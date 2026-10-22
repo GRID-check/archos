@@ -455,16 +455,16 @@ class TestTheNoticeItself:
         agreement, which is exactly the false confidence the guard is supposed
         to save the turn from paying for twice.
         """
-        assert "bereits" in _REPEAT_FETCH_PREFIX
-        assert "nicht erneut" in _REPEAT_FETCH_PREFIX
-        assert "andere" in _REPEAT_FETCH_PREFIX
+        assert "already" in _REPEAT_FETCH_PREFIX
+        assert "not executed again" in _REPEAT_FETCH_PREFIX
+        assert "different" in _REPEAT_FETCH_PREFIX
 
     def test_the_fallback_still_says_the_answer_is_already_there(self):
         """When the turn does not hold the result, an error string would invite
         a retry of the identical call."""
-        assert "bereits" in _REPEAT_FETCH_MESSAGE
-        assert "Ergebnis oben" in _REPEAT_FETCH_MESSAGE
-        assert "andere" in _REPEAT_FETCH_MESSAGE
+        assert "already" in _REPEAT_FETCH_MESSAGE
+        assert "result above" in _REPEAT_FETCH_MESSAGE
+        assert "different" in _REPEAT_FETCH_MESSAGE
 
 
 class TestWhatTheSurvivingCallIsFiledUnder:

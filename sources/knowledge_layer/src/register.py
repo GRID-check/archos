@@ -93,6 +93,9 @@ _KNOWLEDGE_SEARCH_DESCRIPTION = (
     '`group_by="document"` (ranked search only) answers "which documents deal with X": one entry per '
     "document, its best passage and how many passages of the ranked pool it held, so one long PDF "
     "cannot fill every slot.\n"
+    '`shelf=` ("project", "office", "base") reads one shelf only; omitted, every shelf is read, the OIB corpus '
+    'included. For "is X in OUR documents" pass `shelf="project"` (then `"office"`): an exact or regex '
+    "answer states per shelf how many documents were searched and how many matched.\n"
     '`match="exact"` turns the search into Ctrl+F across the files: EVERY '
     "passage that contains the query literally, plus a table of every matching "
     "file with its count and pages — for a company or person, a room or door "
@@ -105,11 +108,13 @@ _KNOWLEDGE_SEARCH_DESCRIPTION = (
     "`stemmed=true` also finds the inflected forms of each word (German stemming: 'Fluchtwegbreite' finds "
     "'Fluchtwegbreiten' and the reverse; a compound only literally); without it the search is literal.\n"
     '`match="regex"` is the same search with a regex in Python syntax, case-insensitive, for a '
-    "pattern (a Geschäftszahl `MA ?37/\\d{6}`, any `Tür T\\d+`); `|` is then regex alternation. "
-    "It needs one literal word it must contain, or a `folder=`, `file_name=` or `doc_class=` to read "
+    "pattern (a Geschäftszahl `MA 37/\\d{6}`, a fire door `\\bT30-\\d+`); `|` is then regex alternation. "
+    "It needs one literal whole word or number it must contain (`37`, `T30`; a word followed by `?`, `*` "
+    "or `\\w` does not count, so `MA ?37` has none), or a `folder=`, `file_name=` or `doc_class=` to read "
     "in; a pattern that backtracks is refused. `context=` (0 to 3, exact and regex only) adds the "
     "lines around every hit as an index under the passages. A search that stops at its limit says "
-    "so: its counts are lower bounds, with the passages per file that hold the words beside them.\n"
+    "so: its counts are lower bounds, with the passages per file that hold the words beside them. A regex "
+    "answer also lists every distinct matched string with its count, files and pages.\n"
     "WHEN NOT TO CALL — to put a file on screen (the user asked to SEE or "
     "BROWSE files, no legal question): that is `surface_documents`. After "
     "you cite a project or Büroablage file, do not also call "
@@ -1596,7 +1601,14 @@ def _grounding_hit(chunk, *, resolved, resolved_titles, resolved_folders, ambigu
         body=content[:_CHUNK_TRUNCATE_CHARS] if truncated else content,
         body_truncated=truncated,
         regions=_hit_regions(chunk),
+        page_end=_page_end(chunk, page),
     )
+
+
+def _page_end(chunk, page: int | None) -> int | None:
+    """The chunk's stored ``page_end`` when it is later than its start page, else None."""
+    end = str((chunk.metadata or {}).get("page_end") or "")
+    return int(end) if page is not None and end.isdigit() and int(end) > page else None
 
 
 def _grounding_hits(chunks) -> tuple:
@@ -2030,6 +2042,7 @@ async def knowledge_retrieval(config: KnowledgeRetrievalConfig, _builder: Builde
         context: int | str | None = None,
         group_by: Literal["document"] | None = None,
         stemmed: bool = False,
+        shelf: str | None = None,
         conclusion: str = "",
     ) -> str:
         """Read and cite passages from the ingested knowledge base.
@@ -2077,6 +2090,11 @@ async def knowledge_retrieval(config: KnowledgeRetrievalConfig, _builder: Builde
             group_by (str | None): "document" returns one entry per document
                 (its best passage, and how many passages of the ranked pool it
                 held) for "which documents deal with X". Ranked search only.
+            shelf (str | None): "project", "office" or "base": read that shelf only.
+                Omitted: every shelf this question may read, the Basiswissen
+                corpus (building law) included. For "is X in OUR documents" pass
+                "project" or "office" (or both in turn); an exact or regex answer
+                also counts matches and documents per shelf.
             stemmed (bool): Exact only: also find each word's inflected forms
                 (German stemming: "Fluchtwegbreite" finds "Fluchtwegbreiten" and
                 the reverse). Off by default: the exact search is literal.
@@ -2151,6 +2169,12 @@ async def knowledge_retrieval(config: KnowledgeRetrievalConfig, _builder: Builde
             _resolve_scoped_collections(config, session_collection, base_collection)
         )
 
+        from .browse import entries_on_shelf
+
+        target_collections, refusal = entries_on_shelf(target_collections, shelf)
+        if refusal:
+            return refusal
+
         mode = (match or "meaning").strip().lower()
         if mode in {"meaning", "exact", "regex"} and mode not in config.match_modes:
             return f"`match={mode}` is not available in this configuration."
@@ -2189,6 +2213,7 @@ async def knowledge_retrieval(config: KnowledgeRetrievalConfig, _builder: Builde
                 regex_mode=mode == "regex",
                 context=context,
                 stemmed=bool(stemmed),
+                shelf=None,  # already applied to ``target_collections`` above
             )
         if mode != "meaning":
             return (

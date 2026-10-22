@@ -8,7 +8,7 @@
  * | `TaskState` | the ask's `state`, the same words (`ASK_STATES`) |
  * | Message (role user) | the question, the person's message in the thread |
  * | Message (role agent) | Piloti's answer, its message in the thread |
- * | Artifact `answer` | the answer's text, artifact id = the answer's message id |
+ * | Artifact `answer` | the answer's text, artifact id = the answer's message id, then one data part with its `sources` and `confidence` where it stored any |
  * | Artifact per document | a document Piloti filed while answering, as data naming it |
  *
  * `metadata.projectId` on the incoming message names the project, because A2A
@@ -78,6 +78,20 @@ function documentArtifact(document: AskDocument): Artifact {
   }
 }
 
+/** The answer's sources and confidence as one structured data part, where the answer stored any. */
+function evidenceParts(answer: NonNullable<AskView['answer']>): Part[] {
+  const { sources, confidence } = answer
+  if (!sources && !confidence) return []
+  return [
+    {
+      content: { $case: 'data', value: { ...(sources && { sources }), ...(confidence && { confidence }) } },
+      metadata: undefined,
+      filename: '',
+      mediaType: 'application/json',
+    },
+  ]
+}
+
 /** The task's artifacts: the answer's text once there, then each document Piloti filed. */
 export function artifactsOf(view: AskView): Artifact[] {
   const answer: Artifact[] = view.answer
@@ -86,7 +100,7 @@ export function artifactsOf(view: AskView): Artifact[] {
           artifactId: view.answer.messageId,
           name: ANSWER_ARTIFACT_NAME,
           description: 'Piloti’s answer.',
-          parts: [textPart(view.answer.text)],
+          parts: [textPart(view.answer.text), ...evidenceParts(view.answer)],
           metadata: undefined,
           extensions: [],
         },

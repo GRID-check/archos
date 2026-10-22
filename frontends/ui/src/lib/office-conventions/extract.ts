@@ -18,7 +18,7 @@
 import { folderMatchKey } from '@/lib/projects/folders'
 
 /** The shape of the stored JSON; bump when a field changes meaning, and the stored row is recomputed. */
-export const EXTRACTOR_VERSION = 2
+export const EXTRACTOR_VERSION = 3
 
 /** A convention needs at least this many projects behind it. */
 export const MIN_PROJECTS = 3
@@ -46,6 +46,19 @@ export interface ConventionDocument {
   revision: string | null
   /** When it was uploaded; reads a six-digit date in its name (`260315` is 2026, not 2015). */
   uploadedAt?: Date | null
+}
+
+/**
+ * A person's accepted move of a document into a folder (an applied
+ * `file_operation` proposal), with the document's Dokumentart. It is a
+ * deliberate choice, so within its project it outweighs where the documents of
+ * that Dokumentart happen to sit.
+ */
+export interface ConventionMove {
+  projectId: string
+  docType: string
+  /** The folder path the document was moved into. */
+  folderPath: string
 }
 
 /** One living folder of a project, as the extractor reads it. */
@@ -175,13 +188,27 @@ function learnSkeleton(folders: readonly ConventionFolder[], projectsWithFolders
  */
 const filedIn = (doc: ConventionDocument): string => prefixes(doc.folderPath).at(-1) ?? ''
 
-function learnFiling(documents: readonly ConventionDocument[]) {
+function learnFiling(documents: readonly ConventionDocument[], moves: readonly ConventionMove[]) {
   const filed = documents.filter((doc) => doc.docType !== null && conventionPathKey(filedIn(doc)) !== '')
-  const spelled = spellings(filed.map((doc) => [conventionPathKey(filedIn(doc)), filedIn(doc)]))
-  const types = [...new Set(filed.map((doc) => doc.docType as string))].sort()
+  const moved = moves.filter((move) => conventionPathKey(prefixes(move.folderPath).at(-1) ?? '') !== '')
+  const movedIn = (move: ConventionMove): string => prefixes(move.folderPath).at(-1) ?? ''
+  const spelled = spellings([
+    ...filed.map((doc): [string, string] => [conventionPathKey(filedIn(doc)), filedIn(doc)]),
+    ...moved.map((move): [string, string] => [conventionPathKey(movedIn(move)), movedIn(move)]),
+  ])
+  const types = [...new Set([...filed.map((doc) => doc.docType as string), ...moved.map((move) => move.docType)])].sort()
   return types.flatMap((docType) => {
     const ofType = filed.filter((doc) => doc.docType === docType)
-    const agreed = agreedAcrossProjects(perProject(ofType, (doc) => doc.projectId, (doc) => conventionPathKey(filedIn(doc))))
+    const votes = perProject(ofType, (doc) => doc.projectId, (doc) => conventionPathKey(filedIn(doc)))
+    const chosen = moved.filter((move) => move.docType === docType)
+    // A project that accepted a move for this Dokumentart votes with its moves alone.
+    for (const projectId of new Set(chosen.map((move) => move.projectId))) {
+      votes.set(
+        projectId,
+        chosen.filter((move) => move.projectId === projectId).map((move) => conventionPathKey(movedIn(move)))
+      )
+    }
+    const agreed = agreedAcrossProjects(votes)
     if (!agreed) return []
     return [{ docType, path: spelled.get(agreed.value) ?? agreed.value, projects: agreed.projects, of: agreed.of }]
   })
@@ -263,8 +290,10 @@ function learnPattern<T extends string>(
 export function extractOfficeConventions(input: {
   documents: readonly ConventionDocument[]
   folders: readonly ConventionFolder[]
+  /** Moves a person accepted; they teach the Dokumentart-to-folder lines. */
+  moves?: readonly ConventionMove[]
 }): OfficeConventions {
-  const { documents, folders } = input
+  const { documents, folders, moves = [] } = input
   const projects = new Set([...documents.map((doc) => doc.projectId), ...folders.map((folder) => folder.projectId)])
   const projectsWithFolders = new Set(folders.map((folder) => folder.projectId)).size
   const number = learnPattern(documents, (doc) => (doc.documentNumber ? documentNumberShape(doc.documentNumber) : null))
@@ -274,7 +303,7 @@ export function extractOfficeConventions(input: {
     version: EXTRACTOR_VERSION,
     projects: projects.size,
     folders: learnSkeleton(folders, projectsWithFolders),
-    filing: learnFiling(documents),
+    filing: learnFiling(documents, moves),
     documentNumber: number && { shape: number.value, projects: number.projects, of: number.of },
     revisionStyle: revision && { style: revision.value, projects: revision.projects, of: revision.of },
     fileDate: date && { format: date.value, projects: date.projects, of: date.of },

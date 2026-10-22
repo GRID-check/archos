@@ -229,3 +229,78 @@ read „1,00 m") or the same decimals („2,70"). A bare whole number („3 Gesc
 beside a read „2,70 m") rounds to nothing. A measurement or a record that
 matches wins. Wire, `claims-by-class` and the UI mix gain the class; a turn
 stored before it reads unchanged.
+
+
+## Amendment, 2026-10-22: a look registers a citable place, and honest uncertainty is not a false claim
+
+Found by tracing the north-star exemplars `ns-dimension`, `ns-door-count` and
+`ns-plankopf` (`docs/architecture/north-star-answers.md`): a value read off a
+drawing by `look` could not be cited honestly. `look` registered no source, so a
+`[N]` either laundered through an unrelated caption chunk of the page (class
+`cited`, able to reach "high"), was dropped (`cited_dropped`, "low"), or was
+absent (`observed`, "medium").
+
+**A place.** A look at a project or office document that produced a reading
+registers a source entry (`tools/look/place.py`): file, page, the region box and
+the reading lines as the passage, of the document's own kind (`project`,
+`office`; a look at the base corpus registers nothing, and a place is never
+`building_law`, whatever its file is called). It travels the grounding-block
+grammar the other evidence tools use (`GroundingHit.regions`, the `Region:`
+line, `render_grounding_block`, `_entry_from_hit`; `register_source_parser`
+for a replayed turn, which now also reads the `Region:` line back), so a
+replayed turn keeps the citation. The reading is `SourceEntry.read`, never
+`chunk_text`: it is a perception, so no quote is checked against it. The chip
+and the peek draw it as the place they already draw for a cited sheet.
+
+**Class and ceiling.** A sentence whose `[N]` resolves to a place only is
+`observed`. Its ceiling is `high` when the cited place is a region crop (not an
+overview, not an embedded image) and the sentence repeats a number or code of
+the reading exactly (`_observed`, the matcher above); `medium` for an overview
+or without an exact match; `low` when normative. A place is not a passage: it
+is not in `cited_numbers`, it never sets `citation_grounded`
+(`answer_pipeline._ground`), does not count as a retrieval for the empty-registry
+check, is left out of the turn's trailer captures and of the quote stamps. A
+sentence that cites a place AND a passage (a looked value compared with a
+cited norm) takes the weaker of the two (`ClaimStamp.cap`): this also covers a
+cited sentence that repeats a reading without its own marker. A place on a page
+that also holds a retrieved caption chunk merges into that entry (the registry
+dedups on file and page, and entry identity is not split), which then holds a
+passage (`chunk_text`) and a reading (`read`). A sentence citing such an entry
+is classed by where its value appears (`claim_provenance._merged_class`): a value
+found in the passage is `cited` as before; a value found only in the reading is
+`observed` with the observed ceiling (crop and exact match `high`, else
+`medium`, `low` if normative), so it never borrows the caption's authority; a
+value in neither is an unsupported value (`model_knowledge`); a sentence that
+states no value stays `cited`.
+
+**Honest absence and estimates.** A sentence that reports the ABSENCE of
+evidence („in keinem Dokument", „nicht nachgewiesen", „kann ich nicht
+nachweisen/bestätigen", „weder bestätigen noch widerlegen", „cannot confirm") or
+marks itself an estimate („nach meiner Einschätzung", „überschlägig",
+„geschätzt", „roughly estimated"; `claim_provenance._HEDGE_RE`, narrow, German
+and English) is not a claim of fact: its ceiling is `medium` (not `low`), and it
+does not count toward `claims-normative-uncited`. A `cited_dropped` sentence stays
+`low`, and a quoted or cited sentence keeps its own ceiling. A `reasoning`
+sentence with a value that a cited or observed sentence of the answer also states
+caps at `medium` instead of `low`. Before, „Nachweisen kann ich es nicht" tripped
+the normative stem `nachweis` and floored a correct, humble answer to "low".
+
+**Cards.** `look/cards.relied_on` keeps, for a document the answer cites, the
+region-crop items that read something (an overview only when the document has
+nothing else), and no card at all for an answer that cites none of the looked
+documents or for a reading that is empty or reports nothing found: the look
+stays a Herleitung step. The claim provenance still counts every reading
+(`relied_readings`), so a value stated without a marker stays `observed`.
+`look`'s card reading prefers the line carrying the measured value (a dimension,
+count, date or code) over the summary.
+
+**Observed.** `look-count` (looks per turn) and `looked-before-measurement` (a
+turn whose answer states a drawing value had a region look at that document
+first: 1 or 0, written only on such a turn), at the turn's end
+(`answer_pipeline._emit_look_scores`).
+
+Confirmation: `tests/aiq_agent/common/test_claim_provenance_looks.py` (the three
+cases, the weaker-of-two cap, the hedges from the exemplar sentences),
+`tests/aiq_agent/tools/look/test_place.py` (live and replayed round trip, the
+wire), `test_claim_provenance_pipeline.py` (through `finalize_answer`, the
+scores), `tools/look/test_visibility.py` (the card rules).

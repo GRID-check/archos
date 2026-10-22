@@ -7,13 +7,24 @@
  */
 
 import 'server-only'
-import { and, count, desc, eq, inArray, isNull, lt, max, or } from 'drizzle-orm'
+import { and, count, desc, eq, inArray, isNull, lt, max, or, sql } from 'drizzle-orm'
 import { getDb } from '@/lib/db'
-import { documents, officeConventions, projectFolders, type Document, type OfficeConventionsRow } from '@/lib/db/schema'
+import {
+  documents,
+  officeConventionDecisions,
+  officeConventions,
+  projectFolders,
+  proposedChanges,
+  type Document,
+  type OfficeConventionsRow,
+} from '@/lib/db/schema'
 import { withTenant } from '@/lib/db/tenant-context'
 import { SCREENED_ONLY } from '@/lib/documents/document-reader'
 import { documentVisibleTo } from '@/lib/documents/visibility'
+import { fileOperationPayloadSchema } from '@/lib/proposals/types'
 import type { OfficeConventions } from './extract'
+import { conventionLineSchema } from './office-conventions-wire'
+import type { StoredDecision } from './lines'
 
 /** Most documents one refresh counts, newest first. */
 export const MAX_CONVENTION_DOCUMENTS = 4000
@@ -122,4 +133,89 @@ export async function listConventionDocuments(organizationId: string, projectIds
       .orderBy(desc(documents.createdAt))
       .limit(MAX_CONVENTION_DOCUMENTS)
   )
+}
+
+/** Most decisions one organization keeps; a decision per line, and the lines are few. */
+export const MAX_DECISIONS = 500
+
+/** The office's decisions on its convention lines. A row whose stored line no longer parses is left out. */
+export async function listConventionDecisions(organizationId: string): Promise<StoredDecision[]> {
+  const rows = await withTenant({ organizationId }, () =>
+    getDb()
+      .select()
+      .from(officeConventionDecisions)
+      .where(eq(officeConventionDecisions.organizationId, organizationId))
+      .orderBy(desc(officeConventionDecisions.decidedAt))
+      .limit(MAX_DECISIONS)
+  )
+  return rows.flatMap((row) => {
+    const line = conventionLineSchema.safeParse(row.line)
+    if (!line.success || line.data.key !== row.lineKey) return []
+    return [{ lineKey: row.lineKey, decision: row.decision, line: line.data, decidedBy: row.decidedBy, decidedAt: new Date(row.decidedAt) }]
+  })
+}
+
+/** Record a decision, replacing an earlier one on the same line. */
+export async function saveConventionDecision(organizationId: string, decision: Omit<StoredDecision, 'decidedAt'>): Promise<void> {
+  const values = { decision: decision.decision, line: decision.line, decidedBy: decision.decidedBy, decidedAt: new Date() }
+  await withTenant({ organizationId }, () =>
+    getDb()
+      .insert(officeConventionDecisions)
+      .values({ organizationId, lineKey: decision.lineKey, ...values })
+      .onConflictDoUpdate({ target: [officeConventionDecisions.organizationId, officeConventionDecisions.lineKey], set: values })
+  )
+}
+
+/** Take a decision back. */
+export async function deleteConventionDecision(organizationId: string, lineKey: string): Promise<void> {
+  await withTenant({ organizationId }, () =>
+    getDb()
+      .delete(officeConventionDecisions)
+      .where(and(eq(officeConventionDecisions.organizationId, organizationId), eq(officeConventionDecisions.lineKey, lineKey)))
+  )
+}
+
+/** Most accepted proposals one refresh reads, newest first. */
+export const MAX_ACCEPTED_MOVES = 1000
+
+/** One document a person accepted a move of, by name, into a folder path. */
+export interface AcceptedMove {
+  projectId: string
+  document: string
+  folderPath: string
+}
+
+/**
+ * The moves a person accepted in these projects: applied `file_operation`
+ * proposals whose operation is `move`, one entry per item that names a document
+ * and a target folder. Bounded by {@link MAX_ACCEPTED_MOVES}.
+ */
+export async function listAcceptedMoves(organizationId: string, projectIds: readonly string[]): Promise<AcceptedMove[]> {
+  if (projectIds.length === 0) return []
+  const rows = await withTenant({ organizationId }, () =>
+    getDb()
+      .select({ projectId: proposedChanges.projectId, payload: proposedChanges.payload })
+      .from(proposedChanges)
+      .where(
+        and(
+          eq(proposedChanges.organizationId, organizationId),
+          eq(proposedChanges.scope, 'project'),
+          eq(proposedChanges.kind, 'file_operation'),
+          eq(proposedChanges.status, 'applied'),
+          sql`${proposedChanges.payload}->>'operation' = 'move'`,
+          inArray(proposedChanges.projectId, [...projectIds])
+        )
+      )
+      .orderBy(desc(proposedChanges.decidedAt))
+      .limit(MAX_ACCEPTED_MOVES)
+  )
+  return rows.flatMap((row) => {
+    const payload = fileOperationPayloadSchema.safeParse(row.payload)
+    if (!payload.success || !row.projectId) return []
+    const projectId = row.projectId
+    return payload.data.operations.flatMap((item) => {
+      const folderPath = item.target_folder ?? payload.data.new_folder?.path
+      return item.document && folderPath && item.source !== 'office' ? [{ projectId, document: item.document, folderPath }] : []
+    })
+  })
 }

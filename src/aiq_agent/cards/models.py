@@ -1137,6 +1137,11 @@ class FileOperationItem(CardModel):
         default=None,
         description="assign: the person as the user named them; the reader's session resolves it against the project",
     )
+    reason: str | None = Field(
+        default=None,
+        max_length=300,
+        description="Why this change, one short sentence the reader sees under the row",
+    )
 
 
 class FileOperationProposalCard(CardModel):

@@ -714,4 +714,32 @@ export const organization: typeof en.organization = {
     deleteErrorSession: 'Einen Chat-Anhang können nur Personen löschen, die an diesem Chat beteiligt sind.',
     loadError: 'Die Quarantäne konnte gerade nicht geladen werden.',
   },
+  /** What Piloti learned about the office's conventions, to confirm or decline (ADR-0129). */
+  officeConventions: {
+    title: 'Was Piloti über das Büro gelernt hat',
+    description: 'Konventionen, die Piloti in Ihren Projekten gezählt hat. Bestätigen Sie, was stimmt, und lehnen Sie ab, was nicht stimmt: Piloti verwendet eine abgelehnte Zeile nie und behält eine bestätigte immer.',
+    confirm: 'Bestätigen',
+    decline: 'Ablehnen',
+    undo: 'Zurücknehmen',
+    confirmed: 'Bestätigt',
+    declined: 'Abgelehnt',
+    support: 'In {projects} von {of} Projekten zu sehen',
+    supportWhenConfirmed: 'Von Ihnen bestätigt; bei der Bestätigung in {projects} von {of} Projekten zu sehen',
+    empty: 'Noch nichts gelernt. Piloti braucht dieselbe Gewohnheit in mindestens drei Ihrer Projekte.',
+    off: 'Piloti lernt die Konventionen des Büros in dieser Installation noch nicht.',
+    loadError: 'Die Konventionen konnten nicht geladen werden.',
+    saveError: 'Ihre Entscheidung konnte nicht gespeichert werden. Bitte versuchen Sie es erneut.',
+    line: {
+      filing: '{docType} werden meist unter {path} abgelegt.',
+      folder: 'Die meisten Projekte führen den Ordner {path}.',
+      documentNumber: 'Plannummern haben meist die Form {shape} (A = Buchstaben, 0 = Ziffer).',
+      fileDate: 'Dateinamen schreiben ein Datum meist als {format}.',
+      revisionStyle: {
+        letter: 'Der Index ist meist ein Buchstabe (A, B, C).',
+        number: 'Der Index ist meist eine Zahl (1, 2, 3).',
+        padded_number: 'Der Index ist meist eine zweistellige Zahl (01, 02, 03).',
+        letter_number: 'Der Index ist meist Buchstabe und Zahl (A1, A2).',
+      },
+    },
+  },
 }

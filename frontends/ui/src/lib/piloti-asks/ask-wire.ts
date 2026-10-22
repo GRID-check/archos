@@ -104,6 +104,37 @@ export interface AskDocument {
   contentType: string | null
 }
 
+/**
+ * One source the answer cites: a document, and the page when the citation names
+ * one. `documentId` is the answer's own document identity (what its citations
+ * group on), not a workspace document id. `url` opens the cited page in Piloti
+ * for the asker (the UI's `?cite=` link on their conversation), or is the
+ * outbound address of a web or RIS source.
+ */
+export interface AskSource {
+  documentId: string
+  name: string
+  page?: number
+  url: string
+}
+
+/** How far the answer rests on its sources, as the answer stored it (ADR-0125). */
+export interface AskConfidence {
+  level: 'low' | 'medium' | 'high'
+  /** Why, in one sentence. */
+  reason?: string
+  /** Set when a guard lowered the level; the guard's code. */
+  cappedReason?: string
+  /** A search ran and found nothing: the answer is Piloti's own knowledge, not a document's. */
+  lookupFoundNothing?: true
+}
+
+/** What the answer's message stores about its grounding. Each key is absent where the message has none. */
+export interface AskAnswerEvidence {
+  sources?: AskSource[]
+  confidence?: AskConfidence
+}
+
 /** What every ask route answers. */
 export interface AskView {
   id: string
@@ -116,7 +147,7 @@ export interface AskView {
   /** Why it failed or was rejected. */
   reason: string | null
   /** Piloti's answer, once `completed`. */
-  answer: { messageId: string; text: string } | null
+  answer: ({ messageId: string; text: string } & AskAnswerEvidence) | null
   documents: AskDocument[]
   createdAt: string
   updatedAt: string

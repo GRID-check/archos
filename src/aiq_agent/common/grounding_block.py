@@ -200,6 +200,9 @@ class GroundingHit(BaseModel):
     #: the record lookup; a block read back by the text parser (a replayed turn)
     #: carries none, and the viewer then opens at the page as before.
     regions: tuple[SourceRegion, ...] = ()
+    #: Last page of a passage that runs over a page break, when it is later than :attr:`page`. Rendered
+    #: as the range ``Page: 4–5``; the citation key keeps the start page, which is its identity.
+    page_end: int | None = None
 
     @property
     def authored_by(self) -> str | None:
@@ -381,7 +384,7 @@ def _header_lines(hit: GroundingHit) -> Iterator[str]:
     if hit.provenance is not None:
         yield f"Herkunft: {_line(provenance_label(hit.provenance))}"
     if hit.page is not None:
-        yield f"Page: {hit.page}"
+        yield f"Page: {hit.page}–{hit.page_end}" if hit.page_end and hit.page_end > hit.page else f"Page: {hit.page}"
     for region in hit.regions[:MAX_RENDERED_REGIONS]:
         yield _region_line(region)
     if hit.clause:

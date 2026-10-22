@@ -59,3 +59,11 @@ def test_every_allowed_tool_is_in_the_contract_as_a_read() -> None:
             "idempotentHint": True,
             "openWorldHint": False,
         }
+
+
+def test_the_door_gets_the_shelf_argument_the_chat_model_gets() -> None:
+    tools = {tool["name"]: tool for tool in json.loads(SCHEMA_PATH.read_text(encoding="utf-8"))["tools"]}
+    search = tools["knowledge_search"]
+
+    assert "shelf" in search["inputSchema"]["properties"]
+    assert "`shelf=`" in search["description"]

@@ -1464,6 +1464,20 @@
           "description": "create_folder: the parent folder PATH, or an empty string for the project root",
           "title": "Parent Folder"
         },
+        "reason": {
+          "anyOf": [
+            {
+              "maxLength": 300,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Why this change, one short sentence the reader sees under the row",
+          "title": "Reason"
+        },
         "source": {
           "anyOf": [
             {

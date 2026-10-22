@@ -1,0 +1,6 @@
+---
+improvements:
+  - >
+    When Piloti proposes moving, renaming or assigning a file, the proposal now
+    says why, for example that the file belongs with the Bescheid of 12 March.
+    Piloti remembers the reason in later turns.

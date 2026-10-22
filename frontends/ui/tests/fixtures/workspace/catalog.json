@@ -1722,6 +1722,24 @@
    "describe": "{\"name\":\"diagram-file\",\"domain\":\"bim\",\"summary\":\"File a drawn diagram into a project\",\"description\":\"File a diagram as documents of the project: the `svg` and its `source` (mermaid or excalidraw), a `title`, and `runId`, the id of the answer it was drawn in (filing the same diagram twice files nothing twice). Optionally `conversationId` so restricted-folder rules apply. Returns `{ svg, pdf }`, `pdf` null when only the SVG landed. Needs project:documents:write and project:documents:generate.\",\"annotations\":{\"title\":\"File a drawn diagram into a project\",\"readOnlyHint\":false,\"destructiveHint\":false,\"idempotentHint\":false,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The project id, from project-list.\"}},\"required\":[\"id\"]},\"body\":{\"type\":\"object\",\"properties\":{\"runId\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":200},\"title\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":200},\"sourceKind\":{\"type\":\"string\",\"enum\":[\"mermaid\",\"excalidraw\"]},\"source\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":524288},\"svg\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":1048576},\"conversationId\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":128}},\"required\":[\"runId\",\"title\",\"sourceKind\",\"source\",\"svg\"]}},\"additionalProperties\":false,\"required\":[\"params\",\"body\"]}}"
   },
   {
+   "name": "office-conventions-decide",
+   "domain": "organization",
+   "summary": "Confirm or decline a learned convention",
+   "description": "Confirms or declines one line of office-conventions-list by its `lineKey`, or takes an earlier decision back with `undecided`. Confirmed lines stay in Piloti’s answers even when later counts fall below the threshold; declined lines are never used. The decision holds for everyone in the organization. Needs org:settings:manage. Returns the updated list.",
+   "readOnly": false,
+   "destructive": false,
+   "describe": "{\"name\":\"office-conventions-decide\",\"domain\":\"organization\",\"summary\":\"Confirm or decline a learned convention\",\"description\":\"Confirms or declines one line of office-conventions-list by its `lineKey`, or takes an earlier decision back with `undecided`. Confirmed lines stay in Piloti’s answers even when later counts fall below the threshold; declined lines are never used. The decision holds for everyone in the organization. Needs org:settings:manage. Returns the updated list.\",\"annotations\":{\"title\":\"Confirm or decline a learned convention\",\"readOnlyHint\":false,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"body\":{\"type\":\"object\",\"properties\":{\"lineKey\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":300,\"description\":\"The key of a line, from office-conventions-list.\"},\"decision\":{\"type\":\"string\",\"enum\":[\"confirmed\",\"declined\",\"undecided\"],\"description\":\"\\\"confirmed\\\" keeps the line for Piloti even when later counts fall below the threshold; \\\"declined\\\" means Piloti never uses it again; \\\"undecided\\\" takes an earlier decision back.\"}},\"required\":[\"lineKey\",\"decision\"]}},\"additionalProperties\":false,\"required\":[\"body\"]}}"
+  },
+  {
+   "name": "office-conventions-list",
+   "domain": "organization",
+   "summary": "List what Piloti has learned about the office’s conventions",
+   "description": "The office’s conventions as Piloti counted them from its projects: where each document type is usually filed, the folders most projects keep, the shape of Plannummern, the Index style and how file names write a date. Each line has a `key`, the projects that show it (`projects` of `of`), whether the latest count still `counted` it, and the office’s `decision` (`confirmed`, `declined` or null). Declined lines never reach Piloti’s answers; confirmed lines always do. Any member may read. The keys feed office-conventions-decide.",
+   "readOnly": true,
+   "destructive": false,
+   "describe": "{\"name\":\"office-conventions-list\",\"domain\":\"organization\",\"summary\":\"List what Piloti has learned about the office’s conventions\",\"description\":\"The office’s conventions as Piloti counted them from its projects: where each document type is usually filed, the folders most projects keep, the shape of Plannummern, the Index style and how file names write a date. Each line has a `key`, the projects that show it (`projects` of `of`), whether the latest count still `counted` it, and the office’s `decision` (`confirmed`, `declined` or null). Declined lines never reach Piloti’s answers; confirmed lines always do. Any member may read. The keys feed office-conventions-decide.\",\"annotations\":{\"title\":\"List what Piloti has learned about the office’s conventions\",\"readOnlyHint\":true,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{},\"additionalProperties\":false}}"
+  },
+  {
    "name": "organization-download-log-list",
    "domain": "organization",
    "summary": "Read the download log",
@@ -1847,13 +1865,13 @@
    "project-list",
    "quarantine-list",
    "project-same-address-list",
+   "office-conventions-list",
    "office-shelf-document-list",
    "project-document-list",
    "office-shelf-folder-list",
    "project-folder-list",
    "conversation-list",
-   "proposal-list",
-   "session-document-list"
+   "proposal-list"
   ],
   "Projekte auflisten": [
    "project-list",

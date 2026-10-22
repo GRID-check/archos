@@ -2421,6 +2421,26 @@
    "withheld": null,
    "reason": null
   },
+  "office-conventions-decide": {
+   "kind": "catalog",
+   "domain": "organization",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "office-conventions-list": {
+   "kind": "catalog",
+   "domain": "organization",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
   "organization-audit-portal-link-create": {
    "kind": "catalog",
    "domain": "organization",

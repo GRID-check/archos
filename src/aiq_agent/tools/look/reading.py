@@ -231,6 +231,44 @@ async def read_region(jpeg: bytes, question: str, *, region: bool = False) -> Re
     return reading
 
 
+#: The kinds whose lines carry a value a sentence repeats; a label with a digit in it is a code („EP-01", „1:50").
+VALUE_KINDS = ("dimension", "count", "date")
+MAX_CARD_VALUE_LINES = 2
+
+
+def card_reading(reading: Reading) -> str:
+    """The one reading a card item and the Herleitung row keep.
+
+    The line(s) carrying the measured value (a dimension, a count, a date or a
+    code) come first: the one-sentence summary of a Plankopf says "title block
+    with scale and date" and holds neither. The summary stays the fallback, then
+    the first line. Empty when the reading is not usable.
+    """
+    if not reading.usable:
+        return ""
+    values = [
+        line.text
+        for line in reading.lines
+        if line.kind in VALUE_KINDS or (line.kind in ("label", "symbol") and any(c.isdigit() for c in line.text))
+    ]
+    if values:
+        return "; ".join(values[:MAX_CARD_VALUE_LINES])
+    return reading.summary or (reading.lines[0].text if reading.lines else "")
+
+
+def render_readings_parts(reading: Reading, *, blind: bool) -> tuple[str, str]:
+    """:func:`render_readings` as (what frames the readings, the reading rows).
+
+    The rows are the passage a look's place holds (``place.py``); the head and a
+    failure's sentence stay with the model-facing preamble. A reading that
+    failed has no rows.
+    """
+    if reading.failure:
+        return render_readings(reading, blind=blind), ""
+    head, _, rows = render_readings(reading, blind=blind).partition("\n")
+    return head, rows
+
+
 def render_readings(reading: Reading, *, blind: bool) -> str:
     """The text a model reads: the readings, labelled as a second reader's perception, or why there are none.
 

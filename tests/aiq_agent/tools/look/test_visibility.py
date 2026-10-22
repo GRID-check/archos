@@ -3,8 +3,10 @@
 ``look`` runs for real against a one-page PDF (the fakes of ``test_register.py``);
 the step is read off the turn's stream, the card off the bound card registry.
 Which looks the answer keeps is the rule in ``tools/look/cards.py``: the cited
-looked-at documents, or every looked-at document when the answer cites none of
-them, and every box or pointer Piloti showed the room.
+looked-at documents only (a look the answer moved past, or cites nothing of, is a
+Herleitung step), of them the items that read something and the region crops
+(an overview only when it is all there is), and every box or pointer Piloti
+showed the room.
 """
 
 from __future__ import annotations
@@ -67,6 +69,14 @@ def _cited(*file_names: str) -> list:
     return [_Cited(SourceEntry(citation_key=f"{name}, p.1", source_type="knowledge_layer")) for name in file_names]
 
 
+def _read(held: list[dict], text: str = "Gangbreite 1,10 m") -> list[dict]:
+    """The held looks as if the second reader had read ``text`` at each."""
+    for entry in held:
+        if entry["item"]["origin"] == "look":
+            entry["item"]["reading"] = text
+    return held
+
+
 def _looks(registry) -> list[dict]:
     return [card for card in registry.snapshot() if card["type"] == "look"]
 
@@ -92,11 +102,12 @@ class TestALookIsSeen:
         }
         assert _looks(registry) == []  # the card waits for the answer
 
-        assert place_look_cards(take_looks()) == 2
+        # The overview is dropped: the document has a region crop that reads.
+        assert place_look_cards(_read(take_looks()), _cited("Grundriss_EG.pdf")) == 1
         [card] = _looks(registry)
         assert card["document"] == {"id": DOCUMENT, "name": "Grundriss_EG.pdf", "shelf": "stored"}
-        assert [item["scope"] for item in card["items"]] == ["overview", "region"]
-        assert card["items"][1]["where"] == "oben rechts"
+        assert [item["scope"] for item in card["items"]] == ["region"]
+        assert card["items"][0]["where"] == "oben rechts"
 
     async def test_a_look_records_the_revision_it_read(self, registry, steps, monkeypatch) -> None:
         """The card and the step name the version whose bytes were rendered, so a newer Fassung never redraws them."""
@@ -111,7 +122,7 @@ class TestALookIsSeen:
         await run_look(page=1, region=[0.1, 0.1, 0.3, 0.2])
 
         assert [step.revision_id for step in steps] == ["version-7"]
-        place_look_cards(take_looks())
+        place_look_cards(_read(take_looks()), _cited("Grundriss_EG.pdf"))
         [card] = _looks(registry)
         assert [item.get("revision_id") for item in card["items"]] == ["version-7"]
 
@@ -138,7 +149,7 @@ class TestAGestureIsSeen:
         await run_highlight(1, 0.9, 0.2, 0.11, 0.1, "Hier: Fluchtweg 1,10 m")
         await run_point(1, 0.3, 0.6)
 
-        place_look_cards(take_looks())
+        place_look_cards(_read(take_looks()), _cited("Grundriss_EG.pdf"))
         [card] = _looks(registry)
         assert [item["origin"] for item in card["items"]] == ["look", "reference", "reference"]
         highlight, point = card["items"][1:]
@@ -154,36 +165,70 @@ class TestAGestureIsSeen:
         assert take_looks() == []
 
 
-def _held(name: str, origin: str = "look", document_id: str | None = None) -> dict:
+def _held(
+    name: str,
+    origin: str = "look",
+    document_id: str | None = None,
+    scope: str | None = None,
+    reading: str | None = None,
+) -> dict:
     document = {"name": name, "shelf": "stored", **({"id": document_id} if document_id else {})}
-    scope = "overview" if origin == "look" else "point"
-    item = {"origin": origin, "page": 1, "scope": scope, **({"point": [0.5, 0.5]} if origin != "look" else {})}
+    scope = scope or ("overview" if origin == "look" else "point")
+    item = {"origin": origin, "page": 1, "frame": "page", "scope": scope}
+    if origin != "look":
+        item["point"] = [0.5, 0.5]
+    elif scope == "region":
+        item["region"] = [0.1, 0.1, 0.3, 0.2]
+    if origin == "look" and reading is not None:
+        item["reading"] = reading
     return {"document": document, "item": item}
+
+
+def _crop(name: str, document_id: str | None = None, reading: str = "Gangbreite 1,10 m") -> dict:
+    return _held(name, document_id=document_id, scope="region", reading=reading)
 
 
 class TestWhichLooksTheAnswerKeeps:
     def test_only_the_cited_documents_when_the_answer_cites_one_it_looked_at(self) -> None:
-        held = [_held("Grundriss_EG.pdf"), _held("Schnitt A-A.pdf"), _held("Grundriss_EG.pdf")]
+        held = [_crop("Grundriss_EG.pdf"), _crop("Schnitt A-A.pdf"), _crop("Grundriss_EG.pdf")]
 
         kept = relied_on(held, {"grundriss_eg.pdf"})
 
         assert [entry["document"]["name"] for entry in kept] == ["Grundriss_EG.pdf", "Grundriss_EG.pdf"]
 
-    def test_every_look_when_the_answer_cites_none_of_the_documents_it_looked_at(self) -> None:
-        held = [_held("Grundriss_EG.pdf"), _held("Schnitt A-A.pdf")]
+    def test_no_card_when_the_answer_cites_none_of_the_documents_it_looked_at(self) -> None:
+        """The look stays a Herleitung step: an answer that does not cite the drawing does not rest on it."""
+        held = [_crop("Grundriss_EG.pdf"), _crop("Schnitt A-A.pdf")]
 
-        assert relied_on(held, {"oib-rl4.pdf"}) == held
-        assert relied_on(held, set()) == held
+        assert relied_on(held, {"oib-rl4.pdf"}) == []
+        assert relied_on(held, set()) == []
+
+    def test_a_look_that_read_nothing_makes_no_item(self) -> None:
+        for reading in (None, "", "Nothing legible in this crop.", "Keine Türen erkennbar."):
+            held = [_held("Grundriss_EG.pdf", scope="region", reading=reading)]
+
+            assert relied_on(held, {"grundriss_eg.pdf"}) == [], reading
+
+    def test_an_overview_is_dropped_when_the_document_has_a_region_crop(self) -> None:
+        overview = _held("Grundriss_EG.pdf", reading="Grundriss EG, Massstab 1:100")
+        crop = _crop("Grundriss_EG.pdf")
+
+        assert relied_on([overview, crop], {"grundriss_eg.pdf"}) == [crop]
+
+    def test_an_overview_is_kept_when_it_is_all_the_document_has(self) -> None:
+        overview = _held("Grundriss_EG.pdf", reading="Grundriss EG, Massstab 1:100")
+
+        assert relied_on([overview], {"grundriss_eg.pdf"}) == [overview]
 
     def test_a_gesture_is_always_kept(self) -> None:
-        held = [_held("Grundriss_EG.pdf"), _held("Schnitt A-A.pdf"), _held("Lageplan.pdf", origin="reference")]
+        held = [_crop("Grundriss_EG.pdf"), _crop("Schnitt A-A.pdf"), _held("Lageplan.pdf", origin="reference")]
 
         kept = relied_on(held, {"grundriss_eg.pdf"})
 
         assert [entry["document"]["name"] for entry in kept] == ["Grundriss_EG.pdf", "Lageplan.pdf"]
 
     def test_the_rule_reads_the_answers_cited_file_names(self, registry) -> None:
-        held = [_held("Grundriss_EG.pdf", document_id=DOCUMENT), _held("Grundriss_OG.pdf", document_id=OG)]
+        held = [_crop("Grundriss_EG.pdf", document_id=DOCUMENT), _crop("Grundriss_OG.pdf", document_id=OG)]
 
         place_look_cards(held, _cited("Grundriss_OG.pdf", "OIB-RL4.pdf"))
 
@@ -191,9 +236,9 @@ class TestWhichLooksTheAnswerKeeps:
 
     def test_a_full_card_opens_the_next_and_no_card_moves(self, registry) -> None:
         registry.add({"type": "calculation", "title": "x"})
-        held = [_held("Grundriss_EG.pdf", document_id=DOCUMENT)] * 13
+        held = [_crop("Grundriss_EG.pdf", document_id=DOCUMENT)] * 13
 
-        assert place_look_cards(held) == 13
+        assert place_look_cards(held, _cited("Grundriss_EG.pdf")) == 13
 
         cards = registry.snapshot()
         assert cards[0]["type"] == "calculation"
@@ -251,6 +296,7 @@ async def test_every_line_a_look_read_counts_for_the_provenance_not_only_the_car
     await run_look(page=1, region=[0.1, 0.1, 0.3, 0.2], question="Wie hoch ist der Raum?")
 
     held = take_looks()
-    assert held[0]["item"]["reading"] == "Ein Raum mit Höhenkote."
+    # The line carrying the measured value comes before the one-sentence summary.
+    assert held[0]["item"]["reading"] == "Raum 1.04; Raumhöhe 2,70 m"
     [read] = relied_readings(held)
     assert "Raumhöhe 2,70 m" in read

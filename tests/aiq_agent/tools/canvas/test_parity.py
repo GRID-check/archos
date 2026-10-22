@@ -49,7 +49,7 @@ class TestAnOpenMark:
         result = await run_mark([PROPOSAL], open=True)
 
         assert calls[0][0]["op"] == "create"
-        assert "Gesetzt" in result and "offen" in result and "VORSCHLÄGE" not in result
+        assert "Set:" in result and "open" in result and "PROPOSALS" not in result
         [card] = registry.snapshot()
         assert card["items"][0]["action"] == "created"
         assert card["items"][0]["annotation_id"] == PROPOSED
@@ -79,10 +79,10 @@ class TestAnUpdate:
         ("change", "expected"),
         [
             ({"note": "  "}, "`note`"),
-            ({}, "mindestens eine Änderung"),
+            ({}, "at least one change"),
             ({"status": "archived"}, "`status`"),
-            ({"due_on": "20.10.2026"}, "JJJJ-MM-TT"),
-            ({"due_on": "2026-02-30"}, "JJJJ-MM-TT"),
+            ({"due_on": "20.10.2026"}, "YYYY-MM-DD"),
+            ({"due_on": "2026-02-30"}, "YYYY-MM-DD"),
             ({"kind": "remark"}, "`kind`"),
         ],
     )
@@ -99,8 +99,8 @@ class TestAnUpdate:
 
         result = await run_update(ANNOTATION, NOTE, status="resolved", assignee="Anna Berger")
 
-        assert "Nr. 4" in result and "offen → erledigt" in result and "– → Anna Berger" in result
-        assert "Antwort von Piloti" in result
+        assert "no. 4" in result and "open → resolved" in result and "– → Anna Berger" in result
+        assert "reply from Piloti" in result
         [card] = registry.snapshot()
         assert card["document"] == {"id": DOCUMENT, "name": NAME}
         assert card["items"] == [
@@ -122,7 +122,7 @@ class TestAnUpdate:
 
         result = await run_update(ANNOTATION, NOTE, status="resolved")
 
-        assert "Nichts geändert" in result
+        assert "Nothing changed" in result
         assert registry.snapshot() == []
 
     async def test_by_number_it_is_guarded_by_the_status_it_read(self, monkeypatch, calls, registry) -> None:
@@ -136,14 +136,14 @@ class TestAnUpdate:
     @pytest.mark.parametrize(
         ("error", "expected"),
         [
-            (CanvasRequestError("x", status=409, code="CONFLICT"), "gerade geändert"),
-            (CanvasRequestError("x", status=403, code="FORBIDDEN"), "darf an diesem Dokument nichts ändern"),
-            (CanvasRequestError("x", status=404, code="NOT_FOUND"), "Diese Anmerkung gibt es"),
+            (CanvasRequestError("x", status=409, code="CONFLICT"), "just changed"),
+            (CanvasRequestError("x", status=403, code="FORBIDDEN"), "may not change anything on this document"),
+            (CanvasRequestError("x", status=404, code="NOT_FOUND"), "This annotation does not exist"),
             (
                 CanvasRequestError("„Anna“ could be Anna Berger, Anna Kurz.", status=422, reason="assignee-ambiguous"),
                 "Anna Berger, Anna Kurz",
             ),
-            (CanvasRequestError("Nobody", status=422, reason="assignee-unknown"), "wen sie meint"),
+            (CanvasRequestError("Nobody", status=422, reason="assignee-unknown"), "whom they mean"),
         ],
     )
     async def test_each_refusal_is_a_sentence_and_lands_nothing(self, monkeypatch, calls, registry, error, expected):
@@ -176,7 +176,7 @@ class TestADelete:
         result = await run_delete(ANNOTATION)
 
         assert calls[0][0]["op"] == "delete"
-        assert "Gelöscht" in result and "Nr. 4" in result and "nicht rückgängig" in result
+        assert "Deleted" in result and "no. 4" in result and "cannot be undone" in result
         [card] = registry.snapshot()
         assert card["items"] == [{"action": "deleted", "number": 4, "body": "Fluchtweg im 1. OG zu lang."}]
 
@@ -185,7 +185,7 @@ class TestADelete:
 
         result = await run_delete(ANNOTATION)
 
-        assert "selbst gesetzt" in result and "`resolved`" in result
+        assert "set themselves" in result and "`resolved`" in result
         assert registry.snapshot() == []
 
 
@@ -204,8 +204,8 @@ class TestAnOfficeThatHasPilotiProposeOnly:
 
         result = await run_mark([PROPOSAL], open=True)
 
-        assert result.startswith("Nicht gesetzt")
-        assert "nur vorschlagen" in result and "`mark` ohne `open`" in result and "übernehmen" in result
+        assert result.startswith("Not set")
+        assert "only propose" in result and "`mark` without `open`" in result and "take it over" in result
         assert registry.snapshot() == []
 
     async def test_the_proposal_it_asks_for_goes_through(self, monkeypatch, calls, registry) -> None:
@@ -215,7 +215,7 @@ class TestAnOfficeThatHasPilotiProposeOnly:
         result = await run_mark([PROPOSAL])
 
         assert [payload["op"] for payload, _ in calls] == ["create", "propose"]
-        assert "VORSCHLÄGE" in result
+        assert "PROPOSALS" in result
         assert registry.snapshot()[0]["items"][0]["action"] == "proposed"
 
     @pytest.mark.parametrize(
@@ -232,10 +232,10 @@ class TestAnOfficeThatHasPilotiProposeOnly:
 
         result = await run()
 
-        assert result.startswith("Nicht geändert")
-        assert "nur vorschlagen" in result and "selbst tun" in result and "nicht erneut versuchen" in result
+        assert result.startswith("Not changed")
+        assert "only propose" in result and "themselves" in result and "do not retry" in result
         # Not the missing-permission sentence: the person may well do it, Piloti may not do it for them.
-        assert "darf an diesem Dokument nichts ändern" not in result and "selbst gesetzt" not in result
+        assert "may not change anything on this document" not in result and "set themselves" not in result
         assert registry.snapshot() == []
 
     async def test_a_refused_change_leaves_the_thread_to_the_answer(self, monkeypatch, calls, registry) -> None:
@@ -255,7 +255,7 @@ class TestAnOfficeThatHasPilotiProposeOnly:
 
         result = await run_reply(ANNOTATION, "Steht im Schnitt B-B.")
 
-        assert "Antwort" in result and calls[0][0]["op"] == "reply"
+        assert "reply" in result and calls[0][0]["op"] == "reply"
 
     async def test_the_refusal_is_recorded_by_its_own_code(self, monkeypatch, calls, registry) -> None:
         spans: list[tuple[str, dict, dict]] = []
@@ -281,13 +281,13 @@ class TestAnOfficeThatHasPilotiProposeOnly:
 
     @pytest.mark.parametrize("tool", ["mark", "update", "delete"])
     def test_each_acting_tool_says_so_in_its_description(self, tool) -> None:
-        assert "nur vorschlagen" in DESCRIPTIONS[tool]
+        assert "only propose" in DESCRIPTIONS[tool]
 
 
 def test_a_check_of_what_is_fixed_is_answered_in_each_thread_and_changes_no_status() -> None:
     """„Piloti prüfen lassen, was behoben ist“: a verdict per mark, in its thread; closing it stays the person's."""
-    assert "prüfen, ob etwas behoben ist, verlangt keine Änderung" in DESCRIPTIONS["update"]
+    assert "check whether something is fixed asks for no change" in DESCRIPTIONS["update"]
     reply = DESCRIPTIONS["reply"]
     assert "„In <Fassung> behoben:“" in reply
     assert "„Weiterhin offen:“" in reply
-    assert "Den Status änderst du dabei nicht" in reply
+    assert "You do not change the status in doing so" in reply

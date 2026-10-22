@@ -120,7 +120,9 @@ one. It waits for a per-document phase or an upload-time stamp.
 A new table, `office_conventions` (migration 0181): one row per organization,
 the extractor's JSON (`conventions`, versioned by `extractor_version`), the
 `source_fingerprint` it was computed from, `computed_at`, and
-`refresh_requested_at`. RLS `organization_id = grid_current_org()`.
+`refresh_requested_at`. RLS `organization_id = grid_current_org()`. A person's
+decisions on its lines are a second table, `office_convention_decisions`
+(migration 0182), keyed by organization and line key.
 
 Existing tables checked first:
 
@@ -185,18 +187,32 @@ Existing tables checked first:
 
 ### What the person sees, and the later slices
 
-Nothing in this slice: no route, so no catalog operation yet. The next slices,
-in order:
+Slices 1 and 2 are built (still behind `GRID_OFFICE_CONVENTIONS`); slice 3 is open.
 
-1. **A read view** under "Was Piloti über das Büro weiß": `GET
-   /api/office-conventions`, its operation `office-conventions-get`, offered on
-   the door like any office read.
-2. **Confirm or decline a line.** A confirmed line becomes an organization
-   memory note (kind `preference`, `user_confirmed`); a declined one is kept as
-   suppressed on the row and never shown again. Accepted filing proposals
-   (`ns-propose-move`) count as confirmation, as the exemplar expects.
+1. **A read view, built.** `GET /api/organization/office-conventions`, its
+   operation `office-conventions-list` (offered on the door like any office
+   read), and a card on Organisation → Übersicht („Was Piloti über das Büro
+   gelernt hat“). Each line has a stable key (`lib/office-conventions/lines.ts`:
+   the kind and the value, never the counts), its counts and its decision. No
+   example file is shown: the privacy floor says a name only one project carries
+   is never stated, and the read is open to every member.
+2. **Confirm or decline a line, built.** `POST` on the same path, operation
+   `office-conventions-decide`, `org:settings:manage` (the decision changes what
+   Piloti says to everyone, like the standing instructions). Decisions are rows
+   of `office_convention_decisions` (migration 0182), not memory notes: a
+   decision is the office's word and the count row is replaced whole, so it
+   needs a home of its own, and the snapshot of the line kept with it lets a
+   **confirmed line outlive a recount** that no longer clears the threshold. A
+   **declined line never reaches the agent** (`linesForAgent`). A confirmed
+   filing line also beats a counted one for the same Dokumentart. A decision can
+   be taken back (`undecided`). Accepted `file_operation` moves (status
+   `applied`) count: the moved document's Dokumentart votes for the target
+   folder in its project, and within that project the moves replace where the
+   documents happen to sit. The extractor version is 3.
 3. **A model's summary from the counts**, only if the lines prove too terse in
    the `files` eval.
+
+Not decided here: a declined proposal does not count against a line.
 
 ### Consequences
 

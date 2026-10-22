@@ -83,6 +83,19 @@ domain, because an ask is a conversation.
    agent derives (`answer_message_id`); one still running answers 202 and the
    agent polls.
 
+The answer carries its evidence, read from the stored message and never
+recomputed (`lib/piloti-asks/answer-evidence.ts`): `answer.sources`, one entry
+per cited page (`documentId`, `name`, `page`, `url`), and `answer.confidence`
+(`level`, `reason`, `cappedReason`, `lookupFoundNothing`, ADR-0125). A key is
+absent where the message stores none, so a caller reads an answer with no
+`sources` as not grounded in a document. `url` is the UI's citation link
+(`?cite=`) on the asker's private thread, opened by the asker only; a web or RIS
+source keeps its own address. `documentId` is the answer's own document identity,
+not a workspace document id. The A2A `answer` artifact carries the same two keys
+as one data part beside the text. Starting the turn waits the chat path's 45
+seconds (a cold backend), and a busy thread is rejected with a reason that names
+the way out: read the earlier ask, or leave out `conversationId`. No queue.
+
 An ask whose turn never started (a spent budget, a busy thread, a server that
 refused it, a deployment with no chat service) ends `rejected` or `failed` with
 the reason and takes back what it wrote: the question, and the thread when the
@@ -137,7 +150,7 @@ refused with their A2A errors.
 | `TaskState` | the ask's state, the same word |
 | Message (user) | the question, the person's message in the thread |
 | Message (agent) | Piloti's answer, its message in the thread |
-| Artifact `answer` | the answer's text, `artifactId` the answer's message id |
+| Artifact `answer` | the answer's text, `artifactId` the answer's message id, then one data part with `sources` and `confidence` where the answer stored any |
 | Artifact per document | a document Piloti filed in the thread while answering, as a data part naming it |
 | `message.metadata.projectId` | the project to ask in (A2A has no field for it) |
 

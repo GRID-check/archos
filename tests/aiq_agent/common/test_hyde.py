@@ -107,8 +107,8 @@ class TestDraftPromptHygiene:
 
     def test_prompt_states_register_and_cap(self) -> None:
         system = build_draft_messages("frage")[0][1]
-        assert "zweihundert" in system
-        assert "Muss-Anforderungen" in system
+        assert "two hundred" in system
+        assert "mandatory requirements" in system
 
     def test_user_turn_is_the_verbatim_query(self) -> None:
         assert build_draft_messages("frage")[1] == ("user", "frage")

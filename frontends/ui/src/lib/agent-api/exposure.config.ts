@@ -493,6 +493,8 @@ export const EXPOSURE = {
     piloti: false,
     withheld: { category: 'product-config', reason: 'how long Piloti keeps the download log; a retention policy a person sets' },
   },
+  'office-conventions-decide': OFFERED,
+  'office-conventions-list': OFFERED,
   'organization-failed-document-reingest': OFFERED,
   'organization-instructions-get': {
     external: false,

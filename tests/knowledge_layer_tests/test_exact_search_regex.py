@@ -455,3 +455,122 @@ class TestDescriptionFollowsMatchModes:
         text = await self._description(["meaning", "exact", "regex"])
         assert '`match="exact"` turns' in text and '`match="regex"` is the same search' in text
         assert "literal only" not in text
+
+
+def _regex_examples(description: str) -> list[str]:
+    """Every backticked regex in the parenthesis after „for a pattern“ in the regex paragraph."""
+    import re
+
+    paragraph = description[description.index('`match="regex"`') : description.index("WHEN NOT TO CALL")]
+    offered = paragraph[paragraph.index("for a pattern (") : paragraph.index("`|` is then")]
+    return re.findall(r"`([^`]+)`", offered)
+
+
+class TestRegexExamplesPassTheirOwnAnchorRule:
+    async def test_every_example_in_the_description_is_accepted_without_a_folder(self, search_with):
+        from sources.knowledge_layer.src.browse import _has_literal_word
+        from sources.knowledge_layer.src.register import _KNOWLEDGE_SEARCH_DESCRIPTION
+
+        examples = _regex_examples(_KNOWLEDGE_SEARCH_DESCRIPTION)
+        assert examples, "the description offers no regex example"
+        for example in examples:
+            assert _has_literal_word(example), f"{example!r} would be refused by its own description"
+
+    async def test_the_refusal_says_how_to_rewrite(self, search_with):
+        search_with(_Store([_chunk("Grundriss_EG.pdf", "MA 37/123456-0001")]))
+        text = await _search(query=r"MA ?37/\d{6}", match="regex")
+        assert "Rewrite it so one word is written out in full" in text
+        assert "`MA ?37/\\d{6}` becomes `MA 37/\\d{6}`" in text
+        assert "folder=" in text
+        ok = await _search(query=r"MA 37/\d{6}", match="regex")
+        assert "Grundriss_EG.pdf" in ok
+
+
+class TestDistinctMatches:
+    async def test_a_regex_lists_each_distinct_string_with_count_files_and_pages(self, search_with):
+        search_with(
+            _Store(
+                [
+                    _chunk("Grundriss_EG.pdf", "MA 37/111111 und MA 37/222222", page=1, chunk_id="1"),
+                    _chunk("Schnitt_A-A.pdf", "ma 37/111111 wieder", page=4, chunk_id="2"),
+                ]
+            )
+        )
+        text = await _search(query=r"MA 37/\d{6}", match="regex")
+        assert "Distinct matches: 2" in text
+        assert "- `MA 37/111111`: 2× in Grundriss_EG.pdf, Schnitt_A-A.pdf, p. 1, 4" in text
+        assert "- `MA 37/222222`: 1× in Grundriss_EG.pdf, p. 1" in text
+
+    async def test_exact_search_has_no_distinct_table(self, search_with):
+        search_with(_Store([_chunk("Grundriss_EG.pdf", "BA-03", page=1)]))
+        assert "Distinct matches" not in await _search(query="BA-03", match="exact")
+
+    def test_the_list_is_bounded_and_says_what_it_left_out(self):
+        import re
+
+        from sources.knowledge_layer.src.browse import MAX_DISTINCT_MATCHES
+        from sources.knowledge_layer.src.browse import match_table
+
+        body = " ".join(f"Nr{n:04d}" for n in range(MAX_DISTINCT_MATCHES + 5))
+        pattern = re.compile(r"Nr\d{4}")
+        groups = group_matches([_chunk("a.pdf", body)], pattern, collect_strings=True)
+        text = match_table(groups, [r"Nr\d{4}"], truncated=False, regex_mode=True)
+        assert f"Distinct matches: {MAX_DISTINCT_MATCHES + 5}" in text
+        assert text.count("\n- `Nr") == MAX_DISTINCT_MATCHES
+        assert "and 5 more distinct strings" in text
+
+
+class TestShelfScope:
+    @pytest.fixture
+    def two_shelves(self, search_with):
+        return search_with(
+            _Store(
+                [
+                    _chunk("Grundriss_EG.pdf", "Fluchtweg 40 m", page=2, chunk_id="1"),
+                    _chunk(
+                        "OIB-RL2.pdf", "Fluchtweg 40 m und Fluchtweg", page=7, chunk_id="2", collection="oib_knowledge"
+                    ),
+                ]
+            )
+        )
+
+    async def test_the_default_reads_every_shelf_and_counts_each(self, two_shelves):
+        text = await _search(query="Fluchtweg", match="exact")
+        assert "Searched: 3 documents plus a corpus (Projektwissen 3 documents, Basiswissen (whole corpus))" in text
+        assert "\nProjektwissen: 1 match in 1 of 3 files" in text
+        assert "\nBasiswissen: 2 matches in 1 file (documents not counted)" in text
+
+    async def test_shelf_project_keeps_the_corpus_out(self, two_shelves):
+        text = await _search(query="Fluchtweg", match="exact", shelf="project")
+        assert "OIB-RL2.pdf" not in text and "Grundriss_EG.pdf" in text
+        assert [call["collection"] for call in two_shelves.calls] == ["proj_1"]
+
+    async def test_a_no_match_states_the_documents_searched_per_shelf(self, two_shelves):
+        text = await _search(query="Brandabschnitt", match="exact", shelf="project")
+        assert text.startswith("No match for")
+        assert "Searched: 3 documents (Projektwissen 3 documents)." in text
+        assert "\nProjektwissen: 0 matches in 3 files" in text
+
+    async def test_a_shelf_out_of_scope_or_unknown_is_said_not_answered_with_a_no(self, two_shelves):
+        assert "not part of this question's scope" in await _search(query="Fluchtweg", match="exact", shelf="office")
+        assert "must be one of project, office, base" in await _search(query="Fluchtweg", match="exact", shelf="x")
+        assert two_shelves.calls == []
+
+    async def test_the_ranked_search_takes_the_same_refusal(self, two_shelves):
+        assert "not part of this question's scope" in await _search(query="Fluchtweg", shelf="office")
+
+
+class TestPageEndReachesTheHit:
+    @pytest.mark.parametrize(
+        ("metadata", "page", "expected"),
+        [({"page_end": "5"}, 4, 5), ({"page_end": "4"}, 4, None), ({}, 4, None), ({"page_end": "x"}, 4, None)],
+    )
+    def test_only_a_later_numeric_end_is_stated(self, metadata, page, expected):
+        from sources.knowledge_layer.src.register import _page_end
+
+        assert _page_end(SimpleNamespace(metadata=metadata), page) == expected
+
+    def test_a_chunk_without_a_page_states_no_end(self):
+        from sources.knowledge_layer.src.register import _page_end
+
+        assert _page_end(SimpleNamespace(metadata={"page_end": "5"}), None) is None

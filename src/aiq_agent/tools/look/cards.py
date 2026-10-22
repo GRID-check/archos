@@ -13,16 +13,18 @@ them after it (:func:`take_looks`, :func:`place_look_cards`). The rule, by
 document:
 
 1. A document the answer CITES (a cited source's file name) and Piloti looked
-   at is relied on. When the answer cites at least one looked-at document, only
-   those are: the others were looks the answer moved past.
-2. When the answer cites none of the documents Piloti looked at, every
-   looked-at document is relied on. A value read off a drawing has no passage
-   to cite (a look registers no source), so an answer that cites only the law
-   it measured against still rests on the looks; hiding them would hide the
-   evidence the card exists to show.
+   at is relied on, and only those: a look the answer moved past stays a
+   Herleitung row. A value read off a drawing is cited with the `[N]` of the
+   look's place (``place.py``), so an answer that states one cites the document.
+   An answer that cites none of the looked documents makes no card: the look is
+   a Herleitung step only (ADR-0125, amendment of 2026-10-22).
+2. Of a relied-on document only the items that ADD evidence are kept: a look
+   whose reading is empty or reports nothing found makes no item, and a whole-
+   page overview is dropped when the document also has a region crop (it is
+   kept when the overviews are all there is).
 3. A document Piloti pointed at or highlighted (``highlight``, ``point``) is
    always shown: the gesture was made for the answer. Its ``reference`` items
-   are kept, and its looks follow rules 1 and 2.
+   are kept; its looks follow rules 1 and 2.
 
 All items of a kept document go on its card, in the order they happened; a
 card holds :data:`MAX_LOOK_ITEMS` and a further one opens the next.
@@ -37,6 +39,7 @@ own preview route. A refused look holds nothing and emits nothing.
 from __future__ import annotations
 
 import logging
+import re
 import unicodedata
 from collections.abc import Iterable
 from collections.abc import Sequence
@@ -220,32 +223,61 @@ def _cited_names(cited: Iterable[Any]) -> set[str]:
     return names
 
 
+#: A reading that says it found nothing: absence is reported in the prose, not shown as evidence.
+_NOTHING_FOUND_RE = re.compile(
+    r"\b(?:nothing|none|not\s+(?:visible|legible|readable|shown|present|found|recognisable|recognizable)"
+    r"|no\s+\w+(?:\s+\w+)?\s+(?:visible|found|shown|present|legible))\b"
+    r"|\bnichts\b|\bnicht\s+(?:erkennbar|sichtbar|lesbar|vorhanden|zu\s+sehen|zu\s+erkennen|gefunden)\b"
+    r"|\bkein\w*\s+(?:\w+\s+){0,2}(?:erkennbar|sichtbar|lesbar|vorhanden|gefunden)\b",
+    re.IGNORECASE,
+)
+
+
+def reports_nothing(reading: str | None) -> bool:
+    """Whether a card item's reading is empty or says the crop held nothing to read."""
+    return not (reading or "").strip() or _NOTHING_FOUND_RE.search(reading or "") is not None
+
+
+def _evidence(entry: dict[str, Any]) -> bool:
+    return entry["item"]["origin"] == "look" and not reports_nothing(entry["item"].get("reading"))
+
+
 def relied_on(held: Sequence[dict[str, Any]], cited_names: set[str]) -> list[dict[str, Any]]:
-    """The held entries the answer relies on, in order (the module docstring's rule). Pure."""
-    looked = {_document_key(e["document"]): e["document"] for e in held if e["item"]["origin"] == "look"}
-    cited = {key for key, document in looked.items() if _key(document.get("name")) in cited_names}
-    relied = cited or set(looked)
+    """The held entries the answer relies on, in order (the module docstring's rules). Pure."""
+    looked = {
+        _document_key(e["document"]): e["document"] for e in held if e["item"]["origin"] == "look" and _evidence(e)
+    }
+    relied = {key for key, document in looked.items() if _key(document.get("name")) in cited_names}
+    crops = {_document_key(e["document"]) for e in held if _evidence(e) and e["item"].get("scope") == "region"}
     return [
-        entry for entry in held if entry["item"]["origin"] == "reference" or _document_key(entry["document"]) in relied
+        entry
+        for entry in held
+        if entry["item"]["origin"] == "reference"
+        or (
+            _evidence(entry)
+            and _document_key(entry["document"]) in relied
+            and (entry["item"].get("scope") == "region" or _document_key(entry["document"]) not in crops)
+        )
     ]
 
 
 def relied_readings(held: Sequence[dict[str, Any]], cited: Iterable[Any] = ()) -> list[str]:
-    """What the looks the answer relies on read off the drawings, one text per look. Pure; never raises.
+    """What the answer's looks read off the drawings, one text per look. Pure; never raises.
 
     The claim provenance (ADR-0125, amendment of 2026-10-21) stamps a sentence
-    that repeats one of these ``observed``.
+    that repeats one of these ``observed``. Unlike the cards, this does not need
+    the answer to cite the look: a value stated without a ``[N]`` is still read
+    off the drawing. Of the looked documents the ones the answer cites, else
+    all, and every look counts, overview or crop.
     """
     try:
-        kept = relied_on(held, _cited_names(cited))
+        looks = [e for e in held if e["item"]["origin"] == "look"]
+        names = _cited_names(cited)
+        mine = [e for e in looks if _key(e["document"].get("name")) in names] or looks
     except Exception:  # noqa: BLE001 - provenance is never worth the answer
         logger.warning("Could not decide which readings the answer relies on", exc_info=True)
         return []
-    return [
-        str(e.get("read") or e["item"]["reading"])
-        for e in kept
-        if e["item"]["origin"] == "look" and (e.get("read") or e["item"].get("reading"))
-    ]
+    return [str(e.get("read") or e["item"]["reading"]) for e in mine if e.get("read") or e["item"].get("reading")]
 
 
 def place_look_cards(held: Sequence[dict[str, Any]], cited: Iterable[Any] = ()) -> int:
@@ -272,3 +304,41 @@ def place_look_cards(held: Sequence[dict[str, Any]], cited: Iterable[Any] = ()) 
         if extend_or_add(registry, entry["item"], owns=owns, build=build, max_items=MAX_LOOK_ITEMS) is not None:
             landed += 1
     return landed
+
+
+def drawing_value_status(
+    held: Sequence[dict[str, Any]], stamps: Iterable[Any], cited: Iterable[Any]
+) -> tuple[bool, bool]:
+    """(the answer states a value read off a drawing, a region look at that drawing came first). Pure; never raises.
+
+    A drawing value is a value sentence that is ``observed`` or that cites a
+    source holding a reading or a drawing region. The look comes first by
+    construction (``held`` is what the turn looked at before the answer); the
+    question is whether it was a REGION look at the cited document, not only an
+    overview or nothing (ADR-0128, the ``looked-before-measurement`` score).
+    """
+    try:
+        from aiq_agent.common.citation_verification import source_entry_to_wire
+
+        by_number = {source.number: source.entry for source in cited if getattr(source, "number", None) is not None}
+        names: set[str] = set()
+        stated = False
+        for stamp in stamps:
+            if stamp.claim_type != "value":
+                continue
+            drawn = [
+                by_number[n] for n in stamp.numbers if n in by_number and (by_number[n].read or by_number[n].regions)
+            ]
+            if stamp.provenance != "observed" and not drawn:
+                continue
+            stated = True
+            for entry in drawn:
+                if file_name := source_entry_to_wire(entry).get("file_name"):
+                    names.add(_key(str(file_name).rsplit("/", 1)[-1]))
+        if not stated:
+            return False, False
+        crops = [e for e in held if e["item"]["origin"] == "look" and e["item"].get("scope") == "region"]
+        return True, any(not names or _key(e["document"].get("name")) in names for e in crops)
+    except Exception:  # noqa: BLE001 - a score is never worth the answer
+        logger.warning("Could not decide whether a drawing value was looked at", exc_info=True)
+        return False, False

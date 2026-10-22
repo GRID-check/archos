@@ -3127,7 +3127,7 @@ class TestMeasurementSourcesDoNotGroundCitations:
         assert measurement["tolerance_text"] == "±0.005 m"
         assert measurement["method"] == _MEASURED_BASEMENT["method"]
         assert [e["global_id"] for e in measurement["elements"]] == _MEASURED_BASEMENT["from"]
-        assert measurement["model"] == "Institut.ifc (IFC4, 12043 Bauteile)"
+        assert measurement["model"] == "Institut.ifc (IFC4, 12043 elements)"
         assert measurement["caveat"] == _MEASURED_BASEMENT["caveat"]
 
     @pytest.mark.asyncio
@@ -3467,16 +3467,16 @@ class TestTheDraftingRulesLiveInTheTools:
 
     def test_write_file_says_a_commissioned_document_is_written_not_described(self):
         description = self._draft_verbs()["write_file"]
-        for kind in ("Aktenvermerk", "Protokoll", "Checkliste", "Flächenaufstellung", "Konzeptentwurf"):
+        for kind in ("Aktenvermerk", "protocol", "checklist", "area schedule", "concept draft"):
             assert kind in description
-        assert "nicht in der Antwort beschrieben" in description
+        assert "described in the answer" in description
         # And the one sentence the answer owes the reader afterwards.
-        assert "in einem Satz" in description
+        assert "in one sentence" in description
 
     def test_a_revision_edits_the_file_it_already_wrote(self):
         verbs = self._draft_verbs()
-        assert "`edit_file` das Werkzeug" in verbs["write_file"]
-        assert "`write_file` verwenden" in verbs["edit_file"]
+        assert "`edit_file` is the tool" in verbs["write_file"]
+        assert "use `write_file`" in verbs["edit_file"]
 
     def test_read_file_says_the_working_directory_is_not_a_source(self):
         """The one thing that must not blur: a draft cannot ground an answer.
@@ -3486,32 +3486,32 @@ class TestTheDraftingRulesLiveInTheTools:
         quotes.
         """
         verbs = self._draft_verbs()
-        assert "hat die Antwort selbst geschrieben" in verbs["read_file"]
-        assert "Quellen-Werkzeugen" in verbs["read_file"]
-        assert "selbst geschrieben" not in verbs["ls"]
+        assert "the answer wrote itself" in verbs["read_file"]
+        assert "source tools" in verbs["read_file"]
+        assert "wrote itself" not in verbs["ls"]
 
     def test_file_draft_says_filing_happens_on_request(self):
         from aiq_agent.tools.documents.register import _FILE_DRAFT_DESCRIPTION
 
         for phrase in ("leg das ins Projekt", "ablegen", "abspeichern"):
             assert phrase in _FILE_DRAFT_DESCRIPTION
-        assert "nicht von selbst nach jedem Schreiben" in _FILE_DRAFT_DESCRIPTION
+        assert "not on your own after every write" in _FILE_DRAFT_DESCRIPTION
         # And nothing filed may be called approved — the claim that reaches a Bauherr.
-        assert "ENTWURF" in _FILE_DRAFT_DESCRIPTION
-        assert "niemand hat ihn freigegeben" in _FILE_DRAFT_DESCRIPTION
+        assert "DRAFT" in _FILE_DRAFT_DESCRIPTION
+        assert "nobody has approved it" in _FILE_DRAFT_DESCRIPTION
 
     def test_submitting_needs_an_explicit_request(self):
         """`submit_draft` merged into `file_draft(submit=true)`; its rules came with it."""
         from aiq_agent.tools.documents.register import _FILE_DRAFT_DESCRIPTION
 
-        assert "Nur mit `submit=true` aufrufen, wenn die Nutzerin um Freigabe" in _FILE_DRAFT_DESCRIPTION
+        assert "Call with `submit=true` only when the user asks for approval" in _FILE_DRAFT_DESCRIPTION
         # „ablegen" alone must not flip the flag.
-        assert "„ablegen“ allein ist keine solche Bitte" in _FILE_DRAFT_DESCRIPTION
+        assert "„ablegen“ alone is not such a request" in _FILE_DRAFT_DESCRIPTION
         # The reviewer name is passed through and never guessed…
-        assert "unverändert" in _FILE_DRAFT_DESCRIPTION
+        assert "unchanged" in _FILE_DRAFT_DESCRIPTION
         # …and without one the draft goes to the project's editors, which the
         # answer has to be able to say.
-        assert "an die Bearbeiter des Projekts" in _FILE_DRAFT_DESCRIPTION
+        assert "project's editors" in _FILE_DRAFT_DESCRIPTION
 
 
 class TestTheDelegationRulesLiveInTheTool:
@@ -3546,22 +3546,22 @@ class TestTheDelegationRulesLiveInTheTool:
     def test_the_deadline_is_a_date_and_not_a_phrase(self):
         """A string nothing can compare is a deadline the scheduler never enforces."""
         description = self._description()
-        assert "`JJJJ-MM-TT`" in description
-        assert "gib keinen Text an" in description
+        assert "`YYYY-MM-DD`" in description
+        assert "do not pass text" in description
 
     def test_the_answer_must_not_claim_the_work_is_done(self):
         """The sentence this whole tool exists to stop."""
-        assert "ANGELEGT, nicht erledigt" in self._description()
+        assert "CREATED, not done" in self._description()
 
     def test_delegating_is_not_a_way_out_of_answering(self):
-        assert "nicht für eine Frage, die sich jetzt beantworten lässt" in self._description()
+        assert "not for a question that can be answered now" in self._description()
 
     def test_the_precondition_is_stated_where_the_model_reads_it(self):
         """Without a project no task is created — the fact the deleted block
         carried and the description did not."""
         description = self._description()
-        assert "Ohne Projekt in dieser Unterhaltung entsteht keiner" in description
-        assert "statt es erneut zu versuchen" in description
+        assert "without a project in this conversation none is created" in description
+        assert "instead of retrying" in description
 
 
 class TestTheWorkingDirectoryBudget:
@@ -3913,18 +3913,18 @@ class TestTheTidyingRulesLiveInTheTools:
     def test_the_tool_says_it_changes_nothing(self):
         """The one failure this rule exists to prevent: „ist verschoben"."""
         for name, description in _file_verb_descriptions().items():
-            assert "SCHLÄGT" in description and "VOR" in description, name
-            assert "ändert selbst nichts" in description, name
-            assert "Karte" in description, name
+            assert "PROPOSES" in description, name
+            assert "changes nothing itself" in description, name
+            assert "card" in description, name
 
     def test_the_tool_says_the_user_decides(self):
         for name, description in _file_verb_descriptions().items():
-            assert "die Nutzerin annimmt oder verwirft" in description, name
+            assert "the user accepts or dismisses" in description, name
 
     def test_it_is_asked_for_and_not_volunteered(self):
         """These answer a request; they are not a tidy-up nobody asked for."""
         for name, description in _file_verb_descriptions().items():
-            assert "Nur vorschlagen, wenn die Nutzerin darum bittet" in description, name
+            assert "Propose only when the user asks for it" in description, name
 
     def test_it_offers_no_operation_that_is_not_bound(self):
         """`set_doc_class` is gone; a description still naming it teaches a call
@@ -3939,7 +3939,7 @@ class TestTheTidyingRulesLiveInTheTools:
 
     def test_a_name_is_taken_from_the_overview_and_never_invented(self):
         (description,) = _file_verb_descriptions().values()
-        assert "genau so, wie ihn die Übersicht oder `list_files` zeigt" in description
+        assert "exactly as the overview or `list_files` shows it" in description
 
 
 class TestTheThreeDraftingTurnShapes:

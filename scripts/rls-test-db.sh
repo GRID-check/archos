@@ -2870,6 +2870,45 @@ check_in grid_officeconv "SELECT count(*) FROM pg_tables WHERE tablename = 'offi
 echo "==> 0181 office conventions and down migration verified"
 
 # ---------------------------------------------------------------------------
+# 0182: a person's decision on one line of the office's conventions (ADR-0129).
+# One row per organization and line, under RLS; the decision is confirmed or
+# declined and the line is a JSON object. The down drops the table (authored
+# rows go with it, which the down says).
+# ---------------------------------------------------------------------------
+echo "==> verifying the 0182 office convention decisions and their down migration on grid_officedec"
+migrate_until grid_officedec 0182_office_convention_decisions
+sql_in grid_officedec <<'SQL'
+INSERT INTO office_convention_decisions (organization_id, line_key, decision, line, decided_by) VALUES
+  ('org_0182_a', 'folder:behoerde', 'confirmed', '{"kind":"folder","key":"folder:behoerde"}'::jsonb, 'user_a'),
+  ('org_0182_b', 'folder:behoerde', 'declined', '{"kind":"folder","key":"folder:behoerde"}'::jsonb, 'user_b');
+SQL
+check_in grid_officedec "SELECT count(*) FROM office_convention_decisions" "2" "0182: the same line may be decided by two organizations"
+refused_in grid_officedec "INSERT INTO office_convention_decisions (organization_id, line_key, decision, line, decided_by) VALUES ('org_0182_a', 'folder:behoerde', 'declined', '{}'::jsonb, 'u')" "office_convention_decisions_pkey" "a second decision on one line"
+refused_in grid_officedec "INSERT INTO office_convention_decisions (organization_id, line_key, decision, line, decided_by) VALUES ('org_0182_a', 'x', 'maybe', '{}'::jsonb, 'u')" "office_convention_decisions_decision_known" "a decision that is neither confirmed nor declined"
+refused_in grid_officedec "INSERT INTO office_convention_decisions (organization_id, line_key, decision, line, decided_by) VALUES ('org_0182_a', 'y', 'confirmed', '[]'::jsonb, 'u')" "office_convention_decisions_line_object" "a line that is not an object"
+RW182=$(PGPASSWORD="$RUNTIME_PASSWORD" $PGBIN/psql -h 127.0.0.1 -p "$PORT" -U grid_app_rw -d grid_officedec -qtA \
+  -c "SET grid.organization_id = 'org_0182_a'" \
+  -c "SELECT string_agg(organization_id, ',') FROM office_convention_decisions")
+if [ "$RW182" != "org_0182_a" ]; then
+  echo "MIGRATION ASSERTION FAILED on grid_officedec: the runtime role saw decisions that are not its organization's (got: $RW182)" >&2
+  exit 1
+fi
+RWUP182=$(PGPASSWORD="$RUNTIME_PASSWORD" $PGBIN/psql -h 127.0.0.1 -p "$PORT" -U grid_app_rw -d grid_officedec -qtA \
+  -c "SET grid.organization_id = 'org_0182_a'" \
+  -c "WITH u AS (UPDATE office_convention_decisions SET decision = 'declined' WHERE organization_id = 'org_0182_b' RETURNING 1) SELECT count(*) FROM u")
+if [ "$RWUP182" != "0" ]; then
+  echo "MIGRATION ASSERTION FAILED on grid_officedec: the runtime role changed another organization's decision (got: $RWUP182)" >&2
+  exit 1
+fi
+apply_in grid_officedec 0182_office_convention_decisions.sql
+check_in grid_officedec "SELECT count(*) FROM office_convention_decisions" "2" "0182 re-applies and keeps the rows"
+apply_in grid_officedec 0182_office_convention_decisions.down.sql
+check_in grid_officedec "SELECT count(*) FROM pg_tables WHERE tablename = 'office_convention_decisions'" "0" "0182 down drops the table"
+apply_in grid_officedec 0182_office_convention_decisions.sql
+check_in grid_officedec "SELECT count(*) FROM pg_tables WHERE tablename = 'office_convention_decisions'" "1" "0182 applies again after its down"
+echo "==> 0182 office convention decisions and down migration verified"
+
+# ---------------------------------------------------------------------------
 # Migrations 0159 to 0162: the project profile's names in English, and their DOWNs.
 #
 # On a database of its own, migrated to what precedes 0159, with a project whose

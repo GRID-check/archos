@@ -95,27 +95,25 @@ REPLACEABLE_STATES = frozenset({"draft", "changes_requested"})
 #: NOT, because that is the claim the model gets wrong: „ins Projekt übernommen“
 #: reads as done, and the reader then tells a Bauherr that a Befund is out.
 _STILL_A_DRAFT = (
-    "Das ist ein ENTWURF, den noch niemand freigegeben hat — sage nicht, das Dokument sei "
-    "freigegeben, veröffentlicht oder fertig."
+    "This is a DRAFT that nobody has approved yet — do not say the document is approved, published or final."
 )
 
 _NO_PROJECT = (
-    "Fehler: In diesem Gespräch gibt es kein Projekt, also auch keine Projektablage, in der ein "
-    "Entwurf liegen könnte. Der Entwurf bleibt im Arbeitsordner dieser Unterhaltung. "
-    "Nicht erneut versuchen."
+    "Error: There is no project in this conversation, so there are no project files in which a "
+    "draft could be filed. The draft stays in this conversation's working directory. "
+    "Do not retry."
 )
 
 #: No signed envelope, no acting person — and this tier must not invent one. A
 #: run without it is an unattended one (CLI, eval, job worker), where there is
 #: nobody whose permissions the filing could be checked against.
 _NO_ENVELOPE = (
-    "Fehler: Dieser Lauf hat keinen signierten Sitzungsnachweis, deshalb kann nicht im Namen einer "
-    "Person abgelegt werden. Es wurde nichts abgelegt. Nicht erneut versuchen."
+    "Error: This run has no signed session credential, so nothing can be filed in a "
+    "person's name. Nothing was filed. Do not retry."
 )
 
 _NO_CONVERSATION = (
-    "Fehler: Dieser Lauf gehört zu keiner Unterhaltung, es gibt also keinen Arbeitsordner. "
-    "Es wurde nichts abgelegt. Nicht erneut versuchen."
+    "Error: This run belongs to no conversation, so there is no working directory. Nothing was filed. Do not retry."
 )
 
 #: The refusal of a ``create`` whose reference was already filed onto a version
@@ -124,8 +122,8 @@ _NO_CONVERSATION = (
 #: replace those bytes, because a reviewer is looking at them and the transition
 #: table gives the agent no way to take them back.
 _ALREADY_SUBMITTED = (
-    "Fehler: Dieser Entwurf liegt bereits zur Freigabe vor und kann nicht mehr geändert werden. "
-    "Sage der Nutzerin, dass eine Person ihn zuerst zurückgeben oder freigeben muss."
+    "Error: This draft is already submitted for approval and can no longer be changed. "
+    "Tell the user that a person must first return or approve it."
 )
 
 
@@ -136,15 +134,14 @@ _ALREADY_SUBMITTED = (
 #: is either a version under review or one a person changed since; the body does
 #: not say which, so the sentence names both.
 _NOT_REPLACEABLE_NOW = (
-    "Fehler: Der Entwurf im Projekt lässt sich gerade nicht ersetzen. Entweder liegt er zur Freigabe "
-    "vor, oder eine Person hat ihn seit dem letzten Ablegen geändert. Sage der Nutzerin, dass eine "
-    "Person ihn zuerst zurückgeben muss oder sie den Stand im Projekt prüfen soll."
+    "Error: The draft in the project cannot be replaced right now. Either it is submitted for approval, "
+    "or a person has changed it since it was last filed. Tell the user that a "
+    "person must first return it, or that they should check the current state in the project."
 )
 
 #: What a ``409`` on ``submit`` means: the version is no longer open.
 _NOT_SUBMITTABLE_NOW = (
-    "Fehler: Dieser Entwurf wurde bereits eingereicht. Sage der Nutzerin, dass er auf die "
-    "Freigabe durch eine Person wartet."
+    "Error: This draft has already been submitted. Tell the user that it is waiting for approval by a person."
 )
 
 
@@ -226,32 +223,25 @@ async def _draft(path: str) -> tuple[DraftBackend, DraftUsage]:
     """The backend and the stored state of one path, or a refusal."""
     if not path.startswith(DRAFT_ROOT) or ".." in path:
         raise _Refused(
-            f"Fehler: `{path}` liegt nicht im Arbeitsordner. Abgelegt werden kann nur, was unter "
-            f"`{DRAFT_ROOT}` geschrieben wurde."
+            f"Error: `{path}` is not in the working directory. Only what was written under `{DRAFT_ROOT}` can be filed."
         )
     backend = await get_draft_backend(_conversation_id())
     usage = await backend.ausage(path)
     if usage.content is None:
-        raise _Refused(
-            f"Fehler: Unter `{path}` gibt es keinen Entwurf. Mit `ls` nachsehen, wie der Entwurf wirklich heißt."
-        )
+        raise _Refused(f"Error: There is no draft at `{path}`. Use `ls` to see what the draft is really called.")
     return backend, usage
 
 
 #: The generic refusal of a lifecycle call, ``{error}`` being the transport's
 #: sentence. True of every call that has not yet put bytes into the project in
 #: this invocation — a filing, and the submit of a draft filed in an earlier one.
-_CALL_FAILED = (
-    "Fehler beim Ablegen: {error}. Es wurde nichts abgelegt; sage der Nutzerin, dass der Entwurf im "
-    "Arbeitsordner liegt."
-)
+_CALL_FAILED = "Error filing: {error}. Nothing was filed; tell the user that the draft is in the working directory."
 
 #: The same refusal for a submit that follows a filing of THIS call, where
 #: „nothing was filed" would be false: the bytes are in the project, the review
 #: round is not.
 _SUBMIT_FAILED_AFTER_FILING = (
-    "Fehler beim Einreichen: {error}. Sage der Nutzerin, dass der Entwurf als ENTWURF im Projekt liegt, "
-    "aber nicht eingereicht ist."
+    "Error submitting: {error}. Tell the user that the draft is in the project as a DRAFT, but not submitted."
 )
 
 
@@ -268,7 +258,7 @@ async def _post(
     ``bad_request`` is the sentence a ``400`` gets instead of the generic one.
     It exists for exactly one caller: a submit that NAMED a reviewer, where the
     only validation the BFF can fail is resolving that name against the
-    project's members. The generic wording („Fehler beim Ablegen") would send
+    project's members. The generic wording („Error filing") would send
     the model looking for a filing problem the reader could not act on, when
     what happened is that nobody in the project is called that.
 
@@ -347,33 +337,33 @@ def _project_or_refuse() -> str:
 # ── file_draft ───────────────────────────────────────────────────────────────
 
 _FILE_DRAFT_DESCRIPTION = (
-    "Legt einen Entwurf aus dem Arbeitsordner ALS ENTWURF im Projekt ab, damit ihn andere sehen und "
-    "prüfen können. `path` ist der Pfad im Arbeitsordner (`" + DRAFT_ROOT + "<name>.md`), `title` "
-    "optional der Titel im Projekt — ohne Angabe die erste Überschrift des Dokuments. "
-    "Aufrufen, wenn die Nutzerin darum bittet („leg das ins Projekt“, „abspeichern“, „ablegen“), "
-    "nicht von selbst nach jedem Schreiben. "
-    "Ein zweiter Aufruf für denselben Pfad ersetzt den Inhalt desselben Entwurfs, es entsteht kein "
-    "zweites Dokument. Abgelegt wird ein ENTWURF: niemand hat ihn freigegeben, er ist nicht "
-    "veröffentlicht und wird nicht durchsucht. "
-    "`submit=true` reicht den Entwurf danach ZUR FREIGABE ein: Er geht in die Prüfung und erscheint im "
-    "Posteingang der Prüfenden. Ist er schon abgelegt und seither unverändert, wird nur eingereicht. "
-    "Nur mit `submit=true` aufrufen, wenn die Nutzerin um Freigabe, Prüfung oder Weitergabe bittet — "
-    "„ablegen“ allein ist keine solche Bitte. Das Einreichen kostet eine Person Aufmerksamkeit, und der "
-    "Entwurf lässt sich danach nicht mehr ändern. "
-    "`reviewer` gilt nur zusammen mit `submit=true` und ist optional: die Person, die prüfen soll, genau "
-    "so genannt, wie die Nutzerin sie genannt hat (Name oder E-Mail) — DIESE Ausführung kennt die "
-    "Projektmitglieder nicht und prüft den Namen nicht; aufgelöst wird er beim Einreichen gegen die "
-    "Mitglieder des Projekts. Deshalb nur ausfüllen, wenn die Nutzerin die Person selbst genannt hat, "
-    "und den Namen unverändert übernehmen. Ohne `reviewer` geht der Entwurf an die Bearbeiter des "
-    "Projekts. Auch nach dem Einreichen ist das Dokument NICHT freigegeben: Es wartet auf die Freigabe "
-    "durch eine Person."
+    "Files a draft from the working directory into the project AS A DRAFT, so that others can see and "
+    "review it. `path` is the path in the working directory (`" + DRAFT_ROOT + "<name>.md`), `title` "
+    "is optionally the title in the project — by default the document's first heading. "
+    "Call it when the user asks for it („leg das ins Projekt“, „abspeichern“, „ablegen“), "
+    "not on your own after every write. "
+    "A second call for the same path replaces the content of the same draft; no "
+    "second document is created. What is filed is a DRAFT: nobody has approved it, it is not "
+    "published and is not searched. "
+    "`submit=true` then submits the draft FOR APPROVAL: it goes into review and appears in the "
+    "reviewers' inbox. If it is already filed and unchanged since, it is only submitted. "
+    "Call with `submit=true` only when the user asks for approval, review or hand-over — "
+    "„ablegen“ alone is not such a request. Submitting costs a person attention, and the "
+    "draft cannot be changed afterwards. "
+    "`reviewer` applies only together with `submit=true` and is optional: the person who is to review, named exactly "
+    "as the user named them (name or email) — THIS execution does not know the "
+    "project members and does not check the name; it is resolved on submission against the "
+    "project's members. So fill it only when the user named the person themselves, "
+    "and take the name over unchanged. Without `reviewer` the draft goes to the project's "
+    "editors. Even after submission the document is NOT approved: it waits for approval "
+    "by a person."
 )
 
 #: A reviewer named on a call that does not submit. Refused before anything is
 #: filed, rather than read as a request to submit: see the module docstring.
 _REVIEWER_WITHOUT_SUBMIT = (
-    "Fehler: `reviewer` gilt nur zusammen mit `submit=true`. Es wurde nichts abgelegt. Hat die Nutzerin "
-    "um Freigabe oder Prüfung gebeten, erneut mit `submit=true` aufrufen; sonst ohne `reviewer`."
+    "Error: `reviewer` applies only together with `submit=true`. Nothing was filed. If the user "
+    "asked for approval or review, call again with `submit=true`; otherwise without `reviewer`."
 )
 
 
@@ -414,14 +404,14 @@ def _submit_payload(filing: dict[str, str], reviewer: str) -> dict[str, Any]:
 
 def _unknown_reviewer(reviewer: str) -> str:
     return (
-        f"Ich kenne keine Person namens „{reviewer}“ in diesem Projekt. Es wurde nichts eingereicht. "
-        "Frage die Nutzerin nach dem genauen Namen oder der E-Mail-Adresse, oder reiche ohne Namen ein "
-        "— dann geht der Entwurf an die Bearbeiter des Projekts."
+        f"I do not know a person named „{reviewer}“ in this project. Nothing was submitted. "
+        "Ask the user for the exact name or email address, or submit without a name "
+        "— then the draft goes to the project's editors."
     )
 
 
 def _whom(reviewer: str) -> str:
-    return f"an {reviewer}" if reviewer else "an die Bearbeiter des Projekts"
+    return f"to {reviewer}" if reviewer else "to the project's editors"
 
 
 async def _submit(
@@ -458,8 +448,8 @@ async def _submit_unchanged(
     submitted = await _submit(backend, path, usage.filing, reviewer, envelope, failure=_SUBMIT_FAILED_AFTER_FILING)
     emit_draft_card(path=path, content=usage.content or "", version=usage.version or 1, filing=submitted)
     return (
-        f"Zur Freigabe {_whom(reviewer)} eingereicht: „{draft_title(path, usage.content or '')}“ wartet jetzt "
-        f"auf die Prüfung durch eine Person. {_STILL_A_DRAFT}"
+        f"Submitted for approval {_whom(reviewer)}: „{draft_title(path, usage.content or '')}“ is now waiting "
+        f"for review by a person. {_STILL_A_DRAFT}"
     )
 
 
@@ -489,8 +479,8 @@ async def _file(path: str, title: str, *, submit: bool, reviewer: str) -> str:
     if not submit:
         _card(filing)
         return (
-            f"Im Projekt abgelegt: „{chosen}“. {_STILL_A_DRAFT} "
-            "Zur Freigabe einreichen kann derselbe Aufruf mit `submit=true`, wenn die Nutzerin darum bittet."
+            f"Filed in the project: „{chosen}“. {_STILL_A_DRAFT} "
+            "The same call with `submit=true` can submit it for approval, if the user asks for that."
         )
     try:
         submitted = await _submit(backend, path, filing, named, envelope, failure=_SUBMIT_FAILED_AFTER_FILING)
@@ -498,11 +488,11 @@ async def _file(path: str, title: str, *, submit: bool, reviewer: str) -> str:
         # The filing stands, so the card and the sentence both say so: the
         # model must not tell the reader nothing happened, nor that it went out.
         _card(filing)
-        raise _Refused(f"Im Projekt abgelegt: „{chosen}“ — aber NICHT eingereicht. {refused.message}") from refused
+        raise _Refused(f"Filed in the project: „{chosen}“ — but NOT submitted. {refused.message}") from refused
     _card(submitted)
     return (
-        f"Im Projekt abgelegt und zur Freigabe {_whom(named)} eingereicht: „{chosen}“ wartet jetzt auf die "
-        f"Prüfung durch eine Person. {_STILL_A_DRAFT}"
+        f"Filed in the project and submitted for approval {_whom(named)}: „{chosen}“ is now waiting for "
+        f"review by a person. {_STILL_A_DRAFT}"
     )
 
 

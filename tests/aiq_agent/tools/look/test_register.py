@@ -132,7 +132,7 @@ class TestWhichFile:
     async def test_a_name_that_means_two_files_is_a_question(self, stored, lookups) -> None:
         result = await run_look("Grundriss", page=1)
 
-        assert isinstance(result, str) and result.startswith("Mehrdeutig")
+        assert isinstance(result, str) and result.startswith("Ambiguous")
         assert stored == [] and lookups == []
 
     async def test_a_file_the_inventory_does_not_list_is_found_in_the_turns_collections(

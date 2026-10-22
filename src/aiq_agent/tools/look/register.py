@@ -44,6 +44,9 @@ from ..canvas.calls import Refused
 from ..canvas.presence import current_canvas_presence
 from ..canvas.presence import show_reading
 from .cards import note_look
+from .place import PlaceFacts
+from .place import place_facts
+from .place import render_place
 from .resolve import Resolved
 from .resolve import resolve_document
 
@@ -67,13 +70,16 @@ DESCRIPTION = (
     "`Image:` line names, at its own resolution. A hit's `Region:` line is the place it sits: look there with "
     "those numbers. Look before you state a value read off a drawing, point "
     "at a place or set a mark: where something lies is read off the image, never off the text. On a large "
-    "sheet, look at the whole page once, then at one to three regions. At most "
+    "sheet, look at the whole page once, then at one to three regions; a Plankopf (title block) sits bottom right "
+    "by convention, so go straight to that region with no overview first. To COUNT things, split the sheet into "
+    "non-overlapping regions, count each once and say so. At most "
     f"{MAX_IMAGE_VIEWS_PER_TURN} looks per turn, at most {MAX_OVERVIEW_VIEWS_PER_TURN} of them whole pages; "
-    "every result says how many are left. Give `question` whenever you will state what you read off the image "
+    "every result says how many are left. Give `question` whenever you will state a value off the image "
     "(a dimension, a count, a Plankopf value, a legend entry): a second reader, the office's vision model, then "
     "answers it from the same crop as short lines starting `Gelesen:`. Those lines are a reading of the drawing, "
-    "never a measurement; say so if you see otherwise. A reading does not cost a look. Fails open with a "
-    "sentence saying why."
+    "never a measurement; say so if you see otherwise. Cite the look's `[N]` on the sentence that states the "
+    "value. A look that finds nothing is reported as absence in the prose; it is not shown as a card. A reading "
+    "does not cost a look. Fails open with a sentence saying why."
 )
 
 
@@ -117,28 +123,41 @@ def _observe(
     )
 
 
-async def _blocks_for(view: Any, question: str, sees: bool | None, region: Any) -> tuple[list[dict], str, str]:
+async def _blocks_for(
+    view: Any, question: str, sees: bool | None, region: Any, place: PlaceFacts | None = None
+) -> tuple[list[dict], str, str]:
     """What the model gets for a rendered look, the reading the card keeps, and everything read.
 
     The blocks are the region text, the readings it asked for, and the image if
     it sees. A model that takes no images is never sent one (the next model call
     of the turn would be refused): it gets the readings alone, answering
     :data:`DEFAULT_QUESTION` when it asked nothing. The second value is the
-    reading's summary, or its first line, for the card item; empty without one.
+    reading for the card item: the line(s) carrying the measured value before
+    the one-sentence summary (:func:`~.reading.card_reading`); empty without one.
     The third is every reading line and the summary, for the claim provenance.
+
+    With a ``place`` (a project or office document) and a usable reading, the
+    text block is a grounding block whose one hit holds the reading, so the
+    model can cite the look with ``[N]`` (``place.py``).
     """
     from .reading import DEFAULT_QUESTION
+    from .reading import card_reading
     from .reading import read_region
     from .reading import render_readings
+    from .reading import render_readings_parts
 
     blind = sees is False
     question = question.strip() or (DEFAULT_QUESTION if blind else "")
     if not question:
         return view.blocks(), "", ""
     reading = await read_region(view.jpeg, question, region=region is not None)
-    text = f"{view.text}\n\n{render_readings(reading, blind=blind)}"
+    if place is not None and reading.usable:
+        head, rows = render_readings_parts(reading, blind=blind)
+        text = render_place(place, f"{view.text}\n\n{head}", rows)
+    else:
+        text = f"{view.text}\n\n{render_readings(reading, blind=blind)}"
     blocks = view.with_text(text).blocks()
-    kept = (reading.summary or (reading.lines[0].text if reading.lines else "")) if reading.usable else ""
+    kept = card_reading(reading)
     read = "\n".join([*(line.text for line in reading.lines), reading.summary]).strip() if reading.usable else ""
     return (blocks[:1] if blind else blocks), kept, read
 
@@ -179,7 +198,8 @@ async def run_look(
             else:
                 rendered = await render
             if isinstance(rendered, View):
-                result, reading, read = await _blocks_for(rendered, question or "", await turn_sees(), region)
+                place = place_facts(resolved, page, rendered.region, image_index)
+                result, reading, read = await _blocks_for(rendered, question or "", await turn_sees(), region, place)
                 # The Herleitung row now, the card item once the answer is final (`cards.py`).
                 note_look(
                     resolved,

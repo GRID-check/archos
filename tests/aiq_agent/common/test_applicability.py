@@ -80,7 +80,7 @@ class TestTriggerHints:
 
     def test_string_true_triggers_hint(self):
         assert trigger_hints({"parking_relevant": "true"}) == [
-            "Stellplatzverpflichtung: Wiener Garagengesetz (bzw. Landesrecht) prüfen."
+            "Stellplatzverpflichtung (parking obligation): check the Wiener Garagengesetz (or state law)."
         ]
 
     def test_false_does_not_trigger(self):
@@ -186,16 +186,16 @@ class TestRenderProjectBlock:
         context = "PROJECT_CONTEXT v1\nconfirmed:\n- hauptnutzung=lager\n"
         block = render_project_block(context)
         assert block is not None
-        assert "### Für dieses Projekt voraussichtlich einschlägig" in block
-        assert "OIB 1 — verbindlich —" in block
-        assert "OIB 2.1 — verbindlich —" in block
-        assert "OIB 6 — zu prüfen —" in block
+        assert "### Likely relevant for this project" in block
+        assert "OIB 1 — required —" in block
+        assert "OIB 2.1 — required —" in block
+        assert "OIB 6 — to be checked —" in block
 
     def test_appends_trigger_hints(self):
         context = "PROJECT_CONTEXT v1\nconfirmed:\n- hauptnutzung=wohnen\n- denkmalschutz=true\n"
         block = render_project_block(context)
         assert block is not None
-        assert "Denkmalschutz:" in block
+        assert "Denkmalschutz (heritage protection):" in block
 
     def test_no_trigger_lines_when_no_triggers(self):
         context = "PROJECT_CONTEXT v1\nconfirmed:\n- hauptnutzung=wohnen\n"

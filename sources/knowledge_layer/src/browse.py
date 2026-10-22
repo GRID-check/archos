@@ -126,6 +126,23 @@ MAX_SNIPPET_LINES = 40
 #: is one question asked three ways; ten is a runaway.
 MAX_ALTERNATIVES = 6
 
+#: Distinct matched strings a regex search lists before it counts the rest, and the characters of one.
+MAX_DISTINCT_MATCHES = 20
+MAX_DISTINCT_CHARS = 60
+#: Files and pages named beside one distinct match, and distinct strings one file is tracked for.
+MAX_DISTINCT_FILES = 3
+MAX_DISTINCT_PAGES = 5
+MAX_TRACKED_STRINGS = 200
+
+#: ``shelf=`` of a literal search as the person-facing word, and the stored shelf it means.
+SEARCH_SHELVES = {
+    "project": "project",
+    "office": "office_shelf",
+    "office_shelf": "office_shelf",
+    "session": "session",
+    "base": "base",
+}
+
 _SHELF_LABELS = {
     "project": "Projektwissen",
     "office_shelf": "Büroablage",
@@ -179,6 +196,16 @@ class FileRow:
     revision_facts: Mapping[str, Any] | None = field(default=None, compare=False)
     #: Pages the document has, when the store knows (None: not recorded, never "zero").
     page_count: int | None = None
+
+    @property
+    def document_date(self) -> str | None:
+        """The document's OWN date (ISO day): the title block's Stand, else the day a photo was taken.
+
+        The same rule as the ``document_date`` payload field (``qdrant/payload.py``), read from the
+        facts the row already carries. None for a document that prints none; never the upload date.
+        """
+        stamp = str((self.revision_facts or {}).get("revision_date") or self.captured_at or "").strip()
+        return stamp[:10] or None
 
     @property
     def searchable(self) -> str:
@@ -721,6 +748,8 @@ MAX_CURRENT_LINES = 3
 #: Subfolders a card names, and older files one "replaces" clause names.
 MAX_CARD_SUBFOLDERS = 8
 MAX_REPLACED_NAMES = 3
+#: A folder holding at most this many documents directly names them on its card.
+MAX_CARD_FILES = 8
 
 
 @dataclass(frozen=True)
@@ -748,6 +777,10 @@ class FolderCard:
     #: One line per series whose current Fassung is in the subtree, and how many older Fassungen it holds.
     current: tuple[str, ...]
     superseded: int
+    #: ``"name (date)"`` of the document with the latest date of its own (Plankopf Stand, photo), or empty.
+    newest_document: str = ""
+    #: The names of the documents filed directly here when there are at most :data:`MAX_CARD_FILES`.
+    files: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -844,6 +877,9 @@ def _folder_card(path: str, depth: int, rows: Sequence[FileRow], series: Sequenc
     dated = [row for row in rows if row.added_at]
     newest = max(dated, key=lambda row: (row.added_at or "", fold(row.file_name)), default=None)
     current, older_held = _current_lines(series, {(row.collection, row.file_name) for row in rows})
+    own_dated = [row for row in rows if row.document_date]
+    newest_own = max(own_dated, key=lambda row: (row.document_date or "", fold(row.file_name)), default=None)
+    direct_rows = sorted((row for row in rows if row.folder == path), key=lambda row: fold(row.file_name))
     return FolderCard(
         path=path,
         depth=depth,
@@ -857,6 +893,8 @@ def _folder_card(path: str, depth: int, rows: Sequence[FileRow], series: Sequenc
         first_added=min((row.added_at or "" for row in dated), default=None),
         last_added=max((row.added_at or "" for row in dated), default=None),
         newest=f"{newest.file_name} ({newest.added_at})" if newest else "",
+        newest_document=f"{newest_own.file_name} ({newest_own.document_date})" if newest_own else "",
+        files=tuple(row.file_name for row in direct_rows) if 0 < len(direct_rows) <= MAX_CARD_FILES else (),
         current=tuple(current),
         superseded=older_held,
     )
@@ -942,7 +980,20 @@ def _card_lines(card: FolderCard, about: Sequence[str] = ()) -> list[str]:
     lines.append(f"  Dokumentart: {' · '.join(types)}")
     if card.first_added:
         span = card.first_added if card.first_added == card.last_added else f"{card.first_added} to {card.last_added}"
-        lines.append(f"  Added: {span}. Newest: {card.newest}")
+        # Two different dates: the upload day says when it reached the office, the document's own date
+        # (Plankopf Stand, photo) says how old the content is. "Newest" names which one it means.
+        if card.newest_document:
+            lines.append(f"  Added: {span}. Newest by document date (Plankopf Stand or photo): {card.newest_document}")
+        else:
+            lines.append(f"  Added: {span}. Newest upload (no document date known): {card.newest}")
+    if card.files:
+        lines.append(f"  Files here: {' · '.join(card.files)}")
+    elif card.direct > MAX_CARD_FILES:
+        call = f'`list_files(folder="{card.path}")`' if card.path else "`list_files()`"
+        lines.append(
+            f"  Files here: {card.direct}, too many to name (a card names them up to {MAX_CARD_FILES}); "
+            f"{call} lists them."
+        )
     lines.extend(f"  Current Fassung: {line}" for line in card.current[:MAX_CURRENT_LINES])
     if len(card.current) > MAX_CURRENT_LINES:
         lines.append(f"  … and {len(card.current) - MAX_CURRENT_LINES} more documents with several Fassungen")
@@ -1477,6 +1528,12 @@ def _occurrences(body: str, pattern: Any, timeout: float | None = None) -> int:
     return sum(1 for match in pattern.finditer(body, timeout=timeout) if match.end() > match.start())
 
 
+def _matched_strings(body: str, pattern: Any, timeout: float | None = None) -> list[str]:
+    """The text of every non-empty match, whitespace collapsed (a match across a line break reads as one line)."""
+    found = pattern.finditer(body) if timeout is None else pattern.finditer(body, timeout=timeout)
+    return [" ".join(match.group().split()) for match in found if match.end() > match.start()]
+
+
 @dataclass
 class FileMatches:
     """Every matching chunk of one file."""
@@ -1486,6 +1543,22 @@ class FileMatches:
     collection: str
     chunks: list[Any] = field(default_factory=list)
     occurrences: int = 0
+    #: A regex search only: per distinct matched string (case-folded), ``[spelling, count, pages]``.
+    strings: dict[str, list[Any]] = field(default_factory=dict)
+    #: True once the file had more distinct strings than :data:`MAX_TRACKED_STRINGS`.
+    strings_cut: bool = False
+
+    def note_strings(self, found: Sequence[str], page: int | None) -> None:
+        for text in found:
+            entry = self.strings.get(fold(text))
+            if entry is None:
+                if len(self.strings) >= MAX_TRACKED_STRINGS:
+                    self.strings_cut = True
+                    continue
+                entry = self.strings[fold(text)] = [text, 0, set()]
+            entry[1] += 1
+            if page:
+                entry[2].add(page)
 
     @property
     def pages(self) -> list[int]:
@@ -1499,6 +1572,7 @@ def group_matches(
     timeout: float | None = None,
     store_decides: bool = False,
     deadline: float | None = None,
+    collect_strings: bool = False,
 ) -> list[FileMatches]:
     """Chunks the :func:`phrase_pattern` really matches, grouped per file, most occurrences first.
 
@@ -1513,6 +1587,9 @@ def group_matches(
     ``deadline`` (a ``time.monotonic()`` instant, with ``timeout``) bounds the
     whole count: each chunk's timeout shrinks to what is left, and
     ``TimeoutError`` is raised once nothing is.
+
+    ``collect_strings`` (a regex search) also records each distinct matched string per file, for
+    :func:`distinct_matches`.
     """
     compiled = pattern if hasattr(pattern, "finditer") else re.compile(pattern)
     groups: dict[tuple[str, str], FileMatches] = {}
@@ -1522,7 +1599,9 @@ def group_matches(
             if remaining <= 0:
                 raise TimeoutError("the count ran out of time")
             timeout = min(timeout, remaining)
-        count = _occurrences(getattr(chunk, "content", "") or "", compiled, timeout)
+        body = getattr(chunk, "content", "") or ""
+        found: list[str] = _matched_strings(body, compiled, timeout) if collect_strings else []
+        count = len(found) if collect_strings else _occurrences(body, compiled, timeout)
         if store_decides:
             count = max(count, 1)
         if not count:
@@ -1539,6 +1618,8 @@ def group_matches(
             )
         group.chunks.append(chunk)
         group.occurrences += count
+        if found:
+            group.note_strings(found, getattr(chunk, "page_number", None))
     # The reader's own files first: „wo steht EI 90" is about the project, and
     # the OIB corpus says EI 90 on a hundred pages.
     ordered = sorted(
@@ -1567,6 +1648,103 @@ def _pages_label(pages: Sequence[int], limit: int = 12) -> str:
     shown = ", ".join(str(page) for page in pages[:limit])
     more = f" … (+{len(pages) - limit})" if len(pages) > limit else ""
     return f", p. {shown}{more}"
+
+
+def _shorten(text: str, limit: int) -> str:
+    return text if len(text) <= limit else f"{text[: limit - 1]}…"
+
+
+def distinct_matches(groups: Sequence[FileMatches]) -> tuple[list[tuple[str, int, list[str], list[int]]], bool]:
+    """Each distinct matched string over all files: ``(spelling, count, files, pages)``, most frequent first.
+
+    ``files`` is in the order of the match table, ``pages`` ascending. The flag says a file had more
+    distinct strings than it tracks, so the aggregate may miss some.
+    """
+    merged: dict[str, list[Any]] = {}
+    cut = False
+    for group in groups:
+        cut = cut or group.strings_cut
+        for key, (text, count, pages) in group.strings.items():
+            entry = merged.setdefault(key, [text, 0, [], set()])
+            entry[1] += count
+            entry[2].append(group.file_name)
+            entry[3].update(pages)
+    ranked = sorted(merged.values(), key=lambda entry: (-entry[1], fold(entry[0])))
+    return [(text, count, files, sorted(pages)) for text, count, files, pages in ranked], cut
+
+
+def _distinct_lines(groups: Sequence[FileMatches]) -> list[str]:
+    """The "Distinct matches" aggregate of a regex search: each different string with its count and places."""
+    ranked, cut = distinct_matches(groups)
+    if not ranked:
+        return []
+    floor = "at least " if cut else ""
+    lines = [f"Distinct matches: {floor}{len(ranked)} (each different matched string, with its count):"]
+    for text, count, files, pages in ranked[:MAX_DISTINCT_MATCHES]:
+        names = ", ".join(files[:MAX_DISTINCT_FILES]) + (
+            f" … (+{len(files) - MAX_DISTINCT_FILES} files)" if len(files) > MAX_DISTINCT_FILES else ""
+        )
+        where = _pages_label(pages, MAX_DISTINCT_PAGES)
+        lines.append(f"- `{_shorten(text, MAX_DISTINCT_CHARS)}`: {count}× in {names}{where}")
+    if len(ranked) > MAX_DISTINCT_MATCHES:
+        lines.append(f"… and {len(ranked) - MAX_DISTINCT_MATCHES} more distinct strings, the rarest.")
+    return lines
+
+
+@dataclass(frozen=True)
+class ShelfScope:
+    """One shelf a literal search read: how many documents it held in scope, or None when that is not counted."""
+
+    shelf: str | None
+    documents: int | None
+
+
+def shelf_scopes(entries: Sequence[Any], documents: Mapping[str, int]) -> list[ShelfScope]:
+    """The shelves of the searched ``entries`` in a stable order, each with the documents searched on it.
+
+    ``documents`` counts the inventory's documents per collection that the search could read. A shelf
+    whose collections have no inventory (the Basiswissen corpus is not enumerated) has no count.
+    """
+    order = [*KNOWN_SHELVES, None]
+    by_shelf: dict[str | None, list[str]] = {}
+    for entry in entries:
+        by_shelf.setdefault(_entry_shelf(entry), []).append(entry.collection)
+    scopes = []
+    for shelf in sorted(by_shelf, key=lambda known: order.index(known) if known in order else len(order)):
+        counted = [documents[name] for name in by_shelf[shelf] if name in documents]
+        scopes.append(ShelfScope(shelf, sum(counted) if counted else None))
+    return scopes
+
+
+def _scope_statement(scopes: Sequence[ShelfScope]) -> str:
+    """How many documents were searched, and on which shelves: the denominator of every "no" and every count."""
+    if not scopes:
+        return ""
+    parts = []
+    for scope in scopes:
+        label = _SHELF_LABELS.get(scope.shelf or "", "unknown shelf")
+        parts.append(
+            f"{label} {scope.documents} documents" if scope.documents is not None else f"{label} (whole corpus)"
+        )
+    counted = [scope.documents for scope in scopes if scope.documents is not None]
+    total = f"{sum(counted)} documents" + (" plus a corpus" if len(counted) < len(scopes) else "")
+    return f"Searched: {total} ({', '.join(parts)})."
+
+
+def _shelf_lines(groups: Sequence[FileMatches], scopes: Sequence[ShelfScope]) -> list[str]:
+    """One line per searched shelf: its matches and files with matches against the files it holds, 0 included."""
+    lines = []
+    for scope in scopes:
+        mine = [group for group in groups if group.shelf == scope.shelf]
+        label = _SHELF_LABELS.get(scope.shelf or "", "unknown shelf")
+        found = _count(sum(group.occurrences for group in mine), "match").replace("matchs", "matches")
+        if scope.documents is None:
+            lines.append(f"{label}: {found} in {_count(len(mine), 'file')} (documents not counted)")
+        elif mine:
+            lines.append(f"{label}: {found} in {len(mine)} of {_count(scope.documents, 'file')}")
+        else:
+            lines.append(f"{label}: {found} in {_count(scope.documents, 'file')}")
+    return lines
 
 
 def _collection_names(collections: Sequence[str]) -> str:
@@ -1633,8 +1811,13 @@ def match_table(
     failed: Sequence[str] = (),
     regex_mode: bool = False,
     candidates: Mapping[str, int] | None = None,
+    scopes: Sequence[ShelfScope] = (),
 ) -> str:
-    """The per-file answer to "where does this appear": every file, not the top three."""
+    """The per-file answer to "where does this appear": every file, not the top three.
+
+    ``scopes`` adds the scope statement and one line per shelf, so „0 matches in 12 files“ on the
+    project is visible beside 40 hits in the Basiswissen corpus.
+    """
     wanted = _wanted(phrases, regex_mode)
     floor = "at least " if truncated else ""
     tolerated = _TOLERATED_REGEX if regex_mode else _TOLERATED
@@ -1642,9 +1825,14 @@ def match_table(
         f"## Matches for {wanted}",
         f"{floor}{sum(group.occurrences for group in groups)} occurrence(s) in {len(groups)} file(s), {tolerated}:",
     ]
+    if scopes:
+        lines.append(_scope_statement(scopes))
+        lines.extend(_shelf_lines(groups, scopes))
     for group in groups:
         shelf = f" ({_SHELF_LABELS[group.shelf]})" if group.shelf in _SHELF_LABELS else ""
         lines.append(f"- {group.file_name}{shelf}: {group.occurrences}×{_pages_label(group.pages)}")
+    if regex_mode:
+        lines.extend(_distinct_lines(groups))
     if truncated:
         lines.append(
             f"The search stopped after {MAX_MATCH_CHUNKS} matching passages in a collection: the counts above are "
@@ -1728,7 +1916,12 @@ def match_snippets(groups: Sequence[FileMatches], pattern: Any, context: int, *,
 
 
 def no_match_message(
-    phrases: Sequence[str], searched: int, failed: Sequence[str] = (), *, regex_mode: bool = False
+    phrases: Sequence[str],
+    searched: int,
+    failed: Sequence[str] = (),
+    *,
+    regex_mode: bool = False,
+    scopes: Sequence[ShelfScope] = (),
 ) -> str:
     """``No match`` over the ``searched`` collections that ANSWERED; never a "no" over one that failed."""
     wanted = _wanted(phrases, regex_mode)
@@ -1736,6 +1929,8 @@ def no_match_message(
     whole_word = f" {short} was searched as a whole word only, not inside longer words." if short else ""
     tolerated = _TOLERATED_REGEX if regex_mode else _TOLERATED
     head = f"No match for {wanted} in {searched} collection(s), {tolerated}.{whole_word}"
+    if scopes:
+        head = "\n".join([head, _scope_statement(scopes), *_shelf_lines([], scopes)])
     if failed:
         return f"{head} {_failed_note(failed)} For those collections this is NOT a no."
     return (
@@ -2150,9 +2345,11 @@ def user_pattern(text: str) -> tuple[Any | None, str]:
 
 #: What a regex with no literal word and no narrowing is told: it would read every passage of every file.
 _NEEDS_A_ANCHOR = (
-    "A regex needs something to narrow the search with: one literal word it must contain (a whole word, e.g. "
-    "`Fluchtweg` or `BA-03`; a word followed by `?`, `*`, `\\w` or a class does not count), or a `folder=`, "
-    '`file_name=` or `doc_class=` to read in. Add one of them, or use `match="exact"` for a literal.'
+    "A regex needs something to narrow the search with: one literal whole word or number it must contain, or a "
+    "`folder=`, `file_name=` or `doc_class=` to read in. This pattern has no such word: a word followed by `?`, "
+    "`*`, `\\w` or a class does not count, and neither does a character class or a digit run alone. Rewrite it "
+    "so one word is written out in full (`MA ?37/\\d{6}` becomes `MA 37/\\d{6}`; `T\\d+` becomes `\\bT30-\\d+`), "
+    'keep that word and give `folder=`, or use `match="exact"` for a literal.'
 )
 
 #: What a regex that outran its time limit is told.
@@ -2212,6 +2409,7 @@ async def exact_search(
     regex_mode: bool = False,
     context: int | str | None = None,
     stemmed: bool = False,
+    shelf: str | None = None,
 ) -> str:
     """``knowledge_search(match="exact"|"regex")``: every chunk in scope that contains the phrase or matches the regex.
 
@@ -2222,7 +2420,16 @@ async def exact_search(
     turn, so the exact mode reads exactly what the meaning mode reads — and the
     base corpus through the same store filter (:func:`_collection_filter`).
     A folder narrows inside the query (``folder_ancestors``), the other narrowings by file list.
+
+    ``shelf`` ("project" | "office" | "base" | "session") keeps one shelf of that scope. Omitted, the
+    search reads every shelf the turn allows, the Basiswissen corpus included: a literal question about
+    the law (a Frist, „EI 90“) must not get a false „no“ because the corpus was left out. The answer
+    says per shelf how many documents were read and how many matched, so „not in our documents“ is
+    read off the project and office lines and not off the corpus's hits.
     """
+    entries, refusal = entries_on_shelf(entries, shelf)
+    if refusal:
+        return refusal
     context_lines, refusal = _context_lines(context)
     if refusal:
         return refusal
@@ -2264,6 +2471,7 @@ async def exact_search(
     from .register import _resolve_base_collection
 
     base = _resolve_base_collection(search_config)
+    scopes = shelf_scopes(entries, await _searched_documents(search_config, narrowed, folder))
     filters_by_collection = {
         entry.collection: _collection_filter(
             entry.collection,
@@ -2285,7 +2493,43 @@ async def exact_search(
         regex_mode=regex_mode,
         context=context_lines,
         stemmed=stemmed and not regex_mode,
+        scopes=scopes,
     )
+
+
+def entries_on_shelf(entries: Sequence[Any], shelf: str | None) -> tuple[list[Any], str]:
+    """The ``entries`` on the asked shelf, or all when none is asked; a refusal when the word is unknown or empty.
+
+    The empty case is said as a scope fact: the shelf is out of THIS turn's reach, which is not a "no".
+    """
+    entries = list(entries)
+    asked = (shelf or "").strip().lower()
+    if not asked:
+        return entries, ""
+    wanted = SEARCH_SHELVES.get(canonical_shelf_value(asked))
+    if wanted is None:
+        return [], f"`shelf` must be one of project, office, base (or omitted for every shelf), got {shelf!r}."
+    kept = [entry for entry in entries if _entry_shelf(entry) == wanted]
+    if not kept:
+        return [], (
+            f"The shelf {asked!r} is not part of this question's scope, so it was not searched. That says nothing "
+            "about what lies there; only the user changes the selection."
+        )
+    return kept, ""
+
+
+async def _searched_documents(search_config: Any, narrowed: Mapping[str, Sequence[str]] | None, folder: str | None):
+    """Per collection, the documents of the inventory that the search could read under its narrowing."""
+    rows = await _turn_rows(search_config)
+    resolved = _folder_matches(rows, folder) if folder else None
+    counts: dict[str, int] = {}
+    for row in rows:
+        if resolved is not None and not _in_folder(row, resolved):
+            continue
+        if narrowed is not None and row.file_name not in narrowed.get(row.collection, ()):
+            continue
+        counts[row.collection] = counts.get(row.collection, 0) + 1
+    return counts
 
 
 def _has_literal_word(pattern: str) -> bool:
@@ -2344,6 +2588,7 @@ async def _search(
     regex_mode: bool = False,
     context: int | None = None,
     stemmed: bool = False,
+    scopes: Sequence[ShelfScope] = (),
 ) -> str:
     from .qdrant.retrieval import USER_REGEX_SCAN_SECONDS
     from .qdrant.retrieval import USER_REGEX_TIMEOUT
@@ -2406,12 +2651,17 @@ async def _search(
     deadline = time.monotonic() + USER_REGEX_SCAN_SECONDS if regex_mode else None
     try:
         groups = group_matches(
-            chunks, compiled if regex_mode else pattern, timeout=timeout, store_decides=stemmed, deadline=deadline
+            chunks,
+            compiled if regex_mode else pattern,
+            timeout=timeout,
+            store_decides=stemmed,
+            deadline=deadline,
+            collect_strings=regex_mode,
         )
     except TimeoutError:
         return _TOO_COSTLY_SCAN if deadline is not None and time.monotonic() >= deadline else _TOO_COSTLY
     if not groups:
-        return no_match_message(phrases, answered, failed, regex_mode=regex_mode)
+        return no_match_message(phrases, answered, failed, regex_mode=regex_mode, scopes=scopes)
     # The match table names every matching file and counts its matches, which
     # is content of each file it names, passages shown or not: reported for the
     # restricted-use admission (ADR-0088), beside the passages the grounding
@@ -2423,7 +2673,7 @@ async def _search(
     query = " | ".join(phrases)
     candidates = await _candidate_counts(retriever, capped, pattern, filters_by_collection, regex_mode=regex_mode)
     trailer = match_table(
-        groups, phrases, truncated=truncated, failed=failed, regex_mode=regex_mode, candidates=candidates
+        groups, phrases, truncated=truncated, failed=failed, regex_mode=regex_mode, candidates=candidates, scopes=scopes
     )
     if stemmed:
         trailer = f"{_STEMMED_NOTE}\n{trailer}"

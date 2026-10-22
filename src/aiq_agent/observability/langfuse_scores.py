@@ -244,6 +244,20 @@ SCORE_DEFINITIONS: tuple[ScoreDefinition, ...] = (
         min_value=0,
     ),
     ScoreDefinition(
+        "look-count",
+        "NUMERIC",
+        "Looks Piloti made in the turn (ADR-0128): renders of a page, a region of it or an embedded image, "
+        "whether or not the answer relies on them. Zero is a measurement.",
+        min_value=0,
+    ),
+    ScoreDefinition(
+        "looked-before-measurement",
+        "BOOLEAN",
+        "On a turn whose answer states a value read off a drawing (ADR-0128): true when Piloti had made a "
+        "region look (not only an overview) at that drawing before it answered. Not written on a turn that "
+        "states no such value.",
+    ),
+    ScoreDefinition(
         "citations-dropped-labelled",
         "NUMERIC",
         "Places the answer cited something that did not resolve, labelled in the text instead of removed.",
@@ -423,6 +437,14 @@ def claim_scores(stamps: Iterable[Any], *, dropped: int) -> list[RuntimeScore]:
     ]
     scores.append(RuntimeScore("claims-normative-uncited", float(normative_uncited(stamps))))
     scores.append(RuntimeScore("citations-dropped-labelled", float(max(0, dropped))))
+    return scores
+
+
+def look_scores(*, looks: int, drawing_value: bool, region_look_first: bool) -> list[RuntimeScore]:
+    """The turn's looks (ADR-0128): how many, and whether a region look came before a stated drawing value."""
+    scores = [RuntimeScore("look-count", float(max(0, looks)))]
+    if drawing_value:
+        scores.append(_boolean("looked-before-measurement", region_look_first))
     return scores
 
 

@@ -703,4 +703,32 @@ export const organization = {
     deleteErrorSession: 'Only people in that chat can delete a chat attachment.',
     loadError: 'Could not load the quarantine.',
   },
+  /** What Piloti learned about the office's conventions, to confirm or decline (ADR-0129). */
+  officeConventions: {
+    title: 'What Piloti has learned about the office',
+    description: 'Conventions Piloti counted from your projects. Confirm what is right, decline what is not: Piloti never uses a declined line, and always keeps a confirmed one.',
+    confirm: 'Confirm',
+    decline: 'Decline',
+    undo: 'Take back',
+    confirmed: 'Confirmed',
+    declined: 'Declined',
+    support: 'Seen in {projects} of {of} projects',
+    supportWhenConfirmed: 'Confirmed by you; seen in {projects} of {of} projects when you confirmed it',
+    empty: 'Nothing learned yet. Piloti needs the same habit in at least three of your projects.',
+    off: 'Piloti does not learn the office’s conventions in this deployment yet.',
+    loadError: 'Could not load the conventions.',
+    saveError: 'Could not save your decision. Please try again.',
+    line: {
+      filing: '{docType} are usually filed under {path}.',
+      folder: 'Most projects keep the folder {path}.',
+      documentNumber: 'Plannummern are usually shaped {shape} (A = letters, 0 = a digit).',
+      fileDate: 'File names usually write a date as {format}.',
+      revisionStyle: {
+        letter: 'The Index is usually a letter (A, B, C).',
+        number: 'The Index is usually a number (1, 2, 3).',
+        padded_number: 'The Index is usually a two-digit number (01, 02, 03).',
+        letter_number: 'The Index is usually a letter and a number (A1, A2).',
+      },
+    },
+  },
 }

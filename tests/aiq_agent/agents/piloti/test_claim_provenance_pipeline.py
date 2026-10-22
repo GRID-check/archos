@@ -312,3 +312,167 @@ async def test_a_value_with_no_look_behind_it_is_not_observed():
     final, _ = await _finalize(messages)
 
     assert [stamp["provenance"] for stamp in final.claim_stamps] == ["model_knowledge"]
+
+
+# --- a look at a project document registers a citable place (ADR-0125, amendment of 2026-10-22) ---
+
+
+def _look_place_entry(region=(0.1, 0.2, 0.3, 0.4)):
+    from aiq_agent.common.citation_verification import extract_sources_from_tool_result
+    from aiq_agent.tools.look.place import place_facts
+    from aiq_agent.tools.look.place import render_place
+
+    resolved = SimpleNamespace(file_name="Schnitt A-A.pdf", collection="proj_1", target=None)
+    text = render_place(
+        place_facts(resolved, 2, region, None), "Region of the page.", "Gelesen: Gangbreite 1,10 m (dimension, high)"
+    )
+    [entry] = extract_sources_from_tool_result("look", text)
+    return entry
+
+
+LOOK_PROSE = "Der Gang ist 1,10 m breit [1].\\n\\n**Quellen:**\\n- [1] Schnitt A-A.pdf, p.2"
+
+
+async def test_a_value_citing_a_region_look_is_observed_and_reaches_high():
+    registry = SourceRegistry()
+    registry.add(_look_place_entry())
+    messages = [HumanMessage("Wie breit ist der Gang?"), AIMessage(ANSWER_ENVELOPE.format(prose=LOOK_PROSE))]
+
+    final, state = await _finalize(messages, registry)
+
+    assert [stamp["provenance"] for stamp in final.claim_stamps] == ["observed"]
+    assert state.answer_confidence == "high"
+    assert [source.entry.citation_key for source in final.cited] == ["Schnitt A-A.pdf, p.2"]
+
+
+async def test_the_same_citation_of_an_overview_is_medium():
+    registry = SourceRegistry()
+    registry.add(_look_place_entry(region=None))
+    messages = [HumanMessage("Wie breit ist der Gang?"), AIMessage(ANSWER_ENVELOPE.format(prose=LOOK_PROSE))]
+
+    final, state = await _finalize(messages, registry)
+
+    assert [stamp["provenance"] for stamp in final.claim_stamps] == ["observed"]
+    assert state.answer_confidence == "medium"
+
+
+async def test_a_place_is_a_citation_and_no_grounding_for_the_law():
+    registry = SourceRegistry()
+    registry.add(_look_place_entry())
+    prose = (
+        "Der Gang ist 1,10 m breit [1]. Der Fluchtweg muss nach § 5 der Bauordnung mindestens 1,20 m breit sein."
+        "\\n\\n**Quellen:**\\n- [1] Schnitt A-A.pdf, p.2"
+    )
+    messages = [HumanMessage("Passt der Gang?"), AIMessage(ANSWER_ENVELOPE.format(prose=prose))]
+
+    final, state = await _finalize(messages, registry)
+
+    assert final.citation_grounded is False
+    assert final.normative_claim_uncited is True
+    assert state.answer_confidence == "low"
+
+
+async def test_a_place_cited_for_a_legal_sentence_is_refused_the_law():
+    registry = SourceRegistry()
+    registry.add(_look_place_entry())
+    prose = (
+        "Der Fluchtweg muss nach § 5 mindestens 1,10 m breit sein [1].\\n\\n**Quellen:**\\n- [1] Schnitt A-A.pdf, p.2"
+    )
+    messages = [HumanMessage("Passt der Gang?"), AIMessage(ANSWER_ENVELOPE.format(prose=prose))]
+
+    final, state = await _finalize(messages, registry)
+
+    assert [(stamp["provenance"], stamp["claim_type"]) for stamp in final.claim_stamps] == [("observed", "normative")]
+    assert state.answer_confidence == "low"
+
+
+async def test_the_look_scores_count_looks_and_say_whether_a_region_look_came_first(monkeypatch):
+    from aiq_agent.cards.registry import CardRegistry
+    from aiq_agent.cards.registry import reset_card_registry
+    from aiq_agent.cards.registry import set_card_registry
+    from aiq_agent.tools.look.cards import note_look
+
+    written: list = []
+    monkeypatch.setattr(answer_pipeline, "emit_scores", lambda scores, **_: written.extend(scores))
+    registry = SourceRegistry()
+    registry.add(_look_place_entry())
+    token = set_card_registry(CardRegistry())
+    try:
+        resolved = SimpleNamespace(file_name="Schnitt A-A.pdf", collection="proj_1", target=None)
+        note_look(resolved, 2, None, question="", reading="")
+        note_look(resolved, 2, [0.1, 0.2, 0.3, 0.4], question="Breite?", reading="Gangbreite 1,10 m")
+        messages = [HumanMessage("Wie breit ist der Gang?"), AIMessage(ANSWER_ENVELOPE.format(prose=LOOK_PROSE))]
+
+        await _finalize(messages, registry)
+    finally:
+        reset_card_registry(token)
+
+    by_name = {score.name: score.value for score in written}
+    assert by_name["look-count"] == 2.0 and by_name["looked-before-measurement"] == 1.0
+
+
+async def test_an_overview_only_turn_that_states_a_drawing_value_scores_zero(monkeypatch):
+    from aiq_agent.cards.registry import CardRegistry
+    from aiq_agent.cards.registry import reset_card_registry
+    from aiq_agent.cards.registry import set_card_registry
+    from aiq_agent.tools.look.cards import note_look
+
+    written: list = []
+    monkeypatch.setattr(answer_pipeline, "emit_scores", lambda scores, **_: written.extend(scores))
+    registry = SourceRegistry()
+    registry.add(_look_place_entry(region=None))
+    token = set_card_registry(CardRegistry())
+    try:
+        resolved = SimpleNamespace(file_name="Schnitt A-A.pdf", collection="proj_1", target=None)
+        note_look(resolved, 2, None, question="Breite?", reading="Gangbreite 1,10 m")
+        messages = [HumanMessage("Wie breit ist der Gang?"), AIMessage(ANSWER_ENVELOPE.format(prose=LOOK_PROSE))]
+
+        await _finalize(messages, registry)
+    finally:
+        reset_card_registry(token)
+
+    by_name = {score.name: score.value for score in written}
+    assert by_name["look-count"] == 1.0 and by_name["looked-before-measurement"] == 0.0
+
+
+async def test_a_turn_with_no_drawing_value_writes_no_looked_before_measurement(monkeypatch):
+    written: list = []
+    monkeypatch.setattr(answer_pipeline, "emit_scores", lambda scores, **_: written.extend(scores))
+    messages = [HumanMessage("Hallo"), AIMessage(ANSWER_ENVELOPE.format(prose="Guten Tag."))]
+
+    await _finalize(messages)
+
+    names = {score.name for score in written}
+    assert "look-count" in names and "looked-before-measurement" not in names
+
+
+async def test_honest_absence_in_an_answer_is_medium_and_not_an_uncited_legal_claim():
+    prose = "Für den Gang ja; der Abstand zum Treppenhaus ist in keinem Dokument nachgewiesen."
+    messages = [HumanMessage("Reicht der Fluchtweg?"), AIMessage(ANSWER_ENVELOPE.format(prose=prose))]
+
+    final, state = await _finalize(messages)
+
+    assert final.claims_ceiling == "medium"
+    assert state.answer_confidence == "medium"
+
+
+async def test_a_look_on_a_page_with_a_retrieved_caption_does_not_borrow_the_captions_authority():
+    from aiq_agent.common.citation_verification import SourceEntry
+
+    registry = SourceRegistry()
+    registry.add(
+        SourceEntry(
+            citation_key="Schnitt A-A.pdf, p.2",
+            collection="proj_1",
+            source_type="knowledge_layer",
+            tool_name="knowledge_search",
+            chunk_text="Schnitt A-A, Massstab 1:50, Legende.",
+        )
+    )
+    registry.add(_look_place_entry(region=None))  # an overview: medium, where a caption would have said high
+    messages = [HumanMessage("Wie breit ist der Gang?"), AIMessage(ANSWER_ENVELOPE.format(prose=LOOK_PROSE))]
+
+    final, state = await _finalize(messages, registry)
+
+    assert [stamp["provenance"] for stamp in final.claim_stamps] == ["observed"]
+    assert state.answer_confidence == "medium"

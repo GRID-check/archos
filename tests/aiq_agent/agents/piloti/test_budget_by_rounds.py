@@ -389,8 +389,8 @@ class TestTheRoundWidthCap:
 
         (deferred,) = [m for m in result.messages if isinstance(m, ToolMessage) and m.tool_call_id == "b"]
         assert str(deferred.content) == _WIDTH_CAP_MESSAGE
-        assert "nächsten Runde" in _WIDTH_CAP_MESSAGE
-        assert "Nicht ausgeführt" in _WIDTH_CAP_MESSAGE
+        assert "next round" in _WIDTH_CAP_MESSAGE
+        assert "Not executed" in _WIDTH_CAP_MESSAGE
 
     async def test_a_capped_round_leaves_its_own_technical_record(self, steps):
         agent = _agent(

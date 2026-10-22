@@ -55,8 +55,8 @@ export const MAX_REVIEW_DECISIONS = 5
 
 /** The verdict word the model reads. The two refusing states differ in finality. */
 const VERDICT: Record<string, string> = {
-  changes_requested: 'Änderungen angefordert',
-  rejected: 'abgelehnt',
+  changes_requested: 'changes requested',
+  rejected: 'rejected',
 }
 
 /**

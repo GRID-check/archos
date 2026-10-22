@@ -6,7 +6,7 @@
  *
  * Derived, not authored: every field is recomputed by
  * `refreshOfficeConventions` (`lib/office-conventions/service.ts`) and replaced whole. A convention a person
- * confirms becomes an organization memory note (`project_memory`), never an
+ * confirms or declines is a row of `office_convention_decisions`, never an
  * edit here, so nothing on this row is anybody's word.
  *
  * `conventions` is null until the first refresh has run; the row exists before
@@ -14,9 +14,10 @@
  * so two turns that find the office changed start one refresh, not two.
  */
 
-import { check, integer, jsonb, pgTable, text, timestamp } from 'drizzle-orm/pg-core'
+import { check, integer, jsonb, pgTable, primaryKey, text, timestamp } from 'drizzle-orm/pg-core'
 import { sql } from 'drizzle-orm'
 import type { OfficeConventions } from '@/lib/office-conventions/extract'
+import type { ConventionDecision, ConventionLine } from '@/lib/office-conventions/office-conventions-wire'
 
 export const officeConventions = pgTable(
   'office_conventions',
@@ -44,3 +45,29 @@ export const officeConventions = pgTable(
 )
 
 export type OfficeConventionsRow = typeof officeConventions.$inferSelect
+
+/**
+ * `office_convention_decisions` (migration 0182): a person's confirm or decline
+ * of one line, keyed by the line's stable key (`lib/office-conventions/lines.ts`).
+ * `line` is the line as decided, so a confirmed line outlives a recount that
+ * no longer shows it. Authored, so unlike the row above it is never replaced.
+ */
+export const officeConventionDecisions = pgTable(
+  'office_convention_decisions',
+  {
+    organizationId: text('organization_id').notNull(),
+    lineKey: text('line_key').notNull(),
+    decision: text('decision').$type<ConventionDecision>().notNull(),
+    line: jsonb('line').$type<ConventionLine>().notNull(),
+    decidedBy: text('decided_by').notNull(),
+    decidedAt: timestamp('decided_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    pk: primaryKey({ name: 'office_convention_decisions_pkey', columns: [table.organizationId, table.lineKey] }),
+    decisionKnown: check('office_convention_decisions_decision_known', sql`${table.decision} IN ('confirmed', 'declined')`),
+    keyBounded: check('office_convention_decisions_key_bounded', sql`char_length(${table.lineKey}) BETWEEN 1 AND 300`),
+    lineObject: check('office_convention_decisions_line_object', sql`jsonb_typeof(${table.line}) = 'object'`),
+  })
+)
+
+export type OfficeConventionDecisionRow = typeof officeConventionDecisions.$inferSelect

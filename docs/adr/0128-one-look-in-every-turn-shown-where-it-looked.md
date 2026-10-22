@@ -223,6 +223,17 @@ in short:
   shown as what Piloti read, never as a measured value, and it grounds no
   normative sentence (ADR-0125's anti-laundering rule applies to it unchanged).
 * Neutral, because the 6-view cap is unchanged; only its split is new.
+* Good, because (amendment of 2026-10-22) a look at a project or office document
+  with a `question` registers a citable place, so the value Piloti reads off a
+  drawing has a `[N]` of its own; see ADR-0125's amendment of the same date. The
+  result's text block is then a grounding block (`tools/look/place.py`), the
+  card keeps the region crops that read something of the documents the answer
+  cites (no card for an answer that cites none, an empty or "nothing found"
+  reading, or an overview beside a crop of the same document), and the card
+  item's reading is the line carrying the measured value before the summary.
+* Bad, because a look without a `question` has no reading and so no place: it is
+  a Herleitung step and cannot be cited. The description already tells the model
+  to give a `question` whenever it will state a value.
 
 ### Confirmation
 

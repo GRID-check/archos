@@ -57,12 +57,14 @@ from aiq_agent.common.citation_verification import annotate_unverified_quotes
 from aiq_agent.common.citation_verification import drop_ungrounded_trailer_values
 from aiq_agent.common.citation_verification import expand_grouped_citations
 from aiq_agent.common.citation_verification import get_turn_captures
+from aiq_agent.common.citation_verification import is_look_place
 from aiq_agent.common.citation_verification import merged_citations
 from aiq_agent.common.citation_verification import sanitize_report
 from aiq_agent.common.citation_verification import verify_citations
 from aiq_agent.common.citation_verification import verify_quoted_spans
 from aiq_agent.common.claim_provenance import ClaimEvidence
 from aiq_agent.common.claim_provenance import ClaimStamp
+from aiq_agent.common.claim_provenance import LookPlace
 from aiq_agent.common.claim_provenance import claims_ceiling
 from aiq_agent.common.claim_provenance import classify_claims
 from aiq_agent.common.claim_provenance import weakest_claim
@@ -77,6 +79,7 @@ from aiq_agent.observability.langfuse_scores import card_validity_score
 from aiq_agent.observability.langfuse_scores import claim_scores
 from aiq_agent.observability.langfuse_scores import dialect_scores
 from aiq_agent.observability.langfuse_scores import emit_scores
+from aiq_agent.observability.langfuse_scores import look_scores
 from aiq_agent.observability.langfuse_scores import quote_patch_scores
 from aiq_agent.observability.langfuse_scores import work_unfiled_scores
 from aiq_agent.observability.langfuse_trace_attributes import record_trace_metadata
@@ -631,7 +634,10 @@ def _ground(verified: _Verified, registry: SourceRegistry) -> _Grounding:
     }
     if verified.verification.valid_citations:
         cited = _cited_sources(verified.verification.valid_citations, registry)
-        return _Grounding(content, citation_grounded=True, cited=cited, **common)
+        # A place a look read is a citation and no grounding: only a retrieved
+        # passage lets an uncited legal sentence beside it count as supported.
+        grounded = not cited or any(not is_look_place(source.entry) for source in cited)
+        return _Grounding(content, citation_grounded=grounded, cited=cited, **common)
     return _Grounding(content, **common)
 
 
@@ -1133,12 +1139,15 @@ async def finalize_answer(
     lookup_attempted = _source_lookup_attempted(turn)
     sources = registry.all_sources()
     found_nothing = False
+    # A place a look registered is a source to cite, not a retrieval: a turn that
+    # only looked and found no passage still reports the failed lookup.
+    if not any(not is_look_place(source) for source in sources):
+        ruling = extracted.meta is not None and extracted.meta.kind == "ruling"
+        found_nothing = _require_retrieval(_passage_lookup_attempted(turn), tools, ruling=ruling)
     if sources:
         emit_citation_check(source_count=len(sources))
         verified = await _verify_with_quote_patch(extracted.content, registry, repair)
     else:
-        ruling = extracted.meta is not None and extracted.meta.kind == "ruling"
-        found_nothing = _require_retrieval(_passage_lookup_attempted(turn), tools, ruling=ruling)
         # Nothing to resolve against: every [N] the model wrote is labelled.
         verified = _verify(extracted.content, registry)
     grounding = _ground(verified, registry)
@@ -1162,14 +1171,16 @@ async def finalize_answer(
     from aiq_agent.tools.look.cards import take_looks
 
     looks = take_looks()
+    looks_made = sum(1 for entry in looks if entry["item"]["origin"] == "look")
     content, meta, _cards_suppressed = _suppress_cards(content, meta)
     place_look_cards(looks, cited)
     content = resolve_callout_marker(content, has_callout=bool(meta and "callout" in meta))
     # Stamped on the text the reader gets, with the [N] it shows. Off the loop,
     # like the quote check it repeats: each line reads the registry's passages.
-    pairs = [(source.entry, source.number) for source in cited]
+    pairs = [(source.entry, source.number) for source in cited if not is_look_place(source.entry)]
     stamps = await asyncio.to_thread(stamp_quote_lines, content, pairs, registry.all_sources())
     claims = _claim_provenance(content, cited, stamps, turn, measured_values, relied_readings(looks, cited))
+    _emit_look_scores(looks, looks_made, claims.stamps, cited)
     final_messages = list(messages)
     final_messages[index] = messages[index].model_copy(update={"content": content})
     return FinalAnswer(
@@ -1199,6 +1210,19 @@ async def finalize_answer(
     )
 
 
+def _emit_look_scores(
+    looks: Sequence[dict[str, Any]], looks_made: int, stamps: Sequence[ClaimStamp], cited: Sequence[CitedSource]
+) -> None:
+    """``look-count`` and ``looked-before-measurement`` at the turn's end (ADR-0128, docs/observability/langfuse.md)."""
+    from aiq_agent.tools.look.cards import drawing_value_status
+
+    drawing_value, region_look_first = drawing_value_status(looks, stamps, cited)
+    emit_scores(
+        look_scores(looks=looks_made, drawing_value=drawing_value, region_look_first=region_look_first),
+        writer="piloti",
+    )
+
+
 @dataclass(frozen=True)
 class _Claims:
     """The answer's per-sentence stamps and what the confidence reads off them."""
@@ -1224,7 +1248,19 @@ def _claim_provenance(
     as three scores.
     """
     evidence = ClaimEvidence(
-        cited_numbers=frozenset(source.number for source in cited if source.number is not None),
+        cited_numbers=frozenset(
+            source.number for source in cited if source.number is not None and not is_look_place(source.entry)
+        ),
+        looks={
+            source.number: LookPlace(
+                read=source.entry.read,
+                crop=bool(source.entry.regions),
+                place_only=is_look_place(source.entry),
+                passage=source.entry.chunk_text or "",
+            )
+            for source in cited
+            if source.number is not None and source.entry.read
+        },
         quote_stamps=quote_stamps,
         records=records_from_messages(turn),
         measured_values=tuple(value for value in measured_values if value),

@@ -84,6 +84,16 @@ describe('FileOperationProposalCard without a proposal_id — what it shows', ()
     expect(screen.getByText(/Top level/)).toBeInTheDocument()
   })
 
+  it('shows the reason under the row it belongs to', () => {
+    const card = {
+      ...moveCard,
+      operations: [{ ...moveCard.operations[0], reason: 'Belongs with the Bescheid of 12 March' }],
+    }
+    render(<FileOperationProposalCard {...card} cardKey="file_operation_proposal-0" />)
+
+    expect(screen.getByTestId('file-operation-row-reason')).toHaveTextContent('Belongs with the Bescheid of 12 March')
+  })
+
   it.each([
     ['rename', { document: 'a.pdf', source: 'project' as const, new_display_name: 'Grundriss Erdgeschoss' }, 'Grundriss Erdgeschoss'],
     ['create_folder', { folder_name: 'Fotos', parent_folder: 'Einreichung' }, 'Fotos'],

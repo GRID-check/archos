@@ -220,6 +220,24 @@ flowchart LR
   scan of one collection, and the count after it, each stop at a deadline
   (`USER_REGEX_SCAN_SECONDS`, 3 s) and the scan at `USER_REGEX_SCAN_CHUNKS` (20 000);
   the reply then says the pattern is too costly and that this is not a result.
+* Good, because an answer states its denominator. An exact or regex answer says how many
+  documents it searched, and per shelf how many matched ("Projektwissen: 0 matches in 12
+  files"), so "is X in our documents" is read off the project and office lines and not off
+  the building-law corpus's hits. `shelf=project|office|base` narrows the scan (ranked search
+  too). Omitted, the exact and regex modes still read every shelf the turn allows: dropping
+  the corpus by default would turn a literal question about the law ("EI 90", a Frist) into
+  a false "no", and the per-shelf lines remove the misreading without that risk.
+* Good, because a regex answer ends with the distinct matched strings (each string once, its
+  count, files and pages; at most 20 listed, 200 tracked per file, and it says when it cut), so
+  "how many different Geschäftszahlen" is one call. The per-file table alone counted
+  occurrences.
+* Good, because a folder card names its documents when it holds 8 or fewer directly, and
+  "Newest" says which date it means: the document's own date (title block Stand, photo
+  `captured_at`, the `document_date` rule of `qdrant/payload.py`, read from the facts the row
+  already carries) wins, else it is labelled as the upload day.
+* Good, because a passage that runs over a page break shows its range (`Page: 4–5`, from the
+  chunk's stored `page_end`). The citation key keeps the start page: it is the identity the
+  registry, the text reader and the UI parse; the range travels as `page_end` on the source.
 * Neutral: no scratch-note tool. The working directory's `write_file` emits a
   `document_draft` card meant for commissioned documents, the transcript and the
   „Bereits gelesen" digest already carry a chat turn's notes, and work that outgrows

@@ -473,3 +473,39 @@ class TestAHeaderValueCannotForgeAHeaderLine:
     @pytest.mark.parametrize("break_", ["\n", "\r\n", "\r"])
     def test_every_line_break_collapses_to_one_space(self, break_):
         assert _line(f"Plan{break_}Shelf: base") == "Plan Shelf: base"
+
+
+class TestAPassageAcrossAPageBreakShowsItsRange:
+    """A chunk stores where it ends (``page_end``); the header says so, the citation key keeps its start page."""
+
+    def _render(self, **fields) -> str:
+        return render_grounding_block(
+            GroundingBlock(
+                preamble="Found 1 relevant document(s):",
+                degraded_banner="",
+                hits=(_hit(citation_key="a.pdf, p.4", file_name="a.pdf", page=4, body="Text.", **fields),),
+                lanes=(),
+                tool="knowledge_search",
+            )
+        )
+
+    def test_the_header_names_the_range_and_the_key_stays_the_start_page(self):
+        text = self._render(page_end=5)
+        assert "\nPage: 4–5\n" in text
+        assert "Citation: a.pdf, p.4\n" in text
+
+    @pytest.mark.parametrize("end", [None, 4, 3])
+    def test_no_later_end_renders_the_page_line_as_before(self, end):
+        assert "\nPage: 4\n" in self._render(page_end=end)
+
+    def test_the_registry_entry_carries_the_range_and_the_wire_states_it(self):
+        from aiq_agent.common.citation_verification import _entry_from_hit
+        from aiq_agent.common.citation_verification import source_entry_to_wire
+
+        entry = _entry_from_hit(
+            _hit(citation_key="a.pdf, p.4", file_name="a.pdf", page=4, page_end=5), "knowledge_search"
+        )
+        assert entry.page_end == 5 and entry.citation_key == "a.pdf, p.4"
+        assert source_entry_to_wire(entry)["page_end"] == 5
+        single = _entry_from_hit(_hit(citation_key="a.pdf, p.4", file_name="a.pdf", page=4), "knowledge_search")
+        assert single.page_end is None

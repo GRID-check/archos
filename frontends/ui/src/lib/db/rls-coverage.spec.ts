@@ -191,6 +191,9 @@ const BOUNDARY_MIGRATIONS = [
   // Adds office_conventions — the office's conventions as Piloti counted them
   // (ADR-0129), one derived row per organization. Keyed directly by it.
   '0181_office_conventions.sql',
+  // Adds office_convention_decisions — a person's confirm or decline of one
+  // line of the office's conventions (ADR-0129). Keyed by its organization.
+  '0182_office_convention_decisions.sql',
 ]
 
 const MIGRATION_SOURCES = BOUNDARY_MIGRATIONS.map((file) =>

@@ -9,7 +9,10 @@
  * except one under an own access list and everything below it (ADR-0087,
  * ADR-0088); their ingested documents that passed screening (ADR-0086), with
  * the Dokumentart and the title-block facts the backend read. A document in a
- * folder that does not count does not count either.
+ * folder that does not count does not count either. A move a person accepted (an applied `file_operation`
+ * proposal) counts for its Dokumentart's line. The office's decisions (`./lines`)
+ * apply when the lines are read: declined lines never reach the agent,
+ * confirmed ones always do.
  *
  * ## When it is counted
  *
@@ -26,6 +29,7 @@
  */
 
 import 'server-only'
+import { NotFoundError } from '@/lib/api/errors'
 import { folderTree, isUnderOwnList } from '@/lib/authz/folder-access-rule'
 import { hasPassedScreening } from '@/lib/documents/document-reader'
 import { reconcileDocumentStatuses } from '@/lib/documents/reconcile-status'
@@ -34,18 +38,27 @@ import { listProjectsFolders, type OfficeFolderRow } from '@/lib/filing/reposito
 import { listProjectsInOrg } from '@/lib/projects/repository'
 import {
   EXTRACTOR_VERSION,
+  conventionPathKey,
   extractOfficeConventions,
   type ConventionDocument,
   type ConventionFolder,
+  type ConventionMove,
   type OfficeConventions,
 } from './extract'
+import { conventionLines, resolveLines } from './lines'
+import type { OfficeConventionsView } from './office-conventions-wire'
 import { asksWhereThingsAre, officeConventionsHeader, renderOfficeConventions } from './render'
 import {
   claimOfficeConventionsRefresh,
+  deleteConventionDecision,
+  listAcceptedMoves,
+  listConventionDecisions,
   listConventionDocuments,
   officeSourceFingerprint,
   readOfficeConventions,
+  saveConventionDecision,
   writeOfficeConventions,
+  type AcceptedMove,
 } from './repository'
 
 /** How many of the office's most recent projects the conventions are counted from. */
@@ -133,14 +146,37 @@ export function conventionDocumentOf(
   }
 }
 
+/**
+ * The accepted moves that teach: the moved document is found in its project by
+ * name and has a Dokumentart, and the target is a folder that counts (living,
+ * not under an own access list). A move that cannot be placed teaches nothing.
+ */
+export function conventionMovesOf(
+  accepted: readonly AcceptedMove[],
+  documents: ReadonlyArray<{ projectId: string; filename: string; docType: string | null }>,
+  folders: ReadonlyMap<string, ConventionFolder>
+): ConventionMove[] {
+  const typeByName = new Map<string, string>()
+  for (const doc of documents) {
+    if (doc.docType) typeByName.set(`${doc.projectId}\u0000${doc.filename.normalize('NFC').toLowerCase()}`, doc.docType)
+  }
+  const open = new Set([...folders.values()].map((folder) => `${folder.projectId}\u0000${conventionPathKey(folder.path)}`))
+  return accepted.flatMap((move) => {
+    const docType = typeByName.get(`${move.projectId}\u0000${move.document.normalize('NFC').toLowerCase()}`)
+    if (!docType || !open.has(`${move.projectId}\u0000${conventionPathKey(move.folderPath)}`)) return []
+    return [{ projectId: move.projectId, docType, folderPath: move.folderPath }]
+  })
+}
+
 /** Count the office's conventions again and replace its record. What was counted, for the log line. */
 export async function refreshOfficeConventions(organizationId: string): Promise<OfficeConventions> {
   // Read before the rows, so a change made during the count leaves the record stale.
   const fingerprint = await officeSourceFingerprint(organizationId)
   const projectIds = (await listProjectsInOrg(organizationId, { limit: MAX_PROJECTS })).map((project) => project.id)
-  const [folderRows, rows] = await Promise.all([
+  const [folderRows, rows, accepted] = await Promise.all([
     listProjectsFolders(organizationId, projectIds),
     listConventionDocuments(organizationId, projectIds),
+    listAcceptedMoves(organizationId, projectIds),
   ])
   const folders = openFolders(folderRows)
   const enriched = await reconcileDocumentStatuses(rows, organizationId)
@@ -148,7 +184,8 @@ export async function refreshOfficeConventions(organizationId: string): Promise<
     .filter(hasPassedScreening)
     .map((row) => conventionDocumentOf(row, folders))
     .filter((doc): doc is ConventionDocument => doc !== null)
-  const conventions = extractOfficeConventions({ documents, folders: [...folders.values()] })
+  const moves = conventionMovesOf(accepted, documents, folders)
+  const conventions = extractOfficeConventions({ documents, folders: [...folders.values()], moves })
   await writeOfficeConventions(organizationId, {
     conventions,
     extractorVersion: EXTRACTOR_VERSION,
@@ -156,7 +193,7 @@ export async function refreshOfficeConventions(organizationId: string): Promise<
   })
   console.debug(
     `[office-conventions] ${organizationId}: ${conventions.projects} projects, ${documents.length} documents, ` +
-      `${conventions.folders.length} folders, ${conventions.filing.length} filing lines`
+      `${conventions.folders.length} folders, ${conventions.filing.length} filing lines, ${moves.length} accepted moves`
   )
   return conventions
 }
@@ -186,14 +223,60 @@ export function isStale(
 /**
  * The convention lines for a turn, header first, or null: when the switch is
  * off, the question is not about filing or finding, or nothing was learned yet.
- * A stale record is still served while its refresh runs.
+ * A stale record is still served while its refresh runs. The office's
+ * decisions apply: a declined line is not sent, a confirmed one always is.
  */
 export async function officeConventionsForTurn(organizationId: string, query: string | null | undefined) {
   if (!officeConventionsEnabled() || !asksWhereThingsAre(query)) return null
-  const [row, fingerprint] = await Promise.all([readOfficeConventions(organizationId), cachedFingerprint(organizationId)])
+  const [row, fingerprint, decisions] = await Promise.all([
+    readOfficeConventions(organizationId),
+    cachedFingerprint(organizationId),
+    listConventionDecisions(organizationId),
+  ])
   if (isStale(row, fingerprint)) await requestOfficeConventionsRefresh(organizationId)
   const conventions = row?.extractorVersion === EXTRACTOR_VERSION ? row.conventions : null
   if (!conventions) return null
-  const lines = renderOfficeConventions(conventions)
+  const lines = renderOfficeConventions(conventions, decisions)
   return lines.length > 0 ? [officeConventionsHeader(conventions.projects), ...lines] : null
+}
+
+/**
+ * What the office's conventions are, for a person: every counted line with its
+ * counts and decision, and the decided lines the count no longer shows. Asks
+ * for a refresh when the record is stale, like a turn does.
+ */
+export async function listOfficeConventions(organizationId: string): Promise<OfficeConventionsView> {
+  const enabled = officeConventionsEnabled()
+  const [row, decisions] = await Promise.all([readOfficeConventions(organizationId), listConventionDecisions(organizationId)])
+  if (enabled && isStale(row, await cachedFingerprint(organizationId))) await requestOfficeConventionsRefresh(organizationId)
+  const conventions = row?.extractorVersion === EXTRACTOR_VERSION ? row.conventions : null
+  return {
+    enabled,
+    projects: conventions?.projects ?? 0,
+    computedAt: row?.computedAt ? new Date(row.computedAt).toISOString() : null,
+    lines: resolveLines(conventions ? conventionLines(conventions) : [], decisions),
+  }
+}
+
+/** Why a decision was refused: the key names no line the office has or had. */
+export class UnknownConventionLineError extends NotFoundError {
+  constructor(readonly lineKey: string) {
+    super(`No convention line has the key ${lineKey}; list the lines first.`)
+  }
+}
+
+/**
+ * Confirm or decline a line, or take the decision back. The line must be one
+ * the latest count shows or one already decided; its snapshot is kept with the
+ * decision so a confirmed line outlives a recount.
+ */
+export async function decideOfficeConvention(
+  organizationId: string,
+  userId: string,
+  input: { lineKey: string; decision: 'confirmed' | 'declined' | 'undecided' }
+): Promise<void> {
+  if (input.decision === 'undecided') return deleteConventionDecision(organizationId, input.lineKey)
+  const view = (await listOfficeConventions(organizationId)).lines.find((entry) => entry.line.key === input.lineKey)
+  if (!view) throw new UnknownConventionLineError(input.lineKey)
+  await saveConventionDecision(organizationId, { lineKey: input.lineKey, decision: input.decision, line: view.line, decidedBy: userId })
 }

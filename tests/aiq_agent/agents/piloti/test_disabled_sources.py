@@ -201,10 +201,10 @@ class TestTheCallIsRefusedNotRemoved:
         assert RAN == []
         answer = _answer_for(result, "w")
         assert "Web-Suche" in answer, "the refusal must name the source the reader turned off"
-        assert "abgeschaltet" in answer
+        assert "switched off" in answer
         # An INSTRUCTION, not an error: what the model should do next is answer
         # from what it holds and SAY the source went unconsulted.
-        assert "nicht konsultiert" in answer
+        assert "was not consulted" in answer
 
     async def test_the_rest_of_the_round_still_runs(self):
         agent, _llm = _agent(
@@ -219,7 +219,7 @@ class TestTheCallIsRefusedNotRemoved:
 
         assert RAN == ["knowledge_search:OIB 2"]
         assert _answer_for(result, "k") == "Treffer zu: OIB 2"
-        assert "abgeschaltet" in _answer_for(result, "w")
+        assert "switched off" in _answer_for(result, "w")
 
     async def test_a_tool_belonging_to_no_source_is_never_refused(self):
         """`emit_card` and its kind are not data sources and have no toggle."""

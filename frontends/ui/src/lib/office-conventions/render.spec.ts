@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { EXTRACTOR_VERSION, type OfficeConventions } from './extract'
+import type { StoredDecision } from './lines'
+import type { ConventionLine } from './office-conventions-wire'
 import {
   MAX_CONVENTION_LINE_CHARS,
   MAX_CONVENTION_LINES,
@@ -85,5 +87,60 @@ describe('asksWhereThingsAre', () => {
     null,
   ])('leaves "%s" alone', (query) => {
     expect(asksWhereThingsAre(query)).toBe(false)
+  })
+})
+
+describe('the office decides what the agent reads', () => {
+  const decision = (line: ConventionLine, kind: StoredDecision['decision']): StoredDecision => ({
+    lineKey: line.key,
+    decision: kind,
+    line,
+    decidedBy: 'user-1',
+    decidedAt: new Date('2026-10-22T08:00:00Z'),
+  })
+  const filing: ConventionLine = {
+    kind: 'filing', key: 'filing:gutachten>fachplaner/gutachten', docType: 'Gutachten', path: 'Fachplaner/Gutachten', projects: 4, of: 5,
+  }
+
+  it('leaves a declined line out, whether it is a filing line, a folder or a naming line', () => {
+    const lines = renderOfficeConventions(conventions(), [
+      decision(filing, 'declined'),
+      decision({ kind: 'folder', key: 'folder:behörde', path: 'Behörde', projects: 5, of: 7 }, 'declined'),
+      decision({ kind: 'revision_style', key: 'revision_style:letter', style: 'letter', projects: 5, of: 6 }, 'declined'),
+    ])
+    expect(lines.join('\n')).not.toContain('Gutachten')
+    expect(lines).toContain('- folders most projects keep: Grundlagen (7/7)')
+    expect(lines.join('\n')).not.toContain('Index usually')
+  })
+
+  it('keeps a confirmed line the count no longer shows, and says the office confirmed it', () => {
+    const lines = renderOfficeConventions(conventions({ filing: [], fileDate: null }), [
+      decision(filing, 'confirmed'),
+      decision({ kind: 'file_date', key: 'file_date:YYYYMMDD', format: 'YYYYMMDD', projects: 3, of: 8 }, 'confirmed'),
+    ])
+    expect(lines).toContain('- Gutachten usually filed under Fachplaner/Gutachten (confirmed by the office)')
+    expect(lines).toContain('- file names usually write a date as YYYYMMDD (confirmed by the office)')
+  })
+
+  it('marks a confirmed line that is still counted with its count', () => {
+    const lines = renderOfficeConventions(conventions(), [decision(filing, 'confirmed')])
+    expect(lines[0]).toBe(
+      '- Gutachten usually filed under Fachplaner/Gutachten (confirmed by the office; 4 of 5 projects that file one in a folder)'
+    )
+  })
+
+  it('lets a confirmed folder win over a different counted folder for the same Dokumentart', () => {
+    const confirmed: ConventionLine = { ...filing, key: 'filing:gutachten>behörde', path: 'Behörde' }
+    const lines = renderOfficeConventions(conventions(), [decision(confirmed, 'confirmed')])
+    const gutachten = lines.filter((line) => line.startsWith('- Gutachten'))
+    expect(gutachten).toEqual(['- Gutachten usually filed under Behörde (confirmed by the office)'])
+  })
+
+  it('puts confirmed filing lines ahead of counted ones when the budget is short', () => {
+    const many = Array.from({ length: 10 }, (_, i) => ({ docType: `Art${i}`, path: `Ordner${i}`, projects: 4, of: 5 }))
+    const last: ConventionLine = { kind: 'filing', key: 'filing:art9>ordner9', docType: 'Art9', path: 'Ordner9', projects: 4, of: 5 }
+    const lines = renderOfficeConventions(conventions({ filing: many }), [decision(last, 'confirmed')])
+    expect(lines).toHaveLength(MAX_CONVENTION_LINES)
+    expect(lines[0]).toContain('Art9 usually filed under Ordner9')
   })
 })

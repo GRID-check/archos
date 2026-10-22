@@ -36,11 +36,14 @@ match what ships today: lower it only when the star itself was wrong.
   German, as an architect asks and as Piloti answers people.
 - **Trajectory** lists the model's own tool calls in order, with the
   arguments that matter. Calls in one numbered step run in the same round. The
-  round-0 prefetch is not listed. `look`'s `question` argument is ADR-0128's;
-  until it lands, the same look goes without it.
+  round-0 prefetch is not listed. `look` carries `question=` whenever a value is stated off the drawing
+  (ADR-0128).
 - **Herleitung** is what the reader sees above the answer: short German step
   lines, the way a senior writes notes, not tool names.
 - **Answer** is the `answer` field as it renders, with its sources section.
+  A look card carries no `[[card:N]]` marker: look cards land after the whole
+  answer, and `[N]` on the sentence that states the value opens that look's
+  place.
   Where Piloti writes a non-breaking space between a number and its unit, this
   document writes an ordinary space so it stays readable in an editor.
   `[[card:N]]` places a card. The envelope fields that matter follow the answer.
@@ -459,17 +462,18 @@ and B; their indexed text is a caption only.
 ```md
 **5,24 m**, eingetragen an der Maßkette unter dem Wohnraum im Grundriss Erdgeschoß, Index B [1].
 
-[[card:1]]
-
 Abgelesen, nicht abgegriffen: Das ist das eingetragene Maß. Index B ist dem Namen nach die aktuelle Fassung.
 
 **Quellen:**
 - [1] EP-01_Grundrisse_Index-B.pdf, p.1
 ```
 
-`kind: direct` · `confidence: high` („Maß im Ausschnitt abgelesen“)
+`kind: direct` · `confidence: high` („Maß im Ausschnitt abgelesen“). High is
+reachable because the crop was looked at with `question=`, `[1]` resolves to
+that look's place and the reading matches the printed figure exactly; the
+whole-page look alone would cap at medium.
 
-**Cards and places.** One look card with one item: the crop of the dimension,
+**Cards and places.** After the answer, one look card with one item: the crop of the dimension,
 the figure highlighted. Clicking it opens EP-01 Index B at page 1 with the
 region glowing. The whole-page look is a Herleitung line, not a card item.
 
@@ -522,8 +526,6 @@ true.
 - je eine an der Oberkante von Schlafen und Kind,
 - eine zwischen Schlafen und Kind.
 
-[[card:1]]
-
 Gezählt sind die Türsymbole in zwei Ausschnitten, die das Blatt ohne Überschneidung teilen; eine Türliste, gegen die sich die Zählung prüfen ließe, liegt im Projekt nicht.
 
 **Quellen:**
@@ -532,7 +534,7 @@ Gezählt sind die Türsymbole in zwei Ausschnitten, die das Blatt ohne Überschn
 
 `kind: direct` · `confidence: high` („in zwei Ausschnitten gezählt“)
 
-**Cards and places.** One look card with the two crops, each door marked.
+**Cards and places.** After the answer, one look card with the two crops, each door marked.
 Clicking an item opens the region on the canvas.
 
 **Must not.**
@@ -571,8 +573,6 @@ Clicking an item opens the region on the canvas.
 
 ```md
 Maßstab **1:50**, Datum **03.02.2026**, Index B, so im Plankopf rechts unten auf EP-02 [1].
-
-[[card:1]]
 
 **Quellen:**
 - [1] EP-02_Schnitt_A-A.pdf, p.1
@@ -630,8 +630,6 @@ Zwei Änderungen, beide links unten im Grundriss:
 | Maß unter Wohnen | 5,04 m [1] | **5,24 m** [2] |
 | Wand zwischen Schlafen und Kind | durchgehend [1] | **neue Tür** [2] |
 
-[[card:1]]
-
 Damit hat das Erdgeschoß in Index B fünf Türen statt vier. In den übrigen Räumen, der Legende und dem Plankopfaufbau habe ich beim Vergleich der ganzen Blätter keine weitere Abweichung gesehen; Maß für Maß geprüft ist nur der Ausschnitt.
 
 **Quellen:**
@@ -641,7 +639,7 @@ Damit hat das Erdgeschoß in Index B fünf Türen statt vier. In den übrigen R�
 
 `kind: walkthrough` · `confidence: high` („beide Änderungen im selben Ausschnitt beider Fassungen abgelesen“)
 
-**Cards and places.** One look card, the two crops side by side, the changed
+**Cards and places.** After the answer, one look card, the two crops side by side, the changed
 dimension and the new door glowing on both (on Index A the place where the
 door is not). Clicking opens the canvas comparison at that region.
 
@@ -690,8 +688,6 @@ between Schlafen and Kind.
 
 ```md
 Eine Tür in der Wand zwischen Schlafen und Kind [1]. In Index A ist die Wand an dieser Stelle durchgehend [2]; die Tür ist mit Index B dazugekommen, die beiden Räume sind damit direkt verbunden.
-
-[[card:1]]
 
 **Quellen:**
 - [1] EP-01_Grundrisse_Index-B.pdf, p.1
@@ -750,15 +746,15 @@ document open.
 ```md
 **9,02 m**, an der Maßkette unter der Galerie, links unten im Grundriss Obergeschoß, Index B [1].
 
-[[card:1]]
-
 **Quellen:**
 - [1] EP-01_Grundrisse_Index-B.pdf, p.2
 ```
 
-`kind: direct` · `confidence: high` („Maß im Ausschnitt abgelesen“)
+`kind: direct` · `confidence: high` („Maß im Ausschnitt abgelesen“), by the
+same rule as `ns-dimension`: a crop, `question=`, an exact match, `[1]` on the
+value.
 
-**Cards and places.** One look card, one item. In the chat, clicking it opens
+**Cards and places.** After the answer, one look card, one item. In the chat, clicking it opens
 the canvas at page 2 with the region glowing; on the canvas, the item and the
 glowing region are already in view. The citation `[1]` peeks the same crop.
 
@@ -831,7 +827,9 @@ Ob das eine Stiegenhaus als einziger vertikaler Rettungsweg genügt [1], hängt 
 `kind: walkthrough` · `topic: Fluchtweg` · `context: OIB-RL 2, Ausgabe Mai 2023 · Wien` · `confidence: medium` („Gangstrecke belegt, Weg in den Wohnungen nicht nachgewiesen“) · `callout` (warning): „Für den Nachweis fehlt die Weglänge innerhalb der Wohnungen des 3. OG.“
 
 **Cards and places.** No look card: the look found nothing that supports the
-answer, so it stays a Herleitung line. The two passages are citation peeks,
+answer, so it is reported as absence in the prose and stays a Herleitung line.
+Medium is the ceiling by construction: the hedged and absence sentences cap at
+medium, whatever the cited Gang part would reach alone. The two passages are citation peeks,
 side by side when both are open.
 
 **Must not.**
@@ -908,7 +906,10 @@ Das einzige Fluchtniveau in den Unterlagen, 13,80 m, gehört zum Nachbarhaus Hub
 
 `kind: walkthrough` · `confidence: medium` („Fluchtniveau in keiner Unterlage angegeben, nur aus Koten geschätzt“) · `summary`: „Danach das Fluchtniveau beim Verfasser des Konzepts anfragen; liegt es über 11 m, ist das Konzept für GK 5 neu zu prüfen.“ · `callout` (warning): „Über 11 m Fluchtniveau wäre es GK 5, mit anderen Anforderungen als im Konzept angesetzt.“
 
-**Cards and places.** The quote line is verbatim and verified. A
+**Cards and places.** The quote line is verbatim and verified. Medium is the
+ceiling: the estimate and the absence sentence are hedged, and the answer does
+not ask for the Fluchtniveau because an estimate with its basis is possible; it
+says the fact is in no document and names who decides. A
 `project_profile_patch` card is **not** proposed: the Fluchtniveau is an open
 fact, and an estimate goes nowhere near the confirmed facts.
 

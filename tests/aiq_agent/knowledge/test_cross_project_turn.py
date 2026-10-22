@@ -127,7 +127,7 @@ class TestTheDoorsStayShut:
         async with project_memory_remember(ProjectMemoryRememberConfig(), MagicMock()) as info:
             result = await info.single_fn(info.input_schema(kind="derived_fact", content="Traufe hinterlüftet."))
 
-        assert "andere Projekte" in result
+        assert "other projects" in result
         insert.assert_not_called()
 
     def test_a_refused_write_never_becomes_a_card_that_would_save_it_anyway(self, monkeypatch) -> None:
@@ -141,7 +141,7 @@ class TestTheDoorsStayShut:
             confidence="medium",
         )
 
-        assert "andere Projekte" in result
+        assert "other projects" in result
         cards.assert_not_called()
 
     def test_the_memory_client_names_the_bffs_refusal(self, monkeypatch) -> None:

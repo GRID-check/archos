@@ -9,6 +9,8 @@
  */
 
 import type { OfficeConventions, RevisionStyle, Support } from './extract'
+import { conventionLines, linesForAgent, resolveLines, type StoredDecision } from './lines'
+import type { ConventionLine, ConventionLineView } from './office-conventions-wire'
 
 /** Most convention lines the block carries. */
 export const MAX_CONVENTION_LINES = 6
@@ -39,39 +41,48 @@ const of = (support: Support): string => `${support.projects} of ${support.of} p
 const clip = (line: string): string =>
   line.length > MAX_CONVENTION_LINE_CHARS ? `${line.slice(0, MAX_CONVENTION_LINE_CHARS - 1)}…` : line
 
-/** The convention lines, without the header, most useful first; empty when nothing was learned. */
-export function renderOfficeConventions(conventions: OfficeConventions): string[] {
-  const lines: string[] = []
-  for (const entry of conventions.filing) {
-    lines.push(`- ${entry.docType} usually filed under ${entry.path} (${of(entry)} that file one in a folder)`)
-  }
-  if (conventions.folders.length > 0) {
-    const named = conventions.folders.slice(0, MAX_FOLDERS_NAMED).map((entry) => `${entry.path} (${entry.projects}/${entry.of})`)
-    lines.push(`- folders most projects keep: ${named.join(', ')}`)
-  }
-  if (conventions.documentNumber) {
-    const { shape } = conventions.documentNumber
-    lines.push(`- Plannummer usually shaped ${shape} (A = letters, 0 = a digit; title blocks of ${of(conventions.documentNumber)})`)
-  }
-  if (conventions.revisionStyle) {
-    lines.push(`- Index usually ${REVISION_WORDS[conventions.revisionStyle.style]} (${of(conventions.revisionStyle)})`)
-  }
-  if (conventions.fileDate) {
-    lines.push(`- file names usually write a date as ${conventions.fileDate.format} (${of(conventions.fileDate)})`)
-  }
-  return prioritised(lines).map(clip)
+const CONFIRMED = 'confirmed by the office'
+
+/** The count behind a line: confirmed by a person, with its count when it still has one. */
+function backing(view: ConventionLineView, count: string): string {
+  if (view.decision !== 'confirmed') return count
+  return view.counted ? `${CONFIRMED}; ${count}` : CONFIRMED
 }
 
+const folderEntry = (view: ConventionLineView & { line: ConventionLine & { kind: 'folder' } }): string =>
+  view.decision === 'confirmed' && !view.counted
+    ? `${view.line.path} (${CONFIRMED})`
+    : `${view.line.path} (${view.line.projects}/${view.line.of})`
+
 /**
- * At most {@link MAX_CONVENTION_LINES}, keeping the naming lines (folders,
- * Plannummer, Index, date) and dropping filing lines past the budget first:
- * those are the ones a project has many of.
+ * The convention lines, without the header, most useful first; empty when
+ * nothing was learned. A declined line is left out and a confirmed one is
+ * always in, counted or not (`./lines`).
  */
-function prioritised(lines: string[]): string[] {
-  if (lines.length <= MAX_CONVENTION_LINES) return lines
-  const filing = lines.filter((line) => line.includes(' usually filed under '))
-  const rest = lines.filter((line) => !line.includes(' usually filed under '))
-  return [...filing.slice(0, Math.max(0, MAX_CONVENTION_LINES - rest.length)), ...rest].slice(0, MAX_CONVENTION_LINES)
+export function renderOfficeConventions(conventions: OfficeConventions, decisions: readonly StoredDecision[] = []): string[] {
+  const views = linesForAgent(resolveLines(conventionLines(conventions), decisions))
+  // Confirmed filing lines first: the budget below drops from the end.
+  const filing: string[] = []
+  const naming: string[] = []
+  const folders: string[] = []
+  for (const view of views) {
+    const { line } = view
+    if (line.kind === 'filing') {
+      const text = `- ${line.docType} usually filed under ${line.path} (${backing(view, `${of(line)} that file one in a folder`)})`
+      if (view.decision === 'confirmed') filing.unshift(text)
+      else filing.push(text)
+    } else if (line.kind === 'folder') {
+      folders.push(folderEntry(view as Parameters<typeof folderEntry>[0]))
+    } else if (line.kind === 'document_number') {
+      naming.push(`- Plannummer usually shaped ${line.shape} (A = letters, 0 = a digit; ${backing(view, `title blocks of ${of(line)}`)})`)
+    } else if (line.kind === 'revision_style') {
+      naming.push(`- Index usually ${REVISION_WORDS[line.style]} (${backing(view, of(line))})`)
+    } else {
+      naming.push(`- file names usually write a date as ${line.format} (${backing(view, of(line))})`)
+    }
+  }
+  const rest = [...(folders.length > 0 ? [`- folders most projects keep: ${folders.slice(0, MAX_FOLDERS_NAMED).join(', ')}`] : []), ...naming]
+  return [...filing.slice(0, Math.max(0, MAX_CONVENTION_LINES - rest.length)), ...rest].slice(0, MAX_CONVENTION_LINES).map(clip)
 }
 
 /**

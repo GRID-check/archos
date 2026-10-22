@@ -174,7 +174,7 @@ class TestTheNextRoundReadsTheNote:
         # The same bytes at the same index in round three: the prefix stays cacheable.
         assert third[: len(second)] == second
         assert _notes_in(third) == _notes_in(second)
-        assert 'von="Anna Asker"' in second[-1].content and "Runde 2" in second[-1].content
+        assert 'author="Anna Asker"' in second[-1].content and "round 2" in second[-1].content
 
         # Never in the state: the turn boundary is the question, as before.
         assert not any(isinstance(m, HumanMessage) and _NOTE in str(m.content) for m in result.messages)
@@ -244,7 +244,7 @@ class TestTheNextRoundReadsTheNote:
 
         await _run(_agent(model))
 
-        assert "[Bereich: S. 3, x 0.41–0.58, y 0.22–0.40]" in model.requests[1][-1].content
+        assert "[Region: p. 3, x 0.41–0.58, y 0.22–0.40]" in model.requests[1][-1].content
 
     async def test_forced_synthesis_reads_the_note_and_keeps_the_anchor_last(self, inbox):
         model = Scripted(

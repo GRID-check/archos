@@ -108,9 +108,9 @@ class TestWhatTheModelReads:
 
         rendered = render_note(note, 3)
 
-        assert rendered.startswith('<ergaenzung von="Anna" waehrend="Runde 3">\nnicht die Tür, die Treppe\n')
-        assert "[Bereich: S. 3, x 0.41–0.58, y 0.22–0.40]" in rendered
-        assert "geht der ursprünglichen Frage vor" in rendered
+        assert rendered.startswith('<user_update author="Anna" during="round 3">\nnicht die Tür, die Treppe\n')
+        assert "[Region: p. 3, x 0.41–0.58, y 0.22–0.40]" in rendered
+        assert "takes precedence over the" in rendered
 
     def test_writes_are_told_apart_from_reads_by_basename(self):
         assert is_write_call({"name": "canvas__mark"})

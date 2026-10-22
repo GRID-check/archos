@@ -41,6 +41,16 @@ const message = (over: Partial<Message> = {}): Message => ({
 })
 
 describe('taskOf', () => {
+  it('puts the answer’s sources and confidence in one data part beside its text, and nothing when it has none', () => {
+    const sources = [{ documentId: 'c:Konzept.pdf', name: 'Konzept', page: 2, url: 'https://app.example/app/chat?session=s&cite=x' }]
+    const confidence = { level: 'high' as const, reason: 'Zitiert.' }
+    const withEvidence = taskOf(view({ answer: { messageId: 'answer-1', text: 'Höchstens 40 m.', sources, confidence } }))
+    const parts = withEvidence.artifacts[0]?.parts ?? []
+    expect(parts.map((part) => part.content?.$case)).toEqual(['text', 'data'])
+    expect(parts[1]?.content).toEqual({ $case: 'data', value: { sources, confidence } })
+    expect(taskOf(view()).artifacts[0]?.parts.map((part) => part.content?.$case)).toEqual(['text'])
+  })
+
   it('maps every ask state to the task state of the same word', () => {
     for (const state of ASK_STATES) {
       expect(TaskState[TASK_STATE_OF[state]]).toBe(`TASK_STATE_${state.toUpperCase()}`)

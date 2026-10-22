@@ -47,7 +47,7 @@ NO_MODEL_TEXT = (
 #: A model IS stored and its index is not ready (``not_ready``): usually still
 #: being extracted, and the route sends the same reason for one whose
 #: extraction failed. Either state outlives the turn, so the retry the listing
-#: invites (a filename under „noch nicht abfragbar") returns this same result.
+#: invites (a filename under "not yet queryable") returns this same result.
 #: The route's own sentence says WHICH state it is; this one says what to do
 #: with it, the way ``NO_MODEL_TEXT`` does.
 NOT_READY_TEXT = (
@@ -59,7 +59,7 @@ NOT_READY_TEXT = (
 
 #: Nothing was looked at. "Could not look" is not "looked and found nothing".
 UNAVAILABLE_TEXT = (
-    "Error: das Modell konnte gerade nicht gelesen werden (der Modelldienst ist nicht erreichbar). "
+    "Error: the model could not be read right now (the model service is unreachable). "
     "Do NOT state anything about the building's geometry; tell the user the model could not be read."
 )
 
@@ -105,15 +105,15 @@ def unrunnable_text(reason: str) -> str:
 
 def too_large_text(model_bytes: int | None, limit_bytes: int) -> str:
     """A model this worker cannot hold — a fact about the FILE, not an outage, so waiting does not help."""
-    size = f"{model_bytes / (1024 * 1024):.0f} MB" if model_bytes else "Dieses Modell"
+    size = f"{model_bytes / (1024 * 1024):.0f} MB" if model_bytes else "This model"
     limit = f"{limit_bytes // (1024 * 1024)} MB"
     return (
-        f"Error: das Modell ({size}) ist zu groß für die geometrische Auswertung auf diesem Server "
-        f"(Grenze {limit}). Das ist eine Aussage über die DATEI, kein Ausfall — Warten hilft nicht. "
-        "Dem Nutzer sagen: entweder das Modell nach Bauteil oder Bauabschnitt getrennt exportieren, "
-        "oder einen größeren Auswerte-Server anfordern. Metadaten-Fragen (Bauteillisten, "
-        "Property-Werte, Zählungen) sind mit ifc_query weiterhin beantwortbar — die laufen über den "
-        "extrahierten Index und nicht über die Datei. Keine Maße schätzen."
+        f"Error: the model ({size}) is too large for geometric evaluation on this server "
+        f"(limit {limit}). This is a statement about the FILE, not an outage — waiting does not help. "
+        "Tell the user: either export the model split by building element or construction phase, "
+        "or request a larger evaluation server. Metadata questions (element lists, "
+        "property values, counts) can still be answered with ifc_query — they run on the "
+        "extracted index and not on the file. Do not estimate dimensions."
     )
 
 

@@ -213,3 +213,42 @@ def test_the_listing_and_the_store_parse_a_page_count_alike(raw):
 
     [row] = file_rows([{"file_name": "a.pdf", "collection": "proj_1", "page_count": raw}])
     assert row.page_count == _decode_page_count(raw) == page_number(raw)
+
+
+def test_a_small_folder_names_its_files_and_a_large_one_says_it_does_not():
+    from sources.knowledge_layer.src.browse import MAX_CARD_FILES
+
+    few = _cards([_doc("b.pdf", "E"), _doc("a.pdf", "E"), _doc("c.pdf", "E/P")])
+    assert few["E"].files == ("a.pdf", "b.pdf")  # direct documents only, by name
+    text = render_tree(list(few.values()), total_rows=3)
+    assert "Files here: a.pdf · b.pdf" in text
+
+    many = _cards([_doc(f"f{n}.pdf", "E") for n in range(MAX_CARD_FILES + 1)])
+    assert many["E"].files == ()
+    text = render_tree(list(many.values()), total_rows=MAX_CARD_FILES + 1)
+    assert f"Files here: {MAX_CARD_FILES + 1}, too many to name" in text
+    assert 'list_files(folder="E")' in text
+
+
+def test_newest_uses_the_documents_own_date_and_says_which_date_it_is():
+    facts = {"document_number": "A-1", "revision": "A", "revision_date": "2024-03-01"}
+    card = _cards(
+        [
+            _doc("old_upload_new_stand.pdf", "E", added_at="2026-01-01", revision_facts=facts),
+            _doc("new_upload.pdf", "E", added_at="2026-06-12"),
+        ]
+    )["E"]
+    assert card.newest == "new_upload.pdf (2026-06-12)"
+    assert card.newest_document == "old_upload_new_stand.pdf (2024-03-01)"
+    text = render_tree([card], total_rows=2)
+    assert "Newest by document date (Plankopf Stand or photo): old_upload_new_stand.pdf (2024-03-01)" in text
+
+
+def test_without_a_document_date_newest_is_labelled_as_the_upload():
+    text = render_tree(list(_cards([_doc("a.pdf", "E", added_at="2026-05-04")]).values()), total_rows=1)
+    assert "Newest upload (no document date known): a.pdf (2026-05-04)" in text
+
+
+def test_a_photo_date_counts_as_the_document_date():
+    row = file_rows([_doc("p.jpg", "E", capture={"captured_at": "2025-08-09T10:00:00"})])[0]
+    assert row.document_date == "2025-08-09"

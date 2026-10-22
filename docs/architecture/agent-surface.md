@@ -805,6 +805,10 @@ runs a headless turn (ADR-0106) as the person in their own private thread, with
 the trigger `agent_consult`, waits up to 40 seconds and otherwise answers
 `working` for `piloti-ask-get` to poll. The organization's `piloti-ask` switch
 gates it, and the turn's budget pays for it.
+A completed answer carries `answer.sources` (`documentId`, `name`, `page`, and a
+`url` that opens the cited page in Piloti for the asker) and `answer.confidence`,
+both as the answer's message stored them and absent where it stored none: an
+answer with neither is not grounded in a document.
 
 **The recursion lock.** In-product Piloti only proposes writes, and
 `lib/proposals/operation-applier.ts` neither files nor applies an ask, so no

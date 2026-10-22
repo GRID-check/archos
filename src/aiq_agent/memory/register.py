@@ -71,9 +71,9 @@ _ORG_DISABLED_RESULT = (
 #: A conversation that drew on another project (ADR-0094) remembers nothing:
 #: project and organization memory are read by people who may not open it.
 _CROSS_PROJECT_RESULT = (
-    "Nicht gespeichert: Diese Unterhaltung stützt sich auf andere Projekte, deshalb wird nichts aus ihr "
-    "im Projekt- oder Büro-Gedächtnis gespeichert. Sage das der Nutzerin in einem Satz, wenn sie darum "
-    "gebeten hat, sich etwas zu merken. Nicht erneut versuchen."
+    "Not saved: This conversation draws on other projects, so nothing from it is saved "
+    "to project or office memory. Tell the user so in one sentence if they asked you "
+    "to remember something. Do not retry."
 )
 _UNAVAILABLE_RESULT = (
     "Error: the finding was NOT saved — long-term memory is unavailable. Do not tell "

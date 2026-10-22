@@ -139,6 +139,16 @@ class SourceEntry:
     # locates by matching ``chunk_text`` instead. Several chunks of one page
     # merge their boxes on dedup, so a page cited for two depictions marks both.
     regions: list[SourceRegion] = field(default_factory=list)
+    # Last page of a passage that runs over a page break (``GroundingHit.page_end``); None when it
+    # ends on its citation key's page. The key itself keeps the start page: it is the identity.
+    page_end: int | None = None
+    # WHAT A ``look`` READ at this place (its ``Gelesen:`` lines), when a look
+    # registered it (ADR-0125, amendment of 2026-10-22). A perception of a
+    # drawing, not a retrieved passage: it is never ``chunk_text``, so no quote
+    # is checked against it and it grounds no claim about the law. An entry with
+    # a ``read`` and no ``chunk_text`` is a PLACE; ``regions`` non-empty says the
+    # look was a region crop and not an overview.
+    read: str | None = None
     # The OTHER project a cross-project lookup found this passage in (ADR-0094),
     # as the knowledge layer's ``Projekt:`` line states it. None for every
     # source of the turn's own scope. The chip names it, and the preview opens
@@ -452,6 +462,8 @@ class SourceRegistry:
                         if entry.score is not None and (existing.score is None or entry.score > existing.score):
                             existing.score = entry.score
                         _merge_regions(existing, entry.regions)
+                        if entry.read and entry.read not in (existing.read or ""):
+                            existing.read = f"{existing.read}\n{entry.read}" if existing.read else entry.read
                         break
         if added:
             self._all.append(entry)
@@ -693,6 +705,8 @@ def _registry_from_cached_entries(entries: Any) -> SourceRegistry:
                                 for region in map(SourceRegion.from_cached, item.get("regions") or [])
                                 if region is not None
                             ],
+                            read=item.get("read"),
+                            page_end=item.get("page_end"),
                             project_id=item.get("project_id"),
                             project_name=item.get("project_name"),
                             project_status=item.get("project_status"),
@@ -1010,7 +1024,42 @@ def _is_status_message(content: str) -> bool:
 # ---------------------------------------------------------------------------
 
 
+#: The tool whose result registers PLACES, not passages (``tools/look``).
+LOOK_TOOL = "look"
+
+
+def is_look_tool(tool_name: str) -> bool:
+    """Whether ``tool_name`` is ``look`` (bare, or as a member of a function group)."""
+    name = (tool_name or "").lower()
+    return name == LOOK_TOOL or name.endswith(f"__{LOOK_TOOL}")
+
+
+def is_look_place(entry: SourceEntry) -> bool:
+    """Whether the entry is a place a look read and no retrieved passage.
+
+    Such a source is evidence of what Piloti read off a drawing. It is never
+    ``citation_grounded`` and never grounds a claim about the law (ADR-0125,
+    amendment of 2026-10-22).
+    """
+    return bool(entry.read) and not entry.chunk_text
+
+
+def _look_entry(hit: GroundingHit, tool_name: str) -> SourceEntry:
+    """A look's hit as a PLACE: the reading in ``read``, no passage, no score."""
+    entry = _entry_from_hit_fields(hit, tool_name)
+    entry.read = hit.body.strip() or None
+    entry.chunk_text = None
+    entry.score = None
+    return entry
+
+
 def _entry_from_hit(hit: GroundingHit, tool_name: str) -> SourceEntry:
+    if is_look_tool(tool_name):
+        return _look_entry(hit, tool_name)
+    return _entry_from_hit_fields(hit, tool_name)
+
+
+def _entry_from_hit_fields(hit: GroundingHit, tool_name: str) -> SourceEntry:
     """One captured grounding hit as a registry entry, by field copy.
 
     The structured twin of :func:`_kl_entry`, and the reason the text parsers
@@ -1039,6 +1088,7 @@ def _entry_from_hit(hit: GroundingHit, tool_name: str) -> SourceEntry:
         clause=(hit.clause or "").strip() or None,
         score=hit.score,
         regions=list(hit.regions[:_MAX_REGIONS_PER_SOURCE]),
+        page_end=hit.page_end if hit.page_end and hit.page and hit.page_end > hit.page else None,
         project_id=hit.project.id if hit.project else None,
         project_name=hit.project.name if hit.project else None,
         project_status=hit.project.status if hit.project else None,
@@ -1450,6 +1500,48 @@ def _parse_knowledge_layer(content: str, tool_name: str) -> list[SourceEntry]:
     return entries
 
 
+_KL_REGION_RE = re.compile(r"^Region:\s*\[([^\]]+)\]\s*(?:„(.*?)“)?\s*$", re.MULTILINE)
+
+
+def _regions_from_header(header: str) -> list[SourceRegion]:
+    """The ``Region: [x, y, w, h]`` lines of a header as boxes (``x0, y0, x1, y1``); malformed lines are skipped."""
+    regions: list[SourceRegion] = []
+    for match in _KL_REGION_RE.finditer(header):
+        try:
+            x, y, w, h = (float(part) for part in match.group(1).split(","))
+        except ValueError:
+            continue
+        regions.append(SourceRegion(box=(x, y, round(x + w, 4), round(y + h, 4)), label=match.group(2) or None))
+    return regions[:_MAX_REGIONS_PER_SOURCE]
+
+
+def _parse_look(content: str, tool_name: str) -> list[SourceEntry]:
+    """``look``'s grounding block read back from TEXT: a replayed turn's places (ADR-0125, 2026-10-22).
+
+    The text twin of :func:`_look_entry`. Without it a replayed turn falls
+    through to the URL extractor and the look's citation vanishes.
+    """
+    entries: list[SourceEntry] = []
+    for block in _split_kl_result_blocks(content):
+        header = _kl_block_header(block)
+        citation_key = _first(_KL_CITATION_RE, header)
+        if not citation_key:
+            continue
+        entry = _kl_entry(
+            citation_key=citation_key,
+            title=_first(_KL_SOURCE_RE, header),
+            collection=_first(_KL_COLLECTION_RE, header),
+            shelf=_first(_KL_SHELF_RE, header),
+            doc_class=None,
+            chunk_text=None,
+            tool_name=tool_name,
+        )
+        entry.read = _kl_block_body(block) or None
+        entry.regions = _regions_from_header(header)
+        entries.append(entry)
+    return entries
+
+
 # Register knowledge layer as the only special-case parser.
 # All other tools (Tavily, paper search, etc.) use the generic URL fallback.
 register_source_parser(lambda name: "knowledge" in name, _parse_knowledge_layer)
@@ -1483,6 +1575,9 @@ register_source_parser(lambda name: "project_lookup" in name, _parse_knowledge_l
 # knowledge parser, which a name containing "knowledge" reaches first and which
 # also finds no ``Citation:`` line in a listing.
 register_source_parser(lambda name: name.endswith("list_files"), lambda content, tool_name: [])
+# ``look`` answers in the same grammar when it read a project or office document
+# (``tools/look/place.py``): the reading is the passage, the region its box.
+register_source_parser(is_look_tool, _parse_look)
 
 # ---------------------------------------------------------------------------
 # Citation parsing and source-section layout normalization
@@ -2543,7 +2638,13 @@ def source_entry_to_wire(entry: SourceEntry, *, number: int | None = None) -> di
     # helpers so none reloads it. Passing it to source_lane/binding_note_for_entry
     # is behaviour-neutral: both only read the registry on the RIS branch.
     registry = load_registry() if (entry.url and "ris.bka.gv.at" in entry.url) or entry.citation_key else None
+    place = is_look_place(entry)
     lane_key, lane_label = source_lane(entry, registry)
+    if place:
+        # A place is the office's own document, never building law, whatever its
+        # file is called (an uploaded „OIB-RL 2.pdf" is still a project document).
+        office = _entry_shelf(entry) == Shelf.OFFICE_SHELF
+        lane_key, lane_label = ("office", "Büroablage") if office else ("project", "Projektwissen")
     kind = kind_for_lane(lane_key)
 
     # Binding classification (rank + coarse status) for the client. Bundesland is
@@ -2554,6 +2655,8 @@ def source_entry_to_wire(entry: SourceEntry, *, number: int | None = None) -> di
     except Exception:  # federal_state resolution must never break wire serialization
         federal_state = None
     classification = binding_classification_for_entry(entry, registry, federal_state)
+    if place:
+        classification = BindingClassification(rank=None, binding_status="unknown")
 
     payload: dict[str, Any] = {
         # The [N] marker this source carries in the answer prose (when known).
@@ -2581,7 +2684,7 @@ def source_entry_to_wire(entry: SourceEntry, *, number: int | None = None) -> di
         "lane_label": lane_label,
         # Bindingness fact for the popover ("does this bind me?") — only present
         # for RIS sources the norm registry catalogues with a binding_note.
-        "binding_note": binding_note_for_entry(entry, registry),
+        "binding_note": None if place else binding_note_for_entry(entry, registry),
         # Structured binding status alongside the prose ``binding_note``. ``rank``
         # is dropped by the None-filter below when the source matched no catalogued
         # norm; ``binding_status`` is ALWAYS emitted (``unknown`` included) — the
@@ -2610,11 +2713,13 @@ def source_entry_to_wire(entry: SourceEntry, *, number: int | None = None) -> di
         # It is bounded here rather than at the reader: this travels on every
         # SSE frame and into ``messages.metadata``, and the client only needs
         # enough to locate a sentence in a document it already has.
-        "snippet": _wire_snippet(entry.chunk_text),
+        "snippet": _wire_snippet(entry.chunk_text or entry.read),
         # WHERE ON THE PAGE, for a passage read off a picture of it: boxes the
         # viewer draws over the page (issue #433). Absent for running text,
         # which the viewer finds by matching ``snippet`` instead.
         "regions": [region.to_wire() for region in entry.regions] or None,
+        # The last page of a passage that crosses a page break, for a chip to show „S. 4–5“.
+        "page_end": entry.page_end,
         # The OTHER project a cross-project lookup found this passage in
         # (ADR-0094): the chip names it, and the preview opens the document in
         # that project. Absent for every source of the chat's own scope.

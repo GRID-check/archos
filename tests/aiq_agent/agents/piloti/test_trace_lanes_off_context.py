@@ -122,4 +122,4 @@ async def test_a_repeat_is_answered_with_the_stripped_result():
     tool_messages = [str(m.content) for m in result.messages if isinstance(m, ToolMessage)]
     assert len(tool_messages) == 2
     assert all(TRACE_LANES_MARKER not in content for content in tool_messages)
-    assert "Wiederholter Aufruf" in tool_messages[1]
+    assert "Repeated call" in tool_messages[1]

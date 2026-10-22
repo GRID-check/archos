@@ -62,7 +62,7 @@ class TestTheDrawnBoxOnTheTurn:
         inputs = turn_input.wrapped(payload.extract_turn_inputs, turn_input.message_fields(ROW))("q")
         state = SimpleNamespace(focus_region=inputs.focus_region, focus_file_name=inputs.focus_file_name)
         block = focus_region_block(state, ["look"])
-        assert "## Fokusbereich" in block
+        assert "## Focus region" in block
         assert "EP-01_Grundrisse_Index-B.pdf" in block
         assert "region=[0.300, 0.600, 0.100, 0.160]" in block
 

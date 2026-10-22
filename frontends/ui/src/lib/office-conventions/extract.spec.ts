@@ -194,3 +194,38 @@ describe('the naming patterns', () => {
     expect(b).toEqual(a)
   })
 })
+
+describe('accepted moves', () => {
+  const projects = ['p1', 'p2', 'p3']
+  const moveTo = (projectId: string, folderPath: string) => ({ projectId, docType: 'Bescheid', folderPath })
+
+  it('teach a Dokumentart line in projects where no document sits in the folder yet', () => {
+    const result = extractOfficeConventions({
+      documents: [],
+      folders: projects.flatMap((id) => folders(id, 'Behörde')),
+      moves: projects.map((id) => moveTo(id, 'Behörde')),
+    })
+    expect(result.filing).toEqual([{ docType: 'Bescheid', path: 'Behörde', projects: 3, of: 3 }])
+  })
+
+  it('outweigh where the documents sit: a project that accepted a move votes with its moves', () => {
+    const documents = projects.map((id) => doc(id, { folderPath: 'Korrespondenz', docType: 'Bescheid' }))
+    const without = extractOfficeConventions({ documents, folders: projects.flatMap((id) => folders(id, 'Korrespondenz', 'Behörde')) })
+    expect(without.filing[0]?.path).toBe('Korrespondenz')
+    const learned = extractOfficeConventions({
+      documents,
+      folders: projects.flatMap((id) => folders(id, 'Korrespondenz', 'Behörde')),
+      moves: projects.map((id) => moveTo(id, 'Behörde')),
+    })
+    expect(learned.filing).toEqual([{ docType: 'Bescheid', path: 'Behörde', projects: 3, of: 3 }])
+  })
+
+  it('one project that moved many files still counts once', () => {
+    const result = extractOfficeConventions({
+      documents: [],
+      folders: folders('p1', 'Behörde'),
+      moves: Array.from({ length: 5 }, () => moveTo('p1', 'Behörde')),
+    })
+    expect(result.filing).toEqual([])
+  })
+})

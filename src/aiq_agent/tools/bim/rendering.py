@@ -8,27 +8,26 @@ from typing import Any
 from aiq_agent.tools.bim.failures import NO_MODEL_TEXT
 from aiq_agent.tools.bim.failures import NOT_READY_TEXT
 
-#: Plural noun → the whole singular phrase, article included. A lookup rather
-#: than a rule because German plurals and genders are not derivable, and
-#: "ein weiteres Raum" in an answer an architect reads is worse than a wrong
-#: number.
-_ONE_MORE_DE = {
-    "Geschoße": "ein weiteres Geschoß",
-    "Bauteile": "ein weiteres Bauteil",
-    "Bauteiltypen": "ein weiterer Bauteiltyp",
-    "betroffene Bauteile": "ein weiteres betroffenes Bauteil",
-    "Räume": "ein weiterer Raum",
-    "Räume ohne Türkante": "ein weiterer Raum ohne Türkante",
-    "Regeln": "eine weitere Regel",
-    "Gruppen": "eine weitere Gruppe",
-    "Merkmale": "ein weiteres Merkmal",
-    "fehlende Merkmale": "ein weiteres fehlendes Merkmal",
-    "neue Bauteile": "ein weiteres neues Bauteil",
-    "entfallene Bauteile": "ein weiteres entfallenes Bauteil",
-    "geänderte Bauteile": "ein weiteres geändertes Bauteil",
-    "Einträge": "ein weiterer Eintrag",
-    "unbestimmte Türen": "eine weitere unbestimmte Tür",
-    "ausgeschlossene Türen": "eine weitere ausgeschlossene Tür",
+#: Plural noun → its singular. A lookup rather than a rule because English
+#: plurals are not derivable either ("storeys", "properties"), and
+#: "1 more rooms" in an answer an architect reads is worse than a wrong number.
+_SINGULAR = {
+    "storeys": "storey",
+    "elements": "element",
+    "element types": "element type",
+    "affected elements": "affected element",
+    "rooms": "room",
+    "rooms without a door edge": "room without a door edge",
+    "rules": "rule",
+    "groups": "group",
+    "properties": "property",
+    "missing properties": "missing property",
+    "new elements": "new element",
+    "removed elements": "removed element",
+    "changed elements": "changed element",
+    "entries": "entry",
+    "undetermined doors": "undetermined door",
+    "excluded doors": "excluded door",
 }
 
 
@@ -42,8 +41,8 @@ def clipped(items: list, shown: int, noun: str) -> str | None:
     if missing <= 0:
         return None
     if missing == 1:
-        return f"… {_ONE_MORE_DE.get(noun, f'ein weiteres {noun}')} nicht gezeigt."
-    return f"… {missing} weitere {noun} nicht gezeigt."
+        return f"… 1 more {_SINGULAR.get(noun, noun)} not shown."
+    return f"… {missing} more {noun} not shown."
 
 
 def listed(
@@ -77,19 +76,19 @@ _NOTHING_TO_READ = {
 def render_unresolved(result: dict[str, Any], fallback: str) -> str:
     """A model that could not be selected, with the alternatives when there are any.
 
-    "Verfügbare" only when the list really is a set of alternatives: on
+    "Available" only when the list really is a set of alternatives: on
     ``not_ready`` the route returns the model that could not be read, and
     calling that available beside "(processing, 0 Bauteile)" reads as a
     building with no elements.
 
     A project with nothing to read gets the sentence saying so AND what to do
     with it (:data:`~aiq_agent.tools.bim.failures.NO_MODEL_TEXT`). The route's
-    „Für dieses Projekt ist kein IFC-Modell hinterlegt" alone reads as one
+    „Für dieses Projekt ist kein IFC-Modell hinterlegt" (the route's German sentence) alone reads as one
     operation's miss, and the agent spent the rest of its rounds trying the
     others. ``not_ready`` gets its own sentence
     (:data:`~aiq_agent.tools.bim.failures.NOT_READY_TEXT`) for the same reason
     and a different fact: extraction finishes after this turn, so the model
-    named under „noch nicht abfragbar" answers a later question and not this
+    named under "not yet queryable" answers a later question and not this
     one.
     """
     text = _unresolved_message(result, fallback)
@@ -104,11 +103,11 @@ def _unresolved_message(result: dict[str, Any], fallback: str) -> str:
     if not models:
         return str(message)
     listed_models = ", ".join(
-        f"{m.get('filename')} ({m.get('status')}, {m.get('elements', 0)} Bauteile)" for m in models[:10]
+        f"{m.get('filename')} ({m.get('status')}, {m.get('elements', 0)} elements)" for m in models[:10]
     )
     heading = (
-        "Verfügbare Modelle"
+        "Available models"
         if result.get("reason") in {"no_match", "ambiguous"}
-        else "Modelle in diesem Projekt (noch nicht abfragbar)"
+        else "Models in this project (not yet queryable)"
     )
     return f"{message} {heading}: {listed_models}."

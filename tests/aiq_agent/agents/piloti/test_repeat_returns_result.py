@@ -242,8 +242,8 @@ class TestWhatIsStillTheSentence:
 
         assert len(RAN) == 1, "the duplicate still does not run"
         assert _answer_for(result, "b") == _FAILED_FETCH_REPEAT_MESSAGE
-        assert "fehlgeschlagen" in _FAILED_FETCH_REPEAT_MESSAGE
-        assert "nächsten Runde" in _FAILED_FETCH_REPEAT_MESSAGE
+        assert "failed" in _FAILED_FETCH_REPEAT_MESSAGE
+        assert "next round" in _FAILED_FETCH_REPEAT_MESSAGE
         assert "Ergebnis oben" not in _FAILED_FETCH_REPEAT_MESSAGE
 
     async def test_the_retry_of_that_failed_fetch_runs_in_the_next_round(self):

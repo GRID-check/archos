@@ -272,6 +272,8 @@ class TestTheCeilings:
             ("observed", "normative", "low"),
             ("reasoning", "descriptive", "medium"),
             ("reasoning", "normative", "low"),
+            # Low while no cited or observed sentence of the answer states the value; with one, medium
+            # (test_claim_provenance_looks.py). An estimate or a reported absence is medium too (`hedged`).
             ("reasoning", "value", "low"),
             ("model_knowledge", "descriptive", "medium"),
             ("model_knowledge", "value", "low"),

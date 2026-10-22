@@ -171,5 +171,5 @@ Piloti filed. Agent access (`agent-mcp`) and `piloti-ask` must both be on.
 | **503** | The external sign-in is not set up on this installation | Tell whoever operates Piloti |
 | **403** „Asking Piloti from another agent is not enabled for this organization“ | Agent access is on, asking Piloti is not | Ask an administrator to switch on `piloti-ask` |
 | An ask ends „rejected“ with „budget“ | Your, the project's or the organization's AI budget is spent | An administrator raises it under Organization → Usage & budgets |
-| An ask ends „rejected“: „Piloti is still answering in this conversation“ | The agent asked again in a conversation where Piloti had not finished | Wait for the first answer (`piloti-ask-get`), then ask again |
+| An ask ends „rejected“: „Piloti is still answering in this conversation“ | The agent asked again in a conversation where Piloti had not finished | Wait for the first answer (`piloti-ask-get`), then ask again, or ask in a new conversation by leaving out `conversationId`. An ask never interrupts a running answer |
 | The profile shows no address | Agent access is off for your organization, or the installation is not set up | Read the notice in the section |

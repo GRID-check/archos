@@ -153,20 +153,20 @@ class TestRendering:
 
         text = render_diff(diff, "Konzept_B.pdf", "Konzept_C.pdf")
 
-        assert "„Konzept_B.pdf“ (älter) → „Konzept_C.pdf“ (neuer)" in text
-        assert "Plankopf: Index B → C." in text
-        assert "Seite 1: Werte: Fluchtweglänge 38 m → 42 m." in text
-        assert "nicht die Zeichnungen selbst" in text
+        assert "„Konzept_B.pdf“ (older) → „Konzept_C.pdf“ (newer)" in text
+        assert "Plankopf (title block): Index B → C." in text
+        assert "Page 1: Values: Fluchtweglänge 38 m → 42 m." in text
+        assert "not the drawings themselves" in text
 
     def test_nothing_to_compare_never_reads_as_the_same(self) -> None:
         empty = diff_revisions([], [])
-        assert "daraus folgt nicht, dass sie gleich sind" in render_diff(empty, "a.pdf", "b.pdf")
+        assert "it does not follow that they are the same" in render_diff(empty, "a.pdf", "b.pdf")
 
     def test_the_report_is_bounded(self) -> None:
         older = [_text(str(n), f"Blatt {n}\nWert 1 m") for n in range(1, 41)]
         newer = [_text(str(n), f"Blatt {n}\nWert 2 m") for n in range(1, 41)]
         text = render_diff(diff_revisions(older, newer), "a.pdf", "b.pdf")
-        assert "… und 30 weitere geänderte Seiten." in text
+        assert "… and 30 more changed pages." in text
         assert len(text) < 4000
 
 

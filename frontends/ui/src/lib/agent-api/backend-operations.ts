@@ -112,8 +112,11 @@ const ENTRIES = [
       'plus each matching file with its count and pages; use it for a number, a code, a name or to prove a term appears nowhere, ' +
       'with several spellings separated by `|`; `stemmed: true` also finds the inflected forms of each word (German stemming). ' +
       '`match: "regex"` is the same search with a pattern in Python syntax (case-insensitive, ' +
-      '`|` is alternation); it needs one literal word it must contain, or a `folder`, `file_name` or `doc_class` to read in, and ' +
-      'a pattern that backtracks is refused. `context` (0 to 3, exact and regex only) adds the lines around every hit as an index. ' +
+      '`|` is alternation; for example `MA 37/\\d{6}`); it needs one literal whole word or number it must contain (`MA ?37` has ' +
+      'none), or a `folder`, `file_name` or `doc_class` to read in, and a pattern that backtracks is refused. A regex answer also ' +
+      'lists every distinct matched string with its count, files and pages. `shelf` (`project`, `office` or `base`) reads one shelf ' +
+      'only; omitted, every shelf is read, the OIB corpus included, so pass `project` for whether something is in the ' +
+      'project’s own documents; an exact or regex answer states per shelf how many documents were searched and how many matched. `context` (0 to 3, exact and regex only) adds the lines around every hit as an index. ' +
       'A search that stops at its limit says its counts are lower bounds. `group_by: "document"` (ranked search only) returns one ' +
       'entry per document, its best passage and how many passages of the ranked pool it held, for which documents deal with a topic. ' +
       'A query that names only a guideline (`OIB 2`) returns every part of it with its ' +

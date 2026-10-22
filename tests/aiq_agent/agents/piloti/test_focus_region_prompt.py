@@ -1,4 +1,4 @@
-"""The „Fokusbereich“: the box a person drew on the review canvas, as the model reads it.
+"""The „Focus region“: the box a person drew on the review canvas, as the model reads it.
 
 What is load-bearing: it reaches the prompt at all, below the KV-cache boundary
 (it varies per question); it names the document, page and box in words a person
@@ -17,7 +17,7 @@ from aiq_agent.agents.piloti.prompt import render_system_prompt
 from aiq_agent.agents.piloti.prompt import system_prompt_template
 from aiq_agent.common.wire_v2 import FocusRegion
 
-HEADING = "## Fokusbereich"
+HEADING = "## Focus region"
 BOUNDARY_ANCHOR = "## Context"
 CANVAS = [{"name": "look", "description": "x"}] + [
     {"name": f"canvas__{tool}", "description": "x"} for tool in ("highlight", "point", "mark", "reply")
@@ -53,39 +53,39 @@ class TestWhatItSays:
     def test_it_names_the_document_page_and_box_in_words(self):
         block = focus_region_block(_state(focus_file_name="Grundriss_EG.pdf", focus_region=REGION), CANVAS_NAMES)
 
-        assert "Seite 2 von **Grundriss_EG.pdf**" in block
-        assert "oben links" in block
-        assert "25 % der Seitenbreite und 20 % der Seitenhöhe" in block
+        assert "page 2 of **Grundriss_EG.pdf**" in block
+        assert "top left" in block
+        assert "25 % of the page width and 20 % of the page height" in block
         assert "region=[0.050, 0.100, 0.250, 0.200]" in block
 
     def test_it_sends_the_model_to_look_at_the_crop_before_answering(self):
         block = focus_region_block(_state(focus_region=REGION), CANVAS_NAMES)
 
-        assert "bevor du antwortest: `look` mit `page=2` und `region=[0.050, 0.100, 0.250, 0.200]`" in block
-        assert "Seite 2 des geöffneten Dokuments" in block
+        assert "before you answer: `look` with `page=2` and `region=[0.050, 0.100, 0.250, 0.200]`" in block
+        assert "page 2 of the open document" in block
 
     def test_it_names_the_document_to_look_at_when_it_knows_it(self):
         block = focus_region_block(_state(focus_file_name="A.pdf", focus_region=REGION), CANVAS_NAMES)
 
-        assert '`look` mit `document="A.pdf"`, `page=2` und `region=' in block
+        assert '`look` with `document="A.pdf"`, `page=2` and `region=' in block
 
     def test_without_the_canvas_tools_it_still_looks_and_asks_for_no_canvas_work(self):
         block = focus_region_block(_state(focus_file_name="A.pdf", focus_region=REGION), WITHOUT_CANVAS)
 
-        assert '`look` mit `document="A.pdf"`, `page=2`' in block
+        assert '`look` with `document="A.pdf"`, `page=2`' in block
         assert "canvas__" not in block
 
     def test_a_thread_question_asks_the_model_to_answer_there_itself(self):
         block = focus_region_block(_state(focus_region=IN_A_THREAD, reply_in_thread=True), CANVAS_NAMES)
 
         assert "`canvas__reply`" in block and IN_A_THREAD.annotation_id in block
-        assert "unten rechts" in block
+        assert "bottom right" in block
 
     def test_a_box_alone_asks_for_no_reply(self):
         assert "canvas__reply" not in focus_region_block(_state(focus_region=IN_A_THREAD), CANVAS_NAMES)
 
     def test_a_model_that_cannot_see_is_told_not_to_guess(self):
-        assert "rate nicht" in focus_region_block(_state(focus_region=REGION), CANVAS_NAMES)
+        assert "do not guess" in focus_region_block(_state(focus_region=REGION), CANVAS_NAMES)
 
     def test_it_never_calls_a_file_a_plan(self):
         for state in (_state(focus_region=REGION), _state(focus_region=IN_A_THREAD, reply_in_thread=True)):

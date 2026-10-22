@@ -25,7 +25,9 @@ Each sentence gets two independent labels.
 7. ``observed``: it states a number or code a ``look`` read off a drawing this
    turn (ADR-0125, amendment of 2026-10-21). A model's perception of a drawing,
    not a reproducible measurement: its ceiling is ``medium``, and it never
-   grounds a normative claim.
+   grounds a normative claim. A ``[N]`` that resolves to a PLACE a look
+   registered (``tools/look/place.py``) is also ``observed``; ``high`` when it
+   cites a region crop and repeats the reading exactly (amendment of 2026-10-22).
 8. ``reasoning``: no pointer, but its paragraph has a quoted or cited
    sentence it can be drawn from (an Einschätzung).
 9. ``model_knowledge``: no pointer, and nothing in the answer to derive it from.
@@ -50,8 +52,10 @@ import re
 from collections import Counter
 from collections.abc import Callable
 from collections.abc import Iterator
+from collections.abc import Mapping
 from collections.abc import Sequence
 from dataclasses import dataclass
+from dataclasses import field
 from typing import Any
 from typing import Literal
 
@@ -202,6 +206,25 @@ class ClaimEvidence:
     #: What this turn's looks read off the drawings the answer relies on (the
     #: ``reading`` of each ``look`` card item). A perception, not a measurement.
     readings: Sequence[str] = ()
+    #: The cited ``[N]`` that resolved to a place a ``look`` read (ADR-0125,
+    #: amendment of 2026-10-22), by number. Not in ``cited_numbers``: a place
+    #: is no passage and grounds no claim about the law.
+    looks: Mapping[int, LookPlace] = field(default_factory=dict)
+
+
+@dataclass(frozen=True)
+class LookPlace:
+    """A cited place a look read: the reading text and whether it was a region crop (not an overview)."""
+
+    read: str
+    crop: bool = False
+    #: No retrieved passage of the same page is merged into it. On a page that
+    #: also holds a retrieved caption (``passage``), a sentence is classed by
+    #: where its value appears: in the passage it is ``cited``, only in the
+    #: reading it is ``observed`` (:func:`_merged_class`).
+    place_only: bool = True
+    #: The retrieved passage merged into the same entry; empty for a place only.
+    passage: str = ""
 
 
 @dataclass(frozen=True)
@@ -220,6 +243,14 @@ class ClaimStamp:
     unmatched: tuple[str, ...] = ()
     #: Whether this sentence decides the answer's level (:func:`load_bearing`).
     load_bearing: bool = False
+    #: ``observed`` only: it cites a region crop and repeats the reading exactly.
+    exact: bool = False
+    #: A level the sentence's look place caps it at, beside a passage pointer.
+    cap: Level | None = None
+    #: It reports an absence of evidence or marks itself an estimate (:data:`_HEDGE_RE`).
+    hedged: bool = False
+    #: ``reasoning`` + a value that a cited or observed-place sentence also states.
+    value_supported: bool = False
 
     def to_wire(self) -> dict[str, Any]:
         wire: dict[str, Any] = {
@@ -479,6 +510,70 @@ def _observed(sentence: str, readings: Sequence[str]) -> bool:
     return any(code.rstrip(".").casefold() in read_codes for code in _CODE_RE.findall(text))
 
 
+def _is_place(number: int, evidence: ClaimEvidence) -> bool:
+    """Whether ``[number]`` resolved to a place a look read and no retrieved passage."""
+    place = evidence.looks.get(number)
+    return place is not None and place.place_only
+
+
+def _value_tokens_of(sentence: str) -> tuple[set[float], set[str]]:
+    """The numbers and the codes a sentence states, markers left out."""
+    text = _MARKER_RE.sub("", sentence)
+    numbers = {value for value, _, _ in _written_numbers(text)}
+    codes = {code.rstrip(".").casefold() for code in _CODE_RE.findall(text)}
+    return numbers, codes
+
+
+def _states_value(sentence: str, text: str) -> bool:
+    """Whether ``text`` holds a number or code the sentence states (equal value, any unit or decimals)."""
+    numbers, codes = _value_tokens_of(sentence)
+    held_numbers, held_codes = _value_tokens_of(text)
+    return bool(numbers & held_numbers or codes & held_codes)
+
+
+def _merged_class(unit: _Unit, numbers: tuple[int, ...], evidence: ClaimEvidence) -> ProvenanceClass | None:
+    """The class of a sentence whose every passage pointer is an entry holding a passage AND a reading.
+
+    A look on a page that also holds a retrieved caption merges into that
+    entry. The sentence is classed by where its value actually appears, so a
+    value read off the drawing never borrows the caption's authority:
+    in the passage → ``cited`` (None here, the pointer's own class), only in the
+    reading → ``observed``, in neither → ``model_knowledge`` (an unsupported
+    value). A sentence stating no value is ``cited`` as before.
+    """
+    pointed = [number for number in numbers if number in evidence.cited_numbers]
+    merged = [evidence.looks.get(number) for number in pointed]
+    if not merged or any(place is None or place.place_only for place in merged):
+        return None
+    numbers_stated, codes_stated = _value_tokens_of(unit.text)
+    if not (numbers_stated or codes_stated):
+        return None
+    if _states_value(unit.text, " ".join(place.passage for place in merged if place)):
+        return None
+    if _observed(unit.text, [place.read for place in merged if place]):
+        return "observed"
+    return "model_knowledge"
+
+
+def _place_level(unit: _Unit, evidence: ClaimEvidence, *, merged: bool = False) -> tuple[bool, Level | None]:
+    """What the look places a sentence cites allow: (exact, level), or (False, None) when it cites none.
+
+    ``high`` only when a cited place is a region crop (not an overview) and the
+    sentence repeats a number or code of that place's reading exactly
+    (:func:`_observed`); ``medium`` otherwise. A reading is a model's
+    perception: no match, or an overview, is the weaker ground.
+    """
+    places = [
+        evidence.looks[n]
+        for n in _numbers(unit.text)
+        if n in evidence.looks and (merged or evidence.looks[n].place_only)
+    ]
+    if not places:
+        return False, None
+    exact = any(place.crop and _observed(unit.text, [place.read]) for place in places)
+    return exact, "high" if exact else "medium"
+
+
 def _class_with_pointer(unit: _Unit, evidence: ClaimEvidence) -> ProvenanceClass | None:
     """The class a sentence's own pointer gives it (a label, a quote, a marker), or None when it has none."""
     if DROPPED_CITATION_MARKER in unit.text:
@@ -489,8 +584,13 @@ def _class_with_pointer(unit: _Unit, evidence: ClaimEvidence) -> ProvenanceClass
             return "quoted"
     numbers = _numbers(unit.text)
     if numbers and any(number in evidence.cited_numbers for number in numbers):
+        merged = _merged_class(unit, numbers, evidence)
+        if merged is not None:
+            return merged
         # A quote line is judged by its stamp above, never by the inline check.
         return "quoted" if not unit.quote_line and _has_verified_inline_quote(unit.text) else "cited"
+    if numbers and any(_is_place(number, evidence) for number in numbers):
+        return "observed"
     if numbers:
         # A number nothing resolves: the verifier labels these, so this is a
         # marker that reached the text another way. It is not a pointer.
@@ -597,6 +697,53 @@ def _action_claim_type(
     return claim_type(typed, normative)
 
 
+#: A sentence that reports the ABSENCE of evidence or marks itself an estimate
+#: (ADR-0125, amendment of 2026-10-22). It is honest uncertainty, not a claim of
+#: fact: it caps at ``medium`` and does not count as a legal claim without a
+#: source. Narrow on purpose, German and English.
+_HEDGE_RE = re.compile(
+    r"\bin\s+(?:keinem|keiner)\s+(?:\w+\s+){0,2}(?:dokument|unterlage|plan|datei|grundriss|schnitt)\w*"
+    r"|\bkeine[nr]?\s+(?:\w+\s+){0,2}(?:grundriss|unterlage|angabe|nachweis)\w*\s+(?:gibt|vor|vorhanden)"
+    r"|\b(?:nicht|nirgends)\s+(?:\w+\s+)?(?:nachgewiesen|belegt|dokumentiert|angegeben|ersichtlich|bestätigt|bestaetigt)\b"
+    r"|\b(?:kann|können|koennen|konnte)\s+(?:ich\s+)?(?:es\s+|das\s+|dies\s+)?(?:\w+\s+)?nicht\s+"
+    r"(?:nachweisen|bestätigen|bestaetigen|belegen|prüfen|pruefen|verifizieren)"
+    r"|\bnachweisen\s+kann\s+ich\b|\bweder\s+bestätigen\s+noch\s+widerlegen"
+    r"|\bnach\s+meiner\s+(?:einschätzung|einschaetzung)|\bmeiner\s+(?:einschätzung|einschaetzung)\s+nach"
+    r"|\büberschlägig|\bueberschlaegig|\bgeschätzt\b|\bgeschaetzt\b|\bschätzungsweise\b"
+    r"|\bnot\s+(?:documented|stated|shown|established|evidenced|verifiable)\b"
+    r"|\b(?:cannot|can't|could\s+not|am\s+unable\s+to)\s+(?:\w+\s+)?(?:verify|confirm|establish|prove)\b"
+    r"|\b(?:no|none\s+of\s+the)\s+documents?\s+(?:state|show|establish|give|hold)"
+    r"|\bin\s+my\s+(?:estimate|assessment)\b|\bi\s+estimate\b|\broughly\s+estimated\b",
+    re.IGNORECASE,
+)
+
+
+def is_hedged(sentence: str) -> bool:
+    """Whether the sentence reports an absence of evidence or marks itself an estimate."""
+    return _HEDGE_RE.search(_MARKER_RE.sub("", sentence)) is not None
+
+
+def _value_tokens(sentence: str) -> set[float]:
+    return {value for value, _, _ in _written_numbers(_MARKER_RE.sub("", sentence))}
+
+
+def _supported_values(stamps: Sequence[ClaimStamp]) -> list[ClaimStamp]:
+    """Mark a ``reasoning`` value sentence whose value a cited or observed-place sentence of the answer also states."""
+    evidence_values: set[float] = set()
+    for stamp in stamps:
+        if stamp.provenance in _PASSAGE_CLASSES or stamp.provenance == "observed":
+            evidence_values |= _value_tokens(stamp.text)
+    marked = []
+    for stamp in stamps:
+        supported = (
+            stamp.provenance == "reasoning"
+            and stamp.claim_type == "value"
+            and bool(_value_tokens(stamp.text) & evidence_values)
+        )
+        marked.append(ClaimStamp(**{**stamp.__dict__, "value_supported": True}) if supported else stamp)
+    return marked
+
+
 def classify_claims(
     prose: str,
     evidence: ClaimEvidence,
@@ -614,18 +761,30 @@ def classify_claims(
         )
         classified.append((unit, ctype, provenance, operation, unmatched))
     supported = {unit.paragraph for unit, _, provenance, _, _ in classified if provenance in _PASSAGE_CLASSES}
-    stamps = [
-        ClaimStamp(
-            text=unit.text,
-            provenance=("reasoning" if provenance == "model_knowledge" and unit.paragraph in supported else provenance),
-            claim_type=ctype,
-            numbers=_numbers(unit.text),
-            operation=operation,
-            unmatched=unmatched,
+    stamps = []
+    for unit, ctype, provenance, operation, unmatched in classified:
+        exact, _ = _place_level(unit, evidence, merged=provenance == "observed")
+        _, level = _place_level(unit, evidence)
+        # A place beside a passage pointer: the sentence is held to the weaker of the two.
+        cap = level if provenance in _PASSAGE_CLASSES else None
+        if provenance in _PASSAGE_CLASSES and cap is None and _observed(unit.text, evidence.readings):
+            cap = "medium"
+        stamps.append(
+            ClaimStamp(
+                text=unit.text,
+                provenance=(
+                    "reasoning" if provenance == "model_knowledge" and unit.paragraph in supported else provenance
+                ),
+                claim_type=ctype,
+                numbers=_numbers(unit.text),
+                operation=operation,
+                unmatched=unmatched,
+                exact=exact and provenance == "observed",
+                cap=cap,
+                hedged=is_hedged(unit.text),
+            )
         )
-        for unit, ctype, provenance, operation, unmatched in classified
-    ]
-    return mark_load_bearing(stamps)
+    return mark_load_bearing(_supported_values(stamps))
 
 
 def mark_load_bearing(stamps: list[ClaimStamp]) -> list[ClaimStamp]:
@@ -643,13 +802,25 @@ def mark_load_bearing(stamps: list[ClaimStamp]) -> list[ClaimStamp]:
 # ---------------------------------------------------------------------------
 
 
-def ceiling(provenance: ProvenanceClass, ctype: ClaimType, *, unmatched: bool = False) -> Level:
+def ceiling(
+    provenance: ProvenanceClass,
+    ctype: ClaimType,
+    *,
+    unmatched: bool = False,
+    exact: bool = False,
+    hedged: bool = False,
+    value_supported: bool = False,
+) -> Level:
     """The highest level one sentence allows.
 
     - ``high`` for a quoted or cited sentence of any type, and for a record,
       an action or a measurement that is not normative.
     - ``medium`` for a sentence read off a drawing (``observed``): a model's
-      perception, whatever its type, and ``low`` when it is normative. Also
+      perception, whatever its type, and ``low`` when it is normative; ``high``
+      only when it cites a region crop and repeats its reading exactly
+      (``exact``). A ``hedged`` sentence (it reports an absence of evidence or
+      marks itself an estimate) is ``medium`` whatever its class, as is a
+      ``reasoning`` value that a cited sentence of the answer also states. Also
       for a record sentence stating a number no record holds (a
       misread until shown otherwise), for ``reasoning``, and for a descriptive
       sentence from model knowledge.
@@ -660,8 +831,15 @@ def ceiling(provenance: ProvenanceClass, ctype: ClaimType, *, unmatched: bool = 
         return "low"
     if provenance in _PASSAGE_CLASSES:
         return "high"
+    if hedged:
+        # Honest absence or an estimate: not a claim of fact, so never below medium.
+        return "medium"
     if provenance == "observed":
-        return "low" if ctype == "normative" else "medium"
+        if ctype == "normative":
+            return "low"
+        return "high" if exact else "medium"
+    if provenance == "reasoning" and ctype == "value" and value_supported:
+        return "medium"
     if provenance in _FACT_CLASSES:
         if ctype == "normative":
             return "low"
@@ -678,15 +856,25 @@ def ceiling(provenance: ProvenanceClass, ctype: ClaimType, *, unmatched: bool = 
 NO_CLAIMS_CEILING: Level = "low"
 
 
+def stamp_ceiling(stamp: ClaimStamp) -> Level:
+    """:func:`ceiling` of one stamp, held to the level its look place caps it at."""
+    level = ceiling(
+        stamp.provenance,
+        stamp.claim_type,
+        unmatched=bool(stamp.unmatched),
+        exact=stamp.exact,
+        hedged=stamp.hedged,
+        value_supported=stamp.value_supported,
+    )
+    return min(level, stamp.cap, key=_LEVELS.index) if stamp.cap else level
+
+
 def claims_ceiling(stamps: Sequence[ClaimStamp]) -> Level:
     """The lowest ceiling among the load-bearing sentences; :data:`NO_CLAIMS_CEILING` when there is none."""
     bearing = [stamp for stamp in stamps if stamp.load_bearing]
     if not bearing:
         return NO_CLAIMS_CEILING
-    return min(
-        (ceiling(stamp.provenance, stamp.claim_type, unmatched=bool(stamp.unmatched)) for stamp in bearing),
-        key=_LEVELS.index,
-    )
+    return min((stamp_ceiling(stamp) for stamp in bearing), key=_LEVELS.index)
 
 
 def weakest_claim(stamps: Sequence[ClaimStamp]) -> ClaimStamp | None:
@@ -694,10 +882,7 @@ def weakest_claim(stamps: Sequence[ClaimStamp]) -> ClaimStamp | None:
     bearing = [stamp for stamp in stamps if stamp.load_bearing]
     if not bearing:
         return None
-    return min(
-        bearing,
-        key=lambda stamp: _LEVELS.index(ceiling(stamp.provenance, stamp.claim_type, unmatched=bool(stamp.unmatched))),
-    )
+    return min(bearing, key=lambda stamp: _LEVELS.index(stamp_ceiling(stamp)))
 
 
 def class_counts(stamps: Sequence[ClaimStamp]) -> dict[str, int]:
@@ -708,4 +893,8 @@ def class_counts(stamps: Sequence[ClaimStamp]) -> dict[str, int]:
 
 def normative_uncited(stamps: Sequence[ClaimStamp]) -> int:
     """Normative sentences with no passage behind them: the claims a reader should check first."""
-    return sum(1 for stamp in stamps if stamp.claim_type == "normative" and stamp.provenance not in _PASSAGE_CLASSES)
+    return sum(
+        1
+        for stamp in stamps
+        if stamp.claim_type == "normative" and stamp.provenance not in _PASSAGE_CLASSES and not stamp.hedged
+    )

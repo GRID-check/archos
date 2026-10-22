@@ -226,6 +226,39 @@ describe('askPiloti', () => {
     expect(view.pollAfterSeconds).toBeNull()
   })
 
+  it('adds the sources and confidence the answer stored, read from its message', async () => {
+    row = askRow({ state: 'completed', endedAt: new Date() })
+    vi.mocked(findConversationInOrg).mockResolvedValue(conversation({ projectId: PROJECT }))
+    vi.mocked(findMessageInConversation).mockImplementation(async (conversationId, id) =>
+      id === askAnswerMessageId(conversationId, row.id)
+        ? ({
+            id,
+            content: 'Höchstens 40 m.',
+            createdAt: new Date(),
+            metadata: {
+              citations: { v: 1, sources: [{ file_name: 'Konzept.pdf', document_id: 'c:Konzept.pdf', page: 2, is_cited: true }] },
+              provenance: { answerConfidence: 'medium' },
+            },
+          } as Message)
+        : null,
+    )
+    const view = await getAsk(SESSION, row.id)
+    expect(view.answer?.sources).toMatchObject([{ documentId: 'c:Konzept.pdf', page: 2 }])
+    expect(view.answer?.sources?.[0]?.url).toContain(`/app/projects/${PROJECT}/chat?session=${THREAD}&cite=`)
+    expect(view.answer?.confidence).toEqual({ level: 'medium' })
+  })
+
+  it('names the busy thread and the way out in the reason the agent reads', async () => {
+    vi.mocked(runHeadlessTurn).mockResolvedValue({ kind: 'busy' })
+    const view = await askPiloti(SESSION, { question: 'Und danach?', waitSeconds: 0 })
+    expect(view.reason).toMatch(/never interrupts a running turn.*piloti-ask-get.*conversationId/)
+  })
+
+  it('leaves the turn’s start to the chat path’s own time bound', async () => {
+    await askPiloti(SESSION, { question: 'Welche Fluchtweglänge gilt?', waitSeconds: 0 })
+    expect(turnRequest().timeoutMs).toBeUndefined()
+  })
+
   it('answers working past the wait, with when to poll', async () => {
     const view = await askPiloti(SESSION, { question: 'Lang?' }, { waitMs: 0 })
     expect(view.state).toBe('working')

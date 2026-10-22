@@ -76,12 +76,12 @@ WRITE_TOOL_BASENAMES: frozenset[str] = frozenset(
     }
 )
 
-#: What a held-back write is answered with. German like the other withholding
-#: notices, and an INSTRUCTION: the call did not fail, the person said
+#: What a held-back write is answered with. Like the other withholding
+#: notices, an INSTRUCTION: the call did not fail, the person said
 #: something since, and the useful move is to read it and choose again.
 HELD_FOR_STEER = (
-    "Nicht ausgeführt: Die Person hat inzwischen etwas ergänzt, nachdem du diesen Aufruf gewählt hattest. "
-    "Lies die Ergänzung und entscheide neu; stell den Aufruf nur dann noch einmal, wenn er danach noch stimmt."
+    "Not executed: The person has added something since you chose this call. "
+    "Read the addition and decide again; make the call again only if it still fits afterwards."
 )
 
 
@@ -182,7 +182,7 @@ class AppliedSteer(BaseModel):
 
 def _region_line(region: FocusRegion) -> str:
     return (
-        f"[Bereich: S. {region.page}, x {region.x:.2f}–{region.x + region.w:.2f}, "
+        f"[Region: p. {region.page}, x {region.x:.2f}–{region.x + region.w:.2f}, "
         f"y {region.y:.2f}–{region.y + region.h:.2f}]"
     )
 
@@ -195,15 +195,15 @@ def render_note(note: SteerNote, round_index: int) -> str:
     of it. The author's name is the verified one; the text is the person's own
     (masked) and is quoted, never merged into an instruction.
     """
-    author = f' von="{note.author}"' if note.author else ""
-    lines = [f'<ergaenzung{author} waehrend="Runde {round_index}">', note.text.strip()]
+    author = f' author="{note.author}"' if note.author else ""
+    lines = [f'<user_update{author} during="round {round_index}">', note.text.strip()]
     if note.focus_region is not None:
         lines.append(_region_line(note.focus_region))
-    lines.append("</ergaenzung>")
+    lines.append("</user_update>")
     lines.append(
-        "Die Person hat das geschrieben, während du gearbeitet hast. Es gilt ab jetzt und geht der "
-        "ursprünglichen Frage vor, wo beide sich widersprechen. Was du schon vorgeschlagen hast, bleibt "
-        "stehen, bis jemand es verwirft; nenne es in deiner Antwort, wenn es nicht mehr stimmt."
+        "The person wrote this while you were working. It applies from now on and takes precedence over the "
+        "original question wherever the two contradict. What you have already proposed stays "
+        "until someone dismisses it; mention it in your answer if it no longer holds."
     )
     return "\n".join(lines)
 

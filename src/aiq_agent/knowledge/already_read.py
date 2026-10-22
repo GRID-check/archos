@@ -268,15 +268,15 @@ def render_already_read_block(digest: Sequence[str] | None) -> str:
     return "\n".join(
         [
             DIGEST_HEADING,
-            "Dokumente, die in DIESER Unterhaltung bereits geöffnet wurden — ein Index, KEIN Beleg: "
-            "Eine Zeile beweist, dass das Dokument geöffnet wurde, nicht dass sein Wortlaut jetzt vorliegt "
-            "(die Passagen des VORIGEN Zuges stehen noch im Verlauf; ältere nicht). "
-            "Zitieren oder wörtlich anführen erst nach erneutem Öffnen mit `read_passage` und dem exakten "
-            "Namen aus der Zeile; die Digest-Zeile selbst wird nie zitiert.",
-            f"Begrenzt auf höchstens {MAX_DIGEST_DOCS} Dokumente / ca. {MAX_DIGEST_TOKENS} Tokens — "
-            "ältere Einträge fallen heraus; was hier fehlt, ist damit nicht widerlegt, sondern per "
-            "`knowledge_search` zu suchen. Einträge können veraltet sein (neuere Fassung abgelegt): "
-            "Meldet `read_passage` „no passage“/„unknown document“, per `knowledge_search` neu auflösen.",
+            "Documents already opened in THIS conversation — an index, NOT evidence: "
+            "a line proves that the document was opened, not that its wording is available now "
+            "(the passages of the PREVIOUS turn are still in the transcript; older ones are not). "
+            "Cite or quote verbatim only after opening it again with `read_passage` and the exact "
+            "name from the line; the digest line itself is never cited.",
+            f"Limited to at most {MAX_DIGEST_DOCS} documents / about {MAX_DIGEST_TOKENS} tokens — "
+            "older entries drop out; what is missing here is therefore not ruled out, but is to be "
+            "searched with `knowledge_search`. Entries can be outdated (a newer Fassung was filed): "
+            "if `read_passage` reports „no passage“/„unknown document“, resolve again with `knowledge_search`.",
             *[f"- {line}" for line in lines],
         ]
     )

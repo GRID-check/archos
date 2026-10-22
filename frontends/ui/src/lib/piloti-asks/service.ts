@@ -31,6 +31,7 @@ import { ConflictError, ForbiddenError, NotFoundError } from '@/lib/api/errors'
 import { isAuthzError } from '@/lib/auth-utils'
 import type { AuthorizedSession } from '@/lib/auth/types'
 import { CHAT_PERMISSIONS } from '@/lib/authz/chat'
+import { configuredAppOrigin } from '@/lib/app-origin'
 import { isPilotiAskEnabled } from '@/lib/authz/feature-flags'
 import { requireProjectAccess } from '@/lib/authz/projects'
 import {
@@ -54,6 +55,7 @@ import {
 import type { TurnOutcomeRequest } from '@/lib/turns/outcome-types'
 import { resolveTurnContext, TurnBudgetExhaustedError } from '@/lib/turns/turn-context'
 import { turnContextHeaders } from '@/lib/turns/turn-headers.js'
+import { answerEvidence } from './answer-evidence'
 import {
   ASK_WAIT_SECONDS,
   DEFAULT_ASK_MAX_SECONDS,
@@ -219,14 +221,20 @@ async function startTurn(
     },
     message: askMessage({ askId: ask.id, conversationId: ask.conversationId, question, authorName: session.name }),
     requires: ASK_REQUIRES,
-    timeoutMs: 20_000,
+    // No `timeoutMs`: the chat path's own bound (45 s, connect included) lets a cold backend start.
   })
   switch (outcome.kind) {
     case 'started':
     case 'duplicate':
       return null
     case 'busy':
-      return { state: 'rejected', reason: 'Piloti is still answering in this conversation. Ask again when it is done.' }
+      return {
+        state: 'rejected',
+        reason:
+          'Piloti is still answering in this conversation, and an ask never interrupts a running turn. ' +
+          'Read the earlier ask with piloti-ask-get until it ends, then ask again; ' +
+          'or ask in a new conversation by leaving out conversationId.',
+      }
     case 'refused':
       return { state: 'rejected', reason: outcome.reason }
     case 'rejected':
@@ -271,7 +279,14 @@ async function viewOf(session: AuthorizedSession, row: PilotiAskRow): Promise<As
   if (row.state === 'completed') {
     const messageId = askAnswerMessageId(row.conversationId, row.id)
     const message = await findMessageInConversation(row.conversationId, messageId)
-    if (message) answer = { messageId, text: message.content }
+    if (message) {
+      const evidence = answerEvidence(message, {
+        conversationId: row.conversationId,
+        projectId: conversation?.projectId ?? null,
+        origin: configuredAppOrigin(),
+      })
+      answer = { messageId, text: message.content, ...evidence }
+    }
   }
   return {
     ...baseView(row, conversation?.projectId ?? null, question?.content ?? null),

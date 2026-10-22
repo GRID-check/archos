@@ -430,14 +430,14 @@ class TestComparing:
     async def test_the_previous_revision_by_default_says_what_moved(self, scope, stored):
         text = await self._call(revisions_of="Plan_Index_B.pdf", compare_to="vorige", shelf="project")
 
-        assert "„Plan_Index_A.pdf“ (älter) → „Plan_Index_B.pdf“ (neuer)" in text
+        assert "„Plan_Index_A.pdf“ (older) → „Plan_Index_B.pdf“ (newer)" in text
         assert "Seite 2: Werte: Fluchtweglänge 38 m → 42 m." in text
         # The stored change line was written against exactly this older file, so it rides along.
         assert "Wand neu" in text
 
     async def test_the_order_follows_the_chain_not_the_arguments(self, scope, stored):
         text = await self._call(revisions_of="Plan_Index_A.pdf", compare_to="Plan_Index_B.pdf", shelf="project")
-        assert "„Plan_Index_A.pdf“ (älter) → „Plan_Index_B.pdf“ (neuer)" in text
+        assert "„Plan_Index_A.pdf“ (older) → „Plan_Index_B.pdf“ (newer)" in text
 
     async def test_reading_both_files_is_reported_for_the_admission(self, scope, stored):
         await self._call(revisions_of="Plan_Index_B.pdf", compare_to="vorige", shelf="project")

@@ -59,27 +59,26 @@ MAX_COMPLETION_TOKENS = 1500
 
 COMPARE_PROMPT = "\n".join(
     (
-        "Du vergleichst zwei Fassungen derselben Seite einer Bauzeichnung. "
-        "Das ERSTE Bild ist die ÄLTERE Fassung, das ZWEITE Bild die NEUERE Fassung.",
+        "You compare two Fassungen of the same page of a building drawing. "
+        "The FIRST image is the OLDER Fassung, the SECOND image the NEWER Fassung.",
         "",
-        "Liste die konkreten sichtbaren Änderungen von der älteren zur neueren Fassung: verschobene, "
-        "hinzugekommene oder entfernte Wände, Öffnungen (Türen, Fenster), Maße und Koten, Beschriftungen "
-        "und Raumnamen, im Schriftfeld Index, Datum und Plannummer.",
+        "List the concrete visible changes from the older to the newer Fassung: moved, "
+        "added or removed walls, openings (doors, windows), dimensions and elevation marks, labels "
+        "and room names, and in the Plankopf the index, date and drawing number.",
         "",
-        "Regeln:",
-        "- Nenne nur, was du in den beiden Bildern tatsächlich siehst. Erfinde nichts. "
-        "Im Zweifel lässt du die Änderung weg.",
-        "- Unterschiede der Abbildung sind keine Änderungen: Scanqualität, Rauschen, Helligkeit, "
-        "ein anderer Bildausschnitt, ein leicht verschobenes Blatt.",
-        f"- Höchstens {MAX_REGIONS} Änderungen. Zusammengehörige Änderungen fasst du zu einer zusammen.",
-        "- Jede Änderung hat einen Rahmen auf der NEUEREN Seite (ein entferntes Element: dort, wo es früher "
-        "war). x und y sind die obere linke Ecke, w und h Breite und Höhe, jeweils als Bruchteil der "
-        "Seitenbreite bzw. Seitenhöhe zwischen 0 und 1; 0,0 ist oben links.",
-        '- label: höchstens sechs Wörter, Deutsch, z. B. "Wand nach Norden verschoben".',
-        "- summary: ein kurzer deutscher Satz je Änderung, in Worten, mit Maßen und Werten, wenn du sie lesen kannst.",
-        f'- Siehst du keine Änderung: "changes" ist [] und "summary" ist ["{NO_CHANGE_TEXT}"].',
+        "Rules:",
+        "- Name only what you actually see in the two images. Invent nothing. When in doubt, leave the change out.",
+        "- Differences in the rendering are not changes: scan quality, noise, brightness, "
+        "a different crop, a slightly shifted sheet.",
+        f"- At most {MAX_REGIONS} changes. Merge related changes into one.",
+        "- Each change has a box on the NEWER page (for a removed element: where it used to be). "
+        "x and y are the top-left corner, w and h the width and height, each as a fraction of the "
+        "page width or page height between 0 and 1; 0,0 is the top left.",
+        '- label: at most six words, in German, e.g. "Wand nach Norden verschoben".',
+        "- summary: one short German sentence per change, in words, with dimensions and values when you can read them.",
+        f'- If you see no change: "changes" is [] and "summary" is ["{NO_CHANGE_TEXT}"].',
         "",
-        "Antworte ausschließlich mit einem JSON-Objekt, ohne Erklärung davor oder danach:",
+        "Answer with a JSON object only, with no explanation before or after it:",
         '{"changes": [{"label": "...", "x": 0.0, "y": 0.0, "w": 0.0, "h": 0.0}], "summary": ["..."]}',
     )
 )

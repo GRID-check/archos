@@ -70,11 +70,10 @@ _TIMEOUT_SECONDS = 5.0
 
 _opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
 
-#: What a tool result carrying refused restricted content is replaced with. In
-#: German, the language the model answers the office in.
+#: What a tool result carrying refused restricted content is replaced with.
 WITHHELD_NOTICE = (
-    "Dieses Ergebnis wurde zurückgehalten: Es stammt aus einem Ordner mit eingeschränktem Zugriff, "
-    "der in diesem Gespräch nicht verwendet werden darf. Antworte ohne diesen Inhalt."
+    "This result was withheld: it comes from a folder with restricted access "
+    "that may not be used in this conversation. Answer without this content."
 )
 
 

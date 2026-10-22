@@ -333,8 +333,8 @@ class TestTruncationIsAnnouncedToTheModel:
         set_inventory_drops(dropped)
 
         rendered = render_inventory_block(kept)
-        assert "6 weitere Datei(en)" in rendered
-        assert "unvollst" in rendered
+        assert "6 more file(s)" in rendered
+        assert "incomplete" in rendered
 
     def test_a_complete_shelf_carries_no_notice(self):
         docs = [_doc("only.pdf", collection="proj_1", shelf="project")]
@@ -342,7 +342,7 @@ class TestTruncationIsAnnouncedToTheModel:
         set_inventory_drops(dropped)
 
         rendered = render_inventory_block(kept)
-        assert "weitere Datei" not in rendered
+        assert "more file" not in rendered
 
     def test_the_notice_lands_in_the_truncated_shelf_section(self):
         docs = [_doc(f"archiv-{i:02d}.pdf", collection="archiv_org", shelf="office_shelf") for i in range(10)]
@@ -354,7 +354,7 @@ class TestTruncationIsAnnouncedToTheModel:
         office_shelf_section = rendered.split("### ")[1]
         # The notice belongs to the shelf that lost files, not to the block.
         assert "Büroablage" in office_shelf_section
-        assert "weitere Datei(en)" in office_shelf_section
+        assert "more file(s)" in office_shelf_section
 
     def test_a_stale_count_from_a_previous_turn_cannot_leak(self):
         set_inventory_drops({Shelf.OFFICE_SHELF: 99})
@@ -385,7 +385,7 @@ class TestBaseShelfIsFolded:
         text = render_inventory_block(docs)
 
         assert "oib-rl_7.pdf" not in text
-        assert "39 Dateien" in text
+        assert "39 files" in text
 
     def test_the_fold_names_the_way_to_reach_the_files(self):
         docs = [_doc(f"oib-rl_{i}.pdf", collection="oib_knowledge", shelf="base") for i in range(39)]
@@ -393,14 +393,14 @@ class TestBaseShelfIsFolded:
 
         # A count with no route to the contents would just be a smaller lie.
         assert "knowledge_search" in text
-        assert "Erfinde keine" in text
+        assert "Do not invent" in text
 
     def test_a_listing_turn_about_base_still_gets_every_name(self):
         docs = [_doc(f"oib-rl_{i}.pdf", collection="oib_knowledge", shelf="base") for i in range(39)]
         text = render_inventory_block(docs, focus_shelf=Shelf.BASE)
 
         assert "oib-rl_7.pdf" in text
-        assert "39 Dateien" not in text
+        assert "39 files" not in text
 
     def test_user_shelves_are_still_spelled_out(self):
         docs = [
@@ -424,8 +424,8 @@ class TestBaseShelfIsFolded:
 
         # The shelf holds 39 whether or not the cap let 10 through. Reporting
         # the surviving count would understate the corpus on every capped turn.
-        assert "39 Dateien" in text
-        assert "10 Dateien" not in text
+        assert "39 files" in text
+        assert "10 files" not in text
 
     def test_an_empty_base_shelf_still_says_it_is_empty(self):
         text = render_inventory_block([], in_scope_shelves=[Shelf.BASE])
@@ -453,7 +453,7 @@ class TestTruncationEdgesTheFirstPassMissed:
 
         # Reporting the platform corpus as "(empty)" tells the model the OIB
         # files are gone — on the one shelf present in every single request.
-        assert "39 Dateien" in rendered
+        assert "39 files" in rendered
         base = rendered.split("### Basiswissen", 1)[1]
         assert "empty" not in base.lower()
 
@@ -466,7 +466,7 @@ class TestTruncationEdgesTheFirstPassMissed:
 
         # Shelf-less drops are recorded under `None`, a key no shelf lookup hits.
         assert "### Unattributed" in rendered
-        assert "weitere Datei(en) ohne angegebenes Regal" in rendered
+        assert "more file(s) with no shelf stated" in rendered
 
 
 class TestFilesStillBeingRead:
@@ -583,7 +583,7 @@ class TestTheFamiliesAreNamed:
         set_norm_families(oib_families(["oib-rl_2_x.pdf", "oib-rl_2.1_x.pdf"]))
         text = render_inventory_block(self._base("oib-rl_2_x.pdf", "oib-rl_2.1_x.pdf"))
 
-        assert "nicht gelesen" in text
+        assert "was not read" in text
 
     def test_a_corpus_with_no_families_adds_no_lines(self):
         """Derived, never listed. A deployment whose corpus holds no
