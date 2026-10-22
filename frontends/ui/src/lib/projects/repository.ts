@@ -25,7 +25,19 @@ import { withOptionalTenant, withPlatformAccess, withTenant } from '@/lib/db/ten
 import { deletionQueue, projectIntakes, projects, type Project } from '@/lib/db/schema'
 import type { GeocodeResult } from '@/lib/geocoding/types'
 import type { DbTransaction } from '@/lib/storage/repository'
+import { publishProjectChanged, publishProjectListChanged } from '@/lib/realtime/door-events'
 import type { ProjectOutcome, ProjectStatus } from './project-status'
+
+/**
+ * Tell the agent door's listeners that a project changed (`realtime/door-events.ts`).
+ * Every write of the projects domain ends here, after its commit, so one place
+ * decides what a listener hears; `listed` when the project's row in the office's
+ * list changed too (created, renamed, deleted, restored, moved to another status).
+ */
+function announceProject(organizationId: string, projectId: string, { listed = false } = {}): void {
+  publishProjectChanged(organizationId, projectId)
+  if (listed) publishProjectListChanged(organizationId)
+}
 
 /** Hard cap for unpaginated org-wide lists. */
 export const PROJECT_LIST_LIMIT = 500
@@ -229,6 +241,7 @@ export async function setProjectStatusInOrg(
       )
       .returning()
   )
+  if (row) announceProject(organizationId, projectId, { listed: true })
   return row ?? null
 }
 
@@ -244,6 +257,7 @@ export async function insertProject(values: {
   const [row] = await withTenant({ organizationId: values.organizationId }, () =>
     db.insert(projects).values(values).returning()
   )
+  announceProject(values.organizationId, row.id, { listed: true })
   return row
 }
 
@@ -359,6 +373,7 @@ export async function renameProjectInOrg(
       )
       .returning()
   )
+  if (row) announceProject(organizationId, projectId, { listed: true })
   return row ?? null
 }
 
@@ -390,6 +405,7 @@ export async function softDeleteProjectAndEnqueue(
         .onConflictDoNothing()
     })
   )
+  announceProject(project.organizationId, project.id, { listed: true })
 }
 
 /** The profile columns of a project row (the shape the profile API returns). */
@@ -446,7 +462,7 @@ export async function updateProjectProfileIfVersion(
   inTransaction?: (tx: DbTransaction, saved: ProjectProfileState) => Promise<void>
 ): Promise<ProjectProfileState | null> {
   const db = getDb()
-  return withTenant({ organizationId }, () =>
+  const saved = await withTenant({ organizationId }, () =>
     db.transaction(async (tx) => {
       const [row] = await tx
         .update(projects)
@@ -465,6 +481,8 @@ export async function updateProjectProfileIfVersion(
       return row
     })
   )
+  if (saved) announceProject(organizationId, projectId)
+  return saved
 }
 
 /**
@@ -518,6 +536,7 @@ export async function setProjectProfileSummaryInOrg(
       .set({ profileDisplay: { ...current.profileDisplay, summary, summaryLocale } })
       .where(scope)
   })
+  announceProject(organizationId, projectId)
 }
 
 /** The WorkOS FGA resource id backing a project, or null when unregistered. */
@@ -554,7 +573,7 @@ export async function restoreProjectIfPending(
   organizationId: string
 ): Promise<boolean> {
   const db = getDb()
-  return withTenant({ organizationId }, () =>
+  const restored = await withTenant({ organizationId }, () =>
     db.transaction(async (tx) => {
       const [entry] = await tx
         .update(deletionQueue)
@@ -579,6 +598,8 @@ export async function restoreProjectIfPending(
       return true
     })
   )
+  if (restored) announceProject(organizationId, projectId, { listed: true })
+  return restored
 }
 
 /**

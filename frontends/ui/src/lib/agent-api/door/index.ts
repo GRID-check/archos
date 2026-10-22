@@ -184,13 +184,48 @@ async function officeSkillText(ctx: McpCallContext, name: string): Promise<strin
   return `No enabled skill is named "${name}". The office's skills: ${names || 'none'}.`
 }
 
+/** Whether `ctx`'s caller is offered the door's resources and prompts at all. */
+export function offersDoorGuide(ctx: McpCallContext): boolean {
+  return doorOfPrincipal(ctx.principal) === 'office' && audienceOf(ctx.principal) === 'external'
+}
+
+/** Whether `ctx`'s caller is offered `piloti://project/{projectId}`: the one resource that changes, so the only one to listen to. */
+export function offersProjectResource(ctx: McpCallContext): boolean {
+  return offersDoorGuide(ctx) && findVisibleOperation(ctx.principal, 'project-overview-get') !== undefined
+}
+
+/** At most this many URIs per listen request; the rest are not honored. Each is one read of an overview. */
+export const MAX_RESOURCE_SUBSCRIPTIONS = 50
+
+const PROJECT_URI = /^piloti:\/\/project\/([A-Za-z0-9_-]{1,120})$/
+
+/**
+ * The URIs among `uris` that `ctx`'s caller may listen to: a project they can
+ * read, decided by the read `resources/read` makes (project-overview-get, whose
+ * route checks the person's access). The SDK filters a listen stream by the URIs
+ * the client names and checks nothing, so a URI that fails here is dropped before
+ * the SDK sees it, and the acknowledgement shows only what was honored.
+ */
+export async function readableProjectUris(ctx: McpCallContext, uris: readonly string[]): Promise<string[]> {
+  if (!offersProjectResource(ctx)) return []
+  const candidates = [...new Set(uris)].filter((uri) => PROJECT_URI.test(uri)).slice(0, MAX_RESOURCE_SUBSCRIPTIONS)
+  const readable = await Promise.all(
+    candidates.map(async (uri) => {
+      const id = PROJECT_URI.exec(uri)?.[1] ?? ''
+      const read = await readOperationBody(ctx, 'project-overview-get', { params: { id } })
+      return 'refusal' in read ? null : uri
+    }),
+  )
+  return readable.filter((uri): uri is string => uri !== null)
+}
+
 /**
  * Registers the door's resources and prompts for an outside agent's client.
  * Piloti's own client reads neither (the guide names operations its door leaves
  * to its native tools); the platform door is a different workspace.
  */
 export function registerDoorGuide(server: McpServer, ctx: McpCallContext): void {
-  if (doorOfPrincipal(ctx.principal) !== 'office' || audienceOf(ctx.principal) !== 'external') return
+  if (!offersDoorGuide(ctx)) return
   const markdown = (uri: string, text: string) => ({ contents: [{ uri, mimeType: 'text/markdown', text }] })
   const completers = completersFor(ctx)
   server.registerResource(
