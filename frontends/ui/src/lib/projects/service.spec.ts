@@ -20,6 +20,8 @@ vi.mock('./repository', () => ({
 }))
 
 const countDocumentsByProject = vi.fn()
+const waitingMailCounts = vi.hoisted(() => vi.fn(async (_session: unknown, ids: readonly string[]) => (ids.includes('proj_beta') ? { proj_beta: 2 } : {})))
+vi.mock('@/lib/inbound-mail/waiting-counts', () => ({ waitingMailCounts }))
 vi.mock('@/lib/documents/repository', () => ({
   countDocumentsByProject: (...args: unknown[]) => countDocumentsByProject(...args),
 }))
@@ -215,6 +217,9 @@ describe('getProjectsGridData', () => {
     expect(data.projects.map((project) => project.id)).toEqual(['proj_beta'])
     expect(data.viewerActivity).toEqual({ proj_beta: '2026-08-05T09:00:00.000Z' })
     expect(data.documentCounts).toEqual({ proj_beta: 4 })
+    // Waiting mail is counted only for the projects the caller reaches (and, inside, only where they may file mail).
+    expect(waitingMailCounts).toHaveBeenCalledWith(expect.anything(), ['proj_beta'])
+    expect(data.mailWaiting).toEqual({ proj_beta: 2 })
   })
 
   it('returns an empty activity map rather than failing when nobody has worked anywhere', async () => {

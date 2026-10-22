@@ -689,9 +689,26 @@ An archive is sent in parts of exactly `partSize` bytes (32 MiB; the last one sh
 
 Source: `frontends/ui/src/app/api/projects/[id]/mail-imports/`, `frontends/ui/src/lib/mail-import/service.ts`
 
+## E-Mail-Eingang: held project mail (ADR-0134, feature-gated)
+
+Mail sent to a project's address waits here until a person files or dismisses each part (the text, each attachment). Every route is behind the office's `inbound-mail` entitlement and needs `project:documents:write` (any-of `project:edit`) on the project; a refusal of either is a 404. Every view is metadata only: the subject masked by the office's content check, never a mail's text (that is `/text`) or bytes. What a mail asks of the person is computed on the server, once, and carried on the views (2026-10-22): `lib/inbound-mail/sender-risk.ts` (the sender) and `lib/inbound-mail/review-defaults.ts` (the defaults and completeness); every client reads it instead of deriving it.
+
+| Method | Path | Auth | Description | Request Body | Response |
+|--------|------|------|-------------|-------------|----------|
+| `GET` | `/api/projects/[id]/inbound-mails` | Required | One page, newest first: `status=waiting` (a part waits; default) or `handled`, the latter narrowed by `outcome` (`filed`, `dismissed`, `expired`). Each summary carries `riskLevel` (`none`, `caution`: filing needs `acknowledgeSender`, `impersonation`: a rejected signature or a member's name on another address), `impersonation` (`rejected_signature`, `member_name`, or null), `incompleteReason` (null when the mail can be filed as suggested, alone or in bulk; else the first of `not_waiting`, `project_closed`, `sender`, `scanning`, `needs_person`, `no_thread`, `folder_missing`) and `followedBy` (whose follow appended its text). `threadGroups` (waiting list only): the page's waiting mails that each would be pre-selected into the same thread, not automatic, two or more, in the order a filing appends them (sent, then received) with the Fassung each becomes and the group's `firstVersion`..`lastVersion` („wird Fassung 4–7“). | `?status=&outcome=&limit=&cursor=` | `{ items: InboundMailSummaryView[], threadGroups, nextCursor }` |
+| `GET` | `/api/projects/[id]/inbound-mails/[mailId]` | Required | One mail: headers, sender label, parts, the viewer's thread and Fassung candidates, `ifMatch`. Each part says whether it is `preselected` (offered checked: nothing of an impersonation ever is). `riskLevel`, `impersonation`, `needsSenderAcknowledgement`, `incompleteReason`, `followedBy`. A part's `suggestion` is null for every mail Piloti does not suggest for (an unconfirmed sender, an impersonation, automatic mail), even one stored earlier. | — | `InboundMailView` |
+| `GET` | `/api/projects/[id]/inbound-mails/[mailId]/text` | Required | The text, masked for every reader: own text, quoted blocks, invitations. `forwardedFrom` (`{ name, address }` or null): who a forwarded mail originally came from, read from the first quote of a mail whose subject says it was forwarded; never checked by anyone. Not offered to Piloti. | — | `InboundMailTextView` |
+| `POST` | `/api/projects/[id]/inbound-mails/file` | Required | Decide up to 20 mails: file the named parts, dismiss every other waiting part. Acknowledgements only with one mail. Refusals are 409 with `details.reason` (`INBOUND_MAIL_REFUSALS`) and what the refusal names (`partId`, `terms` for `name_stop`, …), which the browser client keeps on `ApiRequestError.details`. Answers 202; the filing job files as the person, in filing order. | `{ mails: [{ mailId, ifMatch, parts, message, acknowledgeSender?, acknowledgeRisk? }] }` | `{ mails: InboundMailView[], filingJobId }` |
+| `POST` | `/api/projects/[id]/inbound-mails/dismiss` | Required | Dismiss every waiting part of up to 20 mails, restorable for 7 days. | `{ mailIds }` | `{ mails: InboundMailView[] }` |
+| `POST` | `/api/projects/[id]/inbound-mails/[mailId]/restore` | Required | Restore dismissed or expired parts within their 7 days; idempotent; 409 `not_restorable` when nothing can come back. | — | `InboundMailView` |
+
+The projects home counts waiting mail per project for its cards (`ProjectMailWaiting`) with `waitingMailCounts` (`lib/inbound-mail/waiting-counts.ts`), only in projects whose E-Mail-Eingang the reader may open; an agent reads the same number from the waiting list. The browser polls the waiting count once a minute while visible: the receive job announces arrival to the agent door only (`publishProjectChanged`), not to a browser channel.
+
+Source: `frontends/ui/src/app/api/projects/[id]/inbound-mails/`, `frontends/ui/src/lib/inbound-mail/service.ts`
+
 ## Mail threads: a filed message (ADR-0134, feature-gated)
 
-A message filed from the E-Mail-Eingang is a section of its E-Mail-Verlauf (`mail_thread_entries`). Both routes are behind the office's `inbound-mail` entitlement (404 off it). The thread list and one thread, and the E-Mail-Eingang's routes, are D8's.
+A message filed from the E-Mail-Eingang is a section of its E-Mail-Verlauf (`mail_thread_entries`). Both routes are behind the office's `inbound-mail` entitlement (404 off it). The thread list and one thread are not listed here yet.
 
 | Method | Path | Auth | Description | Request Body | Response |
 |--------|------|------|-------------|-------------|----------|

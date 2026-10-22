@@ -116,7 +116,7 @@ export const mailOperations = [
     domain: 'mail',
     summary: 'List incoming email waiting in a project',
     description:
-      'Held until a person files or dismisses each part. Metadata only: masked subject, sender domain, `senderTrust` (about the domain, never a person). Then inbound-mail-get.',
+      'Held until a person files or dismisses each part. Metadata only: masked subject, sender domain, `senderTrust` (about the domain, never a person), `riskLevel`, `incompleteReason` (null: filable as suggested). `threadGroups`: mails that file into one thread together. Then inbound-mail-get.',
     method: 'GET',
     path: '/api/projects/[id]/inbound-mails',
     params: projectParams,
@@ -129,7 +129,7 @@ export const mailOperations = [
     domain: 'mail',
     summary: 'Read one held email’s parts and placement options',
     description:
-      'Its parts (text and attachments: state, scan, risk flags, suggestion, duplicate, earlier version), `threadCandidates` and the `ifMatch` for inbound-mail-file. No text, no bytes.',
+      'Its parts (text and attachments: state, scan, risk flags, suggestion, `preselected`, duplicate, earlier version), `threadCandidates`, `riskLevel` (`impersonation`: propose nothing) and the `ifMatch` for inbound-mail-file. No text, no bytes.',
     method: 'GET',
     path: '/api/projects/[id]/inbound-mails/[mailId]',
     params: mailParams,

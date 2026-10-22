@@ -46,6 +46,7 @@ import { requireMailReviewer } from './access'
 import { auditDecisions } from './audit'
 import { candidatesFor, type ViewerCandidates } from './candidates'
 import { mailIfMatch, planMailDecision, refusal, requireDecisionRights, type DecisionContext } from './decision'
+import { forwardedOrigin } from './forwarded'
 import { INBOUND_MAIL_RESTORE_DAYS, type InboundSenderTrust } from './inbound-mail-vocabulary'
 import type {
   DismissInboundMailsBody,
@@ -55,7 +56,6 @@ import type {
   InboundMailListStatus,
   InboundMailListView,
   InboundMailOutcome,
-  InboundMailPartView,
   InboundMailSummaryView,
   InboundMailTextView,
   InboundMailView,
@@ -79,9 +79,11 @@ import {
   type DecisionActor,
   type DecisionsWritten,
 } from './repository'
+import { withReviewDefaults, type InboundMailPartBase } from './review-defaults'
 import { readStagedObject } from './staging'
-import { readSuggestion } from './suggest'
+import { readSuggestion, suggestionSkipReason } from './suggest'
 import { scoreMailDecision } from './suggest-scores'
+import { threadGroupsOf } from './thread-groups'
 
 /** How long a claim on a part holds before the sweep hands it back (D8: the proposals' apply claim, reused). */
 export const FILING_CLAIM_MS = 5 * 60 * 1000
@@ -133,7 +135,7 @@ function restorableUntil(mail: InboundMailRow, part: InboundMailPartRow, now: nu
   return until > now ? new Date(until).toISOString() : null
 }
 
-function partView(mail: InboundMailRow, part: InboundMailPartRow, candidates: ViewerCandidates, now: number): InboundMailPartView {
+function partView(mail: InboundMailRow, part: InboundMailPartRow, candidates: ViewerCandidates, now: number): InboundMailPartBase {
   const matched = candidates.part(part)
   return {
     id: part.id,
@@ -154,7 +156,8 @@ function partView(mail: InboundMailRow, part: InboundMailPartRow, candidates: Vi
     duplicateOf: matched.duplicateOf,
     revisionCandidate: matched.revisionCandidate,
     revisionCandidateHidden: matched.revisionCandidateHidden,
-    suggestion: readSuggestion(part.suggestion),
+    // A mail Piloti does not suggest for shows none, even one stored before the rule said so (an impersonation).
+    suggestion: suggestionSkipReason(mail) === null ? readSuggestion(part.suggestion) : null,
     restorableUntil: restorableUntil(mail, part, now),
   }
 }
@@ -167,7 +170,7 @@ function mailView(
   context: { closed: boolean; rules: ContentScreenRules | null; followedBy: string | null; now: number },
 ): InboundMailView {
   const threads = candidates.threads(mail)
-  return {
+  return withReviewDefaults({
     id: mail.id,
     projectId: mail.projectId,
     status: listStatusOf(mail, parts),
@@ -199,27 +202,22 @@ function mailView(
     hiddenThreadCandidates: threads.hidden,
     followedBy: context.followedBy,
     updatedAt: new Date(mail.updatedAt).toISOString(),
-  }
+  })
 }
 
-function summaryView(
-  mail: InboundMailRow,
-  parts: readonly InboundMailPartRow[],
-  candidates: ViewerCandidates,
-  rules: ContentScreenRules | null,
-  now: number,
-): InboundMailSummaryView {
+/** What a list row shows of a mail: read off the mail's own view, so the row and the detail never disagree. */
+function summaryView(mail: InboundMailRow, parts: readonly InboundMailPartRow[], view: InboundMailView, now: number): InboundMailSummaryView {
   const count = (state: InboundMailOutcome) => parts.filter((part) => part.state === state).length
   const until = parts
     .map((part) => restorableUntil(mail, part, now))
     .filter((value): value is string => value !== null)
     .sort()
-  const [best] = candidates.threads(mail).shown
+  const [best] = view.threadCandidates
   return {
     id: mail.id,
     projectId: mail.projectId,
-    status: listStatusOf(mail, parts),
-    subject: masked(mail.subject, rules),
+    status: view.status,
+    subject: view.subject,
     senderName: mail.senderName,
     senderDomain: domainOf(mail.senderAddress),
     senderTrust: (mail.senderTrust as InboundSenderTrust | null) ?? null,
@@ -234,7 +232,11 @@ function summaryView(
     thread: best
       ? { threadId: best.threadId, name: best.name, nextVersion: best.nextVersion, preselected: best.preselected }
       : null,
-    updatedAt: new Date(mail.updatedAt).toISOString(),
+    riskLevel: view.riskLevel,
+    impersonation: view.impersonation,
+    incompleteReason: view.incompleteReason,
+    followedBy: view.followedBy,
+    updatedAt: view.updatedAt,
   }
 }
 
@@ -244,13 +246,13 @@ const groupParts = (parts: readonly InboundMailPartRow[]): Map<string, InboundMa
   return byMail
 }
 
-/** These mails as the viewer reads them, with one load of parts, candidates and the mask for all of them. */
-async function mailViews(
+/** These mails as the viewer reads them, with one load of parts, candidates, followers and the mask for all of them. */
+async function loadMailViews(
   session: AuthorizedSession,
   projectId: string,
   mails: readonly InboundMailRow[],
   closed: boolean,
-): Promise<InboundMailView[]> {
+): Promise<Array<{ mail: InboundMailRow; parts: InboundMailPartRow[]; view: InboundMailView }>> {
   const parts = await findMailParts(mails.map((mail) => mail.id))
   const [candidates, rules, followers] = await Promise.all([
     candidatesFor(session, projectId, mails, parts),
@@ -259,9 +261,19 @@ async function mailViews(
   ])
   const byMail = groupParts(parts)
   const now = Date.now()
-  return mails.map((mail) =>
-    mailView(mail, byMail.get(mail.id) ?? [], candidates, { closed, rules, followedBy: followers.get(mail.id) ?? null, now }),
-  )
+  return mails.map((mail) => {
+    const own = byMail.get(mail.id) ?? []
+    return { mail, parts: own, view: mailView(mail, own, candidates, { closed, rules, followedBy: followers.get(mail.id) ?? null, now }) }
+  })
+}
+
+async function mailViews(
+  session: AuthorizedSession,
+  projectId: string,
+  mails: readonly InboundMailRow[],
+  closed: boolean,
+): Promise<InboundMailView[]> {
+  return (await loadMailViews(session, projectId, mails, closed)).map((entry) => entry.view)
 }
 
 // ---------------------------------------------------------------------------
@@ -274,23 +286,20 @@ export async function listInboundMails(
   projectId: string,
   query: InboundMailListQuery,
 ): Promise<InboundMailListView> {
-  await requireMailReviewer(session, projectId)
+  const { closed } = await requireMailReviewer(session, projectId)
   const decoded = query.cursor ? decodeDocumentListCursor(query.cursor) : null
   if (query.cursor && !decoded) throw new BadRequestError('Invalid cursor')
   const after = decoded ? { receivedAt: decoded.createdAt, id: decoded.id } : null
   const rows = await listProjectMails(projectId, { status: query.status, outcome: query.outcome, limit: query.limit }, after)
   const page = rows.slice(0, query.limit)
-  const mails = page.map((row) => row.mail)
-  const parts = await findMailParts(mails.map((mail) => mail.id))
-  const [candidates, rules] = await Promise.all([
-    candidatesFor(session, projectId, mails, parts),
-    maskRulesFor(session.organizationId, projectId),
-  ])
-  const byMail = groupParts(parts)
+  const loaded = await loadMailViews(session, projectId, page.map((row) => row.mail), closed)
   const now = Date.now()
+  const items = loaded.map((entry) => ({ entry, summary: summaryView(entry.mail, entry.parts, entry.view, now) }))
   const last = page.at(-1)
   return {
-    items: mails.map((mail) => summaryView(mail, byMail.get(mail.id) ?? [], candidates, rules, now)),
+    items: items.map((item) => item.summary),
+    threadGroups:
+      query.status === 'waiting' ? threadGroupsOf(items.map((item) => ({ summary: item.summary, order: item.entry.mail }))) : [],
     nextCursor:
       rows.length > query.limit && last
         ? encodeDocumentListCursor({ createdAt: last.position.receivedAt, id: last.position.id })
@@ -323,13 +332,17 @@ export async function getInboundMailText(session: AuthorizedSession, projectId: 
   const mail = await requireMail(projectId, mailId)
   if (mail.status !== 'waiting' || !mail.readStorageKey) {
     if (mail.status !== 'waiting') throw refusal('gone', 'The text of a handled mail is in its mail thread, if it was filed', { mailId })
-    return { ownText: '', ownTextTruncated: false, quoted: [], calendar: [], masked: false, unreadable: true }
+    return { ownText: '', ownTextTruncated: false, quoted: [], calendar: [], masked: false, unreadable: true, forwardedFrom: null }
   }
   const read = mailReadSchema.parse(JSON.parse(new TextDecoder().decode(await readStagedObject(mail.stagingBucket, mail.readStorageKey))))
   const rules = await maskRulesFor(session.organizationId, projectId)
   const own = maskText(read.ownText, rules)
   const quoted = read.quoted.map((block) => ({ header: maskText(block.header, rules), text: maskText(block.text, rules) }))
   const anyMasked = own.findings.length > 0 || quoted.some((block) => block.header.findings.length + block.text.findings.length > 0)
+  // Read off the masked quotes, so the name shown is masked as the text it came from.
+  const forwardedFrom = forwardedOrigin(masked(mail.subject, rules), {
+    quoted: quoted.map((block) => ({ header: block.header.text, text: block.text.text })),
+  })
   return {
     ownText: own.text,
     ownTextTruncated: read.ownTextTruncated,
@@ -344,6 +357,7 @@ export async function getInboundMailText(session: AuthorizedSession, projectId: 
     })),
     masked: anyMasked,
     unreadable: read.unreadable,
+    forwardedFrom,
   }
 }
 

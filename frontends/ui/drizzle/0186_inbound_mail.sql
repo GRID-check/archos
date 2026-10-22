@@ -714,7 +714,13 @@ CREATE TABLE IF NOT EXISTS "inbound_mails" (
        AND array_to_string("signed_headers", ',') ~ '^([a-z0-9-]+(,[a-z0-9-]+)*)?$'),
   CONSTRAINT "inbound_mails_sender_flags_known"
     CHECK ("sender_flags" <@ ARRAY['not_addressed_to_project', 'bcc_own', 'stale_date',
-                                   'date_out_of_range', 'message_id_reused', 'already_filed']::text[]),
+                                   'date_out_of_range', 'message_id_reused', 'already_filed',
+                                   'claims_member_name']::text[]),
+  -- A member's name on an address that is not theirs: only an outsider's mail
+  -- can claim it, since a member's own address makes the mail `member_*`.
+  CONSTRAINT "inbound_mails_member_name_claim_external"
+    CHECK (NOT ('claims_member_name' = ANY ("sender_flags"))
+       OR "sender_trust" IN ('external_verified', 'external_unverified')),
   -- A member's own Bcc copy is the exception to `not_addressed_to_project`,
   -- never a flag of its own: forgetting the exception then errs safe.
   CONSTRAINT "inbound_mails_bcc_own_paired"

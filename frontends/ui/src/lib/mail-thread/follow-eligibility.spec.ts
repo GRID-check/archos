@@ -154,6 +154,10 @@ describe('followEligibility', () => {
       ).toEqual(['flagged'])
     })
 
+    it('fails alone for a member’s name on an outsider’s address, however well that domain signed', () => {
+      expect(reasons(mail({ senderFlags: ['claims_member_name'] }))).toEqual(['flagged'])
+    })
+
     it('fails alone for automatic mail', () => {
       expect(reasons(mail({ automatic: true }))).toEqual(['automatic'])
     })

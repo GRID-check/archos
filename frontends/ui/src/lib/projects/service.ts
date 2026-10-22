@@ -20,6 +20,7 @@ import {
   listConversationIdsForProject,
 } from '@/lib/conversations/repository'
 import { countDocumentsByProject } from '@/lib/documents/repository'
+import { waitingMailCounts } from '@/lib/inbound-mail/waiting-counts'
 import { computePurgeAfter, projectGraceDays } from '@/lib/deletion/policy'
 import { BadRequestError, ConflictError, NotFoundError } from '@/lib/api/errors'
 import type { AuthorizedSession } from '@/lib/auth/types'
@@ -202,6 +203,8 @@ export async function getProjectsGridData(
   documentCounts: Record<string, number>
   /** ISO timestamp of the caller's own last activity, keyed by project id. */
   viewerActivity: Record<string, string>
+  /** Mails waiting in the project's E-Mail-Eingang, where the caller may open it and one waits (ADR-0134). */
+  mailWaiting: Record<string, number>
 }> {
   const visible = await listProjects(session, order)
   const visibleIds = visible.map((project) => project.id)
@@ -212,15 +215,16 @@ export async function getProjectsGridData(
   // (ADR-0086); each project asks its own reviewers.
   const readers = await Promise.all(visibleIds.map((projectId) => shelfReaderFor(session, { scope: 'project', projectId })))
   const reviewedProjectIds = visibleIds.filter((_, index) => readers[index].kind === 'reviewer')
-  const [documentCounts, viewerActivity] = await Promise.all([
+  const [documentCounts, viewerActivity, mailWaiting] = await Promise.all([
     countDocumentsByProject(session.organizationId, visibleIds, hiddenFolderIds, {
       kind: 'projects',
       userId: session.userId,
       reviewedProjectIds,
     }),
     lastProjectActivityByUser(session.organizationId, session.userId, visibleIds),
+    waitingMailCounts(session, visibleIds),
   ])
-  return { projects: visible, documentCounts, viewerActivity }
+  return { projects: visible, documentCounts, viewerActivity, mailWaiting }
 }
 
 /**

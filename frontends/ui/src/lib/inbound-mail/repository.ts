@@ -832,6 +832,23 @@ export async function listProjectMails(
   return rows.map((row) => ({ mail: row.mail, position: { receivedAt: String(row.receivedAtText), id: row.mail.id } }))
 }
 
+/**
+ * How many mails wait in each of these projects' E-Mail-Eingang: held, with a
+ * part waiting for a person or being filed, the waiting list's own facet. Mail
+ * is the project's, not a reader's, so the caller decides whose projects to ask
+ * about (`waitingMailCounts`). Projects with none are absent.
+ */
+export async function countWaitingMailsByProject(projectIds: readonly string[]): Promise<Map<string, number>> {
+  if (projectIds.length === 0) return new Map()
+  const rows = await getDb()
+    .select({ projectId: inboundMails.projectId, count: sql<string>`count(*)` })
+    .from(inboundMails)
+    .where(and(inArray(inboundMails.projectId, [...projectIds]), eq(inboundMails.status, 'waiting'), partInState(OPEN_PART_STATES)))
+    .groupBy(inboundMails.projectId)
+    .limit(projectIds.length)
+  return new Map(rows.map((row) => [row.projectId, Number(row.count)]))
+}
+
 /** A held or settled mail of the project, or null (receiving and dropped mail is nobody's to read). */
 export async function findProjectMail(projectId: string, mailId: string, executor: DbExecutor = getDb()): Promise<InboundMailRow | null> {
   const [row] = await executor

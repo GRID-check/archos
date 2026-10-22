@@ -54,6 +54,15 @@
  *
  * Addresses are compared ASCII-lowercased and exact, so no Unicode case
  * folding (the Kelvin sign folds to `k`) makes two addresses equal.
+ *
+ * ## A member's name
+ *
+ * An outsider's From whose display name is a member's („Miriam Huber
+ * <miriam.huber@mail.example>“) gets `claims_member_name`, verified or not:
+ * the domain that signed is not the member's. The receive job answers the
+ * question from the directory (`./sender-risk`, `claimsMemberName`), and what
+ * the verdict then asks of a person (acknowledgement, impersonation) is
+ * `./sender-risk`'s, written once.
  */
 
 import { Resolver } from 'node:dns/promises'
@@ -389,15 +398,6 @@ export function isTransientReason(reason: SenderReason): boolean {
   return reason === 'dkim_temperror' || reason === 'verifier_timeout' || reason === 'verifier_error'
 }
 
-/**
- * Reasons that say the From domain's own signature is broken or refused by
- * policy, rather than merely absent. Only these (and a look-alike domain) may
- * be shown as someone pretending to be a member; a plain unsigned mail never is.
- */
-export function isRejectedSignature(reason: SenderReason): boolean {
-  return reason === 'dkim_fail' || reason === 'dkim_policy' || reason === 'dkim_weak_algorithm' || reason === 'dkim_short_key'
-}
-
 // ---------------------------------------------------------------------------
 // The verdict
 // ---------------------------------------------------------------------------
@@ -405,6 +405,11 @@ export function isRejectedSignature(reason: SenderReason): boolean {
 export interface JudgeSenderInput {
   /** The directory member whose address equals `authentication.fromAddress`, ASCII-lowercased and exact; null for none. */
   memberUserId: string | null
+  /**
+   * The From display name is a member's name (`./sender-risk`, `claimsMemberName`).
+   * Only an outsider's address is flagged for it: a member's own address already makes the mail `member_*`.
+   */
+  claimsMemberName?: boolean
   /** When the webhook received the mail. */
   receivedAt: Date
   /** The Date header (`MailHeaders.sentAtHeader`); a verified mail's Date is signed. */
@@ -450,6 +455,7 @@ export function judgeSender(authentication: SenderAuthentication, input: JudgeSe
   }
   if (verified && age !== null && age > STALE_DATE_MS) flags.push('stale_date')
   if (clamped.outOfRange) flags.push('date_out_of_range')
+  if (!member && input.claimsMemberName) flags.push('claims_member_name')
   return {
     trust,
     senderUserId: member ? input.memberUserId : null,
@@ -461,22 +467,6 @@ export function judgeSender(authentication: SenderAuthentication, input: JudgeSe
     sentAt: clamped.sentAt,
     sentAtHeader: input.sentAtHeader,
   }
-}
-
-/**
- * Whether filing anything of this mail needs the person's explicit
- * acknowledgement of the sender (`acknowledgeSender`, ADR-0134 check C2): a
- * member's address without a verified domain, a signature the From domain's
- * own key refuses, a verified mail not addressed to the project (except the
- * member's own Bcc copy), or a stale signed Date. Never for a plain unsigned
- * mail from outside: that is the ordinary case, and an acknowledgement asked
- * for every time is one nobody reads.
- */
-export function requiresSenderAcknowledgement(verdict: Pick<SenderVerdict, 'trust' | 'flags' | 'reason'>): boolean {
-  if (verdict.trust === 'member_unverified') return true
-  if (isRejectedSignature(verdict.reason)) return true
-  if (verdict.flags.includes('not_addressed_to_project') && !verdict.flags.includes('bcc_own')) return true
-  return verdict.flags.includes('stale_date')
 }
 
 /** The Date header of the raw block, for callers that have no `MailHeaders` (the unreadable path). */

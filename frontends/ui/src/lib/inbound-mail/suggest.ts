@@ -25,10 +25,16 @@
  *
  * ## Who is asked about
  *
- * A mail whose sender's domain was confirmed, and that is no list or bulk
- * mail: an unconfirmed sender's mail and automatic mail get no model call
- * ({@link suggestionSkipReason}). A suggestion never files anything; a person
- * files, and may take it with one tap („Wie vorgeschlagen ablegen“).
+ * A mail whose sender's domain was confirmed, that reads as nobody pretending,
+ * and that is no list or bulk mail: an unconfirmed sender's mail (a member's
+ * address included), an impersonation (`./sender-risk`: a rejected signature,
+ * or a member's name on another address, however well its own domain signed)
+ * and automatic mail get no model call ({@link suggestionSkipReason}). A
+ * suggestion on such a mail would put Piloti's weight behind a stranger's
+ * claim, which is what a payment-diversion mail is built to borrow. The views
+ * drop a stored suggestion by the same rule, so one written before the rule
+ * changed is never shown. A suggestion never files anything; a person files,
+ * and may take it with one tap („Wie vorgeschlagen ablegen“).
  *
  * ## Whether it was followed
  *
@@ -53,6 +59,7 @@ import type {
 import { MAX_JUDGED_DOCUMENTS } from '@/lib/filing/types'
 import { folderPathKey } from '@/lib/projects/folders'
 import type { InboundMailDecision } from './inbound-mail-wire'
+import { impersonationOf } from './sender-risk'
 
 // ---------------------------------------------------------------------------
 // The stored suggestion
@@ -91,19 +98,27 @@ export function readSuggestion(stored: unknown): InboundMailSuggestion | null {
 /** Why a mail gets no suggestion; null when it is asked about. */
 export type SuggestionSkipReason =
   | 'not_waiting'
+  | 'impersonation'
   | 'external_unverified'
+  | 'member_unverified'
   | 'automatic'
   | 'project_closed'
   | 'switched_off'
   | 'budget'
   | 'nothing_to_place'
 
-/** The reasons that need no lookup: the mail's own state and labels. */
+/**
+ * The reasons that need no lookup: the mail's own state and labels, in this
+ * order. Pure and browser-safe: the E-Mail-Eingang says „Piloti macht hierfür
+ * keine Vorschläge“ by this same function.
+ */
 export function suggestionSkipReason(
-  mail: Pick<InboundMailRow, 'status' | 'senderTrust' | 'automatic'>,
+  mail: Pick<InboundMailRow, 'status' | 'senderTrust' | 'senderReason' | 'senderFlags' | 'automatic'>,
 ): SuggestionSkipReason | null {
-  if (mail.status !== 'waiting' || !mail.senderTrust) return 'not_waiting'
+  if (mail.status !== 'waiting' || !mail.senderTrust || !mail.senderReason) return 'not_waiting'
+  if (impersonationOf({ trust: mail.senderTrust, reason: mail.senderReason, flags: mail.senderFlags })) return 'impersonation'
   if (mail.senderTrust === 'external_unverified') return 'external_unverified'
+  if (mail.senderTrust === 'member_unverified') return 'member_unverified'
   if (mail.automatic) return 'automatic'
   return null
 }

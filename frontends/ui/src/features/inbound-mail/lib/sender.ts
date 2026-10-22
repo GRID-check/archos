@@ -11,15 +11,16 @@
  * Domain nicht bestätigt“, because most unsigned mail is a misconfigured
  * server and not an attack.
  *
- * Pure. The server's own rules live in `lib/inbound-mail/decision.ts`
- * (server-only); {@link senderNeedsAcknowledgement} restates the one the
- * decision bar needs and its spec holds the two to the same cases.
+ * Pure, and wording only: whether the sender reads as an impersonation, and
+ * whether filing needs the person's acknowledgement, are the server's
+ * (`lib/inbound-mail/sender-risk.ts`), read off the view as `impersonation`
+ * and `needsSenderAcknowledgement`.
  */
 
-import type { InboundMailSenderView } from '@/lib/inbound-mail/inbound-mail-wire'
-import type { SenderFlag } from '@/lib/inbound-mail/inbound-mail-vocabulary'
+import type { InboundMailSenderView, InboundMailView } from '@/lib/inbound-mail/inbound-mail-wire'
+import type { ImpersonationBasis, SenderFlag } from '@/lib/inbound-mail/inbound-mail-vocabulary'
 import { FOLLOW_REFUSING_FLAGS } from '@/lib/mail-thread/follow-eligibility'
-import { isOwnBccCopy, senderPreselectionBlocks } from '@/lib/mail-thread/mail-threading'
+import { isOwnBccCopy } from '@/lib/mail-thread/mail-threading'
 
 /** The one line that says how far the sender is confirmed. */
 export type SenderTrustLine =
@@ -29,26 +30,27 @@ export type SenderTrustLine =
   | { kind: 'bcc_own'; domain: string | null }
   /** A member's address without a valid signature: shown as a member, unconfirmed. */
   | { kind: 'member_unverified' }
-  /** A failed signature or a refusing policy on a member's address: someone claims to be them. */
-  | { kind: 'impersonation'; name: string }
+  /** The server reads the mail as someone pretending (a rejected signature, or a member's name on another address). */
+  | { kind: 'impersonation'; name: string; basis: ImpersonationBasis }
   /** Anyone else whose domain did not sign. */
   | { kind: 'unverified' }
 
 /** How the line is drawn: a quiet fact, or a warning the reader must see before filing. */
 export type SenderTone = 'confirmed' | 'neutral' | 'warning'
 
-/** The reasons that are evidence of a forgery rather than of a missing signature. */
-const FORGERY_REASONS = new Set<InboundMailSenderView['reason']>(['dkim_fail', 'dkim_policy'])
-
-export function senderTrustLine(sender: InboundMailSenderView): SenderTrustLine {
+/**
+ * The line for this sender. An impersonation (`view.impersonation`, the
+ * server's) outranks everything else: a member's name on an outsider's
+ * address may well be „Domain bestätigt“ for the outsider's own domain, and
+ * that line must not be the one a person reads.
+ */
+export function senderTrustLine(sender: InboundMailSenderView, impersonation: InboundMailView['impersonation']): SenderTrustLine {
+  if (impersonation) return { kind: 'impersonation', name: sender.name?.trim() || sender.address, basis: impersonation }
   if (isOwnBccCopy({ senderTrust: sender.trust, senderFlags: sender.flags })) {
     return { kind: 'bcc_own', domain: sender.signerDomain ?? sender.domain }
   }
   if (sender.trust === 'member_verified' || sender.trust === 'external_verified') {
     return { kind: 'verified', domain: sender.signerDomain ?? sender.domain ?? sender.address }
-  }
-  if (FORGERY_REASONS.has(sender.reason)) {
-    return { kind: 'impersonation', name: sender.name?.trim() || sender.address }
   }
   return sender.trust === 'member_unverified' ? { kind: 'member_unverified' } : { kind: 'unverified' }
 }
@@ -80,34 +82,6 @@ export function senderFlagLines(sender: Pick<InboundMailSenderView, 'trust' | 'f
   else if (sender.flags.includes('date_out_of_range')) shown.push('date_out_of_range')
   if (sender.flags.includes('already_filed')) shown.push('already_filed')
   return shown
-}
-
-/**
- * Whether filing anything of this mail needs the person to accept its sender
- * („Domain nicht bestätigt. Trotzdem ablegen“, `acknowledgeSender`): a
- * member's address without their domain's signature, a failed signature or a
- * refusing policy, a mail addressed to others outside the member's own Bcc
- * copy, or a Date more than seven days old. A stranger's plain unsigned mail
- * needs none: it is labelled and never pre-selected.
- *
- * The mirror of `senderNeedsAcknowledgement` in `lib/inbound-mail/decision.ts`.
- */
-export function senderNeedsAcknowledgement(sender: Pick<InboundMailSenderView, 'trust' | 'reason' | 'flags'>): boolean {
-  if (sender.trust === 'member_unverified') return true
-  if (FORGERY_REASONS.has(sender.reason)) return true
-  if (sender.flags.includes('not_addressed_to_project') && !isOwnBccCopy({ senderTrust: sender.trust, senderFlags: sender.flags })) {
-    return true
-  }
-  return sender.flags.includes('stale_date')
-}
-
-/**
- * Whether a Fassung of an earlier document from this sender needs the
- * `unverified_thread` acknowledgement (D11): the same blocks that keep a
- * thread from being pre-selected.
- */
-export function revisionNeedsAcknowledgement(sender: Pick<InboundMailSenderView, 'trust' | 'flags'>): boolean {
-  return senderPreselectionBlocks({ senderTrust: sender.trust, senderFlags: sender.flags }).length > 0
 }
 
 /** Initials-free fallback name for a sender: the display name, else the local part of the address. */

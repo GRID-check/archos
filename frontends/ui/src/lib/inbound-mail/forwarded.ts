@@ -10,6 +10,12 @@
  * geprüft“. Nothing verified it; the label must never look like the trust
  * line above it.
  *
+ * Read on the server, where the text is (`inbound-mail-text-get` answers it as
+ * `forwardedFrom`, masked like the rest of the text), so every client of the
+ * route gets the same answer. It is text a stranger wrote, which is why it
+ * travels with the text and not on `inbound-mail-get`, which Piloti reads
+ * (D7, D22).
+ *
  * Pure.
  */
 

@@ -56,6 +56,8 @@ interface ProjectsGridProps {
   docCounts: Record<string, number>
   /** ISO timestamp of the VIEWER's own last activity, keyed by project id. */
   viewerActivity?: Record<string, string>
+  /** Mails waiting for this viewer in each project's E-Mail-Eingang, keyed by project id (`waitingMailCounts`). */
+  mailWaiting?: Record<string, number>
   /** Open the create dialog on mount — wired to `/app/projects?new=1`. */
   autoOpenCreate?: boolean
 }
@@ -89,6 +91,7 @@ export function ProjectsGrid({
   projects,
   docCounts,
   viewerActivity = {},
+  mailWaiting = {},
   autoOpenCreate = false,
 }: ProjectsGridProps): JSX.Element {
   const t = useTranslations('projects')
@@ -281,6 +284,7 @@ export function ProjectsGrid({
                         project={project}
                         docCount={docCounts[project.id] ?? 0}
                         activityAt={viewerActivity[project.id]}
+                        mailWaiting={mailWaiting[project.id] ?? 0}
                       />
                     </div>
                   ))}

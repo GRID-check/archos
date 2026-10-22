@@ -25,7 +25,7 @@ import { useLocale, useTranslations } from '@/i18n'
 import type { InboundMailSummaryView } from '@/lib/inbound-mail/inbound-mail-wire'
 import { formatCalendarDate } from '@/lib/format'
 import { cn } from '@/lib/utils'
-import { displaySubject } from '../lib/subject'
+import { displaySubject } from '@/lib/inbound-mail/subject'
 import { SenderTrustGlyph } from './sender-trust'
 
 export interface InboundMailRowProps {
@@ -50,8 +50,8 @@ export function InboundMailRow({ mail, href, open, focused, checked, onCheckedCh
   const who = mail.senderName?.trim() || mail.senderDomain || '—'
   const waiting = mail.status === 'waiting'
   const outcomes = (['filed', 'dismissed', 'expired'] as const).filter((outcome) => mail.outcomes[outcome] > 0)
-  // The text was appended by a follow when nothing of the text waits but its attachments do.
-  const textFollowed = waiting && mail.outcomes.filed > 0 && mail.waitingParts === mail.attachments && mail.attachments > 0
+  // A follow appended the text; its attachments still wait for a person (D31).
+  const textFollowed = waiting && mail.followedBy !== null
 
   return (
     <li
@@ -105,7 +105,7 @@ export function InboundMailRow({ mail, href, open, focused, checked, onCheckedCh
             <TimeAgo date={mail.receivedAt} locale={locale} className="text-muted-foreground shrink-0 text-xs tabular-nums" />
           </div>
           <p className="text-muted-foreground flex min-w-0 items-center gap-1.5 text-xs">
-            {mail.automatic ? <Bot className="size-3.5 shrink-0" aria-label={t('row.automatic')} /> : <SenderTrustGlyph trust={mail.senderTrust} flags={mail.senderFlags} />}
+            {mail.automatic ? <Bot className="size-3.5 shrink-0" aria-label={t('row.automatic')} /> : <SenderTrustGlyph trust={mail.senderTrust} flags={mail.senderFlags} impersonation={mail.impersonation} />}
             <span className="min-w-0 truncate">
               {who}
               {mail.senderDomain && mail.senderName && <span> · {mail.senderDomain}</span>}

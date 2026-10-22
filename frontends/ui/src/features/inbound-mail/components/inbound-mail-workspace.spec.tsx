@@ -26,6 +26,7 @@ import {
   PROJECT_NAME,
   fixtureAddressClient,
   fixtureClient,
+  listPage,
 } from '@/app/dev/inbound-mail/fixtures'
 import { resetInboundMailWaitingForTests } from '../hooks/use-inbound-mail-waiting'
 import { InboundMailWorkspace } from './inbound-mail-workspace'
@@ -42,7 +43,7 @@ function renderWorkspace(variant: string, overrides: Partial<Parameters<typeof I
       folders={FOLDERS}
       status={status}
       outcome={fixture.outcome ?? null}
-      initialList={fixture.load ? null : { items: fixture.items.filter((item) => item.status === status), nextCursor: fixture.nextCursor ?? null }}
+      initialList={fixture.load ? null : listPage(fixture.items.filter((item) => item.status === status), fixture.nextCursor ?? null)}
       initialListFailed={fixture.load === 'error'}
       mailId={null}
       initialMail={null}
@@ -67,7 +68,7 @@ describe('InboundMailWorkspace', () => {
   it('groups a conversation with one button that files it as suggested', async () => {
     renderWorkspace('selected')
     const group = screen.getByRole('region', { name: /Mail thread “Stellplatznachweis” · 4 new mails/ })
-    expect(within(group).getByTestId('thread-group-file')).toHaveTextContent('File 4 mails in mail thread “Stellplatznachweis” (becomes revision 7)')
+    expect(within(group).getByTestId('thread-group-file')).toHaveTextContent('File 4 mails in mail thread “Stellplatznachweis” (becomes revisions 4–7)')
     await userEvent.click(within(group).getByTestId('thread-group-file'))
     const destinations = await screen.findByTestId('bulk-destinations')
     expect(destinations).toHaveTextContent('In mail thread “Stellplatznachweis”: 4')

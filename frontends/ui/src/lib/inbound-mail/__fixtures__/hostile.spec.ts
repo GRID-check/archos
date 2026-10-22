@@ -19,7 +19,8 @@ import { describe, expect, it } from 'vitest'
 import { redactProjectAddresses } from '../address'
 import { classifyAutomaticMail } from '../automatic-mail'
 import { MAX_FORWARD_DEPTH, MAX_HEADER_BLOCK_BYTES, rawHeaderFields, readMime, SNIFF_BYTES, type MimeRead } from '../mime'
-import { authenticateSender, judgeSender, MAX_DKIM_SIGNATURES, requiresSenderAcknowledgement } from '../sender-auth'
+import { authenticateSender, judgeSender, MAX_DKIM_SIGNATURES } from '../sender-auth'
+import { senderNeedsAcknowledgement } from '../sender-risk'
 import {
   attachment,
   BODY,
@@ -240,7 +241,7 @@ describe('hostile: senders', () => {
     const { verdict, result, lookups } = await judge(await build())
     expect(result.reason).toBe(reason)
     expect(verdict.trust).toBe('member_unverified')
-    expect(requiresSenderAcknowledgement(verdict)).toBe(true)
+    expect(senderNeedsAcknowledgement(verdict)).toBe(true)
     expect(lookups).toBeLessThanOrEqual(4)
   })
 
@@ -266,7 +267,7 @@ describe('hostile: senders', () => {
     const raw = await sign(message(undefined, { To: 'bauherr@extern.at' }))
     const { verdict } = await judge(raw, undefined, 'user_1', new Date(SENT.getTime() + 3 * DAY))
     expect(verdict).toMatchObject({ trust: 'member_verified', flags: ['not_addressed_to_project'] })
-    expect(requiresSenderAcknowledgement(verdict)).toBe(true)
+    expect(senderNeedsAcknowledgement(verdict)).toBe(true)
   })
 
   it('a stale signed Date: stale_date', async () => {

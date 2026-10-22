@@ -2,8 +2,9 @@
  * The decision a person is making about one held mail, before they press the
  * button, and the request it becomes (`inbound-mail-file`, D26).
  *
- * The draft starts as Piloti's suggestion and the server's candidates
- * (`initialDraft`), so pressing „Ablegen“ IS taking the suggestion over
+ * The draft starts as Piloti's suggestion, the server's candidates and the
+ * server's defaults (`preselected` on each part, `initialDraft`), so pressing
+ * „Ablegen“ IS taking the suggestion over
  * (CONTEXT: Piloti's findings are Vorschläge until a person takes them over);
  * every field the person edits stops being Piloti's (`suggested`). The button
  * label, the bulk confirmation and the request are all read off the same
@@ -19,9 +20,9 @@ import type {
   InboundMailThreadCandidateView,
   InboundMailView,
 } from '@/lib/inbound-mail/inbound-mail-wire'
+import { defaultThread, messageSelectable as partMessageSelectable } from '@/lib/inbound-mail/review-defaults'
+import { displaySubject } from '@/lib/inbound-mail/subject'
 import { attachmentCase, type AttachmentCase } from './attachment-case'
-import { senderNeedsAcknowledgement } from './sender'
-import { displaySubject } from './subject'
 import { readSuggestion, type PartSuggestion } from './suggestion'
 
 /** A folder of the project the person may see, with its full path and whether they may file into it. */
@@ -131,11 +132,6 @@ function attachmentDraft(entry: AttachmentCase, folders: readonly FolderOption[]
   }
 }
 
-/** The candidate the text goes to by default: a pre-selected thread with room (D11). */
-export function defaultThread(view: Pick<InboundMailView, 'threadCandidates'>): InboundMailThreadCandidateView | null {
-  return view.threadCandidates.find((candidate) => candidate.preselected && !candidate.full) ?? null
-}
-
 /** The folder a new thread goes to by default: a correspondence folder the person may write, else the root. */
 export function defaultThreadFolder(folders: readonly FolderOption[]): FolderTarget {
   const folder = folders.find((option) => option.writable && CORRESPONDENCE_FOLDER.test(option.path))
@@ -156,7 +152,7 @@ export function newThreadTarget(view: Pick<InboundMailView, 'subject' | 'parts'>
 /** Whether the mail's own text can be filed at all: waiting, read, and the project open. */
 export function messageSelectable(view: InboundMailView): boolean {
   const part = view.parts.find((candidate) => candidate.kind === 'message')
-  return !!part && part.state === 'waiting' && !part.riskFlags.includes('unreadable') && !view.projectClosed
+  return !!part && partMessageSelectable(part, view.projectClosed)
 }
 
 export function initialDraft(view: InboundMailView, folders: readonly FolderOption[], copy: DraftCopy): MailDraft {
@@ -167,10 +163,9 @@ export function initialDraft(view: InboundMailView, folders: readonly FolderOpti
   let message: MessageDraft | null = null
   if (messagePart) {
     const thread = defaultThread(view)
-    const alreadyFiled = view.sender?.flags.includes('already_filed') ?? false
     message = {
       partId: messagePart.id,
-      checked: messageSelectable(view) && !alreadyFiled,
+      checked: messageSelectable(view) && messagePart.preselected,
       target: thread ? { kind: 'append', threadId: thread.threadId } : newThreadTarget(view, folders, copy),
       findingChoice: messagePart.contentFindings.length > 0 ? 'masked' : null,
       acknowledgeThread: false,
@@ -268,7 +263,7 @@ export function draftSummary(view: InboundMailView, draft: MailDraft): DraftSumm
   const text = !!draft.message?.checked && messageSelectable(view)
   const candidate = text ? appendCandidate(view, draft) : null
   const files = checked.length
-  const needsSender = files + (text ? 1 : 0) > 0 && !!view.sender && senderNeedsAcknowledgement(view.sender)
+  const needsSender = files + (text ? 1 : 0) > 0 && view.needsSenderAcknowledgement
 
   const blockers: DraftBlocker[] = []
   if (view.projectClosed) blockers.push({ kind: 'project_closed' })
@@ -357,7 +352,7 @@ export function decisionOf(view: InboundMailView, draft: MailDraft, options: { b
 
   const decision: InboundMailDecision = { mailId: view.id, ifMatch: draft.ifMatch, parts, message }
   if (options.bulk) return decision
-  if (draft.acknowledgeSender && view.sender && senderNeedsAcknowledgement(view.sender) && (parts.length > 0 || message)) {
+  if (draft.acknowledgeSender && view.needsSenderAcknowledgement && (parts.length > 0 || message)) {
     decision.acknowledgeSender = true
   }
   if (acknowledged.length > 0) decision.acknowledgeRisk = acknowledged

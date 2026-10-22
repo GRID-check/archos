@@ -124,9 +124,9 @@ export type SenderReason = (typeof SENDER_REASONS)[number]
 
 /**
  * Facts about one mail's sender that shape defaults (`sender_flags`, D4, D11,
- * D33). Each one disables pre-selection and following. The first four come
- * from `./sender-auth`; `message_id_reused` and `already_filed` from the
- * receive job's Message-ID lookup.
+ * D33). Each one disables pre-selection and following. The first four and
+ * `claims_member_name` come from `./sender-auth`; `message_id_reused` and
+ * `already_filed` from the receive job's Message-ID lookup.
  *
  * - `not_addressed_to_project`: a verified mail whose signed To and Cc do not
  *   name the project's address: a member's mail to someone else, replayed.
@@ -140,6 +140,11 @@ export type SenderReason = (typeof SENDER_REASONS)[number]
  *   the receipt time stands in for it.
  * - `message_id_reused`: the project already received this Message-ID.
  * - `already_filed`: and its own text is the same, so it is in a Verlauf already.
+ * - `claims_member_name`: the From display name is a directory member's name,
+ *   but the address is not that member's (`./sender-risk`,
+ *   `claimsMemberName`): „Miriam Huber <miriam.huber@mail.example>“. The
+ *   classic payment-diversion mail. Only on an `external_*` mail (the database
+ *   holds the pairing): a member's own address is a `member_*` mail.
  */
 export const SENDER_FLAGS = [
   'not_addressed_to_project',
@@ -148,8 +153,32 @@ export const SENDER_FLAGS = [
   'date_out_of_range',
   'message_id_reused',
   'already_filed',
+  'claims_member_name',
 ] as const
 export type SenderFlag = (typeof SENDER_FLAGS)[number]
+
+/**
+ * How much a held mail's sender asks of the person before anything of it is
+ * filed (`./sender-risk`, `riskLevel` on the views). Not stored: derived from
+ * the sender's trust, reason and flags on every read.
+ *
+ * - `impersonation`: the mail may be someone pretending (a signature the From
+ *   domain refuses, or a member's name on another address). Nothing of it is
+ *   pre-selected, Piloti suggests nothing, and filing needs `acknowledgeSender`.
+ * - `caution`: filing needs `acknowledgeSender` (a member's address without
+ *   its domain's signature, a mail addressed to others, a stale Date).
+ * - `none`: nothing to accept.
+ */
+export const SENDER_RISK_LEVELS = ['none', 'caution', 'impersonation'] as const
+export type SenderRiskLevel = (typeof SENDER_RISK_LEVELS)[number]
+
+/**
+ * Why a mail reads as an impersonation: the From domain's own signature
+ * failed, or its policy refused it (`rejected_signature`); or the display name
+ * is a member's while the address is not theirs (`member_name`).
+ */
+export const IMPERSONATION_BASES = ['rejected_signature', 'member_name'] as const
+export type ImpersonationBasis = (typeof IMPERSONATION_BASES)[number]
 
 /**
  * A malware scan's outcome (ADR-0133, `lib/malware-scan`). Only `clean` lets a

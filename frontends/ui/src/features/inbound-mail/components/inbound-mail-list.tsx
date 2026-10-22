@@ -19,12 +19,15 @@ import { LoadError } from '@/components/ui/load-error'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { useTranslations } from '@/i18n'
-import type { InboundMailListStatus, InboundMailOutcome, InboundMailSummaryView } from '@/lib/inbound-mail/inbound-mail-wire'
+import type { InboundMailListStatus, InboundMailOutcome, InboundMailSummaryView, InboundMailThreadGroupView } from '@/lib/inbound-mail/inbound-mail-wire'
 import { cn } from '@/lib/utils'
 import type { ListSection } from '../lib/list-sections'
 import { InboundMailRow } from './inbound-mail-row'
 
-export type ListState = { kind: 'loading' } | { kind: 'error' } | { kind: 'ready'; items: InboundMailSummaryView[]; nextCursor: string | null }
+export type ListState =
+  | { kind: 'loading' }
+  | { kind: 'error' }
+  | { kind: 'ready'; items: InboundMailSummaryView[]; threadGroups: InboundMailThreadGroupView[]; nextCursor: string | null }
 
 export interface InboundMailListProps {
   state: ListState
@@ -223,7 +226,7 @@ function ListBody({
                   onClick={() => onFileGroup(section.threadId, section.mails.map((mail) => mail.id))}
                   data-testid="thread-group-file"
                 >
-                  {t('group.threadAction', { count: section.mails.length, name: section.name, version: section.finalVersion })}
+                  {t('group.threadAction', { count: section.mails.length, name: section.name, first: section.firstVersion, last: section.lastVersion })}
                 </BusyButton>
               </div>
               <ul className="divide-y">{section.mails.map(row)}</ul>

@@ -19,7 +19,7 @@ import { use, useMemo } from 'react'
 import { I18nProvider } from '@/i18n'
 import { InboundMailWorkspace } from '@/features/inbound-mail/components/inbound-mail-workspace'
 import type { InboundMailPaths } from '@/features/inbound-mail/lib/paths'
-import { ADDRESS_VARIANTS, DETAIL_BY_ID, FIXTURE_NOW, FOLDERS, LIST_VARIANTS, PROJECT_ID, PROJECT_NAME, fixtureAddressClient, fixtureClient } from './fixtures'
+import { ADDRESS_VARIANTS, DETAIL_BY_ID, FIXTURE_NOW, FOLDERS, LIST_VARIANTS, PROJECT_ID, PROJECT_NAME, fixtureAddressClient, fixtureClient, listPage } from './fixtures'
 import { DevVariantStrip } from './dev-chrome'
 
 type SearchParams = Record<string, string | string[] | undefined>
@@ -67,7 +67,7 @@ export default function InboundMailDevPage({ searchParams }: { searchParams: Pro
           folders={FOLDERS}
           status={status}
           outcome={outcome}
-          initialList={fixture.load ? null : { items: fixture.items.filter((item) => item.status === status), nextCursor: fixture.nextCursor ?? null }}
+          initialList={fixture.load ? null : listPage(fixture.items.filter((item) => item.status === status), fixture.nextCursor ?? null)}
           initialListFailed={fixture.load === 'error'}
           listLoading={fixture.load === 'loading'}
           mailId={mailId}

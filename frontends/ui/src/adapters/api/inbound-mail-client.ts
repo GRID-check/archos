@@ -31,13 +31,17 @@ import { ApiRequestError } from './api-error'
 const enc = encodeURIComponent
 const projectBase = (projectId: string) => `/api/projects/${enc(projectId)}`
 
-/** The server's refusal as an error: its message, status and `details.reason`. */
+/** The server's refusal as an error: its message, status, `details.reason` and the rest of `details` (a name stop's `terms`). */
 async function requestError(response: Response, fallback: string): Promise<ApiRequestError> {
   const body: unknown = await response.json().catch(() => null)
-  const envelope = (body ?? {}) as { error?: unknown; details?: { reason?: unknown } }
+  const envelope = (body ?? {}) as { error?: unknown; details?: unknown }
   const message = typeof envelope.error === 'string' && envelope.error ? envelope.error : `${fallback}: ${response.status}`
-  const reason = typeof envelope.details?.reason === 'string' ? envelope.details.reason : null
-  return new ApiRequestError(message, response.status, reason)
+  const details =
+    envelope.details && typeof envelope.details === 'object' && !Array.isArray(envelope.details)
+      ? (envelope.details as Record<string, unknown>)
+      : null
+  const reason = typeof details?.reason === 'string' ? details.reason : null
+  return new ApiRequestError(message, response.status, reason, details)
 }
 
 async function request<T>(url: string, fallback: string, init: RequestInit = {}): Promise<T> {

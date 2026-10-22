@@ -11,9 +11,11 @@
  * In order, each a reason to ask nothing:
  *  1. Filing suggestions are switched off for the deployment
  *     (`GRID_FILING_SUGGESTIONS=off`, the same switch as an upload's).
- *  2. The mail is gone, decided or not this project's; its sender's domain is
- *     unconfirmed; it is list or bulk mail. The receive job does not queue the
- *     last two, and this re-checks them.
+ *  2. The mail is gone, decided or not this project's; it reads as an
+ *     impersonation (a rejected signature, or a member's name on another
+ *     address, `./sender-risk`); its sender's domain is unconfirmed; it is
+ *     list or bulk mail (`suggestionSkipReason`). The receive job does not
+ *     queue these either, and this re-checks them.
  *  3. The project is closed: nothing can be filed into it.
  *  4. Nothing to place: no attachment with a name that passed the check, and a
  *     text that already matched a Verlauf.

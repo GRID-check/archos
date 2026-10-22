@@ -29,9 +29,9 @@ import {
   BCC_WINDOW_MS,
   evidenceLine,
   judgeSender,
-  requiresSenderAcknowledgement,
   type SenderAuthentication,
 } from './sender-auth'
+import { senderNeedsAcknowledgement } from './sender-risk'
 
 const DAY = 24 * 60 * 60 * 1000
 
@@ -312,13 +312,13 @@ describe('judgeSender: replay, Bcc and stale dates', () => {
   it("flags a member's signed mail to someone else, received a week later: a replay", () => {
     const verdict = judgeSender(notAddressed, { memberUserId: 'user_1', receivedAt: new Date(SENT.getTime() + 2 * DAY), sentAtHeader: SENT })
     expect(verdict.flags).toEqual(['not_addressed_to_project'])
-    expect(requiresSenderAcknowledgement(verdict)).toBe(true)
+    expect(senderNeedsAcknowledgement(verdict)).toBe(true)
   })
 
   it("treats the member's own copy within a day as their Bcc: both flags, no acknowledgement", () => {
     const verdict = judgeSender(notAddressed, { memberUserId: 'user_1', receivedAt: RECEIVED, sentAtHeader: SENT })
     expect(verdict.flags).toEqual(['not_addressed_to_project', 'bcc_own'])
-    expect(requiresSenderAcknowledgement(verdict)).toBe(false)
+    expect(senderNeedsAcknowledgement(verdict)).toBe(false)
   })
 
   it('holds the Bcc window at exactly one day', () => {
@@ -340,7 +340,24 @@ describe('judgeSender: replay, Bcc and stale dates', () => {
   it('flags a signed Date more than seven days old as stale, and asks for an acknowledgement', () => {
     const verdict = judgeSender(verifiedAuth(), { memberUserId: 'user_1', receivedAt: new Date(SENT.getTime() + 8 * DAY), sentAtHeader: SENT })
     expect(verdict.flags).toEqual(['stale_date'])
-    expect(requiresSenderAcknowledgement(verdict)).toBe(true)
+    expect(senderNeedsAcknowledgement(verdict)).toBe(true)
+  })
+})
+
+describe('judgeSender: a member’s name on another address', () => {
+  const plain = { receivedAt: RECEIVED, sentAtHeader: SENT }
+
+  it('flags an outsider whose display name is a member’s, signed or not', () => {
+    expect(judgeSender(unverifiedAuth('dkim_none'), { ...plain, memberUserId: null, claimsMemberName: true }).flags).toEqual(['claims_member_name'])
+    expect(judgeSender(verifiedAuth(), { ...plain, memberUserId: null, claimsMemberName: true }).flags).toEqual(['claims_member_name'])
+  })
+
+  it('never flags a member’s own address: that is a member’s mail, verified or not', () => {
+    expect(judgeSender(unverifiedAuth('dkim_none'), { ...plain, memberUserId: 'user_1', claimsMemberName: true }).flags).toEqual([])
+  })
+
+  it('asks for the acknowledgement even when the outsider’s own domain signed', () => {
+    expect(senderNeedsAcknowledgement(judgeSender(verifiedAuth(), { ...plain, memberUserId: null, claimsMemberName: true }))).toBe(true)
   })
 })
 
@@ -356,20 +373,20 @@ describe('judgeSender: the send time', () => {
   })
 })
 
-describe('requiresSenderAcknowledgement', () => {
+describe('senderNeedsAcknowledgement', () => {
   const plain = { receivedAt: RECEIVED, sentAtHeader: SENT }
 
   it('asks for a member address without a verified domain', () => {
-    expect(requiresSenderAcknowledgement(judgeSender(unverifiedAuth(), { ...plain, memberUserId: 'user_1' }))).toBe(true)
+    expect(senderNeedsAcknowledgement(judgeSender(unverifiedAuth(), { ...plain, memberUserId: 'user_1' }))).toBe(true)
   })
 
   it("asks when the From domain's own signature fails or is refused by policy", () => {
     for (const reason of ['dkim_fail', 'dkim_policy', 'dkim_weak_algorithm', 'dkim_short_key'] as const) {
-      expect(requiresSenderAcknowledgement(judgeSender(unverifiedAuth(reason), { ...plain, memberUserId: null })), reason).toBe(true)
+      expect(senderNeedsAcknowledgement(judgeSender(unverifiedAuth(reason), { ...plain, memberUserId: null })), reason).toBe(true)
     }
   })
 
   it('never asks for a plain unsigned mail from outside, the ordinary case', () => {
-    expect(requiresSenderAcknowledgement(judgeSender(unverifiedAuth('dkim_none'), { ...plain, memberUserId: null }))).toBe(false)
+    expect(senderNeedsAcknowledgement(judgeSender(unverifiedAuth('dkim_none'), { ...plain, memberUserId: null }))).toBe(false)
   })
 })

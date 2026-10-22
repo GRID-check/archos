@@ -35,13 +35,14 @@ import { requireFolderWrite } from '@/lib/authz/folder-access'
 import type { InboundMailPartRow, InboundMailRow, NewInboundMailDecisionRow } from '@/lib/db/schema'
 import { isAcceptedType } from '@/lib/documents/accepted-types'
 import { documentNameKey } from '@/lib/documents/name-match'
-import { appendNeedsAcknowledgement, isOwnBccCopy, senderPreselectionBlocks } from '@/lib/mail-thread/mail-threading'
+import { appendNeedsAcknowledgement, senderPreselectionBlocks } from '@/lib/mail-thread/mail-threading'
 import { normalizeFolderPath } from '@/lib/projects/folders'
 import { senderEvidenceOf, threadIsFull, type ViewerCandidates } from './candidates'
 import type { InboundMailRefusal } from './inbound-mail-wire'
 import type { InboundMailDecision, InboundMailPartDecision } from './inbound-mail-wire'
 import type { DecisionActor } from './repository'
 import { findDocumentIdByStoredName, type CandidateDocument, type ThreadDocument } from './repository'
+import { senderFactsOf, senderNeedsAcknowledgement as needsAcknowledgement } from './sender-risk'
 
 /** The Dokumentart a filed mail text's thread document carries (D14). */
 export const THREAD_DOCUMENT_TYPE = 'correspondence' as const
@@ -81,20 +82,14 @@ export function mailIfMatch(
 
 /**
  * Whether filing anything of this mail needs the person to accept its sender
- * (`acknowledgeSender`, C2): a member's address without their domain's
- * signature, a signature that failed or a policy that refused it, a verified
- * mail addressed to someone else (the replay of RT-S12, except a member's own
- * recent Bcc copy), or a Date more than seven days old. A plain unsigned mail
- * from a stranger needs none: it is labelled, never pre-selected (RT-X6).
+ * (`acknowledgeSender`, C2): `./sender-risk`'s rule, read off the stored
+ * verdict. A mail a person can read always has one (`inbound_mails_trust_when_shown`).
  */
 export function senderNeedsAcknowledgement(
   mail: Pick<InboundMailRow, 'senderTrust' | 'senderReason' | 'senderFlags'>,
 ): boolean {
-  if (mail.senderTrust === 'member_unverified') return true
-  if (mail.senderReason === 'dkim_fail' || mail.senderReason === 'dkim_policy') return true
-  const sender = { senderTrust: mail.senderTrust ?? 'external_unverified', senderFlags: mail.senderFlags } as const
-  if (mail.senderFlags.includes('not_addressed_to_project') && !isOwnBccCopy(sender)) return true
-  return mail.senderFlags.includes('stale_date')
+  const facts = senderFactsOf(mail)
+  return facts === null || needsAcknowledgement(facts)
 }
 
 /** What a decision is checked against: the request, the office's rules, and the viewer's candidates. */

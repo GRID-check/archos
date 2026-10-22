@@ -48,6 +48,17 @@ describe('who is asked about', () => {
     expect(suggestionSkipReason(heldMail({ status: 'settled' }))).toBe('not_waiting')
     expect(suggestionSkipReason(heldMail({ senderTrust: null }))).toBe('not_waiting')
   })
+
+  it('never about an impersonation, a member’s address its domain did not sign, or a member’s name on another address', () => {
+    // „Dringend: Kontoänderung Honorarnote“ from Miriam Huber’s address, signature failed.
+    expect(suggestionSkipReason(heldMail({ senderTrust: 'member_unverified', senderReason: 'dkim_fail' }))).toBe('impersonation')
+    expect(suggestionSkipReason(heldMail({ senderTrust: 'external_unverified', senderUserId: null, senderReason: 'dkim_policy' }))).toBe('impersonation')
+    // Her name on another address, however well that domain signed.
+    expect(
+      suggestionSkipReason(heldMail({ senderTrust: 'external_verified', senderUserId: null, senderFlags: ['claims_member_name'] })),
+    ).toBe('impersonation')
+    expect(suggestionSkipReason(heldMail({ senderTrust: 'member_unverified', senderReason: 'dkim_none' }))).toBe('member_unverified')
+  })
 })
 
 describe('what is placed', () => {

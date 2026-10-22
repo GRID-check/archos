@@ -55,6 +55,7 @@ export const FOLLOW_REFUSING_FLAGS = [
   'date_out_of_range',
   'message_id_reused',
   'already_filed',
+  'claims_member_name',
 ] as const
 
 /** The headers that must be inside the signature besides the one the match rests on (condition 3). */

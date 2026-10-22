@@ -46,8 +46,7 @@ import {
   type FolderOption,
   type MailDraft,
 } from '../lib/draft'
-import { forwardedOrigin } from '../lib/forwarded'
-import { refusalNeedsReload, refusalOf } from '../lib/refusal'
+import { refusalNeedsReload, refusalOf, refusalTerms } from '../lib/refusal'
 import { followOffered } from '../lib/sender'
 import { missingSuggestionReason } from '../lib/suggestion'
 import { AttachmentPreviewDialog } from './attachment-preview-dialog'
@@ -132,7 +131,8 @@ export function InboundMailDetail({
   const [dismissing, setDismissing] = useState(false)
   const [restoring, setRestoring] = useState(false)
   const [decidedByOther, setDecidedByOther] = useState(decidedByOtherInitially)
-  const [threadNameStopped, setThreadNameStopped] = useState(false)
+  /** The terms a `name_stop` refusal named for the new thread's name; null until one was refused. */
+  const [threadNameStop, setThreadNameStop] = useState<string[] | null>(null)
   const [closedNoticeHidden, setClosedNoticeHidden] = useState(false)
   const [preview, setPreview] = useState<string | null>(null)
   const [followTarget, setFollowTarget] = useState<{ threadId: string; name: string; followed: boolean } | null>(null)
@@ -170,7 +170,7 @@ export function InboundMailDetail({
   // A new mail: read it (unless the page did) and its text.
   useEffect(() => {
     setDecidedByOther(decidedByOtherInitially)
-    setThreadNameStopped(false)
+    setThreadNameStop(null)
     setFollowTarget(null)
     if (!initial || initial.id !== mailId) {
       setState({ kind: 'loading' })
@@ -253,7 +253,7 @@ export function InboundMailDetail({
       await follow(sent, decision.parts.map((part) => part.partId), decision.message ? { name: appended?.name ?? null } : null)
     } catch (error) {
       const code = refusalOf(error)
-      if (code === 'name_stop' && decision.message?.thread.action === 'create') setThreadNameStopped(true)
+      if (code === 'name_stop' && decision.message?.thread.action === 'create') setThreadNameStop(refusalTerms(error))
       toast.error(t(`refusals.${code}`))
       if (refusalNeedsReload(code)) {
         const next = await load()
@@ -323,10 +323,7 @@ export function InboundMailDetail({
     )
   }
 
-  const missing = missingSuggestionReason(
-    { automatic: view.automatic, senderTrust: view.sender?.trust ?? null, receivedAt: view.receivedAt },
-    now
-  )
+  const missing = missingSuggestionReason(view, now)
   const notStaged = notStagedSummary(view.notStaged)
   const waitingParts = view.parts.filter((part) => part.state === 'waiting')
   const anyFiling = view.parts.some((part) => part.state === 'filing')
@@ -403,7 +400,7 @@ export function InboundMailDetail({
 
         <MailHeader
           view={view}
-          forwarded={forwardedOrigin(view.subject, text.kind === 'ready' ? text.text : null)}
+          forwarded={text.kind === 'ready' ? text.text.forwardedFrom : null}
           originalUrl={client.originalUrl(projectId, view.id)}
         />
 
@@ -427,7 +424,7 @@ export function InboundMailDetail({
                 draft={draft.message}
                 folders={folders}
                 copy={copy}
-                threadNameStopped={threadNameStopped}
+                threadNameStop={threadNameStop}
                 onChange={(change) => setDraft((current) => (current ? updateMessage(current, change) : current))}
               />
             </ItemList>

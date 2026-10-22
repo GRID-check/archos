@@ -20,9 +20,11 @@
  * None of them fires while a field has the focus or a dialog is open.
  *
  * BULK. A selection files „wie vorgeschlagen“ only when every selected mail
- * is complete (`incompleteReason`); the selected mails are read to decide
- * that, at most twenty, the most one request may decide. The request carries
- * no acknowledgement (RT-S5), and its confirmation lists where everything goes.
+ * is complete (`incompleteReason`, the server's, on each row): the bar knows
+ * that without a read. Pressing it reads the selected mails (at most twenty,
+ * the most one request may decide) to build the request and checks them once
+ * more as they are now. The request carries no acknowledgement (RT-S5), and
+ * its confirmation lists where everything goes.
  */
 
 import type { JSX } from 'react'
@@ -45,10 +47,11 @@ import {
   type InboundMailOutcome,
   type InboundMailTextView,
   type InboundMailView,
+  type IncompleteReason,
 } from '@/lib/inbound-mail/inbound-mail-wire'
 import { cn } from '@/lib/utils'
 import { inboundMailAddressClient, inboundMailClient, type InboundMailAddressClient, type InboundMailClient } from '../lib/client'
-import { bulkPlan, incompleteReason, type BulkPlan, type IncompleteReason } from '../lib/completeness'
+import { bulkPlan, type BulkPlan } from '../lib/completeness'
 import { decisionOf, initialDraft, type DraftCopy, type FolderOption } from '../lib/draft'
 import { listSections, visibleMails } from '../lib/list-sections'
 import { inboundMailPaths, type InboundMailPaths } from '../lib/paths'
@@ -167,7 +170,8 @@ export function InboundMailWorkspace({
   }, [reload, projectId, client])
 
   const items = useMemo(() => (list.kind === 'ready' ? list.items : []), [list])
-  const sections = useMemo(() => listSections(items, { grouped: status === 'waiting' }), [items, status])
+  const groups = useMemo(() => (list.kind === 'ready' ? list.threadGroups : []), [list])
+  const sections = useMemo(() => listSections(items, { grouped: status === 'waiting', groups }), [items, status, groups])
   const rows = useMemo(() => visibleMails(sections, quietOpen), [sections, quietOpen])
 
   // An empty waiting list is „never used“ or „all done“: the address says which, and is shown in the first.
@@ -187,13 +191,12 @@ export function InboundMailWorkspace({
 
   const selectedIds = useMemo(() => items.filter((mail) => checked.has(mail.id)).map((mail) => mail.id), [items, checked])
   const [views, setViews] = useState<Map<string, InboundMailView>>(new Map())
-  const [checking, setChecking] = useState(false)
   const [bulkFiling, setBulkFiling] = useState<string | null>(null)
   const [bulkDismissing, setBulkDismissing] = useState(false)
   const [confirmFile, setConfirmFile] = useState<{ ids: string[]; plan: BulkPlan } | null>(null)
   const [confirmDismiss, setConfirmDismiss] = useState(false)
 
-  /** Read the mails a bulk action needs (at most twenty), keeping what is already read and current. */
+  /** Read the mails a bulk filing sends (at most twenty), keeping what is already read and current. */
   const readViews = useCallback(
     async (ids: string[]): Promise<Map<string, InboundMailView>> => {
       const updatedAt = new Map(items.map((mail) => [mail.id, mail.updatedAt]))
@@ -208,45 +211,42 @@ export function InboundMailWorkspace({
     [items, views, client, projectId]
   )
 
-  useEffect(() => {
-    if (selectedIds.length === 0 || selectedIds.length > INBOUND_MAIL_DECISION_MAX_MAILS) return
-    let cancelled = false
-    setChecking(true)
-    void readViews(selectedIds).finally(() => !cancelled && setChecking(false))
-    return () => {
-      cancelled = true
+  /** Why these mails cannot be filed as suggested in one request, the first reason with its count; null when they can. */
+  const blockFor = useCallback((ids: string[], reasonOf: (id: string) => IncompleteReason | null): BulkBlock => {
+    if (ids.length > INBOUND_MAIL_DECISION_MAX_MAILS) return { reason: 'too_many', count: ids.length }
+    const reasons = new Map<IncompleteReason, number>()
+    for (const id of ids) {
+      const reason = reasonOf(id)
+      if (reason) reasons.set(reason, (reasons.get(reason) ?? 0) + 1)
     }
-    // oxlint-disable-next-line react-hooks/exhaustive-deps -- read when the selection changes, not when the cache does
-  }, [selectedIds.join(',')])
+    const first = [...reasons.entries()][0]
+    return first ? { reason: first[0], count: first[1] } : null
+  }, [])
 
-  const blockFor = useCallback(
-    (ids: string[], read: Map<string, InboundMailView>): BulkBlock => {
-      if (ids.length > INBOUND_MAIL_DECISION_MAX_MAILS) return { reason: 'too_many', count: ids.length }
-      const reasons = new Map<IncompleteReason, number>()
-      for (const id of ids) {
-        const view = read.get(id)
-        const reason = view ? incompleteReason(view, folders, copy) : 'not_waiting'
-        if (reason) reasons.set(reason, (reasons.get(reason) ?? 0) + 1)
-      }
-      const first = [...reasons.entries()][0]
-      return first ? { reason: first[0], count: first[1] } : null
+  // The list says it per mail (`incompleteReason`), so the bar knows without reading a single mail.
+  const summaryReason = useCallback(
+    (id: string): IncompleteReason | null => {
+      const mail = items.find((candidate) => candidate.id === id)
+      return mail ? mail.incompleteReason : 'not_waiting'
     },
-    [folders, copy]
+    [items]
   )
-
-  const selectionBlock = checking ? null : blockFor(selectedIds, views)
+  const selectionBlock = blockFor(selectedIds, summaryReason)
 
   const askFile = async (ids: string[], groupId: string | null): Promise<void> => {
-    if (groupId) setBulkFiling(groupId)
-    const read = await readViews(ids)
-    if (groupId) setBulkFiling(null)
-    const block = blockFor(ids, read)
-    if (block) {
+    const openFirst = (block: BulkBlock): boolean => {
+      if (!block) return false
       // A group that cannot go in one press is opened at its first mail.
       if (groupId) router.push(paths.mail(ids[0], filter))
       else toast.error(t(`bulk.blocked.${block.reason}`, { count: block.count, max: INBOUND_MAIL_DECISION_MAX_MAILS }))
-      return
+      return true
     }
+    if (openFirst(blockFor(ids, summaryReason))) return
+    if (groupId) setBulkFiling(groupId)
+    const read = await readViews(ids)
+    if (groupId) setBulkFiling(null)
+    // The mails as they are now: one may have changed since the list was read.
+    if (openFirst(blockFor(ids, (id) => { const view = read.get(id); return view ? view.incompleteReason : 'not_waiting' }))) return
     const entries = ids.map((id) => {
       const view = read.get(id) as InboundMailView
       return { view, draft: initialDraft(view, folders, copy) }
@@ -373,7 +373,6 @@ export function InboundMailWorkspace({
     selectedIds.length > 0 ? (
       <SelectionBar
         count={selectedIds.length}
-        checking={checking}
         block={selectedIds.length > INBOUND_MAIL_DECISION_MAX_MAILS ? { reason: 'too_many', count: selectedIds.length } : selectionBlock}
         max={INBOUND_MAIL_DECISION_MAX_MAILS}
         filing={bulkFiling === 'selection'}
@@ -440,7 +439,14 @@ export function InboundMailWorkspace({
               setLoadingMore(true)
               try {
                 const page = await client.list(projectId, { status, outcome: outcome ?? undefined, cursor: list.nextCursor })
-                setList({ kind: 'ready', items: [...list.items, ...page.items], nextCursor: page.nextCursor })
+                // A thread grouped on an earlier page keeps that group; a later page adds only threads it starts.
+                const known = new Set(list.threadGroups.map((group) => group.threadId))
+                setList({
+                  kind: 'ready',
+                  items: [...list.items, ...page.items],
+                  threadGroups: [...list.threadGroups, ...page.threadGroups.filter((group) => !known.has(group.threadId))],
+                  nextCursor: page.nextCursor,
+                })
               } catch {
                 toast.error(t('loadError'))
               } finally {

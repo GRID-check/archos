@@ -5,6 +5,7 @@
  */
 
 import { describe, expect, it } from 'vitest'
+import type { InboundMailView } from '@/lib/inbound-mail/inbound-mail-wire'
 import { folderLeaf, missingSuggestionReason, readSuggestion, SUGGESTION_GRACE_MS } from './suggestion'
 
 describe('readSuggestion', () => {
@@ -47,15 +48,28 @@ describe('folderLeaf', () => {
 describe('missingSuggestionReason', () => {
   const now = Date.parse('2026-10-22T10:00:00Z')
   const at = (ms: number) => new Date(now - ms).toISOString()
+  type Sender = NonNullable<InboundMailView['sender']>
+  const sender = (overrides: Partial<Sender> = {}): Sender => ({
+    name: 'Mag. Huber',
+    address: 'k.huber@ma37.wien.gv.at',
+    domain: 'ma37.wien.gv.at',
+    signerDomain: 'wien.gv.at',
+    trust: 'external_verified',
+    reason: 'dkim_pass',
+    flags: [],
+    ...overrides,
+  })
 
-  it('says Piloti never suggests for unconfirmed strangers and machines (D21)', () => {
-    expect(missingSuggestionReason({ automatic: false, senderTrust: 'external_unverified', receivedAt: at(0) }, now)).toBe('skipped')
-    expect(missingSuggestionReason({ automatic: true, senderTrust: 'member_verified', receivedAt: at(0) }, now)).toBe('skipped')
+  it('says Piloti never suggests for unconfirmed senders, impersonations and machines (D21), by the suggest job’s own rule', () => {
+    expect(missingSuggestionReason({ automatic: false, sender: sender({ trust: 'external_unverified', reason: 'dkim_none' }), receivedAt: at(0) }, now)).toBe('skipped')
+    expect(missingSuggestionReason({ automatic: true, sender: sender(), receivedAt: at(0) }, now)).toBe('skipped')
+    expect(missingSuggestionReason({ automatic: false, sender: sender({ trust: 'member_unverified', reason: 'dkim_fail' }), receivedAt: at(0) }, now)).toBe('skipped')
+    expect(missingSuggestionReason({ automatic: false, sender: sender({ flags: ['claims_member_name'] }), receivedAt: at(0) }, now)).toBe('skipped')
   })
 
   it('says „still reading“ for a fresh mail, and „none“ after', () => {
-    expect(missingSuggestionReason({ automatic: false, senderTrust: 'member_verified', receivedAt: at(60_000) }, now)).toBe('pending')
-    expect(missingSuggestionReason({ automatic: false, senderTrust: 'member_verified', receivedAt: at(SUGGESTION_GRACE_MS + 1) }, now)).toBe('none')
+    expect(missingSuggestionReason({ automatic: false, sender: sender(), receivedAt: at(60_000) }, now)).toBe('pending')
+    expect(missingSuggestionReason({ automatic: false, sender: sender(), receivedAt: at(SUGGESTION_GRACE_MS + 1) }, now)).toBe('none')
   })
 })
 
