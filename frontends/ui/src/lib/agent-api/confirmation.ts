@@ -197,7 +197,7 @@ function refusalWithoutThePerson(ctx: McpCallContext, call: PendingCall): CallTo
     throw error
   }
   const origin = configuredAppOrigin()
-  recordOperationCalled(ctx, { operation: op.name, domain: op.domain, decision: 'refused', status: 403, startedAt: Date.now() })
+  recordOperationCalled(ctx, { operation: op.name, domain: op.domain, decision: 'person_required', status: 403, startedAt: Date.now() })
   return personRequiredResult(op.name, origin ? `${origin}${confirmation.decideAt(input)}` : null)
 }
 

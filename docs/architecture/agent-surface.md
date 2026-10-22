@@ -148,9 +148,10 @@ changed: false, url }`. `url` is the deployment's pinned origin plus
 `requiresPersonConfirmation.decideAt(input)`, the app page where the person
 decides it themselves (the mail's page for one mail); without a pinned origin
 it is null, as every door link is ([Links into the app](#links-into-the-app)).
-The call is recorded as `decision: refused`, status 403. A malformed call is
-not refused here: today's validator answers it, so the agent fixes its input
-before the person is sent anywhere. Piloti is unaffected: its write is a
+The call is recorded as `decision: person_required`, status 403, in PostHog and
+on the Langfuse trace, apart from the `refused` of a call the caller may not
+make. A malformed call is not refused here: today's validator answers it, so
+the agent fixes its input before the person is sent anywhere. Piloti is unaffected: its write is a
 proposal, and accepting the card is the yes.
 
 The mark sets `destructiveHint`, so a client that asks its user from the
