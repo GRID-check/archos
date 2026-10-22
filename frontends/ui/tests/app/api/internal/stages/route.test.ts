@@ -12,6 +12,7 @@ vi.mock('@/lib/auth/require-auth', () => ({
 vi.mock('@/lib/workos/feature-flags', () => ({
   enabledPostAnswerStages: vi.fn(),
   isDeepResearchEnabledForOrg: vi.fn(),
+  isOrgFeatureEnabled: vi.fn(),
   isTaskAutomationEnabledForOrg: vi.fn(),
 }))
 
@@ -22,6 +23,7 @@ import { findProjectTenancy } from '@/lib/projects/repository'
 import {
   enabledPostAnswerStages,
   isDeepResearchEnabledForOrg,
+  isOrgFeatureEnabled,
   isTaskAutomationEnabledForOrg,
 } from '@/lib/workos/feature-flags'
 
@@ -43,6 +45,7 @@ beforeEach(() => {
   mockEnabled.mockResolvedValue(['memory_reflection'])
   mockDeepResearch.mockResolvedValue(true)
   mockTasks.mockResolvedValue(true)
+  vi.mocked(isOrgFeatureEnabled).mockResolvedValue(false)
 })
 
 afterEach(() => {
