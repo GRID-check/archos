@@ -53,7 +53,6 @@ import weakref
 from typing import Any
 from uuid import UUID
 
-from nat.builder.context import ContextState
 from nat.builder.intermediate_step_manager import IntermediateStepManager
 from nat.data_models.intermediate_step import IntermediateStepPayload
 from nat.data_models.intermediate_step import IntermediateStepState
@@ -62,6 +61,7 @@ from nat.data_models.intermediate_step import StreamEventData
 from nat.data_models.intermediate_step import TraceMetadata
 from nat.data_models.intermediate_step import UsageInfo
 from nat.data_models.token_usage import TokenUsageBaseModel
+from nat.plugin_api import ContextState
 from nat.plugin_api import LLMFrameworkEnum
 from nat.plugins.langchain.callback_handler import LangchainProfilerHandler
 

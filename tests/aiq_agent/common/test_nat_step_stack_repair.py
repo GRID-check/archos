@@ -8,6 +8,8 @@ from langchain_core.tracers.context import register_configure_hook
 from langgraph.graph import END
 from langgraph.graph import START
 from langgraph.graph import StateGraph
+
+from aiq_agent.common.nat_step_repair import install_step_stack_repair
 from nat.data_models.intermediate_step import IntermediateStepPayload
 from nat.data_models.intermediate_step import IntermediateStepState
 from nat.data_models.intermediate_step import IntermediateStepType
@@ -16,8 +18,6 @@ from nat.plugin_api import ContextState
 from nat.plugins.langchain.callback_handler import LangchainProfilerHandler
 from nat.plugins.profiler.decorators.framework_wrapper import callback_handler_var
 from nat.utils.reactive.subject import Subject
-
-from aiq_agent.common.nat_step_repair import install_step_stack_repair
 
 
 class _State(TypedDict, total=False):
