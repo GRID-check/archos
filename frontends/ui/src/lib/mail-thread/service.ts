@@ -21,11 +21,11 @@ import { getHiddenFolderIds, projectMayWriteDocuments } from '@/lib/authz/folder
 import { requireProjectAccess } from '@/lib/authz/projects'
 import type { MailThreadFollowRow } from '@/lib/db/schema'
 import { decodeDocumentListCursor, encodeDocumentListCursor } from '@/lib/documents/list-cursor'
-import { requireInboundMailEnabled } from '@/lib/inbound-mail/access'
+import { managesProject, requireInboundMailEnabled } from '@/lib/inbound-mail/access'
+import { followView } from './follows'
 import type {
   MailThreadAttachmentView,
   MailThreadEntryView,
-  MailThreadFollowView,
   MailThreadListQuery,
   MailThreadListView,
   MailThreadSummaryView,
@@ -107,14 +107,6 @@ function entryView(row: EntryRow, attachments: MailThreadAttachmentView[]): Mail
   }
 }
 
-const followView = (follow: MailThreadFollowRow): MailThreadFollowView => ({
-  id: follow.id,
-  userId: follow.userId,
-  createdAt: new Date(follow.createdAt).toISOString(),
-  expiresAt: new Date(follow.expiresAt).toISOString(),
-  renewedAt: iso(follow.renewedAt),
-  dailyCap: follow.dailyCap,
-})
 
 /** One page of the project's threads the reader may read (`mail-thread-list`), newest first. */
 export async function listMailThreads(
@@ -145,10 +137,11 @@ export async function getMailThread(session: AuthorizedSession, projectId: strin
   const hidden = await requireThreadReader(session, projectId)
   const thread = await findVisibleThread(projectId, threadId, hidden)
   if (!thread) throw new NotFoundError('Mail thread not found')
-  const [entries, follows, mayFile] = await Promise.all([
+  const [entries, follows, mayFile, managesFollows] = await Promise.all([
     findThreadEntries(thread.id),
     findActiveFollows([thread.id]),
     projectMayWriteDocuments(session, projectId),
+    managesProject(session, projectId),
   ])
   const attachments = await entryAttachments(entries.map((row) => row.entry))
   const hiddenSet = new Set(hidden)
@@ -166,6 +159,7 @@ export async function getMailThread(session: AuthorizedSession, projectId: strin
       ),
     ),
     follows: follows.map(followView),
+    managesFollows,
     waitingCount: mayFile ? await countWaitingForThread(projectId, thread.id) : null,
   }
 }

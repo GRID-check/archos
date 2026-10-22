@@ -560,7 +560,9 @@ export type InboundMailFilePayload = z.infer<typeof inboundMailFilePayloadSchema
  * `inbound_mail_follow`: append a reply's text to a followed thread, as the
  * follower (D31). Queued by the receive job only when conditions 1–6 held
  * (`followEligibility`); the job re-checks all nine as the follower. Job id
- * uuid5 of the mail.
+ * uuid5 of the mail. `followId` and `requester` are the follow and follower
+ * the receive job saw: the job resolves the follower of the follow that holds
+ * when it runs (`follow-job.ts`), so a follow ended in between appends nothing.
  */
 export const inboundMailFollowPayloadSchema = z.object({
   projectId: z.string().uuid(),

@@ -180,6 +180,8 @@ const SENSITIVE: Record<string, Sensitivity> = {
   'PUT /api/organization/download-log/retention': 'control',
   'PUT /api/organization/deleted-folder-content': 'control',
   'PUT /api/organization/web-search': 'control',
+  // Following a mail thread turns review down for one conversation (D31).
+  'POST /api/projects/[id]/mail-threads/[threadId]/follow': 'control',
 }
 
 /**

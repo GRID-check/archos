@@ -26,7 +26,12 @@ import {
   inboundMailListQuerySchema,
 } from '@/lib/inbound-mail/inbound-mail-wire'
 import { mailImportListQuerySchema, startMailImportSchema } from '@/lib/mail-import/types'
-import { mailThreadEntryDetachBodySchema, mailThreadListQuerySchema } from '@/lib/mail-thread/mail-thread-wire'
+import {
+  mailThreadEntryDetachBodySchema,
+  mailThreadFollowBodySchema,
+  mailThreadListQuerySchema,
+  mailThreadUnfollowQuerySchema,
+} from '@/lib/mail-thread/mail-thread-wire'
 import type { OperationInput } from '../dispatch'
 import type { AgentOperation } from '../operation'
 import { rawBodySchema } from '../upload-wire'
@@ -284,6 +289,31 @@ export const mailOperations = [
     body: mailThreadEntryDetachBodySchema,
     destructive: true,
     load: () => import('@/app/api/projects/[id]/mail-threads/[threadId]/entries/[entryId]/detach/route'),
+  },
+  {
+    name: 'mail-thread-follow',
+    domain: 'mail',
+    summary: 'Follow an email thread',
+    description:
+      'A standing decision: a later reply’s text from a verified domain already in the thread is filed as you; attachments wait for review. Again renews; mail-thread-unfollow ends.',
+    method: 'POST',
+    path: '/api/projects/[id]/mail-threads/[threadId]/follow',
+    params: threadParams,
+    body: mailThreadFollowBodySchema,
+    idempotent: true,
+    sensitivity: 'control',
+    load: () => import('@/app/api/projects/[id]/mail-threads/[threadId]/follow/route'),
+  },
+  {
+    name: 'mail-thread-unfollow',
+    domain: 'mail',
+    summary: 'Stop following an email thread',
+    description: 'Ends your follow of the thread; with `userId`, another person’s (needs project:manage).',
+    method: 'DELETE',
+    path: '/api/projects/[id]/mail-threads/[threadId]/follow',
+    params: threadParams,
+    query: mailThreadUnfollowQuerySchema,
+    load: () => import('@/app/api/projects/[id]/mail-threads/[threadId]/follow/route'),
   },
   {
     name: 'mail-import-list',

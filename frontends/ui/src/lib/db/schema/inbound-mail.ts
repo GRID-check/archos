@@ -327,6 +327,9 @@ export const inboundMailDecisions = pgTable(
     followIdx: index('inbound_mail_decisions_follow_idx')
       .on(table.followId, table.decidedAt)
       .where(sql`${table.followId} IS NOT NULL`),
+    projectFollowIdx: index('inbound_mail_decisions_project_follow_idx')
+      .on(table.projectId, table.decidedAt)
+      .where(sql`${table.via} = 'follow'`),
     dueIdx: index('inbound_mail_decisions_due_idx').on(table.decidedAt).where(sql`${table.auditedAt} IS NULL`),
   }),
 )

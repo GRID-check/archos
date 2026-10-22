@@ -1067,6 +1067,11 @@ CREATE INDEX IF NOT EXISTS "inbound_mail_decisions_mail_idx"
 CREATE INDEX IF NOT EXISTS "inbound_mail_decisions_follow_idx"
   ON "inbound_mail_decisions" ("follow_id", "decided_at") WHERE "follow_id" IS NOT NULL;
 --> statement-breakpoint
+-- D31 condition 8: what every follow of a project appended in the last day,
+-- counted by the follow job under the project's lock.
+CREATE INDEX IF NOT EXISTS "inbound_mail_decisions_project_follow_idx"
+  ON "inbound_mail_decisions" ("project_id", "decided_at") WHERE "via" = 'follow';
+--> statement-breakpoint
 -- Sweep 11: what is still owed to the trail, found without a scan.
 CREATE INDEX IF NOT EXISTS "inbound_mail_decisions_due_idx"
   ON "inbound_mail_decisions" ("decided_at") WHERE "audited_at" IS NULL;

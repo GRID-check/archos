@@ -57,13 +57,13 @@ import { acceptedTypesForOrganization } from '@/lib/documents/accepted-types'
 import { documentNameKey } from '@/lib/documents/name-match'
 import { insertJobIfAbsent } from '@/lib/jobs-queue/repository'
 import { BFF_JOB_PRIORITY, requesterOf, type InboundMailReceivePayload, type JobAttempt } from '@/lib/jobs-queue/types'
-import { followEligibility, type FollowCandidateMail } from '@/lib/mail-thread/follow-eligibility'
-import { baseSubject, clampSentAt, domainOf, matchThread, type ThreadMatch } from '@/lib/mail-thread/mail-threading'
+import { baseSubject, clampSentAt, domainOf, matchThread } from '@/lib/mail-thread/mail-threading'
 import { publishProjectChanged } from '@/lib/realtime/door-events'
 import { loadOrganizationDirectory } from '@/lib/sharing/directory'
 import { asciiLower, inboundMailDomain, redactProjectAddresses } from './address'
 import { announceWaiting } from './announce'
 import { classifyAutomaticMail } from './automatic-mail'
+import { judgeFollow } from './follow-candidate'
 import { NULL_SENDER } from './contract'
 import {
   inboundMailStagingKey,
@@ -86,7 +86,6 @@ import {
   findScreenedDuplicates,
   findScreenedNamesakes,
   findThreadCandidates,
-  findThreadFollowContext,
   holdMail,
   markNotified,
   recordRawScan,
@@ -599,37 +598,14 @@ async function queueFollowIfEligible(
   domain: string,
   raw: Uint8Array | null,
 ): Promise<boolean> {
-  const match = mail.threadMatch.find((candidate) => candidate.strength === 'reference')
-  if (!match || !mail.senderTrust) return false
-  const thread = await findThreadFollowContext(mail.projectId, match.threadId)
-  if (!thread || thread.follows.length === 0) return false
-  const screening = await mailScreeningFor(mail.organizationId, mail.projectId)
-  const candidate: FollowCandidateMail = {
-    receivedAt: mail.receivedAt,
-    senderTrust: mail.senderTrust,
-    senderFlags: mail.senderFlags,
-    signedHeaders: mail.signedHeaders,
-    automatic: mail.automatic,
-    recipientHeaders: await recipientHeadersOf(mail, raw),
-    participantAddresses: [
-      ...(mail.senderAddress ? [mail.senderAddress] : []),
-      ...mail.participants.filter((participant) => participant.role !== 'reply_to').map((participant) => participant.address),
-    ],
-    match: match as ThreadMatch,
-    subjectNameStops: screening.nameStops(mail.baseSubject ?? ''),
-    contentFindings: parts.find((part) => part.kind === 'message')?.contentFindings.length ?? 0,
-  }
-  const eligibility = followEligibility(
-    candidate,
-    { id: thread.threadId, participantDomains: thread.participantDomains },
-    thread.follows,
-    { now: new Date(), ownDomains: [domain] },
-  )
-  if (!eligibility.eligible) return false
+  const contentFindings = parts.find((part) => part.kind === 'message')?.contentFindings.length ?? 0
+  const judged = await judgeFollow(mail, contentFindings, domain, raw)
+  if (!judged?.eligibility.eligible) return false
+  const { follow } = judged.eligibility
   const directory = await loadOrganizationDirectory(mail.organizationId)
-  const follower = directory.get(eligibility.follow.userId)
+  const follower = directory.get(follow.userId)
   const session = await resolvePinnedRequesterSession({
-    userId: eligibility.follow.userId,
+    userId: follow.userId,
     email: follower?.email ?? null,
     organizationId: mail.organizationId,
   })
@@ -641,16 +617,8 @@ async function queueFollowIfEligible(
     organizationId: mail.organizationId,
     priority: BFF_JOB_PRIORITY.interactive,
     jobId: inboundMailJobId('follow', mail.id),
-    payload: { projectId: mail.projectId, mailId: mail.id, followId: eligibility.follow.id, requester: requesterOf(session) },
+    payload: { projectId: mail.projectId, mailId: mail.id, followId: follow.id, requester: requesterOf(session) },
   })
-}
-
-/** Which recipient fields the message carries (D31 cond. 3 needs each signed), from its header block. */
-async function recipientHeadersOf(mail: InboundMailRow, raw: Uint8Array | null): Promise<Array<'to' | 'cc'>> {
-  const bytes = raw ?? (mail.rawStorageKey ? await readStagedObject(mail.stagingBucket, mail.rawStorageKey) : null)
-  const fields = bytes ? rawHeaderFields(bytes) : null
-  if (!fields) return []
-  return (['to', 'cc'] as const).filter((name) => fields.some((field) => field.name === name))
 }
 
 function sha256Hex(text: string): string {

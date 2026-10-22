@@ -1206,6 +1206,16 @@
    },
    "reason": null
   },
+  "mail-thread-follow": {
+   "kind": "catalog",
+   "domain": "mail",
+   "sensitivity": "control",
+   "external": true,
+   "piloti": false,
+   "platform": false,
+   "withheld": null,
+   "reason": "its `sensitivity` widens access, touches a secret or turns a control down: an outside agent sees it only under the organization’s opt-in and the step-up scope, and accepting a card Piloti worded is not the confirmation it needs"
+  },
   "mail-thread-get": {
    "kind": "catalog",
    "domain": "mail",
@@ -1225,6 +1235,16 @@
    "platform": false,
    "withheld": null,
    "reason": null
+  },
+  "mail-thread-unfollow": {
+   "kind": "catalog",
+   "domain": "mail",
+   "sensitivity": null,
+   "external": true,
+   "piloti": false,
+   "platform": false,
+   "withheld": null,
+   "reason": "a standing decision is the person’s own; Piloti neither makes nor ends it"
   },
   "annotation-create": {
    "kind": "catalog",

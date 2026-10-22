@@ -28,6 +28,9 @@ import { PROPOSAL_DECISION_OPERATIONS } from '@/lib/proposals/operation-applier'
 import { BACKEND_OPERATIONS } from './backend-operations'
 import { AGENT_OPERATIONS } from './catalog'
 import { EXPOSURE, type Exposure, WITHHELD_CATEGORIES } from './exposure.config'
+import type { Sensitivity } from './operation'
+import { maySeeSensitive, SENSITIVE_SCOPE, visibleOperations } from './policy'
+import type { AgentPrincipal } from './principal'
 
 const FIXTURE = join(process.cwd(), 'tests/fixtures/exposure.json')
 const NATIVE = /^native:[a-z][a-z0-9_]*$/
@@ -92,6 +95,31 @@ describe('the exposure config', () => {
     for (const op of AGENT_OPERATIONS.filter((candidate) => /\/original$/.test(candidate.path))) {
       expect(entry(op.name).withheld?.category, op.name).toBe('evidence')
     }
+  })
+
+  it('never lets Piloti make or end a standing decision to follow a mail thread (D31)', () => {
+    const follow = AGENT_OPERATIONS.find((op) => op.name === 'mail-thread-follow')
+    // It turns review down for one conversation: a control, never offered to Piloti, whatever it holds.
+    expect(follow?.sensitivity).toBe('control')
+    expect(entry('mail-thread-follow')).toMatchObject({ external: true, piloti: false })
+    expect(entry('mail-thread-unfollow')).toMatchObject({ external: true, piloti: false })
+    const session = { userId: 'user_1', organizationId: 'org_1', role: 'admin', permissions: [] } as unknown as AgentPrincipal['session']
+    const piloti: AgentPrincipal = { actor: 'piloti', session, clientId: null, scopes: [SENSITIVE_SCOPE], sensitiveOptIns: ['control'] }
+    const names = visibleOperations(piloti).map((op) => op.name)
+    expect(names).not.toContain('mail-thread-follow')
+    expect(names).not.toContain('mail-thread-unfollow')
+    expect(maySeeSensitive(piloti, 'control', true)).toBe(false)
+    // An outside agent sees it only with the office's opt-in AND the step-up scope.
+    const outside = (scopes: string[], sensitiveOptIns: Sensitivity[]): AgentPrincipal => ({
+      actor: 'external_agent',
+      session,
+      clientId: 'c',
+      scopes,
+      sensitiveOptIns,
+    })
+    expect(maySeeSensitive(outside([SENSITIVE_SCOPE], ['control']), 'control', true)).toBe(true)
+    expect(maySeeSensitive(outside([], ['control']), 'control', true)).toBe(false)
+    expect(maySeeSensitive(outside([SENSITIVE_SCOPE], []), 'control', true)).toBe(false)
   })
 
   it('lets the person decide held mail: filing and dismissing run for an outside agent only on their yes', () => {

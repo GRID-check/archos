@@ -45,6 +45,7 @@ import { runDueRemindersSlice } from '@/lib/annotations/due-reminders'
 import { runDocumentCheckSlice } from '@/lib/document-check/job'
 import { runRevisionNotice } from '@/lib/revision-notice/job'
 import { runInboundMailFiling } from '@/lib/inbound-mail/file-job'
+import { runInboundMailFollow } from '@/lib/inbound-mail/follow-job'
 import { runInboundMailReceive } from '@/lib/inbound-mail/receive-job'
 import { runInboundMailSuggest } from '@/lib/inbound-mail/suggest-job'
 import { isLastAttempt } from './attempts'
@@ -215,11 +216,10 @@ export const JOB_HANDLERS: Record<BffJobKind, JobHandler> = {
   // As the person who decided: what a person decided, filed through their own
   // upload path; never anything a decision row does not name (`file-job.ts`).
   inbound_mail_file: handler(inboundMailFilePayloadSchema, runInboundMailFiling),
-  // Registered before its work exists (PR-D assembles it from several
-  // packages), ending without effect: the reply waits for a person, as it
-  // would without a follow.
-  inbound_mail_follow: handler(inboundMailFollowPayloadSchema, async (_session, payload) => {
-    console.warn(`[jobs] inbound_mail_follow has no step yet; mail ${payload.mailId} waits for a person`)
-    return { done: true, payload }
-  }),
+  // As the follower, resolved by the job itself (`follow-job.ts`): the follower
+  // is whoever's follow holds NOW, and one who left ends the follow
+  // (`access_lost`) instead of ending the job quietly.
+  inbound_mail_follow: systemSliceHandler(inboundMailFollowPayloadSchema, (organizationId, payload) =>
+    runInboundMailFollow(organizationId, payload),
+  ),
 }

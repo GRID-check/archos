@@ -1061,7 +1061,6 @@ export const RETIRED_AUDIT_ACTIONS = /** @type {const} */ ([
  */
 export const AWAITING_EMITTER_AUDIT_ACTIONS = /** @type {const} */ ([
   'inbound_mail.expired',
-  'mail_thread.follow_started',
 ])
 
 export const AUDIT_ACTIONS = /** @type {AuditAction[]} */ (Object.keys(AUDIT_SCHEMAS))
