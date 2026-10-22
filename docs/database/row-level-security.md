@@ -100,6 +100,17 @@ PostgreSQL 16, 2026-10-22). On such a table, `REVOKE DELETE … FROM grid_app_rw
 (the owner's cascades and the platform role's sweeps keep working) and let the
 trigger refuse UPDATE only.
 
+A delete guard may still ask about the PARENT. Inside the cascade from a
+deleted row, the child's `BEFORE DELETE` trigger no longer sees that row
+(PostgreSQL 16, checked 2026-10-22). `inbound_mail_decisions` (0184) uses this:
+a decision the audit trail has not taken yet is refused deletion while
+`EXISTS (SELECT 1 FROM projects WHERE id = OLD.project_id)`, so a retention
+sweep or a thread's cascade waits for the audit, and a project purge, which
+deletes the project row first, still goes through. A trigger's refusal names
+its rule with `RAISE … USING CONSTRAINT = '<name>'`; `psql` prints that name
+only under `\set VERBOSITY verbose`, which is how `scripts/rls-test-db.sh`
+asserts it.
+
 ---
 
 ## Writing code that touches the database

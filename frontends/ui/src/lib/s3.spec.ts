@@ -3,6 +3,7 @@
  */
 import { describe, expect, it, vi } from 'vitest'
 import { BadRequestError } from '@/lib/api/errors'
+import { inboundMailStagingPrefix, mailOriginalStorageKey } from '@/lib/inbound-mail/inbound-mail-vocabulary'
 import {
   MAX_STORED_IMAGES_PER_DOCUMENT,
   buildOfficeShelfStorageKey,
@@ -95,6 +96,43 @@ describe('storageKeySegment', () => {
     }
     expect(buildStorageKey('org-1', 'proj-1', 'doc-1', 'archive', `mail-imports/${importId}`)).toBe(
       `org/org-1/project/proj-1/_mail-imports/${importId}/doc/doc-1/archive`,
+    )
+  })
+
+  /**
+   * A mail sent to the project waits at `<project>/_inbound-mail/<mail id>/`,
+   * and a filed message's original is kept at `<project>/_mail-originals/<entry
+   * id>.eml` (ADR-0134, `lib/inbound-mail/inbound-mail-vocabulary.ts`). A
+   * person's folder or file of either name would put the office's documents
+   * among a stranger's unreviewed mail, or among evidence no model may read.
+   */
+  it('never files a document under the inbound mail or originals prefixes', () => {
+    const mailId = '1a000000-0000-4000-8000-000000000184'
+    const entryId = 'e1000000-0000-4000-8000-000000000184'
+    const owner = { organizationId: 'org-1', projectId: 'proj-1' }
+    const staged = inboundMailStagingPrefix(owner, mailId)
+    const original = mailOriginalStorageKey(owner, entryId)
+    expect(staged).toBe(`org/org-1/project/proj-1/_inbound-mail/${mailId}/`)
+    expect(original).toBe(`org/org-1/project/proj-1/_mail-originals/${entryId}.eml`)
+
+    expect(storageKeySegment('_inbound-mail')).toBe('__inbound-mail')
+    expect(storageKeySegment('_Inbound-Mail')).toBe('__Inbound-Mail')
+    expect(storageKeySegment('_mail-originals')).toBe('__mail-originals')
+    expect(storageKeySegment('_MAIL-ORIGINALS')).toBe('__MAIL-ORIGINALS')
+    // Only the exact names.
+    expect(storageKeySegment('inbound-mail')).toBe('inbound-mail')
+    expect(storageKeySegment('_inbound-mail-2026')).toBe('_inbound-mail-2026')
+
+    for (const folder of ['_inbound-mail', `_inbound-mail/${mailId}`, `_INBOUND-MAIL/${mailId}`]) {
+      const key = buildStorageKey('org-1', 'proj-1', 'doc-1', 'raw.eml', folder)
+      expect(key.toLowerCase().startsWith('org/org-1/project/proj-1/_inbound-mail/'), folder).toBe(false)
+    }
+    for (const folder of ['_mail-originals', '_Mail-Originals']) {
+      const key = buildStorageKey('org-1', 'proj-1', 'doc-1', `${entryId}.eml`, folder)
+      expect(key.toLowerCase().startsWith('org/org-1/project/proj-1/_mail-originals/'), folder).toBe(false)
+    }
+    expect(buildStorageKey('org-1', 'proj-1', 'doc-1', 'raw.eml', `_inbound-mail/${mailId}`)).toBe(
+      `org/org-1/project/proj-1/__inbound-mail/${mailId}/doc/doc-1/raw.eml`,
     )
   })
 
