@@ -184,6 +184,10 @@
     "de": "Ein Dokument, das nicht durchsuchbar gemacht werden konnte oder noch gelesen wird, bleibt jetzt mit seinem Status in der Projektdateiliste. So wird es nicht mehr mit einer Datei verwechselt, die nie hochgeladen wurde."
   },
   {
+    "en": "A document that is no longer a building permit no longer keeps showing the permit conditions read from it earlier.",
+    "de": "Ein Dokument, das nicht mehr als Baubewilligung gilt, zeigt die zuvor daraus ausgelesenen Bewilligungsauflagen nicht mehr an."
+  },
+  {
     "en": "A document that never became citable no longer carries the green badge that marks it as citable. It now shows a failure with a retry option, or a neutral status for documents filed before this change.",
     "de": "Ein Dokument, das nie zitierfähig wurde, trägt nicht mehr das grüne Abzeichen, das es als zitierfähig ausweist. Stattdessen zeigt es einen Fehler mit der Möglichkeit, es erneut zu versuchen, oder einen neutralen Status für Dokumente, die vor dieser Änderung abgelegt wurden."
   },
@@ -502,6 +506,10 @@
   {
     "en": "A question sent again after a short connection drop is no longer answered twice. The chat picks up the answer already being written.",
     "de": "Eine Frage, die nach einem kurzen Verbindungsabbruch erneut gesendet wird, wird nicht mehr doppelt beantwortet. Der Chat führt die bereits laufende Antwort fort."
+  },
+  {
+    "en": "A question sent the moment the chat opens now searches your sources like any other, instead of sometimes answering without consulting any of them.",
+    "de": "Eine Frage, die beim Öffnen des Chats sofort gesendet wird, durchsucht jetzt wie jede andere Frage Ihre Quellen, statt manchmal beantwortet zu werden, ohne dass eine davon herangezogen wird."
   },
   {
     "en": "A question that touches the Richtlinien, the RIS and the web now checks all three in its first round instead of saving one for later.",
@@ -1958,6 +1966,10 @@
   {
     "en": "Naming a skill with a slash now simply writes its name into your message, and Piloti picks that skill from there. What reaches Piloti is exactly the text you sent.",
     "de": "Einen Skill mit Schrägstrich zu nennen schreibt jetzt einfach seinen Namen in Ihre Nachricht, und Piloti greift von dort zum gemeinten Skill. Bei Piloti kommt genau der Text an, den Sie abgeschickt haben."
+  },
+  {
+    "en": "New Postfach entries, mentions and shares now reach colleagues right away again, without a reload.",
+    "de": "Neue Postfach-Einträge, Erwähnungen und geteilte Inhalte erreichen Kolleginnen und Kollegen jetzt wieder sofort – ohne Neuladen."
   },
   {
     "en": "New annotations on a document now reach the people responsible for it and the person who uploaded it, as one inbox entry per document and per person who set them, such as „Miriam hat 15 Anmerkungen in „Grundriss EG“ gesetzt“. Annotations Piloti sets for someone count the same way, and Piloti's proposals only once someone takes them over.",

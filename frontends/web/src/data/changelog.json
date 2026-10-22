@@ -369,6 +369,18 @@
               "de": "Große Dateien mit CAD-Zeichnungen, etwa gesammelte Projektunterlagen oder ein Brandschutzkonzept mit vielen Planblättern, lassen sich jetzt hochladen und durchsuchen. Bisher schlägt das Einlesen solcher Dateien jedes Mal fehl, und auch ein erneuter Versuch scheitert."
             },
             {
+              "en": "A question sent the moment the chat opens now searches your sources like any other, instead of sometimes answering without consulting any of them.",
+              "de": "Eine Frage, die beim Öffnen des Chats sofort gesendet wird, durchsucht jetzt wie jede andere Frage Ihre Quellen, statt manchmal beantwortet zu werden, ohne dass eine davon herangezogen wird."
+            },
+            {
+              "en": "New Postfach entries, mentions and shares now reach colleagues right away again, without a reload.",
+              "de": "Neue Postfach-Einträge, Erwähnungen und geteilte Inhalte erreichen Kolleginnen und Kollegen jetzt wieder sofort – ohne Neuladen."
+            },
+            {
+              "en": "A document that is no longer a building permit no longer keeps showing the permit conditions read from it earlier.",
+              "de": "Ein Dokument, das nicht mehr als Baubewilligung gilt, zeigt die zuvor daraus ausgelesenen Bewilligungsauflagen nicht mehr an."
+            },
+            {
               "en": "Piloti's connector in Claude and other AI assistants now shows the Piloti icon instead of a blank tile.",
               "de": "Der Piloti-Connector in Claude und anderen KI-Assistenten zeigt jetzt das Piloti-Icon statt einer leeren Kachel."
             },
