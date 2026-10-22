@@ -212,6 +212,30 @@ export async function batchIdsOfDocuments(organizationId: string, documentIds: r
 }
 
 /**
+ * Which of these batches announce a new Fassung to mark participants only
+ * (`revision_notice = 'marks_only'`, migration 0183). A batch not returned
+ * announces to everyone, as a person's upload does. Read by
+ * `announceSettledVersions` for the documents that just came to rest.
+ */
+export async function findMarksOnlyBatchIds(organizationId: string, batchIds: readonly string[]): Promise<Set<string>> {
+  if (batchIds.length === 0) return new Set()
+  const db = getDb()
+  const rows = await withTenant({ organizationId }, () =>
+    db
+      .select({ id: uploadBatches.id })
+      .from(uploadBatches)
+      .where(
+        and(
+          eq(uploadBatches.organizationId, organizationId),
+          inArray(uploadBatches.id, [...batchIds]),
+          eq(uploadBatches.revisionNotice, 'marks_only')
+        )
+      )
+  )
+  return new Set(rows.map((row) => row.id))
+}
+
+/**
  * The documents a batch wrote, bounded, as `reader` may see them (ADR-0086).
  * A batch's rows are its uploader's own (a re-upload moves a row into the new
  * uploader's batch), so its uploader reads every one.

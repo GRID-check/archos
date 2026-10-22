@@ -918,6 +918,17 @@ who started it ([`mail-import.md`](../architecture/mail-import.md#what-the-perso
 | `sealed_at` | `timestamptz` | | The uploader's last request is done; a batch no file has come into for 30 min (counted from its newest document, or its opening) is sealed by the sweep |
 | `completed_at` | `timestamptz` | CHECK: only after `sealed_at` | Every document is terminal; set once, by a guarded UPDATE, which is what makes the inbox item exactly-once |
 | `created_at` | `timestamptz(3)` | NOT NULL, `defaultNow()` | |
+| `announces_completion` | `boolean` | NOT NULL, default `true` | **Migration `0183`**. Off: the settle sends no `upload.completed` |
+| `reviews_filing` | `boolean` | NOT NULL, default `true` | **Migration `0183`**. Off: neither filing review is queued, the name review at the seal nor the content review at the settle (`lib/filing/trigger.ts`) |
+| `starts_intake` | `boolean` | NOT NULL, default `true` | **Migration `0183`**. Off: the batch starts no intake reading (`lib/project-intake/trigger.ts`, ADR-0111) |
+| `revision_notice` | `text` | NOT NULL, default `'all'`, CHECK `all`/`marks_only` | **Migration `0183`**. Who hears about a new Fassung a document of this batch makes: `marks_only` reaches only the people on an open mark it leaves behind ([`revisions.md`](../architecture/revisions.md#notifications)) |
+
+The four effect columns (migration 0183) say what settling the batch sets
+off. Their defaults are a person's upload, and only a server-side caller sets
+them (`OpenUploadBatchInput.effects` in `lib/upload-batches/service.ts`): the
+route's body has no field for them, so no browser or agent opens a quiet batch.
+Each one off suppresses exactly its own effect. The quarantine reviewers' item
+does not depend on them.
 
 Indexes: `upload_batches_project_created_idx` (a project's history, newest
 first) and the partial `upload_batches_open_idx` (`WHERE completed_at IS NULL`,

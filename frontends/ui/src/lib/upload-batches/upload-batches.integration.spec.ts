@@ -15,7 +15,8 @@
  * (migration 0119): a status write lands only on the dispatch it resolved,
  * records one decision per dispatch, and the decision stays owed to the audit
  * trail, outliving its document, until it is marked once; then the retention
- * sweep, and only it, deletes it.
+ * sweep, and only it, deletes it. And the batch's effects (migration 0183):
+ * a person's upload by default, quieter only where a caller said so.
  */
 
 import { sql } from 'drizzle-orm'
@@ -354,6 +355,50 @@ describe.skipIf(!url)('upload batches against Postgres', () => {
         db.execute(sql`
           INSERT INTO upload_batches (id, organization_id, created_by, scope, project_id, expected_count, completed_at)
           VALUES (gen_random_uuid(), ${ORG}, ${USER}, 'project', ${projectId}::uuid, 1, now())
+        `)
+      )
+    ).rejects.toThrow()
+  })
+
+  // Migration 0183: the effects a settle sets off. A batch opened without
+  // them is a person's upload; only the server opens one quieter.
+  it("opens a batch with every effect of a person's upload, and keeps the quieter ones a caller set", async () => {
+    expect(await repo.findUploadBatch(ORG, BATCH)).toMatchObject({
+      announcesCompletion: true,
+      reviewsFiling: true,
+      startsIntake: true,
+      revisionNotice: 'all',
+    })
+    const quiet = '7c1f0f8e-0b6a-4f41-9d3b-5a0b2f9e1a83'
+    await repo.insertUploadBatch({
+      id: quiet,
+      organizationId: ORG,
+      createdBy: USER,
+      scope: 'project',
+      projectId,
+      expectedCount: 1,
+      announcesCompletion: false,
+      reviewsFiling: false,
+      startsIntake: false,
+      revisionNotice: 'marks_only',
+    })
+    expect(await repo.findUploadBatch(ORG, quiet)).toMatchObject({
+      announcesCompletion: false,
+      reviewsFiling: false,
+      startsIntake: false,
+      revisionNotice: 'marks_only',
+    })
+    expect([...(await repo.findMarksOnlyBatchIds(ORG, [BATCH, quiet]))]).toEqual([quiet])
+    // Another organization learns nothing about the batch, its notice included.
+    expect([...(await repo.findMarksOnlyBatchIds(OTHER_ORG, [quiet]))]).toEqual([])
+  })
+
+  it('refuses an unknown revision notice at the CHECK', async () => {
+    await expect(
+      inTenant(ORG, () =>
+        db.execute(sql`
+          INSERT INTO upload_batches (id, organization_id, created_by, scope, project_id, expected_count, revision_notice)
+          VALUES (gen_random_uuid(), ${ORG}, ${USER}, 'project', ${projectId}::uuid, 1, 'nobody')
         `)
       )
     ).rejects.toThrow()
