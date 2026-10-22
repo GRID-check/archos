@@ -444,8 +444,21 @@ export function clampSentAt(sentAt: Date | null, receivedAt: Date): { sentAt: Da
 // ------------------------------------------------------------ domains
 
 /**
- * The domain of an address as threads compare it: after the last `@`,
- * lower-cased, without a trailing dot. `null` without one.
+ * The domain of an address as threads compare it: after the last `@`, without
+ * a trailing dot, in ONE form: the ASCII (A-label, punycode) form of an
+ * internationalized domain name, lower-cased. `null` without one.
+ *
+ * A domain has two spellings once it holds a non-ASCII letter: `müller.at` as a
+ * person types it (RFC 6532 lets a header carry it so) and `xn--mller-kva.at`
+ * as DNS, a DKIM `d=` and most mail clients write it. Compared as text they are
+ * two domains, so a reply of the same office would count as a new participant
+ * (no follow, D31 condition 5) and one office would show twice. The form is
+ * the A-label because DNS and DKIM speak it; a person's screen may render the
+ * U-label. The conversion is UTS #46 as the WHATWG URL parser applies it
+ * (`new URL`), in the browser and in Node alike: it also folds case and width
+ * (`MÜLLER.AT`, full-width letters) onto the same name. A domain the parser
+ * refuses (a space, a stray `<`) is kept lower-cased as it was: it cannot be a
+ * spelling of any registrable domain, so it can match nothing but itself.
  */
 export function domainOf(address: string | null | undefined): string | null {
   if (!address) return null
@@ -456,6 +469,20 @@ export function domainOf(address: string | null | undefined): string | null {
     .trim()
     .replace(/>$/, '')
     .replace(/\.$/, '')
-    .toLowerCase()
-  return domain || null
+  if (!domain) return null
+  return asciiDomain(domain) ?? domain.toLowerCase()
+}
+
+/** The A-label form of `domain` by UTS #46 (WHATWG URL host parsing), or null when it is not a host name. */
+function asciiDomain(domain: string): string | null {
+  // An address literal (`[192.0.2.1]`) or a bare number is not a name, and the
+  // parser would read it as an IP address (`1.2.3` becomes `1.2.0.3`). A
+  // character that ends or escapes a host (`/ ? # \\ @ :`, `%`) would make it
+  // parse something other than the domain.
+  if (/^\[|^[\d.]+$|[/?#\\@:%]/.test(domain)) return null
+  try {
+    return new URL(`http://${domain}/`).hostname || null
+  } catch {
+    return null
+  }
 }
