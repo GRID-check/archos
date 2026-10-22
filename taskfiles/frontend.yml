@@ -84,6 +84,14 @@ tasks:
       # blobs nothing merges (the coverage comment is a pull request's).
       - bun run test:shard -- --shard={{.SHARD}} --reporter=default{{if .GITHUB_ACTIONS}} --reporter=github-actions{{end}} --outputFile=.vitest-reports/blob-{{.SHARD | replace "/" "-"}}.json{{if eq .COVERAGE "false"}} --coverage.enabled=false{{end}}
 
+  fe:test:durations:
+    desc: Re-record the per-file times the UI shards split by (tests/vitest-durations.json)
+    dir: '{{.UI}}'
+    cmds:
+      # Re-run when the frontend shards' times in CI drift apart.
+      - TZ=UTC bunx vitest run --reporter=json --outputFile=.vitest-reports/durations.json
+      - node scripts/record-vitest-durations.mjs .vitest-reports/durations.json
+
   fe:test:related:
     desc: 'One shard of the UI specs that reach the given files (CI on a pull request: SHARD=1/6 FILES="...")'
     dir: '{{.UI}}'
