@@ -289,6 +289,15 @@ export const EXPOSURE = {
   'mail-import-list': OFFERED,
   'mail-import-part-upload': ARCHIVE_BYTES,
   'mail-import-start': ARCHIVE_BYTES,
+  'mail-thread-entry-detach': OFFERED,
+  'mail-thread-entry-original-get': {
+    external: false,
+    piloti: false,
+    withheld: {
+      category: 'evidence',
+      reason: 'a filed message as received, kept as proof of what was sent; no model reads it, a person downloads it in the app',
+    },
+  },
   'mail-thread-get': OFFERED,
   'mail-thread-list': OFFERED,
 

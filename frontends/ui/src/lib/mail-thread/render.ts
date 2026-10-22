@@ -19,7 +19,9 @@
  *   earlier section;
  * - headings are stored on the row when it is inserted
  *   ({@link mailThreadEntryHeading}) and never recomputed;
- * - attachment lines are frozen on the row (`attachment_links`);
+ * - attachment lines are frozen on their rows when the entry is inserted
+ *   (`mail_thread_entry_attachments.section_*`, decided by
+ *   {@link sectionAttachment});
  * - the words are a versioned table, in the thread's one locale
  *   (`./render-copy.ts`).
  *
@@ -50,12 +52,13 @@ import { SCREENING_PLACEHOLDERS } from '@/lib/upload-screening/content-screen'
 import { escapeInline, escapeMarkdown } from '@/lib/text/markdown-escape'
 import { clampSentAt, VERIFIED_SENDER_TRUSTS, type SenderTrust } from './mail-threading'
 import type {
-  MailThreadAttachmentLink,
+  MailThreadAttachmentDisposition,
   MailThreadCalendarEvent,
   MailThreadEntrySource,
   MailThreadMaskedSpan,
   MailThreadParticipant,
   MailThreadQuote,
+  MailThreadSectionAttachment,
 } from './mail-thread-wire'
 import { MAIL_THREAD_RENDER_COPY, type MailThreadRenderCopy } from './render-copy'
 
@@ -95,7 +98,8 @@ export interface MailThreadRenderEntry extends MailThreadHeadingFields {
   maskedSpans: readonly MailThreadMaskedSpan[] | null
   quoted: readonly MailThreadQuote[]
   calendar: readonly MailThreadCalendarEvent[]
-  attachments: readonly MailThreadAttachmentLink[]
+  /** In the message's order, as frozen on the entry's attachment rows. */
+  attachments: readonly MailThreadSectionAttachment[]
 }
 
 export interface MailThreadRenderInput {
@@ -310,20 +314,51 @@ function meetingLine(event: MailThreadCalendarEvent, copy: MailThreadRenderCopy)
   return cancelled ? `${line} (${copy.cancelled})` : line
 }
 
-/** Named only when filed into a folder as visible as the thread and never stopped by the name check; the rest counted. */
-function attachmentLine(links: readonly MailThreadAttachmentLink[], copy: MailThreadRenderCopy): string {
+/** Named where its frozen line names it; the rest counted. */
+function attachmentLine(attachments: readonly MailThreadSectionAttachment[], copy: MailThreadRenderCopy): string {
   const named: string[] = []
   let unnamed = 0
-  for (const link of links) {
-    const name = link.name ? oneLine(link.name) : ''
-    if (!link.documentId || !name || !link.visibleWithThread || link.nameReleased) {
+  for (const attachment of attachments) {
+    const name = attachment.name ? oneLine(attachment.name) : ''
+    if (!name) {
       unnamed += 1
       continue
     }
-    named.push(link.folderPath ? `${name} (${copy.filedIn(oneLine(link.folderPath))})` : name)
+    named.push(attachment.folderPath ? `${name} (${copy.filedIn(oneLine(attachment.folderPath))})` : name)
   }
   if (unnamed > 0) named.push(copy.unnamedAttachments(unnamed))
   return named.join('; ')
+}
+
+/** What the filing knew about one attachment when its message was filed. */
+export interface MailThreadAttachmentFiling {
+  disposition: MailThreadAttachmentDisposition
+  /** The name the document has (filed, or already present); null for a file without one. */
+  name: string | null
+  /** The document's folder path at filing, '' or null for the project root. */
+  folderPath: string | null
+  /** Its folder is at least as visible as the thread document's (judged by the filing). */
+  visibleWithThread: boolean
+  /** It was filed under a name the Namensprüfung stopped, which a person released. */
+  nameReleased: boolean
+}
+
+/**
+ * What a thread's section will print for one attachment, for ever (RT-S13):
+ * its name and folder only when it is a document, in a folder at least as
+ * visible as the thread document's, under a name the Namensprüfung passed
+ * without a release; otherwise nothing, and the section counts it. Decided
+ * once, when the entry is inserted, and frozen on its row
+ * (`mail_thread_entry_attachments.section_*`): an attachment filed later, or a
+ * document renamed, never rewrites an earlier section.
+ */
+export function sectionAttachment(filing: MailThreadAttachmentFiling): MailThreadSectionAttachment {
+  const name = filing.name ? oneLine(filing.name).slice(0, 500) : ''
+  if (filing.disposition === 'not_filed' || !name || !filing.visibleWithThread || filing.nameReleased) {
+    return { name: null, folderPath: null }
+  }
+  const folderPath = filing.folderPath ? oneLine(filing.folderPath).slice(0, 1000) : ''
+  return { name, folderPath: folderPath || null }
 }
 
 // ------------------------------------------------------------ text

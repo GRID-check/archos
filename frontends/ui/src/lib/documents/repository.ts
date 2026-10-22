@@ -1627,7 +1627,7 @@ export async function setDocumentIngestJob(
    * reviewer's release of a held file still carries it (`./filing-choice`).
    * Null records none, and a dispatch without one drops the last.
    */
-  filingChoice: Record<string, string> | null = null,
+  filingChoice: Record<string, unknown> | null = null,
 ): Promise<boolean> {
   const db = getDb()
   const moved = await withTenant({ organizationId }, () =>

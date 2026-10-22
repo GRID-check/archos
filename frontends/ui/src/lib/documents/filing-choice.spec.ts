@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { FILING_CHOICE_METADATA_KEY, filingChoiceRecord, storedFilingChoice } from './filing-choice'
 import { DOCUMENT_TYPE_TAGS } from './tag-vocabulary'
+import type { MailOriginIngestFacts, MailThreadIngestFacts } from '@/lib/mail-thread/ingest-facts'
 
 const TYPE = DOCUMENT_TYPE_TAGS[0]
 const OLDER = '0b6c8a52-3f1e-4c7a-9d2b-5e8f1a2b3c4d'
@@ -58,5 +59,35 @@ describe('storedFilingChoice', () => {
     expect(storedFilingChoice(row(recorded({ revisionOfId: '   ' })))).toBeNull()
     // A file name is no choice to re-send: the release re-resolves an id.
     expect(storedFilingChoice(row(recorded({ revisionOf: 'Index_B.pdf' })))).toBeNull()
+  })
+})
+
+// A filed mail (ADR-0134, D36): a Verlauf the content screening holds keeps its
+// lane and date through the release, and an attachment the mail it came with.
+describe('a filed mail’s facts with the filing choice', () => {
+  const MAIL_THREAD: MailThreadIngestFacts = { latest_sent_at: '2026-10-14T07:12:00Z', message_count: 4, locale: 'de' }
+  const MAIL_ORIGIN: MailOriginIngestFacts = { sent_at: '2026-10-14T07:12:00Z', sender_trust: 'external_unverified', locale: 'de' }
+  const stored = (choice: unknown) => storedFilingChoice(row({ ingestJobId: 'j', ingestContentHash: 'sha256:abc', [FILING_CHOICE_METADATA_KEY]: choice }))
+
+  it('records and reads back a Verlauf’s thread and an attachment’s mail', () => {
+    const thread = filingChoiceRecord({ documentType: 'correspondence', mailThread: MAIL_THREAD })
+    expect(thread).toEqual({ documentType: 'correspondence', mailThread: MAIL_THREAD })
+    expect(stored(thread)).toEqual({ documentType: 'correspondence', revisionOfId: null, mailThread: MAIL_THREAD })
+    expect(stored(filingChoiceRecord({ mailOrigin: MAIL_ORIGIN }))).toEqual({
+      documentType: null,
+      revisionOfId: null,
+      mailOrigin: MAIL_ORIGIN,
+    })
+  })
+
+  it('reads a record the backend would refuse as none: an address, an unknown trust, both on one document', () => {
+    expect(stored({ mailOrigin: { ...MAIL_ORIGIN, from_name: 'huber@ma37.wien.gv.at' } })).toBeNull()
+    expect(stored({ mailOrigin: { ...MAIL_ORIGIN, sender_trust: 'trusted' } })).toBeNull()
+    expect(stored({ mailThread: { ...MAIL_THREAD, message_count: 0 } })).toBeNull()
+    expect(stored({ mailThread: MAIL_THREAD, mailOrigin: MAIL_ORIGIN })).toEqual({
+      documentType: null,
+      revisionOfId: null,
+      mailThread: MAIL_THREAD,
+    })
   })
 })

@@ -392,8 +392,19 @@ domain only when the sender was verified (`member_verified`,
 bestätigt“ (an archive entry's „aus dem Outlook-Archiv“), the words of the
 Verlauf's own headings, in the thread's locale. So Piloti attributes a statement
 to its mail and never presents an unconfirmed sender as the Behörde. The
-original `.eml` is never dispatched. A held Verlauf released by a reviewer does
-not carry the records yet: the release re-dispatch reads only `filingChoice`.
+original `.eml` is never dispatched.
+
+The filing job sets both through the upload path (`ShelfUploadInput.mailThread`,
+`.mailOrigin`, from `lib/mail-thread/ingest-facts.ts`), and every dispatch that
+carries one records it with the filing choice (`documents.metadata.filingChoice`,
+`lib/documents/filing-choice.ts`), as it does `documentType`. So a Verlauf the
+content screening holds (the full text of a mail) keeps its lane and its date
+through the reviewer's release, and a held attachment keeps its „kam mit der
+E-Mail …“ line: the release re-dispatch reads the record back from the row,
+parsed as the backend parses it, so a record that no longer fits is no record
+rather than a 422. An office file's conversion job carries both the same way
+(`office_rendition` payload). `ingest-mail-contract.spec.ts` pins both keys and
+both models' fields against `requests.py`.
 
 `PATCH /api/documents/[id]/tags` (`document-tags-update`) cannot do this job:
 it needs the metadata row, which only the ingest job writes, and a type set

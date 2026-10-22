@@ -349,7 +349,7 @@ export async function getInboundMailText(session: AuthorizedSession, projectId: 
 const SERVED_TYPES = new Set(['application/pdf', 'image/png', 'image/jpeg', 'image/gif', 'image/webp'])
 
 /** The headers every held byte is served with: never sniffed, never run, never cached, always a download. */
-function heldBytesHeaders(contentType: string, filename: string): Record<string, string> {
+export function heldBytesHeaders(contentType: string, filename: string): Record<string, string> {
   return {
     'Content-Type': contentType,
     'Content-Disposition': contentDisposition('attachment', filename),

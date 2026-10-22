@@ -152,6 +152,18 @@ afterEach(() => {
   vi.unstubAllGlobals()
 })
 
+// A filed mail (ADR-0134): `ingest-mail-contract.spec.ts` pins both keys across the seam.
+const MAIL_THREAD = { latest_sent_at: '2026-10-14T07:12:00Z', message_count: 4, locale: 'de' as const }
+const MAIL_ORIGIN = {
+  sent_at: '2026-10-14T07:12:00Z',
+  received_at: '2026-10-14T07:14:00Z',
+  from_name: 'Mag. Anna Huber',
+  from_domain: 'ma37.wien.gv.at',
+  signer_domain: 'ma37.wien.gv.at',
+  sender_trust: 'external_verified' as const,
+  locale: 'de' as const,
+}
+
 describe('dispatchDocument', () => {
   /**
    * The invariant the whole agent-authored feature rests on, tested at the ONE
@@ -550,6 +562,31 @@ describe('the ingest dispatch sends the document folder path', () => {
     expect(bodyOf(1)).not.toHaveProperty('document_type')
   })
 
+  it('sends a Verlauf its thread and an attachment its mail, and records each with the filing choice', async () => {
+    await dispatchDocument({ ...input('Stellplatznachweis.md'), mailThread: MAIL_THREAD })
+    await dispatchDocument({ ...input('Bescheid.pdf'), mailOrigin: MAIL_ORIGIN })
+    await dispatchDocument(input('plan.pdf'))
+
+    expect(bodyOf(0).mail_thread).toEqual(MAIL_THREAD)
+    expect(bodyOf(0)).not.toHaveProperty('mail_origin')
+    expect(bodyOf(1).mail_origin).toEqual(MAIL_ORIGIN)
+    expect(bodyOf(1)).not.toHaveProperty('mail_thread')
+    expect(bodyOf(2)).not.toHaveProperty('mail_thread')
+    expect(bodyOf(2)).not.toHaveProperty('mail_origin')
+    expect(vi.mocked(setDocumentIngestJob).mock.calls.map((call) => call[3])).toEqual([
+      { mailThread: MAIL_THREAD },
+      { mailOrigin: MAIL_ORIGIN },
+      null,
+    ])
+  })
+
+  it('never sends both mail records on one document, which the backend refuses', async () => {
+    await dispatchDocument({ ...input('Stellplatznachweis.md'), mailThread: MAIL_THREAD, mailOrigin: MAIL_ORIGIN })
+
+    expect(bodyOf(0).mail_thread).toEqual(MAIL_THREAD)
+    expect(bodyOf(0)).not.toHaveProperty('mail_origin')
+  })
+
   // `./filing-choice`: kept on the row with the job, so a reviewer's release of
   // a file this reading holds can send it again.
   it('records the filing choice on the row with the job, and none for a dispatch without one', async () => {
@@ -705,6 +742,23 @@ describe('an office file is converted, by a job, before it is ingested', () => {
     await ingested()
 
     expect(bodyOf(0).document_type).toBe(DOCUMENT_TYPE_TAGS[6])
+  })
+
+  it('carries the mail an attachment came with through the conversion, and drops a queued record that no longer fits', async () => {
+    await dispatchDocument({ ...input('Baubeschreibung.docx'), mailOrigin: MAIL_ORIGIN })
+    expect(queuedJob()).toMatchObject({ kind: 'office_rendition', payload: expect.objectContaining({ mailOrigin: MAIL_ORIGIN }) })
+    await runQueuedJob()
+    await ingested()
+    expect(bodyOf(0).mail_origin).toEqual(MAIL_ORIGIN)
+  })
+
+  it('reads a queued mail record the contract no longer holds as none, and still ingests', async () => {
+    await dispatchDocument({ ...input('Baubeschreibung.docx'), mailOrigin: MAIL_ORIGIN })
+    queuedJob().payload.mailOrigin = { ...MAIL_ORIGIN, from_address: 'huber@ma37.wien.gv.at' }
+    await runQueuedJob()
+    await ingested()
+
+    expect(bodyOf(0)).not.toHaveProperty('mail_origin')
   })
 
   it('reads a queued type the vocabulary no longer holds as no choice, and still ingests', async () => {

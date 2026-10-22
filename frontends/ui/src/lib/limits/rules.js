@@ -415,7 +415,29 @@ const INBOUND_MAIL_UNKNOWN_ADDRESS_LIMIT = {
   windowMs: 60 * 60 * 1000,
 }
 
+/**
+ * Downloading a mail's original `.eml` (ADR-0134, D6), per person: a held
+ * mail's (`inbound-mail-original-get`) and a filed message's
+ * (`mail-thread-entry-original-get`) share one budget.
+ *
+ * Every download is scanned whole by the in-cluster ClamAV on that request (up
+ * to 26 MiB, `ScanMail`), because a verdict from the day the mail arrived says
+ * nothing about today's signatures. So this rule bounds the scanner's load one
+ * person can cause, not the bytes: sixty an hour is a person working through a
+ * dispute's correspondence one original at a time, and the burst clause stops
+ * a script or a stuck client within the minute, before it queues the scanner
+ * for everyone else in the office.
+ * @type {LimitRule}
+ */
+const MAIL_ORIGINAL_DOWNLOAD_LIMIT = {
+  name: 'mail-original-download',
+  limit: 60,
+  windowMs: 60 * 60 * 1000,
+  burst: { limit: 10, windowMs: 60 * 1000 },
+}
+
 module.exports = {
+  MAIL_ORIGINAL_DOWNLOAD_LIMIT,
   INBOUND_MAIL_ADDRESS_LIMIT,
   INBOUND_MAIL_ORGANIZATION_LIMIT,
   INBOUND_MAIL_SIGNING_KEY_LIMIT,

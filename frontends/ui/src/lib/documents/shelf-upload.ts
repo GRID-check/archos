@@ -58,6 +58,7 @@ import { requireShelfWrite } from './shelf-authz'
 import { shelfCollectionName } from './shelf-collection'
 import type { DispatchDocumentResult } from './service'
 import type { DocumentTypeTag } from './tag-vocabulary'
+import type { MailOriginIngestFacts, MailThreadIngestFacts } from '@/lib/mail-thread/ingest-facts'
 
 /** What an upload names besides the file, on either shelf. */
 export interface ShelfUploadInput {
@@ -112,6 +113,19 @@ export interface ShelfUploadInput {
    * `docs/technical-reference/document-ingestion.md`.
    */
   documentType?: DocumentTypeTag
+  /**
+   * This file is a Fassung of an E-Mail-Verlauf (ADR-0134), and these are its
+   * messages' facts (`lib/mail-thread/ingest-facts`): sent as `mail_thread`,
+   * recorded with the filing choice like `documentType`, so a held Verlauf the
+   * reviewer releases keeps its lane and its date. Only the filing job sets it.
+   */
+  mailThread?: MailThreadIngestFacts
+  /**
+   * This file came with a mail (ADR-0134, D36): the message, sent as
+   * `mail_origin` and recorded with the filing choice the same way. Only the
+   * filing job and the archive import set it; never with `mailThread`.
+   */
+  mailOrigin?: MailOriginIngestFacts
 }
 
 export interface UploadDocumentResult {
@@ -578,6 +592,8 @@ export async function uploadToShelf(
     revisionOf: upload.revisionOf,
     revisionOfId: upload.revisionOfId,
     documentType: input.documentType,
+    mailThread: input.mailThread,
+    mailOrigin: input.mailOrigin,
   })
 
   await uploadAuditEvent(session, shelf, request, {

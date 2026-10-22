@@ -15,7 +15,8 @@ import {
 } from 'drizzle-orm/pg-core'
 import type { MalwareScanStatus, SenderTrust } from '@/lib/inbound-mail/inbound-mail-vocabulary'
 import type {
-  MailThreadAttachmentLink,
+  MailThreadAttachmentDisposition,
+  MailThreadAttachmentNotFiledReason,
   MailThreadCalendarEvent,
   MailThreadEntrySource,
   MailThreadFiledVia,
@@ -37,9 +38,10 @@ import { projects } from './projects'
  *
  * Storage only; the migration holds the rules and says why. NOTE: the keys
  * that set one column NULL (`document_id`, `continues_thread_id`,
- * `in_reply_to_entry_id`) and the message ids' key that moves with its entry
- * (`ON UPDATE CASCADE`) live in migration 0184 alone: drizzle cannot express
- * either.
+ * `in_reply_to_entry_id`, an attachment's document and Fassung), the message
+ * ids' key that moves with its entry (`ON UPDATE CASCADE`) and the trigger
+ * that freezes what came with a message live in migration 0184 alone: drizzle
+ * cannot express them.
  */
 
 /** One conversation, one document. `documentId` is NULL while its first Fassung is written and after its document is gone. */
@@ -58,6 +60,9 @@ export const mailThreads = pgTable(
     renderedBytes: integer('rendered_bytes').notNull().default(0),
     lastEntryAt: timestamp('last_entry_at', { withTimezone: true }),
     renderPendingAt: timestamp('render_pending_at', { withTimezone: true }),
+    /** Who writes the next Fassung now (`lib/mail-thread/append.ts`); set with {@link renderLeaseUntil}. */
+    renderLeaseHolder: uuid('render_lease_holder'),
+    renderLeaseUntil: timestamp('render_lease_until', { withTimezone: true }),
     /** The one locale the rendition's words are in, fixed when the thread is created. */
     locale: text('locale').$type<MailThreadLocale>().notNull(),
     createdBy: text('created_by').notNull(),
@@ -155,8 +160,6 @@ export const mailThreadEntries = pgTable(
     maskedSpans: jsonb('masked_spans').$type<MailThreadMaskedSpan[]>(),
     quoted: jsonb('quoted').$type<MailThreadQuote[]>().notNull().default([]),
     calendar: jsonb('calendar').$type<MailThreadCalendarEvent[]>().notNull().default([]),
-    /** Frozen at insert, names included: the superset invariant. */
-    attachmentLinks: jsonb('attachment_links').$type<MailThreadAttachmentLink[]>().notNull().default([]),
     firstVersionId: uuid('first_version_id'),
     filedBy: text('filed_by').notNull(),
     filedVia: text('filed_via').$type<MailThreadFiledVia>().notNull(),
@@ -196,6 +199,47 @@ export const mailThreadEntries = pgTable(
   }),
 )
 
+/**
+ * What came with a filed message (D36), one row per attachment, and what became
+ * of it: the document and Fassung it is (`filed`) or already was
+ * (`already_present`), or why it was not filed. `sectionName` and
+ * `sectionFolderPath` are what the thread's section prints, frozen at insert.
+ */
+export const mailThreadEntryAttachments = pgTable(
+  'mail_thread_entry_attachments',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    organizationId: text('organization_id').notNull(),
+    projectId: uuid('project_id').notNull(),
+    entryId: uuid('entry_id').notNull(),
+    position: integer('position').notNull(),
+    /** The name as it arrived; NULL for a file that came without one. */
+    filename: text('filename'),
+    disposition: text('disposition').$type<MailThreadAttachmentDisposition>().notNull(),
+    notFiledReason: text('not_filed_reason').$type<MailThreadAttachmentNotFiledReason>(),
+    documentId: uuid('document_id'),
+    documentVersionId: uuid('document_version_id'),
+    /** What the section prints, frozen at insert; NULL is counted, never named. */
+    sectionName: text('section_name'),
+    sectionFolderPath: text('section_folder_path'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    entryFk: foreignKey({
+      name: 'mail_thread_entry_attachments_entry_fkey',
+      columns: [table.entryId, table.projectId, table.organizationId],
+      foreignColumns: [mailThreadEntries.id, mailThreadEntries.projectId, mailThreadEntries.organizationId],
+    }).onDelete('cascade'),
+    entryPositionKey: unique('mail_thread_entry_attachments_entry_position_key').on(table.entryId, table.position),
+    documentIdx: index('mail_thread_entry_attachments_document_idx')
+      .on(table.documentId)
+      .where(sql`${table.documentId} IS NOT NULL`),
+    versionIdx: index('mail_thread_entry_attachments_version_idx')
+      .on(table.documentVersionId)
+      .where(sql`${table.documentVersionId} IS NOT NULL`),
+  }),
+)
+
 /** The Message-IDs a thread received (one row per entry) or was referred to by, for matching later replies. */
 export const mailThreadMessageIds = pgTable(
   'mail_thread_message_ids',
@@ -229,3 +273,5 @@ export type NewMailThreadFollowRow = typeof mailThreadFollows.$inferInsert
 export type MailThreadEntryRow = typeof mailThreadEntries.$inferSelect
 export type NewMailThreadEntryRow = typeof mailThreadEntries.$inferInsert
 export type MailThreadMessageIdRow = typeof mailThreadMessageIds.$inferSelect
+export type MailThreadEntryAttachmentRow = typeof mailThreadEntryAttachments.$inferSelect
+export type NewMailThreadEntryAttachmentRow = typeof mailThreadEntryAttachments.$inferInsert
