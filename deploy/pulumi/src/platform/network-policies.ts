@@ -36,7 +36,6 @@ export const QDRANT_CALLERS = [
   "aiq-api",
   "agent-worker",
   "ingest-worker",
-  "legacy-corpus-import",
   QDRANT.snapshotJob,
   CHROMA_MIGRATION.name,
   QDRANT.opsLabel,
