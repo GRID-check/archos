@@ -12,7 +12,7 @@ the details next to the code they explain; this is the map, and the reasons.
 | Put a green `develop` commit on staging | after a green push run of CI | `deploy.yml` | Staging only ever runs a commit CI passed |
 | Put the pinned commit on production | push to `prod`, with reviewers | `deploy.yml` | The `production` environment's reviewers |
 | Notice what turns red without a code change: new CVEs, a secret in history, external links, model drift, WorkOS drift | weekly | `security.yml`, `docs-links.yml`, `turn-shapes-live.yml`, `workos-drift.yml` | No. A red run is a finding to triage |
-| PR hygiene: Conventional title, closing keywords, labels | PR events | `pr.yml` | The title check |
+| PR hygiene: Conventional title, closing keywords, the **What we learned** section, labels | PR events | `pr.yml` | The title check |
 | Publish the changelog | merge touching `releasenotes/` | `release-notes.yml` | No |
 
 Everything else (`claude.yml`, `claude-code-review.yml`, `blog-preview.yml`,
