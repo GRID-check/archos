@@ -424,4 +424,23 @@ describe('domainOf', () => {
     expect(domainOf('nobody')).toBeNull()
     expect(domainOf('x@')).toBeNull()
   })
+
+  it('gives an internationalized domain one form, whichever spelling the mail used', () => {
+    // RFC 6532 lets a header carry the U-label; DNS, DKIM `d=` and most clients write the A-label.
+    expect(domainOf('mueller@müller.at')).toBe('xn--mller-kva.at')
+    expect(domainOf('mueller@xn--mller-kva.at')).toBe('xn--mller-kva.at')
+    expect(domainOf('Mueller@MÜLLER.AT')).toBe('xn--mller-kva.at')
+    expect(domainOf('<mueller@XN--MLLER-KVA.AT.>')).toBe('xn--mller-kva.at')
+    // UTS #46 folds width too: a full-width spelling is the same name, not a look-alike that passes.
+    expect(domainOf('a@ｍüller.at')).toBe('xn--mller-kva.at')
+    expect(domainOf('a@bücher.straße.de')).toBe(domainOf('a@xn--bcher-kva.xn--strae-oqa.de'))
+  })
+
+  it('keeps what is not a host name as it was, lower-cased, so it matches only itself', () => {
+    expect(domainOf('a@[192.0.2.1]')).toBe('[192.0.2.1]')
+    expect(domainOf('a@1.2.3')).toBe('1.2.3')
+    expect(domainOf('a@exa mple.at')).toBe('exa mple.at')
+    expect(domainOf('a@evil.at/x.example')).toBe('evil.at/x.example')
+    expect(domainOf('a@xn--zz')).toBe('xn--zz')
+  })
 })

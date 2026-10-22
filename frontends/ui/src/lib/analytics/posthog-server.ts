@@ -70,6 +70,15 @@ export type ServerEvent =
   | 'organization_budget_snapshot'
   | 'agent_operation_called'
   | 'agent_operation_missing'
+  // The E-Mail-Eingang (ADR-0134). Codes, counts and buckets only: a mail is a
+  // stranger's, and no sender, subject, file name or address is ever a property.
+  | 'inbound_mail_received'
+  | 'inbound_mail_refused'
+  | 'inbound_mail_dropped'
+  | 'inbound_mail_decided'
+  | 'inbound_mail_address_rotated'
+  | 'mail_thread_followed'
+  | 'mail_thread_original_downloaded'
 
 let client: PostHog | null = null
 let resolved = false

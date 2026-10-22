@@ -254,6 +254,7 @@ export const INBOX_TYPE_PRESENTATION: Record<InboxItemType, InboxTypePresentatio
   'annotation.mentioned': { icon: 'at-sign', i18nKey: 'annotationMentioned', tone: 'request', anchor: 'mark' },
   'root_sort.ready': { icon: 'check-circle', i18nKey: 'rootSortReady', tone: 'info' },
   'root_sort.failed': { icon: 'alert-triangle', i18nKey: 'rootSortFailed', tone: 'warning' },
+  'inbound_mail.waiting': { icon: 'clock', i18nKey: 'inboundMailWaiting', tone: 'request' },
 }
 
 /**

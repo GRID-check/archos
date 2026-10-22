@@ -567,6 +567,23 @@ export const INBOX_TYPE_DEFINITIONS: Record<InboxItemType, InboxTypeDefinition> 
     email: { send: 'if-unread', afterMinutes: 30 },
     push: { category: 'results', urgency: 'normal' },
   },
+  /*
+    Mail waits in a project's E-Mail-Eingang (ADR-0134). Actionable: nothing of
+    it reaches the project until a person files it, and the badge is what says
+    so. `collapse` per project: ten mails to one project are one counted row,
+    not ten (a busy project gets dozens a day). Operational, since mail is not a
+    chat feature. Kept 60 days, past the 30-day window and its 7-day restore.
+    In-app and push only: we never send mail about mail, and the row carries no
+    sender or subject, so a push shows nothing a stranger wrote.
+  */
+  'inbound_mail.waiting': {
+    actionable: true,
+    grouping: 'collapse',
+    retentionDays: 60,
+    gate: 'operational',
+    email: IN_APP_ONLY,
+    push: { category: 'requests', urgency: 'normal' },
+  },
 }
 
 /**
