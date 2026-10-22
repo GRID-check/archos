@@ -731,8 +731,8 @@ jobs:
       # version and checksum together with that digest.
       - name: Install otelcol-contrib (config validation)
         env:
-          OTELCOL_VERSION: "0.161.0"
-          OTELCOL_SHA256: "778c689efa681ff6e4722ce9f66b9b7f57c3ba009ab2e2b43dc2e0315862c731"
+          OTELCOL_VERSION: "0.163.2"
+          OTELCOL_SHA256: "cc19dd6a1b85ca694ef16655688e597f693d0e24d2baecdd50e2db597819eeff"
         run: |
           curl -sSfL -o "$RUNNER_TEMP/otelcol.tar.gz" \
             "https://github.com/open-telemetry/opentelemetry-collector-releases/releases/download/v${OTELCOL_VERSION}/otelcol-contrib_${OTELCOL_VERSION}_linux_amd64.tar.gz"
