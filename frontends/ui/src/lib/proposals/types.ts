@@ -340,26 +340,48 @@ export type InternalProposalResponse = z.infer<typeof internalProposalResponseSc
  */
 export const MAX_LISTED_PROPOSALS = 50
 
+/** The shelves a list names without a project (a project's shelf is the `projectId`). */
+export const PROPOSAL_LIST_SHELVES = ['office_shelf', 'organization'] as const
+
 export const listedProposalSchema = z.object({
   proposal: proposedChangeViewSchema,
   documents: z.array(z.object({ id: z.string(), name: z.string() })),
 })
 export type ListedProposal = z.infer<typeof listedProposalSchema>
 
-export const proposalListResponseSchema = z.object({ proposals: z.array(listedProposalSchema) })
+export const proposalListResponseSchema = z.object({
+  proposals: z.array(listedProposalSchema),
+  /** Pass as `cursor` for the next page; null on the last one. */
+  nextCursor: z.string().nullable().default(null),
+})
 export type ProposalListResponse = z.infer<typeof proposalListResponseSchema>
 
-export const proposalListQuerySchema = z
-  .object({
-    projectId: z.string().uuid().optional(),
-    // `archiv` is the value an open tab or an agent pod not yet rolled still sends. Remove after one release.
-    shelf: z.preprocess((value) => (value === 'archiv' ? 'office_shelf' : value), z.enum(PROPOSAL_SCOPES).optional()),
-    kind: z.enum(PROPOSED_CHANGE_KINDS).optional(),
-  })
-  .refine((query) => (query.shelf === 'office_shelf' || query.shelf === 'organization') !== Boolean(query.projectId), {
-    message: 'Name a project, or a shelf without one: shelf=office_shelf (the Büroablage) or shelf=organization',
-  })
-export type ProposalListQuery = z.infer<typeof proposalListQuerySchema>
+/** The list's own parameters (the catalog reads this object; the route adds the shelf rule below). */
+export const proposalListQueryShape = z.object({
+  projectId: z.string().uuid().optional().describe('The project whose open proposals to list, from project-list.'),
+  // `archiv` is the value an open tab or an agent pod not yet rolled still sends. Remove after one release.
+  shelf: z
+    .preprocess((value) => (value === 'archiv' ? 'office_shelf' : value), z.enum(PROPOSAL_LIST_SHELVES).optional())
+    .describe('`office_shelf` or `organization` instead of a project.'),
+  kind: z.enum(PROPOSED_CHANGE_KINDS).optional().describe('Only proposals of this kind.'),
+  limit: z.coerce
+    .number()
+    .int()
+    .min(1)
+    .max(MAX_LISTED_PROPOSALS)
+    .default(MAX_LISTED_PROPOSALS)
+    .describe(`Page size (default and most ${MAX_LISTED_PROPOSALS}).`),
+  cursor: z.string().uuid().optional().describe('The previous `nextCursor`.'),
+})
+
+export const proposalListQuerySchema = proposalListQueryShape.refine(
+  (query) => Boolean(query.shelf) !== Boolean(query.projectId),
+  { message: 'Name a project, or a shelf without one: shelf=office_shelf (the Büroablage) or shelf=organization' }
+)
+/** What a caller sends (`limit` may be left out). */
+export type ProposalListQuery = z.input<typeof proposalListQuerySchema>
+/** What the route hands the service, the limit filled in. */
+export type ParsedProposalListQuery = z.infer<typeof proposalListQuerySchema>
 
 export const applyProposalRequestSchema = z
   .object({ memoryScope: z.literal('project').optional() })

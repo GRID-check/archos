@@ -5,9 +5,11 @@
  * See `projects.ts` for the shape and `docs/architecture/agent-surface.md` for
  * the rules.
  *
- * Deliberately NOT here: changing who may see a resource (visibility, grants,
- * revoking, taking ownership under `/api/sharing/.../grants`). Those stay with
- * the person. Reading sharing state is here. Also left out: registering a
+ * Changing who may see a resource (visibility, grants, revoking, taking
+ * ownership under `/api/sharing/.../grants`) is here too, as `sensitivity:
+ * 'access'`: an outside agent sees it only under the organization's opt-in and
+ * the step-up scope (`SENSITIVE_SCOPE_ENFORCED_BY_WORKOS`, off until WorkOS
+ * enforces it, so today no agent sees it), and Piloti never does. Also left out: registering a
  * browser for push (`POST /api/notifications/push/devices`, `GET .../config`),
  * which needs a browser push subscription, and the multipart session-document
  * upload.
@@ -27,15 +29,14 @@ import {
 } from '@/lib/inbox/inbox-wire'
 import { pushPreferencesPatchSchema } from '@/lib/inbox/push-categories'
 import { grantPostSchema, roleChangeSchema, visibilitySchema } from '@/lib/sharing/sharing-wire'
-import { applyProposalRequestSchema, PROPOSAL_SCOPES, PROPOSED_CHANGE_KINDS } from '@/lib/proposals/types'
+import { SHAREABLE_RESOURCE_TYPES } from '@/lib/sharing/sharing-vocabulary'
+import { applyProposalRequestSchema, proposalListQueryShape } from '@/lib/proposals/types'
 import { listSessionDocumentsQuerySchema } from '@/lib/session-documents/session-documents-wire'
 import { updatePreferencesSchema } from '@/lib/user-preferences/preferences-wire'
 import type { AgentOperation } from '../operation'
 
 const resourceParams = z.object({
-  resourceType: z
-    .string()
-    .describe('The kind of shareable resource, such as `conversation` or `document`, as the resource’s own operations name it.'),
+  resourceType: z.enum(SHAREABLE_RESOURCE_TYPES).describe('The kind of shareable resource.'),
   resourceId: z.string().describe('The id of that resource, from its list operation.'),
 })
 
@@ -43,12 +44,6 @@ const inboxItemParams = z.object({ id: z.string().describe('The inbox item id (a
 
 const conversationParams = z.object({
   id: z.string().describe('The conversation id, from conversation-list.'),
-})
-
-const proposalListQuery = z.object({
-  projectId: z.string().uuid().optional().describe('The project whose open proposals to list, from project-list.'),
-  shelf: z.enum(PROPOSAL_SCOPES).optional().describe('`office_shelf` for the office shelf instead of a project.'),
-  kind: z.enum(PROPOSED_CHANGE_KINDS).optional(),
 })
 
 const proposalParams = z.object({
@@ -62,9 +57,8 @@ export const collaborationOperations = [
     domain: 'collaboration',
     summary: 'List the person’s inbox',
     description:
-      'One page of the person’s own inbox. `filter` picks the slice: `requests` waits on them, `unread`, `all` ' +
-      '(everything unarchived, the default), `archived`, `pending`. Pass the previous page’s `nextCursor` as ' +
-      '`cursor` for the next page. Item ids feed the inbox-item-* operations.',
+      'The person’s own inbox, newest first. `filter`: `requests` (waits on them), `unread`, `pending` (unread OR open request), ' +
+      '`archived`, `all` (default); `type` and `projectId` narrow it. Page with `nextCursor`.',
     method: 'GET',
     path: '/api/inbox',
     query: inboxListQuerySchema,
@@ -167,8 +161,7 @@ export const collaborationOperations = [
     domain: 'collaboration',
     summary: 'Read the push notification preferences',
     description:
-      'What the person wants pushed (the categories requests, results, access, activity, office) and whether the ' +
-      'lock screen shows content. Defaults are filled in.',
+      'What the person wants pushed (categories requests, results, access, activity, office) and whether the lock screen shows content.',
     method: 'GET',
     path: '/api/notifications/push/preferences',
     load: () => import('@/app/api/notifications/push/preferences/route'),
@@ -192,9 +185,7 @@ export const collaborationOperations = [
     domain: 'collaboration',
     summary: 'Read who has access to a resource',
     description:
-      'The sharing state of a conversation or other shareable resource: its visibility, the people with a grant ' +
-      'and their roles, and the person’s own role. Change it with sharing-visibility-set, sharing-grant-add, sharing-grant-update ' +
-      'and sharing-grant-revoke.',
+      'Who has access to a conversation or document: visibility, the people with a grant and their roles, and the person’s own role.',
     method: 'GET',
     path: '/api/sharing/[resourceType]/[resourceId]',
     params: resourceParams,
@@ -205,8 +196,7 @@ export const collaborationOperations = [
     domain: 'collaboration',
     summary: 'List who could be invited to a resource',
     description:
-      'Organization members who may be invited to the resource, plus those flagged `needsProjectAccess` because ' +
-      'they would first need to join the project. Only the resource owner may read it.',
+      'Members who may be invited to the resource; `needsProjectAccess` flags those who would first need to join the project. Owner only.',
     method: 'GET',
     path: '/api/sharing/[resourceType]/[resourceId]/candidates',
     params: resourceParams,
@@ -294,8 +284,7 @@ export const collaborationOperations = [
     domain: 'collaboration',
     summary: 'List who can be assigned to a resource',
     description:
-      'Project members who may be assigned. With `access: write` (documents only) only people who may change the ' +
-      'document, which is who an annotation may be handed to. User ids from here feed assignment-add.',
+      'Project members who may be assigned; `access: write` (documents) keeps those who may change the document. Ids feed assignment-add.',
     method: 'GET',
     path: '/api/assignments/[resourceType]/[resourceId]/candidates',
     params: resourceParams,
@@ -307,8 +296,7 @@ export const collaborationOperations = [
     domain: 'collaboration',
     summary: 'Assign a person to a resource',
     description:
-      'Puts a person (`userId` from assignment-candidate-list) on the hook for the resource. Assignment is not ' +
-      'access. Needs the collaborator role. Returns the updated assignees.',
+      'Assigns a person (`userId` from assignment-candidate-list); assignment is not access. Needs the collaborator role. Returns the assignees.',
     method: 'POST',
     path: '/api/assignments/[resourceType]/[resourceId]',
     params: resourceParams,
@@ -334,8 +322,7 @@ export const collaborationOperations = [
     domain: 'collaboration',
     summary: 'See whom a conversation is waiting on',
     description:
-      'The open mention requests on a conversation: the hand-offs where the thread waits for a colleague. ' +
-      'Request ids feed mention-request-release.',
+      'The open mention requests on a conversation, where it waits for a colleague. Ids feed mention-request-release.',
     method: 'GET',
     path: '/api/conversations/[id]/awaiting',
     params: conversationParams,
@@ -346,8 +333,7 @@ export const collaborationOperations = [
     domain: 'collaboration',
     summary: 'List who can be mentioned in a conversation',
     description:
-      'The people (and Piloti) a message in this conversation may mention. Mentions are structured: use the ' +
-      '`targetId` values from here in conversation-message-add, never a name typed in text.',
+      'Who a message here may mention (people and Piloti). Use these `targetId` values in conversation-message-add, never typed names.',
     method: 'GET',
     path: '/api/conversations/[id]/mention-candidates',
     params: conversationParams,
@@ -358,8 +344,7 @@ export const collaborationOperations = [
     domain: 'collaboration',
     summary: 'Carry on without the person a thread waits on',
     description:
-      'Releases an open hand-off (request id from conversation-awaiting-get) so the thread no longer waits. Any ' +
-      'contributor may do it. The mentioned colleague’s inbox item is settled.',
+      'Releases an open hand-off (id from conversation-awaiting-get) so the thread stops waiting. Any contributor may. The colleague’s inbox item is settled.',
     method: 'POST',
     path: '/api/mentions/[requestId]/release',
     params: z.object({
@@ -375,14 +360,13 @@ export const collaborationOperations = [
     domain: 'collaboration',
     summary: 'List open proposed changes on a shelf',
     description:
-      'Piloti’s open proposals (file operations, notes, profile changes) with the documents they name. Give ' +
-      '`projectId` (from project-list) for a project, or `shelf: office_shelf` for the office shelf, and ' +
-      'optionally `kind`. Ids feed proposal-get, proposal-apply and proposal-dismiss.',
+      'Piloti’s open proposals (file operations, notes, profile changes) with the documents they name, newest first. Give ' +
+      '`projectId` (from project-list) or `shelf`, and optionally `kind`. Page with `nextCursor`. Ids feed proposal-get; the person decides each.',
     method: 'GET',
     path: '/api/proposals',
-    // Looser than the route's `proposalListQuerySchema` (a refined schema is not a ZodObject): the route is the
-    // gate and still demands a project, or shelf=office_shelf.
-    query: proposalListQuery,
+    // The route's `proposalListQuerySchema` adds the refinement (a project or a shelf, never both), which is
+    // not a ZodObject; the route is the gate.
+    query: proposalListQueryShape,
     spansProjects: 'unlessScoped',
     load: () => import('@/app/api/proposals/route'),
   },
@@ -401,9 +385,8 @@ export const collaborationOperations = [
     domain: 'collaboration',
     summary: 'Apply a proposed change',
     description:
-      'Carries out a proposal that is still `proposed` as the person (409 otherwise) and returns it with its ' +
-      '`results`. The body is optional; `memoryScope: project` keeps a proposed note on the project. Needs the ' +
-      'right the proposal’s kind requires. Reverse it with piloti-change-undo where the result allows.',
+      'Carries out a still `proposed` proposal as the person (409 otherwise); returns it with its `results`. Body optional: ' +
+      '`memoryScope: project` keeps a note on the project. Needs the right its kind requires.',
     method: 'POST',
     path: '/api/proposals/[id]/apply',
     params: proposalParams,
@@ -425,8 +408,7 @@ export const collaborationOperations = [
     domain: 'collaboration',
     summary: 'Undo a change Piloti made',
     description:
-      'Reverses one change Piloti applied (id from conversation-message-changes). Answers 409 with `moved-on` if ' +
-      'the object has changed since, or `already-undone`. The inverse runs with the person’s own rights.',
+      'Reverses one change Piloti applied (id from conversation-message-changes); 409 `moved-on` if the object changed since, or `already-undone`. Runs with the person’s rights.',
     method: 'POST',
     path: '/api/piloti-changes/[id]/undo',
     params: z.object({ id: z.string().describe('The change id (a UUID), from conversation-message-changes.') }),
@@ -463,8 +445,7 @@ export const collaborationOperations = [
     domain: 'collaboration',
     summary: 'List the files attached to a conversation',
     description:
-      'The documents attached privately to one conversation (conversationId from conversation-list). Read, ' +
-      'preview or download them through the document operations.',
+      'The documents attached privately to one conversation (conversationId from conversation-list).',
     method: 'GET',
     path: '/api/session/documents',
     query: listSessionDocumentsQuerySchema,
@@ -475,8 +456,7 @@ export const collaborationOperations = [
     domain: 'collaboration',
     summary: 'Remove a file attached to a conversation',
     description:
-      'Deletes one chat attachment (id from session-document-list) with its retrieval chunks and stored copies. ' +
-      'This cannot be undone. Needs the collaborator role on the conversation.',
+      'Deletes one chat attachment (id from session-document-list) permanently. Needs the collaborator role on the conversation.',
     method: 'DELETE',
     path: '/api/session/documents/[id]',
     params: z.object({ id: z.string().describe('The attachment’s document id, from session-document-list.') }),

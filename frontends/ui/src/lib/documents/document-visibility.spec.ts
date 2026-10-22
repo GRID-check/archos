@@ -60,6 +60,8 @@ const SEES_EVERY_ROW: Record<string, string> = {
     "The sharing registry's `listIdsInProject`: a leaver's grants go on every document of the project, held ones included.",
   'lib/sharing/repository.ts#deleteOrphanedGrants': 'Orphan sweep: NOT EXISTS over every row, or a held document loses its grants.',
   'lib/inbox/repository.ts#deleteOrphanedInboxItems': 'Orphan sweep: NOT EXISTS over every row, or a held document loses its inbox rows.',
+  'lib/inbox/repository.ts#projectScopePredicate':
+    "Narrows the recipient's own inbox rows to one project; the row exists either way and is redacted at read time by its target's access check.",
   'lib/mentions/repository.ts#deleteOrphanedMentionRequests':
     'Orphan sweep: NOT EXISTS over every row, or a held document loses its mention requests.',
   'lib/documents/version-repository.ts#keyIsUnnamed':

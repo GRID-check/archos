@@ -496,7 +496,7 @@ export const foldersOperations = [
     summary: 'List open legal holds',
     description:
       'The open legal holds of the organization, each with its entity, reason and id. Needs the ' +
-      'compliance permission. Hold ids feed hold-release.',
+      'compliance permission.',
     method: 'GET',
     path: '/api/holds',
     spansProjects: 'always',
@@ -509,7 +509,7 @@ export const foldersOperations = [
     description:
       'Preserves an entity (`entityType` project, document, conversation, organization, user or folder, ' +
       'and its `entityId`) and blocks its purge, with a `reason`. Needs the compliance permission. ' +
-      'Returns the hold; lift it with hold-release.',
+      'Returns the hold. Lifting it is a separate, sensitive decision.',
     method: 'POST',
     path: '/api/holds',
     body: createHoldSchema,

@@ -296,7 +296,7 @@ if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
         })
       }
       if (url === `/api/conversations/${CONVERSATION_ID}/messages`) {
-        return Response.json(isHandbackVariant() ? HANDBACK_ROWS : MESSAGE_ROWS)
+        return Response.json({ messages: isHandbackVariant() ? HANDBACK_ROWS : MESSAGE_ROWS, nextCursor: null })
       }
       // The derived hand-off state. Empty in both variants — in the hand-back one
       // that emptiness IS the fixture: Anna's answer closed her request, which is

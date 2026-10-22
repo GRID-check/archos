@@ -172,15 +172,12 @@ export const stubApi = (scenario: Scenario): (() => void) => {
       return realFetch(input, init)
     const method = (init?.method ?? 'GET').toUpperCase()
     const path = url.pathname
-    if (
-      method === 'GET' &&
-      /^\/api\/conversations\/[^/]+\/messages$/.test(path) &&
-      scenario.runMessageAfterMs !== undefined
-    ) {
-      return later(scenario.runMessageAfterMs, () =>
-        json([storedRunMessage(scenario.question, new Date())])
-      )
+    if (method === 'GET' && /^\/api\/conversations\/[^/]+\/messages$/.test(path)) {
+      const page = (messages: unknown[]) => json({ messages, nextCursor: null })
+      if (scenario.runMessageAfterMs === undefined) return Promise.resolve(page([]))
+      return later(scenario.runMessageAfterMs, () => page([storedRunMessage(scenario.question, new Date())]))
     }
+    if (method === 'GET' && path === '/api/conversations') return Promise.resolve(json({ conversations: [], nextCursor: null }))
     if (path === `/api/projects/${PROJECT_ID}/folders`) {
       if (method === 'GET')
         return Promise.resolve(

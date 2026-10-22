@@ -80,7 +80,7 @@ import {
   findMessageInConversation,
   insertConversation,
   insertMessages,
-  listMessagesForConversation,
+  listMessagePage,
   listVisibleConversations,
   markConversationDeleting,
   mergeMessageMetadata,
@@ -90,6 +90,9 @@ import {
   updateConversationTitleInOrg,
   upsertConversationRead,
 } from './repository'
+import { CONVERSATION_PAGE_MAX, MESSAGE_PAGE_MAX } from './conversation-wire'
+import { parseMessageIncludes, toMessageView, type MessageListResponse } from './message-view'
+import { resolvePeople } from '@/lib/sharing/directory'
 
 /**
  * Bound the naming call so an unreachable backend rejects promptly instead of
@@ -183,6 +186,16 @@ export interface ConversationWithAccess extends Conversation {
 export interface ListConversationsFilter {
   /** Scope the list to one project's conversations (plus legacy unscoped rows). */
   projectId?: string
+  /** Conversations per page; {@link CONVERSATION_PAGE_MAX} at most. */
+  limit?: number
+  /** The previous page's `nextCursor`. */
+  cursor?: string
+}
+
+/** A page of the caller's conversations; `nextCursor` is null on the last. */
+export interface ConversationListPage {
+  conversations: ListedConversation[]
+  nextCursor: string | null
 }
 
 /**
@@ -202,18 +215,27 @@ export interface ListConversationsFilter {
 export async function listConversations(
   session: AuthorizedSession,
   filter: ListConversationsFilter = {}
-): Promise<ListedConversation[]> {
+): Promise<ConversationListPage> {
   if (filter.projectId) {
     await requireProjectAccess(session, filter.projectId, 'project:view')
   }
-  const rows = await listVisibleConversations(session.organizationId, session.userId, {
+  const pageSize = Math.min(Math.max(1, Math.trunc(filter.limit ?? CONVERSATION_PAGE_MAX)), CONVERSATION_PAGE_MAX)
+  // One more than a page: the extra row says a further page exists.
+  const fetched = await listVisibleConversations(session.organizationId, session.userId, {
     projectId: filter.projectId,
+    limit: pageSize + 1,
+    after: filter.cursor,
   })
+  const hasMore = fetched.length > pageSize
+  const rows = hasMore ? fetched.slice(0, pageSize) : fetched
   const locked = await lockedConversationIds(
     session,
     rows.map((row) => ({ id: row.id, projectId: row.projectId }))
   )
-  return rows.map((row) => (locked.has(row.id) ? withheldConversation(row) : { ...row, contentLocked: false }))
+  return {
+    conversations: rows.map((row) => (locked.has(row.id) ? withheldConversation(row) : { ...row, contentLocked: false })),
+    nextCursor: hasMore ? (rows.at(-1)?.id ?? null) : null,
+  }
 }
 
 /** A listed conversation, and whether its content is withheld from this caller. */
@@ -702,15 +724,25 @@ async function eraseMarkedConversation(organizationId: string, conversationId: s
  */
 export async function listConversationMessages(
   session: AuthorizedSession,
-  conversationId: string
-): Promise<Message[]> {
+  conversationId: string,
+  query: { limit?: number; cursor?: string; include?: string } = {}
+): Promise<MessageListResponse> {
   await requireResourceAccess(session, 'conversation', conversationId, 'viewer')
 
-  const [rows, tenancy] = await Promise.all([
-    listMessagesForConversation(conversationId),
+  const limit = Math.min(Math.max(1, Math.trunc(query.limit ?? 50)), MESSAGE_PAGE_MAX)
+  const [page, tenancy] = await Promise.all([
+    listMessagePage(conversationId, { limit, before: query.cursor }),
     findConversationTenancy(conversationId),
   ])
-  return rows.map((row) => attributeLegacyAuthor(row, tenancy?.createdBy ?? null))
+  const rows = page.rows.map((row) => attributeLegacyAuthor(row, tenancy?.createdBy ?? null))
+  const authorIds = [...new Set(rows.flatMap((row) => (row.authorUserId ? [row.authorUserId] : [])))]
+  const people = await resolvePeople(session.organizationId, authorIds)
+  const names = new Map([...people].map(([userId, person]) => [userId, person.name]))
+  const include = parseMessageIncludes(query.include)
+  return {
+    messages: rows.map((row) => toMessageView(row, names, include)),
+    nextCursor: page.hasMore ? (rows[0]?.id ?? null) : null,
+  }
 }
 
 /**

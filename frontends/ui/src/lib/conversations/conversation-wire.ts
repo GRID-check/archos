@@ -19,9 +19,52 @@ export const createConversationSchema = z.object({
   subjectResourceId: z.string().min(1).max(128).nullable().optional(),
 })
 
+/** Most conversations one page answers; the browser asks for this many. */
+export const CONVERSATION_PAGE_MAX = 200
+
 export const listConversationsQuerySchema = z.object({
   // Optional project scope; the service enforces project access + tenancy.
-  projectId: z.string().uuid().optional(),
+  projectId: z.string().uuid().optional().describe('Only this project’s conversations.'),
+  limit: z.coerce
+    .number()
+    .int()
+    .min(1)
+    .max(CONVERSATION_PAGE_MAX)
+    .default(50)
+    .describe(`Page size (default 50, most ${CONVERSATION_PAGE_MAX}).`),
+  cursor: z.string().min(1).max(128).optional().describe('The previous `nextCursor`.'),
+})
+
+/** The heavy parts of a message a list can include: see `./message-view`. */
+export const MESSAGE_INCLUDES = ['citations', 'steps', 'metadata'] as const
+export type MessageInclude = (typeof MESSAGE_INCLUDES)[number]
+
+/** Most messages one page answers. */
+export const MESSAGE_PAGE_MAX = 200
+
+export const listMessagesQuerySchema = z.object({
+  limit: z.coerce
+    .number()
+    .int()
+    .min(1)
+    .max(MESSAGE_PAGE_MAX)
+    .default(50)
+    .describe(`Page size (default 50, most ${MESSAGE_PAGE_MAX}).`),
+  cursor: z
+    .string()
+    .uuid()
+    .optional()
+    .describe('The previous `nextCursor`: earlier messages.'),
+  include: z
+    .string()
+    .max(64)
+    .refine((value) => value.split(',').every((part) => (MESSAGE_INCLUDES as readonly string[]).includes(part.trim())), {
+      message: `include is a comma-separated list of ${MESSAGE_INCLUDES.join(', ')}`,
+    })
+    .optional()
+    .describe(
+      'Comma-separated extras, none by default: `citations` (sources with snippets), `steps` (thinking steps), `metadata` (cards, provenance, the rest).',
+    ),
 })
 
 /**

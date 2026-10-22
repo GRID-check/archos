@@ -16,7 +16,7 @@
  */
 
 import 'server-only'
-import { and, asc, desc, eq, isNull, sql } from 'drizzle-orm'
+import { and, asc, desc, eq, inArray, isNull, sql } from 'drizzle-orm'
 import { getDb } from '@/lib/db'
 import { isUuid } from '@/lib/ids'
 import { emptyProjectProfile } from '@/lib/project-profile/patch-engine'
@@ -49,6 +49,27 @@ export async function listProjectsInOrg(
       .orderBy(order === 'oldest' ? asc(projects.createdAt) : desc(projects.createdAt))
       .limit(boundedLimit)
   )
+}
+
+/**
+ * The names of these projects, by id: for a list whose rows say which project they are about.
+ * A deleted project and an id of another organization have no entry.
+ */
+export async function listProjectNamesInOrg(
+  organizationId: string,
+  projectIds: readonly string[]
+): Promise<Map<string, string>> {
+  if (projectIds.length === 0) return new Map()
+  const db = getDb()
+  const rows = await withTenant({ organizationId }, () =>
+    db
+      .select({ id: projects.id, name: projects.name })
+      .from(projects)
+      .where(
+        and(eq(projects.organizationId, organizationId), isNull(projects.deletedAt), inArray(projects.id, [...projectIds]))
+      )
+  )
+  return new Map(rows.map((row) => [row.id, row.name]))
 }
 
 /**

@@ -4,11 +4,28 @@
  */
 
 import { z } from 'zod'
+import { INBOX_ITEM_TYPES } from '@/lib/inbox/inbox-vocabulary'
 import { INBOX_LIST_FILTERS, INBOX_LIST_LIMIT } from '@/lib/inbox/types'
 
 export const inboxListQuerySchema = z.object({
-  filter: z.enum(INBOX_LIST_FILTERS).optional(),
-  cursor: z.string().min(1).max(200).optional(),
+  filter: z
+    .enum(INBOX_LIST_FILTERS)
+    .optional()
+    .describe('The slice; `all` (unarchived) is the default.'),
+  type: z.enum(INBOX_ITEM_TYPES).optional().describe('Only this item type.'),
+  projectId: z
+    .string()
+    .uuid()
+    .optional()
+    .describe('Only items about this project or its conversations and documents.'),
+  limit: z.coerce
+    .number()
+    .int()
+    .min(1)
+    .max(INBOX_LIST_LIMIT)
+    .default(INBOX_LIST_LIMIT)
+    .describe(`Page size (default and most ${INBOX_LIST_LIMIT}).`),
+  cursor: z.string().min(1).max(200).optional().describe('The previous `nextCursor`.'),
 })
 
 export const unreadAnchorsQuerySchema = z.object({

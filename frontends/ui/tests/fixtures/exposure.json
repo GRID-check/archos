@@ -1227,6 +1227,16 @@
    "withheld": null,
    "reason": null
   },
+  "document-review-list": {
+   "kind": "catalog",
+   "domain": "review",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
   "document-revision-candidates": {
    "kind": "catalog",
    "domain": "review",
@@ -1723,10 +1733,13 @@
    "kind": "catalog",
    "domain": "collaboration",
    "sensitivity": null,
-   "external": true,
-   "piloti": true,
+   "external": false,
+   "piloti": false,
    "platform": false,
-   "withheld": null,
+   "withheld": {
+    "category": "ui-state",
+    "reason": "puts a request away from the person, who has not seen it; the same reason mark-read is withheld"
+   },
    "reason": null
   },
   "inbox-item-mark-read": {
@@ -1759,10 +1772,13 @@
    "kind": "catalog",
    "domain": "collaboration",
    "sensitivity": null,
-   "external": true,
-   "piloti": true,
+   "external": false,
+   "piloti": false,
    "platform": false,
-   "withheld": null,
+   "withheld": {
+    "category": "ui-state",
+    "reason": "the reverse of archive, which an agent cannot do; what the person put away is theirs to bring back"
+   },
    "reason": null
   },
   "inbox-list": {

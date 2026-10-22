@@ -276,6 +276,8 @@ export interface ListInboxOptions {
   /** Read the page after this row; the first page when omitted. */
   cursor?: InboxCursor | null
   limit?: number
+  /** Only items about this project: the project itself, or a conversation or document of it. */
+  projectId?: string
   /**
    * Restrict to these item types. REQUIRED — see {@link InboxTypeScope}. The
    * caller decides the set from the registry's per-type gate
@@ -345,13 +347,34 @@ function filterPredicate(filter: InboxListFilter) {
   }
 }
 
+/**
+ * "About this project": the project itself, or a conversation or document that hangs off it.
+ *
+ * Narrows the recipient's OWN rows to one project, so it reveals nothing about a document the
+ * reader may not see (the row exists either way, and is redacted at read time by its target's
+ * access check); it is why it is listed in `document-visibility.spec.ts` beside the orphan sweep.
+ */
+function projectScopePredicate(organizationId: string, projectId: string) {
+  return or(
+    and(eq(inboxItems.resourceType, 'project'), eq(inboxItems.resourceId, projectId)),
+    and(
+      eq(inboxItems.resourceType, 'conversation'),
+      sql`exists (select 1 from ${conversations} where ${conversations.id} = ${inboxItems.resourceId} and ${conversations.projectId} = ${projectId} and ${conversations.organizationId} = ${organizationId})`,
+    ),
+    and(
+      eq(inboxItems.resourceType, 'document'),
+      sql`exists (select 1 from ${documents} where ${documents.id}::text = ${inboxItems.resourceId} and ${documents.projectId} = ${projectId} and ${documents.organizationId} = ${organizationId})`,
+    ),
+  )
+}
+
 /** One recipient's inbox, newest activity first. Never crosses organizations. */
 export async function listInboxItems(
   organizationId: string,
   recipientUserId: string,
   options: ListInboxOptions,
 ): Promise<ListedInboxItem[]> {
-  const { filter = 'all', cursor = null, limit = INBOX_LIST_LIMIT, types } = options
+  const { filter = 'all', cursor = null, limit = INBOX_LIST_LIMIT, types, projectId } = options
   const db = getDb()
   return db
     .select({ ...getTableColumns(inboxItems), listedAtMicros })
@@ -362,6 +385,7 @@ export async function listInboxItems(
         eq(inboxItems.recipientUserId, recipientUserId),
         filterPredicate(filter),
         typeFilter(types),
+        projectId ? projectScopePredicate(organizationId, projectId) : undefined,
         // The bound is built from the cursor alone, so the column stays bare:
         // the epoch plus whole microseconds is exact.
         cursor

@@ -45,25 +45,12 @@ function brokenReferences(): string[] {
  * Piloti's own door: the description tells Piloti to call an operation it may only propose.
  */
 const BASELINE: readonly string[] = [
-  'piloti: annotation-list → annotation-reply-create',
-  'piloti: annotation-list → annotation-update',
   'piloti: bim-model-get → bim-model-query',
   'piloti: bim-model-list → bim-model-query',
   'piloti: bim-model-source-get → bim-model-query',
-  'piloti: conversation-message-changes → piloti-change-undo',
-  'piloti: conversation-message-update → proposal-apply',
-  'piloti: document-quarantine-get → document-quarantine-allow',
-  'piloti: hold-create → hold-release',
-  'piloti: hold-list → hold-release',
   'piloti: project-folder-access-get → project-folder-access-set',
   'piloti: project-member-list → project-member-remove',
   'piloti: project-person-add → project-member-add',
-  'piloti: proposal-list → proposal-apply',
-  'piloti: proposal-list → proposal-dismiss',
-  'piloti: sharing-get → sharing-grant-add',
-  'piloti: sharing-get → sharing-grant-revoke',
-  'piloti: sharing-get → sharing-grant-update',
-  'piloti: sharing-get → sharing-visibility-set',
   'piloti: skill-list → task-create',
   'piloti: task-run-get → task-run-commission',
 ]

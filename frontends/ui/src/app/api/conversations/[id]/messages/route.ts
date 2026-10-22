@@ -1,5 +1,6 @@
 /**
- * Conversation messages API — list a conversation's history and append
+ * Conversation messages API — list a page of a conversation's history (newest page first, `?cursor=` for
+ * earlier ones, `?include=` for citations, steps and the rest of the stored metadata) and append
  * messages (single object or batch array; both return an array). Thin
  * handlers; all logic lives in `@/lib/conversations/service`.
  *
@@ -9,8 +10,8 @@
  * shape existing callers expect is unchanged.
  */
 
-import { apiRoute, parseJsonBody } from '@/lib/api/handler'
-import { createMessagesSchema } from '@/lib/conversations/conversation-wire'
+import { apiRoute, parseJsonBody, parseQuery } from '@/lib/api/handler'
+import { createMessagesSchema, listMessagesQuerySchema } from '@/lib/conversations/conversation-wire'
 import { createConversationMessages, listConversationMessages } from '@/lib/conversations/service'
 import {
   DEFAULT_MUTATION_LIMIT,
@@ -21,7 +22,8 @@ import {
 type Params = { id: string }
 
 export const GET = apiRoute<Params>(
-  async ({ session, params }) => listConversationMessages(session, params.id),
+  async ({ session, params, request }) =>
+    listConversationMessages(session, params.id, parseQuery(request, listMessagesQuerySchema)),
   { authz: { enforcedBy: 'listConversationMessages (requireResourceAccess)' } }
 )
 

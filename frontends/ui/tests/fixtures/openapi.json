@@ -5668,7 +5668,7 @@
       "post": {
         "operationId": "hold-create",
         "summary": "Place a legal hold",
-        "description": "Preserves an entity (`entityType` project, document, conversation, organization, user or folder, and its `entityId`) and blocks its purge, with a `reason`. Needs the compliance permission. Returns the hold; lift it with hold-release.",
+        "description": "Preserves an entity (`entityType` project, document, conversation, organization, user or folder, and its `entityId`) and blocks its purge, with a `reason`. Needs the compliance permission. Returns the hold. Lifting it is a separate, sensitive decision.",
         "tags": [
           "documents"
         ],
@@ -5746,7 +5746,7 @@
       "get": {
         "operationId": "hold-list",
         "summary": "List open legal holds",
-        "description": "The open legal holds of the organization, each with its entity, reason and id. Needs the compliance permission. Hold ids feed hold-release.",
+        "description": "The open legal holds of the organization, each with its entity, reason and id. Needs the compliance permission.",
         "tags": [
           "documents"
         ],
@@ -9044,7 +9044,7 @@
       "post": {
         "operationId": "annotation-create",
         "summary": "Place an annotation on a document",
-        "description": "Sets a new annotation at a place on the document (page position or text range, as the schema describes) with a kind and a body. Returns the annotation with its number. Colleagues named in `mentions` are told.",
+        "description": "Sets an annotation at a place on the document (page position or text range) with a kind and a body. Returns it with its number. Colleagues in `mentions` are told.",
         "tags": [
           "review"
         ],
@@ -9224,7 +9224,7 @@
       "get": {
         "operationId": "annotation-list",
         "summary": "List the annotations on a document",
-        "description": "Every annotation on the document with its place, status, assignee and replies, including Piloti’s open proposals. The ids feed annotation-get, annotation-update and annotation-reply-create.",
+        "description": "Every annotation on the document with its place, status, assignee and replies, including Piloti’s open proposals. The ids feed annotation-get.",
         "tags": [
           "review"
         ],
@@ -9278,7 +9278,7 @@
       "delete": {
         "operationId": "annotation-delete",
         "summary": "Delete one of your own annotations",
-        "description": "Removes an annotation its author set. One that has been discussed or carried to another revision is refused with a 409; resolve it instead (annotation-update). Deleting cannot be undone.",
+        "description": "Deletes an annotation its author set, permanently. A discussed or carried one is refused (409): resolve it with annotation-update.",
         "tags": [
           "review"
         ],
@@ -9402,7 +9402,7 @@
       "patch": {
         "operationId": "annotation-update",
         "summary": "Change, resolve or reassign an annotation",
-        "description": "Edits an annotation: reword it, assign it, set a due day, or move its status (open, resolved, dismissed). Send at least one field. `expectedStatus` guards against overwriting a colleague’s change; `carryToCurrent` carries an open annotation onto the current revision.",
+        "description": "Rewords, assigns, dates or moves the status (open, resolved, dismissed) of an annotation; send at least one field. `expectedStatus` guards against overwriting a colleague’s change; `carryToCurrent` carries it onto the current revision.",
         "tags": [
           "review"
         ],
@@ -9573,7 +9573,7 @@
       "post": {
         "operationId": "annotation-reply-create",
         "summary": "Reply in an annotation’s thread",
-        "description": "Adds a reply to an annotation. Set `addressesPiloti` or mention Piloti to ask it to answer. Returns the annotation with its thread.",
+        "description": "Replies in an annotation’s thread; `addressesPiloti` or a Piloti mention asks it to answer. Returns the annotation with its thread.",
         "tags": [
           "review"
         ],
@@ -9685,7 +9685,7 @@
       "delete": {
         "operationId": "annotation-reply-delete",
         "summary": "Take back one of your own replies",
-        "description": "Deletes a reply its author wrote, while the annotation is live and Piloti has not taken it up (otherwise a 409). It cannot be undone.",
+        "description": "Deletes one’s own reply while the annotation is live and Piloti has not taken it up (else 409), permanently.",
         "tags": [
           "review"
         ],
@@ -9757,7 +9757,7 @@
       "patch": {
         "operationId": "annotation-reply-update",
         "summary": "Reword one of your own replies",
-        "description": "Rewords a reply its author wrote, while the annotation is live and Piloti has not taken it up (otherwise a 409). Returns the annotation with its thread.",
+        "description": "Rewords one’s own reply while the annotation is live and Piloti has not taken it up (else 409). Returns the annotation with its thread.",
         "tags": [
           "review"
         ],
@@ -9876,7 +9876,7 @@
       "get": {
         "operationId": "document-annotations-export",
         "summary": "Export a document’s annotations as a minutes file",
-        "description": "The document’s annotations as one file: PDF (default), Word (docx) or Markdown (md), the open ones or all, for the current revision or every one. Returned as an attached resource up to 5 MiB; Markdown comes back as text. Records an audit event. For the data itself use annotation-list. Needs read access to the document.",
+        "description": "The document’s annotations as one file: PDF (default), Word (docx) or Markdown (md), open or all, current revision or every one. An attached resource up to 5 MiB; Markdown comes back as text. For the data use annotation-list.",
         "tags": [
           "review"
         ],
@@ -10002,7 +10002,7 @@
       "post": {
         "operationId": "document-quarantine-allow",
         "summary": "Allow a held document through screening",
-        "description": "A reviewer allows a held file through screening so it is read and shown like any other document. Needs the reviewer permission (see document-quarantine-get). Send no body; the decision is recorded and cannot be taken back.",
+        "description": "A reviewer allows a held file through screening so it reads like any other document. Needs the reviewer permission (see document-quarantine-get). No body; the decision cannot be taken back.",
         "tags": [
           "review"
         ],
@@ -10057,7 +10057,7 @@
       "post": {
         "operationId": "document-quarantine-allow-request",
         "summary": "Ask a reviewer to allow a held upload",
-        "description": "The uploader asks the project’s reviewers to allow their held file through. Notifies the reviewers; changes nothing about the file itself. Send no body.",
+        "description": "The uploader asks the project’s reviewers to allow their held file through; notifies them, changes nothing else. No body.",
         "tags": [
           "review"
         ],
@@ -10111,7 +10111,7 @@
       "get": {
         "operationId": "document-quarantine-get",
         "summary": "Read why a document is held and who may allow it",
-        "description": "For a document held back by upload screening: the reason and what the caller may do (ask for it to be allowed, or allow it as a reviewer). Next: document-quarantine-allow-request or document-quarantine-allow.",
+        "description": "For a document held back by upload screening: the reason and what the caller may do (ask for it to be allowed, or allow it as a reviewer). The uploader’s next call is document-quarantine-allow-request; allowing it is a reviewer’s own decision.",
         "tags": [
           "review"
         ],
@@ -10161,11 +10161,101 @@
         }
       }
     },
+    "/api/review/queue": {
+      "get": {
+        "operationId": "document-review-list",
+        "summary": "List what waits for the person’s review, across projects",
+        "description": "Versions in review waiting for the person’s decision (`role: reviewer`, default) or sent by them (`submitter`), newest first, across projects. `documentId` and `versionId` feed document-version-get and the decisions.",
+        "tags": [
+          "review"
+        ],
+        "parameters": [
+          {
+            "name": "role",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "reviewer",
+                "submitter"
+              ],
+              "description": "`reviewer` (default): waiting for the person’s decision; `submitter`: sent by the person."
+            },
+            "description": "`reviewer` (default): waiting for the person’s decision; `submitter`: sent by the person."
+          },
+          {
+            "name": "projectId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "description": "Only this project’s documents."
+            },
+            "description": "Only this project’s documents."
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "description": "Page size (default and most 50)."
+            },
+            "description": "Page size (default and most 50)."
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "description": "The previous `nextCursor`."
+            },
+            "description": "The previous `nextCursor`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. The body is the route’s JSON answer; no response schema is declared for it yet, so read the operation description for what it contains.",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          }
+        },
+        "x-mcp-annotations": {
+          "title": "List what waits for the person’s review, across projects",
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        }
+      }
+    },
     "/api/documents/revision-candidates": {
       "post": {
         "operationId": "document-revision-candidates",
         "summary": "Find documents a new file could replace",
-        "description": "For file names about to be added to a project (`projectId`, `names`, optional target `folders`), lists existing documents each could be a new revision of. Read-only; feeds document-revision-link-set.",
+        "description": "For file names about to be added to a project (`projectId`, `names`, optional `folders`), lists the documents each could revise. Feeds document-revision-link-set.",
         "tags": [
           "review"
         ],
@@ -10252,7 +10342,7 @@
       "post": {
         "operationId": "document-revision-compare",
         "summary": "Compare a document visually with the one it replaces",
-        "description": "Marks what changed on one page between the older document (`older`, an id) and this newer one: boxed regions plus short sentences. Read-only; both documents must be readable and screened. Candidates for `older` come from document-revision-candidates.",
+        "description": "Marks what changed on one page between the older document (`older`, an id) and this one: boxed regions plus short sentences. Both must be readable and screened. Candidates: document-revision-candidates.",
         "tags": [
           "review"
         ],
@@ -10407,7 +10497,7 @@
       "post": {
         "operationId": "document-thread-ensure",
         "summary": "Open the caller’s conversation about a document",
-        "description": "Returns the id of the caller’s own conversation about this document, creating it (with an optional `title`) the first time. Use the conversation operations with that id to read or post in it.",
+        "description": "The id of the caller’s own conversation about this document, created (optional `title`) the first time. Use it with the conversation operations.",
         "tags": [
           "review"
         ],
@@ -10478,7 +10568,7 @@
       "post": {
         "operationId": "document-version-approve",
         "summary": "Approve a version under review",
-        "description": "Records the reviewer’s approval of a version in review. `ifMatch` is the `contentHash` the reviewer read; a mismatch is a 409. Next: document-version-publish makes an approved version current.",
+        "description": "Approves a version in review. `ifMatch` is the `contentHash` the reviewer read; a mismatch is a 409. Next: document-version-publish.",
         "tags": [
           "review"
         ],
@@ -10626,7 +10716,7 @@
       "put": {
         "operationId": "document-version-content-replace",
         "summary": "Replace the text of a draft version",
-        "description": "Writes the whole body of a draft version. `ifMatch` is the `contentHash` you last read (document-version-get); a mismatch is a 409 and nothing is overwritten. Only drafts are editable. Next: document-version-submit.",
+        "description": "Writes the whole body of a draft version. `ifMatch` is the `contentHash` last read (document-version-get); a mismatch is a 409. Drafts only. Next: document-version-submit.",
         "tags": [
           "review"
         ],
@@ -10715,7 +10805,7 @@
       "get": {
         "operationId": "document-version-diff",
         "summary": "Compare the text of two versions",
-        "description": "Returns both versions (state and full text) side by side so you can see what changed between `from` and `to`. Both ids come from document-version-list.",
+        "description": "Both versions (state and full text) side by side, `from` and `to`, ids from document-version-list.",
         "tags": [
           "review"
         ],
@@ -10789,7 +10879,7 @@
       "post": {
         "operationId": "document-version-fork",
         "summary": "Start a new draft from the published version",
-        "description": "Forks an editable draft from the document’s published version and returns it. Send an empty body. Next: document-version-content-replace to write the draft, then document-version-submit to send it to review.",
+        "description": "Forks an editable draft from the published version and returns it; empty body. Next: document-version-content-replace, then document-version-submit.",
         "tags": [
           "review"
         ],
@@ -10853,7 +10943,7 @@
       "get": {
         "operationId": "document-version-list",
         "summary": "List a document’s versions",
-        "description": "Every version of a document (the approval record of each revision) with its lifecycle state, author and content hash. Start here to get a `versionId` for the other document-version operations.",
+        "description": "Every version of a document with its lifecycle state, author and content hash. Start here for a `versionId`.",
         "tags": [
           "review"
         ],
@@ -11127,7 +11217,7 @@
       "post": {
         "operationId": "document-version-request-changes",
         "summary": "Ask for changes on a version under review",
-        "description": "Sends a version in review back for rework. A `comment` is required; set `delegateRevision` to hand the rework to Piloti as a task instead of leaving it with the author.",
+        "description": "Sends a version in review back for rework. `comment` is required; `delegateRevision` hands the rework to Piloti as a task.",
         "tags": [
           "review"
         ],
@@ -11273,7 +11363,7 @@
       "post": {
         "operationId": "document-version-submit",
         "summary": "Send a draft version to review",
-        "description": "Submits a draft for review. `reviewerUserIds` names who is asked (from document-version-reviewer-list; empty asks the item’s assignees), `orderMessage` is the one-sentence order and `dueAt` an optional date. Reviewers then call document-version-approve, -reject or -request-changes.",
+        "description": "Submits a draft for review. `reviewerUserIds` (from document-version-reviewer-list; empty asks the assignees), `orderMessage` the one-sentence order, `dueAt` optional. Reviewers then approve, reject or request changes.",
         "tags": [
           "review"
         ],
@@ -11486,7 +11576,7 @@
       "get": {
         "operationId": "project-annotations-export",
         "summary": "Export a project’s open items as a minutes file",
-        "description": "The project’s open items as one set of minutes: PDF (default), Word (docx) or Markdown (md), filtered like project-annotation-list (`status`, `assignee`, `due`, `order`). Returned as an attached resource up to 5 MiB; Markdown comes back as text. Refused when more than 1000 annotations match: narrow the filters. Records an audit event.",
+        "description": "The project’s open items as minutes: PDF (default), Word (docx) or Markdown (md), filtered like project-annotation-list. An attached resource up to 5 MiB; Markdown comes back as text. Refused above 1000 matches: narrow the filters.",
         "tags": [
           "review"
         ],
@@ -11615,7 +11705,7 @@
       "get": {
         "operationId": "answer-feedback-list",
         "summary": "Read the person’s votes in a conversation",
-        "description": "The thumbs-up and thumbs-down votes the person has given to answers in one conversation (conversationId from conversation-list). Only their own votes are returned.",
+        "description": "The person’s own thumbs-up and thumbs-down votes on answers in one conversation (conversationId from conversation-list).",
         "tags": [
           "conversations"
         ],
@@ -11719,7 +11809,7 @@
       "post": {
         "operationId": "answer-feedback-submit",
         "summary": "Vote on an answer",
-        "description": "Records a verdict on one answer (messageId from conversation-message-list). Voting again replaces the earlier vote. A down-vote feeds Piloti’s failure learning, so add the reason when the answer was wrong.",
+        "description": "Votes on one answer (messageId from conversation-message-list); voting again replaces the vote. A down-vote feeds Piloti’s failure learning: add the reason.",
         "tags": [
           "conversations"
         ],
@@ -11926,7 +12016,7 @@
       "post": {
         "operationId": "conversation-create",
         "summary": "Start a new conversation",
-        "description": "Creates an empty private conversation, optionally inside a project (projectId from project-list) or about one document. You choose the id: `s_` followed by a UUID with underscores for the hyphens. Returns the conversation. Share it deliberately afterwards (sharing-get shows who has access).",
+        "description": "Creates an empty private conversation, optionally in a project (projectId from project-list) or about one document. You choose the id: `s_` plus a UUID with underscores. Returns it. Share it deliberately afterwards.",
         "tags": [
           "conversations"
         ],
@@ -12030,7 +12120,7 @@
       "get": {
         "operationId": "conversation-list",
         "summary": "List the conversations the person can see",
-        "description": "Every conversation the person may open, their own and those shared with them, newest first, with id, title, project and unread state. Pass projectId to narrow to one project (ids from project-list). Take a conversation id from here for conversation-get and conversation-message-list.",
+        "description": "The conversations the person may open, their own and shared ones, most recently active first, with id, title, project and unread state. Pass projectId (from project-list) to narrow; page with `nextCursor`. Take a conversation id from here for conversation-get and conversation-message-list.",
         "tags": [
           "conversations"
         ],
@@ -12041,8 +12131,32 @@
             "required": false,
             "schema": {
               "type": "string",
-              "format": "uuid"
-            }
+              "format": "uuid",
+              "description": "Only this project’s conversations."
+            },
+            "description": "Only this project’s conversations."
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "description": "Page size (default 50, most 200)."
+            },
+            "description": "Page size (default 50, most 200)."
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "description": "The previous `nextCursor`."
+            },
+            "description": "The previous `nextCursor`."
           }
         ],
         "responses": {
@@ -12083,7 +12197,7 @@
       "delete": {
         "operationId": "conversation-delete",
         "summary": "Delete a conversation",
-        "description": "Deletes a conversation and its messages for everyone in it. This cannot be undone. The answer is the same whether or not the id existed or was the person’s, so it never reveals which ids are real.",
+        "description": "Deletes a conversation and its messages for everyone in it, permanently. The answer is the same whether or not the id was real.",
         "tags": [
           "conversations"
         ],
@@ -12135,7 +12249,7 @@
       "get": {
         "operationId": "conversation-get",
         "summary": "Read one conversation",
-        "description": "One conversation by id: title, project, visibility, engagement mode (when Piloti answers) and the person’s role in it. Messages come from conversation-message-list.",
+        "description": "One conversation: title, project, visibility, engagement mode (when Piloti answers) and the person’s role. Messages: conversation-message-list.",
         "tags": [
           "conversations"
         ],
@@ -12187,7 +12301,7 @@
       "patch": {
         "operationId": "conversation-update",
         "summary": "Rename a conversation or change when Piloti answers",
-        "description": "Set a new `title` (needs the owner role) and/or the `engagement` mode that decides when Piloti answers (needs the collaborator role). Provide at least one of the two. Returns the updated conversation.",
+        "description": "Sets `title` (owner role) and/or the `engagement` mode that decides when Piloti answers (collaborator role); at least one. Returns it.",
         "tags": [
           "conversations"
         ],
@@ -12265,7 +12379,7 @@
       "post": {
         "operationId": "conversation-draft-file",
         "summary": "File an unfiled draft into the project",
-        "description": "Files the content of a draft (path from the answer’s card or conversation-draft-get) as a document in the conversation’s project, as the person. A same-name collision answers 409 with the existing document; repeat with `force: true` only after the person confirmed filing anyway. Returns the filed document.",
+        "description": "Files a draft (path from the answer’s card or conversation-draft-get) as a document in the conversation’s project. A same-name collision answers 409 with the existing document; repeat with `force: true` only after the person confirmed. Returns the document.",
         "tags": [
           "conversations"
         ],
@@ -12347,7 +12461,7 @@
       "get": {
         "operationId": "conversation-draft-get",
         "summary": "Read an unfiled draft Piloti wrote",
-        "description": "The content of one draft in the conversation’s working directory, so it can be read before filing. `path` is the draft path the answer’s card names (such as `/entwuerfe/….md`). Read-only. To keep it, call conversation-draft-file.",
+        "description": "One draft in the conversation’s working directory, to read before filing; `path` is the one the answer’s card names. To keep it: conversation-draft-file.",
         "tags": [
           "conversations"
         ],
@@ -12411,7 +12525,7 @@
       "post": {
         "operationId": "conversation-message-add",
         "summary": "Store a message in a conversation",
-        "description": "Appends one message, or an array of up to the per-request limit, to a thread the person may write in. You supply each message id. Use `mentions` (user ids from conversation-mention-candidate-list) to address colleagues; they get an inbox item. This stores the message only: it does not open a turn with Piloti, which runs over the chat WebSocket. Returns the stored rows with the addressee ruling.",
+        "description": "Appends one message, or an array of them, to a thread the person may write in; you supply each id. `mentions` (ids from conversation-mention-candidate-list) address colleagues, who get an inbox item. Stores only: it opens no turn with Piloti. Returns the stored rows.",
         "tags": [
           "conversations"
         ],
@@ -12616,7 +12730,7 @@
       "get": {
         "operationId": "conversation-message-list",
         "summary": "Read the messages of a conversation",
-        "description": "The whole history of a conversation, oldest first: each message with id, role, content, structured mentions and the answer details Piloti stored. Message ids from here feed conversation-message-changes.",
+        "description": "The newest messages of a conversation, oldest first within the page; earlier ones through `nextCursor`. Each has id, role, content, author, time and mentions; `include` adds citations, steps or metadata. Message ids feed conversation-message-changes.",
         "tags": [
           "conversations"
         ],
@@ -12630,6 +12744,38 @@
               "description": "The conversation id (`s_` plus a UUID with underscores), from conversation-list."
             },
             "description": "The conversation id (`s_` plus a UUID with underscores), from conversation-list."
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "description": "Page size (default 50, most 200)."
+            },
+            "description": "Page size (default 50, most 200)."
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "description": "The previous `nextCursor`: earlier messages."
+            },
+            "description": "The previous `nextCursor`: earlier messages."
+          },
+          {
+            "name": "include",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 64,
+              "description": "Comma-separated extras, none by default: `citations` (sources with snippets), `steps` (thinking steps), `metadata` (cards, provenance, the rest)."
+            },
+            "description": "Comma-separated extras, none by default: `citations` (sources with snippets), `steps` (thinking steps), `metadata` (cards, provenance, the rest)."
           }
         ],
         "responses": {
@@ -12670,7 +12816,7 @@
       "get": {
         "operationId": "conversation-message-changes",
         "summary": "List what one answer changed",
-        "description": "The changes Piloti made while producing one answer, each as it stands now, with `canUndo`. Changes on documents the person may not see are left out. Pass a change id to piloti-change-undo to reverse it.",
+        "description": "The changes Piloti made while producing one answer, each as it stands now, with `canUndo`. Changes on documents the person may not see are left out. Each change carries the id the person’s undo takes.",
         "tags": [
           "conversations"
         ],
@@ -12734,7 +12880,7 @@
       "get": {
         "operationId": "conversation-message-export",
         "summary": "Export one saved answer as a Word document",
-        "description": "One answer of a conversation as a .docx, built from the stored message with its sources. Returned as an attached resource (base64 `blob`) up to 5 MiB. Needs access to the conversation. Message ids come from conversation-message-list; only an answer from Piloti can be exported.",
+        "description": "One answer from Piloti as a .docx with its sources, an attached resource (base64 `blob`) up to 5 MiB. Message ids: conversation-message-list.",
         "tags": [
           "conversations"
         ],
@@ -12807,7 +12953,7 @@
       "patch": {
         "operationId": "conversation-message-update",
         "summary": "Record a card decision or details on an answer",
-        "description": "Saves the person’s decisions on an answer’s interactive cards (`cardInteractions`, keyed like `memory_proposal-0`) and the answer’s own details (`provenance`, `promptState`, `stages`). Provide at least one field. The service whitelists the free-form parts; to act on a proposal use proposal-apply instead.",
+        "description": "Saves the person’s decisions on an answer’s cards (`cardInteractions`, keyed like `memory_proposal-0`) and its details (`provenance`, `promptState`, `stages`). Provide at least one field. The service whitelists the free-form parts. A proposal is decided on its own card, not here.",
         "tags": [
           "conversations"
         ],
@@ -12981,7 +13127,7 @@
       "post": {
         "operationId": "conversation-read-mark",
         "summary": "Mark a conversation read",
-        "description": "Moves the person’s read marker to now, or to `lastReadMessageId`, and clears the thread’s inbox items. Read state is per person. Send an empty object to mark everything read.",
+        "description": "Moves the person’s read marker to now, or to `lastReadMessageId`, and clears the thread’s inbox items. Empty object: mark all read.",
         "tags": [
           "conversations"
         ],
@@ -13157,7 +13303,7 @@
       "post": {
         "operationId": "feedback-report-submit",
         "summary": "Send product feedback to the Piloti team",
-        "description": "Sends a bug report, idea, praise or question to the platform owners (`kind` and `message`, plus the `pagePath` it concerns). Opens a support ticket. This is not an answer vote: use answer-feedback-submit for that. Rate limited per person.",
+        "description": "Sends a bug report, idea, praise or question to the Piloti team and opens a ticket. Not an answer vote (that is answer-feedback-submit).",
         "tags": [
           "conversations"
         ],
@@ -13305,7 +13451,7 @@
       "post": {
         "operationId": "passage-similar-search",
         "summary": "Find passages like one in the office’s documents",
-        "description": "Given a passage the person is reading (its document by id or by legal-corpus file name, and its text), finds similar passages across the projects and documents they may read, grouped project, document, passage. Read-only. Use it to see how the office handled the same question before.",
+        "description": "Given a passage (its document by id or legal-corpus file name, and its text), finds similar passages across the projects and documents the person may read, grouped project, document, passage. Shows how the office handled it before.",
         "tags": [
           "conversations"
         ],
@@ -13644,7 +13790,7 @@
       "post": {
         "operationId": "assignment-add",
         "summary": "Assign a person to a resource",
-        "description": "Puts a person (`userId` from assignment-candidate-list) on the hook for the resource. Assignment is not access. Needs the collaborator role. Returns the updated assignees.",
+        "description": "Assigns a person (`userId` from assignment-candidate-list); assignment is not access. Needs the collaborator role. Returns the assignees.",
         "tags": [
           "collaboration"
         ],
@@ -13655,9 +13801,13 @@
             "required": true,
             "schema": {
               "type": "string",
-              "description": "The kind of shareable resource, such as `conversation` or `document`, as the resource’s own operations name it."
+              "enum": [
+                "conversation",
+                "document"
+              ],
+              "description": "The kind of shareable resource."
             },
-            "description": "The kind of shareable resource, such as `conversation` or `document`, as the resource’s own operations name it."
+            "description": "The kind of shareable resource."
           },
           {
             "name": "resourceId",
@@ -13737,9 +13887,13 @@
             "required": true,
             "schema": {
               "type": "string",
-              "description": "The kind of shareable resource, such as `conversation` or `document`, as the resource’s own operations name it."
+              "enum": [
+                "conversation",
+                "document"
+              ],
+              "description": "The kind of shareable resource."
             },
-            "description": "The kind of shareable resource, such as `conversation` or `document`, as the resource’s own operations name it."
+            "description": "The kind of shareable resource."
           },
           {
             "name": "resourceId",
@@ -13799,9 +13953,13 @@
             "required": true,
             "schema": {
               "type": "string",
-              "description": "The kind of shareable resource, such as `conversation` or `document`, as the resource’s own operations name it."
+              "enum": [
+                "conversation",
+                "document"
+              ],
+              "description": "The kind of shareable resource."
             },
-            "description": "The kind of shareable resource, such as `conversation` or `document`, as the resource’s own operations name it."
+            "description": "The kind of shareable resource."
           },
           {
             "name": "resourceId",
@@ -13861,7 +14019,7 @@
       "get": {
         "operationId": "assignment-candidate-list",
         "summary": "List who can be assigned to a resource",
-        "description": "Project members who may be assigned. With `access: write` (documents only) only people who may change the document, which is who an annotation may be handed to. User ids from here feed assignment-add.",
+        "description": "Project members who may be assigned; `access: write` (documents) keeps those who may change the document. Ids feed assignment-add.",
         "tags": [
           "collaboration"
         ],
@@ -13872,9 +14030,13 @@
             "required": true,
             "schema": {
               "type": "string",
-              "description": "The kind of shareable resource, such as `conversation` or `document`, as the resource’s own operations name it."
+              "enum": [
+                "conversation",
+                "document"
+              ],
+              "description": "The kind of shareable resource."
             },
-            "description": "The kind of shareable resource, such as `conversation` or `document`, as the resource’s own operations name it."
+            "description": "The kind of shareable resource."
           },
           {
             "name": "resourceId",
@@ -13937,7 +14099,7 @@
       "get": {
         "operationId": "conversation-awaiting-get",
         "summary": "See whom a conversation is waiting on",
-        "description": "The open mention requests on a conversation: the hand-offs where the thread waits for a colleague. Request ids feed mention-request-release.",
+        "description": "The open mention requests on a conversation, where it waits for a colleague. Ids feed mention-request-release.",
         "tags": [
           "collaboration"
         ],
@@ -13991,7 +14153,7 @@
       "get": {
         "operationId": "conversation-mention-candidate-list",
         "summary": "List who can be mentioned in a conversation",
-        "description": "The people (and Piloti) a message in this conversation may mention. Mentions are structured: use the `targetId` values from here in conversation-message-add, never a name typed in text.",
+        "description": "Who a message here may mention (people and Piloti). Use these `targetId` values in conversation-message-add, never typed names.",
         "tags": [
           "collaboration"
         ],
@@ -14345,7 +14507,7 @@
       "get": {
         "operationId": "inbox-list",
         "summary": "List the person’s inbox",
-        "description": "One page of the person’s own inbox. `filter` picks the slice: `requests` waits on them, `unread`, `all` (everything unarchived, the default), `archived`, `pending`. Pass the previous page’s `nextCursor` as `cursor` for the next page. Item ids feed the inbox-item-* operations.",
+        "description": "The person’s own inbox, newest first. `filter`: `requests` (waits on them), `unread`, `pending` (unread OR open request), `archived`, `all` (default); `type` and `projectId` narrow it. Page with `nextCursor`.",
         "tags": [
           "collaboration"
         ],
@@ -14362,8 +14524,71 @@
                 "unread",
                 "all",
                 "archived"
-              ]
-            }
+              ],
+              "description": "The slice; `all` (unarchived) is the default."
+            },
+            "description": "The slice; `all` (unarchived) is the default."
+          },
+          {
+            "name": "type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "mention.requested",
+                "mention.answered",
+                "conversation.shared_with_you",
+                "conversation.activity",
+                "storage.quota_warning",
+                "document.assigned_to_you",
+                "task_run.completed",
+                "task_run.failed",
+                "task_run.waiting",
+                "document.review_requested",
+                "feedback.submitted",
+                "upload.completed",
+                "document.quarantined",
+                "document.release_requested",
+                "mail_import.completed",
+                "mail_import.failed",
+                "document.new_revision",
+                "piloti.work_done",
+                "piloti.work_failed",
+                "piloti.asks_you",
+                "piloti.proposal_waiting",
+                "piloti.intake_ready",
+                "piloti.revision_checked",
+                "annotation.assigned_to_you",
+                "annotation.activity",
+                "annotation.mentioned",
+                "root_sort.ready",
+                "root_sort.failed"
+              ],
+              "description": "Only this item type."
+            },
+            "description": "Only this item type."
+          },
+          {
+            "name": "projectId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "description": "Only items about this project or its conversations and documents."
+            },
+            "description": "Only items about this project or its conversations and documents."
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "description": "Page size (default and most 50)."
+            },
+            "description": "Page size (default and most 50)."
           },
           {
             "name": "cursor",
@@ -14372,8 +14597,10 @@
             "schema": {
               "type": "string",
               "minLength": 1,
-              "maxLength": 200
-            }
+              "maxLength": 200,
+              "description": "The previous `nextCursor`."
+            },
+            "description": "The previous `nextCursor`."
           }
         ],
         "responses": {
@@ -14518,7 +14745,7 @@
       "post": {
         "operationId": "mention-request-release",
         "summary": "Carry on without the person a thread waits on",
-        "description": "Releases an open hand-off (request id from conversation-awaiting-get) so the thread no longer waits. Any contributor may do it. The mentioned colleague’s inbox item is settled.",
+        "description": "Releases an open hand-off (id from conversation-awaiting-get) so the thread stops waiting. Any contributor may. The colleague’s inbox item is settled.",
         "tags": [
           "collaboration"
         ],
@@ -14572,7 +14799,7 @@
       "post": {
         "operationId": "piloti-change-undo",
         "summary": "Undo a change Piloti made",
-        "description": "Reverses one change Piloti applied (id from conversation-message-changes). Answers 409 with `moved-on` if the object has changed since, or `already-undone`. The inverse runs with the person’s own rights.",
+        "description": "Reverses one change Piloti applied (id from conversation-message-changes); 409 `moved-on` if the object changed since, or `already-undone`. Runs with the person’s rights.",
         "tags": [
           "collaboration"
         ],
@@ -14626,7 +14853,7 @@
       "post": {
         "operationId": "proposal-apply",
         "summary": "Apply a proposed change",
-        "description": "Carries out a proposal that is still `proposed` as the person (409 otherwise) and returns it with its `results`. The body is optional; `memoryScope: project` keeps a proposed note on the project. Needs the right the proposal’s kind requires. Reverse it with piloti-change-undo where the result allows.",
+        "description": "Carries out a still `proposed` proposal as the person (409 otherwise); returns it with its `results`. Body optional: `memoryScope: project` keeps a note on the project. Needs the right its kind requires.",
         "tags": [
           "collaboration"
         ],
@@ -14804,7 +15031,7 @@
       "get": {
         "operationId": "proposal-list",
         "summary": "List open proposed changes on a shelf",
-        "description": "Piloti’s open proposals (file operations, notes, profile changes) with the documents they name. Give `projectId` (from project-list) for a project, or `shelf: office_shelf` for the office shelf, and optionally `kind`. Ids feed proposal-get, proposal-apply and proposal-dismiss.",
+        "description": "Piloti’s open proposals (file operations, notes, profile changes) with the documents they name, newest first. Give `projectId` (from project-list) or `shelf`, and optionally `kind`. Page with `nextCursor`. Ids feed proposal-get; the person decides each.",
         "tags": [
           "collaboration"
         ],
@@ -14827,13 +15054,12 @@
             "schema": {
               "type": "string",
               "enum": [
-                "project",
                 "office_shelf",
                 "organization"
               ],
-              "description": "`office_shelf` for the office shelf instead of a project."
+              "description": "`office_shelf` or `organization` instead of a project."
             },
-            "description": "`office_shelf` for the office shelf instead of a project."
+            "description": "`office_shelf` or `organization` instead of a project."
           },
           {
             "name": "kind",
@@ -14846,8 +15072,31 @@
                 "memory",
                 "project_profile",
                 "operation"
-              ]
-            }
+              ],
+              "description": "Only proposals of this kind."
+            },
+            "description": "Only proposals of this kind."
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "description": "Page size (default and most 50)."
+            },
+            "description": "Page size (default and most 50)."
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "description": "The previous `nextCursor`."
+            },
+            "description": "The previous `nextCursor`."
           }
         ],
         "responses": {
@@ -14984,7 +15233,7 @@
       "get": {
         "operationId": "push-preference-get",
         "summary": "Read the push notification preferences",
-        "description": "What the person wants pushed (the categories requests, results, access, activity, office) and whether the lock screen shows content. Defaults are filled in.",
+        "description": "What the person wants pushed (categories requests, results, access, activity, office) and whether the lock screen shows content.",
         "tags": [
           "collaboration"
         ],
@@ -15103,7 +15352,7 @@
       "delete": {
         "operationId": "session-document-delete",
         "summary": "Remove a file attached to a conversation",
-        "description": "Deletes one chat attachment (id from session-document-list) with its retrieval chunks and stored copies. This cannot be undone. Needs the collaborator role on the conversation.",
+        "description": "Deletes one chat attachment (id from session-document-list) permanently. Needs the collaborator role on the conversation.",
         "tags": [
           "collaboration"
         ],
@@ -15157,7 +15406,7 @@
       "get": {
         "operationId": "session-document-list",
         "summary": "List the files attached to a conversation",
-        "description": "The documents attached privately to one conversation (conversationId from conversation-list). Read, preview or download them through the document operations.",
+        "description": "The documents attached privately to one conversation (conversationId from conversation-list).",
         "tags": [
           "collaboration"
         ],
@@ -15209,7 +15458,7 @@
       "get": {
         "operationId": "sharing-candidate-list",
         "summary": "List who could be invited to a resource",
-        "description": "Organization members who may be invited to the resource, plus those flagged `needsProjectAccess` because they would first need to join the project. Only the resource owner may read it.",
+        "description": "Members who may be invited to the resource; `needsProjectAccess` flags those who would first need to join the project. Owner only.",
         "tags": [
           "collaboration"
         ],
@@ -15220,9 +15469,13 @@
             "required": true,
             "schema": {
               "type": "string",
-              "description": "The kind of shareable resource, such as `conversation` or `document`, as the resource’s own operations name it."
+              "enum": [
+                "conversation",
+                "document"
+              ],
+              "description": "The kind of shareable resource."
             },
-            "description": "The kind of shareable resource, such as `conversation` or `document`, as the resource’s own operations name it."
+            "description": "The kind of shareable resource."
           },
           {
             "name": "resourceId",
@@ -15273,7 +15526,7 @@
       "get": {
         "operationId": "sharing-get",
         "summary": "Read who has access to a resource",
-        "description": "The sharing state of a conversation or other shareable resource: its visibility, the people with a grant and their roles, and the person’s own role. Change it with sharing-visibility-set, sharing-grant-add, sharing-grant-update and sharing-grant-revoke.",
+        "description": "Who has access to a conversation or document: visibility, the people with a grant and their roles, and the person’s own role.",
         "tags": [
           "collaboration"
         ],
@@ -15284,9 +15537,13 @@
             "required": true,
             "schema": {
               "type": "string",
-              "description": "The kind of shareable resource, such as `conversation` or `document`, as the resource’s own operations name it."
+              "enum": [
+                "conversation",
+                "document"
+              ],
+              "description": "The kind of shareable resource."
             },
-            "description": "The kind of shareable resource, such as `conversation` or `document`, as the resource’s own operations name it."
+            "description": "The kind of shareable resource."
           },
           {
             "name": "resourceId",
@@ -15346,9 +15603,13 @@
             "required": true,
             "schema": {
               "type": "string",
-              "description": "The kind of shareable resource, such as `conversation` or `document`, as the resource’s own operations name it."
+              "enum": [
+                "conversation",
+                "document"
+              ],
+              "description": "The kind of shareable resource."
             },
-            "description": "The kind of shareable resource, such as `conversation` or `document`, as the resource’s own operations name it."
+            "description": "The kind of shareable resource."
           },
           {
             "name": "resourceId",
@@ -15435,9 +15696,13 @@
             "required": true,
             "schema": {
               "type": "string",
-              "description": "The kind of shareable resource, such as `conversation` or `document`, as the resource’s own operations name it."
+              "enum": [
+                "conversation",
+                "document"
+              ],
+              "description": "The kind of shareable resource."
             },
-            "description": "The kind of shareable resource, such as `conversation` or `document`, as the resource’s own operations name it."
+            "description": "The kind of shareable resource."
           },
           {
             "name": "resourceId",
@@ -15543,9 +15808,13 @@
             "required": true,
             "schema": {
               "type": "string",
-              "description": "The kind of shareable resource, such as `conversation` or `document`, as the resource’s own operations name it."
+              "enum": [
+                "conversation",
+                "document"
+              ],
+              "description": "The kind of shareable resource."
             },
-            "description": "The kind of shareable resource, such as `conversation` or `document`, as the resource’s own operations name it."
+            "description": "The kind of shareable resource."
           },
           {
             "name": "resourceId",
@@ -15638,9 +15907,13 @@
             "required": true,
             "schema": {
               "type": "string",
-              "description": "The kind of shareable resource, such as `conversation` or `document`, as the resource’s own operations name it."
+              "enum": [
+                "conversation",
+                "document"
+              ],
+              "description": "The kind of shareable resource."
             },
-            "description": "The kind of shareable resource, such as `conversation` or `document`, as the resource’s own operations name it."
+            "description": "The kind of shareable resource."
           },
           {
             "name": "resourceId",
