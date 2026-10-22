@@ -6439,7 +6439,7 @@
       "get": {
         "operationId": "mail-import-list",
         "summary": "List a project’s mail imports",
-        "description": "The project's Outlook archive imports with their status and counts. Import ids feed mail-import-get and mail-import-cancel.",
+        "description": "The project's Outlook archive imports with their status and counts, newest first, 20 a page by default and at most 50 (`limit`); pass `nextCursor` back as `cursor` for the next page, null on the last. Import ids feed mail-import-get and mail-import-cancel.",
         "tags": [
           "documents"
         ],
@@ -6453,6 +6453,27 @@
               "description": "The project id, from project-list."
             },
             "description": "The project id, from project-list."
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "description": "Default 20, max 50."
+            },
+            "description": "Default 20, max 50."
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 200,
+              "description": "The nextCursor of the previous page."
+            },
+            "description": "The nextCursor of the previous page."
           }
         ],
         "responses": {
