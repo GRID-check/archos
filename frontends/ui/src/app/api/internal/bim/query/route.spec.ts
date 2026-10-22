@@ -279,7 +279,7 @@ describe('POST /api/internal/bim/query', () => {
     })
 
     it('says "still processing", not "no model", when the project’s own IFC is not ready yet', async () => {
-      const PROCESSING = model({ id: '66666666-6666-6666-6666-666666666666', filename: 'Haus-B.ifc', status: 'processing' })
+      const PROCESSING = model({ id: '66666666-6666-6666-6666-666666666666', filename: 'Haus-B.ifc', status: 'extracting' })
       vi.mocked(listBimModels).mockResolvedValue([SAMPLE, PROCESSING])
 
       const body = await (await post(overview)).json()
@@ -288,7 +288,7 @@ describe('POST /api/internal/bim/query', () => {
       expect(body).toMatchObject({
         resolved: false,
         reason: 'not_ready',
-        models: [{ modelId: PROCESSING.id, status: 'processing', shelf: 'project' }],
+        models: [{ modelId: PROCESSING.id, status: 'extracting', shelf: 'project' }],
       })
     })
 
