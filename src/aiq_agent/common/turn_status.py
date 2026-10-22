@@ -92,6 +92,7 @@ from __future__ import annotations
 
 import json
 import logging
+import time
 from collections.abc import Iterator
 from collections.abc import Sequence
 from contextlib import contextmanager
@@ -106,6 +107,9 @@ from langchain_core.callbacks import AsyncCallbackHandler
 from langgraph.config import get_stream_writer
 
 from aiq_agent.common.source_kinds import canonical_shelf_value
+from aiq_agent.common.wire_v2 import ActionCounts
+from aiq_agent.common.wire_v2 import ActionStep
+from aiq_agent.common.wire_v2 import ActionVerb
 from aiq_agent.common.wire_v2 import Channel
 from aiq_agent.common.wire_v2 import EventBody
 from aiq_agent.common.wire_v2 import LookStep
@@ -536,6 +540,80 @@ def emit_status(
 def emit_technical(slot: str, **detail: Scalar | list[str] | None) -> None:
     """Emit one technical record: no key, no values, only detail an operator counts."""
     emit_status(slot, channel=CHANNEL_TECHNICAL, **detail)
+
+
+#: Step id prefix of an action row (ADR-0131); a fresh id per call follows.
+ACTION_STEP_PREFIX = "action:"
+
+
+class ActionRow:
+    """One call's row in the Herleitung work list: emitted ``running`` now, settled by :meth:`finish`.
+
+    The tool holds the row for the length of its call and fills in what it
+    found from its own typed values. Fail-open everywhere: a row that does not
+    validate is logged and dropped, never raised into the tool.
+    """
+
+    def __init__(self, verb: ActionVerb, **fields: Any) -> None:
+        self._id = f"{ACTION_STEP_PREFIX}{uuid4().hex[:16]}"
+        self._started = time.monotonic()
+        self._fields: dict[str, Any] = {"verb": verb, "round": current_retrieval_round(), **_clip_action(fields)}
+        self._done = False
+        self._emit(started=True)
+
+    def finish(
+        self,
+        status: Literal["ok", "empty", "error"] = "ok",
+        *,
+        counts: dict[str, int | None] | None = None,
+        **fields: Any,
+    ) -> None:
+        """Settle the row once: its outcome, its counts and its time. A second call is ignored."""
+        if self._done:
+            return
+        self._done = True
+        self._fields.update(_clip_action(fields))
+        self._fields["status"] = status
+        self._fields["elapsed_ms"] = max(0, round((time.monotonic() - self._started) * 1000))
+        kept = {k: v for k, v in (counts or {}).items() if v is not None}
+        if kept:
+            self._fields["counts"] = kept
+        self._emit(started=False)
+
+    def _emit(self, *, started: bool) -> None:
+        try:
+            fields = dict(self._fields)
+            counts = fields.pop("counts", None)
+            step = ActionStep(id=self._id, counts=ActionCounts(**counts) if counts else None, **fields)
+        except ValueError:
+            logger.warning("An action row did not validate (%s)", self._fields.get("verb"), exc_info=True)
+            return
+        emit_step(step, started=started)
+
+
+_ACTION_CLIPS = {"query": 160, "target": 300, "pages": 40, "shelf": 40}
+
+
+def _clip_action(fields: dict[str, Any]) -> dict[str, Any]:
+    out: dict[str, Any] = {}
+    for key, value in fields.items():
+        if value is None or value == "":
+            continue
+        limit = _ACTION_CLIPS.get(key)
+        out[key] = clip(str(value), limit) if limit else value
+    return out
+
+
+@contextmanager
+def action_row(verb: ActionVerb, **fields: Any) -> Iterator[ActionRow]:
+    """An :class:`ActionRow` that settles as ``error`` when the block raises and ``ok`` when it never settled."""
+    row = ActionRow(verb, **fields)
+    try:
+        yield row
+    except BaseException:
+        row.finish("error")
+        raise
+    row.finish("ok")
 
 
 #: Slot prefix of the technical record a literal-mode ``knowledge_search`` (``match="exact"`` or
