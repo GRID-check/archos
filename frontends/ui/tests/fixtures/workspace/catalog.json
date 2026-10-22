@@ -446,11 +446,11 @@
   {
    "name": "document-restore",
    "domain": "documents",
-   "summary": "Restore a document from the bin",
-   "description": "Brings back a document sent to the bin with document-bin, to the folder it came from, and reads it again. One that went with its folder is refused (409, `details.folderId`): use project-folder-restore.",
+   "summary": "Restore a deleted document from the bin",
+   "description": "Undoes deleting a document with document-bin: brings it back to the folder it came from, and reads it again. One that went with its folder is refused (409, `details.folderId`): use project-folder-restore.",
    "readOnly": false,
    "destructive": false,
-   "describe": "{\"name\":\"document-restore\",\"domain\":\"documents\",\"summary\":\"Restore a document from the bin\",\"description\":\"Brings back a document sent to the bin with document-bin, to the folder it came from, and reads it again. One that went with its folder is refused (409, `details.folderId`): use project-folder-restore.\",\"annotations\":{\"title\":\"Restore a document from the bin\",\"readOnlyHint\":false,\"destructiveHint\":false,\"idempotentHint\":false,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The document id, from document-list or document-search.\"}},\"required\":[\"id\"]}},\"additionalProperties\":false,\"required\":[\"params\"]}}"
+   "describe": "{\"name\":\"document-restore\",\"domain\":\"documents\",\"summary\":\"Restore a deleted document from the bin\",\"description\":\"Undoes deleting a document with document-bin: brings it back to the folder it came from, and reads it again. One that went with its folder is refused (409, `details.folderId`): use project-folder-restore.\",\"annotations\":{\"title\":\"Restore a deleted document from the bin\",\"readOnlyHint\":false,\"destructiveHint\":false,\"idempotentHint\":false,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The document id, from document-list or document-search.\"}},\"required\":[\"id\"]}},\"additionalProperties\":false,\"required\":[\"params\"]}}"
   },
   {
    "name": "document-role-clear",
