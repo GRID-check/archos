@@ -248,6 +248,19 @@ async def test_ingest_accepts_thumbnail_on_object_store_resolving_private(app, m
 
 
 @pytest.mark.asyncio
+async def test_ingest_stores_the_thumbnail_slot_on_the_configured_origin(app, mock_ingestor, no_network):
+    """The job uploads to what the config holds: the store's own origin, the
+    slot's path and presigned query only, whatever spelling the caller used."""
+    spelled = "HTTP://SEAWEEDFS.TEST:80/bucket/doc/thumb.jpg?X-Amz-Signature=abc"
+    response = await _post_json(app, {"file_ref": _SIGNED_REF, "collection": "proj_t", "thumbnail_upload_url": spelled})
+    assert response.status_code == 202
+    assert (
+        mock_ingestor.submit_job.call_args[1]["config"]["thumbnail_upload_url"]
+        == "http://seaweedfs.test/bucket/doc/thumb.jpg?X-Amz-Signature=abc"
+    )
+
+
+@pytest.mark.asyncio
 async def test_ingest_carries_document_id_into_job_config(app, mock_ingestor, no_network):
     """The pipeline stores extracted rasters under the document's prefix by
     asking the BFF for a slot per image; that call needs the document id, so
@@ -369,6 +382,32 @@ async def test_ingest_refuses_a_priority_it_does_not_know(app, mock_ingestor, no
 
 
 # --- DeferredObjectDownload: what the job runs ---
+
+
+@pytest.fixture(autouse=True)
+def object_store(monkeypatch):
+    """The store every download here names; a download is requested only there."""
+    monkeypatch.setenv("SEAWEED_ENDPOINT", "http://seaweedfs.test")
+    monkeypatch.setenv("SEAWEED_PUBLIC_ENDPOINT", "http://seaweedfs.test")
+
+
+def test_deferred_download_requests_the_configured_origin_whatever_the_spelling():
+    """Same origin in another spelling: the GET goes to the store as configured,
+    with only the object's path and presigned query from the URL handed in."""
+    spelled = "HTTP://SeaweedFS.Test:80/bucket/doc/plan.pdf?X-Amz-Signature=secret-original"
+    with patch("httpx.get", return_value=_download(b"%PDF-1.4", "application/pdf")) as get:
+        path = DeferredObjectDownload(spelled)()
+    os.unlink(path)
+    assert get.call_args[0][0] == _SIGNED_REF
+
+
+def test_deferred_download_refuses_a_url_off_the_store_before_any_request():
+    """A forged queue row or a direct caller cannot point the GET anywhere else."""
+    from aiq_api.object_store_url import ObjectStoreUrlError
+
+    with patch("httpx.get") as get, pytest.raises(ObjectStoreUrlError):
+        DeferredObjectDownload("http://169.254.169.254/latest/meta-data")()
+    get.assert_not_called()
 
 
 def test_deferred_download_writes_a_temp_file_and_hides_its_url():

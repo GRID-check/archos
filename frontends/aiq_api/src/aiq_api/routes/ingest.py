@@ -21,6 +21,7 @@ from aiq_agent.knowledge.base import BaseIngestor
 
 from ..models.requests import IngestRequest
 from ..object_store_url import assert_fetchable_object_store_url
+from ..object_store_url import object_store_request_url
 from .collections import _require_ingestor
 
 logger = logging.getLogger(__name__)
@@ -148,8 +149,11 @@ def _job_config(request: IngestRequest, organization_id: str | None, dispatch_ke
         "priority": request.priority,
     }
     if request.thumbnail_upload_url:
-        # An `ObjectStoreUrl`, gated before anything was requested.
-        config["thumbnail_upload_url"] = request.thumbnail_upload_url
+        # An `ObjectStoreUrl`, gated before anything was requested, and rebuilt
+        # on the configured store's origin: the job uploads to what is stored here.
+        config["thumbnail_upload_url"] = object_store_request_url(
+            request.thumbnail_upload_url, field="thumbnail_upload_url"
+        )
     # What a retried dispatch of this document and object is matched against
     # (`BaseIngestor.find_live_job`).
     if dispatch_key:
@@ -327,7 +331,11 @@ class DeferredObjectDownload:
         # (e.g. a cloud metadata endpoint), which would make the route's host
         # check a no-op. Presigned object-store GETs never redirect; a 3xx is
         # a failed download like any other.
-        response = httpx.get(self._url, follow_redirects=False, timeout=_DOWNLOAD_TIMEOUT_SECONDS)
+        # The request goes to the configured store by construction: only the
+        # object's path and its presigned query come from the URL handed in
+        # (`object_store_request_url`), never its host.
+        request_url = object_store_request_url(self._url)
+        response = httpx.get(request_url, follow_redirects=False, timeout=_DOWNLOAD_TIMEOUT_SECONDS)
         response.raise_for_status()
         suffix = self._suffix or _infer_suffix(response.headers.get("content-type", ""), self._url)
         fd, path = tempfile.mkstemp(suffix=suffix)

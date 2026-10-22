@@ -45,6 +45,7 @@ from ..mail_archive.reader import AttachmentTooLargeError
 from ..mail_archive.reader import UnreadableItemError
 from ..mail_archive.remote_file import RemoteFileError
 from ..object_store_url import ObjectStoreUrl
+from ..object_store_url import object_store_request_url
 from .internal_auth import _require_internal_token
 
 logger = logging.getLogger(__name__)
@@ -119,7 +120,8 @@ async def _read(operation, ref: ArchiveRef):  # noqa: ANN001, ANN202 - a closure
     """Run ``operation`` on the open archive, off the event loop, with errors as HTTP answers."""
 
     def run():  # noqa: ANN202
-        with use_archive(ref.url, ref.size) as archive:
+        # The store's own origin, the caller's path and presigned query only.
+        with use_archive(object_store_request_url(ref.url, field="archive.url"), ref.size) as archive:
             return operation(archive)
 
     try:

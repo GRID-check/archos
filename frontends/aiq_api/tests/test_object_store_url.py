@@ -16,6 +16,7 @@ from aiq_api.object_store_url import ObjectStoreUrl
 from aiq_api.object_store_url import ObjectStoreUrlError
 from aiq_api.object_store_url import assert_fetchable_object_store_url
 from aiq_api.object_store_url import object_store_origins
+from aiq_api.object_store_url import object_store_request_url
 
 _SIGNATURE = "X-Amz-Signature=secret-signature"
 
@@ -143,3 +144,24 @@ def test_the_type_stays_a_plain_string_in_the_schema():
         "title": "Url",
         "type": "string",
     }
+
+
+def test_the_request_url_takes_its_origin_from_configuration():
+    # Same origin in another spelling (case, explicit default port): the
+    # request goes to the endpoint as configured, with the caller's path and
+    # presigned query only.
+    assert (
+        object_store_request_url("HTTPS://Files.Buero.Example:443/bucket/org/a.eml?X-Amz-Signature=abc")
+        == "https://files.buero.example/bucket/org/a.eml?X-Amz-Signature=abc"
+    )
+    assert object_store_request_url("http://seaweedfs:8333/b/k") == "http://seaweedfs:8333/b/k"
+
+
+def test_the_request_url_drops_a_fragment():
+    assert object_store_request_url("http://seaweedfs:8333/b/k#frag") == "http://seaweedfs:8333/b/k"
+
+
+@pytest.mark.parametrize("url", ["http://seaweedfs:9333/b/k", "http://evil.example/b/k", "file:///etc/passwd"])
+def test_the_request_url_refuses_what_the_gate_refuses(url):
+    with pytest.raises(ObjectStoreUrlError):
+        object_store_request_url(url)
