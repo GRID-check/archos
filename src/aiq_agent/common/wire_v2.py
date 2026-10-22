@@ -958,7 +958,14 @@ class UserMessage(_ClientBase):
     type: Literal["user_message"] = "user_message"
     message_id: str = Field(min_length=1, max_length=128, description="Becomes the turn_id.")
     text: str = Field(min_length=1)
-    data_sources: list[str] = Field(default_factory=list)
+    data_sources: list[str] | None = Field(
+        default=None,
+        description=(
+            "The composer's source selection. Absent means not stated, so every source the "
+            "organization allows; an empty list selects none. Headless senders (the MCP ask, "
+            "annotation wakes, the document check) leave it out."
+        ),
+    )
     context_only: Literal[True] | None = None
     author_name: str | None = None
     focus_file_name: str | None = None
