@@ -2,7 +2,8 @@
  * @vitest-environment node
  */
 import { describe, expect, it } from 'vitest'
-import { withOperationNames, withRankedOrderNote } from './door-text'
+import { MAX_RESULT_CHARS } from './discovery'
+import { fittedHits, HIT_TEXT_BUDGET, withOperationNames, withRankedOrderNote } from './door-text'
 
 const NAMES = {
   knowledge_search: 'knowledge-search',
@@ -32,11 +33,34 @@ describe('withOperationNames', () => {
 describe('withRankedOrderNote', () => {
   it('says what the order of the hits is, after the count line', () => {
     const out = withRankedOrderNote('Found 25 relevant document(s):\n\n--- Result 1 ---')
-    expect(out).toMatch(/^Found 25 relevant document\(s\):\n\(Ranked hits are in the search/)
+    expect(out).toMatch(/^Found 25 passages:\n\(Ranked hits are in the search/)
     expect(out).toContain('--- Result 1 ---')
   })
 
   it('leaves an answer without a count line alone', () => {
     expect(withRankedOrderNote('No relevant documents found')).toBe('No relevant documents found')
+  })
+})
+
+describe('fittedHits', () => {
+  const hit = (n: number, size: number) =>
+    `--- Result ${n} ---\nSource: Doc ${n}\nCitation: doc-${n}.pdf, p.${n}\nPage: ${n}\n\n${'x'.repeat(size)}\n\n`
+  const answer = (count: number, size: number) =>
+    `Found ${count} passages:\n\n${Array.from({ length: count }, (_, i) => hit(i + 1, size)).join('')}`
+
+  it('leaves an answer that fits alone', () => {
+    const text = answer(3, 100)
+    expect(fittedHits(text)).toBe(text)
+  })
+
+  it('keeps every hit and its citation when the hits would not fit, shortening each passage instead', () => {
+    const out = fittedHits(answer(25, 2_000))
+    expect(out.length).toBeLessThanOrEqual(HIT_TEXT_BUDGET)
+    for (let n = 1; n <= 25; n++) expect(out).toContain(`Citation: doc-${n}.pdf, p.${n}`)
+    expect(out).toContain('read the whole passage with `passage-read`')
+  })
+
+  it('stays under the cut the door makes at the end of every result', () => {
+    expect(HIT_TEXT_BUDGET).toBeLessThan(MAX_RESULT_CHARS)
   })
 })

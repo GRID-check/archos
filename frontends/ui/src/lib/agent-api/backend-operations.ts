@@ -44,7 +44,7 @@ import { turnContextHeaders } from '@/lib/turns/turn-headers.js'
 import backendTools from '../../../tests/fixtures/backend-tools.schema.json'
 import type { AgentDomain, ToolAnnotations } from './operation'
 import { type OperationResult, readResponseBody } from './dispatch'
-import { withOperationNames, withRankedOrderNote, type ToolNames } from './door-text'
+import { fittedHits, withOperationNames, withRankedOrderNote, type ToolNames } from './door-text'
 
 export type { OperationResult }
 
@@ -129,7 +129,7 @@ const ENTRIES = [
       'entry per document, its best passage and how many passages of the ranked pool it held, for which documents deal with a topic. ' +
       'A query that names only a guideline (`OIB 2`) returns every part of it with its ' +
       'scope and outline. ' +
-      'Returns up to 16 excerpts by default (the header counts them), each with source, citation key, document type, folder and page. ' +
+      'Returns the platform’s configured number of excerpts (16 unless raised, at most 50; the header counts them), each with source, citation key, document type, folder and page. ' +
       'A `Folder:` line after them is a folder whose summary matches: a pointer to look inside with files-list or `folder`, never a source. ' +
       'A hit marked as a Piloti document is knowledge the office approved, never a source for a normative value. When you know ' +
       'which document holds the answer, call passage-read instead; for Austrian law itself call law-lookup. Never invent a ' +
@@ -336,6 +336,23 @@ function withProjectId(schema: JsonSchemaObject, optional: boolean): JsonSchemaO
   }
 }
 
+/**
+ * The Python tools take `conclusion`, a line Piloti's own turn shows the person
+ * as its status ("looking for …"); it changes nothing the tool does. An outside
+ * agent has no such status line, and a reasoning-shaped argument is one the
+ * agent surface does not ask for, so the door's schema leaves it out.
+ */
+const STATUS_ONLY_ARGUMENTS = new Set(['conclusion'])
+
+function withoutStatusArguments(schema: JsonSchemaObject): JsonSchemaObject {
+  if (!schema.properties) return schema
+  return {
+    ...schema,
+    properties: Object.fromEntries(Object.entries(schema.properties).filter(([key]) => !STATUS_ONLY_ARGUMENTS.has(key))),
+    ...(schema.required ? { required: schema.required.filter((key) => !STATUS_ONLY_ARGUMENTS.has(key)) } : {}),
+  }
+}
+
 function build(entry: Entry): BackendOperation {
   const tool = (backendTools.tools as readonly FixtureTool[]).find(
     (candidate) => candidate.name === entry.tool
@@ -343,7 +360,7 @@ function build(entry: Entry): BackendOperation {
   // Fails the import, not a call: the contract and this table disagree.
   if (!tool)
     throw new Error(`backend-tools.schema.json has no tool ${entry.tool} (operation ${entry.name})`)
-  const inputSchema = glossed(tool.inputSchema)
+  const inputSchema = withoutStatusArguments(glossed(tool.inputSchema))
   return {
     name: entry.name,
     domain: entry.domain,
@@ -376,7 +393,8 @@ export function doorText(
 ): string {
   const named = withOperationNames(text, OPERATION_NAMES)
   const literal = args.match === 'exact' || args.match === 'regex'
-  return op.name === 'knowledge-search' && !literal ? withRankedOrderNote(named) : named
+  if (op.name !== 'knowledge-search') return named
+  return literal ? named : fittedHits(withRankedOrderNote(named))
 }
 
 /** `body` (the backend's `{ tool, result }`) with its text results put through {@link doorText}. */
