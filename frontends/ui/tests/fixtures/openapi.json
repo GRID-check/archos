@@ -5181,8 +5181,8 @@
     "/api/documents/{id}/restore": {
       "post": {
         "operationId": "document-restore",
-        "summary": "Restore a document from the bin",
-        "description": "Brings back a document sent to the bin with document-bin, to the folder it came from, and reads it again. One that went with its folder is refused (409, `details.folderId`): use project-folder-restore.",
+        "summary": "Restore a deleted document from the bin",
+        "description": "Undoes deleting a document with document-bin: brings it back to the folder it came from, and reads it again. One that went with its folder is refused (409, `details.folderId`): use project-folder-restore.",
         "tags": [
           "documents"
         ],
@@ -5224,7 +5224,7 @@
           }
         },
         "x-mcp-annotations": {
-          "title": "Restore a document from the bin",
+          "title": "Restore a deleted document from the bin",
           "readOnlyHint": false,
           "destructiveHint": false,
           "idempotentHint": false,
