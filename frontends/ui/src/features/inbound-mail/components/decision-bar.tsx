@@ -28,6 +28,8 @@ import { CheckLine, FactLine } from './inbound-mail-atoms'
 export interface DecisionBarProps {
   summary: DraftSummary
   acknowledgeSender: boolean
+  /** The mail reads as someone posing as another: the yes says the person checked it is real. */
+  impersonation?: boolean
   onAcknowledgeSender: (value: boolean) => void
   onFile: () => void
   onDismiss: () => void
@@ -62,6 +64,7 @@ export function primaryLabel(summary: DraftSummary, t: (key: string, vars?: Reco
 export function DecisionBar({
   summary,
   acknowledgeSender,
+  impersonation = false,
   onAcknowledgeSender,
   onFile,
   onDismiss,
@@ -91,7 +94,7 @@ export function DecisionBar({
             <CheckLine checked={acknowledgeSender} onCheckedChange={onAcknowledgeSender} disabled={busy} testId="acknowledge-sender">
               <span className="text-foreground inline-flex items-center gap-1.5 font-medium">
                 <ShieldAlert className="text-warning size-3.5 shrink-0" aria-hidden />
-                {t('bar.acknowledgeSender')}
+                {t(impersonation ? 'bar.acknowledgeImpersonation' : 'bar.acknowledgeSender')}
               </span>
             </CheckLine>
           )}

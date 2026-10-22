@@ -47,6 +47,7 @@ import {
   type MailDraft,
 } from '../lib/draft'
 import { refusalNeedsReload, refusalOf, refusalTerms } from '../lib/refusal'
+import { guardImpersonation, impersonationWarningOf } from '../lib/impersonation'
 import { followOffered } from '../lib/sender'
 import { missingSuggestionReason } from '../lib/suggestion'
 import { AttachmentPreviewDialog } from './attachment-preview-dialog'
@@ -54,6 +55,7 @@ import { AttachmentRow } from './attachment-row'
 import { ContentFindingChoice } from './content-finding-choice'
 import { DecisionBar } from './decision-bar'
 import { FollowOffer } from './follow-offer'
+import { ImpersonationWarning } from './impersonation-warning'
 import { FactLine } from './inbound-mail-atoms'
 import { MailHeader } from './mail-header'
 import { MailText, type MailTextState } from './mail-text'
@@ -144,7 +146,8 @@ export function InboundMailDetail({
     [t]
   )
 
-  const view = state.kind === 'ready' ? state.view : null
+  // An impersonation is drawn with nothing pre-selected and no suggestion, whatever the view says (`guardImpersonation`).
+  const view = useMemo(() => (state.kind === 'ready' ? guardImpersonation(state.view) : null), [state])
 
   const load = useCallback(async () => {
     try {
@@ -332,6 +335,7 @@ export function InboundMailDetail({
   const showBar = view.status === 'waiting' && waitingParts.length > 0 && !anyFiling && draft && summary
   const previewEntry = attachments.find((entry) => entry.part.id === preview)
   const outcome = filingOutcome(view)
+  const impersonation = impersonationWarningOf(view)
 
   return (
     <article className="flex min-h-full flex-col" data-testid="inbound-mail-detail" data-mail-id={view.id}>
@@ -397,6 +401,9 @@ export function InboundMailDetail({
             </BusyButton>
           </div>
         )}
+
+        {/* Above the header, before anything can be checked: the owner's rule for a mail posing as someone. */}
+        {impersonation && <ImpersonationWarning warning={impersonation} />}
 
         <MailHeader
           view={view}
@@ -497,6 +504,7 @@ export function InboundMailDetail({
         <DecisionBar
           summary={summary}
           acknowledgeSender={draft.acknowledgeSender}
+          impersonation={impersonation !== null}
           onAcknowledgeSender={(value) => setDraft((current) => (current ? { ...current, acknowledgeSender: value } : current))}
           onFile={() => void file()}
           onDismiss={() => void dismiss()}

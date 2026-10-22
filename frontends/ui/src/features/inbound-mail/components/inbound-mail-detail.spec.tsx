@@ -88,6 +88,44 @@ describe('InboundMailDetail', () => {
     expect(file.mock.calls[0][1].mails[0].acknowledgeSender).toBe(true)
   })
 
+  it('warns above everything of a mail posing as a member, and its yes says the person checked it', async () => {
+    renderDetail('impersonation')
+    const warning = screen.getByTestId('impersonation-warning')
+    expect(warning).toHaveTextContent('Careful: this mail poses as Miriam Huber. Its signature is invalid or was rejected by the domain.')
+    expect(warning).toHaveTextContent('Piloti suggests nothing and nothing is preselected. Check payment or bank detail changes by phone, never by replying.')
+    // Above the header, before anything can be checked.
+    expect(warning.compareDocumentPosition(screen.getByTestId('mail-header')) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    await userEvent.click(screen.getByTestId('message-checkbox'))
+    expect(screen.getByTestId('acknowledge-sender').closest('div')).toHaveTextContent('I checked that the mail is genuine. File it anyway')
+  })
+
+  it('names the member and the address that is not theirs', () => {
+    renderDetail('member-name')
+    expect(screen.getByTestId('impersonation-warning')).toHaveTextContent('Careful: the name Miriam Huber belongs to a member, the address miriam.huber@mail.example does not.')
+    expect(screen.getByTestId('impersonation-warning').dataset.basis).toBe('member_name')
+  })
+
+  it('pre-selects nothing and shows no suggestion of an impersonation, even when a stale view offers them', async () => {
+    const suggested = DETAIL_VARIANTS['member-verified'].view.parts.find((part) => part.kind === 'attachment' && part.suggestion)?.suggestion ?? null
+    expect(suggested).not.toBeNull()
+    const base = DETAIL_VARIANTS.impersonation
+    const stale = { ...base.view, parts: base.view.parts.map((part) => ({ ...part, preselected: true, suggestion: part.kind === 'attachment' ? suggested : null })) }
+    const client = fixtureClient({ detail: { ...base, view: stale } })
+    render(
+      <InboundMailDetail projectId={PROJECT_ID} mailId={stale.id} initial={stale} initialText={base.text} folders={FOLDERS} client={client} onChanged={vi.fn()} now={FIXTURE_NOW} pollMs={1} />
+    )
+    expect(screen.getByTestId('message-checkbox')).not.toBeChecked()
+    expect(screen.getByTestId('attachment-checkbox')).not.toBeChecked()
+    await userEvent.click(screen.getByTestId('attachment-checkbox'))
+    expect(screen.queryByText('Piloti’s suggestion')).toBeNull()
+    expect(screen.queryByTestId('attachment-folder')).toBeNull()
+  })
+
+  it('warns of nothing for a mail that poses as nobody', () => {
+    renderDetail('external-unverified')
+    expect(screen.queryByTestId('impersonation-warning')).toBeNull()
+  })
+
   it('names the term the name check stopped a new thread’s name for, and offers the release', async () => {
     const client = fixtureClient({ detail: DETAIL_VARIANTS['new-thread'] })
     vi.spyOn(client, 'file').mockRejectedValue(new ApiRequestError('stopped', 409, 'name_stop', { reason: 'name_stop', terms: ['Honorar'] }))

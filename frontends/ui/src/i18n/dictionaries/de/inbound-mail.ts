@@ -257,6 +257,13 @@ export const inboundMail: typeof en.inboundMail = {
     cancel: 'Abbrechen',
   },
 
+  /** Die Warnung über einer E-Mail, die sich als jemand anderes ausgibt (`riskLevel: 'impersonation'`). */
+  impersonationWarning: {
+    rejectedSignature: 'Vorsicht: Diese E-Mail gibt sich als {name} aus. Ihre Signatur ist ungültig oder wurde von der Domain abgelehnt.',
+    memberName: 'Vorsicht: Der Name {name} gehört einem Mitglied, die Adresse {address} nicht.',
+    consequence:
+      'Piloti macht keinen Vorschlag, nichts ist vorausgewählt. Prüfen Sie Zahlungs- oder Kontoänderungen telefonisch, nicht per Antwort.',
+  },
   bar: {
     dismiss: 'Verwerfen',
     dismissBusy: 'Wird verworfen …',
@@ -266,6 +273,7 @@ export const inboundMail: typeof en.inboundMail = {
     fileThread: 'In E-Mail-Verlauf „{name}“ ablegen (wird Fassung {version})',
     fileNothing: 'Nichts ablegen',
     busy: 'Wird abgelegt …',
+    acknowledgeImpersonation: 'Ich habe geprüft, dass die E-Mail echt ist. Trotzdem ablegen',
     acknowledgeSender: 'Domain nicht bestätigt. Trotzdem ablegen',
     originalErased: 'Das Original der E-Mail wird nach der Ablage gelöscht',
     blockers: {

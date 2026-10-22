@@ -252,6 +252,12 @@ export const inboundMail = {
     cancel: 'Cancel',
   },
 
+  /** The warning above a mail that poses as someone (`riskLevel: 'impersonation'`). */
+  impersonationWarning: {
+    rejectedSignature: 'Careful: this mail poses as {name}. Its signature is invalid or was rejected by the domain.',
+    memberName: 'Careful: the name {name} belongs to a member, the address {address} does not.',
+    consequence: 'Piloti suggests nothing and nothing is preselected. Check payment or bank detail changes by phone, never by replying.',
+  },
   bar: {
     dismiss: 'Dismiss',
     dismissBusy: 'Dismissing …',
@@ -261,6 +267,7 @@ export const inboundMail = {
     fileThread: 'File in mail thread “{name}” (becomes revision {version})',
     fileNothing: 'File nothing',
     busy: 'Filing …',
+    acknowledgeImpersonation: 'I checked that the mail is genuine. File it anyway',
     acknowledgeSender: 'Domain not verified. File anyway',
     originalErased: 'The original of the mail is deleted after filing',
     blockers: {

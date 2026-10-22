@@ -288,6 +288,17 @@ export const DETAIL_VARIANTS: Record<string, DetailFixture> = {
     }),
     text: text({ ownText: 'Bitte überweisen Sie die offene Honorarnote ab sofort auf das neue Konto.', quoted: [] }),
   },
+  // An outsider whose display name is a member's: the address is not theirs (D8b `claims_member_name`).
+  'member-name': {
+    view: mail({
+      key: 'member-name',
+      subject: 'Dringend: Kontoänderung Honorarnote',
+      sender: { name: 'Miriam Huber', address: 'miriam.huber@mail.example', domain: 'mail.example', signerDomain: 'mail.example', trust: 'external_verified', reason: 'dkim_pass', flags: ['claims_member_name'] },
+      parts: [messagePart({ id: fixtureId('message:member-name') }), part({ name: 'Bankverbindung_neu.pdf' })],
+      threadCandidates: [],
+    }),
+    text: text({ ownText: 'Liebe Kolleginnen und Kollegen,\n\nbitte ab sofort die Honorarnoten auf das neue Konto im Anhang überweisen. Ich bin heute nicht erreichbar.\n\nMiriam', quoted: [] }),
+  },
   'bcc-own': {
     view: mail({
       key: 'bcc-own',
