@@ -313,6 +313,7 @@ export const EXPOSURE = {
     withheld: { category: 'model-compute', reason: 'a model names the conversation; the caller can name it and save it with conversation-update' },
   },
   'conversation-update': OFFERED,
+  'feedback-office-report-list': OFFERED,
   'feedback-report-list': OFFERED,
   'feedback-report-submit': OFFERED,
   'feedback-thread-get': OFFERED,

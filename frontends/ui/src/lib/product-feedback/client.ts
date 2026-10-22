@@ -137,6 +137,14 @@ export async function fetchOwnFeedback(cursor?: string): Promise<OwnProductFeedb
   return (await response.json()) as OwnProductFeedbackListResponse
 }
 
+/** The office view: every report of the organization. Throws on 403 like any other failure. */
+export async function fetchOfficeFeedback(cursor?: string): Promise<OwnProductFeedbackListResponse> {
+  const query = cursor ? `?${new URLSearchParams({ cursor }).toString()}` : ''
+  const response = await fetch(`/api/feedback/office-reports${query}`, { credentials: 'same-origin' })
+  if (!response.ok) throw new Error(`office feedback failed: ${response.status}`)
+  return (await response.json()) as OwnProductFeedbackListResponse
+}
+
 export async function fetchOwnFeedbackThread(id: string): Promise<OwnProductFeedbackThread> {
   const response = await fetch(`/api/feedback/reports/${encodeURIComponent(id)}/messages`, {
     credentials: 'same-origin',

@@ -6,4 +6,9 @@ export {
   useOpenFeedback,
   useOpenFeedbackThreads,
 } from './feedback-provider'
-export { FeedbackThreadsSheet, type FeedbackThreadsApi, type FeedbackThreadsSheetProps } from './feedback-threads'
+export {
+  FeedbackThreadsSheet,
+  type FeedbackScope,
+  type FeedbackThreadsApi,
+  type FeedbackThreadsSheetProps,
+} from './feedback-threads'

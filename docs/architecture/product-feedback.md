@@ -35,7 +35,8 @@ team answers in PostHog ──▶ PostHog workflow ──▶ POST /api/webhooks/
 | Table, bounds, RLS | `frontends/ui/drizzle/0100_product_feedback.sql`, `0155_product_feedback_posthog_ticket.sql` |
 | Platform routes (`platform:settings:view` to read, `:manage` to change status) | `frontends/ui/src/app/api/platform/feedback/` |
 | Platform page | `frontends/ui/src/features/product-feedback/components/feedback-triage.tsx` |
-| The member's threads (list, chat, reply), and their routes | `features/product-feedback/components/feedback-threads.tsx`, `app/api/feedback/reports/route.ts` (GET), `app/api/feedback/reports/[reportId]/messages/route.ts` |
+| The member's cases (list, chat, reply), and their routes | `features/product-feedback/components/feedback-threads.tsx`, `feedback-atoms.tsx`, `app/api/feedback/reports/route.ts` (GET), `app/api/feedback/reports/[reportId]/messages/route.ts` |
+| The office view (`org:settings:manage`) | `app/api/feedback/office-reports/route.ts`, `listOfficeProductFeedbackThreads` in `lib/product-feedback/service.ts` |
 | Taking a ticket from Slack | `app/api/platform/feedback/claim/route.ts`, `claimProductFeedbackTicket` in `lib/product-feedback/service.ts` |
 
 The page, the browser and the screen size are captured when the form is sent
@@ -149,8 +150,31 @@ or failing, and because the inbox announcement points at it.
 
 The team answers in PostHog Support. The member reads it under **Mein Feedback**
 (avatar menu, phone „More" sheet, and „Chat öffnen" after sending), a sheet that
-lists their own reports and holds the chat on each. It is the same attributed
-message the shared chat renders (`UserMessage` with an author), one column.
+lists their own cases and holds the chat on each. It is the same attributed
+message the shared chat renders (`UserMessage` with an author), the team on the
+left and the reporter on the right, and the same reply box the review threads
+use (`Composer`: Enter sends, the phone's action key says „Senden", a press on
+Send keeps the keyboard up).
+
+- **Cases, active first.** The list is split into **Aktiv** (every PostHog
+  status but `resolved`, and a report without a readable ticket) and
+  **Erledigt**, each by last activity (the ticket's `updated_at`). Each row
+  carries the state in plain words (`FeedbackCaseStatus`: „Eingegangen", „In
+  Bearbeitung", „Wartet auf Sie" for `pending`, „Pausiert", „Erledigt",
+  „Gesendet" without a ticket), the kind, the ticket number and „Neu" when there
+  is news. In a thread, a case the team spoke last on also reads „Wartet auf
+  Sie": PostHog leaves a ticket `new` after a reply.
+- **The office view.** A member holding `org:settings:manage` gets a switch,
+  „Meine / Unser Büro": `GET /api/feedback/office-reports` lists every report of
+  their organization (20 a page, keyset cursor, RLS and an explicit
+  organization filter), with the reporter's name. A colleague's thread reads
+  through the same messages route, read-only: only the reporter can answer,
+  because the conversations session the ticket was opened in is theirs, and
+  reading it marks nothing seen. Everybody else gets a 403 there and a 404 on a
+  colleague's thread. Whether the switch shows is the list's `canViewOffice`.
+- **On a phone** the sheet follows the visual viewport
+  (`useFitToVisualViewport`), so the reply box sits on the iOS keyboard instead
+  of behind it, and the thread keeps its end in view as the pane shrinks.
 
 - **Read from the ticket, every time.** `GET /api/feedback/reports/<id>/messages`
   reads the ticket's messages through the REST API and keeps the reporter's own
@@ -165,12 +189,23 @@ message the shared chat renders (`UserMessage` with an author), one column.
   Bounded by `FEEDBACK_REPLY_LIMIT` (60 an hour per person).
 - **News.** `reporter_seen_at` is set when the ticket opens and whenever the
   member opens the thread. A ticket PostHog updated after it (a reply, a status
-  change) is `hasUpdate`; the shell shows the count on the menu entry, read when
-  the shell mounts and on window focus after five minutes. One PostHog call
-  (tickets filtered by the member's distinct id) serves the whole list.
-- **Only one's own.** Every query is keyed to the session's organization and
-  user id; a colleague's report is a 404. Agents reach the same three routes as
-  `feedback-report-list`, `feedback-thread-get` and `feedback-thread-reply`.
+  change) is `hasUpdate`; a report never looked at (`NULL`, filed before
+  `0183`) counts from when it was sent, past a minute for the ticket's own
+  setup. The shell shows the count on the menu entry and a dot on the avatar
+  and on the phone's „Mehr" tab, read when the shell mounts, on window focus
+  after five minutes, and when the sheet closes (a thread read inside it is no
+  longer news). One PostHog call (tickets filtered by the distinct ids on the
+  page, `date_from=all`) serves the whole list.
+- **Only one's own, or the office's.** Every query is keyed to the session's
+  organization, and to the user id outside the office view. Agents reach the
+  same routes as `feedback-report-list`, `feedback-office-report-list`,
+  `feedback-thread-get` and `feedback-thread-reply`.
+- **A reply PostHog does not list yet** stays on screen at the end of the
+  thread until the ticket's messages hold it.
+- **Not built: a notification.** A team reply raises no inbox item or mail
+  for the member and there is no deep link to a thread; PostHog emits
+  `$conversation_message_sent` for it, which a later slice can route into the
+  inbox (a workflow or webhook into the BFF).
 
 ## The reply notice: PostHog pokes, Piloti reads
 

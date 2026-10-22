@@ -18,6 +18,7 @@ import {
 } from 'lucide-react'
 
 import { useAuth } from '@/adapters/auth/use-auth'
+import { AttentionDot } from '@/components/ui/attention-dot'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { CountPill } from '@/components/ui/count-pill'
 import {
@@ -146,10 +147,18 @@ export function SidebarUserMenu({
             ? 'w-auto rounded-full p-0 pointer-coarse:size-11 pointer-coarse:justify-center'
             : 'w-full rounded-lg py-1 pl-0 pr-2',
         )}
-        aria-label={t('userMenu.label', { name: displayName })}
+        aria-label={
+          feedbackUpdatedCount > 0
+            ? `${t('userMenu.label', { name: displayName })}, ${tFeedback('threads.newsDot')}`
+            : t('userMenu.label', { name: displayName })
+        }
         data-tour={tourAnchor}
       >
-        <span className="flex shrink-0">
+        <span className="relative flex shrink-0">
+          {/* A reply from the Piloti team waits under „Mein Feedback": the
+              count is on that row, one level down, and without a mark here
+              nobody opens the menu to find it. */}
+          <AttentionDot show={feedbackUpdatedCount > 0} className="absolute -top-0.5 -right-0.5 z-10" />
           {/* The hairline is not decoration. `AvatarFallback` fills with
               `bg-muted` (L 0.961), and the rail it sits on is
               `--background-color-surface-sunken` (L 0.958) — a 0.3% lightness

@@ -88,28 +88,56 @@ export const feedback = {
     loadMoreFailed: 'Could not load more. Try again',
     back: 'All feedback',
     hasUpdate: 'New',
-    /** Before a relative time: “Sent 3 hours ago”. */
-    sent: 'Sent',
     me: 'You',
     team: 'Piloti team',
     teamMember: '{name}, Piloti team',
     notLive: 'The team’s replies cannot be loaded right now. Your report is safe and has been received.',
     cannotReply: 'Replies to this report are not possible here. Send new feedback to continue the chat.',
     waiting: 'The team has not replied yet. You will see their answer here.',
-    replyLabel: 'Your reply',
     replyPlaceholder: 'Write a reply …',
     replySend: 'Send',
-    replyHint: 'to send, Shift + ↵ for a new line',
-    replySending: 'Sending …',
     replyError: 'Your reply could not be sent. Please try again.',
     replyRateLimited: 'You have sent a lot of replies in the last hour. Please try again later.',
-    /** The ticket's status, worded for the person who reported it. */
+    /** The dot on the avatar and on “More”, for screen readers. */
+    newsDot: 'New replies on your feedback',
+    /** The switch above the list, for office admins only. */
+    scopeLabel: 'View',
+    scope: {
+      mine: 'Mine',
+      office: 'Our office',
+    },
+    officeTitle: 'Our office’s feedback',
+    officeDescription: 'Every report from your office and where it stands. Only the person who reported can reply.',
+    officeEmpty: {
+      title: 'No feedback from your office yet',
+      description: 'When anyone in your office sends feedback, it shows up here.',
+    },
+    officeLoadError: 'Your office’s feedback could not be loaded.',
+    /** The list's two groups: open cases first. */
+    groups: {
+      active: 'Active',
+      done: 'Done',
+    },
+    /** The number the team files the case under. */
+    ticketNumber: '#{number}',
+    /** Before a relative time: “Updated 3 hours ago”. */
+    updated: 'Updated',
+    unknownReporter: 'Unknown member',
+    readOnly: 'Only {name} can reply to this report.',
+    readOnlyUnnamed: 'Only the person who reported this can reply here.',
+    /** Where a case stands, in plain words, for the person who reported it. */
     statuses: {
       new: 'Received',
       open: 'In progress',
-      pending: 'Waiting for your answer',
+      pending: 'Waiting for you',
       on_hold: 'On hold',
       resolved: 'Resolved',
+      /** Without a readable ticket: sent, no state known. */
+      unknown: 'Sent',
+    },
+    /** The same state in the office view, where “you” would be the wrong person. */
+    officeStatuses: {
+      pending: 'Waiting for the reporter',
     },
   },
   platform: {

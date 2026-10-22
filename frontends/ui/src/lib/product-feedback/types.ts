@@ -251,38 +251,61 @@ export const listOwnProductFeedbackQuerySchema = z.object({
 
 export type ListOwnProductFeedbackQuery = z.infer<typeof listOwnProductFeedbackQuerySchema>
 
-/** One of the reporter's own reports in their list of threads. */
+/** GET /api/feedback/office-reports — one page of every report filed in the caller's organization. */
+export const listOfficeProductFeedbackQuerySchema = listOwnProductFeedbackQuerySchema
+
+export type ListOfficeProductFeedbackQuery = ListOwnProductFeedbackQuery
+
+/**
+ * Whether a case still needs somebody: every PostHog status but `resolved`. A
+ * report without a readable ticket counts as active, because nobody closed it.
+ */
+export function isActiveFeedbackCase(status: SupportTicketStatus | null): boolean {
+  return status !== 'resolved'
+}
+
+/** One report in a list of cases: the reporter's own, or (office view) a colleague's. */
 export interface OwnProductFeedbackSummary {
   id: string
   kind: ProductFeedbackKind
-  /** The start of what they wrote, so the list says which report is which. */
+  /** The start of what was written, so the list says which report is which. */
   excerpt: string
   createdAt: string
   /** The ticket's PostHog status; `null` without a ticket or while PostHog cannot be read. */
   status: SupportTicketStatus | null
-  /** The team did something on the ticket (a reply, a status change) since the reporter last looked. */
+  /** The number PostHog shows for the ticket (`#42`); `null` without one. */
+  ticketNumber: number | null
+  /** When anything last happened on the case: the ticket's last update, else when it was sent. */
+  lastActivityAt: string
+  /** The team did something on the ticket (a reply, a status change) since the reporter last looked. Always `false` on a colleague's case. */
   hasUpdate: boolean
-  /** Whether the reporter can answer: the ticket exists and was opened in a stored session. */
+  /** Whether the CALLER can answer: their own report, with a ticket opened in a stored session. */
   canReply: boolean
+  /** The caller filed it. `false` only in the office view, on a colleague's report. */
+  mine: boolean
+  /** Who filed it, as Piloti knows their name; `null` when it does not. */
+  reporterName: string | null
 }
 
-/** GET /api/feedback/reports */
+/** GET /api/feedback/reports and GET /api/feedback/office-reports */
 export interface OwnProductFeedbackListResponse {
   reports: OwnProductFeedbackSummary[]
-  /** How many on this page have news; on the first page, the shell's unread count. */
+  /** How many on this page have news for the caller; on the first page of their own, the shell's unread count. */
   updatedCount: number
   /** `false` while PostHog cannot be read: statuses and news are unknown. */
   live: boolean
   /** The next, older page; `null` on the last. */
   nextCursor: string | null
+  /** The caller may open the office view (`org:settings:manage`). */
+  canViewOffice: boolean
 }
 
-/** One message of a thread as the reporter sees it. */
+/** One message of a thread. */
 export interface OwnProductFeedbackMessage {
   id: string
-  /** `me`: the reporter. `team`: a reply the Piloti team sent from PostHog Support. */
-  author: 'me' | 'team'
-  /** The team member's name, when PostHog names one. */
+  /** `reporter`: whoever filed the report. `team`: a reply the Piloti team sent from PostHog Support. */
+  author: 'reporter' | 'team'
+  /** The team member's name, when PostHog names one; `null` on the reporter's messages. */
   authorName: string | null
   content: string
   createdAt: string

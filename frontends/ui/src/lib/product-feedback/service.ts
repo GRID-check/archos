@@ -24,7 +24,8 @@ import 'server-only'
 import { randomUUID } from 'node:crypto'
 import { ConflictError, NotFoundError, UpstreamError } from '@/lib/api/errors'
 import type { AuthorizedSession, GridSession } from '@/lib/auth/types'
-import { PLATFORM_PERMISSIONS } from '@/lib/authz/permissions'
+import { authorize, can } from '@/lib/authz/decide'
+import { ORG_PERMISSIONS, PLATFORM_PERMISSIONS } from '@/lib/authz/permissions'
 import { requirePlatformPermission } from '@/lib/authz/platform'
 import type { ProductFeedback } from '@/lib/db/schema'
 import { withPlatformAccess } from '@/lib/db/tenant-context'
@@ -65,10 +66,12 @@ import {
 import { maskChatText } from '@/lib/upload-screening/service'
 import { announceProductFeedback } from './announce'
 import {
+  getOrganizationProductFeedback,
   getOwnProductFeedback,
   getProductFeedback,
   getProductFeedbackByTicketIds,
   insertProductFeedback,
+  listOrganizationProductFeedback,
   listOwnProductFeedback,
   listProductFeedback,
   markOwnProductFeedbackSeen,
@@ -78,6 +81,7 @@ import {
   type ProductFeedbackRow,
 } from './repository'
 import type {
+  ListOfficeProductFeedbackQuery,
   ListOwnProductFeedbackQuery,
   ListProductFeedbackQuery,
   OwnProductFeedbackListResponse,
@@ -570,42 +574,71 @@ export async function triageProductFeedback(
 // inside Piloti. PostHog Support stays the record: the thread is read from the
 // ticket each time, and a reply goes onto the ticket. Nothing is copied here
 // except when the reporter last looked (`reporter_seen_at`). Every function
-// narrows to the caller's own reports; a colleague's report is a 404.
+// narrows to the caller's own reports, a colleague's being a 404, with one
+// exception: the office view. A member holding `org:settings:manage` lists every
+// report of their organization and reads each thread, read-only: only the
+// reporter can answer, because the conversations session the ticket was opened
+// in is theirs.
+
+/** What the office view asks for: whoever may manage the organization's settings. */
+const OFFICE_VIEW_PERMISSION = ORG_PERMISSIONS.settingsManage
 
 /**
- * How many of a person's tickets one PostHog call reads, most recently updated
- * first. Far above what anyone sends; a report whose ticket falls outside it
- * shows without a status, never wrongly.
+ * How many tickets one PostHog call reads, most recently updated first. Far
+ * above what one person, or one page of an office, sends; a report whose ticket
+ * falls outside it shows without a status, never wrongly.
  */
 const OWN_TICKETS_LIMIT = 100
 
 /** How long the list's excerpt of a report is. */
 const EXCERPT_LENGTH = 140
 
+/**
+ * A ticket's own setup touches it after the report row is written (the tag
+ * write lands a few hundred milliseconds after the ticket opens). Within this
+ * of the report, an update is that setup, not news.
+ */
+const TICKET_SETUP_GRACE_MS = 60_000
+
 function excerptOf(message: string): string {
   const flat = message.replace(/\s+/g, ' ').trim()
   return flat.length > EXCERPT_LENGTH ? `${flat.slice(0, EXCERPT_LENGTH - 1)}…` : flat
 }
 
-/** Whether the ticket moved since the reporter last looked. */
-function hasUpdateSince(row: ProductFeedback, ticket: SupportTicket | null): boolean {
-  if (!ticket || !row.reporterSeenAt) return false
-  return new Date(ticket.updatedAt).getTime() > new Date(row.reporterSeenAt).getTime()
+/**
+ * Whether the ticket moved since the reporter last looked. A report that was
+ * never looked at (`reporter_seen_at` NULL: filed before migration 0183, or a
+ * ticket whose id could not be stored) counts from when it was sent, so a team
+ * reply on it is news instead of silently never being.
+ */
+export function hasUpdateSince(row: ProductFeedback, ticket: SupportTicket | null): boolean {
+  if (!ticket) return false
+  const updated = new Date(ticket.updatedAt).getTime()
+  if (row.reporterSeenAt) return updated > new Date(row.reporterSeenAt).getTime()
+  return updated > new Date(row.createdAt).getTime() + TICKET_SETUP_GRACE_MS
 }
 
 function toOwnSummary(
   row: ProductFeedback,
   ticket: SupportTicket | null,
-  config: PosthogSupportConfig | null
+  config: PosthogSupportConfig | null,
+  viewerId: string
 ): OwnProductFeedbackSummary {
+  const mine = row.userId === viewerId
+  const createdAt = new Date(row.createdAt).toISOString()
   return {
     id: row.id,
     kind: row.kind,
     excerpt: excerptOf(row.message),
-    createdAt: new Date(row.createdAt).toISOString(),
+    createdAt,
     status: ticket?.status ?? null,
-    hasUpdate: hasUpdateSince(row, ticket),
-    canReply: Boolean(config && row.posthogTicketId && row.posthogWidgetSessionId),
+    ticketNumber: ticket?.ticketNumber ?? null,
+    lastActivityAt: ticket ? new Date(ticket.updatedAt).toISOString() : createdAt,
+    // News is the reporter's: when they last looked says nothing about a colleague.
+    hasUpdate: mine && hasUpdateSince(row, ticket),
+    canReply: mine && Boolean(config && row.posthogTicketId && row.posthogWidgetSessionId),
+    mine,
+    reporterName: row.userName ?? null,
   }
 }
 
@@ -614,6 +647,62 @@ async function ownReport(session: AuthorizedSession, id: string): Promise<Produc
   const row = await getOwnProductFeedback(session.organizationId, session.userId, id)
   if (!row) throw new NotFoundError('Unknown feedback report.')
   return row
+}
+
+/**
+ * A report the caller may READ: their own, or, in the office view, any of
+ * their organization's. Anything else is a 404, never a 403, so an id is no
+ * oracle for whether a colleague filed something.
+ */
+async function readableReport(session: AuthorizedSession, id: string): Promise<ProductFeedback> {
+  const own = await getOwnProductFeedback(session.organizationId, session.userId, id)
+  if (own) return own
+  if (!(await can(session, OFFICE_VIEW_PERMISSION))) throw new NotFoundError('Unknown feedback report.')
+  const row = await getOrganizationProductFeedback(session.organizationId, id)
+  if (!row) throw new NotFoundError('Unknown feedback report.')
+  return row
+}
+
+/**
+ * The tickets of `rows`, by ticket id, in one PostHog call for everybody who
+ * filed them; `live: false` while PostHog cannot be read.
+ */
+async function ticketsFor(
+  rows: ProductFeedback[],
+  config: PosthogSupportConfig | null
+): Promise<{ tickets: Map<string, SupportTicket>; live: boolean }> {
+  if (!config) return { tickets: new Map(), live: false }
+  const reporters = [...new Set(rows.filter((row) => row.posthogTicketId).map((row) => row.userId))]
+  if (reporters.length === 0) return { tickets: new Map(), live: true }
+  try {
+    const found = await listFeedbackTicketsOf(config, reporters, OWN_TICKETS_LIMIT)
+    return { tickets: new Map(found.map((ticket) => [ticket.id, ticket])), live: true }
+  } catch (error) {
+    if (!(error instanceof PosthogSupportUnavailableError)) throw error
+    console.warn('[product-feedback] PostHog Support unreadable; cases without status:', error.message)
+    return { tickets: new Map(), live: false }
+  }
+}
+
+function caseList(
+  rows: ProductFeedback[],
+  limit: number,
+  found: { tickets: Map<string, SupportTicket>; live: boolean },
+  config: PosthogSupportConfig | null,
+  session: AuthorizedSession,
+  canViewOffice: boolean
+): OwnProductFeedbackListResponse {
+  const reports = rows.map((row) =>
+    toOwnSummary(row, row.posthogTicketId ? (found.tickets.get(row.posthogTicketId) ?? null) : null, config, session.userId)
+  )
+  const last = rows.at(-1)
+  return {
+    reports,
+    updatedCount: reports.filter((report) => report.hasUpdate).length,
+    live: found.live,
+    nextCursor: rows.length === limit && last ? encodeCursor(last) : null,
+    canViewOffice,
+  }
 }
 
 /**
@@ -632,28 +721,29 @@ export async function listOwnProductFeedbackThreads(
     before: decodeCursor(query.cursor),
   })
   const config = supportConfig()
-  let tickets = new Map<string, SupportTicket>()
-  let live = config !== null
-  if (config && rows.some((row) => row.posthogTicketId)) {
-    try {
-      const own = await listFeedbackTicketsOf(config, session.userId, OWN_TICKETS_LIMIT)
-      tickets = new Map(own.map((ticket) => [ticket.id, ticket]))
-    } catch (error) {
-      if (!(error instanceof PosthogSupportUnavailableError)) throw error
-      console.warn('[product-feedback] PostHog Support unreadable; own threads without status:', error.message)
-      live = false
-    }
-  }
-  const reports = rows.map((row) =>
-    toOwnSummary(row, row.posthogTicketId ? (tickets.get(row.posthogTicketId) ?? null) : null, config)
-  )
-  const last = rows.at(-1)
-  return {
-    reports,
-    updatedCount: reports.filter((report) => report.hasUpdate).length,
-    live,
-    nextCursor: rows.length === limit && last ? encodeCursor(last) : null,
-  }
+  const [found, canViewOffice] = await Promise.all([ticketsFor(rows, config), can(session, OFFICE_VIEW_PERMISSION)])
+  return caseList(rows, limit, found, config, session, canViewOffice)
+}
+
+/**
+ * The office view: every report filed in the caller's organization, newest
+ * first, with each ticket's status, for whoever may manage the organization's
+ * settings (403 for everybody else). One PostHog call per page, for everybody
+ * on it; while PostHog cannot be read the list is still there, without
+ * statuses (`live: false`).
+ */
+export async function listOfficeProductFeedbackThreads(
+  session: AuthorizedSession,
+  query: ListOfficeProductFeedbackQuery = { limit: OWN_PRODUCT_FEEDBACK_LIMIT }
+): Promise<OwnProductFeedbackListResponse> {
+  await authorize(session, OFFICE_VIEW_PERMISSION)
+  const limit = Math.min(query.limit, OWN_PRODUCT_FEEDBACK_LIMIT)
+  const rows = await listOrganizationProductFeedback(session.organizationId, {
+    limit,
+    before: decodeCursor(query.cursor),
+  })
+  const config = supportConfig()
+  return caseList(rows, limit, await ticketsFor(rows, config), config, session, true)
 }
 
 /**
@@ -667,7 +757,7 @@ function threadMessages(row: ProductFeedback, ticketMessages: SupportMessage[]):
   const header = `[${row.kind}] #${row.id}`
   const first: OwnProductFeedbackMessage = {
     id: row.id,
-    author: 'me',
+    author: 'reporter',
     authorName: null,
     content: row.message,
     createdAt: new Date(row.createdAt).toISOString(),
@@ -676,7 +766,7 @@ function threadMessages(row: ProductFeedback, ticketMessages: SupportMessage[]):
     .filter((message) => !(message.author === 'customer' && message.content.startsWith(header)))
     .map((message) => ({
       id: message.id,
-      author: message.author === 'customer' ? ('me' as const) : ('team' as const),
+      author: message.author === 'customer' ? ('reporter' as const) : ('team' as const),
       authorName: message.authorName,
       content: message.content,
       createdAt: message.createdAt,
@@ -703,19 +793,24 @@ async function liveThread(
   }
 }
 
-/** One of the caller's threads. Opening it counts as having seen it. */
+/**
+ * One thread: the caller's own, or (office view) a colleague's, read-only.
+ * Opening one's own counts as having seen it; reading a colleague's marks
+ * nothing, so their news stays theirs.
+ */
 export async function getOwnProductFeedbackThread(
   session: AuthorizedSession,
   id: string
 ): Promise<OwnProductFeedbackThread> {
-  const row = await ownReport(session, id)
+  const row = await readableReport(session, id)
+  const mine = row.userId === session.userId
   const config = supportConfig()
   const live = await liveThread(row, config)
   const seenAt = new Date()
-  if (live) await markOwnProductFeedbackSeen(session.organizationId, session.userId, row.id, seenAt)
-  const seen = live ? { ...row, reporterSeenAt: seenAt } : row
+  if (live && mine) await markOwnProductFeedbackSeen(session.organizationId, session.userId, row.id, seenAt)
+  const seen = live && mine ? { ...row, reporterSeenAt: seenAt } : row
   return {
-    report: toOwnSummary(seen, live?.ticket ?? null, config),
+    report: toOwnSummary(seen, live?.ticket ?? null, config, session.userId),
     messages: threadMessages(row, live?.messages ?? []),
     live: live !== null,
   }

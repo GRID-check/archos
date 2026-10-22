@@ -6,6 +6,9 @@
  *
  *   - the REPORTER writes one row into their own organization; the row carries
  *     the session's `organizationId`, and RLS's WITH CHECK refuses any other.
+ *     The reporter reads their own rows, and an office admin (the service
+ *     checks `org:settings:manage`) reads every row of their organization,
+ *     always in the tenant context and always filtered to it.
  *   - the PLATFORM reads and triages across every organization. Those
  *     functions are deliberately not organization-scoped, because the platform
  *     owner's job is the cross-org view; the guard lives in the service
@@ -93,6 +96,47 @@ export async function listOwnProductFeedback(
     .where(and(...clauses))
     .orderBy(desc(productFeedback.createdAt), desc(productFeedback.id))
     .limit(Math.min(page.limit, OWN_PRODUCT_FEEDBACK_LIMIT))
+}
+
+/**
+ * One page of every report filed in one organization, newest first: the office
+ * view. RLS narrows to the organization as well; the explicit filter keeps the
+ * query honest without it. The service gates who may call it.
+ */
+export async function listOrganizationProductFeedback(
+  organizationId: string,
+  page: { limit: number; before?: { createdAt: Date; id: string } }
+): Promise<ProductFeedback[]> {
+  const db = getDb()
+  const clauses: SQL[] = [eq(productFeedback.organizationId, organizationId)]
+  if (page.before) {
+    const { createdAt, id } = page.before
+    const older = or(
+      lt(productFeedback.createdAt, createdAt),
+      and(eq(productFeedback.createdAt, createdAt), lt(productFeedback.id, id))
+    )
+    if (older) clauses.push(older)
+  }
+  return db
+    .select()
+    .from(productFeedback)
+    .where(and(...clauses))
+    .orderBy(desc(productFeedback.createdAt), desc(productFeedback.id))
+    .limit(Math.min(page.limit, OWN_PRODUCT_FEEDBACK_LIMIT))
+}
+
+/** One report of the organization, whoever filed it, or `null`. For the office view only. */
+export async function getOrganizationProductFeedback(
+  organizationId: string,
+  id: string
+): Promise<ProductFeedback | null> {
+  const db = getDb()
+  const [row] = await db
+    .select()
+    .from(productFeedback)
+    .where(and(eq(productFeedback.id, id), eq(productFeedback.organizationId, organizationId)))
+    .limit(1)
+  return row ?? null
 }
 
 /** One of the reporter's own reports, or `null` when it is not theirs. */

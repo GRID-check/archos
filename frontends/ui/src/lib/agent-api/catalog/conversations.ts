@@ -33,6 +33,7 @@ import {
   upsertAnswerFeedbackSchema,
 } from '@/lib/feedback/types'
 import {
+  listOfficeProductFeedbackQuerySchema,
   listOwnProductFeedbackQuerySchema,
   replyToProductFeedbackSchema,
   submitProductFeedbackSchema,
@@ -287,21 +288,37 @@ export const conversationsOperations = [
     domain: 'conversations',
     summary: 'List the person’s own feedback reports',
     description:
-      'The person’s own product feedback reports, newest first, each with its ticket status and `hasUpdate` when the Piloti team ' +
-      'replied or changed the status since the person last read the thread; `updatedCount` counts those on the page. Page with ' +
-      '`nextCursor`. Threads: feedback-thread-get.',
+      'The person’s own product feedback reports, newest first, each with its ticket status (`resolved` is done, every other ' +
+      'status is an active case), ticket number, last activity, and `hasUpdate` when the Piloti team replied or changed the ' +
+      'status since the person last read the thread; `updatedCount` counts those on the page. `canViewOffice` says whether ' +
+      'feedback-office-report-list is open to them. Page with `nextCursor`. Threads: feedback-thread-get.',
     method: 'GET',
     path: '/api/feedback/reports',
     query: listOwnProductFeedbackQuerySchema,
     load: () => import('@/app/api/feedback/reports/route'),
   },
   {
+    name: 'feedback-office-report-list',
+    domain: 'conversations',
+    summary: 'List every feedback report of the organization',
+    description:
+      'Every product feedback report filed by anyone in the organization, newest first, with the reporter’s name, ticket ' +
+      'status (`resolved` is done, every other status is an active case), ticket number and last activity. Needs ' +
+      '`org:settings:manage` (403 otherwise). `mine: false` marks a colleague’s report: its thread reads with ' +
+      'feedback-thread-get but only the reporter can answer it. Page with `nextCursor`.',
+    method: 'GET',
+    path: '/api/feedback/office-reports',
+    query: listOfficeProductFeedbackQuerySchema,
+    load: () => import('@/app/api/feedback/office-reports/route'),
+  },
+  {
     name: 'feedback-thread-get',
     domain: 'conversations',
     summary: 'Read the conversation on one feedback report',
     description:
-      'The thread on one of the person’s own feedback reports, oldest first: the report as written, the Piloti team’s replies ' +
-      '(`author: team`) and the person’s answers (`author: me`). Reading it marks it as read. `live: false` means the ticket ' +
+      'The thread on one feedback report, oldest first: the report as written, the Piloti team’s replies (`author: team`) ' +
+      'and the reporter’s answers (`author: reporter`). The person’s own report, or, with `org:settings:manage`, a ' +
+      'colleague’s (read-only, `report.mine: false`). Reading one’s own marks it as read. `live: false` means the ticket ' +
       'could not be read and only the report is shown.',
     method: 'GET',
     path: '/api/feedback/reports/[reportId]/messages',

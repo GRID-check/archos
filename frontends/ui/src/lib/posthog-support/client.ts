@@ -383,18 +383,28 @@ export async function listCustomerVisibleMessages(
   })
 }
 
+/** The most people one `distinct_ids` filter names; PostHog refuses more. */
+export const DISTINCT_IDS_MAX = 100
+
 /**
- * One person's feedback tickets (tag `FEEDBACK_TICKET_TAG`), most recently
- * updated first: one call for every thread they have.
+ * The feedback tickets (tag `FEEDBACK_TICKET_TAG`) of one person, or of a few
+ * (an office's page of reports), most recently updated first: one call for
+ * every thread they have. `date_from=all` switches off the list's updated-at
+ * window explicitly ("Pass `all` to disable the filter", PostHog's own
+ * parameter doc), so an old open case keeps its status whatever the server's
+ * default window is.
  */
 export async function listFeedbackTicketsOf(
   config: PosthogSupportConfig,
-  distinctId: string,
+  distinctIds: string | readonly string[],
   limit: number,
   fetchImpl: typeof fetch = fetch
 ): Promise<SupportTicket[]> {
+  const ids = [...new Set(typeof distinctIds === 'string' ? [distinctIds] : distinctIds)].slice(0, DISTINCT_IDS_MAX)
+  if (ids.length === 0) return []
   const params = new URLSearchParams({
-    distinct_ids: distinctId,
+    distinct_ids: ids.join(','),
+    date_from: 'all',
     tags_all: JSON.stringify([FEEDBACK_TICKET_TAG]),
     limit: String(limit),
     order_by: '-updated_at',

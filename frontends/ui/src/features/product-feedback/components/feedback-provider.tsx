@@ -20,9 +20,9 @@ import type { JSX } from 'react'
 import * as React from 'react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { fetchOwnFeedback } from '@/lib/product-feedback/client'
-import { FEEDBACK_THREAD_PARAM, type ProductFeedbackKind } from '@/lib/product-feedback/types'
-import { FeedbackDialog } from './feedback-dialog'
-import { FeedbackThreadsSheet } from './feedback-threads'
+import { FEEDBACK_THREAD_PARAM, type OwnProductFeedbackListResponse, type ProductFeedbackKind } from '@/lib/product-feedback/types'
+import { FeedbackDialog, type FeedbackDialogProps } from './feedback-dialog'
+import { FeedbackThreadsSheet, type FeedbackThreadsApi } from './feedback-threads'
 
 /** A focus sooner than this after the last read does not read again. */
 export const UPDATES_REFRESH_MS = 5 * 60 * 1000
@@ -61,38 +61,49 @@ export function useFeedbackAvailable(): boolean {
   return React.useContext(FeedbackContext) !== null
 }
 
-function useUpdatedCount(): [number, (count: number) => void] {
+/**
+ * The count of threads with news, and a way to read it again now. Read when
+ * the shell mounts, on focus after {@link UPDATES_REFRESH_MS}, whenever the
+ * sheet reads the list itself (`remember`), and when the sheet closes
+ * (`refresh`): opening a thread marks it seen on the server, and a sheet closed
+ * from inside that thread never goes back through the list to say so.
+ */
+function useUpdatedCount(
+  list: () => Promise<OwnProductFeedbackListResponse>
+): { count: number; remember: (count: number) => void; refresh: () => void } {
   const [count, setCount] = React.useState(0)
   const lastRead = React.useRef(0)
+  const alive = React.useRef(true)
 
   const remember = React.useCallback((next: number) => {
     lastRead.current = Date.now()
     setCount(next)
   }, [])
 
+  const refresh = React.useCallback(() => {
+    lastRead.current = Date.now()
+    list()
+      .then((page) => {
+        if (alive.current) setCount(page.updatedCount)
+      })
+      // The dot is a hint: a failed read leaves the last answer standing.
+      .catch(() => undefined)
+  }, [list])
+
   React.useEffect(() => {
-    let cancelled = false
-    const read = (): void => {
-      lastRead.current = Date.now()
-      fetchOwnFeedback()
-        .then((list) => {
-          if (!cancelled) setCount(list.updatedCount)
-        })
-        // The dot is a hint: a failed read leaves the last answer standing.
-        .catch(() => undefined)
-    }
+    alive.current = true
     const onFocus = (): void => {
-      if (Date.now() - lastRead.current >= UPDATES_REFRESH_MS) read()
+      if (Date.now() - lastRead.current >= UPDATES_REFRESH_MS) refresh()
     }
-    read()
+    refresh()
     window.addEventListener('focus', onFocus)
     return () => {
-      cancelled = true
+      alive.current = false
       window.removeEventListener('focus', onFocus)
     }
-  }, [])
+  }, [refresh])
 
-  return [count, remember]
+  return { count, remember, refresh }
 }
 
 /**
@@ -122,16 +133,23 @@ function ThreadFromAddress({ onThread }: { onThread: (reportId: string) => void 
 
 export function FeedbackProvider({
   userEmail = null,
+  threadsApi,
+  submit,
   children,
 }: {
   userEmail?: string | null
+  /** Previews inject the sheet's calls (and with them the count); the app uses the live routes. */
+  threadsApi?: FeedbackThreadsApi
+  /** Previews inject the form's send; the app uses the live route. */
+  submit?: FeedbackDialogProps['submit']
   children: React.ReactNode
 }): JSX.Element {
   const [open, setOpen] = React.useState(false)
   const [kind, setKind] = React.useState<ProductFeedbackKind>('bug')
   const [threadsOpen, setThreadsOpen] = React.useState(false)
   const [threadId, setThreadId] = React.useState<string | null>(null)
-  const [updatedCount, setUpdatedCount] = useUpdatedCount()
+  const list = threadsApi?.list ?? fetchOwnFeedback
+  const { count: updatedCount, remember: setUpdatedCount, refresh: refreshUpdatedCount } = useUpdatedCount(list)
 
   const openFeedback = React.useCallback<OpenFeedback>((next) => {
     setKind(next ?? 'bug')
@@ -159,6 +177,7 @@ export function FeedbackProvider({
         onOpenChange={setOpen}
         defaultKind={kind}
         userEmail={userEmail}
+        submit={submit}
         onViewThread={(reportId) => {
           setOpen(false)
           openThreads(reportId)
@@ -166,8 +185,12 @@ export function FeedbackProvider({
       />
       <FeedbackThreadsSheet
         open={threadsOpen}
-        onOpenChange={setThreadsOpen}
+        onOpenChange={(next) => {
+          setThreadsOpen(next)
+          if (!next) refreshUpdatedCount()
+        }}
         initialReportId={threadId}
+        api={threadsApi}
         onUpdatedCount={setUpdatedCount}
         onNewFeedback={() => {
           setThreadsOpen(false)
