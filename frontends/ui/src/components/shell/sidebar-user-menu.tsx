@@ -10,6 +10,7 @@ import {
   LayoutDashboard,
   LogOut,
   MessageSquarePlus,
+  MessagesSquare,
   Monitor,
   Moon,
   Sun,
@@ -18,6 +19,7 @@ import {
 
 import { useAuth } from '@/adapters/auth/use-auth'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { CountPill } from '@/components/ui/count-pill'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -31,7 +33,12 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { useLayoutStore } from '@/features/layout/store'
 import { useStartProductTour } from '@/features/onboarding/components/product-tour'
-import { useFeedbackAvailable, useOpenFeedback } from '@/features/product-feedback/components'
+import {
+  useFeedbackAvailable,
+  useFeedbackUpdatedCount,
+  useOpenFeedback,
+  useOpenFeedbackThreads,
+} from '@/features/product-feedback/components'
 import type { ThemeMode } from '@/features/layout/types'
 import { useTranslations, useLocale, locales } from '@/i18n'
 import { cn } from '@/lib/utils'
@@ -107,6 +114,8 @@ export function SidebarUserMenu({
   const ActiveThemeIcon = THEME_ICONS[theme]
   const startTour = useStartProductTour()
   const openFeedback = useOpenFeedback()
+  const openFeedbackThreads = useOpenFeedbackThreads()
+  const feedbackUpdatedCount = useFeedbackUpdatedCount()
   const feedbackAvailable = useFeedbackAvailable()
   const tFeedback = useTranslations('feedback')
 
@@ -265,6 +274,23 @@ export function SidebarUserMenu({
           <DropdownMenuItem onSelect={() => openFeedback()} className="gap-2" data-testid="user-menu-feedback">
             <MessageSquarePlus className="size-4 text-muted-foreground" aria-hidden />
             {tFeedback('open')}
+          </DropdownMenuItem>
+        )}
+        {/* Where the team's replies arrive; the pill says how many threads
+            have news since the member last looked. */}
+        {feedbackAvailable && (
+          <DropdownMenuItem
+            onSelect={() => openFeedbackThreads()}
+            className="gap-2"
+            data-testid="user-menu-feedback-threads"
+          >
+            <MessagesSquare className="size-4 text-muted-foreground" aria-hidden />
+            <span className="flex-1">{tFeedback('threads.open')}</span>
+            {feedbackUpdatedCount > 0 && (
+              <CountPill tone="attention" aria-label={tFeedback('threads.newCount', { count: feedbackUpdatedCount })}>
+                {feedbackUpdatedCount}
+              </CountPill>
+            )}
           </DropdownMenuItem>
         )}
         {authRequired && (

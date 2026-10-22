@@ -38,7 +38,7 @@ const pagePathSchema = z
   .transform((value) => (value && /^\/[^\s?#]*$/.test(value) ? value : null))
 
 /**
- * A PostHog id the browser hands over (a widget session, a replay session):
+ * A PostHog id the browser hands over (a replay session):
  * UUID-shaped or dropped. Browser input, so a malformed one costs the ticket
  * its replay link, never the report.
  */
@@ -65,15 +65,16 @@ export const submitProductFeedbackSchema = z.object({
     .strip()
     .default({}),
   /**
-   * The reporter's PostHog browser state, so the ticket the SERVER opens lands
-   * in their widget (replies) and links their replay. Absent while PostHog is
-   * off or blocked in that browser.
+   * The reporter's PostHog replay session, so the ticket the SERVER opens links
+   * their recording. Absent while PostHog is off or blocked in that browser.
+   * Older clients also sent a widget session; it is stripped, because the
+   * server opens every ticket in a conversations session of its own.
    */
   posthog: z
-    .object({ widgetSessionId: posthogBrowserId, sessionId: posthogBrowserId })
+    .object({ sessionId: posthogBrowserId })
     .strip()
     .nullish()
-    .transform((value) => value ?? { widgetSessionId: null, sessionId: null }),
+    .transform((value) => value ?? { sessionId: null }),
 })
 
 export type SubmitProductFeedbackInput = z.infer<typeof submitProductFeedbackSchema>
@@ -99,6 +100,18 @@ export type ListProductFeedbackQuery = z.infer<typeof listProductFeedbackQuerySc
 /** PATCH /api/platform/feedback/[id] — moves the report's PostHog ticket. */
 export const triageProductFeedbackSchema = z.object({
   status: z.enum(SUPPORT_TICKET_STATUSES),
+})
+
+/**
+ * POST /api/platform/feedback/claim — a platform owner takes a report's ticket:
+ * it is assigned to them in PostHog. The ticket id is what the Slack alert's
+ * „Übernehmen" button carries (the PostHog workflow knows no report id).
+ */
+export const claimProductFeedbackSchema = z.object({
+  ticketId: z
+    .string()
+    .regex(/^[A-Za-z0-9-]{1,64}$/)
+    .describe('The PostHog Support ticket id (a UUID), as the Slack alert or platform-feedback-list names it.'),
 })
 
 /** The report's PostHog Support ticket, read live from PostHog. */
@@ -153,4 +166,69 @@ export interface ProductFeedbackListResponse {
    */
   unticketed: ProductFeedbackReportView[]
   nextCursor: string | null
+}
+
+// ---------------------------------------------------------------------------
+// The reporter's own threads
+// ---------------------------------------------------------------------------
+
+/** POST /api/feedback/reports/[id]/messages — the reporter answers on their thread. */
+export const replyToProductFeedbackSchema = z.object({
+  message: z.string().trim().min(1).max(PRODUCT_FEEDBACK_MESSAGE_MAX),
+})
+
+export type ReplyToProductFeedbackInput = z.infer<typeof replyToProductFeedbackSchema>
+
+/** GET /api/feedback/reports — one page of the person's own reports, newest first. */
+export const listOwnProductFeedbackQuerySchema = z.object({
+  limit: z.coerce.number().int().min(1).max(20).default(20).describe('Reports per page, newest first (1 to 20).'),
+  cursor: z.string().max(200).optional().describe('`nextCursor` of the previous page.'),
+})
+
+export type ListOwnProductFeedbackQuery = z.infer<typeof listOwnProductFeedbackQuerySchema>
+
+/** One of the reporter's own reports in their list of threads. */
+export interface OwnProductFeedbackSummary {
+  id: string
+  kind: ProductFeedbackKind
+  /** The start of what they wrote, so the list says which report is which. */
+  excerpt: string
+  createdAt: string
+  /** The ticket's PostHog status; `null` without a ticket or while PostHog cannot be read. */
+  status: SupportTicketStatus | null
+  /** The team did something on the ticket (a reply, a status change) since the reporter last looked. */
+  hasUpdate: boolean
+  /** Whether the reporter can answer: the ticket exists and was opened in a stored session. */
+  canReply: boolean
+}
+
+/** GET /api/feedback/reports */
+export interface OwnProductFeedbackListResponse {
+  reports: OwnProductFeedbackSummary[]
+  /** How many on this page have news; on the first page, the shell's unread count. */
+  updatedCount: number
+  /** `false` while PostHog cannot be read: statuses and news are unknown. */
+  live: boolean
+  /** The next, older page; `null` on the last. */
+  nextCursor: string | null
+}
+
+/** One message of a thread as the reporter sees it. */
+export interface OwnProductFeedbackMessage {
+  id: string
+  /** `me`: the reporter. `team`: a reply the Piloti team sent from PostHog Support. */
+  author: 'me' | 'team'
+  /** The team member's name, when PostHog names one. */
+  authorName: string | null
+  content: string
+  createdAt: string
+}
+
+/** GET /api/feedback/reports/[id]/messages */
+export interface OwnProductFeedbackThread {
+  report: OwnProductFeedbackSummary
+  /** Oldest first. The first is always the report as the reporter typed it. */
+  messages: OwnProductFeedbackMessage[]
+  /** `false` while the ticket cannot be read: only the report itself is shown. */
+  live: boolean
 }

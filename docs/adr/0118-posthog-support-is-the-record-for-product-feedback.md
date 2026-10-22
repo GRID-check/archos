@@ -143,6 +143,33 @@ Votes on answers (`answer_feedback`) are not product feedback and do not change.
   send on is a second hop for nothing, and a failure there is swallowed where
   nobody sees it (it hid the relay bug).
 
+## Amendment, 2026-10-22: the reporter's thread, in Piloti
+
+The decision stands; three things are added on top of it.
+
+* **The reporter reads and answers in Piloti, through the API, never the
+  widget.** PostHog's widget stays switched off. Under „Mein Feedback" the BFF
+  serves the thread from the ticket: the private REST API reads its messages
+  (`customer_message` and `sent_reply` only, never notes or AI drafts), and a
+  reply goes onto the ticket through the conversations endpoint the ticket was
+  opened through, because the REST API lets only the team author. That endpoint
+  accepts a later message only from the session that opened the ticket, so the
+  server now makes up a session per report and stores it
+  (`product_feedback.posthog_widget_session_id`, migration `0183`, never sent
+  to a browser). Reports filed before `0183` can be read but not answered. The
+  reply is masked like the report, and when the policy cannot be read nothing
+  is sent. `reporter_seen_at` marks when the reporter last looked; a ticket
+  PostHog updated after it shows as new.
+* **The browser hands over no widget session any more**, only the replay
+  session id. Tickets were opened in a server-made session already whenever the
+  browser had none, which, with the widget off, was always.
+* **Slack, through a PostHog workflow.** „Piloti feedback → Slack" posts every
+  customer message on a widget ticket to `#posthog-inbox`. A Slack reaction
+  cannot start a PostHog workflow (only a new message can), so taking a ticket
+  is a button: „Übernehmen" opens Platform → Feedback with `?claim=<ticket id>`,
+  and the BFF assigns the ticket to the PostHog member with the signed-in
+  person's email. The key needs `organization_member:read` for that lookup.
+
 ## More Information
 
 * Amends ADR-0100: its Support row ("the product-feedback dialog also opens a

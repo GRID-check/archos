@@ -32,12 +32,20 @@ import {
   retractAnswerFeedbackQuerySchema,
   upsertAnswerFeedbackSchema,
 } from '@/lib/feedback/types'
-import { submitProductFeedbackSchema } from '@/lib/product-feedback/types'
+import {
+  listOwnProductFeedbackQuerySchema,
+  replyToProductFeedbackSchema,
+  submitProductFeedbackSchema,
+} from '@/lib/product-feedback/types'
 import { similarPassagesRequestSchema } from '@/lib/similar-passages/types'
 import type { AgentOperation } from '../operation'
 
 const conversationParams = z.object({
   id: z.string().describe('The conversation id (`s_` plus a UUID with underscores), from conversation-list.'),
+})
+
+const feedbackReportParams = z.object({
+  reportId: z.string().uuid().describe('The feedback report id (a UUID), from feedback-report-list.'),
 })
 
 const messageParams = z.object({
@@ -273,6 +281,45 @@ export const conversationsOperations = [
     path: '/api/feedback/reports',
     body: submitProductFeedbackSchema,
     load: () => import('@/app/api/feedback/reports/route'),
+  },
+  {
+    name: 'feedback-report-list',
+    domain: 'conversations',
+    summary: 'List the person’s own feedback reports',
+    description:
+      'The person’s own product feedback reports, newest first, each with its ticket status and `hasUpdate` when the Piloti team ' +
+      'replied or changed the status since the person last read the thread; `updatedCount` counts those on the page. Page with ' +
+      '`nextCursor`. Threads: feedback-thread-get.',
+    method: 'GET',
+    path: '/api/feedback/reports',
+    query: listOwnProductFeedbackQuerySchema,
+    load: () => import('@/app/api/feedback/reports/route'),
+  },
+  {
+    name: 'feedback-thread-get',
+    domain: 'conversations',
+    summary: 'Read the conversation on one feedback report',
+    description:
+      'The thread on one of the person’s own feedback reports, oldest first: the report as written, the Piloti team’s replies ' +
+      '(`author: team`) and the person’s answers (`author: me`). Reading it marks it as read. `live: false` means the ticket ' +
+      'could not be read and only the report is shown.',
+    method: 'GET',
+    path: '/api/feedback/reports/[reportId]/messages',
+    params: feedbackReportParams,
+    load: () => import('@/app/api/feedback/reports/[reportId]/messages/route'),
+  },
+  {
+    name: 'feedback-thread-reply',
+    domain: 'conversations',
+    summary: 'Answer the Piloti team on a feedback report',
+    description:
+      'Posts the person’s answer on one of their own feedback reports; the Piloti team sees it on the ticket. Refused (409) when ' +
+      'the report has no ticket to answer on (`canReply: false` in feedback-report-list). Returns the updated thread.',
+    method: 'POST',
+    path: '/api/feedback/reports/[reportId]/messages',
+    params: feedbackReportParams,
+    body: replyToProductFeedbackSchema,
+    load: () => import('@/app/api/feedback/reports/[reportId]/messages/route'),
   },
   {
     name: 'citation-format',

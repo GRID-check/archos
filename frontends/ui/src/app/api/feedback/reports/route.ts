@@ -2,6 +2,10 @@
  * `POST /api/feedback/reports` — a member sends product feedback (a bug, an
  * idea, praise or a question) to the platform owners.
  *
+ * `GET /api/feedback/reports` — the member's own reports, each with its
+ * PostHog ticket's status and whether the team answered since they last
+ * looked. The threads themselves are `./[reportId]/messages`.
+ *
  * Not `/api/feedback/answers`, which is the thumbs on one answer. Thin adapter
  * (ADR-0017): validation here, everything else in `submitProductFeedback`,
  * which also opens the report's PostHog Support ticket (ADR-0118).
@@ -12,10 +16,10 @@
  * owner.
  */
 
-import { apiRoute, parseJsonBody } from '@/lib/api/handler'
+import { apiRoute, parseJsonBody, parseQuery } from '@/lib/api/handler'
 import { FEEDBACK_REPORT_LIMIT } from '@/lib/limits/catalog'
-import { submitProductFeedback } from '@/lib/product-feedback/service'
-import { submitProductFeedbackSchema } from '@/lib/product-feedback/types'
+import { listOwnProductFeedbackThreads, submitProductFeedback } from '@/lib/product-feedback/service'
+import { listOwnProductFeedbackQuerySchema, submitProductFeedbackSchema } from '@/lib/product-feedback/types'
 
 export const POST = apiRoute(
   async ({ session, request }) => {
@@ -26,5 +30,13 @@ export const POST = apiRoute(
     authz: { enforcedBy: 'submitProductFeedback (any member; the row is keyed to session.userId)' },
     limits: { rule: FEEDBACK_REPORT_LIMIT },
     status: 201,
+  }
+)
+
+export const GET = apiRoute(
+  async ({ session, request }) =>
+    listOwnProductFeedbackThreads(session, parseQuery(request, listOwnProductFeedbackQuerySchema)),
+  {
+    authz: { enforcedBy: 'listOwnProductFeedbackThreads (any member; only rows keyed to session.userId)' },
   }
 )

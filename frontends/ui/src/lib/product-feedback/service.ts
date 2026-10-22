@@ -21,6 +21,7 @@
  */
 
 import 'server-only'
+import { randomUUID } from 'node:crypto'
 import { ConflictError, NotFoundError, UpstreamError } from '@/lib/api/errors'
 import type { AuthorizedSession, GridSession } from '@/lib/auth/types'
 import { PLATFORM_PERMISSIONS } from '@/lib/authz/permissions'
@@ -30,10 +31,15 @@ import { withPlatformAccess } from '@/lib/db/tenant-context'
 import { getOrganizationDisplayName } from '@/lib/organizations/service'
 import { getOrganizationDisplayNames } from '@/lib/organizations/display-names'
 import {
+  assignSupportTicket,
   countFeedbackTicketsByStatus,
+  findPosthogUserIdByEmail,
   getSupportTicket,
+  listCustomerVisibleMessages,
   listFeedbackTickets,
+  listFeedbackTicketsOf,
   openFeedbackTicket,
+  replyAsCustomer,
   updateSupportTicketStatus,
 } from '@/lib/posthog-support/client'
 import { posthogSupportConfigFromEnv } from '@/lib/posthog-support/config'
@@ -43,22 +49,32 @@ import {
   NO_CONTACT_TICKET_TAG,
   PosthogSupportUnavailableError,
   type PosthogSupportConfig,
+  type SupportMessage,
   type SupportTicket,
   type SupportTicketStatus,
 } from '@/lib/posthog-support/types'
 import { maskChatText } from '@/lib/upload-screening/service'
 import { announceProductFeedback } from './announce'
 import {
+  getOwnProductFeedback,
   getProductFeedback,
   getProductFeedbackByTicketIds,
   insertProductFeedback,
+  listOwnProductFeedback,
   listProductFeedback,
+  markOwnProductFeedbackSeen,
+  OWN_PRODUCT_FEEDBACK_LIMIT,
   PRODUCT_FEEDBACK_LIST_LIMIT,
   setProductFeedbackTicket,
   type ProductFeedbackRow,
 } from './repository'
 import type {
+  ListOwnProductFeedbackQuery,
   ListProductFeedbackQuery,
+  OwnProductFeedbackListResponse,
+  OwnProductFeedbackMessage,
+  OwnProductFeedbackSummary,
+  OwnProductFeedbackThread,
   ProductFeedbackKind,
   ProductFeedbackListResponse,
   ProductFeedbackReportView,
@@ -101,14 +117,17 @@ async function openTicketFor(
 ): Promise<void> {
   try {
     const masked = (await maskChatText(session.organizationId, input.message)).text
+    // A session of the report's own: the reporter's replies must come from it
+    // to land on this ticket, and no browser widget is involved.
+    const widgetSessionId = randomUUID()
     const ticketId = await openFeedbackTicket(config, {
       message: supportTicketText(report.kind, report.id, report.pagePath, masked),
       distinctId: session.userId,
-      widgetSessionId: input.posthog.widgetSessionId,
+      widgetSessionId,
       sessionId: input.posthog.sessionId,
       tags: [FEEDBACK_TICKET_TAG, kindTicketTag(report.kind), ...(report.allowContact ? [] : [NO_CONTACT_TICKET_TAG])],
     })
-    await setProductFeedbackTicket(report.id, ticketId)
+    await setProductFeedbackTicket(report.id, ticketId, widgetSessionId)
   } catch (error) {
     console.error(`[product-feedback] report ${report.id} stored, but no Support ticket opened:`, error)
   }
@@ -338,6 +357,239 @@ export async function triageProductFeedback(
   let ticket: SupportTicket
   try {
     ticket = await updateSupportTicketStatus(config, row.posthogTicketId, status)
+  } catch (error) {
+    if (error instanceof PosthogSupportUnavailableError) throw new UpstreamError('PostHog Support did not take the change.')
+    throw error
+  }
+  const [named] = await withOrganizationNames([row])
+  return toReportView(named ?? row, ticket, config)
+}
+
+// ---------------------------------------------------------------------------
+// The reporter's own threads
+// ---------------------------------------------------------------------------
+//
+// A member reads what the team answered on their reports, and answers back,
+// inside Piloti. PostHog Support stays the record: the thread is read from the
+// ticket each time, and a reply goes onto the ticket. Nothing is copied here
+// except when the reporter last looked (`reporter_seen_at`). Every function
+// narrows to the caller's own reports; a colleague's report is a 404.
+
+/**
+ * How many of a person's tickets one PostHog call reads, most recently updated
+ * first. Far above what anyone sends; a report whose ticket falls outside it
+ * shows without a status, never wrongly.
+ */
+const OWN_TICKETS_LIMIT = 100
+
+/** How long the list's excerpt of a report is. */
+const EXCERPT_LENGTH = 140
+
+function excerptOf(message: string): string {
+  const flat = message.replace(/\s+/g, ' ').trim()
+  return flat.length > EXCERPT_LENGTH ? `${flat.slice(0, EXCERPT_LENGTH - 1)}…` : flat
+}
+
+/** Whether the ticket moved since the reporter last looked. */
+function hasUpdateSince(row: ProductFeedback, ticket: SupportTicket | null): boolean {
+  if (!ticket || !row.reporterSeenAt) return false
+  return new Date(ticket.updatedAt).getTime() > new Date(row.reporterSeenAt).getTime()
+}
+
+function toOwnSummary(
+  row: ProductFeedback,
+  ticket: SupportTicket | null,
+  config: PosthogSupportConfig | null
+): OwnProductFeedbackSummary {
+  return {
+    id: row.id,
+    kind: row.kind,
+    excerpt: excerptOf(row.message),
+    createdAt: new Date(row.createdAt).toISOString(),
+    status: ticket?.status ?? null,
+    hasUpdate: hasUpdateSince(row, ticket),
+    canReply: Boolean(config && row.posthogTicketId && row.posthogWidgetSessionId),
+  }
+}
+
+/** The caller's own report, or 404: a report that is not theirs does not exist for them. */
+async function ownReport(session: AuthorizedSession, id: string): Promise<ProductFeedback> {
+  const row = await getOwnProductFeedback(session.organizationId, session.userId, id)
+  if (!row) throw new NotFoundError('Unknown feedback report.')
+  return row
+}
+
+/**
+ * The caller's own reports, newest first, with each ticket's status and
+ * whether the team did something since they last looked. One PostHog call for
+ * all of them; while PostHog cannot be read the list is still there, without
+ * statuses (`live: false`).
+ */
+export async function listOwnProductFeedbackThreads(
+  session: AuthorizedSession,
+  query: ListOwnProductFeedbackQuery = { limit: OWN_PRODUCT_FEEDBACK_LIMIT }
+): Promise<OwnProductFeedbackListResponse> {
+  const limit = Math.min(query.limit, OWN_PRODUCT_FEEDBACK_LIMIT)
+  const rows = await listOwnProductFeedback(session.organizationId, session.userId, {
+    limit,
+    before: decodeCursor(query.cursor),
+  })
+  const config = supportConfig()
+  let tickets = new Map<string, SupportTicket>()
+  let live = config !== null
+  if (config && rows.some((row) => row.posthogTicketId)) {
+    try {
+      const own = await listFeedbackTicketsOf(config, session.userId, OWN_TICKETS_LIMIT)
+      tickets = new Map(own.map((ticket) => [ticket.id, ticket]))
+    } catch (error) {
+      if (!(error instanceof PosthogSupportUnavailableError)) throw error
+      console.warn('[product-feedback] PostHog Support unreadable; own threads without status:', error.message)
+      live = false
+    }
+  }
+  const reports = rows.map((row) =>
+    toOwnSummary(row, row.posthogTicketId ? (tickets.get(row.posthogTicketId) ?? null) : null, config)
+  )
+  const last = rows.at(-1)
+  return {
+    reports,
+    updatedCount: reports.filter((report) => report.hasUpdate).length,
+    live,
+    nextCursor: rows.length === limit && last ? encodeCursor(last) : null,
+  }
+}
+
+/**
+ * The thread as the reporter sees it: their report as they typed it, then the
+ * ticket's later messages. The ticket's own first message is the masked copy
+ * with the report header (`supportTicketText`), so it is replaced by the words
+ * the reporter wrote. Their later replies come back as PostHog holds them,
+ * masked against the office's policy like everything that leaves for PostHog.
+ */
+function threadMessages(row: ProductFeedback, ticketMessages: SupportMessage[]): OwnProductFeedbackMessage[] {
+  const header = `[${row.kind}] #${row.id}`
+  const first: OwnProductFeedbackMessage = {
+    id: row.id,
+    author: 'me',
+    authorName: null,
+    content: row.message,
+    createdAt: new Date(row.createdAt).toISOString(),
+  }
+  const rest = ticketMessages
+    .filter((message) => !(message.author === 'customer' && message.content.startsWith(header)))
+    .map((message) => ({
+      id: message.id,
+      author: message.author === 'customer' ? ('me' as const) : ('team' as const),
+      authorName: message.authorName,
+      content: message.content,
+      createdAt: message.createdAt,
+    }))
+  return [first, ...rest]
+}
+
+/** The ticket and its visible messages, or `null` when there is none or PostHog cannot say. */
+async function liveThread(
+  row: ProductFeedback,
+  config: PosthogSupportConfig | null
+): Promise<{ ticket: SupportTicket; messages: SupportMessage[] } | null> {
+  if (!config || !row.posthogTicketId) return null
+  try {
+    const [ticket, messages] = await Promise.all([
+      getSupportTicket(config, row.posthogTicketId),
+      listCustomerVisibleMessages(config, row.posthogTicketId),
+    ])
+    return ticket ? { ticket, messages } : null
+  } catch (error) {
+    if (!(error instanceof PosthogSupportUnavailableError)) throw error
+    console.warn(`[product-feedback] thread of report ${row.id} unreadable:`, error.message)
+    return null
+  }
+}
+
+/** One of the caller's threads. Opening it counts as having seen it. */
+export async function getOwnProductFeedbackThread(
+  session: AuthorizedSession,
+  id: string
+): Promise<OwnProductFeedbackThread> {
+  const row = await ownReport(session, id)
+  const config = supportConfig()
+  const live = await liveThread(row, config)
+  const seenAt = new Date()
+  if (live) await markOwnProductFeedbackSeen(session.organizationId, session.userId, row.id, seenAt)
+  const seen = live ? { ...row, reporterSeenAt: seenAt } : row
+  return {
+    report: toOwnSummary(seen, live?.ticket ?? null, config),
+    messages: threadMessages(row, live?.messages ?? []),
+    live: live !== null,
+  }
+}
+
+/**
+ * The reporter answers on their thread. The words go out masked against the
+ * office's „Sensible Daten" policy (ADR-0086), like the report did: when the
+ * policy cannot be read, nothing is sent. Resolves to the updated thread.
+ */
+export async function replyToOwnProductFeedback(
+  session: AuthorizedSession,
+  id: string,
+  message: string
+): Promise<OwnProductFeedbackThread> {
+  const row = await ownReport(session, id)
+  const config = supportConfig()
+  if (!config || !row.posthogTicketId || !row.posthogWidgetSessionId) {
+    throw new ConflictError('This report cannot be answered here.')
+  }
+  let masked: string
+  try {
+    masked = (await maskChatText(session.organizationId, message)).text
+  } catch (error) {
+    console.error(`[product-feedback] reply on report ${row.id} not sent: the policy could not mask it`, error)
+    throw new UpstreamError('Your reply could not be sent.')
+  }
+  try {
+    await replyAsCustomer(config, {
+      ticketId: row.posthogTicketId,
+      widgetSessionId: row.posthogWidgetSessionId,
+      distinctId: session.userId,
+      message: masked,
+    })
+  } catch (error) {
+    if (error instanceof PosthogSupportUnavailableError) throw new UpstreamError('Your reply could not be sent.')
+    throw error
+  }
+  return getOwnProductFeedbackThread(session, id)
+}
+
+// ---------------------------------------------------------------------------
+// Taking a ticket
+// ---------------------------------------------------------------------------
+
+/**
+ * A platform owner takes a report's ticket: it is assigned to them in PostHog
+ * Support. The Slack alert's „Übernehmen" button lands here with the ticket id,
+ * so the person is whoever is signed in to Piloti, and their PostHog account is
+ * the one with the same email. No Slack identity is involved.
+ */
+export async function claimProductFeedbackTicket(
+  session: GridSession | null,
+  ticketId: string
+): Promise<ProductFeedbackReportView> {
+  await requirePlatformPermission(session, PLATFORM_PERMISSIONS.settingsManage)
+  const config = supportConfig()
+  if (!config) throw new ConflictError('PostHog Support is not configured here.')
+  const row = await withPlatformAccess('product feedback: claim', async () =>
+    (await getProductFeedbackByTicketIds([ticketId])).get(ticketId)
+  )
+  if (!row) throw new NotFoundError('Unknown feedback ticket.')
+  const email = session?.email?.trim()
+  if (!email) throw new ConflictError('Your account has no email to find you in PostHog by.')
+  let ticket: SupportTicket
+  try {
+    const posthogUserId = await findPosthogUserIdByEmail(config, email)
+    if (posthogUserId === null) {
+      throw new ConflictError('Nobody in PostHog has your email, so the ticket cannot be assigned to you.')
+    }
+    ticket = await assignSupportTicket(config, ticketId, posthogUserId)
   } catch (error) {
     if (error instanceof PosthogSupportUnavailableError) throw new UpstreamError('PostHog Support did not take the change.')
     throw error

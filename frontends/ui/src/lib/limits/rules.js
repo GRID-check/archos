@@ -298,6 +298,17 @@ const DEFAULT_MUTATION_LIMIT = {
 const FEEDBACK_REPORT_LIMIT = { name: 'feedback-report', limit: 10, windowMs: 60 * 60 * 1000 }
 
 /**
+ * A reporter answering on their own feedback thread.
+ *
+ * A reply posts into the platform's Support inbox and the Slack channel the
+ * PostHog workflow feeds, so it is bounded like a report, only looser: a
+ * conversation runs to a few messages in a row. Sixty an hour is a lively
+ * exchange; a stuck client is stopped well before it floods the channel.
+ * @type {LimitRule}
+ */
+const FEEDBACK_REPLY_LIMIT = { name: 'feedback-reply', limit: 60, windowMs: 60 * 60 * 1000 }
+
+/**
  * Dictating into the chat composer.
  *
  * Every call is a paid transcription the member is never billed for and no
@@ -339,6 +350,7 @@ module.exports = {
   MCP_REQUEST_LIMIT,
   DICTATION_LIMIT,
   FEEDBACK_REPORT_LIMIT,
+  FEEDBACK_REPLY_LIMIT,
   BIM_QUERY_LIMIT,
   BIM_EXPORT_LIMIT,
   RIS_DOCUMENT_LIMIT,

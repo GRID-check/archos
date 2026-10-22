@@ -70,21 +70,23 @@ export interface FeedbackDialogProps {
   userEmail?: string | null
   /** Injected by previews and specs; the app uses the real client. */
   submit?: (request: SubmitProductFeedbackRequest) => Promise<SubmitProductFeedbackResult>
+  /** Opens the conversation on the report just sent; the sent panel offers it when given. */
+  onViewThread?: (reportId: string) => void
 }
 
 /**
  * After the first-party record exists, tell PostHog the product event: the kind
  * only, never the words. The Support ticket is not opened here: the SERVER
  * opens it for every report, with the masked text the office's „Sensible
- * Daten" policy allows (ADR-0086); the browser only hands over its widget and
- * replay session ids with the submit (`getPosthogSupportContext`). No-op while
+ * Daten" policy allows (ADR-0086); the browser only hands over its replay
+ * session id with the submit (`getPosthogSupportContext`). No-op while
  * PostHog is off.
  */
 function relayToPosthog(report: SubmittedProductFeedbackView): void {
   capturePosthog('product_feedback_submitted', { kind: report.kind })
 }
 
-type Phase = { kind: 'form' } | { kind: 'sending' } | { kind: 'sent' }
+type Phase = { kind: 'form' } | { kind: 'sending' } | { kind: 'sent'; reportId: string }
 
 /** Whether a finger drives the pointer; false where there is no `matchMedia` (SSR, tests). */
 function isCoarsePointer(): boolean {
@@ -97,6 +99,7 @@ export function FeedbackDialog({
   defaultKind = 'bug',
   userEmail = null,
   submit = submitProductFeedback,
+  onViewThread,
 }: FeedbackDialogProps): JSX.Element {
   const t = useTranslations('feedback')
   const mod = useModifierLabel()
@@ -147,7 +150,7 @@ export function FeedbackDialog({
       posthog: getPosthogSupportContext(),
     })
     if (result.ok) {
-      setPhase({ kind: 'sent' })
+      setPhase({ kind: 'sent', reportId: result.report.id })
       relayToPosthog(result.report)
       return
     }
@@ -197,6 +200,7 @@ export function FeedbackDialog({
               setPhase({ kind: 'form' })
             }}
             onClose={() => onOpenChange(false)}
+            onViewThread={onViewThread ? () => onViewThread(phase.reportId) : undefined}
           />
         ) : (
           <form onSubmit={handleSubmit} onKeyDown={handleKeyDown} className="flex flex-col gap-5">
@@ -352,7 +356,15 @@ function CapturedContext({
   )
 }
 
-function SentPanel({ onAnother, onClose }: { onAnother: () => void; onClose: () => void }): JSX.Element {
+function SentPanel({
+  onAnother,
+  onClose,
+  onViewThread,
+}: {
+  onAnother: () => void
+  onClose: () => void
+  onViewThread?: () => void
+}): JSX.Element {
   const t = useTranslations('feedback')
   return (
     <div className="flex flex-col items-center gap-4 py-6 text-center" data-testid="feedback-sent">
@@ -365,6 +377,11 @@ function SentPanel({ onAnother, onClose }: { onAnother: () => void; onClose: () 
         <Button type="button" variant="ghost" onClick={onAnother}>
           {t('dialog.success.another')}
         </Button>
+        {onViewThread && (
+          <Button type="button" variant="outline" onClick={onViewThread} data-testid="feedback-view-thread">
+            {t('dialog.success.viewThread')}
+          </Button>
+        )}
         <Button type="button" onClick={onClose} autoFocus>
           {t('dialog.success.close')}
         </Button>

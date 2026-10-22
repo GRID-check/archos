@@ -2909,6 +2909,28 @@ check_in grid_officedec "SELECT count(*) FROM pg_tables WHERE tablename = 'offic
 echo "==> 0182 office convention decisions and down migration verified"
 
 # ---------------------------------------------------------------------------
+# 0183: a report's thread (ADR-0118, amended). The conversations session the
+# server opened the ticket in is UUID-shaped or NULL; the down drops both
+# columns and 0183 applies again after it.
+# ---------------------------------------------------------------------------
+echo "==> verifying the 0183 product feedback thread columns and their down migration on grid_feedbackthread"
+migrate_until grid_feedbackthread 0183_product_feedback_thread
+sql_in grid_feedbackthread <<'SQL'
+INSERT INTO product_feedback (organization_id, user_id, kind, message, posthog_widget_session_id) VALUES
+  ('org_0183_a', 'user_a', 'bug', 'The upload stops at 99 percent', '0b1c2d3e-4f50-4617-8899-aabbccddeeff'),
+  ('org_0183_a', 'user_a', 'idea', 'Filed before 0183, no session', NULL);
+SQL
+check_in grid_feedbackthread "SELECT count(*) FROM product_feedback" "2" "0183: a session or none"
+refused_in grid_feedbackthread "INSERT INTO product_feedback (organization_id, user_id, kind, message, posthog_widget_session_id) VALUES ('org_0183_a', 'u', 'bug', 'not a session id here', 'x;--')" "product_feedback_posthog_widget_session_id_shape" "a session id that is not UUID-shaped"
+apply_in grid_feedbackthread 0183_product_feedback_thread.sql
+check_in grid_feedbackthread "SELECT count(*) FROM product_feedback WHERE posthog_widget_session_id IS NOT NULL" "1" "0183 re-applies and keeps the session"
+apply_in grid_feedbackthread 0183_product_feedback_thread.down.sql
+check_in grid_feedbackthread "SELECT count(*) FROM information_schema.columns WHERE table_name = 'product_feedback' AND column_name IN ('posthog_widget_session_id', 'reporter_seen_at')" "0" "0183 down drops both columns"
+apply_in grid_feedbackthread 0183_product_feedback_thread.sql
+check_in grid_feedbackthread "SELECT count(*) FROM information_schema.columns WHERE table_name = 'product_feedback' AND column_name IN ('posthog_widget_session_id', 'reporter_seen_at')" "2" "0183 applies again after its down"
+echo "==> 0183 product feedback thread and down migration verified"
+
+# ---------------------------------------------------------------------------
 # Migrations 0159 to 0162: the project profile's names in English, and their DOWNs.
 #
 # On a database of its own, migrated to what precedes 0159, with a project whose

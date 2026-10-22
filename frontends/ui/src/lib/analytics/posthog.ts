@@ -14,8 +14,9 @@
  * `identifyPosthog` / `resetPosthog` / `getPosthogSupportContext` directly and
  * never touch `posthog-js` or branch on configuration themselves. Support
  * tickets are opened by the SERVER (`lib/posthog-support`); the browser only
- * hands over its widget and replay session ids so the ticket lands in the
- * reporter's widget and links their recording.
+ * hands over its replay session id so the ticket links the recording. The
+ * PostHog widget is never shown: a reporter reads and answers their thread in
+ * Piloti's own chat, served by the BFF.
  *
  * PRIVACY POSTURE (the reasons are the contract; change one and re-read all):
  *
@@ -466,24 +467,15 @@ export const getPosthogSessionId = (): string | null => {
 
 /**
  * What the server needs from this browser to open a PostHog Support ticket for
- * a feedback report: the Support widget's session (so replies show in the
- * reporter's widget) and the replay session (so the ticket links the
- * recording). Each is `null` when analytics is disabled, Support is not loaded
- * in this project, or the SDK has no value yet. Never throws: it runs inside the
+ * a feedback report: the replay session, so the ticket links the recording.
+ * `null` when analytics is disabled or the SDK has none yet. No widget session:
+ * the PostHog widget is not used, and the server opens each ticket in a
+ * conversations session of its own. Never throws: it runs inside the
  * first-party submit and must not be able to fail it.
  */
-export const getPosthogSupportContext = (): { widgetSessionId: string | null; sessionId: string | null } => {
-  if (!initialized) return { widgetSessionId: null, sessionId: null }
-  return { widgetSessionId: readWidgetSessionId(), sessionId: readSessionIdSafely() }
-}
-
-const readWidgetSessionId = (): string | null => {
-  try {
-    const id = posthog.conversations?.getWidgetSessionId?.()
-    return typeof id === 'string' && id.length > 0 ? id : null
-  } catch {
-    return null
-  }
+export const getPosthogSupportContext = (): { sessionId: string | null } => {
+  if (!initialized) return { sessionId: null }
+  return { sessionId: readSessionIdSafely() }
 }
 
 const readSessionIdSafely = (): string | null => {

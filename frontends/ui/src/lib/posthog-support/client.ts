@@ -1,11 +1,14 @@
 /**
  * The BFF's PostHog Support client.
  *
- * Two doors into PostHog. Tickets are OPENED through the public widget
- * endpoint on the ingestion host, the one posthog-js uses, so a ticket carries
- * the reporter's distinct id, widget session and replay session exactly as if
- * the browser had sent it. Everything else (list, read, status, tags) goes
- * through the private REST API on the app host with the personal API key.
+ * Two doors into PostHog, and no widget UI behind either. Whatever the
+ * REPORTER says (the ticket's first message, every later reply) goes through
+ * the public conversations endpoint on the ingestion host, because PostHog's
+ * REST API only lets the team author messages: a ticket is opened, and later
+ * answered, under the reporter's distinct id in a conversations session the
+ * server made up and stored with the report. Everything else (list, read the
+ * thread, status, tags) goes through the private REST API on the app host with
+ * the personal API key.
  *
  * Every failure surfaces as `PosthogSupportUnavailableError`; callers fall
  * back to the local feedback log. The API key is never logged or put in an
@@ -13,15 +16,16 @@
  */
 
 import 'server-only'
-import { randomUUID } from 'node:crypto'
 import { z } from 'zod'
 import {
   FEEDBACK_TICKET_TAG,
   kindTicketTag,
   PosthogSupportUnavailableError,
   SUPPORT_TICKET_STATUSES,
+  type CustomerReplyInput,
   type OpenFeedbackTicketInput,
   type PosthogSupportConfig,
+  type SupportMessage,
   type SupportTicket,
   type SupportTicketPage,
   type SupportTicketStatus,
@@ -62,6 +66,22 @@ const remoteConfigSchema = z
   .passthrough()
 
 const widgetMessageSchema = z.object({ ticket_id: z.string().min(1) }).passthrough()
+
+/**
+ * One message of a ticket's thread from the private API. `message_type`
+ * separates what the reporter may see (`customer_message`, `sent_reply`) from
+ * what they never may (`internal_note`, `ai_draft`, both `is_private`).
+ */
+const threadMessageSchema = z
+  .object({
+    id: z.string().min(1),
+    message_type: z.string(),
+    content: z.string().nullish().catch(null),
+    author_name: z.string().nullish().catch(null),
+    is_private: z.boolean().catch(true),
+    created_at: z.string(),
+  })
+  .passthrough()
 
 // ── Transport ────────────────────────────────────────────────────────────────
 
@@ -146,7 +166,7 @@ function ticketOrThrow(config: PosthogSupportConfig, body: unknown, what: string
 async function patchTicket(
   config: PosthogSupportConfig,
   id: string,
-  patch: { status: SupportTicketStatus } | { tags: string[] },
+  patch: { status: SupportTicketStatus } | { tags: string[] } | { assignee: { type: 'user'; id: number } },
   what: string,
   fetchImpl: typeof fetch
 ): Promise<SupportTicket> {
@@ -189,18 +209,24 @@ async function widgetToken(config: PosthogSupportConfig, fetchImpl: typeof fetch
 // ── The contract ─────────────────────────────────────────────────────────────
 
 /**
- * Open a ticket for one report and tag it. Resolves to the new ticket's id.
- *
- * The ticket exists once the widget endpoint answers; a failed tag write after
- * that only leaves it untagged, so it is warned about and the id still returned.
+ * Post one message as the reporter, through the public conversations endpoint.
+ * `ticketId: null` opens a new ticket; otherwise the message lands on that
+ * ticket, which PostHog accepts only from the session that opened it.
+ * Resolves to the ticket's id.
  */
-export async function openFeedbackTicket(
+async function postCustomerMessage(
   config: PosthogSupportConfig,
-  input: OpenFeedbackTicketInput,
-  fetchImpl: typeof fetch = fetch
+  input: {
+    message: string
+    distinctId: string
+    widgetSessionId: string
+    ticketId: string | null
+    sessionId: string | null
+  },
+  what: string,
+  fetchImpl: typeof fetch
 ): Promise<string> {
   const token = await widgetToken(config, fetchImpl)
-  const what = 'open ticket'
   const response = await send(
     fetchImpl,
     what,
@@ -217,8 +243,8 @@ export async function openFeedbackTicket(
       body: JSON.stringify({
         message: input.message,
         traits: { name: null, email: null },
-        ticket_id: null,
-        widget_session_id: input.widgetSessionId ?? randomUUID(),
+        ticket_id: input.ticketId,
+        widget_session_id: input.widgetSessionId,
         distinct_id: input.distinctId,
         ...(input.sessionId !== null ? { session_id: input.sessionId } : {}),
       }),
@@ -226,10 +252,31 @@ export async function openFeedbackTicket(
   )
   // A refused token was probably rotated: fetch it afresh next time.
   if (response.status === 401 || response.status === 403) widgetTokens.delete(config.projectToken)
-  const { ticket_id: ticketId } = parseOrThrow(
-    widgetMessageSchema,
-    await jsonOf(response, what),
-    what
+  return parseOrThrow(widgetMessageSchema, await jsonOf(response, what), what).ticket_id
+}
+
+/**
+ * Open a ticket for one report and tag it. Resolves to the new ticket's id.
+ *
+ * The ticket exists once the widget endpoint answers; a failed tag write after
+ * that only leaves it untagged, so it is warned about and the id still returned.
+ */
+export async function openFeedbackTicket(
+  config: PosthogSupportConfig,
+  input: OpenFeedbackTicketInput,
+  fetchImpl: typeof fetch = fetch
+): Promise<string> {
+  const ticketId = await postCustomerMessage(
+    config,
+    {
+      message: input.message,
+      distinctId: input.distinctId,
+      widgetSessionId: input.widgetSessionId,
+      ticketId: null,
+      sessionId: input.sessionId,
+    },
+    'open ticket',
+    fetchImpl
   )
 
   try {
@@ -239,6 +286,87 @@ export async function openFeedbackTicket(
     console.warn(`[posthog-support] ticket ${ticketId} opened but not tagged: ${reason}`)
   }
   return ticketId
+}
+
+/** The reporter answers on their own ticket. The message is masked already. */
+export async function replyAsCustomer(
+  config: PosthogSupportConfig,
+  input: CustomerReplyInput,
+  fetchImpl: typeof fetch = fetch
+): Promise<void> {
+  const ticketId = await postCustomerMessage(
+    config,
+    { ...input, sessionId: null },
+    'customer reply',
+    fetchImpl
+  )
+  // PostHog opening a second ticket instead would split the conversation.
+  if (ticketId !== input.ticketId) {
+    throw new PosthogSupportUnavailableError('PostHog Support customer reply: landed on another ticket')
+  }
+}
+
+/** Longest thread read in one call; PostHog pages at most 200. */
+const THREAD_PAGE_LIMIT = 200
+
+/**
+ * A ticket's thread as its reporter may see it, oldest first: their own
+ * messages and the replies sent to them. Internal notes and AI drafts are
+ * dropped here, so no caller can hand them on by mistake.
+ */
+export async function listCustomerVisibleMessages(
+  config: PosthogSupportConfig,
+  ticketId: string,
+  fetchImpl: typeof fetch = fetch
+): Promise<SupportMessage[]> {
+  const what = 'list messages'
+  const response = await send(
+    fetchImpl,
+    what,
+    `${ticketUrl(config, ticketId)}messages/?limit=${THREAD_PAGE_LIMIT}`,
+    { headers: privateHeaders(config) }
+  )
+  const page = parseOrThrow(pageSchema, await jsonOf(response, what), what)
+  return page.results.flatMap((raw): SupportMessage[] => {
+    const parsed = threadMessageSchema.safeParse(raw)
+    if (!parsed.success || parsed.data.is_private) return []
+    const row = parsed.data
+    if (row.message_type !== 'customer_message' && row.message_type !== 'sent_reply') return []
+    const author = row.message_type === 'customer_message' ? 'customer' : 'team'
+    return [
+      {
+        id: row.id,
+        author,
+        authorName: author === 'team' ? (row.author_name ?? null) : null,
+        content: row.content ?? '',
+        createdAt: row.created_at,
+      },
+    ]
+  })
+}
+
+/**
+ * One person's feedback tickets (tag `FEEDBACK_TICKET_TAG`), most recently
+ * updated first: one call for every thread they have.
+ */
+export async function listFeedbackTicketsOf(
+  config: PosthogSupportConfig,
+  distinctId: string,
+  limit: number,
+  fetchImpl: typeof fetch = fetch
+): Promise<SupportTicket[]> {
+  const params = new URLSearchParams({
+    distinct_ids: distinctId,
+    tags_all: JSON.stringify([FEEDBACK_TICKET_TAG]),
+    limit: String(limit),
+    order_by: '-updated_at',
+  })
+  const what = 'list tickets of a person'
+  const response = await send(fetchImpl, what, `${ticketsUrl(config)}?${params.toString()}`, {
+    headers: privateHeaders(config),
+  })
+  const page = parseOrThrow(pageSchema, await jsonOf(response, what), what)
+  return page.results.map((raw) => toTicket(config, raw)).filter((t): t is SupportTicket => t !== null)
 }
 
 /**
@@ -305,4 +433,42 @@ export async function updateSupportTicketStatus(
   fetchImpl: typeof fetch = fetch
 ): Promise<SupportTicket> {
   return patchTicket(config, id, { status }, 'update status', fetchImpl)
+}
+
+/** One member of the PostHog organization, as the members list serves it. */
+const memberSchema = z
+  .object({ user: z.object({ id: z.number().int(), email: z.string() }).passthrough() })
+  .passthrough()
+
+/**
+ * The PostHog user id (the integer the ticket's assignee takes) of the member
+ * with this email, or `null` when nobody in the PostHog organization has it.
+ * Needs `organization_member:read` on the personal API key.
+ */
+export async function findPosthogUserIdByEmail(
+  config: PosthogSupportConfig,
+  email: string,
+  fetchImpl: typeof fetch = fetch
+): Promise<number | null> {
+  const what = 'list members'
+  const response = await send(fetchImpl, what, `${config.appHost}/api/organizations/@current/members/?limit=200`, {
+    headers: privateHeaders(config),
+  })
+  const page = parseOrThrow(pageSchema, await jsonOf(response, what), what)
+  const wanted = email.trim().toLowerCase()
+  for (const raw of page.results) {
+    const member = memberSchema.safeParse(raw)
+    if (member.success && member.data.user.email.trim().toLowerCase() === wanted) return member.data.user.id
+  }
+  return null
+}
+
+/** Assign a ticket to one PostHog user; resolves to the updated ticket. */
+export async function assignSupportTicket(
+  config: PosthogSupportConfig,
+  id: string,
+  posthogUserId: number,
+  fetchImpl: typeof fetch = fetch
+): Promise<SupportTicket> {
+  return patchTicket(config, id, { assignee: { type: 'user', id: posthogUserId } }, 'assign ticket', fetchImpl)
 }
