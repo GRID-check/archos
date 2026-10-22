@@ -28,6 +28,7 @@ import {
 } from '@/lib/documents/repository'
 import { internalRead, isHeldAtRest } from '@/lib/documents/document-reader'
 import { getAccessibleDocument } from '@/lib/documents/access'
+import { storedFilingChoice } from '@/lib/documents/filing-choice'
 import { dispatchDocument, type DispatchDocumentResult } from '@/lib/documents/service'
 import { resolveDocumentFolderPath } from '@/lib/documents/folder-path'
 import { documentShelf } from '@/lib/documents/shelf'
@@ -97,6 +98,10 @@ export async function releaseQuarantinedDocument(
     storageBucket: doc.storageBucket,
     collectionName: doc.collectionName,
     folderPath: await resolveDocumentFolderPath(doc, session.organizationId),
+    // What the uploader chose for these bytes (a document type, the Fassung
+    // they replace): the held reading never stored it, so this one must.
+    // Read from the row loaded above, and only while it names these bytes.
+    ...storedFilingChoice(doc),
   })
 
   const reasons = quarantineVerdictOf(doc)?.reasons ?? []

@@ -36,6 +36,7 @@ import { quarantineReviewersOf } from '@/lib/upload-batches/settle'
 import { ConflictError, ForbiddenError, NotFoundError } from '@/lib/api/errors'
 import type { AuthorizedSession } from '@/lib/auth/types'
 import { makeDocument } from '@/test-utils/db-fixtures'
+import { DOCUMENT_TYPE_TAGS } from '@/lib/documents/tag-vocabulary'
 import {
   listQuarantineQueue,
   mayReviewQuarantine,
@@ -117,6 +118,40 @@ describe('mayReviewQuarantine and restricted folders (ADR-0087)', () => {
 })
 
 describe('releaseQuarantinedDocument', () => {
+  // A held reading never stored what the uploader chose (ADR-0086, C3's gap):
+  // the release sends it again, read from the row, for these bytes only.
+  it("sends the uploader's document type and Fassung again, as the held reading's dispatch recorded them", async () => {
+    const held = {
+      ...quarantined,
+      metadata: {
+        ingestJobId: 'job-1',
+        ingestContentHash: 'sha256:abc',
+        filingChoice: { documentType: DOCUMENT_TYPE_TAGS[0], revisionOf: 'EG_Grundriss_Index_B.pdf' },
+      },
+    }
+    vi.mocked(findDocumentInOrg).mockImplementation(async (_id, _org, reader) => (mayReadDocument(held, reader) ? held : null))
+
+    await releaseQuarantinedDocument(orgAdmin, 'doc-q', new Request('http://x'))
+
+    expect(dispatchDocument).toHaveBeenCalledWith(
+      expect.objectContaining({ documentType: DOCUMENT_TYPE_TAGS[0], revisionOf: 'EG_Grundriss_Index_B.pdf' })
+    )
+  })
+
+  it('sends no choice that was recorded for other bytes than the ones released', async () => {
+    const replaced = {
+      ...quarantined,
+      metadata: { ingestJobId: 'job-1', ingestContentHash: 'sha256:older', filingChoice: { documentType: DOCUMENT_TYPE_TAGS[0] } },
+    }
+    vi.mocked(findDocumentInOrg).mockImplementation(async (_id, _org, reader) => (mayReadDocument(replaced, reader) ? replaced : null))
+
+    await releaseQuarantinedDocument(orgAdmin, 'doc-q', new Request('http://x'))
+
+    const input = vi.mocked(dispatchDocument).mock.calls[0]?.[0]
+    expect(input).not.toHaveProperty('documentType')
+    expect(input).not.toHaveProperty('revisionOf')
+  })
+
   it('releases the exact bytes, re-dispatches, and audits kinds and terms only', async () => {
     const result = await releaseQuarantinedDocument(orgAdmin, 'doc-q', new Request('http://x'))
 
