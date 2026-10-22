@@ -68,7 +68,7 @@ It also lists the third-party image pins the change adds or moves
 | Backend coverage gate (`backend-coverage`) | backend tier | combines the shards' data, the 65% gate, the PR comment |
 | Backend suites (`backend-suites`) | backend tier | three jobs side by side: the aiq_api suite, the `sources/` suites, and the migration test with the claim-queue suites on a real Postgres (`task be:test:postgres`) |
 | Frontend (`frontend`) | frontend tier | card schema check, lint, types, and the tenant-isolation suite against a real Postgres |
-| Frontend tests (`frontend-test`) | frontend tier; on a PR, unless nothing a UI spec reads changed | the vitest suite in 6 shards, split by recorded time (`tests/vitest-durations.json`, refreshed with `task fe:test:durations`, read by `config/vitest/duration-sequencer.ts`); on a PR whose change a selection can see, only the specs it reaches (`task fe:test:related`) |
+| Frontend tests (`frontend-test`) | frontend tier; on a PR, unless nothing a UI spec reads changed | the vitest suite in 8 shards, split by recorded time (`tests/vitest-durations.json`, refreshed with `task fe:test:durations`, read by `config/vitest/duration-sequencer.ts`); on a PR whose change a selection can see, only the specs it reaches (`task fe:test:related`) |
 | Frontend coverage | PRs, frontend tier | merges the shards' coverage into the PR comment. Not in `CI OK` |
 | Web, Infra, Standalone packages | their tier | `task web:verify`; `task infra:types` + `infra:test`; `task pkg:test:*` |
 | Image vulns (`trivy`) | a pin added or moved | trivy on those pins |

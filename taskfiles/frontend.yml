@@ -54,7 +54,7 @@ tasks:
       - bash scripts/rls-test-db.sh
 
   fe:test:shard:
-    desc: 'One shard of the UI suite, as a blob report (CI: SHARD=1/6 task fe:test:shard)'
+    desc: 'One shard of the UI suite, as a blob report (CI: SHARD=1/8 task fe:test:shard)'
     dir: '{{.UI}}'
     cmds:
       # `--reporter=blob` writes the blob that fe:test:merge stitches into one
@@ -93,7 +93,7 @@ tasks:
       - node scripts/record-vitest-durations.mjs .vitest-reports/durations.json
 
   fe:test:related:
-    desc: 'One shard of the UI specs that reach the given files (CI on a pull request: SHARD=1/6 FILES="...")'
+    desc: 'One shard of the UI specs that reach the given files (CI on a pull request: SHARD=1/8 FILES="...")'
     dir: '{{.UI}}'
     requires:
       vars: [SHARD, FILES]
