@@ -219,6 +219,23 @@ describe('the project target', () => {
     )
   })
 
+  it('lands the E-Mail-Eingang’s rows where each can be acted on (ADR-0134)', async () => {
+    vi.mocked(requireProjectAccess).mockResolvedValueOnce({ role: 'project-viewer', closed: false, readsBecauseClosed: false })
+    const access = await projectTarget.resolve(makeSession(), 'proj_1')
+    const list = '/app/projects/proj_1/files/mail'
+    // Collapsed rows count several mails, or the address: the list, where the address dialog is too.
+    expect(access!.deepLink({ itemType: 'inbound_mail.waiting', anchorId: 'mail-9' })).toBe(list)
+    expect(access!.deepLink({ itemType: 'inbound_mail.expiring', anchorId: 'mail-9' })).toBe(list)
+    expect(access!.deepLink({ itemType: 'inbound_mail.cap_reached', anchorId: 'address-1' })).toBe(list)
+    // A failed filing opens its mail, for the decider who may file it again.
+    expect(access!.deepLink({ itemType: 'inbound_mail.filing_failed', anchorId: 'mail-9' })).toBe(`${list}/mail-9`)
+    // A decided mail is its sender's, who may not decide the project's mail: Dateien, at the folder it names.
+    expect(access!.deepLink({ itemType: 'inbound_mail.decided', anchorId: 'folder 1' })).toBe(
+      '/app/projects/proj_1/files?folder=folder%201',
+    )
+    expect(access!.deepLink({ itemType: 'inbound_mail.decided', anchorId: null })).toBe('/app/projects/proj_1/files')
+  })
+
   it('redacts the row, rather than throwing, for a project the reader can no longer open', async () => {
     vi.mocked(requireProjectAccess).mockRejectedValueOnce(new Error('forbidden'))
     await expect(projectTarget.resolve(makeSession(), 'proj_gone')).resolves.toBeNull()

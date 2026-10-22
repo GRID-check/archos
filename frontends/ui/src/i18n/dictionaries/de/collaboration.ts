@@ -784,6 +784,61 @@ export const collaboration: typeof en.collaboration = {
           },
         },
       },
+      // Tag 25 von 30: was niemand ablegt, läuft ab (wiederherstellbar sieben Tage).
+      inboundMailExpiring: {
+        titleOne: 'Eine E-Mail an „{subject}“ läuft in fünf Tagen ab',
+        titleMany: '{count} E-Mails an „{subject}“ laufen in fünf Tagen ab',
+        title: 'E-Mails an „{subject}“ laufen in fünf Tagen ab',
+        titleResolved: 'Keine E-Mail an „{subject}“ läuft mehr ab',
+        body: 'Was bis dahin niemand ablegt, läuft ab und kann danach noch sieben Tage wiederhergestellt werden.',
+        variants: {
+          unconfirmed: {
+            body: 'Darunter E-Mails, deren Domain nicht bestätigt ist oder die automatisch versandt wurden. Was niemand ablegt, läuft ab.',
+          },
+        },
+      },
+      // An das Mitglied, dessen eigene E-Mail entschieden wurde. Der Ordner nur, wenn es ihn sehen darf.
+      inboundMailDecided: {
+        title: 'Ihre E-Mail an „{subject}“ wurde abgelegt',
+        titleRelated: 'Ihre E-Mail an „{subject}“ wurde in „{related}“ abgelegt',
+        body: 'Abgelegt von {actor}.',
+        variants: {
+          dismissed: {
+            title: 'Ihre E-Mail an „{subject}“ wurde verworfen',
+            titleRelated: 'Ihre E-Mail an „{subject}“ wurde verworfen',
+            body: 'Verworfen von {actor}. Sie kann sieben Tage lang wiederhergestellt werden.',
+          },
+        },
+      },
+      inboundMailFilingFailed: {
+        title: 'Eine E-Mail an „{subject}“ wurde nicht vollständig abgelegt',
+        titleResolved: 'Die E-Mail an „{subject}“ ist erledigt',
+        body: 'Was nicht abgelegt wurde, wartet wieder im E-Mail-Eingang. Öffnen Sie die E-Mail, um den Grund zu sehen.',
+      },
+      // 80 % oder 100 % der Bytes, die eine Adresse oder das Büro zwischenspeichern darf.
+      inboundMailCapReached: {
+        title: 'Die E-Mail-Adresse des Projekts „{subject}“ ist fast voll',
+        titleResolved: 'Die E-Mail-Adresse des Projekts „{subject}“ hat wieder Platz',
+        body: 'Legen Sie wartende E-Mails ab oder verwerfen Sie sie, oder erzeugen Sie eine neue Adresse.',
+        variants: {
+          full: {
+            title: 'Die E-Mail-Adresse des Projekts „{subject}“ ist voll',
+            body: 'Neue E-Mails kommen erst wieder an, wenn wartende abgelegt oder verworfen sind. Sie können auch eine neue Adresse erzeugen.',
+          },
+        },
+      },
+      // Verlauf folgen: der Text einer Antwort wurde in Ihrem Namen angefügt, die Anhänge warten.
+      inboundMailAppended: {
+        titleOne: 'Eine Antwort wurde einem E-Mail-Verlauf in „{subject}“ angefügt',
+        titleMany: '{count} Antworten wurden einem E-Mail-Verlauf in „{subject}“ angefügt',
+        title: 'Antworten wurden einem E-Mail-Verlauf in „{subject}“ angefügt',
+        body: 'In Ihrem Namen, weil Sie dem E-Mail-Verlauf folgen. Anhänge warten im E-Mail-Eingang.',
+      },
+      mailThreadFollowExpiring: {
+        title: 'Sie folgen einem E-Mail-Verlauf in „{subject}“ noch fünf Tage',
+        titleResolved: 'Ihr Folgen eines E-Mail-Verlaufs in „{subject}“ ist verlängert oder beendet',
+        body: 'Verlängern Sie, damit spätere Antworten weiter angefügt werden.',
+      },
       rootSortFailed: {
         title: 'Die Sortierung von „{subject}“ wurde abgebrochen',
         body: 'Was bis dahin verschoben wurde, bleibt. Öffnen Sie die Dateien, um den Grund zu sehen.',

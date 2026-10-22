@@ -50,6 +50,7 @@ import {
 import { findOwnUploadBatch } from '@/lib/upload-batches/service'
 import { getOwnProductFeedback } from '@/lib/product-feedback/repository'
 import { feedbackThreadHref } from '@/lib/product-feedback/types'
+import { inboundMailPaths } from '@/features/inbound-mail/lib/paths'
 
 /** Row-level context a deep link may use. */
 export interface InboxTargetLinkContext {
@@ -249,8 +250,8 @@ const projectTarget: InboxTargetDescriptor = {
         if (context.itemType === 'piloti.proposal_waiting') return `/app/projects/${resourceId}/files`
         // A finished reading waits on the project's setup page, where it is reviewed (ADR-0111).
         if (context.itemType === 'piloti.intake_ready') return `/app/projects/${resourceId}/setup`
-        // Mail waiting for a person opens the project's E-Mail-Eingang (ADR-0134).
-        if (context.itemType === 'inbound_mail.waiting') return `/app/projects/${resourceId}/files/mail`
+        const mailLink = inboundMailLink(resourceId, context)
+        if (mailLink) return mailLink
         // A sort of the project's root waits in its files, with the dialog open (ADR-0121).
         if (context.itemType.startsWith('root_sort.')) {
           return rootSortHref(`/app/projects/${resourceId}/files`, context.anchorId)
@@ -264,6 +265,37 @@ const projectTarget: InboxTargetDescriptor = {
       },
     }
   },
+}
+
+/**
+ * Where a row of the E-Mail-Eingang (ADR-0134) lands, or null for any other
+ * type. Collapsed rows (mail waits, mail expires, the address is full) open
+ * the list, where the address dialog is too; a failed filing opens its mail,
+ * for the decider who may file it again. A decided mail is told to its sender,
+ * who may read the project without deciding its mail (D9): the list would
+ * answer them 404, so it opens Dateien, at the folder the files went to when
+ * the row names one they may open (its anchor). `inbound_mail.appended` and
+ * `mail_thread.follow_expiring` point at the Verlauf document instead.
+ */
+function inboundMailLink(projectId: string, context: InboxTargetLinkContext): string | null {
+  const paths = inboundMailPaths(projectId)
+  const waiting = { status: 'waiting', outcome: null } as const
+  switch (context.itemType) {
+    case 'inbound_mail.waiting':
+    case 'inbound_mail.expiring':
+    case 'inbound_mail.cap_reached':
+      return paths.list(waiting)
+    case 'inbound_mail.filing_failed': {
+      const mailId = context.anchorId?.trim()
+      return mailId ? paths.mail(mailId, waiting) : paths.list(waiting)
+    }
+    case 'inbound_mail.decided': {
+      const folderId = context.anchorId?.trim()
+      return folderId ? `${paths.files}?folder=${encodeURIComponent(folderId)}` : paths.files
+    }
+    default:
+      return null
+  }
 }
 
 /** The thread at the run: the shape `features/tasks/lib/task-view.ts` builds. */

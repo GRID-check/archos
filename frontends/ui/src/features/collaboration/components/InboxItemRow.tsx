@@ -55,7 +55,12 @@ import {
   HardDrive,
   Layers,
   Mail,
+  MailCheck,
+  MailClock,
   MailOpen,
+  MailPlus,
+  MailWarning,
+  MailX,
   Megaphone,
   MessageSquare,
   MoreHorizontal,
@@ -131,6 +136,12 @@ const ICONS: Record<Exclude<InboxTypePresentation['icon'], 'piloti'>, LucideIcon
     layers: Layers,
     megaphone: Megaphone,
     'shield-alert': ShieldAlert,
+    mail: Mail,
+    'mail-clock': MailClock,
+    'mail-check': MailCheck,
+    'mail-x': MailX,
+    'mail-warning': MailWarning,
+    'mail-plus': MailPlus,
   }
 
 /** The two writes a mark row makes, through the annotations' own client. Injected by the specs. */

@@ -85,13 +85,18 @@ vi.mock('@/lib/audit/after-commit', () => ({ recordAuditEventAfterCommit: vi.fn(
 vi.mock('@/lib/analytics/posthog-server', () => ({ captureServer: vi.fn() }))
 vi.mock('./suggest-scores', () => ({ scoreMailDecision: vi.fn(() => 'all') }))
 vi.mock('@/lib/realtime/door-events', () => ({ publishProjectChanged: vi.fn() }))
-vi.mock('@/lib/inbox/service', () => ({ resolveInboxItemsAnchoredOn: vi.fn(async () => 1) }))
-vi.mock('@/lib/inbox/best-effort', () => ({ bestEffortInbox: vi.fn(async (_l: string, _o: string, write: () => Promise<unknown>) => write()) }))
+vi.mock('./announce', () => ({
+  announceDecided: vi.fn(async () => true),
+  settleFilingFailed: vi.fn(async () => undefined),
+  settleProjectNotices: vi.fn(async () => undefined),
+}))
+vi.mock('./notice-repository', () => ({ partStatesOf: vi.fn(async () => new Map()) }))
 
 import { captureServer } from '@/lib/analytics/posthog-server'
 import { recordAuditEventAfterCommit } from '@/lib/audit/after-commit'
 import type { AuthorizedSession } from '@/lib/auth/types'
-import { resolveInboxItemsAnchoredOn } from '@/lib/inbox/service'
+import { announceDecided, settleFilingFailed, settleProjectNotices } from './announce'
+import { partStatesOf } from './notice-repository'
 import { FILE_PART_ID, FOLDER_ID, MAIL_ID, PERSON, PROJECT_ID, filePart, heldMail, textPart } from './__fixtures__/review'
 import { auditDecisions } from './audit'
 import { mailIfMatch } from './decision'
@@ -206,13 +211,28 @@ describe('a decision', () => {
     )
   })
 
-  it('settles the waiting notice once nothing of the mail waits', async () => {
-    store.write.mockImplementationOnce(async () => {
-      store.parts = [textPart({ state: 'dismissed', endedAt: new Date() }), filePart({ state: 'filing', decisionId: 'd', claimExpiresAt: new Date() })]
-      return { decisions: [] }
-    })
+  it('settles the project’s notices by what it still holds, and the mails’ failed filings, after a decision', async () => {
     await fileInboundMails(session, PROJECT_ID, body())
-    expect(resolveInboxItemsAnchoredOn).toHaveBeenCalledWith({ organizationId: 'org_1', types: ['inbound_mail.waiting'], anchorId: MAIL_ID })
+    expect(settleProjectNotices).toHaveBeenCalledWith('org_1', PROJECT_ID)
+    expect(settleFilingFailed).toHaveBeenCalledWith('org_1', [MAIL_ID])
+  })
+
+  it('tells a member sender their mail was dismissed once nothing of it waits, and nothing while a part still does', async () => {
+    const { dismissMails } = await import('./repository')
+    vi.mocked(dismissMails).mockResolvedValue({ decisions: [{ mailId: MAIL_ID, action: 'dismiss' }] } as never)
+    vi.mocked(partStatesOf).mockResolvedValueOnce(new Map([[MAIL_ID, ['dismissed', 'dismissed']]]))
+    await dismissInboundMails(session, PROJECT_ID, { mailIds: [MAIL_ID] })
+    expect(announceDecided).toHaveBeenCalledWith(expect.objectContaining({ mailId: MAIL_ID, decidedBy: session.userId, outcome: 'dismissed' }))
+
+    vi.mocked(announceDecided).mockClear()
+    vi.mocked(partStatesOf).mockResolvedValueOnce(new Map([[MAIL_ID, ['dismissed', 'filing']]]))
+    await dismissInboundMails(session, PROJECT_ID, { mailIds: [MAIL_ID] })
+    expect(announceDecided).not.toHaveBeenCalled()
+
+    vi.mocked(partStatesOf).mockResolvedValueOnce(new Map([[MAIL_ID, ['filed', 'dismissed']]]))
+    await dismissInboundMails(session, PROJECT_ID, { mailIds: [MAIL_ID] })
+    expect(announceDecided).toHaveBeenCalledWith(expect.objectContaining({ outcome: 'filed' }))
+    vi.mocked(dismissMails).mockResolvedValue({ decisions: [] })
   })
 
   it('answers a lost compare-and-set as `stale`, and writes nothing else', async () => {
