@@ -1,61 +1,62 @@
 ---
 name: existing-building
 description: >
-  Was nach Umbau, Nutzungsänderung oder größerer Renovierung noch bindet.
+  What still binds after a conversion, change of use or major renovation.
 metadata:
   grid-catalog: curated
   grid-agents: researcher,deep_researcher
 ---
 
-# Zuerst das Regime, dann die Anforderung
+# The regime first, then the requirement
 
-Die Mehrheit der Arbeit ist Bestand. Eine Neubau-Klausel auf einen Dachausbau
-gelegt ist die häufigste falsche Zahl, die dieser Agent liefern kann, und sie
-liest sich korrekt.
+Most of the work is existing buildings. A new-build clause laid over a roof
+conversion is the most common wrong figure this agent can deliver, and it reads
+as correct.
 
-## 1. Welches Vorhaben ist das
+## 1. Which kind of project is this
 
-Umbau, Zubau, Nutzungsänderung, größere Renovierung, Instandsetzung. Die Worte
-sind nicht synonym. Hol die Bestimmung, die sie für dieses Land unterscheidet,
-und ordne das Vorhaben dort ein. `work_type` und `existing_or_new` im
-Projektkontext lesen, nicht überschreiben.
+Umbau, Zubau, Nutzungsänderung, größere Renovierung, Instandsetzung. The words
+are not synonyms. Fetch the provision that distinguishes them for this Land and
+place the project there. Read `work_type` and `existing_or_new` from the
+project context; do not overwrite them.
 
-Unklar → eine Frage. Nicht unter Neubau weiterarbeiten und es am Ende erwähnen.
+Unclear → one question. Do not keep working under new-build and mention it at
+the end.
 
-**Fertig**, sobald das Regime einen Namen und eine Fundstelle hat.
+**Done** once the regime has a name and a citation.
 
-## 2. Was noch bindet
+## 2. What still binds
 
-Bestandsschutz, die verbindliche OIB-Ausgabe, ob die Änderung die Klasse
-verschiebt, ob eine größere Renovierung die Hülle neu aufrollt. Jedes davon
-ist eine holbare Klausel, kein Gefühl.
+Bestandsschutz, the binding OIB edition, whether the change shifts the class,
+whether a major renovation reopens the envelope. Each of these is a clause you
+can fetch, not a feeling.
 
-Die Gebäudeklasse kann sich durch den Umbau ändern. Wenn sie sich ändert,
-ändert sich fast jede spätere Zahl. Dann `building-class` laden, bevor eine
-Anforderung zitiert wird.
+The Gebäudeklasse can change through the conversion. If it changes, almost
+every later figure changes. Then load `building-class` before citing any
+requirement.
 
-## 3. Abweichung, wenn die Anforderung nicht haltbar ist
+## 3. Deviation, when the requirement cannot be kept
 
-Gleiches Schutzniveau ist ein Fall, kein Hoffnungssatz. Der Fall zitiert:
+Equal protection level is a case, not a hope. The case cites:
 
-- welche Anforderung nicht erfüllt wird, mit Fundstelle
-- welches Schutzziel sie trägt
-- womit dasselbe Ziel hier erreicht wird, an diesem Objekt
-- was dafür nachgewiesen werden muss
+- which requirement is not met, with citation
+- which protection goal it carries
+- what achieves the same goal here, at this building
+- what must be demonstrated for it
 
-Eine Erinnerung an „macht die Behörde oft mit“ ist kein Fall.
+A recollection of "the authority often goes along with it" is not a case.
 
-## 4. Zeigen
+## 4. Showing it
 
-Mehrere Anforderungen, jede mit eigenem Urteil → als Prüftabelle mit Status-Spalte.
-Das Regime gabelt die Antwort → als Fallunterscheidung (eine Tabelle der
-Fälle), der Fall dieses Projekts benannt, sobald er bekannt ist.
-Die Stelle, an deren Wortlaut die Antwort hängt → als Zitatzeile `> „…“ [N]`.
-Eine Frist oder ein Vorbehalt, der das nächste Tun ändert → das `callout`-Feld
-der Antwort (`answer_json`-Envelope), höchstens eines.
+Several requirements, each with its own verdict → as a check table with a status column.
+The regime forks the answer → as a case distinction (a table of the cases),
+with this project's case named once it is known.
+The passage whose wording the answer hangs on → as a quote line `> „…“ [N]`.
+A deadline or a caveat that changes the next action → the `callout` field of
+the answer (`answer_json` envelope), at most one.
 
 ## Done
 
-Das Regime ist genannt. Jede zitierte Anforderung gehört zu diesem Regime, nicht
-zum Neubau daneben. Offene Punkte sind Fragen oder ein Abweichungsfall, kein
-geschätzter Grenzwert.
+The regime is named. Every cited requirement belongs to this regime, not to the
+new build next to it. Open points are questions or a deviation case, not an
+estimated limit.

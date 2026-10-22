@@ -42,6 +42,7 @@ import { runFilingReviewSlice } from '@/lib/filing/job'
 import { endRunOfDepartedRequester, runRootSortSlice } from '@/lib/filing/root-sort-run'
 import { runInboxPush } from '@/lib/push/inbox-push-job'
 import { runDueRemindersSlice } from '@/lib/annotations/due-reminders'
+import { runDocumentCheckSlice } from '@/lib/document-check/job'
 import { runRevisionNotice } from '@/lib/revision-notice/job'
 import { isLastAttempt } from './attempts'
 import {
@@ -61,6 +62,7 @@ import {
   reingestFailedPayloadSchema,
   restoreFolderBinPayloadSchema,
   revisionNoticePayloadSchema,
+  documentCheckPayloadSchema,
   rootSortPayloadSchema,
   type BffJobKind,
   type JobAttempt,
@@ -197,4 +199,6 @@ export const JOB_HANDLERS: Record<BffJobKind, JobHandler> = {
   // Not `handler`: the payload names an actor, not a requester snapshot, and a
   // person who left ends the notice quietly in `runRevisionNotice` itself.
   revision_notice: systemHandler(revisionNoticePayloadSchema, runRevisionNotice),
+  // Sliced: start the turn, then wait for its answer; the person is resolved in each slice.
+  document_check: systemSliceHandler(documentCheckPayloadSchema, runDocumentCheckSlice),
 }

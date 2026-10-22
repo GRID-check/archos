@@ -26,7 +26,7 @@ Then, one section per Prüfpunkt, in the plan's order (`answer_strategy.required
 `**Befund:** <Anforderung> — <Wert> — <Fundstelle> — <Status>`
 
 - `<Anforderung>`: the requirement as a noun phrase.
-- `<Wert>`: the copyable value (a number, a class, „Nicht geregelt"), or „–" when the point has no value.
+- `<Wert>`: the copyable value (a number, a class, „Nicht geregelt“), or „–“ when the point has no value.
 - `<Fundstelle>`: the document and Punkt, Tabelle or Paragraph, with the `[N]` citation.
 - `<Status>`: exactly one of `erfüllt`, `nicht erfüllt`, `offen`, `nicht anwendbar`. `offen` means the report could not decide: name what is missing (a project fact, an Aufmaß, the Behörde's ruling) in the sentence after.
 

@@ -304,3 +304,29 @@ cases, the weaker-of-two cap, the hedges from the exemplar sentences),
 `tests/aiq_agent/tools/look/test_place.py` (live and replayed round trip, the
 wire), `test_claim_provenance_pipeline.py` (through `finalize_answer`, the
 scores), `tools/look/test_visibility.py` (the card rules).
+
+## Amendment, 2026-10-22 (b): a listing is a record, still not a source
+
+Found by tracing `ns-orient-project` and `ns-current-fassung`
+(`docs/architecture/north-star-answers.md`): every sentence written from a
+`list_files` result („Einreichung: 6 Dokumente, aktuell Index B") was stamped
+`model_knowledge`, and as a count a `value` claim, so capped `low`. Records came
+only from `workspace__call`, and a listing is no passage, so the one place the
+numbers are true could ground nothing.
+
+A `list_files` result (tree or files view, bare or group-qualified name) is now
+a `record` of operation `list_files` (`workspace_records.listing_record`): the
+text the model saw, cut at 12 000 characters, one item per line. It takes the
+same path and ceiling as a workspace read: matched by `claim_provenance`
+(a number of the sentence in the listing, or two words in one line), `high` for
+a descriptive or value sentence, `medium` when the sentence also states a number
+the listing lacks, `low` when normative, so it never grounds building law. A
+count the listing does not hold stays `model_knowledge`. A refusal („`view` must
+be …") and an empty result make no record. Records are read off the turn's
+transcript, so a replayed turn needs nothing extra; `claims-by-class` counts
+them under `record`, the stamp's `operation` reads `list_files`.
+
+What does not change: the listing is an index, never cited. It registers no
+source (`register_source_parser` for `list_files` still returns nothing), no
+`[N]` resolves to it, and `browse.py` still tells the model not to cite it. The
+provenance is the stamp, not a citation marker.

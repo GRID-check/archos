@@ -476,3 +476,19 @@ async def test_a_look_on_a_page_with_a_retrieved_caption_does_not_borrow_the_cap
 
     assert [stamp["provenance"] for stamp in final.claim_stamps] == ["observed"]
     assert state.answer_confidence == "medium"
+
+
+async def test_a_listing_backed_count_is_record_grounded_and_not_registered_as_a_source():
+    listing = "Einreichung/  6 documents (all here)\n  Current: Einreichplan EG Index B (2026-09-30)\n"
+    messages = [
+        HumanMessage("Was liegt in der Einreichung?"),
+        AIMessage(content="", tool_calls=[{"id": "l1", "name": "list_files", "args": {"view": "tree"}}]),
+        ToolMessage(content=listing, tool_call_id="l1", name="list_files"),
+        AIMessage(ANSWER_ENVELOPE.format(prose="Einreichung: 6 Dokumente, aktuell Index B.")),
+    ]
+    registry = SourceRegistry()
+
+    final, state = await _finalize(messages, registry)
+
+    assert [(s["provenance"], s["operation"]) for s in final.claim_stamps] == [("record", "list_files")]
+    assert state.answer_confidence == "high"

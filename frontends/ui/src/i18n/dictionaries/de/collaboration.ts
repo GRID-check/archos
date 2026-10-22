@@ -464,6 +464,15 @@ export const collaboration: typeof en.collaboration = {
         variants: {
           one: { body: '1 Stelle als Vorschlag markiert, noch nicht übernommen.' },
           many: { body: '{marks} Stellen als Vorschlag markiert, noch nicht übernommen.' },
+          // Der Abgleich eines neuen Dokuments mit den übrigen Unterlagen, kein Vergleich mit einer früheren Fassung.
+          check_one: {
+            title: 'Piloti hat das neue Dokument „{subject}“ mit Ihren übrigen Unterlagen abgeglichen',
+            body: '1 Stelle als Vorschlag markiert, noch nicht übernommen.',
+          },
+          check_many: {
+            title: 'Piloti hat das neue Dokument „{subject}“ mit Ihren übrigen Unterlagen abgeglichen',
+            body: '{marks} Stellen als Vorschlag markiert, noch nicht übernommen.',
+          },
         },
       },
       pilotiWorkDone: {

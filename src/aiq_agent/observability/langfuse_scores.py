@@ -100,6 +100,15 @@ SCORE_DEFINITIONS: tuple[ScoreDefinition, ...] = (
         min_value=0,
     ),
     ScoreDefinition(
+        "document-check",
+        "NUMERIC",
+        "How many marks Piloti proposed when it checked a new document against the project's other documents "
+        "on its own (ADR-0130); 0 is checked, everything agrees. On the trace of the headless turn that ran "
+        "the check; with piloti-decision on those marks, the precision of the check.",
+        writer="bff",
+        min_value=0,
+    ),
+    ScoreDefinition(
         "citation-health",
         "BOOLEAN",
         "True when citation verification found nothing to remove, patch or flag on this turn.",

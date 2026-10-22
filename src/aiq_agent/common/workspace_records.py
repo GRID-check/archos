@@ -32,6 +32,12 @@ model read, so it is all a sentence can have been written from:
 - a WRITE answers „Proposed — the person decides. Nothing was changed.": a
   PROPOSAL, whose evidence is the server row the person decides on. Its values
   are the inputs the model proposed;
+- a ``list_files`` LISTING (tree or files view; ADR-0125, amendment of
+  2026-10-22) is read like a capped read: the rendered text the model saw, cut
+  at :data:`LISTING_MAX_CHARS`, one item per line, so „Einreichung: 6
+  Dokumente, aktuell Index B" is a sentence read off the listing. It is
+  provenance only: the listing stays an index, never cited, and registers no
+  source (``citation_verification``);
 - anything else (a refusal, which the tool words „Error …", or a notice the
   agent's own guards answered the call with) is no JSON and no record.
 
@@ -67,6 +73,13 @@ from typing import Literal
 WORKSPACE_GROUP = "workspace"
 WORKSPACE_CALL = "call"
 _QUALIFIED_CALL_NAMES = (f"{WORKSPACE_GROUP}__{WORKSPACE_CALL}", f"{WORKSPACE_GROUP}.{WORKSPACE_CALL}")
+
+#: ``list_files`` (knowledge layer), however the group qualified it, and the
+#: operation name its records carry. The most listing text kept per call.
+LISTING_TOOL = "list_files"
+LISTING_MAX_CHARS = 12_000
+#: How a listing refusal starts (bad argument, unknown shelf); no listing, no record.
+_LISTING_REFUSALS = re.compile(r"^(?:`\w+` must be|Invalid |Unknown )", re.IGNORECASE)
 
 #: The server's text for a write it filed as a proposal (``discovery.ts``).
 PROPOSED_PREFIX = "Proposed"
@@ -137,6 +150,26 @@ def is_workspace_call(tool_name: str) -> bool:
     """Whether ``tool_name`` is the workspace group's ``call``, however the group was qualified."""
     name = (tool_name or "").strip()
     return any(name == qualified or name.endswith(f"__{qualified}") for qualified in _QUALIFIED_CALL_NAMES)
+
+
+def is_listing_call(tool_name: str) -> bool:
+    """Whether ``tool_name`` is ``list_files``, bare or group-qualified."""
+    name = (tool_name or "").strip()
+    return name == LISTING_TOOL or name.endswith(f"__{LISTING_TOOL}")
+
+
+def listing_record(text: str) -> WorkspaceRecord | None:
+    """The record a ``list_files`` result makes: its rendered text, capped, one item per line.
+
+    A listing is rows the knowledge layer computed, not words Piloti wrote, so
+    it is a read. Numbers are matched against the text itself; the line counts
+    (``12 file(s)``, ``6 documents``) are in it.
+    """
+    stripped = text.strip()
+    if not stripped or _LISTING_REFUSALS.match(stripped):
+        return None
+    lines = [line.strip().casefold() for line in stripped[:LISTING_MAX_CHARS].splitlines() if line.strip()]
+    return WorkspaceRecord(LISTING_TOOL, "read", "\n".join(lines), frozenset(), tuple(lines))
 
 
 def _piloti_authored(value: dict[str, Any]) -> bool:
@@ -286,7 +319,13 @@ def records_from_messages(messages: Sequence[Any]) -> list[WorkspaceRecord]:
     calls = _calls_by_id(messages)
     records: list[WorkspaceRecord] = []
     for message in messages:
-        if not is_workspace_call(getattr(message, "name", "") or ""):
+        name = getattr(message, "name", "") or ""
+        if is_listing_call(name):
+            listing = listing_record(_content_text(getattr(message, "content", "")))
+            if listing is not None:
+                records.append(listing)
+            continue
+        if not is_workspace_call(name):
             continue
         call = calls.get(str(getattr(message, "tool_call_id", "") or ""))
         if call is None:

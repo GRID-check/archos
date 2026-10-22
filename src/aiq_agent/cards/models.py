@@ -329,7 +329,7 @@ class DimensionCheck(CardModel):
     This block used to be `label / value / required / unit / comparator /
     status` and nothing else, and that made the card the least honest surface in
     the product. `ifc_measure` answers „gemessen: 2.47 m (±5 mm) — aus der
-    Geometrie berechnet, nicht deklariert", the assistant repeats that in the
+    Geometrie berechnet, nicht deklariert“, the assistant repeats that in the
     prose, and the card beside it drew **2.47 m ✓** — indistinguishable from a
     figure the architect had stated in their own file. The card is the part a
     reviewer screenshots into a submission, so the surface that dropped the
@@ -444,7 +444,7 @@ class StairDiagramCard(CardModel):
     riser_count: int = Field(gt=0, description="Number of steps in the flight (drawn)")
     riser_height: DimensionCheck = Field(description="Steigung (rise) per step; typical limit <= 18 cm")
     tread_depth: DimensionCheck = Field(description="Auftritt (going) per step; typical limit >= 28 cm")
-    width: DimensionCheck = Field(description="Nutzbare Laufbreite; limit depends on Gebäudeklasse")
+    width: DimensionCheck = Field(description="Usable flight width; limit depends on Gebäudeklasse")
     comfort_note: str | None = Field(default=None, description="Result of the 2×Steigung + Auftritt comfort check")
     reference: NormReference = Field(description="Source of the step-geometry limits")
 
@@ -1033,7 +1033,7 @@ class TaskCreatedCard(CardModel):
     """Work Piloti has taken on, as a row somebody can come back to.
 
     System-emitted by ``create_task``. What it exists to prevent is the answer
-    „ich mache den Einreichcheck bis Freitag" with nothing behind it: the card is
+    „ich mache den Einreichcheck bis Freitag“ with nothing behind it: the card is
     proof there is a row, and the row is what carries the requester's permission,
     the deadline and — when a person judges the result — the decision that reaches
     the next attempt (ADR-0051).
@@ -1731,9 +1731,9 @@ class IfcComplianceCard(CardModel):
     the answer is a list of requirements: the card stays correct after the model
     changes, and a sentence does not.
 
-    NEVER present this as a Nachweis. The catalogue reads only published
-    property values, it reads no geometry, and Fluchtweglängen, Geländerhöhen
-    and Brandabschnittsgrößen are not in it at all.
+    NEVER present this as proof of compliance (a Nachweis). The catalogue reads only published
+    property values, it reads no geometry, and escape-route lengths, guardrail
+    heights and fire-compartment sizes are not in it at all.
     """
 
     type: Literal["ifc_compliance"]

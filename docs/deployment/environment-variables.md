@@ -381,6 +381,8 @@ When a document is linked as the newer Fassung of another, an organization with 
 |----------|----------|---------|-------------|
 | `GRID_REVISION_NOTICE_DELAY_SECONDS` | No | `120` | How long a notice waits after the Fassung is announced before a worker may claim it, so re-reads and relinks have settled. `0` to `3600`. |
 | `GRID_REVISION_NOTICE_MAX_PAGES` | No | `3` | Most pages one notice looks at: one vision call each on the office's vision credential, and none for a page the index shows unchanged. `1` to `10`. The job is one slice, so keep this many calls inside `GRID_BFF_JOBS_SLICE_TIMEOUT_MS`; a retry answers the pages already compared from the cache. |
+| `GRID_DOCUMENT_CHECK_DAILY_LIMIT` | No | `25` | Most checks of a new document against the project's other documents (`document_check`, ADR-0130) one organization may start per day, each a full Piloti turn on the uploader's budget. `0` switches the checks off. A version over the cap is skipped for good, not queued later. Read by the BFF in `lib/document-check/check.ts` |
+| `GRID_DOCUMENT_CHECK_MAX_BATCH` | No | `10` | A settle batch that announces more documents than this (a bulk folder upload or import) is not checked at all. Read by the BFF in `lib/document-check/check.ts` |
 
 ### Wakes of Piloti (ADR-0106)
 

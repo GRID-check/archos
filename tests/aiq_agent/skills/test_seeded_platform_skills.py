@@ -308,20 +308,20 @@ def test_the_prompt_carries_the_voice_craft_the_retired_seed_taught():
 
     # The answer-first rule, and where a caveat may NOT sit. Headings moved
     # under kind=ruling so a walkthrough does not open as a Bescheid.
-    assert "Der erste Satz ist die Antwort" in section
+    assert "The first sentence is the answer" in section
     assert "kind=ruling" in section
-    assert "Vorbehalte" in section
-    assert "mitten im Absatz" in section
+    assert "Reservations" in section
+    assert "never mid-paragraph" in section
     # The wrong-premise correction: leads, about the Richtlinie, Fundstelle in
     # the same sentence, no softener, and the origin of the wrong value named.
-    assert "die Berichtigung ist die Antwort" in section
-    assert "entlang der Richtlinie, nie entlang der Person" in section
-    assert 'kein „gute Frage"' in section
-    assert "Nachbarklasse, ältere Ausgabe, anderer Bauteil" in section
+    assert "the correction is the answer" in section
+    assert "the correction follows the Richtlinie, never the person" in section
+    assert "no „gute Frage“" in section
+    assert "neighbouring class, older edition, other component" in section
     # Uncertainty once, concretely, per PART — and why the confidence line
     # cannot carry the split.
-    assert "pro TEIL, nicht pro Antwort" in section
-    assert "richtet sich nach dem schwächeren Teil" in section
+    assert "per PART, not per answer" in section
+    assert "follows the weaker part" in section
     # Liability is identity, not a ban on helping apply a rule. A Bescheid is
     # still not this answer; a colleague who cites and applies is.
     assert "Entwurfsverfasser" in section
@@ -329,19 +329,19 @@ def test_the_prompt_carries_the_voice_craft_the_retired_seed_taught():
     assert "Bescheid" in section
     assert "Einschätzung, nicht Empfehlung" not in section
     # Notation: the rules a reader copies into an Einreichung.
-    assert "Dezimalkomma" in section and "Tausenderpunkt" in section
+    assert "Decimal comma" in section and "Thousands point" in section
     assert "U+00A0" in section
     assert "EI₂ 30-C" in section
     # The warmth rule, with its one forbidden placement.
-    assert "nie als Polster vor einem Widerspruch" in section
+    assert "never as padding before a contradiction" in section
     # The smallest form, and the heading rules.
     # The size rule survives the move to structured answers (2026-09-24): the
     # form follows the content, and structure is never a licence for length.
-    assert "Die Form, die der Inhalt hat" in section
-    assert "Struktur ist kein Umfang" in section
-    assert "Eine lange Antwort auf eine kurze Frage ist kein Service" in section
-    assert "nie als erste Zeile" in section
-    assert "nie ersatzweise aus einem anderen Regelwerk beantwortet" in section
+    assert "The form the content has" in section
+    assert "Structure is not length" in section
+    assert "A long answer to a short question is no service" in section
+    assert "never as the first line" in section
+    assert "never answered instead from another Regelwerk" in section
 
     # Every rule asserted above must have been in the seed it condenses — the
     # section may compress the voice, never invent a different one.
@@ -502,8 +502,8 @@ def test_the_voice_carries_the_certainty_split_the_confidence_field_cannot():
     body = _unwrapped(_effective_row("piloti-voice")["body"])
 
     assert "Every researched answer carries `confidence`" in prompt
-    assert "richtet sich nach dem schwächeren Teil" in prompt
-    assert "die Teilung existiert nur in der Prosa" in prompt
+    assert "follows the weaker part" in prompt
+    assert "the split exists only in the prose" in prompt
 
     assert "[CONFIDENCE:…]" in body
     assert "ein Wert für den ganzen Zug" in body

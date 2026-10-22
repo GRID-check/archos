@@ -47,6 +47,12 @@ import { BFF_JOB_PRIORITY, type BffJobPriority } from '@/lib/db/schema'
  * Fassung (ADR-0130): it compares the changed pages with the older Fassung and
  * proposes marks where something moved, under their rights today, and does
  * nothing when the organization's `piloti-notices` is off.
+ * `document_check` is a headless turn AS the person whose upload finished
+ * (ADR-0130, second slice): Piloti reads the new document, checks its
+ * load-bearing facts against the project's other documents and proposes marks
+ * where they disagree. Sliced: the first slice starts the turn, the next ones
+ * wait (`notBefore`) for its answer and leave what it found. Does nothing when
+ * the organization's `piloti-notices` is off.
  * The other three are one bounded step each and run as the system, because the
  * person's permission was checked when the work was requested and what they do
  * afterwards takes no session: parsing a model, converting a file, rendering
@@ -70,6 +76,7 @@ export const BFF_JOB_KINDS = [
   'inbox_push',
   'annotation_due_reminders',
   'revision_notice',
+  'document_check',
 ] as const
 export type BffJobKind = (typeof BFF_JOB_KINDS)[number]
 
@@ -463,6 +470,24 @@ export const revisionNoticePayloadSchema = z.object({
   actor: z.object({ userId: z.string().min(1), email: z.string().nullable() }),
 })
 export type RevisionNoticePayload = z.infer<typeof revisionNoticePayloadSchema>
+
+/**
+ * `document_check`: check a new document against the project's other
+ * documents (ADR-0130). The job id is `checkId`, uuid5 of the document's
+ * version. `conversationId` is set once the turn was started (its own private
+ * thread, whose subject is the document) and `waits` counts the polls for its
+ * answer. Ids only: the document, the person's rights and the switch are read
+ * again at every slice.
+ */
+export const documentCheckPayloadSchema = z.object({
+  checkId: z.string().uuid(),
+  documentId: z.string().uuid(),
+  /** The person whose upload finished: the check runs as them, today. */
+  actor: z.object({ userId: z.string().min(1), email: z.string().nullable() }),
+  conversationId: z.string().min(1).nullable(),
+  waits: z.number().int().nonnegative(),
+})
+export type DocumentCheckPayload = z.infer<typeof documentCheckPayloadSchema>
 
 /** What a one-step job is told about the attempt it is running. */
 export interface JobAttempt {

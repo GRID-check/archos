@@ -135,3 +135,95 @@ def test_every_bound_tool_is_scanned(texts: list[tuple[str, str]]) -> None:
 def test_tool_and_parameter_descriptions_are_english(texts: list[tuple[str, str]]) -> None:
     german = [(path, sorted(german_words(text))) for path, text in texts if is_german(text)]
     assert german == [], f"German in what the model reads (translate it; quoted examples may stay): {german}"
+
+
+def _builtin_skill_bodies() -> list[tuple[str, str]]:
+    """Each builtin ``SKILL.md`` split into lines, so a failure names file and line."""
+    rows: list[tuple[str, str]] = []
+    for path in sorted((ROOT / "src" / "aiq_agent" / "skills" / "builtin").rglob("SKILL.md")):
+        rel = path.relative_to(ROOT).as_posix()
+        in_fence = False
+        for number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+            if line.startswith("```"):
+                in_fence = not in_fence
+            if not in_fence:
+                rows.append((f"{rel}:{number}", line))
+    return rows
+
+
+def test_builtin_skills_are_scanned() -> None:
+    files = {where.split(":")[0] for where, _ in _builtin_skill_bodies()}
+    assert any(f.endswith("bim/ifc-spatial-reasoning/SKILL.md") for f in files)
+    assert any(f.endswith("oib/fire-safety/SKILL.md") for f in files)
+
+
+def test_builtin_skill_instructions_are_english() -> None:
+    """The model loads these bodies as instructions (``load_skill``); quoted user phrasings stay German."""
+    german = [(where, line.strip()[:80]) for where, line in _builtin_skill_bodies() if is_german(line)]
+    assert german == [], f"German instruction prose in a builtin skill (translate it): {german[:10]}"
+
+
+#: German prose that had no function word for the detector to catch (noun lists, a bare noun phrase).
+#: Each was found by reading, so each is pinned here: a second occurrence is caught by the test.
+FORMER_GERMAN_PROSE = ("Fluchtweglängen", "Geländerhöhen", "Brandabschnittsgrößen", "Nutzbare Laufbreite")
+
+
+def test_card_schema_descriptions_are_english() -> None:
+    """The generated card schema is what the model is taught; docstrings and Field descriptions land in it."""
+    schema = json.loads((ROOT / "shared" / "cards" / "schemas.json").read_text(encoding="utf-8"))
+    texts = list(_described(schema, "cards"))
+    assert len(texts) > 100
+    german = [(path, sorted(german_words(text))) for path, text in texts if is_german(text)]
+    assert german == [], f"German in the card schema the model reads (translate it): {german}"
+    pinned = [(path, word) for path, text in texts for word in FORMER_GERMAN_PROSE if word in text]
+    assert pinned == [], f"German prose that was translated once is back: {pinned}"
+
+
+PROMPTS = ROOT / "src" / "aiq_agent" / "agents" / "piloti" / "prompts"
+
+
+def _prompt_lines(text: str, name: str) -> list[tuple[str, str]]:
+    """Instruction lines of a prompt file: not fenced code, not the ``<examples>`` block.
+
+    Examples are whole German exchanges (a user turn and the envelope the model
+    answers with), so they are data the model imitates, not instructions to it.
+    """
+    rows: list[tuple[str, str]] = []
+    in_fence = in_examples = False
+    for number, line in enumerate(text.splitlines(), 1):
+        if line.startswith("```"):
+            in_fence = not in_fence
+        if line.startswith("<examples>"):
+            in_examples = True
+        if line.startswith("</examples>"):
+            in_examples = False
+            continue
+        if not (in_fence or in_examples or line.startswith("```")):
+            rows.append((f"{name}:{number}", line))
+    return rows
+
+
+def _prompt_files() -> list[Path]:
+    return sorted([*PROMPTS.glob("*.md"), *PROMPTS.glob("*.j2")])
+
+
+def _german_prompt_lines(text: str, name: str) -> list[tuple[str, str]]:
+    return [(where, line.strip()[:80]) for where, line in _prompt_lines(text, name) if is_german(line)]
+
+
+def test_prompt_files_are_scanned() -> None:
+    names = {path.name for path in _prompt_files()}
+    assert {"piloti_static.md", "piloti.j2"} <= names
+
+
+def test_prompt_instructions_are_english() -> None:
+    """The static prompt is read on every turn; German stays in quoted phrasings, examples and glossary words."""
+    german = [
+        row for path in _prompt_files() for row in _german_prompt_lines(path.read_text(encoding="utf-8"), path.name)
+    ]
+    assert german == [], f"German instruction prose in a prompt file (translate it): {german[:10]}"
+
+
+def test_the_prompt_scan_catches_german_instructions() -> None:
+    line = "**Nichts wiederholen, was die Frage schon sagt.** Der Wert ist nicht neu."
+    assert _german_prompt_lines(f"Fine line.\n{line}\n", "x.md") == [("x.md:2", line)]

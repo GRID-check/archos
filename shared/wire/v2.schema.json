@@ -3212,7 +3212,7 @@
     },
     "TurnTrigger": {
       "additionalProperties": false,
-      "description": "The event that woke this turn, when no person typed it (ADR-0105 draft, §3(b)).\n\nSet by the BFF, never by a browser: the person whose act is the event holds\nthe socket (their pinned session), and the turn answers where the event\nhappened. For a wake, ``event_id`` is the reply (or assignment) id the job\nwas enqueued for and ``annotation_id`` the Anmerkung it happened on.\n``agent_consult`` is a question another agent asked on the person's behalf\n(ADR-0124): ``event_id`` is the ask's id, and there is no Anmerkung.",
+      "description": "The event that woke this turn, when no person typed it (ADR-0105 draft, §3(b)).\n\nSet by the BFF, never by a browser: the person whose act is the event holds\nthe socket (their pinned session), and the turn answers where the event\nhappened. For a wake, ``event_id`` is the reply (or assignment) id the job\nwas enqueued for and ``annotation_id`` the Anmerkung it happened on.\n``agent_consult`` is a question another agent asked on the person's behalf\n(ADR-0124): ``event_id`` is the ask's id, and there is no Anmerkung.\n``new_document`` is a document that just finished indexing, which Piloti\nchecks against the project's other documents unasked (ADR-0130):\n``event_id`` is the check's id, and there is no Anmerkung.",
       "properties": {
         "annotation_id": {
           "anyOf": [
@@ -3239,7 +3239,8 @@
             "thread_mention",
             "thread_reply",
             "assigned",
-            "agent_consult"
+            "agent_consult",
+            "new_document"
           ],
           "title": "Kind",
           "type": "string"

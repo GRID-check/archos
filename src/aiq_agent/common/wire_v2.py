@@ -938,9 +938,12 @@ class TurnTrigger(_Model):
     was enqueued for and ``annotation_id`` the Anmerkung it happened on.
     ``agent_consult`` is a question another agent asked on the person's behalf
     (ADR-0124): ``event_id`` is the ask's id, and there is no Anmerkung.
+    ``new_document`` is a document that just finished indexing, which Piloti
+    checks against the project's other documents unasked (ADR-0130):
+    ``event_id`` is the check's id, and there is no Anmerkung.
     """
 
-    kind: Literal["thread_mention", "thread_reply", "assigned", "agent_consult"]
+    kind: Literal["thread_mention", "thread_reply", "assigned", "agent_consult", "new_document"]
     event_id: str = Field(min_length=1, max_length=128)
     annotation_id: str | None = Field(default=None, min_length=1, max_length=128)
 

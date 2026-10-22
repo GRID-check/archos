@@ -668,7 +668,7 @@ a server whose hello lists it (`user_message.trigger`, `user_message.if_idle`).
 
 | Field | Type | Meaning |
 |-------|------|---------|
-| `trigger` | `{kind: thread_mention \| thread_reply \| assigned \| agent_consult, event_id, annotation_id?}` | What woke the turn, the id of the reply or assignment, and the Anmerkung it happened on. `agent_consult` is a question a connected agent asked for the person (ADR-0124): `event_id` is the ask's id (also the turn id), and there is no Anmerkung, so the answer is the turn's reply. The prompt gains a „Woken by“ section: who acted (the turn's verified user), what happened, and to answer where it happened (`canvas__reply` in that Anmerkung's thread). On the trace as `turn_trigger`, `trigger_event_id` and the tag `trigger:<kind>`. |
+| `trigger` | `{kind: thread_mention \| thread_reply \| assigned \| agent_consult \| new_document, event_id, annotation_id?}` | What woke the turn, the id of the reply or assignment, and the Anmerkung it happened on. `agent_consult` is a question a connected agent asked for the person (ADR-0124): `event_id` is the ask's id (also the turn id), and there is no Anmerkung, so the answer is the turn's reply. The prompt gains a „Woken by“ section: who acted (the turn's verified user), what happened, and to answer where it happened (`canvas__reply` in that Anmerkung's thread). On the trace as `turn_trigger`, `trigger_event_id` and the tag `trigger:<kind>`. |
 | `if_idle` | `boolean` | Run only if the conversation has no running turn. Never supersedes: `rejected{busy}` instead, decided before the turn id is claimed (and, on a race lost after the claim, with the claim given back), so the job retries under the same id. |
 
 **The contract the wake job builds on.**

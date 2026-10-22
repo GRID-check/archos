@@ -1,51 +1,51 @@
 ---
 name: building-class
 description: >
-  Die OIB-Gebäudeklasse (GK 1 bis 5), an der jede spätere OIB-Zahl hängt.
-  Nicht die Bauklasse der Bauordnung.
+  The OIB building class (GK 1 to 5), which every later OIB figure hangs on.
+  Not the Bauklasse of the building code.
 metadata:
   grid-agents: researcher,deep_researcher
   grid-cards: building_section
 ---
 
-# Gebäudeklasse feststellen, bevor eine Zahl fällt
+# Establish the Gebäudeklasse before any figure is given
 
-Die Klasse ist keine Meinung. Sie folgt aus Fluchtniveau, Geschoßzahl, Fläche
-und Nutzung. Die Tabelle selbst steht in der Richtlinie. Hier steht nur, wann
-du sie holst und wann du ohne sie nicht weiterarbeitest.
+The class is not an opinion. It follows from the escape level, the number of
+storeys, the area and the use. The table itself is in the guideline. This file
+only says when you fetch it and when you do not continue without it.
 
-## 1. Nimm die bestätigte Klasse
+## 1. Take the confirmed class
 
-Steht im Projektkontext eine Gebäudeklasse als bestätigt, nimm sie. Nicht neu
-ableiten. Widerspricht die Frage der bestätigten Klasse, sag den Widerspruch
-und arbeit unter der bestätigten weiter, bis jemand sie ändert.
+If the project context lists a Gebäudeklasse as confirmed, take it. Do not
+derive it again. If the question contradicts the confirmed class, name the
+contradiction and keep working under the confirmed class until someone changes
+it.
 
-**Fertig**, sobald die Klasse einen Fundstellenanker hat oder ausdrücklich als
-unbestätigt geführt wird.
+**Done** once the class has a citation anchor or is explicitly carried as
+unconfirmed.
 
-## 2. Fehlt sie, und ändert sie die Antwort: eine Frage
+## 2. If it is missing and changes the answer: one question
 
-Ohne Klasse eine Feuerwiderstandsklasse zu nennen ist eine Zahl ohne Anspruch.
-Frag genau das, was die Klasse entscheidet: Fluchtniveau, oberirdische
-Geschoße, Nutzung. Eine Frage, nicht vier.
+Naming a fire-resistance class without the building class is a figure with no
+claim behind it. Ask exactly what decides the class: escape level, storeys
+above ground, use. One question, not four.
 
-Kannst du unter einer klar benannten Annahme sinnvoll antworten, tu das und
-markier die Annahme. Nicht raten und die Klasse verschweigen.
+If you can answer usefully under a clearly named assumption, do so and mark the
+assumption. Do not guess and stay silent about the class.
 
-## 3. Die Edition bindet mit
+## 3. The edition binds too
 
-Jedes Land erklärt eine andere Ausgabe verbindlich. Nenn die Ausgabe, sobald
-sie den Wert verschiebt. Hol sie aus der Wissensbasis oder aus RIS, nicht aus
-dem Gedächtnis.
+Each Land declares a different edition binding. Name the edition as soon as it
+moves the value. Fetch it from the knowledge base or from RIS, not from memory.
 
-## 4. Zeigen
+## 4. Showing it
 
-Die Antwort gabelt sich an der Klasse → als Fallunterscheidung (eine Tabelle
-der Fälle), der Fall dieses Projekts benannt, sobald seine Klasse bekannt ist.
-Höhe und Fluchtniveau sind der Gegenstand → `building_section`.
-Die Stelle, an deren Wortlaut die Antwort hängt → als Zitatzeile `> „…“ [N]`.
+The answer forks on the class → as a case distinction (a table of the cases),
+with this project's case named once its class is known.
+Height and escape level are the subject → `building_section`.
+The passage whose wording the answer hangs on → as a quote line `> „…“ [N]`.
 
 ## Done
 
-Eine Klasse mit Fundstelle, oder die eine fehlende Tatsache, ohne die keine
-Klasse existiert. Keine Tabelle aus dem Gedächtnis.
+A class with a citation, or the one missing fact without which no class
+exists. No table from memory.

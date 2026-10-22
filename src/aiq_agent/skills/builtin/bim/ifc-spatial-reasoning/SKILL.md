@@ -1,324 +1,318 @@
 ---
 name: ifc-spatial-reasoning
 description: >
-  Am Modell messen mit ifc_measure oder ifc_query, bevor eine OIB-Zahl
-  behauptet wird.
+  Measure on the model with ifc_measure or ifc_query before any OIB figure is
+  asserted.
 metadata:
   grid-agents: researcher,deep_researcher
   grid-cards: ifc_viewer,ifc_element,ifc_schedule,ifc_compliance,ifc_diff
 ---
 
-# Am Modell messen, nicht am Plan raten
+# Measure on the model, do not guess from the plan
 
-Die Werkzeugbeschreibungen sagen, **was** `ifc_query` und `ifc_measure` können,
-und sie sagen es ausführlich — jeden Operator, jeden Kennwert, jede Relation.
-Hier steht nur, was dort nicht steht: **wie viele Runden zur Verfügung stehen**,
-**wie eine Frage über viele Bauteile in eine davon passt**, und **woran man
-merkt, dass eine Zahl etwas anderes misst als das, wonach gefragt wurde**. Der
-Fehler, den dieses Paket beseitigen soll, war nie eine falsche Formel — es war
-eine richtig gemessene Zahl unter einem falschen Namen.
+The tool descriptions say **what** `ifc_query` and `ifc_measure` can do, and
+they say it at length: every operator, every measure, every relation. This file
+holds only what they do not: **how many rounds you have**, **how a question
+about many elements becomes one call**, and **how to notice that a number
+measures something other than what was asked**. The error this package exists
+to remove was never a wrong formula. It was a correctly measured number under a
+wrong name.
 
-## 1. Das Budget: gezählt wird die Runde
+## 1. The budget: the round is what is counted
 
-Nach einer festen Zahl von Runden bricht dieser Agent den Werkzeugteil ab und
-formuliert die Antwort aus dem, was bis dahin dasteht. Eine Runde ist alles, was
-auf einmal abgeschickt wird, und sie kostet einen, gleich wie viele Aufrufe in
-ihr stehen:
+After a fixed number of rounds this agent cuts off the tool phase and writes the
+answer from what is there by then. A round is everything sent at once, and it
+costs one, however many calls it holds:
 
-- **Drei Aufrufe nebeneinander in einer Runde kosten zusammen einen.** Breit zu
-  fragen ist deshalb die billigste Art, an eine Messung zu kommen: `survey`,
-  `element_profile` und ein `briefing` in derselben Runde kosten so viel wie
-  `survey` allein.
-- Ein Aufruf mit null Treffern kostet dasselbe wie einer, der antwortet, und
-  eine Runde aus lauter abgelehnten Aufrufen kostet ihren einen ebenso.
-- Eine Runde läuft bis zur eingestellten Rundenbreite; was darüber hinaus in
-  derselben Runde steht, kommt mit dem Hinweis zurück, dass es in der nächsten
-  Runde erneut gestellt werden kann.
-- Diesen Skill zu laden war eine Runde.
+- **Three calls side by side in one round cost one together.** Asking broadly is
+  therefore the cheapest way to get a measurement: `survey`, `element_profile`
+  and a `briefing` in the same round cost as much as `survey` alone.
+- A call with zero hits costs the same as one that answers, and a round of
+  nothing but rejected calls costs its one just the same.
+- A round runs up to the configured round width; whatever is beyond that in the
+  same round comes back with a note that it can be issued again in the next
+  round.
+- Loading this skill was a round.
 
-Eine Antwort, die vor der Messung abgeschnitten wird, fällt auf die deklarierten
-Werte der Datei zurück — auf genau die Zahlen, wegen deren Unzuverlässigkeit
-überhaupt gemessen wird. So kam eine echte Auskunft dazu, die Geschoßhöhe von
-3,00 m für Räume zu nennen, die 2,70 m messen.
+An answer cut off before the measurement falls back on the values the file
+declares, which are exactly the numbers whose unreliability is the reason for
+measuring at all. That is how a real answer came to state a storey height of
+3.00 m for rooms that measure 2.70 m.
 
-Reicht es nicht bis zur Messung, dann **steht das in der Antwort**: welche
-Messung fehlt und woher die Zahl stattdessen kommt. Eine deklarierte Zahl
-kommentarlos an die Stelle der gemessenen zu setzen, ist die teuerste Art, das
-Budget zu überziehen — von außen ist sie von einer Messung nicht zu
-unterscheiden.
+If the budget does not reach the measurement, **say so in the answer**: which
+measurement is missing and where the number comes from instead. Putting a
+declared number in place of the measured one without comment is the most
+expensive way to overspend the budget, because from outside it cannot be told
+from a measurement.
 
-Die Werkzeugbeschreibung sagt „briefing zuerst". Das gilt, solange die Auswahl
-offen ist: Dann steht `briefing` in einer eigenen Runde davor und liefert die
-Geschoß- und Merkmalsnamen, aus denen die Argumente der Messung gebaut werden.
-Steht die Auswahl schon fest, etwa ein Typ, ein Namensteil oder ein ganzes
-Gebäude, dann fährt `briefing` in derselben Runde neben der Messung mit und
-kostet dort nichts; seine Namen sind das Material, mit dem ein ins Leere
-gelaufener Geschoß- oder Merkmalsname in der nächsten Runde trifft.
+The tool description says "briefing first". That holds while the selection is
+open: then `briefing` goes in a round of its own beforehand and supplies the
+storey and attribute names from which the measurement's arguments are built.
+If the selection is already fixed, such as a type, part of a name or a whole
+building, `briefing` rides along in the same round as the measurement and costs
+nothing there; its names are the material with which a storey or attribute name
+that hit nothing will hit in the next round.
 
-## 2. Eine Frage in der Mehrzahl ist eine Frage über viele Bauteile
+## 2. A question in the plural is a question about many elements
 
-„Wie hoch ist der Keller" nennt einen Raum und meint siebzehn. `survey` misst
-EINEN Kennwert an ALLEN Bauteilen einer Auswahl — ausgewählt wie bei
-`find_elements` über `storey`, `ifc_type`, `name_contains`, `kind` — und liefert
-je Bauteil Name, Geschoß und eigene Antwort, dazu die Spanne über alles.
+"How high is the basement" names one room and means seventeen. `survey`
+measures ONE measure on ALL elements of a selection (selected as in
+`find_elements` through `storey`, `ifc_type`, `name_contains`, `kind`) and
+returns per element the name, storey and its own answer, plus the range across
+all of them.
 
-Am Modell AC20-Institute-Var-2 bringt ein einziger Aufruf mit
-`operation: "survey"`, `measure: "clearHeight"`, `ifc_type: "IfcSpace"` und
-`storey: "Keller"` siebzehn Räume: sechzehn mit 2,700 m und „Flur Keller Treppe"
-mit 0,250 m, Spanne 2,450 m. Wer stattdessen einen Raum misst und
-verallgemeinert, berichtet 2,70 m — richtig gemessen, und der Raum, um den es
-geht, kommt in der Antwort nicht vor.
+On the model AC20-Institute-Var-2, a single call with `operation: "survey"`,
+`measure: "clearHeight"`, `ifc_type: "IfcSpace"` and `storey: "Keller"` returns
+seventeen rooms: sixteen at 2.700 m and "Flur Keller Treppe" at 0.250 m, range
+2.450 m. Whoever measures one room instead and generalises reports 2.70 m,
+correctly measured, and the room that matters does not appear in the answer.
 
-**Die Spanne ist der Befund**, kein Zusatz dazu. In die Antwort gehören: wie
-viele Bauteile gemessen wurden und von wie vielen, Minimum, Maximum und jeder
-Ausreißer beim Namen. „Alle 17 Kellerräume 2,70 m" und „16 davon 2,70 m, einer
-0,25 m" sind verschiedene Antworten auf dieselbe Frage, und aus einem einzeln
-gemessenen Raum folgt keine von beiden. Was `decidable: false` liefert, wird
-einzeln genannt und nie als „wie die übrigen" mitgezählt.
+**The range is the finding**, not an addition to it. The answer must say: how
+many elements were measured and out of how many, the minimum, the maximum and
+every outlier by name. "All 17 basement rooms 2.70 m" and "16 of them 2.70 m,
+one 0.25 m" are different answers to the same question, and a single measured
+room supports neither. Whatever returns `decidable: false` is named
+individually and never counted as "like the rest".
 
-Steht die Menge schon fest — die Türen aus einem Fluchtweg, die Fenster einer
-Fassade —, nimmt `operation: "measure"` in `global_id` die ganze Id-Liste auf
-einmal, jedes Bauteil mit eigener Antwort und eigener Toleranz.
+If the set is already fixed (the doors from an escape route, the windows of a
+facade), `operation: "measure"` takes the whole id list in `global_id` at once,
+each element with its own answer and its own tolerance.
 
-Und ist umgekehrt ein einzelnes Bauteil interessant geworden — der Ausreißer,
-den ein `survey` benannt hat —, dann nimmt `operation: "element_profile"` in
-EINEM Aufruf alle Maße, die für dieses Bauteil überhaupt gelten, statt sie einzeln
-zu erraten. Welche gelten, folgt aus dem IFC-Typ; die teuren (Fluchtweg,
-Erreichbarkeit, Wendekreis, Türanlauf) kommen nur mit `kind: "expensive"` dazu.
+And if a single element has become interesting, such as the outlier a `survey`
+named, then `operation: "element_profile"` takes ALL measures that apply to
+that element in ONE call instead of guessing them one by one. Which apply
+follows from the IFC type; the expensive ones (escape route, reachability,
+turning circle, door swing) are added only with `kind: "expensive"`.
 
-Nichts davon ersetzt die Einzelmessung: ein Bauteil mit bekanntem Maß misst
-`measure`, eine bloße Liste ohne Maß liefert `find_elements`. Und eine reine
-Flächenaufstellung über alle Räume steht ohne jede Geometrie im Index — dafür
-`ifc_query` mit `operation: "schedule"`.
+None of this replaces the single measurement: an element with a known measure
+is measured by `measure`, and a plain list without a measure comes from
+`find_elements`. And a pure area schedule across all rooms stands in the index
+without any geometry: use `ifc_query` with `operation: "schedule"` for that.
 
-## 3. Welches der beiden Werkzeuge
+## 3. Which of the two tools
 
-`ifc_query` liest, was die Datei **deklariert**: schnell, über das ganze Modell,
-und leer, wo der Export nichts geschrieben hat. `ifc_measure` misst an der
-**Geometrie** — auch dort, wo nichts deklariert ist, und immer mit Toleranz.
+`ifc_query` reads what the file **declares**: fast, across the whole model, and
+empty where the export wrote nothing. `ifc_measure` measures on the
+**geometry**, also where nothing is declared, and always with a tolerance.
 
-| Die Frage lautet | Werkzeug |
+| The question is | Tool |
 |---|---|
-| Wie viele, welche, welcher Wert steht in der Datei | `ifc_query`: `types`, `elements`, `aggregate`, `properties` |
-| Raumbuch, Flächenaufstellung, Mengen nach Material | `ifc_query`: `schedule`, `takeoff` |
-| Wie vollständig ist das Modell, was hat sich geändert | `ifc_query`: `health`, `compare`, `compliance-diff` |
-| Ein Maß an EINEM Bauteil oder an einer bekannten Id-Liste | `ifc_measure`: `measure` |
-| Dasselbe Maß über ein Geschoß, eine Raumgruppe, einen Typ | `ifc_measure`: `survey` |
-| Alle Maße, die für EIN Bauteil überhaupt gelten | `ifc_measure`: `element_profile` |
-| Ein Maß, das aus ZWEI Bauteilen entsteht | `ifc_measure`: `distance`, `clearance`, `overhang` |
-| Was grenzt woran, was sitzt worin, was liegt darüber | `ifc_measure`: `relations` |
-| Eine ganze OIB-2- oder OIB-6-Fragestellung auf einmal | `ifc_measure`: `fire`, `envelope`, je mit `kind` |
+| How many, which, what value is in the file | `ifc_query`: `types`, `elements`, `aggregate`, `properties` |
+| Room schedule, area schedule, quantities by material | `ifc_query`: `schedule`, `takeoff` |
+| How complete is the model, what has changed | `ifc_query`: `health`, `compare`, `compliance-diff` |
+| One measure on ONE element or on a known id list | `ifc_measure`: `measure` |
+| The same measure across a storey, a room group, a type | `ifc_measure`: `survey` |
+| All measures that apply to ONE element | `ifc_measure`: `element_profile` |
+| A measure that arises from TWO elements | `ifc_measure`: `distance`, `clearance`, `overhang` |
+| What borders what, what sits in what, what lies above | `ifc_measure`: `relations` |
+| A whole OIB 2 or OIB 6 question at once | `ifc_measure`: `fire`, `envelope`, each with `kind` |
 
-Welchen Kennwert `measure` und `survey` kennen und was er bedeutet, steht
-vollständig in der Werkzeugbeschreibung. Sie hier zu wiederholen hieße, Platz
-für Urteil gegen Platz für Katalog zu tauschen.
+Which measures `measure` and `survey` know and what each means is stated in full
+in the tool description. Repeating them here would trade room for judgement
+against room for catalogue.
 
-**Mehrere Modelle im Projekt:** `model_name` mit einem Stück des Dateinamens
-setzen. Ohne das antwortet das Werkzeug mit der Liste der Modelle — diese
-Antwort weitergeben, nicht ein Modell erraten.
+**Several models in the project:** set `model_name` to a piece of the file name.
+Without it the tool answers with the list of models. Pass that answer on; do not
+guess a model.
 
-## 4. Der Reihenfolge nach, wie ein Mensch einen Plan liest
+## 4. In order, the way a person reads a plan
 
-Gebäude → Geschoß → Raum → Bauteil. Jeder Schritt liefert die GlobalId für den
-nächsten; eine erfundene GlobalId wird namentlich abgelehnt.
+Building → storey → room → element. Each step supplies the GlobalId for the
+next; an invented GlobalId is rejected by name.
 
-Das Verfahren ist für **jede** OIB-Richtlinie dasselbe, und nur die Maße
-wechseln:
+The procedure is the same for **every** OIB guideline, and only the measures
+change:
 
-1. **Welche Bestimmung** — aus der Wissensbasis, nicht aus dem Modell. Sie nennt
-   das verlangte Maß und den Grenzwert.
-2. **Welche Bauteile** — über `find_elements` oder gleich über die Auswahl eines
-   `survey`, nie geraten.
-3. **Das Maß nehmen.**
-4. **Berichten**: Zahl, Toleranz, Herkunft, beteiligte Bauteile, bei mehreren die
-   Spanne. Die Bewertung gegen den Grenzwert ist ein eigener, ausgesprochener
-   Schritt.
+1. **Which provision**: from the knowledge base, not from the model. It names
+   the required measure and the limit.
+2. **Which elements**: through `find_elements`, or directly through the
+   selection of a `survey`, never guessed.
+3. **Take the measure.**
+4. **Report**: number, tolerance, origin, elements involved, and for several
+   the range. Assessing against the limit is a separate, stated step.
 
-Drei Ketten als Beispiel dieses Verfahrens — nicht als Verfahren. Für eine
-Richtlinie, die hier nicht steht, gilt 1 bis 4 genauso, und jede Kette wird
-kürzer, sobald ein Schritt über eine Menge statt über ein Bauteil geht.
+Three chains as examples of this procedure, not as the procedure. For a
+guideline not listed here, 1 to 4 apply just the same, and every chain gets
+shorter as soon as a step runs over a set instead of over one element.
 
-**„Reicht die Raumhöhe?" (OIB 3)** — ein `survey` mit `measure: "clearHeight"`
-über die Räume des Geschosses. Ein Aufruf, alle Räume, Spanne inklusive. Die
-Mindesthöhe kommt aus der Bestimmung, nicht aus dem Modell.
+**"Is the room height sufficient?" (OIB 3)**: a `survey` with
+`measure: "clearHeight"` over the rooms of the storey. One call, all rooms,
+range included. The minimum height comes from the provision, not from the
+model.
 
-**„Passt dieses Fenster mit dem Dach für den Lichteinfall?" (OIB 3)** — die
-längste Kette hier, und sie beginnt nicht am Modell: `find_elements` mit
-`ifc_type: "IfcWindow"` → `relations` mit `relation: "hostedIn"` für die Wand →
-`overhang` mit dem Dach als `global_id` und dieser Wand als `other_global_id` →
-`light_incidence` auf dem Fenster, mit `angle_deg` und `swivel_deg` aus der
-**Bestimmung** (für OIB 3: 45 und 30) — die also vorher aus der Wissensbasis
-geholt sein muss und selbst eine Runde kostet. Für Fläche und Prozentsatz liefert
-`lightEntryArea` beides in einem Maß statt in zweien. Das ist die Kette, bei der
-das Budget zuerst knapp wird; wenn eine Auswahl daneben greift, gehört das
-Fehlende nach Abschnitt 1 in die Antwort, statt am Ende geraten zu werden.
+**"Does this window work with the roof for daylight?" (OIB 3)**: the longest
+chain here, and it does not start at the model: `find_elements` with
+`ifc_type: "IfcWindow"` → `relations` with `relation: "hostedIn"` for the wall →
+`overhang` with the roof as `global_id` and this wall as `other_global_id` →
+`light_incidence` on the window, with `angle_deg` and `swivel_deg` from the
+**provision** (for OIB 3: 45 and 30). That means they must have been fetched
+from the knowledge base beforehand, which itself costs a round. For area and
+percentage, `lightEntryArea` returns both in one measure instead of two. This is
+the chain where the budget gets tight first; if a selection misses, what is
+missing belongs in the answer per section 1, instead of being guessed at the
+end.
 
-**„Wie lang ist der Fluchtweg, und wie breit sind die Türen darin?" (OIB 2)** —
-`measure: "egressPath"` am Raum nennt Räume, Türen und Länge in einem Aufruf; die
-Türen daraus gehen als Id-Liste in einen einzigen `measure: "clearWidth"`. Bevor
-eine Aussage über *alle* Wege fällt, sagt `fire` mit `kind: "doorGraph"`, wie
-tragfähig die Grundlage überhaupt ist. Und zur
-Länge gehört zwingend der Hinweis, dass sie ein Streckenzug über Mittelpunkte
-und damit eine **Untergrenze** ist, keine Fluchtweglänge im Sinne der OIB 2 —
-ohne diesen Satz sieht ein zu langer Weg unauffällig aus.
+**"How long is the escape route, and how wide are the doors in it?" (OIB 2)**:
+`measure: "egressPath"` on the room names rooms, doors and length in one call;
+the doors from it go as an id list into a single `measure: "clearWidth"`. Before
+any statement about *all* routes, `fire` with `kind: "doorGraph"` says how sound
+the basis is at all. And the length must be accompanied by the note that it is a
+polyline through midpoints and therefore a **lower bound**, not an escape-route
+length in the sense of OIB 2. Without that sentence a route that is too long
+looks unremarkable.
 
-Nicht drei Operatoren ausprobieren, um zu sehen, welcher etwas liefert: die vier
-geometrischen Relationen (`bounds`, `enclosedBy`, `opensTo`, `adjacentSpaces`)
-bauen beim ersten Aufruf einen Kontaktplan über mehrere Sekunden, danach kostet
-er nichts mehr. Erst die Frage klären, dann gezielt eine davon aufrufen.
+Do not try three operators to see which returns something: the four geometric
+relations (`bounds`, `enclosedBy`, `opensTo`, `adjacentSpaces`) build a contact
+plan on the first call that takes several seconds, after which it costs
+nothing. Clarify the question first, then call one of them deliberately.
 
-## 5. Fallstricke
+## 5. Pitfalls
 
-Jeder Punkt hier hat schon einmal eine falsche Zahl in eine Antwort gebracht.
-Die ersten beiden sind dieselbe Falle in zwei Gestalten: die Zahl ist richtig,
-der Name darüber ist falsch, und der Fehler zeigt in die Richtung, in der zu
-wenig als genug durchgeht.
+Each point here has once put a wrong number into an answer. The first two are
+the same trap in two shapes: the number is right, the name above it is wrong,
+and the error points in the direction in which too little passes as enough.
 
-**`clearWidth` liefert die Rohbaulichte, nicht die fertige Durchgangsbreite.**
-Gemessen wird die lichte Öffnung im Rohbau, auf die Öffnungsebene projiziert.
-Die lichte Durchgangsbreite einer Tür wird zwischen den fertigen Zargenfalzen
-gemessen und ist 15–25 % kleiner — die Richtung, in der eine zu schmale
-Fluchttür breit genug aussieht. Der `caveat` des Operators gehört in die
-Antwort, und die Zahl wird dort nie „lichte Durchgangsbreite" genannt; welches
-der beiden Maße gefordert ist, entscheidet die Bestimmung. Ohne Öffnung mit
-Geometrie ist der gemessene Bauteilkörper zudem eine **Obergrenze** und als
-Nachweis einer Mindestbreite unbrauchbar, und bei nicht rechteckiger Öffnung ist
-die gemeldete Breite das größte, nicht das durchgehend lichte Maß.
+**`clearWidth` returns the structural clear opening, not the finished passage
+width.** What is measured is the clear opening in the shell, projected onto the
+opening plane. The clear passage width of a door is measured between the
+finished frame rebates and is 15 to 25 % smaller, which is the direction in
+which an escape door that is too narrow looks wide enough. The operator's
+`caveat` belongs in the answer, and the number is never called "lichte
+Durchgangsbreite" there; which of the two measures is required is decided by the
+provision. Without an opening that has geometry, the measured element body is
+moreover an **upper bound** and useless as proof of a minimum width, and for a
+non-rectangular opening the reported width is the largest, not the consistently
+clear one.
 
-**Die Geschoßhöhe liegt rund 30 cm über der lichten Raumhöhe** — der Abstand
-zwischen Nichterfüllen und Erfüllen. `storey_heights` und die Höhen im Briefing
-sind Rohbaumaße von Oberkante zu Oberkante; ein Raumhöhennachweis kennt nur
+**The storey height is about 30 cm above the clear room height**, the distance
+between failing and passing. `storey_heights` and the heights in the briefing
+are shell dimensions from top edge to top edge; a room-height proof knows only
 `clearHeight`.
 
-**`clearHeight` misst bis zum tiefsten Hindernis, nicht bis zur Raumdecke.**
-Gemessen wird mit einem 5×5-Raster senkrecht nach oben, Möblierung ausgenommen,
-alles andere zählt. Ein schmaler Unterzug zwischen zwei Rasterpunkten kann
-verfehlt werden; für einen Nachweis gehört das in die Antwort. Liegt kein
-Rasterpunkt im Raumkörper, kommt `decidable: false`, und ein feineres Raster
-lässt sich nicht anfordern — dann `extent` nehmen und die Zahl ausdrücklich als
-Höhe des modellierten Raumkörpers benennen, nie als lichte Höhe.
+**`clearHeight` measures up to the lowest obstacle, not up to the room
+ceiling.** It is measured with a 5×5 grid straight upward, furniture excluded,
+everything else counts. A narrow beam between two grid points can be missed;
+for a proof that belongs in the answer. If no grid point lies in the room body,
+`decidable: false` comes back, and a finer grid cannot be requested. Then take
+`extent` and state the number explicitly as the height of the modelled room
+body, never as clear height.
 
-**`sillAndHead` misst an der Rohbauöffnung**, über der Geschoßebene und nicht
-über dem Projektnull. Ein Fußbodenaufbau verringert die tatsächliche
-Brüstungshöhe um seine Dicke — bei der 1,00-m-Grenze der Absturzsicherung
-entscheidet das.
+**`sillAndHead` measures at the structural opening**, above the storey level and
+not above project zero. A floor build-up reduces the actual parapet height by
+its thickness; at the 1.00 m limit for fall protection that decides it.
 
-**Flächeneinheit und Längeneinheit sind unabhängig.** Eine Datei kann in
-Millimetern messen und Flächen in Quadratmetern deklarieren. Meldet `floorArea`
-einen WIDERSPRUCH zwischen deklarierter und gemessener Fläche, dann beide Zahlen
-berichten und keine auswählen. Und 0 m² an einer Wand ist ein Messergebnis,
-keine fehlende Angabe.
+**Area unit and length unit are independent.** A file can measure in
+millimetres and declare areas in square metres. If `floorArea` reports a
+CONTRADICTION between declared and measured area, report both numbers and choose
+neither. And 0 m² on a wall is a measurement result, not a missing value.
 
-**`azimuth` kann um 180° gedreht sein.** „Außen" ist die Normale, die von der
-Grundrissmitte wegzeigt; an einem Innenhof oder in einem einspringenden
-Baukörper ist das die falsche Seite.
+**`azimuth` can be turned by 180°.** "Outside" is the normal that points away
+from the middle of the floor plan; at a courtyard or in a re-entrant building
+volume that is the wrong side.
 
-### Leere Ergebnisse sind Aussagen über den Export
+### Empty results are statements about the export
 
-Keines davon ist eine Aussage über das Gebäude, und hinter jedem wartet ein
-„…also gibt es das nicht", das falsch wäre.
+None of them is a statement about the building, and behind each waits a "...so
+it does not exist" that would be wrong.
 
-- **„0 Treffer"** — vor einem „gibt es nicht" die Typschreibweise und den
-  Geschoßnamen prüfen. `ifc_type` ist ein exakter Klassenvergleich **ohne**
-  IFC-Vererbung: eine Suche nach IfcWall findet keine IfcWallStandardCase.
-  `storey` wird wörtlich verglichen; „EG" statt „00 Erdgeschoss" trifft nichts.
-  Beide Schreibweisen nennt `briefing`.
-- **`hostedIn` leer für einen ganzen Export** — manche Exporte schreiben die
-  Rohbauöffnung nicht mit, die Wand trägt den Ausschnitt im Körper. Das heißt
-  nicht, dass das Fenster in keiner Wand sitzt; die Bezugswand dann über
-  `relation: "bounds"` am Raum oder über `find_elements` holen.
-- **`contains` an einem Raum leer** — viele Exporte ordnen Bauteile dem Geschoß
-  statt dem Raum zu.
-- **Die Relationsliste von `element` unvollständig** — die vier geometrischen
-  Relationen stehen dort nie, weil sie zu prüfen Sekunden kostet. Ihr Fehlen ist
-  kein Befund; über `relations` sind sie normal abrufbar.
-- **`adjacentSpaces` heißt nicht „begehbar"** — zwei Räume mit gemeinsamer Wand
-  ohne Tür sind Nachbarn. Für die Verbindung `opensTo` an der Tür.
-- **Aufgelistet ist nicht gefunden** — `find_elements` zeigt höchstens `limit`
-  Treffer und nennt die Gesamtzahl daneben; in die Antwort gehört die
-  Gesamtzahl. `survey` misst höchstens 50 Bauteile und sagt daneben, wie viele
-  es insgesamt waren — bei `balustrade`, `headroom`, `roomDepth` und
-  `thresholdHeight` ohne ausdrückliches `limit` nur **12**, weil diese Kennwerte
-  je Bauteil spürbar Zeit kosten. Wer vierzig Türen erwartet und zwölf Zeilen
-  bekommt, hat nicht gemessen, was er glaubt: `limit` ausdrücklich setzen.
-- **`decidable: false` ist ein Befund, kein Fehler** — die Frage war sinnvoll,
-  diese Datei kann sie nicht beantworten. `missing` nennt, was fehlt und was es
-  behebt; die Abhilfe ist die Arbeitsanweisung an die Architektin und oft der
-  nützlichste Teil. Eine Antwort dagegen, die mit „Error:" beginnt, trägt gar
-  keine Aussage und wird korrigiert statt berichtet.
+- **"0 hits"**: before a "does not exist", check the type spelling and the
+  storey name. `ifc_type` is an exact class comparison **without** IFC
+  inheritance: a search for IfcWall finds no IfcWallStandardCase. `storey` is
+  compared literally; "EG" instead of "00 Erdgeschoss" hits nothing. `briefing`
+  names both spellings.
+- **`hostedIn` empty for a whole export**: some exports do not write the
+  structural opening, and the wall carries the cut-out in its body. That does
+  not mean the window sits in no wall; fetch the host wall through
+  `relation: "bounds"` on the room or through `find_elements`.
+- **`contains` empty on a room**: many exports assign elements to the storey
+  instead of the room.
+- **The relation list of `element` incomplete**: the four geometric relations
+  never appear there, because checking them costs seconds. Their absence is not
+  a finding; through `relations` they can be called normally.
+- **`adjacentSpaces` does not mean "walkable"**: two rooms with a shared wall
+  and no door are neighbours. For the connection use `opensTo` on the door.
+- **Listed is not found**: `find_elements` shows at most `limit` hits and names
+  the total next to them; the total belongs in the answer. `survey` measures at
+  most 50 elements and says next to it how many there were in all, and for
+  `balustrade`, `headroom`, `roomDepth` and `thresholdHeight` without an
+  explicit `limit` only **12**, because these measures take noticeable time per
+  element. Whoever expects forty doors and gets twelve rows has not measured
+  what they believe: set `limit` explicitly.
+- **`decidable: false` is a finding, not an error**: the question made sense,
+  this file cannot answer it. `missing` names what is lacking and what remedies
+  it; the remedy is the work instruction to the architect and often the most
+  useful part. An answer that begins with "Error:", by contrast, carries no
+  statement at all and is corrected rather than reported.
 
-### Hinsehen
+### Looking
 
-Gezeichnet wird immer **ein Grundriss**; Schnitt und Ansicht gibt es **nicht**.
-Ein Überstand wird gemessen (`overhang`), nicht gezeichnet — also keinen Schnitt
-anbieten und keinen ankündigen. Und aus keinem Bild wird je ein Maß abgelesen:
-das ist geraten, auch wenn es zufällig stimmt. Ein Blick auf den Plan gehört in
-dieselbe Runde wie die Messung, zu der er gehört; eine eigene Runde lohnt er,
-wenn unklar ist, welches Bauteil gemeint ist, und nicht als Illustration einer
-schon feststehenden Zahl.
+What is drawn is always **a floor plan**; section and elevation do **not**
+exist. An overhang is measured (`overhang`), not drawn, so offer no section and
+announce none. And no measure is ever read off an image: that is guessed, even
+if it happens to be right. A look at the plan belongs in the same round as the
+measurement it goes with; it merits a round of its own when it is unclear which
+element is meant, and not as an illustration of a number that is already fixed.
 
-## 6. Wie die Zahl in die Antwort kommt
+## 6. How the number gets into the answer
 
-Die gerenderte Zeile trägt bereits das richtige Verb. Sie zu zitieren ist
-sicherer, als den Satz neu zu bauen:
+The rendered line already carries the right verb. Quoting it is safer than
+rebuilding the sentence. These are the German phrasings the lines use:
 
-- `declared` → „Das Modell **deklariert** …" — die Angabe der Datei.
-- `computed` → „**Gemessen** … (± Toleranz)" — unsere Zahl. Die Toleranz gehört
-  dazu; ohne sie ist es eine andere Behauptung.
-- `inferred` → „**Vermutlich** …" mit der Begründung aus `because`, als
-  Vorschlag zur Bestätigung. `room_inventory` ist immer das: ob ein Raum ein
-  Aufenthaltsraum ist, ist eine rechtliche Einstufung, keine geometrische.
+- `declared` → „Das Modell **deklariert** …“: the file's statement.
+- `computed` → „**Gemessen** … (± Toleranz)“: our number. The tolerance belongs
+  with it; without it it is a different claim.
+- `inferred` → „**Vermutlich** …“ with the reason from `because`, as a proposal
+  for confirmation. `room_inventory` is always that: whether a room is an
+  Aufenthaltsraum is a legal classification, not a geometric one.
 
-Ein `caveat` sagt meist, **wie** gemessen wurde und was dabei danebengehen kann.
-Er gehört in die Antwort, nicht in eine Fußnote.
+A `caveat` usually says **how** the measurement was taken and what can go wrong
+with it. It belongs in the answer, not in a footnote.
 
-## 7. Geometrie ist kein Urteil
+## 7. Geometry is not a verdict
 
-Die Werkzeuge liefern Maße. Ob ein Maß eine Anforderung erfüllt, entscheidet die
-**Bestimmung** aus der Wissensbasis. Winkel und Prozentsätze sind Parameter, die
-aus der Klausel gebunden werden — deshalb verweigert `light_incidence` ohne
-`angle_deg` die Auskunft, statt 45 anzunehmen: den Winkel zu liefern hieße, die
-Klausel anzuwenden.
+The tools return measures. Whether a measure meets a requirement is decided by
+the **provision** from the knowledge base. Angles and percentages are parameters
+bound from the clause. That is why `light_incidence` without `angle_deg`
+refuses to answer instead of assuming 45: supplying the angle would mean
+applying the clause.
 
-Konkret für den Lichteinfall: ein geschnittenes 45-Grad-Prisma vergrößert die
-erforderliche Lichteintrittsfläche, es verbietet das Fenster nicht. Wer aus
-„Prisma geschnitten" ein „nicht erfüllt" macht, hat die Bestimmung nicht
-angewandt, sondern übersprungen. Dasselbe gilt für jede Zahl aus diesem Paket:
-keine Gebäudeklasse, kein „erfüllt", kein Grenzwert, der nicht aus einer Klausel
-zitiert ist.
+Concretely for daylight: a cut 45-degree prism enlarges the required light
+entry area; it does not forbid the window. Whoever turns "prism cut" into "not
+met" has not applied the provision but skipped it. The same holds for every
+number from this package: no Gebäudeklasse, no "erfüllt", no limit that is not
+cited from a clause.
 
-Eine gute Antwort auf eine Maßfrage nennt die Zahl mit Einheit und Toleranz,
-ihre Herkunft, die beteiligten Bauteile, bei mehreren die Spanne — und was offen
-bleibt, mit dem, was es beheben würde.
+A good answer to a measurement question states the number with unit and
+tolerance, its origin, the elements involved, for several the range, and what
+remains open together with what would settle it.
 
-## 8. Gemessenes sichtbar machen
+## 8. Making what was measured visible
 
-Eine Zahl aus dem Modell als Satz zeigt nichts, das man anschauen könnte. Die
-Karte ist der Default, nicht ein Extra.
+A number from the model as a sentence shows nothing one could look at. The card
+is the default, not an extra.
 
-Jede Antwort endet mit einer `Bezug:`-Zeile, genau die GlobalIds, aus denen die
-Zahl gebildet wurde.
+Every answer ends with a `Bezug:` line, exactly the GlobalIds from which the
+number was formed.
 
-- Eine Menge (Wände eines Geschoßes, Türen, die eine Breite reißen) →
-  `ifc_viewer`. Eine Highlight-Gruppe pro Bedeutung (`fail` / `warning` /
-  `info`). `storey` isoliert ein Geschoß. In der Gruppe: `match` (dieselben
-  Filter wie die Abfrage) für eine Menge, `global_ids` nur für die wenigen
-  Bauteile, die der Satz namentlich nennt. Genau eines von beiden.
-- Ein Bauteil, um das die ganze Antwort kreist → `ifc_element`.
-- Ein Raumbuch → `ifc_schedule`.
-- Ein Prüflauf → `ifc_compliance`, nur Ids aus den `Regel <id>:`-Zeilen dieses
-  Zuges.
-- Ein Vergleich zweier Stände → `ifc_diff`.
-- Nur anschauen oder öffnen, und es gibt mehrere Modelle → `ifc_model_picker`.
-  Überschrift, keine Dateinamen zum Abtippen.
+- A set (walls of a storey, doors that break a width) → `ifc_viewer`. One
+  highlight group per meaning (`fail` / `warning` / `info`). `storey` isolates a
+  storey. In the group: `match` (the same filters as the query) for a set,
+  `global_ids` only for the few elements the sentence names. Exactly one of the
+  two.
+- One element the whole answer revolves around → `ifc_element`.
+- A room schedule → `ifc_schedule`.
+- A compliance run → `ifc_compliance`, only ids from the `Regel <id>:` lines of
+  this turn.
+- A comparison of two versions → `ifc_diff`.
+- Only to look at or open, and there are several models → `ifc_model_picker`.
+  A heading, no file names to type out.
 
-`model_file` ist der Dateiname, den das Werkzeug gemeldet hat (`Modell: …`),
-nie eine UUID.
+`model_file` is the file name the tool reported (`Modell: …`), never a UUID.
 
-Ids **nie erfinden**. Jede GlobalId und jede Regel-Id kommt aus einer Zeile,
-die `ifc_query` oder `ifc_measure` in THIS turn geliefert hat. Eine erfundene
-Id markiert das falsche Bauteil und sieht dabei aus wie eine echte.
+**Never invent** ids. Every GlobalId and every rule id comes from a line that
+`ifc_query` or `ifc_measure` returned in THIS turn. An invented id marks the
+wrong element and looks like a real one while doing so.
 
-`status` folgt der **Bestimmung**, nicht der Messung. Solange kein Grenzwert
-angewandt wurde, ist er `info`. Ein rotes `fail` ist ein Befund, und ein
-Befund braucht eine Klausel dahinter.
+`status` follows the **provision**, not the measurement. As long as no limit has
+been applied, it is `info`. A red `fail` is a finding, and a finding needs a
+clause behind it.

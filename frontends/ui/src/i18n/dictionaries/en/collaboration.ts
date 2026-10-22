@@ -620,6 +620,15 @@ export const collaboration = {
         variants: {
           one: { body: '1 place marked as a proposal, not yet accepted.' },
           many: { body: '{marks} places marked as proposals, not yet accepted.' },
+          // The check of a new document against the project's others, not a comparison with a previous revision.
+          check_one: {
+            title: 'Piloti checked the new document “{subject}” against your other documents',
+            body: '1 place marked as a proposal, not yet accepted.',
+          },
+          check_many: {
+            title: 'Piloti checked the new document “{subject}” against your other documents',
+            body: '{marks} places marked as proposals, not yet accepted.',
+          },
         },
       },
       pilotiWorkDone: {

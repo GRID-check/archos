@@ -1,53 +1,53 @@
 ---
 name: hygiene
 description: >
-  Ob dieser Raum ein Aufenthaltsraum ist, und was OIB 3 dann verlangt.
+  Whether this room is an Aufenthaltsraum, and what OIB 3 then requires.
 metadata:
   grid-agents: researcher,deep_researcher
   grid-cards: daylight_incidence
 ---
 
-# Zuerst den Raum einordnen, dann die Anforderung holen
+# Classify the room first, then fetch the requirement
 
-OIB 3 hängt daran, ob etwas ein Aufenthaltsraum ist. Das ist eine rechtliche
-Einordnung, kein Raumstempel und kein Name auf dem Plan. Die Maße kommen danach.
+OIB 3 hangs on whether something is an Aufenthaltsraum. That is a legal
+classification, not a room stamp and not a name on the plan. The dimensions
+come after.
 
-## 1. Was ist dieser Raum?
+## 1. What is this room?
 
-Hol die Bestimmung, die Aufenthaltsraum definiert. Wende sie auf die Nutzung
-und die Angaben in der Frage oder in den Projektunterlagen an. Unklar → eine
-Frage, kein stilles Ja.
+Fetch the provision that defines Aufenthaltsraum. Apply it to the use and to
+the details in the question or in the project documents. Unclear → one
+question, not a silent yes.
 
-**Fertig**, sobald die Einordnung eine Fundstelle hat oder als offen steht.
+**Done** once the classification has a citation or stands as open.
 
-## 2. Dann die Anforderung, dann das Maß
+## 2. Then the requirement, then the dimension
 
-Raumhöhe, Belichtung, Lüftung, Fensterfläche: die Grenze steht in der Klausel.
-Das Maß kommt aus der Frage, dem Plan oder den Unterlagen. Nie umgekehrt, sonst
-prüfst du das Falsche sauber.
+Room height, daylight, ventilation, window area: the limit is in the clause.
+The dimension comes from the question, the plan or the documents. Never the
+other way round, or you check the wrong thing cleanly.
 
-Die Bestimmung liefert den Grenzwert. Eine Zahl ohne Herkunft ist behauptet.
+The provision supplies the limit. A figure without a source is only claimed.
 
-## 3. Zeigen
+## 3. Showing it
 
-Belichtung mit Prisma und Glasanteil → `daylight_incidence`.
-Mehrere Anforderungen nebeneinander → als Prüftabelle mit Status-Spalte.
-Die Stelle, an deren Wortlaut die Antwort hängt → als Zitatzeile `> „…“ [N]`.
+Daylight with light prism and glazing share → `daylight_incidence`.
+Several requirements side by side → as a check table with a status column.
+The passage whose wording the answer hangs on → as a quote line `> „…“ [N]`.
 
-## Was schiefläuft
+## What goes wrong
 
-Ein geschnittenes Lichtprisma ist kein Verbot des Fensters. Es ändert die
-erforderliche Fläche. Wer aus „geschnitten“ ein „nicht erfüllt“ macht, hat die
-Bestimmung übersprungen.
+A cut light prism is not a ban on the window. It changes the required area.
+Whoever turns "cut" into "not met" has skipped the provision.
 
-Die Geschoßhöhe ist nicht die lichte Raumhöhe. Die Herkunft der Zahl gehört
-in den Satz.
+The storey height is not the clear room height. The source of the figure
+belongs in the sentence.
 
-Bestand, Zubau und größere Renovierung holen oft andere Anforderungen als
-Neubau. `existing_or_new` im Projektkontext lesen, bevor eine Neubau-Klausel
-zitiert wird.
+Existing buildings, extensions and major renovations often bring different
+requirements than new builds. Read `existing_or_new` from the project context
+before citing a new-build clause.
 
 ## Done
 
-Die Einordnung steht, die Klausel ist zitiert, das Maß hat eine Herkunft. Oder
-es fehlt genau die Tatsache, die die Einordnung trägt.
+The classification stands, the clause is cited, the dimension has a source. Or
+exactly the fact that carries the classification is missing.

@@ -413,8 +413,10 @@ is proposed as marks on it ([ADR-0130](../adr/0130-piloti-notices-a-new-fassung.
    compared page.
 
 It never links, unlinks, sets a mark open or says whether a change is allowed.
-Checking the changed values against the project's key documents is the next
-slice (ADR-0130).
+Checking what a new document states against the project's other documents is
+the second notice, the `document_check` job: a headless turn that proposes cited
+marks only where facts disagree, queued for a first upload too
+(ADR-0130, „Second slice“).
 
 ## Privacy
 

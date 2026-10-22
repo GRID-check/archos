@@ -1,49 +1,48 @@
 ---
 name: plot-development
 description: >
-  Was aufs Grundstück darf: Bauklasse und Gebäudehöhe, Bauwich, Widmung, GFZ,
-  Stellplätze. Land und Gemeinde, nicht OIB.
+  What may go on the plot: Bauklasse and building height, Bauwich, zoning, GFZ,
+  parking. Land and municipality, not OIB.
 metadata:
   grid-agents: researcher,deep_researcher
   grid-cards: setback_plan,building_section,calculation
 ---
 
-# Eine Frage zum Grundstück beantworten
+# Answering a question about the plot
 
-## Das steht nicht in den OIB-Richtlinien
+## This is not in the OIB guidelines
 
-Abstände, Höhen, Dichte, Widmung und Stellplätze sind Landes- und Gemeinderecht:
-Bauordnung, Bebauungsplan, Flächenwidmungsplan, Stellplatzregulativ. Die
-OIB-Richtlinien regeln sie nicht.
+Distances, heights, density, zoning and parking are Land and municipal law:
+Bauordnung, Bebauungsplan, Flächenwidmungsplan, Stellplatzregulativ. The OIB
+guidelines do not regulate them.
 
-Zwei Folgen. Erstens hängt die Antwort immer am Bundesland. Steht es im
-Projektkontext, darunter antworten und es nennen. Fehlt es, das ist die Frage.
-Es gibt hier keine österreichweite Zahl. Zweitens weißt du nicht, was der
-Bebauungsplan *dieses* Grundstücks festsetzt. Du kannst sagen, welche Regel
-greift und was sie üblicherweise festlegt. Du kannst nicht sagen, was hier
-festgelegt wurde. Sag, wo nachzusehen ist, statt eine plausible Zahl zu
-erfinden.
+Two consequences. First, the answer always hangs on the Bundesland. If it is in
+the project context, answer under it and name it. If it is missing, that is the
+question. There is no Austria-wide figure here. Second, you do not know what
+the Bebauungsplan of *this* plot sets. You can say which rule applies and what
+it usually sets. You cannot say what was set here. Say where to look instead of
+inventing a plausible figure.
 
-Hol die Bestimmung über RIS. Eine erinnerte Wiener Formel auf ein anderes Land
-gelegt ist falsch und sieht richtig aus.
+Fetch the provision through RIS. A remembered Viennese formula laid over
+another Land is wrong and looks right.
 
-## Die Normenkette gehört in die Antwort
+## The chain of norms belongs in the answer
 
-Wo eine Frage Landesrecht und eine OIB-Richtlinie zugleich berührt, sag,
-welche Ebene welchen Teil trägt. Was bindet und was nur auslegt, *ist* in
-diesem Genre die Information.
+Where a question touches Land law and an OIB guideline at once, say which level
+carries which part. What binds and what merely interprets *is* the information
+in this genre.
 
-## Welches Bild
+## Which picture
 
-Grundstück, Fußabdruck, Abstände je Seite → `setback_plan`.
-Bebauungsgrad, GFZ, Flächen gegen die Grenze → `setback_plan` mit `coverage`
-und `density`; die Karte rechnet die Quote aus den Flächen.
-Eine Höhenprüfung über die Geschoße, Fluchtniveau → `building_section`.
-Stellplätze gefordert gegen vorhanden → als Kennzahlen (Wert gegen Grenzwert), mit der
-Bemessungsgrundlage in der Prosa: ohne sie ist die Zahl nicht prüfbar. Eine
-errechnete Stellplatzzahl → `calculation`.
+Plot, footprint, distances per side → `setback_plan`.
+Site coverage, GFZ, areas against the limit → `setback_plan` with `coverage`
+and `density`; the card computes the ratio from the areas.
+A height check across the storeys, escape level → `building_section`.
+Parking required against provided → as key figures (value against limit), with
+the basis of assessment in the prose: without it the figure cannot be checked.
+A calculated parking count → `calculation`.
 
 ## Done
 
-Land und Instrument sind genannt. Jede Zahl hat eine Fundstelle oder steht
-ausdrücklich als unbekannt, weil der Plan dieses Grundstücks fehlt.
+Land and instrument are named. Every figure has a citation or is explicitly
+marked unknown because the plan for this plot is missing.

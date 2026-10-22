@@ -7,6 +7,7 @@ from langchain_core.messages import HumanMessage
 from langchain_core.messages import ToolMessage
 
 from aiq_agent.common.answer_envelope import drop_unfiled_proposals
+from aiq_agent.common.workspace_records import LISTING_MAX_CHARS
 from aiq_agent.common.workspace_records import filed_proposal_ids
 from aiq_agent.common.workspace_records import is_workspace_call
 from aiq_agent.common.workspace_records import record_from_result
@@ -129,3 +130,33 @@ def test_a_read_keeps_one_item_per_row_and_none_for_piloti_s_words():
     assert "schnitt prüfen" in record.haystack and "brüstung" not in record.haystack
     assert any("schnitt prüfen" in item for item in record.items)
     assert any(item.split("\n") == ["2"] for item in record.items)
+
+
+TREE = (
+    "Top level  14 documents (2 here, 12 below), 2 subfolders\n"
+    "  Dokumentart: Grundriss 5 · Schnitt 3\n"
+    "Einreichung/  6 documents (all here; 2 older Fassungen)\n"
+    "  Dokumentart: Grundriss 4\n"
+    "  Current: Einreichplan EG Index B (2026-09-30)\n"
+)
+
+
+def _listing(result: str, tool: str = "knowledge__list_files") -> list:
+    return [
+        AIMessage(content="", tool_calls=[{"id": "l1", "name": tool, "args": {"view": "tree"}}]),
+        ToolMessage(content=result, tool_call_id="l1", name=tool),
+    ]
+
+
+def test_a_listing_is_a_read_record_capped_and_one_item_per_line():
+    (record,) = records_from_messages(_listing(TREE))
+    assert (record.operation, record.outcome) == ("list_files", "read")
+    assert len(record.items) == 5 and "einreichplan eg index b" in record.haystack
+    (capped,) = records_from_messages(_listing("x " * 20_000))
+    assert len(capped.haystack) <= LISTING_MAX_CHARS
+
+
+def test_a_bare_name_counts_and_a_refusal_or_an_empty_listing_is_no_record():
+    assert len(records_from_messages(_listing(TREE, tool="list_files"))) == 1
+    assert records_from_messages(_listing("`view` must be files or tree.")) == []
+    assert records_from_messages(_listing("  ")) == []

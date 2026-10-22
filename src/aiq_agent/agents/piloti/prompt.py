@@ -279,6 +279,7 @@ _TRIGGER_EVENTS = {
     "thread_reply": "replied in the thread of an Anmerkung you started",
     "assigned": "assigned an Anmerkung to you",
     "agent_consult": "asked you through a connected agent (such as Claude or Cursor)",
+    "new_document": "uploaded a new document that has just been indexed, and this check was queued for it",
 }
 
 

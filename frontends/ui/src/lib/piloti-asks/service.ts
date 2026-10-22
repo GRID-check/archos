@@ -53,6 +53,7 @@ import {
   type HeadlessUserMessage,
 } from '@/lib/turns/headless-turn'
 import type { TurnOutcomeRequest } from '@/lib/turns/outcome-types'
+import { askAnswerMessageId } from '@/lib/turns/answer-ids'
 import { resolveTurnContext, TurnBudgetExhaustedError } from '@/lib/turns/turn-context'
 import { turnContextHeaders } from '@/lib/turns/turn-headers.js'
 import { answerEvidence } from './answer-evidence'
@@ -89,10 +90,7 @@ const CANCEL_WAIT_MS = 5_000
 
 const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms))
 
-/** The id of the answer a turn writes: `aiq_agent.turn.response.answer_message_id`, the same uuid5. */
-export function askAnswerMessageId(conversationId: string, askId: string): string {
-  return uuidv5(`grid:assistant:${conversationId}:${askId}`, uuidv5.URL)
-}
+export { askAnswerMessageId }
 
 /** A new conversation id in the app's shape: `s_` and a uuid with underscores. */
 const newConversationId = (): string => `s_${randomUUID().replace(/-/g, '_')}`

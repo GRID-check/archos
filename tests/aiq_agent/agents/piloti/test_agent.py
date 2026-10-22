@@ -2670,7 +2670,7 @@ class TestADirectReplyMayStillEmitACard:
         assert "every member the knowledge-base inventory lists" not in rules
         assert "nicht gelesen" in rules
         stimme = rendered.split("<stimme>")[1].split("</stimme>")[0]
-        assert "Folgerung der Herleitung" in stimme
+        assert "a conclusion of the derivation" in stimme
 
 
 class TestKnowledgeInventoryIsNotCitable:
@@ -3416,13 +3416,13 @@ class TestTheWorkingDirectoryBlock:
         transcript holds, so no tool description can resolve it."""
         block = _drafts_block()
         assert "`daraus`/`davon`/`das`" in block
-        assert "vorige Antwort dieser Unterhaltung" in block
-        assert "ohne Rückfrage nach Format oder Inhalt" in block
+        assert "previous answer of this conversation" in block
+        assert "without asking about format or content" in block
 
     def test_a_conversation_without_a_project_is_told_what_happens(self):
         block = _drafts_block()
-        assert "Ohne Projekt" in block
-        assert "bleibt der Entwurf im Arbeitsordner" in block
+        assert "Without a project" in block
+        assert "the draft stays in the working directory" in block
 
     def test_the_workflow_the_tools_own_is_no_longer_in_the_prompt(self):
         """The cut itself. Each of these was a sentence about how to hold a

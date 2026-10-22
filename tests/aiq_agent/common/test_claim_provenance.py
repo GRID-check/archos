@@ -15,7 +15,9 @@ from aiq_agent.common.claim_provenance import class_counts
 from aiq_agent.common.claim_provenance import classify_claims
 from aiq_agent.common.claim_provenance import mark_load_bearing
 from aiq_agent.common.claim_provenance import normative_uncited
+from aiq_agent.common.claim_provenance import stamp_ceiling
 from aiq_agent.common.claim_provenance import weakest_claim
+from aiq_agent.common.workspace_records import listing_record
 from aiq_agent.common.workspace_records import record_from_result
 
 APPROVALS = record_from_result(
@@ -323,3 +325,43 @@ def test_counts_and_the_normative_tally():
     ]
     assert class_counts(stamps) == {"cited": 1, "record": 1, "model_knowledge": 1}
     assert normative_uncited(stamps) == 1
+
+
+class TestAListingGroundsWhatItStates:
+    """ADR-0125, amendment of 2026-10-22: a list_files result is a record, never a citation."""
+
+    LISTING = listing_record(
+        "Einreichung/  6 documents (all here; 2 older Fassungen)\n  Current: Einreichplan EG Index B (2026-09-30)\n"
+    )
+
+    def test_a_count_in_the_listing_is_a_record_and_reaches_high(self):
+        stamps = classify_claims(
+            "Einreichung: 6 Dokumente, aktuell Index B.",
+            ClaimEvidence(records=[self.LISTING]),
+            normative=answer_mentions_normative_claim,
+        )
+        assert [(s.provenance, s.claim_type, s.operation) for s in stamps] == [("record", "value", "list_files")]
+        assert stamp_ceiling(stamps[0]) == "high"
+
+    def test_a_count_the_listing_lacks_stays_capped(self):
+        prose = "Im Ordner Wohnbau liegen 9 Dokumente."
+        (stamp,) = classify_claims(
+            prose, ClaimEvidence(records=[self.LISTING]), normative=answer_mentions_normative_claim
+        )
+        assert stamp.provenance == "model_knowledge" and stamp_ceiling(stamp) == "low"
+
+    def test_a_listing_count_beside_a_stranger_number_is_medium(self):
+        (stamp,) = classify_claims(
+            "Einreichung: 6 Dokumente und 31 Pläne.",
+            ClaimEvidence(records=[self.LISTING]),
+            normative=answer_mentions_normative_claim,
+        )
+        assert stamp.provenance == "record" and stamp_ceiling(stamp) == "medium"
+
+    def test_a_listing_never_grounds_the_law(self):
+        (stamp,) = classify_claims(
+            "Die Einreichung muss nach § 5 mindestens 6 Dokumente enthalten.",
+            ClaimEvidence(records=[self.LISTING]),
+            normative=answer_mentions_normative_claim,
+        )
+        assert stamp_ceiling(stamp) == "low"

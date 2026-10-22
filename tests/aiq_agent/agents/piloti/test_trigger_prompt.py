@@ -122,3 +122,13 @@ def test_a_question_from_a_connected_agent_names_the_door_and_answers_in_the_rep
     # No Anmerkung: the answer is the reply itself, even with the canvas at hand.
     assert "canvas__reply" not in block
     assert "do not wait" in block
+
+
+def test_a_new_document_check_says_what_woke_it_and_has_no_anmerkung():
+    trigger = TurnTrigger(kind="new_document", event_id="check-1")
+    block = trigger_block(_state(trigger=trigger), [tool["name"] for tool in CANVAS])
+
+    assert "Anna Weber uploaded a new document" in block
+    assert "`check-1`" in block
+    assert "canvas__reply" not in block
+    assert "do not wait" in block

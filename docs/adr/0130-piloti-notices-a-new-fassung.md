@@ -175,17 +175,64 @@ what moved, the basis says it was read off two pictures.
   is a `piloti-decision` on the same trace. The share accepted is the precision
   of noticing, the measurement scene 5 names.
 
-### Next slice: the cross-document check
+### Second slice: the cross-document check (built, behind the same flag)
 
-The north star also checks the changed values against the project's key
-documents (Brandschutzkonzept, Bebauungsplan). That is option 1: after the
-visual notice, when the budget allows, a headless turn on the same pair with a
-`new_revision` trigger on ADR-0106's wake path, in the same person's thread,
-given the changed pages and values (`list_files(compare_to=…)`), told to find
-the key documents by retrieval and to propose a mark only where a changed value
-contradicts one of them, with both sources. It needs a wake trigger kind, a
-per-office cap on unasked turns, and a judge row `flags_mismatch` in the north-
-star eval before it ships. It is not in this slice.
+The north star also checks what a new document states against the project's
+other documents: „the Konzept assumes 11 Wohnungen, the Einreichplan Index B
+shows 10“. That is option 1, and it is built as a second job kind,
+`document_check` (`frontends/ui/src/lib/document-check/`), behind the same
+`piloti-notices` flag.
+
+- **Trigger.** Any document that finishes indexing, a **first upload** as much as
+  a Fassung: `announceSettledVersions` (the upload-settled hook) calls
+  `queueDocumentCheck` for each settled user document of a project. Debounced
+  like the visual notice (`GRID_REVISION_NOTICE_DELAY_SECONDS`), run as the
+  uploader, the flag read per organization when queued and again from the
+  person's session when it runs.
+- **One check per document version.** The check's id is uuid5 of the document's
+  published version. It is the job id, the turn id and the user message's id, and
+  it is claimed as an anchor in `document_revision_announcements` (no new table):
+  the claim outlives the job, whose row is deleted when it finishes, so a re-read
+  that settles the document again checks nothing again.
+- **A headless turn, not a pipeline.** The turn is the one `piloti-asks` run
+  (`runHeadlessTurn`, the signed envelope, `X-AIQ-Mode: headless`, `if_idle`), with
+  the new trigger kind `new_document` on the wire (`event_id` the check's id, no
+  Anmerkung). `ask_user` refuses on it, so it cannot ask anyone. The instruction
+  is fixed and English: read the document, find its 2 to 4 load-bearing facts,
+  check each with `knowledge_search` and `read_passage`, and only where a fact
+  contradicts another document propose a `hint` mark on the new document with both
+  values in the body and both sources in the basis; everything agrees: answer
+  „Agrees“ and propose nothing. Marks are born proposals, as for any Piloti
+  finding. The job is sliced: the first slice starts the turn, later ones wait
+  (`notBefore`, 30 s, at most 60 times) for the turn's answer message.
+- **Its own conversation.** The turn runs in a private conversation of the person
+  whose subject is the document, so a check that finds nothing can be erased with
+  no trace in their lists. With findings it stays: it is the origin of the marks'
+  change rows (undo, `piloti-decision`).
+- **What it leaves.** Only with at least one finding (the marks the turn proposed,
+  read from `piloti_changes`): one message in the person's thread about the
+  document and one inbox row, `piloti.revision_checked` with the variants
+  `check_one` and `check_many`, through the `leaveNotice` helper the visual notice
+  uses. No finding: the conversation is deleted, nothing is left.
+- **Budget and cap.** Before the turn the job asks the same fail-closed
+  `unaskedSpendAllowed` (the person's budget status; a spent scope or an unreadable
+  budget ends it) the picture notice asks, and `resolveTurnContext` refuses a spent
+  budget again. The turn's model calls are booked to the person's budget like any
+  turn. Three bounds on the spend: one check per document version; at most
+  `GRID_DOCUMENT_CHECK_DAILY_LIMIT` (25, `0` = off) checks started per organization
+  per day, counted with the rate limiter (fail-open like every limit), a version over
+  the cap staying claimed so it is skipped and not queued later in a burst; and no
+  check at all when one settle batch announces more than
+  `GRID_DOCUMENT_CHECK_MAX_BATCH` (10) documents, since a 200-file import is not
+  checked file by file.
+- **Observable.** The turn is a normal traced turn (`turn_trigger: new_document`,
+  `trigger_event_id` the check's id). `document-check`, a NUMERIC score declared
+  in `SCORE_DEFINITIONS`, carries the number of marks on that trace (0 is written).
+  A decision on each mark is a `piloti-decision` on the same trace.
+
+Still open: a judge row `flags_mismatch` in the north-star eval
+(`ns-notice-new-document`) before the flag is switched on anywhere but a test
+office.
 
 ### Consequences
 
@@ -214,7 +261,11 @@ star eval before it ships. It is not in this slice.
 - `frontends/aiq_api/tests/test_revision_compare.py`: `revision-pages` with no
   model call, the `notice` purpose on the bulk queue and in the generation's
   metadata, the trace id handed on.
-- `tests/aiq_agent/observability/test_langfuse_scores.py`: the score is declared
+- `frontends/ui/src/lib/document-check/*.spec.ts`: a first upload queues, the switch
+  off queues nothing, one check per version, every quiet end, silence leaves
+  nothing, findings leave one message and one inbox row, the `document-check` score.
+- `tests/aiq_agent/agents/piloti/test_trigger_prompt.py`: the `new_document` trigger.
+- `tests/aiq_agent/observability/test_langfuse_scores.py`: both scores are declared
   and documented.
 
 ## Pros and Cons of the Options

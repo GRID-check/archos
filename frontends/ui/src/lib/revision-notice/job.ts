@@ -36,17 +36,13 @@ import { resolvePinnedRequesterSession } from '@/lib/auth/pinned-session'
 import type { AuthorizedSession } from '@/lib/auth/types'
 import { isPilotiNoticesEnabled } from '@/lib/authz/feature-flags'
 import { runAgentAnnotationRequest } from '@/lib/annotations/agent'
-import { ensureDocumentThread } from '@/lib/annotations/document-thread'
 import { listDocumentAnnotations } from '@/lib/annotations/repository'
-import { getBudgetStatus } from '@/lib/budgets/service'
-import { insertMessages } from '@/lib/conversations/repository'
+import { unaskedSpendAllowed } from '@/lib/budgets/unasked-spend'
 import type { Document } from '@/lib/db/schema'
 import { documentDisplayName } from '@/lib/documents/display-name'
 import { SCREENED_ONLY } from '@/lib/documents/document-reader'
 import { findDocumentInOrg } from '@/lib/documents/repository'
 import { changedRevisionPages, compareRevisionPage } from '@/lib/documents/revision-compare-service'
-import { inboxGroupKey } from '@/lib/inbox/registry'
-import { emitInboxItems } from '@/lib/inbox/service'
 import type { JobAttempt, RevisionNoticePayload } from '@/lib/jobs-queue/types'
 import { recordRevisionNoticeScore } from '@/lib/langfuse/revision-notice-score'
 import {
@@ -59,6 +55,7 @@ import {
   revisionNoticeMessageId,
   type PageComparison,
 } from './notice'
+import { leaveNotice, noticeThread } from './leave'
 
 /** How a notice ended, for the log and the tests. */
 export type NoticeOutcome =
@@ -74,17 +71,6 @@ const skipped = (reason: string): NoticeOutcome => {
 /** A refusal a retry would meet again (no access, gone, restricted, not readable): the notice ends. */
 const isFinal = (error: unknown): boolean =>
   isAuthzError(error) || (error instanceof ApiError && error.status >= 400 && error.status < 500)
-
-async function budgetAllows(session: AuthorizedSession, projectId: string | null): Promise<boolean> {
-  try {
-    const status = await getBudgetStatus(session.organizationId, session.userId, projectId)
-    return !status.blocked
-  } catch (error) {
-    // Nobody asked for this spend: a budget nobody can read is not one to spend against.
-    console.warn('[revision-notice] the budget could not be read; not comparing', error)
-    return false
-  }
-}
 
 /** One page's comparison, or null for a page that cannot be compared (past the end, not rendered). */
 async function comparePage(
@@ -122,7 +108,7 @@ async function leave(input: {
   // ...and still counts the marks it wrote then, for the inbox row and the score.
   const earlier = alreadyProposed(found, existing).flatMap((mark) => (mark.id ? [{ id: mark.id }] : []))
 
-  const conversationId = await ensureDocumentThread(session, newer)
+  const conversationId = await noticeThread(session, newer)
   const messageId = revisionNoticeMessageId(payload.noticeId)
   // The marks first: a write the person may no longer make must not leave a message about marks that are not there.
   const result =
@@ -136,50 +122,29 @@ async function leave(input: {
       : null
   const marks = [...earlier, ...((result && 'proposed' in result ? result.proposed : undefined) ?? [])]
 
-  await insertMessages([
-    {
-      id: messageId,
-      conversationId,
-      role: 'assistant',
-      content: noticeMessage({
-        newerName: documentDisplayName(newer),
-        olderName,
-        compared: input.compared,
-        skipped: input.skippedPages,
-        proposals: found,
-      }),
-      metadata: {
-        messageType: 'agent_response',
-        // The decision score on each mark finds its trace here (`lib/langfuse/decision-score.ts`).
-        ...(input.traceId ? { trace_id: input.traceId } : {}),
-        revisionNotice: { noticeId: payload.noticeId, olderDocumentId: older.id, pages: input.compared },
-      },
+  const excerpt = noticeExcerpt(fresh.length > 0 ? fresh : found)
+  await leaveNotice({
+    session,
+    newer,
+    conversationId,
+    messageId,
+    content: noticeMessage({
+      newerName: documentDisplayName(newer),
+      olderName,
+      compared: input.compared,
+      skipped: input.skippedPages,
+      proposals: found,
+    }),
+    metadata: {
+      // The decision score on each mark finds its trace here (`lib/langfuse/decision-score.ts`).
+      ...(input.traceId ? { trace_id: input.traceId } : {}),
+      revisionNotice: { noticeId: payload.noticeId, olderDocumentId: older.id, pages: input.compared },
     },
-  ])
-
-  const first = marks[0]
-  if (first) {
-    const excerpt = noticeExcerpt(fresh.length > 0 ? fresh : found)
-    await emitInboxItems([
-      {
-        organizationId: session.organizationId,
-        recipientUserId: session.userId,
-        type: 'piloti.revision_checked',
-        resourceType: 'document',
-        resourceId: newer.id,
-        anchorId: first.id,
-        actorUserId: null,
-        groupKey: inboxGroupKey('piloti.revision_checked', 'document', newer.id, first.id),
-        payload: {
-          subject: documentDisplayName(newer),
-          related: olderName,
-          openMarks: marks.length,
-          variant: marks.length === 1 ? 'one' : 'many',
-          ...(excerpt ? { excerpt } : {}),
-        },
-      },
-    ]).catch((error: unknown) => console.warn('[revision-notice] the inbox row could not be written', error))
-  }
+    marks,
+    excerpt,
+    variant: marks.length === 1 ? 'one' : 'many',
+    related: olderName,
+  })
   return marks.length
 }
 
@@ -197,7 +162,7 @@ export async function noticeRevision(organizationId: string, payload: RevisionNo
     findDocumentInOrg(payload.olderId, organizationId, SCREENED_ONLY),
   ])
   if (!newer || !older) return skipped('a document is gone or held')
-  if (!(await budgetAllows(session, newer.projectId ?? null))) return skipped('the budget is spent')
+  if (!(await unaskedSpendAllowed(session, newer.projectId ?? null))) return skipped('the budget is spent')
 
   try {
     const changed = await changedRevisionPages(session, newer.id, older.id)
