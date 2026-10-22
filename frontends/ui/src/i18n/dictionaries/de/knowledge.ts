@@ -56,7 +56,7 @@ export const knowledge: typeof en.knowledge = {
   placeThumbnail: {
     page: 'Seite {page}',
     loading: 'Seite wird gezeichnet',
-    noAccess: 'Für dich nicht verfügbar',
+    noAccess: 'Für Sie nicht verfügbar',
     unavailable: 'Keine Vorschau dieser Seite',
     embeddedImage: 'Bild {index} auf dieser Seite',
   },

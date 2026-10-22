@@ -8,7 +8,7 @@
  */
 
 import type { SourceSignal } from '@/features/layout/lib/source-presets'
-import { KIND_TO_SIGNAL, type Shelf } from '../source-kinds'
+import { KIND_TO_SIGNAL, modernizeLane, type Shelf } from '../source-kinds'
 import { splitReportSources, type ReportSourceEntry } from '@/features/layout/lib/report-citations'
 import {
   citationNumbers,
@@ -195,9 +195,36 @@ export const proseLength = (markdown: string): number => {
   return split.body.length
 }
 
+/** The fine lanes the dictionary names (`chat.sourceTabs.lanes`); project, office and web say their shelf. */
+export const NAMED_LANES = [
+  'building_law_oib',
+  'building_law_oib_guide',
+  'building_law_oib_explanatory_note',
+  'building_law_oib_definitions',
+  'building_law_oib_reference',
+  'building_law_oib_amendment',
+  'building_law_ris',
+  'building_law_base',
+  'building_law_federal',
+  'building_law_state',
+  'building_law_ordinance',
+  'authority',
+  'external_standard',
+  'office_piloti',
+  'measurement',
+] as const
+export type NamedLane = (typeof NAMED_LANES)[number]
+
+const isNamedLane = (lane: string): lane is NamedLane => (NAMED_LANES as readonly string[]).includes(lane)
+
 /** The reader's words for a provenance tab: the `chat.sourceTabs` dictionary block. */
 export interface SourceTabLabels {
-  (key: `sourceTabs.${SourceSignal}` | `sourceTabs.shelves.${Shelf}`): string
+  (
+    key:
+      | `sourceTabs.${SourceSignal}`
+      | `sourceTabs.shelves.${Shelf}`
+      | `sourceTabs.lanes.${NamedLane}`
+  ): string
 }
 
 /**
@@ -214,8 +241,13 @@ export const documentShelfLabel = (doc: CitedDocument, t: SourceTabLabels): stri
 
 /**
  * The provenance tab a document's Herleitung card is filed under: its fine lane
- * label ("OIB-Richtlinie", "Bundesrecht") when the backend classified one, then
+ * ("OIB-Richtlinie", "Bundesrecht") when the backend classified one, then
  * the SHELF the wire stated, and only then the coarse display stratum.
+ *
+ * The lane is named from the dictionary, never from the wire's `laneLabel`:
+ * the backend writes that label in German only, and an English reader got
+ * „OIB-Richtlinie“ on an English card. The wire's label stands only for a
+ * document stored without a lane key, where it is all there is.
  *
  * The shelf outranks the coarse stratum because the two answer different
  * questions and only one of them is a fact about this document's filing: a file
@@ -224,5 +256,9 @@ export const documentShelfLabel = (doc: CitedDocument, t: SourceTabLabels): stri
  * labelling it "Projektwissen" told the reader it was project knowledge the
  * office had filed, which was never true.
  */
-export const documentTabLabel = (doc: CitedDocument, t: SourceTabLabels): string =>
-  doc.laneLabel?.trim() || documentShelfLabel(doc, t) || t(`sourceTabs.${KIND_TO_SIGNAL[doc.kind]}`)
+export const documentTabLabel = (doc: CitedDocument, t: SourceTabLabels): string => {
+  const lane = modernizeLane(doc.lane?.trim())?.toLowerCase()
+  if (lane && isNamedLane(lane)) return t(`sourceTabs.lanes.${lane}`)
+  const legacy = lane ? undefined : doc.laneLabel?.trim()
+  return legacy || documentShelfLabel(doc, t) || t(`sourceTabs.${KIND_TO_SIGNAL[doc.kind]}`)
+}

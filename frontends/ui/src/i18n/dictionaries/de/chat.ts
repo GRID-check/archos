@@ -170,6 +170,26 @@ export const chat: typeof en.chat = {
       session: 'Private Sitzung',
       base: 'Basiswissen',
     },
+    // Die feine Spur eines Dokuments (`norm_registry`), in der Sprache der
+    // Lesenden: Das Backend schickt sie nur deutsch (`laneLabel`). Projekt,
+    // Büroablage und Web fehlen hier, sie sagt die Ablage oben.
+    lanes: {
+      building_law_oib: 'OIB-Richtlinie',
+      building_law_oib_guide: 'OIB-Leitfaden',
+      building_law_oib_explanatory_note: 'OIB-Erläuterung',
+      building_law_oib_definitions: 'OIB-Begriffsbestimmungen',
+      building_law_oib_reference: 'OIB-Referenzdokument',
+      building_law_oib_amendment: 'OIB-Änderungsdokument',
+      building_law_ris: 'Rechtsquelle (RIS)',
+      building_law_base: 'Basisdokument',
+      building_law_federal: 'Bundesrecht',
+      building_law_state: 'Landesrecht',
+      building_law_ordinance: 'Verordnung',
+      authority: 'Behördliche Information',
+      external_standard: 'Externe Norm',
+      office_piloti: 'Piloti-Dokument',
+      measurement: 'Modellmessung',
+    },
   },
   shortcuts: {
     label: 'Schnellzugriff',

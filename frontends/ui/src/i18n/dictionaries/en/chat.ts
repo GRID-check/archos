@@ -174,6 +174,26 @@ export const chat = {
       session: 'Private session',
       base: 'Base knowledge',
     },
+    // A document's fine lane (`norm_registry`) in the reader's language: the
+    // backend sends it in German only (`laneLabel`). Project, office filing
+    // and web are not here; the shelf above says them.
+    lanes: {
+      building_law_oib: 'OIB guideline',
+      building_law_oib_guide: 'OIB guide',
+      building_law_oib_explanatory_note: 'OIB explanatory note',
+      building_law_oib_definitions: 'OIB definitions',
+      building_law_oib_reference: 'OIB referenced standards',
+      building_law_oib_amendment: 'OIB amendment',
+      building_law_ris: 'Legal source (RIS)',
+      building_law_base: 'Base document',
+      building_law_federal: 'Federal law',
+      building_law_state: 'State law',
+      building_law_ordinance: 'Ordinance',
+      authority: 'Official information',
+      external_standard: 'External standard',
+      office_piloti: 'Piloti document',
+      measurement: 'Model measurement',
+    },
   },
   shortcuts: {
     label: 'Shortcuts',
@@ -235,7 +255,7 @@ export const chat = {
     clarify: 'Clarify',
     /** Under the matrix in a closed project, where „Clarify“ would be (ADR-0090). */
     clarifyClosed: 'Closed project: no new research to clarify open findings.',
-    commissioned: 'Run commissioned',
+    commissioned: 'Task created',
     change: {
       new: 'new',
       changed: 'changed',
@@ -262,8 +282,8 @@ export const chat = {
     // sources use: the count first, every name on expand.
     more: '+{count} more',
     less: 'Show fewer',
-    clause: 'Pkt. {clause}',
-    clausePage: 'Pkt. {clause} · p. {page}',
+    clause: 'Sec.\u00A0{clause}',
+    clausePage: 'Sec.\u00A0{clause} · p.\u00A0{page}',
     // Citations the user can actually paste somewhere — per source (Fachtext)
     // and for the whole answer in the formats external tools ingest.
     copyCitation: 'Copy citation',
@@ -1104,7 +1124,7 @@ export const chat = {
     // below. No green check, no „Done“.
     // The turn failed; the error card below says how.
     failed: 'Failed',
-    handedOff: 'Run commissioned',
+    handedOff: 'Task created',
     // Piloti did not take the question on (refused, or not admitted): the
     // banner below says why. Neutral, never „Done“.
     refused: 'Not handled',
