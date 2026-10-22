@@ -158,7 +158,7 @@ describe('ProjectLifecycleCard', () => {
   test('closing asks how it ended and when, then what stays, then the clear-out, and only then closes', async () => {
     const fetchMock = vi.fn(async (url: string) => {
       if (url.includes('/cleanup')) return Response.json({ items: [], considered: 3, aiUsed: true, aiError: null })
-      if (url.endsWith('/memory')) return Response.json({ items: [] })
+      if (url.includes('/memory')) return Response.json({ items: [] })
       return Response.json({ status: 'closed' })
     })
     vi.stubGlobal('fetch', fetchMock)
