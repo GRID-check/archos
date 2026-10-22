@@ -43,7 +43,7 @@ mcp = ["mcp>=1.0"]
 # tool degrades to a named refusal when it is absent — the findings themselves
 # are still in the briefing under FEHLT and BLIND.
 ids = ["ifctester>=0.8"]
-dev = ["pytest>=8"]
+dev = ["pytest>=8", "pytest-xdist>=3.6"]
 
 [project.scripts]
 ifc-spatial-mcp = "ifc_spatial.mcp_server:main"

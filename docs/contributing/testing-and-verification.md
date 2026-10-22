@@ -174,7 +174,7 @@ task pkg:install    # both toolchains (`task setup` does this too now)
 task pkg:test       # both suites
 ```
 
-`task verify` deliberately leaves them out. `pkg:test:py` is 636 tests in 3m55s
+`task verify` deliberately leaves them out. `pkg:test:py` is 636 tests in 1m40s on four workers (2026-10-22)
 (measured 2026-09-10) against its own IfcOpenShell/shapely environment; adding
 that to every local gate run is the fastest way to get people to stop running
 the gate. `pkg:test:ts` is ~10 seconds and runs **both** tsconfigs, the source

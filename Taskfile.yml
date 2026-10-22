@@ -106,7 +106,7 @@ tasks:
       # drift from the workflow (that drift is exactly what this file removes).
       #
       # `pkg:test` is deliberately NOT here, and the number is the reason:
-      # packages/ifc-spatial-py is 636 tests in 3m55s (measured 2026-09-10)
+      # packages/ifc-spatial-py is 636 tests in 1m40s on four workers (measured 2026-10-22)
       # against its own uv.lock and its own IfcOpenShell/shapely toolchain, on a
       # directory most changes never touch. CI runs it behind a `packages/**`
       # paths filter (ci.yml's `packages` job), which pays that cost only on the
