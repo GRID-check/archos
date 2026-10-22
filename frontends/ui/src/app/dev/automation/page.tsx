@@ -27,9 +27,9 @@ if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
     window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url
       if (url === '/api/skills') return Response.json({ skills: [] })
-      if (url.includes('/tasks')) return Response.json({ tasks: [] })
-      if (url.includes('/jobs') && !url.includes('/runs') && !url.includes('/async/')) {
-        return Response.json({ jobs: [] })
+      if (url.includes('/runs')) return Response.json({ runs: [], nextCursor: null })
+      if (url.includes('/tasks') && !url.includes('/run')) {
+        return Response.json({ tasks: [], nextCursor: null })
       }
       return real(input, init)
     }

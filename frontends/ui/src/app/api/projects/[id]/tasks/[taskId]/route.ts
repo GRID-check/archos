@@ -1,5 +1,5 @@
 /**
- * Single job API — get, patch (re-resolves the attached skill when it changed
+ * One task (the definition) — get, patch (re-resolves the attached skill when it changed
  * and recomputes next_run_at), delete. Thin adapters (ADR-0017); logic in
  * `@/lib/jobs/service`. Every query is org-scoped.
  */
@@ -9,13 +9,13 @@ import { requireSkillsEnabled } from '@/lib/authz/feature-flags'
 import { deleteJob, getJob, updateJob } from '@/lib/jobs/service'
 import { patchJobSchema } from '@/lib/jobs/types'
 
-type Params = { id: string; jobId: string }
+type Params = { id: string; taskId: string }
 
 export const GET = apiRoute<Params>(
   async ({ session, params }) => {
     const gated = requireSkillsEnabled(session)
     if (gated) return gated
-    return getJob(session, params.id, params.jobId)
+    return getJob(session, params.id, params.taskId)
   },
   {
     authz: {
@@ -29,7 +29,7 @@ export const PATCH = apiRoute<Params>(
     const gated = requireSkillsEnabled(session)
     if (gated) return gated
     const patch = await parseJsonBody(request, patchJobSchema)
-    return updateJob(session, params.id, params.jobId, patch)
+    return updateJob(session, params.id, params.taskId, patch)
   },
   {
     authz: {
@@ -42,7 +42,7 @@ export const DELETE = apiRoute<Params>(
   async ({ session, params }) => {
     const gated = requireSkillsEnabled(session)
     if (gated) return gated
-    await deleteJob(session, params.id, params.jobId)
+    await deleteJob(session, params.id, params.taskId)
   },
   {
     authz: {

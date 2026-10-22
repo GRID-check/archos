@@ -14,7 +14,7 @@ vi.mock('@/lib/conversations/repository', () => ({ listRunLedgersByMessageIds: v
 import { listRunLedgersByMessageIds } from '@/lib/conversations/repository'
 import type { TaskRun } from '@/lib/db/schema'
 import type { RunLedger } from '@/lib/runs/run-ledger-types'
-import { loadRunSummaries, runSummaryOf, toTaskWireRow } from './list-projection'
+import { loadRunSummaries, runSummaryOf, toTaskRunView } from './list-projection'
 
 const T0 = '2026-09-16T08:00:00.000Z'
 
@@ -138,10 +138,10 @@ describe('loadRunSummaries', () => {
   })
 })
 
-describe('toTaskWireRow', () => {
+describe('toTaskRunView', () => {
   it('carries the summary, and null when there is none', () => {
     const summary = { status: 'running' as const, phase: 'researching' as const, rounds: 2, docs: 2 }
-    expect(toTaskWireRow(run(), 'Anna', summary).runSummary).toEqual(summary)
-    expect(toTaskWireRow(run(), 'Anna').runSummary).toBeNull()
+    expect(toTaskRunView(run(), 'Anna', summary).runSummary).toEqual(summary)
+    expect(toTaskRunView(run(), 'Anna').runSummary).toBeNull()
   })
 })

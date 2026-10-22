@@ -65,6 +65,8 @@ import { emitInboxItems, resolveInboxItemsFor } from '@/lib/inbox/service'
 import * as taskRepository from '@/lib/tasks/repository'
 import { requireMaySeeSubject } from '@/lib/tasks/subject-access'
 import { isActiveTaskRunStatus } from '@/lib/tasks/task-vocabulary'
+import { RUN_REPORT_MAX_CHARS, type RunViewQuery } from '@/lib/tasks/task-wire'
+import { requireResourceAccess } from '@/lib/sharing/access'
 import {
   applyRunLedgerAppend,
   applyRunLedgerFinish,
@@ -452,25 +454,35 @@ export async function readRunMessage(
 export async function getRunView(
   session: AuthorizedSession,
   projectId: string,
-  runId: string
+  runId: string,
+  query: RunViewQuery = {}
 ): Promise<RunView> {
   await requireProjectAccess(session, projectId, 'project:view')
   const run = await taskRepository.findRunInProject(runId, projectId, session.organizationId)
   if (!run) throw new NotFoundError('Unknown run')
   // A revision task is judged when read: its document's folder as it is now (ADR-0093).
   await requireMaySeeSubject(session, projectId, run, 'Unknown run')
-  return runView(run)
+  const message = await runMessageOf(run)
+  const view: RunView = {
+    ...viewOf(run, message),
+    // What the run produced, so a reviewer (a person or an agent) can judge it
+    // without opening the thread: the run's message IS its report (ADR-0062).
+    report: await reportOf(session, run, message),
+  }
+  // The stream key, for the browser's live block only; no other reader acts on it.
+  return query.include === 'stream' ? { ...view, backendJobId: run.backendJobId } : view
 }
 
-/** The view of a run already resolved inside the caller's project. */
-async function runView(run: TaskRun): Promise<RunView> {
-  const message =
-    run.conversationId && run.runMessageId
-      ? await findMessageInConversation(run.conversationId, run.runMessageId)
-      : null
+async function runMessageOf(run: TaskRun): Promise<Message | null> {
+  return run.conversationId && run.runMessageId
+    ? findMessageInConversation(run.conversationId, run.runMessageId)
+    : null
+}
+
+function viewOf(run: TaskRun, message: Message | null): RunView {
   return {
     runId: run.id,
-    backendJobId: run.backendJobId,
+    taskId: run.definitionId,
     conversationId: run.conversationId,
     messageId: run.runMessageId,
     status: run.status,
@@ -478,6 +490,39 @@ async function runView(run: TaskRun): Promise<RunView> {
     // payload a renderer meets: the row may have been written by another build.
     ledger: message ? storedLedger(message) : null,
   }
+}
+
+/**
+ * The report as this reader may read it. The text is the run's message, which
+ * lives in a conversation: a commissioned run's conversation can be private to
+ * the people in it, and `project:view` is not a way into it. A reader who is
+ * not a party gets the filed document's id (whose own read checks it) and no
+ * text, rather than a 404 for a run the project list shows them.
+ */
+async function reportOf(
+  session: AuthorizedSession,
+  run: TaskRun,
+  message: Message | null
+): Promise<NonNullable<RunView['report']>> {
+  const content = message?.content?.trim() ?? ''
+  const mayRead =
+    content.length > 0 && run.conversationId
+      ? await requireResourceAccess(session, 'conversation', run.conversationId, 'viewer').then(
+          () => true,
+          () => false
+        )
+      : false
+  const text = mayRead ? content : null
+  return {
+    text: text === null ? null : text.slice(0, RUN_REPORT_MAX_CHARS),
+    truncated: text !== null && text.length > RUN_REPORT_MAX_CHARS,
+    filedDocumentId: run.filedDocumentId ?? null,
+  }
+}
+
+/** The view of a run already resolved inside the caller's project, as a control answers it. */
+async function runView(run: TaskRun): Promise<RunView> {
+  return viewOf(run, await runMessageOf(run))
 }
 
 /**

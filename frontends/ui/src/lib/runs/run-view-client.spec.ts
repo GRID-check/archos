@@ -6,6 +6,7 @@ import {
   addRunDocument,
   cancelRun,
   commissionRun,
+  fetchLiveRunView,
   fetchRunView,
   runCancelPath,
   runsPath,
@@ -15,6 +16,7 @@ import {
 
 const view = {
   runId: 'run-1',
+  taskId: null,
   backendJobId: 'job-1',
   conversationId: 's_conv',
   messageId: 'msg-1',
@@ -52,6 +54,15 @@ describe('fetchRunView', () => {
     await expect(fetchRunView('p1', 'run-1', respond(404, {}))).rejects.toMatchObject({
       status: 404,
     })
+  })
+
+  it('asks for the stream key only on the live read', async () => {
+    const run = respond(200, view)
+
+    const live = await fetchLiveRunView('p1', 'run-1', run)
+
+    expect(run.mock.calls[0][0]).toBe('/api/projects/p1/runs/run-1?include=stream')
+    expect(live.backendJobId).toBe('job-1')
   })
 
   it('rejects a body this build does not recognise rather than casting it', async () => {

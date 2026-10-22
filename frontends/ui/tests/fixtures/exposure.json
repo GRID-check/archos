@@ -2132,16 +2132,6 @@
    "withheld": null,
    "reason": null
   },
-  "task-run-list": {
-   "kind": "catalog",
-   "domain": "tasks",
-   "sensitivity": null,
-   "external": true,
-   "piloti": true,
-   "platform": false,
-   "withheld": null,
-   "reason": null
-  },
   "task-run-review": {
    "kind": "catalog",
    "domain": "tasks",

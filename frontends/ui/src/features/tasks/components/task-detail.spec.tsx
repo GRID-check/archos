@@ -18,7 +18,7 @@ import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, test, vi } from 'vitest'
 import { RUN_DONE } from '@/app/dev/_fixtures/run-ledgers'
 import { TaskDetail } from './task-detail'
-import type { TaskWireRow } from '../lib/task-view'
+import type { TaskRunView } from '../lib/task-view'
 
 const fetchRunView = vi.hoisted(() => vi.fn())
 vi.mock('@/lib/runs/run-view-client', () => ({
@@ -30,7 +30,7 @@ beforeEach(() => {
   fetchRunView.mockReset()
   fetchRunView.mockResolvedValue({
     runId: 'task-1',
-    backendJobId: null,
+    taskId: null,
     conversationId: 'conv-1',
     messageId: 'msg-1',
     status: 'succeeded',
@@ -38,7 +38,7 @@ beforeEach(() => {
   })
 })
 
-const task = (overrides: Partial<TaskWireRow> = {}): TaskWireRow => ({
+const task = (overrides: Partial<TaskRunView> = {}): TaskRunView => ({
   id: 'task-1',
   kind: 'document',
   title: 'Aktenvermerk Fluchtwege',
@@ -49,7 +49,7 @@ const task = (overrides: Partial<TaskWireRow> = {}): TaskWireRow => ({
   filedDocumentId: null,
   conversationId: null,
   runMessageId: null,
-  backendJobId: null,
+  taskId: null,
   trigger: 'delegated',
   requesterUserId: 'user_anna',
   requesterName: 'Anna Berger',
@@ -89,7 +89,6 @@ describe('what the drawer says a task became', () => {
     drawer({
       task: task({
         kind: 'deep-research',
-        backendJobId: 'bj-1',
         conversationId: 'conv-1',
         runMessageId: 'msg-1',
       }),
@@ -106,8 +105,8 @@ describe('what the drawer says a task became', () => {
    * chat page and does nothing, so a run that filed no document and has no
    * thread offers no button rather than a link that goes nowhere.
    */
-  test('a backend job id alone is not a destination any more', () => {
-    drawer({ task: task({ kind: 'deep-research', backendJobId: 'bj-1' }) })
+  test('a run with no document and no thread is not a destination', () => {
+    drawer({ task: task({ kind: 'deep-research' }) })
     expect(screen.queryByTestId('task-detail-result')).not.toBeInTheDocument()
   })
 

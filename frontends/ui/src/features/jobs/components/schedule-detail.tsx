@@ -154,7 +154,11 @@ function ScheduleDetailBody({
     setRunning(true)
     try {
       const result = await runJob(projectId, job.id)
-      if (result.status === 'submitted') {
+      if (result.status === 'skipped') {
+        toast.warning(tj('run.skipped'), { description: result.error ?? undefined })
+      } else if (result.status === 'error' || result.status === 'failed') {
+        toast.error(tj('run.error'), { description: result.error ?? undefined })
+      } else {
         // Carried over from the retired job card, unchanged.
         capturePosthog('job_run_submitted', { output: job.output })
         // Retry with the same plan: the schedule, prompt and skill are
@@ -162,10 +166,6 @@ function ScheduleDetailBody({
         toast.success(tj('run.submitted'), { description: tj('run.submittedDetail') })
         setHistoryToken((token) => token + 1)
         onChanged?.({ ...job, lastRunAt: new Date().toISOString() })
-      } else if (result.status === 'skipped') {
-        toast.warning(tj('run.skipped'), { description: result.detail ?? undefined })
-      } else {
-        toast.error(tj('run.error'), { description: result.detail ?? undefined })
       }
     } catch (err) {
       if (err instanceof JobApiError && err.status === 409) {

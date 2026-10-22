@@ -20,7 +20,7 @@ import { act, fireEvent, render, screen, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import type { Job } from '@/adapters/api/jobs-client'
 import { TASKS_POLL_MS, TasksPanel } from './tasks-panel'
-import type { TaskWireRow } from '../lib/task-view'
+import type { TaskRunView } from '../lib/task-view'
 
 // The header slot belongs to the section frame; unit tests have none.
 vi.mock('@/components/shell/project-section-frame', () => ({
@@ -98,7 +98,7 @@ vi.mock('@/features/jobs/components/schedule-detail', () => ({
     ) : null,
 }))
 
-const row = (overrides: Partial<TaskWireRow> = {}): TaskWireRow => ({
+const row = (overrides: Partial<TaskRunView> = {}): TaskRunView => ({
   id: 'task-1',
   kind: 'document',
   title: 'Aktenvermerk Fluchtwege',
@@ -109,7 +109,7 @@ const row = (overrides: Partial<TaskWireRow> = {}): TaskWireRow => ({
   filedDocumentId: null,
   conversationId: null,
   runMessageId: null,
-  backendJobId: null,
+  taskId: null,
   trigger: 'delegated',
   requesterUserId: 'user_anna',
   requesterName: 'Anna Berger',
@@ -125,7 +125,6 @@ const jobFixture = (overrides: Partial<Job> = {}): Job => ({
   name: 'Wöchentlicher Brandschutz-Scan',
   prompt: 'Prüfe die Brandschutzpunkte.',
   skillName: null,
-  skillSnapshot: null,
   output: 'chat',
   dataSources: null,
   enabled: true,
@@ -135,13 +134,12 @@ const jobFixture = (overrides: Partial<Job> = {}): Job => ({
   nextRunAt: null,
   lastRunAt: null,
   createdBy: 'user_anna',
-  createdByEmail: null,
   createdAt: new Date().toISOString(),
   updatedAt: new Date().toISOString(),
   ...overrides,
 })
 
-let tasks: TaskWireRow[] = []
+let tasks: TaskRunView[] = []
 let jobs: Job[] = []
 let taskCalls = 0
 let jobCalls = 0
@@ -162,10 +160,10 @@ beforeEach(async () => {
     'fetch',
     vi.fn(async (input: RequestInfo | URL) => {
       const url = typeof input === 'string' ? input : input.toString()
-      if (url.includes('/tasks')) {
+      if (url.includes('/runs')) {
         taskCalls += 1
         if (failNext) return new Response('nope', { status: 500 })
-        return Response.json({ tasks })
+        return Response.json({ runs: tasks, nextCursor: null })
       }
       return Response.json({})
     })

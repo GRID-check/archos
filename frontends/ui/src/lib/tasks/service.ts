@@ -18,7 +18,12 @@
 
 import 'server-only'
 import { captureServer } from '@/lib/analytics/posthog-server'
-import { ApiError, ConflictError, NotFoundError, UnprocessableError } from '@/lib/api/errors'
+import { ApiError, BadRequestError, ConflictError, NotFoundError, UnprocessableError } from '@/lib/api/errors'
+import {
+  decodeDocumentListCursor,
+  encodeDocumentListCursor,
+  type DocumentListCursor,
+} from '@/lib/documents/list-cursor'
 import { recordAuditEvent } from '@/lib/audit/service'
 import type { AuthorizedSession } from '@/lib/auth/types'
 import { resolvePinnedRequesterSession } from '@/lib/auth/pinned-session'
@@ -39,9 +44,10 @@ import type { FileResearchReportPayload, JobAttempt } from '@/lib/jobs-queue/typ
 import { sessionOf } from '@/lib/jobs-queue/types'
 import { settleRunLedger } from '@/lib/runs/service'
 import { resolvePeople } from '@/lib/sharing/directory'
-import type { TaskWireRow } from '@/features/tasks/lib/task-view'
-import { loadRunSummaries, toTaskWireRow } from './list-projection'
+import { loadRunSummaries, toTaskRunView } from './list-projection'
 import * as repository from './repository'
+import type { KeysetPage } from './repository'
+import type { TaskRunListQuery, TaskRunPage, TaskRunView } from './task-wire'
 import { requireMaySeeSubject, withoutUnreadableSubjects } from './subject-access'
 import { isActiveTaskRunStatus } from './task-vocabulary'
 import type { ReviewTaskInput } from './types'
@@ -466,39 +472,71 @@ export async function recordRunOutcome(
 }
 
 /**
- * A project's runs, newest first. `project:view`, like the definition list,
- * without the revision tasks whose document the reader may not read now
- * (`subject-access.ts`, ADR-0093).
+ * One page of a project's runs, newest first, narrowed by task, status and
+ * review state. `project:view`, like the task list, without the revision runs
+ * whose document the reader may not read now (`subject-access.ts`, ADR-0093):
+ * those are dropped after the page is read, so a page can be shorter than its
+ * limit while `next` still says another follows.
  */
-export async function listTasks(session: AuthorizedSession, projectId: string): Promise<TaskRun[]> {
+export async function listTaskRuns(
+  session: AuthorizedSession,
+  projectId: string,
+  query: Pick<TaskRunListQuery, 'limit' | 'taskId' | 'status' | 'review'> & { cursor?: string },
+): Promise<KeysetPage<TaskRun>> {
   await requireProjectAccess(session, projectId, 'project:view')
-  const runs = await repository.listRunsInProject(projectId, session.organizationId)
-  return withoutUnreadableSubjects(session, projectId, runs)
+  const page = await repository.listRunPage(projectId, session.organizationId, {
+    limit: query.limit,
+    cursor: decodeCursorParam(query.cursor),
+    definitionId: query.taskId,
+    status: query.status,
+    review: query.review,
+  })
+  return { rows: await withoutUnreadableSubjects(session, projectId, page.rows), next: page.next }
 }
 
 /**
- * The same listing, projected for the wire and with the requesters NAMED.
+ * Runs as the wire carries them, with the requesters NAMED.
  *
  * The name resolution is here and not in the browser because the roster
  * endpoint is `project:members:manage`: a `project:view` member reading their
  * own project's task list would have got a 403 for a byline. `resolvePeople` is
  * the one place this tier turns a user id into a name.
  */
-export async function listTaskViews(
-  session: AuthorizedSession,
-  projectId: string,
-): Promise<TaskWireRow[]> {
-  const runs = await listTasks(session, projectId)
+export async function toTaskRunViews(
+  organizationId: string,
+  runs: readonly TaskRun[],
+): Promise<TaskRunView[]> {
   if (runs.length === 0) return []
   const [people, summaries] = await Promise.all([
-    resolvePeople(session.organizationId, [...new Set(runs.map((run) => run.requesterUserId))]),
-    // What each ACTIVE run is doing, off its message's ledger — one bounded
-    // query for the page (`list-projection.ts`).
+    resolvePeople(organizationId, [...new Set(runs.map((run) => run.requesterUserId))]),
+    // What each run did, off its message's ledger — one bounded query for the
+    // page (`list-projection.ts`).
     loadRunSummaries(runs),
   ])
   return runs.map((run) =>
-    toTaskWireRow(run, people.get(run.requesterUserId)?.name ?? null, summaries.get(run.id) ?? null),
+    toTaskRunView(run, people.get(run.requesterUserId)?.name ?? null, summaries.get(run.id) ?? null),
   )
+}
+
+/** `GET /api/projects/[id]/runs`: one page of runs as the wire carries them. */
+export async function listTaskRunViews(
+  session: AuthorizedSession,
+  projectId: string,
+  query: TaskRunListQuery,
+): Promise<TaskRunPage> {
+  const page = await listTaskRuns(session, projectId, query)
+  return {
+    runs: await toTaskRunViews(session.organizationId, page.rows),
+    nextCursor: page.next ? encodeDocumentListCursor(page.next) : null,
+  }
+}
+
+/** A cursor this API wrote, or a 400 for one it did not. */
+export function decodeCursorParam(cursor: string | undefined): DocumentListCursor | null {
+  if (!cursor) return null
+  const decoded = decodeDocumentListCursor(cursor)
+  if (!decoded) throw new BadRequestError('cursor is not a nextCursor this list returned')
+  return decoded
 }
 
 /**
@@ -510,16 +548,16 @@ export async function listTaskViews(
 export async function reviewTask(
   session: AuthorizedSession,
   projectId: string,
-  taskId: string,
+  runId: string,
   input: ReviewTaskInput,
   request?: Request,
 ): Promise<TaskRun> {
   await requireProjectAccess(session, projectId, 'project:edit')
-  const run = await repository.findRunInProject(taskId, projectId, session.organizationId)
-  if (!run) throw new NotFoundError('Task not found')
+  const run = await repository.findRunInProject(runId, projectId, session.organizationId)
+  if (!run) throw new NotFoundError('Task run not found')
   await requireMaySeeSubject(session, projectId, run)
   if (isActiveTaskRunStatus(run.status)) {
-    throw new ConflictError('A task can only be reviewed once it has finished')
+    throw new ConflictError('A task run can only be reviewed once it has finished')
   }
 
   const reason = input.reason?.trim() || null
@@ -529,7 +567,7 @@ export async function reviewTask(
     reviewedBy: session.userId,
     reviewedAt: new Date(),
   })
-  if (!reviewed) throw new NotFoundError('Task not found')
+  if (!reviewed) throw new NotFoundError('Task run not found')
 
   await recordAuditEvent({
     organizationId: session.organizationId,

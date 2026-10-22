@@ -165,13 +165,13 @@ describe.skipIf(!url)('revision tasks judged by their document’s current folde
   }
 
   async function seen(userId: string) {
-    const { listTasks } = await import('./service')
+    const { listTaskRuns } = await import('./service')
     const { getRunView } = await import('@/lib/runs/service')
     const { lockedConversationIds } = await import('@/lib/conversations/restricted-use')
     const { unreadableRunIds } = await import('./subject-access')
     const session = sessionOf(userId)
     return inOrg(async () => ({
-      listed: (await listTasks(session, projectId)).map((run) => run.id).sort(),
+      listed: (await listTaskRuns(session, projectId, { limit: 200 })).rows.map((run) => run.id).sort(),
       inboxWithheld: [
         ...(await unreadableRunIds(session, [
           { projectId, runId: revisionRun },

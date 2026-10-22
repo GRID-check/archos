@@ -21,4 +21,12 @@ export const LEGACY_ROUTES: readonly LegacyRoute[] = [
   { from: '/api/archiv/documents/fassung-candidates', to: '/api/office-shelf/documents/revision-candidates' },
   { from: '/api/office-shelf/documents/fassung-candidates', to: '/api/office-shelf/documents/revision-candidates' },
   { from: '/api/projects/:id/steckbrief', to: '/api/projects/:id/project-record' },
+  // ADR-0131: a task is the definition, a task run one attempt. The definitions lived at `/jobs` and
+  // the runs at `/tasks`; they now live at `/tasks` and `/runs`. The old run list (`GET /tasks`) is the
+  // one path that cannot redirect, because it is the new task list.
+  { from: '/api/projects/:id/jobs', to: '/api/projects/:id/tasks' },
+  { from: '/api/projects/:id/jobs/:taskId', to: '/api/projects/:id/tasks/:taskId' },
+  { from: '/api/projects/:id/jobs/:taskId/run', to: '/api/projects/:id/tasks/:taskId/run' },
+  { from: '/api/projects/:id/jobs/:taskId/runs', to: '/api/projects/:id/runs?taskId=:taskId' },
+  { from: '/api/projects/:id/tasks/:runId/review', to: '/api/projects/:id/runs/:runId/review' },
 ]

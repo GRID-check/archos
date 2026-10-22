@@ -11,8 +11,8 @@
  * a destination: the list answers "what happened" newest-first, the timetable
  * "what will happen, and when".
  *
- * Two fetches, one cadence: the runs (`/tasks`, the timeline) and the
- * standing definitions (`/jobs`, cards + timetable). Both poll while visible;
+ * Two fetches, one cadence: the runs (`/runs`, the timeline) and the
+ * tasks themselves (`/tasks`, cards + timetable). Both poll while visible;
  * a schedule paused elsewhere, or a `next_run_at` the scheduler advanced,
  * reaches this surface without a reload.
  *
@@ -48,8 +48,11 @@ import { ScheduleTimetable } from '@/features/jobs/components/schedule-timetable
 import { ScheduleWizard } from '@/features/jobs/components/schedule-wizard'
 import { TaskDetail } from './task-detail'
 import { TaskList } from './task-list'
-import { normalizeTaskStatus, type TaskFilter, type TaskWireRow } from '../lib/task-view'
+import { type TaskFilter, type TaskRunView } from '../lib/task-view'
 import { type TasksView } from '../lib/tasks-view'
+
+/** How many runs the timeline reads: the newest page the server will give. */
+const RUN_LIST_PAGE = 200
 
 /** Gap between re-asks while the panel is visible. */
 export const TASKS_POLL_MS = 10_000
@@ -129,7 +132,7 @@ export function TasksPanel({
   const t = useTranslations('tasks')
   const tJobs = useTranslations('jobs')
   const tChat = useTranslations('chat')
-  const [tasks, setTasks] = useState<readonly TaskWireRow[]>([])
+  const [tasks, setTasks] = useState<readonly TaskRunView[]>([])
   const [jobs, setJobs] = useState<readonly Job[]>([])
   const [loading, setLoading] = useState(true)
   const [failed, setFailed] = useState(false)
@@ -178,13 +181,12 @@ export function TasksPanel({
   const loadTasks = useCallback(
     async (quiet: boolean, startedFor: number): Promise<void> => {
       try {
-        const response = await fetch(`/api/projects/${encodeURIComponent(projectId)}/tasks`)
-        if (!response.ok) throw new Error(`tasks ${response.status}`)
-        const body = (await response.json()) as { tasks?: TaskWireRow[] }
-        const rows = (body.tasks ?? []).map((row) => ({
-          ...row,
-          status: normalizeTaskStatus(row.status),
-        }))
+        // The newest page, as large as the list has always been read: the
+        // filters and the timeline group what is on screen, not a server query.
+        const response = await fetch(`/api/projects/${encodeURIComponent(projectId)}/runs?limit=${RUN_LIST_PAGE}`)
+        if (!response.ok) throw new Error(`runs ${response.status}`)
+        const body = (await response.json()) as { runs?: TaskRunView[] }
+        const rows = body.runs ?? []
         if (startedFor !== generationRef.current) return
         setTasks(rows)
         setFailed(false)
@@ -332,7 +334,7 @@ export function TasksPanel({
     [selectedTask, selectedSchedule],
   )
 
-  const openTaskDetail = useCallback((task: TaskWireRow) => {
+  const openTaskDetail = useCallback((task: TaskRunView) => {
     setSelectedTask(task.id)
     setSelectedSchedule(null)
   }, [])

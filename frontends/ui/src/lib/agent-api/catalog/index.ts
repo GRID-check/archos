@@ -74,7 +74,8 @@ const byName = new Map(AGENT_OPERATIONS.map((op) => [op.name, op]))
  * `task run` for one attempt, `allow` for a held upload). Two readers still hold old names: an
  * `operation` proposal filed before the rename (its payload names the operation) and an agent that
  * remembers a name from an earlier conversation. Neither is listed or searchable under the old name.
- * Delete this map in the release after.
+ * `task-run-list` (one task's runs) merged into `project-task-run-list`, which takes the task as its
+ * `taskId` filter (ADR-0131). Delete this map in the release after.
  */
 export const RENAMED_OPERATIONS: Readonly<Record<string, string>> = {
   'job-list': 'task-list',
@@ -83,7 +84,8 @@ export const RENAMED_OPERATIONS: Readonly<Record<string, string>> = {
   'job-update': 'task-update',
   'job-delete': 'task-delete',
   'job-run': 'task-run-start',
-  'job-run-list': 'task-run-list',
+  'job-run-list': 'project-task-run-list',
+  'task-run-list': 'project-task-run-list',
   'task-review': 'task-run-review',
   'run-commission': 'task-run-commission',
   'run-get': 'task-run-get',

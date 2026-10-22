@@ -50,7 +50,6 @@ const BASELINE: readonly string[] = [
   'piloti: bim-model-source-get → bim-model-query',
   'piloti: project-folder-access-get → project-folder-access-set',
   'piloti: skill-list → task-create',
-  'piloti: task-run-get → task-run-commission',
 ]
 
 describe('descriptions name only operations the door offers', () => {

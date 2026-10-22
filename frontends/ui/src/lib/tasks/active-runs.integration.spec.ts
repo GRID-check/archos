@@ -89,6 +89,40 @@ describe.skipIf(!url)('countActiveRunsInProject against Postgres', () => {
     expect(page.filter((run) => run.status === 'queued' || run.status === 'running')).toHaveLength(2)
   })
 
+  it('pages a filtered run list by cursor, through rows that share one created_at, without a gap or a repeat', async () => {
+    // The hundred finished runs were inserted by one statement: one created_at, so the id breaks every tie.
+    const first = await inOrg(ORG, () => repo.listRunPage(ids.project, ORG, { limit: 60, cursor: null, status: 'succeeded' }))
+    const second = await inOrg(ORG, () => repo.listRunPage(ids.project, ORG, { limit: 60, cursor: first.next, status: 'succeeded' }))
+    const seen = [...first.rows, ...second.rows].map((run) => run.id)
+
+    expect(first.next).not.toBeNull()
+    expect(second.next).toBeNull()
+    expect(new Set(seen).size).toBe(repo.RUN_LIST_LIMIT)
+    expect([...first.rows, ...second.rows].every((run) => run.status === 'succeeded')).toBe(true)
+    const unreviewed = await inOrg(ORG, () => repo.listRunPage(ids.project, ORG, { limit: 200, cursor: null, review: 'none' }))
+    expect(unreviewed.rows).toHaveLength(repo.RUN_LIST_LIMIT + 3)
+  })
+
+  it('lists the tasks of a project without the delegations, and keeps a dated one-shot', async () => {
+    const define = (title: string, trigger: string, dueAt: string | null) =>
+      inOrg(ORG, () =>
+        db.execute(sql`
+          insert into task_definitions (organization_id, project_id, kind, title, plan, requester_user_id, trigger, due_at)
+          values (${ORG}, ${ids.other}::uuid, 'deep-research', ${title},
+                  '{"prompt":"Prüfe","skill":{},"dataSources":null}'::jsonb, ${USER}, ${trigger}, ${dueAt}::timestamptz)`)
+      )
+    await define('Delegiert', 'once', null)
+    await define('Freitag', 'once', '2030-01-04T08:00:00Z')
+    await define('Montags', 'manual', null)
+
+    const page = await inOrg(ORG, () => repo.listDefinitionPage(ids.other, ORG, { limit: 1, cursor: null }))
+    const rest = await inOrg(ORG, () => repo.listDefinitionPage(ids.other, ORG, { limit: 5, cursor: page.next }))
+
+    expect([...page.rows, ...rest.rows].map((row) => row.title).sort()).toEqual(['Freitag', 'Montags'])
+    expect(rest.next).toBeNull()
+    await inOrg(ORG, () => db.execute(sql`delete from task_definitions where organization_id = ${ORG}`))
+  })
+
   it('counts no other project’s runs, and no other organization’s', async () => {
     expect(await inOrg(ORG, () => repo.countActiveRunsInProject(ids.other, ORG))).toBe(3)
     expect(await inOrg(ORG, () => repo.countActiveRunsInProject(ids.foreign, ORG))).toBe(0)

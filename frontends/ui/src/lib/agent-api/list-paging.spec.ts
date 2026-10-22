@@ -56,7 +56,6 @@ const BASELINE: readonly string[] = [
   'project-folder-list',
   'project-list',
   'project-same-address-list',
-  'project-task-run-list',
   'project-upload-list',
   'push-device-list',
   'quarantine-list',
@@ -65,8 +64,6 @@ const BASELINE: readonly string[] = [
   'skill-category-list',
   'skill-invocable-list',
   'skill-list',
-  'task-list',
-  'task-run-list',
 ]
 
 describe('list operations page', () => {

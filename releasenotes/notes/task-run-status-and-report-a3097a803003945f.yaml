@@ -1,0 +1,9 @@
+---
+fixes:
+  - >
+    A task's run history now shows how each run actually ended, so a failed run
+    reads as failed with its reason instead of as submitted.
+improvements:
+  - >
+    Assistants connected to Piloti can now read what a task run produced before
+    accepting or rejecting it, and page through all of a project's tasks and runs.
