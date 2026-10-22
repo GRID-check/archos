@@ -824,7 +824,7 @@ What a shelf may differ in is exactly the fields of `FileShelf`:
 
 | Field | Project | Archiv | Why it is inherent |
 |---|---|---|---|
-| `endpoints` | `/api/documents?projectId`, `/api/projects/{id}/folders` | `/api/office-shelf/documents`, `/api/office-shelf/folders` | Two stores |
+| `endpoints` | `/api/documents?projectId`, `/api/projects/{id}/folders` | `/api/documents?scope=office_shelf`, `/api/office-shelf/folders` | Two stores |
 | `canManage` | always | `org:office_shelf:manage` | Archiv writes are an org permission; a read-only member sees folders, search, filters, preview and download, nothing that mutates |
 | `canCollaborate`, `currentUserId` | collaboration flag | off | Assignment is project-scoped |
 | `askAbout` | opens the project chat | absent | There is no Archiv chat to open |
@@ -836,7 +836,7 @@ What a shelf may differ in is exactly the fields of `FileShelf`:
 
 The tag chips of the old Archiv grid are „Kategorie" in the shared filter menu
 (`FileFilters.tags`, any-of), so they work under folders and on every shelf. The
-Archiv's semantic search is the pane's own, pointed at `/api/office-shelf/documents/search`
+Archiv's semantic search is the pane's own, pointed at `/api/documents/search` with `scope: office_shelf`
 (`projectSearchScope` / `OFFICE_SHELF_SEARCH_SCOPE`); a search is shelf-wide and
 escapes the open folder exactly as in Dateien.
 

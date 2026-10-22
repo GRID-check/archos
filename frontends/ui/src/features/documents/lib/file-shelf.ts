@@ -44,7 +44,7 @@ export interface ShelfUploadInput {
 export interface ShelfEndpoints {
   /** The listing, without its query string (`/api/documents`). */
   list: string
-  /** Fixed query parameters of the listing (`projectId`). */
+  /** Fixed query parameters of the listing: the shelf (`projectId`, or `scope`). */
   listParams?: Record<string, string>
   /** The folder collection; `/ensure` and `/{id}` hang off it. */
   folders: string
@@ -149,7 +149,8 @@ export function projectSearchScope(projectId: string): Pick<ShelfEndpoints, 'sea
 
 /** The semantic search scope of the office Archiv. */
 export const OFFICE_SHELF_SEARCH_SCOPE: Pick<ShelfEndpoints, 'search' | 'searchBody'> = {
-  search: '/api/office-shelf/documents/search',
+  search: '/api/documents/search',
+  searchBody: { scope: 'office_shelf' },
 }
 
 export function projectEndpoints(projectId: string): ShelfEndpoints {
@@ -162,7 +163,8 @@ export function projectEndpoints(projectId: string): ShelfEndpoints {
 }
 
 export const OFFICE_SHELF_ENDPOINTS: ShelfEndpoints = {
-  list: '/api/office-shelf/documents',
+  list: '/api/documents',
+  listParams: { scope: 'office_shelf' },
   folders: '/api/office-shelf/folders',
   ...OFFICE_SHELF_SEARCH_SCOPE,
 }

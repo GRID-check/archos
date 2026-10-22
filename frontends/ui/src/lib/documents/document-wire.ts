@@ -8,6 +8,7 @@
 import { z } from 'zod'
 import { MAX_DOCUMENT_NAME_LENGTH } from './display-name'
 import { documentSummaryFilterSchema } from './list-query'
+import { shelfSelectorFields } from './shelf-scope'
 import { MAX_TAGS, MAX_TOPICS, MAX_TOPIC_LENGTH } from './tag-vocabulary'
 
 /** `PATCH /api/documents/[id]` */
@@ -40,12 +41,21 @@ export const revisionLinkSchema = z.object({
   linked: z.boolean(),
 })
 
+/** `GET /api/documents/[id]/file`: the current PDF, or with `versionId` that version's own bytes. */
+export const documentFileQuerySchema = z.object({
+  versionId: z
+    .string()
+    .optional()
+    .describe('A published or superseded version, from document-version-list.'),
+  download: z.string().max(8).optional(),
+})
+
 /** `POST /api/documents/search` */
 export const searchDocumentsSchema = z.object({
-  projectId: z.string().min(1),
+  ...shelfSelectorFields,
   q: z.string().trim().min(1).max(1000),
   topK: z.number().int().min(1).max(100).optional(),
 })
 
 /** `GET /api/documents/summary` */
-export const documentSummaryQuerySchema = documentSummaryFilterSchema.extend({ projectId: z.string().min(1) })
+export const documentSummaryQuerySchema = documentSummaryFilterSchema.extend(shelfSelectorFields)

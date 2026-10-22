@@ -166,7 +166,7 @@ server's `dryRun` is ([servers][mcp-fs]).
 | Act | Person's route | Verdict | Effort |
 |---|---|---|---|
 | Read a page range or a whole short document | PDF viewer, `/api/documents/[id]/preview` | Page ranges: built (`read_passage(pages=…, cursor=…)`, ADR-0127). A whole short document: a range over all its pages | M |
-| Archive | `POST /api/documents/[id]/archive` | Propose, with a warning. No unarchive route exists and the chunks are purged, so undoing it means a re-ingest; bytes and versions stay (`frontends/ui/src/lib/documents/version-content.ts`). The card must say so. Product decision | S |
+| Archive | `POST /api/documents/[id]/archive` | Propose. The chunks are purged and bytes and versions stay (`frontends/ui/src/lib/documents/version-content.ts`); `POST /api/documents/[id]/unarchive` brings it back and reads it again (`lib/documents/unarchive.ts`) | S |
 | Rename, move or delete a folder | `PATCH`/`DELETE /api/projects/[id]/folders/[folderId]` | Propose. Delete re-files the folder's documents first | S |
 | Retag | `PATCH /api/documents/[id]/tags` | Propose | S |
 | Revise any Markdown project document | `POST /api/documents/[id]/versions` | Build. Today only the conversation's subject (`src/aiq_agent/tools/documents/filing.py`) | M |
@@ -212,8 +212,8 @@ LLM events for 30 days, so there is no per-tool usage or error rate.
 1. **Retire `surface_documents` from chat?** Saves ~510 tokens and one of four
    overlapping tools. Loses the 1–3 thumbnail grid unless `list_files(show=true)`
    renders one.
-2. **May the agent propose archiving?** Archiving purges chunks and has no
-   unarchive route. If yes, the card states that undoing it needs a re-ingest.
+2. **May the agent propose archiving?** Archiving purges chunks; unarchiving
+   (`document-unarchive`) reads the document again, so undoing it costs a re-ingest.
 3. **EU in-region routing** needs an OpenRouter Business or Enterprise plan and
    removes OpenRouter web search in that region.
 

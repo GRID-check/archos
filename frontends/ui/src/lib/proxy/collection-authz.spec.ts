@@ -363,7 +363,7 @@ describe('validateCollectionName — what the proxy never does', () => {
 
   it.each([
     ['proj_abc', session, '/api/documents/upload'],
-    ['archiv_org-1', officeShelfManager, '/api/office-shelf/documents/upload'],
+    ['archiv_org-1', officeShelfManager, '/api/documents/upload (scope=office_shelf)'],
   ])(
     'refuses a raw upload into %s (403): the first-party route writes the row and runs the admission',
     async (name, who, route) => {
@@ -380,7 +380,7 @@ describe('validateCollectionName — what the proxy never does', () => {
 
   it.each([
     ['proj_abc', session, '/api/documents/[id]'],
-    ['archiv_org-1', officeShelfManager, '/api/office-shelf/documents/[id]'],
+    ['archiv_org-1', officeShelfManager, '/api/documents/[id]'],
   ])(
     'refuses a chunk-only file delete in %s (403): the row, the object and the audit entry would stay',
     async (name, who, route) => {

@@ -584,6 +584,12 @@ export const AUDIT_SCHEMAS = /** @type {const} */ ({
     targets: [{ type: 'document' }],
     metadata: { projectId: 'string', filename: 'string', collectionName: 'string', nameWithheld: 'boolean' },
   },
+  // Its reverse: back in the working set, and read into the index again
+  // (`ingest`: queued, held or failed).
+  'document.unarchived': {
+    targets: [{ type: 'document' }],
+    metadata: { projectId: 'string', filename: 'string', collectionName: 'string', ingest: 'string', nameWithheld: 'boolean' },
+  },
   'document.generated': {
     targets: [{ type: 'document' }, { type: 'agent_run' }, { type: 'answer_artifact' }],
     // `producer` is emitted by `fileGeneratedDocument` and MUST be declared

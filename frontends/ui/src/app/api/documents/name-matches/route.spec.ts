@@ -33,18 +33,15 @@ import { ForbiddenError } from '@/lib/api/errors'
 import { probeProjectDocumentNames } from '@/lib/documents/service'
 import { probeOfficeShelfDocumentNames } from '@/lib/office-shelf/service'
 import {
-  OFFICE_SHELF_NAME_PROBE_PATH,
-  PROJECT_NAME_PROBE_PATH,
+  NAME_PROBE_PATH,
   NameProbeError,
   createDocumentNameProbeClient,
 } from '@/lib/documents/name-probe-client'
 import { NAME_PROBE_MAX_NAMES, type DocumentNameMatch } from '@/lib/documents/name-probe-types'
 import { POST as probeProject } from './route'
-import { POST as probeOfficeShelf } from '../../office-shelf/documents/name-matches/route'
 
 const handlers: Record<string, (request: Request) => Promise<Response>> = {
-  [PROJECT_NAME_PROBE_PATH]: (request) => probeProject(request, { params: Promise.resolve({}) }),
-  [OFFICE_SHELF_NAME_PROBE_PATH]: (request) => probeOfficeShelf(request, { params: Promise.resolve({}) }),
+  [NAME_PROBE_PATH]: (request) => probeProject(request, { params: Promise.resolve({}) }),
 }
 
 const client = createDocumentNameProbeClient(async (path, init) => {
@@ -88,7 +85,7 @@ describe('POST /api/documents/name-matches', () => {
   it('refuses a probe longer than a folder drop can be', async () => {
     const names = Array.from({ length: NAME_PROBE_MAX_NAMES + 1 }, (_, i) => `f${i}.pdf`)
     const response = await probeProject(
-      new Request(`https://grid.test${PROJECT_NAME_PROBE_PATH}`, {
+      new Request(`https://grid.test${NAME_PROBE_PATH}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ projectId: 'proj_1', names }),
@@ -113,7 +110,7 @@ describe('POST /api/documents/name-matches', () => {
   })
 })
 
-describe('POST /api/office-shelf/documents/name-matches', () => {
+describe('POST /api/documents/name-matches on the office shelf', () => {
   it('answers the Archiv', async () => {
     expect(await client.officeShelf(['EG.pdf'])).toEqual([MATCH])
     expect(probeOfficeShelfDocumentNames).toHaveBeenCalledWith(
@@ -123,8 +120,8 @@ describe('POST /api/office-shelf/documents/name-matches', () => {
   })
 
   it('refuses a malformed body', async () => {
-    const response = await probeOfficeShelf(
-      new Request('https://grid.test/api/office-shelf/documents/name-matches', {
+    const response = await probeProject(
+      new Request('https://grid.test/api/documents/name-matches?scope=office_shelf', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ names: [] }),

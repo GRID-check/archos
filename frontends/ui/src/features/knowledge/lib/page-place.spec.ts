@@ -69,7 +69,7 @@ describe('placeClip', () => {
 describe('the routes a place is read from', () => {
   test('a stored document’s stream, a named Fassung’s, a corpus file, and none without an id', () => {
     expect(placeFileUrl(place())).toBe('/api/documents/doc-1/file')
-    expect(placeFileUrl(place({ revisionId: 'v-7' }))).toBe('/api/documents/doc-1/versions/v-7/file')
+    expect(placeFileUrl(place({ revisionId: 'v-7' }))).toBe('/api/documents/doc-1/file?versionId=v-7')
     expect(placeFileUrl(place({ document: { id: null, name: 'OIB RL 2.pdf', shelf: 'base' } }))).toBe(
       '/api/knowledge-base/documents/OIB%20RL%202.pdf'
     )

@@ -26,9 +26,8 @@ import { fetchSemanticHits, joinHitsToFiles, type SearchedDocument } from '@/lib
 import { collectionFileRef, purgeIngestedChunks } from '@/lib/documents/collection-file-ref'
 import { OFFICE_SHELF } from '@/lib/documents/shelf'
 import { publishShelfChanged } from '@/lib/documents/shelf-live'
-import { toListedDocuments, toListedLevelPage, toListedPage, type ListedDocument } from '@/lib/documents/shelf-listing'
+import { toListedDocuments, toListedLevelPage, type ListedDocument } from '@/lib/documents/shelf-listing'
 import { uploadToShelf, type ShelfUploadInput, type UploadDocumentResult } from '@/lib/documents/shelf-upload'
-import type { DocumentListCursor } from '@/lib/documents/list-cursor'
 import type { DocumentLevelQuery } from '@/lib/documents/list-query'
 import type { DocumentNameMatchRow } from '@/lib/documents/repository'
 import { revisionCandidatesOnShelf } from '@/lib/documents/revision-candidates'
@@ -46,7 +45,6 @@ import {
   findOfficeShelfDocumentsByFilenames,
   findOfficeShelfDocumentsByNames,
   listOfficeShelfDocumentLevel,
-  listOfficeShelfDocuments as listOfficeShelfDocumentRows,
 } from './repository'
 
 /** Bound the best-effort backend call that purges an ingested doc's RAG chunks. */
@@ -70,47 +68,27 @@ function officeShelfReader(session: AuthorizedSession): Promise<ShelfReader> {
 }
 
 /**
- * One page of the org's Archiv (bounded, keyset-paginated), lazily reconciling
- * in-flight ingestion statuses with the backend and merging its read-only
- * document metadata — the exact same treatment, and the same options and rows,
- * `listDocumentsPage` gives a project's corpus (`toListedPage`, ADR-0078). Any
- * org member may read; the internal `metadata` jsonb never leaves the BFF.
- *
- * Archived documents have left the working set and are absent unless
- * `includeArchived` says otherwise; `authoredBy` narrows to one hand.
+ * One page of the org's Archiv (ADR-0102, ADR-0131): one folder level or the
+ * whole shelf, in the reader's order, lazily reconciling in-flight ingestion
+ * statuses and merging the backend's read-only document metadata — the same
+ * treatment, options and rows `listDocumentsPage` gives a project's corpus
+ * (ADR-0078). Any org member may read; the internal `metadata` jsonb never
+ * leaves the BFF. Archived documents are absent unless `includeArchived` says
+ * otherwise; `authoredBy` narrows to one hand.
  */
 export async function listOfficeShelf(
   session: AuthorizedSession,
-  options: {
-    authoredBy?: DocumentAuthor
-    includeArchived?: boolean
-    cursor?: DocumentListCursor
-    /** One folder level in the reader's order instead of the drain (ADR-0102), as `listDocumentsPage` takes it. */
-    level?: DocumentLevelQuery
-  } = {},
+  options: { authoredBy?: DocumentAuthor; includeArchived?: boolean; level: DocumentLevelQuery },
 ): Promise<OfficeShelfListResult> {
   // A held file is listed for its uploader and the curators only (ADR-0086).
   const reader = await officeShelfReader(session)
-  const { level, ...listing } = options
-  const listed = level
-    ? await toListedLevelPage(
-        session,
-        await listOfficeShelfDocumentLevel(session.organizationId, {
-          authoredBy: listing.authoredBy,
-          includeArchived: listing.includeArchived,
-          reader,
-          level,
-        }),
-        reader,
-      )
-    : await toListedPage(session, await listOfficeShelfDocumentRows(session.organizationId, { ...listing, reader }), reader)
+  const page = await listOfficeShelfDocumentLevel(session.organizationId, { ...options, reader })
   return {
-    ...listed,
+    ...(await toListedLevelPage(session, page, reader)),
     collectionName: officeShelfCollectionName(session.organizationId),
     canManage: canManageOfficeShelf(session),
   }
 }
-
 
 /**
  * Document-centric semantic search over the org's shared Archiv. Any org member

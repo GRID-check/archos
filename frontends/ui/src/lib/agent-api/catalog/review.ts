@@ -17,7 +17,7 @@ import {
   replaceContentRequestSchema,
   submitRequestSchema,
 } from '@/lib/documents/lifecycle-types'
-import { projectRevisionCandidatesRequestSchema } from '@/lib/documents/name-probe-types'
+import { revisionCandidatesRequestSchema } from '@/lib/documents/name-probe-types'
 import { revisionCompareBodySchema } from '@/lib/documents/revision-compare-types'
 import {
   ANNOTATION_EXPORT_FORMATS,
@@ -403,10 +403,11 @@ export const reviewOperations = [
     domain: 'review',
     summary: 'Find documents a new file could replace',
     description:
-      'For file names about to be added to a project (`projectId`, `names`, optional `folders`), lists the documents each could revise. Feeds document-revision-link-set.',
+      'For file names about to be added to a project (`projectId`, `names`, optional target `folders`) or the office shelf ' +
+      '(`scope: office_shelf`), lists existing documents each could be a new revision of. Read-only; feeds document-revision-link-set.',
     method: 'POST',
     path: '/api/documents/revision-candidates',
-    body: projectRevisionCandidatesRequestSchema,
+    body: revisionCandidatesRequestSchema,
     readOnly: true,
     load: () => import('@/app/api/documents/revision-candidates/route'),
   },

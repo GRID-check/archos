@@ -60,12 +60,12 @@ describe('document-upload', () => {
     expect(await input?.file.text()).toBe('%PDF fake')
   })
 
-  it('is refused before the route runs when projectId is missing', async () => {
+  it('is refused when the project shelf is asked for without projectId', async () => {
     const op = findOperation('document-upload')
     if (!op) throw new Error('document-upload is not in the catalog')
-    await expect(
-      callOperation(op, { body: { files: [{ name: 'a.pdf', contentBase64: 'YQ==' }], fields: {} } }, session),
-    ).rejects.toThrow(/projectId/)
+    const result = await callOperation(op, { body: { files: [{ name: 'a.pdf', contentBase64: 'YQ==' }], fields: {} } }, session)
+    expect(result.status).toBe(400)
+    expect(JSON.stringify(result.body)).toMatch(/projectId/)
     expect(uploadDocument).not.toHaveBeenCalled()
   })
 })

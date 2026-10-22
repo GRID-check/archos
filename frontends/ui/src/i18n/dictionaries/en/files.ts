@@ -649,6 +649,8 @@ export const files = {
     cancel: 'Cancel',
     loadError: 'The bin could not be loaded.',
     retry: 'Try again',
+    document: 'Document · goes back to its folder when restored',
+    loadMore: 'Load more',
   },
   workspace: {
     more: 'More',

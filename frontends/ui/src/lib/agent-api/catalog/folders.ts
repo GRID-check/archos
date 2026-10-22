@@ -10,21 +10,16 @@ import { z } from 'zod'
 import { projectMarksQuerySchema } from '@/lib/annotations/project-types'
 import { createHoldSchema } from '@/lib/compliance/hold-wire'
 import { declareDocumentRoleSchema } from '@/lib/document-roles/role-wire'
-import { officeShelfByNameRequestSchema } from '@/lib/documents/by-name-types'
 import {
   createFolderSchema,
   ensureFoldersSchema,
+  folderListQuerySchema,
   updateFolderSchema,
 } from '@/lib/documents/folder-wire'
-import {
-  documentListFilterSchema,
-  documentSummaryFilterSchema,
-  projectDocumentListQuerySchema,
-} from '@/lib/documents/list-query'
-import { officeShelfNameProbeRequestSchema } from '@/lib/documents/name-probe-types'
-import { searchOfficeShelfSchema } from '@/lib/office-shelf/search-wire'
+import { documentListQuerySchema } from '@/lib/documents/list-query'
 import { applyRootSortRequestSchema } from '@/lib/filing/root-sort-wire'
 import { folderAccessSchema } from '@/lib/projects/folder-access-wire'
+import { binListQuerySchema } from '@/lib/projects/folder-bin-wire'
 import {
   openUploadBatchSchema,
   sealUploadBatchSchema,
@@ -42,9 +37,6 @@ const folderParams = projectParams.extend({
 })
 const officeFolderParams = z.object({
   folderId: z.string().describe('The office shelf folder id, from office-shelf-folder-list.'),
-})
-const officeDocumentParams = z.object({
-  id: z.string().describe('The office shelf document id, from office-shelf-document-list.'),
 })
 const bindingParams = projectParams.extend({
   bindingId: z.string().describe('The role binding id, from document-role-list.'),
@@ -66,13 +58,13 @@ export const foldersOperations = [
     domain: 'folders',
     summary: 'List a project’s folders',
     description:
-      "Every folder of the project's files that the person may read, each with its id, name, parent, " +
-      "path and the person's own access, plus `rootAccess` (what they may do at the project root). " +
-      'Folder ids from here feed project-folder-update, project-folder-delete, document filters ' +
-      '(`folderId` of project-document-list) and the `parentId` of project-folder-create.',
+      "The project's folder tree in one call: every folder the person may read, with its id, name, parent, path and " +
+      "the person's own access, plus `rootAccess`. `counts: true` adds each folder's `documentCount` and `rootDocumentCount`. " +
+      'Folder ids feed project-folder-update, project-folder-delete and `folderId` of document-list.',
     method: 'GET',
     path: '/api/projects/[id]/folders',
     params: projectParams,
+    query: folderListQuerySchema,
     load: () => import('@/app/api/projects/[id]/folders/route'),
   },
   {
@@ -94,9 +86,8 @@ export const foldersOperations = [
     domain: 'folders',
     summary: 'Resolve folder paths, creating the missing',
     description:
-      'Takes directory paths (relative to `parentId`, null: the project root) and returns the folders ' +
-      'plus `folderIdByPath`, creating whatever is missing. Unlike project-folder-create it treats an ' +
-      'existing folder as success, so call it before filing documents into a tree. Safe to repeat.',
+      'Takes directory paths (relative to `parentId`, null: the root) and returns the folders plus `folderIdByPath`, ' +
+      'creating what is missing; an existing folder is success. Safe to repeat.',
     method: 'POST',
     path: '/api/projects/[id]/folders/ensure',
     params: projectParams,
@@ -109,10 +100,8 @@ export const foldersOperations = [
     domain: 'folders',
     summary: 'Rename, move or describe a project folder',
     description:
-      "Changes a folder's `name`, its `parentId` (null moves it to the project root) or its " +
-      '`description` (null clears it); send only what changes. Folder ids come from ' +
-      'project-folder-list. A move that changes who can open the subtree also needs project:manage. ' +
-      'Returns `{ folder }`.',
+      "Changes a folder's `name`, `parentId` (null: the project root) or `description` (null clears it); send only what " +
+      'changes. A move that changes who can open the subtree needs project:manage.',
     method: 'PATCH',
     path: '/api/projects/[id]/folders/[folderId]',
     params: folderParams,
@@ -137,14 +126,14 @@ export const foldersOperations = [
   {
     name: 'project-folder-bin-list',
     domain: 'folders',
-    summary: 'List a project’s deleted folders',
+    summary: 'List a project’s bin: deleted folders and documents',
     description:
-      "The project's bin: the deleted folders the person may read, who deleted each and when, " +
-      'when its purge runs, and what the person may do about it (restore, purge now). Folder ids from ' +
-      'here feed project-folder-restore and project-folder-bin-purge.',
+      "The project's bin, newest first, paged (`nextCursor`): deleted folders, who deleted each, when it is purged. An entry " +
+      'with `document` is one document: restore it with document-restore; a folder with project-folder-restore.',
     method: 'GET',
     path: '/api/projects/[id]/bin',
     params: projectParams,
+    query: binListQuerySchema,
     load: () => import('@/app/api/projects/[id]/bin/route'),
   },
   {
@@ -181,7 +170,7 @@ export const foldersOperations = [
     description:
       'Every folder of the office shelf, in the same shape as ' +
       'project-folder-list. Any member may read. Folder ids feed office-shelf-folder-update, ' +
-      'office-shelf-folder-delete and the `folderId` filter of office-shelf-document-list.',
+      'office-shelf-folder-delete and the `folderId` filter of document-list.',
     method: 'GET',
     path: '/api/office-shelf/folders',
     load: () => import('@/app/api/office-shelf/folders/route'),
@@ -218,9 +207,8 @@ export const foldersOperations = [
     domain: 'folders',
     summary: 'Rename, move or describe an office shelf folder',
     description:
-      "Changes a folder's `name`, `parentId` (null moves it to the shelf root) or `description` (null " +
-      'clears it); send only what changes. Folder ids come from office-shelf-folder-list. Needs ' +
-      'org:office_shelf:manage. Returns `{ folder }`.',
+      "Changes a folder's `name`, `parentId` (null: the shelf root) or `description` (null clears it); send only what " +
+      'changes. Needs org:office_shelf:manage.',
     method: 'PATCH',
     path: '/api/office-shelf/folders/[folderId]',
     params: officeFolderParams,
@@ -242,112 +230,18 @@ export const foldersOperations = [
     load: () => import('@/app/api/office-shelf/folders/[folderId]/route'),
   },
   {
-    name: 'project-document-list',
+    name: 'document-list',
     domain: 'documents',
-    summary: 'List a project’s documents',
+    summary: 'List the documents of a project or the office shelf',
     description:
-      "One page of the project's documents with name, folder, author, lifecycle and version state. Pass " +
-      '`projectId` (from project-list). Without level parameters it drains the whole shelf, 500 a page; ' +
-      '`folderId` (a folder id or `root`), `sort`, `dir`, `q`, `state` or `limit` read one folder level ' +
-      'instead. Follow `nextCursor` (pass it as `cursor`) until it is null.',
+      'One page of a shelf’s documents with name, folder, author, lifecycle and version state: a project’s (`projectId`, from ' +
+      'project-list) or the office shelf’s (`scope: office_shelf`). 100 a page by default, `limit` up to 500; `folderId` (a ' +
+      'folder id or `root`) reads one folder level, else the whole shelf. Filter with `q`, `state`, `authoredBy`; order with ' +
+      '`sort` and `dir`. Follow `nextCursor` (pass it as `cursor`) until it is null.',
     method: 'GET',
     path: '/api/documents',
-    query: projectDocumentListQuerySchema,
+    query: documentListQuerySchema,
     load: () => import('@/app/api/documents/route'),
-  },
-  {
-    name: 'office-shelf-document-list',
-    domain: 'documents',
-    summary: 'List office shelf documents',
-    description:
-      'One page of the office shelf documents, same rows and filters as project-document-list ' +
-      'but without `projectId`: `folderId`, `sort`, `dir`, `q`, `state`, `limit`, `includeArchived`, ' +
-      '`authoredBy`. Follow `nextCursor` (pass it as `cursor`) until it is null. Document ids from here ' +
-      'feed the document operations.',
-    method: 'GET',
-    path: '/api/office-shelf/documents',
-    query: documentListFilterSchema,
-    load: () => import('@/app/api/office-shelf/documents/route'),
-  },
-  {
-    name: 'office-shelf-document-summary',
-    domain: 'documents',
-    summary: 'Count office shelf documents per folder',
-    description:
-      'What the database can say about every office shelf document at once: counts per folder by ' +
-      'read-state family, plus the failed documents. Cheaper than paging office-shelf-document-list ' +
-      'when you need an overview.',
-    method: 'GET',
-    path: '/api/office-shelf/documents/summary',
-    query: documentSummaryFilterSchema,
-    load: () => import('@/app/api/office-shelf/documents/summary/route'),
-  },
-  {
-    name: 'office-shelf-document-lookup',
-    domain: 'documents',
-    summary: 'Find office shelf documents by file name',
-    description:
-      'Resolves exact file names (case-insensitive) to their office shelf document rows. Use it when you ' +
-      'have names, for example from a citation, and need ids. Names without a match are simply absent ' +
-      'from `documents`.',
-    method: 'POST',
-    path: '/api/office-shelf/documents/by-name',
-    body: officeShelfByNameRequestSchema,
-    readOnly: true,
-    load: () => import('@/app/api/office-shelf/documents/by-name/route'),
-  },
-  {
-    name: 'office-shelf-document-name-probe',
-    domain: 'documents',
-    summary: 'Check which file names the office shelf holds',
-    description:
-      'Given file names about to be uploaded, returns the office shelf documents that already carry them. ' +
-      'Call it before an upload to avoid duplicates. Changes nothing.',
-    method: 'POST',
-    path: '/api/office-shelf/documents/name-matches',
-    body: officeShelfNameProbeRequestSchema,
-    readOnly: true,
-    load: () => import('@/app/api/office-shelf/documents/name-matches/route'),
-  },
-  {
-    name: 'office-shelf-document-revision-probe',
-    domain: 'documents',
-    summary: 'Find documents a file name would revise',
-    description:
-      'Given dropped file names, returns the office shelf documents each would be the next revision of, so ' +
-      'the upload can file it as a new revision instead of a second document. Changes nothing.',
-    method: 'POST',
-    path: '/api/office-shelf/documents/revision-candidates',
-    body: officeShelfNameProbeRequestSchema,
-    readOnly: true,
-    load: () => import('@/app/api/office-shelf/documents/revision-candidates/route'),
-  },
-  {
-    name: 'office-shelf-document-search',
-    domain: 'documents',
-    summary: 'Search the office shelf by meaning',
-    description:
-      "Document-centric semantic search over the office shelf. `q` is a natural-language " +
-      "query, `topK` (1 to 100) caps the hits. Returns the best matching documents. For the project's " +
-      'own documents use the knowledge operations.',
-    method: 'POST',
-    path: '/api/office-shelf/documents/search',
-    body: searchOfficeShelfSchema,
-    readOnly: true,
-    load: () => import('@/app/api/office-shelf/documents/search/route'),
-  },
-  {
-    name: 'office-shelf-document-delete',
-    domain: 'documents',
-    summary: 'Delete an office shelf document',
-    description:
-      'Deletes one office shelf document for good: its stored file, its search chunks and its record. ' +
-      'This cannot be undone. Needs org:office_shelf:manage. Document ids come from ' +
-      'office-shelf-document-list.',
-    method: 'DELETE',
-    path: '/api/office-shelf/documents/[id]',
-    params: officeDocumentParams,
-    load: () => import('@/app/api/office-shelf/documents/[id]/route'),
   },
   {
     name: 'document-role-list',
@@ -369,7 +263,7 @@ export const foldersOperations = [
     description:
       "Binds `documentId` to a `role` of the project's vocabulary (optionally for one " +
       "`scopeInstanceId`). Your call counts as a person's confirmation. Returns the binding. Document " +
-      'ids come from project-document-list.',
+      'ids come from document-list.',
     method: 'POST',
     path: '/api/projects/[id]/document-roles',
     params: projectParams,
@@ -560,10 +454,8 @@ export const foldersOperations = [
     domain: 'documents',
     summary: 'Start an Outlook archive import',
     description:
-      'Registers a .pst or .ost archive for import into the project (`filename`, `sizeBytes`) and answers the upload plan ' +
-      '`{ import, partSize, partCount, uploadedParts }`. Then send the archive in `partCount` parts of exactly `partSize` bytes ' +
-      '(the last one shorter) with mail-import-part-upload, and finish with mail-import-complete. Needs the mail-import feature ' +
-      'and write access to the project’s documents. Archives are large (up to 25 GB); each part is a 32 MiB call.',
+      'Registers a .pst or .ost archive (`filename`, `sizeBytes`, up to 25 GB) and answers the upload plan `{ import, partSize, ' +
+      'partCount, uploadedParts }`. Send the parts with mail-import-part-upload, then call mail-import-complete.',
     method: 'POST',
     path: '/api/projects/[id]/mail-imports',
     params: projectParams,
@@ -575,10 +467,8 @@ export const foldersOperations = [
     domain: 'documents',
     summary: 'Send one part of an Outlook archive',
     description:
-      'Sends the raw bytes of part `partNumber` (1-based) of the archive started with mail-import-start, as `body.contentBase64`. ' +
-      'Every part must be exactly the plan’s `partSize` bytes, the last one the remainder, or the route answers 400 with the size ' +
-      'it expected. Sending a part again replaces it, so a broken send resumes: read mail-import-get for `uploadedParts` and send the ' +
-      'rest. Only the person who started the import may send. Returns `{ partNumber }`.',
+      'Sends part `partNumber` (1-based) of the archive started with mail-import-start as `body.contentBase64`, exactly ' +
+      '`partSize` bytes (the last the remainder). Sending a part again replaces it: resume from mail-import-get `uploadedParts`.',
     method: 'PUT',
     path: '/api/projects/[id]/mail-imports/[importId]/parts/[partNumber]',
     params: mailImportParams.extend({
@@ -619,11 +509,9 @@ export const foldersOperations = [
     domain: 'folders',
     summary: 'Set who may open a project folder',
     description:
-      'Replaces the folder’s access. `{ mode: "inherit" }` returns it to the project’s access; `{ mode: "custom", everyoneReads, ' +
-      'people: [{ userId, level }] }` gives it its own list, `level` `read` or `write`, at most 50 people, user ids from ' +
-      'organization-member-list. A change of who may read moves the documents below the folder before the answer; `failed` lists ' +
-      'any that did not move, and the same call again retries them. Needs manage rights on the project and write access on the ' +
-      'folder. Read the access first with project-folder-access-get. Sensitive: the organization switches it on for agents, and the person confirms every call.',
+      'Replaces the folder’s access: `{ mode: "inherit" }`, or `{ mode: "custom", everyoneReads, people: [{ userId, level }] }` ' +
+      '(`read` or `write`, at most 50 people, ids from organization-member-list). `failed` lists documents that did not move; ' +
+      'call again to retry. Read it first with project-folder-access-get. Sensitive: the person confirms every call.',
     method: 'PUT',
     path: '/api/projects/[id]/folders/[folderId]/access',
     params: folderParams,
@@ -650,12 +538,9 @@ export const foldersOperations = [
     domain: 'folders',
     summary: 'Sort a project root’s loose files into its folders',
     description:
-      "Starts a server run that proposes a folder for every loose file in the project's root, from the " +
-      'folders the project already has, plus new folders for the files none fits. Nothing moves yet. ' +
-      'Returns the run (`status: judging`); follow it with root-sort-run-get until `status` is `ready`, ' +
-      'then send what to keep with root-sort-run-apply. Refused when the project has no folder, the root ' +
-      'holds no file, or a sort of the same root is already running. A new run cancels the person’s ' +
-      'earlier runs that still wait for review.',
+      "Starts a server run that proposes a folder for every loose file in the project's root (existing folders, or new ones). " +
+      'Nothing moves yet. Follow the run with root-sort-run-get until `ready`, then send what to keep with root-sort-run-apply. ' +
+      'Refused when there is no folder, no loose file, or a sort already running.',
     method: 'POST',
     path: '/api/projects/[id]/root-sort',
     params: projectParams,
@@ -691,12 +576,9 @@ export const foldersOperations = [
     domain: 'folders',
     summary: 'Read one root-sort run',
     description:
-      'The run’s `status` (judging, grouping, ready, applying, applied, undoing, undone, cancelled, ' +
-      'failed) and `progress`. Once `ready` it carries `review`: the shelf’s folders, the files, one ' +
-      'placement per file (`folderId`, or `newFolderPath` for a folder the run proposes, with its ' +
-      '`reason` and `confidence`) and the proposed new folders. Only the person who started the run ' +
-      'can read it. Next: root-sort-run-apply, or root-sort-run-cancel. In a project’s own conversation ' +
-      'read the run through project-root-sort-get, which names the project.',
+      'The run’s `status` (judging, grouping, ready, applying, applied, undoing, undone, cancelled, failed) and `progress`. ' +
+      'Once `ready`, `review` holds one placement per file (`folderId` or `newFolderPath`, with `reason` and `confidence`). ' +
+      'Only its starter reads it. Next: root-sort-run-apply or root-sort-run-cancel.',
     method: 'GET',
     path: '/api/root-sort-runs/[runId]',
     params: rootSortRunParams,

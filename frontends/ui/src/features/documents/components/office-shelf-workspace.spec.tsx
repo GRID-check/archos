@@ -6,6 +6,7 @@ import { strToU8, zipSync } from 'fflate'
 import { server } from '@/mocks/server'
 import { OfficeShelfWorkspace } from './office-shelf-workspace'
 import { useOfficeShelfDocuments } from '../hooks/use-office-shelf-documents'
+import { shelfGet, shelfPost } from '@/test-utils/shelf-handlers'
 
 /**
  * The completion toast is an assertion here, not decoration: it is the only
@@ -91,7 +92,7 @@ beforeEach(() => {
   currentSearch = ''
   server.use(
     http.get('/api/office-shelf/folders', () => HttpResponse.json({ folders: [] })),
-    http.get('/api/office-shelf/documents', () =>
+    shelfGet('office_shelf', '/api/documents', () =>
       HttpResponse.json({
         documents: officeShelfDocuments,
         collectionName: 'archiv_org-1',
@@ -120,7 +121,7 @@ describe('OfficeShelfWorkspace — library listing', () => {
   it('states how much the Archiv holds beside its title', async () => {
     const folderTally = { readable: 2390, reading: 0, failed: 10, held: 0, unindexed: 0, latest: null }
     server.use(
-      http.get('/api/office-shelf/documents/summary', () =>
+      shelfGet('office_shelf', '/api/documents/summary', () =>
         HttpResponse.json({
           folders: [{ folderId: null, total: 2400, ...folderTally }],
           failed: [],
@@ -135,7 +136,7 @@ describe('OfficeShelfWorkspace — library listing', () => {
   it('reads the root of the Archiv as a level, page by page, and never drains it', async () => {
     const requests: URLSearchParams[] = []
     server.use(
-      http.get('/api/office-shelf/documents', ({ request }) => {
+      shelfGet('office_shelf', '/api/documents', ({ request }) => {
         requests.push(new URL(request.url).searchParams)
         return HttpResponse.json({ documents: officeShelfDocuments, nextCursor: null, collectionName: 'archiv_org-1', canManage: true })
       })
@@ -163,7 +164,7 @@ describe('OfficeShelfWorkspace — library listing', () => {
   })
 
   it('shows the load-error state with a retry affordance when the list request fails', async () => {
-    server.use(http.get('/api/office-shelf/documents', () => HttpResponse.json({}, { status: 500 })))
+    server.use(shelfGet('office_shelf', '/api/documents', () => HttpResponse.json({}, { status: 500 })))
     render(<OfficeShelfWorkspace canManage />)
 
     expect(await screen.findByText(/documents couldn't be loaded/i)).toBeInTheDocument()
@@ -174,7 +175,7 @@ describe('OfficeShelfWorkspace — library listing', () => {
   it('reads the next page of the level when the reader asks for it', async () => {
     const cursors: Array<string | null> = []
     server.use(
-      http.get('/api/office-shelf/documents', ({ request }) => {
+      shelfGet('office_shelf', '/api/documents', ({ request }) => {
         const cursor = new URL(request.url).searchParams.get('cursor')
         cursors.push(cursor)
         return HttpResponse.json({
@@ -265,7 +266,7 @@ describe('OfficeShelfWorkspace — a settling document settles on screen', () =>
 
   it('re-asks the settling row by id — not the whole Archiv — and stops once it is terminal', async () => {
     server.use(
-      http.get('/api/office-shelf/documents', () => {
+      shelfGet('office_shelf', '/api/documents', () => {
         documentCalls += 1
         return corpus('processing')
       }),
@@ -297,7 +298,7 @@ describe('OfficeShelfWorkspace — a settling document settles on screen', () =>
 
   it('confirms the moment the document becomes citable', async () => {
     server.use(
-      http.get('/api/office-shelf/documents', () => {
+      shelfGet('office_shelf', '/api/documents', () => {
         documentCalls += 1
         return corpus('processing')
       }),
@@ -325,7 +326,7 @@ describe('OfficeShelfWorkspace — a settling document settles on screen', () =>
     let peak = 0
     const gate: { release: (() => void) | null } = { release: null }
     server.use(
-      http.get('/api/office-shelf/documents', () => {
+      shelfGet('office_shelf', '/api/documents', () => {
         documentCalls += 1
         return corpus('processing')
       }),
@@ -354,7 +355,7 @@ describe('OfficeShelfWorkspace — a settling document settles on screen', () =>
   it('polls quietly — the grid the user is reading is never replaced by a skeleton', async () => {
     const gate: { release: (() => void) | null } = { release: null }
     server.use(
-      http.get('/api/office-shelf/documents', () => {
+      shelfGet('office_shelf', '/api/documents', () => {
         documentCalls += 1
         return corpus('processing')
       }),
@@ -381,7 +382,7 @@ describe('OfficeShelfWorkspace — a settling document settles on screen', () =>
     // lands here too. A skeleton over the Archiv for it is a flash for nothing.
     const gate: { release: (() => void) | null } = { release: null }
     server.use(
-      http.get('/api/office-shelf/documents', async () => {
+      shelfGet('office_shelf', '/api/documents', async () => {
         documentCalls += 1
         if (documentCalls > 1) await new Promise<void>((resolve) => (gate.release = resolve))
         return corpus('ready')
@@ -453,7 +454,7 @@ describe('OfficeShelfWorkspace — only the newest answer may win', () => {
     let statusCalls = 0
     const gate: { release: (() => void) | null } = { release: null }
     server.use(
-      http.get('/api/office-shelf/documents', () => {
+      shelfGet('office_shelf', '/api/documents', () => {
         documentCalls += 1
         return corpus(documentCalls === 1 ? 'processing' : 'ready')
       }),
@@ -524,7 +525,7 @@ describe('OfficeShelfWorkspace — file operations', () => {
   it('asks before deleting, names the document, and cancels without deleting', async () => {
     let deleted = false
     server.use(
-      http.delete('/api/office-shelf/documents/:id', () => {
+      http.delete('/api/documents/:id', () => {
         deleted = true
         return new HttpResponse(null, { status: 204 })
       })
@@ -548,7 +549,7 @@ describe('OfficeShelfWorkspace — file operations', () => {
 
   it('deletes on confirm and removes the card from the grid', async () => {
     server.use(
-      http.delete('/api/office-shelf/documents/:id', () => new HttpResponse(null, { status: 204 }))
+      http.delete('/api/documents/:id', () => new HttpResponse(null, { status: 204 }))
     )
     const user = userEvent.setup()
     render(<OfficeShelfWorkspace canManage />)
@@ -608,7 +609,7 @@ describe('OfficeShelfWorkspace — a file the Archiv already holds', () => {
     probed = []
     shelf = officeShelfDocuments.map((doc) => ({ id: doc.id, filename: doc.filename }))
     server.use(
-      http.post('/api/office-shelf/documents/name-matches', async ({ request }) => {
+      shelfPost('office_shelf', '/api/documents/name-matches', async ({ request }) => {
         const { names } = (await request.json()) as { names: string[] }
         probed.push(names)
         return HttpResponse.json({
@@ -713,7 +714,7 @@ describe('OfficeShelfWorkspace — a file the Archiv already holds', () => {
     const OLDER = 'doc-older-b'
     beforeEach(() => {
       server.use(
-        http.post('/api/office-shelf/documents/revision-candidates', async ({ request }) => {
+        shelfPost('office_shelf', '/api/documents/revision-candidates', async ({ request }) => {
           const { names } = (await request.json()) as { names: string[] }
           return HttpResponse.json({
             candidates: names.map((name) => ({
@@ -807,7 +808,7 @@ describe('OfficeShelfWorkspace — folders', () => {
   beforeEach(() => {
     server.use(
       http.get('/api/office-shelf/folders', () => HttpResponse.json({ folders: FOLDERS })),
-      http.get('/api/office-shelf/documents', () =>
+      shelfGet('office_shelf', '/api/documents', () =>
         HttpResponse.json({ documents: [filed, root], collectionName: 'archiv_org-1', canManage: true })
       )
     )

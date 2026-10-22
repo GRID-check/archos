@@ -143,7 +143,7 @@ export interface ValidateCollectionOptions {
 /** Where a shelf's uploads go instead of the raw ingest path. */
 const FIRST_PARTY_UPLOAD: Record<'proj_' | 'office_shelf' | 's_', string> = {
   proj_: '/api/documents/upload',
-  office_shelf: '/api/office-shelf/documents/upload',
+  office_shelf: '/api/documents/upload (scope=office_shelf)',
   s_: '/api/session/documents/upload',
 }
 
@@ -254,10 +254,10 @@ async function authorizeCollection(
     // The org-wide Archiv collection (ADR-0024). It must be THIS org's Archiv,
     // and — because proxy collection routes cover writes (upload/delete) — the
     // caller needs the manage permission. Reads of the Archiv corpus go through
-    // the dedicated `/api/office-shelf/documents` endpoint, not this proxy.
+    // `/api/documents?scope=office_shelf`, not this proxy.
     if (wholeCollectionDelete) return refuseWholeCollectionDelete()
     if (upload) return refuseRawUpload('office_shelf')
-    if (fileDelete) return refuseChunkOnlyDelete('/api/office-shelf/documents/[id]')
+    if (fileDelete) return refuseChunkOnlyDelete('/api/documents/[id]')
     if (!session?.organizationId) {
       return handleAuthzError(new Error('Forbidden'))
     }

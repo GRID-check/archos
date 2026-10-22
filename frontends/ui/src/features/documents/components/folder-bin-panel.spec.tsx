@@ -18,12 +18,14 @@ const entry = (overrides: Partial<FolderBinEntry> = {}): FolderBinEntry => ({
   documents: 14,
   folders: 2,
   canRestore: true,
+  document: null,
   ...overrides,
 })
 
 const listing = (entries: FolderBinEntry[], rights: Partial<FolderBinListing> = {}): FolderBinListing => ({
   entries,
   canPurge: false,
+  nextCursor: null,
   ...rights,
 })
 
@@ -75,6 +77,34 @@ describe('FolderBinPanel (the Papierkorb)', () => {
     )
     expect(fetchSpy.mock.calls[0][0]).toBe('/api/projects/p1/bin/f-vertraege/restore')
     expect(await screen.findByText('The bin is empty.')).toBeDefined()
+  })
+
+  test('a document binned on its own is restored as the document, back to its folder', async () => {
+    const fetchSpy = vi
+      .fn()
+      .mockResolvedValueOnce(answer(200, { documentId: 'd1', folderId: 'f-plaene', restoredTo: 'original' }))
+      .mockResolvedValueOnce(answer(200, listing([])))
+    vi.stubGlobal('fetch', fetchSpy)
+    const binned = entry({ folderId: 'f-holder', name: 'Plan.pdf', document: { id: 'd1', name: 'Plan.pdf' } })
+    render(<FolderBinPanel projectId="p1" initial={listing([binned])} />)
+
+    expect(screen.getByText('Document · goes back to its folder when restored')).toBeDefined()
+    await userEvent.click(screen.getByTestId('bin-restore-f-holder'))
+
+    await waitFor(() => expect(toast.success).toHaveBeenCalled())
+    expect(fetchSpy.mock.calls[0][0]).toBe('/api/documents/d1/restore')
+  })
+
+  test('a further page is read when the server says there is one', async () => {
+    const fetchSpy = vi.fn().mockResolvedValueOnce(answer(200, listing([entry({ folderId: 'f-older', name: 'Older' })])))
+    vi.stubGlobal('fetch', fetchSpy)
+    render(<FolderBinPanel projectId="p1" initial={listing([entry()], { nextCursor: 'next-page' })} />)
+
+    await userEvent.click(screen.getByText('Load more'))
+
+    expect(await screen.findByText('Older')).toBeDefined()
+    expect(screen.getByText('Verträge')).toBeDefined()
+    expect(String(fetchSpy.mock.calls[0][0])).toContain('cursor=next-page')
   })
 
   test('a name clash on restore asks for a rename', async () => {

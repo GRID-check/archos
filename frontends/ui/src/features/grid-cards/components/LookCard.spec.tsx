@@ -89,7 +89,7 @@ describe('LookCard', () => {
 
   test('an item that names its Fassung is drawn from that Fassung, not the current one', () => {
     const [item] = parsed([{ page: 1, scope: 'overview', revision_id: 'version-7' }])
-    expect(placeFileUrl(lookItemPlace(DOCUMENT, item!))).toBe(`/api/documents/${DOCUMENT.id}/versions/version-7/file`)
+    expect(placeFileUrl(lookItemPlace(DOCUMENT, item!))).toBe(`/api/documents/${DOCUMENT.id}/file?versionId=version-7`)
     const [current] = parsed([{ page: 1, scope: 'overview' }])
     expect(placeFileUrl(lookItemPlace(DOCUMENT, current!))).toBe(`/api/documents/${DOCUMENT.id}/file`)
   })

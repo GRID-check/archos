@@ -4,6 +4,7 @@ import { http, HttpResponse } from 'msw'
 import { server } from '@/mocks/server'
 import { resetSurfacedDocumentsCache } from '@/features/documents/hooks/use-surfaced-documents'
 import { useAnswerFileReferences } from './use-answer-file-references'
+import { shelfGet } from '@/test-utils/shelf-handlers'
 
 const row = (id: string, filename: string) => ({
   id,
@@ -28,11 +29,11 @@ const corpora = (options: {
   onProjectFetch?: () => void
 }) => {
   server.use(
-    http.get('/api/documents', () => {
+    shelfGet('project', '/api/documents', () => {
       options.onProjectFetch?.()
       return HttpResponse.json({ documents: options.projekt ?? [] })
     }),
-    http.get('/api/office-shelf/documents', () => HttpResponse.json({ documents: options.archiv ?? [] })),
+    shelfGet('office_shelf', '/api/documents', () => HttpResponse.json({ documents: options.archiv ?? [] })),
     http.get('/api/session/documents', () =>
       HttpResponse.json({ documents: options.session ?? [] })
     )
@@ -84,12 +85,12 @@ describe('useAnswerFileReferences', () => {
   // end: a file older than the first page is as nameable as the newest.
   it('names a project file that sits past the listing\'s first page', async () => {
     server.use(
-      http.get('/api/documents', ({ request }) =>
+      shelfGet('project', '/api/documents', ({ request }) =>
         new URL(request.url).searchParams.get('cursor') === 'page-2'
           ? HttpResponse.json({ documents: [row('p-old', 'Bestand-1962.pdf')], nextCursor: null })
           : HttpResponse.json({ documents: [row('p-new', 'Statik.pdf')], nextCursor: 'page-2' })
       ),
-      http.get('/api/office-shelf/documents', () => HttpResponse.json({ documents: [] })),
+      shelfGet('office_shelf', '/api/documents', () => HttpResponse.json({ documents: [] })),
       http.get('/api/session/documents', () => HttpResponse.json({ documents: [] }))
     )
     const { result } = referencesFor('Vergleichen Sie Bestand-1962.pdf.')
@@ -168,8 +169,8 @@ describe('useAnswerFileReferences', () => {
 
   it('degrades to plain prose when the index cannot be read', async () => {
     server.use(
-      http.get('/api/documents', () => HttpResponse.error()),
-      http.get('/api/office-shelf/documents', () => HttpResponse.error()),
+      shelfGet('project', '/api/documents', () => HttpResponse.error()),
+      shelfGet('office_shelf', '/api/documents', () => HttpResponse.error()),
       http.get('/api/session/documents', () => HttpResponse.error())
     )
     const { result } = referencesFor('Beginnen Sie mit pd8280-2.pdf.')

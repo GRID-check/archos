@@ -4109,7 +4109,7 @@
       "post": {
         "operationId": "document-archive",
         "summary": "Archive a document",
-        "description": "Takes a document out of the working set: it leaves the default listings and stops answering questions, but the file and every version stay. Send an empty body. Needs write access on the document’s project.",
+        "description": "Takes a document out of the working set: it leaves the default listings and stops answering questions, but the file and every version stay. Send an empty body. Undo with document-unarchive. Needs write access on the document’s project.",
         "tags": [
           "documents"
         ],
@@ -4120,9 +4120,9 @@
             "required": true,
             "schema": {
               "type": "string",
-              "description": "The document id, from a project document listing or document-search."
+              "description": "The document id, from document-list or document-search."
             },
-            "description": "The document id, from a project document listing or document-search."
+            "description": "The document id, from document-list or document-search."
           }
         ],
         "requestBody": {
@@ -4171,11 +4171,65 @@
         }
       }
     },
+    "/api/documents/{id}/bin": {
+      "post": {
+        "operationId": "document-bin",
+        "summary": "Move a project document to the bin",
+        "description": "Deletes a project document restorably: out of every listing and every answer, in the project’s bin until `purgeAfter`. Undo with document-restore. The office shelf has no bin (409).",
+        "tags": [
+          "documents"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "The document id, from document-list or document-search."
+            },
+            "description": "The document id, from document-list or document-search."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. The body is the route’s JSON answer; no response schema is declared for it yet, so read the operation description for what it contains.",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          }
+        },
+        "x-mcp-annotations": {
+          "title": "Move a project document to the bin",
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": false,
+          "openWorldHint": false
+        }
+      }
+    },
     "/api/documents/by-name": {
       "post": {
         "operationId": "document-by-name-resolve",
-        "summary": "Find a project’s documents by file name",
-        "description": "Resolves exact file names to the project’s listing rows (`projectId` from project-list, up to the server’s name limit). Use it when you know the file name but not the id. Read-only.",
+        "summary": "Find documents by file name",
+        "description": "Resolves exact file names (case-insensitive) to listing rows on a project (`projectId`) or the office shelf (`scope: office_shelf`). Use it when you know the file name but not the id; names without a match are absent. Read-only.",
         "tags": [
           "documents"
         ],
@@ -4186,6 +4240,14 @@
               "schema": {
                 "type": "object",
                 "properties": {
+                  "scope": {
+                    "type": "string",
+                    "enum": [
+                      "project",
+                      "office_shelf"
+                    ],
+                    "description": "Default `project` (with `projectId`)."
+                  },
                   "projectId": {
                     "type": "string",
                     "minLength": 1
@@ -4201,7 +4263,6 @@
                   }
                 },
                 "required": [
-                  "projectId",
                   "names"
                 ],
                 "additionalProperties": true
@@ -4235,7 +4296,7 @@
           }
         },
         "x-mcp-annotations": {
-          "title": "Find a project’s documents by file name",
+          "title": "Find documents by file name",
           "readOnlyHint": true,
           "destructiveHint": false,
           "idempotentHint": true,
@@ -4247,7 +4308,7 @@
       "delete": {
         "operationId": "document-delete",
         "summary": "Permanently delete a project document",
-        "description": "Erases a project document, its versions and its indexed text. This cannot be undone, and a legal hold refuses it with a 409. To only take a document out of the working set, call document-archive instead.",
+        "description": "Erases a project document, its versions and its indexed text permanently. This cannot be undone, and a legal hold refuses it with a 409. To delete it restorably, call document-bin; to only take it out of the working set, document-archive.",
         "tags": [
           "documents"
         ],
@@ -4258,9 +4319,9 @@
             "required": true,
             "schema": {
               "type": "string",
-              "description": "The document id, from a project document listing or document-search."
+              "description": "The document id, from document-list or document-search."
             },
-            "description": "The document id, from a project document listing or document-search."
+            "description": "The document id, from document-list or document-search."
           }
         ],
         "responses": {
@@ -4299,7 +4360,7 @@
       "get": {
         "operationId": "document-get",
         "summary": "Read one document’s listing row",
-        "description": "One document by id, as the shelf lists it: name, folder, tags, reading status and version summary. Use document-status to follow ingestion, and the passage reader for what the file says.",
+        "description": "One document by id, as the shelf lists it: name, folder, tags, reading status and version summary. Use document-status to follow ingestion.",
         "tags": [
           "documents"
         ],
@@ -4310,9 +4371,9 @@
             "required": true,
             "schema": {
               "type": "string",
-              "description": "The document id, from a project document listing or document-search."
+              "description": "The document id, from document-list or document-search."
             },
-            "description": "The document id, from a project document listing or document-search."
+            "description": "The document id, from document-list or document-search."
           }
         ],
         "responses": {
@@ -4362,9 +4423,9 @@
             "required": true,
             "schema": {
               "type": "string",
-              "description": "The document id, from a project document listing or document-search."
+              "description": "The document id, from document-list or document-search."
             },
-            "description": "The document id, from a project document listing or document-search."
+            "description": "The document id, from document-list or document-search."
           }
         ],
         "requestBody": {
@@ -4432,7 +4493,7 @@
       "get": {
         "operationId": "document-download",
         "summary": "Get a time-limited download link for a document",
-        "description": "Mints a presigned URL for the document’s current file and answers `{ downloadUrl, filename, contentType, fileSize }`. The link expires after a few minutes and was minted for this person: hand it on at once, and call this again for a fresh one. The bytes are not sent here; for a PDF use document-file-get, for the text use the passage reader. Records the access.",
+        "description": "Mints a presigned URL for the document’s current file and answers `{ downloadUrl, filename, contentType, fileSize }`. The link expires after a few minutes and was minted for this person: hand it on at once, and call this again for a fresh one. The bytes are not sent here; for a PDF use document-file-get. Records the access.",
         "tags": [
           "documents"
         ],
@@ -4443,9 +4504,9 @@
             "required": true,
             "schema": {
               "type": "string",
-              "description": "The document id, from a project document listing or document-search."
+              "description": "The document id, from document-list or document-search."
             },
-            "description": "The document id, from a project document listing or document-search."
+            "description": "The document id, from document-list or document-search."
           }
         ],
         "responses": {
@@ -4485,8 +4546,8 @@
     "/api/documents/{id}/file": {
       "get": {
         "operationId": "document-file-get",
-        "summary": "Read a stored PDF’s bytes",
-        "description": "The document’s PDF itself (a stored PDF, or the PDF rendition of an office document), returned as an attached resource (base64 `blob`) up to 5 MiB. A larger file is not sent: read its pages with the passage reader or get a link with document-download. Only PDFs are served here.",
+        "summary": "Read a document’s or a version’s bytes",
+        "description": "The document’s current PDF (a stored PDF, or the PDF rendition of an office document), or with `versionId` that version’s own bytes of any type, as an attached resource (base64 `blob`) up to 5 MiB. A larger file is not sent; document-download gives a link.",
         "tags": [
           "documents"
         ],
@@ -4497,9 +4558,28 @@
             "required": true,
             "schema": {
               "type": "string",
-              "description": "The document id, from a project document listing or document-search."
+              "description": "The document id, from document-list or document-search."
             },
-            "description": "The document id, from a project document listing or document-search."
+            "description": "The document id, from document-list or document-search."
+          },
+          {
+            "name": "versionId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": "A published or superseded version, from document-version-list."
+            },
+            "description": "A published or superseded version, from document-version-list."
+          },
+          {
+            "name": "download",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 8
+            }
           }
         ],
         "responses": {
@@ -4507,6 +4587,18 @@
             "description": "Success. The body is a file; the media type depends on the request (a text format such as Markdown or CSV is returned as text). Over MCP it arrives as an embedded resource up to 5 MiB and is described, not sent, above that. A redirect to a time-limited link is handed on as a resource link and never followed.",
             "content": {
               "application/pdf": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "application/octet-stream": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "image/*": {
                 "schema": {
                   "type": "string",
                   "format": "binary"
@@ -4537,7 +4629,7 @@
           }
         },
         "x-mcp-annotations": {
-          "title": "Read a stored PDF’s bytes",
+          "title": "Read a document’s or a version’s bytes",
           "readOnlyHint": true,
           "destructiveHint": false,
           "idempotentHint": true,
@@ -4560,9 +4652,9 @@
             "required": true,
             "schema": {
               "type": "string",
-              "description": "The document id, from a project document listing or document-search."
+              "description": "The document id, from document-list or document-search."
             },
-            "description": "The document id, from a project document listing or document-search."
+            "description": "The document id, from document-list or document-search."
           }
         ],
         "responses": {
@@ -4599,6 +4691,171 @@
         }
       }
     },
+    "/api/documents": {
+      "get": {
+        "operationId": "document-list",
+        "summary": "List the documents of a project or the office shelf",
+        "description": "One page of a shelf’s documents with name, folder, author, lifecycle and version state: a project’s (`projectId`, from project-list) or the office shelf’s (`scope: office_shelf`). 100 a page by default, `limit` up to 500; `folderId` (a folder id or `root`) reads one folder level, else the whole shelf. Filter with `q`, `state`, `authoredBy`; order with `sort` and `dir`. Follow `nextCursor` (pass it as `cursor`) until it is null.",
+        "tags": [
+          "documents"
+        ],
+        "parameters": [
+          {
+            "name": "authoredBy",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "user",
+                "agent"
+              ]
+            }
+          },
+          {
+            "name": "includeArchived",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "const": "true"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 6000
+            }
+          },
+          {
+            "name": "folderId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "const": "root"
+                },
+                {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              ]
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "added",
+                "name",
+                "size"
+              ]
+            }
+          },
+          {
+            "name": "dir",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "asc",
+                "desc"
+              ]
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 200
+            }
+          },
+          {
+            "name": "state",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 100,
+              "description": "Read-state families, comma-separated: readable, reading, failed, held, unindexed. Held files await a reviewer (quarantine-list); review requests are in inbox-list, filter `requests`."
+            },
+            "description": "Read-state families, comma-separated: readable, reading, failed, held, unindexed. Held files await a reviewer (quarantine-list); review requests are in inbox-list, filter `requests`."
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "scope",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "project",
+                "office_shelf"
+              ],
+              "description": "Default `project` (with `projectId`)."
+            },
+            "description": "Default `project` (with `projectId`)."
+          },
+          {
+            "name": "projectId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. The body is the route’s JSON answer; no response schema is declared for it yet, so read the operation description for what it contains.",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          }
+        },
+        "x-mcp-annotations": {
+          "title": "List the documents of a project or the office shelf",
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        }
+      }
+    },
     "/api/documents/{id}/model": {
       "get": {
         "operationId": "document-model-get",
@@ -4614,9 +4871,9 @@
             "required": true,
             "schema": {
               "type": "string",
-              "description": "The document id, from a project document listing or document-search."
+              "description": "The document id, from document-list or document-search."
             },
-            "description": "The document id, from a project document listing or document-search."
+            "description": "The document id, from document-list or document-search."
           }
         ],
         "responses": {
@@ -4668,9 +4925,9 @@
             "required": true,
             "schema": {
               "type": "string",
-              "description": "The document id, from a project document listing or document-search."
+              "description": "The document id, from document-list or document-search."
             },
-            "description": "The document id, from a project document listing or document-search."
+            "description": "The document id, from document-list or document-search."
           }
         ],
         "requestBody": {
@@ -4737,8 +4994,8 @@
     "/api/documents/name-matches": {
       "post": {
         "operationId": "document-name-match",
-        "summary": "Check which file names already exist in a project",
-        "description": "Before adding files, asks which of the given names a project already holds, with the existing document’s id, size and content hash so identical bytes can be skipped. Read-only.",
+        "summary": "Check which file names a shelf already holds",
+        "description": "Before adding files, asks which of the given names a project (`projectId`) or the office shelf (`scope: office_shelf`) already holds, with the existing document’s id, size and content hash so identical bytes can be skipped. Read-only.",
         "tags": [
           "documents"
         ],
@@ -4749,6 +5006,14 @@
               "schema": {
                 "type": "object",
                 "properties": {
+                  "scope": {
+                    "type": "string",
+                    "enum": [
+                      "project",
+                      "office_shelf"
+                    ],
+                    "description": "Default `project` (with `projectId`)."
+                  },
                   "projectId": {
                     "type": "string",
                     "minLength": 1
@@ -4764,7 +5029,6 @@
                   }
                 },
                 "required": [
-                  "projectId",
                   "names"
                 ],
                 "additionalProperties": true
@@ -4798,7 +5062,7 @@
           }
         },
         "x-mcp-annotations": {
-          "title": "Check which file names already exist in a project",
+          "title": "Check which file names a shelf already holds",
           "readOnlyHint": true,
           "destructiveHint": false,
           "idempotentHint": true,
@@ -4821,9 +5085,9 @@
             "required": true,
             "schema": {
               "type": "string",
-              "description": "The document id, from a project document listing or document-search."
+              "description": "The document id, from document-list or document-search."
             },
-            "description": "The document id, from a project document listing or document-search."
+            "description": "The document id, from document-list or document-search."
           }
         ],
         "responses": {
@@ -4875,9 +5139,9 @@
             "required": true,
             "schema": {
               "type": "string",
-              "description": "The document id, from a project document listing or document-search."
+              "description": "The document id, from document-list or document-search."
             },
-            "description": "The document id, from a project document listing or document-search."
+            "description": "The document id, from document-list or document-search."
           }
         ],
         "responses": {
@@ -4910,6 +5174,60 @@
           "readOnlyHint": false,
           "destructiveHint": false,
           "idempotentHint": true,
+          "openWorldHint": false
+        }
+      }
+    },
+    "/api/documents/{id}/restore": {
+      "post": {
+        "operationId": "document-restore",
+        "summary": "Restore a document from the bin",
+        "description": "Brings back a document sent to the bin with document-bin, to the folder it came from, and reads it again. One that went with its folder is refused (409, `details.folderId`): use project-folder-restore.",
+        "tags": [
+          "documents"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "The document id, from document-list or document-search."
+            },
+            "description": "The document id, from document-list or document-search."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. The body is the route’s JSON answer; no response schema is declared for it yet, so read the operation description for what it contains.",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          }
+        },
+        "x-mcp-annotations": {
+          "title": "Restore a document from the bin",
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": false,
           "openWorldHint": false
         }
       }
@@ -4982,7 +5300,7 @@
       "post": {
         "operationId": "document-role-declare",
         "summary": "Declare a document’s role in a project",
-        "description": "Binds `documentId` to a `role` of the project's vocabulary (optionally for one `scopeInstanceId`). Your call counts as a person's confirmation. Returns the binding. Document ids come from project-document-list.",
+        "description": "Binds `documentId` to a `role` of the project's vocabulary (optionally for one `scopeInstanceId`). Your call counts as a person's confirmation. Returns the binding. Document ids come from document-list.",
         "tags": [
           "documents"
         ],
@@ -5138,8 +5456,8 @@
     "/api/documents/search": {
       "post": {
         "operationId": "document-search",
-        "summary": "Search a project’s documents by meaning",
-        "description": "Semantic search over the documents of one project (`projectId`, from project-list) for a question or phrase `q`. Returns the best matching passages with their documents, up to `topK` (default set by the server). Read-only.",
+        "summary": "Search a shelf’s documents by meaning",
+        "description": "Semantic search over one shelf, a project’s (`projectId`, from project-list) or the office shelf (`scope: office_shelf`), for a question or phrase `q`. Returns the best matching documents with a snippet, page and score, up to `topK` (1 to 100). Read-only.",
         "tags": [
           "documents"
         ],
@@ -5150,6 +5468,14 @@
               "schema": {
                 "type": "object",
                 "properties": {
+                  "scope": {
+                    "type": "string",
+                    "enum": [
+                      "project",
+                      "office_shelf"
+                    ],
+                    "description": "Default `project` (with `projectId`)."
+                  },
                   "projectId": {
                     "type": "string",
                     "minLength": 1
@@ -5164,7 +5490,6 @@
                   }
                 },
                 "required": [
-                  "projectId",
                   "q"
                 ],
                 "additionalProperties": true
@@ -5198,7 +5523,7 @@
           }
         },
         "x-mcp-annotations": {
-          "title": "Search a project’s documents by meaning",
+          "title": "Search a shelf’s documents by meaning",
           "readOnlyHint": true,
           "destructiveHint": false,
           "idempotentHint": true,
@@ -5210,7 +5535,7 @@
       "get": {
         "operationId": "document-status",
         "summary": "Read a document’s ingestion status",
-        "description": "The ingestion state in `status`: `pending` or `processing` (poll again), `completed` (citable), `quarantined` (a reviewer decides), `failed` (call document-reingest), `cancelled`. `uploaded` and `stored` are not read.",
+        "description": "Where the document is in reading and indexing: `status` is one of uploaded, pending, processing, completed, failed, quarantined, stored, cancelled. Poll it after an upload; on `failed` call document-reingest, on a stuck run document-ingest-cancel.",
         "tags": [
           "documents"
         ],
@@ -5221,9 +5546,9 @@
             "required": true,
             "schema": {
               "type": "string",
-              "description": "The document id, from a project document listing or document-search."
+              "description": "The document id, from document-list or document-search."
             },
-            "description": "The document id, from a project document listing or document-search."
+            "description": "The document id, from document-list or document-search."
           }
         ],
         "responses": {
@@ -5263,8 +5588,8 @@
     "/api/documents/summary": {
       "get": {
         "operationId": "document-summary-get",
-        "summary": "Count a project’s documents by state",
-        "description": "Totals for a project’s shelf (how many documents, in which reading state), matching what the listing shows. Optionally filter by author kind or include archived documents.",
+        "summary": "Count a shelf’s documents per folder and state",
+        "description": "Counts per folder by reading state for a project (`projectId`) or the office shelf (`scope: office_shelf`), matching what document-list shows, plus the failed documents. Optionally filter by author kind or include archived documents.",
         "tags": [
           "documents"
         ],
@@ -5290,9 +5615,23 @@
             }
           },
           {
+            "name": "scope",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "project",
+                "office_shelf"
+              ],
+              "description": "Default `project` (with `projectId`)."
+            },
+            "description": "Default `project` (with `projectId`)."
+          },
+          {
             "name": "projectId",
             "in": "query",
-            "required": true,
+            "required": false,
             "schema": {
               "type": "string",
               "minLength": 1
@@ -5325,7 +5664,7 @@
           }
         },
         "x-mcp-annotations": {
-          "title": "Count a project’s documents by state",
+          "title": "Count a shelf’s documents per folder and state",
           "readOnlyHint": true,
           "destructiveHint": false,
           "idempotentHint": true,
@@ -5348,9 +5687,9 @@
             "required": true,
             "schema": {
               "type": "string",
-              "description": "The document id, from a project document listing or document-search."
+              "description": "The document id, from document-list or document-search."
             },
-            "description": "The document id, from a project document listing or document-search."
+            "description": "The document id, from document-list or document-search."
           }
         ],
         "requestBody": {
@@ -5424,8 +5763,8 @@
     "/api/documents/{id}/text": {
       "get": {
         "operationId": "document-text-get",
-        "summary": "Read the extracted text of a document",
-        "description": "The text of a plain-text, Markdown or CSV file: `{ text, truncated, contentType, filename }`, at most 256 KiB. Other types, PDFs and scans included, answer 415: use the passage reader by `filename`.",
+        "summary": "Read a text file’s contents",
+        "description": "The stored text of a plain text, Markdown or CSV document, up to a preview limit (`truncated` says when cut). Any other type answers 415 with where to read it instead.",
         "tags": [
           "documents"
         ],
@@ -5436,9 +5775,9 @@
             "required": true,
             "schema": {
               "type": "string",
-              "description": "The document id, from a project document listing or document-search."
+              "description": "The document id, from document-list or document-search."
             },
-            "description": "The document id, from a project document listing or document-search."
+            "description": "The document id, from document-list or document-search."
           }
         ],
         "responses": {
@@ -5467,7 +5806,7 @@
           }
         },
         "x-mcp-annotations": {
-          "title": "Read the extracted text of a document",
+          "title": "Read a text file’s contents",
           "readOnlyHint": true,
           "destructiveHint": false,
           "idempotentHint": true,
@@ -5490,9 +5829,9 @@
             "required": true,
             "schema": {
               "type": "string",
-              "description": "The document id, from a project document listing or document-search."
+              "description": "The document id, from document-list or document-search."
             },
-            "description": "The document id, from a project document listing or document-search."
+            "description": "The document id, from document-list or document-search."
           }
         ],
         "responses": {
@@ -5529,11 +5868,65 @@
         }
       }
     },
+    "/api/documents/{id}/unarchive": {
+      "post": {
+        "operationId": "document-unarchive",
+        "summary": "Bring an archived document back",
+        "description": "The reverse of document-archive: back in the default listings and read into the index again. Follow `ingest: \"queued\"` with document-status.",
+        "tags": [
+          "documents"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "The document id, from document-list or document-search."
+            },
+            "description": "The document id, from document-list or document-search."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. The body is the route’s JSON answer; no response schema is declared for it yet, so read the operation description for what it contains.",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          }
+        },
+        "x-mcp-annotations": {
+          "title": "Bring an archived document back",
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        }
+      }
+    },
     "/api/documents/upload": {
       "post": {
         "operationId": "document-upload",
-        "summary": "Upload a file to a project",
-        "description": "Stores one file in a project (optionally in a folder) and hands it to ingestion. Up to 32 MiB per call through the agent door; the document limit of the office applies too. Send `body.files[0]` as { name, mimeType, contentBase64 } and the route’s text parts in `body.fields` (`projectId` required). Returns `{ documentId, jobId, status, filename }` (jobId: the ingestion job, not a task); follow it with document-status. Needs write access to the project’s documents.",
+        "summary": "Upload a file to a project or the office shelf",
+        "description": "Stores one file on a shelf, optionally in a folder, and ingests it. Up to 32 MiB per call through the agent door; the document limit of the office applies too. Send `body.files[0]` as { name, mimeType, contentBase64 } and in `body.fields` `projectId` or `scope: office_shelf`. Follow it with document-status.",
         "tags": [
           "documents"
         ],
@@ -5549,14 +5942,19 @@
                     "type": "string",
                     "format": "binary"
                   },
-                  "projectId": {
+                  "scope": {
                     "type": "string",
-                    "minLength": 1,
-                    "description": "The project id, from project-list."
+                    "enum": [
+                      "project",
+                      "office_shelf"
+                    ]
+                  },
+                  "projectId": {
+                    "type": "string"
                   },
                   "folderId": {
                     "type": "string",
-                    "description": "The folder id, from project-folder-list; omit for the project root."
+                    "description": "From project-folder-list or office-shelf-folder-list; omit for the root."
                   },
                   "revisionOf": {
                     "type": "string",
@@ -5578,8 +5976,7 @@
                   }
                 },
                 "required": [
-                  "file",
-                  "projectId"
+                  "file"
                 ]
               }
             }
@@ -5611,105 +6008,10 @@
           }
         },
         "x-mcp-annotations": {
-          "title": "Upload a file to a project",
+          "title": "Upload a file to a project or the office shelf",
           "readOnlyHint": false,
           "destructiveHint": false,
           "idempotentHint": false,
-          "openWorldHint": false
-        }
-      }
-    },
-    "/api/documents/{id}/versions/{versionId}/file": {
-      "get": {
-        "operationId": "document-version-file-get",
-        "summary": "Read the file bytes of one version",
-        "description": "The bytes of one version (the approval record of one revision) of a document under its name, from document-version-list: returned as an attached resource (base64 `blob`) up to 5 MiB; a larger file is not sent. `download: \"1\"` marks it as an attachment. Only published or superseded versions are served.",
-        "tags": [
-          "documents"
-        ],
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "description": "The document id, from a project document listing or document-search."
-            },
-            "description": "The document id, from a project document listing or document-search."
-          },
-          {
-            "name": "versionId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "description": "The version id, from document-version-list."
-            },
-            "description": "The version id, from document-version-list."
-          },
-          {
-            "name": "download",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "const": "1",
-              "description": "Send 1 to ask for the file as a download."
-            },
-            "description": "Send 1 to ask for the file as a download."
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Success. The body is a file; the media type depends on the request (a text format such as Markdown or CSV is returned as text). Over MCP it arrives as an embedded resource up to 5 MiB and is described, not sent, above that. A redirect to a time-limited link is handed on as a resource link and never followed.",
-            "content": {
-              "application/octet-stream": {
-                "schema": {
-                  "type": "string",
-                  "format": "binary"
-                }
-              },
-              "application/pdf": {
-                "schema": {
-                  "type": "string",
-                  "format": "binary"
-                }
-              },
-              "image/*": {
-                "schema": {
-                  "type": "string",
-                  "format": "binary"
-                }
-              },
-              "text/plain": {
-                "schema": {
-                  "type": "string",
-                  "format": "binary"
-                }
-              }
-            }
-          },
-          "400": {
-            "$ref": "#/components/responses/Error400"
-          },
-          "401": {
-            "$ref": "#/components/responses/Error401"
-          },
-          "403": {
-            "$ref": "#/components/responses/Error403"
-          },
-          "404": {
-            "$ref": "#/components/responses/Error404"
-          },
-          "429": {
-            "$ref": "#/components/responses/Error429"
-          }
-        },
-        "x-mcp-annotations": {
-          "title": "Read the file bytes of one version",
-          "readOnlyHint": true,
-          "destructiveHint": false,
-          "idempotentHint": true,
           "openWorldHint": false
         }
       }
@@ -5729,9 +6031,9 @@
             "required": true,
             "schema": {
               "type": "string",
-              "description": "The document id, from a project document listing or document-search."
+              "description": "The document id, from document-list or document-search."
             },
-            "description": "The document id, from a project document listing or document-search."
+            "description": "The document id, from document-list or document-search."
           }
         ],
         "responses": {
@@ -6189,7 +6491,7 @@
       "post": {
         "operationId": "mail-import-start",
         "summary": "Start an Outlook archive import",
-        "description": "Registers a .pst or .ost archive for import into the project (`filename`, `sizeBytes`) and answers the upload plan `{ import, partSize, partCount, uploadedParts }`. Then send the archive in `partCount` parts of exactly `partSize` bytes (the last one shorter) with mail-import-part-upload, and finish with mail-import-complete. Needs the mail-import feature and write access to the project’s documents. Archives are large (up to 25 GB); each part is a 32 MiB call.",
+        "description": "Registers a .pst or .ost archive (`filename`, `sizeBytes`, up to 25 GB) and answers the upload plan `{ import, partSize, partCount, uploadedParts }`. Send the parts with mail-import-part-upload, then call mail-import-complete.",
         "tags": [
           "documents"
         ],
@@ -6268,7 +6570,7 @@
       "put": {
         "operationId": "mail-import-part-upload",
         "summary": "Send one part of an Outlook archive",
-        "description": "Sends the raw bytes of part `partNumber` (1-based) of the archive started with mail-import-start, as `body.contentBase64`. Every part must be exactly the plan’s `partSize` bytes, the last one the remainder, or the route answers 400 with the size it expected. Sending a part again replaces it, so a broken send resumes: read mail-import-get for `uploadedParts` and send the rest. Only the person who started the import may send. Returns `{ partNumber }`.",
+        "description": "Sends part `partNumber` (1-based) of the archive started with mail-import-start as `body.contentBase64`, exactly `partSize` bytes (the last the remainder). Sending a part again replaces it: resume from mail-import-get `uploadedParts`.",
         "tags": [
           "documents"
         ],
@@ -6344,766 +6646,6 @@
         "x-mcp-annotations": {
           "title": "Send one part of an Outlook archive",
           "readOnlyHint": false,
-          "destructiveHint": false,
-          "idempotentHint": true,
-          "openWorldHint": false
-        }
-      }
-    },
-    "/api/office-shelf/documents/{id}": {
-      "delete": {
-        "operationId": "office-shelf-document-delete",
-        "summary": "Delete an office shelf document",
-        "description": "Deletes one office shelf document for good: its stored file, its search chunks and its record. This cannot be undone. Needs org:office_shelf:manage. Document ids come from office-shelf-document-list.",
-        "tags": [
-          "documents"
-        ],
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "description": "The office shelf document id, from office-shelf-document-list."
-            },
-            "description": "The office shelf document id, from office-shelf-document-list."
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Success. The body is the route’s JSON answer; no response schema is declared for it yet, so read the operation description for what it contains.",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          },
-          "400": {
-            "$ref": "#/components/responses/Error400"
-          },
-          "401": {
-            "$ref": "#/components/responses/Error401"
-          },
-          "403": {
-            "$ref": "#/components/responses/Error403"
-          },
-          "404": {
-            "$ref": "#/components/responses/Error404"
-          },
-          "429": {
-            "$ref": "#/components/responses/Error429"
-          }
-        },
-        "x-mcp-annotations": {
-          "title": "Delete an office shelf document",
-          "readOnlyHint": false,
-          "destructiveHint": true,
-          "idempotentHint": true,
-          "openWorldHint": false
-        }
-      }
-    },
-    "/api/office-shelf/documents": {
-      "get": {
-        "operationId": "office-shelf-document-list",
-        "summary": "List office shelf documents",
-        "description": "One page of the office shelf documents, same rows and filters as project-document-list but without `projectId`: `folderId`, `sort`, `dir`, `q`, `state`, `limit`, `includeArchived`, `authoredBy`. Follow `nextCursor` (pass it as `cursor`) until it is null. Document ids from here feed the document operations.",
-        "tags": [
-          "documents"
-        ],
-        "parameters": [
-          {
-            "name": "authoredBy",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "string",
-              "enum": [
-                "user",
-                "agent"
-              ]
-            }
-          },
-          {
-            "name": "includeArchived",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "const": "true"
-            }
-          },
-          {
-            "name": "cursor",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "string",
-              "maxLength": 6000
-            }
-          },
-          {
-            "name": "folderId",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "const": "root"
-                },
-                {
-                  "type": "string",
-                  "format": "uuid"
-                }
-              ]
-            }
-          },
-          {
-            "name": "sort",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "string",
-              "enum": [
-                "added",
-                "name",
-                "size"
-              ]
-            }
-          },
-          {
-            "name": "dir",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "string",
-              "enum": [
-                "asc",
-                "desc"
-              ]
-            }
-          },
-          {
-            "name": "q",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "string",
-              "maxLength": 200
-            }
-          },
-          {
-            "name": "state",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "string",
-              "maxLength": 100
-            }
-          },
-          {
-            "name": "limit",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Success. The body is the route’s JSON answer; no response schema is declared for it yet, so read the operation description for what it contains.",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          },
-          "400": {
-            "$ref": "#/components/responses/Error400"
-          },
-          "401": {
-            "$ref": "#/components/responses/Error401"
-          },
-          "403": {
-            "$ref": "#/components/responses/Error403"
-          },
-          "404": {
-            "$ref": "#/components/responses/Error404"
-          },
-          "429": {
-            "$ref": "#/components/responses/Error429"
-          }
-        },
-        "x-mcp-annotations": {
-          "title": "List office shelf documents",
-          "readOnlyHint": true,
-          "destructiveHint": false,
-          "idempotentHint": true,
-          "openWorldHint": false
-        }
-      }
-    },
-    "/api/office-shelf/documents/by-name": {
-      "post": {
-        "operationId": "office-shelf-document-lookup",
-        "summary": "Find office shelf documents by file name",
-        "description": "Resolves exact file names (case-insensitive) to their office shelf document rows. Use it when you have names, for example from a citation, and need ids. Names without a match are simply absent from `documents`.",
-        "tags": [
-          "documents"
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "names": {
-                    "type": "array",
-                    "items": {
-                      "type": "string",
-                      "minLength": 1,
-                      "maxLength": 1024
-                    },
-                    "maxItems": 200
-                  }
-                },
-                "required": [
-                  "names"
-                ],
-                "additionalProperties": true
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Success. The body is the route’s JSON answer; no response schema is declared for it yet, so read the operation description for what it contains.",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          },
-          "400": {
-            "$ref": "#/components/responses/Error400"
-          },
-          "401": {
-            "$ref": "#/components/responses/Error401"
-          },
-          "403": {
-            "$ref": "#/components/responses/Error403"
-          },
-          "404": {
-            "$ref": "#/components/responses/Error404"
-          },
-          "429": {
-            "$ref": "#/components/responses/Error429"
-          }
-        },
-        "x-mcp-annotations": {
-          "title": "Find office shelf documents by file name",
-          "readOnlyHint": true,
-          "destructiveHint": false,
-          "idempotentHint": true,
-          "openWorldHint": false
-        }
-      }
-    },
-    "/api/office-shelf/documents/name-matches": {
-      "post": {
-        "operationId": "office-shelf-document-name-probe",
-        "summary": "Check which file names the office shelf holds",
-        "description": "Given file names about to be uploaded, returns the office shelf documents that already carry them. Call it before an upload to avoid duplicates. Changes nothing.",
-        "tags": [
-          "documents"
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "names": {
-                    "type": "array",
-                    "items": {
-                      "type": "string",
-                      "minLength": 1,
-                      "maxLength": 1024
-                    },
-                    "maxItems": 2000
-                  }
-                },
-                "required": [
-                  "names"
-                ],
-                "additionalProperties": true
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Success. The body is the route’s JSON answer; no response schema is declared for it yet, so read the operation description for what it contains.",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          },
-          "400": {
-            "$ref": "#/components/responses/Error400"
-          },
-          "401": {
-            "$ref": "#/components/responses/Error401"
-          },
-          "403": {
-            "$ref": "#/components/responses/Error403"
-          },
-          "404": {
-            "$ref": "#/components/responses/Error404"
-          },
-          "429": {
-            "$ref": "#/components/responses/Error429"
-          }
-        },
-        "x-mcp-annotations": {
-          "title": "Check which file names the office shelf holds",
-          "readOnlyHint": true,
-          "destructiveHint": false,
-          "idempotentHint": true,
-          "openWorldHint": false
-        }
-      }
-    },
-    "/api/office-shelf/documents/revision-candidates": {
-      "post": {
-        "operationId": "office-shelf-document-revision-probe",
-        "summary": "Find documents a file name would revise",
-        "description": "Given dropped file names, returns the office shelf documents each would be the next revision of, so the upload can file it as a new revision instead of a second document. Changes nothing.",
-        "tags": [
-          "documents"
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "names": {
-                    "type": "array",
-                    "items": {
-                      "type": "string",
-                      "minLength": 1,
-                      "maxLength": 1024
-                    },
-                    "maxItems": 2000
-                  }
-                },
-                "required": [
-                  "names"
-                ],
-                "additionalProperties": true
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Success. The body is the route’s JSON answer; no response schema is declared for it yet, so read the operation description for what it contains.",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          },
-          "400": {
-            "$ref": "#/components/responses/Error400"
-          },
-          "401": {
-            "$ref": "#/components/responses/Error401"
-          },
-          "403": {
-            "$ref": "#/components/responses/Error403"
-          },
-          "404": {
-            "$ref": "#/components/responses/Error404"
-          },
-          "429": {
-            "$ref": "#/components/responses/Error429"
-          }
-        },
-        "x-mcp-annotations": {
-          "title": "Find documents a file name would revise",
-          "readOnlyHint": true,
-          "destructiveHint": false,
-          "idempotentHint": true,
-          "openWorldHint": false
-        }
-      }
-    },
-    "/api/office-shelf/documents/search": {
-      "post": {
-        "operationId": "office-shelf-document-search",
-        "summary": "Search the office shelf by meaning",
-        "description": "Document-centric semantic search over the office shelf. `q` is a natural-language query, `topK` (1 to 100) caps the hits. Returns the best matching documents. For the project's own documents use the knowledge operations.",
-        "tags": [
-          "documents"
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "q": {
-                    "type": "string",
-                    "minLength": 1,
-                    "maxLength": 1000
-                  },
-                  "topK": {
-                    "type": "integer"
-                  }
-                },
-                "required": [
-                  "q"
-                ],
-                "additionalProperties": true
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Success. The body is the route’s JSON answer; no response schema is declared for it yet, so read the operation description for what it contains.",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          },
-          "400": {
-            "$ref": "#/components/responses/Error400"
-          },
-          "401": {
-            "$ref": "#/components/responses/Error401"
-          },
-          "403": {
-            "$ref": "#/components/responses/Error403"
-          },
-          "404": {
-            "$ref": "#/components/responses/Error404"
-          },
-          "429": {
-            "$ref": "#/components/responses/Error429"
-          }
-        },
-        "x-mcp-annotations": {
-          "title": "Search the office shelf by meaning",
-          "readOnlyHint": true,
-          "destructiveHint": false,
-          "idempotentHint": true,
-          "openWorldHint": false
-        }
-      }
-    },
-    "/api/office-shelf/documents/summary": {
-      "get": {
-        "operationId": "office-shelf-document-summary",
-        "summary": "Count office shelf documents per folder",
-        "description": "What the database can say about every office shelf document at once: counts per folder by read-state family, plus the failed documents. Cheaper than paging office-shelf-document-list when you need an overview.",
-        "tags": [
-          "documents"
-        ],
-        "parameters": [
-          {
-            "name": "authoredBy",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "string",
-              "enum": [
-                "user",
-                "agent"
-              ]
-            }
-          },
-          {
-            "name": "includeArchived",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "const": "true"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Success. The body is the route’s JSON answer; no response schema is declared for it yet, so read the operation description for what it contains.",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          },
-          "400": {
-            "$ref": "#/components/responses/Error400"
-          },
-          "401": {
-            "$ref": "#/components/responses/Error401"
-          },
-          "403": {
-            "$ref": "#/components/responses/Error403"
-          },
-          "404": {
-            "$ref": "#/components/responses/Error404"
-          },
-          "429": {
-            "$ref": "#/components/responses/Error429"
-          }
-        },
-        "x-mcp-annotations": {
-          "title": "Count office shelf documents per folder",
-          "readOnlyHint": true,
-          "destructiveHint": false,
-          "idempotentHint": true,
-          "openWorldHint": false
-        }
-      }
-    },
-    "/api/office-shelf/documents/upload": {
-      "post": {
-        "operationId": "office-shelf-document-upload",
-        "summary": "Upload a file to the office shelf",
-        "description": "Stores one file in the office shelf (optionally in one of its folders) and ingests it into the shared collection. Up to 32 MiB per call through the agent door; the document limit of the office applies too. Send `body.files[0]` as { name, mimeType, contentBase64 }. Needs the right to manage the office shelf. Returns `{ documentId, jobId, status, filename }`; follow ingestion with document-status.",
-        "tags": [
-          "documents"
-        ],
-        "requestBody": {
-          "required": true,
-          "description": "A multipart form: the file in the `file` part, the route’s text fields as their own parts. Over MCP send body.files[0] = { name, mimeType, contentBase64 } and body.fields instead.",
-          "content": {
-            "multipart/form-data": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "file": {
-                    "type": "string",
-                    "format": "binary"
-                  },
-                  "folderId": {
-                    "type": "string",
-                    "description": "The office shelf folder id, from office-shelf-folder-list; omit for the root."
-                  },
-                  "revisionOf": {
-                    "type": "string",
-                    "description": "The id of the older document this file is the new revision of; the service checks the pair."
-                  },
-                  "originPath": {
-                    "type": "string",
-                    "maxLength": 2000,
-                    "description": "Where the file sat before upload, e.g. \"Drawings/GF/floor-plan.pdf\". Only for a folder upload; it is screened by name."
-                  },
-                  "screeningRelease": {
-                    "const": "name",
-                    "description": "Send \"name\" only when a reviewer released this file’s name from the upload screening."
-                  },
-                  "uploadBatchId": {
-                    "type": "string",
-                    "format": "uuid",
-                    "description": "The batch uuid given to upload-batch-open, to file this upload under that batch."
-                  }
-                },
-                "required": [
-                  "file"
-                ]
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Success. The body is the route’s JSON answer; no response schema is declared for it yet, so read the operation description for what it contains.",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          },
-          "400": {
-            "$ref": "#/components/responses/Error400"
-          },
-          "401": {
-            "$ref": "#/components/responses/Error401"
-          },
-          "403": {
-            "$ref": "#/components/responses/Error403"
-          },
-          "404": {
-            "$ref": "#/components/responses/Error404"
-          },
-          "429": {
-            "$ref": "#/components/responses/Error429"
-          }
-        },
-        "x-mcp-annotations": {
-          "title": "Upload a file to the office shelf",
-          "readOnlyHint": false,
-          "destructiveHint": false,
-          "idempotentHint": false,
-          "openWorldHint": false
-        }
-      }
-    },
-    "/api/documents": {
-      "get": {
-        "operationId": "project-document-list",
-        "summary": "List a project’s documents",
-        "description": "One page of the project's documents with name, folder, author, lifecycle and version state. Pass `projectId` (from project-list). Without level parameters it drains the whole shelf, 500 a page; `folderId` (a folder id or `root`), `sort`, `dir`, `q`, `state` or `limit` read one folder level instead. Follow `nextCursor` (pass it as `cursor`) until it is null.",
-        "tags": [
-          "documents"
-        ],
-        "parameters": [
-          {
-            "name": "authoredBy",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "string",
-              "enum": [
-                "user",
-                "agent"
-              ]
-            }
-          },
-          {
-            "name": "includeArchived",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "const": "true"
-            }
-          },
-          {
-            "name": "cursor",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "string",
-              "maxLength": 6000
-            }
-          },
-          {
-            "name": "folderId",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "const": "root"
-                },
-                {
-                  "type": "string",
-                  "format": "uuid"
-                }
-              ]
-            }
-          },
-          {
-            "name": "sort",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "string",
-              "enum": [
-                "added",
-                "name",
-                "size"
-              ]
-            }
-          },
-          {
-            "name": "dir",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "string",
-              "enum": [
-                "asc",
-                "desc"
-              ]
-            }
-          },
-          {
-            "name": "q",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "string",
-              "maxLength": 200
-            }
-          },
-          {
-            "name": "state",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "string",
-              "maxLength": 100,
-              "description": "Read-state families, comma-separated: readable, reading, failed, held, unindexed. Held files await a reviewer (quarantine-list); review requests are in inbox-list, filter `requests`."
-            },
-            "description": "Read-state families, comma-separated: readable, reading, failed, held, unindexed. Held files await a reviewer (quarantine-list); review requests are in inbox-list, filter `requests`."
-          },
-          {
-            "name": "limit",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer"
-            }
-          },
-          {
-            "name": "projectId",
-            "in": "query",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "minLength": 1
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Success. The body is the route’s JSON answer; no response schema is declared for it yet, so read the operation description for what it contains.",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          },
-          "400": {
-            "$ref": "#/components/responses/Error400"
-          },
-          "401": {
-            "$ref": "#/components/responses/Error401"
-          },
-          "403": {
-            "$ref": "#/components/responses/Error403"
-          },
-          "404": {
-            "$ref": "#/components/responses/Error404"
-          },
-          "429": {
-            "$ref": "#/components/responses/Error429"
-          }
-        },
-        "x-mcp-annotations": {
-          "title": "List a project’s documents",
-          "readOnlyHint": true,
           "destructiveHint": false,
           "idempotentHint": true,
           "openWorldHint": false
@@ -7650,7 +7192,7 @@
       "get": {
         "operationId": "office-shelf-folder-list",
         "summary": "List the office shelf folders",
-        "description": "Every folder of the office shelf, in the same shape as project-folder-list. Any member may read. Folder ids feed office-shelf-folder-update, office-shelf-folder-delete and the `folderId` filter of office-shelf-document-list.",
+        "description": "Every folder of the office shelf, in the same shape as project-folder-list. Any member may read. Folder ids feed office-shelf-folder-update, office-shelf-folder-delete and the `folderId` filter of document-list.",
         "tags": [
           "folders"
         ],
@@ -7744,7 +7286,7 @@
       "patch": {
         "operationId": "office-shelf-folder-update",
         "summary": "Rename, move or describe an office shelf folder",
-        "description": "Changes a folder's `name`, `parentId` (null moves it to the shelf root) or `description` (null clears it); send only what changes. Folder ids come from office-shelf-folder-list. Needs org:office_shelf:manage. Returns `{ folder }`.",
+        "description": "Changes a folder's `name`, `parentId` (null: the shelf root) or `description` (null clears it); send only what changes. Needs org:office_shelf:manage.",
         "tags": [
           "folders"
         ],
@@ -8060,7 +7602,7 @@
       "put": {
         "operationId": "project-folder-access-set",
         "summary": "Set who may open a project folder",
-        "description": "Replaces the folder’s access. `{ mode: \"inherit\" }` returns it to the project’s access; `{ mode: \"custom\", everyoneReads, people: [{ userId, level }] }` gives it its own list, `level` `read` or `write`, at most 50 people, user ids from organization-member-list. A change of who may read moves the documents below the folder before the answer; `failed` lists any that did not move, and the same call again retries them. Needs manage rights on the project and write access on the folder. Read the access first with project-folder-access-get. Sensitive: the organization switches it on for agents, and the person confirms every call.",
+        "description": "Replaces the folder’s access: `{ mode: \"inherit\" }`, or `{ mode: \"custom\", everyoneReads, people: [{ userId, level }] }` (`read` or `write`, at most 50 people, ids from organization-member-list). `failed` lists documents that did not move; call again to retry. Read it first with project-folder-access-get. Sensitive: the person confirms every call.",
         "tags": [
           "folders"
         ],
@@ -8193,8 +7735,8 @@
     "/api/projects/{id}/bin": {
       "get": {
         "operationId": "project-folder-bin-list",
-        "summary": "List a project’s deleted folders",
-        "description": "The project's bin: the deleted folders the person may read, who deleted each and when, when its purge runs, and what the person may do about it (restore, purge now). Folder ids from here feed project-folder-restore and project-folder-bin-purge.",
+        "summary": "List a project’s bin: deleted folders and documents",
+        "description": "The project's bin, newest first, paged (`nextCursor`): deleted folders, who deleted each, when it is purged. An entry with `document` is one document: restore it with document-restore; a folder with project-folder-restore.",
         "tags": [
           "folders"
         ],
@@ -8208,6 +7750,23 @@
               "description": "The project id, from project-list."
             },
             "description": "The project id, from project-list."
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 200
+            }
           }
         ],
         "responses": {
@@ -8236,7 +7795,7 @@
           }
         },
         "x-mcp-annotations": {
-          "title": "List a project’s deleted folders",
+          "title": "List a project’s bin: deleted folders and documents",
           "readOnlyHint": true,
           "destructiveHint": false,
           "idempotentHint": true,
@@ -8396,7 +7955,7 @@
       "get": {
         "operationId": "project-folder-list",
         "summary": "List a project’s folders",
-        "description": "Every folder of the project's files that the person may read, each with its id, name, parent, path and the person's own access, plus `rootAccess` (what they may do at the project root). Folder ids from here feed project-folder-update, project-folder-delete, document filters (`folderId` of project-document-list) and the `parentId` of project-folder-create.",
+        "description": "The project's folder tree in one call: every folder the person may read, with its id, name, parent, path and the person's own access, plus `rootAccess`. `counts: true` adds each folder's `documentCount` and `rootDocumentCount`. Folder ids feed project-folder-update, project-folder-delete and `folderId` of document-list.",
         "tags": [
           "folders"
         ],
@@ -8410,6 +7969,16 @@
               "description": "The project id, from project-list."
             },
             "description": "The project id, from project-list."
+          },
+          {
+            "name": "counts",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "const": "true",
+              "description": "Adds `documentCount` (filed directly in it) per folder."
+            },
+            "description": "Adds `documentCount` (filed directly in it) per folder."
           }
         ],
         "responses": {
@@ -8512,7 +8081,7 @@
       "patch": {
         "operationId": "project-folder-update",
         "summary": "Rename, move or describe a project folder",
-        "description": "Changes a folder's `name`, its `parentId` (null moves it to the project root) or its `description` (null clears it); send only what changes. Folder ids come from project-folder-list. A move that changes who can open the subtree also needs project:manage. Returns `{ folder }`.",
+        "description": "Changes a folder's `name`, `parentId` (null: the project root) or `description` (null clears it); send only what changes. A move that changes who can open the subtree needs project:manage.",
         "tags": [
           "folders"
         ],
@@ -8616,7 +8185,7 @@
       "post": {
         "operationId": "project-folder-ensure",
         "summary": "Resolve folder paths, creating the missing",
-        "description": "Takes directory paths (relative to `parentId`, null: the project root) and returns the folders plus `folderIdByPath`, creating whatever is missing. Unlike project-folder-create it treats an existing folder as success, so call it before filing documents into a tree. Safe to repeat.",
+        "description": "Takes directory paths (relative to `parentId`, null: the root) and returns the folders plus `folderIdByPath`, creating what is missing; an existing folder is success. Safe to repeat.",
         "tags": [
           "folders"
         ],
@@ -8822,7 +8391,7 @@
       "post": {
         "operationId": "project-root-sort-start",
         "summary": "Sort a project root’s loose files into its folders",
-        "description": "Starts a server run that proposes a folder for every loose file in the project's root, from the folders the project already has, plus new folders for the files none fits. Nothing moves yet. Returns the run (`status: judging`); follow it with root-sort-run-get until `status` is `ready`, then send what to keep with root-sort-run-apply. Refused when the project has no folder, the root holds no file, or a sort of the same root is already running. A new run cancels the person’s earlier runs that still wait for review.",
+        "description": "Starts a server run that proposes a folder for every loose file in the project's root (existing folders, or new ones). Nothing moves yet. Follow the run with root-sort-run-get until `ready`, then send what to keep with root-sort-run-apply. Refused when there is no folder, no loose file, or a sort already running.",
         "tags": [
           "folders"
         ],
@@ -9042,7 +8611,7 @@
       "get": {
         "operationId": "root-sort-run-get",
         "summary": "Read one root-sort run",
-        "description": "The run’s `status` (judging, grouping, ready, applying, applied, undoing, undone, cancelled, failed) and `progress`. Once `ready` it carries `review`: the shelf’s folders, the files, one placement per file (`folderId`, or `newFolderPath` for a folder the run proposes, with its `reason` and `confidence`) and the proposed new folders. Only the person who started the run can read it. Next: root-sort-run-apply, or root-sort-run-cancel. In a project’s own conversation read the run through project-root-sort-get, which names the project.",
+        "description": "The run’s `status` (judging, grouping, ready, applying, applied, undoing, undone, cancelled, failed) and `progress`. Once `ready`, `review` holds one placement per file (`folderId` or `newFolderPath`, with `reason` and `confidence`). Only its starter reads it. Next: root-sort-run-apply or root-sort-run-cancel.",
         "tags": [
           "folders"
         ],
@@ -10361,7 +9930,7 @@
       "post": {
         "operationId": "document-revision-candidates",
         "summary": "Find documents a new file could replace",
-        "description": "For file names about to be added to a project (`projectId`, `names`, optional `folders`), lists the documents each could revise. Feeds document-revision-link-set.",
+        "description": "For file names about to be added to a project (`projectId`, `names`, optional target `folders`) or the office shelf (`scope: office_shelf`), lists existing documents each could be a new revision of. Read-only; feeds document-revision-link-set.",
         "tags": [
           "review"
         ],
@@ -10372,6 +9941,14 @@
               "schema": {
                 "type": "object",
                 "properties": {
+                  "scope": {
+                    "type": "string",
+                    "enum": [
+                      "project",
+                      "office_shelf"
+                    ],
+                    "description": "Default `project` (with `projectId`)."
+                  },
                   "projectId": {
                     "type": "string",
                     "minLength": 1
@@ -10402,7 +9979,6 @@
                   }
                 },
                 "required": [
-                  "projectId",
                   "names"
                 ],
                 "additionalProperties": true

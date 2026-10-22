@@ -18,11 +18,12 @@
 
 import { z } from 'zod'
 import { FILENAME_LOOKUP_MAX_NAMES } from './filename-lookup'
+import { shelfSelectorFields } from './shelf-scope'
 
 const names = z.array(z.string().min(1).max(1024)).min(1).max(FILENAME_LOOKUP_MAX_NAMES)
 
-export const officeShelfByNameRequestSchema = z.object({ names })
-export const projectByNameRequestSchema = z.object({ projectId: z.string().min(1), names })
+/** The shelf (`scope`, `projectId`) and the file names to resolve on it. */
+export const byNameRequestSchema = z.object({ ...shelfSelectorFields, names })
 
 /**
  * The response, parsed as far as a reader relies on it: the identity fields
