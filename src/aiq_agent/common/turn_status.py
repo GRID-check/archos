@@ -546,6 +546,17 @@ def emit_technical(slot: str, **detail: Scalar | list[str] | None) -> None:
 ACTION_STEP_PREFIX = "action:"
 
 
+#: The action row of the tool call running RIGHT NOW, so the sources it returns
+#: name the same call (ADR-0131). Each parallel call runs in its own task, so
+#: siblings never see each other's id.
+_action_call: ContextVar[str | None] = ContextVar("grid_action_call", default=None)
+
+
+def current_action_call() -> str | None:
+    """The call id of the action row open in this task, or ``None``."""
+    return _action_call.get()
+
+
 class ActionRow:
     """One call's row in the Herleitung work list: emitted ``running`` now, settled by :meth:`finish`.
 
@@ -555,9 +566,16 @@ class ActionRow:
     """
 
     def __init__(self, verb: ActionVerb, **fields: Any) -> None:
-        self._id = f"{ACTION_STEP_PREFIX}{uuid4().hex[:16]}"
+        self.call_id = uuid4().hex[:16]
+        self._id = f"{ACTION_STEP_PREFIX}{self.call_id}"
         self._started = time.monotonic()
-        self._fields: dict[str, Any] = {"verb": verb, "round": current_retrieval_round(), **_clip_action(fields)}
+        self._fields: dict[str, Any] = {
+            "verb": verb,
+            "call_id": self.call_id,
+            "round": current_retrieval_round(),
+            **_clip_action(fields),
+        }
+        self._token: Token[str | None] | None = _action_call.set(self.call_id)
         self._done = False
         self._emit(started=True)
 
@@ -572,6 +590,7 @@ class ActionRow:
         if self._done:
             return
         self._done = True
+        self._release_call()
         self._fields.update(_clip_action(fields))
         self._fields["status"] = status
         self._fields["elapsed_ms"] = max(0, round((time.monotonic() - self._started) * 1000))
@@ -579,6 +598,17 @@ class ActionRow:
         if kept:
             self._fields["counts"] = kept
         self._emit(started=False)
+
+    def _release_call(self) -> None:
+        token, self._token = self._token, None
+        if token is None:
+            return
+        try:
+            _action_call.reset(token)
+        except ValueError:
+            # Settled from another context than the one that opened it: that
+            # context ends with its task, and the id goes with it.
+            pass
 
     def _emit(self, *, started: bool) -> None:
         try:

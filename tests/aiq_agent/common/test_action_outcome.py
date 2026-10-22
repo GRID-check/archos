@@ -44,3 +44,27 @@ def test_settle_finishes_the_row_once_with_its_counts(emitted) -> None:
     started, finished = emitted.steps
     assert started.id == finished.id
     assert (finished.status, finished.counts.hits, finished.counts.searched) == ("ok", 2, 9)
+
+
+async def test_parallel_calls_keep_their_own_call_id_for_their_sources(monkeypatch):
+    """Sources a call returns carry that call's id, even beside a sibling call (ADR-0131)."""
+    import asyncio
+
+    from aiq_agent.common import turn_status
+
+    bodies: list = []
+    monkeypatch.setattr(turn_status, "emit", bodies.append)
+
+    async def call(name: str) -> tuple[str, str | None]:
+        row = turn_status.ActionRow("search", query=name)
+        await asyncio.sleep(0)
+        seen = turn_status.current_action_call()
+        row.finish("ok")
+        return row.call_id, seen
+
+    results = await asyncio.gather(call("a"), call("b"))
+    assert [own for own, _ in results] == [seen for _, seen in results]
+    assert results[0][0] != results[1][0]
+    assert turn_status.current_action_call() is None
+    finished = [b.step for b in bodies if b.type == "STEP_FINISHED"]
+    assert {s.call_id for s in finished} == {own for own, _ in results}

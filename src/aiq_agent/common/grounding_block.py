@@ -42,6 +42,7 @@ from aiq_agent.common.provenance import AGENT_AUTHOR
 from aiq_agent.common.provenance import AgentProvenance
 from aiq_agent.common.provenance import provenance_label
 from aiq_agent.common.source_kinds import Shelf
+from aiq_agent.common.turn_status import current_action_call
 from aiq_agent.common.turn_status import current_retrieval_round
 from aiq_agent.common.turn_status import emit_step
 from aiq_agent.common.wire_v2 import SourcesStep
@@ -322,7 +323,15 @@ def render_grounding_block(block: GroundingBlock) -> str:
     if block.lanes:
         round_index = current_retrieval_round()
         step_id = f"sources:{round_index}:{block.tool}:{uuid.uuid4().hex[:8]}"
-        emit_step(SourcesStep(id=step_id, round=round_index, tool=block.tool, lanes=list(block.lanes)))
+        emit_step(
+            SourcesStep(
+                id=step_id,
+                round=round_index,
+                tool=block.tool,
+                lanes=list(block.lanes),
+                call_id=current_action_call(),
+            )
+        )
     return rendered
 
 

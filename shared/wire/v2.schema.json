@@ -83,6 +83,13 @@
       "additionalProperties": false,
       "description": "One call of the agent's work, as the reader sees it (ADR-0131): verb, target, outcome, time.\n\nThe tool emits it itself, at start (``running``) and at end, under one id,\nfrom the values it already holds: typed and clipped, never its raw input or\nits text. ``elapsed_ms`` is set on the end row.",
       "properties": {
+        "call_id": {
+          "description": "Shared with the sources step this call returned.",
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Call Id",
+          "type": "string"
+        },
         "counts": {
           "anyOf": [
             {
@@ -258,6 +265,7 @@
       },
       "required": [
         "id",
+        "call_id",
         "verb",
         "kind"
       ],
@@ -2152,6 +2160,20 @@
       "additionalProperties": false,
       "description": "What one evidence tool returned, as lanes. Built from the grounding records, never from text.",
       "properties": {
+        "call_id": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "The action row of the call that returned these (ADR-0131).",
+          "title": "Call Id"
+        },
         "id": {
           "maxLength": 200,
           "minLength": 1,

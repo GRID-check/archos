@@ -225,6 +225,9 @@ class SourcesStep(_StepBase):
     round: int | None = Field(default=None, ge=0)
     tool: str = Field(min_length=1)
     lanes: list[TraceLane]
+    call_id: str | None = Field(
+        default=None, max_length=64, description="The action row of the call that returned these (ADR-0131)."
+    )
 
 
 class ToolStep(_StepBase):
@@ -300,6 +303,7 @@ class ActionStep(_StepBase):
     """
 
     kind: Literal["action"] = "action"
+    call_id: str = Field(min_length=1, max_length=64, description="Shared with the sources step this call returned.")
     round: int | None = Field(default=None, ge=0, description="The retrieval round the call ran in.")
     verb: ActionVerb
     status: Literal["running", "ok", "empty", "error"] = "running"
