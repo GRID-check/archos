@@ -59,16 +59,19 @@ if (empty(name) and not empty(assignee) and not empty(assignee.user)) {
   name := assignee.user.first_name ?? assignee.user.email
 }
 if (empty(name)) {
-  name := 'einem Teammitglied'
+  name := inputs.copy.someone
 }
 
+// Every word a person reads comes from the `copy` input, keyed in English, the
+// way the app reads its i18n dictionaries: no German in the code.
+let copy := inputs.copy
 let titles := {
-  'bug': '🐞 Neuer Bug-Report',
-  'idea': '💡 Neue Idee',
-  'praise': '❤️ Neues Lob',
-  'question': '❓ Neue Frage'
+  'bug': f'🐞 {copy.title_bug}',
+  'idea': f'💡 {copy.title_idea}',
+  'praise': f'❤️ {copy.title_praise}',
+  'question': f'❓ {copy.title_question}'
 }
-let title := titles[kind] ?? '📝 Feedback'
+let title := titles[kind] ?? f'📝 {copy.title_other}'
 let number := ticket.ticket_number ?? ticket.number ?? props.ticket_number
 
 // The report's first message starts with "[kind] #<report id> <path>" for
@@ -96,10 +99,10 @@ let quote := empty(words) ? '' : f'\n>>> {words}'
 
 let blocks := [
   {'type': 'section', 'text': {'type': 'mrkdwn', 'text': f'*{title} #{number}*{quote}'}},
-  {'type': 'context', 'elements': [{'type': 'mrkdwn', 'text': f'✅ Übernommen von *{name}*'}]},
+  {'type': 'context', 'elements': [{'type': 'mrkdwn', 'text': f'✅ {copy.taken_by} *{name}*'}]},
   {'type': 'actions', 'elements': [{
     'type': 'button',
-    'text': {'type': 'plain_text', 'text': 'Ticket in PostHog öffnen'},
+    'text': {'type': 'plain_text', 'text': copy.open_ticket},
     'url': f'https://eu.posthog.com/project/{project.id}/support/tickets/{ticketId}'
   }]}
 ]
@@ -114,7 +117,7 @@ for (let ts in alerts) {
     'body': {
       'channel': inputs.channel,
       'ts': ts,
-      'text': f'{title} #{number}: übernommen von {name}',
+      'text': f'{title} #{number}: {copy.taken_by} {name}',
       'blocks': blocks
     }
   })
