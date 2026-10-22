@@ -1,0 +1,7 @@
+---
+operators:
+  - >
+    Knowledge search can leave out passages that are unreadable scanner debris
+    from drawings, so their places go to real passages; exact and pattern
+    searches still return everything. It is off until measured: set
+    AIQ_DROP_OCR_NOISE=true on the backend to switch it on.
