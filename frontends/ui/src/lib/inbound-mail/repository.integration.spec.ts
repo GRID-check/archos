@@ -369,4 +369,198 @@ describe.skipIf(!url)('the E-Mail-Eingang’s receive SQL against Postgres', () 
       expect(await inTenant(() => repo.findThreadFollowContext(otherProjectId, threadId))).toBeNull()
     })
   })
+
+  describe('the review: the address, decisions, dismissal and restore (D8)', () => {
+    const PERSON = USER
+    const OTHER_PERSON = 'user_01J0REPOSPEC0000000000000B'
+    const etag = (mail: { updatedAt: Date }, parts: ReadonlyArray<{ id: string; state: string }>) =>
+      `${new Date(mail.updatedAt).toISOString()}|${parts.map((part) => `${part.id}:${part.state}`).join(',')}`
+    const actor = { decidedBy: PERSON, via: 'app' as const, proposalId: null }
+
+    /** A mail held with its text and one clean attachment, through the receive side's own statements. */
+    async function heldMail(): Promise<{ mailId: string; textId: string; fileId: string }> {
+      const mailId = crypto.randomUUID()
+      await reception(mailId)
+      const deliveryKey = (mailId.replace(/-/g, '') + mailId.replace(/-/g, '')).slice(0, 64)
+      await inTenant(() => repo.completeReception({ mailId, organizationId: ORG, projectId, deliveryKey, rawSizeBytes: 1000 }))
+      await inTenant(() => repo.recordRawScan(mailId, { status: 'clean', engine: 'ClamAV 1.5.4/28157', signature: null, scannedAt: new Date() }))
+      const base = { organizationId: ORG, projectId, mailId, contentType: 'text/plain', sizeBytes: 5, sha256: 'a'.repeat(64) }
+      await inTenant(() =>
+        repo.holdMail(
+          mailId,
+          {
+            readStorageKey: keyOf(mailId, 'read.json'),
+            messageId: `<m-${mailId}@example.org>`,
+            inReplyTo: [],
+            referenceIds: [],
+            threadIndexGuid: null,
+            baseSubject: 'statik dach',
+            threadMatch: [],
+            senderAddress: 'huber@statik.example',
+            senderName: 'Huber',
+            subject: 'AW: Statik Dach',
+            participants: [],
+            participantDomains: ['statik.example'],
+            recipientCount: 1,
+            senderTrust: 'external_verified',
+            senderUserId: null,
+            senderReason: 'dkim_pass',
+            signerDomain: 'statik.example',
+            signedHeaders: ['from', 'subject', 'date', 'message-id'],
+            senderFlags: [],
+            authenticationResults: null,
+            automatic: false,
+            sentAt: new Date(),
+            sentAtHeader: new Date(),
+            notStaged: [],
+            ignored: {},
+          },
+          [
+            { ...base, position: 0, kind: 'message', scanStatus: 'not_applicable' },
+            {
+              ...base,
+              position: 1,
+              kind: 'attachment',
+              filename: 'S-101.pdf',
+              contentType: 'application/pdf',
+              storageKey: keyOf(mailId, '1'),
+              scanStatus: 'clean',
+              scanEngine: 'ClamAV 1.5.4/28157',
+              scannedAt: new Date(),
+            },
+          ],
+        ),
+      )
+      const parts = await inTenant(() => repo.findMailParts([mailId]))
+      return { mailId, textId: parts[0]!.id, fileId: parts[1]!.id }
+    }
+
+    async function currentEtag(mailId: string): Promise<string> {
+      const mail = await inTenant(() => repo.findProjectMail(projectId, mailId))
+      return etag(mail!, await inTenant(() => repo.findMailParts([mailId])))
+    }
+
+    const fileRow = (mailId: string, partId: string, overrides: Record<string, unknown> = {}) => ({
+      id: crypto.randomUUID(),
+      organizationId: ORG,
+      projectId,
+      mailId,
+      partId,
+      action: 'file' as const,
+      decidedBy: PERSON,
+      via: 'app' as const,
+      proposalId: null,
+      folderId: null,
+      folderPath: 'Tragwerk',
+      fileName: 'S-101.pdf',
+      ...overrides,
+    })
+
+    it('gives a project one active address, and replacing it revokes the old one and ends the project’s follows', async () => {
+      const own = (await one<{ id: string }>(sql`
+        INSERT INTO projects (organization_id, name, created_by, collection_name)
+        VALUES (${ORG}, 'Adressprojekt', ${USER}, ${`coll_inbound_addr_${STAMP}`}) RETURNING id`)).id
+      const first = await inTenant(() => repo.insertAddress({ organizationId: ORG, projectId: own, token: token('first'), slug: 'haus', createdBy: PERSON }))
+      expect(first.ok).toBe(true)
+      expect(await inTenant(() => repo.insertAddress({ organizationId: ORG, projectId: own, token: token('secnd'), slug: 'haus', createdBy: PERSON }))).toEqual({
+        ok: false,
+        conflict: 'active',
+      })
+      const thread = (await one<{ id: string }>(sql`
+        INSERT INTO mail_threads (organization_id, project_id, base_subject, locale, created_by)
+        VALUES (${ORG}, ${own}::uuid, 'statik', 'de', ${PERSON}) RETURNING id`)).id
+      await one(sql`
+        INSERT INTO mail_thread_follows (organization_id, project_id, thread_id, user_id, expires_at)
+        VALUES (${ORG}, ${own}::uuid, ${thread}::uuid, ${OTHER_PERSON}, now() + interval '60 days') RETURNING id`)
+
+      const replaced = await inTenant(() => repo.replaceAddress({ organizationId: ORG, projectId: own, token: token('third'), slug: 'haus', createdBy: PERSON }))
+      expect(replaced.ok && replaced.value.previousAddressId).toBe(first.ok ? first.value.id : null)
+      expect(replaced.ok && replaced.value.followsEnded).toEqual([expect.objectContaining({ threadId: thread, userId: OTHER_PERSON })])
+      expect(await one(sql`SELECT revoked_reason, revoked_by FROM inbound_mail_addresses WHERE id = ${first.ok ? first.value.id : ''}::uuid`)).toEqual({
+        revoked_reason: 'rotated',
+        revoked_by: PERSON,
+      })
+      expect(await one(sql`SELECT ended_reason, ended_by FROM mail_thread_follows WHERE thread_id = ${thread}::uuid`)).toEqual({
+        ended_reason: 'address_rotated',
+        ended_by: PERSON,
+      })
+      expect(await inTenant(() => repo.switchOffAddress(own, PERSON))).toMatchObject({ followsEnded: [] })
+      expect(await inTenant(() => repo.findActiveAddress(own))).toBeNull()
+      expect(await inTenant(() => repo.switchOffAddress(own, PERSON))).toBeNull()
+    })
+
+    it('writes a decision with its claim, dismisses the rest and queues the job, all at once', async () => {
+      const { mailId, textId, fileId } = await heldMail()
+      const jobId = crypto.randomUUID()
+      const written = await inTenant(() =>
+        repo.writeMailDecisions([{ mailId, ifMatch: 'x', files: [fileRow(mailId, fileId)] }], actor, () => 'x', new Date(Date.now() + 300_000), {
+          jobId,
+          organizationId: ORG,
+          payload: { projectId, mailIds: [mailId], requester: { userId: PERSON } },
+        }),
+      )
+      expect(written.decisions.map((row) => [row.partId, row.action])).toEqual([
+        [fileId, 'file'],
+        [textId, 'dismiss'],
+      ])
+      const parts = await inTenant(() => repo.findMailParts([mailId]))
+      expect(parts.map((part) => part.state)).toEqual(['dismissed', 'filing'])
+      expect(parts[1]?.decisionId).toBe(written.decisions[0]?.id)
+      expect(await one(sql`SELECT kind FROM bff_job_queue WHERE job_id = ${jobId}::uuid`)).toEqual({ kind: 'inbound_mail_file' })
+
+      const listed = await inTenant(() => repo.listProjectMails(projectId, { status: 'waiting', limit: 50 }, null))
+      expect(listed.map((row) => row.mail.id)).toContain(mailId)
+    })
+
+    it('lets exactly one of two decisions on the same mail win (compare-and-set)', async () => {
+      const { mailId, fileId } = await heldMail()
+      const ifMatch = await currentEtag(mailId)
+      const attempt = () =>
+        inTenant(() => repo.writeMailDecisions([{ mailId, ifMatch, files: [fileRow(mailId, fileId)] }], actor, etag, new Date(Date.now() + 300_000), null))
+      const results = await Promise.allSettled([attempt(), attempt()])
+      expect(results.filter((result) => result.status === 'fulfilled')).toHaveLength(1)
+      const [refused] = results.filter((result): result is PromiseRejectedResult => result.status === 'rejected')
+      expect(refused?.reason).toBeInstanceOf(repo.MailChangedError)
+      expect(await one(sql`SELECT count(*)::int AS n FROM inbound_mail_decisions WHERE mail_id = ${mailId}::uuid AND action = 'file'`)).toEqual({ n: 1 })
+    })
+
+    it('refuses a Piloti card carrying an acknowledgement, in the database (RT-S5)', async () => {
+      const { mailId, fileId } = await heldMail()
+      const card = { decidedBy: PERSON, via: 'piloti_proposal' as const, proposalId: crypto.randomUUID() }
+      await expect(
+        inTenant(() =>
+          repo.writeMailDecisions(
+            [{ mailId, ifMatch: 'x', files: [fileRow(mailId, fileId, { via: 'piloti_proposal', proposalId: card.proposalId, acknowledgedRisk: true })] }],
+            card,
+            () => 'x',
+            new Date(Date.now() + 300_000),
+            null,
+          ),
+        ),
+      ).rejects.toSatisfy((error: unknown) => {
+        const cause = (error as { cause?: { constraint_name?: string } }).cause
+        return cause?.constraint_name === 'inbound_mail_decisions_piloti_cards_file_clean'
+      })
+      expect((await inTenant(() => repo.findMailParts([mailId]))).map((part) => part.state)).toEqual(['waiting', 'waiting'])
+    })
+
+    it('dismisses and restores within the window, each act a decision, and a second restore finds nothing', async () => {
+      const { mailId } = await heldMail()
+      const dismissed = await inTenant(() => repo.dismissMails(projectId, [mailId], actor))
+      expect(dismissed.decisions.map((row) => row.action)).toEqual(['dismiss', 'dismiss'])
+      expect(await inTenant(() => repo.hasOpenParts(mailId))).toBe(false)
+      expect(await inTenant(() => repo.dismissMails(projectId, [mailId], actor))).toEqual({ decisions: [] })
+      const handled = await inTenant(() => repo.listProjectMails(projectId, { status: 'handled', outcome: 'dismissed', limit: 50 }, null))
+      expect(handled.map((row) => row.mail.id)).toContain(mailId)
+
+      const later = new Date(Date.now() + 7 * 86_400_000)
+      const restored = await inTenant(() => repo.restoreMailParts(projectId, mailId, actor, new Date(Date.now() - 7 * 86_400_000), later))
+      expect(restored.decisions.map((row) => row.action)).toEqual(['restore', 'restore'])
+      expect((await inTenant(() => repo.findMailParts([mailId]))).map((part) => part.state)).toEqual(['waiting', 'waiting'])
+      expect(await inTenant(() => repo.restoreMailParts(projectId, mailId, actor, new Date(0), later))).toEqual({ decisions: [] })
+
+      await inTenant(() => repo.markDecisionsAudited(restored.decisions.map((row) => row.id)))
+      expect(await one(sql`SELECT count(*)::int AS n FROM inbound_mail_decisions WHERE mail_id = ${mailId}::uuid AND audited_at IS NOT NULL`)).toEqual({ n: 2 })
+    })
+  })
 })

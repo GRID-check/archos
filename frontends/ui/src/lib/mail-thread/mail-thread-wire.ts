@@ -211,10 +211,30 @@ export interface MailThreadFollowView {
   dailyCap: number
 }
 
-/** An attachment of an entry, only when the viewer may open its document. */
+/**
+ * What became of one attachment of a filed message (D36): filed as a document
+ * (`filed`), already in the project as identical bytes (`already_present`), or
+ * not filed (`not_filed`, with why; its bytes live only in the original).
+ */
+export const MAIL_THREAD_ATTACHMENT_DISPOSITIONS = ['filed', 'already_present', 'not_filed'] as const
+export type MailThreadAttachmentDisposition = (typeof MAIL_THREAD_ATTACHMENT_DISPOSITIONS)[number]
+
+/**
+ * One attachment of an entry, as the viewer may see it (D36). Every attachment
+ * of the message is listed, by its position in the mail; a document in a
+ * folder the viewer may not read is listed without its name and ids
+ * (`visible: false`), so the section's count stays true and nothing restricted
+ * is named. `documentVersionId` is the Fassung the mail brought.
+ */
 export interface MailThreadAttachmentView {
-  documentId: string
-  name: string
+  position: number
+  /** The name as it arrived; null when hidden from this viewer or the file came without one. */
+  filename: string | null
+  disposition: MailThreadAttachmentDisposition
+  notFiledReason?: string
+  documentId?: string
+  documentVersionId?: string
+  visible: boolean
 }
 
 /** One filed message. */

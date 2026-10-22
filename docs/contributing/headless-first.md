@@ -23,6 +23,7 @@ only Piloti has"). Such an operation is still written, then withheld in
 | `product-config` | How Piloti itself works for the office | models and their versions, zero data retention, LLM keys and provider mode, budgets and usage, settings, standing instructions, upload screening, retention policies, curated skills on or off |
 | `model-compute` | Model work the caller can do itself, whose result is no office artifact | conversation titles, citation formatting, skill review |
 | `ui-state` | This person's own screen or device | push devices and preferences, the preference bag, read and unread marks |
+| `evidence` | Bytes kept as proof, which no model reads | a held or filed mail's original `.eml` (ADR-0134) |
 
 A domain feature that makes an office artifact with Piloti's knowledge stays on
 the door (`project-summary-generate`, `project-consistency-check`,

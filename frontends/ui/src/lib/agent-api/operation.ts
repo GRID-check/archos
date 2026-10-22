@@ -35,6 +35,7 @@ export const AGENT_DOMAINS = [
   'projects',
   'documents',
   'folders',
+  'mail',
   'review',
   'conversations',
   'collaboration',
@@ -163,7 +164,7 @@ export interface AgentOperation {
 }
 
 /** What a door answer may link to: the objects with a page of their own in the app. */
-export type LinkKind = 'project' | 'document' | 'task-run' | 'conversation'
+export type LinkKind = 'project' | 'document' | 'task-run' | 'conversation' | 'inbound-mail'
 
 export type SpansProjects = 'always' | 'unlessScoped'
 

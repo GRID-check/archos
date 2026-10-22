@@ -1061,14 +1061,7 @@ export const RETIRED_AUDIT_ACTIONS = /** @type {const} */ ([
  */
 export const AWAITING_EMITTER_AUDIT_ACTIONS = /** @type {const} */ ([
   'inbound_mail.expired',
-  'inbound_mail.part_read',
-  'inbound_mail.original_read',
-  'inbound_mail.decided',
-  'inbound_mail_address.created',
-  'inbound_mail_address.rotated',
-  'inbound_mail_address.deleted',
   'mail_thread.follow_started',
-  'mail_thread.follow_ended',
   'mail_thread.entry_detached',
   'mail_thread.original_read',
 ])
