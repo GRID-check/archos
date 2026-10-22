@@ -346,7 +346,7 @@ CI, with no GitHub Advanced Security licence and no SonarQube subscription.
 
 | Tool | Covers | In CI (blocking) | Weekly |
 |---|---|---|---|
-| gitleaks | Secret scan over full history | **Yes**, every run (Repo checks job) | Yes |
+| gitleaks | Secret scan over the commits a PR adds (a push: its full history; weekly: every branch) | **Yes**, every run (Repo checks job) | Yes |
 | Semgrep | SAST for Python, TS/JS and Actions. Replaces Sonar's security rules | **Yes, on a PR**, diff-aware: blocks a *new* finding without failing on the backlog | Full tree, advisory |
 | trivy | The digest-pinned third-party images in `deploy/pulumi/src` | **Yes**, for the pins a change adds or moves, on fixable HIGH/CRITICAL (`--ignore-unfixed`) | Every pin, blocking |
 | OSV-Scanner | Dependency CVEs from **every** lockfile: both npm ones, `bun.lock`, both `uv.lock`s. Replaces Sonar SCA and the old `pip-audit`/`bun audit`/`npm audit` job | No | Advisory |
