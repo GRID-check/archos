@@ -44,6 +44,7 @@ import { turnContextHeaders } from '@/lib/turns/turn-headers.js'
 import backendTools from '../../../tests/fixtures/backend-tools.schema.json'
 import type { AgentDomain, ToolAnnotations } from './operation'
 import { type OperationResult, readResponseBody } from './dispatch'
+import { withOperationNames, withRankedOrderNote, type ToolNames } from './door-text'
 
 export type { OperationResult }
 
@@ -121,7 +122,7 @@ const ENTRIES = [
       'entry per document, its best passage and how many passages of the ranked pool it held, for which documents deal with a topic. ' +
       'A query that names only a guideline (`OIB 2`) returns every part of it with its ' +
       'scope and outline. Pass `conclusion`: one sentence on what you know and what you still need (empty on the first call). ' +
-      'Returns up to 16 excerpts across several documents, each with its source, citation key, document type, folder and page. ' +
+      'Returns up to the platform’s configured number of excerpts (16 by default; the header counts them) across several documents, each with its source, citation key, document type, folder and page. ' +
       'A `Folder:` line after them is a folder whose summary matches: a pointer to look inside with files-list or `folder`, never a source. ' +
       'A hit marked as a Piloti document is knowledge the office approved, never a source for a normative value. When you know ' +
       'which document holds the answer, call passage-read instead; for Austrian law itself call law-lookup. Never invent a ' +
@@ -339,6 +340,40 @@ function build(entry: Entry): BackendOperation {
 /** Every read tool of the Python agent offered over MCP, in the contract's order. */
 export const BACKEND_OPERATIONS: readonly BackendOperation[] = ENTRIES.map(build)
 
+/** The operation each Python tool is over MCP, for the names its answers mention. */
+const OPERATION_NAMES: ToolNames = Object.fromEntries(ENTRIES.map((entry) => [entry.tool, entry.name]))
+
+/**
+ * A tool's text as an outside agent reads it: its next-call hints name the
+ * operations (not the Python functions), and a ranked search says what its order means.
+ */
+export function doorText(
+  op: Pick<BackendOperation, 'name'>,
+  args: Record<string, unknown>,
+  text: string,
+): string {
+  const named = withOperationNames(text, OPERATION_NAMES)
+  const literal = args.match === 'exact' || args.match === 'regex'
+  return op.name === 'knowledge-search' && !literal ? withRankedOrderNote(named) : named
+}
+
+/** `body` (the backend's `{ tool, result }`) with its text results put through {@link doorText}. */
+function withDoorText(op: BackendOperation, args: Record<string, unknown>, body: unknown): unknown {
+  if (typeof body !== 'object' || body === null || !('result' in body)) return body
+  const result = (body as { result: unknown }).result
+  const door = (text: string) => doorText(op, args, text)
+  if (typeof result === 'string') return { ...body, result: door(result) }
+  if (!Array.isArray(result)) return body
+  return {
+    ...body,
+    result: result.map((block) =>
+      block && typeof block === 'object' && block.type === 'text' && typeof block.text === 'string'
+        ? { ...block, text: door(block.text) }
+        : block,
+    ),
+  }
+}
+
 export function findBackendOperation(name: string): BackendOperation | undefined {
   return BACKEND_OPERATIONS.find((op) => op.name === name)
 }
@@ -461,7 +496,9 @@ export async function callBackendOperation(
     })
     // The routes' reader, with its 5 MiB cap: a tool's answer is read no further than a route's.
     const body = await readResponseBody(response)
-    return response.ok ? { status: response.status, ok: true, body } : backendRefusal(response.status, body)
+    return response.ok
+      ? { status: response.status, ok: true, body: withDoorText(op, toolArguments, body) }
+      : backendRefusal(response.status, body)
   } catch (error) {
     const timedOut =
       error instanceof Error && (error.name === 'TimeoutError' || error.name === 'AbortError')
