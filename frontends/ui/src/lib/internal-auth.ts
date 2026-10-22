@@ -29,7 +29,7 @@ function tokensMatch(provided: string | null, expected: string): boolean {
   return timingSafeEqual(a, b)
 }
 
-function isDevEnvironment(): boolean {
+export function isDevEnvironment(): boolean {
   const env = (process.env.APP_ENV ?? process.env.NODE_ENV ?? 'production').toLowerCase()
   return DEV_APP_ENVS.has(env)
 }
