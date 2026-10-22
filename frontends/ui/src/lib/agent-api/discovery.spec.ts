@@ -482,7 +482,8 @@ describe('the Python agent’s read tools', () => {
   it('are described with the fixture’s input schema and read-only annotations', () => {
     const result = describeOperation(ctx(person), { name: 'knowledge-search' })
     const described = result.structuredContent as { inputSchema: { required: string[] }; annotations: Record<string, unknown> }
-    expect(described.inputSchema.required[0]).toBe('projectId')
+    // The project is optional for the shared corpus (`shelf: "base"`), so the query leads the required ones.
+    expect(described.inputSchema.required).toEqual(['query'])
     expect(described.annotations).toMatchObject({ readOnlyHint: true, idempotentHint: true, openWorldHint: false })
   })
 

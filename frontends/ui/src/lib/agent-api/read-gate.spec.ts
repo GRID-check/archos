@@ -294,6 +294,7 @@ const READS_WITHOUT_PROJECT_CONTENT: Readonly<Record<string, string>> = {
   'office-shelf-document-revision-probe': 'the office shelf, which belongs to no project',
   'office-shelf-root-sort-get': 'the office shelf, which belongs to no project',
   'knowledge-base-get': 'the platform’s base corpus, the same for every organization',
+  'norm-list': 'the platform’s norm register, public law pointers, the same for every organization',
   'organization-member-list': 'the organization’s members, which every member sees',
   'organization-role-list': 'the organization’s roles',
   'organization-memory-list': 'the knowledge shared by every project, which every member reads',

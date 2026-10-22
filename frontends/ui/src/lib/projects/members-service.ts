@@ -10,6 +10,7 @@ import { getWorkOS } from '@/lib/workos/client'
 import { requireProjectAccess, type ProjectPermission } from '@/lib/authz/projects'
 import { recordAuditEvent } from '@/lib/audit/service'
 import { ConflictError, NotFoundError } from '@/lib/api/errors'
+import { pageOfList, type OffsetPage } from '@/lib/api/offset-page'
 import { revokeCollaborationForProjectMember } from '@/lib/collaboration/cleanup'
 import type { AuthorizedSession } from '@/lib/auth/types'
 import { dateToMonth, type Month } from './month'
@@ -111,17 +112,32 @@ export interface ProjectMember {
   profilePictureUrl: string | null
   name: string
   role: ProjectMemberRole | null
+  /**
+   * The WorkOS role assignment that grants `role` directly: what
+   * `removeProjectRoleAssignment` takes. Null for a member without a project
+   * role, and for one who reaches the project only through a group or an
+   * organization-wide right (nothing to remove here).
+   */
+  roleAssignmentId: string | null
 }
 
+/** Who a roster lists: the people holding a project role, or the whole organization (to pick whom to add). */
+export type ProjectMemberScope = 'members' | 'organization'
+
 /**
- * The full org roster annotated with each member's effective project role
- * (null for org members without project access).
+ * The project roster: by default the people who hold a project role, each with
+ * their effective role and the assignment id that removes it. `scope:
+ * 'organization'` is the whole organization, role null for those without one
+ * (the form that picks whom to add). Ordered by name, one page at a time.
  */
 export async function listProjectMembers(
   session: AuthorizedSession,
-  projectId: string
-): Promise<ProjectMember[]> {
+  projectId: string,
+  options: { scope?: ProjectMemberScope; page?: OffsetPage } = {}
+): Promise<{ members: ProjectMember[]; nextCursor: string | null }> {
   await requireProjectAccess(session, projectId, ['project:members:manage', 'project:manage'])
+  const scope = options.scope ?? 'members'
+  const workosResourceId = await findProjectWorkosResourceId(projectId, session.organizationId)
 
   const workos = getWorkOS()
 
@@ -130,13 +146,18 @@ export async function listProjectMembers(
   // Every list is independent — fetch them in parallel. This is the one screen
   // in the product whose whole job is to report access accurately, so it probes
   // each rung rather than inferring one from another.
-  const [users, orgMemberships, ...membershipLists] = await Promise.all([
+  const [users, orgMemberships, assignments, ...membershipLists] = await Promise.all([
     workos.userManagement
       .listUsers({ organizationId: session.organizationId })
       .then((page) => page.autoPagination()),
     workos.userManagement
       .listOrganizationMemberships({ organizationId: session.organizationId })
       .then((page) => page.autoPagination()),
+    workosResourceId
+      ? workos.authorization
+          .listRoleAssignmentsForResource({ resourceId: workosResourceId })
+          .then((page) => page.autoPagination())
+      : Promise.resolve([]),
     ...PROJECT_ROLE_BY_PERMISSION.map(({ permissionSlug }) =>
       workos.authorization
         .listMembershipsForResourceByExternalId({
@@ -172,8 +193,14 @@ export async function listProjectMembers(
   })
 
   const userById = new Map(users.map((user) => [user.id, user]))
+  const assignmentByMembership = new Map<string, string>()
+  for (const assignment of assignments) {
+    if (!assignmentByMembership.has(assignment.organizationMembershipId)) {
+      assignmentByMembership.set(assignment.organizationMembershipId, assignment.id)
+    }
+  }
 
-  return orgMemberships.map((organizationMembership) => {
+  const rows = orgMemberships.map((organizationMembership) => {
     const user = userById.get(organizationMembership.userId)
     const projectMembership = projectMemberByUserId.get(organizationMembership.userId)
     return {
@@ -187,8 +214,15 @@ export async function listProjectMembers(
           ? `${user.firstName} ${user.lastName ?? ''}`.trim()
           : user?.lastName || user?.email || organizationMembership.userId),
       role: projectMembership?.role ?? null,
+      roleAssignmentId: assignmentByMembership.get(organizationMembership.id) ?? null,
     }
   })
+
+  const listed = (scope === 'members' ? rows.filter((row) => row.role !== null) : rows).sort((a, b) =>
+    a.name.localeCompare(b.name)
+  )
+  const { rows: members, nextCursor } = pageOfList(listed, options.page ?? { limit: listed.length || 1, offset: 0 })
+  return { members, nextCursor }
 }
 
 /**

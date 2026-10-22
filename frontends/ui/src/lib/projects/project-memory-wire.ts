@@ -5,6 +5,7 @@
  */
 
 import { z } from 'zod'
+import { pageQueryShape } from '@/lib/api/offset-page'
 import type { ProjectMemoryItem } from '@/lib/db/schema/project-memory'
 import {
   PROJECT_MEMORY_CONFIDENCES,
@@ -17,6 +18,13 @@ export const listMemoryQuerySchema = z.object({
   includeArchived: z.string().optional(),
   // Optional: scope to a single conversation (the chat "Piloti noted N" chip).
   conversationId: z.string().optional(),
+  ...pageQueryShape,
+})
+
+/** `GET /api/organization/memory`. */
+export const listOrganizationMemoryQuerySchema = z.object({
+  includeArchived: z.enum(['true', 'false']).optional().describe('"true" also returns archived items.'),
+  ...pageQueryShape,
 })
 
 export const createMemorySchema = z.object({

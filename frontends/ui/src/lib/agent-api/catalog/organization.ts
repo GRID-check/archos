@@ -18,6 +18,7 @@ import {
   webSearchPutSchema,
   zdrPutSchema,
 } from '@/lib/organizations/organization-wire'
+import { listOrganizationMemoryQuerySchema } from '@/lib/projects/project-memory-wire'
 import { decideConventionBodySchema } from '@/lib/office-conventions/office-conventions-wire'
 import { createRoleSchema, updateRoleSchema } from '@/lib/authz/role-wire'
 import { createCredentialSchema, providerModeSchema } from '@/lib/llm-credentials/credential-wire'
@@ -44,10 +45,6 @@ const versionParams = z.object({
     ),
 })
 
-/** The memory list reads `includeArchived` straight from the URL, so the query is declared here. */
-const memoryListQuery = z.object({
-  includeArchived: z.enum(['true', 'false']).optional().describe('"true" also returns archived items.'),
-})
 
 export const organizationOperations = [
   // --- members and roles ---------------------------------------------------
@@ -222,11 +219,11 @@ export const organizationOperations = [
     domain: 'organization',
     summary: 'List organization memory',
     description:
-      'The knowledge shared by every project of the organization (kind, content, status, confidence, pinned). ' +
+      'The knowledge shared by every project of the organization (kind, content, status, confidence, pinned), pinned first then newest, a page of `limit` (default 50) with `nextCursor`. ' +
       'Any member may read. Item ids feed organization-memory-update and organization-memory-delete.',
     method: 'GET',
     path: '/api/organization/memory',
-    query: memoryListQuery,
+    query: listOrganizationMemoryQuerySchema,
     load: () => import('@/app/api/organization/memory/route'),
   },
   {

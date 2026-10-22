@@ -74,6 +74,11 @@ export interface BackendOperation {
   readonly annotations: BackendAnnotations
   /** The call is scoped to a project, which the person must be able to chat in. */
   readonly needsProject: boolean
+  /**
+   * With `shelf: "base"` the call reads the platform's shared corpus, which belongs to no project:
+   * `projectId` may then be left out (the schema does not require it).
+   */
+  readonly projectOptionalForBase?: true
 }
 
 interface FixtureTool {
@@ -92,6 +97,8 @@ interface Entry {
   /** The English description an outside agent reads, written for this surface (see the module comment). */
   readonly description: string
   readonly needsProject: boolean
+  /** See {@link BackendOperation.projectOptionalForBase}. */
+  readonly projectOptionalForBase?: true
   /** The tool reaches a public service outside the workspace. */
   readonly openWorld?: boolean
 }
@@ -116,7 +123,7 @@ const ENTRIES = [
       '`|` is alternation; for example `MA 37/\\d{6}`); it needs one literal whole word or number it must contain (`MA ?37` has ' +
       'none), or a `folder`, `file_name` or `doc_class` to read in, and a pattern that backtracks is refused. A regex answer also ' +
       'lists every distinct matched string with its count, files and pages. `shelf` (`project`, `office` or `base`) reads one shelf ' +
-      'only; omitted, every shelf is read, the OIB corpus included, so pass `project` for whether something is in the ' +
+      'only (`base` needs no `projectId`); omitted, every shelf is read, the OIB corpus included, so pass `project` for whether something is in the ' +
       'project’s own documents; an exact or regex answer states per shelf how many documents were searched and how many matched. `context` (0 to 3, exact and regex only) adds the lines around every hit as an index. ' +
       'A search that stops at its limit says its counts are lower bounds. `group_by: "document"` (ranked search only) returns one ' +
       'entry per document, its best passage and how many passages of the ranked pool it held, for which documents deal with a topic. ' +
@@ -128,6 +135,7 @@ const ENTRIES = [
       'which document holds the answer, call passage-read instead; for Austrian law itself call law-lookup. Never invent a ' +
       'citation or a file name; an empty result says how to retry.',
     needsProject: true,
+    projectOptionalForBase: true,
   },
   {
     name: 'passage-read',
@@ -310,11 +318,21 @@ const PROJECT_ID_SCHEMA = {
     'The project this call reads from, from project-list. The person must be able to chat in it.',
 } as const
 
-function withProjectId(schema: JsonSchemaObject): JsonSchemaObject {
+const OPTIONAL_PROJECT_ID_SCHEMA = {
+  type: 'string',
+  description:
+    'The project this call reads from, from project-list. The person must be able to chat in it. ' +
+    'Optional only with `shelf: "base"`, the shared building-law corpus, which belongs to no project.',
+} as const
+
+function withProjectId(schema: JsonSchemaObject, optional: boolean): JsonSchemaObject {
   return {
     ...schema,
-    properties: { projectId: PROJECT_ID_SCHEMA, ...schema.properties },
-    required: ['projectId', ...(schema.required ?? [])],
+    properties: {
+      projectId: optional ? OPTIONAL_PROJECT_ID_SCHEMA : PROJECT_ID_SCHEMA,
+      ...schema.properties,
+    },
+    required: [...(optional ? [] : ['projectId']), ...(schema.required ?? [])],
   }
 }
 
@@ -332,9 +350,12 @@ function build(entry: Entry): BackendOperation {
     summary: entry.summary,
     description: entry.description,
     tool: entry.tool,
-    inputSchema: entry.needsProject ? withProjectId(inputSchema) : inputSchema,
+    inputSchema: entry.needsProject
+      ? withProjectId(inputSchema, entry.projectOptionalForBase === true)
+      : inputSchema,
     annotations: { title: entry.summary, ...tool.annotations, openWorldHint: entry.openWorld ?? false },
     needsProject: entry.needsProject,
+    ...(entry.projectOptionalForBase ? { projectOptionalForBase: true as const } : {}),
   }
 }
 
@@ -448,11 +469,13 @@ export async function callBackendOperation(
   if (!op) return refusal(404, 'unknown_operation', `${name} is not a backend operation`)
 
   const projectId = options.projectId?.trim() || undefined
-  if (op.needsProject && !projectId) {
+  const baseOnly = op.projectOptionalForBase === true && args.shelf === 'base'
+  if (op.needsProject && !projectId && !baseOnly) {
     return refusal(
       400,
       'project_required',
-      `${op.name} reads one project: pass projectId (from project-list)`
+      `${op.name} reads one project: pass projectId (from project-list)` +
+        (op.projectOptionalForBase ? ', or shelf "base" for the shared building-law corpus' : '')
     )
   }
 

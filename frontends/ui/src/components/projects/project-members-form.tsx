@@ -6,6 +6,7 @@ import { useStore } from '@tanstack/react-form'
 import { toast } from 'sonner'
 import { z } from 'zod'
 import { Lock, Search, UserPlus, Users } from 'lucide-react'
+import { collectPages } from '@/lib/api/offset-page'
 import { cn } from '@/lib/utils'
 import { FieldShell, useAppForm, useFieldContext } from '@/components/form'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
@@ -362,12 +363,18 @@ export function ProjectMembersForm({
     setIsLoading(true)
     setLoadError(null)
     try {
-      const response = await fetch(`/api/projects/${projectId}/members`)
-      if (!response.ok) {
-        throw new Error(t('errors.loadFailed'))
-      }
-      const data = await response.json()
-      setMembers(data.members ?? [])
+      // The whole organization: this form picks whom to add as well as whom to change.
+      const all = await collectPages<Member>(async (cursor) => {
+        const params = new URLSearchParams({ scope: 'organization', limit: '200' })
+        if (cursor) params.set('cursor', cursor)
+        const response = await fetch(`/api/projects/${projectId}/members?${params}`)
+        if (!response.ok) {
+          throw new Error(t('errors.loadFailed'))
+        }
+        const data = (await response.json()) as { members?: Member[]; nextCursor?: string | null }
+        return { items: data.members ?? [], nextCursor: data.nextCursor }
+      })
+      setMembers(all)
     } catch (err) {
       const message = err instanceof Error ? err.message : t('errors.loadFailed')
       setLoadError(message)

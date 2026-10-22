@@ -17,14 +17,32 @@ import { useTranslations } from '@/i18n'
 type Load<T> = { state: 'loading' } | { state: 'error' } | { state: 'ready'; value: T }
 
 /** One GET, read once on mount; aborted if the tile unmounts first. */
-function useJson<T>(url: string, pick: (body: unknown) => T): Load<T> {
+/**
+ * One read of `url`; with `collect` (the body's list key) every page of a paged
+ * list is read and `pick` gets the whole list under that key, so a count is not
+ * the first page's.
+ */
+function useJson<T>(url: string, pick: (body: unknown) => T, collect?: string): Load<T> {
   const [load, setLoad] = useState<Load<T>>({ state: 'loading' })
   useEffect(() => {
     const controller = new AbortController()
-    fetch(url, { signal: controller.signal })
-      .then(async (res) => {
+    const read = async (): Promise<unknown> => {
+      const rows: unknown[] = []
+      let cursor: string | null = null
+      do {
+        const page: string = cursor ? `${url}${url.includes('?') ? '&' : '?'}cursor=${encodeURIComponent(cursor)}` : url
+        const res = await fetch(page, { signal: controller.signal })
         if (!res.ok) throw new Error(String(res.status))
-        setLoad({ state: 'ready', value: pick(await res.json()) })
+        const body = (await res.json()) as Record<string, unknown>
+        if (!collect) return body
+        rows.push(...((body[collect] as unknown[] | undefined) ?? []))
+        cursor = typeof body.nextCursor === 'string' ? body.nextCursor : null
+      } while (cursor !== null)
+      return { [collect as string]: rows }
+    }
+    read()
+      .then((body) => {
+        setLoad({ state: 'ready', value: pick(body) })
       })
       .catch(() => {
         if (!controller.signal.aborted) setLoad({ state: 'error' })
@@ -81,8 +99,9 @@ export function MemoryTile({
 }): JSX.Element {
   const t = useTranslations('settings')
   const load = useJson(
-    `/api/projects/${encodeURIComponent(projectId)}/memory`,
-    (body) => ((body as { items?: MemoryNote[] }).items ?? []) as MemoryNote[]
+    `/api/projects/${encodeURIComponent(projectId)}/memory?limit=200`,
+    (body) => ((body as { items?: MemoryNote[] }).items ?? []) as MemoryNote[],
+    'items'
   )
 
   return (
@@ -156,10 +175,11 @@ export function MembersTile({
   span?: BentoSpan
 }): JSX.Element {
   const t = useTranslations('settings')
-  const load = useJson(`/api/projects/${encodeURIComponent(projectId)}/members`, (body) =>
+  const load = useJson(`/api/projects/${encodeURIComponent(projectId)}/members?limit=200`, (body) =>
     (((body as { members?: RosterEntry[] }).members ?? []) as RosterEntry[]).filter(
       (member) => member.role
-    )
+    ),
+    'members'
   )
 
   return (

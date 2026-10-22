@@ -5,38 +5,38 @@
   {
    "name": "project-cleanup-confirm",
    "domain": "projects",
-   "summary": "Move the chosen documents to the Papierkorb",
-   "description": "Puts the documents the person chose (`documentIds`) into the Papierkorb, all or nothing; they can be restored for 14 days. `proposedIds` is what project-cleanup-propose suggested and `aiUsed` says whether a proposal was used. Never send ids the person did not approve.",
+   "summary": "Move the chosen documents to the bin",
+   "description": "Puts the documents the person chose (`documentIds`) into the bin, all or nothing; restorable for 14 days. `proposedIds` is what project-cleanup-propose suggested, `aiUsed` whether a proposal was used. Never send ids the person did not approve.",
    "readOnly": false,
    "destructive": true,
-   "describe": "{\"name\":\"project-cleanup-confirm\",\"domain\":\"projects\",\"summary\":\"Move the chosen documents to the Papierkorb\",\"description\":\"Puts the documents the person chose (`documentIds`) into the Papierkorb, all or nothing; they can be restored for 14 days. `proposedIds` is what project-cleanup-propose suggested and `aiUsed` says whether a proposal was used. Never send ids the person did not approve.\",\"annotations\":{\"title\":\"Move the chosen documents to the Papierkorb\",\"readOnlyHint\":false,\"destructiveHint\":true,\"idempotentHint\":false,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The project id, from project-list.\"}},\"required\":[\"id\"]},\"body\":{\"type\":\"object\",\"properties\":{\"documentIds\":{\"type\":\"array\",\"items\":{\"type\":\"string\",\"format\":\"uuid\"},\"maxItems\":2000},\"proposedIds\":{\"type\":\"array\",\"items\":{\"type\":\"string\",\"format\":\"uuid\"},\"maxItems\":2000},\"aiUsed\":{\"type\":\"boolean\"}},\"required\":[\"documentIds\",\"proposedIds\",\"aiUsed\"],\"additionalProperties\":false}},\"additionalProperties\":false,\"required\":[\"params\",\"body\"]}}"
+   "describe": "{\"name\":\"project-cleanup-confirm\",\"domain\":\"projects\",\"summary\":\"Move the chosen documents to the bin\",\"description\":\"Puts the documents the person chose (`documentIds`) into the bin, all or nothing; restorable for 14 days. `proposedIds` is what project-cleanup-propose suggested, `aiUsed` whether a proposal was used. Never send ids the person did not approve.\",\"annotations\":{\"title\":\"Move the chosen documents to the bin\",\"readOnlyHint\":false,\"destructiveHint\":true,\"idempotentHint\":false,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The project id, from project-list.\"}},\"required\":[\"id\"]},\"body\":{\"type\":\"object\",\"properties\":{\"documentIds\":{\"type\":\"array\",\"items\":{\"type\":\"string\",\"format\":\"uuid\"},\"maxItems\":2000},\"proposedIds\":{\"type\":\"array\",\"items\":{\"type\":\"string\",\"format\":\"uuid\"},\"maxItems\":2000},\"aiUsed\":{\"type\":\"boolean\"}},\"required\":[\"documentIds\",\"proposedIds\",\"aiUsed\"],\"additionalProperties\":false}},\"additionalProperties\":false,\"required\":[\"params\",\"body\"]}}"
   },
   {
    "name": "project-cleanup-propose",
    "domain": "projects",
    "summary": "Have Piloti propose what to clear out",
-   "description": "Before a project closes („Ausmisten\"): Piloti proposes which documents the finished project no longer needs, among those the person may read and write. Starts a paid model call, so call it once. Nothing is removed. Show the proposal to the person, then send their choice with project-cleanup-confirm.",
+   "description": "Before a project closes (clearing out): Piloti proposes which documents the finished project no longer needs, among those the person may read and write. Starts a paid model call, so call it once. Nothing is removed; show the proposal, then send their choice with project-cleanup-confirm.",
    "readOnly": true,
    "destructive": false,
-   "describe": "{\"name\":\"project-cleanup-propose\",\"domain\":\"projects\",\"summary\":\"Have Piloti propose what to clear out\",\"description\":\"Before a project closes („Ausmisten\\\"): Piloti proposes which documents the finished project no longer needs, among those the person may read and write. Starts a paid model call, so call it once. Nothing is removed. Show the proposal to the person, then send their choice with project-cleanup-confirm.\",\"annotations\":{\"title\":\"Have Piloti propose what to clear out\",\"readOnlyHint\":true,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The project id, from project-list.\"}},\"required\":[\"id\"]},\"body\":{\"type\":\"object\",\"properties\":{\"locale\":{\"type\":\"string\",\"enum\":[\"de\",\"en\"]}},\"required\":[\"locale\"],\"additionalProperties\":false}},\"additionalProperties\":false,\"required\":[\"params\",\"body\"]}}"
+   "describe": "{\"name\":\"project-cleanup-propose\",\"domain\":\"projects\",\"summary\":\"Have Piloti propose what to clear out\",\"description\":\"Before a project closes (clearing out): Piloti proposes which documents the finished project no longer needs, among those the person may read and write. Starts a paid model call, so call it once. Nothing is removed; show the proposal, then send their choice with project-cleanup-confirm.\",\"annotations\":{\"title\":\"Have Piloti propose what to clear out\",\"readOnlyHint\":true,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The project id, from project-list.\"}},\"required\":[\"id\"]},\"body\":{\"type\":\"object\",\"properties\":{\"locale\":{\"type\":\"string\",\"enum\":[\"de\",\"en\"]}},\"required\":[\"locale\"],\"additionalProperties\":false}},\"additionalProperties\":false,\"required\":[\"params\",\"body\"]}}"
   },
   {
    "name": "project-consistency-check",
    "domain": "projects",
    "summary": "Check free-text answers for contradictions",
-   "description": "Asks the backend model whether the intake’s free-text answers contradict the structured answers (passed as context). Best effort: always answers `{ findings, error? }`, and an error means proceed. Call before saving a profile edited in free text.",
+   "description": "Asks the backend model whether the intake’s free-text answers contradict the structured ones (passed as context). Best effort: always answers `{ findings, error? }`; an error means proceed.",
    "readOnly": true,
    "destructive": false,
-   "describe": "{\"name\":\"project-consistency-check\",\"domain\":\"projects\",\"summary\":\"Check free-text answers for contradictions\",\"description\":\"Asks the backend model whether the intake’s free-text answers contradict the structured answers (passed as context). Best effort: always answers `{ findings, error? }`, and an error means proceed. Call before saving a profile edited in free text.\",\"annotations\":{\"title\":\"Check free-text answers for contradictions\",\"readOnlyHint\":true,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The project id, from project-list.\"}},\"required\":[\"id\"]},\"body\":{\"type\":\"object\",\"properties\":{\"freeText\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"field\":{\"type\":\"string\"},\"value\":{\"type\":\"string\"}},\"required\":[\"field\",\"value\"]},\"maxItems\":50},\"structured\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"field\":{\"type\":\"string\"},\"value\":{\"type\":\"string\"}},\"required\":[\"field\",\"value\"]},\"maxItems\":200},\"locale\":{\"type\":\"string\"}},\"required\":[\"freeText\"]}},\"additionalProperties\":false,\"required\":[\"params\",\"body\"]}}"
+   "describe": "{\"name\":\"project-consistency-check\",\"domain\":\"projects\",\"summary\":\"Check free-text answers for contradictions\",\"description\":\"Asks the backend model whether the intake’s free-text answers contradict the structured ones (passed as context). Best effort: always answers `{ findings, error? }`; an error means proceed.\",\"annotations\":{\"title\":\"Check free-text answers for contradictions\",\"readOnlyHint\":true,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The project id, from project-list.\"}},\"required\":[\"id\"]},\"body\":{\"type\":\"object\",\"properties\":{\"freeText\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"field\":{\"type\":\"string\"},\"value\":{\"type\":\"string\"}},\"required\":[\"field\",\"value\"]},\"maxItems\":50},\"structured\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"field\":{\"type\":\"string\"},\"value\":{\"type\":\"string\"}},\"required\":[\"field\",\"value\"]},\"maxItems\":200},\"locale\":{\"type\":\"string\"}},\"required\":[\"freeText\"]}},\"additionalProperties\":false,\"required\":[\"params\",\"body\"]}}"
   },
   {
    "name": "project-create",
    "domain": "projects",
    "summary": "Create a project",
-   "description": "Creates a project in the organization and returns it with its id. Give a name; optionally the address (a geocoder hit as `location`, or typed `address`), a description, and `setup`: `piloti` (default) has Piloti read the documents afterwards, `self` leaves the profile to the intake wizard. To add a past project as a reference, pass `closing` with the outcome and months. Call project-same-address-list first to avoid a duplicate. Next: upload documents, then project-intake-get to follow the reading.",
+   "description": "Creates a project in the organization and returns it with its id. Give a name; optionally the address (typed `address`), a description, and `setup`: `piloti` (default) has Piloti read the documents afterwards, `self` leaves the profile to the intake wizard. To add a past project as a reference, pass `closing` with the outcome and months. Call project-same-address-list first to avoid a duplicate. Next: upload documents, then project-intake-get to follow the reading.",
    "readOnly": false,
    "destructive": false,
-   "describe": "{\"name\":\"project-create\",\"domain\":\"projects\",\"summary\":\"Create a project\",\"description\":\"Creates a project in the organization and returns it with its id. Give a name; optionally the address (a geocoder hit as `location`, or typed `address`), a description, and `setup`: `piloti` (default) has Piloti read the documents afterwards, `self` leaves the profile to the intake wizard. To add a past project as a reference, pass `closing` with the outcome and months. Call project-same-address-list first to avoid a duplicate. Next: upload documents, then project-intake-get to follow the reading.\",\"annotations\":{\"title\":\"Create a project\",\"readOnlyHint\":false,\"destructiveHint\":false,\"idempotentHint\":false,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"body\":{\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":255},\"closing\":{\"type\":\"object\",\"properties\":{\"outcome\":{\"type\":\"string\",\"enum\":[\"completed\",\"cancelled\"]},\"endedOn\":{\"type\":\"string\"},\"startedOn\":{\"anyOf\":[{\"type\":\"string\"},{\"type\":\"null\"}]}},\"required\":[\"outcome\",\"endedOn\",\"startedOn\"],\"additionalProperties\":false},\"setup\":{\"type\":\"string\",\"enum\":[\"piloti\",\"self\"]},\"description\":{\"type\":\"string\",\"maxLength\":500},\"location\":{\"type\":\"object\",\"properties\":{\"label\":{\"type\":\"string\",\"minLength\":1},\"lat\":{\"type\":\"number\"},\"lon\":{\"type\":\"number\"},\"country\":{\"const\":\"at\"},\"federalState\":{\"anyOf\":[{\"type\":\"string\"},{\"type\":\"null\"}]},\"state\":{\"anyOf\":[{\"type\":\"string\"},{\"type\":\"null\"}]},\"municipality\":{\"anyOf\":[{\"type\":\"string\"},{\"type\":\"null\"}]},\"postcode\":{\"anyOf\":[{\"type\":\"string\"},{\"type\":\"null\"}]},\"kind\":{\"type\":\"string\",\"enum\":[\"address\",\"street\",\"place\"]}},\"required\":[\"label\",\"lat\",\"lon\",\"country\",\"federalState\",\"state\",\"municipality\",\"postcode\",\"kind\"]},\"address\":{\"type\":\"string\",\"maxLength\":200},\"federalState\":{\"type\":\"string\"}},\"required\":[\"name\"],\"additionalProperties\":false}},\"additionalProperties\":false,\"required\":[\"body\"]}}"
+   "describe": "{\"name\":\"project-create\",\"domain\":\"projects\",\"summary\":\"Create a project\",\"description\":\"Creates a project in the organization and returns it with its id. Give a name; optionally the address (typed `address`), a description, and `setup`: `piloti` (default) has Piloti read the documents afterwards, `self` leaves the profile to the intake wizard. To add a past project as a reference, pass `closing` with the outcome and months. Call project-same-address-list first to avoid a duplicate. Next: upload documents, then project-intake-get to follow the reading.\",\"annotations\":{\"title\":\"Create a project\",\"readOnlyHint\":false,\"destructiveHint\":false,\"idempotentHint\":false,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"body\":{\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":255},\"closing\":{\"type\":\"object\",\"properties\":{\"outcome\":{\"type\":\"string\",\"enum\":[\"completed\",\"cancelled\"]},\"endedOn\":{\"type\":\"string\"},\"startedOn\":{\"anyOf\":[{\"type\":\"string\"},{\"type\":\"null\"}]}},\"required\":[\"outcome\",\"endedOn\",\"startedOn\"],\"additionalProperties\":false},\"setup\":{\"type\":\"string\",\"enum\":[\"piloti\",\"self\"]},\"description\":{\"type\":\"string\",\"maxLength\":500},\"location\":{\"type\":\"object\",\"properties\":{\"label\":{\"type\":\"string\",\"minLength\":1},\"lat\":{\"type\":\"number\"},\"lon\":{\"type\":\"number\"},\"country\":{\"const\":\"at\"},\"federalState\":{\"anyOf\":[{\"type\":\"string\"},{\"type\":\"null\"}]},\"state\":{\"anyOf\":[{\"type\":\"string\"},{\"type\":\"null\"}]},\"municipality\":{\"anyOf\":[{\"type\":\"string\"},{\"type\":\"null\"}]},\"postcode\":{\"anyOf\":[{\"type\":\"string\"},{\"type\":\"null\"}]},\"kind\":{\"type\":\"string\",\"enum\":[\"address\",\"street\",\"place\"]}},\"required\":[\"label\",\"lat\",\"lon\",\"country\",\"federalState\",\"state\",\"municipality\",\"postcode\",\"kind\"]},\"address\":{\"type\":\"string\",\"maxLength\":200},\"federalState\":{\"type\":\"string\"}},\"required\":[\"name\"],\"additionalProperties\":false}},\"additionalProperties\":false,\"required\":[\"body\"]}}"
   },
   {
    "name": "project-delete",
@@ -51,10 +51,10 @@
    "name": "project-experience-extract",
    "domain": "projects",
    "summary": "Extract experience from a closing project",
-   "description": "Reads the project’s own documents once and stores what they say as suggestions: unconfirmed facts on the project profile and drafted decisions in project memory, which a person then confirms or dismisses. Refused for a closed project. Starts a paid model call. Needs project:memory:write or project:edit.",
+   "description": "Reads the project’s own documents once and stores what they say as suggestions (unconfirmed profile facts, drafted decisions in project memory) for a person to confirm or dismiss. Refused for a closed project. Starts a paid model call. Needs project:memory:write or project:edit.",
    "readOnly": false,
    "destructive": false,
-   "describe": "{\"name\":\"project-experience-extract\",\"domain\":\"projects\",\"summary\":\"Extract experience from a closing project\",\"description\":\"Reads the project’s own documents once and stores what they say as suggestions: unconfirmed facts on the project profile and drafted decisions in project memory, which a person then confirms or dismisses. Refused for a closed project. Starts a paid model call. Needs project:memory:write or project:edit.\",\"annotations\":{\"title\":\"Extract experience from a closing project\",\"readOnlyHint\":false,\"destructiveHint\":false,\"idempotentHint\":false,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The project id, from project-list.\"}},\"required\":[\"id\"]}},\"additionalProperties\":false,\"required\":[\"params\"]}}"
+   "describe": "{\"name\":\"project-experience-extract\",\"domain\":\"projects\",\"summary\":\"Extract experience from a closing project\",\"description\":\"Reads the project’s own documents once and stores what they say as suggestions (unconfirmed profile facts, drafted decisions in project memory) for a person to confirm or dismiss. Refused for a closed project. Starts a paid model call. Needs project:memory:write or project:edit.\",\"annotations\":{\"title\":\"Extract experience from a closing project\",\"readOnlyHint\":false,\"destructiveHint\":false,\"idempotentHint\":false,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The project id, from project-list.\"}},\"required\":[\"id\"]}},\"additionalProperties\":false,\"required\":[\"params\"]}}"
   },
   {
    "name": "project-get",
@@ -69,10 +69,10 @@
    "name": "project-intake-complete",
    "domain": "projects",
    "summary": "Finish the intake review",
-   "description": "Ends the review of the intake. For a past project created with a closing intent this also closes the project with its outcome and completion month. Call once project-intake-get shows nothing left to decide. Answers `{ intake }`.",
+   "description": "Ends the intake review. For a past project created with a closing intent it also closes the project. Call once project-intake-get shows nothing left to decide. Answers `{ intake }`.",
    "readOnly": false,
    "destructive": false,
-   "describe": "{\"name\":\"project-intake-complete\",\"domain\":\"projects\",\"summary\":\"Finish the intake review\",\"description\":\"Ends the review of the intake. For a past project created with a closing intent this also closes the project with its outcome and completion month. Call once project-intake-get shows nothing left to decide. Answers `{ intake }`.\",\"annotations\":{\"title\":\"Finish the intake review\",\"readOnlyHint\":false,\"destructiveHint\":false,\"idempotentHint\":false,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The project id, from project-list.\"}},\"required\":[\"id\"]}},\"additionalProperties\":false,\"required\":[\"params\"]}}"
+   "describe": "{\"name\":\"project-intake-complete\",\"domain\":\"projects\",\"summary\":\"Finish the intake review\",\"description\":\"Ends the intake review. For a past project created with a closing intent it also closes the project. Call once project-intake-get shows nothing left to decide. Answers `{ intake }`.\",\"annotations\":{\"title\":\"Finish the intake review\",\"readOnlyHint\":false,\"destructiveHint\":false,\"idempotentHint\":false,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The project id, from project-list.\"}},\"required\":[\"id\"]}},\"additionalProperties\":false,\"required\":[\"params\"]}}"
   },
   {
    "name": "project-intake-decide",
@@ -105,10 +105,10 @@
    "name": "project-intake-start",
    "domain": "projects",
    "summary": "Start Piloti reading the documents",
-   "description": "Starts a reading of the project’s documents now. `scope: \"new\"` reads what is not read yet; `\"all\"` forgets what was read and starts over. While one reading runs the next is queued. Needs project:memory:write or project:edit and fails with 409 on a closed project. Answers `{ intake }`; poll project-intake-get.",
+   "description": "Starts a reading of the project’s documents now. `scope: \"new\"` reads what is unread; `\"all\"` starts over. A reading already running queues the next. Needs project:memory:write or project:edit; 409 on a closed project. Answers `{ intake }`; poll project-intake-get.",
    "readOnly": false,
    "destructive": false,
-   "describe": "{\"name\":\"project-intake-start\",\"domain\":\"projects\",\"summary\":\"Start Piloti reading the documents\",\"description\":\"Starts a reading of the project’s documents now. `scope: \\\"new\\\"` reads what is not read yet; `\\\"all\\\"` forgets what was read and starts over. While one reading runs the next is queued. Needs project:memory:write or project:edit and fails with 409 on a closed project. Answers `{ intake }`; poll project-intake-get.\",\"annotations\":{\"title\":\"Start Piloti reading the documents\",\"readOnlyHint\":false,\"destructiveHint\":false,\"idempotentHint\":false,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The project id, from project-list.\"}},\"required\":[\"id\"]},\"body\":{\"type\":\"object\",\"properties\":{\"scope\":{\"type\":\"string\",\"enum\":[\"new\",\"all\"]}},\"required\":[\"scope\"],\"additionalProperties\":false}},\"additionalProperties\":false,\"required\":[\"params\",\"body\"]}}"
+   "describe": "{\"name\":\"project-intake-start\",\"domain\":\"projects\",\"summary\":\"Start Piloti reading the documents\",\"description\":\"Starts a reading of the project’s documents now. `scope: \\\"new\\\"` reads what is unread; `\\\"all\\\"` starts over. A reading already running queues the next. Needs project:memory:write or project:edit; 409 on a closed project. Answers `{ intake }`; poll project-intake-get.\",\"annotations\":{\"title\":\"Start Piloti reading the documents\",\"readOnlyHint\":false,\"destructiveHint\":false,\"idempotentHint\":false,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The project id, from project-list.\"}},\"required\":[\"id\"]},\"body\":{\"type\":\"object\",\"properties\":{\"scope\":{\"type\":\"string\",\"enum\":[\"new\",\"all\"]}},\"required\":[\"scope\"],\"additionalProperties\":false}},\"additionalProperties\":false,\"required\":[\"params\",\"body\"]}}"
   },
   {
    "name": "project-list",
@@ -123,10 +123,10 @@
    "name": "project-member-list",
    "domain": "projects",
    "summary": "List a project’s members",
-   "description": "The project roster: each member with their role and the role assignment id (members[].id), plus `viewerUserId`, the caller’s own user id. Needs project:members:manage. Use the assignment id with project-member-remove.",
+   "description": "The people holding a project role: `userId`, `name`, `email`, `role`, `organizationMembershipId`, `roleAssignmentId` (null when access comes through a group or an organization-wide right), plus `viewerUserId` and `nextCursor`. `scope: \"organization\"` lists everyone, `role` null for those without one. Needs project:members:manage.",
    "readOnly": true,
    "destructive": false,
-   "describe": "{\"name\":\"project-member-list\",\"domain\":\"projects\",\"summary\":\"List a project’s members\",\"description\":\"The project roster: each member with their role and the role assignment id (members[].id), plus `viewerUserId`, the caller’s own user id. Needs project:members:manage. Use the assignment id with project-member-remove.\",\"annotations\":{\"title\":\"List a project’s members\",\"readOnlyHint\":true,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The project id, from project-list.\"}},\"required\":[\"id\"]}},\"additionalProperties\":false,\"required\":[\"params\"]}}"
+   "describe": "{\"name\":\"project-member-list\",\"domain\":\"projects\",\"summary\":\"List a project’s members\",\"description\":\"The people holding a project role: `userId`, `name`, `email`, `role`, `organizationMembershipId`, `roleAssignmentId` (null when access comes through a group or an organization-wide right), plus `viewerUserId` and `nextCursor`. `scope: \\\"organization\\\"` lists everyone, `role` null for those without one. Needs project:members:manage.\",\"annotations\":{\"title\":\"List a project’s members\",\"readOnlyHint\":true,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The project id, from project-list.\"}},\"required\":[\"id\"]},\"query\":{\"type\":\"object\",\"properties\":{\"scope\":{\"type\":\"string\",\"enum\":[\"members\",\"organization\"]},\"limit\":{\"type\":\"integer\",\"description\":\"Default 50, max 200.\"},\"cursor\":{\"type\":\"string\",\"maxLength\":64}}}},\"additionalProperties\":false,\"required\":[\"params\",\"query\"]}}"
   },
   {
    "name": "project-memory-delete",
@@ -141,10 +141,10 @@
    "name": "project-memory-list",
    "domain": "projects",
    "summary": "List a project’s memory items",
-   "description": "The facts, decisions and notes Piloti keeps for the project, as `{ items }` with their ids, kind, status, confidence and pinned flag. Pass `includeArchived: \"true\"` to include archived ones, or `conversationId` for those noted in one conversation. Item ids feed project-memory-update and project-memory-delete.",
+   "description": "The facts, decisions and notes Piloti keeps for the project, pinned first then newest, as `{ items, nextCursor }` (`limit` default 50; pass `nextCursor` as `cursor`). Pass `includeArchived: \"true\"` for archived ones, or `conversationId` for those noted in one conversation. Item ids feed project-memory-update and project-memory-delete.",
    "readOnly": true,
    "destructive": false,
-   "describe": "{\"name\":\"project-memory-list\",\"domain\":\"projects\",\"summary\":\"List a project’s memory items\",\"description\":\"The facts, decisions and notes Piloti keeps for the project, as `{ items }` with their ids, kind, status, confidence and pinned flag. Pass `includeArchived: \\\"true\\\"` to include archived ones, or `conversationId` for those noted in one conversation. Item ids feed project-memory-update and project-memory-delete.\",\"annotations\":{\"title\":\"List a project’s memory items\",\"readOnlyHint\":true,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The project id, from project-list.\"}},\"required\":[\"id\"]},\"query\":{\"type\":\"object\",\"properties\":{\"includeArchived\":{\"type\":\"string\"},\"conversationId\":{\"type\":\"string\"}}}},\"additionalProperties\":false,\"required\":[\"params\",\"query\"]}}"
+   "describe": "{\"name\":\"project-memory-list\",\"domain\":\"projects\",\"summary\":\"List a project’s memory items\",\"description\":\"The facts, decisions and notes Piloti keeps for the project, pinned first then newest, as `{ items, nextCursor }` (`limit` default 50; pass `nextCursor` as `cursor`). Pass `includeArchived: \\\"true\\\"` for archived ones, or `conversationId` for those noted in one conversation. Item ids feed project-memory-update and project-memory-delete.\",\"annotations\":{\"title\":\"List a project’s memory items\",\"readOnlyHint\":true,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The project id, from project-list.\"}},\"required\":[\"id\"]},\"query\":{\"type\":\"object\",\"properties\":{\"includeArchived\":{\"type\":\"string\"},\"conversationId\":{\"type\":\"string\"},\"limit\":{\"type\":\"integer\",\"description\":\"Default 50, max 200.\"},\"cursor\":{\"type\":\"string\",\"maxLength\":64}}}},\"additionalProperties\":false,\"required\":[\"params\",\"query\"]}}"
   },
   {
    "name": "project-memory-update",
@@ -159,10 +159,10 @@
    "name": "project-overview-get",
    "domain": "projects",
    "summary": "Read a project’s overview",
-   "description": "The project’s overview as its home page shows it: profile summary, counts and the latest activity. A good first read once you have a project id from project-list.",
+   "description": "The project’s overview as its home page shows it: profile summary, counts and the latest activity. A good first read.",
    "readOnly": true,
    "destructive": false,
-   "describe": "{\"name\":\"project-overview-get\",\"domain\":\"projects\",\"summary\":\"Read a project’s overview\",\"description\":\"The project’s overview as its home page shows it: profile summary, counts and the latest activity. A good first read once you have a project id from project-list.\",\"annotations\":{\"title\":\"Read a project’s overview\",\"readOnlyHint\":true,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The project id, from project-list.\"}},\"required\":[\"id\"]}},\"additionalProperties\":false,\"required\":[\"params\"]}}"
+   "describe": "{\"name\":\"project-overview-get\",\"domain\":\"projects\",\"summary\":\"Read a project’s overview\",\"description\":\"The project’s overview as its home page shows it: profile summary, counts and the latest activity. A good first read.\",\"annotations\":{\"title\":\"Read a project’s overview\",\"readOnlyHint\":true,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The project id, from project-list.\"}},\"required\":[\"id\"]}},\"additionalProperties\":false,\"required\":[\"params\"]}}"
   },
   {
    "name": "project-period-set",
@@ -177,19 +177,19 @@
    "name": "project-person-add",
    "domain": "projects",
    "summary": "Add a name to the project record’s people list (grants no access)",
-   "description": "Writes someone into the project record’s list of people by hand, such as an external planner: name, optional function, company, start and end month. It grants no access to the project and adds nobody to its team: who may open the project is a project role, project-member-add, which the person may have to set in Piloti themselves. No e-mail or phone is kept. Pass `userId` (from organization-member-list) to describe a colleague of the office instead. Send all fields; use null for unknown.",
+   "description": "Writes someone into the project record’s list of people, such as an external planner: name, optional function, company, start and end month. It grants no access and adds nobody to the team: who may open the project is a project role, which the person may have to set in Piloti themselves. No e-mail or phone is kept. Pass `userId` (project-member-list) to describe a colleague of the office. Send all fields; null for unknown.",
    "readOnly": false,
    "destructive": false,
-   "describe": "{\"name\":\"project-person-add\",\"domain\":\"projects\",\"summary\":\"Add a name to the project record’s people list (grants no access)\",\"description\":\"Writes someone into the project record’s list of people by hand, such as an external planner: name, optional function, company, start and end month. It grants no access to the project and adds nobody to its team: who may open the project is a project role, project-member-add, which the person may have to set in Piloti themselves. No e-mail or phone is kept. Pass `userId` (from organization-member-list) to describe a colleague of the office instead. Send all fields; use null for unknown.\",\"annotations\":{\"title\":\"Add a name to the project record’s people list (grants no access)\",\"readOnlyHint\":false,\"destructiveHint\":false,\"idempotentHint\":false,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The project id, from project-list.\"}},\"required\":[\"id\"]},\"body\":{\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":200},\"function\":{\"anyOf\":[{\"type\":\"string\",\"maxLength\":200},{\"type\":\"null\"}]},\"company\":{\"anyOf\":[{\"type\":\"string\",\"maxLength\":200},{\"type\":\"null\"}]},\"startedOn\":{\"anyOf\":[{\"type\":\"string\"},{\"type\":\"null\"}]},\"endedOn\":{\"anyOf\":[{\"type\":\"string\"},{\"type\":\"null\"}]},\"userId\":{\"anyOf\":[{\"type\":\"string\",\"minLength\":1,\"maxLength\":200},{\"type\":\"null\"}]}},\"required\":[\"name\",\"function\",\"company\",\"startedOn\",\"endedOn\",\"userId\"],\"additionalProperties\":false}},\"additionalProperties\":false,\"required\":[\"params\",\"body\"]}}"
+   "describe": "{\"name\":\"project-person-add\",\"domain\":\"projects\",\"summary\":\"Add a name to the project record’s people list (grants no access)\",\"description\":\"Writes someone into the project record’s list of people, such as an external planner: name, optional function, company, start and end month. It grants no access and adds nobody to the team: who may open the project is a project role, which the person may have to set in Piloti themselves. No e-mail or phone is kept. Pass `userId` (project-member-list) to describe a colleague of the office. Send all fields; null for unknown.\",\"annotations\":{\"title\":\"Add a name to the project record’s people list (grants no access)\",\"readOnlyHint\":false,\"destructiveHint\":false,\"idempotentHint\":false,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The project id, from project-list.\"}},\"required\":[\"id\"]},\"body\":{\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":200},\"function\":{\"anyOf\":[{\"type\":\"string\",\"maxLength\":200},{\"type\":\"null\"}]},\"company\":{\"anyOf\":[{\"type\":\"string\",\"maxLength\":200},{\"type\":\"null\"}]},\"startedOn\":{\"anyOf\":[{\"type\":\"string\"},{\"type\":\"null\"}]},\"endedOn\":{\"anyOf\":[{\"type\":\"string\"},{\"type\":\"null\"}]},\"userId\":{\"anyOf\":[{\"type\":\"string\",\"minLength\":1,\"maxLength\":200},{\"type\":\"null\"}]}},\"required\":[\"name\",\"function\",\"company\",\"startedOn\",\"endedOn\",\"userId\"],\"additionalProperties\":false}},\"additionalProperties\":false,\"required\":[\"params\",\"body\"]}}"
   },
   {
    "name": "project-person-delete",
    "domain": "projects",
    "summary": "Erase a person from the project record",
-   "description": "Erases one person’s entry from the project record; this is the data-protection erasure and cannot be undone. Still possible in a closed project for whoever manages it. `personId` is from project-record-get.",
+   "description": "Erases one person’s entry from the project record; this is the data-protection erasure and cannot be undone. Works in a closed project too. `personId` is from project-record-get.",
    "readOnly": false,
    "destructive": true,
-   "describe": "{\"name\":\"project-person-delete\",\"domain\":\"projects\",\"summary\":\"Erase a person from the project record\",\"description\":\"Erases one person’s entry from the project record; this is the data-protection erasure and cannot be undone. Still possible in a closed project for whoever manages it. `personId` is from project-record-get.\",\"annotations\":{\"title\":\"Erase a person from the project record\",\"readOnlyHint\":false,\"destructiveHint\":true,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The project id, from project-list.\"},\"personId\":{\"type\":\"string\",\"description\":\"The stored person id, from project-record-get (people[].id). A member nobody described yet has no id; add them first.\"}},\"required\":[\"id\",\"personId\"]}},\"additionalProperties\":false,\"required\":[\"params\"]}}"
+   "describe": "{\"name\":\"project-person-delete\",\"domain\":\"projects\",\"summary\":\"Erase a person from the project record\",\"description\":\"Erases one person’s entry from the project record; this is the data-protection erasure and cannot be undone. Works in a closed project too. `personId` is from project-record-get.\",\"annotations\":{\"title\":\"Erase a person from the project record\",\"readOnlyHint\":false,\"destructiveHint\":true,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The project id, from project-list.\"},\"personId\":{\"type\":\"string\",\"description\":\"The stored person id, from project-record-get (people[].id). A member nobody described yet has no id; add them first.\"}},\"required\":[\"id\",\"personId\"]}},\"additionalProperties\":false,\"required\":[\"params\"]}}"
   },
   {
    "name": "project-person-update",
@@ -204,19 +204,19 @@
    "name": "project-profile-get",
    "domain": "projects",
    "summary": "Read a project’s profile",
-   "description": "The structured project profile (facts, goals, unknowns, assumptions) with its `profileVersion`. Read it before project-profile-patch or project-profile-replace. The profile has one form, the intake wizard; this is its stored result.",
+   "description": "The structured project profile (facts, goals, unknowns, assumptions) with its `profileVersion` and `profileDisplay`. `unknowns` are what a person marked as not known; what is still open is project-intake-get. Read it before project-profile-patch or project-profile-replace.",
    "readOnly": true,
    "destructive": false,
-   "describe": "{\"name\":\"project-profile-get\",\"domain\":\"projects\",\"summary\":\"Read a project’s profile\",\"description\":\"The structured project profile (facts, goals, unknowns, assumptions) with its `profileVersion`. Read it before project-profile-patch or project-profile-replace. The profile has one form, the intake wizard; this is its stored result.\",\"annotations\":{\"title\":\"Read a project’s profile\",\"readOnlyHint\":true,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The project id, from project-list.\"}},\"required\":[\"id\"]}},\"additionalProperties\":false,\"required\":[\"params\"]}}"
+   "describe": "{\"name\":\"project-profile-get\",\"domain\":\"projects\",\"summary\":\"Read a project’s profile\",\"description\":\"The structured project profile (facts, goals, unknowns, assumptions) with its `profileVersion` and `profileDisplay`. `unknowns` are what a person marked as not known; what is still open is project-intake-get. Read it before project-profile-patch or project-profile-replace.\",\"annotations\":{\"title\":\"Read a project’s profile\",\"readOnlyHint\":true,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The project id, from project-list.\"}},\"required\":[\"id\"]}},\"additionalProperties\":false,\"required\":[\"params\"]}}"
   },
   {
    "name": "project-profile-patch",
    "domain": "projects",
    "summary": "Change single profile entries",
-   "description": "Applies JSON-patch style operations (`add`, `replace`, `remove`) to the profile under /facts, /goals, /unknowns or /assumptions. The safer way to edit one fact. Pass `conversationId` when the change came out of a conversation. Needs project:edit. Answers the updated profile; read project-profile-get for paths.",
+   "description": "Applies JSON-patch style operations (`add`, `replace`, `remove`) under /facts, /goals, /unknowns or /assumptions: the safer way to edit one fact. Pass `conversationId` when the change came out of a conversation. Needs project:edit. Answers the updated profile; read project-profile-get for paths.",
    "readOnly": false,
    "destructive": false,
-   "describe": "{\"name\":\"project-profile-patch\",\"domain\":\"projects\",\"summary\":\"Change single profile entries\",\"description\":\"Applies JSON-patch style operations (`add`, `replace`, `remove`) to the profile under /facts, /goals, /unknowns or /assumptions. The safer way to edit one fact. Pass `conversationId` when the change came out of a conversation. Needs project:edit. Answers the updated profile; read project-profile-get for paths.\",\"annotations\":{\"title\":\"Change single profile entries\",\"readOnlyHint\":false,\"destructiveHint\":false,\"idempotentHint\":false,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The project id, from project-list.\"}},\"required\":[\"id\"]},\"body\":{\"type\":\"object\",\"properties\":{\"patch\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"op\":{\"type\":\"string\",\"enum\":[\"add\",\"replace\",\"remove\"]},\"path\":{\"type\":\"string\"},\"value\":{}},\"required\":[\"op\",\"path\"]}},\"conversationId\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":128}},\"required\":[\"patch\"]}},\"additionalProperties\":false,\"required\":[\"params\",\"body\"],\"examples\":[{\"params\":{\"id\":\"0d7b3a5e-7c1c-4a4e-9a63-6a4a1f5f1c11\"},\"body\":{\"patch\":[{\"op\":\"replace\",\"path\":\"/facts/building_class\",\"value\":\"GK4\"},{\"op\":\"remove\",\"path\":\"/unknowns/0\"}]}}]}}"
+   "describe": "{\"name\":\"project-profile-patch\",\"domain\":\"projects\",\"summary\":\"Change single profile entries\",\"description\":\"Applies JSON-patch style operations (`add`, `replace`, `remove`) under /facts, /goals, /unknowns or /assumptions: the safer way to edit one fact. Pass `conversationId` when the change came out of a conversation. Needs project:edit. Answers the updated profile; read project-profile-get for paths.\",\"annotations\":{\"title\":\"Change single profile entries\",\"readOnlyHint\":false,\"destructiveHint\":false,\"idempotentHint\":false,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The project id, from project-list.\"}},\"required\":[\"id\"]},\"body\":{\"type\":\"object\",\"properties\":{\"patch\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"op\":{\"type\":\"string\",\"enum\":[\"add\",\"replace\",\"remove\"]},\"path\":{\"type\":\"string\"},\"value\":{}},\"required\":[\"op\",\"path\"]}},\"conversationId\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":128}},\"required\":[\"patch\"]}},\"additionalProperties\":false,\"required\":[\"params\",\"body\"],\"examples\":[{\"params\":{\"id\":\"0d7b3a5e-7c1c-4a4e-9a63-6a4a1f5f1c11\"},\"body\":{\"patch\":[{\"op\":\"replace\",\"path\":\"/facts/building_class\",\"value\":\"GK4\"},{\"op\":\"remove\",\"path\":\"/unknowns/0\"}]}}]}}"
   },
   {
    "name": "project-profile-replace",
@@ -240,19 +240,19 @@
    "name": "project-reindex",
    "domain": "projects",
    "summary": "Rebuild a project’s document index",
-   "description": "Queues a job that rebuilds the search chunks of every document in the project, and answers 202 with the job id at once. Use when answers seem to miss documents that are on the shelf. It carries on after the call returns and is safe to repeat.",
+   "description": "Queues a job that rebuilds the search chunks of every document in the project; answers 202 with the job id. Use when answers seem to miss documents on the shelf. Safe to repeat.",
    "readOnly": false,
    "destructive": false,
-   "describe": "{\"name\":\"project-reindex\",\"domain\":\"projects\",\"summary\":\"Rebuild a project’s document index\",\"description\":\"Queues a job that rebuilds the search chunks of every document in the project, and answers 202 with the job id at once. Use when answers seem to miss documents that are on the shelf. It carries on after the call returns and is safe to repeat.\",\"annotations\":{\"title\":\"Rebuild a project’s document index\",\"readOnlyHint\":false,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The project id, from project-list.\"}},\"required\":[\"id\"]}},\"additionalProperties\":false,\"required\":[\"params\"]}}"
+   "describe": "{\"name\":\"project-reindex\",\"domain\":\"projects\",\"summary\":\"Rebuild a project’s document index\",\"description\":\"Queues a job that rebuilds the search chunks of every document in the project; answers 202 with the job id. Use when answers seem to miss documents on the shelf. Safe to repeat.\",\"annotations\":{\"title\":\"Rebuild a project’s document index\",\"readOnlyHint\":false,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The project id, from project-list.\"}},\"required\":[\"id\"]}},\"additionalProperties\":false,\"required\":[\"params\"]}}"
   },
   {
    "name": "project-rename",
    "domain": "projects",
    "summary": "Rename a project",
-   "description": "Give a project a new name. Needs the project:manage permission on that project.",
+   "description": "Give a project a new name. Needs project:manage.",
    "readOnly": false,
    "destructive": false,
-   "describe": "{\"name\":\"project-rename\",\"domain\":\"projects\",\"summary\":\"Rename a project\",\"description\":\"Give a project a new name. Needs the project:manage permission on that project.\",\"annotations\":{\"title\":\"Rename a project\",\"readOnlyHint\":false,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The project id, from project-list.\"}},\"required\":[\"id\"]},\"body\":{\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":255}},\"required\":[\"name\"]}},\"additionalProperties\":false,\"required\":[\"params\",\"body\"]}}"
+   "describe": "{\"name\":\"project-rename\",\"domain\":\"projects\",\"summary\":\"Rename a project\",\"description\":\"Give a project a new name. Needs project:manage.\",\"annotations\":{\"title\":\"Rename a project\",\"readOnlyHint\":false,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The project id, from project-list.\"}},\"required\":[\"id\"]},\"body\":{\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":255}},\"required\":[\"name\"]}},\"additionalProperties\":false,\"required\":[\"params\",\"body\"]}}"
   },
   {
    "name": "project-restore",
@@ -273,22 +273,31 @@
    "describe": "{\"name\":\"project-same-address-list\",\"domain\":\"projects\",\"summary\":\"Find projects at an address\",\"description\":\"Up to three projects the person may open that sit at the given address, as `{ projects: [{ id, name, status }] }`. Call before project-create to warn about a duplicate. `label` is the address text; `lat` and `lon` sharpen the match.\",\"annotations\":{\"title\":\"Find projects at an address\",\"readOnlyHint\":true,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"query\":{\"type\":\"object\",\"properties\":{\"label\":{\"type\":\"string\",\"minLength\":3,\"maxLength\":300},\"lat\":{\"type\":\"number\"},\"lon\":{\"type\":\"number\"}},\"required\":[\"label\"]}},\"additionalProperties\":false,\"required\":[\"query\"]}}"
   },
   {
+   "name": "project-standards-get",
+   "domain": "projects",
+   "summary": "The OIB standards that apply to a project",
+   "description": "Which standards apply, from the project’s brief: `{ standards: [{ code, title, status, reason, decidingFact? }], briefComplete }`. `status` is `required`, `likely` or `check`; a `check`’s `decidingFact` is the profile key that settles it (project-profile-patch). `briefComplete: false`: the brief is thin, six generic verdicts answered. Orientation only.",
+   "readOnly": true,
+   "destructive": false,
+   "describe": "{\"name\":\"project-standards-get\",\"domain\":\"projects\",\"summary\":\"The OIB standards that apply to a project\",\"description\":\"Which standards apply, from the project’s brief: `{ standards: [{ code, title, status, reason, decidingFact? }], briefComplete }`. `status` is `required`, `likely` or `check`; a `check`’s `decidingFact` is the profile key that settles it (project-profile-patch). `briefComplete: false`: the brief is thin, six generic verdicts answered. Orientation only.\",\"annotations\":{\"title\":\"The OIB standards that apply to a project\",\"readOnlyHint\":true,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The project id, from project-list.\"}},\"required\":[\"id\"]}},\"additionalProperties\":false,\"required\":[\"params\"]}}"
+  },
+  {
    "name": "project-status-set",
    "domain": "projects",
    "summary": "Pause, resume or close a project",
-   "description": "Moves a project through its lifecycle. `{ status: \"active\" }` resumes or reopens, `{ status: \"paused\" }` pauses, `{ status: \"closed\", outcome, endedOn }` closes it with how it ended and its completion month (YYYY-MM). Needs project:manage and works on a closed project too. Answers the new status and dates. Before closing, consider project-cleanup-propose.",
+   "description": "Moves a project through its lifecycle: `{ status: \"active\" }` resumes or reopens, `\"paused\"` pauses, `{ status: \"closed\", outcome, endedOn }` closes it with its outcome and completion month (YYYY-MM). Needs project:manage; works on a closed project too. Answers the new status and dates. Before closing, consider project-cleanup-propose.",
    "readOnly": false,
    "destructive": false,
-   "describe": "{\"name\":\"project-status-set\",\"domain\":\"projects\",\"summary\":\"Pause, resume or close a project\",\"description\":\"Moves a project through its lifecycle. `{ status: \\\"active\\\" }` resumes or reopens, `{ status: \\\"paused\\\" }` pauses, `{ status: \\\"closed\\\", outcome, endedOn }` closes it with how it ended and its completion month (YYYY-MM). Needs project:manage and works on a closed project too. Answers the new status and dates. Before closing, consider project-cleanup-propose.\",\"annotations\":{\"title\":\"Pause, resume or close a project\",\"readOnlyHint\":false,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The project id, from project-list.\"}},\"required\":[\"id\"]},\"body\":{\"oneOf\":[{\"type\":\"object\",\"properties\":{\"status\":{\"const\":\"active\"}},\"required\":[\"status\"],\"additionalProperties\":false},{\"type\":\"object\",\"properties\":{\"status\":{\"const\":\"paused\"}},\"required\":[\"status\"],\"additionalProperties\":false},{\"type\":\"object\",\"properties\":{\"status\":{\"const\":\"closed\"},\"outcome\":{\"type\":\"string\",\"enum\":[\"completed\",\"cancelled\"]},\"endedOn\":{\"type\":\"string\"}},\"required\":[\"status\",\"outcome\",\"endedOn\"],\"additionalProperties\":false}],\"discriminator\":{\"propertyName\":\"status\"}}},\"additionalProperties\":false,\"required\":[\"params\",\"body\"]}}"
+   "describe": "{\"name\":\"project-status-set\",\"domain\":\"projects\",\"summary\":\"Pause, resume or close a project\",\"description\":\"Moves a project through its lifecycle: `{ status: \\\"active\\\" }` resumes or reopens, `\\\"paused\\\"` pauses, `{ status: \\\"closed\\\", outcome, endedOn }` closes it with its outcome and completion month (YYYY-MM). Needs project:manage; works on a closed project too. Answers the new status and dates. Before closing, consider project-cleanup-propose.\",\"annotations\":{\"title\":\"Pause, resume or close a project\",\"readOnlyHint\":false,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The project id, from project-list.\"}},\"required\":[\"id\"]},\"body\":{\"oneOf\":[{\"type\":\"object\",\"properties\":{\"status\":{\"const\":\"active\"}},\"required\":[\"status\"],\"additionalProperties\":false},{\"type\":\"object\",\"properties\":{\"status\":{\"const\":\"paused\"}},\"required\":[\"status\"],\"additionalProperties\":false},{\"type\":\"object\",\"properties\":{\"status\":{\"const\":\"closed\"},\"outcome\":{\"type\":\"string\",\"enum\":[\"completed\",\"cancelled\"]},\"endedOn\":{\"type\":\"string\"}},\"required\":[\"status\",\"outcome\",\"endedOn\"],\"additionalProperties\":false}],\"discriminator\":{\"propertyName\":\"status\"}}},\"additionalProperties\":false,\"required\":[\"params\",\"body\"]}}"
   },
   {
    "name": "project-summary-generate",
    "domain": "projects",
    "summary": "Write the project’s AI summary",
-   "description": "Generates the profile summary with the backend model and stores it on the profile, replacing the earlier one. Needs project:edit. Answers the summary. Optionally pass `locale` (\"de\" or \"en\").",
+   "description": "Generates the profile summary with the backend model, replacing the earlier one. Needs project:edit. Answers the summary. Optional `locale` (\"de\" or \"en\").",
    "readOnly": false,
    "destructive": false,
-   "describe": "{\"name\":\"project-summary-generate\",\"domain\":\"projects\",\"summary\":\"Write the project’s AI summary\",\"description\":\"Generates the profile summary with the backend model and stores it on the profile, replacing the earlier one. Needs project:edit. Answers the summary. Optionally pass `locale` (\\\"de\\\" or \\\"en\\\").\",\"annotations\":{\"title\":\"Write the project’s AI summary\",\"readOnlyHint\":false,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The project id, from project-list.\"}},\"required\":[\"id\"]},\"body\":{\"type\":\"object\",\"properties\":{\"locale\":{\"type\":\"string\",\"description\":\"The language to write the summary in, \\\"de\\\" or \\\"en\\\". Defaults to the person’s UI language.\"}}}},\"additionalProperties\":false,\"required\":[\"params\",\"body\"]}}"
+   "describe": "{\"name\":\"project-summary-generate\",\"domain\":\"projects\",\"summary\":\"Write the project’s AI summary\",\"description\":\"Generates the profile summary with the backend model, replacing the earlier one. Needs project:edit. Answers the summary. Optional `locale` (\\\"de\\\" or \\\"en\\\").\",\"annotations\":{\"title\":\"Write the project’s AI summary\",\"readOnlyHint\":false,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The project id, from project-list.\"}},\"required\":[\"id\"]},\"body\":{\"type\":\"object\",\"properties\":{\"locale\":{\"type\":\"string\",\"description\":\"The language to write the summary in, \\\"de\\\" or \\\"en\\\". Defaults to the person’s UI language.\"}}}},\"additionalProperties\":false,\"required\":[\"params\",\"body\"]}}"
   },
   {
    "name": "deletion-list",
@@ -1635,10 +1644,10 @@
    "name": "knowledge-base-get",
    "domain": "knowledge",
    "summary": "See what the building-law corpus contains",
-   "description": "The status of the platform-owned base corpus (OIB guidelines and the like): which documents it holds and whether they are indexed. Identical for every organization. To search the corpus, ask a question in a conversation; this only lists what is there.",
+   "description": "The status of the platform-owned base corpus (OIB guidelines and the like): which documents it holds and whether they are indexed. Identical for every organization. To search it use the document search with `shelf: \"base\"` (no project needed); for Austrian law itself the law lookup. This only lists what is there.",
    "readOnly": true,
    "destructive": false,
-   "describe": "{\"name\":\"knowledge-base-get\",\"domain\":\"knowledge\",\"summary\":\"See what the building-law corpus contains\",\"description\":\"The status of the platform-owned base corpus (OIB guidelines and the like): which documents it holds and whether they are indexed. Identical for every organization. To search the corpus, ask a question in a conversation; this only lists what is there.\",\"annotations\":{\"title\":\"See what the building-law corpus contains\",\"readOnlyHint\":true,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{},\"additionalProperties\":false}}"
+   "describe": "{\"name\":\"knowledge-base-get\",\"domain\":\"knowledge\",\"summary\":\"See what the building-law corpus contains\",\"description\":\"The status of the platform-owned base corpus (OIB guidelines and the like): which documents it holds and whether they are indexed. Identical for every organization. To search it use the document search with `shelf: \\\"base\\\"` (no project needed); for Austrian law itself the law lookup. This only lists what is there.\",\"annotations\":{\"title\":\"See what the building-law corpus contains\",\"readOnlyHint\":true,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{},\"additionalProperties\":false}}"
   },
   {
    "name": "knowledge-document-get",
@@ -1648,6 +1657,15 @@
    "readOnly": true,
    "destructive": false,
    "describe": "{\"name\":\"knowledge-document-get\",\"domain\":\"knowledge\",\"summary\":\"Read a base-corpus PDF\",\"description\":\"The PDF of one document of the building-law base corpus (the file names are listed by knowledge-base-get), returned as an attached resource up to 5 MiB; a larger file is not sent. Identical for every organization. Use it to quote a source a citation points at.\",\"annotations\":{\"title\":\"Read a base-corpus PDF\",\"readOnlyHint\":true,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"fileName\":{\"type\":\"string\",\"description\":\"The base-corpus file name, exactly as knowledge-base-get lists it.\"}},\"required\":[\"fileName\"]}},\"additionalProperties\":false,\"required\":[\"params\"]}}"
+  },
+  {
+   "name": "norm-list",
+   "domain": "knowledge",
+   "summary": "List the norm register",
+   "description": "Austrian laws and authority guidance Piloti knows by number: `{ norms: [{ id, short, title, rank, federalState, topics, citationUrl, documentNumber, bindingNote }], nextCursor }`. `federalState` (\"Wien\" or \"vienna\") keeps that state’s norms plus federal ones; `topic` matches topics, title or short name. `bindingNote` (German) says how it becomes binding. Pass `documentNumber` as the `instrument` of the law lookup to read it.",
+   "readOnly": true,
+   "destructive": false,
+   "describe": "{\"name\":\"norm-list\",\"domain\":\"knowledge\",\"summary\":\"List the norm register\",\"description\":\"Austrian laws and authority guidance Piloti knows by number: `{ norms: [{ id, short, title, rank, federalState, topics, citationUrl, documentNumber, bindingNote }], nextCursor }`. `federalState` (\\\"Wien\\\" or \\\"vienna\\\") keeps that state’s norms plus federal ones; `topic` matches topics, title or short name. `bindingNote` (German) says how it becomes binding. Pass `documentNumber` as the `instrument` of the law lookup to read it.\",\"annotations\":{\"title\":\"List the norm register\",\"readOnlyHint\":true,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"query\":{\"type\":\"object\",\"properties\":{\"federalState\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":60},\"topic\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":100},\"limit\":{\"type\":\"integer\",\"description\":\"Default 50, max 200.\"},\"cursor\":{\"type\":\"string\",\"maxLength\":64}}}},\"additionalProperties\":false,\"required\":[\"query\"]}}"
   },
   {
    "name": "bim-check-confirm",
@@ -1779,10 +1797,10 @@
    "name": "organization-memory-list",
    "domain": "organization",
    "summary": "List organization memory",
-   "description": "The knowledge shared by every project of the organization (kind, content, status, confidence, pinned). Any member may read. Item ids feed organization-memory-update and organization-memory-delete.",
+   "description": "The knowledge shared by every project of the organization (kind, content, status, confidence, pinned), pinned first then newest, a page of `limit` (default 50) with `nextCursor`. Any member may read. Item ids feed organization-memory-update and organization-memory-delete.",
    "readOnly": true,
    "destructive": false,
-   "describe": "{\"name\":\"organization-memory-list\",\"domain\":\"organization\",\"summary\":\"List organization memory\",\"description\":\"The knowledge shared by every project of the organization (kind, content, status, confidence, pinned). Any member may read. Item ids feed organization-memory-update and organization-memory-delete.\",\"annotations\":{\"title\":\"List organization memory\",\"readOnlyHint\":true,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"query\":{\"type\":\"object\",\"properties\":{\"includeArchived\":{\"type\":\"string\",\"enum\":[\"true\",\"false\"],\"description\":\"\\\"true\\\" also returns archived items.\"}}}},\"additionalProperties\":false,\"required\":[\"query\"]}}"
+   "describe": "{\"name\":\"organization-memory-list\",\"domain\":\"organization\",\"summary\":\"List organization memory\",\"description\":\"The knowledge shared by every project of the organization (kind, content, status, confidence, pinned), pinned first then newest, a page of `limit` (default 50) with `nextCursor`. Any member may read. Item ids feed organization-memory-update and organization-memory-delete.\",\"annotations\":{\"title\":\"List organization memory\",\"readOnlyHint\":true,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"query\":{\"type\":\"object\",\"properties\":{\"includeArchived\":{\"type\":\"string\",\"enum\":[\"true\",\"false\"],\"description\":\"\\\"true\\\" also returns archived items.\"},\"limit\":{\"type\":\"integer\",\"description\":\"Default 50, max 200.\"},\"cursor\":{\"type\":\"string\",\"maxLength\":64}}}},\"additionalProperties\":false,\"required\":[\"query\"]}}"
   },
   {
    "name": "organization-memory-update",
@@ -1863,9 +1881,9 @@
   ],
   "list projects": [
    "project-list",
+   "project-member-list",
    "project-document-list",
    "project-folder-list",
-   "project-member-list",
    "project-memory-list",
    "project-upload-list",
    "project-folder-bin-list",
@@ -1875,9 +1893,9 @@
   ],
   "Projekte auflisten": [
    "project-list",
+   "project-member-list",
    "project-document-list",
    "project-folder-list",
-   "project-member-list",
    "project-memory-list",
    "project-upload-list",
    "project-folder-bin-list",
@@ -1914,6 +1932,7 @@
    "inbox-item-archive",
    "inbox-item-restore",
    "inbox-summary-get",
+   "project-intake-start",
    "project-root-sort-get",
    "conversation-list",
    "conversation-message-add",
@@ -2080,12 +2099,12 @@
    "annotation-list",
    "proposal-get",
    "project-list",
+   "project-member-list",
    "office-shelf-document-list",
    "project-document-list",
    "quarantine-list",
    "office-shelf-folder-list",
-   "project-folder-list",
-   "conversation-list"
+   "project-folder-list"
   ],
   "offene Vorschläge": [
    "proposal-get",
@@ -2111,8 +2130,7 @@
    "assignment-add",
    "assignment-candidate-list",
    "assignment-remove",
-   "assignment-list",
-   "project-member-list"
+   "assignment-list"
   ],
   "annotation reply": [
    "annotation-reply-delete",
@@ -2147,9 +2165,9 @@
    "sharing-get"
   ],
   "Unterhaltung teilen": [
-   "sharing-get",
    "conversation-create",
    "conversation-list",
+   "sharing-get",
    "conversation-delete",
    "conversation-get",
    "conversation-message-add",
@@ -2172,9 +2190,9 @@
   ],
   "a project list": [
    "project-list",
+   "project-member-list",
    "project-document-list",
    "project-folder-list",
-   "project-member-list",
    "project-memory-list",
    "project-upload-list",
    "project-folder-bin-list",

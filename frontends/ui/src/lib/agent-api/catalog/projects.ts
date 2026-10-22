@@ -25,7 +25,7 @@ import { ProjectProfileSchema } from '@/lib/project-profile/types'
 import { intakeDecisionsRequestSchema, startIntakeRequestSchema } from '@/lib/project-intake/types'
 import { confirmCleanupSchema, proposeCleanupSchema } from '@/lib/projects/cleanup-wire'
 import { createProjectSchema } from '@/lib/projects/create-project-schema'
-import { addMemberSchema } from '@/lib/projects/project-members-wire'
+import { addMemberSchema, listMembersQuerySchema } from '@/lib/projects/project-members-wire'
 import {
   createMemorySchema,
   listMemoryQuerySchema,
@@ -47,7 +47,7 @@ const projectParams = z.object({ id: z.string().describe('The project id, from p
 const memberParams = projectParams.extend({
   assignmentId: z
     .string()
-    .describe('The role assignment id of the member, from project-member-list (members[].id).'),
+    .describe('The role assignment id of the member, from project-member-list (members[].roleAssignmentId).'),
 })
 const memoryItemParams = projectParams.extend({
   itemId: z.string().describe('The memory item id, from project-memory-list (items[].id).'),
@@ -89,7 +89,7 @@ export const projectsOperations = [
     name: 'project-rename',
     domain: 'projects',
     summary: 'Rename a project',
-    description: 'Give a project a new name. Needs the project:manage permission on that project.',
+    description: 'Give a project a new name. Needs project:manage.',
     method: 'PATCH',
     path: '/api/projects/[id]',
     params: projectParams,
@@ -116,7 +116,7 @@ export const projectsOperations = [
     domain: 'projects',
     summary: 'Create a project',
     description:
-      'Creates a project in the organization and returns it with its id. Give a name; optionally the address (a geocoder hit as `location`, or typed `address`), ' +
+      'Creates a project in the organization and returns it with its id. Give a name; optionally the address (typed `address`), ' +
       'a description, and `setup`: `piloti` (default) has Piloti read the documents afterwards, `self` leaves the profile to the intake wizard. ' +
       'To add a past project as a reference, pass `closing` with the outcome and months. Call project-same-address-list first to avoid a duplicate. ' +
       'Next: upload documents, then project-intake-get to follow the reading.',
@@ -143,21 +143,31 @@ export const projectsOperations = [
     domain: 'projects',
     summary: 'Read a project’s overview',
     description:
-      'The project’s overview as its home page shows it: profile summary, counts and the latest activity. ' +
-      'A good first read once you have a project id from project-list.',
+      'The project’s overview as its home page shows it: profile summary, counts and the latest activity. A good first read.',
     method: 'GET',
     path: '/api/projects/[id]/overview',
     params: projectParams,
     load: () => import('@/app/api/projects/[id]/overview/route'),
   },
   {
+    name: 'project-standards-get',
+    domain: 'projects',
+    summary: 'The OIB standards that apply to a project',
+    description:
+      'Which standards apply, from the project’s brief: `{ standards: [{ code, title, status, reason, decidingFact? }], briefComplete }`. `status` is `required`, `likely` or ' +
+      '`check`; a `check`’s `decidingFact` is the profile key that settles it (project-profile-patch). `briefComplete: false`: the brief is thin, six generic verdicts answered. Orientation only.',
+    method: 'GET',
+    path: '/api/projects/[id]/standards',
+    params: projectParams,
+    load: () => import('@/app/api/projects/[id]/standards/route'),
+  },
+  {
     name: 'project-status-set',
     domain: 'projects',
     summary: 'Pause, resume or close a project',
     description:
-      'Moves a project through its lifecycle. `{ status: "active" }` resumes or reopens, `{ status: "paused" }` pauses, ' +
-      '`{ status: "closed", outcome, endedOn }` closes it with how it ended and its completion month (YYYY-MM). ' +
-      'Needs project:manage and works on a closed project too. Answers the new status and dates. Before closing, consider project-cleanup-propose.',
+      'Moves a project through its lifecycle: `{ status: "active" }` resumes or reopens, `"paused"` pauses, `{ status: "closed", outcome, endedOn }` closes it with its outcome ' +
+      'and completion month (YYYY-MM). Needs project:manage; works on a closed project too. Answers the new status and dates. Before closing, consider project-cleanup-propose.',
     method: 'PUT',
     path: '/api/projects/[id]/status',
     params: projectParams,
@@ -182,8 +192,7 @@ export const projectsOperations = [
     domain: 'projects',
     summary: 'Rebuild a project’s document index',
     description:
-      'Queues a job that rebuilds the search chunks of every document in the project, and answers 202 with the job id at once. ' +
-      'Use when answers seem to miss documents that are on the shelf. It carries on after the call returns and is safe to repeat.',
+      'Queues a job that rebuilds the search chunks of every document in the project; answers 202 with the job id. Use when answers seem to miss documents on the shelf. Safe to repeat.',
     method: 'POST',
     path: '/api/projects/[id]/reindex',
     params: projectParams,
@@ -195,11 +204,12 @@ export const projectsOperations = [
     domain: 'projects',
     summary: 'List a project’s members',
     description:
-      'The project roster: each member with their role and the role assignment id (members[].id), plus `viewerUserId`, the caller’s own user id. ' +
-      'Needs project:members:manage. Use the assignment id with project-member-remove.',
+      'The people holding a project role: `userId`, `name`, `email`, `role`, `organizationMembershipId`, `roleAssignmentId` (null when access comes through a group or an ' +
+      'organization-wide right), plus `viewerUserId` and `nextCursor`. `scope: "organization"` lists everyone, `role` null for those without one. Needs project:members:manage.',
     method: 'GET',
     path: '/api/projects/[id]/members',
     params: projectParams,
+    query: listMembersQuerySchema,
     load: () => import('@/app/api/projects/[id]/members/route'),
   },
   {
@@ -208,7 +218,7 @@ export const projectsOperations = [
     summary: 'Add a member to a project with a role',
     description:
       'Assigns a project role (`project-viewer`, `project-contributor`, `project-editor`, `project-admin`) to an organization member, ' +
-      'or an empty `roleSlug` to clear their project role. `organizationMembershipId` comes from organization-member-list, not a user id. ' +
+      'or an empty `roleSlug` to clear their project role. `organizationMembershipId` is members[].organizationMembershipId from project-member-list (`scope: "organization"` for someone without a role yet), not a user id. ' +
       'Needs project:members:manage. Check the result with project-member-list.',
     method: 'POST',
     path: '/api/projects/[id]/members',
@@ -223,7 +233,7 @@ export const projectsOperations = [
     domain: 'projects',
     summary: 'Remove a member’s project role',
     description:
-      'Removes one role assignment from a project, so the person loses that access. `assignmentId` is members[].id from project-member-list. ' +
+      'Removes one role assignment from a project, so the person loses that access. `assignmentId` is members[].roleAssignmentId from project-member-list. ' +
       'Needs project:members:manage. Re-adding is project-member-add.',
     method: 'DELETE',
     path: '/api/projects/[id]/members/[assignmentId]',
@@ -237,9 +247,8 @@ export const projectsOperations = [
     domain: 'projects',
     summary: 'List a project’s memory items',
     description:
-      'The facts, decisions and notes Piloti keeps for the project, as `{ items }` with their ids, kind, status, confidence and pinned flag. ' +
-      'Pass `includeArchived: "true"` to include archived ones, or `conversationId` for those noted in one conversation. ' +
-      'Item ids feed project-memory-update and project-memory-delete.',
+      'The facts, decisions and notes Piloti keeps for the project, pinned first then newest, as `{ items, nextCursor }` (`limit` default 50; pass `nextCursor` as `cursor`). ' +
+      'Pass `includeArchived: "true"` for archived ones, or `conversationId` for those noted in one conversation. Item ids feed project-memory-update and project-memory-delete.',
     method: 'GET',
     path: '/api/projects/[id]/memory',
     params: projectParams,
@@ -251,7 +260,7 @@ export const projectsOperations = [
     domain: 'projects',
     summary: 'Add a memory item',
     description:
-      'Writes one memory item by hand: a `kind`, the `content` (up to 2000 characters), and optionally `confidence` and `pinned`. ' +
+      'Writes one memory item: `kind`, `content` (max 2000 characters), optional `confidence` and `pinned`. ' +
       'Answers `{ item }` with its id. Needs project:memory:write. Check project-memory-list first so you do not repeat an item.',
     method: 'POST',
     path: '/api/projects/[id]/memory',
@@ -291,8 +300,8 @@ export const projectsOperations = [
     domain: 'projects',
     summary: 'Read a project’s profile',
     description:
-      'The structured project profile (facts, goals, unknowns, assumptions) with its `profileVersion`. ' +
-      'Read it before project-profile-patch or project-profile-replace. The profile has one form, the intake wizard; this is its stored result.',
+      'The structured project profile (facts, goals, unknowns, assumptions) with its `profileVersion` and `profileDisplay`. `unknowns` are what a person marked as not known; ' +
+      'what is still open is project-intake-get. Read it before project-profile-patch or project-profile-replace.',
     method: 'GET',
     path: '/api/projects/[id]/profile',
     params: projectParams,
@@ -317,8 +326,8 @@ export const projectsOperations = [
     domain: 'projects',
     summary: 'Change single profile entries',
     description:
-      'Applies JSON-patch style operations (`add`, `replace`, `remove`) to the profile under /facts, /goals, /unknowns or /assumptions. ' +
-      'The safer way to edit one fact. Pass `conversationId` when the change came out of a conversation. Needs project:edit. Answers the updated profile; read project-profile-get for paths.',
+      'Applies JSON-patch style operations (`add`, `replace`, `remove`) under /facts, /goals, /unknowns or /assumptions: the safer way to edit one fact. ' +
+      'Pass `conversationId` when the change came out of a conversation. Needs project:edit. Answers the updated profile; read project-profile-get for paths.',
     method: 'POST',
     path: '/api/projects/[id]/profile/patches',
     params: projectParams,
@@ -366,8 +375,8 @@ export const projectsOperations = [
     domain: 'projects',
     summary: 'Start Piloti reading the documents',
     description:
-      'Starts a reading of the project’s documents now. `scope: "new"` reads what is not read yet; `"all"` forgets what was read and starts over. ' +
-      'While one reading runs the next is queued. Needs project:memory:write or project:edit and fails with 409 on a closed project. Answers `{ intake }`; poll project-intake-get.',
+      'Starts a reading of the project’s documents now. `scope: "new"` reads what is unread; `"all"` starts over. A reading already running queues the next. ' +
+      'Needs project:memory:write or project:edit; 409 on a closed project. Answers `{ intake }`; poll project-intake-get.',
     method: 'POST',
     path: '/api/projects/[id]/intake',
     params: projectParams,
@@ -379,9 +388,8 @@ export const projectsOperations = [
     domain: 'projects',
     summary: 'Decide on intake suggestions',
     description:
-      'Applies decisions on what Piloti read: `confirm` writes a suggestion (or the alternative at `alternativeIndex`), `dismiss` removes it, ' +
-      '`answer` writes the person’s own value, `unknown` records the key as not known. Keys come from project-intake-get. ' +
-      'Answers one result per decision, in order, and the intake after them.',
+      'Applies decisions on what Piloti read: `confirm` writes a suggestion (or the alternative at `alternativeIndex`), `dismiss` removes it, `answer` writes the person’s own value, ' +
+      '`unknown` records the key as not known. Keys come from project-intake-get. Answers one result per decision, in order, and the intake after them.',
     method: 'POST',
     path: '/api/projects/[id]/intake/decisions',
     params: projectParams,
@@ -393,8 +401,7 @@ export const projectsOperations = [
     domain: 'projects',
     summary: 'Finish the intake review',
     description:
-      'Ends the review of the intake. For a past project created with a closing intent this also closes the project with its outcome and completion month. ' +
-      'Call once project-intake-get shows nothing left to decide. Answers `{ intake }`.',
+      'Ends the intake review. For a past project created with a closing intent it also closes the project. Call once project-intake-get shows nothing left to decide. Answers `{ intake }`.',
     method: 'POST',
     path: '/api/projects/[id]/intake/complete',
     params: projectParams,
@@ -430,11 +437,9 @@ export const projectsOperations = [
     domain: 'projects',
     summary: 'Add a name to the project record’s people list (grants no access)',
     description:
-      'Writes someone into the project record’s list of people by hand, such as an external planner: name, optional ' +
-      'function, company, start and end month. It grants no access to the project and adds nobody to its team: who ' +
-      'may open the project is a project role, project-member-add, which the person may have to set in Piloti ' +
-      'themselves. No e-mail or phone is kept. Pass `userId` (from organization-member-list) to describe a colleague ' +
-      'of the office instead. Send all fields; use null for unknown.',
+      'Writes someone into the project record’s list of people, such as an external planner: name, optional function, company, start and end month. ' +
+      'It grants no access and adds nobody to the team: who may open the project is a project role, which the person may have to set in Piloti themselves. ' +
+      'No e-mail or phone is kept. Pass `userId` (project-member-list) to describe a colleague of the office. Send all fields; null for unknown.',
     method: 'POST',
     path: '/api/projects/[id]/people',
     params: projectParams,
@@ -461,7 +466,7 @@ export const projectsOperations = [
     summary: 'Erase a person from the project record',
     description:
       'Erases one person’s entry from the project record; this is the data-protection erasure and cannot be undone. ' +
-      'Still possible in a closed project for whoever manages it. `personId` is from project-record-get.',
+      'Works in a closed project too. `personId` is from project-record-get.',
     method: 'DELETE',
     path: '/api/projects/[id]/people/[personId]',
     params: personParams,
@@ -474,7 +479,7 @@ export const projectsOperations = [
     summary: 'Read the project’s sensitive-data list',
     description:
       'The upload screening policy in force for this project: the office’s list and what the project adds to or removes from its name terms. ' +
-      'Any member may read it. Edit with project-upload-screening-set.',
+      'Edit with project-upload-screening-set.',
     method: 'GET',
     path: '/api/projects/[id]/upload-screening',
     params: projectParams,
@@ -486,7 +491,7 @@ export const projectsOperations = [
     summary: 'Set the project’s sensitive name terms',
     description:
       'Saves the project’s whole override of the sensitive name terms: `addedNameTerms` and `removedNameTerms`. It replaces the earlier override, so read project-upload-screening-get first. ' +
-      'Content terms and detectors stay the office’s. Needs project:manage; audited.',
+      'Content terms and detectors stay the office’s. Needs project:manage.',
     method: 'PUT',
     path: '/api/projects/[id]/upload-screening',
     params: projectParams,
@@ -499,8 +504,8 @@ export const projectsOperations = [
     domain: 'projects',
     summary: 'Have Piloti propose what to clear out',
     description:
-      'Before a project closes („Ausmisten"): Piloti proposes which documents the finished project no longer needs, among those the person may read and write. ' +
-      'Starts a paid model call, so call it once. Nothing is removed. Show the proposal to the person, then send their choice with project-cleanup-confirm.',
+      'Before a project closes (clearing out): Piloti proposes which documents the finished project no longer needs, among those the person may read and write. ' +
+      'Starts a paid model call, so call it once. Nothing is removed; show the proposal, then send their choice with project-cleanup-confirm.',
     method: 'POST',
     path: '/api/projects/[id]/cleanup/proposal',
     params: projectParams,
@@ -511,10 +516,10 @@ export const projectsOperations = [
   {
     name: 'project-cleanup-confirm',
     domain: 'projects',
-    summary: 'Move the chosen documents to the Papierkorb',
+    summary: 'Move the chosen documents to the bin',
     description:
-      'Puts the documents the person chose (`documentIds`) into the Papierkorb, all or nothing; they can be restored for 14 days. ' +
-      '`proposedIds` is what project-cleanup-propose suggested and `aiUsed` says whether a proposal was used. Never send ids the person did not approve.',
+      'Puts the documents the person chose (`documentIds`) into the bin, all or nothing; restorable for 14 days. ' +
+      '`proposedIds` is what project-cleanup-propose suggested, `aiUsed` whether a proposal was used. Never send ids the person did not approve.',
     method: 'POST',
     path: '/api/projects/[id]/cleanup',
     params: projectParams,
@@ -527,9 +532,8 @@ export const projectsOperations = [
     domain: 'projects',
     summary: 'Extract experience from a closing project',
     description:
-      'Reads the project’s own documents once and stores what they say as suggestions: unconfirmed facts on the project profile and ' +
-      'drafted decisions in project memory, which a person then confirms or dismisses. Refused for a closed project. Starts a paid ' +
-      'model call. Needs project:memory:write or project:edit.',
+      'Reads the project’s own documents once and stores what they say as suggestions (unconfirmed profile facts, drafted decisions in project memory) for a person to confirm or dismiss. ' +
+      'Refused for a closed project. Starts a paid model call. Needs project:memory:write or project:edit.',
     method: 'POST',
     path: '/api/projects/[id]/experience',
     params: projectParams,
@@ -542,8 +546,7 @@ export const projectsOperations = [
     domain: 'projects',
     summary: 'Check free-text answers for contradictions',
     description:
-      'Asks the backend model whether the intake’s free-text answers contradict the structured answers (passed as context). ' +
-      'Best effort: always answers `{ findings, error? }`, and an error means proceed. Call before saving a profile edited in free text.',
+      'Asks the backend model whether the intake’s free-text answers contradict the structured ones (passed as context). Best effort: always answers `{ findings, error? }`; an error means proceed.',
     method: 'POST',
     path: '/api/projects/[id]/consistency-check',
     params: projectParams,
@@ -556,8 +559,7 @@ export const projectsOperations = [
     domain: 'projects',
     summary: 'Write the project’s AI summary',
     description:
-      'Generates the profile summary with the backend model and stores it on the profile, replacing the earlier one. Needs project:edit. ' +
-      'Answers the summary. Optionally pass `locale` ("de" or "en").',
+      'Generates the profile summary with the backend model, replacing the earlier one. Needs project:edit. Answers the summary. Optional `locale` ("de" or "en").',
     method: 'POST',
     path: '/api/projects/[id]/generate-summary',
     params: projectParams,
