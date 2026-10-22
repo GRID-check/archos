@@ -99,13 +99,16 @@ contract is the chips. Option 3 breaks ADR-0068 and every rename of a phrase.
    tool's own typed values, bounded and clipped like a `look` step's.
 2. **The `tool` step stays** for the chips and for tools that have no action
    row yet; a tool without an action row loses nothing it shows today.
-3. **The Herleitung gains a work list under the source graph**: rounds as
-   groups („Runde n · k gleichzeitig · t s“), each call a row with its verb
-   icon, its words and a bar on the round's time axis, clickable to its
-   document, page or folder. The look rows of ADR-0128 become the `look` verb's
-   rendering in it.
-4. **PF-12 is narrowed, not dropped.** The graph still shows the model's
-   sentence, not the query. The work list shows a query for a file search, a
+3. **The calls become nodes in the Herleitung graph.** The node-based
+   Herleitung (`ReasoningFlow`, the source hero and its spine) stays the
+   surface. A round fans out into one action node per call, side by side, so
+   parallel calls sit in parallel; each node carries its verb, its words, its
+   counts and its time, and connects to the source cards it found. A listing
+   is a folder node with its breadcrumb, a look a node with its crop, a read a
+   node with document and pages. Clicking a node opens its document, page or
+   folder.
+4. **PF-12 is narrowed, not dropped.** A round node still shows the model's
+   sentence, not the query. An action node shows a query for a file search, a
    literal search and a web search, because there the query *is* the evidence.
 5. **Fan out on purpose.** The search description asks for independent queries
    in one round instead of „one precise call“, and round 0 adds a literal
@@ -121,7 +124,7 @@ contract is the chips. Option 3 breaks ADR-0068 and every rename of a phrase.
 | `ActionStep` on the wire, the helper in `turn_status`, schema and Zod regenerated | every row exists, typed, with time |
 | `knowledge_search`, `read_passage`, `list_files` emit action rows | file search and folder opening are drawn |
 | `project_lookup`, web, RIS, `workspace__call`, IFC emit action rows | the rest of the work is drawn |
-| The work list in the Herleitung, live and settled, with time bars and click-through | parallel is visible; every row is evidence |
+| Action nodes in the Herleitung graph, live and settled, with time and click-through | parallel is visible; every node is evidence |
 | A list-only round is never „Kein Treffer“; an error is drawn | the trace tells the truth |
 | Description fan-out and literal prefetch in round 0 | the work is as parallel as it looks |
 
@@ -139,5 +142,5 @@ contract is the chips. Option 3 breaks ADR-0068 and every rename of a phrase.
 
 `tests/aiq_agent/common/test_wire_v2.py` and `wire-v2.spec.ts` validate the new
 kind against the recorded turns; the producer tests assert one start and one
-end per call with the same id; the work list has a `/dev/derivation` variant
+end per call with the same id; the graph has a `/dev/derivation` variant with the action nodes
 with a captured screenshot; the answer suite's report is in the PR.
