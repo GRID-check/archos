@@ -24,13 +24,16 @@
  * whole, so a refresh lost to a restart costs nothing the next stale read does
  * not redo, and a queue row would add durability nobody needs.
  *
- * `GRID_OFFICE_CONVENTIONS=on` switches it on; off (the default), nothing here
- * runs and the turn context is what it was.
+ * The `office-conventions` WorkOS flag switches it on per organization (an
+ * entitlement, off until an operator targets the organization); off, nothing
+ * here runs and the turn context is what it was.
  */
 
 import 'server-only'
 import { NotFoundError } from '@/lib/api/errors'
 import { folderTree, isUnderOwnList } from '@/lib/authz/folder-access-rule'
+import { FEATURE_FLAGS } from '@/lib/authz/feature-flags'
+import { isOrgFeatureEnabled } from '@/lib/workos/feature-flags'
 import { hasPassedScreening } from '@/lib/documents/document-reader'
 import { reconcileDocumentStatuses } from '@/lib/documents/reconcile-status'
 import { documentTypeOf } from '@/lib/documents/tag-vocabulary'
@@ -97,9 +100,9 @@ export function forgetOfficeFingerprints(): void {
   fingerprints.clear()
 }
 
-/** Whether the deployment learns and shows the office's conventions. Off unless switched on. */
-export function officeConventionsEnabled(env: Record<string, string | undefined> = process.env): boolean {
-  return (env.GRID_OFFICE_CONVENTIONS ?? '').trim().toLowerCase() === 'on'
+/** Whether this organization learns and shows its conventions: the `office-conventions` flag. */
+export async function officeConventionsEnabled(organizationId: string): Promise<boolean> {
+  return isOrgFeatureEnabled(FEATURE_FLAGS.officeConventions, organizationId)
 }
 
 /** The folders that count, by id: living, and not under an own access list. */
@@ -221,13 +224,13 @@ export function isStale(
 }
 
 /**
- * The convention lines for a turn, header first, or null: when the switch is
- * off, the question is not about filing or finding, or nothing was learned yet.
+ * The convention lines for a turn, header first, or null: when the flag is
+ * off for the organization, the question is not about filing or finding, or nothing was learned yet.
  * A stale record is still served while its refresh runs. The office's
  * decisions apply: a declined line is not sent, a confirmed one always is.
  */
 export async function officeConventionsForTurn(organizationId: string, query: string | null | undefined) {
-  if (!officeConventionsEnabled() || !asksWhereThingsAre(query)) return null
+  if (!asksWhereThingsAre(query) || !(await officeConventionsEnabled(organizationId))) return null
   const [row, fingerprint, decisions] = await Promise.all([
     readOfficeConventions(organizationId),
     cachedFingerprint(organizationId),
@@ -246,8 +249,11 @@ export async function officeConventionsForTurn(organizationId: string, query: st
  * for a refresh when the record is stale, like a turn does.
  */
 export async function listOfficeConventions(organizationId: string): Promise<OfficeConventionsView> {
-  const enabled = officeConventionsEnabled()
-  const [row, decisions] = await Promise.all([readOfficeConventions(organizationId), listConventionDecisions(organizationId)])
+  const [enabled, row, decisions] = await Promise.all([
+    officeConventionsEnabled(organizationId),
+    readOfficeConventions(organizationId),
+    listConventionDecisions(organizationId),
+  ])
   if (enabled && isStale(row, await cachedFingerprint(organizationId))) await requestOfficeConventionsRefresh(organizationId)
   const conventions = row?.extractorVersion === EXTRACTOR_VERSION ? row.conventions : null
   return {

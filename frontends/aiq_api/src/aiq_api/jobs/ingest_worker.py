@@ -24,7 +24,6 @@ Config (env):
   AIQ_INGEST_MAX_WORKERS               jobs this process runs at once (default 2)
   GRID_INGEST_WORKER_DRAIN_SECONDS     drain budget on SIGTERM (default 600)
   GRID_WORKER_LIVENESS_FILE            touched while the loop is alive
-  GRID_FOLDER_CARDS                    ``on`` also runs the folder card builder here (ADR-0127)
 """
 
 from __future__ import annotations
@@ -91,11 +90,12 @@ async def run(stop: asyncio.Event) -> None:
 
 
 def _start_folder_cards(stop: asyncio.Event) -> asyncio.Task | None:
-    """The folder card builder's loop, beside the claim loop, when ``GRID_FOLDER_CARDS`` is on."""
-    from aiq_agent.knowledge import folder_cards
+    """The folder card builder's loop, beside the claim loop.
 
-    if not folder_cards.enabled():
-        return None
+    It always runs: whether an organization has cards is its ``folder-cards`` WorkOS
+    flag, which the builder asks the BFF per claimed folder (ADR-0127), so a
+    deployment where no organization has the flag finds an empty queue.
+    """
     from aiq_agent.knowledge.folder_cards import worker
 
     logger.info("Ingest worker builds folder cards")

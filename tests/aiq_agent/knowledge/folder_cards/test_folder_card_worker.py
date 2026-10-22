@@ -87,8 +87,23 @@ class TestHooks:
         (claim,) = queue.claim(5)
         assert claim.organization_id == ORG
 
-    def test_off_marks_nothing(self, agent_db, monkeypatch):
-        monkeypatch.setenv("GRID_FOLDER_CARDS", "off")
+    def test_flag_off_marks_nothing(self, agent_db, folder_cards_flag):
+        folder_cards_flag.off(ORG)
+
+        _file("Bescheid.pdf", "Behörde")
+
+        assert _paths() == []
+
+    def test_no_known_organization_marks_nothing(self, agent_db, folder_cards_flag, monkeypatch):
+        monkeypatch.setattr("aiq_agent.knowledge.folder_cards.organization_for", lambda collection: None)
+
+        _file("Bescheid.pdf", "Behörde")
+
+        assert _paths() == []
+
+    def test_the_env_var_is_no_longer_read(self, agent_db, folder_cards_flag, monkeypatch):
+        monkeypatch.setenv("GRID_FOLDER_CARDS", "on")
+        folder_cards_flag.off(ORG)
 
         _file("Bescheid.pdf", "Behörde")
 
@@ -108,6 +123,32 @@ class TestRunOnce:
         assert "- Behörde/: Ordner Gutachten/Behörde." in model.calls[1]
         assert set(project.cards) == {("proj", "Gutachten/Behörde"), ("proj", "Gutachten")}
         assert _paths() == []
+
+    async def test_flag_off_builds_nothing_and_drops_the_queue(self, project, folder_cards_flag):
+        folder_cards_flag.off(ORG)
+        model = FakeModel(_abstracts)
+
+        report = await worker.run_once(llm=model)
+
+        assert report.outcomes == {"skipped": 2}  # claimed the deepest two folders, dropped both
+        assert model.calls == []
+        assert project.cards == {}
+
+    async def test_flag_lookup_failure_keeps_the_claim_for_a_retry(self, project, monkeypatch):
+        from aiq_agent.knowledge.folder_cards import gate
+
+        def down(organization_id):
+            raise OSError("BFF down")
+
+        gate.forget()
+        monkeypatch.setattr(gate, "_fetch", down)
+        model = FakeModel(_abstracts)
+
+        report = await worker.run_once(llm=model)
+
+        assert report.outcomes.get("failed", 0) >= 1
+        assert model.calls == []
+        assert _paths() != []
 
     async def test_nothing_changed_is_no_model_call(self, project):
         model = FakeModel(_abstracts)

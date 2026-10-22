@@ -102,7 +102,11 @@ def channel(monkeypatch):
     )
     retriever = _Retriever([_chunk("Grundriss_EG.pdf")])
     monkeypatch.setattr("sources.knowledge_layer.src.register._get_retriever", lambda config: retriever)
-    monkeypatch.setenv("GRID_FOLDER_CARDS", "on")
+    from aiq_agent.knowledge.folder_cards import gate
+
+    gate.forget()
+    monkeypatch.setattr(gate, "_fetch", lambda organization_id: True)
+    monkeypatch.setattr("aiq_agent.project_context.get_organization_id_from_context", lambda: "org_1")
     asked: list[dict] = []
 
     def routes(retriever_, scopes, query_text, folder, hint):
@@ -149,8 +153,11 @@ class TestThroughTheTool:
         assert channel == []
         assert "Folder:" not in out
 
-    async def test_off_by_default(self, channel, monkeypatch):
-        monkeypatch.delenv("GRID_FOLDER_CARDS")
+    async def test_off_without_the_organizations_flag(self, channel, monkeypatch):
+        from aiq_agent.knowledge.folder_cards import gate
+
+        gate.forget()
+        monkeypatch.setattr(gate, "_fetch", lambda organization_id: False)
 
         out = await _search(query="Grundriss EG")
 

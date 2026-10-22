@@ -172,8 +172,9 @@ Existing tables checked first:
 - **As a prior for list and search, not a filter.** The line names where a
   Dokumentart usually is, so a `list_files` or a folder-scoped search can look
   there first; a miss there is not an absence.
-- **Behind a switch, off by default**: `GRID_OFFICE_CONVENTIONS=on`. Off, no
-  fingerprint is read, no refresh runs, and the block is byte-identical to
+- **Behind a flag, off by default**: the `office-conventions` WorkOS feature
+  flag, per organization (an entitlement; an office's on/off switch is never an
+  environment variable). Off, no fingerprint is read, no refresh runs, and the block is byte-identical to
   before.
 - **Observable**: the agent records `office_conventions_lines` (how many
   convention lines the turn was shown; 0 on a turn whose WORKSPACE block has
@@ -187,7 +188,7 @@ Existing tables checked first:
 
 ### What the person sees, and the later slices
 
-Slices 1 and 2 are built (still behind `GRID_OFFICE_CONVENTIONS`); slice 3 is open.
+Slices 1 and 2 are built (still behind the `office-conventions` flag); slice 3 is open.
 
 1. **A read view, built.** `GET /api/organization/office-conventions`, its
    operation `office-conventions-list` (offered on the door like any office

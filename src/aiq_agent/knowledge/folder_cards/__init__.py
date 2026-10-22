@@ -16,26 +16,23 @@ Tier 0 (counts, Dokumentart mix, current Fassung) is computed live by
   safety net. Under a per-organization monthly token budget.
 * :func:`listing_abstracts` is what ``list_files(view="tree")`` reads.
 
-All of it is behind ``GRID_FOLDER_CARDS`` (off by default): off, a hook is one
-environment read and the listing makes no call.
+All of it is behind the ``folder-cards`` WorkOS flag, per organization (an
+entitlement, off until an operator targets the organization; :mod:`.gate` asks the
+BFF). Off, a hook marks nothing, the builder drops what is queued and the listing
+makes no read.
 """
 
 from __future__ import annotations
 
 import asyncio
 import logging
-import os
 from collections.abc import Iterable
 from collections.abc import Sequence
 from dataclasses import dataclass
 
+from . import gate
+
 logger = logging.getLogger(__name__)
-
-ENABLED_ENV = "GRID_FOLDER_CARDS"
-
-
-def enabled() -> bool:
-    return os.environ.get(ENABLED_ENV, "off").strip().lower() in ("on", "true", "1", "yes")
 
 
 def organization_hint(collection: str) -> str | None:
@@ -69,24 +66,47 @@ def organization_hint(collection: str) -> str | None:
         return None
 
 
+def organization_for(collection: str) -> str | None:
+    """:func:`organization_hint`, then the organization the builder learned for ``collection``. Never raises."""
+    hint = organization_hint(collection)
+    if hint:
+        return hint
+    try:
+        from . import queue
+
+        return queue.organization_of(collection)
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def enabled_for_collection(collection: str) -> bool:
+    """Whether the organization ``collection`` belongs to has the ``folder-cards`` flag. Never raises.
+
+    An organization nobody can name has no cards: a mark made without one is found
+    by the nightly reconcile, which knows the organization of every collection it saw.
+    """
+    return gate.enabled_for(organization_for(collection))
+
+
 def mark_folders(collection: str, folder_paths: Iterable[str | None]) -> None:
     """Mark these folders and every folder above them dirty. Never raises."""
-    if not enabled():
-        return
     paths = [path for path in folder_paths if path and path.strip("/")]
     if not paths:
         return
     try:
+        organization_id = organization_for(collection)
+        if not gate.enabled_for(organization_id):
+            return
         from . import queue
 
-        queue.mark(collection, paths, organization_hint(collection))
+        queue.mark(collection, paths, organization_id)
     except Exception:  # noqa: BLE001 — a card is derived; a lost mark is found by the reconcile
         logger.warning("folder cards: could not mark %s in %s", paths, collection, exc_info=True)
 
 
 def mark_files(collection: str, file_names: Sequence[str] | None, store=None) -> None:
     """Mark the folders these files are filed in. Never raises."""
-    if not enabled() or not file_names:
+    if not file_names or not enabled_for_collection(collection):
         return
     try:
         if store is None:
@@ -115,14 +135,14 @@ async def listing_abstracts(collections: Sequence[str]) -> dict[tuple[str, str],
     ``client.READ_TIMEOUT_SECONDS``, so a slow BFF costs the listing its tier-1
     lines, never the listing.
     """
-    if not enabled() or not collections:
+    if not collections:
         return {}
     from aiq_agent.project_context import get_organization_id_from_context
 
     from . import client
 
     organization_id = get_organization_id_from_context()
-    if not organization_id:
+    if not organization_id or not await asyncio.to_thread(gate.enabled_for, organization_id):
         return {}
 
     def read(collection: str) -> dict[str, dict]:

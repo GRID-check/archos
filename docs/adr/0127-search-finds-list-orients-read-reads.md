@@ -155,6 +155,12 @@ What it decides:
      document it names before an answer states it. A person's folder description
      (migration 0145) is an input and wins over the abstract. Tier 1 ships after tier 0
      and after the eval has a baseline.
+     Tier 1 is an organization's entitlement: the `folder-cards` WorkOS flag, off until an
+     operator targets the organization. It was first built as an environment variable
+     (`GRID_FOLDER_CARDS`); an office capability's switch is a flag, so that is gone. The
+     agent tier asks the BFF per organization (`GET /api/internal/stages`,
+     `features.folderCards`) when it marks, builds, reconciles and lists; the
+     tuning, `GRID_FOLDER_CARDS_MONTHLY_TOKENS`, stays an environment variable.
    - *Tier 1 updates incrementally.* Each card keeps a manifest of what it was written
      from (a fingerprint per direct child document, each child folder's abstract hash,
      the description, the prompt version, an increments counter), in the agent DB

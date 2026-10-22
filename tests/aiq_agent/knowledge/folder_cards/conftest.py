@@ -49,7 +49,7 @@ def database_url(request, tmp_path):
 
 
 @pytest.fixture(params=_BACKENDS)
-def agent_db(request, tmp_path, monkeypatch):
+def agent_db(request, tmp_path, monkeypatch, folder_cards_flag):
     """A fresh agent DB as ``document_metadata`` and the queue's home; folder cards on."""
     from sqlalchemy import text
 
@@ -63,9 +63,47 @@ def agent_db(request, tmp_path, monkeypatch):
             conn.execute(text("DROP TABLE IF EXISTS document_metadata"))
     DocumentMetadataStore._tables_initialized.discard(url)
     factory.configure_summary_db(url)
-    monkeypatch.setenv("GRID_FOLDER_CARDS", "on")
+    folder_cards_flag.on("org_1")
+    # The organization the hooks gate on when no request or ingest context names one.
+    from aiq_agent.knowledge.folder_cards import queue
+
+    queue.remember_collection("proj", "org_1")
     yield url
+    folder_cards_flag.reset()
     factory._document_metadata_store = previous
+
+
+class FolderCardsFlag:
+    """The ``folder-cards`` WorkOS flag as the BFF answers it (``gate._fetch``), per organization."""
+
+    def __init__(self, monkeypatch) -> None:
+        from aiq_agent.knowledge.folder_cards import gate
+
+        self.enabled: set[str] = set()
+        self.asked: list[str] = []
+        self._gate = gate
+        gate.forget()
+        monkeypatch.setattr(gate, "_fetch", self._answer)
+
+    def _answer(self, organization_id: str) -> bool:
+        self.asked.append(organization_id)
+        return organization_id in self.enabled
+
+    def on(self, organization_id: str) -> None:
+        self.enabled.add(organization_id)
+        self._gate.forget()
+
+    def off(self, organization_id: str) -> None:
+        self.enabled.discard(organization_id)
+        self._gate.forget()
+
+    def reset(self) -> None:
+        self._gate.forget()
+
+
+@pytest.fixture
+def folder_cards_flag(monkeypatch) -> FolderCardsFlag:
+    return FolderCardsFlag(monkeypatch)
 
 
 @pytest.fixture

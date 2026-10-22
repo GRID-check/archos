@@ -121,6 +121,15 @@ class TestFetchTurnFlags:
         with patch("urllib.request.urlopen", return_value=_body({"enabled": [], "features": features})):
             assert flags.fetch_turn_flags(organization_id="org_1").deep_research_allowed is True
 
+    @pytest.mark.parametrize(
+        ("features", "expected"),
+        [({"folderCards": True}, True), ({"folderCards": False}, False), ({}, False), (None, False), ("x", False)],
+    )
+    def test_folder_cards_is_an_entitlement_only_an_explicit_true_grants(self, features, expected):
+        """Unlike the two above: an older BFF or a missing field is a no, not a yes."""
+        with patch("urllib.request.urlopen", return_value=_body({"enabled": [], "features": features})):
+            assert flags.fetch_turn_flags(organization_id="org_1").folder_cards_allowed is expected
+
     def test_the_two_capabilities_are_read_independently(self):
         """`task-automation` is its own flag. An org may keep deep research and
         lose the right to queue work, or the reverse."""

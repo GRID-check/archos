@@ -52,7 +52,7 @@ export interface ConventionLineView {
 }
 
 export interface OfficeConventionsView {
-  /** Whether the deployment learns conventions at all (`GRID_OFFICE_CONVENTIONS`). */
+  /** Whether the organization learns conventions at all (the `office-conventions` flag). */
   enabled: boolean
   /** Projects the latest count was taken over; 0 before the first count. */
   projects: number

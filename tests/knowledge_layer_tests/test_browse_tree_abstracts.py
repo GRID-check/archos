@@ -60,6 +60,14 @@ def scope(monkeypatch):
     set_turn_documents(None)
 
 
+def _flag(monkeypatch, on: bool) -> None:
+    """The ``folder-cards`` flag as the BFF answers it for the turn's organization."""
+    from aiq_agent.knowledge.folder_cards import gate
+
+    gate.forget()
+    monkeypatch.setattr(gate, "_fetch", lambda organization_id: on and organization_id == "org_1")
+
+
 async def _tree() -> str:
     builder = MagicMock()
     builder.get_function_config = MagicMock(return_value=KnowledgeRetrievalConfig(collection_name="oib_knowledge"))
@@ -74,7 +82,7 @@ async def test_the_tool_reads_the_turns_collections_cards(scope, monkeypatch):
         asked.append((organization_id, collection))
         return {"Gutachten": {"abstract": "Gutachten zum Wohnhaus.", "status": "fresh", "generated_at": None}}
 
-    monkeypatch.setenv("GRID_FOLDER_CARDS", "on")
+    _flag(monkeypatch, True)
     monkeypatch.setattr("aiq_agent.knowledge.folder_cards.client.get_cards", get_cards)
     set_turn_documents(DOCS)
 
@@ -91,8 +99,8 @@ async def test_off_or_unreachable_the_listing_is_tier_zero_alone(scope, monkeypa
     monkeypatch.setattr("aiq_agent.knowledge.folder_cards.client.get_cards", unreachable)
     set_turn_documents(DOCS)
 
-    monkeypatch.setenv("GRID_FOLDER_CARDS", "off")
+    _flag(monkeypatch, False)
     assert "About:" not in await _tree()
-    monkeypatch.setenv("GRID_FOLDER_CARDS", "on")
+    _flag(monkeypatch, True)
     text = await _tree()
     assert "Gutachten/  2 documents" in text and "About:" not in text

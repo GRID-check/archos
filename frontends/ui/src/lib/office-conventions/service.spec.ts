@@ -15,10 +15,12 @@ vi.mock('./repository', () => ({
   readOfficeConventions: vi.fn(),
   writeOfficeConventions: vi.fn(),
 }))
+vi.mock('@/lib/workos/feature-flags', () => ({ isOrgFeatureEnabled: vi.fn() }))
 vi.mock('@/lib/filing/repository', () => ({ listProjectsFolders: vi.fn() }))
 vi.mock('@/lib/projects/repository', () => ({ listProjectsInOrg: vi.fn() }))
 vi.mock('@/lib/documents/reconcile-status', () => ({ reconcileDocumentStatuses: vi.fn() }))
 
+import { isOrgFeatureEnabled } from '@/lib/workos/feature-flags'
 import { reconcileDocumentStatuses } from '@/lib/documents/reconcile-status'
 import { listProjectsFolders, type OfficeFolderRow } from '@/lib/filing/repository'
 import { listProjectsInOrg } from '@/lib/projects/repository'
@@ -85,7 +87,7 @@ beforeEach(() => {
   vi.clearAllMocks()
   forgetOfficeFingerprints()
   vi.unstubAllEnvs()
-  vi.stubEnv('GRID_OFFICE_CONVENTIONS', 'on')
+  vi.mocked(isOrgFeatureEnabled).mockResolvedValue(true)
   vi.mocked(officeSourceFingerprint).mockResolvedValue('fp-1')
   vi.mocked(claimOfficeConventionsRefresh).mockResolvedValue(false)
   vi.mocked(listConventionDecisions).mockResolvedValue([])
@@ -93,10 +95,17 @@ beforeEach(() => {
 })
 
 describe('the switch', () => {
-  it('is off unless switched on', () => {
-    expect(officeConventionsEnabled({})).toBe(false)
-    expect(officeConventionsEnabled({ GRID_OFFICE_CONVENTIONS: 'off' })).toBe(false)
-    expect(officeConventionsEnabled({ GRID_OFFICE_CONVENTIONS: ' ON ' })).toBe(true)
+  it('is the office-conventions flag of the organization', async () => {
+    vi.mocked(isOrgFeatureEnabled).mockImplementation(async (_flag, org) => org === 'org-on')
+    expect(await officeConventionsEnabled('org-on')).toBe(true)
+    expect(await officeConventionsEnabled('org-off')).toBe(false)
+    expect(isOrgFeatureEnabled).toHaveBeenCalledWith('office-conventions', 'org-off')
+  })
+
+  it('no longer reads the environment variable', async () => {
+    vi.mocked(isOrgFeatureEnabled).mockResolvedValue(false)
+    vi.stubEnv('GRID_OFFICE_CONVENTIONS', 'on')
+    expect(await officeConventionsEnabled('org-1')).toBe(false)
   })
 })
 
@@ -145,11 +154,23 @@ describe('isStale', () => {
   })
 })
 
+describe('listOfficeConventions with the flag off', () => {
+  it('says so and asks for no refresh', async () => {
+    vi.mocked(isOrgFeatureEnabled).mockResolvedValue(false)
+    vi.mocked(readOfficeConventions).mockResolvedValue(stored({ sourceFingerprint: 'fp-0' }))
+
+    const view = await listOfficeConventions('org-1')
+
+    expect(view.enabled).toBe(false)
+    expect(claimOfficeConventionsRefresh).not.toHaveBeenCalled()
+  })
+})
+
 describe('officeConventionsForTurn', () => {
-  it('reads nothing when the switch is off or the question is not about filing or finding', async () => {
-    vi.stubEnv('GRID_OFFICE_CONVENTIONS', '')
+  it('reads nothing when the flag is off or the question is not about filing or finding', async () => {
+    vi.mocked(isOrgFeatureEnabled).mockResolvedValue(false)
     expect(await officeConventionsForTurn('org-1', 'Wo liegt der Bescheid?')).toBeNull()
-    vi.stubEnv('GRID_OFFICE_CONVENTIONS', 'on')
+    vi.mocked(isOrgFeatureEnabled).mockResolvedValue(true)
     expect(await officeConventionsForTurn('org-1', 'Wie hoch darf das Geländer sein?')).toBeNull()
     expect(readOfficeConventions).not.toHaveBeenCalled()
     expect(officeSourceFingerprint).not.toHaveBeenCalled()

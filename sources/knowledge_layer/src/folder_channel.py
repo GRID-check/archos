@@ -7,7 +7,7 @@ whose card matches the question. They are printed after the passages as
 nothing else: no grounding record, no citation key, because a card is an index
 and an answer cites the documents it routes to.
 
-Behind ``GRID_FOLDER_CARDS`` like the rest of tier 1. The query vector is the
+Behind the organization's ``folder-cards`` flag like the rest of tier 1. The query vector is the
 search's own (the retriever's embedding cache answers it without a second
 call), and every failure is silence: the passages are the answer, the folders a
 hint.
@@ -24,9 +24,11 @@ logger = logging.getLogger(__name__)
 
 
 def _enabled() -> bool:
-    from aiq_agent.knowledge.folder_cards import enabled
+    """The turn's organization has the ``folder-cards`` flag. Blocking (the BFF answers, then a minute's cache)."""
+    from aiq_agent.knowledge.folder_cards import gate
+    from aiq_agent.project_context import get_organization_id_from_context
 
-    return enabled()
+    return gate.enabled_for(get_organization_id_from_context())
 
 
 def _office_scopes(collections: Sequence[str]) -> list[str]:
@@ -56,10 +58,8 @@ async def folder_routes(
     have cards. ``query_text`` is what the chunk search embedded, ``hint`` the
     query as the model wrote it, for the drill-down call the lines suggest.
     """
-    if not _enabled():
-        return ""
     scopes = _office_scopes(collections)
-    if not scopes:
+    if not scopes or not await asyncio.to_thread(_enabled):
         return ""
     try:
         return await asyncio.to_thread(_routes, retriever, scopes, query_text, folder, hint.replace('"', "'"))

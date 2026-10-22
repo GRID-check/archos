@@ -260,6 +260,32 @@ export const FEATURE_FLAGS = {
    * still reaches the workspace (`agent-mcp`).
    */
   pilotiAsk: 'piloti-ask',
+  /**
+   * Written folder cards (ADR-0127, tier 1): a model-written abstract per
+   * folder, built in the background when a document's facts change and shown
+   * in `list_files(view="tree")` and the folder channel of a ranked search.
+   * Read per organization (`isOrgFeatureEnabled`) by the agent tier through
+   * `GET /api/internal/stages` (`features.folderCards`), when a change is
+   * marked, when a folder is claimed to be built, and when a listing reads the
+   * cards.
+   *
+   * An entitlement, off until an operator targets the organization: a card is
+   * a model call nobody asked for, paid from the platform. With it off nothing
+   * is marked or built and a listing shows the live counts (tier 0) alone.
+   */
+  folderCards: 'folder-cards',
+  /**
+   * The office's conventions (ADR-0129): Piloti counts how the office files
+   * (folders its projects keep, where each Dokumentart goes, the Plannummer
+   * shape) and tells a turn that asks about filing or finding. Read per
+   * organization (`isOrgFeatureEnabled`) when a turn is assembled and when the
+   * settings card is listed.
+   *
+   * An entitlement, off until an operator targets the organization: the count
+   * reads every project of the office, and what it learns is shown to the
+   * agent. With it off, nothing is counted and the turn context is unchanged.
+   */
+  officeConventions: 'office-conventions',
 } as const
 
 export type KnownFeatureFlag = (typeof FEATURE_FLAGS)[keyof typeof FEATURE_FLAGS]
@@ -287,6 +313,8 @@ export const FLAG_KINDS: Readonly<Record<KnownFeatureFlag, 'entitlement' | 'roll
   'agent-mcp-controls': 'entitlement',
   'platform-agent-mcp': 'entitlement',
   'piloti-ask': 'entitlement',
+  'folder-cards': 'entitlement',
+  'office-conventions': 'entitlement',
   'web-search': 'rollout',
   'project-knowledge-page': 'rollout',
   'image-upload': 'rollout',

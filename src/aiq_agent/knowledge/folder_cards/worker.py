@@ -1,7 +1,7 @@
 """The folder card builder's loop: claim, hash, skip or build, write, climb (ADR-0127).
 
 Runs in the ingest-worker role (``aiq_api.jobs.ingest_worker``) beside the ingest
-queue's claim loop, behind ``GRID_FOLDER_CARDS``. Each pass:
+queue's claim loop, for the organizations with the ``folder-cards`` WorkOS flag. Each pass:
 
 1. claims up to :data:`CLAIM_LIMIT` folders that went quiet (``queue.claim``:
    deepest first, never a folder while one below it is queued);
@@ -46,6 +46,7 @@ from typing import Literal
 
 from aiq_agent.knowledge.folder_cards import build
 from aiq_agent.knowledge.folder_cards import client
+from aiq_agent.knowledge.folder_cards import gate
 from aiq_agent.knowledge.folder_cards import incremental
 from aiq_agent.knowledge.folder_cards import queue
 from aiq_agent.knowledge.folder_cards.inputs import PROMPT_VERSION
@@ -370,9 +371,28 @@ def _give_up(claim: queue.Claim, context: _Collection | None) -> None:
         _restamp(claim, context, existing, "failed")
 
 
+def _flag_off(claim: queue.Claim) -> bool:
+    """Whether the claimed folder's organization lacks the ``folder-cards`` flag. Raises when the BFF cannot be asked.
+
+    An organization nobody can name yet is not off: ``_load`` keeps the claim for a retry.
+    """
+    from aiq_agent.knowledge.folder_cards import gate
+    from aiq_agent.knowledge.folder_cards import organization_hint
+
+    organization_id = (
+        claim.organization_id or queue.organization_of(claim.collection) or organization_hint(claim.collection)
+    )
+    return organization_id is not None and not gate.check(organization_id)
+
+
 async def _settle(claim: queue.Claim, loaded: dict[str, _Collection | None], llm: Any, report: RunReport) -> Outcome:
     """Build one claimed folder and settle its queue row. Never raises."""
     try:
+        if await asyncio.to_thread(_flag_off, claim):
+            # Switched off for the organization: nothing is built, and the row goes. Switching it on
+            # again is found by the nightly reconcile, which marks what lacks a card.
+            await asyncio.to_thread(queue.finish, claim)
+            return "skipped"
         if claim.collection not in loaded:
             loaded[claim.collection] = await asyncio.to_thread(_load, claim)
         context = loaded[claim.collection]
@@ -458,6 +478,8 @@ async def reconcile() -> int:
         queue.collections_due_for_reconcile, RECONCILE_EVERY_SECONDS
     ):
         try:
+            if not await asyncio.to_thread(gate.check, organization_id):
+                continue
             marked += await asyncio.to_thread(reconcile_collection, collection, organization_id)
         except Exception:  # noqa: BLE001 — the next night tries again
             logger.warning("folder cards: could not reconcile %s", collection, exc_info=True)

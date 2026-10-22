@@ -49,7 +49,7 @@ async function advisory<T>(what: string, load: () => Promise<T>): Promise<T | nu
  * access checks above, under the turn's tenant; each part fails open to
  * "unknown" on its own, so one slow table never costs the turn its context.
  * On a question about filing or finding, the office's conventions close it
- * (ADR-0129, off unless `GRID_OFFICE_CONVENTIONS=on`).
+ * (ADR-0129, off unless the organization has the `office-conventions` flag).
  */
 async function loadWorkspaceBlock(
   session: AuthorizedSession,

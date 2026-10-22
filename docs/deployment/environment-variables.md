@@ -160,8 +160,7 @@ Variables set in `docker-compose.yaml` under `environment:` take precedence over
 | `GRID_INGEST_MAX_JOB_SECONDS` | No | `7200` | The longest one claimed ingestion job may run. Past it the worker stops heartbeating and the job stops at its next check; the claim goes stale and is claimed again, up to `GRID_INGEST_CLAIM_MAX_ATTEMPTS`. 0 for no limit. |
 | `GRID_INGEST_PROGRESS_TIMEOUT_SECONDS` | No | `900` | A claimed ingestion job that has not started a file or written its chunks for this long is treated as hung: its worker stops heartbeating it (and resumes if it moves again), so another worker can claim it. Must exceed the slowest single file. 0 for no check. |
 | `GRID_INGEST_DEAD_RETENTION_DAYS` | No | `14` | How long a `dead` ingestion queue row is kept as a trace before it is deleted. |
-| `GRID_FOLDER_CARDS` | No | `off` | Written folder cards (ADR-0127, tier 1). `on` in every backend role: a change to a document's facts marks its folder and the folders above it in `folder_card_queue` (agent DB), the `ingest-worker` builds a German abstract and up to 8 cited key facts per folder that went quiet (10 minutes, or 60 dirty) on the summary model, and `list_files(view="tree")` shows the abstracts it reads from the BFF. Each card is also a Qdrant point (`kind=folder`, dense vector of its path, abstract and key facts) in its folder's own scope, and a ranked `knowledge_search` prints up to three matching folders after its passages. `off`: no mark, no build, no read, no folder lines; tier 0 is unaffected. Needs `GRID_INTERNAL_API_TOKEN`. |
-| `GRID_FOLDER_CARDS_MONTHLY_TOKENS` | No | `2000000` | Tokens the folder card builder may spend per organisation and calendar month (`folder_card_usage`). Over it, a changed folder's card is marked `stale` and nothing is built until the next month or a raised cap. `0` builds nothing. |
+| `GRID_FOLDER_CARDS_MONTHLY_TOKENS` | No | `2000000` | Operator tuning for written folder cards (ADR-0127), which an organization has through the WorkOS flag `folder-cards` (off by default; there is no environment switch). Tokens the folder card builder may spend per organisation and calendar month (`folder_card_usage`). Over it, a changed folder's card is marked `stale` and nothing is built until the next month or a raised cap. `0` builds nothing. |
 | `GRID_INGEST_WORKER_DRAIN_SECONDS` | No | `600` | Ingest worker only: how long it finishes its claimed jobs after SIGTERM. Pulumi `ingestWorkerDrainSeconds`; the pod's grace period is this plus 30 s, so the claims it did not finish are released before SIGKILL. |
 | `GRID_KEYED_LOCK_TIMEOUT_SECONDS` | No | `900` | The longest a `keyed_lock` (`aiq_agent/knowledge/leader_lock.py`) waits for another holder of the same key, such as an ingest replacing a document's previous version or the OIB sync cycle, before the attempt fails and the claim queue retries it. Bounds the wait on a session that died without closing TCP and still holds the lock. Must exceed the longest a live holder keeps one, a file's ingestion. `0` for no limit. |
 | `AIQ_VLM_FLEET_CONCURRENCY` | No | `32` | Vision-model calls in flight across **every** ingest process at once, a Dragonfly lease pool (`common/lease_slots.py`); a call waits for a slot. The provider sees this number, not the worker count, so scaling the ingest tier out queues calls instead of producing 429s. 0 disables; fails open without Dragonfly. Every vision call also holds a slot in its model's own limiter pool (`GRID_PROVIDER_MODEL_LIMIT_CEILING`), so keep this at or below it. Kubernetes: Pulumi `vlmFleetConcurrency`; the deploy fails when the ingest tier's peak (`ingestWorkerMaxReplicas` × `ingestWorkerConcurrency` × `AIQ_VLM_BATCH_WORKERS`) is more than twice it, or when it is above `GRID_PROVIDER_LIMIT_CEILING` or `GRID_PROVIDER_MODEL_LIMIT_CEILING`. |
@@ -364,14 +363,6 @@ Read by the BFF where an upload batch is sealed and settled (`frontends/ui/src/l
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
 | `GRID_FILING_SUGGESTIONS` | No | on | `off` stops Piloti from judging where an upload belongs: no `filing_review` job is queued and no model call is made. Open suggestions stay until decided. |
-
-### Office conventions (ADR-0129)
-
-Read by the BFF where a turn's context is built (`frontends/ui/src/lib/office-conventions/service.ts`).
-
-| Variable | Required | Default | Description |
-|----------|----------|---------|-------------|
-| `GRID_OFFICE_CONVENTIONS` | No | off | `on` lets Piloti count the office's conventions (folders its projects keep, where each Dokumentart is filed, the Plannummer shape, the Index style, the date in file names) from its own projects, and adds them to the WORKSPACE block of a turn that asks about filing or finding. Off, nothing is counted or read and the turn context is unchanged. No model call either way. |
 
 ### Notices of a new Fassung (ADR-0130)
 
