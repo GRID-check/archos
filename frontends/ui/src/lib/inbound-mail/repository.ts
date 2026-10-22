@@ -1248,3 +1248,35 @@ export async function hasOpenParts(mailId: string): Promise<boolean> {
     .limit(1)
   return Boolean(row)
 }
+
+// ---------------------------------------------------------------------------
+// The suggest job (Piloti's suggestion, D21)
+// ---------------------------------------------------------------------------
+
+/**
+ * Store Piloti's suggestion on the parts it placed, with the generation's
+ * trace. Only a part that still waits takes one: a person who decided in the
+ * meantime decided without it, and the suggestion would name a file whose
+ * bytes may be gone (`inbound_mail_parts_suggestion_with_bytes`). The number
+ * of parts that took one.
+ *
+ * `updated_at` is left alone on purpose: it is part of the mail's `ifMatch`
+ * (`mailIfMatch`), and a suggestion arriving while a person reads the mail must
+ * not make their decision stale. It advises; it changes nothing they decide on.
+ */
+export async function storePartSuggestions(
+  mailId: string,
+  suggestions: ReadonlyMap<string, Record<string, unknown>>,
+  traceId: string | null,
+): Promise<number> {
+  let stored = 0
+  for (const [partId, suggestion] of suggestions) {
+    const rows = await getDb()
+      .update(inboundMailParts)
+      .set({ suggestion, suggestionTraceId: traceId })
+      .where(and(eq(inboundMailParts.id, partId), eq(inboundMailParts.mailId, mailId), eq(inboundMailParts.state, 'waiting')))
+      .returning({ id: inboundMailParts.id })
+    stored += rows.length
+  }
+  return stored
+}

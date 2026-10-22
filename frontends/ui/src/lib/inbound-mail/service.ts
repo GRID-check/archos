@@ -80,6 +80,8 @@ import {
   type DecisionsWritten,
 } from './repository'
 import { readStagedObject } from './staging'
+import { readSuggestion } from './suggest'
+import { scoreMailDecision } from './suggest-scores'
 
 /** How long a claim on a part holds before the sweep hands it back (D8: the proposals' apply claim, reused). */
 export const FILING_CLAIM_MS = 5 * 60 * 1000
@@ -152,7 +154,7 @@ function partView(mail: InboundMailRow, part: InboundMailPartRow, candidates: Vi
     duplicateOf: matched.duplicateOf,
     revisionCandidate: matched.revisionCandidate,
     revisionCandidateHidden: matched.revisionCandidateHidden,
-    suggestion: part.suggestion ?? null,
+    suggestion: readSuggestion(part.suggestion),
     restorableUntil: restorableUntil(mail, part, now),
   }
 }
@@ -550,9 +552,22 @@ export async function fileInboundMails(
   }
 
   const now = Date.now()
+  const folderPathOf = (folderId: string) => context.folders.get(folderId) ?? null
   for (const plan of plans) {
     const mail = mails.find((candidate) => candidate.id === plan.mailId)
     const message = plan.files.find((row) => row.threadAction)
+    // Scored against the parts as they were before this decision (D21, §10).
+    const suggestionFollowed = mail
+      ? scoreMailDecision({
+          organizationId: session.organizationId,
+          decidedBy: session.userId,
+          mail,
+          parts: byMail.get(plan.mailId) ?? [],
+          decision: body.mails.find((decision) => decision.mailId === plan.mailId) ?? null,
+          via: context.actor.via,
+          folderPathOf,
+        })
+      : 'no_suggestion'
     captureServer({
       event: 'inbound_mail_decided',
       distinctId: session.userId,
@@ -560,6 +575,7 @@ export async function fileInboundMails(
       properties: {
         files: plan.files.length,
         dismissed: written.decisions.filter((row) => row.mailId === plan.mailId && row.action === 'dismiss').length,
+        suggestion_followed: suggestionFollowed,
         thread_action: message?.threadAction ?? null,
         hours_waiting_bucket: mail ? hoursWaitingBucket(mail.receivedAt, now) : null,
         via: context.actor.via,
@@ -582,17 +598,28 @@ export async function dismissInboundMails(
   body: DismissInboundMailsBody,
 ): Promise<{ mails: InboundMailView[] }> {
   const { closed } = await requireMailReviewer(session, projectId)
-  await Promise.all(body.mailIds.map((mailId) => requireMail(projectId, mailId)))
+  const mails = await Promise.all(body.mailIds.map((mailId) => requireMail(projectId, mailId)))
+  // The parts before the dismissal: each suggestion they carried is scored as not followed.
+  const before = groupParts(await findMailParts(body.mailIds))
   const actor = decisionActor(session)
   const written = await dismissMails(projectId, body.mailIds, actor)
-  for (const mailId of body.mailIds) {
-    const dismissed = written.decisions.filter((row) => row.mailId === mailId).length
+  for (const mail of mails) {
+    const dismissed = written.decisions.filter((row) => row.mailId === mail.id).length
     if (dismissed === 0) continue
+    const suggestionFollowed = scoreMailDecision({
+      organizationId: session.organizationId,
+      decidedBy: session.userId,
+      mail,
+      parts: before.get(mail.id) ?? [],
+      decision: null,
+      via: actor.via,
+      folderPathOf: () => null,
+    })
     captureServer({
       event: 'inbound_mail_decided',
       distinctId: session.userId,
       organizationId: session.organizationId,
-      properties: { files: 0, dismissed, thread_action: null, via: actor.via },
+      properties: { files: 0, dismissed, suggestion_followed: suggestionFollowed, thread_action: null, via: actor.via },
     })
   }
   await afterDecisions(session, projectId, written, body.mailIds)
