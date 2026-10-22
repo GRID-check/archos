@@ -121,6 +121,8 @@ const KEYED_BY_A_READ_DOCUMENT: Record<string, string> = {
     'The version list and the last refusers, after `getAccessibleDocument` / `findDocumentForSession` read the document.',
   'lib/documents/version-repository.ts#findDocumentVersion|documentVersions':
     'A version of a document the transition, the view or the content read loaded through its reader first.',
+  'lib/documents/version-repository.ts#listReviewQueue|documentVersions':
+    "The review queue's own cursor reads the submission time of the version the previous page ended on; the page itself joins `documents` behind `documentVisibleTo`.",
   'lib/documents/version-repository.ts#findPreviousVersion|documentVersions':
     "The version before the one a transition just moved, of the document that transition read.",
   'lib/documents/version-repository.ts#findDocumentVersionInOrg|documentVersions':
