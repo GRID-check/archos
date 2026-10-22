@@ -51,8 +51,16 @@
               "de": "Ihr verbundener Assistent arbeitet jetzt mit dem, was es nur bei Piloti gibt: den Projekten, Dokumenten, Prüfungen und Aufgaben Ihres Büros, dem baurechtlichen Wissen und der BIM-Analyse von Piloti sowie Piloti selbst. Die Einstellungen, Modelle, Budgets und Richtlinien Ihrer Organisation, die Websuche und Ihre Benachrichtigungen bleiben bei Ihnen in Piloti."
             },
             {
+              "en": "Claude, Cursor and other assistants connected to Piloti now find your office's skills on their own and read the right one before they start a task, so they work the way your office has written down.",
+              "de": "Claude, Cursor und andere mit Piloti verbundene Assistenten finden jetzt selbstständig die Skills Ihres Büros und lesen vor Beginn einer Aufgabe den passenden Skill, damit sie so arbeiten, wie Ihr Büro es festgelegt hat."
+            },
+            {
               "en": "An agent connected to Piloti, such as Claude or Cursor, now learns when a project it has open changes: a new name, status, profile or document. It hears only about projects the signed-in person may open.",
               "de": "Ein mit Piloti verbundener Agent wie Claude oder Cursor wird jetzt informiert, wenn sich ein geöffnetes Projekt ändert – etwa Name, Status, Profil oder Dokument. Er erhält nur Informationen zu Projekten, die die angemeldete Person öffnen darf."
+            },
+            {
+              "en": "When your connected assistant finds a project, a document, a task run or a conversation in Piloti, it can now give you a link that opens it right there.",
+              "de": "Wenn Ihr verbundener Assistent in Piloti ein Projekt, ein Dokument, eine Task-Ausführung oder eine Unterhaltung findet, kann er Ihnen jetzt einen Link bereitstellen, über den Sie den jeweiligen Eintrag direkt öffnen können."
             },
             {
               "en": "Once your organization switches it on, your own AI assistant can also share documents, set folder access, edit roles and manage your provider keys for you, and it asks you before every one of these changes.",
@@ -200,6 +208,10 @@
               "de": "Wenn Piloti im Chat zwei Planfassungen vergleicht, sehen Sie jetzt dieselbe Seite beider Fassungen nebeneinander, mit eingerahmten Änderungen auf jeder Seite und einer Auflistung der Änderungen darunter. Wenn Sie auf eine Seite klicken, wird diese Fassung mit allen markierten Änderungen geöffnet."
             },
             {
+              "en": "Agents connected to Piloti now get the purpose of a field quoted back when their input is refused, and large operation inputs are described in layers they can open one part at a time. They can also report a confusing description or error message, not only a missing operation.",
+              "de": "Agents, die mit Piloti verbunden sind, erhalten bei abgelehnten Eingaben nun den Zweck des betreffenden Feldes zurückgemeldet; umfangreiche Operationseingaben werden in Ebenen beschrieben, die sie einzeln öffnen können. Außerdem können sie verwirrende Beschreibungen oder Fehlermeldungen melden, nicht nur fehlende Operationen."
+            },
+            {
               "en": "The English website now has English addresses, for example /en/use-cases/ and /en/why-piloti/ instead of German words after /en/. Links you saved or shared before still work and lead to the new address.",
               "de": "Die englische Website verwendet jetzt englische URLs, zum Beispiel /en/use-cases/ und /en/why-piloti/ statt deutscher Begriffe nach /en/. Links, die Sie zuvor gespeichert oder geteilt haben, funktionieren weiterhin und führen zur neuen Adresse."
             },
@@ -305,6 +317,10 @@
               "de": "Wenn das Einlesen der Projektdokumente vorzeitig abbricht, erhält die Person, die es gestartet hat, jetzt einen entsprechenden Eintrag im Postfach statt gar keiner Nachricht."
             },
             {
+              "en": "When another AI assistant searches your documents through Piloti, a long result now keeps every hit with its citation instead of losing the last ones, and the assistant is no longer asked for a note it never needed.",
+              "de": "Wenn ein anderer KI-Assistent Ihre Dokumente über Piloti durchsucht, bleiben bei langen Ergebnissen jetzt alle Treffer samt Quellenangaben erhalten, statt dass die letzten verloren gehen, und der Assistent wird nicht mehr nach einer Notiz gefragt, die er nie benötigt hat."
+            },
+            {
               "en": "Piloti no longer switches to English on its own: pages open in the language you or your office chose, also after a redirect and on Safari.",
               "de": "Piloti wechselt nicht mehr eigenständig zu Englisch: Seiten öffnen sich in der Sprache, die Sie oder Ihr Büro gewählt haben – auch nach einer Weiterleitung und in Safari."
             },
@@ -315,6 +331,10 @@
             {
               "en": "Large files full of CAD drawings, such as a project's collected documents or a fire safety concept with many drawing sheets, now upload and become searchable. Before, such a file could fail every time it was read, and a retry failed the same way.",
               "de": "Große Dateien mit CAD-Zeichnungen, etwa gesammelte Projektunterlagen oder ein Brandschutzkonzept mit vielen Planblättern, lassen sich jetzt hochladen und durchsuchen. Bisher schlägt das Einlesen solcher Dateien jedes Mal fehl, und auch ein erneuter Versuch scheitert."
+            },
+            {
+              "en": "Piloti's connector in Claude and other AI assistants now shows the Piloti icon instead of a blank tile.",
+              "de": "Der Piloti-Connector in Claude und anderen KI-Assistenten zeigt jetzt das Piloti-Icon statt einer leeren Kachel."
             },
             {
               "en": "Piloti's German screens now use one word for each thing: a task is an Aufgabe and one attempt at it a Lauf, a conversation is a Chat, and the person assigned to something is zuständig.",

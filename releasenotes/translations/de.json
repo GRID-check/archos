@@ -756,6 +756,10 @@
     "de": "Wenn Sie die Anmerkungen im Review bearbeiten, zeigt die Zahl neben dem Dokument unter „Dateien“ an, was noch offen ist. Schließen Sie ein Review, das Sie über den Posteingang oder die offenen Punkte geöffnet haben, gelangen Sie mit Ihrem Filter in einem einzigen Schritt zurück."
   },
   {
+    "en": "Agents connected to Piloti now get the purpose of a field quoted back when their input is refused, and large operation inputs are described in layers they can open one part at a time. They can also report a confusing description or error message, not only a missing operation.",
+    "de": "Agents, die mit Piloti verbunden sind, erhalten bei abgelehnten Eingaben nun den Zweck des betreffenden Feldes zurückgemeldet; umfangreiche Operationseingaben werden in Ebenen beschrieben, die sie einzeln öffnen können. Außerdem können sie verwirrende Beschreibungen oder Fehlermeldungen melden, nicht nur fehlende Operationen."
+  },
+  {
     "en": "Almost every answer now opens with a one- or two-sentence summary of the result and its decisive limitation, right under the verdict when there is one.",
     "de": "Praktisch jede Antwort beginnt jetzt mit einer Zusammenfassung in ein, zwei Sätzen, die das Ergebnis samt entscheidender Einschränkung vorwegnimmt, direkt unter dem Urteil, wenn es eines gibt."
   },
@@ -1178,6 +1182,10 @@
   {
     "en": "Choosing the sign-in button on the Piloti website leads to the sign-in page again.",
     "de": "Wer auf der Piloti-Website die Anmeldung startet, landet wieder auf der Anmeldeseite."
+  },
+  {
+    "en": "Claude, Cursor and other assistants connected to Piloti now find your office's skills on their own and read the right one before they start a task, so they work the way your office has written down.",
+    "de": "Claude, Cursor und andere mit Piloti verbundene Assistenten finden jetzt selbstständig die Skills Ihres Büros und lesen vor Beginn einer Aufgabe den passenden Skill, damit sie so arbeiten, wie Ihr Büro es festgelegt hat."
   },
   {
     "en": "Claude, Cursor and other assistants now show Piloti with its own name and icon, and its search and lookup results come back in a structured form they can read reliably.",
@@ -2404,6 +2412,10 @@
     "de": "Die deutschen Oberflächen von Piloti verwenden jetzt einheitliche Begriffe: Eine Aufgabe heißt „Aufgabe“, ein einzelner Versuch „Lauf“, eine Unterhaltung „Chat“ und die zugewiesene Person ist „zuständig“."
   },
   {
+    "en": "Piloti's connector in Claude and other AI assistants now shows the Piloti icon instead of a blank tile.",
+    "de": "Der Piloti-Connector in Claude und anderen KI-Assistenten zeigt jetzt das Piloti-Icon statt einer leeren Kachel."
+  },
+  {
     "en": "Piloti's project memory now recalls what is relevant to your question rather than only the twenty most recent notes, and it recognizes a note you have already saved even when it is worded differently, so the same fact is usually stored once. Notes that are used stay current, and notes nothing needs quietly fade into the background.",
     "de": "Der Projektspeicher von Piloti ruft jetzt ab, was für Ihre Frage relevant ist, statt nur die zwanzig neuesten Notizen. Außerdem erkennt er eine Notiz, die Sie schon gespeichert haben, auch wenn sie anders formuliert ist, sodass derselbe Sachverhalt meist nur einmal gespeichert wird. Genutzte Notizen bleiben aktuell, und Notizen, die niemand braucht, treten still in den Hintergrund."
   },
@@ -3616,6 +3628,10 @@
     "de": "Nennt eine Antwort eine Datei beim Namen, etwa „Beginnen Sie mit pd8280-2.pdf“, ist der Name jetzt ein Link, der das Dokument neben der Antwort öffnet, im Fließtext wie in Tabellen."
   },
   {
+    "en": "When another AI assistant searches your documents through Piloti, a long result now keeps every hit with its citation instead of losing the last ones, and the assistant is no longer asked for a note it never needed.",
+    "de": "Wenn ein anderer KI-Assistent Ihre Dokumente über Piloti durchsucht, bleiben bei langen Ergebnissen jetzt alle Treffer samt Quellenangaben erhalten, statt dass die letzten verloren gehen, und der Assistent wird nicht mehr nach einer Notiz gefragt, die er nie benötigt hat."
+  },
+  {
     "en": "When everything an upload brought in has been read, your inbox tells you, with a summary of what arrived, where it was filed, what each file is, and what was held back or failed. Project settings list every upload with its outcome and who uploaded it.",
     "de": "Sobald alles gelesen ist, was ein Upload gebracht hat, meldet es Ihr Postfach – mit einer Zusammenfassung, was angekommen ist, wo es abgelegt wurde, was jede Datei ist und was zurückgehalten wurde oder fehlgeschlagen ist. Die Projekteinstellungen listen jeden Upload mit seinem Ergebnis und der Person, die ihn hochgeladen hat."
   },
@@ -3746,6 +3762,10 @@
   {
     "en": "When your browser runs out of room, your chat history is not wiped: Piloti clears only the text of the oldest chats, and their titles, drafts and list entries stay, and a chat loads its text again when you open it.",
     "de": "Wenn im Browser der Speicherplatz knapp wird, geht Ihr Chatverlauf nicht verloren: Piloti entfernt nur den Text der ältesten Chats, Titel, Entwürfe und Listeneinträge bleiben erhalten, und der Text eines Chats lädt wieder, wenn Sie ihn öffnen."
+  },
+  {
+    "en": "When your connected assistant finds a project, a document, a task run or a conversation in Piloti, it can now give you a link that opens it right there.",
+    "de": "Wenn Ihr verbundener Assistent in Piloti ein Projekt, ein Dokument, eine Task-Ausführung oder eine Unterhaltung findet, kann er Ihnen jetzt einen Link bereitstellen, über den Sie den jeweiligen Eintrag direkt öffnen können."
   },
   {
     "en": "When your office checks chat messages for sensitive data, Piloti now says plainly that a dictated message is first transcribed by an external provider. Only that text is checked before it is sent.",
