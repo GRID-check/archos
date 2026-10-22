@@ -999,13 +999,30 @@ export const chat: typeof en.chat = {
     // Aufrufs zusammen, nie aus dem Text des Werkzeugs.
     work: {
       label: 'Arbeitsschritte',
-      round: 'Runde {n}',
-      parallel: '{count} gleichzeitig',
-      foldRound: 'Runde {n} ein- oder ausklappen',
       open: '{target} öffnen',
+      running: 'läuft',
+      noHit: 'kein Treffer',
       nothingFound: 'nichts gefunden',
       failed: 'fehlgeschlagen',
-      running: 'läuft',
+      // Hinter „fehlgeschlagen“: was daraus für die Antwort folgt.
+      failedNote: 'die Antwort stützt sich nicht darauf',
+      // Mehr als fünf Aufrufe in einem Schritt: die schwersten zuerst, der Rest gefaltet.
+      more: '+{count} weitere',
+      moreAllFound: '+{count} weitere, alle mit Ergebnis',
+      fewer: 'Weniger anzeigen',
+      // Gleichartige Aufrufe in einer Zeile.
+      times: '×{count}',
+      // Unter dem Ausschnitt eines Blicks: abgelesen ist keine Messung.
+      readOff: 'abgelesen, nicht gemessen',
+      // Die Art eines Schritts, aus den Verben seiner Aufrufe.
+      kind: {
+        search: 'Suchen',
+        read: 'Lesen',
+        list: 'Ordner öffnen',
+        look: 'Ansehen',
+        model: 'Modell abfragen',
+        workspace: 'Arbeitsbereich',
+      },
       shelf: {
         project: 'im Projekt',
         office: 'in der Büroablage',
@@ -1013,41 +1030,53 @@ export const chat: typeof en.chat = {
         web: 'im Web',
         session: 'in diesem Chat',
       },
-      searchMeaning: 'Sucht „{query}“',
-      searchMeaningIn: 'Sucht {shelf} „{query}“',
-      searchExact: 'Sucht wörtlich „{query}“',
-      searchExactIn: 'Sucht {shelf} wörtlich „{query}“',
-      searchRegex: 'Sucht nach Muster „{query}“',
-      searchRegexIn: 'Sucht {shelf} nach Muster „{query}“',
-      list: 'Öffnet {target}',
-      read: 'Liest {target}',
-      readPages: 'Liest {target}, S. {pages}',
-      readClause: 'Liest {target}, {pages}',
-      look: 'Sieht sich {target} an',
-      lookPages: 'Sieht sich {target}, S. {pages} an',
-      lookupQuery: 'Sucht in anderen Projekten „{query}“',
-      law: 'Ruft {target} im RIS ab',
-      web: 'Sucht im Web „{query}“',
-      model: 'Fragt das Modell ab: {query}',
-      workspace: 'Arbeitsbereich: {target}',
+      // Das Verb steht gedämpft vor seinem Gegenstand: „Sucht wörtlich“ „„Brandabschnitt“ im Projekt“.
+      verb: {
+        search: 'Sucht',
+        searchExact: 'Sucht wörtlich',
+        searchRegex: 'Sucht nach Muster',
+        searchIn: 'Sucht in',
+        searchExactIn: 'Sucht wörtlich in',
+        searchRegexIn: 'Sucht nach Muster in',
+        list: 'Öffnet',
+        read: 'Liest',
+        look: 'Sieht sich an',
+        lookup: 'Sucht in anderen Projekten',
+        law: 'Sucht im RIS',
+        web: 'Sucht im Web',
+        model: 'Fragt das Gebäudemodell',
+        workspace: 'Arbeitsbereich:',
+      },
+      object: {
+        query: '„{query}“',
+        queryShelf: '„{query}“ {shelf}',
+        queryIn: '{target}: „{query}“',
+        pages: '{target}, S. {pages}',
+        clause: '{target}, {pages}',
+        where: '{target}, S. {pages}, {where}',
+      },
+      many: {
+        documents: '{count, plural, one {# Dokument} other {# Dokumente}}',
+        folders: '{count, plural, one {# Ordner} other {# Ordner}}',
+        searches: '{count, plural, one {# Abfrage} other {# Abfragen}}',
+      },
       fallback: {
         search: 'Sucht in den Dokumenten',
         list: 'Öffnet einen Ordner',
         read: 'Liest ein Dokument',
         look: 'Sieht sich ein Dokument an',
         lookup: 'Sucht in anderen Projekten',
-        law: 'Ruft im RIS ab',
+        law: 'Sucht im RIS',
         web: 'Sucht im Web',
-        model: 'Fragt das Modell ab',
+        model: 'Fragt das Gebäudemodell',
         workspace: 'Arbeitet im Arbeitsbereich',
       },
       found: {
         hits: '{count, plural, one {# Treffer} other {# Treffer}}',
         hitsDocuments:
-          '{hits, plural, one {# Treffer} other {# Treffer}} in {documents, plural, one {# Dokument} other {# Dokumenten}}',
-        hitsOfSearched:
-          '{hits, plural, one {# Treffer} other {# Treffer}} in {documents} von {searched, plural, one {# Dokument} other {# Dokumenten}}',
+          '{hits, plural, one {# Treffer} other {# Treffer}} · {documents, plural, one {# Dokument} other {# Dokumente}}',
         documents: '{count, plural, one {# Dokument} other {# Dokumente}}',
+        places: '{count, plural, one {# Stelle} other {# Stellen}}',
         listing:
           '{files, plural, one {# Datei} other {# Dateien}}, {folders, plural, one {# Ordner} other {# Ordner}}',
         files: '{count, plural, one {# Datei} other {# Dateien}}',
@@ -1266,6 +1295,18 @@ export const chat: typeof en.chat = {
     // Quellen-Klausel FEHLT, wenn es keine gibt: „0 Quellen“ ist eine wahre
     // Zahl, die sich wie ein Fehlschlag liest, und eine Antwort aus einer
     // Messung am Modell hat zu Recht keine Zitate.
+    // Kopfzeile der Herleitung: Schritte, zitierte Quellen und höchstens EINE Warnung, die schwerste.
+    derivationSteps: '{count, plural, one {# Schritt} other {# Schritte}}',
+    derivationCited: '{count, plural, one {# Quelle zitiert} other {# Quellen zitiert}}',
+    derivationWarning: {
+      failed: '{count, plural, one {# Abruf fehlgeschlagen} other {# Abrufe fehlgeschlagen}}',
+      open: '{count, plural, one {# Punkt offen} other {# Punkte offen}}',
+    },
+    // Ein Zug ohne jede Recherche: eine Zeile, nichts zum Aufklappen.
+    noResearch: 'Ohne Recherche beantwortet',
+    noResearchNote: 'Allgemeines Fachwissen, keine Quelle zitiert',
+    // Ein Zug mit genau einem Aufruf: die Kopfzeile ist die Herleitung.
+    singleCited: 'zitiert {markers}',
     derivationSummary: 'Herleitung',
     derivationSummaryWithSources: 'Herleitung · {count, plural, one {# Quelle} other {# Quellen}}',
     // aria-label naming the reasoning graph as one region for screen readers.
@@ -1280,16 +1321,40 @@ export const chat: typeof en.chat = {
     // hat — ein echtes Rechercheergebnis, keine Lücke.
     readNotUsed: 'abgerufen, nicht zitiert',
     moreSources: '+{count} weitere',
-    // Die an DIESE Nachricht angehängten Dateien. Die im Composer aktivierten
-    // Datenquellen sind Verfügbarkeit, keine Aktivität, und stehen bewusst
-    // nicht hier — was gelaufen ist, zeigt die `executedSteps`-Zeile darüber.
-    attachedFiles: 'Angehängte Dateien:',
     // Einzeiler, wenn dieser Turn von der Kurz- zur Tiefenrecherche eskaliert ist.
     escalationNarration: 'Eskaliert zur Tiefenrecherche: {reason}',
     node: {
       framingTab: 'Einordnung',
       framingTitle: 'Frage verstanden',
       framingQuestion: 'Sie fragen: „{question}“',
+      // Die letzte Karte der Herleitung: worauf die Antwort steht, als Entwurf.
+      // Nie „nachgewiesen“: Piloti listet die Grundlagen, das Urteil bleibt beim Büro.
+      basis: {
+        label: 'Grundlagen · Entwurf',
+        pendingLabel: 'Grundlagen',
+        pending: 'entstehen mit der Antwort',
+        law: 'Rechtsgrundlage',
+        evidence: 'Belegt durch',
+        open: 'Offen',
+        clause: 'Pkt. {clause}',
+        page: 'S. {page}',
+        // Aus einem Aufruf ohne Treffer: wo gesucht wurde und wonach. Nie „Keine Informationen gefunden“.
+        openNoHitIn: 'Nicht beurteilbar, weil {target} zu „{query}“ keine Fundstelle liefert.',
+        openNoHitShelf: 'Nicht beurteilbar, weil die Suche {shelf} zu „{query}“ keine Fundstelle liefert.',
+        openNoHit: 'Nicht beurteilbar, weil die Suche zu „{query}“ keine Fundstelle liefert.',
+        openEmpty: 'Nicht beurteilbar, weil ein Aufruf nichts ergab: {what}.',
+        openFailed: 'Nicht beurteilbar, weil ein Abruf fehlgeschlagen ist: {what}.',
+      },
+      // Die nicht zitierten Quellen eines Schritts, in einer gestrichelten Karte.
+      // Solange die Antwort läuft, weiß niemand, was sie zitiert: dann „weitere“.
+      uncited: {
+        pill: 'Nicht zitiert',
+        pillLive: 'Abgerufen',
+        name: '+{count} abgerufen, nicht zitiert',
+        nameLive: '+{count} weitere',
+        show: '{count, plural, one {# nicht zitierte Quelle zeigen} other {# nicht zitierte Quellen zeigen}}',
+        hide: 'Nicht zitierte Quellen ausblenden',
+      },
       // Jede Abrufschicht auf der Herleitungs-Achse, in Ausführungsreihenfolge:
       // ein Zähler, ein Wort. Die alte Zwei-Wort-Folge (`Suche 1`, dann
       // `Folgerung 2…`) las sich als ein Lauf, zählte aber zwei Dinge — die
@@ -1344,20 +1409,6 @@ export const chat: typeof en.chat = {
       contextLabel: 'Kontext',
       sourcesTab: 'Quellen',
       sourcesTitle: 'Geprüfte Quellen',
-      findingsTab: 'Stand',
-      // Reine Herleitungs-Info im Stand-Knoten: in welchen Quellenspuren
-      // es Treffer gab. NICHT das Vertrauensurteil (Konfidenz/Belege) — das
-      // steht einmal auf der Antwortkarte.
-      findingsHits: 'Treffer in: {lanes}',
-      // Die Beleg-Bilanz, dort genannt, wo der Fächer zusammenläuft: was
-      // tatsächlich gelesen wurde, bevor die Quellenarten aufgezählt werden.
-      findingsTally: '{hits} Treffer in {docs} Dokumenten',
-      findingsTallyOne: '{hits} Treffer in 1 Dokument',
-      // Während der Zug streamt gibt es noch keinen Stand, der Graph
-      // braucht seinen Zusammenführungspunkt aber trotzdem — sonst hängen die
-      // Quellenspalten in der Luft und die Form springt, sobald die Antwort da ist.
-      findingsPendingTab: 'Stand',
-      findingsPending: 'Quellen werden abgewogen …',
       // Die Recherche lief nicht zu Ende, sondern gegen ihre Iterationsgrenze.
       // Im Stand-Knoten, weil er die Frage „was lag der Antwort
       // zugrunde?“ beantwortet — und dazu gehört, wo die Kette abbrach.

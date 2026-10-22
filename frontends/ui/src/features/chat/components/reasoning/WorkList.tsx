@@ -1,22 +1,26 @@
 'use client'
 
 /**
- * The Herleitung's work list (ADR-0131), under the source graph: the rounds of
- * the turn, and in each round one row per call. A row is its verb's icon, the
- * sentence (what was looked for, where, what it found), the call's time, and a
- * thin bar on the round's shared axis, so calls that ran together visibly
- * overlap. A call still running has its row from the moment it started; its
- * bar breathes (never under reduced motion) until it settles.
+ * The calls of one Herleitung step (ADR-0131), inside its node of the graph:
+ * one row per call — the verb muted, its object, what it found on the right.
  *
- * A row about one document opens that document at its page (the look
- * thumbnails' dialog). A folder listing is not clickable: the wire names the
- * folder by its path in words, and the Files pane opens a folder by id.
+ * A status is a shape and a word, never a colour: a running call has a quiet
+ * dot and „läuft“, a search that found nothing a ring and „kein Treffer“, a
+ * failed call a triangle and „fehlgeschlagen“. Colour is kept for where a
+ * source comes from, on the cards below.
+ *
+ * Tapping a row lights up the source cards its call returned and sets the
+ * others back (`LinkSelection`, joined by `call_id`). A row stored before the
+ * wire carried a call id links to nothing; when it names a document it opens
+ * that document instead, as it always did. A look row carries its crop, marked
+ * as read off rather than measured.
  */
 
 import { useMemo, useState, type FC } from 'react'
 import {
   BookOpen,
   Boxes,
+  Circle,
   FolderOpen,
   FolderSearch,
   Globe,
@@ -24,20 +28,18 @@ import {
   Scale,
   ScanSearch,
   Search,
+  TriangleAlert,
   type LucideIcon,
 } from 'lucide-react'
 import { FOCUS_RING } from '@/components/ui/focus-ring'
 import { PagePlaceDialog } from '@/features/knowledge/components/page-place-dialog'
 import type { PagePlace } from '@/features/knowledge/lib/page-place'
-import { useLocale, useTranslations } from '@/i18n'
+import { useTranslations } from '@/i18n'
 import { cn } from '@/lib/utils'
-import type {
-  ActionVerb,
-  StoredAction,
-} from '@/lib/conversations/message-provenance'
+import type { ActionVerb, StoredAction } from '@/lib/conversations/message-provenance'
 import { lookStepGroups } from '../../lib/look-steps'
-import { formatWorkDuration, type WorkRound, type WorkRow } from '../../lib/work-list'
-import { firstPage, workSentence } from '../../lib/work-sentence'
+import { isLinked, type LinkSelection, type WorkRound, type WorkRow } from '../../lib/work-list'
+import { firstPage, workParts, workPartsText, type WorkParts } from '../../lib/work-sentence'
 import { LookStepRow, LookStrip } from './LookStepRow'
 
 const VERB_ICONS: Record<ActionVerb, LucideIcon> = {
@@ -74,119 +76,226 @@ export function placeOfAction(action: StoredAction): PagePlace | null {
   }
 }
 
-export const WorkRowView: FC<{ row: WorkRow; eager?: boolean }> = ({ row, eager }) => {
+/** What links rows and cards: the round's selection and how to change it. */
+export interface RowLinking {
+  selection: LinkSelection | null
+  onSelect: (selection: LinkSelection | null) => void
+}
+
+/** The result on the row's right edge (or its second line on a phone): shape + word. */
+const ResultWord: FC<{ parts: WorkParts }> = ({ parts }) => {
   const t = useTranslations('chat')
-  const { locale } = useLocale()
+  if (!parts.result) return null
+  const strong = parts.tone === 'empty' || parts.tone === 'error'
+  return (
+    <span
+      data-testid="work-row-result"
+      className={cn(
+        'inline-flex items-center gap-1.5 tabular-nums',
+        strong || parts.tone === 'running' ? 'text-foreground' : 'text-muted-foreground',
+        strong && 'font-semibold'
+      )}
+    >
+      {parts.tone === 'running' && (
+        <span
+          aria-hidden
+          className="bg-foreground animate-caret-breathe size-1.5 rounded-full motion-reduce:animate-none"
+        />
+      )}
+      {parts.tone === 'empty' && (
+        <Circle aria-hidden strokeWidth={2.4} className="size-3 shrink-0" />
+      )}
+      {parts.tone === 'error' && (
+        <TriangleAlert aria-hidden strokeWidth={2.4} className="size-3 shrink-0" />
+      )}
+      {parts.result}
+      {parts.tone === 'error' && (
+        <span className="text-muted-foreground font-normal">{` · ${t('thinking.work.failedNote')}`}</span>
+      )}
+    </span>
+  )
+}
+
+export const WorkRowView: FC<{
+  row: WorkRow
+  compact?: boolean
+  linking?: RowLinking
+  eager?: boolean
+}> = ({ row, compact = false, linking, eager }) => {
+  const t = useTranslations('chat')
   const [open, setOpen] = useState(false)
   const { action } = row
   const Icon = VERB_ICONS[action.verb]
-  const sentence = workSentence(t, action)
-  const place = placeOfAction(action)
-  const failed = sentence.tone === 'error'
-  const duration = row.running
-    ? t('thinking.work.running')
-    : action.elapsedMs === undefined
-      ? ''
-      : formatWorkDuration(action.elapsedMs, locale)
+  const look = row.looks[0]
+  const parts = workParts(t, action, {
+    running: row.running,
+    ...(row.fold ? { fold: row.fold } : {}),
+    ...(look?.where ? { where: look.where } : {}),
+    ...(look?.reading ? { reading: look.reading } : {}),
+  })
+  const sentence = workPartsText(parts)
+  const linkable = row.callIds.length > 0 && Boolean(linking)
+  const place = linkable ? null : placeOfAction(action)
+  const pressed = linkable && linking ? isLinked(linking.selection, row.callIds) : false
+  const times = row.fold ? t('thinking.work.times', { count: row.fold.count }) : ''
+
+  const text = (
+    <span className="min-w-0 [overflow-wrap:anywhere] break-words">
+      {parts.verb && <span className="text-muted-foreground">{parts.verb} </span>}
+      <span className="text-foreground">{parts.object}</span>
+      {times && <span className="text-muted-foreground tabular-nums">{` ${times}`}</span>}
+    </span>
+  )
   const body = (
     <>
       <Icon
         aria-hidden
-        className={cn('mt-px size-3.5 shrink-0', failed ? 'text-error' : 'text-muted-foreground')}
+        strokeWidth={1.8}
+        className={cn('text-muted-foreground size-4 shrink-0', compact && 'mt-0.5')}
       />
-      <span className="min-w-0 flex-1 break-words">
-        <span className="text-foreground font-medium">{sentence.head}</span>
-        {sentence.outcome && (
-          <span
-            className={failed ? 'text-error' : 'text-muted-foreground'}
-          >{` · ${sentence.outcome}`}</span>
-        )}
-      </span>
-      {duration && <span className="text-muted-foreground shrink-0 tabular-nums">{duration}</span>}
+      {compact ? (
+        <span className="flex min-w-0 flex-col">
+          {text}
+          <ResultWord parts={parts} />
+        </span>
+      ) : (
+        <>
+          {text}
+          <span className="justify-self-end whitespace-nowrap">
+            <ResultWord parts={parts} />
+          </span>
+        </>
+      )}
     </>
   )
-  const lineClass = 'flex w-full min-w-0 items-start gap-1.5 text-left text-xs'
+  const lineClass = cn(
+    '-mx-2 grid w-[calc(100%+1rem)] gap-x-2.5 rounded-lg px-2 text-left text-[13px] leading-[19px]',
+    compact
+      ? 'min-h-11 grid-cols-[16px_minmax(0,1fr)] items-start py-[7px]'
+      : 'min-h-10 grid-cols-[16px_minmax(0,1fr)_auto] items-center py-2'
+  )
+  const interactive = cn(
+    lineClass,
+    'cursor-pointer outline-none transition-[background-color,scale] duration-snap ease-out active:scale-[0.985] motion-reduce:transition-none pointer-fine:hover:bg-muted/60',
+    FOCUS_RING
+  )
   const group =
     row.looks.length > 0
       ? { key: row.id, document: row.looks[0].place.document, looks: row.looks }
       : null
+
   return (
     <li
       data-testid="work-row"
       data-verb={action.verb}
       data-status={row.running ? 'running' : action.status}
-      className="flex min-w-0 flex-col gap-1"
+      className="flex min-w-0 flex-col"
     >
-      {place ? (
+      {linkable && linking ? (
+        <button
+          type="button"
+          data-testid="work-row-link"
+          aria-pressed={pressed}
+          aria-label={sentence}
+          onClick={() =>
+            linking.onSelect(
+              pressed && linking.selection?.key === row.id
+                ? null
+                : { key: row.id, callIds: row.callIds }
+            )
+          }
+          className={cn(interactive, pressed && 'bg-muted')}
+        >
+          {body}
+        </button>
+      ) : place ? (
         <>
           <button
             type="button"
             data-testid="work-row-open"
             aria-label={t('thinking.work.open', { target: place.document.name })}
             onClick={() => setOpen(true)}
-            className={cn(
-              lineClass,
-              'hover:bg-muted/60 duration-snap -mx-1 rounded-md px-1 py-0.5 transition-colors ease-out motion-reduce:transition-none',
-              FOCUS_RING,
-              'outline-none'
-            )}
+            className={interactive}
           >
             {body}
           </button>
           {open && <PagePlaceDialog place={place} open={open} onOpenChange={setOpen} />}
         </>
       ) : (
-        <p className={lineClass}>{body}</p>
+        <p aria-label={sentence} className={lineClass}>
+          {body}
+        </p>
       )}
-      <div aria-hidden className="bg-secondary relative ml-5 h-[3px] overflow-hidden rounded-full">
-        <span
-          data-testid="work-bar"
-          style={{ left: `${row.leftPercent}%`, width: `${row.widthPercent}%` }}
+      {group && !row.running && (
+        <div
           className={cn(
-            'absolute inset-y-0 rounded-full',
-            failed ? 'bg-error/60' : 'bg-brand/50',
-            row.running && 'animate-caret-breathe motion-reduce:animate-none'
+            'mb-2 ml-[26px] flex gap-2.5',
+            compact ? 'flex-col items-start' : 'items-end'
           )}
-        />
-      </div>
-      {group && <LookStrip group={group} eager={eager} />}
+        >
+          <LookStrip group={group} eager={eager} className="flex gap-2" />
+          <span className="text-muted-foreground pb-0.5 text-[13px] leading-[19px]">
+            {look?.where
+              ? t('thinking.look.place', { page: look.place.page, where: look.where })
+              : look
+                ? t('thinking.look.placeWhole', { page: look.place.page })
+                : ''}
+            <br />
+            {t('thinking.work.readOff')}
+          </span>
+        </div>
+      )}
     </li>
   )
 }
 
 /**
- * The meta of a round's header, after „Schritt n · Suche“: „3 gleichzeitig · 2,4 s“.
- * The count only when more than one call ran; the time only once every call ended.
+ * The calls of one step, inside its node: a row per call, the worst first and
+ * „+N weitere“ when a step made more than five, and the step's looks under
+ * the row that made them. The rows sit above the node's fold overlay so they
+ * stay clickable.
  */
-export const RoundMeta: FC<{ round: WorkRound }> = ({ round }) => {
+export const RoundCalls: FC<{
+  round: WorkRound
+  compact?: boolean
+  linking?: RowLinking
+  eager?: boolean
+}> = ({ round, compact, linking, eager }) => {
   const t = useTranslations('chat')
-  const { locale } = useLocale()
-  const parts = [
-    ...(round.rows.length > 1 ? [t('thinking.work.parallel', { count: round.rows.length })] : []),
-    ...(round.durationMs === null ? [] : [formatWorkDuration(round.durationMs, locale)]),
-  ]
-  if (parts.length === 0) return null
-  return <span data-testid="work-round-meta">{` · ${parts.join(' · ')}`}</span>
-}
-
-/**
- * The calls of one round, inside its node of the graph: a row per call, bars on
- * the round's shared time axis, and the looks of the round under the row that
- * made them. The rows sit above the node's fold overlay so they stay clickable.
- */
-export const RoundCalls: FC<{ round: WorkRound; eager?: boolean }> = ({ round, eager }) => {
-  const t = useTranslations('chat')
+  const [showMore, setShowMore] = useState(false)
   const strays = useMemo(() => lookStepGroups(round.strayLooks), [round.strayLooks])
+  const rows = showMore ? [...round.rows, ...round.more] : round.rows
+  const allFound = round.more.every((row) => !row.running && row.action.status === 'ok')
   return (
     <ul
       data-testid="work-round"
       data-round={round.round}
       aria-label={t('thinking.work.label')}
-      className="relative z-20 mt-2 flex flex-col gap-2.5 border-t border-base pt-2"
+      className="border-base relative z-20 mt-2 flex flex-col border-t pt-1"
     >
-      {round.rows.map((row) => (
-        <WorkRowView key={row.id} row={row} eager={eager} />
+      {rows.map((row) => (
+        <WorkRowView key={row.id} row={row} compact={compact} linking={linking} eager={eager} />
       ))}
+      {round.more.length > 0 && (
+        <li className="border-base flex border-t">
+          <button
+            type="button"
+            data-testid="work-round-more"
+            aria-expanded={showMore}
+            onClick={() => setShowMore((value) => !value)}
+            className={cn(
+              'text-foreground pointer-fine:hover:bg-muted/60 -mx-2 flex min-h-10 w-[calc(100%+1rem)] items-center rounded-lg px-2 pl-[34px] text-left text-[13px] outline-none',
+              FOCUS_RING
+            )}
+          >
+            {showMore
+              ? t('thinking.work.fewer')
+              : t(allFound ? 'thinking.work.moreAllFound' : 'thinking.work.more', {
+                  count: round.more.length,
+                })}
+          </button>
+        </li>
+      )}
       {strays.map((group) => (
         <LookStepRow key={group.key} group={group} eager={eager} />
       ))}

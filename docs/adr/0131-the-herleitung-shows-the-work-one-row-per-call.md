@@ -119,14 +119,45 @@ contract is the chips. Option 3 breaks ADR-0068 and every rename of a phrase.
 
 ### Slices, each naming the part of the star it serves
 
-| Slice | Serves |
-|---|---|
-| `ActionStep` on the wire, the helper in `turn_status`, schema and Zod regenerated | every row exists, typed, with time |
-| `knowledge_search`, `read_passage`, `list_files` emit action rows | file search and folder opening are drawn |
-| `project_lookup`, web, RIS, `workspace__call`, IFC emit action rows | the rest of the work is drawn |
-| Action nodes in the Herleitung graph, live and settled, with time and click-through | parallel is visible; every node is evidence |
-| A list-only round is never „Kein Treffer“; an error is drawn | the trace tells the truth |
-| Description fan-out and literal prefetch in round 0 | the work is as parallel as it looks |
+| Slice | Serves | Status |
+|---|---|---|
+| `ActionStep` on the wire, the helper in `turn_status`, schema and Zod regenerated | every row exists, typed | shipped |
+| `knowledge_search`, `read_passage`, `list_files` emit action rows | file search and folder opening are drawn | shipped |
+| `project_lookup`, web, RIS, `workspace__call`, IFC emit action rows | the rest of the work is drawn | shipped |
+| Calls as rows inside the step's node, live and settled; `call_id` links a row to its source cards both ways | every row is evidence, and checkable | shipped (rows, not separate nodes: see the amendment) |
+| A list-only round is never „Kein Treffer“; an error is drawn | the trace tells the truth | shipped |
+| Description fan-out and literal prefetch in round 0 | the work is as parallel as it looks | shipped; the prefetch is marked (`RetrievalStep.prefetch`) and draws no row |
+| „Grundlagen · Entwurf“ replaces the findings card; uncited sources fold into one card; one warning in the header | the reader sees what the answer stands on | shipped |
+
+### Amendment, 2026-10-22: the value test
+
+The approved mockup (owner: „natural evolution of our current Herleitung, not a
+rebuild“) kept every decision above but dropped what no architect checks an
+answer by, and added what lets them check and reuse it:
+
+- **Gone:** times per call, per round and in total, „3 gleichzeitig“, the shared
+  time axis (Langfuse keeps the seconds); „von 41“ and hit counts on cards (the
+  place proves, the number does not); the tool chips beside rows; the
+  attached-files footer (a file the turn read is a source card).
+- **Rows, not nodes:** a call is a row inside its step's node, the step still a
+  node of the spine with its split/merge fan. Tapping a row keeps its cards
+  bright and sets the rest back; tapping a card lights up its rows, joined by
+  `call_id` (stored as `callId` on the `action` and `sources` steps). A row stored
+  before `call_id` links nothing.
+- **The prefetch draws no row.** Round 0 run by the decision is marked on the
+  wire (`RetrievalStep.prefetch`), because the round index cannot tell it from
+  the model's own first search; its sources join the first fan.
+- **Status is a shape and a word**, colour only for the source kind; a search
+  that found nothing says where it looked; a look row shows its crop, „abgelesen,
+  nicht gemessen“.
+- **The last card is „Grundlagen · Entwurf“**: the cited law with its edition,
+  the cited project and office sources with their place, and „Offen“ from every
+  call that failed or found nothing. Never „nachgewiesen“. An „Annahme“ line and
+  „Klären mit“ wait for data the answer does not carry yet; a project document's
+  Fassung or plan index is not on the wire either.
+- **Edge cases:** a turn without research is one line; a turn of one call is
+  that call; three or more calls of a kind fold to „×N“; a step of more than
+  five rows shows the worst three and „+N weitere“.
 
 ### Consequences
 

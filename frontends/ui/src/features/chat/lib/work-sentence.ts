@@ -1,20 +1,36 @@
 /**
- * The sentence of one work-list row (ADR-0131): „Sucht im Projekt „Brandabschnitt“ · 14 Treffer in 3 Dokumenten“.
+ * The words of one Herleitung row (ADR-0131), in three parts the row lays out
+ * apart: the verb („Sucht wörtlich“, muted), the object („„Brandabschnitt“
+ * im Projekt“) and the result („14 Treffer · 3 Dokumente“, right-aligned).
  *
  * Built from the typed action, never from a tool's text. Every word is a
- * dictionary key (`chat.thinking.work.*`); this only chooses which, so a
- * count the call does not report drops its clause instead of printing „0“.
+ * dictionary key (`chat.thinking.work.*`); this only chooses which, so a count
+ * the call does not report drops its clause instead of printing „0“. A search
+ * that found nothing says where it looked, because the object already names
+ * the place: „Sucht in OIB-RL 2: „Brandabschnitt Tiefgarage“ · kein Treffer“.
  */
 
 import type { Translator } from '@/i18n'
 import type { StoredAction } from '@/lib/conversations/message-provenance'
 
-export interface WorkSentence {
-  /** What was done, with its target. */
-  head: string
-  /** What it found, or „nichts gefunden“ / „fehlgeschlagen“; absent while running. */
-  outcome?: string
-  tone: 'normal' | 'empty' | 'error'
+export type WorkTone = 'ok' | 'running' | 'empty' | 'error'
+
+export interface WorkParts {
+  /** What was done, muted: „Liest“. Empty when only a fallback sentence is known. */
+  verb: string
+  /** What it was done to: „Einreichplan EG.pdf, S. 2–3“. */
+  object: string
+  /** What it found, „läuft“, „kein Treffer“ or „fehlgeschlagen“; empty when the call counted nothing. */
+  result: string
+  tone: WorkTone
+}
+
+/** What one row stands for when same-kind calls are folded into it. */
+export interface WorkFold {
+  /** How many calls the row stands for. */
+  count: number
+  /** Their counts, summed: what the folded row reports. */
+  counts: StoredAction['counts']
 }
 
 const SHELF_KEYS: Record<string, string> = {
@@ -26,6 +42,12 @@ const SHELF_KEYS: Record<string, string> = {
   session: 'session',
 }
 
+/** A look's reading longer than this is no row result: the row's right edge holds a figure, not a sentence. */
+export const MAX_READING_RESULT_CHARS = 48
+
+/** Verbs whose empty outcome is a search that hit nothing; the rest found nothing to read. */
+const SEARCHING = new Set<StoredAction['verb']>(['search', 'lookup', 'law', 'web'])
+
 /** „03 Einreichung/Pläne“ as „03 Einreichung › Pläne“. */
 export const breadcrumb = (path: string): string =>
   path
@@ -34,94 +56,157 @@ export const breadcrumb = (path: string): string =>
     .filter(Boolean)
     .join(' › ')
 
+const isClause = (pages: string): boolean => /^\s*pkt/i.test(pages)
+
 /** The first page of „2-3“ or „2, 4“; null for a Punkt („Pkt. 3.5“) or nothing. */
 export const firstPage = (pages: string | undefined): number | null => {
-  if (!pages || isPunkt(pages)) return null
+  if (!pages || isClause(pages)) return null
   const match = /\d+/.exec(pages)
   const page = match ? Number(match[0]) : 0
   return page >= 1 ? page : null
 }
 
-const isPunkt = (pages: string): boolean => /^\s*pkt/i.test(pages)
+/** A page range as typeset: „2-3“ → „2–3“. */
+export const pageRange = (pages: string): string => pages.replace(/(\d)\s*-\s*(\d)/g, '$1–$2')
 
-const headOf = (t: Translator, action: StoredAction): string => {
-  const { verb, query, target, pages, mode } = action
-  const shelfKey = action.shelf ? SHELF_KEYS[action.shelf.toLowerCase()] : undefined
-  const shelf = shelfKey ? t(`thinking.work.shelf.${shelfKey}`) : ''
-  const fallback = () => t(`thinking.work.fallback.${verb}`)
+const shelfPhrase = (t: Translator, action: StoredAction): string => {
+  const key = action.shelf ? SHELF_KEYS[action.shelf.toLowerCase()] : undefined
+  return key ? t(`thinking.work.shelf.${key}`) : ''
+}
+
+/** „Sucht“, „Sucht wörtlich“, „Sucht nach Muster“, and each with „in“ when the search names its document or folder. */
+const searchVerb = (t: Translator, action: StoredAction): string => {
+  const mode = action.mode === 'exact' ? 'Exact' : action.mode === 'regex' ? 'Regex' : ''
+  return t(`thinking.work.verb.search${mode}${action.target ? 'In' : ''}`)
+}
+
+const searchObject = (t: Translator, action: StoredAction): string => {
+  const { query, target } = action
+  if (target && query)
+    return t('thinking.work.object.queryIn', { target: breadcrumb(target), query })
+  if (target) return breadcrumb(target)
+  const shelf = shelfPhrase(t, action)
+  if (!query) return shelf
+  return shelf
+    ? t('thinking.work.object.queryShelf', { query, shelf })
+    : t('thinking.work.object.query', { query })
+}
+
+/** „Einreichplan EG.pdf, S. 2–3“, „OIB-RL 2, Pkt. 3.1“, „…, S. 2, oben rechts“. */
+const placeObject = (
+  t: Translator,
+  target: string,
+  pages: string | undefined,
+  where?: string
+): string => {
+  if (!pages) return target
+  if (isClause(pages)) return t('thinking.work.object.clause', { target, pages })
+  const range = pageRange(pages)
+  return where
+    ? t('thinking.work.object.where', { target, pages: range, where })
+    : t('thinking.work.object.pages', { target, pages: range })
+}
+
+/** The folded object: „7 Dokumente“, „3 Ordner“, „4 Suchen“. */
+const foldedObject = (t: Translator, action: StoredAction, count: number): string => {
+  if (action.verb === 'read' || action.verb === 'look')
+    return t('thinking.work.many.documents', { count })
+  if (action.verb === 'list') return t('thinking.work.many.folders', { count })
+  return t('thinking.work.many.searches', { count })
+}
+
+const verbAndObject = (
+  t: Translator,
+  action: StoredAction,
+  where: string | undefined
+): { verb: string; object: string } => {
+  const { verb, query, target, pages } = action
   switch (verb) {
-    case 'search': {
-      if (!query) return fallback()
-      const key =
-        mode === 'exact' ? 'searchExact' : mode === 'regex' ? 'searchRegex' : 'searchMeaning'
-      return t(`thinking.work.${key}${shelf ? 'In' : ''}`, { query, shelf })
-    }
+    case 'search':
+      return { verb: searchVerb(t, action), object: searchObject(t, action) }
     case 'list':
-      return target ? t('thinking.work.list', { target: breadcrumb(target) }) : fallback()
-    case 'read': {
-      if (!target) return fallback()
-      if (!pages) return t('thinking.work.read', { target })
-      return t(isPunkt(pages) ? 'thinking.work.readClause' : 'thinking.work.readPages', {
-        target,
-        pages,
-      })
-    }
-    case 'look': {
-      if (!target) return fallback()
-      return pages && !isPunkt(pages)
-        ? t('thinking.work.lookPages', { target, pages })
-        : t('thinking.work.look', { target })
-    }
+      return { verb: t('thinking.work.verb.list'), object: target ? breadcrumb(target) : '' }
+    case 'read':
+      return {
+        verb: t('thinking.work.verb.read'),
+        object: target ? placeObject(t, target, pages) : '',
+      }
+    case 'look':
+      return {
+        verb: t('thinking.work.verb.look'),
+        object: target ? placeObject(t, target, pages, where) : '',
+      }
+    case 'law':
+      return {
+        verb: t('thinking.work.verb.law'),
+        object: target ?? (query ? t('thinking.work.object.query', { query }) : ''),
+      }
     case 'lookup':
-      return query ? t('thinking.work.lookupQuery', { query }) : fallback()
-    case 'law': {
-      const what = target ?? query
-      return what ? t('thinking.work.law', { target: what }) : fallback()
-    }
     case 'web':
-      return query ? t('thinking.work.web', { query }) : fallback()
+      return {
+        verb: t(`thinking.work.verb.${verb}`),
+        object: query ? t('thinking.work.object.query', { query }) : '',
+      }
     case 'model':
-      return query ? t('thinking.work.model', { query }) : fallback()
+      return { verb: t('thinking.work.verb.model'), object: query ?? '' }
     case 'workspace':
-      return target ? t('thinking.work.workspace', { target }) : fallback()
+      return { verb: t('thinking.work.verb.workspace'), object: target ?? '' }
   }
 }
 
-/** What the call found, from the counts it reported; undefined when it reported none worth a clause. */
-const foundOf = (t: Translator, action: StoredAction): string | undefined => {
-  const { hits, documents, searched, files, folders } = action.counts ?? {}
+/** What the call found, from the counts it reported; empty when it reported none worth a clause. */
+const foundOf = (t: Translator, action: StoredAction, counts: StoredAction['counts']): string => {
+  const { hits, documents, files, folders } = counts ?? {}
   if (action.verb === 'list') {
     if (files !== undefined && folders !== undefined)
       return t('thinking.work.found.listing', { files, folders })
     if (files !== undefined) return t('thinking.work.found.files', { count: files })
     if (folders !== undefined) return t('thinking.work.found.folders', { count: folders })
-    return undefined
+    return ''
+  }
+  if (action.verb === 'read' || action.verb === 'look') {
+    return hits !== undefined ? t('thinking.work.found.places', { count: hits }) : ''
   }
   if (hits !== undefined) {
-    if (
-      documents !== undefined &&
-      searched !== undefined &&
-      action.mode !== 'meaning' &&
-      action.mode !== undefined
-    ) {
-      return t('thinking.work.found.hitsOfSearched', { hits, documents, searched })
-    }
-    if (documents !== undefined) return t('thinking.work.found.hitsDocuments', { hits, documents })
-    return t('thinking.work.found.hits', { count: hits })
+    return documents !== undefined
+      ? t('thinking.work.found.hitsDocuments', { hits, documents })
+      : t('thinking.work.found.hits', { count: hits })
   }
-  if (documents !== undefined) return t('thinking.work.found.documents', { count: documents })
-  return undefined
+  return documents !== undefined ? t('thinking.work.found.documents', { count: documents }) : ''
 }
 
-export function workSentence(t: Translator, action: StoredAction): WorkSentence {
-  const head = headOf(t, action)
-  if (action.status === 'error') return { head, outcome: t('thinking.work.failed'), tone: 'error' }
-  if (action.status === 'empty')
-    return { head, outcome: t('thinking.work.nothingFound'), tone: 'empty' }
-  if (action.status === 'running') return { head, tone: 'normal' }
-  return { head, outcome: foundOf(t, action), tone: 'normal' }
+/**
+ * The parts of a row. `running` is the row's own state (a stored row that
+ * never settled is not running once the turn ended). `reading` is what a look
+ * read off, which is its result when it fits a row's right edge.
+ */
+export function workParts(
+  t: Translator,
+  action: StoredAction,
+  options: { running?: boolean; fold?: WorkFold; where?: string; reading?: string } = {}
+): WorkParts {
+  const { running = false, fold, where, reading } = options
+  const folded = fold && fold.count > 1 ? fold : undefined
+  const named = verbAndObject(t, action, where)
+  const object = folded ? foldedObject(t, action, folded.count) : named.object
+  // A call known only by its verb reads as one sentence: the fallback, in the object's ink.
+  const parts = object
+    ? { verb: named.verb, object }
+    : { verb: '', object: t(`thinking.work.fallback.${action.verb}`) }
+  if (running) return { ...parts, result: t('thinking.work.running'), tone: 'running' }
+  if (action.status === 'error')
+    return { ...parts, result: t('thinking.work.failed'), tone: 'error' }
+  if (action.status === 'empty') {
+    const word = SEARCHING.has(action.verb) ? 'noHit' : 'nothingFound'
+    return { ...parts, result: t(`thinking.work.${word}`), tone: 'empty' }
+  }
+  const found = foundOf(t, action, folded ? folded.counts : action.counts)
+  const short = reading && reading.length <= MAX_READING_RESULT_CHARS ? reading : ''
+  return { ...parts, result: found || (action.verb === 'look' ? short : ''), tone: 'ok' }
 }
 
-/** The whole sentence as one string: head and outcome joined by „ · “. */
-export const workSentenceText = (sentence: WorkSentence): string =>
-  sentence.outcome ? `${sentence.head} · ${sentence.outcome}` : sentence.head
+/** The row as one sentence, for its accessible name: „Liest Einreichplan EG.pdf, S. 2–3: 2 Stellen“. */
+export const workPartsText = (parts: WorkParts): string => {
+  const head = [parts.verb, parts.object].filter(Boolean).join(' ')
+  return parts.result ? `${head}: ${parts.result}` : head
+}

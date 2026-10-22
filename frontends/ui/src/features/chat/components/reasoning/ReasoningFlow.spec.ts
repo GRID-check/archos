@@ -89,8 +89,13 @@ const columnToColumnEdges = (g: ReturnType<typeof buildGraph>) =>
   g.edges.filter((e) => isColumnId(e.source) && isColumnId(e.target))
 
 /** The fan slots one column node carries. */
+/**
+ * The documents a column stands for: its cards, and the ones folded into its
+ * dashed „+N abgerufen, nicht zitiert“ card, in that order.
+ */
+type Slot = { type: 'card'; fan: FanCard } | { type: 'fold'; folded: FanCard[] }
 const slotsOf = (node: { data: unknown }): FanCard[] =>
-  (node.data as { cards: FanCard[] }).cards
+  (node.data as { cards: Slot[] }).cards.flatMap((slot) => (slot.type === 'card' ? [slot.fan] : slot.folded))
 
 /**
  * What each column node carries, left→right: the card's id, or — for a ledger
@@ -448,7 +453,24 @@ describe('buildGraph — the fan-in shares one centred anchor (P1-5)', () => {
 
 describe('buildGraph — only the handles a layout needs (P2-8)', () => {
   test('no sources: framing feeds the converge node from a single centre handle', () => {
-    const g = buildGraph({ ...base, answerConfidence: 'low' }, t, planFan(DESKTOP_W, 0), [])
+    // A verdict alone no longer earns the last card (it lists what the answer
+    // cites, and there is nothing); a limit of the answer does.
+    const g = buildGraph(
+      {
+        ...base,
+        answerConfidence: 'low',
+        steps: [
+          technicalStep('degraded', {
+            degraded: true,
+            agent: 'deep',
+            reasons: ['no_valid_citations'],
+          }),
+        ],
+      },
+      t,
+      planFan(DESKTOP_W, 0),
+      []
+    )
     expect(framingHandles(g)).toEqual(['c-bottom'])
     expect(targetHandles(g, 'findings')).toEqual(['c-top'])
     expect(g.edges).toContainEqual(

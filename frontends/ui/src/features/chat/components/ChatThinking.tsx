@@ -1,14 +1,15 @@
 /**
- * ChatThinking — collapsible Herleitung panel (click-dummy overhaul).
+ * ChatThinking — the collapsible Herleitung panel.
  *
- * Collapsed: status + "Herleitung", plus "· m Quellen" when the answer actually
- * rests on any. No step count: see the header-line comment below.
- * Expanded: the connected reasoning-chain (`ReasoningChain`) — the framing node,
- * a spine of checkpoints when the turn searched more than once (each with the
- * tools it called and the files THAT fetch returned), and the findings node,
- * plus the technical step tail. A HITL choice is answered in its own prompt
- * card in the thread, not in here.
- * Every node binds to real streamed data or is hidden; nothing is fabricated.
+ * Folded: the status glyph, „Herleitung · 2 Schritte · 3 Quellen zitiert“ and
+ * at most one warning, the worst there is (a failed call, else an open point).
+ * Expanded: the graph (`ReasoningFlow`) — the question, each step with one row
+ * per call, the sources each step returned, and „Grundlagen · Entwurf“ — plus
+ * the technical step tail when the reader opted in. Two turns need no panel: one
+ * that looked nothing up is one line („Ohne Recherche beantwortet“), one of a
+ * single call is that call. A HITL choice is answered in its own prompt card in
+ * the thread, not in here. Every line binds to real streamed data or is hidden;
+ * nothing is fabricated.
  */
 
 'use client'
@@ -34,7 +35,9 @@ import {
   CircleArrowRight,
   CircleMinus,
   CircleSlash,
+  Circle,
   Clock,
+  TriangleAlert,
 } from 'lucide-react'
 import { Collapsible, CollapsibleTrigger } from '@/components/ui/collapsible'
 import {
@@ -51,6 +54,7 @@ import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import { SectionLabel } from '@/components/ui/section-label'
 import { Spinner } from '@/components/ui/spinner'
 import { useTranslations } from '@/i18n'
+import { useLayoutStore } from '@/features/layout/store'
 import type { CitationSource } from '../types'
 import type { StoredThinkingStep } from '@/lib/conversations/message-provenance'
 import type { RetrievalLedger } from '@/lib/conversations/message-retrieval-ledger'
@@ -60,7 +64,11 @@ import { liveLine } from '../lib/turn-events'
 import { deriveExecutedSteps } from '../lib/executed-steps'
 import { useElapsedSeconds, formatElapsed, type ElapsedSince } from '../hooks/use-elapsed-seconds'
 import { ReasoningFlow } from './reasoning/ReasoningFlow'
-import { buildFileChips } from './reasoning/context'
+import { derivationOverview, documentLocation } from '../lib/derivation-basis'
+import { hasActions } from '../lib/work-list'
+import { workParts } from '../lib/work-sentence'
+import { citationNumbers, isCited } from '../lib/citations'
+import { documentEdition, documentShortName } from '../lib/document-names'
 
 /**
  * How a turn ended that has no answer of its own to be „Fertig" with: it
@@ -259,6 +267,8 @@ const ChatThinkingView: FC<ChatThinkingProps> = ({
 }) => {
   const t = useTranslations('chat')
   const reducedMotion = useReducedMotion()
+  // With the technical steps switched on, every turn keeps its panel: they live in it.
+  const showTechnicalSteps = useLayoutStore((s) => s.showTechnicalReasoning)
 
   const [disclosure, setDisclosure] = useState<Disclosure>(() => ({
     open: autoOpen ?? defaultOpen,
@@ -291,9 +301,10 @@ const ChatThinkingView: FC<ChatThinkingProps> = ({
   // Unique source cards (hits + gaps) — bar "m Quellen", not sum of Treffer.
   const sourceCount = sourceCards.length
 
-  // Basis footer: the files attached to this message, as clean pills. Data
-  // sources deliberately do NOT appear here — see `enabledDataSources` above.
-  const fileChips = useMemo(() => buildFileChips(messageFiles), [messageFiles])
+  // The turn at a glance: its steps, what the answer cites, the one warning
+  // the header carries, and whether the turn needs a graph at all.
+  const overview = useMemo(() => derivationOverview(steps, sourceCards), [steps, sourceCards])
+  const citedCount = overview.cited
 
   // Live status: what the assistant is doing right now (derived from the newest
   // streamed step) plus a seconds-elapsed cue, so a slow turn reads as active
@@ -338,8 +349,13 @@ const ChatThinkingView: FC<ChatThinkingProps> = ({
   // one with less to say would be making the claim twice. Same label authority
   // either way (`features/skills/lib/skill-activity`), so the two can never
   // word it differently.
+  //
+  // A turn whose calls are drawn as rows (ADR-0131) has no tool chips: each row
+  // already says what ran, where and with what result, and a chip beside it
+  // would be the same claim with less to say. Skills keep theirs.
   const executedSteps = useMemo(() => {
-    const derivedSteps = deriveExecutedSteps(steps, t)
+    const rowsDrawn = hasActions(steps)
+    const derivedSteps = deriveExecutedSteps(steps, t).filter((s) => !rowsDrawn || s.skill)
     if (isThinking) return derivedSteps
     return derivedSteps.filter((s) => !s.skill)
   }, [steps, t, isThinking])
@@ -369,10 +385,21 @@ const ChatThinkingView: FC<ChatThinkingProps> = ({
   // The source clause is ABSENT rather than „0 Quellen": an answer grounded in
   // a measurement of the model rightly has no citations, and zero reads as a
   // failure to find anything.
+  //
+  // Settled, the header counts the steps and what the answer CITES („2 Schritte
+  // · 3 Quellen zitiert“): retrieved-but-unused documents are in the graph,
+  // folded, and are not what the answer rests on.
   const summaryLabel =
-    sourceCount > 0
+    [
+      citedCount > 0 || overview.steps > 0 ? t('thinking.derivationSummary') : null,
+      overview.steps > 0 ? t('thinking.derivationSteps', { count: overview.steps }) : null,
+      citedCount > 0 ? t('thinking.derivationCited', { count: citedCount }) : null,
+    ]
+      .filter(Boolean)
+      .join(' · ') ||
+    (sourceCount > 0
       ? t('thinking.derivationSummaryWithSources', { count: sourceCount })
-      : t('thinking.derivationSummary')
+      : t('thinking.derivationSummary'))
 
   const status: HeaderStatus = isThinking
     ? 'live'
@@ -420,6 +447,22 @@ const ChatThinkingView: FC<ChatThinkingProps> = ({
     : countParts
       ? `summary:${countParts.before}#${countParts.after}`
       : `summary:${label}`
+  // The one warning a settled header carries: the worst there is. A failed
+  // call outranks a search that found nothing (an open point).
+  const warning =
+    status !== 'done'
+      ? null
+      : overview.failed > 0
+        ? {
+            kind: 'failed' as const,
+            text: t('thinking.derivationWarning.failed', { count: overview.failed }),
+          }
+        : overview.open > 0
+          ? {
+              kind: 'open' as const,
+              text: t('thinking.derivationWarning.open', { count: overview.open }),
+            }
+          : null
   // The phase in a word: what the trigger is named by and what is announced.
   const phaseWord = statusLabel[status]
   // An ending that is not „done" says so in a word on the right, beside the
@@ -436,7 +479,9 @@ const ChatThinkingView: FC<ChatThinkingProps> = ({
     !isThinking && answerDurationMs !== undefined
       ? Math.max(Math.floor(answerDurationMs / 1000), sawLive ? elapsedSeconds : 0)
       : elapsedSeconds
-  const showElapsed = sawLive && shownSeconds > 2
+  // Only while the turn works: settled, the total time went by the value test
+  // (no one checks an answer by its seconds; the footer and Langfuse keep it).
+  const showElapsed = sawLive && shownSeconds > 2 && (isThinking || isWaiting)
 
   // Every state swap in the header runs on the house pair, entrance easing in
   // and exit easing out: the icon and the right-hand words cross-fade, the
@@ -458,6 +503,68 @@ const ChatThinkingView: FC<ChatThinkingProps> = ({
     exit: { opacity: 0, y: `-${ROLL_OFFSET}`, transition: { ...leave, y: enter } },
   }
 
+  // Two turns need no graph. One that looked nothing up says so in one line;
+  // one that made a single call is that call, and the header is the Herleitung.
+  // Neither opens: there is nothing behind it.
+  if (
+    status === 'done' &&
+    !overview.researched &&
+    !escalationReason?.trim() &&
+    !showTechnicalSteps
+  ) {
+    return (
+      <div
+        data-testid="derivation-no-research"
+        className="bg-muted w-full rounded-2xl px-4 py-3 shadow-xs"
+      >
+        <p className="text-foreground flex min-h-6 items-center gap-2 text-sm font-semibold">
+          <CircleMinus aria-hidden className="text-muted-foreground size-5 shrink-0" />
+          {t('thinking.noResearch')}
+        </p>
+        <p className="text-muted-foreground pl-7 text-[13px] leading-[19px]">
+          {t('thinking.noResearchNote')}
+        </p>
+      </div>
+    )
+  }
+  if (status === 'done' && overview.single && !showTechnicalSteps) {
+    const call = overview.single
+    const parts = workParts(t, call.action)
+    const card = sourceCards[0]
+    const cited =
+      card && isCited(card)
+        ? citationNumbers(card)
+            .map((n) => `[${n}]`)
+            .join(' ')
+        : ''
+    // The document by its name, and its place on the second line beside the
+    // edition and the marker: „Liest Brandschutzkonzept“ / „S. 7 · zitiert [1]“.
+    // Without a card the call's own words and its result stand.
+    const name = card ? documentShortName(card.fileName ?? card.title, card.title) : ''
+    const head = [parts.verb, name || parts.object].filter(Boolean).join(' ')
+    const detail = [
+      card ? documentEdition(card.fileName ?? card.title, card.title) : undefined,
+      card ? documentLocation(t, card) : parts.result || undefined,
+      cited ? t('thinking.singleCited', { markers: cited }) : undefined,
+    ].filter(Boolean)
+    return (
+      <div
+        data-testid="derivation-single"
+        className="bg-muted grid w-full grid-cols-[20px_minmax(0,1fr)] gap-x-2 rounded-2xl px-4 py-3 shadow-xs"
+      >
+        <CheckCircle2 aria-hidden className="text-success size-5" />
+        <p className="text-sm leading-5 [overflow-wrap:anywhere]">
+          <span className="text-foreground font-semibold">{head}</span>
+          {detail.length > 0 && (
+            <span className="text-muted-foreground block text-[13px] leading-[19px]">
+              {detail.join(' · ')}
+            </span>
+          )}
+        </p>
+      </div>
+    )
+  }
+
   // No entrance of its own: it mounts with its question, and the thread row
   // (`ChatArea`) owns that entrance, gated so a restored turn does not replay it.
   return (
@@ -474,10 +581,15 @@ const ChatThinkingView: FC<ChatThinkingProps> = ({
             data-derivation-trigger
             className="group relative flex min-h-12 w-full cursor-pointer items-center justify-between rounded-2xl px-4 py-3 text-left outline-none transition-colors duration-snap ease-out motion-reduce:transition-none focus-visible:ring-2 focus-visible:ring-ring/60"
           >
-            <span className="sr-only">{`${phaseWord} · ${summaryLabel}`}</span>
+            <span className="sr-only">
+              {[phaseWord, summaryLabel, warning?.text].filter(Boolean).join(' · ')}
+            </span>
             {/* `relative`: `popLayout` lifts the leaving icon and phrase out of
                 the flow, positioned against this box. */}
-            <span className="relative flex min-w-0 items-center gap-2" aria-hidden="true">
+            <span
+              className="relative flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1.5"
+              aria-hidden="true"
+            >
               {/* Fixed icon slot, shared by every state: without it the text
                   starts at a different x whenever the status changes, and the
                   row visibly jumps at the moment the reader looks at it. */}
@@ -496,7 +608,7 @@ const ChatThinkingView: FC<ChatThinkingProps> = ({
                   Keyed by the label's WORDS, not its count: when only the
                   source count changes (it often does at the settle), this
                   node stays and only the digits roll (`RollingCount`). */}
-              <span className="relative min-w-0 overflow-y-clip">
+              <span className="relative max-w-[calc(100%-1.75rem)] min-w-0 overflow-y-clip">
                 <AnimatePresence mode="popLayout" initial={false}>
                   <motion.span
                     key={labelKey}
@@ -523,6 +635,19 @@ const ChatThinkingView: FC<ChatThinkingProps> = ({
                   </motion.span>
                 </AnimatePresence>
               </span>
+              {warning && (
+                <span
+                  data-testid="derivation-warning"
+                  className="bg-card text-foreground inline-flex shrink-0 items-center gap-1.5 rounded-full border px-2 py-px text-[13px] font-medium"
+                >
+                  {warning.kind === 'failed' ? (
+                    <TriangleAlert aria-hidden strokeWidth={2.4} className="size-3" />
+                  ) : (
+                    <Circle aria-hidden strokeWidth={2.4} className="size-3" />
+                  )}
+                  {warning.text}
+                </span>
+              )}
             </span>
 
             <span className="relative flex shrink-0 items-center gap-2" aria-hidden="true">
@@ -634,23 +759,6 @@ const ChatThinkingView: FC<ChatThinkingProps> = ({
                     </div>
                   )}
 
-                  {/* Basis footer — the files attached to this message, as clean
-                      pills. Only shown when the Herleitung is expanded. */}
-                  {fileChips.length > 0 && (
-                    <div className="flex flex-col gap-2 border-t border-border px-4 pb-4 pt-3">
-                      <SectionLabel>{t('thinking.attachedFiles')}</SectionLabel>
-                      <div className="flex flex-wrap gap-1.5">
-                        {fileChips.map((chip) => (
-                          <span
-                            key={chip}
-                            className="whitespace-nowrap rounded-md bg-secondary px-2.5 py-1 text-xs font-medium text-muted-foreground"
-                          >
-                            {chip}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  )}
               </div>
             </motion.div>
           )}

@@ -24,8 +24,7 @@ const document = (loci: CitedDocument['loci']): CitedDocument => ({
   loci,
 })
 
-const renderCard = (loci: CitedDocument['loci']) =>
-  render(<SourceCard document={document(loci)} hitLabel="2 Treffer" gapLabel="0 Treffer" />)
+const renderCard = (loci: CitedDocument['loci']) => render(<SourceCard document={document(loci)} />)
 
 describe('SourceCard — pages', () => {
   test('a retrieved-but-uncited document still names the pages it was read at', () => {
@@ -68,14 +67,7 @@ describe('SourceCard — a ledger round speaks for its own slot', () => {
   ]
 
   test('the locus line is the round’s own, and a re-read says so instead of counting', () => {
-    render(
-      <SourceCard
-        document={document(loci)}
-        hitLabel="2 hits"
-        gapLabel="Nothing found"
-        loci={[{ detail: 'p. 12', repeat: true }]}
-      />
-    )
+    render(<SourceCard document={document(loci)} loci={[{ detail: 'p. 12', repeat: true }]} />)
 
     expect(screen.getByText('p. 12')).toBeInTheDocument()
     expect(screen.getByText('already retrieved')).toBeInTheDocument()
@@ -91,8 +83,6 @@ describe('SourceCard — a ledger round speaks for its own slot', () => {
     const { container } = render(
       <SourceCard
         document={document(loci)}
-        hitLabel="2 hits"
-        gapLabel="Nothing found"
         loci={clauses.map((detail) => ({ detail, repeat: false }))}
       />
     )
@@ -101,15 +91,14 @@ describe('SourceCard — a ledger round speaks for its own slot', () => {
     expect(screen.getByText(clauses.join(', '))).toBeInTheDocument()
     // The round reached five new passages, so it did work: no repeat marker.
     expect(screen.queryByText(/already retrieved/)).not.toBeInTheDocument()
-    expect(screen.getByText('2 hits')).toBeInTheDocument()
+    // No tally: the place proves, the count does not (the 2026-10 value test).
+    expect(screen.queryByText('2 hits')).not.toBeInTheDocument()
   })
 
   test('a round that re-fetched only one of its passages marks that one', () => {
     render(
       <SourceCard
         document={document(loci)}
-        hitLabel="2 hits"
-        gapLabel="Nothing found"
         loci={[
           { detail: 'Pkt. 3.1', repeat: true },
           { detail: 'Pkt. 4.2', repeat: false },
@@ -117,24 +106,19 @@ describe('SourceCard — a ledger round speaks for its own slot', () => {
       />
     )
 
-    // The round did new work, so the pill stays the tally and the marker sits
-    // on the passage that was fetched twice — not on the whole document.
-    expect(screen.getByText('2 hits')).toBeInTheDocument()
+    // The round did new work, so the marker sits on the passage that was
+    // fetched twice — not on the whole document.
+    // No tally: the place proves, the count does not (the 2026-10 value test).
+    expect(screen.queryByText('2 hits')).not.toBeInTheDocument()
     expect(screen.getByText('(already retrieved)')).toBeInTheDocument()
     expect(screen.getByText('Pkt. 3.1, Pkt. 4.2')).toBeInTheDocument()
   })
 
-  test('a round showing a file for the first time keeps the count, and names no locus it did not read', () => {
-    render(
-      <SourceCard
-        document={document(loci)}
-        hitLabel="2 hits"
-        gapLabel="Nothing found"
-        loci={[{ repeat: false }]}
-      />
-    )
+  test('a round showing a file for the first time names no locus it did not read', () => {
+    render(<SourceCard document={document(loci)} loci={[{ repeat: false }]} />)
 
-    expect(screen.getByText('2 hits')).toBeInTheDocument()
+    // No tally: the place proves, the count does not (the 2026-10 value test).
+    expect(screen.queryByText('2 hits')).not.toBeInTheDocument()
     expect(screen.queryByText('already retrieved')).not.toBeInTheDocument()
     // The round named no page, so the card names none — borrowing the turn's
     // would attribute another round's passage to this one.

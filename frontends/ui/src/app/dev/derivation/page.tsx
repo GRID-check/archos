@@ -31,11 +31,18 @@
  *   - spine-folded → THREE rounds, which is where the graph stops being a shape
  *     and becomes a scroll: the older two layers arrive folded to their counts
  *     and the newest is open. Neither folded caption names a query (PF-12).
- *   - work     → the work list (ADR-0131), the north-star scene: round 1 runs a
- *     literal search, a folder listing and a meaning search together on one
- *     time axis; round 2 reads a sheet and looks at it.
- *   - work-live → the same turn mid-round: round 2's read and look are still
- *     running, so their rows breathe and the round has no time yet.
+ *   - work     → the approved 2026-10 Herleitung (ADR-0131): the decision's
+ *     prefetch (no row, its OIB-RL 2 in the first fan), step 1 with a literal
+ *     search, a folder and a search that found nothing, step 2 reading and
+ *     looking at the plan sheet; uncited documents fold into one dashed card,
+ *     and „Grundlagen · Entwurf“ closes it. Tap a row or a card to link them.
+ *   - work-live → the same turn mid-step 2: the look still runs.
+ *   - folded   → the same turn with the panel closed: counts and one warning.
+ *   - no-research → a turn that looked nothing up: one line, no graph.
+ *   - failed   → a failed RIS call beside a search that worked.
+ *   - single-read → one read, cited: the header is the Herleitung.
+ *   - many-calls → eleven calls in one step: ×7, worst first, „+N weitere“.
+ *   - phone    → the work turn at 380 px and 320 px.
  */
 
 import { useEffect, useState } from 'react'
@@ -43,7 +50,18 @@ import { notFound } from 'next/navigation'
 import { ChatThinking } from '@/features/chat/components/ChatThinking'
 import type { CitationSource } from '@/features/chat/types'
 import type { StoredThinkingStep } from '@/lib/conversations/message-provenance'
-import { foldScene, northStarLiveScene, northStarScene } from '@/test-utils/work-list-scenes'
+import {
+  MOCKUP_QUESTION,
+  failedCallCitations,
+  failedCallScene,
+  foldScene,
+  manyCallsScene,
+  mockupCitations,
+  mockupLiveScene,
+  mockupScene,
+  singleReadCitations,
+  singleReadScene,
+} from '@/test-utils/work-list-scenes'
 
 const step: StoredThinkingStep = {
   id: 'kb',
@@ -341,14 +359,45 @@ const liveCommon = {
 // Work-list scenarios (ADR-0131): folded from wire steps by the app's own fold.
 const workCommon = {
   ...defaultCommon,
-  steps: foldScene(northStarScene()),
-  citations: undefined,
-  userQuestion: 'Welche Brandabschnitte sind im Einreichplan eingetragen, und passt das zur OIB 2?',
+  steps: foldScene(mockupScene()),
+  citations: mockupCitations(),
+  messageFiles: [],
+  userQuestion: MOCKUP_QUESTION,
 }
 const workLiveCommon = {
   ...workCommon,
-  steps: foldScene(northStarLiveScene()),
+  steps: foldScene(mockupLiveScene()),
+  citations: undefined,
+  answerConfidence: undefined,
   isThinking: true as const,
+}
+const foldedCommon = { ...workCommon, defaultOpen: false }
+const noResearchCommon = {
+  ...defaultCommon,
+  steps: [],
+  citations: undefined,
+  answerConfidence: 'medium' as const,
+  messageFiles: [],
+  userQuestion: 'Was ist der Unterschied zwischen Brandabschnitt und Brandwand?',
+}
+const failedCommon = {
+  ...workCommon,
+  steps: foldScene(failedCallScene()),
+  citations: failedCallCitations(),
+  userQuestion: 'Wie viele Stellplätze braucht die Tiefgarage nach dem Wiener Garagengesetz?',
+}
+const singleReadCommon = {
+  ...workCommon,
+  steps: foldScene(singleReadScene()),
+  citations: singleReadCitations(),
+  userQuestion:
+    'Welche Feuerwiderstandsklasse nennt das Brandschutzkonzept für die Decke über der Garage?',
+}
+const manyCallsCommon = {
+  ...workCommon,
+  steps: foldScene(manyCallsScene()),
+  citations: undefined,
+  userQuestion: 'Prüf bitte alle Pläne auf die Brandabschnitte der Garage.',
 }
 
 export default function DerivationPreviewPage() {
@@ -364,37 +413,61 @@ export default function DerivationPreviewPage() {
   }, [])
 
   const common =
-    variant === 'work'
+    variant === 'work' || variant === 'phone'
       ? workCommon
-      : variant === 'work-live'
-        ? workLiveCommon
-        : variant === 'branches'
-          ? branchesCommon
-          : variant === 'live'
-            ? liveCommon
-            : variant === 'dense'
-              ? denseCommon
-              : variant === 'spine'
-                ? spineCommon(2)
-                : variant === 'spine-folded'
-                  ? spineCommon(3)
-                  : defaultCommon
+      : variant === 'folded'
+        ? foldedCommon
+        : variant === 'no-research'
+          ? noResearchCommon
+          : variant === 'failed'
+            ? failedCommon
+            : variant === 'single-read'
+              ? singleReadCommon
+              : variant === 'many-calls'
+                ? manyCallsCommon
+                : variant === 'work'
+                  ? workCommon
+                  : variant === 'work-live'
+                    ? workLiveCommon
+                    : variant === 'branches'
+                      ? branchesCommon
+                      : variant === 'live'
+                        ? liveCommon
+                        : variant === 'dense'
+                          ? denseCommon
+                          : variant === 'spine'
+                            ? spineCommon(2)
+                            : variant === 'spine-folded'
+                              ? spineCommon(3)
+                              : defaultCommon
   const label =
-    variant === 'work'
-      ? '/dev/derivation?variant=work — work list, two rounds on shared time axes'
-      : variant === 'work-live'
-        ? '/dev/derivation?variant=work-live — work list mid-round, running rows'
-        : variant === 'branches'
-          ? '/dev/derivation?variant=branches — long question, sources without findings'
-          : variant === 'live'
-            ? '/dev/derivation?variant=live — mid-stream turn (live status + chips)'
-            : variant === 'dense'
-              ? '/dev/derivation?variant=dense — 9 sources, packed into stacked columns'
-              : variant === 'spine'
-                ? '/dev/derivation?variant=spine — two retrieval rounds, both layers open'
-                : variant === 'spine-folded'
-                  ? '/dev/derivation?variant=spine-folded — three rounds, older layers folded'
-                  : '/dev/derivation — reasoning graph (desktop + mobile)'
+    variant === 'phone'
+      ? '/dev/derivation?variant=phone — the work turn at phone widths'
+      : variant === 'folded'
+        ? '/dev/derivation?variant=folded — panel closed: counts and the one warning'
+        : variant === 'no-research'
+          ? '/dev/derivation?variant=no-research — answered without research'
+          : variant === 'failed'
+            ? '/dev/derivation?variant=failed — a failed RIS call'
+            : variant === 'single-read'
+              ? '/dev/derivation?variant=single-read — one call, no graph'
+              : variant === 'many-calls'
+                ? '/dev/derivation?variant=many-calls — ×7, worst first, +N weitere'
+                : variant === 'work'
+                  ? '/dev/derivation?variant=work — the 2026-10 Herleitung: rows, linked cards, Grundlagen'
+                  : variant === 'work-live'
+                    ? '/dev/derivation?variant=work-live — work list mid-round, running rows'
+                    : variant === 'branches'
+                      ? '/dev/derivation?variant=branches — long question, sources without findings'
+                      : variant === 'live'
+                        ? '/dev/derivation?variant=live — mid-stream turn (live status + chips)'
+                        : variant === 'dense'
+                          ? '/dev/derivation?variant=dense — 9 sources, packed into stacked columns'
+                          : variant === 'spine'
+                            ? '/dev/derivation?variant=spine — two retrieval rounds, both layers open'
+                            : variant === 'spine-folded'
+                              ? '/dev/derivation?variant=spine-folded — three rounds, older layers folded'
+                              : '/dev/derivation — reasoning graph (desktop + mobile)'
 
   return (
     <main className="bg-background min-h-dvh px-4 py-10">
@@ -405,15 +478,27 @@ export default function DerivationPreviewPage() {
         {/* Same box the real thread gives the Herleitung (ChatArea's
             assistant-side spine) — the preview must not be wider than
             production, or the fan-out looks like it fits when it doesn't. */}
-        <div className="w-[680px] max-w-full">
-          <ChatThinking {...common} />
-        </div>
+        {variant !== 'phone' && (
+          <div className="w-[680px] max-w-full">
+            <ChatThinking key={variant ?? 'default'} {...common} />
+          </div>
+        )}
         <div>
           <div className="text-muted-foreground mb-2 font-mono text-xs">↓ mobile width (380px)</div>
           <div className="w-[380px] max-w-full">
-            <ChatThinking {...common} />
+            <ChatThinking key={variant ?? 'default'} {...common} />
           </div>
         </div>
+        {variant === 'phone' && (
+          <div>
+            <div className="text-muted-foreground mb-2 font-mono text-xs">
+              ↓ small phone (320px)
+            </div>
+            <div className="w-[320px] max-w-full">
+              <ChatThinking key={variant ?? 'default'} {...common} />
+            </div>
+          </div>
+        )}
       </div>
     </main>
   )

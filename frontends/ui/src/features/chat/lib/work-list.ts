@@ -1,37 +1,46 @@
 /**
  * The Herleitung's work list (ADR-0131): the turn's `action` steps as rounds,
- * each call a row with a bar on the round's shared time axis, so calls that ran
- * together visibly overlap.
+ * one row per call, inside the round's node of the graph.
  *
- * Pure: the stored steps in, rounds and percentages out. The sentence of a row
- * is `work-sentence.ts`; the drawing is `reasoning/WorkList.tsx`.
+ * Pure: the stored steps in, rounds and rows out. The words of a row are
+ * `work-sentence.ts`; the drawing is `reasoning/WorkList.tsx`.
  *
- * Time. A stored action's start is the step's `timestamp`; its finish is that
- * plus `action.elapsedMs`. A call still running has no finish: its bar runs to
- * the end of the axis, and the round has no duration until every call ended.
+ * What a row is NOT any more: a time. Per-call and per-round times, the
+ * „3 gleichzeitig“ label and the shared time axis went by the value test (no
+ * one checks an answer by its seconds; Langfuse keeps them). What stays is
+ * what lets a reader check and reuse: what was looked for, where, what came
+ * back, and which source cards it returned (`callIds`).
+ *
+ * Three shapes keep a busy round readable:
+ *  - the decision's prefetch (round 0, `detail.prefetch`) draws no row; its
+ *    sources join the first fan like any other;
+ *  - three or more settled calls of one kind fold into one row („×7“);
+ *  - more than {@link MAX_ROWS} rows show the worst first and fold the rest
+ *    into „+N weitere“.
  */
 
 import type { StoredAction, StoredThinkingStep } from '@/lib/conversations/message-provenance'
 import { lookStepPlace, type LookStepPlace } from './look-steps'
 import type { RetrievalRound } from './retrieval-rounds'
+import type { WorkFold } from './work-sentence'
 
-/** The narrowest a bar is drawn, as a share of the axis, so an instant call is still seen. */
-export const MIN_BAR_PERCENT = 2
-/** The width a running bar starts with when it has the axis to itself. */
-export const MIN_RUNNING_PERCENT = 12
+/** A round shows at most this many rows before the rest fold into „+N weitere“. */
+export const MAX_ROWS = 5
+/** How many rows a round over {@link MAX_ROWS} keeps in view. */
+export const KEPT_ROWS = 3
+/** Same-kind calls fold into one row from this many on. */
+export const FOLD_FROM = 3
 
 export interface WorkRow {
   id: string
+  /** The first call the row stands for: its verb, target and status. */
   action: StoredAction
   /** The call has started and not ended. */
   running: boolean
-  /** Epoch ms of the start; null when the stored timestamp is unreadable. */
-  startMs: number | null
-  /** Epoch ms of the end; null while running or when the call stored no time. */
-  endMs: number | null
-  /** The bar's left edge and width, in percent of the round's axis. */
-  leftPercent: number
-  widthPercent: number
+  /** The calls this row stands for, as the wire names them; empty on a row stored before `call_id`. */
+  callIds: string[]
+  /** Set when same-kind calls are folded into this row. */
+  fold?: WorkFold
   /** The places this call looked at (a `look` row), drawn as thumbnails under it. */
   looks: LookStepPlace[]
 }
@@ -39,26 +48,22 @@ export interface WorkRow {
 export interface WorkRound {
   /** The wire's round number; calls that carry none sit in the round before them (the first, at the start). */
   round: number
-  /** The reader's number, from 1, in the order the rounds happened. */
-  ordinal: number
+  /** The rows in view, in the order the calls started, or worst first in a round over {@link MAX_ROWS}. */
   rows: WorkRow[]
+  /** The rows folded into „+N weitere“; empty in a round of {@link MAX_ROWS} or fewer. */
+  more: WorkRow[]
   /** Looks of the round that no look row of it explains: drawn as the look rows always were. */
   strayLooks: StoredThinkingStep[]
-  /** The round's wall time, start of the first call to the end of the last; null while one is running. */
-  durationMs: number | null
   running: boolean
 }
 
-const startOf = (step: StoredThinkingStep): number | null => {
+const startOf = (step: StoredThinkingStep): number => {
   const ms = Date.parse(step.timestamp)
-  return Number.isFinite(ms) ? ms : null
+  return Number.isFinite(ms) ? ms : 0
 }
 
 const isRunning = (step: StoredThinkingStep, action: StoredAction): boolean =>
   !step.isComplete && action.status === 'running'
-
-const endOf = (startMs: number | null, action: StoredAction, running: boolean): number | null =>
-  startMs === null || running || action.elapsedMs === undefined ? null : startMs + action.elapsedMs
 
 /** Whether a look at `place` is the one this `look` row made. */
 const isLookOf = (action: StoredAction, place: LookStepPlace): boolean => {
@@ -67,63 +72,89 @@ const isLookOf = (action: StoredAction, place: LookStepPlace): boolean => {
   return Boolean(action.target) && action.target === place.place.document.name
 }
 
-interface Draft {
-  step: StoredThinkingStep
-  action: StoredAction
-  running: boolean
-  startMs: number | null
-  endMs: number | null
-}
-
-const rowsOf = (
-  drafts: Draft[],
-  places: LookStepPlace[]
-): { rows: WorkRow[]; used: Set<string> } => {
-  const timed = drafts.filter((draft) => draft.startMs !== null)
-  const origin = timed.length > 0 ? Math.min(...timed.map((draft) => draft.startMs as number)) : 0
-  const finished = timed.map((draft) => draft.endMs).filter((end): end is number => end !== null)
-  const lastStart =
-    timed.length > 0 ? Math.max(...timed.map((draft) => draft.startMs as number)) : origin
-  const axisEnd = Math.max(lastStart, ...finished)
-  const span = axisEnd - origin
-  const used = new Set<string>()
-  const rows = drafts.map((draft): WorkRow => {
-    const left = draft.startMs === null || span <= 0 ? 0 : ((draft.startMs - origin) / span) * 100
-    const minimum = draft.running ? MIN_RUNNING_PERCENT : MIN_BAR_PERCENT
-    const raw =
-      draft.running || draft.endMs === null || draft.startMs === null
-        ? 100 - left
-        : span <= 0
-          ? 100
-          : ((draft.endMs - draft.startMs) / span) * 100
-    const leftPercent = Math.min(left, 100 - minimum)
-    const widthPercent = Math.min(Math.max(raw, minimum), 100 - leftPercent)
-    const looks =
-      draft.action.verb === 'look'
-        ? places.filter((place) => !used.has(place.id) && isLookOf(draft.action, place))
+/** The rounds the decision ran before the model's first call: no row of their own. */
+export const prefetchRounds = (steps: readonly StoredThinkingStep[]): Set<number> =>
+  new Set(
+    steps.flatMap((step) =>
+      step.kind === 'retrieval' && step.round !== undefined && step.detail?.prefetch === true
+        ? [step.round]
         : []
-    for (const place of looks) used.add(place.id)
-    return {
-      id: draft.step.id,
-      action: draft.action,
-      running: draft.running,
-      startMs: draft.startMs,
-      endMs: draft.endMs,
-      leftPercent,
-      widthPercent,
-      looks,
+    )
+  )
+
+/** How bad a row's outcome is, for „worst first“: failed, then empty, then running, then found. */
+const severity = (row: WorkRow): number =>
+  row.running ? 2 : row.action.status === 'error' ? 0 : row.action.status === 'empty' ? 1 : 3
+
+const sum = (values: Array<number | undefined>): number | undefined =>
+  values.some((value) => value !== undefined)
+    ? values.reduce<number>((a, b) => a + (b ?? 0), 0)
+    : undefined
+
+/** The key same-kind calls share: verb and match mode, settled with a result. Running, empty and failed rows never fold. */
+const foldKey = (row: WorkRow): string | null =>
+  row.running || row.action.status !== 'ok' || row.looks.length > 0
+    ? null
+    : `${row.action.verb}:${row.action.mode ?? ''}`
+
+/** Three or more settled same-kind calls of a round as one row, at the place of the first. */
+export function foldRows(rows: readonly WorkRow[]): WorkRow[] {
+  const groups = new Map<string, WorkRow[]>()
+  for (const row of rows) {
+    const key = foldKey(row)
+    if (key) groups.set(key, [...(groups.get(key) ?? []), row])
+  }
+  const out: WorkRow[] = []
+  for (const row of rows) {
+    const key = foldKey(row)
+    const group = key ? groups.get(key) : undefined
+    if (!group || group.length < FOLD_FROM) {
+      out.push(row)
+      continue
     }
-  })
-  return { rows, used }
+    if (group[0] !== row) continue
+    const counts = {
+      hits: sum(group.map((member) => member.action.counts?.hits)),
+      files: sum(group.map((member) => member.action.counts?.files)),
+      folders: sum(group.map((member) => member.action.counts?.folders)),
+    }
+    out.push({
+      ...row,
+      callIds: group.flatMap((member) => member.callIds),
+      fold: {
+        count: group.length,
+        counts: Object.fromEntries(
+          Object.entries(counts).filter(([, value]) => value !== undefined)
+        ),
+      },
+    })
+  }
+  return out
 }
 
-/** The turn's action rows grouped by round, with each round's time axis; empty when the turn has no actions. */
+/** A round over {@link MAX_ROWS}: the worst {@link KEPT_ROWS} in view, the rest folded. */
+export function limitRows(rows: readonly WorkRow[]): { rows: WorkRow[]; more: WorkRow[] } {
+  if (rows.length <= MAX_ROWS) return { rows: [...rows], more: [] }
+  const ranked = rows
+    .map((row, index) => ({ row, index }))
+    .sort((a, b) => severity(a.row) - severity(b.row) || a.index - b.index)
+  return {
+    rows: ranked.slice(0, KEPT_ROWS).map(({ row }) => row),
+    more: ranked.slice(KEPT_ROWS).map(({ row }) => row),
+  }
+}
+
+/** The turn's action rows grouped by round; empty when the turn has no actions. The prefetch draws none. */
 export function workRounds(steps: readonly StoredThinkingStep[]): WorkRound[] {
-  const byRound = new Map<number, { drafts: Draft[]; looks: StoredThinkingStep[] }>()
+  const prefetch = prefetchRounds(steps)
+  const byRound = new Map<
+    number,
+    { rows: Array<{ row: WorkRow; start: number }>; looks: StoredThinkingStep[] }
+  >()
   const slot = (round: number) => {
     const known = byRound.get(round)
     if (known) return known
-    const created = { drafts: [], looks: [] }
+    const created = { rows: [], looks: [] }
     byRound.set(round, created)
     return created
   }
@@ -132,50 +163,57 @@ export function workRounds(steps: readonly StoredThinkingStep[]): WorkRound[] {
     if (step.scope === 'deep') continue
     if (step.round !== undefined && (step.kind === 'action' || step.kind === 'look'))
       current = step.round
+    if (prefetch.has(current) && (step.kind === 'action' || step.kind === 'look')) continue
     if (step.kind === 'look') {
       slot(current).looks.push(step)
       continue
     }
     if (step.kind !== 'action' || !step.action) continue
-    const running = isRunning(step, step.action)
-    const startMs = startOf(step)
-    slot(current).drafts.push({
-      step,
-      action: step.action,
-      running,
-      startMs,
-      endMs: endOf(startMs, step.action, running),
+    slot(current).rows.push({
+      start: startOf(step),
+      row: {
+        id: step.id,
+        action: step.action,
+        running: isRunning(step, step.action),
+        callIds: step.callId ? [step.callId] : [],
+        looks: [],
+      },
     })
   }
 
   const rounds: WorkRound[] = []
   for (const round of [...byRound.keys()].sort((a, b) => a - b)) {
-    const { drafts, looks } = byRound.get(round)!
+    const { rows: drafts, looks } = byRound.get(round)!
     if (drafts.length === 0) continue
-    drafts.sort((a, b) => (a.startMs ?? 0) - (b.startMs ?? 0))
     const places = looks.flatMap((step) => lookStepPlace(step) ?? [])
-    const { rows, used } = rowsOf(drafts, places)
-    const running = rows.some((row) => row.running)
-    const starts = rows.flatMap((row) => (row.startMs === null ? [] : [row.startMs]))
-    const ends = rows.flatMap((row) => (row.endMs === null ? [] : [row.endMs]))
-    const timed = !running && starts.length > 0 && ends.length > 0
+    const used = new Set<string>()
+    const rows = [...drafts]
+      .sort((a, b) => a.start - b.start)
+      .map(({ row }) => {
+        if (row.action.verb !== 'look') return row
+        const mine = places.filter((place) => !used.has(place.id) && isLookOf(row.action, place))
+        for (const place of mine) used.add(place.id)
+        return { ...row, looks: mine }
+      })
+    const limited = limitRows(foldRows(rows))
     rounds.push({
       round,
-      ordinal: rounds.length + 1,
-      rows,
+      ...limited,
       strayLooks: looks.filter((step) => !used.has(step.id)),
-      durationMs: timed ? Math.max(...ends) - Math.min(...starts) : null,
-      running,
+      running: rows.some((row) => row.running),
     })
   }
   return rounds
 }
 
+/** Every row of a round, in view and folded. */
+export const allRows = (round: WorkRound): WorkRow[] => [...round.rows, ...round.more]
+
 /** The ids of the looks the rounds draw themselves: what the bare look rows must not repeat. */
 export const placedLookIds = (rounds: readonly WorkRound[]): Set<string> =>
   new Set(
     rounds.flatMap((round) => [
-      ...round.rows.flatMap((row) => row.looks.map((look) => look.id)),
+      ...allRows(round).flatMap((row) => row.looks.map((look) => look.id)),
       ...round.strayLooks.map((step) => step.id),
     ])
   )
@@ -195,24 +233,72 @@ export function withActionRounds(
     if (known.has(round.round)) continue
     extra.set(round.round, { index: round.round, key: 'action', tools: [], sourceNames: [] })
   }
-  return extra.size === 0 ? [...rounds] : [...rounds, ...extra.values()].sort((a, b) => a.index - b.index)
+  return extra.size === 0
+    ? [...rounds]
+    : [...rounds, ...extra.values()].sort((a, b) => a.index - b.index)
 }
 
 /** Whether a turn drew any action: the work list replaces the bare look rows only then. */
 export const hasActions = (steps: readonly StoredThinkingStep[]): boolean =>
   steps.some((step) => step.kind === 'action' && step.action && step.scope !== 'deep')
 
-/** „2,4 s“; under a tenth of a second „< 0,1 s“; a minute or more „1:05 min“. */
-export function formatWorkDuration(ms: number, locale: string): string {
-  const seconds = Math.max(0, ms) / 1000
-  if (seconds >= 60) {
-    const minutes = Math.floor(seconds / 60)
-    const rest = Math.round(seconds - minutes * 60)
-    return `${minutes}:${String(rest).padStart(2, '0')} min`
+/**
+ * What the reader tapped in the Herleitung: a row or a source card, and the
+ * calls it stands for. The other side of the link is whatever shares one of
+ * those calls (`call_id`): a row's cards stay bright, a card's rows light up.
+ */
+export interface LinkSelection {
+  /** The row id or the card key that was tapped. */
+  key: string
+  callIds: readonly string[]
+}
+
+/** Whether something standing for `callIds` is linked to the selection. Nothing is, without a call id. */
+export const isLinked = (selection: LinkSelection | null, callIds: readonly string[]): boolean =>
+  selection !== null && callIds.some((id) => selection.callIds.includes(id))
+
+/**
+ * The calls that returned each document, by normalized name: read off the
+ * `sources` steps that carry their call's id. A document no such step names
+ * (a turn stored before `call_id`, the prefetch's own hits) maps to nothing,
+ * and links to nothing.
+ */
+export function callIdsByDocument(
+  steps: readonly StoredThinkingStep[],
+  normalize: (name: string) => string
+): Map<string, string[]> {
+  const out = new Map<string, string[]>()
+  for (const step of steps) {
+    if (step.kind !== 'sources' || !step.callId) continue
+    for (const lane of step.traceLanes ?? []) {
+      for (const source of lane.sources) {
+        for (const name of [source.name, source.title]) {
+          const key = name ? normalize(name) : ''
+          if (!key) continue
+          const known = out.get(key) ?? []
+          if (!known.includes(step.callId)) out.set(key, [...known, step.callId])
+        }
+      }
+    }
   }
-  const number = new Intl.NumberFormat(locale, {
-    minimumFractionDigits: 1,
-    maximumFractionDigits: 1,
-  })
-  return seconds < 0.05 ? `< ${number.format(0.1)} s` : `${number.format(seconds)} s`
+  return out
+}
+
+export type WorkKind = 'search' | 'read' | 'list' | 'look' | 'model' | 'workspace'
+
+const SEARCH_VERBS: ReadonlySet<StoredAction['verb']> = new Set(['search', 'lookup', 'law', 'web'])
+
+/**
+ * What a step did, from its calls: any search makes it a search, else any
+ * read makes it a read, else the first call's own kind. The reader's word
+ * for the step („Schritt 2 · Lesen“), never a tool's name.
+ */
+export function workKind(round: WorkRound): WorkKind {
+  const verbs = allRows(round).map((row) => row.action.verb)
+  if (verbs.some((verb) => SEARCH_VERBS.has(verb))) return 'search'
+  if (verbs.includes('read')) return 'read'
+  const first = verbs[0]
+  return first === 'list' || first === 'look' || first === 'model' || first === 'workspace'
+    ? first
+    : 'read'
 }

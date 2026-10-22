@@ -1,7 +1,8 @@
 /**
- * The work list as the Herleitung draws it (ADR-0131): rounds with a header,
- * one row per call, bars on the shared axis, an error in the error tone, a
- * click that opens the document, and a listing that opens nothing.
+ * The work list as the Herleitung draws it (ADR-0131): one row per call, the
+ * verb muted before its object and the result beside it; status as a shape and
+ * a word, never a colour; a tap that links a row to its cards; a row stored
+ * before call ids opening its document as it did; no time anywhere.
  */
 import type { ReactElement } from 'react'
 import { render as renderPlain, screen, within } from '@/test-utils'
@@ -10,13 +11,19 @@ import userEvent from '@testing-library/user-event'
 import { describe, expect, test, vi } from 'vitest'
 import { installLayoutObservers } from '@/test-utils/layout-observers'
 import { fakePdfjsRuntime, type FakePdfState } from '@/test-utils/pdfjs-fake'
-import { foldScene, northStarLiveScene, northStarScene } from '@/test-utils/work-list-scenes'
+import {
+  foldScene,
+  mockupCitations,
+  mockupScene,
+  northStarLiveScene,
+  northStarScene,
+} from '@/test-utils/work-list-scenes'
 import { storedSteps } from '@/test-utils/wire-v2-steps'
 import { createTranslator } from '@/i18n/translate'
 import { de } from '@/i18n/dictionaries/de'
 import { placedLookIds, workRounds } from '../../lib/work-list'
 import { planFan, ReasoningFlow, buildGraph } from './ReasoningFlow'
-import { RoundCalls, RoundMeta, placeOfAction } from './WorkList'
+import { RoundCalls, placeOfAction } from './WorkList'
 
 const state = vi.hoisted((): FakePdfState => ({
   fail: false,
@@ -36,86 +43,100 @@ const render = (ui: ReactElement) =>
 const rounds = (steps: ReturnType<typeof foldScene>) => workRounds(steps)
 
 describe('RoundCalls', () => {
-  test('draws a row per call with its sentence, and a header meta with concurrency and time', () => {
+  test('a row is verb, object and result; no time and no bar', () => {
     const restore = installLayoutObservers()
     const [first] = rounds(foldScene(northStarScene()))
-    render(
-      <>
-        <RoundMeta round={first} />
-        <RoundCalls round={first} eager />
-      </>
-    )
-    expect(screen.getByTestId('work-round-meta')).toHaveTextContent('3 gleichzeitig · 2,4 s')
+    render(<RoundCalls round={first} eager />)
     const items = screen.getAllByTestId('work-row')
     expect(items).toHaveLength(3)
     expect(items[0]).toHaveTextContent(
-      'Sucht im Projekt wörtlich „Brandabschnitt“ · 14 Treffer in 3 von 212 Dokumenten'
+      'Sucht wörtlich „Brandabschnitt“ im Projekt14 Treffer · 3 Dokumente'
     )
-    expect(items[1]).toHaveTextContent('Öffnet 03 Einreichung › Pläne · 12 Dateien, 2 Ordner')
-    expect(items[2]).toHaveTextContent(
-      'Sucht im Basiswissen „Brandabschnitte Fläche“ · 6 Treffer in 2 Dokumenten'
-    )
+    expect(items[1]).toHaveTextContent('Öffnet 03 Einreichung › Pläne12 Dateien, 2 Ordner')
+    expect(screen.queryByTestId('work-bar')).toBeNull()
+    expect(document.body).not.toHaveTextContent(/\d,\d s|gleichzeitig/)
     restore()
   })
 
-  test('the look call carries its crop thumbnail, the read call its pages', () => {
+  test('the look call carries its crop, read off and not measured; the read its pages', () => {
     const restore = installLayoutObservers()
     const second = rounds(foldScene(northStarScene()))[1]
     render(<RoundCalls round={second} eager />)
     const items = screen.getAllByTestId('work-row')
-    expect(items[0]).toHaveTextContent('Liest Einreichplan EG.pdf, S. 2-3')
+    expect(items[0]).toHaveTextContent('Liest Einreichplan EG.pdf, S. 2–3')
     expect(within(items[1]).getByTestId('page-place-button')).toBeInTheDocument()
+    expect(items[1]).toHaveTextContent('abgelesen, nicht gemessen')
     restore()
   })
 
-  test('puts each bar where the data says', () => {
-    render(<RoundCalls round={rounds(foldScene(northStarScene()))[0]} />)
-    const bars = screen.getAllByTestId('work-bar')
-    expect(bars[0]).toHaveStyle({ left: '0%' })
-    expect(bars[1].style.left).toBe(`${(100 / 2400) * 100}%`)
-  })
-
-  test('a running round has no time in its meta and its rows say so', () => {
+  test('a running row says so in a word', () => {
     const live = rounds(foldScene(northStarLiveScene()))[1]
-    render(
-      <>
-        <RoundMeta round={live} />
-        <RoundCalls round={live} />
-      </>
-    )
-    expect(screen.getByTestId('work-round-meta')).toHaveTextContent(/^· 2 gleichzeitig$/)
+    render(<RoundCalls round={live} />)
     const running = screen
       .getAllByTestId('work-row')
       .filter((row) => row.dataset.status === 'running')
     expect(running).toHaveLength(2)
+    expect(running[0]).toHaveTextContent('läuft')
   })
 
-  test('an error row is drawn in the error tone', () => {
+  test('a failed row says so with a shape and a word, never the error colour', () => {
     const steps = storedSteps([
       {
         id: 'a',
         call_id: 'c',
         kind: 'action',
-        verb: 'read',
+        verb: 'law',
         round: 1,
-        target: 'EG.pdf',
+        query: 'Wiener Garagengesetz 2008',
         status: 'error',
         elapsed_ms: 300,
       },
     ])
     render(<RoundCalls round={rounds(steps)[0]} />)
-    expect(screen.getByTestId('work-row')).toHaveTextContent('Liest EG.pdf · fehlgeschlagen')
-    expect(screen.getByText(/fehlgeschlagen/)).toHaveClass('text-error')
+    const result = screen.getByTestId('work-row-result')
+    expect(result).toHaveTextContent('fehlgeschlagen · die Antwort stützt sich nicht darauf')
+    expect(result.querySelector('svg')).not.toBeNull()
+    expect(result.className).not.toMatch(/text-error/)
   })
 
-  test('a document row opens the document; a listing opens nothing', async () => {
+  test('a row with a call id is a button that links; its name is the sentence', async () => {
+    const onSelect = vi.fn()
+    const [first] = rounds(foldScene(mockupScene()))
+    const { rerender } = render(
+      <RoundCalls round={first} linking={{ selection: null, onSelect }} />
+    )
+    const button = screen.getByRole('button', {
+      name: 'Sucht wörtlich „Brandabschnitt“ im Projekt: 14 Treffer · 3 Dokumente',
+    })
+    expect(button).toHaveAttribute('aria-pressed', 'false')
+    await userEvent.click(button)
+    expect(onSelect).toHaveBeenCalledWith({ key: 'call:c1', callIds: ['call:c1'] })
+    rerender(
+      <I18nProvider initialLocale="de" fixedLocale>
+        <RoundCalls
+          round={first}
+          linking={{ selection: { key: 'call:c1', callIds: ['call:c1'] }, onSelect }}
+        />
+      </I18nProvider>
+    )
+    expect(screen.getByRole('button', { name: /^Sucht wörtlich/ })).toHaveAttribute(
+      'aria-pressed',
+      'true'
+    )
+    // a second tap clears it
+    await userEvent.click(screen.getByRole('button', { name: /^Sucht wörtlich/ }))
+    expect(onSelect).toHaveBeenLastCalledWith(null)
+  })
+
+  test('a row stored before call ids opens its document; a listing opens nothing', async () => {
     const restore = installLayoutObservers()
-    render(<RoundCalls round={rounds(foldScene(northStarScene()))[0]} />)
+    const old = foldScene(northStarScene()).map((step) => ({ ...step, callId: undefined }))
+    render(<RoundCalls round={rounds(old)[0]} linking={{ selection: null, onSelect: () => {} }} />)
     const [list] = screen.getAllByTestId('work-row').filter((row) => row.dataset.verb === 'list')
     expect(within(list).queryByRole('button')).toBeNull()
     restore()
     const restoreSecond = installLayoutObservers()
-    render(<RoundCalls round={rounds(foldScene(northStarScene()))[1]} />)
+    render(<RoundCalls round={rounds(old)[1]} />)
     await userEvent.click(screen.getAllByRole('button', { name: 'Einreichplan EG.pdf öffnen' })[0])
     expect(await screen.findByRole('dialog')).toBeInTheDocument()
     restoreSecond()
@@ -123,8 +144,9 @@ describe('RoundCalls', () => {
 })
 
 describe('the calls inside the graph', () => {
+  const t = createTranslator(de, 'chat')
+
   test("buildGraph puts each round's calls on its round node, even for a single round", () => {
-    const t = createTranslator(de, 'chat')
     const steps = foldScene(northStarScene())
     const graph = buildGraph({ steps, userQuestion: 'Frage?' }, t, planFan(680, 0), [])
     const roundNodes = graph.nodes.filter((node) => node.type === 'round')
@@ -135,12 +157,64 @@ describe('the calls inside the graph', () => {
     expect(placedLookIds(workRounds(steps)).size).toBe(1)
   })
 
-  test('ReasoningFlow draws the rows in the graph and no second look block', () => {
+  test('ReasoningFlow draws the rows in the graph, no second look block, and no round time', () => {
     const restore = installLayoutObservers()
     render(<ReasoningFlow steps={foldScene(northStarScene())} userQuestion="Frage?" />)
     expect(screen.getAllByTestId('work-row')).toHaveLength(5)
     expect(screen.queryByTestId('look-step-rows')).toBeNull()
-    expect(screen.getAllByTestId('work-round-meta')[0]).toHaveTextContent('3 gleichzeitig')
+    expect(screen.queryByTestId('work-round-meta')).toBeNull()
+    restore()
+  })
+
+  test('tapping a row keeps its cards bright and sets the others back; tapping it again clears it', async () => {
+    const restore = installLayoutObservers()
+    render(
+      <ReasoningFlow
+        steps={foldScene(mockupScene())}
+        userQuestion="Frage?"
+        citations={mockupCitations()}
+      />
+    )
+    const read = screen.getByRole('button', { name: /^Liest Einreichplan EG\.pdf/ })
+    await userEvent.click(read)
+    const cards = screen
+      .getAllByRole('listitem')
+      .filter((el) => el.hasAttribute('data-source-card'))
+    const linkOf = (name: RegExp) =>
+      cards.find((card) => name.test(card.textContent ?? ''))?.dataset.link
+    expect(linkOf(/Einreichplan EG/)).toBe('linked')
+    expect(linkOf(/Brandschutzkonzept/)).toBe('receded')
+    expect(read).toHaveAttribute('aria-pressed', 'true')
+    await userEvent.click(read)
+    expect(linkOf(/Einreichplan EG/)).toBeUndefined()
+    restore()
+  })
+
+  test('tapping a card lights up the row of the call that returned it', async () => {
+    const restore = installLayoutObservers()
+    render(
+      <ReasoningFlow
+        steps={foldScene(mockupScene())}
+        userQuestion="Frage?"
+        citations={mockupCitations()}
+      />
+    )
+    const concept = screen
+      .getAllByRole('listitem')
+      .find(
+        (el) =>
+          el.hasAttribute('data-source-card') && /Brandschutzkonzept/.test(el.textContent ?? '')
+      )!
+    // The preview chip inside is the button; the tap bubbles to the card.
+    await userEvent.click(concept)
+    expect(screen.getByRole('button', { name: /^Sucht wörtlich/ })).toHaveAttribute(
+      'aria-pressed',
+      'true'
+    )
+    expect(screen.getByRole('button', { name: /^Liest Einreichplan/ })).toHaveAttribute(
+      'aria-pressed',
+      'false'
+    )
     restore()
   })
 })
