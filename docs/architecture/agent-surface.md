@@ -242,6 +242,10 @@ Three habits borrowed from PostHog's MCP keep an agent from needing a second
 round. A validation refusal quotes the description of the field it names
 (`query.limit: Expected number, received string (Number of results to return per
 page)`), looked up once in `dispatch.ts` through `field-description.ts`. A
+path or query key the operation does not take is refused with the keys it does
+take (`project-list: query.limit is not an input; it takes view, nameContains`):
+zod strips an unknown key and the route never reads it, so before this an agent
+sending `limit` to an unpaged list was answered as though the limit held. A
 schema larger than 4,000 characters (`layered-schema.ts`; the catalog's median is
 333, p95 1,040, and only `bim-model-query` and `project-profile-replace` pass
 4,000) comes back from `describe-operation` as an outline: small fields whole,
