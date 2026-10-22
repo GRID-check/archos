@@ -1952,6 +1952,10 @@
     "de": "Beim Verschieben oder Umbenennen eines Ordners wird jetzt angezeigt, welcher Name am Zielort bereits vergeben ist, statt dass der Vorgang ohne Begründung fehlschlägt."
   },
   {
+    "en": "My feedback now lists your open cases first, each with where it stands, its number and when it last moved. Office admins can switch to Our office and follow every case their colleagues reported.",
+    "de": "Mein Feedback zeigt jetzt zuerst Ihre offenen Fälle an – jeweils mit Status, Nummer und Zeitpunkt der letzten Änderung. Büro-Admins können zu „Unser Büro“ wechseln und alle Fälle verfolgen, die ihre Kolleginnen und Kollegen gemeldet haben."
+  },
+  {
     "en": "Naming a skill with a slash now simply writes its name into your message, and Piloti picks that skill from there. What reaches Piloti is exactly the text you sent.",
     "de": "Einen Skill mit Schrägstrich zu nennen schreibt jetzt einfach seinen Namen in Ihre Nachricht, und Piloti greift von dort zum gemeinten Skill. Bei Piloti kommt genau der Text an, den Sie abgeschickt haben."
   },
@@ -2526,6 +2530,10 @@
   {
     "en": "Replaced versions keep their files and count towards your organization's storage quota.",
     "de": "Ersetzte Fassungen behalten ihre Dateien und zählen weiter auf das Speicherkontingent Ihrer Organisation."
+  },
+  {
+    "en": "Replying to the Piloti team on a phone works: the reply box stays above the keyboard, the keyboard stays up after sending, and a reply from the team now marks your avatar so you notice it.",
+    "de": "Wenn Sie dem Piloti-Team am Handy antworten, bleibt das Antwortfeld über der Tastatur, die Tastatur bleibt nach dem Senden geöffnet und eine Antwort des Teams hebt jetzt Ihren Avatar hervor, damit Sie sie bemerken."
   },
   {
     "en": "Reports Piloti writes are not cited as sources until someone approves and publishes them. To use one sooner, upload it yourself once you have checked it.",
@@ -3670,6 +3678,10 @@
   {
     "en": "When the AI is briefly overloaded, Piloti no longer ends your question with an error; it waits a moment and tries again.",
     "de": "Wenn die KI kurz überlastet ist, bricht Piloti Ihre Frage nicht mehr mit einem Fehler ab, sondern wartet einen Moment und versucht es erneut."
+  },
+  {
+    "en": "When the Piloti team answers feedback you sent, you now get a notification in your inbox and on your devices, and it opens the conversation under My feedback.",
+    "de": "Wenn das Piloti-Team auf Ihr Feedback antwortet, erhalten Sie jetzt eine Benachrichtigung in Ihrem Posteingang und auf Ihren Geräten. Sie öffnet die Unterhaltung unter „Mein Feedback“."
   },
   {
     "en": "When the Piloti team answers your feedback, you now read the answer in Piloti under My feedback and can reply right there in the chat; a count shows when something new arrived.",
