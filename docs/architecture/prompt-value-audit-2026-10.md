@@ -20,8 +20,18 @@ kept when the case still applies, and the test now pins the new wording.
 
 ## The order
 
-Most important first and last, reference in the middle, as the in-window vendor
-guidance the brief cites recommends (vendor guides dated 2026-09/10):
+Identity and goal first, the definition of done last, reference in the middle.
+The sources, fetched 2026-10-22 and dated by the newest model each names against
+the vendor's dated release notes (none shows a date of its own except Gemini's):
+
+- Anthropic, [Prompting best practices](https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices): names Haiku 5.5, so on or after 2026-10-07. Long material above, query and instructions below; a role sentence first.
+- Anthropic, [Prompting Claude Opus 5.5](https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/prompting-claude-opus-5-5) (model released 2026-09-22) and [Sonnet 5.5](https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/prompting-claude-sonnet-5-5) (2026-09-28): turn-ending and settled-answer blocks go at the end of the system prompt.
+- Anthropic, [Prompt caching](https://platform.claude.com/docs/en/build-with-claude/prompt-caching) and [Mid-conversation system messages](https://platform.claude.com/docs/en/build-with-claude/mid-conversation-system-messages) (on or after 2026-09-15 and 2026-08-21 by their beta headers): per-turn content after the stable prefix.
+- OpenAI, [Prompt engineering](https://developers.openai.com/api/docs/guides/prompt-engineering) (names gpt-6-astra, on or after 2026-09-03): identity, instructions, examples, context near the end.
+- Google, [Gemini prompting strategies](https://ai.google.dev/gemini-api/docs/prompting-strategies) (last updated 2026-10-13): context first, the specific instruction at the very end.
+
+No in-window source states a general rule that the beginning and the end
+weigh most; the order above follows what each says about its own blocks.
 
 | Position | Section | What it holds |
 |---|---|---|

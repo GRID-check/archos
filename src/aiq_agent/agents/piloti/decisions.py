@@ -535,8 +535,9 @@ def _corpus_prefetch(
     calls: list[dict[str, Any]] = [{"name": KNOWLEDGE_SEARCH, "args": args}]
     shelf = _LITERAL_SHELF.get(decisions.corpus)
     if shelf:
+        scope = {"file_name": focus_file_name} if focus_file_name else {}
         calls.extend(
-            {"name": KNOWLEDGE_SEARCH, "args": {"query": term, "match": "exact", "shelf": shelf}}
+            {"name": KNOWLEDGE_SEARCH, "args": {"query": term, "match": "exact", "shelf": shelf, **scope}}
             for term in literal_terms(question)
         )
     if decisions.corpus == "baurecht" and family_query_number(query) is None:

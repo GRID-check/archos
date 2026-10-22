@@ -372,9 +372,11 @@ def request_messages(
 ) -> list[BaseMessage]:
     """The request for one model call: system, history, turn context, newest human message, this turn. Pure.
 
-    The turn context goes right BEFORE the last human message, so everything
-    in front of it — the system prompt and every earlier turn — is a prefix
-    the next round and the next turn share byte for byte. A transcript with no
+    The turn context goes right BEFORE the last human message and is never
+    stored, so every round of a turn shares the whole prefix up to and
+    including it, and the next turn shares the system prompt and every turn
+    before the previous question (that question was sent behind its own
+    context, which the next turn no longer carries). A transcript with no
     human message gets it right after the system prompt. Steering notes are
     spliced after it: they arrive while the turn runs, so they index past the
     newest human message, and two messages (system, context) precede the

@@ -265,6 +265,16 @@ class TestThePrefetch:
             {"name": "knowledge_search", "args": {"query": "Rauchabzug", "match": "exact", "shelf": "project"}},
         ]
 
+    def test_an_exact_prefetch_stays_in_the_open_document(self):
+        q = "Wo steht „Rauchabzug“?"
+        calls = prefetch_calls(self._decided("projekt"), q, focus_file_name="Gutachten.pdf")
+        assert calls[1]["args"] == {
+            "query": "Rauchabzug",
+            "match": "exact",
+            "shelf": "project",
+            "file_name": "Gutachten.pdf",
+        }
+
     def test_codes_and_file_names_are_literal_terms_at_most_two_and_the_office_shelf_follows_the_corpus(self):
         q = "Vergleiche A-101, EG_02, 04-112 und Grundriss_EG.pdf"
         assert literal_terms(q) == ["A-101", "EG_02"]
