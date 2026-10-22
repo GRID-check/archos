@@ -936,6 +936,17 @@ export const files = {
    * The Outlook archive import (ADR-0085): a .pst or .ost sent in parts, then
    * filed by a background job, one folder per mail.
    */
+  // The way into the E-Mail-Eingang from Dateien (ADR-0134): the header entry,
+  // its count, the upload menu's address entry and the quiet line above the shelf.
+  inboundMail: {
+    open: 'Project mail',
+    waitingAria: '{count, plural, one {# mail waiting to be filed} other {# mails waiting to be filed}}',
+    sendByMail: 'Send by mail …',
+    sendByMailHint: 'Forward mail to the project mail address',
+    waitingLine: '{count, plural, one {# mail waits to be filed} other {# mails wait to be filed}}',
+    waitingLineMore: 'More than {count} mails wait to be filed',
+    view: 'View',
+  },
   mailImport: {
     action: 'Import Outlook archive',
     title: 'Import an Outlook archive',

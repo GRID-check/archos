@@ -909,6 +909,15 @@ export const files: typeof en.files = {
     foldersError: 'Die Ordner für diesen Upload konnten nicht angelegt werden. Es wurde nichts hochgeladen.',
     applyError: 'Dieser Ordner konnte nicht vollständig hochgeladen werden. Prüfen Sie die Liste und versuchen Sie es erneut.',
   },
+  inboundMail: {
+    open: 'E-Mail-Eingang',
+    waitingAria: '{count, plural, one {# E-Mail wartet auf Ablage} other {# E-Mails warten auf Ablage}}',
+    sendByMail: 'Per E-Mail senden …',
+    sendByMailHint: 'E-Mails an die E-Mail-Adresse des Projekts weiterleiten',
+    waitingLine: '{count, plural, one {# E-Mail wartet auf Ablage} other {# E-Mails warten auf Ablage}}',
+    waitingLineMore: 'Mehr als {count} E-Mails warten auf Ablage',
+    view: 'Ansehen',
+  },
   mailImport: {
     action: 'Outlook-Archiv importieren',
     title: 'Outlook-Archiv importieren',
