@@ -2613,7 +2613,7 @@ function ReaderActions({
         >
           {annotate.count > 0 ? <MessageSquareText className="size-4" aria-hidden /> : <MessageSquarePlus className="size-4" aria-hidden />}
           <span className={cn('truncate', bar && 'max-[27.5rem]:sr-only')}>{annotate.label}</span>
-          {annotate.count > 0 && <CountPill aria-hidden>{annotate.count}</CountPill>}
+          {annotate.count > 0 && <CountPill aria-hidden count={annotate.count} />}
         </Button>
       )}
       {discuss}

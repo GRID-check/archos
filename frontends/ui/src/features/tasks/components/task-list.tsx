@@ -142,9 +142,8 @@ export function TaskList({
             {t(`filters.${option}`)}
             <CountPill
               tone={option === 'unreviewed' && counts.unreviewed > 0 ? 'attention' : 'muted'}
-            >
-              {counts[option]}
-            </CountPill>
+              count={counts[option]}
+            />
           </ToggleGroupItem>
         ))}
       </ToggleGroup>

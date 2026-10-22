@@ -101,7 +101,7 @@ export function TallyPill({ tally, count, label }: { tally: CountKey; count: num
     <Chip variant={look.tone} size="sm" data-testid={`upload-pill-${tally}`}>
       <Icon aria-hidden />
       {label}
-      <ChipCount>{count}</ChipCount>
+      <ChipCount count={count} />
     </Chip>
   )
 }
@@ -128,7 +128,7 @@ export function NamedCount({ name, count }: { name: string; count: number }): JS
   return (
     <Chip variant="muted" className="max-w-full">
       <span className="truncate">{name}</span>
-      <ChipCount>{count}</ChipCount>
+      <ChipCount count={count} />
     </Chip>
   )
 }
@@ -141,7 +141,7 @@ export function FolderHeading({ label, count }: { label: string; count: number }
       <span className="min-w-0 truncate" title={label}>
         {label}
       </span>
-      <CountPill>{count}</CountPill>
+      <CountPill count={count} />
     </h4>
   )
 }

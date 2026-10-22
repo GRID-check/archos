@@ -129,7 +129,7 @@ export function OfficeShelfWorkspace({
                 <h2 className="text-foreground truncate text-sm font-semibold tracking-tight">{t('title')}</h2>
                 <span className="inline-flex h-5 min-w-5 shrink-0 items-center justify-center">
                   {count !== null && count > 0 && (
-                    <CountPill data-testid="office-shelf-document-count">{count}</CountPill>
+                    <CountPill data-testid="office-shelf-document-count" count={count} />
                   )}
                 </span>
               </div>

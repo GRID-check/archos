@@ -359,7 +359,7 @@ function AboutSection({ brief, onSelect }: { brief: FolderBriefData; onSelect: (
                 data-testid={`folder-brief-topic-${label}`}
               >
                 <ChipLabel>{label}</ChipLabel>
-                <ChipCount>{count}</ChipCount>
+                <ChipCount count={count} />
               </button>
             </Chip>
           ))}
@@ -503,7 +503,7 @@ function TagChip({
         data-testid={`folder-brief-tag-${label}`}
       >
         <ChipLabel>{label}</ChipLabel>
-        <ChipCount>{count}</ChipCount>
+        <ChipCount count={count} />
       </button>
     </Chip>
   )

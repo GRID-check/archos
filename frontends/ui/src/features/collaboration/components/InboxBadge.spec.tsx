@@ -39,8 +39,9 @@ describe('InboxBadge', () => {
   test('caps the visible number at 99+ but keeps the true count in the label', () => {
     render(<InboxBadge pending={128} />)
     const badge = screen.getByTestId('inbox-badge')
-    expect(badge).toHaveTextContent('99+')
-    expect(badge).not.toHaveTextContent('128')
+    // The cap is the pill's own (`max`): `99+` is what is seen, and the only
+    // text a sighted reader meets; the exact figure rides in the label.
+    expect(badge.querySelector('[aria-hidden]')).toHaveTextContent(/^99\+$/)
     expect(badge).toHaveAttribute('aria-label', '128 items need your attention')
     // The exact count also stays machine-readable for the collapsed rail.
     expect(badge).toHaveAttribute('data-pending', '128')

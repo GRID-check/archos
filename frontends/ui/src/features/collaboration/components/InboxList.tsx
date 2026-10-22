@@ -326,7 +326,7 @@ export function InboxList({
                 {t(`inbox.filters.${key}`)}
                 {/* Only when there is a number to say: an invisible pill kept
                     a blank tail after the label at zero. */}
-                {count > 0 && <CountPill className={cn(filter === key && 'bg-background/20 text-current')}>{count}</CountPill>}
+                {count > 0 && <CountPill count={count} className={cn(filter === key && 'bg-background/20 text-current')} />}
               </ToggleGroupItem>
             )
           })}
