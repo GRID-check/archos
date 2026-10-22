@@ -58,6 +58,8 @@ import { installHttpRoutes } from "./src/app/httproutes";
 import { installOtelCollector } from "./src/platform/otel-collector";
 import { installOtelAgent } from "./src/platform/otel-agent";
 import { installDns, managedRecordNames } from "./src/platform/dns";
+import { installInboundMail } from "./src/platform/inbound-mail";
+import { installInboundMailZone } from "./src/platform/email-routing";
 import { installLangfuse } from "./src/platform/langfuse";
 import { installQdrantDashboard } from "./src/platform/qdrant-dashboard";
 import { LANGFUSE, QDRANT } from "./src/constants";
@@ -489,6 +491,14 @@ if (cfg.observability.enabled) {
 // this exists to prevent.
 const dns = installDns(cfg);
 
+// ── Project mail (Cloudflare Email Routing, ADR-0135) ────────────────────────
+//
+// Cloudflare-only as well, and independent for the same reason: a Worker that
+// posts to a frontend not up yet gets a connection error or a 404, throws, and
+// the sending server retries. The promote that first sets the domain sets
+// `inboundMailPaused` too, and the unpause follows the launch gates.
+const inboundMail = installInboundMail(cfg, installInboundMailZone(cfg));
+
 // ── Stack outputs ────────────────────────────────────────────────────────────
 export const appUrl = pulumi.interpolate`https://${cfg.ingress.appDomain}`;
 export const s3Url = pulumi.interpolate`https://${cfg.ingress.s3Domain}`;
@@ -515,6 +525,11 @@ export const langfuseUrl = cfg.langfuse.enabled
 export const dnsRecords = dns
   ? pulumi.all(managedRecordNames(dns)).apply((names) => names.join(", "))
   : pulumi.output("(none: dnsEnabled=false — records are maintained by hand)");
+export const inboundMailWorker = inboundMail?.script
+  ? pulumi.interpolate`${inboundMail.script.scriptName}${cfg.inboundMail.paused ? " (paused)" : ""}`
+  : pulumi.output(
+      inboundMail ? "(none: inboundMailEnabled=false, the catch-all refuses)" : "(none: inboundMailDomain unset)",
+    );
 // The image refs this update deployed. `deploy.yml` reads them back before the
 // next staging deploy and refuses one that would move a service to an older
 // commit (`scripts/resolve-image-refs.sh`). The stack file cannot answer that:
