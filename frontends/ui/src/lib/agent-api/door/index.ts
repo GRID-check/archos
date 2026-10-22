@@ -23,6 +23,7 @@
  */
 
 import { type McpServer, ResourceTemplate, completable, fromJsonSchema } from '@modelcontextprotocol/server'
+import { SKILL_SEARCH_MAX } from '@/lib/skills/types'
 import vocabulary from '@/lib/text/operation-search-vocabulary.json'
 import { readOperationBody } from '../discovery'
 import { audienceOf } from '../exposure'
@@ -132,13 +133,8 @@ function completersFor(ctx: McpCallContext): Readonly<Record<string, Completer>>
     project: async (value) =>
       [...new Set((await projectsMatching(ctx, value)).map((project) => project.projectName ?? project.name))].slice(0, COMPLETION_LIMIT),
     skill: async (value) => {
-      const read = await readOperationBody(ctx, 'skill-list', {})
-      if ('refusal' in read) return []
       const wanted = value.trim().toLowerCase()
-      return ((read.body as { skills?: ListedSkill[] } | null)?.skills ?? [])
-        .filter((skill) => skill.enabled !== false && skill.name.toLowerCase().includes(wanted))
-        .map((skill) => skill.name)
-        .slice(0, COMPLETION_LIMIT)
+      return (await skillNames(ctx)).filter((name) => name.toLowerCase().includes(wanted)).slice(0, COMPLETION_LIMIT)
     },
   }
 }
@@ -167,20 +163,19 @@ function argsSchema(args: Readonly<Record<string, string>>, completers: Readonly
 
 const userMessage = (text: string) => ({ messages: [{ role: 'user' as const, content: { type: 'text' as const, text } }] })
 
-interface ListedSkill {
-  name: string
-  body?: string
-  enabled?: boolean
+/** The names of the office's enabled skills, as skill-search lists them for an empty query. */
+async function skillNames(ctx: McpCallContext): Promise<string[]> {
+  const read = await readOperationBody(ctx, 'skill-search', { query: { limit: SKILL_SEARCH_MAX } })
+  if ('refusal' in read) return []
+  return ((read.body as { skills?: { name: string }[] } | null)?.skills ?? []).map((skill) => skill.name)
 }
 
-/** The text of the `office-skill` prompt for `name`, read through the door as the person. */
+/** The text of the `office-skill` prompt for `name`, read through the door as the person with skill-get. */
 async function officeSkillText(ctx: McpCallContext, name: string): Promise<string> {
-  const read = await readOperationBody(ctx, 'skill-list', {})
-  if ('refusal' in read) return read.refusal
-  const skills = ((read.body as { skills?: ListedSkill[] } | null)?.skills ?? []).filter((skill) => skill.enabled !== false)
-  const skill = skills.find((s) => s.name.toLowerCase() === name.trim().toLowerCase())
+  const read = await readOperationBody(ctx, 'skill-get', { params: { name: name.trim() } })
+  const skill = 'refusal' in read ? null : (read.body as { skill?: { name: string; body: string } } | null)?.skill
   if (skill?.body) return fillDoc('prompts/office-skill.md', { skill: skill.name, body: skill.body })
-  const names = skills.map((s) => s.name).slice(0, 40).join(', ')
+  const names = (await skillNames(ctx)).join(', ')
   return `No enabled skill is named "${name}". The office's skills: ${names || 'none'}.`
 }
 
@@ -258,7 +253,7 @@ export function registerDoorGuide(server: McpServer, ctx: McpCallContext): void 
       )
     }
   }
-  if (findVisibleOperation(ctx.principal, 'skill-list')) {
+  if (findVisibleOperation(ctx.principal, 'skill-get')) {
     server.registerPrompt(
       'office-skill',
       {

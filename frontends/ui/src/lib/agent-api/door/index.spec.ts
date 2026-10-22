@@ -133,6 +133,24 @@ describe('completions and the project resource, through the real SDK', () => {
     read.mockRestore()
   })
 
+  it('loads an office skill with skill-get and completes its name from skill-search', async () => {
+    const read = vi.spyOn(discovery, 'readOperationBody').mockImplementation(async (_ctx, name, input) => {
+      if (name === 'skill-search') return { body: { skills: [{ name: 'stair-check' }, { name: 'client-letter' }], total: 2 } }
+      const wanted = (input.params as { name: string }).name
+      return wanted === 'stair-check'
+        ? { body: { skill: { name: 'stair-check', description: 'Checks stairs.', origin: 'org', body: 'Measure every riser.' } } }
+        : { refusal: 'Unknown skill.' }
+    })
+    const complete = await rpc(outside, 'completion/complete', { ref: { type: 'ref/prompt', name: 'office-skill' }, argument: { name: 'skill', value: 'stair' } })
+    expect((complete.result?.completion as { values: string[] }).values).toEqual(['stair-check'])
+    const loaded = await rpc(outside, 'prompts/get', { name: 'office-skill', arguments: { skill: 'stair-check' } })
+    expect((loaded.result?.messages as { content: { text: string } }[])[0].content.text).toContain('Measure every riser.')
+    const missing = await rpc(outside, 'prompts/get', { name: 'office-skill', arguments: { skill: 'nope' } })
+    expect((missing.result?.messages as { content: { text: string } }[])[0].content.text).toContain('stair-check, client-letter')
+    expect(read).toHaveBeenCalledWith(expect.anything(), 'skill-get', { params: { name: 'stair-check' } })
+    read.mockRestore()
+  })
+
   it('lists the person’s projects as attachable resources and reads one as its overview', async () => {
     const read = vi.spyOn(discovery, 'readOperationBody').mockImplementation(async (_ctx, name) =>
       name === 'project-list' ? { body: PROJECTS } : { body: { project: { id: 'p-1' }, counts: { documents: 1 } } },

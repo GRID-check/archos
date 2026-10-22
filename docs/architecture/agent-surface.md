@@ -454,16 +454,16 @@ ceiling.
    ([testing-and-verification.md](../contributing/testing-and-verification.md#the-workspace-set));
    its `uses` rows check the job got done with the native tool.
 
-**What it holds today** (336 entries: 329 operations, 7 read tools):
+**What it holds today** (335 entries: 328 operations, 7 read tools):
 
 | Column | Count |
 |---|---|
-| `external: true` | 235 |
-| `piloti: true` | 199 |
-| `piloti: 'native:…'` | 18 |
-| `piloti: false` | 119 (47 withheld, 54 platform, 12 sensitive, 3 asks, 3 decisions) |
+| `external: true` | 232 |
+| `piloti: true` | 195 |
+| `piloti: 'native:…'` | 17 |
+| `piloti: false` | 123 (49 withheld, 54 platform, 12 sensitive, 3 asks, 3 decisions, 2 skill reads) |
 | `platform: true` | 54 |
-| `withheld` | 47 (29 `product-config`, 10 `ui-state`, 5 `external-service`, 3 `model-compute`) |
+| `withheld` | 49 (29 `product-config`, 13 `ui-state`, 4 `external-service`, 3 `model-compute`) |
 
 | Piloti uses | Instead of |
 |---|---|
@@ -508,7 +508,7 @@ entry names a tool Piloti is not bound to. Regenerate with
 |---|---|---|
 | 1. Atomic operations | One per route method. The layer the rule is checked on | `lib/agent-api/catalog/` |
 | 2. Task-shaped tools | Where an agent needs more than CRUD: retrieval, IFC, canvas | `src/aiq_agent/tools/`, served through the MCP in phase 2 |
-| 3. Workflows and skills | "Brief me on a project"; the office's own skills by name | MCP prompts, `lib/agent-api/door/` ([below](#resources-and-prompts)) |
+| 3. Workflows and skills | "Brief me on a project"; the office's own skills, found and read by the agent | MCP prompts, `lib/agent-api/door/`; `skill-search` and `skill-get` ([below](#the-offices-skills)) |
 
 The Python-only reads (`knowledge_search`, `read_passage`, `list_files`,
 `look`, `ifc_query`, `ifc_measure`, `ris_lookup`) reach the
@@ -534,10 +534,31 @@ Markdown beside the module, embedded by `door/docs.spec.ts`
 Prompts: `project-briefing`, `building-law-check`, `my-day` (each
 `prompts/<name>.md`, its arguments its `{{placeholders}}`), and
 `office-skill`, which loads one of the office's enabled skills by name through
-the door, as the person. A prompt states the goal, the constraints and what a
+the door, as the person (with `skill-get`; its name completes from
+`skill-search`). A prompt states the goal, the constraints and what a
 good answer is; it names no sequence of operations, so the agent finds them.
 Piloti's own client gets neither: it reads neither, and the guide names
 operations its door leaves to its native tools.
+
+### The office's skills
+
+A prompt is something a person picks in their client; an agent does not call
+one on its own. So the office's skills are also two reads an agent finds through
+`search-operations`, as PostHog's MCP serves its skills, and the guide tells it
+to load the office's procedure before it acts:
+
+| Operation | Route | Answers |
+|---|---|---|
+| `skill-search` | `GET /api/skills/search?query=&limit=` | The enabled skills ranked by the words of the task (name, then description, then body; `operationScorer`, so German words find English ones), each with its name, description, origin and up to three matching body lines with their line numbers. An empty query lists them all |
+| `skill-get` | `GET /api/skills/by-name/[name]` | One enabled skill by name: description and full Markdown body |
+
+Both read the set a person may pick (`resolveSelectableSkills`, every agent):
+the organization's enabled skills and the platform offers it switched on, never
+the pipeline's machinery. A skill is one SKILL.md body with no files of its
+own, so there is no file index and no third read for a referenced file. Any
+member may read; the routes are gated on the skills feature. Piloti is not
+offered either (`piloti: false`): it gets the same catalogue at turn start and
+loads a body with its own `use_skill`.
 
 ### Output schemas and icons
 

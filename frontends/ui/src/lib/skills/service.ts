@@ -35,6 +35,7 @@ import {
   type SkillCategoryListItem,
   type SkillSnapshot,
 } from './types'
+import { operationScorer, queryLineMatcher } from '@/lib/text/operation-search'
 import { canonicalSkillName } from './legacy-names'
 import { findPlatformSkill, listPlatformSkills, type PlatformSkill } from './platform-skills'
 
@@ -407,6 +408,86 @@ export async function listInvocableSkills(
       .map(({ name, description, origin }) => ({ name, description, origin }))
       .sort((left, right) => left.name.localeCompare(right.name)),
   }
+}
+
+/** Lines of a skill's body one search hit shows, and how much of each. */
+export const SKILL_SEARCH_LINES = 3
+const SKILL_SEARCH_LINE_CHARS = 200
+
+/** A skill a search found: level 1, plus the lines of its body that hold a word of the search. */
+export type SkillSearchHit = {
+  name: string
+  description: string
+  origin: SkillOrigin | 'platform'
+  lines: { line: number; text: string }[]
+}
+
+/** The first {@link SKILL_SEARCH_LINES} lines of `body` that `matches`, numbered from 1 and cut to a readable length. */
+function matchingLines(body: string, matches: (line: string) => boolean): SkillSearchHit['lines'] {
+  const hits: SkillSearchHit['lines'] = []
+  const lines = body.split('\n')
+  for (let index = 0; index < lines.length && hits.length < SKILL_SEARCH_LINES; index += 1) {
+    const text = lines[index].trim()
+    if (!text || !matches(text)) continue
+    const cut = text.length > SKILL_SEARCH_LINE_CHARS ? `${text.slice(0, SKILL_SEARCH_LINE_CHARS - 1)}…` : text
+    hits.push({ line: index + 1, text: cut })
+  }
+  return hits
+}
+
+/**
+ * The office's skills ranked by the words of `query`: the set a person may
+ * pick (`resolveSelectableSkills`, every agent), so an outside agent finds the
+ * procedures the office has switched on and never the pipeline's machinery.
+ *
+ * Ranked as the agent door ranks its operations (`operationScorer`, ADR-0123):
+ * the name weighs most, then the description, then the body, and German words
+ * find English ones through the office vocabulary. An empty query lists every
+ * skill by name. Each hit carries the lines of its body that hold a query
+ * word, so a caller sees why it matched before reading the whole body.
+ */
+export async function searchSkills(
+  session: AuthorizedSession,
+  query: string,
+  limit: number,
+): Promise<{ skills: SkillSearchHit[]; total: number }> {
+  assertSkillsFeatureOn(session)
+  const { skills } = await resolveSelectableSkills(session.organizationId)
+  const searchable = skills.map((skill) => ({ skill, text: { name: skill.name, summary: skill.description, description: skill.body } }))
+  const score = operationScorer(query, searchable.map((entry) => entry.text))
+  const matchesLine = queryLineMatcher(query)
+  const ranked = searchable
+    .map((entry) => ({ skill: entry.skill, score: score(entry.text) }))
+    .filter((entry) => entry.score > 0)
+    .sort((left, right) => right.score - left.score || left.skill.name.localeCompare(right.skill.name))
+  return {
+    total: ranked.length,
+    skills: ranked.slice(0, limit).map(({ skill }) => ({
+      name: skill.name,
+      description: skill.description,
+      origin: skill.origin,
+      lines: matchingLines(skill.body, matchesLine),
+    })),
+  }
+}
+
+/**
+ * One of the office's skills by name, with its body: level 2, what a run reads
+ * when it activates the skill. The same set as {@link searchSkills}; the name is
+ * matched without regard to case, and a builtin's old name still finds it.
+ */
+export async function readSkill(
+  session: AuthorizedSession,
+  name: string,
+): Promise<{ skill: { name: string; description: string; origin: SkillOrigin | 'platform'; body: string } }> {
+  assertSkillsFeatureOn(session)
+  const { skills } = await resolveSelectableSkills(session.organizationId)
+  const wanted = name.trim().toLowerCase()
+  const skill =
+    skills.find((candidate) => candidate.name.toLowerCase() === wanted) ??
+    skills.find((candidate) => candidate.name === canonicalSkillName(wanted))
+  if (!skill) throw new NotFoundError(`Unknown skill "${name}".`)
+  return { skill: { name: skill.name, description: skill.description, origin: skill.origin, body: skill.body } }
 }
 
 /**

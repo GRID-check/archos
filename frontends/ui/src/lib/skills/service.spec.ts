@@ -68,6 +68,8 @@ import {
   resolveSelectableSkills,
   listInvocableSkills,
   setCuratedSkillEnabled,
+  searchSkills,
+  readSkill,
 } from './service'
 
 type Session = Parameters<typeof listSkills>[0]
@@ -947,5 +949,66 @@ describe('skill category CRUD', () => {
     }))
     const { category } = await createSkillCategory(session, { name: 'Eigene' })
     expect(category).toMatchObject({ name: 'Eigene', scope: 'org' })
+  })
+})
+
+describe('searchSkills and readSkill: the office’s procedures, read by an agent', () => {
+  const STAIRS = makeSkill({
+    id: 'skill-stairs',
+    name: 'stair-check',
+    description: 'Checks stairs against OIB 4.',
+    body: '# Stairs\n\nMeasure every riser.\nCompare the riser height with OIB 4, 2.7.\nWrite the result down.',
+  })
+  const LETTER = makeSkill({ id: 'skill-letter', name: 'client-letter', description: 'Writes a letter to the client.', body: 'Be brief.' })
+
+  beforeEach(() => {
+    vi.mocked(repository.listSkillsInOrg).mockResolvedValue([STAIRS, LETTER, makeSkill({ id: 'off', name: 'old-way', enabled: false })])
+  })
+
+  it('ranks by the words of a task and shows the body lines that hold them, numbered', async () => {
+    const { skills, total } = await searchSkills(session, 'riser height', 10)
+    expect(total).toBe(1)
+    expect(skills[0]).toEqual({
+      name: 'stair-check',
+      description: 'Checks stairs against OIB 4.',
+      origin: 'org',
+      lines: [
+        { line: 3, text: 'Measure every riser.' },
+        { line: 4, text: 'Compare the riser height with OIB 4, 2.7.' },
+      ],
+    })
+  })
+
+  it('ranks a name hit above a body hit', async () => {
+    vi.mocked(repository.listSkillsInOrg).mockResolvedValue([
+      makeSkill({ id: 'a', name: 'site-visit', description: 'Prepares a visit.', body: 'Bring the letter.' }),
+      LETTER,
+    ])
+    const { skills } = await searchSkills(session, 'letter', 10)
+    expect(skills.map((s) => s.name)).toEqual(['client-letter', 'site-visit'])
+  })
+
+  it('lists every enabled skill for an empty query, never a disabled one or the machinery, within the limit', async () => {
+    const all = await searchSkills(session, '', 10)
+    expect(all.skills.map((s) => s.name)).toEqual(['client-letter', 'oib-fire-check', 'stair-check'])
+    expect(all.skills.every((s) => s.lines.length === 0)).toBe(true)
+    expect((await searchSkills(session, '', 1)).skills).toHaveLength(1)
+  })
+
+  it('reads one skill by name, with its body, regardless of case', async () => {
+    const { skill } = await readSkill(session, ' Stair-Check ')
+    expect(skill).toEqual({ name: 'stair-check', description: 'Checks stairs against OIB 4.', origin: 'org', body: STAIRS.body })
+  })
+
+  it('answers 404 for a disabled skill, the machinery or an unknown name', async () => {
+    await expect(readSkill(session, 'old-way')).rejects.toBeInstanceOf(NotFoundError)
+    await expect(readSkill(session, 'data-table-analysis')).rejects.toBeInstanceOf(NotFoundError)
+    await expect(readSkill(session, 'nope')).rejects.toBeInstanceOf(NotFoundError)
+  })
+
+  it('is gated on the skills feature', async () => {
+    vi.mocked(requireSkillsEnabled).mockReturnValue({ status: 403 } as Response)
+    await expect(searchSkills(session, '', 10)).rejects.toBeInstanceOf(ForbiddenError)
+    await expect(readSkill(session, 'stair-check')).rejects.toBeInstanceOf(ForbiddenError)
   })
 })
