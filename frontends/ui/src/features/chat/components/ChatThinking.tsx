@@ -29,6 +29,7 @@ import {
 } from 'react'
 import { ShimmerText } from '@/components/ui/shimmer-text'
 import { cn } from '@/lib/utils'
+import { FOCUS_RING_INSET } from '@/components/ui/focus-ring'
 import {
   ChevronDown,
   CheckCircle2,
@@ -219,6 +220,12 @@ const nextDisclosure = (d: Disclosure, autoOpen: boolean | undefined): Disclosur
   }
   return next
 }
+
+/**
+ * The header's separator: a no-break space before the dot, so a line that
+ * wraps never starts with „·“ (the dot stays with the word before it).
+ */
+const JOIN = '\u00A0· '
 
 /** Phase announcements are at least this far apart, so a fast turn does not queue them. */
 const PHASE_NOTE_MIN_GAP_MS = 3000
@@ -419,7 +426,7 @@ const ChatThinkingView: FC<ChatThinkingProps> = ({
       citedCount > 0 ? t('thinking.derivationCited', { count: citedCount }) : null,
     ]
       .filter(Boolean)
-      .join(' · ') ||
+      .join(JOIN) ||
     (sourceCount > 0
       ? t('thinking.derivationSummaryWithSources', { count: sourceCount })
       : t('thinking.derivationSummary'))
@@ -585,8 +592,8 @@ const ChatThinkingView: FC<ChatThinkingProps> = ({
           <span className="text-foreground font-semibold">{head}</span>
           {(detail.length > 0 || citedPart) && (
             <span className="text-muted-foreground block text-[13px] leading-[19px]">
-              {detail.join(' · ')}
-              {detail.length > 0 && citedPart && ' · '}
+              {detail.join(JOIN)}
+              {detail.length > 0 && citedPart && JOIN}
               {citedPart}
             </span>
           )}
@@ -598,7 +605,10 @@ const ChatThinkingView: FC<ChatThinkingProps> = ({
   // No entrance of its own: it mounts with its question, and the thread row
   // (`ChatArea`) owns that entrance, gated so a restored turn does not replay it.
   return citationScope(
-    <div className="w-full rounded-2xl bg-muted shadow-xs">
+    // `@container`: the header answers to the panel's width, not the
+    // viewport's: the panel sits in a chat column, beside a canvas or a
+    // sidebar, and is a phone's width there on any screen.
+    <div className="@container w-full rounded-2xl bg-muted shadow-xs">
       <Collapsible open={open || opening} onOpenChange={handleOpenChange}>
         <CollapsibleTrigger asChild>
           {/* The trigger's name is the PHASE and the panel (`sr-only` below),
@@ -609,15 +619,24 @@ const ChatThinkingView: FC<ChatThinkingProps> = ({
           <button
             type="button"
             data-derivation-trigger
-            className="group relative flex min-h-12 w-full cursor-pointer items-center justify-between rounded-2xl px-4 py-3 text-left outline-none transition-colors duration-snap ease-out motion-reduce:transition-none focus-visible:ring-2 focus-visible:ring-ring/60"
+            className={cn(
+              'group relative flex min-h-12 w-full cursor-pointer items-center justify-between rounded-2xl px-4 py-3 text-left outline-none transition-colors duration-snap ease-out motion-reduce:transition-none',
+              // Inset: the trigger is the panel's full width, and an offset
+              // ring would sit outside the panel's own rounded edge.
+              FOCUS_RING_INSET
+            )}
           >
             <span className="sr-only">
               {[phaseWord, summaryLabel, warning?.text].filter(Boolean).join(' · ')}
             </span>
             {/* `relative`: `popLayout` lifts the leaving icon and phrase out of
                 the flow, positioned against this box. */}
+            {/* One line in every state: the warning pill arrives at the
+                settle, and a row that wrapped for it grew the header under
+                the reader's eye. The label gives way (ellipsis) instead; the
+                trigger's `sr-only` name above carries it whole. */}
             <span
-              className="relative flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1.5"
+              className="relative flex min-w-0 flex-nowrap items-center gap-x-2"
               aria-hidden="true"
             >
               {/* Fixed icon slot, shared by every state: without it the text
@@ -644,7 +663,7 @@ const ChatThinkingView: FC<ChatThinkingProps> = ({
                     key={labelKey}
                     data-derivation-label
                     className={cn(
-                      'block text-sm font-semibold',
+                      'block truncate text-sm font-semibold',
                       shimmer ? undefined : 'text-foreground'
                     )}
                     {...roll}
@@ -705,11 +724,13 @@ const ChatThinkingView: FC<ChatThinkingProps> = ({
                   </motion.span>
                 )}
               </AnimatePresence>
-              {/* While the label is the activity, the summary sits here, from
-                  `sm` up: beside it, at 390 px, the label read only „Such…"
-                  (Herleitung audit, 2026-09). From the answer's first word the
-                  label IS the summary, and this slot stays empty for good. */}
-              {shimmer && <span className="hidden text-xs text-muted-foreground sm:inline">{summaryLabel}</span>}
+              {/* While the label is the activity, the summary sits here once
+                  the PANEL is 28rem wide: beside it, at 390 px, the label read
+                  only „Such…" (Herleitung audit, 2026-09). A container query,
+                  not `sm:`: a wide window with a narrow chat column is a phone
+                  to this header. From the answer's first word the label IS the
+                  summary, and this slot stays empty for good. */}
+              {shimmer && <span className="hidden text-xs text-muted-foreground @md:inline">{summaryLabel}</span>}
               <ChevronDown className="size-4 text-muted-foreground transition-transform duration-quick ease-out group-data-[state=open]:rotate-180 motion-reduce:transition-none" />
             </span>
           </button>

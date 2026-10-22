@@ -126,9 +126,9 @@
 
 'use client'
 
-import { type FC, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { ChevronDown, Circle } from 'lucide-react'
-import { FOCUS_RING } from '@/components/ui/focus-ring'
+import { type FC, useCallback, useId, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { ChevronDown, ChevronUp, Circle } from 'lucide-react'
+import { FOCUS_RING, FOCUS_RING_INSET } from '@/components/ui/focus-ring'
 import {
   ReactFlow,
   ReactFlowProvider,
@@ -177,7 +177,14 @@ import {
   type CitationLocus,
 } from '../../lib/citations'
 import { documentShortName } from '../../lib/document-names'
-import { BareSourceCard, SourceCard, type CardLink } from './SourceCard'
+import {
+  BareSourceCard,
+  FOLDER_TAB,
+  FOLDER_TAB_H,
+  RECEDED,
+  SourceCard,
+  type CardLink,
+} from './SourceCard'
 import { CitationMarkers } from '../CitationMarker'
 import { SectionLabel } from '@/components/ui/section-label'
 import {
@@ -264,6 +271,13 @@ type SourceColumnData = {
   groupLabel: string
   /** Packed column width for this fan. Falls back to `--source-w` when omitted. */
   colW?: number
+  /**
+   * How far down the column the incoming edge ends: the folder tab's height
+   * when the first slot wears one, so the connector meets the card's body as
+   * it does on every column, never the blank beside the tab. 0 for a bare
+   * first card and for the grouped box, whose own top is the body.
+   */
+  inTop: number
   /**
    * The turn is still running.
    *
@@ -443,7 +457,12 @@ const RoundFlowNode: FC<NodeProps<Node<RoundData>>> = ({ data }) => (
         aria-expanded={!data.folded}
         aria-label={data.toggleLabel}
         data-testid="reasoning-round-toggle"
-        className="focus-visible:ring-ring/60 absolute inset-0 z-10 cursor-pointer rounded-xl outline-none focus-visible:ring-2"
+        className={cn(
+          'absolute inset-0 z-10 cursor-pointer rounded-xl outline-none',
+          // Inset: the banner spans the content width, and an offset ring is
+          // clipped by the pane on both sides.
+          FOCUS_RING_INSET
+        )}
       />
     )}
     <div className="flex items-start justify-between gap-2">
@@ -514,7 +533,9 @@ const SourceColumnFlowNode: FC<NodeProps<Node<SourceColumnData>>> = ({ data }) =
           key={slot.type === 'card' ? slot.fan.key : `fold:${slot.key}`}
           className="flex flex-col"
         >
-          {i > 0 && (
+          {/* The hairline joins cards; the open fold is a text control under
+              the last uncited card, not a card, and hangs on nothing. */}
+          {i > 0 && !(slot.type === 'fold' && slot.expanded) && (
             <span
               aria-hidden="true"
               className="mx-auto h-2.5 w-px shrink-0"
@@ -522,7 +543,11 @@ const SourceColumnFlowNode: FC<NodeProps<Node<SourceColumnData>>> = ({ data }) =
             />
           )}
           {slot.type === 'fold' ? (
-            <UncitedFoldCard slot={slot} onToggle={() => data.onToggleFold(slot.key)} />
+            <UncitedFoldCard
+              slot={slot}
+              grouped={data.grouped}
+              onToggle={() => data.onToggleFold(slot.key)}
+            />
           ) : (
             <FanSlotCard slot={slot} live={data.live} onSelect={data.onSelect} />
           )}
@@ -536,7 +561,12 @@ const SourceColumnFlowNode: FC<NodeProps<Node<SourceColumnData>>> = ({ data }) =
       className="max-w-full"
       style={{ width: data.colW !== undefined ? `${data.colW}px` : 'var(--source-w)' }}
     >
-      <Handle id="in" type="target" position={Position.Top} style={{ ...H, left: '50%' }} />
+      <Handle
+        id="in"
+        type="target"
+        position={Position.Top}
+        style={{ ...H, left: '50%', top: data.inTop }}
+      />
       {data.grouped ? (
         <div className="bg-muted rounded-xl border px-3 py-3">
           <Eyebrow>{data.groupLabel}</Eyebrow>
@@ -586,45 +616,70 @@ const FanSlotCard: FC<{
  * The round's uncited documents as one dashed card: „+2 abgerufen, nicht
  * zitiert“ with their names. While the answer runs nothing is cited yet, so it
  * reads „+2 weitere“. A button: it opens the folded cards in place.
+ *
+ * Open, it is no longer a card: the cards it held stand above it, and what
+ * remains is the way back, a plain muted line under the last of them. The
+ * button's name is what it shows (the count and the names, never a label that
+ * hides them); the tab describes it.
  */
 const UncitedFoldCard: FC<{
   slot: Extract<ColumnSlot, { type: 'fold' }>
+  /** The phone's grouped box is muted, so the tab is card-white there. */
+  grouped: boolean
   onToggle: () => void
-}> = ({ slot, onToggle }) => {
+}> = ({ slot, grouped, onToggle }) => {
   const t = useTranslations('chat')
+  const tabId = useId()
   const U = 'thinking.node.uncited.'
+  if (slot.expanded) {
+    return (
+      <div role="listitem" data-testid="uncited-fold" className="mt-1.5 flex min-w-0">
+        <button
+          type="button"
+          onClick={onToggle}
+          aria-expanded
+          className={cn(
+            'text-muted-foreground duration-snap pointer-fine:hover:text-foreground inline-flex min-h-8 items-center gap-1 rounded-md px-1 text-left text-[13px] leading-[19px] transition-[color,scale] ease-out outline-none active:scale-[0.985] motion-reduce:transition-none pointer-coarse:min-h-11',
+            FOCUS_RING
+          )}
+        >
+          <ChevronUp aria-hidden="true" className="size-3.5 shrink-0" />
+          {t(`${U}hide`)}
+        </button>
+      </div>
+    )
+  }
   return (
     <div
       role="listitem"
       data-testid="uncited-fold"
       className={cn(
         'duration-quick flex min-w-0 flex-col transition-opacity ease-out motion-reduce:transition-none',
-        slot.receded && 'opacity-40'
+        slot.receded && RECEDED
       )}
     >
-      <SectionLabel className="bg-muted text-muted-foreground ml-2.5 inline-flex items-center self-start rounded-t-md px-2 py-1">
+      <SectionLabel
+        id={tabId}
+        className={cn(FOLDER_TAB, grouped ? 'bg-card' : 'bg-muted', 'text-muted-foreground')}
+      >
         {t(`${U}${slot.live ? 'pillLive' : 'pill'}`)}
       </SectionLabel>
       <button
         type="button"
         onClick={onToggle}
-        aria-expanded={slot.expanded}
-        aria-label={slot.expanded ? t(`${U}hide`) : t(`${U}show`, { count: slot.count })}
+        aria-expanded={false}
+        aria-describedby={tabId}
         className={cn(
           'bg-muted/40 duration-snap pointer-fine:hover:bg-muted flex min-h-11 w-full min-w-0 flex-col rounded-lg border border-dashed px-3 py-2.5 text-left transition-[background-color,scale] ease-out outline-none active:scale-[0.985] motion-reduce:transition-none',
           FOCUS_RING
         )}
       >
         <span className="text-foreground/80 text-sm leading-5 font-semibold">
-          {slot.expanded
-            ? t(`${U}hide`)
-            : t(`${U}${slot.live ? 'nameLive' : 'name'}`, { count: slot.count })}
+          {t(`${U}${slot.live ? 'nameLive' : 'name'}`, { count: slot.count })}
         </span>
-        {!slot.expanded && (
-          <span className="text-muted-foreground line-clamp-2 text-[13px] leading-[19px] [overflow-wrap:anywhere]">
-            {slot.names.join(', ')}
-          </span>
-        )}
+        <span className="text-muted-foreground line-clamp-2 text-[13px] leading-[19px] hyphens-auto [overflow-wrap:break-word] [hyphenate-limit-chars:10_4_4]">
+          {slot.names.join(', ')}
+        </span>
       </button>
     </div>
   )
@@ -773,8 +828,14 @@ export interface ReasoningFlowProps {
 }
 
 // ── layout constants ──────────────────────────────────────────────────────────
-/** Narrowest a source card may get before we stack instead of adding a column. */
-const MIN_COL_W = 146
+/**
+ * Narrowest a source card may get before we stack instead of adding a column.
+ *
+ * 172: a hyphenated twelve-letter compound („Brandschutzkonzept“) keeps a
+ * syllable of four on each line, where 146 cut it into three-letter shards.
+ * Still three columns in the 680px chat column; two from 544px down, then one.
+ */
+const MIN_COL_W = 172
 /** Widest a single column grows to, so 2 sources don't become two half-pages. */
 const MAX_COL_W = 236
 /**
@@ -855,6 +916,22 @@ export function planFan(width: number, cardCount: number): FanLayout {
     columns.push(Array.from({ length: size }, () => next++))
   }
   return { columns, colW, gap: COL_GAP, fanX, contentW, grouped }
+}
+
+/**
+ * {@link planFan} over a fan's slots. An OPEN fold is no card: it is the way
+ * back, a line under the last uncited card, so it takes no column of its own
+ * and hangs under that card, which reading order puts in the last column.
+ */
+function packSlots(width: number, slots: readonly ColumnSlot[]): FanLayout {
+  const last = slots.at(-1)
+  const openFold = last?.type === 'fold' && last.expanded
+  if (!openFold) return planFan(width, slots.length)
+  const packed = planFan(width, slots.length - 1)
+  const columns = packed.columns.map((column, i, all) =>
+    i === all.length - 1 ? [...column, slots.length - 1] : column
+  )
+  return { ...packed, columns }
 }
 
 /** Corner rounding on every connector. */
@@ -1355,7 +1432,7 @@ export function buildGraph(
   // „Grundlagen · Entwurf“: the cited law, the cited project and office
   // sources, and what stayed open. Read off the turn, never invented.
   const basis = live ? null : basisLines(t, cards)
-  const open = live ? [] : openPoints(t, work)
+  const open = live ? [] : openPoints(t, work, cards)
   const B = 'thinking.node.basis.'
   const basisGroups: FindingsData['basis'] = basis
     ? [
@@ -1448,7 +1525,7 @@ export function buildGraph(
         const own = roundFan(round, cards, props.retrievalLedger)
         const roundCards = i === 0 ? mergeFans(prefetchSlots, own) : own
         const slots = columnSlots(`round-${round.index}`, roundCards)
-        const packed = planFan(layout.contentW, slots.length)
+        const packed = packSlots(layout.contentW, slots)
         const folded = folding.folded.has(i)
         return {
           roundCards,
@@ -1466,8 +1543,12 @@ export function buildGraph(
     if (ids.length === 0) return
     const xOf = (i: number) => packed.fanX + i * (packed.colW + packed.gap)
     packed.columns.slice(0, ids.length).forEach((indices, i) => {
+      const cards = indices.map((idx) => slots[idx]!)
+      const first = cards[0]
+      const tabbed = first?.type === 'fold' ? !first.expanded : Boolean(first?.fan.card)
       const columnData: SourceColumnData = {
-        cards: indices.map((idx) => slots[idx]!),
+        cards,
+        inTop: tabbed && !packed.grouped ? FOLDER_TAB_H : 0,
         grouped: packed.grouped,
         groupLabel: t('thinking.sourcesFanOut'),
         live,
@@ -1498,7 +1579,7 @@ export function buildGraph(
           'turn',
           cards.map((card) => ({ key: card.id, card, name: card.fileName ?? card.title }))
         )
-        return { slots, packed: planFan(layout.contentW, slots.length) }
+        return { slots, packed: packSlots(layout.contentW, slots) }
       })()
   const columnIds = turnFan ? turnFan.packed.columns.map((_, i) => `col-${i}`) : []
   if (spine) {
@@ -1750,9 +1831,17 @@ const FlowInner: FC<{ built: BuiltGraph; layout: FanLayout; live: boolean }> = (
   const handleSigs = useMemo(() => {
     const sigs = new Map<string, string>()
     for (const n of nodes) {
-      const d = n.data as { sources?: HandleSpec[]; targets?: HandleSpec[]; source?: HandleSpec }
+      const d = n.data as {
+        sources?: HandleSpec[]
+        targets?: HandleSpec[]
+        source?: HandleSpec
+        inTop?: number
+      }
       const specs = [...(d.sources ?? []), ...(d.targets ?? []), ...(d.source ? [d.source] : [])]
-      sigs.set(n.id, specs.map((h) => `${h.id}@${h.left}`).join(','))
+      // A column's `in` handle moves with its first slot's tab: a move is a
+      // changed handle too, and React Flow keeps the old bounds until told.
+      const moved = d.inTop !== undefined ? `;in@${d.inTop}` : ''
+      sigs.set(n.id, specs.map((h) => `${h.id}@${h.left}`).join(',') + moved)
     }
     return sigs
   }, [nodes])

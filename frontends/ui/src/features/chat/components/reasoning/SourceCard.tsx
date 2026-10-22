@@ -24,6 +24,7 @@
 import { Fragment, type FC } from 'react'
 import { Scale, FileText, Archive, Globe, type LucideIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { FOCUS_RING } from '@/components/ui/focus-ring'
 import { useTranslations } from '@/i18n'
 import { sourceSignalStyle } from '@/features/layout/components/SourceSignalChip'
 import type { SourceSignal } from '@/features/layout/lib/source-presets'
@@ -94,6 +95,26 @@ const RoundLoci: FC<{ loci: RoundLocus[]; marked: boolean; repeatLabel: string }
 /** How a card stands to the reader's tap on a row or a card (`LinkSelection`). */
 export type CardLink = 'selected' | 'linked' | 'receded'
 
+/**
+ * How far a card that is not part of the reader's selection sits back. One
+ * value, and never multiplied by the uncited card's own dimming: 0.4 × 0.75
+ * left a receded uncited card at 30%, below any legible contrast.
+ */
+export const RECEDED = 'opacity-60'
+/**
+ * The folder tab's height, fixed so the fan's connector can end where the
+ * card's body starts (the column's `in` handle sits this far down) rather than
+ * in the blank beside the tab. 14px line + 8px padding; the authority badge
+ * (13.5px) and the icon (10px) both fit inside it.
+ */
+export const FOLDER_TAB_H = 22
+/** The folder tab's box, shared by the document card and the uncited fold. */
+export const FOLDER_TAB =
+  'ml-2.5 inline-flex h-[22px] items-center gap-1 self-start rounded-t-md px-2 leading-[14px]'
+
+/** The uncited card's own dimming, dropped while the card is receded (see {@link RECEDED}). */
+export const UNCITED_DIM = 'opacity-75'
+
 export const SourceCard: FC<{
   document: CitedDocument
   /** The turn is still running — see the `live` note on the verdict below. */
@@ -112,9 +133,12 @@ export const SourceCard: FC<{
   /** Where the card stands to the reader's tap; absent while nothing is tapped. */
   link?: CardLink
   /**
-   * A tap on the card: it opens the preview (the chip inside is the button)
-   * and, bubbling here, links the card to the rows of the calls that returned
-   * it. Absent when no call names the card.
+   * A tap on the card links it to the rows of the calls that returned it; a
+   * tap on its name also opens the preview (the chip is that button, and its
+   * click bubbles here). The keyboard reaches the same toggle through a real
+   * button stretched under the card's content (`aria-pressed`), a sibling of
+   * the chip and the markers rather than their parent. Absent when no call
+   * names the card.
    */
   onSelect?: () => void
 }> = ({ document: doc, live = false, loci, link, onSelect }) => {
@@ -168,12 +192,12 @@ export const SourceCard: FC<{
       onClick={onSelect}
       className={cn(
         'duration-quick flex min-w-0 flex-col transition-opacity ease-out motion-reduce:transition-none',
-        link === 'receded' && 'opacity-40'
+        link === 'receded' && RECEDED
       )}
     >
       {/* Folder tab — tinted, uppercase, seated on the card's top-left. */}
       <SectionLabel
-        className="ml-2.5 inline-flex max-w-[calc(100%-0.625rem)] items-center gap-1 self-start rounded-t-md px-2 py-1"
+        className={cn(FOLDER_TAB, 'max-w-[calc(100%-0.625rem)]')}
         style={{ backgroundColor: tint.backgroundColor, color: tint.color }}
       >
         {/* The glyph is dropped when a badge is shown: at column width the tab
@@ -196,12 +220,31 @@ export const SourceCard: FC<{
           did not use; the one the reader tapped wears a full outline. */}
       <div
         className={cn(
-          // A long single word („Brandschutzkonzept“) breaks rather than spill past a narrow column.
-          'bg-card min-w-0 flex-1 rounded-lg border px-3 py-2.5 shadow-xs hyphens-auto [overflow-wrap:anywhere]',
-          !used && !live && 'border-dashed opacity-75',
+          // A long single word („Brandschutzkonzept“) hyphenates at a syllable
+          // rather than spill past a narrow column (grid-design-language
+          // §Typography); `break-word` is the last resort for a word the
+          // dictionary does not know, never a mid-syllable cut by default.
+          'bg-card relative min-w-0 flex-1 rounded-lg border px-3 py-2.5 shadow-xs hyphens-auto [overflow-wrap:break-word] [hyphenate-limit-chars:10_4_4]',
+          !used && !live && 'border-dashed',
+          !used && !live && link !== 'receded' && UNCITED_DIM,
           link === 'selected' && 'border-foreground ring-foreground ring-1'
         )}
       >
+        {/* The keyboard's way to the card's own toggle: a real button under the
+            content, named by the document as the card names it, pressed while the card is the
+            selection. The chip and the markers sit above it (`relative z-10`),
+            so it wraps neither; a press anywhere else on the card lands on it,
+            and its click bubbles to the card like any other tap there. */}
+        {onSelect && (
+          <button
+            type="button"
+            aria-pressed={link === 'selected'}
+            aria-label={[named.title, edition].filter(Boolean).join(', ')}
+            data-source-card-toggle=""
+            className={cn('absolute inset-0 cursor-pointer rounded-lg outline-none', FOCUS_RING)}
+          />
+        )}
+
         {/* The card IS the citation — clicking it opens the document at the
             page the answer used, exactly as the chip under the answer does. */}
         <SourcePreviewChip
@@ -211,7 +254,7 @@ export const SourceCard: FC<{
           // `p-0` strips the row down to the name, and with it the TARGET:
           // `min-h-11` buys the 44px floor back out of padding the card already
           // spends (`-my-2`), so the card grows ~9px instead of ~25px.
-          className="border-0 bg-transparent p-0 shadow-none hover:bg-transparent pointer-coarse:-my-2 pointer-coarse:min-h-11 pointer-coarse:items-center"
+          className="relative z-10 border-0 bg-transparent p-0 shadow-none hover:bg-transparent pointer-coarse:-my-2 pointer-coarse:min-h-11 pointer-coarse:items-center focus-visible:ring-offset-card"
         />
         {edition && <p className="text-muted-foreground text-[13px] leading-[19px]">{edition}</p>}
 
@@ -249,7 +292,7 @@ export const SourceCard: FC<{
             {numbers.length > 0 && (
               <span
                 data-source-card-markers=""
-                className="text-foreground ml-auto text-[15px] font-semibold tabular-nums"
+                className="text-foreground relative z-10 ml-auto text-[15px] font-semibold tabular-nums"
                 onClick={(event) => event.stopPropagation()}
               >
                 <CitationMarkers numbers={numbers} />
@@ -290,7 +333,12 @@ export const BareSourceCard: FC<{ name: string; loci?: RoundLocus[]; workspace?:
   const allRepeat = !!loci && loci.length > 0 && loci.every((locus) => locus.repeat)
   return (
     <div role="listitem" data-source-card className="flex min-w-0 flex-col">
-      <div className="bg-card min-w-0 flex-1 rounded-lg border border-dashed px-3 py-2.5 opacity-75 shadow-xs">
+      <div
+        className={cn(
+          'bg-card min-w-0 flex-1 rounded-lg border border-dashed px-3 py-2.5 shadow-xs',
+          UNCITED_DIM
+        )}
+      >
         {workspace ? (
           // A read of the office's state: worded for the reader, the operation it ran beneath as its identifier.
           <>

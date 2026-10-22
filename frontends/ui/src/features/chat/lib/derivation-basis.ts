@@ -17,6 +17,7 @@ import {
   citationNumbers,
   citedLoci,
   isCited,
+  oibDocumentKey,
   type CitationLocus,
   type CitedDocument,
 } from './citations'
@@ -70,16 +71,66 @@ export interface BasisLine {
   text: string
 }
 
-const basisLine = (t: Translator, doc: CitedDocument): BasisLine => {
+/**
+ * A document as its card names it: the short name and, when the title states
+ * one, its edition („OIB-Richtlinie 2, Ausgabe Mai 2023“). The one naming the
+ * card, the basis and the open points share, so a document never has two.
+ */
+export const cardName = (doc: CitedDocument): string => {
   const name = doc.fileName ?? doc.title
-  const text = [
-    documentShortName(name, doc.title),
-    documentEdition(name, doc.title),
-    documentLocation(t, doc),
-  ]
+  return [documentShortName(name, doc.title), documentEdition(name, doc.title)]
     .filter(Boolean)
     .join(', ')
+}
+
+const basisLine = (t: Translator, doc: CitedDocument): BasisLine => {
+  const text = [cardName(doc), documentLocation(t, doc)].filter(Boolean).join(', ')
   return { numbers: citationNumbers(doc), text }
+}
+
+const sameName = (a: string, b: string): boolean => a.trim().toLowerCase() === b.trim().toLowerCase()
+
+/**
+ * Two editions that may be the same one: either is unstated, or every number
+ * the call's states („2023“) is in the card's („Mai 2023“). A Richtlinie of
+ * another year is another document, and is never renamed to the card's.
+ */
+const editionsAgree = (stated: string | undefined, card: string | undefined): boolean => {
+  if (!stated || !card) return true
+  const numbers: readonly string[] = card.match(/\d+/g) ?? []
+  return (stated.match(/\d+/g) ?? []).every((n) => numbers.includes(n))
+}
+
+/**
+ * The card for the document a call named, when the turn has one: by its file
+ * name or title, else by the short name both come to, else, for an OIB
+ * Richtlinie, by its identity („OIB-RL 2, Ausgabe 2023“ is the card
+ * „OIB-Richtlinie 2“; `oibDocumentKey` ignores the edition as the citation
+ * model does). The call's `target` is the path the backend wrote
+ * („Projekt/Brandschutzkonzept.pdf“), so the match is on its last part.
+ */
+export const cardForTarget = (
+  target: string,
+  cards: readonly CitedDocument[]
+): CitedDocument | undefined => {
+  const leaf = target.split(/[\\/›]+/).at(-1)?.trim() ?? ''
+  if (!leaf) return undefined
+  const short = documentShortName(leaf)
+  const oib = oibDocumentKey(leaf)
+  return (
+    cards.find((doc) => [doc.fileName, doc.title].some((name) => name && sameName(name, leaf))) ??
+    cards.find((doc) => sameName(documentShortName(doc.fileName ?? doc.title, doc.title), short)) ??
+    (oib
+      ? cards.find(
+          (doc) =>
+            (oibDocumentKey(doc.fileName) === oib || oibDocumentKey(doc.title) === oib) &&
+            editionsAgree(
+              documentEdition(leaf),
+              documentEdition(doc.fileName ?? doc.title, doc.title)
+            )
+        )
+      : undefined)
+  )
 }
 
 export interface BasisLines {
@@ -100,15 +151,29 @@ export function basisLines(t: Translator, cards: readonly CitedDocument[]): Basi
   }
 }
 
-/** One open point from a call that failed or found nothing; null for any other row. */
-const openPoint = (t: Translator, row: WorkRow): string | null => {
+/**
+ * One open point from a call that failed or found nothing; null for any other
+ * row. A document the call named is named as its card names it (`cardName`),
+ * so „Offen“ and the fan never call one document two things.
+ */
+const openPoint = (
+  t: Translator,
+  row: WorkRow,
+  cards: readonly CitedDocument[]
+): string | null => {
   if (row.running || (row.action.status !== 'error' && row.action.status !== 'empty')) return null
-  const parts = workParts(t, row.action)
+  const card = row.action.target ? cardForTarget(row.action.target, cards) : undefined
+  const action = card ? { ...row.action, target: cardName(card) } : row.action
+  const parts = workParts(t, action)
   const what = [parts.verb, parts.object].filter(Boolean).join(' ')
-  if (row.action.status === 'error') return t('thinking.node.basis.openFailed', { what })
-  const { query, target } = row.action
+  if (action.status === 'error') return t('thinking.node.basis.openFailed', { what })
+  const { query, target } = action
   if (!query) return t('thinking.node.basis.openEmpty', { what })
-  if (target) return t('thinking.node.basis.openNoHitIn', { target: breadcrumb(target), query })
+  if (target)
+    return t('thinking.node.basis.openNoHitIn', {
+      target: card ? target : breadcrumb(target),
+      query,
+    })
   const shelfKey = row.action.shelf ? SHELF_KEYS[row.action.shelf.toLowerCase()] : undefined
   return shelfKey
     ? t('thinking.node.basis.openNoHitShelf', {
@@ -118,14 +183,21 @@ const openPoint = (t: Translator, row: WorkRow): string | null => {
     : t('thinking.node.basis.openNoHit', { query })
 }
 
-/** The open points of the turn: one per failed or empty call, failed first. */
-export function openPoints(t: Translator, rounds: readonly WorkRound[]): string[] {
+/**
+ * The open points of the turn: one per failed or empty call, failed first.
+ * `cards` is the turn's citation model, for naming a document as its card does.
+ */
+export function openPoints(
+  t: Translator,
+  rounds: readonly WorkRound[],
+  cards: readonly CitedDocument[] = []
+): string[] {
   const rows = rounds.flatMap(allRows)
   const ordered = [
     ...rows.filter((row) => row.action.status === 'error'),
     ...rows.filter((row) => row.action.status === 'empty'),
   ]
-  return [...new Set(ordered.flatMap((row) => openPoint(t, row) ?? []))]
+  return [...new Set(ordered.flatMap((row) => openPoint(t, row, cards) ?? []))]
 }
 
 export interface DerivationOverview {

@@ -2,6 +2,8 @@ import { render, screen, waitFor, within } from '@/test-utils'
 import userEvent from '@testing-library/user-event'
 import { vi, describe, test, expect, beforeEach } from 'vitest'
 import { ChatThinking } from './ChatThinking'
+import { createTranslator } from '@/i18n/translate'
+import { en } from '@/i18n/dictionaries/en'
 import { useLayoutStore } from '@/features/layout/store'
 import { storedStep } from '@/test-utils/wire-v2-steps'
 import type { StoredThinkingStep } from '@/lib/conversations/message-provenance'
@@ -15,6 +17,11 @@ import {
   singleReadCitations,
   singleReadScene,
 } from '@/test-utils/work-list-scenes'
+
+/** The copy as the English dictionary words it, so a retune of a phrase is not a broken spec. */
+const tEn = createTranslator(en, 'chat')
+/** Text as read, with the no-break spaces that hold a count to its noun as plain ones. */
+const plain = (text: string | null): string => (text ?? '').replace(/\u00A0/g, ' ')
 
 const motionPref = vi.hoisted(() => ({ reduced: false }))
 vi.mock('@/hooks/use-reduced-motion', () => ({ useReducedMotion: () => motionPref.reduced }))
@@ -208,7 +215,8 @@ describe('ChatThinking', () => {
       render(<ChatThinking steps={steps} isThinking />)
 
       const trigger = screen.getAllByRole('button')[0]
-      expect(trigger).toHaveAccessibleName('Thinking in progress · Trace · 1 step')
+      // The header's own join holds the dot to the word before it (NBSP).
+      expect(trigger).toHaveAccessibleName(/^Thinking in progress · Trace\u00A0· 1\sstep$/)
       const status = screen.getAllByRole('status').find((el) => el.getAttribute('aria-live') === 'polite')
       expect(status).toHaveTextContent('Thinking in progress')
       expect(status).not.toHaveTextContent('Fluchtweg')
@@ -257,7 +265,9 @@ describe('ChatThinking', () => {
 
       render(<ChatThinking steps={steps} isThinking={true} />)
 
-      expect(screen.getByText('Searching the knowledge base: “Fluchtweg”')).toBeInTheDocument()
+      // The backend's event in the reader's words: the corpus phrase is the
+      // dictionary's, the query the reader's own.
+      expect(screen.getByText(/^Searching .+: “Fluchtweg”$/)).toBeInTheDocument()
     })
 
     test('settled, the label stays the summary: no „Done" word moves it', () => {
@@ -287,7 +297,7 @@ describe('ChatThinking', () => {
     })
 
     test.each([
-      ['handed_off', 'Run commissioned'],
+      ['handed_off', tEn('thinking.handedOff')],
       ['refused', 'Not handled'],
       ['failed', 'Failed'],
     ] as const)('a turn that ended %s is not „Done"', (endedAs, word) => {
@@ -461,7 +471,7 @@ describe('ChatThinking', () => {
       // Once the turn lands and the answer cited nothing from it, the verdict
       // becomes true and is stated: the document folds into the dashed card.
       rerender(<ChatThinking steps={steps} isThinking={false} />)
-      expect(screen.getByText('+1 retrieved, not cited')).toBeInTheDocument()
+      expect(screen.getByText(tEn('thinking.node.uncited.name', { count: 1 }))).toBeInTheDocument()
     })
 
     test('renders per-document source cards from traceLanes', async () => {
@@ -480,7 +490,14 @@ describe('ChatThinking', () => {
       await user.click(screen.getByText(/^Trace( ·|$)/))
 
       // Uncited, the document folds into the dashed card; opening it shows the card.
-      await user.click(screen.getByRole('button', { name: 'Show 1 uncited source' }))
+      // The fold is named by what it shows (count and names), never a label
+      // that hides them; the tab („Not cited“) describes it.
+      const fold = screen.getByRole('button', {
+        name: `${tEn('thinking.node.uncited.name', { count: 1 })} OIB-Richtlinie 2`,
+      })
+      expect(fold).toHaveAttribute('aria-expanded', 'false')
+      expect(fold).toHaveAccessibleDescription(tEn('thinking.node.uncited.pill'))
+      await user.click(fold)
 
       // The card shows the DISPLAY name; the raw corpus filename only survives
       // on the tooltip, so a user never reads `oib-rl_2_ausgabe_mai_2023.pdf`.
@@ -490,7 +507,8 @@ describe('ChatThinking', () => {
       expect(screen.queryByText('OIB-RL_2_Brandschutz.pdf')).not.toBeInTheDocument()
       // A place, not a count: the hit tally went by the 2026-10 value test.
       expect(screen.queryByText('2 hits')).not.toBeInTheDocument()
-      expect(screen.getByText('OIB-Richtlinie')).toBeVisible()
+      // The tab names the lane in the reader's language (the wire sends it in German).
+      expect(screen.getByText(/^OIB(-Richtlinie| guideline)$/)).toBeVisible()
     })
   })
 
@@ -757,9 +775,11 @@ describe('ChatThinking', () => {
       expect(within(lines[1]!).getByRole('button', { name: /^Source 2:/ })).toBeVisible()
       // No text marker is left behind.
       expect(lines[0]).not.toHaveTextContent('[1]')
-      expect(screen.getByTestId('basis-open')).toHaveTextContent(
-        'Cannot be judged, because OIB-RL 2, Ausgabe 2023 has no passage on “Brandabschnitt Tiefgarage”.'
-      )
+      // „Open“ names the document as its card does (B14): the call said
+      // „OIB-RL 2, Ausgabe 2023“, the card „OIB-Richtlinie 2, Ausgabe Mai 2023“.
+      const open = screen.getByTestId('basis-open')
+      expect(open).toHaveTextContent(/OIB.Richtlinie 2, Ausgabe Mai 2023\b.*Brandabschnitt Tiefgarage/)
+      expect(open).not.toHaveTextContent(/OIB.RL 2/)
       // A draft's basis, never a verdict; a gap stated as the gap.
       expect(document.body).not.toHaveTextContent(/proven|No information found/i)
     })
@@ -818,6 +838,83 @@ describe('ChatThinking', () => {
       await user.click(card)
       expect(card).toHaveAttribute('data-link', 'selected')
     })
+
+    const conceptCard = () =>
+      Array.from(document.querySelectorAll<HTMLElement>('[data-source-card]')).find((el) =>
+        /Brandschutzkonzept/.test(el.textContent ?? '')
+      )!
+    const pressedRows = () =>
+      document.querySelectorAll('[data-testid="work-row-link"][aria-pressed="true"]')
+
+    test('a card is a keyboard control: Tab reaches it, Enter and Space toggle it and link its rows', async () => {
+      const user = userEvent.setup()
+      renderSettled()
+      const card = conceptCard()
+      const toggle = card.querySelector<HTMLElement>('[data-source-card-toggle]')!
+      expect(toggle.tagName).toBe('BUTTON')
+      // Named by the document, as the card names it.
+      expect(toggle).toHaveAccessibleName(/Brandschutzkonzept/)
+      // It wraps nothing (not the chip, not the marker) and sits in no button.
+      expect(toggle.childElementCount).toBe(0)
+      expect(toggle.parentElement?.closest('button')).toBeNull()
+
+      for (let i = 0; i < 100 && document.activeElement !== toggle; i++) await user.tab()
+      expect(toggle).toHaveFocus()
+      expect(toggle).toHaveAttribute('aria-pressed', 'false')
+      expect(pressedRows()).toHaveLength(0)
+
+      await user.keyboard('{Enter}')
+      expect(toggle).toHaveAttribute('aria-pressed', 'true')
+      expect(card).toHaveAttribute('data-link', 'selected')
+      expect(pressedRows().length).toBeGreaterThan(0)
+
+      await user.keyboard(' ')
+      expect(toggle).toHaveAttribute('aria-pressed', 'false')
+      expect(card).not.toHaveAttribute('data-link')
+      expect(pressedRows()).toHaveLength(0)
+    })
+
+    test('a receded card is dimmed once, never on top of the uncited dimming', async () => {
+      const user = userEvent.setup()
+      renderSettled()
+      // Open every fold, so the uncited cards stand too.
+      for (const fold of screen.getAllByTestId('uncited-fold'))
+        await user.click(within(fold).getByRole('button'))
+      expect(document.querySelectorAll('[data-source-card] .border-dashed').length).toBeGreaterThan(0)
+      await user.click(conceptCard().querySelector<HTMLElement>('[data-source-card-toggle]')!)
+      const receded = Array.from(document.querySelectorAll('[data-link="receded"]'))
+      expect(receded.length).toBeGreaterThan(0)
+      for (const el of receded) {
+        expect(el).toHaveClass('opacity-60')
+        expect(el.querySelector('.opacity-75, .opacity-40')).toBeNull()
+      }
+      // Nowhere does one dimming sit inside another.
+      for (const el of Array.from(document.querySelectorAll('.opacity-60, .opacity-75')))
+        expect(el.parentElement?.closest('.opacity-60, .opacity-75')).toBeNull()
+    })
+
+    test('the open fold is a plain text button under the last uncited card, with no tab', async () => {
+      const user = userEvent.setup()
+      renderSettled()
+      const fold = screen.getAllByTestId('uncited-fold')[0]!
+      const column = fold.closest<HTMLElement>('[role="list"]')!
+      expect(fold.querySelector('.card-eyebrow')).not.toBeNull()
+      await user.click(within(fold).getByRole('button'))
+
+      const open = within(column).getByTestId('uncited-fold')
+      const hide = within(open).getByRole('button', { name: tEn('thinking.node.uncited.hide') })
+      expect(hide).toHaveAttribute('aria-expanded', 'true')
+      expect(hide).not.toHaveClass('border-dashed')
+      expect(open.querySelector('.card-eyebrow')).toBeNull()
+      const items = within(column).getAllByRole('listitem')
+      expect(items.at(-1)).toBe(open)
+      expect(items.at(-2)).toHaveAttribute('data-source-card')
+
+      await user.click(hide)
+      const closed = within(column).getByTestId('uncited-fold')
+      expect(within(closed).getByRole('button')).toHaveAttribute('aria-expanded', 'false')
+      expect(closed.querySelector('.card-eyebrow')).not.toBeNull()
+    })
   })
 
   describe('the header at a glance (2026-10)', () => {
@@ -833,10 +930,16 @@ describe('ChatThinking', () => {
       expect(within(trigger).getByText(/^Trace ·/)).toHaveTextContent(
         'Trace · 2 steps · 3 sources cited'
       )
-      expect(screen.getByTestId('derivation-warning')).toHaveTextContent('1 point open')
-      expect(trigger).toHaveAccessibleName(
-        'Done · Trace · 2 steps · 3 sources cited · 1 point open'
+      expect(screen.getByTestId('derivation-warning')).toHaveTextContent(
+        plain(tEn('thinking.derivationWarning.open', { count: 1 }))
       )
+      expect(trigger).toHaveAccessibleName(
+        new RegExp(
+          `^Done · Trace\u00A0· 2\\ssteps\u00A0· 3\\ssources cited · ${tEn('thinking.derivationWarning.open', { count: 1 })}$`
+        )
+      )
+      // The dot never starts a line: a no-break space holds it to the word before.
+      expect(within(trigger).getByText(/^Trace/).textContent).toMatch(/^Trace\u00A0· 2\ssteps\u00A0· /)
     })
 
     test('a failed call outranks an open point', () => {
@@ -940,7 +1043,9 @@ describe('ChatThinking', () => {
 
       const during = labels(container).map((n) => n.textContent)
       expect(during).toHaveLength(2)
-      expect(during).toEqual(expect.arrayContaining(['Working on a response …', 'Trace · 2 sources']))
+      expect(during.map(plain)).toEqual(
+        expect.arrayContaining(['Working on a response …', 'Trace · 2 sources'])
+      )
       await waitFor(() => expect(labels(container)).toHaveLength(1))
       expect(labels(container)[0]).toHaveTextContent('Trace · 2 sources')
     })
@@ -950,7 +1055,7 @@ describe('ChatThinking', () => {
       expect(labels(container)[0].querySelector('.animate-shimmer-window')).not.toBeNull()
 
       rerender(<ChatThinking steps={withSources(2)} isThinking={false} />)
-      const summary = labels(container).find((n) => n.textContent === 'Trace · 2 sources')
+      const summary = labels(container).find((n) => plain(n.textContent) === 'Trace · 2 sources')
       expect(summary?.querySelector('.animate-shimmer-window')).toBeNull()
     })
 
