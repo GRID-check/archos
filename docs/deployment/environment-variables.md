@@ -233,17 +233,17 @@ The platform-owner base corpus (`oib_knowledge`) is the PDFs admins upload. They
 
 ---
 
-## Tag Backfill Script (`scripts/backfill_document_tags.py`)
+## Permit-fixture renderer (`scripts/turn_census/render_fixture_permits.py`, development only)
 
-The one-off tag-backfill script runs **outside** the NAT runtime, so it builds an OpenAI-compatible client directly from these env vars, which must match the `summary_llm` block in `configs/config_oib_openrouter.yml`.
+The renderer runs the production permit pen over the precedent fixture office, **outside** the NAT runtime, so it builds an OpenAI-compatible client directly from these env vars, which must match the `summary_llm` block in `configs/config_oib_openrouter.yml`.
 
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
-| `BACKFILL_SUMMARY_API_KEY` | Yes* | provider inference (`OPENROUTER_API_KEY` for the default base URL) | API key for the tagging LLM, resolved through the shared resolver: `BACKFILL_SUMMARY_API_KEY` → the provider key inferred from `BACKFILL_SUMMARY_BASE_URL`. If none resolves the script exits with code `2` (LLM could not be constructed). The script runs outside NAT, so BYOK does not apply. |
-| `BACKFILL_SUMMARY_BASE_URL` | No | `https://openrouter.ai/api/v1` | Base URL for the tagging LLM. Drives provider inference for the tagging key. |
-| `BACKFILL_SUMMARY_MODEL` | No | `GRID_DEFAULT_MODEL`, then `openai/gpt-6-luna` | Tagging model id. Match the config's `summary_llm` model. |
+| `BACKFILL_SUMMARY_API_KEY` | Yes* | provider inference (`OPENROUTER_API_KEY` for the default base URL) | API key for the extraction LLM, resolved through the shared resolver: `BACKFILL_SUMMARY_API_KEY` → the provider key inferred from `BACKFILL_SUMMARY_BASE_URL`. The script runs outside NAT, so BYOK does not apply. |
+| `BACKFILL_SUMMARY_BASE_URL` | No | `https://openrouter.ai/api/v1` | Base URL for the extraction LLM. Drives provider inference for its key. |
+| `BACKFILL_SUMMARY_MODEL` | No | `GRID_DEFAULT_MODEL`, then `openai/gpt-6-luna` | Extraction model id. Match the config's `summary_llm` model. |
 
-*Required only when running the backfill script; not needed by the running services. The store comes from `AIQ_SUMMARY_DB` (or `--summary-db`), the chunk text from the Qdrant at `AIQ_QDRANT_URL` (summaries only when it is unset). Exit codes: `0` success (or nothing to do; `--dry-run` always `0`), `1` a real run finished with per-document classification failures, `2` missing LLM key.
+*Required only when rendering the fixture; not needed by the running services.
 
 ---
 

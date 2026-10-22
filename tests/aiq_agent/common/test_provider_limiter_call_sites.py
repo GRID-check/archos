@@ -54,7 +54,7 @@ CHAT_MODEL = re.compile(
 )
 CHAT_MODEL_HOMES = {
     "src/aiq_agent/common/llm_factory.py": "get_langchain_llm, the one place a chat model is taken from NAT",
-    "scripts/backfill_permit_records.py": (
+    "scripts/turn_census/render_fixture_permits.py": (
         "runs outside NAT; its model goes through enforce_chat_request_contract, the slot seam"
     ),
 }

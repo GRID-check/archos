@@ -258,4 +258,4 @@ The migration reports success/failure: the store URL is added to the in-memory `
 - **Generated migrations are idempotent** — `drizzle-kit generate` always produces SQL that can be safely reapplied (though `drizzle-kit migrate` only applies pending ones).
 - **Snapshot diffing** — Drizzle stores snapshots in `drizzle/meta/` for each migration. These are used to compute the diff for the next `generate` run.
 - **Never edit generated SQL manually** — always modify the schema `.ts` file and re-generate. Manual edits will be overwritten on the next `generate` run.
-- **Rollbacks** — Drizzle Kit does not support down migrations. To revert, create a new migration that reverses the change.
+- **Rollbacks** — Drizzle Kit does not run down migrations; the deploy never applies a `*.down.sql`. They are hand-run rollbacks, and `scripts/rls-test-db.sh` (`task db:test:rls`) applies the ones from 0133 on, round-tripping each against its forward migration. To revert in production, create a new migration that reverses the change.
