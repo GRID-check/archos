@@ -41,7 +41,6 @@ import {
 import { currentMonth, dateToMonth, isMonth, monthToDate, type Month } from './month'
 import type { ProjectSetup } from './create-project-schema'
 import { startProjectIntake } from './intake-seed'
-import type { ListProjectsQuery, ProjectSummary } from './project-wire'
 import type { GeocodeResult } from '@/lib/geocoding/types'
 import { rearmOneShotsSkippedWhileParked } from '@/lib/tasks/repository'
 import { shelfReaderFor } from '@/lib/upload-screening/quarantine-reviewers'
@@ -75,43 +74,6 @@ import {
   softDeleteProjectAndEnqueue,
   type ProjectStatusWrite,
 } from './repository'
-
-function factText(project: Pick<Project, 'profile'>, key: string): string | null {
-  const value = project.profile?.facts?.[key]?.value
-  return typeof value === 'string' && value.trim() ? value.trim() : null
-}
-
-export function toProjectSummary(project: Project): ProjectSummary {
-  return {
-    id: project.id,
-    name: project.name,
-    status: project.status,
-    projectName: factText(project, 'project_name'),
-    // `standort_adresse`: the key an older pod still writes during a rolling deploy (migration 0159).
-    siteAddress: factText(project, 'site_address') ?? factText(project, 'standort_adresse'),
-    createdAt: project.createdAt,
-    pausedAt: project.pausedAt,
-    closedAt: project.closedAt,
-  }
-}
-
-/**
- * `GET /api/projects`: the projects `session` may open, as lean summaries or
- * (`view: 'full'`) whole rows, narrowed to those whose name or profile name
- * contains `nameContains`.
- */
-export async function listProjectsView(
-  session: AuthorizedSession,
-  query: ListProjectsQuery,
-): Promise<ProjectSummary[] | Project[]> {
-  const wanted = query.nameContains?.toLowerCase()
-  const projects = (await listProjects(session)).filter((project) => {
-    if (!wanted) return true
-    const summary = toProjectSummary(project)
-    return [summary.name, summary.projectName].some((name) => name?.toLowerCase().includes(wanted))
-  })
-  return query.view === 'full' ? projects : projects.map(toProjectSummary)
-}
 
 /**
  * Projects the caller can actually reach, not merely the ones their tenant owns.

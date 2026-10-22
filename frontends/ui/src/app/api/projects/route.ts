@@ -12,11 +12,12 @@ import { apiRoute, parseJsonBody, parseQuery } from '@/lib/api/handler'
 import { ORG_PERMISSIONS } from '@/lib/authz/permissions'
 import { createProjectSchema } from '@/lib/projects/create-project-schema'
 import { listProjectsQuerySchema } from '@/lib/projects/project-wire'
-import { createProject, listProjectsView } from '@/lib/projects/service'
+import { projectsView } from '@/lib/projects/project-summary'
+import { createProject, listProjects } from '@/lib/projects/service'
 
 export const GET = apiRoute(
   async ({ session, request }) => {
-    return listProjectsView(session, parseQuery(request, listProjectsQuerySchema))
+    return projectsView(await listProjects(session), parseQuery(request, listProjectsQuerySchema))
   },
   { authz: { enforcedBy: 'listProjects (per-project FGA filter, ADR-0038)' } }
 )
