@@ -305,3 +305,22 @@ only lacked an end. Twenty minutes of design went into the wrong record before
 the question was asked. The decision, and the shape that answered it (Linear's:
 work is delegated to an agent, the agent's activity is a session on the issue),
 is in ADR-0106.
+
+## Prompting advice has a three-month shelf life
+
+Guidance on how to prompt a model, write its tool descriptions or size its
+context goes stale with every model generation. Before a prompt or a tool
+description changes on the strength of outside advice, the advice comes from
+the vendor's live documentation or engineering posts published or updated in
+the last three months, each source cited with its date; anything older or
+undated is listed as excluded, not used. A consultant agent asked for this
+research runs on the strongest model available, never a small one.
+
+The case: on 2026-10-22 a prompt rewrite for the chat agent was briefed from a
+consultant that ran on a small model with undated sources. The product owner
+stopped it; the research was redone with dated, in-window sources only.
+
+The philosophy those sources serve, in the owner's words: unhobble the model.
+Say what the agent is for, what a good answer is and which rails hold, give it
+well-described tools, and leave the thinking to it. A rule earns its place by
+the reason it states, once, where it applies.
