@@ -22,6 +22,9 @@ from knowledge_layer.qdrant.payload import ChunkRecord
 from knowledge_layer.qdrant.search import hybrid_search
 from knowledge_layer.qdrant.store import QdrantStore
 
+#: Every collection here is made with a few indexes (``qdrant_testing.few_payload_indexes``).
+pytestmark = pytest.mark.usefixtures("few_payload_indexes")
+
 SCRIPT = pathlib.Path(__file__).resolve().parents[3] / "scripts" / "qdrant_rebuild.py"
 DIM = 8
 IDENTITY = {"aiq:embed_fingerprint": "fp-rebuild", "aiq:embed_model": "model-rebuild"}

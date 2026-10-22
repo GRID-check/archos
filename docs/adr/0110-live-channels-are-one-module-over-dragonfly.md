@@ -166,7 +166,7 @@ Migration, in phases:
    `lib/annotations/room.ts`, `room-service.ts` and
    `/api/documents/:id/live` are deleted. Piloti gets `publishAsAgent` and
    `roomSnapshot`.
-2. **Per-user hints.** `/api/stream` and `lib/events/bus.ts` onto the hub: one
+2. **Per-user hints (done, 2026-10-22).** `/api/stream` and `lib/events/bus.ts` onto the hub: one
    subscriber per process instead of one per stream, and the origin rule ends
    the likely double delivery on the publishing replica. A `user:<id>` channel
    whose `authorize` is "the session is that user".
@@ -174,4 +174,4 @@ Migration, in phases:
    onto a `turn` topic that the same channel listens to; then
    `/api/conversations/:id/live` and its plumbing go.
 
-Not migrated here: `/api/stream`, typing and the conversation live route.
+Not migrated in phase 1: `/api/stream` (phase 2, since done), typing and the conversation live route.

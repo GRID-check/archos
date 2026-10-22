@@ -1179,7 +1179,7 @@ export const useWebSocketChat = (options: UseWebSocketChatOptions = {}): UseWebS
    * bounded few, and is discarded with the conversation if none comes up.
    */
   const deliverAsContext = useCallback(
-    (messageId: string, content: string, dataSourcesForMessage: string[]): void => {
+    (messageId: string, content: string, dataSourcesForMessage: string[] | null): void => {
       const conversationId = useChatStore.getState().currentConversation?.id
       if (!conversationId) return
       // The user just wrote in this thread, so they are not an observer any
@@ -1216,11 +1216,20 @@ export const useWebSocketChat = (options: UseWebSocketChatOptions = {}): UseWebS
         )
       : []
 
+    // Keep internal knowledge available for base/project/session corpora even though it is hidden from toggles.
+    const dataSourcesForMessage = layoutState.knowledgeLayerAvailable
+      ? Array.from(new Set([...enabledDataSources, 'knowledge_layer']))
+      : enabledDataSources
     return {
-      // Keep internal knowledge available for base/project/session corpora even though it is hidden from toggles.
-      dataSourcesForMessage: layoutState.knowledgeLayerAvailable
-        ? Array.from(new Set([...enabledDataSources, 'knowledge_layer']))
-        : enabledDataSources,
+      dataSourcesForMessage,
+      // On the wire, `[]` selects NO source. Before the source list has loaded
+      // (or when it failed to), an empty selection is the store's initial
+      // value, not a choice, so it states nothing: `null` is every source the
+      // organization allows. Sending it refused every retrieval of the turn
+      // ("Research turn has every data source switched off", PostHog Logs).
+      // A selection that does exist goes out as it is.
+      dataSourcesOnWire:
+        layoutState.availableDataSources === null && dataSourcesForMessage.length === 0 ? null : dataSourcesForMessage,
       // Prepare file metadata for display
       messageFiles: sessionFiles.map((f) => ({ id: f.id, fileName: f.fileName })),
     }
@@ -1238,7 +1247,7 @@ export const useWebSocketChat = (options: UseWebSocketChatOptions = {}): UseWebS
     (
       messageId: string,
       content: string,
-      dataSourcesForMessage: string[],
+      dataSourcesForMessage: string[] | null,
       conversationId: string | undefined,
       reasoningEffort?: ChatEffort,
       asked?: CanvasFocus
@@ -1271,7 +1280,7 @@ export const useWebSocketChat = (options: UseWebSocketChatOptions = {}): UseWebS
       capturePosthog('chat_message_sent', {
         has_attachments: collectSendMetadata().messageFiles.length > 0,
         effort,
-        data_source_count: dataSourcesForMessage.length,
+        data_source_count: dataSourcesForMessage?.length ?? null,
       })
       // `focus_region` and `reply_in_thread` are being added to the wire; until
       // the generated type carries them they ride on this wider local type.
@@ -1328,7 +1337,7 @@ export const useWebSocketChat = (options: UseWebSocketChatOptions = {}): UseWebS
         return { ok: false }
       }
 
-      const { dataSourcesForMessage, messageFiles } = collectSendMetadata()
+      const { dataSourcesForMessage, dataSourcesOnWire, messageFiles } = collectSendMetadata()
       // Our id, generated up front: it is the anchor the mention request points at,
       // and the idempotency key the server rules on.
       const messageId = uuidv4()
@@ -1391,11 +1400,11 @@ export const useWebSocketChat = (options: UseWebSocketChatOptions = {}): UseWebS
         // The thread now waits for a human. Nothing is STARTED (MN-7) — but the
         // agent still has to see what was written, or the next `@Piloti given
         // that…` has nothing to refer to. Free, silent, best-effort.
-        deliverAsContext(messageId, content, dataSourcesForMessage)
+        deliverAsContext(messageId, content, dataSourcesOnWire)
         return { ok: true, addressees: ruling }
       }
 
-      const started = openAgentTurn(messageId, content, dataSourcesForMessage, conversationId, options.reasoningEffort)
+      const started = openAgentTurn(messageId, content, dataSourcesOnWire, conversationId, options.reasoningEffort)
       return { ok: started, addressees: ruling }
     },
     [addErrorCard, collectSendMetadata, deliverAsContext, openAgentTurn]
@@ -1419,14 +1428,14 @@ export const useWebSocketChat = (options: UseWebSocketChatOptions = {}): UseWebS
       if ((options?.mentions && options.mentions.length > 0) || options?.awaitingHuman) {
         return sendRuledMessage(content, options ?? {})
       }
-      const { dataSourcesForMessage, messageFiles } = collectSendMetadata()
+      const { dataSourcesForMessage, dataSourcesOnWire, messageFiles } = collectSendMetadata()
       const message = addUserMessage(content, { enabledDataSources: dataSourcesForMessage, messageFiles })
       // The conversation may have just been created inside addUserMessage.
       const conversationId = useChatStore.getState().currentConversation?.id
       return openAgentTurn(
         message.id,
         content,
-        dataSourcesForMessage,
+        dataSourcesOnWire,
         conversationId,
         options?.reasoningEffort,
         options?.canvas

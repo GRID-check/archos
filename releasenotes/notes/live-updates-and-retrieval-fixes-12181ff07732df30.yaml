@@ -1,0 +1,16 @@
+---
+fixes:
+  - >
+    A question sent the moment the chat opens now searches your sources like
+    any other, instead of sometimes answering without consulting any of them.
+  - >
+    New Postfach entries, mentions and shares now reach colleagues right away
+    again, without a reload.
+  - >
+    A document that is no longer a building permit no longer keeps showing the
+    permit conditions read from it earlier.
+operators:
+  - >
+    A short object-store or Dragonfly outage no longer fails files in ingestion,
+    and logs one warning per outage instead of one per reconnect attempt. NAT
+    trace spans after the first agent round reach Langfuse again.

@@ -242,6 +242,8 @@ COPY --from=builder --chown=nextjs:nodejs /app/src/lib/proxy/ws-teardown.js ./sr
 COPY --from=builder --chown=nextjs:nodejs /app/src/lib/proxy/backend-target.js ./src/lib/proxy/backend-target.js
 # And this one to build a chat turn's headers and signed envelope (ADR-0106).
 COPY --from=builder --chown=nextjs:nodejs /app/src/lib/turns/turn-headers.js ./src/lib/turns/turn-headers.js
+# And this one to open the shared rate-limit store's Dragonfly connection.
+COPY --from=builder --chown=nextjs:nodejs /app/src/lib/redis/connect.js ./src/lib/redis/connect.js
 COPY --from=builder --chown=nextjs:nodejs /app/drizzle.config.ts ./drizzle.config.ts
 COPY --from=builder --chown=nextjs:nodejs /app/drizzle ./drizzle
 

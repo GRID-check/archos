@@ -8,8 +8,8 @@
  *   and only with `REDIS_URL`. A topic is SUBSCRIBEd when its first listener
  *   arrives and UNSUBSCRIBEd when its last one leaves, so a hundred viewers of
  *   one document on this replica are one subscription, and a thousand open
- *   streams are still one connection. (`lib/events/bus.ts` opens a connection
- *   per subscription; ADR-0110 moves it here next.)
+ *   streams are still one connection. The per-user hints (`lib/events/bus.ts`)
+ *   ride on it too.
  * - **In-process loopback, always.** A publish is delivered to this process's
  *   listeners directly, which is all a single replica (development, one pod)
  *   needs, and goes to Dragonfly for the others. A remote message carries the
@@ -26,6 +26,7 @@
 import 'server-only'
 import { randomUUID } from 'node:crypto'
 import type { EventTransport } from '@/lib/events/bus'
+import { createRedisClient } from '@/lib/redis/connect.js'
 
 /** A listener receives the payload as published (loopback) or as parsed JSON (another replica). */
 export type HubListener = (payload: unknown) => void
@@ -223,18 +224,5 @@ interface RedisLike {
 }
 
 function createClient(url: string): RedisLike {
-  // Lazy require keeps ioredis out of bundles that never set REDIS_URL.
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const IORedis = require('ioredis')
-  const client = new IORedis(url, {
-    connectTimeout: 1000,
-    commandTimeout: 2000,
-    maxRetriesPerRequest: 1,
-    enableOfflineQueue: true,
-    lazyConnect: false,
-  }) as RedisLike
-  client.on('error', (error: unknown) => {
-    console.warn('[realtime] redis error:', error)
-  })
-  return client
+  return createRedisClient(url, 'realtime', { commandTimeout: 2000, queueWhileDown: true }) as RedisLike
 }

@@ -19,9 +19,10 @@
  * replay buffer here would create a second, weaker source of truth — the exact
  * mistake ADR-0035 rejects.
  *
- * **Teardown is the load-bearing part.** Each subscription may hold its own Redis
- * subscriber client, so a connection that goes away without unsubscribing leaks a
- * client for the lifetime of the process. Both exit paths (`request.signal`
+ * **Teardown is the load-bearing part.** Each subscription is a listener on the
+ * process's realtime hub, so a connection that goes away without unsubscribing
+ * leaks the listener (and the hub's Dragonfly subscription to the user's
+ * channel) for the lifetime of the process. Both exit paths (`request.signal`
  * aborting and the stream being cancelled) run the same idempotent teardown.
  */
 

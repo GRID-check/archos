@@ -34,6 +34,7 @@ import os
 import signal
 import time
 
+from aiq_agent.common.logging_utils import suppress_noisy_dependency_logs
 from aiq_agent.knowledge.leader_lock import require_direct_dsns
 
 from . import ingest_dispatch
@@ -124,6 +125,7 @@ async def _drain(ingestor) -> None:
 
 def main() -> None:
     logging.basicConfig(level=os.environ.get("LOG_LEVEL", "INFO"))
+    suppress_noisy_dependency_logs()
     # Every file takes a `keyed_lock` while it replaces its predecessor, which
     # needs the direct DSN (ADR-0083). It never LISTENs. Fail the boot, not the
     # first file.

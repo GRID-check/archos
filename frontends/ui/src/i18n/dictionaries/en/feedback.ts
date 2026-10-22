@@ -31,13 +31,6 @@ export const feedback = {
     shortcut: 'to send',
     error: 'Your feedback could not be sent. Please try again.',
     rateLimited: 'You have sent a lot of feedback in the last hour. Please try again later.',
-    success: {
-      title: 'Thank you!',
-      body: 'Your feedback has reached the Piloti team. Every report is read.',
-      another: 'Send more',
-      close: 'Close',
-      viewThread: 'Open chat',
-    },
   },
   kinds: {
     bug: {
@@ -80,6 +73,15 @@ export const feedback = {
       description: 'When you send feedback, your chat with the team shows up here.',
     },
     send: 'Send feedback',
+    /** Opens the form inside „My feedback”. */
+    new: 'New feedback',
+    /** Beside the list, while no case is open. */
+    pick: {
+      title: 'Pick a report',
+      description: 'Choose a report on the left to read the chat with the team, or send new feedback.',
+    },
+    /** In the thread of a report sent a moment ago. */
+    sent: 'Thank you! Your feedback has reached the Piloti team. You will see their answer here.',
     loadError: 'Your feedback could not be loaded.',
     threadLoadError: 'This chat could not be loaded.',
     retry: 'Try again',

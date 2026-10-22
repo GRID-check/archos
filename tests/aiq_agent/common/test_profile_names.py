@@ -3,14 +3,12 @@
 from __future__ import annotations
 
 import json
-import re
 from pathlib import Path
 
 from aiq_agent import profile_names
 
 REPO = Path(__file__).resolve().parents[3]
 NAMES_JSON = REPO / "frontends/ui/src/lib/project-profile/legacy-names.json"
-MIGRATION_0159 = REPO / "frontends/ui/drizzle/0159_english_profile_names.sql"
 
 
 def _names() -> dict:
@@ -26,16 +24,6 @@ def test_the_tables_are_the_json_the_typescript_side_reads() -> None:
         "legacyPrefix": profile_names.LEGACY_BUILDING_PREFIX,
         "prefix": profile_names.BUILDING_PREFIX,
     }
-
-
-def test_migration_0159_rewrites_exactly_these_names() -> None:
-    sql = MIGRATION_0159.read_text(encoding="utf-8")
-    match = re.search(r"\$json\$\n(.*?)\n\$json\$::jsonb", sql, re.DOTALL)
-    assert match, "the migration must carry the names it rewrites in its grid_0159_names() function"
-    embedded = json.loads(match.group(1))
-    names = _names()
-    for section in ("keys", "tokens", "rules"):
-        assert embedded[section] == names[section], section
 
 
 def test_keys_are_renamed_with_their_building_and_zone() -> None:

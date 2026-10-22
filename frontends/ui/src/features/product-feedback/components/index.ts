@@ -1,4 +1,4 @@
-export { FeedbackDialog, FEEDBACK_KIND_ICONS, type FeedbackDialogProps } from './feedback-dialog'
+export { FeedbackForm, FEEDBACK_KIND_ICONS, type FeedbackFormProps } from './feedback-form'
 export {
   FeedbackProvider,
   useFeedbackAvailable,
@@ -7,8 +7,8 @@ export {
   useOpenFeedbackThreads,
 } from './feedback-provider'
 export {
-  FeedbackThreadsSheet,
+  FeedbackThreadsDialog,
   type FeedbackScope,
   type FeedbackThreadsApi,
-  type FeedbackThreadsSheetProps,
+  type FeedbackThreadsDialogProps,
 } from './feedback-threads'

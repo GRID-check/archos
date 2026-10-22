@@ -59,11 +59,9 @@ The **project brief** is the architect-owned context Piloti works from — locat
 
 The wizard implements four scopes: a project may contain one grundstück and **one or more Bauwerke** (added as duplicable cards in module C), and each building's selected uses (module D) expand into **use-zones** with their own key figures. Numeric questions carry one of three **answer modes** — *Wert* (confirmed), *Schätzung* (estimated) or *noch offen* — and yes/no questions add a third *noch offen* value. These modes are not cosmetic: a confirmed answer becomes a fact, an estimate becomes an unconfirmed assumption, and an open answer becomes an unknown, so the mode travels all the way to Piloti (the prompt context lists confirmed facts, assumptions and unknowns separately). Every question shows a *"Warum fragen wir das?"* legal rationale, and the modules marked as system derivations (Gebäudeklasse, UVP-Relevanz) collect the inputs those classifications need. Gebäudeklasse is not auto-computed yet: it is confirmed in the brief when known, and otherwise asked in chat before an answer that hangs on it.
 
-On the project overview the brief renders as a grouped fact sheet with an AI-written prose summary. When a save has just reset the prose, the summary regenerates automatically with a visible *"Piloti schreibt die Projekt-Zusammenfassung…"* state. If that automatic generation cannot complete — for example when no language model is configured — the card shows a calm inline notice (*"Zusammenfassung derzeit nicht verfügbar"*, with the hint *"KI-Dienst nicht konfiguriert — bitte Administrator kontaktieren"* in that specific case) alongside a button to retry, rather than leaving the summary silently blank.
-
 Changing the location in the intake wizard takes effect immediately for new chats: the profile save clears both the cached project-context prompt view and the cached Bundesland used for jurisdiction-dependent RIS logic, so a saved location change is never served stale.
 
-Source: `frontends/ui/src/features/projects/components/project-intake-wizard.tsx`, `frontends/ui/src/features/projects/components/project-brief.tsx`, `frontends/ui/src/lib/project-profile/`
+Source: `frontends/ui/src/features/projects/components/project-intake-wizard.tsx`, `frontends/ui/src/lib/project-profile/`
 
 ## Project-scoped chat
 

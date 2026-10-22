@@ -62,6 +62,7 @@ def no_network():
     """Every way the route could fetch or upload, each failing the test when used."""
     with (
         patch("httpx.get", side_effect=AssertionError("GET inside the request")) as get,
+        patch("httpx.Client.get", side_effect=AssertionError("GET inside the request")),
         patch("httpx.AsyncClient.get", side_effect=AssertionError("GET inside the request")) as async_get,
         patch("httpx.put") as put,
     ):
@@ -395,7 +396,7 @@ def test_deferred_download_requests_the_configured_origin_whatever_the_spelling(
     """Same origin in another spelling: the GET goes to the store as configured,
     with only the object's path and presigned query from the URL handed in."""
     spelled = "HTTP://SeaweedFS.Test:80/bucket/doc/plan.pdf?X-Amz-Signature=secret-original"
-    with patch("httpx.get", return_value=_download(b"%PDF-1.4", "application/pdf")) as get:
+    with patch("httpx.Client.get", return_value=_download(b"%PDF-1.4", "application/pdf")) as get:
         path = DeferredObjectDownload(spelled)()
     os.unlink(path)
     assert get.call_args[0][0] == _SIGNED_REF
@@ -405,7 +406,7 @@ def test_deferred_download_refuses_a_url_off_the_store_before_any_request():
     """A forged queue row or a direct caller cannot point the GET anywhere else."""
     from aiq_api.object_store_url import ObjectStoreUrlError
 
-    with patch("httpx.get") as get, pytest.raises(ObjectStoreUrlError):
+    with patch("httpx.Client.get") as get, pytest.raises(ObjectStoreUrlError):
         DeferredObjectDownload("http://169.254.169.254/latest/meta-data")()
     get.assert_not_called()
 
@@ -416,7 +417,7 @@ def test_deferred_download_writes_a_temp_file_and_hides_its_url():
     deferred = DeferredObjectDownload(_SIGNED_REF)
     assert "secret-original" not in repr(deferred)
     assert "secret-original" not in repr({"extraction_paths": [deferred]})
-    with patch("httpx.get", return_value=_download(b"%PDF-1.4 original", "application/pdf")) as get:
+    with patch("httpx.Client.get", return_value=_download(b"%PDF-1.4 original", "application/pdf")) as get:
         path = deferred()
     try:
         assert get.call_args[0][0] == _SIGNED_REF
@@ -433,7 +434,7 @@ def test_deferred_download_takes_the_suffix_from_the_response():
     response knows the content type: an office original whose object path has
     no extension still lands as what it is."""
     docx = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-    with patch("httpx.get", return_value=_download(b"PK", docx)):
+    with patch("httpx.Client.get", return_value=_download(b"PK", docx)):
         path = DeferredObjectDownload("http://seaweedfs.test/bucket/doc/object")()
     os.unlink(path)
     assert path.endswith(".docx")
@@ -441,7 +442,7 @@ def test_deferred_download_takes_the_suffix_from_the_response():
 
 def test_deferred_download_keeps_a_stated_suffix():
     """The rendition is a PDF whatever the store calls it."""
-    with patch("httpx.get", return_value=_download(b"%PDF", "application/octet-stream")):
+    with patch("httpx.Client.get", return_value=_download(b"%PDF", "application/octet-stream")):
         path = DeferredObjectDownload("http://seaweedfs.test/bucket/doc/_render", suffix=".pdf")()
     os.unlink(path)
     assert path.endswith(".pdf")
@@ -451,7 +452,7 @@ def test_deferred_download_scrubs_a_hostile_url_suffix():
     """The URL-path extension is the fallback, and it lands in the temp
     filename: separators, traversal and length bombs are scrubbed to a plain
     short extension."""
-    with patch("httpx.get", return_value=_download(b"bytes", "application/octet-stream")):
+    with patch("httpx.Client.get", return_value=_download(b"bytes", "application/octet-stream")):
         path = DeferredObjectDownload("http://seaweedfs.test/bucket/a.pdf/../../etc/passwd")()
     os.unlink(path)
     basename = os.path.basename(path)
@@ -463,17 +464,46 @@ def test_deferred_download_scrubs_a_hostile_url_suffix():
 def test_deferred_download_raises_on_a_failed_get(status):
     """An expired signature, a missing object, and a redirect are all failed
     downloads; the job turns the raise into a failed file."""
-    with patch("httpx.get", return_value=_failed_download(status)), pytest.raises(httpx.HTTPStatusError):
+    with patch("httpx.Client.get", return_value=_failed_download(status)), pytest.raises(httpx.HTTPStatusError):
         DeferredObjectDownload(_SIGNED_REF)()
 
 
 def test_deferred_download_logs_the_size_and_never_the_url(caplog):
     caplog.set_level(logging.DEBUG)
-    with patch("httpx.get", return_value=_download(b"%PDF-1.4", "application/pdf")):
+    with patch("httpx.Client.get", return_value=_download(b"%PDF-1.4", "application/pdf")):
         path = DeferredObjectDownload(_SIGNED_REF)()
     os.unlink(path)
     assert any("8 bytes" in record.getMessage() for record in caplog.records)
     assert all("secret-original" not in record.getMessage() for record in caplog.records)
+
+
+def test_deferred_download_retries_a_refused_connect():
+    """An object-store restart costs a few seconds, not the file: the download
+    goes through a transport that retries a refused CONNECT (httpcore's own
+    retry, which repeats nothing that reached the store)."""
+    from aiq_api.routes.ingest import _DOWNLOAD_CONNECT_RETRIES
+
+    with (
+        patch("httpx.HTTPTransport", wraps=httpx.HTTPTransport) as transport,
+        patch("httpx.Client.get", return_value=_download(b"%PDF", "application/pdf")),
+    ):
+        path = DeferredObjectDownload(_SIGNED_REF)()
+    os.unlink(path)
+    transport.assert_called_once_with(retries=_DOWNLOAD_CONNECT_RETRIES)
+    assert _DOWNLOAD_CONNECT_RETRIES >= 5
+
+
+def test_deferred_download_bounds_each_connect_attempt():
+    """Seven attempts at the 60 s read timeout would hold a worker for minutes
+    against a store that drops SYNs: each CONNECT has its own short bound."""
+    from aiq_api.routes.ingest import _DOWNLOAD_CONNECT_TIMEOUT_SECONDS
+
+    with patch("httpx.Client.get", return_value=_download(b"%PDF", "application/pdf")) as get:
+        path = DeferredObjectDownload(_SIGNED_REF)()
+    os.unlink(path)
+    timeout = get.call_args[1]["timeout"]
+    assert timeout.connect == _DOWNLOAD_CONNECT_TIMEOUT_SECONDS <= 10
+    assert timeout.read == 60.0
 
 
 def test_infer_suffix_office_types():

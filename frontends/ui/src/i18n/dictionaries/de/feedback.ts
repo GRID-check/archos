@@ -30,13 +30,6 @@ export const feedback: typeof en.feedback = {
     error: 'Ihr Feedback konnte nicht gesendet werden. Bitte versuchen Sie es erneut.',
     rateLimited:
       'Sie haben in der letzten Stunde schon viel Feedback gesendet. Bitte versuchen Sie es später erneut.',
-    success: {
-      title: 'Vielen Dank!',
-      body: 'Ihr Feedback ist beim Piloti-Team angekommen. Jede Meldung wird gelesen.',
-      another: 'Weiteres senden',
-      close: 'Schließen',
-      viewThread: 'Chat öffnen',
-    },
   },
   kinds: {
     bug: {
@@ -79,6 +72,12 @@ export const feedback: typeof en.feedback = {
       description: 'Sobald Sie Feedback senden, erscheint hier Ihr Chat mit dem Team.',
     },
     send: 'Feedback senden',
+    new: 'Neues Feedback',
+    pick: {
+      title: 'Meldung auswählen',
+      description: 'Wählen Sie links eine Meldung, um den Chat mit dem Team zu lesen, oder senden Sie neues Feedback.',
+    },
+    sent: 'Vielen Dank! Ihr Feedback ist beim Piloti-Team angekommen. Die Antwort erscheint hier.',
     loadError: 'Ihr Feedback konnte nicht geladen werden.',
     threadLoadError: 'Dieser Chat konnte nicht geladen werden.',
     retry: 'Erneut versuchen',

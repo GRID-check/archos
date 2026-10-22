@@ -28,7 +28,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 
 
 def _load(name: str, relative: str):
-    """Import a top-level script by path, the way tests/test_backfill_document_tags.py does."""
+    """Import a top-level script by path."""
     if str(REPO_ROOT) not in sys.path:
         sys.path.insert(0, str(REPO_ROOT))
     spec = importlib.util.spec_from_file_location(name, REPO_ROOT / relative)

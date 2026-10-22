@@ -260,6 +260,10 @@
               "de": "Claude, Cursor und andere Assistenten zeigen Piloti jetzt mit eigenem Namen und Icon an und erhalten Such- und Abfrageergebnisse in einem strukturierten Format, das sie zuverlässig auslesen können."
             },
             {
+              "en": "„Mein Feedback“ now opens as a window with your reports on the left and the chat with the Piloti team on the right, and on a phone it fills the screen. You write new feedback in the same window, so your menu has one feedback entry, and once a report is sent its chat opens right there.",
+              "de": "„Mein Feedback“ öffnet sich jetzt in einem Fenster: Ihre Berichte links, der Chat mit dem Piloti-Team rechts. Am Smartphone nimmt es den ganzen Bildschirm ein. Neues Feedback verfassen Sie im selben Fenster, sodass Ihr Menü nur einen Feedback-Eintrag enthält. Sobald Sie einen Bericht absenden, öffnet sich der zugehörige Chat direkt dort."
+            },
+            {
               "en": "Piloti works from a shorter set of standing instructions, and what changes from one question to the next, such as your project's details and the files, now reaches it separately from them.",
               "de": "Piloti arbeitet mit einem kürzeren Satz dauerhafter Anweisungen. Informationen, die sich von einer Frage zur nächsten ändern, etwa Projektdetails und Dateien, werden nun getrennt davon übermittelt."
             },
@@ -367,6 +371,18 @@
             {
               "en": "Large files full of CAD drawings, such as a project's collected documents or a fire safety concept with many drawing sheets, now upload and become searchable. Before, such a file could fail every time it was read, and a retry failed the same way.",
               "de": "Große Dateien mit CAD-Zeichnungen, etwa gesammelte Projektunterlagen oder ein Brandschutzkonzept mit vielen Planblättern, lassen sich jetzt hochladen und durchsuchen. Bisher schlägt das Einlesen solcher Dateien jedes Mal fehl, und auch ein erneuter Versuch scheitert."
+            },
+            {
+              "en": "A question sent the moment the chat opens now searches your sources like any other, instead of sometimes answering without consulting any of them.",
+              "de": "Eine Frage, die beim Öffnen des Chats sofort gesendet wird, durchsucht jetzt wie jede andere Frage Ihre Quellen, statt manchmal beantwortet zu werden, ohne dass eine davon herangezogen wird."
+            },
+            {
+              "en": "New Postfach entries, mentions and shares now reach colleagues right away again, without a reload.",
+              "de": "Neue Postfach-Einträge, Erwähnungen und geteilte Inhalte erreichen Kolleginnen und Kollegen jetzt wieder sofort – ohne Neuladen."
+            },
+            {
+              "en": "A document that is no longer a building permit no longer keeps showing the permit conditions read from it earlier.",
+              "de": "Ein Dokument, das nicht mehr als Baubewilligung gilt, zeigt die zuvor daraus ausgelesenen Bewilligungsauflagen nicht mehr an."
             },
             {
               "en": "Piloti's connector in Claude and other AI assistants now shows the Piloti icon instead of a blank tile.",

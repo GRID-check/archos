@@ -16,7 +16,7 @@ import type { JSX } from 'react'
 import * as React from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Check, ChevronRight, Compass, LogOut, MessageSquarePlus, MessagesSquare } from 'lucide-react'
+import { Check, ChevronRight, Compass, LogOut, MessagesSquare } from 'lucide-react'
 
 import { useAuth } from '@/adapters/auth/use-auth'
 import { FOCUS_RING_INSET } from '@/components/ui/focus-ring'
@@ -36,7 +36,6 @@ import { useStartProductTour } from '@/features/onboarding/components/product-to
 import {
   useFeedbackAvailable,
   useFeedbackUpdatedCount,
-  useOpenFeedback,
   useOpenFeedbackThreads,
 } from '@/features/product-feedback/components'
 import { CountPill } from '@/components/ui/count-pill'
@@ -80,7 +79,6 @@ export function PhoneMoreSheet({
   const setTheme = useLayoutStore((s) => s.setTheme)
   const { locale, setLocale, localeNames } = useLocale()
   const startTour = useStartProductTour()
-  const openFeedback = useOpenFeedback()
   const openFeedbackThreads = useOpenFeedbackThreads()
   const feedbackUpdatedCount = useFeedbackUpdatedCount()
   const feedbackAvailable = useFeedbackAvailable()
@@ -166,14 +164,6 @@ export function PhoneMoreSheet({
                 <span className="min-w-0 flex-1">{t('userMenu.productTour')}</span>
               </button>
             </li>
-            {feedbackAvailable && (
-              <li>
-                <button type="button" className={ROW} onClick={act(() => openFeedback())}>
-                  <MessageSquarePlus className="text-muted-foreground size-5 shrink-0" aria-hidden />
-                  <span className="min-w-0 flex-1">{tFeedback('open')}</span>
-                </button>
-              </li>
-            )}
             {feedbackAvailable && (
               <li>
                 <button type="button" className={ROW} onClick={act(() => openFeedbackThreads())}>

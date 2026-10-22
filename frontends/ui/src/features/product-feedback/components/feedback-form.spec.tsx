@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, test, vi } from 'vitest'
 import type { SubmitProductFeedbackRequest, SubmitProductFeedbackResult } from '@/lib/product-feedback/client'
 import { capturePosthog, getPosthogSupportContext } from '@/lib/analytics/posthog'
-import { FeedbackDialog } from './feedback-dialog'
+import { FeedbackForm } from './feedback-form'
 
 vi.mock('@/lib/analytics/posthog', () => ({
   capturePosthog: vi.fn(),
@@ -18,17 +18,16 @@ const ok: SubmitProductFeedbackResult = {
 function setup(result: SubmitProductFeedbackResult = ok) {
   const submit = vi.fn<(request: SubmitProductFeedbackRequest) => Promise<SubmitProductFeedbackResult>>()
   submit.mockResolvedValue(result)
-  const onOpenChange = vi.fn()
-  render(
-    <FeedbackDialog open onOpenChange={onOpenChange} submit={submit} userEmail="maria@buero.test" />,
-  )
-  return { submit, onOpenChange, user: userEvent.setup() }
+  const onSent = vi.fn()
+  const onCancel = vi.fn()
+  render(<FeedbackForm submit={submit} onSent={onSent} onCancel={onCancel} userEmail="maria@buero.test" />)
+  return { submit, onSent, onCancel, user: userEvent.setup() }
 }
 
 const message = () => screen.getByTestId('feedback-message')
 const send = () => screen.getByTestId('feedback-send')
 
-describe('FeedbackDialog', () => {
+describe('FeedbackForm', () => {
   test('sends the kind, the trimmed message, the contact choice and the captured page', async () => {
     const { submit, user } = setup()
 
@@ -72,23 +71,33 @@ describe('FeedbackDialog', () => {
     await waitFor(() => expect(submit).toHaveBeenCalledTimes(1))
   })
 
-  test('thanks the reporter once it is sent', async () => {
-    const { user } = setup()
+  test('hands the stored report to the host, which opens its thread', async () => {
+    const { onSent, user } = setup()
 
     await user.type(message(), 'The upload stops at 99 percent.')
     await user.click(send())
 
-    expect(await screen.findByTestId('feedback-sent')).toHaveTextContent('Thank you!')
+    await waitFor(() => expect(onSent).toHaveBeenCalledWith('r1'))
+  })
+
+  test('Cancel hands back to the host without sending', async () => {
+    const { submit, onCancel, user } = setup()
+
+    await user.click(screen.getByRole('button', { name: 'Cancel' }))
+
+    expect(onCancel).toHaveBeenCalledOnce()
+    expect(submit).not.toHaveBeenCalled()
   })
 
   test('keeps the text and explains when sending fails', async () => {
-    const { user } = setup({ ok: false, reason: 'rate-limited' })
+    const { onSent, user } = setup({ ok: false, reason: 'rate-limited' })
 
     await user.type(message(), 'The upload stops at 99 percent.')
     await user.click(send())
 
     expect(await screen.findByRole('alert')).toHaveTextContent('a lot of feedback in the last hour')
     expect(message()).toHaveValue('The upload stops at 99 percent.')
+    expect(onSent).not.toHaveBeenCalled()
   })
 
   test('says where a reply would go', () => {
@@ -129,12 +138,12 @@ describe('FeedbackDialog', () => {
 
     test('still sends with no PostHog state when PostHog is off in this browser', async () => {
       vi.mocked(getPosthogSupportContext).mockReturnValueOnce({ sessionId: null })
-      const { submit, user } = setup()
+      const { submit, onSent, user } = setup()
 
       await user.type(message(), 'The upload stops at 99 percent.')
       await user.click(send())
 
-      expect(await screen.findByTestId('feedback-sent')).toBeInTheDocument()
+      await waitFor(() => expect(onSent).toHaveBeenCalledWith('r1'))
       expect(submit.mock.calls[0]![0].posthog).toEqual({ sessionId: null })
     })
 
@@ -150,7 +159,7 @@ describe('FeedbackDialog', () => {
   })
 })
 
-describe('FeedbackDialog on a phone', () => {
+describe('FeedbackForm on a phone', () => {
   const coarse = (matches: boolean): void => {
     vi.stubGlobal(
       'matchMedia',
@@ -184,21 +193,5 @@ describe('FeedbackDialog on a phone', () => {
   test('the keyboard-shortcut hint is not painted where there is no keyboard', () => {
     setup()
     expect(document.getElementById(`${message().id}-hint`)?.className).toMatch(/pointer-coarse:hidden/)
-  })
-})
-
-describe('FeedbackDialog → the conversation', () => {
-  test('after sending, offers to open the conversation on that report', async () => {
-    const submit = vi.fn<(request: SubmitProductFeedbackRequest) => Promise<SubmitProductFeedbackResult>>()
-    submit.mockResolvedValue(ok)
-    const onViewThread = vi.fn()
-    render(<FeedbackDialog open onOpenChange={vi.fn()} submit={submit} onViewThread={onViewThread} />)
-    const user = userEvent.setup()
-
-    await user.type(screen.getByTestId('feedback-message'), 'The upload stops at 99 percent.')
-    await user.click(screen.getByTestId('feedback-send'))
-    await user.click(await screen.findByTestId('feedback-view-thread'))
-
-    expect(onViewThread).toHaveBeenCalledWith('r1')
   })
 })

@@ -47,11 +47,16 @@ vi.mock('@/shared/hooks/use-backend-health', () => ({
   checkBackendHealthCached: vi.fn(async () => true),
   invalidateHealthCache: vi.fn(),
 }))
+const layout = vi.hoisted(() => ({
+  sources: {
+    enabledDataSourceIds: ['web_search'] as string[],
+    availableDataSources: [] as unknown[] | null,
+  },
+}))
 vi.mock('@/features/layout/store', () => ({
   useLayoutStore: {
     getState: () => ({
-      enabledDataSourceIds: ['web_search'],
-      availableDataSources: [],
+      ...layout.sources,
       knowledgeLayerAvailable: false,
       activeSourcePreset: null,
       setEnabledDataSources: vi.fn(),
@@ -166,6 +171,19 @@ beforeEach(() => {
 afterEach(() => vi.useRealTimers())
 
 describe('a question', () => {
+  it('states no source selection while the source list has not loaded, rather than selecting none', () => {
+    // `[]` on the wire switches every source off; the composer's list is empty
+    // only because nothing has loaded yet.
+    layout.sources = { enabledDataSourceIds: [], availableDataSources: null }
+    try {
+      const { result } = open(conversationOf(CONVERSATION))
+      act(() => void result.current.sendMessage('Wie lang darf der Fluchtweg sein?'))
+      expect(sentOf('user_message')).toEqual([expect.objectContaining({ data_sources: null })])
+    } finally {
+      layout.sources = { enabledDataSourceIds: ['web_search'], availableDataSources: [] }
+    }
+  })
+
   it('goes out as a user_message whose id is the question, and again on every reopen until RUN_STARTED', () => {
     const { result } = open(conversationOf(CONVERSATION))
 

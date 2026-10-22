@@ -198,16 +198,8 @@ const WS_MESSAGE_LIMITS_ENABLED = process.env.GRID_WS_MESSAGE_LIMITS !== '0'
 let limitStoreClient = null
 if (process.env.REDIS_URL) {
   try {
-    const IORedis = require('ioredis')
-    limitStoreClient = new IORedis(process.env.REDIS_URL, {
-      connectTimeout: 1000,
-      commandTimeout: 500,
-      maxRetriesPerRequest: 1,
-      enableOfflineQueue: false,
-    })
-    limitStoreClient.on('error', (error) => {
-      console.warn('[Gateway] rate-limit store error:', error.message)
-    })
+    const { createRedisClient } = require('./src/lib/redis/connect.js')
+    limitStoreClient = createRedisClient(process.env.REDIS_URL, 'Gateway', { commandTimeout: 500 })
   } catch (error) {
     console.warn('[Gateway] shared rate limiter unavailable, using per-process buckets:', error.message)
   }

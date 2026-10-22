@@ -149,8 +149,8 @@ UI. `agent-reachability.spec.ts` fails the PR otherwise. Checklist:
 
 ## Secret scanning
 
-Gitleaks scans full history on every PR and push (CI's **Repo checks** job),
-plus a weekly run ([`.github/workflows/security.yml`](.github/workflows/security.yml)). Its
+Gitleaks scans every commit a PR adds, and a push's full history (CI's **Repo checks** job),
+plus a weekly run over every branch ([`.github/workflows/security.yml`](.github/workflows/security.yml)). Its
 allowlist is [`.gitleaks.toml`](.gitleaks.toml): test, doc, mock and fixture
 paths, lockfiles and `.env.example`, one regex for placeholder words (`example`,
 `dummy`, `changeme` and the like), and one exact literal, Pulumi's public secret

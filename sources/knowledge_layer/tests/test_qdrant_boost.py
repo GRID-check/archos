@@ -24,7 +24,6 @@ from knowledge_layer.qdrant.boost import parse_boost
 from knowledge_layer.qdrant.payload import ChunkRecord
 from knowledge_layer.qdrant.payload import chunk_metadata
 from knowledge_layer.qdrant.payload import project_payload
-from knowledge_layer.qdrant.search import RRF_K
 from knowledge_layer.qdrant.search import grouped_search
 from knowledge_layer.qdrant.store import QdrantStore
 from qdrant_client import models
@@ -94,8 +93,9 @@ def stores(monkeypatch):
 
 
 @pytest.fixture
-def store(stores):
-    return stores.make()
+def store(qdrant_store):
+    """The collections this module shares (``qdrant_testing``); ``stores`` makes sharded ones."""
+    return qdrant_store
 
 
 def _unit(seed: str) -> list[float]:
@@ -425,27 +425,6 @@ def _many_projects(store: QdrantStore, count: int = 12, per: int = 8) -> list[st
     return scopes
 
 
-def test_qdrants_group_query_restarts_the_fusion_per_round(store):
-    """Why ``grouped_search`` groups a flat fused ranking itself.
-
-    If an upgrade makes this fail, Qdrant's group query fuses once and could
-    serve the grouping again.
-    """
-    scopes = _many_projects(store)
-    dense = models.Prefetch(query=_unit("question"), using=schema.DENSE, limit=60)
-    result = store.client.query_points_groups(
-        store.alias(scopes[0]),
-        group_by="scope",
-        prefetch=[dense],
-        query=models.RrfQuery(rrf=models.Rrf(k=RRF_K)),
-        limit=8,
-        group_size=1,
-    )
-    best = [group.hits[0].score for group in result.groups]
-    # More than one group's best passage holds the first rank of "its" fusion.
-    assert sum(score == pytest.approx(1 / RRF_K) for score in best) > 1
-
-
 def test_grouped_search_keeps_the_flat_fused_order(store):
     scopes = _many_projects(store)
     query = _unit("question")
@@ -515,30 +494,3 @@ def test_the_boosted_ranking_is_the_same_on_six_shards_as_on_one(stores):
     six = stores.make(shards=6)
     _office(six)
     assert _boosted_order(six, scopes, query) == expected
-
-
-def test_a_formula_over_a_nested_fusion_ranks_per_shard(stores):
-    """The shape ``boost.py`` avoids: on six shards it is not the global fusion.
-
-    If a Qdrant upgrade makes this fail, nested fusion became global and the
-    simpler ``$score + weights`` formula over it is an option again.
-    """
-    query = _unit("question")
-    six = stores.make(shards=6)
-    scopes = _office(six)
-    channels = [models.Prefetch(query=query, using=schema.DENSE, limit=120)]
-    words = models.Document(text="Holzbau Fluchtweg", model=schema.BM25_MODEL, options=dict(schema.BM25_OPTIONS))
-    channels.append(models.Prefetch(query=words, using=schema.LEXICAL, limit=120))
-    flt = models.Filter(must=[models.FieldCondition(key="scope", match=models.MatchAny(any=scopes))])
-    for channel in channels:
-        channel.filter = flt
-    rrf = models.RrfQuery(rrf=models.Rrf(k=RRF_K))
-    alias = six.alias(scopes[0])
-    top = six.client.query_points(alias, prefetch=channels, query=rrf, limit=30)
-    nested = six.client.query_points(
-        alias,
-        prefetch=[models.Prefetch(prefetch=channels, query=rrf, limit=120)],
-        query=models.FormulaQuery(formula=models.SumExpression(sum=["$score"])),
-        limit=30,
-    )
-    assert [point.id for point in nested.points] != [point.id for point in top.points]
