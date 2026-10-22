@@ -256,6 +256,7 @@ import { BadRequestError, ConflictError, ForbiddenError, NotFoundError, Upstream
 import { makeDocument, makeLiveDocumentMatch, makeProject } from '@/test-utils/db-fixtures'
 import { mayReadDocument } from './document-reader'
 import { INGEST_ALREADY_DONE, INGEST_NOT_ELIGIBLE, INGEST_RUNNING } from './reingest-codes'
+import { DOCUMENT_TYPE_TAGS } from './tag-vocabulary'
 import { s3Client, bucketAdminS3Client } from '@/lib/s3'
 import { __resetBucketCache, tenantBucketName } from '@/lib/storage/bucket'
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
@@ -788,6 +789,40 @@ describe('uploadDocument filed as a new Fassung (ADR-0099)', () => {
 
     expect(ingestBody()).not.toHaveProperty('revision_of')
     expect(vi.mocked(recordAuditEvent).mock.calls.at(-1)?.[0].metadata).not.toHaveProperty('revisionOf')
+  })
+})
+
+/*
+ * The document type the one filing a file chose, end to end through the upload:
+ * `ShelfUploadInput.documentType` → `dispatchDocument` → `document_type` on the
+ * ingest body. The backend stores it as the person's type tag
+ * (`tests/knowledge_layer_tests/test_upload_document_type.py`).
+ */
+describe('uploadDocument with a chosen document type', () => {
+  const ingestBody = (): Record<string, unknown> => {
+    const call = mockFetch.mock.calls.find(([url]) => String(url).endsWith('/v1/ingest'))
+    expect(call).toBeDefined()
+    return JSON.parse(String((call![1] as RequestInit).body)) as Record<string, unknown>
+  }
+
+  beforeEach(() => {
+    mockFetch.mockResolvedValue({ ok: true, status: 200, json: () => Promise.resolve({ job_id: 'job-8' }) })
+  })
+
+  it('sends the chosen type to the ingest job', async () => {
+    await uploadDocument(
+      session,
+      { ...makeInput({ name: 'letter.pdf' }), documentType: DOCUMENT_TYPE_TAGS[7] },
+      new Request('http://x'),
+    )
+
+    expect(ingestBody().document_type).toBe(DOCUMENT_TYPE_TAGS[7])
+  })
+
+  it('sends no document_type for an upload that chose none', async () => {
+    await uploadDocument(session, makeInput({ name: 'letter.pdf' }), new Request('http://x'))
+
+    expect(ingestBody()).not.toHaveProperty('document_type')
   })
 })
 

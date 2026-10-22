@@ -57,6 +57,7 @@ import type { IngestPriority } from './service'
 import { requireShelfWrite } from './shelf-authz'
 import { shelfCollectionName } from './shelf-collection'
 import type { DispatchDocumentResult } from './service'
+import type { DocumentTypeTag } from './tag-vocabulary'
 
 /** What an upload names besides the file, on either shelf. */
 export interface ShelfUploadInput {
@@ -90,6 +91,26 @@ export interface ShelfUploadInput {
    * behalf, the mail import (ADR-0085), says `bulk` so it yields to them.
    */
   priority?: IngestPriority
+  /**
+   * What the file is, when the one filing it said so: a document-type tag of
+   * the controlled vocabulary (`./tag-vocabulary`). Sent to the ingest job as
+   * `document_type`, which stores it as the PERSON's type tag, so neither that
+   * read nor a later one lets the classifier replace it; a person's later edit
+   * in the tag editor still does. Absent leaves the type to the classifier,
+   * as for every upload before this field existed.
+   *
+   * Not the tag editor's `PATCH` after the fact: that needs the metadata row
+   * the ingest job writes, and anything set before the job ran would be
+   * overwritten by its own classification.
+   *
+   * Travels with THIS dispatch only, and is stored once that read writes the
+   * document's metadata row; from then on it holds across every later read.
+   * Two cases never get there: the same bytes already filed (`unchanged`)
+   * dispatch nothing, and a file held by the screening (ADR-0086) is read
+   * again on its release by a dispatch that does not carry the choice, so the
+   * classifier types it. `docs/technical-reference/document-ingestion.md`.
+   */
+  documentType?: DocumentTypeTag
 }
 
 export interface UploadDocumentResult {
@@ -550,6 +571,7 @@ export async function uploadToShelf(
     folderPath,
     priority: input.priority,
     revisionOf: upload.revisionOf,
+    documentType: input.documentType,
   })
 
   await uploadAuditEvent(session, shelf, request, {
