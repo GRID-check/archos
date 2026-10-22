@@ -27,6 +27,15 @@ describe('the inbound mail client', () => {
     expect(fetchMock).toHaveBeenCalledWith('/api/projects/p1/inbound-mails/file', expect.objectContaining({ method: 'POST', body: '{"mails":[]}' }))
   })
 
+  it('keeps what a refusal names, so a name stop can say its terms', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => new Response(JSON.stringify({ error: 'stopped', details: { reason: 'name_stop', partId: 'x', terms: ['Honorar'] } }), { status: 409 })),
+    )
+    const error = await fileInboundMails('p1', { mails: [] }).catch((caught: unknown) => caught)
+    expect(error).toMatchObject({ reason: 'name_stop', details: { reason: 'name_stop', partId: 'x', terms: ['Honorar'] } })
+  })
+
   it('links bytes rather than fetching them', () => {
     expect(inboundMailPartContentUrl('p1', 'm1', 'x/y')).toBe('/api/projects/p1/inbound-mails/m1/parts/x%2Fy/content')
   })

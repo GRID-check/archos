@@ -115,6 +115,12 @@ describe('the job id', () => {
 describe('who is asked about', () => {
   it.each([
     ['an unconfirmed sender', { senderTrust: 'external_unverified' as const }, 'external_unverified'],
+    ['an impersonation of a member', { senderTrust: 'member_unverified' as const, senderReason: 'dkim_fail' as const }, 'impersonation'],
+    [
+      'a member’s name on an outsider’s signed address',
+      { senderTrust: 'external_verified' as const, senderUserId: null, senderFlags: ['claims_member_name' as const] },
+      'impersonation',
+    ],
     ['automatic mail', { automatic: true }, 'automatic'],
     ['a mail already decided', { status: 'settled' as const }, 'not_waiting'],
   ])('asks nothing about %s', async (_case, overrides, reason) => {

@@ -19,7 +19,7 @@ import { Button } from '@/components/ui/button'
 import { Toggletip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useTranslations } from '@/i18n'
 import { cn } from '@/lib/utils'
-import type { IncompleteReason } from '../lib/completeness'
+import type { IncompleteReason } from '@/lib/inbound-mail/inbound-mail-wire'
 
 /** Why the selection cannot be filed as suggested, with how many mails it concerns; null when it can. */
 export type BulkBlock = { reason: IncompleteReason | 'too_many'; count: number } | null
@@ -27,7 +27,6 @@ export type BulkBlock = { reason: IncompleteReason | 'too_many'; count: number }
 export interface SelectionBarProps {
   count: number
   /** Still reading the selected mails to decide whether they are complete. */
-  checking: boolean
   block: BulkBlock
   max: number
   filing: boolean
@@ -38,9 +37,9 @@ export interface SelectionBarProps {
   className?: string
 }
 
-export function SelectionBar({ count, checking, block, max, filing, dismissing, onFile, onDismiss, onClear, className }: SelectionBarProps): JSX.Element {
+export function SelectionBar({ count, block, max, filing, dismissing, onFile, onDismiss, onClear, className }: SelectionBarProps): JSX.Element {
   const t = useTranslations('inboundMail')
-  const reason = block ? t(`bulk.blocked.${block.reason}`, { count: block.count, max }) : checking ? t('bulk.checking') : null
+  const reason = block ? t(`bulk.blocked.${block.reason}`, { count: block.count, max }) : null
   return (
     <div
       role="toolbar"
@@ -81,7 +80,7 @@ export function SelectionBar({ count, checking, block, max, filing, dismissing, 
           busy={filing}
           busyLabel={t('bulk.fileSuggestedBusy')}
           blocked={dismissing}
-          disabled={checking || block !== null}
+          disabled={block !== null}
           onClick={onFile}
           className="min-w-0 flex-1"
           data-testid="selection-file"

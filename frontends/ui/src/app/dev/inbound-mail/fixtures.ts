@@ -4,6 +4,11 @@
  * DECISION §9 names, each built from the same few builders so a change to the
  * wire breaks them at compile time, not on screen.
  *
+ * What a mail asks of the person (each part's `preselected`, the sender's
+ * risk, `incompleteReason`) is never written by hand here: `mail()` derives it
+ * with the server's own rule (`withReviewDefaults`), so a preview shows what
+ * the route would answer.
+ *
  * `fixtureClient` serves them behind the same interface the components take
  * (`InboundMailClient`), so a preview renders the real organism over data
  * that stands still. Filing in a preview „works“: the parts go to `filing`,
@@ -20,7 +25,9 @@ import type {
   InboundMailView,
 } from '@/lib/inbound-mail/inbound-mail-wire'
 import type { DocumentTypeTag } from '@/lib/documents/tag-vocabulary'
+import { partPreselected, withReviewDefaults, type InboundMailPartBase } from '@/lib/inbound-mail/review-defaults'
 import type { InboundMailSuggestion } from '@/lib/inbound-mail/suggest'
+import { threadGroupsOf } from '@/lib/inbound-mail/thread-groups'
 import type { InboundMailAddressClient, InboundMailClient } from '@/features/inbound-mail/lib/client'
 import type { FolderOption } from '@/features/inbound-mail/lib/draft'
 
@@ -51,10 +58,13 @@ export const FOLDERS: FolderOption[] = [
 
 // ------------------------------------------------------------ builders
 
+/** A confirmed outsider in an open project: what a part's default is judged against until `mail()` judges it against its own sender. */
+const PART_DEFAULT_CONTEXT = { projectClosed: false, sender: { trust: 'external_verified', reason: 'dkim_pass', flags: [] } } as const
+
 export function part(overrides: Partial<InboundMailPartView> & { name?: string } = {}): InboundMailPartView {
   sequence += 1
-  const { name, ...rest } = overrides
-  return {
+  const { name, preselected, ...rest } = overrides
+  const base: InboundMailPartBase = {
     id: fixtureId(`part:${name ?? sequence}`),
     kind: 'attachment',
     position: sequence,
@@ -77,6 +87,7 @@ export function part(overrides: Partial<InboundMailPartView> & { name?: string }
     restorableUntil: null,
     ...rest,
   }
+  return { ...base, preselected: preselected ?? partPreselected(base, PART_DEFAULT_CONTEXT) }
 }
 
 export function messagePart(overrides: Partial<InboundMailPartView> = {}): InboundMailPartView {
@@ -100,7 +111,7 @@ export function thread(overrides: Partial<InboundMailThreadCandidateView> = {}):
 
 export function mail(overrides: Partial<InboundMailView> & { key?: string } = {}): InboundMailView {
   const { key, ...rest } = overrides
-  return {
+  return withReviewDefaults({
     id: fixtureId(`mail:${key ?? 'default'}`),
     projectId: PROJECT_ID,
     status: 'waiting',
@@ -134,7 +145,7 @@ export function mail(overrides: Partial<InboundMailView> & { key?: string } = {}
     followedBy: null,
     updatedAt: minutesAgo(9),
     ...rest,
-  }
+  })
 }
 
 export function text(overrides: Partial<InboundMailTextView> = {}): InboundMailTextView {
@@ -151,6 +162,7 @@ export function text(overrides: Partial<InboundMailTextView> = {}): InboundMailT
     calendar: [],
     masked: false,
     unreadable: false,
+    forwardedFrom: null,
     ...overrides,
   }
 }
@@ -179,8 +191,22 @@ export function summaryOf(view: InboundMailView, overrides: Partial<InboundMailS
     },
     restorableUntil: view.parts.map((candidate) => candidate.restorableUntil).find((until): until is string => !!until) ?? null,
     thread: preferred ? { threadId: preferred.threadId, name: preferred.name, nextVersion: preferred.nextVersion, preselected: preferred.preselected } : null,
+    riskLevel: view.riskLevel,
+    impersonation: view.impersonation,
+    incompleteReason: view.incompleteReason,
+    followedBy: view.followedBy,
     updatedAt: view.updatedAt,
     ...overrides,
+  }
+}
+
+/** A page of the list as the route answers it: the thread groups are the server's (`threadGroupsOf`). */
+export function listPage(items: InboundMailSummaryView[], nextCursor: string | null = null): InboundMailListView {
+  const sentAt = (id: string): string | null => DETAIL_BY_ID.get(id)?.view.sentAt ?? null
+  return {
+    items,
+    threadGroups: threadGroupsOf(items.map((summary) => ({ summary, order: { id: summary.id, sentAt: sentAt(summary.id), receivedAt: summary.receivedAt } }))),
+    nextCursor,
   }
 }
 
@@ -296,6 +322,8 @@ export const DETAIL_VARIANTS: Record<string, DetailFixture> = {
           text: 'Von: MA 37 – Baupolizei <post@ma37.wien.gv.at>\nGesendet: Montag, 20. Oktober 2026 14:02\nAn: Huber Architektur\nBetreff: Verhandlungsschrift Bauverhandlung 04.11.\n\nSehr geehrte Damen und Herren,\n\nanbei die Verhandlungsschrift.',
         },
       ],
+      // What the route reads from the quote above (`lib/inbound-mail/forwarded.ts`).
+      forwardedFrom: { name: 'MA 37 – Baupolizei', address: 'post@ma37.wien.gv.at' },
     }),
   },
   'mixed-attachments': {
@@ -640,17 +668,20 @@ export function fixtureClient(options: { list?: ListFixture; detail?: DetailFixt
   for (const [id, fixture] of DETAIL_BY_ID) views.set(id, fixture.view)
   if (options.detail) views.set(options.detail.view.id, options.detail.view)
   const texts = (id: string): InboundMailTextView => DETAIL_BY_ID.get(id)?.text ?? options.detail?.text ?? text()
-  const settle = (view: InboundMailView): InboundMailView => ({
-    ...view,
-    parts: view.parts.map((candidate) => (candidate.state === 'filing' ? { ...candidate, state: 'filed', documentId: candidate.documentId ?? fixtureId(`doc:${candidate.id}`) } : candidate)),
-  })
+  // Every change is judged again by the server's rule, as the route's answer would be.
+  const settle = (view: InboundMailView): InboundMailView =>
+    withReviewDefaults({
+      ...view,
+      parts: view.parts.map((candidate) => (candidate.state === 'filing' ? { ...candidate, state: 'filed', documentId: candidate.documentId ?? fixtureId(`doc:${candidate.id}`) } : candidate)),
+    })
   return {
     list: (_projectId, query = {}) => {
       if (options.list?.load === 'loading') return pending()
       if (options.list?.load === 'error') return failing()
-      const items = (options.list?.items ?? []).filter((item) => (query.status ?? 'waiting') === item.status)
-      const page: InboundMailListView = { items, nextCursor: query.cursor ? null : (options.list?.nextCursor ?? null) }
-      return Promise.resolve(page)
+      const status = query.status ?? 'waiting'
+      const items = (options.list?.items ?? []).filter((item) => status === item.status)
+      const page = listPage(items, query.cursor ? null : (options.list?.nextCursor ?? null))
+      return Promise.resolve(status === 'waiting' ? page : { ...page, threadGroups: [] })
     },
     get: (_projectId, mailId) => {
       if (options.detail?.load === 'loading') return pending()
@@ -666,13 +697,13 @@ export function fixtureClient(options: { list?: ListFixture; detail?: DetailFixt
       const mails = body.mails.map((decision) => {
         const view = views.get(decision.mailId) as InboundMailView
         const filed = new Set([...decision.parts.map((candidate) => candidate.partId), ...(decision.message ? [decision.message.partId] : [])])
-        const next: InboundMailView = {
+        const next = withReviewDefaults({
           ...view,
           ifMatch: `${view.ifMatch}+`,
           parts: view.parts.map((candidate) =>
-            candidate.state !== 'waiting' ? candidate : filed.has(candidate.id) ? { ...candidate, state: 'filing' } : { ...candidate, state: 'dismissed', restorableUntil: daysAhead(7) }
+            candidate.state !== 'waiting' ? candidate : filed.has(candidate.id) ? { ...candidate, state: 'filing' as const } : { ...candidate, state: 'dismissed' as const, restorableUntil: daysAhead(7) }
           ),
-        }
+        })
         views.set(view.id, next)
         return next
       })
@@ -682,22 +713,22 @@ export function fixtureClient(options: { list?: ListFixture; detail?: DetailFixt
       Promise.resolve({
         mails: body.mailIds.map((id) => {
           const view = views.get(id) as InboundMailView
-          const next: InboundMailView = {
+          const next = withReviewDefaults({
             ...view,
             status: 'handled',
-            parts: view.parts.map((candidate) => (candidate.state === 'waiting' ? { ...candidate, state: 'dismissed', restorableUntil: daysAhead(7) } : candidate)),
-          }
+            parts: view.parts.map((candidate) => (candidate.state === 'waiting' ? { ...candidate, state: 'dismissed' as const, restorableUntil: daysAhead(7) } : candidate)),
+          })
           views.set(id, next)
           return next
         }),
       }),
     restore: (_projectId, mailId) => {
       const view = views.get(mailId) as InboundMailView
-      const next: InboundMailView = {
+      const next = withReviewDefaults({
         ...view,
         status: 'waiting',
-        parts: view.parts.map((candidate) => (candidate.state === 'dismissed' || candidate.state === 'expired' ? { ...candidate, state: 'waiting', restorableUntil: null } : candidate)),
-      }
+        parts: view.parts.map((candidate) => (candidate.state === 'dismissed' || candidate.state === 'expired' ? { ...candidate, state: 'waiting' as const, restorableUntil: null } : candidate)),
+      })
       views.set(mailId, next)
       return Promise.resolve(next)
     },

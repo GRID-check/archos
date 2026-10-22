@@ -18,7 +18,8 @@ vi.mock('@/lib/authz/feature-flags', () => ({
 
 import type { AuthorizedSession } from '@/lib/auth/types'
 import { requireProjectAccess } from '@/lib/authz/projects'
-import { requireAddressManager, requireMailReviewer } from './access'
+import { NotFoundError } from '@/lib/api/errors'
+import { mailReviewerProjectIds, requireAddressManager, requireMailReviewer } from './access'
 
 const on = { userId: 'u', organizationId: 'o', featureFlags: ['inbound-mail'] } as unknown as AuthorizedSession
 const off = { userId: 'u', organizationId: 'o', featureFlags: [] } as unknown as AuthorizedSession
@@ -40,5 +41,25 @@ describe('access to the E-Mail-Eingang', () => {
   it('leaves the address to project managers', async () => {
     await requireAddressManager(on, 'p')
     expect(requireProjectAccess).toHaveBeenCalledWith(on, 'p', 'project:manage')
+  })
+})
+
+describe('the projects whose waiting mail a reader is counted (the projects home)', () => {
+  it('keeps only the projects whose E-Mail-Eingang the reader may open', async () => {
+    vi.mocked(requireProjectAccess).mockImplementation(async (_session, projectId) => {
+      if (projectId === 'viewer-only') throw new NotFoundError()
+      return { role: 'project-editor', closed: false, readsBecauseClosed: false }
+    })
+    expect(await mailReviewerProjectIds(on, ['mine', 'viewer-only', 'closed-but-mine'])).toEqual(['mine', 'closed-but-mine'])
+  })
+
+  it('counts nowhere with the office’s entitlement off, asking no project', async () => {
+    expect(await mailReviewerProjectIds(off, ['mine'])).toEqual([])
+    expect(requireProjectAccess).not.toHaveBeenCalled()
+  })
+
+  it('lets any other failure through rather than reading it as „no access“', async () => {
+    vi.mocked(requireProjectAccess).mockRejectedValueOnce(new Error('FGA down'))
+    await expect(mailReviewerProjectIds(on, ['mine'])).rejects.toThrow('FGA down')
   })
 })

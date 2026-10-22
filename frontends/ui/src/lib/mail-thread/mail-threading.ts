@@ -323,6 +323,7 @@ export const PRESELECTION_BLOCKS = [
   'not_addressed_to_project',
   'stale_date',
   'date_out_of_range',
+  'claims_member_name',
 ] as const
 export type PreselectionBlock = (typeof PRESELECTION_BLOCKS)[number]
 
@@ -349,7 +350,8 @@ export function isOwnBccCopy(sender: Pick<SenderEvidence, 'senderTrust' | 'sende
 /**
  * Why this mail's sender keeps every candidate unchecked, whatever matched:
  * an unverified domain, a mail addressed to others (outside the Bcc case), a
- * Date more than seven days old, or a Date outside the clamp. Empty when the
+ * Date more than seven days old, a Date outside the clamp, or a member's name
+ * on an outsider's address (its own domain may well have signed). Empty when the
  * sender qualifies. A Fassung of an attachment (`revisionOf`) on a mail with
  * any of these needs the `unverified_thread` acknowledgement too (D11).
  */
@@ -362,6 +364,7 @@ export function senderPreselectionBlocks(
     blocks.push('not_addressed_to_project')
   if (sender.senderFlags.includes('stale_date')) blocks.push('stale_date')
   if (sender.senderFlags.includes('date_out_of_range')) blocks.push('date_out_of_range')
+  if (sender.senderFlags.includes('claims_member_name')) blocks.push('claims_member_name')
   return blocks
 }
 

@@ -54,6 +54,29 @@ export async function requireMailReviewer(session: AuthorizedSession, projectId:
   return { closed: access.closed }
 }
 
+/**
+ * Of these projects, the ones whose E-Mail-Eingang the caller may see and
+ * decide ({@link requireMailReviewer}, asked per project): the projects home
+ * counts waiting mail only where the reader could open it, never a number of
+ * mail they cannot read (`project-surfaces.md`). Empty with the office's
+ * entitlement off.
+ */
+export async function mailReviewerProjectIds(session: AuthorizedSession, projectIds: readonly string[]): Promise<string[]> {
+  if (!isInboundMailEnabled(session)) return []
+  const allowed = await Promise.all(
+    projectIds.map((projectId) =>
+      requireMailReviewer(session, projectId).then(
+        () => true,
+        (error: unknown) => {
+          if (error instanceof NotFoundError) return false
+          throw error
+        },
+      ),
+    ),
+  )
+  return projectIds.filter((_, index) => allowed[index])
+}
+
 /** The caller may manage the project's address: the entitlement, then `project:manage`. */
 export async function requireAddressManager(session: AuthorizedSession, projectId: string): Promise<void> {
   requireInboundMailEnabled(session)

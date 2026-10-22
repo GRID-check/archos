@@ -1,7 +1,8 @@
 /**
- * Each attachment's case (DECISION §9, the case table): offered checked only
- * when filing it asks nothing of the person; otherwise unchecked with its
- * reason, or not offered at all.
+ * Each attachment's case (DECISION §9, the case table): its state, and the
+ * reasons the row shows for it. Whether it is offered checked is the
+ * server's `preselected` (`lib/inbound-mail/review-defaults.spec.ts` holds
+ * that table); the row only follows it.
  */
 
 import { describe, expect, it } from 'vitest'
@@ -17,6 +18,7 @@ describe('attachmentCase', () => {
   })
 
   it.each<[string, Parameters<typeof part>[0], { status: string; selectable: boolean; defaultChecked: boolean }]>([
+    // `part()` derives `preselected` with the server's rule, so the checked column still reads as the case table.
     ['scan pending', { scan: 'pending' }, { status: 'scan_pending', selectable: false, defaultChecked: false }],
     ['scan failed', { scan: 'failed' }, { status: 'scan_failed', selectable: false, defaultChecked: false }],
     ['infected', { scan: 'infected' }, { status: 'scan_infected', selectable: false, defaultChecked: false }],
@@ -32,14 +34,24 @@ describe('attachmentCase', () => {
     expect(attachmentCase(part(overrides), view)).toMatchObject(expected)
   })
 
-  it('offers a Fassung checked from a confirmed sender, unchecked from one that cannot vouch (D11)', () => {
+  it('says whether the sender vouches for a Fassung (D11), and follows the server on whether it is checked', () => {
     const revisionCandidate = { documentId: 'd', name: 'S-101_B.pdf', folderPath: 'Tragwerk', nextVersion: 3 }
-    expect(attachmentCase(part({ revisionCandidate }), view).defaultChecked).toBe(true)
-    const unverified = mail({ sender: { ...view.sender!, trust: 'external_unverified', reason: 'dkim_none', signerDomain: null } })
-    const entry = attachmentCase(part({ revisionCandidate }), unverified)
+    expect(attachmentCase(part({ revisionCandidate }), view).notes).toContainEqual(expect.objectContaining({ kind: 'revision', verified: true }))
+    const unverified = mail({
+      sender: { ...view.sender!, trust: 'external_unverified', reason: 'dkim_none', signerDomain: null },
+      parts: [part({ name: 'S-101_C.pdf', revisionCandidate })],
+    })
+    const entry = attachmentCase(unverified.parts[0], unverified)
     expect(entry.defaultChecked).toBe(false)
     expect(entry.notes).toContainEqual(expect.objectContaining({ kind: 'revision', verified: false }))
-    expect(attachmentCase(part({ revisionCandidate, riskFlags: ['unverified_thread'] }), view).defaultChecked).toBe(false)
+    expect(attachmentCase(part({ revisionCandidate, riskFlags: ['unverified_thread'] }), view).notes).toContainEqual(
+      expect.objectContaining({ kind: 'revision', verified: false })
+    )
+  })
+
+  it('checks exactly what the server pre-selected, and never what cannot be chosen', () => {
+    expect(attachmentCase(part({ preselected: false }), view).defaultChecked).toBe(false)
+    expect(attachmentCase(part({ preselected: true, scan: 'pending' }), view).defaultChecked).toBe(false)
   })
 
   it('offers nothing in a closed project', () => {

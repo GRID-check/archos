@@ -1,21 +1,11 @@
 /**
- * What the E-Mail-Eingang says about a sender, and what it asks before
- * filing. `senderNeedsAcknowledgement` restates the server's rule in
- * `lib/inbound-mail/decision.ts`; the table below is the C2 list, so the two
- * cannot drift without one of these rows failing.
+ * What the E-Mail-Eingang says about a sender. What it asks before filing is
+ * the server's (`lib/inbound-mail/sender-risk.spec.ts` holds the C2 table).
  */
 
 import { describe, expect, it } from 'vitest'
 import type { InboundMailSenderView } from '@/lib/inbound-mail/inbound-mail-wire'
-import {
-  followOffered,
-  revisionNeedsAcknowledgement,
-  senderDisplayName,
-  senderFlagLines,
-  senderNeedsAcknowledgement,
-  senderTone,
-  senderTrustLine,
-} from './sender'
+import { followOffered, senderDisplayName, senderFlagLines, senderTone, senderTrustLine } from './sender'
 
 const sender = (overrides: Partial<InboundMailSenderView> = {}): InboundMailSenderView => ({
   name: 'DI Petra Weber',
@@ -30,28 +20,30 @@ const sender = (overrides: Partial<InboundMailSenderView> = {}): InboundMailSend
 
 describe('senderTrustLine', () => {
   it('names the signing domain, never the person', () => {
-    expect(senderTrustLine(sender())).toEqual({ kind: 'verified', domain: 'statik-weber.at' })
+    expect(senderTrustLine(sender(), null)).toEqual({ kind: 'verified', domain: 'statik-weber.at' })
   })
 
   it('says a member’s own Bcc copy', () => {
-    expect(senderTrustLine(sender({ trust: 'member_verified', flags: ['not_addressed_to_project', 'bcc_own'] })).kind).toBe('bcc_own')
+    expect(senderTrustLine(sender({ trust: 'member_verified', flags: ['not_addressed_to_project', 'bcc_own'] }), null).kind).toBe('bcc_own')
   })
 
-  it('reserves „Gibt sich als … aus“ for a failed signature or a refusing policy', () => {
-    expect(senderTrustLine(sender({ trust: 'member_unverified', reason: 'dkim_fail', signerDomain: null }))).toEqual({
+  it('says „Gibt sich als … aus“ exactly where the server reads an impersonation', () => {
+    expect(senderTrustLine(sender({ trust: 'member_unverified', reason: 'dkim_fail', signerDomain: null }), 'rejected_signature')).toEqual({
       kind: 'impersonation',
       name: 'DI Petra Weber',
+      basis: 'rejected_signature',
     })
-    expect(senderTrustLine(sender({ trust: 'external_unverified', reason: 'dkim_policy', name: null })).kind).toBe('impersonation')
-    expect(senderTrustLine(sender({ trust: 'member_unverified', reason: 'dkim_none', signerDomain: null })).kind).toBe('member_unverified')
-    expect(senderTrustLine(sender({ trust: 'external_unverified', reason: 'dkim_none', signerDomain: null })).kind).toBe('unverified')
+    // A member's name on an outsider's address outranks the outsider's own confirmed domain.
+    expect(senderTrustLine(sender({ flags: ['claims_member_name'] }), 'member_name').kind).toBe('impersonation')
+    expect(senderTrustLine(sender({ trust: 'member_unverified', reason: 'dkim_none', signerDomain: null }), null).kind).toBe('member_unverified')
+    expect(senderTrustLine(sender({ trust: 'external_unverified', reason: 'dkim_none', signerDomain: null }), null).kind).toBe('unverified')
   })
 
   it('draws only the two cases a person must not miss as warnings', () => {
     expect(senderTone({ kind: 'verified', domain: 'x' })).toBe('confirmed')
     expect(senderTone({ kind: 'unverified' })).toBe('neutral')
     expect(senderTone({ kind: 'member_unverified' })).toBe('warning')
-    expect(senderTone({ kind: 'impersonation', name: 'x' })).toBe('warning')
+    expect(senderTone({ kind: 'impersonation', name: 'x', basis: 'member_name' })).toBe('warning')
   })
 })
 
@@ -65,30 +57,6 @@ describe('senderFlagLines', () => {
     expect(senderFlagLines(sender({ flags: ['stale_date', 'date_out_of_range'] }))).toEqual(['stale_date'])
     expect(senderFlagLines(sender({ flags: ['message_id_reused'] }))).toEqual([])
     expect(senderFlagLines(sender({ flags: ['message_id_reused', 'already_filed'] }))).toEqual(['already_filed'])
-  })
-})
-
-describe('senderNeedsAcknowledgement (C2, mirrors decision.ts)', () => {
-  it.each<[string, Partial<InboundMailSenderView>, boolean]>([
-    ['a confirmed stranger', {}, false],
-    ['an unsigned stranger: labelled, never asked', { trust: 'external_unverified', reason: 'dkim_none' }, false],
-    ['a member’s address without a signature', { trust: 'member_unverified', reason: 'dkim_none' }, true],
-    ['a failed signature', { trust: 'external_unverified', reason: 'dkim_fail' }, true],
-    ['a refusing policy', { trust: 'external_unverified', reason: 'dkim_policy' }, true],
-    ['a mail addressed to others', { flags: ['not_addressed_to_project'] }, true],
-    ['the member’s own Bcc copy', { trust: 'member_verified', flags: ['not_addressed_to_project', 'bcc_own'] }, false],
-    ['a date more than seven days old', { flags: ['stale_date'] }, true],
-    ['a date outside the clamp only', { flags: ['date_out_of_range'] }, false],
-  ])('%s → %s', (_, overrides, expected) => {
-    expect(senderNeedsAcknowledgement(sender(overrides))).toBe(expected)
-  })
-})
-
-describe('revisionNeedsAcknowledgement (D11)', () => {
-  it('asks wherever the sender keeps a thread from being pre-selected', () => {
-    expect(revisionNeedsAcknowledgement(sender())).toBe(false)
-    expect(revisionNeedsAcknowledgement(sender({ trust: 'external_unverified' }))).toBe(true)
-    expect(revisionNeedsAcknowledgement(sender({ flags: ['date_out_of_range'] }))).toBe(true)
   })
 })
 

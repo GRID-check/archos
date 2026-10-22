@@ -24,9 +24,9 @@ import { useLocale, useTranslations } from '@/i18n'
 import { downloadFetched } from '@/lib/browser-download'
 import type { InboundMailView } from '@/lib/inbound-mail/inbound-mail-wire'
 import { formatAbsoluteTime, formatCalendarDate } from '@/lib/format'
-import type { ForwardedOrigin } from '../lib/forwarded'
+import type { ForwardedOrigin } from '@/lib/inbound-mail/forwarded'
 import { senderDisplayName } from '../lib/sender'
-import { displaySubject } from '../lib/subject'
+import { displaySubject } from '@/lib/inbound-mail/subject'
 import { FactLine } from './inbound-mail-atoms'
 import { SenderTrustLines } from './sender-trust'
 
@@ -69,7 +69,7 @@ export function MailHeader({ view, forwarded, originalUrl }: MailHeaderProps): J
             {view.sentAt && <span>{t('header.sent', { time: formatAbsoluteTime(view.sentAt, locale) })}</span>}
             <span>{t('header.received', { time: formatAbsoluteTime(view.receivedAt, locale) })}</span>
           </p>
-          <SenderTrustLines sender={view.sender} />
+          <SenderTrustLines sender={view.sender} impersonation={view.impersonation} />
         </div>
       )}
       {forwarded && (

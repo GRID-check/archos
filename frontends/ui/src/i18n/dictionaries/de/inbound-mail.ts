@@ -70,7 +70,7 @@ export const inboundMail: typeof en.inboundMail = {
 
   group: {
     thread: 'E-Mail-Verlauf „{name}“ · {count, plural, one {# neue E-Mail} other {# neue E-Mails}}',
-    threadAction: '{count} E-Mails in E-Mail-Verlauf „{name}“ ablegen (wird Fassung {version})',
+    threadAction: '{count} E-Mails in E-Mail-Verlauf „{name}“ ablegen (wird Fassung {first}–{last})',
     quiet: 'Domain nicht bestätigt oder automatisch ({count})',
     quietHint: 'Sie stehen vollständig hier. Piloti macht für sie keine Vorschläge, und von selbst wird nichts davon abgelegt.',
   },
@@ -89,6 +89,8 @@ export const inboundMail: typeof en.inboundMail = {
         'Die Adresse gehört einem Mitglied, aber dessen Domain hat diese E-Mail nicht signiert. Zum Ablegen braucht es Ihre Bestätigung.',
       impersonation:
         'Die Signatur dieser E-Mail ist ungültig, oder die Richtlinie der Domain hat sie abgelehnt. Möglicherweise verwendet jemand diesen Namen. Zum Ablegen braucht es Ihre Bestätigung.',
+      impersonationMemberName:
+        'Der angezeigte Name ist der eines Mitglieds, die Adresse gehört aber nicht zu ihm. So sehen E-Mails aus, die eine Zahlung umleiten wollen. Piloti schlägt dafür nichts vor, und zum Ablegen braucht es Ihre Bestätigung.',
       unverified:
         'Die Domain des Absenders hat diese E-Mail nicht signiert. Piloti schlägt dafür nichts vor und wählt keinen E-Mail-Verlauf vor.',
     },
@@ -179,6 +181,7 @@ export const inboundMail: typeof en.inboundMail = {
       not_addressed_to_project: 'Die E-Mail ist an andere Empfänger adressiert',
       stale_date: 'Das Datum der E-Mail liegt mehr als 7 Tage zurück',
       date_out_of_range: 'Das Datum der E-Mail ist nicht plausibel',
+      claims_member_name: 'Der Name gehört einem Mitglied, die Adresse nicht',
     },
   },
 
@@ -310,7 +313,6 @@ export const inboundMail: typeof en.inboundMail = {
     fileSuggested: 'Wie vorgeschlagen ablegen',
     fileSuggestedBusy: 'Wird abgelegt …',
     dismiss: 'Verwerfen',
-    checking: 'Auswahl wird geprüft …',
     blocked: {
       not_waiting: 'Ein Teil der Auswahl ist schon bearbeitet.',
       project_closed: 'Projekt ist abgeschlossen – wieder öffnen, um abzulegen.',

@@ -25,6 +25,7 @@ import type { NotStagedReason } from './inbound-mail-vocabulary'
 import type { InboundMailSuggestion } from './suggest'
 import {
   INBOUND_MAIL_MESSAGE_TEXTS,
+  type ImpersonationBasis,
   type InboundMailContentFinding,
   type InboundMailFilingFailure,
   type InboundMailPartKind,
@@ -36,6 +37,7 @@ import {
   type PartRiskFlag,
   type SenderFlag,
   type SenderReason,
+  type SenderRiskLevel,
   type SenderTrust,
 } from './inbound-mail-vocabulary'
 
@@ -134,6 +136,42 @@ export interface InboundMailAddressView {
   ownDomainVerifiedShare: number | null
 }
 
+// ------------------------------------------------------------ what a mail asks of a person
+
+/**
+ * Why a held mail cannot be filed „wie vorgeschlagen“ without anyone looking
+ * at it (`./review-defaults`, `incompleteReason`), the first found in this
+ * order; null on a view means it can, alone or in a bulk request of up to 20.
+ *
+ * - `not_waiting`: nothing of it waits any more.
+ * - `project_closed`: nothing can be filed until the project is reopened.
+ * - `sender`: filing needs `acknowledgeSender`, which a bulk request never
+ *   carries (RT-S5); every impersonation is this.
+ * - `scanning`: an attachment's scan is still running, or failed and runs again.
+ * - `needs_person`: an attachment is offered unchecked for a reason a person
+ *   must weigh (a name stop, a risk, an earlier Fassung the sender cannot vouch for).
+ * - `no_thread`: the text has no pre-selected thread with room.
+ * - `folder_missing`: an attachment offered checked has no suggested folder.
+ */
+export const INBOUND_MAIL_INCOMPLETE_REASONS = [
+  'not_waiting',
+  'project_closed',
+  'sender',
+  'scanning',
+  'needs_person',
+  'no_thread',
+  'folder_missing',
+] as const
+export type IncompleteReason = (typeof INBOUND_MAIL_INCOMPLETE_REASONS)[number]
+
+/** What the sender asks of the person, on both views (`./sender-risk`). */
+export interface InboundMailSenderRiskView {
+  /** `impersonation`: nothing is pre-selected, Piloti suggests nothing, filing needs `acknowledgeSender`. `caution`: filing needs it. */
+  riskLevel: SenderRiskLevel
+  /** Why it reads as someone pretending; null unless `riskLevel` is `impersonation`. */
+  impersonation: ImpersonationBasis | null
+}
+
 // ------------------------------------------------------------ the list
 
 /** The two lists of the E-Mail-Eingang: what waits for a person, and what was handled. */
@@ -195,7 +233,7 @@ export interface InboundMailThreadCandidateView {
 }
 
 /** One mail in a list. Metadata only (D22): no text, no bytes. */
-export interface InboundMailSummaryView {
+export interface InboundMailSummaryView extends InboundMailSenderRiskView {
   id: string
   projectId: string
   status: InboundMailListStatus
@@ -215,11 +253,33 @@ export interface InboundMailSummaryView {
   restorableUntil: string | null
   /** The strongest thread candidate the viewer may read, for the row's chip; null when there is none. */
   thread: Pick<InboundMailThreadCandidateView, 'threadId' | 'name' | 'nextVersion' | 'preselected'> | null
+  /** Why it cannot be filed as suggested without a look; null when it can (`INBOUND_MAIL_INCOMPLETE_REASONS`). */
+  incompleteReason: IncompleteReason | null
+  /** Whose follow appended this mail's text, when one did (D31): the row says „Text dem E-Mail-Verlauf angefügt“. */
+  followedBy: string | null
   updatedAt: string
+}
+
+/**
+ * Waiting mails of this page that continue the same thread and would each be
+ * pre-selected into it, so one press files the conversation (DECISION §9).
+ * Automatic mail never joins one. Filing a group as suggested still needs
+ * each of its mails complete (`incompleteReason`).
+ */
+export interface InboundMailThreadGroupView {
+  threadId: string
+  name: string
+  /** In the order they would be filed (sent time, then receipt), each with the Fassung its text would become. */
+  mails: Array<{ mailId: string; version: number }>
+  /** The Fassungen the thread goes through when the whole group is filed: „wird Fassung 4–7“. */
+  firstVersion: number
+  lastVersion: number
 }
 
 export interface InboundMailListView {
   items: InboundMailSummaryView[]
+  /** Thread groups of this page's waiting mails, two mails or more each; empty for the handled list. */
+  threadGroups: InboundMailThreadGroupView[]
   nextCursor: string | null
 }
 
@@ -260,14 +320,20 @@ export interface InboundMailPartView {
   revisionCandidate: (InboundMailDocumentRefView & { nextVersion: number }) | null
   /** A possible earlier Fassung exists in a folder the viewer does not see („1 mögliche Fassung …“). */
   revisionCandidateHidden: boolean
-  /** Piloti's suggestion (D21): folder, Dokumentart and a one-line reason; null while there is none. */
+  /** Piloti's suggestion (D21): folder, Dokumentart and a one-line reason; null while there is none, and always for a mail Piloti does not suggest for. */
   suggestion: InboundMailSuggestion | null
+  /**
+   * Offered checked: filing it as suggested asks nothing of the person
+   * (`./review-defaults`). Never for an impersonation, a part that cannot be
+   * filed, or one a person must weigh first.
+   */
+  preselected: boolean
   /** Until when a dismissed or expired part can be restored. */
   restorableUntil: string | null
 }
 
 /** One held mail (`inbound-mail-get`): headers, labels and parts. Its text is `inbound-mail-text-get`'s. */
-export interface InboundMailView {
+export interface InboundMailView extends InboundMailSenderRiskView {
   id: string
   projectId: string
   status: InboundMailListStatus
@@ -297,6 +363,10 @@ export interface InboundMailView {
   hiddenThreadCandidates: number
   /** Whose follow appended this mail's text, when one did (D31). */
   followedBy: string | null
+  /** Filing anything of it needs `acknowledgeSender` (C2); a bulk request can then not file it. */
+  needsSenderAcknowledgement: boolean
+  /** Why it cannot be filed as suggested without a look; null when it can (`INBOUND_MAIL_INCOMPLETE_REASONS`). */
+  incompleteReason: IncompleteReason | null
   updatedAt: string
 }
 
@@ -319,6 +389,13 @@ export interface InboundMailTextView {
   masked: boolean
   /** The reader could not read the body; the original still holds it. */
   unreadable: boolean
+  /**
+   * Who a forwarded mail originally came from, as its forwarded text says
+   * („-----Ursprüngliche Nachricht----- Von: …“): never checked by anyone, so
+   * never a trust label (`./forwarded`). Null when the subject does not say it
+   * was forwarded or no sender line is readable.
+   */
+  forwardedFrom: { name: string | null; address: string | null } | null
 }
 
 // ------------------------------------------------------------ decisions

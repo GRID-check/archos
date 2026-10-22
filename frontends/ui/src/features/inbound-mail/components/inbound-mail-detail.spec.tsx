@@ -70,11 +70,15 @@ describe('InboundMailDetail', () => {
     expect(screen.getByTestId('decision-file')).toHaveTextContent('File in mail thread “Stellplatznachweis” (becomes revision 4)')
   })
 
-  it('asks for the unverified domain before filing, and sends the yes', async () => {
+  it('offers nothing of an impersonation checked, asks for the unverified domain before filing, and sends the yes', async () => {
     const client = fixtureClient({ detail: DETAIL_VARIANTS.impersonation })
     const file = vi.spyOn(client, 'file')
     renderDetail('impersonation', client)
     expect(screen.getByTestId('sender-trust')).toHaveTextContent('Poses as Miriam Huber')
+    // „Dringend: Kontoänderung Honorarnote“: the person picks what to file; nothing is one press away.
+    expect(screen.getByTestId('message-checkbox')).not.toBeChecked()
+    expect(screen.getByTestId('attachment-checkbox')).not.toBeChecked()
+    await userEvent.click(screen.getByTestId('message-checkbox'))
     const button = screen.getByTestId('decision-file')
     expect(button).toBeDisabled()
     await userEvent.click(screen.getByTestId('acknowledge-sender'))
@@ -82,6 +86,15 @@ describe('InboundMailDetail', () => {
     await userEvent.click(button)
     await waitFor(() => expect(file).toHaveBeenCalled())
     expect(file.mock.calls[0][1].mails[0].acknowledgeSender).toBe(true)
+  })
+
+  it('names the term the name check stopped a new thread’s name for, and offers the release', async () => {
+    const client = fixtureClient({ detail: DETAIL_VARIANTS['new-thread'] })
+    vi.spyOn(client, 'file').mockRejectedValue(new ApiRequestError('stopped', 409, 'name_stop', { reason: 'name_stop', terms: ['Honorar'] }))
+    renderDetail('new-thread', client)
+    await userEvent.click(screen.getByTestId('decision-file'))
+    expect(await screen.findByTestId('thread-name-stop')).toHaveTextContent('Name check: “Honorar”')
+    expect(screen.getByTestId('thread-release-name')).toBeInTheDocument()
   })
 
   it('reads the mail again when a colleague decided first, and says so', async () => {

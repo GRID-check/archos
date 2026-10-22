@@ -19,9 +19,11 @@
  *  3. Drop auto-replies, delivery reports and loops, erasing the raw message by
  *     its key (a legal hold defers that). List and bulk mail is kept, marked
  *     `automatic`.
- *  4. Authenticate the sender (DKIM and DMARC, `sender-auth.ts`) and find the
- *     member by exact address; a transient verdict retries.
- *  5. Read the MIME tree (`mime.ts`) against the office's accepted types.
+ *  4. Authenticate the sender (DKIM and DMARC, `sender-auth.ts`); a
+ *     transient verdict retries.
+ *  5. Read the MIME tree (`mime.ts`) against the office's accepted types, then
+ *     find the member by exact address, or an outsider's display name that
+ *     claims a member's (`claims_member_name`).
  *  6. The Namensprüfung on each attachment's name and the base subject.
  *  7. Scan each attachment.
  *  8. The Python reader (`/v1/mail/read`): own text, quotes, invitations; the
@@ -34,8 +36,8 @@
  * 12. Following: conditions 1–6 of D31 (`followEligibility`, pure); only when
  *     they hold is `inbound_mail_follow` queued.
  * 13. Announce (`inbound_mail.waiting`, every held mail), the live hint, the
- *     audit event, PostHog, and Piloti's suggestion unless the sender's domain
- *     is unconfirmed or the mail automatic.
+ *     audit event, PostHog, and Piloti's suggestion unless `suggestionSkipReason`
+ *     says otherwise (an unconfirmed sender, an impersonation, automatic mail).
  *
  * A failure retries through the queue. On the last attempt the mail is held
  * anyway, flagged `unreadable`, with a text part whose original can be
@@ -94,7 +96,9 @@ import {
 } from './repository'
 import { mailScreeningFor, type MailScreening } from './screening'
 import { authenticateSender, dateHeaderOf, isTransientReason, judgeSender, type SenderVerdict } from './sender-auth'
+import { claimsMemberName } from './sender-risk'
 import { eraseStagedObjects, putStagedObject, readStagedObject, stagedObjectUrlForBackend } from './staging'
+import { suggestionSkipReason } from './suggest'
 
 /** The job ids of the jobs one mail queues: uuid5 of the kind and the mail, so a second enqueue is no second job. */
 export function inboundMailJobId(kind: 'suggest' | 'follow', mailId: string): string {
@@ -182,10 +186,11 @@ async function readAndHold(
   if (isTransientReason(authentication.reason) && !attempt.last) {
     throw new RetryLaterError(`sender authentication was inconclusive (${authentication.reason})`)
   }
-  const memberUserId = await memberUserIdFor(mail.organizationId, authentication.fromAddress, attempt)
   const mime = await readMime(raw, { acceptedTypes: await acceptedTypesForOrganization(mail.organizationId) })
+  const fromName = mime.kind === 'read' ? (mime.headers.from?.name ?? null) : null
+  const identity = await senderIdentityFor(mail.organizationId, authentication.fromAddress, fromName, attempt)
   const sentAtHeader = mime.kind === 'read' ? mime.headers.sentAtHeader : dateHeaderOf(raw)
-  const verdict = judgeSender(authentication, { memberUserId, receivedAt: mail.receivedAt, sentAtHeader })
+  const verdict = judgeSender(authentication, { ...identity, receivedAt: mail.receivedAt, sentAtHeader })
   if (mime.kind === 'unreadable') return holdUnreadable(mail, raw, automatic, verdict)
 
   const screening = await mailScreeningFor(mail.organizationId, mail.projectId)
@@ -248,20 +253,28 @@ async function readAndHold(
 }
 
 /**
- * The member whose address the From is, exact after ASCII lower-casing
- * (display names never count, D4). An unreadable directory reads as an empty
- * one, which would label a member's mail as a stranger's: retried, and on the
- * last attempt taken as "no member" (the safe direction).
+ * Who the From is in the office's directory: the member whose address it is,
+ * exact after ASCII lower-casing (display names never make a member, D4), and
+ * whether an outsider's display name claims a member's name
+ * (`claims_member_name`, `./sender-risk`). An unreadable directory reads as an
+ * empty one, which would label a member's mail as a stranger's and miss every
+ * claimed name: retried, and on the last attempt taken as "no member, no
+ * claim" (the label then stays as unconfirmed as the signature says).
  */
-async function memberUserIdFor(organizationId: string, fromAddress: string | null, attempt: JobAttempt): Promise<string | null> {
-  if (!fromAddress) return null
+async function senderIdentityFor(
+  organizationId: string,
+  fromAddress: string | null,
+  fromName: string | null,
+  attempt: JobAttempt,
+): Promise<{ memberUserId: string | null; claimsMemberName: boolean }> {
+  if (!fromAddress) return { memberUserId: null, claimsMemberName: false }
   const directory = await loadOrganizationDirectory(organizationId)
   if (directory.size === 0 && !attempt.last) throw new RetryLaterError('the member directory could not be read')
   const wanted = asciiLower(fromAddress.trim())
   for (const person of directory.values()) {
-    if (person.email && asciiLower(person.email.trim()) === wanted) return person.userId
+    if (person.email && asciiLower(person.email.trim()) === wanted) return { memberUserId: person.userId, claimsMemberName: false }
   }
-  return null
+  return { memberUserId: null, claimsMemberName: claimsMemberName(fromName, [...directory.values()].map((person) => person.name)) }
 }
 
 /** Step 8: the Python reader. A refusal is permanent and reads as unreadable; any other fault retries until the last attempt. */
@@ -499,7 +512,7 @@ async function afterHold(mailId: string, domain: string, raw: Uint8Array | null)
   if (!mail || mail.status !== 'waiting' || mail.notifiedAt || !mail.senderTrust) return
   const parts = await findPartSummaries(mail.id)
   const followQueued = await queueFollowIfEligible(mail, parts, domain, raw)
-  if (mail.senderTrust !== 'external_unverified' && !mail.automatic) await queueSuggestion(mail)
+  if (suggestionSkipReason(mail) === null) await queueSuggestion(mail)
   await announceWaiting({
     organizationId: mail.organizationId,
     projectId: mail.projectId,

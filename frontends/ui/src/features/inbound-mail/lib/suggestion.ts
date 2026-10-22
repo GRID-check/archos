@@ -14,7 +14,8 @@
  */
 
 import { DOCUMENT_TYPE_TAGS, type DocumentTypeTag } from '@/lib/documents/tag-vocabulary'
-import { INBOUND_MAIL_FILE_NAME_MAX, INBOUND_MAIL_FOLDER_PATH_MAX } from '@/lib/inbound-mail/inbound-mail-wire'
+import { INBOUND_MAIL_FILE_NAME_MAX, INBOUND_MAIL_FOLDER_PATH_MAX, type InboundMailView } from '@/lib/inbound-mail/inbound-mail-wire'
+import { suggestionSkipReason } from '@/lib/inbound-mail/suggest'
 
 export interface PartSuggestion {
   /** The folder path, `''` for the project root; null when Piloti suggested no folder. */
@@ -64,18 +65,27 @@ export function folderLeaf(path: string): string {
   return parts.length > 0 ? parts[parts.length - 1] : path
 }
 
-/** Piloti does not suggest for unconfirmed strangers or machines (D21); a fresh mail may still be read. */
+/** A fresh mail Piloti does suggest for may still be being read. */
 export const SUGGESTION_GRACE_MS = 10 * 60 * 1000
 
 /**
  * Why a part shows no suggestion: Piloti is still reading it (a fresh mail),
- * Piloti never suggests for this mail (unconfirmed stranger, automatic), or
- * it had none.
+ * Piloti never suggests for this mail (`skipped`: an unconfirmed sender, an
+ * impersonation, automatic mail; the suggest job's own rule,
+ * `suggestionSkipReason`, D21), or it had none.
  */
 export function missingSuggestionReason(
-  mail: { automatic: boolean; senderTrust: string | null; receivedAt: string },
+  mail: Pick<InboundMailView, 'automatic' | 'sender' | 'receivedAt'>,
   now: number = Date.now(),
 ): 'pending' | 'skipped' | 'none' {
-  if (mail.automatic || mail.senderTrust === 'external_unverified') return 'skipped'
+  const skip = suggestionSkipReason({
+    // Asked as if waiting: a mail that is no longer waiting shows no suggestion row at all.
+    status: 'waiting',
+    senderTrust: mail.sender?.trust ?? null,
+    senderReason: mail.sender?.reason ?? null,
+    senderFlags: mail.sender?.flags ?? [],
+    automatic: mail.automatic,
+  })
+  if (skip !== null && skip !== 'not_waiting') return 'skipped'
   return now - Date.parse(mail.receivedAt) < SUGGESTION_GRACE_MS ? 'pending' : 'none'
 }

@@ -97,7 +97,20 @@ import { auditDecisions } from './audit'
 import { mailIfMatch } from './decision'
 import { MailChangedError } from './repository'
 import { scoreMailDecision } from './suggest-scores'
-import { decisionActor, dismissInboundMails, fileInboundMails, filingJobId, getInboundMail, readInboundMailOriginal, readInboundMailPart } from './service'
+import { candidatesFor } from './candidates'
+import { findFollowDeciders, listProjectMails } from './repository'
+import {
+  decisionActor,
+  dismissInboundMails,
+  fileInboundMails,
+  filingJobId,
+  getInboundMail,
+  getInboundMailText,
+  listInboundMails,
+  readInboundMailOriginal,
+  readInboundMailPart,
+} from './service'
+import { readStagedObject } from './staging'
 
 const session = {
   userId: PERSON,
@@ -157,6 +170,88 @@ describe('what a reader is shown', () => {
     expect(recordAuditEventAfterCommit).toHaveBeenCalledWith(
       expect.objectContaining({ action: 'inbound_mail.original_read', metadata: { projectId: PROJECT_ID, scan: 'infected' } }),
     )
+  })
+})
+
+describe('what a mail asks of the person, on the wire', () => {
+  /** A suggestion as the suggest job stores it. */
+  const stored = { folderId: null, folderPath: 'Tragwerk', newFolder: false, documentType: null, reason: 'Wie S-101_B.pdf.' }
+
+  it('offers a confirmed member’s mail with its suggestion, its attachment checked', async () => {
+    store.parts = [textPart(), filePart({ suggestion: stored })]
+    const view = await getInboundMail(session, PROJECT_ID, MAIL_ID)
+    expect(view.parts[1]?.suggestion).toEqual(stored)
+    expect(view.parts.map((part) => part.preselected)).toEqual([true, true])
+    expect(view).toMatchObject({ riskLevel: 'none', impersonation: null, needsSenderAcknowledgement: false })
+  })
+
+  it('shows no suggestion and checks nothing of an impersonation, even with a suggestion stored before the rule', async () => {
+    // „Dringend: Kontoänderung Honorarnote“ from Miriam's address, its signature failed.
+    store.mail = heldMail({ subject: 'Dringend: Kontoänderung Honorarnote', senderTrust: 'member_unverified', senderReason: 'dkim_fail' })
+    store.parts = [textPart(), filePart({ suggestion: stored })]
+    const view = await getInboundMail(session, PROJECT_ID, MAIL_ID)
+    expect(view.parts.map((part) => part.suggestion)).toEqual([null, null])
+    expect(view.parts.map((part) => part.preselected)).toEqual([false, false])
+    expect(view).toMatchObject({ riskLevel: 'impersonation', impersonation: 'rejected_signature', needsSenderAcknowledgement: true, incompleteReason: 'sender' })
+  })
+
+  it('lists each mail with why it is not complete, whose follow took its text, and the thread groups with their Fassungen', async () => {
+    const thread = { threadId: 'thread-1', documentId: 'doc-1', name: 'Stellplatznachweis', folderPath: 'Korrespondenz', nextVersion: 4, strength: 'reference' as const, preselected: true, blocks: [], full: false }
+    vi.mocked(candidatesFor).mockResolvedValueOnce({
+      threads: () => ({ shown: [thread], hidden: 0 }),
+      part: () => ({ duplicateOf: null, revisionCandidate: null, revisionCandidateHidden: false }),
+      readsFolder: () => true,
+      readsDocument: () => true,
+    } as never)
+    const later = heldMail({ id: 'mail-later', sentAt: new Date('2026-10-14T09:00:00Z'), receivedAt: new Date('2026-10-14T09:01:00Z') })
+    const earlier = heldMail({ id: 'mail-earlier', sentAt: new Date('2026-10-13T09:00:00Z'), receivedAt: new Date('2026-10-14T09:02:00Z') })
+    vi.mocked(listProjectMails).mockResolvedValueOnce(
+      [later, earlier].map((mail) => ({ mail, position: { receivedAt: new Date(mail.receivedAt).toISOString(), id: mail.id } })) as never,
+    )
+    store.parts = [textPart({ mailId: 'mail-later' }), textPart({ id: 'text-earlier', mailId: 'mail-earlier' })]
+    vi.mocked(findFollowDeciders).mockResolvedValueOnce(new Map([['mail-earlier', 'user_01JFOLLOWER0000000000000000']]))
+
+    const page = await listInboundMails(session, PROJECT_ID, { status: 'waiting', limit: 25 })
+
+    expect(page.items.map((item) => [item.id, item.incompleteReason, item.riskLevel, item.followedBy])).toEqual([
+      ['mail-later', null, 'none', null],
+      ['mail-earlier', null, 'none', 'user_01JFOLLOWER0000000000000000'],
+    ])
+    // Filed in the order they were written, whatever order the list shows them in: „wird Fassung 4–5“.
+    expect(page.threadGroups).toEqual([
+      {
+        threadId: 'thread-1',
+        name: 'Stellplatznachweis',
+        mails: [
+          { mailId: 'mail-earlier', version: 4 },
+          { mailId: 'mail-later', version: 5 },
+        ],
+        firstVersion: 4,
+        lastVersion: 5,
+      },
+    ])
+  })
+
+  it('reads who a forwarded mail came from off the masked quote, never as a trust label', async () => {
+    store.mail = heldMail({ subject: 'WG: Verhandlungsschrift' })
+    const read = {
+      readerVersion: 1,
+      bodySource: 'plain',
+      ownText: 'Zur Ablage.',
+      ownTextTruncated: false,
+      split: true,
+      signatureRemoved: false,
+      quoted: [{ header: '-----Ursprüngliche Nachricht-----', text: 'Von: MA 37 – Baupolizei <post@ma37.wien.gv.at>\nGesendet: Montag' }],
+      quotedTruncated: false,
+      calendar: [],
+      calendarTruncated: false,
+      encrypted: false,
+      unreadableReasons: [],
+      unreadable: false,
+    }
+    vi.mocked(readStagedObject).mockResolvedValueOnce(new TextEncoder().encode(JSON.stringify(read)) as never)
+    const text = await getInboundMailText(session, PROJECT_ID, MAIL_ID)
+    expect(text.forwardedFrom).toEqual({ name: 'MA 37 – Baupolizei', address: 'post@ma37.wien.gv.at' })
   })
 })
 
