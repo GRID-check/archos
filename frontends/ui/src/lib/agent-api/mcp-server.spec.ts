@@ -193,7 +193,10 @@ describe('what tools mode costs a client', () => {
   // Measured October 2026 (chars of the tools/list result, about four per token): 1,141 per tool before the
   // fix wave (ifMatch on every write, `additionalProperties: true` everywhere, every hint and the title twice),
   // 922 after. A ratchet: an operation that needs more says so in its description, not in schema ballast.
-  const MAX_AVERAGE_CHARS = 1_000
+  // Raised from 1,000 when the document and task texts were made true to their routes: the average was
+  // already 1,000.3 on the base, and those corrections add about 2 a tool (1,002 measured). Raise it only
+  // with a measured reason written here.
+  const MAX_AVERAGE_CHARS = 1_010
   const MAX_OPERATION_CHARS = 9_000
 
   it(`stays under ${MAX_AVERAGE_CHARS} characters a tool on average, and ${MAX_OPERATION_CHARS} for any catalog operation`, async () => {

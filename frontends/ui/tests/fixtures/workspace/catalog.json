@@ -330,28 +330,28 @@
    "name": "document-download",
    "domain": "documents",
    "summary": "Get a time-limited download link for a document",
-   "description": "Mints a presigned URL for the document’s current file and answers `{ downloadUrl, filename, contentType, fileSize }`. The link expires after a few minutes and was minted for this person: hand it on at once, and call this again for a fresh one. The bytes are not sent here; for a PDF use document-file-get, for the text use passage-read. Records the access.",
+   "description": "Mints a presigned URL for the document’s current file and answers `{ downloadUrl, filename, contentType, fileSize }`. The link expires after a few minutes and was minted for this person: hand it on at once, and call this again for a fresh one. The bytes are not sent here; for a PDF use document-file-get, for the text use the passage reader. Records the access.",
    "readOnly": true,
    "destructive": false,
-   "describe": "{\"name\":\"document-download\",\"domain\":\"documents\",\"summary\":\"Get a time-limited download link for a document\",\"description\":\"Mints a presigned URL for the document’s current file and answers `{ downloadUrl, filename, contentType, fileSize }`. The link expires after a few minutes and was minted for this person: hand it on at once, and call this again for a fresh one. The bytes are not sent here; for a PDF use document-file-get, for the text use passage-read. Records the access.\",\"annotations\":{\"title\":\"Get a time-limited download link for a document\",\"readOnlyHint\":true,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The document id, from a project document listing or document-search.\"}},\"required\":[\"id\"]}},\"additionalProperties\":false,\"required\":[\"params\"]}}"
+   "describe": "{\"name\":\"document-download\",\"domain\":\"documents\",\"summary\":\"Get a time-limited download link for a document\",\"description\":\"Mints a presigned URL for the document’s current file and answers `{ downloadUrl, filename, contentType, fileSize }`. The link expires after a few minutes and was minted for this person: hand it on at once, and call this again for a fresh one. The bytes are not sent here; for a PDF use document-file-get, for the text use the passage reader. Records the access.\",\"annotations\":{\"title\":\"Get a time-limited download link for a document\",\"readOnlyHint\":true,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The document id, from a project document listing or document-search.\"}},\"required\":[\"id\"]}},\"additionalProperties\":false,\"required\":[\"params\"]}}"
   },
   {
    "name": "document-file-get",
    "domain": "documents",
    "summary": "Read a stored PDF’s bytes",
-   "description": "The document’s PDF itself (a stored PDF, or the PDF rendition of an office document), returned as an attached resource (base64 `blob`) up to 5 MiB. A larger file is not sent: read its pages with passage-read or get a link with document-download. Only PDFs are served here.",
+   "description": "The document’s PDF itself (a stored PDF, or the PDF rendition of an office document), returned as an attached resource (base64 `blob`) up to 5 MiB. A larger file is not sent: read its pages with the passage reader or get a link with document-download. Only PDFs are served here.",
    "readOnly": true,
    "destructive": false,
-   "describe": "{\"name\":\"document-file-get\",\"domain\":\"documents\",\"summary\":\"Read a stored PDF’s bytes\",\"description\":\"The document’s PDF itself (a stored PDF, or the PDF rendition of an office document), returned as an attached resource (base64 `blob`) up to 5 MiB. A larger file is not sent: read its pages with passage-read or get a link with document-download. Only PDFs are served here.\",\"annotations\":{\"title\":\"Read a stored PDF’s bytes\",\"readOnlyHint\":true,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The document id, from a project document listing or document-search.\"}},\"required\":[\"id\"]}},\"additionalProperties\":false,\"required\":[\"params\"]}}"
+   "describe": "{\"name\":\"document-file-get\",\"domain\":\"documents\",\"summary\":\"Read a stored PDF’s bytes\",\"description\":\"The document’s PDF itself (a stored PDF, or the PDF rendition of an office document), returned as an attached resource (base64 `blob`) up to 5 MiB. A larger file is not sent: read its pages with the passage reader or get a link with document-download. Only PDFs are served here.\",\"annotations\":{\"title\":\"Read a stored PDF’s bytes\",\"readOnlyHint\":true,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The document id, from a project document listing or document-search.\"}},\"required\":[\"id\"]}},\"additionalProperties\":false,\"required\":[\"params\"]}}"
   },
   {
    "name": "document-get",
    "domain": "documents",
    "summary": "Read one document’s listing row",
-   "description": "One document by id, as the shelf lists it: name, folder, tags, reading status and version summary. Use document-status to follow ingestion, and passage-read for what the file says.",
+   "description": "One document by id, as the shelf lists it: name, folder, tags, reading status and version summary. Use document-status to follow ingestion, and the passage reader for what the file says.",
    "readOnly": true,
    "destructive": false,
-   "describe": "{\"name\":\"document-get\",\"domain\":\"documents\",\"summary\":\"Read one document’s listing row\",\"description\":\"One document by id, as the shelf lists it: name, folder, tags, reading status and version summary. Use document-status to follow ingestion, and passage-read for what the file says.\",\"annotations\":{\"title\":\"Read one document’s listing row\",\"readOnlyHint\":true,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The document id, from a project document listing or document-search.\"}},\"required\":[\"id\"]}},\"additionalProperties\":false,\"required\":[\"params\"]}}"
+   "describe": "{\"name\":\"document-get\",\"domain\":\"documents\",\"summary\":\"Read one document’s listing row\",\"description\":\"One document by id, as the shelf lists it: name, folder, tags, reading status and version summary. Use document-status to follow ingestion, and the passage reader for what the file says.\",\"annotations\":{\"title\":\"Read one document’s listing row\",\"readOnlyHint\":true,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The document id, from a project document listing or document-search.\"}},\"required\":[\"id\"]}},\"additionalProperties\":false,\"required\":[\"params\"]}}"
   },
   {
    "name": "document-ingest-cancel",
@@ -474,10 +474,10 @@
    "name": "document-text-get",
    "domain": "documents",
    "summary": "Read the extracted text of a document",
-   "description": "The text of a plain-text, Markdown or CSV file: `{ text, truncated, contentType, filename }`, at most 256 KiB. Other types, PDFs and scans included, answer 415: use passage-read by `filename`.",
+   "description": "The text of a plain-text, Markdown or CSV file: `{ text, truncated, contentType, filename }`, at most 256 KiB. Other types, PDFs and scans included, answer 415: use the passage reader by `filename`.",
    "readOnly": true,
    "destructive": false,
-   "describe": "{\"name\":\"document-text-get\",\"domain\":\"documents\",\"summary\":\"Read the extracted text of a document\",\"description\":\"The text of a plain-text, Markdown or CSV file: `{ text, truncated, contentType, filename }`, at most 256 KiB. Other types, PDFs and scans included, answer 415: use passage-read by `filename`.\",\"annotations\":{\"title\":\"Read the extracted text of a document\",\"readOnlyHint\":true,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The document id, from a project document listing or document-search.\"}},\"required\":[\"id\"]}},\"additionalProperties\":false,\"required\":[\"params\"]}}"
+   "describe": "{\"name\":\"document-text-get\",\"domain\":\"documents\",\"summary\":\"Read the extracted text of a document\",\"description\":\"The text of a plain-text, Markdown or CSV file: `{ text, truncated, contentType, filename }`, at most 256 KiB. Other types, PDFs and scans included, answer 415: use the passage reader by `filename`.\",\"annotations\":{\"title\":\"Read the extracted text of a document\",\"readOnlyHint\":true,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The document id, from a project document listing or document-search.\"}},\"required\":[\"id\"]}},\"additionalProperties\":false,\"required\":[\"params\"]}}"
   },
   {
    "name": "document-thumbnail-get",
@@ -1899,7 +1899,6 @@
   ],
   "Aufgabe erstellen": [
    "project-create",
-   "session-document-upload",
    "office-shelf-folder-create",
    "project-folder-create",
    "project-task-run-list",
@@ -1907,7 +1906,8 @@
    "task-get",
    "task-list",
    "task-run-cancel",
-   "task-run-get"
+   "task-run-get",
+   "task-run-list"
   ],
   "inbox unread": [
    "inbox-list",

@@ -62,7 +62,7 @@ export const documentsOperations = [
     domain: 'documents',
     summary: 'Read one document’s listing row',
     description:
-      'One document by id, as the shelf lists it: name, folder, tags, reading status and version summary. Use document-status to follow ingestion, and passage-read for what the file says.',
+      'One document by id, as the shelf lists it: name, folder, tags, reading status and version summary. Use document-status to follow ingestion, and the passage reader for what the file says.',
     method: 'GET',
     path: '/api/documents/[id]',
     params: documentParams,
@@ -155,7 +155,7 @@ export const documentsOperations = [
     summary: 'Read the extracted text of a document',
     description:
       'The text of a plain-text, Markdown or CSV file: `{ text, truncated, contentType, filename }`, at most 256 KiB. ' +
-      'Other types, PDFs and scans included, answer 415: use passage-read by `filename`.',
+      'Other types, PDFs and scans included, answer 415: use the passage reader by `filename`.',
     method: 'GET',
     path: '/api/documents/[id]/text',
     params: documentParams,
@@ -270,7 +270,7 @@ export const documentsOperations = [
     description:
       'Mints a presigned URL for the document’s current file and answers `{ downloadUrl, filename, contentType, fileSize }`. ' +
       'The link expires after a few minutes and was minted for this person: hand it on at once, and call this again for a fresh one. ' +
-      'The bytes are not sent here; for a PDF use document-file-get, for the text use passage-read. Records the access.',
+      'The bytes are not sent here; for a PDF use document-file-get, for the text use the passage reader. Records the access.',
     method: 'GET',
     path: '/api/documents/[id]/download',
     params: documentParams,
@@ -282,7 +282,7 @@ export const documentsOperations = [
     summary: 'Read a stored PDF’s bytes',
     description:
       'The document’s PDF itself (a stored PDF, or the PDF rendition of an office document), returned as an attached resource ' +
-      '(base64 `blob`) up to 5 MiB. A larger file is not sent: read its pages with passage-read or get a link with ' +
+      '(base64 `blob`) up to 5 MiB. A larger file is not sent: read its pages with the passage reader or get a link with ' +
       'document-download. Only PDFs are served here.',
     method: 'GET',
     path: '/api/documents/[id]/file',
