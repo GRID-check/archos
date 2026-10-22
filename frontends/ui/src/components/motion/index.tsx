@@ -505,5 +505,11 @@ export const StaggerItem = ({ children, ...props }: HTMLMotionProps<'div'>): Rea
   </motion.div>
 )
 
-/** Re-export for components that need bespoke micro-interactions. */
-export { motion, AnimatePresence } from 'motion/react'
+/**
+ * Re-export for components that need bespoke micro-interactions. `LayoutGroup`
+ * makes siblings that share layout animations measure together, so the rows
+ * around one that moved make room on the same frame; it does not scope a
+ * `layoutId` by itself unless given an `id`, so name ids per mounted group as
+ * the design language says.
+ */
+export { motion, AnimatePresence, LayoutGroup } from 'motion/react'

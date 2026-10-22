@@ -692,6 +692,18 @@ times stops being a physical cue and becomes texture.
 - **State changes inside an arrived turn are transitions, not entrances**:
   `AgentPrompt` dims to `opacity-75`; the answer's meta row is reserved at chip
   height (`min-h-6`) so late chips cannot grow the footer.
+- **A card that moves glides; a filter press does not.** A task card that
+  changes place under the reader (into another recency bucket, out of a
+  narrow filter it no longer matches, pushed down by a new run) travels on
+  `springGlide` with `layout="position"` and a `layoutId` per task, and the
+  cards and bucket sections around it make room on the same spring. Position
+  only: a card that grew takes its height at once. A filter swap must not move
+  anything, so the shared layout is scoped to the filter: the group is keyed
+  by it (every card remounts) and the filter is part of every `layoutId`, so
+  no card has a namespace-mate in the old list to fly from; `useSwapFade`
+  fades the new rows in. Reduced motion lands the card in one frame
+  (`useMotionToken`). `features/tasks/components/task-list.tsx`; the ids are
+  mirrored onto `data-layout-id` and asserted in `task-list.spec.tsx`.
 - **Staggers are always capped** — `Stagger` ships a ceiling
   (`staggerMaxSteps`), because an uncapped stagger delayed one screen's seventh
   row by 350ms. Never on a list the reader opened to reach one specific row.
