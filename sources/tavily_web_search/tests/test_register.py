@@ -205,3 +205,43 @@ class TestLaneCapture:
         finally:
             turn_status.end_lane_capture(token)
         assert hits == [{"round": 1, "name": "https://a.example", "title": "A"}]
+
+
+class TestActionRow:
+    """One ``web`` row per call (ADR-0131): the query, then how many results came back."""
+
+    @pytest.fixture
+    def rows(self, monkeypatch):
+        bodies = []
+        monkeypatch.setattr("aiq_agent.common.turn_status.get_stream_writer", lambda: bodies.append)
+        return bodies
+
+    @staticmethod
+    def _call(bodies):
+        actions = [body.step for body in bodies if body.step.kind == "action"]
+        assert len(actions) == 2
+        assert actions[0].status == "running"
+        assert actions[0].id == actions[1].id
+        return actions
+
+    async def test_a_search_states_its_query_and_hits(self, fake_langchain_tavily, rows):
+        await _run_search(TavilyWebSearchToolConfig(), "Stellplatzschlüssel Wien")
+
+        started, finished = self._call(rows)
+        assert (started.verb, started.query) == ("web", "Stellplatzschlüssel Wien")
+        assert (finished.status, finished.counts.hits) == ("ok", 1)
+
+    async def test_no_results_is_empty(self, fake_langchain_tavily, rows):
+        fake_langchain_tavily.return_value.ainvoke.return_value = {"results": []}
+
+        await _run_search(TavilyWebSearchToolConfig())
+
+        assert self._call(rows)[1].status == "empty"
+
+    async def test_a_search_that_keeps_failing_is_an_error(self, fake_langchain_tavily, rows, monkeypatch):
+        fake_langchain_tavily.return_value.ainvoke.side_effect = RuntimeError("boom")
+        monkeypatch.setattr("tavily_web_search.register.asyncio.sleep", AsyncMock())
+
+        await _run_search(TavilyWebSearchToolConfig(max_retries=2))
+
+        assert self._call(rows)[1].status == "error"

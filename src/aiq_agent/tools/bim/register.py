@@ -20,6 +20,8 @@ from pydantic import AliasChoices
 from pydantic import BaseModel
 from pydantic import Field
 
+from aiq_agent.common.action_outcome import ActionOutcome
+from aiq_agent.common.turn_status import ActionRow
 from aiq_agent.knowledge.bim_query import run_bim_query
 from aiq_agent.profile_names import normalize_profile_token
 from aiq_agent.project_context import get_organization_id_from_context
@@ -777,8 +779,37 @@ def _trace(
     )
 
 
-async def _query(arguments: IfcQueryInput, default_limit: int) -> str:
+def _query_row_fields(arguments: IfcQueryInput) -> dict[str, str]:
+    """The Herleitung row of a model query, from its own arguments: the operation and what it is about."""
+    about = arguments.ifc_type or arguments.quantity or arguments.group_by
+    return {"query": f"{arguments.operation.strip().lower() or 'overview'} {about}".strip()}
+
+
+def _listed(result: dict[str, Any]) -> int | None:
+    """How many rows a list-shaped answer carries (elements, take-off groups); None for any other shape."""
+    for key in ("elements", "takeoff"):
+        if isinstance(result.get(key), list):
+            return len(result[key])
+    return None
+
+
+async def run_ifc_query(arguments: IfcQueryInput, default_limit: int) -> str:
+    """:func:`_query` with its Herleitung row (ADR-0131): one row per call, settled on every path."""
+    outcome = ActionOutcome()
+    row = ActionRow("model", **_query_row_fields(arguments))
+    try:
+        result = await _query(arguments, default_limit, outcome)
+    except BaseException:
+        row.finish("error")
+        raise
+    outcome.settle(row)
+    return result
+
+
+async def _query(arguments: IfcQueryInput, default_limit: int, outcome: ActionOutcome | None = None) -> str:
     """The tool body: guard, build, post, render — every failure as text the agent can act on."""
+    outcome = outcome if outcome is not None else ActionOutcome()
+    outcome.failed = True  # cleared once the model answered; a refusal on the way leaves it set
     organization_id = get_organization_id_from_context()
     if not organization_id:
         return NO_ORG_TEXT
@@ -814,6 +845,8 @@ async def _query(arguments: IfcQueryInput, default_limit: int) -> str:
         _trace(query, None, outcome=failure.outcome)
         return failure.text(exc)
     _trace(query, result)
+    outcome.failed = not result.get("resolved")
+    outcome.hits = _listed(result) if not outcome.failed else None
     return _render(result, project_id, arguments.building_class, arguments.main_use.strip().lower())
 
 
@@ -827,6 +860,6 @@ class IfcQueryConfig(FunctionBaseConfig, name="ifc_query"):
 async def ifc_query(tool_config: IfcQueryConfig, builder: Builder):
     async def _ifc_query(arguments: IfcQueryInput) -> str:
         """Query the project's IFC/BIM model for exact building facts."""
-        return await _query(arguments, tool_config.default_limit)
+        return await run_ifc_query(arguments, tool_config.default_limit)
 
     yield FunctionInfo.from_fn(_ifc_query, input_schema=IfcQueryInput, description=_TOOL_DESCRIPTION)

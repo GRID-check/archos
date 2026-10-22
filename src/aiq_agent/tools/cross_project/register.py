@@ -74,6 +74,7 @@ from typing import Literal
 from pydantic import BeforeValidator
 
 from aiq_agent import project_context
+from aiq_agent.common.action_outcome import ActionOutcome
 from aiq_agent.common.grounding_block import PROJECT_STATUS_LABELS
 from aiq_agent.common.grounding_block import GroundingBlock
 from aiq_agent.common.grounding_block import GroundingHit
@@ -81,6 +82,7 @@ from aiq_agent.common.grounding_block import SourceProject
 from aiq_agent.common.grounding_block import render_grounding_block
 from aiq_agent.common.norm_registry import FEDERAL_STATE_TOKENS
 from aiq_agent.common.source_kinds import Shelf
+from aiq_agent.common.turn_status import ActionRow
 from aiq_agent.knowledge.permit_extraction import canonical_record_kind
 from aiq_agent.knowledge.permit_extraction import canonical_requirement_kind
 from aiq_agent.knowledge.restricted_collections import is_restricted_collection
@@ -989,6 +991,39 @@ def _observe(action: str, payload: dict[str, Any], outcome: dict[str, Any]) -> N
 
 
 # ---------------------------------------------------------------------------
+# The Herleitung row (ADR-0131)
+# ---------------------------------------------------------------------------
+
+
+def _only_project_name(records: list[Any]) -> str | None:
+    """The project's name when every record is from one project, else None."""
+    names = {
+        _text(record["project"].get("name"))
+        for record in records
+        if isinstance(record, dict) and isinstance(record.get("project"), dict)
+    }
+    return names.pop() if len(names) == 1 and next(iter(names), "") else None
+
+
+def record_outcome(action: str, body: dict[str, Any], outcome: ActionOutcome) -> None:
+    """What a lookup found, from the BFF's typed body: hits, the documents they are in, the one project named."""
+    if action == "search":
+        hits = _usable_hits(body)
+        outcome.hits = len(hits)
+        outcome.documents = len({(hit.get("collection"), hit.get("filename")) for hit in hits})
+        outcome.target = _only_project_name(hits)
+        return
+    if action == "find":
+        projects = [project for project in body.get("projects") or [] if isinstance(project, dict)]
+        outcome.hits = len(projects)
+        outcome.target = _text(projects[0].get("name")) if len(projects) == 1 else None
+        return
+    project = body.get("project") if isinstance(body.get("project"), dict) else {}
+    outcome.hits = 1 if project else 0
+    outcome.target = _text(project.get("name")) or None
+
+
+# ---------------------------------------------------------------------------
 # The tool
 # ---------------------------------------------------------------------------
 
@@ -1006,6 +1041,7 @@ async def _lookup(
     project_id: str,
     open_folders_only: bool,
     project_facts: list[str],
+    outcome: ActionOutcome,
 ) -> str:
     facts = project_facts_filter(project_facts) if action in ("search", "find") else {}
     if action == "search":
@@ -1027,6 +1063,7 @@ async def _lookup(
             project_facts=facts,
         )
         body = await _call(SEARCH_PATH, payload)
+        record_outcome(action, body, outcome)
         verdicts = await _judge(payload["query"], body)
         _observe(action, payload, lookup_observation(action, body, verdicts))
         return _render_search(body, verdicts, facts)
@@ -1041,12 +1078,14 @@ async def _lookup(
         if facts:
             payload["projectFacts"] = facts
         body = await _call(PROJECTS_PATH, payload)
+        record_outcome(action, body, outcome)
         _observe(action, payload, lookup_observation(action, body))
         return _render_find(body, facts)
     if not project_id.strip():
         raise _Refused("Error: `brief` needs a `project_id` (from `find` or a hit).")
     payload = {"projectId": project_id.strip()}
     body = await _call(BRIEF_PATH, payload)
+    record_outcome(action, body, outcome)
     _observe(action, payload, lookup_observation(action, body))
     return _render_brief(body)
 
@@ -1066,8 +1105,10 @@ async def run_project_lookup(
     project_facts: list[ProjectFact] | None = None,
 ) -> str:
     """Look across the office's other projects. Module-level so the refusals are reachable without NAT."""
+    outcome = ActionOutcome()
+    row = ActionRow("lookup", query=(query or "").strip())
     try:
-        return await _lookup(
+        result = await _lookup(
             action,
             query or "",
             scope,
@@ -1080,10 +1121,17 @@ async def run_project_lookup(
             project_id or "",
             bool(open_folders_only),
             list(project_facts or []),
+            outcome,
         )
     except _Refused as refused:
         _observe(str(action), {}, {"refused": refused.code})
+        row.finish("error")
         return refused.message
+    except BaseException:
+        row.finish("error")
+        raise
+    outcome.settle(row, target=outcome.target)
+    return result
 
 
 @register_function(config_type=ProjectLookupConfig)

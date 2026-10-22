@@ -143,3 +143,39 @@ async def test_a_live_hit_that_cannot_be_fetched_is_named_as_unread(lookup, monk
 
     assert "Matched but not read:" in output
     assert "Wiener Garagengesetz 2008" in output
+
+
+class TestActionRow:
+    """One ``law`` row per call (ADR-0131): the question, the § asked for, how many passages were cut."""
+
+    @pytest.fixture
+    def rows(self, monkeypatch):
+        bodies = []
+        monkeypatch.setattr("aiq_agent.common.turn_status.get_stream_writer", lambda: bodies.append)
+        return bodies
+
+    @staticmethod
+    def _call(bodies):
+        actions = [body.step for body in bodies if body.step.kind == "action"]
+        assert len(actions) == 2
+        assert actions[0].status == "running"
+        assert actions[0].id == actions[1].id
+        return actions
+
+    async def test_a_miss_is_an_empty_row(self, lookup, rows):
+        await lookup.run(question="Wie viele Stellplätze?", jurisdiction="Wien", instrument="§ 36 BO Wien")
+
+        started, finished = self._call(rows)
+        assert (started.verb, started.query, started.target) == ("law", "Wie viele Stellplätze?", "§ 36 BO Wien")
+        assert (finished.status, finished.counts.hits) == ("empty", 0)
+
+    async def test_a_named_paragraph_is_an_ok_row_with_its_passage_count(self, lookup, catalog, rows):
+        await lookup.run(question="Was verlangt § 63 BO Wien?", instrument="BO Wien")
+
+        finished = self._call(rows)[1]
+        assert (finished.status, finished.counts.hits) == ("ok", 1)
+
+    async def test_an_empty_question_is_refused_without_a_row(self, lookup, rows):
+        await lookup.run(question="  ")
+
+        assert rows == []

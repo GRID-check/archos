@@ -5,6 +5,8 @@ import os
 from pydantic import Field
 from pydantic import SecretStr
 
+from aiq_agent.common.action_outcome import ActionOutcome
+from aiq_agent.common.turn_status import ActionRow
 from nat.plugin_api import Builder
 from nat.plugin_api import FunctionBaseConfig
 from nat.plugin_api import FunctionInfo
@@ -122,6 +124,17 @@ async def tavily_web_search(tool_config: TavilyWebSearchToolConfig, builder: Bui
         Returns:
             str: The web search results containing relevant documents and their URLs.
         """
+        outcome = ActionOutcome()
+        row = ActionRow("web", query=question)
+        try:
+            result = await _search(question, outcome)
+        except BaseException:
+            row.finish("error")
+            raise
+        outcome.settle(row, default="error")
+        return result
+
+    async def _search(question: str, outcome: ActionOutcome) -> str:
         from aiq_agent.common.retrieval_settings import get_retrieval_setting
 
         client = _client_for(get_retrieval_setting(settings_key, tool_config.max_results))
@@ -157,6 +170,7 @@ async def tavily_web_search(tool_config: TavilyWebSearchToolConfig, builder: Bui
                 if not isinstance(results, list):
                     raise ValueError(f"Tavily API returned unexpected results format: {type(results)}")
 
+                outcome.hits = len(results)
                 try:
                     from aiq_agent.common.turn_status import record_lane_hit as capture_lane_hit
                 except ImportError:  # standalone dist without the Grid agent package
@@ -187,6 +201,7 @@ async def tavily_web_search(tool_config: TavilyWebSearchToolConfig, builder: Bui
 
             except Exception as e:
                 if attempt == tool_config.max_retries - 1:
+                    outcome.failed = True
                     # On final attempt, return a user-friendly error message
                     error_msg = str(e)
                     if isinstance(e, ValueError):
@@ -204,6 +219,7 @@ async def tavily_web_search(tool_config: TavilyWebSearchToolConfig, builder: Bui
 
         # Unreachable when max_retries >= 1 (enforced by config), but a tool
         # must always hand the agent a string, never None.
+        outcome.failed = True
         return "Error: Web search failed - no attempts were made"
 
     yield FunctionInfo.from_fn(

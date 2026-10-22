@@ -355,3 +355,53 @@ def test_a_comparison_card_holds_an_address_never_image_bytes() -> None:
     }
     with pytest.raises(ValueError, match="image bytes"):
         grid_card_adapter.validate_python(card)
+
+
+def _action_row(emitted) -> tuple[Any, Any]:
+    actions = [step for step in emitted.steps if step.kind == "action"]
+    assert [step.status for step in actions][0] == "running"
+    assert len(actions) == 2
+    assert actions[0].id == actions[1].id
+    return actions[0], actions[1]
+
+
+async def test_a_call_leaves_one_workspace_row_naming_the_operation(server, registry, emitted) -> None:
+    server.append(structured_answer({"projects": []}, '{"projects": []}'))
+
+    await workspace.run_call("project-list", {})
+
+    started, finished = _action_row(emitted)
+    assert (started.verb, started.target) == ("workspace", "project-list")
+    assert finished.status == "ok"
+
+
+async def test_a_proposed_write_is_an_ok_row(server, registry, emitted) -> None:
+    server.append(structured_answer(proposed()))
+
+    await workspace.run_call("folder-rename", CALL_INPUT)
+
+    assert _action_row(emitted)[1].status == "ok"
+
+
+async def test_a_refused_call_is_an_error_row(server, registry, emitted) -> None:
+    server.append(structured_answer(None, "Forbidden (HTTP 403)", is_error=True))
+
+    await workspace.run_call("folder-rename", CALL_INPUT)
+
+    assert _action_row(emitted)[1].status == "error"
+
+
+async def test_a_rate_limited_call_is_an_error_row(server, registry, emitted) -> None:
+    server.append(structured_answer(None, "Too many requests. (HTTP 429, rate_limited)", is_error=True))
+
+    await workspace.run_call("folder-rename", CALL_INPUT)
+
+    assert _action_row(emitted)[1].status == "error"
+
+
+async def test_the_other_workspace_tools_leave_no_row(server, registry, emitted) -> None:
+    server.append(structured_answer({"operations": []}, "[]"))
+
+    await workspace.run_search("list projects")
+
+    assert [step for step in emitted.steps if step.kind == "action"] == []

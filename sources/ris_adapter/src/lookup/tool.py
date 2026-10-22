@@ -26,6 +26,8 @@ from ris_adapter.lookup.telemetry import emit_lookup_span
 from ris_adapter.lookup.trace import LookupTrace
 from ris_adapter.register import _make_planner
 
+from aiq_agent.common.action_outcome import ActionOutcome
+from aiq_agent.common.turn_status import ActionRow
 from nat.plugin_api import Builder
 from nat.plugin_api import FunctionBaseConfig
 from nat.plugin_api import FunctionInfo
@@ -131,6 +133,19 @@ async def ris_lookup(tool_config: RisLookupToolConfig, builder: Builder):
         question = (question or "").strip()
         if not question:
             return "Error: ris_lookup needs a question — the legal question in German, not a search string."
+        outcome = ActionOutcome()
+        row = ActionRow("law", query=question, target=(instrument or "").strip())
+        try:
+            result = await _answer(question, jurisdiction, instrument, application, outcome)
+        except BaseException:
+            row.finish("error")
+            raise
+        outcome.settle(row)
+        return result
+
+    async def _answer(
+        question: str, jurisdiction: str, instrument: str, application: str, outcome: ActionOutcome
+    ) -> str:
         address = parse_address(question, instrument, jurisdiction)
         trace = LookupTrace(application=application)
         trace.candidates = await collect_candidates(client, planner, question, address, trace, tool_config.catalog_path)
@@ -139,6 +154,7 @@ async def ris_lookup(tool_config: RisLookupToolConfig, builder: Builder):
         passages = build_passages(selections, address)
         ingested = await ingest_documents(documents, tool_config.ingest_into_knowledge)
         emit_lookup_span(question, address, trace, passages)
+        outcome.hits = len(passages)
         if not passages:
             return miss_message(question, address, trace)
         capture_passages(passages)

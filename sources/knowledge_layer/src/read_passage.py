@@ -72,6 +72,8 @@ from pydantic import BaseModel
 from pydantic import ConfigDict
 from pydantic import Field
 
+from aiq_agent.common.action_outcome import ActionOutcome
+from aiq_agent.common.turn_status import ActionRow
 from nat.plugin_api import Builder
 from nat.plugin_api import Context
 from nat.plugin_api import FunctionBaseConfig
@@ -1520,6 +1522,17 @@ async def outline_for(targets: list[PassageTarget], query: str) -> Outline:
     return Outline(chunks, _outline_entries(chunks), fetched.failures, fetched.structural)
 
 
+def _read_row_fields(arguments: ReadPassageInput) -> dict[str, str | None]:
+    """The Herleitung row of a read, from its own arguments: which document, which Punkt or pages (ADR-0131)."""
+    clause = str(arguments.clause if arguments.clause is not None else "").strip().strip(".")
+    page = str(arguments.page if arguments.page is not None else "").strip()
+    pages = str(arguments.pages if arguments.pages is not None else "").strip()
+    return {
+        "target": (arguments.document or "").strip(),
+        "pages": f"Pkt. {clause}" if clause else (pages or page or None),
+    }
+
+
 @register_function(config_type=ReadPassageConfig)
 async def read_passage(config: ReadPassageConfig, _builder: Builder):
     """Open a named passage of a named document, or its outline. Deterministic; no LLM."""
@@ -1613,6 +1626,18 @@ async def read_passage(config: ReadPassageConfig, _builder: Builder):
             `knowledge_search` returns, with Citation keys to copy verbatim —
             followed by the Gliederung when no clause and no page was named.
         """
+        outcome = ActionOutcome()
+        row = ActionRow("read", **_read_row_fields(arguments))
+        try:
+            result = await _read_body(arguments, outcome)
+        except BaseException:
+            row.finish("error")
+            raise
+        # A read that returned without fetching (an unknown name, a refused range) found nothing to count: an error row.
+        outcome.settle(row, default="error", target=outcome.target)
+        return result
+
+    async def _read_body(arguments: ReadPassageInput, outcome: ActionOutcome) -> str:
         from aiq_agent.common.turn_status import READ_PASSAGE_TOOL
         from aiq_agent.common.turn_status import lane_tool_scope
 
@@ -1648,18 +1673,19 @@ async def read_passage(config: ReadPassageConfig, _builder: Builder):
         # which copies the context at call time.
         with lane_tool_scope(READ_PASSAGE_TOOL):
             if clause is None and (str(pages_argument or "").strip() or (arguments.cursor or "").strip()):
-                return await _open_range(document, pages_argument, arguments.cursor)
+                return await _open_range(document, pages_argument, arguments.cursor, outcome)
             if clause is None and page is None:
-                return await _outline(document)
-            return await _open(document, clause, page)
+                return await _outline(document, outcome)
+            return await _open(document, clause, page, outcome)
 
-    async def _open(document: str, clause: str | None, page: int | None) -> str:
+    async def _open(document: str, clause: str | None, page: int | None, outcome: ActionOutcome) -> str:
         from .register import _format_results
 
         targets, refusal = await _resolve_or_refuse(document)
         if refusal:
             return refusal
 
+        outcome.target = targets[0].file_name
         query = _fetch_query(document, clause, page)
         # A page read fetches the window's chunks and keeps those covering the
         # page, so it may not stop at the passage bound before filtering.
@@ -1670,15 +1696,17 @@ async def read_passage(config: ReadPassageConfig, _builder: Builder):
             logger.warning("read_passage: every fetch failed for %r", query, exc_info=fetched.failures[0])
             return await _miss(document, targets, _store_silent_message(query))
         if not chunks:
+            outcome.hits = 0
             return await _miss(document, targets, _no_passage_message(document, clause, page))
 
         chunks.sort(key=_clause_sort_key)
         merged = _passage_result(chunks[:_MAX_PASSAGE_CHUNKS], query)
+        outcome.hits = len(merged.chunks)
         formatted = await asyncio.to_thread(_format_results, merged, query, notice=_older_revision_notice(targets))
         logger.info("read_passage: %s returned %d chunk(s)", query, len(merged.chunks))
         return formatted
 
-    async def _open_range(document: str, pages_argument: Any, cursor_token: str | None) -> str:
+    async def _open_range(document: str, pages_argument: Any, cursor_token: str | None, outcome: ActionOutcome) -> str:
         """Pages ``first``-``last`` of a document in reading order, or the rest of a read that stopped early."""
         from .register import _format_results
 
@@ -1690,6 +1718,7 @@ async def read_passage(config: ReadPassageConfig, _builder: Builder):
         if refusal_text:
             return refusal_text
 
+        outcome.target = targets[0].file_name
         cursor = decode_cursor(cursor_token) if (cursor_token or "").strip() else None
         if (cursor_token or "").strip():
             targets = [
@@ -1723,6 +1752,8 @@ async def read_passage(config: ReadPassageConfig, _builder: Builder):
         if fetched.failures and not chunks:
             logger.warning("read_passage: every fetch failed for %r", label, exc_info=fetched.failures[0])
             return await _miss(document, targets, _store_silent_message(label))
+        if not chunks:
+            outcome.hits = 0
         if not chunks and start is not None:
             return f"Nothing is left after that cursor in {document}: the read is complete."
         if not chunks:
@@ -1734,13 +1765,14 @@ async def read_passage(config: ReadPassageConfig, _builder: Builder):
         next_cursor = _next_cursor(kept, last, kind) if more or capped else None
         trailer = _range_trailer(document, kept, first, last, next_cursor)
         merged = _passage_result(kept, label)
+        outcome.hits = len(kept)
         formatted = await asyncio.to_thread(
             _format_results, merged, label, notice=_older_revision_notice(targets), trailer=trailer
         )
         logger.info("read_passage: %s returned %d chunk(s), cursor=%s", label, len(kept), bool(next_cursor))
         return formatted
 
-    async def _outline(document: str) -> str:
+    async def _outline(document: str, outcome: ActionOutcome) -> str:
         """The same lookup at document granularity: scope passage plus Gliederung."""
         from .register import _format_results
 
@@ -1749,12 +1781,14 @@ async def read_passage(config: ReadPassageConfig, _builder: Builder):
             return refusal
 
         query = _fetch_query(document, None, None)
+        outcome.target = targets[0].file_name
         outline = await outline_for(targets, query)
         entries = outline.entries
         if not outline.chunks:
-            return await _opening_passages(document, targets, query, outline.failures)
+            return await _opening_passages(document, targets, query, outline.failures, outcome)
 
         passages = _scope_chunks(outline.chunks)[:_MAX_PASSAGE_CHUNKS]
+        outcome.hits = len(passages)
         # The Gliederung travels as the block's trailer rather than being glued
         # on here: the renderer files the records under the hash of the bytes it
         # returns, and a byte added afterwards costs this tool the structured
@@ -1770,7 +1804,7 @@ async def read_passage(config: ReadPassageConfig, _builder: Builder):
         return formatted
 
     async def _opening_passages(
-        document: str, targets: list[PassageTarget], query: str, failures: list[BaseException]
+        document: str, targets: list[PassageTarget], query: str, failures: list[BaseException], outcome: ActionOutcome
     ) -> str:
         """The outline of a document with no Punkt metadata: its opening passages.
 
@@ -1790,9 +1824,11 @@ async def read_passage(config: ReadPassageConfig, _builder: Builder):
             logger.warning("read_passage: every outline fetch failed for %r", query, exc_info=broke[0])
             return await _miss(document, targets, _store_silent_message(query))
         if not fetched:
+            outcome.hits = 0
             return await _miss(document, targets, _empty_document_message(document))
 
         merged = _passage_result(sorted(fetched, key=_clause_sort_key)[:_MAX_PASSAGE_CHUNKS], query)
+        outcome.hits = len(merged.chunks)
         # The line that replaces the Gliederung rides the same trailer, and for
         # the same reason: the hash is over the whole text.
         formatted = await asyncio.to_thread(

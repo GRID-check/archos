@@ -61,7 +61,9 @@ from typing import Literal
 import regex
 from pydantic import Field
 
+from aiq_agent.common.action_outcome import ActionOutcome
 from aiq_agent.common.source_kinds import canonical_shelf_value
+from aiq_agent.common.turn_status import ActionRow
 from aiq_agent.knowledge.page_count import page_number
 from aiq_agent.knowledge.title_block import display_date
 from aiq_agent.knowledge.title_block import document_key
@@ -2188,6 +2190,53 @@ async def list_files(config: ListFilesConfig, _builder: Builder):
             str: A count, the subfolders with counts, and one line per file with its exact name; as a tree,
                 a card per folder.
         """
+        outcome = ActionOutcome()
+        row = ActionRow(
+            "list",
+            target=(revisions_of or "").strip() or (folder or "").strip().strip("/"),
+            query=name_contains,
+            shelf=shelf,
+        )
+        try:
+            result = await _list_body(
+                outcome,
+                folder,
+                name_contains,
+                doc_class,
+                added_since,
+                shelf,
+                sort,
+                offset,
+                limit,
+                topic,
+                revisions_of,
+                compare_to,
+                view,
+                depth,
+            )
+        except BaseException:
+            row.finish("error")
+            raise
+        # A refusal lists nothing and says so; a revisions chain is an answer with no file count.
+        outcome.settle(row, default="ok" if outcome.completed else "error", target=outcome.target)
+        return result
+
+    async def _list_body(
+        outcome: ActionOutcome,
+        folder: str | None,
+        name_contains: str | None,
+        doc_class: str | None,
+        added_since: str | None,
+        shelf: str | None,
+        sort: str | None,
+        offset: int | str | None,
+        limit: int | str | None,
+        topic: str | None,
+        revisions_of: str | None,
+        compare_to: str | None,
+        view: Literal["files", "tree"] | None,
+        depth: int | str | None,
+    ) -> str:
         shelf, refusal = _check_shelf(shelf)
         if refusal:
             return refusal
@@ -2203,6 +2252,7 @@ async def list_files(config: ListFilesConfig, _builder: Builder):
                 if refusal or older is None or newer is None:
                     return refusal
                 return await compare_revisions(older, newer)
+            outcome.completed = True
             return render_revisions(turn.rows, revisions_of or "", shelf=shelf, default_shelves=turn.own_shelves)
         sort = (sort or "folder").strip().lower()
         if sort not in ("folder", "name", "newest"):
@@ -2245,7 +2295,11 @@ async def list_files(config: ListFilesConfig, _builder: Builder):
         collections = sorted({row.collection for row in rows if row.shelf in listing.shelves and row.collection})
         in_flight = await asyncio.to_thread(_in_flight, collections) if collections else []
         logger.info("list_files: %d of %d row(s) selected, view=%s", listing.total, len(rows), view)
+        outcome.completed = True
+        outcome.target = listing.folder
+        outcome.files = len(listing.rows)
         if not tree:
+            outcome.folders = len(listing.subfolders)
             return render_listing(listing, in_flight=in_flight)
         cards = folder_cards(
             listing.rows,
@@ -2255,6 +2309,7 @@ async def list_files(config: ListFilesConfig, _builder: Builder):
         )
         from aiq_agent.knowledge.folder_cards import listing_abstracts
 
+        outcome.folders = len(cards)
         return render_tree(
             cards,
             total_rows=listing.total,
@@ -2410,6 +2465,7 @@ async def exact_search(
     context: int | str | None = None,
     stemmed: bool = False,
     shelf: str | None = None,
+    outcome: ActionOutcome | None = None,
 ) -> str:
     """``knowledge_search(match="exact"|"regex")``: every chunk in scope that contains the phrase or matches the regex.
 
@@ -2472,6 +2528,9 @@ async def exact_search(
 
     base = _resolve_base_collection(search_config)
     scopes = shelf_scopes(entries, await _searched_documents(search_config, narrowed, folder))
+    outcome = outcome if outcome is not None else ActionOutcome()
+    counted = [scope.documents for scope in scopes if scope.documents is not None]
+    outcome.searched = sum(counted) if counted else None
     filters_by_collection = {
         entry.collection: _collection_filter(
             entry.collection,
@@ -2494,6 +2553,7 @@ async def exact_search(
         context=context_lines,
         stemmed=stemmed and not regex_mode,
         scopes=scopes,
+        outcome=outcome,
     )
 
 
@@ -2589,6 +2649,7 @@ async def _search(
     context: int | None = None,
     stemmed: bool = False,
     scopes: Sequence[ShelfScope] = (),
+    outcome: ActionOutcome | None = None,
 ) -> str:
     from .qdrant.retrieval import USER_REGEX_SCAN_SECONDS
     from .qdrant.retrieval import USER_REGEX_TIMEOUT
@@ -2660,6 +2721,10 @@ async def _search(
         )
     except TimeoutError:
         return _TOO_COSTLY_SCAN if deadline is not None and time.monotonic() >= deadline else _TOO_COSTLY
+    if outcome is not None:
+        # Hits are the literal matches (the table's count); documents are the files holding them.
+        outcome.hits = sum(group.occurrences for group in groups)
+        outcome.documents = len(groups)
     if not groups:
         return no_match_message(phrases, answered, failed, regex_mode=regex_mode, scopes=scopes)
     # The match table names every matching file and counts its matches, which

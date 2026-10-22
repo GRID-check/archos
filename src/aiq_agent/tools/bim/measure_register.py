@@ -32,6 +32,8 @@ from pydantic import ValidationError
 from pydantic import field_validator
 from pydantic import model_validator
 
+from aiq_agent.common.action_outcome import ActionOutcome
+from aiq_agent.common.turn_status import ActionRow
 from aiq_agent.knowledge.ifc_spatial_client import call_spatial_tool
 from aiq_agent.knowledge.ifc_spatial_client import open_model
 from aiq_agent.knowledge.ifc_spatial_client import resolve_model_source
@@ -1892,8 +1894,31 @@ def _reply(name: str, detail: str, source: dict[str, Any], payload: Any, handle:
     return _render(name, payload, source=source, handle=handle, detail=detail)
 
 
-async def _measure(arguments: IfcMeasureInput, default_limit: int) -> list[dict] | str:
+def _measure_row_fields(arguments: IfcMeasureInput) -> dict[str, str]:
+    """The Herleitung row of a measurement, from its own arguments: the operation and what it measures."""
+    about = arguments.measure or arguments.relation or arguments.mode or arguments.kind or ""
+    return {"query": f"{arguments.operation} {about}".strip()}
+
+
+async def run_ifc_measure(arguments: IfcMeasureInput, default_limit: int) -> list[dict] | str:
+    """:func:`_measure` with its Herleitung row (ADR-0131): one row per call, settled on every path."""
+    outcome = ActionOutcome()
+    row = ActionRow("model", **_measure_row_fields(arguments))
+    try:
+        result = await _measure(arguments, default_limit, outcome)
+    except BaseException:
+        row.finish("error")
+        raise
+    outcome.settle(row)
+    return result
+
+
+async def _measure(
+    arguments: IfcMeasureInput, default_limit: int, outcome: ActionOutcome | None = None
+) -> list[dict] | str:
     """The tool body: guard, build, run, render — every failure as text the agent can act on."""
+    outcome = outcome if outcome is not None else ActionOutcome()
+    outcome.failed = True  # cleared once the engine answered; a refusal on the way leaves it set
     organization_id = get_organization_id_from_context()
     if not organization_id:
         return NO_ORG_TEXT
@@ -1917,6 +1942,9 @@ async def _measure(arguments: IfcMeasureInput, default_limit: int) -> list[dict]
         logger.log(failure.level, "ifc_measure %s: %s", failure.outcome, exc)
         _trace(name, detail, outcome=failure.outcome)
         return failure.text(exc)
+    outcome.failed = not source.get("resolved")
+    if isinstance(payload, dict) and isinstance(payload.get("elements"), list):
+        outcome.hits = len(payload["elements"])
     return _reply(name, detail, source, payload, handle)
 
 
@@ -1930,7 +1958,7 @@ class IfcMeasureConfig(FunctionBaseConfig, name="ifc_measure"):
 async def ifc_measure(tool_config: IfcMeasureConfig, builder: Builder):
     async def _ifc_measure(arguments: IfcMeasureInput) -> list[dict] | str:
         """Measure the project's IFC/BIM model and report the provenance."""
-        return await _measure(arguments, tool_config.default_limit)
+        return await run_ifc_measure(arguments, tool_config.default_limit)
 
     # `input_schema` is what NAT hands LangChain as `args_schema`: the enums,
     # the per-parameter text and the one required field reach the model.
