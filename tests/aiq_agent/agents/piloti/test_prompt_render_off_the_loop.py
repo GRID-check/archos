@@ -1,6 +1,6 @@
 """The system prompt is rendered in a THREAD, not on the event loop.
 
-``render_system_prompt`` is a sync function, and one of its inputs is not
+``render_turn_context`` is a sync function, and one of its inputs is not
 local: the static half is resolved through the prompt store, which — with
 Langfuse prompt management on — makes one bounded HTTP call (2 s) the first
 time a TTL window needs it. Called straight from the async agent node that is

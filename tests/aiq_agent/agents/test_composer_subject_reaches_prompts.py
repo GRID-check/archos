@@ -183,10 +183,10 @@ class TestSubjectKeepsTheSearchTools:
         )
         await agent.run(state)
 
-        # The prompt's tool list mirrors the binding, so it is the readable
-        # proof of which tools the model was actually offered.
-        system_prompt = mock_llm.ainvoke.call_args[0][0][0].content
-        assert "**searching_tool**" in system_prompt
+        # The turn's binding is the proof of which tools the model was offered;
+        # the prompt no longer repeats it as a list.
+        _, offered = agent._research_tool_binding(state.messages, agent.tools_info)
+        assert "searching_tool" in [tool["name"] for tool in offered]
 
 
 class TestSubjectSurvivesTheGraphHandoff:

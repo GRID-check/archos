@@ -83,13 +83,13 @@ def describe_card(card_types: str) -> str:
 
 
 def _piloti_prompt_source() -> str:
-    """Piloti's bundled prompt as ONE template, the way it was before the split.
+    """Piloti's bundled prompt as ONE template: the system prompt, then the turn context.
 
-    `piloti.j2` holds the dynamic half and opens with `{{ static_block }}`; the
-    static half is `piloti_static.md`, the bundled fallback for the platform
-    prompt Langfuse serves. Substituting one into the other reproduces the
-    single template these tests were written against, so they keep asserting
-    about the whole prompt rather than silently about a third of it.
+    The system prompt is `piloti_static.md`, the bundled fallback for the
+    platform prompt Langfuse serves; `piloti.j2` is the turn context, sent as
+    its own message before the newest human message. Rendering them as one
+    template lets these tests assert about everything the model reads in a
+    turn rather than silently about one of the two messages.
     """
     from pathlib import Path
 
@@ -97,7 +97,7 @@ def _piloti_prompt_source() -> str:
 
     prompts = Path(piloti_agent.__file__).parent / "prompts"
     static = (prompts / "piloti_static.md").read_text(encoding="utf-8")
-    return (prompts / "piloti.j2").read_text(encoding="utf-8").replace("{{ static_block }}\n", static, 1)
+    return static + "\n" + (prompts / "piloti.j2").read_text(encoding="utf-8")
 
 
 def _bundled_static_block() -> str:
@@ -691,15 +691,14 @@ class TestPilotiAgent:
         assert first.system_prompt is second.system_prompt
 
     def test_default_prompt_requires_tool_result_references(self, mock_llm_provider, real_tool):
-        """Default prompt tells the model to cite non-URL tool results by exact tool name."""
+        """Default prompt tells the model to cite non-URL tool results by the tool's name."""
         PilotiAgent(
             llm_provider=mock_llm_provider,
             tools=[real_tool],
         )
 
-        assert "When you used a tool result to answer" in _bundled_prompt_text()
-        assert "exact tool name" in _bundled_prompt_text()
-        assert "- [1] mcp_time__get_current_time" in _bundled_prompt_text()
+        assert "a result with neither URL nor key is cited by the tool's name" in _bundled_prompt_text()
+        assert "exactly as the tool returned it" in _bundled_prompt_text()
 
     def test_default_prompt_matches_user_language(self, mock_llm_provider, real_tool):
         """Default prompt instructs the model to answer in the user's language."""
@@ -708,21 +707,23 @@ class TestPilotiAgent:
             tools=[real_tool],
         )
 
-        assert "Answer in the language of the user's request" in _bundled_prompt_text()
-        # German questions should get German answers.
-        assert "German" in _bundled_prompt_text()
+        assert "Write in the language of the request" in _bundled_prompt_text()
+        # German questions get Austrian technical German.
+        assert "German is Austrian technical German" in _bundled_prompt_text()
 
     def test_default_prompt_keeps_escalate_marker_language_independent(self, mock_llm_provider, real_tool):
-        """Language matching must NOT disturb the literal escalation marker contract."""
+        """Language matching must NOT disturb the envelope's contract tokens.
+
+        The legacy bracket grammar (`[ESCALATE_TO_DEEP]`) is still stripped by
+        the parser but no longer taught: the envelope field is the one channel.
+        """
         PilotiAgent(
             llm_provider=mock_llm_provider,
             tools=[real_tool],
         )
 
-        # The marker stays literal/language-independent alongside the new
-        # language-matching instruction.
-        assert "[ESCALATE_TO_DEEP]" in _bundled_prompt_text()
-        assert "exactly as written" in _bundled_prompt_text()
+        assert "contract tokens: write them exactly, whatever the answer's language" in _bundled_prompt_text()
+        assert "[ESCALATE_TO_DEEP]" not in _bundled_prompt_text()
 
     def _render_default_prompt(
         self,
@@ -734,14 +735,18 @@ class TestPilotiAgent:
         from aiq_agent.common import render_prompt_template
 
         agent = PilotiAgent(llm_provider=mock_llm_provider, tools=[real_tool])
-        return render_prompt_template(
-            agent.system_prompt,
-            static_block=_bundled_static_block(),
-            tools=[{"name": real_tool.name, "description": "Search the web"}],
-            user_info=None,
-            current_datetime="2026-07-15",
-            available_documents=[],
-            project_context=project_context,
+        # Both messages the turn sends besides the transcript: the system
+        # prompt, then the turn context.
+        return (
+            _bundled_static_block()
+            + "\n"
+            + render_prompt_template(
+                agent.system_prompt,
+                user_info=None,
+                current_datetime="2026-07-15",
+                available_documents=[],
+                project_context=project_context,
+            )
         )
 
     def test_the_formatting_block_routes_a_diagram_to_a_drawing_card(self, mock_llm_provider, real_tool):
@@ -755,10 +760,6 @@ class TestPilotiAgent:
         """
         rendered = self._render_default_prompt(mock_llm_provider, real_tool)
         formatting = rendered.split("<formatting>")[1].split("</formatting>")[0]
-        # Since 2026-09-24 a drawing is a tagged mermaid fence in the answer,
-        # reached for whenever the answer HAS a shape, not only when asked;
-        # the shaped cards keep what their fields carry, and anything measured
-        # stays with the schematic cards.
         assert "```mermaid" in formatting
         assert "not only when asked" in formatting
         assert "`:::procedure`" in formatting and "`:::cases`" in formatting
@@ -766,7 +767,6 @@ class TestPilotiAgent:
         # The box-art ban must survive the rewrite: the third field
         # transcript drew box-drawing characters where a diagram was asked.
         assert "are never a drawing" in formatting
-        # And it names the notation that renders.
         assert "flowchart TD" in formatting
         # And the consequence, so an edit that keeps the rule and drops the
         # reason still fails: a listing where a drawing was promised.
@@ -774,10 +774,10 @@ class TestPilotiAgent:
         assert "│" in formatting
 
     def test_project_memory_is_framed_as_fallible_not_binding(self, mock_llm_provider, real_tool):
-        """The digest rides inside <project_context>, whose "binding constraints —
-        never contradict them" rule is meant for CONFIRMED profile facts. Without an
-        explicit carve-out, agent-authored `unverified` notes inherit that weight and
-        the agent defends stale memory instead of accepting a correction."""
+        """The digest rides inside <project_context>, whose "confirmed facts bind" rule is meant for
+        CONFIRMED profile facts. Without an explicit carve-out, agent-authored `unverified` notes inherit
+        that weight and the agent defends stale memory instead of accepting a correction. The legend
+        renders in the turn context, beside the block, only when the block is there."""
         rendered = self._render_default_prompt(
             mock_llm_provider,
             real_tool,
@@ -787,18 +787,19 @@ class TestPilotiAgent:
             ),
         )
 
-        assert "not** confirmed project facts" in rendered
-        assert "The current conversation outranks memory, always." in rendered
-        assert "never argue the user out of their own correction" in rendered
+        assert "neither a confirmed fact nor law" in rendered
+        assert "The current conversation outranks it" in rendered
+        assert "never argue the person out of their own correction" in rendered
         # Memory must never be laundered into a legal citation.
         assert "never a source for a legal requirement" in rendered
+        without = self._render_default_prompt(mock_llm_provider, real_tool, project_context="name: X")
+        assert "PROJECT_MEMORY" not in without
 
     def test_research_turn_prompt_keeps_the_envelope_mandate(self, mock_llm_provider, real_tool):
         """The envelope contract is rendered on every turn; there is no suppression note."""
         rendered = self._render_default_prompt(mock_llm_provider, real_tool)
 
         assert "<answer_envelope>" in rendered
-        assert "<control_signals>" in rendered
         assert "Every researched answer carries `confidence`" in rendered
         # The schema the validator enforces is the one the model is taught —
         # injected by the renderer, never an empty block.
@@ -812,17 +813,8 @@ class TestPilotiAgent:
         On the first live run of this branch the marker was absent from 4 of 32
         real answers — and the split was not random. Every answer that produced
         a `**Quellen:**` section carried the marker (18/18); every answer that
-        produced none dropped it 4 times in 14. The raw model output was
-        captured BEFORE the strip, so this is the model omitting the marker,
-        not the parser losing it.
-
-        The cause is the shape of the contract rather than a lack of emphasis:
-        the confidence line is step 3 of a research-turn shape whose steps 1
-        and 2 are inline `[N]` citations and a sources section, and whose level
-        definitions were written purely in terms of „the sources you actually
-        retrieved". An answer built on an `ifc_measure` result has none of
-        those, so the model dropped the whole shape. The prompt therefore has
-        to say that step 3 stands alone, and to give a measurement somewhere to
+        produced none dropped it 4 times in 14. The prompt therefore has to say
+        that confidence stands alone, and to give a measurement somewhere to
         land among the levels.
 
         Nothing here makes the marker enforceable: a missing marker stays a
@@ -831,7 +823,7 @@ class TestPilotiAgent:
         rendered = self._render_default_prompt(mock_llm_provider, real_tool)
 
         # Grounding is evidence, not sources alone — a measurement counts.
-        assert "the workspace records you read AND the measurements you took" in rendered
+        assert "every answer that retrieved, measured or cites" in rendered
         assert "a measurement taken this turn" in rendered
         assert "a record or a measurement never stands in for one" in rendered
         # And WHY it matters, which is what the model was never told.
@@ -2446,12 +2438,13 @@ class TestPilotiRepairPass:
 
 
 class TestClarificationGuidance:
-    """Piloti must be told to push back on under-specified queries —
-    in shallow mode too, and independent of whether project_context is present.
+    """Piloti must be told what to do with an under-specified query —
+    on every turn, and independent of whether project_context is present.
 
     Regression: the only Rueckfrage/pushback guidance lived INSIDE the
     ``{% if project_context %}`` block, so a shallow turn with no project brief
     got zero clarification guidance and always answered straight through.
+    The rule now sits in the static system prompt, which no condition renders.
     """
 
     def _render(self, *, project_context):
@@ -2461,7 +2454,6 @@ class TestClarificationGuidance:
         prompt = _piloti_prompt_source()
         return render_prompt_template(
             prompt,
-            tools=[{"name": "knowledge_search"}],
             user_info={"name": "Alex", "email": "a@example.com"},
             current_datetime="2026-07-23",
             available_documents=[],
@@ -2470,21 +2462,17 @@ class TestClarificationGuidance:
         )
 
     def test_clarification_guidance_present_on_research_turn_without_project_context(self):
-        """A turn with NO project context still gets the push-back guidance —
-        the core regression."""
+        """A turn with NO project context still gets the guidance — the core regression."""
         rendered = self._render(project_context=None)
-        assert "<clarification>" in rendered
-        assert "Folgefrage" in rendered
-        # It must explicitly extend push-back to the shallow/quick path.
-        lowered = rendered.lower()
-        assert "quick answers" in lowered
-        # And it must teach the "state your assumption" alternative, not only asking.
-        assert "assumption" in lowered
+        rules = rendered.split("<rules>")[1].split("</rules>")[0]
+        # Both moves: answer under a stated assumption, or ask one question.
+        assert "answer under a stated assumption" in rules
+        assert "ask one short question first" in rules
+        assert "`ask_user`" in rules
 
     def test_clarification_guidance_present_with_project_context_too(self):
         rendered = self._render(project_context="facts:\n  bundesland: unknown")
-        assert "<clarification>" in rendered
-        assert "Folgefrage" in rendered
+        assert "answer under a stated assumption" in rendered
 
 
 class TestOffTopicDeclineShape:
@@ -2494,8 +2482,7 @@ class TestOffTopicDeclineShape:
 
     Regression: the direct-reply shape said "answer from your own knowledge",
     so a clearly off-topic question (e.g. "how do I bake a cake") risked
-    getting a cheerful full answer. The contract carves out an explicit
-    off-topic decline shape.
+    getting a cheerful full answer. The rules carve out an explicit decline.
     """
 
     def _render(self):
@@ -2505,7 +2492,6 @@ class TestOffTopicDeclineShape:
         prompt = _piloti_prompt_source()
         return render_prompt_template(
             prompt,
-            tools=[],
             user_info={"name": "Alex", "email": "a@example.com"},
             current_datetime="2026-07-23",
             available_documents=[],
@@ -2515,97 +2501,89 @@ class TestOffTopicDeclineShape:
 
     def test_contract_has_explicit_off_topic_decline_shape(self):
         rendered = self._render()
-        assert "An off-topic decline" in rendered
+        rules = rendered.split("<rules>")[1].split("</rules>")[0]
         # The decisive instruction: do not answer, decline + redirect.
-        assert "Do NOT answer" in rendered
-        lowered = rendered.lower()
-        assert "decline" in lowered and "redirect" in lowered
-        # A worked off-topic decline example is present to anchor the behavior.
-        assert 'type="off_topic"' in rendered
+        assert "decline without answering it, even when you know the answer" in rules
+        assert "a redirect to what you can help with" in rules
+        assert "no tool call" in rules
 
     def test_in_scope_conversational_shape_still_answers(self):
         """Guard against over-correction: genuine conversational/platform turns
         (greetings, capability questions) are still answered directly."""
-        rendered = self._render()
-        assert "A direct reply" in rendered
-        # The capability example that DOES answer is retained.
-        assert 'type="direct_reply"' in rendered
+        kinds = self._render().split("KINDS.")[1].split("FIELDS.")[0]
+        assert "`direct`: a greeting, a question about you" in kinds
 
 
 class TestADirectReplyMayStillEmitACard:
-    """The direct-reply shape and the `<cards>` block must not contradict.
+    """The direct-reply shape and the card contract must not contradict.
 
     Field case: „Wie läuft das Baubewilligungsverfahren in Wien ab?" was offered
     a deep-research plan, refused twice, then retyped in plain words — and the
     reply came as prose because the conversational shape said "no tool calls"
-    while `<cards>` told the model to emit one. Every tool is bound on every
-    turn (ADR-0052), so the shape now says so, and the restraint lives where it
-    lived: a greeting has nothing to put on a card and emits none.
+    while the card contract told the model to emit one. Every tool is bound on
+    every turn (ADR-0052), so the contract says so, a plain-words building-law
+    question is a walkthrough or a ruling, and a greeting has nothing to put on
+    a card and emits none.
     """
 
     def _render(self):
         return TestOffTopicDeclineShape._render(self)
 
+    def _kinds(self) -> str:
+        return self._render().split("KINDS.")[1].split("FIELDS.")[0]
+
     def test_the_direct_reply_shape_has_every_tool(self):
-        contract = self._render().split("<output_contract>")[1].split("</output_contract>")[0]
-        direct_shape = contract.split("An off-topic decline")[0]
-        assert "every tool on every turn" in direct_shape
+        kinds = self._kinds()
+        assert "Every tool is available on every turn" in kinds
+        direct_shape = kinds.split("- `direct`")[1].split("- `walkthrough`")[0]
         assert "no tool calls" not in direct_shape
-        # A search is the model's call. Which tool shows a file is the tool
-        # description's business, not the prompt's.
-        assert "A search is not wrong here" in direct_shape
+        assert "cited only for a retrieved passage" in direct_shape
 
     def test_the_off_topic_shape_still_forbids_every_tool_call(self):
         # The carve-out is for a turn that ANSWERS something. A decline has no
         # content, so nothing here is loosened for it.
-        contract = self._render().split("<output_contract>")[1].split("</output_contract>")[0]
-        off_topic = contract.split("An off-topic decline")[1].split("A walkthrough")[0]
-        assert "no tool calls" in off_topic
+        rules = self._render().split("<rules>")[1].split("</rules>")[0]
+        assert "no tool call" in rules
 
     def test_the_direct_reply_shape_names_the_card_rule_and_its_limit(self):
-        contract = self._render().split("<output_contract>")[1].split("</output_contract>")[0]
-        direct_shape = contract.split("An off-topic decline")[0]
-        assert "earns the structure its content calls for" in direct_shape
+        direct_shape = self._kinds().split("- `direct`")[1].split("- `walkthrough`")[0]
+        assert "is a walkthrough or a ruling, not a direct reply" in direct_shape
         # ...and closed again for the turns with nothing to show.
-        assert "carry no card" in direct_shape
+        assert "no card" in direct_shape
 
     def test_the_hand_off_shape_escalates_a_commissioned_report_at_once(self):
-        contract = self._render().split("<output_contract>")[1].split("</output_contract>")[0]
-        hand_off = contract.split("A hand-off to deep research")[1]
+        hand_off = self._kinds().split("- `handoff`")[1]
         assert "`escalate_to_deep`" in hand_off and "`escalation_reason`" in hand_off
-        assert "needs no retrieval of your own first" in hand_off
-        assert 'type="hand_off"' in self._render()
+        assert "a commissioned report needs no retrieval first" in hand_off
+        assert "never handed off" in hand_off
 
-    def test_the_cards_block_says_out_loud_that_it_is_always_on(self):
-        cards = self._render().split("\n<cards>\n")[1].split("\n</cards>\n")[0]
-        assert "a direct reply included" in cards
+    def test_the_card_contract_is_in_every_system_prompt(self):
+        """The card contract is rendered from the catalog into the static half, so no turn can lack it."""
+        from aiq_agent.agents.piloti.prompt import bundled_static_block
+        from aiq_agent.agents.piloti.prompt import render_static_block
 
-    def test_the_contract_names_the_four_kinds_and_earns_a_ruling(self):
+        system = render_static_block(bundled_static_block().text)
+        assert "CARDS (the `cards` field)" in system
+        assert "[[card:N]]" in system
+
+    def test_the_contract_names_the_kinds_and_earns_a_ruling(self):
         """A workspace turn is not a researched Bescheid by default.
 
-        The envelope already has ``direct | walkthrough | ruling | handoff``.
-        The prompt has to name those kinds and keep ``verdict`` behind a
+        The prompt has to name the kinds and keep ``verdict`` behind a
         copyable legal value, or every file walkthrough inherits the gavel.
         """
-        contract = self._render().split("<output_contract>")[1].split("</output_contract>")[0]
-        for kind in ("direct", "walkthrough", "ruling", "handoff"):
-            assert kind in contract
-        assert "copyable legal value" in contract
-        walkthrough = contract.split("A walkthrough")[1].split("A ruling")[0]
-        assert "`verdict`" in walkthrough or "verdict" in walkthrough
-        assert "no `verdict`" in walkthrough or "No `verdict`" in walkthrough or "not emit" in walkthrough.lower()
+        kinds = self._kinds()
+        for kind in ("direct", "walkthrough", "ruling", "handoff", "work"):
+            assert f"`{kind}`" in kinds
+        assert "copyable legal value" in kinds
+        walkthrough = kinds.split("- `walkthrough`")[1].split("- `ruling`")[0]
+        assert "carries no `verdict`" in walkthrough
+        assert "summarising" in walkthrough and "organising" in walkthrough
 
     def test_walkthrough_examples_exist_and_carry_no_verdict(self):
         rendered = self._render()
-        assert 'type="walkthrough"' in rendered
-        # Two workspace moves the old contract had no shape for.
-        lowered = rendered.lower()
-        assert "zusammen" in lowered or "summar" in lowered
-        assert "ordn" in lowered or "organis" in lowered
-        # Each walkthrough example is a fenced envelope; none of them may
-        # grow a verdict, or the model copies the gavel onto a filing turn.
         chunks = rendered.split('type="walkthrough"')
-        assert len(chunks) >= 3, "need two walkthrough examples"
+        assert len(chunks) >= 2, "need a walkthrough example"
         for chunk in chunks[1:]:
             example = chunk.split("</example>", 1)[0]
             assert '"verdict"' not in example
@@ -2617,38 +2595,37 @@ class TestADirectReplyMayStillEmitACard:
         the example.
         """
         rendered = self._render()
-        research = rendered.split('type="research"')[1].split("</example>", 1)[0]
-        assert '"kind": "walkthrough"' in research
-        assert '"verdict"' not in research
+        overview = rendered.split('type="walkthrough"')[1].split("</example>", 1)[0]
+        assert '"kind": "walkthrough"' in overview
+        assert '"topic": "Brandschutz"' in overview
         ruling = rendered.split('type="ruling"')[1].split("</example>", 1)[0]
         assert '"kind": "ruling"' in ruling
         assert '"value": "REI 60"' in ruling
         assert '"value": "Brandschutz"' not in rendered
 
-    def test_the_identity_example_does_not_reduce_the_job_to_oib_questions(self):
+    def test_the_identity_does_not_reduce_the_job_to_oib_questions(self):
         rendered = self._render()
-        identity = rendered.split('type="direct_reply"')[1].split("</example>", 1)[0]
-        assert "Piloti" in identity
-        assert "Ich beantworte Fragen zu OIB" not in identity
-        assert "OIB-Richtlinien, österreichischem Baurecht" not in identity
+        assert "Ich beantworte Fragen zu OIB" not in rendered
+        assert "OIB-Richtlinien, österreichischem Baurecht" not in rendered
 
     def test_the_research_rules_state_outcomes_not_a_procedure(self):
         """The rules say what must be true of a finished answer, never which
         tool to call next or how many times.
 
-        The budget is the graph's business and the prompt no longer names it;
-        a fetch the turn already ran is answered from the transcript, stated
-        as the fact it is; and the Herleitung checkpoint is a declared slot.
+        A fetch the turn already ran is answered from the transcript, stated
+        as the fact it is; the Herleitung checkpoint is the tool's own
+        `conclusion` argument, described where it is passed.
         """
         rendered = self._render()
         assert "Grid OIB Research Agent" not in rendered
         assert "at most 2 calls" not in rendered
         assert "not every question is a legal question" in rendered
         assert "commit to it; re-plan only" not in rendered
-        rules = rendered.split("<working>")[1].split("</working>")[0]
-        assert "evidence you saw this turn" in rules
+        good = rendered.split("<good_answer>")[1].split("</good_answer>")[0]
+        assert "evidence you saw this turn" in good
+        rules = rendered.split("<rules>")[1].split("</rules>")[0]
         assert "A file you did not open is not described" in rules
-        assert '„nicht gelesen"' in rules
+        assert "„nicht gelesen“" in rules
         assert "Abdeckung: unzureichend" in rules
         assert "`conclusion`" not in rules
         procedures = (
@@ -2660,8 +2637,6 @@ class TestADirectReplyMayStillEmitACard:
         )
         for procedure in procedures:
             assert procedure not in rendered, procedure
-        stimme = rendered.split("<stimme>")[1].split("</stimme>")[0]
-        assert "a conclusion of the derivation" in stimme
 
 
 class TestKnowledgeInventoryIsNotCitable:
@@ -2717,32 +2692,28 @@ class TestKnowledgeInventoryIsNotCitable:
         assert "NOT sources" in rendered
         assert "not a citable source" in rendered
         # And the anti-memory rule covers document keys, not only URLs.
-        citation_block = rendered.split("<citation_format>")[1].split("</citation_format>")[0]
-        assert "document citation keys" in citation_block
-        assert "knowledge_search" in citation_block
+        citations = rendered.split("CITATIONS.")[1].split("EXAMPLES.")[0]
+        assert "the citation key exactly as the tool returned it" in citations
+        assert "Cite only what a tool returned" in citations
 
     def test_piloti_prompt_asks_for_disagreement_between_sources_to_be_shown(self):
         """The everyday chat surface had no rule about contradictory sources.
 
-        `deep_researcher/prompts/writer.j2` has told the writer to surface
-        disagreement for a long time; Piloti's prompt — the one that answers
-        almost every question — mentioned contradiction only as a reason to
-        escalate or to lower confidence, never as something to TELL the reader.
         In a legal product a smoothed-over difference is the dangerous failure:
         an unqualified answer reads as a settled one, and gets built on.
         """
         source = self._prompt("piloti/prompts/piloti.j2")
 
-        assert "<source_disagreement>" in source
-        block = source.split("<source_disagreement>")[1].split("</source_disagreement>")[0]
+        block = source.split("<building_law>")[1].split("</building_law>")[0]
+        rule = block.split("When two sources disagree")[1].split("\n")[0]
         # Show the difference rather than silently choosing.
-        assert "Do not silently pick one" in block
-        # Then resolve it by the precedence chain the domain brief already teaches.
-        assert "binds outranks what interprets" in block
+        assert "show both with their citations" in rule
+        # Then resolve it by the precedence chain the same section teaches.
+        assert "Resolve by the chain" in rule
         # And when the chain cannot resolve it, say so instead of inventing a winner.
-        assert "sources disagree" in block
+        assert "say that they disagree" in rule
         # An unresolved conflict must not be reported as high confidence.
-        assert "not `high`" in block
+        assert "keep `confidence` below high" in rule
 
     def test_every_example_source_line_in_the_prompt_is_a_bare_locator(self):
         """The prompt's rule says `- [N] filename.pdf, p.X`; two of its examples
@@ -2793,11 +2764,11 @@ class TestKnowledgeInventoryIsNotCitable:
             assert "Uploaded Documents" not in source, path
 
     def test_piloti_prompt_teaches_the_four_shelves(self):
+        """The shelves themselves are taught where they are listed (the inventory block); the prompt names them."""
         source = self._prompt("piloti/prompts/piloti.j2")
-        assert "<knowledge_shelves>" in source
-        assert "Büroablage" in source
-        assert "NEVER the OIB corpus" in source
-        assert "which files sit on which shelf" in source
+        assert "Basiswissen, Büroablage, Projektwissen, Private Sitzung" in source
+        rendered = self._render(source, self.DOCUMENTS)
+        assert "Büroablage is never the OIB corpus" in rendered
 
     def test_grouped_inventory_does_not_mix_oib_into_office_shelf(self):
         documents = [
@@ -2818,26 +2789,11 @@ class TestKnowledgeInventoryIsNotCitable:
 class TestTheModelCardsAreActuallyAskedFor:
     """The five IFC cards had renderers and no instruction that named them.
 
-    That instruction now lives in ``ifc-spatial-reasoning``, because most turns
+    That instruction lives in ``ifc-spatial-reasoning``, because most turns
     never touch a model and the always-on prompt must not teach a minority
-    path. The prompt keeps a pointer so the model loads that skill before it
-    emits. The skill keeps the card types and the id rule.
+    path. The skill catalog in the turn context points at it; the skill keeps
+    the card types and the id rule.
     """
-
-    def _render(self):
-
-        from aiq_agent.common import render_prompt_template
-
-        prompt = _piloti_prompt_source()
-        return render_prompt_template(
-            prompt,
-            tools=[{"name": "ifc_query"}, {"name": "emit_card"}],
-            user_info={"name": "Alex", "email": "a@example.com"},
-            current_datetime="2026-07-23",
-            available_documents=[],
-            project_context=None,
-            parcel_note=None,
-        )
 
     def _ifc_skill(self) -> str:
         from pathlib import Path
@@ -2848,17 +2804,12 @@ class TestTheModelCardsAreActuallyAskedFor:
             Path(aiq_agent.__file__).parent / "skills" / "builtin" / "bim" / "ifc-spatial-reasoning" / "SKILL.md"
         ).read_text(encoding="utf-8")
 
-    def test_the_prompt_points_at_the_skill_instead_of_teaching_the_cards(self):
-        rendered = self._render()
-        assert "ifc-spatial-reasoning" in rendered
-        assert "Most turns never touch a model." in rendered
+    def test_the_static_prompt_does_not_teach_the_model_cards(self):
         from aiq_agent.cards.catalog import MODEL_BACKED_CARD_TYPES
 
-        # The SECTION, opened on its own line. `split("<cards>")[1]` read the text
-        # between the first two MENTIONS of the tag, which prose makes freely.
-        section = rendered.split("\n<cards>\n")[1].split("</cards>")[0]
+        static = _piloti_prompt_source().split("<turn_context>")[0]
         for card_type in MODEL_BACKED_CARD_TYPES:
-            assert card_type not in section, card_type
+            assert card_type not in static, card_type
 
     def test_every_model_backed_card_is_named_in_the_skill(self):
         from aiq_agent.cards.catalog import MODEL_BACKED_CARD_TYPES
@@ -2873,10 +2824,6 @@ class TestTheModelCardsAreActuallyAskedFor:
         # model is broken when it is not.
         body = self._ifc_skill()
         assert "THIS turn" in body
-
-    def test_the_card_does_not_replace_the_written_answer(self):
-        rendered = self._render()
-        assert "the prose answers on its own" in rendered
 
 
 # ---------------------------------------------------------------------------
@@ -3390,12 +3337,11 @@ def _drafts_block() -> str:
 class TestTheWorkingDirectoryBlock:
     """What is LEFT in the prompt about drafting, after ADR-0060's amendment.
 
-    The block used to teach the whole drafting workflow: which verb writes,
-    which revises, when to file, when to submit, what a filed draft may be
-    called. Every one of those is a tool's own contract and now lives in the
-    tool description that owns it (see ``TestTheDraftingRulesLiveInTheTools``).
-    Two sentences stay here, because no tool description can carry them: what
-    „mach daraus ein File" refers to, and what happens with no project.
+    Every verb's workflow is a tool's own contract and lives in the tool
+    description that owns it (see ``TestTheDraftingRulesLiveInTheTools``). One
+    sentence stays, because no tool description can carry it: what „mach
+    daraus ein File" refers to. What happens without a project is the
+    refusal ``file_draft`` returns, at the moment it matters.
     """
 
     def test_a_turn_without_the_tools_is_never_told_to_write(self):
@@ -3410,10 +3356,13 @@ class TestTheWorkingDirectoryBlock:
         assert "previous answer of this conversation" in block
         assert "without asking about format or content" in block
 
-    def test_a_conversation_without_a_project_is_told_what_happens(self):
-        block = _drafts_block()
-        assert "Without a project" in block
-        assert "the draft stays in the working directory" in block
+    def test_a_conversation_without_a_project_is_told_by_the_refusal(self):
+        from pathlib import Path
+
+        from aiq_agent.tools.documents import register as documents
+
+        assert "There is no project in this conversation" in Path(documents.__file__).read_text(encoding="utf-8")
+        assert "Without a project" not in _drafts_block()
 
     def test_the_workflow_the_tools_own_is_no_longer_in_the_prompt(self):
         """The cut itself. Each of these was a sentence about how to hold a
@@ -3424,16 +3373,16 @@ class TestTheWorkingDirectoryBlock:
 
     def test_the_block_follows_the_tools_and_not_a_second_switch(self):
         """The flag is derived from what is bound, by the renderer itself."""
-        from aiq_agent.agents.piloti.prompt import render_system_prompt
+        from aiq_agent.agents.piloti.prompt import render_turn_context
         from aiq_agent.agents.piloti.prompt import system_prompt_template
 
         state = ResearchAgentState(messages=[HumanMessage(content="Schreib den Aktenvermerk")])
-        with_tools = render_system_prompt(
+        with_tools = render_turn_context(
             system_prompt_template(),
             state,
             [{"name": "write_file", "description": "Schreibt ein NEUES Dokument"}],
         )
-        without = render_system_prompt(
+        without = render_turn_context(
             system_prompt_template(),
             state,
             [{"name": "web_search_tool", "description": "Search"}],

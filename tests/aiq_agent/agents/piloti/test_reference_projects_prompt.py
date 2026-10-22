@@ -10,10 +10,10 @@ office. It renders only when the turn can act on it: a catalog without
 from langchain_core.messages import HumanMessage
 
 from aiq_agent.agents.piloti.models import ResearchAgentState
-from aiq_agent.agents.piloti.prompt import render_system_prompt
+from aiq_agent.agents.piloti.prompt import render_turn_context
 from aiq_agent.agents.piloti.prompt import system_prompt_template
 
-BOUNDARY_ANCHOR = "## Context"
+BOUNDARY_ANCHOR = "<turn_context>"
 HEADING = "## Referenzprojekte des Büros"
 CATALOG = "- Wohnbau Graz (id p1): 2019–2021, steiermark, GK 4, holzbau · gemeinsam: GK 4"
 LOOKUP = {"name": "project_lookup", "description": "Schlägt in anderen Projekten nach."}
@@ -22,7 +22,7 @@ SEARCH = {"name": "knowledge_search", "description": "Search the knowledge base.
 
 def _render(tools, **overrides) -> str:
     state = ResearchAgentState(messages=[HumanMessage(content="Wie haben wir die Fluchttreppe gelöst?")], **overrides)
-    return render_system_prompt(system_prompt_template(), state, tools)
+    return render_turn_context(system_prompt_template(), state, tools)
 
 
 def test_the_catalog_reaches_the_model_below_the_cache_boundary_with_the_rule_to_look_unasked():

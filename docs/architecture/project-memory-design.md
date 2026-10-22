@@ -159,13 +159,13 @@ into `project_context` (`compose_project_context`), whose answering prompt tells
 the model to treat confirmed facts as *binding constraints it must never
 contradict*. That rule is meant for the intake profile; inherited by agent-authored
 `unverified` notes it turns stale memory into something the agent defends. The
-answering prompt therefore carves `PROJECT_MEMORY` out explicitly, in
-`prompts/piloti_static.md` `<project_record>` (above the KV-cache boundary,
-since the explanation is the same bytes on every turn while only the VALUES
-vary): prior notes, not confirmed facts and not law;
-`user_confirmed` alone carries a confirmed fact's weight; entries run pinned-first
-then newest-first; the current conversation always wins; and a memory entry is
-never a citable source for a legal requirement.
+answering prompt therefore carves `PROJECT_MEMORY` out explicitly, in a
+legend `prompts/piloti.j2` renders beside the Project Context only when the
+block is there (since 2026-10; it was in the static prompt before, paid on
+every turn without memory): prior notes, not confirmed facts and not law;
+`user_confirmed` alone carries a confirmed fact's weight; entries run newest
+first; the current conversation always wins; and a memory entry is never a
+citable source for a legal requirement.
 
 **What the project decided about the agent's proposals travels with the
 digest.** A `project_profile_patch`, `memory_proposal` or

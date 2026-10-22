@@ -101,13 +101,12 @@ _KEY_PREFIX = "grid"
 _DIGEST_CHARS = 24
 
 #: The part of this turn's system prompt that is stable across turns, when the
-#: agent knows it. Piloti's system prompt is a static half (rules, tools,
-#: schema) followed by a dynamic half (the date, the inventory, what this
-#: conversation already read), and the dynamic half changes on every turn of
-#: one conversation by construction. Keyed on the whole message, every turn
-#: got a new key, so the provider re-picked a shard and the static ~10k tokens
-#: started cold. The provider caches by prefix anyway: the shard that holds
-#: the static half is the right one for every turn of the tenant.
+#: agent knows it. Piloti's system prompt used to be a static half followed by
+#: a dynamic half that changed on every turn; keyed on the whole message, every
+#: turn got a new key and the static tokens started cold. The dynamic half is
+#: now its own message after the history (``agents/piloti/prompt.py``,
+#: ``request_messages``), so Piloti's system prompt IS the stable prefix; naming
+#: it still guards any agent whose system prompt has a per-turn tail.
 _STABLE_PREFIX: ContextVar[str | None] = ContextVar("prompt_cache_stable_prefix", default=None)
 
 

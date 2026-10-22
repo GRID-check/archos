@@ -2,12 +2,13 @@
 
 WHAT IS MANAGED, AND WHY ONLY THAT HALF
 =======================================
-Piloti's system prompt is two halves split at the ``KV CACHE BOUNDARY`` marker
-in ``agents/piloti/prompts/piloti.j2``: a STATIC half that is byte-identical
-for every tenant and every turn, and a DYNAMIC half Jinja renders per turn from
-that turn's state. Only the static half is worth managing remotely — it is the
-half a prompt author wants to change without shipping a release, and the half
-whose bytes must not move for a provider's prefix cache to hit.
+Piloti sends two prompt messages: the SYSTEM prompt, a static half that is
+byte-identical for every tenant and every turn, and the TURN CONTEXT
+(``agents/piloti/prompts/piloti.j2``), which Jinja renders per turn from that
+turn's state and which is sent right before the newest human message. Only the
+static half is worth managing remotely — it is the half a prompt author wants
+to change without shipping a release, and the half whose bytes must not move
+for a provider's prefix cache to hit.
 
 **Git is the source of truth for that half** (ADR-0060 (a)).
 ``agents/piloti/prompts/piloti_static.md`` is what review reads and what code
