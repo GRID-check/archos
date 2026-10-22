@@ -993,6 +993,66 @@ export const chat = {
       place: 'p. {page}, {where}',
       placeWhole: 'p. {page}',
     },
+    // The Herleitung's work list (ADR-0131): one row per call, grouped into
+    // rounds. Sentences are built from the call's typed values, never from a
+    // tool's text.
+    work: {
+      label: 'Work steps',
+      round: 'Round {n}',
+      parallel: '{count} at once',
+      foldRound: 'Fold or unfold round {n}',
+      open: 'Open {target}',
+      nothingFound: 'nothing found',
+      failed: 'failed',
+      running: 'running',
+      shelf: {
+        project: 'in the project',
+        office: 'in the office archive',
+        base: 'in the knowledge base',
+        web: 'on the web',
+        session: 'in this chat',
+      },
+      searchMeaning: 'Searches “{query}”',
+      searchMeaningIn: 'Searches {shelf} “{query}”',
+      searchExact: 'Searches verbatim “{query}”',
+      searchExactIn: 'Searches {shelf} verbatim “{query}”',
+      searchRegex: 'Searches by pattern “{query}”',
+      searchRegexIn: 'Searches {shelf} by pattern “{query}”',
+      list: 'Opens {target}',
+      read: 'Reads {target}',
+      readPages: 'Reads {target}, p. {pages}',
+      readClause: 'Reads {target}, {pages}',
+      look: 'Looks at {target}',
+      lookPages: 'Looks at {target}, p. {pages}',
+      lookupQuery: 'Searches other projects for “{query}”',
+      law: 'Fetches {target} from the RIS',
+      web: 'Searches the web for “{query}”',
+      model: 'Asks the model: {query}',
+      workspace: 'Workspace: {target}',
+      fallback: {
+        search: 'Searches the documents',
+        list: 'Opens a folder',
+        read: 'Reads a document',
+        look: 'Looks at a document',
+        lookup: 'Searches other projects',
+        law: 'Fetches from the RIS',
+        web: 'Searches the web',
+        model: 'Asks the model',
+        workspace: 'Works in the workspace',
+      },
+      found: {
+        hits: '{count, plural, one {# hit} other {# hits}}',
+        hitsDocuments:
+          '{hits, plural, one {# hit} other {# hits}} in {documents, plural, one {# document} other {# documents}}',
+        hitsOfSearched:
+          '{hits, plural, one {# hit} other {# hits}} in {documents} of {searched, plural, one {# document} other {# documents}}',
+        documents: '{count, plural, one {# document} other {# documents}}',
+        listing:
+          '{files, plural, one {# file} other {# files}}, {folders, plural, one {# folder} other {# folders}}',
+        files: '{count, plural, one {# file} other {# files}}',
+        folders: '{count, plural, one {# folder} other {# folders}}',
+      },
+    },
     inProgress: 'Thinking in progress',
     working: 'Working on a response …',
     waiting: 'Waiting for response',
@@ -1236,6 +1296,9 @@ export const chat = {
       // fan read as one that found nothing, and was often one whose hits the
       // old wire never stamped. Only the ledger can tell the two apart.
       stepKindNoHits: 'No hits',
+      // A round that only opened folders: it looks for no documents, so coming
+      // back without any is no miss (ADR-0131).
+      stepKindBrowse: 'Folder opened',
       // A layer that only opened passages of files the turn already had: it
       // searched for nothing. Telling that round apart from a fresh fetch is
       // the whole reason the word exists.

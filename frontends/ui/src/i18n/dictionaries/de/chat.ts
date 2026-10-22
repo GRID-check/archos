@@ -994,6 +994,66 @@ export const chat: typeof en.chat = {
       place: 'S. {page}, {where}',
       placeWhole: 'S. {page}',
     },
+    // Die Arbeitsliste der Herleitung (ADR-0131): eine Zeile je Aufruf, in
+    // Runden gruppiert. Die Sätze setzen sich aus den getypten Werten des
+    // Aufrufs zusammen, nie aus dem Text des Werkzeugs.
+    work: {
+      label: 'Arbeitsschritte',
+      round: 'Runde {n}',
+      parallel: '{count} gleichzeitig',
+      foldRound: 'Runde {n} ein- oder ausklappen',
+      open: '{target} öffnen',
+      nothingFound: 'nichts gefunden',
+      failed: 'fehlgeschlagen',
+      running: 'läuft',
+      shelf: {
+        project: 'im Projekt',
+        office: 'in der Büroablage',
+        base: 'im Basiswissen',
+        web: 'im Web',
+        session: 'in diesem Chat',
+      },
+      searchMeaning: 'Sucht „{query}“',
+      searchMeaningIn: 'Sucht {shelf} „{query}“',
+      searchExact: 'Sucht wörtlich „{query}“',
+      searchExactIn: 'Sucht {shelf} wörtlich „{query}“',
+      searchRegex: 'Sucht nach Muster „{query}“',
+      searchRegexIn: 'Sucht {shelf} nach Muster „{query}“',
+      list: 'Öffnet {target}',
+      read: 'Liest {target}',
+      readPages: 'Liest {target}, S. {pages}',
+      readClause: 'Liest {target}, {pages}',
+      look: 'Sieht sich {target} an',
+      lookPages: 'Sieht sich {target}, S. {pages} an',
+      lookupQuery: 'Sucht in anderen Projekten „{query}“',
+      law: 'Ruft {target} im RIS ab',
+      web: 'Sucht im Web „{query}“',
+      model: 'Fragt das Modell ab: {query}',
+      workspace: 'Arbeitsbereich: {target}',
+      fallback: {
+        search: 'Sucht in den Dokumenten',
+        list: 'Öffnet einen Ordner',
+        read: 'Liest ein Dokument',
+        look: 'Sieht sich ein Dokument an',
+        lookup: 'Sucht in anderen Projekten',
+        law: 'Ruft im RIS ab',
+        web: 'Sucht im Web',
+        model: 'Fragt das Modell ab',
+        workspace: 'Arbeitet im Arbeitsbereich',
+      },
+      found: {
+        hits: '{count, plural, one {# Treffer} other {# Treffer}}',
+        hitsDocuments:
+          '{hits, plural, one {# Treffer} other {# Treffer}} in {documents, plural, one {# Dokument} other {# Dokumenten}}',
+        hitsOfSearched:
+          '{hits, plural, one {# Treffer} other {# Treffer}} in {documents} von {searched, plural, one {# Dokument} other {# Dokumenten}}',
+        documents: '{count, plural, one {# Dokument} other {# Dokumente}}',
+        listing:
+          '{files, plural, one {# Datei} other {# Dateien}}, {folders, plural, one {# Ordner} other {# Ordner}}',
+        files: '{count, plural, one {# Datei} other {# Dateien}}',
+        folders: '{count, plural, one {# Ordner} other {# Ordner}}',
+      },
+    },
     inProgress: 'Denkvorgang läuft',
     working: 'Antwort wird erstellt …',
     waiting: 'Warten auf Antwort',
@@ -1252,6 +1312,9 @@ export const chat: typeof en.chat = {
       // fand, und war oft nur eine, deren Treffer der alte Draht nie stempelte.
       // Erst das Ledger macht den Unterschied benennbar.
       stepKindNoHits: 'Kein Treffer',
+      // Eine Runde, die nur Ordner geöffnet hat: sie sucht keine Dokumente, also
+      // ist leer ausgehen kein Fehlschlag (ADR-0131).
+      stepKindBrowse: 'Ordner geöffnet',
       // Eine Schicht, die ausschließlich Passagen bereits gefundener Dateien
       // aufgeschlagen hat: sie hat nichts Neues gesucht. Genau diese Runde von
       // einem frischen Abruf zu unterscheiden, ist der Sinn des Wortes.

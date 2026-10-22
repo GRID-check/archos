@@ -48,8 +48,61 @@ export const STEP_KINDS = [
   'skill',
   'clarification',
   'look',
+  'action',
 ] as const
 export type StepKind = (typeof STEP_KINDS)[number]
+
+/** What one call of the agent's work was (`ActionStep.verb`, ADR-0131). */
+export const ACTION_VERBS = [
+  'search',
+  'list',
+  'read',
+  'look',
+  'lookup',
+  'law',
+  'web',
+  'model',
+  'workspace',
+] as const
+export type ActionVerb = (typeof ACTION_VERBS)[number]
+
+export const ACTION_STATUSES = ['running', 'ok', 'empty', 'error'] as const
+export type ActionStatus = (typeof ACTION_STATUSES)[number]
+
+export const ACTION_MODES = ['meaning', 'exact', 'regex'] as const
+export type ActionMode = (typeof ACTION_MODES)[number]
+
+/** What one call found; each count is absent when the call does not count it. */
+export interface StoredActionCounts {
+  hits?: number
+  documents?: number
+  /** The denominator: documents searched. */
+  searched?: number
+  files?: number
+  folders?: number
+}
+
+/**
+ * One call of the agent's work, typed and clipped (`action` step, ADR-0131):
+ * the Herleitung's work list draws a row from it. The start is the step's own
+ * `timestamp`; the finish is that plus `elapsedMs`, once the call has ended.
+ */
+export interface StoredAction {
+  verb: ActionVerb
+  status: ActionStatus
+  query?: string
+  mode?: ActionMode
+  /** Folder path, document name, project or operation, in words. */
+  target?: string
+  /** The workspace document a read or look opened. */
+  documentId?: string
+  /** The pages or Punkt read, e.g. `2-3`, `Pkt. 3.5`. */
+  pages?: string
+  /** Which shelf: project, office, base, web. */
+  shelf?: string
+  counts?: StoredActionCounts
+  elapsedMs?: number
+}
 
 /**
  * What a step may say on the live line and the Herleitung spine: the key, its
@@ -125,6 +178,8 @@ export interface StoredThinkingStep {
   slot?: string
   /** Structured detail of a technical status record: scalars and short string lists. */
   detail?: Record<string, StepDetailValue>
+  /** One call of the agent's work (`action`); its start is `timestamp`. */
+  action?: StoredAction
 }
 
 export type StepDetailValue = string | number | boolean | string[]
@@ -289,6 +344,9 @@ const MAX_TURN_EVENT_VALUE_CHARS = 64
 /** A tool basename; the wire bounds a step id at 200. */
 const MAX_NAME_CHARS = 200
 /** A technical record's detail is a handful of counts and reasons. */
+const MAX_ACTION_QUERY_CHARS = 160
+const MAX_ACTION_TARGET_CHARS = 300
+const MAX_ACTION_PAGES_CHARS = 40
 const MAX_DETAIL_ENTRIES = 16
 const MAX_DETAIL_VALUE_CHARS = 200
 
@@ -370,6 +428,44 @@ function sanitizeDetail(input: unknown): Record<string, StepDetailValue> | undef
   return Object.keys(detail).length > 0 ? detail : undefined
 }
 
+const ACTION_COUNT_KEYS = ['hits', 'documents', 'searched', 'files', 'folders'] as const
+
+/** An action's counts: the five known ones, non-negative integers; nothing else survives. */
+function sanitizeActionCounts(input: unknown): StoredActionCounts | undefined {
+  if (!isRecord(input)) return undefined
+  const counts: StoredActionCounts = {}
+  for (const key of ACTION_COUNT_KEYS) {
+    const value = nonNegativeInt(input[key])
+    if (value !== undefined) counts[key] = value
+  }
+  return Object.keys(counts).length > 0 ? counts : undefined
+}
+
+/** An `action` step's typed payload, bounded like the wire bounds it; null without a known verb. */
+function sanitizeAction(input: unknown): StoredAction | null {
+  if (!isRecord(input)) return null
+  const verb = oneOf(input.verb, ACTION_VERBS)
+  if (!verb) return null
+  const action: StoredAction = { verb, status: oneOf(input.status, ACTION_STATUSES) ?? 'ok' }
+  const query = cap(input.query, MAX_ACTION_QUERY_CHARS)
+  if (query) action.query = query
+  const mode = oneOf(input.mode, ACTION_MODES)
+  if (mode) action.mode = mode
+  const target = cap(input.target, MAX_ACTION_TARGET_CHARS)
+  if (target) action.target = target
+  const documentId = cap(input.documentId, 128)
+  if (documentId) action.documentId = documentId
+  const pages = cap(input.pages, MAX_ACTION_PAGES_CHARS)
+  if (pages) action.pages = pages
+  const shelf = cap(input.shelf, MAX_ACTION_PAGES_CHARS)
+  if (shelf) action.shelf = shelf
+  const counts = sanitizeActionCounts(input.counts)
+  if (counts) action.counts = counts
+  const elapsedMs = nonNegativeInt(input.elapsedMs)
+  if (elapsedMs !== undefined) action.elapsedMs = elapsedMs
+  return action
+}
+
 /** A lane with the fields every reader dereferences; its hits are bounded by the lane cap above. */
 const isTraceLane = (value: unknown): value is TraceLaneCard =>
   isRecord(value) &&
@@ -427,6 +523,8 @@ function sanitizeStep(input: unknown): StoredThinkingStep | null {
   if (slot) step.slot = slot
   const detail = sanitizeDetail(input.detail)
   if (detail) step.detail = detail
+  const action = input.kind === 'action' ? sanitizeAction(input.action) : null
+  if (action) step.action = action
   return step
 }
 
