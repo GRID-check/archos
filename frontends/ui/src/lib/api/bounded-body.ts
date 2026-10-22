@@ -84,6 +84,11 @@ export class BadDigestError extends ApiError {
 const DIGEST_ALGORITHMS = { 'sha-256': 'sha256', 'sha-512': 'sha512' } as const
 type DigestAlgorithm = keyof typeof DIGEST_ALGORITHMS
 
+/** An algorithm we verify. Own keys only: `in` would take `constructor` for one. */
+function isDigestAlgorithm(name: string): name is DigestAlgorithm {
+  return Object.hasOwn(DIGEST_ALGORITHMS, name)
+}
+
 /**
  * The declared `Content-Length` of `request`, strictly a decimal integer.
  * 411 when absent (a chunked body has no length to hold it to), 400 when not
@@ -211,11 +216,10 @@ function digestHashes(
   }
   const hashes = new Map<DigestAlgorithm, { expected: Buffer; hash: ReturnType<typeof createHash> }>()
   for (const [name, member] of dictionary) {
-    if (!(name in DIGEST_ALGORITHMS)) continue
+    if (!isDigestAlgorithm(name)) continue
     const value = member[0]
     if (!(value instanceof ArrayBuffer)) throw new BadDigestError(`${name} is not a byte sequence`)
-    const algorithm = name as DigestAlgorithm
-    hashes.set(algorithm, { expected: Buffer.from(value), hash: createHash(DIGEST_ALGORITHMS[algorithm]) })
+    hashes.set(name, { expected: Buffer.from(value), hash: createHash(DIGEST_ALGORITHMS[name]) })
   }
   if (hashes.size === 0) throw new BadDigestError('names no supported algorithm (sha-256, sha-512)')
   return hashes
