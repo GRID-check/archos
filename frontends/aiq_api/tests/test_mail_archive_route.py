@@ -12,7 +12,7 @@ from fastapi import APIRouter
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from aiq_api.mail_archive.body_text import BodyText
+from aiq_api.mail.body_text import BodyText
 from aiq_api.mail_archive.reader import Address
 from aiq_api.mail_archive.reader import ArchiveError
 from aiq_api.mail_archive.reader import ArchiveMessage
@@ -34,7 +34,12 @@ MAIL = ArchiveMessage(
     subject="Plan",
     sender=Address("Anna", "anna@buero.at"),
     to=(Address("Bauamt", "bauamt@wien.gv.at"),),
+    bcc=(Address("Ablage", "ablage@buero.at"),),
     sent_at=datetime(2026, 9, 30, 8, 15, tzinfo=UTC),
+    message_id="<b@buero.at>",
+    in_reply_to="<a@wien.gv.at>",
+    references="<root@buero.at> <a@wien.gv.at>",
+    conversation_index="AdnCobPEAcmhssPU5fYHGCk6S1xtfg==",
     body=BodyText(text="Hallo", source="plain", truncated=False),
     attachments=(AttachmentInfo(0, "Grundriss Ä.pdf", "application/pdf", 5, inline=False, embedded_message=False),),
 )
@@ -142,6 +147,10 @@ def test_a_page_carries_mail_in_full_and_other_items_by_class(client):
     assert mail["sender"] == {"name": "Anna", "address": "anna@buero.at"}
     assert mail["sent_at"] == "2026-09-30T08:15:00+00:00"
     assert mail["body"] == {"text": "Hallo", "source": "plain", "truncated": False}
+    assert mail["bcc"] == [{"name": "Ablage", "address": "ablage@buero.at"}]
+    assert (mail["message_id"], mail["in_reply_to"]) == ("<b@buero.at>", "<a@wien.gv.at>")
+    assert mail["references"] == "<root@buero.at> <a@wien.gv.at>"
+    assert mail["conversation_index"] == "AdnCobPEAcmhssPU5fYHGCk6S1xtfg=="
     assert mail["attachments"][0]["filename"] == "Grundriss Ä.pdf"
     assert other == {"position": 4, "kind": "other", "message_class": "IPM.Contact", "folder_path": ["Kontakte"]}
     assert damaged == {
