@@ -78,7 +78,11 @@ An inbox type need not belong to a shareable resource; the steps are the same.
 4. Add its copy under `collaboration.inbox.types.<i18nKey>` in every dictionary.
 5. Emit with `emitInboxItems`, keyed by `inboxGroupKey`, inside
    `bestEffortInbox` so a failed row never fails the event. A recipient who is
-   the actor is dropped.
+   the actor is dropped. The exception is an item that something retries until
+   it is written: `upload.completed` is emitted bare, so a failed write throws
+   and `settleUploadBatches` (`lib/upload-batches/settle.ts`) reopens the
+   batch for the sweep to complete and announce again. Wrapped, the batch
+   would stay completed and its uploader never told.
 6. Settle it when what it announced is answered or gone:
    `resolveInboxItemsFor`, `resolveInboxItemsAnchoredOn`,
    `markInboxItemsInertAnchoredOn` (`lib/inbox/service.ts`).
