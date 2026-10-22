@@ -87,7 +87,7 @@ export function narrowingHint(op: { readonly query?: z.ZodObject<z.ZodRawShape>;
   if (names.length === 0) {
     return (
       'This operation has no limit or filter, so its answer cannot be narrowed here. ' +
-      'Use a narrower operation (describe-operation lists the others in its domain), or one that fetches a single item by id.'
+      'Use a narrower operation (search-operations with this domain lists them), or one that fetches a single item by id.'
     )
   }
   const where = op.inputSchema ? 'in input' : 'in input.query'

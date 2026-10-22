@@ -528,7 +528,7 @@
       "get": {
         "operationId": "project-list",
         "summary": "List the projects the person can see",
-        "description": "The projects the person may open, one short row each: `id`, `name`, `status`, `projectName` (what people call it, from the profile; may differ from `name`), `siteAddress` and dates. `nameContains` finds one by either name; `view: \"full\"` adds the profile (large). Start here: most other operations take a project id from this list.",
+        "description": "The projects the person may open, one short row each: `id`, `name`, `status`, `projectName` (the profile’s name for it), `siteAddress` and dates. `nameContains` finds one by either name; `view: \"full\"` adds the profile (large). Start here: most other operations take a project id from this list.",
         "tags": [
           "projects"
         ],
@@ -18383,7 +18383,7 @@
       "get": {
         "operationId": "bim-model-list",
         "summary": "List the BIM models in scope for a project",
-        "description": "The IFC models a project can use: its own uploads plus the office shelf’s, each with its id, name, revision and `shelf`: `project` is the project’s own, `office` belongs to no project (the office shelf every project sees, often a sample): never present it as the project’s building. Needs the ifc-models feature. Model ids feed bim-model-get, bim-model-query and bim-check-confirm.",
+        "description": "The IFC models a project can use, each with id, name, revision and `shelf`: `project` (its own upload) or `office` (the office shelf’s, never the project’s building). Needs the ifc-models feature. Model ids feed bim-model-get, bim-model-query and bim-check-confirm.",
         "tags": [
           "bim"
         ],

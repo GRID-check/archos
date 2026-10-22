@@ -70,6 +70,6 @@ describe('search-operations for the requests agents typed', () => {
   })
 
   it('points a content question that matches nothing at the operations that read content', () => {
-    expect(nothingMatched(ctx)).toMatch(/knowledge-search .*law-lookup .*piloti-ask-create/s)
+    expect(nothingMatched(ctx)).toMatch(/knowledge-search .*law-lookup .*piloti-ask-create/)
   })
 })

@@ -368,7 +368,7 @@ describe('call-operation', () => {
     expect(text(result)).toMatch(/Truncated/)
     // project-list has no query in the fake catalog: the hint says so, not "pass a limit".
     expect(text(result)).toMatch(/has no limit or filter/)
-    expect(text(result)).toMatch(/describe-operation/)
+    expect(text(result)).toMatch(/search-operations with this domain/)
     // The full payload must not slip through as structured content.
     expect(result.structuredContent).toBeUndefined()
   })

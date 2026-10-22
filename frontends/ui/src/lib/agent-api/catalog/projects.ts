@@ -66,7 +66,7 @@ export const projectsOperations = [
     domain: 'projects',
     summary: 'List the projects the person can see',
     description:
-      'The projects the person may open, one short row each: `id`, `name`, `status`, `projectName` (what people call it, from the profile; may differ from `name`), ' +
+      'The projects the person may open, one short row each: `id`, `name`, `status`, `projectName` (the profile’s name for it), ' +
       '`siteAddress` and dates. `nameContains` finds one by either name; `view: "full"` adds the profile (large). ' +
       'Start here: most other operations take a project id from this list.',
     method: 'GET',
