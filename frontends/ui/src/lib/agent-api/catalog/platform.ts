@@ -30,7 +30,11 @@ import {
   reingestKnowledgeSchema,
   retrievalSettingsPutSchema,
 } from '@/lib/platform/platform-wire'
-import { listProductFeedbackQuerySchema, triageProductFeedbackSchema } from '@/lib/product-feedback/types'
+import {
+  claimProductFeedbackSchema,
+  listProductFeedbackQuerySchema,
+  triageProductFeedbackSchema,
+} from '@/lib/product-feedback/types'
 import {
   createCategorySchema,
   createPlatformSkillSchema,
@@ -547,6 +551,19 @@ export const platformOperations = [
     body: triageProductFeedbackSchema,
     idempotent: true,
     load: () => import('@/app/api/platform/feedback/[reportId]/route'),
+  },
+  {
+    name: 'platform-feedback-claim',
+    domain: 'platform',
+    summary: 'Take a feedback ticket',
+    description:
+      'Assigns a report’s PostHog Support ticket to the person, found in PostHog by their email. Takes the ticket id (the ' +
+      'Slack alert carries it; platform-feedback-list returns it as `ticket.id`). Returns the report.',
+    method: 'POST',
+    path: '/api/platform/feedback/claim',
+    body: claimProductFeedbackSchema,
+    idempotent: true,
+    load: () => import('@/app/api/platform/feedback/claim/route'),
   },
 
   // Answer quality

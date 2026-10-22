@@ -5,9 +5,14 @@ vi.mock('server-only', () => ({}))
 
 import {
   countFeedbackTicketsByStatus,
+  assignSupportTicket,
+  findPosthogUserIdByEmail,
   getSupportTicket,
+  listCustomerVisibleMessages,
   listFeedbackTickets,
+  listFeedbackTicketsOf,
   openFeedbackTicket,
+  replyAsCustomer,
   resetWidgetTokenCacheForTests,
   updateSupportTicketStatus,
 } from './client'
@@ -286,13 +291,13 @@ describe('openFeedbackTicket', () => {
     expect(calls[2].body).toEqual({ tags: ['piloti-feedback', 'kind:bug'] })
   })
 
-  test('makes up a widget session and leaves out a missing replay session', async () => {
+  test('leaves out a missing replay session', async () => {
     const { impl, calls } = fakeFetch(happy)
 
-    await openFeedbackTicket(config, { ...input, widgetSessionId: null, sessionId: null }, impl)
+    await openFeedbackTicket(config, { ...input, sessionId: null }, impl)
 
     const body = calls[1].body as Record<string, unknown>
-    expect(body.widget_session_id).toMatch(/^[0-9a-f-]{36}$/)
+    expect(body.widget_session_id).toBe('widget-session-1')
     expect(body).not.toHaveProperty('session_id')
   })
 
@@ -362,5 +367,129 @@ describe('openFeedbackTicket', () => {
     await openFeedbackTicket(config, input, impl)
 
     expect(calls.filter((c) => c.url === PROJECT)).toHaveLength(2)
+  })
+})
+
+describe('replyAsCustomer', () => {
+  const PROJECT = 'https://eu.i.posthog.com/array/phc_public/config'
+  const WIDGET = 'https://eu.i.posthog.com/api/conversations/v1/widget/message'
+  const reply = {
+    ticketId: 'ticket-1',
+    widgetSessionId: 'widget-session-1',
+    distinctId: 'user_01',
+    message: 'Seit gestern, auch in Firefox.',
+  }
+  const answering = (ticketId: string) => (call: Call): Response => {
+    if (call.url === PROJECT) return json(200, { conversations: { token: 'wt_1', enabled: true } })
+    if (call.url === WIDGET) return json(200, { ticket_id: ticketId, message_id: 'm-2' })
+    return json(500, {})
+  }
+
+  beforeEach(() => resetWidgetTokenCacheForTests())
+
+  test("posts onto the existing ticket from the session that opened it, without the personal key", async () => {
+    const { impl, calls } = fakeFetch(answering('ticket-1'))
+
+    await replyAsCustomer(config, reply, impl)
+
+    expect(calls[1].url).toBe(WIDGET)
+    expect(calls[1].headers.authorization).toBeUndefined()
+    expect(calls[1].body).toEqual({
+      message: reply.message,
+      traits: { name: null, email: null },
+      ticket_id: 'ticket-1',
+      widget_session_id: 'widget-session-1',
+      distinct_id: 'user_01',
+    })
+    // A reply is a message, not a new ticket: nothing is tagged.
+    expect(calls.some((c) => c.method === 'PATCH')).toBe(false)
+  })
+
+  test('a reply PostHog put on another ticket is an error, not a silent split', async () => {
+    const { impl } = fakeFetch(answering('ticket-2'))
+
+    await expect(replyAsCustomer(config, reply, impl)).rejects.toBeInstanceOf(PosthogSupportUnavailableError)
+  })
+})
+
+describe('listCustomerVisibleMessages', () => {
+  test('keeps the reporter’s messages and the replies sent to them, never notes or AI drafts', async () => {
+    const { impl, calls } = fakeFetch(() =>
+      json(200, {
+        count: 5,
+        next: null,
+        previous: null,
+        results: [
+          { id: 'm1', message_type: 'customer_message', content: 'Der Export hängt.', author_name: 'Customer', is_private: false, created_at: '2026-10-20T08:00:00Z' },
+          { id: 'm2', message_type: 'internal_note', content: 'Kunde ist VIP', author_name: 'Matthias', is_private: true, created_at: '2026-10-20T08:10:00Z' },
+          { id: 'm3', message_type: 'ai_draft', content: 'Entwurf', author_name: 'AI', is_private: true, created_at: '2026-10-20T08:11:00Z' },
+          { id: 'm4', message_type: 'sent_reply', content: 'Seit wann?', author_name: 'Matthias Bigl', author_email: 'm@posthog.test', is_private: false, created_at: '2026-10-20T08:20:00Z' },
+          { id: 'm5', message_type: 'sent_reply', content: 'leaked?', author_name: 'X', is_private: true, created_at: '2026-10-20T08:30:00Z' },
+        ],
+      })
+    )
+
+    const messages = await listCustomerVisibleMessages(config, 'ticket-1', impl)
+
+    expect(calls[0].url).toBe(`${TICKETS}ticket-1/messages/?limit=200`)
+    expect(calls[0].headers.authorization).toBe('Bearer phx_secret')
+    expect(messages).toEqual([
+      { id: 'm1', author: 'customer', authorName: null, content: 'Der Export hängt.', createdAt: '2026-10-20T08:00:00Z' },
+      { id: 'm4', author: 'team', authorName: 'Matthias Bigl', content: 'Seit wann?', createdAt: '2026-10-20T08:20:00Z' },
+    ])
+  })
+
+  test('an unreadable thread is PosthogSupportUnavailableError', async () => {
+    const { impl } = fakeFetch(() => json(503, {}))
+
+    await expect(listCustomerVisibleMessages(config, 'ticket-1', impl)).rejects.toMatchObject({ status: 503 })
+  })
+})
+
+describe('listFeedbackTicketsOf', () => {
+  test("asks for one person's feedback tickets, most recently updated first", async () => {
+    const { impl, calls } = fakeFetch(() => json(200, { count: 1, next: null, previous: null, results: [row()] }))
+
+    const tickets = await listFeedbackTicketsOf(config, 'user_01', 20, impl)
+
+    const url = new URL(calls[0].url)
+    expect(url.searchParams.get('distinct_ids')).toBe('user_01')
+    expect(JSON.parse(url.searchParams.get('tags_all') ?? '')).toEqual(['piloti-feedback'])
+    expect(url.searchParams.get('order_by')).toBe('-updated_at')
+    expect(url.searchParams.get('limit')).toBe('20')
+    expect(tickets.map((t) => t.id)).toEqual(['0b6c3b1e-1111-4000-8000-000000000001'])
+  })
+})
+
+describe('taking a ticket', () => {
+  test('finds the PostHog user id by email, case-insensitively, through the members list', async () => {
+    const { impl, calls } = fakeFetch(() =>
+      json(200, {
+        count: 2,
+        next: null,
+        previous: null,
+        results: [
+          { id: 'm-1', user: { id: 1, uuid: 'u-1', email: 'anna@posthog.test' } },
+          { id: 'm-2', user: { id: 338908, uuid: 'u-2', email: 'Matthias@Bigls.net' } },
+        ],
+      })
+    )
+
+    expect(await findPosthogUserIdByEmail(config, 'matthias@bigls.net', impl)).toBe(338908)
+    expect(await findPosthogUserIdByEmail(config, 'nobody@example.test', impl)).toBeNull()
+    expect(calls[0].url).toBe('https://eu.posthog.com/api/organizations/@current/members/?limit=200')
+    expect(calls[0].headers.authorization).toBe('Bearer phx_secret')
+  })
+
+  test('assigns by PATCHing the ticket with a user assignee', async () => {
+    const { impl, calls } = fakeFetch(() => json(200, row({ id: 'ticket-1' })))
+
+    await assignSupportTicket(config, 'ticket-1', 338908, impl)
+
+    expect(calls[0]).toMatchObject({
+      url: `${TICKETS}ticket-1/`,
+      method: 'PATCH',
+      body: { assignee: { type: 'user', id: 338908 } },
+    })
   })
 })

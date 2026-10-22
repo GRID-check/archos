@@ -53,6 +53,8 @@ function report(overrides: Partial<ProductFeedback> = {}): ProductFeedback {
     context: {},
     allowContact: true,
     posthogTicketId: null,
+    posthogWidgetSessionId: null,
+    reporterSeenAt: null,
     createdAt: at,
     updatedAt: at,
     ...overrides,

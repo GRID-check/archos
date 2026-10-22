@@ -1,10 +1,12 @@
 # Product feedback and the inbox's platform lane
 
 A member can send the people who run Piloti a bug report, an idea, praise or a
-question from anywhere in the app. The platform owners are told in their inbox,
-every report opens a ticket in PostHog Support, and the owners work through the
-reports on **Platform → Feedback**, which reads and moves those tickets. PostHog
-Support is the one record of where a report stands (ADR-0118). This is separate
+question from anywhere in the app. The platform owners are told in their inbox
+and in Slack, every report opens a ticket in PostHog Support, and the owners
+answer and work through the reports in PostHog and on **Platform → Feedback**.
+The member reads the answer, and replies, under **Mein Feedback** in Piloti.
+PostHog Support is the one record of where a report stands and of what was said
+(ADR-0118 and its amendment). This is separate
 from the thumbs on an answer (`answer_feedback`, which feeds platform lessons).
 A product report never reaches that pipeline.
 
@@ -19,6 +21,8 @@ member ── Feedback senden ──▶ POST /api/feedback/reports
                                         └──▶ product_feedback.posthog_ticket_id
 owner's inbox (platform lane) ──▶ /app/platform/feedback?report=<id>
 Platform → Feedback ──▶ reads PostHog tickets live ──▶ PATCH status on the ticket
+PostHog workflow ──▶ #posthog-inbox ──▶ „Übernehmen" ──▶ /app/platform/feedback?claim=<ticket id>
+team answers in PostHog ──▶ Mein Feedback (GET …/reports/<id>/messages) ──▶ member replies (POST, onto the ticket)
 ```
 
 | Step | Code |
@@ -30,6 +34,8 @@ Platform → Feedback ──▶ reads PostHog tickets live ──▶ PATCH statu
 | Table, bounds, RLS | `frontends/ui/drizzle/0100_product_feedback.sql`, `0155_product_feedback_posthog_ticket.sql` |
 | Platform routes (`platform:settings:view` to read, `:manage` to change status) | `frontends/ui/src/app/api/platform/feedback/` |
 | Platform page | `frontends/ui/src/features/product-feedback/components/feedback-triage.tsx` |
+| The member's threads (list, chat, reply), and their routes | `features/product-feedback/components/feedback-threads.tsx`, `app/api/feedback/reports/route.ts` (GET), `app/api/feedback/reports/[reportId]/messages/route.ts` |
+| Taking a ticket from Slack | `app/api/platform/feedback/claim/route.ts`, `claimProductFeedbackTicket` in `lib/product-feedback/service.ts` |
 
 The page, the browser and the screen size are captured when the form is sent
 and shown to the reporter before sending. The reporter's email reaches the
@@ -60,13 +66,15 @@ report text to PostHog.
   office's „Sensible Daten" policy (ADR-0086). The stored report keeps what was
   typed; only the masked copy leaves for a third party. When the policy cannot
   be read, no ticket opens: never the unmasked text.
-- **In the reporter's widget session.** The dialog sends the browser's PostHog
-  widget session and session id with the report (`posthog` in the request,
-  from `getPosthogSupportContext`). The ticket opens through PostHog's widget
-  endpoint under the reporter's distinct id (the WorkOS user id), so replies
-  show in their widget and the ticket links the session replay. A browser
-  without PostHog sends none; the server then starts a fresh widget session, and
-  the ticket can be triaged but not answered through the widget.
+- **In a conversations session of its own.** The ticket opens through
+  PostHog's conversations endpoint (the one posthog-js uses; no widget is ever
+  shown) under the reporter's distinct id (the WorkOS user id), in a session
+  the server makes up for that report and stores
+  (`product_feedback.posthog_widget_session_id`). The endpoint takes the
+  reporter's later replies only from that session. It is a bearer secret for
+  the ticket and never leaves the server. The dialog sends only the browser's
+  replay session id (`getPosthogSupportContext`), so the ticket links the
+  recording.
 - **Tagged.** Every ticket carries `piloti-feedback`, which is how the platform
   page finds it and keeps tickets opened by hand out, and `kind:<kind>`. A
   reporter who did not tick "You may contact me about this" still gets a ticket,
@@ -105,6 +113,54 @@ The page reads PostHog live and keeps no status of its own.
 the ticket id. Its `status`, `triaged_by` and `triaged_at` columns were dropped
 in migration `0155`. It stays because a report must survive PostHog being off
 or failing, and because the inbox announcement points at it.
+
+## Mein Feedback: the member's side of the thread
+
+The team answers in PostHog Support. The member reads it under **Mein Feedback**
+(avatar menu, phone „More" sheet, and „Chat öffnen" after sending), a sheet that
+lists their own reports and holds the chat on each. It is the same attributed
+message the shared chat renders (`UserMessage` with an author), one column.
+
+- **Read from the ticket, every time.** `GET /api/feedback/reports/<id>/messages`
+  reads the ticket's messages through the REST API and keeps the reporter's own
+  messages and the replies sent to them (`customer_message`, `sent_reply`);
+  internal notes and AI drafts never leave the client. The ticket's first
+  message (header plus masked text) is replaced by the words the member typed.
+  An open thread is re-read every 20 seconds.
+- **Replies go onto the ticket.** `POST` masks the reply against the office's
+  policy (nothing is sent when it cannot be read) and posts it through the
+  conversations endpoint in the stored session. A report filed before migration
+  `0183` has no stored session: it can be read, not answered, and says so.
+  Bounded by `FEEDBACK_REPLY_LIMIT` (60 an hour per person).
+- **News.** `reporter_seen_at` is set when the ticket opens and whenever the
+  member opens the thread. A ticket PostHog updated after it (a reply, a status
+  change) is `hasUpdate`; the shell shows the count on the menu entry, read when
+  the shell mounts and on window focus after five minutes. One PostHog call
+  (tickets filtered by the member's distinct id) serves the whole list.
+- **Only one's own.** Every query is keyed to the session's organization and
+  user id; a colleague's report is a 404. Agents reach the same three routes as
+  `feedback-report-list`, `feedback-thread-get` and `feedback-thread-reply`.
+
+## The Slack alert
+
+A PostHog workflow, „Piloti feedback → Slack" (tag `piloti-feedback`), posts to
+`#posthog-inbox` on every `$conversation_message_received` from the widget
+channel, which only the BFF uses. It routes on the message:
+
+| Message starts with | Posts |
+|---|---|
+| `[bug] #` | „🐞 Neuer Bug-Report", paging the channel (`@here`) |
+| `[idea]`, `[praise]`, `[question]` `#` | „💡 Neues Feedback", quietly |
+| anything else (a member's reply in Mein Feedback) | „↩️ Antwort vom Reporter" |
+
+Each carries the masked text, a link to the ticket and **„Übernehmen"**. A Slack
+reaction cannot start a PostHog workflow (only a new message can, and SupportHog's
+emoji only creates tickets), so taking a ticket is that button: it opens
+Platform → Feedback with `?claim=<ticket id>`, and the page posts
+`/api/platform/feedback/claim`, which assigns the ticket to the PostHog member
+with the signed-in owner's email (`organization_member:read` on the key). The
+button links production; staging shares the PostHog project, and its tickets
+answer „not found" there.
 
 ## No GitHub issues
 

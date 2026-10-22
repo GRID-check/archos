@@ -42,6 +42,7 @@ const EXPECTED: Record<string, string> = {
   'feedback/[reportId]/route.ts GET': 'settingsView',
   'feedback/[reportId]/route.ts PATCH': 'settingsManage',
   'feedback/route.ts GET': 'settingsView',
+  'feedback/claim/route.ts POST': 'settingsManage',
   'knowledge/documents/[fileName]/display-title/route.ts PATCH': 'settingsManage',
   'knowledge/documents/[fileName]/doc-class/route.ts PATCH': 'settingsManage',
   'knowledge/documents/[fileName]/route.ts DELETE': 'settingsManage',

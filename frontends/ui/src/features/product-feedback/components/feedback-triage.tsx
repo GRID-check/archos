@@ -51,6 +51,7 @@ import {
   fetchPlatformFeedback,
   fetchPlatformFeedbackReport,
   triagePlatformFeedback,
+  claimPlatformFeedbackTicket,
   type ListFeedbackFilters,
 } from '@/lib/product-feedback/client'
 import {
@@ -68,12 +69,15 @@ export interface FeedbackTriageClient {
   list: (filters: ListFeedbackFilters) => Promise<ProductFeedbackListResponse>
   get: (id: string) => Promise<ProductFeedbackReportView | null>
   triage: (id: string, status: SupportTicketStatus) => Promise<ProductFeedbackReportView>
+  /** Assign a ticket to the reader in PostHog (the Slack alert's „Übernehmen"). */
+  claim?: (ticketId: string) => Promise<ProductFeedbackReportView>
 }
 
 const defaultClient: FeedbackTriageClient = {
   list: fetchPlatformFeedback,
   get: fetchPlatformFeedbackReport,
   triage: triagePlatformFeedback,
+  claim: claimPlatformFeedbackTicket,
 }
 
 const STATUS_CHIP: Record<SupportTicketStatus, 'info' | 'warning' | 'default' | 'success' | 'muted'> = {
@@ -100,12 +104,19 @@ export interface FeedbackTriageProps {
   canTriage: boolean
   /** The report an inbox row linked to, pinned and marked. */
   focusReportId?: string | null
+  /**
+   * A ticket to take on arrival: the Slack alert's „Übernehmen" button lands
+   * with `?claim=<ticket id>`. The ticket is assigned to the reader in PostHog
+   * and its report pinned like a linked one.
+   */
+  claimTicketId?: string | null
   client?: FeedbackTriageClient
 }
 
 export function FeedbackTriage({
   canTriage,
   focusReportId = null,
+  claimTicketId = null,
   client = defaultClient,
 }: FeedbackTriageProps): JSX.Element {
   const t = useTranslations('feedback')
@@ -167,6 +178,29 @@ export function FeedbackTriage({
       cancelled = true
     }
   }, [client, focusReportId])
+
+  React.useEffect(() => {
+    if (!claimTicketId || !canTriage || !client.claim) return
+    let cancelled = false
+    client
+      .claim(claimTicketId)
+      .then((report) => {
+        if (cancelled) return
+        setFocused(report)
+        setFocusMissing(false)
+        toast.success(
+          report.ticket?.number
+            ? t('platform.claimed', { number: report.ticket.number })
+            : t('platform.claimedUnnumbered')
+        )
+      })
+      .catch(() => {
+        if (!cancelled) toast.error(t('platform.claimError'))
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [client, claimTicketId, canTriage, t])
 
   async function loadMore(): Promise<void> {
     if (!data?.nextCursor) return

@@ -38,16 +38,102 @@ export async function insertProductFeedback(values: NewProductFeedback): Promise
 }
 
 /**
- * Record the Support ticket the server opened for a report, in the reporter's
- * tenant context right after the insert. Written once: a row that already
- * names a ticket keeps it.
+ * Record the Support ticket the server opened for a report, and the
+ * conversations session it was opened in, in the reporter's tenant context
+ * right after the insert. Written once: a row that already names a ticket
+ * keeps it. The reporter counts as having seen their thread now: their own
+ * first message is no news to them.
  */
-export async function setProductFeedbackTicket(id: string, ticketId: string): Promise<void> {
+export async function setProductFeedbackTicket(
+  id: string,
+  ticketId: string,
+  widgetSessionId: string
+): Promise<void> {
   const db = getDb()
   await db
     .update(productFeedback)
-    .set({ posthogTicketId: ticketId, updatedAt: new Date() })
+    .set({
+      posthogTicketId: ticketId,
+      posthogWidgetSessionId: widgetSessionId,
+      reporterSeenAt: new Date(),
+      updatedAt: new Date(),
+    })
     .where(and(eq(productFeedback.id, id), isNull(productFeedback.posthogTicketId)))
+}
+
+// ---------------------------------------------------------------------------
+// Reporter side — one person's own reports, in their tenant context
+// ---------------------------------------------------------------------------
+
+/** The most of their own reports one page of a person's feedback threads holds. */
+export const OWN_PRODUCT_FEEDBACK_LIMIT = 20
+
+/**
+ * One page of the reporter's own reports, newest first. RLS already narrows
+ * to the organization; the user filter is what keeps a colleague's reports out.
+ */
+export async function listOwnProductFeedback(
+  organizationId: string,
+  userId: string,
+  page: { limit: number; before?: { createdAt: Date; id: string } }
+): Promise<ProductFeedback[]> {
+  const db = getDb()
+  const clauses: SQL[] = [eq(productFeedback.organizationId, organizationId), eq(productFeedback.userId, userId)]
+  if (page.before) {
+    const { createdAt, id } = page.before
+    const older = or(
+      lt(productFeedback.createdAt, createdAt),
+      and(eq(productFeedback.createdAt, createdAt), lt(productFeedback.id, id))
+    )
+    if (older) clauses.push(older)
+  }
+  return db
+    .select()
+    .from(productFeedback)
+    .where(and(...clauses))
+    .orderBy(desc(productFeedback.createdAt), desc(productFeedback.id))
+    .limit(Math.min(page.limit, OWN_PRODUCT_FEEDBACK_LIMIT))
+}
+
+/** One of the reporter's own reports, or `null` when it is not theirs. */
+export async function getOwnProductFeedback(
+  organizationId: string,
+  userId: string,
+  id: string
+): Promise<ProductFeedback | null> {
+  const db = getDb()
+  const [row] = await db
+    .select()
+    .from(productFeedback)
+    .where(
+      and(
+        eq(productFeedback.id, id),
+        eq(productFeedback.organizationId, organizationId),
+        eq(productFeedback.userId, userId)
+      )
+    )
+    .limit(1)
+  return row ?? null
+}
+
+/** The reporter opened (or answered) the thread at `at`. */
+export async function markOwnProductFeedbackSeen(
+  organizationId: string,
+  userId: string,
+  id: string,
+  at: Date
+): Promise<void> {
+  const db = getDb()
+  await db
+    .update(productFeedback)
+    .set({ reporterSeenAt: at })
+    .where(
+      and(
+        eq(productFeedback.id, id),
+        eq(productFeedback.organizationId, organizationId),
+        eq(productFeedback.userId, userId)
+      )
+    )
 }
 
 // ---------------------------------------------------------------------------

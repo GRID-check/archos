@@ -91,13 +91,41 @@ export interface OpenFeedbackTicketInput {
   /** The reporter's PostHog distinct id: the WorkOS user id. */
   distinctId: string
   /**
-   * The reporter's browser widget session, so replies show in their widget.
-   * `null` when the browser had none (PostHog off or blocked there): the
-   * server makes one up and the ticket is still triageable, only not
-   * answerable through the widget.
+   * The conversations session the ticket is opened in, made up by the server
+   * per report and stored with it: the reporter's later replies must come from
+   * the same session to land on the same ticket.
    */
-  widgetSessionId: string | null
+  widgetSessionId: string
   /** The reporter's PostHog session, so the ticket links the replay. */
   sessionId: string | null
   tags: string[]
+}
+
+/** What a reporter's reply on their own ticket needs. */
+export interface CustomerReplyInput {
+  ticketId: string
+  /** The session the ticket was opened in (`product_feedback.posthog_widget_session_id`). */
+  widgetSessionId: string
+  distinctId: string
+  /** Already masked. */
+  message: string
+}
+
+/**
+ * Who wrote a message the reporter may see: the reporter themselves, or the
+ * team (a person, a workflow or PostHog's AI, sent as a reply).
+ */
+export type SupportMessageAuthor = 'customer' | 'team'
+
+/**
+ * One message of a ticket's thread as the reporter sees it. Internal notes and
+ * AI drafts are never in this shape: the client drops them.
+ */
+export interface SupportMessage {
+  id: string
+  author: SupportMessageAuthor
+  /** The team member's display name; `null` for the reporter and for unnamed senders. */
+  authorName: string | null
+  content: string
+  createdAt: string
 }

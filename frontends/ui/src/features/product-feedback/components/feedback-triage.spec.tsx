@@ -290,3 +290,25 @@ describe('FeedbackTriage', () => {
     expect(screen.queryByTestId('feedback-unticketed')).not.toBeInTheDocument()
   })
 })
+
+describe('FeedbackTriage → taking a ticket from the Slack alert', () => {
+  test('assigns the linked ticket to the reader, pins its report and says so', async () => {
+    const { toast } = await import('sonner')
+    const claim = vi.fn<NonNullable<FeedbackTriageClient['claim']>>().mockResolvedValue(
+      report({ id: 'r9', message: 'Claimed from Slack.', ticket: ticket('open', 't9', 77) })
+    )
+    render(<FeedbackTriage canTriage claimTicketId="t9" client={{ ...client, claim }} />)
+
+    await waitFor(() => expect(claim).toHaveBeenCalledWith('t9'))
+    expect(await screen.findByText('Claimed from Slack.')).toBeInTheDocument()
+    expect(toast.success).toHaveBeenCalledWith('Ticket #77 is now assigned to you in PostHog.')
+  })
+
+  test('takes nothing for a reader who may only look', async () => {
+    const claim = vi.fn<NonNullable<FeedbackTriageClient['claim']>>()
+    render(<FeedbackTriage canTriage={false} claimTicketId="t9" client={{ ...client, claim }} />)
+
+    await screen.findAllByText('The upload stops at 99 percent.')
+    expect(claim).not.toHaveBeenCalled()
+  })
+})
