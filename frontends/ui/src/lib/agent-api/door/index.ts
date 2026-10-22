@@ -22,7 +22,7 @@
  * the search vocabulary are read at request time, so neither can drift.
  */
 
-import { type McpServer, fromJsonSchema } from '@modelcontextprotocol/server'
+import { type McpServer, ResourceTemplate, completable, fromJsonSchema } from '@modelcontextprotocol/server'
 import vocabulary from '@/lib/text/operation-search-vocabulary.json'
 import { readOperationBody } from '../discovery'
 import { audienceOf } from '../exposure'
@@ -34,6 +34,7 @@ import { DOOR_DOCS, type DoorDoc } from './docs.generated'
 export const GUIDE_URI = 'piloti://guide'
 export const GLOSSARY_URI = 'piloti://glossary'
 export const CATALOG_URI = 'piloti://catalog'
+export const PROJECT_URI_TEMPLATE = 'piloti://project/{projectId}'
 
 /** `{{name}}` in a prompt's Markdown, replaced by the argument of that name. */
 const PLACEHOLDER = /\{\{(\w+)\}\}/g
@@ -104,10 +105,63 @@ export const DOOR_PROMPTS: readonly DoorPrompt[] = [
 
 export const promptDoc = (name: string): DoorDoc => `prompts/${name}.md` as DoorDoc
 
-/** Prompt arguments as the SDK takes them: each a required string with its description. */
-function argsSchema(args: Readonly<Record<string, string>>) {
+/** Values an argument may take, for the client's autocomplete; at most {@link COMPLETION_LIMIT}. */
+type Completer = (value: string) => Promise<string[]>
+
+export const COMPLETION_LIMIT = 20
+
+interface ListedProject {
+  id: string
+  name: string
+  projectName?: string | null
+  status?: string
+  siteAddress?: string | null
+}
+
+/** The projects `ctx`'s caller may open whose name or profile name contains `value`, as project-list answers. */
+async function projectsMatching(ctx: McpCallContext, value: string): Promise<ListedProject[]> {
+  const query = value.trim() ? { nameContains: value.trim() } : {}
+  const read = await readOperationBody(ctx, 'project-list', { query })
+  return 'refusal' in read || !Array.isArray(read.body) ? [] : (read.body as ListedProject[])
+}
+
+/** Completers by argument name: a project by the name people use, a skill by its name. */
+function completersFor(ctx: McpCallContext): Readonly<Record<string, Completer>> {
+  return {
+    project: async (value) =>
+      [...new Set((await projectsMatching(ctx, value)).map((project) => project.projectName ?? project.name))].slice(0, COMPLETION_LIMIT),
+    skill: async (value) => {
+      const read = await readOperationBody(ctx, 'skill-list', {})
+      if ('refusal' in read) return []
+      const wanted = value.trim().toLowerCase()
+      return ((read.body as { skills?: ListedSkill[] } | null)?.skills ?? [])
+        .filter((skill) => skill.enabled !== false && skill.name.toLowerCase().includes(wanted))
+        .map((skill) => skill.name)
+        .slice(0, COMPLETION_LIMIT)
+    },
+  }
+}
+
+/**
+ * Prompt arguments as the SDK takes them: each a required string with its
+ * description, completed where a completer knows its values.
+ *
+ * The SDK lists arguments from the schema's JSON Schema and finds a completer
+ * on the schema's `shape`, as a Zod 4 object has it. The repo is on Zod 3, whose
+ * bundled v4 lacks the JSON Schema the listing needs, so the schema is
+ * `fromJsonSchema` and `shape` carries only the completers. `index.spec.ts`
+ * completes an argument through the SDK, so a change in that lookup fails there.
+ */
+function argsSchema(args: Readonly<Record<string, string>>, completers: Readonly<Record<string, Completer>>) {
   const properties = Object.fromEntries(Object.entries(args).map(([key, description]) => [key, { type: 'string', description }]))
-  return fromJsonSchema({ type: 'object', properties, required: Object.keys(args), additionalProperties: false } as Parameters<typeof fromJsonSchema>[0])
+  const schema = fromJsonSchema({ type: 'object', properties, required: Object.keys(args), additionalProperties: false } as Parameters<typeof fromJsonSchema>[0])
+  const shape = Object.fromEntries(
+    Object.keys(args).flatMap((key) => {
+      const complete = completers[key]
+      return complete ? [[key, completable(fromJsonSchema({ type: 'string' }), (value) => complete(String(value ?? '')))]] : []
+    }),
+  )
+  return Object.assign(schema, { shape })
 }
 
 const userMessage = (text: string) => ({ messages: [{ role: 'user' as const, content: { type: 'text' as const, text } }] })
@@ -137,6 +191,7 @@ async function officeSkillText(ctx: McpCallContext, name: string): Promise<strin
 export function registerDoorGuide(server: McpServer, ctx: McpCallContext): void {
   if (doorOfPrincipal(ctx.principal) !== 'office' || audienceOf(ctx.principal) !== 'external') return
   const markdown = (uri: string, text: string) => ({ contents: [{ uri, mimeType: 'text/markdown', text }] })
+  const completers = completersFor(ctx)
   server.registerResource(
     'guide',
     GUIDE_URI,
@@ -155,13 +210,14 @@ export function registerDoorGuide(server: McpServer, ctx: McpCallContext): void 
     { title: 'Operations you can run', description: 'Every operation this connection may run, by domain, and whether it reads or writes.', mimeType: 'text/markdown' },
     async () => markdown(CATALOG_URI, catalogText(ctx)),
   )
+  if (findVisibleOperation(ctx.principal, 'project-overview-get')) registerProjectResource(server, ctx)
   for (const prompt of DOOR_PROMPTS) {
     const doc = promptDoc(prompt.name)
     const config = { title: prompt.title, description: prompt.description }
     if (Object.keys(prompt.args).length === 0) {
       server.registerPrompt(prompt.name, config, () => userMessage(fillDoc(doc, {})))
     } else {
-      server.registerPrompt(prompt.name, { ...config, argsSchema: argsSchema(prompt.args) }, (args) =>
+      server.registerPrompt(prompt.name, { ...config, argsSchema: argsSchema(prompt.args, completers) }, (args) =>
         userMessage(fillDoc(doc, args as Record<string, string | undefined>)),
       )
     }
@@ -172,9 +228,42 @@ export function registerDoorGuide(server: McpServer, ctx: McpCallContext): void 
       {
         title: 'Use one of the office’s skills',
         description: 'Follow one of the office’s own written procedures, by its name.',
-        argsSchema: argsSchema({ skill: 'The skill’s name, as the skills page in Piloti shows it.' }),
+        argsSchema: argsSchema({ skill: 'The skill’s name, as the skills page in Piloti shows it.' }, completers),
       },
       async (args) => userMessage(await officeSkillText(ctx, String((args as { skill?: unknown }).skill ?? ''))),
     )
   }
+}
+
+/**
+ * `piloti://project/{projectId}`: a project a person can attach to their
+ * conversation in the client, listed by the name people use. Reading it answers
+ * the project's overview (project-overview-get), read as the person.
+ */
+function registerProjectResource(server: McpServer, ctx: McpCallContext): void {
+  const template = new ResourceTemplate(PROJECT_URI_TEMPLATE, {
+    list: async () => ({
+      resources: (await projectsMatching(ctx, '')).map((project) => ({
+        uri: `piloti://project/${project.id}`,
+        name: project.projectName ?? project.name,
+        description: [project.name, project.status, project.siteAddress].filter(Boolean).join(' · '),
+        mimeType: 'application/json',
+      })),
+    }),
+    complete: {
+      projectId: async (value) =>
+        (await projectsMatching(ctx, '')).map((project) => project.id).filter((id) => id.startsWith(value)).slice(0, COMPLETION_LIMIT),
+    },
+  })
+  server.registerResource(
+    'project',
+    template,
+    { title: 'A project', description: 'One project’s overview: its profile summary, counts and latest activity.', mimeType: 'application/json' },
+    async (uri, variables) => {
+      const id = String(variables.projectId ?? '')
+      const read = await readOperationBody(ctx, 'project-overview-get', { params: { id } })
+      const text = 'refusal' in read ? JSON.stringify({ error: read.refusal }) : JSON.stringify(read.body)
+      return { contents: [{ uri: uri.href, mimeType: 'application/json', text }] }
+    },
+  )
 }

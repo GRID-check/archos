@@ -7,14 +7,15 @@
  */
 import { webcrypto } from 'node:crypto'
 import { createMcpHandler } from '@modelcontextprotocol/server'
-import { beforeAll, describe, expect, it } from 'vitest'
+import { beforeAll, describe, expect, it, vi } from 'vitest'
 import { BACKEND_OPERATIONS } from '../backend-operations'
 import { AGENT_OPERATIONS } from '../catalog'
 import { isExposedTo } from '../exposure'
 import { buildMcpServer } from '../mcp-server'
 import type { AgentPrincipal } from '../principal'
 import { DOOR_DOCS } from './docs.generated'
-import { CATALOG_URI, DOOR_PROMPTS, GLOSSARY_URI, GUIDE_URI, placeholdersOf, promptDoc } from './index'
+import * as discovery from '../discovery'
+import { CATALOG_URI, DOOR_PROMPTS, GLOSSARY_URI, GUIDE_URI, PROJECT_URI_TEMPLATE, placeholdersOf, promptDoc } from './index'
 
 const session = {
   userId: 'user_1',
@@ -110,5 +111,39 @@ describe('Piloti’s own client', () => {
   it('gets neither resources nor prompts: it reads neither, and the guide names its native tools', async () => {
     expect((await rpc(piloti, 'resources/list')).error).toBeDefined()
     expect((await rpc(piloti, 'prompts/list')).error).toBeDefined()
+  })
+})
+
+const PROJECTS = [
+  { id: 'p-1', name: 'Wohnhaus Kellermanngasse', projectName: 'Haus Josef', status: 'active', siteAddress: 'Kellermanngasse 8' },
+  { id: 'p-2', name: 'Schulbau', projectName: null, status: 'active', siteAddress: null },
+]
+
+describe('completions and the project resource, through the real SDK', () => {
+  it('completes a prompt’s project from the projects the person may open, by the name people use', async () => {
+    const read = vi.spyOn(discovery, 'readOperationBody').mockImplementation(async (_ctx, _name, input) => {
+      const wanted = String((input.query as { nameContains?: string } | undefined)?.nameContains ?? '').toLowerCase()
+      return { body: PROJECTS.filter((p) => [p.name, p.projectName].some((n) => n?.toLowerCase().includes(wanted))) }
+    })
+    const { result } = await rpc(outside, 'completion/complete', {
+      ref: { type: 'ref/prompt', name: 'project-briefing' },
+      argument: { name: 'project', value: 'jos' },
+    })
+    expect((result?.completion as { values: string[] }).values).toEqual(['Haus Josef'])
+    read.mockRestore()
+  })
+
+  it('lists the person’s projects as attachable resources and reads one as its overview', async () => {
+    const read = vi.spyOn(discovery, 'readOperationBody').mockImplementation(async (_ctx, name) =>
+      name === 'project-list' ? { body: PROJECTS } : { body: { project: { id: 'p-1' }, counts: { documents: 1 } } },
+    )
+    const templates = (await rpc(outside, 'resources/templates/list')).result?.resourceTemplates as { uriTemplate: string }[]
+    expect(templates.map((t) => t.uriTemplate)).toContain(PROJECT_URI_TEMPLATE)
+    const listed = (await rpc(outside, 'resources/list')).result?.resources as { uri: string; name: string }[]
+    expect(listed).toContainEqual(expect.objectContaining({ uri: 'piloti://project/p-1', name: 'Haus Josef' }))
+    const { result } = await rpc(outside, 'resources/read', { uri: 'piloti://project/p-1' })
+    expect(JSON.parse((result?.contents as { text: string }[])[0].text)).toEqual({ project: { id: 'p-1' }, counts: { documents: 1 } })
+    expect(read).toHaveBeenCalledWith(expect.anything(), 'project-overview-get', { params: { id: 'p-1' } })
+    read.mockRestore()
   })
 })
