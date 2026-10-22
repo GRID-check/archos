@@ -122,8 +122,9 @@ each file), there is no switch and no disk mode, and local files are only a
 cache. The files on the old volume are carried over once, outside the running
 code: a one-shot `legacy-corpus-import` Job (Compose: service) reads the
 retained claim read-only and stores them through the admin-upload path
-(`aiq_agent.legacy_corpus_import`). It is deleted, with its stack key, once
-every environment has run it. It removes the PVC but not the StatefulSet: chat affinity hashes a
+(`aiq_agent.legacy_corpus_import`). The Kubernetes Job is deleted, with its
+Pulumi stack key, once every Kubernetes stack has run it; the Compose service
+stays for Compose installs. A2 removes the PVC but not the StatefulSet: chat affinity hashes a
 conversation onto a pod ordinal (ADR-0028, ADR-0080), so the tier becomes a
 Deployment when that routing is gone.
 
