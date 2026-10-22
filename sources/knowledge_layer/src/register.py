@@ -31,6 +31,9 @@ from nat.plugin_api import FunctionBaseConfig
 from nat.plugin_api import FunctionInfo
 from nat.plugin_api import register_function
 
+from .chunk_noise import noise_filter_enabled
+from .chunk_noise import noise_notice
+from .chunk_noise import without_noise
 from .document_groups import GROUP_BY_DOCUMENT
 from .document_groups import GROUP_OVERFETCH
 from .document_groups import group_by_document
@@ -309,6 +312,16 @@ class KnowledgeRetrievalConfig(FunctionBaseConfig, name="knowledge_retrieval"):
             "plumbing and re-points no model. Draft failure/slowness degrades to the "
             "baseline silently. Ship as default behaviour only if the golden harness "
             "shows an overview lift with no exact-id/paraphrase regression."
+        ),
+    )
+    drop_ocr_noise: bool | None = Field(
+        default=None,
+        description=(
+            "Leave text passages that are OCR debris (a scanned drawing's text layer: rotated labels one "
+            "glyph group per line, spaced capitals one letter per token; `chunk_noise`) out of the ranked "
+            "pool, before the reranker and the per-document cap, so their slots go to real passages. "
+            'Never touches `match="exact"`/`"regex"`. None = environment default AIQ_DROP_OCR_NOISE '
+            "(off). Switch it on only after the answer suite has measured it."
         ),
     )
     hyde_timeout_seconds: float = Field(
@@ -719,6 +732,21 @@ def _apply_diversity_cap(ordered, top_k: int, max_per_document: int) -> list:
         selected.append(index)
 
     return [ordered[index] for index in sorted(selected)]
+
+
+def _without_noise(pool, *, enabled: bool):
+    """``pool`` without its OCR-debris passages (``chunk_noise``), and how many went.
+
+    Off, the pool comes back as it came in, the same object: the search is then
+    exactly what it was before the filter existed.
+    """
+    if not enabled:
+        return pool, 0
+    kept, dropped = without_noise(pool.chunks)
+    if not dropped:
+        return pool, 0
+    logger.info("OCR noise filter left out %d of %d ranked candidate(s)", dropped, len(pool.chunks))
+    return pool.model_copy(update={"chunks": kept}), dropped
 
 
 def _merge_results(results, query: str, top_k: int, backend_name: str, max_per_document: int = _MAX_CHUNKS_PER_DOC):
@@ -2001,6 +2029,7 @@ async def knowledge_retrieval(config: KnowledgeRetrievalConfig, _builder: Builde
     collection = config.collection_name
     top_k = config.top_k
     max_per_document = config.max_chunks_per_document
+    drop_noise = noise_filter_enabled(config.drop_ocr_noise)
 
     logger.info("Knowledge retrieval initialized: backend=%s, collection=%s, top_k=%d", BACKEND, collection, top_k)
 
@@ -2158,6 +2187,9 @@ async def knowledge_retrieval(config: KnowledgeRetrievalConfig, _builder: Builde
         candidate_k = effective_top_k * _AGENT_FILTER_OVERFETCH if narrowed else effective_top_k
         if rerank_llm_obj is not None or cross_encoder is not None:
             candidate_k = max(candidate_k, config.rerank_candidates)
+        if drop_noise:
+            # Debris leaves the pool before the trim to top_k; without headroom its slots stay empty.
+            candidate_k = max(candidate_k, effective_top_k * _AGENT_FILTER_OVERFETCH)
 
         # Resolve the per-session collection (UI uploads for this conversation).
         try:
@@ -2465,6 +2497,10 @@ async def knowledge_retrieval(config: KnowledgeRetrievalConfig, _builder: Builde
                 return pool.chunks
 
             merged = merged.model_copy(update={"chunks": _narrowed(merged)})
+            # OCR debris out of the RANKED pool only, before the reranker, the
+            # judge and the cap see it, so its slots go to real passages. The
+            # literal modes returned above and keep every passage.
+            merged, dropped_as_noise = _without_noise(merged, enabled=drop_noise)
 
             # Reranking: cross-encoder first when configured, LLM judge as the
             # fallback (fail-open: any error keeps the fused order).
@@ -2594,8 +2630,10 @@ async def knowledge_retrieval(config: KnowledgeRetrievalConfig, _builder: Builde
                             [*results, *extra], query, candidate_k, retriever.backend_name, max_per_document=0
                         )
                         widened = widened.model_copy(update={"chunks": _narrowed(widened)})
+                        widened, widened_noise = _without_noise(widened, enabled=drop_noise)
                         reranked = await _reranked(widened.chunks)
                         merged = widened
+                        dropped_as_noise = widened_noise
                         requery_queries = list(verdict.queries)
                         requery_fired = True
                         logger.info(
@@ -2758,6 +2796,9 @@ async def knowledge_retrieval(config: KnowledgeRetrievalConfig, _builder: Builde
                         search_input["dropped_by_cap"] = dropped_by_cap
                     if dropped_by_family:
                         search_input["dropped_by_family"] = dropped_by_family
+                    if drop_noise:
+                        # Stated whenever the filter is on, zero included: a zero is a measurement.
+                        search_input["dropped_as_noise"] = dropped_as_noise
                     if overview is not None:
                         # "fetch": the members were read by filter, no embedding (ADR-0115).
                         search_input["family_read"] = "fetch" if overview.structural else "retrieve"
@@ -2804,6 +2845,7 @@ async def knowledge_retrieval(config: KnowledgeRetrievalConfig, _builder: Builde
                 _hidden_revisions_notice(hidden_revisions)
                 + _named_older_revision_notice(file_name, superseded)
                 + requery_notice(requery_queries)
+                + noise_notice(dropped_as_noise)
             )
             # The overview raised, and the passages below are what is left of
             # the family question. Said only where there ARE passages: an empty
