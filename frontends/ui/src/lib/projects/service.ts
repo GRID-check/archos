@@ -111,6 +111,20 @@ export async function listChatProjects(
   return listProjectsHolding(session, CHAT_PERMISSIONS, order)
 }
 
+/**
+ * Of `projectIds`, the projects the caller may chat in: {@link listChatProjects}
+ * asked about a few named projects instead of the whole office. A deleted or
+ * unknown id is left out.
+ */
+export async function listChatProjectsAmong(session: AuthorizedSession, projectIds: readonly string[]): Promise<Project[]> {
+  const rows = await Promise.all([...new Set(projectIds)].map((id) => findProjectInOrg(id, session.organizationId)))
+  return projectsHolding(
+    session,
+    rows.filter((row): row is Project => row !== null),
+    CHAT_PERMISSIONS
+  )
+}
+
 /** The organization's projects on which the caller holds ANY of `permissions`; see {@link listProjects}. */
 async function listProjectsHolding(
   session: AuthorizedSession,

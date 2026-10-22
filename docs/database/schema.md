@@ -23,6 +23,7 @@ All schemas are in `frontends/ui/src/lib/db/schema/` and barrel-exported from `i
 | `messages.ts` | `messages` |
 | `documents.ts` | `documents` |
 | `project-folders.ts` | `project_folders` |
+| `folder-cards.ts` | `folder_cards` (the tier-1 abstract and key facts of a folder, migration 0180, ADR-0127) |
 | `project-folder-grants.ts` | `project_folder_grants` (deprecated by ADR-0097, read only by the conversion script) |
 | `user-preferences.ts` | `user_preferences` |
 | `answer-feedback.ts` | `answer_feedback` |
@@ -837,6 +838,31 @@ left alone.
 > **Applying and reversing `0102`:** nothing to resolve before applying — every existing row is a project folder, `organization_id` is backfilled from its project, and the widened index rejects exactly what the old one did. The down migration **refuses while any Archiv folder exists** (the old schema has no place for one, and the backend still carries its path); delete them through the application first, which re-files their documents into the parent and mirrors the path rewrite. `scripts/rls-test-db.sh` applies `0102` to a seeded database, asserts the backfill and every new constraint, then proves the guard and the down path.
 
 ---
+
+
+## folder_cards
+
+Migration `0180`, [ADR-0127](../adr/0127-search-finds-list-orients-read-reads.md). The tier-1 card of a folder: what `list_files` shows beside its name so an agent can tell what the folder holds without opening a document. Written only by the BFF (`PUT /api/internal/folder-cards`, `frontends/ui/src/app/api/internal/folder-cards/route.ts`; repository `src/lib/folder-cards/repository.ts`, wire contract `src/lib/folder-cards/types.ts`, JSON Schema `tests/fixtures/folder-cards.schema.json`); the Python builder computes the card and sends it. The Qdrant folder point derived from a card is rebuildable.
+
+| Column | Type | Constraints | Notes |
+|---|---|---|---|
+| `id` | `uuid` | PK, default `gen_random_uuid()` | |
+| `organization_id` | `text` | NOT NULL | The tenant; the RLS predicate. |
+| `folder_id` | `uuid` | NOT NULL, UNIQUE (`folder_cards_folder_key`) | One card per folder. Keyed by id, so a rename keeps the card. |
+| `scope` | `text` | NOT NULL, CHECK `project` or `office_shelf` | Equal to the folder's own, held by the composite key. |
+| `collection` | `text` | NOT NULL | The retrieval collection the card was written under, checked on `PUT` against the folder's own (`computeFolderAccess(...).collectionFor`). A hint only: `GET` recomputes every card's collection from the folder tree at read time, so a folder restricted after its card was written is served under its own collection and no longer under the project's (ADR-0088). |
+| `abstract` | `text` | CHECK length at most 600 | At most three sentences, in German. `NULL` before the first build. |
+| `key_facts` | `jsonb` | NOT NULL default `[]`, CHECK array of at most 8 | `[{statement, documents: [file name], pages?}]`. |
+| `input_hash` | `text` | NOT NULL | Hash of what the card was built from; unchanged means nothing is rebuilt. |
+| `abstract_hash` | `text` | | Hash of the abstract, so an abstract that comes out the same does not rewrite the folder point. |
+| `model` / `prompt_version` | `text` | | What built it. |
+| `status` | `text` | NOT NULL default `stale`, CHECK `fresh`, `stale`, `failed` | |
+| `generated_at` | `timestamptz` | | Set when a `fresh` card is written; a `stale` or `failed` mark keeps it. |
+| `created_at` / `updated_at` | `timestamptz` | NOT NULL default `now()` | |
+
+**Keys.** `folder_cards_folder_fkey`: FK (`folder_id`, `organization_id`, `scope`) → `project_folders (id, organization_id, scope)` `ON DELETE CASCADE`, so a card cannot name another tenant's folder or the wrong shelf and goes when its folder row does (an Archiv folder's delete, a project folder's purge keeps the tombstone and so the card, which `GET` skips). Index `idx_folder_cards_collection (organization_id, collection)` serves `list_files`.
+
+**RLS.** `grid_secure_table('folder_cards', 'organization_id = grid_current_org()')`, as every tenant table. The internal route states the organization it works for and runs every query in that tenant scope.
 
 ## push_subscriptions (migration 0147, ADR-0112)
 
@@ -1821,7 +1847,7 @@ omits it to collapse.
 | `id` | `uuid` | PK, `defaultRandom()` | |
 | `organization_id` | `text` | NOT NULL | A user in two orgs has two inboxes; counts never mix |
 | `recipient_user_id` | `text` | NOT NULL | WorkOS user this is FOR |
-| `type` | `text` | NOT NULL | The item kind. **The list lives in `INBOX_ITEM_TYPES` (`frontends/ui/src/lib/db/schema/inbox.ts`) and is exhaustive over two registries by construction**, so it is not restated here — this row said four types long after there were eight. Today: the four collaboration ones, `storage.quota_warning`, `document.assigned_to_you`, `job.completed` / `job.failed`, `document.review_requested` (ADR-0054, actionable), and `upload.completed` / `document.quarantined` / `document.release_requested` (ADR-0086; the last is the uploader asking for a release, one row per file and reviewer). `document.new_revision` (ADR-0054, ADR-0099) tells the followers of a document that a newer Fassung exists: `resource_type`/`resource_id` is the NEWER document, `anchor_id` the older document (a confirmed link) or the new version (a same-name upload), `payload.subject` the followed document, `payload.related` the newer one's name, `payload.excerpt` the first line of the change summary. A row about a mark (`annotation.*`) writes `payload.mentions` beside every `payload.excerpt`: whom the quoted text mentions, `[{targetId, display}]` as the mark kept them, `[]` for none, read back through the bounded mention schema. |
+| `type` | `text` | NOT NULL | The item kind. **The list lives in `INBOX_ITEM_TYPES` (`frontends/ui/src/lib/db/schema/inbox.ts`) and is exhaustive over two registries by construction**, so it is not restated here — this row said four types long after there were eight. Today: the four collaboration ones, `storage.quota_warning`, `document.assigned_to_you`, `task_run.completed` / `task_run.failed` / `task_run.waiting` (a task run ended, failed or stopped to ask; `job.*` until migration 0177, still read through `LEGACY_INBOX_TYPES` for one release), `document.review_requested` (ADR-0054, actionable), and `upload.completed` / `document.quarantined` / `document.release_requested` (ADR-0086; the last is the uploader asking for a release, one row per file and reviewer). `document.new_revision` (ADR-0054, ADR-0099) tells the followers of a document that a newer Fassung exists: `resource_type`/`resource_id` is the NEWER document, `anchor_id` the older document (a confirmed link) or the new version (a same-name upload), `payload.subject` the followed document, `payload.related` the newer one's name, `payload.excerpt` the first line of the change summary. A row about a mark (`annotation.*`) writes `payload.mentions` beside every `payload.excerpt`: whom the quoted text mentions, `[{targetId, display}]` as the mark kept them, `[]` for none, read back through the bounded mention schema. |
 | `resource_type` / `resource_id` | `text` | NOT NULL | What it points AT — resolved through the sharing registry |
 | `anchor_id` | `text` | | Exact spot inside the resource (a message id), for a deep link |
 | `actor_user_id` | `text` | | Who caused it; NULL for system items |

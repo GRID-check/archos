@@ -354,3 +354,4 @@ tasks:
         tests/aiq_agent/common/test_claim_queue.py
         tests/knowledge_layer_tests/test_ingest_queue.py
         frontends/aiq_api/tests/test_research_queue_fair.py
+        tests/aiq_agent/knowledge/folder_cards

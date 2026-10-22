@@ -43,6 +43,7 @@ from aiq_agent.common.db_utils import redact_db_url
 from aiq_agent.knowledge.document_classification import LEGACY_DOC_CLASSES
 from aiq_agent.knowledge.document_classification import MAX_TOPIC_VOCABULARY
 from aiq_agent.knowledge.document_classification import canonical_doc_class
+from aiq_agent.knowledge.page_count import page_number
 from aiq_agent.knowledge.title_block import normalise_revision_facts
 
 if TYPE_CHECKING:
@@ -83,7 +84,11 @@ _OPTIONAL_COLUMNS: tuple[str, ...] = (
     "change_summary",
     "change_basis",
     "revision_facts",
+    "page_count",
 )
+
+#: DDL type of an optional column that is not TEXT. Every other column is TEXT.
+_OPTIONAL_COLUMN_TYPES: dict[str, str] = {"page_count": "INTEGER"}
 
 #: ``tags_set_by`` value for tags a PERSON chose. Machine writes (ingest, the
 #: backfill script) never overwrite them — see :meth:`DocumentMetadataStore.register`.
@@ -99,7 +104,8 @@ SUGGESTION_BASES = ("title_block", "name", "content")
 #: :meth:`DocumentMetadataStore._row_to_document` expects them.
 _DOCUMENT_COLUMNS = (
     "filename, summary, tags, doc_class, display_title, folder_path, created_at, "
-    "topics, capture, superseded_by, revision_suggestion, change_summary, change_basis, revision_facts"
+    "topics, capture, superseded_by, revision_suggestion, change_summary, change_basis, revision_facts, "
+    "page_count"
 )
 
 #: Where the Fassung facts a person made outlive a purge that can be undone (an archive, the folder
@@ -238,6 +244,21 @@ def _person_made_facts(
         "change_basis": change_basis if linked_change else None,
     }
     return kept if any(kept.values()) else None
+
+
+def _encode_page_count(page_count: int | None) -> int | None:
+    """``page_count`` as stored: a whole number of pages of at least one, otherwise ``None`` (no pages known)."""
+    if isinstance(page_count, bool) or not isinstance(page_count, int) or page_count < 1:
+        return None
+    return page_count
+
+
+def _decode_page_count(raw: Any) -> int | None:
+    """The stored page count as an ``int``; ``None`` for a missing, zero or non-numeric value.
+
+    The one parse of a page number (``page_count.page_number``), shared with the listing and the backfill.
+    """
+    return page_number(raw)
 
 
 def _kept_reason(stored: dict[str, Any] | None, older: str) -> dict[str, Any]:
@@ -447,7 +468,7 @@ class DocumentMetadataStore:
         present = present_columns(conn, TABLE_NAME)
         for column in _OPTIONAL_COLUMNS:
             if column not in present:
-                self._add_column_if_missing(conn, column)
+                self._add_column_if_missing(conn, column, _OPTIONAL_COLUMN_TYPES.get(column, "TEXT"))
 
         self._ensure_index(conn)
         self._create_retained_table(conn)
@@ -1025,6 +1046,19 @@ class DocumentMetadataStore:
             collection, filename, "revision_facts", json.dumps(normalised, ensure_ascii=False) if normalised else None
         )
 
+    def set_page_count(self, collection: str, filename: str, page_count: int | None) -> bool:
+        """Replace only the ``page_count`` of an existing metadata row (sync): how many pages the file has.
+
+        Written by the ingest that read the file, so a re-ingest overwrites it with the newest count, and by
+        the backfill for files ingested before the column existed. Nobody sets it by hand. A text file has no
+        pages, so it is ``None``. Same UPDATE-only contract as :meth:`set_capture`.
+        """
+        return self._update_column(collection, filename, "page_count", _encode_page_count(page_count))
+
+    def get_page_count(self, collection: str, filename: str) -> int | None:
+        """The stored page count of a document, or ``None`` when there is none (sync)."""
+        return _decode_page_count(self._get_column(collection, filename, "page_count"))
+
     def set_superseded_by(self, collection: str, older: str, newer: str | None) -> bool:
         """Record that a PERSON confirmed ``newer`` replaces ``older`` (sync), or lift it with ``None``.
 
@@ -1584,6 +1618,7 @@ class DocumentMetadataStore:
             change_summary=(row[11] or None) if len(row) > 11 else None,
             change_basis=(row[12] or None) if len(row) > 12 else None,
             revision_facts=self._decode_revision_facts(row[13]) if len(row) > 13 else None,
+            page_count=_decode_page_count(row[14]) if len(row) > 14 else None,
             collection=collection,
         )
 

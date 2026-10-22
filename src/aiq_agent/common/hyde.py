@@ -72,14 +72,14 @@ _QUOTE_CHARS = frozenset("\"'„“‚‘«»‹›")
 _PARAGRAPH = "§"
 
 _SYSTEM_PROMPT = (
-    "Du formulierst einen kurzen hypothetischen Regelungsabschnitt, der die folgende "
-    "Frage beantworten würde.\n\n"
-    "Regeln:\n"
-    "- Höchstens etwa zweihundert Tokens, ein einziger Absatz, keine Aufzählung.\n"
-    "- Schreibe im Register einer technischen Baunorm: sachlich, mit Muss-Anforderungen.\n"
-    "- Erfinde keine konkreten Nummern, Maße oder Verweise — formuliere den "
-    "Regelungsgedanken allgemein.\n"
-    "- Antworte NUR mit dem Abschnitt, ohne Einleitung und ohne Anführungszeichen."
+    "You write a short hypothetical regulatory passage that would answer the following "
+    "question. Write it in German: it is matched against a German corpus.\n\n"
+    "Rules:\n"
+    "- About two hundred tokens at most, a single paragraph, no list.\n"
+    "- Write in the register of a technical building standard: factual, with mandatory requirements.\n"
+    "- Invent no concrete numbers, dimensions or references — state the "
+    "regulatory idea in general terms.\n"
+    "- Answer ONLY with the passage, with no introduction and no quotation marks."
 )
 
 

@@ -64,7 +64,7 @@ class TestTheSplice:
         return [
             SystemMessage(content="sys"),
             HumanMessage(content="Frage"),
-            AIMessage(content="", tool_calls=[{"name": "canvas__look", "args": {}, "id": "l"}]),
+            AIMessage(content="", tool_calls=[{"name": "look", "args": {}, "id": "l"}]),
             ToolMessage(content="Seite", tool_call_id="l"),
         ]
 
@@ -108,16 +108,16 @@ class TestWhatTheModelReads:
 
         rendered = render_note(note, 3)
 
-        assert rendered.startswith('<ergaenzung von="Anna" waehrend="Runde 3">\nnicht die Tür, die Treppe\n')
-        assert "[Bereich: S. 3, x 0.41–0.58, y 0.22–0.40]" in rendered
-        assert "geht der ursprünglichen Frage vor" in rendered
+        assert rendered.startswith('<user_update author="Anna" during="round 3">\nnicht die Tür, die Treppe\n')
+        assert "[Region: p. 3, x 0.41–0.58, y 0.22–0.40]" in rendered
+        assert "takes precedence over the" in rendered
 
     def test_writes_are_told_apart_from_reads_by_basename(self):
         assert is_write_call({"name": "canvas__mark"})
         assert is_write_call({"name": "canvas__reply"})
         assert is_write_call({"name": "file_draft"})
         assert is_write_call({"name": "propose_file_change"})
-        assert not is_write_call({"name": "canvas__look"})
+        assert not is_write_call({"name": "look"})
         assert not is_write_call({"name": "canvas__marks"})
         assert not is_write_call({"name": "knowledge_search"})
         assert not is_write_call({})

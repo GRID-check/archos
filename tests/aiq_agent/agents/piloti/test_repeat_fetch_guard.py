@@ -148,7 +148,7 @@ def _bypass_citation_pipeline():
         patch("aiq_agent.agents.piloti.answer_pipeline.verify_citations") as verify,
         patch("aiq_agent.agents.piloti.answer_pipeline.sanitize_report") as sanitize,
     ):
-        verify.side_effect = lambda content, reg, reference_sources=None: MagicMock(
+        verify.side_effect = lambda content, reg, reference_sources=None, **_: MagicMock(
             verified_report=content, removed_citations=[]
         )
         sanitize.side_effect = lambda content: MagicMock(sanitized_report=content)
@@ -455,16 +455,16 @@ class TestTheNoticeItself:
         agreement, which is exactly the false confidence the guard is supposed
         to save the turn from paying for twice.
         """
-        assert "bereits" in _REPEAT_FETCH_PREFIX
-        assert "nicht erneut" in _REPEAT_FETCH_PREFIX
-        assert "andere" in _REPEAT_FETCH_PREFIX
+        assert "already" in _REPEAT_FETCH_PREFIX
+        assert "not executed again" in _REPEAT_FETCH_PREFIX
+        assert "different" in _REPEAT_FETCH_PREFIX
 
     def test_the_fallback_still_says_the_answer_is_already_there(self):
         """When the turn does not hold the result, an error string would invite
         a retry of the identical call."""
-        assert "bereits" in _REPEAT_FETCH_MESSAGE
-        assert "Ergebnis oben" in _REPEAT_FETCH_MESSAGE
-        assert "andere" in _REPEAT_FETCH_MESSAGE
+        assert "already" in _REPEAT_FETCH_MESSAGE
+        assert "result above" in _REPEAT_FETCH_MESSAGE
+        assert "different" in _REPEAT_FETCH_MESSAGE
 
 
 class TestWhatTheSurvivingCallIsFiledUnder:

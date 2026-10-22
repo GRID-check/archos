@@ -114,6 +114,14 @@ const SERVICE_ENFORCED = new Set([
   'answer-feedback/options/route.ts',
 ])
 
+/**
+ * The platform door (ADR-0126), the operator console's MCP server. It requires
+ * no permission of its own beyond platform staff (checked when its caller is
+ * resolved, `lib/agent-api/principal.ts`): it is a door, and every operation it
+ * runs is one of the routes in {@link EXPECTED}, whose permission still decides.
+ */
+const DOORS = new Set(['mcp/route.ts'])
+
 const HTTP_METHODS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'] as const
 
 function findRouteFiles(dir: string): string[] {
@@ -136,6 +144,7 @@ function collect(): Declaration[] {
   const declarations: Declaration[] = []
   for (const absolute of findRouteFiles(PLATFORM_DIR)) {
     const file = relative(PLATFORM_DIR, absolute).replace(/\\/g, '/')
+    if (DOORS.has(file)) continue
     const source = readFileSync(absolute, 'utf8')
     for (const method of HTTP_METHODS) {
       const start = source.indexOf(`export const ${method} =`)

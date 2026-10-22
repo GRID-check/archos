@@ -12,18 +12,20 @@
  * what a reader decides is what is stored.
  */
 
-import { useMemo, type ReactNode } from 'react'
-import { FolderTree } from 'lucide-react'
+import { useMemo, useState, type ReactNode } from 'react'
+import { FolderTree, Zap } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 import { Chip } from '@/components/ui/chip'
 import { SectionLabel } from '@/components/ui/section-label'
 import { useTranslations } from '@/i18n'
 import { invalidateProjectFacts } from '@/features/chat/hooks/use-project-facts'
 import { buildPatchPreviewRows } from '@/lib/project-profile/patch-preview'
 import type { ProjectProfilePatchOperation } from '@/lib/project-profile/types'
-import type { MemoryPayload, ProposedChangeResult } from '@/lib/proposals/types'
+import type { MemoryPayload, OperationTargetView, ProposedChangeResult } from '@/lib/proposals/types'
 import { useCurrentProfile } from '../hooks/use-current-profile'
 import { useServerProposal } from '../hooks/use-server-proposal'
 import { notifyIfAnyApplied, type FileOperationItem, type FileOperationKind } from '../lib/file-operations'
+import { operationInputRows, previewOf, rowKey, type OperationInputRow } from '../lib/operation-input'
 import { OperationList } from './FileOperationRows'
 import { ProfilePatchTable } from './ProfilePatchTable'
 import { ProposalReceipt } from './ProposalReceipt'
@@ -104,6 +106,135 @@ export function FileOperationReceipt({
           />
         )
       }
+    />
+  )
+}
+
+// ── Operation ────────────────────────────────────────────────────────────
+
+/** What the call names, by name where this reader may read it (`targets` on the server's view), else by id. */
+function OperationTargets({ targets }: { targets: readonly OperationTargetView[] }) {
+  const t = useTranslations('chat')
+  if (targets.length === 0) return null
+  return (
+    <p className="card-caption text-muted-foreground" data-testid="operation-targets">
+      <span className="font-medium">{t('cards.operationProposal.targetsLabel')}:</span>{' '}
+      {targets.map((target) => t(`cards.operationProposal.target.${target.type}`, { name: target.name ?? target.id })).join(', ')}
+    </p>
+  )
+}
+
+/**
+ * Every input of the action, whole: what it will be called with. A long value
+ * is shown in part until the reader unfolds it (`operation-input.ts`), and the
+ * receipt keeps „Übernehmen“ waiting until every one has been unfolded.
+ */
+function OperationInput({
+  rows,
+  unfolded,
+  onToggle,
+}: {
+  rows: readonly OperationInputRow[]
+  unfolded: ReadonlySet<string>
+  onToggle: (key: string) => void
+}) {
+  const t = useTranslations('chat')
+  if (rows.length === 0) return null
+  return (
+    <dl
+      className="card-caption text-muted-foreground flex flex-col gap-0.5"
+      aria-label={t('cards.operationProposal.inputLabel')}
+      data-testid="operation-input"
+    >
+      {rows.map((row, index) => {
+        const key = rowKey(row, index)
+        const open = !row.long || unfolded.has(key)
+        return (
+          <div key={key} className="flex flex-col gap-0.5 sm:flex-row sm:gap-x-1.5">
+            <dt className="shrink-0 font-medium">{row.key}</dt>
+            <dd className="min-w-0 break-words" data-testid="operation-input-value">
+              {open ? <span className="whitespace-pre-wrap">{row.value}</span> : previewOf(row)}
+              {row.long && (
+                <Button
+                  type="button"
+                  variant="link"
+                  size="sm"
+                  className="ml-1 h-auto p-0 align-baseline"
+                  aria-expanded={open}
+                  onClick={() => onToggle(key)}
+                >
+                  {open
+                    ? t('cards.operationProposal.showLess')
+                    : t('cards.operationProposal.showAll', { length: row.value.length })}
+                </Button>
+              )}
+            </dd>
+          </div>
+        )
+      })}
+    </dl>
+  )
+}
+
+export function OperationReceipt({
+  proposalId,
+  title,
+  operation,
+  input,
+}: {
+  proposalId: string
+  title: string
+  operation: string
+  input: Record<string, unknown>
+}) {
+  const t = useTranslations('chat')
+  const server = useServerProposal(proposalId, 'operation')
+  const { proposal } = server
+  const shownOperation = proposal?.payload.operation ?? operation
+  const shownInput = proposal?.payload.input ?? input
+  const rows = useMemo(() => operationInputRows(shownInput), [shownInput])
+  // Unfolded once is read: folding it again does not make „Übernehmen“ wait again.
+  const [unfolded, setUnfolded] = useState<ReadonlySet<string>>(() => new Set())
+  const [read, setRead] = useState<ReadonlySet<string>>(() => new Set())
+  const toggle = (key: string) => {
+    setUnfolded((now) => {
+      const next = new Set(now)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
+      return next
+    })
+    setRead((now) => new Set(now).add(key))
+  }
+  const unread = rows.filter((row, index) => row.long && !read.has(rowKey(row, index))).length
+
+  return (
+    <ProposalReceipt
+      server={server}
+      eyebrow={<SectionLabel icon={Zap}>{t('cards.operationProposal.eyebrow')}</SectionLabel>}
+      title={proposal?.payload.summary ?? title}
+      open={
+        <>
+          <p className="card-caption text-muted-foreground" data-testid="operation-name">
+            {t('cards.operationProposal.operation', { operation: shownOperation })}
+          </p>
+          <OperationTargets targets={proposal?.targets ?? []} />
+          <OperationInput rows={rows} unfolded={unfolded} onToggle={toggle} />
+        </>
+      }
+      acceptBlocked={unread > 0 ? t('cards.operationProposal.readAllFirst', { count: unread }) : undefined}
+      headline={(decided) => {
+        switch (decided.status) {
+          case 'applied':
+          case 'partially_applied':
+            return t('cards.operationProposal.applied')
+          case 'failed':
+            return t('cards.proposalReceipt.failed')
+          default:
+            return t('cards.operationProposal.dismissed')
+        }
+      }}
+      // A failed apply says why in the route's own words (`FailureReasons`).
+      decidedBody={(decided) => <FailureReasons results={decided.results} />}
     />
   )
 }

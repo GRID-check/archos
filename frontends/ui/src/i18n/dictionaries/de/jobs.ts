@@ -27,7 +27,7 @@ export const jobs: typeof en.jobs = {
     empty: {
       title: 'Noch keine Aufgaben',
       description:
-        'Eine Aufgabe ist ein Auftrag mit oder ohne Rhythmus. Einmal schreiben, festlegen, wann sie läuft — und Piloti recherchiert und legt den Bericht ab, während Sie woanders sind.',
+        'Eine Aufgabe ist Arbeit für Piloti, mit oder ohne Rhythmus. Einmal schreiben, festlegen, wann sie läuft — und Piloti recherchiert und legt den Bericht ab, während Sie woanders sind.',
       action: 'Neue Aufgabe',
     },
     manualOnly: 'Nur manuell',
@@ -113,7 +113,7 @@ export const jobs: typeof en.jobs = {
     stepsLabel: 'Schritte',
     stepProgress: 'Schritt {current} von {total}',
     steps: {
-      task: 'Auftrag',
+      task: 'Aufgabe',
       schedule: 'Wann',
       review: 'Prüfen',
       taskTitle: 'Was soll Piloti tun?',
@@ -138,12 +138,12 @@ export const jobs: typeof en.jobs = {
     nameRequired: 'Ein Name ist erforderlich.',
     nameTooLong: 'Der Name ist zu lang (max. 200 Zeichen).',
 
-    promptLabel: 'Der Auftrag',
+    promptLabel: 'Die Aufgabe',
     promptPlaceholder:
       'Prüfe die aktuellen Projektunterlagen auf offene Brandschutzpunkte und nenne jede Abweichung mit der OIB-Fundstelle.',
     promptHint: 'Das ist es, was jedes Mal wortwörtlich abgefeuert wird.',
-    promptRequired: 'Ein Auftrag ist erforderlich.',
-    promptTooLong: 'Der Auftrag ist zu lang (max. 8000 Zeichen).',
+    promptRequired: 'Beschreiben Sie die Aufgabe.',
+    promptTooLong: 'Die Beschreibung der Aufgabe ist zu lang (max. 8000 Zeichen).',
 
     advancedSources: 'Datenquellen',
     advancedSchedule: 'Zeitzone und Cron',

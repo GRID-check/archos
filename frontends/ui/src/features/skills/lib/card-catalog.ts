@@ -39,7 +39,10 @@ export const SYSTEM_CARD_TYPES = [
   'document_draft',
   'task_created',
   'file_operation_proposal',
+  'operation_proposal',
   'canvas_activity',
+  'look',
+  'revision_compare',
 ] as const
 
 export interface CardCatalogEntry {

@@ -374,7 +374,7 @@ export const organization: typeof en.organization = {
   models: {
     title: 'KI-Modellkonfiguration',
     description:
-      'Wählen Sie, mit welchem OpenRouter-Modell jede Agentengruppe arbeitet. Änderungen gelten sofort für neue Unterhaltungen; jeder Speichervorgang erzeugt eine neue Version, zu der Sie zurückkehren können.',
+      'Wählen Sie, mit welchem OpenRouter-Modell jede Agentengruppe arbeitet. Änderungen gelten sofort für neue Chats; jeder Speichervorgang erzeugt eine neue Version, zu der Sie zurückkehren können.',
     defaultModel: 'Plattform-Standard',
     defaultBadge: 'Standard',
     overrideBadge: 'Override',
@@ -400,7 +400,7 @@ export const organization: typeof en.organization = {
     activateError: 'Diese Version konnte nicht aktiviert werden.',
     activateTitle: 'Für die gesamte Organisation aktivieren?',
     activateDescription:
-      'Setzt {target} sofort als Produktionsmodell für alle Mitglieder Ihrer Organisation — wirksam für neue Unterhaltungen. Sie können jederzeit zu einer anderen Version zurückkehren.',
+      'Setzt {target} sofort als Produktionsmodell für alle Mitglieder Ihrer Organisation — wirksam für neue Chats. Sie können jederzeit zu einer anderen Version zurückkehren.',
     activateConfirm: 'Jetzt aktivieren',
     defaultsTarget: 'die Plattform-Standards',
     useDefaults: 'Overrides deaktivieren (Plattform-Standards verwenden)',
@@ -415,7 +415,7 @@ export const organization: typeof en.organization = {
     zdrHintMore: 'Mehr anzeigen',
     zdrHintLess: 'Weniger anzeigen',
     zdrHint:
-      'Standardmäßig aktiv. Jede Anfrage, die Piloti für Ihre Organisation über OpenRouter an ein KI-Modell sendet, geht ausschließlich an Endpunkte, die weder Prompts noch Antworten speichern: Chat- und Rechercheantworten, Rückfragen, das Lesen von Dokumenten beim Hochladen (Beschreibungen von Zeichnungen, Texterkennung, Embeddings, Zusammenfassungen, Klassifizierung), das Reranking von Suchergebnissen, Titel und Zusammenfassungen von Unterhaltungen, Konsistenzprüfungen und Skill-Prüfungen. Kann die Einstellung nicht gelesen werden, gilt die Beschränkung trotzdem, und nur Modelle mit einem solchen Endpunkt sind auswählbar. Wo ein Modell in der EU betrieben wird, wird dieser Standort bevorzugt. Nicht erfasst: Websuchanfragen gehen an den Websuche-Anbieter (Tavily), der kein Modellanbieter ist.',
+      'Standardmäßig aktiv. Jede Anfrage, die Piloti für Ihre Organisation über OpenRouter an ein KI-Modell sendet, geht ausschließlich an Endpunkte, die weder Prompts noch Antworten speichern: Chat- und Rechercheantworten, Rückfragen, das Lesen von Dokumenten beim Hochladen (Beschreibungen von Zeichnungen, Texterkennung, Embeddings, Zusammenfassungen, Klassifizierung), das Reranking von Suchergebnissen, Titel und Zusammenfassungen von Chats, Konsistenzprüfungen und Skill-Prüfungen. Kann die Einstellung nicht gelesen werden, gilt die Beschränkung trotzdem, und nur Modelle mit einem solchen Endpunkt sind auswählbar. Wo ein Modell in der EU betrieben wird, wird dieser Standort bevorzugt. Nicht erfasst: Websuchanfragen gehen an den Websuche-Anbieter (Tavily), der kein Modellanbieter ist.',
     zdrNotApplicable:
       'Der eigene {provider}-Schlüssel Ihrer Organisation ist aktiv; Anfragen gehen daher direkt an diesen Anbieter und nicht über OpenRouter. Ob dort Daten gespeichert werden, regelt Ihr Vertrag mit {provider}; Piloti kann das nicht durchsetzen. Ihre gespeicherte Einstellung bleibt erhalten und gilt wieder, sobald Sie zum Plattformschlüssel oder zu einem OpenRouter-Schlüssel wechseln.',
     zdrError: 'Zero Data Retention konnte nicht geändert werden. Bitte versuchen Sie es erneut.',
@@ -431,35 +431,35 @@ export const organization: typeof en.organization = {
     zdrOffBody:
       'Die Modellanbieter hinter OpenRouter dürfen Prompts, Dokumente, Zeichnungen und Antworten Ihrer Organisation speichern und – je nach Anbieter – zum Training verwenden. Sie können die Einstellung oben jederzeit ohne Bestätigung wieder aktivieren.',
     zdrBlockedSummary:
-      '{count, plural, one {# Aufgabe kann} other {# Aufgaben können}} mit dem aktuellen Modell nicht unter Zero Data Retention laufen. Siehe die markierten Zeilen unten.',
+      '{count, plural, one {# Funktion kann} other {# Funktionen können}} mit dem aktuellen Modell nicht unter Zero Data Retention laufen. Siehe die markierten Zeilen unten.',
     zdrBlockedNotZdr:
-      '{model} ({source}) hat keinen Zero-Data-Retention-Endpunkt. Anfragen für diese Aufgabe werden abgelehnt, bis Sie hier ein ZDR-fähiges Modell wählen.',
+      '{model} ({source}) hat keinen Zero-Data-Retention-Endpunkt. Anfragen für diese Funktion werden abgelehnt, bis Sie hier ein ZDR-fähiges Modell wählen.',
     zdrBlockedCapability:
-      '{model} ({source}) hat zwar Zero-Data-Retention-Endpunkte, aber keiner unterstützt, was diese Aufgabe benötigt. Anfragen für diese Aufgabe werden abgelehnt, bis Sie hier ein anderes Modell wählen.',
+      '{model} ({source}) hat zwar Zero-Data-Retention-Endpunkte, aber keiner unterstützt, was diese Funktion benötigt. Anfragen für diese Funktion werden abgelehnt, bis Sie hier ein anderes Modell wählen.',
     zdrSource: {
       org: 'Ihre Auswahl',
       platform: 'Plattform-Standard',
       workflow: 'Workflow-Konfiguration',
     },
     zdrCoverageUnknown:
-      'Die Zero-Data-Retention-Liste konnte nicht geladen werden; ob das Modell jeder Aufgabe einen ZDR-Endpunkt hat, ist daher unbekannt. Anfragen bleiben auf ZDR-Endpunkte beschränkt; Anfragen ohne passenden Endpunkt werden abgelehnt.',
+      'Die Zero-Data-Retention-Liste konnte nicht geladen werden; ob das Modell jeder Funktion einen ZDR-Endpunkt hat, ist daher unbekannt. Anfragen bleiben auf ZDR-Endpunkte beschränkt; Anfragen ohne passenden Endpunkt werden abgelehnt.',
     zdrUnresolved:
-      'Das Standardmodell dieser Aufgabe konnte nicht ermittelt werden; ob es einen Zero-Data-Retention-Endpunkt hat, ist unbekannt.',
+      'Das Standardmodell dieser Funktion konnte nicht ermittelt werden; ob es einen Zero-Data-Retention-Endpunkt hat, ist unbekannt.',
     zdrListUnavailable:
       'Die Zero-Data-Retention-Liste konnte nicht geladen werden; deshalb kann gerade kein Modell angeboten werden. Bitte versuchen Sie es gleich noch einmal.',
     noZdrResults: 'Kein Modell mit Zero-Data-Retention-Endpunkt passt zu Ihrer Suche.',
     noZdrMark: 'Kein Zero-Data-Retention-Endpunkt',
     rejection: {
-      unknown_group: 'Diese Aufgabe gibt es nicht mehr.',
+      unknown_group: 'Diese Funktion gibt es nicht mehr.',
       not_in_catalog: '{model} ist nicht im Modellkatalog.',
       not_zdr: '{model} hat keinen Zero-Data-Retention-Endpunkt.',
       zdr_endpoint_lacks_capability:
-        'Kein Zero-Data-Retention-Endpunkt von {model} unterstützt, was diese Aufgabe benötigt.',
+        'Kein Zero-Data-Retention-Endpunkt von {model} unterstützt, was diese Funktion benötigt.',
       no_text_input: 'Das Modell nimmt keine Texteingabe an.',
-      no_image_input: 'Das Modell nimmt keine Bilder an; diese Aufgabe braucht ein Vision-Modell.',
+      no_image_input: 'Das Modell nimmt keine Bilder an; diese Funktion braucht ein Vision-Modell.',
       context_too_small: 'Das Kontextfenster ({actual} Tokens) ist kleiner als die geforderten {required}.',
-      missing_parameter: 'Das Modell unterstützt „{parameter}“ nicht, das diese Aufgabe braucht.',
-      reasoning_mandatory: 'Das Modell erfordert Reasoning; für diese Aufgabe ist Reasoning deaktiviert.',
+      missing_parameter: 'Das Modell unterstützt „{parameter}“ nicht, das diese Funktion braucht.',
+      reasoning_mandatory: 'Das Modell erfordert Reasoning; für diese Funktion ist Reasoning deaktiviert.',
     },
   },
   byok: {
@@ -479,7 +479,7 @@ export const organization: typeof en.organization = {
       'Research-Traffic läuft über Ihren Schlüssel und wird über Ihr Provider-Konto abgerechnet. Die Modellauswahl zeigt die Modelle Ihres Providers.',
     modePlatformHint:
       'Research-Traffic läuft über den Piloti-Plattform-Service. Ihr Schlüssel bleibt sicher gespeichert und kann jederzeit wieder aktiviert werden.',
-    modeByokSet: 'Auf eigenen Schlüssel umgestellt — neue Unterhaltungen nutzen ihn innerhalb einer Minute.',
+    modeByokSet: 'Auf eigenen Schlüssel umgestellt — neue Chats nutzen ihn innerhalb einer Minute.',
     modePlatformSet: 'Auf den Piloti-Plattform-Service umgestellt — Ihr Schlüssel bleibt gespeichert, wird aber nicht verwendet.',
     modeError: 'Der Provider-Modus konnte nicht geändert werden.',
     keyLabel: 'Schlüssel',
@@ -510,7 +510,7 @@ export const organization: typeof en.organization = {
     connect: 'Prüfen & verbinden',
     rotate: 'Prüfen & rotieren',
     saving: 'Wird geprüft…',
-    connected: 'Organisationsschlüssel verbunden — neue Unterhaltungen nutzen ihn sofort.',
+    connected: 'Organisationsschlüssel verbunden — neue Chats nutzen ihn sofort.',
     rotated: 'Schlüssel rotiert — der vorherige Schlüssel wurde widerrufen.',
     saveError: 'Der Schlüssel konnte nicht gespeichert werden.',
     verify: 'Prüfen',
@@ -713,5 +713,33 @@ export const organization: typeof en.organization = {
     deleteError: 'Die Datei konnte nicht gelöscht werden. Bitte versuchen Sie es erneut.',
     deleteErrorSession: 'Einen Chat-Anhang können nur Personen löschen, die an diesem Chat beteiligt sind.',
     loadError: 'Die Quarantäne konnte gerade nicht geladen werden.',
+  },
+  /** What Piloti learned about the office's conventions, to confirm or decline (ADR-0129). */
+  officeConventions: {
+    title: 'Was Piloti über das Büro gelernt hat',
+    description: 'Konventionen, die Piloti in Ihren Projekten gezählt hat. Bestätigen Sie, was stimmt, und lehnen Sie ab, was nicht stimmt: Piloti verwendet eine abgelehnte Zeile nie und behält eine bestätigte immer.',
+    confirm: 'Bestätigen',
+    decline: 'Ablehnen',
+    undo: 'Zurücknehmen',
+    confirmed: 'Bestätigt',
+    declined: 'Abgelehnt',
+    support: 'In {projects} von {of} Projekten zu sehen',
+    supportWhenConfirmed: 'Von Ihnen bestätigt; bei der Bestätigung in {projects} von {of} Projekten zu sehen',
+    empty: 'Noch nichts gelernt. Piloti braucht dieselbe Gewohnheit in mindestens drei Ihrer Projekte.',
+    off: 'Piloti lernt die Konventionen des Büros in dieser Installation noch nicht.',
+    loadError: 'Die Konventionen konnten nicht geladen werden.',
+    saveError: 'Ihre Entscheidung konnte nicht gespeichert werden. Bitte versuchen Sie es erneut.',
+    line: {
+      filing: '{docType} werden meist unter {path} abgelegt.',
+      folder: 'Die meisten Projekte führen den Ordner {path}.',
+      documentNumber: 'Plannummern haben meist die Form {shape} (A = Buchstaben, 0 = Ziffer).',
+      fileDate: 'Dateinamen schreiben ein Datum meist als {format}.',
+      revisionStyle: {
+        letter: 'Der Index ist meist ein Buchstabe (A, B, C).',
+        number: 'Der Index ist meist eine Zahl (1, 2, 3).',
+        padded_number: 'Der Index ist meist eine zweistellige Zahl (01, 02, 03).',
+        letter_number: 'Der Index ist meist Buchstabe und Zahl (A1, A2).',
+      },
+    },
   },
 }

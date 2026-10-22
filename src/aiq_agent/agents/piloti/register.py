@@ -215,6 +215,15 @@ class ResearchAgentConfig(FunctionBaseConfig, name="research_agent"):
             "workflow build rather than silently sending the schemas anyway."
         ),
     )
+    prefetch: bool = Field(
+        default=True,
+        description=(
+            "EVAL KNOB, not a product setting: false turns round 0's prefetched fetches off, so the "
+            "answer suite can measure the navigation tools (`list_files`, `read_passage`, exact search) "
+            "without a ranked search already in the model's first request (`suite.py --set files "
+            "--arm navigate`, ADR-0127). Production keeps the default."
+        ),
+    )
     envelope_json_mode_with_tools: bool = Field(
         default=False,
         description=(
@@ -596,7 +605,7 @@ async def _run_turn(deployment: _Deployment, state: ResearchAgentState) -> Resea
         llm_provider=llm_provider,
         tools=turn_tools,
         disabled_sources=disabled_sources,
-        prefetch=_turn_prefetch(decisions, facts, state),
+        prefetch=_turn_prefetch(decisions, facts, state, enabled=config.prefetch),
     )
     if runtime is not None:
         state.skills_block = _skills_block(runtime)
@@ -610,9 +619,11 @@ async def _run_turn(deployment: _Deployment, state: ResearchAgentState) -> Resea
     return result
 
 
-def _turn_prefetch(decisions: TurnDecisions, facts: TurnFacts | None, state: ResearchAgentState) -> tuple:
-    """Round 0's tool calls; none when the config switched the decision off."""
-    if facts is None:
+def _turn_prefetch(
+    decisions: TurnDecisions, facts: TurnFacts | None, state: ResearchAgentState, *, enabled: bool = True
+) -> tuple:
+    """Round 0's tool calls; none when the config switched the decision off, or the prefetch (``prefetch: false``)."""
+    if facts is None or not enabled:
         return ()
     calls = tuple(
         prefetch_calls(

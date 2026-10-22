@@ -37,10 +37,40 @@ class ContextBlocks:
     #: like this one), so the agent can look there unasked. None from an older
     #: BFF, or when the office has none.
     reference_projects: str | None = None
+    #: The WORKSPACE block (ADR-0123): who asks, where, and what is open now,
+    #: this conversation's proposals included. None from an older BFF.
+    workspace: str | None = None
 
 
 #: The catalog is a dozen short lines; anything longer is cut at a line.
 REFERENCE_PROJECTS_MAX_CHARS = 4000
+
+#: The block is a few header lines, at most eight proposals of a summary and an
+#: outcome of ~200 chars each (``MAX_WORKSPACE_PROPOSALS`` in
+#: ``lib/turn-context/workspace-block.ts``), and, last, at most seven lines of
+#: the office's conventions (``lib/office-conventions/render.ts``, ADR-0129),
+#: which a cut at a line drops first.
+WORKSPACE_MAX_CHARS = 6500
+
+#: The line that opens the office's conventions in the WORKSPACE block
+#: (``officeConventionsHeader`` in ``lib/office-conventions/render.ts``).
+OFFICE_CONVENTIONS_HEADER = "office conventions ("
+
+
+def office_convention_lines(workspace: str | None) -> int:
+    """How many convention lines the WORKSPACE block carries under its header; 0 without one. Pure.
+
+    Counts every ``- `` line after the header, which is right only while the BFF
+    renders the conventions LAST in the block (``renderWorkspaceBlock``); a
+    section added after them would be counted as conventions.
+    """
+    if not workspace:
+        return 0
+    lines = workspace.splitlines()
+    starts = [index for index, line in enumerate(lines) if line.startswith(OFFICE_CONVENTIONS_HEADER)]
+    if not starts:
+        return 0
+    return sum(1 for line in lines[starts[0] + 1 :] if line.startswith("- "))
 
 
 def _bounded_lines(value: str | None, max_chars: int) -> str | None:
@@ -103,6 +133,10 @@ def _parse_blocks(body: object) -> ContextBlocks:
         reference_projects=_bounded_lines(
             data.get("referenceProjects") if isinstance(data.get("referenceProjects"), str) else None,
             REFERENCE_PROJECTS_MAX_CHARS,
+        ),
+        workspace=_bounded_lines(
+            data.get("workspace") if isinstance(data.get("workspace"), str) else None,
+            WORKSPACE_MAX_CHARS,
         ),
     )
 

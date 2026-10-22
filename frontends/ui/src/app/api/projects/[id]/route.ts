@@ -3,19 +3,11 @@
  * Thin handlers; all logic lives in `@/lib/projects/service`.
  */
 
-import { z } from 'zod'
 import { apiRoute, parseJsonBody } from '@/lib/api/handler'
+import { deleteProjectSchema, renameProjectSchema } from '@/lib/projects/project-wire'
 import { deleteProject, getProject, updateProjectName } from '@/lib/projects/service'
 
 type Params = { id: string }
-
-const updateProjectSchema = z.object({
-  name: z.string().min(1).max(255).trim(),
-})
-
-const deleteProjectSchema = z.object({
-  confirmName: z.string().min(1),
-})
 
 export const GET = apiRoute<Params>(async ({ session, params }) => getProject(session, params.id), {
   authz: { enforcedBy: 'getProject (requireProjectAccess project:view)' },
@@ -23,7 +15,7 @@ export const GET = apiRoute<Params>(async ({ session, params }) => getProject(se
 
 export const PATCH = apiRoute<Params>(
   async ({ session, params, request }) => {
-    const { name } = await parseJsonBody(request, updateProjectSchema)
+    const { name } = await parseJsonBody(request, renameProjectSchema)
     return updateProjectName(session, params.id, name)
   },
   { authz: { enforcedBy: 'updateProjectName (requireProjectAccess project:manage)' } }

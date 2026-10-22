@@ -16,7 +16,7 @@
 
 import { chatEffortFromSettings } from '@/lib/reasoning-settings/catalog'
 import type { JSX } from 'react'
-import { Building2, FileDown, Globe, Mail, MessageSquareText, ShieldAlert, Users } from 'lucide-react'
+import { Building2, FileDown, GraduationCap, Globe, Mail, MessageSquareText, ShieldAlert, Users } from 'lucide-react'
 import { withPageSession } from '@/lib/auth/require-auth'
 import { isOrgAdmin } from '@/lib/authz/organizations'
 import {
@@ -26,6 +26,7 @@ import {
 } from '@/lib/organizations/service'
 import { getOrgInstructions } from '@/lib/org-instructions/service'
 import { retentionDaysFromSettings } from '@/lib/download-log/kinds'
+import { OfficeConventionsCard } from '@/features/organization/components/office-conventions-card'
 import { DownloadLogRetentionForm } from '@/features/organization/components/download-log-retention-form'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { EmptyState } from '@/components/ui/empty-state'
@@ -225,6 +226,18 @@ export default async function OrganizationOverviewPage(): Promise<JSX.Element> {
             </CardContent>
           </Card>
         )}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <GraduationCap className="size-4 text-muted-foreground" aria-hidden />
+              {t('officeConventions.title')}
+            </CardTitle>
+            <CardDescription>{t('officeConventions.description')}</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <OfficeConventionsCard />
+          </CardContent>
+        </Card>
       </div>
     )
   })

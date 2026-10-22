@@ -15,7 +15,8 @@
  * clicked. The services the handlers call then check access per document
  * exactly as they do for a request. `purge_binned_chunks` and
  * `placement_reingest` walk as the system, `project_intake_read` and
- * `filing_review` are one step as the uploader, and the other kinds are single
+ * `filing_review` are one step as the uploader, `revision_notice` one step as
+ * the person who made the Fassung, and the other kinds are single
  * steps run as the system
  * (see `./types.ts`).
  */
@@ -41,6 +42,8 @@ import { runFilingReviewSlice } from '@/lib/filing/job'
 import { endRunOfDepartedRequester, runRootSortSlice } from '@/lib/filing/root-sort-run'
 import { runInboxPush } from '@/lib/push/inbox-push-job'
 import { runDueRemindersSlice } from '@/lib/annotations/due-reminders'
+import { runDocumentCheckSlice } from '@/lib/document-check/job'
+import { runRevisionNotice } from '@/lib/revision-notice/job'
 import { isLastAttempt } from './attempts'
 import {
   annotationDueRemindersPayloadSchema,
@@ -58,6 +61,8 @@ import {
   reindexProjectPayloadSchema,
   reingestFailedPayloadSchema,
   restoreFolderBinPayloadSchema,
+  revisionNoticePayloadSchema,
+  documentCheckPayloadSchema,
   rootSortPayloadSchema,
   type BffJobKind,
   type JobAttempt,
@@ -191,4 +196,9 @@ export const JOB_HANDLERS: Record<BffJobKind, JobHandler> = {
     await runInboxPush(organizationId, payload, attempt)
   }),
   annotation_due_reminders: systemSliceHandler(annotationDueRemindersPayloadSchema, runDueRemindersSlice),
+  // Not `handler`: the payload names an actor, not a requester snapshot, and a
+  // person who left ends the notice quietly in `runRevisionNotice` itself.
+  revision_notice: systemHandler(revisionNoticePayloadSchema, runRevisionNotice),
+  // Sliced: start the turn, then wait for its answer; the person is resolved in each slice.
+  document_check: systemSliceHandler(documentCheckPayloadSchema, runDocumentCheckSlice),
 }

@@ -122,8 +122,8 @@ def disabled_source_notice(tool_name: str, disabled: Iterable[str]) -> str | Non
     meta = get_source(source_id)
     label = meta.name if meta else source_id.replace("_", " ").title()
     return (
-        f"Nicht ausgeführt: {label} ist für dieses Gespräch abgeschaltet. "
-        f"Antworte mit dem, was du bereits hast, und schreib im Text, dass {label} nicht konsultiert wurde."
+        f"Not executed: {label} is switched off for this conversation. "
+        f"Answer with what you already have, and state in the text that {label} was not consulted."
     )
 
 

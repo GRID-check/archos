@@ -29,7 +29,7 @@ We apply the published guidance:
 
 Tool retrieval pays off on catalogs of
 hundreds or thousands of tools ([RAG-MCP][rag-mcp], [Less is More][less-more],
-[Gorilla/BFCL][bfcl]). Piloti binds 28, past OpenAI's line of 20 since the canvas group (§2). Of a 33.4k-token research call,
+[Gorilla/BFCL][bfcl]). Piloti binds 32, past OpenAI's line of 20 since the canvas group (§2). Of a 33.4k-token research call,
 26.1k are a cached prefix, and tool execution is 1.3 s of a 31.3 s median turn
 ([turns audit](turns-per-answer-audit-2026-09.md),
 [turn latency](turn-latency-measured-2026-09.md) §2). Seconds follow rounds and
@@ -40,7 +40,7 @@ model to do next.
 
 ## 2. The surface today
 
-A project turn binds 28 tools, about 17.3k tokens (the canvas group replaced
+A project turn binds 32 tools, about 17.9k tokens (the workspace group added four, 635; the canvas group replaced
 the one `document_annotations` tool, 940 tokens, with seven, 1,625; parity with
 a person, 2026-10-13, added `canvas__update` and `canvas__delete` and `mark`'s
 `open`, +502, to nine and 2,127). Tool schemas were 38 % of a
@@ -50,17 +50,18 @@ research call's input ([turns audit](turns-per-answer-audit-2026-09.md)).
 |---|---|---|---|
 | `ifc_measure` | Runs IfcOpenShell/OCCT over the model's bytes: areas, heights, clearances | 6,350 | `src/aiq_agent/tools/bim/measure_register.py` |
 | `ifc_query` | Reads the extracted IFC index | 2,300 | `src/aiq_agent/tools/bim/register.py` |
-| `knowledge_search` | Ranked search; `match="exact"` is Ctrl+F across the files | 1,300 | `sources/knowledge_layer/src/register.py` |
+| `knowledge_search` | Ranked search; `match="exact"` is Ctrl+F across the files, `match="regex"` is grep (Python syntax, case-insensitive, needs a literal word or `folder`/`file_name`/`doc_class`, refused when it backtracks), `context=0..3` adds lines around each hit, and a scan that hits its 500-passage limit says its counts are lower bounds with a per-file upper bound from one Qdrant facet; `stemmed=true` (exact only) adds the inflected forms through a German-stemmed full-text index on a second text field (`text_stem`), the literal matches kept. `group_by="document"` (ranked only) returns one entry per document keyed by `grid_document_id`: its best passage, and a trailer table of passages in the ranked pool and pages, grouped client-side because a fused query cannot be grouped by Qdrant. For an organization with the `folder-cards` flag, one dense query over the folder card points (`kind=folder`) prints up to three `Folder:` lines after the passages, never a citation | 1,450 | `sources/knowledge_layer/src/register.py` |
 | `ris_lookup` | Austrian law by citation | 760 | `sources/ris_adapter/src/lookup/tool.py` |
-| `read_passage` | Opens one Punkt, page or outline, ≤12 chunks | 730 | `sources/knowledge_layer/src/read_passage.py` |
-| `list_files` | Browse: folder, name, Dokumentart, date, paged, uncapped; opens with the selection's document types (`Dokumentarten (von Piloti zugeordnet): …`) and closes by saying unreadable files are not listed (they are in `documents_unreadable:`). `revisions_of=<file name>` returns one document's chain of Fassungen instead, and with `compare_to=` what changed between two of them | 770 | `sources/knowledge_layer/src/browse.py` |
+| `read_passage` | Opens one Punkt, page, page range (`pages="4-6"`, ≤30 pages, ~6k tokens, `cursor` to continue) or outline | 730 | `sources/knowledge_layer/src/read_passage.py` |
+| `list_files` | Browse: folder, name, Dokumentart, date, paged, uncapped; opens with the selection's document types (`Dokumentart (assigned by Piloti): …`); output labels are English, domain words (Dokumentart, Fassung, Plankopf) and file names stay. `view="tree"` (`depth` 1-4) returns a tier-0 card per folder instead (direct and subtree counts, Dokumentart mix, pages, dates, current Fassung per series), bounded at 30 cards, and rows show page counts when stored and closes by saying unreadable files are not listed (they are in `documents_unreadable:`). `revisions_of=<file name>` returns one document's chain of Fassungen instead, and with `compare_to=` what changed between two of them | 770 | `sources/knowledge_layer/src/browse.py` |
 | `surface_documents` | Shows a file or a 1–3 thumbnail choice | 510 | `src/aiq_agent/cards/surface_documents.py` |
 | `ask_user` | Blocking multiple-choice question | 490 | `src/aiq_agent/agents/piloti/ask_user.py` |
 | `remember` | Project memory capture | 420 | `src/aiq_agent/memory/register.py` |
 | `create_task` | Delegates work as a task | 400 | `src/aiq_agent/tools/tasks/register.py` |
 | `propose_file_change` | Move, rename, create folder, assign; proposes only | 390 | `src/aiq_agent/tools/files/register.py` |
-| `canvas__look`, `canvas__room`, `canvas__point`, `canvas__highlight`, `canvas__marks`, `canvas__mark`, `canvas__update`, `canvas__delete`, `canvas__reply` | The review canvas, one NAT function group: look at a page or a box on it, who is in the document and where, point and highlight for everyone, read Anmerkungen, propose one (a person takes it over) or, with `open=true`, set one the person asked for, change one (status, assignee, date, kind, text, with a required `note` posted in its thread) or delete one when the person asks, answer in a thread. Each takes an optional `document`; the default is the document open on the canvas, then the conversation's subject | 217 / 161 / 184 / 216 / 140 / 578 / 303 / 141 / 187 (2,127) | `src/aiq_agent/tools/canvas/register.py` |
-| `view_knowledge_image` | Shows a page or figure to the model | 300 | `sources/knowledge_layer/src/view_image.py` |
+| `canvas__room`, `canvas__point`, `canvas__highlight`, `canvas__marks`, `canvas__mark`, `canvas__update`, `canvas__delete`, `canvas__reply` | The review canvas, one NAT function group (looking is `look`, below): who is in the document and where, point and highlight for everyone, read Anmerkungen, propose one (a person takes it over) or, with `open=true`, set one the person asked for, change one (status, assignee, date, kind, text, with a required `note` posted in its thread) or delete one when the person asks, answer in a thread. Each takes an optional `document`; the default is the document open on the canvas, then the conversation's subject | 217 / 161 / 184 / 216 / 140 / 578 / 303 / 141 / 187 (2,127) | `src/aiq_agent/tools/canvas/register.py` |
+| `workspace__search`, `workspace__describe`, `workspace__call`, `workspace__report_missing` | Piloti as a client of its own MCP server (ADR-0122), the same four meta-tools an external agent gets in `search` mode: find an operation, read its schema, call it as the asker (a write comes back as a proposal), or report a missing operation. Four tools instead of the hundreds of operations behind them. Each call echoes the turn's envelope. English since October 2026, like everything an agent reads | ~200 / ~120 / ~160 / ~105 (~585, estimated from length after the English rewrite, not re-measured) | `src/aiq_agent/tools/workspace/register.py` |
+| `look` | Shows a page, a region of it or an embedded image to the model, in every context (ADR-0128) | 300 | `src/aiq_agent/tools/look/register.py` (renderer `sources/knowledge_layer/src/view_image.py`) |
 | `ls`, `read_file`, `write_file`, `edit_file` | Draft working directory (DeepAgents stock) | 131 / 226 / 244 / 312 | `src/aiq_agent/tools/documents/tools.py` |
 | `file_draft` | Files a draft; `submit=True` sends it for review | 190 | `src/aiq_agent/tools/documents/register.py` |
 | `use_skill` | Loads a skill body | 60 | `src/aiq_agent/skills/runtime.py` |
@@ -72,7 +73,7 @@ The `ifc_*` pair is 8.65k of the 17.3k (the turns audit measured ~8.2k).
 flowchart LR
   L[list_files<br/>what is there] --> S[knowledge_search<br/>where is it written]
   S --> R[read_passage<br/>read it]
-  R --> V[view_knowledge_image<br/>look at the page]
+  R --> V[look<br/>look at the page]
   R --> P[propose_file_change<br/>tidy, card only]
   R --> W[ls / read_file / write_file / edit_file<br/>draft]
   W --> F[file_draft<br/>file or submit]
@@ -98,6 +99,20 @@ server's `dryRun` is ([servers][mcp-fs]).
   filter (`_base_collection_filters`: no excluded edition, no cover page), so both
   modes cite the same passages (`sources/knowledge_layer/src/browse.py`). A store
   outage is reported as "the search did not run", never as "no match".
+  `match="regex"` is the same search over a person's pattern: Python syntax via the
+  `regex` package (it has the match timeout `re` lacks; 0.2 s per chunk, the first
+  overrun stops the search and says it is not a result), at most 300 characters,
+  never one that matches the empty string. The scan is narrowed on the server by the
+  literal words every match must hold (`qdrant/retrieval.user_literal_tokens`, which
+  prefers no word to a wrong one), so a pattern with no such word runs only inside a
+  `folder`, `file_name` or `doc_class`. A folder is pushed into the query as
+  `folder_ancestors` through `scope_filter`, as in the ranked search, not turned into
+  a file list. `context=0..3` prints the lines around every hit (at most 40 lines,
+  marked `>` on the hit) under the passages; it is an index, only the passages are
+  citable. When a collection's scan stops at 500 matching passages the table says
+  "at least" and adds one facet over `file_name` (`store.facet_counts`) under the same
+  word filter: per file, the passages that hold the words, an upper bound beside the
+  counted lower bound.
 - `list_files` replaces the 50-row prompt inventory as the way to see a
   project. It is uncapped and paged, facets by folder, name, `doc_class` and
   date, and lists in-flight files. It drops the shelves the turn did not ask for,
@@ -144,13 +159,13 @@ server's `dryRun` is ([servers][mcp-fs]).
   `list_files` covers discovery, and four tools over one index each spend a
   paragraph saying not to call the others ([hobble register](hobble-register-2026-09.md) row 13).
   The loss is the 1–3 thumbnail grid unless `list_files(show=true)` replaces it.
-- `view_knowledge_image` could become `read_passage(view="image")`. Effort M.
+- `look` could become `read_passage(view="image")`. Effort M.
 
 ## 4. What a person can do to a file and the agent cannot
 
 | Act | Person's route | Verdict | Effort |
 |---|---|---|---|
-| Read a page range or a whole short document | PDF viewer, `/api/documents/[id]/preview` | Build: `read_passage` stops at 12 chunks of ≤2,500 chars | M |
+| Read a page range or a whole short document | PDF viewer, `/api/documents/[id]/preview` | Page ranges: built (`read_passage(pages=…, cursor=…)`, ADR-0127). A whole short document: a range over all its pages | M |
 | Archive | `POST /api/documents/[id]/archive` | Propose, with a warning. No unarchive route exists and the chunks are purged, so undoing it means a re-ingest; bytes and versions stay (`frontends/ui/src/lib/documents/version-content.ts`). The card must say so. Product decision | S |
 | Rename, move or delete a folder | `PATCH`/`DELETE /api/projects/[id]/folders/[folderId]` | Propose. Delete re-files the folder's documents first | S |
 | Retag | `PATCH /api/documents/[id]/tags` | Propose | S |
@@ -176,7 +191,7 @@ LLM events for 30 days, so there is no per-tool usage or error rate.
 | 1 | Project-file eval fixture with `expect.tools` (`must`, `must_not`, `max_research_calls`) | 2 of 29 loop-eval rows are own-file, both skipped; `Run.tool_calls` is already recorded | `tests/fixtures/derivation/loop_eval_questions.yaml`, `scripts/turn_census/suite.py`, `frontends/benchmarks/oib_retrieval` | S–M | ~20 `pf-*` rows: pass rate, research calls, `status:repeat`/`width`/`budget` = 0 |
 | 2 | Bind `ifc_*` only when the project has a readable model | −8.2k tokens and a distractor; outside that scope both return "no model" | `src/aiq_agent/agents/piloti/register.py` (`_tools_in_scope`), BFF project context | S–M | Input tokens per call by scope; model questions in the answer suite; a model uploaded mid-conversation binds next turn |
 | 3 | Prefetch the IFC `briefing` in round 0 | `modell` prefetches nothing while the tool says "CALL 'briefing' FIRST"; a taught sequence is an incomplete contract ([ADR-0060](../adr/0060-three-instruction-layers-and-tools-that-answer.md)); OpenAI: combine sequential calls | `src/aiq_agent/agents/piloti/decisions.py`, `src/aiq_agent/tools/bim/measure_register.py` | S–M | Rounds on model questions |
-| 4 | Read page ranges, and whole documents under ~15–25k tokens | A printed page ≠ stored page cost two extra rounds; Claude Code `Read(pages)`; long context beats RAG when affordable ([Li et al.][li-2024], [contextual retrieval][a-cr]) | `sources/knowledge_layer/src/read_passage.py`, a per-page store at ingest | M | Rounds and truncation on outline and page rows |
+| 4 | Read page ranges (built: `pages`, `cursor`), and whole documents under ~15–25k tokens | A printed page ≠ stored page cost two extra rounds; Claude Code `Read(pages)`; long context beats RAG when affordable ([Li et al.][li-2024], [contextual retrieval][a-cr]) | `sources/knowledge_layer/src/read_passage.py`, a per-page store at ingest | M | Rounds and truncation on outline and page rows |
 | 5 | Truncation notes that name the next call | Grounding hits end in a bare `[truncated]` (`src/aiq_agent/common/grounding_block.py`), BIM lists say "N weitere" (`src/aiq_agent/tools/bim/rendering.py`); `list_files` already names `offset=` | those two, `sources/ris_adapter/src/lookup/grammar.py` | S | Re-fetches of the same document per turn |
 | 6 | Count argument rejections per tool, then `Literal` enums for fixed-value parameters | `is_argument_rejection` only sets a log level (`src/aiq_agent/common/callbacks.py`); NAT drops `Args:`; OpenAI: enums | `src/aiq_agent/common/callbacks.py`, tool input models | S, then M | `status:tool_rejected:<tool>`; schema work above ~2 % |
 | 7 | New `propose_file_change` operations: folder rename/move/delete, retag, archive with warning. **PD** for archive | Routes exist (§4); the BFF stays the single writer | `src/aiq_agent/tools/files/`, UI card executor | S each | Card accept rate; tidy-up fixture rows |
@@ -187,7 +202,7 @@ LLM events for 30 days, so there is no per-tool usage or error rate.
 | 12 | `compare_versions` | Every version's bytes are kept ([ADR-0054](../adr/0054-document-versions-and-the-publish-door.md)); [Bluebeam][bluebeam] overlay is the reference | new tool over `/versions/diff` | L | Planted changes in a two-revision fixture |
 | 13 | `open_document` with native PDF input | Tool outputs may carry `input_file` ([Responses tool calling][or-resp-tools]); gate on the model's `file` modality and pin `engine: native`, because the `mistral-ocr` fallback bills OpenRouter's key (bypasses BYOK) and ZDR does not cover plugins ([PDF][or-pdf], [ZDR][or-zdr]) | `sources/knowledge_layer/src/view_image.py` | M | Tokens per page against 3,896 rendered; the `EI2 30-C` scan |
 | 14 | Contextual chunk headers | −35 % top-20 failures, −49 % with BM25 ([contextual retrieval][a-cr]); only `file_name` and `page_label` reach the embedded text | `sources/knowledge_layer/src/llamaindex/section_chunking.py` | S | Dense and lexical arms on fixture qrels |
-| 15 | German compound splitting | `Fluchtwegbreiten` is unreachable from `Fluchtweg` (`src/aiq_agent/common/german_text.py`); [Braschler & Ripplinger][braschler]; [Postgres Hunspell][pg-dict] | `src/aiq_agent/common/german_text.py`, the `tsv` config | M | Lexical recall@k |
+| 15 | German compound splitting. Inflection is done: `knowledge_search(match="exact", stemmed=true)` matches `Fluchtwegbreite` and `Fluchtwegbreiten` both ways through a Snowball German index ([ADR-0127](../adr/0127-search-finds-list-orients-read-reads.md)); a compound part still is not | `Fluchtwegbreiten` is unreachable from `Fluchtweg` (`src/aiq_agent/common/german_text.py`); [Braschler & Ripplinger][braschler]; [Postgres Hunspell][pg-dict] | `src/aiq_agent/common/german_text.py`, the `tsv` config | M | Lexical recall@k |
 | 16 | EU in-region routing. **PD** (plan tier) | No provider-region constraint today (`docs/compliance/external-dependencies.md`); needs Business/Enterprise; web search unavailable there ([IRR][or-irr]) | model picker, org settings | S–M | Latency; override models that drop out |
 | 17 | `cache_control` for Claude and Gemini overrides | A Claude override re-sends its prefix uncached 3–6 times per turn ([prompt caching][or-cache]) | `src/aiq_agent/common/prompt_caching.py` | S | `cached_tokens` per model family |
 | 18 | Provider metadata in traces | `X-OpenRouter-Metadata` returns routing decisions ([router metadata][or-meta]); rows 8 and 17 need it | LLM client headers | S | Provider and fallback per call |
@@ -257,6 +272,53 @@ External:
 - AEC: [Autodesk AI][adsk], [AU2026](https://architosh.com/2026/09/au2026-autodesk-expands-forma-and-leverages-ai/), [Bluebeam Smart Overlay][bluebeam], [Procore](https://www.enr.com/articles/63042-procore-releases-new-ai-agients-after-datagrid-integration), [Procore Agent Builder](https://v2.support.procore.com/product-manuals/agent-builder-project), [Trunk Tools](https://trunktools.com/product/), [Document Crunch](https://www.documentcrunch.com/crunch-ai)
 - Research: [RAG-MCP][rag-mcp], [Less is More][less-more], [Trace-Free+](https://arxiv.org/abs/2602.20426), [CE-MCP security][ce-mcp], [BFCL][bfcl], [Li et al. 2024, RAG vs. long context][li-2024], [AEC layout benchmark][aec-layout], [ColPali](https://arxiv.org/abs/2407.01449), [Braschler & Ripplinger 2004][braschler], [Postgres dictionaries][pg-dict]
 - OpenRouter: [changelog](https://openrouter.ai/docs/changelog), [Responses](https://openrouter.ai/docs/api_reference/responses/overview), [reasoning](https://openrouter.ai/docs/guides/best-practices/reasoning-tokens), [tool calling](https://openrouter.ai/docs/guides/features/tool-calling), [tool search][or-ts], [server tools](https://openrouter.ai/docs/guides/features/server-tools), [Responses tool calling][or-resp-tools], [PDF inputs][or-pdf], [ZDR][or-zdr], [in-region routing][or-irr], [prompt caching][or-cache], [router metadata][or-meta], [Auto Exacto](https://openrouter.ai/docs/guides/routing/auto-exacto), [Exacto](https://openrouter.ai/docs/guides/routing/model-variants/exacto), [embeddings](https://openrouter.ai/docs/api_reference/embeddings), [web search](https://openrouter.ai/docs/guides/features/server-tools/web-search), [response healing](https://openrouter.ai/docs/guides/features/plugins/response-healing)
+
+## These read tools are also served over MCP
+
+Added 2026-10-21 (ADR-0122, everything a person can do an agent can do). Piloti's
+MCP server (`/api/mcp`) offers the BFF's operations, and these seven reads of
+the agent beside them, so Claude, Cursor or ChatGPT search the office's
+documents with the tool Piloti searches with.
+
+| MCP operation | Tool the chat model sees | Needs |
+|---|---|---|
+| `knowledge-search` | `knowledge_search` | `projectId` |
+| `passage-read` | `read_passage` | `projectId` |
+| `files-list` | `list_files` | `projectId` |
+| `document-look` | `look` | `projectId` |
+| `ifc-query` | `ifc_query` | `projectId` |
+| `ifc-measure` | `ifc_measure` | `projectId` |
+| `law-lookup` | `ris_lookup_tool` | nothing |
+
+- **One description.** The MCP description and input schema are the ones in this
+  document, generated from the functions into
+  `frontends/ui/tests/fixtures/backend-tools.schema.json`
+  (`uv run python scripts/generate_backend_tools_schema.py`).
+  `tests/aiq_agent/common/test_backend_tools_schema.py` fails when it is stale,
+  so changing a description here and not regenerating shows an outside agent a
+  tool that no longer exists. An MCP client reads the same words the model does,
+  and the token costs in §2 are its costs too.
+- **The path.** `lib/agent-api/backend-operations.ts` builds the call: it checks
+  the person may chat in the project, resolves the turn context and collection
+  scope exactly as a chat turn does (`resolveTurnContext`), signs the request-
+  context envelope, and posts `{ arguments }` to the `api` role's
+  `POST /v1/internal/tools/{name}` with the internal token. The route verifies
+  the envelope (signed, naming a user and an organization, current), lays it
+  where the tools read a turn's headers, and runs the named function from the
+  built workflow. It never signs (ADR-0108). The BFF is the signer, the backend
+  the echo.
+- **Reads only.** The allowlist is `BACKEND_READ_TOOLS`
+  (`src/aiq_agent/common/backend_tools.py`); any other name is a 404 before the
+  workflow is asked. A write stays a BFF route, and Piloti's own writes stay
+  proposals. A tool added to the allowlist promises that it only reads and that
+  everything it reads is scoped by the envelope.
+- **No conversation.** A call has none, so the session shelf and the
+  restricted-folder collections (ADR-0087, interactive chat only) are not in
+  scope; what an outside agent searches is the project, the office shelf and the
+  base corpus the person is cleared for.
+- **Not traced as a turn.** The call runs outside a NAT session, so it has no
+  turn span. The model calls inside a tool (embeddings, the summary model) are
+  still generations as everywhere else.
 
 ## What the agent knows about files it cannot read, and about folders
 

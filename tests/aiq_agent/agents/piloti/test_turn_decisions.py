@@ -46,6 +46,12 @@ class TestWhatIsAsked:
         assert "referenz" not in without["corpus"]["criteria"]
         assert "referenz" in with_catalog["corpus"]["criteria"]
 
+    def test_a_file_name_the_inventory_lists_needs_no_evidence(self):
+        """The inventory answers the name, folder or number of a file: no prefetch for it."""
+        criteria = questions_for(_facts("In welchem Ordner liegt der Schnitt?"))["needs_evidence"]["criteria"]
+        assert "name, folder or number of a file the inventory lists" in criteria["false"]
+        assert "value, a class" in criteria["true"]
+
     def test_one_question_per_family_and_per_card_beside_the_fixed_ones(self):
         questions = questions_for(_facts("Wie lang darf der Fluchtweg sein?"))
         assert set(questions) == {

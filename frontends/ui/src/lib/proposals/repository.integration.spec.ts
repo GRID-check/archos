@@ -26,7 +26,11 @@
  *   - a Büroablage proposal (0146) has no project and moves only Büroablage
  *     documents; its organization lists it on its shelf, another organization
  *     sees none of it, and Piloti's withdrawal deletes an open one and never a
- *     decided one.
+ *     decided one;
+ *   - an organization-scoped proposal (0176) has no project, is an `operation`
+ *     and nothing else, and is listed on its own shelf; one open operation
+ *     call is one proposal per conversation and person (0178), however it is
+ *     spelled and however many run at once, and a decided one frees the call.
  *
  * `task db:test:rls` (scripts/rls-test-db.sh) runs it with the other suites.
  */
@@ -399,6 +403,115 @@ describe.skipIf(!url)('proposed changes against live Postgres', () => {
       await repo.dismissProposedChange(ORG, decided.id, USER, stale())
       expect(await repo.deleteUndecidedProposedChange(ORG, decided.id, stale())).toBe(false)
       expect(await repo.findProposedChange(ORG, decided.id)).toMatchObject({ status: 'dismissed' })
+    })
+  })
+
+  describe('the organization and one open call (0176)', () => {
+    const call = (input: unknown, operation = 'organization-memory-create') => ({
+      operation,
+      input,
+      summary: 'Add a note to the office’s memory',
+    })
+    const operationProposal = (
+      payload: ReturnType<typeof call>,
+      extra: Partial<import('./repository').NewProposedChange> = {}
+    ) =>
+      inOrg(extra.organizationId ?? ORG, () =>
+        repo.insertProposedChange({
+          organizationId: ORG,
+          projectId: null,
+          scope: 'organization',
+          kind: 'operation',
+          payload,
+          proposedByKind: 'piloti',
+          onBehalfOf: USER,
+          originConversationId: ids.conversation,
+          originMessageId: null,
+          ...extra,
+        })
+      )
+
+    it('stores an operation with no project, lists it on its own shelf, and shows another organization none of it', async () => {
+      const { row } = await operationProposal(call({ body: { content: 'Wir bauen in Holz.' } }))
+      expect(row).toMatchObject({ projectId: null, scope: 'organization', kind: 'operation' })
+      const shelf = await repo.listShelfProposals(ORG, { scope: 'organization' }, { statuses: ['proposed'], limit: 50 })
+      expect(shelf.map((entry) => entry.id)).toContain(row.id)
+      const office = await repo.listShelfProposals(ORG, { scope: 'office_shelf' }, { statuses: ['proposed'], limit: 50 })
+      expect(office.map((entry) => entry.id)).not.toContain(row.id)
+      expect(await repo.findProposedChange(OTHER_ORG, row.id)).toBeNull()
+    })
+
+    it('refuses an organization-scoped proposal of any other kind, and one that names a project', async () => {
+      const note = { scope: 'project', kind: 'decision', content: 'x', confidence: 'high' }
+      await expect(propose({ projectId: null, scope: 'organization', kind: 'memory', payload: note })).rejects.toThrow()
+      await expect(
+        propose({ projectId: null, scope: 'organization', kind: 'file_operation', payload: PAYLOAD })
+      ).rejects.toThrow()
+      await expect(
+        operationProposal(call({ body: { content: 'x1' } }), { projectId: ids.project })
+      ).rejects.toThrow()
+    })
+
+    it('returns the open proposal for the same call, however the input is spelled', async () => {
+      const first = await operationProposal(call({ params: { id: 'a' }, body: { name: 'Pläne', note: 'x' } }))
+      expect(first.created).toBe(true)
+      // The same call with its keys in another order: jsonb has one spelling per value.
+      const again = await operationProposal(call({ body: { note: 'x', name: 'Pläne' }, params: { id: 'a' } }))
+      expect(again).toMatchObject({ created: false, row: { id: first.row.id } })
+      expect(await inOrg(ORG, () => repo.findOpenOperationProposal(ORG, ids.conversation, USER, call({
+        body: { name: 'Pläne', note: 'x' },
+        params: { id: 'a' },
+      })))).toMatchObject({ id: first.row.id })
+    })
+
+    it('makes one of two identical calls running at once', async () => {
+      const results = await Promise.all(
+        [1, 2, 3].map(() => operationProposal(call({ body: { content: 'gleichzeitig' } })))
+      )
+      expect(new Set(results.map((result) => result.row.id)).size).toBe(1)
+      expect(results.filter((result) => result.created)).toHaveLength(1)
+    })
+
+    it('keeps another input, another operation and another conversation apart', async () => {
+      const base = await operationProposal(call({ body: { content: 'eins' } }))
+      const otherInput = await operationProposal(call({ body: { content: 'zwei' } }))
+      const otherOperation = await operationProposal(call({ body: { content: 'eins' } }, 'skill-create'))
+      const otherConversation = await operationProposal(call({ body: { content: 'eins' } }), {
+        projectId: ids.project,
+        scope: 'project',
+        originConversationId: await conversation(ORG, `${ids.conversation}_second`, ids.project),
+      })
+      expect(
+        new Set([base, otherInput, otherOperation, otherConversation].map((result) => result.row.id)).size
+      ).toBe(4)
+    })
+
+    it('keeps the same call for another person apart: B’s call is never folded into A’s card (0178)', async () => {
+      const mine = await operationProposal(call({ body: { content: 'zu zweit' } }))
+      const theirs = await operationProposal(call({ body: { content: 'zu zweit' } }), { onBehalfOf: OTHER_USER })
+      expect(theirs).toMatchObject({ created: true, row: { onBehalfOf: OTHER_USER } })
+      expect(theirs.row.id).not.toBe(mine.row.id)
+      const again = await operationProposal(call({ body: { content: 'zu zweit' } }), { onBehalfOf: OTHER_USER })
+      expect(again).toMatchObject({ created: false, row: { id: theirs.row.id } })
+      expect(
+        await inOrg(ORG, () =>
+          repo.findOpenOperationProposal(ORG, ids.conversation, OTHER_USER, call({ body: { content: 'zu zweit' } }))
+        )
+      ).toMatchObject({ id: theirs.row.id })
+    })
+
+    it('frees the call once the proposal is decided', async () => {
+      const first = await operationProposal(call({ body: { content: 'später' } }))
+      await inOrg(ORG, () => repo.dismissProposedChange(ORG, first.row.id, USER, stale()))
+      const second = await operationProposal(call({ body: { content: 'später' } }))
+      expect(second).toMatchObject({ created: true })
+      expect(second.row.id).not.toBe(first.row.id)
+    })
+
+    it('does not dedupe a proposal made in no conversation', async () => {
+      const a = await operationProposal(call({ body: { content: 'ohne Chat' } }), { originConversationId: null })
+      const b = await operationProposal(call({ body: { content: 'ohne Chat' } }), { originConversationId: null })
+      expect([a.created, b.created]).toEqual([true, true])
     })
   })
 })

@@ -43,12 +43,21 @@ describe('the registry', () => {
     const entitlements = REGISTRY_FLAG_SLUGS.filter((slug) => FLAG_KINDS[slug] === 'entitlement').sort()
     expect(entitlements).toEqual(
       [
+        'agent-mcp',
+        'agent-mcp-access',
+        'agent-mcp-controls',
+        'agent-mcp-secrets',
         'byok-llm',
         'collaboration',
         'deep-research',
+        'folder-cards',
         'mail-import',
+        'office-conventions',
         'piloti-acts',
+        'piloti-ask',
+        'piloti-notices',
         'piloti-wakes',
+        'platform-agent-mcp',
         'runtime-model-config',
         'skills',
         'task-automation',

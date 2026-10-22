@@ -1055,6 +1055,38 @@ try:
                 logger.debug("Failed to stamp the prompt link onto a span", exc_info=True)
             return item
 
+    class InlineImageRedactionProcessor(Processor[Span, Span]):
+        """Replace every inline image in a span's attributes with its size and hash.
+
+        A tool result that carries a page crop (``view_image``'s ``image_url``
+        block) is copied into the tool span's ``output.value`` and into the
+        next chat generation's ``input.value``. Neither the operator's
+        redaction policy nor Langfuse's size limit is a reason to let a
+        customer's drawing travel to the trace store, so the pixels go on
+        every span, ahead of everything else, and always: a size and an eight
+        character hash say that an image was sent and which one.
+
+        Every string attribute, and every list of strings, is scanned, not only ``input.value``,
+        ``output.value`` and ``nat.metadata``, so a new place a payload is
+        copied to is covered without anyone remembering it. Never raises.
+        """
+
+        async def process(self, item: Span) -> Span:
+            try:
+                from aiq_agent.common.image_redaction import redact_inline_images
+
+                for key, value in list((item.attributes or {}).items()):
+                    if isinstance(value, str) and "data:image" in value:
+                        item.attributes[key] = redact_inline_images(value)
+                    elif isinstance(value, list | tuple) and any(
+                        isinstance(entry, str) and "data:image" in entry for entry in value
+                    ):
+                        # A sequence-valued attribute (OpenTelemetry allows lists of strings).
+                        item.attributes[key] = type(value)(redact_inline_images(list(value)))
+            except Exception:
+                logger.debug("Failed to redact inline images from a span", exc_info=True)
+            return item
+
 except Exception:  # pragma: no cover - exercised only without the NAT extras
     # Mirrors the import guards in `otel_header_redaction_exporter.py`: the
     # pure mapping above stays importable (and testable) even where the NAT
@@ -1064,3 +1096,4 @@ except Exception:  # pragma: no cover - exercised only without the NAT extras
     UsageAttributeProcessor = None  # type: ignore[assignment,misc]
     PromptLinkProcessor = None  # type: ignore[assignment,misc]
     UserIdentityStripProcessor = None  # type: ignore[assignment,misc]
+    InlineImageRedactionProcessor = None  # type: ignore[assignment,misc]

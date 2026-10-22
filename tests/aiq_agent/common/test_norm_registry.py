@@ -286,23 +286,23 @@ class TestRenderPromptBlock:
     def test_federal_lane_and_all_states_without_federal_state(self):
         block = nr.render_prompt_block(_render_registry(), federal_state=None)
 
-        assert "Bundesrecht:" in block
+        assert "Federal law (Bundesrecht):" in block
         assert "ASchG" in block
-        assert "Landesrecht — Wien:" in block
-        assert "Landesrecht — Tirol:" in block
-        assert "OIB-Korpus" in block  # static corpus pointer always present
+        assert "State law (Landesrecht) — Wien:" in block
+        assert "State law (Landesrecht) — Tirol:" in block
+        assert "OIB corpus" in block  # static corpus pointer always present
 
     def test_focused_state_drops_other_states(self):
         block = nr.render_prompt_block(_render_registry(), federal_state="Wien")
 
-        assert "Bundesrecht:" in block
-        assert "Landesrecht — Wien:" in block
+        assert "Federal law (Bundesrecht):" in block
+        assert "State law (Landesrecht) — Wien:" in block
         assert "Tirol" not in block  # other state's law entirely absent
 
     def test_binding_note_rendered(self):
         block = nr.render_prompt_block(_render_registry(), federal_state="Wien")
 
-        assert "Rechtliche Hinweise (kuratiert):" in block
+        assert "Legal notes (curated):" in block
         assert "Macht die OIB-Richtlinien in Wien verbindlich." in block
 
     def test_render_block_for_prompt_none_when_missing(self, tmp_path):
@@ -604,8 +604,8 @@ class TestNonRisEntries:
         registry = nr.load_registry(self._write(tmp_path, [self._base()]))
         assert registry is not None and registry.entries[0].id == "ma37"
         block = nr.render_prompt_block(registry, federal_state="Wien")
-        assert "Behördliche Informationen" in block
-        assert "Quelle: https://www.wien.gv.at/x" in block
+        assert "Authority information" in block
+        assert "Source: https://www.wien.gv.at/x" in block
 
     def test_entry_with_both_urls_renders_both(self, tmp_path):
         # Regression: an entry carrying a consolidated-law link AND a curated
@@ -614,15 +614,15 @@ class TestNonRisEntries:
         entry = self._base(full_law_url="https://www.ris.bka.gv.at/GeltendeFassung/x")
         registry = nr.load_registry(self._write(tmp_path, [entry]))
         block = nr.render_prompt_block(registry, federal_state="Wien")
-        assert "Gesamt: https://www.ris.bka.gv.at/GeltendeFassung/x" in block
-        assert "Quelle: https://www.wien.gv.at/x" in block
+        assert "Full text: https://www.ris.bka.gv.at/GeltendeFassung/x" in block
+        assert "Source: https://www.wien.gv.at/x" in block
 
     def test_norm_extern_stub_renders_kein_volltext(self, tmp_path):
         stub = self._base(id="oenorm", rank="external_standard", federal_state="", source_url="")
         registry = nr.load_registry(self._write(tmp_path, [stub]))
         block = nr.render_prompt_block(registry)
-        assert "Externe Normen" in block
-        assert "kein Volltext verfügbar" in block
+        assert "External standards" in block
+        assert "no full text available" in block
 
     def test_law_rank_without_ris_pointer_is_dropped(self, tmp_path):
         bad = self._base(id="bad-law", rank="state_law")
@@ -658,7 +658,7 @@ class TestParcelNote:
         assert "Bebauungsplan: bplan_7602.pdf" in note
         assert "Flächenwidmungsplan: fwp_wien.pdf" in note
         # The heading names what these documents govern; that is the whole claim.
-        assert "maßgeblich für Widmung, Bauklasse, Gebäudehöhe, Fluchtlinien" in note
+        assert "authoritative for zoning, building class, building height, building lines" in note
         assert "gutachten.pdf" not in note
 
     def test_the_note_is_the_file_list_and_not_the_doctrine(self):

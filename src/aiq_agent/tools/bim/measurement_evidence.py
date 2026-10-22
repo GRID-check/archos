@@ -53,9 +53,9 @@ def measurement_evidence_line(count: int) -> str:
     measured nothing has to say so, both to the reader and to the gate.
     """
     if count <= 0:
-        return f"{MEASUREMENT_EVIDENCE_PREFIX} 0 — keine Angabe mit Herkunft deklariert oder gemessen."
-    noun = "Messwert" if count == 1 else "Messwerte"
-    return f"{MEASUREMENT_EVIDENCE_PREFIX} {count} {noun} mit Herkunft deklariert oder gemessen."
+        return f"{MEASUREMENT_EVIDENCE_PREFIX} 0 — no value with provenance declared or measured."
+    noun = "value" if count == 1 else "values"
+    return f"{MEASUREMENT_EVIDENCE_PREFIX} {count} {noun} with provenance declared or measured."
 
 
 def result_carries_measurement(content: str) -> bool:

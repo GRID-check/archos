@@ -291,8 +291,11 @@ export const SURFACE_EXCLUDED_LEAVES: ReadonlySet<string> = new Set([
   'document_draft',
   'task_created',
   'file_operation_proposal',
+  'operation_proposal',
   'project_profile_patch',
   'canvas_activity',
+  'look',
+  'revision_compare',
 ])
 
 /**

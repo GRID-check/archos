@@ -739,7 +739,7 @@ const answerAboutBox = (turn: ScriptedTurn, box: FocusBox, replyInThread: boolea
   const text = thread ? threadAnswer(thread.number) : corridor ? CORRIDOR_ANSWER : BOX_ANSWER
   const mark = thread ? `Anmerkung ${thread.number}` : corridor ? 'Breite nicht kotiert' : 'Keine Maße im Ausschnitt'
   const roomBox = { page: box.page, x: box.x, y: box.y, w: box.w, h: box.h }
-  const view = { id: 'step-view', kind: 'tool', tool: 'view_knowledge_image' } as const
+  const view = { id: 'step-view', kind: 'tool', tool: 'look' } as const
   // In a thread it reads the Anmerkung and writes a reply; about a box, it reads the OIB passage and writes the answer.
   const reading = thread
     ? ({ id: 'step-read', kind: 'status', slot: 'annotations', key: 'status.action.annotationsRead' } as const)

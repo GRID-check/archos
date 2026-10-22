@@ -90,6 +90,9 @@ BUDGET: dict[str, tuple[int, int]] = {
     "handoff": (0, 0),
     "ruling": (1, 0),
     "walkthrough": (2, 1),
+    # A work report's own structure is the `work` field; the prose may still
+    # hold one block (what someone has to hand in is an `:::actions`).
+    "work": (1, 0),
 }
 
 #: How deep blocks nest and how many one answer opens (``MAX_DIRECTIVE_DEPTH`` /

@@ -5,15 +5,9 @@
  * access filter live in `@/lib/projects/same-address`.
  */
 
-import { z } from 'zod'
 import { apiRoute, parseQuery } from '@/lib/api/handler'
 import { findProjectsAtAddress } from '@/lib/projects/same-address'
-
-const sameAddressQuerySchema = z.object({
-  label: z.string().trim().min(3).max(300),
-  lat: z.coerce.number().min(-90).max(90).optional(),
-  lon: z.coerce.number().min(-180).max(180).optional(),
-})
+import { sameAddressQuerySchema } from '@/lib/projects/project-wire'
 
 export const GET = apiRoute(
   async ({ session, request }) => ({

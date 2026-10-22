@@ -36,10 +36,10 @@ from aiq_agent.knowledge.restricted_use import current_restricted_use
 from aiq_agent.knowledge.restricted_use import drew_on_other_projects
 
 RESTRICTED_REFUSAL = (
-    "Nicht möglich: Diese Unterhaltung hat Inhalte aus einem Ordner mit eingeschränktem Zugriff oder aus "
-    "einem anderen Projekt verwendet. Was du im Dokument zeigst oder schreibst, sehen alle, die es öffnen, "
-    "deshalb bleibt es hier im Chat. Sag der Person, dass du es nur hier beantworten kannst; nicht erneut "
-    "versuchen."
+    "Not possible: This conversation has used content from a folder with restricted access or from "
+    "another project. What you show or write in the document is seen by everyone who opens it, "
+    "so it stays here in the chat. Tell the person you can answer it only here; do not "
+    "retry."
 )
 
 

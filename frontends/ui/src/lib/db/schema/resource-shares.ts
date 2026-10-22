@@ -1,5 +1,7 @@
 import { index, pgTable, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core'
 
+import type { ResourceRole, ShareableResourceType } from '@/lib/sharing/sharing-vocabulary'
+
 /**
  * `resource_shares` — the ONE generic table of resource-level access grants
  * (ADR-0032).
@@ -26,32 +28,14 @@ import { index, pgTable, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/
  *   - a resource always keeps at least one `owner`.
  */
 
-/**
- * Resource types that may be shared. Every entry MUST have a matching entry in
- * the sharing registry (`@/lib/sharing/registry`), which is exhaustive over this
- * union — adding a type here without registering it is a type error.
- */
-export const SHAREABLE_RESOURCE_TYPES = ['conversation', 'document'] as const
-export type ShareableResourceType = (typeof SHAREABLE_RESOURCE_TYPES)[number]
-
-/**
- * The role ladder, weakest first. Deliberately aligned with the project ladder
- * (project-viewer → viewer, project-editor/admin → collaborator) so users learn
- * one vocabulary. Order matters: `@/lib/sharing/access` takes the STRONGEST of
- * the visibility-derived role and any explicit grant.
- */
-export const RESOURCE_ROLES = ['viewer', 'collaborator', 'owner'] as const
-export type ResourceRole = (typeof RESOURCE_ROLES)[number]
-
-/**
- * Blanket visibility of a shareable resource, weakest first.
- *   - `private`      — the owner plus anyone holding an explicit grant;
- *   - `project`      — everyone who can access the containing project;
- *   - `organization`  — every member of the organization (phase 2; the model
- *                      carries it from day one so no migration is needed).
- */
-export const RESOURCE_VISIBILITIES = ['private', 'project', 'organization'] as const
-export type ResourceVisibility = (typeof RESOURCE_VISIBILITIES)[number]
+export {
+  RESOURCE_ROLES,
+  RESOURCE_VISIBILITIES,
+  SHAREABLE_RESOURCE_TYPES,
+  type ResourceRole,
+  type ResourceVisibility,
+  type ShareableResourceType,
+} from '@/lib/sharing/sharing-vocabulary'
 
 export const resourceShares = pgTable(
   'resource_shares',

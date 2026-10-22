@@ -41,6 +41,7 @@ import threading
 from collections.abc import Mapping
 from typing import Any
 
+from aiq_agent.common.image_redaction import redact_inline_images
 from aiq_agent.observability.langfuse_trace_attributes import GEN_AI_REQUEST_MODEL
 from aiq_agent.observability.langfuse_trace_attributes import METADATA_PREFIX
 from aiq_agent.observability.langfuse_trace_attributes import OBSERVATION_MODEL_NAME
@@ -133,6 +134,13 @@ def _current_tracer():
 
 
 def _clip(text: str) -> str:
+    """A payload attribute as it may leave the process: inline images redacted, then cut to the bound.
+
+    Every payload this tracer writes passes here, so no prompt, output or pick carries an image's
+    bytes (``common.image_redaction``), as on the NAT pipeline's spans. Redacted before the cut, so a
+    cut never leaves half a data URL the pattern no longer matches.
+    """
+    text = redact_inline_images(text)
     if len(text) <= MAX_PAYLOAD_CHARS:
         return text
     return text[:MAX_PAYLOAD_CHARS] + TRUNCATION_MARKER

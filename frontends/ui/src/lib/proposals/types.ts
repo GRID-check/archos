@@ -20,8 +20,11 @@ import { PROJECT_MEMORY_CONFIDENCES, PROJECT_MEMORY_KINDS } from '@/lib/projects
  * `memory`: a note for the project's or the office's memory (0143).
  * `project_profile`: a change to the project's facts, goals, unknowns or
  * assumptions, as a JSON patch on the profile (0143).
+ * `operation`: any WRITE operation of the agent catalog (`lib/agent-api`),
+ * proposed by Piloti through the MCP surface and run, when a person accepts,
+ * as that person (0175, ADR-0122).
  */
-export const PROPOSED_CHANGE_KINDS = ['file_operation', 'memory', 'project_profile'] as const
+export const PROPOSED_CHANGE_KINDS = ['file_operation', 'memory', 'project_profile', 'operation'] as const
 export type ProposedChangeKind = (typeof PROPOSED_CHANGE_KINDS)[number]
 
 /**
@@ -32,11 +35,14 @@ export const PROPOSED_CHANGE_STATUSES = ['proposed', 'applied', 'partially_appli
 export type ProposedChangeStatus = (typeof PROPOSED_CHANGE_STATUSES)[number]
 
 /**
- * The shelf a proposal is on (0146), `project_folders.scope`'s vocabulary. A
- * Büroablage (`office_shelf`) proposal has no project and can only move Büroablage
- * documents (`proposed_changes_office_shelf_move`).
+ * The shelf a proposal is on (0146, 0176). `project`: a project's. `office_shelf`
+ * (the Büroablage, `project_folders.scope`'s vocabulary): no project, and it can
+ * only move Büroablage documents (`proposed_changes_office_shelf_move`).
+ * `organization`: no project either, and only an `operation` (a write that is
+ * the organization's, not a project's: its memory, its skills;
+ * `proposed_changes_organization_operation`).
  */
-export const PROPOSAL_SCOPES = ['project', 'office_shelf'] as const
+export const PROPOSAL_SCOPES = ['project', 'office_shelf', 'organization'] as const
 export type ProposalScope = (typeof PROPOSAL_SCOPES)[number]
 
 export const FILE_OPERATIONS = ['move', 'rename', 'create_folder', 'assign'] as const
@@ -48,7 +54,7 @@ export type FileOperation = (typeof FILE_OPERATIONS)[number]
  * file operation by its verb, every other kind by its kind. Stored on the
  * `piloti.proposal_waiting` item as its `variant` (`./attention.ts`).
  */
-export const PROPOSAL_NOTICE_VARIANTS = [...FILE_OPERATIONS, 'memory', 'project_profile'] as const
+export const PROPOSAL_NOTICE_VARIANTS = [...FILE_OPERATIONS, 'memory', 'project_profile', 'operation'] as const
 export type ProposalNoticeVariant = (typeof PROPOSAL_NOTICE_VARIANTS)[number]
 
 /** Most items one proposal carries; mirrors `MAX_FILE_OPERATIONS` in `src/aiq_agent/cards/models.py`. */
@@ -152,6 +158,70 @@ export const projectProfilePayloadSchema = z
   .strict()
 export type ProjectProfilePayload = z.infer<typeof projectProfilePayloadSchema>
 
+/** Most characters of the one-line summary an operation proposal carries. */
+export const MAX_OPERATION_SUMMARY_LENGTH = 300
+
+/**
+ * What an operation proposal runs: the call's own input, in the shape
+ * `callOperation` takes (`lib/agent-api/dispatch.ts`). The body is the
+ * operation's own, validated against the catalog's schema when the proposal is
+ * applied, not here: the catalog may change between the proposal and the click.
+ */
+export const operationInputSchema = z
+  .object({
+    params: z.record(z.string()).optional(),
+    query: z.record(z.unknown()).optional(),
+    body: z.unknown().optional(),
+    /** The version the agent read, sent as If-Match when the proposal is applied: a newer one refuses it. */
+    ifMatch: z.string().min(1).max(256).optional(),
+  })
+  .strict()
+export type OperationProposalInput = z.infer<typeof operationInputSchema>
+
+/**
+ * Any write operation of the agent catalog (ADR-0122), proposed instead of
+ * applied. Accepting runs it as the DECIDING person through `callOperation`, so
+ * the route's own authorization decides; `summary` is the line the person reads.
+ * Created only by `proposeOperation` (`lib/agent-api/operation-proposals.ts`),
+ * which checks the operation exists and writes: there is no agent-facing
+ * create for this kind in `internalProposalRequestSchema`. In a turn with no
+ * project it is the organization's (scope `organization`, 0176).
+ */
+export const operationPayloadSchema = z
+  .object({
+    operation: text(80),
+    input: operationInputSchema,
+    summary: text(MAX_OPERATION_SUMMARY_LENGTH),
+  })
+  .strict()
+export type OperationPayload = z.infer<typeof operationPayloadSchema>
+
+/** What a proposed operation's input may name: the targets `lib/agent-api/operation-targets.ts` reads from it. */
+export const OPERATION_TARGET_TYPES = [
+  'project',
+  'document',
+  'folder',
+  'conversation',
+  'bim_model',
+  'upload_batch',
+  'proposal',
+] as const
+export type OperationTargetType = (typeof OPERATION_TARGET_TYPES)[number]
+
+/**
+ * One target of a proposed operation as the card shows it to ITS reader: the
+ * name when that reader may read it (a project, a document), else null and the
+ * card shows the id. Resolved per reader when the proposal is read, never
+ * stored, so a card in a conversation never names to one reader what only the
+ * proposer could see.
+ */
+export const operationTargetViewSchema = z.object({
+  type: z.enum(OPERATION_TARGET_TYPES),
+  id: z.string(),
+  name: z.string().nullable(),
+})
+export type OperationTargetView = z.infer<typeof operationTargetViewSchema>
+
 /** What applying one item did, in words a person reads in the card. */
 export const proposedChangeResultSchema = z.object({
   label: z.string(),
@@ -173,8 +243,9 @@ export type ProposedChangeResult = z.infer<typeof proposedChangeResultSchema>
 const proposedChangeBaseSchema = z.object({
   id: z.string().uuid(),
   /**
-   * The project. Null only for a Büroablage file operation (0146), which has
-   * none; a memory note and a profile change are always made in a project.
+   * The project. Null only for a Büroablage file operation (0146) and an
+   * organization-scoped operation (0176); a memory note and a profile change
+   * are always made in a project.
    */
   projectId: z.string().nullable(),
   status: z.enum(PROPOSED_CHANGE_STATUSES),
@@ -204,6 +275,12 @@ export const proposedChangeViewSchema = z.discriminatedUnion('kind', [
   proposedChangeBaseSchema.extend({ kind: z.literal('file_operation'), payload: fileOperationPayloadSchema }),
   proposedChangeBaseSchema.extend({ kind: z.literal('memory'), payload: memoryPayloadSchema }),
   proposedChangeBaseSchema.extend({ kind: z.literal('project_profile'), payload: projectProfilePayloadSchema }),
+  proposedChangeBaseSchema.extend({
+    kind: z.literal('operation'),
+    payload: operationPayloadSchema,
+    /** What the call names, for this reader (`operationTargetViewSchema`); absent from a client that predates it. */
+    targets: z.array(operationTargetViewSchema).optional(),
+  }),
 ])
 export type ProposedChangeView = z.infer<typeof proposedChangeViewSchema>
 
@@ -279,8 +356,8 @@ export const proposalListQuerySchema = z
     shelf: z.preprocess((value) => (value === 'archiv' ? 'office_shelf' : value), z.enum(PROPOSAL_SCOPES).optional()),
     kind: z.enum(PROPOSED_CHANGE_KINDS).optional(),
   })
-  .refine((query) => (query.shelf === 'office_shelf') !== Boolean(query.projectId), {
-    message: 'Name a project, or the Büroablage with shelf=office_shelf',
+  .refine((query) => (query.shelf === 'office_shelf' || query.shelf === 'organization') !== Boolean(query.projectId), {
+    message: 'Name a project, or a shelf without one: shelf=office_shelf (the Büroablage) or shelf=organization',
   })
 export type ProposalListQuery = z.infer<typeof proposalListQuerySchema>
 

@@ -54,7 +54,7 @@ _NOTE = "nicht die Tür, die Treppe"
 RAN: list[str] = []
 
 
-@tool("canvas__look")
+@tool("look")
 def look(page: int) -> str:
     """Look at a page of the document."""
     RAN.append(f"look:{page}")
@@ -85,7 +85,7 @@ def _bypass_citation_pipeline():
         patch("aiq_agent.agents.piloti.answer_pipeline.verify_citations") as verify,
         patch("aiq_agent.agents.piloti.answer_pipeline.sanitize_report") as sanitize,
     ):
-        verify.side_effect = lambda content, reg, reference_sources=None: MagicMock(
+        verify.side_effect = lambda content, reg, reference_sources=None, **_: MagicMock(
             verified_report=content, removed_citations=[]
         )
         sanitize.side_effect = lambda content: MagicMock(sanitized_report=content)
@@ -149,9 +149,7 @@ class TestTheNextRoundReadsTheNote:
     async def test_a_note_typed_during_round_one_is_in_round_two_and_holds_the_door_mark_back(self, inbox, emitted):
         """The whole story: the model chose to look AND mark the door; the person typed while it decided."""
         model = Scripted(
-            AIMessage(
-                content="", tool_calls=[_call("canvas__look", "l1", page=1), _call("canvas__mark", "m1", target="Tür")]
-            ),
+            AIMessage(content="", tool_calls=[_call("look", "l1", page=1), _call("canvas__mark", "m1", target="Tür")]),
             AIMessage(content="", tool_calls=[_call("canvas__mark", "m2", target="Treppe")]),
             AIMessage(content="Die Treppe ist markiert."),
             during={1: lambda: inbox.offer(_note())},
@@ -176,7 +174,7 @@ class TestTheNextRoundReadsTheNote:
         # The same bytes at the same index in round three: the prefix stays cacheable.
         assert third[: len(second)] == second
         assert _notes_in(third) == _notes_in(second)
-        assert 'von="Anna Asker"' in second[-1].content and "Runde 2" in second[-1].content
+        assert 'author="Anna Asker"' in second[-1].content and "round 2" in second[-1].content
 
         # Never in the state: the turn boundary is the question, as before.
         assert not any(isinstance(m, HumanMessage) and _NOTE in str(m.content) for m in result.messages)
@@ -197,7 +195,7 @@ class TestTheNextRoundReadsTheNote:
     async def test_a_note_that_arrives_while_tools_run_is_read_next_and_holds_nothing(self, inbox):
         """The writes were chosen and run before the note; there is nothing to hold, only a next round."""
 
-        @tool("canvas__look")
+        @tool("look")
         def slow_look(page: int) -> str:
             """Look at a page of the document."""
             RAN.append(f"look:{page}")
@@ -205,7 +203,7 @@ class TestTheNextRoundReadsTheNote:
             return "Seite 1"
 
         model = Scripted(
-            AIMessage(content="", tool_calls=[_call("canvas__look", "l1", page=1)]),
+            AIMessage(content="", tool_calls=[_call("look", "l1", page=1)]),
             AIMessage(content="Die Treppe."),
         )
         llm = MagicMock()
@@ -226,7 +224,7 @@ class TestTheNextRoundReadsTheNote:
             inbox.offer(SteerNote(steer_id="s2", text="und das Podest"))
 
         model = Scripted(
-            AIMessage(content="", tool_calls=[_call("canvas__look", "l1", page=1)]),
+            AIMessage(content="", tool_calls=[_call("look", "l1", page=1)]),
             AIMessage(content="Fertig."),
             during={1: both},
         )
@@ -239,18 +237,18 @@ class TestTheNextRoundReadsTheNote:
     async def test_a_box_drawn_while_piloti_works_travels_with_the_note(self, inbox):
         region = FocusRegion(page=3, x=0.41, y=0.22, w=0.17, h=0.18)
         model = Scripted(
-            AIMessage(content="", tool_calls=[_call("canvas__look", "l1", page=3)]),
+            AIMessage(content="", tool_calls=[_call("look", "l1", page=3)]),
             AIMessage(content="Fertig."),
             during={1: lambda: inbox.offer(_note(region=region))},
         )
 
         await _run(_agent(model))
 
-        assert "[Bereich: S. 3, x 0.41–0.58, y 0.22–0.40]" in model.requests[1][-1].content
+        assert "[Region: p. 3, x 0.41–0.58, y 0.22–0.40]" in model.requests[1][-1].content
 
     async def test_forced_synthesis_reads_the_note_and_keeps_the_anchor_last(self, inbox):
         model = Scripted(
-            AIMessage(content="", tool_calls=[_call("canvas__look", "l1", page=1)]),
+            AIMessage(content="", tool_calls=[_call("look", "l1", page=1)]),
             AIMessage(content="Die Antwort."),
             during={1: lambda: inbox.offer(_note())},
         )
@@ -267,9 +265,7 @@ class TestWithoutAnInbox:
     async def test_a_turn_outside_a_socket_is_byte_identical(self):
         """An eval, ``nat run`` or a job binds no inbox: nothing is read, held or spliced."""
         model = Scripted(
-            AIMessage(
-                content="", tool_calls=[_call("canvas__look", "l1", page=1), _call("canvas__mark", "m1", target="Tür")]
-            ),
+            AIMessage(content="", tool_calls=[_call("look", "l1", page=1), _call("canvas__mark", "m1", target="Tür")]),
             AIMessage(content="Fertig."),
         )
 

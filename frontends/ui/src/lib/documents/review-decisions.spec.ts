@@ -53,7 +53,7 @@ describe('buildReviewDecisionsBlock', () => {
     vi.mocked(listRefusedVersionsForConversation).mockResolvedValue([row()])
     const block = await buildReviewDecisionsBlock('conv-1', 'org_1')
 
-    expect(block).toContain('Änderungen angefordert')
+    expect(block).toContain('changes requested')
     expect(block).toContain('Befund Fluchtweg')
     expect(block).toContain('v2')
     expect(block).toContain('Maria Huber')
@@ -62,7 +62,7 @@ describe('buildReviewDecisionsBlock', () => {
 
   it('tells a rejection apart from a request for changes', async () => {
     vi.mocked(listRefusedVersionsForConversation).mockResolvedValue([row({ state: 'rejected' })])
-    expect(await buildReviewDecisionsBlock('conv-1', 'org_1')).toContain('abgelehnt')
+    expect(await buildReviewDecisionsBlock('conv-1', 'org_1')).toContain('rejected')
   })
 
   it('falls back to the filename when the document has no display name', async () => {

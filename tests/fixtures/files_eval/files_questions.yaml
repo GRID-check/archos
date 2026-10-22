@@ -1,0 +1,148 @@
+# The office-file eval (`task be:eval:answer-suite -- --set files --arm search|navigate|both`, ADR-0127):
+# questions about the files of a project, asked in the fixture project of `project.yaml` beside this
+# file, seeded by `scripts/turn_census/fixture_files.py`. Every run sits in that project's
+# collection with a signed envelope, as the workspace and precedent sets do.
+#
+# `expect` uses the suite's own checks (`suite.check`) and adds, in `scripts/turn_census/files_eval.py`:
+#   tools:      what the MODEL called (the round-0 prefetch is not in it).
+#     must:     every item must have been called
+#     any:      at least one item must have been called
+#     must_not: none may have been called
+#     An item is a tool name (`list_files`) or `{tool: {argument: value | [values]}}`, matched
+#     against the recorded arguments, case-insensitively.
+#   max_research_calls: the turn answers within this many model calls (rounds)
+#   mentions / not_mentions: as the loop set: words the answer must or must not hold
+#   at_least:   `{n: 4, of: [..]}`, at least n of the words appear (a chapter-by-chapter summary)
+#   judge:      meanings a model judges (`judge.py`)
+#   no_repeat:  tools a follow-up must not call again
+# `needs: [pages|cursor|regex|group_by|view]` names an argument that exists only after its slice
+# lands (ADR-0127 S3, S5, S6, S7); until then the row is reported "not applicable on this commit"
+# and counts neither way, so the baseline is honest. A row with `turns` is one conversation; the
+# checks read the last turn.
+#
+# Facts, read off the fixture: six top folders (Einreichung, Bestand, Behörde, Nachbarn, Gutachten,
+# Korrespondenz); Einreichung holds 6 documents in all (3 directly, 3 in Pläne); EP-01 Index B is
+# current; the Brandschutzkonzept has 14 pages and says „Fluchtweg“ on pages 3, 7 and 11; the newest
+# upload is the MA-37 letter; „Sprinkler“ is written nowhere.
+
+questions:
+  - id: pf-orient-project
+    question: Was liegt alles in diesem Projekt?
+    expect:
+      tools: {any: [list_files]}
+      max_research_calls: 2
+      mentions: [Einreichung, Bestand, Behörde, Nachbarn, Gutachten, Korrespondenz]
+
+  - id: pf-orient-folder
+    question: Was ist im Ordner Einreichung?
+    expect:
+      tools: {any: [list_files]}
+      mentions: [Pläne]
+
+  - id: pf-locate-report
+    question: Wo liegt das Brandschutzgutachten?
+    expect:
+      tools: {any: [list_files, knowledge_search]}
+      mentions: [Nachbarn]
+
+  - id: pf-locate-name
+    question: Wie heißt die Datei mit dem Schnitt genau?
+    expect:
+      tools: {any: [list_files, knowledge_search]}
+      mentions: [EP-02_Schnitt_A-A.pdf]
+
+  - id: pf-aggregate-count
+    question: Wie viele Unterlagen liegen in der Einreichung, und welcher Index der Grundrisse ist aktuell?
+    expect:
+      tools: {any: [list_files]}
+      mentions: [["6", "sechs"], "Index B"]
+
+  - id: pf-aggregate-newest
+    question: Was ist zuletzt dazugekommen?
+    expect:
+      tools: {any: [list_files]}
+      mentions: [Schreiben_MA37_Baubeginn]
+
+  - id: pf-aggregate-pages
+    question: Wie viele Seiten hat das Brandschutzkonzept?
+    expect:
+      tools: {any: [list_files, read_passage, knowledge_search]}
+      mentions: ["14"]
+
+  - id: pf-read-range
+    question: Was steht im Brandschutzkonzept auf Seite 4 bis 6?
+    needs: [pages]
+    expect:
+      tools: {must: [read_passage]}
+      mentions: ["REI 60", "BA-03", ["EI2 30", "rauchdicht"]]
+
+  - id: pf-read-through
+    question: Fass das Brandschutzkonzept Kapitel für Kapitel zusammen.
+    needs: [pages]
+    expect:
+      tools: {must: [read_passage]}
+      max_research_calls: 3
+      # One marker per chapter; the summary must reach at least four of the six.
+      at_least: {n: 4, of: [Brandabschnitt, Sicherheitsbeleuchtung, Aufzug, Rauchwarnmelder, Löschwasser, Brandschutzordnung]}
+
+  - id: pf-read-outline
+    question: Worum geht es in der Baubeschreibung?
+    expect:
+      tools: {any: [read_passage]}
+
+  - id: pf-exact-term
+    question: Finde jede Stelle, an der „Fluchtweg“ vorkommt.
+    expect:
+      tools: {must: [{knowledge_search: {match: [exact, regex]}}]}
+      mentions: ["3", "7", "11"]
+
+  - id: pf-exact-number
+    question: Wo kommt die EZ 1234 vor?
+    expect:
+      tools: {must: [{knowledge_search: {match: [exact, regex]}}]}
+
+  - id: pf-exact-absent
+    question: Steht irgendwo etwas von einer Sprinkleranlage?
+    expect:
+      tools: {must: [{knowledge_search: {match: [exact, regex]}}]}
+      judge: [none_found]
+
+  - id: pf-regex
+    question: Welche Geschäftszahlen der MA 37 kommen in den Unterlagen vor?
+    expect:
+      tools: {any: [{knowledge_search: {match: [regex, exact]}}]}
+      mentions: ["567812", "123456", "654321"]
+
+  - id: pf-scoped-search
+    question: Was sagt die Behörde zur Gebäudehöhe?
+    expect:
+      tools: {any: [{knowledge_search: {folder: Behörde}}, read_passage]}
+
+  - id: pf-scoped-folder
+    question: Was steht in den Unterlagen der Nachbarn zum Brandschutz?
+    expect:
+      tools: {any: [{knowledge_search: {folder: Nachbarn}}, {knowledge_search: {file_name: Brandschutzgutachten_Hubergasse16.pdf}}, read_passage]}
+
+  - id: pf-group-docs
+    question: Welche Dokumente behandeln den Aufzug?
+    needs: [group_by]
+    expect:
+      tools: {any: [{knowledge_search: {group_by: document}}, knowledge_search]}
+      at_least: {n: 2, of: [Baubeschreibung, Bescheid, Brandschutzkonzept]}
+
+  - id: pf-revisions
+    question: Was hat sich zwischen Index A und B der Grundrisse geändert?
+    expect:
+      tools: {any: [{list_files: {revisions_of: [EP-01_Grundrisse_Index-B.pdf, EP-01_Grundrisse_Index-A.pdf]}}, {list_files: {compare_to: "*"}}, read_passage]}
+
+  - id: pf-followup
+    turns: ["Was liegt im Ordner Gutachten?", "Lies mir das erste davon ganz vor."]
+    expect:
+      tools: {must: [read_passage]}
+      no_repeat: [list_files]
+
+  - id: pf-mixed-law
+    question: Hält die Fluchtweglänge im Brandschutzkonzept die OIB-Richtlinie 2 ein?
+    expect:
+      tools: {must: [knowledge_search]}
+      mentions: ["Brandschutzkonzept", "OIB"]

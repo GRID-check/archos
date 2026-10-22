@@ -14,7 +14,7 @@ export const research: typeof en.research = {
 
   chatArea: {
     ariaMessages: 'Chat-Nachrichten',
-    loading: 'Unterhaltung wird geladen',
+    loading: 'Chat wird geladen',
     scrollToLatest: 'Zum neuesten Beitrag springen',
     // Eine leise Zeile über der Eingabe, statt einer Fehlerkarte im Verlauf:
     // die Seite verbindet sich von selbst neu, die Lesenden müssen nichts tun.
@@ -35,8 +35,8 @@ export const research: typeof en.research = {
       stopped: 'Gestoppt',
       // Der Zug ist gescheitert; die Fehlerkarte darunter sagt wie.
       failed: 'Fehlgeschlagen',
-      // Der Zug hat einen Auftrag angelegt: die Arbeit hat erst begonnen.
-      handedOff: 'Auftrag angelegt',
+      // Der Zug hat eine Aufgabe angelegt: die Arbeit hat erst begonnen.
+      handedOff: 'Aufgabe angelegt',
       // Piloti hat die Frage nicht bearbeitet; das Banner sagt warum.
       refused: 'Nicht bearbeitet',
     },

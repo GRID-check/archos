@@ -59,6 +59,28 @@ export const registerCanvasChatSender = (next: CanvasChatSender): (() => void) =
 /** The chat's sender, while a chat composer is mounted. */
 export const canvasChatSender = (): CanvasChatSender | null => sender
 
+/**
+ * What is selected on the open document right now, offered to the chat's own
+ * turns. A question asked in the chat while a document is open over it, with a
+ * box drawn or a mark selected, carries that box as its `focus_region` (the same
+ * wire field a canvas question uses), so Piloti's "here" means the same place
+ * in both. Null: nothing is selected, and the turn goes out as a plain question.
+ */
+export type CanvasFocusProvider = () => CanvasFocus | null
+
+let focusProvider: CanvasFocusProvider | null = null
+
+/** The open review offers its selection. Returns the withdrawal, which leaves a later registration alone. */
+export const registerCanvasFocusProvider = (next: CanvasFocusProvider): (() => void) => {
+  focusProvider = next
+  return () => {
+    if (focusProvider === next) focusProvider = null
+  }
+}
+
+/** The selection on the document open over the chat, or null. */
+export const openCanvasFocus = (): CanvasFocus | null => focusProvider?.() ?? null
+
 /** A note for the chat's running turn: its text and, when one was drawn meanwhile, the box. */
 export interface CanvasChatSteer {
   text: string

@@ -4,6 +4,7 @@ from typing import Any
 from pydantic import BaseModel
 from pydantic import Field
 
+from aiq_agent.observability.langfuse_trace_attributes import InlineImageRedactionProcessor
 from aiq_agent.observability.langfuse_trace_attributes import LangfuseTraceAttributeProcessor
 from aiq_agent.observability.langfuse_trace_attributes import PromptLinkProcessor
 from aiq_agent.observability.langfuse_trace_attributes import TraceContextProcessor
@@ -239,5 +240,11 @@ async def otelcollector_redaction_telemetry_exporter(
                 "processor - traces will export without session/user attribution.",
                 exc_info=True,
             )
+
+    # No image bytes in a trace, whatever the redaction policy says. Installed
+    # first (the last `position=0` insert wins the front) so no later processor
+    # copies or measures a payload that still holds pixels.
+    if InlineImageRedactionProcessor is not None:
+        exporter.add_processor(InlineImageRedactionProcessor(), name="grid_inline_image_redaction", position=0)
 
     yield exporter

@@ -42,6 +42,12 @@
  * same Fassung again. A recipient who still holds the item is skipped too, not
  * folded, so a read item is never marked unread.
  *
+ * ## Piloti notices it
+ *
+ * A Fassung under another name, claimed here, also queues Piloti's notice of
+ * it (`lib/revision-notice`, ADR-0130): a comparison with the older one whose
+ * changes are proposed as marks. Only where the office switched it on.
+ *
  * ## It never fails its caller
  *
  * {@link announceNewRevision} is detached and logs. The link is stored and the
@@ -50,6 +56,9 @@
 
 import 'server-only'
 import { markParticipants } from '@/lib/annotations/attention'
+import { queueRevisionNotice } from '@/lib/revision-notice/queue'
+import { documentCheckMaxBatch } from '@/lib/document-check/check'
+import { queueDocumentCheck } from '@/lib/document-check/queue'
 import { listDocumentAnnotations, type AnnotationRecord } from '@/lib/annotations/repository'
 import { listAssignmentsForResources } from '@/lib/assignments/repository'
 import type { Document } from '@/lib/db/schema'
@@ -212,6 +221,11 @@ export async function notifyNewRevision(announcement: NewRevisionAnnouncement): 
 
   const claim = { organizationId, documentId: newer.id, anchorId: announcement.versionId ?? follow.id }
   if (!(await claimRevisionAnnouncement(claim))) return 0
+  // Piloti checks a Fassung under another name against the one it replaces
+  // (ADR-0130), where the office switched it on. Once per claim, detached, never failing this.
+  if (!sameDocument) {
+    void queueRevisionNotice({ organizationId, actorUserId: announcement.actorUserId, newerId: newer.id, olderId: follow.id })
+  }
   try {
     return await writeRevisionItems(announcement, newer, follow, claim.anchorId)
   } catch (error) {
@@ -344,6 +358,23 @@ async function announceSettledLinks(organizationId: string, document: Document):
 }
 
 /**
+ * Piloti checks a document that just came to rest against the project's
+ * others (ADR-0130), where the office switched it on: a FIRST upload as much as
+ * a Fassung. A project document only, once per published version, as the person
+ * who uploaded it; `queueDocumentCheck` never throws.
+ */
+async function queueSettledDocumentCheck(organizationId: string, document: Document): Promise<void> {
+  if (document.scope !== 'project' || !document.projectId || document.lifecycle !== 'active') return
+  const version = await findPublishedVersion(document.id, organizationId).catch(() => null)
+  await queueDocumentCheck({
+    organizationId,
+    actorUserId: document.createdBy,
+    documentId: document.id,
+    versionId: version?.id ?? null,
+  })
+}
+
+/**
  * Announce the Fassungen among documents that just came to rest.
  *
  * A person's upload is held until its bytes are screened, so the `upload`
@@ -367,8 +398,11 @@ export async function announceSettledVersions(organizationId: string, documentId
   }
   const collections = new Set(settled.filter((document) => collectionFileRef(document)).map((d) => d.collectionName))
   await Promise.all([...collections].map((collection) => refreshCollectionFiles(collection).catch(() => undefined)))
+  // A bulk import is not checked file by file: that is not what a colleague does.
+  const checkBatch = settled.length <= documentCheckMaxBatch()
   for (const document of settled) {
     await announceSettledVersion(organizationId, document)
     await announceSettledLinks(organizationId, document)
+    if (checkBatch) await queueSettledDocumentCheck(organizationId, document)
   }
 }

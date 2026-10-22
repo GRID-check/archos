@@ -4,6 +4,7 @@
 
 import { getTokenClaims, withAuth } from '@workos-inc/authkit-nextjs'
 import { getWorkOS } from '@/lib/workos/client'
+import { currentActingSession } from '@/lib/agent-api/acting-session'
 import { getCached } from '@/lib/cache'
 import { resolveMembershipRoles } from './membership-roles'
 import { clearTenantContext, enterTenantContext } from '@/lib/db/tenant-context'
@@ -61,6 +62,14 @@ export function sessionRoles(fromAuth: unknown, fromClaims: unknown, single: str
  * Returns `null` when the user is not signed in.
  */
 export async function getGridSession(): Promise<GridSession | null> {
+  // A call dispatched by Piloti's MCP server (ADR-0122) runs the browser's
+  // route handler as the person the endpoint already authenticated.
+  const actingSession = currentActingSession()
+  if (actingSession) {
+    enterTenantContext(actingSession)
+    return actingSession
+  }
+
   const auth = await withAuth()
 
   if (!auth.user || !auth.accessToken) {

@@ -178,7 +178,7 @@ class GroundingHit(BaseModel):
     #: The provenance of an agent-authored, human-approved document, or
     #: ``None`` for everything a human wrote (``common/provenance.py``).
     provenance: AgentProvenance | None
-    #: Index of a raster stored beside the document, for ``view_knowledge_image``.
+    #: Index of a raster stored beside the document, for ``look``.
     #: ``None`` when the hit carries no stored image.
     stored_image_index: int | None
     #: A legal disclaimer about the document's status (RIS consolidated
@@ -194,12 +194,15 @@ class GroundingHit(BaseModel):
     #: of the turn's own scope, which renders no ``Projekt:`` line.
     project: SourceProject | None = None
     #: Where on the page the passage sits, for the viewer to mark (issue #433).
-    #: Deliberately NOT rendered as a header line: it is geometry for the
-    #: reader's viewer, and nothing the model could reason with, so the text the
-    #: model reads stays byte-for-byte what it was. It reaches the registry by
+    #: Rendered as ``Region:`` lines in ``look``'s own frame (``[x, y, w, h]``,
+    #: shares of the page as shown), so the model can look again at the place
+    #: it cites by copying the numbers (ADR-0128). It reaches the registry by
     #: the record lookup; a block read back by the text parser (a replayed turn)
     #: carries none, and the viewer then opens at the page as before.
     regions: tuple[SourceRegion, ...] = ()
+    #: Last page of a passage that runs over a page break, when it is later than :attr:`page`. Rendered
+    #: as the range ``Page: 4–5``; the citation key keeps the start page, which is its identity.
+    page_end: int | None = None
 
     @property
     def authored_by(self) -> str | None:
@@ -381,7 +384,9 @@ def _header_lines(hit: GroundingHit) -> Iterator[str]:
     if hit.provenance is not None:
         yield f"Herkunft: {_line(provenance_label(hit.provenance))}"
     if hit.page is not None:
-        yield f"Page: {hit.page}"
+        yield f"Page: {hit.page}–{hit.page_end}" if hit.page_end and hit.page_end > hit.page else f"Page: {hit.page}"
+    for region in hit.regions[:MAX_RENDERED_REGIONS]:
+        yield _region_line(region)
     if hit.clause:
         yield f"Punkt: {_line(hit.clause)}"
     if hit.status_note:
@@ -389,8 +394,26 @@ def _header_lines(hit: GroundingHit) -> Iterator[str]:
     yield f"Citation: {_line(hit.citation_key)}"
     yield f"Content Type: {_line(hit.content_type)}"
     if hit.stored_image_index is not None:
-        yield f"Image: stored (view_knowledge_image image_index={hit.stored_image_index})"
+        yield f"Image: stored (look image_index={hit.stored_image_index})"
     yield f"Relevance Score: {hit.score:.2f}"
+
+
+#: How many of a hit's boxes the model reads. ``look`` takes one to three regions per sheet.
+MAX_RENDERED_REGIONS = 3
+
+
+def _region_line(region: SourceRegion) -> str:
+    """``Region: [x, y, w, h] „label“``: the box in the numbers ``look(region=...)`` takes.
+
+    ``SourceRegion.box`` is ``(x0, y0, x1, y1)``; ``look`` wants origin and
+    size, in the same frame (the page as shown, top left origin), so the
+    conversion is the only thing this line does. Rounded to three places: a
+    share of a sheet is a model's approximation, not a measurement.
+    """
+    x0, y0, x1, y1 = region.box
+    numbers = ", ".join(f"{value:.3f}".rstrip("0").rstrip(".") for value in (x0, y0, x1 - x0, y1 - y0))
+    label = f" „{_line(region.label)}“" if region.label else ""
+    return f"Region: [{numbers}]{label}"
 
 
 def _project_line(project: SourceProject) -> str:

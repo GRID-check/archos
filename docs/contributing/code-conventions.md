@@ -119,3 +119,13 @@ Four terms, kept distinct on purpose:
 Image upload is the worked example: the `image-upload` flag AND `vlm_available`,
 which is derived from the VLM key. Do not add a redundant environment opt-in for
 something the dependency already implies.
+
+**An office capability's on/off switch is a WorkOS flag in `feature-flags.ts`,
+never an environment variable.** Environment variables are for operator tuning
+(a budget, a delay, a page cap) and wiring (a URL, a token). A flag is decided
+per organization, changed in the dashboard with no deploy, and reaches the
+Python tier through the BFF (`GET /api/internal/stages`), which has no WorkOS
+client of its own. `GRID_FOLDER_CARDS` and `GRID_OFFICE_CONVENTIONS` were built
+as variables and replaced by the `folder-cards` and `office-conventions` flags;
+their tuning (`GRID_FOLDER_CARDS_MONTHLY_TOKENS`) stayed. Registering a flag:
+[`workos-provisioning.md`](../deployment/workos-provisioning.md).

@@ -410,12 +410,12 @@ def test_the_skill_does_not_promise_a_section_or_an_elevation(text: str) -> None
     point at `overhang` for the thing an architect would have wanted a section
     for.
     """
-    assert "Grundriss" in text
+    assert "floor plan" in text
     # Whitespace-collapsed: pinning the line break rather than the claim is
     # the brittleness that already broke this suite once when a paragraph
     # rewrapped.
     flat = " ".join(text.split())
-    assert "Schnitt und Ansicht gibt es **nicht**" in flat
+    assert "section and elevation do **not** exist" in flat
     assert "overhang" in text
 
 
@@ -428,16 +428,16 @@ def test_the_light_incidence_angles_are_taught_as_law_not_as_geometry(text: str)
     unexplained error instead of a designed one.
     """
     assert "angle_deg" in text and "swivel_deg" in text
-    assert "Bestimmung" in text
-    assert "45 und 30" in text
+    assert "provision" in text
+    assert "45 and 30" in text
     # And the verdict stays with the rulebook: a cut prism enlarges the required
     # light-entry area, it does not ban the window. Asserted on the words with
     # whitespace collapsed, not on the file's line breaks: a claim that survives
     # only until someone reflows a paragraph is pinning the wrapping, not the
     # claim.
     flowed = " ".join(text.replace("**", "").split())
-    assert "vergrößert die erforderliche Lichteintrittsfläche" in flowed
-    assert "es verbietet das Fenster nicht" in flowed
+    assert "enlarges the required light entry area" in flowed
+    assert "it does not forbid the window" in flowed
 
 
 def test_the_three_provenances_are_all_present_and_distinct(text: str) -> None:
@@ -465,10 +465,10 @@ def test_the_clear_width_hedge_survives(text: str) -> None:
     """
     flowed = " ".join(text.replace("**", "").split())
     # The operator's own result, named for what it is.
-    assert "Rohbaulichte" in flowed
+    assert "structural clear opening" in flowed
     # The size of the gap, and its direction. Both matter: a warning that the
     # number is "approximate" would not stop anyone reporting it as compliant.
-    assert "15–25 % kleiner" in flowed
-    assert "zu schmale" in flowed
+    assert "15 to 25 % smaller" in flowed
+    assert "too narrow" in flowed
     # And the instruction that keeps the wrong noun off the answer.
-    assert "nie „lichte Durchgangsbreite" in flowed
+    assert 'never called "lichte Durchgangsbreite"' in flowed

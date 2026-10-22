@@ -1,9 +1,10 @@
 """A passage read off a picture of the page carries its box to the viewer (issue #433).
 
-The box travels as a field of the grounding record, never as a line of the text
-the model reads: the model gains nothing from coordinates, and a changed block
-would be a changed prompt. So these tests hold both halves: the bytes do not
-move, and the box still reaches the wire, through dedup and the session cache.
+The box travels as a field of the grounding record, and the model reads it as a
+``Region:`` line in ``look``'s own frame (``[x, y, w, h]``, ADR-0128), so it can
+look again at the place a hit cites. These tests hold both halves: the line is
+what ``look(region=...)`` takes, and the box still reaches the wire, through
+dedup and the session cache.
 """
 
 from __future__ import annotations
@@ -67,8 +68,37 @@ def capturing():
     end_grounding_capture(token)
 
 
-def test_the_model_reads_the_same_bytes_with_or_without_a_region():
-    assert render_grounding_block(_block(_hit(regions=(FLOOR_PLAN,)))) == render_grounding_block(_block(_hit()))
+def test_a_hit_with_a_region_says_where_it_sits_in_looks_own_numbers():
+    rendered = render_grounding_block(_block(_hit(regions=(FLOOR_PLAN, SECTION))))
+
+    assert "Region: [0.1, 0.2, 0.4, 0.4] „Grundriss EG“\n" in rendered
+    # origin and size, not corners; an unlabelled box has no label
+    assert "Region: [0.55, 0.2, 0.35, 0.4]\n" in rendered
+    assert rendered.index("Region:") < rendered.index("Citation:")
+
+
+def test_a_hit_without_a_region_renders_no_line():
+    assert "Region:" not in render_grounding_block(_block(_hit()))
+
+
+def test_at_most_three_regions_are_rendered():
+    boxes = tuple(SourceRegion(box=(0.0, i / 10, 0.5, i / 10 + 0.05)) for i in range(5))
+
+    assert render_grounding_block(_block(_hit(regions=boxes))).count("Region:") == 3
+
+
+def test_a_label_with_a_line_break_stays_one_line():
+    region = SourceRegion(box=(0.1, 0.1, 0.4, 0.4), label="Schnitt\nA-A")
+
+    assert "Region: [0.1, 0.1, 0.3, 0.3] „Schnitt A-A“\n" in render_grounding_block(_block(_hit(regions=(region,))))
+
+
+def test_a_replayed_block_with_a_region_line_still_parses_its_citation():
+    rendered = render_grounding_block(_block(_hit(regions=(FLOOR_PLAN,))))
+
+    [entry] = extract_sources_from_tool_result("knowledge_search", rendered)
+
+    assert entry.citation_key == "plan.pdf, p.3"
 
 
 def test_the_record_carries_the_region_into_the_registry(capturing):

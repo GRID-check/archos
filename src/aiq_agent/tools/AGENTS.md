@@ -3,8 +3,13 @@
 Tools that act on the user's workspace rather than retrieve from a corpus.
 Evidence sources are packages under `sources/`; what lives here is the BIM
 surface (`bim/`), the conversation's working directory (`documents/`), the
-write-side workspace verbs (`files/`) and the review canvas (`canvas/`, the
-`canvas` function group: look at a page or a box on it, the room, pointing and
+write-side workspace verbs (`files/`), `look` (`look/`, its own tool bound in
+every context, ADR-0128: a page, a region of it or an embedded image as an
+image the model sees; it resolves the document the way the canvas tools do and
+makes the box glow on the canvas for a workspace document; every look leaves a
+`look` Herleitung step at once and, once the answer is final, an item on the
+document's `look` card if the answer relies on it, `look/cards.py`) and the review
+canvas (`canvas/`, the `canvas` function group: the room, pointing and
 highlighting, and Anmerkungen: Piloti's own findings are born proposals a
 person takes over or dismisses, and what the person asks for (set a mark,
 change one, delete one they set) Piloti does in their name, under their rights,
@@ -129,6 +134,16 @@ audit trail and the feature gates are the ones that were already there — which
 is ADR-0055 read from this side: one HTTP surface per primitive, and this tier
 is a client of it like everybody else, never a second implementation.
 
+**The fourth kind has no creator in this tier.** An `operation` proposal is
+stored by the MCP server when `workspace__call` runs a write
+(`lib/agent-api/operation-proposals.ts`), so `workspace/cards.py` only SHOWS it:
+it reads `structuredContent` `{ decision: 'propose', proposalId, summary, operation }`
+off the result and adds an `operation_proposal` card carrying that `proposal_id`
+(one card per id: a repeated call gets the same proposal back). Reads and
+refusals carry no `decision` and emit no card. The model reads the server's short
+text only. Do not create the proposal from Python: a second path to the same row
+is the drift ADR-0055 forbids.
+
 Three consequences worth knowing before adding a fifth operation:
 
 - **Nothing is resolved that the turn cannot see.** A document is matched
@@ -155,6 +170,38 @@ Three consequences worth knowing before adding a fifth operation:
   project-scoped route rather than shipping ahead of it. Inventing a route on this side would put the
   write back behind the door the whole module exists to keep shut.
 
+## A new workspace capability is a route and an operation, not a tool
+
+Piloti reaches the workspace through the BFF's MCP server (`/api/mcp`) like any
+agent (ADR-0122). Everything a person can do there is an operation in
+`frontends/ui/src/lib/agent-api/catalog/`, run as the person (except the ones
+`withheld` from every agent: product configuration, proxied services, screen state), and a write from
+this tier becomes a proposal the person accepts. So a capability that has a UI
+route gets an operation, not a new Python tool. Python tools are for task-shaped
+reasoning that has no route: retrieval, IFC, canvas. The Python-only reads are
+served to other agents through the same server
+([`agent-surface.md`](../../../docs/architecture/agent-surface.md)).
+
+## The workspace tools are Piloti as a client of its own MCP server
+
+`workspace` (`workspace/`, the `piloti_workspace` function group, ADR-0122) is
+four tools, `workspace__search`, `workspace__describe`, `workspace__call` and
+`workspace__report_missing`: the meta-tools an external agent gets from
+`POST /api/mcp` in `discovery` mode. Each call is one stateless JSON-RPC
+`tools/call` that echoes the turn's envelope beside `GRID_INTERNAL_API_TOKEN`
+(echo, never sign, as above). A write comes back as a proposal the person
+accepts; this tier applies nothing.
+
+**Do not swap it for NAT's `mcp_client` group.** That client connects once, in a
+lifecycle task created at build time, and sends every request from tasks spawned
+inside it, which inherit the CONNECT-time contextvars. An auth provider reading
+the envelope from a contextvar would send no identity, or another turn's, on a
+later turn's call. Here the envelope is read inside the tool, in the turn's own
+context, and nothing is connected or cached between calls; the two tests in
+`tests/aiq_agent/tools/workspace/` (`..._of_its_own_turn`, `..._never_swap_identities`)
+pin it. Nothing is added per operation on this side: a new operation is a catalog
+entry on the BFF and appears through `workspace__search`.
+
 ## Content from another project is recorded by the BFF before it arrives
 
 `project_lookup` (`cross_project/`, ADR-0094) reads OTHER projects, from any
@@ -170,6 +217,17 @@ running project or a restricted folder; a closed project's open folder does
 not), which is what shuts the turn's doors. A second tool that reads another
 project must go through the same routes; one that admitted foreign content on
 its own say-so would let the agent decide access.
+
+The workspace tools are the second: `workspace__call` reads other projects
+through the BFF's MCP door, and the BFF holds those reads to the same reach
+(`audienceReachAmong`) and records them through the same
+`recordCrossProjectHandOut` before the read runs (ADR-0094's amendment,
+[`agent-surface.md`](../../../docs/architecture/agent-surface.md#reads-in-a-conversation)).
+A shared chat reads only a document's content or a project's facts there.
+The workspace result carries no `restricting` flag yet, so a door read of a
+running project shuts the turn's doors only where the server judges them (a
+memory write, a run, a share is refused against the record), not ahead of time
+as `project_lookup` does.
 
 ## Obligations
 

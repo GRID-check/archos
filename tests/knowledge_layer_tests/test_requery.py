@@ -169,7 +169,7 @@ def _grounding(merged, query, notice="", trailer="", preamble_note="", opened_fi
     )
 
 
-_NOTICE_MARK = "Hinweis: die Suche wurde um"
+_NOTICE_MARK = "Note: the search was widened by"
 
 
 def _body(out: str) -> str:
@@ -299,14 +299,14 @@ class TestTheNoticeTheModelReads:
 
     def test_the_line_names_every_alternative_formulation(self):
         notice = requery_notice(["Gehweglänge Gebäudeklasse 4", "Fluchtweglänge GK4"])
-        assert notice.startswith("Hinweis: die Suche wurde um 2 Umformulierungen erweitert (")
+        assert notice.startswith("Note: the search was widened by 2 reformulations (")
         assert "„Gehweglänge Gebäudeklasse 4“" in notice
         assert "„Fluchtweglänge GK4“" in notice
-        assert "weil die ersten Treffer die Frage nicht abdeckten." in notice
+        assert "because the first hits did not cover the question." in notice
         assert notice.endswith("\n\n"), "the notice is a LEADING line, not part of the first excerpt"
 
     def test_one_formulation_reads_as_one(self):
-        assert "um eine Umformulierung erweitert" in requery_notice(["Gehweglänge"])
+        assert "widened by one reformulation" in requery_notice(["Gehweglänge"])
 
     async def test_a_one_shot_search_carries_no_notice(self, loop_harness):
         retriever = _FakeRetriever({"Fluchtweg GK4": [_chunk("a", "a")]})
@@ -434,7 +434,7 @@ class TestTheCoverageSignal:
         out = _body(await _search(_config(requery_llm="judge", requery_decider="jev")))
 
         gap, _, rest = out.partition("]")
-        assert gap.startswith("GAP[keine der 8 gezeigten Passagen") and "auch nach Umformulierung" in gap
+        assert gap.startswith("GAP[none of the 8 shown passages") and "even after reformulating the search" in gap
         assert len(rest.split("|")) == 8
         assert decider.calls[-1] == {"count": 8, "questions": {"answers"}}
 

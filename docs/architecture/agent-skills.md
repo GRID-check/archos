@@ -891,7 +891,7 @@ context, so they read the tenant off the job's `job_access` row
 nothing unless the standing status is its own verdict. Until 2026-09 only the
 runner reported, and only when it wrote the status itself, so a cancelled,
 reaped or exhausted run stayed `running` in `task_runs` forever. The BFF turns that into a
-`job.completed` or `job.failed` inbox item for the job's creator, one row per
+`task_run.completed` or `task_run.failed` inbox item (`job.*` before migration 0177) for the task's creator, one row per
 run, landing on the project's automation page. Best-effort by contract: the
 run is already final in the job store, and a missed notification never
 unmakes a good run.

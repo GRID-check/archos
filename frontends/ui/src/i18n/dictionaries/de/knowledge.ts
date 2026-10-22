@@ -51,6 +51,15 @@ export const knowledge: typeof en.knowledge = {
     removed: 'Der Korpus führt dieses Dokument nicht mehr, seine indexierten Inhalte sind aber noch durchsuchbar. Zum Bereinigen löschen.',
     inconsistent: 'Als verarbeitet vermerkt, aber es wurden keine durchsuchbaren Inhalte gefunden. Synchronisierung erneut ausführen.',
   },
+  // Eine Seite klein, mit einer Stelle darauf markiert (ADR-0128): die
+  // Angesehen-Karte, die Zeile in der Herleitung und die Zitatvorschau.
+  placeThumbnail: {
+    page: 'Seite {page}',
+    loading: 'Seite wird gezeichnet',
+    noAccess: 'Für dich nicht verfügbar',
+    unavailable: 'Keine Vorschau dieser Seite',
+    embeddedImage: 'Bild {index} auf dieser Seite',
+  },
   viewer: {
     view: 'PDF ansehen',
     description: 'Originales Quelldokument.',

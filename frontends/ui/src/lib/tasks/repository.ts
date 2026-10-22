@@ -401,6 +401,27 @@ export async function listRunsInProject(
 }
 
 /**
+ * How many of the project's runs are queued or running, counted in SQL. Not a
+ * filter over {@link listRunsInProject}: that list is the newest
+ * `RUN_LIST_LIMIT`, and a project with more recent runs than that would
+ * under-count the older ones still running.
+ */
+export async function countActiveRunsInProject(projectId: string, organizationId: string): Promise<number> {
+  const db = getDb()
+  const [row] = await db
+    .select({ n: sql<number>`count(*)::int` })
+    .from(taskRuns)
+    .where(
+      and(
+        eq(taskRuns.projectId, projectId),
+        eq(taskRuns.organizationId, organizationId),
+        inArray(taskRuns.status, [...ACTIVE_RUN_STATUSES]),
+      ),
+    )
+  return Number(row?.n ?? 0)
+}
+
+/**
  * The run a backend job id belongs to. NOT tenant-filtered, for the reason
  * `findTaskByBackendJobId` gives: the worker that reports holds the backend id
  * and nothing else, so the caller runs this under platform access and

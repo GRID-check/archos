@@ -48,6 +48,35 @@ LEXICAL = "lexical"
 BM25_MODEL = "qdrant/bm25"
 BM25_OPTIONS: dict[str, Any] = {"language": "german", "ascii_folding": True}
 
+#: Collection metadata key holding the BM25 length normalisation (``k``, ``b``, ``avg_len``) every
+#: sparse vector of that collection was written with. Fixed per collection: changing it means
+#: rewriting every lexical vector, which is a ``_vN`` rebuild (``rebuild.copy_collection``), never
+#: an edit here. A collection without the key was written with Qdrant's defaults
+#: (:data:`BM25_DEFAULT_LENGTH`), which is every collection made before the key existed and every
+#: collection made by anything but a rebuild.
+BM25_LENGTH_KEY = "aiq:bm25_length"
+#: Qdrant's own BM25 length parameters (the ``qdrant/bm25`` model's defaults).
+BM25_DEFAULT_LENGTH: dict[str, float] = {"k": 1.2, "b": 0.75, "avg_len": 256.0}
+_BM25_LENGTH_KEYS = frozenset(BM25_DEFAULT_LENGTH)
+
+
+def bm25_length_of(metadata: dict[str, Any] | None) -> dict[str, float]:
+    """The BM25 length parameters a collection's metadata records; ``{}`` (Qdrant's defaults) when none."""
+    stored = (metadata or {}).get(BM25_LENGTH_KEY)
+    if not isinstance(stored, dict):
+        return {}
+    try:
+        length = {key: float(value) for key, value in stored.items() if key in _BM25_LENGTH_KEYS}
+    except (TypeError, ValueError):
+        return {}
+    return length if all(value > 0 for value in length.values()) else {}
+
+
+def effective_bm25_length(length: dict[str, float] | None) -> dict[str, float]:
+    """``length`` with Qdrant's default for each parameter it leaves out: what the server computes with."""
+    return {**BM25_DEFAULT_LENGTH, **(length or {})}
+
+
 #: Payload field holding the logical collection a point belongs to.
 SCOPE_FIELD = "scope"
 #: Payload field holding the chunk text: what BM25 reads, what the full-text
@@ -76,6 +105,35 @@ TEXT_INDEX = models.TextIndexParams(
     lowercase=True,
     ascii_folding=True,
     phrase_matching=True,
+)
+
+#: Payload field naming what a point is, for the points that are not chunks. A chunk carries no
+#: ``kind`` (every point written before folder points existed is one, so nothing is backfilled);
+#: a folder card's point carries :data:`FOLDER_KIND` (ADR-0127). Every chunk read leaves folder
+#: points out in the one filter constructor (``scope.scope_filter``).
+KIND_FIELD = "kind"
+#: :data:`KIND_FIELD` of a folder card's point: one per card, in the folder's own scope.
+FOLDER_KIND = "folder"
+
+#: Payload field holding a second copy of the chunk text, indexed with a German stemmer
+#: (:data:`TEXT_STEM_INDEX`), so ``knowledge_search(match="exact", stemmed=true)`` finds the
+#: inflected forms of a word („Fluchtwegbreiten“ for „Fluchtwegbreite“). Qdrant keeps one index
+#: per key, and :data:`TEXT_FIELD`'s must stay unstemmed: a number, a code and a literal wording
+#: are matched as written. Written with every new point; a ``_vN`` rebuild fills it on the rest.
+TEXT_STEM_FIELD = "text_stem"
+
+#: The stemmed full-text index on :data:`TEXT_STEM_FIELD`: :data:`TEXT_INDEX`'s tokenizer and
+#: folding plus Snowball's German stemmer (the one ``qdrant/bm25`` with ``language=german`` uses).
+#: Measured on 1.19.2: „Fluchtwegbreite“ and „Fluchtwegbreiten“, „Brandabschnitt“ and
+#: „Brandabschnitte“, „Tür“ and „Türen“ match each other, a compound („Erdgeschoss“ for „Geschoss“)
+#: does not, and „5.1.1“ still matches as a phrase.
+TEXT_STEM_INDEX = models.TextIndexParams(
+    type=models.TextIndexType.TEXT,
+    tokenizer=models.TokenizerType.WORD,
+    lowercase=True,
+    ascii_folding=True,
+    phrase_matching=True,
+    stemmer=models.SnowballParams(type=models.Snowball.SNOWBALL, language=models.SnowballLanguage.GERMAN),
 )
 
 #: Payload object holding the owning project's fingerprint (the BFF's
@@ -148,6 +206,7 @@ KEYWORD_FIELDS: tuple[str, ...] = (
     "folder_ancestors",
     "tags",
     "topics",
+    KIND_FIELD,
     PROJECT_STATUS_FIELD,
     *(f"{PROJECT_FACTS_FIELD}.{key}" for key in FACT_KEYS if key != "building_class"),
     *LEGACY_KEYWORD_FIELDS,
@@ -201,10 +260,21 @@ INTEGER_FIELDS: tuple[str, ...] = (
     "stored_image_index",
     "segment_index",
 )
+#: Payload field holding the document's own date: the title block's ``revision_date``, else the
+#: photo's ``capture.captured_at``, else absent. Copied from the metadata row (``payload.document_facts``).
+DOCUMENT_DATE_FIELD = "document_date"
+#: Payload field holding when the document was first indexed under its name (the row's ``added_at``).
+ADDED_AT_FIELD = "added_at"
+#: Fields stored as RFC 3339 datetimes and indexed as ``datetime`` (a range on one is a
+#: ``DatetimeRange``, ``scope._range``). Not :data:`INDEXED_AT_FIELD`, which is integer seconds.
+DATETIME_FIELDS: tuple[str, ...] = (DOCUMENT_DATE_FIELD, ADDED_AT_FIELD)
 #: Fields stored and filtered as booleans.
 BOOL_FIELDS: tuple[str, ...] = ("superseded",)
 
-INDEXED_FIELDS = frozenset(KEYWORD_FIELDS + INTEGER_FIELDS + BOOL_FIELDS + (TEXT_FIELD,))
+#: The full-text fields: never a filter-grammar field, only the text conditions the search builds.
+TEXT_FIELDS: tuple[str, ...] = (TEXT_FIELD, TEXT_STEM_FIELD)
+
+INDEXED_FIELDS = frozenset(KEYWORD_FIELDS + INTEGER_FIELDS + DATETIME_FIELDS + BOOL_FIELDS + TEXT_FIELDS)
 
 #: Prefixes of collections an office owns. Anything else is shared corpus.
 TENANT_PREFIXES = (*OFFICE_SHELF_COLLECTION_PREFIXES, "proj_", "s_")
@@ -242,10 +312,14 @@ def _field_schema(field: str) -> Any:
         return models.KeywordIndexParams(type=models.KeywordIndexType.KEYWORD, is_tenant=True)
     if field == TEXT_FIELD:
         return TEXT_INDEX
+    if field == TEXT_STEM_FIELD:
+        return TEXT_STEM_INDEX
     if field in INTEGER_FIELDS:
         return models.PayloadSchemaType.INTEGER
     if field in BOOL_FIELDS:
         return models.PayloadSchemaType.BOOL
+    if field in DATETIME_FIELDS:
+        return models.PayloadSchemaType.DATETIME
     return models.PayloadSchemaType.KEYWORD
 
 
@@ -258,6 +332,7 @@ def create_collection(
     *,
     shards: int | None = None,
     replication: int | None = None,
+    bm25_length: dict[str, float] | None = None,
 ) -> None:
     """Create one physical collection with its vectors, quantization, strict mode and indexes.
 
@@ -265,6 +340,9 @@ def create_collection(
     and a rebuild (``rebuild.py``) creates the next ``_vN`` beside the live one
     and switches the alias only once the copy is complete. ``shards`` and
     ``replication`` override the environment's, which is what a rebuild is for.
+    ``bm25_length`` is recorded in the metadata (:data:`BM25_LENGTH_KEY`) and is
+    what every lexical vector written into the collection is computed with; only a
+    rebuild passes one, after measuring the chunks it copies.
     """
     tenant = physical is Physical.OFFICE
     rf = replication or replication_factor()
@@ -289,9 +367,17 @@ def create_collection(
         strict_mode_config=models.StrictModeConfig(
             enabled=True, unindexed_filtering_retrieve=False, unindexed_filtering_update=False
         ),
-        metadata=dict(identity),
+        metadata=_metadata(identity, bm25_length),
     )
     ensure_payload_indexes(client, name)
+
+
+def _metadata(identity: dict[str, Any], bm25_length: dict[str, float] | None) -> dict[str, Any]:
+    """The new collection's metadata: the embedder's identity, and its own BM25 length or none (never a copy's)."""
+    metadata = {key: value for key, value in identity.items() if key != BM25_LENGTH_KEY}
+    if bm25_length:
+        metadata[BM25_LENGTH_KEY] = {key: float(value) for key, value in bm25_length.items()}
+    return metadata
 
 
 def text_index_drift(params: Any) -> str | None:

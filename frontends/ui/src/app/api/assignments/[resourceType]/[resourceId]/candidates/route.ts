@@ -8,19 +8,13 @@
  * a mark may mention.
  */
 
-import { BadRequestError } from '@/lib/api/errors'
-import { apiRoute } from '@/lib/api/handler'
+import { apiRoute, parseQuery } from '@/lib/api/handler'
 import { requireCollaborationEnabled } from '@/lib/authz/feature-flags'
-import { listAssignmentCandidates, type CandidateAccess } from '@/lib/assignments/service'
+import { assignmentCandidatesQuerySchema } from '@/lib/assignments/assignment-wire'
+import { listAssignmentCandidates } from '@/lib/assignments/service'
 import { requireShareableType } from '@/lib/sharing/registry'
 
 type Params = { resourceType: string; resourceId: string }
-
-function accessOf(request: Request): CandidateAccess {
-  const value = new URL(request.url).searchParams.get('access')
-  if (value === null || value === 'read' || value === 'write') return value ?? 'read'
-  throw new BadRequestError('access is read or write.')
-}
 
 export const GET = apiRoute<Params>(
   async ({ session, params, request }) => {
@@ -30,7 +24,7 @@ export const GET = apiRoute<Params>(
       session,
       requireShareableType(params.resourceType),
       params.resourceId,
-      { access: accessOf(request) },
+      { access: parseQuery(request, assignmentCandidatesQuerySchema).access ?? 'read' },
     )
     return { candidates }
   },

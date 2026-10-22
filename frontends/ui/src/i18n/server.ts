@@ -12,14 +12,15 @@ import { getDictionary } from './dictionaries'
 import { pickRequestLocale } from './request-locale'
 import { createTranslator, type Translator } from './translate'
 import { findSavedLocale } from '@/lib/user-preferences/locale'
+import { actingReaderIsAgent } from '@/lib/agent-api/acting-session'
 
 /**
- * Resolve the active locale for the current request.
+ * The locale of the person behind the request.
  *
  * Cached per render: the root layout, the page and its `generateMetadata` each
  * ask, and the saved preference is a database read.
  */
-export const getLocale = cache(async (): Promise<Locale> => {
+const requestLocale = cache(async (): Promise<Locale> => {
   const [cookieStore, headerStore, saved] = await Promise.all([cookies(), headers(), findSavedLocale()])
   return pickRequestLocale({
     saved,
@@ -27,6 +28,17 @@ export const getLocale = cache(async (): Promise<Locale> => {
     acceptLanguage: headerStore.get('accept-language'),
   })
 })
+
+/**
+ * Resolve the active locale for the current request. An agent's call through
+ * the MCP server (`lib/agent-api/dispatch.ts`) reads English, whatever the
+ * person saved: a model reads the answer, and anything an agent reads is
+ * English (AGENTS.md, "Industry standard first").
+ */
+export async function getLocale(): Promise<Locale> {
+  if (actingReaderIsAgent()) return 'en'
+  return requestLocale()
+}
 
 /**
  * Get a server-side translator, optionally scoped to a namespace.

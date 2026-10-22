@@ -60,6 +60,8 @@ from aiq_agent.common.citation_verification import end_turn_capture
 from aiq_agent.common.citation_verification import extract_sources_from_tool_result
 from aiq_agent.common.citation_verification import get_session_registry
 from aiq_agent.common.citation_verification import get_turn_captures
+from aiq_agent.common.citation_verification import is_look_place
+from aiq_agent.common.citation_verification import is_look_tool
 from aiq_agent.common.citation_verification import record_turn_capture
 from aiq_agent.common.citation_verification import reset_session_registry
 from aiq_agent.common.citation_verification import set_session_registry
@@ -127,7 +129,6 @@ from .answer_pipeline import LiveAnswer
 from .answer_pipeline import RepairFn
 from .answer_pipeline import finalize_answer
 from .answer_pipeline import handed_this_turn
-from .answer_pipeline import looked_up_this_turn
 from .envelope_call import ainvoke
 from .envelope_call import ainvoke_with_envelope_json_mode
 from .grounding import tool_result_is_measurement
@@ -175,19 +176,19 @@ _DEFAULT_MAX_INPUT_TOKENS_PER_TURN = 600_000
 #: result so nothing reads as a second, agreeing retrieval. Still uncharged,
 #: still never run again.
 _REPEAT_FETCH_PREFIX = (
-    "Wiederholter Aufruf: dieser Aufruf lief in diesem Zug bereits identisch und wurde nicht erneut "
-    "ausgeführt. Unten steht unverändert sein Ergebnis von damals — weiter mit einer anderen Stelle "
-    "oder einer anderen Frage."
+    "Repeated call: this call already ran identically in this turn and was not executed "
+    "again. Below is its earlier result, unchanged — continue with a different place "
+    "or a different question."
 )
 
 #: The fallback when the turn no longer holds the first execution's text (the
 #: tools node was driven directly, or that call answered with nothing at all).
-#: German for the same reason as the prefix, and an INSTRUCTION for the same
+#: An INSTRUCTION for the same
 #: reason: a retry of the identical call would buy the turn nothing.
 _REPEAT_FETCH_MESSAGE = (
-    "Nicht ausgeführt: dieser Aufruf lief in diesem Zug bereits identisch; "
-    "das Ergebnis oben ist die Antwort — weiter mit einer anderen Stelle oder einer anderen Frage, "
-    "nicht mit einer Wiederholung"
+    "Not executed: this call already ran identically in this turn; "
+    "the result above is the answer — continue with a different place or a different question, "
+    "not with a repetition"
 )
 
 #: What a same-batch repeat of a FAILED fetch is answered with. The turn holds
@@ -197,9 +198,9 @@ _REPEAT_FETCH_MESSAGE = (
 #: nothing, precisely so the retry stays available). Says what happened and
 #: when the call may be made again.
 _FAILED_FETCH_REPEAT_MESSAGE = (
-    "Nicht ausgeführt: dieser Aufruf war in dieser Runde schon einmal enthalten, und dieser erste "
-    "Versuch ist fehlgeschlagen — es liegt kein Ergebnis vor. Du kannst ihn in der nächsten Runde "
-    "erneut stellen oder eine andere Stelle wählen."
+    "Not executed: this call was already included once in this round, and that first "
+    "attempt failed — there is no result. You can make it again in the next round "
+    "or choose a different place."
 )
 
 #: How many tool calls ONE round may actually run. A runaway guard, not a
@@ -215,9 +216,9 @@ _DEFAULT_MAX_CALLS_PER_ROUND = 12
 #: two notices above: the call was not refused, it was not RUN THIS ROUND, and
 #: the useful next move is to ask for it again in the next one.
 _WIDTH_CAP_MESSAGE = (
-    "Nicht ausgeführt: diese Runde hat mehr parallele Aufrufe angefordert, als eine Runde ausführen "
-    "darf. Die ersten Aufrufe der Runde sind gelaufen; dieser hier nicht. Stell ihn in der nächsten "
-    "Runde erneut, wenn du ihn nach den Ergebnissen oben noch brauchst."
+    "Not executed: this round requested more parallel calls than a round may "
+    "run. The first calls of the round ran; this one did not. Make it again in the next "
+    "round if you still need it after the results above."
 )
 
 #: Why the loop stopped early. Stable tokens, not prose: they are counted, and
@@ -877,7 +878,6 @@ def _live_answer(state: ResearchAgentState) -> LiveAnswer | None:
         return None
     return LiveAnswer(
         registry,
-        lookup_attempted=looked_up_this_turn(state.messages),
         handed=handed_this_turn(state.messages),
     )
 
@@ -946,13 +946,16 @@ def _capture_sources(
     if tool_name not in source_tool_names:
         return
     source_id = get_source_id_for_tool(tool_name)
-    if source_id is None:
+    # `look` is no data source: it registers the PLACE it read, when it read a
+    # project or office document (`tools/look/place.py`), and nothing else.
+    if source_id is None and not is_look_tool(tool_name):
         logger.debug("[CitationRegistry] Skipping non-data-source tool result from %s", tool_name)
         return
     sources = extract_sources_from_tool_result(tool_name, content, source_id=source_id)
     for source in sources:
         registry.add(source)
-    record_turn_capture(sources)
+    # A place is no retrieval: it must not ground a trailer value or count as a retrieved source.
+    record_turn_capture([source for source in sources if not is_look_place(source)])
     if sources:
         logger.info(
             "[CitationRegistry] Captured %d source(s) from %s: %s",
@@ -1517,7 +1520,8 @@ class PilotiAgent:
                 # used to register as a web source card nobody had searched.
                 continue
             tool_name = getattr(message, "name", "") or ""
-            content = str(message.content)
+            # A look answers in blocks (text, then the image): its text is the grounding block.
+            content = content_to_text(message.content) if isinstance(message.content, list) else str(message.content)
             measured = measured or tool_result_is_measurement(tool_name, content)
             _capture_sources(tool_name, content, binding.source_tool_names, registry)
         return measured
@@ -1682,6 +1686,7 @@ class PilotiAgent:
             repair=self._repairer(),
             turn_sources=turn_sources,
             card_repair=self._card_repairer(),
+            measured_values=[measurement.value_text for measurement in turn_measurements],
         )
         self._emit_final_report(final)
         # The "already read" digest, appended at turn end: this turn's captures

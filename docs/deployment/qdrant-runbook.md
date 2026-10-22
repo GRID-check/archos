@@ -638,6 +638,50 @@ the old collection once you are sure: `q -X DELETE $P0/collections/piloti_office
 A copy of a large collection runs for a while: run it in a pod that survives
 your terminal (`kubectl exec` dies with it).
 
+### Tune BM25 to the chunks (and fill in the stemmed text) in the same rebuild
+
+Every copy also tunes the keyword channel (ADR-0127). Qdrant's `qdrant/bm25`
+weighs a term by the chunk's length against `avg_len`, default 256, counted in
+its own tokens: the words left after the German analysis, about 0.30 per model
+token on our text. A copy reads each chunk's length back out of the weights it
+stored, and when the mean is more than 10 % from the live collection's
+`avg_len` it creates the target with the measured mean (recorded in the
+collection metadata as `aiq:bm25_length`) and recomputes every lexical vector
+from the chunk text, server side; dense vectors are copied as stored. The same
+copy gives every chunk written before the stemmed exact search existed its
+`text_stem` field, which `knowledge_search(match="exact", stemmed=true)` needs
+to find it in inflected form. **Drilled on a local 1.19.2 only; never run against
+a deployment as part of the change that added it.**
+
+Measured from the chunking constants, before any deployment was read: a
+640-token section chunk is about 210 BM25 tokens, a full 1,024-token split about
+310, a median 128-token OIB Punkt about 41. Expect the office collection near the
+default and the corpus well below it. Read the real numbers first; nothing is
+written:
+
+```bash
+kubectl -n grid exec deploy/aiq-api -- python scripts/qdrant_chunk_length_stats.py
+# office: 5000 chunks, mean …, p50 …, p90 …, written with {...}; a rebuild would write {...}
+```
+
+Then schedule it like any rebuild above (snapshot, stop ingestion, copy, check,
+switch). The copy log says `BM25 length … (recomputed)` or `(copied as stored)`.
+`--bm25-avg-len`, `--bm25-k` and `--bm25-b` set the values outright (a parity
+sweep's result, `frontends/benchmarks/oib_retrieval`); `--keep-bm25` copies the
+lexical vectors untouched.
+
+```bash
+kubectl -n grid exec deploy/aiq-api -- python scripts/qdrant_rebuild.py corpus --copy-to piloti_corpus_v2
+kubectl -n grid exec deploy/aiq-api -- python scripts/qdrant_rebuild.py corpus --switch-to piloti_corpus_v2
+kubectl -n grid rollout restart deploy/aiq-api deploy/ingest-worker
+```
+
+Every process reads a collection's BM25 length from its metadata and trusts it
+for five minutes, so restart the backend and the ingest workers after the switch
+(and after a rollback): a writer that still holds the old length would write
+vectors the new collection does not expect. Gate it with the parity harness and
+the answer suite (`--set loop` and `--set files`) before and after.
+
 ## Rename payload keys
 
 The knowledge layer's payload keys were renamed to English

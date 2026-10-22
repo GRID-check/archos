@@ -258,11 +258,11 @@ def requery_notice(queries: Sequence[str]) -> str:
     named = [" ".join(query.split())[:_NOTICE_QUERY_CHARS] for query in queries if query and query.strip()]
     if not named:
         return ""
-    count = "eine Umformulierung" if len(named) == 1 else f"{len(named)} Umformulierungen"
+    count = "one reformulation" if len(named) == 1 else f"{len(named)} reformulations"
     formulations = "; ".join(f"„{query}“" for query in named)
     return (
-        f"Hinweis: die Suche wurde um {count} erweitert ({formulations}), "
-        "weil die ersten Treffer die Frage nicht abdeckten.\n\n"
+        f"Note: the search was widened by {count} ({formulations}), "
+        "because the first hits did not cover the question.\n\n"
     )
 
 
@@ -311,14 +311,14 @@ class CoverageGap:
     unjudged: int = 0
 
     def reason(self) -> str:
-        """The clause after „Abdeckung: unzureichend — ", German like the excerpts."""
-        after = ", auch nach Umformulierung der Suche" if self.widened else ""
-        which = f"{self.judged} besten" if self.unjudged else f"{self.judged} gezeigten"
-        rest = f"; die übrigen {self.unjudged} Passagen wurden nicht geprüft" if self.unjudged else ""
+        """The clause after „Abdeckung: unzureichend — ", in English."""
+        after = ", even after reformulating the search" if self.widened else ""
+        which = f"best {self.judged}" if self.unjudged else f"{self.judged} shown"
+        rest = f"; the remaining {self.unjudged} passages were not checked" if self.unjudged else ""
         return (
-            f"keine der {which} Passagen enthält die gesuchte Aussage "
-            f"(Entscheidungsmodell: höchste Wahrscheinlichkeit {self.best:.2f}, "
-            f"Schwelle {self.threshold:.2f}){after}{rest}"
+            f"none of the {which} passages contains the statement sought "
+            f"(decision model: highest probability {self.best:.2f}, "
+            f"threshold {self.threshold:.2f}){after}{rest}"
         )
 
 

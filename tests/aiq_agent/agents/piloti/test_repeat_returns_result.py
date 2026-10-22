@@ -88,7 +88,7 @@ def _bypass_citation_pipeline():
         patch("aiq_agent.agents.piloti.answer_pipeline.verify_citations") as verify,
         patch("aiq_agent.agents.piloti.answer_pipeline.sanitize_report") as sanitize,
     ):
-        verify.side_effect = lambda content, reg, reference_sources=None: MagicMock(
+        verify.side_effect = lambda content, reg, reference_sources=None, **_: MagicMock(
             verified_report=content, removed_citations=[]
         )
         sanitize.side_effect = lambda content: MagicMock(sanitized_report=content)
@@ -242,8 +242,8 @@ class TestWhatIsStillTheSentence:
 
         assert len(RAN) == 1, "the duplicate still does not run"
         assert _answer_for(result, "b") == _FAILED_FETCH_REPEAT_MESSAGE
-        assert "fehlgeschlagen" in _FAILED_FETCH_REPEAT_MESSAGE
-        assert "nächsten Runde" in _FAILED_FETCH_REPEAT_MESSAGE
+        assert "failed" in _FAILED_FETCH_REPEAT_MESSAGE
+        assert "next round" in _FAILED_FETCH_REPEAT_MESSAGE
         assert "Ergebnis oben" not in _FAILED_FETCH_REPEAT_MESSAGE
 
     async def test_the_retry_of_that_failed_fetch_runs_in_the_next_round(self):

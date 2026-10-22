@@ -53,10 +53,10 @@ class TestWhichToolsAreBound:
 
 
 class TestTheDescriptions:
-    def test_they_are_german(self, backend: DraftBackend) -> None:
-        """Every stock English description is replaced, not merely extended."""
+    def test_they_replace_the_stock_text(self, backend: DraftBackend) -> None:
+        """Every stock description is replaced, not merely extended."""
         for tool in draft_tools(backend):
-            assert any(word in tool.description for word in ("Entwurf", "Entwürfe", "Arbeitsordner"))
+            assert any(word in tool.description for word in ("draft", "drafts", "working directory"))
             assert "the filesystem" not in tool.description
 
     def test_the_unenforced_read_before_edit_claim_is_gone(self, backend: DraftBackend) -> None:
@@ -71,13 +71,13 @@ class TestTheDescriptions:
     def test_edit_says_where_to_anchor_and_what_not_to_copy(self, backend: DraftBackend) -> None:
         """The two things that make an exact-string replacement land."""
         edit = next(tool for tool in draft_tools(backend) if tool.name == "edit_file")
-        assert "Überschrift" in edit.description
-        assert "Absatz" in edit.description
-        assert "Zeilennummern" in edit.description
+        assert "heading" in edit.description
+        assert "paragraph" in edit.description
+        assert "line numbers" in edit.description
 
     def test_read_warns_that_line_numbers_are_not_in_the_file(self, backend: DraftBackend) -> None:
         read = next(tool for tool in draft_tools(backend) if tool.name == "read_file")
-        assert "Zeilennummer" in read.description
+        assert "line number" in read.description
 
     def test_write_names_the_document_kinds_and_the_root(self, backend: DraftBackend) -> None:
         write = next(tool for tool in draft_tools(backend) if tool.name == "write_file")

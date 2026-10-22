@@ -50,8 +50,10 @@ from aiq_agent.common.wire_v2 import StageValue
 from aiq_agent.common.wire_v2 import StateSnapshotBody
 from aiq_agent.common.wire_v2 import StatusStep
 from aiq_agent.common.wire_v2 import StepFinishedBody
+from aiq_agent.common.wire_v2 import StepStartedBody
 from aiq_agent.common.wire_v2 import TextMessageContentBody
 from aiq_agent.common.wire_v2 import TextMessageStartBody
+from aiq_agent.common.wire_v2 import ToolStep
 from aiq_agent.common.wire_v2 import TurnResult
 from aiq_agent.common.wire_v2 import WireSource
 from aiq_agent.common.write_fence import TurnFenced
@@ -2550,7 +2552,7 @@ async def test_a_note_is_read_by_the_real_graph_in_its_next_round_and_holds_back
     requests: list[list] = []
     deciding, steered = asyncio.Event(), asyncio.Event()
 
-    @tool("canvas__look")
+    @tool("look")
     def look(page: int) -> str:
         """Look at a page."""
         ran.append("look")
@@ -2566,7 +2568,7 @@ async def test_a_note_is_read_by_the_real_graph_in_its_next_round_and_holds_back
         AIMessage(
             content="",
             tool_calls=[
-                {"name": "canvas__look", "args": {"page": 1}, "id": "l1"},
+                {"name": "look", "args": {"page": 1}, "id": "l1"},
                 {"name": "canvas__mark", "args": {"target": "Tür"}, "id": "m1"},
             ],
         ),
@@ -2596,7 +2598,7 @@ async def test_a_note_is_read_by_the_real_graph_in_its_next_round_and_holds_back
             patch("aiq_agent.agents.piloti.answer_pipeline.verify_citations") as verify,
             patch("aiq_agent.agents.piloti.answer_pipeline.sanitize_report") as sanitize,
         ):
-            verify.side_effect = lambda content, reg, reference_sources=None: MagicMock(
+            verify.side_effect = lambda content, reg, reference_sources=None, **_: MagicMock(
                 verified_report=content, removed_citations=[]
             )
             sanitize.side_effect = lambda content: MagicMock(sanitized_report=content)
@@ -3036,3 +3038,62 @@ async def test_one_turn_s_reply_is_not_the_next_turn_s(harness, thread_posts, pe
     assert [(payload["body"], payload["answerMessageId"]) for payload, _ in thread_posts] == [
         ("Zweite Antwort.", answer_message_id(CONV, WAKE_2))
     ]
+
+
+# ---------------------------------------------------------------------------
+# file-tools-used: which office-file moves a turn made (ADR-0127)
+# ---------------------------------------------------------------------------
+
+
+async def test_a_turn_that_listed_and_searched_scores_both(harness, monkeypatch):
+    scored: list[tuple[str, float | str]] = []
+
+    def capture(scores, **_):
+        scored.extend((score.name, score.value) for score in scores)
+        return len(scores)
+
+    monkeypatch.setattr(chat_socket, "emit_scores", capture)
+
+    async def turn(request, ask):
+        for number, tool in enumerate(("knowledge_search", "list_files", "list_files"), start=1):
+            yield StepFinishedBody(step=ToolStep(id=f"tool:{number}", tool=tool, status="ok"))
+        yield _finished(request)
+
+    sock = harness(turn).connect()
+    sock.client(type="user_message", message_id="t1", text="Was liegt im Projekt?")
+    await until(lambda: _last(sock) == "RUN_FINISHED")
+    await _settle_background()
+
+    assert ("file-tools-used", "both") in scored
+
+
+async def test_a_turn_whose_only_search_was_literal_scores_navigate(harness, monkeypatch):
+    from aiq_agent.common.turn_status import status_step
+
+    scored: list[tuple[str, float | str]] = []
+
+    def capture(scores, **_):
+        scored.extend((score.name, score.value) for score in scores)
+        return len(scores)
+
+    monkeypatch.setattr(chat_socket, "emit_scores", capture)
+
+    async def turn(request, ask):
+        yield StepStartedBody(step=ToolStep(id="tool:1", tool="knowledge_search"))
+        yield StepFinishedBody(step=status_step("literal-search:abc", channel="technical", match="exact"))
+        yield StepFinishedBody(step=ToolStep(id="tool:1", tool="knowledge_search", status="ok"))
+        yield _finished(request)
+
+    sock = harness(turn).connect()
+    sock.client(type="user_message", message_id="t1", text="Wo steht Brandabschnitt?")
+    await until(lambda: _last(sock) == "RUN_FINISHED")
+    await _settle_background()
+
+    assert ("file-tools-used", "navigate") in scored
+
+
+def test_only_a_tool_step_names_a_tool():
+    assert chat_socket.tool_called_by(StepFinishedBody(step=ToolStep(id="t", tool="read_passage"))) == "read_passage"
+    status = StepFinishedBody(step=StatusStep(id="s", slot="documents", key="status.documents.session"))
+    assert chat_socket.tool_called_by(status) is None
+    assert chat_socket.tool_called_by(TextMessageStartBody(message_id="m")) is None

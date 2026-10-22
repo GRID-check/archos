@@ -11,7 +11,7 @@ vi.mock('@/lib/backend-proxy', () => ({ getBackendUrl: () => 'http://backend.tes
 vi.mock('./access', () => ({ getAccessibleDocument: vi.fn() }))
 
 import { getAccessibleDocument } from './access'
-import { compareRevisionVisually } from './revision-compare-service'
+import { changedRevisionPages, compareRevisionPage, compareRevisionVisually } from './revision-compare-service'
 import { NO_VISIBLE_CHANGE } from './revision-compare-types'
 
 const session = { userId: 'user-1', organizationId: 'org-1', email: 'a@b.test' } as AuthorizedSession
@@ -73,9 +73,14 @@ describe('compareRevisionVisually', () => {
     const [url, init] = mockFetch.mock.calls[0]
     expect(url).toBe('http://backend.test/v1/collections/proj_abc/revision-compare')
     expect(init.method).toBe('POST')
-    expect(JSON.parse(init.body)).toEqual({ older: 'Grundriss_A.pdf', newer: 'Grundriss_B.pdf', page: 2 })
+    expect(JSON.parse(init.body)).toEqual({ older: 'Grundriss_A.pdf', newer: 'Grundriss_B.pdf', page: 2, purpose: 'person' })
     expect(init.headers).toMatchObject({ 'x-grid-organization-id': 'org-1', 'x-grid-user-id': 'user-1' })
-    expect(result).toEqual({ regions: [REGION], summary: ['Die Wand ist nach Osten gerückt.'] })
+    expect(result).toEqual({
+      regions: [REGION],
+      summary: ['Die Wand ist nach Osten gerückt.'],
+      older_name: 'Grundriss_A.pdf',
+      newer_name: 'Grundriss_B.pdf',
+    })
   })
 
   it('encodes the collection name into the path', async () => {
@@ -211,7 +216,12 @@ describe('compareRevisionVisually', () => {
         }),
       )
 
-      expect(await compareRevisionVisually(session, 'doc-b', 'doc-a', 1)).toEqual({ regions: [REGION], summary: ['Satz'] })
+      expect(await compareRevisionVisually(session, 'doc-b', 'doc-a', 1)).toEqual({
+        regions: [REGION],
+        summary: ['Satz'],
+        older_name: 'Grundriss_A.pdf',
+        newer_name: 'Grundriss_B.pdf',
+      })
     })
 
     it('reads a reply with nothing in it as „keine sichtbare Änderung“', async () => {
@@ -219,12 +229,16 @@ describe('compareRevisionVisually', () => {
       expect(await compareRevisionVisually(session, 'doc-b', 'doc-a', 1)).toEqual({
         regions: [],
         summary: [NO_VISIBLE_CHANGE],
+        older_name: 'Grundriss_A.pdf',
+        newer_name: 'Grundriss_B.pdf',
       })
 
       mockFetch.mockResolvedValue(new Response('not json', { status: 200 }))
       expect(await compareRevisionVisually(session, 'doc-b', 'doc-a', 1)).toEqual({
         regions: [],
         summary: [NO_VISIBLE_CHANGE],
+        older_name: 'Grundriss_A.pdf',
+        newer_name: 'Grundriss_B.pdf',
       })
     })
 
@@ -233,5 +247,66 @@ describe('compareRevisionVisually', () => {
 
       expect((await compareRevisionVisually(session, 'doc-b', 'doc-a', 1)).regions).toHaveLength(12)
     })
+  })
+})
+
+describe('compareRevisionPage (a notice, ADR-0130)', () => {
+  const TRACE = 'a'.repeat(32)
+
+  beforeEach(() => {
+    vi.stubGlobal('fetch', mockFetch)
+    mockFetch.mockReset()
+    vi.mocked(getAccessibleDocument).mockReset()
+    documentsById(NEWER, OLDER)
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  it('says it is a notice and keeps the trace of the call; the browser path never sees it', async () => {
+    mockFetch.mockResolvedValue(answer({ regions: [REGION], summary: ['s'], trace_id: TRACE }))
+
+    const result = await compareRevisionPage(session, 'doc-b', 'doc-a', 3, 'notice')
+
+    expect(JSON.parse(mockFetch.mock.calls[0][1].body)).toMatchObject({ page: 3, purpose: 'notice' })
+    expect(result.traceId).toBe(TRACE)
+    expect(await compareRevisionVisually(session, 'doc-b', 'doc-a', 3)).not.toHaveProperty('traceId')
+  })
+
+  it('reads a malformed trace id as none', async () => {
+    mockFetch.mockResolvedValue(answer({ regions: [], summary: [], trace_id: 'not-a-trace' }))
+
+    expect((await compareRevisionPage(session, 'doc-b', 'doc-a', 1, 'notice')).traceId).toBeNull()
+  })
+})
+
+describe('changedRevisionPages', () => {
+  beforeEach(() => {
+    vi.stubGlobal('fetch', mockFetch)
+    mockFetch.mockReset()
+    vi.mocked(getAccessibleDocument).mockReset()
+    documentsById(NEWER, OLDER)
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  it('asks the index under the same checks, and keeps only real page numbers', async () => {
+    mockFetch.mockResolvedValue(answer({ pages: [2, 0, 'x', 5.5, 7], newer_page_count: 9, comparable: true }))
+
+    const result = await changedRevisionPages(session, 'doc-b', 'doc-a')
+
+    expect(mockFetch.mock.calls[0][0]).toBe('http://backend.test/v1/collections/proj_abc/revision-pages')
+    expect(JSON.parse(mockFetch.mock.calls[0][1].body)).toEqual({ older: 'Grundriss_A.pdf', newer: 'Grundriss_B.pdf' })
+    expect(result).toEqual({ pages: [2, 7], newerPageCount: 9, comparable: true })
+  })
+
+  it('refuses a restricted folder before the backend is asked', async () => {
+    documentsById(doc({ id: 'doc-b', collectionName: 'proj_abc_r0123456789ab' }), doc({ id: 'doc-a', collectionName: 'proj_abc_r0123456789ab' }))
+
+    await expect(changedRevisionPages(session, 'doc-b', 'doc-a')).rejects.toMatchObject({ status: 422 })
+    expect(mockFetch).not.toHaveBeenCalled()
   })
 })

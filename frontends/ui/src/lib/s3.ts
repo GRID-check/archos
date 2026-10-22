@@ -7,12 +7,44 @@ const credentials = {
   secretAccessKey: process.env.SEAWEED_SECRET_KEY || "",
 };
 
+/** The documented local SeaweedFS (`docs/deployment/environment-variables.md`, `SEAWEED_ENDPOINT`). */
+export const LOCAL_STORAGE_ENDPOINT = "http://localhost:8333";
+
+type Env = Record<string, string | undefined>;
+
+/**
+ * The object store a client talks to: `SEAWEED_ENDPOINT` (for the browser-facing
+ * client, `SEAWEED_PUBLIC_ENDPOINT` first). Unset, the AWS SDK would not fail:
+ * with no endpoint it signs for AWS S3 itself and sends every object read and
+ * write there, with whatever credentials it holds. So unset is never that:
+ * outside production it is the documented local SeaweedFS, and in production a
+ * clear error on the first storage call, naming the variable.
+ */
+export function storageEndpoint(which: "internal" | "public" = "internal", env: Env = process.env): string {
+  const configured = (which === "public" ? env.SEAWEED_PUBLIC_ENDPOINT?.trim() : "") || env.SEAWEED_ENDPOINT?.trim();
+  if (configured) return configured;
+  if (env.NODE_ENV === "production") {
+    throw new Error(
+      "SEAWEED_ENDPOINT is not set, so object storage is not configured. Set it to the S3-compatible endpoint " +
+        "(docs/deployment/environment-variables.md); without it the AWS SDK would send every object to AWS S3."
+    );
+  }
+  return LOCAL_STORAGE_ENDPOINT;
+}
+
+/**
+ * The endpoint as the SDK's provider, read at call time rather than at import:
+ * `next build` imports this module without the runtime's environment, and must
+ * not fail for it.
+ */
+const endpointFor = (which: "internal" | "public") => async () => ({ url: new URL(storageEndpoint(which)) });
+
 /**
  * Client for SERVER-SIDE object operations (put/get/head) that run inside the
  * Docker network. Uses the internal endpoint (e.g. http://seaweedfs:8333).
  */
 export const s3Client = new S3Client({
-  endpoint: process.env.SEAWEED_ENDPOINT,
+  endpoint: endpointFor("internal"),
   region: "us-east-1",
   credentials,
   forcePathStyle: true,
@@ -50,7 +82,7 @@ export function presignForBackend(command: GetObjectCommand | PutObjectCommand, 
  * internal endpoint and produced URLs the browser could never fetch.
  */
 export const signingS3Client = new S3Client({
-  endpoint: process.env.SEAWEED_PUBLIC_ENDPOINT || process.env.SEAWEED_ENDPOINT,
+  endpoint: endpointFor("public"),
   region: "us-east-1",
   credentials,
   forcePathStyle: true,
@@ -74,7 +106,7 @@ export const signingS3Client = new S3Client({
  * with per-org buckets turned off has: nothing calls it there.
  */
 export const bucketAdminS3Client = new S3Client({
-  endpoint: process.env.SEAWEED_ENDPOINT,
+  endpoint: endpointFor("internal"),
   region: "us-east-1",
   credentials: {
     accessKeyId: process.env.SEAWEED_TENANT_ADMIN_ACCESS_KEY || credentials.accessKeyId,

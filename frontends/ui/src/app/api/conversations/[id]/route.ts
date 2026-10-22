@@ -3,7 +3,6 @@
  * Thin handlers; all logic lives in `@/lib/conversations/service`.
  */
 
-import { z } from 'zod'
 import { NotFoundError } from '@/lib/api/errors'
 import { apiRoute, parseJsonBody } from '@/lib/api/handler'
 import {
@@ -12,23 +11,9 @@ import {
   updateConversationEngagement,
   updateConversationTitle,
 } from '@/lib/conversations/service'
-import { CONVERSATION_ENGAGEMENTS } from '@/lib/db/schema'
+import { updateConversationSchema } from '@/lib/conversations/conversation-wire'
 
 type Params = { id: string }
-
-/**
- * Either a rename or a change to when the agent answers (ADR-0036) — one PATCH,
- * because both are edits to the same resource. At least one field is required, so
- * an empty body is a 400 rather than a silent no-op that looks like success.
- */
-const updateConversationSchema = z
-  .object({
-    title: z.string().min(1).optional(),
-    engagement: z.enum(CONVERSATION_ENGAGEMENTS).optional(),
-  })
-  .refine((body) => body.title !== undefined || body.engagement !== undefined, {
-    message: 'Provide title or engagement',
-  })
 
 export const GET = apiRoute<Params>(
   async ({ session, params }) => getConversation(session, params.id),

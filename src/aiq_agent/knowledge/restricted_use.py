@@ -70,11 +70,10 @@ _TIMEOUT_SECONDS = 5.0
 
 _opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
 
-#: What a tool result carrying refused restricted content is replaced with. In
-#: German, the language the model answers the office in.
+#: What a tool result carrying refused restricted content is replaced with.
 WITHHELD_NOTICE = (
-    "Dieses Ergebnis wurde zurückgehalten: Es stammt aus einem Ordner mit eingeschränktem Zugriff, "
-    "der in diesem Gespräch nicht verwendet werden darf. Antworte ohne diesen Inhalt."
+    "This result was withheld: it comes from a folder with restricted access "
+    "that may not be used in this conversation. Answer without this content."
 )
 
 
@@ -347,7 +346,7 @@ def note_collections_read(collections: Iterable[str | None]) -> None:
     Content is anything the model would learn from: a passage, a file name or
     summary, a count of matches, an image. Called by every producer that returns
     such content (the grounding-block renderer, the exact search's match table,
-    ``view_knowledge_image``). Outside a wrapped tool call it does nothing.
+    ``look``). Outside a wrapped tool call it does nothing.
     """
     reads = _call_reads.get()
     if reads is None:

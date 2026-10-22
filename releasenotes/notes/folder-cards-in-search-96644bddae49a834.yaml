@@ -1,0 +1,7 @@
+---
+operators:
+  - >
+    For an organization with the folder-cards feature flag, a search can now point Piloti to a
+    folder whose summary matches the question, so it looks inside before it
+    answers. A summary written before this release joins the search the next
+    time its folder changes.

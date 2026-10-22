@@ -22,7 +22,7 @@
  *
  * No thumbnail of the marked place: the BFF has no page rasterizer (pages are
  * rendered by pdf.js in the browser, and crops by the agent's
- * `view_knowledge_image`), so an entry names its page and nothing more.
+ * `look`), so an entry names its page and nothing more.
  *
  * ## What is in it
  *

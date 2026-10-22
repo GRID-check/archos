@@ -113,7 +113,7 @@ services:
       # ── Single-writer memory bridge to the frontend BFF ──
       - FRONTEND_INTERNAL_URL=http://frontend:3000
       - GRID_INTERNAL_API_TOKEN=${SERVICE_PASSWORD_INTERNALTOKEN}
-      # Object storage for `view_knowledge_image` (ADR-0039). Without these the
+      # Object storage for `look` (ADR-0039). Without these the
       # tool fails its credential guard and every project/Archiv image silently
       # degrades to a text-only block — no error anyone would look at.
       #

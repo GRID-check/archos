@@ -197,7 +197,7 @@ class TestRender:
     def test_the_block_carries_the_index_not_evidence_rule_and_the_bound(self):
         block = render_already_read_block(["a.pdf | c | Seiten 1 | Punkte - | Turn 1"])
 
-        assert "KEIN Beleg" in block
+        assert "NOT evidence" in block
         assert "read_passage" in block
         assert str(MAX_DIGEST_DOCS) in block
         assert str(MAX_DIGEST_TOKENS) in block

@@ -181,6 +181,24 @@ class TestTheWireContract:
             ("create_folder", {"new_name": "Fotos", "target_folder": ""}),
             ("create_folder", {"new_name": "Fotos", "target_folder": "Einreichung"}),
             ("assign", {"document": "Grundriss OG.pdf", "member": "Anna Berger"}),
+            (
+                "move",
+                {
+                    "document": "Brandschutzkonzept.pdf",
+                    "target_folder": "Einreichung",
+                    "reason": "Belongs with the Bescheid of 12 March",
+                },
+            ),
+            (
+                "rename",
+                {
+                    "document": "Grundriss OG.pdf",
+                    "new_name": "Grundriss Obergeschoss",
+                    "reason": "Matches the plan set",
+                },
+            ),
+            ("create_folder", {"new_name": "Fotos", "target_folder": "", "reason": "Site photos have no home yet"}),
+            ("assign", {"document": "Grundriss OG.pdf", "member": "Anna Berger", "reason": "Anna asked to own it"}),
         ],
     )
     async def test_every_operation_sends_a_body_the_contract_accepts(
@@ -291,6 +309,28 @@ class TestTheRequest:
             }
         ]
 
+    async def test_the_reason_travels_on_the_item_and_the_card(self, registry, transport):
+        fake = transport(_created(FIRST))
+        await _propose(
+            "move",
+            document="Brandschutzkonzept.pdf",
+            target_folder="Einreichung",
+            reason="  Belongs with the Bescheid\nof 12 March ",
+        )
+
+        (body,) = fake.bodies()
+        assert body["payload"]["operations"][0]["reason"] == "Belongs with the Bescheid of 12 March"
+        assert registry.snapshot()[0]["operations"][0]["reason"] == "Belongs with the Bescheid of 12 March"
+
+    async def test_a_long_reason_is_cut_and_an_empty_one_is_left_off(self, registry, transport):
+        fake = transport(_created(FIRST), _created(SECOND))
+        await _propose("move", document="Brandschutzkonzept.pdf", target_folder="Einreichung", reason="x" * 500)
+        await _propose("rename", document="Grundriss OG.pdf", new_name="Neu", reason="  ")
+
+        long_item, empty_item = (body["payload"]["operations"][0] for body in fake.bodies())
+        assert len(long_item["reason"]) == 200
+        assert "reason" not in empty_item
+
     async def test_the_envelope_is_echoed_byte_for_byte(self, registry, transport):
         """Echo, never sign: the turn's two strings go out exactly as they arrived."""
         fake = transport(_created(FIRST))
@@ -364,7 +404,7 @@ class TestTheIndexIsTheCardsRealPosition:
             _propose("move", document="Grundriss OG.pdf", target_folder="Einreichung"),
         )
 
-        assert all("konnte nicht angelegt werden" in result for result in results)
+        assert all("could not be created" in result for result in results)
         assert len(fake.requests) == 2
         assert sorted(body["originCardIndex"] for body in fake.bodies()) == [0, 1]
         cards = registry.snapshot()
@@ -388,8 +428,8 @@ class TestTheCardCarriesTheProposal:
         assert card["proposal_id"] == FIRST
         assert card["operation"] == "move" and len(card["operations"]) == 1
         grid_card_adapter.validate_python(card)
-        assert "NOCH NICHTS geändert" in result
-        assert "sage nicht, dass es erledigt ist" in result
+        assert "NOTHING has been changed YET" in result
+        assert "do not say it is done" in result
 
     async def test_a_second_call_is_a_second_proposal_never_a_grown_one(self, registry, transport):
         """A stored proposal cannot grow; a card that grew on the client would show two moves and apply one."""
@@ -444,10 +484,10 @@ class TestEveryFailureIsANoticeAndAFailure:
         (card,) = registry.snapshot()
         assert "proposal_id" not in card
         assert card["operations"][0]["document"] == "Brandschutzkonzept.pdf"
-        assert result.startswith("Fehler:")
-        assert "konnte nicht angelegt werden" in result
-        assert "Es wurde nichts geändert" in result
-        assert "Vorgeschlagen" not in result and "Karte angezeigt" not in result
+        assert result.startswith("Error:")
+        assert "could not be created" in result
+        assert "Nothing was changed" in result
+        assert "Proposed" not in result and "shown as a card" not in result
 
     @pytest.mark.parametrize(
         ("operation", "params"),
@@ -462,8 +502,8 @@ class TestEveryFailureIsANoticeAndAFailure:
         transport(500)
         result = await _propose(operation, **params)
 
-        assert "konnte nicht angelegt werden" in result
-        assert "NOCH NICHTS geändert" not in result
+        assert "could not be created" in result
+        assert "NOTHING has been changed YET" not in result
         (card,) = registry.snapshot()
         assert card["operation"] == operation and "proposal_id" not in card
 
@@ -491,7 +531,7 @@ class TestEveryFailureIsANoticeAndAFailure:
         assert fake.requests == []
         (card,) = registry.snapshot()
         assert "proposal_id" not in card
-        assert "konnte nicht angelegt werden" in result
+        assert "could not be created" in result
 
     async def test_a_missing_service_token_is_a_failure(self, monkeypatch, registry, transport):
         monkeypatch.delenv("GRID_INTERNAL_API_TOKEN")
@@ -501,7 +541,7 @@ class TestEveryFailureIsANoticeAndAFailure:
         assert fake.requests == []
         (card,) = registry.snapshot()
         assert "proposal_id" not in card
-        assert "konnte nicht angelegt werden" in result
+        assert "could not be created" in result
 
     async def test_no_card_channel_stores_no_proposal(self, transport):
         """A proposal nobody is shown is a row nobody decides."""
@@ -509,4 +549,4 @@ class TestEveryFailureIsANoticeAndAFailure:
         result = await _propose("move", document="Brandschutzkonzept.pdf", target_folder="Einreichung")
 
         assert fake.requests == []
-        assert "konnte nicht angelegt werden" in result
+        assert "could not be created" in result

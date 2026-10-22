@@ -21,6 +21,13 @@ export const turnContextResponseSchema = z.object({
    * look there unasked. Null when the office has none.
    */
   referenceProjects: z.string().nullable(),
+  /**
+   * The WORKSPACE block (`workspace-block.ts`, ADR-0123): the asker's roles,
+   * the project, the conversation's audience, the inbox and runs that wait,
+   * and this conversation's proposals with every status. Null when it could
+   * not be read; an older agent ignores it.
+   */
+  workspace: z.string().nullable(),
 }).strict()
 
 export const turnContextApiResponseSchema = z.object({ data: turnContextResponseSchema }).strict()

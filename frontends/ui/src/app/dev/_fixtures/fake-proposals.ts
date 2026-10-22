@@ -58,6 +58,8 @@ export const DEMO = {
   profileDecided: id(8),
   /** Discarded by a colleague. */
   profileDismissed: id(9),
+  /** An action of the agent catalog with a long value: „Übernehmen“ waits until it is read in full. */
+  operationOpen: id(10),
 } as const
 
 const base = {
@@ -97,6 +99,22 @@ const PROFILE = {
   title: 'Projektkontext aktualisieren: Wärmeversorgung und Fluchtniveau',
   rationale: 'Sie haben im Gespräch eine Wärmepumpe und ein oberstes Fluchtniveau von 25 m genannt.',
   patch: PROFILE_PATCH,
+}
+
+/** Office instructions with a long text: the card shows the start until the reader unfolds it. */
+const OPERATION = {
+  operation: 'organization-instructions-set',
+  input: {
+    body: {
+      instructions:
+        'Antworte knapp und auf Deutsch. Nenne bei jeder Aussage zum Baurecht die Fundstelle. ' +
+        'Bei Brandschutzfragen gilt die OIB-Richtlinie 2 in der Fassung 2023; weiche nur ab, wenn das Projekt es verlangt, ' +
+        'und sag dann, warum. Frag nach, bevor du eine Gebäudeklasse annimmst.',
+      tone: 'sachlich',
+      limits: { words: 200, sources: ['norm', 'office'] },
+    },
+  },
+  summary: 'Set the office instructions (instructions: Antworte knapp und auf Deutsch. Nenne bei jeder…, tone: sachlich, limits: 2 fields)',
 }
 
 const seed = (): Map<string, ProposedChangeView> =>
@@ -145,6 +163,13 @@ const seed = (): Map<string, ProposedChangeView> =>
           payload: PROFILE,
         },
         { ...base, ...byAnna('dismissed', null), id: DEMO.profileDismissed, kind: 'project_profile', payload: PROFILE },
+        {
+          ...base,
+          id: DEMO.operationOpen,
+          kind: 'operation',
+          payload: OPERATION,
+          targets: [{ type: 'project', id: DEMO_PROJECT_ID, name: 'Wohnanlage Lindengasse' }],
+        },
       ] satisfies ProposedChangeView[]
     ).map((proposal) => [proposal.id, proposal])
   )
@@ -162,6 +187,18 @@ const PROFILE_NOW: ProjectProfile = {
 
 const json = (body: unknown, status = 200): Response =>
   new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } })
+
+/** The one result line of a memory note, a profile change or an operation. */
+function labelOf(proposal: Exclude<ProposedChangeView, { kind: 'file_operation' }>): string {
+  switch (proposal.kind) {
+    case 'memory':
+      return proposal.payload.content
+    case 'operation':
+      return proposal.payload.summary
+    case 'project_profile':
+      return proposal.payload.title
+  }
+}
 
 /**
  * Replace `fetch` with the faked API; the returned function puts the real one
@@ -181,7 +218,7 @@ export function installFakeProposalClient(listed: readonly ListedProposal[] = []
         ? null
         : current.kind === 'file_operation'
           ? current.payload.operations.map((item) => ({ label: item.document ?? item.folder_name ?? '', ok: true }))
-          : [{ label: current.kind === 'memory' ? current.payload.content : current.payload.title, ok: true }]
+          : [{ label: labelOf(current), ok: true }]
     return {
       ...current,
       status,

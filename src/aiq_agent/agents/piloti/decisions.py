@@ -310,7 +310,10 @@ def questions_for(facts: TurnFacts) -> dict[str, dict[str, Any]]:
                 "The message asks what a rule requires, what a document contains, what applies to the "
                 "project, or for a value, a class, a procedure, a comparison or a check."
             ),
-            false=CORPUS_OPTIONS["none"],
+            false=(
+                f"{CORPUS_OPTIONS['none']} Also false when the message asks only for the name, folder or "
+                "number of a file the inventory lists."
+            ),
         ),
         "corpus": choice("Where does the answer to this message most likely live?", corpus_options(facts)),
     }

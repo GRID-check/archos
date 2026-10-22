@@ -36,6 +36,8 @@ from aiq_agent.common import load_prompt
 from aiq_agent.common import render_prompt_template
 from aiq_agent.common.applicability import render_project_block
 from aiq_agent.common.norm_registry import parcel_note
+from aiq_agent.common.page_region_words import percent
+from aiq_agent.common.page_region_words import where_on_the_page_en
 from aiq_agent.common.platform_lessons import render_lessons_block
 from aiq_agent.common.prompt_store import ResolvedPrompt
 from aiq_agent.common.prompt_store import git_blob_version
@@ -56,6 +58,9 @@ logger = logging.getLogger(__name__)
 AGENT_DIR = Path(__file__).parent
 PROMPTS_DIR = AGENT_DIR / "prompts"
 PROMPT_NAME = "piloti"
+#: The workspace function group's tools as bound (`workspace__search` …): the
+#: WORKSPACE block renders only when one of them is (ADR-0123).
+WORKSPACE_TOOL_PREFIX = "workspace__"
 #: The bundled fallback for the static half. Langfuse holds the live one.
 STATIC_PROMPT_FILE = "piloti_static.md"
 #: What the live text is called in Langfuse. A wire name: every version in the
@@ -218,84 +223,68 @@ def shelf_label(shelf: str | None) -> str | None:
     return SHELF_QUALIFIERS.get(parsed) if parsed is not None else None
 
 
-def _where_on_the_page(region: Any) -> str:
-    """The box's place in words, by its centre: „oben links“, „in der Seitenmitte“, „unten rechts“."""
-    cx, cy = region.x + region.w / 2, region.y + region.h / 2
-    row = "oben" if cy < 1 / 3 else ("unten" if cy > 2 / 3 else "")
-    column = "links" if cx < 1 / 3 else ("rechts" if cx > 2 / 3 else "")
-    if row and column:
-        return f"{row} {column}"
-    if row:
-        return f"{row} in der Mitte"
-    return f"in der Mitte {column}" if column else "in der Seitenmitte"
-
-
-def _percent(share: float) -> str:
-    return f"{max(1, round(share * 100))} %"
-
-
 def focus_region_block(state: Any, tool_names: Sequence[str]) -> str | None:
-    """The „Fokusbereich“ section: the box a person drew, and what to do with it. None without one.
+    """The „Focus region“ section: the box a person drew, and what to do with it. None without one.
 
-    German like the blocks around it, and short: which document, page and box in
-    words a person would use, then the order of work — look at exactly that crop
-    before answering (``canvas__look``, or ``view_knowledge_image`` where the
-    canvas tools are not bound), show what the answer refers to, propose
-    findings as marks, and answer in the thread when the question was asked
-    there. The model decides; nothing is posted for it.
+    Short: which document, page and box in
+    words, then the order of work — look at exactly that crop
+    before answering (``look``, bound in every context), and where the canvas
+    tools are bound show what the answer refers to, propose findings as marks,
+    and answer in the thread when the question was asked there. The model
+    decides; nothing is posted for it.
     """
     region = getattr(state, "focus_region", None)
     if region is None:
         return None
     file_name = getattr(state, "focus_file_name", None)
-    document = f"von **{file_name}**" if file_name else "des geöffneten Dokuments"
+    document = f"of **{file_name}**" if file_name else "of the open document"
     box = f"[{region.x:.3f}, {region.y:.3f}, {region.w:.3f}, {region.h:.3f}]"
-    canvas = "canvas__look" in tool_names
+    canvas = "canvas__highlight" in tool_names
+    target = f'`document="{file_name}"`, ' if file_name else ""
     lines = [
-        "## Fokusbereich",
-        f"Die Person hat auf Seite {region.page} {document} einen Rahmen gezogen: {_where_on_the_page(region)}, "
-        f"etwa {_percent(region.w)} der Seitenbreite und {_percent(region.h)} der Seitenhöhe (`region={box}`: "
-        "x, y, w, h als Anteile der Seite, Ursprung oben links). „Hier“, „das“ und „diese Stelle“ meinen diesen "
-        "Ausschnitt.",
+        "## Focus region",
+        f"The person drew a frame on page {region.page} {document}: {where_on_the_page_en(region)}, "
+        f"about {percent(region.w)} of the page width and {percent(region.h)} of the page height (`region={box}`: "
+        "x, y, w, h as shares of the page, origin top left). „Hier“, „das“ and „diese Stelle“ mean this "
+        "crop.",
+        f"Look at it before you answer: `look` with {target}`page={region.page}` and `region={box}`. "
+        "Answer about what lies within the frame, and say so if you need something outside it for that. "
+        "If an earlier state is asked about, look at the same crop in that Fassung.",
     ]
     if canvas:
         lines.append(
-            f"Sieh ihn an, bevor du antwortest: `canvas__look` mit `page={region.page}` und `region={box}`. "
-            "Antworte über das, was im Rahmen liegt, und sag, wenn du dafür etwas außerhalb brauchst. Zeig mit "
-            "`canvas__highlight` oder `canvas__point`, worauf du dich beziehst; Befunde schlägst du mit "
-            "`canvas__mark` als Anmerkungen vor, die Stelle abgelesen an dem, was du gesehen hast. Was die Person "
-            "ausdrücklich verlangt, tust du in ihrem Namen: `canvas__mark` mit `open=true`, `canvas__update`, "
+            "Show with `canvas__highlight` or `canvas__point` what you refer to; you propose findings with "
+            "`canvas__mark` as Anmerkungen, the spot read off what you saw. What the person "
+            "explicitly asks for, you do in their name: `canvas__mark` with `open=true`, `canvas__update`, "
             "`canvas__delete`."
-        )
-    else:
-        target = f'`file_name="{file_name}"`, ' if file_name else ""
-        lines.append(
-            f"Sieh ihn an, bevor du antwortest: `view_knowledge_image` mit {target}`page_number={region.page}` "
-            f"und `region={box}`. Antworte über das, was im Rahmen liegt."
         )
     if getattr(state, "reply_in_thread", False) and region.annotation_id and canvas:
         lines.append(
-            f"Gefragt wurdest du im Verlauf der Anmerkung mit der id `{region.annotation_id}`: Antworte dort mit "
-            "`canvas__reply` (`annotation` = diese id), kurz, für sich verständlich und ohne Quellenmarken, und "
-            "gib hier dieselbe Antwort."
+            f"You were asked in the thread of the Anmerkung with id `{region.annotation_id}`: answer there with "
+            "`canvas__reply` (`annotation` = this id), briefly, understandable on its own "
+            "and without source marks, and "
+            "give the same answer here."
         )
     lines.append(
-        "Zeigt das Werkzeug kein Bild, etwa weil das Modell dieses Büros keine Bilder liest, sag das offen und "
-        "rate nicht, was im Rahmen steht."
+        "If the tool shows no image, for instance because this office's model does not read images, say so openly and "
+        "do not guess what is inside the frame."
     )
     return "\n".join(lines)
 
 
 #: What woke a turn, in the words the prompt uses (``wire_v2.TurnTrigger.kind``).
+#: English, like everything else the agent reads; „Anmerkung" is the domain's word.
 _TRIGGER_EVENTS = {
-    "thread_mention": "hat dich im Verlauf einer Anmerkung erwähnt",
-    "thread_reply": "hat im Verlauf einer Anmerkung geantwortet, die du begonnen hast",
-    "assigned": "hat dir eine Anmerkung zugewiesen",
+    "thread_mention": "mentioned you in the thread of an Anmerkung",
+    "thread_reply": "replied in the thread of an Anmerkung you started",
+    "assigned": "assigned an Anmerkung to you",
+    "agent_consult": "asked you through a connected agent (such as Claude or Cursor)",
+    "new_document": "uploaded a new document that has just been indexed, and this check was queued for it",
 }
 
 
 def trigger_block(state: Any, tool_names: Sequence[str]) -> str | None:
-    """The „Geweckt durch“ section: an event woke this turn, nobody is typing. None for a typed turn.
+    """The „Woken by“ section: an event woke this turn, nobody is typing. None for a typed turn.
 
     A fact block, not a policy: who acted (the verified name the turn runs
     under), what they did, on which Anmerkung, and the outcome to reach, which
@@ -307,22 +296,22 @@ def trigger_block(state: Any, tool_names: Sequence[str]) -> str | None:
     if trigger is None:
         return None
     user = getattr(state, "user_info", None) or {}
-    who = (user.get("name") or user.get("email") or "Eine Person") if isinstance(user, dict) else "Eine Person"
+    who = (user.get("name") or user.get("email") or "A person") if isinstance(user, dict) else "A person"
     lines = [
-        "## Geweckt durch",
-        f"Niemand hat diese Frage in den Chat getippt: {who} {_TRIGGER_EVENTS[trigger.kind]} "
-        f"(Ereignis `{trigger.event_id}`), und das hat dich geweckt. Niemand sieht dir dabei live zu.",
+        "## Woken by",
+        f"Nobody typed this question into the chat: {who} {_TRIGGER_EVENTS[trigger.kind]} "
+        f"(event `{trigger.event_id}`), and that woke you. Nobody watches this turn live.",
     ]
     if trigger.annotation_id and "canvas__reply" in tool_names:
         lines.append(
-            f"Antworte dort, wo es passiert ist: im Verlauf der Anmerkung `{trigger.annotation_id}` mit "
-            "`canvas__reply` (`annotation` = diese id), kurz und für sich verständlich. Brauchst du eine Angabe, "
-            "frag dort im Verlauf; warte nicht auf eine Antwort in diesem Zug."
+            f"Answer where it happened: in the thread of the Anmerkung `{trigger.annotation_id}`, with "
+            "`canvas__reply` (`annotation` = this id), short and readable on its own. If you need something, "
+            "ask in that thread; do not wait for an answer in this turn."
         )
     else:
         lines.append(
-            "Antworte so, dass die Person es dort findet, wo sie gefragt hat. Brauchst du eine Angabe, frag in "
-            "deiner Antwort; warte nicht auf eine Antwort in diesem Zug."
+            "Answer so the person finds it where they asked. If you need something, ask in your answer; do not "
+            "wait for an answer in this turn."
         )
     return "\n".join(lines)
 
@@ -422,6 +411,13 @@ def render_system_prompt(
         # model does not have.
         reference_projects=(
             state.reference_projects if any(tool.get("name") == "project_lookup" for tool in tools_info) else None
+        ),
+        # Who asks, where, and what is open now (ADR-0123): only when the turn
+        # can act on it through the workspace tools.
+        workspace_block=(
+            state.workspace_block
+            if any(str(tool.get("name", "")).startswith(WORKSPACE_TOOL_PREFIX) for tool in tools_info)
+            else None
         ),
         focus_file_name=state.focus_file_name,
         focus_shelf_label=shelf_label(state.focus_shelf),

@@ -3,8 +3,11 @@ import type { GridCard } from '@/shared/cards/schemas'
 import { cardKey } from '../card-decision'
 import { ProjectProfilePatchCard } from './ProjectProfilePatchCard'
 import { MemoryProposalCard } from './MemoryProposalCard'
+import { OperationReceipt } from './ProposalReceipts'
 import { FileOperationProposalCard } from './FileOperationProposalCard'
 import { CanvasActivityCard } from './CanvasActivityCard'
+import { LookCard } from './LookCard'
+import { RevisionCompareCard } from './RevisionCompareCard'
 import { CalculationCard } from './CalculationCard'
 import { BuildingSectionCard } from '../schematics/BuildingSectionCard'
 import { StairDiagramCard } from '../schematics/StairDiagramCard'
@@ -429,6 +432,43 @@ export const GridCardView: FC<GridCardViewProps> = ({
           messageId={messageId}
           cardKey={key}
           decisionsMustPersist={decisionsMustPersist}
+        />
+      </FadeIn>
+    )
+  }
+
+  if (card.type === 'operation_proposal') {
+    return (
+      <FadeIn distance={6}>
+        <OperationReceipt
+          proposalId={card.proposal_id}
+          title={card.title}
+          operation={card.operation}
+          input={card.input ?? {}}
+        />
+      </FadeIn>
+    )
+  }
+
+  if (card.type === 'look') {
+    return (
+      <FadeIn distance={6}>
+        <LookCard document={card.document} items={card.items} />
+      </FadeIn>
+    )
+  }
+
+  if (card.type === 'revision_compare') {
+    return (
+      <FadeIn distance={6}>
+        <RevisionCompareCard
+          olderId={card.older_id}
+          newerId={card.newer_id}
+          olderName={card.older_name}
+          newerName={card.newer_name}
+          page={card.page}
+          changes={card.changes}
+          summary={card.summary}
         />
       </FadeIn>
     )

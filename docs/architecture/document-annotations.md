@@ -673,7 +673,7 @@ the way a design tool shows its collaborators:
 | The mark a colleague has open | a ring round the pin (an outline round a region) in their colour, with their first name at its top-right; „Anna +1" for several; a person whose own pointer is within 48 px of the mark is not named twice (`selectionTagged`); never the reader's own tabs, never Piloti | `peerSelections`, `PeerSelection` |
 | A box being dragged out | dashed in their colour, with their first name over its top-right corner; beside the box when the box is narrower than the name, so the name never lies over a pin next to it (`draftTagPlace`) | `review-page-layer.tsx` |
 | A colleague out of view | a chip at the edge that leads to them („Lena · Seite 2"), decided by whether their point is on screen (`peerSide`); a click jumps there; the face's tooltip names the page. Never over the open card: the card keeps out of the foot, and a row that would still lie over it steps aside (`covers`) | `Elsewhere` in `document-review.tsx` |
-| Piloti | its own pointer, always led by its name („Piloti · Fluchtweg · für Anna"), quieting once it is parked with nothing in hand (`pilotiResting`); the box it reads glows while it reads it (`canvas__look` sends the `look` op: presence and a `reading` activity) | `PilotiCursor`, `tools/canvas/presence.py` `show_reading` |
+| Piloti | its own pointer, always led by its name („Piloti · Fluchtweg · für Anna"), quieting once it is parked with nothing in hand (`pilotiResting`); the box it reads glows while it reads it (`look` sends the `look` op for a workspace document, from the canvas or the chat: presence and a `reading` activity) | `PilotiCursor`, `tools/canvas/presence.py` `show_reading` |
 
 A write sends an `annotations.changed` hint. A hint is a nudge to re-read, never
 the state itself, so a dropped hint costs a few seconds, not a wrong list. The
@@ -721,9 +721,9 @@ Piloti reaches marks in two ways.
 `/api/internal/document-annotations`: `canvas__marks` (`list`), `canvas__mark`
 (`propose`, or `create` with `open=true`), `canvas__update` (`update`),
 `canvas__delete` (`delete`), `canvas__reply` (`reply`), `canvas__room`
-(`room`), and the gestures `canvas__point` and `canvas__highlight`;
-`canvas__look` renders the page or a box on it through `view_knowledge_image`'s
-own body. The turn sends `leave` when it ends, so Piloti's cursor goes with it.
+(`room`), and the gestures `canvas__point` and `canvas__highlight`.
+`look` (`src/aiq_agent/tools/look/`, ADR-0128), a tool of its own bound in every
+context, renders the page or a box on it and makes the box glow here. The turn sends `leave` when it ends, so Piloti's cursor goes with it.
 
 - A tool may name a document (`document`: a file name from the turn's inventory, or an id); the name is resolved against the inventory and its id read from `GET /api/internal/document-file` with the envelope echoed. Without one it acts on the document open on the canvas (`focus_document_id`), then on the conversation's *subject*. The server checks a named document against the asker's access and the turn's signed scope (`lib/annotations/agent.ts`).
 - With no document named and no subject, the tool gets a typed 422 and asks which document is meant.
@@ -746,7 +746,10 @@ service functions the person's own routes use (`lib/annotations/agent.ts`):
 | Delete a mark | `delete` | `deleteAnnotation`, which allows only a mark the asker set themselves, while nobody else wrote in its thread and it was not carried | nothing left |
 
 Findings Piloti makes on its own initiative, including a whole-document review
-the person did not itemise, stay proposals (`propose`). The tool descriptions
+the person did not itemise, stay proposals (`propose`). So do the marks of a
+notice of a new Fassung (ADR-0130), which a job proposes through this same
+function, as the person who made the Fassung, recorded against a message in
+their thread about the document (`lib/revision-notice/job.ts`). The tool descriptions
 say when to use which: `open=true` only when the person asked for exactly that
 mark; `update` only when they asked for that change to that mark; `delete`
 only on explicit request.
@@ -797,7 +800,7 @@ are accountable.
 
 1. The canvas opens a conversation whose subject is the document, before the socket opens. The proxy only verifies a conversation that exists at upgrade time.
 2. It sends the question with `focus_region` (page and normalized box) on the wire v2 `user_message`.
-3. The agent looks at a server-side crop of exactly that box, from `canvas__look` (or `view_knowledge_image`) with `region`. The crop is rendered from the screened Fassung, never from pixels the browser sends.
+3. The agent looks at a server-side crop of exactly that box, from `look` with `region`. The crop is rendered from the screened Fassung, never from pixels the browser sends.
 4. The answer streams into a card beside the box and can be kept as a mark.
 
 A turn that ended is read by its outcome, never its phase alone
@@ -973,6 +976,7 @@ An item about a mark opens the Prüfansicht at that mark (`markId` in
 | `piloti.work_done` | a woken turn ended `answered` | who mentioned, answered or delegated | no |
 | `piloti.work_failed` | a woken turn ended `failed`, or the wake job was refused or gave up before a turn answered (a delegation, a mention or an answer) | who delegated, mentioned or answered | no |
 | `piloti.asks_you` | Piloti set a Rückfrage, or replied on its own open one | the mark's Zuständige, else the person its turn acted for | yes |
+| `piloti.revision_checked` | Piloti compared a new Fassung unasked and proposed marks on it ([ADR-0130](../adr/0130-piloti-notices-a-new-fassung.md)); anchored on the first mark | the person whose upload or link made the Fassung | no |
 | `annotation.assigned_to_you` | a person made someone Zuständige of an open mark (setting it, changing it, taking over Piloti's proposal that names one, or carrying it on to a replacing document), or Piloti did for the person its turn acted for | the new Zuständige, unless they did it themselves | yes |
 | `annotation.assigned_to_you`, variants `due` / `due_cleared` (`…_piloti`) | someone set, moved or cleared the date of an open mark whose Zuständige stays (a date that comes with a new Zuständige is their assignment) | the Zuständige, unless they did it, in the row they have for the mark | yes |
 | `annotation.assigned_to_you`, variants `due_soon` / `overdue` | the daily reminder: the Frist is today or tomorrow, or it has passed (below) | the Zuständige, while they may open the document; once per reminder and date, the overdue one upgrading the same row | yes |
@@ -1554,7 +1558,7 @@ it, and the project is not closed (`protocolFiling`, `file-preview-pane.tsx`).
 - A mark carried on to a replacing document starts a new thread there; the old one is read on the replaced document, by the link in the card. The two are not one timeline.
 
 - The chat-hosted canvas (the review open over the chat) still asks an @Piloti reply in the chat's conversation, under the chat's own message id, when wakes are off; only the standalone canvas uses the reply's turn id.
-- The „Geweckt durch“ prompt block names the person the turn runs for. A woken turn has no access token, so the name comes from the signed envelope's `requester`, which the wake job mints from the pinned session (`resolvePerson`; `turn.context.user_info_for`). `author_name` on the message only attributes the turn in the transcript. A woken turn whose person WorkOS cannot name still reads „Eine Person“.
+- The „Woken by“ prompt block names the person the turn runs for. A woken turn has no access token, so the name comes from the signed envelope's `requester`, which the wake job mints from the pinned session (`resolvePerson`; `turn.context.user_info_for`). `author_name` on the message only attributes the turn in the transcript. A woken turn whose person WorkOS cannot name still reads „A person“.
 - Which Piloti reply a wake wrote is derived, not stored (`lib/annotations/wake-attribution.ts`): a wake of the same person on the same mark that began before the reply and had not ended before it. The thread shows it as „Geweckt durch …“ under the reply's byline.
 
 - The canvas runs its own small turn client next to the chat's turn driver in `use-websocket-chat.ts`. That driver should become one shared module that both use.

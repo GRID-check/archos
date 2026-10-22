@@ -1,6 +1,6 @@
-"""Tests for the view_knowledge_image NAT function.
+"""Tests for ``view_image``, the renderer behind ``look`` (ADR-0128).
 
-The tool re-renders a base-corpus PDF page as a multimodal image content
+It re-renders a base-corpus PDF page as a multimodal image content
 block. Every failure mode must degrade to a text-only block and never raise.
 """
 
@@ -11,20 +11,16 @@ import base64
 import knowledge_layer.llamaindex.adapter as llm_adapter
 import pytest
 
-from sources.knowledge_layer.src.view_image import ViewKnowledgeImageToolConfig
+from sources.knowledge_layer.src.view_image import ViewLimits
 from sources.knowledge_layer.src.view_image import _find_pdf
 from sources.knowledge_layer.src.view_image import _is_enabled
 from sources.knowledge_layer.src.view_image import _is_standalone_image
 from sources.knowledge_layer.src.view_image import _normalize_image_to_jpeg
 from sources.knowledge_layer.src.view_image import _render_page
 from sources.knowledge_layer.src.view_image import _render_page_from_bytes
-from sources.knowledge_layer.src.view_image import view_knowledge_image
+from sources.knowledge_layer.src.view_image import view_image
 
 _JPEG_BYTES = b"\xff\xd8\xff\xe0test-jpeg-payload"
-
-
-def _config(_tmp_path) -> ViewKnowledgeImageToolConfig:
-    return ViewKnowledgeImageToolConfig()
 
 
 def _patch_env(monkeypatch, *, enabled: bool = True, vlm_key: str = "sk-test") -> None:
@@ -46,7 +42,7 @@ async def _invoke(
     enabled: bool = True,
     vlm_key: str = "sk-test",
 ) -> list[dict] | str:
-    """Drive the NAT async generator and call the wrapped lookup."""
+    """Call the renderer with the file and collection ``look`` would have resolved."""
     _patch_env(monkeypatch, enabled=enabled, vlm_key=vlm_key)
 
     if render_raises is not None:
@@ -71,12 +67,7 @@ async def _invoke(
         lambda _name: pdf_path,
     )
 
-    config = _config(tmp_path)
-    async with view_knowledge_image(config, None) as info:
-        args = info.input_schema(
-            file_name=file_name, page_number=page_number, collection=collection, image_index=image_index
-        )
-        return await info.single_fn(args)
+    return await view_image(file_name, page_number, collection, image_index, limits=ViewLimits())
 
 
 @pytest.mark.asyncio
@@ -98,7 +89,7 @@ async def test_missing_pdf_returns_text_only(monkeypatch, tmp_path) -> None:
     result = await _invoke(monkeypatch, tmp_path, pdf_path=None)
 
     assert isinstance(result, str)
-    assert result.startswith("[view_knowledge_image] Could not find the source PDF")
+    assert result.startswith("[look] Could not find the source PDF")
 
 
 @pytest.mark.asyncio
@@ -115,7 +106,7 @@ async def test_invalid_page_number_returns_text_only(monkeypatch, tmp_path) -> N
     result = await _invoke(monkeypatch, tmp_path, pdf_path="x.pdf", page_number=0)
 
     assert isinstance(result, str)
-    assert result.startswith("[view_knowledge_image] Invalid page number")
+    assert result.startswith("[look] Invalid page number")
 
 
 @pytest.mark.asyncio
@@ -371,7 +362,7 @@ async def test_standalone_image_requires_collection(monkeypatch, tmp_path) -> No
     result = await _invoke(monkeypatch, tmp_path, file_name="plan.png")
 
     assert isinstance(result, str)
-    assert "pass the collection" in result
+    assert "none of this turn's collections" in result
 
 
 @pytest.mark.asyncio
@@ -571,7 +562,7 @@ async def test_image_index_requires_a_collection(monkeypatch, tmp_path) -> None:
     result = await _invoke(monkeypatch, tmp_path, file_name="plan.pdf", image_index=0)
 
     assert isinstance(result, str)
-    assert "pass the hit's collection" in result
+    assert "none of this turn's collections" in result
 
 
 @pytest.mark.asyncio

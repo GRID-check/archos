@@ -283,7 +283,7 @@ Four things, in rising cost.
 |---|---|---|---|
 | **Look** | Two Fassungen side by side, overlaid (older cyan, newer orange) or swiped, page by page, through the preview's pdf.js runtime | No | `features/documents/components/revision-compare/` |
 | **Pages and values** | For the agent: which pages changed, the values that moved in the printed text, the quantities and dimension strings that changed in the drawing reading, and the Plankopf. Read from the index, so nothing is read again | No | `src/aiq_agent/knowledge/revision_diff.py`, `list_files(compare_to=…)` |
-| **Marks** | On request, Piloti boxes what changed on the newer page and says it in words | One vision call per page pair, cached | `lib/documents/revision-compare-service.ts`, `routes/revision_compare.py`, `src/aiq_agent/knowledge/revision_compare.py` |
+| **Marks** | On request, or unasked where the office switched it on (below, „Piloti notices a new Fassung“), Piloti boxes what changed on the newer page and says it in words | One vision call per page pair, cached | `lib/documents/revision-compare-service.ts`, `routes/revision_compare.py`, `src/aiq_agent/knowledge/revision_compare.py` |
 | **Words** | The change summary: what differs between two descriptions | Summary model, at ingest or at confirmation | `document_revisions.py`, `summarize_change` |
 
 `POST /api/documents/[id]/revision-compare` takes `{ older, page }`.
@@ -376,6 +376,47 @@ name, each labelled as what it is.
   recipient who still holds the item is skipped too, not folded, so a read item
   is never marked unread.
 - **Never fails the caller.** `announceNewRevision` is detached and logs.
+
+## Piloti notices a new Fassung
+
+Where the office switched it on (WorkOS flag `piloti-notices`, off by default),
+a Fassung under another name is compared without anyone asking, and what moved
+is proposed as marks on it ([ADR-0130](../adr/0130-piloti-notices-a-new-fassung.md),
+`frontends/ui/src/lib/revision-notice/`).
+
+1. **Queued.** `notifyNewRevision` queues a `revision_notice` job right after it
+   claims the announcement of a cross-name Fassung, so once per Fassung; the
+   job id is uuid5 of the pair, and it waits `GRID_REVISION_NOTICE_DELAY_SECONDS`
+   (120 s). A same-name version is not noticed: its older bytes left the index
+   when it was published.
+2. **As the person who made it.** The job runs as the announcement's actor (the
+   uploader, or the person who confirmed the link), resolved from WorkOS when it
+   runs, and asks the switch again from their session, then their budget
+   (fail-closed). Every check of a click on „Vergleichen“ holds: both readable,
+   neither held, one collection, no restricted folder.
+3. **Which pages.** `POST /v1/collections/{c}/revision-pages` reads the changed
+   pages of the newer Fassung from the index (`revision_diff.changed_pages`), no
+   model call. Nothing changed: silence. A scan with nothing read: the first
+   pages. At most `GRID_REVISION_NOTICE_MAX_PAGES` (3).
+4. **What changed.** `compareRevisionPage` with `purpose: notice`, the compare a
+   click runs, queued as `bulk` and traced with `purpose` in its metadata; the
+   route returns the generation's `trace_id`.
+5. **What it leaves.** Each box becomes a proposed `hint` on the new Fassung
+   through `runAgentAnnotationRequest` (`op: propose`), its body what moved
+   against which Fassung, its basis „Bildvergleich … nicht geprüft“. One message
+   in the person's thread about the document names the pages compared, the
+   proposals and the pages not looked at, and carries the trace id; the marks'
+   change rows point at it, so a decision on a mark is a `piloti-decision` on
+   that trace. One inbox row, `piloti.revision_checked`, opens the Prüfansicht at
+   the first mark. Nothing found writes nothing but the score.
+6. **Measured.** `revision-notice` (how many marks) on the trace of the first
+   compared page.
+
+It never links, unlinks, sets a mark open or says whether a change is allowed.
+Checking what a new document states against the project's other documents is
+the second notice, the `document_check` job: a headless turn that proposes cited
+marks only where facts disagree, queued for a first upload too
+(ADR-0130, „Second slice“).
 
 ## Privacy
 

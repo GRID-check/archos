@@ -416,7 +416,7 @@ class TestProvenanceIsThreeDifferentSentences:
     def test_a_declared_value_is_reported_as_the_file_s_own_statement(self):
         line = _provenance_line({"value": 15.41678125, "unit": "m²", "provenance": "declared", "decidable": True})
         assert line.startswith("deklariert:")
-        assert "so steht es in der Datei" in line
+        assert "this is what the file states" in line
 
     def test_a_computed_value_carries_its_tolerance_and_says_it_was_measured(self):
         line = _provenance_line(
@@ -430,7 +430,7 @@ class TestProvenanceIsThreeDifferentSentences:
         )
         assert line.startswith("gemessen")
         assert "±0.005" in line
-        assert "nicht deklariert" in line
+        assert "not declared" in line
         # And it must NOT read as something the model states.
         assert "deklariert:" not in line
 
@@ -446,7 +446,7 @@ class TestProvenanceIsThreeDifferentSentences:
         )
         assert line.startswith("vermutlich:")
         assert "0.72" in line
-        assert "keine Feststellung" in line
+        assert "not a finding" in line
 
     def test_a_number_with_no_tolerance_is_passed_through_untouched(self):
         # Nothing says how precise this is, so nothing may be dropped from it.
@@ -547,7 +547,7 @@ class TestUndecidableIsAFindingAboutTheExport:
     def test_it_renders_as_a_finding_and_not_as_an_error(self):
         rendered = _render("measure", dict(self.UNDECIDABLE))
 
-        assert "NICHT ENTSCHEIDBAR" in rendered
+        assert "UNDECIDABLE" in rendered
         # The word the agent must not reach for. An "Error:" prefix is how this
         # tool reports that nothing was looked at, and this is the opposite —
         # the file was read and it does not say.
@@ -564,7 +564,7 @@ class TestUndecidableIsAFindingAboutTheExport:
     def test_it_says_the_finding_is_about_the_export_not_the_building(self):
         # The sentence that stops "the model does not publish a sill height"
         # becoming "the window has no sill".
-        assert "Befund über den EXPORT, nicht über das Gebäude" in _render("measure", dict(self.UNDECIDABLE))
+        assert "finding about the EXPORT, not about the building" in _render("measure", dict(self.UNDECIDABLE))
 
     def test_the_method_is_still_reported_so_the_refusal_can_be_checked(self):
         assert "sillAndHead" in _render("measure", dict(self.UNDECIDABLE))
@@ -615,8 +615,8 @@ class TestRendering:
             # A content hash, not a credential — detect-secrets sees 16 hex chars.
             handle="3f2a1b0c9d8e7f6a",  # pragma: allowlist secret
         )
-        assert "Modell: Haus-A_V3.ifc (IFC4, 74 Bauteile)" in rendered
-        assert "Kennung 3f2a1b0c9d8e" in rendered
+        assert "Model: Haus-A_V3.ifc (IFC4, 74 elements)" in rendered
+        assert "handle 3f2a1b0c9d8e" in rendered
 
     def test_a_relation_lists_the_elements_it_found_with_their_ids(self):
         rendered = _render(
@@ -638,7 +638,7 @@ class TestRendering:
                 "decidable": True,
             },
         )
-        assert "IfcSpace „Living room“ · GlobalId 3cUkl32yn9qRSPvBJVyWcE (über Kontaktkarte)" in rendered
+        assert "IfcSpace „Living room“ · GlobalId 3cUkl32yn9qRSPvBJVyWcE (via Kontaktkarte)" in rendered
 
     def test_a_caveat_is_never_dropped(self):
         # The storey-pitch caveat is the difference between a Rohbauhöhe and a
@@ -654,7 +654,7 @@ class TestRendering:
                 "caveat": "Rohbau-Geschoßhöhe … NICHT die lichte Raumhöhe.",
             },
         )
-        assert "Hinweis: Rohbau-Geschoßhöhe" in rendered
+        assert "Note: Rohbau-Geschoßhöhe" in rendered
         assert "Ground Floor" in rendered and "2.85" in rendered
 
     def test_a_contradiction_between_two_routes_is_surfaced_as_one(self):
@@ -671,14 +671,14 @@ class TestRendering:
                 "caveat": "Zwei Wege zu dieser Zahl widersprechen sich: 15.41 gegen 12.00 …",
             },
         )
-        assert "WIDERSPRUCH" in rendered
+        assert "CONTRADICTION" in rendered
         assert "widersprechen sich" in rendered
 
     def test_the_briefing_is_handed_over_whole_with_its_instruction(self):
         rendered = _render("briefing", {"briefing": "GEBÄUDE  Haus-A.ifc · IFC4\nBLIND  keine …"})
         assert "GEBÄUDE  Haus-A.ifc" in rendered
         # The briefing is only useful if the agent copies names OUT of it.
-        assert "wörtlich übernehmen" in rendered
+        assert "verbatim" in rendered
         assert "BLIND" in rendered
 
     def test_find_elements_reports_the_total_separately_from_the_page(self):
@@ -692,13 +692,13 @@ class TestRendering:
                 "truncated": True,
             },
         )
-        assert "14 Treffer, 1 aufgelistet." in rendered
-        assert "Weitere Treffer vorhanden" in rendered
+        assert "14 hits, 1 listed." in rendered
+        assert "More hits exist" in rendered
 
     def test_a_drawing_forbids_reading_numbers_off_it(self):
         rendered = _render("draw", {"path": "/tmp/plan.svg", "bytes": 120_000, "seconds": 5.1})
         assert "/tmp/plan.svg" in rendered
-        assert "NICHT aus dem Bild ablesen" in rendered
+        assert "Do NOT read dimensions off the image" in rendered
 
     def test_a_unit_goes_after_a_number_and_beside_a_set_of_them(self):
         # "sill=0.9, head=2.11 m" reads as though only the last figure carried
@@ -725,7 +725,7 @@ class TestRendering:
                 "decidable": True,
             }
         )
-        assert "1 Eintrag" in line and "1 Einträge" not in line
+        assert "1 entry" in line and "1 Einträge" not in line
 
     # ── light_incidence, the flagship operator's own rendering ──────────────
 
@@ -757,7 +757,7 @@ class TestRendering:
         """
         rendered = "\n".join(_render_answer(dict(self.BLOCKED)))
         assert "{" not in rendered and "'globalId'" not in rendered
-        assert "Basic Roof:Roof_Flat · GlobalId 3cUkl32yn9qRSPvBJVyWh4 · ragt 1.056 m in das Prisma" in rendered
+        assert "Basic Roof:Roof_Flat · GlobalId 3cUkl32yn9qRSPvBJVyWh4 · protrudes 1.056 m into the prism" in rendered
 
     def test_the_verdict_line_says_which_way_it_went(self):
         """`free` was in the payload and in no sentence.
@@ -766,22 +766,22 @@ class TestRendering:
         from a blocked one — the answer to the question that was asked.
         """
         blocked = "\n".join(_render_answer(dict(self.BLOCKED)))
-        assert "NICHT FREI (Prisma 45°, seitlich 30°)" in blocked
-        assert "1 Bauteil ragt in das Prisma, tiefster Eingriff 1.056 m" in blocked
+        assert "NICHT FREI (prism 45°, lateral 30°)" in blocked
+        assert "1 element protrudes into the prism, deepest intrusion 1.056 m" in blocked
 
     def test_an_empty_list_is_the_answer_and_must_not_render_as_nothing(self):
         # `free: true` carries no entries at all, so without its own line the
         # renderer produced a provenance header and silence.
         free = {**self.BLOCKED, "value": [], "free": True}
         rendered = "\n".join(_render_answer(free))
-        assert "FREI (Prisma 45°, seitlich 30°): kein Bauteil ragt in das Prisma." in rendered
+        assert "FREI (prism 45°, lateral 30°): no element protrudes into the prism." in rendered
         assert "NICHT FREI" not in rendered
 
     def test_the_german_agrees_in_number(self):
         """„1 Bauteil ragen" tells an Austrian architect a machine wrote this,
         and everything after it is read as machine output rather than a finding."""
         one = "\n".join(_render_answer(dict(self.BLOCKED)))
-        assert "1 Bauteil ragt" in one
+        assert "1 element protrudes" in one
 
         two = {
             **self.BLOCKED,
@@ -790,7 +790,7 @@ class TestRendering:
                 {"globalId": "g2", "name": "Vordach", "intrusionDepth": 0.4},
             ],
         }
-        assert "2 Bauteile ragen" in "\n".join(_render_answer(two))
+        assert "2 elements protrude" in "\n".join(_render_answer(two))
 
     def test_the_angles_are_echoed_as_written_not_as_floats(self):
         # 45.0° suggests a measurement to a tenth of a degree. It is the number
@@ -814,13 +814,13 @@ class TestRendering:
         reported.
         """
         straight = {**self.BLOCKED, "prism": {**self.BLOCKED["prism"], "swivelDeg": 0.0}}
-        assert "seitlich 0°" in "\n".join(_render_answer(straight))
+        assert "lateral 0°" in "\n".join(_render_answer(straight))
 
     def test_a_prism_without_a_swivel_says_nothing_about_one(self):
         unspecified = {**self.BLOCKED, "prism": {"angleDeg": 45.0, "openingId": "3cUkl32yn9qRSPvBJVyWcE"}}
         rendered = "\n".join(_render_answer(unspecified))
         assert "seitlich" not in rendered
-        assert "Prisma 45°" in rendered
+        assert "prism 45°" in rendered
 
     def test_an_unresolved_model_reports_the_reason_and_the_choices(self):
         rendered = _render_unresolved(
@@ -832,7 +832,7 @@ class TestRendering:
             }
         )
         assert "Mehrere Modelle." in rendered
-        assert "haus-a.ifc (ready, 120 Bauteile)" in rendered
+        assert "haus-a.ifc (ready, 120 elements)" in rendered
 
     def test_a_model_that_is_still_extracting_is_not_offered_as_available(self):
         rendered = _render_unresolved(
@@ -843,8 +843,8 @@ class TestRendering:
                 "models": [{"filename": "haus-a.ifc", "status": "extracting", "elements": 0}],
             }
         )
-        assert "noch nicht abfragbar" in rendered
-        assert "Verfügbare Modelle" not in rendered
+        assert "not yet queryable" in rendered
+        assert "Available models" not in rendered
 
     def test_a_model_that_is_still_extracting_closes_the_turn(self):
         """„noch nicht abfragbar" beside a filename reads as an invitation to
@@ -888,7 +888,7 @@ class TestRendering:
                 "models": [{"filename": "haus-a.ifc", "status": "failed", "elements": 0}],
             }
         )
-        assert "haus-a.ifc (failed, 0 Bauteile)" in rendered
+        assert "haus-a.ifc (failed, 0 elements)" in rendered
         assert "This one call is the answer" in rendered
 
     def test_a_retryable_reason_keeps_its_invitation(self):
@@ -903,7 +903,7 @@ class TestRendering:
                     "models": [{"filename": "haus-a.ifc", "status": "ready", "elements": 120}],
                 }
             )
-            assert "Verfügbare Modelle" in rendered, reason
+            assert "Available models" in rendered, reason
             assert "This one call is the answer" not in rendered, reason
 
 
@@ -1197,11 +1197,11 @@ class TestAModelTooBigToMeasureIsNotAnOutage:
         text = _too_large_text(310 * 1024 * 1024, 100 * 1024 * 1024)
         assert "310 MB" in text and "100 MB" in text
         # Not an outage, and it says so — waiting is the wrong action.
-        assert "kein Ausfall" in text and "Warten hilft nicht" in text
+        assert "not an outage" in text and "waiting does not help" in text
         assert text != UNAVAILABLE_TEXT
         # And the half that still works is offered by name.
         assert "ifc_query" in text
-        assert "Keine Maße schätzen" in text
+        assert "Do not estimate dimensions" in text
 
     def test_it_is_still_an_unavailable_error_so_old_handlers_hold(self):
         from aiq_agent.knowledge.bim_query import BimQueryUnavailableError
@@ -1242,7 +1242,7 @@ class TestUnavailableIsNotRejected:
         assert rejected != UNAVAILABLE_TEXT
         assert "problem with the arguments" in rejected
         assert "call the tool again" in rejected
-        assert "nicht erreichbar" in UNAVAILABLE_TEXT
+        assert "unreachable" in UNAVAILABLE_TEXT
         assert "could not be read" in UNAVAILABLE_TEXT
 
     def test_neither_invites_a_statement_about_the_building(self):
@@ -1695,17 +1695,13 @@ class TestTheDescriptionDescribesTheRealTool:
         assert "Reach for it first" in description
 
 
-class TestTheRefusalSentenceAgreesWithItsOwnNoun:
-    """„liefert keine IfcSpace-Elemente nicht" is not German.
+class TestTheRefusalPutsTheEnginesPhraseAfterAColon:
+    """`missing.what` is the engine's own German phrase, negated or not.
 
-    Roughly thirty `missing.what` strings across the engine are already negated
-    („keine Nordrichtung", „kein auswertbares Prisma"), and the renderer wrapped
-    every one of them in a second negation. Read literally the sentence says the
-    opposite of the finding — and it is the sentence an architect reads when the
-    tool is telling them what to fix in their export.
-
-    Fixed in the renderer rather than by rewriting thirty German strings,
-    because the renderer owns the sentence.
+    Roughly thirty of them are already negated („keine Nordrichtung“, „kein
+    auswertbares Prisma“). The renderer used to wrap each in a German sentence
+    and had to repair the double negation; it now places the phrase after a
+    colon, so its grammar cannot turn the finding around.
     """
 
     @staticmethod
@@ -1720,34 +1716,22 @@ class TestTheRefusalSentenceAgreesWithItsOwnNoun:
             "kein auswertbares Prisma: halfSpaces fehlt",
             "keiner der Rasterpunkte liegt im Raumkörper",
             "Keine Georeferenzierung",
-        ],
-    )
-    def test_an_already_negated_noun_is_not_negated_twice(self, what: str) -> None:
-        line = self._line(what)
-        assert f"enthält {what}" in line
-        assert "nicht." not in line.split("Das ist")[0]
-
-    @pytest.mark.parametrize(
-        "what",
-        [
             "IfcGeometricRepresentationContext.TrueNorth",
             "Pset_WindowCommon.SillHeight",
             "Körpergeometrie für IfcWall „Aussenwand“",
             "die Bodenfläche des Raums",
         ],
     )
-    def test_a_plain_noun_still_takes_the_negation(self, what: str) -> None:
-        assert f"liefert {what} nicht" in self._line(what)
-
-    def test_a_word_merely_starting_with_kein_is_not_mistaken_for_a_negation(self) -> None:
-        # `\b` matters: a noun beginning with those letters is not „kein".
-        assert "liefert Keinsche Fläche nicht" in self._line("Keinsche Fläche")
+    def test_the_phrase_is_quoted_after_a_colon_whatever_its_grammar(self, what: str) -> None:
+        line = self._line(what)
+        assert f"missing: {what}." in line
+        assert line.startswith("UNDECIDABLE:")
 
     def test_the_finding_is_still_about_the_export_either_way(self) -> None:
         for what in ("keine Nordrichtung", "Pset_WindowCommon.SillHeight"):
             line = self._line(what)
-            assert "Befund über den EXPORT" in line
-            assert "Abhilfe: R" in line
+            assert "finding about the EXPORT" in line
+            assert "Remedy: R" in line
 
 
 class TestAWrongOperatorIsNotAWrongId:
@@ -1780,7 +1764,7 @@ class TestAWrongOperatorIsNotAWrongId:
             text = _unrunnable_text(reason)
             assert text.startswith("Error:")
             # Never a finding about the export: nothing here is the file's fault.
-            assert "Befund über den EXPORT" not in text
+            assert "finding about the EXPORT" not in text
 
 
 class TestOIB6ReachesTheModel:
@@ -1946,25 +1930,25 @@ class TestTheDoorGraphRendersAsDoorsAndNotAsCounts:
         # building with two rooms and an outside would otherwise report three.
         # Singular where the count is one — German agrees in number, and this
         # assertion pinned „1 Türverbindungen" until it was fixed.
-        assert "2 Räume, 1 Türverbindung, davon 1 ins Freie" in self._text()
+        assert "2 rooms, 1 door connection, of which 1 to the outside" in self._text()
 
     def test_a_room_with_no_door_edge_is_named(self):
         """The finding `egressPath` cannot produce, because it is asked about one
         room and this is about all of them."""
         text = self._text()
-        assert "KEINE Türkante" in text and "Dachraum" in text
-        assert "keinen Ausgang" in text
+        assert "NO door edge" in text and "Dachraum" in text
+        assert "no exit" in text
 
     def test_an_unresolved_door_is_named_with_its_reason(self):
         """A hole in EVERY route through this building. A reader who sees only
         the edge count cannot tell a building with one door from one with two of
         which one was unreadable."""
         text = self._text()
-        assert "UNBESTIMMT" in text and "Zimmertür" in text and "Körpergeometrie fehlt" in text
+        assert "UNDETERMINED" in text and "Zimmertür" in text and "Körpergeometrie fehlt" in text
 
     def test_a_deliberately_excluded_door_is_named_too(self):
         text = self._text()
-        assert "NICHT als Kante gewertet" in text and "Bodenluke" in text and "TRAPDOOR" in text
+        assert "NOT counted as an edge" in text and "Bodenluke" in text and "TRAPDOOR" in text
 
     def test_the_counts_alone_never_stand_in_for_the_lists(self):
         """The line this branch exists to prevent."""
@@ -1972,8 +1956,8 @@ class TestTheDoorGraphRendersAsDoorsAndNotAsCounts:
 
     def test_the_caveat_and_the_method_still_travel(self):
         text = self._text()
-        assert "Hinweis: Der Graph kennt ausschließlich Türen." in text
-        assert "Methode: doorGraph()" in text
+        assert "Note: Der Graph kennt ausschließlich Türen." in text
+        assert "Method: doorGraph()" in text
 
 
 class TestRenderingASurvey:
@@ -2033,7 +2017,7 @@ class TestRenderingASurvey:
         text = self._text()
         head = text.splitlines()[0]
         assert "2.450" in head and "0.250" in head and "2.700" in head
-        assert head.index("Spanne") < text.index("Seminarraum")
+        assert head.index("spread") < text.index("Seminarraum")
 
     def test_the_outlier_is_named_not_just_identified(self):
         """A GlobalId is not something a person can carry to a CAD window."""
@@ -2043,18 +2027,18 @@ class TestRenderingASurvey:
 
     def test_a_room_that_could_not_be_measured_is_never_folded_into_the_others(self):
         text = self._text()
-        assert "Technikraum I (Keller): NICHT ENTSCHEIDBAR" in text
-        assert "1 Bauteil konnte nicht gemessen werden" in text
+        assert "Technikraum I (Keller): UNDECIDABLE" in text
+        assert "1 element could not be measured" in text
         assert "wie die anderen" in text
 
     def test_the_agreement_line_counts_correctly_in_german(self):
         """„1 Bauteile konnten" is the kind of sentence that makes a reader stop
         trusting the rest of the number."""
-        assert "1 Bauteil konnte" in self._text()
+        assert "1 element could" in self._text()
         many = self._text(
             summary={**self.SURVEY["summary"], "undecidable": [{"name": "A"}, {"name": "B"}]},
         )
-        assert "2 Bauteile konnten" in many
+        assert "2 elements could" in many
 
     def test_a_truncated_survey_says_the_spread_covers_only_a_slice(self):
         text = self._text(
@@ -2062,15 +2046,15 @@ class TestRenderingASurvey:
             hint="200 Bauteile passen zur Auswahl, gemessen wurden die ersten 50.",
             summary={**self.SURVEY["summary"], "selected": 200},
         )
-        assert "NUR diese Auswahl" in text
+        assert "ONLY this selection" in text
         assert "200 Bauteile passen" in text
 
     def test_a_declared_computed_conflict_is_reported_as_an_export_defect(self):
         text = self._text(
             summary={**self.SURVEY["summary"], "disagree": [{"name": "Seminarraum", "globalId": "x"}]},
         )
-        assert "WIDERSPRUCH" in text and "Seminarraum" in text
-        assert "über den Export, nicht über das Gebäude" in text
+        assert "CONTRADICTION" in text and "Seminarraum" in text
+        assert "about the export, not about the building" in text
 
     def test_a_survey_that_measured_nothing_does_not_lecture_about_a_spread(self):
         """The sentence has to keep meaning something for the cases where it fires."""
@@ -2780,7 +2764,7 @@ class TestTheToolBody:
         "raised,outcome,expected",
         [
             (BimQueryRejectedError("nope"), "rejected", "problem with the arguments"),
-            (ModelTooLargeError(900 * 1024**2, 512 * 1024**2), "model_too_large", "zu groß"),
+            (ModelTooLargeError(900 * 1024**2, 512 * 1024**2), "model_too_large", "too large"),
             (BimQueryUnavailableError("down"), "service_unavailable", UNAVAILABLE_TEXT),
             (SpatialEngineUnavailableError(), "engine_unavailable", ENGINE_UNAVAILABLE_TEXT),
             (SpatialToolError("Bauteil 0xyz nicht enthalten"), "rejected", "find_elements"),
@@ -2814,6 +2798,6 @@ class TestTheToolBody:
             global_id="1kTv",
             measure="clearHeight",
         )
-        assert answer.startswith("Modell: haus.ifc · Kennung abc\ngemessen (±0.005 m): 2.700 m")
+        assert answer.startswith("Model: haus.ifc · handle abc\ngemessen (±0.005 m): 2.700 m")
         assert result_carries_measurement(answer)
         assert outcome == "resolved"

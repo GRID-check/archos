@@ -19,3 +19,13 @@ export type ProjectMemoryKind = (typeof PROJECT_MEMORY_KINDS)[number]
 
 export const PROJECT_MEMORY_CONFIDENCES = ['low', 'medium', 'high'] as const
 export type ProjectMemoryConfidence = (typeof PROJECT_MEMORY_CONFIDENCES)[number]
+
+export const PROJECT_MEMORY_STATUSES = ['proposed', 'active', 'superseded', 'dismissed'] as const
+export type ProjectMemoryStatus = (typeof PROJECT_MEMORY_STATUSES)[number]
+
+export const PROJECT_MEMORY_VERIFICATIONS = [
+  'unverified',
+  'source_grounded',
+  'user_confirmed',
+] as const
+export type ProjectMemoryVerification = (typeof PROJECT_MEMORY_VERIFICATIONS)[number]

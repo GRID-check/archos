@@ -5,29 +5,15 @@
  * ended and its Abschluss month.
  */
 
-import { z } from 'zod'
 import { apiRoute, parseJsonBody } from '@/lib/api/handler'
 import { setProjectStatus } from '@/lib/projects/service'
-import { dateToMonth, isMonth, type Month } from '@/lib/projects/month'
-import { closingOf, isProjectClosed, PROJECT_OUTCOMES } from '@/lib/projects/project-status'
-
-const monthSchema = z.custom<Month>((value) => typeof value === 'string' && isMonth(value), 'A month, YYYY-MM.')
-
-const statusSchema = z.discriminatedUnion('status', [
-  z.object({ status: z.literal('active') }).strict(),
-  z.object({ status: z.literal('paused') }).strict(),
-  z
-    .object({
-      status: z.literal('closed'),
-      outcome: z.enum(PROJECT_OUTCOMES),
-      endedOn: monthSchema,
-    })
-    .strict(),
-])
+import { dateToMonth } from '@/lib/projects/month'
+import { closingOf, isProjectClosed } from '@/lib/projects/project-status'
+import { projectStatusSchema } from '@/lib/projects/project-wire'
 
 export const PUT = apiRoute<{ id: string }>(
   async ({ session, params, request }) => {
-    const change = await parseJsonBody(request, statusSchema)
+    const change = await parseJsonBody(request, projectStatusSchema)
     const project = await setProjectStatus(session, params.id, change, request)
     return {
       id: project.id,

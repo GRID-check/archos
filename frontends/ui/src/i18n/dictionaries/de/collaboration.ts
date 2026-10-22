@@ -337,9 +337,9 @@ export const collaboration: typeof en.collaboration = {
       },
       documentAssigned: {
         title: '{actor} hat Ihnen {subject} zugewiesen',
-        body: 'Sie sind für diese Datei verantwortlich.',
+        body: 'Sie sind für diese Datei zuständig.',
       },
-      // Ein Hintergrundauftrag ist zu Ende. {subject} ist der Name des Auftrags.
+      // Ein Lauf ist zu Ende. {subject} ist der Name der Aufgabe.
       // Kein {actor}: die Arbeit hat Piloti getan, nicht eine Person.
       // ADR-0086: alles, was ein Upload gebracht hat, ist gelesen. {subject}
       // ist der Projektname; ein Upload in die Büroablage oder einen Chat hat
@@ -400,7 +400,7 @@ export const collaboration: typeof en.collaboration = {
       },
       // Die Zeile führt zum Lauf selbst (seinem Block im Verlauf, sonst der
       // Aufgabe): dort stehen Ergebnis und Grund, nicht in einer „Laufhistorie“.
-      jobCompleted: {
+      taskRunCompleted: {
         title: 'Piloti hat „{subject}“ erledigt',
         body: 'Öffnen Sie den Eintrag, um das Ergebnis zu sehen.',
       },
@@ -413,11 +413,11 @@ export const collaboration: typeof en.collaboration = {
         title: 'Der Import von „{subject}“ wurde abgebrochen',
         body: 'Was bis dahin importiert war, bleibt im Projekt. Die Importliste unter Dateien nennt den Grund.',
       },
-      jobFailed: {
+      taskRunFailed: {
         title: 'Piloti konnte „{subject}“ nicht abschließen',
         body: 'Öffnen Sie den Eintrag: Dort steht, woran es lag.',
       },
-      jobWaiting: {
+      taskRunWaiting: {
         title: 'Piloti hat eine Rückfrage zu „{subject}“',
         body: 'Antworten Sie im Verlauf, dann arbeitet Piloti weiter.',
       },
@@ -453,6 +453,28 @@ export const collaboration: typeof en.collaboration = {
       // darunter ist, was die Anmerkung sagt. Kein {actor}: das war Piloti.
       // `titleRelatedNoSubject`, wenn das Dokument nicht zu benennen war.
       // Dieselben Wörter wie in der Prüfansicht: Anmerkung, Verlauf, delegieren.
+      // Piloti hat eine neue Fassung von sich aus mit der vorigen verglichen
+      // (ADR-0130) und Vorschläge markiert. {subject} die neue Fassung,
+      // {related} die verglichene, {marks} wie viele Vorschläge. Kein {actor}:
+      // das war Piloti. Der Auszug ist die erste Stelle.
+      pilotiRevisionChecked: {
+        title: 'Piloti hat die neue Fassung „{subject}“ verglichen',
+        titleRelated: 'Piloti hat „{subject}“ mit „{related}“ verglichen',
+        body: 'Vorschläge am Dokument, noch nicht übernommen.',
+        variants: {
+          one: { body: '1 Stelle als Vorschlag markiert, noch nicht übernommen.' },
+          many: { body: '{marks} Stellen als Vorschlag markiert, noch nicht übernommen.' },
+          // Der Abgleich eines neuen Dokuments mit den übrigen Unterlagen, kein Vergleich mit einer früheren Fassung.
+          check_one: {
+            title: 'Piloti hat das neue Dokument „{subject}“ mit Ihren übrigen Unterlagen abgeglichen',
+            body: '1 Stelle als Vorschlag markiert, noch nicht übernommen.',
+          },
+          check_many: {
+            title: 'Piloti hat das neue Dokument „{subject}“ mit Ihren übrigen Unterlagen abgeglichen',
+            body: '{marks} Stellen als Vorschlag markiert, noch nicht übernommen.',
+          },
+        },
+      },
       pilotiWorkDone: {
         title: 'Piloti hat eine Anmerkung für Sie bearbeitet',
         titleRelated: 'Piloti hat Anmerkung {related} in „{subject}“ für Sie bearbeitet',
@@ -518,6 +540,7 @@ export const collaboration: typeof en.collaboration = {
           assign: { title: 'Piloti schlägt eine Zuweisung vor' },
           memory: { title: 'Piloti möchte sich eine Notiz merken' },
           project_profile: { title: 'Piloti schlägt eine Änderung am Projektkontext vor' },
+          operation: { title: 'Piloti schlägt eine Aktion vor' },
         },
       },
       // Piloti hat die Dokumente eines Projekts gelesen und Werte für das

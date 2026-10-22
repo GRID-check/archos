@@ -42,7 +42,6 @@ class TestCitationScores:
         assert scores == {
             "citation-health": 1.0,
             "answer-grounded": 1.0,
-            "citation-fallback": 0.0,
             "sources-empty": 0.0,
             "citations-removed": 0.0,
             "quotes-unverified": 0.0,
@@ -175,7 +174,9 @@ class TestOneListOfNames:
 
     def test_every_score_the_bff_writes_is_defined(self):
         source = "\n".join(path.read_text() for path in (REPO / "frontends/ui/src/lib/langfuse").glob("*.ts"))
-        written = set(re.findall(r"""['"](user-feedback[a-z-]*|piloti-decision)['"]""", source))
+        written = set(
+            re.findall(r"""['"](user-feedback[a-z-]*|piloti-decision|revision-notice|document-check)['"]""", source)
+        )
         defined = {definition.name for definition in SCORE_DEFINITIONS if definition.writer == "bff"}
 
         assert written <= defined
@@ -207,3 +208,46 @@ class TestSteerCount:
         from aiq_agent.observability.langfuse_scores import steer_scores
 
         assert steer_scores(SteerInbox()) == []
+
+
+class TestFileToolsUsed:
+    @pytest.mark.parametrize(
+        ("tools", "expected"),
+        [
+            (["knowledge_search"], "search"),
+            (["list_files", "read_passage"], "navigate"),
+            (["knowledge_search", "list_files"], "both"),
+            (["knowledge_search", "read_passage", "list_files"], "both"),
+            (["web_search", "ifc_query"], "none"),
+        ],
+    )
+    def test_the_moves_a_turn_made(self, tools, expected):
+        from aiq_agent.observability.langfuse_scores import file_tool_scores
+
+        [score] = file_tool_scores(tools)
+
+        assert (score.name, score.value) == ("file-tools-used", expected)
+        assert score.data_type == "CATEGORICAL"
+        assert expected in next(d for d in SCORE_DEFINITIONS if d.name == "file-tools-used").categories
+
+    def test_a_turn_with_no_tool_calls_writes_no_score(self):
+        from aiq_agent.observability.langfuse_scores import file_tool_scores
+
+        assert file_tool_scores([]) == []
+
+    @pytest.mark.parametrize(
+        ("tools", "literal", "expected"),
+        [
+            (["knowledge_search"], 1, "navigate"),
+            (["knowledge_search", "knowledge_search"], 1, "both"),
+            (["knowledge_search", "read_passage"], 1, "navigate"),
+            (["knowledge_search"], 3, "navigate"),
+        ],
+    )
+    def test_a_literal_search_is_navigation_as_the_eval_arms_count_it(self, tools, literal, expected):
+        """The files eval's navigate arm is list, read and LITERAL search; ranked search is the search arm."""
+        from aiq_agent.observability.langfuse_scores import file_tool_scores
+
+        [score] = file_tool_scores(tools, literal)
+
+        assert score.value == expected

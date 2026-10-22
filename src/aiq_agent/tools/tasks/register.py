@@ -88,13 +88,13 @@ LEGACY_TASK_KINDS: dict[str, str] = {"einreichcheck": "submission_check"}
 _KIND_LIST = ", ".join(f"`{kind}`" for kind in TASK_KINDS)
 
 _NO_PROJECT = (
-    "Fehler: In diesem Gespräch gibt es kein Projekt, also auch keinen Auftrag, der zu einem Projekt "
-    "gehören könnte. Es wurde nichts angelegt. Nicht erneut versuchen."
+    "Error: There is no project in this conversation, so there is no task that could belong to a "
+    "project. Nothing was created. Do not retry."
 )
 
 _NO_ENVELOPE = (
-    "Fehler: Dieser Lauf hat keinen signierten Sitzungsnachweis, deshalb kann kein Auftrag im Namen "
-    "einer Person angelegt werden. Es wurde nichts angelegt. Nicht erneut versuchen."
+    "Error: This run has no signed session credential, so no task can be created in a "
+    "person's name. Nothing was created. Do not retry."
 )
 
 
@@ -124,16 +124,14 @@ def _kind_or_refuse(kind: str) -> str:
     normalized = (kind or "").strip().lower()
     normalized = LEGACY_TASK_KINDS.get(normalized, normalized)
     if normalized not in TASK_KINDS:
-        raise _Refused(f"Fehler: `{kind}` ist keine Auftragsart. Möglich sind {_KIND_LIST}. Es wurde nichts angelegt.")
+        raise _Refused(f"Error: `{kind}` is not a task kind. The possible kinds are {_KIND_LIST}. Nothing was created.")
     return normalized
 
 
 def _goal_or_refuse(goal: str) -> str:
     text = " ".join((goal or "").split())
     if not text:
-        raise _Refused(
-            "Fehler: Ein Auftrag braucht eine Beschreibung dessen, was zu tun ist. Es wurde nichts angelegt."
-        )
+        raise _Refused("Error: A task needs a description of what is to be done. Nothing was created.")
     return text[:MAX_GOAL_CHARS]
 
 
@@ -141,9 +139,9 @@ def _cadence_or_refuse(cadence: str) -> str:
     """The recurrence, as the 5-field cron the scheduler claims."""
     text = " ".join((cadence or "").split())
     if not text:
-        raise _Refused("Fehler: Für einen wiederkehrenden Auftrag fehlt der Zeitplan. Es wurde nichts angelegt.")
+        raise _Refused("Error: A recurring task needs a schedule. Nothing was created.")
     if len(text) > MAX_CADENCE_CHARS:
-        raise _Refused("Fehler: Der Zeitplan ist zu lang. Es wurde nichts angelegt.")
+        raise _Refused("Error: The schedule is too long. Nothing was created.")
     return text
 
 
@@ -153,8 +151,7 @@ async def _post(payload: dict[str, Any], envelope: SignedEnvelope) -> dict[str, 
         return await asyncio.to_thread(post_task, payload, envelope)
     except DelegationError as exc:
         raise _Refused(
-            f"Fehler beim Anlegen des Auftrags: {exc}. Es wurde nichts angelegt; sage der Nutzerin, "
-            "dass der Auftrag nicht angenommen wurde."
+            f"Error creating the task: {exc}. Nothing was created; tell the user that the task was not accepted."
         ) from exc
 
 
@@ -162,37 +159,38 @@ async def _post(payload: dict[str, Any], envelope: SignedEnvelope) -> dict[str, 
 #: thing the model gets wrong — „ich habe den Einreichcheck gemacht" about work
 #: that has been QUEUED — because that sentence is the reason the tool exists.
 _QUEUED = (
-    "Der Auftrag ist angelegt und läuft; er ist NICHT erledigt. Sage in einem Satz, dass Piloti sich "
-    "darum kümmert und sich meldet — behaupte nicht, das Ergebnis liege schon vor."
+    "The task is created and running; it is NOT done. Say in one sentence that Piloti is "
+    "taking care of it and will get back — do not claim the result is already available."
 )
 
 #: The scheduled arm. Nothing runs now: the definition exists and the scheduler
 #: owns every fire, so the answer must not claim a first result is coming before
 #: the cadence fires — and must name WHEN it will first run when the route said.
 _SCHEDULED = (
-    "Der Auftrag ist als wiederkehrender Zeitplan angelegt; der erste Lauf startet zum angegebenen "
-    "Zeitpunkt, nicht jetzt. Sage in einem Satz, dass der Zeitplan steht und wann er das erste Mal "
-    "läuft — behaupte nicht, es sei schon etwas erledigt."
+    "The task is created as a recurring schedule; the first run starts at the given "
+    "time, not now. Say in one sentence that the schedule is set and when it first "
+    "runs — do not claim anything is already done."
 )
 
 _CREATE_TASK_DESCRIPTION = (
-    "Legt einen Auftrag an, den Piloti nach diesem Gespräch selbständig erledigt, und meldet sich, "
-    "wenn er fertig ist. Aufrufen, wenn die Nutzerin um Arbeit bittet, die länger dauert als diese "
-    "Antwort („mach den Einreichcheck bis Freitag“, „@Piloti prüf das“, „schreib mir bis Montag den "
-    "Aktenvermerk“) — nicht für eine Frage, die sich jetzt beantworten lässt. "
-    "`kind` ist eine von " + _KIND_LIST + ": `compliance_check` ist die Normprüfung eines Dokuments "
-    "gegen die OIB-Richtlinien, `submission_check` prüft die Vollständigkeit der Einreichung, `document` "
-    "schreibt ein Dokument und legt es als Entwurf ab, `revision` überarbeitet einen zurückgegebenen "
-    "Entwurf. "
-    "`goal` ist der Auftrag in den Worten der Nutzerin. `due` ist optional das gewünschte Datum als "
-    "`JJJJ-MM-TT` — rechne „bis Freitag“ selbst in ein Datum um, gib keinen Text an. "
-    "`cadence` ist optional ein 5-Feld-Cron für wiederkehrende Aufträge („jeden Montag“ → "
-    "`0 8 * * 1`, UTC): Damit wird ein Zeitplan angelegt statt eines einzelnen Laufs; er braucht die "
-    "Berechtigung `project:skills:manage`, und ohne sie wird er abgelehnt. "
-    "Der Auftrag läuft mit den Rechten der Nutzerin und kostet ihr Budget. Nach dem Aufruf ist die "
-    "Arbeit ANGELEGT, nicht erledigt. "
-    "Ein Auftrag gehört zu einem Projekt: Ohne Projekt in dieser Unterhaltung entsteht keiner, sage "
-    "das dann der Nutzerin, statt es erneut zu versuchen."
+    "Creates a task that Piloti carries out on its own after this conversation, and reports back "
+    "when it is done. Call it when the user asks for work that takes longer than this "
+    "answer („mach den Einreichcheck bis Freitag“, „@Piloti prüf das“, „schreib mir bis Montag den "
+    "Aktenvermerk“) — not for a question that can be answered now. "
+    "`kind` is one of " + _KIND_LIST + ": `compliance_check` is the norm check of a document "
+    "against the OIB guidelines, `submission_check` checks the completeness of the "
+    "submission (Einreichung), `document` "
+    "writes a document and files it as a draft, `revision` revises a returned "
+    "draft. "
+    "`goal` is the task in the user's words. `due` is optionally the desired date as "
+    "`YYYY-MM-DD` — convert „bis Freitag“ to a date yourself, do not pass text. "
+    "`cadence` is optionally a 5-field cron for recurring tasks („jeden Montag“ → "
+    "`0 8 * * 1`, UTC): it creates a schedule instead of a single run; it needs the "
+    "permission `project:skills:manage`, and without it it is refused. "
+    "The task runs with the user's rights and costs their budget. After the call the "
+    "work is CREATED, not done. "
+    "A task belongs to a project: without a project in this conversation none is created; tell "
+    "the user so instead of retrying."
 )
 
 
@@ -225,9 +223,9 @@ async def _create(kind: str, goal: str, due: str, cadence: str) -> str:
     title = str(body.get("title") or chosen_goal)
     if body.get("scheduled"):
         next_run = str(body.get("nextRunAt") or "").strip()
-        first_run = f" Der erste Lauf ist für {next_run} geplant." if next_run else ""
-        return f"Zeitplan angelegt: „{title}“.{first_run} {_SCHEDULED}"
-    return f"Auftrag angelegt: „{title}“. {_QUEUED}"
+        first_run = f" The first run is planned for {next_run}." if next_run else ""
+        return f"Schedule created: „{title}“.{first_run} {_SCHEDULED}"
+    return f"Task created: „{title}“. {_QUEUED}"
 
 
 async def run_create_task(kind: str, goal: str, due: str = "", cadence: str = "") -> str:

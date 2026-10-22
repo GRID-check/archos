@@ -2,7 +2,7 @@
 
 ``_extract_images_from_pdf`` pulls every image XObject out of a PDF, the VLM
 captions each, and until now the bytes were dropped once the caption was
-indexed. That left ``view_knowledge_image`` one option for an embedded photo
+indexed. That left ``look`` one option for an embedded photo
 or scanned drawing: render the whole page, at page resolution, with the text
 around it. This module keeps the raster itself, beside the document, so the
 tool can hand the model the image at the resolution it was captioned at.

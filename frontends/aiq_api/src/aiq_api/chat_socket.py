@@ -97,6 +97,7 @@ from aiq_agent.common.steering import SteerInbox
 from aiq_agent.common.steering import SteerNote
 from aiq_agent.common.steering import bind_steer_inbox
 from aiq_agent.common.steering import unbind_steer_inbox
+from aiq_agent.common.turn_status import is_literal_search
 from aiq_agent.common.wire_v2 import ACCEPTED_CLIENT_FIELDS
 from aiq_agent.common.wire_v2 import CLIENT_MESSAGE
 from aiq_agent.common.wire_v2 import CLOSE_CLIENT_OUTDATED
@@ -137,6 +138,7 @@ from aiq_agent.conversation_context import ContextOnlyMessage
 from aiq_agent.conversation_context import append_conversation_context
 from aiq_agent.conversation_context import format_context_turn
 from aiq_agent.observability.langfuse_scores import emit_scores
+from aiq_agent.observability.langfuse_scores import file_tool_scores
 from aiq_agent.observability.langfuse_scores import steer_scores
 from aiq_agent.observability.langfuse_scores import turn_outcome_scores
 from aiq_agent.observability.langfuse_trace_attributes import begin_trace_contributions
@@ -1506,16 +1508,32 @@ async def _beat(wire: TurnWire) -> None:
         await wire.send(body)
 
 
+def tool_called_by(body: Any) -> str | None:
+    """The basename of the tool a ``tool`` step names, from a step body; nothing for any other body."""
+    step = getattr(body, "step", None)
+    if getattr(step, "kind", None) != "tool":
+        return None
+    return getattr(step, "tool", None) or None
+
+
 async def _relay_workflow(turn: RunningTurn, request: UserMessage, session: Any) -> None:
     """Send every body the turn's ``_run`` yields, in order; the stream closes in this task."""
+    # One entry per call (a tool step is sent when it starts and again when it ends, under one id).
+    tools_called: dict[str, str] = {}
+    literal_searches: set[str] = set()
     async with contextlib.aclosing(stream_workflow(request, session=session)) as bodies:
         async for body in bodies:
+            if (tool := tool_called_by(body)) is not None:
+                tools_called[body.step.id] = tool
+            elif is_literal_search(getattr(body, "step", None)):
+                literal_searches.add(body.step.id)
             # The terminal is the turn's authoritative record; the root span,
             # exported after it, carries it to Langfuse (`turn_outcome`).
             if isinstance(body, RunFinishedBody):
                 record_turn_finished(body)
                 if body.outcome == "answered":
                     emit_scores(turn_outcome_scores(body.result), writer="chat")
+                emit_scores(file_tool_scores(tools_called.values(), len(literal_searches)), writer="chat")
                 if turn.inbox.received:
                     emit_scores(steer_scores(turn.inbox), writer="chat")
             elif isinstance(body, RunErrorBody):

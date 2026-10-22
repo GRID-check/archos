@@ -75,6 +75,7 @@ import type { RevisionRef } from '@/lib/documents/revision-links'
 import { useChatStore } from '../store'
 import { useHoverPopover } from '@/hooks/use-hover-popover'
 import { useDelayedFlag } from '@/hooks/use-transient-flag'
+import { thumbnailDocumentId } from './CitationPageThumbnail'
 import { CitationPeek, PEEK_ACTION_CLASSES, PeekDownloadButton } from './CitationPeek'
 import { COPY_ACTION_CLASSES, CopySourceCitationButton } from './CopyCitation'
 import { isPrecedent } from '../lib/precedent'
@@ -1286,6 +1287,7 @@ const DocumentPreviewChip: FC<{
             snippet={target.snippet}
             onOpen={open}
             supersededBy={target.supersededBy}
+            thumbnailDocumentId={thumbnailDocumentId(target)}
           />
         </HoverPeekPanel>
       )}

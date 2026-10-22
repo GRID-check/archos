@@ -24,11 +24,12 @@ cannot be named here either; it stays reachable as the canvas's own document.
 A string shaped like a UUID is taken as the id itself, and the BFF checks it
 the same way.
 
-``look`` needs more than the id: the file name and the collection the bytes
-are fetched from. Those come from the same inventory row, or for the canvas's
-own document from the focus the composer sent; the collection of a file the
-inventory does not list (a restricted folder's) is found by asking the lookup
-in each collection the turn may read.
+``look`` (``tools/look``, its own tool since ADR-0128) needs more than the id:
+the file name and the collection the bytes are fetched from. Those come from
+the same inventory row, or for the canvas's own document from the focus the
+composer sent; the collection of a file the inventory does not list (a
+restricted folder's) is found by asking the lookup in each collection the turn
+may read (``tools/look/resolve.py``).
 """
 
 from __future__ import annotations
@@ -94,6 +95,8 @@ class Unresolved:
     """Why no document could be addressed, in the words the model gets back."""
 
     message: str
+    #: The name meant more than one row: a question for the person, never a probe for the file.
+    ambiguous: bool = False
 
 
 @dataclass(frozen=True)
@@ -115,7 +118,7 @@ def _rows() -> list[_Row]:
 def _named(rows: list[_Row]) -> str:
     shown = [f"`{row.file_name}`" for row in rows[:_MAX_NAMED]]
     rest = len(rows) - len(shown)
-    return ", ".join(shown) + (f" (und {rest} weitere)" if rest > 0 else "")
+    return ", ".join(shown) + (f" (and {rest} more)" if rest > 0 else "")
 
 
 def match_document(name: str) -> _Row | Unresolved:
@@ -131,18 +134,19 @@ def match_document(name: str) -> _Row | Unresolved:
             return candidates[0]
         if len(candidates) > 1:
             return Unresolved(
-                f"Mehrdeutig: „{_nfc(name)}“ passt auf {_named(candidates)}. Frage, welches Dokument gemeint ist, "
-                "und rufe das Werkzeug mit dem genauen Dateinamen in `document` erneut auf."
+                f"Ambiguous: „{_nfc(name)}“ matches {_named(candidates)}. Ask which document is meant, "
+                "and call the tool again with the exact file name in `document`.",
+                ambiguous=True,
             )
     return Unresolved(
-        f"Nicht gefunden: „{_nfc(name)}“ steht nicht in der Dateiübersicht dieser Unterhaltung. Nenne den genauen "
-        "Dateinamen in `document` oder frage danach; rate nicht."
+        f"Not found: „{_nfc(name)}“ is not in this conversation's file overview. Give the exact "
+        "file name in `document` or ask for it; do not guess."
     )
 
 
 _CANNOT_NAME = (
-    "Dieses Dokument lässt sich gerade nicht über seinen Namen ansprechen (der Dokumentdienst kennt es nicht "
-    "oder ist nicht erreichbar). Bitte die Person, das Dokument zu öffnen und dich dort zu fragen."
+    "This document cannot be addressed by its name right now (the document service does not know it "
+    "or is unreachable). Ask the person to open the document and ask you there."
 )
 
 

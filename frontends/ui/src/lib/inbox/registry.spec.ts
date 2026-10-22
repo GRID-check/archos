@@ -232,6 +232,7 @@ describe('the Piloti types', () => {
       'annotation.assigned_to_you',
       'annotation.mentioned',
       'piloti.asks_you',
+      'piloti.revision_checked',
       'piloti.work_done',
       'piloti.work_failed',
     ])

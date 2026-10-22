@@ -31,6 +31,8 @@ import { useChatStore } from '@/features/chat'
 import { inboxClient, type InboxClient } from '@/lib/inbox/client'
 import { ARCHIVE_UNDO_MS, useUndoableArchive } from '@/features/collaboration/hooks/use-undoable-archive'
 import { useLiveEvents } from '@/features/collaboration/hooks/use-live-events'
+import { registerCanvasFocusProvider } from '@/features/chat/lib/canvas-bridge'
+import { reviewFocusOf } from '../lib/review-focus'
 import { useCanvasAsk, type UseCanvasAskOptions } from './use-canvas-ask'
 import { useDocumentRoom, type RoomTransport } from './use-document-room'
 
@@ -680,6 +682,18 @@ export function useDocumentReview(
           }),
     [stored, held]
   )
+
+  // The selection, offered to the chat's own turns while the document is its peek.
+  const focusNow = useRef<() => ReturnType<typeof reviewFocusOf>>(() => null)
+  focusNow.current = () =>
+    reviewFocusOf({
+      documentId,
+      draft,
+      selected: annotations.find((annotation) => annotation.id === selectedId) ?? null,
+      document: pilotiOptions ?? null,
+    })
+  const chatHosted = Boolean(enabled && pilotiOptions?.chatHosted)
+  useEffect(() => (chatHosted ? registerCanvasFocusProvider(() => focusNow.current()) : undefined), [chatHosted])
 
   /**
    * Answer in a thread. `addressesPiloti` is the composer's @Piloti mention,

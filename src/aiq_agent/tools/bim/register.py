@@ -95,7 +95,7 @@ _TOOL_DESCRIPTION = (
     "Fluchtniveau band, the main use. These are PROPOSALS with their evidence — offer them "
     "through a project_profile_patch card for the user to confirm, never state them as settled.\n"
     "  'compliance' — run the OIB rule catalogue against the model and report, per requirement, "
-    "how many elements are erfüllt / nicht erfüllt / NICHT ENTSCHEIDBAR. The third state is the "
+    "how many elements are met / not met / UNDECIDABLE. The third state is the "
     "important one: it means the model does not publish the value, NOT that the building fails. "
     "Each row names the exact property (e.g. Pset_WallCommon.FireRating) that would settle it — "
     "report that list, it is what the architect has to add in their CAD. Pass "
@@ -145,8 +145,8 @@ _TOOL_DESCRIPTION = (
     "the architect needs.\n"
     "\n"
     "Never turn a compliance result into a statement that the building complies. The catalogue "
-    "is an orientierende Prüfung over the values the model publishes, it reads no geometry, and "
-    "Fluchtweglängen, Geländerhöhen und Brandabschnittsgrößen are not in it at all. Say what was "
+    "is an orienting check (orientierende Prüfung) over the values the model publishes, it reads no geometry, and "
+    "escape-route lengths, parapet heights and fire-compartment sizes are not in it at all. Say what was "
     "checked, what was not, and what could not be decided.\n"
     "\n"
     "Report the caveat line verbatim whenever one comes back — it says which parts of the "
@@ -165,8 +165,8 @@ _TOOL_DESCRIPTION = (
     "skill before emitting a model card. Highlight a set with the same filter that found it, "
     "rather than a list of ids. A highlight group takes exactly one of the two per group.\n"
     "\n"
-    "When a compliance result comes back with a 'BCF-Export der offenen Punkte:' path, OFFER it as "
-    "a link at the end of the answer — [offene Punkte als BCF](/api/projects/…/bim/checks/export?…) "
+    "When a compliance result comes back with a 'BCF export of the open issues:' path, OFFER it as "
+    "a link at the end of the answer — `[offene Punkte als BCF](/api/projects/…/bim/checks/export?…)` "
     "using that exact path. It downloads the open requirements as a BCF 2.1 file that opens in "
     "ArchiCAD, Revit, Solibri or BIMcollab with the affected elements selected, which is how the "
     "missing properties actually get authored. Copy the path verbatim. The export is ONE-WAY: "
@@ -324,16 +324,16 @@ _BARE_OPS = frozenset({"overview", "types", "health", "schedule", "profile"})
 #: the agent presented it as one floor's. Saying no is the only answer that does
 #: not put a wrong number in front of someone.
 _WHOLE_MODEL_OPS = {
-    "overview": "eine Zusammenfassung des ganzen Modells",
-    "types": "die Typenverteilung des ganzen Modells",
-    "health": "die Modellprüfung des ganzen Modells",
-    "schedule": "das Raumbuch des ganzen Modells",
-    "profile": "die aus dem ganzen Modell ableitbaren Projektangaben",
-    "compare": "einen Vergleich zweier vollständiger Stände",
-    "element": "ein einzelnes Bauteil",
-    "compliance": "eine Prüfung des ganzen Modells gegen den Regelkatalog",
-    "compliance-diff": "eine Prüfung beider Stände gegen den Regelkatalog",
-    "properties": "den Merkmalskatalog des Modells (mit 'ifc_type' auf einen Typ einschränkbar)",
+    "overview": "a summary of the whole model",
+    "types": "the type distribution of the whole model",
+    "health": "the health check of the whole model",
+    "schedule": "the room schedule (Raumbuch) of the whole model",
+    "profile": "the project facts derivable from the whole model",
+    "compare": "a comparison of two complete versions",
+    "element": "a single element",
+    "compliance": "a check of the whole model against the rule catalogue",
+    "compliance-diff": "a check of both versions against the rule catalogue",
+    "properties": "the model's property catalogue (restrictable to one type with 'ifc_type')",
 }
 
 _METRICS = frozenset({"count", "sum", "avg", "min", "max"})
@@ -534,14 +534,14 @@ def _render_overview(result: dict[str, Any], ctx: _RenderContext) -> _Lines:
     storeys = overview.get("storeys") or []
     if storeys:
         lines.append(
-            "Geschoße: "
-            + ", ".join(f"{s.get('name') or '—'} ({s.get('elementCount', 0)} Bauteile)" for s in storeys[:20])
+            "Storeys: "
+            + ", ".join(f"{s.get('name') or '—'} ({s.get('elementCount', 0)} elements)" for s in storeys[:20])
         )
-        lines.append(clipped(storeys, 20, "Geschoße"))
+        lines.append(clipped(storeys, 20, "storeys"))
     types = list((overview.get("typeCounts") or {}).items())
     if types:
-        lines.append("Bauteiltypen: " + ", ".join(f"{name} ({count})" for name, count in types[:15]))
-        lines.append(clipped(types, 15, "Bauteiltypen"))
+        lines.append("Element types: " + ", ".join(f"{name} ({count})" for name, count in types[:15]))
+        lines.append(clipped(types, 15, "element types"))
     return lines
 
 
@@ -552,7 +552,7 @@ def _render_elements(result: dict[str, Any], ctx: _RenderContext) -> _Lines:
         global_id = element.get("globalId")
         return f"- {element.get('ifcType')} „{label}“ · {storey} · GlobalId {global_id}{ctx.link(global_id)}"
 
-    return listed(result.get("elements") or [], 50, "Bauteile", row)
+    return listed(result.get("elements") or [], 50, "elements", row)
 
 
 def _render_element(result: dict[str, Any], ctx: _RenderContext) -> _Lines:
@@ -562,9 +562,9 @@ def _render_element(result: dict[str, Any], ctx: _RenderContext) -> _Lines:
     link = _element_link(ctx.project_id, ctx.filename, element.get("globalId"))
     lines: _Lines = [f"GlobalId: {element.get('globalId')}", f"Link: {link}" if link else None]
     if element.get("storeyName"):
-        lines.append(f"Geschoß: {element['storeyName']}")
+        lines.append(f"Storey: {element['storeyName']}")
     if element.get("materials"):
-        lines.append("Materialien: " + ", ".join(element["materials"]))
+        lines.append("Materials: " + ", ".join(element["materials"]))
     for group in ("properties", "quantities"):
         for set_name, values in (element.get(group) or {}).items():
             lines.append(f"{set_name}: " + ", ".join(f"{key}={value}" for key, value in values.items()))
@@ -579,28 +579,28 @@ def _render_schedule(result: dict[str, Any], ctx: _RenderContext) -> _Lines:
 
     def room(entry: dict[str, Any]) -> str:
         area = entry.get("netFloorArea")
-        return f"  · {entry.get('name')} — {area if area is not None else 'ohne Fläche'}"
+        return f"  · {entry.get('name')} — {area if area is not None else 'no area'}"
 
     def storey(entry: dict[str, Any]) -> list[str]:
         rooms = entry.get("rooms") or []
-        head = f"{entry.get('storeyName')}: {entry.get('netFloorArea')} {area_unit} ({len(rooms)} Räume)"
-        return [head, *listed(rooms, 30, "Räume", room, indent="  ")]
+        head = f"{entry.get('storeyName')}: {entry.get('netFloorArea')} {area_unit} ({len(rooms)} rooms)"
+        return [head, *listed(rooms, 30, "rooms", room, indent="  ")]
 
-    return listed(schedule.get("storeys") or [], 12, "Geschoße", storey)
+    return listed(schedule.get("storeys") or [], 12, "storeys", storey)
 
 
 def _render_takeoff(result: dict[str, Any], ctx: _RenderContext) -> _Lines:
     def row(entry: dict[str, Any]) -> str:
-        missing = f", {entry.get('missing')} ohne Wert" if entry.get("missing") else ""
-        return f"- {entry.get('group')}: {entry.get('value')} ({entry.get('elements')} Bauteile{missing})"
+        missing = f", {entry.get('missing')} without a value" if entry.get("missing") else ""
+        return f"- {entry.get('group')}: {entry.get('value')} ({entry.get('elements')} elements{missing})"
 
-    return listed(result.get("takeoff") or [], 40, "Gruppen", row)
+    return listed(result.get("takeoff") or [], 40, "groups", row)
 
 
 def _shopping_row(entry: dict[str, Any]) -> str:
     count = entry.get("elements")
-    where = "an einem Bauteil" if count == 1 else f"an {count} Bauteilen"
-    return f"- fehlt: {entry.get('path')} {where} (entscheidet: {', '.join(entry.get('rules') or [])})"
+    where = "on one element" if count == 1 else f"on {count} elements"
+    return f"- missing: {entry.get('path')} {where} (decides: {', '.join(entry.get('rules') or [])})"
 
 
 def _rule_rows(rule: dict[str, Any], ctx: _RenderContext) -> list[str]:
@@ -615,21 +615,20 @@ def _rule_rows(rule: dict[str, Any], ctx: _RenderContext) -> list[str]:
     undecidable = int(rule.get("undecidable") or 0)
     if rule.get("ruleId") and (failed or undecidable):
         lines.append(
-            f"- Regel {rule.get('ruleId')}: {rule.get('titleDe')} — "
-            f"{failed} nicht erfüllt, {undecidable} nicht entscheidbar"
+            f"- Rule {rule.get('ruleId')}: {rule.get('titleDe')} — {failed} not met, {undecidable} undecidable"
         )
     # The server list is itself capped at 25 verdicts per rule; `failed` above
     # is the real count and the clip note says the LIST is not.
-    return lines + listed(rule.get("failures") or [], 10, "betroffene Bauteile", verdict, indent="  ")
+    return lines + listed(rule.get("failures") or [], 10, "affected elements", verdict, indent="  ")
 
 
 def _render_compliance(result: dict[str, Any], ctx: _RenderContext) -> _Lines:
     """The verdict lines are already in `summary`; this adds the shopping list, the rule ids and the BCF export."""
-    lines: _Lines = listed(result.get("complianceShoppingList") or [], 15, "fehlende Merkmale", _shopping_row)
-    lines += listed(result.get("compliance") or [], 40, "Regeln", lambda rule: _rule_rows(rule, ctx))
+    lines: _Lines = listed(result.get("complianceShoppingList") or [], 15, "missing properties", _shopping_row)
+    lines += listed(result.get("compliance") or [], 40, "rules", lambda rule: _rule_rows(rule, ctx))
     bcf = _bcf_link(ctx.project_id, ctx.filename, ctx.building_class, ctx.main_use)
     if bcf:
-        lines.append(f"BCF-Export der offenen Punkte: {bcf}")
+        lines.append(f"BCF export of the open issues: {bcf}")
     return lines
 
 
@@ -658,8 +657,8 @@ def _render_compare(result: dict[str, Any], ctx: _RenderContext) -> _Lines:
     lines += [f"- {_entry_label(entry)}" for entry in removed[:25]]
     lines += [changed_row(entry) for entry in changed[:25]]
     lines += [
-        clipped(bucket, 25, f"{noun} Bauteile")
-        for bucket, noun in ((added, "neue"), (removed, "entfallene"), (changed, "geänderte"))
+        clipped(bucket, 25, f"{noun} elements")
+        for bucket, noun in ((added, "new"), (removed, "removed"), (changed, "changed"))
     ]
     return lines
 
@@ -667,10 +666,10 @@ def _render_compare(result: dict[str, Any], ctx: _RenderContext) -> _Lines:
 def _render_properties(result: dict[str, Any], ctx: _RenderContext) -> _Lines:
     def row(entry: dict[str, Any]) -> str:
         values = ", ".join(f"{v.get('value')} ({v.get('elements')}×)" for v in (entry.get("values") or [])[:6])
-        kind = "Menge" if entry.get("source") == "quantity" else "Merkmal"
+        kind = "quantity" if entry.get("source") == "quantity" else "property"
         return f"- [{kind}] {entry.get('set')}.{entry.get('name')}: {values}"
 
-    return listed(result.get("properties") or [], 60, "Merkmale", row)
+    return listed(result.get("properties") or [], 60, "properties", row)
 
 
 #: Per-op detail under the summary line. `health` and `aggregate` have none:
@@ -698,10 +697,10 @@ def _truncation_note(op: str) -> str:
     """What a `truncated` result means, for the op that produced it."""
     if op in _PARTIAL_MODEL_OPS:
         return (
-            "(Achtung: diese Zahlen beziehen sich nur auf einen Teil des Modells. "
-            "Sie sind KEINE Gesamtwerte für das Gebäude — bitte im Text so kennzeichnen.)"
+            "(Warning: these figures cover only part of the model. "
+            "They are NOT totals for the building — mark them as such in the text.)"
         )
-    return "(Weitere Treffer vorhanden — Abfrage eingrenzen oder aggregieren.)"
+    return "(More hits exist — narrow the query or aggregate.)"
 
 
 def _render(
@@ -718,7 +717,7 @@ def _render(
     context with forty thousand element names.
     """
     if not result.get("resolved"):
-        return render_unresolved(result, "Das Modell konnte nicht abgefragt werden.")
+        return render_unresolved(result, "The model could not be queried.")
     model = result.get("model") or {}
     ctx = _RenderContext(project_id, model.get("filename"), building_class, main_use)
     op = str(result.get("op") or "")
@@ -726,7 +725,7 @@ def _render(
     # operation. Only a RESOLVED result — an unresolved one read no file.
     note_model_read(ctx.filename, op)
     lines: _Lines = [
-        f"Modell: {ctx.filename}" if ctx.filename else None,
+        f"Model: {ctx.filename}" if ctx.filename else None,
         str(result.get("summary") or ""),
         str(result.get("caveat") or ""),
     ]

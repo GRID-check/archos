@@ -1,6 +1,6 @@
 /**
  * The two service halves of a stored raster: the presigned PUT the ingest
- * pipeline writes through, and the derived key the `view_knowledge_image`
+ * pipeline writes through, and the derived key the `look`
  * tool reads back. Both build the key from the document's OWN row, so the
  * assertions here are about where the key can and cannot land.
  */
@@ -35,7 +35,7 @@ import { findStorageKeyByCollectionAndFilename, findStorageKeyByIdAndCollection 
 import { findDocumentImageStorageKey, presignDocumentImageUpload } from './service'
 
 const DOC_ID = '4f9c1d2e-3b4a-4c5d-8e6f-7a8b9c0d1e2f'
-const row = { id: 'd1', storageKey: 'org/o1/project/p1/doc/d1/plan.pdf', storageBucket: 'grid-org-o1-abcdef123456' }
+const row = { id: 'd1', storageKey: 'org/o1/project/p1/doc/d1/plan.pdf', storageBucket: 'grid-org-o1-abcdef123456', versionId: null }
 
 afterEach(() => {
   vi.clearAllMocks()

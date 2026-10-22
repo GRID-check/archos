@@ -403,5 +403,5 @@ class TestTheReadingTools:
 
         tools = {tool.name: tool for tool in shared_tools(load_fixture())}
         listing = await tools["list_files"].ainvoke({})
-        assert "10 Datei(en)" in listing
-        assert "ältere Fassung laut Plankopf" in listing
+        assert "10 file(s)" in listing
+        assert "older Fassung by Plankopf" in listing

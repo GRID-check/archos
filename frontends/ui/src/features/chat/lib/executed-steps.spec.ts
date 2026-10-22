@@ -24,17 +24,24 @@ describe('stepNameLabel', () => {
     // ADR-0094: a settled Herleitung says the chat looked beyond its own project.
     ['project_lookup', 'thinking.stepName.otherProjects'],
     ['read_passage', 'thinking.stepName.reading'],
+    ['look', 'thinking.stepName.drawing'],
+    // Retired for `look` (ADR-0128): stored turns still carry the old name.
     ['view_knowledge_image', 'thinking.stepName.drawing'],
     ['write_file', 'thinking.stepName.draft'],
     ['file_draft', 'thinking.stepName.filing'],
     ['document_annotations', 'thinking.stepName.annotations'],
     ['set_doc_class', 'thinking.stepName.fileProposal'],
+    // ADR-0125: a workspace read or proposal is work the Herleitung names.
+    ['call', 'thinking.stepName.workspace'],
   ])('%s → %s', (name, key) => {
     expect(stepNameLabel(name, t)).toBe(key)
   })
 
   test('a basename without an entry has no label; nothing is pattern-matched', () => {
     expect(stepNameLabel('ask_user', t)).toBeNull()
+    // The workspace's bookkeeping calls name nothing the reader asked for.
+    expect(stepNameLabel('search', t)).toBeNull()
+    expect(stepNameLabel('describe', t)).toBeNull()
     expect(stepNameLabel('my_knowledge_thing', t)).toBeNull()
   })
 })

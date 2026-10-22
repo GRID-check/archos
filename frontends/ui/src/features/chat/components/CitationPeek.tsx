@@ -35,6 +35,7 @@ import { useOpenCurrentRevision } from '../hooks/use-open-current-revision'
 import { useChatStore } from '../store'
 import { CopySourceCitationButton } from './CopyCitation'
 import { CopyCitationLinkButton } from './CopyCitationLink'
+import { CitationPageThumbnail } from './CitationPageThumbnail'
 
 interface CitationPeekProps {
   citation: CitationRef
@@ -77,6 +78,12 @@ interface CitationPeekProps {
    * action is the one primary button and the passage gets the room to be read.
    */
   presentation?: 'popover' | 'sheet'
+  /**
+   * The stored PDF the page can be drawn from (`thumbnailDocumentId`). With it,
+   * a locus that carries regions shows its page with the place marked, the
+   * same box the viewer opens with. Absent, or without regions: no thumbnail.
+   */
+  thumbnailDocumentId?: string
 }
 
 /**
@@ -333,12 +340,15 @@ export const CitationPeek: FC<CitationPeekProps> = ({
   downloadPending,
   supersededBy,
   presentation = 'popover',
+  thumbnailDocumentId,
 }) => {
   const t = useTranslations('chat')
   const projectId = useChatStore((s) => s.projectId)
   const { document: doc } = citation
   const tint = doc.tint
   const sheet = presentation === 'sheet'
+  const regions = citation.locus?.regions
+  const thumbnailPage = refPage(citation)
 
   return (
     <div className={sheet ? 'space-y-3' : 'space-y-2'} data-presentation={presentation}>
@@ -357,6 +367,16 @@ export const CitationPeek: FC<CitationPeekProps> = ({
         <p className="break-words text-sm font-medium text-foreground">{doc.title}</p>
         <LocusLine citation={citation} />
       </div>
+
+      {/* The place itself: the sheet with the box on it, before the words that describe it. */}
+      {thumbnailDocumentId && thumbnailPage != null && regions && regions.length > 0 && (
+        <CitationPageThumbnail
+          documentId={thumbnailDocumentId}
+          page={thumbnailPage}
+          regions={regions}
+          color={`var(--source-${tint})`}
+        />
+      )}
 
       {supersededBy && <OlderRevisionLine current={supersededBy} />}
 

@@ -1,0 +1,499 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Grid folder card wire contract",
+  "description": "Generated from frontends/ui/src/lib/folder-cards/types.ts. Do not edit by hand: folder-cards-schema.spec.ts rewrites this file and fails when it is stale.",
+  "$defs": {
+    "PutFolderCardRequest": {
+      "type": "object",
+      "properties": {
+        "organization_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "collection": {
+          "type": "string",
+          "minLength": 1
+        },
+        "folder_path": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1024
+        },
+        "abstract": {
+          "anyOf": [
+            {
+              "type": "string",
+              "maxLength": 600
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "key_facts": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "statement": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 300
+              },
+              "documents": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 255
+                },
+                "maxItems": 8
+              },
+              "pages": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 40
+              }
+            },
+            "required": [
+              "statement",
+              "documents"
+            ],
+            "additionalProperties": false
+          },
+          "maxItems": 8
+        },
+        "input_hash": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "abstract_hash": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "model": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "prompt_version": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "fresh",
+            "stale",
+            "failed"
+          ]
+        }
+      },
+      "required": [
+        "organization_id",
+        "collection",
+        "folder_path",
+        "abstract",
+        "key_facts",
+        "input_hash",
+        "abstract_hash",
+        "model",
+        "prompt_version",
+        "status"
+      ],
+      "additionalProperties": false
+    },
+    "PutFolderCardResponse": {
+      "type": "object",
+      "properties": {
+        "folder_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "fresh",
+            "stale",
+            "failed"
+          ]
+        }
+      },
+      "required": [
+        "folder_id",
+        "status"
+      ],
+      "additionalProperties": true
+    },
+    "FolderCardView": {
+      "type": "object",
+      "properties": {
+        "folder_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "folder_path": {
+          "type": "string"
+        },
+        "folder_description": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "collection": {
+          "type": "string"
+        },
+        "abstract": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "key_facts": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "statement": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 300
+              },
+              "documents": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 255
+                },
+                "maxItems": 8
+              },
+              "pages": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 40
+              }
+            },
+            "required": [
+              "statement",
+              "documents"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "input_hash": {
+          "type": "string"
+        },
+        "abstract_hash": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "model": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "prompt_version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "fresh",
+            "stale",
+            "failed"
+          ]
+        },
+        "generated_at": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "updated_at": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "folder_id",
+        "folder_path",
+        "folder_description",
+        "collection",
+        "abstract",
+        "key_facts",
+        "input_hash",
+        "abstract_hash",
+        "model",
+        "prompt_version",
+        "status",
+        "generated_at",
+        "updated_at"
+      ],
+      "additionalProperties": true
+    },
+    "FolderDescriptionView": {
+      "type": "object",
+      "properties": {
+        "folder_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "folder_path": {
+          "type": "string"
+        },
+        "folder_description": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "folder_id",
+        "folder_path",
+        "folder_description"
+      ],
+      "additionalProperties": true
+    },
+    "GetFolderCardsResponse": {
+      "type": "object",
+      "properties": {
+        "cards": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "folder_id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "folder_path": {
+                "type": "string"
+              },
+              "folder_description": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "collection": {
+                "type": "string"
+              },
+              "abstract": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "key_facts": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "statement": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 300
+                    },
+                    "documents": {
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 255
+                      },
+                      "maxItems": 8
+                    },
+                    "pages": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 40
+                    }
+                  },
+                  "required": [
+                    "statement",
+                    "documents"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "input_hash": {
+                "type": "string"
+              },
+              "abstract_hash": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "model": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "prompt_version": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "fresh",
+                  "stale",
+                  "failed"
+                ]
+              },
+              "generated_at": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "updated_at": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "folder_id",
+              "folder_path",
+              "folder_description",
+              "collection",
+              "abstract",
+              "key_facts",
+              "input_hash",
+              "abstract_hash",
+              "model",
+              "prompt_version",
+              "status",
+              "generated_at",
+              "updated_at"
+            ],
+            "additionalProperties": true
+          }
+        },
+        "folders": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "folder_id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "folder_path": {
+                "type": "string"
+              },
+              "folder_description": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "folder_id",
+              "folder_path",
+              "folder_description"
+            ],
+            "additionalProperties": true
+          }
+        }
+      },
+      "required": [
+        "cards",
+        "folders"
+      ],
+      "additionalProperties": true
+    }
+  }
+}

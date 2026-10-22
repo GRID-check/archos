@@ -348,6 +348,27 @@ def diff_revisions(
     )
 
 
+def changed_pages(diff: RevisionDiff) -> tuple[int, ...]:
+    """The pages of the NEWER Fassung that changed or came new, as 1-based numbers, in page order.
+
+    What a look at the pictures is spent on (ADR-0130): a page the read content
+    shows unchanged is not sent to a vision model. A page whose label is not a
+    number (a roman preface, a sheet name) cannot be rendered by number and is
+    left out; a removed page has nothing on the newer Fassung to mark.
+    """
+    numbers: set[int] = set()
+    for change in diff.pages:
+        if change.kind == "removed" or not change.newer_page:
+            continue
+        try:
+            number = int(change.newer_page)
+        except ValueError:
+            continue
+        if number >= 1:
+            numbers.add(number)
+    return tuple(sorted(numbers))
+
+
 def chunk_from_store(text: str | None, metadata: Mapping[str, Any] | None) -> RevisionChunk | None:
     """One stored chunk as the compare reads it; ``None`` for a chunk that says nothing comparable."""
     metadata = metadata or {}
@@ -383,12 +404,12 @@ def _value_text(change: ValueChange) -> str:
 
 def _page_name(change: PageChange) -> str:
     if change.kind == "added":
-        return f"Seite {change.newer_page} (neu)"
+        return f"Page {change.newer_page} (new)"
     if change.kind == "removed":
-        return f"Seite {change.older_page} (entfallen)"
+        return f"Page {change.older_page} (removed)"
     if change.older_page and change.older_page != change.newer_page:
-        return f"Seite {change.newer_page} (vorher {change.older_page})"
-    return f"Seite {change.newer_page}"
+        return f"Page {change.newer_page} (previously {change.older_page})"
+    return f"Page {change.newer_page}"
 
 
 def _page_lines(change: PageChange) -> list[str]:
@@ -396,24 +417,24 @@ def _page_lines(change: PageChange) -> list[str]:
         return [f"- {_page_name(change)}."]
     parts: list[str] = []
     if change.values:
-        parts.append("Werte: " + "; ".join(_value_text(v) for v in change.values[:MAX_VALUES_PER_PAGE]))
+        parts.append("Values: " + "; ".join(_value_text(v) for v in change.values[:MAX_VALUES_PER_PAGE]))
     if change.removed_lines:
         quoted = " | ".join(f"„{_clip(line)}“" for line in change.removed_lines[:MAX_LINES_PER_PAGE])
         more = len(change.removed_lines) - MAX_LINES_PER_PAGE
-        parts.append(f"entfernt: {quoted}" + (f" und {more} weitere Zeilen" if more > 0 else ""))
+        parts.append(f"removed: {quoted}" + (f" and {more} more lines" if more > 0 else ""))
     if change.added_lines:
         quoted = " | ".join(f"„{_clip(line)}“" for line in change.added_lines[:MAX_LINES_PER_PAGE])
         more = len(change.added_lines) - MAX_LINES_PER_PAGE
-        parts.append(f"neu: {quoted}" + (f" und {more} weitere Zeilen" if more > 0 else ""))
+        parts.append(f"new: {quoted}" + (f" and {more} more lines" if more > 0 else ""))
     drawing: list[str] = []
     if change.drawing_values:
         drawing.append("; ".join(_value_text(v) for v in change.drawing_values[:MAX_VALUES_PER_PAGE]))
     if change.annotations_added:
-        drawing.append("Maße/Beschriftungen neu: " + ", ".join(f"„{a}“" for a in change.annotations_added[:8]))
+        drawing.append("Dimensions/labels new: " + ", ".join(f"„{a}“" for a in change.annotations_added[:8]))
     if change.annotations_removed:
-        drawing.append("entfallen: " + ", ".join(f"„{a}“" for a in change.annotations_removed[:8]))
+        drawing.append("removed: " + ", ".join(f"„{a}“" for a in change.annotations_removed[:8]))
     if drawing:
-        parts.append("laut Pilotis Lesung der Zeichnung: " + "; ".join(drawing))
+        parts.append("according to Piloti's reading of the drawing: " + "; ".join(drawing))
     return [f"- {_page_name(change)}: " + ". ".join(parts) + "."]
 
 
@@ -425,36 +446,36 @@ def render_diff(
     change_summary: str | None = None,
 ) -> str:
     """The compare as the model reads it: title block, then pages, then what it does not cover. Bounded."""
-    lines = [f"Vergleich „{older_name}“ (älter) → „{newer_name}“ (neuer), aus dem gelesenen Inhalt beider Dateien."]
+    lines = [f"Comparison „{older_name}“ (older) → „{newer_name}“ (newer), from the read content of both files."]
     if diff.title_block:
         moved = "; ".join(f"{c.label} {c.older or '—'} → {c.newer or '—'}" for c in diff.title_block)
-        lines.append(f"Plankopf: {moved}.")
+        lines.append(f"Plankopf (title block): {moved}.")
     changed = [c for c in diff.pages if c.kind == "changed"]
     added = [c for c in diff.pages if c.kind == "added"]
     removed = [c for c in diff.pages if c.kind == "removed"]
-    counts = [f"{diff.unchanged_pages} unverändert", f"{len(changed)} geändert"]
+    counts = [f"{diff.unchanged_pages} unchanged", f"{len(changed)} changed"]
     if added:
-        counts.append(f"{len(added)} neu")
+        counts.append(f"{len(added)} new")
     if removed:
-        counts.append(f"{len(removed)} entfallen")
-    lines.append(f"Seiten: {diff.older_page_count} → {diff.newer_page_count}; {', '.join(counts)}.")
+        counts.append(f"{len(removed)} removed")
+    lines.append(f"Pages: {diff.older_page_count} → {diff.newer_page_count}; {', '.join(counts)}.")
     for change in diff.pages[:MAX_PAGES_SHOWN]:
         lines.extend(_page_lines(change))
     if len(diff.pages) > MAX_PAGES_SHOWN:
-        lines.append(f"… und {len(diff.pages) - MAX_PAGES_SHOWN} weitere geänderte Seiten.")
+        lines.append(f"… and {len(diff.pages) - MAX_PAGES_SHOWN} more changed pages.")
     if not diff.pages and not diff.title_block:
         if diff.has_text or diff.has_drawing:
-            lines.append("Im gelesenen Inhalt unterscheiden sich die beiden Dateien nicht.")
+            lines.append("In the read content the two files do not differ.")
         else:
             lines.append(
-                "Keine der beiden Dateien hat gelesenen Text oder eine Lesung der Zeichnung, die sich vergleichen "
-                "ließe; daraus folgt nicht, dass sie gleich sind."
+                "Neither file has read text or a reading of the drawing that could be compared; "
+                "it does not follow that they are the same."
             )
     if change_summary:
-        lines.append(f"Pilotis Zusammenfassung der Änderung (aus den Beschreibungen): {_clip(change_summary)}")
+        lines.append(f"Piloti's summary of the change (from the descriptions): {_clip(change_summary)}")
     lines.append(
-        "Verglichen wurden der gedruckte Text und Pilotis Lesung der Zeichnungen, nicht die Zeichnungen selbst. "
-        "Ein Maß vor einer Aussage mit `read_passage` im Dokument prüfen; Markierungen auf der Seite zeigt "
+        "What was compared is the printed text and Piloti's reading of the drawings, not the drawings themselves. "
+        "Check a dimension in the document with `read_passage` before stating it; marks on the page are shown by "
         "„Vergleichen“ in Dateien."
     )
     return "\n".join(lines)

@@ -159,7 +159,7 @@ export function s3IdentityCatalog({
       // described this identity as scoped to the documents bucket; it now
       // actually is.
       //
-      // `List` is deliberately absent. `view_knowledge_image` fetches an object
+      // `List` is deliberately absent. `look` fetches an object
       // by the key its caller already holds (ADR-0039); enumerating a bucket is
       // not something the agent tier ever needs, and it is the one grant that
       // turns a leaked read credential into a map of the tenant.

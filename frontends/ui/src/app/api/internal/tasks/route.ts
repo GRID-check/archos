@@ -67,9 +67,13 @@ export const POST = internalApiRoute(
     //
     // Both ops, because they withdraw different things. `research` is the same
     // capability `POST /api/jobs/async/submit` gates, reached by another path; a
-    // delegated task is `task-automation`. The message is German and a full
-    // sentence on purpose: `create_task` relays the envelope's `error` verbatim
-    // to the model, which relays it to the reader.
+    // delegated task is `task-automation`. The message is a full sentence on
+    // purpose, because `create_task` relays the envelope's `error` to the model.
+    // It is English: the model reads it and words it for the reader in their
+    // language. (Until October 2026 it was German and quoted to the reader
+    // verbatim; anything an agent reads is English now, AGENTS.md "Industry
+    // standard first", and a second language in the model's context is a
+    // translation every agent pays for.)
     const allowed =
       body.op === 'research'
         ? await isDeepResearchEnabledForOrg(context.organizationId)
@@ -77,9 +81,9 @@ export const POST = internalApiRoute(
     if (!allowed) {
       throw new ForbiddenError(
         body.op === 'research'
-          ? 'Eine Tiefenrecherche steht in diesem Arbeitsbereich nicht zur Verfügung.'
-          : 'Aufträge und Zeitpläne stehen in diesem Arbeitsbereich nicht zur Verfügung. ' +
-            'Die Frage lässt sich nur direkt im Chat beantworten.',
+          ? 'Deep research is not available in this workspace.'
+          : 'Tasks and schedules are not available in this workspace. ' +
+            'Answer the question directly in the conversation instead.',
       )
     }
 

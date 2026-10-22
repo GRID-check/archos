@@ -71,7 +71,7 @@ async def test_file_draft_updates_the_document_the_turn_read(monkeypatch, calls)
     assert payload["documentId"] == "doc-1"
     assert payload["versionId"] == "ver-1"
     assert payload["ifMatch"] == "hash-1"
-    assert "abgelegt" in answer.lower()
+    assert "filed" in answer.lower()
 
 
 async def test_the_turn_writes_a_path_file_draft_can_find(monkeypatch, calls) -> None:

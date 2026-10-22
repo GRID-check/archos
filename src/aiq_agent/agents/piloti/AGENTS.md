@@ -32,11 +32,19 @@ with a reason in its own envelope; `conversation.py` only routes on it. A label
 decided before the answer can only withhold a capability the answer turned out
 to need.
 
-**Confidence has two currencies that do not convert.** A resolved citation can
-reach `high`; an IFC measurement (`grounding.py`) never buys more than
-`medium`, and an answer touching the law without verified citations is capped
-whatever it measured. That ceiling is what keeps a basement measurement from
-grounding a legal verdict.
+**Confidence is held to the weakest sentence, and the law has its own currency**
+(ADR-0125). `finalize_answer` stamps every sentence of the final text with a
+provenance class and a claim type (`common/claim_provenance.py`); the surfaced
+level is the self-report under the weakest load-bearing sentence's ceiling
+(`markers.surface_claim_confidence`). A cited passage, a workspace record, an
+action or a measurement each lets its sentence reach `high`, but only a passage
+grounds a normative sentence: a record or a measurement beside a statement
+about the law leaves that statement uncited and the answer `low`. That is what
+keeps a basement measurement, or a member list, from grounding a legal verdict.
+Records come from this turn's `workspace__call` results
+(`common/workspace_records.py`) and never enter the `SourceRegistry`; a state
+without claim stamps (deep research, a stored turn) is judged by the old
+answer-level floors (rule 1), and `answer_confidence_version` says which.
 
 ## Obligations
 
@@ -52,6 +60,7 @@ grounding a legal verdict.
 | Change anything that runs after the answer's prose settles | Change nothing but a corrected quotation: its inside (`quote_patch.splice`) and the unverified-quote marker the settled snapshot showed after it, which goes with the correction. A repair never adds, drops or renumbers a `[N]` and never retrieves (ADR-0067) | `test_agent.py::TestPilotiRepairPass` (the model's text outside the quote is byte-identical, no second call or search) and the answer suite's signals: a run whose patch landed ("quote patch corrected N of M", N > 0) reports `settled_patched`, and any `settled_replaced` is a regression |
 | Edit `piloti_static.md`'s envelope examples or its field-order sentence | Keep `kind` and the masthead fields before `answer`, then `cards` (ADR-0066; `common/answer_prose_stream.py` reads them in that order). Run the answer suite and `test_answer_prose_stream.py`, then `task prompts:push` checks it and `-- --apply` publishes it (a one-way door: ask first) | Nothing: streaming fails open and the masthead just arrives late |
 | Edit a table, status or directive rule in `piloti_static.md`'s `<formatting>` (RICH BLOCKS) | Keep the header names, status words and directive names in `frontends/ui/src/shared/components/MarkdownRenderer/table-shape.ts`, `status-marks.ts` and `directives.ts` in step, the dialect names in `cards/catalog.RETIRED_CARD_REPLACEMENTS`, and the block, marker and `:project` key lists in `common/answer_dialect.py` and `frontends/ui/src/lib/text/answer-directives.ts` | `tests/aiq_agent/common/test_answer_dialect_parity.py` for the two lists; otherwise nothing: the table renders plain, a directive shows as its literal `:::` lines, and a block the server does not know is unwrapped |
+| Change what a sentence of the answer is stamped with, or a ceiling | Keep the record and measurement classes out of normative grounding (`claim_provenance.ceiling`), keep records out of the `SourceRegistry`, and run the stamps on the FINAL text, after the quote stamps (`answer_pipeline._claim_provenance`) | `tests/aiq_agent/common/test_claim_provenance.py`, `test_claim_provenance_pipeline.py` and `conversation/test_measurement_confidence.py::TestRuleTwoKeepsTheLaunderingPathShut` |
 | Change what the clarify step is given | Edit `ClarifierSettings` on `chat_deepresearcher_agent`, and leave `AgentGroup.CLARIFIER` alone: an org's model choice is stored against it | An org's pinned clarifier model silently stops applying |
 
 ## The names that stay

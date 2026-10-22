@@ -145,6 +145,9 @@ ANSWER_LIFTS: tuple[tuple[str, str], ...] = (
     ("answer_meta", "answer_meta"),
     ("retrieval_ledger", "retrieval_ledger"),
     ("quote_stamps", "quote_stamps"),
+    ("claim_stamps", "claim_stamps"),
+    ("answer_confidence_version", "answer_confidence_version"),
+    ("answer_lookup_found_nothing", "lookup_found_nothing"),
     ("reasoning_effort", "reasoning_effort"),
 )
 
@@ -455,6 +458,7 @@ class ConversationGraph:
             platform_lessons=state.platform_lessons,
             org_instructions=state.org_instructions,
             reference_projects=state.reference_projects,
+            workspace_block=state.workspace_block,
             focus_file_name=state.focus_file_name,
             focus_shelf=state.focus_shelf,
             focus_region=state.focus_region,

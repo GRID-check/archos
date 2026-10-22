@@ -65,6 +65,10 @@ _EXAMPLE_EXEMPT = {
     # example would teach a shape the model must not produce — and this is the
     # card where authoring one would mean naming a file it never looked up.
     "file_operation_proposal",
+    # System-emitted for a write the agent proposed through the MCP surface
+    # (ADR-0122); it names a stored proposal, so an example would teach the
+    # model to author one that does not exist.
+    "operation_proposal",
     # System-emitted (by `create_task`) and built in Python from the id and the
     # title the BFF returned. An example would teach the model to author proof
     # that a task row exists — which is the one claim this card was added to
@@ -74,6 +78,14 @@ _EXAMPLE_EXEMPT = {
     # Python from the mark ids and numbers the BFF returned. An example would
     # teach the model to author proof that a mark or a reply exists.
     "canvas_activity",
+    # System-emitted (by `look`, `highlight` and `point`) from places that were
+    # actually rendered or shown. An example would teach the model to author
+    # evidence of a look it never took.
+    "look",
+    # System-emitted (by `workspace__call` of `document-revision-compare`) from a
+    # comparison that ran. An example would teach the model to author a comparison
+    # nobody made.
+    "revision_compare",
 }
 
 

@@ -88,6 +88,12 @@ export const CARD_INTERACTIVITY: Record<GridCard['type'], CardInteractivity> = {
   // describe all three better; see `DECIDED_ON_THE_SERVER` in
   // `card-interactivity.spec.tsx`, which it would retire.
   file_operation_proposal: 'interactive',
+  // Asks the user to run an operation of the product's MCP surface that Piloti
+  // only PROPOSED (ADR-0122). Decided on the server like `file_operation_proposal`
+  // above: Accept and Discard go to `/api/proposals/[id]`, the object records who
+  // decided, and nothing is written to `cardInteractions`. The card always carries
+  // its `proposal_id`: a call that stored no proposal has no card.
+  operation_proposal: 'interactive',
   // Reports the marks Piloti set on a document and the threads it answered in,
   // and asks, per proposed mark, „übernehmen oder verwerfen?" (or all at once).
   // A window onto objects, not a copy of them: the card reads the marks live
@@ -103,6 +109,12 @@ export const CARD_INTERACTIVITY: Record<GridCard['type'], CardInteractivity> = {
   // reveals where those numbers came from on click. Nothing is written, and
   // the disclosure is one reader's view of data that already arrived.
   calculation: 'presentational',
+  // Where Piloti looked (ADR-0128): places on a document. Opening one is a
+  // read-only preview, so there is nothing to remember.
+  look: 'presentational',
+  // Two Fassungen side by side with the changes boxed (ADR-0128, V10): addresses of
+  // documents. Opening a page is a read-only preview, so there is nothing to remember.
+  revision_compare: 'presentational',
   document_grid: 'presentational',
   // Reports a draft the working directory holds, and — once it has been filed,
   // whether by Piloti or by the reader's own press — the project document it

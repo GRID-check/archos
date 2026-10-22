@@ -10,7 +10,7 @@ Page: 12
 Punkt: 3.5.2
 Citation: oib-rl_2_ausgabe_mai_2023.pdf, p.12
 Content Type: text
-Image: stored (view_knowledge_image image_index=4)
+Image: stored (look image_index=4)
 Relevance Score: 0.87
 
 Brandabschnitte sind so auszubilden.

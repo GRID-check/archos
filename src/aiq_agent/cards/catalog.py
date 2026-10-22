@@ -41,6 +41,9 @@ from pydantic_core import PydanticUndefined
 SYSTEM_CARD_TYPES = frozenset(
     {
         "memory_proposal",
+        # `operation_proposal` from the product's own MCP server: the card names
+        # a stored `operation` proposal a person decides (ADR-0122).
+        "operation_proposal",
         "document_grid",
         "document_draft",
         # `task_created` from `create_task`: the card is proof that a task ROW
@@ -52,6 +55,15 @@ SYSTEM_CARD_TYPES = frozenset(
         # `canvas_activity` from the canvas tools: the card names marks and
         # replies the BFF has already written, by their ids and numbers.
         "canvas_activity",
+        # `look` from `look`, `highlight` and `point` (ADR-0128): the card names
+        # places Piloti actually rendered or showed the room, built once the
+        # answer is final from the looks it relies on (`tools/look/cards.py`).
+        "look",
+        # `revision_compare` from `workspace__call` of `document-revision-compare`
+        # (ADR-0128, V10): the card shows the result of a comparison that ran, by
+        # the two documents' ids, so a model that could emit it could present a
+        # comparison nobody made.
+        "revision_compare",
     }
 )
 
@@ -232,7 +244,14 @@ def retired_card_markdown(payload: object) -> str | None:
 # `'live'`: the mark is the record, not the message. "Interactive" here means
 # "asks the user", which a live card still does.)
 INTERACTIVE_CARD_TYPES = frozenset(
-    {"project_profile_patch", "memory_proposal", "file_operation_proposal", "document_draft", "canvas_activity"}
+    {
+        "project_profile_patch",
+        "memory_proposal",
+        "file_operation_proposal",
+        "operation_proposal",
+        "document_draft",
+        "canvas_activity",
+    }
 )
 
 # Card types offered on the chat envelope only. A `surface` is taught by the

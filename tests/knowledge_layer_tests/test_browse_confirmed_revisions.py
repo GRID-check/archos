@@ -2,7 +2,7 @@
 
 A confirmed replacement is a fact; an index in a file name is a guess. The older file
 says which one replaced it, the newer which it replaced and, in a line, what changed.
-An unconfirmed name series keeps its „dem Namen nach" mark. A link counts only while
+An unconfirmed name series keeps its "by file name" mark. A link counts only while
 both files are in the selection.
 """
 
@@ -55,43 +55,43 @@ class TestTheConfirmedMarks:
     def test_the_older_file_names_its_replacement_and_the_newer_the_file_it_replaced(self):
         text = render_listing(select_files(_confirmed(), shelf="project"))
 
-        assert "ersetzt durch Statik neu.pdf (bestätigt)" in _line(text, "Statik alt.pdf")
-        assert "ersetzt Statik alt.pdf (bestätigt)" in _line(text, "Statik neu.pdf")
-        assert "bestätigt" not in _line(text, "Baubeschreibung.pdf")
+        assert "replaced by Statik neu.pdf (confirmed)" in _line(text, "Statik alt.pdf")
+        assert "replaces Statik alt.pdf (confirmed)" in _line(text, "Statik neu.pdf")
+        assert "confirmed" not in _line(text, "Baubeschreibung.pdf")
 
     def test_the_newer_row_carries_what_changed_on_one_line(self):
         text = render_listing(select_files(_confirmed(), shelf="project"))
 
         line = _line(text, "Statik neu.pdf")
-        assert "geändert: Bewehrung Decke 12 mm statt 10 mm; Neue Stütze in Achse 3" in line
-        assert "geändert" not in _line(text, "Statik alt.pdf")
+        assert "changed: Bewehrung Decke 12 mm statt 10 mm; Neue Stütze in Achse 3" in line
+        assert "changed" not in _line(text, "Statik alt.pdf")
 
     def test_the_change_is_bounded_to_160_characters(self):
         rows = file_rows([_doc("neu.pdf", change_summary="- " + "x" * 400, change_basis="alt.pdf")])
         line = _line(render_listing(select_files(rows, shelf="project")), "neu.pdf")
-        change = line.split("geändert: ", 1)[1].split(" · ")[0].split(" — ")[0]
+        change = line.split("changed: ", 1)[1].split(" · ")[0].split(" — ")[0]
         assert len(change) <= MAX_CHANGE_CHARS
         assert change.endswith("…")
 
     def test_a_change_against_the_files_own_previous_upload_says_so(self):
         rows = file_rows([_doc("statik.pdf", change_summary="- Lift neu", change_basis="statik.pdf")])
         line = _line(render_listing(select_files(rows, shelf="project")), "statik.pdf")
-        assert "geändert (vorige Fassung): Lift neu" in line
-        assert "bestätigt" not in line
+        assert "changed (previous Fassung): Lift neu" in line
+        assert "confirmed" not in line
 
     def test_the_profile_line_counts_the_confirmed_replacements(self):
         text = render_listing(select_files(_confirmed(), shelf="project"))
-        assert "Fassungen (bestätigt): 1 Datei(en)" in text
+        assert "Fassungen (confirmed): a person replaced 1 file(s)" in text
         assert "file_name=" in text
 
     def test_no_confirmed_link_means_no_confirmed_line(self):
         text = render_listing(select_files(file_rows([_doc("a.pdf"), _doc("b.pdf")]), shelf="project"))
-        assert "bestätigt" not in text
+        assert "confirmed" not in text
 
     def test_a_link_to_a_file_outside_the_selection_marks_nothing(self):
         rows = file_rows([_doc("alt.pdf", superseded_by="weg.pdf")])
         assert confirmed_revision_marks(rows) == {}
-        assert "bestätigt" not in render_listing(select_files(rows, shelf="project"))
+        assert "confirmed" not in render_listing(select_files(rows, shelf="project"))
 
     def test_the_marks_are_keyed_by_collection_and_name(self):
         marks = confirmed_revision_marks(_confirmed())
@@ -106,7 +106,7 @@ class TestTheConfirmedMarks:
             ]
         )
         line = _line(render_listing(select_files(rows, shelf="project")), "b.pdf")
-        assert "ersetzt durch c.pdf (bestätigt)" in line and "ersetzt a.pdf (bestätigt)" in line
+        assert "replaced by c.pdf (confirmed)" in line and "replaces a.pdf (confirmed)" in line
 
 
 class TestAConfirmedLinkBeatsTheReadingOfTheNames:
@@ -122,20 +122,20 @@ class TestAConfirmedLinkBeatsTheReadingOfTheNames:
     def test_a_row_in_a_confirmed_link_carries_the_confirmed_mark_not_the_name_mark(self):
         text = render_listing(select_files(self._rows(), shelf="project"))
 
-        assert "ersetzt durch EG_Grundriss_Index_C.pdf (bestätigt)" in _line(text, "EG_Grundriss_Index_B")
-        assert "dem Namen nach" not in _line(text, "EG_Grundriss_Index_B")
-        assert "dem Namen nach" not in _line(text, "EG_Grundriss_Index_C")
+        assert "replaced by EG_Grundriss_Index_C.pdf (confirmed)" in _line(text, "EG_Grundriss_Index_B")
+        assert "by file name" not in _line(text, "EG_Grundriss_Index_B")
+        assert "by file name" not in _line(text, "EG_Grundriss_Index_C")
 
     def test_an_unconfirmed_member_of_the_same_series_keeps_the_name_mark(self):
         text = render_listing(select_files(self._rows(), shelf="project"))
-        assert "ältere Fassung (Index A)" in _line(text, "EG_Grundriss_Index_A")
-        assert "Fassungen: 1 Dokument(e)" in text  # the series still counts once, for A
+        assert "older Fassung (Index A)" in _line(text, "EG_Grundriss_Index_A")
+        assert "Fassungen: 1 document(s)" in text  # the series still counts once, for A
 
     def test_an_unconfirmed_series_is_unchanged(self):
         rows = file_rows([_doc("EG_Index_A.pdf"), _doc("EG_Index_B.pdf")])
         text = render_listing(select_files(rows, shelf="project"))
-        assert "aktuelle Fassung (Index B" in _line(text, "EG_Index_B")
-        assert "bestätigt" not in text
+        assert "current Fassung (Index B" in _line(text, "EG_Index_B")
+        assert "confirmed" not in text
 
 
 def test_the_row_reads_the_facts_from_an_inventory_row_or_a_dict():

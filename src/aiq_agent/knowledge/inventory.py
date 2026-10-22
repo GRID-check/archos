@@ -465,14 +465,14 @@ def _family_lines(families: Sequence[Any]) -> list[str]:
     if not families:
         return []
     lines = [
-        "Die Richtlinien-Familien dieses Korpus, mit allen Teilen, die tatsächlich "
-        "indiziert sind (nicht die Reihe „1–6“, sondern die Mitglieder):"
+        "The Richtlinien families of this corpus, with all parts that are actually "
+        "indexed (not the series „1–6“, but the members):"
     ]
     lines += [f"- {family.label}: {', '.join(family.members)}" for family in families]
     lines.append(
-        "Eine Frage nach einer ganzen Richtlinie ist erst beantwortet, wenn jedes hier "
-        "genannte Mitglied gelesen wurde. Ein nicht gelesenes Mitglied darf genannt, "
-        "aber nicht beschrieben werden."
+        "A question about a whole Richtlinie is answered only once every member named "
+        "here has been read. A member that was not read may be named, "
+        "but not described."
     )
     return lines
 
@@ -544,16 +544,16 @@ def _folded_base_lines(count: int) -> list[str]:
     names it (``shelf_hint_from_query`` → ``set_listing_shelf``), and then
     ``focus_shelf`` prints the full list. The fold applies to every other turn.
     """
-    n = f"{count} Datei" if count == 1 else f"{count} Dateien"
+    n = f"{count} file" if count == 1 else f"{count} files"
     return [
-        f"{n} — der Plattform-Korpus (OIB-Richtlinien samt Erläuterungen, Leitfäden "
-        "und Begriffsbestimmungen). Konstant auf jeder Anfrage und hier bewusst "
-        "nicht aufgezählt.",
-        "Durchsuche ihn mit `knowledge_search` ohne `file_name`; jeder Treffer nennt "
-        "die Datei, aus der er stammt, und die ist dann zitierbar.",
-        f"Fragt der Nutzer, was auf diesem Regal liegt: sage, dass es {n} des "
-        "OIB-Korpus sind und du sie über die Suche erreichst. Erfinde keine "
-        "Dateinamen.",
+        f"{n} — the platform corpus (OIB guidelines with explanatory notes, guides "
+        "and definitions). Constant on every request and deliberately not "
+        "listed here.",
+        "Search it with `knowledge_search` without `file_name`; every hit names "
+        "the file it comes from, and that file is then citable.",
+        f"If the user asks what is on this shelf: say that it is {n} of the "
+        "OIB corpus and that you reach them through search. Do not invent "
+        "file names.",
         # The one thing the fold may NOT leave out. Everything above is a shape
         # retrieval can recover; which parts a Richtlinie HAS is not — a search
         # that never returns 2.3 looks exactly like a Richtlinie that has none.
@@ -708,10 +708,10 @@ def render_inventory_block(
         missing = dropped.get(shelf, 0)
         if missing > 0:
             lines.append(
-                f"- (und {missing} weitere Datei(en) auf diesem Regal, hier nicht aufgeführt — "
-                f'diese Liste ist unvollständig. `list_files(shelf="{shelf.value}")` zeigt alle, '
-                f"auch nach Ordner, Name oder Datum gefiltert; ohne diesen Aufruf behandle die Liste "
-                f"nicht als vollständig)"
+                f"- (and {missing} more file(s) on this shelf, not listed here — "
+                f'this list is incomplete. `list_files(shelf="{shelf.value}")` shows all, '
+                f"also filtered by folder, name or date; without that call do not treat the list "
+                f"as complete)"
             )
         lines.append("")
 
@@ -728,9 +728,9 @@ def render_inventory_block(
         missing_unknown = dropped.get(None, 0)
         if missing_unknown > 0:
             lines.append(
-                f"- (und {missing_unknown} weitere Datei(en) ohne angegebenes Regal, hier nicht "
-                f"aufgeführt — diese Liste ist unvollständig; sage das, statt sie als vollständig "
-                f"zu behandeln)"
+                f"- (and {missing_unknown} more file(s) with no shelf stated, not "
+                f"listed here — this list is incomplete; say so instead of treating it as "
+                f"complete)"
             )
         lines.append("")
 

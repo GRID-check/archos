@@ -3,18 +3,13 @@
  * Thin handler; all logic lives in `@/lib/office-shelf/service` (ADR-0024).
  */
 
-import { z } from 'zod'
 import { apiRoute, parseJsonBody } from '@/lib/api/handler'
+import { searchOfficeShelfSchema } from '@/lib/office-shelf/search-wire'
 import { searchOfficeShelfDocuments } from '@/lib/office-shelf/service'
-
-const searchBodySchema = z.object({
-  q: z.string().trim().min(1).max(1000),
-  topK: z.number().int().min(1).max(100).optional(),
-})
 
 export const POST = apiRoute(
   async ({ session, request }) => {
-    const { q, topK } = await parseJsonBody(request, searchBodySchema)
+    const { q, topK } = await parseJsonBody(request, searchOfficeShelfSchema)
     return searchOfficeShelfDocuments(session, q, topK)
   },
   {

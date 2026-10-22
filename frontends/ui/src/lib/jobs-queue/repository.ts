@@ -53,6 +53,38 @@ export async function insertJob(
 }
 
 /**
+ * {@link insertJob} for a job whose id is derived from what it is about: a
+ * second enqueue of the same id is no job, not an error. Whether this call
+ * added it. A finished job is deleted, so the id names the job only while it
+ * waits or runs; the caller's own record says whether the work was done.
+ */
+export async function insertJobIfAbsent(
+  job: {
+    kind: string
+    organizationId: string
+    priority: BffJobPriority
+    payload: Record<string, unknown>
+    jobId: string
+    notBefore?: Date
+  },
+  executor: DbExecutor = getDb()
+): Promise<boolean> {
+  const rows = await executor
+    .insert(bffJobQueue)
+    .values({
+      jobId: job.jobId,
+      kind: job.kind,
+      lane: job.organizationId,
+      priority: job.priority,
+      payload: job.payload,
+      notBefore: job.notBefore ?? null,
+    })
+    .onConflictDoNothing()
+    .returning({ jobId: bffJobQueue.jobId })
+  return rows.length > 0
+}
+
+/**
  * Withdraw a job nobody has claimed yet, in the caller's lane; whether it was
  * there. A claimed job is left alone: its worker owns it now, and a job that
  * may be withdrawn checks on its own whether it still has work.

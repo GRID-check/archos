@@ -67,29 +67,31 @@ _OIB6_EXEMPT = frozenset({"storage", "agriculture"})
 _MAIN_USE_TOKENS = _BETRIEBSBAU_USES | _BETRIEBSBAU_CHECK | _PUBLIC_USES | _NOISE_SENSITIVE | _OIB6_EXEMPT
 _GK_TOKEN = re.compile(r"(?:GK)?([1-5])")
 
-_VERDICT_LABELS_DE: dict[str, str] = {
-    "required": "verbindlich",
-    "likely": "voraussichtlich anwendbar",
-    "check": "zu prüfen",
+_VERDICT_LABELS: dict[str, str] = {
+    "required": "required",
+    "likely": "likely applicable",
+    "check": "to be checked",
 }
 
-# The four boolean intake triggers -> German one-liner shown when the fact is true.
+# The four boolean intake triggers -> one-liner shown when the fact is true.
 _TRIGGER_HINTS: tuple[tuple[str, str], ...] = (
     (
         "allotment_garden_area",
-        "Kleingartengebiet: Wiener Kleingartengesetz gilt als lex specialis — vor BauO/OIB prüfen.",
+        "Kleingartengebiet (allotment garden area): the Wiener Kleingartengesetz applies "
+        "as lex specialis — check before BauO/OIB.",
     ),
     (
         "heritage_protection",
-        "Denkmalschutz: DMSG-Bewilligung (Bundesdenkmalamt) zusätzlich zur Baubewilligung prüfen.",
+        "Denkmalschutz (heritage protection): check the DMSG approval (Bundesdenkmalamt) "
+        "in addition to the building permit.",
     ),
     (
         "commercial_facility",
-        "Betriebsanlage: GewO §§ 74 ff Genehmigungsregime zusätzlich prüfen.",
+        "Betriebsanlage (commercial facility): additionally check the GewO §§ 74 ff approval regime.",
     ),
     (
         "parking_relevant",
-        "Stellplatzverpflichtung: Wiener Garagengesetz (bzw. Landesrecht) prüfen.",
+        "Stellplatzverpflichtung (parking obligation): check the Wiener Garagengesetz (or state law).",
     ),
 )
 
@@ -408,7 +410,7 @@ def resolve_oib_applicability(facts: Facts) -> list[OibVerdict]:
 
 
 def trigger_hints(facts: Facts) -> list[str]:
-    """German one-liners for the four boolean intake triggers that are set true."""
+    """One-liners for the four boolean intake triggers that are set true."""
     return [hint for key, hint in _TRIGGER_HINTS if _is_true(facts.get(key))]
 
 
@@ -451,18 +453,18 @@ def facts_from_project_context(text: str) -> Facts:
 
 
 def render_project_block(project_context: str) -> str | None:
-    """German prompt section for the parsed project facts, or None when empty.
+    """Prompt section for the parsed project facts, or None when empty.
 
     Called lazily by ``norm_registry.render_block_for_prompt``. Lists each OIB
-    verdict (``code — verdict — reason_de``) followed by any trigger hints.
+    verdict (``code — verdict — reason_en``) followed by any trigger hints.
     """
     facts = facts_from_project_context(project_context)
     if not facts:
         return None
-    lines = ["### Für dieses Projekt voraussichtlich einschlägig", ""]
+    lines = ["### Likely relevant for this project", ""]
     for verdict in resolve_oib_applicability(facts):
-        label = _VERDICT_LABELS_DE.get(verdict.verdict, verdict.verdict)
-        lines.append(f"- {verdict.code} — {label} — {verdict.reason_de}")
+        label = _VERDICT_LABELS.get(verdict.verdict, verdict.verdict)
+        lines.append(f"- {verdict.code} — {label} — {verdict.reason_en}")
     hints = trigger_hints(facts)
     if hints:
         lines.append("")

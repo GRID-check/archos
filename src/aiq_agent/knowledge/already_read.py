@@ -51,6 +51,9 @@ MAX_DIGEST_DOCS = 20
 #: entries drop out exactly like past the document cap.
 MAX_DIGEST_TOKENS = 800
 
+#: The longest page run a digest line may hold as a range; a longer one is a hand-edited line, not a read.
+MAX_DIGEST_PAGE_RUN = 500
+
 
 @dataclass
 class DigestEntry:
@@ -77,13 +80,43 @@ def _clause_sort_key(raw: str) -> tuple:
     return (numbered, raw)
 
 
+def _page_runs(pages: Sequence[int]) -> str:
+    """Sorted ``pages`` with runs of three or more as ranges: ``1, 2, 4-6, 9``.
+
+    A ranged read (``read_passage(pages="4-6")``) opens a run of pages, and the digest names it the
+    way ``read_passage`` accepts it back, rather than one number per page.
+    """
+    parts: list[str] = []
+    ordered = sorted(pages)
+    index = 0
+    while index < len(ordered):
+        end = index
+        while end + 1 < len(ordered) and ordered[end + 1] == ordered[end] + 1:
+            end += 1
+        if end - index >= 2:
+            parts.append(f"{ordered[index]}-{ordered[end]}")
+        else:
+            parts.extend(str(page) for page in ordered[index : end + 1])
+        index = end + 1
+    return ", ".join(parts)
+
+
+def _parse_page_token(token: str) -> set[int]:
+    """One digest page token (``7`` or ``4-6``) as pages; raises ``ValueError`` when it is neither."""
+    first, dash, last = token.strip().partition("-")
+    start, end = int(first), int(last) if dash else int(first)
+    if end < start or end - start > MAX_DIGEST_PAGE_RUN:
+        raise ValueError(token)
+    return set(range(start, end + 1))
+
+
 def format_digest_line(
     file_name: str, collection: str, pages: set[int] | Sequence[int], clauses: set[str] | Sequence[str], turn: int
 ) -> str:
     """One digest line: ``"<file> | <collection> | Seiten <p> | Punkte <n> | Turn <k>"``."""
     ordered_pages = sorted({int(page) for page in pages})
     ordered_clauses = sorted({str(clause) for clause in clauses if str(clause).strip()}, key=_clause_sort_key)
-    pages_bit = ", ".join(str(page) for page in ordered_pages) if ordered_pages else "-"
+    pages_bit = _page_runs(ordered_pages) if ordered_pages else "-"
     clauses_bit = ", ".join(ordered_clauses) if ordered_clauses else "-"
     return f"{file_name} | {collection} | Seiten {pages_bit} | Punkte {clauses_bit} | Turn {max(1, int(turn))}"
 
@@ -116,7 +149,7 @@ def parse_digest_line(line: str) -> DigestEntry | None:
     if raw_pages and raw_pages != "-":
         for token in raw_pages.split(","):
             try:
-                pages.add(int(token.strip()))
+                pages |= _parse_page_token(token)
             except ValueError:
                 return None
     clauses: set[str] = set()
@@ -235,15 +268,15 @@ def render_already_read_block(digest: Sequence[str] | None) -> str:
     return "\n".join(
         [
             DIGEST_HEADING,
-            "Dokumente, die in DIESER Unterhaltung bereits geöffnet wurden — ein Index, KEIN Beleg: "
-            "Eine Zeile beweist, dass das Dokument geöffnet wurde, nicht dass sein Wortlaut jetzt vorliegt "
-            "(die Passagen des VORIGEN Zuges stehen noch im Verlauf; ältere nicht). "
-            "Zitieren oder wörtlich anführen erst nach erneutem Öffnen mit `read_passage` und dem exakten "
-            "Namen aus der Zeile; die Digest-Zeile selbst wird nie zitiert.",
-            f"Begrenzt auf höchstens {MAX_DIGEST_DOCS} Dokumente / ca. {MAX_DIGEST_TOKENS} Tokens — "
-            "ältere Einträge fallen heraus; was hier fehlt, ist damit nicht widerlegt, sondern per "
-            "`knowledge_search` zu suchen. Einträge können veraltet sein (neuere Fassung abgelegt): "
-            "Meldet `read_passage` „no passage“/„unknown document“, per `knowledge_search` neu auflösen.",
+            "Documents already opened in THIS conversation — an index, NOT evidence: "
+            "a line proves that the document was opened, not that its wording is available now "
+            "(the passages of the PREVIOUS turn are still in the transcript; older ones are not). "
+            "Cite or quote verbatim only after opening it again with `read_passage` and the exact "
+            "name from the line; the digest line itself is never cited.",
+            f"Limited to at most {MAX_DIGEST_DOCS} documents / about {MAX_DIGEST_TOKENS} tokens — "
+            "older entries drop out; what is missing here is therefore not ruled out, but is to be "
+            "searched with `knowledge_search`. Entries can be outdated (a newer Fassung was filed): "
+            "if `read_passage` reports „no passage“/„unknown document“, resolve again with `knowledge_search`.",
             *[f"- {line}" for line in lines],
         ]
     )

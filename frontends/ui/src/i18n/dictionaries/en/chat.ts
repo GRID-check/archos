@@ -296,6 +296,9 @@ export const chat = {
     // promise evidence that is not there.
     researchTruncatedWithoutSources:
       'The search stopped before it was finished, and before it had found anything',
+    // The search ran and found nothing; the answer is shown anyway (ADR-0125),
+    // and this sentence says what it then rests on.
+    lookupFoundNothing: 'The search found no sources. This answer rests on general knowledge and is not backed.',
     // WHY it stopped, appended to whichever sentence above applies as a short
     // parenthetical — "it stopped early" is the fact, "it ran out of time" is
     // what tells the reader whether asking again is worth anything.
@@ -369,6 +372,8 @@ export const chat = {
   // Thread-header breadcrumb (project / session title) with inline rename.
   // The citation peek: what a Fundstelle IS, before you open it.
   citationPeek: {
+    pageThumbnail: 'Page {page}',
+    thumbnailLoading: 'Drawing the page',
     wholeDocument: 'Whole document',
     openAtPage: 'Open at this passage',
     notOpenable: 'No file for this source is available in Piloti.',
@@ -449,6 +454,15 @@ export const chat = {
       // label is a sentence fragment, not a request. It is prefill and not a
       // command, so the reader can edit it before pressing send.
       fileNotePrefill: 'Write that up as a file note in my project.',
+    },
+    workReport: {
+      eyebrow: 'Where the work stands',
+      done: 'Done',
+      proposed: 'Proposed, waiting for you',
+      blocked: 'Blocked',
+      next: 'Next',
+      who: 'Who: {who}',
+      due: 'by {due}',
     },
     keyTakeaways: {
       eyebrow: 'What matters most',
@@ -541,6 +555,27 @@ export const chat = {
     // renders, and the run block below it says how the work is going — so
     // this card is the receipt (what, of what kind, by when) and states no
     // status of its own.
+    // Where Piloti looked on a document (ADR-0128): per look the page and the
+    // place, and what Piloti showed the room.
+    look: {
+      eyebrow: 'Looked at',
+      looked: 'p. {page}',
+      shown: 'Shown on p. {page}',
+      wholePage: 'whole page',
+      // A reading is what Piloti read off the page, never a measurement (ADR-0125).
+      reading: 'Read: {reading}',
+      readingNote: 'Read off the page by Piloti, not measured.',
+      embeddedImage: 'image {index}',
+      open: 'Open {document} at p. {page}',
+    },
+    // Two Fassungen of a document, the changes boxed on each (ADR-0128, V10).
+    revisionCompare: {
+      eyebrow: 'Fassungen compared',
+      page: 'p. {page}',
+      older: 'Older Fassung',
+      newer: 'Newer Fassung',
+      open: '{side}, p. {page}: open with the changes',
+    },
     taskCreated: {
       eyebrow: 'Task',
       due: 'by {date}',
@@ -631,6 +666,31 @@ export const chat = {
         applied: 'Project context updated.',
         dismissed: 'Discarded. The project context is unchanged.',
       },
+    },
+    // An action Piloti PROPOSED through the MCP surface (ADR-0122). Nothing has
+    // happened until the reader accepts; accepting runs it in the reader's own
+    // session, and the action's route checks the permission.
+    operationProposal: {
+      eyebrow: 'Action',
+      // `{operation}` is the action's technical name; it is not translated.
+      operation: 'Action: {operation}',
+      inputLabel: 'Inputs',
+      // A long value is shortened at first; „Apply“ waits until every one has been read in full.
+      showAll: 'Show all ({length} characters)',
+      showLess: 'Show less',
+      readAllFirst: '{count, plural, one {Read the shortened value in full before you apply.} other {Read the # shortened values in full before you apply.}}',
+      targetsLabel: 'Applies to',
+      target: {
+        project: 'Project {name}',
+        document: 'Document {name}',
+        folder: 'Folder {name}',
+        conversation: 'Conversation {name}',
+        bim_model: 'Model {name}',
+        upload_batch: 'Upload {name}',
+        proposal: 'Proposal {name}',
+      },
+      applied: 'The action was carried out.',
+      dismissed: 'Discarded. The action was not carried out.',
     },
     // What Piloti did on a document: marks it set, threads it answered in.
     // One „take over" or „discard" per mark, and the way into the review at
@@ -925,6 +985,14 @@ export const chat = {
     },
   },
   thinking: {
+    // One row per document Piloti looked at (ADR-0128); its thumbnails open the place.
+    look: {
+      step: 'Looked at: {document}, p. {page}, {where}',
+      stepWhole: 'Looked at: {document}, p. {page}',
+      stepMany: 'Looked at: {document}, {count} places',
+      place: 'p. {page}, {where}',
+      placeWhole: 'p. {page}',
+    },
     inProgress: 'Thinking in progress',
     working: 'Working on a response …',
     waiting: 'Waiting for response',
@@ -1044,6 +1112,11 @@ export const chat = {
           annotationsUpdate: 'Changing an annotation …',
           annotationsDelete: 'Deleting an annotation …',
           annotationsReply: 'Replying to an annotation …',
+          // Piloti looks at a page or a region of it (ADR-0128).
+          look: 'Looking at the document …',
+          // A call into the workspace through Piloti itself: a read runs, a
+          // write comes back as a proposal.
+          workspaceCall: 'Working in the workspace …',
         },
         // The tools are done, the answer is being written. The same words as
         // `activity.composing` above: one vocabulary for one thing — whether
@@ -1094,6 +1167,8 @@ export const chat = {
       annotations: 'Annotations',
       /** The file actions PROPOSE and write nothing (ADR-0003). */
       fileProposal: 'File proposal',
+      // Read or proposed in the workspace (members, approvals, tasks).
+      workspace: 'Workspace',
       // One chip per skill the turn actually applied. `{name}` is resolved by
       // the single label authority (features/skills/lib/skill-activity).
       skill: 'Skill: {name}',
@@ -1185,6 +1260,7 @@ export const chat = {
       // The count is the whole turn's tally and therefore identical on every
       // repeat — which is what made a re-read look like a second fetch.
       roundDocRepeat: 'already retrieved',
+      workspaceRead: 'Read from the workspace',
       contextLabel: 'Context',
       sourcesTab: 'Sources',
       sourcesTitle: 'Sources examined',
@@ -1436,6 +1512,38 @@ export const chat = {
       // backs no more than a measurement does.
       citationFallback:
         'Medium confidence: the source shown was attached by the assistant, not cited by the answer itself.',
+    },
+    // The assessment since ADR-0125: computed per statement, not per answer.
+    // Older answers keep the copy above, under which they were computed.
+    byClaim: {
+      tooltip:
+        "The assistant's own assessment, held to the weakest statement the answer rests on. It can be wrong.",
+      levelMeanings: {
+        high: 'High: every statement the answer rests on is backed by a cited source, a workspace record or a measurement.',
+        medium:
+          'Medium: a statement the answer rests on is an inference or general knowledge, or a record read does not cover a figure.',
+        low: 'Low: a statement about the law, a figure or a deadline is not backed, or a citation did not hold up.',
+      },
+      // What the answer's sentences rest on, in reading order: what holds first.
+      mix: {
+        supported: '{count, plural, one {# statement backed} other {# statements backed}}',
+        observed: '{count, plural, one {# statement read off the drawing} other {# statements read off the drawing}}',
+        reasoning: '{count, plural, one {# inference} other {# inferences}}',
+        modelKnowledge: '{count, plural, one {# from general knowledge} other {# from general knowledge}}',
+        normativeUncited: '{count, plural, one {# legal statement without a source} other {# legal statements without a source}}',
+        dropped: '{count, plural, one {# citation not verified} other {# citations not verified}}',
+      },
+      cappedReasons: {
+        ungrounded: 'Capped by a statement the answer rests on that nothing backs.',
+        quoteUnverified:
+          'A quote could not be verified verbatim against the source; the assessment is capped accordingly.',
+        normativeClaimUncited:
+          'Capped by a legal statement without a cited source. A workspace record or a measurement does not back a legal statement.',
+        measurementOnly:
+          'Medium confidence: the figure was measured on the model (with tolerance and method), but is not backed by a source.',
+        citationFallback:
+          'Medium confidence: the source shown was attached by the assistant, not cited by the answer itself.',
+      },
     },
   },
   // Per-answer thumbs feedback (WS-7).

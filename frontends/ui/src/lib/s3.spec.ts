@@ -12,6 +12,8 @@ import {
   buildRenditionStorageKey,
   buildStorageKey,
   buildThumbnailStorageKey,
+  LOCAL_STORAGE_ENDPOINT,
+  storageEndpoint,
   storageKeySegment,
 } from './s3'
 
@@ -276,6 +278,37 @@ describe('presignForBackend', () => {
         )
       )
       expect(url.host).toBe('seaweedfs:8333')
+    } finally {
+      process.env.SEAWEED_ENDPOINT = saved.internal
+      process.env.SEAWEED_PUBLIC_ENDPOINT = saved.browser
+      vi.resetModules()
+    }
+  })
+})
+
+describe('storageEndpoint', () => {
+  it('reads SEAWEED_ENDPOINT, and the public one first for the browser-facing client', () => {
+    const env = { SEAWEED_ENDPOINT: 'http://seaweedfs:8333', SEAWEED_PUBLIC_ENDPOINT: 'https://files.piloti.test' }
+    expect(storageEndpoint('internal', env)).toBe('http://seaweedfs:8333')
+    expect(storageEndpoint('public', env)).toBe('https://files.piloti.test')
+    expect(storageEndpoint('public', { SEAWEED_ENDPOINT: 'http://seaweedfs:8333' })).toBe('http://seaweedfs:8333')
+  })
+
+  it('never lets an unset endpoint fall through to AWS S3', () => {
+    expect(storageEndpoint('internal', { NODE_ENV: 'development' })).toBe(LOCAL_STORAGE_ENDPOINT)
+    expect(() => storageEndpoint('internal', { NODE_ENV: 'production', SEAWEED_ENDPOINT: ' ' })).toThrow(/SEAWEED_ENDPOINT is not set/)
+  })
+
+  it('signs for the local store, not amazonaws.com, when nothing is set in development', async () => {
+    const saved = { internal: process.env.SEAWEED_ENDPOINT, browser: process.env.SEAWEED_PUBLIC_ENDPOINT }
+    delete process.env.SEAWEED_ENDPOINT
+    delete process.env.SEAWEED_PUBLIC_ENDPOINT
+    try {
+      vi.resetModules()
+      const fresh = await import('./s3')
+      const { GetObjectCommand } = await import('@aws-sdk/client-s3')
+      const url = new URL(await fresh.presignForBackend(new GetObjectCommand({ Bucket: 'grid-documents', Key: 'a.pdf' }), 60))
+      expect(url.host).toBe('localhost:8333')
     } finally {
       process.env.SEAWEED_ENDPOINT = saved.internal
       process.env.SEAWEED_PUBLIC_ENDPOINT = saved.browser

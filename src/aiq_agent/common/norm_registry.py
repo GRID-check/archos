@@ -130,41 +130,41 @@ _MIN_TOPIC_LENGTH = 4
 # The Normenhierarchie doctrine, injected into researcher/planner/writer prompts as
 # {{ norm_doctrine }} — ONE copy, rendered by the prompt factories. Reasoning rules
 # belong in the prompt; data (pointers, notes) belongs in the registry entries.
-NORM_DOCTRINE = """## Normenhierarchie & Dokumentrollen
+NORM_DOCTRINE = """## Norm hierarchy & document roles
 
-**Autoritätsordnung ≠ Abrufreihenfolge.** Welche Quelle eine Frage BEANTWORTET (Bundesgesetz >
-Landesgesetz/Verordnung > OIB-Richtlinie > Leitfaden/Erläuterung) ist nicht dieselbe Ordnung, in der Quellen
-ABGERUFEN werden (Wissensbasis — Projektdokumente UND Basiswissen — → RIS → Web). Die Wissensbasis steht
-am Anfang, auch wenn die Frage nach einer Richtlinie klingt: deren verbindlicher Text liegt dort, mit Seite
-zitierbar. RIS kommt, wenn die Wissensbasis die Ebene nicht führt (Gesetz, Verordnung, Judikatur).
+**Order of authority ≠ order of retrieval.** Which source ANSWERS a question (federal law >
+state law/ordinance > OIB guideline > guide/explanatory note) is not the same order in which sources are
+RETRIEVED (knowledge base — project documents AND base knowledge — → RIS → web). The knowledge base comes
+first, even when the question sounds like one about a guideline: its binding text is there, citable with
+page. RIS comes when the knowledge base does not carry the level (law, ordinance, case law).
 
-**Dokumentrollen beachten:**
-- Anforderungen („muss", „darf nicht", Mindestwerte) stammen ausschließlich aus NORMATIVEN Dokumenten (Gesetz,
-  Verordnung, OIB-Richtlinie, verbindlich erklärte Norm).
-- Leitfäden beschreiben die ANWENDUNG einer Richtlinie — sie begründen keine neuen Anforderungen.
-- Erläuterungen liefern BEGRÜNDUNGEN und Auslegungshilfen — ebenfalls keine neuen Anforderungen.
-- Behördliche Informationen (z. B. MA 37) zeigen behördliche Praxis — niemals als neue Norm zitieren.
-- Rechtskommentare stehen nicht zur Verfügung. Wenn danach gefragt wird, offen sagen — keine Kommentar-Kenntnis
-  simulieren.
+**Respect document roles:**
+- Requirements („muss", „darf nicht", minimum values) come exclusively from NORMATIVE documents (law,
+  ordinance, OIB guideline, norm declared binding).
+- Guides (Leitfäden) describe the APPLICATION of a guideline — they establish no new requirements.
+- Explanatory notes (Erläuterungen) provide RATIONALES and aids to interpretation — likewise no new requirements.
+- Authority information (e.g. MA 37) shows authority practice — never cite it as a new norm.
+- Legal commentaries are not available. When asked for them, say so openly — do not simulate knowledge of
+  commentaries.
 
-**Abweichungsdisziplin:** Eine OIB-Richtlinie gilt nur in der vom Bundesland verbindlich erklärten Edition und nur
-ohne landesrechtliche Abweichungen. Das prüfen, soweit die Quellen es hergeben — sonst ausdrücklich als offen
-kennzeichnen. Zitiert wird die verbindlich erklärte Edition, nie automatisch die neueste.
+**Discipline on deviations:** An OIB guideline applies only in the edition the Bundesland has declared binding, and only
+without deviations in state law. Check that as far as the sources allow — otherwise flag it expressly as
+open. Cite the edition declared binding, never automatically the newest.
 
-**Parzellen-Fragen zuerst am Grundstück klären.** Widmung, Bauklasse, Gebäudehöhe, Fluchtlinien u. Ä. beantworten
-Flächenwidmungs- und Bebauungsplan des Grundstücks — nicht OIB oder Bauordnung allgemein. Liegt der Plan nicht in
-der Wissensbasis, das offen sagen (wien.gv.at/flaechenwidmung/public) statt generisch zu antworten.
+**Parcel questions: settle them at the plot first.** Zoning (Widmung), building class (Bauklasse), building
+height, building lines (Fluchtlinien) and the like are answered by the plot's zoning plan and development
+plan (Flächenwidmungs- und Bebauungsplan) — not by OIB or the building code in general. If the plan is not in
+the knowledge base, say so openly (wien.gv.at/flaechenwidmung/public) instead of answering generically.
+**Terms follow the level of the question.** The same term can be defined differently in OIB, state law and federal
+law (example: „Gebäudehöhe"). Always name the definition level used.
 
-**Begriffe folgen der Ebene der Frage.** Derselbe Begriff kann in OIB, Landesrecht und Bundesrecht unterschiedlich
-definiert sein (Beispiel: „Gebäudehöhe"). Die verwendete Definitionsebene immer mitnennen.
+**ÖNORM honesty:** ÖNORMs are reference norms without full text in the available sources. Name them only as a
+reference (as far as known from other documents) and disclose that the full text is not available — never
+reproduce ÖNORM content from memory.
 
-**ÖNORM-Ehrlichkeit:** ÖNORMen sind Bezugsnormen ohne Volltext in den verfügbaren Quellen. Sie nur als Verweis
-nennen (soweit aus anderen Dokumenten bekannt) und offenlegen, dass der Volltext nicht verfügbar ist — niemals
-ÖNORM-Inhalte aus dem Gedächtnis wiedergeben.
-
-**Bestand/Übergangsrecht:** Wenn das Projekt kein Neubau ist (Sanierung, Zubau, Änderung), darauf hinweisen, dass
-Bestandsschutz/Übergangsbestimmungen gelten können und dies baurechtlich zu prüfen ist."""
-
+**Existing buildings/transitional law:** If the project is not a new build (refurbishment, extension,
+alteration), point out that grandfathering (Bestandsschutz) and transitional provisions may apply and that
+this must be checked under building law."""
 # The jurisdiction + project-hard-limits grounding, injected into every deep-research
 # prompt as {{ jurisdiction_grounding }} — ONE copy, rendered by the prompt factories
 # (same pattern as NORM_DOCTRINE). Keep the rendered prompts long and specific; only
@@ -616,16 +616,16 @@ def focus_entries(entries: list[NormEntry], federal_state: str | None) -> list[N
 # ---------------------------------------------------------------------------
 
 _BLOCK_HEADER = (
-    "Kuratierter Normenkatalog (verifizierte RIS-Verweise).\n"
-    "Die RIS-Werkzeuge kennen diesen Katalog und lösen einen Verweis selbst auf; ein Eintrag hier\n"
-    "ist eine Adresse, die im Aufruf genannt werden kann, keine Fundstelle."
+    "Curated norm catalogue (verified RIS references).\n"
+    "The RIS tools know this catalogue and resolve a reference themselves; an entry here\n"
+    "is an address that can be named in the call, not a source location."
 )
 
 OIB_CORPUS_NOTE = (
-    "OIB-Korpus (bereits in der Wissensbasis, keine RIS-Abfrage nötig): OIB-Richtlinien 1–6\n"
-    "samt Leitfäden, Erläuterungen, Begriffsbestimmungen und zitierten Normen, Ausgabe Mai 2023.\n"
-    'Zitieren als "OIB-RL <N>, Pkt <x>, Ausgabe Mai 2023". Anforderungen nur aus der Richtlinie\n'
-    "selbst — Leitfaden/Erläuterung sind Auslegungshilfen."
+    "OIB corpus (already in the knowledge base, no RIS query needed): OIB guidelines 1–6\n"
+    "with guides, explanatory notes, definitions and cited norms, edition May 2023.\n"
+    'Cite as "OIB-RL <N>, Pkt <x>, Ausgabe Mai 2023". Requirements only from the guideline\n'
+    "itself — guide/explanatory note are aids to interpretation."
 )
 
 
@@ -643,11 +643,11 @@ def _render_entry_line(entry: NormEntry) -> str:
     # annex link) — an `elif` here silently dropped a populated ``source_url``
     # whenever ``full_law_url`` was also present.
     if entry.full_law_url:
-        line += f" Gesamt: {entry.full_law_url}"
+        line += f" Full text: {entry.full_law_url}"
     if entry.source_url:
-        line += f" Quelle: {entry.source_url}"
+        line += f" Source: {entry.source_url}"
     if not entry.full_law_url and not entry.source_url and not entry.is_ris:
-        line += " (kein Volltext verfügbar — nur referenzieren)"
+        line += " (no full text available — reference only)"
     return line
 
 
@@ -664,7 +664,7 @@ def render_prompt_block(
     law = [entry for entry in focused if entry.rank in _LAW_RANKS]
     federal = [entry for entry in law if not entry.federal_state]
     if federal:
-        lines.append("Bundesrecht:")
+        lines.append("Federal law (Bundesrecht):")
         lines.extend(_render_entry_line(entry) for entry in sorted(federal, key=lambda e: e.short.lower()))
     by_state: dict[str, list[NormEntry]] = {}
     for entry in law:
@@ -672,22 +672,22 @@ def render_prompt_block(
             by_state.setdefault(entry.federal_state, []).append(entry)
     for state in sorted(by_state, key=lambda s: (s != federal_state, s)):
         lines.append("")
-        lines.append(f"Landesrecht — {state}:")
+        lines.append(f"State law (Landesrecht) — {state}:")
         lines.extend(_render_entry_line(entry) for entry in sorted(by_state[state], key=lambda e: e.short.lower()))
     behoerdlich = [entry for entry in focused if entry.rank == "authority_info"]
     if behoerdlich:
         lines.append("")
-        lines.append("Behördliche Informationen (Praxis-Hinweise — nur Ergänzungen, niemals neue Normen):")
+        lines.append("Authority information (practice notes — supplements only, never new norms):")
         lines.extend(_render_entry_line(entry) for entry in sorted(behoerdlich, key=lambda e: e.short.lower()))
     extern = [entry for entry in focused if entry.rank == "external_standard"]
     if extern:
         lines.append("")
-        lines.append("Externe Normen (Bezugsnormen — Volltext i. d. R. nicht verfügbar, ehrlich kennzeichnen):")
+        lines.append("External standards (referenced standards — full text usually unavailable, say so plainly):")
         lines.extend(_render_entry_line(entry) for entry in sorted(extern, key=lambda e: e.short.lower()))
     notes = [entry for entry in focused if entry.binding_note]
     if notes:
         lines.append("")
-        lines.append("Rechtliche Hinweise (kuratiert):")
+        lines.append("Legal notes (curated):")
         for entry in notes:
             lines.append(f"- {entry.short}: {entry.binding_note}")
     lines.append("")
@@ -770,7 +770,9 @@ def parcel_note(available_documents: list[dict] | None, country: str | None = No
                 by_tag.setdefault(tag, []).append(name)
     if not by_tag:
         return None
-    lines = ["## Parzellen-Quellen dieses Projekts (maßgeblich für Widmung, Bauklasse, Gebäudehöhe, Fluchtlinien)"]
+    lines = [
+        "## Parcel sources of this project (authoritative for zoning, building class, building height, building lines)"
+    ]
     for tag in parcel_tags:
         if tag in by_tag:
             files = ", ".join(sorted(by_tag[tag]))

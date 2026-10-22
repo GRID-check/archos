@@ -72,10 +72,10 @@ class TestWhichDocument:
     @pytest.mark.parametrize(
         ("name", "expected"),
         [
-            ("Grundriss", "Mehrdeutig"),
-            ("Ansicht Nord", "Nicht gefunden"),
+            ("Grundriss", "Ambiguous"),
+            ("Ansicht Nord", "Not found"),
             # The platform corpus is nobody's to mark: never resolved.
-            ("OIB-RL2.pdf", "Nicht gefunden"),
+            ("OIB-RL2.pdf", "Not found"),
         ],
     )
     async def test_a_name_that_is_not_one_document_is_a_question(
@@ -93,7 +93,7 @@ class TestWhichDocument:
 
         result = await run_marks(document="Grundriss_OG.pdf")
 
-        assert calls == [] and "nicht über seinen Namen" in result
+        assert calls == [] and "cannot be addressed by its name" in result
 
 
 class TestWhatEveryoneSees:
@@ -122,13 +122,13 @@ class TestWhatEveryoneSees:
         result = await run()
 
         assert calls == []
-        assert "eingeschränktem Zugriff" in result
+        assert "restricted access" in result
 
     async def test_another_projects_content_shuts_the_door_too(self, monkeypatch, calls) -> None:
         bind_cross_project_turn(CrossProjectTurn(drew_on_others=True))
         answering(monkeypatch, calls, PROPOSE_BODY)
 
-        assert "anderen Projekt" in await run_mark([PROPOSAL])
+        assert "another project" in await run_mark([PROPOSAL])
         assert calls == []
 
     async def test_reading_and_a_bare_pointer_stay_open(self, monkeypatch, calls) -> None:

@@ -9,18 +9,13 @@
  * `@/lib/sharing/service`.
  */
 
-import { z } from 'zod'
 import { apiRoute, parseJsonBody } from '@/lib/api/handler'
 import { requireCollaborationEnabled } from '@/lib/authz/feature-flags'
-import { RESOURCE_VISIBILITIES } from '@/lib/db/schema'
 import { getSharingState, setResourceVisibility } from '@/lib/sharing/service'
 import { requireShareableType } from '@/lib/sharing/registry'
+import { visibilitySchema } from '@/lib/sharing/sharing-wire'
 
 type Params = { resourceType: string; resourceId: string }
-
-const visibilitySchema = z.object({
-  visibility: z.enum(RESOURCE_VISIBILITIES),
-})
 
 export const GET = apiRoute<Params>(
   async ({ session, params }) => {

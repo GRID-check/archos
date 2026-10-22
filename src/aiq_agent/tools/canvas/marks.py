@@ -88,21 +88,21 @@ class AnnotationProposal(BaseModel):
 
 #: Every successful `propose` ends on this. It leads with the negative because that is what a model gets wrong.
 _PROPOSED = (
-    "Das sind VORSCHLÄGE: Es wurde NOCH NICHTS bestätigt. Sie stehen im Dokument als Vorschläge von Piloti, "
-    "bis eine Person jeden einzeln übernimmt oder verwirft. Sage nicht, die Befunde seien eingetragen oder "
-    "festgehalten; sag, dass du sie vorgeschlagen hast und wo sie sie im Dokument prüfen kann."
+    "These are PROPOSALS: NOTHING has been confirmed YET. They appear in the document as proposals from Piloti "
+    "until a person takes over or dismisses each one individually. Do not say the findings were entered or "
+    "recorded; say you proposed them and where the person can review them in the document."
 )
 
 # ---------------------------------------------------------------------------
 # list
 # ---------------------------------------------------------------------------
 
-_KIND_LABELS = {"hint": "Hinweis", "question": "Rückfrage", "defect": "Mangel"}
+_KIND_LABELS = {"hint": "hint", "question": "question", "defect": "defect"}
 _STATUS_LABELS = {
-    "proposed": "Vorschlag, noch nicht übernommen",
-    "open": "offen",
-    "resolved": "erledigt",
-    "dismissed": "verworfen",
+    "proposed": "proposal, not yet taken over",
+    "open": "open",
+    "resolved": "resolved",
+    "dismissed": "dismissed",
 }
 _LIVE = ("proposed", "open")
 
@@ -132,14 +132,14 @@ def _share(value: object) -> str:
 def _place(item: dict[str, Any]) -> str:
     box = item.get("box") if isinstance(item.get("box"), list) and len(item["box"]) == 4 else [None] * 4
     if item.get("shape") == "point":
-        return f"Punkt x {_share(box[0])}, y {_share(box[1])}"
-    return f"Bereich x {_share(box[0])}–{_share(box[2])}, y {_share(box[1])}–{_share(box[3])}"
+        return f"point x {_share(box[0])}, y {_share(box[1])}"
+    return f"region x {_share(box[0])}–{_share(box[2])}, y {_share(box[1])}–{_share(box[3])}"
 
 
 def _author(item: dict[str, Any]) -> str:
-    name = _text(item.get("createdByName")) or "einer Person"
+    name = _text(item.get("createdByName")) or "a person"
     if item.get("authorKind") == "piloti":
-        return f"Piloti, für {name}" if item.get("createdByName") else "Piloti"
+        return f"Piloti, for {name}" if item.get("createdByName") else "Piloti"
     return name
 
 
@@ -148,9 +148,9 @@ def _reply_lines(replies: list[Any]) -> list[str]:
     if not usable:
         return []
     shown = usable[-MAX_LISTED_REPLIES:]
-    lines = [f"  Antworten ({len(usable)}{', die letzten ' + str(len(shown)) if len(shown) < len(usable) else ''}):"]
+    lines = [f"  Replies ({len(usable)}{', the last ' + str(len(shown)) if len(shown) < len(usable) else ''}):"]
     for reply in shown:
-        who = "Piloti" if reply.get("authorKind") == "piloti" else _text(reply.get("createdByName")) or "Person"
+        who = "Piloti" if reply.get("authorKind") == "piloti" else _text(reply.get("createdByName")) or "person"
         lines.append(f"    - {who}: {_clipped(reply.get('body'), MAX_LISTED_REPLY)}")
     return lines
 
@@ -158,18 +158,18 @@ def _reply_lines(replies: list[Any]) -> list[str]:
 def _annotation_lines(item: dict[str, Any]) -> list[str]:
     kind = _KIND_LABELS.get(str(item.get("kind")), _text(item.get("kind")))
     status = _STATUS_LABELS.get(str(item.get("status")), _text(item.get("status")))
-    head = f"Nr. {item.get('number')} · S. {item.get('page')} · {kind} · {status} · von {_author(item)}"
+    head = f"No. {item.get('number')} · p. {item.get('page')} · {kind} · {status} · by {_author(item)}"
     lines = [head, f"  {_clipped(item.get('body'), MAX_LISTED_BODY)}"]
     if basis := _text(item.get("basis")):
-        lines.append(f"  Grundlage: {basis}")
+        lines.append(f"  Basis: {basis}")
     if assignee := _text(item.get("assigneeName")):
-        lines.append(f"  Zuständig: {assignee}" + (f", fällig {_text(item.get('dueOn'))}" if item.get("dueOn") else ""))
+        lines.append(f"  Assignee: {assignee}" + (f", due {_text(item.get('dueOn'))}" if item.get("dueOn") else ""))
     elif item.get("dueOn"):
-        lines.append(f"  Fällig: {_text(item.get('dueOn'))}")
+        lines.append(f"  Due: {_text(item.get('dueOn'))}")
     lines.extend(_reply_lines(item.get("replies") or []))
     # ``onCurrentFassung`` is the name a BFF that has not rolled yet sends (renamed with migration 0165).
     on_current = item.get("onCurrentRevision", item.get("onCurrentFassung", True))
-    where = _place(item) + ("" if on_current else "; auf einer früheren Fassung gesetzt")
+    where = _place(item) + ("" if on_current else "; set on an earlier Fassung")
     lines.append(f"  {where} · id {item.get('id')}")
     return lines
 
@@ -188,22 +188,22 @@ def _annotations(body: dict[str, Any]) -> list[dict[str, Any]]:
 
 
 def render_list(body: dict[str, Any]) -> str:
-    """The marks as compact German text a model can cite by number and answer by id."""
+    """The marks as compact English text a model can cite by number and answer by id."""
     items = _annotations(body)
-    named = f"„{body['documentName']}“" if body.get("documentName") else "diesem Dokument"
+    named = f"„{body['documentName']}“" if body.get("documentName") else "this document"
     if not items:
-        return f"Auf {named} gibt es noch keine Anmerkungen."
+        return f"There are no annotations on {named} yet."
     live = sum(1 for item in items if item.get("status") in _LIVE)
     proposed = sum(1 for item in items if item.get("status") == "proposed")
     lines = [
-        f"Anmerkungen auf {named}: {len(items)}, davon {live} offen oder vorgeschlagen"
-        f" ({proposed} Vorschläge von Piloti, die noch niemand übernommen hat). Orte als Anteile der Seite, "
-        "Ursprung oben links."
+        f"Annotations on {named}: {len(items)}, of which {live} open or proposed"
+        f" ({proposed} proposals from Piloti that nobody has taken over yet). Locations as shares of the page, "
+        "origin top left."
     ]
     for item in items[:MAX_LISTED]:
         lines.extend(_annotation_lines(item))
     if len(items) > MAX_LISTED:
-        lines.append(f"[{len(items) - MAX_LISTED} weitere, erledigte oder verworfene, nicht aufgeführt.]")
+        lines.append(f"[{len(items) - MAX_LISTED} more, resolved or dismissed, not listed.]")
     return "\n".join(lines)
 
 
@@ -216,21 +216,21 @@ def _region_size(proposal: AnnotationProposal, index: int) -> tuple[float, float
     """A region's width and height, clamped onto the page when it pokes past an edge by a hair."""
     w, h = proposal.w or 0.0, proposal.h or 0.0
     if w <= 0 or h <= 0:
-        raise Refused(f"Fehler: Vorschlag {index}: ein Bereich braucht `w` und `h` größer als 0.")
+        raise Refused(f"Error: Proposal {index}: a region needs `w` and `h` greater than 0.")
     if proposal.x + w > 1 + _EDGE_SLACK or proposal.y + h > 1 + _EDGE_SLACK:
-        raise Refused(f"Fehler: Vorschlag {index}: der Bereich reicht über die Seite hinaus (x+w und y+h höchstens 1).")
+        raise Refused(f"Error: Proposal {index}: the region extends beyond the page (x+w and y+h at most 1).")
     return min(w, 1 - proposal.x), min(h, 1 - proposal.y)
 
 
 def _proposal_payload(proposal: AnnotationProposal, index: int) -> dict[str, Any]:
     """One ``AnnotationProposal`` body, or a refusal naming what is wrong with it."""
     if proposal.page < 1:
-        raise Refused(f"Fehler: Vorschlag {index}: `page` zählt ab 1.")
+        raise Refused(f"Error: Proposal {index}: `page` counts from 1.")
     if not (0 <= proposal.x <= 1 and 0 <= proposal.y <= 1):
-        raise Refused(f"Fehler: Vorschlag {index}: `x` und `y` sind Anteile der Seite zwischen 0 und 1, keine Pixel.")
+        raise Refused(f"Error: Proposal {index}: `x` and `y` are shares of the page between 0 and 1, not pixels.")
     body = _text(proposal.body)
     if not body or len(body) > MAX_BODY:
-        raise Refused(f"Fehler: Vorschlag {index}: `body` muss 1 bis {MAX_BODY} Zeichen haben.")
+        raise Refused(f"Error: Proposal {index}: `body` must have 1 to {MAX_BODY} characters.")
     payload: dict[str, Any] = {
         "page": proposal.page,
         "shape": proposal.shape,
@@ -254,16 +254,16 @@ def _coerced(proposals: list[Any]) -> list[AnnotationProposal]:
             for item in proposals
         ]
     except ValidationError as exc:
-        raise Refused(f"Fehler: Ein Vorschlag ist unvollständig oder ungültig ({exc.error_count()} Fehler).") from exc
+        raise Refused(f"Error: A proposal is incomplete or invalid ({exc.error_count()} errors).") from exc
 
 
 def propose_payload(proposals: list[Any]) -> dict[str, Any]:
     """The ``propose`` body, every proposal checked here so the model can fix it before the BFF refuses."""
     if not proposals:
-        raise Refused("Fehler: `mark` braucht mindestens einen Eintrag in `proposals`.")
+        raise Refused("Error: `mark` needs at least one entry in `proposals`.")
     if len(proposals) > MAX_PROPOSALS_PER_CALL:
         raise Refused(
-            f"Fehler: Höchstens {MAX_PROPOSALS_PER_CALL} Vorschläge pro Aufruf. Wähle die wichtigsten oder teile auf."
+            f"Error: At most {MAX_PROPOSALS_PER_CALL} proposals per call. Choose the most important or split them up."
         )
     items = _coerced(proposals)
     return {"op": "propose", "proposals": [_proposal_payload(item, index) for index, item in enumerate(items, 1)]}
@@ -278,13 +278,13 @@ def _set_marks(body: dict[str, Any], key: str) -> list[dict[str, Any]]:
 
 
 def _on(body: dict[str, Any]) -> str:
-    return f" auf „{body['documentName']}“" if body.get("documentName") else " auf dem Dokument"
+    return f" on „{body['documentName']}“" if body.get("documentName") else " on the document"
 
 
 def render_proposed(body: dict[str, Any]) -> str:
     proposed = _proposed(body)
-    where = ", ".join(f"Nr. {item.get('number')} auf S. {item.get('page')}" for item in proposed)
-    return f"Vorgeschlagen: {len(proposed)} Anmerkung(en){_on(body)} ({where}). {_PROPOSED}"
+    where = ", ".join(f"no. {item.get('number')} on p. {item.get('page')}" for item in proposed)
+    return f"Proposed: {len(proposed)} annotation(s){_on(body)} ({where}). {_PROPOSED}"
 
 
 def create_payload(proposals: list[Any]) -> dict[str, Any]:
@@ -294,11 +294,8 @@ def create_payload(proposals: list[Any]) -> dict[str, Any]:
 
 def render_created(body: dict[str, Any]) -> str:
     created = _set_marks(body, "created")
-    where = ", ".join(f"Nr. {item.get('number')} auf S. {item.get('page')}" for item in created)
-    return (
-        f"Gesetzt: {len(created)} Anmerkung(en){_on(body)} ({where}), offen, im Namen der Person, die dich "
-        "darum gebeten hat."
-    )
+    where = ", ".join(f"no. {item.get('number')} on p. {item.get('page')}" for item in created)
+    return f"Set: {len(created)} annotation(s){_on(body)} ({where}), open, in the name of the person who asked you to."
 
 
 def _box(item: dict[str, Any]) -> dict[str, Any]:
@@ -370,14 +367,14 @@ def annotation_entry(body: dict[str, Any], number: int) -> dict[str, Any]:
 def reply_body(body: str) -> str:
     text = (body or "").strip()
     if not text or len(text) > MAX_BODY:
-        raise Refused(f"Fehler: `reply` braucht `body` mit 1 bis {MAX_BODY} Zeichen.")
+        raise Refused(f"Error: `reply` needs `body` with 1 to {MAX_BODY} characters.")
     return text
 
 
 def render_replied(body: dict[str, Any]) -> str:
     return (
-        f"Deine Antwort steht jetzt im Verlauf von Anmerkung Nr. {body.get('number')}, als Antwort von Piloti "
-        f"gekennzeichnet ({body.get('replies')} Antwort(en) im Verlauf)."
+        f"Your reply is now in the thread of annotation no. {body.get('number')}, marked as a reply from Piloti "
+        f"({body.get('replies')} reply(ies) in the thread)."
     )
 
 
@@ -411,7 +408,7 @@ _DAY = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 def _choice(value: str, allowed: dict[str, str], name: str) -> str:
     key = (value or "").strip().lower()
     if key not in allowed:
-        raise Refused(f"Fehler: `{name}` ist eines von {', '.join(sorted(set(allowed.values())))}.")
+        raise Refused(f"Error: `{name}` is one of {', '.join(sorted(set(allowed.values())))}.")
     return allowed[key]
 
 
@@ -425,14 +422,14 @@ def _due_on(value: str) -> str | None:
             return day
         except ValueError:
             pass
-    raise Refused(f"Fehler: `due_on` ist ein Tag als JJJJ-MM-TT, oder `{CLEAR}` zum Entfernen.")
+    raise Refused(f"Error: `due_on` is a day as YYYY-MM-DD, or `{CLEAR}` to clear it.")
 
 
 def update_payload(*, status: str, assignee: str, due_on: str, kind: str, body: str, note: str) -> dict[str, Any]:
     """The change fields of an ``update`` body, each checked here so the model can fix it before the BFF refuses."""
     text = (note or "").strip()
     if not text or len(text) > MAX_BODY:
-        raise Refused(f"Fehler: `update` braucht `note` (1 bis {MAX_BODY} Zeichen): was du getan hast und warum.")
+        raise Refused(f"Error: `update` needs `note` (1 to {MAX_BODY} characters): what you did and why.")
     payload: dict[str, Any] = {}
     if status.strip():
         payload["status"] = _choice(status, _STATUSES, "status")
@@ -445,9 +442,7 @@ def update_payload(*, status: str, assignee: str, due_on: str, kind: str, body: 
     if body.strip():
         payload["body"] = _text(body)[:MAX_BODY]
     if not payload:
-        raise Refused(
-            "Fehler: `update` braucht mindestens eine Änderung: `status`, `assignee`, `due_on`, `kind` oder `body`."
-        )
+        raise Refused("Error: `update` needs at least one change: `status`, `assignee`, `due_on`, `kind` or `body`.")
     return {**payload, "note": text}
 
 
@@ -502,21 +497,21 @@ def _shown(field: str, value: Any, label: Any) -> str:
     return _text(label or value)
 
 
-_FIELD_NAMES = {"status": "Status", "assignee": "Zuständig", "due_on": "Frist", "kind": "Art", "body": "Text"}
+_FIELD_NAMES = {"status": "status", "assignee": "assignee", "due_on": "due date", "kind": "kind", "body": "text"}
 
 
 def render_updated(body: dict[str, Any]) -> str:
     number = body.get("number")
     if not body.get("noted"):
-        return f"Nichts geändert: Anmerkung Nr. {number} stand schon so. Es wurde keine Notiz gepostet."
+        return f"Nothing changed: annotation no. {number} was already like that. No note was posted."
     moved = "; ".join(
         f"{_FIELD_NAMES[change['field']]} {_shown(change['field'], change.get('before'), change.get('before_label'))}"
         f" → {_shown(change['field'], change.get('after'), change.get('after_label'))}"
         for change in _field_changes(body.get("before") or {}, body.get("after") or {})
     )
     return (
-        f"Geändert im Namen der Person: Anmerkung Nr. {number}{_on(body)} ({moved}). Deine `note` steht als Antwort "
-        "von Piloti im Verlauf. Nenne in deiner Antwort die Nummer und was du geändert hast."
+        f"Changed in the person's name: annotation no. {number}{_on(body)} ({moved}). Your `note` appears as a reply "
+        "from Piloti in the thread. Give the number and what you changed in your answer."
     )
 
 
@@ -527,8 +522,8 @@ def deleted_item(body: dict[str, Any]) -> dict[str, Any]:
 
 def render_deleted(body: dict[str, Any]) -> str:
     return (
-        f"Gelöscht: Anmerkung Nr. {body.get('number')}{_on(body)} („{_clipped(body.get('body'), 120)}“) mit ihrem "
-        "Verlauf. Das lässt sich nicht rückgängig machen."
+        f"Deleted: annotation no. {body.get('number')}{_on(body)} („{_clipped(body.get('body'), 120)}“) with its "
+        "thread. This cannot be undone."
     )
 
 

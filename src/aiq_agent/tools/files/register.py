@@ -26,11 +26,11 @@ leaves behind is a read-only notice (``cards.py``). A tool here that wrote
 directly would bypass all three in one call — and would do it on behalf of a
 user who never saw what was about to happen.
 
-The descriptions and the results are GERMAN, like the working directory's four
-verbs and unlike ``remember``: every argument these tools take is a name the
-user typed in German — a file, a folder, a colleague — and the
-refusals are written to be turned straight into the sentence the model says
-back („welche der beiden Dateien meinst du?").
+The descriptions and the results are ENGLISH, like everything an agent reads
+(AGENTS.md, "Industry standard first"). The arguments stay as the user typed
+them in German — a file, a folder, a colleague — and the refusals are written
+to be turned straight into the sentence the model says back, in the user's
+language („welche der beiden Dateien meinst du?").
 """
 
 from __future__ import annotations
@@ -57,27 +57,41 @@ logger = logging.getLogger(__name__)
 #: and the reader then finds it where it was. ``remember``'s card path says
 #: the same thing for the same reason.
 _PROPOSED = (
-    "Ein Vorschlag wurde als Karte angezeigt. Es wurde NOCH NICHTS geändert — "
-    "sage nicht, dass es erledigt ist; die Nutzerin entscheidet auf der Karte."
+    "A proposal was shown as a card. NOTHING has been changed YET — "
+    "do not say it is done; the user decides on the card."
 )
 
 #: No proposal, whether there was no card channel or the server did not take it.
 #: Never dressed up as success, and no promise either way: the reader has no
 #: card to decide on, so the model must not say one is waiting.
 _NOT_PROPOSED = (
-    "Fehler: Der Vorschlag konnte nicht angelegt werden (kein Kartenkanal oder vom Server nicht "
-    "angenommen), niemand kann etwas annehmen. Es wurde nichts geändert. Sage das; die Person kann "
-    "den Vorgang selbst in der Dateiablage vornehmen oder dich bitten, es noch einmal vorzuschlagen. "
-    "In diesem Zug nicht erneut versuchen."
+    "Error: The proposal could not be created (no card channel, or the server did not accept it), "
+    "so nobody can accept anything. Nothing was changed. Say so; the person can make the change "
+    "themselves in the project files or ask you to propose it again. "
+    "Do not retry in this turn."
 )
 
 #: Every operation acts on a project's workspace: folders are
 #: project-scoped and the reader's session applies the change against a
 #: project. A chat with no project in scope has nothing to organise.
 _NO_PROJECT = (
-    "Fehler: Diese Unterhaltung gehört zu keinem Projekt, deshalb gibt es keine Ablage, in der "
-    "etwas geordnet werden könnte. Es wurde nichts geändert. Nicht erneut versuchen."
+    "Error: This conversation belongs to no project, so there are no project files to organise. "
+    "Nothing was changed. Do not retry."
 )
+
+
+#: The stored proposal's per-item ``reason`` allows 300 characters
+#: (``lib/proposals/types.ts``); the tool asks for one short sentence, so the
+#: cut is a net for a model that ignores the ask, not a limit it should reach.
+MAX_REASON_CHARS = 200
+
+
+def _reason_field(reason: str) -> dict[str, str]:
+    """``{"reason": ...}`` when the model gave one, else nothing (the key stays off the item)."""
+    text = " ".join((reason or "").split())
+    if len(text) > MAX_REASON_CHARS:
+        text = text[: MAX_REASON_CHARS - 1].rstrip() + "…"
+    return {"reason": text} if text else {}
 
 
 def _project_or_error() -> str | None:
@@ -96,7 +110,7 @@ def _document(name: str) -> ResolvedDocument | str:
 # `_PROPOSED`; anything else is a refusal the model can turn into its answer.
 
 
-async def _move(document: str, target_folder: str) -> str:
+async def _move(document: str, target_folder: str, reason: str = "") -> str:
     resolved = _document(document)
     if isinstance(resolved, str):
         return resolved
@@ -104,19 +118,22 @@ async def _move(document: str, target_folder: str) -> str:
     if isinstance(folder, Refusal):
         return folder.message
     if folder == resolved.folder_path:
-        where = f"„{folder}“" if folder else "der obersten Ebene"
-        return f"`{resolved.file_name}` liegt bereits in {where}. Kein Vorschlag nötig."
+        where = f"„{folder}“" if folder else "the top level"
+        return f"`{resolved.file_name}` is already in {where}. No proposal needed."
 
     item = {
         "document": resolved.file_name,
         "source": resolved.source,
         "current": resolved.folder_path,
         "target_folder": folder,
+        **_reason_field(reason),
     }
-    title = f"Verschieben nach „{folder}“" if folder else "Auf die oberste Ebene verschieben"
+    title = (
+        f"Verschieben nach „{folder}“" if folder else "Auf die oberste Ebene verschieben"
+    )  # card title: shown to the person
     if not await propose_file_operation(operation="move", title=title, item=item):
         return _NOT_PROPOSED
-    return f"Vorgeschlagen: `{resolved.file_name}` → {folder or 'oberste Ebene'}. {_PROPOSED}"
+    return f"Proposed: `{resolved.file_name}` → {folder or 'top level'}. {_PROPOSED}"
 
 
 #: Same ceiling the BFF's rename route enforces
@@ -126,27 +143,28 @@ async def _move(document: str, target_folder: str) -> str:
 MAX_DISPLAY_NAME_CHARS = 255
 
 
-async def _rename(document: str, new_name: str) -> str:
+async def _rename(document: str, new_name: str, reason: str = "") -> str:
     resolved = _document(document)
     if isinstance(resolved, str):
         return resolved
     name = " ".join((new_name or "").split())
     if not name:
-        return "Fehler: `new_name` ist leer. Nenne den neuen Anzeigenamen."
+        return "Error: `new_name` is empty. Give the new display name."
     if len(name) > MAX_DISPLAY_NAME_CHARS:
-        return f"Fehler: Der neue Name ist länger als {MAX_DISPLAY_NAME_CHARS} Zeichen. Kürze ihn."
+        return f"Error: The new name is longer than {MAX_DISPLAY_NAME_CHARS} characters. Shorten it."
     if name == resolved.file_name:
-        return f"`{resolved.file_name}` heißt bereits so. Kein Vorschlag nötig."
+        return f"`{resolved.file_name}` already has that name. No proposal needed."
 
     item = {
         "document": resolved.file_name,
         "source": resolved.source,
         "current": resolved.file_name,
         "new_display_name": name,
+        **_reason_field(reason),
     }
     if not await propose_file_operation(operation="rename", title="Datei umbenennen", item=item):
         return _NOT_PROPOSED
-    return f"Vorgeschlagen: `{resolved.file_name}` → „{name}“. {_PROPOSED}"
+    return f"Proposed: `{resolved.file_name}` → „{name}“. {_PROPOSED}"
 
 
 #: One segment. The BFF's own folder validation refuses separators
@@ -155,65 +173,69 @@ async def _rename(document: str, new_name: str) -> str:
 _FOLDER_NAME_MAX = 120
 
 
-async def _create_folder(name: str, parent: str) -> str:
+async def _create_folder(name: str, parent: str, reason: str = "") -> str:
     folder_name = " ".join((name or "").split())
     if not folder_name:
-        return "Fehler: `new_name` ist leer. Nenne den Namen des neuen Ordners."
+        return "Error: `new_name` is empty. Give the name of the new folder."
     if "/" in folder_name or "\\" in folder_name:
         return (
-            "Fehler: `new_name` ist EIN Ordnername ohne Schrägstriche. Für einen Unterordner den "
-            "übergeordneten Pfad in `target_folder` angeben."
+            "Error: `new_name` is ONE folder name without slashes. For a subfolder, give the "
+            "parent path in `target_folder`."
         )
     if len(folder_name) > _FOLDER_NAME_MAX:
-        return f"Fehler: Ordnernamen sind auf {_FOLDER_NAME_MAX} Zeichen begrenzt. Kürze ihn."
+        return f"Error: Folder names are limited to {_FOLDER_NAME_MAX} characters. Shorten it."
 
     parent_path = resolve_folder(parent)
     if isinstance(parent_path, Refusal):
         return parent_path.message
     full = f"{parent_path}/{folder_name}" if parent_path else folder_name
     if full.casefold() in {folder.casefold() for folder in known_folders()}:
-        return f"Den Ordner „{full}“ gibt es bereits. Kein Vorschlag nötig; du kannst direkt hineinlegen."
+        return f"The folder „{full}“ already exists. No proposal needed; you can move files into it directly."
 
-    item = {"folder_name": folder_name, "parent_folder": parent_path, "current": full}
+    item = {"folder_name": folder_name, "parent_folder": parent_path, "current": full, **_reason_field(reason)}
     if not await propose_file_operation(operation="create_folder", title="Neuen Ordner anlegen", item=item):
         return _NOT_PROPOSED
-    return f"Vorgeschlagen: neuer Ordner „{full}“. {_PROPOSED}"
+    return f"Proposed: new folder „{full}“. {_PROPOSED}"
 
 
-async def _assign(document: str, member: str) -> str:
+async def _assign(document: str, member: str, reason: str = "") -> str:
     resolved = _document(document)
     if isinstance(resolved, str):
         return resolved
     person = " ".join((member or "").split())
     if not person:
-        return "Fehler: `member` ist leer. Nenne die Person so, wie die Nutzerin sie genannt hat."
+        return "Error: `member` is empty. Give the person as the user named them."
 
-    item = {"document": resolved.file_name, "source": resolved.source, "member": person}
+    item = {"document": resolved.file_name, "source": resolved.source, "member": person, **_reason_field(reason)}
     if not await propose_file_operation(operation="assign", title="Datei zuweisen", item=item):
         return _NOT_PROPOSED
-    return f"Vorgeschlagen: `{resolved.file_name}` → {person}. {_PROPOSED}"
+    return f"Proposed: `{resolved.file_name}` → {person}. {_PROPOSED}"
 
 
 # ── propose_file_change ─────────────────────────────────────────────────────
 
 _DESCRIPTION = (
-    "SCHLÄGT eine Änderung an der Dateiablage VOR — ändert selbst nichts. Es entsteht eine Karte, die "
-    "die Nutzerin annimmt oder verwirft; erst dann wird es ausgeführt, in ihrer eigenen Sitzung. "
-    "Nur vorschlagen, wenn die Nutzerin darum bittet („leg die Einreichunterlagen in einen Ordner“, "
-    "„benenn das um“, „gib das Anna“) oder ein Name nachweislich falsch ist.\n"
-    "`operation` und was sie braucht:\n"
-    "- `move`: `document` in den vorhandenen Ordner `target_folder` (Pfad wie 'Einreichung/Akten', "
-    "leer = oberste Ebene).\n"
-    "- `rename`: `document` bekommt den Anzeigenamen `new_name` (der gespeicherte Dateiname bleibt).\n"
-    "- `create_folder`: neuer Ordner `new_name` (EIN Segment, keine Schrägstriche) unter "
-    "`target_folder` (leer = oberste Ebene). Danach kann `move` hineinlegen; die Nutzerin nimmt die "
-    "Karten in dieser Reihenfolge an.\n"
-    "- `assign`: `document` an die Person `member`, so wie die Nutzerin sie genannt hat (Name oder "
-    "E-Mail) — hier nicht geprüft, sondern beim Annehmen gegen die Projektmitglieder aufgelöst. Nur "
-    "vorschlagen, wenn die Nutzerin die Person selbst genannt hat, und den Namen unverändert übernehmen; "
-    "nie eine Person aus dem Zusammenhang erschließen.\n"
-    "`document` ist der Dateiname genau so, wie ihn die Übersicht oder `list_files` zeigt. Ein Aufruf "
-    "schlägt EINE Änderung vor; mehrere Dateien sind mehrere Aufrufe."
+    "PROPOSES a change to the project's files — changes nothing itself. A card is created that the "
+    "user accepts or dismisses; only then is it carried out, in their own session. "
+    "Propose only when the user asks for it („leg die Einreichunterlagen in einen Ordner“, "
+    "„benenn das um“, „gib das Anna“) or a name is demonstrably wrong.\n"
+    "`operation` and what it needs:\n"
+    "- `move`: `document` into the existing folder `target_folder` (path like 'Einreichung/Akten', "
+    "empty = top level).\n"
+    "- `rename`: `document` gets the display name `new_name` (the stored file name stays).\n"
+    "- `create_folder`: new folder `new_name` (ONE segment, no slashes) under "
+    "`target_folder` (empty = top level). `move` can put files into it afterwards; the user accepts the "
+    "cards in that order.\n"
+    "- `assign`: `document` to the person `member`, as the user named them (name or "
+    "email) — not checked here, but resolved against the project members on acceptance. Propose only "
+    "when the user named the person themselves, and take the name over unchanged; "
+    "never infer a person from context.\n"
+    "`reason` (for every operation, keep it short): ONE sentence, at most 200 characters, that the person reads on the "
+    "card — why exactly this change („gehört zum Bescheid vom 12. März“). Only what you can substantiate from "
+    "the file name, content or conversation; nothing invented. The reason is stored with the proposal and "
+    "appears among the decisions in later turns.\n"
+    "`document` is the file name exactly as the overview or `list_files` shows it. One call "
+    "proposes ONE change; several files are several calls."
 )
 
 _OPERATIONS = ("move", "rename", "create_folder", "assign")
@@ -231,6 +253,7 @@ async def propose_file_change(tool_config: ProposeFileChangeConfig, builder: Bui
         target_folder: str = "",
         new_name: str = "",
         member: str = "",
+        reason: str = "",
     ) -> str:
         """Propose one change to the project's files: move, rename, create_folder or assign.
 
@@ -240,18 +263,19 @@ async def propose_file_change(tool_config: ProposeFileChangeConfig, builder: Bui
             target_folder: Existing folder path; the destination for move, the parent for create_folder.
             new_name: The new display name (rename) or the new folder's name (create_folder).
             member: The person, as the user named them (assign).
+            reason: Why, in one short sentence the person reads on the card (max 200 characters).
         """
         if (refused := _project_or_error()) is not None:
             return refused
         op = (operation or "").strip().lower()
         if op == "move":
-            return await _move(document, target_folder)
+            return await _move(document, target_folder, reason)
         if op == "rename":
-            return await _rename(document, new_name)
+            return await _rename(document, new_name, reason)
         if op == "create_folder":
-            return await _create_folder(new_name, target_folder)
+            return await _create_folder(new_name, target_folder, reason)
         if op == "assign":
-            return await _assign(document, member)
-        return f"Fehler: `operation` muss eine von {', '.join(_OPERATIONS)} sein."
+            return await _assign(document, member, reason)
+        return f"Error: `operation` must be one of {', '.join(_OPERATIONS)}."
 
     yield FunctionInfo.from_fn(_propose, description=_DESCRIPTION)

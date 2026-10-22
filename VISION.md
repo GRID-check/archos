@@ -45,7 +45,7 @@ places, not the frame around them.
 | Starting a project | The Einrichtung asks for the facts that decide the rest: Bundesland, Gebäudeklasse, Bauwerke, uses, plot. Piloti derives which OIB-Richtlinien apply, keeps a Steckbrief of the people involved, and keeps the profile current as the project establishes new facts. |
 | Files and the Büroablage | Folders, uploads of whole folders and ZIPs, Office files shown and cited page by page. Piloti reads every upload and says what it is, what it found, which of its Fassungen is current, and what is missing or could not be read. Sensitive uploads are screened before any model sees them. The Büroablage holds the office's own documents, on every project. An Outlook archive can be filed mail by mail. |
 | The building model | IFC models in the browser: structure, quantities (Raumbuch), revisions, 3D with sections and measuring. Piloti reads and measures their elements, and a person's confirmations are recorded in the Prüfbuch. |
-| Questions about the work | About a document, a folder, a decision, the model, the law. Answers come from the project's files, the Büroablage, the legal corpus and the web, whichever the question needs, with every claim cited and the derivation visible. |
+| Questions about the work | About a document, a folder, a decision, the model, the law. Answers come from the project's files, the workspace's own records, the Büroablage, the legal corpus and the web, whichever the question needs. Every claim shows where it comes from (a cited passage, a record, a measurement, or an Einschätzung marked as one), and the derivation is visible. |
 | Handing over work | Aufgaben run on their own under the requester's permissions. Zeitpläne repeat them. A Tiefenrecherche plans, researches, checks and files a report. Skills hold the office's own procedures. |
 | Writing | Piloti drafts Aktenvermerke, Protokolle, Checklisten, Flächenaufstellungen and reports into the project. A person releases them (Freigabe), Piloti revises them from a reviewer's comment, and a released document counts as office knowledge. Piloti proposes moves, renames and folders, and nothing changes until someone accepts. |
 | Working as a team | Shared chats, mentions, an inbox, assignments ("Verantwortlich"), live presence, custom roles and folder access per role, a download log. |
@@ -56,6 +56,10 @@ places, not the frame around them.
 
 These are directions with a document behind them, not promises:
 
+- **The office's own agents.** The workspace is open to them. Anything a person
+  can do in Piloti, their agent (Claude, Cursor, their own) can do through
+  Piloti's MCP server, with the person saying yes or no
+  ([`docs/architecture/agent-surface.md`](docs/architecture/agent-surface.md)).
 - **The office's past as knowledge.** An importer that reads an office's
   archive for facts and decisions, and Referenzblätter for tenders
   ([`docs/roadmap/office-experience.md`](docs/roadmap/office-experience.md)).

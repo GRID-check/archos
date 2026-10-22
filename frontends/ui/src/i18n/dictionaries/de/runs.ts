@@ -70,7 +70,7 @@ export const runs: typeof en.runs = {
     continueClosed: 'Abgeschlossenes Projekt: keine neue Recherche',
   },
   documents: {
-    receiptLabel: 'Für diesen Auftrag benannte Unterlagen',
+    receiptLabel: 'Für diesen Lauf benannte Unterlagen',
     receipt: '{read} von {total} benannten Unterlagen gelesen',
     unread: 'nicht gelesen',
     open: '{name} öffnen',
@@ -93,7 +93,7 @@ export const runs: typeof en.runs = {
     add: 'Hinzufügen',
     addOne: '{name} hinzufügen',
     alreadyNamed: 'benannt',
-    addFailed: 'Die Unterlage hat den Auftrag nicht erreicht. Bitte erneut versuchen.',
+    addFailed: 'Die Unterlage hat den Lauf nicht erreicht. Bitte erneut versuchen.',
     restricted: 'eingeschränkt',
     restrictedReason:
       'Liegt in einem Ordner mit eingeschränktem Zugriff. Unterlagen und Bericht einer Recherche sind für alle im Projekt sichtbar, deshalb lässt sie sich nicht hinzufügen.',
@@ -101,10 +101,10 @@ export const runs: typeof en.runs = {
     shelf: { project: 'Projekt', office_shelf: 'Büroablage', session: 'Dieser Chat', base: 'Regelwerke' },
   },
   cancel: {
-    confirmTitle: 'Auftrag abbrechen?',
+    confirmTitle: 'Lauf abbrechen?',
     confirmBody:
       'Piloti hört dort auf, wo es gerade ist. Was bis dahin recherchiert wurde, bleibt im Block stehen; der Bericht wird nicht mehr geschrieben.',
-    confirm: 'Auftrag abbrechen',
+    confirm: 'Lauf abbrechen',
     keep: 'Weiterlaufen lassen',
   },
   review: {
@@ -115,13 +115,13 @@ export const runs: typeof en.runs = {
   },
   connection: {
     reconnecting:
-      'Die Live-Ansicht hat die Verbindung verloren und verbindet neu. Der Auftrag läuft weiter.',
-    lost: 'Die Live-Ansicht ist getrennt. Der Auftrag läuft weiter — zum Mitlesen neu laden.',
+      'Die Live-Ansicht hat die Verbindung verloren und verbindet neu. Der Lauf geht weiter.',
+    lost: 'Die Live-Ansicht ist getrennt. Der Lauf geht weiter — zum Mitlesen neu laden.',
   },
   block: {
-    aria: 'Auftrag {title}: {status}',
-    toggle: 'Verlauf des Auftrags ein- oder ausblenden',
-    untitled: 'Auftrag',
+    aria: 'Lauf {title}: {status}',
+    toggle: 'Verlauf des Laufs ein- oder ausblenden',
+    untitled: 'Lauf',
     elapsedAria: 'Laufzeit {elapsed}',
   },
 }

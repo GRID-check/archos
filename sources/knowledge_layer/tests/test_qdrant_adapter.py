@@ -408,7 +408,7 @@ async def test_find_text_with_the_token_prefilter_returns_exactly_what_the_full_
         pattern = phrase_pattern(phrases)
         narrowed, narrowed_scanned = run(pattern)
         with monkeypatch.context() as full_scroll:
-            full_scroll.setattr(qdrant_retrieval, "_text_prefilter", lambda scope, pattern: [])
+            full_scroll.setattr(qdrant_retrieval, "_text_prefilter", lambda scope, pattern, **_: [])
             full, full_scanned = run(pattern)
         assert narrowed == full, phrases
         assert full_scanned == len(FIND_CORPUS)

@@ -124,7 +124,7 @@ const SETTLE_CASES: Partial<
  * in `setCardDecision`. Classifying such a type apart from `'interactive'`
  * (a `'live'` class) retires this set.
  */
-const DECIDED_ON_THE_SERVER: ReadonlySet<GridCard['type']> = new Set(['file_operation_proposal'])
+const DECIDED_ON_THE_SERVER: ReadonlySet<GridCard['type']> = new Set(['file_operation_proposal', 'operation_proposal'])
 
 describe('interactive card wiring', () => {
   beforeEach(() => {

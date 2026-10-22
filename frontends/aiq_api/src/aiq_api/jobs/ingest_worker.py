@@ -77,6 +77,7 @@ async def run(stop: asyncio.Event) -> None:
         logger.info("Ingest worker %s claiming", ingest_dispatch.worker_id())
         clock.ready()
         boot_timing.flush()
+        cards = _start_folder_cards(stop)
         while not stop.is_set():
             lease_policy.touch_liveness(liveness)
             try:
@@ -84,6 +85,21 @@ async def run(stop: asyncio.Event) -> None:
             except TimeoutError:
                 pass
         await _drain(ingestor)
+        if cards is not None:
+            await cards
+
+
+def _start_folder_cards(stop: asyncio.Event) -> asyncio.Task | None:
+    """The folder card builder's loop, beside the claim loop.
+
+    It always runs: whether an organization has cards is its ``folder-cards`` WorkOS
+    flag, which the builder asks the BFF per claimed folder (ADR-0127), so a
+    deployment where no organization has the flag finds an empty queue.
+    """
+    from aiq_agent.knowledge.folder_cards import worker
+
+    logger.info("Ingest worker builds folder cards")
+    return asyncio.create_task(worker.loop(stop), name="folder-cards")
 
 
 async def _drain(ingestor) -> None:

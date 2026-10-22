@@ -7,19 +7,13 @@
  * gated per ITEM TYPE like every inbox route (see `/api/inbox`).
  */
 
-import { z } from 'zod'
 import { apiRoute, parseQuery } from '@/lib/api/handler'
+import { unreadAnchorsQuerySchema } from '@/lib/inbox/inbox-wire'
 import { unreadAnchorsFor } from '@/lib/inbox/service'
-
-const querySchema = z.object({
-  // Only a document has marks today; a second anchored resource joins here, as on `/read`.
-  resourceType: z.literal('document'),
-  resourceId: z.string().min(1).max(200),
-})
 
 export const GET = apiRoute(
   async ({ session, request }) => {
-    const { resourceType, resourceId } = parseQuery(request, querySchema)
+    const { resourceType, resourceId } = parseQuery(request, unreadAnchorsQuerySchema)
     return unreadAnchorsFor(session, resourceType, resourceId)
   },
   { authz: { enforcedBy: 'unreadAnchorsFor (rows are keyed to session.userId)' } }

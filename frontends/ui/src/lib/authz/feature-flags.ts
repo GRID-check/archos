@@ -197,6 +197,95 @@ export const FEATURE_FLAGS = {
    * untouched.
    */
   pilotiActs: 'piloti-acts',
+  /**
+   * Piloti notices a new Fassung (ADR-0130): when a document is linked as the
+   * newer Fassung of another, a job compares the changed pages of the two and
+   * leaves what moved as proposed marks on the new Fassung, in the name of the
+   * person whose upload or link made it. Read per organization when the job is
+   * queued (`isOrgFeatureEnabled`) and from that person's pinned session when it
+   * runs.
+   *
+   * An entitlement, off until an operator targets the organization: a notice is
+   * a vision call nobody asked for. With it off, a new Fassung is announced as
+   * before and nobody compares it until a person opens „Vergleichen".
+   */
+  pilotiNotices: 'piloti-notices',
+  /**
+   * The agent door (ADR-0122): external agents (Claude, Cursor, ChatGPT)
+   * reach the workspace as a person through the MCP server at `/api/mcp`.
+   * An entitlement, because it lets software outside the browser act with a
+   * person's rights; nobody has it until an operator targets the organization.
+   * Read per organization (`isOrgFeatureEnabled`) from the verified token's
+   * organization, since a bearer token carries no feature-flag claim. Piloti's
+   * own in-product calls to the same server are not gated by it.
+   */
+  agentMcp: 'agent-mcp',
+  /**
+   * The organization's second opt-in for the agent door (ADR-0122, "Sensitive
+   * operations"): operations with `sensitivity: 'access'` (sharing grants,
+   * folder access, custom role definitions) are offered to an external agent
+   * only with this on. One flag per class, so an office can let its agents
+   * share and still keep its provider keys to itself. Read per organization
+   * when the bearer token is verified (`lib/agent-api/principal.ts`). Piloti
+   * in-product never sees these operations, flag or not.
+   */
+  agentMcpAccess: 'agent-mcp-access',
+  /** The same opt-in for `sensitivity: 'secret'`: the organization's LLM provider keys and audit-log links. */
+  agentMcpSecrets: 'agent-mcp-secrets',
+  /**
+   * The same opt-in for `sensitivity: 'control'`: the switches that turn a
+   * security or compliance control down or off (zero data retention, upload
+   * screening, letting a held file through, lifting a legal hold, how long the
+   * download log and a purged folder's content are kept).
+   */
+  agentMcpControls: 'agent-mcp-controls',
+  /**
+   * The platform door (ADR-0126): a platform operator's agent reaches the
+   * operator console through its own MCP server at `/api/platform/mcp`. Read
+   * for the GRID Platform organization only, from the verified token's
+   * organization (`lib/agent-api/principal.ts`); no other organization can
+   * reach that door at all. An entitlement, off until an operator switches it
+   * on for the platform organization: every write there reaches every tenant.
+   */
+  platformAgentMcp: 'platform-agent-mcp',
+  /**
+   * Agents consult Piloti (ADR-0124): an agent acting for a person asks Piloti
+   * a question (`piloti-ask-create` on the agent door, `SendMessage` on the
+   * A2A door) and Piloti answers in a turn run as that person, on their
+   * budget. Read from the person's session on `POST /api/piloti-asks`.
+   *
+   * An entitlement, off until an operator targets the organization: every ask
+   * is a model turn nobody typed, paid from the organization's budget. With it
+   * off, the ask is refused (403) and nothing else changes; the agent door
+   * still reaches the workspace (`agent-mcp`).
+   */
+  pilotiAsk: 'piloti-ask',
+  /**
+   * Written folder cards (ADR-0127, tier 1): a model-written abstract per
+   * folder, built in the background when a document's facts change and shown
+   * in `list_files(view="tree")` and the folder channel of a ranked search.
+   * Read per organization (`isOrgFeatureEnabled`) by the agent tier through
+   * `GET /api/internal/stages` (`features.folderCards`), when a change is
+   * marked, when a folder is claimed to be built, and when a listing reads the
+   * cards.
+   *
+   * An entitlement, off until an operator targets the organization: a card is
+   * a model call nobody asked for, paid from the platform. With it off nothing
+   * is marked or built and a listing shows the live counts (tier 0) alone.
+   */
+  folderCards: 'folder-cards',
+  /**
+   * The office's conventions (ADR-0129): Piloti counts how the office files
+   * (folders its projects keep, where each Dokumentart goes, the Plannummer
+   * shape) and tells a turn that asks about filing or finding. Read per
+   * organization (`isOrgFeatureEnabled`) when a turn is assembled and when the
+   * settings card is listed.
+   *
+   * An entitlement, off until an operator targets the organization: the count
+   * reads every project of the office, and what it learns is shown to the
+   * agent. With it off, nothing is counted and the turn context is unchanged.
+   */
+  officeConventions: 'office-conventions',
 } as const
 
 export type KnownFeatureFlag = (typeof FEATURE_FLAGS)[keyof typeof FEATURE_FLAGS]
@@ -217,6 +306,15 @@ export const FLAG_KINDS: Readonly<Record<KnownFeatureFlag, 'entitlement' | 'roll
   'mail-import': 'entitlement',
   'piloti-wakes': 'entitlement',
   'piloti-acts': 'entitlement',
+  'piloti-notices': 'entitlement',
+  'agent-mcp': 'entitlement',
+  'agent-mcp-access': 'entitlement',
+  'agent-mcp-secrets': 'entitlement',
+  'agent-mcp-controls': 'entitlement',
+  'platform-agent-mcp': 'entitlement',
+  'piloti-ask': 'entitlement',
+  'folder-cards': 'entitlement',
+  'office-conventions': 'entitlement',
   'web-search': 'rollout',
   'project-knowledge-page': 'rollout',
   'image-upload': 'rollout',
@@ -273,6 +371,16 @@ export function isMailImportEnabled(session: Pick<GridSession, 'featureFlags'>):
 /** Whether events on Piloti's work wake a turn for this organization (ADR-0106). */
 export function isPilotiWakesEnabled(session: Pick<GridSession, 'featureFlags'>): boolean {
   return isFeatureEnabled(session, FEATURE_FLAGS.pilotiWakes)
+}
+
+/** Whether agents acting for people may ask Piloti questions in this organization (ADR-0124). */
+export function isPilotiAskEnabled(session: Pick<GridSession, 'featureFlags'>): boolean {
+  return isFeatureEnabled(session, FEATURE_FLAGS.pilotiAsk)
+}
+
+/** Whether Piloti compares a new Fassung on its own and proposes marks where it changed (ADR-0130). */
+export function isPilotiNoticesEnabled(session: Pick<GridSession, 'featureFlags'>): boolean {
+  return isFeatureEnabled(session, FEATURE_FLAGS.pilotiNotices)
 }
 
 /** Whether Piloti may apply a change to Anmerkungen when the asker asks, or only propose (ADR-0105). */

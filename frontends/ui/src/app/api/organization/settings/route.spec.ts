@@ -81,27 +81,35 @@ describe('PUT /api/organization/settings', () => {
   })
 
   it('refuses zdrOnly even beside legitimate keys, writing none of them', async () => {
-    const res = await put({ settings: { webSearchEnabled: false, zdrOnly: false } })
+    const res = await put({ settings: { chatEffort: 'low', zdrOnly: false } })
     expect(res.status).toBe(400)
     expect(upsertOrganization).not.toHaveBeenCalled()
   })
 
+  // Web search is a privacy switch (ADR-0022) with its own route, which the agent
+  // catalog marks a control; the generic save would be a second, unmarked door.
+  it.each([false, true])('refuses webSearchEnabled=%s with a 400 naming the web-search route', async (value) => {
+    const res = await put({ settings: { webSearchEnabled: value } })
+    expect(res.status).toBe(400)
+    expect((await res.json()).error).toContain('/api/organization/web-search')
+    expect(upsertOrganization).not.toHaveBeenCalled()
+  })
+
   it('still saves ordinary settings, auditing the nested keys that changed', async () => {
-    stored.settings = { webSearchEnabled: true, chatEffort: 'medium' }
+    stored.settings = { chatEffort: 'medium', webSearchEnabled: true }
     const res = await put({
       displayName: 'Büro Nord',
-      settings: { webSearchEnabled: false, chatEffort: 'medium' },
+      settings: { chatEffort: 'low' },
     })
     expect(res.status).toBe(200)
-    expect(stored.settings).toEqual({ webSearchEnabled: false, chatEffort: 'medium' })
-    // `chatEffort` was sent but did not change, so it is not listed.
+    expect(stored.settings).toEqual({ chatEffort: 'low', webSearchEnabled: true })
     expect(recordAuditEvent).toHaveBeenCalledWith(
       expect.objectContaining({
         action: 'org.settings.updated',
-        metadata: { fields: 'displayName,settings.webSearchEnabled' },
+        metadata: { fields: 'displayName,settings.chatEffort' },
       })
     )
-    expect(invalidateBackendModelConfig).toHaveBeenCalledWith('org_1')
+    expect(invalidateBackendModelConfig).not.toHaveBeenCalled()
   })
 })
 

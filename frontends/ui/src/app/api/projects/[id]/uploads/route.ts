@@ -5,18 +5,16 @@
  * page). The per-file detail stays in each uploader's summary.
  */
 
-import { z } from 'zod'
 import { apiRoute, parseQuery } from '@/lib/api/handler'
-import { decodeDocumentListCursor, documentListCursorParam } from '@/lib/documents/list-cursor'
+import { decodeDocumentListCursor } from '@/lib/documents/list-cursor'
+import { uploadHistoryQuerySchema } from '@/lib/upload-batches/batch-wire'
 import { listProjectUploadHistory } from '@/lib/upload-batches/service'
 
 type Params = { id: string }
 
-const querySchema = z.object({ cursor: documentListCursorParam })
-
 export const GET = apiRoute<Params>(
   async ({ session, params, request }) => {
-    const { cursor } = parseQuery(request, querySchema)
+    const { cursor } = parseQuery(request, uploadHistoryQuerySchema)
     return listProjectUploadHistory(session, params.id, {
       cursor: cursor ? (decodeDocumentListCursor(cursor) ?? undefined) : undefined,
     })

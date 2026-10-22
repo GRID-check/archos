@@ -12,7 +12,7 @@
  * numbering, the export walker, or persistence.
  */
 
-import type { AnswerMeta } from '@/lib/conversations/message-answer-meta'
+import type { AnswerMeta, AnswerMetaWork } from '@/lib/conversations/message-answer-meta'
 import type { CalloutKind, KeyTakeawayData, NormReferenceData } from '@/features/grid-cards/schematics/types'
 
 /**
@@ -44,8 +44,13 @@ export interface AnatomyTakeaways {
   items: KeyTakeawayData[]
 }
 
+/** The report of an operations turn (`kind: work`, ADR-0123), drawn after the prose. */
+export interface AnatomyWork extends AnswerMetaWork {
+  type: 'work_report'
+}
+
 /** One after-prose anatomy block. */
-export type AnatomyShape = AnatomyCallout | AnatomyTakeaways
+export type AnatomyShape = AnatomyCallout | AnatomyTakeaways | AnatomyWork
 
 export interface AnswerAnatomy {
   /** The masthead's standfirst — the whole answer in 1–2 sentences. */
@@ -64,6 +69,8 @@ export interface AnswerAnatomy {
   callout?: AnatomyCallout
   /** The closing block, always after the prose. */
   takeaways?: AnatomyTakeaways
+  /** A work turn's report: done, proposed, blocked, next. First after the prose. */
+  work?: AnatomyWork
   /**
    * The fixed after-prose order: the callout (when the prose did not claim it
    * with a marker), then the takeaways. Callers that placed the callout
@@ -118,12 +125,16 @@ export function answerMetaToAnatomy(meta: AnswerMeta | undefined): AnswerAnatomy
   const topic = meta.topic
   const context = meta.context
 
-  if (!summary && !topic && !context && !verdict && !callout && !takeaways) return null
+  const work: AnatomyWork | undefined = meta.work ? { type: 'work_report', ...meta.work } : undefined
+
+  if (!summary && !topic && !context && !verdict && !callout && !takeaways && !work) return null
 
   const below: AnatomyShape[] = []
+  // The report is what a work turn is FOR, so it closes the prose before any aside.
+  if (work) below.push(work)
   if (callout) below.push(callout)
   if (takeaways) below.push(takeaways)
-  return { summary, topic, context, verdict, callout, takeaways, below }
+  return { summary, topic, context, verdict, callout, takeaways, work, below }
 }
 
 /**

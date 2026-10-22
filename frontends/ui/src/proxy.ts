@@ -42,6 +42,22 @@ const middleware = authkitMiddleware({
       // enforces its own shared-token auth (X-Grid-Internal-Token). Without
       // this entry AuthKit 303-redirects the POST to WorkOS sign-in.
       '/api/internal/(.*)',
+      // The agent door (ADR-0122): the MCP endpoint and the OAuth discovery
+      // documents an MCP client fetches before it has any credential. Clients
+      // carry no AuthKit cookie; `/api/mcp` authenticates itself, a WorkOS
+      // bearer token for an external agent or the signed request-context
+      // envelope for Piloti, and the `.well-known` documents are public by
+      // specification (RFC 9728).
+      '/api/mcp',
+      // The A2A door (ADR-0124): authenticates itself with the same bearer
+      // token as `/api/mcp`; the agent card is under `.well-known`.
+      '/api/a2a',
+      // The platform door (ADR-0126): the operator console's MCP server.
+      // Authenticates itself with a bearer token for its own audience, issued
+      // in the GRID Platform organization; every operation's route still
+      // checks its `platform:*` permission.
+      '/api/platform/mcp',
+      '/.well-known/(.*)',
       // Signed document images. `_next/image` is excluded from the matcher
       // below, but the optimizer does not fetch the underlying route over the
       // network — it re-enters the router server handler in-process, so

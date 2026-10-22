@@ -254,8 +254,32 @@ class ClarificationStep(_StepBase):
     max_turns: int = Field(ge=1)
 
 
+class LookStep(_StepBase):
+    """One look that rendered (``look``, ADR-0128): which document, which page, where on it.
+
+    An address, never pixels: the reader's thumbnail is drawn from the
+    document's own preview route (``document_id``, ``revision_id``), so it is
+    authorized exactly like the document. A refused look leaves no step.
+    """
+
+    kind: Literal["look"] = "look"
+    round: int | None = Field(default=None, ge=0, description="The retrieval round the look ran in.")
+    document_name: str = Field(min_length=1, max_length=300, description="The file name.")
+    document_id: str | None = Field(default=None, description="The workspace document's id; absent for Basiswissen.")
+    revision_id: str | None = Field(default=None, description="The Fassung; absent means the current one.")
+    shelf: Literal["stored", "base"] = "stored"
+    page: int = Field(ge=1)
+    region: list[float] | None = Field(
+        default=None, min_length=4, max_length=4, description="[x, y, w, h], shares of the page; absent: whole page."
+    )
+    image_index: int | None = Field(default=None, ge=0, description="The embedded image looked at, if any.")
+    where: str | None = Field(default=None, max_length=60, description="The region in words, e.g. 'oben rechts'.")
+    question: str | None = Field(default=None, max_length=200)
+    reading: str | None = Field(default=None, max_length=300, description="The first reading, when one was made.")
+
+
 Step = Annotated[
-    StatusStep | RetrievalStep | SourcesStep | ToolStep | SkillStep | ClarificationStep,
+    StatusStep | RetrievalStep | SourcesStep | ToolStep | SkillStep | ClarificationStep | LookStep,
     Field(discriminator="kind"),
 ]
 
@@ -304,6 +328,27 @@ class QuoteStamp(_Model):
     url: str | None = None
 
 
+class ClaimStamp(_Model):
+    """Where one sentence of ``text`` comes from (``common/claim_provenance.py``, ADR-0125), in document order.
+
+    ``provenance`` is the strongest evidence the sentence has; ``claim_type``
+    whether it states the law, a value, or a description. ``load_bearing``
+    sentences are the ones the turn's confidence is held to.
+    """
+
+    text: str = Field(max_length=300, description="The sentence as the final text writes it, cut at 300 characters.")
+    provenance: Literal[
+        "quoted", "cited", "cited_dropped", "record", "action", "measured", "observed", "reasoning", "model_knowledge"
+    ]
+    claim_type: Literal["normative", "value", "descriptive"]
+    load_bearing: bool = False
+    numbers: list[int] = Field(default_factory=list)
+    #: For a ``record`` or ``action``: the workspace operation it came from.
+    operation: str | None = None
+    #: For a ``record``: numbers the sentence states that no record this turn held.
+    unmatched: list[str] = Field(default_factory=list)
+
+
 class TurnResult(_Model):
     """Everything the finished turn delivers; authoritative, and what the server persists.
 
@@ -335,6 +380,15 @@ class TurnResult(_Model):
     retrieval_ledger: list[dict[str, Any]] = Field(default_factory=list)
     #: One stamp per quote line of ``text``, in document order.
     quote_stamps: list[QuoteStamp] = Field(default_factory=list)
+    #: One stamp per sentence of ``text``, in document order (ADR-0125).
+    claim_stamps: list[ClaimStamp] = Field(default_factory=list)
+    #: Which rule computed ``answer_confidence``: 2 the per-sentence formula
+    #: (ADR-0125). Absent on every turn stored before it, which the reader
+    #: renders under the answer-level floors it was computed with.
+    answer_confidence_version: Literal[1, 2] | None = None
+    #: A lookup ran and found nothing; the answer is the model's own knowledge
+    #: and says so in a banner. False on every other turn.
+    lookup_found_nothing: bool = False
     #: ADR-0062: the run this turn commissioned instead of answering itself.
     run: RunHandoff | None = None
     #: The thinking level the answering call RAN at, resolved (the asker's level,
@@ -853,7 +907,7 @@ class FocusRegion(_Model):
     top left, so ``x`` and ``w`` are shares of the page's width and ``y`` and
     ``h`` of its height: the frame an Anmerkung's region uses
     (``lib/annotations/types.ts``). Drawn on the review canvas; the turn shows
-    the model exactly that crop (``view_knowledge_image(region=...)``).
+    the model exactly that crop (``look(region=[x, y, w, h])``).
     """
 
     page: int = Field(ge=1, description="The page, from 1.")
@@ -878,13 +932,18 @@ class FocusRegion(_Model):
 class TurnTrigger(_Model):
     """The event that woke this turn, when no person typed it (ADR-0105 draft, §3(b)).
 
-    Set by the BFF's wake job, never by a browser: the person whose act is the
-    event holds the socket (their pinned session), and the turn answers where
-    the event happened. ``event_id`` is the reply (or assignment) id the job was
-    enqueued for; ``annotation_id`` the Anmerkung it happened on.
+    Set by the BFF, never by a browser: the person whose act is the event holds
+    the socket (their pinned session), and the turn answers where the event
+    happened. For a wake, ``event_id`` is the reply (or assignment) id the job
+    was enqueued for and ``annotation_id`` the Anmerkung it happened on.
+    ``agent_consult`` is a question another agent asked on the person's behalf
+    (ADR-0124): ``event_id`` is the ask's id, and there is no Anmerkung.
+    ``new_document`` is a document that just finished indexing, which Piloti
+    checks against the project's other documents unasked (ADR-0130):
+    ``event_id`` is the check's id, and there is no Anmerkung.
     """
 
-    kind: Literal["thread_mention", "thread_reply", "assigned"]
+    kind: Literal["thread_mention", "thread_reply", "assigned", "agent_consult", "new_document"]
     event_id: str = Field(min_length=1, max_length=128)
     annotation_id: str | None = Field(default=None, min_length=1, max_length=128)
 

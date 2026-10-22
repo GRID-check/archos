@@ -21,7 +21,6 @@ Design, costs and the defects each rule answers:
 import asyncio
 import logging
 import math
-import re
 from collections.abc import Callable
 from collections.abc import Sequence
 from typing import Any
@@ -1191,23 +1190,22 @@ def _value_text(value: Any, decimals: int | None = None) -> str:
         return ", ".join(parts)
     if isinstance(value, list):
         # A coordinate is a list of three numbers, and counting it — "centroid=3
-        # Einträge" — throws away the only part anybody wanted.
+        # entries" — throws away the only part anybody wanted.
         if value and all(isinstance(item, (int, float)) and not isinstance(item, bool) for item in value):
             return "[" + ", ".join(_num(item, decimals) for item in value) + "]"
-        # German has a singular, and a renderer that substitutes into one
-        # template produces "1 Einträge" in an answer an architect reads.
-        return "1 Eintrag" if len(value) == 1 else f"{len(value)} Einträge"
+        # A renderer that substitutes into one template produces "1 entries".
+        return "1 entry" if len(value) == 1 else f"{len(value)} entries"
     return str(value)
 
 
 def _element_line(entry: dict[str, Any]) -> str:
     label = entry.get("name") or entry.get("globalId")
-    via = f" (über {entry['via']})" if entry.get("via") else ""
+    via = f" (via {entry['via']})" if entry.get("via") else ""
     return f"- {entry.get('ifcType')} „{label}“ · GlobalId {entry.get('globalId')}{via}"
 
 
 def _provenance_line(answer: dict[str, Any]) -> str:
-    """The one line the agent quotes — with the right German verb in front.
+    """The one line the agent quotes — with the right provenance verb in front.
 
     Three provenances, three sentences, and a fourth for the undecidable case.
     They are written out rather than composed from a template on purpose: the
@@ -1218,21 +1216,14 @@ def _provenance_line(answer: dict[str, Any]) -> str:
     """
     if not answer.get("decidable", True):
         missing = answer.get("missing") or {}
-        what = missing.get("what") or "die nötige Angabe"
+        what = missing.get("what") or "the required information"
         remedy = missing.get("remedy") or ""
-        # Two sentence forms, because `missing.what` comes in two grammatical
-        # shapes and one template cannot carry both. Around thirty of them
-        # across the package are already negated („keine IfcSpace-Elemente"),
-        # and „liefert keine IfcSpace-Elemente nicht" is not German — read
-        # literally it says the opposite of the finding.
-        #
-        # Fixed here rather than by rewriting thirty German strings: the
-        # renderer owns the sentence, so the renderer is where the agreement
-        # belongs, and a string added tomorrow gets it for free.
-        negated = re.match(r"kein(e|en|er|es)?\b", what.strip(), re.IGNORECASE)
-        opening = f"dieser Export enthält {what}" if negated else f"dieser Export liefert {what} nicht"
-        return f"NICHT ENTSCHEIDBAR: {opening}. Das ist ein Befund über den EXPORT, nicht über das Gebäude." + (
-            f" Abhilfe: {remedy}" if remedy else ""
+        # `missing.what` is the engine's own phrase (German, sometimes negated:
+        # „keine IfcSpace-Elemente"). It is put after a colon, never into a
+        # sentence of ours, so its grammar cannot turn the finding around.
+        return (
+            f"UNDECIDABLE: this export cannot answer it — missing: {what}. "
+            "This is a finding about the EXPORT, not about the building." + (f" Remedy: {remedy}" if remedy else "")
         )
 
     text = _value_with_unit(answer)
@@ -1241,15 +1232,15 @@ def _provenance_line(answer: dict[str, Any]) -> str:
     provenance = answer.get("provenance")
 
     if provenance == "declared":
-        return f"deklariert: {text} — so steht es in der Datei."
+        return f"deklariert: {text} — this is what the file states."
     if provenance == "inferred":
         confidence = answer.get("confidence")
-        band = f" (Konfidenz {_num(confidence)})" if confidence is not None else ""
-        return f"vermutlich: {text}{band} — ein Vorschlag zur Bestätigung, keine Feststellung."
+        band = f" (confidence {_num(confidence)})" if confidence is not None else ""
+        return f"vermutlich: {text}{band} — a proposal for confirmation, not a finding."
     # The tolerance is always a scalar in the value's unit, whatever shape the
     # value itself has — so it takes the plain unit, not the parenthesised one.
     band = f" (±{_tolerance_text(tolerance)}{' ' + unit if unit else ''})" if tolerance is not None else ""
-    return f"gemessen{band}: {text} — aus der Geometrie berechnet, nicht deklariert."
+    return f"gemessen{band}: {text} — computed from the geometry, not declared."
 
 
 def _value_with_unit(answer: dict[str, Any]) -> str:
@@ -1281,7 +1272,7 @@ def _computed_decimals(answer: dict[str, Any]) -> int | None:
 
 
 def _missing_what(answer: dict[str, Any]) -> str:
-    return (answer.get("missing") or {}).get("what") or "nicht entscheidbar"
+    return (answer.get("missing") or {}).get("what") or "undecidable"
 
 
 def _all_numbers(value: list) -> bool:
@@ -1292,9 +1283,9 @@ def _trailer(answer: dict[str, Any]) -> list[str]:
     """The caveat and the method, which close every special-shape answer."""
     lines: list[str] = []
     if answer.get("caveat"):
-        lines.append(f"Hinweis: {answer['caveat']}")
+        lines.append(f"Note: {answer['caveat']}")
     if answer.get("method"):
-        lines.append(f"Methode: {answer['method']}")
+        lines.append(f"Method: {answer['method']}")
     return lines
 
 
@@ -1310,18 +1301,17 @@ def _render_light_entry(answer: dict[str, Any], list_limit: int) -> list[str]:
     decimals = _computed_decimals(answer)
     band = f" (±{_tolerance_text(answer.get('tolerance'))} m²)" if answer.get("tolerance") is not None else ""
     lines = [
-        f"gemessen{band}: Lichteintrittsfläche {_num(value.get('lightEntryArea'), decimals)} m² auf "
-        f"{_num(value.get('floorArea'), decimals)} m² Bodenfläche = **{_num(value.get('percent'), 2)} %** "
-        "— aus der Geometrie berechnet, nicht deklariert."
+        f"gemessen{band}: light entry area {_num(value.get('lightEntryArea'), decimals)} m² on "
+        f"{_num(value.get('floorArea'), decimals)} m² floor area = **{_num(value.get('percent'), 2)} %** "
+        "— computed from the geometry, not declared."
     ]
     lines += [
-        f"- außenliegend: {e.get('ifcType')} „{e.get('name')}“ · {_num(e.get('area'), 3)} m² "
-        f"· GlobalId {e.get('globalId')}"
+        f"- exterior: {e.get('ifcType')} „{e.get('name')}“ · {_num(e.get('area'), 3)} m² · GlobalId {e.get('globalId')}"
         for e in value.get("openings") or []
     ]
     excluded = (
-        ("interior", "NICHT gezählt (innenliegend)"),
-        ("undetermined", "NICHT gezählt (außen/innen unbestimmt)"),
+        ("interior", "NOT counted (interior)"),
+        ("undetermined", "NOT counted (exterior/interior undetermined)"),
     )
     for key, label in excluded:
         lines += [
@@ -1334,22 +1324,22 @@ def _render_light_entry(answer: dict[str, Any], list_limit: int) -> list[str]:
 def _leg_row(leg: dict[str, Any]) -> str:
     door = leg.get("door") or {}
     to = leg.get("to") or {}
-    target = "INS FREIE" if to.get("kind") == "outside" else to.get("name")
+    target = "TO THE OUTSIDE" if to.get("kind") == "outside" else to.get("name")
     start = (leg.get("from") or {}).get("name")
     return (
-        f"- {start} → {target} durch „{door.get('name')}“ ({_num(leg.get('length'), 2)} m) "
+        f"- {start} → {target} through „{door.get('name')}“ ({_num(leg.get('length'), 2)} m) "
         f"· GlobalId {door.get('globalId')}"
     )
 
 
 def _render_egress(answer: dict[str, Any], list_limit: int) -> list[str]:
     value = answer["value"]
-    room = (value.get("space") or {}).get("name") or "der Raum"
-    head = f"gemessen: von „{room}“ führt KEINE Türverbindung ins Freie."
+    room = (value.get("space") or {}).get("name") or "the room"
+    head = f"gemessen: NO door connection leads from „{room}“ to the outside."
     if value.get("reachesOutside"):
         head = (
-            f"gemessen: „{room}“ erreicht das Freie über {value.get('doorCount')} Tür(en), "
-            f"Weglänge {_num(value.get('length'), 2)} m — aus der Geometrie berechnet, nicht deklariert."
+            f"gemessen: „{room}“ reaches the outside through {value.get('doorCount')} door(s), "
+            f"path length {_num(value.get('length'), 2)} m — computed from the geometry, not declared."
         )
     return [head, *(_leg_row(leg) for leg in value.get("legs") or []), *_trailer(answer)]
 
@@ -1359,8 +1349,8 @@ def _render_door_graph(answer: dict[str, Any], list_limit: int) -> list[str]:
     edges = value.get("edges") or []
     rooms = [n for n in value.get("nodes") or [] if isinstance(n, dict) and n.get("globalId") != "AUSSEN"]
     outside = sum(1 for e in edges if isinstance(e, dict) and e.get("external"))
-    room_text = "1 Raum" if len(rooms) == 1 else f"{len(rooms)} Räume"
-    door_text = "1 Türverbindung" if len(edges) == 1 else f"{len(edges)} Türverbindungen"
+    room_text = "1 room" if len(rooms) == 1 else f"{len(rooms)} rooms"
+    door_text = "1 door connection" if len(edges) == 1 else f"{len(edges)} door connections"
     reached = {node for e in edges if isinstance(e, dict) for node in (e.get("connects") or [])}
     stranded = [n for n in rooms if n.get("globalId") not in reached]
 
@@ -1368,23 +1358,26 @@ def _render_door_graph(answer: dict[str, Any], list_limit: int) -> list[str]:
         return f"- {prefix}: {entry.get('ifcType')} „{entry.get('name')}“ · GlobalId {entry.get('globalId')} — {tail}"
 
     lines = [
-        f"gemessen: {room_text}, {door_text}, davon {outside} ins Freie "
-        "— aus der Geometrie abgeleitet, nicht deklariert."
+        f"gemessen: {room_text}, {door_text}, of which {outside} to the outside "
+        "— derived from the geometry, not declared."
     ]
     lines += listed(
         stranded,
         list_limit,
-        "Räume ohne Türkante",
-        lambda n: named("KEINE Türkante", n, "dieser Raum hat in dieser Datei keinen Ausgang"),
+        "rooms without a door edge",
+        lambda n: named("NO door edge", n, "this room has no exit in this file"),
     )
     lines += listed(
-        value.get("undetermined") or [], list_limit, "unbestimmte Türen", lambda e: named("UNBESTIMMT", e, e.get("why"))
+        value.get("undetermined") or [],
+        list_limit,
+        "undetermined doors",
+        lambda e: named("UNDETERMINED", e, e.get("why")),
     )
     lines += listed(
         value.get("excluded") or [],
         list_limit,
-        "ausgeschlossene Türen",
-        lambda e: named("NICHT als Kante gewertet", e, e.get("why")),
+        "excluded doors",
+        lambda e: named("NOT counted as an edge", e, e.get("why")),
     )
     return lines + _trailer(answer)
 
@@ -1403,17 +1396,17 @@ def _prism_line(answer: dict[str, Any], decimals: int | None) -> str:
     prism = answer.get("prism") or {}
     angles = ""
     if prism:
-        swivel = f", seitlich {_angle(prism.get('swivelDeg'))}°" if prism.get("swivelDeg") is not None else ""
-        angles = f" (Prisma {_angle(prism.get('angleDeg'))}°{swivel})"
+        swivel = f", lateral {_angle(prism.get('swivelDeg'))}°" if prism.get("swivelDeg") is not None else ""
+        angles = f" (prism {_angle(prism.get('angleDeg'))}°{swivel})"
     if answer.get("free"):
-        return f"FREI{angles}: kein Bauteil ragt in das Prisma."
+        return f"FREI{angles}: no element protrudes into the prism."
     value = answer.get("value")
     count = len(value) if isinstance(value, list) else 0
     intruders = [e for e in value if isinstance(e, dict)] if isinstance(value, list) else []
     deepest = max((e.get("intrusionDepth", 0) for e in intruders), default=None)
-    depth = f", tiefster Eingriff {_num(deepest, decimals)} {unit}" if deepest is not None else ""
-    subject = "1 Bauteil ragt" if count == 1 else f"{count} Bauteile ragen"
-    return f"NICHT FREI{angles}: {subject} in das Prisma{depth}."
+    depth = f", deepest intrusion {_num(deepest, decimals)} {unit}" if deepest is not None else ""
+    subject = "1 element protrudes" if count == 1 else f"{count} elements protrude"
+    return f"NICHT FREI{angles}: {subject} into the prism{depth}."
 
 
 def _list_entry(entry: Any, answer: dict[str, Any], decimals: int | None) -> str:
@@ -1424,16 +1417,16 @@ def _list_entry(entry: Any, answer: dict[str, Any], decimals: int | None) -> str
     if "intrusionDepth" in entry:
         unit = answer.get("unit") or "m"
         depth = _num(entry.get("intrusionDepth"), decimals)
-        return f"- {name} · GlobalId {entry.get('globalId')} · ragt {depth} {unit} in das Prisma"
+        return f"- {name} · GlobalId {entry.get('globalId')} · protrudes {depth} {unit} into the prism"
     if "ifcType" in entry:
         return _element_line(entry)
     if "storey" in entry:
         height = entry.get("height")
-        tail = f", Geschoßhöhe {_num(height, decimals)}" if height is not None else ", Geschoßhöhe nicht bestimmbar"
-        return f"- {entry.get('storey')}: Höhenlage {_num(entry.get('elevation'), decimals)}{tail}"
+        tail = f", storey height {_num(height, decimals)}" if height is not None else ", storey height not determinable"
+        return f"- {entry.get('storey')}: elevation {_num(entry.get('elevation'), decimals)}{tail}"
     if "confidence" in entry:
         because = ", ".join(entry.get("because") or [])
-        return f"- {name} · GlobalId {entry.get('globalId')} · Konfidenz {_num(entry.get('confidence'))}" + (
+        return f"- {name} · GlobalId {entry.get('globalId')} · confidence {_num(entry.get('confidence'))}" + (
             f" ({because})" if because else ""
         )
     return f"- {entry}"
@@ -1450,17 +1443,17 @@ def _render_answer(answer: dict[str, Any], *, list_limit: int = 40) -> list[str]
     if "free" in answer:
         lines.append(_prism_line(answer, decimals))
     if isinstance(value, list) and value and not _all_numbers(value):
-        lines += listed(value, list_limit, "Einträge", lambda entry: _list_entry(entry, answer, decimals))
+        lines += listed(value, list_limit, "entries", lambda entry: _list_entry(entry, answer, decimals))
     if answer.get("agreement") == "disagree":
-        lines.append("WIDERSPRUCH zwischen zwei Wegen zu dieser Zahl — siehe Hinweis.")
+        lines.append("CONTRADICTION between two methods for this number — see the note.")
     if answer.get("caveat"):
-        lines.append(f"Hinweis: {answer['caveat']}")
+        lines.append(f"Note: {answer['caveat']}")
     if answer.get("because") and not isinstance(value, list):
-        lines.append("Begründung: " + "; ".join(str(reason) for reason in answer["because"]))
+        lines.append("Reasoning: " + "; ".join(str(reason) for reason in answer["because"]))
     if answer.get("method"):
-        lines.append(f"Methode: {answer['method']}")
+        lines.append(f"Method: {answer['method']}")
     if answer.get("from"):
-        lines.append("Bezug: " + ", ".join(str(ref) for ref in answer["from"][:8]))
+        lines.append("Reference: " + ", ".join(str(ref) for ref in answer["from"][:8]))
     return lines
 
 
@@ -1478,14 +1471,14 @@ def _is_batch(payload: Any) -> bool:
 
 
 def _model_identity(source: dict[str, Any] | None) -> str | None:
-    """Which file, its schema and its size — without the „Modell: " label the prose header adds."""
+    """Which file, its schema and its size — without the „Model: " label the prose header adds."""
     model = (source or {}).get("model") or {}
     filename = model.get("filename")
     if not filename:
         return None
     facts = [str(model["schemaVersion"])] if model.get("schemaVersion") else []
     if model.get("elements"):
-        facts.append(f"{model['elements']} Bauteile")
+        facts.append(f"{model['elements']} elements")
     return f"{filename} ({', '.join(facts)})" if facts else str(filename)
 
 
@@ -1493,7 +1486,7 @@ def _model_line(result: dict[str, Any], handle: str = "") -> str:
     identity = _model_identity(result)
     if not identity:
         return ""
-    return f"Modell: {identity}" + (f" · Kennung {handle[:12]}" if handle else "")
+    return f"Model: {identity}" + (f" · handle {handle[:12]}" if handle else "")
 
 
 def _briefing_lines(payload: Any) -> list[str]:
@@ -1502,17 +1495,17 @@ def _briefing_lines(payload: Any) -> list[str]:
     )
     return [
         text,
-        "Geschoß- und Merkmalsnamen aus diesem Briefing wörtlich übernehmen — sie stammen aus "
-        "DIESER Datei. Der Abschnitt BLIND sagt, was diese Datei nicht beantworten kann.",
+        "Take storey and property names from this briefing verbatim — they come from "
+        "THIS file. The BLIND section says what this file cannot answer.",
     ]
 
 
 def _find_elements_lines(payload: dict[str, Any]) -> list[str]:
     elements = payload.get("elements") or []
-    lines = [f"{payload.get('total', len(elements))} Treffer, {len(elements)} aufgelistet."]
+    lines = [f"{payload.get('total', len(elements))} hits, {len(elements)} listed."]
     lines += [_element_line(entry) for entry in elements]
     if payload.get("truncated"):
-        lines.append("(Weitere Treffer vorhanden — Suche eingrenzen.)")
+        lines.append("(More hits exist — narrow the search.)")
     if payload.get("hint"):
         lines.append(str(payload["hint"]))
     return lines
@@ -1523,16 +1516,16 @@ def _element_lines(payload: dict[str, Any]) -> list[str]:
     label = element.get("name") or element.get("globalId")
     lines = [f"{element.get('ifcType')} „{label}“ · GlobalId {element.get('globalId')}"]
     if payload.get("storey"):
-        lines.append(f"Geschoß: {payload['storey']}")
+        lines.append(f"Storey: {payload['storey']}")
     if payload.get("predefinedType"):
         lines.append(f"PredefinedType: {payload['predefinedType']}")
     container = payload.get("container")
     if isinstance(container, dict):
-        lines.append(f"Liegt in: {container.get('ifcType')} „{container.get('name')}“")
+        lines.append(f"Located in: {container.get('ifcType')} „{container.get('name')}“")
     if payload.get("available"):
-        lines.append("Vorhandene Relationen: " + ", ".join(str(name) for name in payload["available"]))
+        lines.append("Available relations: " + ", ".join(str(name) for name in payload["available"]))
     if payload.get("note"):
-        lines.append(f"Hinweis: {payload['note']}")
+        lines.append(f"Note: {payload['note']}")
     return lines
 
 
@@ -1540,48 +1533,46 @@ def _shopping_list_lines(payload: dict[str, Any]) -> list[str]:
     lines = [str(payload.get("summary") or "")]
     if payload.get("path"):
         lines.append(
-            f"IDS-Datei geschrieben: {payload['path']} "
-            f"({payload.get('specifications')} Spezifikationen, {payload.get('bytes')} Bytes)."
+            f"IDS file written: {payload['path']} "
+            f"({payload.get('specifications')} specifications, {payload.get('bytes')} bytes)."
         )
-    lines += [f"- enthalten: {entry}" for entry in payload.get("exported") or []]
-    lines += [
-        f"- NICHT als IDS ausdrückbar: {e.get('what')} — {e.get('why')}" for e in payload.get("notExportable") or []
-    ]
+    lines += [f"- included: {entry}" for entry in payload.get("exported") or []]
+    lines += [f"- NOT expressible as IDS: {e.get('what')} — {e.get('why')}" for e in payload.get("notExportable") or []]
     lines.append(
-        "Die Datei verlangt nur, DASS ein Merkmal vorhanden ist, nie welchen Wert es haben muss. "
-        "Grenzwerte kommen aus der Bestimmung."
+        "The file only requires THAT a property exists, never which value it must have. "
+        "Limit values come from the Bestimmung."
     )
     return lines
 
 
 def _draw_lines(payload: dict[str, Any]) -> list[str]:
     return [
-        f"Zeichnung erzeugt: {payload.get('path')} ({payload.get('bytes')} Bytes, {payload.get('seconds')} s).",
-        "Die Zeichnung liegt als Datei auf dem Server. Maße NICHT aus dem Bild ablesen — dafür "
-        "operation='measure' oder 'distance' verwenden.",
+        f"Drawing created: {payload.get('path')} ({payload.get('bytes')} bytes, {payload.get('seconds')} s).",
+        "The drawing is a file on the server. Do NOT read dimensions off the image — use "
+        "operation='measure' or 'distance' for that.",
     ]
 
 
 def _profile_row(name: str, answer: dict[str, Any]) -> str:
     if answer.get("error"):
-        return f"- {name}: FEHLER — {answer['error']}"
+        return f"- {name}: ERROR — {answer['error']}"
     if answer.get("decidable"):
         return f"- {name}: {_value_text(answer.get('value'))} {answer.get('unit') or ''}".rstrip()
-    return f"- {name}: NICHT ENTSCHEIDBAR — {_missing_what(answer)}"
+    return f"- {name}: UNDECIDABLE — {_missing_what(answer)}"
 
 
 def _profile_lines(payload: dict[str, Any]) -> list[str]:
     """Every measure that applies to one element, one line each — never the raw dict."""
     element = payload.get("element") or {}
     storey = f", {payload['storey']}" if payload.get("storey") else ""
-    lines = [f"gemessen an {element.get('name') or element.get('globalId')} ({element.get('ifcType')}{storey}):"]
+    lines = [f"gemessen on {element.get('name') or element.get('globalId')} ({element.get('ifcType')}{storey}):"]
     lines += [_profile_row(name, answer or {}) for name, answer in (payload.get("measures") or {}).items()]
     skipped = payload.get("notMeasured") or {}
     if skipped.get("kinds"):
-        lines.append(f"Nicht gemessen: {', '.join(skipped['kinds'])}. {skipped.get('why') or ''}".strip())
+        lines.append(f"Not measured: {', '.join(skipped['kinds'])}. {skipped.get('why') or ''}".strip())
     lines.append(
-        "Verkürzte Übersicht: Toleranz, Herkunft und Methode je Kennwert liefert operation='measure' "
-        "für den einen, auf den es ankommt. Lange Listen sind gekürzt."
+        "Shortened overview: operation='measure' returns tolerance, provenance and method per value "
+        "for the one that matters. Long lists are clipped."
     )
     return lines
 
@@ -1595,13 +1586,13 @@ def _batch_headline(payload: dict[str, Any]) -> str:
     results = payload.get("results") or []
     spread = summary.get("spread")
     measured, of = summary.get("measured", 0), summary.get("of", len(results))
-    head = f"gemessen: {payload.get('measure')} an {measured} von {of} Bauteilen"
+    head = f"gemessen: {payload.get('measure')} on {measured} of {of} elements"
     if spread is not None and spread > 0:
-        head += f" — von {_num(summary.get('min'), 3)} bis {_num(summary.get('max'), 3)}, Spanne {_num(spread, 3)}"
+        head += f" — from {_num(summary.get('min'), 3)} to {_num(summary.get('max'), 3)}, spread {_num(spread, 3)}"
     elif spread == 0:
-        head += f" — durchgehend {_num(summary.get('min'), 3)}"
+        head += f" — uniformly {_num(summary.get('min'), 3)}"
     if payload.get("truncated"):
-        head += f" (von {summary.get('selected')} passenden — NUR diese Auswahl)"
+        head += f" (of {summary.get('selected')} matching — ONLY this selection)"
     return head + "."
 
 
@@ -1614,30 +1605,30 @@ def _batch_row(entry: dict[str, Any]) -> str:
     if answer.get("decidable"):
         value = _num(answer.get("value"), _decimals(answer.get("tolerance")))
         return f"- {label}: {value} {answer.get('unit') or ''}".rstrip()
-    return f"- {label}: NICHT ENTSCHEIDBAR — {_missing_what(answer)}"
+    return f"- {label}: UNDECIDABLE — {_missing_what(answer)}"
 
 
 def _batch_lines(payload: dict[str, Any]) -> list[str]:
     summary = payload.get("summary") or {}
     lines = [_batch_headline(payload)]
-    lines += listed(payload.get("results") or [], 40, "Bauteile", _batch_row)
+    lines += listed(payload.get("results") or [], 40, "elements", _batch_row)
     if summary.get("undecidable"):
         count = len(summary["undecidable"])
-        noun = "Bauteil konnte" if count == 1 else "Bauteile konnten"
+        noun = "element could" if count == 1 else "elements could"
         lines.append(
-            f"{count} {noun} nicht gemessen werden — sie sind oben einzeln genannt und dürfen "
-            "nicht als „wie die anderen“ berichtet werden."
+            f"{count} {noun} not be measured — they are named individually above and must "
+            "not be reported as „wie die anderen“."
         )
     if summary.get("disagree"):
         named = ", ".join(entry.get("name") or entry.get("globalId") for entry in summary["disagree"])
         lines.append(
-            f"WIDERSPRUCH zwischen deklariertem und gemessenem Wert bei: {named}. "
-            "Das ist ein Befund über den Export, nicht über das Gebäude."
+            f"CONTRADICTION between declared and measured value for: {named}. "
+            "This is a finding about the export, not about the building."
         )
     if payload.get("hint"):
         lines.append(str(payload["hint"]))
     if summary.get("spread"):
-        lines.append("Die Spanne ist die Aussage: ein einzeln gemessener Raum belegt nichts über die übrigen.")
+        lines.append("The spread is the finding: a single measured room proves nothing about the others.")
     return lines
 
 
@@ -1677,17 +1668,16 @@ def _image_blocks(payload: dict[str, Any], *, source: dict[str, Any] | None, han
     """
     lines = [_model_line(source or {}, handle), str(payload.get("note") or "")]
     if payload.get("rooms"):
-        lines.append("Räume im Bild: " + ", ".join(str(room) for room in payload["rooms"]) + ".")
+        lines.append("Rooms in the image: " + ", ".join(str(room) for room in payload["rooms"]) + ".")
     if payload.get("highlighted"):
-        lines.append("Rot markiert: " + ", ".join(str(item) for item in payload["highlighted"]) + ".")
+        lines.append("Marked red: " + ", ".join(str(item) for item in payload["highlighted"]) + ".")
     if not payload.get("northDeclared"):
         lines.append(
-            "Kein Nordpfeil: diese Datei deklariert keine Nordrichtung. Aus dem Bild lässt sich "
-            "keine Himmelsrichtung ableiten."
+            "No north arrow: this file declares no north direction. No compass direction can be derived from the image."
         )
     lines.append(
-        "Das Bild dient der Orientierung und der Identifikation von Bauteilen. Maße NIE daraus "
-        "ablesen — dafür operation='measure' oder 'distance', die ihre Toleranz mitliefern."
+        "The image serves orientation and identifying elements. NEVER read dimensions off it — "
+        "use operation='measure' or 'distance' for that, which return their tolerance."
     )
     return [
         {"type": "text", "text": "\n".join(line for line in lines if line)},
@@ -1700,7 +1690,7 @@ def _image_blocks(payload: dict[str, Any], *, source: dict[str, Any] | None, han
 
 def _render_unresolved(result: dict[str, Any]) -> str:
     """A model that could not be selected — the same shape ``ifc_query`` uses."""
-    return render_unresolved(result, "Das Modell konnte nicht gelesen werden.")
+    return render_unresolved(result, "The model could not be read.")
 
 
 # ── evidence: what the result says about itself ──────────────────────────────

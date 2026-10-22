@@ -5,21 +5,11 @@
  * tag vocabulary; the zod schema here only guards request shape + basic bounds.
  */
 
-import { z } from 'zod'
 import { apiRoute, parseJsonBody } from '@/lib/api/handler'
 import { updateDocumentTags } from '@/lib/documents/service'
-import { MAX_TAGS, MAX_TOPICS, MAX_TOPIC_LENGTH } from '@/lib/documents/tag-vocabulary'
+import { updateTagsSchema } from '@/lib/documents/document-wire'
 
 type Params = { id: string }
-
-const updateTagsSchema = z.object({
-  // Empty list is allowed (clears tags). Vocabulary membership is enforced in
-  // the service against the mirrored ALLOWED_TAGS and, authoritatively, the
-  // backend — the schema only bounds shape and count.
-  tags: z.array(z.string().min(1).max(128)).max(MAX_TAGS),
-  // Optional: a tag-only edit omits it and the model's topics are left alone.
-  topics: z.array(z.string().min(1).max(MAX_TOPIC_LENGTH)).max(MAX_TOPICS).optional(),
-})
 
 export const PATCH = apiRoute<Params>(
   async ({ session, request, params }) => {

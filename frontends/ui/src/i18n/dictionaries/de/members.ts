@@ -19,7 +19,7 @@ export const members: typeof en.members = {
   },
   roleDescriptions: {
     'project-viewer':
-      'Kann Projektinhalte, Dateien und Unterhaltungen lesen. Kann nichts ändern und Piloti nicht nutzen.',
+      'Kann Projektinhalte, Dateien und Chats lesen. Kann nichts ändern und Piloti nicht nutzen.',
     'project-contributor':
       'Kann außerdem Piloti in diesem Projekt nutzen, aber dessen Dokumente und Gedächtnis nicht ändern.',
     'project-editor':

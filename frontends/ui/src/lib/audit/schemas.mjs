@@ -821,7 +821,8 @@ export const AUDIT_SCHEMAS = /** @type {const} */ ({
   },
   // Piloti filed a proposed change (ADR-0105) in a person's name. Once per
   // card: the same card again files nothing new and emits nothing. `kind` is
-  // file_operation, memory or project_profile; `operation` the file verb;
+  // file_operation, memory, project_profile or operation; `operation` the file
+  // verb, or the catalog operation's name for an `operation` proposal;
   // `items` how many; `memoryScope` where a note would go.
   'piloti.proposal.created': {
     targets: [{ type: 'proposed_change' }, { type: 'project' }, { type: 'conversation' }],

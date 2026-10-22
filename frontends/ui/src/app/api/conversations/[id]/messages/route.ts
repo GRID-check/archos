@@ -9,60 +9,16 @@
  * shape existing callers expect is unchanged.
  */
 
-import { z } from 'zod'
 import { apiRoute, parseJsonBody } from '@/lib/api/handler'
+import { createMessagesSchema } from '@/lib/conversations/conversation-wire'
 import { createConversationMessages, listConversationMessages } from '@/lib/conversations/service'
 import {
   DEFAULT_MUTATION_LIMIT,
   enforceLimit,
-  MAX_MENTIONS_PER_MESSAGE,
-  MAX_MESSAGES_PER_REQUEST,
   memberSubject,
 } from '@/lib/limits'
 
 type Params = { id: string }
-
-const mentionSchema = z.object({
-  // A WorkOS user id or the agent's sentinel id; length-capped like every other
-  // client-supplied identifier. Legitimacy is decided server-side, not here.
-  targetId: z.string().min(1).max(128),
-})
-
-const createMessageSchema = z.object({
-  // Client-generated id; length-capped so user-controlled strings never
-  // reach the database unbounded.
-  id: z.string().min(1).max(128),
-  role: z.enum(['user', 'assistant', 'system', 'tool']),
-  content: z.string(),
-  // UI display type (user, agent_response, …); stored in metadata so past
-  // chats rehydrate with the right renderer. Length-capped like `id`.
-  messageType: z.string().min(1).max(64).optional(),
-  metadata: z.record(z.unknown()).optional(),
-  // Kept as a plain string: the chat store sends both ISO strings and
-  // `String(Date)` output, which `.datetime()` would reject.
-  createdAt: z.string().optional(),
-  // Structured mentions (spec MN-3) — never a text match on a name. The
-  // addressee set is resolved from these server-side (spec MN-2).
-  //
-  // Bounded by the SAME constant the service enforces (`@/lib/sharing/rate-limit`
-  // owns the product bound MN-13 asks for) so the two cannot drift: this schema
-  // used to cap the array at 20 while the service refused anything over 10, which
-  // meant an 11-mention message passed validation and then hit a 403. The two are
-  // still both needed — this bounds the PAYLOAD, the service bounds the
-  // DEDUPLICATED target count, which is the number the abuse bound is about.
-  mentions: z.array(mentionSchema).max(MAX_MENTIONS_PER_MESSAGE).optional(),
-  // The asker's question, carried into the recipient's inbox item (spec MN-12).
-  mentionNote: z.string().max(500).nullable().optional(),
-})
-
-// Bounded for the reason the constant explains: the route factory charges one
-// unit of budget per REQUEST, so an unbounded array would buy unbounded insert
-// work for a single unit. The POST below pays the other half by charging per
-// message.
-const createMessagesSchema = z.union([
-  createMessageSchema,
-  z.array(createMessageSchema).min(1).max(MAX_MESSAGES_PER_REQUEST),
-])
 
 export const GET = apiRoute<Params>(
   async ({ session, params }) => listConversationMessages(session, params.id),

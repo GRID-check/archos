@@ -13,6 +13,8 @@ import time
 
 import httpx
 
+#: Eval-only. The file holds every request body in full, base64 page images included: point it at
+#: scratch space for a census over test fixtures, never at a run over a customer's documents.
 _OUT = os.environ.get("REC_OUT", "")
 _SEQ = itertools.count(1)
 _HOSTS = ("openrouter.ai", "api.typesafe.ai", "api.openai.com")
@@ -203,3 +205,17 @@ def _eval_envelope():
 
 
 _eval_envelope()
+
+
+def _eval_user_message():
+    """A row's drawn box, handed to the turn as the chat socket would (``turn_input.py``).
+
+    Only when the suite sets ``GRID_EVAL_USER_MESSAGE`` (a north-star row with ``box: given``).
+    """
+    if os.environ.get("GRID_EVAL_USER_MESSAGE"):
+        import turn_input
+
+        turn_input.install()
+
+
+_eval_user_message()

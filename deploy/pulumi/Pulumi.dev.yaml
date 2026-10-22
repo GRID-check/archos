@@ -93,7 +93,7 @@ config:
   grid-oib:seaweedfsStorageSize: 10Gi
   grid-oib:seaweedfsBucket: grid-documents
   grid-oib:seaweedfsAccessKey: grid
-  # Read-only identity for the aiq-agent tier (view_knowledge_image, ADR-0039).
+  # Read-only identity for the aiq-agent tier (the `look` tool, ADR-0039).
   grid-oib:seaweedfsBackendReadSecretKey:
     secure: AAABAMgLCSPRIGVbS+2Qqu/PaTFNt6j3hrxVVJ5q4noYPVAHqbOErFG7vBMa8KN/e+wmVSy5uybmUvk0FgSeE0TNvRELoEnJLMf+Az7WREs=
   # Set NOW rather than during the migration window. Both are inert while the
@@ -179,6 +179,8 @@ config:
   # ── Auth / platform ──
   grid-oib:requireAuth: "true"
   grid-oib:workosClientId: client_01KEF0YGNPX7S4SF952ZX46V1K # pragma: allowlist secret (public OAuth client id)
+  # AuthKit domain of this stack's WorkOS environment: the agent doors' authorization server (ADR-0122).
+  grid-oib:workosAuthkitDomain: grateful-view-25-staging.authkit.app
   grid-oib:registryUsername: matthiasbigl
   # ── Observability / OTel Collector + Aspire dashboard (ADR-0029) ──
   # Deployed only when the flag is on AND every dependency is set; otherwise

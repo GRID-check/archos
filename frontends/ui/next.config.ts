@@ -25,6 +25,13 @@ const requestBodyLimitMB = Math.ceil(requestBodyLimitBytes(process.env) / (1024 
 export const nextConfig: NextConfig = {
   reactStrictMode: true,
 
+  // `next dev` rewrites AGENTS.md when it detects a coding agent: it upserts a
+  // managed block whose heading level differs from ours, so every dev start in an
+  // agent session dirtied a tracked file (docs/contributing/gotchas.md, "next dev
+  // rewrites frontends/ui/AGENTS.md"). Off; AGENTS.md carries the same advice in
+  // its own words. `src/next-agent-rules.spec.ts` holds both.
+  agentRules: false,
+
   // Renamed paths keep answering for one release: the API paths in
   // src/lib/api/legacy-routes.ts, and the office shelf's old page URL. A stored
   // link (an inbox item, a shared link: `/app/archiv?doc=<id>`) and a bookmark

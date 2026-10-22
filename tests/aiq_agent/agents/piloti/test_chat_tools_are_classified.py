@@ -35,13 +35,18 @@ NOT_SOURCES = {
     "file_draft": "files a draft from the working directory",
     "create_task": "hands work over; the confirmation is not evidence",
     "canvas": (
-        "the review canvas (a function group): looks at a page, reads and proposes marks, points; a mark is a "
-        "person's note and a page image shows a document already searchable, never a passage a reader cites"
+        "the review canvas (a function group): reads and proposes marks, points; a mark is a person's note, "
+        "never a passage a reader cites"
+    ),
+    "workspace": (
+        "Piloti's own MCP server (a function group): finds and runs workspace operations as the asker, a write "
+        "comes back as a proposal; its results are records of the office's own state, not passages a reader cites. "
+        "They ground sentences through their own channel (common/workspace_records, ADR-0125), never the registry"
     ),
     "ask_user": "asks the reader a question",
     "ifc_query": "answers from the building model through cards, not passages",
     "ifc_measure": "measures in the building model; its numbers arrive through cards",
-    "view_knowledge_image": "shows an image of a passage already captured by the knowledge search",
+    "look": "shows a page, a region of it or an image of a document already searchable; an image is no passage",
 }
 
 

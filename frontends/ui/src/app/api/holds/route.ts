@@ -6,16 +6,10 @@
  * Thin handlers; all logic lives in `@/lib/compliance/service`.
  */
 
-import { z } from 'zod'
 import { apiRoute, parseJsonBody } from '@/lib/api/handler'
 import { ORG_PERMISSIONS } from '@/lib/authz/permissions'
+import { createHoldSchema } from '@/lib/compliance/hold-wire'
 import { createHold, listOpenHolds } from '@/lib/compliance/service'
-
-const createHoldSchema = z.object({
-  entityType: z.enum(['project', 'document', 'conversation', 'organization', 'user', 'folder']),
-  entityId: z.string().min(1),
-  reason: z.string().min(1).max(2000),
-})
 
 export const GET = apiRoute(async ({ session }) => listOpenHolds(session), {
   authz: { permission: ORG_PERMISSIONS.complianceManage },

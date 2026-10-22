@@ -83,8 +83,20 @@ function stringNode(schema: z.ZodString): JsonSchemaNode {
   return node
 }
 
-/** One zod node as JSON Schema. Throws for anything it cannot describe. */
+/**
+ * One zod node as JSON Schema. Throws for anything it cannot describe.
+ *
+ * A `.describe()` text becomes the node's `description`: it is the guidance a
+ * model reads for that field when the schema is an MCP tool's input (ADR-0122),
+ * and the one a Python reader sees for a wire field.
+ */
 export function toJsonSchema(schema: ZodTypeAny): JsonSchemaNode {
+  const node = shapeOf(schema)
+  const description = schema.description
+  return description && node.description === undefined ? { ...node, description } : node
+}
+
+function shapeOf(schema: ZodTypeAny): JsonSchemaNode {
   const definition = schema._def as { typeName: string; [key: string]: unknown }
   switch (definition.typeName) {
     case z.ZodFirstPartyTypeKind.ZodObject:
@@ -107,6 +119,9 @@ export function toJsonSchema(schema: ZodTypeAny): JsonSchemaNode {
       }
     case z.ZodFirstPartyTypeKind.ZodOptional:
     case z.ZodFirstPartyTypeKind.ZodDefault:
+    case z.ZodFirstPartyTypeKind.ZodCatch:
+      // `.catch(fallback)` accepts any input and answers the fallback for an
+      // invalid one; the shape worth describing is the one it falls back from.
       return toJsonSchema((definition.innerType as ZodTypeAny) ?? z.unknown())
     case z.ZodFirstPartyTypeKind.ZodEffects:
       // A `.refine()` is a BFF-side validation, not a wire shape: the JSON
@@ -145,8 +160,15 @@ export function toJsonSchema(schema: ZodTypeAny): JsonSchemaNode {
       return {
         anyOf: (schema as z.ZodUnion<[ZodTypeAny, ...ZodTypeAny[]]>).options.map((option) => toJsonSchema(option)),
       }
+    case z.ZodFirstPartyTypeKind.ZodRecord:
+      // A string-keyed map: an object whose every value is the value schema.
+      return { type: 'object', additionalProperties: toJsonSchema(definition.valueType as ZodTypeAny) }
     case z.ZodFirstPartyTypeKind.ZodNull:
       return { type: 'null' }
+    case z.ZodFirstPartyTypeKind.ZodDate:
+      // `z.coerce.date()` reads an ISO-8601 string off the wire; the Date is
+      // what the route has after parsing, not what crosses the boundary.
+      return { type: 'string', format: 'date-time' }
     case z.ZodFirstPartyTypeKind.ZodUnknown:
       // Any JSON value: the empty schema. Used where the contract deliberately
       // leaves a value open (a profile patch's `value`, checked by the profile

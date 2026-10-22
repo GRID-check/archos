@@ -12,11 +12,11 @@
  * Thin handlers; all logic lives in `@/lib/org-instructions/service`.
  */
 
+import { orgInstructionsSchema } from '@/lib/organizations/organization-wire'
 import { apiRoute, parseJsonBody } from '@/lib/api/handler'
 import { ORG_PERMISSIONS } from '@/lib/authz/permissions'
 import {
   getOrgInstructions,
-  orgInstructionsSchema,
   saveOrgInstructions,
 } from '@/lib/org-instructions/service'
 

@@ -1,45 +1,44 @@
 ---
 name: thermal-protection
 description: >
-  U-Wert, HWB und Schall. Zuerst ob Neubau oder Bestand.
+  U-value, HWB and sound insulation. First whether new build or existing.
 metadata:
   grid-agents: researcher,deep_researcher
 ---
 
-# Eine Frage zu Energie oder Schall beantworten
+# Answering a question about energy or sound
 
-## Die Grenze allein beantwortet die Frage selten
+## The limit alone rarely answers the question
 
-Ein U-Wert hängt am Bauteil und daran, woran das Bauteil grenzt: Außenluft,
-Erdreich oder ein unbeheizter Raum. Bauteil und Lage neben die Zahl, sonst
-wird die Zahl am falschen Bauteil angewandt. Schallschutz ebenso: DnTw und
-LnTw gelten für ein Bauteil *zwischen* zwei bestimmten Nutzungseinheiten, und
-die Paarung entscheidet den Wert.
+A U-value hangs on the component and on what the component borders: outside
+air, ground or an unheated space. Put component and position next to the
+figure, or the figure is applied to the wrong component. The same holds for
+sound insulation: DnTw and LnTw apply to a component *between* two specific
+usage units, and the pairing decides the value.
 
-Heizwärmebedarf kommt aus einer Rechnung, die dieses Produkt nicht ausführt.
-Du kannst sagen, welche Anforderung gilt und wie ein gegebener Wert dazu
-steht. Du kannst keinen HWB bestimmen. Das sagen, wenn die Frage so klingt,
-als würde sie einen verlangen.
+Heizwärmebedarf comes from a calculation this product does not run. You can say
+which requirement applies and how a given value stands against it. You cannot
+determine an HWB. Say so when the question sounds as if it demands one.
 
-## Bestand ist der Normalfall
+## Existing buildings are the normal case
 
-Ein großer Teil dieser Fragen betrifft Sanierung. Bestand, Zubau und größere
-Renovierung holen andere Anforderungen als Neubau. Steht `existing_or_new` im
-Projektkontext, darunter antworten. Fehlt es und macht es einen Unterschied,
-das ist die eine Frage, und sie kommt, bevor eine Neubau-Anforderung zitiert
-wird, die sich dann als die falsche erweist.
+A large share of these questions concern refurbishment. Existing buildings,
+extensions and major renovations bring different requirements than new builds.
+If `existing_or_new` is in the project context, answer under it. If it is
+missing and makes a difference, that is the one question, and it comes before a
+new-build requirement is cited that then turns out to be the wrong one.
 
-## Welches Bild
+## Which picture
 
-U-Werte je Bauteil der Hülle → als Prüftabelle, eine Zeile je Bauteil, der
-Wert in Ist, der Grenzwert mit ≤ in Soll.
-HWB und Energieklasse → als Kennzahlen (Wert gegen Grenzwert), die
-Energieeffizienzklasse benannt.
-Schallschutz je Bauteilpaarung → als Prüftabelle, die Paarung in der ersten Spalte.
-Mehrere Anforderungen nebeneinander → als Prüftabelle mit Status-Spalte.
+U-values per envelope component → as a check table, one row per component, the
+value in the `Ist` column, the limit written with ≤ in the `Soll` column.
+HWB and energy class → as key figures (value against limit), the energy
+efficiency class named.
+Sound insulation per component pairing → as a check table, the pairing in the
+first column.
+Several requirements side by side → as a check table with a status column.
 
 ## Done
 
-Jedes Limit nennt Bauteil und Lage, oder die Paarung. Ein HWB, den niemand
-gerechnet hat, kommt nicht vor. Neubau ist nur zitiert, wenn das Vorhaben
-eines ist.
+Every limit names component and position, or the pairing. An HWB nobody
+calculated does not appear. New build is cited only if the project is one.

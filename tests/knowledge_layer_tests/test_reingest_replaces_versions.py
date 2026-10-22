@@ -641,9 +641,9 @@ def _one_point_per_request(monkeypatch) -> list[list[str]]:
     requests: list[list[str]] = []
     real = store_module.QdrantStore._point
 
-    def recorded(scope, chunk, enrichment):
+    def recorded(scope, chunk, *rest):
         requests.append([chunk.chunk_id])
-        return real(scope, chunk, enrichment)
+        return real(scope, chunk, *rest)
 
     monkeypatch.setattr(store_module.QdrantStore, "_point", staticmethod(recorded))
     return requests

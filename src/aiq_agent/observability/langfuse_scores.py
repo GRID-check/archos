@@ -91,6 +91,24 @@ SCORE_DEFINITIONS: tuple[ScoreDefinition, ...] = (
         categories=("accepted", "dismissed", "undone"),
     ),
     ScoreDefinition(
+        "revision-notice",
+        "NUMERIC",
+        "How many marks Piloti proposed when it compared a new Fassung on its own (ADR-0130); 0 is compared, "
+        "nothing visible. On the trace of the first page's vision call; with piloti-decision on those marks, "
+        "the precision of noticing.",
+        writer="bff",
+        min_value=0,
+    ),
+    ScoreDefinition(
+        "document-check",
+        "NUMERIC",
+        "How many marks Piloti proposed when it checked a new document against the project's other documents "
+        "on its own (ADR-0130); 0 is checked, everything agrees. On the trace of the headless turn that ran "
+        "the check; with piloti-decision on those marks, the precision of the check.",
+        writer="bff",
+        min_value=0,
+    ),
+    ScoreDefinition(
         "citation-health",
         "BOOLEAN",
         "True when citation verification found nothing to remove, patch or flag on this turn.",
@@ -122,7 +140,7 @@ SCORE_DEFINITIONS: tuple[ScoreDefinition, ...] = (
     ScoreDefinition(
         "citation-fallback",
         "BOOLEAN",
-        "True when nothing the model cited survived and the single retrieved source was appended for it.",
+        "Retired with the single-source fallback (ADR-0125); no longer written. Kept so older traces chart.",
     ),
     ScoreDefinition(
         "sources-empty",
@@ -174,10 +192,85 @@ SCORE_DEFINITIONS: tuple[ScoreDefinition, ...] = (
         min_value=0,
     ),
     ScoreDefinition(
+        "file-tools-used",
+        "CATEGORICAL",
+        "Which of the office-file moves a turn used (ADR-0127), as the files eval's arms define them: search "
+        "(knowledge_search ranked by meaning, round 0 included), navigate (list_files, read_passage, and "
+        "knowledge_search in a literal mode, exact or regex), both, or none. Written on every turn that called "
+        "a tool.",
+        categories=("none", "search", "navigate", "both"),
+    ),
+    ScoreDefinition(
+        "folder-card-fresh",
+        "NUMERIC",
+        "Share of the folders one folder-card pass claimed whose written card is fresh afterwards (ADR-0127): "
+        "built, or unchanged because nothing it reads changed. Below 1 is a pass that hit the monthly budget "
+        "or a failed build. Written on the pass's first folder-card generation.",
+        min_value=0,
+        max_value=1,
+    ),
+    ScoreDefinition(
         "card-validity",
         "CATEGORICAL",
         "Each envelope card that missed its schema: repaired, or dropped.",
         categories=("repaired", "dropped"),
+    ),
+    ScoreDefinition(
+        "work-report-matches",
+        "BOOLEAN",
+        "On a work turn (kind work, ADR-0123): true when the report lists as many proposals as the turn put "
+        "in front of the person as proposal cards. A reported proposal no write filed is dropped before this "
+        "is counted (work-proposals-unfiled), so false is mostly a turn that filed a proposal it did not report.",
+    ),
+    ScoreDefinition(
+        "work-proposals-unfiled",
+        "NUMERIC",
+        "On a work turn (kind work, ADR-0123): the report's proposed lines whose ref named no proposal this "
+        "turn filed, dropped before the person saw them. Above zero is a turn that claimed a proposal it did not make.",
+        min_value=0,
+    ),
+    ScoreDefinition(
+        "claims-by-class",
+        "CATEGORICAL",
+        "One score per provenance class present in the answer (ADR-0125): where its sentences come from. "
+        "The comment and metadata carry how many sentences of that class.",
+        categories=(
+            "quoted",
+            "cited",
+            "cited_dropped",
+            "record",
+            "action",
+            "measured",
+            "observed",
+            "reasoning",
+            "model_knowledge",
+        ),
+    ),
+    ScoreDefinition(
+        "claims-normative-uncited",
+        "NUMERIC",
+        "Sentences about the law (the normative detector) with no quoted or cited passage behind them.",
+        min_value=0,
+    ),
+    ScoreDefinition(
+        "look-count",
+        "NUMERIC",
+        "Looks Piloti made in the turn (ADR-0128): renders of a page, a region of it or an embedded image, "
+        "whether or not the answer relies on them. Zero is a measurement.",
+        min_value=0,
+    ),
+    ScoreDefinition(
+        "looked-before-measurement",
+        "BOOLEAN",
+        "On a turn whose answer states a value read off a drawing (ADR-0128): true when Piloti had made a "
+        "region look (not only an overview) at that drawing before it answered. Not written on a turn that "
+        "states no such value.",
+    ),
+    ScoreDefinition(
+        "citations-dropped-labelled",
+        "NUMERIC",
+        "Places the answer cited something that did not resolve, labelled in the text instead of removed.",
+        min_value=0,
     ),
     ScoreDefinition(
         "thread-answered-in-place",
@@ -284,7 +377,6 @@ def citation_scores(events: Iterable[Any]) -> list[RuntimeScore]:
     scores = [
         _boolean("citation-health", not unhealthy, ", ".join(unhealthy) or None),
         _boolean("answer-grounded", "answer_ungrounded" not in by_kind),
-        _boolean("citation-fallback", "citation_fallback" in by_kind),
         _boolean("sources-empty", False),
         RuntimeScore("citations-removed", _count(by_kind, "citations_removed")),
         RuntimeScore("quotes-unverified", _count(by_kind, "quote_unverified")),
@@ -309,6 +401,59 @@ def turn_outcome_scores(result: Any) -> list[RuntimeScore]:
     checked = [status for status in statuses if status in ("verbatim", "not_found")]
     if checked:
         scores.append(RuntimeScore("quotes-verbatim-rate", round(checked.count("verbatim") / len(checked), 4)))
+    scores.extend(work_report_scores(result))
+    return scores
+
+
+def proposal_cards(cards: Iterable[Any]) -> int:
+    """How many of a turn's cards show a stored proposal (they carry its ``proposal_id``)."""
+    count = 0
+    for keyed in cards:
+        card = getattr(keyed, "card", keyed)
+        if isinstance(card, dict) and card.get("proposal_id"):
+            count += 1
+    return count
+
+
+def work_report_scores(result: Any) -> list[RuntimeScore]:
+    """A work turn's report against what the turn filed; nothing on any other turn."""
+    meta = getattr(result, "answer_meta", None) or {}
+    if not isinstance(meta, dict) or meta.get("kind") != "work":
+        return []
+    reported = len(((meta.get("work") or {}).get("proposed")) or [])
+    filed = proposal_cards(getattr(result, "cards", None) or [])
+    return [_boolean("work-report-matches", reported == filed, f"reported {reported}, filed {filed}")]
+
+
+def work_unfiled_scores(dropped: int) -> list[RuntimeScore]:
+    """How many of a work report's ``proposed`` lines named no proposal this turn filed; zero included."""
+    return [RuntimeScore("work-proposals-unfiled", float(max(0, dropped)))]
+
+
+def claim_scores(stamps: Iterable[Any], *, dropped: int) -> list[RuntimeScore]:
+    """The answer's per-sentence provenance (``common/claim_provenance.py``), zeros included.
+
+    ``stamps`` are ``ClaimStamp`` objects; ``dropped`` is how many labels the
+    final text carries where a citation did not resolve.
+    """
+    from aiq_agent.common.claim_provenance import class_counts
+    from aiq_agent.common.claim_provenance import normative_uncited
+
+    stamps = list(stamps)
+    scores = [
+        RuntimeScore("claims-by-class", name, comment=str(count), item=name, metadata={"count": count})
+        for name, count in class_counts(stamps).items()
+    ]
+    scores.append(RuntimeScore("claims-normative-uncited", float(normative_uncited(stamps))))
+    scores.append(RuntimeScore("citations-dropped-labelled", float(max(0, dropped))))
+    return scores
+
+
+def look_scores(*, looks: int, drawing_value: bool, region_look_first: bool) -> list[RuntimeScore]:
+    """The turn's looks (ADR-0128): how many, and whether a region look came before a stated drawing value."""
+    scores = [RuntimeScore("look-count", float(max(0, looks)))]
+    if drawing_value:
+        scores.append(_boolean("looked-before-measurement", region_look_first))
     return scores
 
 
@@ -321,6 +466,37 @@ def dialect_scores(repairs: list[dict[str, str]]) -> list[RuntimeScore]:
 def quote_patch_scores(patched: int) -> list[RuntimeScore]:
     """How many quotes the repair pass corrected on one answer."""
     return [RuntimeScore("quotes-patched", float(max(0, patched)))]
+
+
+#: The tool basenames that navigate the office's files (ADR-0127). ``knowledge_search`` is the search
+#: move when it ranks by meaning and a navigate move in a literal mode (``match="exact"`` or ``"regex"``),
+#: as the files eval's ``navigate`` arm defines it (``scripts/turn_census/files_eval.py``).
+NAVIGATE_TOOLS = frozenset({"list_files", "read_passage"})
+SEARCH_TOOLS = frozenset({"knowledge_search"})
+
+
+def file_tool_scores(tools: Iterable[str], literal_searches: int = 0) -> list[RuntimeScore]:
+    """Which office-file moves a turn used, from the basenames of the tools it called, one per call.
+
+    ``literal_searches`` is how many of the ``knowledge_search`` calls ran in a literal mode
+    (``turn_status.emit_literal_search``): those count as navigation, the rest as search, so the
+    score separates the eval's arms. Nothing for a turn that called no tool at all; ``none`` for a
+    turn that called tools but none of these.
+    """
+    calls = list(tools)
+    if not calls:
+        return []
+    searches = sum(1 for tool in calls if tool in SEARCH_TOOLS)
+    literal = min(max(0, literal_searches), searches)
+    searched = searches > literal
+    navigated = literal > 0 or any(tool in NAVIGATE_TOOLS for tool in calls)
+    value = "both" if searched and navigated else "search" if searched else "navigate" if navigated else "none"
+    named = set(calls) & NAVIGATE_TOOLS
+    if searched:
+        named.add("knowledge_search")
+    if literal:
+        named.add("knowledge_search (literal)")
+    return [RuntimeScore("file-tools-used", value, comment=", ".join(sorted(named)) or None)]
 
 
 def steer_scores(inbox: Any) -> list[RuntimeScore]:

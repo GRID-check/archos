@@ -513,6 +513,10 @@ def _mirror_facts(collection: str, file_names: list[str] | None = None, *, folde
     instead of after. It never raises (``knowledge_layer.qdrant.writes.refresh_facts``).
     ``folders_only`` copies just the folder, all a folder move changed.
     """
+    # The folders these files sit in are dirty for their written card (ADR-0127); never raises.
+    from .folder_cards import mark_files
+
+    mark_files(collection, file_names)
     try:
         from knowledge_layer.qdrant import writes
     except ImportError:  # the knowledge layer's store extra is not installed here
@@ -616,6 +620,15 @@ def set_document_revision_facts(collection: str, filename: str, facts: dict[str,
     :func:`set_document_capture`: ``False`` when the document has no metadata row.
     """
     return _get_document_metadata_store().set_revision_facts(collection, filename, facts or None)
+
+
+def set_document_page_count(collection: str, filename: str, page_count: int | None) -> bool:
+    """Set how many pages a document has (UPDATE-only, like :func:`set_document_capture`); ``None`` when it has none.
+
+    The ingest that read the file calls this after :func:`register_summary`, so a re-ingest overwrites the count.
+    ``False`` when the document has no metadata row.
+    """
+    return _get_document_metadata_store().set_page_count(collection, filename, page_count)
 
 
 def set_document_superseded_by(collection: str, older: str, newer: str | None) -> bool:
@@ -752,8 +765,17 @@ def set_document_folder_path(collection: str, filename: str, folder_path: str | 
     The single seam behind BOTH ingestion (which stamps the folder the BFF sent
     with the file) and the folder mirror endpoint.
     """
-    changed = _get_document_metadata_store().set_folder_path(collection, filename, (folder_path or "").strip() or None)
+    from .folder_cards import enabled_for_collection as folder_cards_enabled
+    from .folder_cards import mark_folders
+
+    store = _get_document_metadata_store()
+    # The folder it leaves is dirty too; read before the move overwrites it.
+    left = (
+        store.get_folder_paths_batch(collection, [filename]).get(filename) if folder_cards_enabled(collection) else None
+    )
+    changed = store.set_folder_path(collection, filename, (folder_path or "").strip() or None)
     if changed:
+        mark_folders(collection, [left])
         _mirror_facts(collection, [filename])
     return changed
 
@@ -811,6 +833,9 @@ def rewrite_document_folder_paths(collection: str, from_path: str, to_path: str 
     """
     count, moved = _get_document_metadata_store().rewrite_folder_paths_moved(collection, from_path, to_path)
     if moved:
+        from .folder_cards import mark_folders
+
+        mark_folders(collection, [from_path])
         _mirror_facts(collection, moved, folders_only=True)
     return count
 
@@ -946,9 +971,17 @@ def unregister_summary(collection: str, filename: str, *, permanent: bool = Fals
     ``superseded`` is copied again: left ``true`` on the points, the pre-filter
     would hide the Fassung that is now the current one from every search.
     """
+    from .folder_cards import enabled_for_collection as folder_cards_enabled
+    from .folder_cards import mark_folders
+
     store = _get_document_metadata_store()
     linked = store.files_linked_to(collection, filename)
+    left = (
+        store.get_folder_paths_batch(collection, [filename]).get(filename) if folder_cards_enabled(collection) else None
+    )
     store.unregister(collection, filename, permanent=permanent)
+    # The folder it left is dirty for its written card (ADR-0127).
+    mark_folders(collection, [left])
     if linked:
         _mirror_facts(collection, linked)
 

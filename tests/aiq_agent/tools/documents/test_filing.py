@@ -91,8 +91,8 @@ class TestFilingANewDraft:
             monkeypatch, [{"documentId": "doc-1", "version": _version("ver-1", "draft", "h1")}], calls
         )
         assert "Aktenvermerk – Fluchtweg" in message
-        assert "ENTWURF" in message
-        assert "freigegeben" in message
+        assert "DRAFT" in message
+        assert "approved" in message
 
     async def test_the_filing_is_remembered_on_the_draft(self, _one_store, monkeypatch, calls) -> None:
         await _write(_one_store)
@@ -130,7 +130,7 @@ class TestTheEnvelopeIsEchoed:
         _bind_context(monkeypatch, headers={"x-grid-project-id": PROJECT}, conversation_id=CONVERSATION)
 
         message = await _file(monkeypatch, [], calls)
-        assert "Sitzungsnachweis" in message
+        assert "signed session credential" in message
         assert calls == []
         assert FILED_DOCUMENT_KEY not in _stored(_one_store)
 
@@ -149,7 +149,7 @@ class TestTheEnvelopeIsEchoed:
         )
 
         message = await _file(monkeypatch, [], calls)
-        assert "Fehler" in message
+        assert "Error" in message
         assert calls == []
 
 
@@ -217,8 +217,8 @@ class TestFilingTheSameDraftTwice:
             calls,
         )
 
-        assert "zur Freigabe" in message
-        assert "abgelegt" not in message.split("Fehler:")[-1].split(".")[0]
+        assert "for approval" in message
+        assert "filed" not in message.split("Error:")[-1].split(".")[0]
         # One call, and it was the create that came back already filed. No
         # update was attempted, and nothing claims a version was written.
         assert [payload["op"] for payload, _ in calls] == ["create"]
@@ -232,7 +232,7 @@ class TestFilingTheSameDraftTwice:
         calls.clear()
         _conflict(monkeypatch, calls)
         message = await filing_tools.run_file_draft(DRAFT)
-        assert "zur Freigabe" in message
+        assert "for approval" in message
         assert [payload["op"] for payload, _ in calls] == ["update"]
         assert _stored(_one_store)[FILED_STATE_KEY] == "in_review"
 
@@ -256,7 +256,7 @@ class TestFilingTheSameDraftTwice:
         assert payload["op"] == "update"
         assert payload["ifMatch"] == "h1"
         assert "38 m" in payload["content"]
-        assert "Fehler" not in message
+        assert "Error" not in message
         assert _stored(_one_store)[FILED_STATE_KEY] == "draft"
 
 
@@ -280,12 +280,12 @@ class TestSubmitting:
             "reviewerUserIds": [],
         }
         assert signed.header == ENVELOPE_HEADER
-        assert "Freigabe" in message
+        assert "approval" in message
         # Nobody was named, so the route submits to the project's editors — and
         # the sentence says so, because „wartet auf eine Person" leaves the
         # reader wondering which one.
-        assert "an die Bearbeiter des Projekts" in message
-        assert "ENTWURF" in message
+        assert "to the project's editors" in message
+        assert "DRAFT" in message
         assert _stored(_one_store)[FILED_STATE_KEY] == "in_review"
 
     async def test_a_named_reviewer_travels_as_a_NAME(self, _one_store, monkeypatch, calls) -> None:
@@ -308,7 +308,7 @@ class TestSubmitting:
         payload, _ = calls[0]
         assert payload["reviewer"] == "Anna Berger"
         assert payload["reviewerUserIds"] == []
-        assert "an Anna Berger" in message
+        assert "to Anna Berger" in message
 
     async def test_no_reviewer_puts_no_field_on_the_wire(self, _one_store, monkeypatch, calls) -> None:
         await _write(_one_store)
@@ -334,9 +334,9 @@ class TestSubmitting:
         monkeypatch.setattr(filing_tools, "post_document_version", _refuse)
         message = await filing_tools.run_file_draft(DRAFT, submit=True, reviewer="Anna Berger")
 
-        assert "Ich kenne keine Person namens „Anna Berger“" in message
-        assert "Es wurde nichts eingereicht" in message
-        assert "Bearbeiter des Projekts" in message
+        assert "I do not know a person named „Anna Berger“" in message
+        assert "Nothing was submitted" in message
+        assert "project's editors" in message
         assert _stored(_one_store)[FILED_STATE_KEY] == "draft"
 
     async def test_a_400_without_a_named_reviewer_keeps_the_submit_wording(
@@ -355,7 +355,7 @@ class TestSubmitting:
         assert "Ich kenne keine Person" not in message
         # The draft was filed in the call before, so the failure says it lies in
         # the project; the old „nur im Arbeitsordner" wording was false here.
-        assert "als ENTWURF im Projekt" in message
+        assert "as a DRAFT" in message
 
     async def test_a_filed_unchanged_draft_is_only_submitted(self, _one_store, monkeypatch, calls) -> None:
         """Nothing to file: an ``update`` of the same bytes would only trip If-Match."""
@@ -375,7 +375,7 @@ class TestSubmitting:
         calls.clear()
         _conflict(monkeypatch, calls)
         message = await filing_tools.run_file_draft(DRAFT, submit=True)
-        assert "bereits eingereicht" in message
+        assert "already been submitted" in message
         assert [payload["op"] for payload, _ in calls] == ["submit"]
 
     async def test_a_version_sent_back_unedited_can_be_submitted_again(self, _one_store, monkeypatch, calls) -> None:
@@ -390,7 +390,7 @@ class TestSubmitting:
             monkeypatch, [{"documentId": "doc-1", "version": _version("ver-1", "in_review", "h1")}], calls
         )
         assert [payload["op"] for payload, _ in calls] == ["submit"]
-        assert "Fehler" not in message
+        assert "Error" not in message
 
 
 class TestRefusals:
@@ -411,18 +411,18 @@ class TestRefusals:
         monkeypatch.setattr(filing_tools.project_context, "get_project_id_from_context", lambda: None)
 
         message = await _file(monkeypatch, [], calls)
-        assert "In diesem Gespräch gibt es kein Projekt" in message
+        assert "There is no project in this conversation" in message
         assert calls == []
 
     async def test_a_path_outside_the_working_directory_is_refused(self, monkeypatch, calls) -> None:
         monkeypatch.setattr(filing_tools, "post_document_version", _responder([], calls))
         message = await filing_tools.run_file_draft("/etc/passwd", "")
-        assert "Arbeitsordner" in message
+        assert "working directory" in message
         assert calls == []
 
     async def test_a_path_that_was_never_written_is_refused(self, monkeypatch, calls) -> None:
         message = await _file(monkeypatch, [], calls)
-        assert "gibt es keinen Entwurf" in message
+        assert "There is no draft" in message
         assert calls == []
 
     async def test_a_refused_call_says_the_draft_is_still_in_the_working_directory(
@@ -435,7 +435,7 @@ class TestRefusals:
 
         monkeypatch.setattr(filing_tools, "post_document_version", _boom)
         message = await filing_tools.run_file_draft(DRAFT, "")
-        assert "Arbeitsordner" in message
+        assert "working directory" in message
         assert FILED_DOCUMENT_KEY not in _stored(_one_store)
 
 
@@ -567,9 +567,9 @@ class TestFilingAndSubmittingInOneCall:
 
         assert [payload["op"] for payload, _ in calls] == ["create", "submit"]
         assert calls[1][0] == {"op": "submit", "documentId": "doc-1", "versionId": "ver-1", "reviewerUserIds": []}
-        assert "abgelegt und zur Freigabe an die Bearbeiter des Projekts eingereicht" in message
+        assert "submitted for approval to the project's editors" in message
         assert "Aktenvermerk – Fluchtweg" in message
-        assert "ENTWURF" in message
+        assert "DRAFT" in message
         assert _stored(_one_store)[FILED_STATE_KEY] == "in_review"
         # ONE card for one call, in the state the call ended in.
         cards = [card for card in _draft_cards(registry) if card.get("document_id")]
@@ -630,7 +630,7 @@ class TestFilingAndSubmittingInOneCall:
         calls.clear()
         _conflict(monkeypatch, calls)
         message = await filing_tools.run_file_draft(DRAFT, submit=True)
-        assert "nicht ersetzen" in message
+        assert "cannot be replaced" in message
         # The update was refused, so no submit followed it.
         assert [payload["op"] for payload, _ in calls] == ["update"]
 
@@ -651,9 +651,9 @@ class TestFilingAndSubmittingInOneCall:
         message = await filing_tools.run_file_draft(DRAFT, submit=True)
 
         assert [payload["op"] for payload, _ in calls] == ["create", "submit"]
-        assert "Im Projekt abgelegt" in message
-        assert "NICHT eingereicht" in message
-        assert "Es wurde nichts abgelegt" not in message
+        assert "Filed in the project" in message
+        assert "NOT submitted" in message
+        assert "Nothing was filed" not in message
         assert _stored(_one_store)[FILED_DOCUMENT_KEY] == "doc-1"
         assert _stored(_one_store)[FILED_STATE_KEY] == "draft"
         assert _draft_cards(registry)[-1]["version_state"] == "draft"
@@ -676,9 +676,9 @@ class TestFilingAndSubmittingInOneCall:
         message = await filing_tools.run_file_draft(DRAFT, submit=True)
 
         assert [payload["op"] for payload, _ in calls] == ["submit"]
-        assert "als ENTWURF im Projekt" in message
-        assert "nicht eingereicht" in message
-        assert "Es wurde nichts abgelegt" not in message
+        assert "as a DRAFT" in message
+        assert "not submitted" in message
+        assert "Nothing was filed" not in message
 
     async def test_an_unknown_reviewer_after_filing_keeps_the_reviewer_wording(self, _one_store, monkeypatch, calls):
         await _write(_one_store)
@@ -692,8 +692,8 @@ class TestFilingAndSubmittingInOneCall:
         monkeypatch.setattr(filing_tools, "post_document_version", _create_then_400)
         message = await filing_tools.run_file_draft(DRAFT, submit=True, reviewer="Anna Berger")
 
-        assert "Im Projekt abgelegt" in message
-        assert "Ich kenne keine Person namens „Anna Berger“" in message
+        assert "Filed in the project" in message
+        assert "I do not know a person named „Anna Berger“" in message
 
     async def test_a_reviewer_without_submit_is_refused_before_anything_is_filed(
         self, _one_store, monkeypatch, calls
@@ -703,7 +703,7 @@ class TestFilingAndSubmittingInOneCall:
         message = await filing_tools.run_file_draft(DRAFT, reviewer="Anna Berger")
 
         assert "`submit=true`" in message
-        assert "Es wurde nichts abgelegt" in message
+        assert "Nothing was filed" in message
         assert calls == []
         assert FILED_DOCUMENT_KEY not in _stored(_one_store)
 

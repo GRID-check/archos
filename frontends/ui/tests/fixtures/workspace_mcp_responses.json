@@ -1,0 +1,55 @@
+{
+  "comment": "Written by workspace-contract.spec.ts from the real route; read by test_workspace_mcp_contract.py. Regenerate with UPDATE_FIXTURES=1.",
+  "responses": {
+    "call_read": {
+      "status": 200,
+      "contentType": "application/json",
+      "body": "{\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"{\\\"projects\\\":[{\\\"id\\\":\\\"proj_1\\\",\\\"name\\\":\\\"Haus Muster\\\"}]}\"}],\"structuredContent\":{\"projects\":[{\"id\":\"proj_1\",\"name\":\"Haus Muster\"}]}},\"jsonrpc\":\"2.0\",\"id\":1}"
+    },
+    "call_write": {
+      "status": 200,
+      "contentType": "application/json",
+      "body": "{\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"Proposed — the person decides. Nothing was changed.\"}],\"structuredContent\":{\"decision\":\"propose\",\"proposalId\":\"prop_1\",\"summary\":\"Add user_2 to proj_1 as viewer\",\"operation\":\"project-member-add\"}},\"jsonrpc\":\"2.0\",\"id\":1}"
+    },
+    "describe": {
+      "status": 200,
+      "contentType": "application/json",
+      "body": "{\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"{\\\"name\\\":\\\"project-member-add\\\",\\\"domain\\\":\\\"projects\\\",\\\"summary\\\":\\\"Add a person to a project\\\",\\\"description\\\":\\\"Adds an organization member to a project with a role. The user id comes from organization-member-list.\\\",\\\"annotations\\\":{\\\"title\\\":\\\"Add a person to a project\\\",\\\"readOnlyHint\\\":false,\\\"destructiveHint\\\":false,\\\"idempotentHint\\\":false,\\\"openWorldHint\\\":false},\\\"sensitivity\\\":null,\\\"inputSchema\\\":{\\\"type\\\":\\\"object\\\",\\\"properties\\\":{\\\"params\\\":{\\\"type\\\":\\\"object\\\",\\\"properties\\\":{\\\"id\\\":{\\\"type\\\":\\\"string\\\",\\\"description\\\":\\\"The project id, from project-list.\\\"}},\\\"required\\\":[\\\"id\\\"]},\\\"body\\\":{\\\"type\\\":\\\"object\\\",\\\"properties\\\":{\\\"userId\\\":{\\\"type\\\":\\\"string\\\"},\\\"role\\\":{\\\"type\\\":\\\"string\\\",\\\"enum\\\":[\\\"viewer\\\",\\\"editor\\\"]}},\\\"required\\\":[\\\"userId\\\",\\\"role\\\"],\\\"additionalProperties\\\":false}},\\\"additionalProperties\\\":false,\\\"required\\\":[\\\"params\\\",\\\"body\\\"]}}\"}],\"structuredContent\":{\"name\":\"project-member-add\",\"domain\":\"projects\",\"summary\":\"Add a person to a project\",\"description\":\"Adds an organization member to a project with a role. The user id comes from organization-member-list.\",\"annotations\":{\"title\":\"Add a person to a project\",\"readOnlyHint\":false,\"destructiveHint\":false,\"idempotentHint\":false,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The project id, from project-list.\"}},\"required\":[\"id\"]},\"body\":{\"type\":\"object\",\"properties\":{\"userId\":{\"type\":\"string\"},\"role\":{\"type\":\"string\",\"enum\":[\"viewer\",\"editor\"]}},\"required\":[\"userId\",\"role\"],\"additionalProperties\":false}},\"additionalProperties\":false,\"required\":[\"params\",\"body\"]}}},\"jsonrpc\":\"2.0\",\"id\":1}"
+    },
+    "refused_forged_envelope": {
+      "status": 401,
+      "contentType": "application/json",
+      "body": "{\"error\":\"Missing or invalid request context envelope\",\"code\":\"UNAUTHORIZED\"}"
+    },
+    "refused_no_envelope": {
+      "status": 401,
+      "contentType": "application/json",
+      "body": "{\"error\":\"Missing or invalid request context envelope\",\"code\":\"UNAUTHORIZED\"}"
+    },
+    "refused_shared_conversation": {
+      "status": 200,
+      "contentType": "application/json",
+      "body": "{\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"This conversation is shared, and that read answers with what the person may see, not with what everyone in the conversation may: in a shared conversation Piloti reads only a document or a project's facts, of a project every reader may open. Tell the person to open it themselves, or to ask in a conversation that is theirs alone.\"}],\"isError\":true},\"jsonrpc\":\"2.0\",\"id\":1}"
+    },
+    "refused_wrong_token": {
+      "status": 403,
+      "contentType": "application/json",
+      "body": "{\"error\":\"Forbidden\"}"
+    },
+    "report_missing": {
+      "status": 200,
+      "contentType": "application/json",
+      "body": "{\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"{\\\"status\\\":\\\"recorded\\\"}\"}],\"structuredContent\":{\"status\":\"recorded\"}},\"jsonrpc\":\"2.0\",\"id\":1}"
+    },
+    "search": {
+      "status": 200,
+      "contentType": "application/json",
+      "body": "{\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"{\\\"total\\\":3,\\\"operations\\\":[{\\\"name\\\":\\\"project-list\\\",\\\"summary\\\":\\\"List the projects the person can open\\\",\\\"domain\\\":\\\"projects\\\",\\\"readOnly\\\":true,\\\"destructive\\\":false},{\\\"name\\\":\\\"project-member-add\\\",\\\"summary\\\":\\\"Add a person to a project\\\",\\\"domain\\\":\\\"projects\\\",\\\"readOnly\\\":false,\\\"destructive\\\":false},{\\\"name\\\":\\\"project-delete\\\",\\\"summary\\\":\\\"Delete a project\\\",\\\"domain\\\":\\\"projects\\\",\\\"readOnly\\\":false,\\\"destructive\\\":true}],\\\"next\\\":\\\"Call call-operation with the name; call describe-operation first when you do not know its input.\\\"}\"}],\"structuredContent\":{\"total\":3,\"operations\":[{\"name\":\"project-list\",\"summary\":\"List the projects the person can open\",\"domain\":\"projects\",\"readOnly\":true,\"destructive\":false},{\"name\":\"project-member-add\",\"summary\":\"Add a person to a project\",\"domain\":\"projects\",\"readOnly\":false,\"destructive\":false},{\"name\":\"project-delete\",\"summary\":\"Delete a project\",\"domain\":\"projects\",\"readOnly\":false,\"destructive\":true}],\"next\":\"Call call-operation with the name; call describe-operation first when you do not know its input.\"}},\"jsonrpc\":\"2.0\",\"id\":1}"
+    },
+    "unknown_operation": {
+      "status": 200,
+      "contentType": "application/json",
+      "body": "{\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"Unknown operation \\\"nope\\\". Use search-operations to find the right name.\"}],\"isError\":true},\"jsonrpc\":\"2.0\",\"id\":1}"
+    }
+  }
+}

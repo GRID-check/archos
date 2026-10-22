@@ -425,6 +425,9 @@ export const replyResponseSchema = z.object({
 })
 export type ReplyResponse = z.infer<typeof replyResponseSchema>
 
+/** The body of `POST /api/documents/{id}/thread`. */
+export const documentThreadRequestSchema = z.object({ title: z.string().trim().max(200).optional() }).strict()
+
 /** `POST /api/documents/{id}/thread`: the caller's own thread about the document (ADR-0106). */
 export const documentThreadResponseSchema = z.object({ conversationId: z.string().min(1) })
 

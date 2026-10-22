@@ -84,6 +84,9 @@ export const documentListFilterSchema = z.object({
 
 export type DocumentListFilter = z.infer<typeof documentListFilterSchema>
 
+/** `GET /api/documents`: the shelf's filters, and the project whose documents they read. */
+export const projectDocumentListQuerySchema = documentListFilterSchema.extend({ projectId: z.string().min(1) })
+
 /** The filters a shelf summary takes: the two the server answers, so its counts match the listing they sit above. */
 export const documentSummaryFilterSchema = documentListFilterSchema.pick({ authoredBy: true, includeArchived: true })
 

@@ -14,33 +14,70 @@ always accepted::
     {"field": [v1, ...]}                          -> any of
     {"field": {"$eq"|"$ne": v}}                   -> (not) equal
     {"field": {"$in"|"$nin": [v1, ...]}}          -> (not) in
+    {"field": {"$gt"|"$gte"|"$lt"|"$lte": v}}     -> range (integer and datetime fields only)
     {"$and": [node, ...]}  /  {"$or": [node, ...]} -> groups
+
+A read is over chunks unless it says otherwise. A folder card's point
+(``kind = folder``, ADR-0127) sits in its folder's scope beside the chunks, so
+:func:`scope_filter` leaves it out of every read by default and admits it only
+to a read that asks for ``kind="folder"``; a delete of a whole scope asks for
+``kind="any"``. A chunk carries no ``kind`` at all, which the ``must_not``
+keeps: nothing was backfilled.
 
 ``$ne`` and ``$nin`` keep a point that lacks the field, as
 ``test_page_chunk_exclusion.py`` pins: the base corpus's ``chunking $ne page``
 must not drop chunks written before ``chunking`` existed. A field that is not
 indexed raises, because strict mode would refuse it at the server anyway and
-a refusal deep in a search reads as "nothing found".
+a refusal deep in a search reads as "nothing found". A range on a keyword or
+boolean field raises for the same reason: Qdrant would refuse it, and a range
+over strings is not what the caller meant. One range operator per condition;
+a closed interval is ``{"$and": [{"f": {"$gte": a}}, {"f": {"$lte": b}}]}``.
 """
 
 from __future__ import annotations
 
 from collections.abc import Sequence
 from typing import Any
+from typing import Literal
 
 from qdrant_client import models
 
 from aiq_agent.profile_names import legacy_profile_token
 
 from .payload import coerce_field
+from .schema import DATETIME_FIELDS
+from .schema import FOLDER_KIND
 from .schema import INDEXED_FIELDS
+from .schema import INTEGER_FIELDS
+from .schema import KIND_FIELD
 from .schema import LEGACY_CHUNKING
 from .schema import LEGACY_FIELDS
 from .schema import PROJECT_FACTS_FIELD
 from .schema import SCOPE_FIELD
-from .schema import TEXT_FIELD
+from .schema import TEXT_FIELDS
 
-_OPERATORS = frozenset({"$eq", "$ne", "$in", "$nin"})
+#: Which points a read is over: chunks (every read's default), folder card points, or both
+#: (only a write or a delete that names a whole scope).
+PointKind = Literal["chunk", "folder", "any"]
+
+_RANGE_OPERATORS = {"$gt": "gt", "$gte": "gte", "$lt": "lt", "$lte": "lte"}
+_OPERATORS = frozenset({"$eq", "$ne", "$in", "$nin", *_RANGE_OPERATORS})
+
+
+def _range(field: str, op: str, value: Any) -> models.FieldCondition:
+    """``field`` compared by ``op`` to ``value``: an integer range, or a datetime range for a datetime field."""
+    bound = _RANGE_OPERATORS[op]
+    if field in DATETIME_FIELDS:
+        moment = coerce_field(field, value)
+        if moment is None:
+            raise ValueError(f"Filter on {field!r}: {op} needs an ISO 8601 date, got {value!r}")
+        return models.FieldCondition(key=field, range=models.DatetimeRange(**{bound: moment}))
+    if field not in INTEGER_FIELDS:
+        raise ValueError(f"Filter on {field!r}: {op} needs an integer or datetime field")
+    number = coerce_field(field, value)
+    if number is None:
+        raise ValueError(f"Filter on {field!r}: {op} needs a number, got {value!r}")
+    return models.FieldCondition(key=field, range=models.Range(**{bound: number}))
 
 
 def _match(field: str, value: Any) -> models.FieldCondition:
@@ -108,7 +145,7 @@ def _field(field: str, condition: Any) -> models.Filter:
 
 def _field_exact(field: str, condition: Any) -> models.Filter:
     """One ``field: condition`` pair as a filter, in exactly the spelling given."""
-    if field not in INDEXED_FIELDS or field == TEXT_FIELD:
+    if field not in INDEXED_FIELDS or field in TEXT_FIELDS:
         raise ValueError(f"Filter on {field!r}: not an indexed payload field")
     if not isinstance(condition, dict):
         return models.Filter(must=[_match(field, condition)])
@@ -121,6 +158,8 @@ def _field_exact(field: str, condition: Any) -> models.Filter:
         return models.Filter(must_not=[_match(field, value)])
     if op == "$in":
         return models.Filter(must=[_match_any(field, value)])
+    if op in _RANGE_OPERATORS:
+        return models.Filter(must=[_range(field, op, value)])
     # $nin of nothing excludes nothing.
     return models.Filter(must_not=[_match_any(field, value)] if value else [])
 
@@ -151,14 +190,36 @@ def scope_condition(scopes: Sequence[str]) -> models.FieldCondition:
     return models.FieldCondition(key=SCOPE_FIELD, match=models.MatchAny(any=list(dict.fromkeys(names))))
 
 
+def _is_folder() -> models.FieldCondition:
+    return models.FieldCondition(key=KIND_FIELD, match=models.MatchValue(value=FOLDER_KIND))
+
+
+def kind_filter(kind: PointKind = "chunk") -> models.Filter:
+    """Only points of ``kind``, over a whole collection: for the one read that lists scopes, not one of them."""
+    if kind == "chunk":
+        return models.Filter(must_not=[_is_folder()])
+    if kind == "folder":
+        return models.Filter(must=[_is_folder()])
+    return models.Filter()
+
+
 def scope_filter(
     scopes: Sequence[str],
     filters: dict[str, Any] | None = None,
     *extra: models.Condition,
+    kind: PointKind = "chunk",
 ) -> models.Filter:
-    """The filter for a read over ``scopes``: the scope, the caller's filter, and any extra conditions."""
+    """The filter for a read over ``scopes``: the scope, the caller's filter, any extra conditions, and the kind.
+
+    ``kind`` defaults to chunks: a folder card's point never reaches a chunk read,
+    a count or a facet unless the caller asks for ``"folder"`` (or ``"any"``).
+    """
+    if kind not in ("chunk", "folder", "any"):
+        raise ValueError(f"Unknown point kind {kind!r}")
     must: list[Any] = [scope_condition(scopes)]
     if filters:
         must.append(translate(filters))
     must.extend(extra)
-    return models.Filter(must=must)
+    if kind == "folder":
+        must.append(_is_folder())
+    return models.Filter(must=must, must_not=[_is_folder()] if kind == "chunk" else None)

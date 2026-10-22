@@ -125,9 +125,9 @@ const ALL_TYPES = [
   'conversation.activity',
   'storage.quota_warning',
   'document.assigned_to_you',
-  'job.completed',
-  'job.failed',
-  'job.waiting',
+  'task_run.completed',
+  'task_run.failed',
+  'task_run.waiting',
   'document.review_requested',
   'upload.completed',
   'document.quarantined',
@@ -146,6 +146,7 @@ const ALL_TYPES = [
   // A reading of a project's documents is ready for review (ADR-0111): setting
   // a project up is not a chat feature.
   'piloti.intake_ready',
+  'piloti.revision_checked',
   // A colleague's work on an Anmerkung: marks are not a chat feature either.
   'annotation.assigned_to_you',
   'annotation.activity',
@@ -157,11 +158,11 @@ const ALL_TYPES = [
 /** What a tenant WITHOUT collaboration may see: the operational types only. */
 const OPERATIONAL_TYPES = [
   'storage.quota_warning',
-  'job.completed',
-  'job.failed',
+  'task_run.completed',
+  'task_run.failed',
   // A run stopped to ask its requester something: the same operational class
   // as a run that finished or failed, and invisible without the badge.
-  'job.waiting',
+  'task_run.waiting',
   // A Freigabe is not a chat feature (ADR-0054): an office that never bought
   // collaboration still has documents to approve, and gating the one review
   // queue in the product would make it invisible for exactly them.
@@ -187,6 +188,7 @@ const OPERATIONAL_TYPES = [
   // A reading of a project's documents is ready for review (ADR-0111): setting
   // a project up is not a chat feature.
   'piloti.intake_ready',
+  'piloti.revision_checked',
   // A colleague's work on an Anmerkung: marks are not a chat feature either.
   'annotation.assigned_to_you',
   'annotation.activity',
@@ -532,7 +534,7 @@ describe('listInbox — project href threads the delegated task', () => {
     vi.mocked(repository.listInboxItems).mockResolvedValue([
       row({
         id: 'job-done',
-        type: 'job.completed',
+        type: 'task_run.completed',
         resourceType: 'project',
         resourceId: 'proj_1',
         anchorId: 'backend-job-1',
@@ -549,7 +551,7 @@ describe('listInbox — project href threads the delegated task', () => {
     vi.mocked(repository.listInboxItems).mockResolvedValue([
       row({
         id: 'job-no-task',
-        type: 'job.completed',
+        type: 'task_run.completed',
         resourceType: 'project',
         resourceId: 'proj_1',
         anchorId: 'backend-job-1',
@@ -557,7 +559,7 @@ describe('listInbox — project href threads the delegated task', () => {
       }),
       row({
         id: 'job-blank-task',
-        type: 'job.failed',
+        type: 'task_run.failed',
         resourceType: 'project',
         resourceId: 'proj_1',
         anchorId: 'backend-job-2',
@@ -582,7 +584,7 @@ describe('listInbox — project href threads the delegated task', () => {
     vi.mocked(repository.listInboxItems).mockResolvedValue([
       row({
         id: 'revision-done',
-        type: 'job.completed',
+        type: 'task_run.completed',
         resourceType: 'project',
         resourceId: 'proj_1',
         anchorId: 'backend-job-1',
@@ -596,7 +598,7 @@ describe('listInbox — project href threads the delegated task', () => {
       }),
       row({
         id: 'plain-done',
-        type: 'job.completed',
+        type: 'task_run.completed',
         resourceType: 'project',
         resourceId: 'proj_1',
         anchorId: 'backend-job-2',
@@ -1267,7 +1269,7 @@ describe('viewInboxItemAs — the row as its recipient would be shown it', () =>
   it('answers null for a run the recipient may not read', async () => {
     vi.mocked(unreadableRunIds).mockResolvedValue(new Set(['run_1']))
     const project = row({
-      type: 'job.completed',
+      type: 'task_run.completed',
       resourceType: 'project',
       resourceId: 'proj_1',
       payload: { runId: 'run_1', subject: 'Auftrag' },

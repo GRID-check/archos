@@ -43,7 +43,6 @@ from .schema import LEXICAL
 from .schema import PARAGRAPH_FIELD
 from .schema import TEXT_FIELD
 from .schema import physical_for_scope
-from .scope import scope_condition
 from .scope import scope_filter
 from .store import QdrantStore
 from .store import bm25
@@ -175,9 +174,15 @@ def _prefetches(
     exact_terms: Sequence[str],
     candidates: int,
     ranking: Ranking,
+    length: dict[str, float] | None = None,
 ) -> list[models.Prefetch]:
-    """The channels, the unrestricted dense one first (:func:`_fusion` weighs it by position)."""
-    idf = models.SearchParams(idf=models.IdfCorpusParams(corpus=models.Filter(must=[scope_condition(scopes)])))
+    """The channels, the unrestricted dense one first (:func:`_fusion` weighs it by position).
+
+    ``length`` is the collection's BM25 length normalisation (``store.bm25_length``). On the
+    query side it scales every term alike, so the BM25 channel's ORDER does not depend on it
+    (measured on 1.19.2); it is sent anyway, so a query is always analysed as its documents were.
+    """
+    idf = models.SearchParams(idf=models.IdfCorpusParams(corpus=scope_filter(scopes)))
     dense = _dense_params(ranking)
     prefetch = [
         models.Prefetch(
@@ -186,7 +191,9 @@ def _prefetches(
     ]
     if lexical_text.strip():
         prefetch.append(
-            models.Prefetch(query=bm25(lexical_text), using=LEXICAL, limit=candidates, filter=query_filter, params=idf)
+            models.Prefetch(
+                query=bm25(lexical_text, length), using=LEXICAL, limit=candidates, filter=query_filter, params=idf
+            )
         )
     for term in exact_terms:
         restricted = models.Filter(must=[query_filter, exact_term(term)])
@@ -251,7 +258,16 @@ def hybrid_search(
         return []
     alias = _alias(store, scopes)
     query_filter = scope_filter(scopes, filters)
-    prefetch = _prefetches(scopes, query_filter, vector, lexical_text, exact_terms, candidates or limit, RANKING)
+    prefetch = _prefetches(
+        scopes,
+        query_filter,
+        vector,
+        lexical_text,
+        exact_terms,
+        candidates or limit,
+        RANKING,
+        store.bm25_length(scopes[0]),
+    )
     result = store.client.query_points(
         alias,
         prefetch=prefetch,
@@ -313,7 +329,9 @@ def grouped_search(
     likeness = likeness_formula(boost)
     prefetch = [
         boosted(channel, likeness)
-        for channel in _prefetches(scopes, query_filter, vector, lexical_text, exact_terms, candidates, RANKING)
+        for channel in _prefetches(
+            scopes, query_filter, vector, lexical_text, exact_terms, candidates, RANKING, store.bm25_length(scopes[0])
+        )
     ]
     # One flat fused ranking, grouped here in its order. Qdrant's group query
     # is no substitute: with a fusion as its query it fuses again for every

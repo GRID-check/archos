@@ -24,14 +24,7 @@ export type FileOperationKind = ProposalCard['operation']
  * gallery entry and test spell out five fields that mean nothing for its
  * operation — while a card that came off the wire is assignable either way.
  */
-export type FileOperationItem = Partial<ProposalCard['operations'][number]> & {
-  /**
-   * Why this item, one line (a filing suggestion's reason per file). Only a
-   * stored proposal carries it: the agent's card has no such field, so a card
-   * without a `proposal_id` never shows one.
-   */
-  reason?: string | null
-}
+export type FileOperationItem = Partial<ProposalCard['operations'][number]>
 
 /** The folder a move creates first, as a stored proposal names it. */
 export interface FileOperationNewFolder {

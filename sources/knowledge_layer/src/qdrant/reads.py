@@ -31,11 +31,11 @@ from typing import Any
 
 from qdrant_client import models
 
+from aiq_agent.knowledge.base import DocumentPosition
+from aiq_agent.knowledge.base import document_position
 from aiq_agent.knowledge.base import reading_order
-from aiq_agent.knowledge.base import section_position
 
 from .schema import CHUNK_ID_FIELD
-from .schema import CHUNK_ORDINAL_FIELD
 from .schema import READING_ORDER_FIELD
 from .schema import TEXT_FIELD
 from .search import Hit
@@ -71,6 +71,34 @@ def fetch(scope: str, filters: dict[str, Any] | None, limit: int, order_by: str 
     return [_hit(record) for record in records]
 
 
+def fetch_from(scope: str, filters: dict[str, Any] | None, start: DocumentPosition, limit: int) -> list[Hit]:
+    """The chunks ``filters`` admits that come AFTER ``start`` in document order, at most ``limit`` of them.
+
+    ``start`` is the :func:`~aiq_agent.knowledge.base.document_position` of the last chunk a reader
+    already holds: it and everything before it are dropped, so a read that stopped at a size cap
+    continues where it stopped. The comparison is on the same total key :func:`in_document_order`
+    sorts by, so no chunk sorted after ``start`` is skipped, whatever its ordinal. The scope filter
+    is applied by the store as for every read; ``start`` only narrows within it, so it cannot reach
+    another scope.
+
+    A set holding a point without ``reading_order`` (written before the field
+    existed) is read whole and ordered here, as :func:`fetch` does; the rest takes
+    the server-side bound ``reading_order >= start[0]`` and is read from there.
+    """
+    store = get_store()
+    if limit <= 0 or not store.exists(scope):
+        return []
+    if _orders_server_side(store, scope, filters):
+        bound = {READING_ORDER_FIELD: {"$gte": start[0]}}
+        records = list(store.scroll(scope, {"$and": [filters, bound]} if filters else bound, limit=WHOLE_SET_CAP))
+    else:
+        records = list(store.scroll(scope, filters, limit=WHOLE_SET_CAP))
+    _warn_if_capped(records, scope)
+    start = tuple(start)
+    after = [hit for hit in in_document_order([_hit(record) for record in records]) if _document_key(hit) > start]
+    return after[:limit]
+
+
 def in_document_order(hits: Sequence[Hit]) -> list[Hit]:
     """One document's ``hits`` in reading order: page, section structure, then place in the file.
 
@@ -89,16 +117,8 @@ def in_document_order(hits: Sequence[Hit]) -> list[Hit]:
     return sorted(hits, key=_document_key)
 
 
-def _document_key(hit: Hit) -> tuple[Any, ...]:
-    ordinal = hit.payload.get(CHUNK_ORDINAL_FIELD)
-    numbered = isinstance(ordinal, int)
-    return (
-        reading_order(hit.payload.get("page_label")),
-        *section_position(hit.payload),
-        not numbered,
-        ordinal if numbered else 0,
-        hit.chunk_id,
-    )
+def _document_key(hit: Hit) -> DocumentPosition:
+    return document_position(hit.payload, hit.chunk_id)
 
 
 def _orders_server_side(store: QdrantStore, scope: str, filters: dict[str, Any] | None) -> bool:

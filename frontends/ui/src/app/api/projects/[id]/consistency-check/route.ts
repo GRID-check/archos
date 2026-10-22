@@ -10,17 +10,9 @@
  * "proceed with the save" — a check outage must not block saving.
  */
 
-import { z } from 'zod'
 import { apiRoute, parseJsonBody } from '@/lib/api/handler'
 import { checkProjectConsistency } from '@/lib/project-profile/profile-service'
-
-const fieldSchema = z.object({ field: z.string(), value: z.string() })
-
-const consistencyCheckSchema = z.object({
-  freeText: z.array(fieldSchema).max(50),
-  structured: z.array(fieldSchema).max(200).optional(),
-  locale: z.string().optional(),
-})
+import { consistencyCheckSchema } from '@/lib/project-profile/profile-wire'
 
 export const POST = apiRoute<{ id: string }>(
   async ({ session, params, request }) => {

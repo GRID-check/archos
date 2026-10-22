@@ -1,0 +1,9 @@
+# One entry per user-visible change. This text is PUBLISHED, in English and in
+# German machine translation, to https://piloti.at/changelog — write it for the
+# architect using Piloti, not for the reviewer of your diff.
+features:
+  - >
+    Your own AI assistant, such as Claude, ChatGPT or Cursor, can now work in
+    Piloti for you with your rights, set up from Connect your agent on your
+    profile once your organization switches it on.
+    It asks you before it changes or deletes anything, so you stay in charge.

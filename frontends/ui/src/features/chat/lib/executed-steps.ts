@@ -52,6 +52,7 @@ const TOOL_LABEL_KEYS: Record<string, string> = {
   read_passage: 'reading',
   ifc_query: 'model',
   ifc_measure: 'measure',
+  // Retired for `look` (ADR-0128); a read-side alias, because stored turns carry it.
   view_knowledge_image: 'drawing',
   surface_documents: 'documents',
   list_files: 'documents',
@@ -69,10 +70,11 @@ const TOOL_LABEL_KEYS: Record<string, string> = {
   // because stored turns carry it.
   submit_draft: 'filing',
   create_task: 'task',
-  // The review canvas (the `canvas` group; basenames arrive without the
-  // `canvas__` prefix): looking at a page is reading the drawing, everything
-  // else on the canvas shares the Anmerkungen chip. The old single tool's name
-  // stays because stored turns carry it.
+  // `look` (ADR-0128): looking at a page or a region of it is reading the
+  // drawing, in the chat and on the canvas. A stored canvas-group look step
+  // arrives as the same basename. The review canvas (the `canvas` group;
+  // basenames arrive without the `canvas__` prefix) shares the Anmerkungen
+  // chip. The old single tool's name stays because stored turns carry it.
   look: 'drawing',
   room: 'annotations',
   point: 'annotations',
@@ -90,6 +92,11 @@ const TOOL_LABEL_KEYS: Record<string, string> = {
   create_folder: 'fileProposal',
   assign_document: 'fileProposal',
   set_doc_class: 'fileProposal',
+  // The workspace group's `call` (`workspace__call`, ADR-0122): a read of the
+  // office's own state, or a proposal. The wire sends the basename, and no
+  // other group binds a bare `call`. `search` and `describe` are bookkeeping
+  // and get no chip.
+  call: 'workspace',
 }
 
 /**

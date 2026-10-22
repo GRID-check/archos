@@ -15,29 +15,11 @@
  * exactly those.
  */
 
-import { z } from 'zod'
 import { apiRoute, parseJsonBody } from '@/lib/api/handler'
-import { FOLDER_ACCESS_MAX_PEOPLE, getFolderAccess, setFolderAccess } from '@/lib/projects/folder-access-settings'
+import { getFolderAccess, setFolderAccess } from '@/lib/projects/folder-access-settings'
+import { folderAccessSchema } from '@/lib/projects/folder-access-wire'
 
 type Params = { id: string; folderId: string }
-
-const personSchema = z
-  .object({
-    userId: z.string().trim().min(1).max(100),
-    level: z.enum(['read', 'write']),
-  })
-  .strict()
-
-const bodySchema = z.discriminatedUnion('mode', [
-  z.object({ mode: z.literal('inherit') }).strict(),
-  z
-    .object({
-      mode: z.literal('custom'),
-      everyoneReads: z.boolean(),
-      people: z.array(personSchema).max(FOLDER_ACCESS_MAX_PEOPLE),
-    })
-    .strict(),
-])
 
 const enforcedBy = 'getFolderAccess/setFolderAccess -> requireProjectAccess (project:manage) + write on the folder'
 
@@ -48,7 +30,7 @@ export const GET = apiRoute<Params>(
 
 export const PUT = apiRoute<Params>(
   async ({ session, params, request }) => {
-    const access = await parseJsonBody(request, bodySchema)
+    const access = await parseJsonBody(request, folderAccessSchema)
     return setFolderAccess(session, { projectId: params.id, folderId: params.folderId, access }, request)
   },
   { authz: { enforcedBy } }

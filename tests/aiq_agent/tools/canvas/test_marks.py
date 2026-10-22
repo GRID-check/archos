@@ -47,7 +47,7 @@ class TestWhoItActsAs:
         result = await run_mark([PROPOSAL])
 
         assert calls == []
-        assert result.startswith("Fehler:") and "Sitzungsnachweis" in result
+        assert result.startswith("Error:") and "signed session credential" in result
 
     async def test_a_run_with_no_conversation_names_no_answer(self, monkeypatch, calls) -> None:
         monkeypatch.setattr(project_context, "get_conversation_id_from_context", lambda: None)
@@ -64,16 +64,16 @@ class TestRefusals:
             (
                 CanvasRequestError("x", status=422, code="UNPROCESSABLE", reason="no-document-subject"),
                 "marks",
-                "Nenne es in `document`",
+                "Name it in `document`",
             ),
-            (CanvasRequestError("x", status=403, code="FORBIDDEN"), "mark", "Nicht möglich"),
-            (CanvasRequestError("x", status=404, code="NOT_FOUND"), "reply", "Diese Anmerkung gibt es"),
-            (CanvasRequestError("x", status=404, code="NOT_FOUND"), "marks", "Dieses Dokument gibt es nicht"),
-            (CanvasRequestError("x", status=409, code="CONFLICT"), "reply", "gerade geändert"),
+            (CanvasRequestError("x", status=403, code="FORBIDDEN"), "mark", "Not possible"),
+            (CanvasRequestError("x", status=404, code="NOT_FOUND"), "reply", "This annotation does not exist"),
+            (CanvasRequestError("x", status=404, code="NOT_FOUND"), "marks", "This document does not exist"),
+            (CanvasRequestError("x", status=409, code="CONFLICT"), "reply", "just changed"),
             (CanvasRequestError("Too long", status=400, code="BAD_REQUEST"), "mark", "Too long"),
-            (CanvasRequestError("x", status=422, code="UNPROCESSABLE"), "mark", "Korrigiere"),
-            (CanvasRequestError("x", status=500), "marks", "nicht erreichbar"),
-            (CanvasRequestError("the canvas route could not be reached"), "marks", "nicht erreichbar"),
+            (CanvasRequestError("x", status=422, code="UNPROCESSABLE"), "mark", "Correct the arguments"),
+            (CanvasRequestError("x", status=500), "marks", "not reachable"),
+            (CanvasRequestError("the canvas route could not be reached"), "marks", "not reachable"),
         ],
     )
     async def test_each_refusal_is_a_sentence_the_model_can_relay(self, monkeypatch, calls, error, tool, expected):
@@ -93,7 +93,7 @@ class TestRefusals:
             CanvasRequestError("x", status=409, code="CONFLICT", reason=reason), "delete"
         )
 
-        assert "Nicht gelöscht" in str(refused) and "gerade geändert" not in str(refused)
+        assert "Not deleted" in str(refused) and "just changed" not in str(refused)
 
     async def test_no_document_subject_wins_over_the_status(self, monkeypatch, calls) -> None:
         """The reason is what tells „name the document“ from a malformed request."""
@@ -101,17 +101,17 @@ class TestRefusals:
 
         result = await run_mark([PROPOSAL])
 
-        assert "`document`" in result and "Korrigiere" not in result
+        assert "`document`" in result and "Correct the arguments" not in result
 
     @pytest.mark.parametrize(
         ("change", "expected"),
         [
-            ({"x": 120.0}, "keine Pixel"),
-            ({"page": 0}, "ab 1"),
-            ({"w": None}, "`w` und `h`"),
-            ({"x": 0.9, "w": 0.5}, "über die Seite"),
+            ({"x": 120.0}, "not pixels"),
+            ({"page": 0}, "from 1"),
+            ({"w": None}, "`w` and `h`"),
+            ({"x": 0.9, "w": 0.5}, "beyond the page"),
             ({"body": "   "}, "`body`"),
-            ({"kind": "remark"}, "ungültig"),
+            ({"kind": "remark"}, "invalid"),
         ],
     )
     async def test_a_bad_proposal_is_refused_before_anything_is_sent(self, monkeypatch, calls, change, expected):
@@ -126,7 +126,7 @@ class TestRefusals:
 
         result = await run_mark([PROPOSAL] * 21)
 
-        assert calls == [] and "Höchstens 20" in result
+        assert calls == [] and "At most 20" in result
 
 
 class TestWhatItSays:
@@ -137,16 +137,16 @@ class TestWhatItSays:
 
         for expected in (
             f"„{NAME}“",
-            "Nr. 4",
-            "S. 2",
-            "Mangel",
-            "offen",
+            "No. 4",
+            "p. 2",
+            "defect",
+            "open",
             "Martin Huber",
             "Fluchtweg im 1. OG zu lang.",
-            "Grundlage: OIB-RL 2, Pkt. 5.1.1",
-            "Zuständig: Anna Berger, fällig 2026-10-20",
+            "Basis: OIB-RL 2, Pkt. 5.1.1",
+            "Assignee: Anna Berger, due 2026-10-20",
             "Anna Berger: Prüfe ich.",
-            "Bereich x 0.10–0.35, y 0.20–0.40",
+            "region x 0.10–0.35, y 0.20–0.40",
             f"id {ANNOTATION}",
         ):
             assert expected in result, expected
@@ -164,34 +164,34 @@ class TestWhatItSays:
 
         result = await run_marks()
 
-        assert result.index("Nr. 2") < result.index("Nr. 1")
-        assert "Vorschlag, noch nicht übernommen" in result and "von Piloti, für Martin Huber" in result
-        assert "Punkt x 0.10, y 0.20" in result
+        assert result.index("No. 2") < result.index("No. 1")
+        assert "proposal, not yet taken over" in result and "by Piloti, for Martin Huber" in result
+        assert "point x 0.10, y 0.20" in result
 
     async def test_an_older_revision_is_named(self, monkeypatch, calls) -> None:
         answering(monkeypatch, calls, {**LIST_BODY, "annotations": [listed(onCurrentRevision=False)]})
 
-        assert "früheren Fassung" in await run_marks()
+        assert "earlier Fassung" in await run_marks()
 
     async def test_a_bff_that_has_not_rolled_yet_names_the_older_revision_the_old_way(self, monkeypatch, calls) -> None:
         mark = {key: value for key, value in listed().items() if key != "onCurrentRevision"}
         answering(monkeypatch, calls, {**LIST_BODY, "annotations": [{**mark, "onCurrentFassung": False}]})
 
-        assert "früheren Fassung" in await run_marks()
+        assert "earlier Fassung" in await run_marks()
 
     async def test_an_empty_document_says_so(self, monkeypatch, calls) -> None:
         answering(monkeypatch, calls, {**LIST_BODY, "annotations": []})
 
-        assert "noch keine Anmerkungen" in await run_marks()
+        assert "no annotations on" in await run_marks()
 
     async def test_a_proposal_is_never_reported_as_recorded(self, monkeypatch, calls, registry) -> None:
         answering(monkeypatch, calls, PROPOSE_BODY)
 
         result = await run_mark([PROPOSAL])
 
-        assert "Nr. 5 auf S. 1" in result
-        assert "VORSCHLÄGE" in result and "NOCH NICHTS bestätigt" in result
-        assert "übernimmt oder verwirft" in result
+        assert "no. 5 on p. 1" in result
+        assert "PROPOSALS" in result and "NOTHING has been confirmed YET" in result
+        assert "until a person takes over or dismisses" in result
 
     async def test_a_reply_by_number_looks_the_id_up_first(self, monkeypatch, calls, registry) -> None:
         answering(monkeypatch, calls, LIST_BODY, REPLY_BODY)
@@ -200,7 +200,7 @@ class TestWhatItSays:
 
         assert [payload["op"] for payload, _ in calls] == ["list", "reply"]
         assert calls[1][0]["annotationId"] == ANNOTATION
-        assert "Anmerkung Nr. 4" in result
+        assert "annotation no. 4" in result
 
     async def test_a_reply_to_a_number_the_document_lacks_is_refused(self, monkeypatch, calls) -> None:
         answering(monkeypatch, calls, LIST_BODY)
@@ -208,7 +208,7 @@ class TestWhatItSays:
         result = await run_reply("9", "Ist korrigiert.")
 
         assert [payload["op"] for payload, _ in calls] == ["list"]
-        assert "Diese Anmerkung gibt es" in result
+        assert "This annotation does not exist" in result
 
     async def test_a_reply_without_an_annotation_is_refused_before_anything_is_sent(self, monkeypatch, calls):
         answering(monkeypatch, calls, LIST_BODY)

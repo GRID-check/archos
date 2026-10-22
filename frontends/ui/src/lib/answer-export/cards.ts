@@ -190,11 +190,22 @@ export const CARD_EXPORT: Record<GridCard['type'], ExportKind> = {
   // would tell a Behörde that files are filed where this card only SUGGESTED
   // putting them. The same reasoning as the two proposals above it.
   file_operation_proposal: 'chrome',
+  // An action Piloti proposed through the MCP surface, awaiting a decision the
+  // export cannot report: printed, it would state a change that may never have run.
+  operation_proposal: 'chrome',
   // Piloti's marks and thread answers on a document. A proposed mark is a
   // question to the office until somebody takes it over, and the answer lives in
   // `metadata.cardInteractions` and on the canvas, neither of which the export
   // reads; the marks themselves belong to the document's own Prüfansicht.
   canvas_activity: 'chrome',
+  // Where Piloti looked on a document (ADR-0128). The card is an ADDRESS (page,
+  // region, Fassung) whose picture the browser draws from the document; printed,
+  // it is coordinates with no picture. Revisit when the card draws its thumbnail
+  // (ADR-0128 plan, V4): the crop itself would be a finding a Behörde can read.
+  look: 'chrome',
+  // The same: two page addresses and boxes, whose pictures the browser draws from the documents;
+  // printed, it is ids and coordinates with no picture.
+  revision_compare: 'chrome',
 
   // Read live from the project's model; exported as a title plus `liveCard`.
   ifc_viewer: 'live',

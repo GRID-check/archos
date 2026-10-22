@@ -12,24 +12,14 @@
  */
 
 import { NextResponse } from 'next/server'
-import { z } from 'zod'
 import { platformApiRoute } from '@/lib/api/platform-handler'
 import { PLATFORM_PERMISSIONS } from '@/lib/authz/permissions'
 import { parseJsonBody } from '@/lib/api/handler'
 import { recordAuditEvent } from '@/lib/audit/service'
 import { getPlatformOrganizationId } from '@/lib/authz/platform'
 import { invalidateSeededLimits } from '@/lib/budgets/service'
+import { pricingPutSchema } from '@/lib/platform/platform-wire'
 import { getPricingView, PRICING_BOUNDS, REFERENCE_REQUEST, savePricing } from '@/lib/pricing/service'
-
-const creditsSchema = z.number().min(0).finite().nullable()
-
-const putSchema = z.object({
-  marginMultiplier: z.number().finite(),
-  usdPerCredit: z.number().finite(),
-  defaultOrgDailyCredits: creditsSchema,
-  defaultOrgMonthlyCredits: creditsSchema,
-  note: z.string().trim().max(500).nullable().optional(),
-})
 
 export const GET = platformApiRoute(
   async () => {
@@ -41,7 +31,7 @@ export const GET = platformApiRoute(
 
 export const PUT = platformApiRoute(
   async ({ request, session }) => {
-    const input = await parseJsonBody(request, putSchema)
+    const input = await parseJsonBody(request, pricingPutSchema)
 
     const version = await savePricing({
       marginMultiplier: input.marginMultiplier,

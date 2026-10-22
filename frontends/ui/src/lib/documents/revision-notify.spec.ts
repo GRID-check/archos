@@ -18,6 +18,8 @@ vi.mock('@/lib/inbox/service', () => ({ emitInboxItems: vi.fn().mockResolvedValu
 vi.mock('./repository', () => ({ findDocumentInOrg: vi.fn(), findRevisionCounterparts: vi.fn() }))
 vi.mock('./reconcile-status', () => ({ readRevisionLinkNames: vi.fn(), refreshCollectionFiles: vi.fn() }))
 vi.mock('./version-repository', () => ({ findPublishedVersion: vi.fn(), findPreviousVersion: vi.fn() }))
+vi.mock('@/lib/revision-notice/queue', () => ({ queueRevisionNotice: vi.fn().mockResolvedValue(true) }))
+vi.mock('@/lib/document-check/queue', () => ({ queueDocumentCheck: vi.fn().mockResolvedValue(true) }))
 vi.mock('./revision-announcement-repository', () => ({
   claimRevisionAnnouncement: vi.fn(),
   releaseRevisionAnnouncement: vi.fn(),
@@ -31,6 +33,8 @@ import { recipientsHoldingGroup } from '@/lib/inbox/repository'
 import { loadOrganizationDirectory } from '@/lib/sharing/directory'
 import type { DirectoryPerson } from '@/lib/sharing/types'
 import { emitInboxItems } from '@/lib/inbox/service'
+import { queueDocumentCheck } from '@/lib/document-check/queue'
+import { queueRevisionNotice } from '@/lib/revision-notice/queue'
 import { SCREENED_ONLY } from './document-reader'
 import { claimRevisionAnnouncement, releaseRevisionAnnouncement } from './revision-announcement-repository'
 import {
@@ -111,6 +115,7 @@ const openMark = (fields: Partial<AnnotationRecord>): AnnotationRecord =>
   }) as AnnotationRecord
 
 beforeEach(() => {
+  vi.mocked(queueDocumentCheck).mockClear()
   vi.mocked(listDocumentAnnotations).mockReset()
   vi.mocked(listDocumentAnnotations).mockResolvedValue([])
   vi.mocked(emitInboxItems).mockReset()
@@ -515,6 +520,47 @@ describe('announceSettledVersions', () => {
     expect(emitted()[0]).toMatchObject({ anchorId: 'v2', actorUserId: 'editor', resourceId: 'doc-a' })
   })
 
+  it('queues the check of a document against the project, a first upload included, as its uploader', async () => {
+    vi.mocked(findPublishedVersion).mockResolvedValue(version({ id: 'v1', versionNumber: 1 }))
+
+    await announceSettledVersions('org-1', ['doc-a'])
+
+    expect(queueDocumentCheck).toHaveBeenCalledWith({
+      organizationId: 'org-1',
+      actorUserId: 'uploader',
+      documentId: 'doc-a',
+      versionId: 'v1',
+    })
+  })
+
+  it('queues no check when one settle batch announces more than ten documents (a bulk import)', async () => {
+    const ids = Array.from({ length: 11 }, (_, index) => `bulk-${index}`)
+    vi.mocked(findDocumentInOrg).mockImplementation(async (id) => doc({ id }))
+    vi.mocked(findPublishedVersion).mockResolvedValue(version({ versionNumber: 1 }))
+
+    await announceSettledVersions('org-1', ids)
+
+    expect(queueDocumentCheck).not.toHaveBeenCalled()
+  })
+
+  it('still checks a batch of ten', async () => {
+    const ids = Array.from({ length: 10 }, (_, index) => `few-${index}`)
+    vi.mocked(findDocumentInOrg).mockImplementation(async (id) => doc({ id }))
+    vi.mocked(findPublishedVersion).mockResolvedValue(version({ versionNumber: 1 }))
+
+    await announceSettledVersions('org-1', ids)
+
+    expect(queueDocumentCheck).toHaveBeenCalledTimes(10)
+  })
+
+  it('queues no check for a document that is not a project\'s', async () => {
+    vi.mocked(findDocumentInOrg).mockResolvedValue(doc({ id: 'shelf', scope: 'office_shelf', projectId: null }))
+
+    await announceSettledVersions('org-1', ['shelf'])
+
+    expect(queueDocumentCheck).not.toHaveBeenCalled()
+  })
+
   it('says nothing for a first version', async () => {
     vi.mocked(findPublishedVersion).mockResolvedValue(version({ versionNumber: 1 }))
 
@@ -687,5 +733,44 @@ describe('notifyNewRevision — announced once', () => {
 
     await expect(notifyNewRevision(link)).rejects.toThrow('db down')
     expect(releaseRevisionAnnouncement).toHaveBeenCalledWith({ organizationId: 'org-1', documentId: 'doc-b', anchorId: 'doc-a' })
+  })
+})
+
+describe('notifyNewRevision — Piloti notices the Fassung (ADR-0130)', () => {
+  beforeEach(() => {
+    vi.mocked(queueRevisionNotice).mockClear()
+  })
+
+  it('queues one notice of a Fassung under another name, as the person who made it, once the announcement is claimed', async () => {
+    await notifyNewRevision(link)
+
+    expect(queueRevisionNotice).toHaveBeenCalledWith({
+      organizationId: 'org-1',
+      actorUserId: 'editor',
+      newerId: 'doc-b',
+      olderId: 'doc-a',
+    })
+  })
+
+  it('queues nothing for a Fassung announced before', async () => {
+    vi.mocked(claimRevisionAnnouncement).mockResolvedValue(false)
+
+    await notifyNewRevision(link)
+
+    expect(queueRevisionNotice).not.toHaveBeenCalled()
+  })
+
+  it('queues nothing for a same-name version, whose older bytes the index no longer holds', async () => {
+    await notifyNewRevision({ organizationId: 'org-1', actorUserId: 'editor', newerId: 'doc-a', olderId: 'doc-a', versionId: 'v2' })
+
+    expect(queueRevisionNotice).not.toHaveBeenCalled()
+  })
+
+  it('queues nothing for a held document', async () => {
+    vi.mocked(findDocumentInOrg).mockResolvedValue(null)
+
+    await notifyNewRevision(link)
+
+    expect(queueRevisionNotice).not.toHaveBeenCalled()
   })
 })

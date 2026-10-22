@@ -1,6 +1,6 @@
 """One page of a stored document as JPEG bytes, for a caller that is not a chat turn.
 
-``view_knowledge_image`` shows a page to the model inside a turn: it is bound to
+``look`` shows a page to the model inside a turn: it is bound to
 the turn's scope and its per-turn image budget, and it answers in content
 blocks. The Fassung comparison (``aiq_api.routes.revision_compare``) needs the
 same bytes outside a turn, so this is the same three steps without the tool
@@ -12,7 +12,7 @@ ingest-time captioning used.
 **Nothing is stored per page.** Ingestion keeps the rasters it cut out of a PDF
 (``llamaindex/image_store``) and one thumbnail per document, not a render of
 every page, so a page is rendered from the original on demand, exactly as
-``view_knowledge_image`` does it. Those helpers are used as they are, so a
+``look`` does it. Those helpers are used as they are, so a
 change to how a page is rendered lands in both places.
 
 **Who may ask is not decided here.** The lookup carries no turn envelope, so the
@@ -70,7 +70,7 @@ async def load_page_jpeg(
     """
     if page < 1:
         raise PageImageUnavailable("invalid_page")
-    limit = max_dim or _view._default_max_dim()
+    limit = max_dim or _view.default_max_dim()
     location = await _view._resolve_storage_location(collection, file_name, organization_id)
     if location is None:
         raise PageImageUnavailable("not_stored")

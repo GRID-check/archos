@@ -16,6 +16,7 @@ from contextlib import nullcontext
 from contextlib import suppress
 from dataclasses import dataclass
 from typing import Any
+from typing import Literal
 
 from pydantic import Field
 from pydantic import model_validator
@@ -27,6 +28,11 @@ from nat.plugin_api import Context
 from nat.plugin_api import FunctionBaseConfig
 from nat.plugin_api import FunctionInfo
 from nat.plugin_api import register_function
+
+from .document_groups import GROUP_BY_DOCUMENT
+from .document_groups import GROUP_OVERFETCH
+from .document_groups import group_by_document
+from .document_groups import render_document_groups
 
 logger = logging.getLogger(__name__)
 
@@ -83,7 +89,13 @@ _KNOWLEDGE_SEARCH_DESCRIPTION = (
     "when you already know the class or a title fragment. Pass `folder=` (the "
     "path the inventory prints after 'Ordner:', e.g. Brandschutz/Fluchtwege) "
     "when the user scoped the question to a folder — it also covers everything "
-    "filed beneath that folder.\n"
+    "filed beneath that folder. "
+    '`group_by="document"` (ranked search only) answers "which documents deal with X": one entry per '
+    "document, its best passage and how many passages of the ranked pool it held, so one long PDF "
+    "cannot fill every slot.\n"
+    '`shelf=` ("project", "office", "base") reads one shelf only; omitted, every shelf is read, the OIB corpus '
+    'included. For "is X in OUR documents" pass `shelf="project"` (then `"office"`): an exact or regex '
+    "answer states per shelf how many documents were searched and how many matched.\n"
     '`match="exact"` turns the search into Ctrl+F across the files: EVERY '
     "passage that contains the query literally, plus a table of every matching "
     "file with its count and pages — for a company or person, a room or door "
@@ -92,7 +104,17 @@ _KNOWLEDGE_SEARCH_DESCRIPTION = (
     "go into one query separated by '|' ('BA-03 | BA 03'); case, ä/ae and ß/ss, "
     "and a line break, space or hyphen between words are matched for you "
     "('OIB Richtlinie' finds 'OIB-Richtlinie'). A term of two or three "
-    "characters ('EG') matches as a whole word only. The reader's own files come first.\n"
+    "characters ('EG') matches as a whole word only. The reader's own files come first. "
+    "`stemmed=true` also finds the inflected forms of each word (German stemming: 'Fluchtwegbreite' finds "
+    "'Fluchtwegbreiten' and the reverse; a compound only literally); without it the search is literal.\n"
+    '`match="regex"` is the same search with a regex in Python syntax, case-insensitive, for a '
+    "pattern (a Geschäftszahl `MA 37/\\d{6}`, a fire door `\\bT30-\\d+`); `|` is then regex alternation. "
+    "It needs one literal whole word or number it must contain (`37`, `T30`; a word followed by `?`, `*` "
+    "or `\\w` does not count, so `MA ?37` has none), or a `folder=`, `file_name=` or `doc_class=` to read "
+    "in; a pattern that backtracks is refused. `context=` (0 to 3, exact and regex only) adds the "
+    "lines around every hit as an index under the passages. A search that stops at its limit says "
+    "so: its counts are lower bounds, with the passages per file that hold the words beside them. A regex "
+    "answer also lists every distinct matched string with its count, files and pages.\n"
     "WHEN NOT TO CALL — to put a file on screen (the user asked to SEE or "
     "BROWSE files, no legal question): that is `surface_documents`. After "
     "you cite a project or Büroablage file, do not also call "
@@ -101,7 +123,8 @@ _KNOWLEDGE_SEARCH_DESCRIPTION = (
     "already know WHICH document you need, that is `read_passage` — with the "
     "Punkt or page when you have one, with the document alone when you do not "
     "(it then returns that document's scope and its outline). A lookup, not a "
-    "second search.\n"
+    "second search. Which files there are, how many, or which Fassung is "
+    "current: that is `list_files`.\n"
     "HOW TO QUERY — rewrite the user question into a search query (topic + "
     "jurisdiction + implied year). Prefer one precise call over a broad dump. "
     "If a conclusion names a document and a Punkt or page you have not opened, "
@@ -124,12 +147,44 @@ _KNOWLEDGE_SEARCH_DESCRIPTION = (
     "RETURNS — numbered passages with Source, Citation (copy this key "
     "verbatim), Dokumentart, Ordner (the folder the file is filed in, when it "
     "has one), page, and the passage. Cite only those keys. "
+    "A `Folder: <path> — <abstract>` line after the passages is a folder whose card matches: a pointer, "
+    'never a source. Look inside with `list_files(folder=…, view="tree")` or `knowledge_search(…, folder=…)` '
+    "and cite the documents you read there. "
     "A hit whose Herkunft line says 'Piloti-Dokument' is office knowledge the "
     "office has approved, never a source for a normative value: cite it for "
     "what the office decided, not for what the OIB requires. "
     "An empty result tells you how to retry (narrower query, `file_name`, "
     "`title_contains`); it is not permission to invent a citation."
 )
+
+#: The paragraphs of :data:`_KNOWLEDGE_SEARCH_DESCRIPTION` that offer a literal mode, each dropped when
+#: its mode is not configured.
+_EXACT_PARAGRAPH = _KNOWLEDGE_SEARCH_DESCRIPTION[
+    _KNOWLEDGE_SEARCH_DESCRIPTION.index('`match="exact"`') : _KNOWLEDGE_SEARCH_DESCRIPTION.index('`match="regex"`')
+]
+_REGEX_PARAGRAPH = _KNOWLEDGE_SEARCH_DESCRIPTION[
+    _KNOWLEDGE_SEARCH_DESCRIPTION.index('`match="regex"`') : _KNOWLEDGE_SEARCH_DESCRIPTION.index("WHEN NOT TO CALL")
+]
+
+
+def knowledge_search_description(match_modes: Sequence[str]) -> str:
+    """The description, offering only the ``match`` modes this configuration accepts.
+
+    ``match_modes`` is an eval knob (``KnowledgeRetrievalConfig.match_modes``). A description that
+    offered a mode the search then refuses would cost each arm a call to learn so, and bias the
+    comparison the knob exists for.
+    """
+    modes = set(match_modes)
+    text = _KNOWLEDGE_SEARCH_DESCRIPTION
+    if "exact" not in modes:
+        text = text.replace(_EXACT_PARAGRAPH, "")
+    if "regex" not in modes:
+        text = text.replace(_REGEX_PARAGRAPH, "")
+    if "meaning" not in modes:
+        offered = " or ".join(f'`match="{mode}"`' for mode in ("exact", "regex") if mode in modes)
+        text = f"In this configuration the search is literal only: pass {offered} on every call.\n{text}"
+    return text
+
 
 # The knowledge layer has one backend (ADR-0072). The name still keys the
 # adapter registry, where tests register fakes beside it.
@@ -197,6 +252,15 @@ class KnowledgeRetrievalConfig(FunctionBaseConfig, name="knowledge_retrieval"):
     summary_db: str = Field(
         default="sqlite+aiosqlite:///./summaries.db",
         description="Database URL for document summaries (SQLite or PostgreSQL)",
+    )
+    match_modes: list[str] = Field(
+        default_factory=lambda: ["meaning", "exact", "regex"],
+        description=(
+            "EVAL KNOB, not a product setting: the `match=` modes the search accepts. The answer suite's "
+            "`search` arm keeps only `meaning` and its `navigate` arm only the literal modes, to measure "
+            "each way of finding on its own (ADR-0127). A comma-separated string is read as a list, which "
+            "is how `nat run --override` hands one over. Production keeps the default: every mode."
+        ),
     )
     hybrid_search: bool | None = Field(
         default=None,
@@ -303,6 +367,14 @@ class KnowledgeRetrievalConfig(FunctionBaseConfig, name="knowledge_retrieval"):
             "draft and the search is the baseline."
         ),
     )
+
+    @model_validator(mode="before")
+    @classmethod
+    def read_match_modes(cls, data):
+        """``match_modes`` given as a comma-separated string (a ``nat run --override``) is a list."""
+        if isinstance(data, dict) and isinstance(data.get("match_modes"), str):
+            data = {**data, "match_modes": [mode.strip() for mode in data["match_modes"].split(",") if mode.strip()]}
+        return data
 
     @model_validator(mode="after")
     def validate_summary_config(self):
@@ -1529,7 +1601,14 @@ def _grounding_hit(chunk, *, resolved, resolved_titles, resolved_folders, ambigu
         body=content[:_CHUNK_TRUNCATE_CHARS] if truncated else content,
         body_truncated=truncated,
         regions=_hit_regions(chunk),
+        page_end=_page_end(chunk, page),
     )
+
+
+def _page_end(chunk, page: int | None) -> int | None:
+    """The chunk's stored ``page_end`` when it is later than its start page, else None."""
+    end = str((chunk.metadata or {}).get("page_end") or "")
+    return int(end) if page is not None and end.isdigit() and int(end) > page else None
 
 
 def _grounding_hits(chunks) -> tuple:
@@ -1960,6 +2039,10 @@ async def knowledge_retrieval(config: KnowledgeRetrievalConfig, _builder: Builde
         file_name: str | None = None,
         folder: str | None = None,
         match: str = "meaning",
+        context: int | str | None = None,
+        group_by: Literal["document"] | None = None,
+        stemmed: bool = False,
+        shelf: str | None = None,
         conclusion: str = "",
     ) -> str:
         """Read and cite passages from the ingested knowledge base.
@@ -1997,7 +2080,24 @@ async def knowledge_retrieval(config: KnowledgeRetrievalConfig, _builder: Builde
                 hyphens between words matched; a term of up to three
                 characters as a whole word; several spellings separated by
                 "|"), with a per-file count of all matches — for a name, a
-                number, a code or a wording.
+                number, a code or a wording. "regex" is the same search for a
+                pattern in Python syntax (case-insensitive; "|" is regex
+                alternation): it needs one literal word it must contain, or
+                `folder`, `file_name` or `doc_class` to read in.
+            context (int | None): Exact and regex only: 0 to 3 lines shown
+                around every hit, as an index under the passages (0: the hit
+                lines alone, for every hit and not only the eight passages).
+            group_by (str | None): "document" returns one entry per document
+                (its best passage, and how many passages of the ranked pool it
+                held) for "which documents deal with X". Ranked search only.
+            shelf (str | None): "project", "office" or "base": read that shelf only.
+                Omitted: every shelf this question may read, the Basiswissen
+                corpus (building law) included. For "is X in OUR documents" pass
+                "project" or "office" (or both in turn); an exact or regex answer
+                also counts matches and documents per shelf.
+            stemmed (bool): Exact only: also find each word's inflected forms
+                (German stemming: "Fluchtwegbreite" finds "Fluchtwegbreiten" and
+                the reverse). Off by default: the exact search is literal.
 
         Returns:
             str: Numbered excerpts with a Citation key to copy verbatim.
@@ -2069,9 +2169,36 @@ async def knowledge_retrieval(config: KnowledgeRetrievalConfig, _builder: Builde
             _resolve_scoped_collections(config, session_collection, base_collection)
         )
 
-        # The literal mode: same scope, same narrowing, no ranking at all.
-        if (match or "meaning").strip().lower() == "exact":
+        from .browse import entries_on_shelf
+
+        target_collections, refusal = entries_on_shelf(target_collections, shelf)
+        if refusal:
+            return refusal
+
+        mode = (match or "meaning").strip().lower()
+        if mode in {"meaning", "exact", "regex"} and mode not in config.match_modes:
+            return f"`match={mode}` is not available in this configuration."
+        grouping = (group_by or "").strip().lower() or None
+        if grouping not in (None, GROUP_BY_DOCUMENT):
+            return f'`group_by` takes "{GROUP_BY_DOCUMENT}" or nothing.'
+        if grouping and mode != "meaning":
+            return (
+                '`group_by="document"` groups a ranked search. The exact and regex modes already end with '
+                "every matching file and its count."
+            )
+        if grouping:
+            candidate_k = max(candidate_k, effective_top_k * GROUP_OVERFETCH)
+        if stemmed and mode != "exact":
+            return '`stemmed` finds inflected forms in a literal search: pass it with `match="exact"`.'
+
+        # The literal modes: same scope, same narrowing, no ranking at all.
+        if mode in {"exact", "regex"}:
+            from aiq_agent.common.turn_status import emit_literal_search
+
             from .browse import exact_search
+
+            # A literal search is a navigate move (ADR-0127); the tool step cannot say so, this record does.
+            emit_literal_search(mode)
 
             return await exact_search(
                 target_collections,
@@ -2083,9 +2210,21 @@ async def knowledge_retrieval(config: KnowledgeRetrievalConfig, _builder: Builde
                 doc_class=doc_class,
                 title_contains=title_contains,
                 filters=filters,
+                regex_mode=mode == "regex",
+                context=context,
+                stemmed=bool(stemmed),
+                shelf=None,  # already applied to ``target_collections`` above
             )
-        if (match or "meaning").strip().lower() != "meaning":
-            return '`match` must be "meaning" (ranked by what a passage says) or "exact" (every literal occurrence).'
+        if mode != "meaning":
+            return (
+                '`match` must be "meaning" (ranked by what a passage says), "exact" (every literal occurrence) '
+                'or "regex" (every match of a pattern).'
+            )
+        if context not in (None, ""):
+            return (
+                '`context` shows lines around a hit, and only `match="exact"` or `match="regex"` '
+                "has hits to show them around."
+            )
 
         # `folder=` narrows BEFORE ranking, as the exact mode does: the folder
         # becomes the files filed in it (or under it), and only those are
@@ -2153,8 +2292,25 @@ async def knowledge_retrieval(config: KnowledgeRetrievalConfig, _builder: Builde
         # which is the opposite request.
         from aiq_agent.common.norm_registry import family_query_number
 
-        family_key = None if (file_name or folder) else family_query_number(query)
+        family_key = None if (file_name or folder or grouping) else family_query_number(query)
         family_task = asyncio.create_task(_family_branch(target_collections, family_key)) if family_key else None
+        # A search can land on a folder: its card's point, beside the passages (ADR-0127). Not when a
+        # file is named, which is the caller already past every folder.
+        from .folder_channel import folder_routes
+
+        folder_task = (
+            None
+            if file_name
+            else asyncio.create_task(
+                folder_routes(
+                    retriever,
+                    [entry.collection for entry in target_collections if entry.collection != base_collection],
+                    retrieval_query,
+                    folder=folder,
+                    hint=query,
+                )
+            )
+        )
 
         # Per-turn requery budget: one firing per turn. Reset per turn id when
         # the NAT context states one (user message id), falling back to the
@@ -2441,6 +2597,7 @@ async def knowledge_retrieval(config: KnowledgeRetrievalConfig, _builder: Builde
                         )
                 except Exception:  # noqa: BLE001 - the first ranking is always a valid answer
                     logger.warning("Retrieval loop fan-out failed; keeping the first pool", exc_info=True)
+            pool = list(merged.chunks)
             merged = merged.model_copy(update={"chunks": reranked})
 
             # Diversity cap on the ANSWER budget, in whatever order survived reranking
@@ -2449,7 +2606,15 @@ async def knowledge_retrieval(config: KnowledgeRetrievalConfig, _builder: Builde
             # where possible, filled back from the deferred ranks when there are not
             # enough distinct documents. With the cap disabled this is the plain trim.
             pre_cap_count = len(merged.chunks)
-            capped = _apply_diversity_cap(merged.chunks, effective_top_k, effective_max_per_document)
+            groups_trailer = ""
+            if grouping:
+                # One entry per document instead of the cap: the grouping IS the spread.
+                every_group = group_by_document(merged.chunks, pool)
+                groups = every_group[:effective_top_k]
+                capped = [group.best for group in groups]
+                groups_trailer = render_document_groups(groups, sum(group.passages for group in every_group))
+            else:
+                capped = _apply_diversity_cap(merged.chunks, effective_top_k, effective_max_per_document)
             dropped_by_cap = max(0, pre_cap_count - len(capped))
             merged = merged.model_copy(update={"chunks": capped})
 
@@ -2576,6 +2741,8 @@ async def knowledge_retrieval(config: KnowledgeRetrievalConfig, _builder: Builde
                         search_input["title_contains"] = title_contains
                     if folder:
                         search_input["folder"] = folder
+                    if grouping:
+                        search_input["group_by"] = grouping
                     if requery_skipped_reason:
                         search_input["requery_skipped"] = requery_skipped_reason
                     search_input["requery_fired"] = bool(requery_fired)
@@ -2645,17 +2812,19 @@ async def knowledge_retrieval(config: KnowledgeRetrievalConfig, _builder: Builde
             from aiq_agent.common.turn_status import KNOWLEDGE_SEARCH_TOOL
             from aiq_agent.common.turn_status import lane_tool_scope
 
+            folders_trailer = await folder_task if folder_task is not None else ""
             if not merged.chunks:
                 if not merged.success or getattr(merged, "error_message", None):
                     with lane_tool_scope(KNOWLEDGE_SEARCH_TOOL):
                         return notice + _format_results(merged, query)
-                return notice + _empty_search_message(
+                empty = _empty_search_message(
                     query,
                     file_name=file_name,
                     doc_class=doc_class,
                     title_contains=title_contains,
                     folder=folder,
                 )
+                return notice + empty + (f"\n\n{folders_trailer}" if folders_trailer else "")
 
             # Format for LLM. _format_results does the (now batched, 1-3 query)
             # doc_class resolution plus pure-CPU string building; run it off the
@@ -2673,7 +2842,15 @@ async def knowledge_retrieval(config: KnowledgeRetrievalConfig, _builder: Builde
                     merged,
                     query,
                     notice,
-                    overview.trailer if overview is not None else "",
+                    "\n\n".join(
+                        part
+                        for part in (
+                            overview.trailer if overview is not None else "",
+                            groups_trailer,
+                            folders_trailer,
+                        )
+                        if part
+                    ),
                     family_note,
                     overview.opened_files if overview is not None else frozenset(),
                     coverage_gap=coverage.reason() if coverage is not None else None,
@@ -2702,6 +2879,8 @@ async def knowledge_retrieval(config: KnowledgeRetrievalConfig, _builder: Builde
             # concurrency free: nothing outlives the call it was started for.
             if family_task is not None and not family_task.done():
                 family_task.cancel()
+            if folder_task is not None and not folder_task.done():
+                folder_task.cancel()
 
     # Yield the function info for NAT registration
     if max_per_document > 0:
@@ -2715,7 +2894,7 @@ async def knowledge_retrieval(config: KnowledgeRetrievalConfig, _builder: Builde
         yield FunctionInfo.from_fn(
             search,
             description=(
-                f"{_KNOWLEDGE_SEARCH_DESCRIPTION} "
+                f"{knowledge_search_description(config.match_modes)} "
                 f"Returns up to {top_k} excerpts (platform-configurable), {diversity_clause}"
             ),
         )

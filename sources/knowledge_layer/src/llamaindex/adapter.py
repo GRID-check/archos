@@ -277,7 +277,7 @@ MIN_IMAGE_HEIGHT_PX = 100
 # Most embedded rasters per PDF sent to the VLM. Each one is a paid call, and a
 # photo catalogue or a scanned folder can hold hundreds. 64 is the BFF's
 # `MAX_STORED_IMAGES_PER_DOCUMENT` (frontends/ui/src/lib/s3.ts), so every raster
-# that is analysed can also be stored for `view_knowledge_image`. The largest
+# that is analysed can also be stored for `look`. The largest
 # are kept (see `cap_images`); the count left out is recorded on the file's
 # job status as `images_over_cap`. 0 analyses none.
 MAX_IMAGES_PER_DOCUMENT = _env_int("AIQ_MAX_IMAGES_PER_DOCUMENT", 64, minimum=0)
@@ -5176,7 +5176,7 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
                             )
 
                         # Keep the rasters the VLM just captioned, beside the
-                        # document, so `view_knowledge_image` can show one at
+                        # document, so `look` can show one at
                         # its own resolution rather than as a page render.
                         # Only a document the BFF dispatched has an id and a
                         # prefix to store under; the corpus sync has neither
@@ -5534,6 +5534,14 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
                         from aiq_agent.knowledge import set_document_folder_path
 
                         register_summary(collection_name, file_name, summary, tags=tags, topics=topics)
+                        # The page count the listing and the tree show: the highest page
+                        # any chunk reaches. A text file has none, which clears an old count.
+                        from aiq_agent.knowledge import set_document_page_count
+                        from aiq_agent.knowledge.page_count import largest_page
+
+                        set_document_page_count(
+                            collection_name, file_name, largest_page(doc.metadata for doc in all_documents)
+                        )
                         # The title block (Plankopf) the vision model read on the first drawing
                         # page that has one: Plannummer, Index, Datum. Read from the same
                         # analysis as the chunks, so it costs no further call. A re-upload
@@ -6048,8 +6056,15 @@ class LlamaIndexRetriever(BaseRetriever):
         pattern: str,
         filters: dict[str, Any] | None = None,
         limit: int = 500,
+        user_regex: bool = False,
+        stem_phrases: list[str] | None = None,
     ) -> list[Chunk] | None:
         """Every chunk matching the regex ``pattern`` (``qdrant.retrieval.find_text``).
+
+        ``user_regex`` marks a person's own pattern (``match="regex"``), which is read
+        with a match timeout and raises ``PatternTooCostly`` when it backtracks.
+        ``stem_phrases`` adds the chunks holding an inflected form of those phrases
+        (the German-stemmed index, ``knowledge_search(stemmed=true)``).
 
         The vector store is the source of truth for chunk text, so this reads it
         there. No embedding, no ranking: a scroll over the collection, narrowed
@@ -6057,7 +6072,19 @@ class LlamaIndexRetriever(BaseRetriever):
         regex. A collection with no chunks is an empty answer, not a failure;
         a store error raises, so the caller can say the search did not run.
         """
-        return await asyncio.to_thread(self._find_text_sync, collection_name, pattern, filters, limit)
+        return await asyncio.to_thread(
+            self._find_text_sync, collection_name, pattern, filters, limit, user_regex, stem_phrases
+        )
+
+    async def candidate_counts(
+        self, collection_name: str, pattern: str, filters: dict[str, Any] | None = None, user_regex: bool = False
+    ) -> dict[str, int] | None:
+        """``file_name -> chunks that hold the pattern's words`` (``qdrant.retrieval.candidate_counts``), or None."""
+        from ..qdrant import retrieval as qdrant_retrieval
+
+        return await asyncio.to_thread(
+            qdrant_retrieval.candidate_counts, collection_name, pattern, filters, user_regex=user_regex
+        )
 
     async def fetch(
         self,
@@ -6065,26 +6092,47 @@ class LlamaIndexRetriever(BaseRetriever):
         filters: dict[str, Any] | None,
         limit: int,
         order_by: str | None = None,
+        start_from: tuple[int, int] | None = None,
     ) -> list[Chunk] | None:
         """The chunks ``filters`` admits, by scroll, with no query vector and no ranking.
 
         No embedding and no lazy adapter start-up: nothing here needs the
         embedder (``qdrant/reads.py``).
         """
-        return await asyncio.to_thread(self._fetch_sync, collection_name, filters, limit, order_by)
+        return await asyncio.to_thread(self._fetch_sync, collection_name, filters, limit, order_by, start_from)
 
     def _fetch_sync(
-        self, collection_name: str, filters: dict[str, Any] | None, limit: int, order_by: str | None
+        self,
+        collection_name: str,
+        filters: dict[str, Any] | None,
+        limit: int,
+        order_by: str | None,
+        start_from: tuple[int, int] | None = None,
     ) -> list[Chunk]:
         from ..qdrant import reads as qdrant_reads
+        from ..qdrant.schema import CHUNK_ORDINAL_FIELD
 
-        chunks = [self._chunk_from_hit(hit) for hit in qdrant_reads.fetch(collection_name, filters, limit, order_by)]
-        for rank, chunk in enumerate(chunks):
+        if start_from is None:
+            hits = qdrant_reads.fetch(collection_name, filters, limit, order_by)
+        else:
+            hits = qdrant_reads.fetch_from(collection_name, filters, start_from, limit)
+        chunks = [self._chunk_from_hit(hit) for hit in hits]
+        for rank, (chunk, hit) in enumerate(zip(chunks, hits, strict=True)):
             chunk.retrieval_rank = rank
+            # A reader that continues a read needs the chunk's place in its file, which the hit's
+            # metadata leaves out as store-only (``payload.STORE_ONLY_FIELDS``).
+            if isinstance(hit.payload.get(CHUNK_ORDINAL_FIELD), int):
+                chunk.metadata.setdefault(CHUNK_ORDINAL_FIELD, hit.payload[CHUNK_ORDINAL_FIELD])
         return chunks
 
     def _find_text_sync(
-        self, collection_name: str, pattern: str, filters: dict[str, Any] | None, limit: int
+        self,
+        collection_name: str,
+        pattern: str,
+        filters: dict[str, Any] | None,
+        limit: int,
+        user_regex: bool = False,
+        stem_phrases: list[str] | None = None,
     ) -> list[Chunk]:
         if not pattern or limit <= 0:
             return []
@@ -6093,7 +6141,10 @@ class LlamaIndexRetriever(BaseRetriever):
         # Every returned chunk matches, so none ranks above another; the
         # caller orders them by document and page (cosine 1.0).
         return [
-            self._chunk_from_hit(hit) for hit in qdrant_retrieval.find_text(collection_name, pattern, filters, limit)
+            self._chunk_from_hit(hit)
+            for hit in qdrant_retrieval.find_text(
+                collection_name, pattern, filters, limit, user_regex=user_regex, stem_phrases=stem_phrases
+            )
         ]
 
     def _warm_sync(self, query: str) -> None:

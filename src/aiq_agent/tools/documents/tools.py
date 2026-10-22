@@ -37,41 +37,41 @@ logger = logging.getLogger(__name__)
 #: meets them. Everything else the middleware builds is dropped.
 DRAFT_TOOL_NAMES = ("ls", "read_file", "write_file", "edit_file")
 
-#: Model-facing German, replacing DeepAgents' English. ``edit_file`` carries the
+#: Model-facing text, replacing DeepAgents' defaults. ``edit_file`` carries the
 #: two things that actually make an exact-string replacement land: anchor on a
 #: heading, and copy the paragraph rather than retyping it — with the warning
 #: that ``read_file`` prints line numbers that are not part of the file.
 _TOOL_DESCRIPTIONS = {
     "ls": (
-        "Listet die Entwürfe dieser Unterhaltung. Der Arbeitsordner liegt unter "
-        f"`{DRAFT_ROOT}` und enthält nur, was in dieser Unterhaltung geschrieben wurde — "
-        "keine Projektdateien, keine Büroablage. Vor einer Überarbeitung aufrufen, wenn der "
-        "Pfad des Entwurfs nicht bekannt ist."
+        "Lists the drafts of this conversation. The working directory is at "
+        f"`{DRAFT_ROOT}` and contains only what was written in this conversation — "
+        "no project files, no office shelf (Büroablage). Call it before a revision when the "
+        "path of the draft is not known."
     ),
     "read_file": (
-        "Liest einen Entwurf aus dem Arbeitsordner. Die Ausgabe ist dem Text jeder Zeile eine "
-        "Zeilennummer und ein Tabulator vorangestellt; beides gehört zur Anzeige und nicht zum "
-        "Dokument. Vor einer Überarbeitung lesen, damit `old_string` wörtlich aus dem Dokument "
-        "stammt. Was hier steht, hat die Antwort selbst geschrieben; Belege kommen aus den "
-        "Quellen-Werkzeugen."
+        "Reads a draft from the working directory. The output has a line number "
+        "and a tab prepended to the text of each line; both belong to the display and not to the "
+        "document. Read before a revision, so that `old_string` comes verbatim from the document. "
+        "What stands here, the answer wrote itself; evidence comes from the "
+        "source tools."
     ),
     "write_file": (
-        "Schreibt ein NEUES Dokument in den Arbeitsordner dieser Unterhaltung, als Markdown "
-        f"unter `{DRAFT_ROOT}<name>.md` (kurzer, sprechender Dateiname, Kleinbuchstaben, "
-        "Bindestriche). Für ein in Auftrag gegebenes Dokument — Aktenvermerk, Protokoll, "
-        "Checkliste, Flächenaufstellung, Konzeptentwurf: das Dokument wird geschrieben, nicht "
-        "in der Antwort beschrieben. Das Dokument beginnt mit einer Überschrift (`# …`) und ist "
-        "vollständig; die Antwort sagt danach in einem Satz, was geschrieben wurde. "
-        "Legt nur neue Dateien an: Gibt es den Pfad schon, ist `edit_file` das Werkzeug."
+        "Writes a NEW document into this conversation's working directory, as Markdown "
+        f"under `{DRAFT_ROOT}<name>.md` (short, descriptive file name, lowercase, "
+        "hyphens). For a commissioned document — Aktenvermerk, protocol, "
+        "checklist, area schedule, concept draft: the document is written, not "
+        "described in the answer. The document begins with a heading (`# …`) and is "
+        "complete; the answer then says in one sentence what was written. "
+        "Only creates new files: if the path already exists, `edit_file` is the tool."
     ),
     "edit_file": (
-        "Überarbeitet einen vorhandenen Entwurf, indem `old_string` genau einmal durch "
-        "`new_string` ersetzt wird. `old_string` muss im Dokument eindeutig sein: An einer "
-        "Überschrift verankern und den ganzen Absatz von der Überschrift bis zum Ende des zu "
-        "ändernden Textes übernehmen, wörtlich aus der Ausgabe von `read_file` — ohne die "
-        "vorangestellten Zeilennummern und Tabulatoren. Kommt der Text mehrfach vor, meldet das "
-        "Werkzeug die Anzahl; dann mit mehr Umgebung erneut versuchen. Für ein neues Dokument "
-        "`write_file` verwenden."
+        "Revises an existing draft by replacing `old_string` exactly once with "
+        "`new_string`. `old_string` must be unique in the document: anchor on a "
+        "heading and take over the whole paragraph from the heading to the end of the text to "
+        "change, verbatim from the output of `read_file` — without the "
+        "prepended line numbers and tabs. If the text occurs several times, the "
+        "tool reports the count; then retry with more surrounding context. For a new document "
+        "use `write_file`."
     ),
 }
 

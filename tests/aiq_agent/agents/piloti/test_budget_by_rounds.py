@@ -104,7 +104,7 @@ def _bypass_citation_pipeline():
         patch("aiq_agent.agents.piloti.answer_pipeline.verify_citations") as verify,
         patch("aiq_agent.agents.piloti.answer_pipeline.sanitize_report") as sanitize,
     ):
-        verify.side_effect = lambda content, reg, reference_sources=None: MagicMock(
+        verify.side_effect = lambda content, reg, reference_sources=None, **_: MagicMock(
             verified_report=content, removed_citations=[]
         )
         sanitize.side_effect = lambda content: MagicMock(sanitized_report=content)
@@ -389,8 +389,8 @@ class TestTheRoundWidthCap:
 
         (deferred,) = [m for m in result.messages if isinstance(m, ToolMessage) and m.tool_call_id == "b"]
         assert str(deferred.content) == _WIDTH_CAP_MESSAGE
-        assert "nächsten Runde" in _WIDTH_CAP_MESSAGE
-        assert "Nicht ausgeführt" in _WIDTH_CAP_MESSAGE
+        assert "next round" in _WIDTH_CAP_MESSAGE
+        assert "Not executed" in _WIDTH_CAP_MESSAGE
 
     async def test_a_capped_round_leaves_its_own_technical_record(self, steps):
         agent = _agent(

@@ -322,7 +322,7 @@ def _format(chunks) -> str:
 
 def test_hit_shows_the_image_line_only_when_a_raster_was_stored():
     with_key = _format([_hit({"image_key": "org/o1/project/p1/doc/d1/_img/3.jpg", "stored_image_index": 3})])
-    assert "Image: stored (view_knowledge_image image_index=3)" in with_key
+    assert "Image: stored (look image_index=3)" in with_key
     assert with_key.index("Citation: fassade.pdf, p.2") < with_key.index("Image: stored")
 
     without = _format([_hit({"image_index": 0})])

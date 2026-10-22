@@ -46,6 +46,9 @@ const BACKEND_TIMEOUT_MS = 120_000
 const compareUrl = (backendUrl: string, collectionName: string): string =>
   `${backendUrl}/v1/collections/${encodeURIComponent(collectionName)}/revision-compare`
 
+const pagesUrl = (backendUrl: string, collectionName: string): string =>
+  `${backendUrl}/v1/collections/${encodeURIComponent(collectionName)}/revision-pages`
+
 /** Load a document to be compared: readable, not held, active, in the working set. */
 async function loadForComparing(session: AuthorizedSession, documentId: string): Promise<Document> {
   const doc = await getAccessibleDocument(session, documentId, 'read')
@@ -57,9 +60,9 @@ async function loadForComparing(session: AuthorizedSession, documentId: string):
   return doc
 }
 
-async function postToBackend(session: AuthorizedSession, collectionName: string, body: object): Promise<Response> {
+async function postToBackend(session: AuthorizedSession, url: string, body: object): Promise<Response> {
   try {
-    return await fetch(compareUrl(getBackendUrl(), collectionName), {
+    return await fetch(url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -93,16 +96,15 @@ function refusalFor(status: number): Error {
   }
 }
 
+/** Who waits on a comparison: a person in the compare view, or a notice Piloti runs on its own (ADR-0130). */
+export type ComparePurpose = 'person' | 'notice'
+
 /**
- * What changed on `page` between `olderId` and `newerId`: boxes on the newer page and
- * the changes in words. Throws an `ApiError` on every failure.
+ * The two documents of a comparison, after every check the comparison needs:
+ * both readable by `session`, neither held, both active, one collection, both
+ * owning backend state, and outside a restricted folder. Throws an `ApiError`.
  */
-export async function compareRevisionVisually(
-  session: AuthorizedSession,
-  newerId: string,
-  olderId: string,
-  page: number,
-): Promise<RevisionVisualChanges> {
+async function loadPair(session: AuthorizedSession, newerId: string, olderId: string): Promise<[Document, Document]> {
   if (newerId === olderId) throw new BadRequestError('A document is not its own earlier Fassung', { reason: 'same_document' })
 
   const newer = await loadForComparing(session, newerId)
@@ -117,15 +119,110 @@ export async function compareRevisionVisually(
       reason: 'restricted_folder',
     })
   }
+  return [newer, older]
+}
 
-  const response = await postToBackend(session, newer.collectionName, {
+/** One page's comparison, with the trace of the vision call that made it (null when cached or untraced). */
+export interface RevisionPageComparison {
+  changes: RevisionVisualChanges
+  traceId: string | null
+}
+
+const traceIdOf = (raw: unknown): string | null => {
+  const value = typeof raw === 'object' && raw !== null ? (raw as Record<string, unknown>).trace_id : null
+  return typeof value === 'string' && /^[0-9a-f]{32}$/.test(value) ? value : null
+}
+
+/**
+ * What changed on `page` between `olderId` and `newerId`, and the trace of the
+ * call. Throws an `ApiError` on every failure. The trace id stays on the
+ * server: {@link compareRevisionVisually} is what a browser is answered with.
+ */
+export async function compareRevisionPage(
+  session: AuthorizedSession,
+  newerId: string,
+  olderId: string,
+  page: number,
+  purpose: ComparePurpose = 'person',
+): Promise<RevisionPageComparison> {
+  const { changes, traceId } = await comparePair(session, newerId, olderId, page, purpose)
+  return { changes, traceId }
+}
+
+/** {@link compareRevisionPage} with the two file names the pair was loaded under. */
+async function comparePair(
+  session: AuthorizedSession,
+  newerId: string,
+  olderId: string,
+  page: number,
+  purpose: ComparePurpose,
+): Promise<RevisionPageComparison & { olderName: string; newerName: string }> {
+  const [newer, older] = await loadPair(session, newerId, olderId)
+  const response = await postToBackend(session, compareUrl(getBackendUrl(), newer.collectionName), {
     older: older.filename,
     newer: newer.filename,
     page,
+    purpose,
   })
   if (!response.ok) {
     console.warn('[Fassung compare] backend refused:', response.status)
     throw refusalFor(response.status)
   }
-  return parseRevisionVisualChanges(await response.json().catch(() => null))
+  const raw: unknown = await response.json().catch(() => null)
+  return { changes: parseRevisionVisualChanges(raw), traceId: traceIdOf(raw), olderName: older.filename, newerName: newer.filename }
+}
+
+/**
+ * What changed on `page` between `olderId` and `newerId`: boxes on the newer page and
+ * the changes in words, with the two documents' file names (the route already loaded
+ * both to check access, so naming them costs no lookup; an agent's card labels its
+ * sides with them). Throws an `ApiError` on every failure.
+ */
+export async function compareRevisionVisually(
+  session: AuthorizedSession,
+  newerId: string,
+  olderId: string,
+  page: number,
+): Promise<RevisionVisualChanges & { older_name: string; newer_name: string }> {
+  const { changes, olderName, newerName } = await comparePair(session, newerId, olderId, page, 'person')
+  return { ...changes, older_name: olderName, newer_name: newerName }
+}
+
+/** Which pages of the newer Fassung changed, read from the index (no model call). */
+export interface ChangedRevisionPages {
+  pages: number[]
+  newerPageCount: number
+  /** False when neither Fassung has read text or a drawing reading: no page can be called unchanged. */
+  comparable: boolean
+}
+
+const pageList = (raw: unknown): number[] =>
+  Array.isArray(raw) ? raw.filter((page): page is number => Number.isInteger(page) && page >= 1 && page <= 2000) : []
+
+/**
+ * The changed pages of `newerId` against `olderId`, under the same checks as a
+ * comparison (`POST /v1/collections/{c}/revision-pages`). Throws an `ApiError`.
+ */
+export async function changedRevisionPages(
+  session: AuthorizedSession,
+  newerId: string,
+  olderId: string,
+): Promise<ChangedRevisionPages> {
+  const [newer, older] = await loadPair(session, newerId, olderId)
+  const response = await postToBackend(session, pagesUrl(getBackendUrl(), newer.collectionName), {
+    older: older.filename,
+    newer: newer.filename,
+  })
+  if (!response.ok) {
+    console.warn('[Fassung compare] backend refused the changed pages:', response.status)
+    throw refusalFor(response.status)
+  }
+  const body: unknown = await response.json().catch(() => null)
+  const record = typeof body === 'object' && body !== null ? (body as Record<string, unknown>) : {}
+  const count = record.newer_page_count
+  return {
+    pages: pageList(record.pages),
+    newerPageCount: typeof count === 'number' && Number.isInteger(count) && count >= 0 ? count : 0,
+    comparable: record.comparable === true,
+  }
 }

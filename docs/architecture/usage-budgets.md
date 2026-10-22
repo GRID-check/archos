@@ -159,6 +159,15 @@ track_llm_costs()  ──sets──▶  grid_cost_tracker_var (ContextVar)
   tracker (a no-op outside one), and each event carries its role
   (`ingest_vision`, `ingest_transcription`, `embedding`) into `agent_group`.
   Query-time embeddings in a chat turn are metered by the same wrapper.
+- **Direct vision calls over `httpx`**: `look`'s second reader
+  (`tools/look/reading.py`, role `look_reading`) and the Fassung comparison
+  (`aiq_api/routes/revision_compare.py`, role `revision_compare`) post to
+  `/chat/completions` themselves and book the reply's `usage` with
+  `record_completion_usage(body, role=…)`. A look reads the turn's tracker; the
+  comparison opens its own for the organization and person the BFF names in
+  `x-grid-organization-id` / `x-grid-user-id`. A tool call through the agent
+  door (`routes/internal_tools.py`) opens a tracker for the person the envelope
+  verified, so a door `document-look` or search is booked like a turn's.
 - **Voice dictation** (`aiq_api/routes/dictation.py`) is a single
   transcription call per recording, outside any turn. It opens its own
   tracker, books one event with `activity = 'dictation'`, the provider's cost

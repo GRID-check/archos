@@ -95,6 +95,7 @@ import {
   findDocumentInOrg,
   markDocumentNotIndexed,
   findStorageKeyByCollectionAndFilename,
+  type StoredDocumentFile,
   findStorageKeyByIdAndCollection,
   listDocumentLevelPage,
   listProjectDocumentPage,
@@ -3326,7 +3327,7 @@ export async function getDocumentStatus(session: AuthorizedSession, documentId: 
  * backend derives an `organizationId` from an `archiv_` collection prefix, it
  * is forwarded to narrow the row lookup to that org; otherwise the lookup is
  * collection-only. The backend uses the key to fetch the raw bytes from
- * SeaweedFS for the `view_knowledge_image` tool (ADR-0039), so this is
+ * SeaweedFS for the `look` tool (ADR-0039), so this is
  * read-only metadata — it never returns the bytes themselves.
  */
 /**
@@ -3381,7 +3382,7 @@ export async function presignDocumentImageUpload(
 /**
  * Where the `imageIndex`-th stored raster of a `(collection, filename)` pair
  * lives — the read half of {@link presignDocumentImageUpload}, for the
- * backend's `view_knowledge_image` tool. The key is built from the owning
+ * backend's `look` tool. The key is built from the owning
  * document's row, never taken from the caller, so a derived read can only ever
  * name an object under that document's prefix. Null when the pair is unknown
  * or the index is out of range; the tool degrades to a text answer.
@@ -3403,11 +3404,6 @@ export async function findDocumentStorageKey(
   collectionName: string,
   filename: string,
   organizationId?: string
-): Promise<{
-  id: string
-  storageKey: string
-  storageBucket: string | null
-  contentType: string | null
-} | null> {
+): Promise<StoredDocumentFile | null> {
   return findStorageKeyByCollectionAndFilename(collectionName, filename, organizationId)
 }

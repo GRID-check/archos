@@ -8,7 +8,7 @@
  * indexed, so retrieval cannot surface it. That is only half of what the design
  * claims. `findStorageKeyByCollectionAndFilename` resolves any
  * `(collection, filename)` pair for the service-token internal route, and
- * `view_knowledge_image` in the knowledge layer calls that route with a file
+ * `look` in the knowledge layer calls that route with a file
  * name and collection the MODEL supplies — then renders the object with pdfium
  * and hands it back as "the actual page the retrieved chunk describes".
  *

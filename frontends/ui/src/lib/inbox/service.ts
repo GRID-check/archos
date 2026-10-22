@@ -667,7 +667,7 @@ function toItemView(
     row.inertAt || withheld.has(row.id) ? null : (targets.get(targetKey(row.resourceType, row.resourceId)) ?? null)
   const payload: Record<string, unknown> = row.payload ?? {}
   // The delegated task this row is about, when the emitter named one
-  // (`job.completed` / `job.failed` carry `taskId` beside `filedDocumentId`).
+  // (`task_run.completed` / `task_run.failed` carry `taskId` beside `filedDocumentId`).
   // Threaded into the href so the row lands on its result; absent falls back
   // to the target's own page. Attacker-influenced like every other payload
   // field, so anything that is not a non-empty string becomes absent.

@@ -125,7 +125,12 @@ class TestTheRoute:
         response, post = await _post(headers={"x-grid-organization-id": "org-1"})
 
         assert response.status_code == 200
-        assert response.json() == {
+        body = response.json()
+        # The trace id is whatever tracer the process has (another test may have
+        # installed one); the test that installs its own pins the value.
+        assert set(body) >= {"trace_id"}
+        body.pop("trace_id")
+        assert body == {
             "regions": [{"page": 1, "x": 0.2, "y": 0.3, "w": 0.1, "h": 0.25, "label": "Wand verschoben"}],
             "summary": ["Die Wand im Norden ist um 0,5 m nach Osten gerückt."],
             "model": "openai/test-vlm",
@@ -273,10 +278,52 @@ class TestTracing:
         direct_trace._provider.force_flush()
         (span,) = exporter.get_finished_spans()
         assert span.attributes["langfuse.trace.name"] == route.TRACE_NAME == "revision-visual-compare"
+        assert span.attributes["langfuse.trace.metadata.purpose"] == "person"
         assert span.attributes["langfuse.observation.type"] == "generation"
         assert span.attributes["gen_ai.usage.input_tokens"] == 8000
         traced_input = span.attributes["langfuse.observation.input"]
         assert "base64" not in traced_input and "Ältere Fassung" in traced_input
+
+    async def test_a_notice_is_traced_as_one_and_hands_its_trace_on(self, pages, ingested, exporter):
+        response, _ = await _post({**BODY, "purpose": "notice"})
+
+        direct_trace._provider.force_flush()
+        (span,) = exporter.get_finished_spans()
+        assert span.attributes["langfuse.trace.metadata.purpose"] == "notice"
+        assert response.json()["trace_id"] == format(span.get_span_context().trace_id, "032x")
+
+    async def test_the_vision_call_is_booked_to_the_named_organization_and_person(self, pages, ingested, monkeypatch):
+        """A notice's spend reaches the ledger the budget gate reads; a cache hit books nothing (ADR-0130)."""
+        from aiq_agent.common import cost_tracking
+
+        posted: list[dict] = []
+        monkeypatch.setattr(cost_tracking, "_post_usage_events", posted.append)
+        headers = {"x-grid-organization-id": "org-1", "x-grid-user-id": "user-9"}
+        gateway = _gateway()
+
+        await _post({**BODY, "purpose": "notice"}, gateway=gateway, headers=headers)
+        await _post({**BODY, "purpose": "notice"}, gateway=gateway, headers=headers)
+
+        [batch] = posted
+        assert (batch["organizationId"], batch["userId"]) == ("org-1", "user-9")
+        [event] = batch["events"]
+        assert event["role"] == "revision_compare"
+        assert (event["promptTokens"], event["completionTokens"], event["costUsd"]) == (8000, 120, 0.0014)
+        assert event["costSource"] == "usage_field"
+
+    async def test_a_notice_queues_behind_people_waiting(self, pages, ingested, monkeypatch):
+        classes: list[str] = []
+        real = route.limited_async_http_client
+
+        def spy(*args, **kwargs):
+            classes.append(kwargs["cls"])
+            return real(*args, **kwargs)
+
+        monkeypatch.setattr(route, "limited_async_http_client", spy)
+        await _post({**BODY, "purpose": "notice"})
+        await _post({**BODY, "page": 2})
+
+        assert classes == ["bulk", "interactive"]
 
     async def test_a_cache_hit_makes_no_generation(self, pages, ingested, exporter):
         gateway = _gateway()
@@ -285,6 +332,61 @@ class TestTracing:
 
         direct_trace._provider.force_flush()
         assert len(exporter.get_finished_spans()) == 1
+
+
+class TestChangedPages:
+    """``revision-pages``: the newer Fassung's changed pages, from the index, without a model call."""
+
+    @pytest.fixture
+    def stored(self, monkeypatch):
+        chunks = {
+            OLDER: [("Grundriss EG\nWand 2,50 m", {"page_label": "1"}), ("Schnitt\nREI 90", {"page_label": "2"})],
+            NEWER: [("Grundriss EG\nWand 2,50 m", {"page_label": "1"}), ("Schnitt\nREI 60", {"page_label": "2"})],
+        }
+        monkeypatch.setattr(
+            "aiq_agent.knowledge.collection_pages.read_chunks", lambda collection, name: chunks.get(name)
+        )
+        return chunks
+
+    async def _pages(self, body=None, gateway=None):
+        fake, post = gateway or _gateway()
+        async with _client() as client:
+            with patch("httpx.AsyncClient", fake):
+                response = await client.post(
+                    f"/v1/collections/{COLLECTION}/revision-pages", json=body or {"older": OLDER, "newer": NEWER}
+                )
+        return response, post
+
+    async def test_only_the_changed_page_and_no_model(self, ingested, stored):
+        response, post = await self._pages()
+
+        assert response.status_code == 200
+        assert response.json() == {"pages": [2], "newer_page_count": 2, "comparable": True}
+        post.assert_not_awaited()
+
+    async def test_a_scan_with_nothing_read_is_not_comparable(self, ingested, stored):
+        stored[OLDER], stored[NEWER] = None, None
+
+        response, _ = await self._pages()
+
+        assert response.json() == {"pages": [], "newer_page_count": 0, "comparable": False}
+
+    async def test_a_file_not_ingested_is_a_409(self, ingested, stored):
+        ingested.discard(NEWER)
+
+        response, _ = await self._pages()
+
+        assert response.status_code == 409
+
+    async def test_an_index_outage_is_a_503_never_nothing_changed(self, ingested, monkeypatch):
+        def down(collection, name):
+            raise ConnectionError("qdrant down")
+
+        monkeypatch.setattr("aiq_agent.knowledge.collection_pages.read_chunks", down)
+
+        response, _ = await self._pages()
+
+        assert response.status_code == 503
 
 
 class TestParsing:
@@ -383,8 +485,8 @@ class TestWhatIsSent:
     def test_the_prompt_asks_for_the_newer_page_in_page_coordinates_and_forbids_inventing(self):
         prompt = compare.COMPARE_PROMPT
 
-        assert "NEUEREN" in prompt and "0 und 1" in prompt
-        assert "Erfinde nichts" in prompt
+        assert "NEWER page" in prompt and "between 0 and 1" in prompt
+        assert "Invent nothing" in prompt
         assert compare.NO_CHANGE_TEXT in prompt
         assert str(compare.MAX_REGIONS) in prompt
 

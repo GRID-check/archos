@@ -39,7 +39,6 @@ import { z } from 'zod'
 import { getCached, invalidateCached } from '@/lib/cache'
 import { recordAuditEvent } from '@/lib/audit/service'
 import type { AuthorizedSession } from '@/lib/auth/types'
-import { ORG_INSTRUCTIONS_MAX_CHARS } from './constants'
 import {
   deleteOrganizationInstructions,
   findOrganizationInstructions,
@@ -74,14 +73,9 @@ const EMPTY: OrgInstructions = {
  * validation error — someone who selects all and deletes has cleared the box,
  * and telling them it is invalid would be pedantry.
  */
-export const orgInstructionsSchema = z.object({
-  instructions: z
-    .string()
-    .max(
-      ORG_INSTRUCTIONS_MAX_CHARS,
-      `Instructions are at most ${ORG_INSTRUCTIONS_MAX_CHARS} characters.`,
-    ),
-})
+import { orgInstructionsSchema } from '@/lib/organizations/organization-wire'
+
+export { orgInstructionsSchema }
 
 export type OrgInstructionsInput = z.infer<typeof orgInstructionsSchema>
 

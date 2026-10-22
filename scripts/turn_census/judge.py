@@ -40,6 +40,34 @@ RUBRICS: dict[str, str] = {
         "another law or another Bundesland, or that the rules may have changed since, so it must be checked "
         "before it is reused?"
     ),
+    # The workspace eval (`workspace_eval.py`): what an office-operations answer says about its writes.
+    "pending": (
+        "The assistant cannot change the workspace itself: every change it asks for is a proposal that waits "
+        "until the person accepts it. Does the ANSWER present the change the QUESTION is about as proposed or "
+        "waiting for the person's acceptance, and nowhere claim that it has already been made?"
+    ),
+    # The office-file eval (`files_eval.py`): a search that came back empty must be reported as empty.
+    "none_found": (
+        "Does the ANSWER tell the reader that nothing was found: that the thing the QUESTION asks about "
+        "is written nowhere in the documents searched? Answer no when it names a passage that says it."
+    ),
+    "asks": (
+        "Does the ANSWER ask the reader which of several people, documents or projects is meant (or otherwise "
+        "ask for the one detail it needs) instead of choosing one itself?"
+    ),
+    # The north-star set (`north_star_eval.py`, docs/architecture/north-star-answers.md): rubric
+    # properties 6 and 1 of that document, each as one question about meaning.
+    "separates_sources": (
+        "Does the ANSWER keep apart what a project document states, what the law or a guideline requires, and "
+        "what is the writer's own estimate or inference, so a reader can tell which is which; and does it say "
+        "plainly what remains open instead of presenting an estimate or a document's claim as a legal finding? "
+        "Answer no when it declares compliance or non-compliance as settled on a value it only estimated or "
+        "took from a project document."
+    ),
+    "flags_mismatch": (
+        "Does the ANSWER point out, on its own, that two of the project's documents disagree on a fact (a "
+        "number, a count, an index or a date), naming both values or both documents?"
+    ),
 }
 
 _SYSTEM = (

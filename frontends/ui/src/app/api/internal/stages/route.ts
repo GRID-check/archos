@@ -1,7 +1,9 @@
 import { z } from 'zod'
 import { internalApiRoute, parseQuery } from '@/lib/api/handler'
+import { FEATURE_FLAGS } from '@/lib/authz/feature-flags'
 import {
   enabledPostAnswerStages,
+  isOrgFeatureEnabled,
   isDeepResearchEnabledForOrg,
   isTaskAutomationEnabledForOrg,
 } from '@/lib/workos/feature-flags'
@@ -39,6 +41,11 @@ import { isProjectClosed } from '@/lib/projects/project-status'
  * every authorization uses, and only counts when it belongs to
  * `?organizationId`.
  *
+ * `folderCards` is the same kind of read for the folder card builder and its
+ * listing (ADR-0127): the Python tier asks per organization whether to mark,
+ * build or show cards, so it needs no WorkOS client of its own. It is not
+ * withdrawn by a closed project.
+ *
  * Token-guarded like every other internal route.
  */
 
@@ -54,14 +61,15 @@ export const GET = internalApiRoute(
   'post-answer-stages',
   async ({ request }) => {
     const { organizationId, projectId } = parseQuery(request, querySchema)
-    const [enabled, deepResearch, tasks, project] = await Promise.all([
+    const [enabled, deepResearch, tasks, folderCards, project] = await Promise.all([
       enabledPostAnswerStages(organizationId),
       isDeepResearchEnabledForOrg(organizationId),
       isTaskAutomationEnabledForOrg(organizationId),
+      isOrgFeatureEnabled(FEATURE_FLAGS.folderCards, organizationId),
       projectId ? findProjectTenancy(projectId) : Promise.resolve(null),
     ])
     const closed = project !== null && project.organizationId === organizationId && isProjectClosed(project)
-    return { enabled, features: { deepResearch: deepResearch && !closed, tasks: tasks && !closed } }
+    return { enabled, features: { deepResearch: deepResearch && !closed, tasks: tasks && !closed, folderCards } }
   },
   // `?organizationId` names the tenant the flags are evaluated for. The one
   // query, the project's tenancy probe, states its own platform scope and is

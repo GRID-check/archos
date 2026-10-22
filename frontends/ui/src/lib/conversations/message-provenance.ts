@@ -36,6 +36,7 @@ import { modernizeTurnEventKey, modernizeTurnEventValueName } from './legacy-tur
 import type { RetrievalLedger } from './message-retrieval-ledger'
 import { sanitizeRetrievalLedger } from './message-retrieval-ledger'
 import { sanitizeQuoteStamps, type QuoteStamp } from './message-quote-stamps'
+import { sanitizeClaimStamps, type ClaimStamp } from './message-claim-stamps'
 import { isChatEffort, type ChatEffort } from '@/lib/reasoning-settings/catalog'
 
 /** The kinds of Herleitung step, one per wire v2 `Step` (`wire_v2.py`). */
@@ -46,6 +47,7 @@ export const STEP_KINDS = [
   'tool',
   'skill',
   'clarification',
+  'look',
 ] as const
 export type StepKind = (typeof STEP_KINDS)[number]
 
@@ -251,6 +253,19 @@ export interface MessageProvenance {
    * so a reload still says „Wortlaut belegt [N]" where the live answer did.
    */
   quoteStamps?: QuoteStamp[]
+  /**
+   * Where each sentence comes from (`message-claim-stamps.ts`, ADR-0125). The
+   * confidence chip explains its level as their mix.
+   */
+  claimStamps?: ClaimStamp[]
+  /**
+   * Which rule computed `answerConfidence`: 2 the per-sentence formula
+   * (ADR-0125). Absent on every answer stored before it, which renders under
+   * the answer-level floors it was computed with.
+   */
+  answerConfidenceVersion?: 1 | 2
+  /** A search ran and found nothing; the answer is the model's own knowledge. Present or absent. */
+  lookupFoundNothing?: true
 }
 
 /** One answer's Herleitung is tens of steps; a thousand is a runaway client. */
@@ -556,6 +571,13 @@ export function sanitizeProvenance(input: unknown): MessageProvenance | null {
 
   const stamps = sanitizeQuoteStamps(input.quoteStamps)
   if (stamps) out.quoteStamps = stamps
+
+  const claims = sanitizeClaimStamps(input.claimStamps)
+  if (claims) out.claimStamps = claims
+  if (input.answerConfidenceVersion === 1 || input.answerConfidenceVersion === 2) {
+    out.answerConfidenceVersion = input.answerConfidenceVersion
+  }
+  if (input.lookupFoundNothing === true) out.lookupFoundNothing = true
 
   return Object.keys(out).length > 0 ? out : null
 }

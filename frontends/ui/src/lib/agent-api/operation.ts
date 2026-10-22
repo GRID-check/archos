@@ -1,0 +1,182 @@
+/**
+ * One thing a person can do in Piloti, described for an agent (ADR-0122).
+ *
+ * An operation is not a new door. It names a route the UI already calls
+ * (`method` + `path`), says in words an agent can act on when to call it and
+ * what comes back, and states the input as zod so it can be shown as JSON
+ * Schema. The route stays the gate: its `authz` declaration, its rate limit,
+ * its tenant slot and its own body parsing apply to an agent exactly as they
+ * apply to a browser. The catalog only makes the door findable.
+ *
+ * The shape follows PostHog's MCP catalog, which is the reference for this
+ * record: kebab-case `<entity>-<verb>` names under 52 characters, a short
+ * summary for search, a description that names the next call, and annotations
+ * that say whether a call reads, writes or destroys.
+ */
+
+import type { z } from 'zod'
+
+export type BodyEncoding = 'json' | 'multipart' | 'raw'
+
+export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'
+
+/** A route handler as `lib/api/handler.ts` builds one. */
+export type RouteHandler = (
+  request: Request,
+  context?: { params?: Promise<Record<string, string | string[]>> },
+) => Promise<Response>
+
+/** What `import('@/app/api/…/route')` resolves to, as far as the dispatcher reads it. */
+export type RouteModule = Partial<Record<HttpMethod, RouteHandler>>
+
+/** The areas of the workspace, in the order `tools` lists them. */
+export const AGENT_DOMAINS = [
+  'projects',
+  'documents',
+  'folders',
+  'review',
+  'conversations',
+  'collaboration',
+  'tasks',
+  'skills',
+  'knowledge',
+  'bim',
+  'organization',
+  'platform',
+] as const
+
+export type AgentDomain = (typeof AGENT_DOMAINS)[number]
+
+export interface AgentOperation {
+  /** `<entity>-<verb>`, kebab-case, at most 52 characters, unique. */
+  readonly name: string
+  readonly domain: AgentDomain
+  /** One line for `tools` and `search`. */
+  readonly summary: string
+  /**
+   * When to call it, what it returns, and what to call next. Written for the
+   * model: the description is the only guidance that reaches it.
+   */
+  readonly description: string
+  readonly method: HttpMethod
+  /** The route's path as its folder spells it: `/api/projects/[id]/members`. */
+  readonly path: `/api/${string}`
+  /**
+   * The route module, imported lazily: `() => import('@/app/api/projects/[id]/members/route')`.
+   * The dispatcher calls its `method` export, so the call runs the browser's
+   * handler. `agent-reachability.spec.ts` holds the import to `path`.
+   */
+  readonly load: () => Promise<RouteModule>
+  /** The dynamic segments, one key per `[name]` in `path`. */
+  readonly params?: z.ZodObject<z.ZodRawShape>
+  /** Query string parameters. */
+  readonly query?: z.ZodObject<z.ZodRawShape>
+  /** The JSON body the route parses, reused from the route's own schema where it is exported. */
+  readonly body?: z.ZodTypeAny
+  /**
+   * How `body` reaches the route (default `json`). `multipart`: the agent sends
+   * `{ files: [{ name, mimeType, contentBase64 }], fields? }` (`upload-wire.ts`)
+   * and the dispatcher builds the `FormData` the UI's uploader builds. `raw`:
+   * the agent sends `{ contentBase64 }` and the route receives those bytes as
+   * `application/octet-stream`. The route's own parsing is the gate either way.
+   */
+  readonly bodyEncoding?: BodyEncoding
+  /**
+   * The media types a binary answer may have (a PDF, a Word file, a BCF zip).
+   * Absent: the route answers JSON or text. A binary answer reaches an MCP
+   * client as a `resource` content item, up to `MAX_INLINE_BYTES`.
+   */
+  readonly binaryResponse?: readonly string[]
+  /**
+   * A call that changes nothing. Defaults to `method === 'GET'`; a POST that
+   * searches or computes says `true`.
+   */
+  readonly readOnly?: boolean
+  /**
+   * A call a person would confirm in the UI: it deletes, revokes or releases
+   * something. Defaults to `method === 'DELETE'`.
+   */
+  readonly destructive?: boolean
+  /** Calling it twice with the same input leaves the same state. Defaults to GET, PUT and DELETE. */
+  readonly idempotent?: boolean
+  /**
+   * The route reads the `If-Match` header (the project profile's PUT), so the
+   * agent's top-level `ifMatch` is offered and sent as that header. Only these
+   * operations take it; a route that wants the version in its body declares
+   * `ifMatch` in the body schema, and a top-level one anywhere else is refused.
+   */
+  readonly ifMatchHeader?: true
+  /**
+   * One to three realistic inputs, for an operation whose input is hard to get
+   * right from the schema alone (nested bodies, patches, uploads). Shown in
+   * `describe-operation` and as the input schema's JSON Schema `examples`;
+   * `agent-reachability.spec.ts` holds each to the operation's own schemas.
+   */
+  readonly examples?: readonly OperationExample[]
+  /**
+   * An operation that widens who may do what (`access`: sharing, folder
+   * access, project roles, role definitions), touches the organization's
+   * secrets (`secret`: LLM provider keys), or turns a security or compliance
+   * control down or off (`control`: zero data retention, upload screening, a
+   * held file let through, a legal hold lifted, retention shortened). An agent
+   * may call it for a person who holds
+   * the right, under the extra guards ADR-0122 names: the organization opted
+   * in, the client was granted the step-up scope, the person confirms, and
+   * Piloti in-product only ever proposes it.
+   */
+  readonly sensitivity?: Sensitivity
+  /**
+   * A read whose answer can carry content of every project the person may
+   * read, not only the one a call names (ADR-0122, "Shared conversations").
+   * `always`: whatever the call names (similar passages search every project
+   * the person reads). `unlessScoped`: unless the call names a project (the
+   * conversation list without `projectId`). Piloti's read gate refuses it in a
+   * solo conversation of a project: the record there covers that project only.
+   */
+  readonly spansProjects?: SpansProjects
+}
+
+export type SpansProjects = 'always' | 'unlessScoped'
+
+/** An example input of an operation: `{ params, query, body }` as `call-operation` takes it. */
+export interface OperationExample {
+  readonly params?: Record<string, string>
+  readonly query?: Record<string, unknown>
+  readonly body?: unknown
+}
+
+export const SENSITIVITIES = ['access', 'secret', 'control'] as const
+export type Sensitivity = (typeof SENSITIVITIES)[number]
+
+/**
+ * The MCP tool annotations for `op` (specification, `ToolAnnotations`), every
+ * hint stated rather than left to the spec's defaults: an absent
+ * `destructiveHint` means "destructive", which would make every write look
+ * like a delete to a client that asks its user before each one.
+ */
+export interface ToolAnnotations {
+  readonly title: string
+  readonly readOnlyHint: boolean
+  readonly destructiveHint: boolean
+  readonly idempotentHint: boolean
+  /** Piloti's operations reach the organization's own workspace, a closed world. */
+  readonly openWorldHint: false
+}
+
+export function annotationsOf(op: AgentOperation): ToolAnnotations {
+  const readOnlyHint = op.readOnly ?? op.method === 'GET'
+  return {
+    title: op.summary,
+    readOnlyHint,
+    // A sensitive operation is always one the client confirms with the person, a read of
+    // the organization's keys included; any other read never is.
+    destructiveHint: op.sensitivity !== undefined || (!readOnlyHint && (op.destructive ?? op.method === 'DELETE')),
+    idempotentHint: readOnlyHint || (op.idempotent ?? (op.method === 'PUT' || op.method === 'DELETE')),
+    openWorldHint: false,
+  }
+}
+
+/** The `[name]` segments of a route path, in order. */
+export function pathParams(path: string): string[] {
+  return [...path.matchAll(/\[(?:\.\.\.)?([^\]]+)\]/g)].map((match) => match[1] as string)
+}

@@ -1238,7 +1238,7 @@ export async function findDocumentAuthoredByRef(
  * notes that "the safety comes from the dispatch that does not happen, never
  * from this string" about the project collection name it writes. This function
  * is what made that string load-bearing after all: it resolves any
- * `(collection, filename)` pair, and `view_knowledge_image` in the knowledge
+ * `(collection, filename)` pair, and `look` in the knowledge
  * layer calls the internal route with a file name and collection the MODEL
  * supplies, fetches the object, renders a page with pdfium and hands it back
  * as "the actual page the retrieved chunk describes".
@@ -1387,11 +1387,20 @@ export async function findProjectCollectionsHoldingFilename(
   return rows.map((row) => row.collectionName)
 }
 
+/** Where a document's current bytes are, and which Fassung they are (`versionId`, null before a publish). */
+export interface StoredDocumentFile {
+  id: string
+  storageKey: string
+  storageBucket: string | null
+  contentType: string | null
+  versionId: string | null
+}
+
 export async function findStorageKeyByCollectionAndFilename(
   collectionName: string,
   filename: string,
   organizationId?: string,
-): Promise<{ id: string; storageKey: string; storageBucket: string | null; contentType: string | null } | null> {
+): Promise<StoredDocumentFile | null> {
   const db = getDb()
   const [row] = await withOptionalTenant(
     organizationId,
@@ -1409,6 +1418,11 @@ export async function findStorageKeyByCollectionAndFilename(
           // second implementation of the naming rule in a third language.
           storageBucket: documents.storageBucket,
           contentType: documents.contentType,
+          // The Fassung these bytes are: the published version the item's
+          // storage columns mirror. A look card records it, so an old answer
+          // keeps showing the Fassung that was read (ADR-0128); null before
+          // anything was published.
+          versionId: documents.publishedVersionId,
         })
         .from(documents)
         .where(

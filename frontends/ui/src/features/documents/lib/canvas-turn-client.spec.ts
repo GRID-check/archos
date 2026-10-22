@@ -154,7 +154,7 @@ describe('the canvas turn client', () => {
     expect(last().phase).toBe('running')
 
     socket.deliver(1, { type: 'RUN_STARTED', message_id: 'a-1' })
-    socket.deliver(2, { type: 'STEP_STARTED', step: { id: 'tool:1', kind: 'tool', tool: 'view_knowledge_image' } })
+    socket.deliver(2, { type: 'STEP_STARTED', step: { id: 'tool:1', kind: 'tool', tool: 'look' } })
     socket.deliver(3, { type: 'TEXT_MESSAGE_START', message_id: 'a-1' })
     socket.deliver(4, { type: 'TEXT_MESSAGE_CONTENT', message_id: 'a-1', delta: 'Die Raumhöhe ' })
     socket.deliver(5, { type: 'TEXT_MESSAGE_CONTENT', message_id: 'a-1', delta: 'fehlt.' })

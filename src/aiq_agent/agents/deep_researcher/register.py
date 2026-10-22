@@ -27,6 +27,8 @@ from aiq_agent.common import get_langchain_llm
 from aiq_agent.common import is_verbose
 from aiq_agent.common import validate_tool_availability
 from aiq_agent.common.agent_tools import load_agent_tools
+from aiq_agent.common.image_view_budget import begin_image_view_budget
+from aiq_agent.common.image_view_budget import end_image_view_budget
 from aiq_agent.common.request_llm_context import RequestLLMContext
 from aiq_agent.common.request_llm_context import read_request_llm_context
 from nat.plugin_api import Builder
@@ -369,7 +371,14 @@ async def run_deep_research(state: DeepResearchAgentState, lazy: LazyTools) -> D
     if not is_valid:
         error_msg = format_user_facing_tool_error("deep research", unavailable_tools)
         return DeepResearchAgentState(messages=state.messages + [AIMessage(content=error_msg)])
-    return await active_agent.run(state)
+    # One look budget per run (`look`, ADR-0128): a run on the job worker enters
+    # no chat turn, and an unbound budget is no cap at all. A run inside a turn
+    # gets its own too, so its researchers cannot spend the turn's looks.
+    budget = begin_image_view_budget()
+    try:
+        return await active_agent.run(state)
+    finally:
+        end_image_view_budget(budget)
 
 
 @register_function(config_type=DeepResearchAgentConfig, framework_wrappers=[LLMFrameworkEnum.LANGCHAIN])

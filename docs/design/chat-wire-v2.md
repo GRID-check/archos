@@ -274,6 +274,7 @@ Each step is compact, typed data. None of them carries a tool's input or output.
 | `tool` | `tool` (basename), `status: running \| ok \| error` | one LangChain callback on the graph run (`on_tool_start`/`_end`/`_error`) |
 | `skill` | `phase: offered \| activated \| loaded`, `skill?`, `title?`, `hidden`, `count?`, `channel` | `skills/events.py` |
 | `clarification` | `max_turns` | `agents/piloti/clarify.py` |
+| `look` | `round?`, `document_name`, `document_id?`, `revision_id?` (the Fassung; absent: the current one), `shelf: stored \| base`, `page`, `region?` (`[x, y, w, h]`), `image_index?`, `where?` (the region in words), `question?`, `reading?`. One per look that rendered, id `look:<n>`; a refused look leaves none | `turn_status.emit_look_step`, called by `tools/look/cards.note_look` (ADR-0128) |
 
 `scope: chat | deep` sits on every step. In-process deep research sets `deep`.
 
@@ -698,7 +699,7 @@ writes:
 ```ts
 interface StoredThinkingStep {
   id: string; userMessageId: string; timestamp: string; isComplete: boolean
-  kind: 'status' | 'retrieval' | 'sources' | 'tool' | 'skill' | 'clarification'
+  kind: 'status' | 'retrieval' | 'sources' | 'tool' | 'skill' | 'clarification' | 'look'
   scope?: 'deep'
   turnEvent?: { key: string; values?: Record<string, string>; reason?: string; tools?: string[] }
   traceLanes?: TraceLaneCard[]; round?: number; tool?: string; slot?: string

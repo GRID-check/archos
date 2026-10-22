@@ -242,3 +242,25 @@ def test_reference_projects_absent_or_malformed_read_as_none(request_context, op
     opener.open.return_value.read.return_value = json.dumps({"data": body}).encode("utf-8")
 
     assert client.fetch_turn_context(request_context).reference_projects is None
+
+
+def test_the_workspace_block_is_read_and_bounded(request_context, opener):
+    header = "WORKSPACE v1 (the workspace as of this turn)"
+    lines = [header] + [f"- p{n} · waiting for the person · " + "x" * 80 for n in range(80)]
+    body = {"projectContext": None, "projectMemory": None, "orgInstructions": None, "workspace": "\n".join(lines)}
+    opener.open.return_value.read.return_value = json.dumps({"data": body}).encode("utf-8")
+
+    workspace = client.fetch_turn_context(request_context).workspace
+
+    assert workspace is not None and workspace.startswith(header)
+    assert len(workspace) <= client.WORKSPACE_MAX_CHARS
+
+
+@pytest.mark.parametrize("value", [None, 7, " "])
+def test_a_missing_or_malformed_workspace_block_reads_as_none(request_context, opener, value):
+    body = {"projectContext": None, "projectMemory": None, "orgInstructions": None}
+    if value is not None:
+        body["workspace"] = value
+    opener.open.return_value.read.return_value = json.dumps({"data": body}).encode("utf-8")
+
+    assert client.fetch_turn_context(request_context).workspace is None

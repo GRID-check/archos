@@ -366,6 +366,80 @@
       "title": "CitationsRemoved",
       "type": "object"
     },
+    "ClaimStamp": {
+      "additionalProperties": false,
+      "description": "Where one sentence of ``text`` comes from (``common/claim_provenance.py``, ADR-0125), in document order.\n\n``provenance`` is the strongest evidence the sentence has; ``claim_type``\nwhether it states the law, a value, or a description. ``load_bearing``\nsentences are the ones the turn's confidence is held to.",
+      "properties": {
+        "claim_type": {
+          "enum": [
+            "normative",
+            "value",
+            "descriptive"
+          ],
+          "title": "Claim Type",
+          "type": "string"
+        },
+        "load_bearing": {
+          "default": false,
+          "title": "Load Bearing",
+          "type": "boolean"
+        },
+        "numbers": {
+          "items": {
+            "type": "integer"
+          },
+          "title": "Numbers",
+          "type": "array"
+        },
+        "operation": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Operation"
+        },
+        "provenance": {
+          "enum": [
+            "quoted",
+            "cited",
+            "cited_dropped",
+            "record",
+            "action",
+            "measured",
+            "observed",
+            "reasoning",
+            "model_knowledge"
+          ],
+          "title": "Provenance",
+          "type": "string"
+        },
+        "text": {
+          "description": "The sentence as the final text writes it, cut at 300 characters.",
+          "maxLength": 300,
+          "title": "Text",
+          "type": "string"
+        },
+        "unmatched": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Unmatched",
+          "type": "array"
+        }
+      },
+      "required": [
+        "text",
+        "provenance",
+        "claim_type"
+      ],
+      "title": "ClaimStamp",
+      "type": "object"
+    },
     "ClarificationStep": {
       "additionalProperties": false,
       "description": "The clarify step started: the one row it contributes before its first question.",
@@ -443,7 +517,7 @@
     },
     "FocusRegion": {
       "additionalProperties": false,
-      "description": "A box on one page of the conversation's document: what the question is about.\n\nNormalized to the page as it is shown (its own rotation applied), origin\ntop left, so ``x`` and ``w`` are shares of the page's width and ``y`` and\n``h`` of its height: the frame an Anmerkung's region uses\n(``lib/annotations/types.ts``). Drawn on the review canvas; the turn shows\nthe model exactly that crop (``view_knowledge_image(region=...)``).",
+      "description": "A box on one page of the conversation's document: what the question is about.\n\nNormalized to the page as it is shown (its own rotation applied), origin\ntop left, so ``x`` and ``w`` are shares of the page's width and ``y`` and\n``h`` of its height: the frame an Anmerkung's region uses\n(``lib/annotations/types.ts``). Drawn on the review canvas; the turn shows\nthe model exactly that crop (``look(region=[x, y, w, h])``).",
       "properties": {
         "annotation_id": {
           "anyOf": [
@@ -937,6 +1011,175 @@
         "card"
       ],
       "title": "KeyedCard",
+      "type": "object"
+    },
+    "LookStep": {
+      "additionalProperties": false,
+      "description": "One look that rendered (``look``, ADR-0128): which document, which page, where on it.\n\nAn address, never pixels: the reader's thumbnail is drawn from the\ndocument's own preview route (``document_id``, ``revision_id``), so it is\nauthorized exactly like the document. A refused look leaves no step.",
+      "properties": {
+        "document_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "The workspace document's id; absent for Basiswissen.",
+          "title": "Document Id"
+        },
+        "document_name": {
+          "description": "The file name.",
+          "maxLength": 300,
+          "minLength": 1,
+          "title": "Document Name",
+          "type": "string"
+        },
+        "id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Id",
+          "type": "string"
+        },
+        "image_index": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "The embedded image looked at, if any.",
+          "title": "Image Index"
+        },
+        "kind": {
+          "const": "look",
+          "default": "look",
+          "title": "Kind",
+          "type": "string"
+        },
+        "page": {
+          "minimum": 1,
+          "title": "Page",
+          "type": "integer"
+        },
+        "question": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Question"
+        },
+        "reading": {
+          "anyOf": [
+            {
+              "maxLength": 300,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "The first reading, when one was made.",
+          "title": "Reading"
+        },
+        "region": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "number"
+              },
+              "maxItems": 4,
+              "minItems": 4,
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "[x, y, w, h], shares of the page; absent: whole page.",
+          "title": "Region"
+        },
+        "revision_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "The Fassung; absent means the current one.",
+          "title": "Revision Id"
+        },
+        "round": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "The retrieval round the look ran in.",
+          "title": "Round"
+        },
+        "scope": {
+          "default": "chat",
+          "enum": [
+            "chat",
+            "deep"
+          ],
+          "title": "Scope",
+          "type": "string"
+        },
+        "shelf": {
+          "default": "stored",
+          "enum": [
+            "stored",
+            "base"
+          ],
+          "title": "Shelf",
+          "type": "string"
+        },
+        "where": {
+          "anyOf": [
+            {
+              "maxLength": 60,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "The region in words, e.g. 'oben rechts'.",
+          "title": "Where"
+        }
+      },
+      "required": [
+        "id",
+        "document_name",
+        "page",
+        "kind"
+      ],
+      "title": "LookStep",
       "type": "object"
     },
     "Masthead": {
@@ -2193,6 +2436,7 @@
           "discriminator": {
             "mapping": {
               "clarification": "#/$defs/ClarificationStep",
+              "look": "#/$defs/LookStep",
               "retrieval": "#/$defs/RetrievalStep",
               "skill": "#/$defs/SkillStep",
               "sources": "#/$defs/SourcesStep",
@@ -2219,6 +2463,9 @@
             },
             {
               "$ref": "#/$defs/ClarificationStep"
+            },
+            {
+              "$ref": "#/$defs/LookStep"
             }
           ],
           "title": "Step"
@@ -2275,6 +2522,7 @@
           "discriminator": {
             "mapping": {
               "clarification": "#/$defs/ClarificationStep",
+              "look": "#/$defs/LookStep",
               "retrieval": "#/$defs/RetrievalStep",
               "skill": "#/$defs/SkillStep",
               "sources": "#/$defs/SourcesStep",
@@ -2301,6 +2549,9 @@
             },
             {
               "$ref": "#/$defs/ClarificationStep"
+            },
+            {
+              "$ref": "#/$defs/LookStep"
             }
           ],
           "title": "Step"
@@ -2754,6 +3005,22 @@
           "default": null,
           "title": "Answer Confidence Reason"
         },
+        "answer_confidence_version": {
+          "anyOf": [
+            {
+              "enum": [
+                1,
+                2
+              ],
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Answer Confidence Version"
+        },
         "answer_meta": {
           "anyOf": [
             {
@@ -2785,6 +3052,13 @@
           ],
           "default": null
         },
+        "claim_stamps": {
+          "items": {
+            "$ref": "#/$defs/ClaimStamp"
+          },
+          "title": "Claim Stamps",
+          "type": "array"
+        },
         "escalation_reason": {
           "anyOf": [
             {
@@ -2800,6 +3074,11 @@
         "job_admission_rejected": {
           "default": false,
           "title": "Job Admission Rejected",
+          "type": "boolean"
+        },
+        "lookup_found_nothing": {
+          "default": false,
+          "title": "Lookup Found Nothing",
           "type": "boolean"
         },
         "message_id": {
@@ -2933,7 +3212,7 @@
     },
     "TurnTrigger": {
       "additionalProperties": false,
-      "description": "The event that woke this turn, when no person typed it (ADR-0105 draft, §3(b)).\n\nSet by the BFF's wake job, never by a browser: the person whose act is the\nevent holds the socket (their pinned session), and the turn answers where\nthe event happened. ``event_id`` is the reply (or assignment) id the job was\nenqueued for; ``annotation_id`` the Anmerkung it happened on.",
+      "description": "The event that woke this turn, when no person typed it (ADR-0105 draft, §3(b)).\n\nSet by the BFF, never by a browser: the person whose act is the event holds\nthe socket (their pinned session), and the turn answers where the event\nhappened. For a wake, ``event_id`` is the reply (or assignment) id the job\nwas enqueued for and ``annotation_id`` the Anmerkung it happened on.\n``agent_consult`` is a question another agent asked on the person's behalf\n(ADR-0124): ``event_id`` is the ask's id, and there is no Anmerkung.\n``new_document`` is a document that just finished indexing, which Piloti\nchecks against the project's other documents unasked (ADR-0130):\n``event_id`` is the check's id, and there is no Anmerkung.",
       "properties": {
         "annotation_id": {
           "anyOf": [
@@ -2959,7 +3238,9 @@
           "enum": [
             "thread_mention",
             "thread_reply",
-            "assigned"
+            "assigned",
+            "agent_consult",
+            "new_document"
           ],
           "title": "Kind",
           "type": "string"

@@ -275,7 +275,11 @@ export const SourceCard: FC<{
  * be a claim about a document this turn has no card for, and a control that
  * opens nothing is worse than no control.
  */
-export const BareSourceCard: FC<{ name: string; loci?: RoundLocus[] }> = ({ name, loci }) => {
+export const BareSourceCard: FC<{ name: string; loci?: RoundLocus[]; workspace?: boolean }> = ({
+  name,
+  loci,
+  workspace,
+}) => {
   const t = useTranslations('chat')
   // The same verdict the carded slot draws, through the same component — a
   // slot without a card still knows what its round did, and dropping the
@@ -285,7 +289,15 @@ export const BareSourceCard: FC<{ name: string; loci?: RoundLocus[] }> = ({ name
   return (
     <div role="listitem" data-source-card className="flex min-w-0 flex-col">
       <div className="bg-card shadow-xs min-w-0 flex-1 rounded-lg border border-dashed px-3 py-2.5 opacity-75">
-        <p className="text-foreground line-clamp-2 text-sm leading-snug">{name}</p>
+        {workspace ? (
+          // A read of the office's state: worded for the reader, the operation it ran beneath as its identifier.
+          <>
+            <p className="text-foreground line-clamp-2 text-sm leading-snug">{t('thinking.node.workspaceRead')}</p>
+            <p className="text-muted-foreground mt-0.5 truncate font-mono text-xs">{name}</p>
+          </>
+        ) : (
+          <p className="text-foreground line-clamp-2 text-sm leading-snug">{name}</p>
+        )}
         {loci && loci.length > 0 && (
           <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
             {/* No hit tally to stand in for: a bare slot has no card, so the

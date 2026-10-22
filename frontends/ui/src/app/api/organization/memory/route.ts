@@ -8,18 +8,10 @@
  * (`@/lib/projects/service`), the one an accepted memory proposal uses too.
  */
 
-import { z } from 'zod'
 import { apiRoute, parseJsonBody } from '@/lib/api/handler'
 import { listOrganizationMemory } from '@/lib/projects/memory-service'
 import { createOrganizationMemoryItem } from '@/lib/projects/service'
-import { PROJECT_MEMORY_CONFIDENCES, PROJECT_MEMORY_KINDS } from '@/lib/db/schema'
-
-const createOrgMemorySchema = z.object({
-  kind: z.enum(PROJECT_MEMORY_KINDS),
-  content: z.string().trim().min(1).max(2000),
-  confidence: z.enum(PROJECT_MEMORY_CONFIDENCES).optional(),
-  pinned: z.boolean().optional(),
-})
+import { createOrgMemorySchema } from '@/lib/organizations/organization-wire'
 
 export const GET = apiRoute(
   async ({ session, request }) => {

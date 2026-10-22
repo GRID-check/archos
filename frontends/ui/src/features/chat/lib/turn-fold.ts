@@ -181,6 +181,28 @@ const storedFields = (step: StepOf<string>, previous?: StoredThinkingStep): Part
     }
     case 'clarification':
       return { detail: { max_turns: step.max_turns } }
+    case 'look': {
+      // The look's address (ADR-0128), flat in `detail` until the row has a renderer of its own.
+      const [x, y, w, h] = step.region ?? []
+      return {
+        ...some('round', step.round),
+        detail: {
+          document: step.document_name,
+          page: step.page,
+          shelf: step.shelf,
+          ...some('document_id', step.document_id),
+          ...some('revision_id', step.revision_id),
+          ...some('x', x),
+          ...some('y', y),
+          ...some('w', w),
+          ...some('h', h),
+          ...some('image_index', step.image_index),
+          ...some('where', step.where),
+          ...some('question', step.question),
+          ...some('reading', step.reading),
+        },
+      }
+    }
     default:
       return {}
   }

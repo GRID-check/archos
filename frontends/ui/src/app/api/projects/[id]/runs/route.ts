@@ -5,26 +5,16 @@
  * same gate; the run's message is minted in the thread that asked.
  */
 
-import { z } from 'zod'
-import { planDocumentsSchema } from '@/lib/runs/plan-documents'
+import { commissionRunSchema } from '@/lib/runs/commission-wire'
 import { apiRoute, parseJsonBody } from '@/lib/api/handler'
 import { NotFoundError } from '@/lib/api/errors'
 import { FEATURE_FLAGS, requireFeature } from '@/lib/authz/feature-flags'
 import { findConversationInOrg } from '@/lib/conversations/repository'
 import { requireResourceAccess } from '@/lib/sharing/access'
-import { TASK_GOAL_MAX_CHARS } from '@/lib/tasks/delegation'
 import { commissionResearchRun } from '@/lib/tasks/delegation'
 import { getLocale } from '@/i18n/server'
 
 type Params = { id: string }
-
-const commissionRunSchema = z.object({
-  conversationId: z.string().min(1),
-  question: z.string().trim().min(1).max(TASK_GOAL_MAX_CHARS),
-  context: z.string().trim().max(20_000).optional(),
-  /** The Unterlagen a continuation carries forward: the last report's sources as its Grundlage. */
-  documents: planDocumentsSchema.optional(),
-})
 
 export const POST = apiRoute<Params>(
   async ({ session, params, request }) => {

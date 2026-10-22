@@ -232,6 +232,8 @@ describe('route factories open a request-scoped slot', () => {
   const FACTORIES: Array<{ file: string; factories: string[] }> = [
     { file: 'src/lib/api/handler.ts', factories: ['apiRoute', 'internalApiRoute', 'publicApiRoute'] },
     { file: 'src/lib/api/platform-handler.ts', factories: ['platformApiRoute'] },
+    // The MCP doors' edge (`/api/mcp`, `/api/platform/mcp`, ADR-0126): one factory, two doors.
+    { file: 'src/lib/agent-api/mcp-door-route.ts', factories: ['mcpDoorPost'] },
   ]
 
   it.each(FACTORIES)('$file wraps every handler in runWithTenantSlot', ({ file, factories }) => {
@@ -249,9 +251,9 @@ describe('route factories open a request-scoped slot', () => {
       // import or a `void runWithTenantSlot` left behind by a refactor.
       expect(
         body,
-        `${factory} must RETURN runWithTenantSlot(...), or a request can ` +
-          `inherit the previous request's tenant off a keep-alive socket.`
-      ).toMatch(/return\s+runWithTenantSlot\(/)
+        `${factory} must RETURN runWithTenantSlot(...) or tenantSlotRoute(...), or a ` +
+          `request can inherit the previous request's tenant off a keep-alive socket.`
+      ).toMatch(/return\s+(?:runWithTenantSlot|tenantSlotRoute)\(/)
     }
   })
 
@@ -278,7 +280,7 @@ describe('route factories open a request-scoped slot', () => {
     // to satisfy the old file-wide substring check.
     // The generic parameter is common (`apiRoute<Params>(...)`), so allow it.
     const SCOPED_EXPORT =
-      /export\s+const\s+(?:GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS)\s*=\s*(?:apiRoute|internalApiRoute|publicApiRoute|platformApiRoute|tenantSlotRoute)\s*(?:<[^>]*>)?\s*\(/
+      /export\s+const\s+(?:GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS)\s*=\s*(?:apiRoute|internalApiRoute|publicApiRoute|platformApiRoute|tenantSlotRoute|mcpDoorPost)\s*(?:<[^>]*>)?\s*\(/
     const unscoped = routes
       .filter((path) => !SCOPED_EXPORT.test(readFileSync(path, 'utf8')))
       .map((path) => relative(apiDir, path))

@@ -123,6 +123,34 @@ describe('the other ends', () => {
     expect(messages.map((m) => m.id)).toEqual(['turn-1'])
   })
 
+  it('answered: the claim stamps, the rule version and the found-nothing flag reach the message (ADR-0125)', () => {
+    const messages = play([
+      ...preamble,
+      body(5, {
+        type: 'RUN_FINISHED',
+        outcome: 'answered',
+        result: {
+          message_id: 'answer-1',
+          text: 'Ich gebe das an eine Recherche ab.',
+          answer_confidence: 'medium',
+          answer_confidence_version: 2,
+          lookup_found_nothing: true,
+          claim_stamps: [
+            { text: 'Ich gebe das an eine Recherche ab.', provenance: 'model_knowledge', claim_type: 'descriptive', load_bearing: true },
+          ],
+        },
+      }),
+    ])
+    expect(messages[1]).toMatchObject({
+      answerConfidence: 'medium',
+      answerConfidenceVersion: 2,
+      lookupFoundNothing: true,
+      claimStamps: [
+        { text: 'Ich gebe das an eine Recherche ab.', provenance: 'model_knowledge', claimType: 'descriptive', loadBearing: true },
+      ],
+    })
+  })
+
   it('cancelled: the answer stays, marked stopped', () => {
     const messages = play([
       ...preamble,

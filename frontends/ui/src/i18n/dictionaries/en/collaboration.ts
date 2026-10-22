@@ -555,7 +555,7 @@ export const collaboration = {
       },
       // The row lands on the run itself (its block in the thread, else the
       // task), where the result and the reason are.
-      jobCompleted: {
+      taskRunCompleted: {
         title: 'Piloti finished “{subject}”',
         body: 'Open it to see the result.',
       },
@@ -568,13 +568,13 @@ export const collaboration = {
         title: 'The import of “{subject}” stopped',
         body: 'What was imported until then stays in the project. The import list under Files gives the reason.',
       },
-      jobFailed: {
+      taskRunFailed: {
         title: 'Piloti could not finish “{subject}”',
         body: 'Open it to see what went wrong.',
       },
       // A run stopped to ask its requester something (ADR-0062, `wartet`). The
       // body says where the answer goes, because the run resumes nowhere else.
-      jobWaiting: {
+      taskRunWaiting: {
         title: 'Piloti has a question about “{subject}”',
         body: 'Answer it in the thread and Piloti carries on.',
       },
@@ -610,6 +610,27 @@ export const collaboration = {
       // {actor}: that was Piloti. `titleRelatedNoSubject` when the document
       // could not be named. Same words as the review view: annotation, thread,
       // delegate.
+      // Piloti compared a new revision with the previous one on its own
+      // (ADR-0130) and proposed marks. {subject} the new revision, {related}
+      // the one compared, {marks} how many proposals. No {actor}: Piloti did it.
+      pilotiRevisionChecked: {
+        title: 'Piloti compared the new revision “{subject}”',
+        titleRelated: 'Piloti compared “{subject}” with “{related}”',
+        body: 'Proposals on the document, not yet accepted.',
+        variants: {
+          one: { body: '1 place marked as a proposal, not yet accepted.' },
+          many: { body: '{marks} places marked as proposals, not yet accepted.' },
+          // The check of a new document against the project's others, not a comparison with a previous revision.
+          check_one: {
+            title: 'Piloti checked the new document “{subject}” against your other documents',
+            body: '1 place marked as a proposal, not yet accepted.',
+          },
+          check_many: {
+            title: 'Piloti checked the new document “{subject}” against your other documents',
+            body: '{marks} places marked as proposals, not yet accepted.',
+          },
+        },
+      },
       pilotiWorkDone: {
         title: 'Piloti worked on an annotation for you',
         titleRelated: 'Piloti worked on annotation {related} in “{subject}” for you',
@@ -674,6 +695,7 @@ export const collaboration = {
           assign: { title: 'Piloti suggests an assignment' },
           memory: { title: 'Piloti would like to remember a note' },
           project_profile: { title: 'Piloti suggests a change to the project context' },
+          operation: { title: 'Piloti suggests an action' },
         },
       },
       // Piloti read a project's documents and suggested values for its profile

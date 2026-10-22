@@ -87,7 +87,7 @@ services:
       # API (single-writer separation — the backend never touches grid_app).
       FRONTEND_INTERNAL_URL: ${FRONTEND_INTERNAL_URL:-http://frontend:3000}
       GRID_INTERNAL_API_TOKEN: ${GRID_INTERNAL_API_TOKEN:-grid-internal-dev-token}
-      # Object storage, for `view_knowledge_image` (ADR-0039): the tool asks the
+      # Object storage, for `look` (ADR-0039): the tool asks the
       # BFF where a document is and then reads the bytes from SeaweedFS itself.
       # These were only ever wired in the Kubernetes deployment, so in compose
       # the tool failed its credential guard and silently degraded every
@@ -99,7 +99,7 @@ services:
       # ingest endpoint must accept file_refs pointing at it too (SSRF
       # allowlist in aiq_api.routes.ingest).
       SEAWEED_PUBLIC_ENDPOINT: ${SEAWEED_PUBLIC_ENDPOINT:-http://localhost:8333}
-      # READ-ONLY. `view_knowledge_image` (ADR-0039) only ever calls get_object,
+      # READ-ONLY. `look` (ADR-0039) only ever calls get_object,
       # and this tier used to carry the `grid` credential — which holds
       # Write and Tagging on every document bucket, so a compromise here could
       # overwrite or delete any tenant document. AGENTS.md already described this
@@ -937,7 +937,7 @@ services:
       - GRID_APP_DATABASE_URL=${GRID_APP_DATABASE_URL:-postgresql://grid_app_rw:${GRID_APP_RUNTIME_PASSWORD:-grid_app_rw_dev}@pgbouncer:5432/grid_app}
       - FRONTEND_INTERNAL_URL=${FRONTEND_INTERNAL_URL:-http://frontend:3000}
       - GRID_INTERNAL_API_TOKEN=${GRID_INTERNAL_API_TOKEN:-grid-internal-dev-token}
-      # Object storage, for `view_knowledge_image` (ADR-0039): the tool asks the
+      # Object storage, for `look` (ADR-0039): the tool asks the
       # BFF where a document is and then reads the bytes from SeaweedFS itself.
       # These were only ever wired in the Kubernetes deployment, so in compose
       # the tool failed its credential guard and silently degraded every

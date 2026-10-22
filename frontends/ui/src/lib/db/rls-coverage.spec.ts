@@ -180,6 +180,20 @@ const BOUNDARY_MIGRATIONS = [
   // folders, worked by the BFF job (ADR-0121). Keyed by its organization; the
   // composite foreign key ties a project run to the project's.
   '0173_root_sort_runs.sql',
+  // Adds piloti_asks — a question another agent asked Piloti on a person's
+  // behalf (ADR-0124). Keyed by its organization; the composite foreign key
+  // ties it to its conversation's.
+  '0179_piloti_asks.sql',
+  // Adds folder_cards — the tier-1 abstract and key facts of a folder
+  // (ADR-0127). Keyed by its organization; the composite foreign key ties it
+  // to its folder's organization and shelf.
+  '0180_folder_cards.sql',
+  // Adds office_conventions — the office's conventions as Piloti counted them
+  // (ADR-0129), one derived row per organization. Keyed directly by it.
+  '0181_office_conventions.sql',
+  // Adds office_convention_decisions — a person's confirm or decline of one
+  // line of the office's conventions (ADR-0129). Keyed by its organization.
+  '0182_office_convention_decisions.sql',
 ]
 
 const MIGRATION_SOURCES = BOUNDARY_MIGRATIONS.map((file) =>

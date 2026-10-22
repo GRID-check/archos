@@ -252,6 +252,31 @@ class MemoryProposalCard(CardModel):
     )
 
 
+class OperationProposalCard(CardModel):
+    """A workspace operation the agent PROPOSES through the MCP surface and a person runs.
+
+    System-emitted for a write operation Piloti called on the product's own MCP
+    server (ADR-0122): the call changed nothing, it stored an ``operation``
+    proposal (ADR-0105) and this card shows it. Accepting runs the operation
+    as the ACCEPTING person through the operation's own route, so that route's
+    authorization decides; dismissing runs nothing. ``proposal_id`` is
+    required: a call that stored no proposal has no card, and says so in its
+    own result text.
+    """
+
+    type: Literal["operation_proposal"] = "operation_proposal"
+    title: str = Field(min_length=1, description="The one-line English description of what accepting would do")
+    operation: str = Field(min_length=1, description="The catalog operation's name, e.g. 'folder-rename'")
+    input: dict[str, Any] = Field(
+        default_factory=dict,
+        description="What the operation is called with: params, query and body, shown to the person",
+    )
+    proposal_id: str = Field(
+        pattern=PROPOSAL_ID_PATTERN,
+        description="The server proposal this card shows (kind 'operation'); the person accepts or dismisses it there",
+    )
+
+
 # ── Schematic cards: shared sub-structures ───────────────────────────────────
 # These cards are programmatically-drawn technical schematics (SVG). The model
 # emits PARAMETERS ONLY — never a rendered image and never a number it can't
@@ -304,7 +329,7 @@ class DimensionCheck(CardModel):
     This block used to be `label / value / required / unit / comparator /
     status` and nothing else, and that made the card the least honest surface in
     the product. `ifc_measure` answers „gemessen: 2.47 m (±5 mm) — aus der
-    Geometrie berechnet, nicht deklariert", the assistant repeats that in the
+    Geometrie berechnet, nicht deklariert“, the assistant repeats that in the
     prose, and the card beside it drew **2.47 m ✓** — indistinguishable from a
     figure the architect had stated in their own file. The card is the part a
     reviewer screenshots into a submission, so the surface that dropped the
@@ -419,7 +444,7 @@ class StairDiagramCard(CardModel):
     riser_count: int = Field(gt=0, description="Number of steps in the flight (drawn)")
     riser_height: DimensionCheck = Field(description="Steigung (rise) per step; typical limit <= 18 cm")
     tread_depth: DimensionCheck = Field(description="Auftritt (going) per step; typical limit >= 28 cm")
-    width: DimensionCheck = Field(description="Nutzbare Laufbreite; limit depends on Gebäudeklasse")
+    width: DimensionCheck = Field(description="Usable flight width; limit depends on Gebäudeklasse")
     comfort_note: str | None = Field(default=None, description="Result of the 2×Steigung + Auftritt comfort check")
     reference: NormReference = Field(description="Source of the step-geometry limits")
 
@@ -1008,7 +1033,7 @@ class TaskCreatedCard(CardModel):
     """Work Piloti has taken on, as a row somebody can come back to.
 
     System-emitted by ``create_task``. What it exists to prevent is the answer
-    „ich mache den Einreichcheck bis Freitag" with nothing behind it: the card is
+    „ich mache den Einreichcheck bis Freitag“ with nothing behind it: the card is
     proof there is a row, and the row is what carries the requester's permission,
     the deadline and — when a person judges the result — the decision that reaches
     the next attempt (ADR-0051).
@@ -1111,6 +1136,11 @@ class FileOperationItem(CardModel):
     member: str | None = Field(
         default=None,
         description="assign: the person as the user named them; the reader's session resolves it against the project",
+    )
+    reason: str | None = Field(
+        default=None,
+        max_length=300,
+        description="Why this change, one short sentence the reader sees under the row",
     )
 
 
@@ -1287,6 +1317,220 @@ class CanvasActivityCard(CardModel):
         max_length=MAX_CANVAS_ACTIVITY_ITEMS,
         description="What happened, in the order it happened",
     )
+
+
+# ---------------------------------------------------------------------------
+# Look card (ADR-0128)
+# ---------------------------------------------------------------------------
+# Where Piloti looked: one card per document per turn, an item per look the
+# answer relies on, and a `reference` item per box or pointer Piloti showed the
+# room (`highlight`, `point`). Built by `tools/look/cards.py` once the answer is
+# final; the model cannot emit it (`SYSTEM_CARD_TYPES`).
+#
+# An item is an ADDRESS, never pixels: the document, its Fassung, the page, the
+# region. The browser draws the thumbnail from the document's own preview route,
+# so who may see the crop is decided exactly as for the document. A string that
+# starts `data:` is refused anywhere on the card, so no field can smuggle an
+# image in.
+
+#: How many items one card carries: the turn's look budget is 6, plus the
+#: gestures that point at the same document.
+MAX_LOOK_ITEMS = 12
+
+_UUID_PATTERN = r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+#: A text that is not a `data:` URL, as a pattern, so the generated JSON Schema
+#: and Zod schema refuse one too (a lookahead: these models use Python's `re`).
+_NOT_A_DATA_URL = r"^(?!\s*[dD][aA][tT][aA]:)"
+#: A share of the page or image: 0 to 1.
+_Share = Annotated[float, Field(ge=0, le=1)]
+
+
+def _refuse_data_urls(value: Any, path: str = "card") -> None:
+    """Raise on any string under ``value`` that starts ``data:``: a card stores an address, never bytes."""
+    if isinstance(value, str):
+        if value.lstrip()[:5].lower() == "data:":
+            raise ValueError(f"{path}: a look card holds an address, never image bytes (a `data:` URL)")
+    elif isinstance(value, dict):
+        for key, item in value.items():
+            _refuse_data_urls(item, f"{path}.{key}")
+    elif isinstance(value, list):
+        for index, item in enumerate(value):
+            _refuse_data_urls(item, f"{path}[{index}]")
+
+
+class LookDocument(CardModel):
+    """The document looked at: its id when it is a workspace document, its file name, its shelf."""
+
+    model_config = ConfigDict(regex_engine="python-re")
+
+    id: str | None = Field(
+        default=None,
+        pattern=_UUID_PATTERN,
+        description="The workspace document's id; absent for a base-corpus document or when it was not resolved",
+    )
+    name: str = Field(min_length=1, max_length=300, pattern=_NOT_A_DATA_URL, description="The file name")
+    shelf: Literal["stored", "base"] = Field(
+        default="stored",
+        description="`stored`: a document of the office or the project; `base`: the platform corpus (Basiswissen)",
+    )
+
+
+class LookItem(CardModel):
+    """One place on the document: a look Piloti took, or a box or pointer it showed the room (`reference`)."""
+
+    model_config = ConfigDict(regex_engine="python-re")
+
+    origin: Literal["look", "reference"] = Field(
+        default="look", description="`look`: Piloti looked here; `reference`: Piloti pointed the room here"
+    )
+    page: int = Field(ge=1, description="The page, from 1")
+    frame: Literal["page", "image"] = Field(
+        default="page", description="`page`: the region is on the page as shown; `image`: on the embedded image"
+    )
+    scope: Literal["overview", "region", "point"] = Field(
+        description="`overview`: the whole page or image; `region`: a box on it; `point`: a pointer"
+    )
+    region: list[_Share] | None = Field(
+        default=None,
+        min_length=4,
+        max_length=4,
+        description="[x, y, w, h] as shares of the frame, origin top left; x + w and y + h at most 1",
+    )
+    point: list[_Share] | None = Field(
+        default=None, min_length=2, max_length=2, description="[x, y] of a pointer, as shares of the page"
+    )
+    image_index: int | None = Field(default=None, ge=0, description="The embedded image, for frame `image`")
+    revision_id: str | None = Field(
+        default=None,
+        min_length=1,
+        max_length=128,
+        pattern=r"^[A-Za-z0-9_.-]+$",
+        description="The Fassung looked at; absent means the document's current Fassung",
+    )
+    question: str | None = Field(
+        default=None, max_length=200, pattern=_NOT_A_DATA_URL, description="What Piloti looked for"
+    )
+    reading: str | None = Field(
+        default=None, max_length=300, pattern=_NOT_A_DATA_URL, description="The first thing read there"
+    )
+    label: str | None = Field(
+        default=None, max_length=80, pattern=_NOT_A_DATA_URL, description="A reference's label, as the room saw it"
+    )
+    where: str | None = Field(
+        default=None, max_length=60, pattern=_NOT_A_DATA_URL, description="The region in words, e.g. „oben rechts“"
+    )
+
+    @model_validator(mode="after")
+    def _a_place(self) -> "LookItem":
+        if self.region is not None:
+            x, y, w, h = self.region
+            if w <= 0 or h <= 0 or x + w > 1 + 1e-6 or y + h > 1 + 1e-6:
+                raise ValueError("the region reaches past the frame or has no area: x + w and y + h are at most 1")
+        if self.scope == "region" and self.region is None:
+            raise ValueError("a `region` item names its region")
+        if self.scope == "point" and self.point is None:
+            raise ValueError("a `point` item names its point")
+        if self.frame == "image" and self.image_index is None:
+            raise ValueError("an `image` frame names its `image_index`")
+        return self
+
+
+class LookCard(CardModel):
+    """Where Piloti looked on one document in this turn, and what it showed the room there.
+
+    System-emitted (``tools/look/cards.py``) once the answer is final, from the
+    looks the answer relies on; the model cannot emit it (``SYSTEM_CARD_TYPES``).
+    """
+
+    type: Literal["look"] = "look"
+    document: LookDocument
+    items: list[LookItem] = Field(
+        min_length=1, max_length=MAX_LOOK_ITEMS, description="The places, in the order Piloti reached them"
+    )
+
+    @model_validator(mode="before")
+    @classmethod
+    def _no_bytes(cls, data: Any) -> Any:
+        _refuse_data_urls(data)
+        return data
+
+
+# ---------------------------------------------------------------------------
+# Revision compare card (ADR-0128, slice V10)
+# ---------------------------------------------------------------------------
+# Two Fassungen of a document side by side with what changed boxed on each.
+# Built by `tools/workspace/cards.py` from the result of the
+# `document-revision-compare` operation; the model cannot emit it
+# (`SYSTEM_CARD_TYPES`). Like the look card it is an ADDRESS (the two documents'
+# ids, the page, the boxes), never pixels: the browser draws each thumbnail from
+# the document's own routes, so only a reader who may open both sees the pages.
+
+#: Changes one card carries: the comparison returns at most this many boxes.
+MAX_REVISION_CHANGES = 12
+#: Sentences one card carries: the comparison returns at most this many.
+MAX_REVISION_SUMMARY = 8
+
+
+class RevisionCompareChange(CardModel):
+    """One change, boxed on the page (the same frame on both Fassungen)."""
+
+    model_config = ConfigDict(regex_engine="python-re")
+
+    region: list[_Share] = Field(
+        min_length=4,
+        max_length=4,
+        description="[x, y, w, h] as shares of the page, origin top left; x + w and y + h at most 1",
+    )
+    label: str = Field(min_length=1, max_length=200, pattern=_NOT_A_DATA_URL, description="What changed there")
+
+    @model_validator(mode="after")
+    def _a_box(self) -> "RevisionCompareChange":
+        x, y, w, h = self.region
+        if w <= 0 or h <= 0 or x + w > 1 + 1e-6 or y + h > 1 + 1e-6:
+            raise ValueError("the region reaches past the page or has no area: x + w and y + h are at most 1")
+        return self
+
+
+class RevisionCompareCard(CardModel):
+    """The same page of an older and a newer Fassung, side by side, with the changes boxed on each.
+
+    System-emitted (``tools/workspace/cards.py``) from a ``document-revision-compare``
+    result; the model cannot emit it (``SYSTEM_CARD_TYPES``). The boxes were found
+    on the newer page and are drawn at the same place on the older one.
+    """
+
+    model_config = ConfigDict(regex_engine="python-re")
+
+    type: Literal["revision_compare"] = "revision_compare"
+    older_id: str = Field(pattern=_UUID_PATTERN, description="The older Fassung's workspace document id")
+    newer_id: str = Field(pattern=_UUID_PATTERN, description="The newer Fassung's workspace document id")
+    older_name: str | None = Field(
+        default=None,
+        min_length=1,
+        max_length=255,
+        pattern=_NOT_A_DATA_URL,
+        description="The older Fassung's file name, when the comparison named it; the side's label",
+    )
+    newer_name: str | None = Field(
+        default=None,
+        min_length=1,
+        max_length=255,
+        pattern=_NOT_A_DATA_URL,
+        description="The newer Fassung's file name, when the comparison named it; the side's label",
+    )
+    page: int = Field(ge=1, description="The page compared, from 1; the same page of both Fassungen")
+    changes: list[RevisionCompareChange] = Field(
+        default_factory=list, max_length=MAX_REVISION_CHANGES, description="The boxed changes; empty when none"
+    )
+    summary: list[Annotated[str, Field(min_length=1, max_length=400, pattern=_NOT_A_DATA_URL)]] = Field(
+        min_length=1, max_length=MAX_REVISION_SUMMARY, description="What changed, in short sentences"
+    )
+
+    @model_validator(mode="before")
+    @classmethod
+    def _no_bytes(cls, data: Any) -> Any:
+        _refuse_data_urls(data)
+        return data
 
 
 # ---------------------------------------------------------------------------
@@ -1487,9 +1731,9 @@ class IfcComplianceCard(CardModel):
     the answer is a list of requirements: the card stays correct after the model
     changes, and a sentence does not.
 
-    NEVER present this as a Nachweis. The catalogue reads only published
-    property values, it reads no geometry, and Fluchtweglängen, Geländerhöhen
-    and Brandabschnittsgrößen are not in it at all.
+    NEVER present this as proof of compliance (a Nachweis). The catalogue reads only published
+    property values, it reads no geometry, and escape-route lengths, guardrail
+    heights and fire-compartment sizes are not in it at all.
     """
 
     type: Literal["ifc_compliance"]
@@ -1847,11 +2091,14 @@ GridCard = (
     | GuardrailCheckCard
     | FireAccessPlanCard
     | MemoryProposalCard
+    | OperationProposalCard
     | DocumentGridCard
     | DocumentDraftCard
     | TaskCreatedCard
     | FileOperationProposalCard
     | CanvasActivityCard
+    | LookCard
+    | RevisionCompareCard
     | IfcViewerCard
     | IfcComplianceCard
     | IfcScheduleCard
@@ -1881,7 +2128,13 @@ __all__ = [
     "IfcElementCard",
     "IfcDiffCard",
     "IfcModelPickerCard",
+    "LookCard",
+    "LookDocument",
+    "LookItem",
+    "RevisionCompareCard",
+    "RevisionCompareChange",
     "MemoryProposalCard",
+    "OperationProposalCard",
     "SurfacedDocument",
     "ProjectProfilePatchCard",
     "ProjectProfilePatchOperation",

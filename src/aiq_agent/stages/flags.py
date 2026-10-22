@@ -73,6 +73,11 @@ class TurnFlags:
     #: queue work that outlives the turn. Same True-on-every-failure-path
     #: reasoning as :attr:`deep_research_allowed`.
     tasks_allowed: bool = True
+    #: Whether this tenant has written folder cards (the ``folder-cards`` WorkOS
+    #: flag, ADR-0127). Unlike the two above this is an entitlement, so it is OFF
+    #: unless the BFF says yes: an older BFF, a failed call or a missing field
+    #: all read as no.
+    folder_cards_allowed: bool = False
 
 
 #: The evaluation runs on the per-turn critical path, in the same gather as the
@@ -142,6 +147,7 @@ def fetch_turn_flags(*, organization_id: str | None, project_id: str | None = No
         # null, a string from a future schema — is the older-BFF case above.
         deep_research_allowed=features.get("deepResearch") is not False,
         tasks_allowed=features.get("tasks") is not False,
+        folder_cards_allowed=features.get("folderCards") is True,
     )
 
 

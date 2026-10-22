@@ -55,8 +55,8 @@ export const LEGACY_CALLOUT_KIND: Readonly<Record<string, AnswerCalloutKind>> = 
   tipp: 'tip',
 }
 
-/** Exclusive answer shapes. A verdict is kept only for `ruling`. */
-export const ANSWER_KINDS = ['direct', 'walkthrough', 'ruling', 'handoff'] as const
+/** Exclusive answer shapes. A verdict is kept only for `ruling`, a work report only for `work`. */
+export const ANSWER_KINDS = ['direct', 'walkthrough', 'ruling', 'handoff', 'work'] as const
 export type AnswerKind = (typeof ANSWER_KINDS)[number]
 
 /** The Fundstelle a verdict rests on; the card `NormReference` shape. */
@@ -76,6 +76,39 @@ export interface AnswerMetaTakeaway {
   text: string
   detail?: string
 }
+
+/** Mirrors `WORK_ITEMS_MAX` and the item caps in `answer_envelope.py`. */
+export const WORK_ITEMS_MAX = 6
+export const WORK_TEXT_MAX_CHARS = 200
+const WORK_REF_MAX_CHARS = 80
+const WORK_WHO_MAX_CHARS = 80
+const WORK_DUE_MAX_CHARS = 40
+
+/** One line of a work report: what, and optionally the object it names, who acts, and by when. */
+export interface AnswerMetaWorkItem {
+  text: string
+  /** The object or proposal id the line is about. */
+  ref?: string
+  /** Who acts: the person a blocked step waits on, or who takes the next one. */
+  who?: string
+  /** By when, in the answer's words. */
+  due?: string
+}
+
+/**
+ * The report of an operations turn (`kind: work`, ADR-0123): what ran, what
+ * waits for the person as a proposal, what is blocked and on whom, and what
+ * comes next. Each list is optional and at most {@link WORK_ITEMS_MAX} long.
+ */
+export interface AnswerMetaWork {
+  done?: AnswerMetaWorkItem[]
+  proposed?: AnswerMetaWorkItem[]
+  blocked?: AnswerMetaWorkItem[]
+  next?: AnswerMetaWorkItem[]
+}
+
+export const WORK_SECTIONS = ['done', 'proposed', 'blocked', 'next'] as const
+export type WorkSection = (typeof WORK_SECTIONS)[number]
 
 export interface AnswerMetaCallout {
   kind: AnswerCalloutKind
@@ -114,6 +147,8 @@ export interface AnswerMeta {
   verdict?: AnswerMetaVerdict
   takeaways?: AnswerMetaTakeaway[]
   callout?: AnswerMetaCallout
+  /** Only for `kind: work`: the report of what the turn did and what waits. */
+  work?: AnswerMetaWork
 }
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -161,6 +196,36 @@ function sanitizeTakeaways(input: unknown): AnswerMetaTakeaway[] | undefined {
   }
   // Two is the backend's floor too: one takeaway is a sentence, not a block.
   return items.length >= 2 ? items : undefined
+}
+
+function sanitizeWorkItems(input: unknown): AnswerMetaWorkItem[] | undefined {
+  if (!Array.isArray(input)) return undefined
+  const items: AnswerMetaWorkItem[] = []
+  for (const raw of input) {
+    if (items.length >= WORK_ITEMS_MAX) break
+    if (!isRecord(raw)) continue
+    const text = cap(raw.text, WORK_TEXT_MAX_CHARS)
+    if (!text) continue
+    const item: AnswerMetaWorkItem = { text }
+    const ref = cap(raw.ref, WORK_REF_MAX_CHARS)
+    if (ref) item.ref = ref
+    const who = cap(raw.who, WORK_WHO_MAX_CHARS)
+    if (who) item.who = who
+    const due = cap(raw.due, WORK_DUE_MAX_CHARS)
+    if (due) item.due = due
+    items.push(item)
+  }
+  return items.length > 0 ? items : undefined
+}
+
+function sanitizeWork(input: unknown): AnswerMetaWork | undefined {
+  if (!isRecord(input)) return undefined
+  const work: AnswerMetaWork = {}
+  for (const section of WORK_SECTIONS) {
+    const items = sanitizeWorkItems(input[section])
+    if (items) work[section] = items
+  }
+  return Object.keys(work).length > 0 ? work : undefined
 }
 
 function sanitizeKind(input: unknown): AnswerKind | undefined {
@@ -218,6 +283,8 @@ export function sanitizeAnswerMeta(input: unknown): AnswerMeta | null {
   const verdict = kind && kind !== 'ruling' ? undefined : sanitizeVerdict(input.verdict)
   const takeaways = sanitizeTakeaways(input.takeaways)
   const callout = sanitizeCallout(input.callout)
+  // Exclusive like the verdict: a work report belongs to a work turn only.
+  const work = kind === 'work' ? sanitizeWork(input.work) : undefined
   if (!kind && !summary && !topic && !context && !verdict && !takeaways && !callout) return null
 
   const version = typeof input.v === 'number' && Number.isFinite(input.v) ? input.v : ANSWER_META_VERSION
@@ -229,5 +296,6 @@ export function sanitizeAnswerMeta(input: unknown): AnswerMeta | null {
   if (verdict) meta.verdict = verdict
   if (takeaways) meta.takeaways = takeaways
   if (callout) meta.callout = callout
+  if (work) meta.work = work
   return meta
 }

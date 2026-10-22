@@ -55,7 +55,7 @@ const ITEMS: InboxItemView[] = [
   },
   {
     id: 'n2',
-    type: 'job.completed',
+    type: 'task_run.completed',
     state: 'unread',
     archived: false,
     actionable: false,

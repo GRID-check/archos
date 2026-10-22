@@ -174,6 +174,52 @@ const RAW_FIXTURES: CardInput[] = [
     note: 'Vorschlag — es wurde noch nichts verschoben.',
   },
   {
+    // An action Piloti proposed through the MCP surface (ADR-0122): the
+    // summary as the title, the action's name, and its inputs.
+    type: 'operation_proposal',
+    title: 'Rename a folder (name: Pläne, folderId: f_1)',
+    operation: 'folder-rename',
+    input: { params: { id: '00000000-0000-4000-8000-0000000000a1', folderId: 'f_1' }, body: { name: 'Pläne' } },
+    proposal_id: '00000000-0000-4000-8000-0000000000b1',
+  },
+  {
+    // Both origins: a whole-page look, a region read with a question, and the
+    // box Piloti showed the room.
+    type: 'look',
+    document: { id: '00000000-0000-4000-8000-0000000000c1', name: 'Grundriss EG.pdf' },
+    items: [
+      { page: 2, scope: 'overview' },
+      {
+        page: 2,
+        scope: 'region',
+        region: [0.62, 0.04, 0.34, 0.22],
+        where: 'oben rechts',
+        question: 'Maßstab und Planstand im Plankopf?',
+        reading: 'M 1:100, Stand 14.03.2026',
+      },
+      {
+        origin: 'reference',
+        page: 2,
+        scope: 'region',
+        region: [0.58, 0.34, 0.14, 0.22],
+        where: 'in der Seitenmitte',
+        label: 'Hier: Laufbreite 1,10 m',
+      },
+    ],
+  },
+  {
+    // Two Fassungen of one page, two changes boxed on each (ADR-0128, V10).
+    type: 'revision_compare',
+    older_id: '00000000-0000-4000-8000-0000000000d1',
+    newer_id: '00000000-0000-4000-8000-0000000000d2',
+    page: 2,
+    changes: [
+      { region: [0.62, 0.04, 0.34, 0.22], label: 'Plankopf: Index B statt A' },
+      { region: [0.58, 0.34, 0.14, 0.22], label: 'Laufbreite 1,10 m statt 1,00 m' },
+    ],
+    summary: ['Plankopf: Index B statt A', 'Treppe: Laufbreite 1,10 m statt 1,00 m'],
+  },
+  {
     // Both kinds of row: two marks to take over or discard, a box and a
     // point, and an answer in an existing thread.
     type: 'canvas_activity',

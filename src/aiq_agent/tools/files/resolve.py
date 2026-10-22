@@ -125,15 +125,13 @@ def resolve_document(name: str) -> ResolvedDocument | Refusal:
     """
     wanted = _key(name)
     if not wanted:
-        return Refusal(
-            "Fehler: Es wurde kein Dateiname übergeben. Nenne die Datei genau so, wie sie in der Übersicht steht."
-        )
+        return Refusal("Error: No file name was given. Name the file exactly as it appears in the overview.")
 
     rows = _rows()
     if not rows:
         return Refusal(
-            "Fehler: Diese Unterhaltung sieht keine Projekt- oder Büroablage-Dateien, also gibt es nichts "
-            "zu ordnen. Sage das, statt einen Vorschlag zu machen."
+            "Error: This conversation sees no project or office-shelf files, so there is nothing "
+            "to organise. Say so instead of making a proposal."
         )
 
     for candidates in (
@@ -145,13 +143,13 @@ def resolve_document(name: str) -> ResolvedDocument | Refusal:
             return candidates[0]
         if len(candidates) > 1:
             return Refusal(
-                f"Mehrdeutig: „{_nfc(name)}“ passt auf {_named(candidates)}. Frage die Nutzerin, welche Datei "
-                "gemeint ist, und rufe das Werkzeug mit dem genauen Dateinamen erneut auf."
+                f"Ambiguous: „{_nfc(name)}“ matches {_named(candidates)}. Ask the user which file "
+                "is meant, and call the tool again with the exact file name."
             )
 
     return Refusal(
-        f"Nicht gefunden: „{_nfc(name)}“ steht nicht in der Dateiübersicht dieser Unterhaltung. Nenne den "
-        "genauen Dateinamen aus der Übersicht oder frage die Nutzerin danach — rate nicht."
+        f"Not found: „{_nfc(name)}“ is not in this conversation's file overview. Give the "
+        "exact file name from the overview or ask the user for it — do not guess."
     )
 
 
@@ -193,8 +191,8 @@ def resolve_folder(path: str) -> str | Refusal:
     folders = known_folders()
     if not folders:
         return Refusal(
-            f"Nicht gefunden: Dieses Projekt hat noch keine Ordner, „{_nfc(path)}“ also auch nicht. Schlage mit "
-            '`propose_file_change(operation="create_folder")` einen Ordner vor, bevor du etwas hineinlegst.'
+            f"Not found: This project has no folders yet, so no „{_nfc(path)}“ either. Propose a folder with "
+            '`propose_file_change(operation="create_folder")` before you put anything in it.'
         )
 
     for candidates in (
@@ -205,10 +203,10 @@ def resolve_folder(path: str) -> str | Refusal:
             return candidates[0]
         if len(candidates) > 1:
             listed = ", ".join(f"`{folder}`" for folder in candidates[:_MAX_NAMED_CANDIDATES])
-            return Refusal(f"Mehrdeutig: „{_nfc(path)}“ passt auf {listed}. Frage nach, welcher Ordner gemeint ist.")
+            return Refusal(f"Ambiguous: „{_nfc(path)}“ matches {listed}. Ask which folder is meant.")
 
     listed = ", ".join(f"`{folder}`" for folder in folders[:_MAX_NAMED_CANDIDATES])
     return Refusal(
-        f"Nicht gefunden: Es gibt keinen Ordner „{_nfc(path)}“. Vorhanden sind: {listed}. Nenne einen davon "
-        'oder schlage den neuen Ordner erst mit `propose_file_change(operation="create_folder")` vor.'
+        f"Not found: There is no folder „{_nfc(path)}“. Existing folders: {listed}. Name one of them "
+        'or first propose the new folder with `propose_file_change(operation="create_folder")`.'
     )

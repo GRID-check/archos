@@ -141,6 +141,7 @@ class TestAvailableDocument:
             "supersedes": None,
             "revision_suggestion": None,
             "revision_facts": None,
+            "page_count": None,
             "change_summary": None,
             "change_basis": None,
             "added_at": None,
@@ -165,6 +166,7 @@ class TestAvailableDocument:
             "supersedes": None,
             "revision_suggestion": None,
             "revision_facts": None,
+            "page_count": None,
             "change_summary": None,
             "change_basis": None,
             "added_at": None,
@@ -1768,3 +1770,101 @@ class TestTopicsAndCaptureThroughTheFactory:
         assert set_document_capture("coll", "foto.jpg", capture) is True
         assert get_available_documents("coll")[0].capture == capture
         assert set_document_capture("coll", "ghost.jpg", capture) is False
+
+
+# =============================================================================
+# Page count per document
+# =============================================================================
+
+
+class TestPageCount:
+    """``page_count`` is an INTEGER column, written by the ingest and by the backfill, read into the listing."""
+
+    @staticmethod
+    def _legacy_db_without_page_count(dir_path):
+        """A ``summaries`` table from before the page count (and the other optional columns)."""
+        from sqlalchemy import create_engine
+        from sqlalchemy import text
+
+        db_url = f"sqlite:///{dir_path / 'legacy.db'}"
+        engine = create_engine(db_url)
+        with engine.connect() as conn:
+            conn.execute(
+                text(
+                    "CREATE TABLE summaries ("
+                    "collection VARCHAR(256) NOT NULL, "
+                    "filename VARCHAR(512) NOT NULL, "
+                    "summary TEXT NOT NULL, "
+                    "created_at DATETIME, "
+                    "PRIMARY KEY (collection, filename))"
+                )
+            )
+            conn.execute(
+                text("INSERT INTO summaries (collection, filename, summary) VALUES ('oib', 'old.pdf', 'Alt.')")
+            )
+            conn.commit()
+        return db_url, engine
+
+    @pytest.fixture
+    def store(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            db_url = f"sqlite:///{Path(tmpdir) / 'page_counts.db'}"
+            store = DocumentMetadataStore(db_url)
+            yield store
+            DocumentMetadataStore.dispose_engine(db_url)
+
+    def test_migration_adds_an_integer_column_and_keeps_old_rows(self):
+        from sqlalchemy import inspect
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            db_url, engine = self._legacy_db_without_page_count(Path(tmpdir))
+            DocumentMetadataStore._tables_initialized.discard(db_url)
+            try:
+                store = DocumentMetadataStore(db_url)
+                columns = {c["name"]: str(c["type"]) for c in inspect(engine).get_columns("document_metadata")}
+                assert columns["page_count"].upper().startswith("INTEGER")
+                (old,) = store.get_all("oib")
+                assert old.file_name == "old.pdf"
+                assert old.page_count is None
+            finally:
+                engine.dispose()
+                DocumentMetadataStore.dispose_engine(db_url)
+                DocumentMetadataStore._tables_initialized.discard(db_url)
+
+    def test_set_and_read_back_through_the_listing(self, store):
+        store.register("oib", "plan.pdf", "Grundriss.")
+        assert store.set_page_count("oib", "plan.pdf", 14) is True
+        assert store.get_page_count("oib", "plan.pdf") == 14
+        (doc,) = store.get_all("oib")
+        assert doc.page_count == 14
+        (batch,) = store.get_many("oib", ["plan.pdf"])
+        assert batch.page_count == 14
+
+    def test_a_re_ingest_overwrites_with_the_newest_count(self, store):
+        store.register("oib", "plan.pdf", "Grundriss.")
+        store.set_page_count("oib", "plan.pdf", 4)
+        store.register("oib", "plan.pdf", "Grundriss, neu gelesen.")
+        assert store.get_page_count("oib", "plan.pdf") == 4
+        store.set_page_count("oib", "plan.pdf", 6)
+        assert store.get_page_count("oib", "plan.pdf") == 6
+
+    def test_none_clears_the_count(self, store):
+        store.register("oib", "plan.pdf", "Grundriss.")
+        store.set_page_count("oib", "plan.pdf", 4)
+        store.set_page_count("oib", "plan.pdf", None)
+        assert store.get_page_count("oib", "plan.pdf") is None
+
+    def test_a_text_file_has_no_count(self, store):
+        store.register("oib", "notiz.txt", "Notiz.")
+        assert store.set_page_count("oib", "notiz.txt", 0) is True
+        assert store.get_page_count("oib", "notiz.txt") is None
+
+    def test_set_is_update_only(self, store):
+        assert store.set_page_count("oib", "missing.pdf", 3) is False
+        assert store.get_page_count("oib", "missing.pdf") is None
+
+    def test_invalid_values_are_not_stored(self, store):
+        store.register("oib", "plan.pdf", "Grundriss.")
+        for bad in (True, -2, "7"):
+            store.set_page_count("oib", "plan.pdf", bad)
+            assert store.get_page_count("oib", "plan.pdf") is None

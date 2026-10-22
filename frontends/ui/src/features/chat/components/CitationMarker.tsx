@@ -29,6 +29,7 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '
 import { citationSnippet, type CitationRef } from '../lib/citations'
 import { useHoverPopover, type HoverPopover } from '@/hooks/use-hover-popover'
 import { useCitationScope } from './CitationScope'
+import { thumbnailDocumentId } from './CitationPageThumbnail'
 import { CitationPeek } from './CitationPeek'
 import { SourceDocumentDialog, useCitationDownload, useSourcePreviewIndex } from './SourcePreview'
 import { citedFileName, resolveCitationTarget } from '../lib/citations/target'
@@ -339,6 +340,7 @@ const ResolvedCitationPeek: FC<{
       snippet={snippet}
       url={url}
       presentation={presentation}
+      thumbnailDocumentId={thumbnailDocumentId(target)}
       onOpen={openable ? onOpen : undefined}
       // A document with no in-app viewer is reachable, just not renderable —
       // the file is offered instead of the open, and the popover says which.

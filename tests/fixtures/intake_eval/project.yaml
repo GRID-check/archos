@@ -157,14 +157,14 @@ files:
   - name: EP-02_Schnitt_A-A.pdf
     folder: Einreichung
     added_at: "2026-05-04"
-    revision_facts: {document_number: EP-02, revision: B, revision_date: "2026-02-03", scale: "1:100", title: Schnitt A-A}
+    revision_facts: {document_number: EP-02, revision: B, revision_date: "2026-02-03", scale: "1:50", title: Schnitt A-A}
     pages:
       - |
         PLANKOPF
         Projekt: Aufstockung Wohnhaus Hubergasse 14, 1160 Wien
         Planart: Einreichplan
         Planinhalt: Schnitt A-A
-        Plannummer: EP-02   Index: B   Datum: 03.02.2026   Maßstab: 1:100
+        Plannummer: EP-02   Index: B   Datum: 03.02.2026   Maßstab: 1:50
         Planverfasser: Atelier Lindner Architektur ZT GmbH
 
         Höhenkoten

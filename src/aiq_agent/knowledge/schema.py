@@ -538,6 +538,9 @@ class AvailableDocument(BaseModel):
         change_summary: Optional German bullet lines: what changed against the
             Fassung named by ``change_basis``.
         change_basis: Optional file name ``change_summary`` compared against.
+        page_count: Optional number of pages the file has, counted when it was ingested (a backfill
+            fills the older rows). ``None`` for a file without pages, such as a text file, and for a row
+            ingested before the count was kept: the listing says nothing rather than guess.
         added_at: Optional ``YYYY-MM-DD`` the document was first indexed under
             this name (the row's ``created_at``; a re-ingest keeps it). A
             string, not a datetime, because the row rides the checkpointed turn
@@ -561,6 +564,7 @@ class AvailableDocument(BaseModel):
     revision_facts: dict[str, Any] | None = None
     change_summary: str | None = None
     change_basis: str | None = None
+    page_count: int | None = None
     added_at: str | None = None
     collection: str | None = None
     shelf: str | None = None

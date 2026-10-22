@@ -91,7 +91,7 @@ class TestRefusals:
         bind_context(monkeypatch, headers={"x-grid-project-id": PROJECT}, conversation_id="conv-1")
 
         answer = await task_tools.run_create_task("submission_check", "Prüf das")
-        assert "Sitzungsnachweis" in answer
+        assert "signed session credential" in answer
         assert calls == []
 
     async def test_a_turn_with_no_project_delegates_nothing(self, monkeypatch, calls) -> None:
@@ -113,13 +113,13 @@ class TestRefusals:
         )
 
         answer = await task_tools.run_create_task("submission_check", "Prüf das")
-        assert "kein Projekt" in answer
+        assert "no project" in answer
         assert calls == []
 
     async def test_an_unknown_kind_is_refused_with_the_set_named(self, monkeypatch, calls) -> None:
         responder(monkeypatch, ACCEPTED, calls)
         answer = await task_tools.run_create_task("kostenschaetzung", "Rechne das durch")
-        assert "keine Auftragsart" in answer
+        assert "not a task kind" in answer
         for kind in task_tools.TASK_KINDS:
             assert kind in answer
         assert calls == []
@@ -127,7 +127,7 @@ class TestRefusals:
     async def test_an_empty_goal_is_refused(self, monkeypatch, calls) -> None:
         responder(monkeypatch, ACCEPTED, calls)
         answer = await task_tools.run_create_task("submission_check", "   ")
-        assert "Beschreibung" in answer
+        assert "description" in answer
         assert calls == []
 
     async def test_an_overlong_cadence_is_refused_and_nothing_is_posted(self, monkeypatch, calls) -> None:
@@ -138,13 +138,13 @@ class TestRefusals:
 
         answer = await task_tools.run_create_task("submission_check", "Prüf das", cadence=cadence)
 
-        assert "zu lang" in answer
+        assert "too long" in answer
         assert calls == []
 
     async def test_a_refusal_from_the_route_says_nothing_was_created(self, monkeypatch) -> None:
         raiser(monkeypatch, DelegationError("the task API refused the call (403)", status=403))
         answer = await task_tools.run_create_task("submission_check", "Prüf das")
-        assert "nicht angenommen" in answer
+        assert "was not accepted" in answer
 
 
 class TestWhatTheReaderSees:
@@ -169,8 +169,8 @@ class TestWhatTheReaderSees:
     async def test_the_answer_says_the_work_is_running_and_not_done(self, monkeypatch, calls) -> None:
         responder(monkeypatch, ACCEPTED, calls)
         answer = await task_tools.run_create_task("submission_check", "Prüf das")
-        assert "angelegt" in answer
-        assert "NICHT erledigt" in answer
+        assert "created" in answer
+        assert "NOT done" in answer
 
     async def test_a_scheduled_answer_says_the_plan_stands_and_nothing_ran_yet(self, monkeypatch, calls) -> None:
         """The scheduled arm: the scheduler owns every fire, so no work is running."""
@@ -180,11 +180,11 @@ class TestWhatTheReaderSees:
             calls,
         )
         answer = await task_tools.run_create_task("submission_check", "Prüf das jeden Montag", cadence="0 8 * * 1")
-        assert "Zeitplan angelegt" in answer
-        assert "nicht jetzt" in answer
-        assert "Der erste Lauf ist für 2026-09-21T08:00:00.000Z geplant." in answer
+        assert "Schedule created" in answer
+        assert "not now" in answer
+        assert "The first run is planned for 2026-09-21T08:00:00.000Z." in answer
         # The queued sentence would claim a run that does not exist yet.
-        assert "NICHT erledigt" not in answer
+        assert "NOT done" not in answer
 
     async def test_a_cadence_refusal_from_the_route_is_relayed_verbatim(self, monkeypatch) -> None:
         """No `project:skills:manage`: the route's sentence reaches the model,
@@ -200,13 +200,13 @@ class TestWhatTheReaderSees:
         )
         answer = await task_tools.run_create_task("document", "Prüf das", cadence="0 8 * * 1")
         assert "project:skills:manage" in answer
-        assert "nicht angenommen" in answer
+        assert "was not accepted" in answer
 
     async def test_a_missing_card_registry_does_not_cost_the_delegation(self, monkeypatch, calls) -> None:
         """A CLI run has no card channel; the ROW is the product, the card is the announcement."""
         responder(monkeypatch, ACCEPTED, calls)
         answer = await task_tools.run_create_task("submission_check", "Prüf das")
-        assert "Auftrag angelegt" in answer
+        assert "Task created" in answer
         assert len(calls) == 1
 
     async def test_an_answer_with_no_task_id_emits_no_card(self, monkeypatch, calls, registry) -> None:

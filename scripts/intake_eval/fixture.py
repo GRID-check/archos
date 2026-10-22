@@ -325,9 +325,14 @@ def list_files_tool(fixture: Fixture) -> StructuredTool:
         topic: str | None = None,
         revisions_of: str | None = None,
         compare_to: str | None = None,
+        view: str | None = None,
+        depth: int | None = None,
     ) -> str:
+        from knowledge_layer.browse import DEFAULT_TREE_DEPTH
+        from knowledge_layer.browse import folder_cards
         from knowledge_layer.browse import render_listing
         from knowledge_layer.browse import render_revisions
+        from knowledge_layer.browse import render_tree
         from knowledge_layer.browse import select_files
 
         if revisions_of:
@@ -342,8 +347,13 @@ def list_files_tool(fixture: Fixture) -> StructuredTool:
             topic=topic,
             sort=sort or "folder",
             offset=int(offset or 0),
-            limit=int(limit or 40),
+            limit=len(rows) + 1 if view == "tree" else int(limit or 40),
         )
+        if view == "tree":
+            cards = folder_cards(
+                listing.rows, root=listing.folder, depth=int(depth or DEFAULT_TREE_DEPTH), series_rows=rows
+            )
+            return render_tree(cards, total_rows=listing.total, notes=listing.notes)
         return render_listing(listing)
 
     return StructuredTool.from_function(coroutine=list_files, name="list_files", description=_LIST_FILES_DESCRIPTION)

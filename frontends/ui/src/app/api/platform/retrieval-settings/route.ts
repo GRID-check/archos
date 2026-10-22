@@ -13,23 +13,17 @@
  */
 
 import { NextResponse } from 'next/server'
-import { z } from 'zod'
 import { platformApiRoute } from '@/lib/api/platform-handler'
 import { PLATFORM_PERMISSIONS } from '@/lib/authz/permissions'
 import { parseJsonBody } from '@/lib/api/handler'
 import { recordAuditEvent } from '@/lib/audit/service'
 import { getPlatformOrganizationId } from '@/lib/authz/platform'
+import { retrievalSettingsPutSchema } from '@/lib/platform/platform-wire'
 import { RETRIEVAL_SETTINGS } from '@/lib/retrieval-settings/catalog'
 import {
   listPlatformRetrievalSettings,
   savePlatformRetrievalSettings,
 } from '@/lib/retrieval-settings/service'
-
-const putSchema = z.object({
-  /** The complete settings set: `{key: count}`. Omitted keys are cleared. */
-  settings: z.record(z.string(), z.number().int()),
-  note: z.string().trim().max(500).nullable().optional(),
-})
 
 export const GET = platformApiRoute(
   async () => {
@@ -41,7 +35,7 @@ export const GET = platformApiRoute(
 
 export const PUT = platformApiRoute(
   async ({ request, session }) => {
-    const input = await parseJsonBody(request, putSchema)
+    const input = await parseJsonBody(request, retrievalSettingsPutSchema)
 
     await savePlatformRetrievalSettings({
       settings: input.settings,

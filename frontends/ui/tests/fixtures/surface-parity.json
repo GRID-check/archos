@@ -1,0 +1,325 @@
+{
+ "comment": "Where each canvas capability is shown: frontends/ui/src/lib/surface-parity/parity.config.ts, written by parity.config.spec.ts (UPDATE_FIXTURES=1). `tool` is the name the model binds (`canvas__mark`, `look`).",
+ "capabilities": {
+  "look": {
+   "summary": "Look at a page or a box on it, then answer from what was seen",
+   "tool": "look",
+   "annotationOp": "look",
+   "operations": [
+    "document-look"
+   ],
+   "canvas": {
+    "kind": "rendering",
+    "component": "features/documents/components/review/review-page-layer.tsx",
+    "card": null,
+    "step": null
+   },
+   "chat": {
+    "kind": "rendering",
+    "component": "features/chat/components/reasoning/LookStepRow.tsx",
+    "card": "look",
+    "step": "look"
+   }
+  },
+  "point": {
+   "summary": "Move Piloti’s pointer to a place on a page for everyone in the document",
+   "tool": "canvas__point",
+   "annotationOp": "point",
+   "operations": [],
+   "canvas": {
+    "kind": "rendering",
+    "component": "features/documents/components/review/review-page-layer.tsx",
+    "card": null,
+    "step": null
+   },
+   "chat": {
+    "kind": "rendering",
+    "component": null,
+    "card": "look",
+    "step": null
+   }
+  },
+  "highlight": {
+   "summary": "Show everyone a labelled box on a page for what the answer refers to",
+   "tool": "canvas__highlight",
+   "annotationOp": "highlight",
+   "operations": [],
+   "canvas": {
+    "kind": "rendering",
+    "component": "features/documents/components/review/review-page-layer.tsx",
+    "card": null,
+    "step": null
+   },
+   "chat": {
+    "kind": "rendering",
+    "component": null,
+    "card": "look",
+    "step": null
+   }
+  },
+  "propose": {
+   "summary": "Propose marks a person takes over or dismisses",
+   "tool": "canvas__mark",
+   "annotationOp": "propose",
+   "operations": [],
+   "canvas": {
+    "kind": "rendering",
+    "component": "features/documents/components/review/mark-row.tsx",
+    "card": null,
+    "step": null
+   },
+   "chat": {
+    "kind": "rendering",
+    "component": "features/grid-cards/components/CanvasActivityCard.tsx",
+    "card": "canvas_activity",
+    "step": null
+   }
+  },
+  "createMark": {
+   "summary": "Set a mark open, in the person’s name, when they asked for exactly that mark",
+   "tool": "canvas__mark",
+   "annotationOp": "create",
+   "operations": [
+    "annotation-create"
+   ],
+   "canvas": {
+    "kind": "rendering",
+    "component": "features/documents/components/review/composer.tsx",
+    "card": null,
+    "step": null
+   },
+   "chat": {
+    "kind": "rendering",
+    "component": "features/grid-cards/components/CanvasActivityCard.tsx",
+    "card": "canvas_activity",
+    "step": null
+   }
+  },
+  "updateMark": {
+   "summary": "Change a mark: status, assignee, due date, kind, text",
+   "tool": "canvas__update",
+   "annotationOp": "update",
+   "operations": [
+    "annotation-update"
+   ],
+   "canvas": {
+    "kind": "rendering",
+    "component": "features/documents/components/review/mark-row.tsx",
+    "card": null,
+    "step": null
+   },
+   "chat": {
+    "kind": "rendering",
+    "component": "features/grid-cards/components/CanvasActivityCard.tsx",
+    "card": "canvas_activity",
+    "step": null
+   }
+  },
+  "deleteMark": {
+   "summary": "Delete a mark a person set",
+   "tool": "canvas__delete",
+   "annotationOp": "delete",
+   "operations": [
+    "annotation-delete"
+   ],
+   "canvas": {
+    "kind": "rendering",
+    "component": "features/documents/components/review/mark-row.tsx",
+    "card": null,
+    "step": null
+   },
+   "chat": {
+    "kind": "rendering",
+    "component": "features/grid-cards/components/CanvasActivityCard.tsx",
+    "card": "canvas_activity",
+    "step": null
+   }
+  },
+  "replyToMark": {
+   "summary": "Reply in a mark’s thread",
+   "tool": "canvas__reply",
+   "annotationOp": "reply",
+   "operations": [
+    "annotation-reply-create"
+   ],
+   "canvas": {
+    "kind": "rendering",
+    "component": "features/documents/components/review/thread-card.tsx",
+    "card": null,
+    "step": null
+   },
+   "chat": {
+    "kind": "rendering",
+    "component": "features/grid-cards/components/CanvasActivityCard.tsx",
+    "card": "canvas_activity",
+    "step": null
+   }
+  },
+  "editReply": {
+   "summary": "Reword or remove a reply",
+   "tool": null,
+   "annotationOp": null,
+   "operations": [
+    "annotation-reply-update",
+    "annotation-reply-delete"
+   ],
+   "canvas": {
+    "kind": "rendering",
+    "component": "features/documents/components/review/thread-card.tsx",
+    "card": null,
+    "step": null
+   },
+   "chat": {
+    "kind": "exempt",
+    "reason": "Piloti has no tool to edit a reply: its own reply is final and a person’s is theirs to change"
+   }
+  },
+  "readMarks": {
+   "summary": "Read the marks of a document or a project",
+   "tool": "canvas__marks",
+   "annotationOp": "list",
+   "operations": [
+    "annotation-list",
+    "annotation-get",
+    "project-annotation-list"
+   ],
+   "canvas": {
+    "kind": "rendering",
+    "component": "features/documents/components/review/review-panel.tsx",
+    "card": null,
+    "step": null
+   },
+   "chat": {
+    "kind": "exempt",
+    "reason": "A read whose result is the answer; the marks it quotes are cited as text"
+   }
+  },
+  "exportMarks": {
+   "summary": "Export a document’s or a project’s marks as a file",
+   "tool": null,
+   "annotationOp": null,
+   "operations": [
+    "document-annotations-export",
+    "project-annotations-export"
+   ],
+   "canvas": {
+    "kind": "rendering",
+    "component": "features/documents/components/review/review-export-menu.tsx",
+    "card": null,
+    "step": null
+   },
+   "chat": {
+    "kind": "exempt",
+    "reason": "A file download for a person; the door offers it to agents, the chat has no card for a file of marks"
+   }
+  },
+  "room": {
+   "summary": "See who has the document open, on which page, and what they select",
+   "tool": "canvas__room",
+   "annotationOp": "room",
+   "operations": [],
+   "canvas": {
+    "kind": "rendering",
+    "component": "features/documents/components/review/cursor-chat.tsx",
+    "card": null,
+    "step": null
+   },
+   "chat": {
+    "kind": "exempt",
+    "reason": "Who is in a document has no meaning in a conversation; a read whose result is the answer"
+   }
+  },
+  "leave": {
+   "summary": "Piloti leaves the document’s room when its turn ends",
+   "tool": null,
+   "annotationOp": "leave",
+   "operations": [],
+   "canvas": {
+    "kind": "rendering",
+    "component": "features/documents/components/review/review-page-layer.tsx",
+    "card": null,
+    "step": null
+   },
+   "chat": {
+    "kind": "exempt",
+    "reason": "The turn harness’s own clean-up, not a capability of the person or of Piloti"
+   }
+  },
+  "compareRevisions": {
+   "summary": "Compare two Fassungen of a document: what changed on a page, boxed",
+   "tool": null,
+   "annotationOp": null,
+   "operations": [
+    "document-revision-compare",
+    "document-revision-candidates",
+    "document-revision-link-set"
+   ],
+   "canvas": {
+    "kind": "rendering",
+    "component": "features/documents/components/document-revisions.tsx",
+    "card": null,
+    "step": null
+   },
+   "chat": {
+    "kind": "rendering",
+    "component": "features/grid-cards/components/RevisionCompareCard.tsx",
+    "card": "revision_compare",
+    "step": null
+   }
+  },
+  "askAboutBox": {
+   "summary": "Draw a box on a page and ask about it; Piloti answers in context of that box",
+   "tool": null,
+   "annotationOp": null,
+   "operations": [],
+   "canvas": {
+    "kind": "rendering",
+    "component": "features/documents/hooks/use-canvas-ask.ts",
+    "card": null,
+    "step": null
+   },
+   "chat": {
+    "kind": "rendering",
+    "component": "features/chat/lib/canvas-bridge.ts",
+    "card": null,
+    "step": null
+   }
+  },
+  "readSelectedRegion": {
+   "summary": "Piloti reads what the person selected or points at when the question says \"here\"",
+   "tool": "canvas__room",
+   "annotationOp": null,
+   "operations": [],
+   "canvas": {
+    "kind": "rendering",
+    "component": "features/documents/components/review/document-review.tsx",
+    "card": null,
+    "step": null
+   },
+   "chat": {
+    "kind": "rendering",
+    "component": "features/documents/lib/review-focus.ts",
+    "card": null,
+    "step": null
+   }
+  },
+  "openAtPlace": {
+   "summary": "Open a document at a page, with a region glowing",
+   "tool": null,
+   "annotationOp": null,
+   "operations": [],
+   "canvas": {
+    "kind": "rendering",
+    "component": "features/documents/components/review/document-review.tsx",
+    "card": null,
+    "step": null
+   },
+   "chat": {
+    "kind": "rendering",
+    "component": "features/knowledge/components/page-place-button.tsx",
+    "card": "look",
+    "step": null
+   }
+  }
+ }
+}

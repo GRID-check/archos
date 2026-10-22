@@ -23,18 +23,18 @@ class TestTheRoom:
 
         assert calls[0][0]["op"] == "room"
         for expected in (
-            "Anna Berger (Person): sieht S. 2, etwa 35 % nach unten",
-            "hat Anmerkung Nr. 4 ausgewählt",
-            "zieht gerade einen Rahmen auf: S. 2, x 0.30–0.40, y 0.50–0.60",
+            "Anna Berger (Person): is viewing p. 2, about 35 % down",
+            "has selected annotation no. 4",
+            "is drawing a frame: p. 2, x 0.30–0.40, y 0.50–0.60",
             "- Martin Huber (Person)\n",
-            "5 offen, 2 Vorschläge",
+            "5 open, 2 proposals",
         ):
             assert expected in result, expected
 
     async def test_an_empty_room_says_so(self, monkeypatch, calls):
         answering(monkeypatch, calls, {**ROOM_BODY, "peers": []})
 
-        assert "Niemand hat es gerade geöffnet" in await run_room()
+        assert "Nobody has it open right now" in await run_room()
 
     async def test_the_room_op_names_the_answer_this_turn_writes(self, monkeypatch, calls):
         """The BFF admits the document against the conversation's audience, and marks the answer."""
@@ -53,7 +53,7 @@ class TestPointingAndHighlighting:
 
         sent = {key: value for key, value in calls[0][0].items() if key != "answerMessageId"}
         assert sent == {"op": "point", "page": 2, "x": 0.4, "y": 0.5, "label": "Hier"}
-        assert "S. 2" in result
+        assert "p. 2" in result
         assert presence.current_canvas_presence().documents == {presence.SUBJECT}
 
     async def test_a_highlight_carries_its_label_and_is_clamped_onto_the_page(self, monkeypatch, calls):
@@ -75,12 +75,12 @@ class TestPointingAndHighlighting:
     @pytest.mark.parametrize(
         ("arguments", "expected"),
         [
-            ((0, 0.1, 0.1, 0.1, 0.1, "x"), "ab 1"),
-            ((1, 120, 0.1, 0.1, 0.1, "x"), "keine Pixel"),
-            ((1, 0.1, 0.1, 0.0, 0.1, "x"), "größer als 0"),
-            ((1, 0.8, 0.1, 0.5, 0.1, "x"), "über die Seite"),
+            ((0, 0.1, 0.1, 0.1, 0.1, "x"), "from 1"),
+            ((1, 120, 0.1, 0.1, 0.1, "x"), "not pixels"),
+            ((1, 0.1, 0.1, 0.0, 0.1, "x"), "greater than 0"),
+            ((1, 0.8, 0.1, 0.5, 0.1, "x"), "beyond the page"),
             ((1, 0.1, 0.1, 0.1, 0.1, "  "), "`label`"),
-            ((1, 0.1, 0.1, 0.1, 0.1, "x" * 121), "höchstens 120"),
+            ((1, 0.1, 0.1, 0.1, 0.1, "x" * 121), "at most 120"),
         ],
     )
     async def test_a_bad_highlight_is_refused_before_anything_is_sent(self, monkeypatch, calls, arguments, expected):

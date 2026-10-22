@@ -1,9 +1,9 @@
 """Whether the model answering this turn can see an image.
 
-``view_knowledge_image`` and the canvas's ``look`` answer with an image content
-block. A model that takes text only cannot read one: OpenRouter refuses the
-NEXT model call of the turn ("no endpoints found that support image input"), so
-a single look would end the turn with an error instead of an answer. The admin
+``look`` (``tools/look``) answers with an image content block. A model that takes
+text only cannot read one: OpenRouter refuses the NEXT model call of the turn
+("no endpoints found that support image input"), so a single look would end the
+turn with an error instead of an answer. The admin
 picker only requires image input of the ingestion VLM group
 (``frontends/ui/src/lib/model-config/agent-groups.ts``); the chat group stays
 open to text-only models on purpose, because an office that chose one should

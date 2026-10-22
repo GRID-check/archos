@@ -29,6 +29,9 @@ function payloadFacts(typed: KindPayload) {
       return { operation: null, items: 1, memoryScope: typed.payload.scope }
     case 'project_profile':
       return { operation: null, items: typed.payload.patch.length, memoryScope: null }
+    // The catalog operation's name is a code identifier, not a word of the payload.
+    case 'operation':
+      return { operation: typed.payload.operation, items: 1, memoryScope: null }
   }
 }
 

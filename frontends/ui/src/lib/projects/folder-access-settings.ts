@@ -57,8 +57,9 @@ import { assertRestrictionKeepsIfcOpen } from './ifc-folder-guard'
 import { projectShelf } from '@/lib/documents/shelf'
 import { publishShelfChanged } from '@/lib/documents/shelf-live'
 
-/** Most people one folder's own list may name. A list longer than this is a group's job. */
-export const FOLDER_ACCESS_MAX_PEOPLE = 50
+import { FOLDER_ACCESS_MAX_PEOPLE } from './folder-access-wire'
+
+export { FOLDER_ACCESS_MAX_PEOPLE }
 
 /** One person on a folder's own list. */
 export interface FolderPersonGrant {

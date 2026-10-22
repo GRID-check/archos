@@ -190,14 +190,17 @@ def run_once(
     conversation_id: str,
     overrides: list[list[str]] | None = None,
     extra_env: dict[str, str] | None = None,
+    name: str | None = None,
 ) -> Path:
     """One `nat run` of the question with the recorder loaded; the JSONL it wrote.
 
     ``extra_env`` is added to the run's environment: the precedent eval hands
     each run its own signed envelope and the fixture BFF's address through it.
+    ``name`` names the recording when it is not the conversation's: an earlier
+    turn of a conversation the workspace eval asks several turns in.
     """
-    record = out / f"{conversation_id}.jsonl"
-    log = out / f"{conversation_id}.log"
+    record = out / f"{name or conversation_id}.jsonl"
+    log = out / f"{name or conversation_id}.log"
     record.unlink(missing_ok=True)
     env = {**os.environ, **(extra_env or {}), "REC_OUT": str(record), "PYTHONPATH": tree_pythonpath(out)}
     # -P: no working directory on sys.path, as the `nat` console script has none.

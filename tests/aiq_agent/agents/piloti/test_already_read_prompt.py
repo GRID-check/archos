@@ -52,14 +52,14 @@ class TestDigestBlock:
     def test_the_block_carries_the_index_not_evidence_rule(self):
         rendered = _render(already_read_digest=list(DIGEST))
 
-        assert "KEIN Beleg" in rendered
+        assert "NOT evidence" in rendered
 
     def test_no_digest_renders_no_section(self):
         rendered = _render(already_read_digest=None)
 
         # The rule still names the heading (static prompt text); the BLOCK —
         # its entries and its index-not-evidence sentence — must be absent.
-        assert "KEIN Beleg" not in rendered
+        assert "NOT evidence" not in rendered
         assert DIGEST[0] not in rendered
 
 

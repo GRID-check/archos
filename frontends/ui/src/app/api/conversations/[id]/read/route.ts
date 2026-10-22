@@ -10,16 +10,11 @@
  * the unread separator at an exact message (CC-19).
  */
 
-import { z } from 'zod'
 import { apiRoute, parseJsonBody } from '@/lib/api/handler'
+import { markReadSchema } from '@/lib/conversations/conversation-wire'
 import { markConversationRead } from '@/lib/conversations/service'
 
 type Params = { id: string }
-
-const markReadSchema = z.object({
-  // Client-generated message id; length-capped like every other id from a client.
-  lastReadMessageId: z.string().min(1).max(128).nullable().optional(),
-})
 
 export const POST = apiRoute<Params>(
   async ({ session, params, request }) => {

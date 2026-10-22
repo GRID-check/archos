@@ -23,20 +23,10 @@ import { readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import ts from 'typescript-api'
 import { describe, expect, it } from 'vitest'
+import { germanIdentifierWords as germanWords } from '@/test-utils/german-words'
 
 const UI_ROOT = path.resolve(__dirname, '..')
-const REPO_ROOT = path.resolve(UI_ROOT, '../..')
 const BASELINE_PATH = path.join(UI_ROOT, 'english-names-baseline.json')
-const STEMS = (JSON.parse(readFileSync(path.join(REPO_ROOT, 'ci', 'german_stems.json'), 'utf8')) as { stems: string[] })
-  .stems
-const GERMAN = new RegExp(STEMS.join('|'))
-const WORDS = /[A-Z]?[a-z]+|[A-Z]+(?![a-z])|\d+/g
-
-/** The words of `identifier` that carry a German stem (`federalState` → [], `bundeslandId` → ['bundesland']). */
-function germanWords(identifier: string): string[] {
-  const words = identifier.split('_').flatMap((part) => part.match(WORDS) ?? [])
-  return words.map((word) => word.toLowerCase()).filter((word) => GERMAN.test(word))
-}
 
 function sourceFiles(): string[] {
   const listed = execFileSync('git', ['ls-files', '*.ts', '*.tsx', '*.mts', '*.mjs', '*.js'], {

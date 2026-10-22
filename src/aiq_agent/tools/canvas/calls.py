@@ -32,54 +32,48 @@ class Refused(Exception):
 
 
 NO_ENVELOPE = (
-    "Fehler: Dieser Lauf hat keinen signierten Sitzungsnachweis, deshalb kann Piloti in keinem Dokument lesen "
-    "oder schreiben. Nicht erneut versuchen."
+    "Error: This run has no signed session credential, so Piloti cannot read or write in any document. Do not retry."
 )
 NO_DOCUMENT = (
-    "Welches Dokument? Dieser Chat gehört zu keinem Dokument, und keines ist geöffnet. Nenne es in `document` "
-    "(der Dateiname aus der Übersicht) oder frage, welches gemeint ist."
+    "Which document? This chat belongs to no document, and none is open. Name it in `document` "
+    "(the file name from the overview) or ask which one is meant."
 )
 FORBIDDEN = (
-    "Nicht möglich: Die Person darf an diesem Dokument nichts ändern, oder dieser Chat darf es nicht lesen. "
-    "Sage es ihr so; nicht erneut versuchen."
+    "Not possible: The person may not change anything on this document, or this chat may not read it. "
+    "Tell them so; do not retry."
 )
 DOCUMENT_GONE = (
-    "Dieses Dokument gibt es nicht (mehr), es ist noch nicht freigegeben, oder dieser Chat darf es nicht lesen. "
-    "Nicht erneut versuchen."
+    "This document does not exist (any more), it is not yet released, or this chat may not read it. Do not retry."
 )
-ANNOTATION_GONE = (
-    "Diese Anmerkung gibt es auf dem Dokument nicht (mehr). Lies mit `marks` nach und nimm ihre id oder Nummer."
-)
-CONFLICT = "Jemand hat die Anmerkungen gerade geändert. Lies sie mit `marks` neu, bevor du weitermachst."
+ANNOTATION_GONE = "This annotation does not exist (any more) on the document. Read `marks` and use its id or number."
+CONFLICT = "Someone has just changed the annotations. Re-read them with `marks` before you continue."
 DELETE_FORBIDDEN = (
-    "Nicht möglich: Löschen kann die Person nur Anmerkungen, die sie selbst gesetzt hat, und nur, wenn sie an "
-    "diesem Dokument etwas ändern darf. Sag es ihr so; erledigen (`update` mit `status` `resolved`) geht, wenn sie "
-    "es möchte."
+    "Not possible: The person can delete only annotations they set themselves, and only if they may change "
+    "this document. Tell them so; resolving (`update` with `status` `resolved`) works if they "
+    "want it."
 )
 #: The BFF's ``details.reason`` values for a mark its author may no longer delete (``deleteRefusalOf``).
 DELETE_KEPT_REASONS = frozenset({"mark-discussed", "mark-carried"})
 DELETE_KEPT = (
-    "Nicht gelöscht: Andere haben im Verlauf dieser Anmerkung geantwortet, oder sie wurde zwischen Dokumenten "
-    "übernommen. Sie bleibt, damit ihr Verlauf und ihre Nummer erhalten bleiben. Sag es der Person so; erledigen "
-    "(`update` mit `status` `resolved`) geht, wenn sie es möchte."
+    "Not deleted: Others have replied in this annotation's thread, or it was carried over between documents. "
+    "It stays so that its thread and its number are kept. Tell the person so; resolving "
+    "(`update` with `status` `resolved`) works if they want it."
 )
 ASSIGNEE_UNCLEAR = (
-    "Unklar, wer gemeint ist ({detail}). Frage die Person, wen sie meint, und nimm dann den vollen Namen; nichts "
-    "wurde geändert."
+    "Unclear who is meant ({detail}). Ask the person whom they mean, then use the full name; nothing was changed."
 )
 #: The BFF's ``details.reason`` when the organization has Piloti propose only (``piloti-acts`` off).
 PILOTI_ACTS_OFF = "piloti-acts-off"
 PROPOSE_ONLY_MARK = (
-    "Nicht gesetzt: Dieses Büro lässt Piloti Anmerkungen nur vorschlagen. Setze sie mit `mark` ohne `open` als "
-    "Vorschlag und sag der Person, dass sie ihn im Dokument übernehmen kann."
+    "Not set: This office lets Piloti only propose annotations. Set them with `mark` without `open` as a "
+    "proposal and tell the person they can take it over in the document."
 )
 PROPOSE_ONLY_CHANGE = (
-    "Nicht geändert: Dieses Büro lässt Piloti Anmerkungen nur vorschlagen, nicht ändern oder löschen. Sag der "
-    "Person, dass sie das im Dokument selbst tun kann; nicht erneut versuchen."
+    "Not changed: This office lets Piloti only propose annotations, not change or delete them. Tell the "
+    "person they can do this in the document themselves; do not retry."
 )
 UNREACHABLE = (
-    "Fehler: Das Dokument ist gerade nicht erreichbar. Sage der Person, dass es nicht geklappt hat; nicht in "
-    "derselben Antwort erneut versuchen."
+    "Error: The document is not reachable right now. Tell the person it did not work; do not retry in the same answer."
 )
 
 
@@ -124,7 +118,7 @@ def refusal_for(exc: CanvasRequestError, operation: str) -> Refused:
     if exc.status == 409:
         return Refused(CONFLICT, "conflict")
     if exc.status in (400, 422):
-        return Refused(f"Fehler: Die Anfrage wurde abgelehnt ({exc}). Korrigiere die Argumente.", "invalid")
+        return Refused(f"Error: The request was rejected ({exc}). Correct the arguments.", "invalid")
     return Refused(UNREACHABLE, "unreachable")
 
 

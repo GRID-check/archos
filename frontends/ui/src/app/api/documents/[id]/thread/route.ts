@@ -6,18 +6,16 @@
  * `@/lib/annotations/document-thread`.
  */
 
-import { z } from 'zod'
 import { apiRoute, parseJsonBody } from '@/lib/api/handler'
+import { documentThreadRequestSchema } from '@/lib/annotations/types'
 import { ensureDocumentThread } from '@/lib/annotations/document-thread'
 import { getAccessibleDocument } from '@/lib/documents/access'
 
 type Params = { id: string }
 
-const threadRequestSchema = z.object({ title: z.string().trim().max(200).optional() }).strict()
-
 export const POST = apiRoute<Params>(
   async ({ session, request, params }) => {
-    const { title } = await parseJsonBody(request, threadRequestSchema)
+    const { title } = await parseJsonBody(request, documentThreadRequestSchema)
     const doc = await getAccessibleDocument(session, params.id, 'read')
     return { conversationId: await ensureDocumentThread(session, doc, title) }
   },

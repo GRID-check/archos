@@ -1,0 +1,13 @@
+---
+features:
+  - >
+    When a newer revision of a drawing is filed, Piloti can now compare it with
+    the previous one on its own and mark what changed as suggestions on the new
+    revision, which you take over or dismiss in the review. You get one inbox
+    message, and nothing when nothing visible changed.
+operators:
+  - >
+    Noticing a new revision is off until the organization has the piloti-notices
+    feature flag; it compares at most three changed pages per revision with the
+    office's vision model, and GRID_REVISION_NOTICE_MAX_PAGES and
+    GRID_REVISION_NOTICE_DELAY_SECONDS tune it.

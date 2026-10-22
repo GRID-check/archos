@@ -7,11 +7,9 @@
  * `/api/inbox`).
  */
 
-import { z } from 'zod'
 import { apiRoute, parseJsonBody } from '@/lib/api/handler'
-import { INBOX_LIST_LIMIT, markUnread } from '@/lib/inbox/service'
-
-const markUnreadSchema = z.object({ itemIds: z.array(z.string().uuid()).min(1).max(INBOX_LIST_LIMIT) }).strict()
+import { markUnreadSchema } from '@/lib/inbox/inbox-wire'
+import { markUnread } from '@/lib/inbox/service'
 
 export const POST = apiRoute(
   async ({ session, request }) => {

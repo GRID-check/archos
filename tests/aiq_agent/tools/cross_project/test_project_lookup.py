@@ -143,7 +143,7 @@ class TestWhatItSends:
 
         result = await lookup.run_project_lookup("search", query="Traufe")
 
-        assert "Sitzungsnachweis" in result
+        assert "signed session credential" in result
         assert calls == []
         assert not turn.drew_on_others
 
@@ -224,7 +224,7 @@ class TestTheSearchAnswer:
         [
             (
                 "vienna",
-                "Bundesland: Steiermark — nicht das Bundesland dieses Projekts: dort gilt eine andere Bauordnung",
+                "Bundesland: Steiermark — not this project's federal state: a different building code applies there",
             ),
             ("styria", "Bundesland: Steiermark\n"),
             (None, "Bundesland: Steiermark\n"),
@@ -259,7 +259,7 @@ class TestTheSearchAnswer:
         assert "Projekt: Wohnbau Graz — abgeschlossen (project_id 22222222-0000-4000-8000-000000000002)" in result
         assert "Citation: Detail Traufe.pdf (Wohnbau Graz), p.3" in result
         assert "offset=8" in result
-        assert "kein Projektgedächtnis" in result
+        assert "no project memory" in result
         entry = next(
             e
             for e in extract_sources_from_tool_result("project_lookup", result)
@@ -287,7 +287,7 @@ class TestTheSearchAnswer:
 
         assert turn.admitted == {OTHER_COLLECTION}
         assert not turn.drew_on_others
-        assert "laufende andere Projekte" not in result
+        assert "other running projects" not in result
 
     async def test_a_running_projects_passage_shuts_the_doors(self, monkeypatch, calls, turn) -> None:
         running = _hit(
@@ -299,7 +299,7 @@ class TestTheSearchAnswer:
         result = await lookup.run_project_lookup("search", query="Attika")
 
         assert turn.drew_on_others
-        assert "laufende andere Projekte" in result
+        assert "other running projects" in result
 
     async def test_the_default_scope_is_the_most_similar_projects(self, monkeypatch, calls, turn) -> None:
         _answering(monkeypatch, calls, SEARCH_BODY)
@@ -316,7 +316,7 @@ class TestTheSearchAnswer:
 
         result = await lookup.run_project_lookup("search", query="Traufe")
 
-        assert result == f"Nicht möglich: {sentence}"
+        assert result == f"Not possible: {sentence}"
         assert not turn.drew_on_others
 
     async def test_a_project_out_of_reach_reads_as_not_found(self, monkeypatch, calls, turn) -> None:
@@ -411,10 +411,10 @@ class TestThePermitRecords:
         assert "Source: Nachforderung – Stadtgemeinde Baden, 12.03.2020" in result
         assert "Projekt: Wohnbau Graz — abgeschlossen" in result
         assert "Bundesland: Steiermark" in result
-        assert "Verfahren: Gemeinde Baden, Geschäftszahl BA-123/2020" in result
+        assert "Procedure: Gemeinde Baden, Geschäftszahl BA-123/2020" in result
         assert (
-            "Nachforderung (S. 2): Ein Brandschutzgutachten ist vorzulegen. "
-            "Nachweis: Gutachten eines Sachverständigen Rechtsgrundlage: § 13 Abs. 3 AVG"
+            "Nachforderung (p. 2): Ein Brandschutzgutachten ist vorzulegen. "
+            "Evidence: Gutachten eines Sachverständigen Legal basis: § 13 Abs. 3 AVG"
         ) in result
         assert "Hinweis: Die Frist beträgt vier Wochen." in result
         assert "1 Bescheid(e)" in result
@@ -465,7 +465,7 @@ class TestThePermitRecords:
         result = await lookup.run_project_lookup("search", query="x")
 
         assert not turn.drew_on_others
-        assert "laufende andere Projekte" not in result
+        assert "other running projects" not in result
 
     @pytest.mark.parametrize(
         "permit",
@@ -480,7 +480,7 @@ class TestThePermitRecords:
         result = await lookup.run_project_lookup("search", query="x")
 
         assert turn.drew_on_others
-        assert "laufende andere Projekte" in result
+        assert "other running projects" in result
 
     async def test_a_record_missing_what_a_citation_needs_is_dropped(self, monkeypatch, calls, turn) -> None:
         _answering(monkeypatch, calls, {**SEARCH_BODY, "hits": [], "permits": [_permit(fileName="")]})
@@ -501,7 +501,7 @@ class TestThePermitRecords:
 
         assert "Source: Nachforderung, 12.03.2020" in result
         assert [s.citation_key for s in sources] == ["Baubescheid_Baden_2020.pdf (Wohnbau Graz), p.2"]
-        assert "Verfahren: Gemeinde Baden, Geschäftszahl BA-123/2020" in result
+        assert "Procedure: Gemeinde Baden, Geschäftszahl BA-123/2020" in result
 
     async def test_a_record_longer_than_the_cap_is_cut_and_marked_as_truncated(self, monkeypatch, calls, turn) -> None:
         long_requirements = [
@@ -562,15 +562,15 @@ class TestTheRecordedDecisions:
 
         assert sources[0].citation_key == "Projektgedächtnis (Wohnbau Graz)"
         assert sources[0].project_name == "Wohnbau Graz"
-        assert "Entscheidung (von einer Person bestätigt, 2021): Stiegenhaus in Stahlbeton" in result
-        assert "Vorgabe (von Piloti notiert, 2021): Brandsperre" in result
+        assert "Decision (confirmed by a person, 2021): Stiegenhaus in Stahlbeton" in result
+        assert "Constraint (noted by Piloti, 2021): Brandsperre" in result
         assert result.index("Projektgedächtnis") < result.index("Detail Traufe.pdf")
 
     @pytest.mark.parametrize(
         ("decision", "marker"),
         [
-            ({"origin": "person", "confirmed": True}, "(von einer Person bestätigt, 2021): "),
-            ({"origin": "agent", "confirmed": False}, "(von Piloti notiert, 2021): "),
+            ({"origin": "person", "confirmed": True}, "(confirmed by a person, 2021): "),
+            ({"origin": "agent", "confirmed": False}, "(noted by Piloti, 2021): "),
             (
                 {
                     "origin": "documents",
@@ -580,15 +580,15 @@ class TestTheRecordedDecisions:
                         {"fileName": "Gutachten.pdf", "page": "1"},
                     ],
                 },
-                "(aus den Unterlagen erschlossen: Bescheid.pdf S. 3, 2021): ",
+                "(inferred from the documents: Bescheid.pdf p. 3, 2021): ",
             ),
             (
                 {"origin": "documents", "confirmed": False, "evidence": [{"fileName": "Bescheid.pdf", "page": None}]},
-                "(aus den Unterlagen erschlossen: Bescheid.pdf, 2021): ",
+                "(inferred from the documents: Bescheid.pdf, 2021): ",
             ),
             (
                 {"origin": "documents", "confirmed": False, "evidence": []},
-                "(aus den Unterlagen erschlossen, 2021): ",
+                "(inferred from the documents, 2021): ",
             ),
         ],
     )
@@ -601,11 +601,9 @@ class TestTheRecordedDecisions:
 
         result = await lookup.run_project_lookup("search", query="Stiegenhaus")
 
-        assert f"Entscheidung {marker}Stiegenhaus in Stahlbeton." in result
+        assert f"Decision {marker}Stiegenhaus in Stahlbeton." in result
 
-    @pytest.mark.parametrize(
-        ("confirmed", "marker"), [(True, "von einer Person bestätigt"), (False, "von Piloti notiert")]
-    )
+    @pytest.mark.parametrize(("confirmed", "marker"), [(True, "confirmed by a person"), (False, "noted by Piloti")])
     async def test_an_older_bff_without_origin_is_read_by_its_confirmed_flag(
         self, monkeypatch, calls, turn, confirmed, marker
     ) -> None:
@@ -619,7 +617,7 @@ class TestTheRecordedDecisions:
 
         result = await lookup.run_project_lookup("search", query="Stiegenhaus")
 
-        assert f"Entscheidung ({marker}, 2021): Stiegenhaus in Stahlbeton." in result
+        assert f"Decision ({marker}, 2021): Stiegenhaus in Stahlbeton." in result
 
     async def test_decisions_alone_are_still_a_source_so_the_answer_is_not_replaced(self, monkeypatch, calls, turn):
         _answering(monkeypatch, calls, {**SEARCH_BODY, "hits": [], "decisions": [_decision("Holz-Massivbau-Treppe.")]})
@@ -645,7 +643,7 @@ class TestTheRecordedDecisions:
         result = await lookup.run_project_lookup("search", query="x")
 
         assert turn.drew_on_others
-        assert "laufende andere Projekte" in result
+        assert "other running projects" in result
 
 
 class TestTheAdmission:
@@ -687,9 +685,9 @@ class TestFindAndBrief:
         result = await lookup.run_project_lookup("find", query="Graz")
 
         assert (
-            "- Wohnbau Graz — abgeschlossen · 2019-03-01 bis 2021-06-30 · Steiermark · Hauptstraße 3, Graz (project_id"
+            "- Wohnbau Graz — abgeschlossen · 2019-03-01 to 2021-06-30 · Steiermark · Hauptstraße 3, Graz (project_id"
         ) in result
-        assert "das Projekt dieses Chats" in result
+        assert "this chat's own project" in result
         assert turn.admitted == {OTHER_COLLECTION}
         # A closed project: every office member reads it, so naming it shuts nothing.
         assert not turn.drew_on_others
@@ -711,7 +709,7 @@ class TestFindAndBrief:
         result = await lookup.run_project_lookup("find", query="Linz")
 
         assert turn.drew_on_others
-        assert "laufende andere Projekte" in result
+        assert "other running projects" in result
 
     async def test_the_chats_own_project_alone_shuts_no_door(self, monkeypatch, calls, turn) -> None:
         own = {
@@ -729,7 +727,7 @@ class TestFindAndBrief:
 
         result = await lookup.run_project_lookup("brief", project_id="own")
 
-        assert "Zusammenfassung: Ein Schulbau." in result
+        assert "Summary: Ein Schulbau." in result
         assert not turn.drew_on_others
 
     async def test_find_prints_each_projects_land_after_its_period_and_names_one_that_is_not_this_chats(
@@ -750,18 +748,18 @@ class TestFindAndBrief:
 
         _validator(schema, "CrossProjectListResponse").validate(body)
         assert (
-            "- Wohnbau Graz — abgeschlossen · 2019-03-01 bis 2021-06-30 · "
-            "Steiermark — nicht das Bundesland dieses Projekts: dort gilt eine andere Bauordnung (project_id"
+            "- Wohnbau Graz — abgeschlossen · 2019-03-01 to 2021-06-30 · "
+            "Steiermark — not this project's federal state: a different building code applies there (project_id"
         ) in result
-        assert "- Lagerhalle — abgeschlossen · 2019-03-01 bis 2021-06-30 (project_id" in result
+        assert "- Lagerhalle — abgeschlossen · 2019-03-01 to 2021-06-30 (project_id" in result
 
     @pytest.mark.parametrize(
         ("edition", "printed"),
         [
-            ({"value": "2019", "confirmed": True}, "· geplant nach OIB-Richtlinien 2019 (project_id"),
+            ({"value": "2019", "confirmed": True}, "· planned under OIB guidelines 2019 (project_id"),
             (
                 {"value": "2015", "confirmed": False},
-                "· geplant nach OIB-Richtlinien 2015 (aus den Unterlagen, unbestätigt) (project_id",
+                "· planned under OIB guidelines 2015 (from the documents, unconfirmed) (project_id",
             ),
         ],
     )
@@ -775,7 +773,7 @@ class TestFindAndBrief:
 
         _validator(schema, "CrossProjectBriefResponse").validate(body)
         assert printed in result
-        assert ("unbestätigt" in result) is (not edition["confirmed"])
+        assert ("unconfirmed" in result) is (not edition["confirmed"])
 
     async def test_an_absent_oib_edition_prints_nothing_on_find_or_brief(
         self, monkeypatch, calls, turn, schema
@@ -791,7 +789,7 @@ class TestFindAndBrief:
         _validator(schema, "CrossProjectBriefResponse").validate(brief)
         assert "OIB" not in listing
         assert "OIB" not in read
-        assert "Keine bestätigten Eckdaten." in read
+        assert "No confirmed key facts." in read
         assert extract_sources_from_tool_result("project_lookup", read) == []
 
     # An answer that states a project's facts from its brief cited it, and the
@@ -820,8 +818,8 @@ class TestFindAndBrief:
         assert [s.citation_key for s in sources] == ["Projektdaten (Wohnbau Graz)"]
         assert (sources[0].project_id, sources[0].collection) == (OTHER, OTHER_COLLECTION)
         assert "construction_method@bldg1=holzbau" in result
-        assert "Zusammenfassung: Zubau" in result
-        assert "laufende andere Projekte" in result
+        assert "Summary: Zubau" in result
+        assert "other running projects" in result
         assert verification.removed_citations == []
         assert "[1]" in verification.verified_report
 
@@ -958,8 +956,8 @@ class TestTheHitJudge:
 
         result = await lookup.run_project_lookup("search", query="Traufe")
 
-        assert "Notiz.pdf (Wohnbau Graz) enthält Text, der eine KI anweisen will" in result
-        assert "Notiz.pdf" in result.split("enthält Text", 1)[1]
+        assert "Notiz.pdf (Wohnbau Graz) contains text that tries to instruct an AI" in result
+        assert "Notiz.pdf" in result.split("contains text", 1)[1]
 
     async def test_nothing_that_shows_a_solution_with_more_projects_left_says_to_page_on(
         self, monkeypatch, calls, turn
@@ -969,7 +967,7 @@ class TestTheHitJudge:
 
         result = await lookup.run_project_lookup("search", query="Traufe")
 
-        assert "offset=8" in result and "Keine dieser Passagen zeigt" in result
+        assert "offset=8" in result and "None of these passages shows" in result
 
     async def test_a_judge_that_did_not_run_leaves_the_hits_as_the_bff_sent_them(self, monkeypatch, calls, turn):
         _answering(monkeypatch, calls, {**SEARCH_BODY, "hits": [_hit("Allgemein.pdf"), _hit("Detail Traufe.pdf")]})
@@ -1066,7 +1064,7 @@ class TestTheProjectFacts:
 
         result = await lookup.run_project_lookup("search", query="Traufe", project_facts=["tyrol", "Mars", "gk7"])
 
-        assert result.startswith("Fehler: unbekannte `project_facts`: Mars, gk7.")
+        assert result.startswith("Error: unknown `project_facts`: Mars, gk7.")
         assert calls == []
 
     @pytest.mark.parametrize(
@@ -1122,11 +1120,13 @@ class TestTheProjectFacts:
         none = await lookup.run_project_lookup("find", project_facts=["vorarlberg"])
         plain = await lookup.run_project_lookup("find")
 
-        narrowed = "[Nur Projekte mit diesen Eckdaten: Tirol, GK 4, Wohnen. Projekte, deren Eckdaten das nicht erfassen"
+        narrowed = (
+            "[Only projects with these key facts: Tirol, GK 4, Wohnen. Projects whose key facts do not record this"
+        )
         assert narrowed in searched
-        assert "Nur Projekte mit diesen Eckdaten: Niederösterreich, Nutzungsänderung." in found
-        assert "Nur Projekte mit diesen Eckdaten: Vorarlberg." in none
-        assert "Eckdaten" not in plain
+        assert "Only projects with these key facts: Niederösterreich, Nutzungsänderung." in found
+        assert "Only projects with these key facts: Vorarlberg." in none
+        assert "key facts" not in plain
         # The line is preamble, not a source: the hit still cites as before.
         assert "Citation: Detail Traufe.pdf (Wohnbau Graz), p.3" in searched
 

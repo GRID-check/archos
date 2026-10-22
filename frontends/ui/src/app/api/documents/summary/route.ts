@@ -10,16 +10,13 @@
  * Thin handler; all logic lives in `@/lib/documents/shelf-summary`.
  */
 
-import { z } from 'zod'
 import { apiRoute, parseQuery } from '@/lib/api/handler'
-import { documentSummaryFilterSchema } from '@/lib/documents/list-query'
+import { documentSummaryQuerySchema } from '@/lib/documents/document-wire'
 import { summarizeProjectDocuments } from '@/lib/documents/shelf-summary'
-
-const summaryQuerySchema = documentSummaryFilterSchema.extend({ projectId: z.string().min(1) })
 
 export const GET = apiRoute(
   async ({ session, request }) => {
-    const { projectId, authoredBy, includeArchived } = parseQuery(request, summaryQuerySchema)
+    const { projectId, authoredBy, includeArchived } = parseQuery(request, documentSummaryQuerySchema)
     return summarizeProjectDocuments(session, projectId, { authoredBy, includeArchived: includeArchived === 'true' })
   },
   { authz: { enforcedBy: 'summarizeProjectDocuments (requireProjectAccess project:view)' } }

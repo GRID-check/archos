@@ -79,6 +79,7 @@ import { getPosthogSessionId } from '@/lib/analytics/posthog'
 import { fetchRunMessage } from '../lib/commissioned-run'
 import {
   clampFocusRegion,
+  openCanvasFocus,
   registerCanvasChatSender,
   registerCanvasChatSteerer,
   type CanvasFocus,
@@ -1240,8 +1241,12 @@ export const useWebSocketChat = (options: UseWebSocketChatOptions = {}): UseWebS
       dataSourcesForMessage: string[],
       conversationId: string | undefined,
       reasoningEffort?: ChatEffort,
-      canvas?: CanvasFocus
+      asked?: CanvasFocus
     ): boolean => {
+      // A question typed in the chat while a document is open over it, with a
+      // box drawn or a mark selected, points at that place exactly as a canvas
+      // question does; an explicit canvas question brings its own.
+      const canvas = asked ?? openCanvasFocus() ?? undefined
       if (!conversationId) {
         addErrorCard('system.unknown', 'No active conversation')
         return false

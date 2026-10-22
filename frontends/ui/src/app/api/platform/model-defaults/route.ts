@@ -23,7 +23,6 @@
  */
 
 import { NextResponse } from 'next/server'
-import { z } from 'zod'
 import { parseJsonBody } from '@/lib/api/handler'
 import { platformApiRoute } from '@/lib/api/platform-handler'
 import { PLATFORM_PERMISSIONS } from '@/lib/authz/permissions'
@@ -32,11 +31,10 @@ import { UnprocessableError } from '@/lib/api/errors'
 import { recordAuditEvent } from '@/lib/audit/service'
 import {
   AGENT_GROUPS,
-  AGENT_GROUP_IDS,
-  OPENROUTER_MODEL_ID_PATTERN,
   getAgentGroup,
   isAgentGroupId,
 } from '@/lib/model-config/agent-groups'
+import { modelDefaultsPutSchema } from '@/lib/platform/platform-wire'
 import { getWorkflowGroupDefaults, splitGroupDefault, type GroupDefaults } from '@/lib/model-config/backend-defaults'
 import {
   catalogUnavailableError,
@@ -50,19 +48,6 @@ import {
   listPlatformModelDefaults,
   savePlatformModelDefaults,
 } from '@/lib/model-config/platform-defaults'
-
-const putSchema = z.object({
-  /**
-   * The complete default set. Platform defaults are always OpenRouter
-   * `author/slug` ids — unlike a tenant's BYOK override, this row is served to
-   * every organization, so it must be a model the platform catalog knows.
-   */
-  defaults: z.record(
-    z.enum(AGENT_GROUP_IDS as [string, ...string[]]),
-    z.object({ model: z.string().regex(OPENROUTER_MODEL_ID_PATTERN, 'not an OpenRouter model id') })
-  ),
-  note: z.string().trim().max(500).nullable().optional(),
-})
 
 // `platformApiRoute` supplies the owner gate, the request-bounded slot, the
 // platform scope and the 403 mapping — the four things these handlers used to
@@ -114,7 +99,7 @@ export const PUT = platformApiRoute(
   async ({ request, session }) => {
     // `parseJsonBody` raises the same 400 the local ZodError branch did, with
     // the issue list attached, so the shared error mapping covers it.
-    const input = await parseJsonBody(request, putSchema)
+    const input = await parseJsonBody(request, modelDefaultsPutSchema)
     const flat = Object.fromEntries(
       Object.entries(input.defaults).map(([group, value]) => [group, value.model])
     )

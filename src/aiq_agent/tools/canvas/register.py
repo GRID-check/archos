@@ -1,11 +1,14 @@
 """``canvas``: Piloti's hands on a document, as a NAT function group.
 
-Nine tools, the way a person works a document on the review canvas: ``look``
-at a page or a box on it, see who is in the ``room`` and where, ``point`` and
-``highlight`` to show what is meant, read the ``marks``, set a ``mark`` (a
-proposal a person takes over, or open when the person asked for exactly that
-mark), ``update`` or ``delete`` one when the person asks, and ``reply`` in a
-mark's thread. The model calls them as ``canvas__look`` and so on; one group,
+Eight tools, the way a person works a document on the review canvas: see who
+is in the ``room`` and where, ``point`` and ``highlight`` to show what is meant,
+read the ``marks``, set a ``mark`` (a proposal a person takes over, or open when
+the person asked for exactly that mark), ``update`` or ``delete`` one when the
+person asks, and ``reply`` in a mark's thread. Looking at a page or a box on it
+is ``look``, a tool of its own bound in every context (``tools/look``,
+ADR-0128); it shares this group's target resolution and makes the box glow
+through ``presence.show_reading``. The model calls these as ``canvas__room`` and
+so on; one group,
 because they share the client,
 the target resolution and the restricted-folder rule, and because NAT can serve
 a function group over MCP as it stands, so a second client never means a second
@@ -30,7 +33,9 @@ it does not, the turn's answer goes into the thread once the turn has ended
 ``policy.shared_write_refusal`` first. ``point`` and ``highlight`` are
 ephemeral; the turn harness takes them down when the answer is out
 (``presence.py``). ``mark``, ``update``, ``delete`` and ``reply`` put what the
-BFF confirmed on the turn's ``canvas_activity`` card (``cards.py``).
+BFF confirmed on the turn's ``canvas_activity`` card (``cards.py``); ``point``
+and ``highlight`` add a ``reference`` item to the document's ``look`` card
+(``tools/look/cards.py``), so a chat reader sees what the answer points at.
 
 ## Parity, with light reporting
 
@@ -49,11 +54,8 @@ that the person makes the change themselves (``calls.refusal_for``).
 
 from __future__ import annotations
 
-import asyncio
 import logging
 from typing import Any
-
-from pydantic import Field
 
 from aiq_agent.turn.annotation_reply import note_thread_post
 from nat.plugin_api import Builder
@@ -61,13 +63,13 @@ from nat.plugin_api import FunctionGroup
 from nat.plugin_api import FunctionGroupBaseConfig
 from nat.plugin_api import register_function_group
 
+from ..look.cards import note_reference
 from .calls import Refused
 from .calls import call
 from .calls import document_of
 from .calls import envelope
 from .calls import observe
 from .cards import record_canvas_activity
-from .look import look_at
 from .marks import MAX_PROPOSALS_PER_CALL
 from .marks import AnnotationProposal
 from .marks import annotation_entry
@@ -90,7 +92,6 @@ from .marks import reply_body
 from .marks import update_payload
 from .policy import shared_write_refusal
 from .presence import note_presence
-from .presence import show_reading
 from .room import highlight_payload
 from .room import point_payload
 from .room import render_room
@@ -106,82 +107,76 @@ logger = logging.getLogger(__name__)
 GROUP = "canvas"
 
 _DOCUMENT = (
-    "`document` (optional): der Dateiname aus der Übersicht oder die id; ohne ihn das im Canvas geöffnete "
-    "Dokument, sonst das Dokument dieses Chats."
+    "`document` (optional): the file name from the overview, or the id; without it, the document open on the canvas, "
+    "otherwise this chat's document."
 )
-_FRAME = "Orte als Anteil der Seite, wie sie gezeigt wird: 0 bis 1, Ursprung oben links, keine Pixel."
+_FRAME = "Locations are a share of the page as displayed: 0 to 1, origin top left, no pixels."
 
 DESCRIPTIONS = {
-    "look": (
-        "Zeigt dir eine Seite eines Dokuments als Bild, mit `region=[x, y, w, h]` nur diesen Ausschnitt, schärfer. "
-        "Sieh hin, bevor du etwas über eine Zeichnung sagst, eine Stelle zeigst oder eine Anmerkung setzt: Wo "
-        "etwas liegt („beim Treppenhaus“), liest du am Bild ab, nie aus dem Text. "
-        f"{_FRAME} {_DOCUMENT}"
-    ),
     "room": (
-        "Wer das Dokument gerade offen hat: Seite und Ausschnitt jeder Person, welche Anmerkung sie ausgewählt "
-        "hat, welchen Rahmen sie gerade aufzieht, und wie viele Anmerkungen offen sind. Nimm es, wenn „hier“, "
-        f"„das“ oder „diese Stelle“ nicht schon durch den Fokusbereich geklärt ist. {_DOCUMENT}"
+        "Who has the document open right now: each person's page and viewport, which annotation they selected, "
+        "which frame they are drawing, and how many annotations are open. Use it when „hier“, "
+        f"„das“ or „diese Stelle“ is not already settled by the focus region. {_DOCUMENT}"
     ),
     "point": (
-        "Bewegt deinen Zeiger für alle im Dokument an `page`, `x`, `y`, mit kurzem `label` (höchstens 80 "
-        f"Zeichen). Verschwindet, wenn deine Antwort fertig ist. {_FRAME} {_DOCUMENT}"
+        "Moves your pointer, for everyone in the document, to `page`, `x`, `y`, with a short `label` (at most 80 "
+        f"characters). Disappears when your answer is finished. {_FRAME} {_DOCUMENT}"
     ),
     "highlight": (
-        "Zeigt allen im Dokument einen Rahmen `page`, `x`, `y`, `w`, `h` mit `label`, z. B. „Hier: Fluchtweg "
-        "1,10 m“. Für das, worauf deine Antwort sich bezieht; verschwindet, wenn sie fertig ist. Vorher mit "
-        f"`look` hinsehen. {_FRAME} {_DOCUMENT}"
+        "Shows everyone in the document a frame `page`, `x`, `y`, `w`, `h` with `label`, e.g. „Hier: Fluchtweg "
+        "1,10 m“. For what your answer refers to; disappears when it is finished. Look first with "
+        f"`look`. {_FRAME} {_DOCUMENT}"
     ),
     "marks": (
-        "Liest die Anmerkungen eines Dokuments mit Nummer, Seite, Art, Status, Text, Grundlage, Zuständigkeit, "
-        "Frist und Antworten. Vor einem Protokoll, einer Antwort im Verlauf und vor `mark` lesen, damit nichts "
-        f"doppelt markiert wird. {_DOCUMENT}"
+        "Reads a document's annotations with number, page, kind, status, text, basis, assignee, "
+        "due date and replies. Read before a protocol, before a reply in the thread and before `mark`, so nothing "
+        f"is marked twice. {_DOCUMENT}"
     ),
     "mark": (
-        "Setzt `proposals` als VORSCHLÄGE von Piloti; nichts davon gilt, bis eine Person den Vorschlag im Dokument "
-        "übernimmt oder verwirft. Sag nie, ein Mangel sei eingetragen. `open=true` nur, wenn die Person genau diese "
-        "Anmerkung zu setzen verlangt (dann gleich offen, in ihrem Namen; lässt das Büro Piloti nur vorschlagen, wird "
-        "das abgelehnt, dann ohne `open`); eigene Befunde, auch einer erbetenen Durchsicht, bleiben Vorschläge. "
-        "Vorher mit `look` die Seite ansehen und die Stelle dort abschätzen. Je Vorschlag: `page` (ab 1); `shape` "
-        "`region` (bevorzugt: ein enger Rahmen "
-        "um das Bauteil) oder `point`; `x`/`y` die linke obere Ecke, bei `region` dazu `w`/`h` (x+w und y+h "
-        "höchstens 1); `kind` `hint`, `question` oder `defect`; `body` im Deutsch des Büros, konkret und kurz "
-        "(höchstens 2000 Zeichen); `basis` mit der Fundstelle, wenn der Befund auf einer Norm beruht. Höchstens "
-        f"{MAX_PROPOSALS_PER_CALL} pro Aufruf, das Wichtigste zuerst. Die Datei heißt Dokument oder Fassung, nie "
+        "Sets `proposals` as PROPOSALS from Piloti; none of them counts until a person takes the proposal over in "
+        "the document or dismisses it. Never say a defect has been entered. `open=true` "
+        "only when the person asks for exactly this "
+        "annotation to be set (then it is open at once, in their name; if the office lets Piloti only propose, this is "
+        "refused, then retry without `open`); your own findings, even in a requested review, stay proposals. "
+        "First look at the page with `look` and estimate the spot there. Per proposal: `page` (from 1); `shape` "
+        "`region` (preferred: a tight frame "
+        "around the component) or `point`; `x`/`y` the top left corner, for `region` also `w`/`h` (x+w and y+h "
+        "at most 1); `kind` `hint`, `question` or `defect`; `body` in the office's German, concrete and short "
+        "(at most 2000 characters); `basis` with the source reference when the finding rests on a norm. At most "
+        f"{MAX_PROPOSALS_PER_CALL} per call, the most important first. The file is called Dokument or Fassung, never "
         f"Plan. {_FRAME} {_DOCUMENT}"
     ),
     "update": (
-        "Ändert die Anmerkung `annotation` (Nummer oder id) im Namen der Person, nur wenn sie diese Änderung an "
-        "dieser Anmerkung verlangt. Nur Geändertes angeben: `status` `open` (übernehmen, wieder öffnen), "
-        "`resolved` oder `dismissed` (Vorschlag verwerfen); `assignee` (Name); `due_on` (JJJJ-MM-TT); `kind`; "
-        "`body`; `-` leert `assignee`/`due_on`. `note` (Pflicht): ein Satz, was du getan hast, z. B. „Erledigt: "
-        "Lichte Breite im Schnitt B-B mit 1,25 m kotiert.“; steht als Antwort von Piloti im Verlauf. Nenne in "
-        "der Antwort die Nummer. Lässt das Büro Piloti nur vorschlagen, wird es abgelehnt: dann ändert die Person es "
-        "selbst. Die Bitte zu prüfen, ob etwas behoben ist, verlangt keine Änderung: Dann antwortest du mit `reply`, "
-        f"erledigen tut die Person. {_DOCUMENT}"
+        "Changes the annotation `annotation` (number or id) in the person's name, only "
+        "when they ask for this change to "
+        "this annotation. Give only what changes: `status` `open` (take over, reopen), "
+        "`resolved` or `dismissed` (dismiss a proposal); `assignee` (name); `due_on` (YYYY-MM-DD); `kind`; "
+        "`body`; `-` clears `assignee`/`due_on`. `note` (required): one sentence on what you did, e.g. „Erledigt: "
+        "Lichte Breite im Schnitt B-B mit 1,25 m kotiert.“; it appears as a reply from Piloti in the thread. Give "
+        "the number in your answer. If the office lets Piloti only propose, this is "
+        "refused: then the person changes it "
+        "themselves. A request to check whether something is fixed asks for no change: then you answer with `reply`, "
+        f"and the person resolves it. {_DOCUMENT}"
     ),
     "delete": (
-        "Löscht die Anmerkung `annotation` (Nummer oder id) samt Verlauf, endgültig. Nur auf ausdrückliche Bitte, "
-        "und nur Anmerkungen, die die Person selbst gesetzt hat; lässt das Büro Piloti nur vorschlagen, löscht sie "
-        f"selbst. {_DOCUMENT}"
+        "Deletes the annotation `annotation` (number or id) with its thread, permanently. Only on explicit request, "
+        "and only annotations the person set themselves; if the office lets Piloti only propose, the person deletes "
+        f"it themselves. {_DOCUMENT}"
     ),
     "reply": (
-        "Schreibt `body` als Antwort von Piloti in den Verlauf der Anmerkung `annotation` (ihre id oder Nummer). "
-        "Alle, die das Dokument öffnen, lesen sie sofort: kurz, für sich verständlich, ohne Quellenmarken wie "
-        "[1], höchstens 2000 Zeichen. Nimm es, wenn du im Verlauf gefragt wurdest oder darum gebeten wirst. "
-        "Sollst du prüfen, ob Anmerkungen einer früheren Fassung in der aktuellen behoben sind: je Anmerkung eine "
-        "Antwort, die mit „In <Fassung> behoben:“ oder „Weiterhin offen:“ beginnt und sagt, woran du es an der "
-        "Stelle siehst; vorher mit `look` hinsehen. Den Status änderst du dabei nicht. "
+        "Writes `body` as Piloti's reply into the thread of the annotation `annotation` (its id or number). "
+        "Everyone who opens the document reads it at once: short, understandable on its own, without source marks like "
+        "[1], at most 2000 characters. Use it when you were asked in the thread or are asked to. "
+        "If you are to check whether annotations from an earlier revision are fixed in the current one: one "
+        "reply per annotation, beginning with „In <Fassung> behoben:“ or „Weiterhin offen:“ and saying what you see "
+        "at the spot; look first with `look`. You do not change the status in doing so. "
         f"{_DOCUMENT}"
     ),
 }
 
 
 class DocumentCanvasConfig(FunctionGroupBaseConfig, name="document_canvas"):
-    """Configuration for the ``canvas`` function group."""
-
-    max_dim: int = Field(default=2048, description="Long edge (px) of what `look` renders.")
-    timeout: float = Field(default=30.0, description="Render timeout of `look`, in seconds.")
+    """Configuration for the ``canvas`` function group. The render limits moved to ``look``'s own config."""
 
 
 async def _target(document: str) -> tuple[Target, Any]:
@@ -208,24 +203,6 @@ async def _refusing(step: str, run: Any) -> Any:
         return refused.message
 
 
-async def run_look(
-    page: int = 1, region: list[float] | None = None, document: str = "", *, limits: Any = None
-) -> list[dict] | str:
-    """Look at a page of the document, or at the box ``region`` on it."""
-
-    async def body() -> list[dict] | str:
-        target, signed = await _target(document)
-        # Telling the room and reading are independent: the glow costs the look no round trip.
-        _, result = await asyncio.gather(
-            show_reading(target.body(), target.document_id, signed, page, region),
-            look_at(target, signed, page=page, region=region, limits=limits),
-        )
-        observe("look", {"page": page, "region": region is not None}, {"viewed": isinstance(result, list)})
-        return result
-
-    return await _refusing("look", body)
-
-
 async def run_room(document: str = "") -> str:
     """Who has the document open, and where."""
 
@@ -246,11 +223,18 @@ async def run_point(page: int, x: float, y: float, label: str = "", document: st
         if "label" in payload:
             _shared_write_allowed("point")
         target, signed = await _target(document)
-        await call(payload, target, signed)
+        result = await call(payload, target, signed)
         note_presence(target.document_id)
+        note_reference(
+            document_of(result, target),
+            payload["page"],
+            point=[payload["x"], payload["y"]],
+            label=payload.get("label", ""),
+        )
         observe("point", {"page": payload["page"], "label": "label" in payload}, {"ok": True})
         return (
-            f"Dein Zeiger steht auf S. {payload['page']}, für alle im Dokument sichtbar, bis deine Antwort fertig ist."
+            f"Your pointer is on p. {payload['page']}, visible to everyone in the document "
+            f"until your answer is finished."
         )
 
     return await _refusing("point", body)
@@ -263,12 +247,14 @@ async def run_highlight(page: int, x: float, y: float, w: float, h: float, label
         payload = highlight_payload(page, x, y, w, h, label)
         _shared_write_allowed("highlight")
         target, signed = await _target(document)
-        await call(payload, target, signed)
+        result = await call(payload, target, signed)
         note_presence(target.document_id)
+        box = [payload["x"], payload["y"], payload["w"], payload["h"]]
+        note_reference(document_of(result, target), payload["page"], region=box, label=payload["label"])
         observe("highlight", {"page": payload["page"]}, {"ok": True})
         return (
-            f"Der Rahmen „{payload['label']}“ auf S. {payload['page']} ist für alle im Dokument sichtbar, bis deine "
-            "Antwort fertig ist."
+            f"The frame „{payload['label']}“ on p. {payload['page']} is visible to everyone in the document until your "
+            "answer is finished."
         )
 
     return await _refusing("highlight", body)
@@ -312,7 +298,7 @@ async def _annotation_ref(annotation: str, target: Target, signed: Any, tool: st
         return ref, None
     number = annotation_number(ref)
     if number is None:
-        raise Refused(f"Fehler: `{tool}` braucht `annotation`: die id oder die Nummer aus `marks`.")
+        raise Refused(f"Error: `{tool}` needs `annotation`: the id or the number from `marks`.")
     entry = annotation_entry(await call({"op": "list"}, target, signed), number)
     status = entry.get("status")
     return entry["id"], status if isinstance(status, str) else None
@@ -383,16 +369,8 @@ async def run_reply(annotation: str, body: str, document: str = "") -> str:
 @register_function_group(config_type=DocumentCanvasConfig)
 async def document_canvas(config: DocumentCanvasConfig, _builder: Builder):
     """The canvas tools, as one group."""
-    from knowledge_layer.view_image import ViewLimits
-
-    limits = ViewLimits(max_dim=config.max_dim, timeout=config.timeout)
-
-    async def look(page: int = 1, region: list[float] | None = None, document: str = "") -> list[dict] | str:
-        return await run_look(page, region, document, limits=limits)
-
     group = FunctionGroup(config=config)
     for name, fn in (
-        ("look", look),
         ("room", run_room),
         ("point", run_point),
         ("highlight", run_highlight),

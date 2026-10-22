@@ -177,7 +177,7 @@ class TestRender:
             }
         )
         assert "Mehrere Modelle." in rendered
-        assert "haus-a.ifc (ready, 120 Bauteile)" in rendered
+        assert "haus-a.ifc (ready, 120 elements)" in rendered
 
     def test_an_unresolved_result_with_no_models_is_just_the_message(self):
         assert _render({"resolved": False, "message": "Kein Modell hinterlegt."}) == "Kein Modell hinterlegt."
@@ -242,7 +242,7 @@ class TestTheFiveWaysAModelIsNotResolved:
         what the user needs to hear."""
         rendered = _render(self.EXTRACTION_FAILED)
 
-        assert "haus-a.ifc (failed, 0 Bauteile)" in rendered
+        assert "haus-a.ifc (failed, 0 elements)" in rendered
         assert "This one call is the answer" in rendered
 
     def test_not_ready_closes_the_turn_and_still_names_the_model(self):
@@ -251,8 +251,8 @@ class TestTheFiveWaysAModelIsNotResolved:
         not finish inside one turn, so the reply says what this turn can do."""
         rendered = _render(self.NOT_READY)
 
-        assert "haus-a.ifc (extracting, 0 Bauteile)" in rendered
-        assert "noch nicht abfragbar" in rendered
+        assert "haus-a.ifc (extracting, 0 elements)" in rendered
+        assert "not yet queryable" in rendered
         assert "This one call is the answer for this turn" in rendered
         assert "not ready to be queried yet" in rendered
         assert "without any claim about the building" in rendered
@@ -281,13 +281,13 @@ class TestTheFiveWaysAModelIsNotResolved:
     def test_ambiguous_keeps_the_alternatives_and_invites_the_retry(self):
         rendered = _render(self.AMBIGUOUS)
 
-        assert "Verfügbare Modelle: haus-a.ifc (ready, 120 Bauteile)." in rendered
+        assert "Available models: haus-a.ifc (ready, 120 elements)." in rendered
         assert "This one call is the answer" not in rendered
 
     def test_no_match_keeps_the_alternatives_and_invites_the_retry(self):
         rendered = _render(self.NO_MATCH)
 
-        assert "Verfügbare Modelle: haus-a.ifc (ready, 120 Bauteile)." in rendered
+        assert "Available models: haus-a.ifc (ready, 120 elements)." in rendered
         assert "This one call is the answer" not in rendered
 
     def test_the_do_not_retry_wording_has_one_source(self):
@@ -307,7 +307,7 @@ class TestTheFiveWaysAModelIsNotResolved:
                 "groups": [],
             }
         )
-        assert "Modell: haus-a.ifc" in rendered
+        assert "Model: haus-a.ifc" in rendered
         assert "Erdgeschoss: 44.5 (2)" in rendered
 
     def test_overview_adds_storeys_and_types_the_summary_cannot_carry(self):
@@ -324,8 +324,8 @@ class TestTheFiveWaysAModelIsNotResolved:
             }
         )
         # Geschoß, the Austrian spelling the rest of the product uses.
-        assert "Geschoße: Erdgeschoss (12 Bauteile)" in rendered
-        assert "Bauteiltypen: IfcWall (5), IfcSpace (4)" in rendered
+        assert "Storeys: Erdgeschoss (12 elements)" in rendered
+        assert "Element types: IfcWall (5), IfcSpace (4)" in rendered
 
     def test_element_lists_carry_the_global_id_the_viewer_highlights_by(self):
         rendered = _render(
@@ -354,11 +354,11 @@ class TestTheFiveWaysAModelIsNotResolved:
         # total, which is the failure the flag exists to prevent.
         from aiq_agent.tools.bim.register import _truncation_note
 
-        assert "Teil des Modells" in _truncation_note("schedule")
-        assert "Teil des Modells" in _truncation_note("compliance")
-        assert "Teil des Modells" in _truncation_note("takeoff")
-        assert "eingrenzen" in _truncation_note("elements")
-        assert "eingrenzen" in _truncation_note("aggregate")
+        assert "only part of the model" in _truncation_note("schedule")
+        assert "only part of the model" in _truncation_note("compliance")
+        assert "only part of the model" in _truncation_note("takeoff")
+        assert "narrow the query" in _truncation_note("elements")
+        assert "narrow the query" in _truncation_note("aggregate")
 
     def test_a_truncated_result_says_so(self):
         rendered = _render(
@@ -371,7 +371,7 @@ class TestTheFiveWaysAModelIsNotResolved:
                 "truncated": True,
             }
         )
-        assert "Abfrage eingrenzen oder aggregieren" in rendered
+        assert "narrow the query or aggregate" in rendered
 
     def test_a_comparison_lists_added_removed_and_changed_with_deltas(self):
         rendered = _render(
@@ -420,8 +420,8 @@ class TestTheFiveWaysAModelIsNotResolved:
                 ],
             }
         )
-        assert "[Merkmal] Pset_WallCommon.FireRating: REI 90 (3×)" in rendered
-        assert "[Menge] Qto_SpaceBaseQuantities.NetFloorArea" in rendered
+        assert "[property] Pset_WallCommon.FireRating: REI 90 (3×)" in rendered
+        assert "[quantity] Qto_SpaceBaseQuantities.NetFloorArea" in rendered
 
 
 class TestElementLinks:
@@ -618,7 +618,7 @@ class TestComplianceOperation:
             },
             "p1",
         )
-        assert "fehlt: Pset_WallCommon.FireRating an 34 Bauteilen" in rendered
+        assert "missing: Pset_WallCommon.FireRating on 34 elements" in rendered
 
     def test_a_failing_element_carries_its_reading_and_its_link(self):
         rendered = _render(
@@ -675,8 +675,8 @@ class TestComplianceOperation:
             "p1",
         )
 
-        assert "Regel oib4-door-clear-width" in rendered
-        assert "3 nicht erfüllt" in rendered
+        assert "Rule oib4-door-clear-width" in rendered
+        assert "3 not met" in rendered
 
     def test_a_clean_rule_is_not_offered_as_a_card_row(self):
         # A rule with nothing outstanding is not work, and listing its id would
@@ -727,8 +727,8 @@ class TestComplianceOperation:
             "p1",
         )
 
-        assert "Regel oib2-feuerwiderstand" in rendered
-        assert "34 nicht entscheidbar" in rendered
+        assert "Rule oib2-feuerwiderstand" in rendered
+        assert "34 undecidable" in rendered
 
     def test_the_open_items_come_back_as_a_bcf_download(self):
         # The list of open requirements is the answer; the BCF file is what the
@@ -747,7 +747,7 @@ class TestComplianceOperation:
             "residential",
         )
         assert (
-            "BCF-Export der offenen Punkte: /api/projects/p1/bim/checks/export"
+            "BCF export of the open issues: /api/projects/p1/bim/checks/export"
             "?model=Haus-A_V3.ifc&buildingClass=4&mainUse=residential" in rendered
         )
 
@@ -788,7 +788,7 @@ class TestComplianceOperation:
     def test_the_tool_description_tells_the_model_to_offer_the_file(self):
         from aiq_agent.tools.bim.register import _TOOL_DESCRIPTION
 
-        assert "BCF-Export der offenen Punkte:" in _TOOL_DESCRIPTION
+        assert "BCF export of the open issues:" in _TOOL_DESCRIPTION
         # Naming the tools is what makes "BCF" mean something to the reader.
         assert "ArchiCAD, Revit, Solibri or BIMcollab" in _TOOL_DESCRIPTION
 
@@ -798,7 +798,7 @@ class TestComplianceOperation:
         assert "Never turn a compliance result into a statement that the building complies" in (_TOOL_DESCRIPTION)
         # And it must name what the catalogue cannot see, so the agent does not
         # present a partial check as a whole one.
-        assert "Fluchtweglängen" in _TOOL_DESCRIPTION
+        assert "escape-route lengths" in _TOOL_DESCRIPTION
 
 
 class TestTheDescriptionDescribesTheRealTool:
@@ -984,13 +984,13 @@ class TestWhatTheTraceRecords:
 
     def test_a_list_clipped_by_one_reads_as_one(self):
         # The renderer substitutes into a template and does nothing else, so
-        # "… 1 weitere Geschoße nicht gezeigt." was what every list clipped by
-        # exactly one produced — in an answer an architect reads as German.
+        # "… 1 more storeys not shown." was what every list clipped by
+        # exactly one produced — in an answer an architect reads.
         from aiq_agent.tools.bim.register import _clipped
 
-        assert _clipped(list(range(21)), 20, "Geschoße") == "… ein weiteres Geschoß nicht gezeigt."
-        assert _clipped(list(range(22)), 20, "Geschoße") == "… 2 weitere Geschoße nicht gezeigt."
-        assert _clipped(list(range(20)), 20, "Geschoße") is None
+        assert _clipped(list(range(21)), 20, "storeys") == "… 1 more storey not shown."
+        assert _clipped(list(range(22)), 20, "storeys") == "… 2 more storeys not shown."
+        assert _clipped(list(range(20)), 20, "storeys") is None
 
     def test_the_model_handle_is_stable_and_not_the_name(self):
         # Stable, because an operator correlating two slow turns needs them to
@@ -1175,7 +1175,7 @@ class TestTheToolBody:
         assert seen["query"] == {"op": "elements", "filter": {}, "limit": 25, "offset": 0}
         assert seen["model_name"] == "haus"
         assert seen["compare_with_name"] is None
-        assert answer == "Modell: haus.ifc\n3 Bauteile"
+        assert answer == "Model: haus.ifc\n3 Bauteile"
         assert outcome == "resolved"
 
 

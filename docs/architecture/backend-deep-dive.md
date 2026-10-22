@@ -112,8 +112,20 @@ field at its default, and each is reset at the turn boundary in
   `answer_confidence_reason` alongside the level. Escalated turns drop it.
 - `answer_confidence_capped_reason` (`"ungrounded" | "quote_unverified" |
   "normative_claim_uncited" | "measurement_only" | "citation_fallback"`) — set when
-  `surface_answer_confidence` downgraded the self-report. Gives the confidence
-  chip a machine-readable reason the UI can explain.
+  the guard downgraded the self-report. Gives the confidence chip a
+  machine-readable reason the UI can explain.
+
+  **Two rules, and the turn says which** (`answer_confidence_version`). Chat
+  uses rule 2 (ADR-0125, `markers.surface_claim_confidence`): every sentence of
+  the final text is stamped with a provenance class and a claim type
+  (`common/claim_provenance.py`, `TurnResult.claim_stamps`), and the self-report
+  is held under the weakest load-bearing sentence's ceiling, plus the quote gate
+  below. A passage, a workspace record (`common/workspace_records.py`), an
+  action or a measurement lets its sentence reach `"high"`; only a passage
+  grounds a normative sentence. Rule 2 names a cap `normative_claim_uncited`
+  (a statement about the law without a passage) or `ungrounded` (any other
+  sentence without evidence). Deep research, and any state without stamps, keep
+  rule 1, the answer-level floors described in the rest of this entry.
   - `"ungrounded"` — citation verification left the answer without grounding and
     nothing was measured.
   - `"quote_unverified"` — a quoted span failed the deterministic
@@ -124,13 +136,10 @@ field at its default, and each is reset at the turn boundary in
     otherwise altered).
   - `"normative_claim_uncited"` / `"measurement_only"` — the two reasons about
     the SECOND kind of grounding, below.
-  - `"citation_fallback"` — the answer's only citation is the single registry
-    source Piloti appended when nothing the model wrote survived
-    verification (`_append_minimal_citation`). The registry is cumulative across
-    the conversation, so that source may have been retrieved on an earlier turn
-    for a different question: it is treated exactly like a measurement (ceiling
-    `"medium"`, and the normative brake still applies), never as the verified
-    citation that "high" is reserved for.
+  - `"citation_fallback"` — no longer produced. It named the single registry
+    source Piloti appended when nothing the model wrote survived verification;
+    that fallback invented an attribution and was removed (ADR-0125). Stored
+    turns still carry the token.
 
   **Two kinds of grounding.** The guard was written against one form of
   evidence: a citation the verifier can resolve to a retrieved passage. An IFC
@@ -169,11 +178,6 @@ field at its default, and each is reset at the turn boundary in
     entry or blank, or the „**Quellen:**" line is just something the model wrote
     in the middle of an answer and the verdict after it would be dropped before
     the brake ever read it.
-  - `answer_citation_fallback_used` — which citation did the grounding. A
-    fallback citation does not disarm the normative brake and does not reach
-    `"high"`: one stale session source used to do both, and „Der Keller ist
-    2,70 m hoch und erfüllt damit OIB 4 Punkt 2.1" surfaced at the model's own
-    self-report with an unrelated Bauordnung link attached to the verdict.
 
   **What counts as a measurement.** `ifc_measure`'s renderer states it: a result
   from an operation that could measure something ends with a line reporting how
@@ -1328,8 +1332,8 @@ Five retrieval-quality improvements sit in the knowledge layer's `register.py`
    new kind so "precision" is shown as its own diagnostic, not a citation
    defect).
 
-5. **Multimodal answer-time page/image viewing** — a new NAT tool
-   `view_knowledge_image` (`llamaindex/view_image.py`, gated on
+5. **Multimodal answer-time page/image viewing** — the NAT tool `look`
+   (`tools/look/`, ADR-0128; renderer `knowledge_layer/view_image.py`, gated on
    `AIQ_VIEW_IMAGES_ENABLED`, default on, plus a resolvable VLM key) hands a
    knowledge image to the VLM **as an image block during a research turn** —
    not just at ingestion. Three source shapes: **PDF pages** are re-rendered on
@@ -1349,7 +1353,7 @@ Five retrieval-quality improvements sit in the knowledge layer's `register.py`
    `MAX_STORED_IMAGES_PER_DOCUMENT` (64, `frontends/ui/src/lib/s3.ts`, enforced
    by the presign route; the backend stops at the first refusal). The caption
    chunk records `image_key` and `stored_image_index`; `_format_results` shows
-   an `Image: stored (view_knowledge_image image_index=N)` line only for such a
+   an `Image: stored (look image_index=N)` line only for such a
    chunk, and the tool's `image_index` argument fetches that raster through
    `GET /api/internal/document-file?imageIndex=N` — the BFF derives the key
    from the document's own row, so the backend never names an object key. Fail

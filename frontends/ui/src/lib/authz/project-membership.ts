@@ -31,6 +31,14 @@ import { inPool } from '@/lib/utils/in-pool'
 const MEMBERSHIP_TTL_MS = 10 * 60 * 1000
 const MEMBERSHIP_NEGATIVE_TTL_MS = 30 * 1000
 
+/**
+ * The membership age a door accepts when nobody signs in on it and a revocation
+ * must bite within a minute rather than ten: the external agent door (ADR-0122),
+ * where a token outlives the membership it was issued for. Cached under its own
+ * key, so the longer-lived entry never answers for it.
+ */
+export const FRESH_MEMBERSHIP_TTL_MS = 60 * 1000
+
 interface SubjectMembership {
   organizationMembershipId: string
   /** WorkOS role slug for this membership (e.g. `admin`, `member`). */
@@ -52,11 +60,16 @@ interface SubjectMembership {
  */
 export async function lookupSubjectMembership(
   organizationId: string,
-  userId: string
+  userId: string,
+  ttlMs: number = MEMBERSHIP_TTL_MS
 ): Promise<SubjectMembership | null> {
+  const key =
+    ttlMs === MEMBERSHIP_TTL_MS
+      ? `membership-role:${organizationId}:${userId}`
+      : `membership-role-${ttlMs}:${organizationId}:${userId}`
   return getCached(
-    `membership-role:${organizationId}:${userId}`,
-    MEMBERSHIP_TTL_MS,
+    key,
+    ttlMs,
     async () => {
       const memberships = await getWorkOS().userManagement.listOrganizationMemberships({
         userId,
@@ -85,10 +98,11 @@ export async function lookupSubjectMembership(
  */
 export async function resolveSubjectMembership(
   organizationId: string,
-  userId: string
+  userId: string,
+  ttlMs: number = MEMBERSHIP_TTL_MS
 ): Promise<SubjectMembership | null> {
   try {
-    return await lookupSubjectMembership(organizationId, userId)
+    return await lookupSubjectMembership(organizationId, userId, ttlMs)
   } catch (error) {
     // Fail closed, and uncached: an unanswered lookup is not a membership.
     console.warn(`[project-membership] lookup failed for ${userId}:`, error)

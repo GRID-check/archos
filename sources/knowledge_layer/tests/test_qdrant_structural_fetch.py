@@ -366,3 +366,34 @@ def test_reading_order_is_the_page_number_a_reader_sorts_by(label):
     assert payload[READING_ORDER] == (chunk.page_number or 0) == reading_order(label)
     # A reader never sees the field: the chunk's metadata is what the chunker wrote.
     assert READING_ORDER not in chunk_metadata(payload)
+
+
+def _sections_read(text: str) -> list[str]:
+    return re.findall(r"Abschnitt (\w+)\.", text)
+
+
+async def test_a_cursor_continues_on_the_key_the_read_sorts_by(corpus, monkeypatch):
+    """Page 1 sorts [text 4, text 5, table part 3, an unnumbered chunk of a later section]: a cut after
+    text 4 must deliver every other chunk on the continuation, on a real Qdrant."""
+    file_name = "Statik.pdf"
+    rows = [
+        (_row("Abschnitt vier. " + "x" * 22_000, file_name, page_label="1"), 4),
+        (_row("Abschnitt fuenf. " + "y" * 3_000, file_name, page_label="1"), 5),
+        (_row("Abschnitt Tabelle. " + "t" * 500, file_name, page_label="1", table_part=2), 3),
+        (_row("Abschnitt Anhang. " + "a" * 500, file_name, page_label="1", section_order=9), None),
+    ]
+    records = [ChunkRecord(row["id"], row["text"], row["embedding"], row["metadata"], ordinal) for row, ordinal in rows]
+    writes.write_chunks(SCOPE, file_name, records, identity=corpus._identity())
+    statik = SimpleNamespace(file_name=file_name, display_title=None, summary=None, tags=None, superseded_by=None)
+
+    async def _documents(collection: str):
+        return [statik]
+
+    monkeypatch.setattr("aiq_agent.knowledge.factory.get_available_documents_async", _documents)
+
+    first = await _read(document=file_name, pages="1", conclusion="x")
+    cursor = re.search(r'cursor="([^"]+)"', first).group(1)
+    rest = await _read(document=file_name, cursor=cursor, conclusion="x")
+
+    assert _sections_read(first) == ["vier"]
+    assert _sections_read(rest) == ["fuenf", "Tabelle", "Anhang"]

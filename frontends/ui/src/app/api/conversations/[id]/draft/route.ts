@@ -8,18 +8,11 @@
  * / `aget` doors and never touches `grid_app`.
  */
 
-import { z } from 'zod'
 import { apiRoute, parseQuery } from '@/lib/api/handler'
+import { draftPreviewQuerySchema } from '@/lib/conversations/conversation-wire'
 import { readConversationDraft } from '@/lib/conversations/draft-preview'
 
 type Params = { id: string }
-
-const draftPreviewQuerySchema = z.object({
-  // The working-directory path as the card carries it (`/entwuerfe/….md`).
-  // Length-capped like every other client-supplied identifier; legitimacy is
-  // decided by the service and the backend's own path refusal, not here.
-  path: z.string().min(1).max(500),
-})
 
 export const GET = apiRoute<Params>(
   async ({ session, params, request }) => {

@@ -228,7 +228,7 @@ export const chat: typeof en.chat = {
     clarify: 'Klären',
     /** Unter der Matrix in einem abgeschlossenen Projekt, wo „Klären“ stünde (ADR-0090). */
     clarifyClosed: 'Abgeschlossenes Projekt: keine neue Recherche zu offenen Befunden.',
-    commissioned: 'Auftrag angelegt',
+    commissioned: 'Aufgabe angelegt',
     // Gegenüber dem vorigen Bericht zum selben Thema.
     change: {
       new: 'neu',
@@ -291,6 +291,10 @@ export const chat: typeof en.chat = {
     // Derselbe Sachverhalt, wenn die Antwort gar keine Quellen nennt: der Satz
     // oben verspräche „die bis dahin gefundenen Belege“, die es nicht gibt.
     researchTruncatedWithoutSources: 'Recherche vorzeitig beendet, bevor Belege gefunden wurden',
+    // Die Suche lief und fand nichts; die Antwort steht trotzdem da (ADR-0125),
+    // und dieser Satz sagt, worauf sie dann beruht.
+    lookupFoundNothing:
+      'Die Suche hat keine Quellen gefunden. Diese Antwort beruht auf allgemeinem Wissen und ist nicht belegt.',
     // WOMIT sie endete — als kurzer Zusatz in Klammern hinter dem jeweils
     // zutreffenden Satz oben. Dass vorzeitig Schluss war, ist der Sachverhalt;
     // woran es lag, entscheidet, ob eine erneute Anfrage etwas bringt.
@@ -364,6 +368,8 @@ export const chat: typeof en.chat = {
   },
   // Der Zitat-Peek: was diese Fundstelle IST, bevor man sie öffnet.
   citationPeek: {
+    pageThumbnail: 'Seite {page}',
+    thumbnailLoading: 'Die Seite wird gezeichnet',
     wholeDocument: 'Gesamtes Dokument',
     openAtPage: 'An dieser Stelle öffnen',
     notOpenable: 'Zu dieser Quelle liegt in Piloti keine Datei vor.',
@@ -445,6 +451,15 @@ export const chat: typeof en.chat = {
       // Beschriftung: „Als Aktenvermerk schreiben“ ist ein Satzfragment und
       // keine Bitte.
       fileNotePrefill: 'Schreib das als Aktenvermerk in mein Projekt.',
+    },
+    workReport: {
+      eyebrow: 'Arbeitsstand',
+      done: 'Erledigt',
+      proposed: 'Vorgeschlagen, wartet auf Sie',
+      blocked: 'Blockiert',
+      next: 'Als Nächstes',
+      who: 'Wer: {who}',
+      due: 'bis {due}',
     },
     keyTakeaways: {
       eyebrow: 'Das Wichtigste',
@@ -534,14 +549,35 @@ export const chat: typeof en.chat = {
       ersetzt: 'Ersetzt',
       error: 'Das Einreichen hat nicht geklappt. Bitte unter Dateien erneut versuchen.',
     },
-    // Ein Auftrag, den Piloti nach diesem Gespräch selbständig erledigt
+    // Eine Aufgabe, die Piloti nach diesem Chat selbständig erledigt
     // (ADR-0051). Die Karte bietet nichts an: die Zeile existiert schon, wenn
     // sie erscheint, und der Laufblock darunter sagt, wie es steht — die Karte
     // ist die Quittung (was, welcher Art, bis wann) und nennt keinen Status.
+    // Wo Piloti in einem Dokument hingesehen hat (ADR-0128): je Ansicht die
+    // Seite und die Stelle, und was Piloti in der Runde gezeigt hat.
+    look: {
+      eyebrow: 'Angesehen',
+      looked: 'S. {page}',
+      shown: 'Gezeigt auf S. {page}',
+      wholePage: 'ganze Seite',
+      // Was Piloti von der Seite abgelesen hat, nie eine Messung (ADR-0125).
+      reading: 'Gelesen: {reading}',
+      readingNote: 'Von Piloti abgelesen, nicht gemessen.',
+      embeddedImage: 'Bild {index}',
+      open: '{document}, S. {page} öffnen',
+    },
+    // Zwei Fassungen eines Dokuments, die Änderungen auf jeder eingerahmt (ADR-0128, V10).
+    revisionCompare: {
+      eyebrow: 'Fassungen verglichen',
+      page: 'S. {page}',
+      older: 'Ältere Fassung',
+      newer: 'Neuere Fassung',
+      open: '{side}, S. {page}: mit den Änderungen öffnen',
+    },
     taskCreated: {
-      eyebrow: 'Auftrag',
+      eyebrow: 'Aufgabe',
       due: 'bis {date}',
-      open: 'Unterhaltung öffnen',
+      open: 'Chat öffnen',
       // Die vier Arten, in den Worten, in denen die Nutzerin sie beauftragt hat.
       kind: {
         complianceCheck: 'Normprüfung',
@@ -633,6 +669,31 @@ export const chat: typeof en.chat = {
         applied: 'Projektkontext aktualisiert.',
         dismissed: 'Verworfen. Der Projektkontext blieb unverändert.',
       },
+    },
+    // Eine Aktion, die Piloti über die MCP-Schnittstelle VORGESCHLAGEN hat
+    // (ADR-0122). Bis zum Annehmen ist nichts geschehen; das Annehmen führt sie
+    // in der Sitzung der Lesenden aus, die Route prüft die Berechtigung.
+    operationProposal: {
+      eyebrow: 'Aktion',
+      // „{operation}“ ist der technische Name der Aktion, er bleibt unübersetzt.
+      operation: 'Aktion: {operation}',
+      inputLabel: 'Eingaben',
+      // Ein langer Wert ist erst gekürzt; „Übernehmen“ wartet, bis jeder ganz gelesen ist.
+      showAll: 'Ganz anzeigen ({length} Zeichen)',
+      showLess: 'Weniger anzeigen',
+      readAllFirst: '{count, plural, one {Lies den gekürzten Wert ganz, bevor du übernimmst.} other {Lies die # gekürzten Werte ganz, bevor du übernimmst.}}',
+      targetsLabel: 'Betrifft',
+      target: {
+        project: 'Projekt {name}',
+        document: 'Dokument {name}',
+        folder: 'Ordner {name}',
+        conversation: 'Chat {name}',
+        bim_model: 'Modell {name}',
+        upload_batch: 'Upload {name}',
+        proposal: 'Vorschlag {name}',
+      },
+      applied: 'Die Aktion wurde ausgeführt.',
+      dismissed: 'Verworfen. Die Aktion wurde nicht ausgeführt.',
     },
     // Was Piloti an einem Dokument getan hat: Anmerkungen gesetzt, in einem
     // Thread geantwortet. Je Anmerkung ein „Übernehmen“ oder „Verwerfen“, und
@@ -924,6 +985,15 @@ export const chat: typeof en.chat = {
     },
   },
   thinking: {
+    // Eine Zeile je Dokument, das Piloti angesehen hat (ADR-0128); die
+    // Vorschaubilder öffnen die Stelle.
+    look: {
+      step: 'Angesehen: {document}, S. {page}, {where}',
+      stepWhole: 'Angesehen: {document}, S. {page}',
+      stepMany: 'Angesehen: {document}, {count} Stellen',
+      place: 'S. {page}, {where}',
+      placeWhole: 'S. {page}',
+    },
     inProgress: 'Denkvorgang läuft',
     working: 'Antwort wird erstellt …',
     waiting: 'Warten auf Antwort',
@@ -964,7 +1034,7 @@ export const chat: typeof en.chat = {
         documents: {
           officeShelf: 'Unterlagen aus der Büroablage werden gesichtet …',
           project: 'Unterlagen aus dem Projekt werden gesichtet …',
-          session: 'Unterlagen aus dieser Unterhaltung werden gesichtet …',
+          session: 'Unterlagen aus diesem Chat werden gesichtet …',
           several: 'Ihre Unterlagen werden gesichtet …',
           // Eine gerade hochgeladene Datei ist noch nicht fertig indiziert;
           // die Antwort wartet kurz darauf, statt ohne sie zu antworten.
@@ -1013,7 +1083,7 @@ export const chat: typeof en.chat = {
           // Dinge sind: das eine legt etwas hin, das andere bittet jemanden.
           draftFiled: 'Entwurf wird im Projekt abgelegt …',
           draftSubmitted: 'Entwurf wird zur Freigabe eingereicht …',
-          taskCreated: 'Auftrag wird angelegt …',
+          taskCreated: 'Aufgabe wird angelegt …',
           // Anmerkungen in einem Dokument. Eigene Befunde schlägt Piloti nur
           // vor: Erst eine Person übernimmt oder verwirft sie. Setzen, ändern
           // und löschen tut Piloti nur, worum die Person bittet.
@@ -1023,6 +1093,11 @@ export const chat: typeof en.chat = {
           annotationsUpdate: 'Anmerkung wird geändert …',
           annotationsDelete: 'Anmerkung wird gelöscht …',
           annotationsReply: 'Antwort auf eine Anmerkung wird geschrieben …',
+          // Piloti sieht sich eine Seite oder einen Ausschnitt an (ADR-0128).
+          look: 'Sieht sich das Dokument an …',
+          // Ein Aufruf im Arbeitsbereich über Piloti selbst: Lesen läuft,
+          // Schreiben kommt als Vorschlag zurück.
+          workspaceCall: 'Arbeitet im Arbeitsbereich …',
         },
         // Die Werkzeuge sind durch, die Antwort wird geschrieben. Dieselben
         // Worte wie `activity.composing` darüber: ein Vokabular für dieselbe
@@ -1074,11 +1149,13 @@ export const chat: typeof en.chat = {
       // Der Entwurf verlässt das Arbeitsverzeichnis: als Projektdokument
       // abgelegt oder zur Freigabe eingereicht.
       filing: 'Ablage',
-      task: 'Auftrag',
+      task: 'Aufgabe',
       // Anmerkungen im Dokument: gelesen, vorgeschlagen oder beantwortet.
       annotations: 'Anmerkungen',
       // Die Dateiaktionen SCHLAGEN vor und schreiben nichts (ADR-0003).
       fileProposal: 'Ablagevorschlag',
+      // Gelesen oder vorgeschlagen im Arbeitsbereich (Mitglieder, Freigaben, Aufträge).
+      workspace: 'Arbeitsbereich',
       // Ein Chip pro Skill, den dieser Turn tatsächlich angewendet hat.
       // `{name}` liefert die einzige Label-Instanz
       // (features/skills/lib/skill-activity).
@@ -1118,7 +1195,7 @@ export const chat: typeof en.chat = {
     // Laufblock darunter. Kein grünes Häkchen, kein „Fertig“.
     // Der Zug ist gescheitert; die Fehlerkarte darunter sagt wie.
     failed: 'Fehlgeschlagen',
-    handedOff: 'Auftrag angelegt',
+    handedOff: 'Aufgabe angelegt',
     // Piloti hat die Frage nicht bearbeitet (abgelehnt oder nicht angenommen):
     // das Banner darunter sagt warum. Neutral, kein „Fertig“.
     refused: 'Nicht bearbeitet',
@@ -1200,6 +1277,7 @@ export const chat: typeof en.chat = {
       // damit bei jeder Wiederholung dieselbe — genau das ließ ein erneutes
       // Aufschlagen wie einen zweiten Abruf aussehen.
       roundDocRepeat: 'bereits abgerufen',
+      workspaceRead: 'Aus dem Arbeitsbereich gelesen',
       contextLabel: 'Kontext',
       sourcesTab: 'Quellen',
       sourcesTitle: 'Geprüfte Quellen',
@@ -1455,6 +1533,40 @@ export const chat: typeof en.chat = {
       citationFallback:
         'Mittlere Sicherheit: die angeführte Quelle wurde ergänzt, nicht von der Antwort selbst zitiert.',
     },
+    // Die Einschätzung seit ADR-0125: pro Aussage gerechnet, nicht pro Antwort.
+    // Ältere Antworten behalten die Texte oben, unter denen sie berechnet wurden.
+    byClaim: {
+      tooltip:
+        'Die eigene Einschätzung des Assistenten, begrenzt durch die schwächste tragende Aussage der Antwort. Sie kann falsch sein.',
+      levelMeanings: {
+        high: 'Hoch: jede tragende Aussage ist belegt, durch eine zitierte Quelle, einen Eintrag im Arbeitsbereich oder eine Messung.',
+        medium:
+          'Mittel: eine tragende Aussage ist eine Einschätzung oder allgemeines Wissen, oder ein gelesener Eintrag deckt eine Zahl nicht.',
+        low: 'Niedrig: eine Aussage zu Recht, Zahl oder Frist ist nicht belegt, oder eine Quellenangabe hielt der Prüfung nicht stand.',
+      },
+      // Woraus die Sätze der Antwort bestehen, in Lesereihenfolge: was hält zuerst.
+      mix: {
+        supported: '{count, plural, one {# Aussage belegt} other {# Aussagen belegt}}',
+        observed: '{count, plural, one {# Aussage von der Zeichnung abgelesen} other {# Aussagen von der Zeichnung abgelesen}}',
+        reasoning: '{count, plural, one {# Einschätzung} other {# Einschätzungen}}',
+        modelKnowledge: '{count, plural, one {# Aussage aus allgemeinem Wissen} other {# Aussagen aus allgemeinem Wissen}}',
+        normativeUncited: '{count, plural, one {# Rechtsaussage ohne Beleg} other {# Rechtsaussagen ohne Beleg}}',
+        dropped: '{count, plural, one {# Beleg nicht verifiziert} other {# Belege nicht verifiziert}}',
+      },
+      cappedReasons: {
+        ungrounded: 'Begrenzt durch eine tragende Aussage, hinter der kein Beleg steht.',
+        quoteUnverified:
+          'Ein Zitat konnte nicht wörtlich in der Quelle bestätigt werden; die Einschätzung ist entsprechend begrenzt.',
+        // Ein Eintrag im Arbeitsbereich oder eine Messung belegt Fakten über
+        // das Büro und das Gebäude, nie eine Aussage über das Recht.
+        normativeClaimUncited:
+          'Begrenzt durch eine Rechtsaussage ohne zitierte Quelle. Ein Eintrag im Arbeitsbereich oder eine Messung belegt keine Rechtsaussage.',
+        measurementOnly:
+          'Mittlere Sicherheit: die Angabe ist am Modell gemessen (mit Toleranz und Methode), aber nicht durch eine Quelle belegt.',
+        citationFallback:
+          'Mittlere Sicherheit: die angeführte Quelle wurde ergänzt, nicht von der Antwort selbst zitiert.',
+      },
+    },
   },
   // Antwort-Feedback per Daumen (WS-7).
   feedback: {
@@ -1500,7 +1612,7 @@ export const chat: typeof en.chat = {
     chip: '{count, plural, one {Ein anderes Projekt} other {# andere Projekte}}',
     title: 'Dieser Chat stützt sich auf andere Projekte: {projects}.',
     gone: 'ein Projekt, das es nicht mehr gibt',
-    body: 'Er lässt sich nur mit Personen teilen, die diese Projekte öffnen dürfen. Aus ihm geht nichts ins Projektgedächtnis, in Aufträge, in eine Tiefenrecherche oder in die Projektablage.',
+    body: 'Er lässt sich nur mit Personen teilen, die diese Projekte öffnen dürfen. Aus ihm geht nichts ins Projektgedächtnis, in Aufgaben, in eine Tiefenrecherche oder in die Projektablage.',
   },
   screening: {
     title: 'Enthält {items} (Sensible Daten).',

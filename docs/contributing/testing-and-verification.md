@@ -74,7 +74,9 @@ Backend job.** `tests/aiq_agent/common/test_claim_queue.py`,
 `tests/knowledge_layer_tests/test_ingest_queue.py` and
 `frontends/aiq_api/tests/test_research_queue_fair.py` run every scenario on
 SQLite, which ranks in Python, and on Postgres, which runs production's claim
-SQL. Without `AIQ_TEST_POSTGRES_URL` the Postgres parameter skips, so the task
+SQL. The folder card builder's suites (`tests/aiq_agent/knowledge/folder_cards/`:
+dirty queue, budget, manifests, worker) run on both too, through the
+`database_url` and `agent_db` fixtures in their `conftest.py`. Without `AIQ_TEST_POSTGRES_URL` the Postgres parameter skips, so the task
 reuses `scripts/rls-test-db.sh --exec` for a throwaway cluster and names a
 scratch database in it. Each file carries an `AIQ_TEST_POSTGRES_REQUIRED` guard,
 set in CI, that fails instead of skipping. A new suite with a Postgres parameter
@@ -631,6 +633,72 @@ calls and the retriever's embed, store (the one Qdrant query) and retrieve phase
 several questions in one process so all but the first are warm. What both
 measured on 2026-09-24, and the effort A/B:
 [turn-latency-measured-2026-09.md](../architecture/turn-latency-measured-2026-09.md).
+
+### The workspace set
+
+**The workspace set** (`-- --set workspace`, ADR-0123) asks Piloti for office
+work through its MCP door: reads, writes that must come back as proposals with
+the right input, two writes in one turn, an ambiguous target it must ask about,
+German and English, and follow-up turns in one conversation (a row's `turns`
+run in order; the checkpointer carries the history between processes). Each
+run sits in the current project of a fixture office
+(`frontends/ui/tests/fixtures/workspace/office.json`) as an admin, with a
+signed envelope. `scripts/turn_census/fixture_workspace.py` serves the door from
+the catalog production shows Piloti (`catalog.json`, written by
+`workspace-eval.fixture.spec.ts`) and the turn context with the WORKSPACE block
+the production renderer writes (`rendered.json`); a follow-up turn's block lists
+what the run filed, as production would. A search ranks as `discovery.ts` does
+(`lib/text/operation-search.ts`); `tests/test_workspace_eval.py` holds the
+Python mirror to lists the TypeScript wrote. The questions are `tests/fixtures/workspace/workspace_questions.yaml`;
+the checks (`reads`, `proposes`, `uses`, `no_write`, `no_workspace`, `no_repeat`, the
+judge's `pending` and `asks`) are explained in its header. `uses` names the tool a
+job must be done with, a native one where the exposure config hides the door's
+look-alike from Piloti (`frontends/ui/src/lib/agent-api/exposure.config.ts`): run
+the set before and after you change a `piloti` entry there. The report's
+`## Workspace` section gives the share of runs where every check held, rounds,
+door calls by kind, searches that found nothing, tokens and seconds. No corpus
+is needed. Run it before and after a change to the prompt's workspace facts,
+the WORKSPACE block, the work report or the catalog's search:
+
+```bash
+task be:eval:answer-suite -- --set workspace --out /tmp/ws/before
+task be:eval:answer-suite -- --set workspace --out /tmp/ws/after --baseline /tmp/ws/before/results.json
+```
+
+**The files set** (`-- --set files --arm search|navigate|both`, ADR-0127) asks about
+a project's own files: what is in a folder, where a document is, how many, what a
+page range says, every occurrence of a word. About 20 `pf-*` rows
+(`tests/fixtures/files_eval/files_questions.yaml`, whose header says what each check
+means) run through the real `list_files`, `knowledge_search` and `read_passage` in a
+fixture project (`tests/fixtures/files_eval/project.yaml`, the intake eval's project
+grown to nested folders, a 14-page report and a letter). Each row states
+`expect.tools`, the move that fits it, and the report gives pass rate, rounds,
+tokens, seconds, the moves each row made and the `status:budget|repeat|width`
+counts. A row with `needs:` waits for a tool argument a later slice adds and is
+listed as not applicable until the tool schema shows it.
+
+The arms measure each way of finding alone: `search` unbinds `list_files` and
+`read_passage` and keeps `match=meaning`; `navigate` drops the round-0 prefetch
+(`prefetch: false` on the agent) and keeps the literal modes (`match_modes` on
+`knowledge_search`); `both` is production. Both knobs are eval-only and default to
+today's behaviour. Run each arm with `--runs 3`, as the judge rows are noisy.
+
+The project has to exist where the tools read it. The suite seeds it itself
+(`scripts/turn_census/fixture_files.py`: one chunk per page into the Qdrant at
+`AIQ_QDRANT_URL`, the documents into the metadata store at `AIQ_SUMMARY_DB`, which
+must be a database URL). Seeding is idempotent and embeds only what changed; it
+needs the deployment's embedding key. Reseed after editing `project.yaml` by
+running the suite again.
+
+```bash
+task be:eval:answer-suite -- --set files --arm both --runs 3 --out /tmp/pf/both
+task be:eval:answer-suite -- --set files --arm search --runs 3 --out /tmp/pf/search
+task be:eval:answer-suite -- --set files --arm navigate --runs 3 --out /tmp/pf/navigate
+```
+
+The suite starts each run from the working tree: edit nothing under `src/`
+while it runs, or run it from an exported copy of the commit
+(`git archive <sha> | tar -x -C /tmp/copy`).
 
 ## The socket-level streaming harness
 

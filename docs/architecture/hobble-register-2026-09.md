@@ -100,7 +100,7 @@ retune · **D** = defect.
 | 18 | `max_llm_turns: 10` is dead, and the config reasons from it | `configs/…`; `register.py` warns it is ignored; real limit `agent.py::_recursion_limit` | The config comment computes "well under `recursion_limit` 30 (`max_llm_turns * 2 + 10`)". The code gives **46**, from a different formula | **D** | Delete the key, fix the comment. A stale derivation in the one file people tune is how the next budget decision goes wrong | **In this change**, with row 2 |
 | 19 | `top_k: 16`, `max_chunks_per_document: 5`, `rerank_candidates: 60`, relevance floor | `configs/…`; ADR-0057/0058 | Retrieval-side bounds with measured derivations | **B**, keep | None | **Keep** |
 | 20 | `tool_search` off; `deferred_tool_loading` on with `min_intelligence_index: 50` | `configs/…`; `piloti/tool_search.py`; ADR-0048 | Both *add* capability or leave it untouched; the off switch is argued from measurement (71 % answering-tool recall) | **B/R**, keep | None. `tool_search.py` names the real constraint — "turns are the scarce resource" — which is row #2 | **Keep** |
-| 21 | Citation verification only ever removes; confidence capped without verified citations | `piloti.j2`; `piloti/grounding.py`; `piloti/AGENTS.md` "two currencies" | Catches a false claim **after** the fact | **R**, keep | None. This is the archetype of what must stay | **Keep** |
+| 21 | Citation verification only ever removes; confidence capped without verified citations | `piloti.j2`; `piloti/grounding.py`; `piloti/AGENTS.md` "two currencies" | Catches a false claim **after** the fact | **R**, keep | None. This is the archetype of what must stay | **Keep**. *ADR-0125 changed the form, not the ratchet: a dropped pointer is labelled, and the cap is per sentence (§5)* |
 | 22 | `conclusion=` required on every retrieval call | `knowledge_layer/register.py`; `turn_status.py` | One sentence per call, deliberately unread by the tool | **R** (it is the Herleitung's evidence, and it is a *slot*, not a sequence) | Keep. Extend to `ris_lookup` | **Keep**, and extended in §3 |
 | 23 | The DYNAMIC half restates tool contracts and standing doctrine | `piloti.j2` below the boundary: `<entwuerfe>` 788 · `<aufraeumen>` 329 · `<delegieren>` 383 · `ris_catalog` 1 544 · `norm_doctrine` 788 · the three `project_context` explanations 718 | 7 724 tokens on a realistic turn, none of it cacheable, so every call of every turn pays all of it. Row 8's pattern, three more times: a bound tool's contract written out beside the tool that already states it | **H** | Each rule into the tool description that owns it; standing doctrine ABOVE the boundary, where identical bytes are cached; the catalog deleted, because `ris_lookup` resolves a pointer from the question | **Closed** — ADR-0060 amendment. 7 724 → 2 962; two sentences of rule survive (`<entwuerfe>`: the anaphora, and that filing needs a project) and per-turn FACTS are all that is left |
 
@@ -555,11 +555,19 @@ the one merge candidate on the horizon, and it can wait.
 
 * **Citation verification that only ever removes** (`piloti.j2`,
   `common/citation_verification.py`). It catches a false claim after the fact
-  and cannot invent one. The archetype.
+  and cannot invent one. The archetype. *Since ADR-0125 it labels instead of
+  removing silently: an unresolvable `[N]`, or one whose § / Punkt the passage
+  does not hold, becomes „[Beleg nicht verifiziert]" where it stood. It still
+  invents nothing; the single-source fallback that did is gone.*
 * **The confidence ceiling** — a measurement never buys more than `medium`, and
   an answer touching the law without verified citations is capped whatever it
   measured (`piloti/grounding.py`, `piloti/AGENTS.md` "two currencies that do
   not convert"). It closes a laundering path; it removes no capability.
+  *Superseded by ADR-0125 for chat: the ceiling is now per sentence. A
+  measurement or a workspace record can reach `high` for the sentence it
+  states, and a normative sentence without a passage still floors the answer,
+  so the laundering path stays closed. Deep research keeps the answer-level
+  ceiling until it stamps sentences.*
 * **`conclusion=` on every retrieval call** (`turn_status.py`). A slot, not a
   sequence: it says *write down what you now know*, never *do this next*. The
   docstring explains why an argument beats prose. Extend it to every new tool.

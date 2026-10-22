@@ -38,12 +38,24 @@ and not when it should not, cited the right project, said when nothing
 comparable exists, and flagged an older edition
 (docs/roadmap/office-experience.md, step A).
 
+`--set visual` (`tests/fixtures/visual/visual_questions.yaml`, ADR-0128) asks questions answered by looking
+at a drawing: three sheets are rendered from `drawings.json` into the output directory and served by the
+fixture BFF, and the report counts looks and the IoU of their regions against the gold boxes. `--look off`
+is its paired arm (`AIQ_VIEW_IMAGES_ENABLED=0`). Needs `AIQ_QDRANT_URL` and `AIQ_SUMMARY_DB` like `--set files`.
+
+`--set north-star` (`tests/fixtures/north_star/north_star_questions.yaml`) asks the exemplars of
+docs/architecture/north-star-answers.md: each row is a files-set or visual-set row, run behind its own
+fixture BFF with that set's checks (`north_star_eval.py`). Rows the commit or the harness cannot ask yet are
+reported not applicable; horizon rows are listed, never run.
+
     python scripts/turn_census/suite.py                        # the core set, 2 runs each
     python scripts/turn_census/suite.py --ingest --corpus data/oib   # ingest data/oib first, no stack needed
     python scripts/turn_census/suite.py --all --runs 3 --out /tmp/suite/after
     python scripts/turn_census/suite.py --baseline /tmp/suite/before/results.json
     python scripts/turn_census/suite.py --report /tmp/suite/after/results.json
     python scripts/turn_census/suite.py --set precedent --runs 2
+    python scripts/turn_census/suite.py --set visual --runs 2 [--look off]
+    python scripts/turn_census/suite.py --set north-star --runs 2
 """
 
 from __future__ import annotations
@@ -71,6 +83,7 @@ QUESTIONS = ROOT / "tests" / "fixtures" / "derivation" / "loop_eval_questions.ya
 PRECEDENT_QUESTIONS = ROOT / "tests" / "fixtures" / "precedent" / "precedent_questions.yaml"
 sys.path.insert(0, str(HERE))
 
+import turn_input  # noqa: E402
 from census import ensure_key  # noqa: E402  (a sibling script, not a package)
 from census import kind as call_kind  # noqa: E402
 from census import records  # noqa: E402
@@ -80,6 +93,12 @@ from census import run_stamp  # noqa: E402
 from census import source_packages  # noqa: E402
 from census import timed_out  # noqa: E402
 from census import tree_pythonpath  # noqa: E402
+from files_eval import recorded_calls  # noqa: E402
+from fixture_bff import lookups_served  # noqa: E402
+from fixture_bff import marks_proposed  # noqa: E402
+from fixture_bff import proposals_filed  # noqa: E402
+from fixture_bff import writes_attempted  # noqa: E402
+from workspace_eval import run_conversation  # noqa: E402
 
 _ANSI = re.compile(r"\x1b\[[0-9;]*m")
 #: A cited corpus file's Richtlinie number: `oib-rl_2.1_…`, `oib-richtlinie_2.2_…`.
@@ -100,6 +119,11 @@ _LOG_SIGNALS = {
     # waits for a person `nat run` does not have; the workflow ends with an
     # empty error. Recorded as what it is, not as a crash.
     "escalated": "Clarifier: Starting",
+    # The round ceiling and the two withheld-call guards (`status:<slot>:N` technical records), which the
+    # office-file eval reports per arm (`files_eval.report_lines`); read off the log where one is written.
+    "budget": "status:budget",
+    "repeat": "status:repeat",
+    "width": "status:width",
 }
 
 
@@ -119,6 +143,8 @@ class Run:
     #: Research calls after the answer: a repair rewriting the prose.
     post_answer_calls: int = 0
     tool_calls: list[str] = field(default_factory=list)
+    #: `--set files`: each model-made tool call with its arguments (`files_eval.recorded_calls`).
+    tool_args: list[dict] = field(default_factory=list)
     reasoning_tokens: int = 0
     max_reasoning_tokens: int = 0
     output_tokens: int = 0
@@ -142,6 +168,12 @@ class Run:
     holdout: bool = False
     answer: str = ""
     error: str = ""
+    #: `--set workspace`: the calls the measured (last) turn made on the MCP door, as the fixture
+    #: served them (`workspace_eval.py`), how many the conversation's earlier turns made before it,
+    #: and how many turns the conversation had.
+    door: list[dict] = field(default_factory=list)
+    door_offset: int | None = None
+    turns: int = 1
 
 
 # --- Questions ---------------------------------------------------------------
@@ -181,6 +213,34 @@ def load_precedent_questions(path: Path = PRECEDENT_QUESTIONS) -> list[dict]:
     import yaml
 
     return list((yaml.safe_load(path.read_text(encoding="utf-8")) or {}).get("questions") or [])
+
+
+def _files_questions() -> list[dict]:
+    """The office-file set (``files_eval.py``): questions about a fixture project's own files."""
+    from files_eval import load_questions as load_files_questions
+
+    return load_files_questions()
+
+
+def _visual_questions() -> list[dict]:
+    """The visual set (``visual_eval.py``): questions answered by looking at a drawing."""
+    from visual_eval import load_questions as load_visual_questions
+
+    return load_visual_questions()
+
+
+def _north_star_questions() -> list[dict]:
+    """The north-star set (``north_star_eval.py``): the exemplars, as files-set and visual-set rows."""
+    from north_star_eval import load_questions as load_north_star_questions
+
+    return load_north_star_questions()
+
+
+def _workspace_questions() -> list[dict]:
+    """The workspace set (``workspace_eval.py``): office work in the fixture office, some rows several turns."""
+    from workspace_eval import load_questions as load_workspace_questions
+
+    return load_workspace_questions()
 
 
 def load_questions(path: Path = QUESTIONS, *, core_only: bool = True) -> tuple[list[dict], list[str]]:
@@ -271,6 +331,7 @@ def _read_calls(run: Run, research: list[dict], answered_at: int | None, t0: flo
         for item in (entry.get("resp") or {}).get("output", []):
             if item.get("type") == "function_call":
                 run.tool_calls.append(str(item.get("name")))
+        run.tool_args.extend(recorded_calls((entry.get("resp") or {}).get("output", [])))
     if not research:
         return
     call = research[answering]
@@ -279,13 +340,22 @@ def _read_calls(run: Run, research: list[dict], answered_at: int | None, t0: flo
         run.first_text_s = round(first_text - t0, 1)
 
 
-def observe(question: dict, index: int, record: Path, log: Path) -> Run:
-    """Everything one turn left behind, read into a Run."""
+def observe(
+    question: dict, index: int, record: Path, log: Path, door_offset: int | None = None, look_on: bool = True
+) -> Run:
+    """Everything one turn left behind, read into a Run.
+
+    ``door_offset`` (``--set workspace``) is how many MCP calls the
+    conversation made before this turn: the turn's own are the ones after it.
+    ``look_on`` (``--set visual``) is False for the ``--look off`` arm, which asks no look of the turn.
+    """
     run = Run(
         question_id=str(question["id"]),
         run=index,
         scenario=str(question.get("scenario") or ""),
         holdout=bool(question.get("holdout")),
+        door_offset=door_offset,
+        turns=len(question.get("turns") or []) or 1,
     )
     rows = sorted(records(record), key=lambda r: r["t_start"])
     log_text = log.read_text(errors="replace") if log.exists() else ""
@@ -303,12 +373,60 @@ def observe(question: dict, index: int, record: Path, log: Path) -> Run:
     run.envelope = {"kind": envelope.get("kind"), "cards": envelope.get("cards") or []} if envelope else None
     run.kind = str((envelope or {}).get("kind") or "")
     run.cited_families = sorted(set(_CITED_FAMILY.findall(run.answer)))
-    from fixture_bff import lookups_served
-
-    run.lookups = lookups_served(record.parent / "requests.jsonl", record.stem)
+    requests = record.parent / "requests.jsonl"
+    run.lookups = lookups_served(requests, record.stem)
     if "escalated" in run.signals:
         run.kind = run.kind or "handoff"
     run.checks = check(question, run, envelope)
+    if question.get("set") == "files":
+        from files_eval import files_checks
+
+        run.checks.update(
+            files_checks(
+                question.get("expect") or {},
+                run.tool_args,
+                run.answer,
+                str(question.get("question") or ""),
+                _judge(),
+                run.signals,
+                run.research_calls,
+                proposals_filed(requests, record.stem),
+                writes_attempted(requests, record.stem),
+                marks_proposed(requests, record.stem),
+            )
+        )
+    if question.get("set") == "visual":
+        from visual_eval import visual_checks
+
+        run.checks.update(
+            visual_checks(
+                question.get("expect") or {},
+                run.tool_args,
+                question.get("gold") or [],
+                run.answer,
+                str(question.get("question") or ""),
+                _judge(),
+                run.signals,
+                run.research_calls,
+                look_on=look_on,
+            )
+        )
+    if door_offset is not None:
+        from fixture_workspace import workspace_calls
+        from workspace_eval import workspace_checks
+
+        run.door = workspace_calls(record.parent / "requests.jsonl", record.stem)[door_offset:]
+        run.checks.update(
+            workspace_checks(
+                question.get("expect") or {},
+                run.door,
+                run.tool_calls,
+                run.answer,
+                str(question.get("question") or ""),
+                _judge(),
+                run.signals,
+            )
+        )
     if "escalated" not in run.signals and not run.answer:
         run.error = _no_answer(log_text)
     return run
@@ -608,6 +726,22 @@ def render(
         "",
         *(failing or ["None."]),
     ]
+    if meta.get("set") == "workspace":
+        from workspace_eval import report_lines
+
+        lines += ["", *report_lines(runs)]
+    if meta.get("set") == "files":
+        from files_eval import report_lines as files_report_lines
+
+        lines += ["", *files_report_lines(runs, meta)]
+    if meta.get("set") == "visual":
+        from visual_eval import report_lines as visual_report_lines
+
+        lines += ["", *visual_report_lines(runs, meta)]
+    if meta.get("set") == "north-star":
+        from north_star_eval import report_lines as north_star_report_lines
+
+        lines += ["", *north_star_report_lines(runs, meta)]
     if skipped:
         lines += ["", f"Skipped, need a project: {', '.join(skipped)}."]
     if not_in_corpus:
@@ -872,11 +1006,16 @@ def run_suite(
     overrides: list[list[str]] | None,
     stamp: str | None = None,
     env_for: Any = None,
+    conversations: bool = False,
+    look_on: bool = True,
 ) -> list[Run]:
     """Every question ``runs`` times, ``workers`` at once; each recorded as ``suite-{stamp}-{id}-{run}``.
 
     ``env_for(conversation_id, question)``, when given, is each run's extra
     environment (the precedent eval's envelope and fixture BFF).
+    ``conversations`` (``--set workspace``): a row's ``turns`` run in order in
+    one conversation, and the last is the one observed with its door calls.
+    ``look_on`` is False for ``--set visual --look off``.
     """
     out.mkdir(parents=True, exist_ok=True)
     stamp = stamp or run_stamp()
@@ -887,8 +1026,15 @@ def run_suite(
         conversation = f"suite-{stamp}-{question['id']}-{index}"
         try:
             extra = env_for(conversation, question) if env_for else None
-            record = run_once(str(question["question"]).strip(), out, conversation, overrides, extra)
-            result = observe(question, index, record, record.with_suffix(".log"))
+            if conversations:
+                record, before = run_conversation(question, index, out, conversation, overrides, extra)
+                offset = None if question.get("set") in ("files", "visual") else before
+                result = observe(
+                    question, index, record, record.with_suffix(".log"), door_offset=offset, look_on=look_on
+                )
+            else:
+                record = run_once(str(question["question"]).strip(), out, conversation, overrides, extra)
+                result = observe(question, index, record, record.with_suffix(".log"))
         except Exception as exc:  # noqa: BLE001 - one run's failure is that run's, not the suite's
             result = Run(question_id=str(question["id"]), run=index, error=f"{type(exc).__name__}: {exc}")
         print(f"  {question['id']} #{index}: {result.wall_s}s, {result.research_calls} call(s)", flush=True)
@@ -902,13 +1048,16 @@ def run_suite(
         pool.shutdown(wait=True, cancel_futures=True)
 
 
-def precedent_envelope(office: dict, conversation_id: str, secret: str, current: dict | None = None) -> tuple[str, str]:
+def precedent_envelope(
+    office: dict, conversation_id: str, secret: str, current: dict | None = None, extra: dict | None = None
+) -> tuple[str, str]:
     """The signed request-context envelope the BFF would mint for a turn in the fixture office's current project.
 
     Base64url JSON, HMAC-SHA256 over the exact bytes with the run's
     ``GRID_INTERNAL_API_TOKEN``: the agent verifies it like a real one
     (``GridRequestContext.from_envelope``). A solo chat, as the conversation
-    has no row: the fixture BFF searches every project in the office.
+    has no row: the fixture BFF searches every project in the office. ``extra`` adds payload
+    fields (``--set files`` states the project's ``collectionScope`` this way).
     """
     import base64
     import hashlib
@@ -924,12 +1073,109 @@ def precedent_envelope(office: dict, conversation_id: str, secret: str, current:
             "issuedAt": int(time.time() * 1000),
             "contextTransport": "bff",
             "federalState": current.get("facts", {}).get("federal_state"),
+            **(extra or {}),
         },
         ensure_ascii=False,
     )
     header = base64.urlsafe_b64encode(raw.encode("utf-8")).decode("ascii").rstrip("=")
     signature = hmac.new(secret.encode("utf-8"), raw.encode("utf-8"), hashlib.sha256).hexdigest()
     return header, signature
+
+
+def start_workspace_bff(out: Path) -> tuple[Any, Any]:
+    """``--set workspace``: the fixture BFF serving the MCP door from the workspace office, and each run's env."""
+    import secrets
+
+    from fixture_bff import FixtureBFF
+    from fixture_workspace import FixtureWorkspace
+
+    token = secrets.token_hex(16)
+    workspace = FixtureWorkspace()
+    bff = FixtureBFF(token, out / "requests.jsonl", workspace=workspace).start()
+    office = workspace.office
+    project = next(p for p in office["projects"] if p["id"] == office["current"])
+
+    def env_for(conversation_id: str, question: dict) -> dict[str, str]:
+        header, signature = precedent_envelope(
+            {"organizationId": office["organizationId"], "userId": office["userId"]},
+            conversation_id,
+            token,
+            {"id": project["id"]},
+        )
+        return {
+            "FRONTEND_INTERNAL_URL": bff.url,
+            "GRID_INTERNAL_API_TOKEN": token,
+            "GRID_EVAL_ENVELOPE": header,
+            "GRID_EVAL_ENVELOPE_SIG": signature,
+        }
+
+    return bff, env_for
+
+
+def start_files_bff(out: Path) -> tuple[Any, Any]:
+    """``--set files``: a fixture BFF that serves the project's turn context, and each run's env.
+
+    The run's scope is the fixture project's collection, stated in the signed envelope's
+    ``collectionScope`` (as the BFF's is), so ``list_files``, ``knowledge_search`` and
+    ``read_passage`` read what ``fixture_files.py`` seeded and nothing else.
+    """
+    import secrets
+
+    from fixture_bff import FixtureBFF
+    from fixture_files import FilesWorkspace
+
+    token = secrets.token_hex(16)
+    workspace = FilesWorkspace()
+    bff = FixtureBFF(token, out / "requests.jsonl", workspace=workspace).start()
+
+    def env_for(conversation_id: str, question: dict) -> dict[str, str]:
+        header, signature = precedent_envelope(
+            workspace.office, conversation_id, token, {"id": workspace.project_id}, extra=workspace.envelope_fields
+        )
+        return {
+            "FRONTEND_INTERNAL_URL": bff.url,
+            "GRID_INTERNAL_API_TOKEN": token,
+            "GRID_EVAL_ENVELOPE": header,
+            "GRID_EVAL_ENVELOPE_SIG": signature,
+            # A row an upload starts carries its trigger and open document, as the headless turn does.
+            **turn_input.env_for(question),
+        }
+
+    return bff, env_for
+
+
+def start_visual_bff(out: Path, look: bool = True) -> tuple[Any, Any]:
+    """``--set visual``: the fixture BFF serving the rendered drawings, and each run's env.
+
+    The drawings are drawn from ``drawings.json`` into ``out/drawings`` now. The fixture BFF answers the
+    document lookup and is the object store the run reads the bytes from (``fixture_visual.py``); the
+    run's scope is the project's collection, as in ``--set files``. ``look`` False sets
+    ``AIQ_VIEW_IMAGES_ENABLED=0`` for every run.
+    """
+    import secrets
+
+    from fixture_bff import FixtureBFF
+    from fixture_visual import VisualWorkspace
+
+    token = secrets.token_hex(16)
+    workspace = VisualWorkspace.rendered(out / "drawings")
+    bff = FixtureBFF(token, out / "requests.jsonl", workspace=workspace).start()
+
+    def env_for(conversation_id: str, question: dict) -> dict[str, str]:
+        header, signature = precedent_envelope(
+            workspace.office, conversation_id, token, {"id": workspace.project_id}, extra=workspace.envelope_fields
+        )
+        return {
+            "FRONTEND_INTERNAL_URL": bff.url,
+            "GRID_INTERNAL_API_TOKEN": token,
+            "GRID_EVAL_ENVELOPE": header,
+            "GRID_EVAL_ENVELOPE_SIG": signature,
+            **workspace.env(bff.url, look),
+            # A row with a drawn box sends it on the turn, as the canvas does (turn_input.py).
+            **turn_input.env_for(question),
+        }
+
+    return bff, env_for
 
 
 def start_fixture_bff(out: Path) -> tuple[Any, Any]:
@@ -983,7 +1229,20 @@ def _rerender(report: Path, baseline: dict | None) -> int:
     """
     data = json.loads(report.read_text())
     runs = [Run(**row) for row in data["runs"]]
-    rows = load_precedent_questions() if data["meta"].get("set") == "precedent" else load_questions(core_only=False)[0]
+    chosen = data["meta"].get("set")
+    rows = (
+        load_precedent_questions()
+        if chosen == "precedent"
+        else _workspace_questions()
+        if chosen == "workspace"
+        else _files_questions()
+        if chosen == "files"
+        else _visual_questions()
+        if chosen == "visual"
+        else _north_star_questions()
+        if chosen == "north-star"
+        else load_questions(core_only=False)[0]
+    )
     by_id = {str(q["id"]): q for q in rows}
     for index, run in enumerate(runs):
         question = by_id.get(run.question_id)
@@ -991,15 +1250,26 @@ def _rerender(report: Path, baseline: dict | None) -> int:
             continue
         found = recording(report.parent, data["meta"].get("stamp"), run)
         if found is not None:
-            runs[index] = observe(question, run.run, found, found.with_suffix(".log"))
+            runs[index] = observe(
+                question,
+                run.run,
+                found,
+                found.with_suffix(".log"),
+                door_offset=run.door_offset,
+                look_on=data["meta"].get("look") != "off",
+            )
         elif not run.error:
             run.checks = check(question, run, run.envelope)
     print(render(runs, data.get("skipped", []), data["meta"], baseline, data.get("not_in_corpus", [])))
     return 0
 
 
-def _preflight(out: Path, ingest: bool, corpus: Path | None = None) -> int:
-    """0 when the runs would measure what the report will say they measured, else 2 and why."""
+def _preflight(out: Path, ingest: bool, corpus: Path | None = None, needs_corpus: bool = True) -> int:
+    """0 when the runs would measure what the report will say they measured, else 2 and why.
+
+    ``needs_corpus`` is False for the workspace set: its questions are about the
+    office's records, served by the fixture, and none asks the corpus.
+    """
     if not ensure_key():
         print("OPENROUTER_API_KEY is not set; the suite needs the real models.", file=sys.stderr)
         return 2
@@ -1013,6 +1283,8 @@ def _preflight(out: Path, ingest: bool, corpus: Path | None = None) -> int:
             file=sys.stderr,
         )
         return 2
+    if not needs_corpus:
+        return 0
     if ingest:
         if corpus is not None:
             print(f"the corpus is {use_local_corpus(corpus)} PDF(s) from {corpus}")
@@ -1078,6 +1350,57 @@ def _warn_if_dirty(commit: str) -> None:
         )
 
 
+def run_set(questions: list[dict], args: argparse.Namespace, stamp: str, meta: dict) -> list[Run]:
+    """Every set but the north-star one: its fixture BFF, if it has one, and the runs behind it."""
+    bff, env_for = (
+        start_fixture_bff(args.out)
+        if args.set == "precedent"
+        else start_workspace_bff(args.out)
+        if args.set == "workspace"
+        else start_files_bff(args.out)
+        if args.set == "files"
+        else start_visual_bff(args.out, args.look == "on")
+        if args.set == "visual"
+        else (None, None)
+    )
+    if bff is not None and args.set not in ("files", "visual"):
+        # A run ranked by tokens alone measures a kinder search than production's: the report says which it was.
+        meta["fixture_search"] = "embeddings" if bff.embed is not None else "tokens only (no embedding key)"
+    try:
+        runs = run_suite(
+            questions,
+            args.runs,
+            args.out,
+            args.workers,
+            args.override,
+            stamp,
+            env_for,
+            args.set in ("workspace", "files", "visual"),
+            args.look == "on",
+        )
+    finally:
+        if bff is not None:
+            bff.stop()
+    return runs
+
+
+def run_north_star(questions: list[dict], args: argparse.Namespace, stamp: str) -> list[Run]:
+    """``--set north-star``: the files rows behind the files fixture BFF, then the visual rows behind the visual one.
+
+    Each row's ``set`` is its fixture, so ``observe`` checks it as that set checks its own rows.
+    """
+    from north_star_eval import by_fixture
+
+    runs: list[Run] = []
+    for fixture, group in by_fixture(questions).items():
+        bff, env_for = start_files_bff(args.out) if fixture == "files" else start_visual_bff(args.out)
+        try:
+            runs += run_suite(group, args.runs, args.out, args.workers, args.override, stamp, env_for, True, True)
+        finally:
+            bff.stop()
+    return runs
+
+
 def main(argv: list[str] | None = None) -> int:
     # Every run executes in the checkout (`cwd=ROOT`); the registry, the corpus
     # an --ingest reads and the inventory are resolved there too, wherever the
@@ -1100,28 +1423,92 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--override", nargs=2, action="append", metavar=("KEY", "VALUE"))
     parser.add_argument(
         "--set",
-        choices=("loop", "precedent"),
+        choices=("loop", "precedent", "workspace", "files", "visual", "north-star"),
         default="loop",
-        help="loop: the norm questions; precedent: questions in a fixture office's project (fixture_bff.py)",
+        help=(
+            "loop: the norm questions; precedent: questions in a fixture office's project (fixture_bff.py); "
+            "workspace: office work through the MCP door (fixture_workspace.py); "
+            "files: questions about a fixture project's own files (files_eval.py); "
+            "visual: questions answered by looking at a drawing (visual_eval.py); "
+            "north-star: the exemplars of docs/architecture/north-star-answers.md (north_star_eval.py)"
+        ),
+    )
+    parser.add_argument(
+        "--look",
+        choices=("on", "off"),
+        default="on",
+        help="--set visual: off sets AIQ_VIEW_IMAGES_ENABLED=0 for the run, the paired arm for what looking is worth",
+    )
+    parser.add_argument(
+        "--arm",
+        choices=("search", "navigate", "both"),
+        default="both",
+        help="--set files: search = ranked search only; navigate = list, read, literal search; both = as shipped",
     )
     args = parser.parse_args(argv)
     if args.corpus is not None and not args.ingest:
         parser.error("--corpus is what --ingest reads; give both")
+    if args.arm != "both" and args.set != "files":
+        parser.error("--arm is for --set files")
+    if args.look != "on" and args.set != "visual":
+        parser.error("--look is for --set visual")
     baseline = json.loads(args.baseline.read_text()) if args.baseline else None
     if args.report:
         return _rerender(args.report, baseline)
     # The ids first: a typo must not cost an ingest.
-    if args.set == "precedent":
-        rows = load_precedent_questions()
+    not_applicable: list[str] = []
+    horizon: list[str] = []
+    fixture_sets = ("files", "visual", "north-star")
+    if args.set in ("precedent", "workspace", *fixture_sets):
+        rows = (
+            load_precedent_questions()
+            if args.set == "precedent"
+            else _workspace_questions()
+            if args.set == "workspace"
+            else _visual_questions()
+            if args.set == "visual"
+            else _north_star_questions()
+            if args.set == "north-star"
+            else _files_questions()
+        )
+        if args.set == "files":
+            from files_eval import split_applicable
+
+            rows, not_applicable = split_applicable(rows)
+        if args.set == "north-star":
+            from north_star_eval import split
+
+            rows, not_applicable, horizon = split(rows)
         selected = ([q for q in rows if not args.only or str(q["id"]) in set(args.only)], [])
     else:
         selected = select_questions(args.only, args.all)
     if selected is None:
         return 2
-    if failed := _preflight(args.out, args.ingest, args.corpus.resolve() if args.corpus else None):
+    corpus = args.corpus.resolve() if args.corpus else None
+    if failed := _preflight(args.out, args.ingest, corpus, needs_corpus=args.set not in ("workspace", *fixture_sets)):
         return failed
+    if args.set in fixture_sets:
+        from fixture_files import seed_problem
+
+        if problem := seed_problem():
+            print(problem, file=sys.stderr)
+            return 2
+    if args.set in ("visual", "north-star"):
+        from fixture_files import seed
+        from fixture_visual import load_project
+
+        # The files set expects its project to be seeded already; this one seeds its own, idempotently.
+        print(f"seeded {sum(seed(load_project()).values())} chunk(s) of the visual project")
+        if args.set == "north-star":
+            # Its files rows ask the office-file project, which the files set leaves to be seeded beforehand.
+            print(f"seeded {sum(seed().values())} chunk(s) of the office-file project")
+    if args.set == "files":
+        from files_eval import arm_overrides
+        from files_eval import configured_tools
+
+        args.override = [*arm_overrides(args.arm, configured_tools()), *(args.override or [])]
     questions, skipped = selected
-    families = corpus_families()
+    families = corpus_families() if args.set not in ("workspace", *fixture_sets) else None
     not_in_corpus = [f"{q['id']} ({lacking})" for q in questions if (lacking := lacking_family(q, families))]
     questions = [q for q in questions if lacking_family(q, families) is None]
     commit = source_commit()
@@ -1135,18 +1522,17 @@ def main(argv: list[str] | None = None) -> int:
         "overrides": args.override or [],
         "stamp": stamp,
         "set": args.set,
+        "arm": args.arm if args.set == "files" else None,
+        "look": args.look if args.set == "visual" else None,
+        "not_applicable": not_applicable,
+        "horizon": horizon,
     }
     print(f"{len(questions)} question(s) × {args.runs} run(s), {args.workers} at a time → {args.out}")
     args.out.mkdir(parents=True, exist_ok=True)
-    bff, env_for = start_fixture_bff(args.out) if args.set == "precedent" else (None, None)
-    if bff is not None:
-        # A run ranked by tokens alone measures a kinder search than production's: the report says which it was.
-        meta["fixture_search"] = "embeddings" if bff.embed is not None else "tokens only (no embedding key)"
-    try:
-        runs = run_suite(questions, args.runs, args.out, args.workers, args.override, stamp, env_for)
-    finally:
-        if bff is not None:
-            bff.stop()
+    if args.set == "north-star":
+        runs = run_north_star(questions, args, stamp)
+    else:
+        runs = run_set(questions, args, stamp, meta)
     results = {"meta": meta, "skipped": skipped, "not_in_corpus": not_in_corpus, "runs": [asdict(r) for r in runs]}
     (args.out / "results.json").write_text(json.dumps(results, ensure_ascii=False, indent=1))
     report = render(runs, skipped, meta, baseline, not_in_corpus)

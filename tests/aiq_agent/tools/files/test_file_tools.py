@@ -103,14 +103,14 @@ class TestResolution:
         """The whole point: two Grundrisse are an ambiguity, not a ranking."""
         refused = resolve.resolve_document("Grundriss")
         assert isinstance(refused, resolve.Refusal)
-        assert "Mehrdeutig" in refused.message
+        assert "Ambiguous" in refused.message
         assert "Grundriss EG.pdf" in refused.message and "Grundriss OG.pdf" in refused.message
 
     def test_a_name_nobody_has_is_refused_with_an_instruction(self):
         refused = resolve.resolve_document("Statikbericht.pdf")
         assert isinstance(refused, resolve.Refusal)
-        assert "Nicht gefunden" in refused.message
-        assert "rate nicht" in refused.message
+        assert "Not found" in refused.message
+        assert "do not guess" in refused.message
 
     def test_the_platform_corpus_and_this_chats_attachments_are_not_organisable(self):
         for name in ("OIB-RL2.pdf", "Anhang.pdf"):
@@ -151,8 +151,8 @@ class TestProposalsNeverWrite:
                 "target_folder": "Einreichung",
             }
         ]
-        assert "NOCH NICHTS geändert" in result
-        assert "sage nicht, dass es erledigt ist" in result
+        assert "NOTHING has been changed YET" in result
+        assert "do not say it is done" in result
 
     async def test_several_moves_are_several_cards(self, registry):
         """A stored proposal cannot grow: „Räum die Einreichunterlagen zusammen" is one card per move."""
@@ -174,12 +174,12 @@ class TestProposalsNeverWrite:
     async def test_a_move_that_changes_nothing_is_not_proposed(self, registry):
         result = await _move(document="Grundriss EG.pdf", target_folder="Einreichung/Pläne")
         assert registry.snapshot() == []
-        assert "liegt bereits" in result
+        assert "is already in" in result
 
     async def test_an_unresolvable_name_proposes_nothing(self, registry):
         result = await _move(document="Grundriss", target_folder="Einreichung")
         assert registry.snapshot() == []
-        assert "Mehrdeutig" in result
+        assert "Ambiguous" in result
 
     async def test_a_missing_folder_is_refused_rather_than_created(self, registry):
         """A move must never invent the folder it moves into."""
@@ -199,19 +199,19 @@ class TestProposalsNeverWrite:
     async def test_a_folder_name_is_one_segment(self, registry):
         result = await _propose("create_folder", new_name="Einreichung/Fotos")
         assert registry.snapshot() == []
-        assert "ohne Schrägstriche" in result
+        assert "without slashes" in result
 
     async def test_a_folder_that_exists_is_not_proposed_again(self, registry):
         result = await _propose("create_folder", new_name="Pläne", target_folder="Einreichung")
         assert registry.snapshot() == []
-        assert "gibt es bereits" in result
+        assert "already exists" in result
 
     async def test_an_assignment_carries_the_person_as_the_user_named_them(self, registry):
         """This tier has no member roster; the reader's session resolves it."""
         result = await _propose("assign", document="Grundriss OG.pdf", member="Anna Berger")
         (card,) = registry.snapshot()
         assert card["operations"][0]["member"] == "Anna Berger"
-        assert "NOCH NICHTS geändert" in result
+        assert "NOTHING has been changed YET" in result
 
 
 class TestRefusals:
@@ -219,19 +219,19 @@ class TestRefusals:
         monkeypatch.setattr(pc, "get_project_id_from_context", lambda: None)
         result = await _move(document="Grundriss OG.pdf", target_folder="Einreichung")
         assert registry.snapshot() == []
-        assert "keinem Projekt" in result and "Nicht erneut versuchen" in result
+        assert "no project" in result and "Do not retry" in result
 
     async def test_a_run_with_no_card_channel_says_so_instead_of_succeeding(self):
         """No registry bound (a CLI run, an eval): the proposal was never shown."""
         result = await _move(document="Grundriss OG.pdf", target_folder="Einreichung")
-        assert "konnte nicht angelegt werden" in result
-        assert "Es wurde nichts geändert" in result
+        assert "could not be created" in result
+        assert "Nothing was changed" in result
 
     async def test_a_turn_that_sees_no_files_says_that_instead_of_guessing(self, registry):
         set_turn_documents(None)
         result = await _move(document="Grundriss OG.pdf", target_folder="Einreichung")
         assert registry.snapshot() == []
-        assert "keine Projekt- oder Büroablage-Dateien" in result
+        assert "no project or office-shelf files" in result
 
 
 class TestOneToolFourOperations:

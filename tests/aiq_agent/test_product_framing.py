@@ -75,6 +75,15 @@ def test_every_deep_research_prompt_introduces_the_agent_as_piloti(name: str) ->
     assert "Piloti" in first_line.splitlines()[0]
 
 
+def test_pilotis_role_is_the_office_colleague_who_works_in_the_workspace_before_it_knows_the_law() -> None:
+    """The chat prompt's role leads with the work (ADR-0123): the workspace and its proposals first, the law later."""
+    static = (ROOT / "src/aiq_agent/agents/piloti/prompts/piloti_static.md").read_text(encoding="utf-8")
+    role = static.split("<role>", 1)[1].split("</role>", 1)[0]
+    assert "colleague in this planning office" in role
+    assert role.index("workspace") < role.index("building law")
+    assert "proposing" in role
+
+
 def test_the_scan_sees_the_prompts() -> None:
     """A glob that silently matched nothing would pass every test above."""
     assert "src/aiq_agent/agents/piloti/prompts/piloti_static.md" in PROMPTS

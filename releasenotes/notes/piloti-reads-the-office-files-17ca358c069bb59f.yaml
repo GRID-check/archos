@@ -1,0 +1,15 @@
+---
+features:
+  - >
+    Piloti finds its way around a project's folders: asked what a project
+    holds, it can show the folder tree with a short card per folder (how many
+    documents, which kinds, the date range, the latest Fassung and the page
+    counts). It can also read a long document through by page range and
+    continue where it stopped, instead of only reading the passages a search
+    returned.
+operators:
+  - >
+    Each document's page count is now stored when it is ingested. For
+    documents ingested earlier, run the page-count backfill once per
+    environment; it reads the existing index and only writes with --apply. Migration 0180
+    adds the folder_cards table, which nothing writes yet.

@@ -18,12 +18,11 @@
  * gate and the dark-launch feature flag live.
  */
 
-import { z } from 'zod'
 import { apiRoute, parseJsonBody } from '@/lib/api/handler'
 import { deleteDocument, renameDocument } from '@/lib/documents/service'
 import { getListedDocument } from '@/lib/documents/listed-document'
 import { toDocumentWireRows } from '@/lib/documents/list-projection'
-import { MAX_DOCUMENT_NAME_LENGTH } from '@/lib/documents/display-name'
+import { renameDocumentSchema } from '@/lib/documents/document-wire'
 
 type Params = { id: string }
 
@@ -47,13 +46,9 @@ export const GET = apiRoute<Params>(
  * re-validates with `validateDocumentName`, which is also what the dialog uses,
  * so the rule is stated once and enforced on both sides.
  */
-const renameSchema = z.object({
-  displayName: z.string().max(MAX_DOCUMENT_NAME_LENGTH).nullable(),
-})
-
 export const PATCH = apiRoute<Params>(
   async ({ session, params, request }) => {
-    const { displayName } = await parseJsonBody(request, renameSchema)
+    const { displayName } = await parseJsonBody(request, renameDocumentSchema)
     return renameDocument(session, params.id, displayName, request)
   },
   { authz: { enforcedBy: 'renameDocument -> getAccessibleDocument (project:documents:write | org:office_shelf:manage)' } }

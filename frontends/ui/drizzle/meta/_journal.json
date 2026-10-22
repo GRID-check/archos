@@ -1226,6 +1226,62 @@
       "when": 1792590149796,
       "tag": "0174_root_sort_live_progress",
       "breakpoints": true
+    },
+    {
+      "idx": 175,
+      "version": "7",
+      "when": 1792590150296,
+      "tag": "0175_operation_proposals",
+      "breakpoints": true
+    },
+    {
+      "idx": 176,
+      "version": "7",
+      "when": 1792590150796,
+      "tag": "0176_organization_operation_proposals",
+      "breakpoints": true
+    },
+    {
+      "idx": 177,
+      "version": "7",
+      "when": 1792590151296,
+      "tag": "0177_task_run_inbox_types",
+      "breakpoints": true
+    },
+    {
+      "idx": 178,
+      "version": "7",
+      "when": 1792590151796,
+      "tag": "0178_open_operation_per_person",
+      "breakpoints": true
+    },
+    {
+      "idx": 179,
+      "version": "7",
+      "when": 1792627217044,
+      "tag": "0179_piloti_asks",
+      "breakpoints": true
+    },
+    {
+      "idx": 180,
+      "version": "7",
+      "when": 1792650000000,
+      "tag": "0180_folder_cards",
+      "breakpoints": true
+    },
+    {
+      "idx": 181,
+      "version": "7",
+      "when": 1792660000000,
+      "tag": "0181_office_conventions",
+      "breakpoints": true
+    },
+    {
+      "idx": 182,
+      "version": "7",
+      "when": 1792670000000,
+      "tag": "0182_office_convention_decisions",
+      "breakpoints": true
     }
   ]
 }

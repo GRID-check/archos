@@ -77,8 +77,12 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
 const asString = (value: unknown): string | undefined =>
   typeof value === 'string' && value.trim() ? value.trim() : undefined
 
-/** The verdict tag the model reads: a decision is either for or against. */
-function verdictOf(decision: string): 'angenommen' | 'abgelehnt' | null {
+/**
+ * The verdict tag the model reads: a decision is either for or against. The
+ * static prompt names the tags (`accepted`, `declined`); renaming them is one
+ * change with that prompt.
+ */
+function verdictOf(decision: string): 'accepted' | 'declined' | null {
   switch (decision as Decision) {
     case 'accepted':
     case 'savedOrg':
@@ -88,10 +92,10 @@ function verdictOf(decision: string): 'angenommen' | 'abgelehnt' | null {
     // agent must not do is propose the same tidy-up again because some of it
     // did not land.
     case 'partiallyApplied':
-      return 'angenommen'
+      return 'accepted'
     case 'rejected':
     case 'dismissed':
-      return 'abgelehnt'
+      return 'declined'
     default:
       return null
   }
@@ -113,7 +117,7 @@ function instantOf(value: unknown): string | null {
 function describeCard(card: Record<string, unknown>): { kind: string; content: string } | null {
   const type = asString(card.type)
   if (type === 'project_profile_patch') {
-    const title = asString(card.title) ?? 'Projektkontext aktualisieren'
+    const title = asString(card.title) ?? 'Update project context'
     const preview = Array.isArray(card.preview) ? card.preview : []
     const changes = preview
       .filter(isRecord)
@@ -126,11 +130,11 @@ function describeCard(card: Record<string, unknown>): { kind: string; content: s
       })
       .filter((change): change is string => change !== null)
       .slice(0, 3)
-    return { kind: 'Profil', content: changes.length > 0 ? `${title} (${changes.join('; ')})` : title }
+    return { kind: 'profile', content: changes.length > 0 ? `${title} (${changes.join('; ')})` : title }
   }
   if (type === 'memory_proposal') {
     const content = asString(card.content)
-    return content ? { kind: 'Notiz', content } : null
+    return content ? { kind: 'note', content } : null
   }
   if (type === 'file_operation_proposal') {
     // The decision, in the words the card showed: the verb and what it named.
@@ -147,7 +151,8 @@ function describeCard(card: Record<string, unknown>): { kind: string; content: s
       .slice(0, 3)
     if (!title && !operation) return null
     const named = subjects.length > 0 ? ` (${subjects.join('; ')})` : ''
-    return { kind: 'Ablage', content: `${title ?? operation}${named}` }
+    const why = reasonOf(rows)
+    return { kind: 'files', content: `${title ?? operation}${named}${why}` }
   }
   return null
 }
@@ -193,15 +198,15 @@ function decisionsOf(metadata: unknown, fallbackDate: Date): DecidedProposal[] {
 }
 
 const FILE_OPERATION_LABELS: Record<string, string> = {
-  move: 'Verschieben',
-  rename: 'Umbenennen',
-  create_folder: 'Ordner anlegen',
-  assign: 'Zuweisen',
+  move: 'Move',
+  rename: 'Rename',
+  create_folder: 'Create folder',
+  assign: 'Assign',
 }
 
 /** `label: → value` per patch operation, derived from the PATCH that was applied. */
 function describeProfilePatch(payload: Record<string, unknown>): string {
-  const title = asString(payload.title) ?? 'Projektkontext aktualisieren'
+  const title = asString(payload.title) ?? 'Update project context'
   const operations = (Array.isArray(payload.patch) ? payload.patch : []).flatMap((operation) => {
     const parsed = ProjectProfilePatchOperationSchema.safeParse(operation)
     return parsed.success ? [parsed.data] : []
@@ -219,6 +224,12 @@ function describeProfilePatch(payload: Record<string, unknown>): string {
   return lines.length > 0 ? `${title} (${lines.join('; ')})` : title
 }
 
+/** ` — reason: …` from the first item that carries one; nothing otherwise. */
+function reasonOf(rows: readonly unknown[]): string {
+  const reason = rows.filter(isRecord).map((row) => asString(row.reason)).find((value) => value !== undefined)
+  return reason ? ` — reason: ${reason}` : ''
+}
+
 function describeFileOperation(payload: Record<string, unknown>): string | null {
   const operation = asString(payload.operation)
   const label = operation ? (FILE_OPERATION_LABELS[operation] ?? operation) : null
@@ -234,20 +245,25 @@ function describeFileOperation(payload: Record<string, unknown>): string | null 
   const target = items.length > 0 ? (asString(items[0].target_folder) ?? asString(items[0].member)) : undefined
   if (!label && subjects.length === 0) return null
   const named = subjects.length > 0 ? ` (${subjects.join('; ')})` : ''
-  return `${label ?? 'Ablage'}${named}${target ? ` → ${target}` : ''}`
+  return `${label ?? 'File change'}${named}${target ? ` → ${target}` : ''}${reasonOf(items)}`
 }
 
 /** What one server proposal was, from its payload; null when the payload says nothing usable. */
 function describePayload(kind: string, payload: unknown): { kind: string; content: string } | null {
   if (!isRecord(payload)) return null
-  if (kind === 'project_profile') return { kind: 'Profil', content: describeProfilePatch(payload) }
+  if (kind === 'project_profile') return { kind: 'profile', content: describeProfilePatch(payload) }
   if (kind === 'memory') {
     const content = asString(payload.content)
-    return content ? { kind: 'Notiz', content } : null
+    return content ? { kind: 'note', content } : null
   }
   if (kind === 'file_operation') {
     const content = describeFileOperation(payload)
-    return content ? { kind: 'Ablage', content } : null
+    return content ? { kind: 'files', content } : null
+  }
+  if (kind === 'operation') {
+    // The one line the person read when they decided (`OperationPayload.summary`).
+    const content = asString(payload.summary)
+    return content ? { kind: 'action', content } : null
   }
   return null
 }
@@ -262,11 +278,11 @@ function decisionOfRow(row: DecidedProposalRow): DecidedProposal | null {
   const described = describePayload(row.kind, row.payload)
   if (!described || Number.isNaN(row.decidedAt.getTime())) return null
   const decidedAt = row.decidedAt.toISOString()
-  const verdict = row.status === 'dismissed' ? 'abgelehnt' : 'angenommen'
+  const verdict = row.status === 'dismissed' ? 'declined' : 'accepted'
   return {
     decidedAt,
     item: { tags: [verdict, described.kind, decidedAt.slice(0, 10)], content: described.content },
-    suffix: row.status === 'partially_applied' ? ' (teilweise angewendet)' : undefined,
+    suffix: row.status === 'partially_applied' ? ' (partially applied)' : undefined,
     maxChars: ROW_LINE_MAX_CHARS,
   }
 }
