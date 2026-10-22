@@ -60,8 +60,15 @@ def _masked(opcode: int, payload: bytes) -> bytes:
     return bytes([0x80 | opcode, 0x80 | len(payload)]) + mask + bytes(b ^ mask[i % 4] for i, b in enumerate(payload))
 
 
-async def _close_during_a_ping(implementation: str) -> tuple[list[str], str]:
-    """Open a socket, echo one message, let a keepalive ping go unanswered, then close; what asyncio reported."""
+async def _close_during_a_ping(implementation: str, *, until_reported: float = 0.0) -> tuple[list[str], str]:
+    """Open a socket, echo one message, let a keepalive ping go unanswered, then close; what asyncio reported.
+
+    ``until_reported`` (seconds) keeps collecting garbage until a report arrives or
+    the time is up. The legacy report comes from a future's finaliser, so when it
+    is collected depends on what else the run has put on the heap: one collection
+    found it alone and missed it in a CI shard holding other tests. The quiet case
+    passes 0 and keeps the single settle, where waiting longer would only hide a report.
+    """
     loop = asyncio.get_running_loop()
     reports: list[str] = []
     previous = loop.get_exception_handler()
@@ -102,6 +109,10 @@ async def _close_during_a_ping(implementation: str) -> tuple[list[str], str]:
         # a loop cost seconds each on a large heap.
         await asyncio.sleep(0.25)
         gc.collect()
+        deadline = loop.time() + until_reported
+        while not reports and loop.time() < deadline:
+            await asyncio.sleep(0.05)
+            gc.collect()
         return reports, echoed
     finally:
         server.should_exit = True
@@ -112,7 +123,7 @@ async def _close_during_a_ping(implementation: str) -> tuple[list[str], str]:
 @pytest.mark.asyncio
 async def test_the_legacy_implementation_reproduces_the_report():
     # The oracle: if this stops reproducing, the test below proves nothing.
-    reports, _ = await _close_during_a_ping("websockets")
+    reports, _ = await _close_during_a_ping("websockets", until_reported=5.0)
     assert any("exception in shielded future" in report for report in reports)
 
 
