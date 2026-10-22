@@ -150,7 +150,9 @@ channel, which only the BFF uses. It routes on the message:
 | Message starts with | Posts |
 |---|---|
 | `[bug] #` | „🐞 Neuer Bug-Report", paging the channel (`@here`) |
-| `[idea]`, `[praise]`, `[question]` `#` | „💡 Neues Feedback", quietly |
+| `[idea] #` | „💡 Neue Idee", quietly |
+| `[praise] #` | „❤️ Neues Lob", quietly |
+| `[question] #` | „❓ Neue Frage (wartet auf eine Antwort)", quietly, with „Antworten in PostHog" |
 | anything else (a member's reply in Mein Feedback) | „↩️ Antwort vom Reporter" |
 
 Each carries the masked text, a link to the ticket and **„Übernehmen"**. A Slack
