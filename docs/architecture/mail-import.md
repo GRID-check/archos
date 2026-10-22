@@ -218,6 +218,10 @@ document.
   and can be cancelled; it never completes, and the sweep cancels it
   (`upload_expired`) after 48 h.
 - The To and Cc addresses are in the note, and so in the index.
+- The preview draws a note with the answer renderer (`MarkdownRenderer`,
+  through `/text`), whose math and answer-dialect plugins the escape leaves
+  alone: `$5 und $10` in a body is drawn as a formula, and a `:::details`
+  line as a dialect block. Only the preview; the chunker reads neither.
 - The BFF carries the archive's bytes; twenty gigabytes is twenty gigabytes
   through the frontend pods.
 - `libpff-python` is pinned to its first cp314 release and is labelled alpha
