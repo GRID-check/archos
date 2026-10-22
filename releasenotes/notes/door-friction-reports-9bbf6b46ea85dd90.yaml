@@ -1,0 +1,5 @@
+---
+improvements:
+  - >
+    Agents connected to Piloti now get the purpose of a field quoted back when their input is refused, and large operation inputs are described in layers they can open one part at a time.
+    They can also report a confusing description or error message, not only a missing operation.

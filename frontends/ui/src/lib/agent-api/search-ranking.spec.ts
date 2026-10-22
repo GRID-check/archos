@@ -52,6 +52,7 @@ const FOUND_IN_THE_FIRST_THREE: ReadonlyArray<readonly [string, string]> = [
   ['add member project', 'project-person-add'],
   ['search documents for a topic', 'knowledge-search'],
   ['rename a document', 'document-rename'],
+  ['undo deleting a document', 'document-restore'],
   ['create a task', 'task-create'],
   ['open points of the project', 'project-annotation-list'],
 ]

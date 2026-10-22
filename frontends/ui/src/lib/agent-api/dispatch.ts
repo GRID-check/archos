@@ -17,6 +17,7 @@ import 'server-only'
 
 import type { AuthorizedSession } from '@/lib/auth/types'
 import { type ActingReader, runAsActingSession } from './acting-session'
+import { fieldDescription } from './field-description'
 import { type AgentOperation, pathParams, withInputDefaults } from './operation'
 import { type UploadBody, decodeBase64 } from './upload-wire'
 
@@ -256,7 +257,10 @@ export function validateOperationInput(op: AgentOperation, given: OperationInput
     if (!schema) return
     const result = schema.safeParse(value ?? {})
     if (result.success) return
-    const issues = result.error.issues.map((issue) => `${label}.${issue.path.join('.')}: ${issue.message}`)
+    const issues = result.error.issues.map((issue) => {
+      const described = fieldDescription(schema, issue.path)
+      return `${label}.${issue.path.join('.')}: ${issue.message}${described ? ` (${described.replace(/\.$/, '')})` : ''}`
+    })
     throw new OperationInputError(`${op.name}: ${issues.join('; ')}`)
   }
   check(op.params, input.params, 'params')

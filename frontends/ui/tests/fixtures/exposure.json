@@ -2188,6 +2188,16 @@
    "withheld": null,
    "reason": null
   },
+  "skill-get": {
+   "kind": "catalog",
+   "domain": "skills",
+   "sensitivity": null,
+   "external": true,
+   "piloti": false,
+   "platform": false,
+   "withheld": null,
+   "reason": "Piloti is given the office’s skills at turn start and loads one with its own `use_skill`, which the turn records; the door offers them to outside agents"
+  },
   "skill-invocable-list": {
    "kind": "catalog",
    "domain": "skills",
@@ -2220,6 +2230,16 @@
     "reason": "a model critiques a skill draft and stores nothing; the calling agent can review its own draft"
    },
    "reason": null
+  },
+  "skill-search": {
+   "kind": "catalog",
+   "domain": "skills",
+   "sensitivity": null,
+   "external": true,
+   "piloti": false,
+   "platform": false,
+   "withheld": null,
+   "reason": "Piloti is given the office’s skills at turn start and loads one with its own `use_skill`, which the turn records; the door offers them to outside agents"
   },
   "skill-update": {
    "kind": "catalog",

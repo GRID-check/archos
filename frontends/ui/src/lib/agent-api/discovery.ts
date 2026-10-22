@@ -36,6 +36,9 @@ import {
 } from './dispatch'
 import { type BackendOperation, type JsonSchemaObject, callBackendOperation, toMcpContent } from './backend-operations'
 import { AGENT_OPERATIONS } from './catalog'
+import { layerSchema, resolveField } from './layered-schema'
+import { configuredAppOrigin } from '@/lib/app-origin'
+import { withLinks } from './links'
 import { type AgentOperation, annotationsOf } from './operation'
 import { proposeOperation } from './operation-proposals'
 import {
@@ -198,14 +201,22 @@ function refusalResult(result: OperationResult): CallToolResult {
   return failure(`${message} (HTTP ${result.status}${code})${details}`)
 }
 
-/** A route's answer as the tool result. */
-export function fromOperationResult(op: AgentOperation, result: OperationResult): CallToolResult {
+/**
+ * A route's answer as the tool result. `input` is the call's, for the project a
+ * link needs when the answer does not say it (a run under `/api/projects/[id]`).
+ */
+export function fromOperationResult(
+  op: AgentOperation,
+  result: OperationResult,
+  input: OperationInput = {},
+  origin: string | null = configuredAppOrigin(),
+): CallToolResult {
   const opName = op.name
   if (isOversizedBody(result.body)) return oversizedResult(op, result.body)
   if (!result.ok) return refusalResult(result)
   if (isBinaryBody(result.body)) return binaryResult(opName, result.body)
   if (isRedirectBody(result.body)) return redirectResult(opName, result.body.location)
-  return success(result.body, narrowingHint(op))
+  return success(withLinks(op, input, result.body, origin), narrowingHint(op))
 }
 
 /**
@@ -423,7 +434,7 @@ export async function runOperation(ctx: McpCallContext, name: string, input: Ope
     }
   }
   const outcome = await executeOperation(ctx, op, input, startedAt)
-  return 'refusal' in outcome ? outcome.refusal : fromOperationResult(op, outcome.result)
+  return 'refusal' in outcome ? outcome.refusal : fromOperationResult(op, outcome.result, input)
 }
 
 /**
@@ -616,15 +627,32 @@ export function searchOperations(ctx: McpCallContext, args: unknown): CallToolRe
   return success({ total: hits.length, operations: shown, next: hidden ? `${SENSITIVE_MATCH_NOTE} ${next}` : next })
 }
 
-const describeInput = z.object({ name: z.string().min(1) })
+const describeInput = z.object({ name: z.string().min(1), field: z.string().min(1).max(200).optional() })
+
+/**
+ * The input schema as describe-operation shows it: whole when small, an outline
+ * when large (`layered-schema.ts`), or the subtree at `field`. A field that is
+ * not in the schema is a refusal naming the fields that are.
+ */
+function schemaView(opName: string, schema: JsonSchemaNode, field: string | undefined): { shown: Record<string, unknown> } | { refusal: CallToolResult } {
+  const root = schema as Record<string, unknown>
+  const resolved = field === undefined ? { node: root } : resolveField(root, field)
+  if ('error' in resolved) return { refusal: failure(`describe-operation ${opName}: ${resolved.error}`) }
+  const { schema: inputSchema, layered } = layerSchema(resolved.node, field ?? '')
+  return { shown: { ...(field === undefined ? {} : { field }), ...(layered ? { layered: true } : {}), inputSchema } }
+}
 
 export function describeOperation(ctx: McpCallContext, args: unknown): CallToolResult {
   const startedAt = Date.now()
   const parsed = describeInput.safeParse(args)
-  if (!parsed.success) return failure('describe-operation needs { name }.')
+  if (!parsed.success) return failure('describe-operation needs { name, field? }.')
+  const { field } = parsed.data
   const backend = findVisibleBackendOperation(ctx.principal, parsed.data.name)
   if (backend) {
     recordOperationCalled(ctx, { operation: 'describe-operation', domain: backend.domain, decision: 'run', status: 200, startedAt })
+    // Flat: call-operation takes these as `input` itself, with no params/query/body.
+    const view = schemaView(backend.name, backend.inputSchema as JsonSchemaNode, field)
+    if ('refusal' in view) return view.refusal
     return success({
       name: backend.name,
       domain: backend.domain,
@@ -632,8 +660,7 @@ export function describeOperation(ctx: McpCallContext, args: unknown): CallToolR
       description: backend.description,
       annotations: backend.annotations,
       sensitivity: null,
-      // Flat: call-operation takes these as `input` itself, with no params/query/body.
-      inputSchema: backend.inputSchema,
+      ...view.shown,
     })
   }
   const op = findVisibleOperation(ctx.principal, parsed.data.name)
@@ -645,6 +672,8 @@ export function describeOperation(ctx: McpCallContext, args: unknown): CallToolR
     startedAt,
   })
   if (!op) return unknownOperation(ctx, parsed.data.name)
+  const view = schemaView(op.name, inputSchemaOf(op), field)
+  if ('refusal' in view) return view.refusal
   return success({
     name: op.name,
     domain: op.domain,
@@ -652,7 +681,7 @@ export function describeOperation(ctx: McpCallContext, args: unknown): CallToolR
     description: op.description,
     annotations: annotationsOf(op),
     sensitivity: op.sensitivity ?? null,
-    inputSchema: inputSchemaOf(op),
+    ...view.shown,
   })
 }
 
@@ -702,13 +731,22 @@ export function callOperationTool(ctx: McpCallContext, args: unknown): Promise<C
   return runOperation(ctx, parsed.data.name, parsed.data.input ?? {})
 }
 
-const missingInput = z.object({ description: z.string().min(1).max(2_000) })
+/** What a report is about: a missing operation, or friction with one the agent did find. */
+export const FRICTION_CATEGORIES = ['missing_operation', 'tool_description', 'input_schema', 'error_message', 'result_shape', 'other'] as const
+export type FrictionCategory = (typeof FRICTION_CATEGORIES)[number]
+
+const missingInput = z.object({
+  description: z.string().min(1).max(2_000),
+  category: z.enum(FRICTION_CATEGORIES).default('missing_operation'),
+})
 
 export function reportMissingOperation(ctx: McpCallContext, args: unknown): CallToolResult {
   const parsed = missingInput.safeParse(args)
-  if (!parsed.success) return failure('report-missing-operation needs { description } of 1 to 2000 characters.')
-  // Only the length leaves this process: server events are non-personal by rule.
-  recordOperationMissing(ctx, parsed.data.description.length)
+  if (!parsed.success) {
+    return failure(`report-missing-operation needs { description } of 1 to 2000 characters, and category one of ${FRICTION_CATEGORIES.join(', ')} when given.`)
+  }
+  // Only the length and the category leave this process: server events are non-personal by rule.
+  recordOperationMissing(ctx, parsed.data.description.length, parsed.data.category)
   return success({ status: 'recorded' })
 }
 
@@ -786,10 +824,17 @@ export function metaToolsFor(principal: Pick<AgentPrincipal, 'actor' | 'door'>):
       description:
         'One operation\'s description, annotations and input JSON Schema ({ params, query, body }), by the exact name ' +
         'search-operations returned. Call it before the first call of an operation whose input you do not know. An unknown ' +
-        'name comes back with similar names.',
+        'name comes back with similar names. A very large input comes back as an outline; pass field to open one part.',
       inputSchema: {
         type: 'object',
-        properties: { name: { type: 'string', description: `An operation name, e.g. ${scope.operation}.` } },
+        properties: {
+          name: { type: 'string', description: `An operation name, e.g. ${scope.operation}.` },
+          field: {
+            type: 'string',
+            maxLength: 200,
+            description: 'Dot path into the input schema, e.g. "body.files": returns just that part. For an outline\'s large fields.',
+          },
+        },
         required: ['name'],
         additionalProperties: false,
       },
@@ -819,11 +864,16 @@ export function metaToolsFor(principal: Pick<AgentPrincipal, 'actor' | 'door'>):
       title: 'Report a missing operation',
       description:
         'Count a gap: the person wants something done in the workspace and search-operations found no operation for it with ' +
-        'two different phrasings. The Piloti team sees that a gap was reported, never your words, so describe the goal ' +
-        'without names or document contents. Then tell the person it cannot be done here yet.',
+        'two different phrasings. Also for friction with an operation you did find: set category to tool_description, ' +
+        'input_schema, error_message or result_shape when one was confusing. The Piloti team sees that a report was made ' +
+        'and its category, never your words, so describe the goal or the confusion without names or document contents. ' +
+        'For a gap, then tell the person it cannot be done here yet.',
       inputSchema: {
         type: 'object',
-        properties: { description: { type: 'string', minLength: 1, maxLength: 2000, description: 'The goal that has no operation.' } },
+        properties: {
+          description: { type: 'string', minLength: 1, maxLength: 2000, description: 'The goal that has no operation, or what was confusing.' },
+          category: { type: 'string', enum: [...FRICTION_CATEGORIES], description: 'What the report is about (default missing_operation).' },
+        },
         required: ['description'],
         additionalProperties: false,
       },

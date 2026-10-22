@@ -56,9 +56,11 @@ export const documentsOperations = [
   {
     name: 'document-get',
     domain: 'documents',
+    links: 'document',
     summary: 'Read one document’s listing row',
     description:
-      'One document by id, as the shelf lists it: name, folder, tags, reading status and version summary. ' +
+      'One document by id, as the shelf lists it: name, folder, tags, reading status, version summary and `projectId` ' +
+      '(null on the office shelf). ' +
       'Use document-status to follow ingestion.',
     method: 'GET',
     path: '/api/documents/[id]',
@@ -107,9 +109,9 @@ export const documentsOperations = [
   {
     name: 'document-restore',
     domain: 'documents',
-    summary: 'Restore a document from the bin',
+    summary: 'Restore a deleted document from the bin',
     description:
-      'Brings back a document sent to the bin with document-bin, to the folder it came from, and reads it again. One that ' +
+      'Undoes deleting a document with document-bin: brings it back to the folder it came from, and reads it again. One that ' +
       'went with its folder is refused (409, `details.folderId`): use project-folder-restore.',
     method: 'POST',
     path: '/api/documents/[id]/restore',

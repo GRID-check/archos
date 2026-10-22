@@ -136,11 +136,13 @@ describe('icons', () => {
       }),
       { authInfo: { token: '', clientId: 'c', scopes: [], extra: { principal, mode: 'search' } } },
     )
-    const info = ((await response.json()) as Rpc).result?.serverInfo as { title: string; websiteUrl?: string; icons: { src: string; theme: string }[] }
+    const info = ((await response.json()) as Rpc).result?.serverInfo as { title: string; websiteUrl?: string; icons: { src: string; theme?: string; mimeType?: string }[] }
     expect(info.title).toBe('Piloti')
     expect(info.websiteUrl).toBe('https://app.piloti.test')
-    expect(THEMES(info.icons)).toEqual(['dark', 'light'])
-    expect(info.icons[0].src).toMatch(/^data:image\/svg\+xml,/)
+    // PNG first, from the pinned origin: the one format every client must render.
+    expect(info.icons[0]).toMatchObject({ src: 'https://app.piloti.test/icons/icon-192.png', mimeType: 'image/png', sizes: ['192x192'] })
+    expect(info.icons.map((icon) => icon.mimeType)).toContain('image/svg+xml')
+    expect(THEMES(info.icons.filter((icon) => icon.theme))).toEqual(['dark', 'light'])
   })
 
   it('puts one icon per meaning on the meta-tools, the prompts and the resources', async () => {

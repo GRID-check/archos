@@ -119,11 +119,13 @@ describe('the operations', () => {
     for (const tool of fixture.tools) {
       const op = BACKEND_OPERATIONS.find((candidate) => candidate.tool === tool.name)
       // The description is the agent surface's own English one, not Piloti's native tool text
-      // (`backend-operations.ts`); the input is the tool's own, property for property.
+      // (`backend-operations.ts`); the input is the tool's own, property for property, less
+      // `conclusion`: Piloti's status line, which an outside agent is never asked for.
       expect(op?.description.length).toBeGreaterThan(200)
       expect(op?.description).not.toBe(tool.description)
       const own = Object.keys(op?.inputSchema.properties ?? {}).filter((key) => key !== 'projectId')
-      expect(own).toEqual(Object.keys(tool.inputSchema.properties ?? {}))
+      expect(own).toEqual(Object.keys(tool.inputSchema.properties ?? {}).filter((key) => key !== 'conclusion'))
+      expect(op?.inputSchema.required ?? []).not.toContain('conclusion')
     }
   })
 

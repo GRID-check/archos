@@ -199,6 +199,27 @@ function rarityOf(corpus: readonly IndexedOperation[]): (word: string) => number
   }
 }
 
+/** The word groups a query is ranked by: its meaningful words, or all of them when it has none but grammar. */
+function rankedWordGroups(query: string): string[][] {
+  const all = searchWordGroups(query)
+  const meaningful = all.filter((group) => !STOPWORDS.has(group[0]))
+  return meaningful.length > 0 ? meaningful : all
+}
+
+/**
+ * Whether a line of text holds a word of `query`, matched as {@link operationScorer}
+ * matches one: folded, by stem, a long word by its start, a German term by its meanings.
+ * Shows an agent which lines of a long text a search hit, as grep would.
+ */
+export function queryLineMatcher(query: string): (line: string) => boolean {
+  const words = rankedWordGroups(query).flat()
+  if (words.length === 0) return () => false
+  return (line) => {
+    const tokens = wordsOf(line)
+    return words.some((word) => contains(tokens, word))
+  }
+}
+
 /**
  * How well `op` answers the query; 0 when it answers no word. A blank query
  * scores every operation 1; text with no usable word in it (`a`, `(+)$`)
@@ -215,9 +236,7 @@ export function operationScorer(
   query: string,
   corpus: readonly SearchableOperation[] = [],
 ): (op: SearchableOperation) => number {
-  const all = searchWordGroups(query)
-  const meaningful = all.filter((group) => !STOPWORDS.has(group[0]))
-  const groups = meaningful.length > 0 ? meaningful : all
+  const groups = rankedWordGroups(query)
   const listsAll = query.trim() === ''
   const rarity = rarityOf(corpus.map(indexOperation))
   return (op) => {

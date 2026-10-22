@@ -21,6 +21,7 @@ export const consultOperations = [
   {
     name: 'piloti-ask-create',
     domain: 'conversations',
+    links: 'conversation',
     summary: 'Ask Piloti a question and get its answer',
     description:
       'Asks Piloti, the office’s own agent, as the signed-in person: it answers from the office’s documents, ' +
@@ -39,6 +40,7 @@ export const consultOperations = [
   {
     name: 'piloti-ask-get',
     domain: 'conversations',
+    links: 'conversation',
     summary: 'Read an ask to Piloti, and its answer once there',
     description:
       'The ask piloti-ask-create started, by its id: its state, the answer once "completed" (with its sources and confidence, as piloti-ask-create), ' +

@@ -4,6 +4,12 @@
  * route has to be public; each one repeats in every `tools/list`,
  * `prompts/list` and `resources/list`, so each stays a few hundred bytes.
  *
+ * The server's own icon leads with the app's PNG tiles, served from the
+ * deployment's pinned origin (`public/icons/`, the same origin as the MCP
+ * endpoint): the spec obliges a client to render only PNG and JPEG, SVG is a
+ * SHOULD, and Claude's connector UI showed nothing for an SVG-only list. The SVG
+ * marks follow for clients that take them.
+ *
  * Two variants per icon, one per client theme: the ink of the brand tile
  * (`shared/brand/piloti-mark.svg`: `#2a301f` on a light page, `#eef2e4` on a
  * dark one). The server's own icon is the Piloti column (`BRAND_MARK`); the
@@ -38,10 +44,28 @@ const glyph = (d: string): Icon[] =>
       `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="${ink}" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="${d}"/></svg>`,
   )
 
-/** The Piloti column, without its tile: the server's own mark. */
-export const SERVER_ICONS: Icon[] = icon(
+/** The Piloti column, without its tile. */
+const SERVER_MARK: Icon[] = icon(
   (ink) => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${BRAND_MARK.viewBox}"><path fill="${ink}" d="${BRAND_MARK.path}"/></svg>`,
 )
+
+/** The app's PNG tiles (`public/icons/`), theme-neutral: the tile carries its own ground. */
+const SERVER_TILES = [
+  { path: '/icons/icon-192.png', size: '192x192' },
+  { path: '/icons/icon-512.png', size: '512x512' },
+] as const
+
+/**
+ * The server's icons: the PNG tiles from `origin` first, then the SVG mark. No
+ * origin pinned (a dev box), no tiles: the request's own Host is never trusted
+ * to name where an icon lives.
+ */
+export function serverIcons(origin: string | null): Icon[] {
+  const tiles: Icon[] = origin
+    ? SERVER_TILES.map(({ path, size }) => ({ src: `${origin}${path}`, mimeType: 'image/png', sizes: [size] }))
+    : []
+  return [...tiles, ...SERVER_MARK]
+}
 
 export const META_TOOL_ICONS = {
   'search-operations': glyph('M10.5 4.5a6 6 0 1 0 0 12 6 6 0 0 0 0-12ZM15 15l5 5'),

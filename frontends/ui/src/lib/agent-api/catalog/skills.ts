@@ -8,6 +8,7 @@ import {
   patchCategorySchema,
   patchSkillSchema,
   reviewSkillSchema,
+  skillSearchQuerySchema,
 } from '@/lib/skills/types'
 import type { AgentOperation } from '../operation'
 
@@ -28,6 +29,31 @@ export const skillsOperations = [
     method: 'GET',
     path: '/api/skills',
     load: () => import('@/app/api/skills/route'),
+  },
+  {
+    name: 'skill-search',
+    domain: 'skills',
+    summary: 'Find the office’s procedures for a task',
+    description:
+      'The office’s skills are its written procedures: search them before acting on office work. Ranks the enabled ' +
+      'skills by your words (name, description, then body) and answers each hit’s name, description and up to ' +
+      'three matching body lines with their line numbers. Empty `query` lists them all. Read one with skill-get.',
+    method: 'GET',
+    path: '/api/skills/search',
+    query: skillSearchQuerySchema,
+    load: () => import('@/app/api/skills/search/route'),
+  },
+  {
+    name: 'skill-get',
+    domain: 'skills',
+    summary: 'Read one of the office’s procedures',
+    description:
+      'One enabled skill by name (from skill-search): its description and its full Markdown body, the steps to ' +
+      'follow. Load it before doing the work it describes.',
+    method: 'GET',
+    path: '/api/skills/by-name/[name]',
+    params: z.object({ name: z.string().describe('The skill name, from skill-search.') }),
+    load: () => import('@/app/api/skills/by-name/[name]/route'),
   },
   {
     name: 'skill-invocable-list',

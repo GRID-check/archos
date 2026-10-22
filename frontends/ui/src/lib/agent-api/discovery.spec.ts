@@ -489,7 +489,30 @@ describe('report-missing-operation', () => {
     const description = 'Export the Bauakt as a ZIP for Anna Muster'
     const result = reportMissingOperation(ctx(person), { description })
     expect(structured(result)).toEqual({ status: 'recorded' })
-    expect(recordOperationMissing).toHaveBeenCalledWith(expect.anything(), description.length)
+    expect(recordOperationMissing).toHaveBeenCalledWith(expect.anything(), description.length, 'missing_operation')
+  })
+
+  it('carries the friction category and nothing of the text', () => {
+    const description = 'The summary of project-list for Anna Muster says nothing about paging'
+    const result = reportMissingOperation(ctx(person), { description, category: 'tool_description' })
+    expect(structured(result)).toEqual({ status: 'recorded' })
+    expect(recordOperationMissing).toHaveBeenCalledWith(expect.anything(), description.length, 'tool_description')
+    expect(JSON.stringify(vi.mocked(recordOperationMissing).mock.calls)).not.toContain('Anna')
+  })
+
+  it('refuses a category it does not know, naming the ones it does', () => {
+    const result = reportMissingOperation(ctx(person), { description: 'x', category: 'rant' })
+    expect(result.isError).toBe(true)
+    expect(text(result)).toMatch(/error_message/)
+  })
+
+  it('declares the category as an enum in the tool’s input schema', () => {
+    const schema = metaToolsFor({ actor: 'external_agent' })['report-missing-operation'].inputSchema as {
+      properties: { category: { enum: string[] } }
+      required: string[]
+    }
+    expect(schema.properties.category.enum).toEqual(['missing_operation', 'tool_description', 'input_schema', 'error_message', 'result_shape', 'other'])
+    expect(schema.required).toEqual(['description'])
   })
 
   it('refuses an empty description', () => {

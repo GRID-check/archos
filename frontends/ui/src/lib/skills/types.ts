@@ -461,3 +461,31 @@ export const reviewSkillSchema = z.object({
   description: z.string().max(MAX_SKILL_DESCRIPTION_LENGTH).default(''),
   body: z.string().max(MAX_SKILL_BODY_LENGTH).default(''),
 })
+
+// ---------------------------------------------------------------------------
+// Reading the office's skills: a search, and one by name
+// ---------------------------------------------------------------------------
+
+/** Most hits one skill search answers. */
+export const SKILL_SEARCH_MAX = 25
+
+/** Longest search text, as long as the agent door's own search allows. */
+export const MAX_SKILL_SEARCH_QUERY_LENGTH = 200
+
+/** Query of `GET /api/skills/search`: the office's skills ranked by the words of `query`. */
+export const skillSearchQuerySchema = z.object({
+  query: z
+    .string()
+    .max(MAX_SKILL_SEARCH_QUERY_LENGTH)
+    .default('')
+    .describe('Plain words for the task at hand, German or English; empty lists every skill.'),
+  limit: z.coerce
+    .number()
+    .int()
+    .min(1)
+    .max(SKILL_SEARCH_MAX)
+    .default(10)
+    .describe(`Most hits (default 10, most ${SKILL_SEARCH_MAX}).`),
+})
+
+export type SkillSearchQuery = z.infer<typeof skillSearchQuerySchema>

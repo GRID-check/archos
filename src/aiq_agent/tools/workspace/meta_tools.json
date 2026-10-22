@@ -45,13 +45,18 @@
     },
     "describe-operation": {
       "title": "Describe an operation",
-      "description": "One operation's description, annotations and input JSON Schema ({ params, query, body }), by the exact name search-operations returned. Call it before the first call of an operation whose input you do not know. An unknown name comes back with similar names.",
+      "description": "One operation's description, annotations and input JSON Schema ({ params, query, body }), by the exact name search-operations returned. Call it before the first call of an operation whose input you do not know. An unknown name comes back with similar names. A very large input comes back as an outline; pass field to open one part.",
       "inputSchema": {
         "type": "object",
         "properties": {
           "name": {
             "type": "string",
             "description": "An operation name, e.g. project-list."
+          },
+          "field": {
+            "type": "string",
+            "maxLength": 200,
+            "description": "Dot path into the input schema, e.g. \"body.files\": returns just that part. For an outline's large fields."
           }
         },
         "required": [
@@ -85,7 +90,7 @@
     },
     "report-missing-operation": {
       "title": "Report a missing operation",
-      "description": "Count a gap: the person wants something done in the workspace and search-operations found no operation for it with two different phrasings. The Piloti team sees that a gap was reported, never your words, so describe the goal without names or document contents. Then tell the person it cannot be done here yet.",
+      "description": "Count a gap: the person wants something done in the workspace and search-operations found no operation for it with two different phrasings. Also for friction with an operation you did find: set category to tool_description, input_schema, error_message or result_shape when one was confusing. The Piloti team sees that a report was made and its category, never your words, so describe the goal or the confusion without names or document contents. For a gap, then tell the person it cannot be done here yet.",
       "inputSchema": {
         "type": "object",
         "properties": {
@@ -93,7 +98,19 @@
             "type": "string",
             "minLength": 1,
             "maxLength": 2000,
-            "description": "The goal that has no operation."
+            "description": "The goal that has no operation, or what was confusing."
+          },
+          "category": {
+            "type": "string",
+            "enum": [
+              "missing_operation",
+              "tool_description",
+              "input_schema",
+              "error_message",
+              "result_shape",
+              "other"
+            ],
+            "description": "What the report is about (default missing_operation)."
           }
         },
         "required": [

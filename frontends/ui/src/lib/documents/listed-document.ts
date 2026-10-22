@@ -25,8 +25,15 @@ import { toListedDocuments, type ListedDocument } from './shelf-listing'
  * for both), then read through the listing's own predicates with the reader
  * the shelf's listing uses. A chat attachment is on no shelf and is not found
  * here; an archived document is, because a link names it on purpose.
+ *
+ * Unlike a listing row it says its project (`null` on the office shelf): a
+ * caller holding only the id, an agent at the door, needs it for the next call
+ * and for the page that shows the document.
  */
-export async function getListedDocument(session: AuthorizedSession, documentId: string): Promise<ListedDocument> {
+export async function getListedDocument(
+  session: AuthorizedSession,
+  documentId: string,
+): Promise<ListedDocument & { projectId: string | null }> {
   const doc = await getAccessibleDocument(session, documentId)
   const shelf = documentShelf(doc)
   if (!shelf) throw new NotFoundError()
@@ -41,5 +48,5 @@ export async function getListedDocument(session: AuthorizedSession, documentId: 
   // narrowed again by the same rule, and a reader it hides gets a 404.
   const [listed] = await toListedDocuments(session, [row], reader)
   if (!listed) throw new NotFoundError()
-  return listed
+  return { ...listed, projectId: shelf.kind === 'project' ? shelf.projectId : null }
 }
