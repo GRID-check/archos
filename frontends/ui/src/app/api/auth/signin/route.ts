@@ -47,7 +47,13 @@ async function expireVerifierCookies(): Promise<void> {
     .filter(({ name }) => name === VERIFIER_COOKIE_PREFIX || name.startsWith(`${VERIFIER_COOKIE_PREFIX}-`))
 
   if (verifiers.length < MAX_VERIFIER_COOKIES) return
-  for (const { name } of verifiers) jar.delete(name)
+
+  // Expire in the scope AuthKit set: `path: '/'` and WORKOS_COOKIE_DOMAIN. A
+  // bare `delete(name)` answers with a host-only expiry, which does not remove a
+  // cookie that carries a Domain, so a deployment that sets the variable would
+  // sweep nothing and keep the 431 this exists to prevent.
+  const domain = process.env.WORKOS_COOKIE_DOMAIN
+  for (const { name } of verifiers) jar.delete({ name, path: '/', domain })
 }
 
 const signIn = async (request: NextRequest): Promise<Response> => {

@@ -19,9 +19,10 @@ const SIGN_IN_URL = 'https://api.workos.com/user_management/authorize?client_id=
 const getSignInUrl = vi.fn<(options?: { returnTo?: string }) => Promise<string>>()
 
 type StoredCookie = { name: string; value: string }
+type DeletedCookie = { name: string; path?: string; domain?: string }
 const jar = {
   getAll: vi.fn<() => StoredCookie[]>(() => []),
-  delete: vi.fn<(name: string) => void>(),
+  delete: vi.fn<(cookie: string | DeletedCookie) => void>(),
 }
 
 vi.mock('@workos-inc/authkit-nextjs', () => ({
@@ -34,6 +35,11 @@ const { GET } = await import('./route')
 
 const signIn = (url = 'https://app.dev.piloti.at/api/auth/signin') => GET(new NextRequest(url))
 const verifier = (index: number): StoredCookie => ({ name: `wos-auth-verifier-${index}`, value: 'sealed' })
+
+/** Every `delete` call, whichever overload it used. */
+const deletedCookies = (): DeletedCookie[] =>
+  jar.delete.mock.calls.map(([cookie]) => (typeof cookie === 'string' ? { name: cookie } : cookie))
+const deletedNames = (): string[] => deletedCookies().map(({ name }) => name)
 
 beforeEach(() => {
   getSignInUrl.mockReset()
@@ -103,7 +109,7 @@ describe('GET /api/auth/signin', () => {
 
       await signIn()
 
-      expect(jar.delete.mock.calls.map(([name]) => name)).toEqual([
+      expect(deletedNames()).toEqual([
         'wos-auth-verifier-1',
         'wos-auth-verifier-2',
         'wos-auth-verifier-3',
@@ -114,6 +120,45 @@ describe('GET /api/auth/signin', () => {
       // ran afterwards would expire the cookie it had just written.
       expect(getSignInUrl).toHaveBeenCalledWith({})
       expect(jar.delete.mock.invocationCallOrder.at(-1)).toBeLessThan(getSignInUrl.mock.invocationCallOrder[0])
+    })
+
+    /**
+     * A deletion only removes the cookie when it names the same scope. AuthKit
+     * sets `path: '/'` and, when WORKOS_COOKIE_DOMAIN is set, a Domain — and a
+     * bare `delete(name)` answers host-only, which leaves the domain cookie in
+     * place and the sweep silently doing nothing.
+     */
+    test('are expired with the path they were set on', async () => {
+      jar.getAll.mockReturnValue([verifier(1), verifier(2), verifier(3), verifier(4), verifier(5)])
+      getSignInUrl.mockResolvedValue(SIGN_IN_URL)
+
+      await signIn()
+
+      expect(deletedCookies().every(({ path }) => path === '/')).toBe(true)
+    })
+
+    test('carry WORKOS_COOKIE_DOMAIN when the deployment scopes them to a domain', async () => {
+      process.env.WORKOS_COOKIE_DOMAIN = '.piloti.at'
+      jar.getAll.mockReturnValue([verifier(1), verifier(2), verifier(3), verifier(4), verifier(5)])
+      getSignInUrl.mockResolvedValue(SIGN_IN_URL)
+
+      try {
+        await signIn()
+      } finally {
+        delete process.env.WORKOS_COOKIE_DOMAIN
+      }
+
+      expect(deletedCookies()[0]).toStrictEqual({ name: 'wos-auth-verifier-1', path: '/', domain: '.piloti.at' })
+    })
+
+    test('stay host-only when no domain is configured', async () => {
+      jar.getAll.mockReturnValue([verifier(1), verifier(2), verifier(3), verifier(4), verifier(5)])
+      getSignInUrl.mockResolvedValue(SIGN_IN_URL)
+
+      await signIn()
+
+      // A Domain attribute on a host-only cookie's expiry would miss it instead.
+      expect(deletedCookies()[0].domain).toBeFalsy()
     })
 
     test('leave a cookie that is not a verifier alone', async () => {
@@ -129,7 +174,7 @@ describe('GET /api/auth/signin', () => {
 
       await signIn()
 
-      expect(jar.delete.mock.calls.map(([name]) => name)).not.toContain('wos-session')
+      expect(deletedNames()).not.toContain('wos-session')
     })
   })
 })
