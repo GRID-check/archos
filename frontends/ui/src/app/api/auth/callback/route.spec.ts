@@ -4,14 +4,37 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { NextRequest } from 'next/server'
 
-const { authkit, authkitOptions, captureServer } = vi.hoisted(() => ({
-  authkit: vi.fn(async (_request: Request) => new Response('authkit', { status: 307 })),
-  authkitOptions: {} as { onSuccess?: (data: unknown) => void | Promise<void> },
-  captureServer: vi.fn(() => true),
-}))
+const { CallbackError, authkit, authkitOptions, captureServer } = vi.hoisted(() => {
+  /**
+   * What AuthKit exports for `onError` to tell a lost flow from a failed
+   * exchange. The real code is a union; a string here also lets a test hand
+   * over a code the module does not enumerate.
+   */
+  class CallbackError extends Error {
+    readonly code: string
+
+    constructor(code: string) {
+      super(code)
+      this.name = 'CallbackError'
+      this.code = code
+    }
+  }
+
+  return {
+    CallbackError,
+    authkit: vi.fn(async (_request: Request) => new Response('authkit', { status: 307 })),
+    authkitOptions: {} as {
+      onSuccess?: (data: unknown) => void | Promise<void>
+      onError?: (params: { error?: unknown; request: NextRequest }) => Response | Promise<Response>
+    },
+    captureServer: vi.fn(() => true),
+  }
+})
 vi.mock('@workos-inc/authkit-nextjs', () => ({
+  CallbackError,
   handleAuth: (options: typeof authkitOptions) => {
     authkitOptions.onSuccess = options.onSuccess
+    authkitOptions.onError = options.onError
     return authkit
   },
 }))
@@ -95,6 +118,38 @@ describe('/api/auth/callback', () => {
       })
 
       expect(JSON.stringify(captureServer.mock.calls)).not.toMatch(/a@b\.at|Anna|jwt|refresh/)
+    })
+  })
+
+  /**
+   * AuthKit deletes the flow's verifier cookie before answering, so reloading a
+   * failed callback URL reproduces the failure. Its generic 500 leaves the
+   * person with a dead end; our own page can say what happened and offer Try
+   * Again. The page is a page — never a redirect back into the flow — so it
+   * cannot loop.
+   */
+  describe('a sign-in that failed', () => {
+    const failure = async (error: unknown): Promise<string | null> => {
+      const response = await authkitOptions.onError?.({
+        error,
+        request: new NextRequest('https://app.piloti.at/api/auth/callback?code=c&state=s'),
+      })
+      const location = new URL(response?.headers.get('location') ?? '', 'https://app.piloti.at')
+      expect(location.pathname).toBe('/auth/error')
+      return location.searchParams.get('error')
+    }
+
+    it('sends a flow whose verifier is gone to our page, which offers Try Again', async () => {
+      expect(await failure(new CallbackError('missing_pkce_cookie'))).toBe('SessionExpired')
+    })
+
+    it('treats a collided flow the same way: both need a fresh sign-in', async () => {
+      expect(await failure(new CallbackError('oauth_state_mismatch'))).toBe('SessionExpired')
+    })
+
+    it('keeps the generic answer for a failure the person cannot act on', async () => {
+      expect(await failure(new CallbackError('missing_tokens'))).toBe('Default')
+      expect(await failure(new Error('boom'))).toBe('Default')
     })
   })
 })

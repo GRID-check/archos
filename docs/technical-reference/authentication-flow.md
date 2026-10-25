@@ -4,11 +4,28 @@ Auth is handled by **WorkOS AuthKit v4** with session cookies. The `REQUIRE_AUTH
 
 ## Sign-in flow
 
-1. User clicks **Sign In** → calls `getAuth()` from `@workos-inc/authkit-nextjs`
-2. Browser redirects to WorkOS hosted login page
-3. WorkOS authenticates the user and redirects back to `/api/auth/callback`
-4. AuthKit sets an encrypted httpOnly session cookie
-5. User is redirected to the home page, now authenticated
+1. A request for a protected page with no session reaches the Next.js proxy
+   (`frontends/ui/src/proxy.ts`), which asks AuthKit. For an initial document
+   navigation, AuthKit mints the PKCE verifier cookie and redirects to WorkOS in
+   the same response.
+2. A client-side (RSC) navigation or a client fetch cannot receive that cookie —
+   AuthKit mints it only when answering a document request — so the proxy
+   replaces the redirect with `/api/auth/signin?returnPathname=<page>`. That is a
+   Route Handler, where `getSignInUrl()` may write the cookie whatever kind of
+   request it answers.
+3. The browser reaches the WorkOS hosted login, which returns to
+   `/api/auth/callback` with `code` and `state`.
+4. `handleAuth()` exchanges the code, verifying it against the PKCE cookie, and
+   writes the encrypted httpOnly `wos-session` cookie.
+5. The callback redirects to the page the sign-in started for. AuthKit carries
+   that page in the sealed flow state; the callback's own `returnPathname`
+   (`/app/projects`) is the fallback.
+
+A callback that arrives without its flow (`missing_pkce_cookie`,
+`oauth_state_mismatch`) goes to `/auth/error?error=SessionExpired`, which offers
+Try Again. AuthKit has already deleted the flow cookie by then, so reloading the
+callback URL can never succeed. `/` sends a signed-out visitor to the landing
+site, and to `/api/auth/signin` when `?sign-in` asks for the app.
 
 Sign-out calls `signOut({ returnTo: '/' })` which clears the WorkOS session cookie.
 
