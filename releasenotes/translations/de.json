@@ -2660,6 +2660,10 @@
     "de": "Die Anmeldung über die Piloti-Website funktioniert wieder. Besucherinnen und Besucher, die auf piloti.at „Anmelden“ gewählt haben, sahen statt der Login-Seite einen Fehlerbildschirm und konnten die App nicht erreichen. Jetzt gelangen sie wie vorgesehen zum regulären Login-Ablauf."
   },
   {
+    "en": "Signing in no longer bounces between Piloti and the login page. If a sign-in is interrupted, you now see what happened and a Try Again button instead of an error page with no way forward.",
+    "de": "Beim Anmelden wechseln Sie nicht mehr zwischen Piloti und der Login-Seite hin und her. Wird die Anmeldung unterbrochen, sehen Sie jetzt, was passiert ist, und eine Schaltfläche „Erneut versuchen“ statt einer Fehlerseite ohne Möglichkeit fortzufahren."
+  },
+  {
     "en": "Similar projects now shows what each comparison is based on and which facts in your brief would sharpen it. Projects with nothing in common are set apart from the rest, and you can ask Piloti about any of them in this project's chat.",
     "de": "Ähnliche Projekte zeigt jetzt, worauf ein Vergleich beruht und welche Angaben in Ihrer Projektbeschreibung ihn schärfen würden. Projekte ohne Gemeinsamkeiten stehen getrennt davon, und Sie können Piloti im Chat dieses Projekts zu jedem von ihnen befragen."
   },

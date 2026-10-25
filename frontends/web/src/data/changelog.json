@@ -301,6 +301,10 @@
               "de": "Ein Agent, der die Mitglieder eines Projekts auflistet, erhält jetzt Personen mit einer Rolle samt der zum Entfernen benötigten ID; lange Listen aus dem Langzeitgedächtnis werden seitenweise ausgegeben."
             },
             {
+              "en": "Signing in no longer bounces between Piloti and the login page. If a sign-in is interrupted, you now see what happened and a Try Again button instead of an error page with no way forward.",
+              "de": "Beim Anmelden wechseln Sie nicht mehr zwischen Piloti und der Login-Seite hin und her. Wird die Anmeldung unterbrochen, sehen Sie jetzt, was passiert ist, und eine Schaltfläche „Erneut versuchen“ statt einer Fehlerseite ohne Möglichkeit fortzufahren."
+            },
+            {
               "en": "With no project yet, the projects page shows one button to create the first project instead of two.",
               "de": "Wenn noch kein Projekt vorhanden ist, wird auf der Projektseite statt zwei Schaltflächen nur eine zum Erstellen des ersten Projekts angezeigt."
             },
