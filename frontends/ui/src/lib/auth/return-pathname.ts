@@ -24,8 +24,19 @@ export function safeReturnPathname(candidate: string | null | undefined): string
 
   if (resolved.origin !== 'https://placeholder.invalid') return undefined
   // `/api/...` is a fetch from a page, never a place a person was going:
-  // landing there after signing in would show them JSON.
-  if (resolved.pathname === '/api' || resolved.pathname.startsWith('/api/')) return undefined
+  // landing there after signing in would show them JSON. The router decodes a
+  // path segment before matching it, so `/api%2Fv1` reaches the API too.
+  if (targetsApi(resolved.pathname)) return undefined
 
   return `${resolved.pathname}${resolved.search}`
+}
+
+function targetsApi(pathname: string): boolean {
+  let decoded = pathname
+  try {
+    decoded = decodeURIComponent(pathname)
+  } catch {
+    // Not valid percent-encoding, so no route sees anything but these bytes.
+  }
+  return [pathname, decoded].some((path) => path === '/api' || path.startsWith('/api/'))
 }

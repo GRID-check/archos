@@ -1,4 +1,5 @@
 import { getSignInUrl } from '@workos-inc/authkit-nextjs'
+import { cookies } from 'next/headers'
 import { type NextRequest, NextResponse } from 'next/server'
 import { safeReturnPathname } from '@/lib/auth/return-pathname'
 import { tenantSlotRoute } from '@/lib/db/tenant-context'
@@ -24,7 +25,34 @@ import { tenantSlotRoute } from '@/lib/db/tenant-context'
  * apply. AuthKit's middlewareAuth lets it through via
  * proxy.ts unauthenticatedPaths.
  */
+
+/**
+ * AuthKit's middleware keeps at most five verifier cookies and expires the rest
+ * (`MAX_PKCE_COOKIES` in its `pkce.ts`), because a pile of them risks HTTP 431.
+ * That budget lives in the middleware path only; `setPKCECookie` just writes.
+ * The proxy now sends every unauthenticated client navigation here, so a browser
+ * that keeps bouncing would add one cookie per attempt for ten minutes and the
+ * loop would end at a 431 instead of a login page.
+ *
+ * Mirror the budget. A flow live in another tab is given up only once the limit
+ * is already reached, which is the trade AuthKit makes at the same point.
+ */
+const VERIFIER_COOKIE_PREFIX = 'wos-auth-verifier'
+const MAX_VERIFIER_COOKIES = 5
+
+async function expireVerifierCookies(): Promise<void> {
+  const jar = await cookies()
+  const verifiers = jar
+    .getAll()
+    .filter(({ name }) => name === VERIFIER_COOKIE_PREFIX || name.startsWith(`${VERIFIER_COOKIE_PREFIX}-`))
+
+  if (verifiers.length < MAX_VERIFIER_COOKIES) return
+  for (const { name } of verifiers) jar.delete(name)
+}
+
 const signIn = async (request: NextRequest): Promise<Response> => {
+  await expireVerifierCookies()
+
   const returnTo = safeReturnPathname(new URL(request.url).searchParams.get('returnPathname'))
   const url = await getSignInUrl(returnTo ? { returnTo } : {})
   return NextResponse.redirect(url)

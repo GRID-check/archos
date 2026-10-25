@@ -101,7 +101,7 @@ export default async function proxy(request: NextRequest, event: NextFetchEvent)
  * what tells those two apart on the next occurrence. It never carries the
  * value: that is the session.
  */
-const SESSION_COOKIE_NAME = 'wos-session'
+const SESSION_COOKIE_NAME = process.env.WORKOS_COOKIE_NAME || 'wos-session'
 
 function warnIfSessionIsDiscarded(request: NextRequest, response: Response): void {
   if (!isAuthorizeRedirect(response.headers.get('location'))) return
@@ -122,14 +122,20 @@ function warnIfSessionIsDiscarded(request: NextRequest, response: Response): voi
  * navigation (`isInitialDocumentRequest` in authkit's `pkce.ts`). A client-side
  * navigation asks for the RSC payload instead, and a fetch asks for data: in
  * both, WorkOS gets the redirect, the callback gets no verifier, and
- * `handleAuth` answers "Sign-in session could not be verified". The browser
- * retries the navigation, which starts the next flow — the loop dev lived in.
+ * `handleAuth` answers "Sign-in session could not be verified".
+ *
+ * The client router then makes it worse, and this is the loop dev lived in. It
+ * does not retry the page it was loading: a redirected RSC fetch whose answer is
+ * not a Flight payload becomes an MPA navigation to the *redirect target*
+ * (`doMpaNavigation(responseUrl)` in `fetch-server-response.js`), so the browser
+ * goes straight to WorkOS and the flow starts that was never given a verifier.
  *
  * A redirect that cannot complete is therefore replaced with our own sign-in
  * route: a Route Handler, where `cookies().set()` writes the verifier whatever
- * kind of request it answers. Prefetches are left alone — nobody is waiting for
- * a login on a speculative load, and minting a cookie per prefetch would burn
- * AuthKit's five-cookie budget.
+ * kind of request it answers, so the same-origin hop hands the browser the
+ * cookie before it continues to WorkOS. Prefetches are left alone — nobody is
+ * waiting for a login on a speculative load, and minting a cookie per prefetch
+ * would burn AuthKit's five-cookie budget.
  */
 const SIGN_IN_PATH = '/api/auth/signin'
 const AUTHORIZE_PATH_SUFFIX = '/user_management/authorize'
