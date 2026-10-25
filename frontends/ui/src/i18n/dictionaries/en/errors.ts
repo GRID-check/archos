@@ -34,6 +34,7 @@ export const errors = {
       Configuration: 'There is a problem with the server configuration.',
       AccessDenied: 'You do not have permission to access this resource.',
       Verification: 'The verification link has expired or has already been used.',
+      SessionExpired: 'Your sign-in expired or was completed in another tab. Please sign in again.',
       Default: 'An error occurred during authentication.',
     },
   },

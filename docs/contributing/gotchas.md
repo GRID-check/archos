@@ -299,6 +299,12 @@ string you are seeing.
 | A turn answers with no retrieval at all, and the agent warns `Research turn has every data source switched off; every retrieval call will be refused` | The composer sent its initial `enabledDataSourceIds: []` before `/v1/data_sources` had loaded (or after it failed), and on the wire `[]` selects NO source, while absent/`null` selects every source the organization allows | `collectSendMetadata` sends `null` while `availableDataSources` is still `null`. Never send a store's not-yet-loaded default as a deliberate choice |
 | The ingest worker fails a burst of files with `Download of the original failed: ConnectError` (the template is `deferred_files.py`'s `Download of the %s failed`, so a grep for the full sentence finds nothing) | The object store was unreachable for a few seconds and the download made one connect attempt | `DeferredObjectDownload` connects through `httpx.HTTPTransport(retries=…)`, which retries a refused connect with backoff and never repeats a request that reached the store |
 
+## Sign-in and sessions
+
+| Symptom | Cause | Do this |
+|---|---|---|
+| Sign-in on a deployed app bounces or loops: WorkOS returns to `/api/auth/callback`, which answers `Sign-in session could not be verified` (logs: `[AuthKit callback error] … missing_pkce_cookie`), and `user_signed_in` repeats in PostHog with no `$pageview` | AuthKit's proxy mints the PKCE verifier cookie only when the redirect answers an **initial document** navigation (`isInitialDocumentRequest`, `pkce.ts` — unchanged through 4.6.0). A client-side (RSC) navigation and a client fetch get the same 307 to WorkOS, without the verifier, so the callback holds a `code` it can never match. `handleAuth` deletes the flow cookie before answering and returns a generic error page, so reloading the callback URL fails identically | `rerouteIncompleteSignIn` in `frontends/ui/src/proxy.ts` replaces a verifier-less authorize redirect with `/api/auth/signin?returnPathname=…`, a Route Handler where `cookies().set()` is legal whatever kind of request it answers; the callback's `onError` sends `missing_pkce_cookie`/`oauth_state_mismatch` to `/auth/error?error=SessionExpired`, which offers Try Again. Check the redirect before blaming the browser: `curl -sI https://<app>/app/projects -H 'accept: text/html' \| grep -i set-cookie` must name `wos-auth-verifier`; repeat with `-H 'RSC: 1' -H 'accept: text/x-component'`, where it is legitimately absent and the redirect must go to `/api/auth/signin` rather than WorkOS |
+
 ## On a phone
 
 | Symptom | Cause | Do this |
