@@ -27,6 +27,8 @@ describe('safeReturnPathname', () => {
   it('refuses an API path', () => {
     expect(safeReturnPathname('/api')).toBeUndefined()
     expect(safeReturnPathname('/api/v1/projects')).toBeUndefined()
+    // The router decodes a segment before matching it, so this reaches the API.
+    expect(safeReturnPathname('/api%2Fv1/projects')).toBeUndefined()
   })
 
   it('refuses a value that is not a path', () => {

@@ -12,7 +12,11 @@ Auth is handled by **WorkOS AuthKit v4** with session cookies. The `REQUIRE_AUTH
    AuthKit mints it only when answering a document request — so the proxy
    replaces the redirect with `/api/auth/signin?returnPathname=<page>`. That is a
    Route Handler, where `getSignInUrl()` may write the cookie whatever kind of
-   request it answers.
+   request it answers, and the browser stores it on the way through.
+   Without that hop the flow cannot finish: the client router turns a redirected
+   RSC fetch it cannot decode into an MPA navigation to the redirect *target*
+   (`doMpaNavigation(responseUrl)` in Next's `fetch-server-response.js`), so the
+   browser lands on WorkOS and starts a flow that was never given a verifier.
 3. The browser reaches the WorkOS hosted login, which returns to
    `/api/auth/callback` with `code` and `state`.
 4. `handleAuth()` exchanges the code, verifying it against the PKCE cookie, and
@@ -20,6 +24,11 @@ Auth is handled by **WorkOS AuthKit v4** with session cookies. The `REQUIRE_AUTH
 5. The callback redirects to the page the sign-in started for. AuthKit carries
    that page in the sealed flow state; the callback's own `returnPathname`
    (`/app/projects`) is the fallback.
+
+The sign-in route serves every unauthenticated client navigation now, and each
+one mints a verifier cookie that outlives its flow by ten minutes. It holds
+AuthKit's own budget of five (`MAX_PKCE_COOKIES`), expiring the older ones rather
+than letting a loop fill the cookie jar until the request headers overflow.
 
 A callback that arrives without its flow (`missing_pkce_cookie`,
 `oauth_state_mismatch`) goes to `/auth/error?error=SessionExpired`, which offers

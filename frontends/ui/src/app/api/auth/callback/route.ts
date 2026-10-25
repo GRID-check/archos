@@ -63,9 +63,10 @@ const announceSignIn = ({ user, organizationId, authenticationMethod }: SignInDa
  * cookie jar — `missing_pkce_cookie` and `oauth_state_mismatch` respectively.
  *
  * Send those to our own page, which says so and offers Try Again, instead of
- * AuthKit's generic 500. Everything else keeps the generic answer: an
- * `invalid_grant` from WorkOS is not something the person can act on
- * differently.
+ * AuthKit's generic answer. Everything else lands there too, on the `Default`
+ * message: supplying `onError` means AuthKit no longer renders its own page at
+ * all, and an `invalid_grant` from WorkOS is not something the person can act on
+ * differently anyway.
  */
 const LOST_FLOW_CODES = new Set<string>(['missing_pkce_cookie', 'oauth_state_mismatch'])
 
