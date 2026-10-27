@@ -551,6 +551,173 @@ reverting is deleting a Cloudflare zone nobody is pointed at.
 
 ---
 
+## 3c. Project mail (Cloudflare Email Routing, ADR-0135)
+
+Every project of an office with the `inbound-mail` entitlement can have an
+address `<slug>.<token>@<domain>`; mail to it waits in the project's
+E-Mail-Eingang until a person files it (ADR-0134,
+[`inbound-mail.md`](../architecture/inbound-mail.md)). Off by default: nothing
+is deployed until `inboundMailDomain` is set.
+
+### What it is
+
+```text
+sender ─SMTP─▶ Cloudflare Email Routing (apex MX) ─catch-all─▶ Email Worker
+                 literal rules first:                          shape check, buffer,
+                 postmaster@, abuse@, company addresses        RFC 9421 sign, post
+                                                                     │
+   app.<domain> Envoy: route grid-app-signed, Content-Length ≤ 27 MiB, no edge limit
+                                                                     ▼
+   frontend: POST /api/internal/signed/inbound-mail ─▶ staging ─▶ bff-jobs: receive job
+                                                                  ─▶ ClamAV, /v1/mail/read
+```
+
+Pieces: `deploy/pulumi/src/platform/{inbound-mail,email-routing}.ts` and the
+Worker `inbound-mail-worker.js` (uploaded verbatim); the signed route
+`SIGNED_INTERNAL_ROUTE` in `src/constants.ts`; the frontend's
+`GRID_INBOUND_MAIL_{DOMAIN,PAUSED,SIGNING_KEYS}`; the in-cluster ClamAV
+(`malwareScanEnabled`, ADR-0133). Config keys and their meaning:
+[`deploy/pulumi/README.md`](../../deploy/pulumi/README.md) („Project mail“ rows).
+
+### Prerequisites
+
+- **Cloudflare Workers Paid** on the account (gate O2): the Worker buffers up
+  to 25 MiB to sign it, which the free plan's CPU and memory do not allow.
+- `cloudflareApiToken` with, on the mail domain's zone, `Zone:Zone Settings:Edit`,
+  `Zone:Email Routing Rules:Edit` and `Zone:Zone:Read`, plus Account
+  `Workers Scripts:Edit` with the account under the token's Account Resources.
+- The mail domain is the apex of its zone (Cloudflare's catch-all exists only
+  for an apex). On the app zone that needs `dnsEnabled` and `dnsZoneBaseline`.
+  The preview refuses an apex whose MX points anywhere but
+  `*.mx.cloudflare.net`. On 2026-10-22 `piloti.at` had no MX (DNS-over-HTTPS lookup); Email Routing adds and
+  locks the apex MX, an SPF TXT and a DKIM TXT, and leaves A, `www` and
+  `_dmarc` alone.
+- **The scanner first.** `loadConfig` refuses an inbound domain while
+  `malwareScanEnabled` is false. Promote the scanner on its own and wait for its
+  pod to be ready (signatures under 48 h old) before the mail promote.
+- The WorkOS entitlement `inbound-mail` exists, OFF for all organizations
+  (gate O1, [`workos-provisioning.md`](workos-provisioning.md)).
+
+### Setup: the first promote is paused
+
+1. In the Cloudflare dashboard, give `postmaster@`, `abuse@` and **every
+   company address on the apex** a literal routing rule. Literal rules match
+   before the catch-all; an address without one reaches the Worker, which
+   refuses anything that is not project-shaped (gate G7).
+2. Generate a key: `openssl rand -base64 32`. Set, in **one** promote:
+   `inboundMailDomain`, `inboundMailPaused: true`, the secret
+   `inboundMailSigningKeys` (`{"mi-2026-10":"<key>"}`), and
+   `inboundMailZoneId` only for a domain on a zone of its own.
+3. `npm run preview`, then `npm run up` (gate O4).
+4. Run the launch gates against the test office (below), then set
+   `inboundMailPaused: false` and promote.
+5. Switch `inbound-mail` on for an office only after the Datenschutzberater's
+   sign-off and the customer notice (gate O7).
+
+### The gates, in order
+
+Owner gates are post-merge: each is a one-way door or a billing or production
+change. The owner says yes, the operator runs it, and the result is recorded
+below.
+
+| # | Gate | When |
+|---|---|---|
+| O1 | WorkOS dashboard: create the `inbound-mail` entitlement OFF in staging and production; delete `project-mail-inbox` if PR #831 ever created it | within a week of the feature merging (`workos-drift.yml` fails weekly on staging while a registry slug is missing) |
+| O2 | Cloudflare Workers Paid | before O4 |
+| O3 | `task langfuse:provision -- --apply` (score config `mail-thread-match`, the `piloti-decision` subject `inbound_mail_suggestion`) | after the merge |
+| O4 | `npm run up` with `malwareScanEnabled` (the scanner), then with `inboundMailDomain`, the keys and `inboundMailPaused: true` | after the merge |
+| O5 | DNS: Email Routing on the apex writes MX and TXT records; literal rules for `postmaster@`, `abuse@` and company addresses first | with O4 |
+| O6 | Launch gates G1–G9, then unpause | after O4 and O5, with a named pilot office for G9 |
+| O7 | The `inbound-mail` entitlement on, per office, only after the Datenschutzberater's sign-off and the customer notice | per office |
+
+Launch gates, run with `deploy/pulumi/scripts/inbound-mail-smoke.ts` (usage in
+[`deploy/pulumi/README.md`](../../deploy/pulumi/README.md#project-mails-launch-gates);
+`plan` prints every gate's steps, nothing is sent without `--run`, and the
+probes are held mail in the TEST office, never a customer's):
+
+| Gate | Check |
+|---|---|
+| G1 | A DKIM-signed test mail arrives `*_verified` with its `signed_headers` (DKIM survives into `message.raw`) |
+| G2 | A throwing Worker gives a temporary failure, and the retry delivers |
+| G3 | 24 MiB is held, 26 MiB refused by Cloudflare, a truncated body gives `body-truncated`, unsigned and unknown-key requests 401 |
+| G4 | While paused, a temporary failure; after the unpause the mail is delivered |
+| G5 | Worker CPU and memory for a 25 MiB message. A failure blocks the launch: there is no fallback that drops the digest |
+| G6 | EICAR through the full path; a limit-exceeding archive and a stale signature database each give `failed`, never `clean`; an infected original's download is refused. Known engine gap (ClamAV 1.5.4): a zip member over `MaxFileSize` (100 MB) is scanned only up to that size and answers `OK` with no alert, gzip alerts (ADR-0133) |
+| G7 | Literal `postmaster@` and `abuse@` rules present |
+| G8 | G1 and G2 again after any `COMPATIBILITY_DATE` bump of the Worker (a spec fails once the date is a year old) |
+| G9 | The aligned-DKIM share of a pilot office's real project mail, counted offline from an archive's `Authentication-Results` (`dkim-share`). It sets expectations for the trust labels and following |
+
+Record of runs: none yet.
+
+### Operating
+
+- **Alerts** (BFF log lines and PostHog `inbound_mail_refused.reason`):
+  `bad-signature` (a key or `BFF_URL` mismatch), `body-truncated`,
+  `unavailable` (storage or database), `cap_reached`, and no `received` for
+  24 hours on a deployment that usually receives mail. The receive log line per
+  delivery carries ids, sizes and the outcome code only.
+- **Retention sweeps** run in the scheduler's background-work call, one log
+  line per sweep that acted (§6.3c).
+- **The scanner's image.** The ClamAV pin lives in `deploy/pulumi/src/config.ts`
+  (and the Compose service); read it there rather than from a doc. trivy's
+  changed-pins scan fails when a pinned image gets a fixable HIGH or CRITICAL
+  finding; the fix is to re-pin to the upstream rebuild of the same version
+  after checking its package versions (the 1.5.4 rebuild of 2026-10-26 fixed
+  brotli-libs and libcurl), in Pulumi and Compose together.
+
+### Signing-key rotation
+
+1. Add the successor to `inboundMailSigningKeys` (two entries at most).
+2. Set `inboundMailSigningKeyId` to the successor's keyid, promote. The BFF
+   accepts both keys meanwhile; the Worker signs with the new one.
+3. Remove the old entry, promote.
+
+Never edit the Worker's binding in the Cloudflare dashboard: the next `up`
+restores it from state. The Worker must post to the origin of
+`WORKOS_REDIRECT_URI` (both come from `appOrigin(cfg)` in
+`src/app/config.ts`); a domain move without it is a `bad-signature` on every
+delivery, which the senders retry.
+
+### Incidents
+
+1. **Pause**: `inboundMailPaused: true`, promote. The Worker answers a
+   temporary failure before reading anything, effective as soon as Cloudflare
+   has the binding (no frontend rollout needed for that half), and the BFF
+   answers 503. Senders retry for days; nothing bounces.
+2. A leaked project address: a manager replaces it (Settings › Dokumente,
+   „Neue Adresse erzeugen“, or `inbound-mail-address-rotate`); the old one
+   stops at once and every follow on the project ends.
+3. A leaked signing key: rotate it (above).
+4. One office: switch its `inbound-mail` entitlement off; its addresses then
+   bounce as unknown, and what is held stays held.
+
+### Turning it off
+
+Set `inboundMailEnabled: false` and promote. The catch-all is updated in place
+to disabled, so Cloudflare refuses unclaimed addresses at SMTP time (never
+Drop, which accepts and discards), and Pulumi deletes the Worker afterwards
+(deletions run last). The frontend loses `GRID_INBOUND_MAIL_DOMAIN`. Only then
+unset `inboundMailDomain`, if it is for good. Email Routing itself is
+`retainOnDelete`: company addresses depend on it. Reversing migration 0186
+needs every staged object and kept original erased first
+([`schema.md`](../database/schema.md#reversing-0186)).
+
+### Privacy settings at Cloudflare
+
+Workers observability is off (Pulumi sets `observability.enabled: false`); no
+Logpush. Cloudflare keeps Email Routing's activity log (sender, recipient,
+time, outcome). Cloudflare is a transit processor of project mail: the
+sub-processor row and the customer notice belong to gate O7
+([`docs/compliance/inbound-mail-review-2026-10.md`](../compliance/inbound-mail-review-2026-10.md)).
+
+### Known unknowns
+
+- That a thrown error in an email Worker is a temporary SMTP failure is not
+  documented by Cloudflare; G2 proves it and G8 re-proves it.
+- The email handler's wall-clock limit is undocumented; the Worker gives up on
+  the BFF at 90 s and throws (a retry).
+- G5's numbers for a 25 MiB message.
+
 ## 4. SeaweedFS — two topologies, and the migration between them
 
 `grid-oib:seaweedfsTopology` selects one of two layouts (ADR-0043). New stacks

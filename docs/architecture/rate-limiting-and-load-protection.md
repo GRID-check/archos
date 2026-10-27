@@ -436,7 +436,7 @@ the body is read (`lib/inbound-mail/receive.ts`): `inbound-mail-signing-key`
 signing key for tokens no project has, a bucket of its own so a guesser walking
 the token space never spends real mail's budget. On top, byte caps on staged
 raw bytes: 1 GiB per address, 5 GiB per organization; over either the answer
-is 429 `cap-reached` and the managers are told at 80% and 100%
+is 429 (outcome `cap_reached` in the log line) and the managers are told at 80% and 100%
 (`inbound_mail.cap_reached`). There is no count cap: a count cap bounces real
 senders after a backlog. `mail-original-download` (60/h, 10/min per person)
 bounds the ClamAV scan every original download runs.
