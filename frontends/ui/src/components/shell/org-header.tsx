@@ -2,6 +2,7 @@
 
 import type { JSX } from 'react'
 import * as React from 'react'
+import dynamic from 'next/dynamic'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { Archive, Bell, MessageSquarePlus } from 'lucide-react'
@@ -18,6 +19,10 @@ import { ConnectionBand } from './connection-band'
 import { ShellSearchButton } from './shell-search-button'
 import { SidebarUserMenu, type SidebarUser } from './sidebar-user-menu'
 
+// Loaded only for someone who belongs to several organizations: the widget
+// brings Radix Themes and its stylesheet, which nobody else needs.
+const HeaderOrganizationSwitcher = dynamic(() => import('./organization-switcher'), { ssr: false })
+
 /**
  * The org-scope chrome: one slim header instead of a rail.
  *
@@ -30,6 +35,9 @@ import { SidebarUserMenu, type SidebarUser } from './sidebar-user-menu'
  *
  * The header carries exactly what must stay one click away: the wordmark (the
  * way home), the two org-wide doorways with the inbox badge, and the avatar.
+ * Someone who works in several offices also gets WorkOS's organization
+ * switcher beside the wordmark, since which office they are in is the scope of
+ * everything below it.
  * Everything account-shaped is behind the avatar — two clicks, deliberately.
  *
  * On a phone the doorways move to the tab bar at the bottom of the screen
@@ -42,6 +50,8 @@ export interface OrgHeaderProps {
   user?: SidebarUser
   organizationName?: string | null
   authRequired: boolean
+  /** The reader belongs to more than one organization (`belongsToSeveralOrganizations`). */
+  canSwitchOrganization?: boolean
   canManageOrganization: boolean
   canViewOrganization: boolean
   canManagePlatform: boolean
@@ -53,6 +63,7 @@ export function OrgHeader({
   user,
   organizationName,
   authRequired,
+  canSwitchOrganization = false,
   canManageOrganization,
   canViewOrganization,
   canManagePlatform,
@@ -74,13 +85,20 @@ export function OrgHeader({
       className="border-border bg-background flex w-full shrink-0 flex-col border-b pt-[env(safe-area-inset-top)]"
     >
       <div className="flex min-h-14 items-center justify-between gap-3 pl-[max(1rem,env(safe-area-inset-left))] pr-[max(0.5rem,env(safe-area-inset-right))] md:pl-6 md:pr-6">
-        <Link
-          href="/app/projects"
-          aria-label={t('allProjects')}
-          className="text-foreground focus-visible:ring-ring/60 rounded-md text-[19px] font-semibold tracking-[-0.015em] focus-visible:outline-none focus-visible:ring-2"
-        >
-          Piloti
-        </Link>
+        <div className="flex min-w-0 items-center gap-2">
+          <Link
+            href="/app/projects"
+            aria-label={t('allProjects')}
+            className="text-foreground focus-visible:ring-ring/60 rounded-md text-[19px] font-semibold tracking-[-0.015em] focus-visible:outline-none focus-visible:ring-2"
+          >
+            Piloti
+          </Link>
+          {canSwitchOrganization && (
+            <div className="min-w-0 max-w-64" data-testid="organization-switcher">
+              <HeaderOrganizationSwitcher />
+            </div>
+          )}
+        </div>
 
         <div className="flex items-center gap-1">
           {/* On a phone the two doorways live in the tab bar, under the thumb

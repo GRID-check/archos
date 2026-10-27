@@ -5,7 +5,7 @@ import type { AuthorizedSession } from '@/lib/auth/types'
 import { getNavFlags, type NavFlags } from '@/lib/authz/nav'
 import { isIfcModelsEnabled, isSkillsEnabled } from '@/lib/authz/feature-flags'
 import { listProjects } from '@/lib/projects/service'
-import { getOrganizationDisplayName } from '@/lib/organizations/service'
+import { belongsToSeveralOrganizations, getOrganizationDisplayName } from '@/lib/organizations/service'
 import { isAuthRequired } from '@/lib/auth/auth-required'
 import { resolveTourEligibility } from '@/lib/onboarding/tour-eligibility'
 import { NO_TOURS, type TourEligibility } from '@/features/onboarding/lib/product-tour'
@@ -30,6 +30,8 @@ export interface ShellChrome {
   user?: SidebarUser
   /** The org the reader is acting in, for the footer eyebrow. */
   organizationName: string | null
+  /** Whether the org header offers the organization switcher: the reader belongs to more than one. */
+  canSwitchOrganization: boolean
   navFlags: NavFlags
   /** Agent Skills + Jobs sections (`skills` flag, ADR-0046). */
   showSkills: boolean
@@ -55,6 +57,7 @@ function emptyChrome(): ShellChrome {
     projects: [],
     user: undefined,
     organizationName: null,
+    canSwitchOrganization: false,
     navFlags: EMPTY_NAV_FLAGS,
     showSkills: false,
     showModels: false,
@@ -119,11 +122,13 @@ export async function resolveShellChrome(): Promise<ShellChrome> {
   } catch {
     organizationName = null
   }
+  const canSwitchOrganization = authRequired && (await belongsToSeveralOrganizations(session.organizationId, session.userId))
 
   return {
     projects,
     user: { name: session.name, email: session.email },
     organizationName,
+    canSwitchOrganization,
     navFlags,
     showSkills: isSkillsEnabled(session),
     showModels: isIfcModelsEnabled(session),

@@ -68,6 +68,16 @@ upgrade that leaves the patch behind fails there. When AuthKit is upgraded,
 `bun install` refuses a patch that no longer applies: re-create it with
 `bun patch @workos-inc/authkit-nextjs`, or delete it if upstream has closed #404.
 
+## Switching organization
+
+Someone who belongs to more than one organization gets WorkOS's
+`OrganizationSwitcher` widget beside the wordmark in the org header
+(`components/shell/organization-switcher.tsx`; the shell asks
+`belongsToSeveralOrganizations`). It calls AuthKit's `switchToOrganization`,
+which refreshes the session into the chosen organization, or sends the person
+to sign in when that organization requires SSO or MFA, and then loads
+`/app/projects` of the new office.
+
 ## Session resolution
 
 `getGridSession()` in `frontends/ui/src/lib/auth/session.ts:38` reads the current session using `withAuth()` from AuthKit:

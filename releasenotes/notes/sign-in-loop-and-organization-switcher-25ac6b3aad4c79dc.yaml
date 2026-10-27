@@ -1,0 +1,9 @@
+---
+features:
+  - >
+    If you work in more than one office, you can now switch between them from
+    the header, next to the Piloti name.
+fixes:
+  - >
+    Signing in from a new browser or a private window no longer bounces back
+    and forth until the browser gives up with too many redirects.
