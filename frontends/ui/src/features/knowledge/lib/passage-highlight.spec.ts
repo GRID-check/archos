@@ -9,6 +9,7 @@ import {
   MIN_WINDOW_SCORE,
   normalizePassage,
   passageBounds,
+  type MeasureText,
   type TextChunk,
 } from './passage-highlight'
 
@@ -139,6 +140,42 @@ describe('findPassage — exact', () => {
     ]
     const match = locatePassage(chunks, 'links rechts')
     expect(match!.rects).toHaveLength(2)
+  })
+})
+
+describe('findPassage — where a part of a run ends', () => {
+  // Helvetica's advances in thousandths of an em, the base-14 font the dev
+  // fixture's PDF is set in: wide „m“, narrow „i“, „l“, „f“.
+  const HELVETICA: Record<string, number> = {
+    ' ': 278, a: 556, c: 500, d: 556, e: 556, f: 278, g: 556, h: 556, i: 222, k: 500, l: 222, m: 833,
+    n: 556, p: 556, r: 333, s: 500, t: 278, u: 556, w: 722, y: 500, T: 611, O: 778, ä: 556,
+  }
+  const helvetica: MeasureText = (text) => [...text].reduce((sum, ch) => sum + (HELVETICA[ch] ?? 556), 0)
+  const SECOND_LINE = 'im Treppenhaus mit einer aerodynamisch wirksamen Öffnungsfläche'
+  const FONT_SIZE = 10
+  const run: TextChunk = { text: SECOND_LINE, x: 64, y: 30, width: (helvetica(SECOND_LINE, undefined) * FONT_SIZE) / 1000, height: 12 }
+  const firstLine: TextChunk = { text: 'Die Rauchableitung erfolgt über die Rauch- und Wärmeabzugsanlage', x: 64, y: 12, width: 320, height: 12 }
+  const snippet = 'Die Rauchableitung erfolgt über die Rauch- und Wärmeabzugsanlage im Treppenhaus'
+  const lit = (measure?: MeasureText) => locatePassage([firstLine, run], snippet, measure)!.rects.find((rect) => rect.y === run.y)!
+  const glyphsEnd = run.x + (helvetica('im Treppenhaus', undefined) * FONT_SIZE) / 1000
+
+  it('ends a highlight on the end of its last glyph, measured in the run\'s font', () => {
+    const rect = lit(helvetica)
+    expect(rect.x).toBeCloseTo(run.x, 5)
+    expect(rect.x + rect.width).toBeCloseTo(glyphsEnd, 5)
+  })
+
+  it('stopped short of the „s“ when every character took an even share of the run', () => {
+    // The defect this measure closes: „im Treppenhau“ lit, „s“ dark.
+    const counted = lit()
+    expect(glyphsEnd - (counted.x + counted.width)).toBeGreaterThan((HELVETICA.s! * FONT_SIZE) / 1000 / 2)
+  })
+
+  it('starts a highlight that begins mid-run where its first glyph begins', () => {
+    const chunks: TextChunk[] = [{ ...run, y: 0 }]
+    const [rect] = findOccurrences(buildPassageIndex(chunks, helvetica), 'Treppenhaus')[0]!
+    expect(rect!.x).toBeCloseTo(run.x + (helvetica('im ', undefined) * FONT_SIZE) / 1000, 5)
+    expect(rect!.x + rect!.width).toBeCloseTo(glyphsEnd, 5)
   })
 })
 

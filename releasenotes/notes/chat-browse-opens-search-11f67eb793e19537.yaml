@@ -1,0 +1,6 @@
+---
+improvements:
+  - >
+    When you ask Piloti to show you files on a topic, it now finds them with the
+    same search you use, in the language of your documents, and the files it
+    offers carry a link that opens that search with every result.

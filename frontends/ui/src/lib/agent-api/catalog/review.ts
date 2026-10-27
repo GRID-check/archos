@@ -28,7 +28,7 @@ import { projectProtocolQuerySchema } from '@/lib/annotations/project-types'
 import type { AgentOperation } from '../operation'
 
 const documentParams = z.object({
-  id: z.string().describe('The document id, from a project document listing or document-search.'),
+  id: z.string().describe('The document id, from a project document listing or workspace-search.'),
 })
 
 const projectParams = z.object({ id: z.string().describe('The project id, from project-list.') })

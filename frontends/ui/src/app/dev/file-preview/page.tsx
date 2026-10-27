@@ -29,6 +29,7 @@ import { FilePreviewPane } from '@/features/documents/components/file-preview-pa
 import type { FileItem } from '@/features/documents/components/project-file-workspace'
 import { buildPdf, type PdfLine } from '../_fixtures/sample-pdf'
 import { a1SheetPdf } from '../_fixtures/a1-sheet'
+import { SEARCH_FIXTURE_DOCUMENTS } from '../_fixtures/search'
 import { normalizeDrawingStructured } from '@/lib/documents/drawing-structured'
 
 // A visible "document page" so the left preview renders something real (not a
@@ -311,6 +312,75 @@ const DRAWING_FIXTURE: FileItem = {
   fileSize: 2_380_000,
   pageCount: 1,
 }
+
+/**
+ * `?variant=search-hit`: the document the search's first hit names
+ * (`SEARCH_FIXTURE_DOCUMENTS[0]`, „Brandschutzkonzept Wohnhaus Seestadt J7“),
+ * so the hit's link (`?doc=…&page=7&highlight=…`) opens THAT file at THAT
+ * page with THAT passage lit: the scene the search promises, end to end. Its
+ * 24 pages are real, and page 7 carries the passage word for word, wrapped
+ * across two lines as a typeset page would.
+ */
+const SEARCH_HIT = SEARCH_FIXTURE_DOCUMENTS[0]!
+const SEARCH_HIT_FIXTURE: FileItem = {
+  ...FIXTURE,
+  id: SEARCH_HIT.id,
+  filename: SEARCH_HIT.filename,
+  displayName: SEARCH_HIT.title,
+  contentType: 'application/pdf',
+  fileSize: 3_140_000,
+  pageCount: SEARCH_HIT.pageCount,
+  summary:
+    'Brandschutzkonzept für das Wohnhaus Seestadt Baufeld J7 (Gebäudeklasse 4) nach OIB-Richtlinie 2 (2023). ' +
+    'Es weist die Fluchtwege je Geschoss nach: die Fluchtweglänge beträgt höchstens 40 m bis zum nächsten ' +
+    'gesicherten Stiegenhaus. Brandabschnitte sind mit REI 90 ausgeführt, die Rauchableitung erfolgt über die ' +
+    'Rauch- und Wärmeabzugsanlage im Stiegenhaus.',
+  topics: ['Fluchtwege', 'Stiegenhaus'],
+}
+
+const SEARCH_HIT_SECTIONS = [
+  'Allgemeines',
+  'Grundlagen',
+  'Gebäudebeschreibung',
+  'Brandabschnitte',
+  'Tragwerk',
+  'Fluchtwege',
+  'Stiegenhäuser',
+  'Rauchableitung',
+  'Löschwasser',
+  'Feuerwehrzufahrt',
+  'Brandmeldeanlage',
+  'Sicherheitsbeleuchtung',
+]
+
+/** Twenty-four pages; page 7 holds the hit's passage, the rest say where they are. */
+const searchHitPages = (): PdfLine[][] =>
+  Array.from({ length: SEARCH_HIT.pageCount ?? 24 }, (_, index) => {
+    const page = index + 1
+    const head: PdfLine[] = [[`Brandschutzkonzept Wohnhaus Seestadt J7 · Seite ${page}`, 9, false], ['', 11, false]]
+    if (page === 7) {
+      return [
+        ...head,
+        ['5. Fluchtwege', 14, true],
+        ['', 11, false],
+        ['5.1 Fluchtweglängen', 12, true],
+        ['', 11, false],
+        ['Jede Wohnung hat einen Fluchtweg über das Stiegenhaus. Die Fluchtweglänge', 11, false],
+        ['beträgt max. 40 m bis zum nächsten gesicherten Stiegenhaus (GK 4, OIB-RL 2,', 11, false],
+        ['Pkt. 5.1.1). Gemessen wird in der Lauflinie ab der Wohnungseingangstür.', 11, false],
+        ['', 11, false],
+        ['Stiege 2 erreicht 42,10 m; die Abweichung ist in Abschnitt 5.3 begründet.', 11, false],
+      ]
+    }
+    const section = SEARCH_HIT_SECTIONS[Math.floor(index / 2) % SEARCH_HIT_SECTIONS.length]!
+    return [
+      ...head,
+      [`${Math.floor(index / 2) + 1}. ${section}`, 14, true],
+      ['', 11, false],
+      ['Die Angaben dieses Abschnitts beziehen sich auf die Einreichplanung', 11, false],
+      ['vom 14.10.2026 und die Pläne EP-01 bis EP-06.', 11, false],
+    ]
+  })
 
 const isPdfVariant = (value: string | undefined): value is PdfVariant =>
   (PDF_VARIANTS as readonly string[]).includes(value ?? '')
@@ -634,6 +704,9 @@ if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
       if (fileMatch?.[1] === DRAWING_FIXTURE.id) {
         return new Response(a1SheetPdf('C'), { headers: { 'Content-Type': 'application/pdf' } })
       }
+      if (fileMatch?.[1] === SEARCH_HIT_FIXTURE.id) {
+        return new Response(buildPdf(searchHitPages()), { headers: { 'Content-Type': 'application/pdf' } })
+      }
       if (fileMatch?.[1] === 'dev-doc-pdf-unreadable') {
         return new Response('upstream unavailable', { status: 500 })
       }
@@ -792,7 +865,9 @@ export default function FilePreviewDevPage({
       ? pdfFixture(variant)
       : variant === 'drawing'
         ? DRAWING_FIXTURE
-        : null
+        : variant === 'search-hit'
+          ? SEARCH_HIT_FIXTURE
+          : null
 
   return (
     <FilePreviewDialog

@@ -14,8 +14,10 @@ vi.mock('./access', () => ({ getAccessibleDocument: vi.fn() }))
 vi.mock('./revision-links-loader', () => ({ loadRevisionLinks: vi.fn() }))
 vi.mock('./revision-notify', () => ({ announceNewRevision: vi.fn().mockResolvedValue(undefined) }))
 vi.mock('@/lib/upload-screening/quarantine-reviewers', () => ({ shelfReaderFor: vi.fn() }))
+vi.mock('@/lib/search/refresh-rows', () => ({ refreshSearchRows: vi.fn().mockResolvedValue(undefined) }))
 
 import { recordAuditEvent } from '@/lib/audit/service'
+import { refreshSearchRows } from '@/lib/search/refresh-rows'
 import { shelfReaderFor } from '@/lib/upload-screening/quarantine-reviewers'
 import { getAccessibleDocument } from './access'
 import { loadRevisionLinks } from './revision-links-loader'
@@ -112,6 +114,23 @@ describe('setRevisionLink', () => {
     )
     expect(loadRevisionLinks).toHaveBeenCalledWith(session, [NEWER, OLDER], { kind: 'member', userId: 'user-1' }, { fresh: true })
     expect(result).toEqual({ id: 'doc-b', revision: newerFacts, older: { id: 'doc-a', revision: olderFacts } })
+  })
+
+  it.each([true, false])('rewrites the search rows of both documents once the link is stored (linked: %s)', async (linked) => {
+    vi.mocked(refreshSearchRows).mockClear()
+
+    await setRevisionLink(session, 'doc-b', 'doc-a', linked, request)
+
+    expect(refreshSearchRows).toHaveBeenCalledWith('org-1', [NEWER, OLDER])
+    expect(mockFetch.mock.invocationCallOrder[0]).toBeLessThan(vi.mocked(refreshSearchRows).mock.invocationCallOrder[0])
+  })
+
+  it('does not rewrite a search row when the backend refused the link', async () => {
+    vi.mocked(refreshSearchRows).mockClear()
+    mockFetch.mockResolvedValue(new Response('{}', { status: 409 }))
+
+    await expect(setRevisionLink(session, 'doc-b', 'doc-a', true, request)).rejects.toThrow()
+    expect(refreshSearchRows).not.toHaveBeenCalled()
   })
 
   it('announces a confirmed link to the people who follow the older document, with the first line of what changed', async () => {
