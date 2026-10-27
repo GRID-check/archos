@@ -132,6 +132,10 @@
               "de": "Zitate, Notizen, Hinweise, Nachrichten und Termineinträge haben keine farbige Leiste mehr am linken Rand. Zitierte Wörter sind kursiv gesetzt, Auszüge aus einer Quelle heben sich durch einen dezenten Hintergrund ab, ungelesene Nachrichten sind mit einem Punkt gekennzeichnet, und Bestätigungen oder Warnungen werden mit einem Symbol und einer Bezeichnung statt mit einem farbigen Streifen kenntlich gemacht."
             },
             {
+              "en": "The search filters now complete as you type: party names, place, cited norms and drawings, drawing number, revision, scale and stated facts offer the values your documents actually hold, each with how many documents hold it, so you pick the exact spelling instead of guessing it.",
+              "de": "Die Suchfilter ergänzen jetzt beim Tippen: Beteiligte, Ort, zitierte Normen und Pläne, Plannummer, Index, Maßstab und Angaben schlagen die Werte vor, die in Ihren Dokumenten tatsächlich stehen, jeweils mit der Zahl der Dokumente, die ihn enthalten. So wählen Sie die genaue Schreibweise, statt sie zu erraten."
+            },
+            {
               "en": "Piloti now opens your office's skills the same way in chat and in deep research, and a deep research report's \"Skills used\" now names every working method it followed, including the report formats Piloti brings along.",
               "de": "Piloti stellt die Skills Ihres Büros jetzt im Chat und in Deep Research auf dieselbe Weise bereit. Unter „Verwendete Skills“ werden in einem Deep-Research-Bericht nun alle angewandten Arbeitsmethoden genannt, einschließlich der von Piloti bereitgestellten Berichtsformate."
             }
