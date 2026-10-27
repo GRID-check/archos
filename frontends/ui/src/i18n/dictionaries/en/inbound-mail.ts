@@ -180,7 +180,8 @@ export const inboundMail = {
     unreadable: 'The text could not be read, so it cannot be filed. The original holds it.',
     followed: 'Text added to the mail thread (following)',
     filed: 'Filed in a mail thread',
-    openThread: 'Open',
+    filedTo: 'Filed in mail thread “{name}”',
+    followedTo: 'Text added to mail thread “{name}” (following)',
     nameStop: 'Name check: “{terms}”',
     releaseName: 'File anyway',
     blocks: {
@@ -209,6 +210,8 @@ export const inboundMail = {
       not_offered: 'This office does not file this file type · in the original',
       filing: 'Being filed …',
       filed: 'Filed in Files',
+      filedTo: 'Filed in {folder}',
+      version: 'revision {version}',
       dismissed: 'Dismissed',
       expired: 'Expired',
     },
@@ -304,6 +307,8 @@ export const inboundMail = {
     quotaFull: 'The office’s storage is full. Nothing was filed; the mail keeps waiting.',
     expired: 'Expired · can be restored until {date}',
     dismissed: 'Dismissed · can be restored until {date}',
+    partsExpired: '{count, plural, one {# part expired} other {# parts expired}} · can be restored until {date}',
+    partsDismissed: '{count, plural, one {# part dismissed} other {# parts dismissed}} · can be restored until {date}',
     restore: 'Restore',
     restoreBusy: 'Restoring …',
     settled: 'Everything of this mail is handled.',
@@ -312,8 +317,10 @@ export const inboundMail = {
 
   toast: {
     filed: '{count, plural, one {# file filed} other {# files filed}}',
-    textFiled: 'Text filed in mail thread “{name}”',
-    textFiledNew: 'Text filed as a new mail thread',
+    filedBoth: '{count, plural, one {Filed # file and the mail text} other {Filed # files and the mail text}}',
+    textFiled: 'Mail text filed',
+    lineFile: '{name} → {folder}',
+    lineText: 'Mail text → “{name}”',
     filing: 'Being filed …',
     view: 'View',
     dismissed: 'Mail dismissed',
@@ -444,7 +451,7 @@ export const inboundMail = {
   },
 
   follow: {
-    offer: 'Follow this mail thread',
+    offer: 'Follow',
     thread: 'Mail thread “{name}”',
     explain:
       'Replies from verified domains already writing in the mail thread are added without a click. Attachments keep waiting here.',

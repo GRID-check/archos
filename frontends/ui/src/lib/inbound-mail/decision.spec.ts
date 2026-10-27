@@ -50,6 +50,7 @@ function context(overrides: Partial<DecisionContext> = {}): DecisionContext {
     part: () => ({ duplicateOf: null, revisionCandidate: null, revisionCandidateHidden: false }),
     readsFolder: (folderId) => folderId !== HIDDEN_FOLDER,
     readsDocument: () => true,
+    filedAs: () => null,
   }
   return {
     actor: { decidedBy: PERSON, via: 'app', proposalId: null },

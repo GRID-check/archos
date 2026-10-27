@@ -6,6 +6,7 @@
  * filed text offers the follow, only where it could ever hold.
  */
 
+import type { ReactNode } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import userEvent from '@testing-library/user-event'
 
@@ -62,7 +63,36 @@ describe('InboundMailDetail', () => {
     })
     expect(body.mails[0]).not.toHaveProperty('acknowledgeSender')
     await waitFor(() => expect(onChanged).toHaveBeenCalled())
-    expect(toast.success).toHaveBeenCalledWith('1 file filed', expect.anything())
+    // One toast that says where each part went and which Fassung it became.
+    expect(toast.success).toHaveBeenCalledTimes(1)
+    const [title, options] = vi.mocked(toast.success).mock.calls[0] as [string, { description: ReactNode; action: { label: string } }]
+    expect(title).toBe('Filed 1 file and the mail text')
+    expect(options.action.label).toBe('View')
+    render(<>{options.description}</>)
+    const lines = screen.getAllByTestId('filed-lines').at(-1) as HTMLElement
+    expect(within(lines).getAllByRole('listitem').map((line) => line.textContent)).toEqual([
+      'Mail text → “Stellplatznachweis” · revision 4',
+      'Bescheid_MA37_2026-10-14.pdf → Behörde/Bescheide · revision 1',
+    ])
+  })
+
+  it('says where each filed part went and which Fassung it became, with the way to it', async () => {
+    renderDetail('filed-outcome')
+    expect(screen.getByTestId('message-filed')).toHaveTextContent('Filed in mail thread “Stellplatznachweis” · revision 7 · Open')
+    expect(screen.getByTestId('status-filed')).toHaveTextContent('Filed in Behörde/Bescheide · revision 1 · Open')
+    // One part was dismissed, not the mail: the banner counts the part.
+    expect(screen.getByTestId('detail-restorable')).toHaveTextContent('1 part dismissed · can be restored until')
+    expect(screen.getByTestId('detail-restorable')).not.toHaveTextContent(/^Dismissed/)
+  })
+
+  it('says a part was filed, never where, when the viewer may not see its folder', () => {
+    const fixture = DETAIL_VARIANTS['filed-outcome']
+    const hidden = { ...fixture.view, parts: fixture.view.parts.map((part) => ({ ...part, filedAs: null, documentId: null })) }
+    render(
+      <InboundMailDetail projectId={PROJECT_ID} mailId={hidden.id} initial={hidden} initialText={fixture.text} folders={FOLDERS} client={fixtureClient({ detail: { ...fixture, view: hidden } })} onChanged={vi.fn()} now={FIXTURE_NOW} />
+    )
+    expect(screen.getByTestId('status-filed')).toHaveTextContent('Filed in Files')
+    expect(screen.getByTestId('status-filed')).not.toHaveTextContent('Behörde')
   })
 
   it('names the thread and its revision when only the text goes', () => {

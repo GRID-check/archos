@@ -13,7 +13,7 @@ vi.mock('./repository', () => ({}))
 vi.mock('@/lib/authz/folder-access', () => ({ getHiddenFolderIds: vi.fn() }))
 
 import { DOCUMENT_ID, FOLDER_ID, THREAD_ID, heldMail } from './__fixtures__/review'
-import { partCandidatesFor, senderEvidenceOf, threadCandidatesFor } from './candidates'
+import { filedAsFor, partCandidatesFor, senderEvidenceOf, threadCandidatesFor } from './candidates'
 import type { CandidateDocument, ThreadDocument } from './repository'
 
 const HIDDEN = '5f6a7b8c-9d0e-4f1a-8b2c-3d4e5f6a7b8c'
@@ -104,5 +104,31 @@ describe('a part’s documents for the viewer', () => {
   it('knows nothing of a document that is held, gone or binned', () => {
     const part = { duplicateOfDocumentId: DOCUMENT_ID, revisionCandidateDocumentId: DOCUMENT_ID }
     expect(partCandidatesFor(part, new Map(), new Set())).toEqual({ duplicateOf: null, revisionCandidate: null, revisionCandidateHidden: false })
+  })
+})
+
+describe('where a filed part went, for the viewer', () => {
+  const VERSION = '7b8c9d0e-1f2a-4b3c-8d4e-5f6a7b8c9d0e'
+  const filed = (folderId: string | null): CandidateDocument => ({ documentId: DOCUMENT_ID, name: 'S-101_C.pdf', folderId, folderPath: folderId ? 'Tragwerk' : null, nextVersion: 4 })
+
+  it('names the document, its folder and the Fassung the part became', () => {
+    expect(filedAsFor({ documentId: DOCUMENT_ID, documentVersionId: VERSION }, new Map([[DOCUMENT_ID, filed(FOLDER_ID)]]), new Map([[VERSION, 3]]), new Set())).toEqual({
+      name: 'S-101_C.pdf',
+      folderPath: 'Tragwerk',
+      version: 3,
+    })
+  })
+
+  it('says nothing of a document in a folder the viewer may not read, and nothing before filing', () => {
+    expect(filedAsFor({ documentId: DOCUMENT_ID, documentVersionId: VERSION }, new Map([[DOCUMENT_ID, filed(HIDDEN)]]), new Map([[VERSION, 3]]), new Set([HIDDEN]))).toBeNull()
+    expect(filedAsFor({ documentId: null, documentVersionId: null }, new Map(), new Map(), new Set())).toBeNull()
+  })
+
+  it('keeps the place and drops the number when that Fassung is gone', () => {
+    expect(filedAsFor({ documentId: DOCUMENT_ID, documentVersionId: VERSION }, new Map([[DOCUMENT_ID, filed(null)]]), new Map(), new Set())).toEqual({
+      name: 'S-101_C.pdf',
+      folderPath: null,
+      version: null,
+    })
   })
 })

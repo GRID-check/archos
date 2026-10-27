@@ -187,7 +187,8 @@ export const inboundMail: typeof en.inboundMail = {
     unreadable: 'Der Text konnte nicht gelesen werden und lässt sich daher nicht ablegen. Das Original enthält ihn.',
     followed: 'Text dem E-Mail-Verlauf angefügt (Verlauf folgen)',
     filed: 'In einem E-Mail-Verlauf abgelegt',
-    openThread: 'Öffnen',
+    filedTo: 'In E-Mail-Verlauf „{name}“ abgelegt',
+    followedTo: 'Dem E-Mail-Verlauf „{name}“ angefügt (Verlauf folgen)',
     nameStop: 'Namensprüfung: „{terms}“',
     releaseName: 'Trotzdem ablegen',
     blocks: {
@@ -216,6 +217,8 @@ export const inboundMail: typeof en.inboundMail = {
       not_offered: 'Dateityp wird in diesem Büro nicht abgelegt · im Original enthalten',
       filing: 'Wird abgelegt …',
       filed: 'In Dateien abgelegt',
+      filedTo: 'Abgelegt in {folder}',
+      version: 'Fassung {version}',
       dismissed: 'Verworfen',
       expired: 'Abgelaufen',
     },
@@ -311,6 +314,8 @@ export const inboundMail: typeof en.inboundMail = {
     quotaFull: 'Der Speicher des Büros ist voll. Es wurde nichts abgelegt; die E-Mail wartet weiter.',
     expired: 'Abgelaufen · wiederherstellbar bis {date}',
     dismissed: 'Verworfen · wiederherstellbar bis {date}',
+    partsExpired: '{count, plural, one {# Teil abgelaufen} other {# Teile abgelaufen}} · wiederherstellbar bis {date}',
+    partsDismissed: '{count, plural, one {# Teil verworfen} other {# Teile verworfen}} · wiederherstellbar bis {date}',
     restore: 'Wiederherstellen',
     restoreBusy: 'Wird wiederhergestellt …',
     settled: 'Alles an dieser E-Mail ist bearbeitet.',
@@ -319,8 +324,10 @@ export const inboundMail: typeof en.inboundMail = {
 
   toast: {
     filed: '{count, plural, one {# Datei abgelegt} other {# Dateien abgelegt}}',
-    textFiled: 'Text in E-Mail-Verlauf „{name}“ abgelegt',
-    textFiledNew: 'Text als neuer E-Mail-Verlauf abgelegt',
+    filedBoth: '{count, plural, one {# Datei und der E-Mail-Text abgelegt} other {# Dateien und der E-Mail-Text abgelegt}}',
+    textFiled: 'E-Mail-Text abgelegt',
+    lineFile: '{name} → {folder}',
+    lineText: 'E-Mail-Text → „{name}“',
     filing: 'Wird abgelegt …',
     view: 'Ansehen',
     dismissed: 'E-Mail verworfen',
@@ -459,7 +466,7 @@ export const inboundMail: typeof en.inboundMail = {
   },
 
   follow: {
-    offer: 'Diesem E-Mail-Verlauf folgen',
+    offer: 'Folgen',
     thread: 'E-Mail-Verlauf „{name}“',
     explain:
       'Antworten von bestätigten Domains, die schon im E-Mail-Verlauf schreiben, werden ohne Klick angefügt. Anhänge warten weiter hier.',

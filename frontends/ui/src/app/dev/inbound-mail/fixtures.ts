@@ -17,6 +17,8 @@
 
 import type {
   InboundMailAddressView,
+  InboundMailDecision,
+  InboundMailFiledAsView,
   InboundMailListView,
   InboundMailPartView,
   InboundMailSummaryView,
@@ -80,6 +82,7 @@ export function part(overrides: Partial<InboundMailPartView> & { name?: string }
     offered: true,
     lastFailure: null,
     documentId: null,
+    filedAs: null,
     duplicateOf: null,
     revisionCandidate: null,
     revisionCandidateHidden: false,
@@ -527,7 +530,20 @@ export const DETAIL_VARIANTS: Record<string, DetailFixture> = {
       status: 'handled',
       sender: { name: 'Mag. Huber', address: 'k.huber@ma37.wien.gv.at', domain: 'ma37.wien.gv.at', signerDomain: 'wien.gv.at', trust: 'external_verified', reason: 'dkim_pass', flags: [] },
       originalHeld: false,
-      parts: [messagePart({ id: fixtureId('message:fo'), state: 'filed', documentId: fixtureId('doc:stellplatz') }), permitDecision({ state: 'filed', documentId: fixtureId('doc:bescheid-neu') }), part({ name: 'Beilage_alt.pdf', state: 'dismissed', restorableUntil: daysAhead(7) })],
+      parts: [
+        messagePart({
+          id: fixtureId('message:fo'),
+          state: 'filed',
+          documentId: fixtureId('doc:stellplatz'),
+          filedAs: { name: 'Stellplatznachweis', folderPath: 'Korrespondenz', version: 7 },
+        }),
+        permitDecision({
+          state: 'filed',
+          documentId: fixtureId('doc:bescheid-neu'),
+          filedAs: { name: 'Bescheid_MA37_2026-10-14.pdf', folderPath: 'Behörde/Bescheide', version: 1 },
+        }),
+        part({ name: 'Beilage_alt.pdf', state: 'dismissed', restorableUntil: daysAhead(7) }),
+      ],
     }),
     text: text(),
   },
@@ -726,6 +742,26 @@ const pending = <T,>(): Promise<T> => new Promise<T>(() => {})
 const failing = <T,>(): Promise<T> => Promise.reject(new Error('fixture: refused'))
 
 /** A client over the fixtures: reads answer at once, decisions change the fixture in memory. */
+/** Where a decided part will have gone once the fixture's filing settles: what the server's `filedAs` would say. */
+function filedAsOf(view: InboundMailView, decision: InboundMailDecision, partId: string): InboundMailFiledAsView | null {
+  const message = decision.message
+  if (message?.partId === partId) {
+    if (message.thread.action === 'append') {
+      const threadId = message.thread.mailThreadId
+      const candidate = view.threadCandidates.find((entry) => entry.threadId === threadId)
+      return candidate ? { name: candidate.name, folderPath: candidate.folderPath, version: candidate.nextVersion } : null
+    }
+    const folder = FOLDERS.find((entry) => entry.id === (message.thread as { folderId: string | null }).folderId)
+    return { name: message.thread.name, folderPath: folder?.path ?? message.thread.newFolderPath ?? null, version: 1 }
+  }
+  const choice = decision.parts.find((entry) => entry.partId === partId)
+  if (!choice) return null
+  const revision = view.parts.find((entry) => entry.id === partId)?.revisionCandidate
+  if (choice.revisionOf && revision) return { name: revision.name, folderPath: revision.folderPath, version: revision.nextVersion }
+  const folder = FOLDERS.find((entry) => entry.id === choice.folderId)
+  return { name: choice.name, folderPath: folder?.path ?? choice.newFolderPath ?? null, version: 1 }
+}
+
 export function fixtureClient(options: { list?: ListFixture; detail?: DetailFixture } = {}): InboundMailClient {
   const views = new Map<string, InboundMailView>()
   for (const [id, fixture] of DETAIL_BY_ID) views.set(id, fixture.view)
@@ -764,7 +800,11 @@ export function fixtureClient(options: { list?: ListFixture; detail?: DetailFixt
           ...view,
           ifMatch: `${view.ifMatch}+`,
           parts: view.parts.map((candidate) =>
-            candidate.state !== 'waiting' ? candidate : filed.has(candidate.id) ? { ...candidate, state: 'filing' as const } : { ...candidate, state: 'dismissed' as const, restorableUntil: daysAhead(7) }
+            candidate.state !== 'waiting'
+              ? candidate
+              : filed.has(candidate.id)
+                ? { ...candidate, state: 'filing' as const, filedAs: filedAsOf(view, decision, candidate.id) }
+                : { ...candidate, state: 'dismissed' as const, restorableUntil: daysAhead(7) }
           ),
         })
         views.set(view.id, next)

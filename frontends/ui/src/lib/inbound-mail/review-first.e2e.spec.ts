@@ -368,6 +368,12 @@ describe.skipIf(!url)('review first: nothing is filed without a person’s decis
       { kind: 'attachment', state: 'filed', erased: true },
     ])
     expect(store.erased).toContain(file.storageKey)
+    // What the filing then says it became (`filedAs`): the Fassung of the document it made, read per project.
+    const filedPart = (await inTenant(() => repository.findMailParts([mailId]))).find((part) => part.kind === 'attachment')
+    expect(filedPart?.documentVersionId).toEqual(expect.any(String))
+    const versionId = filedPart?.documentVersionId as string
+    expect(await inTenant(() => repository.findVersionNumbers(projectId, [versionId]))).toEqual(new Map([[versionId, 1]]))
+    expect(await inTenant(() => repository.findVersionNumbers(crypto.randomUUID(), [versionId]))).toEqual(new Map())
     expect(
       (
         await rows<{ count: string }>(

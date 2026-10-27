@@ -22,7 +22,6 @@ import Link from 'next/link'
 import {
   AlertTriangle,
   Ban,
-  CheckCircle2,
   Copy,
   FileStack,
   FolderInput,
@@ -53,6 +52,7 @@ import { targetForPath, type AttachmentDraft, type FolderOption, type FolderTarg
 import { folderLeaf, readSuggestion } from '../lib/suggestion'
 import { AttachmentTargetDialog } from './attachment-target-dialog'
 import { AttachmentThumbnail } from './attachment-thumbnail'
+import { FiledTo } from './filed-to'
 import { CheckLine, FactLine } from './inbound-mail-atoms'
 
 export interface AttachmentRowProps {
@@ -91,7 +91,8 @@ export function AttachmentRow({
   const [pickerOpen, setPickerOpen] = useState(false)
   const [editOpen, setEditOpen] = useState(false)
   const { part, status, selectable } = entry
-  const name = part.filename ?? draft.name
+  // Filed, the bytes and their name are gone (D6): the document's name is what it is now called.
+  const name = part.filedAs?.name ?? part.filename ?? draft.name
   const suggestion = useMemo(() => readSuggestion(part.suggestion), [part.suggestion])
   const destinations = useMemo(
     () =>
@@ -202,19 +203,7 @@ export function AttachmentRow({
           </FactLine>
         )
       case 'filed':
-        return (
-          <FactLine icon={CheckCircle2} tone="default" testId="status-filed">
-            {t('attachments.status.filed')}
-            {part.documentId && (
-              <>
-                {' · '}
-                <Link className="underline-offset-2 hover:underline" href={documentFilesHref(projectId, part.documentId)}>
-                  {t('attachments.open')}
-                </Link>
-              </>
-            )}
-          </FactLine>
-        )
+        return <FiledTo projectId={projectId} part={part} />
       case 'dismissed':
       case 'expired':
         return (

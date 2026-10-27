@@ -27,6 +27,7 @@ import { isUniqueViolation } from '@/lib/db/errors'
 import type { DbExecutor, DbTransaction } from '@/lib/db/executor'
 import {
   documents,
+  documentVersions,
   inboundMailAddresses,
   inboundMailDecisions,
   inboundMailParts,
@@ -1017,6 +1018,24 @@ export async function findCandidateDocuments(projectId: string, documentIds: rea
     folderPath: row.folderPath ?? null,
     nextVersion: Number(row.nextVersion),
   }))
+}
+
+/**
+ * The Fassung each of these document versions is, by version id: what a filed
+ * part became (`filedAs` on the part's view). Only versions of the project's
+ * screened documents not in the bin, like {@link findCandidateDocuments};
+ * whether the viewer may read the folder is the caller's question.
+ */
+export async function findVersionNumbers(projectId: string, versionIds: readonly string[]): Promise<Map<string, number>> {
+  const ids = [...new Set(versionIds)].slice(0, 200)
+  if (ids.length === 0) return new Map()
+  const rows = await getDb()
+    .select({ id: documentVersions.id, versionNumber: documentVersions.versionNumber })
+    .from(documentVersions)
+    .innerJoin(documents, and(eq(documents.id, documentVersions.documentId), eq(documents.projectId, projectId)))
+    .where(and(inArray(documentVersions.id, ids), documentVisibleTo(SCREENED_ONLY)))
+    .limit(ids.length)
+  return new Map(rows.map((row) => [row.id, Number(row.versionNumber)]))
 }
 
 /**
