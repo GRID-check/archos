@@ -12,7 +12,7 @@
  */
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
-import { findOversizedWsHeader, stripClientContextHeaders, WS_HEADER_LINE_MAX_BYTES } from './ws-upgrade-headers.js'
+import { findOversizedWsHeader, stripClientContextHeaders, withoutSessionCookies, WS_HEADER_LINE_MAX_BYTES } from './ws-upgrade-headers.js'
 
 describe('stripClientContextHeaders', () => {
   it('removes every x-grid-* header a client sent', () => {
@@ -98,5 +98,34 @@ describe('server.js strips before it writes', () => {
     expect(strip, 'the upgrade handler no longer strips client headers').toBeGreaterThan(-1)
     expect(firstWrite).toBeGreaterThan(-1)
     expect(strip).toBeLessThan(firstWrite)
+  })
+})
+
+describe('withoutSessionCookies', () => {
+  it('drops the AuthKit session, whole or in chunks, and keeps every other cookie', () => {
+    expect(withoutSessionCookies('wos-session.0=a; idToken=t; wos-session.1=b; wos-session=z; ph_x=1')).toBe(
+      'idToken=t; ph_x=1',
+    )
+  })
+
+  it('keeps a cookie that only starts with the session name', () => {
+    expect(withoutSessionCookies('wos-session-other=1; wos-session.x=2')).toBe('wos-session-other=1; wos-session.x=2')
+  })
+
+  it('sends no Cookie line when the session was all there was', () => {
+    expect(withoutSessionCookies('wos-session.0=a; wos-session.1=b')).toBeUndefined()
+    expect(withoutSessionCookies(undefined)).toBeUndefined()
+  })
+
+  it('keeps a chat socket under the line limit however large the session grows', () => {
+    const chunks = Array.from({ length: 4 }, (_, index) => `wos-session.${index}=${'s'.repeat(3800)}`).join('; ')
+    const cookie = withoutSessionCookies(`${chunks}; idToken=t`)
+
+    expect(findOversizedWsHeader({ cookie })).toBeNull()
+  })
+
+  it('is what server.js forwards to the backend', () => {
+    const server = readFileSync(new URL('../../../server.js', import.meta.url), 'utf8')
+    expect(server).toMatch(/const cookie = withoutSessionCookies\(req\.headers\.cookie\)/)
   })
 })

@@ -30,7 +30,7 @@ import 'server-only'
 import type { AuthorizedSession } from '@/lib/auth/types'
 import { filterUsersWhoMayReadFolder, filterUsersWhoMayWriteFolder } from '@/lib/authz/folder-access'
 import { DOCUMENT_WRITE_PERMISSIONS } from '@/lib/authz/folder-access-rule'
-import { orgRoleHoldsPermission } from '@/lib/authz/org-role-permissions'
+import { rolesHoldPermission } from '@/lib/authz/org-role-permissions'
 import { ORG_PERMISSIONS } from '@/lib/authz/permissions'
 import {
   PERMISSION_CHECKS_AT_ONCE,
@@ -123,7 +123,7 @@ export async function mayWriteDocument(
     const curators = await inPool(people, PERMISSION_CHECKS_AT_ONCE, async (userId) => {
       const membership = await resolveSubjectMembership(organizationId, userId)
       if (!membership) return null
-      return (await orgRoleHoldsPermission(membership.role, ORG_PERMISSIONS.officeShelfManage, organizationId)) ? userId : null
+      return (await rolesHoldPermission(organizationId, membership.roles, ORG_PERMISSIONS.officeShelfManage)) ? userId : null
     })
     return new Set(curators.filter((userId): userId is string => userId !== null))
   }

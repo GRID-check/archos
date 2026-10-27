@@ -9,6 +9,8 @@ import {
   buildBaseCorpusStorageKey,
   buildImageDerivedPrefix,
   buildImageStorageKey,
+  buildPageTextPrefix,
+  buildPageTextStorageKey,
   buildRenditionStorageKey,
   buildStorageKey,
   buildThumbnailStorageKey,
@@ -336,5 +338,25 @@ describe('storageEndpoint', () => {
       process.env.SEAWEED_PUBLIC_ENDPOINT = saved.browser
       vi.resetModules()
     }
+  })
+})
+
+describe('buildPageTextStorageKey (ADR-0134)', () => {
+  const key = 'org/org-1/project/proj-1/doc/doc-1/v2/Baubeschreibung.pdf'
+
+  it('puts the two parts of a version’s page text beside its file', () => {
+    expect(buildPageTextPrefix(key)).toBe('org/org-1/project/proj-1/doc/doc-1/v2/_text/')
+    expect(buildPageTextStorageKey(key, 'pages.md')).toBe('org/org-1/project/proj-1/doc/doc-1/v2/_text/pages.md')
+    expect(buildPageTextStorageKey(key, 'index.json')).toBe('org/org-1/project/proj-1/doc/doc-1/v2/_text/index.json')
+  })
+
+  it('mints nothing but the two parts', () => {
+    expect(buildPageTextStorageKey(key, '../secret.pdf')).toBeNull()
+    expect(buildPageTextStorageKey(key, 'drawing_data/1.json')).toBeNull()
+    expect(buildPageTextStorageKey('nodir.pdf', 'pages.md')).toBeNull()
+  })
+
+  it('keeps an upload from taking the name of the prefix', () => {
+    expect(storageKeySegment('_text')).toBe('__text')
   })
 })

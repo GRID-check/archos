@@ -392,3 +392,29 @@ async def test_title_contains_is_still_a_post_filter_and_over_fetches(search):
     assert calls and all(call["top_k"] == TOP_K * 3 for call in calls)
     assert _cited_files(out) == {"Bescheid.pdf"}
     assert span["prefiltered"] == ["superseded"]
+
+
+class TestTheReadingNarrowsTheSearch:
+    """`document_type` and `refers_to` run inside the Qdrant query, on the facts the ingest read."""
+
+    def test_refers_to_a_norm_is_one_indexed_condition_on_references(self):
+        pushdown = prefilter.plan(doc_class=None, folder=None, file_name=None, refers_to="ÖNORM B 1600")
+        assert {"references": {"$in": ["norm:önorm b 1600"]}} in pushdown.clauses(user_shelf=True)
+        assert "references" in pushdown.fields(user_shelves=True)
+
+    def test_refers_to_a_plan_number_or_a_document_kind(self):
+        plan = prefilter.plan(doc_class=None, folder=None, file_name=None, refers_to="EP 05")
+        kind = prefilter.plan(doc_class=None, folder=None, file_name=None, refers_to="Brandschutzkonzept")
+        assert plan.references == ("plan:ep-05",)
+        assert kind.references == ("document:fire_safety_concept",)
+
+    def test_document_type_is_a_condition_of_its_own(self):
+        pushdown = prefilter.plan(doc_class=None, folder=None, file_name=None, document_type="permit")
+        assert {"document_type": "permit"} in pushdown.clauses(user_shelf=False)
+
+    def test_without_them_nothing_is_added(self):
+        pushdown = prefilter.plan(doc_class=None, folder=None, file_name=None)
+        assert pushdown.references == () and pushdown.document_type is None
+        assert not any(
+            "references" in clause or "document_type" in clause for clause in pushdown.clauses(user_shelf=True)
+        )

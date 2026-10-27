@@ -13,12 +13,14 @@ vi.mock('@/lib/workos/client', () => ({
   getWorkOS: () => ({ userManagement: { listOrganizationMemberships } }),
 }))
 
-const getCached = vi.fn(async (_key: string, _ttl: number, loader: () => Promise<unknown>) => loader())
+const getCached = vi.fn(async (_key: string, _ttl: number, loader: () => Promise<unknown>, _options?: unknown) => loader())
 vi.mock('@/lib/cache', () => ({
-  getCached: (key: string, ttl: number, loader: () => Promise<unknown>) => getCached(key, ttl, loader),
+  getCached: (key: string, ttl: number, loader: () => Promise<unknown>, options?: unknown) =>
+    getCached(key, ttl, loader, options),
 }))
 
-import { MEMBERSHIP_ROLES_TTL_MS, resolveMembershipRoles, rolesOfMembership } from './membership-roles'
+import { MEMBERSHIP_TTL_MS, rolesOfMembership } from '@/lib/authz/project-membership'
+import { resolveMembershipRoles } from './membership-roles'
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -37,8 +39,9 @@ describe('resolveMembershipRoles', () => {
       statuses: ['active'],
       limit: 1,
     })
-    expect(getCached).toHaveBeenCalledWith('membership-roles:org_1:user_1', MEMBERSHIP_ROLES_TTL_MS, expect.any(Function))
-    expect(MEMBERSHIP_ROLES_TTL_MS).toBeLessThanOrEqual(60_000)
+    // The one membership lookup, shared with the session and every third-party check.
+    expect(getCached).toHaveBeenCalledWith('org-membership:org_1:user_1', MEMBERSHIP_TTL_MS, expect.any(Function), expect.anything())
+    expect(MEMBERSHIP_TTL_MS).toBeLessThanOrEqual(60_000)
   })
 
   it('answers no roles for someone who is not an active member', async () => {

@@ -3,44 +3,24 @@
  */
 
 import { getTokenClaims, withAuth } from '@workos-inc/authkit-nextjs'
-import { getWorkOS } from '@/lib/workos/client'
 import { currentActingSession } from '@/lib/agent-api/acting-session'
-import { getCached } from '@/lib/cache'
-import { resolveMembershipRoles } from './membership-roles'
+import { lookupSubjectMembership, type SubjectMembership } from '@/lib/authz/project-membership'
 import { clearTenantContext, enterTenantContext } from '@/lib/db/tenant-context'
 import type { GridSession } from './types'
 
 /**
- * Membership ids change only when a user joins/leaves an org, but this lookup
- * sits on every authenticated request — without a cache it is a WorkOS network
- * round-trip per request. A missing membership is cached briefly so a signed-in
- * user without one doesn't hammer WorkOS either.
+ * The session's membership, id and roles, from the one membership lookup
+ * (cached a minute). `null` when the person is not an active member: no id and
+ * no roles, which every check reads as "no access". `undefined` when WorkOS
+ * could not be asked: no id either, and the token's roles stand in.
  */
-const MEMBERSHIP_TTL_MS = 10 * 60_000
-const MEMBERSHIP_NEGATIVE_TTL_MS = 30_000
-
-/**
- * Resolve the WorkOS organization membership id for a user + organization.
- *
- * Returns `null` when no active membership is found.
- */
-async function resolveOrganizationMembershipId(
-  userId: string,
-  organizationId: string
-): Promise<string | null> {
-  return getCached(
-    `membership:${organizationId}:${userId}`,
-    MEMBERSHIP_TTL_MS,
-    async () => {
-      const memberships = await getWorkOS().userManagement.listOrganizationMemberships({
-        userId,
-        organizationId,
-        limit: 1,
-      })
-      return memberships.data[0]?.id ?? null
-    },
-    { negativeTtlMs: MEMBERSHIP_NEGATIVE_TTL_MS },
-  )
+async function membershipOf(organizationId: string, userId: string): Promise<SubjectMembership | null | undefined> {
+  try {
+    return await lookupSubjectMembership(organizationId, userId)
+  } catch (error) {
+    console.warn(`[session] membership lookup failed for ${userId}:`, error)
+    return undefined
+  }
 }
 
 /**
@@ -92,12 +72,7 @@ export async function getGridSession(): Promise<GridSession | null> {
 
   const organizationId = auth.organizationId ?? null
 
-  const [organizationMembershipId, memberRoles] = organizationId
-    ? await Promise.all([
-        resolveOrganizationMembershipId(auth.user.id, organizationId),
-        resolveMembershipRoles(organizationId, auth.user.id),
-      ])
-    : [null, null]
+  const membership = organizationId ? await membershipOf(organizationId, auth.user.id) : undefined
   const tokenRole = auth.role ?? (typeof claims.role === 'string' ? claims.role : null)
 
   const session: GridSession = {
@@ -106,12 +81,12 @@ export async function getGridSession(): Promise<GridSession | null> {
     name,
     accessToken: auth.accessToken,
     organizationId,
-    organizationMembershipId,
+    organizationMembershipId: membership?.organizationMembershipId ?? null,
     role: tokenRole,
     // The roles folder access is decided on (ADR-0088): WorkOS's membership,
     // at most a minute old, so a revoked role stops opening folders within a
     // minute; the token's claim only when WorkOS could not be asked.
-    roles: memberRoles ?? sessionRoles(auth.roles, claims.roles, tokenRole),
+    roles: membership === undefined ? sessionRoles(auth.roles, claims.roles, tokenRole) : (membership?.roles ?? []),
     permissions: auth.permissions ?? [],
     featureFlags: auth.featureFlags ?? null,
     profilePictureUrl: auth.user.profilePictureUrl ?? null,

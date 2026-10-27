@@ -10,9 +10,9 @@
  * such roles so the contract is exercised rather than merely asserted.
  *
  * Org- and platform-tier permissions arrive in the AuthKit JWT `permissions`
- * claim for the active organization and are checked with zero I/O. Project- and
- * skill-tier permissions are per-resource and go through WorkOS FGA — see
- * `./decide` for the single entry point across all four tiers.
+ * claim for the active organization and are checked with zero I/O. Project-tier
+ * permissions are per-resource and go through WorkOS FGA — see `./decide` for
+ * the single entry point across the tiers.
  */
 
 import type { GridSession } from '@/lib/auth/types'
@@ -20,8 +20,6 @@ import {
   ORG_PERMISSION_SPECS,
   PLATFORM_PERMISSION_SPECS,
   PROJECT_PERMISSION_SPECS,
-  ROLES,
-  SKILL_PERMISSION_SPECS,
   FOLDER_PERMISSION_SPECS,
 } from './catalog'
 
@@ -98,13 +96,6 @@ export const PROJECT_PERMISSIONS = {
   skillsManage: 'project:skills:manage',
 } as const
 
-/** Skill-tier permissions, checked per skill schedule via WorkOS FGA. */
-export const SKILL_PERMISSIONS = {
-  view: 'skill:view',
-  run: 'skill:run',
-  manage: 'skill:manage',
-} as const
-
 /** Folder tier (ADR-0097): held through a folder role on a folder with its own list. */
 export const FOLDER_PERMISSIONS = {
   read: 'folder:read',
@@ -114,7 +105,6 @@ export const FOLDER_PERMISSIONS = {
 export type OrgPermission = (typeof ORG_PERMISSIONS)[keyof typeof ORG_PERMISSIONS]
 export type PlatformPermission = (typeof PLATFORM_PERMISSIONS)[keyof typeof PLATFORM_PERMISSIONS]
 export type ProjectPermission = (typeof PROJECT_PERMISSIONS)[keyof typeof PROJECT_PERMISSIONS]
-export type SkillPermission = (typeof SKILL_PERMISSIONS)[keyof typeof SKILL_PERMISSIONS]
 export type FolderPermission = (typeof FOLDER_PERMISSIONS)[keyof typeof FOLDER_PERMISSIONS]
 
 /**
@@ -124,10 +114,8 @@ export type FolderPermission = (typeof FOLDER_PERMISSIONS)[keyof typeof FOLDER_P
  */
 export type KnownPermission = OrgPermission | PlatformPermission
 
-/** Any permission in the catalog, across all four tiers. */
-export type AnyPermission = KnownPermission | ProjectPermission | SkillPermission
-
-const EMPTY_PERMISSIONS: ReadonlySet<string> = new Set()
+/** Any permission `./decide` answers: the claims tiers and the project tier. */
+export type AnyPermission = KnownPermission | ProjectPermission
 
 /**
  * Permissions that were renamed: the current slug, then the slugs it used to
@@ -148,104 +136,19 @@ export function acceptedPermissionSlugs(permission: string): readonly string[] {
 }
 
 /**
- * Permissions each ENVIRONMENT-SCOPED ORG role holds, straight from the catalog.
+ * Whether the session holds a permission for its ACTIVE organization: the
+ * AuthKit token's `permissions` claim names it, or a name it was renamed from.
  *
- * This table is what bounds the legacy role implication below. Platform-org
- * roles are excluded on purpose: a `platform:*` permission must never be
- * reachable by implication, only by real platform-org membership.
+ * The claim is WorkOS's answer, and the only one. The deploy applies the catalog
+ * to WorkOS (`grid-app-authz-catalog`), so a role holds in WorkOS what the
+ * catalog says, and a session minted before a change catches up at its next
+ * refresh, within minutes. There used to be a second answer here, the catalog's
+ * permissions for the role SLUG, for sessions minted before provisioning. It
+ * handed a role named `admin` the whole Admin bundle whatever WorkOS said it
+ * held, and it outlived the gap it was written for.
  */
-const ORG_ROLE_PERMISSIONS: ReadonlyMap<string, ReadonlySet<string>> = new Map(
-  ROLES.filter((role) => role.tier === 'org' && role.scope === 'environment').map((role) => [
-    role.slug,
-    new Set(role.permissions),
-  ])
-)
-
-/**
- * The same table for PLATFORM-ORG roles, kept separate on purpose.
- *
- * `hasPermission` must never consult this one — that is the invariant the
- * comment above rests on. It exists for `./platform`, which has already
- * established real platform-org membership before it asks what that membership's
- * role holds, and which therefore needs the bounded implication for the same
- * reason the org tier does: a session minted before `platform:settings:view` was
- * provisioned carries the role slug without the claim.
- */
-const PLATFORM_ROLE_PERMISSIONS: ReadonlyMap<string, ReadonlySet<string>> = new Map(
-  ROLES.filter((role) => role.scope === 'platform-org').map((role) => [
-    role.slug,
-    new Set(role.permissions),
-  ])
-)
-
-/**
- * Every permission the catalog says an ENVIRONMENT-SCOPED org role holds.
- *
- * Exported so the two places that must reason about a THIRD PARTY's org role —
- * `./project-membership` mirroring the project bypass for an invitee, and the
- * provisioning check — derive it from the same table `hasPermission` uses
- * instead of re-deriving "which roles are admin-ish" by hand.
- */
-export function permissionsForOrgRole(roleSlug: string | null | undefined): ReadonlySet<string> {
-  if (!roleSlug) return EMPTY_PERMISSIONS
-  return ORG_ROLE_PERMISSIONS.get(roleSlug) ?? EMPTY_PERMISSIONS
-}
-
-/** Every permission the catalog says a PLATFORM-ORG role holds. */
-export function permissionsForPlatformRole(
-  roleSlug: string | null | undefined
-): ReadonlySet<string> {
-  if (!roleSlug) return EMPTY_PERMISSIONS
-  return PLATFORM_ROLE_PERMISSIONS.get(roleSlug) ?? EMPTY_PERMISSIONS
-}
-
-/**
- * Whether the session holds a permission for its ACTIVE organization.
- *
- * Two ways to hold one:
- *
- *  1. The JWT `permissions` claim names it. This is the normal path.
- *  2. **Bounded legacy implication.** Sessions minted before the permission
- *     rollout — or in an environment whose provisioning has not been replayed —
- *     carry a role slug without the granular claims. Such a session holds
- *     exactly the permissions the CATALOG says that role holds.
- *
- * Rule 2 replaces a former wildcard — `role === 'admin'` used to imply every
- * `org:*` permission, including ones that did not exist yet. That made a
- * restricted admin impossible to build and silently pre-granted each new
- * permission to every admin the moment it was defined. Deriving the implication
- * from the catalog keeps existing admins working while making the grant finite,
- * reviewable, and identical to what WorkOS would return once provisioned.
- *
- * ## Why the implication applies even to a session that HAS claims
- *
- * Because the catalog routinely ships ahead of provisioning, and this fallback
- * is the only thing that keeps that gap invisible to users. Restricting it to
- * claims-less sessions was tried here and reverted: both live environments hold
- * an Admin role WITHOUT `org:skills:manage` — the catalog has it, the
- * provisioner has not been re-run — so every admin carrying claims would have
- * lost the org skills toolbox the moment the narrower rule shipped. Turning
- * every catalog/WorkOS gap into a silent permission removal is a worse failure
- * than the one the narrowing fixes.
- *
- * The cost, stated plainly: a WorkOS role whose slug happens to be `admin` is
- * handed the whole Admin bundle whatever it actually holds, so a restricted
- * admin must be built as a NEW role rather than by editing Admin. That is
- * bounded (the catalog decides the set), visible (the `provision:authz --check`
- * drift job compares the two), and it retires when the implication does.
- *
- * `platform:*` is never implied, by construction: the map above only contains
- * environment-scoped org-tier roles.
- */
-export function hasPermission(
-  session: Pick<GridSession, 'role' | 'permissions'>,
-  permission: KnownPermission
-): boolean {
-  const accepted = acceptedPermissionSlugs(permission)
-  if (accepted.some((slug) => session.permissions.includes(slug))) return true
-  if (!session.role) return false
-  const implied = ORG_ROLE_PERMISSIONS.get(session.role)
-  return implied ? accepted.some((slug) => implied.has(slug)) : false
+export function hasPermission(session: Pick<GridSession, 'permissions'>, permission: KnownPermission): boolean {
+  return acceptedPermissionSlugs(permission).some((slug) => session.permissions.includes(slug))
 }
 
 /** Every permission slug the catalog defines, for provisioning and tests. */
@@ -256,9 +159,6 @@ export const ALL_PLATFORM_PERMISSION_SLUGS: readonly string[] = PLATFORM_PERMISS
   (permission) => permission.slug
 )
 export const ALL_PROJECT_PERMISSION_SLUGS: readonly string[] = PROJECT_PERMISSION_SPECS.map(
-  (permission) => permission.slug
-)
-export const ALL_SKILL_PERMISSION_SLUGS: readonly string[] = SKILL_PERMISSION_SPECS.map(
   (permission) => permission.slug
 )
 export const ALL_FOLDER_PERMISSION_SLUGS: readonly string[] = FOLDER_PERMISSION_SPECS.map(

@@ -28,7 +28,7 @@ const ErrorContent = (): ReactNode => {
   const searchParams = useSearchParams()
   const t = useTranslations('errors')
   const error = searchParams?.get('error') || 'Default'
-  const knownKeys = ['Configuration', 'AccessDenied', 'Verification', 'Default']
+  const knownKeys = ['Configuration', 'AccessDenied', 'Verification', 'SessionExpired', 'Default']
   const messageKey = knownKeys.includes(error) ? error : 'Default'
   const errorMessage = t(`auth.messages.${messageKey}`)
 

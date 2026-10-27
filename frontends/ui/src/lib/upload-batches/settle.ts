@@ -39,6 +39,7 @@ import { loadOrganizationDirectory } from '@/lib/sharing/directory'
 import { quarantineNoticePayload } from '@/lib/upload-screening/quarantine'
 import { auditOwedQuarantines } from '@/lib/upload-screening/quarantine-audit'
 import { batchIdsOfDocuments, completeSettledBatches, reopenCompletedBatches } from './repository'
+import { uploadReportFor } from './upload-report-service'
 
 export interface SettledDocument {
   id: string
@@ -137,8 +138,17 @@ async function projectNameOf(batch: UploadBatch): Promise<string | null> {
   return project?.name ?? null
 }
 
+/**
+ * The uploader's row: where the upload went, and for a project upload the
+ * Eingangsbericht, what it brought the project (`./upload-report`). The report
+ * is a courtesy and never costs the row: it answers null rather than throw or
+ * wait past its bound (`uploadReportFor`), and the row goes out without it.
+ */
 async function completionEmission(batch: UploadBatch): Promise<InboxEmission> {
-  const subject = await projectNameOf(batch)
+  const [subject, report] = await Promise.all([
+    projectNameOf(batch),
+    uploadReportFor(batch).catch(() => null),
+  ])
   return {
     organizationId: batch.organizationId,
     recipientUserId: batch.createdBy,
@@ -148,7 +158,7 @@ async function completionEmission(batch: UploadBatch): Promise<InboxEmission> {
     anchorId: batch.id,
     actorUserId: null,
     groupKey: inboxGroupKey('upload.completed', 'upload_batch', batch.id, batch.id),
-    payload: subject ? { subject } : {},
+    payload: { ...(subject ? { subject } : {}), ...(report ? { report } : {}) },
   }
 }
 

@@ -190,6 +190,7 @@ const RESERVED_DERIVED_SEGMENTS: ReadonlySet<string> = new Set([
   '_render.pdf',
   '_img',
   '_bim',
+  '_text',
   'mail-imports',
 ])
 
@@ -364,6 +365,35 @@ export function buildImageStorageKey(storageKey: string, index: number): string 
   const prefix = buildImageDerivedPrefix(storageKey)
   if (!prefix) return null
   return `${prefix}${index}.jpg`
+}
+
+/**
+ * The parts of a version's stored page text (ADR-0134): what each page says, and the
+ * index that locates every page in it. A closed list, so the presign route can mint
+ * nothing else under the prefix.
+ */
+export const PAGE_TEXT_PARTS = ['pages.md', 'index.json'] as const
+export type PageTextPart = (typeof PAGE_TEXT_PARTS)[number]
+
+/**
+ * The directory a version's stored page text lives in, beside the version's file:
+ * `<dir>/_text/`. A prefix, like `_img/`, so a delete can sweep it without a list.
+ */
+export function buildPageTextPrefix(storageKey: string): string | null {
+  const idx = storageKey.lastIndexOf('/')
+  if (idx <= 0 || idx === storageKey.length - 1) return null
+  return `${storageKey.slice(0, idx)}/_text/`
+}
+
+/**
+ * Storage key of one part of a version's stored page text: `<dir>/_text/pages.md` or
+ * `<dir>/_text/index.json`. Built from the document's own key and a part from
+ * {@link PAGE_TEXT_PARTS}, never from a caller's path; null for anything else.
+ */
+export function buildPageTextStorageKey(storageKey: string, part: string): string | null {
+  if (!(PAGE_TEXT_PARTS as readonly string[]).includes(part)) return null
+  const prefix = buildPageTextPrefix(storageKey)
+  return prefix ? `${prefix}${part}` : null
 }
 
 /**

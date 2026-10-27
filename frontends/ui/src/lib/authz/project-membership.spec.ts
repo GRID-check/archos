@@ -36,6 +36,7 @@ describe('resolveSubjectMembership', () => {
     await expect(resolveSubjectMembership('org_1', 'u-anna')).resolves.toEqual({
       organizationMembershipId: 'om_anna',
       role: 'member',
+      roles: ['member'],
     })
   })
 

@@ -1,6 +1,9 @@
 # Document Ingestion Pipeline
 
-End-to-end flow from file upload to vector search.
+End-to-end flow from file upload to vector search, step by step, with the history
+of each fix. For the pipeline drawn as diagrams, with what each stage costs and
+what fails a file, start at
+[`architecture/ingestion-pipeline.md`](../architecture/ingestion-pipeline.md).
 
 ---
 

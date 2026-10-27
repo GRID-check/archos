@@ -495,6 +495,39 @@ describe('listInbox — projection', () => {
     expect(byId.get('gone')).toMatchObject({ dueOn: null, openMarks: null, marksRevision: null })
   })
 
+  it('carries an upload report only in its shape, and withholds it when redacted', async () => {
+    const report = {
+      projectId: 'proj-1',
+      documents: 3,
+      read: 3,
+      byType: [{ type: 'submission_drawing', count: 3 }],
+      facts: 1,
+      factSamples: [{ key: 'storeys_above_ground', value: '4', unit: null }],
+      newFindings: 1,
+      findings: [{ kind: 'missing_document', key: 'soil_report', label: null, documents: 3 }],
+      resolvedFindings: 0,
+      unresolvedReferences: 1,
+      pagesNotRead: 0,
+      documentsNotFullyRead: 0,
+    }
+    vi.mocked(repository.listInboxItems).mockResolvedValue([
+      row({ id: 'ok', resourceId: 'conv_ok', payload: { report } }),
+      row({ id: 'junk', resourceId: 'conv_ok', payload: { report: { ...report, read: 'zwölf' } } }),
+      row({ id: 'gone', resourceId: 'conv_gone', payload: { report } }),
+    ])
+    vi.mocked(resolveResourceAccess).mockImplementation(async (_session, _type, resourceId) => {
+      if (resourceId === 'conv_gone') throw new NotFoundError()
+      return reachable
+    })
+
+    const { items } = await listInbox(session)
+    const byId = new Map(items.map((item) => [item.id, item]))
+
+    expect(byId.get('ok')?.uploadReport).toEqual(report)
+    expect(byId.get('junk')?.uploadReport).toBeNull()
+    expect(byId.get('gone')?.uploadReport).toBeNull()
+  })
+
   it('leaves an unresolvable actor nameless rather than showing a raw user id', async () => {
     vi.mocked(repository.listInboxItems).mockResolvedValue([row({ actorUserId: 'user_deactivated' })])
     vi.mocked(resolvePeople).mockResolvedValue(new Map())
