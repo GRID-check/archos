@@ -37,7 +37,6 @@ import { compactFilters, type SearchUrlState } from '../lib/search-url'
 import type { SectionView } from '../lib/sections'
 import {
   LabelledSwitch,
-  MetaLine,
   MetaPart,
   RegisterBar,
   RegisterBody,
@@ -389,7 +388,7 @@ function RegisterStackLine({ hit, columns, active, id }: { hit: DocumentHit; col
       href={documentHitHref(hit, from)}
       code={code || undefined}
       title={hit.title ?? hit.name}
-      meta={<MetaLine parts={columns.map(meta)} />}
+      meta={columns.map(meta)}
       where={
         // Its own line under the meta, never a part of it (`RegisterStackRow`).
         !shown.has('project') ? undefined : hit.shelf === 'office_shelf' ? (

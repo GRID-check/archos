@@ -890,7 +890,8 @@ export function RegisterStackRow({
   /** „EP-03 · C“; absent for a document without a number. */
   code?: ReactNode
   title: ReactNode
-  meta?: ReactNode
+  /** What else the register shows, part by part: dated, scaled, typed, authored. */
+  meta?: ReadonlyArray<ReactNode | null | undefined | false>
   /** Where it is kept: the `ShelfMark`. */
   where?: ReactNode
   aside?: ReactNode
@@ -923,10 +924,35 @@ export function RegisterStackRow({
           <span className="min-w-0 flex-1 truncate text-sm font-semibold tracking-tight text-foreground">{title}</span>
           {aside ? <span className="flex shrink-0 items-center gap-1.5">{aside}</span> : null}
         </span>
-        {meta ? <span className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs text-muted-foreground">{meta}</span> : null}
+        {meta ? <StackMeta parts={meta} /> : null}
         {where ? <span className="flex min-w-0 pt-0.5 text-xs">{where}</span> : null}
       </Link>
     </li>
+  )
+}
+
+/**
+ * A phone entry's meta line. Each part carries its dot IN FRONT, in a 12px
+ * gutter, and the line is pulled 12px left inside a clipping box: the part
+ * that starts a line has its dot cut off, so a wrapped line neither ends nor
+ * starts on a separator, whichever part the width breaks before.
+ */
+function StackMeta({ parts }: { parts: ReadonlyArray<ReactNode | null | undefined | false> }): JSX.Element | null {
+  const present = parts.filter((part): part is ReactNode => Boolean(part))
+  if (present.length === 0) return null
+  return (
+    <span className="flex min-w-0 overflow-hidden text-xs text-muted-foreground">
+      <span className="-ml-3 flex min-w-0 flex-wrap items-center gap-y-0.5">
+        {present.map((part, index) => (
+          <span
+            key={index}
+            className="inline-flex min-w-0 max-w-full items-center before:w-3 before:shrink-0 before:text-center before:text-muted-foreground/60 before:content-['·']"
+          >
+            <span className="min-w-0 truncate">{part}</span>
+          </span>
+        ))}
+      </span>
+    </span>
   )
 }
 
