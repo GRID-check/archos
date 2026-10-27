@@ -70,12 +70,15 @@ function checkedFormat(audio: Blob): string {
 }
 
 async function postToBackend(session: AuthorizedSession, body: object): Promise<Response> {
+  const backendUrl = getBackendUrl()
+  // Outside the try: a deployment without the token is a 503, not a 502 for the recording.
+  const serviceHeaders = internalServiceHeaders(backendUrl)
   try {
-    return await fetch(`${getBackendUrl()}/v1/dictation`, {
+    return await fetch(`${backendUrl}/v1/dictation`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        ...internalServiceHeaders(getBackendUrl()),
+        ...serviceHeaders,
         // Whose credential and data policy, and whose ledger row.
         'x-grid-organization-id': session.organizationId,
         'x-grid-user-id': session.userId,
