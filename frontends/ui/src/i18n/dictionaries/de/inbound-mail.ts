@@ -147,7 +147,7 @@ export const inboundMail: typeof en.inboundMail = {
     choiceLabel: 'Wie der Text abgelegt wird',
     masked: 'Unkenntlich ablegen',
     maskedHint: 'Die Fundstellen werden im E-Mail-Verlauf unkenntlich gemacht. Das Original bleibt unverändert.',
-    own_thread: 'Als eigenen E-Mail-Verlauf ablegen',
+    own_thread: 'Getrennt ablegen (eigener E-Mail-Verlauf)',
     own_threadHint: 'Der ganze Text kommt in einen neuen E-Mail-Verlauf, getrennt vom bestehenden.',
     full: 'Ungekürzt in den E-Mail-Verlauf',
     fullHint: 'Der ganze E-Mail-Verlauf wird zurückgehalten, bis jemand ihn prüft.',

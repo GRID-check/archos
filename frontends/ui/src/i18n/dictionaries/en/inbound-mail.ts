@@ -141,7 +141,7 @@ export const inboundMail = {
     choiceLabel: 'How the text is filed',
     masked: 'File it unrecognizable',
     maskedHint: 'The findings are made unrecognizable in the mail thread. The original stays unchanged.',
-    own_thread: 'File it as a mail thread of its own',
+    own_thread: 'File separately (a mail thread of its own)',
     own_threadHint: 'The full text goes into a new mail thread, apart from the existing one.',
     full: 'File it unabridged into the mail thread',
     fullHint: 'The whole mail thread is held back until someone checks it.',

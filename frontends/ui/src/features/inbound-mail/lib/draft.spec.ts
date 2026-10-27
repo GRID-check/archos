@@ -77,7 +77,7 @@ describe('edits', () => {
     expect(edited.attachments[0].suggested.documentType).toBe(false)
   })
 
-  it('„Als eigenen E-Mail-Verlauf ablegen“ makes a new thread (D13)', () => {
+  it('„Getrennt ablegen (eigener E-Mail-Verlauf)“ makes a new thread (D13)', () => {
     const view = mail({ parts: [messagePart({ id: message.id, contentFindings: ['term'] })] })
     const draft = chooseFinding(initialDraft(view, FOLDERS, copy), 'own_thread', view, FOLDERS, copy)
     expect(draft.message).toMatchObject({ findingChoice: 'own_thread', target: { kind: 'create' } })
