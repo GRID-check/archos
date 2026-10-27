@@ -147,7 +147,7 @@ def format_user_facing_tool_error(
         return detailed
 
     # Detailed diagnostics (tool names, missing keys) are only shown when
-    # AIQ_DEV_ENV is "cli" — set automatically by scripts/start_cli.sh.
+    # AIQ_DEV_ENV is "cli", which deploy/.env.example sets for local development.
     return TOOLS_UNAVAILABLE_MESSAGE
 
 

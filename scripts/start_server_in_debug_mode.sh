@@ -58,8 +58,6 @@ if ! grep -q "front_end:" "$REPO_ROOT/$CONFIG_FILE" 2>/dev/null; then
     echo ""
     echo "Error: Config file '$CONFIG_FILE' does not have front_end configured."
     echo "This script requires a web-enabled config (config_oib_openrouter.yml)"
-    echo ""
-    echo "For CLI mode, use: ./scripts/start_cli.sh --config_file $CONFIG_FILE"
     exit 1
 fi
 

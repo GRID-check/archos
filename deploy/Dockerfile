@@ -65,8 +65,6 @@ COPY pyproject.toml uv.lock ./
 COPY src/ ./src/
 COPY sources/ ./sources/
 COPY frontends/aiq_api/ ./frontends/aiq_api/
-COPY frontends/cli/ ./frontends/cli/
-COPY frontends/debug/ ./frontends/debug/
 COPY configs/ ./configs/
 COPY scripts/ ./scripts/
 # The spatial engine behind `ifc_measure` (ADR-0045 amendment / roadmap §13b).
@@ -117,20 +115,16 @@ RUN chmod +x /app/deploy/start_web.py \
     && chown -R 1000:1000 /app/data
 
 # =============================================================================
-# Stage 2: Development (includes CLI)
+# Stage 2: Development (adds Node.js)
 # =============================================================================
 FROM builder AS dev-builder
-
-# Install CLI and debug UI for development
-RUN uv pip install --no-deps -e ./frontends/cli \
-    && uv pip install --no-deps -e ./frontends/debug
 
 # Install Node.js for frontend development inside the dev container
 RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
     && DEBIAN_FRONTEND=noninteractive apt-get install -y nodejs \
     && rm -rf /var/lib/apt/lists/*
 
-RUN /app/.venv/bin/python -c "import aiq_api; import aiq_research_cli; import aiq_debug; import knowledge_layer; print('✓ All packages installed')"
+RUN /app/.venv/bin/python -c "import aiq_api; import knowledge_layer; print('✓ All packages installed')"
 
 # =============================================================================
 # Stage 3: Development runtime

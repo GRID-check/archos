@@ -9,7 +9,7 @@ mounts for each role, and not on the lists the plugin keeps.
 
 The baseline is built from the ingredients instead of from the plugin: every
 router registrar found under ``aiq_api/routes/`` by name, NAT's own routes, the
-job routes, the debug console and the chat socket, mounted on one app the way
+job routes and the chat socket, mounted on one app the way
 the single process did. A router added under ``routes/`` and assigned to no role
 is in the baseline and in neither role; one assigned to both is in both roles.
 Either fails here.
@@ -143,8 +143,6 @@ async def _build(worker: plugin.AIQAPIWorker) -> FastAPI:
 
 async def _baseline(worker: plugin.AIQAPIWorker) -> FastAPI:
     """The routes the single process mounted, from the registrars and the pieces and not from the plugin's lists."""
-    from aiq_debug import register_debug_routes
-
     app = FastAPI()
     router = APIRouter()
     app_level = []
@@ -163,7 +161,6 @@ async def _baseline(worker: plugin.AIQAPIWorker) -> FastAPI:
         app.add_api_websocket_route(plugin.CHAT_SOCKET_PATH, plugin.chat_socket_endpoint(create.return_value))
     for function in app_level:
         await function(app, builder, worker)
-    await register_debug_routes(app)
     return app
 
 
@@ -176,7 +173,6 @@ def apps(tmp_path_factory: pytest.TempPathFactory) -> dict[str, FastAPI]:
     with pytest.MonkeyPatch.context() as env, contextlib.ExitStack() as stack:
         env.setenv("NAT_JOB_STORE_DB_URL", f"sqlite+aiosqlite:///{root}/jobs.db")
         env.setenv("NAT_CONFIG_FILE", str(config_file))
-        env.setenv("AIQ_ENABLE_DEBUG", "true")
         env.setenv("REQUIRE_AUTH", "false")
         # No handshake with a BFF, no handlers installed on the test process.
         stack.enter_context(patch.object(plugin.AIQAPIWorker, "_schedule_internal_api_check", lambda self: None))
@@ -235,8 +231,9 @@ def test_each_role_serves_what_its_deployment_is_there_for(route_sets):
         ("POST", "/v1/admin/oib/sync"),
         ("GET", "/v1/oib/status"),
         ("POST", "/v1/maintenance/housekeeping/base-corpus"),
-        ("GET", "/debug"),
     } <= api
+    # The blueprint's debug console was removed with its package; nothing mounts it again.
+    assert not any(path == "/debug" for _, path in api | chat)
     assert not any(path.startswith(("/v1/jobs", "/v1/ingest", "/v1/oib", "/v1/admin/oib")) for _, path in chat)
     assert not any(path in (plugin.CHAT_SOCKET_PATH, CHAT_OCCUPANCY_PATH, "/generate") for _, path in api)
 

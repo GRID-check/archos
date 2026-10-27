@@ -379,7 +379,7 @@ def test_the_frontend_plugins_a_run_loads_come_from_this_checkout():
     import census
 
     packages = census.source_packages()
-    for name in ("aiq_api", "aiq_debug"):
+    for name in ("aiq_api",):
         assert packages[name].is_relative_to(census.ROOT.resolve())
         assert (packages[name] / "__init__.py").exists()
 

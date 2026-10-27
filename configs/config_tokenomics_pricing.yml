@@ -8,10 +8,6 @@
 # Optional: mirror `eval.general.output_dir` from your profiling eval config so the
 # report defaults to the same folder as the trace when you omit `--output`.
 
-eval:
-  general:
-    output_dir: frontends/benchmarks/deepresearch_bench/results
-
 tokenomics:
   pricing:
     models:
