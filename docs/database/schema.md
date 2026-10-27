@@ -1040,7 +1040,7 @@ answers by reading the winner. Index `(project_id, created_at)`.
 | `sender_address`, `sender_name`, `subject` | `text` | lengths; `sender_address` required while `waiting` | Gone once the mail settles |
 | `participants` | `jsonb` | array ≤ 200 | From, Reply-To, To, Cc, the project addresses taken out |
 | `participant_domains` | `text[]` | ≤ 50 | |
-| `recipient_count` | `integer` | 0..1000 | |
+| `recipient_count` | `integer` | 0..1000 | To and Cc recipients, the project addresses not counted; more than the To/Cc `participants` kept means the 200 cap cut some, and a follow refuses the mail (condition 5, `recipients_unchecked`) |
 | `sender_trust` | `text` | `member_verified`/`member_unverified`/`external_verified`/`external_unverified`; required when `waiting` or `settled` | A label and a condition on defaults, never a gate |
 | `sender_user_id` | `text` | set exactly when the trust is `member_*` (`inbound_mails_member_has_user`); person-shaped | Read only under the notice rules |
 | `sender_reason` | `text` | 20 known codes; set exactly with the trust; `dkim_pass` exactly when `*_verified` (`inbound_mails_reason_with_trust`) | |

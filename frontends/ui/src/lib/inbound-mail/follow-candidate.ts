@@ -58,6 +58,8 @@ export async function judgeFollow(
         .filter((participant) => participant.role !== 'reply_to')
         .map((participant) => participant.address),
     ],
+    recipientCount: mail.recipientCount,
+    checkedRecipientCount: mail.participants.filter((participant) => participant.role === 'to' || participant.role === 'cc').length,
     match: match as ThreadMatch,
     subjectNameStops: screening.nameStops(mail.baseSubject ?? ''),
     contentFindings,

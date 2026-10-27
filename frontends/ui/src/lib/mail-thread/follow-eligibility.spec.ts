@@ -54,6 +54,8 @@ function mail(overrides: Partial<FollowCandidateMail> = {}): FollowCandidateMail
     match: { threadId: THREAD_ID, strength: 'reference', headers: ['in-reply-to', 'references'] },
     subjectNameStops: [],
     contentFindings: 0,
+    recipientCount: 3,
+    checkedRecipientCount: 3,
     ...overrides,
   }
 }
@@ -184,6 +186,10 @@ describe('followEligibility', () => {
 
     it('fails alone for an address without a domain', () => {
       expect(reasons(mail({ participantAddresses: ['undisclosed-recipients'] }))).toEqual(['new_participant_domain'])
+    })
+
+    it('fails alone when the mail has more recipients than were checked: a domain past the cap is unseen (review D, finding 6)', () => {
+      expect(reasons(mail({ recipientCount: 260, checkedRecipientCount: 200 }))).toEqual(['recipients_unchecked'])
     })
 
     it('never counts the project’s own address', () => {

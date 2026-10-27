@@ -309,7 +309,10 @@ waits exactly as without a follow:
    `date_out_of_range`, `message_id_reused`, `already_filed`,
    `claims_member_name`, and not automatic mail;
 5. no new participant domain: every domain in From, To and Cc, the project's
-   own excluded, already took part in the thread;
+   own excluded, already took part in the thread, and every To/Cc recipient
+   was checked (a mail keeps at most 200 participants; one whose
+   `recipient_count` exceeds the To/Cc participants it kept is refused,
+   `recipients_unchecked`);
 6. the Namensprüfung finds nothing in the subject and the content check
    nothing in the own text;
 7. the follower still holds the `inbound-mail` entitlement,

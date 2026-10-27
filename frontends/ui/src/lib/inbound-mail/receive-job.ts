@@ -244,7 +244,7 @@ async function readAndHold(
     subject: subject?.slice(0, 998) ?? null,
     participants: participants.slice(0, 200),
     participantDomains: participantDomainsOf(participants),
-    recipientCount: Math.min(mime.headers.recipientCount, 1000),
+    recipientCount: recipientCountOf(mime.headers, domain),
     automatic,
     ...notStagedFields(mime.notStaged, mime.notStagedOverflow, redact),
   }
@@ -308,6 +308,20 @@ function mailParticipants(headers: MailHeaders, domain: string, redact: (text: s
     })
   }
   return participants
+}
+
+/**
+ * The To/Cc recipients the mail names, the project addresses taken out as
+ * `mailParticipants` takes them out, at most 1000 (the CHECK). Exact while the
+ * participant cap kept every recipient; past it, a project address the cap cut
+ * is still counted, so the count only errs high: condition 5 of a follow
+ * (`followEligibility`) refuses a mail with more recipients than it checked.
+ */
+function recipientCountOf(headers: MailHeaders, domain: string): number {
+  const own = headers.participants.filter(
+    (participant) => (participant.role === 'to' || participant.role === 'cc') && isOurDomain(participant.domain, domain),
+  ).length
+  return Math.min(Math.max(headers.recipientCount - own, 0), 1000)
 }
 
 function isOurDomain(candidate: string | null, domain: string): boolean {

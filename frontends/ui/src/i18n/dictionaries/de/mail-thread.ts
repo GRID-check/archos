@@ -19,6 +19,7 @@ export const mailThread: typeof en.mailThread = {
     flagged: 'Die E-Mail ist an andere adressiert, oder ihr Datum ist nicht plausibel',
     automatic: 'Die E-Mail wurde automatisch gesendet',
     new_participant_domain: 'Neue Beteiligte: {domains}',
+    recipients_unchecked: 'Die E-Mail hat mehr Empfänger, als geprüft werden können',
     name_stop: 'Die Namensprüfung hat den Betreff angehalten',
     content_finding: 'Die Inhaltsprüfung hat im Text etwas gefunden',
   },

@@ -606,6 +606,8 @@ CREATE TABLE IF NOT EXISTS "inbound_mails" (
   -- addresses taken out (B8).
   "participants" jsonb DEFAULT '[]'::jsonb NOT NULL,
   "participant_domains" text[] DEFAULT '{}'::text[] NOT NULL,
+  -- To and Cc recipients, the project addresses not counted: more than the
+  -- To/Cc participants kept means the cap cut some (follow condition 5).
   "recipient_count" integer DEFAULT 0 NOT NULL,
   -- The verdict (D4): a label and a condition on defaults, never a gate.
   -- NULL until the receive job read the mail.

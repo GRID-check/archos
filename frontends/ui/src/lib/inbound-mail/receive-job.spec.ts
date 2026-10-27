@@ -559,6 +559,18 @@ describe('B8: another office’s project address never reaches what a person rea
   })
 })
 
+describe('the recipient count (review D, finding 6)', () => {
+  it('counts To and Cc without the project addresses, as the participants hold them, so a follow can tell none was cut', async () => {
+    receive(await sign(message(BODY, { Cc: `Nachbar <${OTHER_TENANT_ADDRESS}>, Statik <weber@statik-weber.at>` })))
+
+    await run()
+
+    const recipients = heldRow().participants.filter((participant) => participant.role === 'to' || participant.role === 'cc')
+    expect(heldRow().recipientCount).toBe(1)
+    expect(recipients).toHaveLength(heldRow().recipientCount)
+  })
+})
+
 describe('the PII canary', () => {
   it('lets no sender, subject, file name, address or token reach a log line, PostHog or the audit trail', async () => {
     const canaries = ['Zebulon Quixote', 'Kanarienvogel-Betreff', 'Flamingo-Rechnungsliste.pdf', 'quixote@canary-domain.example', 'abcdefgh2345']

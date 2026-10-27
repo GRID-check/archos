@@ -48,7 +48,8 @@ export function heldMail(overrides: Partial<InboundMailRow> = {}): InboundMailRo
     subject: 'AW: Statik Einreichung',
     participants: [],
     participantDomains: ['statik-weber.at'],
-    recipientCount: 2,
+    // Its one recipient is the project's own address, which is not counted.
+    recipientCount: 0,
     senderTrust: 'member_verified',
     senderUserId: PERSON,
     senderReason: 'dkim_pass',

@@ -22,7 +22,10 @@
  *    `date_out_of_range`, `message_id_reused` or `already_filed`, and not
  *    automatic mail;
  * 5. no new participant domain: every domain in From/To/Cc, the project's
- *    own excluded, already took part in the thread;
+ *    own excluded, already took part in the thread; and every To/Cc
+ *    recipient was checked (a mail holds at most 200 participants, so one
+ *    with more recipients than were checked could hide a new domain past the
+ *    cap);
  * 6. the Namensprüfung found no term in the subject, and the content check
  *    found nothing in the own text.
  */
@@ -42,6 +45,7 @@ export const FOLLOW_INELIGIBILITY_REASONS = [
   'flagged',
   'automatic',
   'new_participant_domain',
+  'recipients_unchecked',
   'name_stop',
   'content_finding',
 ] as const
@@ -72,6 +76,10 @@ export interface FollowCandidateMail {
   recipientHeaders: ReadonlyArray<'to' | 'cc'>
   /** Every address in From, To and Cc. */
   participantAddresses: readonly string[]
+  /** How many To/Cc recipients the mail names, the project's own addresses not counted (`recipient_count`). */
+  recipientCount: number
+  /** How many of them `participantAddresses` holds: fewer when the participant cap cut the list. */
+  checkedRecipientCount: number
   /** The mail's match to the followed thread, or null when it did not match it. */
   match: ThreadMatch | null
   /** Terms the Namensprüfung found in the base subject. */
@@ -133,6 +141,7 @@ export function followEligibility(
   if (FOLLOW_REFUSING_FLAGS.some((flag) => mail.senderFlags.includes(flag))) reasons.push('flagged')
   if (mail.automatic) reasons.push('automatic')
   if (newDomains.length > 0) reasons.push('new_participant_domain')
+  if (mail.recipientCount > mail.checkedRecipientCount) reasons.push('recipients_unchecked')
   if (mail.subjectNameStops.length > 0) reasons.push('name_stop')
   if (mail.contentFindings > 0) reasons.push('content_finding')
   if (follow && reasons.length === 0) return { eligible: true, follow }
