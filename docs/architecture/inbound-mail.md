@@ -314,12 +314,17 @@ Condition 8 counts the follow's own appends against its `daily_cap` (default
 hours, under a project advisory lock. A failing condition writes nothing: the
 mail waits as without a follow. A follower who lost the project or the folder
 ends the follow (`access_lost`); a deleted, archived or binned document ends it
-(`document_gone`); a closed project or a held document only makes the mail
-wait. One log line per run: `[inbound-mail] follow of mail <id>: <kind>[:<reason>]`.
+(`document_gone`); a held document only makes the mail wait. Closing a
+project ends every follow on it (`project_closed`), so a run that still meets
+a closed project (closed between its find and its check) leaves the mail
+waiting. One log line per run: `[inbound-mail] follow of mail <id>: <kind>[:<reason>]`.
 
 Ending: `DELETE …/follow` (own: `unfollowed`; `?userId` with `project:manage`:
-`revoked_by_manager`), sweep 12 (`expired`, `document_gone`), address rotation
-or switch-off (`address_rotated`), detach (`detached`). Every system end goes
+`revoked_by_manager`), closing the project (`project_closed`,
+`endFollowsOnProjectClose` in the close itself, as the person who closed it,
+each audited), sweep 12 (`expired`,
+`document_gone`, and `project_closed` for a follow the close missed), address
+rotation or switch-off (`address_rotated`), detach (`detached`). Every system end goes
 through `endFollowBySystem` (`lib/mail-thread/follows.ts`), which audits
 `mail_thread.follow_ended`, sends a personless `mail_thread_followed`, settles
 the renewal notice and publishes the change.
@@ -352,7 +357,7 @@ In the order they run:
 | 7 | `rescans` | failed scans of waiting parts and held raw messages, hourly, up to 24 attempts | 1 h | — |
 | 10 | `releasedErasures` | erasures a hold deferred, once no hold covers them | — | only rows no hold covers |
 | 8 | `keptMails` | settled mails 30 days after settling with no filed part's document alive, dropped mails 30 days after receipt; nothing left to erase, nothing unaudited: deleted | 30 days | project or custodian hold: skipped; trigger `GLH01` backstop |
-| 12 | `follows` | running follows past `expires_at` end `expired`, those whose document is gone end `document_gone`; five days before the end `mail_thread.follow_expiring`, once | 60 days, day 55 | — |
+| 12 | `follows` | running follows past `expires_at` end `expired`, those whose document is gone end `document_gone`, those in a closed project end `project_closed`; five days before the end `mail_thread.follow_expiring`, once | 60 days, day 55 | — |
 | 9 | `threads` | threads whose document is deleted (a binned one keeps its row), over an hour old, no lease, no running follow, nothing unaudited, not waiting for a first archive render: the thread's render lease taken under that whole condition (the hold included), then every original erased by key, then the thread deleted (cascade: entries, attachment rows, Message-IDs, ended follows, their audited decisions and the parts those filed) | 1 h | project hold: skipped; triggers backstop |
 | 14 | `caps` | addresses at 80% or 100% of their own or their organization's staged-bytes cap: `inbound_mail.cap_reached` to the managers once per rise; settled below 80% or when revoked | — | — |
 
