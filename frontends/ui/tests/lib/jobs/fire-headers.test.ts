@@ -1,3 +1,4 @@
+// @disk-inputs: src/lib/jobs/background-run.ts, src/lib/jobs/service.ts
 /**
  * @vitest-environment node
  *

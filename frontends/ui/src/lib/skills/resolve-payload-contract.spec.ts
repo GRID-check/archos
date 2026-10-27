@@ -1,3 +1,4 @@
+// @disk-inputs: ../../tests/fixtures/skills_resolve/resolve_payload.json
 /**
  * @vitest-environment node
  */
