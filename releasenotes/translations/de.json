@@ -1104,6 +1104,14 @@
     "de": "Wenn Sie eine vollständige Soll-Ist- oder Konformitätsprüfung anfordern, prüft Piloti dieses Projekt jetzt vollständig, statt die sechs Richtlinien von Hand durchzugehen."
   },
   {
+    "en": "Asking for the documents that refer to a plan finds them when the plan is named the way a person writes it, such as \"Plan Nr. EP-05\" or \"siehe EP-05\".",
+    "de": "Wenn Sie nach Dokumenten fragen, die sich auf einen Plan beziehen, werden diese auch gefunden, wenn der Plan so bezeichnet ist, wie man ihn schreiben würde, etwa „Plan Nr. EP-05“ oder „siehe EP-05“."
+  },
+  {
+    "en": "Asking which documents deal with a topic lists each document once again, even when two folders hold a file of the same name.",
+    "de": "Bei der Frage, welche Dokumente ein Thema behandeln, wird jedes Dokument erneut aufgelistet, auch wenn sich in zwei Ordnern Dateien mit demselben Namen befinden."
+  },
+  {
     "en": "Assigning existing drawings to a building under Projektgrundlagen no longer fails with an error when the project brief has not been saved yet. Drawings for a building you have just added are shown as waiting and assigned when you save, and removing a building also removes its drawing assignments.",
     "de": "Bestehende Zeichnungen einem Gebäude unter Projektgrundlagen zuzuweisen, führt nicht mehr zu einem Fehler, wenn der Projektbrief noch nicht gespeichert ist. Zeichnungen für ein gerade angelegtes Gebäude werden als wartend angezeigt und beim Speichern zugewiesen, und beim Entfernen eines Gebäudes fallen auch seine Zeichnungszuweisungen weg."
   },
