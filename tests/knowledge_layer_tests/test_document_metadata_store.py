@@ -1495,6 +1495,24 @@ class TestTopicsAndCapture:
         store.register("coll", "plan.pdf", "A plan.")
         assert store.get_all("coll")[0].topics is None
 
+    def test_the_reading_is_written_together_and_read_back(self, store):
+        store.register("coll", "bsk.pdf", "Ein Brandschutzkonzept.")
+        dossier = {"version": 1, "document_type": "fire_safety_concept", "facts": []}
+        references = [{"kind": "norm", "key": "trvb 124 f", "label": "TRVB 124 F", "pages": [2]}]
+        coverage = {"pages": 4, "not_read": 0, "reasons": {}}
+
+        assert store.set_reading("coll", "bsk.pdf", dossier=dossier, references=references, coverage=coverage)
+        doc = store.get_all("coll")[0]
+        assert (doc.dossier, doc.doc_references, doc.coverage) == (dossier, references, coverage)
+
+        # A re-ingest that read nothing of the kind clears the old reading.
+        store.set_reading("coll", "bsk.pdf", dossier=None, references=[], coverage=None)
+        doc = store.get_all("coll")[0]
+        assert (doc.dossier, doc.doc_references, doc.coverage) == (None, None, None)
+
+    def test_a_reading_for_a_document_without_a_row_is_refused(self, store):
+        assert store.set_reading("coll", "ghost.pdf", dossier={"version": 1}, references=None, coverage=None) is False
+
     async def test_get_all_async_decodes_topics_and_capture(self, store):
         store.register("acoll", "plan.pdf", "A plan.", topics=["Attika"])
         store.set_capture("acoll", "plan.pdf", {"captured_at": "2026-10-09T14:30:00", "camera": "Canon R5"})

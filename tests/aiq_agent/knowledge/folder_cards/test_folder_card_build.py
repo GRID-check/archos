@@ -111,6 +111,8 @@ class TestGenerate:
         assert generation.tokens == 1100
         assert generation.model == "test/summary-model"
         assert model.bound[0]["response_format"]["type"] == "json_schema"
+        # The summary model is capped at one sentence; a card with key facts needs its own budget.
+        assert model.bound[0]["max_tokens"] == build.MAX_OUTPUT_TOKENS >= 1000
         direct_trace._provider.force_flush()
         (span,) = exporter.get_finished_spans()
         assert span.attributes["langfuse.trace.name"] == build.GENERATION_NAME

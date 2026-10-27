@@ -270,7 +270,7 @@ class GenerationRecorder:
 
 
 class _ObservedGeneration:
-    """The async context manager :func:`observed_generation` returns."""
+    """What :func:`observed_generation` returns: ``async with`` in a route, ``with`` on a worker thread."""
 
     def __init__(self, feature: str, attributes: dict[str, Any]) -> None:
         self._feature = feature
@@ -282,6 +282,14 @@ class _ObservedGeneration:
         return GenerationRecorder(self._span)
 
     async def __aexit__(self, exc_type, exc, traceback) -> bool:
+        _end_span(self._span, exc)
+        return False
+
+    def __enter__(self) -> GenerationRecorder:
+        self._span = _start_span(self._feature, self._attributes)
+        return GenerationRecorder(self._span)
+
+    def __exit__(self, exc_type, exc, traceback) -> bool:
         _end_span(self._span, exc)
         return False
 

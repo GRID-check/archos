@@ -526,6 +526,10 @@ JOB_RETENTION_SECONDS = 3600  # 1 hour
 # call over the document, then the BFF embeds its requirements). Past it the
 # record is skipped, never the file.
 PERMIT_RECORD_TIMEOUT_SECONDS = 90
+#: How long the document's dossier may take (``aiq_agent.knowledge.dossier``). It runs
+#: beside the summary, the tags and the topics, after the vision batch, and writes a
+#: JSON object where they write a line: about twice the summary's 30 s.
+DOSSIER_TIMEOUT_SECONDS = 60
 #: Dropping a record is one internal call, no model: it must never hold up an ingest.
 PERMIT_RECORD_DROP_TIMEOUT_SECONDS = 5
 #: The bound on one file's Fassung step (a suggestion for a new name, a change line for a re-upload).
@@ -2688,6 +2692,64 @@ def _future_result(future, what: str, file_name: str, timeout: float = 30):
     except Exception as e:  # noqa: BLE001 — an annotation is worth less than the ingestion
         logger.warning("%s failed for %s: %s", what, file_name, e)
     return None
+
+
+def _digest_passages(documents: list[Any]) -> list[tuple[Any, str, str]]:
+    """``(page, content type, text)`` per document chunk, in reading order: what the dossier digest reads."""
+    return [
+        (doc.metadata.get("page_label"), str(doc.metadata.get("content_type") or "text"), doc.get_content())
+        for doc in documents
+    ]
+
+
+def _page_number(label: Any) -> int | None:
+    try:
+        number = int(str(label).strip())
+    except (TypeError, ValueError):
+        return None
+    return number if number > 0 else None
+
+
+def _reading_of(
+    documents: list[Any], dossier: dict[str, Any] | None
+) -> tuple[dict[str, Any] | None, list[dict[str, Any]]]:
+    """The dossier with the facts the drawings printed, and the document's references. Pure over the chunks.
+
+    A drawing's analysis already holds its printed quantities (``drawing_data``); the ones
+    that are project facts join the dossier's own, once per key and value. References are
+    read from every chunk's text, a drawing's annotations included, and a document's
+    references to its own kind are dropped.
+    """
+    from knowledge_layer.references import extract_references
+
+    from aiq_agent.knowledge.dossier import MAX_FACTS
+    from aiq_agent.knowledge.dossier import lifted_drawing_facts
+    from aiq_agent.knowledge.dossier import own_document_type
+
+    references = extract_references(
+        ((doc.get_content(), _page_number(doc.metadata.get("page_label"))) for doc in documents),
+        own_document_type=own_document_type(dossier),
+    )
+    if not dossier:
+        return None, references
+    analyses = []
+    for doc in documents:
+        raw = doc.metadata.get("drawing_data")
+        if not raw:
+            continue
+        try:
+            analyses.append(
+                (_page_number(doc.metadata.get("page_label")), json.loads(raw) if isinstance(raw, str) else raw)
+            )
+        except (TypeError, ValueError):
+            continue
+    facts = list(dossier.get("facts") or [])
+    seen = {(fact["key"], fact["value"]) for fact in facts}
+    for fact in lifted_drawing_facts(analyses):
+        if (fact["key"], fact["value"]) not in seen and len(facts) < MAX_FACTS:
+            seen.add((fact["key"], fact["value"]))
+            facts.append(fact)
+    return {**dossier, "facts": facts}, references
 
 
 def _generate_document_summary(text_content: str, file_name: str, llm=None) -> str | None:
@@ -4893,6 +4955,9 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
                     # The image branch reads the camera facts; stored with the
                     # metadata rows after indexing. Reset here, before the branch.
                     photo = None
+                    # How much of a PDF was read (`knowledge_layer.coverage`), set
+                    # after the vision batch; stored with the metadata rows.
+                    coverage = None
 
                     mode_str = "text"
                     if is_image or (is_pdf and (extract_tables or extract_images)):
@@ -5134,6 +5199,7 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
                     # rendered-page descriptions — not a watermark — feed the
                     # summary. Rendered visual/vector pages accumulate here.
                     summary_future = None
+                    dossier_future = None
                     tags_future = None
                     topics_future = None
                     doc_class_future = None
@@ -5200,6 +5266,21 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
                                 vlm_api_key=vlm_api_key,
                                 extract_charts=extract_charts,
                             )
+
+                        from knowledge_layer.coverage import reading_coverage
+
+                        coverage = reading_coverage(
+                            page_count=getattr(text_pages, "page_count", 0) or len(text_pages),
+                            text_pages=text_pages,
+                            drawing_pages=page_routes.drawing_pages,
+                            rendered=len(drawing_pages_raw),
+                            read=len(drawing_pages),
+                            transcribed=len(page_routes.outcome.texts),
+                            transcription_failed=len(page_routes.outcome.failed),
+                            transcription_over_cap=len(page_routes.outcome.over_cap),
+                            not_transcribed=len(page_routes.not_transcribed),
+                            vision_configured=bool(vlm_api_key) and RENDER_VISUAL_PAGES,
+                        )
 
                         # Keep the rasters the VLM just captioned, beside the
                         # document, so `look` can show one at
@@ -5317,6 +5398,22 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
                         summary_future = submit_in_context(
                             executor, _generate_document_summary, llm_input, file_name, self.summary_llm
                         )
+                        # The dossier reads the WHOLE document (a digest of every
+                        # page), beside the one-sentence summary that reads its first
+                        # and last chunk. Not for the base corpus: a Richtlinie is not
+                        # a project document, and its structure is read by the clauses.
+                        if not base_corpus:
+                            from aiq_agent.knowledge.dossier import build_digest
+                            from aiq_agent.knowledge.dossier import write_dossier
+
+                            digest = build_digest(
+                                _digest_passages(all_documents),
+                                file_name=file_name,
+                                title_block=revisions.revision_facts_from_documents(all_documents),
+                            )
+                            dossier_future = submit_in_context(
+                                executor, write_dossier, digest, self.summary_llm, file_name=file_name
+                            )
                         tags_future = submit_in_context(
                             executor,
                             classify_document_tags,
@@ -5380,6 +5477,10 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
                                 logger.warning("Tag classification failed for %s: %s", file_name, e)
 
                         topics = _future_result(topics_future, "Topic suggestion", file_name)
+                        dossier = _future_result(dossier_future, "Dossier", file_name, timeout=DOSSIER_TIMEOUT_SECONDS)
+                        # Written from every page rather than the first and last chunk.
+                        if dossier and dossier.get("summary"):
+                            summary = dossier["summary"]
 
                         # Clean up executor
                         if executor:
@@ -5581,6 +5682,15 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
                             from aiq_agent.knowledge import set_document_capture
 
                             set_document_capture(collection_name, file_name, photo.as_metadata())
+
+                        # What the ingest read: the dossier, the references, the coverage.
+                        # Written together, so a re-ingest replaces the whole reading.
+                        from aiq_agent.knowledge import set_document_reading
+
+                        reading, references = _reading_of(all_documents, dossier)
+                        set_document_reading(
+                            collection_name, file_name, dossier=reading, references=references, coverage=coverage
+                        )
 
                         # Persist the doc_class onto the freshly-created summary
                         # row, but never overwrite a human-set stored value —

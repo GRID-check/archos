@@ -78,7 +78,8 @@ def _merge_summaries(
     knows what the vector store holds. The join key is the
     filename, unique within the summaries table, so a straight lookup is safe.
     A file without a stored summary/tags/folder is left untouched; already-populated
-    values are never overwritten. Topics (Themen), the camera's capture facts and the
+    values are never overwritten. Topics (Themen), the camera's capture facts, the ingest's
+    reading (``dossier``, ``doc_references``, ``coverage``) and the
     title-block facts (``revision_facts``: Plannummer, Index, Datum, Maßstab, Planinhalt read from the
     Plankopf) travel the same way, and so do the Fassungen: the confirmed link
     (``superseded_by``, and ``supersedes`` as its reverse), the change summary with
@@ -112,6 +113,12 @@ def _merge_summaries(
             file.capture = doc.capture
         if file.revision_facts is None and doc.revision_facts:
             file.revision_facts = doc.revision_facts
+        if file.dossier is None and doc.dossier:
+            file.dossier = doc.dossier
+        if file.doc_references is None and doc.doc_references:
+            file.doc_references = doc.doc_references
+        if file.coverage is None and doc.coverage:
+            file.coverage = doc.coverage
         if file.superseded_by is None and doc.superseded_by:
             file.superseded_by = doc.superseded_by
         if not file.supersedes and doc.supersedes:
