@@ -17,14 +17,15 @@ import 'server-only'
 import { and, eq, isNull, like, or } from 'drizzle-orm'
 import { BadRequestError, NotFoundError } from '@/lib/api/errors'
 import type { AuthorizedSession } from '@/lib/auth/types'
-import { getProjectFolderAccess } from '@/lib/authz/folder-access'
+import { getProjectFolderAccess, getRestrictedFolderIds } from '@/lib/authz/folder-access'
 import { requireProjectAccess } from '@/lib/authz/projects'
 import { getDb } from '@/lib/db'
 import { projectFolders, type Project } from '@/lib/db/schema'
 import { withTenant } from '@/lib/db/tenant-context'
-import type { DocumentReader } from '@/lib/documents/document-reader'
+import { SCREENED_ONLY, type DocumentReader } from '@/lib/documents/document-reader'
 import { OFFICE_SHELF, projectShelf, shelfFolderWhere, type DocumentShelf } from '@/lib/documents/shelf'
 import { officeShelfCollectionName } from '@/lib/office-shelf/collection'
+import { audienceReach } from '@/lib/cross-project/audience-reach'
 import { findProjectInOrg } from '@/lib/projects/repository'
 import { listProjects } from '@/lib/projects/service'
 import { escapeLikePattern } from '@/lib/text/like-pattern'
@@ -50,6 +51,12 @@ export interface SearchReach {
   officeShelf: { collection: string; reviewsQuarantine: boolean } | null
   /** With a folder scope: the folder and its subfolders. */
   folderIds: readonly string[] | null
+  /**
+   * Only documents whose screening passed (`SCREENED_ONLY`, ADR-0086): set for
+   * a conversation's audience that is more than its asker, where an upload held
+   * for the asker alone must not reach the other readers.
+   */
+  screenedOnly?: boolean
 }
 
 /** Projects whose folder access is read at once. Each is a tenancy probe and a folder-tree read. */
@@ -144,6 +151,64 @@ export async function reachFor(session: AuthorizedSession, scope: SearchScope): 
   return { ...base, projects, officeShelf, folderIds: null }
 }
 
+/**
+ * What a conversation's whole audience may read, as the same {@link SearchReach}
+ * (ADR-0094's `audienceReach`): for the agent tier's reads from a chat, so the
+ * search and the folder tree share {@link reachWhere} rather than a second rule.
+ *
+ * - Projects: the audience's (`audienceReach`); a scoped project outside it is
+ *   not found.
+ * - Restricted folders: searched only in a chat that is the asker's alone
+ *   (`restrictedFolders`); otherwise every folder not every member may read is
+ *   hidden and only the project's own collection is named.
+ * - Held uploads: the asker's own only in their solo chat; any other audience
+ *   reads screened documents only.
+ * - The office shelf: every member reads it.
+ */
+export async function reachForAudience(
+  session: AuthorizedSession,
+  conversationId: string,
+  scope: SearchScope
+): Promise<SearchReach> {
+  const audience = await audienceReach(session, conversationId)
+  const base = {
+    organizationId: session.organizationId,
+    userId: session.userId,
+    scope,
+    screenedOnly: !audience.restrictedFolders,
+  }
+  const inScope =
+    scope.kind === 'project'
+      ? audience.projects.filter((project) => project.id === scope.projectId)
+      : scope.kind === 'office'
+        ? audience.projects
+        : []
+  if (scope.kind === 'project' && inScope.length === 0) throw new NotFoundError('Project not found')
+  const projects = await inPool(inScope, PROJECTS_AT_ONCE, async (project) => {
+    const reached = await reachProject(session, project)
+    if (audience.restrictedFolders) return reached
+    const restricted = await getRestrictedFolderIds(session.organizationId, project.id)
+    return {
+      ...reached,
+      hiddenFolderIds: [...new Set([...reached.hiddenFolderIds, ...restricted])],
+      collections: [project.collectionName],
+      reviewsQuarantine: false,
+    }
+  })
+  const officeShelf = scope.kind === 'project' ? null : await reachOfficeShelf(session)
+  const shelfOffice = officeShelf && !audience.restrictedFolders ? { ...officeShelf, reviewsQuarantine: false } : officeShelf
+  const folderIds =
+    scope.kind !== 'office' && scope.folderId
+      ? await folderSubtree(
+          session.organizationId,
+          scope.kind === 'project' ? projectShelf(scope.projectId) : OFFICE_SHELF,
+          scope.folderId,
+          projects.flatMap((reached) => reached.hiddenFolderIds)
+        )
+      : null
+  return { ...base, projects, officeShelf: scope.kind === 'project' ? null : shelfOffice, folderIds }
+}
+
 /** The shelves a reach covers, for the projection's staleness check. */
 export function reachShelves(reach: SearchReach): DocumentShelf[] {
   return [...reach.projects.map((reached) => projectShelf(reached.project.id)), ...(reach.officeShelf ? [OFFICE_SHELF] : [])]
@@ -156,6 +221,7 @@ export function reachCollections(reach: SearchReach): string[] {
 
 /** The reader the documents predicate takes for this reach (`documentVisibleTo`). */
 export function reachReader(reach: SearchReach): DocumentReader {
+  if (reach.screenedOnly) return SCREENED_ONLY
   return {
     kind: 'projects',
     userId: reach.userId,
