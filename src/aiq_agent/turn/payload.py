@@ -13,6 +13,7 @@ from typing import Literal
 from typing import NamedTuple
 
 from aiq_agent.common import parse_data_sources
+from aiq_agent.common.client_tools import set_turn_client_tools
 from aiq_agent.common.focus_file import get_focused_file_name
 from aiq_agent.common.focus_file import get_focused_shelf
 from aiq_agent.common.focus_file import set_turn_intent
@@ -130,6 +131,7 @@ def extract_turn_inputs(request: UserMessage | str) -> TurnInputs:
     if isinstance(request, str):
         set_turn_intent()
         set_turn_reasoning_effort(None)
+        set_turn_client_tools(None)
         return TurnInputs(request.strip(), None, None, None)
     if not isinstance(request, UserMessage):
         raise TypeError(f"A turn is asked with a v2 user_message or a plain question, not a {type(request).__name__}")
@@ -140,6 +142,8 @@ def extract_turn_inputs(request: UserMessage | str) -> TurnInputs:
         document_id=request.focus_document_id,
     )
     set_turn_reasoning_effort(request.reasoning_effort)
+    # The frontend tools the asking page can run (ADR-0144); a headless sender declares none.
+    set_turn_client_tools(request.client_tools)
     subject = SubjectVersion(request.focus_document_id, request.focus_version_id, request.focus_version_state)
     return TurnInputs(
         request.text.strip(),
