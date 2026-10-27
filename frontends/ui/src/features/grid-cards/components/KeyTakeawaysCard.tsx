@@ -153,10 +153,10 @@ const TakeawayRow: FC<{ item: KeyTakeawayData; index: number }> = ({ item, index
       </CollapsibleTrigger>
 
       <CollapsibleContent>
-        {/* Indented to the takeaway's own text column and hung off a rule, so
-            the detail reads as belonging to the row above rather than as a
-            fifth takeaway. */}
-        <p className="card-caption mb-2 ml-9 max-w-prose border-l-2 border-border pl-3 text-muted-foreground">
+        {/* Indented past the takeaway's own text column and set in the muted
+            caption, so the detail reads as belonging to the row above rather
+            than as a fifth takeaway. */}
+        <p className="card-caption mb-2 ml-9 max-w-prose pl-3 text-muted-foreground">
           {item.detail}
         </p>
       </CollapsibleContent>
@@ -180,7 +180,7 @@ export const KeyTakeawaysCard: FC<KeyTakeawaysCardProps> = ({ title, items, flat
       {/* Hand-rolled rather than `SectionLabel`, for the same reason CalloutCard
           names in its own body: this eyebrow carries the distillation ink (dark
           green) where SectionLabel hard-codes the muted one — and the check
-          glyph is the icon half of the hue + rule + label/icon triple. The
+          glyph is the icon half of the hue + label + icon triple. The
           sage wash rides this pill alone, never the rows below: the marker
           marks the block's eyebrow, it never fills behind the running text. */}
       <span className={cn('card-eyebrow inline-flex w-fit items-center gap-1.5 rounded-sm px-1.5 py-0.5 text-success', SAGE_WASH)}>
@@ -189,9 +189,9 @@ export const KeyTakeawaysCard: FC<KeyTakeawaysCardProps> = ({ title, items, flat
       </span>
       {title && <p className="card-title text-foreground">{title}</p>}
 
-      {/* One continuous hairline down the gutter, and no rules between rows:
-          the rank is carried by the ordinals, not by a box per takeaway. */}
-      <ol className="mt-0.5 flex flex-col border-l border-border/70">
+      {/* No rules between rows and none down the gutter: the rank is
+          carried by the ordinals, not by a box per takeaway. */}
+      <ol className="mt-0.5 flex flex-col">
         {takeaways.map((item, index) => (
           <li key={`${item.text}-${index}`}>
             <TakeawayRow item={item} index={index} />
@@ -203,11 +203,11 @@ export const KeyTakeawaysCard: FC<KeyTakeawaysCardProps> = ({ title, items, flat
 
   if (flat) {
     return (
-      <div className="flex flex-col gap-2 border-l-2 border-l-success py-1 pl-4 pr-3">
+      <div className="flex flex-col gap-2 py-1">
         {body}
       </div>
     )
   }
 
-  return <Card className={cn(CARD_SHELL, 'gap-2 border-l-2 border-l-success p-5')}>{body}</Card>
+  return <Card className={cn(CARD_SHELL, 'gap-2 p-5')}>{body}</Card>
 }

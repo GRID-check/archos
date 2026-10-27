@@ -383,9 +383,8 @@ export const CitationPeek: FC<CitationPeekProps> = ({
       {/* Does this actually bind me? The highest-value fact for a legal source. */}
       {doc.bindingNote && (
         <div
-          className="rounded-md border-l-2 py-1.5 pl-2.5 pr-2"
+          className="rounded-md px-2.5 py-1.5"
           style={{
-            borderColor: `color-mix(in oklch, var(--source-${tint}, var(--foreground)) 45%, transparent)`,
             backgroundColor: `var(--source-${tint}-tint, var(--muted))`,
           }}
         >
