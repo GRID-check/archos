@@ -1,4 +1,4 @@
-# Agent Skills and Jobs (ADR-0046)
+# Agent Skills and Jobs (ADR-0046, ADR-0135)
 
 Skills are reusable, versioned instruction packages (the agentskills.io
 format) that extend what the model can be told how to do on:
@@ -7,7 +7,10 @@ format) that extend what the model can be told how to do on:
 
 A skill is a **working method the model chooses**, never one it is told to run:
 it reaches the model as one line in a catalog, and its body arrives only when
-the model calls `use_skill`. Nothing can require one — not a request, not a
+the model reads its `SKILL.md` with `read_file`. Both agents run that through
+Deep Agents' `SkillsMiddleware` (the Agent Skills spec's progressive
+disclosure, [ADR-0135](../adr/0135-skills-run-on-deep-agents-skills-middleware.md)).
+Nothing can require one — not a request, not a
 deployment, not a job. What must hold on every answer is prompt text instead,
 at two levels (the platform prompt and the organization's own instruction
 block); that split is [ADR-0060](../adr/0060-three-instruction-layers-and-tools-that-answer.md),
@@ -45,7 +48,7 @@ validated strictly by `src/aiq_agent/skills/models.py`:
 |-------|------|
 | `name` | 1–64 chars, lowercase `a-z0-9` + hyphens; for filesystem skills it must equal the parent dir name |
 | `description` | 1–1024 chars, non-empty; the one-line L1 summary the model sees |
-| `body` | The full markdown instructions (L2), loaded only via the `use_skill` tool |
+| `body` | The full markdown instructions (L2), read only when the model opens `/skills/<source>/<name>/SKILL.md` with `read_file` |
 | `metadata` | String-map; reserved GRID keys are validated — `grid-agents` (who may use it), `grid-cards` (preferred output card types), `grid-title`, `grid-hidden` (mute the live line), `grid-catalog` (`curated` = offer, absent = machinery). Every other key is opaque |
 | `license` / `compatibility` / `allowed_tools` | Optional free-form strings |
 
@@ -78,8 +81,8 @@ the toolbox to punish a key that costs nothing to ignore.
 generated card `type`s (SYSTEM cards excluded — those are emitted by tools on
 sanctioned paths, and asking the model for one would invite it to fabricate a
 card the product treats as trustworthy). It costs nothing until the skill is
-activated, at which point `SkillRuntime._preferred_cards_block` appends a short
-block naming those types to the loaded body — **and their full shapes with it**,
+activated, at which point the skills backend's read (`runtime.preferred_cards_block`)
+appends a short block naming those types to the body it hands over — **and their full shapes with it**,
 by calling the card catalog's `render_card_details()`. A skill that names its
 cards is the moment we know which of the 38 card shapes this turn could possibly
 need, so it is the moment to spend context on them, and it saves the activated
@@ -152,8 +155,8 @@ every organization, never listed, not switchable" — and resolving it only put
 the skill's one-line **description** in the L1 catalogue. The answer at the time
 was to FORCE it: name it in an "Active skills" block and tell the model to open
 it. That bought less than it looked like. Forcing puts a NAME in the prompt and
-nothing else, because the body travels through exactly one path (the `use_skill`
-closure), so a model that skipped the call read not one word of the instruction
+nothing else, because the body travelled through exactly one path (the
+`use_skill` closure of the time), so a model that skipped the call read not one word of the instruction
 while a model that made it paid a tool call and thousands of tokens for a
 standing rule that could have been three sentences of prompt.
 
@@ -211,8 +214,8 @@ chat turn that cannot execute it.
 disclosure under an answer reports what shaped it, and a product built on
 traceable sourcing must not have a class of instruction it declines to admit
 ran. With forcing gone there is one way a skill runs — the model read its line
-in the catalog and called `use_skill`, or (ADR-0063) read its body in the
-prompt and named it in the envelope's `skills_applied` — so the panel names
+in the catalog and read its `SKILL.md`, or (ADR-0063) was given its body
+pinned in the prompt and named it in the envelope's `skills_applied` — so the panel names
 exactly the bodies that reached the model and that it says it followed.
 
 **Fail-open drops offers and keeps machinery** — see Resolution below. Offers
@@ -253,7 +256,7 @@ Eight builtins were renamed to English (migration `0169`): `einreichcheck` →
 type after a slash, what a stored schedule's prompt says and what the activation
 rows refer to, so the old names keep resolving for one release: `LEGACY_SKILL_NAMES`
 (`skills/builtin.py`, mirrored in `lib/skills/legacy-names.ts` and pinned against
-each other by `legacy-names.spec.ts`) is the one table. `use_skill`, the skills a
+each other by `legacy-names.spec.ts`) is the one table. The pinned skill, the skills a
 reply reports as followed, the slash chip and menu, a job's skill snapshot and the
 organization's switch all pass a name through `canonical_skill_name` /
 `canonicalSkillName`; nothing writes an old name again.
@@ -408,55 +411,80 @@ skill onto a turn: not the request, not the deployment, not a job.
   turn context, never a source and never above the rules it may not
   override).
 
-Progressive disclosure has two levels, and a measured shortcut (ADR-0063 as
-amended, ADR-0064): the turn-start decision asks a `skill` choice over every
-resolved skill with `none`, verified by one "fits" noul per skill, and the ONE
-chosen body rides this turn's prompt in full (`SkillRuntime.inline_also`,
-~400 tokens for a chat method, the IFC method on a model question) with its
-preferred card shapes beyond the eight the envelope teaches. An inlined body
-renders as a `<skill name="…">` element under `## Skills`, the rest as one
-line each under `### Available by name`. The model names the inlined skill it
-followed in the envelope's `skills_applied`; the runtime accepts a name only
-when that body was in the prompt, and that is what makes it `activated`.
-Inlining every short method by size (`skills_inline_max_body_chars` /
-`skills_inline_budget_chars`) is an opt-in budget an org can set; the shipped
-config sets neither, because nine bodies were ~4,600 tokens on every call for
-methods most turns never use. Deep research sets nothing and keeps the
-catalog.
+Progressive disclosure is Deep Agents' `SkillsMiddleware` in both agents
+([ADR-0135](../adr/0135-skills-run-on-deep-agents-skills-middleware.md)), with
+one measured shortcut (ADR-0063 as amended, ADR-0064).
 
-- **L1 — the catalog.** One line per RESOLVED skill (`name: description`)
-  under the system prompt's `## Available skills` heading (or `### Available
-  by name` when a budget is set), and nothing else —
-  there is no second, "active" block any more, and nothing a person sets takes
-  a row out. `grid-auto-invoke: false` used to; its author-facing switch is
-  gone, so honouring the stored token would hide a skill from every turn with
-  nobody able to bring it back. The key still parses on an old document and
-  decides nothing. The block is pre-collated by the register layer
-  (`piloti/register.py::_skills_block`, `deep_researcher/agent.py::_skills_block`)
-  and renders via the runtime's `prompt_block()`; `None` renders no section.
-- **L2 — the body.** A body over the budget is loaded with the `use_skill`
-  tool before it is followed. A failed lookup returns an error listing the
-  available names, so a hallucinated skill name is self-correcting rather
-  than a fatal turn. `use_skill` still answers for an inlined body (a model on
-  an older prompt), and that delivery activates it exactly as before.
+**One backend.** `SkillRuntime` (`src/aiq_agent/skills/runtime.py`) is built
+per run from the skills already resolved for this tenant and agent (see
+Resolution), laid out as sources on one `SkillsBackend`
+(`src/aiq_agent/skills/backend.py`): an in-memory, read-only filesystem that
+serves each skill as `/<source>/<name>/SKILL.md`, rendered from the validated
+model (frontmatter, then body), mounted at `/skills/` behind a
+`CompositeBackend`. Nothing is on disk behind it, and every write verb refuses.
+The sources are the gate on who sees what:
 
-**Every scaffolding string in the runtime is English**, and that is a decision
-rather than an oversight. The one heading left was German once (`## Verfügbare
-Skills`; its sibling `## Aktive Skills (vom Nutzer erzwungen)` is gone with
-forcing). The agent answers in the
-user's language, and that is decided per turn from the question — not baked into
-the machinery — so a prompt that mixes German block headings into English
-instructions is neither localised nor language-agnostic. It is also a country
-coupling of exactly the kind `country-extensibility.md` exists to remove: text
-that assumes Austria in a mechanism that has nothing to do with Austria.
-Country- or language-specific wording belongs in `CountryProfile` or in an
-authored skill body, never in string constants in `runtime.py`.
+| Agent | Sources it lists | What is in them |
+|---|---|---|
+| Piloti (chat) | `/skills/office/` | everything `SkillResolver(agent="researcher")` resolved: machinery, the offers the office took up, its own rows, after `skill_allowlist` |
+| Deep research, researcher | `/skills/oib/`, `/skills/bim/` (`deep_research_skills.agents`) | the non-curated builtins of each assigned collection |
+| Deep research, writer | `/skills/synthesis/`, then `/skills/office/` | the assigned collection, then what `resolve_served_skills("deep_researcher", org)` served: offers taken up and the office's rows |
 
-`SkillRuntime` (`src/aiq_agent/skills/runtime.py`) is **per run**
-(ADR-0018 — never cached on a shared agent instance): it owns the activation
-list, so `skills_activated` on the terminal frame records exactly which bodies
-were delivered this run — and nothing else, because delivery is the only event
-there is.
+A later source wins a name clash, which is the middleware's own layering.
+
+- **L1 — the catalog.** One entry per skill (name, description, the path to
+  read), rendered by the middleware with our template (`SKILLS_PROMPT`, English,
+  under `## Skills`) instead of the stock text, which tells the model about
+  "Deepagents" sources and helper scripts it has none of. The deep researcher's
+  subagents host the middleware (a `SkillsMiddleware` in a subagent spec's
+  `middleware` takes the skills slot by name). Piloti's loop is its own
+  LangGraph graph, not `create_agent`, so it cannot host `AgentMiddleware`, and
+  its system prompt must stay byte-identical across turns
+  (`test_turn_context_message.py`); `SkillRuntime.catalog_block` therefore runs
+  the middleware's own `before_agent` (load from the backend) and
+  `modify_request` (render) and puts the section in the turn context
+  (`piloti.j2` `skills_block`). Same text, same loader, both agents. Nothing a
+  person sets takes a row out: `grid-auto-invoke: false` still parses and
+  decides nothing.
+- **L2 — the body.** The model reads `SKILL.md` with `read_file`. In deep
+  research that is the subagent's stock filesystem tool, gated by
+  `factory.skill_filesystem_permissions` (read only the agent's own sources,
+  never write). Piloti gets the same verb from `tools/documents/tools.py`: the
+  skills backend is a `/skills/` route beside the working directory, so one
+  `read_file` reads drafts and skills, and a turn without a conversation gets
+  `read_file` for its skills alone. A path that is not a skill reads as not
+  found. The `grid-cards` block rides on that read.
+- **Pinned — the shortcut.** The turn-start decision (ADR-0064) asks a `skill`
+  choice over every resolved skill with `none`, verified by one "fits" noul per
+  skill, and the ONE chosen body is pinned (`SkillRuntime.pin`): it rides this
+  turn's prompt in full under `### Given in full for this question`, in the
+  middleware's own pinned shape `<skill name="…" path="…">`, with its preferred
+  card shapes beyond the eight the envelope teaches. Deep Agents' own
+  `pinned_skills` (0.7.23) appends the body as a `HumanMessage`; Piloti cannot
+  use it, because a `HumanMessage` is where its turn begins
+  (`answer_pipeline.this_turn`). The model names a pinned skill it followed in
+  the envelope's `skills_applied`; the runtime accepts a name only when that
+  body was pinned. The size budget that used to inline every short body
+  (`skills_inline_max_body_chars` / `skills_inline_budget_chars`, both 0 in the
+  shipped config) is gone. Deep research pins nothing.
+- **Skill tools** (Deep Agents 0.7.22, `metadata.include_tools`) are not used:
+  no skill needs a tool the agent does not already have.
+
+**Every scaffolding string is English**, and that is a decision rather than an
+oversight. The agent answers in the user's language, decided per turn from the
+question — not baked into the machinery — so a prompt that mixes German block
+headings into English instructions is neither localised nor language-agnostic.
+It is also a country coupling of exactly the kind `country-extensibility.md`
+exists to remove. Country- or language-specific wording belongs in
+`CountryProfile` or in an authored skill body, never in string constants in
+`runtime.py`.
+
+`SkillRuntime` is **per run** (ADR-0018 — never cached on a shared agent
+instance): it owns the activation list, so `skills_activated` on the terminal
+frame records exactly which bodies reached the model this run, from the reads
+of every subagent in deep research. The deep researcher's `CompositeBackend` is
+built per run for the same reason; only the job's default backend (state or
+sandbox) is cached on the agent.
 
 ## Invoking a skill in chat (`/name`)
 
@@ -464,7 +492,7 @@ Typing `/` as the first non-whitespace character of a composer message opens a
 picker of the skills this member may invoke; picking one inserts a `/name`
 mention into the message TEXT, and that text is what is sent. Nothing rides
 beside it on the wire: the model reads the mention in the question, sees the
-skill's line in its catalog, and calls `use_skill` if it agrees the skill
+skill's line in its catalog, and reads its `SKILL.md` if it agrees the skill
 applies.
 
 - **Endpoint:** `GET /api/skills/invocable` → `listInvocableSkills`, filtered
@@ -479,8 +507,8 @@ applies.
   For the skills that *are* in the menu, that is exactly the metadata the
   agent is given at the start of a turn, so a description that fails to say
   when a skill applies is visibly unhelpful to both. Bodies are never fetched
-  to draw it; they enter the conversation only when the agent calls
-  `use_skill`.
+  to draw it; they enter the conversation only when the agent reads the
+  skill's `SKILL.md`.
 - **Why only at the start of a message.** The trigger is deliberately narrower
   than `@`: slashes are ordinary punctuation in this domain (`12/05`,
   `OIB-RL 2/3`, `und/oder`, `m/s`, `/etc/hosts`), and a menu firing on those
@@ -507,9 +535,13 @@ contract and panel as `MentionPicker`) and `components/InvokedSkillChip.tsx`
 
 ## Activation transparency (`skills_activated`)
 
-The runtime records which skills were actually **loaded** — the ones invoked
-via `use_skill`, in call order, deduped — and the agent lifts that list onto the
-terminal `system_response_message` as `skills_activated`; the reconnect path
+The runtime records which skills were actually **loaded** — the ones whose
+`SKILL.md` the model read (`SkillsBackend.read`, not the catalog's own
+download), plus a pinned body the envelope named, in order, deduped — and the
+agent lifts that list onto the terminal `system_response_message` as
+`skills_activated`. It is also Langfuse trace metadata (`skills_activated`, with
+`skills_offered` and `skills_pinned` for the turn,
+[`langfuse.md`](../observability/langfuse.md)); the reconnect path
 persists it into assistant-message metadata
 (`docs/api/websocket-protocol.md`).
 
@@ -535,25 +567,24 @@ name is still a true record of what ran.
 workflow YAML — NAT's own vocabulary for an agent config):
 
 ```yaml
-skills_enabled: true        # default true; false disables the use_skill tool + catalog
+skills_enabled: true        # default true; false offers no catalog and no skill read
 skill_allowlist: []         # empty = every resolved skill is offered
 ```
 
-Both are fields on `ResearchAgentConfig`. `use_skill` and the skill
-index are bound on **every** turn, greetings included: there is no classifier
-and no `requires_sources` gate in front of the answering agent any more
-(ADR-0052), so whether a turn loads a skill is the model's call, pinned by the
-prompt. The allowlist filters to the actual resolved set; an unknown name in it
-is simply ignored (fail-open, so a typo never errors a turn).
+Both are fields on `ResearchAgentConfig`. The catalog and the skill read are
+there on **every** turn, greetings included: there is no classifier and no
+`requires_sources` gate in front of the answering agent any more (ADR-0052), so
+whether a turn reads a skill is the model's call. The allowlist filters the
+resolved set; an unknown name in it is simply ignored (fail-open, so a typo
+never errors a turn). The WorkOS `skills` entitlement gates authoring and jobs
+in the BFF; it does not gate the catalog, which carries the pipeline's own
+machinery for every organization.
 
-The deep-research side is different by construction: it does NOT use the
-`use_skill` tool or these config keys. Its skills are deepagents-native
-(`deep_research_skills`, a `DeepResearchSkillsConfig` function-ref in the
-config): per-agent skill *sources* wired through `SkillsMiddleware` with a
-`FilesystemBackend` over `src/aiq_agent/skills/builtin/` and read-only
-filesystem permission rules (`factory.runtime_skill_filesystem_permissions`).
-The writer's BFF-served skills reach it the same way they reach chat: as the L1
-catalog it may pick from, never as a body it was told to open.
+The deep-research side has no such keys. `deep_research_skills` (a
+`DeepResearchSkillsConfig` function-ref) names the builtin collections each
+subagent lists, and the office's skills are added to the writer's sources when
+the BFF served any. Both reach the subagents through the one `SkillsMiddleware`
+and backend described under Selection; there is no second channel.
 
 ## Data model (grid_app, Drizzle)
 
@@ -1280,10 +1311,18 @@ history surfaces, and the run-history link and job-glyph rendering that
 
 - `tests/aiq_agent/skills/` — model validation, builtin discovery, resolver
   caching/shadowing/fail-open (including the resolve query contract: URL,
-  token header, both param cases), runtime prompt/tool wiring, and the rule
-  that nothing may require a skill: `test_runtime.py` pins that the runtime
-  offers and cannot require, that a `standard` marker on the payload is an
-  ordinary catalog entry, and that only a delivered body counts as activated.
+  token header, both param cases), and the rule that nothing may require a
+  skill: `test_runtime.py` pins the catalog the middleware renders, that only a
+  read body (or a pinned one the envelope named) counts as activated, and that
+  the runtime offers and cannot require; `test_backend.py` pins the backend:
+  read-only, what it serves parses back as the skill, an office skill is
+  visible only to its organization, and a curated offer is absent until taken
+  up.
+- `tests/aiq_agent/tools/documents/test_draft_tools.py` — the one `read_file`
+  reading drafts and skills, and a skill path never writable;
+  `tests/aiq_agent/agents/deep_researcher/test_factory.py` — the office's skills
+  go to the writer alone; `tests/aiq_agent/test_deepagents_contract.py` — the
+  Deep Agents internals the backend and the catalog render rest on.
 - `tests/aiq_agent/turn/test_payload.py` and
   `tests/aiq_agent/turn/test_payload_parsing.py` — the envelope parsing,
   including that a `skills` array from an older client is dropped rather than

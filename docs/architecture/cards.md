@@ -536,8 +536,8 @@ and the shapes of `ENVELOPE_SHAPE_TYPES` ride in the envelope contract
 enough to name the right card AND to build it, with a card the validator
 refuses handed to the small repair model (`cards/repair.py`) rather than back
 to the answering agent. Deep research still reads the doctrine in
-`emit_card`'s description, and gets the shape on the retry. Skills, too, are bound on
-every turn (`use_skill`); there is no gate in front of the skill runtime any
+`emit_card`'s description, and gets the shape on the retry. Skills, too, are offered on
+every turn (the catalog, and `read_file` on a `SKILL.md`); there is no gate in front of the skill runtime any
 more, and no way to require a skill either, so a greeting that loads no skill is
 the model's judgment, pinned by the prompt.
 

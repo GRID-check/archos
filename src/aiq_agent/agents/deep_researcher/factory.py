@@ -13,7 +13,6 @@ from deepagents.middleware.filesystem import FilesystemMiddleware
 from deepagents.middleware.filesystem import FilesystemPermission
 from deepagents.middleware.filesystem import FsToolName
 from deepagents.middleware.patch_tool_calls import PatchToolCallsMiddleware
-from deepagents.middleware.skills import SkillsMiddleware
 from deepagents.middleware.summarization import create_summarization_middleware
 from langchain.agents import create_agent
 from langchain.agents.middleware import ModelRetryMiddleware
@@ -31,6 +30,11 @@ from aiq_agent.common.norm_registry import JURISDICTION_GROUNDING
 from aiq_agent.common.norm_registry import doctrine_for
 from aiq_agent.common.norm_registry import parcel_note
 from aiq_agent.common.norm_registry import render_block_for_prompt
+from aiq_agent.skills import OFFICE_SOURCE
+from aiq_agent.skills import SKILLS_ROOT
+from aiq_agent.skills import SkillRuntime
+from aiq_agent.skills import skills_middleware
+from aiq_agent.skills.runtime import source_path
 
 from .custom_middleware import DeferredStructuredOutputMiddleware
 from .custom_middleware import EmptyContentFixMiddleware
@@ -40,7 +44,6 @@ from .custom_middleware import ToolNameSanitizationMiddleware
 from .custom_middleware import ToolResultPruningMiddleware
 from .custom_middleware import ToolVisibilityMiddleware
 from .custom_middleware import is_retryable_tool_error
-from .deepagents_runtime import BUILTIN_SKILL_SOURCE
 from .deepagents_runtime import DeepAgentsRuntime
 from .models import DeepResearchAgentState
 from .models import ResearchNotes
@@ -102,11 +105,6 @@ class DeepResearchToolSet:
     research_source_tools: list[BaseTool]
     researcher_tools: list[BaseTool]
     writer_tools: list[BaseTool]
-    #: The ``use_skill`` closure of THIS run, when platform/org skills resolved.
-    #: Already inside ``writer_tools``; kept separately because the writer's
-    #: sanitizer has to be told the name (see ``build_deep_research_middleware_set``)
-    #: and because it is the one tool in the set whose existence is per-run.
-    writer_skill_tools: list[BaseTool]
 
 
 @dataclass(frozen=True)
@@ -136,11 +134,11 @@ class DeepResearchGraphContext:
     enable_source_router: bool
     backend: Any
     visibility_middleware: list[Any]
-    #: The resolved platform/org skills for THIS run, rendered as the catalog +
-    #: "Active skills" blocks the writer prompt shows. None when none
-    #: resolved — including every run where the BFF could not be reached, which
-    #: is why the writer prompt has to read as a complete instruction without it.
-    skills_block: str | None = None
+    #: THIS run's skills (ADR-0135): the assigned builtin collections and the
+    #: office's own, served under ``/skills/`` on ``backend``. None, or empty,
+    #: on a run where nothing resolved, which is why every prompt has to read
+    #: as a complete instruction without a skills section.
+    skills: SkillRuntime | None = None
 
     @property
     def available_documents(self) -> list[dict[str, Any]]:
@@ -186,10 +184,21 @@ class DeepResearchGraphContext:
         return [*base, *self.visibility_middleware]
 
     def permissions(self, agent_name: str) -> list[FilesystemPermission]:
-        return runtime_skill_filesystem_permissions(self.runtime, agent_name)
+        if self.skills is None or not self.skills.sources:
+            return []
+        return skill_filesystem_permissions(self.skill_sources(agent_name))
 
     def skill_sources(self, agent_name: str) -> list[str] | None:
-        return self.runtime.skill_sources_for(agent_name)
+        """The skill sources ``agent_name`` lists; the writer also lists the office's own.
+
+        The office's skills go to the WRITER and to no one else: a skill that
+        reaches deep research from the office is an instruction about the
+        ANSWER, and the answer is written there.
+        """
+        sources = self.runtime.skill_sources_for(agent_name, self.skills)
+        if agent_name == WRITER_AGENT and self.skills is not None and OFFICE_SOURCE in self.skills.sources:
+            sources.append(source_path(OFFICE_SOURCE))
+        return sources or None
 
 
 def build_deep_research_tool_set(
@@ -198,7 +207,6 @@ def build_deep_research_tool_set(
     source_registry_middleware: SourceRegistryMiddleware,
     max_concurrent_source_tool_calls: int,
     max_source_tool_batch_size: int,
-    writer_skill_tools: Sequence[BaseTool] = (),
 ) -> DeepResearchToolSet:
     """Build helper, researcher, writer, and source tool groupings."""
     source_tool_names = {tool.name for tool in tools}
@@ -216,12 +224,7 @@ def build_deep_research_tool_set(
         all_tools=[*helper_tools, *tools],
         research_source_tools=research_source_tools,
         researcher_tools=[*helper_tools, *research_source_tools],
-        # ``use_skill`` goes to the WRITER and to no one else. A platform skill
-        # that reaches this agent is an instruction about the ANSWER — the house
-        # voice is the type case — and the answer is written here; the researcher
-        # has a skills channel of its own in the sandbox mount.
-        writer_tools=[*helper_tools, *writer_skill_tools],
-        writer_skill_tools=list(writer_skill_tools),
+        writer_tools=list(helper_tools),
     )
 
 
@@ -347,7 +350,6 @@ def build_deep_research_middleware_set(
         researcher=common(),
         planner=common(),
         writer=common(
-            [tool.name for tool in tool_set.writer_skill_tools],
             tool_result_keep_last_n=writer_tool_result_keep_last_n(max_research_concurrency),
             tool_result_max_chars=_WRITER_MAX_TOOL_RESULT_CHARS,
             tool_result_total_char_budget=_WRITER_CHAR_BUDGET,
@@ -389,12 +391,12 @@ def runtime_visibility_middleware(runtime: DeepAgentsRuntime) -> list[Any]:
 
 
 def skill_filesystem_permissions(skill_sources: Sequence[str] | None) -> list[FilesystemPermission]:
-    """Build permissions that expose only assigned built-in skill collections as read-only."""
+    """Build permissions that expose only an agent's own skill sources, read-only."""
     allowed_source_paths = [source.rstrip("/") for source in skill_sources or ()]
     rules = [
         FilesystemPermission(
             operations=["write"],
-            paths=[f"{BUILTIN_SKILL_SOURCE}**"],
+            paths=[f"{SKILLS_ROOT}**"],
             mode="deny",
         )
     ]
@@ -402,7 +404,7 @@ def skill_filesystem_permissions(skill_sources: Sequence[str] | None) -> list[Fi
         rules.append(
             FilesystemPermission(
                 operations=["read"],
-                paths=[BUILTIN_SKILL_SOURCE],
+                paths=[SKILLS_ROOT],
                 mode="allow",
             )
         )
@@ -417,18 +419,11 @@ def skill_filesystem_permissions(skill_sources: Sequence[str] | None) -> list[Fi
     rules.append(
         FilesystemPermission(
             operations=["read"],
-            paths=[f"{BUILTIN_SKILL_SOURCE}**"],
+            paths=[f"{SKILLS_ROOT}**"],
             mode="deny",
         )
     )
     return rules
-
-
-def runtime_skill_filesystem_permissions(runtime: DeepAgentsRuntime, agent_name: str) -> list[FilesystemPermission]:
-    """Return filesystem-tool permissions for an agent's configured skill sources."""
-    if not runtime.skills_enabled:
-        return []
-    return skill_filesystem_permissions(runtime.skill_sources_for(agent_name))
 
 
 def build_researcher_runnable(
@@ -445,7 +440,7 @@ def build_researcher_runnable(
     """Build the reusable single-query researcher runnable."""
     middleware: list[Any] = []
     if skill_sources:
-        middleware.append(SkillsMiddleware(backend=backend, sources=skill_sources))
+        middleware.append(skills_middleware(backend, skill_sources))
     middleware.extend(
         [
             research_filesystem_middleware(backend, filesystem_permissions),
@@ -491,8 +486,10 @@ def _subagent_spec(
     }
     if response_format is not None:
         spec["response_format"] = response_format
-    if skills is not None:
-        spec["skills"] = skills
+    if skills:
+        # In the spec's own middleware our instance takes the skills slot by
+        # name, so the catalog reads as it does for every other agent.
+        spec["middleware"] = [*spec["middleware"], skills_middleware(context.backend, skills)]
     return spec
 
 
@@ -558,7 +555,7 @@ def build_deep_research_subagents(context: DeepResearchGraphContext) -> list[dic
             role=LLMRole.REPORT_WRITER,
             tools=context.tool_set.writer_tools,
             middleware=context.middleware_set.writer,
-            prompt_values={"skills_block": context.skills_block, "approved_plan": context.state.clarifier_result},
+            prompt_values={"approved_plan": context.state.clarifier_result},
             skills=context.skill_sources(WRITER_AGENT),
         ),
     )
@@ -637,7 +634,7 @@ def build_deep_research_graph(
     max_research_concurrency: int,
     enable_source_router: bool = True,
     checkpointer: Checkpointer | None = None,
-    skills_block: str | None = None,
+    skills: SkillRuntime | None = None,
     rounds: RetrievalRounds | None = None,
 ) -> Any:
     """Build the full DeepAgents graph for one deep research run.
@@ -663,9 +660,9 @@ def build_deep_research_graph(
         current_datetime=datetime.now().strftime("%Y-%m-%d"),
         max_research_concurrency=max_research_concurrency,
         enable_source_router=enable_source_router,
-        backend=runtime.backend,
+        backend=runtime.backend_for(skills),
         visibility_middleware=runtime_visibility_middleware(runtime),
-        skills_block=skills_block,
+        skills=skills,
     )
     research_batch_tool = _build_research_batch_tool(
         context,

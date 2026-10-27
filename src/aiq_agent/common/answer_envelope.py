@@ -364,10 +364,10 @@ class AnswerMeta(_EnvelopeModel):
         description="with escalate_to_deep: one short clause saying why, in the answer's language",
     )
     #: CONTROL. The model's account of which of the skills in its prompt it
-    #: followed (ADR-0063): a body that rode the prompt costs no ``use_skill``
-    #: call, so this is the only way the "Skills used" disclosure can learn it
-    #: shaped the answer. Names only; the runtime accepts a name only when the
-    #: body was in the prompt (``skills/runtime.py::record_applied``).
+    #: followed (ADR-0063): a pinned body that rode the prompt costs no
+    #: ``read_file``, so this is the only way the "Skills used" disclosure can
+    #: learn it shaped the answer. Names only; the runtime accepts a name only
+    #: when the body was pinned (``skills/runtime.py::record_applied``).
     skills_applied: list[str] | None = Field(
         default=None,
         description=(
