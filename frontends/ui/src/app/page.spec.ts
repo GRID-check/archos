@@ -3,7 +3,7 @@
  *
  * Regression cover for the sign-in loop: the landing site's only link back to
  * the app is its "Sign in" button, so if `/` bounced *every* logged-out visitor
- * to GRID_LANDING_URL the button returned the visitor to the page they came
+ * to LANDING_URL the button returned the visitor to the page they came
  * from and the app had no reachable entry point.
  */
 
@@ -61,7 +61,7 @@ const originalEnv = process.env
 
 describe('HomePage redirect', () => {
   beforeEach(() => {
-    process.env = { ...originalEnv, REQUIRE_AUTH: 'true', GRID_LANDING_URL: LANDING_URL }
+    process.env = { ...originalEnv, REQUIRE_AUTH: 'true', LANDING_URL: LANDING_URL }
     redirect.mockClear()
     getGridSession.mockReset()
     getGridSession.mockResolvedValue(null)
@@ -83,7 +83,7 @@ describe('HomePage redirect', () => {
   })
 
   test('falls back to the sign-in route when no landing site is configured', async () => {
-    delete process.env.GRID_LANDING_URL
+    delete process.env.LANDING_URL
 
     expect(await visit()).toBe('/api/auth/signin')
   })

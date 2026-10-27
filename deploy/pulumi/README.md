@@ -161,7 +161,7 @@ All keys live under the `grid-oib:` namespace. **Bold** = required (no default).
 | `rateLimitFailClosed` | `false` | Refuse traffic when the rate limit service is unreachable. Fail-open is right for abuse bounds — a counter-store blip must not read as an outage |
 | `rateLimitApp` | `600`/min | Catch-all budget per client IP on the app host (deliberately loose — stops runaway clients, does not shape traffic) |
 | `rateLimitAppAuth` | `20`/min | `/api/auth/*` — the credential-stuffing surface |
-| `rateLimitAppWsUpgrade` | `30`/min | `/websocket` upgrades; mirrors `GRID_WS_UPGRADE_RATE_LIMIT` |
+| `rateLimitAppWsUpgrade` | `30`/min | `/websocket` upgrades; mirrors `WS_UPGRADE_RATE_LIMIT` |
 | `rateLimitS3` | `300`/min | Presigned preview/download URLs (one preview fans out into many GETs) |
 | `rateLimitWeb` | `120`/min | Landing site + blog |
 | `rateLimitStoreMaxmemory` | `256mb` | Counter-store dataset cap (floor 256mb — Dragonfly's per-thread boot minimum) |
@@ -213,7 +213,7 @@ All keys live under the `grid-oib:` namespace. **Bold** = required (no default).
 | `gotenbergReplicas` | `ceil(bffJobsMaxReplicas × bffJobsRenditionConcurrency / 2)` (2 by default) | Converter replicas. A replica is sized for 2 conversions (one running, one ready behind it, `GOTENBERG_SLOTS_PER_REPLICA`), so its capacity is twice this, and the `bff-jobs` pool's ceiling (`bffJobsMaxReplicas × bffJobsRenditionConcurrency`) may not exceed it (`gotenberg.spec.ts` holds the defaults to it). Unset, it follows the pool; set it higher to leave headroom for readers opening a preview, whose conversions the frontend pods run themselves |
 | `gotenbergImage` | `gotenberg/gotenberg:8.37.0-libreoffice` | Pinned, LibreOffice-only variant: no Chromium, so no HTML/URL → PDF routes. The container args are 8.x flag names, and an unknown flag (any `--chromium-*` on this variant) stops it at boot. Keep equal to the Compose pin (`gotenberg.spec.ts` checks) |
 | **Geocoder (address search, ADR-0120)** | | |
-| `geocoderEnabled` | `false` | Self-hosted [Photon](https://github.com/komoot/photon) over the Austrian OSM extract: a `geocoder` StatefulSet of one with an index volume, and `GRID_GEOCODER_URL=http://geocoder:2322` on the frontend. Off, the project dialog's address stays a plain text field. The first start downloads the pinned jar from GitHub and the ~1 GB index from `download1.graphhopper.com`, so the cluster needs HTTPS egress to both. With `networkPolicies` on it admits the frontend alone and may only reach DNS and port 443 (`geocoder-frontend-only`) |
+| `geocoderEnabled` | `false` | Self-hosted [Photon](https://github.com/komoot/photon) over the Austrian OSM extract: a `geocoder` StatefulSet of one with an index volume, and `GEOCODER_URL=http://geocoder:2322` on the frontend. Off, the project dialog's address stays a plain text field. The first start downloads the pinned jar from GitHub and the ~1 GB index from `download1.graphhopper.com`, so the cluster needs HTTPS egress to both. With `networkPolicies` on it admits the frontend alone and may only reach DNS and port 443 (`geocoder-frontend-only`) |
 | `geocoderImage` / `geocoderFetchImage` | `eclipse-temurin:21.0.12.1_1-jre-noble@sha256:…` / `alpine:3.22.6@sha256:…` | The Java runtime Photon runs on, and the init container that fetches and verifies the jar (sha256 pinned in `GEOCODER`, `src/constants.ts`) and the index (md5 published beside it). Official images, digest-pinned |
 | `geocoderIndexUrl` | GraphHopper's `photon-db-austria-1.0-latest.tar.bz2` | The Photon 1.x index; `<url>.md5` must exist beside it. Move it with the jar on a Photon major bump |
 | `geocoderStorageSize` | `10Gi` | The index volume. The index unpacks to about 2 GB; a refresh holds the tarball, the new index and the old one at once |
@@ -299,7 +299,7 @@ All keys live under the `grid-oib:` namespace. **Bold** = required (no default).
 | `platformOwnerEmails` / `platformOrgExternalId` | — / `grid-platform` | Platform tier |
 | `disableSelfServeOrgs` | `false` | Tenancy toggle |
 | *(feature flags)* | — | No stack keys. Every feature is a WorkOS flag per organization (`frontends/ui/src/lib/authz/feature-flags.ts`), read from the WorkOS environment `requireAuth` signs in against. The retired keys `enforceFeatureFlags`, `skillsEnabled`, `collaborationEnabled`, `mailImportEnabled`, `agentAuthoredDocumentsEnabled`, `ifcModelsEnabled` and `memoryReflectionEnabled` are ignored |
-| `auditLogsEnabled` | `false` | WorkOS audit-log emission from the frontend (`GRID_AUDIT_LOGS_ENABLED`) — default OFF |
+| `auditLogsEnabled` | `false` | WorkOS audit-log emission from the frontend (`AUDIT_LOGS_ENABLED`) — default OFF |
 | `byokSecretBackend` / 🔒 `byokLocalKek` | — | BYOK backends |
 | `allowAgentOrgMemory` | `false` | Org-memory write path |
 | 🔒 **`gridInternalApiToken`** / 🔒 **`gridAdminToken`** | — | Cross-service tokens |
@@ -307,7 +307,7 @@ All keys live under the `grid-oib:` namespace. **Bold** = required (no default).
 | `skillMinIntervalMinutes` | `15` | Floor on how often a job may be scheduled to fire |
 | **Storage alerts** (ADR-0042) | | |
 | `storageAlertsEnabled` | `true` | Creates the hourly `storage-alerts` CronJob, which calls `POST /api/internal/storage/alerts`. Default-**on**: the quota already refuses the upload that crosses it, so without the alert the first person to learn about the limit is whoever breaks mid-task. An org with no quota is skipped, so on a deployment that sets none the sweep emits nothing |
-| `storageAlertThresholdPercent` | `80` | Share of quota at which an organization is warned. Reaches the frontend as `GRID_STORAGE_ALERT_THRESHOLD_PERCENT`. Escalation at 90% and 100% is automatic. **Rejected at load time** if outside `(0, 100]` — the BFF would clamp it back to 80, which is right at runtime and wrong at deploy time, where somebody is present to read the error |
+| `storageAlertThresholdPercent` | `80` | Share of quota at which an organization is warned. Reaches the frontend as `STORAGE_ALERT_THRESHOLD_PERCENT`. Escalation at 90% and 100% is automatic. **Rejected at load time** if outside `(0, 100]` — the BFF would clamp it back to 80, which is right at runtime and wrong at deploy time, where somebody is present to read the error |
 | `storageAlertSchedule` | `0 * * * *` | 5-field cron for the sweep. Hourly because the condition changes on the timescale of an ingest and a live alert suppresses re-emission, so a shorter period costs queries without telling anyone anything new |
 | **Vector maintenance** | | |
 | `vectorReconcileEnabled` | `true` | Creates the `vector-reconcile` CronJob, which calls `POST /api/internal/maintenance/reconcile-vectors`: the same sweep a platform owner can start from Platform → Vector maintenance — delete indexed chunks whose document row is gone, forget inventory (summary) rows whose chunks are gone. Default-**on**: the orphans it recovers are invisible in the product, so nobody knows to start the manual run |

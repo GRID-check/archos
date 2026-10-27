@@ -563,7 +563,7 @@ shelf and basis. The content basis may withdraw or sharpen what the name basis
 proposed: an open suggestion it no longer supports for every file is deleted
 (`withdrawProposal`, never a decided one, never a chat's) and its files judged
 afresh. **Latency from drop to suggestion:** the runner's poll
-(`GRID_BFF_JOBS_POLL_MS`, 2 s) plus one model call, and the browser asks every
+(`BFF_JOBS_POLL_MS`, 2 s) plus one model call, and the browser asks every
 4 s while an upload is on screen; the service logs the measured time from the
 seal to the stored proposals (`[filing] … ms after the seal`). Not measured
 against a live model in this change.
@@ -592,7 +592,7 @@ the move, the reason and „Verschieben" / „Alle 2 verschieben" / „Anlegen u
 verschieben" and „Belassen"; per folder in the filing bar above a folder, in the
 upload tray and on the setup page; all through `useServerProposal`
 ([the UI](../ux/file-upload-and-explorer.md#folders-that-say-what-they-hold-and-pilotis-filing-suggestion));
-and in the inbox, pointing at the shelf. `GRID_FILING_SUGGESTIONS=off` switches it off. The receipt card
+and in the inbox, pointing at the shelf. `FILING_SUGGESTIONS=off` switches it off. The receipt card
 (`FileOperationReceipt`) draws a move's `new_folder` („Neuer Ordner“, its path
 and description) above the rows and each item's `reason` under its row, so a
 proposal that carries them reads the same wherever it is shown.
@@ -666,7 +666,7 @@ gets an Eingang item (`root_sort.ready`, `root_sort.failed`,
 (`?rootSort=<runId>`), so closing the dialog never means missing the result.
 
 **The slices.** Each one is bounded well inside the runner's 300 s ceiling
-(`GRID_BFF_JOBS_SLICE_TIMEOUT_MS`), and the cursor is saved after each one.
+(`BFF_JOBS_SLICE_TIMEOUT_MS`), and the cursor is saved after each one.
 
 1. **Scan** (the start request, not a slice). The shelf's open folders and the
    root documents the judgement may read: screened, and read by ingestion.

@@ -20,9 +20,9 @@ export const MAX_MULTIPART_PARTS = 10_000
 /** Decimal, like every size the product shows (`formatBytes`): 25 GB reads as 25 GB. */
 const DEFAULT_MAX_ARCHIVE_BYTES = 25e9
 
-/** The largest archive an import takes (`GRID_MAIL_IMPORT_MAX_BYTES`, default 25 GB). */
+/** The largest archive an import takes (`MAIL_IMPORT_MAX_BYTES`, default 25 GB). */
 export function maxArchiveBytes(env: Record<string, string | undefined> = process.env): number {
-  const parsed = Number.parseInt(env.GRID_MAIL_IMPORT_MAX_BYTES ?? '', 10)
+  const parsed = Number.parseInt(env.MAIL_IMPORT_MAX_BYTES ?? '', 10)
   const value = Number.isFinite(parsed) && parsed > 0 ? parsed : DEFAULT_MAX_ARCHIVE_BYTES
   return Math.min(value, MAIL_IMPORT_PART_BYTES * MAX_MULTIPART_PARTS)
 }

@@ -147,7 +147,7 @@ async function pruneOldRuns(sql, retentionDays) {
  * How long after a chat was erased its traces are still looked for. The BFF
  * erases a chat in the delete request and closes its queue row as 'purged';
  * this is the window in which the scheduler goes back for the traces. Past it
- * the retention sweep (`GRID_LANGFUSE_TRACE_RETENTION_DAYS`) is what removes
+ * the retention sweep (`TRACE_RETENTION_DAYS`) is what removes
  * them, so it need only outlast the longest outage worth recovering from.
  */
 const TRACE_ERASURE_WINDOW_DAYS = 35

@@ -6,7 +6,7 @@
  * is "each due occurrence fires once, on whichever replica", which only row
  * locks and a committed advance can make true.
  *
- *   GRID_TEST_DATABASE_URL=postgres://grid_app_rw@host:port/grid_app \
+ *   TEST_DATABASE_URL=postgres://grid_app_rw@host:port/grid_app \
  *     npx vitest run scheduler/db.integration.spec.mjs
  *
  * `task db:test:rls` (scripts/rls-test-db.sh) builds that database and runs it.
@@ -16,14 +16,14 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import { withPlatformScope } from '../workers/platform-scope.js'
 import { claimDue } from './db.js'
 
-const url = process.env.GRID_TEST_DATABASE_URL
+const url = process.env.TEST_DATABASE_URL
 const ORG = `org_scheduler_${Date.now()}`
 const NEXT = new Date('2099-01-01T09:00:00Z')
 
 describe('the suite is not silently skipped in CI', () => {
   it('has a database to run against', () => {
-    if (!process.env.GRID_RLS_SUITE_REQUIRED) return
-    expect(url, 'GRID_TEST_DATABASE_URL is unset while GRID_RLS_SUITE_REQUIRED is set').toBeTruthy()
+    if (!process.env.RLS_SUITE_REQUIRED) return
+    expect(url, 'TEST_DATABASE_URL is unset while RLS_SUITE_REQUIRED is set').toBeTruthy()
   })
 })
 

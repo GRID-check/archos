@@ -4,7 +4,7 @@
  * The asks against a REAL Postgres (migration 0179, ADR-0124), through the
  * restricted runtime role:
  *
- *   GRID_TEST_DATABASE_URL=postgres://grid_app_rw@host:port/grid_app \
+ *   TEST_DATABASE_URL=postgres://grid_app_rw@host:port/grid_app \
  *     npx vitest run src/lib/piloti-asks/repository.integration.spec.ts
  *
  * The unit specs mock this module; these prove the SQL the service rests on:
@@ -21,7 +21,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 
 vi.mock('server-only', () => ({}))
 
-const url = process.env.GRID_TEST_DATABASE_URL
+const url = process.env.TEST_DATABASE_URL
 const ORG = `org_ask_${Date.now()}`
 const OTHER_ORG = `${ORG}_other`
 const ANNA = 'user_ask_anna'

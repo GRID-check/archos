@@ -6,7 +6,7 @@
  * click finds the open job by its payload, and the internal route reads back
  * only the row a worker holds. The claim itself is `queue.integration.spec.ts`.
  *
- *   GRID_TEST_DATABASE_URL=postgres://grid_app_rw@host:port/grid_app \
+ *   TEST_DATABASE_URL=postgres://grid_app_rw@host:port/grid_app \
  *     npx vitest run src/lib/jobs-queue/repository.integration.spec.ts
  *
  * `task db:test:rls` (scripts/rls-test-db.sh) builds that database and runs it.
@@ -17,7 +17,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 
 vi.mock('server-only', () => ({}))
 
-const url = process.env.GRID_TEST_DATABASE_URL
+const url = process.env.TEST_DATABASE_URL
 const STAMP = Date.now()
 const ORG_A = `org_jobrepo_a_${STAMP}`
 const ORG_B = `org_jobrepo_b_${STAMP}`

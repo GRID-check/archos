@@ -16,7 +16,7 @@
  * who can act on it. Support holds the read half and sees the reports on the
  * page, but is not paged for each one.
  *
- * Break-glass owners (`GRID_PLATFORM_OWNER_EMAILS`) are not members of the
+ * Break-glass owners (`PLATFORM_OWNER_EMAILS`) are not members of the
  * platform organization and are therefore not addressed; the triage page
  * still shows them every report.
  *

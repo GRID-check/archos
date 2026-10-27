@@ -70,8 +70,8 @@ cleanly when unset, so a partial run only verifies what it knows:
 
 | Section | Desired state via | Reconciles |
 |---|---|---|
-| Platform organization | `GRID_PLATFORM_ORG_EXTERNAL_ID` (default `grid-platform`) | creates "GRID Platform" with that external id when missing |
-| Owner membership | `GRID_PLATFORM_OWNER_EMAIL` | seats the user in the platform org and assigns `org-platform-owner` (the invite itself stays manual) |
+| Platform organization | `PLATFORM_ORG_EXTERNAL_ID` (default `grid-platform`) | creates "GRID Platform" with that external id when missing |
+| Owner membership | `PLATFORM_OWNER_EMAIL` | seats the user in the platform org and assigns `org-platform-owner` (the invite itself stays manual) |
 | AuthKit redirect URIs / CORS origins | `WORKOS_DESIRED_REDIRECT_URIS`, `WORKOS_DESIRED_CORS_ORIGINS` (comma-separated) | adds missing entries; extras are REPORTED, never deleted without `--apply --prune` |
 | Observability Connect app | `WORKOS_CONNECT_APP_NAME` (default `GRID Observability`), `WORKOS_CONNECT_REDIRECT_URIS` | matches by name; creates a confidential OAuth app and prints client id + secret ONCE; updates redirect URIs on an existing app. The Scopes permission assignment stays manual |
 | Feature-flag targeting | `WORKOS_FLAG_TARGETS_JSON` (`{"<slug>": ["org_…", …]}`) | ADDITIVE only — adds missing targets per org, never removes one; flags missing from WorkOS are reported as MANUAL because creation has no SDK binding |
@@ -110,7 +110,7 @@ Two Production-specific notes:
 
 - **No users exist yet**, so the GRID Platform organization has no
   `org-platform-owner` membership. Until the first owner signs in, platform
-  access comes from the `GRID_PLATFORM_OWNER_EMAILS` break-glass allowlist —
+  access comes from the `PLATFORM_OWNER_EMAILS` break-glass allowlist —
   which is exactly the first-run case it exists for. Clear it once the
   membership is assigned.
 - **`multipleRolesEnabled` is `false` in Production and `true` in Staging.**
@@ -275,7 +275,7 @@ nobody. The current gap in both environments, and what it costs users, is in
 
 - Organization **"GRID Platform"**, external id **`grid-platform`**
   (Staging id: `org_01KX06QQJN3KA25R9G2PNFBGXV`). The app resolves it by
-  external id (`GRID_PLATFORM_ORG_EXTERNAL_ID`).
+  external id (`PLATFORM_ORG_EXTERNAL_ID`).
 - **Org-scoped role** `org-platform-owner` ("Platform Owner") **created
   inside that org only** — WorkOS org-scoped roles cannot be assigned in
   any other organization, which is the exclusivity guarantee. Permissions:
@@ -321,7 +321,7 @@ nobody. The current gap in both environments, and what it costs users, is in
      dashboard (or via the management API `updateAuthkitSettings`,
      `allowSignUp: false`) for Staging, and again when Production is
      provisioned.
-  2. **App-side**: `GRID_DISABLE_SELF_SERVE_ORGS=true` in the deploy
+  2. **App-side**: `DISABLE_SELF_SERVE_ORGS=true` in the deploy
      environment (Coolify) — org creation becomes platform-team-only and
      onboarding shows the invite-only notice up front.
 
@@ -576,12 +576,12 @@ free-text check has been smoke-tested against a configured LLM.
 
 #### Flags are always enforced (since 2026-10)
 
-`GRID_ENFORCE_FEATURE_FLAGS` was switched on in both stacks on 2026-09-18 and
+`ENFORCE_FEATURE_FLAGS` was switched on in both stacks on 2026-09-18 and
 then deleted, together with every env fallback that only mattered while it was
-off (`GRID_SKILLS_ENABLED`, `GRID_COLLABORATION_ENABLED`,
-`GRID_MAIL_IMPORT_ENABLED`, `GRID_IFC_MODELS_ENABLED`,
-`GRID_AGENT_AUTHORED_DOCUMENTS_ENABLED`, `GRID_PROJECT_KNOWLEDGE_PAGE_ENABLED`,
-`GRID_MEMORY_REFLECTION_ENABLED`, `GRID_STAGE_FOLLOW_UPS_ENABLED`). With it on,
+off (`SKILLS_ENABLED`, `COLLABORATION_ENABLED`,
+`MAIL_IMPORT_ENABLED`, `IFC_MODELS_ENABLED`,
+`AGENT_AUTHORED_DOCUMENTS_ENABLED`, `GRID_PROJECT_KNOWLEDGE_PAGE_ENABLED`,
+`MEMORY_REFLECTION_ENABLED`, `GRID_STAGE_FOLLOW_UPS_ENABLED`). With it on,
 every one of those was dead config in both stacks, and compose and local dev,
 which ran it off, rehearsed a different code path from the one that shipped.
 WorkOS is the control plane for features: per organization, per flag, no
@@ -739,7 +739,7 @@ Three things follow, and each has cost somebody an afternoon:
 4. **Script**: re-run both without `--apply` and confirm
    "WorkOS matches the catalog." / "WorkOS matches the desired environment."
 5. **Script**: re-run `provision:workos-env --apply` with
-   `GRID_PLATFORM_OWNER_EMAIL=<owner email>` set — it seats the user in GRID
+   `PLATFORM_OWNER_EMAIL=<owner email>` set — it seats the user in GRID
    Platform (the account itself must already exist; the script reports a
    missing one as MANUAL) and assigns `org-platform-owner`. The membership +
    role pair used to be a dashboard/API action.
@@ -772,7 +772,7 @@ Still manual in every environment, summarized by every `provision:workos-env`
 run: resource types, AuthKit's *Allow sign-ups* toggle, the
 `multipleRolesEnabled` role setting, flag creation, and Vault CMK via support.
 
-Bootstrap alternative: set `GRID_PLATFORM_OWNER_EMAILS=<owner email>` until
+Bootstrap alternative: set `PLATFORM_OWNER_EMAILS=<owner email>` until
 steps 3–5 are done, then clear it.
 
 ## Rolling out folder roles (ADR-0097)
@@ -863,7 +863,7 @@ environment; the migration that drops it also deletes the
 - **Folders** (ADR-0097): `lib/authz/folder-roles.ts` holds every WorkOS call of
   the folder tier. A person's levels in a project are two
   `listResourcesForMembership` calls (`folder:read`, `folder:write`) scoped to
-  the project, cached for `GRID_AUTHZ_CACHE_TTL_MS` like every FGA answer, and
+  the project, cached for `AUTHZ_CACHE_TTL_MS` like every FGA answer, and
   never made for a project with no folder of its own (one indexed probe). A
   lookup that fails clears nothing and is not cached. Changing a list registers
   the folder, then removes the folder roles it no longer wants before assigning
@@ -886,10 +886,10 @@ environment; the migration that drops it also deletes the
 |---|---|---|
 | Who can create an ACCOUNT | **WorkOS (native)** | AuthKit → `allowSignUp` off = invite-only accounts; or enable the **waitlist** (approve/deny each entry). Auth methods (password/Google/GitHub/Microsoft/Apple), email verification, MFA, password policy are all native settings. |
 | Joining an existing org | **WorkOS (native)** | Invitations (users-table widget) and **domain auto-join** (verify the org's email domain; users signing up with that domain land in the org via JIT provisioning instead of the onboarding screen). |
-| Who can create an ORGANIZATION | **App-side** (`GRID_DISABLE_SELF_SERVE_ORGS`) | WorkOS has no org-creation gate — orgs are created by our API. `true` = only the platform team creates orgs; onboarding shows the invite-only notice up front. |
+| Who can create an ORGANIZATION | **App-side** (`DISABLE_SELF_SERVE_ORGS`) | WorkOS has no org-creation gate — orgs are created by our API. `true` = only the platform team creates orgs; onboarding shows the invite-only notice up front. |
 | Platform tier / cross-org access | **App-side on WorkOS primitives** | The GRID Platform org + org-scoped role (this runbook); resolution logic in `lib/authz/platform.ts`. |
 
 Decided posture (see §4): invite-only everything — `allowSignUp` off,
-`GRID_DISABLE_SELF_SERVE_ORGS=true`. Verified-domain auto-join stays
+`DISABLE_SELF_SERVE_ORGS=true`. Verified-domain auto-join stays
 available for known customer domains; the waitlist remains an option if
 public interest should queue rather than bounce.

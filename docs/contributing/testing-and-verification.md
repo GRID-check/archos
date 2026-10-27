@@ -66,7 +66,7 @@ really about SQL. The script (`scripts/rls-test-db.sh`) runs a fixed list of
 suites, and the memory service's "one fact, one live row" consolidation suite.
 A new database-backed spec has to be added to that list, or it only ever runs
 on a developer's machine. Each of those files also carries a
-`GRID_RLS_SUITE_REQUIRED` guard so the CI job fails if the database goes
+`RLS_SUITE_REQUIRED` guard so the CI job fails if the database goes
 missing instead of skipping green.
 
 The per-migration sections at the end of that script prove a backfill, a data

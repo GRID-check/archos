@@ -33,17 +33,17 @@ function base64UrlLength(value: string): number {
 
 /** Why a configuration is unusable, or null when it is fine. */
 export function webPushConfigProblem(env: Record<string, string | undefined>): string | null {
-  const publicKey = env.GRID_WEB_PUSH_VAPID_PUBLIC_KEY?.trim()
-  const privateKey = env.GRID_WEB_PUSH_VAPID_PRIVATE_KEY?.trim()
-  const subject = env.GRID_WEB_PUSH_SUBJECT?.trim()
+  const publicKey = env.WEB_PUSH_VAPID_PUBLIC_KEY?.trim()
+  const privateKey = env.WEB_PUSH_VAPID_PRIVATE_KEY?.trim()
+  const subject = env.WEB_PUSH_SUBJECT?.trim()
   if (!publicKey && !privateKey && !subject) return null
   if (!publicKey || !privateKey || !subject) {
-    return 'GRID_WEB_PUSH_VAPID_PUBLIC_KEY, GRID_WEB_PUSH_VAPID_PRIVATE_KEY and GRID_WEB_PUSH_SUBJECT must be set together'
+    return 'WEB_PUSH_VAPID_PUBLIC_KEY, WEB_PUSH_VAPID_PRIVATE_KEY and WEB_PUSH_SUBJECT must be set together'
   }
-  if (base64UrlLength(publicKey) !== 65) return 'GRID_WEB_PUSH_VAPID_PUBLIC_KEY is not a URL-safe base64 P-256 public key (65 bytes)'
-  if (base64UrlLength(privateKey) !== 32) return 'GRID_WEB_PUSH_VAPID_PRIVATE_KEY is not a URL-safe base64 P-256 private key (32 bytes)'
+  if (base64UrlLength(publicKey) !== 65) return 'WEB_PUSH_VAPID_PUBLIC_KEY is not a URL-safe base64 P-256 public key (65 bytes)'
+  if (base64UrlLength(privateKey) !== 32) return 'WEB_PUSH_VAPID_PRIVATE_KEY is not a URL-safe base64 P-256 private key (32 bytes)'
   if (!/^(mailto:[^@\s]+@[^@\s]+|https:\/\/\S+)$/.test(subject)) {
-    return 'GRID_WEB_PUSH_SUBJECT must be a mailto: address or an https: URL'
+    return 'WEB_PUSH_SUBJECT must be a mailto: address or an https: URL'
   }
   return null
 }
@@ -60,8 +60,8 @@ export function webPushConfig(env: Record<string, string | undefined> = process.
     }
     return null
   }
-  const publicKey = env.GRID_WEB_PUSH_VAPID_PUBLIC_KEY?.trim()
-  const privateKey = env.GRID_WEB_PUSH_VAPID_PRIVATE_KEY?.trim()
-  const subject = env.GRID_WEB_PUSH_SUBJECT?.trim()
+  const publicKey = env.WEB_PUSH_VAPID_PUBLIC_KEY?.trim()
+  const privateKey = env.WEB_PUSH_VAPID_PRIVATE_KEY?.trim()
+  const subject = env.WEB_PUSH_SUBJECT?.trim()
   return publicKey && privateKey && subject ? { publicKey, privateKey, subject } : null
 }

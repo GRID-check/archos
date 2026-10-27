@@ -4,7 +4,7 @@
  * The Papierkorb against a REAL Postgres (migration 0115, ADR-0088), through
  * the restricted runtime role:
  *
- *   GRID_TEST_DATABASE_URL=postgres://grid_app_rw@host:port/grid_app \
+ *   TEST_DATABASE_URL=postgres://grid_app_rw@host:port/grid_app \
  *     npx vitest run src/lib/projects/folder-bin.integration.spec.ts
  *
  * Every rule here is a claim about SQL: which rows a listing leaves out, what
@@ -97,7 +97,7 @@ vi.mock('@/lib/documents/lifecycle', () => ({
   redispatchPublishedVersion: vi.fn(async () => ({ jobId: 'job', status: 'pending' })),
 }))
 
-const url = process.env.GRID_TEST_DATABASE_URL
+const url = process.env.TEST_DATABASE_URL
 const STAMP = Date.now()
 const ORG = `org_bin_${STAMP}`
 const USER = `user_bin_${STAMP}`

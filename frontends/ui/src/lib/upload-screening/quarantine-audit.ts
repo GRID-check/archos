@@ -102,7 +102,7 @@ export async function auditQuarantineDecision(
 
 /**
  * Send the owed decisions about these documents. A deployment that keeps no
- * trail (`GRID_AUDIT_LOGS_ENABLED` off) sends nothing and marks nothing, so
+ * trail (`AUDIT_LOGS_ENABLED` off) sends nothing and marks nothing, so
  * turning the trail on later still finds the recent ones. Never throws.
  */
 export async function auditOwedQuarantines(

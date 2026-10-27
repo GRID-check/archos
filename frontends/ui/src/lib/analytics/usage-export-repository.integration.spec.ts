@@ -3,14 +3,14 @@
  * Postgres with the whole migration chain applied, as the restricted runtime
  * role. The cursor is claimed once while a run holds it, moves only when told
  * to, and the hourly sum puts each ledger row in its own UTC hour. Runs under
- * `task db:test:rls`; skipped unless GRID_TEST_DATABASE_URL is set.
+ * `task db:test:rls`; skipped unless TEST_DATABASE_URL is set.
  */
 
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 
 vi.mock('server-only', () => ({}))
 
-const url = process.env.GRID_TEST_DATABASE_URL
+const url = process.env.TEST_DATABASE_URL
 
 describe.skipIf(!url)('usage export repository against live Postgres', () => {
   const asPlatform = async <T>(run: () => Promise<T>): Promise<T> => {

@@ -1259,9 +1259,9 @@ died half way left no record of which half. Both are now jobs:
   minutes is given back the same way between two slices, so a job that runs
   for hours (an archive import) waits its turn behind the fair claim instead of
   keeping the slot. A claim that lost its worker is taken again
-  after `GRID_BFF_JOBS_STALE_SECONDS`. Every other end of an attempt spends
-  it (a handler that threw, a slice past `GRID_BFF_JOBS_SLICE_TIMEOUT_MS`, a BFF
-  that answered 5xx or not at all) and the job waits `GRID_BFF_JOBS_RETRY_BACKOFF_SECONDS`,
+  after `BFF_JOBS_STALE_SECONDS`. Every other end of an attempt spends
+  it (a handler that threw, a slice past `BFF_JOBS_SLICE_TIMEOUT_MS`, a BFF
+  that answered 5xx or not at all) and the job waits `BFF_JOBS_RETRY_BACKOFF_SECONDS`,
   doubling, before the next, so a job that always times out or kills the BFF
   ends. After `GRID_BFF_JOBS_MAX_ATTEMPTS` the row is marked `dead` with its
   reason in `last_error` and its payload (a report, the requester, storage keys)
@@ -1562,13 +1562,13 @@ preview if this ratio regresses. Tune from `kubectl top pods` — the invariant 
 
 **2. A rolling update is a self-inflicted reconnect herd.** Every WebSocket on a
 draining pod is severed, and each re-upgrade resolves the session, runs FGA
-checks and reads budgets (ADR-0020). `GRID_WS_UPGRADE_RATE_LIMIT` does not cover
+checks and reads budgets (ADR-0020). `WS_UPGRADE_RATE_LIMIT` does not cover
 this: it is keyed on client IP, and the herd arrives from thousands of distinct
 IPs. Three bounds now apply — jittered client backoff
 (`frontends/ui/src/shared/utils/backoff.ts`), per-pod single-flight memoisation
-of the scope lookup (`GRID_WS_SCOPE_CACHE_TTL_MS`), and a global in-flight
+of the scope lookup (`WS_SCOPE_CACHE_TTL_MS`), and a global in-flight
 ceiling that sheds with `503` + `Retry-After` rather than queueing
-(`GRID_WS_UPGRADE_MAX_INFLIGHT`). Covered by
+(`WS_UPGRADE_MAX_INFLIGHT`). Covered by
 `frontends/ui/tests/gateway/ws-upgrade-admission.test.ts`.
 
 **Known gap — CPU is the wrong signal for two of the three workloads.** Holding
@@ -1713,7 +1713,7 @@ so a rotation changes the pod template and triggers an ordinary, gated rolling
 update. The digest is a one-way SHA-256 and is deliberately *not* marked secret,
 so `pulumi preview` shows you the restart before you approve it.
 
-**Frontend WebSocket drain.** `server.js` honours `GRID_SHUTDOWN_DRAIN_MS` (set
+**Frontend WebSocket drain.** `server.js` honours `SHUTDOWN_DRAIN_MS` (set
 to 30s by the deployment; 2s locally). On SIGTERM it starts failing
 `/api/healthz`, refuses new WebSocket upgrades, and lets in-flight streaming
 answers finish. The pod's grace period (60s) covers preStop + that drain.
@@ -1897,7 +1897,7 @@ Three things are true of this whole table and are easy to miss:
 
 | Store | Encrypted? | Detail |
 |---|---|---|
-| BYOK LLM credentials | **Yes** | WorkOS Vault (`byokSecretBackend`), or AES-256-GCM under `GRID_BYOK_LOCAL_KEK` in the local backend. ADR-0022. |
+| BYOK LLM credentials | **Yes** | WorkOS Vault (`byokSecretBackend`), or AES-256-GCM under `BYOK_LOCAL_KEK` in the local backend. ADR-0022. |
 | DB-claimed job payloads | **Yes** | AES-256-GCM under `JOB_PAYLOAD_KEK`; they carry the user auth token. The deploy refuses to run without the KEK unless `allowPlaintextJobPayloads` opts out. |
 | SeaweedFS chunk data | **Yes — and what it protects depends on the topology** | `-filer.encryptVolumeData` (`seaweedfsEncryptVolumeData`, default **on**). Per-chunk AES-256-GCM, **new writes only** — objects written before it was enabled stay plaintext, and there is no bulk-encrypt tool. The per-chunk keys live in the **filer metadata store**, so where that store is decides what the feature is worth. Under `seaweedfsTopology: single` (and under `split` with `seaweedfsFilerStore: leveldb`) the store sits on a PVC in the same cluster — on `single`, the *same* PVC as the volume data — so anyone who obtains the volume obtains the keys beside it: this is crypto-erasure, not disk-theft protection. Under `split` with the Postgres store the keys move to a separate database on separate disks reachable with a different credential, which is what makes it at-rest protection. `pulumi up` warns in the configurations where it is not. ADR-0042, ADR-0043. |
 | Postgres data files (tables, indexes, WAL on disk) | **No** | Postgres has no native TDE. Confidentiality at rest here is entirely the PVC's (see below). |
@@ -2199,7 +2199,7 @@ matching scope.
 > **Bare membership of the platform org is not enough**, and neither is the
 > `org-platform-owner` role on its own if the permission is not attached to it.
 > If nobody holds `platform:organizations:view`, nobody can open Langfuse.
-> `GRID_PLATFORM_OWNER_EMAILS` is an application-level bootstrap and does **not**
+> `PLATFORM_OWNER_EMAILS` is an application-level bootstrap and does **not**
 > apply at the Gateway.
 
 One-time setup, in the WorkOS dashboard under **Connect**:

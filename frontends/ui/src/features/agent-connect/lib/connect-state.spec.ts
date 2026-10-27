@@ -73,8 +73,8 @@ describe('loadAgentConnectState', () => {
     expect(state).toEqual({ availability: 'not-configured', url: null, canAdminister: false })
   })
 
-  test('GRID_MCP_RESOURCE_URL overrides the derived URL', () => {
-    const state = loadAgentConnectState(session(['agent-mcp']), { ...env, GRID_MCP_RESOURCE_URL: 'https://mcp.example.com/api/mcp' })
+  test('MCP_RESOURCE_URL overrides the derived URL', () => {
+    const state = loadAgentConnectState(session(['agent-mcp']), { ...env, MCP_RESOURCE_URL: 'https://mcp.example.com/api/mcp' })
     expect(state.url).toBe('https://mcp.example.com/api/mcp')
   })
 })

@@ -78,7 +78,7 @@ tasks:
       documents, three organizations) as the runtime role under RLS. Prints
       p50/p95 per query; a measurement, not a gate. Needs PostgreSQL server binaries.
     cmds:
-      - GRID_SEARCH_LATENCY=1 bash scripts/rls-test-db.sh --only src/lib/search/search-latency.integration.spec.ts
+      - SEARCH_LATENCY=1 bash scripts/rls-test-db.sh --only src/lib/search/search-latency.integration.spec.ts
 
   fe:test:shard:
     desc: 'One shard of the UI suite, as a blob report (CI: SHARD=1/8 task fe:test:shard)'

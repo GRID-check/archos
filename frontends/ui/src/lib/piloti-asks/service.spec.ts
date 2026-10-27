@@ -486,9 +486,9 @@ describe('getAsk and cancelAsk', () => {
     expect(endAsk).not.toHaveBeenCalled()
   })
 
-  it('reads the longest an ask stays open from GRID_PILOTI_ASK_MAX_SECONDS', () => {
-    expect(askMaxSeconds({ GRID_PILOTI_ASK_MAX_SECONDS: '600' })).toBe(600)
-    expect(askMaxSeconds({ GRID_PILOTI_ASK_MAX_SECONDS: 'x' })).toBe(1_800)
+  it('reads the longest an ask stays open from AGENT_ASK_MAX_SECONDS', () => {
+    expect(askMaxSeconds({ AGENT_ASK_MAX_SECONDS: '600' })).toBe(600)
+    expect(askMaxSeconds({ AGENT_ASK_MAX_SECONDS: 'x' })).toBe(1_800)
     expect(askMaxSeconds({})).toBe(1_800)
   })
 })

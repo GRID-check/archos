@@ -4,7 +4,7 @@
  * The inbox list's paging against a REAL Postgres, through the restricted
  * runtime role:
  *
- *   GRID_TEST_DATABASE_URL=postgres://grid_app_rw@host:port/grid_app \
+ *   TEST_DATABASE_URL=postgres://grid_app_rw@host:port/grid_app \
  *     npx vitest run src/lib/inbox/repository.integration.spec.ts
  *
  * What it proves, a claim about SQL a mocked handle cannot disagree with:
@@ -21,7 +21,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vites
 
 vi.mock('server-only', () => ({}))
 
-const url = process.env.GRID_TEST_DATABASE_URL
+const url = process.env.TEST_DATABASE_URL
 const ORG = `org_inbox_paging_${Date.now()}`
 const ME = 'user_inbox_paging'
 

@@ -123,8 +123,8 @@ done
 if [ "${1:-}" = "--only" ]; then
   shift
   echo "==> running $* as grid_app_rw"
-  GRID_TEST_DATABASE_URL="postgres://grid_app_rw:$RUNTIME_PASSWORD@127.0.0.1:$PORT/grid_app" \
-  GRID_TEST_OWNER_DATABASE_URL="postgres://grid_app_owner@127.0.0.1:$PORT/grid_app" \
+  TEST_DATABASE_URL="postgres://grid_app_rw:$RUNTIME_PASSWORD@127.0.0.1:$PORT/grid_app" \
+  TEST_OWNER_DATABASE_URL="postgres://grid_app_owner@127.0.0.1:$PORT/grid_app" \
     npx vitest run "$@"
   exit 0
 fi
@@ -137,7 +137,7 @@ fi
 # that mocked it. (The memory suite is the one that found the semantic gate
 # reading `.rows` off a postgres-js array, which every mock had agreed with.)
 echo "==> running the isolation, BIM query, memory consolidation, profile-binding, legal-hold, chat-erasure, restricted-use, cross-project use, similar passages, project intake, run-reconciler, usage-ledger, answer-feedback, restricted memory, download-log, Papierkorb, closed-project, Steckbrief, Ausmisten, upload batches, quarantine decisions, Piloti's proposed operations and solo reads, restricted-feedback, revision-subject, the hold on a document, permit-record, push subscription, inbox paging, Anmerkungen, Offene Punkte, folder cards and search providers and workspace search suites as grid_app_rw"
-GRID_TEST_DATABASE_URL="postgres://grid_app_rw:$RUNTIME_PASSWORD@127.0.0.1:$PORT/grid_app" \
+TEST_DATABASE_URL="postgres://grid_app_rw:$RUNTIME_PASSWORD@127.0.0.1:$PORT/grid_app" \
   npx vitest run \
     src/lib/db/tenant-isolation.integration.spec.ts \
     src/lib/bim/query.integration.spec.ts \
@@ -206,7 +206,7 @@ $MIGRATE -v ON_ERROR_STOP=1 -q -c "DELETE FROM bff_job_queue" >/dev/null
 # in parallel they claim each other's seeded jobs. One file at a time. The
 # scheduler's due-scan is the same shape over task_definitions, every tenant's.
 echo "==> running the job-queue and scheduler-claim suites one file at a time as grid_app_rw"
-GRID_TEST_DATABASE_URL="postgres://grid_app_rw:$RUNTIME_PASSWORD@127.0.0.1:$PORT/grid_app" \
+TEST_DATABASE_URL="postgres://grid_app_rw:$RUNTIME_PASSWORD@127.0.0.1:$PORT/grid_app" \
   npx vitest run --no-file-parallelism \
     src/lib/jobs-queue/queue.integration.spec.ts \
     src/lib/jobs-queue/repository.integration.spec.ts \

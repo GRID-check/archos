@@ -10,9 +10,9 @@ import { webPushConfig, webPushConfigProblem } from './config'
 
 const keys = generateVAPIDKeys()
 const valid = {
-  GRID_WEB_PUSH_VAPID_PUBLIC_KEY: keys.publicKey,
-  GRID_WEB_PUSH_VAPID_PRIVATE_KEY: keys.privateKey,
-  GRID_WEB_PUSH_SUBJECT: 'mailto:betrieb@example.org',
+  WEB_PUSH_VAPID_PUBLIC_KEY: keys.publicKey,
+  WEB_PUSH_VAPID_PRIVATE_KEY: keys.privateKey,
+  WEB_PUSH_SUBJECT: 'mailto:betrieb@example.org',
 }
 
 describe('Web Push configuration', () => {
@@ -33,7 +33,7 @@ describe('Web Push configuration', () => {
 
   it('is off, and says why once, with a half-set or malformed pair', () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
-    const broken = { ...valid, GRID_WEB_PUSH_VAPID_PRIVATE_KEY: undefined }
+    const broken = { ...valid, WEB_PUSH_VAPID_PRIVATE_KEY: undefined }
     expect(webPushConfig(broken)).toBeNull()
     expect(webPushConfig(broken)).toBeNull()
     expect(warn).toHaveBeenCalledTimes(1)
@@ -41,9 +41,9 @@ describe('Web Push configuration', () => {
   })
 
   it.each([
-    ['a public key of the wrong length', { GRID_WEB_PUSH_VAPID_PUBLIC_KEY: 'AAAA' }],
-    ['a private key that is not base64url', { GRID_WEB_PUSH_VAPID_PRIVATE_KEY: 'not base64!' }],
-    ['a subject that is neither mailto: nor https:', { GRID_WEB_PUSH_SUBJECT: 'ops@example.org' }],
+    ['a public key of the wrong length', { WEB_PUSH_VAPID_PUBLIC_KEY: 'AAAA' }],
+    ['a private key that is not base64url', { WEB_PUSH_VAPID_PRIVATE_KEY: 'not base64!' }],
+    ['a subject that is neither mailto: nor https:', { WEB_PUSH_SUBJECT: 'ops@example.org' }],
   ])('rejects %s', (_label, override) => {
     expect(webPushConfigProblem({ ...valid, ...override })).not.toBeNull()
   })

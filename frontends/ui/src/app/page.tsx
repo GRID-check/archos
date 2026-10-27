@@ -2,8 +2,8 @@
  * Home Page
  *
  * Thin redirect, no UI: authenticated users go to the project workspace,
- * logged-out visitors go to the public landing site (GRID_LANDING_URL — the
- * Astro marketing/blog microservice). When GRID_LANDING_URL is unset (local
+ * logged-out visitors go to the public landing site (LANDING_URL — the
+ * Astro marketing/blog microservice). When LANDING_URL is unset (local
  * dev without the landing service) the fallback is WorkOS sign-in, and with
  * REQUIRE_AUTH off (dev) we skip auth entirely.
  *
@@ -40,7 +40,7 @@ export default async function HomePage({ searchParams }: HomePageProps): Promise
       if (!session) {
         // Resolve before redirect() — it throws to unwind the render.
         const wantsSignIn = 'sign-in' in (await searchParams)
-        const landingUrl = process.env.GRID_LANDING_URL
+        const landingUrl = process.env.LANDING_URL
         redirect(wantsSignIn || !landingUrl ? SIGN_IN_ROUTE : landingUrl)
       }
     }

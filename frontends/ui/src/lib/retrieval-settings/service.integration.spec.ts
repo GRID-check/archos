@@ -3,7 +3,7 @@
  */
 /**
  * Opt-in integration test: the platform retrieval settings against a real
- * Postgres with migration 0029 applied. Skipped unless GRID_TEST_DATABASE_URL
+ * Postgres with migration 0029 applied. Skipped unless TEST_DATABASE_URL
  * is set (CI has no database).
  *
  * The behaviour worth a real database: a save is a REPLACE, not a patch — a
@@ -15,7 +15,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 
 vi.mock('server-only', () => ({}))
 
-const url = process.env.GRID_TEST_DATABASE_URL
+const url = process.env.TEST_DATABASE_URL
 
 describe.skipIf(!url)('platform retrieval settings against live Postgres', () => {
   beforeAll(() => {

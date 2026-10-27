@@ -9,7 +9,7 @@
  * organization, and that an event with no conversation drops out of a
  * project-filtered view.
  *
- *   GRID_TEST_DATABASE_URL=postgres://grid_app_rw@host:port/grid_app \
+ *   TEST_DATABASE_URL=postgres://grid_app_rw@host:port/grid_app \
  *     npx vitest run src/lib/citations/repository.integration.spec.ts
  *
  * `task db:test:rls` (scripts/rls-test-db.sh) builds that database.
@@ -21,7 +21,7 @@ import type { CitationScopeFilter } from './repository'
 
 vi.mock('server-only', () => ({}))
 
-const url = process.env.GRID_TEST_DATABASE_URL
+const url = process.env.TEST_DATABASE_URL
 
 const STAMP = Date.now()
 const ORG_A = `org_cite_a_${STAMP}`

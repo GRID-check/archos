@@ -1139,13 +1139,13 @@ next interval:
    the BFF records run rows, and if the BFF itself was unreachable the
    occurrence is missed once and the next occurrence heals it (ADR-0023 risks).
 3. Retention: `DELETE FROM task_runs WHERE created_at < now() - interval
-   '$GRID_SKILL_RUNS_RETENTION_DAYS days'` (batched by id-subselect so each
+   '$SKILL_RUNS_RETENTION_DAYS days'` (batched by id-subselect so each
    statement locks a bounded set). The definition survives its pruned runs, so
    a schedule keeps firing after its oldest attempts age out.
 4. Run reconciler, every tick and whatever the gate says: `POST
    {FRONTEND_INTERNAL_URL}/api/internal/runs/reconcile`. The BFF does the work
    (`lib/runs/reconcile.ts`): it claims up to 25 still-`queued`/`running` runs
-   nothing has checked for `GRID_RUN_RECONCILE_STALE_MINUTES` (default 10),
+   nothing has checked for `RUN_RECONCILE_STALE_MINUTES` (default 10),
    stamping `reconcile_checked_at` in the same statement (`FOR UPDATE SKIP
    LOCKED`, migration 0096), asks the job store for each job's real verdict
    (`GET /v1/internal/jobs/{id}/outcome`, service token), and for a finished job
@@ -1153,7 +1153,7 @@ next interval:
    its block's ledger (`recordRunOutcome` with `onlyIfActive`) — the same
    functions the worker's own writes reach. A job the
    store cannot find, or a run that never got a backend job id, is closed as
-   failed once it is older than `GRID_RUN_RECONCILE_UNKNOWN_GRACE_MINUTES`
+   failed once it is older than `RUN_RECONCILE_UNKNOWN_GRACE_MINUTES`
    (default 120). The same sweep then heals up to 100 CLOSED runs nothing has
    looked at since they ended (`claimClosedRunsToHeal`, migration 0099): a block
    still reading „läuft" takes the ending its row records (`settleRunLedger`).
@@ -1196,7 +1196,7 @@ renaming them is a deployment change with no user-visible gain.
 
 - 5-field cron, validated at save time in the BFF with `cron-parser`.
 - Per-job IANA timezone (DST handled by the library).
-- Minimum interval between occurrences: `GRID_SKILL_MIN_INTERVAL_MINUTES`
+- Minimum interval between occurrences: `SKILL_MIN_INTERVAL_MINUTES`
   (default 15) — enforced at save time by sampling successive occurrences.
 - **No skill can veto a schedule.** `grid-schedulable` is gone: whether
   something may run on a timer is a property of the job, not of a skill that
@@ -1206,12 +1206,12 @@ renaming them is a deployment change with no user-visible gain.
 
 | Variable | Service | Default | Purpose |
 |---|---|---|---|
-| `GRID_RUN_RECONCILE_STALE_MINUTES` | frontend | `10` | A still-active run is asked about once nothing has checked it for this long |
-| `GRID_RUN_RECONCILE_UNKNOWN_GRACE_MINUTES` | frontend | `120` | A run whose job cannot be found is closed as failed once this old |
-| `GRID_SKILL_SCHEDULER_POLL_MS` | skill-scheduler | `30000` | Tick interval |
-| `GRID_SKILL_SCHEDULER_BATCH` | skill-scheduler | `20` | Max claims per tick |
-| `GRID_SKILL_MIN_INTERVAL_MINUTES` | frontend | `15` | Minimum cron cadence accepted at save time |
-| `GRID_SKILL_RUNS_RETENTION_DAYS` | skill-scheduler | `90` | Run-history retention |
+| `RUN_RECONCILE_STALE_MINUTES` | frontend | `10` | A still-active run is asked about once nothing has checked it for this long |
+| `RUN_RECONCILE_UNKNOWN_GRACE_MINUTES` | frontend | `120` | A run whose job cannot be found is closed as failed once this old |
+| `SKILL_SCHEDULER_POLL_MS` | skill-scheduler | `30000` | Tick interval |
+| `SKILL_SCHEDULER_BATCH` | skill-scheduler | `20` | Max claims per tick |
+| `SKILL_MIN_INTERVAL_MINUTES` | frontend | `15` | Minimum cron cadence accepted at save time |
+| `SKILL_RUNS_RETENTION_DAYS` | skill-scheduler | `90` | Run-history retention |
 | `SKILLS_CACHE_TTL_SECONDS` | aiq-agent | `60` | Backend org-skill resolution cache TTL (ADR-0020) |
 
 (Existing: `GRID_APP_DATABASE_URL`, `FRONTEND_INTERNAL_URL`,

@@ -26,16 +26,16 @@
  *   GRID_APP_DATABASE_URL            - grid_app Postgres DSN (the queue lives there)
  *   GRID_BFF_JOBS_MODE               - `http` (default) or `inprocess`: where a slice runs
  *   GRID_INTERNAL_API_TOKEN          - shared token for the internal run route (http mode)
- *   GRID_BFF_JOBS_URL                - the pod's own BFF (http mode; default http://127.0.0.1:$PORT)
- *   GRID_BFF_JOBS_CONCURRENCY        - jobs one replica runs at once (default 2)
- *   GRID_BFF_JOBS_POLL_MS            - idle wait between claims (default 2000)
+ *   BFF_JOBS_URL                - the pod's own BFF (http mode; default http://127.0.0.1:$PORT)
+ *   BFF_JOBS_CONCURRENCY        - jobs one replica runs at once (default 2)
+ *   BFF_JOBS_POLL_MS            - idle wait between claims (default 2000)
  *   GRID_BFF_JOBS_DRAIN_SECONDS      - SIGTERM budget to finish a slice (default 60)
- *   GRID_BFF_JOBS_STALE_SECONDS      - a claim silent this long is claimed again (default 180)
+ *   BFF_JOBS_STALE_SECONDS      - a claim silent this long is claimed again (default 180)
  *   GRID_BFF_JOBS_MAX_ATTEMPTS       - claims one job gets before it is dead (default 3)
- *   GRID_BFF_JOBS_RETRY_BACKOFF_SECONDS - wait before a failed job's second attempt, doubling per attempt, at most 15 min; 0 retries at once (default 30)
+ *   BFF_JOBS_RETRY_BACKOFF_SECONDS - wait before a failed job's second attempt, doubling per attempt, at most 15 min; 0 retries at once (default 30)
  *   GRID_BFF_JOBS_DEAD_RETENTION_DAYS - how long a dead job is kept before it is deleted (default 14)
- *   GRID_BFF_JOBS_MAX_PER_ORG        - most jobs one organization runs fleet-wide; 0 = no cap (default 0)
- *   GRID_BFF_JOBS_SLICE_TIMEOUT_MS   - ceiling on one slice's request (default 300000)
+ *   BFF_JOBS_MAX_PER_ORG        - most jobs one organization runs fleet-wide; 0 = no cap (default 0)
+ *   BFF_JOBS_SLICE_TIMEOUT_MS   - ceiling on one slice's request (default 300000)
  */
 
 const { spawn } = require('node:child_process')
@@ -88,24 +88,24 @@ function readConfig(env) {
   return {
     mode: readMode(env.GRID_BFF_JOBS_MODE),
     port,
-    url: (env.GRID_BFF_JOBS_URL || `http://127.0.0.1:${port}`).replace(/\/$/, ''),
+    url: (env.BFF_JOBS_URL || `http://127.0.0.1:${port}`).replace(/\/$/, ''),
     internalToken: env.GRID_INTERNAL_API_TOKEN || '',
     drainMs: toInt(env.GRID_BFF_JOBS_DRAIN_SECONDS, 60) * 1000,
-    sliceTimeoutMs: toInt(env.GRID_BFF_JOBS_SLICE_TIMEOUT_MS, 300_000),
+    sliceTimeoutMs: toInt(env.BFF_JOBS_SLICE_TIMEOUT_MS, 300_000),
     runner: {
       workerPrefix: `bff-jobs-${env.HOSTNAME || os.hostname()}`,
-      concurrency: toInt(env.GRID_BFF_JOBS_CONCURRENCY, 2),
-      pollMs: toInt(env.GRID_BFF_JOBS_POLL_MS, 2000),
+      concurrency: toInt(env.BFF_JOBS_CONCURRENCY, 2),
+      pollMs: toInt(env.BFF_JOBS_POLL_MS, 2000),
       heartbeatMs,
       // Never shorter than a few beats, or a healthy slice's claim would look dead.
-      staleSeconds: Math.max(toInt(env.GRID_BFF_JOBS_STALE_SECONDS, 180), (heartbeatMs / 1000) * 4),
+      staleSeconds: Math.max(toInt(env.BFF_JOBS_STALE_SECONDS, 180), (heartbeatMs / 1000) * 4),
       maxAttempts: toInt(env.GRID_BFF_JOBS_MAX_ATTEMPTS, 3),
-      perLaneCap: toInt(env.GRID_BFF_JOBS_MAX_PER_ORG, 0, { min: 0 }),
+      perLaneCap: toInt(env.BFF_JOBS_MAX_PER_ORG, 0, { min: 0 }),
       // A claim gives its slot back between slices after this long (runner.js, runClaim).
       yieldAfterMs: 10 * 60_000,
       reapEveryMs: 60_000,
       transientBackoffMs: 5_000,
-      retryBackoffSeconds: toInt(env.GRID_BFF_JOBS_RETRY_BACKOFF_SECONDS, queue.DEFAULT_RETRY_BACKOFF_SECONDS, { min: 0 }),
+      retryBackoffSeconds: toInt(env.BFF_JOBS_RETRY_BACKOFF_SECONDS, queue.DEFAULT_RETRY_BACKOFF_SECONDS, { min: 0 }),
       deadRetentionSeconds: toInt(env.GRID_BFF_JOBS_DEAD_RETENTION_DAYS, 14) * 86_400,
       purgeEveryMs: 600_000,
     },

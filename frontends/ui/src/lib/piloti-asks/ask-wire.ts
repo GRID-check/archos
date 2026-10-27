@@ -41,7 +41,7 @@ export const ASK_WAIT_SECONDS = 40
 /**
  * How long an ask may stay open before it is ended `failed` when it is next read:
  * the turn's outcome notice was lost (a replica died mid-turn). Past the longest
- * a turn runs; `GRID_PILOTI_ASK_MAX_SECONDS` overrides it.
+ * a turn runs; `AGENT_ASK_MAX_SECONDS` overrides it.
  */
 export const DEFAULT_ASK_MAX_SECONDS = 1_800
 

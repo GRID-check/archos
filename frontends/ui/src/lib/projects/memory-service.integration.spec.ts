@@ -20,7 +20,7 @@
  * part of this harness, and the claim under test is what the service does with
  * a near-identical vector, not how one is produced.
  *
- *   GRID_TEST_DATABASE_URL=postgres://grid_app_rw@host:port/grid_app \
+ *   TEST_DATABASE_URL=postgres://grid_app_rw@host:port/grid_app \
  *     npx vitest run src/lib/projects/memory-service.integration.spec.ts
  *
  * `task db:test:rls` (scripts/rls-test-db.sh) builds that database and runs
@@ -49,7 +49,7 @@ vi.mock('@/lib/knowledge/embeddings', async (importOriginal) => {
 
 import { embedNote } from '@/lib/knowledge/embeddings'
 
-const url = process.env.GRID_TEST_DATABASE_URL
+const url = process.env.TEST_DATABASE_URL
 
 const ORG = `org_memory_${Date.now()}`
 const USER = `user_${ORG}`
@@ -102,10 +102,10 @@ function useEmbedder(): void {
  */
 describe('the memory consolidation suite is not silently skipped in CI', () => {
   it('has a database to run against', () => {
-    if (!process.env.GRID_RLS_SUITE_REQUIRED) return
+    if (!process.env.RLS_SUITE_REQUIRED) return
     expect(
       url,
-      'GRID_TEST_DATABASE_URL is unset while GRID_RLS_SUITE_REQUIRED is set, so the ' +
+      'TEST_DATABASE_URL is unset while RLS_SUITE_REQUIRED is set, so the ' +
         'memory consolidation suite skipped and nothing verified "one fact, one live row". ' +
         'Check `task db:test:rls`.'
     ).toBeTruthy()

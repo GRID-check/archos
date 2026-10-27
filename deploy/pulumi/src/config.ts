@@ -293,7 +293,7 @@ export interface GridConfig {
       app: number;
       /** `/api/auth/*` — the credential-stuffing surface. */
       appAuth: number;
-      /** `/websocket` upgrades. Mirrors `GRID_WS_UPGRADE_RATE_LIMIT`. */
+      /** `/websocket` upgrades. Mirrors `WS_UPGRADE_RATE_LIMIT`. */
       appWsUpgrade: number;
       /** Presigned S3 preview/download URLs. */
       s3: number;
@@ -561,7 +561,7 @@ export interface GridConfig {
 
   /**
    * The self-hosted address search (ADR-0120, `data/geocoder.ts`): Photon over
-   * the Austrian OSM extract. The frontend gets `GRID_GEOCODER_URL` exactly
+   * the Austrian OSM extract. The frontend gets `GEOCODER_URL` exactly
    * when this is on; off, the project dialog's address stays a plain text field.
    */
   geocoder: {
@@ -1076,7 +1076,7 @@ export interface GridConfig {
     /** Floor; 0 lets the pool scale to nothing while no job waits. */
     minReplicas: number;
     maxReplicas: number;
-    /** Jobs one replica runs at once (`GRID_BFF_JOBS_CONCURRENCY`); also KEDA's jobs-per-replica target. */
+    /** Jobs one replica runs at once (`BFF_JOBS_CONCURRENCY`); also KEDA's jobs-per-replica target. */
     concurrency: number;
     /** SIGTERM budget to finish the slice in hand; the claim is then given back without costing an attempt. */
     drainSeconds: number;
@@ -1265,7 +1265,7 @@ export interface GridConfig {
   skills: {
     /**
      * Floor on how often a job may be scheduled to fire, in minutes. Reaches
-     * the frontend as `GRID_SKILL_MIN_INTERVAL_MINUTES` and is enforced at
+     * the frontend as `SKILL_MIN_INTERVAL_MINUTES` and is enforced at
      * save time.
      */
     minIntervalMinutes: number;
@@ -1284,7 +1284,7 @@ export interface GridConfig {
     enabled: boolean;
     /**
      * Share of the quota at which the first warning goes out, as a percentage.
-     * Reaches the frontend as `GRID_STORAGE_ALERT_THRESHOLD_PERCENT`. Escalation
+     * Reaches the frontend as `STORAGE_ALERT_THRESHOLD_PERCENT`. Escalation
      * to 90% and 100% is automatic and not configurable — "you have run out" is
      * a different message from "you are nearly out", and a computed step can
      * straddle 100%.

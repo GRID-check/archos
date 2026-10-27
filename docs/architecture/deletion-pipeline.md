@@ -265,7 +265,7 @@ is removed by the retention sweep.
 **Trace retention.** Langfuse's own retention is Enterprise-only, so the
 scheduler (`scheduler/index.js`, `sweepTraceRetention`) does it once a day, the
 first run on its first tick: it lists root observations that started before
-`now - GRID_LANGFUSE_TRACE_RETENTION_DAYS` (default 30, never below Langfuse's
+`now - TRACE_RETENTION_DAYS` (default 30, never below Langfuse's
 own minimum of 3) and deletes their traces in batches of 1,000. A run sends at
 most 50 batches, reads at most 100 pages and stops after two minutes, so a
 backlog drains over days; it logs how many it asked Langfuse to delete. A failed
@@ -354,7 +354,7 @@ How the design satisfies the articles enterprise DPAs and security questionnaire
 | **Art. 17** — right to erasure "without undue delay" | Deletion pipeline for all five entity types; grace + retry bounded within the Art. 12(3) one-month response window; `purged_at` timestamps are the evidence of completion |
 | **Art. 17** — erasing a folder and what was derived from it | The folder's purge after at most 23 days (or at once by „Endgültig löschen"): the documents by the document delete's steps, and under „Mit dem Ordner entfernen" the memory notes drawn from it, the answers that drew on it (replaced), the conversations' Langfuse traces; the queue row (ids, counts, who, when; no content) is the proof. A legal hold defers it |
 | **Art. 5(1)(e)** — derived content outliving a deleted folder | The organization's setting „Inhalte aus gelöschten Ordnern": unchanged, project, admins only, or removed with the folder; keeping derived personal data longer than its source is the organization's decision |
-| **Art. 17 / Art. 5(1)(e)** — the prompts and answers in LLM traces | Langfuse traces are deleted by conversation id when the purger erases a chat or a project (native delete API, every edition; asynchronous, usually within about 15 minutes), and by the scheduler's daily sweep once older than `GRID_LANGFUSE_TRACE_RETENTION_DAYS` (default 30, minimum 3). A chat deleted by the request itself is picked up by a scheduler job from its closed queue row, within about the hour (legal-held chats keep theirs); the 30-day sweep is the net behind it. Langfuse does not remove copies saved into datasets; Piloti creates none |
+| **Art. 17 / Art. 5(1)(e)** — the prompts and answers in LLM traces | Langfuse traces are deleted by conversation id when the purger erases a chat or a project (native delete API, every edition; asynchronous, usually within about 15 minutes), and by the scheduler's daily sweep once older than `TRACE_RETENTION_DAYS` (default 30, minimum 3). A chat deleted by the request itself is picked up by a scheduler job from its closed queue row, within about the hour (legal-held chats keep theirs); the 30-day sweep is the net behind it. Langfuse does not remove copies saved into datasets; Piloti creates none |
 | **Art. 12(3)** — respond within one month | Grace periods capped at ≤ 23 days; `attempts`/`failed` status surfaces stuck purges before the deadline |
 | **Art. 18** — restriction of processing | Legal hold: data preserved, hidden from active use, purge blocked until release |
 | **Art. 5(2) / Art. 30** — accountability, records of processing | `deletion_queue` rows survive purge as the record of what was erased, when, by whose request; `legal_holds` records restriction events |

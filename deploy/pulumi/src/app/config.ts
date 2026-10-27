@@ -154,15 +154,15 @@ export function buildSecrets(w: AppWiring): AppSecrets {
     TAVILY_API_KEY: cfg.llm.tavilyApiKey,
     GRID_INTERNAL_API_TOKEN: cfg.internal.apiToken,
     GRID_ADMIN_TOKEN: cfg.internal.adminToken,
-    GRID_CORPUS_EXPORT_TOKEN: cfg.internal.corpusExportToken,
+    CORPUS_EXPORT_TOKEN: cfg.internal.corpusExportToken,
     JOB_PAYLOAD_KEK: cfg.internal.jobPayloadKek,
-    GRID_WEB_PUSH_VAPID_PRIVATE_KEY: cfg.webPush.privateKey,
+    WEB_PUSH_VAPID_PRIVATE_KEY: cfg.webPush.privateKey,
     // PostHog Support (feedback tickets). Absent unless the stack sets it, so
     // `frontendEnv` can leave the variable off the pod rather than empty.
     ...(cfg.posthog.personalApiKey ? { POSTHOG_PERSONAL_API_KEY: cfg.posthog.personalApiKey } : {}),
     WORKOS_API_KEY: cfg.auth.workosApiKey,
     WORKOS_COOKIE_PASSWORD: cfg.auth.workosCookiePassword,
-    GRID_BYOK_LOCAL_KEK: cfg.auth.byokLocalKek,
+    BYOK_LOCAL_KEK: cfg.auth.byokLocalKek,
     SEAWEED_SECRET_KEY: cfg.seaweedfs.secretKey,
     // Dedicated READ-ONLY bucket-scoped identity for the aiq-agent tier — the
     // backend must never hold the root `grid` Admin credential (ADR-0039).
@@ -515,7 +515,7 @@ export function frontendEnv(w: AppWiring): EnvVar[] {
   return [
     { name: "APP_ENV", value: "production" },
     { name: "REQUIRE_AUTH", value: String(cfg.auth.requireAuth) },
-    { name: "GRID_LANDING_URL", value: `https://${cfg.ingress.webDomain}` },
+    { name: "LANDING_URL", value: `https://${cfg.ingress.webDomain}` },
     // Every backend HTTP call goes to the api role; only the WebSocket proxy
     // goes to chat, and it has no fallback to the api URL (ADR-0082 step B).
     { name: "BACKEND_URL", value: BACKEND_URL },
@@ -541,7 +541,7 @@ export function frontendEnv(w: AppWiring): EnvVar[] {
     sref("GRID_ADMIN_TOKEN"),
     // The corpus export (`/api/internal/oib-corpus`). No caller since the
     // answer-suite CI workflow was removed; unset disables it.
-    sref("GRID_CORPUS_EXPORT_TOKEN"),
+    sref("CORPUS_EXPORT_TOKEN"),
     { name: "GRID_ALLOW_AGENT_ORG_MEMORY", value: String(cfg.auth.allowAgentOrgMemory) },
     // WorkOS AuthKit.
     { name: "WORKOS_CLIENT_ID", value: cfg.auth.workosClientId },
@@ -577,13 +577,13 @@ export function frontendEnv(w: AppWiring): EnvVar[] {
     // Web Push for the inbox (ADR-0112). Empty = off. The bff-jobs pool inherits
     // these (`bffJobsEnv`) and is the one that sends; the frontend serves the
     // public key to the browser.
-    { name: "GRID_WEB_PUSH_VAPID_PUBLIC_KEY", value: cfg.webPush.publicKey },
-    sref("GRID_WEB_PUSH_VAPID_PRIVATE_KEY"),
-    { name: "GRID_WEB_PUSH_SUBJECT", value: cfg.webPush.subject },
+    { name: "WEB_PUSH_VAPID_PUBLIC_KEY", value: cfg.webPush.publicKey },
+    sref("WEB_PUSH_VAPID_PRIVATE_KEY"),
+    { name: "WEB_PUSH_SUBJECT", value: cfg.webPush.subject },
     // BYOK.
-    { name: "GRID_BYOK_SECRET_BACKEND", value: cfg.auth.byokSecretBackend },
-    sref("GRID_BYOK_LOCAL_KEK"),
-    { name: "GRID_BYOK_ALLOW_PRIVATE_BASE_URLS", value: "false" },
+    { name: "BYOK_SECRET_BACKEND", value: cfg.auth.byokSecretBackend },
+    sref("BYOK_LOCAL_KEK"),
+    { name: "BYOK_ALLOW_PRIVATE_BASE_URLS", value: "false" },
     // Object storage (public endpoint signs browser presigned URLs).
     { name: "SEAWEED_ENDPOINT", value: w.seaweedInternalEndpoint },
     { name: "SEAWEED_PUBLIC_ENDPOINT", value: w.seaweedPublicEndpoint },
@@ -604,30 +604,30 @@ export function frontendEnv(w: AppWiring): EnvVar[] {
     // the database (ADR-0053), not an environment variable.
     sref("OPENROUTER_API_KEY"),
     // Platform tier.
-    { name: "GRID_PLATFORM_OWNER_EMAILS", value: cfg.auth.platformOwnerEmails },
-    { name: "GRID_PLATFORM_ORG_EXTERNAL_ID", value: cfg.auth.platformOrgExternalId },
-    { name: "GRID_DISABLE_SELF_SERVE_ORGS", value: String(cfg.auth.disableSelfServeOrgs) },
-    { name: "GRID_AUDIT_LOGS_ENABLED", value: String(cfg.auth.auditLogsEnabled) },
+    { name: "PLATFORM_OWNER_EMAILS", value: cfg.auth.platformOwnerEmails },
+    { name: "PLATFORM_ORG_EXTERNAL_ID", value: cfg.auth.platformOrgExternalId },
+    { name: "DISABLE_SELF_SERVE_ORGS", value: String(cfg.auth.disableSelfServeOrgs) },
+    { name: "AUDIT_LOGS_ENABLED", value: String(cfg.auth.auditLogsEnabled) },
     // Shared cache + WS rate limiting (needed for >1 replica correctness).
     // Authenticated: the URL carries the password, so it comes from the Secret.
     sref("REDIS_URL"),
-    { name: "GRID_WS_UPGRADE_RATE_LIMIT", value: String(APP_DEFAULTS.wsUpgradeRateLimit) },
+    { name: "WS_UPGRADE_RATE_LIMIT", value: String(APP_DEFAULTS.wsUpgradeRateLimit) },
     // Graceful shutdown: how long server.js keeps serving after SIGTERM before
     // forcing exit. Chat WebSockets are long-lived, so the 2s dev default would
     // drop every streaming answer in flight on each deploy. Must stay inside the
     // pod's terminationGracePeriodSeconds (see ROLLOUT.frontend in rollout.ts).
-    { name: "GRID_SHUTDOWN_DRAIN_MS", value: String(FRONTEND_DRAIN_SECONDS * 1000) },
+    { name: "SHUTDOWN_DRAIN_MS", value: String(FRONTEND_DRAIN_SECONDS * 1000) },
     // Agent Skills + Jobs (ADR-0046). Whether the feature exists for an
     // organization is its `skills` WorkOS flag, like every other feature
     // (`frontends/ui/src/lib/authz/feature-flags.ts`); only the scheduling
     // floor is deployment configuration.
-    { name: "GRID_SKILL_MIN_INTERVAL_MINUTES", value: String(cfg.skills.minIntervalMinutes) },
+    { name: "SKILL_MIN_INTERVAL_MINUTES", value: String(cfg.skills.minIntervalMinutes) },
     // Storage-quota alerting (ADR-0042). Read by the sweep behind
     // /api/internal/storage/alerts, which the storage-alerts CronJob calls — so
     // it belongs to the frontend even though nothing renders it. Escalation to
     // 90% and 100% above this value is automatic.
     {
-      name: "GRID_STORAGE_ALERT_THRESHOLD_PERCENT",
+      name: "STORAGE_ALERT_THRESHOLD_PERCENT",
       value: String(cfg.storageAlerts.thresholdPercent),
     },
     // Office → PDF rendition (ADR-0070). Frontend-only: the BFF is the one
@@ -639,7 +639,7 @@ export function frontendEnv(w: AppWiring): EnvVar[] {
     // Address search for the project dialog (ADR-0120), behind `/api/geocode`.
     // Absent ⇒ the route answers `enabled: false` and the address stays a plain
     // text field. Only ever the in-cluster Photon: an address is client data.
-    ...(w.geocoderUrl ? [{ name: "GRID_GEOCODER_URL", value: w.geocoderUrl }] : []),
+    ...(w.geocoderUrl ? [{ name: "GEOCODER_URL", value: w.geocoderUrl }] : []),
     // OTLP tracing via the cluster collector — injected only when the
     // observability tier is deployed, which is what makes
     // src/instrumentation.ts register @vercel/otel (it no-ops without the
@@ -735,15 +735,15 @@ export function schedulerEnv(w: AppWiring): EnvVar[] {
     sref("GRID_APP_DATABASE_URL"),
     { name: "FRONTEND_INTERNAL_URL", value: `http://frontend:${PORT.frontend}` },
     sref("GRID_INTERNAL_API_TOKEN"),
-    { name: "GRID_SKILL_SCHEDULER_POLL_MS", value: String(APP_DEFAULTS.schedulerPollMs) },
-    { name: "GRID_SKILL_SCHEDULER_BATCH", value: String(APP_DEFAULTS.schedulerBatch) },
-    { name: "GRID_SKILL_RUNS_RETENTION_DAYS", value: String(APP_DEFAULTS.skillRunsRetentionDays) },
+    { name: "SKILL_SCHEDULER_POLL_MS", value: String(APP_DEFAULTS.schedulerPollMs) },
+    { name: "SKILL_SCHEDULER_BATCH", value: String(APP_DEFAULTS.schedulerBatch) },
+    { name: "SKILL_RUNS_RETENTION_DAYS", value: String(APP_DEFAULTS.skillRunsRetentionDays) },
     // The daily Langfuse trace retention sweep (ADR-0044); a no-op without the keys.
     ...(cfg.langfuse.enabled
       ? [
           ...langfuseApiEnv(cfg),
           {
-            name: "GRID_LANGFUSE_TRACE_RETENTION_DAYS",
+            name: "TRACE_RETENTION_DAYS",
             value: String(APP_DEFAULTS.langfuseTraceRetentionDays),
           },
         ]
@@ -784,7 +784,7 @@ export function auditSchemaEnv(): EnvVar[] {
 export function authzCatalogEnv(cfg: GridConfig): EnvVar[] {
   return [
     sref("WORKOS_API_KEY"),
-    { name: "GRID_PLATFORM_ORG_EXTERNAL_ID", value: cfg.auth.platformOrgExternalId },
+    { name: "PLATFORM_ORG_EXTERNAL_ID", value: cfg.auth.platformOrgExternalId },
   ];
 }
 

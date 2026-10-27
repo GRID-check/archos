@@ -557,8 +557,8 @@ describe('configuration', () => {
   it('reads the knobs and ignores nonsense', () => {
     const config = readConfig({
       PORT: '4000',
-      GRID_BFF_JOBS_CONCURRENCY: '5',
-      GRID_BFF_JOBS_MAX_PER_ORG: '2',
+      BFF_JOBS_CONCURRENCY: '5',
+      BFF_JOBS_MAX_PER_ORG: '2',
       GRID_BFF_JOBS_DRAIN_SECONDS: 'soon',
     })
 
@@ -569,7 +569,7 @@ describe('configuration', () => {
   })
 
   it('reads the retry backoff (0 retries at once) and the dead-row retention, and never retains for less than a day', () => {
-    const runner = readConfig({ GRID_BFF_JOBS_RETRY_BACKOFF_SECONDS: '0', GRID_BFF_JOBS_DEAD_RETENTION_DAYS: '0' }).runner
+    const runner = readConfig({ BFF_JOBS_RETRY_BACKOFF_SECONDS: '0', GRID_BFF_JOBS_DEAD_RETENTION_DAYS: '0' }).runner
 
     expect(runner.retryBackoffSeconds).toBe(0)
     expect(runner.deadRetentionSeconds).toBe(14 * 86_400)
@@ -577,7 +577,7 @@ describe('configuration', () => {
   })
 
   it('never lets the stale window shrink below a few heartbeats', () => {
-    expect(readConfig({ GRID_BFF_JOBS_STALE_SECONDS: '5' }).runner.staleSeconds).toBe(60)
+    expect(readConfig({ BFF_JOBS_STALE_SECONDS: '5' }).runner.staleSeconds).toBe(60)
   })
 
   it('waits for the BFF to answer its health route', async () => {

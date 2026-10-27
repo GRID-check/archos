@@ -86,8 +86,8 @@ describe('where people sign in (REQUIRE_AUTH=true): WorkOS decides, fail-closed'
   })
 
   it('gives a rollout no default either — absent from the claim is off', () => {
-    // The default-ON env gates (`GRID_IFC_MODELS_ENABLED`,
-    // `GRID_AGENT_AUTHORED_DOCUMENTS_ENABLED`) are gone; what WorkOS says is
+    // The default-ON env gates (`IFC_MODELS_ENABLED`,
+    // `AGENT_AUTHORED_DOCUMENTS_ENABLED`) are gone; what WorkOS says is
     // what the session gets.
     expect(isIfcModelsEnabled({ featureFlags: [] })).toBe(false)
     expect(isAgentAuthoredDocumentsEnabled({ featureFlags: [] })).toBe(false)
@@ -96,14 +96,14 @@ describe('where people sign in (REQUIRE_AUTH=true): WorkOS decides, fail-closed'
 
   it('ignores every retired environment fallback', () => {
     for (const name of [
-      'GRID_SKILLS_ENABLED',
-      'GRID_COLLABORATION_ENABLED',
-      'GRID_MAIL_IMPORT_ENABLED',
+      'SKILLS_ENABLED',
+      'COLLABORATION_ENABLED',
+      'MAIL_IMPORT_ENABLED',
       'GRID_PROJECT_KNOWLEDGE_PAGE_ENABLED',
     ]) {
       vi.stubEnv(name, 'true')
     }
-    vi.stubEnv('GRID_IFC_MODELS_ENABLED', 'true')
+    vi.stubEnv('IFC_MODELS_ENABLED', 'true')
     const none = { featureFlags: [] }
     expect(isSkillsEnabled(none)).toBe(false)
     expect(isCollaborationEnabled(none)).toBe(false)
@@ -159,8 +159,8 @@ describe('where nobody signs in (REQUIRE_AUTH unset): rollouts on, entitlements 
   })
 
   it('is not talked into an entitlement by a retired environment variable', () => {
-    vi.stubEnv('GRID_SKILLS_ENABLED', 'true')
-    vi.stubEnv('GRID_ENFORCE_FEATURE_FLAGS', 'true')
+    vi.stubEnv('SKILLS_ENABLED', 'true')
+    vi.stubEnv('ENFORCE_FEATURE_FLAGS', 'true')
     expect(isSkillsEnabled({ featureFlags: [FEATURE_FLAGS.skills] })).toBe(false)
   })
 })

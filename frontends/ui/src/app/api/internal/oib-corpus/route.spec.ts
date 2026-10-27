@@ -24,7 +24,7 @@ const request = (token: string | null): Request =>
 describe('GET /api/internal/oib-corpus', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    process.env.GRID_CORPUS_EXPORT_TOKEN = 'export-token'
+    process.env.CORPUS_EXPORT_TOKEN = 'export-token'
     process.env.GRID_INTERNAL_API_TOKEN = 'service-token'
     process.env.APP_ENV = 'development'
   })
@@ -46,7 +46,7 @@ describe('GET /api/internal/oib-corpus', () => {
   })
 
   it('fails closed when its token is unconfigured', async () => {
-    delete process.env.GRID_CORPUS_EXPORT_TOKEN
+    delete process.env.CORPUS_EXPORT_TOKEN
     expect((await GET(request('export-token'))).status).toBe(503)
     expect(streamKnowledgeBaseCorpus).not.toHaveBeenCalled()
   })

@@ -83,7 +83,7 @@ export function installWeb(
                     // Where the landing site's "Anmelden" link hands off
                     // (/sign-in endpoint). Runtime, not baked: one web image
                     // serves every stack — this is the same per-stack host
-                    // derivation the app tier gets for GRID_LANDING_URL,
+                    // derivation the app tier gets for LANDING_URL,
                     // pointed the other way.
                     name: "PUBLIC_APP_URL",
                     value: `https://${cfg.ingress.appDomain}`,

@@ -89,7 +89,7 @@ describe('resolveActiveCredentialForBackend', () => {
   })
 
   it('returns null without the byok-llm flag, before anything is decrypted', async () => {
-    // The check used to run only under GRID_ENFORCE_FEATURE_FLAGS, so a
+    // The check used to run only under ENFORCE_FEATURE_FLAGS, so a
     // deployment without it served every stored key whatever WorkOS said.
     vi.mocked(isOrgFeatureEnabled).mockResolvedValueOnce(false)
     vi.mocked(getActiveCredential).mockResolvedValue(ROW as never)

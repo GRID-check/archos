@@ -22,13 +22,13 @@ const TEST_KEK = Buffer.alloc(32, 7).toString('base64')
 
 describe('llm-credentials secret store (local-aes-gcm)', () => {
   beforeEach(() => {
-    process.env.GRID_BYOK_LOCAL_KEK = TEST_KEK
-    delete process.env.GRID_BYOK_SECRET_BACKEND
+    process.env.BYOK_LOCAL_KEK = TEST_KEK
+    delete process.env.BYOK_SECRET_BACKEND
     delete process.env.WORKOS_API_KEY
   })
   afterEach(() => {
-    delete process.env.GRID_BYOK_LOCAL_KEK
-    delete process.env.GRID_BYOK_SECRET_BACKEND
+    delete process.env.BYOK_LOCAL_KEK
+    delete process.env.BYOK_SECRET_BACKEND
     delete process.env.WORKOS_API_KEY
   })
 
@@ -52,7 +52,7 @@ describe('llm-credentials secret store (local-aes-gcm)', () => {
   })
 
   it('rejects a malformed KEK', () => {
-    process.env.GRID_BYOK_LOCAL_KEK = 'dG9vLXNob3J0'
+    process.env.BYOK_LOCAL_KEK = 'dG9vLXNob3J0'
     expect(() => encryptLocal('org_1', 'cred-1', 'sk-x')).toThrow(/32 bytes/)
   })
 
@@ -67,9 +67,9 @@ describe('llm-credentials secret store (local-aes-gcm)', () => {
     expect(activeSecretBackend()).toBe('local-aes-gcm')
     process.env.WORKOS_API_KEY = 'sk_test'
     expect(activeSecretBackend()).toBe('workos-vault')
-    process.env.GRID_BYOK_SECRET_BACKEND = 'local'
+    process.env.BYOK_SECRET_BACKEND = 'local'
     expect(activeSecretBackend()).toBe('local-aes-gcm')
-    process.env.GRID_BYOK_SECRET_BACKEND = 'vault'
+    process.env.BYOK_SECRET_BACKEND = 'vault'
     delete process.env.WORKOS_API_KEY
     expect(activeSecretBackend()).toBe('workos-vault')
   })

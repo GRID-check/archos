@@ -20,10 +20,10 @@ const schedulerSource = [
 ].join("\n");
 const configSource = readFileSync(join(here, "config.ts"), "utf8");
 
-/** Every `env.GRID_*` / `process.env.GRID_*` the scheduler actually reads. */
+/** Every `env.X` / `process.env.X` the scheduler actually reads. */
 function envNamesReadBy(source: string): string[] {
   const names = new Set<string>();
-  for (const match of source.matchAll(/(?:process\.)?env\.(GRID_[A-Z0-9_]+)/g)) {
+  for (const match of source.matchAll(/(?:process\.)?env\.([A-Z][A-Z0-9_]+)/g)) {
     names.add(match[1]);
   }
   return [...names].sort();
@@ -33,7 +33,7 @@ function envNamesReadBy(source: string): string[] {
  * The env names this program EMITS must be the names its consumers READ.
  *
  * This is the bug that shipped Agent Skills as an invisible feature. The
- * scheduler worker and the BFF moved to `GRID_SKILLS_ENABLED` /
+ * scheduler worker and the BFF moved to `SKILLS_ENABLED` /
  * `GRID_SKILL_SCHEDULER_*` when Workflows was replaced; this file kept emitting
  * `GRID_WORKFLOWS_ENABLED` / `GRID_WORKFLOW_SCHEDULER_*`, whose readers had been
  * deleted. Nothing failed: the stack planned clean, applied clean, every unit
@@ -65,7 +65,7 @@ describe("schedulerEnv", () => {
     env.map((e) => e.name).filter((name): name is string => typeof name === "string"),
   );
 
-  it("emits every GRID_ env var the scheduler reads", () => {
+  it("emits every env var the scheduler reads", () => {
     const read = envNamesReadBy(schedulerSource);
     // Sanity: if the extraction stops finding anything, the assertion below
     // would pass vacuously and the guard would be silently dead.
@@ -73,24 +73,23 @@ describe("schedulerEnv", () => {
     expect([...read].filter((name) => !emitted.has(name))).toEqual([]);
   });
 
-  it("emits no GRID_ var the scheduler does not read", () => {
+  it("emits no var the scheduler does not read", () => {
     // The other half of the mismatch: a stale name left behind here is how the
     // block LOOKED correct while the gate it was supposed to set stayed unset.
     const read = new Set(envNamesReadBy(schedulerSource));
-    const gridEmitted = [...emitted].filter((name) => name.startsWith("GRID_"));
-    expect(gridEmitted.filter((name) => !read.has(name))).toEqual([]);
+    expect([...emitted].filter((name) => !read.has(name))).toEqual([]);
   });
 
   it("emits no feature switch: whether a schedule fires is the organization's flag", () => {
-    // `GRID_SKILLS_ENABLED` / `GRID_ENFORCE_FEATURE_FLAGS` were the worker's
+    // `SKILLS_ENABLED` / `ENFORCE_FEATURE_FLAGS` were the worker's
     // schedules gate; the BFF now checks the `skills` WorkOS flag per fire.
-    expect(emitted.has("GRID_SKILLS_ENABLED")).toBe(false);
-    expect(emitted.has("GRID_ENFORCE_FEATURE_FLAGS")).toBe(false);
+    expect(emitted.has("SKILLS_ENABLED")).toBe(false);
+    expect(emitted.has("ENFORCE_FEATURE_FLAGS")).toBe(false);
   });
 
   it("gives the trace retention sweep Langfuse's API and a 30-day window when the tier is deployed", () => {
     expect(env.find((e) => e.name === "LANGFUSE_HOST")?.value).toBe("http://langfuse-web:3000");
-    expect(env.find((e) => e.name === "GRID_LANGFUSE_TRACE_RETENTION_DAYS")?.value).toBe("30");
+    expect(env.find((e) => e.name === "TRACE_RETENTION_DAYS")?.value).toBe("30");
     expect(secretRef(env, "LANGFUSE_PUBLIC_KEY")).toEqual({ name: "langfuse-secrets", key: "public-key" });
     expect(secretRef(env, "LANGFUSE_SECRET_KEY")).toEqual({ name: "langfuse-secrets", key: "secret-key" });
   });
@@ -136,13 +135,13 @@ describe("frontendEnv", () => {
     // GridConfig, and a stub deep enough to call it would assert more about the
     // stub than about the program.
     for (const name of [
-      "GRID_ENFORCE_FEATURE_FLAGS",
-      "GRID_SKILLS_ENABLED",
-      "GRID_COLLABORATION_ENABLED",
-      "GRID_MAIL_IMPORT_ENABLED",
-      "GRID_IFC_MODELS_ENABLED",
-      "GRID_AGENT_AUTHORED_DOCUMENTS_ENABLED",
-      "GRID_MEMORY_REFLECTION_ENABLED",
+      "ENFORCE_FEATURE_FLAGS",
+      "SKILLS_ENABLED",
+      "COLLABORATION_ENABLED",
+      "MAIL_IMPORT_ENABLED",
+      "IFC_MODELS_ENABLED",
+      "AGENT_AUTHORED_DOCUMENTS_ENABLED",
+      "MEMORY_REFLECTION_ENABLED",
       "GRID_WORKFLOWS_ENABLED",
     ]) {
       expect(configSource).not.toContain(`name: "${name}"`);

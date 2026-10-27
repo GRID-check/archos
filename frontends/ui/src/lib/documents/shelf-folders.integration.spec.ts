@@ -10,7 +10,7 @@
  * project and the Archiv the same row. It runs under `task db:test:rls`, through
  * the restricted runtime role:
  *
- *   GRID_TEST_DATABASE_URL=postgres://grid_app_rw@host:port/grid_app \
+ *   TEST_DATABASE_URL=postgres://grid_app_rw@host:port/grid_app \
  *     npx vitest run src/lib/documents/shelf-folders.integration.spec.ts
  */
 
@@ -25,7 +25,7 @@ vi.mock('@/lib/authz/projects', () => ({ requireProjectAccess: vi.fn().mockResol
 // The backend mirror is best-effort; nothing listens.
 vi.mock('@/lib/backend-proxy', () => ({ getBackendUrl: () => 'http://127.0.0.1:9' }))
 
-const url = process.env.GRID_TEST_DATABASE_URL
+const url = process.env.TEST_DATABASE_URL
 const ORG = `org_folders_${Date.now()}`
 const OTHER_ORG = `org_folders_other_${Date.now()}`
 const USER = 'user_folders'

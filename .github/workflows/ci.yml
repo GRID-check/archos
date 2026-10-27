@@ -673,7 +673,7 @@ jobs:
         env:
           # Turns "the suite skipped" into a failure for THIS step only: the
           # unit shards legitimately have no database.
-          GRID_RLS_SUITE_REQUIRED: "1"
+          RLS_SUITE_REQUIRED: "1"
           # The per-migration checks only when a migration or the script moved.
           GRID_RLS_MIGRATION_CHECKS: ${{ needs.changes.outputs.migrations == 'true' && '1' || '0' }}
 

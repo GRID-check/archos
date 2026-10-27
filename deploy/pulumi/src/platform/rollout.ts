@@ -81,7 +81,7 @@ export interface RolloutProfile {
 
 /**
  * Seconds the frontend gateway keeps serving after SIGTERM before forcing exit
- * (`GRID_SHUTDOWN_DRAIN_MS` in server.js). Chat WebSockets are long-lived, so a
+ * (`SHUTDOWN_DRAIN_MS` in server.js). Chat WebSockets are long-lived, so a
  * hard close on SIGTERM drops every streaming answer in flight on every deploy.
  * Must fit inside the frontend grace period alongside `endpointDrainSeconds`.
  */

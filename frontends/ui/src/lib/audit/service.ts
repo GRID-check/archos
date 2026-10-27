@@ -22,7 +22,7 @@
  * `recordAuditEvent` (never throws, the default every existing call site keeps)
  * and `recordAuditEventOrThrow` (opt-in, see its own note).
  *
- * Emission itself is deployment-gated by `GRID_AUDIT_LOGS_ENABLED`
+ * Emission itself is deployment-gated by `AUDIT_LOGS_ENABLED`
  * ({@link auditLogsEnabled}, default OFF): a deployment opts in explicitly,
  * because an audit trail only means something when its operator knows it is
  * being written where they expect. Suppressed events are silent by design —
@@ -194,7 +194,7 @@ function requestContext(request?: Request): { location: string; userAgent?: stri
  * On Kubernetes set via the Pulumi stack key `grid-oib:auditLogsEnabled`.
  */
 export function auditLogsEnabled(): boolean {
-  return (process.env.GRID_AUDIT_LOGS_ENABLED ?? '').trim().toLowerCase() === 'true'
+  return (process.env.AUDIT_LOGS_ENABLED ?? '').trim().toLowerCase() === 'true'
 }
 
 /**
@@ -344,7 +344,7 @@ export async function recordAuditEvent(input: AuditEventInput): Promise<void> {
 export async function recordAuditEventOrThrow(input: AuditEventInput): Promise<void> {
   // The deployment gate applies to BOTH emitters, and this one has to say why.
   //
-  // `GRID_AUDIT_LOGS_ENABLED` defaults off, and this emitter is the one whose
+  // `AUDIT_LOGS_ENABLED` defaults off, and this emitter is the one whose
   // caller treats a failure as fatal — `fileGeneratedDocument` unfiles the
   // document it just wrote. Reaching WorkOS anyway on a deployment that has
   // turned audit logs off would therefore not produce a trail; it would make

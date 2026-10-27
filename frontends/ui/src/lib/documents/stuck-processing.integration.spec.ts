@@ -12,7 +12,7 @@
  *   - which report filings are still `queued` after the window (migration 0105,
  *     its CHECK and its partial index).
  *
- *   GRID_TEST_DATABASE_URL=postgres://grid_app_rw@host:port/grid_app \
+ *   TEST_DATABASE_URL=postgres://grid_app_rw@host:port/grid_app \
  *     npx vitest run src/lib/documents/stuck-processing.integration.spec.ts
  *
  * `task db:test:rls` (scripts/rls-test-db.sh) builds that database and runs it.
@@ -25,7 +25,7 @@ import { internalRead } from '@/lib/documents/document-reader'
 
 vi.mock('server-only', () => ({}))
 
-const url = process.env.GRID_TEST_DATABASE_URL
+const url = process.env.TEST_DATABASE_URL
 const STAMP = Date.now()
 const ORG = `org_stuck_${STAMP}`
 const OTHER_ORG = `org_stuck_other_${STAMP}`

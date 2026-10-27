@@ -130,7 +130,7 @@ async function startGateway(env: Record<string, string> = {}): Promise<number> {
       BACKEND_CHAT_URL: `http://127.0.0.1:${upstreamPort}`,
       // Isolate the behaviour under test from the per-IP limiter: every request
       // here comes from 127.0.0.1, which is exactly the case it does cover.
-      GRID_WS_UPGRADE_RATE_LIMIT: '0',
+      WS_UPGRADE_RATE_LIMIT: '0',
       GRID_INTERNAL_API_TOKEN: SECRET,
       ...env,
     },
@@ -216,7 +216,7 @@ describe('gateway WS-upgrade scope memoisation', () => {
   })
 
   it('pays per upgrade when the memo is disabled', async () => {
-    const port = await startGateway({ GRID_WS_SCOPE_CACHE_TTL_MS: '0' })
+    const port = await startGateway({ WS_SCOPE_CACHE_TTL_MS: '0' })
     scopeHits = 0
 
     for (let i = 0; i < 5; i += 1) await upgrade(port, 'session=alpha')
@@ -302,7 +302,7 @@ describe('gateway compact turn-context transport', () => {
 
 describe('gateway WS-upgrade admission gate', () => {
   it('sheds past the in-flight ceiling instead of queueing', async () => {
-    const port = await startGateway({ GRID_WS_UPGRADE_MAX_INFLIGHT: '2' })
+    const port = await startGateway({ WS_UPGRADE_MAX_INFLIGHT: '2' })
     slowScope = true
     scopeHits = 0
 
@@ -321,8 +321,8 @@ describe('gateway WS-upgrade admission gate', () => {
     // The memo and the ceiling are independent bounds: turning the memo off
     // (e.g. to force fresh auth) must not remove the admission gate too.
     const port = await startGateway({
-      GRID_WS_UPGRADE_MAX_INFLIGHT: '2',
-      GRID_WS_SCOPE_CACHE_TTL_MS: '0',
+      WS_UPGRADE_MAX_INFLIGHT: '2',
+      WS_SCOPE_CACHE_TTL_MS: '0',
     })
     slowScope = true
     scopeHits = 0

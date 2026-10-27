@@ -10,7 +10,7 @@
  *
  * The field never changes into something else. It used to turn into a
  * Bundesland select on the first answer saying no search was configured, which
- * is every deployment without `GRID_GEOCODER_URL`: the person typed three
+ * is every deployment without `GEOCODER_URL`: the person typed three
  * letters and their text was gone (pilot onboarding, 2026-10-19).
  *
  * Typing asks after 250 ms of quiet; every keystroke aborts the request still

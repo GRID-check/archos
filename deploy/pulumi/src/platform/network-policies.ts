@@ -481,7 +481,7 @@ export function installNetworkPolicies(
   //     Every address a person types in the project dialog reaches it, so it
   //     is withheld from rule 2: the frontend BFF (`/api/geocode`) is its one
   //     caller. The bff-jobs pool inherits the frontend's environment but
-  //     not `GRID_GEOCODER_URL` (`BFF_JOBS_WITHHELD`), so it is not named.
+  //     not `GEOCODER_URL` (`BFF_JOBS_WITHHELD`), so it is not named.
   //
   //     Egress is the init container's: the jar from GitHub and the index
   //     from download1.graphhopper.com, both over HTTPS. Photon itself dials

@@ -402,8 +402,8 @@ Before any of the above, the single most useful thing to establish is
   The pilot runs on Coolify compose, whose redeploy is manual
   (`feedback-backlog.md:106`: "merge → full Redeploy in Coolify").
 - `deploy/compose/docker-compose.coolify.yaml:517,523,612`:
-  `GRID_SKILLS_ENABLED`, `GRID_COLLABORATION_ENABLED` and
-  `GRID_ENFORCE_FEATURE_FLAGS` all default to `false`. With those defaults
+  `SKILLS_ENABLED`, `COLLABORATION_ENABLED` and
+  `ENFORCE_FEATURE_FLAGS` all default to `false`. With those defaults
   the product a pilot organisation sees has no inbox, no sharing, no
   mentions, no jobs, no skills and no knowledge-transparency page. PF-4
   reasons carefully about why "@ erwähnen funktioniert nicht" and concludes

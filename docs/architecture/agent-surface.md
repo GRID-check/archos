@@ -1254,7 +1254,7 @@ applied by the deploy.
    [`../deployment/environment-variables.md`](../deployment/environment-variables.md)):
    - `WORKOS_AUTHKIT_DOMAIN`: the AuthKit domain, without scheme. Unset, the
      external door answers 503 and Piloti in-product still works.
-   - `GRID_MCP_RESOURCE_URL`: the MCP URL, when it differs from the origin of
+   - `MCP_RESOURCE_URL`: the MCP URL, when it differs from the origin of
      `WORKOS_REDIRECT_URI` plus `/api/mcp`. The A2A and platform doors take their
      resources from its origin.
 

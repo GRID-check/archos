@@ -7,7 +7,7 @@
  * to the span's when the conversation row is gone, and that a project filter
  * resolves through `conversations.project_id`.
  *
- *   GRID_TEST_DATABASE_URL=postgres://grid_app_rw@host:port/grid_app \
+ *   TEST_DATABASE_URL=postgres://grid_app_rw@host:port/grid_app \
  *     npx vitest run src/lib/profiler/repository.integration.spec.ts
  *
  * `task db:test:rls` (scripts/rls-test-db.sh) builds that database.
@@ -19,7 +19,7 @@ import type { ProfiledConversationFilter } from './repository'
 
 vi.mock('server-only', () => ({}))
 
-const url = process.env.GRID_TEST_DATABASE_URL
+const url = process.env.TEST_DATABASE_URL
 
 const STAMP = Date.now()
 const ORG_A = `org_prof_a_${STAMP}`

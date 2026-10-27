@@ -81,7 +81,7 @@ export const PORT = {
   clickhouseMetrics: 9363,
   /** Gotenberg API (office → PDF, ADR-0070). Upstream default. */
   gotenberg: 3000,
-  /** Photon, the address search behind `GRID_GEOCODER_URL` (ADR-0120). Upstream default. */
+  /** Photon, the address search behind `GEOCODER_URL` (ADR-0120). Upstream default. */
   geocoder: 2322,
   /** Qdrant REST API: clients, probes and the snapshot CronJob. Upstream default. */
   qdrantHttp: 6333,
@@ -415,7 +415,7 @@ export const EDGE_RATE_LIMIT = {
 
 /**
  * The geocoder (ADR-0120): a self-hosted Photon over the Austrian OSM extract,
- * behind the project creation dialog's address search (`GRID_GEOCODER_URL`,
+ * behind the project creation dialog's address search (`GEOCODER_URL`,
  * `frontends/ui/src/lib/geocoding/photon.ts`).
  *
  * Upstream publishes no Photon image, and a community one would put a third

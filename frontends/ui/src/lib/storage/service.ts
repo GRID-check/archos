@@ -49,10 +49,10 @@ export const STORAGE_QUOTA_SETTING = 'storageQuotaBytes'
  * Unset (the default) means unlimited, which is what every existing deployment
  * already had — introducing a quota must not retroactively block tenants who
  * were never told there was a limit. Operators opt the fleet in by setting
- * `GRID_DEFAULT_STORAGE_QUOTA_BYTES`; an org-level value always wins.
+ * `DEFAULT_STORAGE_QUOTA_BYTES`; an org-level value always wins.
  */
 function platformDefaultQuotaBytes(): number | null {
-  const raw = process.env.GRID_DEFAULT_STORAGE_QUOTA_BYTES
+  const raw = process.env.DEFAULT_STORAGE_QUOTA_BYTES
   if (!raw) return null
   const parsed = Number(raw)
   return Number.isFinite(parsed) && parsed > 0 ? Math.floor(parsed) : null

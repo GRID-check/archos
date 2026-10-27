@@ -10,7 +10,7 @@
  * `createRunner` and `workers/job-queue.js`, and only the BFF's work is a stub
  * that counts a cursor up.
  *
- *   GRID_TEST_DATABASE_URL=postgres://grid_app_rw@host:port/grid_app \
+ *   TEST_DATABASE_URL=postgres://grid_app_rw@host:port/grid_app \
  *     npx vitest run workers/jobs/runner.integration.spec.mjs
  *
  * `task db:test:rls` (scripts/rls-test-db.sh) builds that database and runs it.
@@ -22,7 +22,7 @@ import { createFailureStreak } from '../failure-streak.js'
 import { withPlatformScope } from '../platform-scope.js'
 import { createRunner } from './runner.js'
 
-const url = process.env.GRID_TEST_DATABASE_URL
+const url = process.env.TEST_DATABASE_URL
 const LANE = `org_runner_${Date.now()}`
 
 const CONFIG = {
@@ -42,8 +42,8 @@ const CONFIG = {
 
 describe('the suite is not silently skipped in CI', () => {
   it('has a database to run against', () => {
-    if (!process.env.GRID_RLS_SUITE_REQUIRED) return
-    expect(url, 'GRID_TEST_DATABASE_URL is unset while GRID_RLS_SUITE_REQUIRED is set').toBeTruthy()
+    if (!process.env.RLS_SUITE_REQUIRED) return
+    expect(url, 'TEST_DATABASE_URL is unset while RLS_SUITE_REQUIRED is set').toBeTruthy()
   })
 })
 

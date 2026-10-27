@@ -99,14 +99,14 @@ function positiveInt(raw: string | undefined, fallback: number): number {
   return Number.isFinite(n) && n > 0 ? n : fallback
 }
 
-/** `GRID_RUN_RECONCILE_STALE_MINUTES`, `GRID_RUN_RECONCILE_UNKNOWN_GRACE_MINUTES`. */
+/** `RUN_RECONCILE_STALE_MINUTES`, `RUN_RECONCILE_UNKNOWN_GRACE_MINUTES`. */
 export function readReconcileConfig(env: Record<string, string | undefined> = process.env): ReconcileConfig {
-  const staleMinutes = positiveInt(env.GRID_RUN_RECONCILE_STALE_MINUTES, DEFAULT_STALE_MINUTES)
+  const staleMinutes = positiveInt(env.RUN_RECONCILE_STALE_MINUTES, DEFAULT_STALE_MINUTES)
   // Never shorter than the stale window: a grace inside it would fail a run on
   // the first look, before the backend had any chance to answer twice.
   const unknownGraceMinutes = Math.max(
     staleMinutes,
-    positiveInt(env.GRID_RUN_RECONCILE_UNKNOWN_GRACE_MINUTES, DEFAULT_UNKNOWN_GRACE_MINUTES),
+    positiveInt(env.RUN_RECONCILE_UNKNOWN_GRACE_MINUTES, DEFAULT_UNKNOWN_GRACE_MINUTES),
   )
   return { staleMinutes, unknownGraceMinutes, batch: RECONCILE_BATCH }
 }

@@ -556,7 +556,7 @@ This environment cannot reach openrouter.ai (network policy), so:
   `frontends/ui/src/app/api/platform/model-defaults/route.spec.ts`. The
   replace-not-patch write semantics need a real database
   (`platform-defaults.integration.spec.ts`, opt-in via
-  `GRID_TEST_DATABASE_URL`).
+  `TEST_DATABASE_URL`).
 - Header parse/sanitize, `override_model` copy semantics, and provider
   derivation are covered by pytest
   (`tests/aiq_agent/common/test_model_overrides.py`).

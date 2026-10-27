@@ -127,7 +127,7 @@ initOtelMetrics()
 // terminationGracePeriodSeconds above it (deploy/pulumi/src/platform/rollout.ts).
 const SHUTDOWN_DRAIN_MS = Math.max(
   0,
-  parseInt(process.env.GRID_SHUTDOWN_DRAIN_MS || '', 10) || 2000
+  parseInt(process.env.SHUTDOWN_DRAIN_MS || '', 10) || 2000
 )
 // The list the app pushes its flush-on-exit functions onto (see cleanExit).
 const SHUTDOWN_HOOKS_KEY = '__gridShutdownHooks'
@@ -170,17 +170,17 @@ const { createFrameObserver, classifyFrame } = require('./src/lib/limits/ws-fram
 // Inbound x-grid-* / authorization are the proxy's to set, never the client's.
 const { stripClientContextHeaders, findOversizedWsHeader, withoutSessionCookies } = require('./src/lib/proxy/ws-upgrade-headers.js')
 
-// `GRID_WS_UPGRADE_RATE_LIMIT` predates the catalog and stays honoured: an
+// `WS_UPGRADE_RATE_LIMIT` predates the catalog and stays honoured: an
 // operator who tuned it should not have it silently reverted by this refactor.
 // 0 still disables the upgrade limit entirely.
 const parsedUpgradeOverride = parseInt(
-  process.env.GRID_WS_UPGRADE_RATE_LIMIT || String(WS_UPGRADE_LIMIT.limit),
+  process.env.WS_UPGRADE_RATE_LIMIT || String(WS_UPGRADE_LIMIT.limit),
   10
 )
 if (!Number.isFinite(parsedUpgradeOverride)) {
   console.warn(
-    '[Gateway] invalid GRID_WS_UPGRADE_RATE_LIMIT=%s, using catalog default %d',
-    process.env.GRID_WS_UPGRADE_RATE_LIMIT,
+    '[Gateway] invalid WS_UPGRADE_RATE_LIMIT=%s, using catalog default %d',
+    process.env.WS_UPGRADE_RATE_LIMIT,
     WS_UPGRADE_LIMIT.limit
   )
 }
@@ -193,7 +193,7 @@ const WS_UPGRADE_OVERRIDE = Number.isFinite(parsedUpgradeOverride)
   : WS_UPGRADE_LIMIT.limit
 // Frames per session. 0 disables, for an operator who needs the old behaviour
 // back in a hurry.
-const WS_MESSAGE_LIMITS_ENABLED = process.env.GRID_WS_MESSAGE_LIMITS !== '0'
+const WS_MESSAGE_LIMITS_ENABLED = process.env.WS_MESSAGE_LIMITS !== '0'
 
 let limitStoreClient = null
 if (process.env.REDIS_URL) {
@@ -440,8 +440,8 @@ const fetchCollectionScopeHeader = (req, projectId, conversationId) => {
 // proportionally, because a given client reconnects to one pod at a time.
 // TTL is deliberately short — it bounds how long a revoked session can still
 // ride a cached scope. 0 disables the memo entirely.
-const WS_UPGRADE_MAX_INFLIGHT = parseInt(process.env.GRID_WS_UPGRADE_MAX_INFLIGHT || '32', 10)
-const WS_SCOPE_CACHE_TTL_MS = parseInt(process.env.GRID_WS_SCOPE_CACHE_TTL_MS || '10000', 10)
+const WS_UPGRADE_MAX_INFLIGHT = parseInt(process.env.WS_UPGRADE_MAX_INFLIGHT || '32', 10)
+const WS_SCOPE_CACHE_TTL_MS = parseInt(process.env.WS_SCOPE_CACHE_TTL_MS || '10000', 10)
 const WS_SCOPE_CACHE_MAX_ENTRIES = 5000
 
 let inflightScopeResolutions = 0

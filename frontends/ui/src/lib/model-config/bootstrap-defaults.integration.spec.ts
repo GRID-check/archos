@@ -1,6 +1,6 @@
 /**
  * Opt-in integration test: the first-boot bootstrap against a real Postgres with
- * the migrations applied. Skipped unless GRID_TEST_DATABASE_URL is set (CI has
+ * the migrations applied. Skipped unless TEST_DATABASE_URL is set (CI has
  * no database).
  *
  * The unit spec covers the decision logic with everything mocked. What only a
@@ -20,7 +20,7 @@ import { AGENT_GROUPS } from './agent-groups'
 
 vi.mock('server-only', () => ({}))
 
-const url = process.env.GRID_TEST_DATABASE_URL
+const url = process.env.TEST_DATABASE_URL
 
 const OPENROUTER = 'https://openrouter.ai/api/v1'
 const allRefs = AGENT_GROUPS.flatMap((group) => group.configLlmRefs)

@@ -9,7 +9,7 @@
  * the lane's tenant as `grid_app_rw`, and a handler that reads the request
  * (the locale, for a report's PDF) still finishes with no request to read.
  *
- *   GRID_TEST_DATABASE_URL=postgres://grid_app_rw@host:port/grid_app \
+ *   TEST_DATABASE_URL=postgres://grid_app_rw@host:port/grid_app \
  *     npx vitest run workers/jobs/slice-bundle.integration.spec.mjs
  *
  * `task db:test:rls` (scripts/rls-test-db.sh) builds that database and runs it.
@@ -26,7 +26,7 @@ import { createFailureStreak } from '../failure-streak.js'
 import { withPlatformScope } from '../platform-scope.js'
 import { createInProcessSliceRunner, createRunner } from './runner.js'
 
-const url = process.env.GRID_TEST_DATABASE_URL
+const url = process.env.TEST_DATABASE_URL
 const LANE = `org_bundle_${Date.now()}`
 const UI_ROOT = path.resolve(import.meta.dirname, '..', '..')
 

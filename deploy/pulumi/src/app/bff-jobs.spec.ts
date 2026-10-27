@@ -144,11 +144,11 @@ describe("the bff-jobs pool", () => {
     expect(spec.template.spec.containers[0].readinessProbe.httpGet.path).toBe("/api/healthz");
   });
 
-  it("emits only GRID_BFF_JOBS_ names the runner reads, and the ones it needs", async () => {
+  it("emits only BFF_JOBS_ names the runner reads, and the ones it needs", async () => {
     const readByRunner = new Set(
-      [...read("frontends", "ui", "workers", "jobs", "index.js").matchAll(/(GRID_BFF_JOBS_[A-Z_]+)/g)].map((m) => m[1]),
+      [...read("frontends", "ui", "workers", "jobs", "index.js").matchAll(/\b((?:GRID_)?BFF_JOBS_[A-Z_]+)/g)].map((m) => m[1]),
     );
-    const emitted = env.map((e) => e.name as string).filter((name) => name.startsWith("GRID_BFF_JOBS_"));
+    const emitted = env.map((e) => e.name as string).filter((name) => /^(GRID_)?BFF_JOBS_/.test(name));
 
     expect(emitted.length).toBeGreaterThan(2);
     expect(emitted.filter((name) => !readByRunner.has(name))).toEqual([]);
@@ -171,13 +171,13 @@ describe("the bff-jobs pool", () => {
     const names = env.map((e) => e.name);
     expect(names).toEqual(
       expect.arrayContaining([
-        "GRID_WEB_PUSH_VAPID_PUBLIC_KEY",
-        "GRID_WEB_PUSH_VAPID_PRIVATE_KEY",
-        "GRID_WEB_PUSH_SUBJECT",
+        "WEB_PUSH_VAPID_PUBLIC_KEY",
+        "WEB_PUSH_VAPID_PRIVATE_KEY",
+        "WEB_PUSH_SUBJECT",
       ]),
     );
-    const privateKey = env.find((e) => e.name === "GRID_WEB_PUSH_VAPID_PRIVATE_KEY");
-    expect(privateKey).toMatchObject({ valueFrom: { secretKeyRef: { key: "GRID_WEB_PUSH_VAPID_PRIVATE_KEY" } } });
+    const privateKey = env.find((e) => e.name === "WEB_PUSH_VAPID_PRIVATE_KEY");
+    expect(privateKey).toMatchObject({ valueFrom: { secretKeyRef: { key: "WEB_PUSH_VAPID_PRIVATE_KEY" } } });
   });
 
   it("names no variable twice, and logs under its own service name", async () => {
@@ -186,7 +186,7 @@ describe("the bff-jobs pool", () => {
     expect(names.filter((name, i) => names.indexOf(name) !== i)).toEqual([]);
     expect(env.find((e) => e.name === "OTEL_SERVICE_NAME")?.value).toBe("grid-bff-jobs");
     // Stopped after the runner has drained, so it needs no long WebSocket drain.
-    expect(env.find((e) => e.name === "GRID_SHUTDOWN_DRAIN_MS")?.value).toBe("5000");
+    expect(env.find((e) => e.name === "SHUTDOWN_DRAIN_MS")?.value).toBe("5000");
   });
 
   it("scales on the table the queue is written to, leaving dead rows out", () => {

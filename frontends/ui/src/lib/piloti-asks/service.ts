@@ -176,7 +176,7 @@ function socketTarget(conversationId: string): SocketTarget {
 
 /** The longest an ask stays open before a read ends it `failed` (its outcome was lost). */
 export function askMaxSeconds(env: Record<string, string | undefined> = process.env): number {
-  const raw = Number.parseInt(env.GRID_PILOTI_ASK_MAX_SECONDS ?? '', 10)
+  const raw = Number.parseInt(env.AGENT_ASK_MAX_SECONDS ?? '', 10)
   return Number.isFinite(raw) && raw > 0 ? raw : DEFAULT_ASK_MAX_SECONDS
 }
 

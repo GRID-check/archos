@@ -15,7 +15,7 @@ import { GET } from './route'
 
 beforeEach(() => {
   process.env.WORKOS_AUTHKIT_DOMAIN = 'auth.piloti.test'
-  process.env.GRID_MCP_RESOURCE_URL = 'https://app.piloti.test/api/mcp'
+  process.env.MCP_RESOURCE_URL = 'https://app.piloti.test/api/mcp'
 })
 
 describe('oauth-protected-resource', () => {
@@ -59,13 +59,13 @@ describe('oauth-protected-resource', () => {
   })
 
   it('derives the platform door from the same setting, so one change moves all three resources', async () => {
-    process.env.GRID_MCP_RESOURCE_URL = 'https://piloti.example/api/mcp'
+    process.env.MCP_RESOURCE_URL = 'https://piloti.example/api/mcp'
     const body = (await platform().json()) as { resource: string }
     expect(body.resource).toBe('https://piloti.example/api/platform/mcp')
   })
 
   it('takes the resource from the pinned app origin when none is set', async () => {
-    delete process.env.GRID_MCP_RESOURCE_URL
+    delete process.env.MCP_RESOURCE_URL
     process.env.WORKOS_REDIRECT_URI = 'https://app.piloti.test/api/auth/callback'
     const body = (await GET().json()) as { resource: string }
     expect(body.resource).toBe('https://app.piloti.test/api/mcp')

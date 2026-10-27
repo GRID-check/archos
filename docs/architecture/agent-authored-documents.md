@@ -539,7 +539,7 @@ rather than a duplicate. The permission is the tenant's, per project and per
 role, withheld on a custom role. Withdrawing it fleet-wide would mean editing the
 built-in project roles in the catalog, which `provision:authz --check` then fails
 in CI — so the operator's kill switch has to be the `agent-authored-documents`
-flag (`GRID_AGENT_AUTHORED_DOCUMENTS_ENABLED`, default ON), checked at the same
+flag (`AGENT_AUTHORED_DOCUMENTS_ENABLED`, default ON), checked at the same
 seam so every producer rides one switch rather than one each.
 
 ### 6. The filed report is a PDF

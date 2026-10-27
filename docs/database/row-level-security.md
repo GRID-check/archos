@@ -187,7 +187,7 @@ or against your own database:
 
 ```bash
 export PGPASSWORD=...   # the password you gave grid_app_rw
-export GRID_TEST_DATABASE_URL="postgres://grid_app_rw:$PGPASSWORD@localhost:5432/grid_app"
+export TEST_DATABASE_URL="postgres://grid_app_rw:$PGPASSWORD@localhost:5432/grid_app"
 npx vitest run src/lib/db/tenant-isolation.integration.spec.ts
 ```
 

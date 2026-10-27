@@ -45,13 +45,13 @@
  *   GRID_APP_DATABASE_URL              - grid_app Postgres DSN (required)
  *   FRONTEND_INTERNAL_URL              - BFF base URL (default http://frontend:3000)
  *   GRID_INTERNAL_API_TOKEN            - shared token for the internal fire endpoint
- *   GRID_SKILL_SCHEDULER_POLL_MS       - tick interval (default 30000)
- *   GRID_SKILL_SCHEDULER_BATCH         - max claims per tick (default 20)
- *   GRID_SKILL_RUNS_RETENTION_DAYS     - run-history retention (default 90)
+ *   SKILL_SCHEDULER_POLL_MS       - tick interval (default 30000)
+ *   SKILL_SCHEDULER_BATCH         - max claims per tick (default 20)
+ *   SKILL_RUNS_RETENTION_DAYS     - run-history retention (default 90)
  *   LANGFUSE_HOST / LANGFUSE_PUBLIC_KEY / LANGFUSE_SECRET_KEY
  *                                      - Langfuse API for the trace retention
  *                                        sweep (all three, or it is a no-op)
- *   GRID_LANGFUSE_TRACE_RETENTION_DAYS - how long Langfuse traces live
+ *   TRACE_RETENTION_DAYS - how long Langfuse traces live
  *                                        (default 30, minimum 3)
  *
  * There is no deployment-wide schedules gate. Every due definition is claimed
@@ -117,9 +117,9 @@ function readConfig(env) {
     traceRetentionClamped: traceRetention.clamped,
     frontendUrl: (env.FRONTEND_INTERNAL_URL || 'http://frontend:3000').replace(/\/$/, ''),
     internalToken: env.GRID_INTERNAL_API_TOKEN || '',
-    pollMs: toPositiveInt(env.GRID_SKILL_SCHEDULER_POLL_MS, 30000),
-    batch: toPositiveInt(env.GRID_SKILL_SCHEDULER_BATCH, 20),
-    retentionDays: toPositiveInt(env.GRID_SKILL_RUNS_RETENTION_DAYS, 90),
+    pollMs: toPositiveInt(env.SKILL_SCHEDULER_POLL_MS, 30000),
+    batch: toPositiveInt(env.SKILL_SCHEDULER_BATCH, 20),
+    retentionDays: toPositiveInt(env.SKILL_RUNS_RETENTION_DAYS, 90),
   }
 }
 
@@ -702,7 +702,7 @@ function main() {
   console.log(
     `${LOG} Langfuse trace erasure of deleted chats and retention: ` +
       (config.langfuse
-        ? `${config.traceRetentionDays} days${config.traceRetentionClamped ? ' (GRID_LANGFUSE_TRACE_RETENTION_DAYS is below the minimum of 3 or invalid, corrected)' : ''}`
+        ? `${config.traceRetentionDays} days${config.traceRetentionClamped ? ' (TRACE_RETENTION_DAYS is below the minimum of 3 or invalid, corrected)' : ''}`
         : `off (missing ${config.langfuseMissing.join(', ')})`),
   )
   void runTick()

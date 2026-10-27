@@ -11,7 +11,7 @@
  * 3. Their budget: a spent scope ends the notice before a model is asked.
  * 4. The pages: which pages of the newer Fassung changed, read from the index
  *    with no model call (`changedRevisionPages`), at most
- *    `GRID_REVISION_NOTICE_MAX_PAGES` of them.
+ *    `REVISION_NOTICE_MAX_PAGES` of them.
  * 5. One vision call per page through the comparison the compare view uses
  *    (`compareRevisionPage`, purpose `notice`): read access to both, neither
  *    held, one collection, no restricted folder. A page that cannot be

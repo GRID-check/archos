@@ -14,7 +14,7 @@
  *   - the item read, the sharing probe, document roles, the upload history's
  *     counts and the IFC model header each see a held row only as its reader may.
  *
- *   GRID_TEST_DATABASE_URL=postgres://grid_app_rw@host:port/grid_app \
+ *   TEST_DATABASE_URL=postgres://grid_app_rw@host:port/grid_app \
  *     npx vitest run src/lib/documents/visibility.integration.spec.ts
  *
  * `task db:test:rls` (scripts/rls-test-db.sh) builds that database and runs it.
@@ -35,7 +35,7 @@ import {
 
 vi.mock('server-only', () => ({}))
 
-const url = process.env.GRID_TEST_DATABASE_URL
+const url = process.env.TEST_DATABASE_URL
 const STAMP = Date.now()
 const ORG = `org_visibility_${STAMP}`
 const UPLOADER = 'user_vis_uploader'

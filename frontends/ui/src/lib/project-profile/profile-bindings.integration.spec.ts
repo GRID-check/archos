@@ -10,7 +10,7 @@
  * row-level security, and only on its own tenant's project. Runs under
  * `task db:test:rls`:
  *
- *   GRID_TEST_DATABASE_URL=postgres://grid_app_rw@host:port/grid_app \
+ *   TEST_DATABASE_URL=postgres://grid_app_rw@host:port/grid_app \
  *     npx vitest run src/lib/project-profile/profile-bindings.integration.spec.ts
  */
 
@@ -19,7 +19,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 
 vi.mock('server-only', () => ({}))
 
-const url = process.env.GRID_TEST_DATABASE_URL
+const url = process.env.TEST_DATABASE_URL
 const ORG = `org_profilebind_${Date.now()}`
 const OTHER_ORG = `${ORG}_other`
 const USER = 'user_profilebind'

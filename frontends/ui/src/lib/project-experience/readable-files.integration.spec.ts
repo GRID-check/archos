@@ -4,7 +4,7 @@
  * Which files the closing extraction may read (`readable-files.ts`), against a
  * REAL Postgres through the restricted runtime role:
  *
- *   GRID_TEST_DATABASE_URL=postgres://grid_app_rw@host:port/grid_app \
+ *   TEST_DATABASE_URL=postgres://grid_app_rw@host:port/grid_app \
  *     npx vitest run src/lib/project-experience/readable-files.integration.spec.ts
  *
  * What it proves, each a claim about SQL a mocked handle cannot disagree with:
@@ -22,7 +22,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 
 vi.mock('server-only', () => ({}))
 
-const url = process.env.GRID_TEST_DATABASE_URL
+const url = process.env.TEST_DATABASE_URL
 const STAMP = Date.now()
 const ORG = `org_readable_${STAMP}`
 const OTHER_ORG = `${ORG}_other`
@@ -30,8 +30,8 @@ const USER = `user_readable_${STAMP}`
 
 describe('the closing extraction files suite is not silently skipped in CI', () => {
   it('has a database to run against', () => {
-    if (!process.env.GRID_RLS_SUITE_REQUIRED) return
-    expect(url, 'GRID_TEST_DATABASE_URL is unset while GRID_RLS_SUITE_REQUIRED is set').toBeTruthy()
+    if (!process.env.RLS_SUITE_REQUIRED) return
+    expect(url, 'TEST_DATABASE_URL is unset while RLS_SUITE_REQUIRED is set').toBeTruthy()
   })
 })
 

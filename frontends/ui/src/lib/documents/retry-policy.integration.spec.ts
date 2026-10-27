@@ -6,7 +6,7 @@
  * rescan select with the SQL, a single „Erneut lesen“ decides with the
  * TypeScript, and the two must agree on every row (migration 0134).
  *
- *   GRID_TEST_DATABASE_URL=postgres://grid_app_rw@host:port/grid_app \
+ *   TEST_DATABASE_URL=postgres://grid_app_rw@host:port/grid_app \
  *     npx vitest run src/lib/documents/retry-policy.integration.spec.ts
  *
  * `task db:test:rls` (scripts/rls-test-db.sh) builds that database and runs it.
@@ -18,7 +18,7 @@ import { CURRENT_INGEST_READER_VERSION, canRetryRow } from './retry-policy'
 
 vi.mock('server-only', () => ({}))
 
-const url = process.env.GRID_TEST_DATABASE_URL
+const url = process.env.TEST_DATABASE_URL
 const STAMP = Date.now()
 const ORG = `org_retry_${STAMP}`
 const USER = `user_retry_${STAMP}`

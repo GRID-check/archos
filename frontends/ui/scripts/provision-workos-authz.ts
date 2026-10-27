@@ -41,7 +41,7 @@ import {
   type RoleSpec,
 } from '../src/lib/authz/catalog'
 
-const PLATFORM_ORG_EXTERNAL_ID = process.env.GRID_PLATFORM_ORG_EXTERNAL_ID ?? 'grid-platform'
+const PLATFORM_ORG_EXTERNAL_ID = process.env.PLATFORM_ORG_EXTERNAL_ID ?? 'grid-platform'
 
 const apply = process.argv.includes('--apply')
 const apiKey = process.env.WORKOS_API_KEY

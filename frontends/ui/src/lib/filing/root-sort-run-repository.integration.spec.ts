@@ -4,7 +4,7 @@
  * `root_sort_runs` (migration 0173, ADR-0121) against a REAL Postgres, through
  * the restricted runtime role:
  *
- *   GRID_TEST_DATABASE_URL=postgres://grid_app_rw@host:port/grid_app \
+ *   TEST_DATABASE_URL=postgres://grid_app_rw@host:port/grid_app \
  *     npx vitest run src/lib/filing/root-sort-run-repository.integration.spec.ts
  *
  * What it proves, claims about SQL a mocked handle cannot disagree with: the
@@ -24,7 +24,7 @@ import type { RootSortRunStatus } from './root-sort-types'
 
 vi.mock('server-only', () => ({}))
 
-const url = process.env.GRID_TEST_DATABASE_URL
+const url = process.env.TEST_DATABASE_URL
 const STAMP = Date.now()
 const ORG_A = `org_root_sort_a_${STAMP}`
 const ORG_B = `org_root_sort_b_${STAMP}`

@@ -575,7 +575,7 @@ services:
       # aiq-agent value). Powers the platform-owner base-knowledge management UI.
       - GRID_ADMIN_TOKEN=${GRID_ADMIN_TOKEN:?set GRID_ADMIN_TOKEN}
       # Corpus tarball (/api/internal/oib-corpus). No caller since the answer-suite CI workflow was removed. Unset = disabled.
-      - GRID_CORPUS_EXPORT_TOKEN=${GRID_CORPUS_EXPORT_TOKEN:-}
+      - CORPUS_EXPORT_TOKEN=${CORPUS_EXPORT_TOKEN:-${GRID_CORPUS_EXPORT_TOKEN:-}}
       # WorkOS AuthKit — only consumed when REQUIRE_AUTH=true. Safe to leave the
       # keys empty for an unauthenticated preview.
       - WORKOS_CLIENT_ID=${WORKOS_CLIENT_ID:-}
@@ -591,9 +591,9 @@ services:
       - NEXT_PUBLIC_POSTHOG_PROXY=${NEXT_PUBLIC_POSTHOG_PROXY:-true}
       - WORKOS_COOKIE_PASSWORD=${WORKOS_COOKIE_PASSWORD:-}
       # BYOK LLM credentials (ADR-0022): secret backend for tenant API keys.
-      - GRID_BYOK_SECRET_BACKEND=${GRID_BYOK_SECRET_BACKEND:-}
-      - GRID_BYOK_LOCAL_KEK=${GRID_BYOK_LOCAL_KEK:-}
-      - GRID_BYOK_ALLOW_PRIVATE_BASE_URLS=${GRID_BYOK_ALLOW_PRIVATE_BASE_URLS:-false}
+      - BYOK_SECRET_BACKEND=${BYOK_SECRET_BACKEND:-${GRID_BYOK_SECRET_BACKEND:-}}
+      - BYOK_LOCAL_KEK=${BYOK_LOCAL_KEK:-${GRID_BYOK_LOCAL_KEK:-}}
+      - BYOK_ALLOW_PRIVATE_BASE_URLS=${BYOK_ALLOW_PRIVATE_BASE_URLS:-${GRID_BYOK_ALLOW_PRIVATE_BASE_URLS:-false}}
       # Must match the code default in frontends/ui/src/shared/config/file-upload.ts:
       # an override here that lists fewer types silently narrows what users can upload.
       - FILE_UPLOAD_ACCEPTED_TYPES=${FILE_UPLOAD_ACCEPTED_TYPES:-.pdf,.docx,.txt,.md,.csv,.xlsx,.pptx}
@@ -626,12 +626,12 @@ services:
       - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:?set OPENROUTER_API_KEY}
       # Platform tier (ADR-0016): break-glass owner bootstrap, platform-org
       # external id override, and the self-serve org creation gate.
-      - GRID_PLATFORM_OWNER_EMAILS=${GRID_PLATFORM_OWNER_EMAILS:-}
-      - GRID_PLATFORM_ORG_EXTERNAL_ID=${GRID_PLATFORM_ORG_EXTERNAL_ID:-grid-platform}
-      - GRID_DISABLE_SELF_SERVE_ORGS=${GRID_DISABLE_SELF_SERVE_ORGS:-false}
+      - PLATFORM_OWNER_EMAILS=${PLATFORM_OWNER_EMAILS:-${GRID_PLATFORM_OWNER_EMAILS:-}}
+      - PLATFORM_ORG_EXTERNAL_ID=${PLATFORM_ORG_EXTERNAL_ID:-${GRID_PLATFORM_ORG_EXTERNAL_ID:-grid-platform}}
+      - DISABLE_SELF_SERVE_ORGS=${DISABLE_SELF_SERVE_ORGS:-${GRID_DISABLE_SELF_SERVE_ORGS:-false}}
       # ── Shared cache (Dragonfly, ADR-0020) ──
       - REDIS_URL=redis://dragonfly:6379/0
-      - GRID_WS_UPGRADE_RATE_LIMIT=${GRID_WS_UPGRADE_RATE_LIMIT:-30}
+      - WS_UPGRADE_RATE_LIMIT=${WS_UPGRADE_RATE_LIMIT:-${GRID_WS_UPGRADE_RATE_LIMIT:-30}}
       # The commit this deployment is running. Stamped into the image as a
       # build arg by CI's image build, so it is normally already set inside
       # the container and this line only matters for a locally built or
@@ -646,8 +646,8 @@ services:
       # entitlement (deep research, tasks, skills, collaboration, the mail
       # import, BYOK, model configuration) is off.
       # ── Agent Skills (ADR-0046): save-time cron validation ──
-      - GRID_SKILL_MIN_INTERVAL_MINUTES=${GRID_SKILL_MIN_INTERVAL_MINUTES:-15}
-      - GRID_MAIL_IMPORT_MAX_BYTES=${GRID_MAIL_IMPORT_MAX_BYTES:-}
+      - SKILL_MIN_INTERVAL_MINUTES=${SKILL_MIN_INTERVAL_MINUTES:-${GRID_SKILL_MIN_INTERVAL_MINUTES:-15}}
+      - MAIL_IMPORT_MAX_BYTES=${MAIL_IMPORT_MAX_BYTES:-${GRID_MAIL_IMPORT_MAX_BYTES:-}}
       # Extraction bounds. BIM_MAX_IFC_BYTES is also the UPLOAD ceiling for a
       # .ifc — the two must not disagree. Defaults: 250 MB / 200 000 rows.
       - BIM_MAX_IFC_BYTES=${BIM_MAX_IFC_BYTES:-}
@@ -708,13 +708,13 @@ services:
       service: frontend
     command: ["node", "workers/jobs/index.js"]
     environment:
-      - GRID_BFF_JOBS_CONCURRENCY=${GRID_BFF_JOBS_CONCURRENCY:-2}
+      - BFF_JOBS_CONCURRENCY=${BFF_JOBS_CONCURRENCY:-${GRID_BFF_JOBS_CONCURRENCY:-2}}
       - GRID_BFF_JOBS_DRAIN_SECONDS=${GRID_BFF_JOBS_DRAIN_SECONDS:-30}
-      - GRID_BFF_JOBS_MAX_PER_ORG=${GRID_BFF_JOBS_MAX_PER_ORG:-0}
+      - BFF_JOBS_MAX_PER_ORG=${BFF_JOBS_MAX_PER_ORG:-${GRID_BFF_JOBS_MAX_PER_ORG:-0}}
       # `inprocess` runs the slices without spawning the BFF (ADR-0079 amendment 1).
       - GRID_BFF_JOBS_MODE=${GRID_BFF_JOBS_MODE:-http}
       # The runner stops the BFF only after it has drained.
-      - GRID_SHUTDOWN_DRAIN_MS=5000
+      - SHUTDOWN_DRAIN_MS=5000
     # The runner gives claims back for up to the drain budget; docker's default
     # 10 s would kill it first.
     stop_grace_period: 60s
@@ -758,7 +758,7 @@ services:
         node dist-scripts/migrate-folder-grants-to-workos.mjs --apply
     environment:
       - WORKOS_API_KEY=${WORKOS_API_KEY:-}
-      - GRID_PLATFORM_ORG_EXTERNAL_ID=${GRID_PLATFORM_ORG_EXTERNAL_ID:-grid-platform}
+      - PLATFORM_ORG_EXTERNAL_ID=${PLATFORM_ORG_EXTERNAL_ID:-${GRID_PLATFORM_ORG_EXTERNAL_ID:-grid-platform}}
       # Schema owner: the carry-over reads every organization's folder grants.
       - GRID_APP_MIGRATION_DATABASE_URL=postgresql://aiq:${SERVICE_PASSWORD_POSTGRES}@postgres:5432/grid_app
     depends_on:
@@ -822,9 +822,9 @@ services:
       - GRID_APP_DATABASE_URL=postgresql://grid_app_rw:${SERVICE_PASSWORD_GRIDRUNTIME}@pgbouncer:5432/grid_app
       - FRONTEND_INTERNAL_URL=http://frontend:3000
       - GRID_INTERNAL_API_TOKEN=${SERVICE_PASSWORD_INTERNALTOKEN}
-      - GRID_SKILL_SCHEDULER_POLL_MS=${GRID_SKILL_SCHEDULER_POLL_MS:-30000}
-      - GRID_SKILL_SCHEDULER_BATCH=${GRID_SKILL_SCHEDULER_BATCH:-20}
-      - GRID_SKILL_RUNS_RETENTION_DAYS=${GRID_SKILL_RUNS_RETENTION_DAYS:-90}
+      - SKILL_SCHEDULER_POLL_MS=${SKILL_SCHEDULER_POLL_MS:-${GRID_SKILL_SCHEDULER_POLL_MS:-30000}}
+      - SKILL_SCHEDULER_BATCH=${SKILL_SCHEDULER_BATCH:-${GRID_SKILL_SCHEDULER_BATCH:-20}}
+      - SKILL_RUNS_RETENTION_DAYS=${SKILL_RUNS_RETENTION_DAYS:-${GRID_SKILL_RUNS_RETENTION_DAYS:-90}}
     depends_on:
       postgres:
         condition: service_healthy

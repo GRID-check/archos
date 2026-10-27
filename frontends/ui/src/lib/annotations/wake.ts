@@ -45,7 +45,7 @@ import { wakeTurnId } from './wake-ids'
 /** The job kind a wake runs as. */
 export const PILOTI_WAKE_JOB = 'piloti_wake'
 
-/** The caps, from `GRID_WAKE_MAX_PER_MARK_HOUR` and `GRID_WAKE_MAX_PER_PERSON_DAY`. */
+/** The caps, from `WAKE_MAX_PER_MARK_HOUR` and `WAKE_MAX_PER_PERSON_DAY`. */
 export interface WakeLimits {
   perMarkHour: number
   perPersonDay: number
@@ -61,8 +61,8 @@ const positive = (raw: string | undefined, fallback: number) => {
 /** The caps in force; an unreadable value is the default, `0` lets nothing through. */
 export function wakeLimits(env: Record<string, string | undefined> = process.env): WakeLimits {
   return {
-    perMarkHour: positive(env.GRID_WAKE_MAX_PER_MARK_HOUR, DEFAULT_LIMITS.perMarkHour),
-    perPersonDay: positive(env.GRID_WAKE_MAX_PER_PERSON_DAY, DEFAULT_LIMITS.perPersonDay),
+    perMarkHour: positive(env.WAKE_MAX_PER_MARK_HOUR, DEFAULT_LIMITS.perMarkHour),
+    perPersonDay: positive(env.WAKE_MAX_PER_PERSON_DAY, DEFAULT_LIMITS.perPersonDay),
   }
 }
 

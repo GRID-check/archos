@@ -9,7 +9,7 @@
  * than a millisecond — the case a cursor built from a JS `Date` gets wrong.
  * It runs under `task db:test:rls`, through the restricted runtime role:
  *
- *   GRID_TEST_DATABASE_URL=postgres://grid_app_rw@host:port/grid_app \
+ *   TEST_DATABASE_URL=postgres://grid_app_rw@host:port/grid_app \
  *     npx vitest run src/lib/documents/list-page.integration.spec.ts
  */
 
@@ -19,7 +19,7 @@ import { memberReader, REVIEWER_READER } from '@/lib/documents/document-reader'
 
 vi.mock('server-only', () => ({}))
 
-const url = process.env.GRID_TEST_DATABASE_URL
+const url = process.env.TEST_DATABASE_URL
 const ORG = `org_listpage_${Date.now()}`
 const USER = 'user_listpage'
 

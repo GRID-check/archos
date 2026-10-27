@@ -4,7 +4,7 @@
  * A chat's use of OTHER projects (ADR-0094, migration 0125) against a REAL
  * Postgres, through the restricted runtime role:
  *
- *   GRID_TEST_DATABASE_URL=postgres://grid_app_rw@host:port/grid_app \
+ *   TEST_DATABASE_URL=postgres://grid_app_rw@host:port/grid_app \
  *     npx vitest run src/lib/conversations/cross-project-use.integration.spec.ts
  *
  * `task db:test:rls` (scripts/rls-test-db.sh) builds that database and runs it.
@@ -86,12 +86,12 @@ vi.mock('@/lib/sharing/directory', () => ({
   loadOrganizationDirectory: vi.fn(async () => new Map([[OUTSIDER, { userId: OUTSIDER, email: null, name: 'Otto', profilePictureUrl: null }]])),
 }))
 
-const url = process.env.GRID_TEST_DATABASE_URL
+const url = process.env.TEST_DATABASE_URL
 
 describe('the cross-project suite is not silently skipped in CI', () => {
   it('has a database to run against', () => {
-    if (!process.env.GRID_RLS_SUITE_REQUIRED) return
-    expect(url, 'GRID_TEST_DATABASE_URL is unset while GRID_RLS_SUITE_REQUIRED is set').toBeTruthy()
+    if (!process.env.RLS_SUITE_REQUIRED) return
+    expect(url, 'TEST_DATABASE_URL is unset while RLS_SUITE_REQUIRED is set').toBeTruthy()
   })
 })
 

@@ -147,7 +147,7 @@ describe('POST /api/internal/bim/query', () => {
       vi.mocked(listBimModels).mockResolvedValue([])
       await post(overview)
 
-      process.env.GRID_IFC_MODELS_ENABLED = 'false'
+      process.env.IFC_MODELS_ENABLED = 'false'
       await post(overview)
 
       expect(captureServer).not.toHaveBeenCalled()

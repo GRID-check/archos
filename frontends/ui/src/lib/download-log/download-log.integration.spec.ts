@@ -4,7 +4,7 @@
  * The download log against a REAL Postgres with every migration applied, as the
  * restricted runtime role (migration 0114, ADR-0088):
  *
- *   GRID_TEST_DATABASE_URL=postgres://grid_app_rw@host:port/grid_app \
+ *   TEST_DATABASE_URL=postgres://grid_app_rw@host:port/grid_app \
  *     npx vitest run src/lib/download-log/download-log.integration.spec.ts
  *
  * `task db:test:rls` (scripts/rls-test-db.sh) builds that database and runs it.
@@ -42,7 +42,7 @@ vi.mock('@/lib/authz/folder-roles', () => ({
   ),
 }))
 
-const url = process.env.GRID_TEST_DATABASE_URL
+const url = process.env.TEST_DATABASE_URL
 const STAMP = Date.now()
 const ORG = `org_dlog_${STAMP}`
 const OTHER_ORG = `${ORG}_other`

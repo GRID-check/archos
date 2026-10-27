@@ -2,7 +2,7 @@
 --
 -- NOT destructive beyond the feature's own data: skills, schedules and their
 -- run history are the sole contents of these tables, and the feature is
--- dark-launched (GRID_SKILLS_ENABLED), so no other surface depends on them.
+-- dark-launched (SKILLS_ENABLED), so no other surface depends on them.
 
 -- The RLS policy goes away before the table does. RLS itself stays enabled
 -- on the table until then; dropping the policy first and then the table keeps

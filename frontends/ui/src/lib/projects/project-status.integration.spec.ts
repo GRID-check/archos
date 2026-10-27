@@ -4,7 +4,7 @@
  * A closed project (ADR-0090, migration 0116) against a REAL Postgres, through
  * the restricted runtime role:
  *
- *   GRID_TEST_DATABASE_URL=postgres://grid_app_rw@host:port/grid_app \
+ *   TEST_DATABASE_URL=postgres://grid_app_rw@host:port/grid_app \
  *     npx vitest run src/lib/projects/project-status.integration.spec.ts
  *
  * What only the database can prove: that closing and reopening never open a
@@ -70,7 +70,7 @@ vi.mock('@/lib/workos/client', () => ({
   }),
 }))
 
-const url = process.env.GRID_TEST_DATABASE_URL
+const url = process.env.TEST_DATABASE_URL
 const STAMP = Date.now()
 const ORG = `org_closed_${STAMP}`
 const COLLECTION = `proj_closed_${STAMP}`
@@ -135,7 +135,7 @@ describe.skipIf(!url)('a closed project against Postgres', () => {
 
   beforeAll(async () => {
     process.env.GRID_APP_DATABASE_URL = url
-    process.env.GRID_AUTHZ_CACHE_TTL_MS = '0'
+    process.env.AUTHZ_CACHE_TTL_MS = '0'
     withTenant = (await import('@/lib/db/tenant-context')).withTenant
     db = (await import('@/lib/db')).getDb()
     access = await import('@/lib/authz/folder-access')

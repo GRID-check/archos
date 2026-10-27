@@ -4,9 +4,9 @@
  * organization's tenant context as the usage route runs it. Pricing runs on the
  * boot floor (margin 1, one credit = one US cent), so credits = cost × 100. Runs
  * under `task db:test:rls` as the restricted runtime role; skipped unless
- * GRID_TEST_DATABASE_URL is set.
+ * TEST_DATABASE_URL is set.
  *
- *   GRID_TEST_DATABASE_URL=postgres://user@host:port/grid_app npx vitest run \
+ *   TEST_DATABASE_URL=postgres://user@host:port/grid_app npx vitest run \
  *     src/lib/budgets/service.integration.spec.ts
  */
 
@@ -14,7 +14,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 
 vi.mock('server-only', () => ({}))
 
-const url = process.env.GRID_TEST_DATABASE_URL
+const url = process.env.TEST_DATABASE_URL
 
 describe.skipIf(!url)('budgets service against live Postgres', () => {
   /** The internal usage route runs in the reporting organization's context; so do these. */

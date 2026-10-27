@@ -8,7 +8,7 @@
  * owner would pass every assertion below while proving nothing: owners are
  * exempt from row-level security.
  *
- *   GRID_TEST_DATABASE_URL=postgres://grid_app_rw@host:port/grid_app \
+ *   TEST_DATABASE_URL=postgres://grid_app_rw@host:port/grid_app \
  *     npx vitest run src/lib/db/tenant-isolation.integration.spec.ts
  *
  * Setting up that database is `task db:test:rls` (see Taskfile.yml), which
@@ -20,7 +20,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 
 vi.mock('server-only', () => ({}))
 
-const url = process.env.GRID_TEST_DATABASE_URL
+const url = process.env.TEST_DATABASE_URL
 
 const ORG_A = `org_rls_a_${Date.now()}`
 const ORG_B = `org_rls_b_${Date.now()}`
@@ -64,10 +64,10 @@ async function rejectionCause(run: () => PromiseLike<unknown>): Promise<Error> {
  */
 describe('the isolation suite is not silently skipped in CI', () => {
   it('has a database to run against', () => {
-    if (!process.env.GRID_RLS_SUITE_REQUIRED) return
+    if (!process.env.RLS_SUITE_REQUIRED) return
     expect(
       url,
-      'GRID_TEST_DATABASE_URL is unset while GRID_RLS_SUITE_REQUIRED is set, so ' +
+      'TEST_DATABASE_URL is unset while RLS_SUITE_REQUIRED is set, so ' +
         'the tenant-isolation suite skipped and nothing verified the boundary. ' +
         'Check `task db:test:rls`.'
     ).toBeTruthy()

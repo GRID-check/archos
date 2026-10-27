@@ -4,7 +4,7 @@
  * The project overview and the document-role bindings against a REAL Postgres
  * (ADR-0087), through the restricted runtime role:
  *
- *   GRID_TEST_DATABASE_URL=postgres://grid_app_rw@host:port/grid_app \
+ *   TEST_DATABASE_URL=postgres://grid_app_rw@host:port/grid_app \
  *     npx vitest run src/lib/projects/folder-visibility.integration.spec.ts
  *
  * Each reads `documents` beside the listing repository: the overview's recent
@@ -20,7 +20,7 @@ import { REVIEWER_READER } from '@/lib/documents/document-reader'
 
 vi.mock('server-only', () => ({}))
 
-const url = process.env.GRID_TEST_DATABASE_URL
+const url = process.env.TEST_DATABASE_URL
 const ORG = `org_folder_vis_${Date.now()}`
 const USER = 'user_folder_vis'
 const COLLECTION = `proj_folder_vis_${Date.now()}`

@@ -155,12 +155,12 @@ describe('readReconcileConfig', () => {
 
   it('reads the two knobs and never lets the grace be shorter than the window', () => {
     expect(
-      readReconcileConfig({ GRID_RUN_RECONCILE_STALE_MINUTES: '15', GRID_RUN_RECONCILE_UNKNOWN_GRACE_MINUTES: '60' }),
+      readReconcileConfig({ RUN_RECONCILE_STALE_MINUTES: '15', RUN_RECONCILE_UNKNOWN_GRACE_MINUTES: '60' }),
     ).toMatchObject({ staleMinutes: 15, unknownGraceMinutes: 60 })
     expect(
-      readReconcileConfig({ GRID_RUN_RECONCILE_STALE_MINUTES: '30', GRID_RUN_RECONCILE_UNKNOWN_GRACE_MINUTES: '5' }),
+      readReconcileConfig({ RUN_RECONCILE_STALE_MINUTES: '30', RUN_RECONCILE_UNKNOWN_GRACE_MINUTES: '5' }),
     ).toMatchObject({ staleMinutes: 30, unknownGraceMinutes: 30 })
-    expect(readReconcileConfig({ GRID_RUN_RECONCILE_STALE_MINUTES: '0' }).staleMinutes).toBe(10)
+    expect(readReconcileConfig({ RUN_RECONCILE_STALE_MINUTES: '0' }).staleMinutes).toBe(10)
   })
 })
 

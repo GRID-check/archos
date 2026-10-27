@@ -10,7 +10,7 @@ import { GEOCODER, PORT, UID } from "../constants";
 export interface Geocoder {
   statefulSet: k8s.apps.v1.StatefulSet;
   service: k8s.core.v1.Service;
-  /** In-cluster URL the frontend's `GRID_GEOCODER_URL` points at. */
+  /** In-cluster URL the frontend's `GEOCODER_URL` points at. */
   url: pulumi.Output<string>;
 }
 

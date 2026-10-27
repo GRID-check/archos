@@ -25,7 +25,7 @@ const middleware = authkitMiddleware({
     enabled: isAuthRequired(),
     unauthenticatedPaths: [
       // Root redirect page (sends logged-out visitors to the public landing
-      // site via GRID_LANDING_URL). AuthKit compiles these paths with
+      // site via LANDING_URL). AuthKit compiles these paths with
       // path-to-regexp (anchored), so '/' matches only the root.
       '/',
       // Liveness probe — must return 200 even when auth is required, so the

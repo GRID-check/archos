@@ -313,13 +313,13 @@ primitive gives them one.
 `x-grid-feature-memory-reflection` and read fail-closed on the agent side
 (`project_context.py:265-271`, field at `:295`, parse at `:332`).
 
-- With `GRID_ENFORCE_FEATURE_FLAGS=true`: the per-org WorkOS `memory-reflection`
+- With `ENFORCE_FEATURE_FLAGS=true`: the per-org WorkOS `memory-reflection`
   flag, fail-closed.
-- Otherwise: `GRID_MEMORY_REFLECTION_ENABLED`, **default ON**
+- Otherwise: `MEMORY_REFLECTION_ENABLED`, **default ON**
   (`feature-flags.ts:86`).
 
 *(Superseded: the gate is the per-org flag alone now, read per turn, with no
-`GRID_ENFORCE_FEATURE_FLAGS` and no `GRID_MEMORY_REFLECTION_ENABLED`; see §7.8.)*
+`ENFORCE_FEATURE_FLAGS` and no `MEMORY_REFLECTION_ENABLED`; see §7.8.)*
 
 Two things to note. First, **the kill switch takes effect at the next socket
 handshake, not the next turn** — a long-lived tab keeps the old decision.
@@ -1166,7 +1166,7 @@ Per stage, config-driven, no deploy:
    (`lib/workos/feature-flags.ts`), fail-closed. Every stage flag is a
    **rollout** in the registry (`FLAG_KINDS`), so a deployment where nobody
    signs in runs every stage. There is no env fallback: the
-   `StageSpec.env_default` field and the `GRID_MEMORY_REFLECTION_ENABLED` /
+   `StageSpec.env_default` field and the `MEMORY_REFLECTION_ENABLED` /
    `GRID_STAGE_FOLLOW_UPS_ENABLED` variables it named were removed when flag
    enforcement became unconditional. A new stage ships with its flag created
    OFF in WorkOS.

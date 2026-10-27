@@ -870,8 +870,8 @@ retried by the queue and recorded as `failed` on the last attempt.
 
 **Guards.** Piloti's own replies never wake it. Only a person who may write
 the document can reply, so only they can wake it. At most
-`GRID_WAKE_MAX_PER_MARK_HOUR` wakes per mark an hour (6) and
-`GRID_WAKE_MAX_PER_PERSON_DAY` per person a day (50), counted over the
+`WAKE_MAX_PER_MARK_HOUR` wakes per mark an hour (6) and
+`WAKE_MAX_PER_PERSON_DAY` per person a day (50), counted over the
 `piloti_wakes` rows at enqueue and again at claim. The WorkOS flag
 `piloti-wakes`, an entitlement off by default. A wake held before Piloti was
 asked (a cap, the switch, rights lost, the mark gone, the delegation taken

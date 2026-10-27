@@ -37,9 +37,9 @@ describe('readConfig', () => {
     const c = readConfig({
       FRONTEND_INTERNAL_URL: 'http://frontend:3000/',
       GRID_INTERNAL_API_TOKEN: 'tok',
-      GRID_SKILL_SCHEDULER_POLL_MS: '5000',
-      GRID_SKILL_SCHEDULER_BATCH: '7',
-      GRID_SKILL_RUNS_RETENTION_DAYS: '30',
+      SKILL_SCHEDULER_POLL_MS: '5000',
+      SKILL_SCHEDULER_BATCH: '7',
+      SKILL_RUNS_RETENTION_DAYS: '30',
     })
     expect(c.frontendUrl).toBe('http://frontend:3000')
     expect(c.internalToken).toBe('tok')
@@ -52,7 +52,7 @@ describe('readConfig', () => {
   it('prefers the new GRID_SKILL_* name when both new and old are set (no warning)', () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
     const c = readConfig({
-      GRID_SKILL_SCHEDULER_POLL_MS: '1000',
+      SKILL_SCHEDULER_POLL_MS: '1000',
       GRID_WORKFLOW_SCHEDULER_POLL_MS: '9000',
     })
     expect(c.pollMs).toBe(1000)
@@ -61,9 +61,9 @@ describe('readConfig', () => {
 
   it('falls back to defaults for non-positive / garbage numeric knobs', () => {
     const c = readConfig({
-      GRID_SKILL_SCHEDULER_POLL_MS: '0',
-      GRID_SKILL_SCHEDULER_BATCH: '-3',
-      GRID_SKILL_RUNS_RETENTION_DAYS: 'abc',
+      SKILL_SCHEDULER_POLL_MS: '0',
+      SKILL_SCHEDULER_BATCH: '-3',
+      SKILL_RUNS_RETENTION_DAYS: 'abc',
     })
     expect(c.pollMs).toBe(30000)
     expect(c.batch).toBe(20)
@@ -690,10 +690,10 @@ describe('Langfuse trace retention (ADR-0044)', () => {
       expect(c.traceRetentionDays).toBe(30)
     })
 
-    it('reads GRID_LANGFUSE_TRACE_RETENTION_DAYS and never goes below the 3-day minimum', () => {
-      expect(readConfig({ ...env, GRID_LANGFUSE_TRACE_RETENTION_DAYS: '14' }).traceRetentionDays).toBe(14)
-      expect(readConfig({ ...env, GRID_LANGFUSE_TRACE_RETENTION_DAYS: '1' }).traceRetentionDays).toBe(3)
-      expect(readConfig({ ...env, GRID_LANGFUSE_TRACE_RETENTION_DAYS: 'x' }).traceRetentionDays).toBe(30)
+    it('reads TRACE_RETENTION_DAYS and never goes below the 3-day minimum', () => {
+      expect(readConfig({ ...env, TRACE_RETENTION_DAYS: '14' }).traceRetentionDays).toBe(14)
+      expect(readConfig({ ...env, TRACE_RETENTION_DAYS: '1' }).traceRetentionDays).toBe(3)
+      expect(readConfig({ ...env, TRACE_RETENTION_DAYS: 'x' }).traceRetentionDays).toBe(30)
       expect(readConfig(env).langfuse.host).toBe('http://langfuse-web:3000')
     })
   })
@@ -712,7 +712,7 @@ describe('Langfuse trace retention (ADR-0044)', () => {
       const { fetchImpl, lists, deletes } = langfuse([roots(3)])
       const s = streak()
 
-      const result = await sweepTraceRetention(readConfig({ ...env, GRID_LANGFUSE_TRACE_RETENTION_DAYS: '14' }), fetchImpl, s, { nextRunAt: 0 }, NOW)
+      const result = await sweepTraceRetention(readConfig({ ...env, TRACE_RETENTION_DAYS: '14' }), fetchImpl, s, { nextRunAt: 0 }, NOW)
 
       expect(result).toEqual({ traces: 3, batches: 1, capped: false })
       expect(lists[0].toStartTime).toBe(new Date(NOW.getTime() - 14 * DAY).toISOString())
@@ -728,12 +728,12 @@ describe('Langfuse trace retention (ADR-0044)', () => {
       expect(a.lists[0].toStartTime).toBe(new Date(NOW.getTime() - 30 * DAY).toISOString())
 
       const b = langfuse([[]])
-      await sweepTraceRetention(readConfig({ ...env, GRID_LANGFUSE_TRACE_RETENTION_DAYS: '0' }), b.fetchImpl, streak(), { nextRunAt: 0 }, NOW)
+      await sweepTraceRetention(readConfig({ ...env, TRACE_RETENTION_DAYS: '0' }), b.fetchImpl, streak(), { nextRunAt: 0 }, NOW)
       // '0' is not a valid window: the default, never "delete everything".
       expect(b.lists[0].toStartTime).toBe(new Date(NOW.getTime() - 30 * DAY).toISOString())
 
       const c = langfuse([[]])
-      await sweepTraceRetention(readConfig({ ...env, GRID_LANGFUSE_TRACE_RETENTION_DAYS: '2' }), c.fetchImpl, streak(), { nextRunAt: 0 }, NOW)
+      await sweepTraceRetention(readConfig({ ...env, TRACE_RETENTION_DAYS: '2' }), c.fetchImpl, streak(), { nextRunAt: 0 }, NOW)
       expect(c.lists[0].toStartTime).toBe(new Date(NOW.getTime() - 3 * DAY).toISOString())
     })
 

@@ -6,11 +6,11 @@
  * - **At the seal** (`sealOwnUploadBatch`): the bytes are in and the person is
  *   still looking at the tray. `basis: name`, queued `interactive`, so the
  *   suggestion arrives while they are there: the runner's poll (2 s by
- *   default, `GRID_BFF_JOBS_POLL_MS`) plus one model call.
+ *   default, `BFF_JOBS_POLL_MS`) plus one model call.
  * - **At the settle** (`settleUploadBatches`): ingestion has read the batch.
  *   `basis: content`, queued `bulk`. It may sharpen or withdraw the first.
  *
- * `GRID_FILING_SUGGESTIONS=off` switches both off for a deployment.
+ * `FILING_SUGGESTIONS=off` switches both off for a deployment.
  *
  * Imports no service, so the seal and the settle do not pull the judgement
  * (and everything behind it) into the upload path.
@@ -26,7 +26,7 @@ import type { FilingBasis } from './types'
 
 /** Whether the deployment suggests filing at all. On unless switched off. */
 export function filingSuggestionsEnabled(env: Record<string, string | undefined> = process.env): boolean {
-  return (env.GRID_FILING_SUGGESTIONS ?? '').trim().toLowerCase() !== 'off'
+  return (env.FILING_SUGGESTIONS ?? '').trim().toLowerCase() !== 'off'
 }
 
 type QueuedBatch = Pick<UploadBatch, 'id' | 'scope' | 'createdBy'>

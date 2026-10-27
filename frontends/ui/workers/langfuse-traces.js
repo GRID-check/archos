@@ -109,14 +109,14 @@ function readLangfuseConfig(env) {
 }
 
 /**
- * The retention window in days: `GRID_LANGFUSE_TRACE_RETENTION_DAYS`, default
+ * The retention window in days: `TRACE_RETENTION_DAYS`, default
  * 30, never below Langfuse's own minimum of 3.
  *
  * @param {Record<string, string | undefined>} env
  * @returns {{ days: number, clamped: boolean }}
  */
 function readTraceRetentionDays(env) {
-  const raw = (env.GRID_LANGFUSE_TRACE_RETENTION_DAYS ?? '').trim()
+  const raw = (env.TRACE_RETENTION_DAYS ?? '').trim()
   if (!raw) return { days: DEFAULT_RETENTION_DAYS, clamped: false }
   const parsed = Number(raw)
   if (!Number.isInteger(parsed) || parsed < 1) return { days: DEFAULT_RETENTION_DAYS, clamped: true }

@@ -274,7 +274,7 @@ describe("the program constructs in the split topology", () => {
     const frontend = RESOURCES.find((r) => r.type === "kubernetes:apps/v1:Deployment" && r.name === "frontend");
     const env = frontend?.inputs.spec?.template?.spec.containers[0].env ?? [];
     expect(env.length).toBeGreaterThan(0);
-    expect(env.map((e) => e.name)).not.toContain("GRID_GEOCODER_URL");
+    expect(env.map((e) => e.name)).not.toContain("GEOCODER_URL");
     expect(STACK.geocoderUrl).toBeDefined();
   });
 

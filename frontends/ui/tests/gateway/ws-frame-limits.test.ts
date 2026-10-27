@@ -101,7 +101,7 @@ async function startGateway(env: Record<string, string> = {}): Promise<number> {
       GRID_INTERNAL_API_TOKEN: 'gateway-frame-limits-test-token', // pragma: allowlist secret
       // Every request here comes from 127.0.0.1; the per-IP upgrade limit is a
       // different layer and would only add noise to what these tests assert.
-      GRID_WS_UPGRADE_RATE_LIMIT: '0',
+      WS_UPGRADE_RATE_LIMIT: '0',
       ...env,
     },
     stdio: ['ignore', 'pipe', 'pipe'],
@@ -227,7 +227,7 @@ describe('gateway WS frame limiting', () => {
   })
 
   it('does not count frames when the limiter is switched off', async () => {
-    const port = await startGateway({ GRID_WS_MESSAGE_LIMITS: '0' })
+    const port = await startGateway({ WS_MESSAGE_LIMITS: '0' })
     const socket = await openSocket(port, 'session=unlimited')
 
     const burst = CHAT_TURN_LIMIT.burst?.limit ?? CHAT_TURN_LIMIT.limit
