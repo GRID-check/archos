@@ -6,15 +6,21 @@ adds only what the extension needs (``refile``, ``tags``). Unlike the intake eva
 three file tools over the fixture, the ``files`` set runs the REAL ``list_files``,
 ``knowledge_search`` and ``read_passage``, so the project has to exist where they read:
 
-- the vector store (``AIQ_QDRANT_URL``): one chunk per page through the adapter's own write path
-  (``knowledge_layer.qdrant.writes.write_chunks``), embedded by the deployment's embedder, with
-  ``page_label``, ``folder_path`` and ``grid_document_id`` as an ingest job writes them;
+- the vector store (``AIQ_QDRANT_URL``): each file cut by the ingest job's own chunkers
+  (``adapter.text_chunks_for_pages``: the section chunker's breadcrumbs and its overlap across page
+  breaks, the per-page splitter where a file has no headings), written through the adapter's own
+  write path (``knowledge_layer.qdrant.writes.write_chunks``) and embedded by the deployment's
+  embedder, with ``page_label``, ``chunk_ordinal``, ``folder_path`` and ``grid_document_id`` as an
+  ingest job writes them;
 - the metadata store (``AIQ_SUMMARY_DB``): each document registered, filed, typed and given its
   Fassung facts through ``DocumentMetadataStore``, which is what ``list_files`` reads.
 
 Seeding is idempotent: a file whose chunks already carry this content's hash is not embedded again.
 ``FilesWorkspace`` is the fixture BFF's side: the turn context of a chat in this project.
-Chunking is not under test here, the tools are.
+The tools are under test, on chunks cut as production cuts them: a count that one chunk per page
+cannot get wrong (a word in the overlap, a heading word in every chunk's breadcrumb) is wrong here
+until the tools count right. A project may still ask for ``chunking="page"`` (the visual set: one
+caption per sheet, as a scanned sheet's ingest leaves it).
 """
 
 from __future__ import annotations
@@ -48,6 +54,8 @@ class FilesProject:
     description: str
     files: tuple[FixtureFile, ...]
     tags: dict[str, list[str]]
+    #: ``"ingest"``: each file cut by the ingest job's chunkers; ``"page"``: one chunk per page, as written.
+    chunking: str = "page"
 
     @property
     def names(self) -> list[str]:
@@ -78,7 +86,7 @@ def load_project(path: Path = PROJECT) -> FilesProject:
         )
         tags[item["name"]] = list(item.get("tags") or [])
     project = raw["project"]
-    return FilesProject(project["collection"], project["description"], tuple(files), tags)
+    return FilesProject(project["collection"], project["description"], tuple(files), tags, chunking="ingest")
 
 
 def document_id(project: FilesProject, name: str) -> str:
@@ -91,12 +99,19 @@ def content_hash(file: FixtureFile) -> str:
 
 
 def chunk_specs(project: FilesProject, file: FixtureFile) -> list[dict[str, Any]]:
-    """One chunk per page: ``{chunk_id, text, metadata, ordinal}``, before any embedding."""
+    """The file's chunks: ``{chunk_id, text, embed_text, metadata, ordinal}``, before any embedding.
+
+    Under ``chunking="ingest"`` the ingest job's own cut (``adapter.text_chunks_for_pages``), so the
+    text carries the breadcrumb and the overlap production stores; under ``"page"`` one chunk per page.
+    """
     digest = content_hash(file)
+    if project.chunking == "ingest":
+        return _ingested_specs(project, file, digest)
     return [
         {
             "chunk_id": str(uuid.uuid5(uuid.NAMESPACE_URL, f"{project.collection}/{file.name}/{number}/{digest}")),
             "text": text,
+            "embed_text": text,
             "ordinal": number - 1,
             "metadata": {
                 "file_name": file.name,
@@ -107,6 +122,25 @@ def chunk_specs(project: FilesProject, file: FixtureFile) -> list[dict[str, Any]
             },
         }
         for number, text in enumerate(file.pages, start=1)
+    ]
+
+
+def _ingested_specs(project: FilesProject, file: FixtureFile, digest: str) -> list[dict[str, Any]]:
+    from knowledge_layer.llamaindex.adapter import text_chunks_for_pages
+    from llama_index.core.schema import MetadataMode
+
+    pages = [{"page_number": number, "text": text} for number, text in enumerate(file.pages, start=1)]
+    size = len("\n".join(file.pages).encode("utf-8"))
+    nodes = text_chunks_for_pages(pages, file.name, size)
+    return [
+        {
+            "chunk_id": str(uuid.uuid5(uuid.NAMESPACE_URL, f"{project.collection}/{file.name}/c{ordinal}/{digest}")),
+            "text": node.get_content(metadata_mode=MetadataMode.NONE),
+            "embed_text": node.get_content(metadata_mode=MetadataMode.EMBED),
+            "ordinal": ordinal,
+            "metadata": {**node.metadata, "fixture_hash": digest},
+        }
+        for ordinal, node in enumerate(nodes)
     ]
 
 
@@ -147,16 +181,19 @@ def seed(project: FilesProject | None = None, *, embed: Any = None) -> dict[str,
     for file in project.files:
         specs = chunk_specs(project, file)
         have = (
-            store.scroll(project.collection, {"file_name": file.name}, fields=["fixture_hash"])
+            list(store.scroll(project.collection, {"file_name": file.name}, fields=["chunk_id"]))
             if store.exists(project.collection)
             else []
         )
-        if {(r.payload or {}).get("fixture_hash") for r in have} == {content_hash(file)} and len(list(have)) == len(
-            specs
-        ):
+        # The chunk ids carry the content hash and the cut: the same set is the same content, chunked the same way.
+        stored = {str((r.payload or {}).get("chunk_id") or "") for r in have}
+        wanted = {spec["chunk_id"] for spec in specs}
+        if stored == wanted:
             written[file.name] = 0
         else:
-            vectors = embed([spec["text"] for spec in specs])
+            # A file chunked another way before (one chunk per page, or an earlier text) leaves no stale point.
+            store.delete_chunks(project.collection, sorted(stored - wanted))
+            vectors = embed([spec["embed_text"] for spec in specs])
             if vectors is None:
                 raise RuntimeError(f"The embedder did not answer for {file.name}.")
             records = [

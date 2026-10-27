@@ -165,13 +165,24 @@ class TestThePathRoot:
 
 
 class TestTheStockContract:
-    """What DeepAgents already guarantees, pinned because the prompt relies on it."""
+    """What the tool descriptions rely on: DeepAgents' guarantees, and the one we add back."""
 
     def test_write_is_create_only(self, backend: DraftBackend) -> None:
+        """Ours since DeepAgents 0.7, whose ``write`` overwrites: ``write_refusal`` keeps it."""
         backend.write(DRAFT, "# Vermerk\n")
         result = backend.write(DRAFT, "# Anderer Vermerk\n")
         assert result.error is not None
         assert "already exists" in result.error
+        assert "edit_file" in result.error
+        assert backend.read(DRAFT).file_data["content"] == "# Vermerk\n"
+
+    async def test_write_is_create_only_on_the_async_path(self, backend: DraftBackend) -> None:
+        """The path production runs: a second ``awrite`` leaves the first draft standing."""
+        await backend.awrite(DRAFT, "# Vermerk\n")
+        result = await backend.awrite(DRAFT, "# Anderer Vermerk\n")
+        assert result.error is not None
+        assert "already exists" in result.error
+        assert (await backend.aread(DRAFT)).file_data["content"] == "# Vermerk\n"
 
     def test_an_ambiguous_edit_reports_the_count(self, backend: DraftBackend) -> None:
         """The count is what tells the model to add surrounding context."""

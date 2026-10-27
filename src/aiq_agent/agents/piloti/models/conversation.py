@@ -298,7 +298,8 @@ class ConversationState(BaseModel):
     # Retry hint in seconds, only alongside ``job_admission_rejected``.
     retry_after_seconds: int | None = None
     # Ordered names of the skills whose BODY reached the model this turn, in
-    # delivery order (``use_skill``), deduped — never a skill the catalog only
+    # delivery order (a ``read_file`` of its SKILL.md, or a pinned body the
+    # envelope named), deduped — never a skill the catalog only
     # offered, which shaped nothing. Set on the success path of
     # ``conversation._answer_update`` and lifted onto the terminal TurnResult
     # ONLY when present (escaped escalations and generation failures leave it

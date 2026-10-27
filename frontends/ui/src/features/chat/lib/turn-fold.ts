@@ -168,7 +168,14 @@ const storedFields = (step: StepOf<string>, previous?: StoredThinkingStep): Part
     case 'sources':
       return { tool: step.tool, traceLanes: lanesOf(step), ...some('round', step.round), ...some('callId', step.call_id) }
     case 'tool':
-      return { tool: step.tool, ...(step.status === 'error' ? { detail: { status: 'error' } } : {}) }
+      return {
+        tool: step.tool,
+        // A file tool's mount (ADR-0133) rides in `detail`, like a status: an estate `read_file` is a read, a
+        // `read_file` under /drafts/ is drafting, and the tool name alone cannot tell them apart.
+        ...(step.status === 'error' || step.mount
+          ? { detail: { ...(step.status === 'error' ? { status: 'error' } : {}), ...some('mount', step.mount) } }
+          : {}),
+      }
     case 'skill': {
       // The one live skill sentence: an activation with an authored title, not hidden (`skills/events.py`).
       const live = step.phase === 'activated' && step.channel === 'live' && !step.hidden && step.title

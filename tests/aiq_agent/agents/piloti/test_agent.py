@@ -3100,7 +3100,7 @@ class TestTheResearchBudgetIsOneNumber:
     It used to have a reserve on top, sized to the skills the deployment forced
     onto every turn: those calls were overhead the question never asked for, and
     charging them shortened every research chain in the product by one per
-    published house skill. Nothing is forced now — a ``use_skill`` call is one
+    published house skill. Nothing is forced now — a skill read is one
     the model chose, exactly like a search — so there is no overhead to
     compensate, and the number the config's traced floors measure is the number
     the turn gets.
@@ -3172,8 +3172,8 @@ class TestTruncationIsObservable:
             AIMessage(
                 content="",
                 tool_calls=[
-                    {"name": "use_skill", "args": {"skill_name": "piloti-voice"}, "id": "s1"},
-                    {"name": "use_skill", "args": {"skill_name": "piloti-cards"}, "id": "s2"},
+                    {"name": "read_file", "args": {"file_path": "/skills/office/piloti-voice/SKILL.md"}, "id": "s1"},
+                    {"name": "read_file", "args": {"file_path": "/skills/office/piloti-cards/SKILL.md"}, "id": "s2"},
                 ],
             ),
             AIMessage(content="", tool_calls=[{"name": "knowledge_search", "args": {}, "id": "k1"}]),
@@ -3207,7 +3207,7 @@ class TestTruncationIsObservable:
         assert "skill_calls=2" in line
         # …and the SHAPE, which is what makes "on which questions" answerable
         # without putting the reader's own words in a log line.
-        assert "shape=use_skill>use_skill>knowledge_search>find_elements>light_incidence" in line
+        assert "shape=read_skill>read_skill>knowledge_search>find_elements>light_incidence" in line
         assert "Lichteinfall" not in line
 
     @pytest.mark.asyncio
@@ -3230,7 +3230,7 @@ class TestTruncationIsObservable:
             "research_budget": 5,
             "spent": 5,
             "rounds": 5,
-            "tools": ["use_skill", "use_skill", "knowledge_search", "find_elements", "light_incidence"],
+            "tools": ["read_skill", "read_skill", "knowledge_search", "find_elements", "light_incidence"],
         }
         # Technical channel, and therefore no `key`: whether the READER is told
         # the answer stopped early is a product decision, and a live key would

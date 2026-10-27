@@ -47,8 +47,12 @@
               "de": "Ein Projekt listet Erkenntnisse aus seinen Dokumenten auf: ein referenziertes Dokument oder eine Plannummer, die dem Projekt nicht vorliegt, sowie zwei Dokumente, die denselben Sachverhalt unterschiedlich darstellen – jeweils mit den Seiten, auf die sich der Befund stützt."
             },
             {
-              "en": "If you work in more than one office, you can now switch between them from the header, next to the Piloti name.",
-              "de": "Wenn Sie in mehr als einem Büro arbeiten, können Sie jetzt in der Kopfzeile neben dem Piloti-Namen zwischen ihnen wechseln."
+              "en": "Piloti now goes through your documents like a colleague on the drive: it lists a folder, finds every place a word stands across the shelves you may see, and reads the pages that hold it. Each quote names its page, and a search that could not reach everything says what it left out instead of answering that nothing was found.",
+              "de": "Piloti durchsucht Ihre Dokumente jetzt wie ein Kollege im Laufwerk: Es listet Ordnerinhalte auf, findet alle Vorkommen eines Begriffs in den für Sie sichtbaren Ablagen und liest die entsprechenden Seiten. Jedes Zitat nennt die Seitenzahl. Kann eine Suche nicht alles erfassen, weist sie darauf hin, was ausgelassen wurde, statt zu melden, dass nichts gefunden wurde."
+            },
+            {
+              "en": "If you work in more than one office, you can now switch between them from the menu behind your picture, under „Switch organization“.",
+              "de": "Wenn Sie in mehreren Büros arbeiten, können Sie jetzt im Menü hinter Ihrem Profilbild unter „Organisation wechseln“ zwischen den Büros wechseln."
             },
             {
               "en": "When an upload to a project has been read, its inbox notice says what it brought: how many documents of which kind, the findings it opened or settled, references the project cannot answer and pages not read in full, with a link to the project's findings.",
@@ -70,6 +74,10 @@
             {
               "en": "A document whose reading failed for a passing reason is read again on its own, and drawing sets are read faster while several offices upload at once.",
               "de": "Ein Dokument, dessen Einlesen vorübergehend fehlgeschlagen ist, wird automatisch erneut eingelesen, und Plansätze werden schneller eingelesen, wenn mehrere Büros gleichzeitig Uploads durchführen."
+            },
+            {
+              "en": "Piloti now opens your office's skills the same way in chat and in deep research, and a deep research report's \"Skills used\" now names every working method it followed, including the report formats Piloti brings along.",
+              "de": "Piloti stellt die Skills Ihres Büros jetzt im Chat und in Deep Research auf dieselbe Weise bereit. Unter „Verwendete Skills“ werden in einem Deep-Research-Bericht nun alle angewandten Arbeitsmethoden genannt, einschließlich der von Piloti bereitgestellten Berichtsformate."
             }
           ]
         },
@@ -87,6 +95,22 @@
             {
               "en": "Permit notices with several conditions are remembered in full again.",
               "de": "Bewilligungsbescheide mit mehreren Auflagen werden wieder vollständig berücksichtigt."
+            },
+            {
+              "en": "When Piloti looks up every place a word appears in your documents, each place now counts once. A word in a chapter heading, or in a passage that runs on to the next page, was counted two or more times and could be listed on pages where it does not stand.",
+              "de": "Wenn Piloti alle Stellen in Ihren Dokumenten ermittelt, an denen ein Wort vorkommt, zählt jede Stelle jetzt nur einmal. Ein Wort in einer Kapitelüberschrift oder in einem Textabschnitt, der auf der nächsten Seite weitergeht, wurde bisher zwei- oder mehrmals gezählt und konnte auf Seiten aufgeführt werden, auf denen es nicht vorkommt."
+            },
+            {
+              "en": "For people who work in more than one office, the top bar above the projects filled the whole window and hid the page. The bar is back to its normal height, and switching offices now lives in the menu behind your picture.",
+              "de": "Wenn Sie in mehreren Büros arbeiten, nimmt die obere Leiste über den Projekten nicht mehr das ganze Fenster ein und verdeckt die Seite nicht mehr. Sie hat wieder ihre normale Höhe, und den Wechsel zwischen Büros finden Sie jetzt im Menü hinter Ihrem Profilbild."
+            },
+            {
+              "en": "Asking which documents deal with a topic lists each document once again, even when two folders hold a file of the same name.",
+              "de": "Bei der Frage, welche Dokumente ein Thema behandeln, wird jedes Dokument erneut aufgelistet, auch wenn sich in zwei Ordnern Dateien mit demselben Namen befinden."
+            },
+            {
+              "en": "Asking for the documents that refer to a plan finds them when the plan is named the way a person writes it, such as \"Plan Nr. EP-05\" or \"siehe EP-05\".",
+              "de": "Wenn Sie nach Dokumenten fragen, die sich auf einen Plan beziehen, werden diese auch gefunden, wenn der Plan so bezeichnet ist, wie man ihn schreiben würde, etwa „Plan Nr. EP-05“ oder „siehe EP-05“."
             },
             {
               "en": "Signing in from a new browser or a private window no longer bounces back and forth until the browser gives up with too many redirects.",

@@ -11,6 +11,7 @@ carved out of ``_finalize``, ``run``, the batch tool and the middleware.
 from __future__ import annotations
 
 import threading
+from types import SimpleNamespace
 from unittest.mock import MagicMock
 from unittest.mock import patch
 
@@ -22,6 +23,7 @@ from langgraph.errors import GraphRecursionError
 from aiq_agent.agents.deep_researcher.agent import DeepResearcherAgent
 from aiq_agent.agents.deep_researcher.custom_middleware import _evictions
 from aiq_agent.agents.deep_researcher.cutoff import classify_cutoff
+from aiq_agent.agents.deep_researcher.deepagents_runtime import DeepAgentsRuntime
 from aiq_agent.agents.deep_researcher.finalize import _apply_renumbering
 from aiq_agent.agents.deep_researcher.models import DeepResearchAgentState
 from aiq_agent.agents.deep_researcher.tools.research import _batch_failure_message
@@ -49,7 +51,8 @@ async def test_the_skill_resolver_never_runs_on_the_event_loop_thread():
 
     state = DeepResearchAgentState(messages=[HumanMessage(content="q")], organization_id="org-1")
     with patch("aiq_agent.agents.deep_researcher.agent.resolve_served_skills", side_effect=_resolver):
-        runtime = await DeepResearcherAgent._build_skill_runtime(state)
+        owner = SimpleNamespace(deepagents_runtime=DeepAgentsRuntime())
+        runtime = await DeepResearcherAgent._build_skill_runtime(owner, state)  # type: ignore[arg-type]
 
     assert seen["args"] == ("deep_researcher", "org-1")
     assert seen["thread"] != loop_thread, "resolve_served_skills ran on the event loop: the heartbeat stalls"

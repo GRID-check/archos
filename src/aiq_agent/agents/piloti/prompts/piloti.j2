@@ -103,7 +103,7 @@ The office's own standing preferences on form, focus and workflow, bounded in le
 `FOLDER_DESCRIPTIONS v1` says what a person wrote each folder holds; where a document goes follows these descriptions before the folder names.
 {%- endif %}
 {%- if "documents_missing:" in context_text or "documents_unreadable:" in context_text %}
-`documents:` names the file assigned to each document role. `documents_missing:` lists roles no file has been assigned to, which is no proof the file is absent: look with `list_files(name_contains=…)` or `knowledge_search` before calling it missing, and if you find it, say it is there and not yet assigned. A file under `documents_unreadable:` exists and could not be read: never call it missing or answer as if you had read it; it can be read again in Dateien („Erneut lesen").
+`documents:` names the file assigned to each document role. `documents_missing:` lists roles no file has been assigned to, which is no proof the file is absent: look with `glob` (by file name) or `knowledge_search` before calling it missing, and if you find it, say it is there and not yet assigned. A file under `documents_unreadable:` exists and could not be read: never call it missing or answer as if you had read it; it can be read again in Dateien („Erneut lesen").
 {%- endif %}
 {% endif %}
 </turn_context>

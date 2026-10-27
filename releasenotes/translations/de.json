@@ -1104,6 +1104,14 @@
     "de": "Wenn Sie eine vollständige Soll-Ist- oder Konformitätsprüfung anfordern, prüft Piloti dieses Projekt jetzt vollständig, statt die sechs Richtlinien von Hand durchzugehen."
   },
   {
+    "en": "Asking for the documents that refer to a plan finds them when the plan is named the way a person writes it, such as \"Plan Nr. EP-05\" or \"siehe EP-05\".",
+    "de": "Wenn Sie nach Dokumenten fragen, die sich auf einen Plan beziehen, werden diese auch gefunden, wenn der Plan so bezeichnet ist, wie man ihn schreiben würde, etwa „Plan Nr. EP-05“ oder „siehe EP-05“."
+  },
+  {
+    "en": "Asking which documents deal with a topic lists each document once again, even when two folders hold a file of the same name.",
+    "de": "Bei der Frage, welche Dokumente ein Thema behandeln, wird jedes Dokument erneut aufgelistet, auch wenn sich in zwei Ordnern Dateien mit demselben Namen befinden."
+  },
+  {
     "en": "Assigning existing drawings to a building under Projektgrundlagen no longer fails with an error when the project brief has not been saved yet. Drawings for a building you have just added are shown as waiting and assigned when you save, and removing a building also removes its drawing assignments.",
     "de": "Bestehende Zeichnungen einem Gebäude unter Projektgrundlagen zuzuweisen, führt nicht mehr zu einem Fehler, wenn der Projektbrief noch nicht gespeichert ist. Zeichnungen für ein gerade angelegtes Gebäude werden als wartend angezeigt und beim Speichern zugewiesen, und beim Entfernen eines Gebäudes fallen auch seine Zeichnungszuweisungen weg."
   },
@@ -1732,6 +1740,10 @@
     "de": "Bei einer sehr langen Textdatei steht jetzt unter dem Text, dass nur der Anfang angezeigt wird, damit die letzte sichtbare Zeile nicht wie das Ende des Dokuments wirkt."
   },
   {
+    "en": "For people who work in more than one office, the top bar above the projects filled the whole window and hid the page. The bar is back to its normal height, and switching offices now lives in the menu behind your picture.",
+    "de": "Wenn Sie in mehreren Büros arbeiten, nimmt die obere Leiste über den Projekten nicht mehr das ganze Fenster ein und verdeckt die Seite nicht mehr. Sie hat wieder ihre normale Höhe, und den Wechsel zwischen Büros finden Sie jetzt im Menü hinter Ihrem Profilbild."
+  },
+  {
     "en": "Forecast and prediction-report skills no longer come along automatically with every deep research run. They sit on the Skills tab, for the tasks that need them.",
     "de": "Die Skills für Prognosen und Prognoseberichte kommen nicht mehr automatisch mit jeder Tiefenrecherche mit. Sie liegen im Skills-Tab, für die Aufgaben, die sie brauchen."
   },
@@ -1808,8 +1820,8 @@
     "de": "Wechseln Sie während einer Antwort in eine andere Unterhaltung und zurück, erscheint die fertige Antwort statt eines halben Satzes mit blinkendem Cursor."
   },
   {
-    "en": "If you work in more than one office, you can now switch between them from the header, next to the Piloti name.",
-    "de": "Wenn Sie in mehr als einem Büro arbeiten, können Sie jetzt in der Kopfzeile neben dem Piloti-Namen zwischen ihnen wechseln."
+    "en": "If you work in more than one office, you can now switch between them from the menu behind your picture, under „Switch organization“.",
+    "de": "Wenn Sie in mehreren Büros arbeiten, können Sie jetzt im Menü hinter Ihrem Profilbild unter „Organisation wechseln“ zwischen den Büros wechseln."
   },
   {
     "en": "If you write in a conversation before its history has arrived, the earlier messages still appear.",
@@ -2372,6 +2384,10 @@
     "de": "Piloti findet vergleichbare frühere Projekte jetzt anhand der im Briefing angegebenen Bauweise, Nutzung und Gebäudeklasse jedes einzelnen Gebäudes. Bisher verglich Piloti nur nach Bundesland und Art der Leistung."
   },
   {
+    "en": "Piloti now goes through your documents like a colleague on the drive: it lists a folder, finds every place a word stands across the shelves you may see, and reads the pages that hold it. Each quote names its page, and a search that could not reach everything says what it left out instead of answering that nothing was found.",
+    "de": "Piloti durchsucht Ihre Dokumente jetzt wie ein Kollege im Laufwerk: Es listet Ordnerinhalte auf, findet alle Vorkommen eines Begriffs in den für Sie sichtbaren Ablagen und liest die entsprechenden Seiten. Jedes Zitat nennt die Seitenzahl. Kann eine Suche nicht alles erfassen, weist sie darauf hin, was ausgelassen wurde, statt zu melden, dass nichts gefunden wurde."
+  },
+  {
     "en": "Piloti now knows how you filed your project documents: it can say what is in Brandschutz, name the folder when it points at a file, and search one folder including its subfolders. Renaming or moving a folder updates what it sees without re-uploading anything.",
     "de": "Piloti kennt jetzt Ihre Ablage: Es sagt, was im Ordner Brandschutz liegt, nennt den Ordner, wenn es auf eine Datei verweist, und durchsucht einen Ordner samt Unterordnern. Umbenennen oder Verschieben eines Ordners übernimmt es sofort, ohne dass etwas neu hochgeladen werden muss."
   },
@@ -2394,6 +2410,10 @@
   {
     "en": "Piloti now opens the exact passage a conclusion names, such as „OIB-Richtlinie 2, Pkt. 3.5.2“, instead of searching for it a second time.",
     "de": "Piloti öffnet jetzt genau die Fundstelle, die eine Herleitung nennt, etwa „OIB-Richtlinie 2, Pkt. 3.5.2“, statt sie ein zweites Mal zu suchen."
+  },
+  {
+    "en": "Piloti now opens your office's skills the same way in chat and in deep research, and a deep research report's \"Skills used\" now names every working method it followed, including the report formats Piloti brings along.",
+    "de": "Piloti stellt die Skills Ihres Büros jetzt im Chat und in Deep Research auf dieselbe Weise bereit. Unter „Verwendete Skills“ werden in einem Deep-Research-Bericht nun alle angewandten Arbeitsmethoden genannt, einschließlich der von Piloti bereitgestellten Berichtsformate."
   },
   {
     "en": "Piloti now picks where to look based on your question rather than following a fixed order, so a question about the Bauordnung goes straight to the Bauordnung. Values in an answer are taken from passages Piloti read for that answer, and a reference that still fails the check is marked.",
@@ -3578,6 +3598,10 @@
   {
     "en": "When Piloti looks into the office's past projects, it now quotes the decisions and requirements those projects wrote down in their project memory first, named by project, and then the documents. Restricted notes show up only in a chat that is yours alone and only if you may read the folder they came from.",
     "de": "Wenn Piloti frühere Projekte des Büros durchsucht, zitiert es jetzt zuerst die dort im Projektgedächtnis festgehaltenen Entscheidungen und Anforderungen, nach Projekt benannt, und danach die Dokumente. Eingeschränkte Notizen werden nur in einem Chat angezeigt, den nur Sie sehen, und nur dann, wenn Sie den Ordner lesen dürfen, aus dem sie stammen."
+  },
+  {
+    "en": "When Piloti looks up every place a word appears in your documents, each place now counts once. A word in a chapter heading, or in a passage that runs on to the next page, was counted two or more times and could be listed on pages where it does not stand.",
+    "de": "Wenn Piloti alle Stellen in Ihren Dokumenten ermittelt, an denen ein Wort vorkommt, zählt jede Stelle jetzt nur einmal. Ein Wort in einer Kapitelüberschrift oder in einem Textabschnitt, der auf der nächsten Seite weitergeht, wurde bisher zwei- oder mehrmals gezählt und konnte auf Seiten aufgeführt werden, auf denen es nicht vorkommt."
   },
   {
     "en": "When Piloti proposes a research plan and you reply in your own words, it now revises the plan with your answer. A plain no still skips the plan and answers directly.",

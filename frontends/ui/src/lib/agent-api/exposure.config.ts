@@ -109,7 +109,7 @@ const MEMORY =
   'Piloti keeps a note with its own `remember`, which records where the finding came from and keeps a restricted one in its project'
 const TASK = 'Piloti proposes a task, or commissions a run, with its own `create_task`, whose card the person confirms'
 const SKILL_READ =
-  'Piloti is given the office’s skills at turn start and loads one with its own `use_skill`, which the turn records; the door offers them to outside agents'
+  'Piloti is given the office’s skills at turn start and reads one with its own `read_file`, which the turn records; the door offers them to outside agents'
 const CANVAS ='Piloti marks a document, and answers in a mark’s thread, with its own canvas tools, anchored where it looked'
 
 /**
