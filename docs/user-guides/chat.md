@@ -405,7 +405,7 @@ Clicking a source chip opens a preview of the source instead of doing nothing:
 
 When an answer rests on one place in a document, „Laut Baubeschreibung S. 4 …“,
 Piloti can take you there: the document opens in the peek beside the chat at
-that page, with the passage or the box marked (ADR-0142). Under the answer a
+that page, with the passage or the box marked (ADR-0144). Under the answer a
 short row says what it opened. **Zurück / Back** puts the viewer back as it was;
 if nothing was open, it closes.
 

@@ -105,7 +105,7 @@ export interface TurnView {
   /** The asker's steering notes, by `steer_id`, as the server acknowledged them. */
   steers?: Record<string, SteerView>
   /**
-   * Piloti's viewer actions (ADR-0142), in arrival order, one per `tool_call_id`.
+   * Piloti's viewer actions (ADR-0144), in arrival order, one per `tool_call_id`.
    * Folded for every reader; only the asker's driver hands them on to be run
    * (`viewer-actions.ts`), and nothing of them is stored with the answer.
    */

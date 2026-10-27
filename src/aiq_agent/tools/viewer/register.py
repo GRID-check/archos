@@ -1,4 +1,4 @@
-"""``show_in_viewer``: Piloti proposes to move the asker's own document viewer (ADR-0142).
+"""``show_in_viewer``: Piloti proposes to move the asker's own document viewer (ADR-0144).
 
 When an answer rests on a place in a document („Baubeschreibung S. 4“), the
 person's next move is to go there. This tool lets Piloti take them: open a

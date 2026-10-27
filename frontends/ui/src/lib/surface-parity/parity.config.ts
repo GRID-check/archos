@@ -190,7 +190,7 @@ export const SURFACE_CAPABILITIES = {
   showInViewer: {
     summary: 'Take the asker to a place: a page, a passage or a box on it, a Fassung comparison, a model element',
     tool: 'show_in_viewer',
-    // The BFF's gate before the asker's page moves (ADR-0142), withheld from every door as screen state.
+    // The BFF's gate before the asker's page moves (ADR-0144), withheld from every door as screen state.
     operations: ['document-viewer-place-get'],
     // The viewer the action moves: the chat peek, turned to the page with the passage or the boxes marked.
     canvas: { component: 'features/documents/components/file-preview-pane.tsx' },

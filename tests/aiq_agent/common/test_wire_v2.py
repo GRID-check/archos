@@ -256,7 +256,7 @@ class TestFocusRegion:
 
 
 class TestViewerAction:
-    """A viewer action (ADR-0142): the allow-list and what each action needs, which the JSON Schema cannot say."""
+    """A viewer action (ADR-0144): the allow-list and what each action needs, which the JSON Schema cannot say."""
 
     def _value(self, name: str, **args) -> dict:
         return {

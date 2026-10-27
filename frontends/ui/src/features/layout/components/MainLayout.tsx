@@ -270,7 +270,7 @@ export const MainLayout: FC<MainLayoutProps> = ({
               {/* The scrims under and above the floating composer (`ComposerScrim`). */}
               <ComposerScrim />
 
-              {/* What Piloti's viewer actions move, for this page only (ADR-0142). */}
+              {/* What Piloti's viewer actions move, for this page only (ADR-0144). */}
               <ViewerActionHost />
 
               {/* Floating composer stack: overlays the bottom of the chat scroll

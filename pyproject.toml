@@ -140,7 +140,7 @@ aiq_canvas = "aiq_agent.tools.canvas.register"
 # as an image the model sees, in every context. Its own entry point, not a
 # member of the canvas group: a deployment without one keeps the other.
 aiq_look = "aiq_agent.tools.look.register"
-# `show_in_viewer` (`tools/viewer`, ADR-0142): Piloti proposes to move the asker's
+# `show_in_viewer` (`tools/viewer`, ADR-0144): Piloti proposes to move the asker's
 # own document viewer, one allow-listed action as an AG-UI frontend tool call.
 # Its own entry point: it reuses `look`'s resolver, and a deployment can drop it alone.
 aiq_viewer = "aiq_agent.tools.viewer.register"

@@ -18,7 +18,7 @@ export interface RevisionCompareHandle {
     newer: CompareFile,
     overlays?: readonly CompareRegion[],
   ) => void
-  /** Shut the comparison, as its own close button does (a viewer action's „Zurück“, ADR-0142). */
+  /** Shut the comparison, as its own close button does (a viewer action's „Zurück“, ADR-0144). */
   closeRevisionCompare: () => void
   /** Render this once, anywhere in the tree; it is nothing while the comparison is shut. */
   compareElement: JSX.Element | null

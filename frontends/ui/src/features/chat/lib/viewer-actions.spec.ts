@@ -1,5 +1,5 @@
 /**
- * Whether a viewer action moves the asker's viewer (ADR-0142): on when the
+ * Whether a viewer action moves the asker's viewer (ADR-0144): on when the
  * person allows it and is not typing, offered otherwise, and always undoable.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'

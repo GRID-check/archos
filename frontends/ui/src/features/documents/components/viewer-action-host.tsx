@@ -1,7 +1,7 @@
 'use client'
 
 /**
- * The viewer Piloti's viewer actions move (ADR-0142), mounted once with the chat.
+ * The viewer Piloti's viewer actions move (ADR-0144), mounted once with the chat.
  *
  * It registers the runner (`lib/viewer-action-runner.ts`) with the chat's
  * viewer actions and holds the Fassung comparison a `compare_revisions` opens.

@@ -476,7 +476,7 @@ const createTurnDriver = (conversationId: string, projectId: string | undefined,
   const steers = new Map<string, SentSteer>()
   /**
    * The turns this page asked. Only their viewer actions may move this page's
-   * viewer (ADR-0142): a turn attached after a reload, or watched as a
+   * viewer (ADR-0144): a turn attached after a reload, or watched as a
    * spectator, folds the same events and runs none of them.
    */
   const asked = new Set<string>()

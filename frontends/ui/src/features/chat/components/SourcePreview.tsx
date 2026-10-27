@@ -926,7 +926,7 @@ export const CitationDocumentDialog: FC<{
     if (!next) similar.close()
     onOpenChange(next)
   }
-  // The same viewer action Piloti proposes (ADR-0142), on the reader's own
+  // The same viewer action Piloti proposes (ADR-0144), on the reader's own
   // click: the document beside the chat at this place, through the BFF's gate.
   // Only where the peek has room beside a chat (not on a phone, not on Files).
   const beside = target.document.type === 'stored' && viewerBesideChat() ? target.document : null

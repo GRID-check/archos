@@ -148,7 +148,7 @@ TOOL_CONTEXT_REQUIREMENTS: dict[str, tuple[str, ...]] = {
     # project (an Archiv or session upload). The envelope is supplied as for
     # `file_draft` above; without one every canvas tool refuses.
     "document_canvas": (REQUEST_CONTEXT_ENVELOPE_HEADER, REQUEST_CONTEXT_ENVELOPE_SIG_HEADER),
-    # The asker's viewer (`tools/viewer/`, ADR-0142): the document is read once
+    # The asker's viewer (`tools/viewer/`, ADR-0144): the document is read once
     # through the canvas route as the person the envelope names, so a document
     # they cannot see is refused before anything reaches their page.
     "show_in_viewer": (REQUEST_CONTEXT_ENVELOPE_HEADER, REQUEST_CONTEXT_ENVELOPE_SIG_HEADER),

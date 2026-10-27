@@ -1721,7 +1721,7 @@ const AgentResponseComponent: FC<AgentResponseProps> = ({
   // retracted answer keeps its frame (above).
   if (blank && !retracted) return null
 
-  // What Piloti showed the reader in their viewer during this answer (ADR-0142).
+  // What Piloti showed the reader in their viewer during this answer (ADR-0144).
   // The reader's own answers only: a shared answer moved nobody's viewer here.
   const viewerActionRow = !readOnly && messageId ? <ViewerActionRow messageId={messageId} /> : null
 

@@ -511,7 +511,7 @@ functions:
   look:
     _type: look
 
-  # TAKE THE PERSON TO THE PLACE (`tools/viewer`, ADR-0142). One allow-listed
+  # TAKE THE PERSON TO THE PLACE (`tools/viewer`, ADR-0144). One allow-listed
   # viewer action per call (open at a page, mark a passage or a box, compare two
   # Fassungen, select a model element), sent as an AG-UI frontend tool call that
   # only the asker's live page runs. Chat only: deep research has no screen.

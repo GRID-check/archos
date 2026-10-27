@@ -72,7 +72,7 @@ TOOLS: dict[str, tuple[str, str]] = {
     "describe_card": ("no_collection_content", "returns a card type's schema"),
     "file_draft": ("no_collection_content", "files the conversation's own draft; returns the filing outcome"),
     "create_task": ("no_collection_content", "queues work; returns the task it created"),
-    # The asker's viewer (ADR-0142): returns one sentence naming the document the
+    # The asker's viewer (ADR-0144): returns one sentence naming the document the
     # model named, after the BFF admitted it for the turn; no content of it.
     "show_in_viewer": (
         "no_collection_content",

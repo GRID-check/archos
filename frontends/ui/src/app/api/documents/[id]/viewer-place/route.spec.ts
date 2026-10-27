@@ -3,7 +3,7 @@
  */
 /**
  * The gate a viewer action passes before it moves the person's screen
- * (ADR-0142): the document read as the person, the older Fassung on its shelf.
+ * (ADR-0144): the document read as the person, the older Fassung on its shelf.
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { NextRequest } from 'next/server'

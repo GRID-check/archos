@@ -696,7 +696,7 @@ class SteerAppliedValue(_Model):
     round: int = Field(ge=1)
 
 
-# --- Viewer actions: AG-UI frontend tool calls, allow-listed (ADR-0142) ------
+# --- Viewer actions: AG-UI frontend tool calls, allow-listed (ADR-0144) ------
 
 #: The allow-list: the only ways Piloti may move the asker's own document viewer.
 #: Each is a frontend tool in AG-UI's sense: Piloti names it and its arguments,
@@ -852,7 +852,7 @@ class SteerAppliedBody(_CustomBody):
 
 
 class ViewerActionBody(_CustomBody):
-    """Piloti proposes to move the asker's document viewer (ADR-0142). Only the asker's live page runs it."""
+    """Piloti proposes to move the asker's document viewer (ADR-0144). Only the asker's live page runs it."""
 
     name: Literal["viewer_action"] = "viewer_action"
     value: ViewerActionValue

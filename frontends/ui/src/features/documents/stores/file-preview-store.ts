@@ -159,7 +159,7 @@ export interface FilePreviewContext {
 }
 
 /**
- * A place a viewer action asked the open document to show (ADR-0142): a page,
+ * A place a viewer action asked the open document to show (ADR-0144): a page,
  * and on it a passage or boxes to mark. `key` changes per action, so the same
  * place asked twice turns the viewer again after the reader scrolled away.
  */

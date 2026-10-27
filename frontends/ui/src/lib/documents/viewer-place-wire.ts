@@ -1,5 +1,5 @@
 /**
- * Where a viewer action may take the person (ADR-0142): the one question the
+ * Where a viewer action may take the person (ADR-0144): the one question the
  * browser asks the BFF before Piloti's proposal moves anything on their screen.
  *
  * `GET /api/documents/[id]/viewer-place` answers with the document's listing

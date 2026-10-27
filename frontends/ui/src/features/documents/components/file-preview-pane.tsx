@@ -968,7 +968,7 @@ export function FilePreviewPane({
     })
   }, [])
   /**
-   * Where Piloti's viewer action asked this document to be (ADR-0142): the
+   * Where Piloti's viewer action asked this document to be (ADR-0144): the
    * page turns the way a reading turns it, and the passage or the boxes are
    * marked there until the reader asks for another place.
    */
