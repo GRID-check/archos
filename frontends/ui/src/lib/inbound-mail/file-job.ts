@@ -89,7 +89,8 @@ import {
 import { scanForStorage } from './malware-scan'
 import { partOutcomesOf } from './notice-repository'
 import { openQuietBatch, sealQuietBatch } from './quiet-batch'
-import { mailReadSchema } from './read-client'
+import { inboundMailDomain, redactProjectAddresses } from './address'
+import { mailReadSchema, redactRead, type MailRead } from './read-client'
 import { FILING_CLAIM_MS } from './service'
 import { eraseStagedObjects, readStagedObject } from './staging'
 
@@ -355,11 +356,12 @@ async function fileText(
     await returnPartToWaiting(part.id, decision.id, 'unreadable')
     return 'done'
   }
-  const read = mailReadSchema.parse(
+  const staged = mailReadSchema.parse(
     JSON.parse(
       new TextDecoder().decode(await readStagedObject(mail.stagingBucket, mail.readStorageKey))
     )
   )
+  const filed = filedForm(mail, staged)
   const folder =
     decision.threadAction === 'create'
       ? await ensureTargetFolder(run.session, run.projectId, {
@@ -374,10 +376,10 @@ async function fileText(
 
   const outcome = await appendInboundMessage({
     session: run.session,
-    mail,
+    mail: filed.mail,
     part,
     decision,
-    read,
+    read: filed.read,
     form: {
       masked: decision.messageText === 'masked',
       rules: chatScreeningRules(
@@ -500,4 +502,25 @@ async function settleIfFiled(run: FilingRun, mailId: string): Promise<void> {
     (await held(run)) || (await eraseStagedObjects(mail.stagingBucket, keys)).length > 0
   if (!(await settleFiledMail(mail, deferred))) return
   await settleProjectNotices(run.session.organizationId, run.projectId)
+}
+
+/**
+ * The mail as the Verlauf keeps it: every project address redacted, the
+ * receiving project's own included (B8). Staging kept the own token so the
+ * person deciding sees which address was written to; a filed entry outlives
+ * that decision and can leave the project (a shared or exported Verlauf), so it
+ * names no address that mail could be sent to. A participant without a display
+ * name is printed by its local part, so its address is redacted too.
+ */
+export function filedForm<M extends { participants: readonly { address: string }[] }>(
+  mail: M,
+  read: MailRead,
+  domain: string | null = inboundMailDomain()
+): { mail: M; read: MailRead } {
+  if (!domain) return { mail, read }
+  const redact = (text: string) => redactProjectAddresses(text, domain)
+  return {
+    mail: { ...mail, participants: mail.participants.map((p) => ({ ...p, address: redact(p.address) })) },
+    read: redactRead(read, redact),
+  }
 }

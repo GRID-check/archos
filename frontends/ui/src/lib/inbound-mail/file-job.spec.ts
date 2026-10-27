@@ -111,7 +111,8 @@ import {
   THREAD_ID,
 } from './__fixtures__/review'
 import { announceDecided, announceFilingFailed, settleFilingFailed, settleProjectNotices } from './announce'
-import { runInboundMailFiling } from './file-job'
+import { filedForm, runInboundMailFiling } from './file-job'
+import { unreadableRead } from './read-client'
 import {
   findFilingWork,
   markAttachmentFiled,
@@ -560,5 +561,37 @@ describe('telling (D9, DECISION §9)', () => {
 
     expect(announceDecided).not.toHaveBeenCalled()
     expect(announceFilingFailed).not.toHaveBeenCalled()
+  })
+})
+
+describe('filedForm (B8: a filed entry names no project address, its own included)', () => {
+  const domain = 'piloti.test'
+  const own = `wohnbau.abcdefgh2345@${domain}`
+  const other = `nachbar.zzzzzzzzzzzz@${domain}`
+  const read = {
+    ...unreadableRead('empty'),
+    unreadable: false,
+    unreadableReasons: [],
+    ownText: `Bitte an ${own} und ${other} schicken.`,
+    quoted: [{ header: `Am Montag schrieb ${own}:`, text: `Kopie an ${other}` }],
+  }
+  const mail = {
+    participants: [
+      { role: 'to', name: null, address: own },
+      { role: 'cc', name: 'Anna', address: 'anna@buero.at' },
+    ],
+  }
+
+  it("redacts the receiving project's own token in the text, the quotes and the recipients", () => {
+    const filed = filedForm(mail, read, domain)
+    const everything = JSON.stringify(filed)
+    expect(everything).not.toContain('abcdefgh2345')
+    expect(everything).not.toContain('zzzzzzzzzzzz')
+    expect(filed.read.ownText).toContain(`wohnbau.…@${domain}`)
+    expect(filed.mail.participants[1]?.address).toBe('anna@buero.at')
+  })
+
+  it('leaves everything as it is when no inbound domain is configured', () => {
+    expect(filedForm(mail, read, null)).toEqual({ mail, read })
   })
 })
