@@ -135,6 +135,41 @@ for a grep without a path.
    tool, and the `semantic` arm sets `filesystem: null` so the estate verbs reach the drafts
    alone. The answer suite has not been run on any slice (no model access in the build container): every row above is unmeasured.
 
+**Slice 6, the descriptions, the evidence rules, the old names retired** (built). The tool
+texts, the three `<rules>` bullets and the line-by-line fate of each are in
+[`prompt-value-audit-2026-10.md`](prompt-value-audit-2026-10.md#2026-10-27-slice-6-the-evidence-tools-and-their-rules);
+the evidence tool surface went from 5,560 to 2,426 tokens per call (o200k).
+
+| Piece | Where |
+|---|---|
+| The descriptions, bare schema fields, `conclusion` on `grep` and `read_file` | `src/aiq_agent/tools/documents/tools.py` (`_ESTATE_DESCRIPTIONS`), `filesystem.py` |
+| `knowledge_search` (ranked only, `path`) and `list_files` (Fassungen only) on Piloti's chat | `sources/knowledge_layer/src/chat_binding.py`, applied in `agents/piloti/register._chat_bound` |
+| A call to a retired spelling answered with the exact replacement call | `src/aiq_agent/common/retired_calls.py`, composed into `agents/piloti/agent._withheld_calls` |
+| Shared hints name the caller's own tool | `src/aiq_agent/common/tool_vocabulary.py`, set around Piloti's graph run |
+| A citation written as a path resolves to its key | `common/citation_verification.citation_key_of_path` |
+| The coverage line and the `Herkunft:` line say what they mean | `common/grounding_block.COVERAGE_GAP_NOTE`, `AGENT_DOCUMENT_NOTE` |
+| The literal prefetch of a quoted term or a code | `agents/piloti/decisions._corpus_prefetch`: a `grep` on the shelf's mount or the open document |
+
+Departures, each with its reason:
+
+1. **The skills moved before this slice** (ADR-0135), so the `/skills/` exception to "tool
+   results are data" ships, and there is no `use_skill` to retire.
+2. **The retired names are refused, not unbound from the NAT registry**: deep research, intake
+   and the door bind the same NAT functions with their full contracts, so the variant is chosen
+   at bind time and the refusal applies only where the replacement is bound. An eval arm without
+   the filesystem verbs runs the old calls.
+3. **A `read_passage` refusal names the exact path only when a hit named it**; otherwise it names
+   the `Path:` line and a `glob` that finds it. The path needs the document's rows, which the pure
+   guard does not read.
+4. **The already-read digest keeps file names, not paths**: its lines are persisted on the
+   conversation, and `read_file` resolves a mount and a leaf without the folder, so the digest says
+   that instead of changing a stored format.
+5. **The files eval's rows keep their old names**: the suite's `aliases()` and `path_scope()` count
+   a call under every name it is an alias of, both ways, so one row set measures both sides.
+6. **Not run:** the answer suite on this slice (no model access in the build container). The
+   history-with-retired-calls row (a pre-slice conversation resumed on each provider path) is not
+   added yet.
+
 ## 1. Mounts and paths
 
 | Mount | What | Backed by | Writable |
@@ -509,8 +544,10 @@ our own caching stays), the general-purpose subagent, `write_todos`.
 | `knowledge_search` (meaning) | stays, with `path` |
 | `look`, `ris_lookup`, `web_search_tool`, `ifc_query`, `ifc_measure`, `project_lookup`, `workspace__*`, `canvas__*` and the write tools | stay |
 
-The old names stay registered as aliases for one release: stored and replayed turns name
-them, NAT discovers tools by name, and the answer suite's matcher maps old to new so
+Since slice 6 the old names are off Piloti's chat binding: a call to one is answered with
+the exact replacement call (`common/retired_calls.py`), and `list_files` stays bound with
+`revisions_of` and `compare_to` only. They stay registered, because stored and replayed turns
+name them, the read side reads them for good, and the answer suite's matcher maps old to new so
 before and after compare. The MCP door keeps its operations (`files-list`,
 `passage-read`, `knowledge-search`) and gains `path`. Deep research and intake keep the
 old names until each is measured on the new ones; deep research never mounts the estate

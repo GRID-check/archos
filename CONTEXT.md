@@ -305,7 +305,8 @@ and `notApplicable` in identifiers.
 
 **Abdeckung** (coverage):
 Whether the sources a search found answer the question. *Abdeckung:
-unzureichend* says they do not, without hiding what was found.
+unzureichend* says they do not, without hiding what was found; the agent reads it
+as the result's `Coverage: insufficient —` line.
 
 ## Delegated work
 
