@@ -1,3 +1,4 @@
+// @disk-inputs: deploy/Dockerfile, next.config.ts, src/lib/api/legacy-routes.ts, src/lib/images/avatar-hosts.ts, src/lib/images/optimizable.ts, src/shared/config/request-body-limit.ts
 import { describe, expect, it } from 'vitest'
 import { readFileSync, existsSync } from 'node:fs'
 import path from 'node:path'

@@ -197,6 +197,30 @@
       "rules": { "grid/require-tenant-scope": "error" }
     },
     {
+      // A module imports the table it uses (`@/lib/db/schema/projects`), never
+      // the schema barrel: the barrel puts all 60-odd table files below every
+      // spec that reaches the importer, so a change to one table re-ran ~770
+      // specs (docs/audit/blast-radius-2026-10.md §7.2). Only the drizzle
+      // client (`lib/db/index.ts`, which imports it as `./schema` for the
+      // relational query API) needs the whole object. Specs are exempt below.
+      // The route override after this one replaces it for `src/app`, where no
+      // value import from `@/lib/db/*` is allowed at all.
+      "files": ["src/**/*.{ts,tsx}"],
+      "rules": {
+        "typescript/no-restricted-imports": [
+          "error",
+          {
+            "paths": [
+              {
+                "name": "@/lib/db/schema",
+                "message": "Import the table's own module, e.g. `@/lib/db/schema/projects`: the barrel makes every spec that reaches this file re-run on any table change."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
       // Transport code does not query (ADR-0017): route handlers and server
       // components call a service, and the query lives there.
       // `server-component-db-access.spec.ts` holds the same rule, but it lives

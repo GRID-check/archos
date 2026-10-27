@@ -1,3 +1,4 @@
+// @disk-inputs: src/features/chat/components/AnswerSourcesRow.tsx, src/features/chat/components/CitationPeek.tsx, src/features/chat/components/FindingsMatrix.tsx, src/features/chat/components/PlanChecklist.tsx, src/features/knowledge/components/ris-document-dialog.tsx
 /**
  * What a finger meets in an answer's own content, held as source rules.
  *

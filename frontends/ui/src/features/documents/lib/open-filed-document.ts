@@ -51,7 +51,7 @@
  * and the composer keeps saying whatever it already said.
  */
 
-import type { DocumentAuthor } from '@/lib/db/schema'
+import type { DocumentAuthor } from '@/lib/db/schema/documents'
 import { fileItemFromStatus } from './document-question'
 import { openFilePeek } from './open-file-peek'
 

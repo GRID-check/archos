@@ -1,3 +1,4 @@
+// @disk-inputs: src/lib/bim/rules.ts
 /**
  * The precomputed rule inputs.
  *

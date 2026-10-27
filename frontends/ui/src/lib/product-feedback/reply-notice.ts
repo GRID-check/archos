@@ -38,7 +38,7 @@
 
 import 'server-only'
 import { UpstreamError } from '@/lib/api/errors'
-import type { ProductFeedback } from '@/lib/db/schema'
+import type { ProductFeedback } from '@/lib/db/schema/product-feedback'
 import { withPlatformAccess, withTenant } from '@/lib/db/tenant-context'
 import { inboxGroupKey } from '@/lib/inbox/registry'
 import { emitInboxItems, type InboxEmission } from '@/lib/inbox/service'

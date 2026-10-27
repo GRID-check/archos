@@ -72,9 +72,14 @@ async def spanned(name: str, awaitable: Awaitable[T]) -> T:
     context, so the span nests under the turn root and never leaks into a
     sibling. The observation (``observability.turn_phases``) is what makes the
     seconds before the first model call readable in the trace, phase by phase.
+    A result that carries ``phase_facts`` (scalars, never content) adds them to
+    the observation's output: a phase that is one call to another service says
+    there where that service spent its time (``TurnContext.phase_facts``).
     """
-    with profiled_span(name), observed_phase(name):
-        return await awaitable
+    with profiled_span(name), observed_phase(name) as outcome:
+        result = await awaitable
+        outcome.update(getattr(result, "phase_facts", None) or {})
+        return result
 
 
 @dataclass(frozen=True)

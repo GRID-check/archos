@@ -261,11 +261,8 @@ def external_host() -> bytes:
 
 class TestGetCurrentUser:
     def test_returns_value_from_contextvar_when_set(self) -> None:
-        token = middleware_module._current_user.set({"type": "jwt", "skip_clarifier": False})
-        try:
+        with middleware_module.user_context({"type": "jwt", "skip_clarifier": False}):
             assert get_current_user() == {"type": "jwt", "skip_clarifier": False}
-        finally:
-            middleware_module._current_user.reset(token)
 
 
 class TestAuthMiddlewareExternalPaths:

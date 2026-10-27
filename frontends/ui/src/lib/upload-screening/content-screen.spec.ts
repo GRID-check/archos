@@ -1,3 +1,4 @@
+// @disk-inputs: ../../tests/fixtures/content_screen_cases.json
 /**
  * @vitest-environment node
  */

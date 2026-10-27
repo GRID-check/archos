@@ -35,7 +35,7 @@ import { clearanceOf, loadCustomFolderTree, type AccessFolder } from '@/lib/auth
 import { requireProjectAccess } from '@/lib/authz/projects'
 import { findProjectInOrg } from '@/lib/projects/repository'
 import { loadOrganizationDirectory } from '@/lib/sharing/directory'
-import type { UploadBatch } from '@/lib/db/schema'
+import type { UploadBatch } from '@/lib/db/schema/upload-batches'
 import { reconcileDocumentStatuses } from '@/lib/documents/reconcile-status'
 import { findFolderPathsInProject } from '@/lib/documents/repository'
 import { encodeDocumentListCursor } from '@/lib/documents/list-cursor'

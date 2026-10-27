@@ -1,5 +1,5 @@
 import type { MarkTally } from '@/lib/annotations/types'
-import type { DocumentAuthor } from '@/lib/db/schema'
+import type { DocumentAuthor } from '@/lib/db/schema/documents'
 import type { RevisionLinks } from '@/lib/documents/revision-links'
 import type { PhotoCapture } from '@/lib/documents/photo-capture'
 import type { DocumentReference, Dossier, ReadingCoverage } from '@/lib/documents/dossier'

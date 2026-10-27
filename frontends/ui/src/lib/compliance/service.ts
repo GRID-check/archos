@@ -11,7 +11,8 @@ import 'server-only'
 import { recordAuditEvent } from '@/lib/audit/service'
 import { NotFoundError } from '@/lib/api/errors'
 import type { AuthorizedSession } from '@/lib/auth/types'
-import type { DeletionEntityType, LegalHold } from '@/lib/db/schema'
+import type { DeletionEntityType } from '@/lib/db/schema/deletion-queue'
+import type { LegalHold } from '@/lib/db/schema/legal-holds'
 import {
   insertHold,
   listOpenHoldsInOrg,

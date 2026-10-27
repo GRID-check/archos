@@ -12,16 +12,10 @@
 import 'server-only'
 import { and, asc, eq, inArray, notExists, or, sql } from 'drizzle-orm'
 import { getDb } from '@/lib/db'
-import {
-  conversations,
-  documents,
-  mentionRequests,
-  type MentionRequest,
-  type MentionRequestStatus,
-  type MentionResolution,
-  type NewMentionRequest,
-  type ShareableResourceType,
-} from '@/lib/db/schema'
+import { conversations } from '@/lib/db/schema/conversations'
+import { documents } from '@/lib/db/schema/documents'
+import { mentionRequests, type MentionRequest, type MentionRequestStatus, type MentionResolution, type NewMentionRequest } from '@/lib/db/schema/mention-requests'
+import type { ShareableResourceType } from '@/lib/db/schema/resource-shares'
 
 /** Bound on outstanding requests surfaced for one resource. */
 export const OPEN_REQUEST_LIMIT = 50

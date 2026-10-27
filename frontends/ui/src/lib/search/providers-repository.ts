@@ -20,15 +20,12 @@
 import 'server-only'
 import { and, asc, desc, eq, inArray, isNull, notInArray, or, sql, type SQL } from 'drizzle-orm'
 import { getDb } from '@/lib/db'
-import {
-  conversations,
-  documentAnnotationReplies,
-  documentAnnotations,
-  documents,
-  documentSearchFacets,
-  projectFolders,
-  projects,
-} from '@/lib/db/schema'
+import { conversations } from '@/lib/db/schema/conversations'
+import { documentAnnotationReplies, documentAnnotations } from '@/lib/db/schema/document-annotations'
+import { documentSearchFacets } from '@/lib/db/schema/document-search'
+import { documents } from '@/lib/db/schema/documents'
+import { projectFolders } from '@/lib/db/schema/project-folders'
+import { projects } from '@/lib/db/schema/projects'
 import { withTenant } from '@/lib/db/tenant-context'
 import { visibleConversationsWhere } from '@/lib/conversations/repository'
 import { likeContains } from '@/lib/text/like-pattern'

@@ -9,7 +9,7 @@
  * an empty list.
  */
 
-import type { Project } from '@/lib/db/schema'
+import type { Project } from '@/lib/db/schema/projects'
 
 export const PROJECT_STATUS_FILTERS = ['active', 'paused', 'closed', 'all'] as const
 export type ProjectStatusFilter = (typeof PROJECT_STATUS_FILTERS)[number]

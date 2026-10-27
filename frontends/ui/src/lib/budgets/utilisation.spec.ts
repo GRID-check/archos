@@ -7,7 +7,7 @@
  * what is used. `budget-events.ts` turns that into 80 / 100 % events.
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import type { BudgetPolicy } from '@/lib/db/schema'
+import type { BudgetPolicy } from '@/lib/db/schema/budgets'
 
 vi.mock('server-only', () => ({}))
 vi.mock('@/lib/authz/organizations', () => ({ canManageBudgets: () => true }))

@@ -42,7 +42,7 @@ import {
   type ProjectStatusFilter,
 } from '@/features/projects/lib/status-filter'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
-import type { Project } from '@/lib/db/schema'
+import type { Project } from '@/lib/db/schema/projects'
 import { useTranslations } from '@/i18n'
 import { useSwapFade } from '@/hooks/use-swap-fade'
 import { TOUR_ANCHORS } from '@/lib/onboarding/product-tour'

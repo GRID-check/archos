@@ -17,7 +17,8 @@ import 'server-only'
 import { and, asc, eq, gt, inArray, isNull, ne, or, sql } from 'drizzle-orm'
 import { getDb } from '@/lib/db'
 import { withTenant } from '@/lib/db/tenant-context'
-import { documents, projectFolders } from '@/lib/db/schema'
+import { documents } from '@/lib/db/schema/documents'
+import { projectFolders } from '@/lib/db/schema/project-folders'
 import { PLACEMENT_REINGEST_MARKER } from './repository'
 
 export interface PlacementRow {

@@ -17,8 +17,8 @@
  */
 
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import type { Conversation } from '@/lib/db/schema'
-import type { DocumentVersion } from '@/lib/db/schema'
+import type { Conversation } from '@/lib/db/schema/conversations'
+import type { DocumentVersion } from '@/lib/db/schema/document-versions'
 import type { DocumentListRow } from '@/lib/documents/repository'
 
 const requireResourceAccessMock = vi.hoisted(() => vi.fn())

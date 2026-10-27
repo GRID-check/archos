@@ -99,7 +99,7 @@ def _transparency_metadata(transparency: dict[str, Any] | None) -> dict[str, Any
     not a claim of "degraded in zero ways", it is the ordinary case, and storing
     it would let a later reader mistake "nothing was recorded" for "we checked
     and there was nothing". Same contract the job output keeps
-    (``runner._build_job_output``), enforced again here because this is a second
+    (``run_result.build_job_output``), enforced again here because this is a second
     door into the same fact and the two must not drift.
     """
     if not transparency:
@@ -393,7 +393,7 @@ def run_message_for_outcome(
     (``GET /v1/internal/jobs/{job_id}/outcome``). It must be the SAME content and
     metadata the runner would have posted, so it is built here, next to the
     writers above, from the job's persisted ``output`` — the dict
-    ``runner._build_job_output`` wrote, whose report, cards, sources and
+    ``run_result.build_job_output`` wrote, whose report, cards, sources and
     transparency keys are the ones ``_answer_metadata`` reads. The one thing the
     output does not keep is the skills a run activated, so a reconciled message
     carries no ``skills_activated``.

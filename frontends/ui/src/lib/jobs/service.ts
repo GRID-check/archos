@@ -31,13 +31,8 @@ import { isOrgFeatureEnabled } from '@/lib/workos/feature-flags'
 import { submitBackgroundRun } from './background-run'
 import { resolveRunContext } from './run-context'
 import type { AuthorizedSession } from '@/lib/auth/types'
-import type {
-  DefinitionTrigger,
-  JobOutput,
-  TaskDefinition,
-  TaskRun,
-  TaskRunTrigger,
-} from '@/lib/db/schema'
+import type { JobOutput } from '@/lib/db/schema/jobs'
+import type { DefinitionTrigger, TaskDefinition, TaskRun, TaskRunTrigger } from '@/lib/db/schema/task-model'
 import { resolveSkillSnapshot } from '@/lib/skills/service'
 import { snapshotOf, type SkillSnapshot } from '@/lib/skills/types'
 import { nextOccurrence, validateCron, validateDueAt, minIntervalMinutesFromEnv } from './schedule'

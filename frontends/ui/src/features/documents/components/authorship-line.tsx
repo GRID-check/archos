@@ -1,6 +1,6 @@
 'use client'
 
-import type { DocumentAuthor } from '@/lib/db/schema'
+import type { DocumentAuthor } from '@/lib/db/schema/documents'
 import { useTranslations } from '@/i18n'
 import { cn } from '@/lib/utils'
 

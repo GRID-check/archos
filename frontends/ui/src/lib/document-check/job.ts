@@ -43,7 +43,7 @@ import {
   insertConversation,
   insertMessages,
 } from '@/lib/conversations/repository'
-import type { Document } from '@/lib/db/schema'
+import type { Document } from '@/lib/db/schema/documents'
 import { getAccessibleDocument } from '@/lib/documents/access'
 import { documentDisplayName } from '@/lib/documents/display-name'
 import type { JobAttempt, JobSliceResult, DocumentCheckPayload } from '@/lib/jobs-queue/types'
