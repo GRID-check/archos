@@ -24,6 +24,7 @@ vi.mock('./staging', () => ({ eraseStagedObjects: vi.fn(), putRawMessage: vi.fn(
 
 import type { VerifiedSignature } from '@/lib/internal-auth'
 import { enforceLimit } from '@/lib/limits/enforce'
+import type { RateLimitDecision } from '@/lib/limits'
 import {
   INBOUND_MAIL_ADDRESS_LIMIT,
   INBOUND_MAIL_ORGANIZATION_LIMIT,
@@ -50,6 +51,7 @@ describe('the inbound limits', () => {
   it('spend no wider bucket when the address refuses', async () => {
     vi.mocked(enforceLimit).mockImplementation(async (rule) => {
       if (rule.name === INBOUND_MAIL_ADDRESS_LIMIT.name) throw new Error('429')
+      return { allowed: true } as RateLimitDecision
     })
     await expect(enforceInboundLimits(signature, address, 1_000)).rejects.toThrow('429')
     expect(vi.mocked(enforceLimit).mock.calls.map(([rule]) => rule.name)).toEqual([INBOUND_MAIL_ADDRESS_LIMIT.name])

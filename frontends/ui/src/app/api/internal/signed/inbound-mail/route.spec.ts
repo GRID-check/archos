@@ -174,7 +174,7 @@ describe('POST /api/internal/signed/inbound-mail', () => {
     expect(reception.expiresAt.getTime() - (reception.receivedAt as Date).getTime()).toBe(30 * 24 * 60 * 60 * 1000)
     expect(vi.mocked(completeReception).mock.calls[0][0]).toMatchObject({
       mailId: reception.id,
-      deliveryKey: deliveryKey(new Uint8Array(Buffer.from(MESSAGE))),
+      deliveryKey: deliveryKey(new Uint8Array(Buffer.from(MESSAGE)), reception.id!),
       rawSizeBytes: Buffer.byteLength(MESSAGE),
     })
   })
