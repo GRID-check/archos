@@ -3624,6 +3624,10 @@
     "de": "Recherchiert Piloti eine Frage gründlich, erscheint das jetzt als Auftrag im Verlauf, mit Phasen, Runden, Dokumenten und Laufzeit; er lässt sich abbrechen, und der Bericht wird abgelegt."
   },
   {
+    "en": "When Piloti runs a deep research inside the chat, the Herleitung now shows who did the work: the planning, each research question and the report, nested under the deep research, each with whether it is still working, finished or failed. A research question that failed says so, and the answer goes on without it.",
+    "de": "Wenn Piloti im Chat eine Deep Research durchführt, zeigt die Herleitung jetzt die einzelnen Arbeitsschritte: die Planung, jede Recherchefrage und den Bericht, verschachtelt unter der Deep Research und jeweils mit dem Status „in Bearbeitung“, „abgeschlossen“ oder „fehlgeschlagen“. Eine fehlgeschlagene Recherchefrage wird entsprechend gekennzeichnet, und die Antwort wird ohne sie fortgesetzt."
+  },
+  {
     "en": "When Piloti searches more than once, the Herleitung now shows the conclusion behind each new search: what it already knew and what it still needed, instead of repeating the search query.",
     "de": "Wenn Piloti mehrfach sucht, zeigt die Herleitung jetzt die Erkenntnis hinter jeder neuen Suche: was Piloti bereits wusste und was ihm noch fehlte, statt die Suchanfrage zu wiederholen."
   },
