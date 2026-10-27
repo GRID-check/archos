@@ -59,7 +59,7 @@
  * `renderPaperDiagram` when a view is shown).
  */
 
-import { useRef, useState, type ReactNode } from 'react'
+import { useMemo, useRef, useState, type ReactNode } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
 import { motionBase, motionInstant, useMotionToken } from '@/components/motion'
 import { useHeightGlide } from '@/components/motion/height-glide'
@@ -73,7 +73,7 @@ import { DiagramView } from '../views/diagram-views'
 import { titleFromSource, useDiagramFiling } from '../use-diagram-filing'
 import { CAPTION_CONTROL, DiagramFilingControls } from './diagram-filing-controls'
 import { DrawingCaption, DrawingReveal } from './drawing-skeleton'
-import { isSketchable } from '../sketch/sketch-from-model'
+import { isSketchable, sketchFromModel } from '../sketch/sketch-from-model'
 import { SketchDialog } from '../sketch/sketch-dialog'
 
 export interface MermaidDiagramProps {
@@ -140,6 +140,8 @@ export function MermaidDiagram({ source, isStreaming = false }: MermaidDiagramPr
   // loads, mount only once a person asks (ADR-0141).
   const [sketching, setSketching] = useState(false)
   const sketchable = isSketchable(model) && filing.target !== null
+  // Laid out once per model, from the drawing the reader is looking at.
+  const sketchElements = useMemo(() => (sketching && isSketchable(model) ? sketchFromModel(model) : null), [sketching, model])
   const crossfade = useMotionToken(motionBase)
 
   let body: ReactNode
@@ -198,8 +200,8 @@ export function MermaidDiagram({ source, isStreaming = false }: MermaidDiagramPr
             </DrawingCaption>
           ) : null}
         </AnimatePresence>
-        {sketching && isSketchable(model) ? (
-          <SketchDialog open={sketching} onOpenChange={setSketching} source={source} model={model} />
+        {sketchElements ? (
+          <SketchDialog open={sketching} onOpenChange={setSketching} source={source} elements={sketchElements} />
         ) : null}
       </figure>
     )

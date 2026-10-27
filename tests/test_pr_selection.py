@@ -16,6 +16,8 @@ import pytest
 ROOT = Path(__file__).resolve().parents[1]
 TESTS = {
     "tests/aiq_agent/test_prompt.py": "PROMPT = 'agents/piloti/prompts/piloti_static.md'",
+    "tests/test_grounding.py": "FIXTURE = ROOT / 'tests/fixtures/citation_pipeline/grounding_block.txt'",
+    "tests/test_decisions_eval.py": "CASES = sorted((ROOT / 'tests' / 'fixtures' / 'decisions').rglob('*.json'))",
     "tests/test_config.py": "load('configs/config_oib_openrouter.yml')",
     "sources/knowledge_layer/tests/test_schema.py": "read('schemas.json')",
 }
@@ -51,7 +53,7 @@ def test_without_a_recorded_database_everything_runs(mod):
         "conftest.py",
         "tests/conftest.py",
         "sources/knowledge_layer/tests/conftest.py",
-        "tests/fixtures/oib/sample.json",
+        "tests/fixtures/drafting_turns.py",
         "uv.lock",
         "pyproject.toml",
         "frontends/aiq_api/pyproject.toml",
@@ -97,6 +99,22 @@ def test_a_file_named_only_by_its_basename_still_counts(mod):
 
 def test_package_data_no_test_names_forces_the_full_suite(mod):
     assert mod.decide_python(["src/aiq_agent/agents/piloti/prompts/unnamed.md"], TESTS, recorded=True)[0] == "full"
+
+
+def test_a_fixture_selects_the_tests_that_read_it(mod):
+    changed = ["tests/fixtures/citation_pipeline/grounding_block.txt"]
+
+    assert mod.decide_python(changed, TESTS, recorded=True)[:2] == ("select", ["tests/test_grounding.py"])
+
+
+def test_a_fixture_read_through_its_directory_selects_that_test(mod):
+    changed = ["tests/fixtures/decisions/holdout/case_7.json"]
+
+    assert mod.decide_python(changed, TESTS, recorded=True)[:2] == ("select", ["tests/test_decisions_eval.py"])
+
+
+def test_a_fixture_no_test_names_forces_the_full_suite(mod):
+    assert mod.decide_python(["tests/fixtures/orphan/data.json"], TESTS, recorded=True)[0] == "full"
 
 
 def test_an_eval_fixture_no_test_names_forces_the_full_suite(mod):
@@ -182,3 +200,20 @@ def test_the_newest_green_run_on_an_ancestor_is_the_reference(mod):
 
 def test_no_green_run_means_the_whole_pull_request(mod):
     assert mod.previous_green(lambda _path: {"workflow_runs": []}, "o/r", "b", "h" * 40, lambda _sha: True) is None
+
+
+def test_the_reference_that_forces_fewer_full_suites_wins(mod):
+    whole = (["src/aiq_agent/a.py", "src/aiq_agent/b.py", "src/aiq_agent/c.py"], "the base")
+    since_green = (["src/aiq_agent/a.py", "pyproject.toml"], "the last green run")  # develop moved
+
+    def full_suites(paths):
+        return mod.decide_python(paths, TESTS, recorded=True)[0] == "full"
+
+    assert mod.cheaper([whole, since_green], full_suites) == whole
+
+
+def test_with_equal_cost_the_smaller_reference_wins(mod):
+    whole = (["src/aiq_agent/a.py", "src/aiq_agent/b.py"], "the base")
+    since_green = (["src/aiq_agent/b.py"], "the last green run")  # a push that answered a review
+
+    assert mod.cheaper([whole, since_green], lambda _paths: 0) == since_green
