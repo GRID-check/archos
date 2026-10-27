@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import * as k8s from "@pulumi/kubernetes";
 import * as pulumi from "@pulumi/pulumi";
-import { loadConfig } from "../src/config";
+import { loadConfig } from '../src/config'
 import { KEDA_CHART_VERSION } from "../src/platform/keda";
 import { installIngestWorker } from "../src/app/ingest-worker";
 import { installJobsQueueAuth } from "../src/app/jobs-queue-auth";

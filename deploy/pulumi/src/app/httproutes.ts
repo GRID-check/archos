@@ -3,7 +3,7 @@ import * as pulumi from "@pulumi/pulumi";
 // Compile-time spec typing from the upstream CRD schemas (see gateway.ts).
 import type { IHTTPRouteSpec } from "@kubernetes-models/gateway-api/gateway.networking.k8s.io/v1/HTTPRouteSpec";
 import type { IBackendTrafficPolicySpec } from "@kubernetes-models/envoy-gateway/gateway.envoyproxy.io/v1alpha1/BackendTrafficPolicySpec";
-import { GridConfig } from "../config";
+import { GridConfig } from '../config'
 import { commonLabels } from "../platform/namespaces";
 import type { ICompression } from "@kubernetes-models/envoy-gateway/gateway.envoyproxy.io/v1alpha1/Compression";
 import type { IRetry } from "@kubernetes-models/envoy-gateway/gateway.envoyproxy.io/v1alpha1/Retry";

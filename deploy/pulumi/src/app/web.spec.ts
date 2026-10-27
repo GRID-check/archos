@@ -90,7 +90,7 @@ describe("the web Deployment's PostHog env", () => {
   });
 
   it("carries Piloti's project when the stack sets nothing", async () => {
-    const { POSTHOG_DEFAULT_HOST, POSTHOG_DEFAULT_PROJECT_TOKEN } = await import("../config");
+    const { POSTHOG_DEFAULT_HOST, POSTHOG_DEFAULT_PROJECT_TOKEN } = await import("../config/posthog");
     expect(await webEnv({})).toEqual([
       { name: "PUBLIC_POSTHOG_HOST", value: POSTHOG_DEFAULT_HOST },
       { name: "PUBLIC_POSTHOG_PROJECT_TOKEN", value: POSTHOG_DEFAULT_PROJECT_TOKEN },

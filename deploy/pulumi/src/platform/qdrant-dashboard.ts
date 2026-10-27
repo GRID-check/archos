@@ -1,7 +1,7 @@
 import * as k8s from "@pulumi/kubernetes";
 import * as pulumi from "@pulumi/pulumi";
 import type { IHTTPRouteSpec } from "@kubernetes-models/gateway-api/gateway.networking.k8s.io/v1/HTTPRouteSpec";
-import { GridConfig } from "../config";
+import { GridConfig } from '../config'
 import { EDGE_TIMEOUT, PORT, QDRANT } from "../constants";
 import { GATEWAY_NAME } from "./gateway";
 import { commonLabels } from "./namespaces";

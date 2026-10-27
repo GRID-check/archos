@@ -170,6 +170,9 @@ describe("the research queue is the only execution path", () => {
     join("deploy", ".env.example"),
     join("deploy", "entrypoint.py"),
     join("deploy", "pulumi", "src", "config.ts"),
+    ...readdirSync(join(repoRoot, "deploy", "pulumi", "src", "config"))
+      .filter((f) => f.endsWith(".ts"))
+      .map((f) => join("deploy", "pulumi", "src", "config", f)),
     join("deploy", "pulumi", "src", "app", "config.ts"),
     join("deploy", "pulumi", "src", "app", "api.ts"),
     join("deploy", "pulumi", "src", "app", "backend.ts"),
