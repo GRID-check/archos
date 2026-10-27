@@ -74,7 +74,7 @@ built first (slice 1, design doc §12) and showed the cost of two stores:
 deletes that had to be ordered across them, a mirror whose failures needed a
 policy per mode, a backfill to heal it, and every registry read still tied to
 Chroma. The gates that decided the move were measured on that build
-([`qdrant-gates-2026-10.md`](../architecture/qdrant-gates-2026-10.md)); they
+([`qdrant-gates-2026-10.md`](../audit/qdrant-gates-2026-10.md)); they
 need no second store to stay true.
 
 ### Consequences

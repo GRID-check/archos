@@ -3,7 +3,7 @@
 Every model call the turn makes — research rounds, the turn decision, passage
 verdicts, the requery judge, reranks, embeddings — as the provider billed it:
 input tokens, cached tokens, output, seconds. The number the turns audit
-(`docs/architecture/turns-per-answer-audit-2026-09.md`) reconstructed by
+(`docs/audit/turns-per-answer-audit-2026-09.md`) reconstructed by
 hand, measured.
 
 Needs what a local turn needs: OPENROUTER_API_KEY, and the corpus ingested

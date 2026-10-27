@@ -1,6 +1,9 @@
+---
+status: accepted
+---
+
 # ADR-0040: Layered rate limiting — the edge limits traffic, the app limits consumption
 
-- **Status:** Accepted
 - **Date:** 2026-08-04
 - **Deciders:** Grid Agent team (commissioned by the platform owner: "a rate limiter that plays nicely with Kubernetes and is not implemented per app")
 - **Related:** ADR-0009 (WebSocket-only chat), ADR-0015 (LLM budgets & usage ledger), ADR-0020 (Dragonfly shared cache), ADR-0028 (horizontal agent scaling), ADR-0029 (Aspire telemetry), ADR-0038 (one authorization catalog + coverage gate), [`../architecture/rate-limiting-and-load-protection.md`](../architecture/rate-limiting-and-load-protection.md) (the research this decision rests on)

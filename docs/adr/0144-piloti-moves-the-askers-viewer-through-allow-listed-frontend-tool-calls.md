@@ -97,6 +97,9 @@ the reader to reload.
    a Stop, a refusal or a hand-off drops them. A retracted stream
    (`answer_retracted`) is a round, not the answer, and neither releases nor
    drops. Of the released actions, one moves the viewer; any other is offered.
+   A held action is not hidden: once the answer's first words are on screen
+   its row says it waits for the finished answer, and „Anzeigen“ opens it at
+   once. That press is the person's and counts as the answer's one move.
 6. **The page reads the document again before anything moves**, with
    `GET /api/documents/{id}` (`document-get`), the read Files and every agent
    door already use. A 403 or 404 moves nothing, and the row says neutrally
@@ -108,8 +111,10 @@ the reader to reload.
    „Anzeigen“ when it did not move. An undo says whether it put anything back:
    the peek as it was, unless the person opened another document since; the
    comparison shut, only if it is still the one this action opened; the page
-   the person came from, only while they are still in the model view. Only the
-   status text is a live region.
+   the person came from, only while they are still in the model view (the same
+   page and model, whatever element or camera they moved to there). Once they
+   have left it the row drops „Zurücknehmen“ rather than navigate anywhere.
+   Only the status text is a live region.
 
 **What runs on its own and what only offers itself.** The person's switch
 („Automatisch öffnen“, under the latest answer that proposed a place and on the

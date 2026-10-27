@@ -518,7 +518,7 @@ user waited minutes for the report and gets it regardless.
 
 The document is written with `authored_by = 'agent'`, `status = 'stored'` and
 **zero assignees**, and is **never ingested** — see
-[../superpowers/specs/2026-08-20-agent-authored-documents-design.md](../superpowers/specs/2026-08-20-agent-authored-documents-design.md)
+[../specs/agent-authored-documents.md](../architecture/agent-authored-documents.md)
 and [../user-guides/agent-authored-reports.md](../user-guides/agent-authored-reports.md).
 
 Source: `frontends/ui/src/app/api/jobs/async/[...path]/route.ts`

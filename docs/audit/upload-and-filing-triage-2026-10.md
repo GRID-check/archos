@@ -21,7 +21,7 @@ shipping.
 before anyone relies on it. Sizes are S / M / L / XL of engineering effort.
 
 The working log with the research behind the built tickets is
-[`plans/2026-10-01-upload-governance-worklog.md`](../../plans/2026-10-01-upload-governance-worklog.md).
+`docs/plans/2026-10-01-upload-governance-worklog.md` (removed; in git history at `56ee3329`).
 
 ---
 

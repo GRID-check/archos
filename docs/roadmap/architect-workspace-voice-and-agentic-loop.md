@@ -205,7 +205,7 @@ The calendar makes the miss obvious. **[PR #590](https://github.com/GRID-check/g
 
 Two product bets merged past each other:
 
-- Answer-layer worklog (`plans/answer-layer-worklog.md`): “**better, richer, nicer answers**.” Cites **Harvey’s published design principles** and legal-UX: inverted pyramid, ruling or number in the first sentence, reasoning as the audit trail the reader reads second. `338732f31` (2026-08-18) added `<answer_shape>` for that. The seeded `piloti-voice` body (`drizzle/0053_piloti_voice_standard_skill.sql`) is the same German that now lives in `<stimme>`.
+- Answer-layer worklog (`docs/plans/answer-layer-worklog.md` at `56ee3329`): “**better, richer, nicer answers**.” Cites **Harvey’s published design principles** and legal-UX: inverted pyramid, ruling or number in the first sentence, reasoning as the audit trail the reader reads second. `338732f31` (2026-08-18) added `<answer_shape>` for that. The seeded `piloti-voice` body (`drizzle/0053_piloti_voice_standard_skill.sql`) is the same German that now lives in `<stimme>`.
 - Workspace review, nine hours later: “**nobody asked for a better answer.** They asked for folder upload…”
 
 Harvey-the-answer-document is CoCounsel’s shape (research-first, conclusion then audit trail). Harvey-the-2026-platform is the workspace. The repo copied the former on the morning of 1 September and declared the latter that evening, without touching the prompt.
@@ -406,7 +406,7 @@ Law360 Pulse (2026-08-24): legal AI is moving from attorneys prompting chatbots 
 
 The lesson is not “drop citations”. Harvey still cites. The lesson is **do not let the research-assistant envelope remain the only document the agent can produce** once the product is a workspace.
 
-This repo already copied Harvey once, and it copied the **answer document**, not the platform. `plans/answer-layer-worklog.md` cites Harvey’s inverted pyramid as the reason the first sentence is the ruling. That is CoCounsel-shaped. Harvey II is Spaces + agents + memory. Using Harvey as a citation for `<stimme>` and as a citation for “become a workspace” are two different Harveys.
+This repo already copied Harvey once, and it copied the **answer document**, not the platform. `docs/plans/answer-layer-worklog.md` at `56ee3329` cites Harvey’s inverted pyramid as the reason the first sentence is the ruling. That is CoCounsel-shaped. Harvey II is Spaces + agents + memory. Using Harvey as a citation for `<stimme>` and as a citation for “become a workspace” are two different Harveys.
 
 ### AEC: “AI native” means the agent is in the project, not a sidebar QA
 

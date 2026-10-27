@@ -345,7 +345,7 @@ writer) and uses its own stable, persisted cutoff — the two mechanisms are
 still not aware of each other, they just no longer fight the cache on their
 own axis. No call site sets provider-side prompt-caching hints yet, so
 enabling that remains a separate, larger cost lever — see
-`docs/architecture/scaling-review-2026-07.md` §6.1 and
+`docs/audit/scaling-review-2026-07.md` §6.1 and
 `docs/architecture/llm-providers.md`.
 
 ### Strict structured-output schemas can violate provider constraints — fixed (`2db0f7d`)

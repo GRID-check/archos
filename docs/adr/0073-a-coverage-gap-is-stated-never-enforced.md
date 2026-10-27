@@ -13,7 +13,7 @@ informed: everyone working in this repo
 `knowledge_search` fills `top_k` with whatever it found. A question the corpus
 cannot answer still gets sixteen formatted excerpts, and the model reads them
 as evidence: fill@16 is 1.000 on the golden set's should-refuse rows
-([rag-system-audit-2026-08.md](../architecture/rag-system-audit-2026-08.md)
+([rag-system-audit-2026-08.md](../audit/rag-system-audit-2026-08.md)
 §20). A cosine floor cannot separate the two cases, because the top-1
 similarities overlap: 0.799 to 0.933 for answerable questions, 0.795 to 0.865
 for should-refuse ones.

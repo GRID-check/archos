@@ -1088,7 +1088,7 @@ schema.
 
 The agent (`aiq-agent`) is the token-heavy core and the thing you most want to
 scale. Its scaling story has two phases. This is grounded in
-[`../architecture/scaling-review-2026-07.md`](../architecture/scaling-review-2026-07.md),
+[`../audit/scaling-review-2026-07.md`](../audit/scaling-review-2026-07.md),
 which inventories exactly what pins work to one process.
 
 ### 6.1 Today: vertical scaling (wired and working)

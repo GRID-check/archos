@@ -27,7 +27,7 @@ import { sanitizeAnswerMeta } from '@/lib/conversations/message-answer-meta'
 import { isChatEffort } from '@/lib/reasoning-settings/catalog'
 import { sanitizeRetrievalLedger } from '@/lib/conversations/message-retrieval-ledger'
 import { sanitizeQuoteStamps } from '@/lib/conversations/message-quote-stamps'
-import { sanitizeClaimStamps } from '@/lib/conversations/message-claim-stamps'
+import { sanitizeConfidenceCheck } from '@/lib/conversations/confidence-check'
 import { emptyRunLedger, sanitizeRunTitle } from '@/lib/runs/run-ledger'
 import {
   sanitizeFollowUpsStage,
@@ -97,7 +97,7 @@ const resultFields = (view: TurnView): Partial<ChatMessage> => {
     skillsHidden: nonEmpty(result.skills_hidden),
     retrievalLedger: sanitizeRetrievalLedger(result.retrieval_ledger) ?? undefined,
     quoteStamps: sanitizeQuoteStamps(result.quote_stamps) ?? undefined,
-    claimStamps: sanitizeClaimStamps(result.claim_stamps) ?? undefined,
+    confidenceCheck: sanitizeConfidenceCheck(result.confidence_check),
     answerConfidenceVersion: result.answer_confidence_version ?? undefined,
     lookupFoundNothing: result.lookup_found_nothing ? true : undefined,
   }

@@ -1,6 +1,9 @@
+---
+status: accepted
+---
+
 # ADR-0020: Dragonfly as the shared cache tier
 
-- **Status:** Accepted
 - **Date:** 2026-07-09
 - **Deciders:** Platform engineering
 - **Related:** ADR-0019 (usage rollups), ADR-0003 (BFF split), ../architecture/scaling-review-2026-07.md

@@ -1,6 +1,9 @@
+---
+status: accepted
+---
+
 # ADR-0001: Use Architecture Decision Records
 
-- **Status:** Accepted
 - **Date:** 2026-06-30
 - **Deciders:** Grid Agent team
 - **Related:** [`README.md`](README.md), [`../architecture/multitenancy-and-auth-spec.md`](../architecture/multitenancy-and-auth-spec.md)
