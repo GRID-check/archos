@@ -53,6 +53,7 @@ import { insertJobIfAbsent } from '@/lib/jobs-queue/repository'
 import { BFF_JOB_PRIORITY } from '@/lib/jobs-queue/types'
 import type { FollowRow } from '@/lib/mail-thread/follow-eligibility'
 import type { ThreadCandidate } from '@/lib/mail-thread/mail-threading'
+import type { MailThreadFollowEndReason } from '@/lib/mail-thread/mail-thread-vocabulary'
 import type { MalwareScanStatus } from './inbound-mail-vocabulary'
 
 // ---------------------------------------------------------------------------
@@ -680,23 +681,30 @@ export async function insertAddress(input: NewAddress): Promise<AddressWrite<Inb
   }
 }
 
-/** A follow the address change ended (D31: rotation ends every follow on the project). */
+/** A follow ended for the whole project at once: by an address change (D31) or the project's close. */
 export interface EndedFollow {
   id: string
   threadId: string
   userId: string
 }
 
-/** End every running follow of a project, as `endedBy`, for `reason`. */
-async function endProjectFollows(
+/** Why every follow of a project ends at once. */
+export type ProjectFollowEnd = Extract<MailThreadFollowEndReason, 'address_rotated' | 'project_closed'>
+
+/**
+ * End every running follow of a project, as the person `endedBy` who replaced
+ * or switched off its address, or closed it. One statement: the caller's
+ * transaction, or the database's own.
+ */
+export async function endProjectFollows(
   executor: DbExecutor,
   projectId: string,
-  endedBy: string,
+  end: { endedBy: string; reason: ProjectFollowEnd },
   at: Date,
 ): Promise<EndedFollow[]> {
   return executor
     .update(mailThreadFollows)
-    .set({ endedAt: at, endedBy, endedReason: 'address_rotated' })
+    .set({ endedAt: at, endedBy: end.endedBy, endedReason: end.reason })
     .where(and(eq(mailThreadFollows.projectId, projectId), isNull(mailThreadFollows.endedAt)))
     .returning({ id: mailThreadFollows.id, threadId: mailThreadFollows.threadId, userId: mailThreadFollows.userId })
 }
@@ -726,7 +734,7 @@ export async function replaceAddress(
         .returning({ id: inboundMailAddresses.id })
       const [row] = await tx.insert(inboundMailAddresses).values(next).returning()
       if (!row) throw new Error('inserting an inbound mail address returned no row')
-      const followsEnded = await endProjectFollows(tx, next.projectId, next.createdBy, now)
+      const followsEnded = await endProjectFollows(tx, next.projectId, { endedBy: next.createdBy, reason: 'address_rotated' }, now)
       return { row, previousAddressId: revoked[0]?.id ?? null, followsEnded }
     })
     return { ok: true, value }
@@ -751,7 +759,7 @@ export async function switchOffAddress(projectId: string, revokedBy: string): Pr
       .where(and(eq(inboundMailAddresses.projectId, projectId), isNull(inboundMailAddresses.revokedAt)))
       .returning({ id: inboundMailAddresses.id })
     if (!revoked) return null
-    return { previousAddressId: revoked.id, followsEnded: await endProjectFollows(tx, projectId, revokedBy, now) }
+    return { previousAddressId: revoked.id, followsEnded: await endProjectFollows(tx, projectId, { endedBy: revokedBy, reason: 'address_rotated' }, now) }
   })
 }
 

@@ -3,8 +3,9 @@
  *
  * The project lifecycle (ADR-0098, ADR-0090): which moves exist, who may make
  * them, that each is audited under its own name, that closing names its outcome
- * and an Abschluss that is neither in the future nor before the Beginn, and
- * that a second click writes nothing.
+ * and an Abschluss that is neither in the future nor before the Beginn, that
+ * a second click writes nothing, and that closing ends the follows of the
+ * project's E-Mail-Verläufe (ADR-0134).
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -30,6 +31,11 @@ vi.mock('@/lib/tasks/repository', () => ({
 const syncProjectFacts = vi.fn(async () => 'pushed')
 vi.mock('@/lib/cross-project/project-facts-mirror', () => ({
   syncProjectFacts: (...args: unknown[]) => syncProjectFacts(...(args as [])),
+}))
+
+const endFollowsOnProjectClose = vi.fn(async () => 0)
+vi.mock('@/lib/mail-thread/follows', () => ({
+  endFollowsOnProjectClose: (...args: unknown[]) => endFollowsOnProjectClose(...(args as [])),
 }))
 
 const recordAuditEvent = vi.fn()
@@ -215,5 +221,29 @@ describe('setProjectStatus', () => {
     await expect(setProjectStatus(session, 'p1', { status: 'paused' })).rejects.toBeInstanceOf(NotFoundError)
     expect(setProjectStatusInOrg).not.toHaveBeenCalled()
     expect(recordAuditEvent).not.toHaveBeenCalled()
+  })
+
+  it('ends every follow of the closed project, as the person who closed it, after the close', async () => {
+    setProjectStatusInOrg.mockResolvedValue(makeProject({ id: 'p1', status: 'closed' }))
+    await setProjectStatus(session, 'p1', { status: 'closed', outcome: 'completed', endedOn: '2026-09' }, undefined, NOW)
+    expect(endFollowsOnProjectClose).toHaveBeenCalledWith(session, 'p1', NOW)
+  })
+
+  it('ends no follow on a pause, a resume or a reopening', async () => {
+    setProjectStatusInOrg.mockResolvedValue(makeProject({ id: 'p1', status: 'paused' }))
+    await setProjectStatus(session, 'p1', { status: 'paused' }, undefined, NOW)
+    findProjectInOrg.mockResolvedValue(makeProject({ id: 'p1', status: 'closed' }))
+    setProjectStatusInOrg.mockResolvedValue(makeProject({ id: 'p1' }))
+    await setProjectStatus(session, 'p1', { status: 'active' }, undefined, NOW)
+    expect(endFollowsOnProjectClose).not.toHaveBeenCalled()
+  })
+
+  it('a failure ending the follows does not fail a close that happened (sweep 12 ends them)', async () => {
+    setProjectStatusInOrg.mockResolvedValue(makeProject({ id: 'p1', status: 'closed' }))
+    endFollowsOnProjectClose.mockRejectedValueOnce(new Error('db down'))
+    const quiet = vi.spyOn(console, 'error').mockImplementation(() => {})
+    await expect(setProjectStatus(session, 'p1', { status: 'closed', outcome: 'completed', endedOn: '2026-09' }, undefined, NOW)).resolves.toMatchObject({ status: 'closed' })
+    expect(recordAuditEvent).toHaveBeenCalledWith(expect.objectContaining({ action: 'project.closed' }))
+    quiet.mockRestore()
   })
 })

@@ -30,6 +30,7 @@ export const mailThread: typeof en.mailThread = {
     detached: 'Eine E-Mail wurde aus dem E-Mail-Verlauf herausgelöst',
     document_gone: 'Der E-Mail-Verlauf wurde gelöscht',
     revoked_by_manager: 'Von der Projektverwaltung beendet',
+    project_closed: 'Das Projekt wurde abgeschlossen',
   },
 
   /** Der Reiter „E-Mails“ in der Vorschau eines E-Mail-Verlaufs (D16). */
