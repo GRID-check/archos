@@ -192,6 +192,7 @@ GRID_TEST_DATABASE_URL="postgres://grid_app_rw:$RUNTIME_PASSWORD@127.0.0.1:$PORT
     src/lib/feedback/repository.integration.spec.ts \
     src/lib/filing/root-sort-run-repository.integration.spec.ts \
     src/lib/folder-cards/repository.integration.spec.ts \
+    src/lib/estate-tree/repository.integration.spec.ts \
     src/lib/search/providers.integration.spec.ts \
     src/lib/search/document-repository.integration.spec.ts
 
