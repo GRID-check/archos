@@ -216,3 +216,24 @@ def drop_own_type(records: list[dict[str, object]], own_document_type: str | Non
     if not own_document_type:
         return records
     return [r for r in records if not (r.get("kind") == "document" and r.get("key") == own_document_type)]
+
+
+def reference_keys_for(text: str) -> list[tuple[str, str]]:
+    """``(kind, key)`` pairs a search for documents referring to ``text`` matches. Pure.
+
+    ``text`` is what a person or the model names: "ÖNORM B 1600", "§ 33 BayBO",
+    "EP-05", "Brandschutzkonzept". A norm or a law is read with the same patterns as
+    the documents; a document word maps to its type; anything else is taken as a plan
+    number, which is how a sheet is named. Several readings may match ("Lageplan" is
+    a document type, never a plan number), so every one found is returned.
+    """
+    text = " ".join((text or "").split())
+    if not text:
+        return []
+    found = [(kind, key) for kind, key, _ in _found(text) if kind in ("norm", "law")]
+    document_type = _document_type(text)
+    if document_type:
+        found.append(("document", document_type))
+    if not found and any(char.isdigit() for char in text):
+        found.append(("plan", plan_key(text)))
+    return list(dict.fromkeys(found))

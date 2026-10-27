@@ -635,9 +635,13 @@ def set_document_reading(
     Written together by the ingest that read the file, so a re-ingest replaces the whole reading.
     ``False`` when the document has no metadata row.
     """
-    return _get_document_metadata_store().set_reading(
+    written = _get_document_metadata_store().set_reading(
         collection, filename, dossier=dossier, references=references, coverage=coverage
     )
+    # The chunks were written before the reading existed; their copy of it is set here.
+    if written:
+        _mirror_facts(collection, [filename])
+    return written
 
 
 def set_document_page_count(collection: str, filename: str, page_count: int | None) -> bool:
