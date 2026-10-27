@@ -132,7 +132,8 @@ async def test_the_three_scores_are_written(monkeypatch):
 
     by_name = {(score.name, score.item): score.value for score in written}
     assert by_name[("claims-by-class", "record")] == "record"
-    assert by_name[("claims-by-class", "cited_dropped")] == "cited_dropped"
+    # The pointer that did not hold is a flag (labelled, named), not a class (ADR-0139).
+    assert ("claims-by-class", "cited_dropped") not in by_name
     assert by_name[("claims-normative-uncited", None)] == 1.0
     assert by_name[("citations-dropped-labelled", None)] == 1.0
 
@@ -447,12 +448,11 @@ async def test_a_turn_with_no_drawing_value_writes_no_looked_before_measurement(
     assert "look-count" in names and "looked-before-measurement" not in names
 
 
-async def test_honest_absence_does_not_lift_the_verdict_it_rides_with():
-    """„Für den Gang ja" answers „Reicht der Fluchtweg?" with nothing behind it.
+async def test_honest_absence_that_concludes_nothing_counts_half():
+    """„… ist in keinem Dokument nachgewiesen": an honest absence, no verdict (ADR-0139, round 3 of #1231).
 
-    Until ADR-0139 a hedge exempted the sentence from being a legal claim
-    without a source, and it read „medium". A hedge is no source (review of
-    #1231): the verdict counts nothing, and with nothing else it reads „low".
+    The net reads it as normative; it concludes nothing about the law, so the
+    hedge holds it at „medium" and the chip names no uncited verdict.
     """
     prose = "Für den Gang ja; der Abstand zum Treppenhaus ist in keinem Dokument nachgewiesen."
     messages = [HumanMessage("Reicht der Fluchtweg?"), AIMessage(ANSWER_ENVELOPE.format(prose=prose))]
@@ -460,8 +460,8 @@ async def test_honest_absence_does_not_lift_the_verdict_it_rides_with():
     final, state = await _finalize(messages)
 
     assert final.claim_stamps[0]["claim_type"] == "normative"
-    assert final.claims_ceiling == "low"
-    assert state.answer_confidence == "low"
+    assert final.claim_stamps[0]["verdict"] is False
+    assert final.claims_ceiling == "medium"
 
 
 async def test_honest_absence_about_a_fact_still_counts_half():

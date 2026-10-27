@@ -59,8 +59,9 @@ from aiq_agent.common.citation_verification import expand_grouped_citations
 from aiq_agent.common.citation_verification import get_turn_captures
 from aiq_agent.common.citation_verification import is_look_place
 from aiq_agent.common.citation_verification import merged_citations
+from aiq_agent.common.citation_verification import resolve_unlisted_numbers
 from aiq_agent.common.citation_verification import sanitize_report
-from aiq_agent.common.citation_verification import turn_numbering
+from aiq_agent.common.citation_verification import turn_passages
 from aiq_agent.common.citation_verification import verify_citations
 from aiq_agent.common.citation_verification import verify_quoted_spans
 from aiq_agent.common.claim_provenance import ClaimEvidence
@@ -75,6 +76,7 @@ from aiq_agent.common.turn_status import emit_anatomy_dropped
 from aiq_agent.common.turn_status import emit_answer_repair
 from aiq_agent.common.turn_status import emit_citation_check
 from aiq_agent.common.workspace_records import filed_proposal_ids
+from aiq_agent.common.workspace_records import profile_record
 from aiq_agent.common.workspace_records import records_from_messages
 from aiq_agent.observability.langfuse_scores import card_validity_score
 from aiq_agent.observability.langfuse_scores import claim_scores
@@ -518,20 +520,24 @@ class _Verified:
     unverified_quotes: tuple[UnverifiedQuote, ...]
 
 
-def _writer_numbering(turn: Sequence[Any]) -> list[SourceEntry | None] | None:
-    """What an ``[N]`` without a source list names: the N-th passage of the turn's one numbered block.
+def _writer_numbering(turn: Sequence[Any], content: str) -> list[SourceEntry | None] | None:
+    """What each ``[N]`` of an answer without a source list names among this turn's passages (ADR-0139).
 
-    ``None`` when the turn read no numbered block or more than one
-    (``turn_numbering``), so every such number is labelled (``NO_SOURCE_LIST_REASON``).
+    A turn numbers its passages on across its blocks, so „[3]" names the third
+    passage it read; a sentence naming a file it read settles a number that
+    does not (``resolve_unlisted_numbers``). ``None`` when nothing resolves, so
+    every such number is labelled (``NO_SOURCE_LIST_REASON``). The list that
+    comes back is appended as the answer's sources: the reader always gets the
+    Quellen list the prompt asks for.
     """
-    numbering = turn_numbering(
+    numbered = turn_passages(
         [
             (getattr(msg, "name", "") or "", msg.content, getattr(msg, "artifact", None))
             for msg in turn
             if isinstance(msg, ToolMessage)
         ]
     )
-    return numbering or None
+    return resolve_unlisted_numbers(content, numbered) or None
 
 
 def _verify(
@@ -1145,8 +1151,13 @@ async def finalize_answer(
     turn_sources: Sequence[SourceEntry] | None = None,
     card_repair: CardRepairFn | None = None,
     measured_values: Sequence[str] = (),
+    project_context: str | None = None,
 ) -> FinalAnswer:
     """Run every post-answer stage and return the answer as the reader gets it.
+
+    ``project_context`` is the turn context's project block
+    (``PROJECT_CONTEXT v1``): its confirmed rows are a record a sentence can be
+    read off (``workspace_records.profile_record``).
 
     ``turn_sources`` is this turn's capture, which the caller must pass when it
     finalises AFTER ``end_turn_capture``: the ContextVar is back to its prior
@@ -1181,7 +1192,9 @@ async def finalize_answer(
         found_nothing = _require_retrieval(_passage_lookup_attempted(turn), tools, ruling=ruling)
     if sources:
         emit_citation_check(source_count=len(sources))
-        verified = await _verify_with_quote_patch(extracted.content, registry, repair, _writer_numbering(turn))
+        verified = await _verify_with_quote_patch(
+            extracted.content, registry, repair, _writer_numbering(turn, extracted.content)
+        )
     else:
         # Nothing to resolve against: every [N] the model wrote is labelled.
         verified = _verify(extracted.content, registry)
@@ -1214,7 +1227,9 @@ async def finalize_answer(
     # like the quote check it repeats: each line reads the registry's passages.
     pairs = [(source.entry, source.number) for source in cited if not is_look_place(source.entry)]
     stamps = await asyncio.to_thread(stamp_quote_lines, content, pairs, registry.all_sources())
-    claims = _claim_provenance(content, cited, stamps, turn, measured_values, relied_readings(looks, cited))
+    claims = _claim_provenance(
+        content, cited, stamps, turn, measured_values, relied_readings(looks, cited), project_context=project_context
+    )
     _emit_look_scores(looks, looks_made, claims.stamps, cited)
     final_messages = list(messages)
     final_messages[index] = messages[index].model_copy(update={"content": content})
@@ -1267,6 +1282,13 @@ class _Claims:
     weakest: tuple[str, str] | None
 
 
+def _weakest_kind(stamp: ClaimStamp) -> str:
+    """The claim type the capped reason reads: „normative" only for a verdict on the law (ADR-0139)."""
+    if stamp.claim_type == "normative" and not stamp.is_verdict:
+        return "value"
+    return stamp.claim_type
+
+
 def _claim_provenance(
     content: str,
     cited: Sequence[CitedSource],
@@ -1274,6 +1296,8 @@ def _claim_provenance(
     turn: Sequence[Any],
     measured_values: Sequence[str],
     readings: Sequence[str] = (),
+    *,
+    project_context: str | None = None,
 ) -> _Claims:
     """Stamp each sentence of the final text with where it comes from (``common/claim_provenance``).
 
@@ -1302,7 +1326,7 @@ def _claim_provenance(
             if source.number is not None and not is_look_place(source.entry)
         },
         quote_stamps=quote_stamps,
-        records=records_from_messages(turn),
+        records=[*records_from_messages(turn), *filter(None, [profile_record(project_context)])],
         measured_values=tuple(value for value in measured_values if value),
         readings=tuple(readings),
     )
@@ -1312,5 +1336,5 @@ def _claim_provenance(
     return _Claims(
         stamps=tuple(stamps),
         ceiling=claims_ceiling(stamps),
-        weakest=(weakest.provenance, weakest.claim_type) if weakest is not None else None,
+        weakest=(weakest.provenance, _weakest_kind(weakest)) if weakest is not None else None,
     )

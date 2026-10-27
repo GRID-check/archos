@@ -166,25 +166,32 @@ class TestHonestAbsenceAndEstimatesAreNotFalseClaims:
         assert not is_hedged(sentence)
 
     @pytest.mark.parametrize("sentence", [*ABSENCE, *ESTIMATE])
-    def test_a_hedged_sentence_about_a_fact_caps_at_medium_and_one_about_the_law_counts_nothing(self, sentence):
-        """A hedge is honest uncertainty, not a source (ADR-0139): about the law it is still an uncited claim."""
+    def test_a_hedged_absence_caps_at_medium_and_a_hedged_verdict_counts_nothing(self, sentence):
+        """A hedge is honest uncertainty, not a source (ADR-0139): a verdict it hedges is still an uncited claim."""
         stamps = _stamps(sentence)
 
-        if stamps[0].claim_type == "normative":
+        if stamps[0].is_verdict:
             assert claims_ceiling(stamps) == "low"
             assert normative_uncited(stamps) == 1
         else:
             assert claims_ceiling(stamps) == "medium"
             assert normative_uncited(stamps) == 0
 
+    def test_a_hedged_verdict_counts_nothing(self):
+        stamps = _stamps("Nach meiner Einschätzung ist die Anforderung an die Raumhöhe damit erfüllt.")
+
+        assert stamps[0].is_verdict and stamps[0].hedged
+        assert claims_ceiling(stamps) == "low"
+
     def test_the_same_sentence_without_the_hedge_is_still_low_and_uncited(self):
         stamps = _stamps("Der Abstand zum Treppenhaus beträgt 28 m.")
 
         assert claims_ceiling(stamps) == "low"
 
-    def test_a_cited_dropped_sentence_stays_low_whatever_it_says(self):
+    def test_a_dropped_pointer_beside_a_verdict_stays_low(self):
         stamps = _stamps("Nach meiner Einschätzung gilt § 5 [Beleg nicht verifiziert].")
 
+        assert stamps[0].dropped and stamps[0].is_verdict
         assert claims_ceiling(stamps) == "low"
 
 

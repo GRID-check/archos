@@ -256,10 +256,10 @@ SCORE_DEFINITIONS: tuple[ScoreDefinition, ...] = (
     ScoreDefinition(
         "claims-evidence-share",
         "NUMERIC",
-        "The mean support of the answer's load-bearing sentences (ADR-0139): a quoted or cited passage, a "
-        "record, an action or a measurement counts 1, an Einschätzung drawn from a cited passage or a hedge about "
-        "a fact 0.5, nothing (and any uncited legal sentence) 0. The trend a calibration of rule 3 reads; the "
-        "level counts instead. Not written on an answer with no load-bearing sentence.",
+        "The mean support of the answer's claims (ADR-0139; a table under a lead-in is one): a quoted or cited "
+        "passage, a record, an action or a measurement counts 1, an Einschätzung drawn from a cited passage or a "
+        "hedge about a fact 0.5, nothing (and any uncited verdict on the law) 0. The trend a calibration of rule 3 "
+        "reads; the level counts instead. Not written on an answer with no load-bearing sentence.",
         min_value=0,
         max_value=1,
     ),

@@ -1584,6 +1584,7 @@ class PilotiAgent:
             turn_sources=turn_sources,
             card_repair=self._card_repairer(),
             measured_values=[measurement.value_text for measurement in turn_measurements],
+            project_context=state.project_context,
         )
         self._emit_final_report(final)
         # The "already read" digest, appended at turn end: this turn's captures

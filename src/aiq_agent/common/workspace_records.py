@@ -17,7 +17,7 @@ means is empty. A record in it would let a member list ground an uncited legal
 verdict, and a turn that read the task list and retrieved nothing would stop
 being a turn without retrieved evidence. So a record never touches it. It
 grounds descriptive and value sentences about the office (``claim_provenance``)
-and never a normative one.
+and never a verdict on the law (ADR-0139).
 
 ## Where records come from
 
@@ -38,6 +38,14 @@ model read, so it is all a sentence can have been written from:
   Dokumente, aktuell Index B" is a sentence read off the listing. It is
   provenance only: the listing stays an index, never cited, and registers no
   source (``citation_verification``);
+- the CONFIRMED PROJECT PROFILE in the turn context (``PROJECT_CONTEXT v1``,
+  its ``confirmed:`` rows, ADR-0139) is a read too: the person confirmed each
+  row in the intake, and the prompt hands the rows to the model verbatim.
+  :func:`profile_record` makes one item per row, its English tokens followed
+  by the German the answer writes them in (:data:`_PROFILE_WORDS`), so
+  „Geschoße · 5 oberirdisch" or „Widmung · Wohngebiet" is a sentence read off
+  the profile. Notes (``PROJECT_MEMORY``), unknowns and assumptions are not:
+  the prompt itself calls a note neither a confirmed fact nor law;
 - anything else (a refusal, which the tool words „Error …", or a notice the
   agent's own guards answered the call with) is no JSON and no record.
 
@@ -170,6 +178,130 @@ def listing_record(text: str) -> WorkspaceRecord | None:
         return None
     lines = [line.strip().casefold() for line in stripped[:LISTING_MAX_CHARS].splitlines() if line.strip()]
     return WorkspaceRecord(LISTING_TOOL, "read", "\n".join(lines), frozenset(), tuple(lines))
+
+
+#: The operation a record of the confirmed project profile names.
+PROFILE_OPERATION = "project-profile"
+
+#: The German an answer writes a profile token in, by token: the intake's own
+#: question and option labels (``frontends/ui/src/lib/project-profile/
+#: intake-definition.ts``), cut to the words a sentence repeats. A token
+#: missing here still matches on its numbers and its own spelling; the table
+#: only lets a row like „Widmung · Wohngebiet" match without one.
+_PROFILE_WORDS: dict[str, tuple[str, ...]] = {
+    # Keys
+    "zoning": ("widmung", "flächenwidmung", "flaechenwidmung"),
+    "work_type": ("maßnahme", "massnahme", "vorhaben"),
+    "construction_method": ("bauweise", "tragstruktur"),
+    "storeys_above_ground": ("geschoße", "geschosse", "oberirdisch", "oberirdische"),
+    "storeys_below_ground": ("geschoße", "geschosse", "unterirdisch", "unterirdische", "untergeschoß"),
+    "uses": ("nutzung", "nutzungen"),
+    "residential_form": ("wohnform",),
+    "building_class": ("gebäudeklasse", "gebaeudeklasse"),
+    "escape_level": ("fluchtniveau",),
+    "escape_level_m": ("fluchtniveau", "rechenwert"),
+    "elevator": ("aufzug",),
+    "pv": ("photovoltaik", "photovoltaikanlage"),
+    "heritage_protection": ("denkmalschutz",),
+    "protected_area": ("schutzgebiet",),
+    "contaminated_land": ("altlast", "altlasten"),
+    "old_town_protection_zone": ("altstadterhaltungszone", "schutzzone", "altstadt"),
+    "development_pattern": ("bebauungsweise", "bauweise"),
+    "existing_year_built": ("baujahr", "bestand", "bestandsgebäude"),
+    "site_address": ("adresse", "standort"),
+    "project_name": ("projekt",),
+    "federal_state": ("bundesland",),
+    "project_phase": ("phase", "projektphase"),
+    "bauherrschaft": ("bauherrschaft", "bauherr"),
+    "max_building_height": ("höchstgebäudehöhe", "gebäudehöhe", "bauklasse"),
+    "building_position": ("gebäudestellung",),
+    "conditioning": ("konditionierung",),
+    "development_plan": ("bebauungsplan",),
+    "noise_situation": ("lärm", "lärmsituation"),
+    "fire_brigade_access": ("feuerwehr", "feuerwehrzufahrt"),
+    "drinking_water": ("trinkwasser",),
+    "district_heating": ("fernwärme",),
+    "building_lines": ("baufluchtlinien", "baugrenzen"),
+    "build_to_plot_boundary": ("grundgrenze", "anbau"),
+    "workplace": ("arbeitsstätte",),
+    "public_access": ("öffentlich", "publikumsverkehr"),
+    "fireplaces": ("feuerstätten", "rauchfänge"),
+    "commercial_facility": ("betriebsanlage",),
+    "water_rights": ("wasserrecht", "wasserrechtliche"),
+    "tree_stock": ("baumbestand",),
+    "funding": ("förderung", "zertifizierung"),
+    "hazard_zones": ("gefahrenzonen", "standortrisiken"),
+    "heat_supply": ("wärmeversorgung",),
+    "fire_safety_systems": ("brandschutz", "anlagentechnischer"),
+    "building_type": ("bauwerkstyp",),
+    "country": ("land",),
+    # Values
+    "residential": ("wohnen", "wohngebiet", "wohnnutzung", "wohngebäude", "wohnhaus"),
+    "office": ("büro", "verwaltung"),
+    "lodging": ("beherbergung",),
+    "extension": ("zubau",),
+    "new_build": ("neubau",),
+    "conversion": ("umbau",),
+    "timber": ("holz", "holzbau", "holzbauweise"),
+    "closed": ("geschlossen", "geschlossene"),
+    "open": ("offen", "offene"),
+    "preliminary_design": ("vorentwurf",),
+    "vienna": ("wien",),
+    "attached": ("angebaut",),
+    "heated": ("beheizt",),
+    "conventional": ("konventionell", "klassisch"),
+    "urban": ("innerstädtisch", "städtisch"),
+    "above_ground": ("oberirdisch",),
+    "building": ("gebäude",),
+    "private": ("privat",),
+    "at": ("österreich",),
+    "true": ("ja",),
+    "false": ("nein", "kein", "keine", "keinen"),
+    "none": ("keine", "kein"),
+}
+_PROFILE_ROW_RE = re.compile(r"^-\s*([^=\s][^=]*)=(.*)$")
+
+
+def _profile_spellings(token: str) -> list[str]:
+    """A profile token, its parts and its German: „escape_level_m@bldg1" reads as „escape level m fluchtniveau …"."""
+    folded = token.strip().strip('"').casefold()
+    parts = [part for part in re.split(r"[@_,\s]+", folded) if part]
+    words = [folded, " ".join(parts)]
+    # „gk5" is written „GK 5", „11-22m" as „11–22 m".
+    words.append(re.sub(r"(?<=[^\W\d_])(?=\d)|(?<=\d)(?=[^\W\d_])", " ", re.sub(r"[-–]", " ", folded)))
+    for name in (folded.split("@")[0], *[value.strip() for value in folded.split(",")], *parts):
+        words.extend(_PROFILE_WORDS.get(name, ()))
+    return words
+
+
+def profile_record(project_context: str | None) -> WorkspaceRecord | None:
+    """The record the confirmed rows of ``PROJECT_CONTEXT v1`` make, one item per row; None without one.
+
+    Read from the same text the prompt renders (``prompt-view.ts``,
+    ``buildProjectPromptView``): the ``confirmed:`` section, up to the next
+    blank line. A row's key and value tokens are followed by their German.
+    """
+    if not project_context or "PROJECT_CONTEXT v1" not in project_context:
+        return None
+    items: list[str] = []
+    in_confirmed = False
+    for line in project_context.splitlines():
+        stripped = line.strip()
+        if stripped == "confirmed:":
+            in_confirmed = True
+            continue
+        if not stripped or not stripped.startswith("-"):
+            # A blank line or the next section's header ends the confirmed rows.
+            in_confirmed = False
+            continue
+        match = _PROFILE_ROW_RE.match(stripped) if in_confirmed else None
+        if match is None:
+            continue
+        key, value = match.group(1), match.group(2)
+        items.append("\n".join([*_profile_spellings(key), *_profile_spellings(value)]))
+    if not items:
+        return None
+    return WorkspaceRecord(PROFILE_OPERATION, "read", "\n".join(items), frozenset(), tuple(items))
 
 
 def _piloti_authored(value: dict[str, Any]) -> bool:

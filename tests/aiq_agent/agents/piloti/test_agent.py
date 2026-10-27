@@ -1311,7 +1311,9 @@ class TestPilotiSourceRegistryGating:
 
         assert result.answer_lookup_found_nothing is True
         assert result.messages[-1].content == f"Hochhäuser regelt die OIB-RL 2.3 {DROPPED_CITATION_MARKER}."
-        assert [stamp["provenance"] for stamp in result.claim_stamps] == ["cited_dropped"]
+        assert [(stamp["provenance"], stamp.get("dropped")) for stamp in result.claim_stamps] == [
+            ("model_knowledge", True)
+        ]
         assert result.verified_sources is None
 
     @pytest.mark.asyncio
@@ -1943,7 +1945,9 @@ class TestPilotiAnswerGrounding:
         assert answer.content == f"The building height limit is 12 m {DROPPED_CITATION_MARKER}."
         assert "OIB Richtlinie" not in answer.content
         assert result.answer_citation_grounded is False
-        assert [stamp["provenance"] for stamp in result.claim_stamps] == ["cited_dropped"]
+        assert [(stamp["provenance"], stamp.get("dropped")) for stamp in result.claim_stamps] == [
+            ("model_knowledge", True)
+        ]
 
     # --- verified_sources emission: only THIS turn's cited sources become chips ---
 

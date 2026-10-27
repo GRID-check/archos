@@ -37,16 +37,20 @@ Each sentence gets two independent labels.
 
 The ceiling a sentence allows (:func:`ceiling`) is ``high`` for evidence and
 lower without it, and never lets a record, an action, a measurement or a
-reading ground a normative claim: those three are evidence about the office and the building,
-not about the law. That is the anti-laundering rule of
+reading ground a verdict on the law (:func:`states_verdict`): those are
+evidence about the office and the building, not about the law. A normative
+sentence that concludes nothing („Gebäudeklasse · GK 5 (bestätigt)" off the
+confirmed profile) is held like a value; a next step bears no load at all
+(:func:`is_next_step`). That is the anti-laundering rule of
 ``agents/piloti/grounding.py``, now enforced per sentence rather than by
 flooring the whole answer.
 
-The answer's level is read off how many of its load-bearing sentences
-evidence carries (rule 3, ADR-0139), not off the weakest one: ``high`` only
-when every one is backed whole, ``low`` when most have nothing behind them or
-the answer's verdict on the law has no passage behind any of its legal
-sentences, ``medium`` otherwise (:func:`claims_ceiling`). The normative
+The answer's level is read off how many of its claims evidence carries
+(rule 3, ADR-0139), not off the weakest one: a claim is a load-bearing
+sentence, or a table under a lead-in as one (:func:`claim_supports`); ``high``
+only when every claim is backed whole, ``low`` when most have nothing behind
+them or an uncited verdict has no legal passage beside it, ``medium``
+otherwise (:func:`claims_ceiling`). The normative
 detector is a deliberately wide net, built as a brake on uncited answers; run
 per sentence it catches a next step („muss im Einzelnen geöffnet werden") or a
 fact about the corpus as readily as a verdict, and a minimum over twenty such
@@ -68,6 +72,7 @@ from collections.abc import Mapping
 from collections.abc import Sequence
 from dataclasses import dataclass
 from dataclasses import field
+from dataclasses import replace
 from typing import Any
 from typing import Literal
 
@@ -274,6 +279,31 @@ class ClaimStamp:
     #: ``reasoning`` only: what it states is in the passage its paragraph cites
     #: (its numbers and most of its key words), or it states no number.
     drawn: bool = False
+    #: It concludes something about the law (:func:`states_verdict`) and is no
+    #: next step: only a passage grounds it. None derives it from the text, as
+    #: for a stamp stored before it existed.
+    verdict: bool | None = None
+    #: A next step or an offer („muss im Einzelnen geöffnet werden", „Eine
+    #: kurze Nachricht genügt"): never load-bearing. None derives it.
+    next_step: bool | None = None
+    #: It carried a pointer that did not hold (:data:`DROPPED_CITATION_MARKER`,
+    #: or a number nothing resolves). Its class is what the sentence has
+    #: without it: the chip names it, it zeroes nothing a record or a
+    #: measurement stands behind.
+    dropped: bool = False
+    #: The rows of one table or list under a lead-in, with that lead-in, share
+    #: a group: one claim (:func:`claim_supports`), not one per row.
+    group: int | None = None
+
+    @property
+    def is_next_step(self) -> bool:
+        return self.next_step if self.next_step is not None else is_next_step(self.text)
+
+    @property
+    def is_verdict(self) -> bool:
+        if self.verdict is not None:
+            return self.verdict
+        return self.claim_type == "normative" and not self.is_next_step and states_verdict(self.text)
 
     def to_wire(self) -> dict[str, Any]:
         wire: dict[str, Any] = {
@@ -289,6 +319,11 @@ class ClaimStamp:
         if self.unmatched:
             wire["unmatched"] = list(self.unmatched)
         wire["support"] = support(self)
+        wire["verdict"] = self.is_verdict
+        if self.dropped:
+            wire["dropped"] = True
+        if self.group is not None:
+            wire["group"] = self.group
         return wire
 
 
@@ -300,6 +335,8 @@ class _Unit:
     paragraph: int
     quote_line: bool = False
     quote_wording: str | None = None
+    #: The lead-in block this row or list item stands under, if any.
+    group: int | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -351,6 +388,7 @@ def _units(prose: str) -> Iterator[_Unit]:
     gap = False
     lead_in = False
     in_lead_block = False
+    group = 0
     for line in prose.split("\n"):
         fence_match = _FENCE_RE.match(line)
         if fence is not None:
@@ -377,6 +415,8 @@ def _units(prose: str) -> Iterator[_Unit]:
             paragraph += 1
         gap = False
         if is_block:
+            if lead_in and not in_lead_block:
+                group += 1
             in_lead_block = lead_in
         else:
             lead_in = line.rstrip().rstrip("*_").endswith(":")
@@ -385,7 +425,7 @@ def _units(prose: str) -> Iterator[_Unit]:
             if table_header_pending:
                 table_header_pending = False
                 continue
-            yield _Unit(_table_cells(line), paragraph)
+            yield _Unit(_table_cells(line), paragraph, group=group if in_lead_block else None)
             continue
         if _QUOTE_LINE_RE.match(line):
             wording = _next_wording(wordings, line)
@@ -394,7 +434,7 @@ def _units(prose: str) -> Iterator[_Unit]:
                 continue
             line = line.lstrip(" >")
         for sentence in _split_sentences(_clean(line)):
-            yield _Unit(sentence, paragraph)
+            yield _Unit(sentence, paragraph, group=group if is_block and in_lead_block else None)
 
 
 def _next_wording(wordings: Iterator[tuple[str, tuple[int, ...]]], line: str) -> str | None:
@@ -624,9 +664,7 @@ def _place_level(unit: _Unit, evidence: ClaimEvidence, *, merged: bool = False) 
 
 
 def _class_with_pointer(unit: _Unit, evidence: ClaimEvidence) -> ProvenanceClass | None:
-    """The class a sentence's own pointer gives it (a label, a quote, a marker), or None when it has none."""
-    if DROPPED_CITATION_MARKER in unit.text:
-        return "cited_dropped"
+    """The class a sentence's own pointer gives it (a quote, a marker that resolved), or None when it has none."""
     if unit.quote_line and unit.quote_wording is not None:
         stamp = _stamp_for(unit.quote_wording, evidence.quote_stamps)
         if stamp is not None and stamp.get("status") == "verbatim":
@@ -640,15 +678,27 @@ def _class_with_pointer(unit: _Unit, evidence: ClaimEvidence) -> ProvenanceClass
         return "quoted" if not unit.quote_line and _has_verified_inline_quote(unit.text) else "cited"
     if numbers and any(_is_place(number, evidence) for number in numbers):
         return "observed"
-    if numbers:
-        # A number nothing resolves: the verifier labels these, so this is a
-        # marker that reached the text another way. It is not a pointer.
-        return "cited_dropped"
     return None
 
 
+def _pointer_dropped(unit: _Unit, evidence: ClaimEvidence) -> bool:
+    """Whether the sentence carried a pointer that did not hold: the label, or a number nothing resolves."""
+    if DROPPED_CITATION_MARKER in unit.text:
+        return True
+    numbers = _numbers(unit.text)
+    return bool(numbers) and not any(n in evidence.cited_numbers or _is_place(n, evidence) for n in numbers)
+
+
 def _classify(unit: _Unit, evidence: ClaimEvidence) -> tuple[ProvenanceClass, str | None, tuple[str, ...]]:
-    """One sentence's class, the operation behind a record or action, and a record's unmatched numbers."""
+    """One sentence's class, the operation behind a record or action, and a record's unmatched numbers.
+
+    A pointer that did not hold is taken off first (:func:`_pointer_dropped`
+    flags it): the sentence is then classed by what else stands behind it, so a
+    file name read off this turn's listing stays a record whatever number the
+    model put beside it.
+    """
+    if DROPPED_CITATION_MARKER in unit.text:
+        unit = replace(unit, text=unit.text.replace(DROPPED_CITATION_MARKER, " ").strip())
     pointed = _class_with_pointer(unit, evidence)
     if pointed is not None:
         return pointed, None, ()
@@ -802,7 +852,8 @@ def classify_claims(
 ) -> list[ClaimStamp]:
     """One stamp per sentence of ``prose`` (the answer without its reference list), in document order."""
     classified = []
-    for unit in _units(prose):
+    units = _with_lead_ins(list(_units(prose)))
+    for unit in units:
         provenance, operation, unmatched = _classify(unit, evidence)
         ctype = (
             _action_claim_type(unit.text, evidence, operation, normative)
@@ -836,6 +887,8 @@ def classify_claims(
                 exact=exact and provenance == "observed",
                 cap=cap,
                 hedged=is_hedged(unit.text),
+                dropped=_pointer_dropped(unit, evidence),
+                group=unit.group,
                 drawn=(
                     provenance == "model_knowledge"
                     and unit.paragraph in supported
@@ -844,6 +897,18 @@ def classify_claims(
             )
         )
     return mark_load_bearing(_supported_values(stamps))
+
+
+def _with_lead_ins(units: list[_Unit]) -> list[_Unit]:
+    """The units, the lead-in sentence of each grouped block joined to its group: one statement."""
+    joined = list(units)
+    for index, unit in enumerate(units):
+        if unit.group is None or index == 0 or units[index - 1].group == unit.group:
+            continue
+        before = units[index - 1]
+        if before.group is None and before.text.rstrip().rstrip("*_").endswith(":"):
+            joined[index - 1] = replace(before, group=unit.group)
+    return joined
 
 
 #: Of a drawn sentence's key words, the share the passage must hold. Half, so a
@@ -876,8 +941,16 @@ def _drawn_from(sentence: str, numbers: Sequence[int], evidence: ClaimEvidence) 
 
 
 def mark_load_bearing(stamps: list[ClaimStamp]) -> list[ClaimStamp]:
-    """Mark the sentences the answer's level rests on: every normative or value one; all, when there is none."""
-    marked = [stamp.claim_type != "descriptive" for stamp in stamps]
+    """Mark the sentences the answer's level rests on: every normative or value one; all, when there is none.
+
+    A next step or an offer (:attr:`ClaimStamp.is_next_step`) never bears load:
+    it asserts nothing the answer could be wrong about, and the wide normative
+    net catching „muss im Einzelnen geöffnet werden" must not make a listing
+    read „Rechtsaussage ohne Beleg".
+    """
+    marked = [stamp.claim_type != "descriptive" and not stamp.is_next_step for stamp in stamps]
+    if not any(marked):
+        marked = [not stamp.is_next_step for stamp in stamps]
     if not any(marked):
         marked = [True] * len(stamps)
     return [
@@ -898,8 +971,16 @@ def ceiling(
     exact: bool = False,
     hedged: bool = False,
     value_supported: bool = False,
+    verdict: bool | None = None,
 ) -> Level:
     """The highest level one sentence allows.
+
+    ``verdict`` says whether a normative sentence concludes something about
+    the law (:func:`states_verdict`); None reads every normative sentence as
+    one, the stricter reading. Only a verdict needs a passage: a normative
+    sentence that concludes nothing („Gebäudeklasse · GK 5 (bestätigt)" off
+    the confirmed project profile, „Die Höhen widersprechen sich") is held like
+    a value, to the evidence it restates (ADR-0139).
 
     - ``high`` for a quoted or cited sentence of any type, and for a record,
       an action or a measurement that is not normative.
@@ -920,18 +1001,19 @@ def ceiling(
         return "low"
     if provenance in _PASSAGE_CLASSES:
         return "high"
-    if hedged and ctype != "normative":
+    law = ctype == "normative" and verdict is not False
+    if hedged and not law:
         # Honest absence or an estimate: not a claim of fact, so never below
         # medium. About the law it is still a claim, and a hedge is no source.
         return "medium"
     if provenance == "observed":
-        if ctype == "normative":
+        if law:
             return "low"
         return "high" if exact else "medium"
     if provenance == "reasoning" and ctype == "value" and value_supported:
         return "medium"
     if provenance in _FACT_CLASSES:
-        if ctype == "normative":
+        if law:
             return "low"
         return "medium" if unmatched else "high"
     if ctype != "descriptive":
@@ -955,6 +1037,7 @@ def stamp_ceiling(stamp: ClaimStamp) -> Level:
         exact=stamp.exact,
         hedged=stamp.hedged,
         value_supported=stamp.value_supported,
+        verdict=stamp.is_verdict,
     )
     return min(level, stamp.cap, key=_LEVELS.index) if stamp.cap else level
 
@@ -969,8 +1052,8 @@ _SUPPORT: dict[Level, float] = {"low": 0.0, "medium": 0.5, "high": 1.0}
 #: one next step the normative net caught (one of two) is not floored by it.
 UNBACKED_SHARE = 0.5
 
-#: A legal conclusion: the sentence says a requirement is met, needed or
-#: allowed. Narrow on purpose: a next step („muss im Einzelnen geöffnet
+#: A legal conclusion: the sentence says a requirement is met, needed, allowed
+#: or missed. Narrow on purpose: a next step („muss im Einzelnen geöffnet
 #: werden") or a fact about the corpus („39 Dateien des OIB-Korpus") is caught
 #: by the wide normative net but concludes nothing, and must not floor an
 #: answer the way an uncited verdict does (:func:`claims_ceiling`).
@@ -980,17 +1063,18 @@ _VERDICT_RE = re.compile(
     r"|genehmigungsfähig|genehmigungsfaehig|bewilligungspflichtig|genehmigungspflichtig"
     r"|erforderlich|vorgeschrieben|entspricht|entsprechen|widerspricht|verstößt|verstoesst|ausreichend"
     r"|überschreit|ueberschreit|unterschreit|einzuhalten|bewilligt|genehmigt|einschlägig|einschlaegig"
-    r"|anwendbar|greift|gilt\s+nicht"
-    r"|complies|compliant|permitted|permissible|required|meets|satisf|applies|exceed)",
+    r"|anwendbar|greift|gilt\s+nicht|genügt|genuegt|ausreicht|reicht\s+(?:nicht|aus)|nötig|noetig|notwendig|vorzulegen|nachzuweisen"
+    r"|zu\s+(?:schmal|gering|hoch|niedrig|klein|kurz|lang|breit|eng|steil|flach|weit|nah)\b"
+    r"|complies|compliant|permitted|permissible|required|meets|satisf|applies|exceed|too\s+(?:narrow|low|high|small|short|steep))",
     re.IGNORECASE,
 )
-
-
-#: A requirement's modal („muss", „darf", „ist … zu"). Alone it is a next step
-#: as often as a rule; beside a value or a named instrument it states the rule.
+#: A requirement's modal („muss", „darf", „ist … zu", „vorzulegen"). Alone it
+#: is a next step as often as a rule; beside a value or a named instrument it
+#: states the rule.
 _MODAL_RE = re.compile(
-    r"\b(?:muss|müssen|muessen|darf|dürfen|duerfen|soll|sollen|must|shall|may\s+not)\b"
-    r"|\b(?:ist|sind)\s+(?:\w+\s+){0,3}zu\s+\w+en\b",
+    r"\b(?:muss|müssen|muessen|darf|dürfen|duerfen|soll|sollen|gilt|gelten|must|shall|may\s+not)\b"
+    r"|\b(?:ist|sind)\s+(?:\w+\s+){0,3}zu\s+\w+en\b"
+    r"|\b\w+zu\w+en\b",
     re.IGNORECASE,
 )
 #: An instrument of the law named in the sentence: a paragraph, an OIB guideline, a code or a standard.
@@ -998,18 +1082,57 @@ _INSTRUMENT_RE = re.compile(
     r"§|\bOIB\b|\bOIB-|richtlinie|bauordnung|bautechnikverordnung|\bÖNORM|\bOENORM|\bEN\s?\d|\bDIN\b|\bBO\b",
     re.IGNORECASE,
 )
+#: What a next step, a question left open or an offer reads like: it asserts
+#: nothing the answer could be wrong about. „Ob GK 5 hier richtig ist, muss …
+#: geprüft werden", „Als Nächstes wäre … auszuwerten", „muss im Einzelnen
+#: geöffnet werden", „Eine kurze Nachricht genügt".
+_NEXT_STEP_VERBS = (
+    r"(?:prüf|klär|öffn|oeffn|abstimm|bestätig|bestaetig|auswert|les|kontrollier|verifizier|nachfrag|anfrag"
+    r"|ermittel|entscheid|feststell|aufschlag|ergänz|ergaenz|nachreich|abklär|abklaer)"
+)
+_NEXT_STEP_RE = re.compile(
+    r"^\s*(?:ob|welche[rsnm]?|wie|wann|wo|wer)\b[^.?!]*,\s*(?:muss|müssen|muessen|sollte|sollten|ist|sind|wäre|waere|bleibt)\b"
+    r"|\bals\s+nächste[srnm]?\b|\bals\s+naechste[srnm]?\b|\bnächste[rn]?\s+schritt|\bnaechste[rn]?\s+schritt"
+    r"|\b(?:muss|müssen|muessen|sollte|sollten|wäre|waere)\b[^.?!]*\b(?:ge)?"
+    + _NEXT_STEP_VERBS
+    + r"\w*\s*(?:werden|lassen)?\s*[.?!]?\s*$"
+    r"|\b(?:ist|sind|wäre|waere)\b[^.?!]*\bzu\s+" + _NEXT_STEP_VERBS + r"\w*\b"
+    r"|\b\w*zu" + _NEXT_STEP_VERBS + r"\w*en\b"
+    r"|^\s*(?:ich\s+kann|wenn\s+sie\b|gerne\b|sagen\s+sie|eine\s+kurze\s+(?:nachricht|rückmeldung|rueckmeldung)"
+    r"|i\s+can\b|if\s+you\b|let\s+me\s+know)"
+    # The answer's account of its own reading: „Nicht gelesen habe ich …",
+    # „… habe ich nicht geprüft", „… nenne ich erst nach dem Aufschlagen",
+    # „Dafür brauche ich eine gezielte Abfrage". Scope, not a claim.
+    r"|^\s*nicht\s+(?:\w+\s+)?(?:gelesen|geprüft|geprueft|geöffnet|geoeffnet|ausgezählt|ausgezaehlt)\s+habe\s+ich\b"
+    r"|\b(?:habe|hab)\s+ich\b[^.?!]*\bnicht\b[^.?!]*\b(?:gelesen|geprüft|geprueft|geöffnet|geoeffnet|ausgezählt"
+    r"|ausgezaehlt|ausgewertet|nachgeprüft|nachgeprueft)\b"
+    r"|\b(?:nenne|liefere|prüfe|pruefe)\s+ich\s+erst\b|\b(?:brauche|bräuchte|braeuchte|benötige|benoetige)\s+ich\b"
+    r"|\b(?:needs?\s+to\s+be|must\s+be|should\s+be)\s+(?:checked|verified|confirmed|clarified|opened|reviewed)\b"
+    r"|\bnext\s+step\b|^\s*whether\b",
+    re.IGNORECASE,
+)
+
+
+def is_next_step(sentence: str) -> bool:
+    """Whether a sentence is a next step, a question left open or an offer (:data:`_NEXT_STEP_RE`)."""
+    return _NEXT_STEP_RE.search(_MARKER_RE.sub("", sentence)) is not None
 
 
 def states_verdict(sentence: str) -> bool:
     """Whether a sentence concludes something about the law: met, needed, allowed, or a requirement it states.
 
-    A verdict word (:data:`_VERDICT_RE`), or a requirement's modal beside a
-    value or a named instrument („muss mindestens 1,20 m breit sein", „muss
-    nach § 5 bewilligt werden"). A modal alone („muss im Einzelnen geöffnet
-    werden") is how a next step reads, and an instrument alone („die 39
-    Dateien des OIB-Korpus") is a fact about the corpus.
+    A verdict word (:data:`_VERDICT_RE`: „erfüllt", „nötig", „zu schmal",
+    „vorzulegen"), or a requirement's modal beside a value or a named
+    instrument („muss mindestens 1,20 m breit sein", „muss nach § 5 bewilligt
+    werden"). Never a next step (:func:`is_next_step`): „Ob ein zweiter
+    Fluchtweg erforderlich ist, muss geprüft werden" leaves the question open.
+    A modal alone („muss im Einzelnen geöffnet werden") is how a next step
+    reads, and an instrument alone („die 39 Dateien des OIB-Korpus") is a fact
+    about the corpus.
     """
     text = _MARKER_RE.sub("", sentence)
+    if is_next_step(text):
+        return False
     if _VERDICT_RE.search(text):
         return True
     return _MODAL_RE.search(text) is not None and (bool(_value_tokens(text)) or _INSTRUMENT_RE.search(text) is not None)
@@ -1027,7 +1150,7 @@ def support(stamp: ClaimStamp) -> float:
     sentence beside it does not make it a claim the law backs.
     """
     level = stamp_ceiling(stamp)
-    if stamp.provenance == "reasoning" and stamp.claim_type != "normative":
+    if stamp.provenance == "reasoning" and not stamp.is_verdict:
         if _value_tokens(stamp.text) and not (stamp.drawn or stamp.value_supported):
             return 0.0
         if level == "low":
@@ -1039,60 +1162,91 @@ def _bearing(stamps: Sequence[ClaimStamp]) -> list[ClaimStamp]:
     return [stamp for stamp in stamps if stamp.load_bearing]
 
 
-def evidence_share(stamps: Sequence[ClaimStamp]) -> float | None:
-    """How much of what the answer asserts rests on evidence this turn read: 0 to 1, None with no claim.
+def claim_supports(stamps: Sequence[ClaimStamp]) -> list[float]:
+    """The support of each claim the answer makes, in order: a load-bearing sentence, or a group as one.
 
-    The mean :func:`support` over the load-bearing sentences, scored in
-    Langfuse as ``claims-evidence-share``. The level does not threshold it
-    (:func:`claims_ceiling` counts); it is the trend a calibration reads.
+    A table or a list under a lead-in is one statement (:attr:`ClaimStamp.group`):
+    its rows and lead-in count once, with the mean of their supports. Nine
+    rows of a table of contents must not outvote five cited sentences, nor be
+    outvoted by them.
     """
-    bearing = _bearing(stamps)
-    if not bearing:
+    supports: list[float] = []
+    groups: dict[int, list[float]] = {}
+    slot: dict[int, int] = {}
+    for stamp in _bearing(stamps):
+        value = support(stamp)
+        if stamp.group is None:
+            supports.append(value)
+            continue
+        if stamp.group not in groups:
+            groups[stamp.group] = []
+            slot[stamp.group] = len(supports)
+            supports.append(0.0)
+        groups[stamp.group].append(value)
+    for group, values in groups.items():
+        supports[slot[group]] = sum(values) / len(values)
+    return supports
+
+
+def evidence_share(stamps: Sequence[ClaimStamp]) -> float | None:
+    """The mean support of the answer's claims (:func:`claim_supports`): 0 to 1, None with no claim.
+
+    Scored in Langfuse as ``claims-evidence-share``. The level does not
+    threshold it (:func:`claims_ceiling` counts); it is the trend a calibration
+    reads.
+    """
+    supports = claim_supports(stamps)
+    if not supports:
         return None
-    return sum(support(stamp) for stamp in bearing) / len(bearing)
+    return sum(supports) / len(supports)
 
 
 def _uncited_law(stamp: ClaimStamp) -> bool:
-    return stamp.claim_type == "normative" and stamp.provenance not in _PASSAGE_CLASSES
+    return stamp.is_verdict and stamp.provenance not in _PASSAGE_CLASSES
 
 
 def unsupported_claims(stamps: Sequence[ClaimStamp]) -> list[ClaimStamp]:
-    """The load-bearing sentences that keep an answer below ``high`` and that the chip names.
+    """The load-bearing sentences the chip names: an uncited verdict on the law, and a pointer that did not hold.
 
-    A sentence about the law without a passage behind it (``normative`` and
-    not ``quoted`` or ``cited``, hedged or not: a hedge is no source) and a
-    pointer that did not hold (``cited_dropped``). The reader checks these
-    first; the chip names the first kind whatever the model said of itself.
+    A verdict (:attr:`ClaimStamp.is_verdict`) without a quoted or cited
+    passage, hedged or not: a hedge is no source. A next step is never one, nor
+    a normative sentence that concludes nothing.
     """
-    return [stamp for stamp in _bearing(stamps) if stamp.provenance == "cited_dropped" or _uncited_law(stamp)]
+    return [
+        stamp
+        for stamp in _bearing(stamps)
+        if stamp.provenance == "cited_dropped" or stamp.dropped or _uncited_law(stamp)
+    ]
 
 
 def claims_ceiling(stamps: Sequence[ClaimStamp]) -> Level:
     """The level the answer's evidence allows (rule 3, ADR-0139); :data:`NO_CLAIMS_CEILING` with no claim.
 
-    - ``high`` when every load-bearing sentence has evidence of its own
-      (:func:`support` 1): the chip's „14 von 14 Aussagen belegt" is high, and
-      nothing less is.
+    Counted over claims (:func:`claim_supports`: a load-bearing sentence, or a
+    table under a lead-in as one):
+
+    - ``high`` when every claim has support 1: „14 von 14 Aussagen belegt" is
+      high, and nothing less is.
     - ``low`` when more than :data:`UNBACKED_SHARE` of them have nothing behind
-      them (support 0), or when the answer concludes something about the law
-      (:func:`states_verdict`) and none of its legal sentences has a passage:
-      a measurement or a record beside an uncited verdict does not lift it.
+      them, or when the answer concludes something about the law
+      (:attr:`ClaimStamp.is_verdict`) and none of its normative sentences has a
+      passage: a measurement or a record beside an uncited verdict does not
+      lift it.
     - ``medium`` otherwise.
 
     Before (rule 2) this was the weakest load-bearing sentence's ceiling: one
-    sentence the wide normative net caught („muss im Einzelnen geöffnet
-    werden", „die 39 Dateien des OIB-Korpus") floored an answer whose every
-    other sentence was read off a record or a passage.
+    sentence the wide normative net caught floored an answer whose every other
+    sentence was read off a record or a passage. Next steps bear no load at all
+    (:func:`mark_load_bearing`).
     """
     bearing = _bearing(stamps)
-    if not bearing:
+    supports = claim_supports(bearing)
+    if not supports:
         return NO_CLAIMS_CEILING
-    supports = [support(stamp) for stamp in bearing]
-    if sum(1 for value in supports if value == 0.0) > UNBACKED_SHARE * len(bearing):
+    if sum(1 for value in supports if value == 0.0) > UNBACKED_SHARE * len(supports):
         return "low"
-    law = [stamp for stamp in bearing if stamp.claim_type == "normative"]
-    verdict_uncited = any(_uncited_law(stamp) and states_verdict(stamp.text) for stamp in law)
-    if verdict_uncited and not any(stamp.provenance in _PASSAGE_CLASSES for stamp in law):
+    read_the_law = any(stamp.claim_type == "normative" and stamp.provenance in _PASSAGE_CLASSES for stamp in bearing)
+    if any(_uncited_law(stamp) for stamp in bearing) and not read_the_law:
         return "low"
     if all(value == 1.0 for value in supports):
         return "high"
@@ -1105,7 +1259,7 @@ def weakest_claim(stamps: Sequence[ClaimStamp]) -> ClaimStamp | None:
     Read for the capped reason only: a normative sentence names
     ``normative_claim_uncited``, anything else ``ungrounded``.
     """
-    unsupported = [stamp for stamp in unsupported_claims(stamps) if stamp.claim_type == "normative"]
+    unsupported = [stamp for stamp in _bearing(stamps) if _uncited_law(stamp)]
     if unsupported:
         return unsupported[0]
     bearing = _bearing(stamps)

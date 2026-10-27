@@ -16,6 +16,7 @@ from aiq_agent.common.claim_provenance import classify_claims
 from aiq_agent.common.claim_provenance import mark_load_bearing
 from aiq_agent.common.claim_provenance import normative_uncited
 from aiq_agent.common.claim_provenance import stamp_ceiling
+from aiq_agent.common.claim_provenance import support
 from aiq_agent.common.claim_provenance import weakest_claim
 from aiq_agent.common.workspace_records import listing_record
 from aiq_agent.common.workspace_records import record_from_result
@@ -44,12 +45,17 @@ def _classes(prose: str, evidence: ClaimEvidence) -> list[tuple[str, str]]:
 
 
 class TestEachClassFromItsEvidence:
-    def test_a_resolved_marker_is_cited_and_an_unresolved_label_is_cited_dropped(self):
+    def test_a_resolved_marker_is_cited_and_an_unresolved_label_is_a_flag_not_a_class(self):
+        """ADR-0139: a pointer that did not hold is named on the chip; the class is what is left without it."""
         prose = f"Die Raumhöhe muss 2,50 m betragen [1]. Laut § 5 ist das zulässig {DROPPED_CITATION_MARKER}."
-        assert _classes(prose, ClaimEvidence(cited_numbers=frozenset({1}))) == [
-            ("cited", "normative"),
-            ("cited_dropped", "normative"),
+        stamps = classify_claims(
+            prose, ClaimEvidence(cited_numbers=frozenset({1})), normative=answer_mentions_normative_claim
+        )
+        assert [(stamp.provenance, stamp.claim_type, stamp.dropped) for stamp in stamps] == [
+            ("cited", "normative", False),
+            ("reasoning", "normative", True),
         ]
+        assert support(stamps[1]) == 0.0
 
     def test_a_quote_line_the_server_stamped_verbatim_is_quoted(self):
         prose = f"> „{QUOTE}“ [1]"
@@ -323,10 +329,12 @@ class TestTheCeilings:
 def test_counts_and_the_normative_tally():
     stamps = [
         ClaimStamp("a", "cited", "normative"),
-        ClaimStamp("b", "model_knowledge", "normative"),
+        ClaimStamp("Das ist damit zulässig.", "model_knowledge", "normative"),
         ClaimStamp("c", "record", "descriptive"),
+        ClaimStamp("Ob das reicht, muss geprüft werden.", "model_knowledge", "normative"),
     ]
-    assert class_counts(stamps) == {"cited": 1, "record": 1, "model_knowledge": 1}
+    assert class_counts(stamps) == {"cited": 1, "record": 1, "model_knowledge": 2}
+    # Only the verdict is an uncited claim about the law; the next step concludes nothing (ADR-0139).
     assert normative_uncited(stamps) == 1
 
 

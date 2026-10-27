@@ -364,7 +364,11 @@ class ResearchAgentState(BaseModel):
 
     @property
     def answer_confidence_version(self) -> int | None:
-        """Which rule computed :attr:`answer_confidence`: 3 for the evidence share over the stamps, 1 for the floors.
+        """Which rule computed :attr:`answer_confidence`: 2 for the per-sentence stamps, 1 for the floors.
+
+        Rule 3 (ADR-0139, the count of backed claims) is 2 here too: an open
+        tab reads the field as ``1 | 2``, and the stamps' ``support`` tells rule
+        3 apart.
 
         None when nothing is surfaced. The reader renders a turn's level and
         its explanation under the rule it was computed with.
