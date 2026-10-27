@@ -140,7 +140,7 @@ def _parse_scores(raw: str) -> list[tuple[int, float]]:
         return []
     try:
         payload = json.loads(text[start : end + 1])
-    except (json.JSONDecodeError, ValueError):
+    except json.JSONDecodeError, ValueError:
         return []
     if not isinstance(payload, dict):
         return []

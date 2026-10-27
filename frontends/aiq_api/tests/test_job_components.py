@@ -1869,8 +1869,8 @@ class TestCitedSourceEmission:
     """
 
     def _registry(self):
-        from aiq_agent.common.citation_verification import SourceEntry
-        from aiq_agent.common.citation_verification import SourceRegistry
+        from aiq_agent.citations.entries import SourceEntry
+        from aiq_agent.citations.registry import SourceRegistry
 
         registry = SourceRegistry()
         registry.add(
@@ -1886,8 +1886,8 @@ class TestCitedSourceEmission:
         return registry
 
     def _cited_artifacts(self, report: str) -> list[dict]:
-        from aiq_agent.common.citation_verification import reset_session_registry
-        from aiq_agent.common.citation_verification import set_session_registry
+        from aiq_agent.citations.session import reset_session_registry
+        from aiq_agent.citations.session import set_session_registry
 
         callback = DeepResearchEventCallback()
         emitted: list[dict] = []
@@ -1958,8 +1958,8 @@ class TestCitedSourceEmission:
         assert any(item.get("url") == "https://example.com/a" for item in cited)
 
     def test_emission_is_idempotent_across_repeated_outputs(self):
-        from aiq_agent.common.citation_verification import reset_session_registry
-        from aiq_agent.common.citation_verification import set_session_registry
+        from aiq_agent.citations.session import reset_session_registry
+        from aiq_agent.citations.session import set_session_registry
 
         callback = DeepResearchEventCallback()
         emitted: list[dict] = []
@@ -2015,8 +2015,8 @@ class _StubLLMResult:
 
 def _kb_registry():
     """A registry holding one OIB document and one web page, as a run would."""
-    from aiq_agent.common.citation_verification import SourceEntry
-    from aiq_agent.common.citation_verification import SourceRegistry
+    from aiq_agent.citations.entries import SourceEntry
+    from aiq_agent.citations.registry import SourceRegistry
 
     registry = SourceRegistry()
     registry.add(
@@ -2110,8 +2110,8 @@ class TestCitedSourceRegistryResolution:
 
     def test_a_broken_provider_falls_back_to_the_session_registry(self):
         """Transparency artifacts never fail a job — not even on bad wiring."""
-        from aiq_agent.common.citation_verification import reset_session_registry
-        from aiq_agent.common.citation_verification import set_session_registry
+        from aiq_agent.citations.session import reset_session_registry
+        from aiq_agent.citations.session import set_session_registry
 
         def provider():
             raise RuntimeError("registry handle went away")
@@ -2218,7 +2218,7 @@ class TestVerifiedCitedSourceStream:
         code announced. (An unbacked URL on the line no longer does this: the
         document's key now carries the line and only the link is dropped.)
         """
-        from aiq_agent.common.citation_verification import verify_citations
+        from aiq_agent.citations.verification import verify_citations
 
         registry = _kb_registry()
         draft = (
@@ -2254,7 +2254,7 @@ class TestVerifiedCitedSourceStream:
         those as cited marked sources the finished answer never carries — and
         with `isCited` sticky in the frontend, permanently.
         """
-        from aiq_agent.common.citation_verification import SourceEntry
+        from aiq_agent.citations.entries import SourceEntry
 
         registry = _kb_registry()
         registry.add(SourceEntry(url="https://example.com/b", source_type="generic", tool_name="web_search_tool"))

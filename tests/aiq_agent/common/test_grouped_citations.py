@@ -6,8 +6,8 @@ import json
 
 import pytest
 
+from aiq_agent.citations.references import expand_grouped_citations
 from aiq_agent.common.answer_prose_stream import AnswerProseStream
-from aiq_agent.common.citation_verification import expand_grouped_citations
 
 
 @pytest.mark.parametrize(
