@@ -57,6 +57,16 @@ ENV UV_LINK_MODE=copy
 # publish leaves its commit with no image, so be patient with the index.
 ENV UV_HTTP_TIMEOUT=120 \
     UV_HTTP_RETRIES=6
+# Ship bytecode. The runtime stages set PYTHONDONTWRITEBYTECODE, so an image
+# without .pyc compiled every module from source in every process, on every
+# start: the agent's boot imports took 11.0 s instead of 4.0 s, and the
+# retrieval stack the first knowledge search imports lazily 4.9 s instead of
+# 2.2 s (measured 2026-10-27, docs/architecture/turn-latency-measured-2026-09.md §3.6).
+ENV UV_COMPILE_BYTECODE=1
+# The BPE table the history budget counts tokens with (tiktoken cl100k_base),
+# baked in below. Without it every process downloaded it on its first turn,
+# synchronously, inside the conversation graph's first node.
+ENV TIKTOKEN_CACHE_DIR=/app/tiktoken-cache
 
 # Copy workspace configuration and lockfile
 COPY pyproject.toml uv.lock ./
@@ -112,6 +122,13 @@ RUN /app/.venv/bin/python -c "import aiq_api; import knowledge_layer; import ris
     && /app/.venv/bin/python -c "import ifc_spatial.tools; print('✓ Spatial engine installed')" \
     && ! uv pip check --python /app/.venv/bin/python 2>&1 | grep "not installed"
 
+# The workspace packages are installed editable, so UV_COMPILE_BYTECODE above
+# compiled their dependencies but not them: compile their sources here. Then
+# fetch the BPE table into TIKTOKEN_CACHE_DIR, so no process downloads it.
+RUN /app/.venv/bin/python -m compileall -q -j 0 /app/src /app/sources /app/frontends/aiq_api /app/packages/ifc-spatial-py \
+    && /app/.venv/bin/python -c "import tiktoken; tiktoken.get_encoding('cl100k_base')" \
+    && test -n "$(ls -A /app/tiktoken-cache)"
+
 RUN chmod +x /app/deploy/start_web.py \
     && mkdir -p /app/data \
     && chown -R 1000:1000 /app/data
@@ -153,6 +170,7 @@ USER 1000:1000
 
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
+ENV TIKTOKEN_CACHE_DIR=/app/tiktoken-cache
 ENV PATH="/app/.venv/bin:$PATH"
 
 # The commit this image was built from. `--build-arg GRID_GIT_SHA=$(git rev-parse
@@ -190,6 +208,7 @@ USER 1000:1000
 
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
+ENV TIKTOKEN_CACHE_DIR=/app/tiktoken-cache
 ENV PATH="/app/.venv/bin:$PATH"
 ENV APP_ENV=production
 

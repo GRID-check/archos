@@ -23,6 +23,7 @@ from pydantic import Field
 from aiq_agent.agents.piloti.clarify import ClarifierSettings
 from aiq_agent.agents.piloti.clarify import build_clarifier
 from aiq_agent.agents.piloti.conversation import ConversationGraph
+from aiq_agent.agents.piloti.history import warm_token_encoder
 from aiq_agent.agents.piloti.models import ConversationState
 from aiq_agent.common import AgentGroup
 from aiq_agent.common import filter_tools_by_sources
@@ -514,8 +515,11 @@ def _turn_runner(agent: ConversationGraph, config: ChatDeepResearcherConfig, sta
         # turn, None included, so one turn never runs on the last one's answer;
         # the scope read below and every read path after it keep only these.
         bind_restricted_use(
-            await begin_restricted_use(
-                request, conversation_id, answer_message_id=turn_answer_message_id(conversation_id)
+            await spanned(
+                "setup.restricted_use",
+                begin_restricted_use(
+                    request, conversation_id, answer_message_id=turn_answer_message_id(conversation_id)
+                ),
             )
         )
         if inputs.reply_in_thread:
@@ -568,7 +572,7 @@ def _turn_runner(agent: ConversationGraph, config: ChatDeepResearcherConfig, sta
                         else:
                             yield item
                 message_id = answer_message_id(conversation_id, turn.context.stage_facts.ws_parent_id)
-                stream = await asyncio.to_thread(answer_streaming_enabled)
+                stream = await spanned("setup.answer_streaming", asyncio.to_thread(answer_streaming_enabled))
                 # `aclosing` at every level, because `async for` never closes
                 # what it iterates: a consumer that walks away would reach the
                 # flush below with the graph still suspended mid-run.
@@ -605,6 +609,11 @@ async def chat_deepresearcher_agent(config: ChatDeepResearcherConfig, builder: B
         AgentGroup.FOLLOW_UPS: await _stage_llm(builder, config.follow_ups_llm, "follow_ups_llm"),
     }
     agent = await _build_agent(config, builder)
+    # The history budget counts tokens with tiktoken, whose first use reads the
+    # BPE table (downloading it when the image did not bake it in). Paid here,
+    # at boot and off the loop, it is not paid synchronously by the first
+    # turn's first node: measured 1.0 s with an empty cache, 0.18 s from disk.
+    await asyncio.to_thread(warm_token_encoder)
     # Ingest-only context (ADR-0034 addendum): a `context_only` frame lands in
     # this conversation's checkpoint without a turn. Published rather than
     # imported because the socket is the front end's and the graph is ours.

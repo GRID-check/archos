@@ -71,10 +71,25 @@ def decision_observation(
 
 
 def emit_decision_span(slot: str, body_in: dict[str, Any], body_out: dict[str, Any]) -> None:
-    """Push the ``decide.<slot>`` step pair. Never raises."""
-    from aiq_agent.observability.retrieval_trace import emit_step_span
+    """Push the ``decide.<slot>`` step pair. Never raises.
 
-    emit_step_span(f"{DECISION_SPAN_PREFIX}{slot}", body_in, body_out)
+    Emitted once the call returned. With its ``latency_ms`` the pair spans the
+    call itself, ending now, so the generation's latency in Langfuse is the
+    call's and not the 1 ms a point reads as (``emit_step_span``).
+    """
+    from aiq_agent.observability.retrieval_trace import emit_step_span
+    from aiq_agent.observability.turn_phases import now
+
+    latency_ms = body_out.get("latency_ms")
+    ended = now()
+    started = ended - latency_ms / 1000 if isinstance(latency_ms, int | float) and latency_ms >= 0 else None
+    emit_step_span(
+        f"{DECISION_SPAN_PREFIX}{slot}",
+        body_in,
+        body_out,
+        started_at=started,
+        ended_at=ended if started is not None else None,
+    )
 
 
 def is_decision_span(name: str | None) -> bool:

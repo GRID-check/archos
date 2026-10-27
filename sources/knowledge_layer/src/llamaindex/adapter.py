@@ -6483,6 +6483,22 @@ class LlamaIndexRetriever(BaseRetriever):
                 chunk.metadata.setdefault(CHUNK_ORDINAL_FIELD, hit.payload[CHUNK_ORDINAL_FIELD])
         return chunks
 
+    def warm_components(self) -> None:
+        """Pay the lazy initialisation now, so the first search of the process does not. Blocking.
+
+        The preflight imports ``llama_index.core`` and ``qdrant_client`` and
+        the embedding client is built (``_initialize_components``); the Qdrant
+        read path is imported with them. None of it touches the network.
+        Measured 2026-10-27 in a process that had done the boot imports:
+        1.0 s + 0.6 s + 0.4 s from a warm disk cache, 6.1 s for the
+        ``llama_index.core`` import alone from a cold one. On the first turn
+        of a process that sat inside the round-0 prefetch, before its
+        embedding call. The knowledge tool calls this at build time
+        (``knowledge_layer.register``).
+        """
+        self._ensure_initialized()
+        from ..qdrant import retrieval  # noqa: F401 - the read path's imports, paid here
+
     def _warm_sync(self, query: str) -> None:
         self._ensure_initialized()
         self._embed_query_cached(query)
