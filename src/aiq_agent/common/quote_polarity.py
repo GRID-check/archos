@@ -1,6 +1,6 @@
 """Polarity agreement: a quote that changes what the passage negates or restricts is not verbatim.
 
-The quote matcher (``citation_verification._quote_coverage``) already refuses a
+The quote matcher (``citations.quote_matching.normalized_coverage``) already refuses a
 quote that skips or inserts a whole word. What it cannot see is an edit INSIDE
 a word, because it is calibrated to forgive sub-word noise (a hyphen, a swapped
 letter, an inflection): „keine Genehmigung" quoted as „eine Genehmigung"

@@ -23,6 +23,7 @@ from langchain_core.messages import HumanMessage
 from pydantic import Field
 from pydantic import field_validator
 
+from aiq_agent.citations.entries import EmptySourceRegistryError
 from aiq_agent.common import AgentGroup
 from aiq_agent.common import LLMProvider
 from aiq_agent.common import LLMRole
@@ -34,7 +35,6 @@ from aiq_agent.common import is_verbose
 from aiq_agent.common import unavailable_source_ids
 from aiq_agent.common import validate_tool_availability
 from aiq_agent.common.agent_tools import load_agent_tools
-from aiq_agent.common.citation_verification import EmptySourceRegistryError
 from aiq_agent.common.client_tools import KNOWN_CLIENT_TOOLS
 from aiq_agent.common.client_tools import client_tool_declared
 from aiq_agent.common.data_source_registry import get_all_sources

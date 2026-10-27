@@ -265,7 +265,7 @@ def _decode_audio(audio_base64: str) -> bytes | str:
     """The recording's bytes, or the error code for why there are none."""
     try:
         audio = base64.b64decode(audio_base64, validate=True)
-    except (binascii.Error, ValueError):
+    except binascii.Error, ValueError:
         return "audio_invalid"
     if not audio:
         return "audio_invalid"

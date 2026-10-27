@@ -408,7 +408,7 @@ def _citation_keys_by_round(payloads: Sequence[tuple[str, dict]]) -> dict[int | 
             continue
         try:
             round_index: int | None = int(inp.get("round")) if inp.get("round") is not None else None
-        except (TypeError, ValueError):
+        except TypeError, ValueError:
             round_index = None
         by_round.setdefault(round_index, set()).update(keys)
     return by_round
@@ -441,7 +441,7 @@ def flag_cross_turn(payloads: Sequence[tuple[str, dict]]) -> str:
 # measuring channel, and nothing read out of anybody's prose.
 
 #: Tool basenames belonging to RIS. The prefix, not a list of names, because
-#: `turn_status._SEARCH_CORPORA` maps the same prefix to the `ris` corpus and
+#: `tool_calls._SEARCH_CORPORA` maps the same prefix to the `ris` corpus and
 #: two lists of RIS tool names would drift.
 _RIS_TOOL_PREFIX = "ris"
 
@@ -569,7 +569,7 @@ def observe(question: Question, steps: Sequence[dict], answer: str, envelope: di
             if isinstance(raw, dict) and raw.get("round") is not None:
                 try:
                     rounds.add(int(raw["round"]))
-                except (TypeError, ValueError):
+                except TypeError, ValueError:
                     pass
     checkpoints = {
         int(m.group(1)): str(body.get("source") or "none")

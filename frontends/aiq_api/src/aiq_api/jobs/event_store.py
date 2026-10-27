@@ -218,7 +218,7 @@ class EventStore:
         """Dispose a sync or async SQLAlchemy engine safely."""
         try:
             dispose_result = engine.dispose()
-        except (RuntimeError, OSError):
+        except RuntimeError, OSError:
             return
         except Exception:
             logger.exception("Failed to dispose engine")
@@ -233,7 +233,7 @@ class EventStore:
             except RuntimeError:
                 try:
                     asyncio.run(dispose_result)
-                except (RuntimeError, OSError):
+                except RuntimeError, OSError:
                     pass
             else:
                 loop.create_task(dispose_result)
@@ -246,7 +246,7 @@ class EventStore:
             for _, (engine, _) in list(cls._sync_engine_cache.items()):
                 try:
                     engine.dispose()
-                except (RuntimeError, OSError):
+                except RuntimeError, OSError:
                     pass
             cls._sync_engine_cache.clear()
 
@@ -257,7 +257,7 @@ class EventStore:
         for engine in async_engines:
             try:
                 await engine.dispose()
-            except (RuntimeError, OSError):
+            except RuntimeError, OSError:
                 pass
 
     @classmethod
@@ -268,7 +268,7 @@ class EventStore:
             for _, (engine, _) in list(cls._sync_engine_cache.items()):
                 try:
                     engine.dispose()
-                except (RuntimeError, OSError):
+                except RuntimeError, OSError:
                     pass
             cls._sync_engine_cache.clear()
 

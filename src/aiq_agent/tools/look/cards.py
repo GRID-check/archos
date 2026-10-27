@@ -78,7 +78,7 @@ def clamp_region(region: Any) -> list[float] | None:
         return None
     try:
         x, y, w, h = (min(1.0, max(0.0, float(share))) for share in region)
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         return None
     w, h = min(w, 1 - x), min(h, 1 - y)
     if w <= 0 or h <= 0:
@@ -228,7 +228,7 @@ def take_looks() -> list[dict[str, Any]]:
 
 def _cited_names(cited: Iterable[Any]) -> set[str]:
     """The file names (basename, case-folded) of the answer's cited sources."""
-    from aiq_agent.common.citation_verification import source_entry_to_wire
+    from aiq_agent.citations.wire import source_entry_to_wire
 
     names: set[str] = set()
     for source in cited:
@@ -338,7 +338,7 @@ def drawing_value_status(
     overview or nothing (ADR-0128, the ``looked-before-measurement`` score).
     """
     try:
-        from aiq_agent.common.citation_verification import source_entry_to_wire
+        from aiq_agent.citations.wire import source_entry_to_wire
 
         drawn = [
             source.entry

@@ -33,10 +33,10 @@ from aiq_agent.agents.piloti.answer_pipeline import finalize_answer
 from aiq_agent.cards.registry import CardRegistry
 from aiq_agent.cards.registry import reset_card_registry
 from aiq_agent.cards.registry import set_card_registry
+from aiq_agent.citations.entries import SourceEntry
+from aiq_agent.citations.registry import SourceRegistry
 from aiq_agent.common.answer_envelope import AnswerMeta
 from aiq_agent.common.answer_envelope import gate_answer_meta
-from aiq_agent.common.citation_verification import SourceEntry
-from aiq_agent.common.citation_verification import SourceRegistry
 
 #: Above the card floor (400) but below the takeaway floor (600): cards stay,
 #: takeaways were never gated in.

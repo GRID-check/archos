@@ -24,7 +24,7 @@ from unittest.mock import MagicMock
 import pytest
 from knowledge_layer.register import KnowledgeRetrievalConfig
 
-from aiq_agent.common.citation_verification import extract_sources_from_tool_result
+from aiq_agent.citations.extraction import extract_sources_from_tool_result
 from aiq_agent.common.grounding_block import begin_grounding_capture
 from aiq_agent.common.grounding_block import end_grounding_capture
 from aiq_agent.common.grounding_block import get_grounding_block

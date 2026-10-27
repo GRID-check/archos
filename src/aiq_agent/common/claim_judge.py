@@ -193,7 +193,7 @@ def parse_reply(text: str) -> Check | None:
 
     try:
         reply = CheckReply.model_validate(extract_json(text))
-    except (ValidationError, TypeError, ValueError):
+    except ValidationError, TypeError, ValueError:
         return None
     findings = tuple(
         Finding(f.statement.strip()[:300], f.problem, f.reason.strip()[:300], f.source.strip()[:200])

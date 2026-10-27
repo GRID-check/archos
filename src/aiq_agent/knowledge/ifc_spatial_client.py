@@ -116,7 +116,7 @@ def _container_memory_bytes() -> int | None:
             return value
     try:
         return os.sysconf("SC_PAGE_SIZE") * os.sysconf("SC_PHYS_PAGES")
-    except (ValueError, OSError, AttributeError):
+    except ValueError, OSError, AttributeError:
         return None
 
 

@@ -60,6 +60,10 @@ export interface ListJobRunsParams {
   limit?: number
 }
 
+export interface ListProjectRunsParams {
+  limit: number
+}
+
 // ============================================================
 // Errors
 // ============================================================
@@ -211,6 +215,20 @@ export const listJobRuns = async (
   if (params.limit !== undefined) search.set('limit', String(params.limit))
   const response = await fetch(`${runsBase(projectId)}?${search.toString()}`, { headers: jsonHeaders })
   if (!response.ok) await throwJobApiError(response, 'Failed to list task runs')
+  const data = (await response.json()) as Partial<TaskRunPage>
+  return data.runs ?? []
+}
+
+/**
+ * A project's runs across every task, newest first: the first `limit` of the
+ * project's run list, the feed the Tasks timeline groups.
+ */
+export const listProjectRuns = async (
+  projectId: string,
+  params: ListProjectRunsParams,
+): Promise<JobRun[]> => {
+  const response = await fetch(`${runsBase(projectId)}?limit=${params.limit}`)
+  if (!response.ok) await throwJobApiError(response, 'Failed to list project runs')
   const data = (await response.json()) as Partial<TaskRunPage>
   return data.runs ?? []
 }

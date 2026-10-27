@@ -2197,7 +2197,7 @@ class ListFilesConfig(FunctionBaseConfig, name="list_files"):
 def _coerce_int(value: Any, default: int, *, low: int, high: int) -> int:
     try:
         number = int(str(value).strip()) if value not in (None, "") else default
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         number = default
     return max(low, min(high, number))
 

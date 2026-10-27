@@ -2,7 +2,7 @@
 
 The design this implements asked for the duplicate-fetch guard to withhold the
 second identical `ris_lookup` call. THE CODE DISAGREES, and the code wins:
-``turn_status.fetch_signature`` signs ``knowledge_search`` and ``read_passage``
+``tool_calls.fetch_signature`` signs ``knowledge_search`` and ``read_passage``
 and nothing else, so no RIS call has ever been withheld — putting `ris_lookup`
 under that guard means editing ``turn_status``, which is a different change
 with a different blast radius (it is the atom BOTH nodes read, the agent node

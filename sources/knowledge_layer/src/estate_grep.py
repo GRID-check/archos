@@ -227,7 +227,7 @@ async def _search(
         parsed = parse_estate_path(path, directory=True) if path and path.strip() not in ("", "/") else None
     except (GrepRefused, PathRefused) as refusal:
         return ToolOutput(str(refusal), status="error")
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         return ToolOutput(f"`context` is a number of lines from 0 to {MAX_CONTEXT_LINES}.", status="error")
     if parsed is not None and parsed.mount is None:
         return ToolOutput(f'No place "{parsed.path}". `ls("/")` lists the places there are.', status="error")

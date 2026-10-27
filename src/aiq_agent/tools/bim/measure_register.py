@@ -621,7 +621,7 @@ class IfcMeasureInput(BaseModel):
         return ",".join(str(part).strip() for part in parts if str(part).strip())
 
     @model_validator(mode="after")
-    def _a_batch_fits_in_one_call(self) -> "IfcMeasureInput":
+    def _a_batch_fits_in_one_call(self) -> IfcMeasureInput:
         """The engine's own ceiling, applied before the model is downloaded.
 
         `measure` over more than :data:`MAX_BATCH` ids is refused by the engine
