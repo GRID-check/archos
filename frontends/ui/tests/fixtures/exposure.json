@@ -770,6 +770,16 @@
    "withheld": null,
    "reason": null
   },
+  "project-document-findings": {
+   "kind": "catalog",
+   "domain": "documents",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
   "project-upload-list": {
    "kind": "catalog",
    "domain": "documents",

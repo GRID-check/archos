@@ -6652,6 +6652,71 @@
         }
       }
     },
+    "/api/projects/{id}/document-findings": {
+      "get": {
+        "operationId": "project-document-findings",
+        "summary": "List what a project’s documents say about each other",
+        "description": "Findings read from the project's documents at ingest: `contradiction` (two current documents state one fact, e.g. storeys_above_ground, with different values), `missing_document` (a document points at a document type the project does not hold), `missing_plan` (a drawing number no document matches) and `incomplete_read` (pages Piloti could not fully read). Each finding names its documents and pages in `sources`; open them with document-get. Pass `documentId` to also get that document’s references resolved to project documents and the documents that point at it.",
+        "tags": [
+          "documents"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "The project id, from project-list."
+            },
+            "description": "The project id, from project-list."
+          },
+          {
+            "name": "documentId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "description": "A document id from document-list. With it, `document` carries that document's references resolved to the project's documents and the documents that point at it."
+            },
+            "description": "A document id from document-list. With it, `document` carries that document's references resolved to the project's documents and the documents that point at it."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. The body is the route’s JSON answer; no response schema is declared for it yet, so read the operation description for what it contains.",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          }
+        },
+        "x-mcp-annotations": {
+          "title": "List what a project’s documents say about each other",
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        }
+      }
+    },
     "/api/projects/{id}/uploads": {
       "get": {
         "operationId": "project-upload-list",
