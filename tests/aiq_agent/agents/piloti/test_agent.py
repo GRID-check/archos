@@ -707,9 +707,40 @@ class TestPilotiAgent:
             tools=[real_tool],
         )
 
-        assert "Write in the language of the request" in _bundled_prompt_text()
+        text = _bundled_prompt_text()
+        # The turn context is a human-role message right before the question
+        # (`prompt.request_messages`) and mostly German project data; "the
+        # request" read as including it answered an English question in German
+        # (live QA 2026-10-27, "What is this project about?").
+        assert "Write in the language of the person's newest message, not of the turn context or files" in text
+        assert "language of the request" not in text
         # German questions get Austrian technical German.
-        assert "German is Austrian technical German" in _bundled_prompt_text()
+        assert "German is Austrian technical German" in text
+
+    def test_an_english_question_is_answered_in_english_in_the_examples(self, mock_llm_provider, real_tool):
+        """Every example was German, so the examples taught German whatever the rule said.
+
+        At least one example asks in English and answers in English, with the
+        English sources label the CITATIONS rule names.
+        """
+        import re
+
+        PilotiAgent(llm_provider=mock_llm_provider, tools=[real_tool])
+        examples = re.findall(r"<example type=\"[a-z]+\">\nUser: (.*?)\n(.*?)</example>", _bundled_prompt_text(), re.S)
+        english = [body for question, body in examples if question.startswith(("What ", "How ", "Which "))]
+
+        assert english, "no example asks in English"
+        assert all("**References:**" in body and "**Quellen:**" not in body for body in english)
+
+    def test_default_prompt_names_profile_facts_in_words(self, mock_llm_provider, real_tool):
+        """The project context lists facts as `key=value`; a key copied into prose reached the reader.
+
+        Live QA 2026-10-27: „max_building_height=3" stood in an answer, in the
+        UI and over MCP alike.
+        """
+        PilotiAgent(llm_provider=mock_llm_provider, tools=[real_tool])
+
+        assert "Name a fact in words, never as its key" in _bundled_prompt_text()
 
     def test_default_prompt_keeps_escalate_marker_language_independent(self, mock_llm_provider, real_tool):
         """Language matching must NOT disturb the envelope's contract tokens.
@@ -2595,11 +2626,12 @@ class TestADirectReplyMayStillEmitACard:
         rendered = self._render()
         overview = rendered.split('type="walkthrough"')[1].split("</example>", 1)[0]
         assert '"kind": "walkthrough"' in overview
-        assert '"topic": "Brandschutz"' in overview
+        assert '"topic": "Fire safety"' in overview
         ruling = rendered.split('type="ruling"')[1].split("</example>", 1)[0]
         assert '"kind": "ruling"' in ruling
         assert '"value": "REI 60"' in ruling
         assert '"value": "Brandschutz"' not in rendered
+        assert '"value": "Fire safety"' not in rendered
 
     def test_the_identity_does_not_reduce_the_job_to_oib_questions(self):
         rendered = self._render()
