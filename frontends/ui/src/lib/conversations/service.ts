@@ -38,7 +38,7 @@ import type { ResourceRole, ResourceVisibility } from '@/lib/db/schema/resource-
 import { purgeConversationCollaboration } from '@/lib/collaboration/cleanup'
 import { discardConversationDrafts } from './working-directory'
 import { deleteSessionCollection, purgeSessionDocuments } from '@/lib/session-documents/cleanup'
-import { sessionCollectionName } from '@/lib/collection-scope'
+import { sessionCollectionName } from '@/lib/retrieval-scope/collection-scope'
 import { assertNoActiveHold } from '@/lib/compliance/holds'
 import { publishToUsers } from '@/lib/events/bus'
 import { inboxGroupKey } from '@/lib/inbox/registry'

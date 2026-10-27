@@ -15,7 +15,7 @@ vi.mock('@/lib/proxy/collection-authz', () => ({
   validateCollectionName: vi.fn().mockResolvedValue(null),
 }))
 
-vi.mock('@/lib/collection-scope-request', () => ({
+vi.mock('@/lib/retrieval-scope/collection-scope-request', () => ({
   buildCollectionScopeFromRequest: vi.fn().mockResolvedValue({ headerValue: 'scope' }),
 }))
 

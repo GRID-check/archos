@@ -7,8 +7,8 @@ import inspect
 import pytest
 from sqlalchemy import text
 
+from aiq_api.jobs import agent_job
 from aiq_api.jobs import queue
-from aiq_api.jobs import runner
 from aiq_api.jobs.event_store import EventStore
 from aiq_api.jobs.runner import _purge_deep_checkpoint
 from aiq_api.jobs.runner import _purge_deep_checkpoint_unless_reclaimed
@@ -115,6 +115,6 @@ async def test_an_unclaimed_run_has_no_claim_and_purges(tmp_path, monkeypatch):
 
 def test_the_runner_never_purges_without_the_claim_check():
     """Ratchet: the unconditional call is what deleted the winner's checkpoint."""
-    source = inspect.getsource(runner.run_agent_job)
+    source = inspect.getsource(agent_job)
     assert "_purge_deep_checkpoint(" not in source
     assert "_purge_deep_checkpoint_unless_reclaimed(" in source

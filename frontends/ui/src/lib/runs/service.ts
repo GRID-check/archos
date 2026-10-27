@@ -49,7 +49,7 @@ import {
 import type { Message } from '@/lib/db/schema/messages'
 import type { TaskRun } from '@/lib/db/schema/task-model'
 import { withPlatformAccess, withTenant } from '@/lib/db/tenant-context'
-import { buildCollectionScopeFromRequest } from '@/lib/collection-scope-request'
+import { buildCollectionScopeFromRequest } from '@/lib/retrieval-scope/collection-scope-request'
 import {
   addDocumentToBackendJob,
   cancelBackendJob,

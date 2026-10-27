@@ -11,7 +11,7 @@ import inspect
 import json
 from types import SimpleNamespace
 
-from aiq_api.jobs.runner import run_agent_job
+from aiq_api.jobs.agent_job import run_agent_job
 from aiq_api.jobs.submit import _build_run_agent_payload
 
 

@@ -3,11 +3,10 @@
  * The claim loop of the `bff-jobs` pool (ADR-0079).
  *
  * A replica claims jobs from `bff_job_queue` fairly across organizations
- * (`../job-queue.js`) and hands each to the BFF that runs in the SAME pod, one
- * slice at a time, over `POST /api/internal/jobs/run`. The loop owns the
- * claim: the heartbeat, the release, the failure and the finish. The BFF owns
- * the work: which kind does what, and the progress a slice leaves behind in the
- * job's payload.
+ * (`../job-queue.js`) and runs each one slice at a time, through one of the two
+ * doors below. The loop owns the claim: the heartbeat, the release, the failure
+ * and the finish. The BFF's services own the work: which kind does what, and
+ * the progress a slice leaves behind in the job's payload.
  *
  * WHAT COSTS AN ATTEMPT. Only a clean give-back is free: a drain, a claim over
  * its lane's cap, a long claim yielding its slot (`runClaim`), or a slice that
@@ -30,11 +29,15 @@
  * abandoned the same way (the claim is released, so the progress the slice
  * would have saved is refused: the write is conditional on the claim).
  *
- * WHY A SEPARATE PROCESS FROM THE WORK. The claim loop is plain Node with no
- * build step, like the purger and the scheduler, so it cannot import the
- * TypeScript services. They run behind the internal route, in the pod's own
- * BFF, which is the point: the heavy work lands on `bff-jobs` pods and never on
- * the user-facing frontend pods that proxy chat.
+ * TWO DOORS TO THE WORK. The claim loop is plain Node with no build step, like
+ * the purger and the scheduler, so it cannot import the TypeScript services
+ * from source. By default they run behind the internal route, in a BFF the pod
+ * spawns ({@link createSliceRunner}). With `GRID_BFF_JOBS_MODE=inprocess` they
+ * run in this process from `dist-jobs/slice.mjs`, the services bundled at image
+ * build ({@link createInProcessSliceRunner}, ADR-0079 amendment 1), and no
+ * server is spawned. Either way the heavy work lands on `bff-jobs` pods and
+ * never on the user-facing frontend pods that proxy chat, and either way a
+ * slice comes back as the same {@link SliceOutcome}.
  *
  * The functions here take their collaborators as arguments, so the specs drive
  * a whole claim without a database or a server.
@@ -121,6 +124,57 @@ function createSliceRunner({ url, token, timeoutMs, fetchImpl = fetch }) {
       return { kind: 'more', payload: body.payload ?? {} }
     } catch (error) {
       return { kind: 'transient', failure: describeTransportError(error) }
+    }
+  }
+}
+
+/**
+ * What `dist-jobs/slice.mjs` exports (`src/lib/jobs-queue/slice-entry.ts`).
+ *
+ * @typedef {object} SliceBundle
+ * @property {() => Promise<void>} initSliceHost
+ * @property {() => Promise<void>} shutdownSliceHost
+ * @property {(jobId: string, worker: string) => Promise<
+ *   | { kind: 'done' } | { kind: 'more', payload: Record<string, unknown> } | { kind: 'lost' }
+ *   | { kind: 'defer', payload: Record<string, unknown>, notBefore: string }
+ *   | { kind: 'transient', failure: { kind: string, detail?: string } }
+ *   | { kind: 'error', message: string }>} runSlice
+ */
+
+/**
+ * Run one slice of a claimed job in this process, through the bundled services.
+ *
+ * The same question {@link createSliceRunner} asks over HTTP, with the same
+ * reading of the answer: the bundle maps what a request would have answered
+ * as a status (409 lost, a database outage transient) to the outcome itself.
+ * A slice that outlives `timeoutMs` is reported transient exactly as an aborted
+ * request is; like the request, the work it started is not cut off, and the
+ * claim it no longer holds refuses whatever it would have saved.
+ *
+ * @param {{ bundle: Pick<SliceBundle, 'runSlice'>, timeoutMs: number }} options
+ * @returns {(claim: Claim, worker: string) => Promise<SliceOutcome>}
+ */
+function createInProcessSliceRunner({ bundle, timeoutMs }) {
+  return async (claim, worker) => {
+    /** @type {ReturnType<typeof setTimeout> | undefined} */
+    let timer
+    const timedOut = new Promise((resolve) => {
+      timer = setTimeout(() => resolve(null), timeoutMs)
+      timer.unref?.()
+    })
+    try {
+      const outcome = await Promise.race([bundle.runSlice(claim.jobId, worker), timedOut])
+      if (!outcome) return { kind: 'transient', failure: { kind: 'slice timeout', detail: `no answer in ${timeoutMs}ms` } }
+      if (outcome.kind !== 'defer') return outcome
+      const notBefore = new Date(outcome.notBefore)
+      // A date it cannot read is no wait, as over HTTP.
+      if (Number.isNaN(notBefore.getTime())) return { kind: 'more', payload: outcome.payload }
+      return { kind: 'defer', payload: outcome.payload, notBefore }
+    } catch (error) {
+      // The entry answers every failure as an outcome, so a rejection is its bug.
+      return { kind: 'error', message: describe(error) }
+    } finally {
+      clearTimeout(timer)
     }
   }
 }
@@ -374,4 +428,4 @@ function describe(error) {
   return error instanceof Error ? error.message : String(error)
 }
 
-module.exports = { createRunner, createSliceRunner }
+module.exports = { createInProcessSliceRunner, createRunner, createSliceRunner }
