@@ -30,8 +30,12 @@ from aiq_api.auth.errors import AuthError
 
 
 def _with_legacy_tags(tags: dict[str, str]) -> dict[str, str]:
-    """``tags`` plus each of the middleware's own again under ``aiq.*``, for one release (ADR-0145)."""
-    return {**tags, **{"aiq." + k: v for k, v in tags.items() if k != "enduser.id"}}
+    """Each of the middleware's own ``tags`` under ``app.*``, and under ``aiq.*`` for one release (ADR-0145)."""
+    own = {k: v for k, v in tags.items() if k != "enduser.id"}
+    return {
+        **{k: v for k, v in tags.items() if k == "enduser.id"},
+        **{p + k: v for p in ("app.", "aiq.") for k, v in own.items()},
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -750,7 +754,7 @@ class TestAuthMiddlewareInternal:
             mw = AuthMiddleware(app, validators=[mock_v], require_auth=True, external_hostnames=set())
             await mw(scope, AsyncMock(), send)
 
-        assert span_tags["access.channel"] == "headless"
+        assert span_tags["app.access.channel"] == "headless"
 
     @pytest.mark.asyncio
     async def test_explicit_access_channel_ignored_for_external_anonymous_request(self, capture_asgi, external_host):
@@ -783,7 +787,7 @@ class TestAuthMiddlewareInternal:
             mw = AuthMiddleware(app, validators=[], require_auth=False, external_hostnames={external_host.decode()})
             await mw(scope, AsyncMock(), send)
 
-        assert span_tags["access.channel"] == "anonymous"
+        assert span_tags["app.access.channel"] == "anonymous"
 
     @pytest.mark.asyncio
     async def test_client_ip_mode_adds_pseudonymous_client_id(self, capture_asgi):

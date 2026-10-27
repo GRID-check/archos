@@ -37,7 +37,7 @@ general:
       # (only SDK env-var defaults get the signal path appended).
       otelcollector_redaction:
         _type: otelcollector_redaction
-        project: ${OTEL_SERVICE_NAME:-chat}
+        project: ${OTEL_SERVICE_NAME:-backend-chat}
         endpoint: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
         resource_attributes:
           deployment.environment: ${APP_ENV:-production}

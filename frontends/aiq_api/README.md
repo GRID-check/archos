@@ -221,10 +221,10 @@ through HTTP requests, WebSocket workflow execution, and async jobs.
 
 Always-on NAT span tags:
 
-- `nat.caller.type`: resolved caller type from the auth middleware
-- `nat.auth.transport`: `bearer`, `cookie`, or `none`
-- `nat.auth.verified`: whether the request resolved to a verified principal
-- `nat.access.channel`: inferred or explicitly supplied access channel
+- `nat.app.caller.type`: resolved caller type from the auth middleware
+- `nat.app.auth.transport`: `bearer`, `cookie`, or `none`
+- `nat.app.auth.verified`: whether the request resolved to a verified principal
+- `nat.app.access.channel`: inferred or explicitly supplied access channel
 
 For one release every one of these tags is also written under `aiq.*`, its old
 name, so a saved trace view filtering on the old name keeps matching until it
@@ -233,8 +233,8 @@ is re-pointed.
 Optional user identity tags are controlled by `GRID_TRACE_USER_IDENTITY_MODE`:
 
 - `none`: disable user identity tagging entirely
-- `id`: tag only pseudonymous stable identifiers (`nat.enduser.id`, `nat.user.id`, `nat.auth.type`)
-- `full`: tag pseudonymous identifiers plus `nat.user.email` and `nat.user.name` when present
+- `id`: tag only pseudonymous stable identifiers (`nat.enduser.id`, `nat.app.user.id`, `nat.app.auth.type`)
+- `full`: tag pseudonymous identifiers plus `nat.app.user.email` and `nat.app.user.name` when present
 
 Only verified principals are tagged. Anonymous, internal, and unverified JWT
 fallback callers are never attached to traces.
@@ -244,7 +244,7 @@ identity tagging is skipped.
 Optional client correlation is controlled by `GRID_TRACE_CLIENT_ID_MODE`:
 
 - `none`: disable client correlation
-- `ip`: add `nat.client.id` as an HMAC-derived pseudonymous identifier from
+- `ip`: add `nat.app.client.id` as an HMAC-derived pseudonymous identifier from
   the client IP
 
 Set `GRID_TRACE_CLIENT_ID_HMAC_SECRET` when using `ip`. If unset, the middleware

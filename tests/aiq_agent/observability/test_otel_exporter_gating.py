@@ -18,7 +18,9 @@ CONFIG_PATH = "configs/config_oib_openrouter.yml"
 
 
 def _make_config(endpoint: str | None) -> OtelCollectorRedactionTelemetryExporter:
-    return OtelCollectorRedactionTelemetryExporter(_type="otelcollector_redaction", project="chat", endpoint=endpoint)
+    return OtelCollectorRedactionTelemetryExporter(
+        _type="otelcollector_redaction", project="backend-chat", endpoint=endpoint
+    )
 
 
 @pytest.mark.parametrize("endpoint", ["", "   ", None])

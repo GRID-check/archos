@@ -82,7 +82,7 @@ def test_the_endpoint_builds_a_private_provider_and_never_the_global_one(monkeyp
     assert tracer is not None
     assert otel_trace.get_tracer_provider() is global_before
     resource = direct_trace._provider.resource.attributes
-    assert resource["service.name"] == "chat"
+    assert resource["service.name"] == "backend-chat"
     assert resource["service.version"] == "abc123"
 
 

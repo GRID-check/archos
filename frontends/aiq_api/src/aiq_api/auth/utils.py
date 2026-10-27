@@ -95,9 +95,10 @@ def _load_trace_client_ip_headers() -> list[str]:
 #: separately. The BFF sends both meanwhile.
 HEADERS = {"mode": ("x-chat-mode", "x-aiq-mode"), "access-channel": ("x-access-channel", "x-aiq-access-channel")}
 
-#: The span attributes this middleware writes. Saved trace views filtered on them
-#: under the ``aiq.`` prefix before ADR-0145, so for one release each is written
-#: under that name too.
+#: The span attributes this middleware writes, each under ``app.`` (ADR-0145):
+#: OpenTelemetry wants custom attributes namespaced, and NAT already writes a bare
+#: ``user.id`` of its own. Saved trace views filtered on them under ``aiq.``, so
+#: for one release each is written under that name too.
 TRACE_TAG_KEYS = frozenset(
     {
         "user.id",
@@ -111,6 +112,7 @@ TRACE_TAG_KEYS = frozenset(
         "client.id",
     }
 )
+TRACE_TAG_PREFIX = "app."
 LEGACY_TRACE_TAG_PREFIX = "aiq."
 
 
@@ -356,8 +358,11 @@ def build_request_trace_tags(
         client_ip_headers=client_ip_headers,
     )
     tags.update(_build_trace_user_tags(user, user_identity_mode, user_identity_secret))
-    legacy = {LEGACY_TRACE_TAG_PREFIX + key: value for key, value in tags.items() if key in TRACE_TAG_KEYS}
-    return {**tags, **legacy}
+    namespaced = {}
+    for key, value in tags.items():
+        prefixes = (TRACE_TAG_PREFIX, LEGACY_TRACE_TAG_PREFIX) if key in TRACE_TAG_KEYS else ("",)
+        namespaced.update({prefix + key: value for prefix in prefixes})
+    return namespaced
 
 
 def attach_request_to_active_trace(
