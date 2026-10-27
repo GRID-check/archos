@@ -174,6 +174,8 @@ export const search = {
     partyNamePlaceholder: 'Name, e.g. Haas',
     place: 'Place',
     placeHint: 'Address, municipality or state',
+    placePlaceholder: 'Vienna',
+    scalePlaceholder: '1:100, 1:50',
     fact: 'Fact',
     factKey: 'Which fact',
     factValue: 'Value',
@@ -193,6 +195,8 @@ export const search = {
     rangeTo: 'up to {to}',
     yes: 'yes',
     rangeInvalid: 'The lower bound is above the upper one.',
+    factValueMissing: 'Enter a value.',
+    factBoundMissing: 'Enter a minimum or a maximum.',
   },
   register: {
     caption: 'One row per document, as Piloti read it.',

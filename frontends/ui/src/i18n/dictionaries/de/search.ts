@@ -174,6 +174,8 @@ export const search: typeof en.search = {
     partyNamePlaceholder: 'Name, z. B. Haas',
     place: 'Ort',
     placeHint: 'Adresse, Gemeinde oder Bundesland',
+    placePlaceholder: 'Wien',
+    scalePlaceholder: '1:100, 1:50',
     fact: 'Angabe',
     factKey: 'Welche Angabe',
     factValue: 'Wert',
@@ -193,6 +195,8 @@ export const search: typeof en.search = {
     rangeTo: 'bis {to}',
     yes: 'ja',
     rangeInvalid: 'Der untere Wert liegt über dem oberen.',
+    factValueMissing: 'Bitte einen Wert eingeben.',
+    factBoundMissing: 'Bitte einen Mindest- oder Höchstwert eingeben.',
   },
   register: {
     caption: 'Eine Zeile je Dokument, so wie Piloti es gelesen hat.',

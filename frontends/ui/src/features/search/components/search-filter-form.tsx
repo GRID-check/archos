@@ -15,7 +15,7 @@ import type { DocumentFilters } from '@/lib/search/search-wire'
 import { useSearchLabels } from '../hooks/use-search-labels'
 import { splitList } from '../lib/active-filters'
 import { compactFilters, NUMERIC_FACT_KEYS, type SearchUrlState } from '../lib/search-url'
-import { FieldPair, FieldStack, KeyFieldRow, RailAction, RailBody, RailSection } from './search-atoms'
+import { FieldPair, FieldStack, KeyFieldRow, RailBody, RailSection } from './search-atoms'
 
 export interface SearchFilterFormProps {
   state: SearchUrlState
@@ -92,14 +92,23 @@ export function SearchFilterForm({ state, onChange, currentUserId, defaultOpen =
     <RailSection title={t('title')} defaultOpen={defaultOpen} testId="search-more-filters">
       <RailBody>
         <DateRange label={t('planDate')} value={f.planDate} onChange={(range) => set({ planDate: range })} testId="filter-plan-date" />
+        {/* An example in the field, as the dates and the Plannummer have; what else it takes is the tooltip. */}
         <CommitText
           label={t('scale')}
-          hint={t('listHint')}
+          placeholder={t('scalePlaceholder')}
+          title={t('listHint')}
           value={(f.scale ?? []).join(', ')}
           onCommit={(value) => set({ scale: splitList(value) })}
           testId="filter-scale"
         />
-        <CommitText label={t('place')} hint={t('placeHint')} value={f.place ?? ''} onCommit={(value) => set({ place: value || undefined })} testId="filter-place" />
+        <CommitText
+          label={t('place')}
+          placeholder={t('placePlaceholder')}
+          title={t('placeHint')}
+          value={f.place ?? ''}
+          onCommit={(value) => set({ place: value || undefined })}
+          testId="filter-place"
+        />
         <FactAdder onAdd={(fact) => set({ facts: [...(f.facts ?? []), fact] })} />
         <DateRange label={t('uploaded')} value={f.uploaded} onChange={(range) => set({ uploaded: range })} testId="filter-uploaded" />
         {/* Beside the upload date: "what changed recently" is the two together. */}
@@ -334,8 +343,15 @@ function FactAdder({ onAdd }: { onAdd: (fact: { key: DossierFactKey; equals?: st
   const upper = numberOrUndefined(max)
   const inverted = lower !== undefined && upper !== undefined && lower > upper
   const ready = numeric ? !inverted && (lower !== undefined || upper !== undefined) : equals.trim() !== ''
+  // Never greyed out (a disabled button cannot say why): a press with nothing to add says so under the fields.
+  const [tried, setTried] = useState(false)
+  const missing = tried && !ready && !inverted
   const add = (): void => {
-    if (!ready) return
+    if (!ready) {
+      setTried(true)
+      return
+    }
+    setTried(false)
     const value = equals.trim()
     onAdd(numeric ? { key, ...(lower !== undefined ? { min: lower } : {}), ...(upper !== undefined ? { max: upper } : {}) } : { key, equals: value.slice(0, 120) })
     setEquals('')
@@ -369,11 +385,10 @@ function FactAdder({ onAdd }: { onAdd: (fact: { key: DossierFactKey; equals?: st
         <Input placeholder={t('factValue')} aria-label={t('factValue')} value={equals} onChange={(event) => setEquals(event.target.value)} onKeyDown={onKeyDown} data-testid="filter-fact-value" />
       )}
       {inverted ? <FieldError>{t('rangeInvalid')}</FieldError> : null}
-      <RailAction>
-        <Button type="button" variant="outline" size="sm" onClick={add} disabled={!ready} data-testid="filter-fact-add">
-          {t('add')}
-        </Button>
-      </RailAction>
+      {missing ? <FieldError>{numeric ? t('factBoundMissing') : t('factValueMissing')}</FieldError> : null}
+      <Button type="button" variant="secondary" size="sm" className="self-start" onClick={add} data-testid="filter-fact-add">
+        {t('add')}
+      </Button>
     </Field>
   )
 }
