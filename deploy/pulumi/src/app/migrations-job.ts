@@ -6,6 +6,7 @@ import { commonLabels } from "../platform/namespaces";
 import { hardenedContainerSecurityContext } from "../platform/security";
 import { JOB_DEFAULTS, LIGHT_WORKER_RESOURCES, UID } from "../constants";
 import { AppSecrets, AppWiring, migrationEnv } from "./config";
+import { logicalName } from "../names";
 
 /**
  * Runs `drizzle-kit migrate` against grid_app once per deploy, from the frontend
@@ -25,14 +26,14 @@ export function runMigrations(
   dependsOn: pulumi.Resource[],
 ): k8s.batch.v1.Job {
   return new k8s.batch.v1.Job(
-    "grid-app-migrate",
+    logicalName("grid-app-migrate"),
     {
       metadata: { namespace: w.namespace },
       spec: {
         backoffLimit: JOB_DEFAULTS.backoffLimit,
         ttlSecondsAfterFinished: JOB_DEFAULTS.ttlSecondsAfterFinished,
         template: {
-          metadata: { labels: commonLabels("grid-app-migrate") },
+          metadata: { labels: commonLabels(logicalName("grid-app-migrate")) },
           spec: {
             enableServiceLinks: false, // see platform/security.ts — service-link env collisions
             imagePullSecrets: w.imagePullSecrets,

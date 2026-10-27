@@ -1,5 +1,6 @@
 import * as k8s from "@pulumi/kubernetes";
 import { GridConfig } from "../config";
+import { logicalName } from "../names";
 
 /**
  * A Kubernetes provider bound to the target cluster's kubeconfig.
@@ -10,7 +11,7 @@ import { GridConfig } from "../config";
  * `grid-oib:kubeconfig`.
  */
 export function makeProvider(cfg: GridConfig): k8s.Provider {
-  return new k8s.Provider("grid-k8s", {
+  return new k8s.Provider(logicalName("grid-k8s"), {
     kubeconfig: cfg.kubeconfig,
     // Server-side apply gives us cleaner diffs and avoids the last-applied
     // annotation bloat on large manifests (CNPG/ingress CRs).
