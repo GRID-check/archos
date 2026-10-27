@@ -1294,7 +1294,7 @@ Five retrieval-quality improvements sit in the knowledge layer's `register.py`
    failed open, keeps the judge. The turn's prefetch is judged like any other
    search: a switch that skipped it (`requery_on_prefetch`) measured 3.4 s
    slower on the turns it applied to and was removed
-   (`turn-latency-measured-2026-09.md` §3.5; it lived in the requery gate of `knowledge_layer/register.py`, marked by a `ContextVar` the prefetch node set). A pinned file (`"file_pinned"`), a requery that already fired this turn
+   (`docs/audit/turn-latency-measured-2026-09.md` §3.5; it lived in the requery gate of `knowledge_layer/register.py`, marked by a `ContextVar` the prefetch node set). A pinned file (`"file_pinned"`), a requery that already fired this turn
    (`"already_fired"`) and the cheap pre-checks of `should_skip_judge` skip it
    too.
 
@@ -1886,7 +1886,7 @@ past the system prompt into the history.
    Langfuse**, under the prompt name `piloti-system-static` and the label
    `production`, and pulled by the agent at render time
    (`src/aiq_agent/common/prompt_store.py`). What each line of it is for, and
-   what was cut and why: [`prompt-value-audit-2026-10.md`](prompt-value-audit-2026-10.md).
+   what was cut and why: [`docs/audit/prompt-value-audit-2026-10.md`](../audit/prompt-value-audit-2026-10.md).
 2. **The office's standing instructions** — the tenant's own preferences,
    arriving per request on the `x-grid-org-instructions` header
    (`project_context.py`, bounded at 1500 characters) and rendered in the turn
@@ -2143,7 +2143,7 @@ office's skills (`resolve_served_skills`) under `/skills/office/`. Full design a
   It still runs uncoordinated with deepagents' own (stable-cutoff)
   summarization middleware, and no call site sets provider prompt-caching
   hints yet (that's a separate, still-open lever — see
-  `docs/architecture/llm-providers.md` and `scaling-review-2026-07.md` §6.1).
+  `docs/architecture/llm-providers.md` and `docs/audit/scaling-review-2026-07.md` §6.1).
   Model-call retries were narrowed in the same change: `ModelRetryMiddleware`
   now retries only rate limits, timeouts, transport errors, and 5xx (was any
   exception). See `src/aiq_agent/agents/deep_researcher/README.md`
@@ -2264,7 +2264,7 @@ office's skills (`resolve_served_skills`) under `/skills/office/`. Full design a
   checkpointed thread via the state schema's reducers rather than continuing
   exactly from the interrupted step — there is no automatic queueing/resume
   entry point yet, and the ghost-job reaper (ADR-0021,
-  `scaling-review-2026-07.md` §2.4) still flips an orphaned `RUNNING` row to
+  `docs/audit/scaling-review-2026-07.md` §2.4) still flips an orphaned `RUNNING` row to
   `FAILURE` after its timeout. A future DB-claimed-worker migration
   (ADR-0021) fixes replica pinning/cross-node cancel but is orthogonal to
   this checkpointing layer.

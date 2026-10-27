@@ -8,7 +8,7 @@
 > Complements [ADR-0016](../adr/0016-platform-tier-and-permission-registry.md),
 > [ADR-0038](../adr/0038-one-authorization-catalog-and-decision-point.md) and
 > [ADR-0041](../adr/0041-row-level-security-for-tenant-isolation.md), and sits next to
-> [multitenancy-and-auth-spec.md](./multitenancy-and-auth-spec.md).
+> [multitenancy-and-auth-spec.md](../architecture/multitenancy-and-auth-spec.md).
 >
 > Scope reviewed: `frontends/ui/src/lib/authz/*`, `lib/api/handler.ts`,
 > `lib/api/platform-handler.ts`, `lib/projects/{service,members-service,repository}.ts`,

@@ -38,7 +38,7 @@ asks, because the data that answers them never reaches Langfuse:
   given everything.
 
 Two audits on the turns-per-answer and the roadmap
-(`docs/architecture/turns-per-answer-audit-2026-09.md`,
+(`docs/audit/turns-per-answer-audit-2026-09.md`,
 `docs/roadmap/architect-workspace-voice-and-agentic-loop.md`) had to
 reconstruct production behaviour by hand for the same reason. The full
 inventory is in [`docs/observability/langfuse-audit-2026-10.md`](../observability/langfuse-audit-2026-10.md).

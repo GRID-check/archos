@@ -16,8 +16,9 @@ python3 scripts/check_adrs.py            # what `task lint:repo` runs
 
 New ADRs use [MADR 4](0000-template.md): YAML frontmatter, then *Context and
 Problem Statement*, *Considered Options*, *Decision Outcome*. ADRs 0001–0049
-predate it and keep the shape they were written in; the checker knows which is
-which and does not ask you to convert them.
+predate it and keep the body they were written in. Every record, old or new,
+states its status once, as frontmatter `status:`; a `**Status:**` line or a
+`## Status` section in the body fails `check_adrs.py`.
 
 ## Obligations
 
@@ -32,8 +33,9 @@ which and does not ask you to convert them.
 
 ## Rules that need more than a row
 
-**A status field holds one of five values and nothing else.** `proposed`,
-`rejected`, `accepted`, `deprecated`, `superseded by ADR-NNNN`. Qualifications
+**A status field holds one of six values and nothing else.** `proposed`,
+`rejected`, `accepted`, `deprecated`, `superseded by ADR-NNNN`, and bare
+`superseded` only while the replacing record is not written yet. Qualifications
 belong in Consequences: they are where a reader looks for them, and a status
 carrying a paragraph cannot be read by the index, the checker, or a person
 scanning for what is in force.

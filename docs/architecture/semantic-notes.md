@@ -6,7 +6,7 @@
 > were answering lexically, which is the reason the memory audit called the
 > embedding gate *"the single most important component — skip it and memory
 > rots"* and then recorded that it had been skipped
-> ([`memory-system-audit-2026-07.md`](memory-system-audit-2026-07.md) F2/F3).
+> ([`docs/audit/memory-system-audit-2026-07.md`](../audit/memory-system-audit-2026-07.md) F2/F3).
 >
 > Built 2026-08. Status: memory recall and both consolidation gates are live;
 > the honest gaps are at the end.

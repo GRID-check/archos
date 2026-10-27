@@ -4,13 +4,13 @@ Date: 2026-08-13
 Status: accepted (building)
 Branch: `feature/document-ownership` (worktree `.worktrees/document-ownership`)
 
-Related: [ADR-0032](../../adr/0032-shareable-resource-model.md),
-[ADR-0035](../../adr/0035-notification-model-and-inbox.md),
-[ADR-0045](../../adr/0045-ifc-models-as-a-queryable-building-not-a-document.md),
-[ADR-0047](../../adr/0059-assignment-is-not-access.md) (proposed),
-[adding a shareable resource type](../../architecture/adding-a-shareable-resource-type.md),
-[collaboration spec](../../design/collaboration-sharing-and-inbox-spec.md) Phase 3,
-[citation pipeline](../../architecture/citation-system-audit-2026-07.md).
+Related: [ADR-0032](../adr/0032-shareable-resource-model.md),
+[ADR-0035](../adr/0035-notification-model-and-inbox.md),
+[ADR-0045](../adr/0045-ifc-models-as-a-queryable-building-not-a-document.md),
+[ADR-0047](../adr/0059-assignment-is-not-access.md) (proposed),
+[adding a shareable resource type](../architecture/adding-a-shareable-resource-type.md),
+[collaboration spec](../design/collaboration-sharing-and-inbox-spec.md) Phase 3,
+[citation pipeline](../audit/citation-system-audit-2026-07.md).
 
 ## Problem
 
@@ -26,7 +26,7 @@ Two further mistakes would make this worse rather than better:
    can have nobody on the hook, or several people. Unassigned is a fact.
 2. **Bolt a document type onto the collaboration substrate as it stands.**
    ADR-0032 promised a second consumer would cost a registry entry.
-   [`adding-a-shareable-resource-type.md`](../../architecture/adding-a-shareable-resource-type.md)
+   [`adding-a-shareable-resource-type.md`](../architecture/adding-a-shareable-resource-type.md)
    measured the promise: mentions, events, cleanup, orphan sweeps, routes, and
    ~20 “generic” strings are still conversation-shaped. A visibility write on a
    new type silently no-ops and leaves a truthful-looking audit row. Shipping
@@ -71,7 +71,7 @@ obligation in `AGENTS.md` and the closing section of the shareable-type doc.
    stays `project` (today’s everyone-on-the-project-can-see). Private drafts
    become possible once the type is registered; they are not the first UI.
 6. **The substrate lifts in
-   [`adding-a-shareable-resource-type.md`](../../architecture/adding-a-shareable-resource-type.md)
+   [`adding-a-shareable-resource-type.md`](../architecture/adding-a-shareable-resource-type.md)
    §3.1–§3.10 are in this change.** None are deferred. They land as their own
    commits, *before* the document descriptor is more than a registry entry.
    Bolting the descriptor on first and “cleaning up later” is the failure mode

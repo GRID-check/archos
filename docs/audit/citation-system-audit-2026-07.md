@@ -311,7 +311,7 @@ when the format changes; they are the cheapest part of that change.
   to an entry, so per-citation matching is bounded work.
 - **Negation-blind quote verification** — see
   `quote-verification-calibration-2026-07.md`. Tracked as **T2-CIT1** in
-  `backlog.md`.
+  `docs/audit/overnight-run-backlog.md`.
 - **The deep-research path resolves no `[N]` for document citations.**
   `citation_use` carries the full wire but no number, so a deep answer's chips
   show markers only where the written list supplied them. The binding exists in

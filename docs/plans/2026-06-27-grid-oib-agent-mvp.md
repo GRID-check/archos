@@ -16,9 +16,9 @@
 
 ## Sub-plans
 
-1. [`2026-06-27-grid-oib-cleanup.md`](./2026-06-27-grid-oib-cleanup.md) — Strip NVIDIA template artifacts, keep runtime + frontends + agent dev files, rewrite README, update compose/config.
-2. [`2026-06-27-grid-oib-backend.md`](./2026-06-27-grid-oib-backend.md) — Incremental OIB ingestion script, manual sync API route, custom `oib_knowledge_search` source package, Grid workflow config (with web search kept), topic guardrails.
-3. [`2026-06-27-grid-oib-frontend.md`](./2026-06-27-grid-oib-frontend.md) — Remove NVIDIA branding, add Grid theme, parse `<grid_cards>` from agent responses, render SummaryCard and LegalBasisCard.
+1. [`2026-06-27-grid-oib-cleanup.md`](2026-06-27-grid-oib-cleanup.md) — Strip NVIDIA template artifacts, keep runtime + frontends + agent dev files, rewrite README, update compose/config.
+2. [`2026-06-27-grid-oib-backend.md`](2026-06-27-grid-oib-backend.md) — Incremental OIB ingestion script, manual sync API route, custom `oib_knowledge_search` source package, Grid workflow config (with web search kept), topic guardrails.
+3. [`2026-06-27-grid-oib-frontend.md`](2026-06-27-grid-oib-frontend.md) — Remove NVIDIA branding, add Grid theme, parse `<grid_cards>` from agent responses, render SummaryCard and LegalBasisCard.
 
 ## Execution order
 

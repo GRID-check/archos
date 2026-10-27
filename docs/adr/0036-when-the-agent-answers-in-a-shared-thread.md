@@ -1,6 +1,9 @@
+---
+status: accepted
+---
+
 # ADR-0036: When the agent answers in a shared thread (engagement modes, not judgement)
 
-- **Status:** Accepted
 - **Date:** 2026-07-30
 - **Deciders:** Platform engineering, product
 - **Related:** ADR-0034 (mention hand-off as persisted state), ADR-0033 (server-authoritative

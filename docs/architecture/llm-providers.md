@@ -130,7 +130,7 @@ bounded by per-org/member/project budgets — see
   middleware) are still independent and uncoordinated (no shared budget or
   deadline), but the worst case per logical turn is now on the order of a
   handful of attempts, not ~33. See
-  [`scaling-review-2026-07.md`](scaling-review-2026-07.md) §6.3 for the
+  [`docs/audit/scaling-review-2026-07.md`](../audit/scaling-review-2026-07.md) §6.3 for the
   cross-run multiplication this still doesn't address (bounded fan-out, not
   a shared retry budget).
 - **`api_type: responses` is a per-ROLE opt-in, not a fleet default.**

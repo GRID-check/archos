@@ -12,7 +12,7 @@ sharding, managed PG) is explicitly out of scope per the review request; query b
 The system is architecturally well-layered (ADR-0003 BFF split, ADR-0017 repository/service
 discipline, single-writer `grid_app`), but the **deployed reality is a single-host,
 single-instance-per-service stack** with several hidden serialization points. The "stateless,
-horizontally scalable agent" described in ADR-0003 and `system-overview.md` is aspirational today:
+horizontally scalable agent" described in ADR-0003 and `docs/architecture/system-overview.md` is aspirational today:
 the backend embeds ChromaDB and a private Dask cluster in-process on local volumes, the chat
 gateway is one Node process, and the backend web tier is one uvicorn worker on one event loop.
 

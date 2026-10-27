@@ -1,6 +1,9 @@
+---
+status: accepted
+---
+
 # ADR-0011: Deletion pipeline — soft-delete → restore → hard-purge with legal holds
 
-- **Status:** Accepted
 - **Date:** 2026-07-05
 - **Deciders:** Grid Agent team
 - **Related:** [ADR-0004](0004-tenancy-ownership-and-access-model.md), [ADR-0005](0005-object-storage-for-documents-minio.md), [`../architecture/deletion-pipeline.md`](../architecture/deletion-pipeline.md)

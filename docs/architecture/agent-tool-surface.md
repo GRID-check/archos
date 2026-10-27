@@ -31,10 +31,10 @@ Tool retrieval pays off on catalogs of
 hundreds or thousands of tools ([RAG-MCP][rag-mcp], [Less is More][less-more],
 [Gorilla/BFCL][bfcl]). Piloti binds 32, past OpenAI's line of 20 since the canvas group (§2). Of a 33.4k-token research call,
 26.1k are a cached prefix, and tool execution is 1.3 s of a 31.3 s median turn
-([turns audit](turns-per-answer-audit-2026-09.md),
-[turn latency](turn-latency-measured-2026-09.md) §2). Seconds follow rounds and
+([turns audit](../audit/turns-per-answer-audit-2026-09.md),
+[turn latency](../audit/turn-latency-measured-2026-09.md) §2). Seconds follow rounds and
 reasoning tokens: one round thought for 4,335 tokens (54 s) before asking for
-two passages ([turns audit](turns-per-answer-audit-2026-09.md)). At this size,
+two passages ([turns audit](../audit/turns-per-answer-audit-2026-09.md)). At this size,
 the lever is how many rounds a question takes and what each result tells the
 model to do next.
 
@@ -44,7 +44,7 @@ A project turn binds 32 tools, about 17.9k tokens (the workspace group added fou
 the one `document_annotations` tool, 940 tokens, with seven, 1,625; parity with
 a person, 2026-10-13, added `canvas__update` and `canvas__delete` and `mark`'s
 `open`, +502, to nine and 2,127). Tool schemas were 38 % of a
-research call's input ([turns audit](turns-per-answer-audit-2026-09.md)).
+research call's input ([turns audit](../audit/turns-per-answer-audit-2026-09.md)).
 
 | Tool | What it does | ~Tokens | Owner |
 |---|---|---|---|
@@ -153,7 +153,7 @@ server's `dryRun` is ([servers][mcp-fs]).
 - A `search_tools` tool: it costs a round.
 - Provider-native deferral ([ADR-0048](../adr/0048-tool-schemas-stay-with-the-provider.md)):
   luna, sol, sonnet-5 and gemini-3.7-flash echoed the flag and billed the
-  schemas in full ([turns audit](turns-per-answer-audit-2026-09.md)). Off
+  schemas in full ([turns audit](../audit/turns-per-answer-audit-2026-09.md)). Off
   since 2026-09-25, code removed 2026-10-27; a standards-based tool search
   replaces it in its own change.
 - Narrowing tools on a guess about intent:
@@ -239,8 +239,8 @@ Repo: `pyproject.toml`; `configs/config_oib_openrouter.yml`;
 [0054](../adr/0054-document-versions-and-the-publish-door.md),
 [0060](../adr/0060-three-instruction-layers-and-tools-that-answer.md),
 [0064](../adr/0064-a-decision-model-decides-and-never-withholds.md);
-[turns audit](turns-per-answer-audit-2026-09.md),
-[turn latency](turn-latency-measured-2026-09.md),
+[turns audit](../audit/turns-per-answer-audit-2026-09.md),
+[turn latency](../audit/turn-latency-measured-2026-09.md),
 [hobble register](hobble-register-2026-09.md),
 [filesystem design](piloti-filesystem-design.md),
 [visual ingestion](visual-ingestion.md); the code paths in the tables above.
