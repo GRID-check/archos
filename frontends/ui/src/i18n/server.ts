@@ -8,9 +8,9 @@ import 'server-only'
 import { cache } from 'react'
 import { cookies, headers } from 'next/headers'
 import { LOCALE_COOKIE, type Locale } from './config'
-import { getDictionary } from './dictionaries'
+import { translatorFor, type Namespace } from './namespace'
 import { pickRequestLocale } from './request-locale'
-import { createTranslator, type Translator } from './translate'
+import type { Translator } from './translate'
 import { findSavedLocale } from '@/lib/user-preferences/locale'
 import { actingReaderIsAgent } from '@/lib/agent-api/acting-session'
 
@@ -41,13 +41,13 @@ export async function getLocale(): Promise<Locale> {
 }
 
 /**
- * Get a server-side translator, optionally scoped to a namespace.
+ * Get a server-side translator over one namespace, optionally narrowed to a
+ * scope inside it.
  *
  * @example
- * const t = await getTranslations('errors')
+ * const t = await getTranslations(errorsCopy)
  * t('notFound.title')
  */
-export async function getTranslations(namespace?: string): Promise<Translator> {
-  const locale = await getLocale()
-  return createTranslator(getDictionary(locale), namespace)
+export async function getTranslations(namespace: Namespace, scope?: string): Promise<Translator> {
+  return translatorFor(namespace, await getLocale(), scope)
 }

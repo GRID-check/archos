@@ -24,6 +24,8 @@ import { type FC, type ReactNode, useRef, useState } from 'react'
 import { PRESSABLE } from '@/components/ui/press'
 import { cn } from '@/lib/utils'
 import { useTranslations } from '@/i18n'
+import { chatCopy } from '@/i18n/namespaces/chat'
+import { commonCopy } from '@/i18n/namespaces/common'
 import { HoverPeekPanel } from '@/components/ui/hover-peek-panel'
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { citationSnippet, type CitationRef } from '../lib/citations'
@@ -46,7 +48,7 @@ import { useCoarsePointer } from '../hooks/use-coarse-pointer'
  */
 export const CitationMarker: FC<{ href: string; fallback: ReactNode }> = ({ href, fallback }) => {
   const scope = useCitationScope()
-  const t = useTranslations('chat')
+  const t = useTranslations(chatCopy)
   const [openDocument, setOpenDocument] = useState<CitationRef | null>(null)
   const peek = useHoverPopover()
   const live = useAnswerLive()
@@ -264,8 +266,8 @@ const CitationSheet: FC<{
   onReturnFocus: () => void
   children: ReactNode
 }> = ({ peek, number, onReturnFocus, children }) => {
-  const t = useTranslations('chat')
-  const tCommon = useTranslations('common')
+  const t = useTranslations(chatCopy)
+  const tCommon = useTranslations(commonCopy)
   return (
     <Sheet open={peek.open} onOpenChange={peek.onOpenChange}>
       <SheetContent
@@ -298,7 +300,7 @@ const CitationSheet: FC<{
  * loops beside the one the turn allows (the caret).
  */
 const PendingCitationMarker: FC<{ number: number }> = ({ number }) => {
-  const t = useTranslations('chat')
+  const t = useTranslations(chatCopy)
   return (
     <span
       data-citation-pending={number}

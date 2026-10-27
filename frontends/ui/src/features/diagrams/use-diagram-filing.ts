@@ -48,6 +48,7 @@
 
 import { useCallback, useState } from 'react'
 import { useTranslations } from '@/i18n'
+import { diagramsCopy } from '@/i18n/namespaces/diagrams'
 import { diagramRunId, useDiagramFilingTarget, type DiagramFilingTarget } from './diagram-filing-context'
 
 export type DiagramFilingState =
@@ -168,7 +169,7 @@ export function useDiagramFiling({
   prepareSketch,
   edited = true,
 }: DiagramFilingOptions): DiagramFiling {
-  const t = useTranslations('diagrams')
+  const t = useTranslations(diagramsCopy)
   const target = useDiagramFilingTarget()
   const [state, setState] = useState<DiagramFilingState>({ kind: 'idle' })
 

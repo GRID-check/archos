@@ -19,6 +19,7 @@ import { SectionLabel } from '@/components/ui/section-label'
 import { BaseKnowledge } from '@/app/app/(shell)/platform/base-knowledge'
 import { PlatformAccessProvider } from '@/features/platform/platform-access'
 import { I18nProvider, useTranslations } from '@/i18n'
+import { platformCopy } from '@/i18n/namespaces/platform'
 import { PLATFORM_PERMISSIONS } from '@/lib/authz/permissions'
 
 /** Each fixture document with the type it really has, so the type column reads true. */
@@ -94,7 +95,7 @@ if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
 }
 
 function Preview(): JSX.Element {
-  const t = useTranslations('platform')
+  const t = useTranslations(platformCopy)
   return (
     <main
       className="mx-auto flex max-w-5xl flex-col gap-12 px-4 py-8 md:px-8"

@@ -31,6 +31,7 @@ import { type FC } from 'react'
 import { MessageCircleQuestion } from 'lucide-react'
 import { useChatStore } from '@/features/chat/store'
 import { useTranslations } from '@/i18n'
+import { chatCopy } from '@/i18n/namespaces/chat'
 import { cn } from '@/lib/utils'
 
 /** Sentence marks a row may end on, dropped before the template's own lands. */
@@ -88,7 +89,7 @@ interface AskAboutChipProps {
 }
 
 export const AskAboutChip: FC<AskAboutChipProps> = ({ subject, missing, className }) => {
-  const t = useTranslations('chat')
+  const t = useTranslations(chatCopy)
   const setComposerPrefill = useChatStore((s) => s.setComposerPrefill)
 
   const cleanSubject = tidy(subject, MAX_SUBJECT)

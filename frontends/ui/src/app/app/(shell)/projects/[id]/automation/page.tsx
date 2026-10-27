@@ -8,6 +8,7 @@ import { canManageSkills } from '@/lib/authz/organizations'
 import { isSkillsEnabled } from '@/lib/authz/feature-flags'
 import { findProjectInOrg } from '@/lib/projects/repository'
 import { getTranslations } from '@/i18n/server'
+import { navCopy } from '@/i18n/namespaces/nav'
 import { AutomationPanel } from '@/features/automation/components/automation-panel'
 import { parseAutomationTab } from '@/features/automation/lib/automation-tab'
 import { parseTasksView } from '@/features/tasks/lib/tasks-view'
@@ -18,7 +19,7 @@ interface AutomationPageProps {
 }
 
 export async function generateMetadata(): Promise<Metadata> {
-  const t = await getTranslations('nav')
+  const t = await getTranslations(navCopy)
   return { title: t('sections.automation') }
 }
 

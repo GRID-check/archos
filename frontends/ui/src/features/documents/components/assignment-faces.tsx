@@ -2,6 +2,7 @@
 
 import { AvatarStack } from '@/components/ui/avatar-stack'
 import { useTranslations } from '@/i18n'
+import { filesCopy } from '@/i18n/namespaces/files'
 import type { FileAssignee } from './project-file-workspace'
 import { cn } from '@/lib/utils'
 import { UserRound } from 'lucide-react'
@@ -20,7 +21,7 @@ export function AssignmentFaces({
   faceOnly?: boolean
   className?: string
 }) {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   if ((!assignees || assignees.length === 0) && faceOnly) {
     return (
       <span

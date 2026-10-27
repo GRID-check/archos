@@ -7,6 +7,7 @@ import { COMMENT_PIN_ON_POINT, CommentPin } from '@/components/ui/comment-pin'
 import { Popover, PopoverAnchor, PopoverContent } from '@/components/ui/popover'
 import { useMediaQuery } from '@/hooks/use-media-query'
 import { useTranslations } from '@/i18n'
+import { filesCopy } from '@/i18n/namespaces/files'
 import type { DocumentReview } from '../hooks/use-document-review'
 import { MarkBody } from './review/mark-body'
 import { markInk } from './review/review-page-layer'
@@ -39,7 +40,7 @@ export function InlineMarkPeek({
   review: DocumentReview
   onOpenMark: (annotationId: string) => void
 }): JSX.Element | null {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   const canHover = useMediaQuery(HOVER_QUERY)
   const [shownId, setShownId] = useState<string | null>(null)
   const inCard = useRef(false)

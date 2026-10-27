@@ -7,6 +7,7 @@ import { listFolderBin } from '@/lib/projects/folder-bin'
 import { BIN_PAGE_MAX } from '@/lib/projects/folder-bin-wire'
 import { findProjectInOrg } from '@/lib/projects/repository'
 import { getTranslations } from '@/i18n/server'
+import { filesCopy } from '@/i18n/namespaces/files'
 import { FolderBinPanel } from '@/features/documents/components/folder-bin-panel'
 
 interface BinPageProps {
@@ -14,7 +15,7 @@ interface BinPageProps {
 }
 
 export async function generateMetadata(): Promise<Metadata> {
-  const t = await getTranslations('files')
+  const t = await getTranslations(filesCopy)
   return { title: t('bin.title') }
 }
 

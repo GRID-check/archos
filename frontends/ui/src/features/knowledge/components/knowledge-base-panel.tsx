@@ -32,6 +32,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { StatCard } from '@/components/ui/stat-card'
 import { DocumentStatusBadge, documentStatusVariant, fileTypeIcon } from '@/features/documents/components/document-status'
 import { useLocale, useTranslations } from '@/i18n'
+import { knowledgeCopy } from '@/i18n/namespaces/knowledge'
 import type { KnowledgeBaseStatus, KnowledgeFile, KnowledgeFileState } from '@/lib/knowledge/service'
 import { PdfViewerDialog } from './pdf-viewer-dialog'
 import { formatBytes } from '@/lib/format'
@@ -77,7 +78,7 @@ function useDateFormatter(): (iso: string | null) => string {
 }
 
 function CorpusRow({ file, onView }: { file: KnowledgeFile; onView: (fileName: string) => void }) {
-  const t = useTranslations('knowledge')
+  const t = useTranslations(knowledgeCopy)
   const { locale } = useLocale()
   const formatDate = useDateFormatter()
   const checksum = file.currentSha256 ?? file.ingestedSha256
@@ -183,7 +184,7 @@ function LoadingSkeleton() {
 }
 
 export function KnowledgeBasePanel({ projectId }: KnowledgeBasePanelProps) {
-  const t = useTranslations('knowledge')
+  const t = useTranslations(knowledgeCopy)
   const { locale } = useLocale()
   const formatDate = useDateFormatter()
 

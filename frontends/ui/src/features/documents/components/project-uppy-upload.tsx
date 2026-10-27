@@ -14,6 +14,8 @@ import {
 import { Spinner } from '@/components/ui/spinner'
 import { useCoarsePointer } from '../hooks/use-coarse-pointer'
 import { useLocale, useTranslations } from '@/i18n'
+import { captureCopy } from '@/i18n/namespaces/capture'
+import { filesCopy } from '@/i18n/namespaces/files'
 import { formatBytes } from '@/lib/format'
 import { useAppConfig } from '@/shared/context'
 import { DEFAULT_ACCEPTED_FILE_TYPES, DEFAULT_MAX_FILE_SIZE } from '../constants'
@@ -65,8 +67,8 @@ export function ProjectUppyUpload({
   pickFilesRef,
   pickFolderRef,
 }: ProjectUppyUploadProps) {
-  const t = useTranslations('files')
-  const tCapture = useTranslations('capture')
+  const t = useTranslations(filesCopy)
+  const tCapture = useTranslations(captureCopy)
   const { locale } = useLocale()
   const inputRef = useRef<HTMLInputElement>(null)
   const folderInputRef = useRef<HTMLInputElement>(null)

@@ -36,6 +36,7 @@ import { AtSign, Users } from 'lucide-react'
 
 import { AvatarStack, type AvatarStackPerson } from '@/components/ui/avatar-stack'
 import { useTranslations } from '@/i18n'
+import { collaborationCopy } from '@/i18n/namespaces/collaboration'
 import { AGENT_MENTION_ID } from '@/lib/mentions/types'
 import { cn } from '@/lib/utils'
 import type { DraftMention } from '../lib/mention-text'
@@ -80,7 +81,7 @@ export function AddresseeIndicator({
   onMentionSomeone,
   className,
 }: AddresseeIndicatorProps): JSX.Element {
-  const t = useTranslations('collaboration')
+  const t = useTranslations(collaborationCopy)
 
   const humans = mentions.filter((mention) => mention.targetId !== AGENT_MENTION_ID)
   const agentTagged = mentions.some((mention) => mention.targetId === AGENT_MENTION_ID)

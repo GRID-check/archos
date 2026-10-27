@@ -6,6 +6,7 @@ import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useTranslations } from '@/i18n'
+import { searchCopy } from '@/i18n/namespaces/search'
 import { SEARCH_FACET_DIMENSIONS, type FacetCount, type SearchFacetDimension, type SearchResponse } from '@/lib/search/search-wire'
 import { useSearchLabels } from '../hooks/use-search-labels'
 import { isFacetActive } from '../lib/search-facets'
@@ -35,7 +36,7 @@ export interface SearchFacetRailProps {
  * switched on first. A click switches a value on or off (`toggleFacet`).
  */
 export function SearchFacetRail({ state, facets, unread = null, onToggle, showProjects, extras }: SearchFacetRailProps): JSX.Element | null {
-  const t = useTranslations('search.facets')
+  const t = useTranslations(searchCopy, 'facets')
   if (!facets) return null
   const dimensions = SEARCH_FACET_DIMENSIONS.filter((dimension) => (dimension === 'project' ? showProjects : true))
   return (
@@ -61,7 +62,7 @@ function FacetGroup({
   onToggle: (dimension: SearchFacetDimension, value: string) => void
   extra?: ReactNode
 }): JSX.Element | null {
-  const t = useTranslations('search.facets')
+  const t = useTranslations(searchCopy, 'facets')
   const labels = useSearchLabels()
   const [expanded, setExpanded] = useState(false)
   const [find, setFind] = useState('')

@@ -45,7 +45,7 @@
 
 import 'server-only'
 import { ConversationConfinedError } from '@/lib/api/errors'
-import { getDictionary } from '@/i18n/dictionaries'
+import { errorsCopy } from '@/i18n/namespaces/errors'
 import type { Locale } from '@/i18n/config'
 import { asShelf } from '@/features/chat/lib/source-kinds'
 import { folderTree, readableByEveryMember } from '@/lib/authz/folder-access'
@@ -74,7 +74,7 @@ export const AGENT_REFUSAL_LOCALE: Locale = 'de'
 
 /** The typed refusal, its message in the reader's language. */
 export function confinementRefusal(action: ConfinedAction, locale: Locale): ConversationConfinedError {
-  return new ConversationConfinedError(action, getDictionary(locale).errors.confinement[action])
+  return new ConversationConfinedError(action, errorsCopy.messages[locale].confinement[action])
 }
 
 /** Where content is about to come from. */

@@ -19,11 +19,12 @@ import { Search } from 'lucide-react'
 import { FOCUS_RING } from '@/components/ui/focus-ring'
 import { TOUR_ANCHORS } from '@/features/onboarding/lib/product-tour'
 import { useTranslations } from '@/i18n'
+import { navCopy } from '@/i18n/namespaces/nav'
 import { cn } from '@/lib/utils'
 import { useShellOverlays } from './shell-overlays'
 
 export function ShellSearchButton({ className }: { className?: string }): JSX.Element {
-  const t = useTranslations('nav')
+  const t = useTranslations(navCopy)
   const open = useShellOverlays((s) => s.paletteOpen)
   const setOpen = useShellOverlays((s) => s.setPaletteOpen)
   return (

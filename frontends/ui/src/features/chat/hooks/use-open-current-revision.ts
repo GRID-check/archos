@@ -3,6 +3,7 @@
 import { useCallback } from 'react'
 import { toast } from 'sonner'
 import { useTranslations } from '@/i18n'
+import { chatCopy } from '@/i18n/namespaces/chat'
 import { toFileItem } from '@/features/documents/lib/file-item'
 import { documentNameLookupKey, resolveDocumentsByName } from '@/features/documents/lib/documents-by-name'
 import type { RevisionRef } from '@/lib/documents/revision-links'
@@ -21,7 +22,7 @@ import { useOpenStoredFile } from './use-open-stored-file'
  * is gone by now says so, and nothing else happens.
  */
 export const useOpenCurrentRevision = (): ((current: RevisionRef) => Promise<void>) => {
-  const t = useTranslations('chat')
+  const t = useTranslations(chatCopy)
   const projectId = useChatStore((state) => state.projectId)
   const openFile = useOpenStoredFile()
 

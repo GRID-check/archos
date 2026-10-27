@@ -42,6 +42,8 @@ import { citationViewerAction, runViewerActionNow, useViewerBesideChat } from '.
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { useTranslations } from '@/i18n'
+import { chatCopy } from '@/i18n/namespaces/chat'
+import { knowledgeCopy } from '@/i18n/namespaces/knowledge'
 import { documentFileUrl } from '@/lib/documents/urls'
 import { onDocumentsChanged, useDocumentsGeneration } from '@/lib/documents/document-changes'
 import {
@@ -553,7 +555,7 @@ type RisTarget = Extract<CitationTarget, { kind: 'ris' }>
 export const useCitationDownload = (
   target: DownloadTarget | null
 ): { isDownloading: boolean; download: () => Promise<void> } => {
-  const t = useTranslations('chat')
+  const t = useTranslations(chatCopy)
   const [isDownloading, setIsDownloading] = useState(false)
 
   const download = async (): Promise<void> => {
@@ -639,7 +641,7 @@ const navigableLoci = (doc: CitedDocument): CitationLocus[] =>
 
 /** Tinted "Fundstelle" / cited-passage box shown above the document frame. */
 const CitedPassageBox: FC<{ snippet: string; signal: SourceTint }> = ({ snippet, signal }) => {
-  const t = useTranslations('chat')
+  const t = useTranslations(chatCopy)
   const style: CSSProperties = {
     backgroundColor: `var(--source-${signal}-tint, var(--muted))`,
     borderColor: `color-mix(in oklch, var(--source-${signal}, var(--foreground)) 25%, transparent)`,
@@ -695,7 +697,7 @@ const LocusRail: FC<{
   activeKey: string | undefined
   onSelect: (locus: CitationLocus) => void
 }> = ({ document: doc, activeKey, onSelect }) => {
-  const t = useTranslations('chat')
+  const t = useTranslations(chatCopy)
   const loci = navigableLoci(doc)
   // Nothing that names a page is nothing to point at: the passage box says what
   // was read, and a rail of one unplaceable entry would say it again, emptier.
@@ -871,8 +873,8 @@ export const CitationDocumentDialog: FC<{
    */
   similarFixtures?: { load: SimilarPassagesLoader; srcOf: DocumentSrcOf }
 }> = ({ target, citation, activeLocus, onSelectLocus, src, open, onOpenChange, similarFixtures }) => {
-  const t = useTranslations('chat')
-  const tKnowledge = useTranslations('knowledge')
+  const t = useTranslations(chatCopy)
+  const tKnowledge = useTranslations(knowledgeCopy)
   const projectId = useChatStore((s) => s.projectId)
   // The provenance tint comes from the SOURCE, not from where the file happens
   // to be stored: a chip and the dialog it opens must never disagree about what
@@ -1116,7 +1118,7 @@ export const CitationDocumentDialog: FC<{
 type PreviewOutcome = 'opened' | 'downloaded' | 'failed'
 
 const useDocumentPreview = (target: DocumentTarget, citation?: CitationRef) => {
-  const t = useTranslations('chat')
+  const t = useTranslations(chatCopy)
   const [isOpen, setIsOpen] = useState(false)
   const [isResolving, setIsResolving] = useState(false)
   const [src, setSrc] = useState<string | null>(null)
@@ -1251,7 +1253,7 @@ const DocumentPreviewChip: FC<{
   detail,
   onUnrenderable,
 }) => {
-  const t = useTranslations('chat')
+  const t = useTranslations(chatCopy)
   const { isResolving, openPreview, dialog } = useDocumentPreview(target, citation)
   const peek = useHoverPopover()
   const showBusy = useDelayedFlag(isResolving)
@@ -1371,7 +1373,7 @@ const DownloadPreviewChip: FC<{
   bindingNote,
   meta,
 }) => {
-  const t = useTranslations('chat')
+  const t = useTranslations(chatCopy)
   const { isDownloading, download } = useCitationDownload(target)
   const peek = useHoverPopover()
 
@@ -1463,7 +1465,7 @@ const RisPreviewChip: FC<{
   trailing,
   detail,
 }) => {
-  const t = useTranslations('chat')
+  const t = useTranslations(chatCopy)
   const [isOpen, setIsOpen] = useState(false)
   const peek = useHoverPopover()
 
@@ -1599,7 +1601,7 @@ const InfoPreviewChip: FC<{
   onDownload,
   downloadPending,
 }) => {
-  const t = useTranslations('chat')
+  const t = useTranslations(chatCopy)
   const peek = useHoverPopover()
   return (
     <>
@@ -2066,7 +2068,7 @@ export const SourceDocumentDialog: FC<{
 
 /** The RIS provenance chip, so the reader's header matches the chip that opened it. */
 const RisHeaderChip: FC<{ signal: SourceTint }> = ({ signal }) => {
-  const t = useTranslations('chat')
+  const t = useTranslations(chatCopy)
   return <SourceSignalChip signal={signal}>{t('sourcePreview.risDocument')}</SourceSignalChip>
 }
 

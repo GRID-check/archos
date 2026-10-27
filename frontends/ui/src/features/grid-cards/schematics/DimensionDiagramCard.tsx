@@ -27,6 +27,7 @@ import {
 } from './kit'
 import { sketchCircle, sketchLine, sketchPath, sketchPolygon, sketchRect, type Point } from './rough'
 import { useTranslations, type Translator } from '@/i18n'
+import { chatCopy } from '@/i18n/namespaces/chat'
 import type { DimensionCheckData, NormReferenceData } from './types'
 
 type Shape = 'door' | 'ramp' | 'corridor' | 'turning_circle' | 'threshold' | 'parking_space' | 'lift_cabin'
@@ -689,7 +690,7 @@ export const DimensionDiagramCard: FC<DimensionDiagramCardProps> = ({
   reference,
   note,
 }) => {
-  const t = useTranslations('chat')
+  const t = useTranslations(chatCopy)
   const template = (TEMPLATES[shape] ?? doorTemplate)(dimensions, t)
 
   return (

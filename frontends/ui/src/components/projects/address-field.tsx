@@ -30,6 +30,7 @@ import { Input } from '@/components/ui/input'
 import { Listbox, ListboxOption } from '@/components/ui/listbox'
 import { Spinner } from '@/components/ui/spinner'
 import { useTranslations } from '@/i18n'
+import { projectsCopy } from '@/i18n/namespaces/projects'
 import { createGeocodingClient, type GeocodingClient } from '@/lib/geocoding/client'
 import { GEOCODE_DEFAULT_LIMIT, type GeocodeResult } from '@/lib/geocoding/types'
 import { MAX_ADDRESS_LENGTH } from '@/lib/projects/create-project-schema'
@@ -78,7 +79,7 @@ export function AddressField({
   client,
   sameAddressClient,
 }: AddressFieldProps): JSX.Element {
-  const t = useTranslations('projects')
+  const t = useTranslations(projectsCopy)
   const id = useId()
   const listId = `${id}-list`
   const geocoder = useRef<GeocodingClient>(client ?? createGeocodingClient())

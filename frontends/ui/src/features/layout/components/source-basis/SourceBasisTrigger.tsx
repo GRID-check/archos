@@ -54,6 +54,7 @@ import {
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/adapters/auth'
 import { useTranslations } from '@/i18n'
+import { researchCopy } from '@/i18n/namespaces/research'
 import { useLayoutStore } from '../../store'
 import type { SourceSignal } from '../../lib/source-presets'
 import { iconForTint } from '../SourceSignalChip'
@@ -108,7 +109,7 @@ export interface SourceBasisTriggerProps extends ComponentProps<typeof Button> {
 
 export const SourceBasisTrigger = forwardRef<HTMLButtonElement, SourceBasisTriggerProps>(
   function SourceBasisTrigger({ className, pickerOpen = false, ...props }, ref) {
-    const t = useTranslations('research')
+    const t = useTranslations(researchCopy)
     // A 2px settle on the receipt: instant under reduced motion, like every token.
     const receiptTransition = useMotionToken(springSnap)
     const { idToken } = useAuth()

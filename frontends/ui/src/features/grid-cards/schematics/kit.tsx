@@ -36,6 +36,8 @@ import {
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { useTranslations, type Translator } from '@/i18n'
+import { chatCopy } from '@/i18n/namespaces/chat'
+import { knowledgeCopy } from '@/i18n/namespaces/knowledge'
 import { AskAboutChip } from '../components/AskAboutChip'
 import { CARD_SHELL } from '../components/card-chrome'
 import { PdfViewerDialog } from '@/features/knowledge/components/pdf-viewer-dialog'
@@ -519,7 +521,7 @@ interface LimitBarProps {
  * render an empty track with "fehlende Angabe".
  */
 export const LimitBar: FC<LimitBarProps> = ({ check, className }) => {
-  const t = useTranslations('chat')
+  const t = useTranslations(chatCopy)
   const { label, value, required, comparator, status } = check
   const unit = check.unit ?? 'cm'
   const max = Math.max(value ?? 0, required ?? 0) * 1.08 || 1
@@ -649,7 +651,7 @@ interface DimChecksListProps {
  * puts that question in the composer instead of making the reader type it.
  */
 export const DimChecksList: FC<DimChecksListProps> = ({ checks, className }) => {
-  const t = useTranslations('chat')
+  const t = useTranslations(chatCopy)
   if (checks.length === 0) return null
   return (
     <ul className={cn('flex flex-col gap-1.5', className)}>
@@ -748,7 +750,7 @@ export const NormRefFooter: FC<NormRefFooterProps> = ({ reference, bare = false 
   // Named for its namespace: every other translator in this file is scoped to
   // `chat`, and two `t`s in one file bound to different namespaces are
   // indistinguishable to `key-coverage.spec.ts`.
-  const tKnowledge = useTranslations('knowledge')
+  const tKnowledge = useTranslations(knowledgeCopy)
   const corpusFiles = useCorpusFiles()
   const [viewerOpen, setViewerOpen] = useState(false)
   if (!reference?.document) return null
@@ -793,7 +795,7 @@ interface StatusBadgeProps {
 
 /** Small verdict pill for the card header. */
 export const StatusBadge: FC<StatusBadgeProps> = ({ status }) => {
-  const t = useTranslations('chat')
+  const t = useTranslations(chatCopy)
   const Icon = STATUS_ICON[status]
   return (
     <span
@@ -842,7 +844,7 @@ export const SchematicCard: FC<SchematicCardProps> = ({
   reference,
   children,
 }) => {
-  const t = useTranslations('chat')
+  const t = useTranslations(chatCopy)
   return (
     // No entrance of its own: the card slot fades it in when the reader
     // watches it arrive, and a root `animate-in` replayed on every remount.

@@ -21,6 +21,7 @@
 import { toast } from 'sonner'
 import { createDocumentsClient } from '@/adapters/api'
 import { getStoreTranslator } from '@/i18n/store-translator'
+import { filesCopy } from '@/i18n/namespaces/files'
 import { listSessionDocuments } from '@/adapters/api/session-documents-client'
 import { useDocumentsStore } from './store'
 import { useLayoutStore } from '@/features/layout/store'
@@ -607,7 +608,7 @@ class UploadOrchestratorImpl {
           // The job's text is the knowledge layer's English, for logs; the
           // composer's error line says its category in the reader's language.
           const failure = classifyIngestFailure(status.error_message)
-          store.setError(failure ? ingestFailureSentence(failure, getStoreTranslator('files')) : status.error_message)
+          store.setError(failure ? ingestFailureSentence(failure, getStoreTranslator(filesCopy)) : status.error_message)
           this.emit('onError', new Error(status.error_message))
         }
 
@@ -748,7 +749,7 @@ class UploadOrchestratorImpl {
 
   /** A notice, not an error: nothing failed and there is nothing to retry. */
   private announceStillReading(): void {
-    toast.info(getStoreTranslator('files')('uploads.stillReading'), { id: STILL_READING_TOAST_ID })
+    toast.info(getStoreTranslator(filesCopy)('uploads.stillReading'), { id: STILL_READING_TOAST_ID })
   }
 
   /**

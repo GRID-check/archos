@@ -16,13 +16,14 @@ import { useRouter } from 'next/navigation'
 import { SectionLabel } from '@/components/ui/section-label'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useTranslations } from '@/i18n'
+import { projectsCopy } from '@/i18n/namespaces/projects'
 import type { ProjectRecordView } from '@/lib/projects/project-record-types'
 import { ProjectRecordPeople, useProjectPeriodText } from './project-record-editor'
 
 type Load = { state: 'loading' } | { state: 'failed' } | { state: 'ready'; projectRecord: ProjectRecordView }
 
 export function ClosingProjectRecord({ projectId }: { projectId: string }): JSX.Element {
-  const t = useTranslations('projects')
+  const t = useTranslations(projectsCopy)
   const router = useRouter()
   const [load, setLoad] = useState<Load>({ state: 'loading' })
 
@@ -73,7 +74,7 @@ function ClosingPeople({
   projectRecord: ProjectRecordView
   onChanged: () => void
 }): JSX.Element {
-  const t = useTranslations('projects')
+  const t = useTranslations(projectsCopy)
   const period = useProjectPeriodText(projectRecord)
   return (
     <div className="space-y-3">

@@ -39,6 +39,9 @@ import { SectionLabel } from '@/components/ui/section-label'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { useTranslations } from '@/i18n'
+import { chatCopy } from '@/i18n/namespaces/chat'
+import { jobsCopy } from '@/i18n/namespaces/jobs'
+import { tasksCopy } from '@/i18n/namespaces/tasks'
 import { listJobs, type Job } from '@/adapters/api/jobs-client'
 import type { ScheduleDraft } from '@/features/jobs/lib/schedule-draft'
 import { seriesColorsFor } from '@/features/jobs/lib/timetable'
@@ -129,9 +132,9 @@ export function TasksPanel({
   canChatInProject = true,
   initialView = 'list',
 }: TasksPanelProps): JSX.Element {
-  const t = useTranslations('tasks')
-  const tJobs = useTranslations('jobs')
-  const tChat = useTranslations('chat')
+  const t = useTranslations(tasksCopy)
+  const tJobs = useTranslations(jobsCopy)
+  const tChat = useTranslations(chatCopy)
   const [tasks, setTasks] = useState<readonly TaskRunView[]>([])
   const [jobs, setJobs] = useState<readonly Job[]>([])
   const [loading, setLoading] = useState(true)
@@ -643,8 +646,8 @@ function StandingTasksSection({
   onCreate,
   onRetry,
 }: StandingTasksSectionProps): JSX.Element {
-  const t = useTranslations('tasks')
-  const tJobs = useTranslations('jobs')
+  const t = useTranslations(tasksCopy)
+  const tJobs = useTranslations(jobsCopy)
 
   return (
     <section

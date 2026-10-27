@@ -15,6 +15,8 @@ import { BookOpenCheck } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { UploadHistory } from '@/features/uploads/components/upload-history'
 import { useTranslations } from '@/i18n'
+import { settingsCopy } from '@/i18n/namespaces/settings'
+import { uploadBatchesCopy } from '@/i18n/namespaces/upload-batches'
 import { ProjectReindexCard } from '../project-reindex-card'
 import { SettingsPanel } from './settings-panel'
 
@@ -34,8 +36,8 @@ export function DocumentsSettings({
   canReindex,
   showKnowledgeLink,
 }: DocumentsSettingsProps): JSX.Element {
-  const t = useTranslations('settings')
-  const tUploads = useTranslations('uploadBatches')
+  const t = useTranslations(settingsCopy)
+  const tUploads = useTranslations(uploadBatchesCopy)
 
   return (
     <div className="flex flex-col gap-6">

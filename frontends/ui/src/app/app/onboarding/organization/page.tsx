@@ -16,12 +16,13 @@ import { useAuth } from '@/adapters/auth/use-auth'
 import { OrganizationSetup } from '@/features/onboarding/components/organization-setup'
 import { TOUR_START_URL } from '@/features/onboarding/lib/product-tour'
 import { useTranslations } from '@/i18n'
+import { onboardingCopy } from '@/i18n/namespaces/onboarding'
 
 /** The "you're in" beat before the hand-off. Long enough to read, no longer. */
 const HANDOFF_DELAY_MS = 1200
 
 const OrganizationOnboardingPage = (): ReactNode => {
-  const t = useTranslations('onboarding')
+  const t = useTranslations(onboardingCopy)
   const { user, signOut } = useAuth()
   const router = useRouter()
   const [error, setError] = useState<string | null>(null)

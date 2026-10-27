@@ -39,6 +39,7 @@ import { ShimmerText } from '@/components/ui/shimmer-text'
 import { ChatThinking } from '@/features/chat/components/ChatThinking'
 import { AgentResponse } from '@/features/chat/components/AgentResponse'
 import { useTranslations } from '@/i18n'
+import { collaborationCopy } from '@/i18n/namespaces/collaboration'
 import { cn } from '@/lib/utils'
 import type { TurnView } from '@/features/chat/lib/turn-fold'
 import { citationsFromWireList } from '@/features/chat/lib/wire-citation'
@@ -91,7 +92,7 @@ const useJoinedMidText = (turn: TurnView): string | null => {
 }
 
 export const SpectatedTurn: FC<SpectatedTurnProps> = ({ turn, label, since, className }) => {
-  const t = useTranslations('collaboration')
+  const t = useTranslations(collaborationCopy)
   const done = turn.phase !== 'running'
   const waitingOn = turn.interaction?.text
   // Memoised on the view's own fields, which the fold replaces only when they

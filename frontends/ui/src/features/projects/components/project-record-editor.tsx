@@ -22,6 +22,8 @@ import { Input } from '@/components/ui/input'
 import { Item, ItemActions, ItemContent, ItemDescription, ItemList, ItemTitle } from '@/components/ui/item'
 import { MonthInput } from '@/components/ui/month-input'
 import { useLocale, useTranslations } from '@/i18n'
+import { commonCopy } from '@/i18n/namespaces/common'
+import { projectsCopy } from '@/i18n/namespaces/projects'
 import { isMonth, isOrderedPeriod, type Month } from '@/lib/projects/month'
 import type { ProjectPersonView, ProjectRecordView } from '@/lib/projects/project-record-types'
 
@@ -31,7 +33,7 @@ export function useProjectRecordFormat(): {
   /** A person's months: „März 2026 – Juni 2027", „seit März 2026", „bis Juni 2027", or empty. */
   span: (from: Month | null, to: Month | null) => string
 } {
-  const t = useTranslations('projects')
+  const t = useTranslations(projectsCopy)
   const { locale } = useLocale()
   const month = (value: Month): string =>
     new Intl.DateTimeFormat(locale, { month: 'short', year: 'numeric', timeZone: 'UTC' }).format(new Date(`${value}-01T00:00:00Z`))
@@ -46,7 +48,7 @@ export function useProjectRecordFormat(): {
 
 /** The project's period as one line: „seit März 2026", „März 2026 – Sept. 2027", or „Beginn offen". */
 export function useProjectPeriodText(projectRecord: Pick<ProjectRecordView, 'startedOn' | 'endedOn'>): string {
-  const t = useTranslations('projects')
+  const t = useTranslations(projectsCopy)
   const { span } = useProjectRecordFormat()
   if (!projectRecord.startedOn) return t('projectRecord.periodOpen')
   return span(projectRecord.startedOn, projectRecord.endedOn)
@@ -77,7 +79,7 @@ export function ProjectRecordPeriod({
   projectRecord: ProjectRecordView
   onChanged: () => void
 }): JSX.Element {
-  const t = useTranslations('projects')
+  const t = useTranslations(projectsCopy)
   const { locale } = useLocale()
   const { month } = useProjectRecordFormat()
   const [pending, setPending] = useState(false)
@@ -160,8 +162,8 @@ export function ProjectRecordPeople({
   /** Says who is listed on their own; off where the surface already says it. */
   hint?: boolean
 }): JSX.Element {
-  const t = useTranslations('projects')
-  const tCommon = useTranslations('common')
+  const t = useTranslations(projectsCopy)
+  const tCommon = useTranslations(commonCopy)
   const { span } = useProjectRecordFormat()
   const [editing, setEditing] = useState<Editing | null>(null)
   const [removing, setRemoving] = useState<ProjectPersonView | null>(null)
@@ -317,7 +319,7 @@ function PersonForm({
   onSubmit: (draft: PersonDraft) => Promise<void>
   onCancel: () => void
 }): JSX.Element {
-  const t = useTranslations('projects')
+  const t = useTranslations(projectsCopy)
   const { locale } = useLocale()
   const [draft, setDraft] = useState(initial)
   const backwards = !isOrderedPeriod(monthOrNull(draft.startedOn), monthOrNull(draft.endedOn))

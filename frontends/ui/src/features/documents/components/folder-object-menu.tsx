@@ -8,6 +8,7 @@ import { createContext, useContext, useMemo, useState, type ReactNode } from 're
 import { MoreHorizontal } from 'lucide-react'
 import { ActionMenu } from '@/components/ui/action-menu'
 import { useTranslations } from '@/i18n'
+import { filesCopy } from '@/i18n/namespaces/files'
 import { folderActionEntries } from './folder-action-entries'
 import { FolderPickerSheet } from './folder-picker-sheet'
 import { sortedFolderDestinations, type PathFolder } from '../lib/folder-path-label'
@@ -53,7 +54,7 @@ export function FolderObjectMenu({
   moveInSheet = false,
   children,
 }: FolderObjectMenuProps): ReactNode {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   const [moveOpen, setMoveOpen] = useState(false)
   // Labelled and sorted only for a sheet that is open: one per folder tile otherwise.
   const pickerDestinations = useMemo(

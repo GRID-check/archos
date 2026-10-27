@@ -90,6 +90,11 @@ import { useAuth } from '@/adapters/auth'
 import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import { SectionLabel } from '@/components/ui/section-label'
 import { useTranslations } from '@/i18n'
+import { chatCopy } from '@/i18n/namespaces/chat'
+import { collaborationCopy } from '@/i18n/namespaces/collaboration'
+import { commonCopy } from '@/i18n/namespaces/common'
+import { filesCopy } from '@/i18n/namespaces/files'
+import { researchCopy } from '@/i18n/namespaces/research'
 import { SourceDeletedNote } from '@/components/projects/source-deleted-note'
 import { useShowReasoningSkills } from '@/lib/user-preferences/use-show-reasoning-skills'
 import { WELCOME_OFFSET_FALLBACK } from '../hooks/use-composer-metrics'
@@ -276,8 +281,8 @@ export const ChatArea: FC<ChatAreaProps> = memo(function ChatArea({
   const stableStepsRef = useRef(new Map<string, StoredThinkingStep[]>())
   const dismissErrorCard = useChatStore((s) => s.dismissErrorCard)
   const retryLastUserMessage = useChatStore((s) => s.retryLastUserMessage)
-  const t = useTranslations('research')
-  const tCollaboration = useTranslations('collaboration')
+  const t = useTranslations(researchCopy)
+  const tCollaboration = useTranslations(collaborationCopy)
   const { user } = useAuth()
   const currentUserId = user?.id ?? null
   // Fetched ONCE for the whole transcript and passed down to each answer.
@@ -2127,8 +2132,8 @@ const MessageRendererComponent: FC<MessageRendererProps> = ({
   onCommissionFinding,
   onContinueRun,
 }) => {
-  const tFileStatus = useTranslations('research')
-  const tCommon = useTranslations('common')
+  const tFileStatus = useTranslations(researchCopy)
+  const tCommon = useTranslations(commonCopy)
   const messageType = message.messageType || (message.role === 'user' ? 'user' : 'assistant')
 
   switch (messageType) {
@@ -2400,7 +2405,7 @@ const TurnInFlightBanner: FC<{ label: string }> = ({ label }) => (
  * HITL prompt until the turn resumes. Left-aligned to match assistant bubbles.
  */
 const TypingIndicator: FC = () => {
-  const t = useTranslations('research')
+  const t = useTranslations(researchCopy)
   const label = t('chatArea.status.thinking')
   // Mounted when the reader answers the prompt, so counting from mount is the
   // true time since that answer.
@@ -2444,7 +2449,7 @@ const TypingIndicator: FC = () => {
  * a WelcomeState flash before their thread loads in.
  */
 const MessageListSkeleton: FC = () => {
-  const t = useTranslations('research')
+  const t = useTranslations(researchCopy)
   return (
     <div
       className={cn(
@@ -2516,11 +2521,11 @@ const WelcomeState: FC<WelcomeStateProps> = ({
   onSignIn,
   inProject = false,
 }) => {
-  const t = useTranslations('research')
-  const tChat = useTranslations('chat')
+  const t = useTranslations(researchCopy)
+  const tChat = useTranslations(chatCopy)
   const { user } = useAuth()
   const composerSubject = useChatStore((s) => s.composerSubject)
-  const tFiles = useTranslations('files')
+  const tFiles = useTranslations(filesCopy)
 
   if (!isAuthenticated) {
     return (

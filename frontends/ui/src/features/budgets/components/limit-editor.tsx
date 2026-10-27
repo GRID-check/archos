@@ -28,6 +28,8 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog'
 import { useLocale, useTranslations } from '@/i18n'
+import { commonCopy } from '@/i18n/namespaces/common'
+import { organizationCopy } from '@/i18n/namespaces/organization'
 import { parseDecimalInput } from '@/lib/text/parse-decimal'
 
 /** A budget policy as `/api/organization/budgets` sends it. Limits are decimal strings. */
@@ -70,8 +72,8 @@ export const LimitEditor: FC<{
   onSaved: () => Promise<void>
   trigger: ReactNode
 }> = ({ scope, subjectId, current, unitWord, subjectLabel, onSaved, trigger }) => {
-  const t = useTranslations('organization')
-  const tCommon = useTranslations('common')
+  const t = useTranslations(organizationCopy)
+  const tCommon = useTranslations(commonCopy)
   const { locale } = useLocale()
   const [open, setOpen] = useState(false)
   const [daily, setDaily] = useState('')

@@ -32,6 +32,7 @@ import { Fragment } from 'react'
 import { HoverPeekPanel } from '@/components/ui/hover-peek-panel'
 import { useHoverPopover } from '@/hooks/use-hover-popover'
 import { useTranslations } from '@/i18n'
+import { collaborationCopy } from '@/i18n/namespaces/collaboration'
 import { AGENT_MENTION_ID } from '@/lib/mentions/types'
 import { motion, springPress } from '@/components/motion'
 import { cn } from '@/lib/utils'
@@ -169,7 +170,7 @@ export function MentionText({
   currentUserId,
   className,
 }: MentionTextProps): JSX.Element {
-  const t = useTranslations('collaboration')
+  const t = useTranslations(collaborationCopy)
   const segments = splitMentionSegments(content, mentions ?? [])
 
   return (

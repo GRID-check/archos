@@ -12,6 +12,7 @@ import type { JSX } from 'react'
 import { Sparkles, UserPlus } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useTranslations } from '@/i18n'
+import { filesCopy } from '@/i18n/namespaces/files'
 import { askAboutFile } from '@/features/documents/lib/ask-about-file'
 import { AssignPopover } from '@/features/documents/components/assign-popover'
 import { AssignmentFaces } from '@/features/documents/components/assignment-faces'
@@ -29,7 +30,7 @@ export function ModelFileOwnership({
   model: BimModelHeaderView
   canCollaborate: boolean
 }): JSX.Element {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   const router = useRouter()
   const [assignees, setAssignees] = useDocumentAssignees(model.documentId, canCollaborate)
   const file = fileItemFromModel(model, assignees)

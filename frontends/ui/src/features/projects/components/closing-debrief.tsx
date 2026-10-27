@@ -38,6 +38,7 @@ import { Item, ItemActions, ItemContent, ItemList } from '@/components/ui/item'
 import { SectionLabel } from '@/components/ui/section-label'
 import { Textarea } from '@/components/ui/textarea'
 import { useTranslations } from '@/i18n'
+import { projectsCopy } from '@/i18n/namespaces/projects'
 import { isConfirmedMemory, memoryOriginOf } from '@/lib/cross-project/decision-origin'
 import { factLabel, fingerprintOf, type FingerprintKey } from '@/lib/cross-project/fingerprint'
 import type { ProjectMemoryItem } from '@/lib/db/schema'
@@ -103,7 +104,7 @@ async function send<T>(url: string, init?: RequestInit): Promise<T> {
 }
 
 export function ClosingDebrief({ projectId, profile, canWriteMemory }: ClosingDebriefProps): JSX.Element {
-  const t = useTranslations('projects')
+  const t = useTranslations(projectsCopy)
   const router = useRouter()
   const [items, setItems] = useState<DebriefItem[] | null>(null)
   const [failed, setFailed] = useState(false)

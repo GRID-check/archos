@@ -27,11 +27,13 @@ import {
   type UsageResponse,
 } from '@/features/budgets/components/usage-overview'
 import { useTranslations } from '@/i18n'
+import { organizationCopy } from '@/i18n/namespaces/organization'
+import { platformCopy } from '@/i18n/namespaces/platform'
 import { fetchPlatformOrgUsage } from '@/lib/budgets/platform-client'
 import type { PlatformOrgUsage } from '@/lib/budgets/platform-contract'
 
 export const PlatformOrgUsageView: FC<{ organizationId: string }> = ({ organizationId }) => {
-  const t = useTranslations('platform')
+  const t = useTranslations(platformCopy)
   const [data, setData] = useState<PlatformOrgUsage | null>(null)
   const [failed, setFailed] = useState(false)
 
@@ -95,8 +97,8 @@ const MemberSpendList: FC<{ usage: UsageResponse; members: PlatformOrgUsage['mem
   usage,
   members,
 }) => {
-  const t = useTranslations('platform')
-  const tOrg = useTranslations('organization')
+  const t = useTranslations(platformCopy)
+  const tOrg = useTranslations(organizationCopy)
   const { formatBare } = useSpendFormat(usage.unit)
   const byId = useMemo(() => new Map(members.map((member) => [member.id, member])), [members])
   const rows = useMemo(

@@ -7,6 +7,7 @@ import { Check, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { useTranslations } from '@/i18n'
+import { intakeProfileStepCopy } from '@/i18n/namespaces/intake-profile-step'
 import type { DerivationReview, IntakeDecision, Suggestion, SuggestionGroup } from '@/lib/project-intake/types'
 import { cn } from '@/lib/utils'
 import { usePressed } from '../../hooks/use-pressed'
@@ -48,7 +49,7 @@ export function FindingsCard({
   /** The briefing editor is still a way to change the values (the setup is not finished). */
   editable: boolean
 }): JSX.Element {
-  const t = useTranslations('intakeProfileStep')
+  const t = useTranslations(intakeProfileStepCopy)
   const [open, setOpen] = useState(false)
   const all = findings(groups)
   const top = topFindings(groups, derivations)
@@ -155,7 +156,7 @@ function FindingRows({
 }
 
 function FindingRow({ item, severalBuildings, ...decide }: Decide & { item: Suggestion; severalBuildings: boolean }): JSX.Element {
-  const t = useTranslations('intakeProfileStep')
+  const t = useTranslations(intakeProfileStepCopy)
   const label = shortLabel(item.label)
   const building =
     severalBuildings && item.buildingId ? t('findings.building', { number: buildingNumber(item.buildingId) }) : null
@@ -191,7 +192,7 @@ function FindingRow({ item, severalBuildings, ...decide }: Decide & { item: Sugg
  * („Ändern“) or says it is not right at all (✕); a value they set says so.
  */
 function RowAction({ item, label, canDecide, busy, onDecide }: Decide & { item: Suggestion; label: string }): JSX.Element {
-  const t = useTranslations('intakeProfileStep')
+  const t = useTranslations(intakeProfileStepCopy)
   const [dismissing, dismiss] = usePressed()
   if (item.state === 'confirmed') {
     return (

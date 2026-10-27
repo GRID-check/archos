@@ -29,6 +29,7 @@ import {
 import { Input } from '@/components/ui/input'
 import { asShelf, type Shelf } from '@/features/chat/lib/source-kinds'
 import { useTranslations } from '@/i18n'
+import { runsCopy } from '@/i18n/namespaces/runs'
 import { planDocumentLabel, type PlanDocument } from '@/lib/runs/plan-documents'
 import { cn } from '@/lib/utils'
 
@@ -74,7 +75,7 @@ const shelfKey = (shelf: string | undefined): Shelf | null => asShelf(shelf) ?? 
 
 export const DocumentsDialog: FC<DocumentsDialogProps> = (props) => {
   const { open, onOpenChange, documents, loading = false } = props
-  const t = useTranslations('runs')
+  const t = useTranslations(runsCopy)
   const [query, setQuery] = useState('')
   const rows = useMemo(() => {
     const needle = fold(query)

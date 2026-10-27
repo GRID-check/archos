@@ -27,6 +27,7 @@ import {
 } from './kit'
 import { sketchPolygon, sketchRect, type Point } from './rough'
 import { useTranslations } from '@/i18n'
+import { chatCopy } from '@/i18n/namespaces/chat'
 import type { DimensionCheckData, NormReferenceData } from './types'
 
 interface StairDiagramCardProps {
@@ -53,7 +54,7 @@ export const StairDiagramCard: FC<StairDiagramCardProps> = ({
   comfort_note,
   reference,
 }) => {
-  const t = useTranslations('chat')
+  const t = useTranslations(chatCopy)
   const n = Math.max(1, Math.min(riser_count, 30))
   const rise = riser_height.value ?? FALLBACK_RISE_CM
   const going = tread_depth.value ?? FALLBACK_GOING_CM

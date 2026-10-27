@@ -44,6 +44,7 @@ import type { PluggableList } from 'unified'
 import { useLocale, useTranslations } from '@/i18n'
 import { AnswerCost } from './AnswerCost'
 import type { Translator } from '@/i18n'
+import { chatCopy } from '@/i18n/namespaces/chat'
 import { MarkdownRenderer } from '@/shared/components/MarkdownRenderer'
 import { remarkCitationMarkers } from '@/features/layout/lib/citation-markers'
 import { remarkFileReferences } from '@/features/layout/lib/file-reference-markers'
@@ -521,7 +522,7 @@ function localizeTokens(
 const CitationsRemovedNote: FC<{ citationsRemoved?: { count: number; reasons: string[] } }> = ({
   citationsRemoved,
 }) => {
-  const t = useTranslations('chat')
+  const t = useTranslations(chatCopy)
   if (!citationsRemoved || citationsRemoved.count <= 0) return null
 
   const label = t('answerSources.citationsRemoved', { count: citationsRemoved.count })
@@ -598,7 +599,7 @@ const CitationsRemovedNote: FC<{ citationsRemoved?: { count: number; reasons: st
  * not in the details: it changes how the whole answer reads.
  */
 const LookupFoundNothingNote: FC<{ show: boolean }> = ({ show }) => {
-  const t = useTranslations('chat')
+  const t = useTranslations(chatCopy)
   if (!show) return null
   return (
     <div className="mt-1.5" data-testid="lookup-found-nothing">
@@ -614,7 +615,7 @@ const ResearchTruncatedNote: FC<{
   truncationReason?: string
   hasSources: boolean
 }> = ({ researchTruncated, truncationReason, hasSources }) => {
-  const t = useTranslations('chat')
+  const t = useTranslations(chatCopy)
   if (!researchTruncated) return null
   const sentence = t(
     hasSources ? 'answerSources.researchTruncated' : 'answerSources.researchTruncatedWithoutSources'
@@ -651,7 +652,7 @@ const ResearchTruncatedNote: FC<{
  * is weaker, which is precisely what it was before this rendered at all.
  */
 const AnswerDegradedNote: FC<{ degradedReasons?: string[] }> = ({ degradedReasons }) => {
-  const t = useTranslations('chat')
+  const t = useTranslations(chatCopy)
   const lines = localizeTokens(
     t,
     'answerSources.degradedReason',
@@ -715,7 +716,7 @@ function readSourceLabel(source: CitationSource): string | undefined {
  * without burying the footer. Dedupe stays backend-side: one row per entry.
  */
 const ReadSourcesSection: FC<{ readSources?: CitationSource[] }> = ({ readSources }) => {
-  const t = useTranslations('chat')
+  const t = useTranslations(chatCopy)
   const [expanded, setExpanded] = useState(false)
   const named = useMemo(
     () =>
@@ -838,7 +839,7 @@ const AnswerDetails = memo(function AnswerDetails({
   beside?: ReactNode
   after?: ReactNode
 }) {
-  const t = useTranslations('chat')
+  const t = useTranslations(chatCopy)
   // Without the locale `formatTime` uses the RUNTIME default, so a German user on
   // an en-US browser got "03:35 PM" beside cards that all say "15:35".
   const { locale } = useLocale()
@@ -978,7 +979,7 @@ const AgentResponseComponent: FC<AgentResponseProps> = ({
   stopped = false,
   failed = false,
 }) => {
-  const t = useTranslations('chat')
+  const t = useTranslations(chatCopy)
   const storeProjectId = useChatStore((s) => s.projectId)
   // A read-only answer is not the reader's: nothing in it may act on the
   // project the READER has open (ADR-0039 §5), and no card in it may record a

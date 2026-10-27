@@ -33,6 +33,7 @@ import { X } from 'lucide-react'
 import { AvatarStack, type AvatarStackPerson } from '@/components/ui/avatar-stack'
 import { Button } from '@/components/ui/button'
 import { useTranslations } from '@/i18n'
+import { collaborationCopy } from '@/i18n/namespaces/collaboration'
 import { cn } from '@/lib/utils'
 
 export interface HandbackOfferProps {
@@ -53,7 +54,7 @@ export function HandbackOffer({
   onDismiss,
   className,
 }: HandbackOfferProps): JSX.Element | null {
-  const t = useTranslations('collaboration')
+  const t = useTranslations(collaborationCopy)
   if (people.length === 0) return null
 
   const names = people.map((person) => person.name)

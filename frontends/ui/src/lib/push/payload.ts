@@ -14,9 +14,11 @@
  */
 
 import { createHash } from 'node:crypto'
-import { getDictionary } from '@/i18n/dictionaries'
+import { namespaceRoot, translatorFor } from '@/i18n/namespace'
+import { collaborationCopy } from '@/i18n/namespaces/collaboration'
+import { notificationsCopy } from '@/i18n/namespaces/notifications'
 import type { Locale } from '@/i18n/config'
-import { createTranslator, getByPath } from '@/i18n/translate'
+import { getByPath } from '@/i18n/translate'
 import { inboxItemCopy } from '@/lib/inbox/item-copy'
 import type { PushPreferences } from '@/lib/inbox/push-categories'
 import type { InboxPushFold } from '@/lib/inbox/registry'
@@ -82,16 +84,15 @@ export function buildFoldedPushMessage(
   const told = items.filter((item) => item.href && isSameOriginPath(item.href))
   const type = told[0]?.type
   if (!type || told.length < 2) return null
-  const dictionary = getDictionary(locale)
   const tag = pushTagFor(`fold:${type}:${told[0]?.id}`)
   const base = { version: PUSH_PAYLOAD_VERSION, url: INBOX_PATH, tag, itemId: '' } as const
   if (!preferences.showContent) {
-    return { ...base, title: createTranslator(dictionary, 'notifications')('push.genericTitle'), body: null }
+    return { ...base, title: translatorFor(notificationsCopy, locale)('push.genericTitle'), body: null }
   }
   const presentation = INBOX_TYPE_PRESENTATION[type] ?? UNKNOWN_TYPE_PRESENTATION
   const root = `inbox.types.${presentation.i18nKey}.pushFold`
-  const t = createTranslator(dictionary, 'collaboration')
-  const words = getByPath(dictionary, `collaboration.${root}`) as { parts?: Record<string, unknown> } | undefined
+  const t = translatorFor(collaborationCopy, locale)
+  const words = getByPath(namespaceRoot(collaborationCopy, locale), `collaboration.${root}`) as { parts?: Record<string, unknown> } | undefined
   if (!words?.parts) return null
   const counts = new Map<string, number>()
   for (const item of told) {
@@ -120,12 +121,11 @@ export function buildPushMessage(
   locale: Locale
 ): PushMessage | null {
   if (!item.href || !isSameOriginPath(item.href)) return null
-  const dictionary = getDictionary(locale)
   const base = { version: PUSH_PAYLOAD_VERSION, url: item.href, tag: pushTagFor(groupKey), itemId: item.id } as const
   if (!preferences.showContent) {
-    const t = createTranslator(dictionary, 'notifications')
+    const t = translatorFor(notificationsCopy, locale)
     return { ...base, title: t('push.genericTitle'), body: null }
   }
-  const { title, body } = inboxItemCopy(item, createTranslator(dictionary, 'collaboration'), dictionary, locale)
+  const { title, body } = inboxItemCopy(item, translatorFor(collaborationCopy, locale), namespaceRoot(collaborationCopy, locale), locale)
   return { ...base, title: clip(title, MAX_TITLE), body: body ? clip(body, MAX_BODY) : null }
 }

@@ -19,6 +19,7 @@
 import type { FC } from 'react'
 import { ArrowUpRight, FileWarning } from 'lucide-react'
 import { useLocale, useTranslations } from '@/i18n'
+import { chatCopy } from '@/i18n/namespaces/chat'
 import { formatBytes } from '@/lib/format'
 import { documentDisplayName } from '@/lib/documents/display-name'
 import { SectionLabel } from '@/components/ui/section-label'
@@ -35,7 +36,7 @@ export const FileReferencePeek: FC<{
   writtenAs?: string
   onOpen: () => void
 }> = ({ stored, writtenAs, onOpen }) => {
-  const t = useTranslations('chat')
+  const t = useTranslations(chatCopy)
   const { locale } = useLocale()
   const { file } = stored
   const name = documentDisplayName(file)

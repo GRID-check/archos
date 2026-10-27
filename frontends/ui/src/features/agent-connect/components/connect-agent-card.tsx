@@ -23,6 +23,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { SectionLabel } from '@/components/ui/section-label'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useTranslations } from '@/i18n'
+import { profileCopy } from '@/i18n/namespaces/profile'
 import { CodeBlock } from '@/shared/components/CodeBlock'
 import type { AgentConnectState } from '../lib/connect-state'
 
@@ -72,7 +73,7 @@ export interface ConnectAgentCardProps {
 }
 
 function Notice({ state }: { state: AgentConnectState }): JSX.Element {
-  const t = useTranslations('profile.connectAgent')
+  const t = useTranslations(profileCopy, 'connectAgent')
   const prefix = state.availability === 'not-configured' ? 'notConfigured' : 'orgDisabled'
   return (
     <Alert variant="info" data-testid="connect-agent-notice">
@@ -87,7 +88,7 @@ function Notice({ state }: { state: AgentConnectState }): JSX.Element {
 }
 
 function ClientSteps({ client, url }: { client: ClientSpec; url: string }): JSX.Element {
-  const t = useTranslations('profile.connectAgent')
+  const t = useTranslations(profileCopy, 'connectAgent')
   return (
     <ol className="flex list-decimal flex-col gap-2 pl-5 text-sm">
       {client.steps.map((step) => (
@@ -106,7 +107,7 @@ function ClientSteps({ client, url }: { client: ClientSpec; url: string }): JSX.
 }
 
 function Bullets({ group, keys }: { group: 'can' | 'stays'; keys: readonly string[] }): JSX.Element {
-  const t = useTranslations('profile.connectAgent')
+  const t = useTranslations(profileCopy, 'connectAgent')
   const Icon = group === 'can' ? Check : ShieldCheck
   return (
     <ul className="flex flex-col gap-1.5 text-sm">
@@ -121,7 +122,7 @@ function Bullets({ group, keys }: { group: 'can' | 'stays'; keys: readonly strin
 }
 
 export function ConnectAgentCard({ state, guideHref }: ConnectAgentCardProps): JSX.Element {
-  const t = useTranslations('profile.connectAgent')
+  const t = useTranslations(profileCopy, 'connectAgent')
   const url = state.availability === 'ready' ? state.url : null
 
   return (
@@ -190,6 +191,6 @@ export function ConnectAgentCard({ state, guideHref }: ConnectAgentCardProps): J
 }
 
 function ClientTab({ id }: { id: ClientId }): JSX.Element {
-  const t = useTranslations('profile.connectAgent')
+  const t = useTranslations(profileCopy, 'connectAgent')
   return <TabsTrigger value={id}>{t(`clients.${id}.name`)}</TabsTrigger>
 }

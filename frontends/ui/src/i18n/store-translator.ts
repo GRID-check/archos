@@ -5,15 +5,15 @@
  * hook, but they still surface user-facing copy (e.g. toast notifications when
  * a background job fails to cancel). This helper resolves the active locale
  * from the same cookie the {@link I18nProvider} mirrors it into, then builds a
- * one-off translator over the bundled dictionaries.
+ * one-off translator over the namespace it is handed.
  *
  * It is intentionally NOT reactive: it reads the locale at call time, which is
  * exactly right for imperative, fire-and-forget messages. React components must
  * keep using `useTranslations` so they re-render on a language switch.
  */
 
-import { getDictionary } from './dictionaries'
-import { createTranslator, type Translator } from './translate'
+import { translatorFor, type Namespace } from './namespace'
+import type { Translator } from './translate'
 import { LOCALE_COOKIE, defaultLocale, isLocale, resolveLocale, type Locale } from './config'
 
 /**
@@ -39,10 +39,10 @@ export function getActiveLocale(): Locale {
 }
 
 /**
- * Build a translator bound to the active locale, optionally scoped to a
- * namespace. Call this at the point of use (not module load) so it always
- * reflects the current language.
+ * Build a translator bound to the active locale over one namespace, optionally
+ * narrowed to a scope inside it. Call this at the point of use (not module
+ * load) so it always reflects the current language.
  */
-export function getStoreTranslator(namespace?: string): Translator {
-  return createTranslator(getDictionary(getActiveLocale()), namespace)
+export function getStoreTranslator(namespace: Namespace, scope?: string): Translator {
+  return translatorFor(namespace, getActiveLocale(), scope)
 }

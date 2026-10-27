@@ -19,6 +19,7 @@ import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useTranslations } from '@/i18n'
+import { organizationCopy } from '@/i18n/namespaces/organization'
 import type {
   ConventionLine,
   ConventionLineView,
@@ -52,7 +53,7 @@ interface LineRowProps {
 }
 
 const LineRow: FC<LineRowProps> = ({ view, busy, onDecide }) => {
-  const t = useTranslations('organization')
+  const t = useTranslations(organizationCopy)
   const { line, decision } = view
   return (
     <li className="flex flex-col gap-2 py-3 sm:flex-row sm:items-center sm:gap-4" data-testid="office-convention-line">
@@ -89,7 +90,7 @@ const LineRow: FC<LineRowProps> = ({ view, busy, onDecide }) => {
 }
 
 export const OfficeConventionsCard: FC = () => {
-  const t = useTranslations('organization')
+  const t = useTranslations(organizationCopy)
   const [view, setView] = useState<OfficeConventionsView | null>(null)
   const [failed, setFailed] = useState(false)
   const [busy, setBusy] = useState(false)

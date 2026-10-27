@@ -51,6 +51,8 @@ import { TimeAgo } from '@/components/ui/time-ago'
 import { QuarantineFindings } from '@/features/documents/components/quarantine-findings'
 import { documentHref } from '@/features/uploads/lib/upload-summary'
 import { useLocale, useTranslations } from '@/i18n'
+import { commonCopy } from '@/i18n/namespaces/common'
+import { organizationCopy } from '@/i18n/namespaces/organization'
 
 type PendingAction = { kind: 'release' | 'delete'; item: QuarantineQueueItem }
 
@@ -69,8 +71,8 @@ function useProjectNames(): Map<string, string> {
 }
 
 export const QuarantineQueue: FC = () => {
-  const t = useTranslations('organization')
-  const tc = useTranslations('common')
+  const t = useTranslations(organizationCopy)
+  const tc = useTranslations(commonCopy)
   const [items, setItems] = useState<QuarantineQueueItem[] | null>(null)
   const [failed, setFailed] = useState(false)
   // The item stays set while the dialog animates out, so its title does not blank.
@@ -210,7 +212,7 @@ const QuarantineRow: FC<{
   onRelease: () => void
   onDelete: () => void
 }> = ({ item, projectName, onRelease, onDelete }) => {
-  const t = useTranslations('organization')
+  const t = useTranslations(organizationCopy)
   const { locale } = useLocale()
   const hasReasons = (item.verdict?.reasons.length ?? 0) > 0
 

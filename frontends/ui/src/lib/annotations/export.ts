@@ -57,6 +57,7 @@ import { DOCX_MEDIA_TYPE, renderDocx } from '@/lib/answer-export/docx'
 import { labelled, paragraph, type DocBlock, type DocRun } from '@/lib/answer-export/blocks'
 import { getLocale, getTranslations } from '@/i18n/server'
 import type { Translator } from '@/i18n/translate'
+import { filesCopy } from '@/i18n/namespaces/files'
 import { listAnnotations } from './service'
 import { isLive, isOverdue, type AnnotationView } from './types'
 import { protocolFileNameOf, type AnnotationExportOptions } from './export-request'
@@ -513,7 +514,7 @@ export async function exportAnnotationProtocol(
     getLocale(),
   ])
   // Bound by name, so `key-coverage.spec.ts` checks every key this file asks for against `files`.
-  const t = await getTranslations('files')
+  const t = await getTranslations(filesCopy)
   const selection = selectMarks(annotations, options)
   const protocol = buildProtocol(header, selection, options, t, locale)
   const file = await renderProtocol(protocol, options.format)

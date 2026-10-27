@@ -13,6 +13,7 @@ import { documentBadgeState } from '../lib/document-lifecycle'
 import { FileExtChip } from './file-ext-chip'
 import { DEFAULT_FILE_SORT, RELEVANCE_SORT, nextSort, sortFiles, type FileSort, type FileSortKey } from '../lib/file-sort'
 import { useLocale, useTranslations } from '@/i18n'
+import { filesCopy } from '@/i18n/namespaces/files'
 import { formatAbsoluteTime, formatBytes, formatRelativeTime } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import { documentDisplayName } from '@/lib/documents/display-name'
@@ -104,7 +105,7 @@ export function FileListView({
   draggable = false,
   selection,
 }: FileListViewProps) {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   const { locale } = useLocale()
   const [uncontrolledSort, setUncontrolledSort] = useState<FileSort>(
     semantic ? RELEVANCE_SORT : DEFAULT_FILE_SORT
@@ -359,7 +360,7 @@ const FileListRowItem = memo(function FileListRowItem({
   renderActions,
   wrapRow,
 }: FileListRowItemProps): ReactNode {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   const { locale } = useLocale()
   // The badge rule's subject, with the listing's nulls narrowed to
   // what the rule reads: `null` lifecycle is "the working set", i.e.
@@ -664,7 +665,7 @@ export function FileListSkeleton({ rows = 6 }: { rows?: number }) {
 
 /** The heading strip above the placeholder rows — same widths as the real columns. */
 function FileListSkeletonHeader(): JSX.Element {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   return (
     <div className="text-muted-foreground flex items-center gap-2.5 border-b px-2 pb-1.5 text-[10.5px] font-medium tracking-wider">
       <span className="min-w-0 flex-1">{t('list.columns.name')}</span>

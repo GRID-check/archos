@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Chip } from '@/components/ui/chip'
 import { useTranslations } from '@/i18n'
+import { chatCopy } from '@/i18n/namespaces/chat'
 import { cn } from '@/lib/utils'
 import { useChatStore } from '@/features/chat/store'
 import { useCardDecision } from '../hooks/use-card-decision'
@@ -81,7 +82,7 @@ function BrowserWrittenMemoryCard({
   cardKey,
   decisionsMustPersist,
 }: Omit<MemoryProposalCardProps, 'proposalId' | 'supersedes'>) {
-  const t = useTranslations('chat')
+  const t = useTranslations(chatCopy)
   // Same source as ProjectProfilePatchCard's projectId: the active chat store.
   const projectId = useChatStore((s) => s.projectId)
   const { decision, decide, canDecide } = useCardDecision(messageId, cardKey, {

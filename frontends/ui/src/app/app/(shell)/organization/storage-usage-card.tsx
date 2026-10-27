@@ -25,6 +25,7 @@ import { LoadError } from '@/components/ui/load-error'
 import { Skeleton } from '@/components/ui/skeleton'
 import { formatBytes } from '@/lib/format'
 import { useLocale, useTranslations } from '@/i18n'
+import { organizationCopy } from '@/i18n/namespaces/organization'
 
 /** Wire shape of `GET /api/organization/storage`. */
 interface StorageScopeUsage {
@@ -52,7 +53,7 @@ const StorageMeter: FC<{ usedBytes: number; quotaBytes: number | null }> = ({
   usedBytes,
   quotaBytes,
 }) => {
-  const t = useTranslations('organization')
+  const t = useTranslations(organizationCopy)
   const { locale } = useLocale()
 
   const over = quotaBytes !== null && usedBytes >= quotaBytes
@@ -126,7 +127,7 @@ const FactRow: FC<{ label: string; testId?: string; children: ReactNode }> = ({
 )
 
 const ScopeRow: FC<{ label: string; usage: StorageScopeUsage }> = ({ label, usage }) => {
-  const t = useTranslations('organization')
+  const t = useTranslations(organizationCopy)
   const { locale } = useLocale()
 
   return (
@@ -162,7 +163,7 @@ interface StorageUsageCardProps {
 export const StorageUsageCard: FC<StorageUsageCardProps> = ({
   endpoint = STORAGE_ENDPOINT,
 }) => {
-  const t = useTranslations('organization')
+  const t = useTranslations(organizationCopy)
   const { locale } = useLocale()
   const [data, setData] = useState<StorageResponse | null>(null)
   const [loading, setLoading] = useState(true)

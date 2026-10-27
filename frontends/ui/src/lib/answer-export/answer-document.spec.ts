@@ -24,16 +24,16 @@
  */
 
 import { describe, expect, it } from 'vitest'
-import { createTranslator } from '@/i18n/translate'
-import { de, en } from '@/i18n/dictionaries'
+import { translatorFor } from '@/i18n/namespace'
+import { answerExportCopy } from '@/i18n/namespaces/answer-export'
 import type { DocBlock } from './blocks'
 import { buildAnswerDocument, type AnswerDocumentInput } from './answer-document'
 import { CARD_EXPORT, isCheck, SKIPPED_FIELDS, skippedNested } from './cards'
 import { gridCardSchema } from '@/shared/cards/schemas'
 import { previewFixtureFor } from '@/features/grid-cards/preview-fixtures'
 
-const german = createTranslator(de, 'answerExport')
-const english = createTranslator(en, 'answerExport')
+const german = translatorFor(answerExportCopy, 'de')
+const english = translatorFor(answerExportCopy, 'en')
 
 const CREATED_AT = new Date('2026-05-04T09:30:00Z')
 
@@ -160,7 +160,7 @@ describe('the marking on an unreviewed document', () => {
         [
           [
             { text: 'KI-generiert — nicht geprüft\n', bold: true },
-            { text: de.answerExport.aiNotice.body },
+            { text: answerExportCopy.messages.de.aiNotice.body },
           ],
         ],
       ],
@@ -843,7 +843,7 @@ describe('every string in the document comes from a dictionary', () => {
    * The vocabularies the walker spells payload members with — read off the
    * German dictionary, because that is the document being asserted.
    */
-  const vocabularies = de.answerExport.values as Record<
+  const vocabularies = answerExportCopy.messages.de.values as Record<
     string,
     Record<string, string | undefined> | undefined
   >
@@ -886,7 +886,7 @@ describe('every string in the document comes from a dictionary', () => {
         return
       }
       if (typeof value === 'boolean') {
-        expected.push([de.answerExport.boolean[value ? 'true' : 'false']])
+        expected.push([answerExportCopy.messages.de.boolean[value ? 'true' : 'false']])
         return
       }
       if (typeof value === 'number') {

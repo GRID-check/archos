@@ -8,6 +8,7 @@ import { OfficeShelfEntryCard } from '@/components/projects/office-shelf-entry-c
 import { ShellContent } from '@/components/shell'
 import { RecentlyDeleted } from '@/features/projects/components/recently-deleted'
 import { getTranslations } from '@/i18n/server'
+import { projectsCopy } from '@/i18n/namespaces/projects'
 
 interface ProjectsPageProps {
   searchParams: Promise<{ new?: string }>
@@ -19,7 +20,7 @@ export default async function ProjectsPage({
   return withPageSession(async (session) => {
     const navFlags = await getNavFlags(session)
     const { new: newParam } = await searchParams
-    const t = await getTranslations('projects')
+    const t = await getTranslations(projectsCopy)
 
     // The page is transport: it resolves the session, asks the service for the
     // view, and renders. Tenancy scope, FGA filtering and the document counts all

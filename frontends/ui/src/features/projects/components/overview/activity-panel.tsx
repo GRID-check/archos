@@ -6,6 +6,7 @@ import { SpendTrendChart } from '@/components/charts/spend-trend-chart'
 import { SectionLabel } from '@/components/ui/section-label'
 import { StatCardIcon } from '@/components/ui/stat-card'
 import { useLocale, useTranslations } from '@/i18n'
+import { settingsCopy } from '@/i18n/namespaces/settings'
 
 /** `ProjectActivity` from `lib/projects/activity`, as it crosses to the browser. */
 export interface ProjectActivityView {
@@ -20,7 +21,7 @@ export interface ProjectActivityView {
  * hero, because it is counts and nothing else (`getProjectActivity`).
  */
 export function ActivityPanel({ activity }: { activity: ProjectActivityView }): JSX.Element {
-  const t = useTranslations('settings')
+  const t = useTranslations(settingsCopy)
   const { locale } = useLocale()
   const questions = (count: number): string => t('project.overview.activity.questions', { count })
 

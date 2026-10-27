@@ -16,6 +16,7 @@ import { Field, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
 import { useTranslations } from '@/i18n'
+import { projectsCopy } from '@/i18n/namespaces/projects'
 
 interface ProjectRenameDialogProps {
   projectId: string
@@ -35,7 +36,7 @@ export function ProjectRenameDialog({
   open,
   onOpenChange,
 }: ProjectRenameDialogProps) {
-  const t = useTranslations('projects')
+  const t = useTranslations(projectsCopy)
   const router = useRouter()
   const [name, setName] = useState(projectName)
   const [pending, setPending] = useState(false)

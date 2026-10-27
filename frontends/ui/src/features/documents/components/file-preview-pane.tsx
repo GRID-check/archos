@@ -53,6 +53,9 @@ import { documentTypeOf } from '@/lib/documents/tag-vocabulary'
 import { ClampedText } from '@/components/ui/clamped-text'
 import { documentFileUrl } from '@/lib/documents/urls'
 import { useLocale, useTranslations } from '@/i18n'
+import { commonCopy } from '@/i18n/namespaces/common'
+import { filesCopy } from '@/i18n/namespaces/files'
+import { organizationCopy } from '@/i18n/namespaces/organization'
 import { isOptimizerEligible } from '@/lib/images/optimizable'
 import { cn } from '@/lib/utils'
 import { inferDocumentKind } from '../document-kind'
@@ -256,7 +259,7 @@ export function FilePreviewPane({
   presentation = 'modal',
   onAssigneesChanged,
 }: FilePreviewPaneProps) {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   // The project this pane sits in, when it is closed and the file is one of its
   // own (not an Archiv file, not another project's): the chip under the name.
   const currentProject = useCurrentProject()
@@ -2256,7 +2259,7 @@ function PeekStage({ peeking, children }: { peeking: boolean; children: ReactNod
  * in the wide modal and the mobile sheet.
  */
 function IndexedSummary({ summary }: { summary: string }) {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   return (
     <div className="p-3">
       <ClampedText
@@ -2373,9 +2376,9 @@ function HeldReview({
   /** The file was allowed and sent to be read, with this status. */
   onReleased: (status: string) => void
 }): JSX.Element | null {
-  const t = useTranslations('files')
-  const tOrg = useTranslations('organization')
-  const tc = useTranslations('common')
+  const t = useTranslations(filesCopy)
+  const tOrg = useTranslations(organizationCopy)
+  const tc = useTranslations(commonCopy)
   const [access, setAccess] = useState<QuarantineReviewAccess | null>(null)
   const [releaseOpen, setReleaseOpen] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
@@ -2460,7 +2463,7 @@ function AskColleagueButton({
   file: FileItem
   documentId: string
 }): JSX.Element {
-  const t = useTranslations('files')
+  const t = useTranslations(filesCopy)
   const router = useRouter()
   return (
     <AssignPopover

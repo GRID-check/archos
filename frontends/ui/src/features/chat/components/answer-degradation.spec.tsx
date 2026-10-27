@@ -26,7 +26,11 @@
  */
 
 import { fireEvent, render, screen } from '@/test-utils'
-import { de, en } from '@/i18n/dictionaries'
+import { chatCopy } from '@/i18n/namespaces/chat'
+
+/** The chat namespace in the dictionary's shape, which is all this spec reads. */
+const en = { chat: chatCopy.messages.en }
+const de = { chat: chatCopy.messages.de }
 import { createTranslator } from '@/i18n/translate'
 import { vi, describe, test, expect } from 'vitest'
 import { AgentResponse } from './AgentResponse'

@@ -52,6 +52,7 @@ import { projectNameTail } from '@/features/projects/lib/project-name'
 import type { Project } from '@/lib/db/schema'
 import { formatAbsoluteTime, formatRelativeTime } from '@/lib/format'
 import { useLocale, useTranslations } from '@/i18n'
+import { projectsCopy } from '@/i18n/namespaces/projects'
 import { cn } from '@/lib/utils'
 
 /**
@@ -66,7 +67,7 @@ export function ProjectOpenLink({
   project: Pick<Project, 'id' | 'name'>
   className?: string
 }): JSX.Element {
-  const t = useTranslations('projects')
+  const t = useTranslations(projectsCopy)
   return (
     <Link
       href={`/app/projects/${project.id}/chat`}
@@ -117,7 +118,7 @@ export function ProjectSummaryLine({
   fallback?: boolean
   className?: string
 }): JSX.Element | null {
-  const t = useTranslations('projects')
+  const t = useTranslations(projectsCopy)
   const summary = project.profileDisplay?.summary?.trim() || (fallback ? t('card.summaryFallback') : '')
   if (!summary) return null
   return <p className={cn('truncate text-xs text-muted-foreground', className)}>{summary}</p>
@@ -155,7 +156,7 @@ export function ProjectActivity({
   compact?: boolean
   className?: string
 }): JSX.Element {
-  const t = useTranslations('projects')
+  const t = useTranslations(projectsCopy)
   const { locale } = useLocale()
 
   const fallback = project.profileUpdatedAt ?? project.createdAt
@@ -191,7 +192,7 @@ export function ProjectActivity({
 
 /** Ingested document count, pluralized. */
 export function ProjectDocCount({ count, className }: { count: number; className?: string }): JSX.Element {
-  const t = useTranslations('projects')
+  const t = useTranslations(projectsCopy)
   return (
     <span className={cn('flex items-center gap-1.5 text-xs tabular-nums text-muted-foreground', className)}>
       <FileText className="size-3.5 shrink-0" aria-hidden />
@@ -225,7 +226,7 @@ export function ProjectOverviewLink({
   showLabel?: boolean
   className?: string
 }): JSX.Element {
-  const t = useTranslations('projects')
+  const t = useTranslations(projectsCopy)
   return (
     <Link
       href={`/app/projects/${project.id}/settings`}

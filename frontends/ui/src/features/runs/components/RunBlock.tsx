@@ -92,6 +92,7 @@ import { documentFilesHref } from '@/features/documents/lib/document-question'
 import { SourceSignalChip } from '@/features/layout/components/SourceSignalChip'
 import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import { useLocale, useTranslations, type Translator } from '@/i18n'
+import { runsCopy } from '@/i18n/namespaces/runs'
 import { formatDurationElapsed } from '@/lib/format'
 import {
   RUN_PHASES,
@@ -315,7 +316,7 @@ function trackTone(status: RunStatus): StageTrackTone {
  * again.
  */
 const DocChip: FC<{ doc: RunLedgerDoc; reduced: boolean }> = ({ doc, reduced }) => {
-  const t = useTranslations('runs')
+  const t = useTranslations(runsCopy)
   const { tint, authority } = docProvenance(doc)
   const name = doc.title ?? doc.name
   const loci = doc.loci.join(' · ')
@@ -386,7 +387,7 @@ const RoundRow: FC<{ step: RunStep; index: number; reduced: boolean }> = ({
   index,
   reduced,
 }) => {
-  const t = useTranslations('runs')
+  const t = useTranslations(runsCopy)
   const intent = step.intent.trim() || t('step.fallback', { n: index + 1 })
   const chipDelay = (position: number): number =>
     Math.min(position, staggerMaxSteps) * staggerStepSeconds
@@ -492,7 +493,7 @@ const PhaseActs: FC<{
   live: boolean
   tallies: RunTallies
 }> = ({ ledger, live, tallies }) => {
-  const t = useTranslations('runs')
+  const t = useTranslations(runsCopy)
   // Its own clock, like `RunElapsed`: only a phase without an end measures to
   // now, and only this list says so.
   const now = useRunClock(live)
@@ -550,7 +551,7 @@ const PhaseActs: FC<{
  * clock (see useRunClock).
  */
 const RunElapsed: FC<{ ledger: RunLedger; live: boolean }> = ({ ledger, live }) => {
-  const t = useTranslations('runs')
+  const t = useTranslations(runsCopy)
   const now = useRunClock(live)
   const elapsedSeconds =
     ledger.finishedAt || now !== null ? Math.floor(elapsedMs(ledger, now ?? 0) / 1000) : 0
@@ -588,7 +589,7 @@ export function RunBlock({
   live: streaming,
   className,
 }: RunBlockProps): JSX.Element {
-  const t = useTranslations('runs')
+  const t = useTranslations(runsCopy)
   const reduced = useReducedMotion()
   const status = runDisplayStatus(ledger)
   const live = isLiveStatus(status)

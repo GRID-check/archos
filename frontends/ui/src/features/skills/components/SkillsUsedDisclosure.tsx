@@ -36,6 +36,7 @@ import { ChevronDown, Sparkles } from 'lucide-react'
 import { ClampedText } from '@/components/ui/clamped-text'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { useTranslations } from '@/i18n'
+import { skillsCopy } from '@/i18n/namespaces/skills'
 import { cn } from '@/lib/utils'
 import { useInvocableSkills } from '../hooks/use-invocable-skills'
 import { skillLabel } from '../lib/skill-activity'
@@ -67,7 +68,7 @@ export const SkillsUsedDisclosure: FC<SkillsUsedDisclosureProps> = ({
   showReasoning = false,
   className,
 }) => {
-  const t = useTranslations('skills')
+  const t = useTranslations(skillsCopy)
   const [open, setOpen] = useState(false)
   const { skills } = useInvocableSkills(open)
 

@@ -18,6 +18,7 @@ import { Chip } from '@/components/ui/chip'
 import { Input } from '@/components/ui/input'
 import { DocumentsDialog } from '@/features/runs/components/DocumentsDialog'
 import { useTranslations } from '@/i18n'
+import { chatCopy } from '@/i18n/namespaces/chat'
 import { planDocumentLabel, sanitizePlanDocuments, type PlanDocument } from '@/lib/runs/plan-documents'
 import { modernizePlan } from '@/lib/runs/plan-vocabulary'
 import { cn } from '@/lib/utils'
@@ -160,7 +161,7 @@ export const PlanChecklist: FC<{
   frame?: PlanFrame
   onChange: (plan: PlanShape) => void
 }> = ({ plan, disabled = false, frame, onChange }) => {
-  const t = useTranslations('chat')
+  const t = useTranslations(chatCopy)
   const [draft, setDraft] = useState('')
   const [picking, setPicking] = useState(false)
   const labelOf = (name: string): string => {

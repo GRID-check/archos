@@ -30,6 +30,7 @@ import { AvatarStack, PersonAvatar } from '@/components/ui/avatar-stack'
 import { AnimatePresence, motion, motionEntrance } from '@/components/motion'
 import { Button } from '@/components/ui/button'
 import { useLocale, useTranslations } from '@/i18n'
+import { collaborationCopy } from '@/i18n/namespaces/collaboration'
 import { formatAbsoluteTime, formatRelativeTime } from '@/lib/format'
 import type { AwaitingStateResponse, PendingMentionView } from '@/lib/mentions/types'
 import { cn } from '@/lib/utils'
@@ -63,7 +64,7 @@ export function AwaitingBanner({
   onAskBack,
   className,
 }: AwaitingBannerProps): JSX.Element | null {
-  const t = useTranslations('collaboration')
+  const t = useTranslations(collaborationCopy)
   const { locale } = useLocale()
   const [releasing, setReleasing] = useState<string | null>(null)
   const [failed, setFailed] = useState(false)

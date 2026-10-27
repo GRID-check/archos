@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { RaisedCard, RaisedCardBody } from '@/components/ui/raised-card'
 import { QuestionControl } from '@/features/projects/components/intake-question-field'
 import { useTranslations } from '@/i18n'
+import { projectIntakeCopy } from '@/i18n/namespaces/project-intake'
 import { isIntakeAnswerProvided } from '@/lib/project-profile/intake-definition'
 import type { ProjectPrimitiveValue } from '@/lib/project-profile/types'
 import type { IntakeDecision, Need } from '@/lib/project-intake/types'
@@ -36,7 +37,7 @@ export function QuestionSection({
   onDecide: (decisions: IntakeDecision[]) => Promise<boolean>
   onFiles: (files: File[], info?: DropInfo) => void
 }): JSX.Element | null {
-  const t = useTranslations('projectIntake')
+  const t = useTranslations(projectIntakeCopy)
   if (questions.length === 0) return null
   return (
     <IntakeSection
@@ -82,7 +83,7 @@ export function NeedAnswer({
   /** A further control in the row (the interview's „Überspringen"). */
   trailing?: ReactNode
 }): JSX.Element {
-  const t = useTranslations('projectIntake')
+  const t = useTranslations(projectIntakeCopy)
   const question = useMemo(() => questionOfNeed(need), [need])
   const [draft, setDraft] = useState<ProjectPrimitiveValue>(need.type === 'multi_select' ? [] : '')
   const [answering, answer] = usePressed()
@@ -157,7 +158,7 @@ export function QuestionCard({
   /** „Frage 2 von 9", when the card is one of a series. */
   position?: string
 }): JSX.Element {
-  const t = useTranslations('projectIntake')
+  const t = useTranslations(projectIntakeCopy)
   return (
     <RaisedCard data-testid={`intake-question-${need.key}`}>
       <RaisedCardBody className="divide-border divide-y p-0">
@@ -211,7 +212,7 @@ export function InterviewSection({
   /** Without its own heading: the caller frames it (step 4 folds it away). */
   bare?: boolean
 }): JSX.Element | null {
-  const t = useTranslations('projectIntake')
+  const t = useTranslations(projectIntakeCopy)
   const [skipped, setSkipped] = useState<ReadonlySet<string>>(() => new Set())
   const waiting = needs.filter((need) => !skipped.has(need.key))
   if (needs.length === 0) return null

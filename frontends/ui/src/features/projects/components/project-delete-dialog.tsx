@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { TypeToConfirmDialog } from '@/components/ui/type-to-confirm-dialog'
 import { useLocale, useTranslations } from '@/i18n'
+import { commonCopy } from '@/i18n/namespaces/common'
+import { projectsCopy } from '@/i18n/namespaces/projects'
 
 export interface ProjectDeleteDialogProps {
   projectId: string
@@ -25,8 +27,8 @@ export function ProjectDeleteDialog({
   open,
   onOpenChange: setOpen,
 }: ProjectDeleteDialogProps) {
-  const t = useTranslations('projects')
-  const tCommon = useTranslations('common')
+  const t = useTranslations(projectsCopy)
+  const tCommon = useTranslations(commonCopy)
   const { locale } = useLocale()
   const router = useRouter()
   const [pending, setPending] = useState(false)

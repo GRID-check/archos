@@ -24,6 +24,7 @@ import { notFound } from 'next/navigation'
 import { PageHeader } from '@/components/ui/page-header'
 import { BaseKnowledge } from '@/app/app/(shell)/platform/base-knowledge'
 import { I18nProvider, useTranslations } from '@/i18n'
+import { platformCopy } from '@/i18n/namespaces/platform'
 
 const FILES = [
   {
@@ -125,7 +126,7 @@ function useSelectFirstRows(): void {
 }
 
 function Preview(): JSX.Element {
-  const t = useTranslations('platform')
+  const t = useTranslations(platformCopy)
   useSelectFirstRows()
   return (
     <main

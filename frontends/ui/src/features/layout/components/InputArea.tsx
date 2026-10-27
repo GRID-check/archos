@@ -81,6 +81,11 @@ import { useChatDropTarget } from './chat-drop-zone'
 import { composerDropRefusal } from '../lib/composer-drop-refusal'
 import { useAppConfig } from '@/shared/context'
 import { useLocale, useTranslations } from '@/i18n'
+import { captureCopy } from '@/i18n/namespaces/capture'
+import { chatCopy } from '@/i18n/namespaces/chat'
+import { collaborationCopy } from '@/i18n/namespaces/collaboration'
+import { filesCopy } from '@/i18n/namespaces/files'
+import { researchCopy } from '@/i18n/namespaces/research'
 import {
   DictationButton,
   LiveDictationStrip,
@@ -333,7 +338,7 @@ const FileChip: FC<{
    */
   readOnly?: boolean
 }> = ({ file, onOpen, onRemove, onRetry, readOnly = false }) => {
-  const t = useTranslations('research')
+  const t = useTranslations(researchCopy)
   const isPending = file.status === 'uploading' || file.status === 'ingesting'
   const isFailed = file.status === 'failed'
   // Held back by the content check (ADR-0086): a reason, not a failure, and
@@ -353,7 +358,7 @@ const FileChip: FC<{
   // sentence, not a verdict (ADR-0086): it is said as it is.
   // A file the content check held says why from its verdict, with the same
   // sentence the findings use (`heldSentenceKey`), never from its message.
-  const tFiles = useTranslations('files')
+  const tFiles = useTranslations(filesCopy)
   const heldSentence = isHeld
     ? file.replacesHeld
       ? file.errorMessage
@@ -514,10 +519,10 @@ export const InputArea: FC<InputAreaProps> = memo(function InputArea({
   canCollaborate = false,
   canChatInProject = true,
 }) {
-  const t = useTranslations('research')
-  const tChat = useTranslations('chat')
-  const tCollab = useTranslations('collaboration')
-  const tFiles = useTranslations('files')
+  const t = useTranslations(researchCopy)
+  const tChat = useTranslations(chatCopy)
+  const tCollab = useTranslations(collaborationCopy)
+  const tFiles = useTranslations(filesCopy)
   const { locale } = useLocale()
   const [message, setMessage] = useState('')
   // Voice dictation: where the caret last was (null until the textarea has had
@@ -1761,7 +1766,7 @@ export const InputArea: FC<InputAreaProps> = memo(function InputArea({
   // Photos are accepted only where Piloti can read them (`image-upload` flag
   // AND a vision model); the attach menu says which of the two is missing.
   const photos = photoIntake(fileUploadConfig)
-  const tCapture = useTranslations('capture')
+  const tCapture = useTranslations(captureCopy)
 
   const handleFilesSelected = useCallback(
     async (selected: File[], source: AttachSource = 'picker') => {

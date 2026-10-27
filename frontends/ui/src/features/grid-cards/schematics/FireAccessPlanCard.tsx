@@ -29,6 +29,7 @@ import {
 } from './kit'
 import { sketchRect } from './rough'
 import { useTranslations } from '@/i18n'
+import { chatCopy } from '@/i18n/namespaces/chat'
 import type { StagingAreaPlanData, DimensionCheckData, NormReferenceData } from './types'
 
 interface FireAccessPlanCardProps {
@@ -66,7 +67,7 @@ export const FireAccessPlanCard: FC<FireAccessPlanCardProps> = ({
   reference,
   note,
 }) => {
-  const t = useTranslations('chat')
+  const t = useTranslations(chatCopy)
   const k = fitScale(parcelW, parcelD, 304, 236)
   const px = 60
   const py = 26

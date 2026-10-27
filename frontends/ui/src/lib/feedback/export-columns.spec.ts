@@ -11,7 +11,12 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { de, en } from '@/i18n/dictionaries'
+import { feedbackExportCopy } from '@/i18n/namespaces/feedback-export'
+import { platformCopy } from '@/i18n/namespaces/platform'
+
+/** The two namespaces an export reads, in the dictionary's shape. */
+const en = { feedbackExport: feedbackExportCopy.messages.en, platform: platformCopy.messages.en }
+const de = { feedbackExport: feedbackExportCopy.messages.de, platform: platformCopy.messages.de }
 import { CONVERSATION_TAG_KEYS } from '@/lib/conversations/tags'
 import { feedbackExportRecord, feedbackWeeklyRecord } from '@/test-utils/feedback-export-fixtures'
 import {

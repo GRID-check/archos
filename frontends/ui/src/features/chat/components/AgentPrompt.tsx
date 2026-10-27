@@ -28,6 +28,7 @@ import { DECISION_BUTTON, DECISION_ROW } from '@/features/grid-cards/components/
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import { useLocale, useTranslations } from '@/i18n'
+import { chatCopy } from '@/i18n/namespaces/chat'
 import { formatTime } from '@/shared/utils/format-time'
 import { MarkdownRenderer } from '@/shared/components/MarkdownRenderer'
 import { BranchOptions } from './reasoning/BranchOptions'
@@ -116,7 +117,7 @@ export const AgentPrompt: FC<AgentPromptProps> = ({
   isAddressee = true,
   addresseeName,
 }) => {
-  const t = useTranslations('chat')
+  const t = useTranslations(chatCopy)
   const { locale } = useLocale()
   const respondToInteractionFn = useChatStore((state) => state.respondToInteractionFn)
   const isApprovalPrompt = APPROVAL_PROMPT_RE.test(content)
@@ -351,7 +352,7 @@ export const AgentPrompt: FC<AgentPromptProps> = ({
  * Display the user's response after submission
  */
 const ResponseDisplay: FC<{ response?: string }> = ({ response }) => {
-  const t = useTranslations('chat')
+  const t = useTranslations(chatCopy)
   if (!response) return null
 
   return (
@@ -412,7 +413,7 @@ const PlanRecord: FC<{
   plan: PlanShape
   frame?: { ids: string[]; labels: string[] }
 }> = ({ label, plan, frame }) => {
-  const t = useTranslations('chat')
+  const t = useTranslations(chatCopy)
   const [open, setOpen] = useState(false)
   return (
     <Collapsible open={open} onOpenChange={setOpen} className="flex flex-col gap-3">

@@ -49,6 +49,8 @@ import {
 import { SectionCard } from '@/features/platform/components/section-card'
 import { usePlatformCan } from '@/features/platform/platform-access'
 import { useLocale, useTranslations } from '@/i18n'
+import { commonCopy } from '@/i18n/namespaces/common'
+import { platformCopy } from '@/i18n/namespaces/platform'
 import { PLATFORM_PERMISSIONS } from '@/lib/authz/permissions'
 import { formatCredits, formatDate, formatUsd } from '@/lib/format'
 import { formatDecimalInput, parseDecimalInput } from '@/lib/text/parse-decimal'
@@ -190,8 +192,8 @@ const fieldsFromServerErrors = (errors: readonly string[]): FieldKey[] =>
     .filter((name): name is FieldKey => (FIELD_KEYS as readonly string[]).includes(name ?? ''))
 
 export const PlatformPricingCard: FC<{ onSaved?: () => void }> = ({ onSaved }) => {
-  const t = useTranslations('platform')
-  const tc = useTranslations('common')
+  const t = useTranslations(platformCopy)
+  const tc = useTranslations(commonCopy)
   const { locale } = useLocale()
   const canManage = usePlatformCan(PLATFORM_PERMISSIONS.settingsManage)
   const [payload, setPayload] = useState<PayloadDto | null>(null)

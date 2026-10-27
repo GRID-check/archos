@@ -42,6 +42,7 @@ import { Card } from '@/components/ui/card'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { StatCardIcon, type StatCardIconTone } from '@/components/ui/stat-card'
 import { useTranslations, type Translator } from '@/i18n'
+import { chatCopy } from '@/i18n/namespaces/chat'
 import { cn } from '@/lib/utils'
 import type { CalloutKind } from '../schematics/types'
 import { CARD_SHELL } from './card-chrome'
@@ -118,7 +119,7 @@ const TONES: Record<CalloutKind, CalloutTone> = {
 }
 
 export const CalloutCard: FC<CalloutCardProps> = ({ kind, text, title, detail, flat = false }) => {
-  const t = useTranslations('chat')
+  const t = useTranslations(chatCopy)
   const [open, setOpen] = useState(false)
   // `?? TONES.note`, because `kind` arrives through a `z.any()`-typed union
   // member: an unknown value must render as a neutral remark rather than crash

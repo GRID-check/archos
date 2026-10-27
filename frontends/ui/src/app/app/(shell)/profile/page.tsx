@@ -16,6 +16,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/com
 import { PageHeader } from '@/components/ui/page-header'
 import { getTranslations } from '@/i18n/server'
 import type { Translator } from '@/i18n'
+import { profileCopy } from '@/i18n/namespaces/profile'
 import { getOrgSettings, getOrganizationOverview } from '@/lib/organizations/service'
 import { ProfileControls } from './profile-controls'
 import { isAuthRequired } from '@/lib/auth/auth-required'
@@ -64,7 +65,7 @@ const resolveOrganizationName = async (organizationId: string): Promise<string> 
 
 export default async function ProfilePage(): Promise<JSX.Element> {
   return withPageSession(async (session) => {
-    const t = await getTranslations('profile')
+    const t = await getTranslations(profileCopy)
 
     // `process.env` whole, so Next does not inline the build-time value (layout.tsx).
     const posthog = postHogConfigFromEnv(process.env)

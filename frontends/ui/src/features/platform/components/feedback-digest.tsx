@@ -39,6 +39,7 @@ import {
 } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useLocale, useTranslations } from '@/i18n'
+import { platformCopy } from '@/i18n/namespaces/platform'
 import { formatRelativeTime } from '@/lib/format'
 import { cn } from '@/lib/utils'
 
@@ -79,7 +80,7 @@ const BENIGN = new Set(['no_feedback', 'too_few_votes'])
  * or a failure that says the figures below are still good.
  */
 export function FeedbackDigest({ search, className }: FeedbackDigestProps): JSX.Element | null {
-  const t = useTranslations('platform')
+  const t = useTranslations(platformCopy)
   const { locale } = useLocale()
   const [data, setData] = useState<DigestResponse | null>(null)
   const [loading, setLoading] = useState(true)

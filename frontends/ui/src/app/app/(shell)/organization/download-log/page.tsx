@@ -21,10 +21,11 @@ import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/ca
 import { PageHeader } from '@/components/ui/page-header'
 import { DownloadLogView, type DownloadLogPerson } from '@/features/organization/components/download-log-view'
 import { getTranslations } from '@/i18n/server'
+import { organizationCopy } from '@/i18n/namespaces/organization'
 
 export default async function OrganizationDownloadLogPage(): Promise<JSX.Element> {
   return withPageSession(async (session) => {
-    const t = await getTranslations('organization')
+    const t = await getTranslations(organizationCopy)
 
     if (!canViewDownloadLog(session)) {
       return (

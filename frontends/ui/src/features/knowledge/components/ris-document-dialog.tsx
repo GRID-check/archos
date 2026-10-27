@@ -34,6 +34,7 @@ import {
 } from '@/components/ui/dialog'
 import { Spinner } from '@/components/ui/spinner'
 import { useTranslations } from '@/i18n'
+import { knowledgeCopy } from '@/i18n/namespaces/knowledge'
 import { locatePassageInText } from '../lib/passage-highlight'
 
 export interface RisDocumentDialogProps {
@@ -82,7 +83,7 @@ export function RisDocumentDialog({
   headerChip,
   headerActions,
 }: RisDocumentDialogProps) {
-  const t = useTranslations('knowledge')
+  const t = useTranslations(knowledgeCopy)
   const [state, setState] = useState<LoadState>({ status: 'loading' })
   const markRef = useRef<HTMLElement | null>(null)
 

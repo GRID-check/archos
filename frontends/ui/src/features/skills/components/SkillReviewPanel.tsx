@@ -51,6 +51,7 @@ import { ArrowRight, Check } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/spinner'
 import { useTranslations } from '@/i18n'
+import { skillsCopy } from '@/i18n/namespaces/skills'
 import { cn } from '@/lib/utils'
 import type { SkillReviewFinding } from '@/adapters/api/skills-client'
 import type { SkillReviewField, SkillReviewState } from '../hooks/use-skill-review'
@@ -80,7 +81,7 @@ export const SkillReviewPanel: FC<SkillReviewPanelProps> = ({
   onGoToField,
   className,
 }) => {
-  const t = useTranslations('skills')
+  const t = useTranslations(skillsCopy)
   const running = state.kind === 'running'
   // „Erneut prüfen" once a verdict exists, because by then re-running IS the
   // job — the author has revised and wants to know whether it took.

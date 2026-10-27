@@ -148,6 +148,7 @@ import {
 import '@xyflow/react/dist/style.css'
 import type { Translator } from '@/i18n'
 import { useTranslations } from '@/i18n'
+import { chatCopy } from '@/i18n/namespaces/chat'
 import { cn } from '@/lib/utils'
 import { useLayoutStore } from '@/features/layout/store'
 import { TechnicalSteps } from './TechnicalSteps'
@@ -634,7 +635,7 @@ const UncitedFoldCard: FC<{
   slot: Extract<ColumnSlot, { type: 'fold' }>
   onToggle: () => void
 }> = ({ slot, onToggle }) => {
-  const t = useTranslations('chat')
+  const t = useTranslations(chatCopy)
   const tabId = useId()
   const U = 'thinking.node.uncited.'
   if (slot.expanded) {
@@ -1777,7 +1778,7 @@ const FlowInner: FC<{ built: BuiltGraph; layout: FanLayout; live: boolean }> = (
   layout,
   live,
 }) => {
-  const t = useTranslations('chat')
+  const t = useTranslations(chatCopy)
   const { nodes, edges, rows } = built
   const initialized = useNodesInitialized()
   const paneRef = useRef<HTMLDivElement>(null)
@@ -2030,7 +2031,7 @@ export const ReasoningFlow: FC<ReasoningFlowProps> = (props) => {
     live,
     sourceCards,
   } = props
-  const t = useTranslations('chat')
+  const t = useTranslations(chatCopy)
   const showTechnicalReasoning = useLayoutStore((s) => s.showTechnicalReasoning)
   const containerRef = useRef<HTMLDivElement>(null)
   const [width, setWidth] = useState(0)

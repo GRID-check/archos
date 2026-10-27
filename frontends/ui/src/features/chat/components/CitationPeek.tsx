@@ -19,6 +19,7 @@ import { type FC } from 'react'
 import Link from 'next/link'
 import { Download, ExternalLink, FileSearch, FolderOpen, History, Link2 } from 'lucide-react'
 import { useTranslations } from '@/i18n'
+import { chatCopy } from '@/i18n/namespaces/chat'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { FOCUS_RING } from '@/components/ui/focus-ring'
@@ -107,7 +108,7 @@ const BINDING_TONE: Record<string, string> = {
 }
 
 const BindingStatusChip: FC<{ status?: string }> = ({ status }) => {
-  const t = useTranslations('chat')
+  const t = useTranslations(chatCopy)
   if (!status || !(status in BINDING_TONE)) return null
   return (
     <span
@@ -146,7 +147,7 @@ export const PEEK_ACTION_CLASSES = cn(
  * alone would understate a document the answer leaned on at four places.
  */
 export const LocusLine: FC<{ citation: CitationRef }> = ({ citation }) => {
-  const t = useTranslations('chat')
+  const t = useTranslations(chatCopy)
   const page = refPage(citation)
   const pages = documentPages(citation.document)
 
@@ -191,7 +192,7 @@ const DocumentHomeLink: FC<{ shelf?: Shelf; tint: CitedDocument['tint'] }> = ({
   shelf,
   tint,
 }) => {
-  const t = useTranslations('chat')
+  const t = useTranslations(chatCopy)
   const projectId = useChatStore((s) => s.projectId)
 
   const target =
@@ -232,7 +233,7 @@ export const CitationOpenButton: FC<{
   className?: string
   primary?: boolean
 }> = ({ tint, onOpen, className, primary = false }) => {
-  const t = useTranslations('chat')
+  const t = useTranslations(chatCopy)
   if (primary) {
     return (
       <Button
@@ -275,7 +276,7 @@ export const PeekDownloadButton: FC<{
   onDownload: () => void
   pending?: boolean
 }> = ({ tint, onDownload, pending = false }) => {
-  const t = useTranslations('chat')
+  const t = useTranslations(chatCopy)
   const showBusy = useDelayedFlag(pending)
   return (
     <button
@@ -309,7 +310,7 @@ export const PeekDownloadButton: FC<{
  * names (an older Fassung is read on request); the name is the control.
  */
 const OlderRevisionLine: FC<{ current: RevisionRef }> = ({ current }) => {
-  const t = useTranslations('chat')
+  const t = useTranslations(chatCopy)
   const openCurrent = useOpenCurrentRevision()
   return (
     <p
@@ -342,7 +343,7 @@ export const CitationPeek: FC<CitationPeekProps> = ({
   presentation = 'popover',
   thumbnailDocumentId,
 }) => {
-  const t = useTranslations('chat')
+  const t = useTranslations(chatCopy)
   const projectId = useChatStore((s) => s.projectId)
   const { document: doc } = citation
   const tint = doc.tint

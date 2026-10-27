@@ -41,6 +41,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { FolderAccessMark } from '@/features/documents/components/folder-access-mark'
 import { useLocale, useTranslations } from '@/i18n'
 import type { Translator } from '@/i18n'
+import { projectsCopy } from '@/i18n/namespaces/projects'
 
 /**
  * Project Memory panel — "What Piloti knows about this project".
@@ -134,7 +135,7 @@ export function ProjectMemoryPanel({
   projectId,
   readOnly = false,
 }: ProjectMemoryPanelProps): JSX.Element {
-  const t = useTranslations('projects')
+  const t = useTranslations(projectsCopy)
   const { locale } = useLocale()
   const [items, setItems] = useState<MemoryItem[] | null>(null)
   const [error, setError] = useState<string | null>(null)

@@ -28,6 +28,7 @@ import { motion, motionEntrance, motionInstant } from '@/components/motion'
 import type { ChatMessage } from '@/features/chat/types'
 import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import { useTranslations } from '@/i18n'
+import { runsCopy } from '@/i18n/namespaces/runs'
 import type { RunStatus } from '@/lib/runs/run-ledger-types'
 import { runDisplayStatus } from '@/lib/runs/run-vocabulary'
 import { useRunLedger } from '../hooks/use-run-ledger'
@@ -60,7 +61,7 @@ export function RunBlockMessage({
   answer,
   onContinue,
 }: RunBlockMessageProps): JSX.Element | null {
-  const t = useTranslations('runs')
+  const t = useTranslations(runsCopy)
   const { ledger, live, cancel, writeNow, addDocument, addDocumentFailure, connection } = useRunLedger({
     message,
     projectId,

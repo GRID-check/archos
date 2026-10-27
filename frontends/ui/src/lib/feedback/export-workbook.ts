@@ -26,13 +26,13 @@
 
 import 'server-only'
 import { Workbook, type Worksheet } from 'exceljs'
-import type { Dictionary } from '@/i18n/dictionaries'
 import { interpolate } from '@/i18n/translate'
 import { PRODUCT_NAME } from '@/lib/brand'
 import {
   FEEDBACK_EXPORT_COLUMNS,
   FEEDBACK_WEEKLY_COLUMNS,
   helpfulRate,
+  type Dictionary,
   type ExportCell,
   type ExportColumn,
   type ExportFormat,

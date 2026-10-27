@@ -7,6 +7,7 @@ import { BusyButton } from '@/components/ui/busy-button'
 import { Button } from '@/components/ui/button'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { useTranslations } from '@/i18n'
+import { intakeReadingStepCopy } from '@/i18n/namespaces/intake-reading-step'
 import { cn } from '@/lib/utils'
 import { usePressed } from '../../hooks/use-pressed'
 import { ASIDE_ACTION_CLASS, PRIMARY_ACTION_CLASS, StepFooter } from '../setup-frame'
@@ -44,7 +45,7 @@ const BAND: Record<ReadingPhase, 'reading' | 'ready' | 'failed' | 'waiting'> = {
 
 /** What Piloti said about what it read, folded behind one quiet link. */
 function SummaryDisclosure({ summary }: { summary: string }): JSX.Element {
-  const t = useTranslations('intakeReadingStep')
+  const t = useTranslations(intakeReadingStepCopy)
   const [open, setOpen] = useState(false)
   return (
     <Collapsible open={open} onOpenChange={setOpen} data-testid="reading-summary">
@@ -89,7 +90,7 @@ export function ReadingStep({
   onNext,
   onGoTo,
 }: SetupStepProps): JSX.Element {
-  const t = useTranslations('intakeReadingStep')
+  const t = useTranslations(intakeReadingStepCopy)
   const [retrying, retry] = usePressed()
   const phase = readingPhase(view)
   const running = phase === 'reading' || phase === 'waitingWithDocuments'

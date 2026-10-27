@@ -18,12 +18,12 @@ export {
 
 export {
   I18nProvider,
-  useI18n,
   useLocale,
   useTranslations,
   type I18nProviderProps,
 } from './context'
 
 export type { Translator, TranslationVars } from './translate'
-export { getDictionary, type Dictionary } from './dictionaries'
+export type { Dictionary } from './dictionaries'
+export { namespaceRoot, translatorFor, type Namespace } from './namespace'
 export { getStoreTranslator, getActiveLocale } from './store-translator'

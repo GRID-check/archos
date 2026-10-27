@@ -13,6 +13,7 @@ import { notFound } from 'next/navigation'
 import { getLegalDocument, legalNavEntries } from '@/lib/legal'
 import { isLegalSlug } from '@/lib/legal/types'
 import { getLocale, getTranslations } from '@/i18n/server'
+import { legalCopy } from '@/i18n/namespaces/legal'
 
 interface LegalPageProps {
   params: Promise<{ slug: string }>
@@ -23,7 +24,7 @@ const LegalPage = async ({ params }: LegalPageProps): Promise<ReactNode> => {
   if (!isLegalSlug(slug)) notFound()
 
   const locale = await getLocale()
-  const t = await getTranslations('legal')
+  const t = await getTranslations(legalCopy)
   const doc = getLegalDocument(locale, slug)
 
   return (

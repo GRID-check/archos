@@ -12,6 +12,7 @@ import {
 } from 'lucide-react'
 import { SectionNav } from '@/components/shell/section-nav'
 import { useTranslations } from '@/i18n'
+import { settingsCopy } from '@/i18n/namespaces/settings'
 import {
   PROJECT_SETTINGS_SECTION_KEYS,
   settingsSectionHref,
@@ -39,7 +40,7 @@ export function ProjectSettingsNav({
   projectId: string
   sections: readonly ProjectSettingsSectionKey[]
 }): JSX.Element {
-  const t = useTranslations('settings')
+  const t = useTranslations(settingsCopy)
 
   const items = PROJECT_SETTINGS_SECTION_KEYS.filter((key) => sections.includes(key)).map(
     (key) => ({

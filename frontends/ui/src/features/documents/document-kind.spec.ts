@@ -6,9 +6,8 @@ import {
   OFFICE_RENDITION_CONTENT_TYPES,
   OFFICE_RENDITION_EXTENSIONS,
 } from '@/lib/documents/preview-types'
-import { de } from '@/i18n/dictionaries/de'
-import { en } from '@/i18n/dictionaries/en'
-import { createTranslator } from '@/i18n/translate'
+import { translatorFor } from '@/i18n/namespace'
+import { filesCopy } from '@/i18n/namespaces/files'
 import {
   extChipTint,
   fileExtensionLabel,
@@ -178,8 +177,8 @@ describe('extChipTint', () => {
 })
 
 describe('fileFormatMessage', () => {
-  const tDe = createTranslator(de, 'files')
-  const tEn = createTranslator(en, 'files')
+  const tDe = translatorFor(filesCopy, 'de')
+  const tEn = translatorFor(filesCopy, 'en')
   const label = (
     t: typeof tDe,
     file: { filename?: string | null; contentType?: string | null }
@@ -251,9 +250,9 @@ describe('fileFormatMessage', () => {
       'pdf', 'word', 'excel', 'powerpoint', 'odText', 'odSpreadsheet', 'odPresentation', 'rtf',
       'csv', 'tsv', 'markdown', 'plainText', 'ifc', 'email', 'image', 'extension', 'raw',
     ]
-    for (const dictionary of [en, de]) {
+    for (const files of Object.values(filesCopy.messages)) {
       for (const key of keys) {
-        expect(typeof dictionary.files.preview.formats[key], key).toBe('string')
+        expect(typeof files.preview.formats[key], key).toBe('string')
       }
     }
   })

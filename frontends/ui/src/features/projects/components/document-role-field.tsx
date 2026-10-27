@@ -32,6 +32,8 @@ import {
 } from '@/components/ui/select'
 import { cn } from '@/lib/utils'
 import { useTranslations } from '@/i18n'
+import { filesCopy } from '@/i18n/namespaces/files'
+import { projectsCopy } from '@/i18n/namespaces/projects'
 import { loadUploadScreeningPolicy } from '@/adapters/api/upload-screening-policy'
 import { screenUploadName, type NameMatch } from '@/lib/upload-screening/name-screen'
 import { describeScreenedOut } from '@/lib/upload-screening/quarantine'
@@ -77,8 +79,8 @@ export function DocumentRoleField({
   deferred,
 }: DocumentRoleFieldProps) {
   const definition = documentRoleDefinition(role)
-  const tFiles = useTranslations('files')
-  const tRole = useTranslations('projects.intake.documentRole')
+  const tFiles = useTranslations(filesCopy)
+  const tRole = useTranslations(projectsCopy, 'intake.documentRole')
   const { bindings, documents, refresh } = useDocumentRoles(projectId)
   const [busy, setBusy] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)

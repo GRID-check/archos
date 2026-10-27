@@ -18,6 +18,7 @@ import { ShieldAlert } from 'lucide-react'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { useLocale, useTranslations } from '@/i18n'
+import { chatCopy } from '@/i18n/namespaces/chat'
 import type { ContentFinding } from '@/lib/upload-screening/content-screen'
 
 export interface ChatScreeningNoticeProps {
@@ -34,7 +35,7 @@ export const ChatScreeningNotice: FC<ChatScreeningNoticeProps> = ({
   onSendMasked,
   onEdit,
 }) => {
-  const t = useTranslations('chat')
+  const t = useTranslations(chatCopy)
   const { locale } = useLocale()
 
   const items = findings.map((finding) => {

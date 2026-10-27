@@ -61,6 +61,7 @@ import { SectionLabel } from '@/components/ui/section-label'
 import { MarkdownRenderer } from '@/shared/components/MarkdownRenderer'
 import { formatTime } from '@/shared/utils/format-time'
 import { useLocale, useTranslations } from '@/i18n'
+import { chatCopy } from '@/i18n/namespaces/chat'
 import { cn } from '@/lib/utils'
 import { MentionText } from '@/features/collaboration/components/MentionText'
 import { MessageAuthor } from './MessageAuthor'
@@ -150,7 +151,7 @@ export const UserMessage: FC<UserMessageProps> = ({
   currentUserId,
   side,
 }) => {
-  const t = useTranslations('chat')
+  const t = useTranslations(chatCopy)
   const swap = useIconSwapTransition()
   const [copied, setCopied] = useState(false)
   // `formatTime` without a locale falls back to the RUNTIME default, so a

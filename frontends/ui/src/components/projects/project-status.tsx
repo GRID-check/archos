@@ -24,6 +24,7 @@ import { Chip } from '@/components/ui/chip'
 import type { Project } from '@/lib/db/schema'
 import { toProjectStatus, type ProjectOutcome, type ProjectStatus } from '@/lib/projects/project-status'
 import { useTranslations } from '@/i18n'
+import { projectsCopy } from '@/i18n/namespaces/projects'
 
 export type { ProjectStatus }
 
@@ -68,7 +69,7 @@ interface ProjectStatusChipProps {
 
 /** Small status chip: Aktiv, Ruhend, Abgeschlossen, or Nicht realisiert. */
 export function ProjectStatusChip({ status, outcome = null, size = 'md' }: ProjectStatusChipProps): JSX.Element {
-  const t = useTranslations('projects')
+  const t = useTranslations(projectsCopy)
   const Icon = STATUS_ICON[status]
   const label = status === 'closed' && outcome === 'cancelled' ? t('card.status.cancelled') : t(`card.status.${status}`)
   return (
@@ -97,7 +98,7 @@ export function ProjectStatusMark({
  * The name is the project's; without one the chip says only that it is closed.
  */
 export function ProjectClosedChip({ projectName, className }: { projectName?: string | null; className?: string }): JSX.Element {
-  const t = useTranslations('projects')
+  const t = useTranslations(projectsCopy)
   const label = projectName ? t('lifecycle.fileChip', { name: projectName }) : t('lifecycle.fileChipNoName')
   return (
     <Chip variant="muted" size="sm" className={className} title={label}>

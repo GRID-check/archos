@@ -32,6 +32,7 @@ import { useChatStore } from '@/features/chat/store'
 import { useLayoutStore } from '../store'
 import { useAppConfig } from '@/shared/context'
 import { useTranslations } from '@/i18n'
+import { researchCopy } from '@/i18n/namespaces/research'
 import { quarantineVerdictOf } from '@/lib/upload-screening/quarantine'
 
 interface FileSourcesTabProps {
@@ -45,7 +46,7 @@ const UploadErrorAlert: FC<{ message: string; onClose: () => void; className?: s
   onClose,
   className,
 }) => {
-  const t = useTranslations('research')
+  const t = useTranslations(researchCopy)
   return (
   <Alert variant="destructive" className={className}>
     <AlertDescription className="flex w-full items-start justify-between gap-2">
@@ -68,7 +69,7 @@ const UploadErrorAlert: FC<{ message: string; onClose: () => void; className?: s
  * Connected to the file upload store for real-time updates.
  */
 export const FileSourcesTab: FC<FileSourcesTabProps> = ({ onDeleteFile }) => {
-  const t = useTranslations('research')
+  const t = useTranslations(researchCopy)
   // Get current conversation and ensureSession for session management
   const currentConversationId = useChatStore((state) => state.currentConversation?.id)
   const ensureSession = useChatStore((state) => state.ensureSession)

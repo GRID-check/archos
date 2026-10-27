@@ -51,6 +51,8 @@ import {
   newProjectDropKey,
 } from '@/features/documents/lib/dropped-file-handover'
 import { useLocale, useTranslations } from '@/i18n'
+import { filesCopy } from '@/i18n/namespaces/files'
+import { projectsCopy } from '@/i18n/namespaces/projects'
 import { capturePosthog } from '@/lib/analytics/posthog'
 import { MAX_INTAKE_DESCRIPTION_LENGTH } from '@/lib/project-intake/types'
 import { currentMonth, isMonth, type Month } from '@/lib/projects/month'
@@ -103,8 +105,8 @@ export function CreateProjectForm({
   addressClients,
   initial,
 }: CreateProjectFormProps): JSX.Element {
-  const t = useTranslations('projects')
-  const tFiles = useTranslations('files')
+  const t = useTranslations(projectsCopy)
+  const tFiles = useTranslations(filesCopy)
   const [thisMonth] = useState(() => currentMonth())
   const [serverError, setServerError] = useState<string | null>(null)
   const [serverAbschluss, setServerAbschluss] = useState<AbschlussProblem>(null)
@@ -473,7 +475,7 @@ function FolderZone({
   onPick: (files: File[]) => void
   onRemove: () => void
 }): JSX.Element {
-  const t = useTranslations('projects')
+  const t = useTranslations(projectsCopy)
   const input = useRef<HTMLInputElement>(null)
   return (
     <div
@@ -584,7 +586,7 @@ function OutcomeField({
   onChange: (value: ProjectOutcome) => void
   disabled: boolean
 }): JSX.Element {
-  const t = useTranslations('projects')
+  const t = useTranslations(projectsCopy)
   return (
     <Field>
       <FieldLabel id="create-project-outcome-label">
@@ -629,7 +631,7 @@ function PeriodFields({
   onStartedOn,
   onEndedOn,
 }: PeriodFieldsProps): JSX.Element {
-  const t = useTranslations('projects')
+  const t = useTranslations(projectsCopy)
   const { locale } = useLocale()
   const bounds = closingBounds(startedOnOf(startedOn), thisMonth)
   const placeholder = { month: t('projectRecord.month'), year: t('projectRecord.year') }

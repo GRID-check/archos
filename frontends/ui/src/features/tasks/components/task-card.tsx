@@ -44,6 +44,7 @@ import { RaisedCard, RaisedCardBody, RaisedCardFooter } from '@/components/ui/ra
 import { Spinner } from '@/components/ui/spinner'
 import { RunBlockLine } from '@/features/runs/components/RunBlockLine'
 import { useLocale, useTranslations } from '@/i18n'
+import { tasksCopy } from '@/i18n/namespaces/tasks'
 import { formatAbsoluteTime, formatRelativeTime } from '@/lib/format'
 import type { TaskRunStatus } from '@/lib/tasks/task-vocabulary'
 import { cn } from '@/lib/utils'
@@ -144,7 +145,7 @@ export function cardTimeLabel(iso: string, locale: string, now: number = Date.no
 }
 
 export function TaskCard({ projectId, task, onSelect }: TaskCardProps): JSX.Element {
-  const t = useTranslations('tasks')
+  const t = useTranslations(tasksCopy)
   const { locale } = useLocale()
   const ReviewIcon = task.review ? REVIEW_ICON[task.review] : null
   const result = taskResultTarget(projectId, task)

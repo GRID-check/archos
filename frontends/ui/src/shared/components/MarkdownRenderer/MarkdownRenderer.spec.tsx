@@ -4,7 +4,7 @@ import { describe, test, expect, vi } from 'vitest'
 import { MarkdownRenderer, stabilizeStreamingMarkdown } from './MarkdownRenderer'
 import { InternalLinkProvider } from './internal-link-context'
 import { I18nProvider } from '@/i18n'
-import { de } from '@/i18n/dictionaries'
+import { commonCopy } from '@/i18n/namespaces/common'
 
 describe('MarkdownRenderer', () => {
   describe('basic rendering', () => {
@@ -38,7 +38,7 @@ describe('MarkdownRenderer', () => {
       const label = container.querySelector('h2#footnote-label')
       expect(label).not.toBeNull()
       expect(label?.className).toContain('sr-only')
-      expect(label?.textContent).toBe(de.common.markdown.footnotes)
+      expect(label?.textContent).toBe(commonCopy.messages.de.markdown.footnotes)
       // The list item keeps the id the `[^1]` link points at.
       expect(container.querySelector('li[id$="fn-1"]')).not.toBeNull()
       const back = container.querySelector('[data-footnote-backref]')
@@ -456,8 +456,8 @@ Below`}
         </I18nProvider>
       )
       const marks = container.querySelectorAll('[data-testid="task-mark"]')
-      expect(marks[0]).toHaveTextContent(de.common.markdown.taskDone)
-      expect(marks[1]).toHaveTextContent(de.common.markdown.taskOpen)
+      expect(marks[0]).toHaveTextContent(commonCopy.messages.de.markdown.taskDone)
+      expect(marks[1]).toHaveTextContent(commonCopy.messages.de.markdown.taskOpen)
     })
   })
 
