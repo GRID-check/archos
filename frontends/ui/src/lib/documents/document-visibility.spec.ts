@@ -185,6 +185,8 @@ const KEYED_BY_A_READ_DOCUMENT: Record<string, string> = {
     'The threads of Anmerkungen just read from a document the service read first.',
   'lib/search/providers-repository.ts#replyMatch|documentAnnotationReplies':
     "A subquery correlated to the outer row's `document_annotations.id`; the outer query joins `documents` under the search reach (`reachWhere`).",
+  'lib/estate-tree/repository.ts#listTreeDocuments|documentVersions':
+    "The estate tree's Fassung count, a subquery correlated to the outer row's `documents.id`; the outer query, and its join to the published version, read `documents` under the search reach (`reachWhere`) or `documentVisibleTo` itself.",
   'lib/annotations/repository.ts#insertAnnotationReply|documentAnnotationReplies':
     "The thread's count under the insert's lock, for an Anmerkung of a document the service read for writing.",
 
