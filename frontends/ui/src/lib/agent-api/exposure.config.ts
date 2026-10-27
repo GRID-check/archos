@@ -223,6 +223,11 @@ export const EXPOSURE = {
   'upload-batch-get': OFFERED,
   'upload-batch-open': OFFERED,
   'upload-batch-seal': OFFERED,
+  // saved searches (catalog/saved-searches.ts)
+  'saved-search-create': OFFERED,
+  'saved-search-delete': OFFERED,
+  'saved-search-list': OFFERED,
+  'saved-search-update': OFFERED,
 
   // folders
   'office-shelf-folder-create': OFFERED,

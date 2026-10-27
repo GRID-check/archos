@@ -2030,6 +2030,31 @@ check_in grid_documentsearch "SELECT count(*) FROM information_schema.tables WHE
 echo "==> 0185 search projection and down migration verified"
 
 # ---------------------------------------------------------------------------
+# Migration 0186: saved searches (ADR-0133, slice 5). A saved search holds a
+# question, never an answer: scope and query are objects, the query is bounded,
+# a name is 1 to 120 characters and unique per owner (two owners may share one
+# name); the down drops the table and 0186 applies again after it.
+# ---------------------------------------------------------------------------
+echo "==> verifying the 0186 saved searches and their down migration on grid_savedsearch"
+migrate_until grid_savedsearch 0186_saved_searches
+sql_in grid_savedsearch <<'SQL'
+INSERT INTO saved_searches (organization_id, owner_user_id, name, scope, query, shared) VALUES
+  ('org_0186', 'user_a', 'Brandschutz', '{}', '{"text":"Brandschutzkonzept","kinds":["document"]}', true),
+  ('org_0186', 'user_b', 'Brandschutz', '{"scope":"office_shelf"}', '{"text":"Brandschutz"}', false);
+SQL
+check_in grid_savedsearch "SELECT count(*) FROM saved_searches WHERE organization_id = 'org_0186' AND (owner_user_id = 'user_a' OR shared)" "1" "0186: user_a sees their own and the shared ones"
+check_in grid_savedsearch "SELECT count(*) FROM saved_searches WHERE name = 'Brandschutz'" "2" "0186: two owners may use one name"
+refused_in grid_savedsearch "INSERT INTO saved_searches (organization_id, owner_user_id, name, scope, query) VALUES ('org_0186', 'user_a', 'Brandschutz', '{}', '{}')" "saved_searches_owner_name_key" "0186: a name is unique per owner"
+refused_in grid_savedsearch "INSERT INTO saved_searches (organization_id, owner_user_id, name, scope, query) VALUES ('org_0186', 'user_a', '', '{}', '{}')" "saved_searches_name_bounded" "0186: a name is not empty"
+refused_in grid_savedsearch "INSERT INTO saved_searches (organization_id, owner_user_id, name, scope, query) VALUES ('org_0186', 'user_a', 'Liste', '{}', '[]')" "saved_searches_query_object" "0186: the query is an object"
+refused_in grid_savedsearch "INSERT INTO saved_searches (organization_id, owner_user_id, name, scope, query) VALUES ('org_0186', 'user_a', 'Gross', '{}', jsonb_build_object('text', repeat('x', 16000)))" "saved_searches_query_bounded" "0186: the query is bounded"
+apply_in grid_savedsearch 0186_saved_searches.down.sql
+check_in grid_savedsearch "SELECT count(*) FROM information_schema.tables WHERE table_name = 'saved_searches'" "0" "0186 down drops the table"
+apply_in grid_savedsearch 0186_saved_searches.sql
+check_in grid_savedsearch "SELECT count(*) FROM information_schema.tables WHERE table_name = 'saved_searches'" "1" "0186 applies again after its down"
+echo "==> 0186 saved searches and down migration verified"
+
+# ---------------------------------------------------------------------------
 # Migrations 0159 to 0162: the project profile's names in English, and their DOWNs.
 #
 # On a database of its own, migrated to what precedes 0159, with a project whose
