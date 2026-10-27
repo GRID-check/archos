@@ -365,3 +365,20 @@ export async function readReferenceSubject(
   if (!row) return null
   return { planNumberKey: row.planNumberKey, documentType: row.documentType, referenceTokens: row.referenceTokens ?? [] }
 }
+
+/**
+ * The ids of the documents a query's filters admit, without its text, at most
+ * `max` (the content search's pre-filter: ADR-0133 item 5). A list one longer
+ * than `max` means "too many to name", and the caller narrows by payload instead.
+ */
+export async function listCandidateDocumentIds(reach: SearchReach, query: DocumentQuery, max: number): Promise<string[]> {
+  const rows = await withTenant({ organizationId: reach.organizationId }, () =>
+    getDb()
+      .select({ id: documents.id })
+      .from(documents)
+      .leftJoin(f, eq(f.documentId, documents.id))
+      .where(documentSearchWhere(reach, { ...query, text: null }))
+      .limit(max + 1)
+  )
+  return rows.map((row) => row.id)
+}

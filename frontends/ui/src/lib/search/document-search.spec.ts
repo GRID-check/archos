@@ -7,6 +7,7 @@ const repository = vi.hoisted(() => ({
   searchDocumentPage: vi.fn(),
   documentFacetCounts: vi.fn(),
   readReferenceSubject: vi.fn(),
+  listCandidateDocumentIds: vi.fn(),
 }))
 vi.mock('./document-repository', () => repository)
 const providers = vi.hoisted(() => ({
@@ -33,7 +34,7 @@ import { UpstreamError } from '@/lib/api/errors'
 import type { AuthorizedSession } from '@/lib/auth/types'
 import type { Project } from '@/lib/db/schema'
 import { fetchGroupedSemanticHits } from '@/lib/documents/service'
-import { decodeSearchCursor, documentOrder, encodeSearchCursor, runSearch } from './document-search'
+import { contentPrefilter, decodeSearchCursor, documentOrder, encodeSearchCursor, runSearch } from './document-search'
 import type { DocumentSearchRow } from './document-repository'
 import { reachFor, type SearchReach } from './reach'
 
@@ -107,7 +108,8 @@ describe('runSearch', () => {
 
     const answer = await runSearch(session, {}, { text: 'Fluchtweg', kinds: ['document'] })
 
-    expect(fetchGroupedSemanticHits).toHaveBeenCalledWith(['proj_a', 'office_org_1'], 'Fluchtweg', 20, 400)
+    expect(fetchGroupedSemanticHits).toHaveBeenCalledWith(['proj_a', 'office_org_1'], 'Fluchtweg', 20, 400, {})
+    expect(repository.listCandidateDocumentIds).not.toHaveBeenCalled()
     const query = repository.searchDocumentPage.mock.calls[0][1]
     expect(query.text).toEqual({ text: 'Fluchtweg', contentKeys: ['proj_a\u0000bsk.pdf'] })
     expect(repository.searchDocumentPage.mock.calls[0][2]).toEqual({ sort: 'relevance', dir: 'desc', limit: 25, offset: 0 })
@@ -185,5 +187,31 @@ describe('documentOrder', () => {
     expect(documentOrder({ sort: 'relevance' })).toEqual({ sort: 'added', dir: 'desc' })
     expect(documentOrder({ sort: 'plan_number' })).toEqual({ sort: 'plan_number', dir: 'asc' })
     expect(documentOrder({ sort: 'plan_date', dir: 'asc' })).toEqual({ sort: 'plan_date', dir: 'asc' })
+  })
+})
+
+describe('contentPrefilter', () => {
+  const base = { text: null, citedBy: null, citing: null }
+
+  it('narrows the content search to the filtered documents when they are few', async () => {
+    repository.listCandidateDocumentIds.mockResolvedValue(['d1', 'd2'])
+    expect(await contentPrefilter(reach, { ...base, filters: { documentTypes: ['permit'] } })).toEqual({
+      filters: { document_ids: ['d1', 'd2'] },
+    })
+  })
+
+  it('narrows by the payload when the filtered documents are too many to name, and skips a search none can match', async () => {
+    repository.listCandidateDocumentIds.mockResolvedValue(Array.from({ length: 1001 }, (_, i) => `d${i}`))
+    expect(
+      await contentPrefilter(reach, { ...base, filters: { documentTypes: ['permit'], cites: ['ÖNORM B 1600'], currentOnly: true } })
+    ).toEqual({ filters: { reading_types: ['permit'], refers_to: ['ÖNORM B 1600'] } })
+
+    repository.listCandidateDocumentIds.mockResolvedValue([])
+    expect(await contentPrefilter(reach, { ...base, filters: { planNumber: 'XX-99' } })).toBeNull()
+  })
+
+  it('does not narrow a search without filters', async () => {
+    expect(await contentPrefilter(reach, { ...base, filters: { includeArchived: true } })).toEqual({ filters: undefined })
+    expect(repository.listCandidateDocumentIds).not.toHaveBeenCalled()
   })
 })

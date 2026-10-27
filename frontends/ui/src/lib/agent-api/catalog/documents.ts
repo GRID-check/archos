@@ -265,28 +265,17 @@ export const documentsOperations = [
     domain: 'documents',
     summary: 'Search everything the person may read, with filters',
     description:
-      'One search over every shelf the person may read (absent scope), one project (`projectId`, from project-list), a folder ' +
-      'of it (`folderId`) or the office shelf (`scope: office_shelf`). Finds documents by name, by what ingestion read in ' +
-      'them (type, parties, place, stated facts, references, drawing number, revision, scale) and by their content, with the ' +
-      'matching passage and page; also annotations, folders, projects and conversations (`kinds`). Filters narrow the ' +
-      'documents (document type, facts with ranges, cited norms or drawings, dates, uploader, status, current revision only); ' +
-      '`sort` orders them like a drawing register; `facets` counts per filter value. Page one kind with `cursor`. A passage ' +
-      'here points at a page: read the document before quoting it. Read-only.',
+      'Searches every shelf the person may read, or one project (`projectId`), a folder of it (`folderId`) or the office ' +
+      'shelf (`scope: office_shelf`). Finds documents by name, by what ingestion read (type, parties, facts, references, ' +
+      'drawing number, revision, scale) and by content with the passage and page; also annotations, folders, projects and ' +
+      'conversations (`kinds`). `sort` orders like a drawing register, `facets` counts per value, `cursor` pages one kind. ' +
+      'A passage points at a page: read the document before quoting it.',
     method: 'POST',
     path: '/api/search',
     query: searchScopeQuerySchema,
     body: searchBodySchema,
     readOnly: true,
     spansProjects: 'unlessScoped',
-    examples: [
-      {
-        body: {
-          text: 'escape route',
-          kinds: ['document'],
-          filters: { documentTypes: ['fire_safety_concept'], facts: [{ key: 'building_class', min: 4 }], currentOnly: true },
-        },
-      },
-    ],
     load: () => import('@/app/api/search/route'),
   },
   {

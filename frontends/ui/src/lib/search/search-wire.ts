@@ -45,7 +45,7 @@ export const SEARCH_SECTION_PREVIEW = 5
 /** How deep a result can be paged: a search is for finding, the register for walking. */
 export const SEARCH_OFFSET_MAX = 5000
 
-const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'YYYY-MM-DD')
+const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/)
 const shortText = z.string().trim().min(1).max(120)
 
 /** A fact the document states: equal to a value, or within a numeric range. */
@@ -71,6 +71,7 @@ export const partyFilterSchema = z
 
 const dateRange = z
   .object({ from: isoDate.optional(), to: isoDate.optional() })
+  .describe('YYYY-MM-DD bounds, inclusive.')
   .refine((range) => range.from !== undefined || range.to !== undefined, { message: 'A date range needs from or to' })
 
 /** What narrows the documents. Within a list any of; across fields all of. */
@@ -81,32 +82,32 @@ export const documentFiltersSchema = z.object({
     .max(20)
     .optional()
     .describe('Controlled tags: document kind and OIB discipline.'),
-  planNumber: shortText.optional().describe('The Plannummer from the title block; spaces, hyphens and case ignored, a prefix matches.'),
+  planNumber: shortText.optional().describe('Drawing number prefix; spaces, hyphens, case ignored.'),
   planIndex: z.array(shortText).max(20).optional(),
   planDate: dateRange.optional(),
   scale: z.array(shortText).max(20).optional().describe('Scale as the title block writes it, e.g. "1:100".'),
-  currentOnly: z.boolean().optional().describe('Only documents no newer revision replaces.'),
+  currentOnly: z.boolean().optional().describe('No newer revision replaces it.'),
   parties: z.array(partyFilterSchema).max(8).optional(),
-  place: shortText.optional().describe('A part of the address, municipality or state.'),
+  place: shortText.optional().describe('Part of address, municipality or state.'),
   facts: z.array(factFilterSchema).max(8).optional(),
   cites: z
     .array(shortText)
     .max(8)
     .optional()
-    .describe('References the document makes: a norm ("EN 1992-1-1"), a law ("§ 33"), a drawing number ("EP-05") or a `kind:key` token.'),
-  citedBy: z.string().uuid().optional().describe('Only the documents this document references by plan number or document type.'),
-  citing: z.string().uuid().optional().describe('Only the documents that reference this document.'),
+    .describe('Cited norm ("EN 1992-1-1"), law ("§ 33"), drawing ("EP-05") or `kind:key` token.'),
+  citedBy: z.string().uuid().optional().describe('Documents this document references.'),
+  citing: z.string().uuid().optional().describe('Documents referencing this document.'),
   documentDate: dateRange.optional(),
   uploaded: dateRange.optional(),
   photographed: dateRange.optional(),
-  uploadedBy: z.array(z.string().min(1).max(100)).max(20).optional().describe('User ids of the uploaders.'),
+  uploadedBy: z.array(z.string().max(100)).max(20).optional().describe('Uploader user ids.'),
   states: z.array(z.enum(SEARCH_READ_STATES)).max(5).optional(),
-  incompleteRead: z.boolean().optional().describe('Only documents with pages that were not read.'),
+  incompleteRead: z.boolean().optional().describe('Has unread pages.'),
   fileTypes: z
     .array(z.string().regex(/^[a-z0-9]{1,8}$/))
     .max(12)
     .optional()
-    .describe('File name extensions, lower case: pdf, dwg, ifc, jpg.'),
+    .describe('Extensions: pdf, dwg, ifc.'),
   pages: z.object({ min: z.number().int().min(0).optional(), max: z.number().int().min(0).optional() }).optional(),
   includeArchived: z.boolean().optional(),
 })
@@ -128,7 +129,7 @@ export const searchBodySchema = z.object({
     .trim()
     .max(500)
     .optional()
-    .describe('Free text: names, what the documents are and say (their content, with the page), annotations, folders, projects, conversations.'),
+    .describe('Matches names, what documents are and say (with the page), annotations, folders, projects, conversations.'),
   kinds: z.array(z.enum(SEARCH_KINDS)).min(1).max(SEARCH_KINDS.length).optional().describe('Default: every kind.'),
   filters: documentFiltersSchema.optional(),
   annotationFilters: annotationFiltersSchema.optional(),

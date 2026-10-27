@@ -14,10 +14,16 @@ import 'server-only'
 import { BadRequestError, UnprocessableError, UpstreamError } from '@/lib/api/errors'
 import type { AuthorizedSession } from '@/lib/auth/types'
 import { documentReadFamily } from '@/lib/documents/document-status'
-import { BACKEND_SEARCH_MAX_COLLECTIONS, fetchGroupedSemanticHits, type BackendSearchHit } from '@/lib/documents/service'
+import {
+  BACKEND_SEARCH_MAX_COLLECTIONS,
+  fetchGroupedSemanticHits,
+  type BackendSearchHit,
+  type GroupedSearchFilters,
+} from '@/lib/documents/service'
 import { resolvePeople } from '@/lib/sharing/directory'
 import {
   documentFacetCounts,
+  listCandidateDocumentIds,
   readReferenceSubject,
   searchDocumentPage,
   type DocumentQuery,
@@ -48,6 +54,8 @@ import { refreshStaleShelves } from './shelf-projection'
 const CONTENT_FILES_PER_COLLECTION = 20
 /** The passages one content search ranks (the backend's candidate budget, `qdrant/search.py`); as many documents at most. */
 const CONTENT_CANDIDATES = 200
+/** The most documents a content search is narrowed to by id; past it, by what they are and cite. */
+const PREFILTER_MAX_IDS = 1000
 /** Characters of a passage shown under a document. */
 const PASSAGE_CHARS = 400
 /** Text shorter than this goes to the names and the reading only. */
@@ -107,13 +115,44 @@ async function referenceTargets(reach: SearchReach, documentId: string, directio
   return { planKeys, documentTypes }
 }
 
+/**
+ * What narrows the content search before it ranks, so a selective filter does
+ * not leave the candidate budget to documents it then drops: the filtered ids
+ * when they are few, else the payload's own reading type and references. It
+ * only ever narrows what SQL decides; a mismatch costs recall, never visibility.
+ * `null` filters: the filters admit no document.
+ */
+export async function contentPrefilter(
+  reach: SearchReach,
+  query: DocumentQuery
+): Promise<{ filters: GroupedSearchFilters | undefined } | null> {
+  const narrowed = Object.entries(query.filters).some(([key, value]) => key !== 'includeArchived' && value !== undefined)
+  if (!narrowed && !query.citedBy && !query.citing && !reach.folderIds) return { filters: undefined }
+  const ids = await listCandidateDocumentIds(reach, query, PREFILTER_MAX_IDS)
+  if (ids.length === 0) return null
+  if (ids.length <= PREFILTER_MAX_IDS) return { filters: { document_ids: ids } }
+  const readingTypes = query.filters.documentTypes ?? []
+  const refersTo = (query.filters.cites ?? []).slice(0, 8)
+  if (readingTypes.length === 0 && refersTo.length === 0) return { filters: undefined }
+  return {
+    filters: {
+      ...(readingTypes.length > 0 ? { reading_types: [...readingTypes] } : {}),
+      ...(refersTo.length > 0 ? { refers_to: refersTo } : {}),
+    },
+  }
+}
+
 /** The content search over the reach's collections, or null when it could not run. */
-async function contentHits(reach: SearchReach, text: string): Promise<{ hits: BackendSearchHit[]; partial: boolean } | null> {
+async function contentHits(
+  reach: SearchReach,
+  text: string,
+  filters: GroupedSearchFilters | undefined
+): Promise<{ hits: BackendSearchHit[]; partial: boolean } | null> {
   const collections = reachCollections(reach)
   if (collections.length === 0) return { hits: [], partial: false }
   try {
     const named = collections.slice(0, BACKEND_SEARCH_MAX_COLLECTIONS)
-    const hits = await fetchGroupedSemanticHits(named, text, CONTENT_FILES_PER_COLLECTION, PASSAGE_CHARS)
+    const hits = await fetchGroupedSemanticHits(named, text, CONTENT_FILES_PER_COLLECTION, PASSAGE_CHARS, filters ? { filters } : {})
     return { hits, partial: named.length < collections.length }
   } catch (error) {
     if (error instanceof UpstreamError) return null
@@ -181,6 +220,17 @@ function labelFacets(
   return out
 }
 
+/** The content search under the structured filters' pre-filter; no call when the filters admit nothing. */
+async function rankedContent(
+  reach: SearchReach,
+  structured: DocumentQuery,
+  text: string
+): Promise<{ hits: BackendSearchHit[]; partial: boolean } | null> {
+  const prefilter = await contentPrefilter(reach, structured)
+  if (!prefilter) return { hits: [], partial: false }
+  return contentHits(reach, text, prefilter.filters)
+}
+
 /** The documents section, and the facets when asked. */
 async function searchDocuments(
   reach: SearchReach,
@@ -196,14 +246,10 @@ async function searchDocuments(
   ])
   if ((filters.citedBy && !citedBy) || (filters.citing && !citing)) return empty
   const text = body.text?.trim() || null
-  const content = text && text.length >= CONTENT_MIN_CHARS ? await contentHits(reach, text) : { hits: [], partial: false }
+  const structured: DocumentQuery = { filters, text: null, citedBy, citing }
+  const content = text && text.length >= CONTENT_MIN_CHARS ? await rankedContent(reach, structured, text) : { hits: [], partial: false }
   const passages = new Map((content?.hits ?? []).map((hit) => [contentKey(hit.collection, hit.file_name), hit]))
-  const query: DocumentQuery = {
-    filters,
-    text: text ? { text, contentKeys: [...passages.keys()] } : null,
-    citedBy,
-    citing,
-  }
+  const query: DocumentQuery = { ...structured, text: text ? { text, contentKeys: [...passages.keys()] } : null }
   const order = documentOrder(body)
   const [result, counts] = await Promise.all([
     searchDocumentPage(reach, query, { ...order, ...page }),
