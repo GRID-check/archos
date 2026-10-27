@@ -2102,6 +2102,28 @@ export const chat: typeof en.chat = {
       citationFallback:
         'Mittlere Sicherheit: die angeführte Quelle wurde ergänzt, nicht von der Antwort selbst zitiert.',
     },
+    // Die Einschätzung seit ADR-0139: ein Prüfmodell liest die Antwort gegen
+    // alles, was die Antwort abgerufen hat, und nennt, was nicht belegt ist.
+    checked: {
+      ariaLabel: 'Belegprüfung der Antwort: {level}',
+      tooltip:
+        'Ein Prüfmodell hat die Antwort gegen alles gelesen, was für sie abgerufen wurde: Quellen, Einträge im Arbeitsbereich, Messungen und Ablesungen. Es kann irren.',
+      levelMeanings: {
+        high: 'Hoch: jede Aussage, auf die sich die Antwort stützt, ist belegt.',
+        medium: 'Mittel: die Kernaussage ist belegt, Nebenaussagen sind es nicht.',
+        low: 'Niedrig: die Kernaussage ist nicht belegt, oder eine Quelle widerspricht der Antwort.',
+      },
+      findingsLabel: 'Nicht belegt',
+      problems: { unbacked: 'nicht belegt', contradicted: 'widerspricht der Quelle' },
+      // „{source}" ist die Quelle, wie das Prüfmodell sie benannt hat.
+      checkedAgainst: 'geprüft gegen {source}',
+      noSource: 'keine Quelle',
+      quoteUnverified:
+        'Ein Zitat konnte nicht wörtlich in der Quelle bestätigt werden; die Einschätzung ist deshalb begrenzt.',
+      unavailable: 'Belegprüfung nicht verfügbar',
+      unavailableTooltip:
+        'Die Belegprüfung konnte für diese Antwort nicht laufen. Piloti zeigt deshalb keine Einschätzung; die Antwort selbst ist unverändert.',
+    },
     // Die Einschätzung seit ADR-0125: pro Aussage gerechnet, nicht pro Antwort.
     // Ältere Antworten behalten die Texte oben, unter denen sie berechnet wurden.
     byClaim: {
@@ -2112,15 +2134,6 @@ export const chat: typeof en.chat = {
         medium:
           'Mittel: eine tragende Aussage ist eine Einschätzung oder allgemeines Wissen, oder ein gelesener Eintrag deckt eine Zahl nicht.',
         low: 'Niedrig: eine Aussage zu Recht, Zahl oder Frist ist nicht belegt, oder eine Quellenangabe hielt der Prüfung nicht stand.',
-      },
-      // Woraus die Sätze der Antwort bestehen, in Lesereihenfolge: was hält zuerst.
-      mix: {
-        supported: '{count, plural, one {# Aussage belegt} other {# Aussagen belegt}}',
-        observed: '{count, plural, one {# Aussage von der Zeichnung abgelesen} other {# Aussagen von der Zeichnung abgelesen}}',
-        reasoning: '{count, plural, one {# Einschätzung} other {# Einschätzungen}}',
-        modelKnowledge: '{count, plural, one {# Aussage aus allgemeinem Wissen} other {# Aussagen aus allgemeinem Wissen}}',
-        normativeUncited: '{count, plural, one {# Rechtsaussage ohne Beleg} other {# Rechtsaussagen ohne Beleg}}',
-        dropped: '{count, plural, one {# Beleg nicht verifiziert} other {# Belege nicht verifiziert}}',
       },
       cappedReasons: {
         ungrounded: 'Begrenzt durch eine tragende Aussage, hinter der kein Beleg steht.',

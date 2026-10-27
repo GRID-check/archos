@@ -5,7 +5,7 @@ import { Gauge } from 'lucide-react'
 import { Chip } from '@/components/ui/chip'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useTranslations } from '@/i18n'
-import { claimMix, type ClaimMix, type ClaimStamp } from '@/lib/conversations/message-claim-stamps'
+import type { ConfidenceCheck } from '@/lib/conversations/confidence-check'
 import type { AnswerConfidenceCappedReason } from '@/lib/conversations/message-provenance'
 
 /** The three self-assessment levels the model can report. */
@@ -23,16 +23,6 @@ const CAPPED_REASON_KEYS: Record<AnswerConfidenceCappedReason, string> = {
   measurement_only: 'measurementOnly',
   citation_fallback: 'citationFallback',
 }
-
-/** The mix line's parts, in the order they are read: what holds first, what does not last. */
-const MIX_PARTS: readonly (keyof ClaimMix)[] = [
-  'supported',
-  'observed',
-  'reasoning',
-  'modelKnowledge',
-  'normativeUncited',
-  'dropped',
-]
 
 interface ConfidenceChipProps {
   /** The model's guarded self-assessment; undefined/null renders nothing. */
@@ -58,8 +48,12 @@ interface ConfidenceChipProps {
    * it, which keeps the copy of the answer-level floors it was computed with.
    */
   version?: 1 | 2
-  /** Where each sentence comes from; read only under rule 2. */
-  claimStamps?: readonly ClaimStamp[]
+  /**
+   * What the answer check found (ADR-0139). Judged: the level is the check's,
+   * and the tooltip names the statements it found unbacked or contradicted.
+   * Unavailable: there is no level, and the chip says the check did not run.
+   */
+  check?: ConfidenceCheck
 }
 
 /**
@@ -72,20 +66,37 @@ interface ConfidenceChipProps {
  *
  * The tooltip explains the chip in full: what the level means, the model's own
  * reason (when given), the self-assessment caveat, any deterministic cap, and
- * under rule 2 the mix of what the sentences rest on
- * („5 Aussagen belegt · 1 Einschätzung · 1 Rechtsaussage ohne Beleg").
+ * for a checked answer (ADR-0139) the statements the check found unbacked.
  */
 export const ConfidenceChip: FC<ConfidenceChipProps> = ({
   confidence,
   cappedReason,
   reason,
   version,
-  claimStamps,
+  check,
 }) => {
   const t = useTranslations('chat')
 
+  if (check?.status === 'unavailable') {
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Chip asChild variant="muted" size="sm" interactive>
+            <button type="button" data-testid="confidence-check-unavailable">
+              <Gauge aria-hidden="true" />
+              {t('confidence.checked.unavailable')}
+            </button>
+          </Chip>
+        </TooltipTrigger>
+        <TooltipContent className="max-w-xs">{t('confidence.checked.unavailableTooltip')}</TooltipContent>
+      </Tooltip>
+    )
+  }
   if (confidence !== 'low' && confidence !== 'medium' && confidence !== 'high') {
     return null
+  }
+  if (check?.status === 'judged') {
+    return <CheckedChip confidence={confidence} check={check} quoteCapped={cappedReason === 'quote_unverified'} />
   }
 
   const byClaim = version === 2
@@ -104,12 +115,6 @@ export const ConfidenceChip: FC<ConfidenceChipProps> = ({
   // Trim only to DETECT an empty/whitespace-only reason; the reason itself is
   // rendered verbatim, as the wire contract promises.
   const displayReason = reason?.trim() ? reason : undefined
-  const mix = byClaim && claimStamps && claimStamps.length > 0 ? claimMix(claimStamps) : null
-  const mixText = mix
-    ? MIX_PARTS.filter((part) => mix[part] > 0)
-        .map((part) => t(`confidence.byClaim.mix.${part}`, { count: mix[part] }))
-        .join(' · ')
-    : ''
 
   return (
     <Tooltip>
@@ -133,11 +138,6 @@ export const ConfidenceChip: FC<ConfidenceChipProps> = ({
             `${byClaim ? 'confidence.byClaim.levelMeanings' : 'confidence.levelMeanings'}.${confidence}`
           )}
         </span>
-        {mixText ? (
-          <span className="mt-1 block" data-testid="confidence-claim-mix">
-            {mixText}
-          </span>
-        ) : null}
         {displayReason ? (
           <span className="mt-1 block">
             <span className="font-medium">
@@ -150,6 +150,54 @@ export const ConfidenceChip: FC<ConfidenceChipProps> = ({
           {t(byClaim ? 'confidence.byClaim.tooltip' : 'confidence.tooltip')}
         </span>
         {cappedReasonText ? <span className="mt-1 block">{cappedReasonText}</span> : null}
+      </TooltipContent>
+    </Tooltip>
+  )
+}
+
+/** The chip of a checked answer (ADR-0139): the check's level, and what it found unbacked. */
+const CheckedChip: FC<{ confidence: AnswerConfidence; check: ConfidenceCheck; quoteCapped: boolean }> = ({
+  confidence,
+  check,
+  quoteCapped,
+}) => {
+  const t = useTranslations('chat')
+  const levelLabel = t(`confidence.levels.${confidence}`)
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Chip
+          asChild
+          variant={confidence === 'low' ? 'warning' : 'muted'}
+          size="sm"
+          interactive
+          aria-label={t('confidence.checked.ariaLabel', { level: levelLabel })}
+        >
+          <button type="button">
+            <Gauge aria-hidden="true" />
+            {t('confidence.label', { level: levelLabel })}
+          </button>
+        </Chip>
+      </TooltipTrigger>
+      <TooltipContent className="max-w-xs">
+        <span className="block">{t(`confidence.checked.levelMeanings.${confidence}`)}</span>
+        {check.findings.length > 0 ? (
+          <span className="mt-1 block" data-testid="confidence-check-findings">
+            <span className="font-medium">{t('confidence.checked.findingsLabel')}:</span>
+            {check.findings.map((finding) => (
+              <span key={`${finding.problem}-${finding.statement}`} className="mt-0.5 block">
+                „{finding.statement}“ – {t(`confidence.checked.problems.${finding.problem}`)}
+                {finding.reason ? `: ${finding.reason}` : ''} (
+                {t('confidence.checked.checkedAgainst', {
+                  source: finding.source === 'none' ? t('confidence.checked.noSource') : finding.source,
+                })}
+                )
+              </span>
+            ))}
+          </span>
+        ) : null}
+        <span className="mt-1 block">{t('confidence.checked.tooltip')}</span>
+        {quoteCapped ? <span className="mt-1 block">{t('confidence.checked.quoteUnverified')}</span> : null}
       </TooltipContent>
     </Tooltip>
   )

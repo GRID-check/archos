@@ -46,7 +46,7 @@ import { sanitizeAnswerMeta } from '@/lib/conversations/message-answer-meta'
 import { sanitizeFindings } from '@/lib/conversations/message-findings'
 import { sanitizeRetrievalLedger } from '@/lib/conversations/message-retrieval-ledger'
 import { sanitizeQuoteStamps } from '@/lib/conversations/message-quote-stamps'
-import { sanitizeClaimStamps } from '@/lib/conversations/message-claim-stamps'
+import { sanitizeConfidenceCheck } from '@/lib/conversations/confidence-check'
 import { isChatEffort } from '@/lib/reasoning-settings/catalog'
 import { sanitizeStages } from '@/lib/conversations/message-stages'
 import { sanitizePromptOptions } from '@/lib/conversations/message-prompt'
@@ -359,8 +359,8 @@ const restoreProvenance = (value: unknown): Partial<ChatMessage> => {
   if (ledger) out.retrievalLedger = ledger
   const stamps = sanitizeQuoteStamps(provenance.quoteStamps)
   if (stamps) out.quoteStamps = stamps
-  const claims = sanitizeClaimStamps(provenance.claimStamps)
-  if (claims) out.claimStamps = claims
+  const check = sanitizeConfidenceCheck(provenance.confidenceCheck)
+  if (check) out.confidenceCheck = check
   if (provenance.answerConfidenceVersion === 1 || provenance.answerConfidenceVersion === 2) {
     out.answerConfidenceVersion = provenance.answerConfidenceVersion
   }
