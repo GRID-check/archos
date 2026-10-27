@@ -21,6 +21,8 @@ from contextvars import ContextVar
 from datetime import datetime
 from typing import Any
 
+from aiq_agent.common.estate_paths import MOUNT_ROOTS
+from aiq_agent.common.estate_paths import SHELF_MOUNTS
 from aiq_agent.common.source_kinds import SHELF_QUALIFIERS
 from aiq_agent.common.source_kinds import Shelf
 from aiq_agent.common.source_kinds import parse_shelf
@@ -579,15 +581,14 @@ def _folded_base_lines(count: int) -> list[str]:
     ]
 
 
-#: The estate mount of each shelf value the inventory groups by, for the call that lists one completely.
-_SHELF_ROOTS = {"project": "/project/", "office_shelf": "/office/", "session": "/chat/", "base": "/law/oib/"}
-
-
 def _complete_list(shelf: str | None = None) -> str:
     """The call that lists a shelf completely, in the caller's spelling (``common.tool_vocabulary``)."""
-    if current_vocabulary().filesystem:
-        return f'`ls("{_SHELF_ROOTS.get(shelf or "", "/")}")`' if shelf else "`ls` or `glob`"
-    return f'`list_files(shelf="{shelf}")`' if shelf else "`list_files`"
+    if not current_vocabulary().filesystem:
+        return f'`list_files(shelf="{shelf}")`' if shelf else "`list_files`"
+    mount = SHELF_MOUNTS.get(shelf or "")
+    if mount is None:
+        return "`ls` or `glob`"
+    return f'`glob(pattern="*", path="{MOUNT_ROOTS[mount]}")`'
 
 
 def render_inventory_block(

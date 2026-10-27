@@ -73,8 +73,8 @@ from aiq_agent.common.model_vision import chat_model_scope
 from aiq_agent.common.model_vision import model_name_of
 from aiq_agent.common.prompt_caching import begin_stable_prefix
 from aiq_agent.common.prompt_caching import end_stable_prefix
+from aiq_agent.common.retired_calls import NEEDS_PATHS
 from aiq_agent.common.retired_calls import RETIRED_CALL_TAG
-from aiq_agent.common.retired_calls import RETIRED_NAMES
 from aiq_agent.common.retired_calls import RetiredNotice
 from aiq_agent.common.retired_calls import known_paths
 from aiq_agent.common.retired_calls import retired_call_notice
@@ -381,7 +381,8 @@ def _withheld_calls(
     """
     repeats = repeat_fetches(calls, state.executed_fetches)
     seen = {id(call) for call in repeats}
-    paths = _result_paths(state) if bound and any(_call_name(c) in RETIRED_NAMES for c in calls) else {}
+    # Read only for a call that is answered with a path; a round of searches never pays the scan.
+    paths = _result_paths(state) if bound and any(_call_name(c) in NEEDS_PATHS for c in calls) else {}
     refused = [
         (call, sentence)
         for call in calls

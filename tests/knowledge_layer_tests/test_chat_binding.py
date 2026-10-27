@@ -48,7 +48,7 @@ def test_the_search_is_ranked_only_and_states_its_budget():
         "group_by",
         "conclusion",
     }
-    assert "up to 16, at most 5 from one document" in search.description
+    assert "up to 16 by default, at most 5 from one document" in search.description
     assert "match" not in search.description.replace("matches", "")
 
 

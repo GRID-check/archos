@@ -53,6 +53,12 @@ class TestTheNotice:
         assert 'mode="regex"' in retired_call_notice("knowledge_search", {"query": r"\bT\d+", "match": "regex"}, PILOTI)
         assert retired_call_notice("knowledge_search", {"query": "Fluchtweg"}, PILOTI) is None
 
+    def test_a_literal_search_keeps_its_scope_as_a_path(self):
+        scoped = {"query": "T30", "match": "exact", "shelf": "office", "folder": "Brandschutz"}
+        assert 'path="/office/Brandschutz/"' in retired_call_notice("knowledge_search", scoped, PILOTI)
+        one = {"query": "T30", "match": "exact", "file_name": "Gutachten.pdf"}
+        assert 'path="/project/Gutachten.pdf.md"' in retired_call_notice("knowledge_search", one, PILOTI)
+
     def test_deep_research_keeps_every_old_spelling(self):
         """The replacement is not bound there, so nothing is retired."""
         assert retired_call_notice("read_passage", {"document": "x.pdf"}, DEEP) is None

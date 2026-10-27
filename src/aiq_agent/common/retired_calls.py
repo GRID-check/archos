@@ -28,9 +28,10 @@ from typing import Any
 
 from aiq_agent.common.estate_paths import MOUNT_ROOTS
 from aiq_agent.common.estate_paths import SHELF_MOUNTS
+from aiq_agent.common.estate_paths import estate_path
 
-#: The names a retired spelling can be called by; a round with none of them skips the guard.
-RETIRED_NAMES = frozenset({"read_passage", "list_files", "knowledge_search"})
+#: The retired spellings whose answer names a path from this turn's results (:func:`known_paths`).
+NEEDS_PATHS = frozenset({"read_passage"})
 
 #: The literal modes ``knowledge_search`` no longer has on Piloti's binding.
 LITERAL_MODES = ("exact", "regex")
@@ -107,11 +108,33 @@ def _list_files_notice(args: Mapping[str, Any]) -> str:
     )
 
 
+#: ``knowledge_search``'s ``shelf`` values, as the shelf wire values the mounts are keyed by.
+_SEARCH_SHELVES = {"office": "office_shelf", "archiv": "office_shelf"}
+
+
+def _scope_path(args: Mapping[str, Any]) -> str | None:
+    """The path ``folder``, ``shelf`` and ``file_name`` of a ``knowledge_search`` call name; ``path`` wins."""
+    if str(args.get("path") or "").strip():
+        return str(args["path"]).strip()
+    shelf = str(args.get("shelf") or "").strip().lower()
+    shelf = _SEARCH_SHELVES.get(shelf, shelf)
+    folder = str(args.get("folder") or "").strip().strip("/")
+    file_name = str(args.get("file_name") or "").strip()
+    if not (shelf or folder or file_name):
+        return None
+    mount = SHELF_MOUNTS.get(shelf or "project")
+    if mount is None:
+        return None
+    if file_name:
+        return estate_path(shelf or "project", folder or None, file_name)
+    return MOUNT_ROOTS[mount] + (f"{folder}/" if folder and mount != "law" else "")
+
+
 def _literal_search_notice(args: Mapping[str, Any], mode: str) -> str:
     replacement = {
         "pattern": args.get("query"),
         "mode": mode,
-        "path": args.get("path"),
+        "path": _scope_path(args),
         "stemmed": "true" if args.get("stemmed") else None,
     }
     call = _call("grep", replacement).replace('stemmed="true"', "stemmed=true")
