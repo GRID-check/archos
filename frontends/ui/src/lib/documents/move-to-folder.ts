@@ -38,13 +38,13 @@ import { PURGE_TIMEOUT_MS, placeProjectDocuments } from '@/lib/projects/collecti
 import { assertIfcMayBeFiledIn } from '@/lib/projects/ifc-folder-guard'
 import { findProjectInOrg } from '@/lib/projects/repository'
 import { findDocumentForSession } from './access'
-import { reingestDocument } from './service'
+import { reingestDocument } from './reingest'
 import { documentShelf, type DocumentShelf } from './shelf'
 import { requireShelfWrite } from './shelf-authz'
 import { findShelfFolder } from './shelf-folders'
 import { publishShelfChanged } from './shelf-live'
 
-/** Same ceiling the other backend mirrors in `@/lib/documents/service` use. */
+/** Same ceiling the other backend mirrors use (`BACKEND_FETCH_TIMEOUT_MS` in `@/lib/documents/ingest-dispatch`). */
 const BACKEND_MIRROR_TIMEOUT_MS = 10_000
 
 /** What the caller is told when the destination is not a folder of the document's shelf. */

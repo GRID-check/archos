@@ -86,19 +86,19 @@ type Disposition =
  * Key: `<path under src>::<function>`.
  */
 const OBJECT_READERS: Record<string, Disposition> = {
-  'lib/documents/service.ts::getDocumentDownload': { logged: ['download'] },
-  'lib/documents/service.ts::getDocumentPreview': { logged: ['preview'] },
-  'lib/documents/service.ts::streamDocumentFile': { logged: ['pdf'] },
-  'lib/documents/service.ts::getDocumentTextPreview': { logged: ['text'] },
+  'lib/documents/document-delivery.ts::getDocumentDownload': { logged: ['download'] },
+  'lib/documents/document-delivery.ts::getDocumentPreview': { logged: ['preview'] },
+  'lib/documents/document-delivery.ts::streamDocumentFile': { logged: ['pdf'] },
+  'lib/documents/document-delivery.ts::getDocumentTextPreview': { logged: ['text'] },
   'lib/documents/version-content.ts::readVersionContent': { logged: ['version'] },
   'lib/documents/version-content.ts::streamVersionFile': { logged: ['version'] },
   'lib/bim/model-service.ts::getModelSource': { logged: ['model'] },
-  'lib/documents/service.ts::getDocumentThumbnail': {
+  'lib/documents/document-delivery.ts::getDocumentThumbnail': {
     servesPerson: true,
     exempt:
       'a derived 200 px JPEG of the first page, not the file. It does not hand over the document, and a thumbnail on every card would fill the log with who scrolled past what.',
   },
-  'lib/documents/service.ts::streamDocumentImage': {
+  'lib/documents/document-delivery.ts::streamDocumentImage': {
     servesPerson: true,
     exempt:
       'the Next image optimizer fetches it with no session, so there is no person to name. The signed URL it checks is minted by getDocumentPreview, which records the open (a download of the original goes through getDocumentDownload).',
@@ -112,8 +112,8 @@ const OBJECT_READERS: Record<string, Disposition> = {
   },
   'lib/bim/service.ts::fetchObject': { exempt: 'server-side IFC extraction reads the file to build the model; nothing is handed to a person.' },
   'lib/documents/rendition.ts::readOriginal': { exempt: 'server-side conversion of an office file to its PDF rendition.' },
-  'lib/documents/service.ts::dispatchIngest': { exempt: 'presigns the file for the ingest backend, a machine.' },
-  'lib/documents/service.ts::signedRenditionRef': { exempt: 'presigns the rendition for the ingest backend, a machine.' },
+  'lib/documents/ingest-dispatch.ts::dispatchIngest': { exempt: 'presigns the file for the ingest backend, a machine.' },
+  'lib/documents/extraction-jobs.ts::signedRenditionRef': { exempt: 'presigns the rendition for the ingest backend, a machine.' },
   'lib/storage/bucket.ts::readClaimOwner': { exempt: 'reads a bucket-claim marker object, not a document.' },
   'lib/mail-import/staging.ts::archiveUrlForBackend': {
     exempt:
@@ -751,7 +751,7 @@ const CALLERS = ALL_FUNCTIONS.filter((fn) => !fn.file.startsWith(LOG_MODULE))
 describe('download log coverage: object readers', () => {
   it('finds the source (a broken walk would make every check vacuous)', () => {
     expect(FILES.length).toBeGreaterThan(500)
-    expect(CALLERS.some((fn) => fn.key === 'lib/documents/service.ts::getDocumentDownload')).toBe(true)
+    expect(CALLERS.some((fn) => fn.key === 'lib/documents/document-delivery.ts::getDocumentDownload')).toBe(true)
   })
 
   it('classifies every function that builds an object read or presign, and every function that records', () => {

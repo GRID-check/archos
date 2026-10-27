@@ -73,8 +73,8 @@ import {
 /**
  * Ceiling on the chunk purges this tier runs against the backend.
  *
- * Its own constant rather than an import of `documents/service.ts`'s
- * `BACKEND_FETCH_TIMEOUT_MS`, which is module-private there, and the same ten
+ * Its own constant rather than an import of `documents/ingest-dispatch.ts`'s
+ * `BACKEND_FETCH_TIMEOUT_MS`, and the same ten
  * seconds for the same reason: an unreachable backend must not hold a BFF
  * request past Cloudflare's ~100s origin timeout. The purge is best-effort, so
  * exceeding it costs a superseded version's chunks lingering until the

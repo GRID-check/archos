@@ -11,7 +11,7 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { INGEST_PRIORITIES } from './service'
+import { INGEST_PRIORITIES } from './ingest-dispatch'
 
 /** Repo root, from this spec's own location. */
 const REPO_ROOT = join(__dirname, '..', '..', '..', '..', '..')

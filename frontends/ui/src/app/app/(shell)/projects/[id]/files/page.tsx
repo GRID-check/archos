@@ -11,7 +11,7 @@ import {
 } from '@/lib/authz/feature-flags'
 import { findProjectInOrg } from '@/lib/projects/repository'
 import { listProjectFolders, projectRootAccess } from '@/lib/projects/folder-service'
-import { listDocumentsPage } from '@/lib/documents/service'
+import { listDocumentsPage } from '@/lib/documents/document-listing'
 import { DOCUMENT_LEVEL_PAGE_SIZE } from '@/lib/documents/list-query'
 import { summarizeDocumentVersions } from '@/lib/documents/lifecycle'
 import { resolveDocumentLifecyclePermissions } from '@/lib/documents/lifecycle-permissions'

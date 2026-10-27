@@ -38,7 +38,12 @@ vi.mock('@/lib/sharing/access', () => ({ requireResourceAccess: vi.fn() }))
 vi.mock('@/lib/sharing/directory', () => ({ loadOrganizationDirectory: vi.fn(async () => new Map()) }))
 vi.mock('@/lib/conversations/repository', () => ({ findConversationInOrg: vi.fn() }))
 vi.mock('@/lib/analytics/posthog-server', () => ({ captureServer: vi.fn() }))
-vi.mock('@/lib/documents/service', () => ({ resolveProjectDocumentsByName: vi.fn(), renameDocument: vi.fn() }))
+vi.mock('@/lib/documents/document-edits', () => ({
+  renameDocument: vi.fn(),
+}))
+vi.mock('@/lib/documents/document-listing', () => ({
+  resolveProjectDocumentsByName: vi.fn(),
+}))
 vi.mock('@/lib/office-shelf/service', () => ({ resolveOfficeShelfDocumentsByName: vi.fn() }))
 vi.mock('@/lib/office-shelf/folder-service', () => ({
   listOfficeShelfFolders: vi.fn(),
@@ -89,7 +94,7 @@ import { resolveOfficeShelfDocumentsByName } from '@/lib/office-shelf/service'
 import { requireProjectAccess } from '@/lib/authz/projects'
 import type { ProposedChangeRow } from '@/lib/db/schema/proposed-changes'
 import { moveDocumentToFolder } from '@/lib/documents/move-to-folder'
-import { resolveProjectDocumentsByName } from '@/lib/documents/service'
+import { resolveProjectDocumentsByName } from '@/lib/documents/document-listing'
 import type { ListedDocument } from '@/lib/documents/shelf-listing'
 import { recordDecisionScore } from '@/lib/langfuse/decision-score'
 import {

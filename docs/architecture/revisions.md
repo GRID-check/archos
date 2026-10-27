@@ -527,7 +527,7 @@ sequenceDiagram
   such a version today; a reviewer's release is per document, not per version.
 
 - **A re-read after a failed first ingest loses `revision_of`.** `reingestDocument`
-  dispatches without it (`frontends/ui/src/lib/documents/service.ts`), so the
+  dispatches without it (`frontends/ui/src/lib/documents/reingest.ts`), so the
   confirmed link is never written. The file falls back to the ordinary path: a
   title-block, name or content suggestion, which a person must confirm again. If
   none of the three fires, nothing is offered.

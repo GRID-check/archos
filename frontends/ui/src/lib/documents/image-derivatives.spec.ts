@@ -32,7 +32,7 @@ vi.mock('./repository', () => ({
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 import { MAX_STORED_IMAGES_PER_DOCUMENT } from '@/lib/s3'
 import { findStorageKeyByCollectionAndFilename, findStorageKeyByIdAndCollection } from './repository'
-import { findDocumentImageStorageKey, presignDocumentImageUpload } from './service'
+import { findDocumentImageStorageKey, presignDocumentImageUpload } from './document-storage-keys'
 
 const DOC_ID = '4f9c1d2e-3b4a-4c5d-8e6f-7a8b9c0d1e2f'
 const row = { id: 'd1', storageKey: 'org/o1/project/p1/doc/d1/plan.pdf', storageBucket: 'grid-org-o1-abcdef123456', versionId: null }

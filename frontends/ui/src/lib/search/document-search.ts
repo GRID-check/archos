@@ -14,12 +14,7 @@ import 'server-only'
 import { BadRequestError, UnprocessableError, UpstreamError } from '@/lib/api/errors'
 import type { AuthorizedSession } from '@/lib/auth/types'
 import { documentReadFamily } from '@/lib/documents/document-status'
-import {
-  BACKEND_SEARCH_MAX_COLLECTIONS,
-  fetchGroupedSemanticHits,
-  type BackendSearchHit,
-  type GroupedSearchFilters,
-} from '@/lib/documents/service'
+import { BACKEND_SEARCH_MAX_COLLECTIONS, fetchGroupedSemanticHits, type BackendSearchHit, type GroupedSearchFilters } from '@/lib/documents/semantic-search'
 import { resolvePeople } from '@/lib/sharing/directory'
 import {
   contentKey,

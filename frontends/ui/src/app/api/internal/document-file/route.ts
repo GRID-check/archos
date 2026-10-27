@@ -48,7 +48,7 @@ import { withOptionalTenant, withTenant } from '@/lib/db/tenant-context'
 import { NotFoundError } from '@/lib/api/errors'
 import { restrictedCollectionBase } from '@/lib/authz/folder-access-rule'
 import { drawableRestrictedCollections } from '@/lib/conversations/restricted-use'
-import { findDocumentImageStorageKey, findDocumentStorageKey } from '@/lib/documents/service'
+import { findDocumentImageStorageKey, findDocumentStorageKey } from '@/lib/documents/document-storage-keys'
 import { GRID_HEADER_NAMES, type VerifiedGridRequestContext } from '@/lib/request-context'
 
 const querySchema = z.object({

@@ -140,7 +140,7 @@ function safeDecode(name: string): string {
  *
  * It does NOT answer "which filenames legitimately own chunks here". Nothing
  * machine-authored is ever dispatched to `/v1/ingest` (see
- * `lib/documents/service.ts`'s dispatch guard), so an agent row owns no chunks
+ * `lib/documents/document-dispatch.ts`'s dispatch guard), so an agent row owns no chunks
  * by construction, and a stored chunk carrying its filename is never explained
  * by it. Letting it into the live set makes it a SHIELD: the orphaned chunks of
  * a deleted document stay in retrieval because an unrelated row happens to

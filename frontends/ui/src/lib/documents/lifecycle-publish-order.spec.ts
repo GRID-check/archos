@@ -147,7 +147,7 @@ vi.mock('./version-content', () => ({
   renderVersionBytes: vi.fn(),
   writeVersionContent: vi.fn(),
 }))
-vi.mock('./service', () => ({
+vi.mock('./document-dispatch', () => ({
   dispatchDocument: vi.fn(),
   AgentAuthoredDocumentNotIndexableError: class extends Error {},
 }))

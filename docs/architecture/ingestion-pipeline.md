@@ -12,7 +12,7 @@ Older, deeper material is still right and is linked rather than repeated:
 ADR-0076 (the queue), ADR-0117 (the page pipeline, proposed, not built).
 
 Short forms: **A** is `sources/knowledge_layer/src/llamaindex/adapter.py`, **S** is
-`frontends/ui/src/lib/documents/service.ts`, **D** is
+`frontends/ui/src/lib/documents/service.ts` as it stood before it was split (its `S:N` line references are from then; `dispatchDocument` is now in `document-dispatch.ts`, `dispatchIngest` in `ingest-dispatch.ts`), **D** is
 `frontends/aiq_api/src/aiq_api/jobs/ingest_dispatch.py`.
 
 ## 1. The whole thing on one page

@@ -271,15 +271,15 @@ const ELEVATED_READERS: Record<string, { makes: string[]; why: string }> = {
     makes: ['internal:ingest'],
     why: "The permit writer resolves the document the ingest just read (service token, no person); the search serves its record only through SCREENED_ONLY.",
   },
-  'lib/documents/service.ts#dispatchIngest': { makes: ['internal:ingest'], why: "The dispatch reads the row it sends: whose spend, which rules." },
-  'lib/documents/service.ts#dispatchDocument': { makes: ['internal:ingest'], why: 'The one funnel every ingest passes reads its row.' },
-  'lib/documents/service.ts#jobStillOwnsRow': { makes: ['internal:ingest'], why: 'A background job asks whether the row is still its own.' },
-  'lib/documents/service.ts#redispatchStuckDocument': { makes: ['internal:ingest'], why: 'The sweep re-dispatches a stuck row.' },
-  'lib/documents/service.ts#retryTransientFailure': {
+  'lib/documents/ingest-dispatch.ts#dispatchIngest': { makes: ['internal:ingest'], why: "The dispatch reads the row it sends: whose spend, which rules." },
+  'lib/documents/document-dispatch.ts#dispatchDocument': { makes: ['internal:ingest'], why: 'The one funnel every ingest passes reads its row.' },
+  'lib/documents/extraction-jobs.ts#jobStillOwnsRow': { makes: ['internal:ingest'], why: 'A background job asks whether the row is still its own.' },
+  'lib/documents/ingest-recovery.ts#redispatchStuckDocument': { makes: ['internal:ingest'], why: 'The sweep re-dispatches a stuck row.' },
+  'lib/documents/ingest-recovery.ts#retryTransientFailure': {
     makes: ['internal:ingest'],
     why: 'The transient-retry sweep re-reads the failed row it sends back; no person is asking.',
   },
-  'lib/documents/service.ts#runReindexSlice': {
+  'lib/documents/reindex.ts#runReindexSlice': {
     makes: ['internal:ingest'],
     why: 'A reindex re-dispatches every row of the project; `dispatchDocument` leaves a quarantine where it is.',
   },

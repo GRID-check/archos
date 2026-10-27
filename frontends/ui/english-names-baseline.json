@@ -46,7 +46,6 @@
   "src/lib/conversations/message-quote-stamps.ts": 1,
   "src/lib/conversations/tags.ts": 2,
   "src/lib/db/schema/documents.ts": 1,
-  "src/lib/documents/service.ts": 1,
   "src/lib/download-log/download-log.integration.spec.ts": 5,
   "src/lib/feedback/export-columns.ts": 1,
   "src/lib/feedback/export-repository.spec.ts": 1,

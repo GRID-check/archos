@@ -95,7 +95,7 @@ a Word, presentation, `.xls` or `.ods` file returns `failed` at once.
 
 ### Office files: convert, then ingest
 
-**File**: `frontends/ui/src/lib/documents/service.ts` (`beginRenditionIngest`)
+**File**: `frontends/ui/src/lib/documents/document-dispatch.ts` (`beginRenditionIngest`)
 
 An office file (`isOfficeRenditionSource` on the row's filename and stored type)
 is converted to its PDF rendition before it is ingested, by a background job
@@ -417,7 +417,7 @@ The BFF's delete purges the chunks first and deletes the row last, after the
 objects, so an ingest whose check lands between the two still sees the row and
 keeps the chunks it inserted after that purge. Every immediate delete therefore
 purges once more after the row is gone: the project and Archiv deletes
-(`deleteDocument` in `lib/documents/service.ts`, `deleteOfficeShelfDocument` in
+(`deleteDocument` in `lib/documents/document-edits.ts`, `deleteOfficeShelfDocument` in
 `lib/office-shelf/service.ts`), the chat-attachment delete (`deleteSessionDocument`
 in `lib/session-documents/service.ts`) and a whole chat's attachment purge
 (`purgeSessionDocuments` in `lib/session-documents/cleanup.ts`, for the rows
@@ -519,7 +519,7 @@ Two pollers read two different things.
 - Persists job state to localStorage for recovery on page refresh
 - Updates `TrackedFile` entries in the Zustand store from the job status. A file the job ends `failed` with a `quarantine` verdict becomes `held`, not `failed` (`trackedStatusOfJobFile`; a job from before the typed field is read by its `quarantined:{…}` error), so the tray never offers to retry a file the content check held back (ADR-0086). A row settled by a document status read takes the status's read family instead (`trackedPatchFromStatus`): `quarantined` is `held`, `uploaded` and `stored` are `stored`, never `success`. The tray's states: [`docs/ux/file-upload-and-explorer.md`](../ux/file-upload-and-explorer.md#the-rule)
 
-**Document status**: `GET /api/documents/{id}/status` (`frontends/ui/src/app/api/documents/[id]/status/route.ts` → `getDocumentStatus` in `lib/documents/service.ts`)
+**Document status**: `GET /api/documents/{id}/status` (`frontends/ui/src/app/api/documents/[id]/status/route.ts` → `getDocumentStatus` in `lib/documents/document-details.ts`)
 - Reads the `documents` row, reconciling an in-flight row first (see below)
 - Returns `{ id, status, filename, displayName, scope, fileSize, contentType, collectionName, errorMessage, createdAt, updatedAt, summary, pageCount, chunkCount, contentTypes, tags, authoredBy, openVersion, versionCount }`. `summary` through `tags` are read-only metadata merged from the backend's collection listing
 - Read by the open file preview, the composer's subject bar and the chat's document peek
@@ -577,7 +577,7 @@ The collection file list is fetched at most once per collection per request.
 A read in progress can be stopped from the file's own menu, or from the upload
 list while the row is being read. Both send one request,
 `POST /api/documents/{id}/cancel` (`cancelDocumentIngest` in
-`lib/documents/service.ts`), which reads the row's `metadata.ingestJobId` and
+`lib/documents/reingest.ts`), which reads the row's `metadata.ingestJobId` and
 forwards `POST /v1/documents/{job_id}/cancel` to the backend.
 
 The stop is expressed through the ingest claim, not a second control channel:

@@ -78,8 +78,10 @@ vi.mock('./repository', () => ({
  */
 const dispatchDocument = vi.fn()
 const dispatchIngest = vi.fn()
-vi.mock('@/lib/documents/service', () => ({
+vi.mock('@/lib/documents/document-dispatch', () => ({
   dispatchDocument: (...args: unknown[]) => dispatchDocument(...args),
+}))
+vi.mock('@/lib/documents/ingest-dispatch', () => ({
   dispatchIngest: (...args: unknown[]) => dispatchIngest(...args),
 }))
 
@@ -562,7 +564,7 @@ describe('fileGeneratedDocument', () => {
    * MACHINE AUTHORSHIP IS ITS OWN CAPABILITY.
    *
    * `project:documents:write` also authorizes a human upload, a delete and a
-   * re-ingest (`lib/documents/service.ts`), so an organization that wanted
+   * re-ingest (`lib/documents/reingest.ts`), so an organization that wanted
    * Piloti to answer without writing into its file system had one lever, and
    * pulling it stopped its own architects uploading plans. These assertions are
    * what make `project:documents:generate` a second, separable question rather
@@ -1190,7 +1192,7 @@ describe('every path that can create a machine-authored row', () => {
    * The text of every `admitOrDiscard(...)` call in a module, comments removed
    * and parentheses balanced — so what is inspected is the ROW LITERAL handed to
    * admission, not an unrelated mention of the column elsewhere in the file
-   * (`lib/documents/service.ts` reads `authoredBy` in four places that build no
+   * (the documents services read `authoredBy` in several places that build no
    * row at all).
    */
   const admissionCalls = (code: string): string[] => {

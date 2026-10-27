@@ -11,7 +11,9 @@ import { describe, expect, test, vi, beforeEach } from 'vitest'
 
 const reindexProject = vi.fn()
 
-vi.mock('@/lib/documents/service', () => ({ reindexProject }))
+vi.mock('@/lib/documents/reindex', () => ({
+  reindexProject,
+}))
 vi.mock('@/lib/api/handler', () => ({
   apiRoute:
     (

@@ -13,11 +13,11 @@ vi.mock('@/lib/auth/require-auth', () => ({
   }),
 }))
 
-vi.mock('@/lib/documents/service', () => ({
+vi.mock('@/lib/documents/document-edits', () => ({
   updateDocumentTags: vi.fn(),
 }))
 
-import { updateDocumentTags } from '@/lib/documents/service'
+import { updateDocumentTags } from '@/lib/documents/document-edits'
 import { NotFoundError } from '@/lib/api/errors'
 import { PATCH } from './route'
 

@@ -14,7 +14,7 @@ vi.mock('@/lib/documents/repository', () => ({
 // them from there.
 vi.mock('@/lib/documents/upload-type', () => ({ assertUploadTypeAllowed: vi.fn() }))
 vi.mock('@/lib/storage/upload-limit', () => ({ assertFileSizeAllowed: vi.fn() }))
-vi.mock('@/lib/documents/service', () => ({
+vi.mock('@/lib/documents/document-dispatch', () => ({
   uploadDocument: vi.fn(async () => ({ documentId: 'd', jobId: null, status: 'uploaded', filename: 'x' })),
 }))
 vi.mock('@/lib/projects/folder-service', () => ({
@@ -54,7 +54,7 @@ import type { AuthorizedSession } from '@/lib/auth/types'
 import type { MailImport } from '@/lib/db/schema'
 import { resolveShelfFolderPath } from '@/lib/documents/folder-path'
 import { findLiveDocumentByFilename, findProjectCollectionsHoldingFilename } from '@/lib/documents/repository'
-import { uploadDocument } from '@/lib/documents/service'
+import { uploadDocument } from '@/lib/documents/document-dispatch'
 import { assertUploadTypeAllowed } from '@/lib/documents/upload-type'
 import { assertFileSizeAllowed } from '@/lib/storage/upload-limit'
 import { FOLDER_NAME_TAKEN } from '@/lib/documents/shelf-folders'

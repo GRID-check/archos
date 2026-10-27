@@ -143,7 +143,7 @@ vi.mock('@/lib/images/signed-image-url', () => ({
 }))
 
 import { getTenantContext, runWithTenantSlot } from '@/lib/db/tenant-context'
-import { streamDocumentImage } from './service'
+import { streamDocumentImage } from './document-delivery'
 
 describe('the signed image route runs in a scope without a session', () => {
   beforeEach(() => {

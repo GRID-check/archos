@@ -20,7 +20,7 @@
  * the collection a restricted folder's documents live in. The Archiv has no
  * per-role folder access; `requireShelfWrite` is its whole gate.
  *
- * `@/lib/documents/service#uploadDocument` and
+ * `@/lib/documents/document-dispatch#uploadDocument` and
  * `@/lib/office-shelf/service#uploadOfficeShelfDocument` are the names the two shelves'
  * routes call; both are one line over this.
  */
@@ -52,11 +52,11 @@ import { retryRacedUpload } from './unique-conflicts'
 import { newVersionWriteId, versionWriteKey } from './version-content'
 import { shelfOwner, type DocumentShelf } from './shelf'
 // Type only: `service.ts` imports this module, and a value import would be a cycle.
-import type { IngestPriority } from './service'
+import type { IngestPriority } from './ingest-dispatch'
 import { requireShelfWrite } from './shelf-authz'
 import { admitUpload } from './upload-admission'
 import { shelfCollectionName } from './shelf-collection'
-import type { DispatchDocumentResult } from './service'
+import type { DispatchDocumentResult } from './document-dispatch'
 
 /** What an upload names besides the file, on either shelf. */
 export interface ShelfUploadInput {
@@ -504,7 +504,7 @@ export async function uploadToShelf(
   input: ShelfUploadInput,
   request: Request,
 ): Promise<UploadDocumentResult> {
-  const { dispatchDocument } = await import('./service')
+  const { dispatchDocument } = await import('./document-dispatch')
   const upload = await prepareUpload(session, shelf, input)
   const { file, filename, collectionName, folderPath, storageBucket, contentHash } = upload
 

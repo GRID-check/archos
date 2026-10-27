@@ -87,15 +87,10 @@ import {
 } from './repository'
 import { makeDocument } from '@/test-utils/db-fixtures'
 import { internalRead } from '@/lib/documents/document-reader'
-import {
-  INGEST_DISPATCH_FAILED_MESSAGE,
-  RENDITION_REQUIRED_MESSAGE,
-  dispatchDocument,
-  redispatchStuckDocument,
-  runBimExtractJob,
-  runOfficeRenditionJob,
-  type DispatchDocumentInput,
-} from './service'
+import { dispatchDocument, type DispatchDocumentInput } from './document-dispatch'
+import { runBimExtractJob, runOfficeRenditionJob } from './extraction-jobs'
+import { INGEST_DISPATCH_FAILED_MESSAGE, RENDITION_REQUIRED_MESSAGE } from './ingest-dispatch'
+import { redispatchStuckDocument } from './ingest-recovery'
 
 const input = (filename: string): DispatchDocumentInput => ({
   organizationId: 'org-1',

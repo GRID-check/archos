@@ -13,7 +13,7 @@
 
 import { apiRoute, parseQuery } from '@/lib/api/handler'
 import { documentFileQuerySchema } from '@/lib/documents/document-wire'
-import { streamDocumentFile } from '@/lib/documents/service'
+import { streamDocumentFile } from '@/lib/documents/document-delivery'
 import { streamVersionFile } from '@/lib/documents/version-content'
 
 type Params = { id: string; versionId?: string }

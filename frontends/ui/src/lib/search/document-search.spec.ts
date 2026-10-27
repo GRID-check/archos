@@ -29,7 +29,7 @@ vi.mock('./shelf-projection', () => ({ refreshStaleShelves: vi.fn().mockResolved
 vi.mock('@/lib/sharing/directory', () => ({
   resolvePeople: vi.fn().mockResolvedValue(new Map([['user_1', { userId: 'user_1', name: 'Lena Huber' }]])),
 }))
-vi.mock('@/lib/documents/service', () => ({
+vi.mock('@/lib/documents/semantic-search', () => ({
   BACKEND_SEARCH_MAX_COLLECTIONS: 500,
   fetchGroupedSemanticHits: vi.fn(),
 }))
@@ -37,7 +37,7 @@ vi.mock('@/lib/documents/service', () => ({
 import { UpstreamError } from '@/lib/api/errors'
 import type { AuthorizedSession } from '@/lib/auth/types'
 import type { Project } from '@/lib/db/schema'
-import { fetchGroupedSemanticHits } from '@/lib/documents/service'
+import { fetchGroupedSemanticHits } from '@/lib/documents/semantic-search'
 import {
   contentPrefilter,
   decodeSearchCursor,

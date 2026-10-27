@@ -31,7 +31,8 @@ import { collectionFileRef } from '@/lib/documents/collection-file-ref'
 import { resolveDocumentFolderPath } from '@/lib/documents/folder-path'
 import { redispatchPublishedVersion } from '@/lib/documents/lifecycle'
 import { markDocumentIngestFailed } from '@/lib/documents/repository'
-import { INGEST_DISPATCH_FAILED_MESSAGE, dispatchDocument } from '@/lib/documents/service'
+import { dispatchDocument } from '@/lib/documents/document-dispatch'
+import { INGEST_DISPATCH_FAILED_MESSAGE } from '@/lib/documents/ingest-dispatch'
 import {
   recordJobFailure,
   type JobAttempt,
