@@ -49,9 +49,10 @@ import {
   RegisterStack,
   RegisterStackRow,
   RegisterTable,
+  RegisterTitle,
+  HitBadge,
   ShelfMark,
   SupersededMark,
-  ToolbarLabel,
 } from './search-atoms'
 
 /** Columns whose values are figures: right-aligned, as a register reads them. */
@@ -69,8 +70,11 @@ const COLUMN_WIDTH: Readonly<Record<RegisterColumn, number | null>> = {
   planDate: 7,
   scale: 5.5,
   documentType: 8.5,
-  author: 8.5,
-  project: 9,
+  // Verfasser and Projekt carry the words that tell two rows apart („Atelier
+  // Lindner ZT GmbH“, „Wohnhaus Seestadt J7“): the width Status gave a column
+  // of „Gelesen“ went to them.
+  author: 11,
+  project: 11.5,
   folder: 8,
   uploaded: 7.5,
   pages: 5,
@@ -131,18 +135,20 @@ export function SearchRegisterBar({
 /** Which columns show: a check per column, kept open while the reader picks several. */
 function ColumnMenu({ state, onStateChange, hideProject }: { state: SearchUrlState; onStateChange: (next: SearchUrlState) => void; hideProject: boolean }): JSX.Element {
   const t = useTranslations('search')
+  // On a phone there are no columns, only the fields of each entry: the button says so.
+  const isMobile = useIsMobile()
   const visible = new Set(visibleRegisterColumns(state.columns))
   const offered = REGISTER_COLUMNS.filter((column) => !(hideProject && column === 'project'))
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button type="button" variant="outline" size="sm" aria-label={t('register.columnsMenuTitle')} data-testid="search-register-columns">
+        <Button type="button" variant="ghost" size="sm" aria-label={isMobile ? t('register.fieldsMenuTitle') : t('register.columnsMenuTitle')} data-testid="search-register-columns">
           <Columns3 aria-hidden />
-          <ToolbarLabel>{t('register.columnsMenu')}</ToolbarLabel>
+          {isMobile ? t('register.fieldsMenu') : t('register.columnsMenu')}
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-56">
-        <DropdownMenuLabel>{t('register.columnsMenuTitle')}</DropdownMenuLabel>
+        <DropdownMenuLabel>{isMobile ? t('register.fieldsMenuTitle') : t('register.columnsMenuTitle')}</DropdownMenuLabel>
         {offered.map((column) => (
           <DropdownMenuCheckboxItem
             key={column}
@@ -196,7 +202,7 @@ function SortMenu({ state, onStateChange, hideProject }: { state: SearchUrlState
       trigger={
         <Button
           type="button"
-          variant="outline"
+          variant="ghost"
           size="sm"
           aria-label={active === null ? t('register.sortMenu') : t('register.sortMenuLabel', { column: label, direction: order.dir === 'asc' ? t('register.ascending') : t('register.descending') })}
           data-testid="search-register-sort"
@@ -275,18 +281,23 @@ export function SearchRegister({ state, section, onStateChange, onLoadMore, hide
   )
 }
 
-function useStatus(hit: DocumentHit): { node: ReactNode; quiet: boolean } {
+/**
+ * The read state, only where it is news: a document Piloti has read says
+ * nothing, so the column (and a phone card's corner) shows the exceptions
+ * alone, „Wird gelesen“, „Nicht lesbar“. „Ersetzt“ is not a read state: it
+ * sits on the name's line in every view.
+ */
+function useReadException(hit: DocumentHit): string | null {
   const labels = useSearchLabels()
-  if (hit.superseded) return { node: <SupersededMark />, quiet: false }
   const family = documentReadFamily(hit.status)
-  return { node: labels.readState(family), quiet: family === 'readable' }
+  return family === 'readable' ? null : labels.readState(family)
 }
 
 function RegisterLine({ hit, columns, active, id }: { hit: DocumentHit; columns: readonly RegisterColumn[]; active: boolean; id?: string }): JSX.Element {
   const from = useSearchReturn()
   const t = useTranslations('search')
   const labels = useSearchLabels()
-  const status = useStatus(hit)
+  const exception = useReadException(hit)
   const cell = (column: RegisterColumn): JSX.Element => {
     switch (column) {
       case 'planNumber':
@@ -300,7 +311,9 @@ function RegisterLine({ hit, columns, active, id }: { hit: DocumentHit; columns:
       case 'title':
         return (
           <RegisterCell key={column} kind="strong" title={hit.title ?? hit.name}>
-            <RegisterLink href={documentHitHref(hit, from)}>{hit.title ?? hit.name}</RegisterLink>
+            <RegisterTitle mark={hit.superseded ? <SupersededMark /> : null}>
+              <RegisterLink href={documentHitHref(hit, from)}>{hit.title ?? hit.name}</RegisterLink>
+            </RegisterTitle>
           </RegisterCell>
         )
       case 'documentType': {
@@ -327,8 +340,8 @@ function RegisterLine({ hit, columns, active, id }: { hit: DocumentHit; columns:
         return <RegisterCell key={column} kind="figure">{hit.pageCount}</RegisterCell>
       case 'status':
         return (
-          <RegisterCell key={column} kind={status.quiet ? 'muted' : 'mark'}>
-            {status.node}
+          <RegisterCell key={column} kind="muted">
+            {exception}
           </RegisterCell>
         )
     }
@@ -345,7 +358,7 @@ function RegisterStackLine({ hit, columns, active, id }: { hit: DocumentHit; col
   const from = useSearchReturn()
   const t = useTranslations('search')
   const labels = useSearchLabels()
-  const status = useStatus(hit)
+  const exception = useReadException(hit)
   const shown = new Set(columns)
   const code = [shown.has('planNumber') ? hit.planNumber : null, shown.has('planIndex') && hit.planIndex ? `${t('register.columns.planIndex')} ${hit.planIndex}` : null]
     .filter(Boolean)
@@ -360,13 +373,6 @@ function RegisterStackLine({ hit, columns, active, id }: { hit: DocumentHit; col
         return labels.documentType(hit.documentType)
       case 'author':
         return hit.author
-      case 'project':
-        // A line of its own on a phone, so the project's name is read whole.
-        return hit.shelf === 'office_shelf' ? (
-          <ShelfMark shelf="office_shelf" label={t('where.officeShelf')} wrap />
-        ) : hit.projectName ? (
-          <ShelfMark shelf="project" label={hit.projectName} wrap />
-        ) : null
       case 'folder':
         return hit.folderName
       case 'uploaded':
@@ -384,7 +390,15 @@ function RegisterStackLine({ hit, columns, active, id }: { hit: DocumentHit; col
       code={code || undefined}
       title={hit.title ?? hit.name}
       meta={<MetaLine parts={columns.map(meta)} />}
-      aside={shown.has('status') && !status.quiet ? status.node : undefined}
+      where={
+        // Its own line under the meta, never a part of it (`RegisterStackRow`).
+        !shown.has('project') ? undefined : hit.shelf === 'office_shelf' ? (
+          <ShelfMark shelf="office_shelf" label={t('where.officeShelf')} wrap />
+        ) : hit.projectName ? (
+          <ShelfMark shelf="project" label={hit.projectName} wrap />
+        ) : undefined
+      }
+      aside={hit.superseded ? <SupersededMark /> : shown.has('status') && exception ? <HitBadge>{exception}</HitBadge> : undefined}
       active={active}
       testId={`search-register-row-${hit.id}`}
     />

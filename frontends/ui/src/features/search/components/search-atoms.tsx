@@ -261,6 +261,11 @@ export function FacetOption({
   )
 }
 
+/** A field over a facet group's values that narrows them by name, once the whole list is open. */
+export function FacetFind({ children }: { children: ReactNode }): JSX.Element {
+  return <div className="px-1 pb-1.5 [&_input]:h-8 [&_input]:text-sm">{children}</div>
+}
+
 /** A control under a rail group or a form, at its own width: „Alle zeigen“, „Hinzufügen“. */
 export function RailAction({ children }: { children: ReactNode }): JSX.Element {
   return <div className="flex min-w-0 flex-wrap items-center gap-2 px-1">{children}</div>
@@ -276,7 +281,12 @@ export function FieldStack({ children }: { children: ReactNode }): JSX.Element {
   return <div className="flex min-w-0 flex-col gap-2">{children}</div>
 }
 
-/** Two short fields side by side: min and max, role and name. */
+/** Plannummer and Index on one row: the number takes the room, the Index (a letter or two) a narrow field. */
+export function KeyFieldRow({ children }: { children: ReactNode }): JSX.Element {
+  return <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_4.5rem] items-start gap-2">{children}</div>
+}
+
+/** Two short fields side by side: min and max. */
 export function FieldPair({ children }: { children: ReactNode }): JSX.Element {
   return <div className="grid min-w-0 grid-cols-2 gap-2">{children}</div>
 }
@@ -515,14 +525,15 @@ export function ShelfMark({ shelf, label, wrap = false }: { shelf: 'project' | '
 
 /**
  * A folder in the where line: an icon and its name, in ink, never a colour.
- * After a shelf mark it leads with a quiet chevron, kept with the name so a
- * wrapped line never ends on the chevron alone. `label` („Ordner“) is read
- * before the name by a screen reader, which does not see the icon.
+ * After a shelf mark (`after`) it is set apart by space, not by a chevron: the
+ * tinted mark and the folder glyph already read as two steps, and a chevron
+ * that wrapped with the folder started the phone's second line on a lone „›“.
+ * `label` („Ordner“) is read before the name by a screen reader, which does
+ * not see the icon.
  */
 export function WherePart({ children, label, after = false }: { children: ReactNode; label: string; after?: boolean }): JSX.Element {
   return (
-    <span className="inline-flex min-w-0 items-center gap-1 text-foreground/75">
-      {after ? <ChevronRight className="size-3 shrink-0 text-muted-foreground/60" aria-hidden /> : null}
+    <span className={cn('inline-flex min-w-0 items-center gap-1 text-foreground/75', after && 'ml-0.5')}>
       <Folder className="size-3 shrink-0 text-muted-foreground" aria-hidden />
       <span className="min-w-0 [overflow-wrap:anywhere]">
         <span className="sr-only">{label} </span>
@@ -717,7 +728,8 @@ export function RegisterTable({
 
   const table = (
     <table className="w-full table-fixed caption-bottom border-separate border-spacing-0 text-sm" style={{ minWidth: `${minRem}rem` }}>
-      <caption className="py-2 text-left text-xs text-muted-foreground">{caption}</caption>
+      {/* Named for a screen reader; the columns say it to the eye. */}
+      <caption className="sr-only">{caption}</caption>
       <colgroup>
         {columnWidths.map((width, index) => (
           <col key={index} style={width === null ? undefined : { width: `${width}rem` }} />
@@ -782,10 +794,12 @@ export function RegisterRow({ children, active = false, testId, id }: { children
     <TableRow
       ref={ref}
       id={id}
-      data-state={active ? 'selected' : undefined}
+      // No `data-state`: the kit's muted selected fill would race the accent below.
       aria-selected={active || undefined}
-      // The row the arrow keys are on: the list's 2px ink rule, on the first cell (a row draws no shadow of its own).
-      className="h-9 border-b-0 even:bg-secondary/30 [&>td]:border-b [&>td]:border-border/50 aria-selected:[&>td:first-child]:shadow-[inset_2px_0_0_0_var(--foreground)]"
+      // Hairlines separate the rows, no stripes: a stripe competed with the
+      // selection. The row the arrow keys are on takes the list's selected
+      // fill and its 2px ink rule, on the first cell (a row draws no shadow of its own).
+      className="h-9 border-b-0 [&>td]:border-b [&>td]:border-border/50 aria-selected:bg-accent aria-selected:hover:bg-accent aria-selected:[&>td:first-child]:shadow-[inset_2px_0_0_0_var(--foreground)]"
       data-testid={testId}
     >
       {children}
@@ -822,6 +836,17 @@ export function RegisterCell({
   )
 }
 
+/** The name cell's content: the name, cut at the column, then its state („Ersetzt“) at its end, never cut. */
+export function RegisterTitle({ children, mark }: { children: ReactNode; mark?: ReactNode }): JSX.Element {
+  if (!mark) return <>{children}</>
+  return (
+    <span className="flex min-w-0 items-center gap-2">
+      <span className="min-w-0 truncate">{children}</span>
+      <span className="flex shrink-0 items-center">{mark}</span>
+    </span>
+  )
+}
+
 /** The register's name cell: a link that opens the document. */
 export function RegisterLink({ href, children }: { href: string; children: ReactNode }): JSX.Element {
   return (
@@ -842,14 +867,17 @@ export function RegisterStack({ children, label, testId, id }: { children: React
 
 /**
  * One document on a phone: Plannummer and Index in the mono face over the
- * name, what else the register shows on a muted line under it, the state at
- * the end of the first line.
+ * name, the state at the end of the name's line (where every view puts
+ * „Ersetzt“), what else the register shows on a muted line under it, and where
+ * it is kept on a line of its own, so a long project name is read whole and
+ * the meta line never ends on a separator before it.
  */
 export function RegisterStackRow({
   href,
   code,
   title,
   meta,
+  where,
   aside,
   active = false,
   testId,
@@ -860,6 +888,8 @@ export function RegisterStackRow({
   code?: ReactNode
   title: ReactNode
   meta?: ReactNode
+  /** Where it is kept: the `ShelfMark`. */
+  where?: ReactNode
   aside?: ReactNode
   active?: boolean
   testId?: string
@@ -885,14 +915,13 @@ export function RegisterStackRow({
           ACTIVE_ROW
         )}
       >
-        {code || aside ? (
-          <span className="flex min-h-5 min-w-0 items-center gap-2">
-            <span className="min-w-0 flex-1 truncate font-mono text-xs text-foreground/80">{code}</span>
-            {aside ? <span className="flex shrink-0 items-center gap-1.5">{aside}</span> : null}
-          </span>
-        ) : null}
-        <span className="truncate text-sm font-semibold tracking-tight text-foreground">{title}</span>
+        {code ? <span className="min-w-0 truncate font-mono text-xs text-foreground/80">{code}</span> : null}
+        <span className="flex min-w-0 items-center gap-2">
+          <span className="min-w-0 flex-1 truncate text-sm font-semibold tracking-tight text-foreground">{title}</span>
+          {aside ? <span className="flex shrink-0 items-center gap-1.5">{aside}</span> : null}
+        </span>
         {meta ? <span className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs text-muted-foreground">{meta}</span> : null}
+        {where ? <span className="flex min-w-0 pt-0.5 text-xs">{where}</span> : null}
       </Link>
     </li>
   )

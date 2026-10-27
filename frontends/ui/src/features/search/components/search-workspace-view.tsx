@@ -4,21 +4,8 @@ import type { JSX, KeyboardEvent, ReactNode } from 'react'
 import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import {
-  Bookmark,
-  BookmarkPlus,
-  BookOpenCheck,
-  FileSpreadsheet,
-  FileText,
-  Hourglass,
-  List,
-  MoreHorizontal,
-  SearchX,
-  SlidersHorizontal,
-  Table2,
-} from 'lucide-react'
+import { BookOpenCheck, Hourglass, List, SearchX, SlidersHorizontal, Table2 } from 'lucide-react'
 
-import { ActionMenu, type ActionMenuEntry } from '@/components/ui/action-menu'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
 import { LoadError } from '@/components/ui/load-error'
@@ -36,7 +23,6 @@ import { useSearchReturn } from '../hooks/use-search-return'
 import type { SearchSurface } from '../lib/search-surface'
 import { activeFilterCount, filtersByReading, officeSearchHref, withView, type SearchUrlState, type SearchView } from '../lib/search-url'
 import type { SectionView } from '../lib/sections'
-import type { NarrowSavedSearches } from './saved-searches-menu'
 import { SearchActiveFilters } from './search-active-filters'
 import {
   ChoiceStrip,
@@ -51,11 +37,10 @@ import {
   SearchFrame,
   SearchNote,
   SearchToolbar,
-  ToolbarLabel,
 } from './search-atoms'
 import { SearchExportMenu } from './search-export-menu'
 import { SearchFacetRail } from './search-facet-rail'
-import { SearchFilterForm, SearchKeyFilters } from './search-filter-form'
+import { PartyNameFilter, SearchFilterForm, SearchKeyFilters } from './search-filter-form'
 import { SearchRegister, SearchRegisterBar } from './search-register'
 import { SearchResultList } from './search-result-list'
 
@@ -74,15 +59,11 @@ export interface SearchWorkspaceViewProps {
   failed: boolean
   onRetry: () => void
   onLoadMore: (kind: SearchKind) => void
-  /** Absent: no export offered. */
+  /** Absent: no export offered. Offered in the register view only, where the Planliste it writes is on screen. */
   onExport?: (format: SearchExportFormat) => void
   exporting?: boolean
-  /**
-   * The saved searches control (`SavedSearchesMenu`), wired by the caller.
-   * Given the „Mehr“ menu's state on a phone, where that menu opens it; null
-   * where the toolbar has room for its own buttons.
-   */
-  savedSearches?: (narrow: NarrowSavedSearches | null) => ReactNode
+  /** The saved searches control (`SavedSearchesMenu`), wired by the caller: one button, saving included. */
+  savedSearches?: ReactNode
   /** Controls before the view switch: the way back to the Dateien. */
   leading?: ReactNode
   currentUserId?: string
@@ -105,9 +86,12 @@ const hitKey = (hit: SearchHit): string => `${hit.kind}:${hit.id}`
  * no question of its own; the question is `state`, which the caller keeps in
  * the URL (`SearchWorkspace`) or, in the preview, in memory.
  *
- * Under `md` the rail is a sheet behind „Filter“, so the first result sits
- * under the field. On a phone-sized screen the toolbar keeps the view and
- * „Filter“, and folds the saved searches and the export into one „Mehr“.
+ * The toolbar is set as the Dateien header sets its own: the view as an icon
+ * pair, the secondary actions as quiet icon buttons with their name on hover
+ * (saved searches, and in the register the export), so no row of equal
+ * labelled buttons competes with the field. Under `md` the rail is a sheet
+ * behind „Filter“, the one labelled control, so the first result sits under
+ * the field.
  *
  * The keyboard: ⌘K / Strg+K focuses the field from anywhere on the page; in
  * the field ↑ and ↓ walk the results, Enter opens the one marked, Escape
@@ -139,8 +123,6 @@ export function SearchWorkspaceView({
   const sheetLayout = useIsMobile()
   const phone = useMediaQuery(PHONE_QUERY)
   const [sheetOpen, setSheetOpen] = useState(filtersOpen)
-  const [savedListOpen, setSavedListOpen] = useState(false)
-  const [saveOpen, setSaveOpen] = useState(false)
   const field = useRef<HTMLInputElement | null>(null)
   const filterCount = activeFilterCount(state)
   const officeWide = surface.kind === 'office'
@@ -235,29 +217,18 @@ export function SearchWorkspaceView({
   const readingNote = building > 0 && anyHits && filtersByReading(state)
   const statusLine = status && building > 0 && anyHits && !loading && !readingNote ? `${status} · ${t('notes.buildingShort', { count: building })}` : status
 
-  const narrowSaved: NarrowSavedSearches = { listOpen: savedListOpen, onListOpenChange: setSavedListOpen, saveOpen, onSaveOpenChange: setSaveOpen }
-  const moreEntries: ActionMenuEntry[] = [
-    ...(savedSearches
-      ? [
-          { type: 'item' as const, id: 'saved', label: t('more.savedLabel'), icon: Bookmark, onSelect: () => setSavedListOpen(true), testId: 'search-more-saved' },
-          { type: 'item' as const, id: 'save', label: t('saved.save'), icon: BookmarkPlus, onSelect: () => setSaveOpen(true), testId: 'search-more-save' },
-        ]
-      : []),
-    ...(savedSearches && onExport ? [{ type: 'separator' as const }] : []),
-    ...(onExport
-      ? [
-          { type: 'item' as const, id: 'csv', label: t('export.csv'), icon: FileText, disabled: exporting, onSelect: () => onExport('csv'), testId: 'search-export-csv' },
-          { type: 'item' as const, id: 'xlsx', label: t('export.xlsx'), icon: FileSpreadsheet, disabled: exporting, onSelect: () => onExport('xlsx'), testId: 'search-export-xlsx' },
-        ]
-      : []),
-  ]
-
   // The typed filters an office reaches for first lead, always open; the
   // counts follow; the rest waits behind „Weitere Filter“.
   const rail = (
     <>
       <SearchKeyFilters state={state} onChange={onStateChange} />
-      <SearchFacetRail state={state} facets={response?.facets ?? null} onToggle={onFacet} showProjects={officeWide} />
+      <SearchFacetRail
+        state={state}
+        facets={response?.facets ?? null}
+        onToggle={onFacet}
+        showProjects={officeWide}
+        extras={{ partyRole: <PartyNameFilter state={state} onChange={onStateChange} /> }}
+      />
       <SearchFilterForm state={state} onChange={onStateChange} currentUserId={currentUserId} defaultOpen={filtersOpen} />
     </>
   )
@@ -329,20 +300,18 @@ export function SearchWorkspaceView({
                 <ToggleGroup
                   type="single"
                   segmented
-                  size="sm"
+                  size="icon-sm"
                   value={state.view}
                   onValueChange={(value) => {
                     if (value === 'list' || value === 'register') onStateChange(withView(state, value as SearchView))
                   }}
                   aria-label={t('views.label')}
                 >
-                  <ToggleGroupItem value="list" aria-label={t('views.list')} data-testid="search-view-list">
+                  <ToggleGroupItem value="list" aria-label={t('views.list')} title={t('views.list')} data-testid="search-view-list">
                     <List aria-hidden />
-                    <ToolbarLabel>{t('views.list')}</ToolbarLabel>
                   </ToggleGroupItem>
-                  <ToggleGroupItem value="register" aria-label={t('views.register')} data-testid="search-view-register">
+                  <ToggleGroupItem value="register" aria-label={t('views.register')} title={t('views.register')} data-testid="search-view-register">
                     <Table2 aria-hidden />
-                    <ToolbarLabel>{t('views.register')}</ToolbarLabel>
                   </ToggleGroupItem>
                 </ToggleGroup>
                 {sheetLayout ? (
@@ -359,28 +328,8 @@ export function SearchWorkspaceView({
                     {filterCount > 0 ? t('filters.toggleCount', { count: filterCount }) : t('filters.toggle')}
                   </Button>
                 ) : null}
-                {phone ? (
-                  <>
-                    {moreEntries.length > 0 ? (
-                      <ActionMenu
-                        mode="dropdown"
-                        entries={moreEntries}
-                        trigger={
-                          <Button type="button" variant="outline" size="sm" aria-busy={exporting || undefined} data-testid="search-more">
-                            <MoreHorizontal aria-hidden />
-                            {t('more.label')}
-                          </Button>
-                        }
-                      />
-                    ) : null}
-                    {savedSearches?.(narrowSaved)}
-                  </>
-                ) : (
-                  <>
-                    {savedSearches?.(null)}
-                    {onExport ? <SearchExportMenu onExport={onExport} busy={exporting} /> : null}
-                  </>
-                )}
+                {savedSearches}
+                {onExport && state.view === 'register' ? <SearchExportMenu onExport={onExport} busy={exporting} /> : null}
               </>
             }
           />

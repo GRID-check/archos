@@ -61,10 +61,11 @@ describe('SavedSearchesMenu', () => {
     expect(props.onUndoDelete).toHaveBeenCalledWith(mine)
   })
 
-  it('opens the save dialog with the name the search suggests, ready to save', async () => {
+  it('saves from inside the list: the dialog opens with the name the search suggests, ready to save', async () => {
     const props = menu({ suggestedName: 'Fluchtweg GK 4, Einreichplan' })
     german(<SavedSearchesMenu {...props} />)
-    await userEvent.click(screen.getByTestId('saved-search-save-toolbar'))
+    await userEvent.click(screen.getByTestId('saved-searches'))
+    await userEvent.click(await screen.findByTestId('saved-search-save'))
     const name = await screen.findByTestId('saved-search-name')
     expect(name).toHaveValue('Fluchtweg GK 4, Einreichplan')
     const confirm = screen.getByTestId('saved-search-confirm')
@@ -77,7 +78,8 @@ describe('SavedSearchesMenu', () => {
   it('says a name is missing instead of greying out the button', async () => {
     const props = menu({ suggestedName: '' })
     german(<SavedSearchesMenu {...props} />)
-    await userEvent.click(screen.getByTestId('saved-search-save-toolbar'))
+    await userEvent.click(screen.getByTestId('saved-searches'))
+    await userEvent.click(await screen.findByTestId('saved-search-save'))
     const confirm = await screen.findByTestId('saved-search-confirm')
     expect(confirm).toBeEnabled()
     await userEvent.click(confirm)

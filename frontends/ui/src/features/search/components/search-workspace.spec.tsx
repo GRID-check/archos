@@ -126,6 +126,37 @@ describe('SearchWorkspaceView', () => {
     expect(onChange).toHaveBeenLastCalledWith(expect.objectContaining({ filters: { planNumber: 'EP-0', currentOnly: true } }))
   })
 
+  it('gives each filter one control: the counted ones in their group, a party’s name typed inside Beteiligte', async () => {
+    const onChange = vi.fn()
+    german(<Harness initial={EMPTY_SEARCH_STATE} onChange={onChange} />)
+    const rail = screen.getByTestId('search-rail')
+    expect(within(rail).queryByTestId('filter-cites')).toBeNull()
+    expect(within(rail).queryByTestId('filter-file-type')).toBeNull()
+    expect(within(rail).queryByTestId('filter-party-role')).toBeNull()
+    const parties = screen.getByTestId('search-facet-partyRole')
+    await userEvent.type(within(parties).getByTestId('filter-party-name'), 'Haas{Enter}')
+    expect(onChange).toHaveBeenLastCalledWith(expect.objectContaining({ filters: { parties: [{ name: 'Haas' }] } }))
+    expect(within(parties).getByTestId('filter-party-name')).toHaveValue('')
+  })
+
+  it('says „Nur aktuelle Fassung“ in the register with its switch alone, never also as a chip', () => {
+    german(<Harness initial={{ ...EMPTY_SEARCH_STATE, view: 'register', filters: { currentOnly: true, planNumber: 'EP' } }} onChange={() => {}} />)
+    expect(screen.getByTestId('search-register-current')).toBeChecked()
+    expect(screen.queryByTestId('filter-current')).toBeNull()
+    const chips = screen.getByTestId('search-active-filters')
+    expect(chips).toHaveTextContent('Plannummer')
+    expect(chips).not.toHaveTextContent('Nur aktuelle Fassung')
+  })
+
+  it('marks a replaced Fassung on its name in the register, and spends no default column on „Gelesen“', () => {
+    german(<Harness initial={{ ...EMPTY_SEARCH_STATE, view: 'register' }} onChange={() => {}} />)
+    const register = screen.getByTestId('search-register')
+    expect(within(register).queryByRole('button', { name: 'Nach Status sortieren' })).toBeNull()
+    expect(register).not.toHaveTextContent('Gelesen')
+    const replaced = screen.getByTestId('search-register-row-d0000000-0000-4000-8000-000000000003')
+    expect(within(replaced).getByTestId('superseded-mark')).toBeInTheDocument()
+  })
+
   it('offers the ways out of an empty answer while shelves are read: archived, and the whole office from a project', () => {
     const empty = { ...SEARCH_FIXTURE_RESPONSE, sections: { document: { hits: [], total: 0, totalIsLowerBound: false, nextCursor: null } }, building: ['p1', 'p2'] }
     german(
@@ -315,7 +346,7 @@ describe('SearchWorkspaceView', () => {
     await userEvent.click(screen.getByTestId('search-register-columns'))
     await userEvent.click(await screen.findByRole('menuitemcheckbox', { name: 'Ordner' }))
     expect(onChange).toHaveBeenLastCalledWith(
-      expect.objectContaining({ columns: ['planNumber', 'planIndex', 'title', 'planDate', 'scale', 'documentType', 'author', 'project', 'folder', 'status'] })
+      expect.objectContaining({ columns: ['planNumber', 'planIndex', 'title', 'planDate', 'scale', 'documentType', 'author', 'project', 'folder'] })
     )
     // The menu stays open for the next pick; Escape closes it.
     expect(screen.getByRole('menuitemcheckbox', { name: 'Ordner' })).toBeChecked()
@@ -414,20 +445,18 @@ describe('SearchWorkspaceView on a phone', () => {
     await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Filter' })).toBeNull())
   })
 
-  it('folds the saved searches and the export into one „Mehr“', async () => {
+  it('keeps one saved-searches button, its list a sheet with saving inside, and the export only in the Planliste', async () => {
     server.use(
       http.post('*/api/search', () => HttpResponse.json(SEARCH_FIXTURE_RESPONSE)),
       http.get('*/api/search/saved', () => HttpResponse.json({ savedSearches: SEARCH_FIXTURE_SAVED }))
     )
     currentSearch = ''
     german(<SearchWorkspace surface={{ kind: 'office' }} />)
-    expect(screen.queryByTestId('saved-searches')).toBeNull()
+    expect(screen.queryByTestId('search-more')).toBeNull()
     expect(screen.queryByTestId('search-export')).toBeNull()
-    await userEvent.click(screen.getByTestId('search-more'))
-    expect(await screen.findByTestId('search-export-csv')).toHaveTextContent('Planliste als CSV')
-    expect(screen.getByTestId('search-more-save')).toHaveTextContent('Diese Suche speichern')
-    await userEvent.click(screen.getByTestId('search-more-saved'))
+    await userEvent.click(screen.getByTestId('saved-searches'))
     const list = await screen.findByRole('dialog', { name: 'Gespeicherte Suchen' })
     expect(await within(list).findAllByTestId('saved-search-apply')).toHaveLength(SEARCH_FIXTURE_SAVED.length)
+    expect(within(list).getByTestId('saved-search-save')).toHaveTextContent('Diese Suche speichern')
   })
 })

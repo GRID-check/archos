@@ -98,9 +98,8 @@ export function SearchWorkspace({ surface, leading, currentUserId, autoFocus = f
       leading={leading}
       currentUserId={currentUserId}
       autoFocus={autoFocus}
-      savedSearches={(narrow) => (
+      savedSearches={
         <SavedSearchesMenu
-          narrow={narrow}
           items={saved.items}
           failed={saved.failed}
           onApply={(item) => {
@@ -122,7 +121,7 @@ export function SearchWorkspace({ surface, leading, currentUserId, autoFocus = f
             return created !== null
           }}
         />
-      )}
+      }
     />
   )
   // Every hit drawn here returns to this search on closing (`back`).

@@ -6,17 +6,19 @@ import { Bookmark, BookmarkPlus, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { SectionLabel } from '@/components/ui/section-label'
 import { Switch } from '@/components/ui/switch'
+import { PHONE_QUERY } from '@/hooks/use-is-mobile'
+import { useMediaQuery } from '@/hooks/use-media-query'
 import { useTranslations } from '@/i18n'
 import type { SavedSearchView } from '@/lib/search/saved-search-client'
 import { SAVED_SEARCH_NAME_MAX } from '@/lib/search/saved-search-wire'
 import { SAVED_SEARCH_UNDO_MS } from '../hooks/use-saved-searches'
-import { ColleagueMark, DialogForm, SwitchCaption, PanelBody, QuietLine, RailAction, SavedSearchList, SavedSearchRow, ToolbarLabel } from './search-atoms'
+import { ColleagueMark, DialogForm, SwitchCaption, PanelBody, QuietLine, RailAction, SavedSearchList, SavedSearchRow } from './search-atoms'
 
 export interface SavedSearchesMenuProps {
   /** null while the list is read. */
@@ -37,35 +39,21 @@ export interface SavedSearchesMenuProps {
 }
 
 /**
- * A narrow toolbar has no room for the two buttons, so its „Mehr“ menu opens
- * the list and the save dialog instead, and holds their open state.
- */
-export interface NarrowSavedSearches {
-  listOpen: boolean
-  onListOpenChange: (open: boolean) => void
-  saveOpen: boolean
-  onSaveOpenChange: (open: boolean) => void
-}
-
-/**
- * The reader's saved searches and the ones colleagues shared: a name applies
- * one, the person who saved it shares it with the switch beside its word or
- * deletes it (with „Rückgängig“ in a toast), a colleague's names the colleague,
- * and the current search is saved from here under a name it already proposes.
+ * The reader's saved searches and the ones colleagues shared, behind one
+ * toolbar button: a name applies one, the person who saved it shares it with
+ * the switch beside its word or deletes it (with „Rückgängig“ in a toast), a
+ * colleague's names the colleague. Saving the current search is the list's
+ * own last action, „Diese Suche speichern“, under a name it already proposes:
+ * there is no second button beside the first for it.
  *
- * Two presentations of the one list. Wide: two toolbar buttons, the list in a
- * popover at the first. Narrow (`narrow`): no buttons, the parent's „Mehr“
- * menu opens the list, which is then the kit's bottom sheet, since there is no
- * button left to hang a popover from.
+ * Wide, the list is a popover at the button; on a phone, the kit's bottom
+ * sheet, where the thumb is.
  */
-export function SavedSearchesMenu({ narrow, ...props }: SavedSearchesMenuProps & { narrow?: NarrowSavedSearches | null }): JSX.Element {
+export function SavedSearchesMenu(props: SavedSearchesMenuProps): JSX.Element {
   const t = useTranslations('search.saved')
-  const [wideOpen, setWideOpen] = useState(false)
-  const [wideSaving, setWideSaving] = useState(false)
-  const open = narrow ? narrow.listOpen : wideOpen
-  const setOpen = narrow ? narrow.onListOpenChange : setWideOpen
-  const saving = narrow ? narrow.saveOpen : wideSaving
-  const setSaving = narrow ? narrow.onSaveOpenChange : setWideSaving
+  const phone = useMediaQuery(PHONE_QUERY)
+  const [open, setOpen] = useState(false)
+  const [saving, setSaving] = useState(false)
   const body = (
     <SavedSearchesBody
       {...props}
@@ -76,11 +64,17 @@ export function SavedSearchesMenu({ narrow, ...props }: SavedSearchesMenuProps &
       }}
     />
   )
+  const trigger = (
+    <Button type="button" variant="ghost" size="icon" aria-label={t('label')} title={t('label')} data-testid="saved-searches">
+      <Bookmark aria-hidden />
+    </Button>
+  )
   const dialog = <SaveSearchDialog open={saving} onOpenChange={setSaving} suggestedName={props.suggestedName ?? ''} onSave={props.onSave} />
-  if (narrow) {
+  if (phone) {
     return (
       <>
         <Dialog open={open} onOpenChange={setOpen}>
+          <DialogTrigger asChild>{trigger}</DialogTrigger>
           <DialogContent data-testid="saved-searches-sheet">
             <DialogHeader>
               <DialogTitle>{t('label')}</DialogTitle>
@@ -96,12 +90,7 @@ export function SavedSearchesMenu({ narrow, ...props }: SavedSearchesMenuProps &
   return (
     <>
       <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger asChild>
-          <Button type="button" variant="outline" size="sm" aria-label={t('label')} data-testid="saved-searches">
-            <Bookmark aria-hidden />
-            <ToolbarLabel>{t('menu')}</ToolbarLabel>
-          </Button>
-        </PopoverTrigger>
+        <PopoverTrigger asChild>{trigger}</PopoverTrigger>
         <PopoverContent align="end">
           <PanelBody>
             <SectionLabel as="h3">{t('label')}</SectionLabel>
@@ -109,10 +98,6 @@ export function SavedSearchesMenu({ narrow, ...props }: SavedSearchesMenuProps &
           </PanelBody>
         </PopoverContent>
       </Popover>
-      <Button type="button" variant="outline" size="sm" aria-label={t('save')} onClick={() => setSaving(true)} data-testid="saved-search-save-toolbar">
-        <BookmarkPlus aria-hidden />
-        <ToolbarLabel>{t('saveShort')}</ToolbarLabel>
-      </Button>
       {dialog}
     </>
   )
@@ -187,6 +172,7 @@ function SavedSearchesBody({
       )}
       <RailAction>
         <Button type="button" size="sm" onClick={onSaveRequested} data-testid="saved-search-save">
+          <BookmarkPlus aria-hidden />
           {t('save')}
         </Button>
       </RailAction>

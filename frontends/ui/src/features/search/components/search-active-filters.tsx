@@ -9,7 +9,12 @@ import { activeFilters, clearFilters } from '../lib/active-filters'
 import type { SearchUrlState } from '../lib/search-url'
 import { ActiveFilters, RemovableChip } from './search-atoms'
 
-/** The filters that are set, as chips that take themselves off, and one control that takes them all off. */
+/**
+ * The filters that are set, as chips that take themselves off, and one control
+ * that takes them all off. A summary, not a home: each filter's control is in
+ * the rail, except „Nur aktuelle Fassung“ in the register, whose switch is on
+ * screen above the table and so has no chip there.
+ */
 export function SearchActiveFilters({
   state,
   onChange,
@@ -21,7 +26,9 @@ export function SearchActiveFilters({
 }): JSX.Element | null {
   const t = useTranslations('search.filters')
   const labels = useSearchLabels()
-  const filters = activeFilters(state)
+  // The register says „Nur aktuelle Fassung“ with its own switch above the
+  // table; a chip beside it would be the one setting shown twice.
+  const filters = activeFilters(state).filter((filter) => !(state.view === 'register' && filter.id === 'currentOnly'))
   if (filters.length === 0) return null
   return (
     <ActiveFilters>

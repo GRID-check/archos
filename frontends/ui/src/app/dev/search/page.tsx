@@ -91,9 +91,8 @@ function Preview({
       onExport={() => {}}
       currentUserId="user_lena"
       filtersOpen={filtersOpen}
-      savedSearches={(narrow) => (
+      savedSearches={
         <SavedSearchesMenu
-          narrow={narrow}
           items={saved.filter((entry) => !deleting.has(entry.id))}
           failed={false}
           onApply={() => {}}
@@ -103,7 +102,7 @@ function Preview({
           suggestedName={suggestedName}
           onSave={async () => true}
         />
-      )}
+      }
     />
   )
 }

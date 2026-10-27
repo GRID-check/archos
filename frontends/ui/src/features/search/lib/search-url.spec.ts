@@ -103,7 +103,7 @@ describe('the register’s columns in the URL', () => {
   it('keeps the title, drops what it cannot name, and reads a link naming the defaults as the default', () => {
     expect(parseSearchParams(new URLSearchParams('cols=planNumber,colour')).columns).toEqual(['planNumber', 'title'])
     expect(parseSearchParams(new URLSearchParams('cols=colour,,')).columns).toBeNull()
-    const defaults = 'planNumber,planIndex,title,planDate,scale,documentType,author,project,status'
+    const defaults = 'planNumber,planIndex,title,planDate,scale,documentType,author,project'
     expect(parseSearchParams(new URLSearchParams(`cols=${defaults}`)).columns).toBeNull()
   })
 
