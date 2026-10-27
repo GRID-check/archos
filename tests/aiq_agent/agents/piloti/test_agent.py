@@ -2766,7 +2766,9 @@ class TestKnowledgeInventoryIsNotCitable:
     def test_piloti_prompt_teaches_the_four_shelves(self):
         """The shelves themselves are taught where they are listed (the inventory block); the prompt names them."""
         source = self._prompt("piloti/prompts/piloti.j2")
-        assert "Basiswissen, Büroablage, Projektwissen, Private Sitzung" in source
+        for mount, name in (("/project/", "Projektwissen"), ("/office/", "Büroablage"), ("/chat/", "Private Sitzung")):
+            assert f"{mount} is {name}" in source or f"{mount} {name}" in source
+        assert "/law/oib/ Basiswissen" in source
         rendered = self._render(source, self.DOCUMENTS)
         assert "Büroablage is never the OIB corpus" in rendered
 
