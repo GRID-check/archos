@@ -79,7 +79,7 @@ export async function getOrganizationOverview(
     id: org.id,
     name: org.name,
     domains: org.domains?.map((d) => d.domain) ?? [],
-    createdAt: org.createdAt,
+    createdAt: org.createdAt.toISOString(),
     memberCount,
     memberCountCapped,
     pendingInviteCount,
@@ -214,6 +214,36 @@ export async function getOrganizationDisplayName(
     })
   } catch {
     return null
+  }
+}
+
+/** Membership changes are rare; a joiner sees the switcher within this long. */
+const SWITCHER_CACHE_TTL_MS = 5 * 60_000
+
+/**
+ * Whether the person belongs to more than one organization, which is when the
+ * header offers WorkOS's organization switcher. Two memberships are enough to
+ * answer, so no more are asked for.
+ *
+ * Fails soft to `false`, as the display name does: a header without the
+ * switcher still renders, and caught outside `getCached` so an outage is not
+ * remembered as "one organization".
+ */
+export async function belongsToSeveralOrganizations(
+  organizationId: string | null | undefined,
+  userId: string
+): Promise<boolean> {
+  try {
+    return await getCached(`organization-switcher:${organizationId ?? 'none'}:${userId}`, SWITCHER_CACHE_TTL_MS, async () => {
+      const memberships = await getWorkOS().userManagement.listOrganizationMemberships({
+        userId,
+        statuses: ['active'],
+        limit: 2,
+      })
+      return memberships.data.length > 1
+    })
+  } catch {
+    return false
   }
 }
 

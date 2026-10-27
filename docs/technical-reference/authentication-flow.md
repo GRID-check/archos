@@ -20,15 +20,17 @@ Auth is handled by **WorkOS AuthKit v4** with session cookies. The `REQUIRE_AUTH
 3. The browser reaches the WorkOS hosted login, which returns to
    `/api/auth/callback` with `code` and `state`.
 4. `handleAuth()` exchanges the code, verifying it against the PKCE cookie, and
-   writes the encrypted httpOnly `wos-session` cookie.
+   writes the encrypted httpOnly `wos-session` cookie, split into
+   `wos-session.0`, `wos-session.1`, … when it is too large for one (below).
 5. The callback redirects to the page the sign-in started for. AuthKit carries
    that page in the sealed flow state; the callback's own `returnPathname`
    (`/app/projects`) is the fallback.
 
 The sign-in route serves every unauthenticated client navigation now, and each
-one mints a verifier cookie that outlives its flow by ten minutes. It holds
-AuthKit's own budget of five (`MAX_PKCE_COOKIES`), expiring the older ones rather
-than letting a loop fill the cookie jar until the request headers overflow.
+one mints a verifier cookie that outlives its flow by ten minutes. `getSignInUrl`
+holds AuthKit's budget of five (`MAX_PKCE_COOKIES`, authkit-nextjs 4.6.2),
+expiring the older ones rather than letting a loop fill the cookie jar until the
+request headers overflow.
 
 A callback that arrives without its flow (`missing_pkce_cookie`,
 `oauth_state_mismatch`) goes to `/auth/error?error=SessionExpired`, which offers
@@ -37,6 +39,44 @@ callback URL can never succeed. `/` sends a signed-out visitor to the landing
 site, and to `/api/auth/signin` when `?sign-in` asks for the app.
 
 Sign-out calls `signOut({ returnTo: '/' })` which clears the WorkOS session cookie.
+
+## The session cookie, and why it is split
+
+The sealed session holds the access token, and WorkOS puts every permission and
+every feature flag the person has into that token. A browser keeps a cookie
+only while its name and value fit in 4096 bytes and drops a larger one
+silently. In October 2026 an admin of GRID Test in Staging held 18 permissions
+and 33 flags, the cookie came to about 4,180 bytes, and every new browser
+signed in, lost the cookie, and was sent back to WorkOS, which was still signed
+in and sent it straight back: `ERR_TOO_MANY_REDIRECTS`, nothing in any log.
+Older browsers kept working on the smaller cookie they had from before.
+
+Neither claim can be removed. A JWT template adds claims, it does not drop the
+built-in ones, and the WorkOS docs say enabling a flag "starts including it in
+a user's access token"; the feature-flag runtime client evaluates flags without
+the claim but does not stop WorkOS minting it (workos/authkit-nextjs#404, open).
+
+So the cookie is split, the way Auth.js and `@supabase/ssr` keep theirs: a bun
+patch on AuthKit (`frontends/ui/patches/@workos-inc%2Fauthkit-nextjs@4.6.2.patch`,
+module `session-cookie.js`) reads and writes the session through every path
+AuthKit has (the proxy's refresh, `saveSession`, `refreshSession` behind the
+client's token refresh and `switchToOrganization`, the callback, sign-out). A
+session that fits stays one cookie under its own name; one that does not
+becomes chunks of 3,800 bytes, and every write expires the form it replaced.
+`src/lib/auth/session-cookie-chunks.spec.ts` runs the installed package, so an
+upgrade that leaves the patch behind fails there. When AuthKit is upgraded,
+`bun install` refuses a patch that no longer applies: re-create it with
+`bun patch @workos-inc/authkit-nextjs`, or delete it if upstream has closed #404.
+
+## Switching organization
+
+Someone who belongs to more than one organization gets WorkOS's
+`OrganizationSwitcher` widget beside the wordmark in the org header
+(`components/shell/organization-switcher.tsx`; the shell asks
+`belongsToSeveralOrganizations`). It calls AuthKit's `switchToOrganization`,
+which refreshes the session into the chosen organization, or sends the person
+to sign in when that organization requires SSO or MFA, and then loads
+`/app/projects` of the new office.
 
 ## Session resolution
 

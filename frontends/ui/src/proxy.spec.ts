@@ -247,6 +247,21 @@ describe('a request that carries a session and is still sent to sign in', () => 
     warn.mockRestore()
   })
 
+  test('counts a session split across chunks as one, with its whole size', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const chunked = new NextRequest('https://app.dev.piloti.at/app/projects', {
+      headers: { cookie: 'wos-session.0=aaaa; wos-session.1=bb; wos-session-other=x' },
+    })
+
+    await throughProxy(chunked, authkitRedirect([VERIFIER_COOKIE]))
+
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringContaining('session cookie present'),
+      expect.objectContaining({ cookieBytes: 6, cookieChunks: 2 })
+    )
+    warn.mockRestore()
+  })
+
   test('stays quiet for a signed-out request, which is the ordinary case', async () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
 

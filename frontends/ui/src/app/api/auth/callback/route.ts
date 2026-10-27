@@ -43,7 +43,7 @@ type HandleAuthOptions = NonNullable<Parameters<typeof handleAuth>[0]>
 type SignInData = Parameters<NonNullable<HandleAuthOptions['onSuccess']>>[0]
 
 const announceSignIn = ({ user, organizationId, authenticationMethod }: SignInData): void => {
-  const createdAt = Date.parse(user.createdAt)
+  const createdAt = user.createdAt.getTime()
   captureServer({
     event: 'user_signed_in',
     distinctId: user.id,

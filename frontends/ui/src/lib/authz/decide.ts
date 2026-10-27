@@ -23,7 +23,7 @@
  *     caller's active organization. Checked FIRST and bypassed by nobody —
  *     not platform owners, not org admins.
  *  3. **Tier dispatch.** `org`/`platform` are answered from claims and
- *     membership; `project`/`skill` go to WorkOS FGA.
+ *     membership; `project` goes to WorkOS FGA.
  *  4. **Named bypasses.** Org admins reach every project in their own
  *     organization, and platform owners reach the platform tier. Both are
  *     deliberate product decisions, and both now surface as a NAMED rule on the
@@ -34,14 +34,13 @@
  * `authorize()` throws the error each tier already threw, so migrating a call
  * site changes no response:
  *   - claims tiers (`org`, `platform`) → **403 Forbidden**
- *   - resource tiers (`project`, `skill`) → **404 Not found**, so a response
+ *   - the resource tier (`project`) → **404 Not found**, so a response
  *     never confirms the existence of something the caller may not see.
  */
 
 import 'server-only'
 import { ForbiddenError, NotFoundError } from '@/lib/api/errors'
 import type { GridSession } from '@/lib/auth/types'
-import { findJob } from '@/lib/jobs/repository'
 import { findPermissionSpec, type PermissionTier } from './catalog'
 import { findProjectTenancy } from '@/lib/projects/repository'
 import {
@@ -51,18 +50,14 @@ import {
   type KnownPermission,
   type PlatformPermission,
   type ProjectPermission,
-  type SkillPermission,
 } from './permissions'
 import { hasPlatformPermission } from './platform'
 import { requireProjectAccess, type ProjectAccess } from './projects'
 import { isProjectClosedError } from '@/lib/projects/project-status'
-import { checkResourcePermission } from './resource-check'
 import type { AuthorizedSession } from '@/lib/auth/types'
 
 /** A resource a decision can be scoped to. Claims tiers need none. */
-export type AuthzResource =
-  | { readonly type: 'project'; readonly id: string }
-  | { readonly type: 'skill'; readonly id: string }
+export type AuthzResource = { readonly type: 'project'; readonly id: string }
 
 /**
  * The named rule that produced a decision. Every allow and every deny carries
@@ -76,8 +71,6 @@ export type AuthzRule =
   | 'no-organization'
   /** The JWT `permissions` claim names the permission. */
   | 'jwt-permission'
-  /** Bounded legacy implication from the role slug (see `./permissions`). */
-  | 'legacy-role-implication'
   /** Platform-org membership (or the audited break-glass allowlist). */
   | 'platform-membership'
   /** Org admins reach every project in their OWN organization. */
@@ -101,30 +94,6 @@ export interface AuthzDecision {
   readonly tier: PermissionTier
   /** Set when a resource tier decided; useful for audit and logging. */
   readonly resource?: AuthzResource
-}
-
-/**
- * Whether per-skill FGA resources exist to check against.
- *
- * `false` today and deliberately a named constant rather than a silent omission:
- * the skill tier's permissions and its parent fallback are real and used, only
- * the per-resource grants are unbuilt. Flipping this is one half of shipping
- * them; the other half is creating the resource alongside the job row.
- */
-const SKILL_RESOURCES_PROVISIONED = false
-
-/**
- * Project-tier permission that also covers a job action. Same reasoning as
- * WORKFLOW_FALLBACK: the Skill resource (a JOB row since 0043) is a child of
- * Project in the topology, and rather than rely on unverified FGA inheritance
- * semantics, a project admin administers the jobs in their project because they
- * hold `project:skills:manage`, and anyone who can see the project can see that
- * its jobs exist.
- */
-const SKILL_FALLBACK: Record<SkillPermission, ProjectPermission> = {
-  'skill:view': 'project:view',
-  'skill:run': 'project:skills:manage',
-  'skill:manage': 'project:skills:manage',
 }
 
 /**
@@ -184,13 +153,8 @@ async function decideClaimsTier(
       : deny(permission, tier, 'no-grant')
   }
 
-  if (session.permissions.includes(permission)) {
-    return allow(permission, tier, 'jwt-permission')
-  }
-  // `hasPermission` also consults the bounded catalog-derived implication for
-  // sessions minted before a permission was provisioned.
   return hasPermission(session, permission)
-    ? allow(permission, tier, 'legacy-role-implication')
+    ? allow(permission, tier, 'jwt-permission')
     : deny(permission, tier, 'no-grant')
 }
 
@@ -247,55 +211,6 @@ async function decideProjectTier(
 }
 
 /**
- * Skill tier — tenancy from the `jobs` row, then the job's own FGA role, then
- * the project-tier fallback above. Identical shape to the workflow tier; the
- * job is the resource, and its project carries the fallback permissions. The
- * tier keeps the name `skill` because that is the FGA resource type slug.
- */
-async function decideSkillTier(
-  session: GridSession,
-  permission: SkillPermission,
-  resource: AuthzResource
-): Promise<AuthzDecision> {
-  const authorized = asAuthorized(session)
-  if (!authorized) return deny(permission, 'skill', 'no-organization', resource)
-
-  // Tenancy first, and never bypassed: the row is looked up scoped to the
-  // caller's organization, so a job id from another tenant is absent.
-  const job = await findJob(resource.id, authorized.organizationId)
-  if (!job) return deny(permission, 'skill', 'tenancy-mismatch', resource)
-
-  // Per-skill FGA is only asked when there is something it could answer.
-  //
-  // Nothing in the app creates a `skill` FGA resource — `createResource` is
-  // called for projects and nothing else — and the catalog defines no
-  // skill-tier ROLE, so no membership can hold `skill:*` on anything. Asking
-  // WorkOS anyway was a guaranteed-false round-trip plus a warning line on every
-  // skill decision, which reads in the logs like a broken authorization check
-  // rather than an unbuilt feature. When per-skill grants ship, this predicate
-  // is where they turn on.
-  if (SKILL_RESOURCES_PROVISIONED) {
-    const granted = await checkResourcePermission({
-      organizationMembershipId: authorized.organizationMembershipId,
-      organizationId: authorized.organizationId,
-      permissionSlug: permission,
-      resourceExternalId: resource.id,
-      resourceTypeSlug: 'skill',
-    })
-    if (granted) return allow(permission, 'skill', 'resource-role', resource)
-  }
-
-  // Parent fallback: the project role that covers this job action.
-  const viaProject = await decideProjectTier(session, SKILL_FALLBACK[permission], {
-    type: 'project',
-    id: job.projectId,
-  })
-  return viaProject.allowed
-    ? allow(permission, 'skill', 'project-inherited', resource)
-    : deny(permission, 'skill', 'no-grant', resource)
-}
-
-/**
  * Decide whether `session` may perform `permission`, optionally on `resource`.
  *
  * Pure decision: returns rather than throws, so callers that need to branch
@@ -314,18 +229,15 @@ export async function decide(
     return decideClaimsTier(session, permission as KnownPermission, tier)
   }
 
+  if (tier !== 'project') {
+    // `skill` and `folder` permissions are WorkOS's shape, decided elsewhere or
+    // not at all: no skill resource exists, and folders are `./folder-access`.
+    throw new Error(`[authz] permission "${permission}" is ${tier}-tier, which this module does not decide`)
+  }
   if (!resource) {
-    throw new Error(`[authz] permission "${permission}" is ${tier}-tier and requires a resource`)
+    throw new Error(`[authz] permission "${permission}" is project-tier and requires a resource`)
   }
-  if (resource.type !== tier) {
-    throw new Error(
-      `[authz] permission "${permission}" is ${tier}-tier but was given a ${resource.type} resource`
-    )
-  }
-
-  return tier === 'project'
-    ? decideProjectTier(session, permission as ProjectPermission, resource)
-    : decideSkillTier(session, permission as SkillPermission, resource)
+  return decideProjectTier(session, permission as ProjectPermission, resource)
 }
 
 /** True when the session holds the permission. Sugar over {@link decide}. */
@@ -339,7 +251,7 @@ export async function can(
 
 /**
  * Enforce a permission, throwing the error that tier already threw:
- * 403 for claims tiers, 404 for resource tiers (no existence oracle).
+ * 403 for claims tiers, 404 for the project tier (no existence oracle).
  */
 export async function authorize(
   session: GridSession | null,
