@@ -34,7 +34,7 @@ import { hasPassedScreening } from './document-reader'
 import { documentNameKey } from './name-match'
 import { documentShelf, type DocumentShelf } from './shelf'
 
-const olderIdSchema = z.string().uuid()
+const olderIdSchema = z.guid()
 
 /**
  * The `revisionOf` form field of an upload: the older document's id, or `null`

@@ -54,7 +54,7 @@ const querySchema = z.object({
     .string()
     .regex(/^org_[A-Za-z0-9]+$/, 'not a WorkOS organization id')
     .optional(),
-  projectId: z.string().uuid().optional(),
+  projectId: z.guid().optional(),
 })
 
 export const GET = internalApiRoute(

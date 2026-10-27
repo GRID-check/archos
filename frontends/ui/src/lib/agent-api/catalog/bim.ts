@@ -138,7 +138,7 @@ export const bimOperations = [
     params: projectParams,
     // The route's schema is a preprocess + refine (legacy names, a lenient `.catch`), which a query object cannot be; the route is the gate.
     query: z.object({
-      modelId: z.string().uuid().optional().describe('The model (revision) id, from bim-model-list. Give this or `model`.'),
+      modelId: z.guid().optional().describe('The model (revision) id, from bim-model-list. Give this or `model`.'),
       model: z.string().max(255).optional().describe('The model’s file name. Give this or `modelId`.'),
       buildingClass: z.number().int().min(1).max(5).optional().describe('The building class (OIB), 1 to 5.'),
       mainUse: z.string().max(100).optional().describe('The main use as in bim-model-query; an unknown value is treated as not stated.'),

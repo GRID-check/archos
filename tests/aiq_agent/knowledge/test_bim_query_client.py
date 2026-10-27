@@ -15,9 +15,10 @@ from typing import Any
 
 import pytest
 
+from aiq_agent.common import bff_http
+from aiq_agent.knowledge import bim_query
 from aiq_agent.knowledge.bim_query import BimQueryRejectedError
 from aiq_agent.knowledge.bim_query import BimQueryUnavailableError
-from aiq_agent.knowledge.bim_query import _rejection_message
 from aiq_agent.knowledge.bim_query import run_bim_query
 
 
@@ -33,13 +34,19 @@ def http_error(status: int, body: Any) -> urllib.error.HTTPError:
     )
 
 
+def rejection_message(error: urllib.error.HTTPError) -> str:
+    """The message the client builds from ``error``, parsed by the seam exactly as a live refusal is."""
+    refusal = bff_http.BffRefusedError("refused", status=error.code, body=bff_http._error_envelope(error))
+    return bim_query._rejection_message(refusal)
+
+
 class TestTheMessageAnAgentSeesWhenAQueryIsRefused:
     def test_reads_the_key_the_envelope_actually_carries(self):
         # `errorResponse` in lib/api/handler.ts emits {error, code, details}.
         # This used to read `message`, a key the BFF has never sent, so every
         # 4xx degraded to a bare status and the correctable text was lost.
         error = http_error(400, {"error": "gt/gte/lt/lte need a numeric value", "code": "BAD_REQUEST"})
-        assert _rejection_message(error) == "gt/gte/lt/lte need a numeric value"
+        assert rejection_message(error) == "gt/gte/lt/lte need a numeric value"
 
     def test_names_the_key_the_schema_did_not_recognise(self):
         # The top-level text for a schema failure is the generic "Invalid
@@ -58,7 +65,7 @@ class TestTheMessageAnAgentSeesWhenAQueryIsRefused:
                 ],
             },
         )
-        message = _rejection_message(error)
+        message = rejection_message(error)
         assert "Invalid request body" in message
         assert "query.filter" in message
         assert "'storey'" in message
@@ -72,7 +79,7 @@ class TestTheMessageAnAgentSeesWhenAQueryIsRefused:
                 "details": [{"path": ["query", f"f{index}"], "message": "Required"} for index in range(20)],
             },
         )
-        message = _rejection_message(error)
+        message = rejection_message(error)
         assert message.count("Required") == 3
         assert len(message) <= 350
 
@@ -94,14 +101,14 @@ class TestTheMessageAnAgentSeesWhenAQueryIsRefused:
                 ],
             },
         )
-        assert "Brandabschnitt" not in _rejection_message(error)
+        assert "Brandabschnitt" not in rejection_message(error)
 
     def test_falls_back_to_the_status_when_the_body_says_nothing(self):
-        assert _rejection_message(http_error(422, {})) == "the query was refused (422)"
-        assert _rejection_message(http_error(400, None)) == "the query was refused (400)"
+        assert rejection_message(http_error(422, {})) == "the query was refused (422)"
+        assert rejection_message(http_error(400, None)) == "the query was refused (400)"
 
     def test_ignores_a_body_that_is_not_an_object(self):
-        assert _rejection_message(http_error(400, ["nope"])) == "the query was refused (400)"
+        assert rejection_message(http_error(400, ["nope"])) == "the query was refused (400)"
 
 
 class TestWhichErrorTheCallerGets:
@@ -113,7 +120,7 @@ class TestWhichErrorTheCallerGets:
         def opener(_request, timeout=None):  # noqa: ANN001, ARG001
             raise error
 
-        monkeypatch.setattr("aiq_agent.knowledge.bim_query._opener", type("O", (), {"open": staticmethod(opener)})())
+        monkeypatch.setattr("aiq_agent.common.bff_http._opener", type("O", (), {"open": staticmethod(opener)})())
 
     def test_a_correctable_400_is_a_rejection(self, monkeypatch):
         self._raise(monkeypatch, http_error(400, {"error": 'groupBy "property" needs groupProperty {set, name}'}))

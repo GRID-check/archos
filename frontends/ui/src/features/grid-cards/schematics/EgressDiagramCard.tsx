@@ -23,7 +23,7 @@ import {
 } from './kit'
 import { sketchPath, type Point } from './rough'
 import { useTranslations } from '@/i18n'
-import type { DimensionCheckData, EgressSegmentData, NormReferenceData } from './types'
+import type { DimensionCheckData, EgressSegmentData, NormReferenceData } from '@/shared/cards/schemas'
 
 interface EgressDiagramCardProps {
   title: string

@@ -95,6 +95,12 @@ describe('request errors through @posthog/next', () => {
     expect(beforeCapture(capture(new Error('Forbidden'), '/elsewhere'))).not.toBe(false)
   })
 
+  test('redirect() and notFound() throws are navigation, not exceptions', () => {
+    const redirect = Object.assign(new Error('NEXT_REDIRECT'), { digest: 'NEXT_REDIRECT;replace;/app/projects;307;' })
+    expect(beforeCapture(capture(redirect, '/app/projects'))).toBe(false)
+    expect(beforeCapture(capture(Object.assign(new Error('NEXT_NOT_FOUND'), { digest: 'NEXT_NOT_FOUND' })))).toBe(false)
+  })
+
   test('a post naming a server action this build lacks is not an exception', () => {
     // Next's own message (action-handler, E975), verbatim.
     const unknownAction = new Error(

@@ -15,8 +15,9 @@ import pytest
 from jsonschema import Draft202012Validator
 from jsonschema import FormatChecker
 
+from aiq_agent.common import bff_http
+from aiq_agent.common.bff_http import SignedEnvelope
 from aiq_agent.knowledge import estate_tree_client as client
-from aiq_agent.tools.documents.filing import SignedEnvelope
 
 ROOT = Path(__file__).resolve().parents[3]
 SCHEMA = json.loads((ROOT / "frontends/ui/tests/fixtures/estate-tree.schema.json").read_text(encoding="utf-8"))
@@ -132,7 +133,7 @@ class TestTransport:
             )
             return _Reply(json.dumps(ANSWER).encode())
 
-        monkeypatch.setattr(client._opener, "open", opened)
+        monkeypatch.setattr(bff_http._opener, "open", opened)
 
         tree = await client.read_estate_tree("project", ENVELOPE, folder_path="Einreichung", limit=2)
 
@@ -148,7 +149,7 @@ class TestTransport:
             body = io.BytesIO(json.dumps({"error": "No folder with that path.", "code": "NOT_FOUND"}).encode())
             raise urllib.error.HTTPError(request.full_url, 404, "Not Found", {}, body)
 
-        monkeypatch.setattr(client._opener, "open", refused)
+        monkeypatch.setattr(bff_http._opener, "open", refused)
 
         with pytest.raises(client.EstateTreeError) as caught:
             await client.read_estate_tree("project", ENVELOPE, folder_path="Personal")
@@ -168,7 +169,7 @@ class TestTransport:
         def down(request, timeout):
             raise urllib.error.URLError("connection refused")
 
-        monkeypatch.setattr(client._opener, "open", down)
+        monkeypatch.setattr(bff_http._opener, "open", down)
 
         with pytest.raises(client.EstateTreeError, match="could not be reached") as caught:
             await client.read_estate_tree("office_shelf", ENVELOPE)

@@ -28,7 +28,7 @@ function refusal(input: Record<string, unknown>): string {
 describe('a validation refusal quotes the field’s description', () => {
   it('names the field, what was wrong, and what the field is for', () => {
     expect(refusal({ limit: 'ten', sort: 'asc' })).toBe(
-      'thing-list: query.limit: Expected number, received string (Number of results to return per page)',
+      'thing-list: query.limit: Invalid input: expected number, received string (Number of results to return per page)',
     )
   })
 

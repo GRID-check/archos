@@ -26,10 +26,23 @@
  * is DRAWN is not this module's business: the host hands a renderer down
  * (`CardRenderer`), which keeps `features/a2ui` free of every card component
  * and of the import cycle that would bring.
+ *
+ * A2UI 0.14 speaks Zod 3, and this module is the seam. `@a2ui/web_core`
+ * depends on `zod@^3` and reads a component's schema through Zod 3 internals
+ * (`_def.typeName`) to find which props hold child ids and how to bind each
+ * prop, and formats a refusal from `ZodError.errors`, which Zod 4 dropped. So
+ * the layout and `Text` schemas are built with Zod 3 around A2UI's own
+ * `componentId()`, and a card's Zod 4 schema is handed over wrapped in a Zod 3
+ * schema that runs it ({@link forA2ui}). `zod-v3` is an alias of the exact Zod
+ * A2UI depends on (`npm:zod@3.25.76`): with one version, TypeScript reads both
+ * as one package; `zod/v3` from Zod 4 is another and does not typecheck
+ * against A2UI's types. Move these to Zod 4, and drop the alias, when A2UI
+ * does.
  */
 
 import { createContext, useContext, useLayoutEffect, type ReactNode } from 'react'
 import { z } from 'zod'
+import { z as z3 } from 'zod-v3'
 import { Catalog, componentId, type ComponentApi } from '@a2ui/web_core/v0_9'
 
 import { gridCardSchema, type GridCard } from '@/shared/cards/schemas'
@@ -82,39 +95,56 @@ export type CardSchema = (typeof gridCardSchema.options)[number]
 
 /** A card schema's `type` literal; one card defaults it, which wraps the literal. */
 export function cardTypeOf(schema: CardSchema): string {
-  const field: z.ZodTypeAny = schema.shape.type
-  const literal = field instanceof z.ZodDefault ? field._def.innerType : field
+  const field: z.ZodType = schema.shape.type
+  const literal = field instanceof z.ZodDefault ? field.unwrap() : field
   return (literal as z.ZodLiteral<string>).value
+}
+
+/**
+ * A Zod 4 schema as the Zod 3 schema A2UI reads: it accepts what `schema`
+ * accepts and refuses with `schema`'s own issues. A2UI finds no child ids in
+ * it, which is right for a card (a leaf), and binds every prop as a static
+ * value, which is what a card's props are.
+ */
+function forA2ui(schema: z.ZodType): z3.ZodType {
+  return z3.unknown().superRefine((value, ctx) => {
+    const result = schema.safeParse(value)
+    if (result.success) return
+    for (const issue of result.error.issues) {
+      ctx.addIssue({ code: z3.ZodIssueCode.custom, message: issue.message, path: issue.path.filter((step) => typeof step !== 'symbol') })
+    }
+  })
 }
 
 /** A card component's props: the card's fields without its `type`, which is the component name. */
 export function cardComponentApi(schema: CardSchema): ComponentApi {
-  return { name: cardTypeOf(schema), schema: (schema as z.AnyZodObject).omit({ type: true }) }
+  const props = (schema as z.ZodObject).omit({ type: true })
+  return { name: cardTypeOf(schema), schema: forA2ui(props) }
 }
 
 export const RowApi = {
   name: 'Row',
-  schema: z
+  schema: z3
     .object({
       // Static ids only, as `SurfaceCard` requires: A2UI's data-bound
       // `{componentId, path}` form would draw an empty box with no fallback.
-      children: z.array(componentId()),
-      justify: z.enum(['start', 'center', 'end', 'spaceBetween', 'spaceAround', 'spaceEvenly', 'stretch']).optional(),
-      align: z.enum(['start', 'center', 'end', 'stretch']).optional(),
+      children: z3.array(componentId()),
+      justify: z3.enum(['start', 'center', 'end', 'spaceBetween', 'spaceAround', 'spaceEvenly', 'stretch']).optional(),
+      align: z3.enum(['start', 'center', 'end', 'stretch']).optional(),
     })
     .strict(),
 }
 export const ColumnApi = { ...RowApi, name: 'Column' }
 export const TabsApi = {
   name: 'Tabs',
-  schema: z
+  schema: z3
     .object({
-      tabs: z.array(z.object({ title: z.string().trim().min(1), child: componentId() }).strict()).min(1),
+      tabs: z3.array(z3.object({ title: z3.string().trim().min(1), child: componentId() }).strict()).min(1),
     })
     .strict(),
 }
 
-export const TextApi = { name: TEXT_COMPONENT, schema: z.object({ text: z.string().trim().min(1) }).strict() }
+export const TextApi = { name: TEXT_COMPONENT, schema: z3.object({ text: z3.string().trim().min(1) }).strict() }
 
 /**
  * A run of the answer's Markdown, drawn by the renderer the prose is drawn by,

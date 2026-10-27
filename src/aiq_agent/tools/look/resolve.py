@@ -28,6 +28,7 @@ import unicodedata
 from dataclasses import dataclass
 
 from aiq_agent import project_context
+from aiq_agent.common.bff_http import SignedEnvelope
 from aiq_agent.common.focus_file import get_focused_document_id
 from aiq_agent.common.focus_file import get_focused_file_name
 
@@ -41,7 +42,6 @@ from ..canvas.target import is_uuid
 from ..canvas.target import match_document
 from ..canvas.target import probe_collections
 from ..canvas.target import resolve_target
-from ..documents.filing import SignedEnvelope
 
 NO_FILE = "I do not know which file this document is. Name it in `document` (the file name from the inventory)."
 NOT_FOUND = (
