@@ -120,6 +120,10 @@
               "de": "Bei der Suche in den Dokumenten eines Projekts oder im Archiv werden Dokumente jetzt nicht nur anhand ihres Inhalts, sondern auch anhand ihres Namens und Dokumenttyps gefunden. Die Ergebnisse zeigen den passenden Textabschnitt und die Seitenzahl und sind nach Relevanz sortiert – ohne Prozentangabe zur Relevanz."
             },
             {
+              "en": "When Piloti looks through your documents, the Herleitung names folders and files the way you do: „Öffnet 03 Einreichung · 12 Dateien, 2 Ordner“ or „Sucht im Projekt nach PDF-Dateien“. A folder that is not there reads „nicht gefunden“, and one that is there but empty reads „leer“.",
+              "de": "Wenn Piloti Ihre Dokumente durchsucht, nennt die Herleitung Ordner und Dateien so, wie Sie es tun: „Öffnet 03 Einreichung · 12 Dateien, 2 Ordner“ oder „Sucht im Projekt nach PDF-Dateien“. Ein nicht vorhandener Ordner wird als „nicht gefunden“ angezeigt, ein vorhandener, aber leerer als „leer“."
+            },
+            {
               "en": "A document says how many of its pages were fully read, and why the rest were not, instead of looking complete when a drawing or scan could not be read.",
               "de": "Ein Dokument weist aus, wie viele seiner Seiten vollständig gelesen wurden und warum die übrigen nicht gelesen wurden, statt vollständig zu erscheinen, wenn eine Zeichnung oder ein Scan nicht gelesen werden konnte."
             },
@@ -155,6 +159,10 @@
             {
               "en": "The permission reference on the Access tab no longer lists skill-schedule permissions that no role could ever hold. Who may run and change a schedule is decided by the project, as it always was.",
               "de": "Die Berechtigungsübersicht im Tab Zugriff führt keine Berechtigungen für Skill-Zeitpläne mehr auf, die keine Rolle jemals haben konnte. Wer einen Zeitplan ausführen und ändern darf, wird wie bisher durch das Projekt festgelegt."
+            },
+            {
+              "en": "A word search that could not search all your documents no longer looks complete in the Herleitung. It is drawn with a dashed ring and says that a missing hit is no proof; an incomplete search without a hit appears under „Offen“.",
+              "de": "Eine Wortsuche, die nicht alle Ihre Dokumente durchsuchen konnte, wird in der Herleitung nicht mehr als vollständig angezeigt. Sie ist mit einem gestrichelten Ring markiert und weist darauf hin, dass ein fehlender Treffer kein Beweis ist; eine unvollständige Suche ohne Treffer erscheint unter „Offen“."
             },
             {
               "en": "Uploaded photos show again when they were taken and with which camera.",

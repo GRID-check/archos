@@ -5,6 +5,8 @@ from __future__ import annotations
 import pytest
 
 from aiq_agent.common.estate_paths import PathRefused
+from aiq_agent.common.estate_paths import action_place
+from aiq_agent.common.estate_paths import asked_document
 from aiq_agent.common.estate_paths import call_mount
 from aiq_agent.common.estate_paths import estate_path
 from aiq_agent.common.estate_paths import file_name_candidates
@@ -98,3 +100,39 @@ class TestMounts:
         assert reaches_drafts_only("ls", {"path": "/drafts/"})
         assert not reaches_drafts_only("ls", {"path": "/project/"})
         assert not reaches_drafts_only("read_file", None)
+
+
+class TestTheRowsPlace:
+    """A Herleitung row names a place and the folder inside it, never a path (ADR-0132, ADR-0133)."""
+
+    @pytest.mark.parametrize(
+        ("path", "place"),
+        [
+            (None, {"mount": "estate"}),
+            ("", {"mount": "estate"}),
+            ("/", {"mount": "estate"}),
+            ("/project/", {"mount": "project"}),
+            ("/project/03 Einreichung/Pläne/", {"mount": "project", "target": "03 Einreichung/Pläne"}),
+            ("/project/03 Einreichung", {"mount": "project", "target": "03 Einreichung"}),
+            ("/office/Vorlagen/", {"mount": "office", "target": "Vorlagen"}),
+            ("/chat/", {"mount": "chat"}),
+            ("/law/oib/", {"mount": "law"}),
+            ("/law/", {}),
+        ],
+    )
+    def test_a_path_is_its_place_and_folder(self, path, place) -> None:
+        assert action_place(path) == place
+
+    @pytest.mark.parametrize("path", ["/nirgends/", "../project/", "project/x", "/drafts/", "/drafts/../project/"])
+    def test_a_path_that_names_no_place_gives_the_row_nothing_to_print(self, path) -> None:
+        """The row then reads „… einen Ordner“, never „drafts › .. › project“."""
+        assert action_place(path) == {}
+
+    def test_the_document_a_read_asked_for_is_its_leaf_without_the_text_suffix(self) -> None:
+        assert asked_document("/project/Personal/Vertrag.pdf.md") == "Vertrag.pdf"
+        assert asked_document("/project/Notiz.txt") == "Notiz.txt"
+        # A stem without an extension is a file served as its text: the row names it without the suffix.
+        assert asked_document("/project/Notiz.md") == "Notiz"
+        assert asked_document("/project/Plan.pdf") == "Plan.pdf"
+        assert asked_document("/project/Gutachten/") == ""
+        assert asked_document("") == ""

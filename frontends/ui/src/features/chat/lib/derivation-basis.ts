@@ -32,7 +32,16 @@ import {
   type WorkRound,
   type WorkRow,
 } from './work-list'
-import { breadcrumb, quoteQuery, workParts } from './work-sentence'
+import {
+  actionPlace,
+  breadcrumb,
+  namePattern,
+  placeIn,
+  placeLabel,
+  quoteQuery,
+  sentenceKind,
+  workParts,
+} from './work-sentence'
 
 const SHELF_KEYS: Record<string, string> = {
   project: 'project',
@@ -161,6 +170,26 @@ const TARGET_VERBS: ReadonlySet<string> = new Set(['list', 'read', 'look'])
  * never the row's verb, so the sentence reads as one.
  */
 const callNoun = (t: Translator, action: StoredAction): string => {
+  const place = actionPlace(action)
+  if (place) {
+    // A call over the filesystem is named by where it looked: „die wörtliche Suche in allen Ablagen nach ‚…‘“.
+    const kind = sentenceKind(action)
+    const where = placeIn(t, place)
+    // A pattern is no wörtliche Suche: „die Suche in der Büroablage › Vorlagen nach dem Muster ‚EI\s?90‘“.
+    if (kind === 'grep' && action.mode === 'regex' && action.query)
+      return t('thinking.node.basis.callPlacePattern', {
+        place: where,
+        query: quoteQuery(t, action.query),
+      })
+    const call = t(`thinking.node.basis.call.${kind}`)
+    return action.query
+      ? t('thinking.node.basis.callPlaceQuery', {
+          call,
+          place: where,
+          query: quoteQuery(t, action.query),
+        })
+      : t('thinking.node.basis.callPlace', { call, place: where })
+  }
   const call = t(`thinking.node.basis.call.${action.verb}`)
   if (TARGET_VERBS.has(action.verb) && action.target)
     return t('thinking.node.basis.callTarget', { call, target: breadcrumb(action.target) })
@@ -186,6 +215,26 @@ const openPoint = (
   const action = card ? { ...row.action, target: cardName(card) } : row.action
   if (action.status === 'error') return t('thinking.node.basis.openFailed', { call: callNoun(t, action) })
   if (interrupted) return t('thinking.node.basis.openInterrupted', { call: callNoun(t, action) })
+  // Most of the scope was searched and the rest could not be: not a no, and „Offen“ says which.
+  if (action.incomplete)
+    return t('thinking.node.basis.openIncomplete', { call: callNoun(t, action) })
+  const missing = missingName(t, action)
+  if (missing)
+    return t(
+      action.verb === 'read'
+        ? 'thinking.node.basis.openNotFoundDocument'
+        : 'thinking.node.basis.openNotFoundFolder',
+      { name: missing }
+    )
+  const place = actionPlace(action)
+  const kind = sentenceKind(action)
+  if (place && action.query && kind === 'grep')
+    return t('thinking.node.basis.openNoHitPlace', { call: callNoun(t, action) })
+  if (place && action.query && kind === 'glob')
+    return t('thinking.node.basis.openNoFile', {
+      place: placeIn(t, place),
+      what: namePattern(t, action.query),
+    })
   const { query, target } = action
   if (!query) {
     const parts = workParts(t, action)
@@ -206,6 +255,14 @@ const openPoint = (
         query: quoted,
       })
     : t('thinking.node.basis.openNoHit', { query: quoted })
+}
+
+/** The folder or document an empty listing or read did not find, by the name the row gives it; null otherwise. */
+const missingName = (t: Translator, action: StoredAction): string | null => {
+  if (!action.missing) return null
+  if (action.verb === 'read') return action.target || null
+  const place = actionPlace(action)
+  return place ? placeLabel(t, place) : null
 }
 
 /**

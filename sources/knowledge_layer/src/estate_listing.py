@@ -58,7 +58,7 @@ class Listing:
     text: str
     files: int | None = None
     folders: int | None = None
-    #: The call could not list (a path that is no folder, a refusal): an error row.
+    #: No such folder (a restricted one answers the same): an error for the model, „nicht gefunden“ on the row.
     error: bool = False
 
 
@@ -164,7 +164,8 @@ def render_root(files: Sequence[EstateFile], *, drafts: bool) -> Listing:
     if not shown:
         lines.append("No document of the office is readable in this conversation.")
     lines.append("Next: `ls` a mount, `glob` by name, `grep` for wording, `read_file` to read.")
-    return Listing(text="\n".join(lines), files=0, folders=shown)
+    # The row counts what the places hold (every document, every place), as a folder's row does.
+    return Listing(text="\n".join(lines), files=len(files), folders=shown)
 
 
 def render_folder(
@@ -210,7 +211,9 @@ def render_folder(
         lines.append(f"Not listed here: files still being read ({len(in_flight)}).")
     lines.append("Restricted folders are not listed.")
     lines.append("Next: `ls` a folder, `glob` by name, `grep` for wording, `read_file` to read.")
-    return Listing(text="\n".join(lines), files=min(len(here), MAX_LS_FILES), folders=len(subfolders))
+    # Everything the folder holds, its subfolders' documents too, as its head line, the tree and the folder card
+    # count it; not what the text had room for.
+    return Listing(text="\n".join(lines), files=len(selected), folders=len(subfolders))
 
 
 def _render_tree(
@@ -229,7 +232,9 @@ def _render_tree(
     if in_flight:
         lines.append(f"Not listed here: files still being read ({len(in_flight)}).")
     lines.append("Restricted folders are not listed. " + INDEX_NOTE)
-    return Listing(text="\n".join(lines), files=len(rows), folders=len(cards))
+    # The folder's own subfolders, as `ls` at depth 1 and its README.md count them: not every card in the tree.
+    own = next((card for card in cards if card.path == (folder or "")), None)
+    return Listing(text="\n".join(lines), files=len(rows), folders=len(own.subfolders) if own else 0)
 
 
 def render_readme(
@@ -276,7 +281,7 @@ def render_glob(files: Sequence[EstateFile], pattern: str, path: str | None) -> 
     if len(matched) > MAX_GLOB_FILES:
         lines.append(f"… {len(matched) - MAX_GLOB_FILES} more not shown: narrow the pattern or the path.")
     lines.append(INDEX_NOTE)
-    return Listing(text="\n".join(lines), files=min(len(matched), MAX_GLOB_FILES))
+    return Listing(text="\n".join(lines), files=len(matched))
 
 
 def collections_of(files: Sequence[EstateFile]) -> list[str]:
