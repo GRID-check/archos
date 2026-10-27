@@ -329,10 +329,10 @@ def test_a_chat_turn_runs_in_the_chat_class():
 
 
 def test_a_research_job_runs_in_the_research_class():
-    from aiq_api.jobs import runner
+    from aiq_api.jobs import agent_job
 
-    assert getattr(runner.run_agent_job, "__wrapped__", None) is not None
-    assert inspect.iscoroutinefunction(runner.run_agent_job)
+    assert getattr(agent_job.run_agent_job, "__wrapped__", None) is not None
+    assert inspect.iscoroutinefunction(agent_job.run_agent_job)
 
 
 def test_a_queued_ingest_job_runs_in_the_class_of_its_priority(monkeypatch):

@@ -22,7 +22,7 @@ from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[3]
 START_WEB = REPO / "deploy" / "start_web.py"
-RUNNER = REPO / "frontends" / "aiq_api" / "src" / "aiq_api" / "jobs" / "runner.py"
+AGENT_JOB = REPO / "frontends" / "aiq_api" / "src" / "aiq_api" / "jobs" / "agent_job.py"
 
 
 def _clean_env() -> dict[str, str]:
@@ -55,10 +55,10 @@ def test_the_web_boot_readings_are_named_after_the_role_not_after_web():
         assert 'BootClock("web")' not in path.read_text(encoding="utf-8"), path
 
 
-def test_worker_runner_registers_grid_telemetry_before_load_config():
-    src = RUNNER.read_text(encoding="utf-8")
-    register_at = src.index("register_grid_telemetry")
-    load_at = src.index("load_config(config_file_path)")
+def test_worker_job_registers_grid_telemetry_before_load_config():
+    src = AGENT_JOB.read_text(encoding="utf-8")
+    register_at = src.index("register_grid_telemetry()")
+    load_at = src.index("load_config(request.config_file_path)")
     assert register_at < load_at
 
 

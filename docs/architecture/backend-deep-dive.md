@@ -413,7 +413,7 @@ config key any more. The result rides `ChatResponse.cards` → `message.cards`
 
 With `use_async_deep_research: true` (the working config), any query routed to
 deep research returns the stub `"Deep research job submitted. Job ID: …"`. The
-**real** answer is produced later by `frontends/aiq_api/src/aiq_api/jobs/runner.py`
+**real** answer is produced later by `frontends/aiq_api/src/aiq_api/jobs/agent_job.py`
 (`run_agent_job`), which now generates cards post-hoc from the final report
 (`_generate_grid_cards` → `aiq_agent.cards.generate_cards`), re-emits the
 report artifact with cards attached over the job SSE stream, and stores
@@ -1772,8 +1772,8 @@ runner). And the research tab can 403 — see §9.
 `f8093a0`)**: the `X-Grid-Collection-Scope` header is captured once at submit
 time (`piloti/conversation_register.py`) and threaded into the async job payload
 as `collection_scope`. The research worker only re-injects it into its own
-request context conditionally — `frontends/aiq_api/src/aiq_api/jobs/runner.py:641`
-does `if collection_scope is not None:` before base64url-encoding it back
+request context conditionally — `frontends/aiq_api/src/aiq_api/jobs/agent_job_setup.py`
+(`_inject_scope_headers`) does `if collection_scope is not None:` before base64url-encoding it back
 onto the header. When the scope is absent, `knowledge_retrieval` inside the
 worker falls back to legacy config-based resolution (base collection +
 session collection only — see `docs/technical-reference/collection-scoping.md`).
@@ -1981,7 +1981,7 @@ full specs in `org-model-configuration.md` (ADR-0014) and
   nothing applies) in Piloti/deep `_run` closures and in
   `clarify.Clarifier.deps_for`, plus `apply_model_override()` at the clarifier
   planner and the reflection scheduling site. Async jobs carry
-  the map through `submit_agent_job` → `jobs/runner.py` (provider + header
+  the map through `submit_agent_job` → `jobs/agent_job_setup.py` (provider + header
   re-injection). Only the model id changes; params/keys stay from YAML. When
   no header/envelope carries the map (e.g. the generic async-job proxy before
   2026-07-16, or any future endpoint the BFF doesn't front),
@@ -2105,7 +2105,7 @@ office's skills (`resolve_served_skills`) under `/skills/office/`. Full design a
   `collection_scope` is still only re-injected into the research worker context
   when present (behavior unchanged: absent scope still drops
   project-collection search for that job, §7), but the degradation is no
-  longer silent: `runner.py` logs a one-time WARNING (job id, whether the
+  longer silent: `agent_job_setup.py` logs a one-time WARNING (job id, whether the
   request looked authenticated/project-scoped) at the point it would
   otherwise skip re-injection, so the gap is diagnosable from logs instead of
   invisible.
@@ -2219,7 +2219,7 @@ office's skills (`resolve_served_skills`) under `/skills/office/`. Full design a
   instance for callbacks without it) before each `researcher_runnable.ainvoke()`
   call — the outer/batch-level callbacks list itself is untouched. This
   applies uniformly to both the sync chat path and the async job runner
-  (both go through the same `_run_research_query`), so `runner.py` building
+  (both go through the same `_run_research_query`), so `agent_job.py` building
   one `VerboseTraceCallback()`/`LangchainProfilerHandler()` per job (not per
   worker) no longer means those workers race on shared state.
 - **Async deep-research jobs are not restart-safe — mitigated 2026-07-16

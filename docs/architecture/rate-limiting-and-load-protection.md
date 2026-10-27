@@ -550,7 +550,7 @@ that chat, research, ingestion and embeddings all draw from
   its own model's limit does not hold back the other models queued behind it.
 - **The class comes from the task, not the call site.** A ContextVar
   (`provider_class`): a chat turn sets `chat` (`turn/admission.answer_turn`),
-  a research job `research` (`jobs/runner.run_agent_job`), an ingest job its
+  a research job `research` (`jobs/agent_job.run_agent_job`), an ingest job its
   priority (`interactive` or `bulk`), and anything else is `interactive`.
 - **Three seams, each single.** Every chat-model call passes the contract
   subclass in `common/llm_factory.py` (streams hold their slot to the last
