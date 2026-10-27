@@ -57,7 +57,7 @@ export function ComposerPreview(): JSX.Element {
       {subject ? <p className="text-xs text-muted-foreground">Gefragt zu: {subject}</p> : null}
       <textarea
         aria-label="Nachricht"
-        className="min-h-20 w-full rounded-xl border border-input bg-card px-4 py-3 text-sm shadow-md"
+        className="min-h-20 w-full rounded-xl border border-input bg-card px-4 py-3 text-sm shadow-md pointer-coarse:text-base"
         value={text}
         onChange={(event) => {
           setText(event.target.value)
