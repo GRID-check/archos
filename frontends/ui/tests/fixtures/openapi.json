@@ -7449,7 +7449,7 @@
                   "text": {
                     "type": "string",
                     "maxLength": 500,
-                    "description": "Matches names, what documents are and say (with the page), annotations, folders, projects, conversations."
+                    "description": "Matches names, what documents are and say (with the page), annotations, folders, projects, conversations. Write it in the language of the documents."
                   },
                   "kinds": {
                     "type": "array",

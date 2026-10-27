@@ -135,7 +135,7 @@ export const searchBodySchema = z.object({
     .trim()
     .max(500)
     .optional()
-    .describe('Matches names, what documents are and say (with the page), annotations, folders, projects, conversations.'),
+    .describe('Matches names, what documents are and say (with the page), annotations, folders, projects, conversations. Write it in the language of the documents.'),
   kinds: z.array(z.enum(SEARCH_KINDS)).min(1).max(SEARCH_KINDS.length).optional().describe('Default: every kind.'),
   filters: documentFiltersSchema.optional(),
   annotationFilters: annotationFiltersSchema.optional(),
