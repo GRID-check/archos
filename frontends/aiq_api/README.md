@@ -221,16 +221,20 @@ through HTTP requests, WebSocket workflow execution, and async jobs.
 
 Always-on NAT span tags:
 
-- `nat.aiq.caller.type`: resolved caller type from the auth middleware
-- `nat.aiq.auth.transport`: `bearer`, `cookie`, or `none`
-- `nat.aiq.auth.verified`: whether the request resolved to a verified principal
-- `nat.aiq.access.channel`: inferred or explicitly supplied access channel
+- `nat.grid.caller.type`: resolved caller type from the auth middleware
+- `nat.grid.auth.transport`: `bearer`, `cookie`, or `none`
+- `nat.grid.auth.verified`: whether the request resolved to a verified principal
+- `nat.grid.access.channel`: inferred or explicitly supplied access channel
+
+For one release every `grid.*` tag is written again under `aiq.*`, its name before
+ADR-0145, so a saved trace view filtering on the old name keeps matching until it
+is re-pointed.
 
 Optional user identity tags are controlled by `GRID_TRACE_USER_IDENTITY_MODE`:
 
 - `none`: disable user identity tagging entirely
-- `id`: tag only pseudonymous stable identifiers (`nat.enduser.id`, `nat.aiq.user.id`, `nat.aiq.auth.type`)
-- `full`: tag pseudonymous identifiers plus `nat.aiq.user.email` and `nat.aiq.user.name` when present
+- `id`: tag only pseudonymous stable identifiers (`nat.enduser.id`, `nat.grid.user.id`, `nat.grid.auth.type`)
+- `full`: tag pseudonymous identifiers plus `nat.grid.user.email` and `nat.grid.user.name` when present
 
 Only verified principals are tagged. Anonymous, internal, and unverified JWT
 fallback callers are never attached to traces.
@@ -240,7 +244,7 @@ identity tagging is skipped.
 Optional client correlation is controlled by `GRID_TRACE_CLIENT_ID_MODE`:
 
 - `none`: disable client correlation
-- `ip`: add `nat.aiq.client.id` as an HMAC-derived pseudonymous identifier from
+- `ip`: add `nat.grid.client.id` as an HMAC-derived pseudonymous identifier from
   the client IP
 
 Set `GRID_TRACE_CLIENT_ID_HMAC_SECRET` when using `ip`. If unset, the middleware
@@ -301,7 +305,9 @@ class MyValidator:
 
 The middleware sets `skip_clarifier=True` for callers that cannot participate in
 interactive back-and-forth (anonymous requests, headless API callers).  Pass the
-`X-AIQ-Mode: headless` request header to force this for any authenticated caller.
+`X-Grid-Mode: headless` request header to force this for any authenticated caller.
+For one release the old name, `X-AIQ-Mode`, is read too (and `X-AIQ-Access-Channel`
+beside `X-Grid-Access-Channel`): the BFF and the backend deploy separately.
 
 ---
 

@@ -678,7 +678,7 @@ a server whose hello lists it (`user_message.trigger`, `user_message.if_idle`).
   same gateway route a browser takes (affinity by conversation), with the
   acting person's pinned session cookie or bearer token, and the signed
   `X-Grid-Request-Context` envelope **including `conversationId`** (without it
-  the canvas tools have no subject). Add `X-AIQ-Mode: headless`: the caller is
+  the canvas tools have no subject). Add `X-Grid-Mode: headless`: the caller is
   then marked `headless` (and `skip_clarifier`), so the clarifier and its plan
   approval are skipped and `ask_user` refuses without prompting; the model asks
   in the thread instead of waiting thirty minutes on a socket nobody reads.
@@ -714,7 +714,7 @@ pool; `lib/turns/headless-turn.ts` is the socket client, the store-free
 - **What it sends.** The headers `server.js` sends, built by the same
   `turnContextHeaders` (`lib/turns/turn-headers.js`) from the same
   `resolveTurnContext` (`lib/turns/turn-context.ts`), for the acting person's
-  pinned session and their own thread about the document, plus `x-aiq-mode:
+  pinned session and their own thread about the document, plus `x-grid-mode:
   headless`. The envelope carries `conversationId`. `message_id` is
   `wakeTurnId(<event id>)`, `author_name` the person's directory name.
 - **When it sends.** Only once the hello names `user_message.trigger`,

@@ -35,6 +35,6 @@ def test_the_resource_names_the_tier_the_build_and_the_process():
 
 def test_blank_values_are_left_out_and_the_name_falls_back_to_the_chat_service():
     assert resource_attributes({"OTEL_SERVICE_NAME": " ", "GRID_GIT_SHA": "", "HOSTNAME": ""}, pid=7) == {
-        "service.name": "grid-aiq-agent",
+        "service.name": "grid-backend-chat",
         "process.pid": 7,
     }

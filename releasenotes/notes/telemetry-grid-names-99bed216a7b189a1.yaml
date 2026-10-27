@@ -1,0 +1,8 @@
+---
+operators:
+  - >
+    Traces from the backend now carry the service names grid-backend-chat and
+    grid-backend-api instead of grid-aiq-agent and grid-aiq-api, so re-point
+    any saved trace view or alert that filters on the old names. The span
+    attributes are now grid.*; for one release they are also written as
+    aiq.*, so views on those keep matching until you move them.

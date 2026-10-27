@@ -41,7 +41,7 @@ __all__ = [
 def skip_clarifier_requested() -> bool:
     """Whether the API middleware marked this request as headless.
 
-    Covers ``X-AIQ-Mode: headless``, anonymous callers and unauthenticated
+    Covers ``X-Grid-Mode: headless``, anonymous callers and unauthenticated
     internal callers. Outside a request the middleware's default identity
     says ``False``.
     """
@@ -51,7 +51,7 @@ def skip_clarifier_requested() -> bool:
 
 
 def headless_turn_requested() -> bool:
-    """Whether the caller said ``X-AIQ-Mode: headless``: a job holds the socket, and no person watches it.
+    """Whether the caller said ``X-Grid-Mode: headless``: a job holds the socket, and no person watches it.
 
     Narrower than :func:`skip_clarifier_requested`, which an anonymous caller
     also sets: a question put to a headless turn's asker (``ask_user``) would

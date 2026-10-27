@@ -202,6 +202,7 @@ describe('askPiloti', () => {
       if_idle: true,
     })
     expect(request.requires).toEqual(ASK_REQUIRES)
+    expect(request.headers['x-grid-mode']).toBe('headless')
     expect(request.headers['x-aiq-mode']).toBe('headless')
     const context = verifyGridRequestContextEnvelope(
       request.headers['x-grid-request-context'],

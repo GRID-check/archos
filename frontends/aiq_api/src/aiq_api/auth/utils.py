@@ -90,9 +90,28 @@ def _load_trace_client_ip_headers() -> list[str]:
     return [header.strip().lower() for header in raw.split(",") if header.strip()]
 
 
+#: The prefix of our request headers, and the one they had before ADR-0145 (row 10b).
+#: The BFF and the backend deploy separately, so for one release a header is read
+#: under either; the BFF sends both meanwhile.
+HEADER_PREFIX = "x-grid-"
+LEGACY_HEADER_PREFIX = "x-aiq-"
+
+#: The prefix of our span attributes, and the one saved trace views filtered on
+#: before ADR-0145. For one release every attribute is written under both.
+TRACE_TAG_PREFIX = "grid."
+LEGACY_TRACE_TAG_PREFIX = "aiq."
+
+
+def _grid_header(headers: dict[bytes, bytes], name: str) -> str | None:
+    """The ``x-grid-<name>`` header's text, else the legacy ``x-aiq-<name>``'s."""
+    return _extract_header_text(headers, HEADER_PREFIX + name) or _extract_header_text(
+        headers, LEGACY_HEADER_PREFIX + name
+    )
+
+
 def is_headless_request(headers: dict[bytes, bytes]) -> bool:
     """Return ``True`` for headless callers that should skip the clarifier."""
-    return headers.get(b"x-aiq-mode", b"").decode().lower() == "headless"
+    return (_grid_header(headers, "mode") or "").lower() == "headless"
 
 
 def _build_pseudonymous_trace_user_id(principal_type: str, principal_sub: str, secret: str | None) -> str | None:
@@ -157,13 +176,13 @@ def _extract_explicit_access_channel(headers: dict[bytes, bytes], *, allow_overr
     if not allow_override:
         return None
 
-    value = _extract_header_text(headers, "x-aiq-access-channel")
+    value = _grid_header(headers, "access-channel")
     if not value:
         return None
     channel = value.lower()
     if channel in TRACE_ACCESS_CHANNELS:
         return channel
-    logger.warning("Ignoring unsupported X-AIQ-Access-Channel=%r", value)
+    logger.warning("Ignoring unsupported X-Grid-Access-Channel=%r", value)
     return None
 
 
@@ -221,14 +240,14 @@ def _build_trace_user_tags(user: dict[str, Any], mode: str, secret: str | None) 
 
     tags = {
         "enduser.id": pseudonymous_id,
-        "aiq.user.id": pseudonymous_id,
-        "aiq.auth.type": str(principal_type),
+        "grid.user.id": pseudonymous_id,
+        "grid.auth.type": str(principal_type),
     }
     if mode == "full":
         if email := user.get("email"):
-            tags["aiq.user.email"] = str(email)
+            tags["grid.user.email"] = str(email)
         if name := user.get("name"):
-            tags["aiq.user.name"] = str(name)
+            tags["grid.user.name"] = str(name)
     return tags
 
 
@@ -245,10 +264,10 @@ def _build_common_trace_tags(
     """Return always-on low-risk trace tags describing request origin and auth shape."""
     auth_transport = _extract_auth_transport(headers)
     tags = {
-        "aiq.caller.type": str(user.get("type") or "unknown"),
-        "aiq.auth.transport": auth_transport,
-        "aiq.auth.verified": "true" if _is_verified_trace_user(user) else "false",
-        "aiq.access.channel": _infer_access_channel(
+        "grid.caller.type": str(user.get("type") or "unknown"),
+        "grid.auth.transport": auth_transport,
+        "grid.auth.verified": "true" if _is_verified_trace_user(user) else "false",
+        "grid.access.channel": _infer_access_channel(
             headers,
             user,
             auth_transport,
@@ -260,7 +279,7 @@ def _build_common_trace_tags(
         client_ip = _extract_client_ip(headers, scope, client_ip_headers)
         client_id = _build_pseudonymous_trace_client_id(client_ip or "", client_id_secret)
         if client_id:
-            tags["aiq.client.id"] = client_id
+            tags["grid.client.id"] = client_id
 
     return tags
 
@@ -326,7 +345,12 @@ def build_request_trace_tags(
         client_ip_headers=client_ip_headers,
     )
     tags.update(_build_trace_user_tags(user, user_identity_mode, user_identity_secret))
-    return tags
+    legacy = {
+        LEGACY_TRACE_TAG_PREFIX + key.removeprefix(TRACE_TAG_PREFIX): value
+        for key, value in tags.items()
+        if key.startswith(TRACE_TAG_PREFIX)
+    }
+    return {**tags, **legacy}
 
 
 def attach_request_to_active_trace(

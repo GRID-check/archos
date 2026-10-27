@@ -306,7 +306,7 @@ class TestToolDescriptionPrefersAskingWhenOptionsAreNameable:
 
 
 class TestAHeadlessTurnIsNeverAsked:
-    """A turn an event woke (``X-AIQ-Mode: headless``): nobody holds the socket to answer."""
+    """A turn an event woke (``X-Grid-Mode: headless``): nobody holds the socket to answer."""
 
     @pytest.mark.asyncio
     async def test_the_tool_refuses_without_prompting_and_points_at_the_thread(self):
