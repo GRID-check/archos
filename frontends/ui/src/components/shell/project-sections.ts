@@ -7,6 +7,7 @@ import {
   Folder,
   MessageSquare,
   LayoutDashboard,
+  Search,
   Zap,
 } from 'lucide-react'
 
@@ -23,7 +24,7 @@ import {
  * ONE place, so the rail and the palette can never disagree again.
  *
  * One icon per destination. Rail order (top → bottom, Settings pinned
- * separately): Ask Piloti · Files · Automation* · Archiv* · Inbox*.
+ * separately): Ask Piloti · Files · Automation* · Archiv* · Suche · Inbox*.
  *
  * Ask Piloti is the primary job-to-be-done and leads; Files is the other work
  * surface. History has no rail entry any more — the chat toolbar's history
@@ -54,6 +55,7 @@ export type ProjectSectionKey =
   | 'files'
   | 'knowledge'
   | 'officeShelf'
+  | 'search'
   | 'inbox'
   | 'intake'
   | 'settings'
@@ -197,6 +199,21 @@ const PROJECT_SECTIONS: readonly ProjectSection[] = [
     inRail: true,
     inPalette: true,
     shortcutKey: 'a',
+    group: 'org',
+  },
+  {
+    // The workspace search (ADR-0133): every shelf the reader may open, from
+    // anywhere. Org-scoped like the Archiv, so a cross-project doorway; ⌘K
+    // reaches it too, carrying what was typed. A project's own search is a
+    // mode of its Dateien, not a second rail entry.
+    key: 'search',
+    segment: null,
+    href: '/app/search',
+    icon: Search,
+    i18nKey: 'search',
+    inRail: true,
+    inPalette: true,
+    shortcutKey: 'u',
     group: 'org',
   },
   {

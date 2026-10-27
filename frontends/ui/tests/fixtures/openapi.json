@@ -7665,6 +7665,25 @@
                         "maxLength": 120,
                         "description": "Part of address, municipality or state."
                       },
+                      "municipalities": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 120
+                        },
+                        "maxItems": 20,
+                        "description": "Municipality as the facet names it, any case."
+                      },
+                      "projectIds": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "maxItems": 50,
+                        "description": "Only these projects (within the scope)."
+                      },
                       "facts": {
                         "type": "array",
                         "items": {
@@ -7874,7 +7893,10 @@
                       "document_date",
                       "document_type",
                       "page_count",
-                      "project"
+                      "project",
+                      "scale",
+                      "folder",
+                      "status"
                     ],
                     "description": "Default: relevance with text, else added."
                   },

@@ -217,6 +217,24 @@ yet for the same reason.
    operations `saved-search-list`, `-create`, `-update`, `-delete`
    (`lib/search/saved-search-*.ts`).
 
+### Where the page is
+
+One organism, `frontends/ui/src/features/search` (`SearchWorkspace`), at every
+scope; the question lives in the URL (`?q=…&type=…&view=register&sort=…`), so
+a search is a link and Back walks its filters.
+
+- `/app/search`: the whole office. The rail's „Suche“ (`g u`), the header's
+  magnifier, and ⌘K, whose first row carries what was typed
+  (`/app/search?q=…`). The project facet narrows it to one project.
+- A project's Dateien and the Büroablage: „Suche“ in the header switches the
+  listing to the search (`?mode=search`), scoped to the shelf and the open
+  folder (`?folder=`).
+- `/dev/search`: the organism over a fixture answer, list and register.
+
+A hit opens where the workspace already shows it: a document in its shelf's
+preview (`?doc=`), an annotation in the review at the mark. The passage's page
+is not in the link yet: the Dateien preview has no page parameter.
+
 ### Piloti
 
 Piloti reaches the search as every other client does: `workspace-search` is

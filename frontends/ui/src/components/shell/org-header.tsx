@@ -5,7 +5,7 @@ import * as React from 'react'
 import dynamic from 'next/dynamic'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Archive, Bell, MessageSquarePlus } from 'lucide-react'
+import { Archive, Bell, MessageSquarePlus, Search } from 'lucide-react'
 
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useInboxBadge } from '@/features/collaboration/hooks/use-inbox'
@@ -113,6 +113,13 @@ export function OrgHeader({
               active={pathname === '/app/office-shelf' || pathname.startsWith('/app/office-shelf/')}
             />
           )}
+          {/* The workspace search (ADR-0133); ⌘K reaches it from anywhere too. */}
+          <OrgHeaderIconLink
+            href="/app/search"
+            label={t('sections.search')}
+            icon={Search}
+            active={pathname === '/app/search' || pathname.startsWith('/app/search/')}
+          />
           {canAccessInbox && (
             <OrgHeaderIconLink
               href="/app/inbox"
