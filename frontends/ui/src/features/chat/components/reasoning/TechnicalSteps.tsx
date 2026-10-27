@@ -65,7 +65,7 @@ export const TechnicalSteps: FC<{ steps: StoredThinkingStep[]; t: Translator }> 
         {steps.map((step) => (
           <div
             key={step.id}
-            className="border-base ml-1 flex w-full items-center justify-between border-l-2 py-1.5 pl-4"
+            className="ml-1 flex w-full items-center justify-between py-1.5 pl-4"
             role="listitem"
           >
             <span className="text-foreground min-w-0 truncate text-sm">

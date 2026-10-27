@@ -66,6 +66,7 @@ import { liveLine } from '../lib/turn-events'
 import { deriveExecutedSteps } from '../lib/executed-steps'
 import { useElapsedSeconds, formatElapsed, type ElapsedSince } from '../hooks/use-elapsed-seconds'
 import { ReasoningFlow } from './reasoning/ReasoningFlow'
+import { SubagentGroups } from './reasoning/SubagentGroups'
 import { derivationOverview, documentLocation } from '../lib/derivation-basis'
 import { hasActions } from '../lib/work-list'
 import { settledHead, workParts } from '../lib/work-sentence'
@@ -779,6 +780,9 @@ const ChatThinkingView: FC<ChatThinkingProps> = ({
                       sourceCards={sourceCards}
                     />
                   </div>
+
+                  {/* The subagents the turn ran (AG-UI 1.0 SUBAGENT_*), nested; nothing without one. */}
+                  <SubagentGroups steps={steps} className="border-base border-t px-4 pb-3 pt-3" />
 
                   {/* Executed steps — what actually ran, as compact chips, under
                       the graph; a running one breathes. */}

@@ -40,6 +40,7 @@ from .custom_middleware import DeferredStructuredOutputMiddleware
 from .custom_middleware import EmptyContentFixMiddleware
 from .custom_middleware import SelectiveToolRetryMiddleware
 from .custom_middleware import SourceRegistryMiddleware
+from .custom_middleware import SubagentEventsMiddleware
 from .custom_middleware import ToolNameSanitizationMiddleware
 from .custom_middleware import ToolResultPruningMiddleware
 from .custom_middleware import ToolVisibilityMiddleware
@@ -48,6 +49,7 @@ from .deepagents_runtime import DeepAgentsRuntime
 from .models import DeepResearchAgentState
 from .models import ResearchNotes
 from .models import ResearchPlan
+from .tools.research import RESEARCHER_AGENT
 from .tools.research import RetrievalRounds
 from .tools.research import _positive_int_env
 from .tools.research import build_research_batch_tool
@@ -83,9 +85,10 @@ FILESYSTEM_TOOL_NAMES: tuple[FsToolName, ...] = (
 )
 ORCHESTRATOR_AGENT = "orchestrator"
 PLANNER_AGENT = "planner-agent"
-RESEARCHER_AGENT = "researcher-agent"
 SOURCE_ROUTER_AGENT = "source-router-agent"
 WRITER_AGENT = "writer-agent"
+#: The subagent deepagents adds to every orchestrator unless a profile turns it off.
+GENERAL_PURPOSE_AGENT = "general-purpose"
 
 
 @tool
@@ -671,14 +674,20 @@ def build_deep_research_graph(
         rounds=rounds if rounds is not None else RetrievalRounds(),
     )
     orchestrator_tools = [*context.tool_set.helper_tools, research_batch_tool]
+    subagents = build_deep_research_subagents(context)
+    # Innermost, so each `task` attempt the retry middleware makes is one
+    # subagent invocation on the chat wire.
+    subagent_events = SubagentEventsMiddleware([*(spec["name"] for spec in subagents), GENERAL_PURPOSE_AGENT])
     agent = create_deep_agent(
         model=context.llm_provider.get(LLMRole.ORCHESTRATOR),
         tools=orchestrator_tools,
         system_prompt=_orchestrator_prompt(context, orchestrator_tools),
-        subagents=build_deep_research_subagents(context),
+        subagents=subagents,
         store=InMemoryStore(),
         checkpointer=checkpointer,
-        middleware=context.middleware([*planning_middleware(context.backend), *context.middleware_set.orchestrator]),
+        middleware=context.middleware(
+            [*planning_middleware(context.backend), *context.middleware_set.orchestrator, subagent_events]
+        ),
         permissions=context.permissions(ORCHESTRATOR_AGENT),
         backend=context.backend,
     )
