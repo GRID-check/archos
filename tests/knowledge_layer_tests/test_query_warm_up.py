@@ -8,7 +8,7 @@ import time
 from types import SimpleNamespace
 
 from aiq_agent.knowledge import factory
-from sources.knowledge_layer.src.llamaindex.adapter import LlamaIndexRetriever
+from sources.knowledge_layer.src.llamaindex.retriever import LlamaIndexRetriever
 
 
 class _SlowEmbedder:
@@ -23,18 +23,18 @@ class _SlowEmbedder:
 
 def _inflight_wait_hook(waiting: threading.Semaphore):
     """Signal ``waiting`` each time a caller starts waiting on an in-flight embedding; returns the undo."""
-    from sources.knowledge_layer.src.llamaindex import adapter
+    from sources.knowledge_layer.src.llamaindex import query_embeddings
 
-    original = adapter._InflightEmbedding.result
+    original = query_embeddings._InflightEmbedding.result
 
     def result(self):
         waiting.release()
         return original(self)
 
-    adapter._InflightEmbedding.result = result  # type: ignore[method-assign]
+    query_embeddings._InflightEmbedding.result = result  # type: ignore[method-assign]
 
     def undo() -> None:
-        adapter._InflightEmbedding.result = original  # type: ignore[method-assign]
+        query_embeddings._InflightEmbedding.result = original  # type: ignore[method-assign]
 
     return undo
 
@@ -84,7 +84,7 @@ def test_a_failed_embedding_fails_every_waiter_at_once():
 
     assert attempts == ["q"]  # one failure shared, not four in a row
     assert len(outcome) == 4 and all(isinstance(o, RuntimeError) for o in outcome)
-    assert retriever._embed_inflight == {}
+    assert retriever._query_embeddings._inflight == {}
 
 
 def test_after_a_shared_failure_the_next_call_tries_again():
@@ -164,7 +164,7 @@ def test_without_a_cache_parallel_callers_still_share_one_embedding(monkeypatch)
     """``AIQ_QUERY_EMBED_CACHE_SIZE=0`` turns the LRU off, not the in-flight
     sharing: the waiters read the vector off the in-flight record."""
     retriever, embedder = _retriever()
-    monkeypatch.setattr(LlamaIndexRetriever, "EMBED_CACHE_MAX", 0)
+    monkeypatch.setattr(retriever._query_embeddings, "max_entries", 0)
     waiting = threading.Semaphore(0)
     undo = _inflight_wait_hook(waiting)
     release = threading.Event()
@@ -191,8 +191,8 @@ def test_without_a_cache_parallel_callers_still_share_one_embedding(monkeypatch)
 
     assert embedder.calls == ["q"]
     assert results == [[1.0]] * 3
-    assert retriever._embed_cache == {}
-    assert retriever._embed_inflight == {}
+    assert retriever._query_embeddings._cache == {}
+    assert retriever._query_embeddings._inflight == {}
 
 
 def test_initialising_the_retriever_leaves_the_global_embed_model_alone(monkeypatch):
@@ -202,9 +202,9 @@ def test_initialising_the_retriever_leaves_the_global_embed_model_alone(monkeypa
     from llama_index.core import Settings
     from llama_index.embeddings import nvidia
 
-    from sources.knowledge_layer.src.llamaindex import adapter
+    from sources.knowledge_layer.src.llamaindex import dependencies
 
-    monkeypatch.setattr(adapter, "ensure_retrieval_dependencies", lambda: None)
+    monkeypatch.setattr(dependencies, "ensure_retrieval_dependencies", lambda: None)
     from llama_index.core import MockEmbedding
 
     monkeypatch.setattr(nvidia, "NVIDIAEmbedding", lambda **kwargs: MockEmbedding(embed_dim=2))
@@ -220,6 +220,6 @@ def test_initialising_the_retriever_leaves_the_global_embed_model_alone(monkeypa
 def test_the_llamaindex_backend_registers_the_retriever():
     # A class inserted between the decorator and the retriever once took the
     # registration: every llamaindex deployment built the wrong class.
-    import sources.knowledge_layer.src.llamaindex.adapter  # noqa: F401  (registers)
+    import sources.knowledge_layer.src.llamaindex.retriever  # noqa: F401  (registers)
 
     assert factory._RETRIEVER_REGISTRY["llamaindex"].__name__ == "LlamaIndexRetriever"

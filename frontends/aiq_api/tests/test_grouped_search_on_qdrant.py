@@ -57,7 +57,7 @@ def stack(monkeypatch):
         if os.environ.get("CI"):
             pytest.fail("AIQ_QDRANT_TEST_URL is unset on CI: the Qdrant service container is missing")
         pytest.skip("AIQ_QDRANT_TEST_URL not set")
-    from knowledge_layer.llamaindex.adapter import LlamaIndexRetriever
+    from knowledge_layer.llamaindex.retriever import LlamaIndexRetriever
     from knowledge_layer.qdrant import schema
     from knowledge_layer.qdrant import store as store_module
 

@@ -773,7 +773,7 @@ def test_the_startup_probe_times_only_methods_the_retriever_has():
     import re
 
     import startup_probe
-    from knowledge_layer.llamaindex.adapter import LlamaIndexRetriever
+    from knowledge_layer.llamaindex.retriever import LlamaIndexRetriever
 
     timed = re.findall(r"retriever\.(\w+) = timed\(", Path(startup_probe.__file__).read_text())
     assert timed, "the probe times no retriever method; this test reads its source"

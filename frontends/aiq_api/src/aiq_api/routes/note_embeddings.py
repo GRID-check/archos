@@ -73,18 +73,18 @@ def add_note_embedding_routes(router: APIRouter) -> None:
         try:
             import asyncio
 
-            from knowledge_layer.llamaindex.adapter import LlamaIndexRetriever
-            from knowledge_layer.llamaindex.adapter import _resolve_embed_api_key
-            from knowledge_layer.llamaindex.adapter import embed_fingerprint
+            from knowledge_layer.llamaindex.embedding import embed_fingerprint
+            from knowledge_layer.llamaindex.embedding import resolve_embed_api_key
+            from knowledge_layer.llamaindex.retriever import LlamaIndexRetriever
 
             model = LlamaIndexRetriever.DEFAULT_EMBED_MODEL
             base_url = LlamaIndexRetriever.DEFAULT_EMBED_BASE_URL
-            api_key = _resolve_embed_api_key(base_url, model)
+            api_key = resolve_embed_api_key(base_url, model)
             if not api_key:
                 logger.warning("No embeddings API key resolved; notes stay on the lexical path")
                 return NoteEmbeddingResponse(vectors=[], fingerprint="", dimensions=0, error="embedder_not_configured")
 
-            from knowledge_layer.llamaindex.adapter import make_embed_model
+            from knowledge_layer.llamaindex.embedding import make_embed_model
 
             embedder = make_embed_model(base_url=base_url, model=model, api_key=api_key)
             # Synchronous HTTP inside; keep it off the event loop like the

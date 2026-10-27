@@ -10,11 +10,13 @@ from __future__ import annotations
 
 import math
 import re
+from pathlib import Path
 from typing import Any
 
 import pytest
 from knowledge_layer.llamaindex import adapter as adapter_module
-from knowledge_layer.llamaindex.adapter import LlamaIndexRetriever
+from knowledge_layer.llamaindex import embedding as embedding_module
+from knowledge_layer.llamaindex.retriever import LlamaIndexRetriever
 from knowledge_layer.qdrant import store as store_module
 from knowledge_layer.qdrant import writes
 from knowledge_layer.qdrant.payload import ChunkRecord
@@ -217,9 +219,10 @@ def test_a_write_the_store_refuses_raises(retriever, monkeypatch):
 
 
 def test_adapter_never_imports_qdrant_client():
-    """The adapter reaches Qdrant only through ``knowledge_layer.qdrant`` (ADR-0115)."""
-    source = open(adapter_module.__file__, encoding="utf-8").read()
-    assert not re.search(r"^\s*(from|import)\s+qdrant_client\b", source, re.MULTILINE)
+    """The ingestor and the retriever reach Qdrant only through ``knowledge_layer.qdrant`` (ADR-0115)."""
+    for module in Path(adapter_module.__file__).parent.glob("*.py"):
+        source = module.read_text(encoding="utf-8")
+        assert not re.search(r"^\s*(from|import)\s+qdrant_client\b", source, re.MULTILINE), module.name
 
 
 def test_refresh_facts_copies_a_persons_edit_onto_the_points(retriever, monkeypatch):
@@ -723,7 +726,7 @@ def test_embed_query_initializes_without_reaching_any_store(monkeypatch):
             return _vector(text)
 
     monkeypatch.delenv("AIQ_QDRANT_URL", raising=False)
-    monkeypatch.setattr(adapter_module, "make_embed_model", lambda **kwargs: Embedder())
+    monkeypatch.setattr(embedding_module, "make_embed_model", lambda **kwargs: Embedder())
     monkeypatch.setattr(store_module, "get_store", lambda *a, **k: pytest.fail("embedding reached the store"))
     instance = LlamaIndexRetriever({"embed_model": "test-model", "embed_base_url": "https://test"})
 

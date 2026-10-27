@@ -336,7 +336,7 @@ class TestThroughTheTool:
 
 def test_the_adapter_hands_the_search_each_chunks_place_in_its_file(monkeypatch):
     """``chunk_ordinal`` is store-only metadata; without it on the hit no overlap could be found."""
-    from knowledge_layer.llamaindex.adapter import LlamaIndexRetriever
+    from knowledge_layer.llamaindex.retriever import LlamaIndexRetriever
     from knowledge_layer.qdrant import retrieval as adapter_retrieval
     from knowledge_layer.qdrant.search import Hit
 

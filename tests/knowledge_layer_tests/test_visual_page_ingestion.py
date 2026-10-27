@@ -703,11 +703,14 @@ class TestRunIngestionEmbedsAndChecksWithTheWholePage:
         from llama_index.embeddings import nvidia
 
         made: list[dict] = []
-        monkeypatch.setattr(adapter, "ensure_retrieval_dependencies", lambda: None)
+        from knowledge_layer.llamaindex import dependencies
+        from knowledge_layer.llamaindex import embedding
+
+        monkeypatch.setattr(dependencies, "ensure_retrieval_dependencies", lambda: None)
         monkeypatch.setattr(nvidia, "NVIDIAEmbedding", lambda **kwargs: made.append(kwargs) or MagicMock())
         ing = LlamaIndexIngestor({})
 
         ing._ensure_initialized()
 
-        assert [kwargs["timeout"] for kwargs in made] == [adapter.EMBED_TIMEOUT_SECONDS]
-        assert adapter.EMBED_TIMEOUT_SECONDS > adapter.QUERY_EMBED_TIMEOUT_SECONDS
+        assert [kwargs["timeout"] for kwargs in made] == [embedding.EMBED_TIMEOUT_SECONDS]
+        assert embedding.EMBED_TIMEOUT_SECONDS > embedding.QUERY_EMBED_TIMEOUT_SECONDS
