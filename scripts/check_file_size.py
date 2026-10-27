@@ -19,7 +19,13 @@ A ratchet, in the style of `tests/test_english_names.py`: limits for everything
 new, and a baseline (`ci/size_baseline.json`) holding what was already over them
 when the check arrived.
 
-- A source file (Python, TypeScript or JavaScript) may have at most ``FILE_LIMIT`` lines.
+- A source file (Python, TypeScript or JavaScript) may have at most ``FILE_LIMIT`` lines,
+  not counting its import statements (``import`` and ``from … import`` in
+  Python; ``import … from`` and ``export … from`` in TypeScript and JavaScript,
+  multi-line ones whole) or the blank lines between two of them. An import is
+  a dependency named, not logic written: counting it made a precise import
+  (one namespace, one table module instead of a barrel) cost lines a split
+  had to pay back, so the ratchet punished decoupling.
 - A Python function may span at most ``FUNCTION_LIMIT`` lines, from its `def`
   to its last line (``end_lineno - lineno + 1``), the bar
   `docs/contributing/code-conventions.md` sets ("Sixty lines is long").
@@ -122,14 +128,68 @@ def function_lengths(source: str) -> dict[str, int]:
     return lengths
 
 
+# One TypeScript or JavaScript import or re-export statement, from its first
+# line to its specifier: `import x from 'm'`, `import type { A } from 'm'`,
+# `import 'm'`, `export { a } from 'm'`, `export * as ns from 'm'`. A dynamic
+# `import(…)` and `import.meta` are expressions, not statements, and are counted.
+TS_IMPORT = re.compile(
+    r"^[ \t]*"
+    r"(?:import(?:\s+type)?\s+[^'\"`;()]*?\sfrom\s*"  # import x from, import { a } from
+    r"|import\s*"  # import 'side-effect'
+    r"|export(?:\s+type)?\s*(?:\*(?:\s+as\s+\w+)?|\{[^}]*\})\s*from\s*)"  # export * / { a } from
+    r"['\"][^'\"\n]+['\"];?[ \t]*$",
+    re.M,
+)
+
+
+def import_lines(path: str, source: str) -> set[int]:
+    """The 1-based lines of ``source`` its import statements occupy."""
+    if path.endswith(".py"):
+        try:
+            tree = ast.parse(source)
+        except SyntaxError:
+            return set()
+        return {
+            line
+            for node in ast.walk(tree)
+            if isinstance(node, ast.Import | ast.ImportFrom)
+            for line in range(node.lineno, (node.end_lineno or node.lineno) + 1)
+        }
+    covered: set[int] = set()
+    for match in TS_IMPORT.finditer(source):
+        first = source.count("\n", 0, match.start()) + 1
+        covered.update(range(first, first + match.group(0).count("\n") + 1))
+    return covered
+
+
+def counted_lines(path: str, source: str) -> int:
+    """Lines as `wc -l` counts them, less import statements and the blank lines between two of them."""
+    rows = source.split("\n")
+    if rows and rows[-1] == "":
+        rows.pop()  # the newline that ends the last line opens no line of its own
+    imports = import_lines(path, source)
+    skipped = set(imports)
+    previous_code = 0  # the last non-blank line seen, 0 before the first
+    blanks: list[int] = []
+    for number, row in enumerate(rows, start=1):
+        if not row.strip():
+            blanks.append(number)
+            continue
+        if number in imports and previous_code in imports:
+            skipped.update(blanks)
+        blanks = []
+        previous_code = number
+    return len(rows) - len(skipped)
+
+
 def measure(root: Path, paths: list[str]) -> Sizes:
     """Everything in ``paths`` that is over a limit."""
     sizes = Sizes()
     for path in paths:
         source = (root / path).read_text(encoding="utf-8", errors="replace")
-        # Counted as `wc -l` does, plus an unterminated last line. Not splitlines(),
-        # which also breaks on U+2028 and form feeds inside a string.
-        lines = source.count("\n") + int(bool(source) and not source.endswith("\n"))
+        # Split on "\n" only, not splitlines(), which also breaks on U+2028 and
+        # form feeds inside a string.
+        lines = counted_lines(path, source)
         if lines > FILE_LIMIT:
             sizes.files[path] = lines
         if not path.endswith(".py"):
