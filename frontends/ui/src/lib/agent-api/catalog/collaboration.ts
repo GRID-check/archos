@@ -393,6 +393,7 @@ export const collaborationOperations = [
     path: '/api/proposals/[id]/apply',
     params: proposalParams,
     body: applyProposalRequestSchema,
+    personDecides: true,
     load: () => import('@/app/api/proposals/[id]/apply/route'),
   },
   {
@@ -403,6 +404,7 @@ export const collaborationOperations = [
     method: 'POST',
     path: '/api/proposals/[id]/dismiss',
     params: proposalParams,
+    personDecides: true,
     load: () => import('@/app/api/proposals/[id]/dismiss/route'),
   },
   {

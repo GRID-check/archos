@@ -68,6 +68,16 @@ export function isOnDoor(name: string, door: AgentDoor = 'office'): boolean {
   return door === 'platform' ? entry.platform === true : entry.external || entry.piloti !== false
 }
 
+/**
+ * Whether the app-only tool `name` (`catalog/app-views.ts`) is offered to a view
+ * in `audience`'s host: an outside agent's only, since only an outside agent's
+ * host draws MCP Apps. Piloti's own door and the platform door list none.
+ */
+export function isAppToolFor(audience: Audience, name: string): boolean {
+  const entry = exposureOf(name)
+  return audience === 'external' && entry?.app === true && !entry.withheld
+}
+
 /** The native tool Piloti does `name` with, when the config names one: `remember` for `project-memory-create`. */
 export function nativeToolOf(name: string): string | undefined {
   const piloti = exposureOf(name)?.piloti

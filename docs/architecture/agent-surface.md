@@ -92,20 +92,29 @@ is how old the answers about the person may be:
 
 | Client | A read | A write |
 |---|---|---|
-| External agent | Runs | The client asks its user, driven by the tool annotations. On a 2026-07-28 request from a client that declares form elicitation, the door asks the person itself before a destructive write (below) |
+| External agent | Runs | The client asks its user, driven by the tool annotations. On a 2026-07-28 request from a client that declares form elicitation, the door asks the person itself before a destructive write, and before deciding a proposal (`proposal-apply`, `proposal-dismiss`: `personDecides`), whatever the proposal changes (below) |
 | Piloti in-product, in a conversation that is the person's alone | Runs if what it names lies in a project the person may chat in, after what it may carry is recorded on the conversation (below) | Becomes an `operation` proposal. The person accepts it (it runs as them) or dismisses it (ADR-0105) |
 | Piloti in-product, in a shared conversation | Runs only a document's content or a project's facts (`AUDIENCE_READS`), of the conversation's own project or one every reader may open, never of a restricted folder, recorded first; every other read is refused with a sentence the model relays | As above, refused when it names a project outside the audience's reach |
 
 #### The person confirms in their own chat
 
 An outside agent's destructive write (`destructiveHint`, never a read, never
-Piloti's) is put to the person before it runs when the request is of the
-2026-07-28 era and its client declares form elicitation in the request's
-`_meta` capabilities (`lib/agent-api/confirmation.ts`). The tool answers
-`inputRequired` with one `elicitation/create`: a plain English line built from
+Piloti's), and its decision of a proposal (an operation marked
+`personDecides`: `proposal-apply`, `proposal-dismiss`, ADR-0142), is put to the
+person before it runs when the request is of the 2026-07-28 era and its client
+declares form elicitation in the request's `_meta` capabilities
+(`lib/agent-api/confirmation.ts`). A proposal is asked about because the model
+never decides one for the person, and one it would apply may itself delete.
+The tool answers `inputRequired` with one `elicitation/create`: a plain English
+line and a form with one boolean, `confirm`. For a write the line is built from
 the operation's summary and the names of the project or document it touches
-(`summaryOfOperation`, `describeTargets`), and a form with one boolean,
-`confirm`. The client shows it in the person's own chat and calls again with
+(`summaryOfOperation`, `describeTargets`). For a decision it is the proposal's
+own: read as the person (`getProposal`), its kind, its summary, the targets it
+names and its project ("An agent connected to Piloti wants to apply this Piloti
+proposal as you: an action, "Delete the document Grundriss EG.pdf"
+(document-delete), on document "Grundriss EG.pdf". In project "Wohnhaus
+Lindengasse"."), never the proposal's id alone. A press on the MCP Apps card is
+not asked about: it is the person's (`mcp-apps.ts`). The client shows it in the person's own chat and calls again with
 the answer in `inputResponses`. A yes runs the call through `runOperation`, the
 path every call takes; a no, a cancel or an unchecked box returns "nothing was
 changed" (`structuredContent.decision: 'declined'`). Either answer is an audit
@@ -227,7 +236,7 @@ a client that lists 300 tools pays for them in every conversation.
 
 | Mode | The client sees | Use it when |
 |---|---|---|
-| `search` (default) | `search-operations`, `describe-operation`, `call-operation`, `report-missing-operation` | Almost always. The agent searches, reads one schema, calls |
+| `search` (default) | `search-operations`, `describe-operation`, `call-operation`, `report-missing-operation`; to an outside agent also `proposal-get`, the tool Piloti's proposal card is drawn from, and the card's two app-only buttons a host keeps from its model ([MCP Apps](#mcp-apps-cards-in-the-persons-own-assistant)) | Almost always. The agent searches, reads one schema, calls |
 | `tools` | One MCP tool per operation, each with its annotations | A client or model that copes with a long list |
 
 `report-missing-operation` is how an agent says "I wanted to do X and found
@@ -271,7 +280,7 @@ four characters a token):
 
 | Mode | Piloti | External agent |
 |---|---|---|
-| `search` | 4 tools, 3.5k characters | 4 tools, 3.5k characters |
+| `search` | 4 tools, 3.5k characters | 4 tools, 3.5k characters, plus `proposal-get` and the card's two app-only tools since ADR-0142 (5 shown to a model in an MCP Apps host) |
 | `tools` | 203 tools, 179k characters (238 and 202k before the amendment) | 216 tools, 214k characters (304 and 281k before the amendment) |
 
 `tools` mode lists only what says something: `ifMatch` only where the route reads
@@ -348,6 +357,11 @@ Piloti for what it cannot get elsewhere. The office door offers
   artifact (`project-summary-generate`, `project-consistency-check`,
   `project-experience-extract`);
 - **Piloti itself**: `piloti-ask`.
+
+And it offers **Piloti's own cards**: an outside agent's host that renders MCP
+Apps draws Piloti's proposal card in the person's own chat, where they apply
+or discard it ([MCP Apps](#mcp-apps-cards-in-the-persons-own-assistant),
+ADR-0142).
 
 Everything else a person can do is still an operation, withheld in the
 exposure config (`withheld: { category, reason }`, [below](#the-exposure-config)):
@@ -439,6 +453,7 @@ is no operation, or an operation without an entry, does not compile (the object
 | `external` | an outside agent on an office door (`/api/mcp`, `/api/a2a`), and the OpenAPI document | `true` / `false` |
 | `piloti` | in-product Piloti on its workspace door | `true`; `false`; `'native:<tool>'`: Piloti does it with that native tool, so the door hides the operation from it |
 | `platform` | platform staff on the platform door (ADR-0126) | `true` for the `platform` domain, absent elsewhere |
+| `app` | an MCP Apps view in an outside agent's host (ADR-0142) | `true` on an app-only tool (`catalog/app-views.ts`) only, with `external` and `piloti` false: a card's button, listed with `_meta.ui.visibility: ["app"]` |
 | `withheld` | nobody | `{ category, reason }`: `external-service`, `product-config`, `model-compute`, `ui-state` |
 | `reason` | the reviewer | why the entry is not simply offered to both office audiences |
 
@@ -484,6 +499,7 @@ ceiling.
 | `piloti: false` | 124 (49 withheld, 55 platform, 12 sensitive, 3 asks, 3 decisions, 2 skill reads) |
 | `platform: true` | 55 |
 | `withheld` | 49 (29 `product-config`, 13 `ui-state`, 4 `external-service`, 3 `model-compute`) |
+| `app: true` | 2 (the proposal card's buttons; 337 entries with them) |
 
 | Piloti uses | Instead of |
 |---|---|
@@ -559,6 +575,7 @@ Markdown beside the module, embedded by `door/docs.spec.ts`
 | `piloti://guide` | How the workspace fits together, how ids flow, which operation reads what (`guide.md`) |
 | `piloti://glossary` | The office's German words and the catalog words they find: `glossary.md` and the search vocabulary |
 | `piloti://catalog` | Every operation this caller may run, by domain, read or write; generated per caller |
+| `ui://piloti/proposal-card` | Piloti's proposal card, an MCP Apps view (`text/html;profile=mcp-app`); drawn by the host from `proposal-get`'s result ([below](#mcp-apps-cards-in-the-persons-own-assistant)) |
 
 Prompts: `project-briefing`, `building-law-check`, `my-day` (each
 `prompts/<name>.md`, its arguments its `{{placeholders}}`), and
@@ -649,6 +666,85 @@ Piloti's own client and the platform door are offered no stream.
   the read is refused) until the stream ends. Project membership changes do not
   publish yet. The edge allows an hour of stream (`EDGE_TIMEOUT`); the client
   reconnects after.
+
+## MCP Apps: cards in the person's own assistant
+
+[ADR-0142](../adr/0142-piloti-cards-render-in-the-persons-own-assistant-as-mcp-apps.md).
+A host that renders MCP Apps (`io.modelcontextprotocol/ui`, spec 2026-01-26:
+Claude, ChatGPT, VS Code, Goose, Postman; Cursor since 2.6) draws Piloti's
+proposal card in the person's own chat, from a tool result, in a sandboxed
+iframe the host owns. Code: `lib/agent-api/mcp-apps.ts` (the door's side),
+`lib/agent-api/catalog/app-views.ts` (what is offered),
+`features/mcp-apps/proposal-card/` (the view), through the SDK
+`@modelcontextprotocol/ext-apps` (pinned 2.0.3).
+
+```mermaid
+sequenceDiagram
+  participant M as Host's model
+  participant H as Host (Claude, ChatGPT)
+  participant V as Card (iframe, ui://piloti/proposal-card)
+  participant D as /api/mcp
+  participant R as Proposal routes
+  M->>H: call proposal-get {params:{id}}
+  H->>D: tools/call proposal-get
+  D->>R: GET /api/proposals/[id] as the person
+  D-->>H: text + structuredContent {proposal}
+  H->>D: resources/read ui://piloti/proposal-card (cached)
+  H->>V: ui/notifications/tool-result
+  V->>H: tools/call proposal-card-apply {id} (the person's press)
+  H->>D: tools/call proposal-card-apply
+  D->>R: POST /api/proposals/[id]/apply as the person (authz)
+  D-->>V: {proposal} decided, or {status: 403 | 409}
+  V->>H: ui/update-model-context "the person decided proposal X"
+```
+
+| Piece | What | Where |
+|---|---|---|
+| The resource | One HTML document, the same for every office: script and styles inline, CSP declared empty (no origin to load, connect to or frame), no permission, `prefersBorder: false`. Listed in `resources/list` and read with `text/html;profile=mcp-app` | built by `scripts/build-mcp-app-views.ts` into `frontends/ui/mcp-app-views/` (`bun run build:mcp-apps`; `build` and `dev:next` run it; gitignored; copied into the image) |
+| The link | `proposal-get` carries `_meta.ui.resourceUri` (and the deprecated flat `ui/resourceUri`). In `search` mode it is listed beside the meta-tools: a host links a view to a tool, and `call-operation` runs every operation | `drawsResultOf` in `APP_VIEWS` |
+| The buttons | `proposal-card-apply`, `proposal-card-dismiss`: `_meta.ui.visibility: ["app"]`, not catalog operations (no search hit, `call-operation` answers unknown). Each runs the operation it names (`proposal-apply`, `proposal-dismiss`) through `executeOperation`, so the route's `authz`, rate limit and schema decide; a refusal carries `{ status, code }` | `APP_TOOLS`; exposure `app: true` |
+| Who gets it | An outside agent on an office door whose client can draw it: on the 2026-07-28 era, one whose request capabilities name `io.modelcontextprotocol/ui` with `text/html;profile=mcp-app` (read off each request's `_meta` before the SDK serves it); on the 2025 era, which carries no capabilities, every outside client, as before. Not Piloti (it draws its own cards and never decides a proposal), not the platform door | `declaresMcpApps`, `appHostOf`, `offersAppViews`, `isAppToolFor` |
+| A model's own decision | `proposal-apply` and `proposal-dismiss` carry `personDecides`: an outside agent's call is put to the person first through elicitation, like a destructive write, on a 2026-07-28 client that declares form elicitation; elsewhere it runs as before | `confirmation.ts` |
+| Telemetry | A press is `agent_operation_called` / `agent-tool-call` with `decision_source: app` from a client that declared MCP Apps, `app-unverified` from one that declared nothing (the 2025 era); either is the host's word, not a signed answer like `elicitation`. The decision is the proposal's (`piloti.proposal.decided`, the decider the person) | `telemetry.ts` |
+| The view's data | For a caller offered the views, `structuredContent` of `proposal-get` and the buttons' operations is never dropped for length; only the text is capped. Every other caller gets the usual cap | `VIEW_DATA_OPERATIONS` in `discovery.ts`, `offersAppViews` in `app-host.ts` |
+
+**The view** draws the catalog card for the proposal's kind (`operation`,
+`file_operation`, `memory`) through `A2uiCard` with the chat's own receipts;
+only the transport differs (`ProposalTransport`: `tools/call` through the host,
+no realtime channel). A `project_profile` proposal says to decide it in Piloti:
+its card needs the live profile. The host's theme maps onto Piloti's tokens
+where the host gives a variable (`host-theme.ts`, the table in ADR-0142), and
+`hostContext.locale` picks the language. The bundle leaves out the Markdown
+renderer (a view draws no `Text` leaf) and every dictionary namespace but
+`chat`, `common` and `nav`; it is about 1.7 MB, held under 2 MiB by
+`view-build.spec.ts`.
+
+**What the server cannot tell.** A view's `tools/call` and a model's look the
+same on the wire; the host enforces visibility. The buttons grant nothing an
+outside agent did not have (`proposal-apply` stays offered to it). A 2026-07-28
+client that does not declare MCP Apps never sees them; a 2025-era client that
+does not render MCP Apps lists them to its model as two more tools, and a call
+of one is recorded `app-unverified`.
+
+**A replayed result.** A host may replay a stored tool result. With no
+realtime channel in the frame, an open card re-reads the proposal once
+(`useServerProposal`), and every settled state, however the card reached it,
+is told to the model in one line ("is applied; it is no longer open; do not
+apply or dismiss it").
+
+**See it.** `/dev/mcp-apps` draws the built document in five host frames with
+the SDK's own `AppBridge`: host theme light and dark, no host styles, a German
+host, read only; a press shows the app-only call and the context line in the
+frame's log. **Test it in a real host**: the SDK's
+[testing guide](https://github.com/modelcontextprotocol/ext-apps/blob/main/docs/testing-mcp-apps.md)
+(`examples/basic-host` with `SERVERS='["https://<app-host>/api/mcp"]'` needs a
+bearer token; Claude's custom connector is the simpler probe).
+
+**Adding a view** (the read cards are next): an `APP_VIEWS` entry naming the
+operations whose result it draws, an entry in `scripts/build-mcp-app-views.ts`,
+a view under `features/mcp-apps/` drawing the catalog card through `A2uiCard`,
+and, for a control, an `APP_TOOLS` entry with its `exposure.config.ts` line
+(`app: true`) naming the operation it runs. Never a route of its own.
 
 ## Adding an operation
 
@@ -1112,6 +1208,11 @@ Then run `/mcp`, pick `piloti`, and sign in.
 
 Cursor opens the sign-in on first use.
 
+A client that renders MCP Apps (Claude, ChatGPT, VS Code) shows a proposal the
+agent reads with `proposal-get` as Piloti's card, with Apply and Discard for the
+person ([MCP Apps](#mcp-apps-cards-in-the-persons-own-assistant)). Every other
+client reads the same result as text.
+
 A client that does not support OAuth cannot connect yet. Scripts get WorkOS API
 Keys later.
 
@@ -1166,5 +1267,6 @@ and are covered by ADR-0122.
 - [ADR-0122](../adr/0122-everything-a-person-can-do-an-agent-can-do.md): the decision and the options that lost.
 - [ADR-0055](../adr/0055-api-first-workspace-primitives.md): one HTTP surface per primitive.
 - [ADR-0105](../adr/0105-piloti-works-on-shared-objects.md) and [`proposed-changes.md`](proposed-changes.md): proposals, the person decides.
+- [ADR-0142](../adr/0142-piloti-cards-render-in-the-persons-own-assistant-as-mcp-apps.md): Piloti's cards as MCP Apps in the person's own assistant.
 - [ADR-0108](../adr/0108-background-runs-act-as-the-person-who-commissioned-them.md): resolving the person on every call.
 - [`adding-a-tool.md`](adding-a-tool.md): the Python tools, for task-shaped reasoning.

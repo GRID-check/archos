@@ -1,0 +1,27 @@
+/*
+ * The proposal card view's stylesheet (ADR-0142): Piloti's design system
+ * (`globals.css`: tokens, utilities, the dark variant), with Tailwind told to
+ * generate only the classes the card's components use. The build sets the scan
+ * base to this folder (`scripts/build-mcp-app-views.ts`); every other folder
+ * the card draws from is named here.
+ */
+@import '../../../app/globals.css';
+
+@source '../../a2ui';
+@source '../../grid-cards/components';
+@source '../../../components/ui';
+@source '../../../components/motion';
+
+/* The frame is the card's own: no page background, no page margin. The host
+   draws (or omits) the border around it (`prefersBorder` on the resource).
+   The frame is as tall as the card, not the app's full-height shell
+   (`globals.css` sets `height: 100%`): the SDK measures the document for
+   `ui/notifications/size-changed`, and a full-height body never let the frame
+   shrink once a decided card was shorter than the open one. */
+html,
+body {
+  background: transparent;
+  margin: 0;
+  height: auto;
+  min-height: 0;
+}
