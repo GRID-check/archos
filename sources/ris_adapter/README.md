@@ -1,7 +1,7 @@
 # RIS Adapter
 
-NAT data-source package for the **Austrian RIS** (Rechtsinformationssystem des
-Bundes) built on the official [OGD-RIS API v2.6](https://data.bka.gv.at/ris/api/v2.6/)
+Austrian federal and state law and case law for Piloti, from the **Austrian
+RIS** (Rechtsinformationssystem des Bundes), built on the official [OGD-RIS API v2.6](https://data.bka.gv.at/ris/api/v2.6/)
 (see the *OGD-RIS API Handbuch V2_6*, July 2025). No API key is required —
 OGD-RIS is an open-government-data service.
 

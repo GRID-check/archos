@@ -381,6 +381,11 @@ describe('scrubEvent (before_send)', () => {
     })
   })
 
+  test('drops an unhandled rejection that is only a redirect() (Error: NEXT_REDIRECT)', () => {
+    expect(scrubEvent(capture({ $exception_list: [{ type: 'Error', value: 'NEXT_REDIRECT' }] }, '$exception'))).toBeNull()
+    expect(scrubEvent(capture({ $exception_list: [{ type: 'Error', value: 'boom' }] }, '$exception'))).not.toBeNull()
+  })
+
   test('scrubs a click on a signed link, element chains and exception stacks', () => {
     const scrubbed = scrubEvent(
       capture(

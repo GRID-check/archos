@@ -6,6 +6,8 @@
  * Client-side: Uses same-origin URLs (proxied through UI server)
  */
 
+import { getBackendUrl } from '@/lib/backend-url'
+
 interface ApiConfig {
   baseUrl: string
   healthUrl: string
@@ -15,11 +17,6 @@ interface ApiConfig {
 }
 
 const isServer = typeof window === 'undefined'
-
-const getBaseUrl = (): string => {
-  const url = process.env.BACKEND_URL || process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000'
-  return url.replace(/\/$/, '')
-}
 
 /**
  * Get WebSocket URL.
@@ -41,11 +38,11 @@ export const getWebSocketUrl = async (): Promise<string> => {
 }
 
 export const apiConfig: ApiConfig = {
-  baseUrl: getBaseUrl(),
-  healthUrl: `${getBaseUrl()}/health`,
+  baseUrl: getBackendUrl(),
+  healthUrl: `${getBackendUrl()}/health`,
   timeout: 30000,
-  documentsBaseUrl: `${getBaseUrl()}/v1`,
-  collectionsUrl: `${getBaseUrl()}/v1/collections`,
+  documentsBaseUrl: `${getBackendUrl()}/v1`,
+  collectionsUrl: `${getBackendUrl()}/v1/collections`,
 }
 
 export const checkBackendHealth = async (): Promise<boolean> => {

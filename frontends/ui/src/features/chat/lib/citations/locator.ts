@@ -11,7 +11,7 @@
  * `citation-wire-contract.spec.ts`.
  */
 
-import { CITATION_KEY_QUALIFIERS, scopeForQualifier, type Shelf } from '../source-kinds'
+import { CITATION_KEY_QUALIFIERS, scopeForQualifier, type Shelf } from '@/lib/source-kinds'
 import { stripOriginToken } from './model'
 
 /** A knowledge-layer citation locator: filename + optional page + optional shelf. */

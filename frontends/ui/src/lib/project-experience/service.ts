@@ -21,6 +21,7 @@
 import 'server-only'
 import { NotFoundError } from '@/lib/api/errors'
 import { getBackendUrl } from '@/lib/backend-proxy'
+import { internalServiceHeaders } from '@/lib/internal-auth'
 import type { AuthorizedSession } from '@/lib/auth/types'
 import { requireProjectAccess } from '@/lib/authz/projects'
 import { documentEvidence, reasonFromEvidence } from '@/lib/project-intake/evidence'
@@ -189,7 +190,7 @@ async function askBackend(body: ExperienceRequest): Promise<ExperienceResponse |
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-grid-internal-token': process.env.GRID_INTERNAL_API_TOKEN ?? '',
+        ...internalServiceHeaders(getBackendUrl()),
       },
       body: JSON.stringify(body),
       signal: AbortSignal.timeout(EXTRACTION_TIMEOUT_MS),

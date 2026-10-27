@@ -12,6 +12,7 @@ import urllib.error
 
 import pytest
 
+from aiq_agent.common import bff_http
 from aiq_agent.knowledge import project_memory as pm
 
 
@@ -37,7 +38,7 @@ def _patched_opener(monkeypatch, *, body=None, error=None):
                 raise error
             return _FakeResponse(json.dumps(body).encode("utf-8"))
 
-    monkeypatch.setattr(pm, "_opener", _Opener())
+    monkeypatch.setattr(bff_http, "_opener", _Opener())
     yield captured
 
 
@@ -125,7 +126,7 @@ def test_bare_403_logs_token_mismatch_and_reraises(monkeypatch, caplog):
     body = json.dumps({"error": "Forbidden"}).encode()
     with _patched_opener(monkeypatch, error=_http_error(403, body)):
         with caplog.at_level(logging.ERROR, logger=pm.logger.name):
-            with pytest.raises(urllib.error.HTTPError):
+            with pytest.raises(bff_http.BffRefusedError):
                 pm.insert_memory_item(
                     scope="project", project_id="p1", organization_id=None, kind="derived_fact", content="x"
                 )
@@ -140,7 +141,7 @@ def test_forbidden_code_403_treated_as_token_mismatch(monkeypatch, caplog):
     body = json.dumps({"error": "Forbidden", "code": "FORBIDDEN"}).encode()
     with _patched_opener(monkeypatch, error=_http_error(403, body)):
         with caplog.at_level(logging.ERROR, logger=pm.logger.name):
-            with pytest.raises(urllib.error.HTTPError):
+            with pytest.raises(bff_http.BffRefusedError):
                 pm.insert_memory_item(
                     scope="project", project_id="p1", organization_id=None, kind="derived_fact", content="x"
                 )
@@ -151,7 +152,7 @@ def test_503_logs_disabled_and_reraises(monkeypatch, caplog):
     monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", "t")
     with _patched_opener(monkeypatch, error=_http_error(503, b'{"error":"Internal API disabled"}')):
         with caplog.at_level(logging.ERROR, logger=pm.logger.name):
-            with pytest.raises(urllib.error.HTTPError):
+            with pytest.raises(bff_http.BffRefusedError):
                 pm.insert_memory_item(
                     scope="project", project_id="p1", organization_id=None, kind="derived_fact", content="x"
                 )

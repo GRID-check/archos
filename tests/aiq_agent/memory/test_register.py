@@ -17,6 +17,7 @@ from pydantic import ValidationError
 
 import aiq_agent.knowledge.project_memory as pm
 import aiq_agent.project_context as pc
+from aiq_agent.common import bff_http
 from aiq_agent.memory import register
 from aiq_agent.memory.register import ProjectMemoryRememberConfig
 from aiq_agent.memory.register import project_memory_remember
@@ -525,7 +526,6 @@ def proposals(monkeypatch):
     from aiq_agent.cards.registry import CardRegistry
     from aiq_agent.cards.registry import reset_card_registry
     from aiq_agent.cards.registry import set_card_registry
-    from aiq_agent.tools import proposals_client
 
     _patch_context(monkeypatch)
     monkeypatch.setattr(pc, "get_request_envelope_from_context", lambda: (_HEADER, _SIGNATURE))
@@ -536,7 +536,7 @@ def proposals(monkeypatch):
 
     def install(answer):
         transport = _Transport(answer)
-        monkeypatch.setattr(proposals_client._opener, "open", transport)
+        monkeypatch.setattr(bff_http._opener, "open", transport)
         return transport
 
     yield type("Proposals", (), {"registry": registry, "install": staticmethod(install)})

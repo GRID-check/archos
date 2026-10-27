@@ -19,12 +19,16 @@ tasks:
   # ── backend (src/, sources/, frontends/aiq_api) ─────────────────────────────
 
   be:lint:
-    desc: 'Ruff lint + format check. CI: task be:lint -- --output-format=github'
+    desc: 'Ruff lint + format check, and the package seams (import-linter). CI: task be:lint -- --output-format=github'
     cmds:
       # Extra arguments reach `ruff check` only: the formatter calls its own
       # --output-format unstable and warns about it.
       - '{{.RUFF}} check . {{.CLI_ARGS}}'
       - '{{.RUFF}} format --check .'
+      # The contracts in pyproject.toml's [tool.importlinter]: aiq_agent reaches
+      # aiq_api and knowledge_layer only through their seams. About a second.
+      # docs/contributing/module-seams.md
+      - '{{.LINT_IMPORTS}} --no-cache'
 
   be:format:
     desc: Apply ruff formatting and autofixes

@@ -8,7 +8,7 @@
 import { render, screen, waitFor } from '@/test-utils'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { projectTourUrl } from '@/features/onboarding/lib/product-tour'
+import { projectTourUrl } from '@/lib/onboarding/product-tour'
 
 const pushMock = vi.fn()
 const refreshMock = vi.fn()

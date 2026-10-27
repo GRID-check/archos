@@ -17,7 +17,7 @@ import type { JSX } from 'react'
 import { Search } from 'lucide-react'
 
 import { FOCUS_RING } from '@/components/ui/focus-ring'
-import { TOUR_ANCHORS } from '@/features/onboarding/lib/product-tour'
+import { TOUR_ANCHORS } from '@/lib/onboarding/product-tour'
 import { useTranslations } from '@/i18n'
 import { cn } from '@/lib/utils'
 import { useShellOverlays } from './shell-overlays'

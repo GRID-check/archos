@@ -215,7 +215,7 @@ class Shelf(StrEnum):
     "Projektwissen".
 
     The TypeScript twin declares the same four members
-    (``frontends/ui/src/features/chat/lib/source-kinds.ts``); neither runtime
+    (``frontends/ui/src/lib/source-kinds.ts``); neither runtime
     imports the other's — three constants declared twice is looser coupling than
     a generated artifact on the core retrieval path.
     """
@@ -229,7 +229,7 @@ class Shelf(StrEnum):
 #: The shelf's wire value before it had an English name. A peer that has not
 #: rolled yet (an old BFF, a conversation or citation stored by an earlier build)
 #: still says ``archiv``; it reads as the office shelf and nothing writes it.
-#: The TypeScript twin is ``LEGACY_SHELF`` in ``features/chat/lib/source-kinds.ts``.
+#: The TypeScript twin is ``LEGACY_SHELF`` in ``lib/source-kinds.ts``.
 #: Remove after one release.
 LEGACY_SHELF_VALUES: dict[str, str] = {"archiv": Shelf.OFFICE_SHELF.value}
 

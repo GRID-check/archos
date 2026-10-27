@@ -18,7 +18,7 @@ import type { ReactElement } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { I18nProvider } from '@/i18n'
 import { CalculationCard } from './CalculationCard'
-import type { CalculationStepData } from '../schematics/types'
+import type { CalculationStepData } from '@/shared/cards/schemas'
 
 const chatSendFn = vi.fn()
 const setComposerPrefill = vi.fn()

@@ -85,10 +85,12 @@ jobs:
       # Third-party image pins this change adds or moves, for trivy.
       pins: ${{ steps.pins.outputs.pins || '[]' }}
       # What a pull request's test lanes run: 'select' only the tests its
-      # change reaches since its last green run, 'full' the sharded,
-      # coverage-gated suite, 'none' (UI) nothing. A push is always full.
-      # ci/pr_selection.py says why, in this job's log.
+      # change reaches, 'full' the sharded, coverage-gated suite, 'none' (UI)
+      # nothing. A push is always full. Reaches since what is `reference`:
+      # 'green' its last green run, 'base' the whole pull request against
+      # develop. ci/pr_selection.py says why, in this job's log.
       backend_mode: ${{ steps.pysel.outputs.py_mode || 'full' }}
+      py_reference: ${{ steps.pysel.outputs.reference || 'base' }}
       py_extra: ${{ steps.pysel.outputs.py_extra || '[]' }}
       ui_mode: ${{ steps.pysel.outputs.ui_mode || 'full' }}
       ui_files: ${{ steps.pysel.outputs.ui_files || '[]' }}
@@ -213,12 +215,25 @@ jobs:
     steps:
       # No persisted checkout token: this job runs repository-defined pre-commit
       # hooks, which never need a credential (hook repos clone anonymously).
-      # Full history: reno walks each note back to its commit, the release-note
-      # rule diffs against the merge base, and gitleaks reads every commit.
+      # A pull request starts shallow and fetches only down to its merge base,
+      # which is all the release-note rule and gitleaks read; the full history
+      # was 1.1 GB and ~75 s of every PR's critical path
+      # (docs/audit/blast-radius-2026-10.md §7). reno alone needs the whole
+      # history, and only when the notes change (below). A push keeps the full
+      # clone: its gitleaks scan reads every commit.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-          fetch-depth: 0
+          fetch-depth: ${{ github.event_name == 'pull_request' && 1 || 0 }}
+      - name: Fetch down to the merge base
+        if: github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          . ci/git_auth.sh
+          ci/fetch_merge_base.sh "$BASE_SHA" "$HEAD_SHA"
       - uses: ./.github/actions/setup-python-env
       # pre-commit builds an isolated env per hook repo, and they only change
       # when a `rev:` does: ~25s of env building becomes ~0.3s warm. The
@@ -254,9 +269,22 @@ jobs:
       - name: Repository machinery tests (CI, release notes)
         run: task be:test:harness
       # The notes are published verbatim to piloti.at, so their prose is linted
-      # on every run, a push straight to release/** included.
+      # on every run, a push straight to release/** included. reno's own lint
+      # reads the notes through the whole git history, and its verdict changes
+      # only with the notes, reno's config or its pin, so a pull request that
+      # touches none of them skips that part rather than fetch 1.1 GB for it.
       - name: Release notes (lint)
-        run: task release:lint
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          if [ -n "$BASE_SHA" ] && git diff --quiet "$BASE_SHA...HEAD" -- releasenotes/ Taskfile.yml taskfiles/repo.yml; then
+            echo "No change to the notes, reno's config or its pin: house rules only."
+            task release:lint:house
+          else
+            . ci/git_auth.sh
+            task release:lint
+          fi
       # AGENTS.md: a change a customer can notice ships with its note. The
       # escape hatch is the `no-release-note` label, read from the PR as it is
       # NOW rather than from the event payload: a re-run replays the payload, so
@@ -308,10 +336,11 @@ jobs:
       # did not change, and nobody can tell which version said what.
       image: semgrep/semgrep:1.177.0
     steps:
-      # Full history: diff-aware scanning needs the merge base with the PR's base.
+      # Shallow, on purpose: `semgrep ci` finds the merge base itself, asking
+      # the GitHub API first (GH_TOKEN below) and deepening the clone only if
+      # that fails. The full history cost ~72 s (docs/audit/blast-radius-2026-10.md §7).
+      # The checkout keeps its token so that fallback fetch can run.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          fetch-depth: 0
       # p/github-actions includes the mutable-action-tag rule, so an action
       # referenced by tag instead of commit SHA is a new finding here.
       - name: Semgrep scan
@@ -320,6 +349,7 @@ jobs:
           --exclude-rule javascript.lang.security.audit.unsafe-formatstring.unsafe-formatstring
         env:
           SEMGREP_RULES: p/default p/javascript p/typescript p/python p/secrets p/github-actions
+          GH_TOKEN: ${{ github.token }}
       - name: Findings summary
         if: always()
         continue-on-error: true
@@ -509,10 +539,13 @@ jobs:
       # This pull request's own database first: it carries what the last push
       # ran, so the next push re-runs only what it changed (and anything that
       # failed, which testmon keeps selecting until it passes). Else develop's,
-      # which is all a core shard reads (above).
+      # which is all a core shard reads (above). Develop's too when the plan
+      # selected against the whole pull request (`py_reference: base`): that
+      # selection is sound only measured from develop, and from this pull
+      # request's database it would skip a test whose file it changed earlier.
       - name: Restore this pull request's test database
         id: own-db
-        if: ${{ !matrix.shard }}
+        if: ${{ !matrix.shard && needs.changes.outputs.py_reference == 'green' }}
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: .testmondata-${{ matrix.suite }}
@@ -647,8 +680,8 @@ jobs:
   frontend-test:
     name: Frontend tests (shard ${{ matrix.shard }}/8)
     needs: changes
-    # A pull request whose change no UI spec reads since its last green run
-    # ('none') runs none; one that a selection can see runs only the specs
+    # A pull request whose change no UI spec reads since its reference (the
+    # last green run or the base, ci/pr_selection.py) runs none ('none'); one that a selection can see runs only the specs
     # its change reaches ('select'); everything else, and every push, all.
     if: needs.changes.outputs.frontend == 'true' && (github.event_name == 'push' || needs.changes.outputs.ui_mode != 'none')
     runs-on: ubuntu-latest

@@ -25,6 +25,7 @@ from aiq_agent.citations.extraction import extract_sources_from_tool_result
 from aiq_agent.citations.grounding_text import parse_knowledge_layer
 from aiq_agent.citations.registry import SourceRegistry
 from aiq_agent.citations.verification import verify_citations
+from aiq_agent.common.bff_http import SignedEnvelope
 from aiq_agent.common.grounding_block import begin_grounding_capture
 from aiq_agent.common.grounding_block import end_grounding_capture
 from aiq_agent.knowledge import restricted_use
@@ -37,7 +38,6 @@ from aiq_agent.knowledge.restricted_use import may_name
 from aiq_agent.knowledge.restricted_use import reset_cross_project_turn
 from aiq_agent.tools.cross_project import register as lookup
 from aiq_agent.tools.cross_project.client import CrossProjectLookupError
-from aiq_agent.tools.documents.filing import SignedEnvelope
 from aiq_agent.turn.response import answer_message_id
 from nat.plugin_api import FunctionInfo
 
