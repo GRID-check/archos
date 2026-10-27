@@ -13,7 +13,8 @@ import { vi, describe, test, expect, beforeEach, afterEach } from 'vitest'
 import { buildCitationModel, type CitationRef, type CitedDocument } from '../lib/citations'
 import type { CitationSource } from '../types'
 import { popoverMounts, resetPopoverMounts } from '@/test-utils/popover-mounts'
-import { SourcePreviewChip, resetSourcePreviewIndexCache } from './SourcePreview'
+import { SourcePreviewChip } from './SourcePreview'
+import { resetSourcePreviewIndexCache } from './source-preview/source-preview-index'
 import { SourceCard } from './reasoning/SourceCard'
 
 vi.mock('@/components/ui/popover', async (importOriginal) =>
