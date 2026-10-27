@@ -50,7 +50,7 @@ vi.mock('./repository', () => ({
 import { captureServer } from '@/lib/analytics/posthog-server'
 import type { AuthorizedSession } from '@/lib/auth/types'
 import { requirePlatformPermission } from '@/lib/authz/platform'
-import type { ProductFeedback } from '@/lib/db/schema'
+import type { ProductFeedback } from '@/lib/db/schema/product-feedback'
 import { getOrganizationDisplayName } from '@/lib/organizations/service'
 import { getOrganizationDisplayNames } from '@/lib/organizations/display-names'
 import {

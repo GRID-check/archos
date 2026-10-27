@@ -16,7 +16,7 @@ vi.mock('@/lib/db/tenant-context', () => ({
 }))
 
 import { getPlatformOrganizationId } from '@/lib/authz/platform'
-import type { ProductFeedback } from '@/lib/db/schema'
+import type { ProductFeedback } from '@/lib/db/schema/product-feedback'
 import { emitInboxItems } from '@/lib/inbox/service'
 import {
   listOrganizationMembersWithRoles,

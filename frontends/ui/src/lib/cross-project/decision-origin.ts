@@ -6,7 +6,7 @@
  * `_decision_provenance` in the tool).
  */
 
-import type { ProjectMemoryItem } from '@/lib/db/schema'
+import type { ProjectMemoryItem } from '@/lib/db/schema/project-memory'
 
 export type DecisionOrigin = 'person' | 'documents' | 'agent'
 

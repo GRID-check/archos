@@ -20,7 +20,10 @@ import { and, eq, inArray, ne, or, sql } from 'drizzle-orm'
 import { getDb } from '@/lib/db'
 import { executeRows } from '@/lib/db/execute-rows'
 import { withTenant } from '@/lib/db/tenant-context'
-import { documents, documentVersions, messages, projectMemory } from '@/lib/db/schema'
+import { documentVersions } from '@/lib/db/schema/document-versions'
+import { documents } from '@/lib/db/schema/documents'
+import { messages } from '@/lib/db/schema/messages'
+import { projectMemory } from '@/lib/db/schema/project-memory'
 
 /**
  * What an answer keeps as its text when the purge of its source folder removes

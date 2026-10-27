@@ -8,7 +8,7 @@
 import 'server-only'
 import { and, count, desc, eq, or } from 'drizzle-orm'
 import { getDb } from '@/lib/db'
-import { savedSearches, type SavedSearchRow } from '@/lib/db/schema'
+import { savedSearches, type SavedSearchRow } from '@/lib/db/schema/saved-searches'
 import { withTenant } from '@/lib/db/tenant-context'
 import type { OffsetPage } from '@/lib/api/offset-page'
 import type { SearchBody, SearchScopeQuery } from './search-wire'

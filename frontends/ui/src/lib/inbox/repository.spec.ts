@@ -48,7 +48,7 @@ import {
   upsertInboxItems,
 } from './repository'
 
-import type { NewInboxItem } from '@/lib/db/schema'
+import type { NewInboxItem } from '@/lib/db/schema/inbox'
 
 /** The one statement the call under test produced. */
 function onlyQuery(): CapturedQuery {

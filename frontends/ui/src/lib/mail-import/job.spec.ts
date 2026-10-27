@@ -68,7 +68,7 @@ vi.mock('./repository', () => ({
 }))
 
 import type { AuthorizedSession } from '@/lib/auth/types'
-import type { MailImport } from '@/lib/db/schema'
+import type { MailImport } from '@/lib/db/schema/mail-imports'
 import { emitInboxItems } from '@/lib/inbox/service'
 import { ForbiddenError, NotFoundError } from '@/lib/api/errors'
 import { requireFolderWrite } from '@/lib/authz/folder-access'

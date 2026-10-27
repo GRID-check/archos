@@ -19,7 +19,7 @@
  * disagree about what a stored stage looks like.
  */
 
-import { PROJECT_MEMORY_KINDS } from '@/lib/db/schema'
+import { PROJECT_MEMORY_KINDS } from '@/lib/db/schema/project-memory'
 
 /** One follow-up question, the same shape the `follow_ups` card has always had. */
 export interface StoredFollowUp {

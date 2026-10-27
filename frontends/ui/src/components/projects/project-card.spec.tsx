@@ -2,7 +2,7 @@ import { render, screen } from '@/test-utils'
 import { describe, test, expect } from 'vitest'
 import { ProjectCard } from './project-card'
 import { getProjectStatus } from './project-status'
-import type { Project } from '@/lib/db/schema'
+import type { Project } from '@/lib/db/schema/projects'
 
 const createProject = (overrides: Partial<Project> = {}): Project =>
   ({

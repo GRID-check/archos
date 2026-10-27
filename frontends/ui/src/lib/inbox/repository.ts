@@ -14,15 +14,10 @@
 import 'server-only'
 import { and, desc, eq, getTableColumns, gte, inArray, isNotNull, isNull, lt, lte, ne, notExists, notInArray, or, sql } from 'drizzle-orm'
 import { getDb } from '@/lib/db'
-import {
-  conversations,
-  documents,
-  inboxItems,
-  type InboxItem,
-  type InboxItemType,
-  type NewInboxItem,
-  type ShareableResourceType,
-} from '@/lib/db/schema'
+import { conversations } from '@/lib/db/schema/conversations'
+import { documents } from '@/lib/db/schema/documents'
+import { inboxItems, type InboxItem, type InboxItemType, type NewInboxItem } from '@/lib/db/schema/inbox'
+import type { ShareableResourceType } from '@/lib/db/schema/resource-shares'
 import { INBOX_LIST_LIMIT, legacyInboxTypeAliases, type InboxListFilter } from './types'
 import { MARKS_SET_GROUP_ANCHOR } from './registry'
 
