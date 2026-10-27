@@ -40,18 +40,29 @@ const deletedKeys = () =>
 
 const IMG_PREFIX = 'org/org-1/project/proj-1/doc/doc-1/_img/'
 
-/** `send` answers a listing with these keys and every delete with success. */
+/**
+ * `send` answers a listing with the stored keys under its prefix, as S3 does, and every
+ * delete with success. `truncated` pages the first listing of a prefix that holds keys.
+ */
 const storedRasters = (keys: string[], { truncated = false }: { truncated?: boolean } = {}) => {
-  let page = 0
+  const pages = new Map<string, number>()
   send.mockImplementation(async (command: unknown) => {
     if (!(command instanceof ListObjectsV2Command)) return {}
-    page += 1
-    if (truncated && page === 1) {
-      return { Contents: keys.slice(0, 1).map((Key) => ({ Key })), IsTruncated: true, NextContinuationToken: 'p2' }
+    const prefix = command.input.Prefix ?? ''
+    const under = keys.filter((key) => key.startsWith(prefix))
+    const page = (pages.get(prefix) ?? 0) + 1
+    pages.set(prefix, page)
+    if (truncated && under.length > 1 && page === 1) {
+      return { Contents: under.slice(0, 1).map((Key) => ({ Key })), IsTruncated: true, NextContinuationToken: 'p2' }
     }
-    return { Contents: (truncated ? keys.slice(1) : keys).map((Key) => ({ Key })) }
+    return { Contents: (truncated && under.length > 1 ? under.slice(1) : under).map((Key) => ({ Key })) }
   })
 }
+
+const listingsOf = (prefix: string) =>
+  send.mock.calls
+    .map(([c]) => c)
+    .filter((c): c is ListObjectsV2Command => c instanceof ListObjectsV2Command && c.input.Prefix === prefix)
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -133,8 +144,17 @@ describe('deleteDerivedObjects', () => {
     await expect(deleteDerivedObjects(doc)).resolves.toEqual({ ok: true })
 
     expect(deletedKeys()).toContain(`${IMG_PREFIX}1.jpg`)
-    const listings = send.mock.calls.map(([c]) => c).filter((c) => c instanceof ListObjectsV2Command)
-    expect(listings).toHaveLength(2)
+    expect(listingsOf(IMG_PREFIX)).toHaveLength(2)
+  })
+
+  it('sweeps the _text/ prefix the ingest pipeline stored a version’s page text under (ADR-0134)', async () => {
+    const textPrefix = 'org/org-1/project/proj-1/doc/doc-1/_text/'
+    storedRasters([`${textPrefix}pages.md`, `${textPrefix}index.json`])
+
+    await expect(deleteDerivedObjects(doc)).resolves.toEqual({ ok: true })
+
+    expect(listingsOf(textPrefix)).toHaveLength(1)
+    expect(deletedKeys()).toEqual(expect.arrayContaining([`${textPrefix}pages.md`, `${textPrefix}index.json`]))
   })
 
   it('reports a raster it could not remove instead of moving on', async () => {
