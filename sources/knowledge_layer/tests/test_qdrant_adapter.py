@@ -128,7 +128,7 @@ def test_a_foreign_embedder_is_refused_on_write(retriever):
     """The write checks the identity the collection was created with: two vector spaces never share one."""
     _ingest(retriever, "proj_a", [_row("x", "a.pdf")])
     store_module.reset_store()
-    other = {"aiq:embed_fingerprint": "other-fp", "aiq:embed_model": "other-model"}
+    other = {"grid:embed_fingerprint": "other-fp", "grid:embed_model": "other-model"}
     with pytest.raises(RuntimeError, match="embedding mismatch"):
         writes.write_chunks("proj_a", "b.pdf", [_row("y", "b.pdf")], identity=other)
     store_module.reset_store()

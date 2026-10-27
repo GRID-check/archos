@@ -108,7 +108,7 @@ it where the backend runs.
   out (a warning names it), and `--verify` and `--prune` expect the new ones
   instead. Inserted, the old Fassung would answer beside the new one under one
   file name, and a prune would then delete the new one.
-- **The embedder must match.** Each collection's `aiq:embed_fingerprint` is
+- **The embedder must match.** Each collection's `aiq:embed_fingerprint` (Chroma's name; Qdrant keeps it as `grid:embed_fingerprint`) is
   checked against the Qdrant collection it lands in before anything is written;
   one mismatch refuses the whole run (exit 2). A collection without a
   fingerprint takes the configured embedder's.
@@ -126,7 +126,7 @@ it where the backend runs.
   or a whole new project (the re-ingested file above is the one exception).
 - **Once, unless forced.** A run with `--verify` over every collection that
   ends in step records it in the Qdrant collections' metadata
-  (`aiq:vector_import`: which export, verified when). Every later run that
+  (`grid:vector_import`: which export, verified when). Every later run that
   would write is then refused with exit 2 and writes nothing, unless
   `--force`: an old export imported again brings back the chunks of every
   document deleted since. `--dry-run` and `--verify-only` are never refused.

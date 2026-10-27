@@ -646,7 +646,7 @@ its own tokens: the words left after the German analysis, about 0.30 per model
 token on our text. A copy reads each chunk's length back out of the weights it
 stored, and when the mean is more than 10 % from the live collection's
 `avg_len` it creates the target with the measured mean (recorded in the
-collection metadata as `aiq:bm25_length`) and recomputes every lexical vector
+collection metadata as `grid:bm25_length`) and recomputes every lexical vector
 from the chunk text, server side; dense vectors are copied as stored. The same
 copy gives every chunk written before the stemmed exact search existed its
 `text_stem` field, which `knowledge_search(match="exact", stemmed=true)` needs

@@ -259,7 +259,7 @@ _DRIVER = textwrap.dedent(
     spec = importlib.util.spec_from_file_location("cli", sys.argv[1])
     cli = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(cli)
-    cli._configured_identity = lambda: {"aiq:embed_fingerprint": "fp-config", "aiq:embed_model": "config"}
+    cli._configured_identity = lambda: {"grid:embed_fingerprint": "fp-config", "grid:embed_model": "config"}
     code = cli.main(["--in", sys.argv[3], "--verify"])
     client = store_module.make_client()
     seen = {}
@@ -275,7 +275,7 @@ _DRIVER = textwrap.dedent(
             }
         seen[scope] = {
             "points": points,
-            "identity": client.get_collection(store.alias(scope)).config.metadata["aiq:embed_fingerprint"],
+            "identity": client.get_collection(store.alias(scope)).config.metadata["grid:embed_fingerprint"],
         }
     for physical in schema.Physical:
         name = schema.ALIASES[physical] + schema.FIRST_VERSION

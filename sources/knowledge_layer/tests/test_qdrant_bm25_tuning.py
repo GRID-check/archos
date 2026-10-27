@@ -29,7 +29,7 @@ from knowledge_layer.qdrant.store import QdrantStore
 pytestmark = pytest.mark.usefixtures("few_payload_indexes")
 
 DIM = 8
-IDENTITY = {"aiq:embed_fingerprint": "fp-bm25", "aiq:embed_model": "model-bm25"}
+IDENTITY = {"grid:embed_fingerprint": "fp-bm25", "grid:embed_model": "model-bm25"}
 SCOPE = "proj_bm25"
 #: Words the German analysis keeps (no stopwords), so a text of N of them is N BM25 tokens long.
 WORDS = ["Fluchtweg", "Treppenhaus", "Brandabschnitt", "Geschoss", "Rauchabzug", "Bauteil", "Decke", "Wand"]
@@ -133,7 +133,7 @@ class TestOnQdrant:
         assert report.bm25_length == {"k": 1.2, "b": 0.75, "avg_len": 90.0}
         target = store.client.get_collection(alias + "_v2").config.metadata
         assert target[schema.BM25_LENGTH_KEY] == {"k": 1.2, "b": 0.75, "avg_len": 90.0}
-        assert target["aiq:embed_fingerprint"] == IDENTITY["aiq:embed_fingerprint"]
+        assert target["grid:embed_fingerprint"] == IDENTITY["grid:embed_fingerprint"]
         after = _weights(store, alias + "_v2", records[0].chunk_id)
         # A 60-token chunk was short against 256 and is near the mean against 90: its weights fall.
         assert min(after) < min(before)

@@ -28,7 +28,7 @@ the chunks of every document deleted since. ``--dry-run`` and
 ``--verify-only`` write nothing and are never refused.
 
 Each collection's vectors must come from the embedder the Qdrant collection
-was created with (``aiq:embed_fingerprint``); a mismatch refuses the run
+was created with (``grid:embed_fingerprint``); a mismatch refuses the run
 before anything is written. A collection the export names no embedder for
 takes the configured one (``AIQ_EMBED_MODEL``, ``AIQ_EMBED_BASE_URL``). It
 reads ``AIQ_QDRANT_URL``, ``AIQ_QDRANT_API_KEY`` and, for the person-set
