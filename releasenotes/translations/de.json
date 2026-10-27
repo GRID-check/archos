@@ -3200,6 +3200,10 @@
     "de": "Die Seite bleibt flüssig, während eine Antwort erscheint, auch in einem langen Verlauf; bisher stockte sie und reagierte verzögert auf Eingaben."
   },
   {
+    "en": "The permission reference on the Access tab no longer lists skill-schedule permissions that no role could ever hold. Who may run and change a schedule is decided by the project, as it always was.",
+    "de": "Die Berechtigungsübersicht im Tab Zugriff führt keine Berechtigungen für Skill-Zeitpläne mehr auf, die keine Rolle jemals haben konnte. Wer einen Zeitplan ausführen und ändern darf, wird wie bisher durch das Projekt festgelegt."
+  },
+  {
     "en": "The plan preview is in your language, and after a click the card states your decision in words rather than as a technical keyword.",
     "de": "Die Planvorschau spricht Ihre Sprache, und nach einem Klick nennt die Karte Ihre Entscheidung in Worten statt als technisches Schlüsselwort."
   },

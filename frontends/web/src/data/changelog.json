@@ -48,6 +48,10 @@
           "key": "fixes",
           "notes": [
             {
+              "en": "The permission reference on the Access tab no longer lists skill-schedule permissions that no role could ever hold. Who may run and change a schedule is decided by the project, as it always was.",
+              "de": "Die Berechtigungsübersicht im Tab Zugriff führt keine Berechtigungen für Skill-Zeitpläne mehr auf, die keine Rolle jemals haben konnte. Wer einen Zeitplan ausführen und ändern darf, wird wie bisher durch das Projekt festgelegt."
+            },
+            {
               "en": "Signing in from a new browser or a private window no longer bounces back and forth until the browser gives up with too many redirects.",
               "de": "Wenn Sie sich über einen neuen Browser oder ein privates Fenster anmelden, kommt es nicht mehr zu endlosen Weiterleitungen, bis der Browser abbricht."
             },
