@@ -169,7 +169,7 @@ aiq_otel_logs = "aiq_agent.observability.otlp_logging_method"
 aiq_otel_redaction = "aiq_agent.observability.otel_header_redaction_exporter"
 
 [tool.pytest.ini_options]
-testpaths = ["tests", "sources/**/tests"]
+testpaths = ["tests", "evals", "sources/**/tests"]
 # `-m "not live"`: a test that calls a real model runs only when asked for by
 # name (`task be:eval:turn-shapes` passes `-m live`, and a later `-m` replaces
 # this one). A key that happens to be in the shell is not that request: before
@@ -187,9 +187,11 @@ addopts = "--import-mode=importlib -m 'not live'"
 # appended to sys.path, so it loses). `frontends/aiq_api/src` is the same guard
 # for `aiq_api`, which `tests/aiq_agent` imports too (the worker's header
 # contract, the job runner): without it a root-level `pytest` in a worktree ran
-# those tests against the MAIN checkout's `aiq_api`. `knowledge_layer` is a
-# finder-style editable and is NOT covered by this; see docs/contributing/gotchas.md.
-pythonpath = [".", "src", "frontends/aiq_api/src"]
+# those tests against the MAIN checkout's `aiq_api`. `evals/oib-retrieval/src`
+# is the same guard for the retrieval harness, a finder-style editable the evals
+# import by name. `knowledge_layer` is a finder-style editable too and is NOT
+# covered by this; see docs/contributing/gotchas.md.
+pythonpath = [".", "src", "frontends/aiq_api/src", "evals/oib-retrieval/src"]
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "session"
 markers = [
@@ -384,6 +386,10 @@ dev = [
     "ris-adapter",
     "knowledge-layer[all]",
     "aiq-api",
+    # The eval harness (evals/), so its tests and `task be:eval:*` import it
+    # by name. Path sources, not workspace members: the backend image's
+    # `uv sync --all-packages` would otherwise need evals/ in its build context.
+    "oib-retrieval",
     "pytest-xdist>=3.8.0",
     # Splits the core suite across CI's backend shards (ci.yml `backend`).
     "pytest-split>=0.11.0",
@@ -427,3 +433,4 @@ tavily-web-search = { workspace = true }
 ris-adapter = { workspace = true }
 knowledge-layer = { workspace = true }
 aiq-api = { workspace = true }
+oib-retrieval = { path = "evals/oib-retrieval", editable = true }

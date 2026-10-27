@@ -192,7 +192,7 @@ Piloti's reading of its own prompt: a greeting or a question
 about the assistant answers without calling a search tool, and a commissioned
 report („erstelle mir einen vollständigen Prüfbericht …") escalates to deep
 research before it retrieves anything.
-[`tests/benchmarks/test_turn_shapes_live.py`](../../tests/benchmarks/test_turn_shapes_live.py)
+[`evals/turn-shapes/test_turn_shapes_live.py`](../../evals/turn-shapes/test_turn_shapes_live.py)
 pins both, plus a control question that must still search. It runs the real
 agent on the real prompt against Piloti's own model through OpenRouter, with
 stub tools in place of retrieval, and reads the trace from the turn's own
