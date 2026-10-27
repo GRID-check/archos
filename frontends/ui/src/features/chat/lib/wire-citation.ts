@@ -4,7 +4,7 @@
  */
 
 import type { CitationProject, CitationSource, WireCitationSource } from '../types'
-import { asShelf, asSourceKind, modernizeLane, modernizeSourceKind } from './source-kinds'
+import { asShelf, asSourceKind, modernizeLane, modernizeSourceKind } from '@/lib/source-kinds'
 import { parsePageRegions } from '@/features/knowledge/lib/page-region'
 import { toProjectStatus } from '@/lib/projects/project-status'
 

@@ -599,7 +599,7 @@ the room hears it, and a carried mark names its source on the mark itself.
 The draft card and a thread's reply box are the chat's composer for mentions,
 gesture for gesture (`review/composer.tsx`): „@“ opens the chat's own picker
 (`MentionPicker`), a pick writes „@Anna Berger“ into the text and records whom
-it means (`features/collaboration/lib/mention-text.ts`), and what is sent is
+it means (`lib/mentions/mention-text.ts`), and what is sent is
 reconciled against the text at the last moment, so a name deleted while
 editing mentions nobody and a name typed by hand never did. The rows are the
 people who may open the document, read from the assignment candidates

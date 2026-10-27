@@ -6,7 +6,7 @@ import { FOCUS_RING } from '@/components/ui/focus-ring'
 import { PRESSABLE } from '@/components/ui/press'
 import { Spinner } from '@/components/ui/spinner'
 import { iconForTint, sourceSignalStyle } from '@/features/layout/components/SourceSignalChip'
-import type { SourceTint } from '@/features/layout/lib/source-presets'
+import type { SourceTint } from '@/lib/source-kinds'
 import type { CitationRef } from '../../lib/citations'
 import { AuthorityTag } from '../AuthorityTag'
 

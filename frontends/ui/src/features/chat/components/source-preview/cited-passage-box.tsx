@@ -3,7 +3,7 @@
 import type { CSSProperties, FC } from 'react'
 import { useTranslations } from '@/i18n'
 import { SectionLabel } from '@/components/ui/section-label'
-import type { SourceTint } from '@/features/layout/lib/source-presets'
+import type { SourceTint } from '@/lib/source-kinds'
 
 /** Tinted "Fundstelle" / cited-passage box shown above the document frame. */
 export const CitedPassageBox: FC<{ snippet: string; signal: SourceTint }> = ({ snippet, signal }) => {

@@ -18,6 +18,14 @@ from contextvars import ContextVar
 from types import SimpleNamespace
 
 import pytest
+from knowledge_layer import estate as estate_module
+from knowledge_layer import stored_pages
+from knowledge_layer.browse import FileRow
+from knowledge_layer.estate import EstateBackend
+from knowledge_layer.estate import PagesRefused
+from knowledge_layer.estate import no_such_file
+from knowledge_layer.estate import pages_for_lines
+from knowledge_layer.estate import parse_pages
 
 from aiq_agent.common.citation_collector import collect_citations
 from aiq_agent.common.grounding_block import begin_grounding_capture
@@ -27,14 +35,6 @@ from aiq_agent.knowledge.restricted_use import RestrictedUse
 from aiq_agent.knowledge.restricted_use import bind_restricted_use
 from aiq_agent.knowledge.restricted_use import reset_restricted_use
 from aiq_agent.knowledge.scoping import ScopedCollection
-from sources.knowledge_layer.src import estate as estate_module
-from sources.knowledge_layer.src import stored_pages
-from sources.knowledge_layer.src.browse import FileRow
-from sources.knowledge_layer.src.estate import EstateBackend
-from sources.knowledge_layer.src.estate import PagesRefused
-from sources.knowledge_layer.src.estate import no_such_file
-from sources.knowledge_layer.src.estate import pages_for_lines
-from sources.knowledge_layer.src.estate import parse_pages
 
 RESTRICTED = "proj_a_r0123456789ab"
 
@@ -288,7 +288,7 @@ class TestStoredPages:
             return data[byte_range[0] : byte_range[1] + 1]
 
         async def resolve(collection, file_name):
-            from sources.knowledge_layer.src.view_image import StorageLocation
+            from knowledge_layer.view_image import StorageLocation
 
             return StorageLocation(self.KEY, None, "ver-2", "d1")
 

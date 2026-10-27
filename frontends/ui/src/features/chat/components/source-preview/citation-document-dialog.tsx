@@ -16,7 +16,7 @@ import {
 } from '@/features/similar-passages/lib/use-similar-passages'
 import { SIMILAR_PASSAGE_TEXT_MIN, type SimilarSourceDocument } from '@/lib/similar-passages/types'
 import { SourceSignalChip } from '@/features/layout/components/SourceSignalChip'
-import type { SourceTint } from '@/features/layout/lib/source-presets'
+import type { SourceTint } from '@/lib/source-kinds'
 import { useDelayedFlag } from '@/hooks/use-transient-flag'
 import { citationViewerAction, runViewerActionNow, useViewerBesideChat } from '../../lib/viewer-actions'
 import { toQuoteList } from '../../lib/source-citation'

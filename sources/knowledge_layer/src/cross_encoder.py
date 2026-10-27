@@ -15,7 +15,7 @@ holds a key for (``OPENROUTER_API_KEY``) and its ``POST /api/v1/rerank`` takes
 for Cohere, Voyage, Jina and NVIDIA's hosted NIM as well; none of them was
 ever configured, and NVIDIA's hosted URL had gone (HTTP 410) by the time the
 feature was switched on. A self-hosted reranker that speaks the same shape
-still fits through ``AIQ_RERANKER_BASE_URL``.
+still fits through ``GRID_RERANKER_BASE_URL``.
 
 One key per SEARCH, not per process. The handle is built once at startup where
 no tenant is in scope, so for a release every organization's reranks went out
@@ -102,7 +102,7 @@ def _env_float(name: str, fallback: float) -> float:
     return value
 
 
-# @environment_variable AIQ_RERANKER_PROVIDER
+# @environment_variable GRID_RERANKER_PROVIDER
 # @category Knowledge Layer
 # @type str
 # @default none
@@ -111,9 +111,9 @@ def _env_float(name: str, fallback: float) -> float:
 # reranking to the LLM judge configured by `rerank_llm`; the reference config's
 # `reranker_provider` field sets `openrouter`, which makes the cross-encoder
 # primary and the judge the fallback.
-DEFAULT_PROVIDER = os.environ.get("AIQ_RERANKER_PROVIDER", "none").strip().lower()
+DEFAULT_PROVIDER = os.environ.get("GRID_RERANKER_PROVIDER", "none").strip().lower()
 
-# @environment_variable AIQ_RERANKER_MODEL
+# @environment_variable GRID_RERANKER_MODEL
 # @category Knowledge Layer
 # @type str
 # @default qwen/qwen3-reranker-8b
@@ -121,18 +121,18 @@ DEFAULT_PROVIDER = os.environ.get("AIQ_RERANKER_PROVIDER", "none").strip().lower
 # Reranking model id on OpenRouter. The corpus is German, so a multilingual
 # model is not optional, and every rerank is pinned to zero-data-retention
 # endpoints, so the model must have one (`/api/v1/endpoints/zdr`).
-DEFAULT_MODEL = os.environ.get("AIQ_RERANKER_MODEL", "").strip()
+DEFAULT_MODEL = os.environ.get("GRID_RERANKER_MODEL", "").strip()
 
-# @environment_variable AIQ_RERANKER_BASE_URL
+# @environment_variable GRID_RERANKER_BASE_URL
 # @category Knowledge Layer
 # @type str
 # @default https://openrouter.ai/api/v1
 # @required false
 # Override the host (a gateway, a self-hosted reranker speaking the same
 # request and response shape, a test double).
-DEFAULT_BASE_URL = os.environ.get("AIQ_RERANKER_BASE_URL", "").strip()
+DEFAULT_BASE_URL = os.environ.get("GRID_RERANKER_BASE_URL", "").strip()
 
-# @environment_variable AIQ_RERANKER_TIMEOUT_SECONDS
+# @environment_variable GRID_RERANKER_TIMEOUT_SECONDS
 # @category Knowledge Layer
 # @type float
 # @default 3.0
@@ -140,9 +140,9 @@ DEFAULT_BASE_URL = os.environ.get("AIQ_RERANKER_BASE_URL", "").strip()
 # Per-request timeout. Cross-encoders answer in ~100ms; 3s bounds a provider
 # having a bad day, and a hang must never cost more than a fraction of the 30s
 # LLM-judge fallback it precedes — worst case a turn pays 3s + 30s.
-DEFAULT_TIMEOUT_SECONDS = _env_float("AIQ_RERANKER_TIMEOUT_SECONDS", 3.0)
+DEFAULT_TIMEOUT_SECONDS = _env_float("GRID_RERANKER_TIMEOUT_SECONDS", 3.0)
 
-# @environment_variable AIQ_RERANKER_MAX_DOC_CHARS
+# @environment_variable GRID_RERANKER_MAX_DOC_CHARS
 # @category Knowledge Layer
 # @type int
 # @default 4000
@@ -151,10 +151,10 @@ DEFAULT_TIMEOUT_SECONDS = _env_float("AIQ_RERANKER_TIMEOUT_SECONDS", 3.0)
 # 8k-32k tokens per document, so a full 1024-token chunk fits comfortably; the cap
 # exists to bound a pathological chunk, not to summarise.
 #: At least one character. `_env_float` accepts any positive finite value, so
-#: AIQ_RERANKER_MAX_DOC_CHARS=0.5 truncated to 0 and every document was sliced to
+#: GRID_RERANKER_MAX_DOC_CHARS=0.5 truncated to 0 and every document was sliced to
 #: "" — the provider then ranked empty strings and returned a meaningless order,
 #: with a successful HTTP status and nothing in the logs.
-DEFAULT_MAX_DOC_CHARS = max(1, int(_env_float("AIQ_RERANKER_MAX_DOC_CHARS", 4000.0)))
+DEFAULT_MAX_DOC_CHARS = max(1, int(_env_float("GRID_RERANKER_MAX_DOC_CHARS", 4000.0)))
 
 
 def _breaker_open() -> bool:
@@ -225,7 +225,7 @@ def _normalize_base_url(base_url: str) -> str:
     trailing ``/rerank`` path segment.
 
     The request path is appended by the caller, so a user-supplied
-    ``AIQ_RERANKER_BASE_URL`` ending in ``/rerank`` would otherwise double-append
+    ``GRID_RERANKER_BASE_URL`` ending in ``/rerank`` would otherwise double-append
     (``.../rerank/rerank``) and fail every call.
     """
     normalized = (base_url or "").strip().rstrip("/")
@@ -257,7 +257,7 @@ def _resolve_credential(base_url: str, model: str, organization_id: str | None) 
     """Resolve the reranker credential through the shared resolver, env as fallback.
 
     An organization's own key (BYOK) wins when one is known, then
-    ``AIQ_RERANKER_API_KEY``, then ``OPENROUTER_API_KEY``, then host inference
+    ``GRID_RERANKER_API_KEY``, then ``OPENROUTER_API_KEY``, then host inference
     — the same chain every other bespoke call site in this deployment uses. A
     BYOK hit replaces the key AND the base URL, never the model (ADR-0022).
     """
@@ -265,7 +265,7 @@ def _resolve_credential(base_url: str, model: str, organization_id: str | None) 
         from aiq_agent.common.credential_resolution import resolve_llm_credential
 
         resolved = resolve_llm_credential(
-            primary_env="AIQ_RERANKER_API_KEY",
+            primary_env="GRID_RERANKER_API_KEY",
             fallback_envs=(_KEY_ENV,),
             default_base_url=base_url,
             default_model=model,
@@ -288,7 +288,7 @@ def _resolve_credential(base_url: str, model: str, organization_id: str | None) 
         # nosemgrep: python.lang.security.audit.logging.logger-credential-leak.python-logger-credential-disclosure
         logger.warning("Reranker credential resolution failed (%s); trying the env directly", type(e).__name__)
 
-    env_key = os.environ.get("AIQ_RERANKER_API_KEY", "") or os.environ.get(_KEY_ENV, "")
+    env_key = os.environ.get("GRID_RERANKER_API_KEY", "") or os.environ.get(_KEY_ENV, "")
     return _Credential(api_key=env_key, base_url=base_url)
 
 
@@ -640,7 +640,7 @@ def resolve_cross_encoder(
         # naming the variable an operator has to set.
         # nosemgrep: python.lang.security.audit.logging.logger-credential-leak.python-logger-credential-disclosure
         logger.warning(
-            "Reranker provider %r is configured but no API key resolved (AIQ_RERANKER_API_KEY / %s); "
+            "Reranker provider %r is configured but no API key resolved (GRID_RERANKER_API_KEY / %s); "
             "falling back to the LLM judge.",
             name,
             _KEY_ENV,

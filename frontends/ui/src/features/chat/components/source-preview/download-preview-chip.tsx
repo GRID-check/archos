@@ -4,10 +4,9 @@ import type { FC, ReactNode } from 'react'
 import { cn } from '@/lib/utils'
 import { useTranslations } from '@/i18n'
 import { HoverPeekPanel } from '@/components/ui/hover-peek-panel'
-import type { SourceTint } from '@/features/layout/lib/source-presets'
 import { useHoverPopover } from '@/hooks/use-hover-popover'
 import type { CitationRef } from '../../lib/citations'
-import type { SourceKind } from '../../lib/source-kinds'
+import type { SourceKind, SourceTint } from '@/lib/source-kinds'
 import { CitationPeek } from '../CitationPeek'
 import {
   CitationFace,

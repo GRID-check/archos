@@ -13,10 +13,9 @@ from types import SimpleNamespace
 
 import httpx
 import pytest
-
-from sources.knowledge_layer.src import cross_encoder as ce
-from sources.knowledge_layer.src.cross_encoder import CrossEncoderReranker
-from sources.knowledge_layer.src.cross_encoder import resolve_cross_encoder
+from knowledge_layer import cross_encoder as ce
+from knowledge_layer.cross_encoder import CrossEncoderReranker
+from knowledge_layer.cross_encoder import resolve_cross_encoder
 
 
 @pytest.fixture(autouse=True)
@@ -28,7 +27,7 @@ def _isolated_breaker_state():
 
 @pytest.fixture()
 def _no_keys(monkeypatch):
-    monkeypatch.delenv("AIQ_RERANKER_API_KEY", raising=False)
+    monkeypatch.delenv("GRID_RERANKER_API_KEY", raising=False)
     monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
 
 

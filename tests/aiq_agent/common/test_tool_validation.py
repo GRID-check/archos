@@ -43,6 +43,6 @@ def test_a_scoped_miss_tells_the_reader_to_widen_the_scope():
 
 
 def test_an_unavailable_tool_is_named_before_any_scope_advice(monkeypatch):
-    monkeypatch.delenv("AIQ_DEV_ENV", raising=False)
+    monkeypatch.delenv("GRID_DEV_ENV", raising=False)
     message = format_no_sources_message("research", ["web_search_tool (missing KEY)"], 0, scoped=True)
     assert message == TOOLS_UNAVAILABLE_MESSAGE

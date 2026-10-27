@@ -15,7 +15,7 @@
  *    across the uploads under this name (`document_versions`, ADR-0054) and the
  *    older documents linked under other names (ADR-0099). The index or date the
  *    office gave a Fassung is a secondary tag; „aktuell" marks only the one
- *    Piloti answers from (`lib/revision-timeline.ts`).
+ *    Piloti answers from (`lib/documents/revision-timeline.ts`).
  *  - **Every fact once.** The state is in the header; the date and the person
  *    on a row's act line; a file name only where the row is another document.
  *    One visible action per row (Öffnen), the rest behind its ⋯.
@@ -96,7 +96,7 @@ import {
   type TimelineRow,
   type VersionAct,
   type VersionRow,
-} from '../lib/revision-timeline'
+} from '@/lib/documents/revision-timeline'
 import { requestRevisionLink } from '../lib/revision-request'
 import { DocumentArchiveAction } from './document-archive-action'
 import { DocumentReviewControls, type DocumentReviewControlsProps } from './document-review-controls'

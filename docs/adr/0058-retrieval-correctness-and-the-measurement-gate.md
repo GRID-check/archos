@@ -57,7 +57,7 @@ Two further forces bear on the decision. The corpus is 946 numbered requirements
 at a median of 128 tokens, cut into 1024-token blocks over per-page Documents:
 57% of pages began mid-Punkt and 92% of chunks did not start on a numbered line,
 so one chunk blended roughly eight unrelated requirements and no citation could
-be finer than a page. And the deployment is not one process — `AIQ_CHROMA_URL`
+be finer than a page. And the deployment is not one process — `GRID_CHROMA_URL`
 points two backend replicas and a 2–8 replica research worker tier at one Chroma —
 while the collection write version the result cache keys on was a module global.
 

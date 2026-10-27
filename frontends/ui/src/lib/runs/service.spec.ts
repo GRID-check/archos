@@ -29,7 +29,7 @@ vi.mock('@/lib/authz/projects', () => ({ requireProjectAccess: vi.fn() }))
 vi.mock('@/lib/sharing/access', () => ({ requireResourceAccess: vi.fn() }))
 // The scope a run control signs: the project the service just authorized, as
 // the scope builder resolves it (its own checks are its spec's to pin).
-vi.mock('@/lib/collection-scope-request', () => ({
+vi.mock('@/lib/retrieval-scope/collection-scope-request', () => ({
   buildCollectionScopeFromRequest: vi.fn(async (_session: unknown, context: { projectId?: string }) => ({
     headerValue: 'scope',
     scope: ['oib_knowledge', `proj_col_${context.projectId}`],
@@ -85,7 +85,7 @@ import {
 } from '@/lib/conversations/repository'
 import type { Message, TaskRun } from '@/lib/db/schema'
 import { withTenant } from '@/lib/db/tenant-context'
-import { buildCollectionScopeFromRequest } from '@/lib/collection-scope-request'
+import { buildCollectionScopeFromRequest } from '@/lib/retrieval-scope/collection-scope-request'
 import {
   addDocumentToBackendJob,
   cancelBackendJob,

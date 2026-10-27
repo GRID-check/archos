@@ -11,7 +11,7 @@ import {
 } from '@/features/documents/lib/documents-by-name'
 import type { RevisionRef } from '@/lib/documents/revision-links'
 import type { StoredDocumentRef } from '../../lib/citations'
-import type { Shelf } from '../../lib/source-kinds'
+import type { Shelf } from '@/lib/source-kinds'
 
 // ---------------------------------------------------------------------------
 // Lazy resolution index (project documents + base-corpus files)
