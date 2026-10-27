@@ -59,7 +59,7 @@ builds the graph with grimp, which sees imports inside functions too.
 
 | Contract | What it forbids | Allowed |
 |---|---|---|
-| `agent-api-seam` | `aiq_agent` importing `aiq_api`, directly or through a chain. What the agent needs from a request is owned in `aiq_agent` and written by `aiq_api` (`auth/request_identity.py`, `auth/errors.py`), or handed in by the API-tier caller (`oib_sync`'s `enqueue`) | `auth/workos_validator.py`, API-tier code still in the agent's package |
+| `agent-api-seam` | `aiq_agent` importing `aiq_api`, directly or through a chain. What the agent needs from a request is owned in `aiq_agent` and written by `aiq_api` (`auth/request_identity.py`, `auth/errors.py`), or handed in by the API-tier caller (`oib_sync`'s `enqueue`) | nothing |
 | `agent-knowledge-port` | `aiq_agent` importing `knowledge_layer` directly | `knowledge/factory.py`, the BaseRetriever/BaseIngestor port (ADR-0072); sixteen known bypasses, each listed |
 | `qdrant-client-confined` | Any of the three packages importing `qdrant_client` directly | `knowledge_layer.qdrant` |
 
