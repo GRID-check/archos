@@ -91,3 +91,9 @@ starts firing, not on every check.
 | CSAT „nach Export" | 3 s after `report_exported` | 30 % of people, once per 30 days across surveys |
 | NPS „power users" | 5 s after `chat_message_sent` | `chat_messages_total` ≥ 15, once per 90 days |
 | „Piloti Wochenbericht" (subscription 58130) | Mondays 07:00 UTC | AI-written report to `#piloti-metrics`: usage, answer quality, support, costs, errors, against the week before |
+
+## Announcements
+
+In-app announcements (a window or a banner, for a new guideline or a model
+switch) are PostHog product tours, created in the PostHog UI. How to send one,
+target it and read its reach: [`announcements.md`](announcements.md).
