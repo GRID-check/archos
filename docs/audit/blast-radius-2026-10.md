@@ -454,7 +454,8 @@ Not structural, but measured and left out of this PR:
   change.
 - **Repo checks and SAST check out the full history** (75 s and 72 s median).
   A shallow clone plus a targeted fetch of the base would save about a minute
-  on every PR's critical path.
+  on every PR's critical path. *Done (2026-10-27): `ci/fetch_merge_base.sh`,
+  and `semgrep ci`'s own merge-base lookup; `docs/contributing/ci.md`.*
 
 ## Appendix: reproducing
 

@@ -167,13 +167,7 @@ tasks:
       - uv sync --group dev
       - task: fe:install
       - task: web:install
-      # Two Node programs under deploy/pulumi, each with its own lockfile: the
-      # Pulumi program itself (which `infra:types` typechecks and `infra:test`
-      # runs) and the policy pack beside it. Installing only the policy pack
-      # left a fresh clone failing `task verify` at `infra:types`, because the
-      # program's own TypeScript and Vitest were never fetched.
-      - bun install --frozen-lockfile --cwd deploy/pulumi
-      - bun install --frozen-lockfile --cwd deploy/pulumi/policy
+      - task: infra:install
       # packages/ used to be skipped here too, so `task pkg:test` on a fresh
       # clone failed at "vitest: not found" rather than at an assertion.
       - task: pkg:install

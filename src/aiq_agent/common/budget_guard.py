@@ -180,7 +180,7 @@ class BudgetGuardCallback(BaseCallbackHandler):
     """LangChain callback enforcing a per-job completion-token ceiling.
 
     Add one instance to a job's callback list (see
-    ``aiq_api.jobs.runner.run_agent_job``); it reaches every LLM call in the
+    ``aiq_api.jobs.agent_job.run_agent_job``); it reaches every LLM call in the
     job the same way the existing ``AgentEventCallback``/
     ``VerboseTraceCallback`` do -- LangGraph/DeepAgents' ``task`` tool merges
     the ambient parent config (including ``callbacks``) into every subagent

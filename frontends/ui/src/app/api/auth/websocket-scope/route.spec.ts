@@ -16,7 +16,7 @@ vi.mock('@/lib/auth/session', () => ({
 }))
 
 const buildCollectionScopeFromRequest = vi.fn()
-vi.mock('@/lib/collection-scope-request', () => ({
+vi.mock('@/lib/retrieval-scope/collection-scope-request', () => ({
   buildCollectionScopeFromRequest: (...args: unknown[]) => buildCollectionScopeFromRequest(...args),
 }))
 

@@ -65,7 +65,7 @@ def test_job_events_runs_one_cleanup_cycle_with_the_expiry_settings(
 def test_chat_checkpoints_reports_threads_reaped(client: TestClient, monkeypatch: pytest.MonkeyPatch):
     from aiq_api.jobs import checkpoint_retention
 
-    monkeypatch.setenv("AIQ_CHECKPOINT_DB", "postgresql://grid@db/checkpoints")
+    monkeypatch.setenv("GRID_CHECKPOINT_DB", "postgresql://grid@db/checkpoints")
     monkeypatch.setenv("GRID_CHAT_CHECKPOINT_RETENTION_SECONDS", "60")
     monkeypatch.setattr(checkpoint_retention, "reap_idle_threads", lambda dsn, retention: 7 if retention == 60 else -1)
     response = client.post("/v1/maintenance/housekeeping/chat-checkpoints", headers=AUTH)
@@ -75,11 +75,11 @@ def test_chat_checkpoints_reports_threads_reaped(client: TestClient, monkeypatch
 def test_chat_checkpoints_without_a_checkpoint_db_says_why_it_did_nothing(
     client: TestClient, monkeypatch: pytest.MonkeyPatch
 ):
-    monkeypatch.delenv("AIQ_CHECKPOINT_DB", raising=False)
+    monkeypatch.delenv("GRID_CHECKPOINT_DB", raising=False)
     response = client.post("/v1/maintenance/housekeeping/chat-checkpoints", headers=AUTH)
     assert response.status_code == 200
     assert response.json()["threads_reaped"] == 0
-    assert "AIQ_CHECKPOINT_DB" in response.json()["skipped"]
+    assert "GRID_CHECKPOINT_DB" in response.json()["skipped"]
 
 
 def test_base_corpus_runs_one_sync_cycle_and_reports_its_counts(client: TestClient, monkeypatch: pytest.MonkeyPatch):
@@ -113,7 +113,7 @@ def test_base_corpus_that_cannot_run_fails_the_call_so_the_scheduler_shows_it(
     from aiq_agent import oib_sync
 
     def broken(**_kwargs):
-        raise RuntimeError("the base corpus needs AIQ_SUMMARY_DB")
+        raise RuntimeError("the base corpus needs GRID_SUMMARY_DB")
 
     monkeypatch.setattr(oib_sync, "sync", broken)
     failing = TestClient(client.app, raise_server_exceptions=False)

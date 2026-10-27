@@ -24,7 +24,7 @@ const CONTEXT_BUILDERS = [
   'lib/cross-project',
   'app/api/internal',
   'app/api/auth/websocket-scope',
-  'lib/collection-scope-request.ts',
+  'lib/retrieval-scope/collection-scope-request.ts',
   'lib/jobs/service.ts',
   'lib/tasks/delegation.ts',
 ]
