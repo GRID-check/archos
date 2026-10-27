@@ -20,7 +20,7 @@ export const renameDocumentSchema = z.object({
 export const moveDocumentSchema = z.object({
   // Explicit `null` files the document at its shelf's root, which is a real
   // destination — so this is nullable, not optional.
-  folderId: z.string().uuid().nullable(),
+  folderId: z.guid().nullable(),
 })
 
 /** `PATCH /api/documents/[id]/tags` */
@@ -36,7 +36,7 @@ export const updateTagsSchema = z.object({
 /** `PUT /api/documents/[id]/revision` */
 export const revisionLinkSchema = z.object({
   /** The document being replaced. */
-  older: z.string().uuid(),
+  older: z.guid(),
   /** `true` confirms the link, `false` takes it back. */
   linked: z.boolean(),
 })

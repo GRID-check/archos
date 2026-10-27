@@ -14,9 +14,17 @@
  * few seconds. It counts a module a spec replaces with `vi.mock` too, so it
  * reads a little above `vitest related`, never below.
  *
- * The check fails when a module not in the baseline reaches THRESHOLD specs (a
- * new hub), or a baseline module grows past its recorded count by more than
- * the slack. A count that drops is tightened on `--update`, and only there.
+ * The check fails when a module not in the baseline grows past THRESHOLD and
+ * its slack (a new hub), or a baseline module grows past its recorded count and
+ * its slack. The baseline records every module from RECORD_FLOOR up, and both
+ * limits scale with the number of specs: a suite that grows by a tenth lets
+ * every count grow by a tenth, so specs other pull requests add do not fail
+ * this one. A count that drops is tightened on `--update`, and only there.
+ *
+ * A leaf, a module that imports nothing of ours, is held by neither rule. It
+ * is as wide as whatever imports it, and an edge that widens it shows up on
+ * that importer, which is not a leaf; there is nothing to cut in the leaf
+ * itself (`lib/api/zod-union.ts`, `lib/diagrams/sketch-fence.ts`).
  *
  *   node scripts/blast-radius.mjs            check against the baseline
  *   node scripts/blast-radius.mjs --update   rewrite the baseline
@@ -31,6 +39,8 @@ const UI = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const BASELINE = path.join(UI, 'scripts', 'blast-radius.baseline.json')
 /** A module reaching this many specs is a hub the baseline must name. */
 export const THRESHOLD = 300
+/** The baseline records modules from here up, so a module just below THRESHOLD is held by its slack instead. */
+export const RECORD_FLOOR = 240
 /** How far a hub may grow before the check fails: new specs arrive every week. */
 export const SLACK = { ratio: 1.1, specs: 10 }
 
@@ -61,6 +71,15 @@ async function importGraph(entryPoints) {
   return result.metafile.inputs
 }
 
+/** The modules that import nothing of ours: neither specs nor anything with an in-tree import. */
+export function leavesOf(inputs) {
+  return new Set(
+    Object.entries(inputs)
+      .filter(([file, { imports }]) => !SPEC.test(file) && imports.every((edge) => edge.external))
+      .map(([file]) => file)
+  )
+}
+
 /** For each module that is not a spec, how many specs reach it. */
 export function specReach(inputs) {
   const importers = new Map()
@@ -89,59 +108,80 @@ export function specReach(inputs) {
   return reach
 }
 
-/** What breaks the ratchet, one line each. */
-export function violations(reach, baseline) {
+/** The most a count expected at `expected` may reach before it fails. */
+export function ceilingOf(expected) {
+  return Math.max(Math.ceil(expected * SLACK.ratio), Math.ceil(expected) + SLACK.specs)
+}
+
+/**
+ * What breaks the ratchet, one line each. `scale` is the number of specs now
+ * over the number the baseline was recorded with.
+ */
+export function violations(reach, baseline, scale = 1) {
   const found = []
+  const newHub = ceilingOf(THRESHOLD * scale)
   for (const [file, count] of Object.entries(reach)) {
     const recorded = baseline[file]
     if (recorded === undefined) {
-      if (count >= THRESHOLD) found.push(`${file}: a new hub, reached by ${count} specs (threshold ${THRESHOLD})`)
+      if (count > newHub)
+        found.push(`${file}: a new hub, reached by ${count} specs (limit ${newHub})`)
       continue
     }
-    const ceiling = Math.max(Math.ceil(recorded * SLACK.ratio), recorded + SLACK.specs)
-    if (count > ceiling) found.push(`${file}: reached by ${count} specs, was ${recorded} (ceiling ${ceiling})`)
+    const ceiling = ceilingOf(recorded * scale)
+    if (count > ceiling)
+      found.push(`${file}: reached by ${count} specs, was ${recorded} (ceiling ${ceiling})`)
   }
   return found
 }
 
-/** The baseline to record: every hub, at its current count. */
+/** The baseline to record: every module from RECORD_FLOOR up, at its current count. */
 export function baselineOf(reach) {
   return Object.fromEntries(
     Object.entries(reach)
-      .filter(([, count]) => count >= THRESHOLD)
-      .sort(([a], [b]) => a.localeCompare(b)),
+      .filter(([, count]) => count >= RECORD_FLOOR)
+      .sort(([a], [b]) => a.localeCompare(b))
   )
 }
 
 async function main(argv) {
   const specs = specFiles()
-  const reach = specReach(await importGraph(specs))
+  const inputs = await importGraph(specs)
+  const everyReach = specReach(inputs)
   const topIndex = argv.indexOf('--top')
   if (topIndex !== -1) {
-    const widest = Object.entries(reach).sort(([, a], [, b]) => b - a)
-    for (const [file, count] of widest.slice(0, Number(argv[topIndex + 1] ?? 30))) console.log(`${count}\t${file}`)
+    const widest = Object.entries(everyReach).sort(([, a], [, b]) => b - a)
+    for (const [file, count] of widest.slice(0, Number(argv[topIndex + 1] ?? 30)))
+      console.log(`${count}\t${file}`)
     return 0
   }
+  const leaves = leavesOf(inputs)
+  const reach = Object.fromEntries(Object.entries(everyReach).filter(([file]) => !leaves.has(file)))
   if (argv.includes('--update')) {
     const modules = baselineOf(reach)
     const description =
-      'Specs that reach each hub module (a module reached by at least `threshold` specs), read by frontends/ui/scripts/blast-radius.mjs. Rewrite with `task fe:blast-radius -- --update` and say in the pull request why a hub grew. docs/audit/blast-radius-2026-10.md'
-    writeFileSync(BASELINE, `${JSON.stringify({ description, threshold: THRESHOLD, specs: specs.length, modules }, null, 1)}\n`)
-    console.log(`recorded ${Object.keys(modules).length} hubs over ${specs.length} specs`)
+      'Specs that reach each module reached by at least `recordFloor` specs, out of `specs`, read by frontends/ui/scripts/blast-radius.mjs. A module outside it fails at `threshold`. Rewrite with `task fe:blast-radius -- --update` and say in the pull request why a hub grew. docs/audit/blast-radius-2026-10.md'
+    writeFileSync(
+      BASELINE,
+      `${JSON.stringify({ description, threshold: THRESHOLD, recordFloor: RECORD_FLOOR, specs: specs.length, modules }, null, 1)}\n`
+    )
+    console.log(`recorded ${Object.keys(modules).length} modules over ${specs.length} specs`)
     return 0
   }
-  const { modules } = JSON.parse(readFileSync(BASELINE, 'utf8'))
-  const found = violations(reach, modules)
+  const recorded = JSON.parse(readFileSync(BASELINE, 'utf8'))
+  const found = violations(reach, recorded.modules, specs.length / recorded.specs)
   if (found.length === 0) {
-    console.log(`blast radius: ${Object.keys(modules).length} hubs within their baseline (${specs.length} specs)`)
+    console.log(
+      `blast radius: ${Object.keys(recorded.modules).length} modules within their baseline (${specs.length} specs)`
+    )
     return 0
   }
   console.error(`blast radius grew (${found.length}):\n  ${found.join('\n  ')}`)
   console.error(
     '\nA change made a module invalidate more specs. Cut the edge that did it (a hub importing a subtree, a barrel),' +
-      '\nor, when the growth is the point, run `task fe:blast-radius -- --update` and say why in the pull request.',
+      '\nor, when the growth is the point, run `task fe:blast-radius -- --update` and say why in the pull request.'
   )
   return 1
 }
 
-if (process.argv[1] === fileURLToPath(import.meta.url)) process.exit(await main(process.argv.slice(2)))
+if (process.argv[1] === fileURLToPath(import.meta.url))
+  process.exit(await main(process.argv.slice(2)))

@@ -59,7 +59,7 @@ export const permitRecordSchema = z.preprocess(renameLegacyPermitFields, z.objec
 export const storePermitRecordRequestSchema = z.object({
   organizationId: z.string().min(1).max(200),
   /** Absent: the document is found by `collection` and `fileName` (the backfill knows no id). */
-  documentId: z.string().uuid().optional(),
+  documentId: z.guid().optional(),
   collection: z.string().min(1).max(300),
   fileName: text(512),
   /** The model that extracted it. Empty on a delete (`record: null`): nothing was extracted. */
