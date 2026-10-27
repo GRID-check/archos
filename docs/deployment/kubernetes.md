@@ -373,8 +373,8 @@ Full command list is in [`deploy/pulumi/README.md`](../../deploy/pulumi/README.m
 In short:
 
 ```bash
+task infra:install   # the program and its policy pack, each from its own lockfile
 cd deploy/pulumi
-bun install --frozen-lockfile
 pulumi stack init prod
 # edit Pulumi.prod.yaml placeholders, then set --secret values (kubeconfig,
 # pgAppPassword, seaweedfsSecretKey, tokens, OpenRouter/Tavily/WorkOS keys)
@@ -1834,8 +1834,8 @@ Helm-rendered charts (cert-manager, Envoy Gateway, CNPG) arrive as a single
 opaque `Release` resource and are out of scope by construction.
 
 ```bash
-cd deploy/pulumi/policy && bun install --frozen-lockfile   # once
-cd .. && pulumi preview --policy-pack ./policy
+task infra:install   # once
+cd deploy/pulumi && pulumi preview --policy-pack ./policy
 ```
 
 ## 7d. Protected resources

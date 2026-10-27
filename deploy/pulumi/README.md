@@ -34,8 +34,8 @@ SeaweedFS object storage — behind Envoy Gateway (Gateway API) with automatic L
 ## Quick start
 
 ```bash
+task infra:install   # the program and its policy pack, each from its own lockfile
 cd deploy/pulumi
-bun install --frozen-lockfile
 pulumi stack init prod
 
 # Non-secret config is templated in Pulumi.prod.yaml — edit the placeholders
