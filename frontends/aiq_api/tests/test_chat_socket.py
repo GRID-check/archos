@@ -313,7 +313,6 @@ async def test_nat_s_socket_objects_are_nat_s_own_and_the_route_is_ours(monkeypa
     monkeypatch.setattr(FastApiFrontEndPluginWorker, "add_routes", AsyncMock())
     monkeypatch.setattr(worker, "_schedule_internal_api_check", lambda: None)
     monkeypatch.setattr(worker, "_install_signal_handlers", lambda: None)
-    monkeypatch.setenv("AIQ_ENABLE_DEBUG", "false")
     app = FastAPI()
 
     before = list(app.routes)

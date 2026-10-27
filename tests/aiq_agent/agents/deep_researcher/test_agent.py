@@ -29,8 +29,8 @@ from aiq_agent.common.citation_verification import SourceEntry
 from aiq_agent.common.citation_verification import SourceRegistry
 from aiq_agent.common.citation_verification import reset_session_registry
 from aiq_agent.common.citation_verification import set_session_registry
-from tests.conftest import NAT_LLM_CONFIG
-from tests.conftest import nat_langchain_client
+from tests.provider_doubles import NAT_LLM_CONFIG
+from tests.provider_doubles import nat_langchain_client
 
 
 @tool

@@ -427,11 +427,11 @@ async function renderAndFileReport(
       //      document — the ordering its own comment calls out.
       //   2. The user still gets the report. It is a chat answer first and a
       //      document second; filing is the second thing that happens to it,
-      //      and `fileReportIfCommissioned` swallows this failure exactly as it
+      //      and `fileCommissionedReport` swallows this failure exactly as it
       //      swallows a quota refusal, so the answer they waited minutes for is
       //      never at risk from the filing.
-      //   3. The reader is TOLD. This lands in the `status: 'failed'` arm of
-      //      `fileReportIfCommissioned`, so the report response carries
+      //   3. The reader is TOLD. This lands in the `outcome: 'failed'` arm of
+      //      `fileCommissionedReport`, so the report response carries
       //      `filingFailed: true` — the promise the starting banner made
       //      („wird abgelegt") was made and broken, and that is the one case
       //      that key exists for. A key nobody reads is the same as no key

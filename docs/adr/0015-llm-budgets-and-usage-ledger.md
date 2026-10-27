@@ -1,6 +1,9 @@
+---
+status: accepted
+---
+
 # ADR-0015: LLM spend limits and the auditable usage ledger
 
-- **Status**: Accepted
 - **Date**: 2026-07-07
 - **Deciders**: Grid Agent team
 - **Related**: ADR-0008 (single-writer grid_app), ADR-0013 (base64url context headers), ADR-0014 (runtime model configuration), `docs/architecture/usage-budgets.md`

@@ -23,7 +23,7 @@ from aiq_agent.common import provider_limiter as pl
 from aiq_agent.common.llm_factory import enforce_chat_request_contract
 from aiq_agent.common.openrouter import pinned_async_http_client
 from aiq_agent.common.openrouter import pinned_http_client
-from tests.conftest import StrictProviderChatModel
+from tests.provider_doubles import StrictProviderChatModel
 
 
 @pytest.fixture

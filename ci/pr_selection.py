@@ -3,21 +3,29 @@
 
 Two questions, answered once in the Plan job for both test tiers.
 
-**What changed?** Against the pull request's last green CI run when it has
-one, not against its base: the tests that run passed, so a push that only
-answers a review comment re-runs only what that push reaches. The set is the
-pull request's own diff since that run's head, plus every file `develop` (the
-base) changed since shortly before that run, because the merge commit CI tests
-carries both. With no green run yet, it is the whole pull request against its
-base. Each run's selection was sound against its own reference, so chaining
-them is sound too.
+**What changed?** Two references are sound, and the cheaper one wins.
+
+- The whole pull request against its base. A test that reaches none of its
+  files gives on the merge commit what it gives on `develop`, whose own full
+  run (the deploy gate) answers for it.
+- Against the pull request's last green CI run, when it has one: the pull
+  request's own diff since that run's head, plus every file `develop` changed
+  since shortly before that run, because the merge commit CI tests carries
+  both. The tests that ran passed, so a push that only answers a review
+  comment re-runs only what that push reaches. Each run's selection was sound
+  against its own reference, so chaining them is sound too.
+
+The second is smaller when `develop` stood still, and usually larger when it
+moved: an hour of `develop` was a median 95 files, and forced the full Python
+suite in 94 of 115 windows (docs/audit/blast-radius-2026-10.md). So the plan
+takes the one that forces fewer full suites, then the one with fewer files.
 
 **Python** (pytest-testmon). Every green push to develop records which test
 executed which function (`backend-testmon`); a pull request's own runs keep
 their database per pull request, so the next push starts from it. The run is
 FULL when the change touches what testmon cannot see:
 
-- a conftest, a fixture directory, the lockfile or any pyproject.toml;
+- a conftest, a Python fixture, the lockfile or any pyproject.toml;
 - how the backend jobs run (ci.yml, its setup action, the task files, the
   filters, this script);
 - Python outside the tested packages (scripts/, deploy/, frontends/benchmarks/,
@@ -25,7 +33,10 @@ FULL when the change touches what testmon cannot see:
 - a non-Python file under a package's src/ that no test names;
 - no recorded database (first run, evicted cache).
 A non-Python input (a config, a prompt, a skill, a JSON schema) is invisible
-to coverage, so every test file that names it is added.
+to coverage, so every test file that names it is added. A fixture under
+tests/fixtures/ counts as named by a test that names its directory too, since
+tests read whole fixture directories; one that no test names forces the full
+run.
 
 **UI** (`vitest related`). The specs whose import graph reaches a changed file,
 plus every spec that reads files from disk instead of importing them (route
@@ -76,7 +87,9 @@ BASE_SLACK = datetime.timedelta(hours=1)
 PY_FULL = (
     "**/conftest.py",
     "conftest.py",
-    "tests/fixtures/**",
+    # A Python fixture is test data a parametrize reads at collection, before
+    # testmon records anything. A data fixture is matched by name below.
+    "tests/fixtures/*.py",
     "tests/__init__.py",
     "uv.lock",
     "pyproject.toml",
@@ -103,6 +116,10 @@ PY_TRACKED = (
 
 # Where a test reads a non-Python file it does not import.
 PY_TEST_ROOTS = ("tests", "frontends/aiq_api/tests", "sources")
+
+# Test data. A test reads a fixture by name or a whole directory of them, so one
+# no test names, directly or by a directory, forces a full run.
+PY_FIXTURES = "tests/fixtures/"
 
 # A non-Python file under these that no test names is code testmon cannot see
 # (package data read at runtime), so it forces a full run rather than none.
@@ -181,6 +198,11 @@ def decide_python(changed: list[str], test_files: dict[str, str], recorded: bool
             continue
         name = Path(path).name
         named = {test for test, text in test_files.items() if path in text or name in text}
+        if not named and path.startswith(PY_FIXTURES):
+            directories = Path(path).parent.relative_to(PY_FIXTURES).parts
+            named = {test for test, text in test_files.items() if any(part in text for part in directories)}
+            if not named:
+                return "full", [], f"{path} is a fixture no test names"
         if not named and _matches(path, PY_PACKAGE_SRC):
             return "full", [], f"{path} is package data no test names"
         extra |= named
@@ -245,16 +267,22 @@ def previous_green(get: Get, repo: str, branch: str, head: str, is_ancestor: Cal
     return None
 
 
-def changed_paths(base: str, previous: dict | None) -> tuple[list[str], str]:
-    """The paths the tests have not yet seen, and a description of the reference."""
+def changed_paths(base: str, previous: dict | None) -> list[tuple[list[str], str]]:
+    """Each sound set of paths the tests have not yet seen, with a description of its reference."""
     merge_base = _git("merge-base", base, "HEAD").strip()
+    whole = (_names("diff", "--name-only", "--no-renames", merge_base, "HEAD"), f"the base {merge_base[:12]}")
     if previous is None:
-        return _names("diff", "--name-only", "--no-renames", merge_base, "HEAD"), f"the base {merge_base[:12]}"
+        return [whole]
     own = _names("diff", "--name-only", "--no-renames", previous["head_sha"], "HEAD")
     started = datetime.datetime.fromisoformat(previous["created_at"].replace("Z", "+00:00"))
     since = (started - BASE_SLACK).isoformat()
     from_base = _names("log", "--format=", "--name-only", f"--since={since}", base)
-    return sorted(set(own) | set(from_base)), f"the last green run at {previous['head_sha'][:12]}"
+    return [whole, (sorted(set(own) | set(from_base)), f"the last green run at {previous['head_sha'][:12]}")]
+
+
+def cheaper(candidates: list[tuple[list[str], str]], cost: Callable[[list[str]], int]) -> tuple[list[str], str]:
+    """The candidate that forces the fewest full suites, then has the fewest paths; the first on a tie."""
+    return min(candidates, key=lambda candidate: (cost(candidate[0]), len(candidate[0])))
 
 
 def recorded_database(get: Get) -> bool:
@@ -293,9 +321,14 @@ def main(argv: list[str]) -> int:
             )
         except Exception as error:  # noqa: BLE001 - no previous run only widens the set
             print(f"previous-run lookup failed ({error}); diffing against the base", file=sys.stderr)
-    changed, since = changed_paths(argv[1], previous)
-    py_mode, py_extra, py_reason = decide_python(changed, _python_test_files(), recorded)
-    ui_mode, ui_files, ui_reason = decide_ui(changed, _disk_readers())
+    test_files, disk_readers = _python_test_files(), _disk_readers()
+
+    def full_suites(paths: list[str]) -> int:
+        return (decide_python(paths, test_files, recorded)[0] == "full") + (decide_ui(paths, disk_readers)[0] == "full")
+
+    changed, since = cheaper(changed_paths(argv[1], previous), full_suites)
+    py_mode, py_extra, py_reason = decide_python(changed, test_files, recorded)
+    ui_mode, ui_files, ui_reason = decide_ui(changed, disk_readers)
     print(f"changes since {since}: {len(changed)} files")
     print(f"python: {py_mode} ({py_reason})")
     print(f"ui: {ui_mode} ({ui_reason})")

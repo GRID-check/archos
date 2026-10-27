@@ -211,4 +211,4 @@ code (the allowance can then become a limit).
 
 Related: ADR-0041 (row-level security and the per-transaction tenant context),
 ADR-0079 (the claim queues and KEDA's scaler login), ADR-0043 (the SeaweedFS filer
-store). Scaling review item 8: `docs/architecture/scaling-review-2026-07.md`.
+store). Scaling review item 8: `docs/audit/scaling-review-2026-07.md`.

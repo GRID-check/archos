@@ -12,11 +12,9 @@ run through the real `chat_deepresearcher_agent` workflow (the same one
 
 per case, in one run.
 
-This is a NAT (NeMo Agent Toolkit) eval harness extension, following the same
-pattern as the sibling `freshqa` and `deepsearch_qa` suites in this
-directory: a small installable plugin package registers a custom
-`nat.plugins.eval` evaluator, wired up via a config YAML passed to `nat eval`.
-Unlike those two, this evaluator does **not** call an LLM judge — see
+This is a NAT (NeMo Agent Toolkit) eval harness extension: a small installable
+plugin package registers a custom `nat.plugins.eval` evaluator, wired up via a
+config YAML passed to `nat eval`. The evaluator does **not** call an LLM judge — see
 `src/oib_compliance_eval/checklist.py` for why and how.
 
 ## Layout
@@ -32,8 +30,8 @@ Unlike those two, this evaluator does **not** call an LLM judge — see
 ## Install
 
 ```bash
-# From repo root — this suite is a standalone plugin package, same as
-# freshqa/deepsearch_qa. It is intentionally NOT yet added to the root
+# From repo root — this suite is a standalone plugin package. It is
+# intentionally NOT yet added to the root
 # pyproject.toml's [tool.uv.workspace] members list (that file is outside
 # frontends/benchmarks/); wire it in as a follow-up once calibrated.
 pip install -e frontends/benchmarks/oib_compliance

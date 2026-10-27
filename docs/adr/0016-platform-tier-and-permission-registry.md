@@ -1,6 +1,9 @@
+---
+status: accepted
+---
+
 # ADR-0016: Platform tier and the permission-driven authorization model
 
-- **Status**: Accepted
 - **Date**: 2026-07-08
 - **Deciders**: Grid Agent team (platform model chosen by the platform owner)
 - **Related**: ADR-0002 (WorkOS identity), ADR-0004 (tenancy), ADR-0007 (no local identity sync), `docs/deployment/workos-provisioning.md`, `docs/architecture/multitenancy-and-auth-spec.md`

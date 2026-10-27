@@ -283,8 +283,9 @@ def relied_on(held: Sequence[dict[str, Any]], cited_names: set[str]) -> list[dic
 def relied_readings(held: Sequence[dict[str, Any]], cited: Iterable[Any] = ()) -> list[str]:
     """What the answer's looks read off the drawings, one text per look. Pure; never raises.
 
-    The claim provenance (ADR-0125, amendment of 2026-10-21) stamps a sentence
-    that repeats one of these ``observed``. Unlike the cards, this does not need
+    The answer check reads them beside the passages (ADR-0139), and the
+    ``looked-before-measurement`` score asks whether the answer repeats one.
+    Unlike the cards, this does not need
     the answer to cite the look: a value stated without a ``[N]`` is still read
     off the drawing. Of the looked documents the ones the answer cites, else
     all, and every look counts, overview or crop.
@@ -326,12 +327,12 @@ def place_look_cards(held: Sequence[dict[str, Any]], cited: Iterable[Any] = ()) 
 
 
 def drawing_value_status(
-    held: Sequence[dict[str, Any]], stamps: Iterable[Any], cited: Iterable[Any]
+    held: Sequence[dict[str, Any]], content: str, cited: Iterable[Any], readings: Sequence[str] = ()
 ) -> tuple[bool, bool]:
     """(the answer states a value read off a drawing, a region look at that drawing came first). Pure; never raises.
 
-    A drawing value is a value sentence that is ``observed`` or that cites a
-    source holding a reading or a drawing region. The look comes first by
+    A drawing value is a reading the answer repeats, or a citation of a source
+    holding a reading or a drawing region. The look comes first by
     construction (``held`` is what the turn looked at before the answer); the
     question is whether it was a REGION look at the cited document, not only an
     overview or nothing (ADR-0128, the ``looked-before-measurement`` score).
@@ -339,21 +340,15 @@ def drawing_value_status(
     try:
         from aiq_agent.common.citation_verification import source_entry_to_wire
 
-        by_number = {source.number: source.entry for source in cited if getattr(source, "number", None) is not None}
-        names: set[str] = set()
-        stated = False
-        for stamp in stamps:
-            if stamp.claim_type != "value":
-                continue
-            drawn = [
-                by_number[n] for n in stamp.numbers if n in by_number and (by_number[n].read or by_number[n].regions)
-            ]
-            if stamp.provenance != "observed" and not drawn:
-                continue
-            stated = True
-            for entry in drawn:
-                if file_name := source_entry_to_wire(entry).get("file_name"):
-                    names.add(_key(str(file_name).rsplit("/", 1)[-1]))
+        drawn = [
+            source.entry
+            for source in cited
+            if getattr(source, "number", None) is not None and (source.entry.read or source.entry.regions)
+        ]
+        files = [source_entry_to_wire(entry).get("file_name") for entry in drawn]
+        names = {_key(str(name).rsplit("/", 1)[-1]) for name in files if name}
+        text = content.casefold()
+        stated = bool(drawn) or any(reading and reading.casefold() in text for reading in readings)
         if not stated:
             return False, False
         crops = [e for e in held if e["item"]["origin"] == "look" and e["item"].get("scope") == "region"]

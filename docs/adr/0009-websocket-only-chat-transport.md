@@ -1,6 +1,9 @@
+---
+status: accepted
+---
+
 # ADR-0009: WebSocket-only chat transport
 
-- **Status:** Accepted
 - **Date:** 2026-07-05
 - **Deciders:** Grid Agent team
 - **Related:** [`../architecture/backend-deep-dive.md`](../architecture/backend-deep-dive.md), [`../technical-reference/websocket-gateway.md`](../technical-reference/websocket-gateway.md)

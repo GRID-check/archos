@@ -13,8 +13,10 @@ New records use [MADR 4](https://adr.github.io/madr/). The shape is in
 [`0000-template.md`](0000-template.md). Records 0001–0049 predate that template
 and follow the lightweight
 [Michael Nygard pattern](https://cognitect.com/blog/2011/11/15/documenting-architecture-decisions);
-they are left in the shape they were written in, because an accepted decision is
-superseded rather than rewritten.
+their bodies are left in the shape they were written in, because an accepted
+decision is superseded rather than rewritten. Their status is metadata, not the
+decision: since 2026-10 every record, old or new, carries it as frontmatter
+`status:` and nowhere else, and `scripts/check_adrs.py` refuses any other form.
 
 Working in here: [`AGENTS.md`](AGENTS.md).
 
@@ -58,6 +60,7 @@ Consequences, where a reader looks for them.
 | `accepted` | Agreed and in effect. |
 | `rejected` | Considered and declined; kept so it is not re-proposed. |
 | `superseded by ADR-NNNN` | Replaced by a later decision; kept for history. |
+| `superseded` | Replaced, and the replacing record is not written yet (0048). Becomes `superseded by ADR-NNNN` when it is. |
 | `deprecated` | No longer relevant, but not directly replaced. |
 
 ## Index
@@ -107,7 +110,7 @@ Consequences, where a reader looks for them.
 | [0041](0041-row-level-security-for-tenant-isolation.md) | Row-level security for tenant isolation | Accepted |
 | [0042](0042-object-storage-durability-and-quota.md) | Object-storage durability — backup, quota, and least privilege | Proposed |
 | [0043](0043-seaweedfs-split-topology-and-per-tenant-buckets.md) | SeaweedFS split topology, a Postgres filer store, and a bucket per tenant | Proposed |
-| [0044](0044-langfuse-durable-llm-observability.md) | Langfuse as the durable LLM-observability backend | Proposed |
+| [0044](0044-langfuse-durable-llm-observability.md) | Langfuse as the durable LLM-observability backend | Accepted |
 | [0045](0045-ifc-models-as-a-queryable-building-not-a-document.md) | IFC models are a queryable building, not another document | Accepted |
 | [0046](0046-agent-skills.md) | Agent skills — user-selected, progressive-disclosure instruction packages | Proposed |
 | [0047](0047-document-shelf-travels-as-data.md) | A document's shelf travels as data, not as a name or a label | Accepted |
@@ -144,7 +147,7 @@ Consequences, where a reader looks for them.
 | [0079](0079-background-work-runs-on-one-claim-substrate.md) | Background work runs on one claim substrate, in worker pools KEDA scales on their queues | Proposed |
 | [0080](0080-chat-drops-affinity-for-the-conversation-bus.md) | Chat drops conversation affinity for the conversation bus, and the backend scales on turn occupancy | Proposed |
 | [0081](0081-every-model-call-passes-one-priority-aware-provider-limiter.md) | Every model call passes one priority-aware provider limiter that adapts to 429s | Proposed |
-| [0082](0082-backend-roles-are-split-by-job-and-named-after-it.md) | Backend roles are split by job, and named after it | Proposed |
+| [0082](0082-backend-roles-are-split-by-job-and-named-after-it.md) | Backend roles are split by job, and named after it | Accepted |
 | [0083](0083-postgres-connections-go-through-a-transaction-pooler.md) | Postgres connections go through a transaction pooler; session features take a direct connection | Proposed |
 | [0084](0084-the-backend-authorizes-a-job-by-the-scope-the-bff-signed.md) | The backend authorizes a job by the scope the BFF signed | Proposed |
 | [0085](0085-outlook-archives-are-read-by-range-and-filed-as-the-person-per-mail.md) | Outlook archives are read by range and filed as the person, one folder per mail | Proposed |
@@ -160,12 +163,12 @@ Consequences, where a reader looks for them.
 | [0095](0095-permitting-memory-is-derived-from-the-documents-at-ingest.md) | Permitting memory is derived from the documents at ingest, read by meaning | Proposed |
 | [0096](0096-a-closed-project-s-experience-is-read-from-its-documents-as-suggestions.md) | A closed project's experience is read from its documents, as suggestions a person confirms | Proposed |
 | [0097](0097-who-holds-a-folder-s-own-list-is-a-workos-folder-role.md) | Who holds a folder's own access list is a WorkOS folder role | Accepted |
-| [0098](0098-the-project-lifecycle-is-a-small-state-machine.md) | The project lifecycle is a small state machine, and the Abschluss belongs to the closing | Proposed |
+| [0098](0098-the-project-lifecycle-is-a-small-state-machine.md) | The project lifecycle is a small state machine, and the Abschluss belongs to the closing | Accepted |
 | [0099](0099-fassungen-across-file-names-are-a-confirmed-link-not-a-merge.md) | Fassungen across file names are a confirmed link, not a merge | Proposed |
 | [0100](0100-posthog-is-the-product-platform-and-langfuse-feeds-it.md) | PostHog is the product platform, and Langfuse feeds it the LLM traces | Accepted |
 | [0101](0101-the-steckbrief-lists-the-projects-members-on-its-own.md) | The Steckbrief lists the project's members on its own | Accepted |
 | [0102](0102-file-workspaces-load-a-folder-level-by-pages.md) | File workspaces load a folder level by pages | Proposed |
-| [0103](0103-bun-is-the-javascript-toolchain-node-the-runtime.md) | Bun is the JavaScript toolchain, Node the runtime | Proposed |
+| [0103](0103-bun-is-the-javascript-toolchain-node-the-runtime.md) | Bun is the JavaScript toolchain, Node the runtime | Accepted |
 | [0104](0104-a-document-is-a-timeline-of-fassungen-and-approval-is-separate.md) | A document is a timeline of Fassungen, and approval is a separate round | Accepted |
 | [0105](0105-piloti-works-on-shared-objects.md) | Piloti works on shared objects, as the person it acts for | Accepted |
 | [0106](0106-events-on-pilotis-work-wake-a-turn.md) | Events on Piloti's work wake a turn, run as the person who acted | Accepted |
@@ -184,7 +187,7 @@ Consequences, where a reader looks for them.
 | [0120](0120-addresses-are-geocoded-by-a-self-hosted-photon.md) | Addresses are geocoded by a Photon in the cluster, over the Austrian OSM extract | Proposed |
 | [0121](0121-bulk-work-is-owned-by-the-server.md) | Bulk work is owned by the server: a durable run on `bff_job_queue`, never a loop in the browser | Accepted |
 | [0122](0122-everything-a-person-can-do-an-agent-can-do.md) | Everything a person can do, an agent can do: one MCP server, every agent a client | Accepted |
-| [0123](0123-piloti-works-the-office-through-its-door.md) | Piloti works the office through its door: workspace state in every turn, a work report, and an eval that measures it | Proposed |
+| [0123](0123-piloti-works-the-office-through-its-door.md) | Piloti works the office through its door: workspace state in every turn, a work report, and an eval that measures it | Accepted |
 | [0124](0124-agents-consult-piloti-over-mcp-and-a2a.md) | Agents consult Piloti: an ask over MCP, and an A2A server on the same primitive | Accepted |
 | [0125](0125-every-sentence-shows-where-it-comes-from.md) | Every sentence shows where it comes from: per-sentence provenance, confidence held to the weakest claim | Accepted |
 | [0126](0126-the-operator-console-has-its-own-mcp-door.md) | The operator console has its own MCP door: a second server for platform staff, its own audience | Accepted |
@@ -194,15 +197,18 @@ Consequences, where a reader looks for them.
 | [0130](0130-piloti-notices-a-new-fassung.md) | Piloti notices a new Fassung: it compares it unasked and leaves proposed marks where it changed | Proposed |
 | [0131](0131-the-agent-api-speaks-one-dialect.md) | The agent API speaks one dialect: one word, one id slot, lean pages, views not rows | Accepted |
 | [0132](0132-the-herleitung-shows-the-work-one-row-per-call.md) | The Herleitung shows the work: one row per call, grouped by round, with what it found | Proposed |
-| [0133](0133-piloti-reads-the-estate-through-standard-filesystem-tools.md) | Piloti reads the office's documents through ls, glob, grep and read_file over its own backend, beside ranked search | Proposed |
+| [0133](0133-piloti-reads-the-estate-through-standard-filesystem-tools.md) | Piloti reads the office's documents through ls, glob, grep and read_file over its own backend, beside ranked search | Accepted |
 | [0134](0134-extracted-page-text-is-stored-per-version.md) | Extracted page text is stored per version, and the index is derived from it | Proposed |
 | [0135](0135-skills-run-on-deep-agents-skills-middleware.md) | Skills run on Deep Agents' SkillsMiddleware, in chat and in deep research | Proposed |
 | [0136](0136-search-is-one-query-over-a-projection-beside-the-index.md) | Search is one query over a projection beside the index: the dossier's facts are filtered where authorization lives | Proposed |
+| [0139](0139-confidence-is-a-groundedness-check-of-the-answer.md) | Confidence is a groundedness check of the answer, graded by a model on everything the turn registered | Accepted |
 | [0140](0140-a-turn-that-needs-the-person-pauses-and-a-new-run-resumes-it.md) | A turn that needs the person pauses, and a new run resumes it: LangGraph `interrupt()` with the checkpointer, as AG-UI 1.0's interrupt outcome | Proposed |
-| [0141](0141-a-person-reworks-piloti-drawing-as-an-excalidraw-sketch.md) | A person reworks Piloti's drawing as an Excalidraw sketch; the model still writes mermaid | Proposed |
+| [0141](0141-a-person-reworks-piloti-drawing-as-an-excalidraw-sketch.md) | A person reworks Piloti's drawing as an Excalidraw sketch; the model still writes mermaid | Accepted |
 | [0142](0142-piloti-cards-render-in-the-persons-own-assistant-as-mcp-apps.md) | Piloti's cards render in the person's own assistant as MCP Apps, starting with the proposal card | Accepted |
 | [0143](0143-a-computing-card-takes-reader-inputs-and-never-a-stated-result.md) | A computing card takes reader inputs, and never a stated result: named formulas recompute in the browser, cited limits stay fixed | Proposed |
 | [0144](0144-piloti-moves-the-askers-viewer-through-allow-listed-frontend-tool-calls.md) | Piloti moves the asker's viewer through allow-listed frontend tool calls | Proposed |
+| [0145](0145-the-repository-is-laid-out-by-job.md) | The repository is laid out by job: `apps/`, `packages/`, `contracts/`, `evals/`, moved one tree per PR, and no AI-Q names | Proposed |
+| [0146](0146-piloti-draws-sketches-in-excalidraws-own-format.md) | Piloti draws sketches in Excalidraw's own format: an `excalidraw` fence, checked twice, drawn as it streams; amends 0141 | Proposed |
 
 > Note: 0027, 0039, 0044 and 0047 were each independently used twice, every
 > time because two people read the next number off this index instead of off
@@ -213,6 +219,24 @@ Consequences, where a reader looks for them.
 > a decision is not, so renumbering one does not rewrite it.
 > Take the next number from `python3 scripts/check_adrs.py --next`, which reads
 > the directory, not from this table.
+
+### Numbers with no record
+
+The index skips five numbers. None names a merged decision; each was drawn by
+a branch that has not landed (checked 2026-10-27 against `develop` and the
+pull requests that cite the number):
+
+| Number | What happened to it |
+|--------|---------------------|
+| 0075 | Taken by the project mail inbox ADR on open PR #831 (and again on #1069). #833 moved its ingestion ADR from 0075 to 0076 to keep clear of it. Never merged. |
+| 0114 | Held for a while by the Qdrant scope ADR on PR #1019, which moved to 0115 and 0116 when `develop` took 0113 first. Never merged. |
+| 0137 | Taken by the inbound-mail ADR on open PR #1188. Never merged. |
+| 0138 | Taken by the Cloudflare email routing ADR on open PR #1188. Never merged. |
+| 0139 | Taken by the ClamAV attachment scanning ADR on open PR #1188, and by the claim-confidence ADR on open PR #1231. Never merged. |
+
+`--next` answers one past the highest number on disk, so it never hands
+these out again. A branch that lands with one keeps it; a second branch holding
+the same number fails `check_adrs.py` once the first has merged, and moves.
 
 ## Related documents
 

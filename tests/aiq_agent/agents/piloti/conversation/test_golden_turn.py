@@ -132,17 +132,7 @@ async def _piloti_behind_its_nat_function(state):
         answer_confidence_marker="high",
         verified_sources=[SOURCE],
         answer_meta={"kind": "ruling", "topic": "Fluchtweglänge", "verdict": "40 m"},
-        claim_stamps=[
-            {
-                "text": "Für Gebäudeklasse 4 darf die Gehweglänge zu einem Treppenhaus höchstens 40 m betragen [1].",
-                "provenance": "cited",
-                "claim_type": "normative",
-                "load_bearing": True,
-                "numbers": [1],
-            }
-        ],
-        answer_claims_ceiling="high",
-        answer_weakest_claim=["cited", "normative"],
+        confidence_check={"status": "judged", "level": "high", "findings": []},
     )
 
 

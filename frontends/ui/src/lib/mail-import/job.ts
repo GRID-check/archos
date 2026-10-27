@@ -26,9 +26,8 @@ import 'server-only'
 import type { AuthorizedSession } from '@/lib/auth/types'
 import type { MailImport, MailImportErrorCode, MailImportSkippedSample, MailImportStatus } from '@/lib/db/schema'
 import { withPlatformAccess, withTenant } from '@/lib/db/tenant-context'
-import { ApiError } from '@/lib/api/errors'
+import { isAuthzRefusal } from '@/lib/api/errors'
 import { resolvePinnedRequesterSession } from '@/lib/auth/pinned-session'
-import { isAuthzError } from '@/lib/auth-utils'
 import { requireFolderWrite } from '@/lib/authz/folder-access'
 import { resolveShelfFolderPath } from '@/lib/documents/folder-path'
 import { requireShelfWrite } from '@/lib/documents/shelf-authz'
@@ -373,8 +372,7 @@ function failureOf(error: unknown): Failure | null {
 
 /** A refusal of the person, as opposed to a failure to ask. */
 function isRefusal(error: unknown): boolean {
-  if (error instanceof ApiError) return error.status === 403 || error.status === 404
-  return isAuthzError(error)
+  return isAuthzRefusal(error)
 }
 
 function messageOf(error: unknown): string {

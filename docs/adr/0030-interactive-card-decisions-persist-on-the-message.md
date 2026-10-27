@@ -1,6 +1,9 @@
+---
+status: accepted
+---
+
 # ADR-0030: Interactive-card decisions persist on the message
 
-- **Status:** Accepted
 - **Date:** 2026-07-28
 - **Deciders:** GRID engineering
 - **Related:** ADR-0012 (cards as a rich-UI presentation layer), ADR-0008 (project & organization memory), [`../architecture/cards.md`](../architecture/cards.md), [`../architecture/project-memory-design.md`](../architecture/project-memory-design.md)

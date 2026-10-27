@@ -4,7 +4,6 @@ import { Circle, CircleCheck, TableOfContents } from 'lucide-react'
 import { HorizontalScroll } from '@/components/ui/horizontal-scroll'
 import { type FC, type ReactNode, createContext, memo, useContext, useMemo, useState } from 'react'
 import { useTranslations } from '@/i18n'
-import dynamic from 'next/dynamic'
 import ReactMarkdown, { type Components, type ExtraProps, type Options } from 'react-markdown'
 import type { PluggableList } from 'unified'
 import rehypeKatex from 'rehype-katex'
@@ -12,7 +11,6 @@ import remarkDirective from 'remark-directive'
 import remarkGfm from 'remark-gfm'
 import remarkMath from 'remark-math'
 import { CodeBlock } from '@/shared/components/CodeBlock'
-import { DrawingSkeleton } from '@/features/diagrams/components/drawing-skeleton'
 import { Chip } from '@/components/ui/chip'
 import type { MarkdownRendererProps } from './types'
 import { scrollToAnchor, useInPageAnchorRenderer } from './anchor-context'
@@ -27,7 +25,8 @@ import {
   remarkBlockContinues,
   splitMarkdownBlocks,
 } from './markdown-blocks'
-import { getLanguageFromClassName, headingAnchorId, isMermaidFence } from './utils'
+import { getLanguageFromClassName, headingAnchorId } from './utils'
+import { DiagramFence, diagramFenceKind } from './diagram-fence'
 import { isStatusTone, statusTone } from './status-marks'
 import { parseTally, rehypeTableShape, textOf } from './table-shape'
 import { isDelimiterRow } from '@/lib/text/markdown-table'
@@ -123,48 +122,6 @@ const REHYPE_PLUGINS_OPEN: PluggableList = [
   [rehypeDirectiveShape, { openTail: true }],
   rehypeBindWords,
 ]
-
-/**
- * A ```mermaid fence, drawn instead of printed.
- *
- * `dynamic` with `ssr: false` for the same reason the BIM preview uses it: the
- * component reaches for a DOM (mermaid lays out a graph by measuring text), and
- * everything behind this boundary — the renderer, the SVG validator and, one
- * `import()` further in, mermaid itself — stays out of the bundle of an answer
- * that has no diagram in it. Measured: mermaid's first flowchart render pulls
- * 214 KB gzipped, and a reader who never meets a fence pays none of it.
- *
- * The fallback while the chunk loads is the place the drawing will be drawn
- * in ({@link DiagramPlace}), not a spinner and not nothing. It was nothing,
- * and the paced reveal shows a closed fence together with the first words
- * after it: those words were drawn first, and the figure then opened 156 px
- * above the line being read when the chunk resolved (stream audit 2026-10,
- * an answer opening with a table: `dy 180` on the paragraph after it).
- */
-const MermaidDiagram = dynamic(
-  () =>
-    import('@/features/diagrams/components/mermaid-diagram').then(
-      (module) => module.MermaidDiagram
-    ),
-  { ssr: false, loading: () => <DiagramPlace /> }
-)
-
-/**
- * The drawing's place while its component loads: the frame and skeleton
- * `MermaidDiagram` itself shows while it parses, so the swap to it changes
- * nothing on screen. The plane of the product's own views, the frame most
- * fences are drawn in; a fence mermaid draws itself has a hairline frame of
- * the same height instead.
- */
-function DiagramPlace() {
-  return (
-    <figure data-testid="mermaid-place" className="my-4" aria-busy="true">
-      <div className="bg-muted/40 rounded-xl p-3">
-        <DrawingSkeleton />
-      </div>
-    </figure>
-  )
-}
 
 /**
  * The text alignment a GFM table wrote into its delimiter row (`|---:|`).
@@ -442,13 +399,13 @@ function MarkdownCode({
     )
   }
 
-  // A diagram, not a listing. The fence still being written holds its
-  // place (`isStreaming`). A source mermaid will not draw falls back to
-  // the `CodeBlock` below.
-  if (isMermaidFence(codeClassName, codeContent)) {
+  // A drawing, not a listing (`diagram-fence.tsx`). The fence still being
+  // written holds its place, or draws as far as it has arrived.
+  const drawing = diagramFenceKind(codeClassName, codeContent)
+  if (drawing) {
     const at = node?.position
     const stillWriting = streamingLines !== null && at !== undefined && isOpenFence(streamingLines, at.start.line, at.end.line)
-    return <MermaidDiagram source={codeContent} isStreaming={stillWriting} />
+    return <DiagramFence kind={drawing} source={codeContent} isStreaming={stillWriting} />
   }
 
   const lineCount = codeContent.split('\n').length

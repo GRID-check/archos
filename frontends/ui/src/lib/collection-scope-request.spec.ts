@@ -32,8 +32,7 @@ vi.mock('@/lib/conversations/restricted-use', async (importOriginal) => ({
 vi.mock('@/lib/conversations/repository', () => ({ findConversationTenancy: vi.fn() }))
 vi.mock('@/lib/sharing/repository', () => ({ findGrantForSubject: vi.fn() }))
 
-import { NotFoundError } from '@/lib/api/errors'
-import { isAuthzError } from '@/lib/auth-utils'
+import { isAuthzRefusal, NotFoundError } from '@/lib/api/errors'
 import type { AuthorizedSession } from '@/lib/auth/types'
 import { requireProjectAccess } from '@/lib/authz/projects'
 import { findConversationTenancy } from '@/lib/conversations/repository'
@@ -88,7 +87,7 @@ describe('a conversationId on the WS upgrade is authorized (F2)', () => {
     expect(failure).toBeInstanceOf(NotFoundError)
     // The websocket-scope route answers 403 on exactly this classification, and
     // the gateway destroys the socket on a non-2xx — so the upgrade is refused.
-    expect(isAuthzError(failure)).toBe(true)
+    expect(isAuthzRefusal(failure)).toBe(true)
   })
 
   it('refuses a conversation in another organization', async () => {

@@ -23,7 +23,6 @@ vi.mock('@/lib/auth/require-auth', () => ({
     role: 'member',
     permissions: [],
   }),
-  authzErrorResponse: () => null,
 }))
 
 vi.mock('@/lib/session-documents/service', () => ({

@@ -51,6 +51,7 @@ from aiq_agent.common.turn_status import emit_escalation
 from aiq_agent.common.wire_v2 import EventBody
 from aiq_agent.knowledge.inventory import set_listing_shelf
 from aiq_agent.knowledge.inventory import shelf_hint_from_query
+from aiq_agent.observability.turn_phases import observed_phase
 from aiq_agent.turn.api_seam import AuthError
 from aiq_agent.turn.commission import CommissionedRun
 from aiq_agent.turn.commission import CommissionRefused
@@ -145,7 +146,7 @@ ANSWER_LIFTS: tuple[tuple[str, str], ...] = (
     ("answer_meta", "answer_meta"),
     ("retrieval_ledger", "retrieval_ledger"),
     ("quote_stamps", "quote_stamps"),
-    ("claim_stamps", "claim_stamps"),
+    ("confidence_check", "confidence_check"),
     ("answer_confidence_version", "answer_confidence_version"),
     ("answer_lookup_found_nothing", "lookup_found_nothing"),
     ("reasoning_effort", "reasoning_effort"),
@@ -492,7 +493,9 @@ class ConversationGraph:
             return _error_update(GENERIC_ERROR_MESSAGE)
 
     async def _research_node(self, state: ConversationState) -> dict[str, Any]:
-        trimmed = self._trimmed(state)
+        with observed_phase("history.trim", messages=len(state.messages)) as trim:
+            trimmed = self._trimmed(state)
+            trim["kept"] = len(trimmed)
         logger.debug("research_node: available_documents = %s", state.available_documents)
         # A shelf named in the question ("was hast du in der Büroablage") is the
         # one the inventory prints in full this turn — a ContextVar read by
@@ -722,7 +725,8 @@ class ConversationGraph:
         logger.info("Conversation: Starting turn")
         input_state = {name: getattr(state, name) for name in TURN_SCOPED_FIELDS}
         input_state["messages"] = state.messages
-        merged_digest = await self._merged_digest(graph_config, state)
+        with observed_phase("setup.checkpoint_digest"):
+            merged_digest = await self._merged_digest(graph_config, state)
         if merged_digest is not None:
             input_state["already_read_digest"] = merged_digest
         if state.messages:

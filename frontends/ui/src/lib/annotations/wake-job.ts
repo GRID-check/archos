@@ -32,8 +32,7 @@
  */
 
 import 'server-only'
-import { ApiError } from '@/lib/api/errors'
-import { isAuthzError } from '@/lib/auth-utils'
+import { ApiError, isAuthzRefusal } from '@/lib/api/errors'
 import { resolvePinnedRequesterSession } from '@/lib/auth/pinned-session'
 import type { AuthorizedSession } from '@/lib/auth/types'
 import { insertMessages } from '@/lib/conversations/repository'
@@ -312,7 +311,7 @@ export async function runPilotiWake(
   try {
     conversationId = await ensureDocumentThread(session, doc)
   } catch (error) {
-    if (isAuthzError(error)) return end('suppressed', 'the person may no longer chat here')
+    if (isAuthzRefusal(error)) return end('suppressed', 'the person may no longer chat here')
     // Their thread is being deleted: its id comes free once the erasure ran.
     if (error instanceof ApiError && error.status === 409) return wait('the thread is being deleted')
     throw error
@@ -324,7 +323,7 @@ export async function runPilotiWake(
     context = await resolveTurnContext(session, { projectId: doc.projectId ?? undefined, conversationId })
   } catch (error) {
     if (error instanceof TurnBudgetExhaustedError) return fail('refused', `budget: ${error.message}`)
-    if (isAuthzError(error)) return end('suppressed', 'the person may no longer chat here')
+    if (isAuthzRefusal(error)) return end('suppressed', 'the person may no longer chat here')
     throw error
   }
   const secret = process.env.GRID_INTERNAL_API_TOKEN

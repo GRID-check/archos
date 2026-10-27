@@ -2,7 +2,9 @@
 
 /**
  * „Als Skizze bearbeiten": a drawing Piloti made, opened in Excalidraw so a
- * person can rework it and file their own version into the project.
+ * person can rework it and file their own version into the project. The
+ * drawing is a flow or a Gliederung laid out as a sketch (`sketchFromModel`),
+ * or a sketch Piloti drew itself (an ```excalidraw fence, ADR-0146).
  *
  * The canvas (`sketch-canvas.tsx`) is loaded with `next/dynamic` when the
  * dialog opens, never before, so a chat with diagrams in it downloads none of
@@ -19,14 +21,13 @@
  */
 
 import dynamic from 'next/dynamic'
-import { useCallback, useMemo, useRef, useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { useLocale, useTranslations } from '@/i18n'
 import { useDiagramFiling } from '../use-diagram-filing'
 import { useDiagramTheme } from '../use-diagram-theme'
 import { DiagramFilingControls } from '../components/diagram-filing-controls'
-import { sketchFromModel, type SketchableModel } from './sketch-from-model'
 import type { SketchCanvasHandle } from './sketch-canvas'
 
 /** While the canvas chunk loads, and in its place when it could not be loaded (offline, a stale deploy). */
@@ -47,26 +48,27 @@ const SketchCanvas = dynamic(() => import('./sketch-canvas'), {
 export interface SketchDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  /** The mermaid source the drawing came from: its title names the file. */
+  /** The fence the drawing came from: its title names the file. */
   source: string
-  model: SketchableModel
+  /** The starting scene as Excalidraw skeletons, laid out once per opening by the caller. */
+  elements: readonly object[]
+  /** A title the fence states outside its source (a sketch fence's `title`). */
+  title?: string | null
 }
 
-export function SketchDialog({ open, onOpenChange, source, model }: SketchDialogProps) {
+export function SketchDialog({ open, onOpenChange, source, elements, title }: SketchDialogProps) {
   const t = useTranslations('diagrams')
   const { locale } = useLocale()
   const theme = useDiagramTheme()
   const handle = useRef<SketchCanvasHandle | null>(null)
   const [dirty, setDirty] = useState(false)
   const [confirmingDiscard, setConfirmingDiscard] = useState(false)
-  // Laid out once per opening, from the model the reader is looking at.
-  const initialElements = useMemo(() => sketchFromModel(model), [model])
 
   const prepareSketch = useCallback(async () => {
     if (!handle.current) throw new Error('the canvas is not ready')
     return handle.current.prepare()
   }, [])
-  const filing = useDiagramFiling({ source, fileSvg: null, prepareSketch })
+  const filing = useDiagramFiling({ source, fileSvg: null, prepareSketch, title })
   const filed = filing.state.kind === 'filed' || filing.state.kind === 'partial'
 
   const requestClose = useCallback(
@@ -98,7 +100,7 @@ export function SketchDialog({ open, onOpenChange, source, model }: SketchDialog
         <div className="border-border min-h-0 flex-1 overflow-hidden rounded-lg border phone:rounded-none phone:border-x-0">
           {open ? (
             <SketchCanvas
-              initialElements={initialElements}
+              initialElements={elements}
               theme={theme}
               langCode={locale === 'de' ? 'de-DE' : 'en'}
               onReady={onReady}

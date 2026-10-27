@@ -3,7 +3,7 @@
 Every model call the turn makes — research rounds, the turn decision, passage
 verdicts, the requery judge, reranks, embeddings — as the provider billed it:
 input tokens, cached tokens, output, seconds. The number the turns audit
-(`docs/architecture/turns-per-answer-audit-2026-09.md`) reconstructed by
+(`docs/audit/turns-per-answer-audit-2026-09.md`) reconstructed by
 hand, measured.
 
 Needs what a local turn needs: OPENROUTER_API_KEY, and the corpus ingested
@@ -114,12 +114,12 @@ def run_stamp() -> str:
     return f"{time.strftime('%H%M%S')}-{os.getpid()}"
 
 
-# The NAT plugins a run loads from ``frontends/``: installed editable from ONE
+# The NAT plugin a run loads from ``frontends/``: installed editable from ONE
 # checkout like the sources, and loaded by every ``nat run`` through their entry
 # points. From a worktree of another commit the main checkout's ``aiq_api`` met
 # the worktree's ``aiq_agent`` and every turn died (``Unknown field name
 # front_end``), reported as a 0.0 s run.
-FRONTEND_PACKAGES = {"aiq_api": "frontends/aiq_api/src/aiq_api", "aiq_debug": "frontends/debug/src/aiq_debug"}
+FRONTEND_PACKAGES = {"aiq_api": "frontends/aiq_api/src/aiq_api"}
 
 
 def source_packages() -> dict[str, Path]:

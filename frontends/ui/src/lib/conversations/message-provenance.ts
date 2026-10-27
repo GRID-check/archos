@@ -36,7 +36,7 @@ import { modernizeTurnEventKey, modernizeTurnEventValueName } from './legacy-tur
 import type { RetrievalLedger } from './message-retrieval-ledger'
 import { sanitizeRetrievalLedger } from './message-retrieval-ledger'
 import { sanitizeQuoteStamps, type QuoteStamp } from './message-quote-stamps'
-import { sanitizeClaimStamps, type ClaimStamp } from './message-claim-stamps'
+import { sanitizeConfidenceCheck, type ConfidenceCheck } from './confidence-check'
 import { isChatEffort, type ChatEffort } from '@/lib/reasoning-settings/catalog'
 
 /** The kinds of Herleitung step, one per wire v2 `Step` (`wire_v2.py`). */
@@ -330,11 +330,8 @@ export interface MessageProvenance {
    * so a reload still says „Wortlaut belegt [N]" where the live answer did.
    */
   quoteStamps?: QuoteStamp[]
-  /**
-   * Where each sentence comes from (`message-claim-stamps.ts`, ADR-0125). The
-   * confidence chip explains its level as their mix.
-   */
-  claimStamps?: ClaimStamp[]
+  /** What the answer check found (`confidence-check.ts`, ADR-0139). */
+  confidenceCheck?: ConfidenceCheck
   /**
    * Which rule computed `answerConfidence`: 2 the per-sentence formula
    * (ADR-0125). Absent on every answer stored before it, which renders under
@@ -813,8 +810,8 @@ export function sanitizeProvenance(input: unknown): MessageProvenance | null {
   const stamps = sanitizeQuoteStamps(input.quoteStamps)
   if (stamps) out.quoteStamps = stamps
 
-  const claims = sanitizeClaimStamps(input.claimStamps)
-  if (claims) out.claimStamps = claims
+  const check = sanitizeConfidenceCheck(input.confidenceCheck)
+  if (check) out.confidenceCheck = check
   if (input.answerConfidenceVersion === 1 || input.answerConfidenceVersion === 2) {
     out.answerConfidenceVersion = input.answerConfidenceVersion
   }

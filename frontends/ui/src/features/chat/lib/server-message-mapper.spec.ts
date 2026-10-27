@@ -453,24 +453,28 @@ describe('mapServerMessageToChatMessage — the answer’s provenance', () => {
     expect(bad!.quoteStamps).toBeUndefined()
   })
 
-  it('restores the claim stamps, the rule version and the found-nothing flag (ADR-0125)', () => {
-    const claim = { text: 'Anna hat drei offene Freigaben.', provenance: 'record', claimType: 'value', loadBearing: true }
+  it('restores the answer check, the rule version and the found-nothing flag (ADR-0139)', () => {
     const mapped = mapServerMessageToChatMessage(
       serverMessage({
         role: 'assistant',
         metadata: {
-          provenance: { ...provenance, claimStamps: [claim], answerConfidenceVersion: 2, lookupFoundNothing: true },
+          provenance: {
+            ...provenance,
+            confidenceCheck: { status: 'unavailable', findings: [] },
+            answerConfidenceVersion: 2,
+            lookupFoundNothing: true,
+          },
         },
       }),
     )
-    expect(mapped!.claimStamps).toEqual([claim])
+    expect(mapped!.confidenceCheck).toEqual({ status: 'unavailable', findings: [] })
     expect(mapped!.answerConfidenceVersion).toBe(2)
     expect(mapped!.lookupFoundNothing).toBe(true)
 
     // A row stored before ADR-0125 restores no version: it renders under the rule it was computed with.
     const old = mapServerMessageToChatMessage(serverMessage({ role: 'assistant', metadata: { provenance } }))
     expect(old!.answerConfidenceVersion).toBeUndefined()
-    expect(old!.claimStamps).toBeUndefined()
+    expect(old!.confidenceCheck).toBeUndefined()
   })
 
   it('restores the run ledger on a run’s own message, bounded again on the way out', () => {

@@ -36,6 +36,7 @@ async def _shallow(state):
         source_lookup_attempted=True,
         answer_citation_grounded=True,
         answer_confidence_marker="high",
+        confidence_check={"status": "judged", "level": "high", "findings": []},
         skills_activated=["oib-brandschutz"],
     )
 

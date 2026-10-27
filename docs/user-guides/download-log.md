@@ -4,7 +4,7 @@ Who took which document out of Piloti, and who opened one in a folder the office
 gave its own access list. This page says what is recorded and why, how long it
 is kept, who sees it, and what an office with a works council should settle
 before it relies on it. The decision behind it is ADR-0088 and its plan,
-[`plans/2026-10-06-folder-access-lifecycle.md`](../../plans/2026-10-06-folder-access-lifecycle.md)
+`docs/plans/2026-10-06-folder-access-lifecycle.md` (removed; in git history at `56ee3329`)
 (decision 4).
 
 ## What is recorded

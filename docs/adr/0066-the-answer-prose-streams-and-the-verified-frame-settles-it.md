@@ -122,7 +122,7 @@ verified original (`_adopt_if_better`), and after an adopted rewrite a card's
 `[N]` was carried through the numbers both source lists shared. ADR-0067
 replaced that repair, guard included: the whole-answer rewrite is gone, and the
 repair corrects a misremembered quote in place (weighed in
-`docs/architecture/repair-pass-alternatives-2026-09.md`). One defect found
+`docs/audit/repair-pass-alternatives-2026-09.md`). One defect found
 along the way still stands fixed: the settled snapshot checked citations but
 not quotes, so a quote no passage holds read as real until the terminal frame
 marked it; it is now marked at settle. The answer suite counts each terminal

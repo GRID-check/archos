@@ -8,7 +8,7 @@ The two decisions it rests on are
 [ADR-0116](../adr/0116-retrieval-scope-is-a-payload-filter-compiled-in-one-place.md)
 (scope as a filter, not a collection). What is built, and where it departs
 from the target below, is §12. The gates in §10 decided the move
-([results](qdrant-gates-2026-10.md)); §2 describes the Chroma-era system the
+([results](../audit/qdrant-gates-2026-10.md)); §2 describes the Chroma-era system the
 design started from.
 
 This is not a port. A port would copy today's collection-per-scope layout into
@@ -55,7 +55,7 @@ relative to `sources/knowledge_layer/src/` unless they are absolute.
 - the durable fair ingest queue (ADR-0076/0079)
 - OIB hash gating plus `CHUNK_FORMAT_VERSION`
 - the query-embedding cache and warm-up, since embedding costs 280–980 ms and
-  the store only 50–230 ms (`turn-latency-measured-2026-09.md`)
+  the store only 50–230 ms (`docs/audit/turn-latency-measured-2026-09.md`)
 - the cross-encoder rerank, the requery loop, the coverage judge, and the
   EN→DE glossary expansion
 - `keyed_lock` plus retire-after-insert for concurrent re-ingest
@@ -293,7 +293,7 @@ group_by: document_id, group_size: 3, limit: 16       # replaces the soft per-fi
   sweep measured `k` 20/60/100, dense weights 1.5 to 3, DBSF, MMR and
   rescoring, and kept plain RRF at 60; RRF ties are ordered by cosine in the
   application, because Qdrant returns them in no fixed order
-  ([gate report](qdrant-gates-2026-10.md#ranking-sweep-2026-10-13)).
+  ([gate report](../audit/qdrant-gates-2026-10.md#ranking-sweep-2026-10-13)).
 - Fusion inside a prefetch is computed per shard, so fusion stays at the top
   level. That rules out the "then (nested)" formula above on a sharded
   collection: a boost rescores each channel before the fusion instead, and
@@ -603,13 +603,13 @@ Each gate is a number with the place it is measured.
 | G6 dimension | Recall at 1024-d derived from the stored 3072-d vectors is within 1 point of 3072-d | `task be:eval:qdrant-parity` dimension section, on the production embedder |
 
 **Measured 2026-10-13 on the OIB corpus:**
-[`qdrant-gates-2026-10.md`](qdrant-gates-2026-10.md).
+[`docs/audit/qdrant-gates-2026-10.md`](../audit/qdrant-gates-2026-10.md).
 
 - G1b passes, with exact mode identical to `$regex`. G2 passes locally (p95
   34 ms).
 - G6 fails its 1-point bound: recall@1 drops by one to two of 46 questions,
   so `dense` stays 3072-d.
-- Ranked `§` lookups regressed against Chroma's `$contains`; the `paragraph_refs` keyword channel closed it („§ 8“ P@10 0.50 on both paths, [re-run](qdrant-gates-2026-10.md#re-run-on-the-merged-code)).
+- Ranked `§` lookups regressed against Chroma's `$contains`; the `paragraph_refs` keyword channel closed it („§ 8“ P@10 0.50 on both paths, [re-run](../audit/qdrant-gates-2026-10.md#re-run-on-the-merged-code)).
 - Two defects in the Qdrant path, found and fixed there: the text index
   dropped digits, and BM25 was sent unpriced.
 - G1 passes. The answer suite through the real agent (29 questions, two
@@ -618,14 +618,14 @@ Each gate is a number with the place it is measured.
   and the same seconds and reasoning tokens per question (median deltas
   −0.3 s and −22 tokens). Retrieval differs by about 15 points of result
   overlap beyond run-to-run noise without reaching a checked answer
-  ([G1](qdrant-gates-2026-10.md#g1-answer-quality-pass)).
+  ([G1](../audit/qdrant-gates-2026-10.md#g1-answer-quality-pass)).
 - G3, G4 and G5 are not measured by these runs.
 - The ranking sweep (`--variants all`) measured rescoring, RRF `k`, dense
   weights, DBSF, MMR and BM25 compound splitting against the same corpus and
   adopted one setting, a cosine tie-break for RRF ties. The exact-id and
   overview gaps were BM25 fed umlaut stopwords and file-name pieces, now
   fixed (exact-id recall@16 1.000, overview 0.967, both above Chroma)
-  ([sweep](qdrant-gates-2026-10.md#ranking-sweep-2026-10-13)).
+  ([sweep](../audit/qdrant-gates-2026-10.md#ranking-sweep-2026-10-13)).
 
 Open questions the spike answers:
 
@@ -639,7 +639,7 @@ Open questions the spike answers:
   BM25 matches or beats it on the lexical set. Exact mode stays a regex over a
   Qdrant scroll (`find_text`): the phrase index alone misses in-word matches
   (`Geschoss` 88 of 255) and cannot see `§`
-  ([gate report](qdrant-gates-2026-10.md#g1b-lexical-pass)).
+  ([gate report](../audit/qdrant-gates-2026-10.md#g1b-lexical-pass)).
 - **Q4.** How many points does the largest office hold, and is that enough to
   justify custom sharding now?
 
@@ -732,12 +732,12 @@ itself.
 | Similar passages („Im Büro behandelt“): the nearest passages to one the reader is looking at, across the collections the BFF authorized (the reader's project, the projects a solo chat reaches with closed ones, the Büroablage), the source document and superseded Fassungen filtered out in the query. A stored chunk is queried by its point id (by `chunk_id`, or a cited passage found in its file by its text), from the corpus by `lookup_from`; a selection is embedded once through the cached query path. Hits are joined to screened rows only (`SCREENED_ONLY`), so a held document never shows. A `retrieve.similar_passages` retriever observation per call | `qdrant/similar.py` — `find_similar`; `POST /v1/collections/similar` (`routes/similar_passages.py`); BFF `lib/similar-passages/service.ts` — `findSimilarPassages` |
 | Grouped answers ordered document by document across projects | `routes/document_search.py` — `_ranked_group_hits` |
 | Operations: every peer scraped by the collector on a keyless metrics port, 13 alert rules held to the collector's real export, quotas, the alias record beside the snapshots, alias-based rebuilds, a second key for rotation, the low-memory load mode, and a runbook whose procedures were drilled against real containers | `data/qdrant.ts`, `data/qdrant-alerts.ts`, `platform/otel-collector.ts` — `qdrantScrape`; `qdrant/rebuild.py`, `scripts/qdrant_rebuild.py`; [`qdrant-runbook.md`](../deployment/qdrant-runbook.md) |
-| The gate measurement (G1b, G2, G6): both paths over one OIB corpus with one set of production vectors, through the production retriever ([results](qdrant-gates-2026-10.md)) | `task be:eval:qdrant-parity`, `frontends/benchmarks/oib_retrieval/src/oib_retrieval_eval/qdrant_parity/` |
-| The ranking sweep: every `search.Ranking` variant read through the production retriever on one collection, per-question moves against a baseline measured first and last; the BM25 compound-splitting experiment ([results](qdrant-gates-2026-10.md#ranking-sweep-2026-10-13)) | `qdrant_parity/variants.py`, `decompound.py`; `task be:eval:qdrant-parity -- --variants all` |
+| The gate measurement (G1b, G2, G6): both paths over one OIB corpus with one set of production vectors, through the production retriever ([results](../audit/qdrant-gates-2026-10.md)) | `task be:eval:qdrant-parity`, `frontends/benchmarks/oib_retrieval/src/oib_retrieval_eval/qdrant_parity/` |
+| The ranking sweep: every `search.Ranking` variant read through the production retriever on one collection, per-question moves against a baseline measured first and last; the BM25 compound-splitting experiment ([results](../audit/qdrant-gates-2026-10.md#ranking-sweep-2026-10-13)) | `qdrant_parity/variants.py`, `decompound.py`; `task be:eval:qdrant-parity -- --variants all` |
 | From the sweep: RRF ties ordered by cosine, then chunk id, with a tie straddling the cut fetched whole (repeated calls returned another top-60 for 86 of 105 queries, now 0), in grouped search before the grouping; the settings named once (`RANKING`) and on the span as `ranking` | `qdrant/search.py` — `Ranking`, `RANKING`, `_cosine_ordered_ties`; `register.py` |
 | From the sweep: BM25 never asked for the umlaut stopwords Qdrant's folding lets through (`über`, `für`, …) or for the pieces of a file name | `retrieval.bm25_candidates`, used by `_qdrant_lexical_inputs` |
 | From that measurement: BM25 terms priced by the German mirror's own rule (`german_text.select_terms`), with counts cached per collection size. Cross-project grouped search prices them too, and runs the same exact-term channels, with document frequencies over the union of the searched scopes (the corpus its IDF is computed over). It also found the tokenizer defect, fixed below under "Hardened after review" | `adapter.py` — `_qdrant_lexical_inputs`, `_search_grouped_sync`; `retrieval.term_frequencies` |
-| Gate G1: the answer suite through the real agent on the pre-migration Chroma baseline and on Qdrant, one ingest read by both ([results](qdrant-gates-2026-10.md#g1-answer-quality-pass)) | `task be:eval:answer-suite -- --ingest --corpus data/oib`, `scripts/turn_census/suite.py` — `use_local_corpus` |
+| Gate G1: the answer suite through the real agent on the pre-migration Chroma baseline and on Qdrant, one ingest read by both ([results](../audit/qdrant-gates-2026-10.md#g1-answer-quality-pass)) | `task be:eval:answer-suite -- --ingest --corpus data/oib`, `scripts/turn_census/suite.py` — `use_local_corpus` |
 
 ### Hardened after review (2026-10-13)
 
@@ -848,7 +848,7 @@ rest stands.
   sweep measured `rescore: true` at oversampling 1 to 3 and rejected it: no
   primary measure improved, the same golden questions lost a rank in every
   run, and it did not recover the exact-id question it was suspected of
-  losing ([gate report](qdrant-gates-2026-10.md#ranking-sweep-2026-10-13)).
+  losing ([gate report](../audit/qdrant-gates-2026-10.md#ranking-sweep-2026-10-13)).
   Served scores do not need it: `Chunk.score` is the exact cosine, from an
   `exact=True` query over the hit ids (error 0.000 on every hit of every
   variant). Without rescoring, a channel's own `$score` is the quantized one
@@ -891,7 +891,7 @@ rest stands.
   fell behind before the change.
 * **The Postgres `chunk_text` mirror stays** while the Chroma path reads it.
   G1b has since shown that the Qdrant path needs it for neither BM25 nor exact
-  mode ([gate report](qdrant-gates-2026-10.md)), so it goes with Chroma in
+  mode ([gate report](../audit/qdrant-gates-2026-10.md)), so it goes with Chroma in
   slice 3.
 
 ### Next
@@ -901,11 +901,11 @@ rest stands.
    ([runbook, Migrating from Chroma](../deployment/qdrant-runbook.md#migrating-from-chroma)),
    then run the answer suite on the migrated stack.
    - G1 is closed: the answer suite held every baseline check on Qdrant
-     ([G1](qdrant-gates-2026-10.md#g1-answer-quality-pass)); re-run it after
+     ([G1](../audit/qdrant-gates-2026-10.md#g1-answer-quality-pass)); re-run it after
      any ranking change. TurboQuant oversampling is measured and rejected
-     ([sweep](qdrant-gates-2026-10.md#ranking-sweep-2026-10-13)). Ranked `§`
+     ([sweep](../audit/qdrant-gates-2026-10.md#ranking-sweep-2026-10-13)). Ranked `§`
      lookups are closed: „§ 8“ P@10 0.50 on both paths after the
-     `paragraph_refs` channel ([re-run](qdrant-gates-2026-10.md#re-run-on-the-merged-code)).
+     `paragraph_refs` channel ([re-run](../audit/qdrant-gates-2026-10.md#re-run-on-the-merged-code)).
 2. Slice 2: ids in the envelope, `restriction_id`, folder ids in
    `folder_ancestors`, and the envelope saying `project_status = closed`
    instead of listing ids for wide chats (the facts are on the points for it

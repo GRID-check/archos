@@ -30,8 +30,8 @@ while disabled):
   `grid-locale` cookie (no provider exists) and reuses `errors.appError` for its
   copy, German and English. The prop is `retry` (stable since Next 16.3).
 
-Neither boundary reports an authorization denial (`isAuthzError`: an expected
-outcome) or an error with a `digest` (thrown on the server, where
+Neither boundary reports an authorization denial (an expected outcome, told by
+its message, since a server-thrown class does not survive the RSC boundary) or an error with a `digest` (thrown on the server, where
 `onRequestError` already reported it with its stack; the client copy is the
 redacted "error occurred in the Server Components render"). PostHog starts in
 the layout's providers, so a crash before they mount is reported by the server
@@ -63,7 +63,8 @@ version); `lib/analytics/request-error.ts` builds it with our configuration:
   error of an opted-out visitor is still reported under their distinct id.
   Moving the opt-out to a cookie (`opt_out_capturing_persistence_type`) would
   forget every opt-out already stored, so it is left as an open decision.
-- Authorization denials are dropped, and each fingerprint (route, error name,
+- Authorization denials (`isAuthzRefusal`: an `ApiError` with status 401, 403
+  or 404, thrown in a page render or a server action) are dropped, and each fingerprint (route, error name,
   message) gets 5 events per 5 minutes, through `@posthog/core`'s
   `BucketedRateLimiter`.
 

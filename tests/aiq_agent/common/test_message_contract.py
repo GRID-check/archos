@@ -18,7 +18,7 @@ from aiq_agent.common.llm_factory import enforce_chat_request_contract
 from aiq_agent.common.message_contract import CONTINUATION_TURN
 from aiq_agent.common.message_contract import ends_on_model_turn
 from aiq_agent.common.message_contract import normalize_chat_request
-from tests.conftest import ProviderContractError
+from tests.provider_doubles import ProviderContractError
 
 
 class TestNormalizeChatRequest:

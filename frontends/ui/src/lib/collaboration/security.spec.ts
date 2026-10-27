@@ -54,7 +54,6 @@ vi.mock('@/lib/workos/client', () => ({
 
 vi.mock('@/lib/auth/require-auth', () => ({
   requireAuthorizedSession: vi.fn(),
-  authzErrorResponse: () => null,
 }))
 
 // ADR-0087/0086: no conversation here recorded a restricted folder, so every

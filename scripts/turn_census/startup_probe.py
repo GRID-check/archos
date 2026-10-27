@@ -9,7 +9,7 @@ per turn, relative to the turn's start:
 
 Read it for the order of the startup steps (decision, query embedding,
 retrieval, rerank, sufficiency verdicts, requery, first ``/responses`` call)
-and for which ones wait on which. ``docs/architecture/turn-latency-measured-2026-09.md``
+and for which ones wait on which. ``docs/audit/turn-latency-measured-2026-09.md``
 is the write-up it produced.
 
 Needs what a local turn needs (OPENROUTER_API_KEY, the ingested corpus, the

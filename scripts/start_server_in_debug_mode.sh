@@ -53,13 +53,11 @@ fi
 # Suppress Python warnings unless overridden by .env
 export PYTHONWARNINGS="${PYTHONWARNINGS:-ignore}"
 
-# Validate that config has front_end (API mode) - required for server/debug mode
+# Validate that config has front_end (API mode) - required for server mode
 if ! grep -q "front_end:" "$REPO_ROOT/$CONFIG_FILE" 2>/dev/null; then
     echo ""
     echo "Error: Config file '$CONFIG_FILE' does not have front_end configured."
     echo "This script requires a web-enabled config (config_oib_openrouter.yml)"
-    echo ""
-    echo "For CLI mode, use: ./scripts/start_cli.sh --config_file $CONFIG_FILE"
     exit 1
 fi
 
@@ -78,9 +76,6 @@ echo ""
 echo "  API Documentation:"
 echo "    http://localhost:$PORT/docs"
 echo ""
-echo "  Debug Console (Deep Research):"
-echo "    http://localhost:$PORT/debug"
-echo ""
 echo "  Health Check:"
 echo "    http://localhost:$PORT/health"
 echo ""
@@ -91,5 +86,5 @@ echo ""
 
 cd "$REPO_ROOT"
 source "$VENV_DIR/bin/activate"
-# The job API and the debug console are the api role's (ADR-0082). The chat role (the chat socket, port 8001) is not started here: run `GRID_ROLE=chat nat serve --config_file $CONFIG_FILE --port 8001` alongside, or use start_e2e.sh.
+# The job API is the api role's (ADR-0082). The chat role (the chat socket, port 8001) is not started here: run `GRID_ROLE=chat nat serve --config_file $CONFIG_FILE --port 8001` alongside, or use start_e2e.sh.
 GRID_ROLE=api nat serve --config_file "$CONFIG_FILE" --port $PORT

@@ -1,6 +1,9 @@
+---
+status: accepted
+---
+
 # ADR-0032: The shareable-resource model, and where resource-level grants live
 
-- **Status:** Accepted
 - **Date:** 2026-07-29
 - **Deciders:** Platform engineering
 - **Related:** ADR-0004 (tenancy, ownership & access), ADR-0007 (no local identity sync),
@@ -162,7 +165,7 @@ type, and when you pay a piece of the debt down.
 
 Documents are the second consumer (Files as a shareable resource + a
 conversation subject). The design is
-[`../superpowers/specs/2026-08-13-file-native-ownership-design.md`](../superpowers/specs/2026-08-13-file-native-ownership-design.md).
+`../specs/2026-08-13-file-native-ownership-design.md` (removed; in git history at `56ee3329`).
 Assignment — who is professionally on the hook — is **not** this ADR's
 `owner` role; that split is [ADR-0047](0059-assignment-is-not-access.md).
 
@@ -181,7 +184,7 @@ compliance board). It does not apply to §3 of the shareable-type doc.
 Documents are now produced by an agent as well as by people: a commissioned
 deep-research run is filed into the project as a `documents` row with
 `authored_by = 'agent'`
-([../superpowers/specs/2026-08-20-agent-authored-documents-design.md](../superpowers/specs/2026-08-20-agent-authored-documents-design.md)).
+([../specs/agent-authored-documents.md](../architecture/agent-authored-documents.md)).
 
 **This ADR required no amendment for it, and that is the finding worth
 recording.** Authorship is a column on the resource, not a participant in the

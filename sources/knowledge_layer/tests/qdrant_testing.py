@@ -147,8 +147,7 @@ def _signature(client: Any, name: str) -> Any:
     return (info.config.model_dump(), indexes)
 
 
-@pytest.fixture
-def qdrant_store(monkeypatch, request) -> Iterator[store_module.QdrantStore]:
+def shared_store(monkeypatch, request) -> Iterator[store_module.QdrantStore]:
     """The process-wide store, on collections its test module shares; emptied after the test.
 
     One pair per module, not per process: a module writes with one embedder
@@ -184,8 +183,7 @@ def qdrant_store(monkeypatch, request) -> Iterator[store_module.QdrantStore]:
         store_module.reset_store()
 
 
-@pytest.fixture
-def fresh_qdrant_store(monkeypatch) -> Iterator[store_module.QdrantStore]:
+def fresh_store(monkeypatch) -> Iterator[store_module.QdrantStore]:
     """The process-wide store, on collections of this test's own; both deleted afterwards."""
     store = _point_at(monkeypatch, uuid.uuid4().hex[:10])
     try:
@@ -196,6 +194,21 @@ def fresh_qdrant_store(monkeypatch) -> Iterator[store_module.QdrantStore]:
             if client.collection_exists(name):
                 client.delete_collection(name)
         store_module.reset_store()
+
+
+# The fixtures, for a conftest that loads this module up front. One that every
+# test loads takes them from `qdrant_fixtures.py` instead, which imports this
+# module only when a test asks for a store.
+@pytest.fixture
+def qdrant_store(monkeypatch, request) -> Iterator[store_module.QdrantStore]:
+    """:func:`shared_store` as a fixture."""
+    yield from shared_store(monkeypatch, request)
+
+
+@pytest.fixture
+def fresh_qdrant_store(monkeypatch) -> Iterator[store_module.QdrantStore]:
+    """:func:`fresh_store` as a fixture."""
+    yield from fresh_store(monkeypatch)
 
 
 #: The payload indexes a test of a collection's copy and length tuning filters on.

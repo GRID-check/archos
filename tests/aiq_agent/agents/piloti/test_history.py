@@ -226,3 +226,21 @@ class TestCompactToolResults:
 
         messages = [ToolMessage(content="No relevant documents found for query: 'x'", tool_call_id="c1")]
         assert compact_tool_results(messages, {"k1"})[0].content == messages[0].content
+
+
+class TestWarmTokenEncoder:
+    """The encoder is loaded once, at boot (`conversation_register`), and the turn reuses it."""
+
+    def test_warming_loads_the_encoder_the_trim_then_reuses(self):
+        from aiq_agent.agents.piloti import history
+
+        history._get_token_encoder.cache_clear()
+        try:
+            history.warm_token_encoder()
+            assert history._get_token_encoder.cache_info().currsize == 1
+            before = history._get_token_encoder.cache_info().misses
+            trim_message_history([HumanMessage(content="Hallo")], max_tokens=100)
+            # The trim found the encoder the warm-up loaded: no second load.
+            assert history._get_token_encoder.cache_info().misses == before
+        finally:
+            history._get_token_encoder.cache_clear()

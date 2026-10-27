@@ -20,7 +20,7 @@ from typing import TYPE_CHECKING
 from typing import Any
 
 from aiq_agent.common.canned_replies import NO_RESPONSE_TEXT
-from aiq_agent.common.wire_v2 import ClaimStamp
+from aiq_agent.common.wire_v2 import ConfidenceCheck
 from aiq_agent.common.wire_v2 import KeyedCard
 from aiq_agent.common.wire_v2 import QuoteStamp
 from aiq_agent.common.wire_v2 import RunFinishedBody
@@ -101,7 +101,7 @@ def build_result(state: ConversationState, cards: list[dict[str, Any]], message_
         skills_hidden=list(state.skills_hidden or []) if skills_activated else [],
         retrieval_ledger=list(state.retrieval_ledger or []),
         quote_stamps=[QuoteStamp.model_validate(stamp) for stamp in state.quote_stamps or []],
-        claim_stamps=[ClaimStamp.model_validate(stamp) for stamp in state.claim_stamps or []],
+        confidence_check=ConfidenceCheck.model_validate(state.confidence_check) if state.confidence_check else None,
         answer_confidence_version=state.answer_confidence_version if state.answer_confidence else None,
         lookup_found_nothing=bool(state.lookup_found_nothing),
         run=_run_handoff(state),

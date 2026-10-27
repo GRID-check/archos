@@ -333,15 +333,6 @@ When a `knowledge_retrieval` function is configured in your workflow, the plugin
 
 They serve the llamaindex backend that the `knowledge_retrieval` function sets up (ADR-0072). If no knowledge function is configured, these routes are not registered.
 
-## Debug Console
-
-When the `aiq_debug` package is installed, the plugin registers a debug console at **`http://localhost:8000/debug`**:
-
-- Real-time SSE streaming
-- Job submission and tracking
-- State visualization (todos, subagents, sources, tool calls)
-- Copy SSE streams for debugging
-
 ## Comparison with NAT's Built-in Async
 
 NAT's `/generate/async` is not mounted: none of NAT's HTTP turn routes is, since a
