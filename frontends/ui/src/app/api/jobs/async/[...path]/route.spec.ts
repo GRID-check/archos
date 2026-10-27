@@ -45,16 +45,13 @@ vi.mock('@/lib/project-profile/prompt-view', () => ({
 }))
 
 // The commissioned-report filing, mocked at its own module so this suite
-// asserts the WIRING — is it called, with what, and does a failure of it reach
-// the user's answer — and not the filing's own behaviour, which
-// `lib/documents/generated.spec.ts` owns.
+// asserts the WIRING — is it called, with what, and does its outcome reach the
+// user's answer — and not the filing's own behaviour, which
+// `lib/documents/research-report.spec.ts` owns.
 vi.mock('@/lib/documents/research-report', () => ({
-  findFiledResearchReport: vi.fn(),
-  findReportFilingRefusal: vi.fn(),
-  queueResearchReportFiling: vi.fn(),
+  fileCommissionedReport: vi.fn(),
 }))
 vi.mock('@/lib/projects/repository', () => ({
-  findProjectIdByCollectionName: vi.fn(),
   // An active project: a closed one refuses the submit (ADR-0090).
   findProjectTenancy: vi.fn(async () => ({ organizationId: 'org_1', deletedAt: null, status: 'active' })),
 }))
@@ -64,12 +61,7 @@ import { requireAuthorizedSession } from '@/lib/auth/require-auth'
 import { getEffectiveModelOverrides } from '@/lib/model-config/service'
 import { buildCollectionScopeFromRequest } from '@/lib/collection-scope-request'
 import { loadProjectFederalState } from '@/lib/project-profile/prompt-view'
-import {
-  findFiledResearchReport,
-  findReportFilingRefusal,
-  queueResearchReportFiling,
-} from '@/lib/documents/research-report'
-import { findProjectIdByCollectionName } from '@/lib/projects/repository'
+import { fileCommissionedReport } from '@/lib/documents/research-report'
 import { verifyGridRequestContextEnvelope } from '@/lib/request-context'
 
 const originalRequireAuth = process.env.REQUIRE_AUTH
@@ -443,8 +435,10 @@ describe('/api/jobs/async/[...path] proxy — signed X-Grid-Request-Context enve
 /**
  * A finished run's report used to be read once, rendered into a chat message
  * and discarded with the run's whole file system. This is the point at which
- * the BFF observes that completion, so it is where the report becomes a
- * document the project can find, assign, preview and delete.
+ * the BFF observes that completion. The filing itself is
+ * `fileCommissionedReport` (`lib/documents/research-report.spec.ts` owns its
+ * behaviour); this suite asserts the WIRING: which path calls it, with what,
+ * and how each outcome reaches the answer.
  */
 describe('/api/jobs/async/[...path] proxy — filing a commissioned report', () => {
   let fetchSpy: ReturnType<typeof vi.spyOn>
@@ -467,9 +461,6 @@ describe('/api/jobs/async/[...path] proxy — filing a commissioned report', () 
       headers: { 'Content-Type': 'application/json' },
     })
 
-  // `project_collection` is on every real report body: the backend records the
-  // commissioning project on `job_access` at submit time and returns it here.
-  // It — not the request's project — is what decides where the report is filed.
   const REPORT_BODY = {
     job_id: 'job-1',
     has_report: true,
@@ -477,22 +468,16 @@ describe('/api/jobs/async/[...path] proxy — filing a commissioned report', () 
     project_collection: 'proj_abc',
   }
 
+  const readReport = () =>
+    GET(
+      getRequest('https://grid.example/api/jobs/async/job/job-1/report?projectId=proj-1'),
+      streamParams(['job', 'job-1', 'report'])
+    )
+
   beforeEach(() => {
     process.env.REQUIRE_AUTH = 'true'
     vi.mocked(requireAuthorizedSession).mockResolvedValue(session)
-    vi.mocked(buildCollectionScopeFromRequest).mockResolvedValue({
-      headerValue: 'scope',
-      scope: [],
-      scopedCollections: [],
-      projectId: 'proj-1',
-      projectCollectionName: 'proj_abc',
-      conversationId: undefined,
-      verifiedConversationId: undefined,
-    })
-    vi.mocked(findProjectIdByCollectionName).mockResolvedValue('proj-1')
-    vi.mocked(findFiledResearchReport).mockResolvedValue(null)
-    vi.mocked(findReportFilingRefusal).mockResolvedValue(null)
-    vi.mocked(queueResearchReportFiling).mockResolvedValue({ jobId: 'bff-job-1' })
+    vi.mocked(fileCommissionedReport).mockResolvedValue({ outcome: 'queued' })
     fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(reportResponse(REPORT_BODY))
     vi.spyOn(console, 'log').mockImplementation(() => undefined)
     vi.spyOn(console, 'error').mockImplementation(() => undefined)
@@ -501,6 +486,7 @@ describe('/api/jobs/async/[...path] proxy — filing a commissioned report', () 
 
   afterEach(() => {
     vi.restoreAllMocks()
+    vi.mocked(fileCommissionedReport).mockReset()
     if (originalRequireAuth === undefined) {
       delete process.env.REQUIRE_AUTH
     } else {
@@ -508,305 +494,75 @@ describe('/api/jobs/async/[...path] proxy — filing a commissioned report', () 
     }
   })
 
-  it('queues the filing of the finished report and tells the client it is on its way', async () => {
-    const res = await GET(
-      getRequest('https://grid.example/api/jobs/async/job/job-1/report?projectId=proj-1'),
-      streamParams(['job', 'job-1', 'report'])
-    )
+  it('hands the run id, the reader’s session and the upstream body to the filing', async () => {
+    await readReport()
+
+    expect(fileCommissionedReport).toHaveBeenCalledWith({
+      runId: 'job-1',
+      session: expect.objectContaining({ userId: 'user-1', organizationId: 'org-1' }),
+      body: REPORT_BODY,
+    })
+  })
+
+  it('tells the client a queued filing is on its way, beside the untouched report', async () => {
+    const res = await readReport()
 
     expect(res.status).toBe(200)
-    // The PDF is rendered by a `bff-jobs` pod (ADR-0079), as the reader.
-    expect(queueResearchReportFiling).toHaveBeenCalledWith({
-      organizationId: 'org-1',
-      payload: expect.objectContaining({
-        projectId: 'proj-1',
-        runId: 'job-1',
-        report: REPORT_BODY.report,
-        taskRunId: null,
-        requester: expect.objectContaining({ userId: session.userId, organizationMembershipId: session.organizationMembershipId }),
-      }),
-    })
     const body = await res.json()
-    // Additive: everything the report response already carried is untouched.
     expect(body).toMatchObject(REPORT_BODY)
     expect(body.filingQueued).toBe(true)
     expect(body.filed).toBeUndefined()
     expect(body.filingFailed).toBeUndefined()
   })
 
-  it('answers a reader who may not file with the broken promise, and queues nothing, however often it is read', async () => {
-    vi.mocked(findReportFilingRefusal).mockResolvedValue('ForbiddenError: Agent-authored documents are disabled')
-    fetchSpy.mockImplementation(async () => reportResponse(REPORT_BODY)) // a fresh body per read
-
-    for (let read = 0; read < 3; read += 1) {
-      const res = await GET(
-        getRequest('https://grid.example/api/jobs/async/job/job-1/report?projectId=proj-1'),
-        streamParams(['job', 'job-1', 'report'])
-      )
-      const body = await res.json()
-      expect(body).toMatchObject(REPORT_BODY)
-      expect(body.filingFailed).toBe(true)
-      expect(body.filingQueued).toBeUndefined()
-    }
-
-    expect(queueResearchReportFiling).not.toHaveBeenCalled()
-    expect(console.error).not.toHaveBeenCalled() // a refusal is an answer, not a fault
-  })
-
-  it('tells the client where a report that is already filed landed, without a job', async () => {
-    vi.mocked(findFiledResearchReport).mockResolvedValue({
-      documentId: 'doc-1',
-      filename: 'bericht-2026-08-20.pdf',
-      folderId: 'folder-1',
-      alreadyFiled: true,
+  it('tells the client where a filed report landed', async () => {
+    vi.mocked(fileCommissionedReport).mockResolvedValue({
+      outcome: 'filed',
+      filed: { documentId: 'doc-1', filename: 'bericht-2026-08-20.pdf', alreadyFiled: true },
     })
 
-    const res = await GET(
-      getRequest('https://grid.example/api/jobs/async/job/job-1/report?projectId=proj-1'),
-      streamParams(['job', 'job-1', 'report'])
-    )
+    const body = await (await readReport()).json()
 
-    expect(queueResearchReportFiling).not.toHaveBeenCalled()
-    const body = await res.json()
     expect(body).toMatchObject(REPORT_BODY)
-    expect(body.filed).toEqual({
-      documentId: 'doc-1',
-      filename: 'bericht-2026-08-20.pdf',
-      alreadyFiled: true,
-    })
+    expect(body.filed).toEqual({ documentId: 'doc-1', filename: 'bericht-2026-08-20.pdf', alreadyFiled: true })
     expect(body.filingQueued).toBeUndefined()
   })
 
-  // ---------------------------------------------------------------------
-  // WHERE it lands: a property of the run, not of the request that reads it
-  // ---------------------------------------------------------------------
+  it.each(['failed', 'refused'] as const)('reports a %s filing as the broken promise, and still returns the report', async (outcome) => {
+    vi.mocked(fileCommissionedReport).mockResolvedValue({ outcome })
 
-  it('files into the project the RUN names, not the one the request asks for', async () => {
-    // The reader has a different project open, or reopened an old run from
-    // history. The cover sheet names the Bundesland, which says which
-    // Bauordnung the report was checked against, so filing it under the
-    // reader's current project produces a compliance document asserting the
-    // wrong law.
-    vi.mocked(buildCollectionScopeFromRequest).mockResolvedValue({
-      headerValue: 'scope',
-      scope: ['proj_wien'],
-      scopedCollections: [{ collection: 'proj_wien', shelf: 'project' }],
-      projectId: 'proj-the-reader-is-looking-at',
-      projectCollectionName: 'proj_wien',
-      conversationId: undefined,
-      verifiedConversationId: undefined,
-    })
-    vi.mocked(findProjectIdByCollectionName).mockResolvedValue('proj-the-run-belongs-to')
-
-    await GET(
-      getRequest('https://grid.example/api/jobs/async/job/job-1/report?projectId=proj-the-reader-is-looking-at'),
-      streamParams(['job', 'job-1', 'report'])
-    )
-
-    expect(findProjectIdByCollectionName).toHaveBeenCalledWith('proj_abc', 'org-1')
-    expect(queueResearchReportFiling).toHaveBeenCalledWith(
-      expect.objectContaining({ payload: expect.objectContaining({ projectId: 'proj-the-run-belongs-to' }) })
-    )
-  })
-
-  it('files nothing for a run that was never commissioned in a project', async () => {
-    // A run started from a chat outside any project. Its banner promised no
-    // filing, and the old behaviour filed it into whatever project the reader's
-    // stored `active_project_id` happened to name — silently, with no
-    // disclosure ever having been shown.
-    fetchSpy.mockResolvedValue(
-      reportResponse({ job_id: 'job-1', has_report: true, report: '# Bericht' })
-    )
-
-    const res = await GET(
-      getRequest('https://grid.example/api/jobs/async/job/job-1/report?projectId=proj-1'),
-      streamParams(['job', 'job-1', 'report'])
-    )
-
-    expect(queueResearchReportFiling).not.toHaveBeenCalled()
-    const body = await res.json()
-    expect(body.filed).toBeUndefined()
-    // Not a broken promise either: none was made, and nothing is on its way.
-    expect(body.filingFailed).toBeUndefined()
-    expect(body.filingQueued).toBeUndefined()
-  })
-
-  it('files nothing when the run\u2019s collection belongs to no project in this organization', async () => {
-    // The cross-tenant version of the same bug: a real collection name that
-    // this organization does not own must not fall back to anywhere.
-    vi.mocked(findProjectIdByCollectionName).mockResolvedValue(null)
-
-    const res = await GET(
-      getRequest('https://grid.example/api/jobs/async/job/job-1/report?projectId=proj-1'),
-      streamParams(['job', 'job-1', 'report'])
-    )
-
-    expect(queueResearchReportFiling).not.toHaveBeenCalled()
-    expect((await res.json()).filed).toBeUndefined()
-  })
-
-  it('passes the run’s cards through, so the filed PDF can render Rechtsgrundlagen', async () => {
-    const cards = [{ type: 'legal_basis', title: 'OIB-Richtlinie 2', lane: 'oib' }]
-    fetchSpy.mockResolvedValue(reportResponse({ ...REPORT_BODY, cards }))
-
-    await GET(
-      getRequest('https://grid.example/api/jobs/async/job/job-1/report?projectId=proj-1'),
-      streamParams(['job', 'job-1', 'report'])
-    )
-
-    expect(queueResearchReportFiling).toHaveBeenCalledWith(
-      expect.objectContaining({ payload: expect.objectContaining({ cards }) })
-    )
-  })
-
-  it('passes no cards rather than an empty list when the run produced none', async () => {
-    // `legalBasisSection` prints no heading for an absent value; an empty array
-    // would be a promise of a section that then has nothing under it.
-    fetchSpy.mockResolvedValue(reportResponse({ ...REPORT_BODY, cards: [] }))
-
-    await GET(
-      getRequest('https://grid.example/api/jobs/async/job/job-1/report?projectId=proj-1'),
-      streamParams(['job', 'job-1', 'report'])
-    )
-
-    expect(vi.mocked(queueResearchReportFiling).mock.calls[0][0].payload.cards).toBeUndefined()
-  })
-
-  it('files the report anyway when `cards` is malformed', async () => {
-    // The user waited minutes for the report. A display enhancement arriving in
-    // a shape nobody expects may cost its own section, never the filing.
-    fetchSpy.mockResolvedValue(reportResponse({ ...REPORT_BODY, cards: 'nonsense' }))
-
-    const res = await GET(
-      getRequest('https://grid.example/api/jobs/async/job/job-1/report?projectId=proj-1'),
-      streamParams(['job', 'job-1', 'report'])
-    )
+    const res = await readReport()
 
     expect(res.status).toBe(200)
-    expect(queueResearchReportFiling).toHaveBeenCalledWith(
-      expect.objectContaining({ payload: expect.objectContaining({ cards: undefined }) })
-    )
-  })
-
-  it('says so when a promise to file was made and broken', async () => {
-    // The starting banner told the reader the report would be filed under
-    // „Berichte". A plain success after a failed filing sends them to look for
-    // a document that is not there, with the only record in a server log.
-    vi.mocked(queueResearchReportFiling).mockRejectedValue(new Error('quota exceeded'))
-
-    const res = await GET(
-      getRequest('https://grid.example/api/jobs/async/job/job-1/report?projectId=proj-1'),
-      streamParams(['job', 'job-1', 'report'])
-    )
-
     const body = await res.json()
+    expect(body).toMatchObject(REPORT_BODY)
     expect(body.filingFailed).toBe(true)
     expect(body.filed).toBeUndefined()
-    // The reason stays in the log: a bucket, a permission or a limit is
-    // actionable by an operator, not by the architect reading the report.
-    expect(JSON.stringify(body)).not.toContain('quota exceeded')
+    expect(body.filingQueued).toBeUndefined()
   })
 
-  it('claims no failure when no promise was made — a run with no project', async () => {
-    // No project on the RUN is not a broken promise: the starting banner prints
-    // the disclosure only when there was a project to file into. What the
-    // READER has open is not this question and must not answer it.
-    fetchSpy.mockResolvedValue(
-      reportResponse({ job_id: 'job-1', has_report: true, report: '# Bericht' })
-    )
+  it('returns the body untouched when no promise was made', async () => {
+    vi.mocked(fileCommissionedReport).mockResolvedValue(null)
 
-    const res = await GET(
-      getRequest('https://grid.example/api/jobs/async/job/job-1/report'),
-      streamParams(['job', 'job-1', 'report'])
-    )
+    const body = await (await readReport()).json()
 
-    const body = await res.json()
-    expect(body.filingFailed).toBeUndefined()
-    expect(body.filed).toBeUndefined()
-  })
-
-  it('still returns the report when filing fails — the answer is not the filing’s to lose', async () => {
-    vi.mocked(queueResearchReportFiling).mockRejectedValue(new Error('quota exceeded'))
-
-    const res = await GET(
-      getRequest('https://grid.example/api/jobs/async/job/job-1/report'),
-      streamParams(['job', 'job-1', 'report'])
-    )
-
-    expect(res.status).toBe(200)
-    const body = await res.json()
-    // Every field the report carried is untouched — the failure is reported
-    // ALONGSIDE the answer, never instead of it.
-    expect(body).toMatchObject(REPORT_BODY)
-    expect(body.filed).toBeUndefined()
-  })
-
-  it('files nothing for a run that has no report yet', async () => {
-    fetchSpy.mockResolvedValue(reportResponse({ job_id: 'job-1', has_report: false, report: null }))
-
-    await GET(
-      getRequest('https://grid.example/api/jobs/async/job/job-1/report'),
-      streamParams(['job', 'job-1', 'report'])
-    )
-
-    expect(queueResearchReportFiling).not.toHaveBeenCalled()
+    expect(body).toEqual(REPORT_BODY)
   })
 
   it('files nothing on the status endpoint — only a report is a document', async () => {
     fetchSpy.mockResolvedValue(reportResponse({ job_id: 'job-1', status: 'completed' }))
 
-    await GET(
-      getRequest('https://grid.example/api/jobs/async/job/job-1'),
-      streamParams(['job', 'job-1'])
-    )
+    await GET(getRequest('https://grid.example/api/jobs/async/job/job-1'), streamParams(['job', 'job-1']))
 
-    expect(queueResearchReportFiling).not.toHaveBeenCalled()
+    expect(fileCommissionedReport).not.toHaveBeenCalled()
   })
 
-  it('files the run\u2019s report even when the reader\u2019s own context resolves no project', async () => {
-    // The precondition used to be `!session?.organizationId || !projectId`, and
-    // `projectId` there is the READER's — the request's, or their stored
-    // `active_project_id`. It survived the change that moved the destination
-    // onto the run, so a commissioned run opened from a context with no project
-    // of its own was silently never filed, and the response carried neither
-    // `filed` nor `filingFailed`: a reader who had been promised „wird abgelegt"
-    // was told nothing at all.
-    vi.mocked(buildCollectionScopeFromRequest).mockResolvedValue({
-      headerValue: 'scope',
-      scope: [],
-      scopedCollections: [],
-      projectId: undefined,
-      projectCollectionName: undefined,
-      conversationId: undefined,
-      verifiedConversationId: undefined,
-    })
-
-    await GET(
-      getRequest('https://grid.example/api/jobs/async/job/job-1/report'),
-      streamParams(['job', 'job-1', 'report'])
-    )
-
-    expect(queueResearchReportFiling).toHaveBeenCalledWith(
-      expect.objectContaining({ payload: expect.objectContaining({ projectId: 'proj-1', runId: 'job-1' }) })
-    )
-  })
-
-  /**
-   * Interactive runs only (design decision 10). A scheduled run has no live
-   * session, and the write is authorized by the commissioning human's
-   * `project:documents:write` — resolving the scheduler's `triggered_by`
-   * permission at fire time is v1.1. Anonymous mode reaches this handler with
-   * no session too, and the answer is the same one: file nothing.
-   */
-  it('files nothing when there is no live session to authorize the write', async () => {
+  it('hands no session to the filing in anonymous mode', async () => {
     delete process.env.REQUIRE_AUTH
 
-    await GET(
-      getRequest('https://grid.example/api/jobs/async/job/job-1/report'),
-      streamParams(['job', 'job-1', 'report'])
-    )
+    await GET(getRequest('https://grid.example/api/jobs/async/job/job-1/report'), streamParams(['job', 'job-1', 'report']))
 
-    expect(queueResearchReportFiling).not.toHaveBeenCalled()
+    expect(fileCommissionedReport).toHaveBeenCalledWith(expect.objectContaining({ session: null }))
   })
 })
 

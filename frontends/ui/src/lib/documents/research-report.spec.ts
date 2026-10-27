@@ -23,8 +23,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 vi.mock('server-only', () => ({}))
 
 const fileGeneratedDocument = vi.fn()
+const assertMayFileGeneratedDocument = vi.hoisted(() => vi.fn())
 vi.mock('./generated', () => ({
   fileGeneratedDocument: (...args: unknown[]) => fileGeneratedDocument(...args),
+  assertMayFileGeneratedDocument: (...args: unknown[]) => assertMayFileGeneratedDocument(...args),
 }))
 
 const renderMarkdownPdf = vi.hoisted(() => vi.fn())
@@ -44,7 +46,11 @@ vi.mock('./lifecycle', () => ({
   transitionDocumentVersion: vi.fn(),
 }))
 vi.mock('./version-repository', () => ({ findOpenVersion: vi.fn() }))
-vi.mock('./repository', () => ({ findDocumentInOrg: vi.fn() }))
+vi.mock('./repository', () => ({ findDocumentInOrg: vi.fn(), findDocumentAuthoredByRef: vi.fn() }))
+
+/** The `bff-jobs` queue a reader's filing is handed to (ADR-0079). */
+vi.mock('@/lib/jobs-queue/enqueue', () => ({ enqueueJob: vi.fn() }))
+vi.mock('@/lib/jobs-queue/repository', () => ({ findOpenJobId: vi.fn() }))
 
 vi.mock('@/i18n/server', () => ({
   getTranslations: async () => (key: string) => `t:${key}`,
@@ -75,8 +81,10 @@ vi.mock('@/lib/organizations/service', () => ({
  * assertion below a statement about a query builder instead.
  */
 const findProjectInOrg = vi.hoisted(() => vi.fn())
+const findProjectIdByCollectionName = vi.hoisted(() => vi.fn())
 vi.mock('@/lib/projects/repository', () => ({
   findProjectInOrg: (...args: unknown[]) => findProjectInOrg(...args),
+  findProjectIdByCollectionName: (...args: unknown[]) => findProjectIdByCollectionName(...args),
 }))
 
 /**
@@ -122,9 +130,12 @@ import { MAX_MARKDOWN_PDF_CHARS, MarkdownTooLongError } from '@/lib/pdf/markdown
 import { aiProvenanceMarking } from '@/lib/ai-provenance'
 import type { GeneratedRenderContext } from './generated'
 import { createDocumentVersion, transitionDocumentVersion } from './lifecycle'
-import { findDocumentInOrg } from './repository'
+import { findDocumentAuthoredByRef, findDocumentInOrg } from './repository'
 import { findOpenVersion } from './version-repository'
-import { fileResearchReport, splitReportTitle } from './research-report'
+import { enqueueJob } from '@/lib/jobs-queue/enqueue'
+import { findOpenJobId } from '@/lib/jobs-queue/repository'
+import { ForbiddenError } from '@/lib/api/errors'
+import { fileCommissionedReport, fileResearchReport, splitReportTitle } from './research-report'
 
 const SESSION = { userId: 'user-1', organizationId: 'org-1' } as AuthorizedSession
 
@@ -566,7 +577,7 @@ describe('fileResearchReport', () => {
    * the ordering is what it is.
    *
    * What the READER ends up with is the report itself, unaffected: it is a chat
-   * answer first and a document second, and `fileReportIfCommissioned` swallows
+   * answer first and a document second, and `fileCommissionedReport` swallows
    * this exactly as it swallows a quota refusal. They are not told why the file
    * is missing, which is a gap the success banner owes rather than one this
    * module can close.
@@ -649,5 +660,174 @@ describe('fileResearchReport opens a review round', () => {
       report: REPORT,
     })
     expect(filed.documentId).toBe('doc-1')
+  })
+})
+
+/**
+ * A reader's GET of a finished run's report is where the BFF observes the run's
+ * completion (`app/api/jobs/async/[...path]/route.ts`), and this is what it
+ * does with the body: decide whether a promise to file was made, keep it by
+ * queueing the filing, or say it was broken.
+ */
+describe('fileCommissionedReport', () => {
+  const READER = {
+    userId: 'user-1',
+    organizationId: 'org-1',
+    email: 'user@grid.example',
+    name: 'Test User',
+    accessToken: 'token-abc',
+    organizationMembershipId: 'membership-1',
+    role: 'member',
+    permissions: ['project:documents:write'],
+    featureFlags: ['deep-research'],
+  } as AuthorizedSession
+
+  // `project_collection` is on every real report body: the backend records the
+  // commissioning project on `job_access` at submit time and returns it here.
+  // It — not the request's project — is what decides where the report is filed.
+  const REPORT_BODY = {
+    job_id: 'job-1',
+    has_report: true,
+    report: '# Bericht\n\nText.',
+    project_collection: 'proj_abc',
+  }
+
+  const file = (body: unknown, session: AuthorizedSession | null = READER) =>
+    fileCommissionedReport({ runId: 'job-1', session, body })
+
+  const queuedPayload = () => vi.mocked(enqueueJob).mock.calls[0][0].payload
+
+  beforeEach(() => {
+    findProjectIdByCollectionName.mockResolvedValue('proj-1')
+    vi.mocked(findDocumentAuthoredByRef).mockResolvedValue(null)
+    assertMayFileGeneratedDocument.mockResolvedValue(undefined)
+    vi.mocked(findOpenJobId).mockResolvedValue(null)
+    vi.mocked(enqueueJob).mockResolvedValue({ jobId: 'bff-job-1' })
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+  })
+
+  it('queues the filing of the finished report, as the reader, and says it is on its way', async () => {
+    await expect(file(REPORT_BODY)).resolves.toEqual({ outcome: 'queued' })
+
+    // The PDF is rendered by a `bff-jobs` pod (ADR-0079), as the reader.
+    expect(enqueueJob).toHaveBeenCalledWith({
+      kind: 'file_research_report',
+      organizationId: 'org-1',
+      priority: expect.any(Number),
+      payload: expect.objectContaining({
+        projectId: 'proj-1',
+        runId: 'job-1',
+        report: REPORT_BODY.report,
+        taskRunId: null,
+        requester: expect.objectContaining({ userId: 'user-1', organizationMembershipId: 'membership-1' }),
+      }),
+    })
+  })
+
+  it('answers a reader who may not file with a refusal, and queues nothing', async () => {
+    assertMayFileGeneratedDocument.mockRejectedValue(new ForbiddenError('Agent-authored documents are disabled'))
+
+    await expect(file(REPORT_BODY)).resolves.toEqual({ outcome: 'refused' })
+
+    expect(enqueueJob).not.toHaveBeenCalled()
+    expect(console.error).not.toHaveBeenCalled() // a refusal is an answer, not a fault
+  })
+
+  it('says where a report that is already filed landed, without a job', async () => {
+    vi.mocked(findDocumentAuthoredByRef).mockResolvedValue({
+      id: 'doc-1',
+      filename: 'bericht-2026-08-20.pdf',
+      folderId: 'folder-1',
+    } as never)
+
+    await expect(file(REPORT_BODY)).resolves.toEqual({
+      outcome: 'filed',
+      filed: { documentId: 'doc-1', filename: 'bericht-2026-08-20.pdf', alreadyFiled: true },
+    })
+    expect(findDocumentAuthoredByRef).toHaveBeenCalledWith('job-1', 'org-1', 'proj-1', 'deep_research')
+    expect(enqueueJob).not.toHaveBeenCalled()
+  })
+
+  it('files into the project the RUN names, looked up in the reader’s organization', async () => {
+    // The reader may have a different project open, or reopen an old run from
+    // history. The cover sheet names the Bundesland, which says which Bauordnung
+    // the report was checked against, so the run's project is the only answer.
+    findProjectIdByCollectionName.mockResolvedValue('proj-the-run-belongs-to')
+
+    await file(REPORT_BODY)
+
+    expect(findProjectIdByCollectionName).toHaveBeenCalledWith('proj_abc', 'org-1')
+    expect(queuedPayload()).toMatchObject({ projectId: 'proj-the-run-belongs-to' })
+  })
+
+  it('files nothing, and claims no failure, for a run never commissioned in a project', async () => {
+    // Its banner promised no filing; none was made, so none was broken.
+    await expect(file({ job_id: 'job-1', has_report: true, report: '# Bericht' })).resolves.toBeNull()
+    expect(enqueueJob).not.toHaveBeenCalled()
+  })
+
+  it('files nothing when the run’s collection belongs to no project in this organization', async () => {
+    // The cross-tenant version of the same bug: a real collection name that
+    // this organization does not own must not fall back to anywhere.
+    findProjectIdByCollectionName.mockResolvedValue(null)
+
+    await expect(file(REPORT_BODY)).resolves.toBeNull()
+    expect(enqueueJob).not.toHaveBeenCalled()
+  })
+
+  it('passes the run’s cards through, so the filed PDF can render Rechtsgrundlagen', async () => {
+    const cards = [{ type: 'legal_basis', title: 'OIB-Richtlinie 2', lane: 'oib' }]
+
+    await file({ ...REPORT_BODY, cards })
+
+    expect(queuedPayload()).toMatchObject({ cards })
+  })
+
+  it('passes no cards rather than an empty list when the run produced none', async () => {
+    // `legalBasisSection` prints no heading for an absent value; an empty array
+    // would be a promise of a section that then has nothing under it.
+    await file({ ...REPORT_BODY, cards: [] })
+
+    expect(queuedPayload().cards).toBeUndefined()
+  })
+
+  it('files the report anyway when `cards` is malformed', async () => {
+    await expect(file({ ...REPORT_BODY, cards: 'nonsense' })).resolves.toEqual({ outcome: 'queued' })
+    expect(queuedPayload().cards).toBeUndefined()
+  })
+
+  it('reports a broken promise without its reason when the filing cannot be queued', async () => {
+    // The reason stays in the log: a bucket, a permission or a limit is
+    // actionable by an operator, not by the architect reading the report.
+    vi.mocked(enqueueJob).mockRejectedValue(new Error('quota exceeded'))
+
+    const outcome = await file(REPORT_BODY)
+
+    expect(outcome).toEqual({ outcome: 'failed' })
+    expect(JSON.stringify(outcome)).not.toContain('quota exceeded')
+    expect(console.error).toHaveBeenCalled()
+  })
+
+  it('hands the open job back rather than queueing a second one for the same run', async () => {
+    vi.mocked(findOpenJobId).mockResolvedValue('bff-job-0')
+
+    await expect(file(REPORT_BODY)).resolves.toEqual({ outcome: 'queued' })
+    expect(enqueueJob).not.toHaveBeenCalled()
+  })
+
+  it('files nothing for a run that has no report yet', async () => {
+    await expect(file({ job_id: 'job-1', has_report: false, report: null })).resolves.toBeNull()
+    expect(enqueueJob).not.toHaveBeenCalled()
+  })
+
+  /**
+   * Interactive runs only (design decision 10). A scheduled run is filed by the
+   * worker's outcome callback; anonymous mode reaches the proxy with no session,
+   * and the answer is the same one: file nothing.
+   */
+  it('files nothing when there is no session to authorize the write', async () => {
+    await expect(file(REPORT_BODY, null)).resolves.toBeNull()
+    expect(findProjectIdByCollectionName).not.toHaveBeenCalled()
+    expect(enqueueJob).not.toHaveBeenCalled()
   })
 })
