@@ -530,6 +530,31 @@ describe.skipIf(!url)('the search documents SQL against Postgres', () => {
       expect(await found({ ...reach, projects: [], officeShelf: null }, query())).toEqual([])
     })
 
+    it('reads the folder path of each row from the shelf root, nested names joined by a slash, the root as empty', async () => {
+      const [child] = Array.from(
+        await inTenant(ORG, () =>
+          db.execute<{ id: string }>(sql`
+            INSERT INTO project_folders (organization_id, project_id, parent_id, name, path)
+            VALUES (${ORG}, ${projectIds.p1}::uuid, ${folderIds.visible}::uuid, 'Grundrisse', 'Einreichung/Grundrisse')
+            RETURNING id`)
+        )
+      )
+      const move = (folderId: string): Promise<unknown> =>
+        inTenant(ORG, () => db.execute(sql`UPDATE documents SET folder_id = ${folderId}::uuid WHERE id = ${ids.A1}::uuid`))
+      await move(String(child.id))
+      try {
+        const { rows } = await repo.searchDocumentPage(officeReach(), query(), ALL)
+        const pathOf = (key: string): string | undefined => rows.find((row) => row.id === ids[key])?.folderPath
+        expect(pathOf('A1')).toBe('Einreichung/Grundrisse')
+        expect(rows.find((row) => row.id === ids.A1)?.folderName).toBe('Grundrisse')
+        expect(pathOf('A2')).toBe('')
+        expect(pathOf('A5')).toBe('')
+      } finally {
+        await move(folderIds.visible)
+        await inTenant(ORG, () => db.execute(sql`DELETE FROM project_folders WHERE id = ${String(child.id)}::uuid`))
+      }
+    })
+
     it('never crosses into another organization, even with its project in the reach', async () => {
       const reach = officeReach()
       const smuggled: SearchReach = {

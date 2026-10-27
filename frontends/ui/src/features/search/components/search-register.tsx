@@ -318,7 +318,7 @@ function RegisterLine({ hit, columns, active, id }: { hit: DocumentHit; columns:
           </RegisterCell>
         )
       case 'folder':
-        return <RegisterCell key={column} title={hit.folderName ?? undefined}>{hit.folderName}</RegisterCell>
+        return <RegisterCell key={column} title={hit.folderPath || undefined}>{hit.folderName}</RegisterCell>
       case 'uploaded':
         return <RegisterCell key={column} kind="muted">{labels.day(hit.uploadedAt)}</RegisterCell>
       case 'pages':

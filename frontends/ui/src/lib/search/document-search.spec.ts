@@ -69,6 +69,7 @@ const row = (overrides: Partial<DocumentSearchRow> = {}): DocumentSearchRow => (
   projectName: 'Hubergasse 14',
   folderId: null,
   folderName: null,
+  folderPath: '',
   collectionName: 'proj_a',
   status: 'completed',
   contentType: 'application/pdf',
@@ -123,6 +124,21 @@ describe('runSearch', () => {
     expect(hit.matchedOn).toEqual(['reading', 'content'])
     expect(hit.uploadedBy).toBe('Lena Huber')
     expect(answer.building).toEqual(['office_shelf'])
+  })
+
+  it('hands each hit its folder path from the shelf root, the root as an empty path', async () => {
+    vi.mocked(fetchGroupedSemanticHits).mockResolvedValue([])
+    repository.searchDocumentPage.mockResolvedValue({
+      rows: [row({ folderId: 'f2', folderName: 'Grundrisse', folderPath: '03 Einreichung/Grundrisse' }), row({ id: 'd2' })],
+      total: 2,
+    })
+
+    const answer = await runSearch(session, {}, { kinds: ['document'] })
+
+    expect(answer.sections.document?.hits.map((hit) => [hit.folderName, hit.folderPath])).toEqual([
+      ['Grundrisse', '03 Einreichung/Grundrisse'],
+      [null, ''],
+    ])
   })
 
   it('joins a hit that names its document by id, whatever the file is called now', async () => {
