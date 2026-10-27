@@ -22,7 +22,7 @@
 import { useEffect, type FC, type ReactNode } from 'react'
 import { CalculationCard } from '@/features/grid-cards/components/CalculationCard'
 import { I18nProvider } from '@/i18n'
-import type { CalculationStepData } from '@/features/grid-cards/schematics/types'
+import type { CalculationStepData } from '@/shared/cards/schemas'
 
 const OIB4 = { document: 'OIB-Richtlinie 4', section: 'Pkt. 3.2', edition: 'Ausgabe Mai 2023' }
 const OIB6 = { document: 'OIB-Richtlinie 6', section: 'Pkt. 4.2', edition: 'Ausgabe Mai 2023' }
