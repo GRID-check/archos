@@ -56,7 +56,7 @@ export const en: LegalContent = {
 
   privacy: {
     title: 'Privacy Policy',
-    updated: '2026-10-10',
+    updated: '2026-10-27',
     intro:
       'This policy explains how personal data is processed when you use Piloti, pursuant to Regulation (EU) 2016/679 (GDPR / DSGVO).',
     sections: [
@@ -75,6 +75,7 @@ export const en: LegalContent = {
           'Usage and billing data: a usage ledger recording, per AI request, the requested and actually serving AI model, token counts and cost, attributed to your organization, project and user.',
           'Audit data: privileged administrative actions (e.g. model configuration changes, budget changes, deletions, legal holds) are recorded with actor, timestamp, IP address and user agent.',
           'Technical data: server logs, session cookie (authentication), locale preference cookie.',
+          'Mail to project addresses (only where your organization has switched the feature on): mail anyone sends to a project’s e-mail address, with its sender, recipients, subject, text, attachments and the result of the sender check (DKIM/DMARC). It waits in the project’s Project mail until an authorized person files or dismisses it; filed mail becomes part of the project’s documents, and its original (.eml) is kept as evidence beside the mail thread. The organization that provides the address is the controller of this mail.',
           'Usage and device data (product analytics): your user ID (the pseudonymous WorkOS identifier), your organization’s ID and name, and your role; pages viewed, clicks (without the labels of the clicked elements) and interaction events (e.g. question sent, document uploaded, export); browser, device and language settings; error reports with technical context; for recorded sessions a replay of your screen in which text and inputs are masked and in which images, the PDF view and the IFC model view are not recorded; survey answers and messages to support, where you submit them. Your email address and name are not sent to product analytics. Passwords, API keys and credentials are never captured.',
         ],
       },
@@ -93,6 +94,7 @@ export const en: LegalContent = {
         paragraphs: [
           'To generate answers, your chat messages, relevant excerpts of your uploaded documents and retrieved regulation passages are transmitted to external AI model providers via the API gateway OpenRouter, Inc. (USA). Web-research queries derived from your questions are sent to the search provider Tavily. Identity and sign-in are handled by WorkOS, Inc. (USA).',
           'For product analytics, session replay, error tracking, surveys and support we use PostHog (PostHog, Inc.; data stored in the EU Cloud, Frankfurt). PostHog processes this data on our behalf under a data processing agreement (Art. 28 GDPR). PostHog also receives AI-request metadata (time, model, duration, token counts, cost, names of the processing steps) and the ratings you give to answers, including your comment, from our tracing system Langfuse. Chat messages, answers and document contents are not part of it.',
+          'Mail to project addresses: while a mail waits to be filed, no AI model reads its text or its attachments. For a filing suggestion the AI model receives only the attachments’ file names that passed the name check, the subject (masked by your organization’s content check) and the sender’s domain, together with the folders every project member can see and your organization’s filing conventions; mail from unconfirmed domains and automatic mail get no suggestion. Only filed mail is processed like other project documents. No AI model receives a mail’s original (.eml). Mail reaches Piloti through Cloudflare, Inc. (USA, transit); attachments and originals are scanned for malware in our own infrastructure (ClamAV).',
         ],
         notice:
           'Important: which AI model — and therefore which upstream model provider (e.g. DeepSeek, OpenAI, Anthropic, Google, Meta, Mistral and others listed in the OpenRouter catalog) — processes your requests is configurable at runtime by your organization’s administrators. All AI traffic always flows through OpenRouter and never through any other gateway, but the effective downstream provider, and thus the location of that processing (which may be outside the EU/EEA), depends on the model your organization selects. Every model change is validated, versioned, attributable to the administrator who made it, and auditable; the model that actually served each request is recorded. The current list of external services is available on the Subprocessors page.',
@@ -108,6 +110,7 @@ export const en: LegalContent = {
         heading: '6. Storage, retention and deletion',
         paragraphs: [
           'Project content is stored in our application database, in object storage (uploaded documents) and in a vector index (document embeddings) — all operated within our own infrastructure. When a project is deleted it is first soft-deleted and restorable during a grace period, after which an automated purge permanently removes it from all stores (database, object storage, vector index, and the associated authorization records). Deletion can be suspended by a legal hold (Art. 18 GDPR restriction) placed by your organization’s compliance role; every hold and release is recorded in the audit trail.',
+          'A mail to a project address waits at most 30 days to be filed; dismissed or expired parts can be restored for 7 days and are then deleted, as is the original of a mail whose text was not filed. The original of a filed mail is kept as long as the mail thread it belongs to. A legal hold on the project or anything in it suspends these deletions.',
           'Usage-ledger and audit records are retained for accountability and billing purposes for as long as the organization’s contract and statutory retention periods require.',
           'At PostHog, product-analytics events (including error reports, survey answers and the AI metadata received from Langfuse) are kept up to 12 months and session recordings up to 30 days. Messages to support are kept until we delete them. On request we delete the data stored at PostHog under your user ID.',
         ],
@@ -257,7 +260,7 @@ export const en: LegalContent = {
 
   subprocessors: {
     title: 'External Services & Subprocessors',
-    updated: '2026-10-22',
+    updated: '2026-10-27',
     intro:
       'All external services that can process data when you use Piloti, and the infrastructure the operator runs itself. This page implements the transparency commitment referenced in the Privacy Policy.',
     sections: [
@@ -338,8 +341,8 @@ export const en: LegalContent = {
             ],
             [
               'Cloudflare, Inc.',
-              'DNS for the Piloti domains; redirects www.piloti.at to piloti.at',
-              'DNS lookups of the domain names; for requests to www.piloti.at only, the visitor’s IP address and the requested address. The application itself is reached directly, not through Cloudflare',
+              'DNS for the Piloti domains; redirects www.piloti.at to piloti.at; receiving and forwarding mail to project addresses (Email Routing), where your organization has switched the feature on',
+              'DNS lookups of the domain names; for requests to www.piloti.at only, the visitor’s IP address and the requested address. Mail to project addresses: sender, recipients and the whole message on its way to Piloti. The application itself is reached directly, not through Cloudflare',
               'USA (global network)',
               'Yes',
             ],
@@ -364,6 +367,7 @@ export const en: LegalContent = {
             ['SeaweedFS (S3-compatible)', 'Object storage', 'Uploaded documents'],
             ['Qdrant', 'Vector index', 'Document and regulation embeddings'],
             ['Dragonfly (Redis-compatible)', 'Cache, rate limiting', 'Short-lived operational data'],
+            ['ClamAV', 'Malware scanning of attachments sent from outside', 'None: scanned files are not stored'],
           ],
         },
       },

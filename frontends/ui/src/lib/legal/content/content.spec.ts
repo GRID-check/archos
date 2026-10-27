@@ -51,6 +51,22 @@ describe.each([
     expect(flatten(content.privacy)).toMatch(/E-Mail-Adresse und Ihr Name werden nicht|email address and name are not sent/)
   })
 
+  it('names exactly what Piloti reads of a held mail, and that no model reads its original (ADR-0134)', () => {
+    const privacy = flatten(content.privacy)
+    expect(privacy).toMatch(/Dateinamen der Anhänge|attachments’ file names/)
+    expect(privacy).toMatch(/Betreff \(maskiert|subject \(masked/)
+    expect(privacy).toMatch(/Absender-Domain|sender’s domain/)
+    expect(privacy).toMatch(/Original \(\.eml\) einer E-Mail erhält kein KI-Modell|No AI model receives a mail’s original/)
+  })
+
+  it('lists Cloudflare as the transit of project mail and ClamAV as self-hosted (ADR-0135, ADR-0133)', () => {
+    const processors = content.subprocessors.sections[0]?.table?.rows ?? []
+    const cloudflare = processors.find((row) => row[0] === 'Cloudflare, Inc.')
+    expect(cloudflare?.[1]).toMatch(/Email Routing/)
+    const selfHosted = content.subprocessors.sections[1]?.table?.rows ?? []
+    expect(selfHosted.some((row) => row[0] === 'ClamAV')).toBe(true)
+  })
+
   it('has been revised since the PostHog switch', () => {
     expect(content.privacy.updated >= '2026-10-10').toBe(true)
     expect(content.subprocessors.updated >= '2026-10-10').toBe(true)
