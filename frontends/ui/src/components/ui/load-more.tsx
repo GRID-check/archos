@@ -24,6 +24,12 @@ export interface LoadMoreProps {
    * reader, so a steady scroll does not stop at the end of each page.
    */
   rootMargin?: string
+  /**
+   * Read the next page when the end comes into view. Off where several lists
+   * stand on one page (the search's kind sections): each would read its next
+   * page at once, and the button is the reader's choice of which to grow.
+   */
+  auto?: boolean
   className?: string
 }
 
@@ -46,13 +52,14 @@ export function LoadMore({
   loadingLabel,
   failedLabel,
   rootMargin = '600px 0px',
+  auto = true,
   className,
 }: LoadMoreProps): JSX.Element | null {
   const [sentinel, inView] = useInView<HTMLDivElement>({ rootMargin })
 
   useEffect(() => {
-    if (inView && hasMore && !loading && !failed) onLoadMore()
-  }, [inView, hasMore, loading, failed, onLoadMore])
+    if (auto && inView && hasMore && !loading && !failed) onLoadMore()
+  }, [auto, inView, hasMore, loading, failed, onLoadMore])
 
   if (!hasMore && !loading) return null
 
