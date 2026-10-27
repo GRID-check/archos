@@ -211,6 +211,7 @@ GRID_TEST_DATABASE_URL="postgres://grid_app_rw:$RUNTIME_PASSWORD@127.0.0.1:$PORT
     src/lib/jobs-queue/queue.integration.spec.ts \
     src/lib/jobs-queue/repository.integration.spec.ts \
     workers/jobs/runner.integration.spec.mjs \
+    workers/jobs/slice-bundle.integration.spec.mjs \
     scheduler/db.integration.spec.mjs
 
 # Everything below re-proves one migration of the chain at a time: a database
