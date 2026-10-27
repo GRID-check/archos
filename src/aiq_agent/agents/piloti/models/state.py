@@ -207,7 +207,7 @@ class ResearchAgentState(BaseModel):
     # load-bearing. Set by ``ledger.assemble_result``. None means the pipeline
     # did not stamp this answer, and the guard falls back to rule 1.
     claim_stamps: list[dict[str, Any]] | None = None
-    # The claims ceiling (rule 3, ADR-0139: what the evidence share allows) and
+    # The claims ceiling (rule 3, ADR-0139: what the count of backed claims allows) and
     # the (class, type) of the sentence that most explains a cap. None with no
     # sentence to hold the self-report to.
     answer_claims_ceiling: Literal["low", "medium", "high"] | None = None
@@ -378,7 +378,7 @@ class ResearchAgentState(BaseModel):
         """The self-assessment as it may be SURFACED, after the overconfidence guard.
 
         ``answer_confidence_marker`` is what the model claimed. With claim
-        stamps it is held under the claims ceiling (the evidence share, ADR-0139)
+        stamps it is held under the claims ceiling (the backed claims, ADR-0139)
         (:func:`~aiq_agent.agents.piloti.markers.surface_claim_confidence`,
         ADR-0125); without them, under the answer-level floors.
         """

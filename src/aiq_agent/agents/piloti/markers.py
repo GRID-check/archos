@@ -183,8 +183,9 @@ def detect_and_strip_confidence_marker(content: Any) -> tuple[Any, ConfidenceLev
 # - **Rules 2 and 3, chat** (:func:`surface_claim_confidence`): the level is
 #   the self-report, held under the claims ceiling of the per-sentence stamps
 #   (``common/claim_provenance.claims_ceiling``). Rule 2 (ADR-0125) took the
-#   weakest load-bearing sentence's ceiling; rule 3 (ADR-0139) takes the share
-#   of load-bearing sentences evidence carries. A record, an action or a
+#   weakest load-bearing sentence's ceiling; rule 3 (ADR-0139) counts the
+#   load-bearing sentences evidence carries (and travels as version 2, with
+#   ``support`` on each stamp). A record, an action or a
 #   measurement grounds the sentences it states; a normative sentence still
 #   needs a passage, so no evidence of the second kind can launder a claim
 #   about the law.

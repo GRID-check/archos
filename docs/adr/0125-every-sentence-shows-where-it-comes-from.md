@@ -334,10 +334,12 @@ provenance is the stamp, not a citation marker.
 ## Amendment, 2026-10-27: the aggregation moved to ADR-0139
 
 The per-sentence provenance, the claim types and every ceiling above stand. The
-answer's level is no longer the weakest load-bearing sentence's ceiling: it is
-the share of load-bearing sentences evidence carries, with an uncited normative
-sentence still counting nothing and still keeping the answer below „high"
+answer's level is no longer the weakest load-bearing sentence's ceiling: it
+counts the load-bearing sentences evidence carries (high only when all are,
+low when most are not or the legal conclusion has no passage), with an uncited
+normative sentence still counting nothing, hedged or not
 ([ADR-0139](0139-confidence-is-the-share-of-claims-evidence-carries.md)). The
-minimum let one sentence caught by the wide normative net floor 8 of 9 stored
-answers. ADR-0139 also stops reading `[N]` as a registry position when an answer
-writes no source list.
+hedge exemption of the 2026-10-22 amendment no longer holds for a normative
+sentence. The minimum let one sentence caught by the wide normative net floor
+the nine stored answers of 2026-10. ADR-0139 also stops reading `[N]` as a
+registry position when an answer writes no source list.
