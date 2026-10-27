@@ -109,7 +109,7 @@ the maintained path.
   (fail-open sync with unset token). HARDENED: proxy denylists both prefixes
   (404 before fetch, 5 tests); coolify compose now requires GRID_ADMIN_TOKEN
   (`:?`), defaults REQUIRE_AUTH=true on both services (also re-enables job
-  ownership checks), sets AIQ_EXTERNAL_HOSTNAMES defense-in-depth, and carries
+  ownership checks), sets GRID_EXTERNAL_HOSTNAMES defense-in-depth, and carries
   do-not-add-ports warnings; coolify.md updated (firewall note, auth-required
   posture, preview opt-out). Residual (flagged, future work): MinIO S3 stays
   public for presigned URLs — closing it needs an authenticated frontend

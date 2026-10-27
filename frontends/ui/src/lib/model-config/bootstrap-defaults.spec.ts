@@ -122,9 +122,9 @@ describe('groupsEligibleForBootstrap', () => {
   })
 
   it('leaves ingest_vlm out when the ingestion VLM is on its own provider', () => {
-    // An operator may point AIQ_VLM_BASE_URL at another provider while the
+    // An operator may point GRID_VLM_BASE_URL at another provider while the
     // chat models route to OpenRouter. Seeding ingest_vlm there would make
-    // their AIQ_VLM_MODEL dead config and fail every caption call.
+    // their GRID_VLM_MODEL dead config and fail every caption call.
     const vlmElsewhere: LlmBaseUrls = {
       ...allOn(OPENROUTER),
       vlm: 'https://api.openai.com/v1',

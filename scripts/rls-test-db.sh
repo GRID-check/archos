@@ -80,12 +80,12 @@ PSQL="$PGBIN/psql -h $WORKDIR -p $PORT -U postgres"
 # `--exec <command…>`: the same throwaway cluster, without the migration chain or
 # the suites below, for the Python suites whose Postgres branch would otherwise
 # skip (`task be:test:postgres`). They create and drop their own tables, so they
-# get an empty scratch database as the superuser, in AIQ_TEST_POSTGRES_URL.
+# get an empty scratch database as the superuser, in GRID_TEST_POSTGRES_URL.
 if [ "${1:-}" = "--exec" ]; then
   shift
   $PSQL -q -v ON_ERROR_STOP=1 -c "CREATE DATABASE aiq_queues;"
   echo "==> running: $*"
-  AIQ_TEST_POSTGRES_URL="postgresql://postgres@127.0.0.1:$PORT/aiq_queues" "$@"
+  GRID_TEST_POSTGRES_URL="postgresql://postgres@127.0.0.1:$PORT/aiq_queues" "$@"
   exit 0
 fi
 

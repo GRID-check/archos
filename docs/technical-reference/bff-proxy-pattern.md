@@ -18,7 +18,7 @@ Each BFF route is a `route.ts` file in `frontends/ui/src/app/api/` that exports 
 ```
 import { NextResponse } from 'next/server'
 import { requireAuthorizedSession } from '@/lib/auth/require-auth'
-import { buildCollectionScopeFromRequest } from '@/lib/collection-scope-request'
+import { buildCollectionScopeFromRequest } from '@/lib/retrieval-scope/collection-scope-request'
 
 export async function GET(req: Request, { params }): Promise<Response> {
   try {
@@ -65,7 +65,7 @@ Source: `frontends/ui/src/app/api/v1/[...path]/route.ts:84`
 
 The result is a base64url-encoded JSON array sent to the backend.
 
-Source: `frontends/ui/src/lib/collection-scope-request`
+Source: `frontends/ui/src/lib/retrieval-scope/collection-scope-request`
 
 ## Auth forwarding headers
 

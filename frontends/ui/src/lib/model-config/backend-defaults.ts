@@ -18,6 +18,8 @@
  */
 
 import 'server-only'
+import { getBackendUrl } from '@/lib/backend-url'
+import { InternalServiceUnavailableError, internalServiceHeaders } from '@/lib/internal-auth'
 import { AGENT_GROUPS } from './agent-groups'
 import { getPlatformModelDefaults } from './platform-defaults'
 
@@ -38,68 +40,23 @@ interface LlmDefaults {
   reasoningEfforts: Record<string, string | null>
 }
 
-/**
- * Whether the shared internal token may travel to `baseUrl`.
- *
- * HTTPS always qualifies. Plain HTTP qualifies only for destinations that cannot
- * leave the deployment's own network: loopback, an RFC1918/link-local/CGNAT
- * address, `.internal`/`.local`, or a single-label hostname — which is what a
- * compose service name (`aiq-api`) or a Kubernetes short name looks like.
- * Anything else is a public host over cleartext and does not get the secret.
- */
-export function isTokenSafeDestination(baseUrl: string): boolean {
-  let url: URL
-  try {
-    url = new URL(baseUrl)
-  } catch {
-    return false
-  }
-  if (url.protocol === 'https:') return true
-  if (url.protocol !== 'http:') return false
-
-  const host = url.hostname.toLowerCase().replace(/^\[|\]$/g, '')
-  if (host === 'localhost' || host === '::1' || host.endsWith('.localhost')) return true
-  if (host.endsWith('.internal') || host.endsWith('.local')) return true
-  // No dot and no colon: a container/service short name, resolvable only inside
-  // the deployment's own network.
-  if (!host.includes('.') && !host.includes(':')) return true
-
-  const v4 = host.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/)
-  if (v4) {
-    const [a, b] = [Number(v4[1]), Number(v4[2])]
-    if (a === 127 || a === 10) return true
-    if (a === 192 && b === 168) return true
-    if (a === 172 && b >= 16 && b <= 31) return true
-    if (a === 169 && b === 254) return true
-    if (a === 100 && b >= 64 && b <= 127) return true
-    return false
-  }
-  // IPv6 unique-local (fc00::/7) and link-local (fe80::/10).
-  if (/^f[cd][0-9a-f]{2}:/.test(host) || /^fe[89ab][0-9a-f]:/.test(host)) return true
-  return false
-}
-
 let cache: { fetchedAt: number; defaults: LlmDefaults } | null = null
 
 async function fetchLlmDefaults(): Promise<LlmDefaults> {
   if (cache && Date.now() - cache.fetchedAt < CACHE_TTL_MS) {
     return cache.defaults
   }
-  const base = (process.env.BACKEND_URL ?? 'http://localhost:8000').replace(/\/$/, '')
+  const base = getBackendUrl()
   const headers: Record<string, string> = { Accept: 'application/json' }
-  const token = process.env.GRID_INTERNAL_API_TOKEN
-  // The shared internal token is a bearer secret. Plain HTTP is the NORMAL and
-  // intended transport here — the backend is a sibling service on the compose or
-  // cluster network (`http://aiq-api:8000`), which is isolated and has no TLS
-  // terminator — so HTTP is not by itself a reason to withhold it. What must not
-  // happen is sending it somewhere that is neither TLS-protected nor demonstrably
-  // on that internal network, so an operator who points BACKEND_URL at a public
-  // http:// host gets the request without the token (and a loud warning) rather
-  // than a secret in cleartext across the internet.
-  if (token) {
-    if (isTokenSafeDestination(base)) {
-      headers['x-grid-internal-token'] = token
-    } else {
+  // The one backend read that may go out WITHOUT the token: the llm-defaults
+  // route answers an anonymous dev backend that has none (`config_info._token_ok`),
+  // so a BFF without a token, or one whose BACKEND_URL is plain HTTP to a public
+  // host, still learns the defaults rather than failing the settings page.
+  try {
+    Object.assign(headers, internalServiceHeaders(base))
+  } catch (error) {
+    if (!(error instanceof InternalServiceUnavailableError)) throw error
+    if (error.reason === 'unsafe_destination') {
       console.warn(
         `[Model Config] Withholding the internal token: BACKEND_URL (${base}) is plain HTTP to a non-internal host. Use https, or an internal hostname/private address.`
       )

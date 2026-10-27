@@ -9,7 +9,7 @@ import type {
   Conversation,
   PendingInteraction,
 } from '../types'
-import type { DraftMention } from '@/features/collaboration/lib/mention-text'
+import type { DraftMention } from '@/lib/mentions/mention-text'
 import type { ShownAnswer, WireEvent } from '@/adapters/api/wire-v2'
 import { deferChatStorageWrites } from './chat-storage'
 import type { CardDecision, CardInteractions } from '@/features/grid-cards/card-decision'

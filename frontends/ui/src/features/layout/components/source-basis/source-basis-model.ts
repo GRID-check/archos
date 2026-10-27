@@ -29,7 +29,8 @@
  */
 
 import type { DataSourceFromAPI } from '@/adapters/api'
-import { classifySourceSignal, type SourceSignal } from '../../lib/source-presets'
+import type { SourceSignal } from '@/lib/source-kinds'
+import { classifySourceSignal } from '../../lib/source-presets'
 import type { SourcePresetId } from '../../types'
 
 /**

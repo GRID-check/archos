@@ -33,10 +33,11 @@ def test_llamaindex_maps_to_an_ingestor_class():
 
     assert inspect.isclass(registered), f"llamaindex is registered as {registered!r}, not a class"
     assert issubclass(registered, BaseIngestor)
-    # Compared by name and source file, not identity. The suite imports this
-    # package under two names (`knowledge_layer`, and `sources.knowledge_layer.src`
-    # by path, which the worktree tests need), and each name loads its own copy
-    # of the module. A combined run registers whichever copy loaded first.
+    # Compared by name and source file, not identity. The suite imported this
+    # package under two names until ADR-0145 row 5 (`knowledge_layer`, and
+    # `sources.knowledge_layer.src` by path), each loading its own copy of the
+    # module; a combined run registered whichever loaded first. Name and file
+    # hold however the module came to be loaded.
     assert registered.__qualname__ == LlamaIndexIngestor.__qualname__
     assert Path(inspect.getfile(registered)).resolve() == Path(inspect.getfile(LlamaIndexIngestor)).resolve()
 

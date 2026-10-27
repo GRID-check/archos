@@ -221,7 +221,7 @@ def db_url(tmp_path, monkeypatch):
     monkeypatch.setenv("NAT_JOB_STORE_DB_URL", url)
     monkeypatch.setenv("GRID_WORKER_LIVENESS_FILE", str(tmp_path / "alive"))
     monkeypatch.setenv("GRID_JOB_PAYLOAD_KEK", base64.b64encode(os.urandom(32)).decode())
-    monkeypatch.delenv("AIQ_DEEP_CHECKPOINT_DB", raising=False)
+    monkeypatch.delenv("GRID_DEEP_CHECKPOINT_DB", raising=False)
     EventStore._tables_initialized.clear()
     job_access._job_access_schema_initialized.clear()
     queue.ensure_research_queue_table(url)

@@ -15,7 +15,31 @@
  * derived from nor merged into the display taxonomy above.
  */
 
-import type { SourceSignal, SourceTint } from '@/features/layout/lib/source-presets'
+/**
+ * The provenance signal a source belongs to (spec §4 `--source-*` family).
+ * `auto` covers web search / anything unclassified.
+ *
+ * `model` is the one signal no composer preset selects for and no data source
+ * classifies into: it is what the project's BIM model measures, and nothing
+ * retrieves it. It belongs here anyway, because a signal is what the
+ * `--source-*` token families and the provenance glyphs are keyed on, and a
+ * measurement is a provenance family of its own — not a refinement of law,
+ * project or office (which is what an accent like `oib` is).
+ */
+export type SourceSignal = 'law' | 'project' | 'office' | 'auto' | 'model'
+
+/**
+ * A `--source-*` token family name: the four signals plus the lane-level
+ * accents that refine one of them.
+ *
+ * `oib` is not a fifth signal — the OIB corpus is still `law` everywhere the
+ * coarse provenance stratum is what matters (icon, presets, trust grouping).
+ * It exists because OIB and RIS are the two tiers architects compare most, and
+ * painting both the same blue left the authority badge carrying that entire
+ * distinction on its own. Resolve it with {@link accentForLane}, the only
+ * place a fine lane key is known.
+ */
+export type SourceTint = SourceSignal | 'oib'
 
 /**
  * The five coarse source kinds every source renders through.

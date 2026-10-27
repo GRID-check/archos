@@ -14,9 +14,9 @@ script that produced it; the scripts are in the appendix.
 1. **Python's selection is precise, but rarely gets to run.** testmon selects 1
    to 307 of 15,631 tests for a one-file edit (section 1). But a re-run of a
    pull request added every file `develop` changed in the hour before, and that
-   hour forced the full Python suite on **88 of 115** re-runs, because `develop`
+   hour forced the full Python suite on **90 of 113** re-runs, because `develop`
    touches `pyproject.toml`, `scripts/rls-test-db.sh` or `bun.lock` most hours.
-   This PR makes those re-runs select from the PR's own diff: 28 of 115.
+   This PR makes those re-runs select from the PR's own diff: 27 of 113.
 2. **Every small Python run paid 4.6 s before its first test.** That was the
    root conftest importing LangChain, NAT and the Qdrant client, plus three
    package `__init__` barrels. A one-line harness test took 5.7 s and now takes
@@ -100,19 +100,21 @@ Out of 15,631 tests in core and 1,802 in api: the selection is fine-grained.
 Every selection still paid about 8 s to start pytest and collect, which is the
 subject of section 3.
 
-**How often the Python selection got to run.** Replaying the same 115 commits
-through `decide_python`:
+**How often the Python selection got to run.** Replaying the 113 squash
+commits from 2026-10-20 20:00 to 2026-10-27 20:00 through `decide_python` and
+`decide_ui`, old script against new:
 
-| | Python full | Python select |
-|---|---|---|
-| A first run (the commit's own files) | 29 | 86 |
-| A re-run that adds the 75 min of `develop` before it, as the old `changed_paths` did | **88** | 27 |
-| A re-run now (cheaper of the two sound references, this PR) | 28 | 87 |
+| | Python full | Python select | UI full | UI none |
+|---|---|---|---|---|
+| A first run (the commit's own files), old | 33 | 80 | 14 | 55 |
+| A first run, new (fixture and helper rules) | 27 | 86 | 14 | 54 |
+| A re-run that adds the 75 min of `develop` before it, as the old `changed_paths` did | **90** | 23 | 45 | 3 |
+| A re-run now (cheaper of the two sound references, this PR) | 27 | 86 | 14 | 54 |
 
 Before, the re-run's full runs came from `develop`'s files, not the PR's:
 `pyproject.toml` (27 windows), `scripts/rls-test-db.sh` (18), `tests/fixtures/**` (12),
 `.github/` (11), `taskfiles/` (8). A 75-minute window of `develop` held a median
-95 files (p90 407). In 3 of the 8 PR Plan logs sampled in section 4, the full run
+83 files (p90 384). In 3 of the 8 PR Plan logs sampled in section 4, the full run
 came from one fixture alone, `tests/fixtures/citation_pipeline/grounding_block_all_fields.txt`.
 
 ## 2. Fan-in hubs
@@ -344,10 +346,10 @@ What dominates:
 
 | Change | Before → after | Measured by |
 |---|---|---|
-| A re-run takes the cheaper of two sound references, the PR's whole diff or the diff since its last green run plus `develop`'s hour (`ci/pr_selection.py` `changed_paths`, `cheaper`) | Re-runs forcing the full Python suite 88 → 28 of 115; full UI 45 → 14; no UI at all 3 → 56 | Replay of 115 develop commits through old and new `decide_*` |
-| A data fixture under `tests/fixtures/` selects the tests that name it or its directories; full only if none, or for a Python fixture | First runs forcing full Python 29 → 28; the fixture that forced 3 of 8 sampled PR runs now selects `test_grounding_block.py` | Same replay; `tests/test_pr_selection.py` |
+| A re-run takes the cheaper of two sound references, the PR's whole diff or the diff since its last green run plus `develop`'s hour (`ci/pr_selection.py` `changed_paths`, `cheaper`) | Re-runs forcing the full Python suite 90 → 27 of 113; full UI 45 → 14; no UI at all 3 → 54 | Replay of 113 develop commits through old and new `decide_*` |
+| A data fixture under `tests/fixtures/` selects the tests that name it or any of its directories; full if none does, for a Python fixture, or when a helper or conftest reads it (by a quoted name), since nothing says which tests load the helper | First runs forcing full Python 33 → 27; the fixture that forced 3 of 8 sampled PR runs now selects `test_grounding_block.py`. The helper rule applies to every non-Python input and closes a hole: `intake/conftest.py` and `folder_cards/conftest.py` read UI schema files no test file names | Same replay; `tests/test_pr_selection.py` |
 | `aiq_agent`, `aiq_agent.common`, `aiq_agent.agents`, `agents.piloti`, `agents.deep_researcher` and `knowledge_layer` re-export lazily (`aiq_agent/lazy_exports.py`, PEP 562) | Import times in section 3 | `-X importtime` |
-| `knowledge_layer.browse` and `knowledge_layer.read_passage` get their own `nat.plugins` entry points, as `sources/AGENTS.md` asks | `list_files` and `read_passage` still register; the package `__init__` was what registered them | NAT's `discover_and_register_plugins` lists all three; `test_import_weight.py` |
+| `knowledge_layer.browse` and `knowledge_layer.read_passage` get their own `nat.plugins` entry points, as `sources/AGENTS.md` asks, and `knowledge_layer/__init__.py` re-exports nothing (nothing imported its six names, and `read_passage` was both a function and a submodule) | `list_files` and `read_passage` still register; the package `__init__` was what registered them | NAT's `discover_and_register_plugins` lists all three; `test_import_weight.py` |
 | Root conftest imports only `pytest`; the model doubles move to `tests/provider_doubles.py`; the Qdrant fixtures to `sources/knowledge_layer/tests/qdrant_fixtures.py`, which imports the client on first use | A 7-test file 5.7 s → 1.3 s; harness 11.8 s → 6.6 s | Section 3 |
 
 Every suite passed afterwards: core 15,636 passed / 381 skipped, api 1,802 /
@@ -357,23 +359,39 @@ Every suite passed afterwards: core 15,636 passed / 381 skipped, api 1,802 /
 run against the merge base as sound, with no `develop` files added. The
 argument behind that: a test that reaches none of the PR's files gives on the
 merge commit what it gives on `develop`, and `develop`'s own full run is the
-deploy gate. On a re-run, the PR's whole diff is that same reference. The old
-re-run reference stays a candidate, and wins whenever `develop` stood still.
+deploy gate. On a re-run, the PR's whole diff is that same reference, and it
+holds only measured from `develop`'s testmon database. The api and sources
+suites keep a database per pull request, from which a test reaching a file an
+earlier push changed is no longer selected. So when the whole diff wins, the
+Plan job says so (`reference: base`) and those suites restore `develop`'s
+database instead (found by the independent review; `tests/test_ci_workflows.py`
+pins it). The old re-run reference stays a candidate, and wins whenever
+`develop` stood still.
 
 ## 6. Ratchets added
 
 - **`task fe:blast-radius`** (`frontends/ui/scripts/blast-radius.mjs`, ~5 s, in
   `fe:verify` and the CI Frontend job). It counts, for every module, the specs
   that reach it, over esbuild's graph, and compares the counts with
-  `scripts/blast-radius.baseline.json` (360 hubs at ≥300 specs). It fails a
-  module that newly reaches 300 specs, or a recorded hub that grows by more
-  than 10% or 10 specs, whichever is larger. `-- --update` rewrites the
-  baseline, and the PR says why; `-- --top 30` prints the list above.
+  `scripts/blast-radius.baseline.json` (every module at ≥240 specs that
+  imports something of ours, 308 of them). A recorded module fails when it
+  grows by more than 10% or 10 specs, whichever is larger; a module outside
+  the baseline fails past 300 with the same slack (330). Both limits scale
+  with the number of specs, so specs other pull requests add do not fail
+  this one. A leaf, which imports nothing of ours, is held by neither rule:
+  it is as wide as its importers, and an edge that widens it shows up on
+  them. The first version had neither the new-hub slack nor the leaf rule,
+  and `develop` went red minutes after it merged, when #1256 and #1257
+  landed beside it (#1261 re-recorded; `docs/contributing/gotchas.md` says
+  what to do next time). `-- --update` rewrites the baseline, and the PR
+  says why; `-- --top 30` prints the list above.
 - **`tests/test_import_weight.py`** (~5 s, core suite). In a fresh interpreter,
-  each lazy package loads none of its own submodules, the root conftest loads
-  none of LangChain, LangGraph, NAT, Qdrant, LlamaIndex, OpenAI or
-  `aiq_agent.common`, and each knowledge-layer module that registers a tool is
-  a `nat.plugins` entry point. Against the old code, 6 of its 8 cases fail.
+  each lazy package loads none of its own submodules and nothing heavy, and
+  re-exports no name one of its submodules has; neither conftest every test
+  loads (core and api) loads LangChain, LangGraph, NAT, Qdrant, LlamaIndex,
+  OpenAI or `aiq_agent.common`; and each knowledge-layer module that registers
+  a tool is a `nat.plugins` entry point. Against the old code, 6 of its first
+  8 cases failed.
 
 ## 7. Structural fixes, ranked by what they would cut
 
@@ -436,7 +454,8 @@ Not structural, but measured and left out of this PR:
   change.
 - **Repo checks and SAST check out the full history** (75 s and 72 s median).
   A shallow clone plus a targeted fetch of the base would save about a minute
-  on every PR's critical path.
+  on every PR's critical path. *Done (2026-10-27): `ci/fetch_merge_base.sh`,
+  and `semgrep ci`'s own merge-base lookup; `docs/contributing/ci.md`.*
 
 ## Appendix: reproducing
 

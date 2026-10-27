@@ -21,7 +21,7 @@
  */
 
 import type { GridCard } from '@/shared/cards/schemas'
-import type { CalculationLimitData, CalculationStepData, DimStatus, NormReferenceData } from '../schematics/types'
+import type { CalculationLimitData, CalculationStepData, DimStatus, NormReferenceData } from '@/shared/cards/schemas'
 import { evaluate, resultDecimals, verdictFor, type Derivation, type StepDisplay, type StepResult } from './calculate'
 
 export type FormulaCardData = Extract<GridCard, { type: 'formula' }>

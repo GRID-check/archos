@@ -141,9 +141,9 @@ Phase 1, in parallel:
    `priority`; release claims on drain; maximum job runtime and a progress
    heartbeat; dead rows instead of `DELETE`; one per-organisation cap name;
    queue meters. `/v1/ingest` accepts `priority: "interactive" | "bulk"`
-   (default `interactive`). Not done: the cap name. Ingestion reads
-   `GRID_INGEST_MAX_PER_ORG` and still honours the deprecated
-   `AIQ_INGEST_MAX_PER_ORG` (`ingest_scheduler.per_org_cap_from_env`), and the
+   (default `interactive`). Ingestion reads `GRID_INGEST_MAX_PER_ORG`
+   (`ingest_scheduler.per_org_cap_from_env`); the old `AIQ_` name is adopted by
+   the image entrypoint for one release (ADR-0145 row 10b). Not done: the
    meters record into no provider (see Measured).
 2. **Provider limiter.** `provider_limiter` with priority classes and AIMD,
    wrapped around the single LLM and embedding choke points; embeddings gated

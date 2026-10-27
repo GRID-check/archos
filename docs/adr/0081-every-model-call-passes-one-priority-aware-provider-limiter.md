@@ -12,7 +12,7 @@ informed: everyone working in this repo
 
 Chat, research, ingestion and embeddings call models on one OpenRouter key.
 Each has its own ceiling or none: chat a turn cap, ingestion a VLM lease pool
-(`AIQ_VLM_FLEET_CONCURRENCY`), embeddings nothing and no 429 backoff. When the
+(`GRID_VLM_FLEET_CONCURRENCY`), embeddings nothing and no 429 backoff. When the
 key saturates, nothing decides that a user waiting on chat goes before a bulk
 reindex, and scaling a worker tier out (ADR-0076, ADR-0079) only adds callers.
 

@@ -215,7 +215,7 @@ class Shelf(StrEnum):
     "Projektwissen".
 
     The TypeScript twin declares the same four members
-    (``frontends/ui/src/features/chat/lib/source-kinds.ts``); neither runtime
+    (``frontends/ui/src/lib/source-kinds.ts``); neither runtime
     imports the other's — three constants declared twice is looser coupling than
     a generated artifact on the core retrieval path.
     """

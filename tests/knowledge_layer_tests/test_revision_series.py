@@ -13,11 +13,10 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-
-from sources.knowledge_layer.src.revision_series import RevisionName
-from sources.knowledge_layer.src.revision_series import find_revision_series
-from sources.knowledge_layer.src.revision_series import parse_revision_name
-from sources.knowledge_layer.src.revision_series import revision_label
+from knowledge_layer.revision_series import RevisionName
+from knowledge_layer.revision_series import find_revision_series
+from knowledge_layer.revision_series import parse_revision_name
+from knowledge_layer.revision_series import revision_label
 
 CASES: dict[str, Any] = json.loads(
     (Path(__file__).parents[2] / "tests" / "fixtures" / "revision_series_cases.json").read_text(encoding="utf-8")

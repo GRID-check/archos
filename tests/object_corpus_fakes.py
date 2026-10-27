@@ -60,7 +60,9 @@ class FakeBucket:
 def install(monkeypatch, tmp_path: Path) -> FakeBucket:
     """A fresh database, an empty cache directory and a fake bucket."""
     bucket = FakeBucket()
-    monkeypatch.setenv("AIQ_SUMMARY_DB", os.environ.get("GRID_TEST_CORPUS_DB") or f"sqlite:///{tmp_path / 'corpus.db'}")
+    monkeypatch.setenv(
+        "GRID_SUMMARY_DB", os.environ.get("GRID_TEST_CORPUS_DB") or f"sqlite:///{tmp_path / 'corpus.db'}"
+    )
     monkeypatch.setenv(corpus_store.CACHE_DIR_ENV, str(tmp_path / "cache"))
     monkeypatch.setattr(corpus_store, "_request_upload_url", bucket.request_upload_url)
     monkeypatch.setattr(corpus_store, "_put_object", bucket.put_object)

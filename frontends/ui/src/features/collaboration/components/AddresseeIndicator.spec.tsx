@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { render, screen } from '@/test-utils'
 
 import { AGENT_MENTION_ID } from '@/lib/mentions/types'
-import type { DraftMention } from '../lib/mention-text'
+import type { DraftMention } from '@/lib/mentions/mention-text'
 import { AddresseeIndicator } from './AddresseeIndicator'
 
 const ANNA: DraftMention = { targetId: 'u-anna', display: 'Anna Weber' }

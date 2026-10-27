@@ -19,6 +19,7 @@ from typing import Any
 
 import pytest
 
+from aiq_agent.common import bff_http
 from aiq_agent.tools.workspace import client
 from aiq_agent.tools.workspace import register as workspace
 
@@ -81,7 +82,7 @@ def sent(monkeypatch: pytest.MonkeyPatch) -> list[Any]:
         requests.append(request)
         return _Response(result("ok"))
 
-    monkeypatch.setattr(client._opener, "open", _open)
+    monkeypatch.setattr(bff_http._opener, "open", _open)
     monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", SECRET)
     monkeypatch.setenv("FRONTEND_INTERNAL_URL", "http://bff.test/")
     return requests
@@ -192,7 +193,7 @@ async def test_without_a_full_envelope_nothing_is_sent(monkeypatch, sent, header
 
 async def test_a_tool_level_error_is_relayed_as_the_servers_lesson(monkeypatch, sent) -> None:
     monkeypatch.setattr(
-        client._opener,
+        bff_http._opener,
         "open",
         lambda request, timeout: _Response(
             result("Unknown operation `proj-get`. Did you mean `project-get`?", is_error=True)
@@ -210,7 +211,7 @@ async def test_a_refusal_from_the_server_is_worded_with_its_own_sentence(monkeyp
         body = io.BytesIO(json.dumps({"error": "request context signature invalid"}).encode())
         raise urllib.error.HTTPError(request.full_url, 401, "Unauthorized", {}, body)
 
-    monkeypatch.setattr(client._opener, "open", _refuse)
+    monkeypatch.setattr(bff_http._opener, "open", _refuse)
     bind(monkeypatch, turn_of("anna"))
 
     text = await workspace.run_call("project-get", {})
@@ -223,7 +224,7 @@ async def test_an_unreachable_server_is_a_sentence_not_a_crash(monkeypatch, sent
     def _down(request: Any, timeout: float) -> _Response:
         raise OSError("connection refused")
 
-    monkeypatch.setattr(client._opener, "open", _down)
+    monkeypatch.setattr(bff_http._opener, "open", _down)
     bind(monkeypatch, turn_of("anna"))
 
     assert "could not be reached" in await workspace.run_search("x")
