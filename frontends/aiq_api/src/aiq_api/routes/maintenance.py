@@ -46,7 +46,7 @@ class PurgeProjectResourcesRequest(BaseModel):
 
 
 def _jobs_dsn() -> str | None:
-    dsn = os.environ.get("AIQ_SUMMARY_DB")
+    dsn = os.environ.get("GRID_SUMMARY_DB")
     return dsn.replace("+psycopg", "") if dsn else None
 
 
@@ -83,7 +83,7 @@ async def _purge_jobs(collection_name: str) -> int:
 
 
 async def _purge_checkpoints(conversation_ids: list[str]) -> None:
-    dsn = os.environ.get("AIQ_CHECKPOINT_DB")
+    dsn = os.environ.get("GRID_CHECKPOINT_DB")
     if not dsn or not conversation_ids:
         return
     async with await psycopg.AsyncConnection.connect(dsn) as conn:

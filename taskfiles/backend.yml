@@ -101,7 +101,7 @@ tasks:
       # chromadb is not a dependency of this repo (ADR-0115): the exporter's own
       # PEP 723 pin decides the environment, and pytest's testpaths never reach
       # deploy/, so no other task imports chromadb. The end-to-end test runs the
-      # importer in .venv and needs AIQ_QDRANT_TEST_URL (skipped locally without it).
+      # importer in .venv and needs GRID_QDRANT_TEST_URL (skipped locally without it).
       - uvx --python 3.12 --with-requirements deploy/migration/chroma_export.py --with pytest pytest deploy/migration/tests -q -p no:cacheprovider
 
   prompts:pull:
@@ -174,7 +174,7 @@ tasks:
     cmds:
       # The recording is the only part of that harness that needs a model and a
       # key. It is committed so `be:eval:overview` and CI stay offline; re-run
-      # this when AIQ_EMBED_MODEL, data/oib or the golden questions change.
+      # this when GRID_EMBED_MODEL, data/oib or the golden questions change.
       - '{{.PY}} -m oib_retrieval_eval.record_vector'
 
   be:eval:qdrant-parity:
@@ -189,7 +189,7 @@ tasks:
       # retriever. Chroma is gone (ADR-0115): its numbers from the gate run are the
       # fixed reference (qdrant_parity/baseline.py). `-- --embedder hashed` runs it
       # keyless as a wiring check only; `-- --variants all` adds the ranking sweep;
-      # `-- --qdrant-url URL` points at another server (default $AIQ_QDRANT_TEST_URL
+      # `-- --qdrant-url URL` points at another server (default $GRID_QDRANT_TEST_URL
       # or localhost:6333). Only uniquely named parity_* collections are touched.
       - '{{.PY}} -m oib_retrieval_eval.qdrant_parity.runner {{.CLI_ARGS}}'
 
