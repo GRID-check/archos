@@ -1,6 +1,6 @@
 # Search: find anything the office has, from anywhere
 
-Status: designed, 2026-10-27; slices below are built in order. Decision record: [ADR-0135](../adr/0135-search-is-one-query-over-a-projection-beside-the-index.md).
+Status: designed, 2026-10-27; slices below are built in order. Decision record: [ADR-0136](../adr/0136-search-is-one-query-over-a-projection-beside-the-index.md).
 What a document knows about itself: [`document-dossier.md`](../architecture/document-dossier.md).
 
 ## What Planfred is trying to be
