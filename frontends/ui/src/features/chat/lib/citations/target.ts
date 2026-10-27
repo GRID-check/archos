@@ -110,7 +110,14 @@ export type CitationTarget =
       /** Cited passage text when the locus carries one. */
       snippet?: string
       document:
-        | { type: 'stored'; id: string; filename: string; contentType: string | null }
+        | {
+            type: 'stored'
+            id: string
+            filename: string
+            contentType: string | null
+            /** The shelf the row was listed from, when the caller tagged it: a chat attachment opens in no viewer beside the chat. */
+            shelf?: Shelf
+          }
         | { type: 'base'; fileName: string }
       /** Set when the cited document is an older Fassung: the one that replaces it. */
       supersededBy?: RevisionRef
@@ -355,6 +362,7 @@ export const resolveCitationTarget = (
           id: storedDoc.id,
           filename: storedDoc.filename,
           contentType: storedDoc.contentType ?? null,
+          ...(storedDoc.shelf ? { shelf: storedDoc.shelf } : {}),
         },
         ...supersededByOf(storedDoc),
       }

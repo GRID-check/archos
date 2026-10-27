@@ -137,6 +137,8 @@ export type PostHogEvent =
   | 'saved_search_run'
   | 'usage_notice_shown'
   | 'usage_notice_dismissed'
+  | 'viewer_action_outcome'
+  | 'viewer_actions_auto_changed'
 
 let initialized = false
 
