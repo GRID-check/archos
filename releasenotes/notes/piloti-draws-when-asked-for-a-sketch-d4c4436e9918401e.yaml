@@ -1,0 +1,7 @@
+---
+fixes:
+  - >
+    Asked for an Excalidraw diagram or a sketch, Piloti now draws it, and you
+    can open the drawing as a sketch to rework it, instead of being told it
+    cannot. Asked about itself, such as whether it works inside your own
+    assistant, Piloti now answers instead of searching your files.
