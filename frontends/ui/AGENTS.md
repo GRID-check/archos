@@ -94,9 +94,12 @@ built by `resolvePinnedRequesterSession`. Never call `runAsActingSession`
 anywhere else, and never pass it a session a request supplied: that is a way past
 every route's `authz`. [`agent-surface.md`](../../docs/architecture/agent-surface.md#the-acting-session).
 
-**Piloti is the product, GRID is the repo.** User-facing strings say Piloti;
-env vars (`GRID_*`), headers (`x-grid-*`) and CSS variables stay GRID.
-`lib/brand.ts` is the single source.
+**The product's name is copy, never a name in code.** User-facing strings say
+Piloti, read from `lib/brand.ts`, the single source. No identifier, env var,
+header, CSS variable or route carries a product name (`aiq`, `grid`, `piloti`):
+the old `GRID_*` variables and `x-grid-*` headers are being renamed, and the
+`brand-names` ratchet stops new ones
+([`code-conventions.md`](../../docs/contributing/code-conventions.md#no-brand-names)).
 
 ## Reference
 

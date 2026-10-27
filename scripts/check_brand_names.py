@@ -85,6 +85,8 @@ EXCLUDED = re.compile(
             r"\.mdx?$",  # prose, which follows the code it names
             r"^ci/[^/]*baseline[^/]*\.json$",  # ratchet baselines: they list paths, not names
             r"^scripts/check_brand_names\.py$|^tests/test_check_brand_names\.py$",  # this check
+            # The one-release fallback that reads the old, prefixed variable names, and its tests.
+            r"^deploy/entrypoint\.py$|^tests/test_entrypoint_roles\.py$|^frontends/ui/scripts/legacy-env-names\.",
         )
     )
 )

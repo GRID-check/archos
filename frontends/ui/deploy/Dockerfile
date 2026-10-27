@@ -176,6 +176,10 @@ ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
+# Every Node process of the image reads the old (prefixed) names of the
+# environment variables for one release (scripts/legacy-env-names.cjs). A
+# deployment that sets NODE_OPTIONS itself must keep this --require in it.
+ENV NODE_OPTIONS="--require /app/scripts/legacy-env-names.cjs"
 
 # The commit this image was built from. `--build-arg GRID_GIT_SHA=$(git rev-parse
 # HEAD)` in the image build (publish-images.yml / docker-build.yml); unset
