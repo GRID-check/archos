@@ -1,3 +1,4 @@
+// @disk-inputs: public/sw.js
 /**
  * @vitest-environment node
  */

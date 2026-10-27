@@ -1,3 +1,4 @@
+// @disk-inputs: ../../shared/wire/v2/**, ../shared/wire/v2, shared/wire/v2
 /**
  * @vitest-environment node
  */

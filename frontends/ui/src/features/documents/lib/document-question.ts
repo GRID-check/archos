@@ -5,7 +5,7 @@
  * retrieves by name in that text; a silent subject id is not enough.
  */
 
-import type { DocumentAuthor } from '@/lib/db/schema'
+import type { DocumentAuthor } from '@/lib/db/schema/documents'
 import type { PhotoCapture } from '@/lib/documents/photo-capture'
 
 export function documentAskQuestion(name: string, kind: 'open' | 'keyPoints' | 'oib' = 'open'): string {

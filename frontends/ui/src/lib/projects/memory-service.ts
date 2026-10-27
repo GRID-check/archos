@@ -7,12 +7,9 @@ import { BadRequestError } from '@/lib/api/errors'
 import type { OffsetPage } from '@/lib/api/offset-page'
 import { sourceFoldersOfCollections } from '@/lib/authz/folder-access'
 import { isProjectClosed, projectClosedError } from './project-status'
-import { PROJECT_MEMORY_MAX_RESTRICTED_FOLDERS, projectMemory, projects } from '@/lib/db/schema'
-import type {
-  NewProjectMemoryItem,
-  ProjectMemoryConfidence,
-  ProjectMemoryItem,
-} from '@/lib/db/schema'
+import { PROJECT_MEMORY_MAX_RESTRICTED_FOLDERS, projectMemory } from '@/lib/db/schema/project-memory'
+import { projects } from '@/lib/db/schema/projects'
+import type { NewProjectMemoryItem, ProjectMemoryConfidence, ProjectMemoryItem } from '@/lib/db/schema/project-memory'
 import {
   NEAR_DUP_JACCARD_THRESHOLD,
   NEAR_DUP_MIN_TOKENS,

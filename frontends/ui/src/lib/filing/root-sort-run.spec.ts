@@ -34,7 +34,7 @@ vi.mock('@/lib/office-shelf/folder-service', () => ({ ensureOfficeShelfFolderPat
 
 import { ConflictError, ForbiddenError } from '@/lib/api/errors'
 import type { AuthorizedSession } from '@/lib/auth/types'
-import type { RootSortRun } from '@/lib/db/schema'
+import type { RootSortRun } from '@/lib/db/schema/root-sort-runs'
 import { moveDocumentsToFolders } from '@/lib/documents/move-to-folder'
 import { enqueueJob } from '@/lib/jobs-queue/enqueue'
 import type { RootSortPayload } from '@/lib/jobs-queue/types'

@@ -1,3 +1,4 @@
+// @disk-inputs: ../../tests/fixtures/derivation/retrieval_ledger_wire.json
 import { describe, expect, test } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'

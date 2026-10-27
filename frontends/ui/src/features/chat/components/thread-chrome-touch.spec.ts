@@ -1,3 +1,4 @@
+// @disk-inputs: src/features/chat/components/AnswerActions.tsx, src/features/chat/components/AnswerFeedback.tsx, src/features/chat/components/RetryThoroughButton.tsx, src/features/layout/components/ChatArea.tsx, src/features/layout/components/ChatToolbar.tsx, src/features/layout/components/SessionsPanel.tsx, src/features/runs/components/RunBlock.tsx
 /**
  * The thread's chrome, held to the phone.
  *

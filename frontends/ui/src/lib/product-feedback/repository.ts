@@ -22,13 +22,8 @@
 import 'server-only'
 import { and, desc, eq, gte, inArray, isNull, lt, or, type SQL } from 'drizzle-orm'
 import { getDb } from '@/lib/db'
-import {
-  organizations,
-  productFeedback,
-  type NewProductFeedback,
-  type ProductFeedback,
-  type ProductFeedbackKind,
-} from '@/lib/db/schema'
+import { organizations } from '@/lib/db/schema/organizations'
+import { productFeedback, type NewProductFeedback, type ProductFeedback, type ProductFeedbackKind } from '@/lib/db/schema/product-feedback'
 
 /** Hard cap for one page of the platform triage list. */
 export const PRODUCT_FEEDBACK_LIST_LIMIT = 50

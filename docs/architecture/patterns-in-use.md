@@ -25,8 +25,9 @@ Layers and rules:
 
 The UI's layers point one way, `app` → `features` → `components` → `lib`, and a
 feature reaches another only through its index and never in a circle. In
-Python, `aiq_agent` reaches `aiq_api` only through `turn/api_seam.py` and
-`knowledge_layer` only through the port in `knowledge/factory.py` (ADR-0072).
+Python, `aiq_agent` never imports `aiq_api` (the API tier owns the request
+identity's writes and hands its capabilities in) and reaches `knowledge_layer`
+only through the port in `knowledge/factory.py` (ADR-0072).
 The rules and the baselines that hold today's exceptions:
 [`../contributing/module-seams.md`](../contributing/module-seams.md).
 **Enforced by:** dependency-cruiser in `task fe:lint`, import-linter in

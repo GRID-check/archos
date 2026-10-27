@@ -22,7 +22,7 @@ import { isFolderVisibleTo } from '@/lib/authz/folder-access'
 import { canManageOfficeShelf } from '@/lib/authz/organizations'
 import { hasPermission, ORG_PERMISSIONS } from '@/lib/authz/permissions'
 import { requireProjectAccess } from '@/lib/authz/projects'
-import type { Document } from '@/lib/db/schema'
+import type { Document } from '@/lib/db/schema/documents'
 import {
   hasPassedScreening,
   memberReader,

@@ -56,7 +56,7 @@
  */
 
 import 'server-only'
-import type { TaskRun } from '@/lib/db/schema'
+import type { TaskRun } from '@/lib/db/schema/task-model'
 import { withPlatformAccess, withTenant } from '@/lib/db/tenant-context'
 import { fetchBackendJobOutcome, type BackendJobOutcome } from '@/lib/jobs/backend-client'
 import * as taskRepository from '@/lib/tasks/repository'

@@ -18,16 +18,7 @@
 import 'server-only'
 import { and, desc, eq, gte, isNotNull, isNull, sql } from 'drizzle-orm'
 import { getDb } from '@/lib/db'
-import {
-  budgetPolicies,
-  llmUsageEvents,
-  llmUsageRollups,
-  UNBILLED_USAGE_ACTIVITIES,
-  type BudgetPolicy,
-  type BudgetScope,
-  type BudgetUnit,
-  type NewLlmUsageEvent,
-} from '@/lib/db/schema'
+import { budgetPolicies, llmUsageEvents, llmUsageRollups, UNBILLED_USAGE_ACTIVITIES, type BudgetPolicy, type BudgetScope, type BudgetUnit, type NewLlmUsageEvent } from '@/lib/db/schema/budgets'
 
 // ---------------------------------------------------------------------------
 // UTC windows

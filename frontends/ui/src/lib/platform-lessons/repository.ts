@@ -19,15 +19,7 @@ import 'server-only'
 import { isUniqueViolation } from '@/lib/db/errors'
 import { and, asc, desc, eq, inArray, isNull, ne, or, sql } from 'drizzle-orm'
 import { getDb } from '@/lib/db'
-import {
-  platformLessonEvents,
-  platformLessonReports,
-  platformLessons,
-  type NewPlatformLessonEvent,
-  type PlatformLesson,
-  type PlatformLessonEvent,
-  type PlatformLessonReport,
-} from '@/lib/db/schema'
+import { platformLessonEvents, platformLessonReports, platformLessons, type NewPlatformLessonEvent, type PlatformLesson, type PlatformLessonEvent, type PlatformLessonReport } from '@/lib/db/schema/platform-lessons'
 import { normalizeContentGerman } from '@/lib/knowledge/consolidation'
 import { toVectorLiteral } from '@/lib/knowledge/embeddings'
 import { executeRows } from '@/lib/db/execute-rows'

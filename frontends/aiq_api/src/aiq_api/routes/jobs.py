@@ -19,6 +19,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import os
 import time
 from typing import TYPE_CHECKING
 from typing import Annotated
@@ -51,6 +52,7 @@ if TYPE_CHECKING:
     from nat.builder.workflow_builder import WorkflowBuilder
     from nat.front_ends.fastapi.fastapi_front_end_plugin_worker import FastApiFrontEndPluginWorker
 
+from ..jobs.ingest_dispatch import enqueue_only
 from ..jobs.outcome_notify import notify_job_outcome_from_access
 from ..jobs.runner import DOCUMENT_ADDED_EVENT_TYPE
 from ..jobs.runner import WRITE_NOW_EVENT_TYPE
@@ -534,8 +536,6 @@ async def register_job_routes(app: FastAPI, builder: WorkflowBuilder, worker: Fa
     Uses NAT's JobStore for job metadata. Research runs on the database-claimed
     queue (ADR-0021). The /v1/data_sources endpoint is always registered.
     """
-    import os
-
     from .builder_state import set_active_builder
 
     # Publish the builder so the internal skills submit route (registered
@@ -1452,8 +1452,6 @@ def _add_housekeeping_routes(app: FastAPI, job_store, db_url: str, expiry_second
 
     @app.post("/v1/maintenance/housekeeping/chat-checkpoints", tags=["maintenance"], include_in_schema=False)
     async def housekeeping_chat_checkpoints(request: Request) -> dict:
-        import os
-
         from ..jobs.checkpoint_retention import reap_idle_threads
 
         _require_internal_token(request)
@@ -1468,7 +1466,7 @@ def _add_housekeeping_routes(app: FastAPI, job_store, db_url: str, expiry_second
         from aiq_agent import oib_sync
 
         _require_internal_token(request)
-        result = await asyncio.to_thread(oib_sync.sync)
+        result = await asyncio.to_thread(oib_sync.sync, enqueue=enqueue_only)
         return {
             "enqueued": result.enqueued,
             "ingested_recorded": result.ingested_recorded,

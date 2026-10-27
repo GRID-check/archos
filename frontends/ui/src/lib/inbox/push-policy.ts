@@ -8,8 +8,8 @@
  * Nothing here knows about subscriptions, VAPID or the queue.
  */
 
-import type { InboxItem } from '@/lib/db/schema'
-import { INBOX_ITEM_TYPES, type InboxItemType } from '@/lib/db/schema'
+import type { InboxItem } from '@/lib/db/schema/inbox'
+import { INBOX_ITEM_TYPES, type InboxItemType } from '@/lib/db/schema/inbox'
 import type { PushCategory, PushPreferences, PushUrgency } from './push-categories'
 import { INBOX_TYPE_DEFINITIONS, type InboxPushPolicy } from './registry'
 

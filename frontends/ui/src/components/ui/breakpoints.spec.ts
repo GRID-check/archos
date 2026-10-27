@@ -1,3 +1,4 @@
+// @disk-inputs: src/**
 /**
  * A phone on its side is still a phone: `md:` and `useIsMobile()` agree, and
  * both say so.

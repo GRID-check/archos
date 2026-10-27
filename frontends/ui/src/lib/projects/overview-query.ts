@@ -1,6 +1,7 @@
 import { eq, and, desc, sql } from 'drizzle-orm'
 import { getDb } from '@/lib/db'
-import { projects, documents } from '@/lib/db/schema'
+import { documents } from '@/lib/db/schema/documents'
+import { projects } from '@/lib/db/schema/projects'
 import type { ProjectOverviewData } from '@/features/projects/types'
 import { deriveProjectStandards } from '@/lib/oib/project-standards'
 import { outsideHiddenFolders } from '@/lib/documents/repository'
