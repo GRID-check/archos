@@ -189,7 +189,7 @@ def test_a_backend_fixture_runs_the_ui_specs_that_read_it(mod):
     # `skills/resolve-payload-contract.spec.ts` reads one from disk.
     changed = ["tests/fixtures/skills_resolve/resolve_payload.json"]
 
-    assert mod.decide_ui(changed, READERS)[:2] == ("select", READERS)
+    assert mod.decide_ui(changed, READERS)[:2] == ("select", list(READERS))
 
 
 def test_a_change_no_ui_spec_reads_runs_no_ui_spec(mod):
