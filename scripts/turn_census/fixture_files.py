@@ -16,7 +16,7 @@ Seeding is idempotent: a file whose chunks already carry this content's hash is 
 ``FilesWorkspace`` is the fixture BFF's side: the turn context of a chat in this project.
 Chunking is not under test here, the tools are, with one exception.
 
-**The E-Mail-Verlauf is chunked for real** (ADR-0134). A file with ``markdown:`` is the bytes the
+**The E-Mail-Verlauf is chunked for real** (ADR-0137). A file with ``markdown:`` is the bytes the
 BFF's renderer wrote (``tests/fixtures/files_eval/mail/``, pinned by
 ``frontends/ui/src/lib/mail-thread/files-eval-fixture.spec.ts``), cut by the knowledge layer's own
 Markdown chunker (``text_formats.markdown_documents``) and stamped ``source_format: mail`` the way

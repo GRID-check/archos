@@ -1,6 +1,6 @@
 /**
  * What a held mail's sender asks of the person before anything of it is filed
- * (ADR-0134, DECISION §4 C2, D4, RT-X6): the one place these rules are
+ * (ADR-0137, DECISION §4 C2, D4, RT-X6): the one place these rules are
  * written. The decision refuses by them (`./decision`), the views carry their
  * answer (`riskLevel`, `impersonation`, `needsSenderAcknowledgement` on
  * `./inbound-mail-wire`), the suggest job skips by them (`./suggest`), and the

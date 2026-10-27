@@ -1,6 +1,6 @@
 /**
  * mailThread namespace: the E-Mail-Verlauf, one conversation filed as one
- * document (ADR-0134). The „Mails“ tab, following and detaching (D16) add to
+ * document (ADR-0137). The „Mails“ tab, following and detaching (D16) add to
  * it; the closed code lists of `lib/mail-thread` are worded here so every
  * surface says them the same way.
  *

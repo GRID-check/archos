@@ -1,5 +1,5 @@
 /**
- * One mail thread (ADR-0134, D36).
+ * One mail thread (ADR-0137, D36).
  *
  * GET — its filed messages in order (heading, sender and trust, sent and
  *       received, the Fassung each first appeared in, whether its original is

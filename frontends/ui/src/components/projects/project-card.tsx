@@ -42,7 +42,7 @@ interface ProjectCardProps {
    */
   activityAt?: string
   /**
-   * Mails waiting in the project's E-Mail-Eingang for the viewer (ADR-0134);
+   * Mails waiting in the project's E-Mail-Eingang for the viewer (ADR-0137);
    * absent or 0 shows nothing. Only a reader who may file the mail gets one.
    */
   mailWaiting?: number

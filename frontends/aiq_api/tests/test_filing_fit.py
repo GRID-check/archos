@@ -271,7 +271,7 @@ async def test_too_many_folders_to_offer_are_not_scored(monkeypatch):
     spy.assert_not_awaited()
 
 
-# ── basis: mail (ADR-0134, D21): a held mail's attachments, placed from metadata only ──
+# ── basis: mail (ADR-0137, D21): a held mail's attachments, placed from metadata only ──
 
 MAIL_BODY = {
     "basis": "mail",

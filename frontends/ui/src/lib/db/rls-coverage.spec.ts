@@ -194,7 +194,7 @@ const BOUNDARY_MIGRATIONS = [
   // Adds office_convention_decisions — a person's confirm or decline of one
   // line of the office's conventions (ADR-0129). Keyed by its organization.
   '0182_office_convention_decisions.sql',
-  // Adds the E-Mail-Eingang and the E-Mail-Verlauf (ADR-0134): the project
+  // Adds the E-Mail-Eingang and the E-Mail-Verlauf (ADR-0137): the project
   // mail address, the mail a person files before any of it is a document, its
   // parts and the decisions about them, and the thread of filed messages with
   // its Message-IDs and follows. Eight tables keyed by their organization;

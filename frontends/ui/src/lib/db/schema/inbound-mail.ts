@@ -41,7 +41,7 @@ import type { ThreadMatch } from '@/lib/mail-thread/mail-thread-vocabulary'
 import { projects } from './projects'
 
 /**
- * The E-Mail-Eingang (ADR-0134, migration 0186): a project's mail address, the
+ * The E-Mail-Eingang (ADR-0137, migration 0186): a project's mail address, the
  * mail that reached it, its parts, and what a person decided about each part.
  * Nothing that arrives is a document; a part becomes one only when a person
  * files it, and the mail's text becomes a section of its E-Mail-Verlauf

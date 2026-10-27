@@ -122,7 +122,7 @@ done
 # cosine query — and a mocked drizzle handle cannot disagree with the fixture
 # that mocked it. (The memory suite is the one that found the semantic gate
 # reading `.rows` off a postgres-js array, which every mock had agreed with.)
-# The inbound mail and mail thread suites (ADR-0134) are named here before
+# The inbound mail and mail thread suites (ADR-0137) are named here before
 # their files exist, one per package that writes one: the repository (D7, D8),
 # the sweeps (D12), the review-first ratchet (D9), append (D9), follow (D10)
 # and the archive (D11). A name vitest finds no file for filters nothing, and
@@ -2242,7 +2242,7 @@ refused_in grid_batch_effects "INSERT INTO upload_batches (id, organization_id, 
 echo "==> 0185 upload batch effects and its down migration verified"
 
 # ---------------------------------------------------------------------------
-# Migration 0186: inbound mail, mail threads and follows (ADR-0134), and the
+# Migration 0186: inbound mail, mail threads and follows (ADR-0137), and the
 # DOWN.
 #
 # On a database of its own, migrated through 0186, with two organizations and

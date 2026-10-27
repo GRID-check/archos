@@ -1,6 +1,6 @@
 import 'server-only'
 /**
- * SQL of „Verlauf folgen“ (ADR-0134, DECISION D31): a person's follow of one
+ * SQL of „Verlauf folgen“ (ADR-0137, DECISION D31): a person's follow of one
  * E-Mail-Verlauf, started, renewed and ended, and the one transaction in which
  * the follow job turns a reply's text into the follower's decision. No
  * authorization here: `./follows.ts` and `lib/inbound-mail/follow-job.ts`

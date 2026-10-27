@@ -1,6 +1,6 @@
 import 'server-only'
 /**
- * Reading the project's E-Mail-Verläufe (ADR-0134, DECISION §7):
+ * Reading the project's E-Mail-Verläufe (ADR-0137, DECISION §7):
  * `mail-thread-list` and `mail-thread-get`. A thread is a document, and it is
  * exactly as readable as that document (D9, RT-S13): screened, not in the bin,
  * in a folder the reader may open. A thread the reader may not read is not

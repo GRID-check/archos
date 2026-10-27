@@ -35,7 +35,7 @@ features:
     grew, without showing a sender, subject or file name.
 operators:
   - >
-    Project mail (ADR-0134, ADR-0135) stays off until a stack sets
+    Project mail (ADR-0137, ADR-0138) stays off until a stack sets
     inboundMailDomain, which needs the malware scanner, the Cloudflare
     Workers Paid plan, signing keys and a first promote that is paused. Run
     launch gates G1 to G9 before unpausing, and switch the inbound-mail

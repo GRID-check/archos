@@ -1,7 +1,7 @@
 'use client'
 
 /**
- * Dev preview of the project's mail address (ADR-0134): the settings card
+ * Dev preview of the project's mail address (ADR-0137): the settings card
  * (`InboundMailAddressCard`, Settings › Dokumente) and the dialog the upload
  * menu's „Per E-Mail senden …“ opens (`InboundMailAddressDialog`, with
  * `&dialog=1`), over the fixture address client:

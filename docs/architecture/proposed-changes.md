@@ -24,7 +24,7 @@ was a card: the applier passes the proposal's id as `callOperation`'s `origin`,
 and the acting session answers it (`actingProposalId`,
 `lib/agent-api/acting-session.ts`). The E-Mail-Eingang records such a filing
 as `via = 'piloti_proposal'`, and the database refuses a card that carries an
-acknowledgement or a name release (ADR-0134): Piloti proposes `inbound-mail-file`
+acknowledgement or a name release (ADR-0137): Piloti proposes `inbound-mail-file`
 for clean, unflagged parts only.
 The lifecycle in `service.ts` is the same for every kind and asks `kinds.ts`
 for the rest.

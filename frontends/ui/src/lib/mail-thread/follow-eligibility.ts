@@ -1,6 +1,6 @@
 /**
  * Whether a reply may join a followed E-Mail-Verlauf without a click
- * („Verlauf folgen“, ADR-0134, DECISION D31). Pure.
+ * („Verlauf folgen“, ADR-0137, DECISION D31). Pure.
  *
  * Following is a person's standing decision about one conversation: later
  * replies' **text** is appended as that person, attachments always wait. It is

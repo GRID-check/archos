@@ -6,7 +6,7 @@
  * signs them for the BFF, posts them, and turns the BFF's answer into accept,
  * reject or retry. Everything that decides anything about a project (address,
  * office, sender, DKIM, limits) lives in the BFF, where it is tested and
- * audited (ADR-0135). The webhook's contract is `shared/inbound-mail-contract.json`;
+ * audited (ADR-0138). The webhook's contract is `shared/inbound-mail-contract.json`;
  * the constants below restate it, and `inbound-mail-worker.spec.ts` holds them
  * to that file.
  *

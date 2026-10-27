@@ -27,7 +27,7 @@ export default async function ProjectDocumentsSettingsPage({
     await requireProjectAccess(session, id, 'project:view')
 
     const access = await resolveProjectSettingsAccess(session, id)
-    // The address card, for whoever may decide the project's held mail (ADR-0134).
+    // The address card, for whoever may decide the project's held mail (ADR-0137).
     const project =
       isInboundMailEnabled(session) && (await requireMailReviewer(session, id).then(() => true, () => false))
         ? await findProjectInOrg(id, session.organizationId)

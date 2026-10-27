@@ -99,7 +99,7 @@ describe("committed stack files", () => {
   });
 
   it("run the malware scanner wherever project mail is configured", () => {
-    // `loadConfig` refuses the pair at plan time (ADR-0133, ADR-0135); this
+    // `loadConfig` refuses the pair at plan time (ADR-0136, ADR-0138); this
     // says so on the pull request instead.
     for (const stack of stacks()) {
       if (str(stack.config, "inboundMailDomain") === undefined) continue;

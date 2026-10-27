@@ -1,6 +1,6 @@
 # Project mail: data-protection review (October 2026)
 
-- **Date:** 2026-10-27, against the project-mail branch (ADR-0134, ADR-0135).
+- **Date:** 2026-10-27, against the project-mail branch (ADR-0137, ADR-0138).
 - **What it covers:** mail that third parties send to a project's address, the
   E-Mail-Verläufe it is filed into, the original `.eml` kept as evidence, the
   standing decision to follow a Verlauf, Piloti's metadata suggestion, and the
@@ -8,7 +8,7 @@
 - **Status: Datenschutzberater sign-off OPEN.** Every section marked
   **[sign-off]** needs a human data-protection decision before the
   `inbound-mail` entitlement is switched on for any customer (owner gate O7,
-  [`kubernetes.md` §3c](../deployment/kubernetes.md#3c-project-mail-cloudflare-email-routing-adr-0135)).
+  [`kubernetes.md` §3c](../deployment/kubernetes.md#3c-project-mail-cloudflare-email-routing-adr-0138)).
   This document is an engineering inventory, **not legal advice**.
 
 ## Roles

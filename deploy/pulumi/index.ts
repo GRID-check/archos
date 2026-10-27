@@ -9,7 +9,7 @@
  *               HPA, the api role), frontend (Deployment + HPA), purger, skill-scheduler, gotenberg (office
  *               → PDF), a migration Job, a WorkOS audit-schema reconcile Job and,
  *               opt-in, the one-shot Chroma-to-Qdrant Job and ClamAV (the
- *               malware scanner, ADR-0133)
+ *               malware scanner, ADR-0136)
  *   edge      → Gateway API (Envoy Gateway) + HTTPRoutes with cert-manager TLS,
  *               for the app, the landing site and the public S3 endpoint
  *
@@ -198,7 +198,7 @@ const gotenberg = cfg.gotenberg.enabled
 const geocoder = cfg.geocoder.enabled
   ? installGeocoder(cfg, provider, namespace, [ns])
   : undefined;
-// The malware scanner (ADR-0133): clamd and freshclam for what strangers send.
+// The malware scanner (ADR-0136): clamd and freshclam for what strangers send.
 // Off by default (`malwareScanEnabled`). Fail closed: without it every scan
 // fails and nothing that needs a clean one is filed, so nothing waits on it.
 const clamav = cfg.malwareScan.enabled
@@ -481,7 +481,7 @@ if (cfg.observability.enabled) {
 // this exists to prevent.
 const dns = installDns(cfg);
 
-// ── Project mail (Cloudflare Email Routing, ADR-0135) ────────────────────────
+// ── Project mail (Cloudflare Email Routing, ADR-0138) ────────────────────────
 //
 // Cloudflare-only as well, and independent for the same reason: a Worker that
 // posts to a frontend not up yet gets a connection error or a 404, throws, and

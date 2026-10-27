@@ -3,7 +3,7 @@
  */
 /**
  * A filed mail's two ingest records, pinned across the BFF ↔ backend seam
- * (ADR-0134): `mail_thread` on a Fassung of an E-Mail-Verlauf, `mail_origin`
+ * (ADR-0137): `mail_thread` on a Fassung of an E-Mail-Verlauf, `mail_origin`
  * on an attachment filed with a message (`lib/mail-thread/ingest-facts`).
  *
  * Both Python models are `extra="forbid"`, so a key the BFF spells differently

@@ -1,5 +1,5 @@
 -- 0186: mail sent to a project waits until a person files it; a conversation is
--- one document; its originals are evidence; a person may follow it (ADR-0134).
+-- one document; its originals are evidence; a person may follow it (ADR-0137).
 --
 -- ## What was missing
 --
@@ -801,7 +801,7 @@ CREATE INDEX IF NOT EXISTS "inbound_mails_original_move_idx"
   ON "inbound_mails" ("original_move_pending_at") WHERE "original_move_pending_at" IS NOT NULL;
 --> statement-breakpoint
 COMMENT ON TABLE "inbound_mails" IS
-  'One delivery to a project mail address, held until a person files or dismisses its parts (ADR-0134). Holds what a reviewer needs to decide until it settles, then only ids, counts and the member it came from; the message itself is a staged object named by its key. Deleted after the retention window. Tenant data (migration 0186).';
+  'One delivery to a project mail address, held until a person files or dismisses its parts (ADR-0137). Holds what a reviewer needs to decide until it settles, then only ids, counts and the member it came from; the message itself is a staged object named by its key. Deleted after the retention window. Tenant data (migration 0186).';
 --> statement-breakpoint
 CREATE TABLE IF NOT EXISTS "inbound_mail_parts" (
   "id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,

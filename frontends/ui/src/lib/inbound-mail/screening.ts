@@ -1,6 +1,6 @@
 /**
  * The office's screening, applied to a held mail before anyone sees it
- * (ADR-0134 D10 and D13). It flags; it never drops and never files.
+ * (ADR-0137 D10 and D13). It flags; it never drops and never files.
  *
  * - **Namensprüfung** on each attachment's name and on the thread's base
  *   subject (the default name of a new E-Mail-Verlauf): a match sets

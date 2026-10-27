@@ -167,7 +167,7 @@ export function storageKeySegment(raw: string): string {
  * beside a project's folders: `mail-imports/`, where an Outlook import stages
  * its archive (`lib/mail-import/staging.ts`); `_inbound-mail/`, where a mail
  * sent to the project waits until a person files it; and `_mail-originals/`,
- * where a filed message's original `.eml` is kept as evidence (ADR-0134). No
+ * where a filed message's original `.eml` is kept as evidence (ADR-0137). No
  * segment of an uploaded key may take one: a file, or a folder at any depth, so
  * above all one at the root.
  *

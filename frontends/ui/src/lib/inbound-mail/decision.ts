@@ -1,7 +1,7 @@
 import 'server-only'
 /**
  * Whether a person's decision about a held mail may be written, check by check
- * (ADR-0134, DECISION §4 C2), and the decision rows it becomes.
+ * (ADR-0137, DECISION §4 C2), and the decision rows it becomes.
  *
  * A decision is the filing job's only instruction: the job reads what to file,
  * where, under which name and with which acknowledgements from the rows this

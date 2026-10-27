@@ -1,6 +1,6 @@
 /**
  * Who a mail is from, as far as its bytes and DNS can tell, and what that
- * means for the defaults a person sees (ADR-0134 D4, check B2).
+ * means for the defaults a person sees (ADR-0137 D4, check B2).
  *
  * Every mail is held whatever this says. The verdict is a label and a
  * condition on defaults (thread pre-selection, following, the acknowledgements

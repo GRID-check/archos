@@ -62,7 +62,7 @@ describe('storedFilingChoice', () => {
   })
 })
 
-// A filed mail (ADR-0134, D36): a Verlauf the content screening holds keeps its
+// A filed mail (ADR-0137, D36): a Verlauf the content screening holds keeps its
 // lane and date through the release, and an attachment the mail it came with.
 describe('a filed mail’s facts with the filing choice', () => {
   const MAIL_THREAD: MailThreadIngestFacts = { latest_sent_at: '2026-10-14T07:12:00Z', message_count: 4, locale: 'de' }

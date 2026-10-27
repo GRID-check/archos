@@ -1,5 +1,5 @@
 /**
- * „Verlauf folgen“ (ADR-0134, D31): a person's standing decision about one
+ * „Verlauf folgen“ (ADR-0137, D31): a person's standing decision about one
  * mail thread.
  *
  * POST   — follow the thread, or renew the caller's follow, for `days` (default

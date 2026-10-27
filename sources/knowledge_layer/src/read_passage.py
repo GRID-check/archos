@@ -331,7 +331,7 @@ def _older_revision_notice(targets: Sequence[PassageTarget]) -> str:
 
 
 def _mail_origin_notice(targets: Sequence[PassageTarget]) -> str:
-    """The line that says which mail a document came with, in the words of its Verlauf (ADR-0134).
+    """The line that says which mail a document came with, in the words of its Verlauf (ADR-0137).
 
     So a passage of an attachment is attributed to the message that brought it
     („laut der E-Mail von Ing. Gruber vom 04.05.2026“), and a sender nobody

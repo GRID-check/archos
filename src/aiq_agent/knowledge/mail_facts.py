@@ -2,7 +2,7 @@
 
 A conversation a person files from a project's E-Mail-Eingang becomes one
 document, the E-Mail-Verlauf, with one Markdown section per message
-(``frontends/ui/src/lib/mail-thread/render.ts``, ADR-0134); each attachment the
+(``frontends/ui/src/lib/mail-thread/render.ts``, ADR-0137); each attachment the
 person files becomes a document of its own. Two records on the document's
 metadata row (``document_metadata``) say so, and this module is the one place
 that knows what they look like, so the store, the payload, the listing and the

@@ -1,5 +1,5 @@
 /**
- * Decide held mail (ADR-0134, D26): file the named parts of up to 20 mails;
+ * Decide held mail (ADR-0137, D26): file the named parts of up to 20 mails;
  * every other waiting part of each is dismissed.
  *
  * POST — checks every rule of DECISION §4 C2 for every mail (a refusal names

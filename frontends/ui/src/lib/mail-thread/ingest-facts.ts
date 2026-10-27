@@ -1,5 +1,5 @@
 /**
- * What a filed mail tells the knowledge layer beside the bytes (ADR-0134,
+ * What a filed mail tells the knowledge layer beside the bytes (ADR-0137,
  * DECISION §6 "Ingest"): the two records `POST /v1/ingest` takes for it, in
  * the ingest contract's own snake_case (`aiq_api.models.requests.MailThreadFacts`
  * and `MailOrigin`, both `extra="forbid"`).

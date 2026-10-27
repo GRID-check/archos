@@ -36,7 +36,7 @@ export interface FilesHeaderControlsProps {
   /** Where the shelf's Offene Punkte are, the open Anmerkungen of all its documents; absent where it has none. */
   openPointsHref?: string
   /**
-   * The project's E-Mail-Eingang (ADR-0134) and how many mails wait in it for
+   * The project's E-Mail-Eingang (ADR-0137) and how many mails wait in it for
    * this reader; absent where the reader may not decide held mail. The count
    * is a muted pill: the Postfach's ink pill is the one that asks for
    * attention, and two of them would make neither mean anything.
@@ -191,7 +191,7 @@ export function FilesHeaderControls({
           </Link>
         </Button>
       )}
-      {/* Mail sent to the project's address, waiting until a person files it (ADR-0134). */}
+      {/* Mail sent to the project's address, waiting until a person files it (ADR-0137). */}
       {inboundMail && (
         <Button asChild variant="ghost" size="sm">
           <Link

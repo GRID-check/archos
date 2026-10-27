@@ -69,7 +69,7 @@ export function actingReaderIsAgent(): boolean {
 /**
  * The Piloti proposal whose acceptance the call in flight applies, or
  * `undefined`. A route that records HOW a person decided (an E-Mail-Eingang
- * decision's `via`, ADR-0134) reads it: a card Piloti worded may not carry an
+ * decision's `via`, ADR-0137) reads it: a card Piloti worded may not carry an
  * acknowledgement or a release, which the person gives only in the app or as
  * themselves (RT-S5). Set only by the proposal applier, through `callOperation`.
  */

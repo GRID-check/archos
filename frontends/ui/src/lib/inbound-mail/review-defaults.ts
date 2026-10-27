@@ -1,6 +1,6 @@
 /**
  * What a held mail offers checked, and whether it can be filed „wie
- * vorgeschlagen“ without anyone looking at it (ADR-0134, DECISION §9 and its
+ * vorgeschlagen“ without anyone looking at it (ADR-0137, DECISION §9 and its
  * case table, D11, RT-X10). The views carry the answers (`preselected` on each
  * part, `incompleteReason` and the sender's risk on the mail), so the
  * E-Mail-Eingang, the Postfach's action and an outside agent read one rule

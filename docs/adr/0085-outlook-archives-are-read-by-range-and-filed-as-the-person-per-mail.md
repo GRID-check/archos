@@ -131,13 +131,13 @@ The flow, the routes and the operator steps: `docs/architecture/mail-import.md`.
 
 ## Amendment, 2026-10-22: the archive renders into the E-Mail-Verläufe
 
-*Product owner, from the project-mail work (ADR-0134, DECISION D33, owner
+*Product owner, from the project-mail work (ADR-0137, DECISION D33, owner
 answer C).*
 
 §6–7's per-mail note is replaced. Each mail's attachments are still filed as
 the person into a folder of its own (§6; a mail without an attachment to file
 gets no folder), and its text is written as an entry of the project's
-E-Mail-Verläufe (ADR-0134), the same documents mail to the project's address is
+E-Mail-Verläufe (ADR-0137), the same documents mail to the project's address is
 filed into: one shape for mail, whichever way it arrives. The import appends
 only on a strong match (a reference or Outlook's conversation index, each with
 an equal subject, or a Verlauf that already cites the mail) and only into a
@@ -147,11 +147,11 @@ Mail the project already holds is deduplicated by Message-ID, both ways. Each
 touched Verlauf gets one Fassung per slice, under the thread's render lease.
 
 §7's "the inbox (#831) files attachments only" is reversed: the inbound mail
-feature (ADR-0134) files a mail's text as a Verlauf section too, and an archive
+feature (ADR-0137) files a mail's text as a Verlauf section too, and an archive
 is a person's correspondence, so its text belongs in the same conversations
 rather than beside them as notes nobody can follow as a thread.
 
-The import stays direct: starting it is the person's decision (ADR-0134 keeps
+The import stays direct: starting it is the person's decision (ADR-0137 keeps
 review for mail that arrives on its own). Notes written before this amendment
 stay as they are; nothing rewrites them (FU15 would, per project, opt-in).
 Entries are `sender_trust = 'not_checked'` and their headings say „aus dem

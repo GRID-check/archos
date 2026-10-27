@@ -1,5 +1,5 @@
 /**
- * Piloti's suggestion for a held mail (ADR-0134, DECISION D21): where each
+ * Piloti's suggestion for a held mail (ADR-0137, DECISION D21): where each
  * attachment belongs and as which Dokumentart, and, for a mail that matched no
  * E-Mail-Verlauf, the folder its text would start one in. The rules, pure; the
  * job that asks the model and stores the answer is `./suggest-job`.

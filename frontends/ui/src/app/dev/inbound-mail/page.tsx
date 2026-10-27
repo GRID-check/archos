@@ -1,7 +1,7 @@
 'use client'
 
 /**
- * Dev preview of Dateien › E-Mail-Eingang (ADR-0134, DECISION §9): the real
+ * Dev preview of Dateien › E-Mail-Eingang (ADR-0137, DECISION §9): the real
  * workspace (`InboundMailWorkspace`) over the fixture client, one fixture per
  * state of the list:
  *

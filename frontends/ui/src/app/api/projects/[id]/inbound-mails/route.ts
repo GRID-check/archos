@@ -1,5 +1,5 @@
 /**
- * The project's E-Mail-Eingang (ADR-0134): the mail held for a person.
+ * The project's E-Mail-Eingang (ADR-0137): the mail held for a person.
  *
  * GET — one page, newest first: `status=waiting` (a part still waits, the
  *       default) or `status=handled` (nothing waits any more), the handled

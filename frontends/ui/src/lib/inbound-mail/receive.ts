@@ -1,6 +1,6 @@
 /**
  * Receiving one mail: the webhook the Cloudflare Email Worker posts each
- * message to (ADR-0135, `POST /api/internal/signed/inbound-mail`). It decides
+ * message to (ADR-0138, `POST /api/internal/signed/inbound-mail`). It decides
  * the answer, streams the raw message to staging and queues the job that reads
  * it. It parses nothing, and it can file nothing: a mail is only ever HELD here
  * (`review-first.spec.ts` keeps every filing module out of its imports).

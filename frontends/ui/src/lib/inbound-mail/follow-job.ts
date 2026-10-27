@@ -1,6 +1,6 @@
 import 'server-only'
 /**
- * The follow job (`inbound_mail_follow`, ADR-0134, DECISION D31 and §6
+ * The follow job (`inbound_mail_follow`, ADR-0137, DECISION D31 and §6
  * "Follow"): a reply to a followed E-Mail-Verlauf has its TEXT appended to the
  * thread as the follower, without a click, and only while every one of D31's
  * nine conditions holds. The receive job queued it because conditions 1–6

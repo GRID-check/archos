@@ -87,7 +87,7 @@ const PAGES: Readonly<Record<LinkKind, Page>> = {
     path: (id, row, callProject) => describeResource('conversation').deepLink(id, { projectId: projectOf(row, callProject) }),
   },
   'inbound-mail': {
-    // A held mail is decided on its own page in the project's E-Mail-Eingang (ADR-0134): the
+    // A held mail is decided on its own page in the project's E-Mail-Eingang (ADR-0137): the
     // page an outside agent hands the person, since only they file it.
     idOf: (row) => text(row.id),
     path: (id, row, callProject) => {

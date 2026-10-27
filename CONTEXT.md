@@ -223,7 +223,7 @@ The exact place a statement is pinned to: a Punkt, a section, a page.
 
 **E-Mail-Eingang** (Project mail):
 Where mail sent to a project's e-mail address waits until a person files it
-(ADR-0134). Each part of a mail, its own text and each attachment, is
+(ADR-0137). Each part of a mail, its own text and each attachment, is
 *abgelegt* (into a folder the person chooses, under a name and a Dokumentart,
 possibly as a new Fassung; the text usually into its **E-Mail-Verlauf**) or
 not; a mail nobody wants is *verworfen*, and one nobody decides *läuft ab*

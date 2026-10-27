@@ -223,7 +223,7 @@ async function reconcileBackgroundWork(config, fetchImpl, streak) {
 
 /**
  * The log lines of the project mail sweeps (`lib/inbound-mail/sweep.ts`,
- * ADR-0134): one per sweep that did something or failed, each count by name
+ * ADR-0137): one per sweep that did something or failed, each count by name
  * (`expired: checked 3, expired 2, parts 5, errors 0`). A sweep that only
  * looked says nothing, as the halves above. Counts only: no id, no address.
  * An older BFF sends no `inboundMail`, which logs nothing.

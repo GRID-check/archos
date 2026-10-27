@@ -1,6 +1,6 @@
 /**
  * A project's mail address: minting, formatting, parsing and redacting it
- * (ADR-0135).
+ * (ADR-0138).
  *
  * An address is `<slug>.<token>@<domain>`. Only the TOKEN names a project; the
  * slug is decoration from the project name, so a person can tell two addresses
@@ -130,7 +130,7 @@ const HOST_CHARACTER = /[A-Za-z0-9-]/
 
 /**
  * Every project address in `text` with its token replaced by
- * {@link REDACTED_TOKEN}, except the token `keep` (ADR-0134, check B8).
+ * {@link REDACTED_TOKEN}, except the token `keep` (ADR-0137, check B8).
  *
  * A mail to one project may quote, forward or Cc another project's address,
  * and that address belongs to another office. The receive job runs this over

@@ -51,7 +51,7 @@ describe.each([
     expect(flatten(content.privacy)).toMatch(/E-Mail-Adresse und Ihr Name werden nicht|email address and name are not sent/)
   })
 
-  it('names exactly what Piloti reads of a held mail, and that no model reads its original (ADR-0134)', () => {
+  it('names exactly what Piloti reads of a held mail, and that no model reads its original (ADR-0137)', () => {
     const privacy = flatten(content.privacy)
     expect(privacy).toMatch(/Dateinamen der Anhänge|attachments’ file names/)
     expect(privacy).toMatch(/Betreff \(maskiert|subject \(masked/)
@@ -59,7 +59,7 @@ describe.each([
     expect(privacy).toMatch(/Original \(\.eml\) einer E-Mail erhält kein KI-Modell|No AI model receives a mail’s original/)
   })
 
-  it('lists Cloudflare as the transit of project mail and ClamAV as self-hosted (ADR-0135, ADR-0133)', () => {
+  it('lists Cloudflare as the transit of project mail and ClamAV as self-hosted (ADR-0138, ADR-0136)', () => {
     const processors = content.subprocessors.sections[0]?.table?.rows ?? []
     const cloudflare = processors.find((row) => row[0] === 'Cloudflare, Inc.')
     expect(cloudflare?.[1]).toMatch(/Email Routing/)

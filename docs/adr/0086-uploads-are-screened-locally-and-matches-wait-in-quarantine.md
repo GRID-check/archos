@@ -750,12 +750,12 @@ counts, never terms.
 
 ## Amendment (2026-10-27): mail sent to a project is name-checked, and a match is a flag
 
-*Product owner, from the project-mail work (ADR-0134, D10, RT-X14).*
+*Product owner, from the project-mail work (ADR-0137, D10, RT-X14).*
 
 ### Context
 
 A mail sent to a project's address is held until a person files it
-(ADR-0134). Its attachments' names are a stranger's, and refusing a matching
+(ADR-0137). Its attachments' names are a stranger's, and refusing a matching
 file on receipt would lose it: the sender has no screen to release it from, and
 the person deciding never sees what arrived.
 
@@ -781,7 +781,7 @@ the person deciding never sees what arrived.
 - **The content gate is unchanged after filing.** A filed attachment and every
   Verlauf Fassung pass the Inhaltsprüfung as any upload does. The mail's own
   text is checked before filing too: a finding there is decided by the person
-  (mask, own Verlauf, or file in full and hold the Verlauf), ADR-0134.
+  (mask, own Verlauf, or file in full and hold the Verlauf), ADR-0137.
 
 ### Consequences
 

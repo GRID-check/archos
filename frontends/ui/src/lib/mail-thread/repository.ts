@@ -1,6 +1,6 @@
 import 'server-only'
 /**
- * SQL for reading the E-Mail-Verläufe of a project (ADR-0134): the thread
+ * SQL for reading the E-Mail-Verläufe of a project (ADR-0137): the thread
  * list, one thread with its entries, follows and attachments. No
  * authorization here (`./service.ts` decides who may ask; row-level security
  * is the backstop), and every list is bounded.

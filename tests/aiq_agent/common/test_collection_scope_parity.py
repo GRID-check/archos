@@ -124,7 +124,7 @@ def test_the_agent_authored_lane_matches(mirror_source: str):
 
 
 def test_the_mail_lanes_match(mirror_source: str):
-    """A filed E-Mail-Verlauf's lanes and their label, the same on both ends (ADR-0134).
+    """A filed E-Mail-Verlauf's lanes and their label, the same on both ends (ADR-0137).
 
     Like the agent-authored lane: a key that disagrees renders as an unknown
     sub-label, and the ``project``/``office`` prefixes place both in the

@@ -1,5 +1,5 @@
 /**
- * The E-Mail-Verlauf's client (ADR-0134, ADR-0055): the typed browser door to
+ * The E-Mail-Verlauf's client (ADR-0137, ADR-0055): the typed browser door to
  * the `mail-thread-*` routes the agent operations name
  * (`lib/agent-api/catalog/mail.ts`), so the „E-Mails“ tab and an agent are two
  * clients of one API.

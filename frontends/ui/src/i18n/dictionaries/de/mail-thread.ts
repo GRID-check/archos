@@ -2,7 +2,7 @@ import type { en } from '../en'
 
 /**
  * mailThread namespace: der E-Mail-Verlauf, eine Korrespondenz als ein
- * Dokument (ADR-0134). Der Reiter „E-Mails“, das Folgen und das Herauslösen
+ * Dokument (ADR-0137). Der Reiter „E-Mails“, das Folgen und das Herauslösen
  * (D16) ergänzen ihn; die festen Codelisten aus `lib/mail-thread` werden hier
  * formuliert, damit jede Fläche sie gleich sagt.
  *

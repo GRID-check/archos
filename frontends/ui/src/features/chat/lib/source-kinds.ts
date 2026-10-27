@@ -131,7 +131,7 @@ export const AGENT_AUTHORED_LANE_LABEL = 'Piloti-Dokument'
  * The fine lanes of a filed E-Mail-Verlauf — mirror of the backend
  * `source_kinds.MAIL_LANE` / `OFFICE_MAIL_LANE` / `MAIL_LANE_LABEL`, decided in
  * `norm_registry.lane_for_hit` from the chunk's `source_format: 'mail'`
- * (ADR-0134). The kind stays the shelf's: `project_mail` is Projektwissen and
+ * (ADR-0137). The kind stays the shelf's: `project_mail` is Projektwissen and
  * `office_mail` Büroablage, so a mail from a Behörde's domain never paints in
  * the building-law colour and never earns an authority badge. The label is the
  * sub-label inside that kind, like {@link AGENT_AUTHORED_LANE_LABEL}.

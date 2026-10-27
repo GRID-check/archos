@@ -1,6 +1,6 @@
 /**
  * INTERNAL, signed: the Cloudflare Email Worker delivers one raw message
- * (ADR-0135). Not a person's route and no agent operation: the reachability
+ * (ADR-0138). Not a person's route and no agent operation: the reachability
  * walk skips every `internalApiRoute`.
  *
  * POST — the body is the message as it arrived (`message/rfc822`), its length

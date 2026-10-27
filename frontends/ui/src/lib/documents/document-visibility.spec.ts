@@ -118,7 +118,7 @@ const SEES_EVERY_ROW: Record<string, string> = {
  * and says which read that was.
  */
 const KEYED_BY_A_READ_DOCUMENT: Record<string, string> = {
-  // --- The E-Mail-Eingang's candidates (ADR-0134): the next version's number of the row read ----
+  // --- The E-Mail-Eingang's candidates (ADR-0137): the next version's number of the row read ----
   'lib/inbound-mail/repository.ts#findThreadDocuments|documentVersions':
     'A correlated count beside the thread document the same query lets through `documentVisibleTo(SCREENED_ONLY)`. A number, no fact.',
   'lib/inbound-mail/repository.ts#findCandidateDocuments|documentVersions':
@@ -243,7 +243,7 @@ const ELEVATED_READERS: Record<string, { makes: string[]; why: string }> = {
   },
   'lib/inbound-mail/repository.ts#findDocumentIdByStoredName': {
     makes: ['internal:identity'],
-    why: 'Whether a held mail’s part would be filed under a name the project already has: identity, over every row (ADR-0134, C2 `name_taken`). The id never leaves the service.',
+    why: 'Whether a held mail’s part would be filed under a name the project already has: identity, over every row (ADR-0137, C2 `name_taken`). The id never leaves the service.',
   },
   'lib/documents/repository.ts#findLiveDocumentByFilename': {
     makes: ['internal:identity'],

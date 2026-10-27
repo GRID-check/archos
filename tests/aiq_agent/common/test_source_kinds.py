@@ -82,7 +82,7 @@ class TestAgentAuthoredLane:
 
 
 class TestMailLanes:
-    """A filed E-Mail-Verlauf is Projektwissen with a sub-label, never building law (ADR-0134)."""
+    """A filed E-Mail-Verlauf is Projektwissen with a sub-label, never building law (ADR-0137)."""
 
     def test_the_project_thread_is_project_and_the_office_thread_is_office(self):
         from aiq_agent.common.source_kinds import MAIL_LANE

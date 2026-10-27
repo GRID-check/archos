@@ -1,5 +1,5 @@
 /**
- * The project's mail threads (ADR-0134): each conversation filed as one
+ * The project's mail threads (ADR-0137): each conversation filed as one
  * document.
  *
  * GET — one page, newest first, `documentId` for the thread of one document.

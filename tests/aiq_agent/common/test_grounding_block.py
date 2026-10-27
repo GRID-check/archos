@@ -577,7 +577,7 @@ class TestAPassageAcrossAPageBreakShowsItsRange:
 
 
 class TestAMailPassageStatesItsFormat:
-    """A filed E-Mail-Verlauf's section says it is mail, and both readers place it in the mail lane (ADR-0134).
+    """A filed E-Mail-Verlauf's section says it is mail, and both readers place it in the mail lane (ADR-0137).
 
     The format is a field of the hit and a line of the text. A replayed turn reads the text, so the
     line is what keeps a resumed conversation's chip in „Projektwissen · E-Mail“ rather than in plain

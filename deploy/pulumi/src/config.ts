@@ -252,7 +252,7 @@ export interface GridConfig {
   };
 
   /**
-   * Project mail (ADR-0135, `platform/inbound-mail.ts`): Cloudflare Email
+   * Project mail (ADR-0138, `platform/inbound-mail.ts`): Cloudflare Email
    * Routing on `domain`, whose catch-all hands every unclaimed address to one
    * Email Worker, which signs each message (RFC 9421) and posts it to the
    * BFF's `/api/internal/signed/inbound-mail`.
@@ -637,7 +637,7 @@ export interface GridConfig {
   };
 
   /**
-   * The malware scanner (ADR-0133, `app/clamav.ts`): clamd with freshclam,
+   * The malware scanner (ADR-0136, `app/clamav.ts`): clamd with freshclam,
    * scanning what strangers send before anyone may file or download it. The
    * frontend and the bff-jobs pool get `GRID_MALWARE_SCAN_URL` exactly when
    * this is on; off, every scan fails closed with `not-configured`, and nothing
@@ -1716,7 +1716,7 @@ function refuseRetiredVectorKeys(cfg: pulumi.Config): void {
 }
 
 /**
- * The malware scanner (ADR-0133). Two refusals, each of which would otherwise
+ * The malware scanner (ADR-0136). Two refusals, each of which would otherwise
  * plan clean:
  *
  * - An image without a digest. The image carries the engine and the parser of
@@ -1732,7 +1732,7 @@ function malwareScanConfig(cfg: pulumi.Config): GridConfig["malwareScan"] {
     throw new Error(
       `grid-oib:malwareScanUrl (${url.startsWith("fake:") ? "the development fake" : "set"}) is refused: a ` +
         "stack scans with its own in-cluster clamd, and the URL the BFF gets is that Service's. Remove it " +
-        "with `pulumi config rm`, and set grid-oib:malwareScanEnabled to true to deploy the scanner (ADR-0133).",
+        "with `pulumi config rm`, and set grid-oib:malwareScanEnabled to true to deploy the scanner (ADR-0136).",
     );
   }
   const image =
@@ -1807,7 +1807,7 @@ interface InboundMailZoneContext {
 }
 
 /**
- * Project mail (ADR-0135). Opt-in by setting the domain; everything else is
+ * Project mail (ADR-0138). Opt-in by setting the domain; everything else is
  * then required together, because each half alone fails silently: a domain
  * without a usable key map is a Worker whose every delivery answers 503 (the
  * sender retries for days, then bounces), and a domain without the zone has
@@ -1843,7 +1843,7 @@ function inboundMailConfig(cfg: pulumi.Config, zone: InboundMailZoneContext): Gr
     // cannot file anything.
     throw new Error(
       "grid-oib:inboundMailDomain needs grid-oib:malwareScanEnabled=true: mail from anyone is scanned by " +
-        "the in-cluster ClamAV before it can be filed or downloaded (ADR-0133), and without the scanner " +
+        "the in-cluster ClamAV before it can be filed or downloaded (ADR-0136), and without the scanner " +
         "nothing that arrives could ever be filed.",
     );
   }
@@ -1896,7 +1896,7 @@ function inboundMailConfig(cfg: pulumi.Config, zone: InboundMailZoneContext): Gr
     cfg,
     ["inboundMailSigningKeys"],
     "when grid-oib:inboundMailDomain is set and the inbox is on (the keys the Worker signs with and " +
-      "the BFF verifies, ADR-0135)",
+      "the BFF verifies, ADR-0138)",
   );
   const keyIds = assertSigningKeys((cfg.get("inboundMailSigningKeys") ?? "").trim());
   const signingKeyId = cfg.get("inboundMailSigningKeyId") ?? (keyIds.length === 1 ? keyIds[0] : "");
@@ -2873,7 +2873,7 @@ export function loadConfig(): GridConfig {
     }
   }
 
-  // ── Project mail (Cloudflare Email Routing, ADR-0135) ──────────────────────
+  // ── Project mail (Cloudflare Email Routing, ADR-0138) ──────────────────────
   const malwareScan = malwareScanConfig(cfg);
   const inboundMail = inboundMailConfig(cfg, {
     dnsEnabled,

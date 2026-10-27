@@ -1,6 +1,6 @@
 import 'server-only'
 /**
- * What a held mail's candidates are FOR THE VIEWER (ADR-0134, D9, RT-S13,
+ * What a held mail's candidates are FOR THE VIEWER (ADR-0137, D9, RT-S13,
  * RT-X8): the threads it may belong to, the document its attachment
  * duplicates, the document it may be the next Fassung of.
  *

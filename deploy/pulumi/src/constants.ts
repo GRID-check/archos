@@ -88,7 +88,7 @@ export const PORT = {
   clickhouseMetrics: 9363,
   /** Gotenberg API (office → PDF, ADR-0070). Upstream default. */
   gotenberg: 3000,
-  /** clamd, the malware scanner behind `GRID_MALWARE_SCAN_URL` (ADR-0133). Upstream default. */
+  /** clamd, the malware scanner behind `GRID_MALWARE_SCAN_URL` (ADR-0136). Upstream default. */
   clamav: 3310,
   /** Photon, the address search behind `GRID_GEOCODER_URL` (ADR-0120). Upstream default. */
   geocoder: 2322,
@@ -426,7 +426,7 @@ export const EDGE_RATE_LIMIT = {
  * The signed internal routes at the edge (`/api/internal/signed/*`): requests
  * from callers outside the cluster that push bytes in, each carrying an
  * RFC 9421 signature the BFF checks before it reads the body
- * (`requireInternalSignature`, ADR-0135). Today the one caller is the inbound
+ * (`requireInternalSignature`, ADR-0138). Today the one caller is the inbound
  * mail Worker (`platform/inbound-mail-worker.js`).
  *
  * They get an HTTPRoute of their own (`app/httproutes.ts`), for three reasons
@@ -523,7 +523,7 @@ export const GEOCODER = {
 } as const;
 
 /**
- * ClamAV (ADR-0133): clamd, the malware scanner behind `GRID_MALWARE_SCAN_URL`,
+ * ClamAV (ADR-0136): clamd, the malware scanner behind `GRID_MALWARE_SCAN_URL`,
  * with freshclam beside it. Off by default (`malwareScanEnabled`).
  *
  * The image is a knob (`malwareScanImage`, digest-pinned); the name, the port,

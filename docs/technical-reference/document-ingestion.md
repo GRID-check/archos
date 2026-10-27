@@ -155,7 +155,7 @@ Body: {
   revision_of: str | None,
   # the document type a person chose when filing it, one of DOCUMENT_TYPE_TAGS (422 otherwise)
   document_type: str | None,
-  # a filed mail (ADR-0134): the E-Mail-Verlauf's newest message, or the message an attachment came with
+  # a filed mail (ADR-0137): the E-Mail-Verlauf's newest message, or the message an attachment came with
   mail_thread: {latest_sent_at, message_count, locale} | None,
   mail_origin: {sent_at, received_at?, from_name?, from_domain?, signer_domain?, sender_trust,
                 thread_document_id?, locale} | None,
@@ -371,7 +371,7 @@ person's later edit in the tag editor, since the job treats it as the newest
 choice. A file stranded at `processing` on the rendition path still carries its
 choice in the queued job's payload, not on the row.
 
-**A filed mail (ADR-0134).** A conversation a person files from a project's
+**A filed mail (ADR-0137).** A conversation a person files from a project's
 E-Mail-Eingang is one document, the E-Mail-Verlauf: the BFF renders it as
 Markdown with one `##` section per message (`lib/mail-thread/render.ts`) and
 dispatches it with `mail_thread`; every attachment the person files is its own

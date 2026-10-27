@@ -25,7 +25,7 @@
 # current; the Brandschutzkonzept has 14 pages and says „Fluchtweg“ on pages 3, 7 and 11; the newest
 # upload is the MA-37 letter; „Sprinkler“ is written nowhere.
 #
-# The `pf-mail-*` rows read the E-Mail-Verlauf `Verlauf_MA37_Stellplaetze.md` (ADR-0134, DECISION §10):
+# The `pf-mail-*` rows read the E-Mail-Verlauf `Verlauf_MA37_Stellplaetze.md` (ADR-0137, DECISION §10):
 # a filed conversation is evidence from named senders, never the office's or the Behörde's finding
 # unless the Behörde's own, signed mail says it. Their judges are in `judge.py`: `attributes_mail`
 # (the answer says whose mail and of when), `quoted_as_quote` (a statement written only inside a

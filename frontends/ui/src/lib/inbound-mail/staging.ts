@@ -1,5 +1,5 @@
 /**
- * The staged objects of a held mail (ADR-0134, D6): the raw message as it
+ * The staged objects of a held mail (ADR-0137, D6): the raw message as it
  * arrived, what the Python reader made of it (`read.json`), and one object per
  * attachment part. They live in the organization's bucket under the PROJECT's
  * reserved `_inbound-mail/<mail>/` prefix (`inboundMailStagingKey`), so the

@@ -370,14 +370,14 @@ export interface DispatchIngestExtras {
    */
   documentType?: DocumentTypeTag | null
   /**
-   * A Fassung of an E-Mail-Verlauf (ADR-0134): sent as `mail_thread`, which
+   * A Fassung of an E-Mail-Verlauf (ADR-0137): sent as `mail_thread`, which
    * makes its chunks the `project_mail` lane and the newest message's date the
    * document's. Absent for every other dispatch, and then not sent at all.
    * `ingest-mail-contract.spec.ts` pins the key.
    */
   mailThread?: MailThreadIngestFacts | null
   /**
-   * An attachment filed with a mail (ADR-0134): sent as `mail_origin`, the
+   * An attachment filed with a mail (ADR-0137): sent as `mail_origin`, the
    * message it came with, which the knowledge layer prints beside the file.
    * Never together with `mailThread` (the backend refuses both).
    */

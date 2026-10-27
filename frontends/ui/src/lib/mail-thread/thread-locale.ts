@@ -1,7 +1,7 @@
 import 'server-only'
 /**
  * The locale a new E-Mail-Verlauf is rendered in, for its whole life
- * (`mail_threads.locale`, ADR-0134): the filer's own, else their office's
+ * (`mail_threads.locale`, ADR-0137): the filer's own, else their office's
  * default (the chain the UI resolves them by, `user-preferences/locale.ts`),
  * else German, the language an office's mail to its projects is written in.
  *

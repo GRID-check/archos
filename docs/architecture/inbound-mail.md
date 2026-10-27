@@ -8,13 +8,13 @@ section of the conversation's one document, the **E-Mail-Verlauf**, and the
 message's original `.eml` is kept beside it as evidence. A person may follow a
 Verlauf, so that later replies' text is appended without a click.
 
-Why it is built this way: [ADR-0134](../adr/0134-mail-sent-to-a-project-waits-until-a-person-files-it.md)
+Why it is built this way: [ADR-0137](../adr/0137-mail-sent-to-a-project-waits-until-a-person-files-it.md)
 (review, threads, originals, following) and
-[ADR-0135](../adr/0135-project-mail-arrives-through-cloudflare-email-routing-and-a-signed-worker.md)
-(transport). The scanner: [ADR-0133](../adr/0133-attachments-from-outside-are-scanned-in-cluster-by-clamav.md).
+[ADR-0138](../adr/0138-project-mail-arrives-through-cloudflare-email-routing-and-a-signed-worker.md)
+(transport). The scanner: [ADR-0136](../adr/0136-attachments-from-outside-are-scanned-in-cluster-by-clamav.md).
 The Outlook archive renders into the same Verläufe: [`mail-import.md`](mail-import.md).
-The tables: [`schema.md`](../database/schema.md#project-mail-migration-0186-adr-0134).
-Operating it: [`kubernetes.md` §3c](../deployment/kubernetes.md#3c-project-mail-cloudflare-email-routing-adr-0135).
+The tables: [`schema.md`](../database/schema.md#project-mail-migration-0186-adr-0137).
+Operating it: [`kubernetes.md` §3c](../deployment/kubernetes.md#3c-project-mail-cloudflare-email-routing-adr-0138).
 
 ## The flow, from the edge to filing
 
@@ -290,7 +290,7 @@ sequenceDiagram
   FJ-->>P: inbound_mail.appended (collapsed per Verlauf and day)
 ```
 
-The nine conditions are listed in ADR-0134. The follower is the earliest running
+The nine conditions are listed in ADR-0137. The follower is the earliest running
 follow made before the mail arrived, whichever follow the receive job named.
 Condition 8 counts the follow's own appends against its `daily_cap` (default
 20) and the project's `via = 'follow'` decisions against 100, over the last 24

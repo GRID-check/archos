@@ -244,7 +244,7 @@ export function ProjectOverviewLink({
 }
 
 /**
- * Mail waiting in the project's E-Mail-Eingang (ADR-0134): „2 E-Mails warten“,
+ * Mail waiting in the project's E-Mail-Eingang (ADR-0137): „2 E-Mails warten“,
  * a link straight into it, layered above `ProjectOpenLink` (`relative z-10`)
  * the way {@link ProjectOverviewLink} is. Rendered only with a count above
  * zero, and only for a reader who may file the project's mail: the projects

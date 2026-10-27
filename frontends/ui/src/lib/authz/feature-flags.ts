@@ -287,7 +287,7 @@ export const FEATURE_FLAGS = {
    */
   officeConventions: 'office-conventions',
   /**
-   * Mail sent to a project's address (ADR-0134, ADR-0135): the project shows
+   * Mail sent to a project's address (ADR-0137, ADR-0138): the project shows
    * its address, mail to it waits in the project's E-Mail-Eingang until a
    * person files each part, and a person may follow a conversation. Read per
    * organization by the webhook (`lib/inbound-mail/receive.ts`, from
@@ -387,7 +387,7 @@ export function isMailImportEnabled(session: Pick<GridSession, 'featureFlags'>):
 }
 
 /**
- * Mail to the project's address (ADR-0134): the address, the E-Mail-Eingang
+ * Mail to the project's address (ADR-0137): the address, the E-Mail-Eingang
  * and its operations. The webhook reads the organization's flag without a
  * session; a mail already held is unaffected by switching it off.
  */

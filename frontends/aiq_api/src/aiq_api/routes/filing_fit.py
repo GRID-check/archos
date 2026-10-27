@@ -29,7 +29,7 @@ summary, queued as ``bulk``. The Dokumentart was set by a person or read from
 the content, and outweighs the file name (``doc_class`` beats every guess).
 
 **Mail.** ``basis: mail`` places the attachments of a mail that waits in the
-project's E-Mail-Eingang for a person to file it (ADR-0134, DECISION D21), and,
+project's E-Mail-Eingang for a person to file it (ADR-0137, DECISION D21), and,
 when the mail matched no E-Mail-Verlauf, the folder its text would start one in.
 It reads metadata only: the attachments' names that passed the name check, the
 subject masked by the office's content check, the sender's domain, the folders

@@ -689,7 +689,7 @@ def _row_line(row: FileRow, *, show_shelf: bool, mark: str | None = None) -> str
     if title_block:
         bits.append(f"Plankopf: {title_block}")
     # A filed mail, in the words of the Verlauf's own headings: the sender's domain only when a
-    # signature confirmed it, „Domain nicht bestätigt“ otherwise (ADR-0134, RT-S2).
+    # signature confirmed it, „Domain nicht bestätigt“ otherwise (ADR-0137, RT-S2).
     for mail_line in (mail_thread_label(row.mail_thread), mail_origin_label(row.mail_origin)):
         if mail_line:
             bits.append(mail_line)

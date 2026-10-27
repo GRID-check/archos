@@ -1,5 +1,5 @@
 /**
- * The wire of the E-Mail-Eingang (ADR-0134): what the `inbound-mail*` routes
+ * The wire of the E-Mail-Eingang (ADR-0137): what the `inbound-mail*` routes
  * take and answer. Pure zod and view types, shared by the routes, the agent
  * operations (`lib/agent-api/catalog/mail.ts`), the browser client
  * (`adapters/api/inbound-mail-client.ts`) and the UI, so each contract is

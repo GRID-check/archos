@@ -1,5 +1,5 @@
 /**
- * The text of one held mail (ADR-0134, D7).
+ * The text of one held mail (ADR-0137, D7).
  *
  * GET — the sender's own text and the quoted earlier messages, with every
  *       finding of the office's content check masked, for every reader.

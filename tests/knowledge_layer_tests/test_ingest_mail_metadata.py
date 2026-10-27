@@ -1,4 +1,4 @@
-"""A filed mail survives ingestion: its format onto every chunk, its records onto the metadata row (ADR-0134).
+"""A filed mail survives ingestion: its format onto every chunk, its records onto the metadata row (ADR-0137).
 
 ``POST /v1/ingest`` puts ``source_format: mail`` and ``mail_thread`` on the job config of a filed
 E-Mail-Verlauf, and ``mail_origin`` on an attachment's (``test_ingest_mail.py`` in ``aiq_api``). This is

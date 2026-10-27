@@ -129,7 +129,7 @@ class TestSelectFiles:
 
 
 class TestAFiledMailIsListedInTheWordsOfItsVerlauf:
-    """``list_files`` names where a filed mail came from, never an unconfirmed sender as the domain (ADR-0134)."""
+    """``list_files`` names where a filed mail came from, never an unconfirmed sender as the domain (ADR-0137)."""
 
     THREAD = {"latest_sent_at": "2026-05-14T14:40:00Z", "message_count": 5, "locale": "de"}
     SIGNED = {

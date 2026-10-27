@@ -1,5 +1,5 @@
 /**
- * The original `.eml` of one held mail (ADR-0134, D6): evidence.
+ * The original `.eml` of one held mail (ADR-0137, D6): evidence.
  *
  * GET — scanned whole on this request; served only on a clean answer (409
  *       `original_not_clean` otherwise), never sniffed or run, and audited

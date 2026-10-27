@@ -714,7 +714,7 @@ does not see a change to how a text or CSV file is cut into sections; for that,
 ingest a file for real and ask by hand, or add a case to the chunker's own specs.
 
 The one exception is the E-Mail-Verlauf (`tests/fixtures/files_eval/mail/`, the
-`pf-mail-*` rows, ADR-0134): what those rows test is the message boundary, so it
+`pf-mail-*` rows, ADR-0137): what those rows test is the message boundary, so it
 is cut by the real Markdown chunker and stamped `source_format: mail` as an
 ingest job would. Its bytes are the BFF renderer's, pinned by
 `frontends/ui/src/lib/mail-thread/files-eval-fixture.spec.ts` from

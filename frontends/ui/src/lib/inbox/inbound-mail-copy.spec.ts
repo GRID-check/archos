@@ -1,5 +1,5 @@
 /**
- * The words of the E-Mail-Eingang's seven notice types (ADR-0134, DECISION §9),
+ * The words of the E-Mail-Eingang's seven notice types (ADR-0137, DECISION §9),
  * as a row and a push say them, in both languages: every type and every
  * variant it is emitted with reads a whole sentence naming the project, with
  * no placeholder left and no key printed. The rows carry the project's name

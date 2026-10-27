@@ -146,7 +146,7 @@ export interface AppSidebarProps {
    */
   canAccessInbox: boolean
   /**
-   * The office receives project mail (`inbound-mail`, ADR-0134): Dateien
+   * The office receives project mail (`inbound-mail`, ADR-0137): Dateien
    * carries the muted count of mail waiting for this reader. Optional and off
    * by default, so a preview without it shows the rail as it was.
    */

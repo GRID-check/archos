@@ -1,7 +1,7 @@
 import 'server-only'
 /**
  * What the E-Mail-Eingang's notices read before they are written or settled
- * (`./announce.ts`, ADR-0134). Ids and states only: no sender, subject or file
+ * (`./announce.ts`, ADR-0137). Ids and states only: no sender, subject or file
  * name is read here, because none may reach a row. Runs in the tenant scope
  * its caller opened; every read is bounded.
  */

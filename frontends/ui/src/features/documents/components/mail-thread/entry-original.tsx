@@ -1,7 +1,7 @@
 'use client'
 
 /**
- * „Original (.eml)“ of one filed mail (ADR-0134, D6): evidence kept beside its
+ * „Original (.eml)“ of one filed mail (ADR-0137, D6): evidence kept beside its
  * section, downloaded by whoever may read the thread.
  *
  * What the entry knows decides the first word: an archive entry has no

@@ -1,4 +1,4 @@
-"""`read_passage` says which mail a document came with, and reads a Verlauf's message as mail (ADR-0134).
+"""`read_passage` says which mail a document came with, and reads a Verlauf's message as mail (ADR-0137).
 
 An attachment a person filed from a mail is read like any file; the result opens with one line naming
 the message that brought it, in the words of its Verlauf: the signing domain for a verified sender,

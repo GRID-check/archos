@@ -256,7 +256,7 @@ async function purgeProject(tx, entry, deps) {
   //    otherwise never reach that bucket, and its upload would never be aborted.
   //    So does a mail sent to the project (`_inbound-mail/`, staged in the
   //    bucket its row recorded) and a filed message's kept original
-  //    (`_mail-originals/`, ADR-0134): a project that only ever received mail
+  //    (`_mail-originals/`, ADR-0137): a project that only ever received mail
   //    has no document, and its staged mail would outlive the purge.
   const recorded = /** @type {{ storage_bucket: string }[]} */ (
     await tx`

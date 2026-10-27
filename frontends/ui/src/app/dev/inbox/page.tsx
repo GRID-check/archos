@@ -21,7 +21,7 @@
  * runtime fallback that keeps one bad row from taking the page down), and an
  * INERT row whose target is gone — the last one is a security-visible state
  * (IB-13), so it must be in the evidence. `?variant=mail` serves the
- * E-Mail-Eingang's seven types alone (ADR-0134).
+ * E-Mail-Eingang's seven types alone (ADR-0137).
  *
  * Pinned to German (`I18nProvider initialLocale="de" fixedLocale`): German is the product's
  * primary language, so the committed evidence must carry the copy most users
@@ -696,7 +696,7 @@ const ITEMS: InboxItemView[] = [
 ]
 
 /**
- * The E-Mail-Eingang's seven types (ADR-0134, DECISION §9), served alone under
+ * The E-Mail-Eingang's seven types (ADR-0137, DECISION §9), served alone under
  * `?variant=mail`: what each row says, with the project's name and codes only
  * (no sender, no subject, no file name ever reaches a row or a push).
  */

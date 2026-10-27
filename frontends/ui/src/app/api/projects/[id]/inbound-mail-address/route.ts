@@ -1,5 +1,5 @@
 /**
- * A project's mail address (ADR-0135).
+ * A project's mail address (ADR-0138).
  *
  * GET    — read it. Whoever reviews the project's E-Mail-Eingang
  *          (`project:documents:write`) may; a read never mints an address, it

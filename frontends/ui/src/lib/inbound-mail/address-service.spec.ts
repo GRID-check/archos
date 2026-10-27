@@ -2,7 +2,7 @@
  * @vitest-environment node
  */
 /**
- * A project's address (ADR-0135): reading never mints one (the PR this ports
+ * A project's address (ADR-0138): reading never mints one (the PR this ports
  * did, so a read wrote); creating is idempotent; replacing and switching off
  * end every follow on the project, in the trail as the person who did it.
  */

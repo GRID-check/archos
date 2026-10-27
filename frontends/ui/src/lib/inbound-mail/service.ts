@@ -1,7 +1,7 @@
 import 'server-only'
 /**
  * The E-Mail-Eingang as a person (or an agent acting as one) reads and decides
- * it (ADR-0134, DECISION §6 "Decide", §7). The routes under
+ * it (ADR-0137, DECISION §6 "Decide", §7). The routes under
  * `/api/projects/[id]/inbound-mails` are thin adapters over this module.
  *
  * What it guarantees:

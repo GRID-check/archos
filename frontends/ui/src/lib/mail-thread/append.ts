@@ -1,6 +1,6 @@
 import 'server-only'
 /**
- * Filing a mail's text into its E-Mail-Verlauf (ADR-0134, DECISION §6 "File",
+ * Filing a mail's text into its E-Mail-Verlauf (ADR-0137, DECISION §6 "File",
  * D11, D12, D36): one new entry, and the thread document's next Fassung, which
  * holds every section of the last one and the new message's.
  *

@@ -94,7 +94,7 @@ SCORE_DEFINITIONS: tuple[ScoreDefinition, ...] = (
     ScoreDefinition(
         "mail-thread-match",
         "CATEGORICAL",
-        "What a person did with the E-Mail-Verlauf a held mail matched (ADR-0134): appended it to the strongest "
+        "What a person did with the E-Mail-Verlauf a held mail matched (ADR-0137): appended it to the strongest "
         "match (followed), to another Verlauf (other_thread), or started a new one (new_thread). One per decided "
         "mail text with a match; a follow's append is followed with metadata via follow. The precision of "
         "thread matching, by strength and sender trust.",

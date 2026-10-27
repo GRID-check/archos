@@ -1,6 +1,6 @@
 import 'server-only'
 /**
- * SQL of the E-Mail-Eingang's retention sweeps (ADR-0134, DECISION §5, `./sweep.ts`).
+ * SQL of the E-Mail-Eingang's retention sweeps (ADR-0137, DECISION §5, `./sweep.ts`).
  *
  * Three kinds of statement, each named by its scope:
  *

@@ -1,6 +1,6 @@
 import 'server-only'
 /**
- * SQL that writes an E-Mail-Verlauf (ADR-0134): the render lease, the reads a
+ * SQL that writes an E-Mail-Verlauf (ADR-0137): the render lease, the reads a
  * new Fassung is rendered from, the one transaction that records a filed
  * message, a detach, and an entry's kept original. No authorization here: the
  * filing job, the follow job and the detach service decide who may, and

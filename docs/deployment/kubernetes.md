@@ -31,7 +31,7 @@ their own namespaces.
 | `dragonfly` (Redis-proto cache) | Deployment | 1 | — (cache) | — |
 | `gotenberg` (office → PDF, ADR-0070; required to index Word, presentation, `.xls` and `.ods` files, ADR-0071; `gotenbergEnabled`, default on) | Deployment | `gotenbergReplicas` (sized to the `bff-jobs` pool's conversion ceiling, prod 2; §6.3c) | — | n/a (stateless. A conversion it drops fails that ingest retryably, so a rollout drains for up to 120s) |
 | `geocoder` (Photon, the project dialog's address search, ADR-0120; `geocoderEnabled`, default off) | StatefulSet | 1 | RWO PVC `/data` (the jar and the Austrian index, a download), `Retain` | n/a (the frontend fails open to a plain text field while it restarts) |
-| `clamav` (clamd and freshclam, the malware scanner for what strangers send, ADR-0133; `malwareScanEnabled`, default off) | Deployment | 1 | emptyDir `/var/lib/clamav` (signatures, seeded from the image, then freshclam's) | n/a (fail closed: while no pod is ready every scan fails and is retried; ready only while its signatures are under 48 h old) |
+| `clamav` (clamd and freshclam, the malware scanner for what strangers send, ADR-0136; `malwareScanEnabled`, default off) | Deployment | 1 | emptyDir `/var/lib/clamav` (signatures, seeded from the image, then freshclam's) | n/a (fail closed: while no pod is ready every scan fails and is retried; ready only while its signatures are under 48 h old) |
 | `qdrant` (the vector store, ADR-0115; always deployed) | StatefulSet (`Parallel`) + PDB + `qdrant-snapshot` CronJob | `qdrantReplicas` (default 3, one per node; 1 runs without cluster mode) | RWO PVC `/qdrant/storage` per peer, `Retain` | Peers by hand, shards moved by the runbook ([`qdrant-runbook.md`](qdrant-runbook.md)) |
 | `chroma-migration` (one-shot copy of the retired Chroma store into Qdrant; `chromaMigration`, default off) | Job | 1 pod | exports from the still-running `chroma` Service over HTTP, awaited before the backend tiers roll; scratch is a generic ephemeral claim | n/a ([runbook](qdrant-runbook.md#migrating-from-chroma-on-kubernetes)) |
 | `seaweedfs` (filer + S3 gateway) | StatefulSet | 1 (`single`) / N (`split`) | RWO PVC `/data` (unused under the Postgres filer store) | See §4 |
@@ -551,11 +551,11 @@ reverting is deleting a Cloudflare zone nobody is pointed at.
 
 ---
 
-## 3c. Project mail (Cloudflare Email Routing, ADR-0135)
+## 3c. Project mail (Cloudflare Email Routing, ADR-0138)
 
 Every project of an office with the `inbound-mail` entitlement can have an
 address `<slug>.<token>@<domain>`; mail to it waits in the project's
-E-Mail-Eingang until a person files it (ADR-0134,
+E-Mail-Eingang until a person files it (ADR-0137,
 [`inbound-mail.md`](../architecture/inbound-mail.md)). Off by default: nothing
 is deployed until `inboundMailDomain` is set.
 
@@ -576,7 +576,7 @@ Pieces: `deploy/pulumi/src/platform/{inbound-mail,email-routing}.ts` and the
 Worker `inbound-mail-worker.js` (uploaded verbatim); the signed route
 `SIGNED_INTERNAL_ROUTE` in `src/constants.ts`; the frontend's
 `GRID_INBOUND_MAIL_{DOMAIN,PAUSED,SIGNING_KEYS}`; the in-cluster ClamAV
-(`malwareScanEnabled`, ADR-0133). Config keys and their meaning:
+(`malwareScanEnabled`, ADR-0136). Config keys and their meaning:
 [`deploy/pulumi/README.md`](../../deploy/pulumi/README.md) („Project mail“ rows).
 
 ### Prerequisites
@@ -647,7 +647,7 @@ probes are held mail in the TEST office, never a customer's):
 | G3 | 24 MiB is held, 26 MiB refused by Cloudflare, a truncated body gives `body-truncated`, unsigned and unknown-key requests 401 |
 | G4 | While paused, a temporary failure; after the unpause the mail is delivered |
 | G5 | Worker CPU and memory for a 25 MiB message. A failure blocks the launch: there is no fallback that drops the digest |
-| G6 | EICAR through the full path; a limit-exceeding archive and a stale signature database each give `failed`, never `clean`; an infected original's download is refused. Known engine gap (ClamAV 1.5.4): a zip member over `MaxFileSize` (100 MB) is scanned only up to that size and answers `OK` with no alert, gzip alerts (ADR-0133) |
+| G6 | EICAR through the full path; a limit-exceeding archive and a stale signature database each give `failed`, never `clean`; an infected original's download is refused. Known engine gap (ClamAV 1.5.4): a zip member over `MaxFileSize` (100 MB) is scanned only up to that size and answers `OK` with no alert, gzip alerts (ADR-0136) |
 | G7 | Literal `postmaster@` and `abuse@` rules present |
 | G8 | G1 and G2 again after any `COMPATIBILITY_DATE` bump of the Worker (a spec fails once the date is a year old) |
 | G9 | The aligned-DKIM share of a pilot office's real project mail, counted offline from an archive's `Authentication-Results` (`dkim-share`). It sets expectations for the trust labels and following |
@@ -1472,7 +1472,7 @@ a project a slice at a time; the other three are one step each:
   filing `queued` for 15 minutes whose job is gone ends as `filed` (the report
   is there after all) or `failed`. A row whose job is queued or running is left
   alone however long it waits. The same call runs project mail's retention
-  sweeps (`lib/inbound-mail/sweep.ts`, ADR-0134), and the scheduler logs one
+  sweeps (`lib/inbound-mail/sweep.ts`, ADR-0137), and the scheduler logs one
   line per sweep that acted or failed, counts by name:
   `[job-scheduler] background work sweep, project mail expired: checked 3, errors 0, expired 2, parts 5`.
 - **Gotenberg's capacity is a ceiling on the pool.** Conversions are claimed
@@ -1788,7 +1788,7 @@ emitted somewhere it can read; see §10.
   intra-namespace allow too: clamd authenticates nobody and opens hostile files
   for a living, so it admits the frontend and the `bff-jobs` pool alone. Its
   egress stays open, because freshclam fetches signatures from
-  `database.clamav.net`, a CDN no NetworkPolicy can name (ADR-0133).
+  `database.clamav.net`, a CDN no NetworkPolicy can name (ADR-0136).
 - **Dragonfly authentication** (`grid-oib:dragonflyPassword` and
   `grid-oib:rateLimitStorePassword`, both **required**): `requirepass` on both
   instances, delivered as `DFLY_requirepass` from a Kubernetes Secret rather
@@ -2102,7 +2102,7 @@ Three things are true of this whole table and are easy to miss:
 | Producers → OTel Collector, Collector → Langfuse | **No** | Plain OTLP on `http://otel-collector:4318`, and the collector's export to `http://langfuse-web:3000`. This traffic carries **prompts, retrieved snippets, LLM output and live presigned S3 URLs**, so it is the most sensitive plaintext channel in the namespace; Langfuse's store is likewise kept off-limits only by NetworkPolicy, which is why `langfuseEnabled` refuses to deploy with `networkPolicies=false`. |
 | Frontend and `bff-jobs` → Gotenberg | **No, and unauthenticated** | `http://gotenberg:3000`. It carries the bytes of every office file converted, and anyone who can reach it can have LibreOffice parse a file of their choosing. NetworkPolicy admits the frontend and the `bff-jobs` pool only. |
 | Frontend → geocoder | **No, and unauthenticated** | `http://geocoder:2322`, when `geocoderEnabled`. It carries every address typed into the project dialog, which is client data and the reason the geocoder runs in the cluster at all (ADR-0120). NetworkPolicy admits the frontend only. |
-| Frontend and `bff-jobs` → ClamAV | **No, and unauthenticated** | `tcp://clamav:3310`, when `malwareScanEnabled`. It carries every attachment and raw message scanned, and anyone who can reach it can have clamd parse a file of their choosing. NetworkPolicy admits the frontend and the `bff-jobs` pool only (ADR-0133). |
+| Frontend and `bff-jobs` → ClamAV | **No, and unauthenticated** | `tcp://clamav:3310`, when `malwareScanEnabled`. It carries every attachment and raw message scanned, and anyone who can reach it can have clamd parse a file of their choosing. NetworkPolicy admits the frontend and the `bff-jobs` pool only (ADR-0136). |
 | App → Qdrant | **No, but authenticated** | `http://qdrant.grid.svc.cluster.local:6333` (and gRPC 6334) with the read-write API key, which an observer of the pod network could read off the wire. NetworkPolicy admits the named callers only (`allow-app-to-qdrant`); the peers' p2p traffic (6335) is plaintext too, between the peers alone (`qdrant-peers`). The keyless metrics port (6336) admits the collector alone. |
 | Cluster egress (OpenRouter, Tavily, WorkOS, GitHub, with the geocoder `download1.graphhopper.com`, and with the malware scanner `database.clamav.net`) | **Yes** | All HTTPS. |
 

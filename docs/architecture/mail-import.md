@@ -4,7 +4,7 @@ A member imports an Outlook archive (`.pst`, or the `.ost` Outlook caches from
 Exchange) into a project's Dateien. Each mail's attachments go into a folder
 of its own, and its text becomes a section of the project's E-Mail-Verläufe,
 the same Verläufe mail to the project's address is filed into
-([ADR-0134](../adr/0134-mail-sent-to-a-project-waits-until-a-person-files-it.md),
+([ADR-0137](../adr/0137-mail-sent-to-a-project-waits-until-a-person-files-it.md),
 [`inbound-mail.md`](inbound-mail.md)). Why it is built this way:
 [ADR-0085](../adr/0085-outlook-archives-are-read-by-range-and-filed-as-the-person-per-mail.md)
 and its 2026-10 amendment.
@@ -162,7 +162,7 @@ the importer sent (From = the import's `user_email`), else the sender, by name,
 else address, else the locale's „Unbekannt“; the day is the clamped send time in
 Vienna; numbered on `name_taken`, and never a document another Verlauf already
 names. A Verlauf that was there keeps its name, folder and
-`participant_domains` (unchecked parties widen no follow, ADR-0134). The import
+`participant_domains` (unchecked parties widen no follow, ADR-0137). The import
 completes only once the cursor passed the last item and no Verlauf still waits
 for its Fassung. A render refused for good (Namensprüfung on the name, type,
 size, access) gives the Verlauf up (`render_pending_at` NULL) and names it in

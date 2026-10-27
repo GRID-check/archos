@@ -1,4 +1,4 @@
-"""`POST /v1/ingest` carries what a filed mail says about the document (ADR-0134).
+"""`POST /v1/ingest` carries what a filed mail says about the document (ADR-0137).
 
 A filed E-Mail-Verlauf arrives with `mail_thread`: the route stamps the job's `source_format`
 (the chunks' lane, `project_mail`) and hands the record to the job, which stores it on the

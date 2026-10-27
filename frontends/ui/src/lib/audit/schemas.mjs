@@ -918,7 +918,7 @@ export const AUDIT_SCHEMAS = /** @type {const} */ ({
     targets: [{ type: 'document' }],
     metadata: { subjectUserId: 'string' },
   },
-  // --- The E-Mail-Eingang (ADR-0134) -----------------------------------------
+  // --- The E-Mail-Eingang (ADR-0137) -----------------------------------------
   // Mail a stranger may write. Every key below is an id, a code, a count or a
   // flag, never a sender, a subject, a file name, an address or a token: the
   // trail outlives the scrub of a settled mail (migration 0186), and the PII
@@ -1053,7 +1053,7 @@ export const RETIRED_AUDIT_ACTIONS = /** @type {const} */ ([
 
 /**
  * Actions registered ahead of their emitter, while the change that adds them is
- * assembled from several work packages (PR-D of ADR-0134: the schemas land
+ * assembled from several work packages (PR-D of ADR-0137: the schemas land
  * first, so every package emits against one registry). `schemas.spec.ts` holds
  * both halves: none of them counts as an orphan, and an action that HAS an
  * emitter fails until it is taken off this list, so the list only shrinks. It

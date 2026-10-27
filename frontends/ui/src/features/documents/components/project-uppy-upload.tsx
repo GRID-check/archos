@@ -47,7 +47,7 @@ interface ProjectUppyUploadProps {
   pickFilesRef?: MutableRefObject<(() => void) | null>
   pickFolderRef?: MutableRefObject<(() => void) | null>
   /**
-   * „Per E-Mail senden …“: opens the project's mail address (ADR-0134), a
+   * „Per E-Mail senden …“: opens the project's mail address (ADR-0137), a
    * project shelf's only, for a reader who may decide held mail. In this menu
    * because forwarding a mail is one more way of bringing files here.
    */

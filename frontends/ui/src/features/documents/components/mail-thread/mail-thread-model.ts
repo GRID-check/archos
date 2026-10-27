@@ -1,5 +1,5 @@
 /**
- * What the „E-Mails“ tab decides before it draws anything (ADR-0134, D16, D36),
+ * What the „E-Mails“ tab decides before it draws anything (ADR-0137, D16, D36),
  * pure so each rule is tested once and the components only word it:
  *
  * - **Who follows, and what the viewer may do about it.** The viewer's own

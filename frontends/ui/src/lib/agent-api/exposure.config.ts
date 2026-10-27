@@ -47,7 +47,7 @@ import type { OperationName } from './catalog'
  * budgets, policies, settings). `model-compute`: model work the caller can do
  * itself whose result is no office artifact. `ui-state`: this person's own
  * screen or device state. `evidence`: bytes kept as proof, which no model reads
- * (a mail's original `.eml`, ADR-0134; ADR-0122's amendment of 2026-10-22).
+ * (a mail's original `.eml`, ADR-0137; ADR-0122's amendment of 2026-10-22).
  */
 export const WITHHELD_CATEGORIES = ['external-service', 'product-config', 'model-compute', 'ui-state', 'evidence'] as const
 export type WithheldCategory = (typeof WITHHELD_CATEGORIES)[number]
@@ -120,7 +120,7 @@ const ARCHIVE_BYTES = {
 
 /**
  * A held mail's text and an attachment's bytes, before a person filed them
- * (ADR-0134, D7, D22, RT-S6): unconfirmed third-party content. Piloti reads
+ * (ADR-0137, D7, D22, RT-S6): unconfirmed third-party content. Piloti reads
  * metadata only until a person files the mail; an outside agent reads them as
  * the person, masked, who decides in their own client.
  */

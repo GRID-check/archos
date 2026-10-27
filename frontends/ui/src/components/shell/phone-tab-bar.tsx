@@ -54,7 +54,7 @@ export interface PhoneTabBarProps {
   projectId: string | null
   canAccessOfficeShelf: boolean
   canAccessInbox: boolean
-  /** The office receives project mail: the Dateien tab carries the muted waiting count (ADR-0134). */
+  /** The office receives project mail: the Dateien tab carries the muted waiting count (ADR-0137). */
   inboundMailEnabled?: boolean
   className?: string
   /**

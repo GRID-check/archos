@@ -147,7 +147,7 @@ export function isModifierKey(key: string): boolean {
 export interface ShortcutFlags extends ProjectSectionFlags {
   /** Whether the organization page is reachable for this user. */
   canViewOrganization?: boolean
-  /** The office receives project mail (`inbound-mail`, ADR-0134): the E-Mail-Eingang's keys are taught. */
+  /** The office receives project mail (`inbound-mail`, ADR-0137): the E-Mail-Eingang's keys are taught. */
   inboundMail?: boolean
 }
 

@@ -1,7 +1,7 @@
 import 'server-only'
 /**
  * What a person did with the E-Mail-Verlauf a held mail matched, as a Langfuse
- * score (ADR-0089, ADR-0134, DECISION §10): `mail-thread-match`, categorical,
+ * score (ADR-0089, ADR-0137, DECISION §10): `mail-thread-match`, categorical,
  * declared in `aiq_agent.observability.langfuse_scores.SCORE_DEFINITIONS`.
  *
  * - `followed`: the text was appended to the strongest match (the candidate

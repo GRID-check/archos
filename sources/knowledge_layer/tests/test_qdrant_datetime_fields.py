@@ -100,7 +100,7 @@ class TestFacts:
         assert facts["document_date"] == "2025-07-01T09:00:00Z"
 
     def test_a_mail_thread_is_dated_by_its_newest_message(self):
-        """A filed E-Mail-Verlauf (ADR-0134): „the newest correspondence“ sorts by its last message."""
+        """A filed E-Mail-Verlauf (ADR-0137): „the newest correspondence“ sorts by its last message."""
         facts = document_facts(_document(mail_thread={"latest_sent_at": "2026-05-14T14:40:00Z", "message_count": 5}))
 
         assert facts["document_date"] == "2026-05-14T14:40:00Z"

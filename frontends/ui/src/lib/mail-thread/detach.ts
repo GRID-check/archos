@@ -1,6 +1,6 @@
 import 'server-only'
 /**
- * Taking a filed message out of its E-Mail-Verlauf (ADR-0134, D34): it was
+ * Taking a filed message out of its E-Mail-Verlauf (ADR-0137, D34): it was
  * filed into the wrong conversation, so it moves into another thread, or a new
  * one, and each thread gets a new Fassung.
  *

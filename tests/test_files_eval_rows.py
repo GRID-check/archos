@@ -108,7 +108,7 @@ def specs():
 
 
 class TestTheMailThread:
-    """The E-Mail-Verlauf the ``pf-mail-*`` rows read, cut by the real Markdown chunker (ADR-0134, DECISION §10).
+    """The E-Mail-Verlauf the ``pf-mail-*`` rows read, cut by the real Markdown chunker (ADR-0137, DECISION §10).
 
     What a live row could not tell apart from a model's mistake is pinned here: a citation lands on one
     message, the forged heading stays inside its real sender's section, the quote stays under the message

@@ -10,7 +10,7 @@ informed: whoever operates the stack, Cloudflare or the edge
 
 ## Context and Problem Statement
 
-ADR-0134 gives every project an address, `<slug>.<token>@<domain>`
+ADR-0137 gives every project an address, `<slug>.<token>@<domain>`
 (`bauplatz-12.k3x7q2m9p4ab@piloti.at`), and holds what arrives for a person to
 file. Something has to receive SMTP for `piloti.at`, decide which addresses
 exist, and hand each message to the BFF without letting anyone else post a mail
@@ -197,7 +197,7 @@ always `temperror` and is **never read**. The stored evidence line
 (`authentication_results`) is built by us from the DKIM and DMARC results
 alone, and a CHECK refuses any stored line containing `spf=`. A verified sender
 is an aligned DKIM pass (DMARC relaxed alignment unless the domain's record says
-strict) plus hygiene rules; what the verdict means for a person is ADR-0134's.
+strict) plus hygiene rules; what the verdict means for a person is ADR-0137's.
 The signed header list of the passing signature is stored (`signed_headers`),
 because thread pre-selection and following require the thread headers to be
 inside it.
@@ -223,9 +223,9 @@ inside it.
 4. Per project: the address switched off or rotated.
 
 `loadConfig` refuses an inbound domain without `malwareScanEnabled`: every
-part of a mail is scanned before it can be filed (ADR-0133). The operator's
+part of a mail is scanned before it can be filed (ADR-0136). The operator's
 runbook, with the owner gates and the launch gates G1–G9:
-[`kubernetes.md` §3c](../deployment/kubernetes.md#3c-project-mail-cloudflare-email-routing-adr-0135).
+[`kubernetes.md` §3c](../deployment/kubernetes.md#3c-project-mail-cloudflare-email-routing-adr-0138).
 
 ### Consequences
 

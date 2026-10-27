@@ -224,7 +224,7 @@ describe('purgeProject', () => {
     ])
   })
 
-  // A project that only ever received mail (ADR-0134) has no document row to
+  // A project that only ever received mail (ADR-0137) has no document row to
   // name its bucket: the staged mail and the kept originals name it on their
   // own rows, and the bucket read asks them in the same query.
   it('sweeps the buckets a project\'s mail and kept originals recorded', async () => {

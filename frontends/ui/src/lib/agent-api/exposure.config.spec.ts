@@ -86,7 +86,7 @@ describe('the exposure config', () => {
     }
   })
 
-  it('keeps a held mail’s text and bytes from Piloti, and evidence off every door (ADR-0134, D22)', () => {
+  it('keeps a held mail’s text and bytes from Piloti, and evidence off every door (ADR-0137, D22)', () => {
     // Piloti reads a mail once a person filed it; before, metadata only (RT-S6).
     for (const name of ['inbound-mail-text-get', 'inbound-mail-part-content-get']) expect(entry(name).piloti, name).toBe(false)
     // The original `.eml` is proof: no model reads it, whoever asks (ADR-0122, amendment "evidence is on no door").

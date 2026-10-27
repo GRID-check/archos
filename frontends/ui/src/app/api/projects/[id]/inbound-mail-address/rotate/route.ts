@@ -1,5 +1,5 @@
 /**
- * Replace a project's mail address with a new one (ADR-0135), `project:manage`.
+ * Replace a project's mail address with a new one (ADR-0138), `project:manage`.
  *
  * POST — the old address stops resolving at once (mail to it bounces), the
  *        new one is answered, and every follow on the project ends (D31).

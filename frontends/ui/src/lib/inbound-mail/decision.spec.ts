@@ -4,7 +4,7 @@
 /**
  * Every check of DECISION §4 C2, each failing alone with its code, on a mail
  * that otherwise passes; and the rows a passing decision becomes, which are the
- * filing job's only instruction (ADR-0134).
+ * filing job's only instruction (ADR-0137).
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 

@@ -166,7 +166,7 @@ _MailDomain = Annotated[str, StringConstraints(strip_whitespace=True, max_length
 
 
 class MailThreadFacts(BaseModel):
-    """The document is a filed E-Mail-Verlauf (ADR-0134): one Markdown section per message.
+    """The document is a filed E-Mail-Verlauf (ADR-0137): one Markdown section per message.
 
     Its chunks are stamped ``source_format: mail`` (the lane ``project_mail``), and the
     record lands on the metadata row, where the newest message's date becomes the
@@ -183,7 +183,7 @@ class MailThreadFacts(BaseModel):
 
 
 class MailOrigin(BaseModel):
-    """The message a filed attachment came with, as the receive step established it (ADR-0134).
+    """The message a filed attachment came with, as the receive step established it (ADR-0137).
 
     Stored on the attachment's metadata row and printed by ``list_files`` and
     ``read_passage``: the signing domain when the sender was verified, and
@@ -376,7 +376,7 @@ class IngestRequest(BaseModel):
     mail_thread: MailThreadFacts | None = Field(
         None,
         description=(
-            "Sent for a filed E-Mail-Verlauf (ADR-0134): the document's chunks are stamped "
+            "Sent for a filed E-Mail-Verlauf (ADR-0137): the document's chunks are stamped "
             "`source_format: mail`, which places them in the lane `project_mail`, and the newest "
             "message's date becomes the document's own date. Omit for every other document."
         ),

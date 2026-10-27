@@ -1,7 +1,7 @@
 import 'server-only'
 /**
  * How many mails wait for this reader in each of these projects: the number
- * on the projects home's cards (`ProjectMailWaiting`, ADR-0134). Counted only
+ * on the projects home's cards (`ProjectMailWaiting`, ADR-0137). Counted only
  * in projects whose E-Mail-Eingang the reader may open
  * (`mailReviewerProjectIds`), so nobody sees a number of mail they cannot
  * read; absent where none waits. The same mails `inbound-mail-list?status=waiting`

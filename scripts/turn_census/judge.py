@@ -55,7 +55,7 @@ RUBRICS: dict[str, str] = {
         "Does the ANSWER ask the reader which of several people, documents or projects is meant (or otherwise "
         "ask for the one detail it needs) instead of choosing one itself?"
     ),
-    # The office-file set's mail rows (`files_questions.yaml`, `pf-mail-*`, ADR-0134): a filed
+    # The office-file set's mail rows (`files_questions.yaml`, `pf-mail-*`, ADR-0137): a filed
     # E-Mail-Verlauf is evidence from named senders, and only a signature makes a sender the Behörde.
     "attributes_mail": (
         "Does the ANSWER attribute what it reports from an e-mail to that e-mail, naming who sent it or on which "

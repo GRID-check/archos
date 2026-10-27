@@ -203,7 +203,7 @@ export async function getProjectsGridData(
   documentCounts: Record<string, number>
   /** ISO timestamp of the caller's own last activity, keyed by project id. */
   viewerActivity: Record<string, string>
-  /** Mails waiting in the project's E-Mail-Eingang, where the caller may open it and one waits (ADR-0134). */
+  /** Mails waiting in the project's E-Mail-Eingang, where the caller may open it and one waits (ADR-0137). */
   mailWaiting: Record<string, number>
 }> {
   const visible = await listProjects(session, order)

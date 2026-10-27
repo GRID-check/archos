@@ -268,7 +268,7 @@ const projectTarget: InboxTargetDescriptor = {
 }
 
 /**
- * Where a row of the E-Mail-Eingang (ADR-0134) lands, or null for any other
+ * Where a row of the E-Mail-Eingang (ADR-0137) lands, or null for any other
  * type. Collapsed rows (mail waits, mail expires, the address is full) open
  * the list, where the address dialog is too; a failed filing opens its mail,
  * for the decider who may file it again. A decided mail is told to its sender,

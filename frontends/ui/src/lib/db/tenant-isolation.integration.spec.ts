@@ -378,7 +378,7 @@ describe.skipIf(!url)('tenant isolation against live Postgres', () => {
   })
 
   /**
-   * The E-Mail-Eingang and the E-Mail-Verlauf (migration 0186, ADR-0134), as
+   * The E-Mail-Eingang and the E-Mail-Verlauf (migration 0186, ADR-0137), as
    * the runtime role: each tenant sees its own mail, threads and follows, and
    * the database refuses every way of filing mail without a person's decision.
    * `scripts/rls-test-db.sh` proves each of 0186's refusals as the owner; this

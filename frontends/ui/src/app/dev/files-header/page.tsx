@@ -24,7 +24,7 @@
  *
  * `?variant=narrow` renders it at a laptop width, which is where the squeeze
  * appeared first. The E-Mail-Eingang's entry carries its muted count (three
- * mails wait), and the upload menu offers „Per E-Mail senden …“ (ADR-0134).
+ * mails wait), and the upload menu offers „Per E-Mail senden …“ (ADR-0137).
  * Not linked from anywhere; 404s outside development.
  */
 

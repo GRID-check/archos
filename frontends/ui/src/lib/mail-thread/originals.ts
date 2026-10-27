@@ -1,6 +1,6 @@
 import 'server-only'
 /**
- * A filed message's original `.eml` (ADR-0134, D6): evidence, kept beside its
+ * A filed message's original `.eml` (ADR-0137, D6): evidence, kept beside its
  * section of the E-Mail-Verlauf, never a document, never indexed, never read
  * by a model.
  *

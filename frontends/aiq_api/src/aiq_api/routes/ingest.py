@@ -174,7 +174,7 @@ def _job_config(request: IngestRequest, organization_id: str | None, dispatch_ke
     # job stores it as their type tag, which no classifier pass replaces.
     if request.document_type:
         config["document_type"] = request.document_type
-    # A filed mail (ADR-0134): the Verlauf's chunks carry its format, and its row and an
+    # A filed mail (ADR-0137): the Verlauf's chunks carry its format, and its row and an
     # attachment's row carry what a reader attributes a passage by. Plain JSON, so both ride
     # the durable queue's payload unchanged; the job stores them through the store's normaliser.
     if request.mail_thread is not None:

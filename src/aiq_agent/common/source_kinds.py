@@ -133,7 +133,7 @@ AGENT_AUTHORED_LANE_LABEL = "Piloti-Dokument"
 
 #: The ``source_format`` a mail thread's chunks carry: the E-Mail-Verlauf, one
 #: Markdown section per message, rendered by the BFF from the messages a person
-#: filed (``frontends/ui/src/lib/mail-thread/render.ts``, ADR-0134). A FORMAT,
+#: filed (``frontends/ui/src/lib/mail-thread/render.ts``, ADR-0137). A FORMAT,
 #: not a document type: the type is ``correspondence``, which a scanned letter
 #: shares, and the format is what tells a reader that each section is a
 #: message whose heading names its sender and whether that sender's domain was

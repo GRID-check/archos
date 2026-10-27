@@ -1,6 +1,6 @@
 import 'server-only'
 /**
- * The E-Mail-Eingang's notices (ADR-0134, DECISION §9 „Postfach types“): who
+ * The E-Mail-Eingang's notices (ADR-0137, DECISION §9 „Postfach types“): who
  * is told what about project mail, and when a notice is settled. Seven types,
  * all in-app and push only (we never send mail about mail):
  *

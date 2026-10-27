@@ -1,6 +1,6 @@
 /**
  * Reading a raw message: its header block, its thread headers and
- * participants, and which of its MIME parts a person decides on (ADR-0134,
+ * participants, and which of its MIME parts a person decides on (ADR-0137,
  * receive job step 5).
  *
  * `postal-mime` parses and `file-type` sniffs; this module owns only the

@@ -1,5 +1,5 @@
 /**
- * SQL for the E-Mail-Eingang (ADR-0134, migration 0186). No authorization
+ * SQL for the E-Mail-Eingang (ADR-0137, migration 0186). No authorization
  * here: the service decides who may ask, and row-level security is the
  * backstop. Every list is bounded.
  *

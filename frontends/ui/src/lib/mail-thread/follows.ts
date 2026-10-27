@@ -1,7 +1,7 @@
 import 'server-only'
 /**
  * „Verlauf folgen“: a person's standing decision about one E-Mail-Verlauf
- * (ADR-0134, DECISION D31). While it runs, a later reply's TEXT is appended to
+ * (ADR-0137, DECISION D31). While it runs, a later reply's TEXT is appended to
  * the thread as that person, by the follow job and only when every one of
  * D31's nine conditions holds (`lib/inbound-mail/follow-job.ts`); attachments
  * always wait for a person. This module is the decision itself:

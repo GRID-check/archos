@@ -1,6 +1,6 @@
 /**
  * An E-Mail-Verlauf's bytes: the Markdown rendition one Fassung of the thread
- * document holds (ADR-0134, DECISION D11, D12). Pure and deterministic, over
+ * document holds (ADR-0137, DECISION D11, D12). Pure and deterministic, over
  * the thread's `mail_thread_entries` rows and nothing else, so a retry or two
  * concurrent filings give the same bytes, and the second hits the upload
  * path's unchanged digest.

@@ -19,7 +19,7 @@ conversation itself, so Piloti could not say what the Behörde wrote, and a file
 that came by mail had no record of the mail it came with.
 
 Giving every project an address (`<slug>.<token>@piloti.at`, the transport is
-ADR-0135) fixes the gap and opens a new one: anyone who knows the address can
+ADR-0138) fixes the gap and opens a new one: anyone who knows the address can
 put bytes and words in front of the office. A conversation where the project
 is only in Cc grows through other people's replies, so the address cannot be
 limited to members. And a mail is third-party text: an injected instruction, a
@@ -50,7 +50,7 @@ and its becoming part of the project, what it becomes, and who may decide.
   not a person. A verdict decides what is suggested and pre-selected, never
   whether a mail is held.
 * **Strangers' bytes are checked before anyone acts on them**, in the cluster
-  (ADR-0133).
+  (ADR-0136).
 
 ## Considered Options
 
@@ -100,7 +100,7 @@ part is a card that person accepted, and it carries no override. The database
 refuses a filed part without such a decision and without a clean scan.
 
 What enforces each half is under Confirmation; the CHECKs and triggers are in
-[`schema.md`](../database/schema.md#project-mail-migration-0186-adr-0134).
+[`schema.md`](../database/schema.md#project-mail-migration-0186-adr-0137).
 
 ### The E-Mail-Eingang: a mail waits outside the project
 
@@ -451,7 +451,7 @@ placement review and no document check.
   a press.
 * Good, because anyone can write to a project and the office is protected:
   trust-shaped defaults, an impersonation stop, ClamAV, byte caps and rate
-  limits (ADR-0135), and address rotation.
+  limits (ADR-0138), and address rotation.
 * Bad, because review is still work: every attachment of every mail waits for a
   person, and a busy project's E-Mail-Eingang needs a habit. The Postfach's
   „Wie vorgeschlagen ablegen“ action is not built yet.
@@ -547,7 +547,7 @@ placement review and no document check.
   basis of this record (the project-mail work, DECISION v2 of 2026-10-22).
   Owner answers: four PRs; keep the original as evidence (B); the archive into
   the same Verläufe (C); ship „Verlauf folgen“ under the hijack conditions (D).
-- Transport: ADR-0135. Scanner: ADR-0133. Amended here: ADR-0085 (archive into
+- Transport: ADR-0138. Scanner: ADR-0136. Amended here: ADR-0085 (archive into
   Verläufe), ADR-0086 (the name flag on mail), ADR-0122 (`evidence`,
   `requiresPersonConfirmation`).
 - Revisit when: an office needs a narrower decider than every
@@ -559,4 +559,4 @@ placement review and no document check.
   FU9 (sender policy), FU11 (merging Verläufe), FU12 (cloud links), FU15
   (re-render old archive notes).
 - The architecture: [`inbound-mail.md`](../architecture/inbound-mail.md). The
-  data: [`schema.md`](../database/schema.md#project-mail-migration-0186-adr-0134).
+  data: [`schema.md`](../database/schema.md#project-mail-migration-0186-adr-0137).

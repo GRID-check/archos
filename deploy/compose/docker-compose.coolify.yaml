@@ -576,7 +576,7 @@ services:
       - GRID_ADMIN_TOKEN=${GRID_ADMIN_TOKEN:?set GRID_ADMIN_TOKEN}
       # Corpus tarball (/api/internal/oib-corpus). No caller since the answer-suite CI workflow was removed. Unset = disabled.
       - GRID_CORPUS_EXPORT_TOKEN=${GRID_CORPUS_EXPORT_TOKEN:-}
-      # Project mail (ADR-0135). Off unless the domain is set (the UI then shows
+      # Project mail (ADR-0138). Off unless the domain is set (the UI then shows
       # no address). The Cloudflare Email Worker that posts to
       # /api/internal/signed/inbound-mail runs only on Cloudflare; Pulumi deploys
       # it (deploy/pulumi/src/platform/inbound-mail.ts). The key map is what its

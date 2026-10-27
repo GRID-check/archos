@@ -428,7 +428,7 @@ silent retune.
 **Project mail's webhook is limited after its signature, not at the edge.**
 `POST /api/internal/signed/inbound-mail` has no edge bucket: every office's
 mail arrives from Cloudflare's shared egress, so a per-IP budget would let any
-other Cloudflare traffic defer it (ADR-0135). Its edge bound is a 27 MiB
+other Cloudflare traffic defer it (ADR-0138). Its edge bound is a 27 MiB
 `Content-Length` header match. The BFF charges, after the signature and before
 the body is read (`lib/inbound-mail/receive.ts`): `inbound-mail-signing-key`
 3,000/h per signing key, `inbound-mail-organization` 600/h,

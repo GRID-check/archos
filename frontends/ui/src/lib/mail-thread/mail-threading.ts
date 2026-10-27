@@ -1,6 +1,6 @@
 /**
  * Which E-Mail-Verlauf a mail belongs to, and whether the place it seems to
- * belong is offered pre-selected (ADR-0134, DECISION D11, RT-S1). Pure: the
+ * belong is offered pre-selected (ADR-0137, DECISION D11, RT-S1). Pure: the
  * receive job, the decision service and the archive import call it with rows
  * they loaded, so the ladder is written once and tested here.
  *

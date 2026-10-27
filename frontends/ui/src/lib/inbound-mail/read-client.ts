@@ -1,5 +1,5 @@
 /**
- * The Python mail reader, as the receive job calls it (ADR-0134, D12):
+ * The Python mail reader, as the receive job calls it (ADR-0137, D12):
  * `POST /v1/mail/read` (`frontends/aiq_api/src/aiq_api/routes/mail.py`).
  *
  * TypeScript decides what the attachments are (`./mime`); Python decides what

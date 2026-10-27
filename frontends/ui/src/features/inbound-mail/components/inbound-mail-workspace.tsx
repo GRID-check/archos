@@ -1,7 +1,7 @@
 'use client'
 
 /**
- * Dateien › E-Mail-Eingang (ADR-0134, DECISION §9): the list of held mail read
+ * Dateien › E-Mail-Eingang (ADR-0137, DECISION §9): the list of held mail read
  * against the open mail, a split with no overlay (the „second pane“ case of
  * the design language's overlay table).
  *

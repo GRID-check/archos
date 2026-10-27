@@ -68,7 +68,7 @@ export interface KeyboardShortcutsProps {
   canCollaborate?: boolean
   /** Inbox reachability — gates the `g i` jump (ADR-0042, see NavFlags). */
   canAccessInbox?: boolean
-  /** The office receives project mail (`inbound-mail`, ADR-0134): documents the E-Mail-Eingang's keys. */
+  /** The office receives project mail (`inbound-mail`, ADR-0137): documents the E-Mail-Eingang's keys. */
   inboundMail?: boolean
 }
 

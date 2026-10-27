@@ -54,7 +54,7 @@ import { BFF_JOB_PRIORITY, type BffJobPriority } from '@/lib/db/schema'
  * wait (`notBefore`) for its answer and leave what it found. Does nothing when
  * the organization's `piloti-notices` is off.
  * The four `inbound_mail_*` kinds carry a mail sent to a project's address
- * (ADR-0134), and who each runs as is the point of the design: nothing that
+ * (ADR-0137), and who each runs as is the point of the design: nothing that
  * runs as the system files. `inbound_mail_receive` is one step AS THE SYSTEM
  * (`SYSTEM_ACTORS.inboundMail`): it reads, scans, labels and holds a mail for a
  * person, and decides nothing a person would. `inbound_mail_suggest` is one
@@ -326,7 +326,7 @@ export const officeRenditionPayloadSchema = documentWorkPayloadSchema.extend({
    */
   documentType: z.string().nullable().optional(),
   /**
-   * A filed mail's facts (`ShelfUploadInput.mailThread`, `.mailOrigin`, ADR-0134); absent for every other.
+   * A filed mail's facts (`ShelfUploadInput.mailThread`, `.mailOrigin`, ADR-0137); absent for every other.
    * Unknown here, parsed by the consumer against `lib/mail-thread/ingest-facts`: a record a job queued
    * before a contract change reads as none rather than failing the job or the backend's 422.
    */
@@ -522,7 +522,7 @@ export type DocumentCheckPayload = z.infer<typeof documentCheckPayloadSchema>
 
 /**
  * `inbound_mail_receive`: read, scan, label and hold one mail the webhook
- * staged (ADR-0134, `lib/inbound-mail/receive-job.ts`). The job id is the
+ * staged (ADR-0137, `lib/inbound-mail/receive-job.ts`). The job id is the
  * mail's id, so the webhook's enqueue and the sweep's re-enqueue of a mail left
  * `received` are one job. Ids only: everything else is on the row and in the
  * staged message.

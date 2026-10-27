@@ -5945,7 +5945,7 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
                             from aiq_agent.knowledge import set_document_capture
 
                             set_document_capture(collection_name, file_name, photo.as_metadata())
-                        # A filed mail (ADR-0134): the Verlauf's newest message and count, or the
+                        # A filed mail (ADR-0137): the Verlauf's newest message and count, or the
                         # message an attachment came with. Each Fassung states its own, so a
                         # re-upload of the name as an ordinary file clears what the mail said.
                         _store_mail_facts(collection_name, file_name, config, replaced=previous is not None)

@@ -1,5 +1,5 @@
 /**
- * Take one filed message out of its mail thread (ADR-0134, D34).
+ * Take one filed message out of its mail thread (ADR-0137, D34).
  *
  * POST — moves the message into another thread (`target.action: 'append'`) or a
  *        new one (`'create'`): the thread it leaves gets a new Fassung without

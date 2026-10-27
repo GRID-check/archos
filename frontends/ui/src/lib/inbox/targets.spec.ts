@@ -219,7 +219,7 @@ describe('the project target', () => {
     )
   })
 
-  it('lands the E-Mail-Eingang’s rows where each can be acted on (ADR-0134)', async () => {
+  it('lands the E-Mail-Eingang’s rows where each can be acted on (ADR-0137)', async () => {
     vi.mocked(requireProjectAccess).mockResolvedValueOnce({ role: 'project-viewer', closed: false, readsBecauseClosed: false })
     const access = await projectTarget.resolve(makeSession(), 'proj_1')
     const list = '/app/projects/proj_1/files/mail'

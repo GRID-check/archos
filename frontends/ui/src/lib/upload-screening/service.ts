@@ -160,7 +160,7 @@ export class ScreeningPolicyUnavailableError extends ApiError {
  *
  * Exported for the gates that screen a name before it is an upload: a mail at
  * a project's address flags an attachment whose name the Namensprüfung stops,
- * and its thread's base subject (`lib/inbound-mail/screening.ts`, ADR-0134
+ * and its thread's base subject (`lib/inbound-mail/screening.ts`, ADR-0137
  * D10). One policy read, so the flag and the later filing cannot disagree.
  */
 export async function gatePolicy(organizationId: string, projectId?: string | null): Promise<UploadScreeningPolicy> {

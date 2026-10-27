@@ -109,7 +109,7 @@ export interface FilingJudgement {
   error: string | null
 }
 
-// ── A held mail (`basis: mail`, ADR-0134, D21) ──────────────────────────────
+// ── A held mail (`basis: mail`, ADR-0137, D21) ──────────────────────────────
 
 /**
  * What the filing judgement reads of a mail that waits in the E-Mail-Eingang:

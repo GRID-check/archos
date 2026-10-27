@@ -74,7 +74,7 @@ interface ProjectFileWorkspaceProps {
   mailImportEnabled?: boolean
   /**
    * Whether this reader may decide the project's held mail (the `inbound-mail`
-   * entitlement and `project:documents:write`, ADR-0134), resolved on the
+   * entitlement and `project:documents:write`, ADR-0137), resolved on the
    * server. Shows the E-Mail-Eingang entry, its count and „Per E-Mail senden …“.
    */
   inboundMailEnabled?: boolean

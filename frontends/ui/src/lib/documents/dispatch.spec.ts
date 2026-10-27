@@ -152,7 +152,7 @@ afterEach(() => {
   vi.unstubAllGlobals()
 })
 
-// A filed mail (ADR-0134): `ingest-mail-contract.spec.ts` pins both keys across the seam.
+// A filed mail (ADR-0137): `ingest-mail-contract.spec.ts` pins both keys across the seam.
 const MAIL_THREAD = { latest_sent_at: '2026-10-14T07:12:00Z', message_count: 4, locale: 'de' as const }
 const MAIL_ORIGIN = {
   sent_at: '2026-10-14T07:12:00Z',

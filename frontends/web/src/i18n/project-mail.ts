@@ -1,6 +1,6 @@
 /**
  * The copy of /e-mail-eingang/ (/en/project-mail/): the help page for project
- * mail (ADR-0134). Two readers land here: a member of an office that uses
+ * mail (ADR-0137). Two readers land here: a member of an office that uses
  * Piloti, from „Anleitung“ in the address dialog, and somebody whose mail was
  * bounced, from the link in the bounce text (`shared/public-site.json`,
  * `mailInbox`). So it says plainly what happens to a mail sent to a project

@@ -7,7 +7,7 @@ import { appOrigin } from "../app/config";
 import type { MailZone } from "./email-routing";
 
 /**
- * Project mail (ADR-0135): the catch-all of `inboundMailDomain`'s zone, handing
+ * Project mail (ADR-0138): the catch-all of `inboundMailDomain`'s zone, handing
  * every unclaimed address to one Email Worker (`inbound-mail-worker.js`),
  * which signs project addresses' mail for the BFF and refuses the rest.
  *

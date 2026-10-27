@@ -2,7 +2,7 @@
  * @vitest-environment node
  */
 /**
- * The review service around the decision (ADR-0134): what a reader is shown
+ * The review service around the decision (ADR-0137): what a reader is shown
  * (masked, metadata only, no bytes until a clean scan), how a decision is
  * recorded (`via` from the call, never the body; one transaction with its
  * job; a refusal with its code), and what follows a commit (the trail, the

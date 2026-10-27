@@ -30,7 +30,7 @@ import type {
 import { projects } from './projects'
 
 /**
- * The E-Mail-Verlauf (ADR-0134, migration 0186): one mail conversation filed as
+ * The E-Mail-Verlauf (ADR-0137, migration 0186): one mail conversation filed as
  * one document of the project, the messages filed into it, the Message-IDs it
  * is matched by, and who follows it. The rendition is a pure function of the
  * entries (`lib/mail-thread/render.ts`); each filed message adds a Fassung of

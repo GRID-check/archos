@@ -588,7 +588,7 @@ export const INBOX_TYPE_DEFINITIONS: Record<InboxItemType, InboxTypeDefinition> 
     push: { category: 'results', urgency: 'normal' },
   },
   /*
-    Mail waits in a project's E-Mail-Eingang (ADR-0134). Actionable: nothing of
+    Mail waits in a project's E-Mail-Eingang (ADR-0137). Actionable: nothing of
     it reaches the project until a person files it, and the badge is what says
     so. `collapse` per project: ten mails to one project are one counted row,
     not ten (a busy project gets dozens a day). Operational, since mail is not a
@@ -605,7 +605,7 @@ export const INBOX_TYPE_DEFINITIONS: Record<InboxItemType, InboxTypeDefinition> 
     push: { category: 'requests', urgency: 'normal' },
   },
   /*
-    The rest of the E-Mail-Eingang's types (ADR-0134, DECISION §9). Every one
+    The rest of the E-Mail-Eingang's types (ADR-0137, DECISION §9). Every one
     is operational and in-app only: we never send mail about mail. None
     carries a sender, a subject or a file name, so neither a row nor a push
     shows anything a stranger wrote; each names the project.

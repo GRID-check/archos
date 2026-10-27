@@ -1,6 +1,6 @@
 import 'server-only'
 /**
- * A project's mail address, as a person reads and manages it (ADR-0135,
+ * A project's mail address, as a person reads and manages it (ADR-0138,
  * DECISION §7): `inbound-mail-address-{get,create,delete,rotate}`.
  *
  * **Reading never mints.** The PR this ports minted an address on the first

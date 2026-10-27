@@ -107,7 +107,7 @@ export interface FileShelf {
    */
   openPoints?: { href: string }
   /**
-   * The project's E-Mail-Eingang (ADR-0134), for a reader who may decide its
+   * The project's E-Mail-Eingang (ADR-0137), for a reader who may decide its
    * mail: the header entry with its count, the quiet line above the shelf,
    * and „Per E-Mail senden …“ in the upload menu, which opens the address.
    */

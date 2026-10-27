@@ -1,5 +1,5 @@
 /**
- * The receive job (`inbound_mail_receive`, ADR-0134, DECISION §6 "Read and
+ * The receive job (`inbound_mail_receive`, ADR-0137, DECISION §6 "Read and
  * stage"): read one staged mail, scan it, label it and hold it for a person.
  *
  * Runs AS THE SYSTEM (`SYSTEM_ACTORS.inboundMail`), one step, bulk. It decides

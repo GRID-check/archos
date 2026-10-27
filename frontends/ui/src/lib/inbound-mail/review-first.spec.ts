@@ -1,7 +1,7 @@
 /**
  * @vitest-environment node
  *
- * Review first, held statically (ADR-0134, ratchet 2 of DECISION §10): nothing
+ * Review first, held statically (ADR-0137, ratchet 2 of DECISION §10): nothing
  * reachable from the code that RECEIVES mail can file it.
  *
  * Mail at a project's address is held until a person files it. The guarantee

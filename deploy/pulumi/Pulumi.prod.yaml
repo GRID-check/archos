@@ -179,7 +179,7 @@ config:
 
   # the zone apex, that stack is the natural owner.
   grid-oib:dnsEnabled: "true"
-  # ── Project mail (Cloudflare Email Routing, ADR-0135) ──
+  # ── Project mail (Cloudflare Email Routing, ADR-0138) ──
   # Off until owner gate O4 (docs/deployment/kubernetes.md §3c). The promote that
   # turns it on sets the domain AND the pause, with the scanner already running:
   #   pulumi config set        grid-oib:malwareScanEnabled true   (PR-C, deployed first)

@@ -1,7 +1,7 @@
 import type { en } from '../en'
 
 /**
- * inboundMail namespace: der E-Mail-Eingang (ADR-0134, DECISION §9).
+ * inboundMail namespace: der E-Mail-Eingang (ADR-0137, DECISION §9).
  *
  * Ein Wort je Begriff (DECISION §3): „E-Mail-Eingang“ ist der Ort, „ablegen“
  * bringt einen Teil ins Projekt, „verwerfen“ sagt Nein zur ganzen E-Mail,

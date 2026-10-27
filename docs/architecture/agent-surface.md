@@ -83,7 +83,7 @@ applier through `callOperation`'s `origin`). A route that records how a person
 decided reads them: an E-Mail-Eingang decision's `via` is `piloti_proposal`,
 `agent` or `app` from these, never from the body an agent writes
 (`decisionActor`, `lib/inbound-mail/service.ts`), and a card may then carry no
-acknowledgement or release (ADR-0134).
+acknowledgement or release (ADR-0137).
 
 ### How long a revocation takes
 
@@ -399,7 +399,7 @@ exposure config (`withheld: { category, reason }`, [below](#the-exposure-config)
 | `product-config` | How Piloti itself works: settings, standing instructions, models and versions, zero data retention, LLM keys and provider mode, budgets and usage, upload screening, retention policies, curated skills on or off |
 | `model-compute` | Model work the caller can do itself, whose result is no office artifact (titles, citation formatting, skill review) |
 | `ui-state` | This person's own screen or device (push devices and preferences, the preference bag, read and unread marks) |
-| `evidence` | Bytes kept as proof, which no model reads (a held or filed mail's original `.eml`, ADR-0134) |
+| `evidence` | Bytes kept as proof, which no model reads (a held or filed mail's original `.eml`, ADR-0137) |
 
 A withheld operation reads as an unknown name everywhere: `tools/list`,
 `search-operations` (and no hint that it exists), `describe-operation`,
@@ -751,7 +751,7 @@ Do this in the same change that adds or changes the route. The exemplar is
 create, update, delete, rename, move, add, remove, search, export, start, cancel,
 approve, reject, publish, submit, restore, archive, allow and release (a legal hold,
 a hand-off; a held upload is allowed, never released, because "release" collides
-with approval). Project mail (ADR-0134) adds `file` (put a held mail's part into
+with approval). Project mail (ADR-0137) adds `file` (put a held mail's part into
 the project, „ablegen“; never "accept" or "approve", which are Freigabe's),
 `dismiss` (say no to a held mail, restorable seven days; never "reject", which
 is Freigabe's), `rotate` (replace an address, the old one stops at once),

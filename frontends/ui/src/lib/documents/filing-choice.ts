@@ -6,7 +6,7 @@
  * document type (`ShelfUploadInput.documentType`, sent as `document_type`) and
  * the older document these bytes are the new Fassung of
  * (`ShelfUploadInput.revisionOf`, ADR-0099, sent as `revision_of`). A filed
- * mail adds what the filing knew about it (ADR-0134, D36): an E-Mail-Verlauf
+ * mail adds what the filing knew about it (ADR-0137, D36): an E-Mail-Verlauf
  * Fassung's `mail_thread`, an attachment's `mail_origin`
  * (`lib/mail-thread/ingest-facts`). The ingest job stores them once it has
  * read the file. A file the content screening holds

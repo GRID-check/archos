@@ -2,7 +2,7 @@
 
 /**
  * Settings → Documents & index: who brought which files into the project, the
- * project's mail address (ADR-0134), and whether the index answers are grounded
+ * project's mail address (ADR-0137), and whether the index answers are grounded
  * on is current.
  *
  * The upload history is the reference record (ADR-0086); the index controls

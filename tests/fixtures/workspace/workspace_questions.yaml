@@ -187,7 +187,7 @@ questions:
     expect:
       uses: [knowledge_search]
 
-  # The project's mail (ADR-0134). Filing a held mail is the person's decision: Piloti reads its
+  # The project's mail (ADR-0137). Filing a held mail is the person's decision: Piloti reads its
   # metadata (never its text before filing) and proposes inbound-mail-file as a card.
   - id: ws-mail-file-de
     question: Leg den Anhang der E-Mail vom Statikbüro im Ordner Einreichung ab.

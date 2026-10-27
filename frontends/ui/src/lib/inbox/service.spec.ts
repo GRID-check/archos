@@ -208,7 +208,7 @@ const OPERATIONAL_TYPES = [
   // A sort of a shelf's root is ready or has stopped (ADR-0121): documents are not a chat feature.
   'root_sort.ready',
   'root_sort.failed',
-  // Project mail (ADR-0134) is not a chat feature: every one of its notices is operational.
+  // Project mail (ADR-0137) is not a chat feature: every one of its notices is operational.
   'inbound_mail.waiting',
   'inbound_mail.expiring',
   'inbound_mail.decided',

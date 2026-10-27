@@ -104,7 +104,7 @@ describe('storageKeySegment', () => {
   /**
    * A mail sent to the project waits at `<project>/_inbound-mail/<mail id>/`,
    * and a filed message's original is kept at `<project>/_mail-originals/<entry
-   * id>.eml` (ADR-0134, `lib/inbound-mail/inbound-mail-vocabulary.ts`). A
+   * id>.eml` (ADR-0137, `lib/inbound-mail/inbound-mail-vocabulary.ts`). A
    * person's folder or file of either name would put the office's documents
    * among a stranger's unreviewed mail, or among evidence no model may read.
    */

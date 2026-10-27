@@ -1,5 +1,5 @@
 /**
- * The mail operations (ADR-0122, ADR-0134): a project's mail address, the
+ * The mail operations (ADR-0122, ADR-0137): a project's mail address, the
  * E-Mail-Eingang where mail sent to it waits for a person, the mail threads
  * filed mail becomes, and the Outlook archive import. See `projects.ts` for the
  * shape and `docs/architecture/agent-surface.md` for the rules.

@@ -1,5 +1,5 @@
 /**
- * The suggest job (`inbound_mail_suggest`, ADR-0134, DECISION §6 "Suggest"):
+ * The suggest job (`inbound_mail_suggest`, ADR-0137, DECISION §6 "Suggest"):
  * ask once where a held mail's parts belong, and store the answer on the parts
  * for the person who files it. The rules it applies are `./suggest`'s.
  *

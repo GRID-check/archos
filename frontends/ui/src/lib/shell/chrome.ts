@@ -38,7 +38,7 @@ export interface ShellChrome {
   /** IFC/BIM model surfaces (`ifc-models`, ADR-0045). */
   showModels: boolean
   /**
-   * The office receives project mail (`inbound-mail`, ADR-0134): Dateien in
+   * The office receives project mail (`inbound-mail`, ADR-0137): Dateien in
    * the rail and the tab bar may carry the count of mail waiting. Whether this
    * reader may decide a given project's mail is that project's answer (a 404
    * shows no number).

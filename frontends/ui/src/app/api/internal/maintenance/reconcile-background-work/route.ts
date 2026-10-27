@@ -11,7 +11,7 @@
  *   - Outlook archive imports left open: an upload nobody finished, an import
  *     whose job is gone, a staged archive an ended import did not delete
  *     (`lib/mail-import/job.ts`, ADR-0085);
- *   - project mail (ADR-0134): receptions and filings a restart left
+ *   - project mail (ADR-0137): receptions and filings a restart left
  *     half-done, windows that ran out, bytes past their keep, erasures a
  *     released legal hold deferred, follows that ended, and the notices each
  *     of those owes (`lib/inbound-mail/sweep.ts`, the sweeps of its table).

@@ -114,14 +114,14 @@ export interface ShelfUploadInput {
    */
   documentType?: DocumentTypeTag
   /**
-   * This file is a Fassung of an E-Mail-Verlauf (ADR-0134), and these are its
+   * This file is a Fassung of an E-Mail-Verlauf (ADR-0137), and these are its
    * messages' facts (`lib/mail-thread/ingest-facts`): sent as `mail_thread`,
    * recorded with the filing choice like `documentType`, so a held Verlauf the
    * reviewer releases keeps its lane and its date. Only the filing job sets it.
    */
   mailThread?: MailThreadIngestFacts
   /**
-   * This file came with a mail (ADR-0134, D36): the message, sent as
+   * This file came with a mail (ADR-0137, D36): the message, sent as
    * `mail_origin` and recorded with the filing choice the same way. Only the
    * filing job and the archive import set it; never with `mailThread`.
    */

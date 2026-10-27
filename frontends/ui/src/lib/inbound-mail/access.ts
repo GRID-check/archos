@@ -1,7 +1,7 @@
 import 'server-only'
 /**
  * Who may see and decide the E-Mail-Eingang, and who may manage a project's
- * address (ADR-0134, DECISION D9 and §4 C1). Every route of the feature asks
+ * address (ADR-0137, DECISION D9 and §4 C1). Every route of the feature asks
  * here first, so the rule is written once.
  *
  * - **The office's switch.** With the organization's `inbound-mail`

@@ -16,7 +16,7 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 /**
- * Dateien › E-Mail-Eingang (ADR-0134): the mail sent to the project's address,
+ * Dateien › E-Mail-Eingang (ADR-0137): the mail sent to the project's address,
  * waiting until a person files it. The list is read here for the first
  * paint; the workspace reads every other filter and page through the typed
  * client. 404 for anyone who may not decide the project's mail.

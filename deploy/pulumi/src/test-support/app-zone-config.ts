@@ -1,5 +1,5 @@
 /**
- * Stack configurations for project mail (ADR-0135), on top of
+ * Stack configurations for project mail (ADR-0138), on top of
  * {@link baseStackConfig}. Test support only; no value here is a real
  * credential.
  */

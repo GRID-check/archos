@@ -59,7 +59,7 @@ const PATH_SEGMENT_TARGETS: Readonly<Record<string, TargetType>> = {
   models: 'bim_model',
   'upload-batches': 'upload_batch',
   proposals: 'proposal',
-  // A held mail and a mail thread live in their project (ADR-0134); the path names the project too.
+  // A held mail and a mail thread live in their project (ADR-0137); the path names the project too.
   'inbound-mails': 'inbound_mail',
   'mail-threads': 'mail_thread',
 }
@@ -76,7 +76,7 @@ export const KEY_TARGETS: Readonly<Record<string, TargetType>> = {
   modelId: 'bim_model',
   // The model a comparison or a compliance diff reads beside the one in the path (`lib/bim/query.ts`).
   baseModelId: 'bim_model',
-  // What a decision about held mail names (`inbound-mail-file`, `inbound-mail-dismiss`, ADR-0134).
+  // What a decision about held mail names (`inbound-mail-file`, `inbound-mail-dismiss`, ADR-0137).
   mailId: 'inbound_mail',
   mailIds: 'inbound_mail',
   mailThreadId: 'mail_thread',

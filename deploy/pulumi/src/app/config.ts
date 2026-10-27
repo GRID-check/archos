@@ -19,7 +19,7 @@ export interface AppWiring {
   gotenbergUrl?: pulumi.Output<string>;
   /** The self-hosted Photon's URL (set when cfg.geocoder.enabled, ADR-0120). */
   geocoderUrl?: pulumi.Output<string>;
-  /** clamd's `tcp://` URL (set when cfg.malwareScan.enabled, ADR-0133). */
+  /** clamd's `tcp://` URL (set when cfg.malwareScan.enabled, ADR-0136). */
   malwareScanUrl?: pulumi.Output<string>;
   /** The Qdrant cluster's client URL (ADR-0115): the one vector store, so there is no embedded one. */
   qdrantUrl: pulumi.Output<string>;
@@ -169,7 +169,7 @@ export function buildSecrets(w: AppWiring): AppSecrets {
     GRID_ADMIN_TOKEN: cfg.internal.adminToken,
     GRID_CORPUS_EXPORT_TOKEN: cfg.internal.corpusExportToken,
     // The key map the inbound mail Worker's signatures are checked against
-    // (`platform/inbound-mail.ts`, ADR-0135). Its own secret, because it also
+    // (`platform/inbound-mail.ts`, ADR-0138). Its own secret, because it also
     // lives outside the cluster, in a Cloudflare Worker binding. Empty = the
     // signed route answers 503 and the Worker's senders retry.
     GRID_INBOUND_MAIL_SIGNING_KEYS: cfg.inboundMail.signingKeys,
@@ -560,7 +560,7 @@ export function frontendEnv(w: AppWiring): EnvVar[] {
     // The corpus export (`/api/internal/oib-corpus`). No caller since the
     // answer-suite CI workflow was removed; unset disables it.
     sref("GRID_CORPUS_EXPORT_TOKEN"),
-    // Project mail (ADR-0135). The key map is always wired, and empty fails
+    // Project mail (ADR-0138). The key map is always wired, and empty fails
     // closed. The domain is absent rather than empty while the feature is off
     // or switched off, which is what hides the address in the UI; the pause
     // makes the webhook answer 503, the Worker's own pause aside.
@@ -669,7 +669,7 @@ export function frontendEnv(w: AppWiring): EnvVar[] {
     // Absent ⇒ the route answers `enabled: false` and the address stays a plain
     // text field. Only ever the in-cluster Photon: an address is client data.
     ...(w.geocoderUrl ? [{ name: "GRID_GEOCODER_URL", value: w.geocoderUrl }] : []),
-    // The malware scanner (ADR-0133): the in-cluster clamd, never anything
+    // The malware scanner (ADR-0136): the in-cluster clamd, never anything
     // else. Inherited by the bff-jobs pool, whose receive jobs scan what
     // arrives; the request path scans an original before serving it. Absent ⇒
     // every scan fails `not-configured`, and nothing waiting on one is filed.
@@ -737,7 +737,7 @@ const BFF_JOBS_OVERRIDES = new Set(["OTEL_SERVICE_NAME", "GRID_SHUTDOWN_DRAIN_MS
  *
  * The geocoder's URL likewise: address search is a request-path feature, and
  * `geocoder-frontend-only` admits the frontend alone (ADR-0120). And the
- * inbound mail webhook's key map and pause, for the same reason (ADR-0135).
+ * inbound mail webhook's key map and pause, for the same reason (ADR-0138).
  */
 const BFF_JOBS_WITHHELD = new Set([
   "LANGFUSE_HOST",

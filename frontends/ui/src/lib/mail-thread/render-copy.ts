@@ -1,5 +1,5 @@
 /**
- * The words an E-Mail-Verlauf's rendition is written in, per locale (ADR-0134).
+ * The words an E-Mail-Verlauf's rendition is written in, per locale (ADR-0137).
  *
  * This is document text, not interface copy, and it lives here rather than in
  * the i18n dictionaries for one reason: the superset invariant. Every Fassung

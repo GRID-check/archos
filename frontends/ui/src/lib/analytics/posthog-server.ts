@@ -72,7 +72,7 @@ export type ServerEvent =
   | 'agent_operation_missing'
   | 'product_feedback_ticket_opened'
   | 'product_feedback_reply_sent'
-  // The E-Mail-Eingang (ADR-0134). Codes, counts and buckets only: a mail is a
+  // The E-Mail-Eingang (ADR-0137). Codes, counts and buckets only: a mail is a
   // stranger's, and no sender, subject, file name or address is ever a property.
   | 'inbound_mail_received'
   | 'inbound_mail_refused'

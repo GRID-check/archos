@@ -121,10 +121,10 @@ const OBJECT_READERS: Record<string, Disposition> = {
   },
   'lib/inbound-mail/staging.ts::readStagedObject': {
     exempt:
-      'reads a held mail’s staged objects (its raw message, `read.json`, an attachment) and a filed message’s original (ADR-0134): never a document. A person receives such bytes only through the held-attachment and the two original routes, each audited in its own trail (`inbound_mail.part_read`, `inbound_mail.original_read`, `mail_thread.original_read`), scanned before they leave; filed, an attachment is a document, logged when a person opens it.',
+      'reads a held mail’s staged objects (its raw message, `read.json`, an attachment) and a filed message’s original (ADR-0137): never a document. A person receives such bytes only through the held-attachment and the two original routes, each audited in its own trail (`inbound_mail.part_read`, `inbound_mail.original_read`, `mail_thread.original_read`), scanned before they leave; filed, an attachment is a document, logged when a person opens it.',
   },
   'lib/inbound-mail/staging.ts::streamStagedObject': {
-    exempt: 'streams a staged mail object to the malware scanner, a machine (ADR-0133). Nobody receives the bytes.',
+    exempt: 'streams a staged mail object to the malware scanner, a machine (ADR-0136). Nobody receives the bytes.',
   },
   'lib/inbound-mail/staging.ts::stagedObjectUrlForBackend': {
     exempt: 'presigns the staged raw message for the Python mail reader, a machine (`POST /v1/mail/read`). Nobody downloads it.',

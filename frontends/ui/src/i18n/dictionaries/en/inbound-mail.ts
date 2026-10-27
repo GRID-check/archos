@@ -1,5 +1,5 @@
 /**
- * inboundMail namespace: the E-Mail-Eingang (ADR-0134, DECISION §9).
+ * inboundMail namespace: the E-Mail-Eingang (ADR-0137, DECISION §9).
  *
  * One word per concept (DECISION §3): „Project mail“ is the place, „file“
  * puts a part into the project, „dismiss“ says no to a whole mail, „restore“

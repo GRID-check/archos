@@ -1,5 +1,5 @@
 /**
- * Dismiss held mail (ADR-0134): every waiting part of up to 20 mails,
+ * Dismiss held mail (ADR-0137): every waiting part of up to 20 mails,
  * restorable for seven days.
  *
  * POST — answers the mails as they stand. Possible in a closed project. A mail

@@ -77,7 +77,7 @@ export interface AppShellChromeProps {
   canAccessInbox: boolean
   showSkills: boolean
   showModels: boolean
-  /** The office receives project mail: Dateien carries the waiting count (ADR-0134). Absent: off. */
+  /** The office receives project mail: Dateien carries the waiting count (ADR-0137). Absent: off. */
   inboundMail?: boolean
   /** Which product tours start by themselves for this reader. */
   tours: TourEligibility

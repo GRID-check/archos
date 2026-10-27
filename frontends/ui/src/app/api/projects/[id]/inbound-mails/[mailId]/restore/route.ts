@@ -1,6 +1,6 @@
 /**
  * Restore a held mail's dismissed or expired parts within their seven days
- * (ADR-0134, D8).
+ * (ADR-0137, D8).
  *
  * POST — the parts wait again, and an expired mail waits seven more days.
  *        Idempotent; 409 `not_restorable` when nothing can come back. Whoever

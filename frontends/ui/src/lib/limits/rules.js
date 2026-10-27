@@ -370,7 +370,7 @@ const MCP_REQUEST_LIMIT = {
 }
 
 /**
- * Mail reaching one project's address (ADR-0134, DECISION D18), per address.
+ * Mail reaching one project's address (ADR-0137, DECISION D18), per address.
  *
  * Every mail arrives through Cloudflare's shared egress and one signing key, so
  * no client address or person tells two senders apart: the address is the
@@ -416,7 +416,7 @@ const INBOUND_MAIL_UNKNOWN_ADDRESS_LIMIT = {
 }
 
 /**
- * Downloading a mail's original `.eml` (ADR-0134, D6), per person: a held
+ * Downloading a mail's original `.eml` (ADR-0137, D6), per person: a held
  * mail's (`inbound-mail-original-get`) and a filed message's
  * (`mail-thread-entry-original-get`) share one budget.
  *

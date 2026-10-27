@@ -1,4 +1,4 @@
-"""What a filed mail says about a document, and how it is printed (ADR-0134, RT-S2).
+"""What a filed mail says about a document, and how it is printed (ADR-0137, RT-S2).
 
 Pinned here: a record keeps only what it may (no address, no unknown key, no
 trust outside the vocabulary); the line names a sender's domain only when a

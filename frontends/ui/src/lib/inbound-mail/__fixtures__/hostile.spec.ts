@@ -2,7 +2,7 @@
  * @vitest-environment node
  */
 /**
- * The hostile corpus (ADR-0134 §10): every message an attacker or a broken
+ * The hostile corpus (ADR-0137 §10): every message an attacker or a broken
  * mailer can send, through every pure transport module, each with its outcome
  * AND its budget. A budget is counted work (messages parsed, parts visited,
  * bytes sniffed and hashed, DNS lookups), never elapsed time: a clock-based

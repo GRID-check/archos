@@ -1,5 +1,5 @@
 /**
- * The wire of the E-Mail-Verlauf (ADR-0134): what the `mail-thread-*` routes
+ * The wire of the E-Mail-Verlauf (ADR-0137): what the `mail-thread-*` routes
  * take and answer, and the shapes of the JSON a filed message carries on its
  * `mail_thread_entries` row. Pure zod, shared by the routes, the agent
  * operations (`lib/agent-api/catalog/mail.ts`), the filing job, the archive

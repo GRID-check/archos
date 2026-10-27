@@ -1,7 +1,7 @@
 'use client'
 
 /**
- * The „E-Mails“ tab of a thread document's preview (ADR-0134, D16): the
+ * The „E-Mails“ tab of a thread document's preview (ADR-0137, D16): the
  * E-Mail-Verlauf as the mails it holds, where the well beside it shows the
  * document they render into.
  *

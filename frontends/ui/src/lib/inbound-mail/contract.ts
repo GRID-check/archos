@@ -1,5 +1,5 @@
 /**
- * The transport contract of project mail (ADR-0134, ADR-0135): what the
+ * The transport contract of project mail (ADR-0137, ADR-0138): what the
  * Cloudflare Email Worker and the webhook agree on, and the closed vocabularies
  * the transport modules of this folder produce.
  *
@@ -21,7 +21,7 @@
 /**
  * Where the Worker posts. Under `/api/internal/signed/`, which the Next proxy
  * does not match, so the body is never buffered before its signature is
- * checked (ADR-0134 D20).
+ * checked (ADR-0137 D20).
  */
 export const INBOUND_MAIL_WEBHOOK_PATH = '/api/internal/signed/inbound-mail'
 
@@ -86,7 +86,7 @@ export const SIGNATURE_LIFETIME_SECONDS = 300
 /**
  * The one bounce text, ASCII, naming no reason: an unknown token, a deleted
  * project and an office that switched the feature off read the same, so a
- * bounce teaches a guesser nothing (ADR-0134 D5).
+ * bounce teaches a guesser nothing (ADR-0137 D5).
  */
 export const REJECT_TEXT =
   'This message could not be delivered: the address is unknown or no longer valid. ' +
