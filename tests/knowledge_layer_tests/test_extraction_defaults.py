@@ -214,7 +214,7 @@ def ingestor(tmp_path, monkeypatch, qdrant_store):
     # The deployed default: no switch in the env, none named in the config.
     for name in _SWITCHES:
         monkeypatch.delenv(name, raising=False)
-        monkeypatch.setattr(LlamaIndexIngestor, f"DEFAULT_{name[4:]}", adapter._env_switch(name))
+        monkeypatch.setattr(LlamaIndexIngestor, f"DEFAULT_{name.removeprefix('GRID_')}", adapter._env_switch(name))
     ing = LlamaIndexIngestor({})
     ing._embed_model = FakeEmbedder()
     ing._initialized = True
