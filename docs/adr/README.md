@@ -209,6 +209,7 @@ Consequences, where a reader looks for them.
 | [0144](0144-piloti-moves-the-askers-viewer-through-allow-listed-frontend-tool-calls.md) | Piloti moves the asker's viewer through allow-listed frontend tool calls | Proposed |
 | [0145](0145-the-repository-is-laid-out-by-job.md) | The repository is laid out by job: `apps/`, `packages/`, `contracts/`, `evals/`, moved one tree per PR, and no AI-Q names | Proposed |
 | [0146](0146-piloti-draws-sketches-in-excalidraws-own-format.md) | Piloti draws sketches in Excalidraw's own format: an `excalidraw` fence, checked twice, drawn as it streams; amends 0141 | Proposed |
+| [0147](0147-infrastructure-names-carry-no-brand.md) | Infrastructure names carry no brand: namespace `workspace`, Pulumi project `workspace`, moved by expand, switch and contract | Proposed |
 
 > Note: 0027, 0039, 0044 and 0047 were each independently used twice, every
 > time because two people read the next number off this index instead of off
