@@ -29,13 +29,8 @@
  * a client-supplied array in it is otherwise an unbounded write.
  */
 
-import {
-  modernizeLane,
-  modernizeSourceKind,
-  type Shelf,
-  type SourceKind,
-  type SourceSignal,
-} from '@/lib/source-kinds'
+import type { Shelf, SourceKind, SourceSignal } from '@/lib/source-kinds'
+import { modernizeLane, modernizeSourceKind } from '@/lib/source-kinds'
 import { modernizeTurnEventKey, modernizeTurnEventValueName } from './legacy-turn-event'
 import type { RetrievalLedger } from './message-retrieval-ledger'
 import { sanitizeRetrievalLedger } from './message-retrieval-ledger'
