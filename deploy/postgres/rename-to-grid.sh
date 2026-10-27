@@ -41,14 +41,21 @@ wait_for_server() {
 }
 
 # Compose logs in as the superuser it creates, `grid` on a fresh volume and `aiq`
-# on one from before this script. Kubernetes logs in as `postgres` and never
-# falls back.
+# on one from before this script. Kubernetes logs in as `postgres`, whose
+# password the operator sets a moment after superuser access is switched on,
+# so a refused login is retried for a while before it fails the run.
 log_in() {
-  q -c "SELECT 1" >/dev/null 2>&1 && return
-  [ "${PGUSER:-}" = grid ] || q -c "SELECT 1"
-  PGUSER=aiq
-  export PGUSER
-  q -c "SELECT 1" >/dev/null
+  tries=0
+  until q -c "SELECT 1" >/dev/null 2>&1; do
+    if [ "${PGUSER:-}" = grid ] && (PGUSER=aiq && export PGUSER && q -c "SELECT 1" >/dev/null 2>&1); then
+      PGUSER=aiq
+      export PGUSER
+      return
+    fi
+    tries=$((tries + 1))
+    [ "$tries" -lt 60 ] || q -c "SELECT 1"
+    sleep 5
+  done
 }
 
 rename_database() {
