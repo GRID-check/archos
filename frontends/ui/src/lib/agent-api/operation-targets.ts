@@ -34,7 +34,8 @@ import { documentDisplayName } from '@/lib/documents/display-name'
 import { requireResourceAccess } from '@/lib/sharing/access'
 import type { OperationTargetType, OperationTargetView } from '@/lib/proposals/types'
 import type { AgentOperation } from './operation'
-import { type TargetPlace, findTargetPlace, findProjectName } from './operation-targets-repository'
+import { findConversationInOrg } from '@/lib/conversations/repository'
+import { type TargetPlace, findFolderName, findTargetPlace, findProjectName } from './operation-targets-repository'
 
 export type TargetType = OperationTargetType
 
@@ -236,6 +237,11 @@ async function readableName(session: AuthorizedSession, target: OperationTarget)
       return await findProjectName(session.organizationId, target.id)
     }
     if (target.type === 'document') return documentDisplayName(await getAccessibleDocument(session, target.id, 'read'))
+    if (target.type === 'folder') return await readableFolderName(session, target.id)
+    if (target.type === 'conversation') {
+      await requireResourceAccess(session, 'conversation', target.id, 'viewer')
+      return (await findConversationInOrg(target.id, session.organizationId))?.title?.trim() || null
+    }
     return null
   } catch {
     // Not readable for this reader, or gone: the card shows the id alone.
@@ -243,11 +249,47 @@ async function readableName(session: AuthorizedSession, target: OperationTarget)
   }
 }
 
-/** The targets of a proposed call, named for `session`'s person where they may read them. Call in the tenant scope. */
+/** A folder's name, as the read gate judges it (`requireTargetsReadable`): its project, and the folder's own access. */
+async function readableFolderName(session: AuthorizedSession, folderId: string): Promise<string | null> {
+  const folder = await findFolderName(session.organizationId, folderId)
+  if (!folder) return null
+  if (folder.projectId) {
+    await requireProjectAccess(session, folder.projectId, 'project:view')
+    if (!(await isFolderVisibleTo(session, folder.projectId, folderId))) return null
+  }
+  return folder.name
+}
+
+/** The input keys that name a person of the office, by WorkOS user id. Labels only: no gate reads them. */
+const PERSON_KEYS: ReadonlySet<string> = new Set(['userId', 'userIds', 'memberId', 'assigneeId'])
+
+function personIds(value: unknown, depth: number, into: Set<string>): void {
+  if (depth > MAX_DEPTH) return
+  if (Array.isArray(value)) {
+    for (const item of value) personIds(item, depth + 1, into)
+    return
+  }
+  if (!isRecord(value)) return
+  for (const [key, inner] of Object.entries(value)) {
+    if (PERSON_KEYS.has(key)) for (const id of idsOf(inner)) into.add(id)
+    else personIds(inner, depth + 1, into)
+  }
+}
+
+/** The names a person of the office is shown by: the organization directory, keyed by user id. */
+export type PersonNames = ReadonlyMap<string, { name: string }>
+
+/**
+ * The targets of a proposed call, named for `session`'s person where they may
+ * read them, and the people it names (`userId`), from `people` (the
+ * organization directory the caller already holds; a person outside it keeps
+ * the id). Call in the tenant scope.
+ */
 export async function describeTargets(
   session: AuthorizedSession,
   op: Pick<AgentOperation, 'path'>,
   input: TargetInput,
+  people?: PersonNames,
 ): Promise<OperationTargetView[]> {
   let targets: OperationTarget[]
   try {
@@ -255,7 +297,14 @@ export async function describeTargets(
   } catch {
     return []
   }
-  return Promise.all(targets.map(async (target) => ({ ...target, name: await readableName(session, target) })))
+  const named = await Promise.all(targets.map(async (target) => ({ ...target, name: await readableName(session, target) })))
+  if (!people) return named
+  const ids = new Set<string>()
+  for (const part of [input.params, input.query, input.body]) personIds(part, 0, ids)
+  const persons = [...ids]
+    .slice(0, MAX_TARGETS)
+    .map((id): OperationTargetView => ({ type: 'member', id, name: people.get(id)?.name ?? null }))
+  return [...named, ...persons]
 }
 
 function label(type: TargetType): string {

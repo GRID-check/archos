@@ -889,6 +889,7 @@ export const chat: typeof en.chat = {
         bim_model: 'Modell',
         upload_batch: 'Upload',
         proposal: 'Vorschlag',
+        member: 'Person',
       },
       inputLabel: 'Eingaben',
       // Ein langer Wert ist erst gekürzt; „Übernehmen“ wartet, bis jeder ganz gelesen ist.
@@ -904,6 +905,7 @@ export const chat: typeof en.chat = {
         bim_model: 'Modell {name}',
         upload_batch: 'Upload {name}',
         proposal: 'Vorschlag {name}',
+        member: 'Person {name}',
       },
       applied: 'Die Aktion wurde ausgeführt.',
       dismissed: 'Verworfen. Die Aktion wurde nicht ausgeführt.',
@@ -2004,6 +2006,7 @@ export const chat: typeof en.chat = {
       focus_ifc_element: 'Bauteil in {name}',
     },
     status: {
+      held: 'Wartet auf die fertige Antwort',
       pending: 'Wird geöffnet …',
       undone: 'Zurückgenommen',
       kept: 'Nicht zurückgenommen: Sie haben den Viewer inzwischen geändert',

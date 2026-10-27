@@ -147,6 +147,10 @@ export default function ProposalReceiptsPreview() {
               <OperationReceipt proposalId={DEMO.operationOpen} title="Büroanweisungen setzen" operation="organization-instructions-set" input={{}} />
             </Panel>
 
+            <Panel title="Aktion, deren Eingaben IDs sind" note="Projekt, Ordner, Dokument und Person beim Namen, die ID beim Darüberfahren; ein Dokument, das dieser Leser nicht sehen darf, bleibt die ID.">
+              <OperationReceipt proposalId={DEMO.operationIds} title="Dokumente verschieben" operation="document-move" input={{}} />
+            </Panel>
+
             <Panel title="Dateien, ohne gespeicherten Vorschlag" note="Eine Antwort aus der Zeit vor den Vorschlägen auf dem Server, oder einer, den der Agent nicht ablegen konnte: lesbar, nicht übernehmbar, mit dem Grund.">
               <Files title="Drei Dateien nach „Einreichung/Pläne“ verschieben" />
             </Panel>
