@@ -54,7 +54,7 @@ export const CollectionInfoSchema = z.object({
   created_at: z.string().nullable().optional(),
   updated_at: z.string().nullable().optional(),
   backend: z.string(),
-  metadata: z.record(z.unknown()),
+  metadata: z.record(z.string(), z.unknown()),
 })
 
 // ============================================================================
@@ -74,7 +74,7 @@ export const FileInfoSchema = z.object({
   expiration_date: z.string().nullable().optional(),
   error_message: z.string().nullable().optional(),
   quarantine: QuarantineFieldSchema,
-  metadata: z.record(z.unknown()),
+  metadata: z.record(z.string(), z.unknown()),
 })
 
 /** Response for list files endpoint */
@@ -117,7 +117,7 @@ export const IngestionJobStatusSchema = z.object({
   collection_name: z.string(),
   backend: z.string(),
   error_message: z.string().nullable().optional(),
-  metadata: z.record(z.unknown()),
+  metadata: z.record(z.string(), z.unknown()),
 })
 
 // ============================================================================

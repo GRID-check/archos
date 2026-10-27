@@ -22,7 +22,7 @@ type Params = { reportId?: string | string[] }
 
 /** A path segment that is not a uuid names nothing — 404, not a 500. */
 function parseReportId(params: Params): string {
-  const parsed = z.string().uuid().safeParse(params.reportId)
+  const parsed = z.guid().safeParse(params.reportId)
   if (!parsed.success) throw new NotFoundError('Unknown feedback report.')
   return parsed.data
 }

@@ -24,7 +24,7 @@ import { internalApiRoute, parseJsonBody } from '@/lib/api/handler'
 import { runJobSlice } from '@/lib/jobs-queue/run'
 
 const runSchema = z.object({
-  jobId: z.string().uuid(),
+  jobId: z.guid(),
   worker: z.string().min(1).max(200),
 })
 

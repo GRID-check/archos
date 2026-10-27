@@ -10,7 +10,7 @@ import type { DocumentFinding, IncomingReference, ResolvedReference } from './fi
 export const documentFindingsQuerySchema = z.object({
   documentId: z
     .string()
-    .uuid()
+    .guid()
     .optional()
     .describe(
       "A document id from document-list. With it, `document` carries that document's references resolved to the " +

@@ -24,7 +24,7 @@ import { internalApiRoute, parseQuery } from '@/lib/api/handler'
 import { documentStillExists } from '@/lib/documents/service'
 
 const querySchema = z.object({
-  documentId: z.string().uuid(),
+  documentId: z.guid(),
   collection: z.string().min(1),
   organizationId: z.string().min(1).optional(),
 })
