@@ -188,8 +188,7 @@ and cannot measure (no dense arm offline).
 | `.cache/` | Extracted-page cache and the parity run's embedding cache (gitignored, regeneratable). |
 
 Fixtures live in `fixtures/`, not `data/`, because `evals/*/data/` is
-gitignored for large downloaded datasets — same convention as the sibling `oib_compliance`
-suite.
+gitignored for large downloaded datasets.
 
 ## Run
 
@@ -263,21 +262,19 @@ numbers: [`docs/audit/qdrant-gates-2026-10.md`](../../docs/audit/qdrant-gates-20
 
 ## Install
 
+`uv sync --group dev` installs it editable (CI's path): the root `pyproject.toml` names it
+in the dev group with a path source. The dense arm's model is an extra, installed on demand:
+
 ```bash
-pip install -e evals/oib-retrieval          # CI path
-pip install -e "evals/oib-retrieval[dense]" # adds sentence-transformers
+uv pip install -e "evals/oib-retrieval[dense]" # adds sentence-transformers
 ```
 
-Like `oib_compliance`, this suite is deliberately **not** in the root `pyproject.toml`'s
-`[tool.uv.workspace] members` list; the tests fall back to a `sys.path` insert so they run
-without the editable install.
-
-That was tried and reverted, on measurement. `uv` locks every extra a workspace member
-declares, so adding this one pulled `torch`, `transformers` and the NVIDIA CUDA wheels
-into `uv.lock` (+400 lines) and **downgraded `tokenizers` 0.23.1 → 0.22.2 for the whole
-workspace**, including the deployed backend. An evaluation harness must not move the
-application's dependency floor. Install it on demand instead, exactly as `oib_compliance`
-is installed.
+It is a path source, deliberately **not** a `[tool.uv.workspace]` member. That was tried
+and reverted, on measurement: `uv` locks every extra a workspace member declares, so it
+pulled `torch`, `transformers` and the NVIDIA CUDA wheels into `uv.lock` (+400 lines) and
+**downgraded `tokenizers` 0.23.1 → 0.22.2 for the whole workspace**, including the
+deployed backend. A path source locks only what the dev group asks for, and the backend
+image's `uv sync --all-packages` never needs `evals/` in its build context.
 
 ### The NAT evaluator is registered but not yet driven by a config
 
@@ -291,11 +288,11 @@ looks wired and is not. To wire it:
 1. export `fixtures/oib_retrieval_golden.json` to a NAT eval dataset — one row per entry
    with `input` = `question` and `expected_output` = `{"relevant": [...]}` (the evaluator
    reads exactly that key);
-2. copy `evals/oib-compliance/configs/config_oib_compliance_eval.yml`,
-   point `eval.general.dataset` at the export and swap the evaluator name for
-   `oib_retrieval_citation_evaluator`;
-3. run it against `chat_deepresearcher_agent` with a key, exactly as the compliance suite
-   documents.
+2. write a `nat eval` config that runs `chat_deepresearcher_agent` (the deleted
+   `oib_compliance` suite's `config_oib_compliance_eval.yml` in git history is a worked
+   example), point `eval.general.dataset` at the export and name
+   `oib_retrieval_citation_evaluator` as its evaluator;
+3. run it with a key.
 
 ## How to read a regression
 

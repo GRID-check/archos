@@ -226,7 +226,6 @@ dev = [
     { name = "fakeredis", extra = ["lua"] },
     { name = "knowledge-layer", extra = ["all"] },
     { name = "mypy" },
-    { name = "oib-compliance" },
     { name = "oib-retrieval" },
     { name = "pre-commit" },
     { name = "pytest" },
@@ -295,7 +294,6 @@ dev = [
     { name = "fakeredis", extras = ["lua"], specifier = ">=2.20.0" },
     { name = "knowledge-layer", extras = ["all"], editable = "sources/knowledge_layer" },
     { name = "mypy", specifier = ">=2.3.0" },
-    { name = "oib-compliance", editable = "evals/oib-compliance" },
     { name = "oib-retrieval", editable = "evals/oib-retrieval" },
     { name = "pre-commit", specifier = ">=3.5.0" },
     { name = "pytest", specifier = ">=9.1.1" },
@@ -2930,21 +2928,6 @@ dependencies = [
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/8c/79/017fab2f7167a9a9795665f894d04f77aafceca80821b51589bb4b23ff5c/nvidia_sphinx_theme-0.0.9.post1-py3-none-any.whl", hash = "sha256:21ca60206dff2f380d7783d64bbaf71a5b9cacae53c7d0686f089c16b5a3d45a", size = 143816, upload-time = "2025-11-09T23:16:55.719Z" },
-]
-
-[[package]]
-name = "oib-compliance"
-version = "1.0.0"
-source = { editable = "evals/oib-compliance" }
-dependencies = [
-    { name = "nvidia-nat-eval" },
-    { name = "pydantic" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "nvidia-nat-eval", specifier = "==1.9.0" },
-    { name = "pydantic", specifier = ">=2.0.0" },
 ]
 
 [[package]]

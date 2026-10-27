@@ -1,7 +1,7 @@
 """NAT evaluator: grade an agent answer's CITATIONS against the retrieval golden set.
 
 Registers ``oib_retrieval_citation_evaluator`` with NAT (see ``register.py`` for the plugin
-entry point). Like the sibling ``oib_compliance`` suite it makes no LLM calls: an answer's
+entry point). It makes no LLM calls: an answer's
 References section names ``file_name, p.N`` units, those units are compared against the
 same ``(richtlinie, punkt, grade)`` labels the offline runner uses, and the score is the
 graded nDCG of the cited order.

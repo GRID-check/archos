@@ -317,11 +317,10 @@ dev = [
     "ris-adapter",
     "knowledge-layer[all]",
     "aiq-api",
-    # The eval harnesses (evals/), so their tests and `task be:eval:*` import
-    # them by name. Path sources, not workspace members: the backend image's
+    # The eval harness (evals/), so its tests and `task be:eval:*` import it
+    # by name. Path sources, not workspace members: the backend image's
     # `uv sync --all-packages` would otherwise need evals/ in its build context.
     "oib-retrieval",
-    "oib-compliance",
     "pytest-xdist>=3.8.0",
     # Splits the core suite across CI's backend shards (ci.yml `backend`).
     "pytest-split>=0.11.0",
@@ -365,4 +364,3 @@ ris-adapter = { workspace = true }
 knowledge-layer = { workspace = true }
 aiq-api = { workspace = true }
 oib-retrieval = { path = "evals/oib-retrieval", editable = true }
-oib-compliance = { path = "evals/oib-compliance", editable = true }
