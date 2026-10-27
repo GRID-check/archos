@@ -6,10 +6,6 @@ requires-python = ">=3.14.1, <3.15"
 members = [
     "aiq-agent",
     "aiq-api",
-    "aiq-debug",
-    "aiq-research-cli",
-    "deepsearch-qa-evaluator",
-    "freshqa-eval",
     "knowledge-layer",
     "ris-adapter",
     "tavily-web-search",
@@ -227,8 +223,6 @@ viz = [
 [package.dev-dependencies]
 dev = [
     { name = "aiq-api" },
-    { name = "aiq-debug" },
-    { name = "aiq-research-cli" },
     { name = "fakeredis", extra = ["lua"] },
     { name = "knowledge-layer", extra = ["all"] },
     { name = "mypy" },
@@ -296,8 +290,6 @@ provides-extras = ["dev", "docs", "viz"]
 [package.metadata.requires-dev]
 dev = [
     { name = "aiq-api", editable = "frontends/aiq_api" },
-    { name = "aiq-debug", editable = "frontends/debug" },
-    { name = "aiq-research-cli", editable = "frontends/cli" },
     { name = "fakeredis", extras = ["lua"], specifier = ">=2.20.0" },
     { name = "knowledge-layer", extras = ["all"], editable = "sources/knowledge_layer" },
     { name = "mypy", specifier = ">=2.3.0" },
@@ -364,49 +356,6 @@ requires-dist = [
     { name = "striprtf", specifier = "==0.0.33" },
 ]
 provides-extras = ["postgres", "dev"]
-
-[[package]]
-name = "aiq-debug"
-version = "0.1.0"
-source = { editable = "frontends/debug" }
-dependencies = [
-    { name = "fastapi" },
-]
-
-[package.optional-dependencies]
-dev = [
-    { name = "pytest" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "fastapi", specifier = ">=0.100.0" },
-    { name = "pytest", marker = "extra == 'dev'", specifier = ">=9.1.1" },
-]
-provides-extras = ["dev"]
-
-[[package]]
-name = "aiq-research-cli"
-version = "2.0.1"
-source = { editable = "frontends/cli" }
-dependencies = [
-    { name = "aiq-agent" },
-    { name = "httpx" },
-    { name = "prompt-toolkit" },
-    { name = "pydantic" },
-    { name = "python-dotenv" },
-    { name = "rich" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "aiq-agent", editable = "." },
-    { name = "httpx", specifier = ">=0.24.0" },
-    { name = "prompt-toolkit", specifier = ">=3.0.53" },
-    { name = "pydantic", specifier = ">=2.0.0" },
-    { name = "python-dotenv", specifier = ">=1.0.0" },
-    { name = "rich", specifier = ">=13.0.0" },
-]
 
 [[package]]
 name = "alabaster"
@@ -1030,23 +979,6 @@ wheels = [
 ]
 
 [[package]]
-name = "deepsearch-qa-evaluator"
-version = "1.0.0"
-source = { editable = "frontends/benchmarks/deepsearch_qa" }
-dependencies = [
-    { name = "httpx" },
-    { name = "nvidia-nat-eval" },
-    { name = "pydantic" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "httpx", specifier = ">=0.24.0" },
-    { name = "nvidia-nat-eval", specifier = "==1.9.0" },
-    { name = "pydantic", specifier = ">=2.0.0" },
-]
-
-[[package]]
 name = "defusedxml"
 version = "0.7.1"
 source = { registry = "https://pypi.org/simple" }
@@ -1257,23 +1189,6 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/34/3b/214dcc19ee31d3d38fb5ad2755c11ef0514e5dc300bbaf41c0b69f393799/fonttools-4.63.0-cp314-cp314t-win32.whl", hash = "sha256:948428a275741f0b64b113c955425a953314f4b9ab9997f73a72c83e68e569c8", size = 2359326, upload-time = "2026-05-14T12:04:24.22Z" },
     { url = "https://files.pythonhosted.org/packages/dd/1e/3ff1a9b523058c2eeb6a9d50f5574e2a738200d0d94107d5bc4105e8da3f/fonttools-4.63.0-cp314-cp314t-win_amd64.whl", hash = "sha256:6d4741eb179121cab9eea4cb2393d24492373a260d7945006358c08cfbf45419", size = 2425829, upload-time = "2026-05-14T12:04:26.829Z" },
     { url = "https://files.pythonhosted.org/packages/2c/47/c99d5268f354002ce80f8d029cd9d7d872969da1de8b93d32de4dc56d6f4/fonttools-4.63.0-py3-none-any.whl", hash = "sha256:445af2eab030a16b9171ea8bdda7ebf7d96bda2df88ee182a464252f6e05e20d", size = 1164562, upload-time = "2026-05-14T12:04:29.092Z" },
-]
-
-[[package]]
-name = "freshqa-eval"
-version = "1.0.0"
-source = { editable = "frontends/benchmarks/freshqa" }
-dependencies = [
-    { name = "nvidia-nat-eval" },
-    { name = "pydantic" },
-    { name = "pytz" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "nvidia-nat-eval", specifier = "==1.9.0" },
-    { name = "pydantic", specifier = ">=2.0.0" },
-    { name = "pytz", specifier = ">=2026.3.post1" },
 ]
 
 [[package]]
@@ -3469,18 +3384,6 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/c5/b0/e66e9f6e07a0b37aa0f5703c46f54bafbdf65dfba63994247676b19076c4/prefixspan-0.5.2.tar.gz", hash = "sha256:8fbd2f94b3a7f4399d04f9bd6aa214b830fb7828799c472cd43dda10b03f671c", size = 10404, upload-time = "2018-09-29T06:12:27.708Z" }
 
 [[package]]
-name = "prompt-toolkit"
-version = "3.0.53"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "wcwidth" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/7d/ea/39b988c938f75cb75d7045b5c69f8bfed47ee2152c8837fb403de29d6fb8/prompt_toolkit-3.0.53.tar.gz", hash = "sha256:9ec8a0ad96d5c56148b3f914aa79c1564c3fde5d2e6b876e7bc327e353cf8fa6", size = 435492, upload-time = "2026-07-26T20:56:14.758Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/54/6f/84908cad2d6aa5144abcf7b42709fe4fdb459bc640ec7ac5786e7693dabc/prompt_toolkit-3.0.53-py3-none-any.whl", hash = "sha256:01c0891d7f9237d5e339f7d3e42cdae80b7534abb1c7c0e3352efba6231492f2", size = 392288, upload-time = "2026-07-26T20:56:12.512Z" },
-]
-
-[[package]]
 name = "propcache"
 version = "0.5.2"
 source = { registry = "https://pypi.org/simple" }
@@ -4995,15 +4898,6 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/78/cd/0e028d8b7d906d51acdac537334fbe85f8284f2a8147d48bc9403af77a0d/wcmatch-11.1.tar.gz", hash = "sha256:f2b6f0fad6f5e2571498723fcb3c8facdd0fba0dcc139f31d32f592eb648153e", size = 129091, upload-time = "2026-10-10T13:10:54.573Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/1e/22/c4adda5a3754b7fc9429a544a0673fa6922fdd7808eab09abe18616f6e38/wcmatch-11.1-py3-none-any.whl", hash = "sha256:2863afee97a7dd62e64f7feada864848c1a5e31cb331b3aa530fa1300d2d5d3c", size = 43417, upload-time = "2026-10-10T13:10:52.939Z" },
-]
-
-[[package]]
-name = "wcwidth"
-version = "0.8.1"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/49/b4/51fe890511f0f242d07cb1ebe6a5b6db417262b9d2568b460347c57d95cc/wcwidth-0.8.1.tar.gz", hash = "sha256:faf5b4a5366a72dc49cad48cdf21f52bdf63bdda995178e483ba247ff79089b9", size = 1466072, upload-time = "2026-06-08T05:57:23.146Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/bd/6e/95b0e537de1f4d4301f76f944642c6da50d1511cc7b3d64dc418a66c7509/wcwidth-0.8.1-py3-none-any.whl", hash = "sha256:f453740b1e4a4f3291faa37944c555d71056c4da08d59809b307ef4feba695c8", size = 323092, upload-time = "2026-06-08T05:57:21.413Z" },
 ]
 
 [[package]]

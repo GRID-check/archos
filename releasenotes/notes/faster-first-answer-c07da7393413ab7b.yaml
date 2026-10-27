@@ -1,0 +1,6 @@
+---
+fixes:
+  - >
+    Piloti starts on the first question of a chat sooner: the first answer
+    after an update or a restart no longer waits several seconds before
+    Piloti begins to look things up.

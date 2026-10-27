@@ -161,8 +161,8 @@ Each step adds its own gate as it lands:
   `GRID_ROLE` and asserts that the two route sets overlap only in `/health` and
   FastAPI's documentation routes, and that their union equals a baseline mounted
   the way the single process did it: every `add_*_routes` / `register_*_routes`
-  function found under `aiq_api/routes/`, NAT's own routes, the chat socket and the
-  debug console. A router assigned to both roles, or to none, or a route added
+  function found under `aiq_api/routes/`, NAT's own routes, the chat socket and,
+  until it was removed in 2026-10, the debug console. A router assigned to both roles, or to none, or a route added
   outside the two lists, fails it. `deploy/pulumi/src/app/api.spec.ts` holds the
   `aiq-api` Deployment, Service and HPA, `GRID_ROLE` on each workload, the
   frontend's two URLs and the CronJobs' target; `compose-roles.spec.ts` holds both

@@ -49,12 +49,14 @@ from aiq_agent.common.turn_status import tool_basename
 from aiq_agent.knowledge.restricted_use import current_cross_project_turn
 from aiq_agent.observability.langfuse_trace_attributes import add_trace_tag
 from aiq_agent.observability.langfuse_trace_attributes import record_trace_metadata
+from aiq_agent.observability.turn_phases import observed_phase
 from aiq_agent.project_context import get_organization_id_from_context
 from aiq_agent.project_context import get_project_id_from_context
 from aiq_agent.skills import SkillResolver
 from aiq_agent.skills import SkillRuntime
 from aiq_agent.skills.events import emit_skills_offered
 from aiq_agent.tools.documents.tools import filesystem_tools_for_turn
+from aiq_agent.turn.admission import spanned
 from nat.plugin_api import Builder
 from nat.plugin_api import FunctionBaseConfig
 from nat.plugin_api import FunctionGroupRef
@@ -560,7 +562,9 @@ async def _run_turn(deployment: _Deployment, state: ResearchAgentState) -> Resea
     # decides whether a skill applies, the same way it decides whether to
     # search (ADR-0052), and reads the one it chooses with `read_file` over the
     # run's skills backend (ADR-0135). The decision's pick rides the prompt.
-    runtime = await _resolve_skill_runtime(config, state)
+    with observed_phase("setup.skills") as skills_phase:
+        runtime = await _resolve_skill_runtime(config, state)
+        skills_phase["skills"] = len(runtime.skills) if runtime is not None else 0
     # The conversation's working directory, folded in the same way: four file
     # verbs over a store namespaced by conversation, or nothing at all when the
     # turn has no conversation to namespace by (CLI, eval, worker).
@@ -575,9 +579,12 @@ async def _run_turn(deployment: _Deployment, state: ResearchAgentState) -> Resea
     facts = _turn_facts(state, runtime) if config.turn_decisions else None
     _warm_question(facts)
     draft_tools, decisions, llm_provider, fit = await asyncio.gather(
-        filesystem_tools_for_turn(deployment.estate, skills=runtime.backend if runtime is not None else None),
+        spanned(
+            "setup.file_tools",
+            filesystem_tools_for_turn(deployment.estate, skills=runtime.backend if runtime is not None else None),
+        ),
         _decide_turn(facts),
-        _active_provider(deployment.provider),
+        spanned("setup.llm_provider", _active_provider(deployment.provider)),
         _fit_references(facts),
     )
     _apply_decisions(decisions, state, runtime)

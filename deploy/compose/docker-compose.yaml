@@ -177,7 +177,7 @@ services:
       <<: *backend-environment
       GRID_ROLE: api
     ports:
-      # The API, docs and debug console: what `localhost:8000` has always been.
+      # The API and its docs: what `localhost:8000` has always been.
       - "${PORT:-8000}:8000"
     volumes:
       - ../../configs:/app/configs:ro
