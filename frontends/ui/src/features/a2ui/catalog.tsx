@@ -5,8 +5,16 @@
  * layout components an answer may compose them with, and `Text`, a run of the
  * answer's own Markdown (ADR-0065).
  *
- * Custom-only. A2UI's basic catalog is not registered: its styles are empty in
- * 0.11.1 and its Lit build registers custom elements on import. `Row`,
+ * This module is the catalog's contract: each component's name and props
+ * schema, the contexts its components read, and `preflight`, the check a
+ * surface passes before it is drawn. It is safe to import on the server. The
+ * React implementations live in `react-catalog.tsx`, which imports
+ * `@a2ui/react` and is loaded in the browser only (`A2uiCard`): since 0.13
+ * that package defines a custom element class at import, which throws where
+ * there is no DOM.
+ *
+ * Custom-only. A2UI's basic catalog is not registered: it draws Lit custom
+ * elements with A2UI's own styles, not this product's atoms. `Row`,
  * `Column`, `Tabs` and `Text` take the basic catalog's NAMES and shapes (so a
  * surface is plain A2UI v0.9) and are drawn with this product's atoms. `Text`
  * is narrowed to a `text` of Markdown: it is what lets a tab hold a table,
@@ -20,21 +28,23 @@
  * and of the import cycle that would bring.
  */
 
-import { createContext, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { createContext, useContext, useLayoutEffect, type ReactNode } from 'react'
 import { z } from 'zod'
 import { Catalog, componentId, type ComponentApi } from '@a2ui/web_core/v0_9'
-import { createComponentImplementation, type ReactComponentImplementation } from '@a2ui/react/v0_9'
 
 import { gridCardSchema, type GridCard } from '@/shared/cards/schemas'
-import { Tabs as UiTabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { useHeightGlide } from '@/components/motion/height-glide'
-import { cn } from '@/lib/utils'
 import { MarkdownRenderer } from '@/shared/components/MarkdownRenderer/MarkdownRenderer'
 import { useNestedMarkdownPlugins } from '@/shared/components/MarkdownRenderer/nested-plugins-context'
-import { dataModelStore, ReaderInputsProvider } from './reader-inputs'
 
 /** The catalog's identity on the wire; `createSurface.catalogId` must equal it. */
 export const PILOTI_CATALOG_ID = 'https://piloti.at/a2ui/catalogs/cards/v1'
+
+/**
+ * The A2UI protocol version the catalog and every surface speak: v0.9, the
+ * current stable specification. Written as the catalog writes it (a bare
+ * version, as the basic catalog does); the messages carry it as `v0.9`.
+ */
+export const A2UI_PROTOCOL_VERSION = '0.9'
 
 /** The layout components, named as in A2UI's basic catalog. */
 export const LAYOUT_COMPONENTS = ['Row', 'Column', 'Tabs'] as const
@@ -50,6 +60,7 @@ export type CardRenderer = (card: GridCard, leafId: string) => ReactNode
 
 const CardRendererContext = createContext<CardRenderer | null>(null)
 export const CardRendererProvider = CardRendererContext.Provider
+export const useCardRenderer = () => useContext(CardRendererContext)
 
 /**
  * Called once A2UI has drawn a real component. A layout effect, so it runs in
@@ -62,12 +73,12 @@ const DrawnContext = createContext<(() => void) | null>(null)
 export const DrawnProvider = DrawnContext.Provider
 export const useDrawnReporter = () => useContext(DrawnContext)
 
-function useReportDrawn() {
+export function useReportDrawn() {
   const report = useDrawnReporter()
   useLayoutEffect(() => report?.(), [report])
 }
 
-type CardSchema = (typeof gridCardSchema.options)[number]
+export type CardSchema = (typeof gridCardSchema.options)[number]
 
 /** A card schema's `type` literal; one card defaults it, which wraps the literal. */
 export function cardTypeOf(schema: CardSchema): string {
@@ -77,32 +88,11 @@ export function cardTypeOf(schema: CardSchema): string {
 }
 
 /** A card component's props: the card's fields without its `type`, which is the component name. */
-function cardComponentApi(schema: CardSchema): ComponentApi {
+export function cardComponentApi(schema: CardSchema): ComponentApi {
   return { name: cardTypeOf(schema), schema: (schema as z.AnyZodObject).omit({ type: true }) }
 }
 
-function cardComponent(schema: CardSchema): ReactComponentImplementation {
-  const api = cardComponentApi(schema)
-  const type = api.name
-  return createComponentImplementation(api, function A2uiCardComponent({ props, context }) {
-    const render = useContext(CardRendererContext)
-    useReportDrawn()
-    // The leaf's reader inputs are bound into this surface's data model
-    // (`reader-inputs.ts`, ADR-0141); a card without inputs never reads them.
-    const leafId = context.componentModel.id
-    const store = useMemo(() => dataModelStore(context.dataContext, leafId), [context.dataContext, leafId])
-    if (!render) return null
-    // `display: contents`: no box of its own. The attribute is how the host
-    // knows A2UI has drawn a real component rather than its placeholder.
-    return (
-      <div className="contents" data-a2ui-node={type}>
-        <ReaderInputsProvider store={store}>{render({ ...(props as object), type } as GridCard, leafId)}</ReaderInputsProvider>
-      </div>
-    )
-  })
-}
-
-const RowApi = {
+export const RowApi = {
   name: 'Row',
   schema: z
     .object({
@@ -114,8 +104,8 @@ const RowApi = {
     })
     .strict(),
 }
-const ColumnApi = { ...RowApi, name: 'Column' }
-const TabsApi = {
+export const ColumnApi = { ...RowApi, name: 'Column' }
+export const TabsApi = {
   name: 'Tabs',
   schema: z
     .object({
@@ -124,129 +114,7 @@ const TabsApi = {
     .strict(),
 }
 
-/**
- * Side by side where there is room, stacked where there is not. A container
- * query, not a breakpoint: the same surface sits in the answer column, a side
- * panel and a phone, and only its own width says whether two cards fit. 44rem
- * because a card under ~340px crowds its own margin (legal_basis's Fundstelle,
- * a calculation's operands): a Row goes side by side only on a surface wider
- * than that, and stacks in a narrow window or a side panel.
- */
-function RowView({ ids, buildChild }: { ids: string[]; buildChild: (id: string) => ReactNode }) {
-  useReportDrawn()
-  return (
-    <div className="@container" data-a2ui-node="Row">
-      <div className="grid items-start gap-3 @[44rem]:grid-flow-col @[44rem]:auto-cols-fr">
-        {ids.map((id) => (
-          <div key={id} className="min-w-0">
-            {buildChild(id)}
-          </div>
-        ))}
-      </div>
-    </div>
-  )
-}
-
-const Row = createComponentImplementation(RowApi, ({ props, buildChild }) => (
-  <RowView ids={props.children as string[]} buildChild={buildChild} />
-))
-
-function ColumnView({ ids, buildChild }: { ids: string[]; buildChild: (id: string) => ReactNode }) {
-  useReportDrawn()
-  return (
-    <div className="flex flex-col gap-3" data-a2ui-node="Column">
-      {ids.map((id) => (
-        <div key={id} className="min-w-0">
-          {buildChild(id)}
-        </div>
-      ))}
-    </div>
-  )
-}
-
-const Column = createComponentImplementation(ColumnApi, ({ props, buildChild }) => (
-  <ColumnView ids={props.children as string[]} buildChild={buildChild} />
-))
-
-/**
- * Variants, one at a time: the product's own tabs atom (`components/ui/tabs`),
- * so a composed answer switches the way every other tab strip in the app does
- * — the gliding pill, the focus ring, the 44px touch floor.
- *
- * Switching is a swap the reader asked for, so it moves like one: the panel
- * area glides to the new panel's height (`useHeightGlide`) instead of shoving
- * the rest of the answer by the difference in one frame, and the new panel
- * fades in. Only after a switch — the first panel arrives with its card.
- *
- * On a phone the strip scrolls sideways, and a tapped variant half under the
- * edge stayed half under it. The chosen tab is brought fully into the strip,
- * by scrolling the strip alone: `scrollIntoView` would also scroll the page.
- */
-function TabsView({ tabs, buildChild }: { tabs: { title: string; child: string }[]; buildChild: (id: string) => ReactNode }) {
-  useReportDrawn()
-  const [value, setValue] = useState(tabs[0]?.child)
-  const [switched, setSwitched] = useState(false)
-  const panelsRef = useRef<HTMLDivElement>(null)
-  const listRef = useRef<HTMLDivElement>(null)
-  useHeightGlide(panelsRef, value)
-
-  useEffect(() => {
-    if (!switched) return
-    const list = listRef.current
-    const tab = list?.querySelector<HTMLElement>('[data-state="active"]')
-    if (!list || !tab) return
-    const listBox = list.getBoundingClientRect()
-    const tabBox = tab.getBoundingClientRect()
-    const overflowLeft = tabBox.left - listBox.left
-    const overflowRight = tabBox.right - listBox.right
-    if (overflowLeft >= 0 && overflowRight <= 0) return
-    const reduced = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
-    list.scrollTo({
-      left: list.scrollLeft + (overflowLeft < 0 ? overflowLeft : overflowRight),
-      behavior: reduced ? 'auto' : 'smooth',
-    })
-  }, [value, switched])
-
-  return (
-    <UiTabs
-      value={value}
-      onValueChange={(next) => {
-        setSwitched(true)
-        setValue(next)
-      }}
-      className="gap-3"
-      data-a2ui-node="Tabs"
-    >
-      <TabsList ref={listRef} className="max-w-full justify-start overflow-x-auto">
-        {tabs.map((tab) => (
-          <TabsTrigger key={tab.child} value={tab.child} className="flex-none">
-            {tab.title}
-          </TabsTrigger>
-        ))}
-      </TabsList>
-      <div ref={panelsRef}>
-        {tabs.map((tab) => (
-          <TabsContent
-            key={tab.child}
-            value={tab.child}
-            className={cn(
-              'mt-0 min-w-0',
-              switched && 'animate-in fade-in-0 duration-quick ease-out motion-reduce:animate-none'
-            )}
-          >
-            {buildChild(tab.child)}
-          </TabsContent>
-        ))}
-      </div>
-    </UiTabs>
-  )
-}
-
-const Tabs = createComponentImplementation(TabsApi, ({ props, buildChild }) => (
-  <TabsView tabs={props.tabs as { title: string; child: string }[]} buildChild={buildChild} />
-))
-
-const TextApi = { name: TEXT_COMPONENT, schema: z.object({ text: z.string().trim().min(1) }).strict() }
+export const TextApi = { name: TEXT_COMPONENT, schema: z.object({ text: z.string().trim().min(1) }).strict() }
 
 /**
  * A run of the answer's Markdown, drawn by the renderer the prose is drawn by,
@@ -262,22 +130,27 @@ export function TextBlock({ text }: { text: string }) {
   )
 }
 
-function TextView({ text }: { text: string }) {
-  useReportDrawn()
-  return <TextBlock text={text} />
+/**
+ * The card types the catalog draws, one component each. `surface` is not a
+ * component: it is the envelope a composition travels in, unpacked into its
+ * own components by `cardToSurfaceMessages`.
+ */
+export function catalogCardSchemas(): CardSchema[] {
+  return gridCardSchema.options.filter((schema) => cardTypeOf(schema) !== 'surface')
 }
 
-const Text = createComponentImplementation(TextApi, ({ props }) => <TextView text={String(props.text)} />)
+let catalogApi: Catalog<ComponentApi> | null = null
 
-let catalog: Catalog<ReactComponentImplementation> | null = null
-
-/** The catalog, built once on first use. */
-export function pilotiCatalog(): Catalog<ReactComponentImplementation> {
-  // `surface` is not a component: it is the envelope a composition travels in,
-  // unpacked into its own components by `cardToSurfaceMessages`.
-  const cards = gridCardSchema.options.filter((schema) => cardTypeOf(schema) !== 'surface')
-  catalog ??= new Catalog(PILOTI_CATALOG_ID, [...cards.map(cardComponent), Row, Column, Tabs, Text])
-  return catalog
+/** The catalog's components as schemas only, built once: what `preflight` checks a surface against. */
+export function pilotiCatalogApi(): Catalog<ComponentApi> {
+  catalogApi ??= new Catalog(PILOTI_CATALOG_ID, A2UI_PROTOCOL_VERSION, [
+    ...catalogCardSchemas().map(cardComponentApi),
+    RowApi,
+    ColumnApi,
+    TabsApi,
+    TextApi,
+  ])
+  return catalogApi
 }
 
 /**
@@ -320,7 +193,7 @@ export const SURFACE_EXCLUDED_LEAVES: ReadonlySet<string> = new Set([
  * `summary` or `memory_proposal` draws through the catalog like any other card.
  */
 export function preflight(components: Record<string, unknown>[], { surface = true } = {}): string | null {
-  const registry = pilotiCatalog().components
+  const registry = pilotiCatalogApi().components
   for (const { id, component, ...props } of components) {
     if (surface && SURFACE_EXCLUDED_LEAVES.has(String(component))) {
       return `'${String(id)}': a '${String(component)}' cannot sit inside a surface`

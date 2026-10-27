@@ -34,8 +34,10 @@ Rules the models carry
 ----------------------
 
 * Names are AG-UI's where AG-UI has one (``RUN_STARTED``, ``TEXT_MESSAGE_*``,
-  ``STATE_SNAPSHOT``, ``STEP_*``, ``RUN_FINISHED``, ``RUN_ERROR``, ``CUSTOM``);
-  the ``CUSTOM`` events are told apart by ``name``.
+  ``STATE_SNAPSHOT``, ``STEP_*``, ``SUBAGENT_*``, ``RUN_FINISHED``,
+  ``RUN_ERROR``, ``CUSTOM``), and so are their fields, in snake case
+  (``message_id``, ``subagent_run_id``); the ``CUSTOM`` events are told apart
+  by ``name``.
 * ``seq`` is per turn, starts at 1 with ``RUN_STARTED`` and increases by one
   per event, stage frames after ``RUN_FINISHED`` included. ``seq == 0`` marks an
   out-of-band ``rejected`` notice, which is never replayed.
@@ -510,11 +512,20 @@ class StateSnapshotBody(_Model):
     snapshot: AnswerSnapshot
 
 
+#: A subagent invocation's handle (AG-UI 1.0 ``SubagentRunId``): minted per
+#: invocation, so two runs of the same subagent carry two values.
+SubagentRunId = Annotated[str, Field(min_length=1, max_length=64)]
+
+
 class StepStartedBody(_Model):
     """A step with a duration began (a tool call). Instant steps send only STEP_FINISHED."""
 
     type: Literal["STEP_STARTED"] = "STEP_STARTED"
     step: Step
+    subagent_run_id: SubagentRunId | None = Field(
+        default=None,
+        description="The subagent invocation that took the step (AG-UI `subagentRunId`). Absent: the turn's own agent.",
+    )
 
 
 class StepFinishedBody(_Model):
@@ -522,6 +533,54 @@ class StepFinishedBody(_Model):
 
     type: Literal["STEP_FINISHED"] = "STEP_FINISHED"
     step: Step
+    subagent_run_id: SubagentRunId | None = Field(
+        default=None,
+        description="The subagent invocation that took the step (AG-UI `subagentRunId`). Absent: the turn's own agent.",
+    )
+
+
+class SubagentStartedBody(_Model):
+    """A subagent invocation began inside this turn (AG-UI 1.0 ``SUBAGENT_STARTED``).
+
+    Every step it takes afterwards carries its ``subagent_run_id``, so a reader
+    groups the work without replaying the stream. A subagent it spawns names it
+    as ``parent_subagent_run_id``. An agent run as a separate run (a
+    commissioned research run, ADR-0062) is not a subagent: it is the turn's
+    ``result.run``.
+    """
+
+    type: Literal["SUBAGENT_STARTED"] = "SUBAGENT_STARTED"
+    subagent_run_id: SubagentRunId
+    name: str = Field(min_length=1, max_length=64, description="Which subagent, e.g. 'planner-agent'; reusable.")
+    description: str | None = Field(
+        default=None, max_length=160, description="What this invocation is for, in the model's words, clipped."
+    )
+    parent_subagent_run_id: SubagentRunId | None = Field(
+        default=None, description="The subagent invocation that spawned this one; absent: the turn's own agent did."
+    )
+    parent_tool_call_id: str | None = Field(
+        default=None, max_length=128, description="The tool call that spawned it, when a subagent is a tool."
+    )
+
+
+class SubagentFinishedBody(_Model):
+    """The subagent invocation completed (AG-UI 1.0 ``SUBAGENT_FINISHED``; an absent ``outcome`` is success).
+
+    AG-UI's ``outcome: suspended`` is not modelled: no Piloti subagent pauses
+    yet. It arrives with pausing a run to ask the person (ADR-0140).
+    """
+
+    type: Literal["SUBAGENT_FINISHED"] = "SUBAGENT_FINISHED"
+    subagent_run_id: SubagentRunId
+
+
+class SubagentErrorBody(_Model):
+    """The subagent invocation failed; the turn may go on (AG-UI 1.0 ``SUBAGENT_ERROR``, never ``RUN_ERROR``)."""
+
+    type: Literal["SUBAGENT_ERROR"] = "SUBAGENT_ERROR"
+    subagent_run_id: SubagentRunId
+    message: str = Field(min_length=1, max_length=300, description="For a person to read; never the raw exception.")
+    code: str | None = Field(default=None, max_length=64, description="Machine-readable, e.g. the exception class.")
 
 
 class RunFinishedBody(_Model):
@@ -789,6 +848,18 @@ class StepFinished(Envelope, StepFinishedBody):
     pass
 
 
+class SubagentStarted(Envelope, SubagentStartedBody):
+    pass
+
+
+class SubagentFinished(Envelope, SubagentFinishedBody):
+    pass
+
+
+class SubagentError(Envelope, SubagentErrorBody):
+    pass
+
+
 class RunFinished(Envelope, RunFinishedBody):
     pass
 
@@ -864,6 +935,9 @@ WireEvent = Annotated[
     | StateSnapshot
     | StepStarted
     | StepFinished
+    | SubagentStarted
+    | SubagentFinished
+    | SubagentError
     | RunFinished
     | RunError
     | CustomEvent,
@@ -878,6 +952,9 @@ EventBody = (
     | StateSnapshotBody
     | StepStartedBody
     | StepFinishedBody
+    | SubagentStartedBody
+    | SubagentFinishedBody
+    | SubagentErrorBody
     | RunFinishedBody
     | RunErrorBody
     | MastheadBody
@@ -901,6 +978,9 @@ _EVENT_OF_BODY: dict[type[BaseModel], type[Envelope]] = {
     StateSnapshotBody: StateSnapshot,
     StepStartedBody: StepStarted,
     StepFinishedBody: StepFinished,
+    SubagentStartedBody: SubagentStarted,
+    SubagentFinishedBody: SubagentFinished,
+    SubagentErrorBody: SubagentError,
     RunFinishedBody: RunFinished,
     RunErrorBody: RunError,
     MastheadBody: Masthead,

@@ -80,10 +80,12 @@ Chosen: **option 3**.
   input is written with `DataContext.set` to `/inputs/<leaf id>` of the card's
   surface and read by subscription (`features/a2ui/reader-inputs.ts`). The path
   is derived, never authored: the model writes literals and cannot bind a
-  statement. Only `DataContext.set` and `DataModel.get`/`subscribe` are used,
-  stable since A2UI v0.9 and unchanged in 0.11, so the A2UI 0.14 upgrade does
-  not touch it. A card drawn without A2UI (the fallback) gets a local store with
-  the same interface.
+  statement. The store is handed to the card by the catalog's card component
+  (`features/a2ui/react-catalog.tsx`). Only `DataContext.set` and
+  `DataModel.get`/`subscribe` are used: written against A2UI 0.11, built and
+  tested on 0.14 (`@a2ui/react` and `@a2ui/web_core` 0.14.0), with the same
+  calls in both. A card drawn without A2UI (the fallback) gets a local store
+  with the same interface.
 - **A reader's value is marked as theirs.** Beside a changed input: „Ihre
   Annahme" and the source's value; under the Rechenweg: „Gerechnet mit Ihren
   Annahmen"; one „Zurücksetzen" restores every source value.

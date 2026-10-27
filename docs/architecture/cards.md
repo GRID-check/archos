@@ -660,6 +660,10 @@ per card type, named by the type and validated by that card's generated Zod
 schema, plus `Row`, `Column`, `Tabs` and `Text` in the basic catalog's shapes. Each
 card component calls back into `GridCardView`, the per-type dispatch that used
 to be `GridCardItem`, so the pixels are the same components as before.
+`@a2ui/react` is imported only by `react-catalog.tsx`, which `A2uiCard` loads
+in the browser: the library defines custom elements on import and cannot load
+on the server. `catalog.tsx` is the server-safe half (component APIs,
+`preflight`, the contexts), and `ssr.spec.tsx` keeps it that way.
 
 - **Composition.** A `surface` card carries an A2UI component list: a
   container with id `root` and the content cards it holds. `SurfaceCard` in

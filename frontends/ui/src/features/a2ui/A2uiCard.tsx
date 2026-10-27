@@ -8,13 +8,15 @@
  * `A2uiSurface` draws it with the Piloti catalog, whose card components call
  * back into `render`. It is drawn once, by A2UI:
  *
- *  - **Until A2UI has drawn.** `A2uiSurface` has no server snapshot (it
- *    throws under SSR) and resolves its tree in a subscription, so its first
- *    frame is a grey "[Loading root...]". The surface is mounted hidden behind
- *    a `CardPlaceholder` and shown in the commit its first real component
- *    reports itself (`useReportDrawn`, a layout effect), before paint.
- *  - **On failure.** A message A2UI refuses, or a render that throws inside
- *    it, falls back to the direct card: a card is never lost to the library.
+ *  - **Until A2UI has drawn.** The renderer (`react-catalog.tsx`) is loaded
+ *    in the browser only, so the server and the hydrating pass draw a
+ *    `CardPlaceholder`. `A2uiSurface` then resolves its tree in a
+ *    subscription, so its first frame is a grey "[Loading root...]". The
+ *    surface is mounted hidden behind the placeholder and shown in the commit
+ *    its first real component reports itself (`useReportDrawn`, a layout
+ *    effect), before paint.
+ *  - **On failure.** A message A2UI refuses, a renderer that will not load,
+ *    or a render that throws inside it, falls back to the direct card: a card is never lost to the library.
  *    A surface falls back to its cards stacked in order.
  *
  * Either way, whatever holds the card's place (a `DrawnProvider` above it) is
@@ -33,21 +35,11 @@ import {
   type ErrorInfo,
   type ReactNode,
 } from 'react'
-import { MessageProcessor } from '@a2ui/web_core/v0_9'
-import { A2uiSurface, type ReactComponentImplementation } from '@a2ui/react/v0_9'
 
 import type { GridCard } from '@/shared/cards/schemas'
 import { CardPlaceholder } from '@/features/grid-cards/components/CardPlaceholder'
-import {
-  CardRendererProvider,
-  DrawnProvider,
-  pilotiCatalog,
-  preflight,
-  TextBlock,
-  useDrawnReporter,
-  type CardRenderer,
-} from './catalog'
-import { cardToSurfaceMessages, surfaceComponents, surfaceLeaves } from './surface-messages'
+import { CardRendererProvider, DrawnProvider, preflight, TextBlock, useDrawnReporter, type CardRenderer } from './catalog'
+import { surfaceComponents, surfaceLeaves } from './surface-messages'
 
 interface A2uiCardProps {
   card: GridCard
@@ -84,39 +76,66 @@ class Fallback extends Component<FallbackProps, { failed: boolean }> {
   }
 }
 
-const noSubscription = () => () => {}
-/** False on the server and while hydrating; true on every other render, a later mount's first included. */
-const useHydrated = () => useSyncExternalStore(noSubscription, () => true, () => false)
+type Renderer = typeof import('./react-catalog')
+
+/**
+ * The renderer module, once the browser has it: `'failed'` if it would not
+ * load, `null` until then and always on the server. The import starts when
+ * this module is first evaluated in the browser, well before a thread's cards
+ * arrive, so a card normally mounts with the renderer already here and draws
+ * in its first commit, as it did when the renderer was a static import.
+ */
+let rendererModule: Renderer | 'failed' | null = null
+const rendererListeners = new Set<() => void>()
+const rendererLoad: Promise<void> =
+  typeof window === 'undefined'
+    ? Promise.resolve()
+    : import('./react-catalog')
+        .then((loaded) => {
+          rendererModule = loaded
+        })
+        .catch((error: unknown) => {
+          console.warn('[A2UI] renderer failed to load; drawing cards directly', error)
+          rendererModule = 'failed'
+        })
+        .finally(() => rendererListeners.forEach((listener) => listener()))
+/** Settles once the renderer has loaded or failed; a spec that checks a card in the commit it renders awaits it first. */
+export const rendererSettled = (): Promise<void> => rendererLoad
+const subscribeRenderer = (listener: () => void) => {
+  rendererListeners.add(listener)
+  return () => rendererListeners.delete(listener)
+}
+/** Null on the server and while hydrating, like the old hydration gate; the module or `'failed'` after. */
+const useRenderer = () => useSyncExternalStore(subscribeRenderer, () => rendererModule, () => null)
 
 export function A2uiCard({ card, surfaceKey, render }: A2uiCardProps) {
-  const hydrated = useHydrated()
+  const loaded = useRenderer()
+  const renderer = loaded === 'failed' ? null : loaded
   // Keyed on the card's CONTENT, not its identity: a parent that re-parses
   // its cards on every render would otherwise rebuild the surface each time,
   // remounting every card in it and resetting the open tab.
   const content = useMemo(() => JSON.stringify(card), [card])
   const surface = useMemo(() => {
-    if (!hydrated) return null
+    if (!renderer) return null
     const refusal = preflight(surfaceComponents(card), { surface: card.type === 'surface' })
     if (refusal) {
       console.warn('[A2UI] surface refused; drawing the card directly', card.type, refusal)
       return null
     }
-    const processor = new MessageProcessor<ReactComponentImplementation>([pilotiCatalog()])
     try {
-      processor.processMessages(cardToSurfaceMessages(card, surfaceKey))
+      return renderer.buildSurface(card, surfaceKey)
     } catch (error) {
       console.warn('[A2UI] surface refused; drawing the card directly', card.type, error)
       return null
     }
-    return processor.model.getSurface(surfaceKey) ?? null
     // eslint-disable-next-line react-hooks/exhaustive-deps -- `content` stands for `card`
-  }, [hydrated, content, surfaceKey])
+  }, [renderer, content, surfaceKey])
 
   // Reset per surface; set by the first component A2UI draws (`useReportDrawn`).
   const [drawnSurface, setDrawnSurface] = useState<object | null>(null)
   const drawn = surface !== null && drawnSurface === surface
   const reportDrawn = useCallback(() => setDrawnSurface(surface), [surface])
-  const refused = hydrated && surface === null
+  const refused = loaded !== null && surface === null
   const reportOnScreen = useDrawnReporter()
   // Whether the reader SAW the placeholder: a frame went by with the surface
   // still undrawn. A stored card draws in the layout pass before its first
@@ -166,7 +185,7 @@ export function A2uiCard({ card, surfaceKey, render }: A2uiCardProps) {
                     : 'pointer-events-none invisible absolute inset-x-0 top-0'
                 }
               >
-                <A2uiSurface surface={surface} />
+                {renderer && <renderer.A2uiSurface surface={surface} />}
               </div>
             </Fallback>
           </DrawnProvider>

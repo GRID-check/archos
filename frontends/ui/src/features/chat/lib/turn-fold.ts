@@ -269,12 +269,61 @@ const foldStep = (view: TurnView, event: Extract<WireEvent, { type: 'STEP_STARTE
     isComplete: event.type === 'STEP_FINISHED',
     kind: step.kind,
     ...(step.scope === 'deep' ? { scope: 'deep' } : {}),
+    ...some('subagentRunId', event.subagent_run_id),
     ...storedFields(step, previous),
   }
   return {
     ...view,
     steps: { ...view.steps, [step.id]: stored },
     stepOrder: previous ? view.stepOrder : [...view.stepOrder, step.id],
+  }
+}
+
+/** The step id a subagent invocation's own row is kept under. */
+export const subagentStepId = (runId: string): string => `subagent:${runId}`
+
+/** How a subagent invocation stands, as its row's `detail.status` says it. */
+export type SubagentStatus = 'running' | 'ok' | 'error'
+
+/**
+ * A subagent invocation (AG-UI 1.0 `SUBAGENT_*`) as one technical status row,
+ * `subagent:<run id>`, so it is stored and bounded like every other step and
+ * needs no second column. The row's `subagentRunId` is its PARENT, the same
+ * field a step uses for the invocation that took it, so nesting and membership
+ * read one way. An invocation ends once; an error is never overwritten.
+ */
+const foldSubagent = (
+  view: TurnView,
+  event: Extract<WireEvent, { type: 'SUBAGENT_STARTED' | 'SUBAGENT_FINISHED' | 'SUBAGENT_ERROR' }>
+): TurnView => {
+  const id = subagentStepId(event.subagent_run_id)
+  const previous = view.steps[id]
+  if (previous?.isComplete) return view
+  const started = event.type === 'SUBAGENT_STARTED' ? event : undefined
+  const name = started?.name ?? (typeof previous?.detail?.name === 'string' ? previous.detail.name : 'subagent')
+  const status: SubagentStatus =
+    event.type === 'SUBAGENT_STARTED' ? 'running' : event.type === 'SUBAGENT_ERROR' ? 'error' : 'ok'
+  const step: StoredThinkingStep = {
+    id,
+    userMessageId: view.turnId,
+    timestamp: previous?.timestamp ?? new Date(event.ts).toISOString(),
+    isComplete: status !== 'running',
+    kind: 'status',
+    slot: `subagent:${name}`,
+    ...(previous?.subagentRunId ? { subagentRunId: previous.subagentRunId } : {}),
+    ...some('subagentRunId', started?.parent_subagent_run_id),
+    detail: {
+      ...previous?.detail,
+      name,
+      status,
+      ...some('description', started?.description),
+      ...(event.type === 'SUBAGENT_ERROR' ? some('code', event.code) : {}),
+    },
+  }
+  return {
+    ...view,
+    steps: { ...view.steps, [id]: step },
+    stepOrder: previous ? view.stepOrder : [...view.stepOrder, id],
   }
 }
 
@@ -415,6 +464,10 @@ const apply = (view: TurnView, event: WireEvent): TurnView => {
     case 'STEP_STARTED':
     case 'STEP_FINISHED':
       return foldStep(view, event)
+    case 'SUBAGENT_STARTED':
+    case 'SUBAGENT_FINISHED':
+    case 'SUBAGENT_ERROR':
+      return foldSubagent(view, event)
     case 'RUN_FINISHED':
       return {
         ...view,

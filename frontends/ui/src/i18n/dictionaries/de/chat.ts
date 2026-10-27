@@ -1446,6 +1446,26 @@ export const chat: typeof en.chat = {
     reasoningGraphLabel: 'Herleitung',
     stepsLabel: 'Denkschritte',
     stepsHeading: 'Zwischenschritte',
+    // Teilagenten, die ein Zug laufen ließ (AG-UI 1.0 SUBAGENT_*): heute die
+    // Tiefenrecherche im Chat mit ihrer Planung, ihren Recherchen und dem Bericht.
+    subagents: {
+      heading: 'Teilagenten',
+      steps: '{count, plural, one {# Schritt} other {# Schritte}}',
+      status: {
+        running: 'arbeitet',
+        ok: 'fertig',
+        error: 'fehlgeschlagen',
+        ended: 'abgebrochen',
+      },
+      name: {
+        deepResearcher: 'Tiefenrecherche',
+        planner: 'Planung',
+        researcher: 'Recherche',
+        writer: 'Bericht',
+        sourceRouter: 'Quellenwahl',
+        generalPurpose: 'Allgemeiner Agent',
+      },
+    },
     sourcesFanOut: 'Quellen',
     hitCount: '{count} Treffer',
     hitCountOne: '1 Treffer',
