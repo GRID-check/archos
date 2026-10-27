@@ -1,6 +1,7 @@
 # Knowledge Layer
 
-Document ingestion and retrieval for NeMo Agent Toolkit workflows.
+Piloti's knowledge layer: it reads the office's documents and the legal corpus,
+and finds the passages Piloti cites.
 
 For comprehensive documentation, see [`KNOWLEDGE-LAYER-SETUP.md`](./KNOWLEDGE-LAYER-SETUP.md).
 

@@ -128,18 +128,18 @@ describe("the chat tier's scale-out", () => {
   });
 
   it("scales the StatefulSet between its floor and ceiling", async () => {
-    const spec = await resolve(find(SCALED, "aiq-agent").inputs.spec);
-    expect(spec.scaleTargetRef).toMatchObject({ apiVersion: "apps/v1", kind: "StatefulSet", name: "aiq-agent" });
+    const spec = await resolve(find(SCALED, "chat").inputs.spec);
+    expect(spec.scaleTargetRef).toMatchObject({ apiVersion: "apps/v1", kind: "StatefulSet", name: "chat" });
     expect(spec.minReplicaCount).toBe(1);
     expect(spec.maxReplicaCount).toBe(3);
   });
 
   it("reads the fleet's running turns from the route the backend serves, the way it serves them", async () => {
-    const spec = await resolve(find(SCALED, "aiq-agent").inputs.spec);
+    const spec = await resolve(find(SCALED, "chat").inputs.spec);
     const trigger = spec.triggers.find((t: { type: string }) => t.type === "metrics-api");
 
     // The operator is in another namespace: the Service name must be qualified.
-    expect(trigger.metadata.url).toBe("http://aiq-agent.grid.svc.cluster.local:8000/v1/internal/chat-occupancy");
+    expect(trigger.metadata.url).toBe("http://chat.grid.svc.cluster.local:8000/v1/internal/chat-occupancy");
     expect(trigger.metricType).toBe("AverageValue");
     expect(trigger.metadata.targetValue).toBe(String(cfg.backend.turnsPerReplica));
 
@@ -153,15 +153,15 @@ describe("the chat tier's scale-out", () => {
   });
 
   it("sends the shared internal token from the Secret the pods read it from", async () => {
-    const spec = await resolve(find(AUTH, "aiq-agent-occupancy-auth").inputs.spec);
+    const spec = await resolve(find(AUTH, "chat-occupancy-auth").inputs.spec);
     expect(spec.secretTargetRef).toEqual([{ parameter: "apiKey", name: "grid-secrets", key: "GRID_INTERNAL_API_TOKEN" }]);
-    const scaled = await resolve(find(SCALED, "aiq-agent").inputs.spec);
+    const scaled = await resolve(find(SCALED, "chat").inputs.spec);
     const trigger = scaled.triggers.find((t: { type: string }) => t.type === "metrics-api");
-    expect(trigger.authenticationRef.name).toBe("aiq-agent-occupancy-auth");
+    expect(trigger.authenticationRef.name).toBe("chat-occupancy-auth");
   });
 
   it("adds a cpu trigger beside it, and scales in slowly and one pod at a time", async () => {
-    const spec = await resolve(find(SCALED, "aiq-agent").inputs.spec);
+    const spec = await resolve(find(SCALED, "chat").inputs.spec);
     expect(spec.triggers.map((t: { type: string }) => t.type).sort()).toEqual(["cpu", "metrics-api"]);
     const behavior = spec.advanced.horizontalPodAutoscalerConfig.behavior;
     expect(behavior.scaleDown.stabilizationWindowSeconds).toBeGreaterThanOrEqual(600);
@@ -173,6 +173,7 @@ describe("the chat tier's scale-out", () => {
   it("lets KEDA's operator reach the backend port, and nothing else", async () => {
     expect(RESOURCES.filter((r) => r.type === NETPOL).map((r) => r.name)).toContain("allow-keda-to-aiq-agent");
     const pol = await resolve(find(NETPOL, "allow-keda-to-aiq-agent").inputs.spec);
+    // The tier KEDA scales until the switch (`tier-names.ts`).
     expect(pol.podSelector.matchLabels).toEqual({ "app.kubernetes.io/name": "aiq-agent" });
     expect(pol.ingress).toEqual([
       {
@@ -190,7 +191,7 @@ describe("the chat tier's scale-out", () => {
   });
 
   it("gives a terminating replica the whole drain, and the drain covers the longest chat turn", async () => {
-    const spec = await resolve(find(STATEFULSET, "aiq-agent").inputs.spec);
+    const spec = await resolve(find(STATEFULSET, "chat").inputs.spec);
     const grace = spec.template.spec.terminationGracePeriodSeconds;
     const drain = Number(backendEnvNames.GRID_CHAT_DRAIN_SECONDS);
 

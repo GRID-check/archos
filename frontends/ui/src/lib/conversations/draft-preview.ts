@@ -19,6 +19,7 @@
 import 'server-only'
 import { z } from 'zod'
 import { getBackendUrl } from '@/lib/backend-proxy'
+import { InternalServiceUnavailableError, internalServiceHeaders } from '@/lib/internal-auth'
 import {
   BadRequestError,
   NotFoundError,
@@ -76,9 +77,12 @@ export async function readConversationDraft(
     .map((segment) => encodeURIComponent(segment))
     .join('/')
 
-  const token = process.env.GRID_INTERNAL_API_TOKEN
-  if (!token) {
-    throw new ServiceUnavailableError('Draft preview is unavailable')
+  let tokenHeaders: Record<string, string>
+  try {
+    tokenHeaders = internalServiceHeaders(getBackendUrl())
+  } catch (error) {
+    if (error instanceof InternalServiceUnavailableError) throw new ServiceUnavailableError('Draft preview is unavailable')
+    throw error
   }
 
   let response: Response
@@ -87,7 +91,7 @@ export async function readConversationDraft(
       `${getBackendUrl()}/v1/drafts/${encodeURIComponent(conversationId)}/${encodedPath}`,
       {
         method: 'GET',
-        headers: { 'x-grid-internal-token': token },
+        headers: tokenHeaders,
         signal: AbortSignal.timeout(DRAFT_READ_TIMEOUT_MS),
       },
     )

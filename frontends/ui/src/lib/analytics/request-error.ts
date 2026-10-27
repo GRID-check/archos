@@ -20,6 +20,8 @@
  *   `isAuthzRefusal`) routes the visitor to the access screen. Counted as
  *   exceptions they would be most of the free tier's 100K a month and none of
  *   its value.
+ * - **Next's control flow is not an error.** `redirect()` and `notFound()` throw;
+ *   one that reaches here anyway (a `try` around a redirect) is navigation.
  * - **A form post naming no action we have is not an error either.** Next
  *   throws "Failed to find Server Action" when a non-fetch multipart POST
  *   carries action ids this build does not know, and answers it with a 404. Our
@@ -50,6 +52,7 @@ import {
 
 import { isAuthzRefusal } from '@/lib/api/errors'
 
+import { isFrameworkControlFlow } from './control-flow-error'
 import { posthogServerSettings, serverSuperProperties } from './posthog-server'
 import { scrubServerEvent } from './scrub-server-event'
 
@@ -104,6 +107,7 @@ export const beforeCapture = (
   capture: OnRequestErrorBeforeCaptureContext
 ): Record<string, unknown> | false => {
   if (isAuthzRefusal(capture.error)) return false
+  if (isFrameworkControlFlow(capture.error)) return false
   if (isUnknownActionError(capture.error)) return false
   if (limiter.consumeRateLimit(fingerprintOf(capture))) return false
   // The package's client is not ours to `register` on, so the super

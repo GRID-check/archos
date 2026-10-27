@@ -18,6 +18,7 @@ import pytest
 from jsonschema import Draft202012Validator
 from jsonschema import FormatChecker
 
+from aiq_agent.common.bff_http import SignedEnvelope
 from aiq_agent.common.wire_v2 import FocusRegion
 from aiq_agent.common.wire_v2 import RunFinishedBody
 from aiq_agent.common.wire_v2 import TurnResult
@@ -31,7 +32,6 @@ from aiq_agent.observability.langfuse_trace_attributes import begin_trace_contri
 from aiq_agent.observability.langfuse_trace_attributes import end_trace_contributions
 from aiq_agent.observability.langfuse_trace_attributes import snapshot_contributions
 from aiq_agent.tools.canvas.client import CanvasRequestError
-from aiq_agent.tools.documents.filing import SignedEnvelope
 from aiq_agent.turn import annotation_reply
 from aiq_agent.turn.annotation_reply import MAX_REPLY_CHARS
 from aiq_agent.turn.annotation_reply import ThreadReply

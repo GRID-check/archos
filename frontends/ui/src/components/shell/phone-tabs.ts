@@ -1,7 +1,7 @@
 import type { ComponentType } from 'react'
 import { Archive, Bell, FolderKanban, MoreHorizontal } from 'lucide-react'
 
-import { TOUR_ANCHORS, sectionAnchor } from '@/features/onboarding/lib/product-tour'
+import { TOUR_ANCHORS, sectionAnchor } from '@/lib/onboarding/product-tour'
 import {
   projectSection,
   sectionHref,

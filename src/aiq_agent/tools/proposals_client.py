@@ -49,28 +49,23 @@ asked for twice returns the first proposal. The index is therefore the card's
 REAL position in the turn's registry, which :func:`add_card` fixes by putting
 the card in the registry first and asking for the proposal second.
 
-The transport is the seventh copy of the internal-call shape; the reason it
-is not lifted yet is in ``tools/documents/filing.py``.
+The transport is :mod:`aiq_agent.common.bff_http`, the one BFF client.
 """
 
 from __future__ import annotations
 
 import asyncio
-import json
 import logging
-import os
-import urllib.error
-import urllib.request
 import uuid
 from typing import Any
 from typing import Literal
 
 from aiq_agent import project_context
 from aiq_agent.cards.registry import CardRegistry
+from aiq_agent.common import bff_http
+from aiq_agent.common.bff_http import SignedEnvelope
 from aiq_agent.observability.retrieval_trace import emit_step_span
 from aiq_agent.turn.response import turn_answer_message_id
-
-from .documents.filing import SignedEnvelope
 
 logger = logging.getLogger(__name__)
 
@@ -83,27 +78,11 @@ REQUEST_TIMEOUT_SECONDS = 10
 ProposalKind = Literal["file_operation", "memory", "project_profile"]
 
 
-class ProposalRequestError(RuntimeError):
+class ProposalRequestError(bff_http.BffError):
     """The route refused, or could not be reached. ``status`` is the HTTP status when there was one."""
 
     def __init__(self, message: str, *, status: int | None = None) -> None:
-        super().__init__(message)
-        self.status = status
-
-
-class _NoRedirectHandler(urllib.request.HTTPRedirectHandler):
-    """Refuse redirects: a 3xx means an auth middleware intercepted the call."""
-
-    def redirect_request(self, req, fp, code, msg, headers, newurl):  # noqa: ANN001
-        raise urllib.error.HTTPError(req.full_url, code, f"unexpected redirect to {newurl}", headers, fp)
-
-
-_opener = urllib.request.build_opener(_NoRedirectHandler)
-
-
-def _internal_base_url() -> str:
-    url = os.environ.get("FRONTEND_INTERNAL_URL") or os.environ.get("FRONTEND_URL") or "http://frontend:3000"
-    return url.rstrip("/")
+        super().__init__(message, status=status)
 
 
 def post_proposal(payload: dict[str, Any], envelope: SignedEnvelope) -> dict[str, Any]:
@@ -111,27 +90,13 @@ def post_proposal(payload: dict[str, Any], envelope: SignedEnvelope) -> dict[str
 
     Raises :class:`ProposalRequestError` for every refusal and transport failure.
     """
-    token = os.environ.get("GRID_INTERNAL_API_TOKEN")
-    if not token:
-        raise ProposalRequestError("GRID_INTERNAL_API_TOKEN is not configured")
-    request = urllib.request.Request(
-        f"{_internal_base_url()}{PROPOSALS_PATH}",
-        data=json.dumps(payload).encode("utf-8"),
-        headers={
-            "Content-Type": "application/json",
-            "X-Grid-Internal-Token": token,
-            # Who this is, forwarded exactly as the BFF minted it for the turn.
-            "X-Grid-Request-Context": envelope.header,
-            "X-Grid-Request-Context-Sig": envelope.signature,
-        },
-        method="POST",
-    )
     try:
-        with _opener.open(request, timeout=REQUEST_TIMEOUT_SECONDS) as response:
-            body = json.loads(response.read().decode("utf-8"))
-    except urllib.error.HTTPError as exc:
-        raise ProposalRequestError(f"the proposals route refused ({exc.code})", status=exc.code) from exc
-    except (urllib.error.URLError, OSError, ValueError) as exc:
+        body = bff_http.post_json(PROPOSALS_PATH, payload, timeout=REQUEST_TIMEOUT_SECONDS, headers=envelope.headers())
+    except bff_http.BffNotConfiguredError as exc:
+        raise ProposalRequestError(str(exc)) from exc
+    except bff_http.BffRefusedError as exc:
+        raise ProposalRequestError(f"the proposals route refused ({exc.status})", status=exc.status) from exc
+    except bff_http.BffError as exc:
         raise ProposalRequestError("the proposals route could not be reached") from exc
     if not isinstance(body, dict):
         raise ProposalRequestError("the proposals route answered with something that is not an object")

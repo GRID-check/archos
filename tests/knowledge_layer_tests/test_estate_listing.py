@@ -12,11 +12,10 @@ from __future__ import annotations
 from types import SimpleNamespace
 
 import pytest
-
-from sources.knowledge_layer.src.browse import FileRow
-from sources.knowledge_layer.src.estate import EstateBackend
-from sources.knowledge_layer.src.estate import glob_files
-from sources.knowledge_layer.src.estate_listing import render_glob
+from knowledge_layer.browse import FileRow
+from knowledge_layer.estate import EstateBackend
+from knowledge_layer.estate import glob_files
+from knowledge_layer.estate_listing import render_glob
 
 ROWS = [
     FileRow(
@@ -66,7 +65,7 @@ def _backend(rows=ROWS) -> EstateBackend:
 
 @pytest.fixture(autouse=True)
 def _no_in_flight(monkeypatch):
-    from sources.knowledge_layer.src import estate
+    from knowledge_layer import estate
 
     async def none(_files):
         return []
@@ -164,7 +163,7 @@ class TestTheFolderCard:
         real = FileRow(file_name="README.md", shelf="project", collection="proj_a", folder="Einreichung")
 
         async def pages(collection, file_name, *, wanted=None):
-            from sources.knowledge_layer.src import stored_pages
+            from knowledge_layer import stored_pages
 
             return stored_pages.PageText(
                 pages=[stored_pages.Page(number=1, text="Lies mich")], origin="chunks", page_count=1

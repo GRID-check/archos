@@ -20,10 +20,10 @@ the TTL-cleanup lock — is a cliff).
 1. **LangGraph checkpoint tables never cleaned** (`checkpoints`/`checkpoint_blobs`/
    `checkpoint_writes`). Per-run byte growth is superlinear (full-state blob per
    changed channel per step). **[LANDED — deep]** `runner.py` now purges a deep
-   run's `AIQ_DEEP_CHECKPOINT_DB` rows (`thread_id = job_id`) on terminal
+   run's `GRID_DEEP_CHECKPOINT_DB` rows (`thread_id = job_id`) on terminal
    completion in both the Dask and DB-queue execution paths
    (`_purge_deep_checkpoint`, tested). **[LANDED — chat]** the
-   `AIQ_CHECKPOINT_DB` conversation checkpoints have no terminal event, so a
+   `GRID_CHECKPOINT_DB` conversation checkpoints have no terminal event, so a
    leader-locked **age reaper** (`jobs/checkpoint_retention.py`,
    `reap_idle_threads`) now drops whole threads idle beyond
    `GRID_CHAT_CHECKPOINT_RETENTION_SECONDS` (default 14d), using the checkpoint's
@@ -91,7 +91,7 @@ the TTL-cleanup lock — is a cliff).
 13. **`self._files` in-process dict never pruned** + O(n²) `list_files`
     (`adapter.py:1345,2055`). **[LANDED]** `_prune_stale_files` (mirrors
     `_prune_completed_jobs`, on the same cadence) ages out terminal entries past
-    `AIQ_FILE_TRACKING_RETENTION_SECONDS` (default 24h); `list_files` now
+    `GRID_FILE_TRACKING_RETENTION_SECONDS` (default 24h); `list_files` now
     correlates tracked files via a one-pass `_index_tracked_files` index (O(files),
     was O(files²)). Both unit-tested in isolation.
 14. **Uncapped embedded-image extraction + sequential VLM captioning**

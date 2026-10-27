@@ -1,4 +1,4 @@
-// @disk-inputs: src/app/api/auth/websocket-scope/**, src/app/api/internal/**, src/lib/collection-scope-request.ts, src/lib/cross-project/**, src/lib/jobs/service.ts, src/lib/project-profile/**, src/lib/tasks/delegation.ts, src/lib/turn-context/**
+// @disk-inputs: src/app/api/auth/websocket-scope/**, src/app/api/internal/**, src/lib/cross-project/**, src/lib/jobs/service.ts, src/lib/project-profile/**, src/lib/retrieval-scope/collection-scope-request.ts, src/lib/tasks/delegation.ts, src/lib/turn-context/**
 /**
  * @vitest-environment node
  *
@@ -25,7 +25,7 @@ const CONTEXT_BUILDERS = [
   'lib/cross-project',
   'app/api/internal',
   'app/api/auth/websocket-scope',
-  'lib/collection-scope-request.ts',
+  'lib/retrieval-scope/collection-scope-request.ts',
   'lib/jobs/service.ts',
   'lib/tasks/delegation.ts',
 ]
