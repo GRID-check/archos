@@ -457,7 +457,7 @@ export const files = {
       'Upload your project’s documents: drawings, official notices, expert reports. Piloti reads them and cites them instead of answering from generic guidance.',
     searchPlaceholder: 'Search…',
     /** The field of a shelf that has the workspace search: typing filters names, Enter searches everything. */
-    searchPlaceholderEverything: 'Filter names, Enter searches all…',
+    searchPlaceholderEverything: 'Filter, Enter searches all…',
     searchLabel: 'Search files',
     noMatch: 'No files match “{query}”',
     noMatchDescription:

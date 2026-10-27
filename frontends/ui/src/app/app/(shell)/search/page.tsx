@@ -28,7 +28,7 @@ export default async function SearchPage(): Promise<JSX.Element> {
     const t = await getTranslations('search')
     return (
       <ShellContent width="wide">
-        <PageHeader className="mb-6" title={t('title')} subtitle={t('subtitle')} />
+        <PageHeader className="mb-6" title={t('title')} />
         <Suspense fallback={null}>
           <SearchWorkspace surface={{ kind: 'office' }} currentUserId={session.userId} autoFocus />
         </Suspense>

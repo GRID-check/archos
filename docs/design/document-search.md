@@ -272,12 +272,20 @@ chosen columns on a line under it, the order in a menu.
 - ⌘K, from anywhere: what is typed is searched live (150 ms after the last
   key, three hits of each kind, no facet counts; in a project, that project),
   the hits grouped by kind and drawn by the page's own row components
-  (`HitRow` inside the palette's option), Enter on the first. The last search
-  row, „Alle Treffer für …“, opens the page with the question
-  (`/app/search?q=…`). With nothing typed the palette says in one line what the
+  (`HitRow` inside the palette's option), compact there: the name, one line of
+  where and what, the passage only on the row the arrows are on. Enter opens
+  the first. The last search row, „Alle Treffer für …“, opens the page with
+  the question (`/app/search?q=…`); it stays pinned at the list's foot while
+  hits run past it, and ⌘↵ (Strg+Enter) reaches it from any row. With nothing typed the palette says in one line what the
   search reaches and offers the recent searches (this browser, five) and the
   saved ones. The palette's commands stay below. On the search page itself ⌘K
   focuses the page's field, which is the same search.
+- A hit in the list is at most three lines: the name, the searched words set
+  apart in it; one muted line of where it lives (the shelf's mark only when
+  the scope does not already say it, then the folder) and what it is
+  (Dokumentart, Plannummer, Index, Maßstab, Planstand); then the passage with
+  its page. „Gefunden in …“ shows only on a row that shows nothing that
+  matched.
 - The field is a WAI-ARIA combobox: ↑ ↓ move an active option while focus
   stays in the field (`aria-activedescendant`), each kind's rows are a listbox
   (the register's rows, its table), and the active row carries a 2px ink rule.

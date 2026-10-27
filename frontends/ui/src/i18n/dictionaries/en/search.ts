@@ -1,7 +1,6 @@
 /** The workspace search: one page office-wide, the same search in a project's files and on the office shelf. */
 export const search = {
   title: 'Search',
-  subtitle: 'Everything the office holds: documents and what they say, annotations, folders, projects and chats.',
   scope: {
     office: 'Whole office',
     project: 'This project',
@@ -10,9 +9,9 @@ export const search = {
   },
   field: {
     placeholder: {
-      office: 'Search all documents, annotations, folders, projects and chats…',
-      project: 'Search this project: documents, annotations, folders, chats…',
-      office_shelf: 'Search the office filing: documents and folders…',
+      office: 'Search the whole office…',
+      project: 'Search this project…',
+      office_shelf: 'Search the office filing…',
     },
     /** On a phone, where the long placeholder is cut mid-word. */
     placeholderShort: 'Search…',
@@ -67,9 +66,10 @@ export const search = {
     withFilters: 'The filters exclude everything that matched. Take one off, or clear them all.',
   },
   notes: {
-    building:
-      '{count, plural, one {Piloti is still reading what the documents on one shelf are. Filters by type, parties and facts may miss some of them until it is done.} other {Piloti is still reading what the documents on # shelves are. Filters by type, parties and facts may miss some of them until it is done.}}',
     buildingShort: '{count, plural, one {one shelf still being read} other {# shelves still being read}}',
+    /** The same, when a filter that is set depends on what Piloti reads there. */
+    buildingFiltered:
+      '{count, plural, one {one shelf still being read, the filters may miss documents there} other {# shelves still being read, the filters may miss documents there}}',
     contentPartial: 'The search through what the documents say covered only part of this scope.',
   },
   passage: {
@@ -88,8 +88,9 @@ export const search = {
   },
   matchedOn: {
     label: 'Found in',
-    name: 'name',
-    reading: 'what Piloti read',
+    name: 'file name',
+    /** What Piloti read about the document: title, parties, place, title block, references. The file view calls it the summary. */
+    reading: 'summary',
     content: 'content',
   },
   annotation: {

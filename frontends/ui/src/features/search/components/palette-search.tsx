@@ -8,11 +8,13 @@
  *
  * A hit is drawn by the result list's own row components (`HitRow`) inside a
  * cmdk option (`ResultRowFrameProvider`), so the palette and the search page
- * show one hit the same way: name, the meta line, the passage with its page,
- * the shelf mark. Only the box differs.
+ * show one hit with the same parts. In the palette the row is compact: the
+ * name, one line of where and what, and the passage only on the row the
+ * arrows are on, so a glance takes in every kind's hits and the way to all of
+ * them stays in view.
  */
 
-import type { JSX } from 'react'
+import type { JSX, ReactNode } from 'react'
 import { createContext, useContext } from 'react'
 import type { LucideIcon } from 'lucide-react'
 import { Bookmark, History, Search, Users } from 'lucide-react'
@@ -20,7 +22,7 @@ import { Bookmark, History, Search, Users } from 'lucide-react'
 import { CommandGroup, CommandItem } from '@/components/ui/command'
 import { useTranslations } from '@/i18n'
 import type { SavedSearchView } from '@/lib/search/saved-search-client'
-import { SEARCH_KINDS, type SearchHit, type SearchResponse } from '@/lib/search/search-wire'
+import { SEARCH_KINDS, type SearchHit, type SearchResponse, type SearchScopeQuery } from '@/lib/search/search-wire'
 import { PALETTE_HITS_PER_KIND } from '../hooks/use-palette-search'
 import { hitHref } from '../lib/search-hrefs'
 import {
@@ -32,7 +34,7 @@ import {
   ResultRowFrameProvider,
   type ResultRowFrameProps,
 } from './search-atoms'
-import { HitRow } from './search-result-list'
+import { HitRow, HitScopeProvider } from './search-result-list'
 
 /** Every row this module adds carries this prefix, so the palette's filter can rank them above the commands. */
 export const PALETTE_SEARCH_VALUE_PREFIX = 'search:'
@@ -82,11 +84,24 @@ export interface PaletteSearchResultsProps {
   onOpen: (href: string) => void
   /** The search page asking `text` at the palette's scope. */
   allHref: string
+  /** The scope the palette searched in; a row leaves out the shelf it already says. */
+  scope: SearchScopeQuery
+  /** The keys that open the search page from anywhere in the list, shown on its row. */
+  allShortcut?: ReactNode
   itemClassName?: string
 }
 
+/**
+ * „Alle Treffer für …“ stays in view at the foot of the list while hits run
+ * past it, on the palette's own surface, so the way to every hit is never a
+ * scroll away. Once the list scrolls on to the commands it goes with them.
+ */
+// `-bottom-1` covers the list's own 4px padding, so no hit shows beneath it.
+const PINNED_GROUP_CLASS = 'sticky -bottom-1 z-10 border-t border-border/70 bg-popover'
+
+
 /** What was typed, answered: three hits of each kind, then the way to all of them. */
-export function PaletteSearchResults({ text, answered, response, loading, failed, onOpen, allHref, itemClassName }: PaletteSearchResultsProps): JSX.Element {
+export function PaletteSearchResults({ text, answered, response, loading, failed, onOpen, allHref, scope, allShortcut, itemClassName }: PaletteSearchResultsProps): JSX.Element {
   const t = useTranslations('search')
   const words = text.trim()
   const stale = answered !== words
@@ -94,6 +109,7 @@ export function PaletteSearchResults({ text, answered, response, loading, failed
   const status = failed ? t('error') : loading || stale ? t('loading') : response && !anyHits ? t('palette.noHits') : null
   return (
     <OpenContext.Provider value={onOpen}>
+      <HitScopeProvider scope={scope}>
       <ResultRowFrameProvider value={PaletteHitFrame}>
         {SEARCH_KINDS.map((kind) => {
           const hits = response?.sections[kind]?.hits.slice(0, PALETTE_HITS_PER_KIND) ?? []
@@ -107,7 +123,8 @@ export function PaletteSearchResults({ text, answered, response, loading, failed
           )
         })}
       </ResultRowFrameProvider>
-      <CommandGroup forceMount>
+      </HitScopeProvider>
+      <CommandGroup forceMount className={anyHits ? PINNED_GROUP_CLASS : undefined}>
         <CommandItem forceMount value={PALETTE_ALL_RESULTS_VALUE} onSelect={() => onOpen(allHref)} className={itemClassName} data-testid="palette-workspace-search">
           <PaletteGlyph icon={Search} />
           <PaletteLabel>{t('palette.allResults', { text: words })}</PaletteLabel>
@@ -116,6 +133,7 @@ export function PaletteSearchResults({ text, answered, response, loading, failed
               {status}
             </PaletteAside>
           ) : null}
+          {allShortcut ? <span className={status ? 'flex shrink-0' : 'ml-auto flex shrink-0'}>{allShortcut}</span> : null}
         </CommandItem>
       </CommandGroup>
     </OpenContext.Provider>
@@ -169,7 +187,7 @@ export function PaletteSearchStart({ inProject, recent, saved, onRecent, onSaved
               icon={item.ownedByMe ? Bookmark : Users}
               onSelect={() => onSaved(item)}
               className={itemClassName}
-              aside={item.ownedByMe ? undefined : t('saved.fromColleague')}
+              aside={item.ownedByMe ? undefined : item.ownerName ? t('saved.byColleague', { name: item.ownerName }) : t('saved.fromColleague')}
             >
               {item.name}
             </PaletteRow>
