@@ -18,13 +18,13 @@ All tests are offline: no ChromaDB, no embeddings, no network.
 from types import SimpleNamespace
 
 import pytest
+from knowledge_layer.llamaindex.hybrid import fuse_with_ranks
 from knowledge_layer.register import _apply_diversity_cap
 from knowledge_layer.register import _merge_results
 
 from aiq_agent.knowledge.schema import Chunk
 from aiq_agent.knowledge.schema import ContentType
 from aiq_agent.knowledge.schema import RetrievalResult
-from sources.knowledge_layer.src.llamaindex.hybrid import fuse_with_ranks
 
 
 def _chunk(chunk_id: str, score: float, rank: int, file_name: str = "doc.pdf", collection: str | None = None) -> Chunk:

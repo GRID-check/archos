@@ -28,7 +28,7 @@ only.
 
 | When you | You must | What fails you |
 |---|---|---|
-| Reach for anything in `aiq_api` | Add it to `api_seam.py` and import it from there | `tests/aiq_agent/turn/test_api_seam.py` walks every module in `turn/` and `agents/piloti/` |
+| Reach for anything in `aiq_api` | Add it to `api_seam.py` and import it from there | The `agent-api-seam` import-linter contract (`pyproject.toml`, run by `task be:lint`), over every module in `aiq_agent` |
 | Add a wire field or a stage fact | Add it to `TurnResult` (`common/wire_v2.py`), lift it in `response.build_result`, and give it a test that reads it back | Nothing. A field nobody lifts is set, valid, and invisible |
 | Add setup I/O to the turn | Gather it with the existing `asyncio.gather` and let it fail open on its own | It lands on the time-to-first-byte path in series |
 

@@ -169,7 +169,7 @@ functions:
     project_collections: []
     generate_summary: true
     summary_model: summary_llm
-    summary_db: ${AIQ_SUMMARY_DB:-sqlite+aiosqlite:///./summaries.db}
+    summary_db: ${GRID_SUMMARY_DB:-sqlite+aiosqlite:///./summaries.db}
     top_k: 5
 
   remember:
@@ -228,7 +228,7 @@ workflow:
     log_response_max_chars: 2000
     verbose: true
   use_async_deep_research: false
-  checkpoint_db: ${AIQ_EVAL_CHECKPOINT_DB:-./checkpoints_oib_compliance_eval.db}
+  checkpoint_db: ${GRID_EVAL_CHECKPOINT_DB:-./checkpoints_oib_compliance_eval.db}
 
 eval:
   general:

@@ -11,7 +11,7 @@ next to the ``avg_len`` the collection was written with. Nothing is written.
 
 The rebuild (``scripts/qdrant_rebuild.py --copy-to``) measures the same way and
 writes the mean into the new collection; this is how to see the number first.
-It reads ``AIQ_QDRANT_URL`` and ``AIQ_QDRANT_API_KEY`` like the backend.
+It reads ``GRID_QDRANT_URL`` and ``GRID_QDRANT_API_KEY`` like the backend.
 
 EXIT CODES: ``0`` measured; ``2`` Qdrant could not be reached.
 """

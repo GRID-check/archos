@@ -50,7 +50,7 @@ def fleet(tmp_path, monkeypatch):
     queue.ensure_research_queue_table(db_url)
     monkeypatch.setenv("NAT_JOB_STORE_DB_URL", async_url)
     monkeypatch.setenv("GRID_WORKER_LIVENESS_FILE", str(tmp_path / "alive"))
-    monkeypatch.delenv("AIQ_DEEP_CHECKPOINT_DB", raising=False)
+    monkeypatch.delenv("GRID_DEEP_CHECKPOINT_DB", raising=False)
     monkeypatch.delenv("GRID_JOB_PAYLOAD_KEK", raising=False)
     yield db_url, async_url
     queue._queues.pop(db_url, None)

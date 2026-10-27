@@ -123,6 +123,54 @@ def test_a_second_definition_under_one_name_is_held_to_its_own_count(checker, re
     assert "src/a.py::A.p#2: grew from 70 to 75 lines" in capsys.readouterr().err
 
 
+def test_typescript_imports_and_the_blanks_between_them_are_not_counted(checker):
+    source = (
+        "import { a } from 'a'\n"
+        "import type { B } from 'b'\n"
+        "\n"
+        "import {\n"
+        "  c,\n"
+        "  d,\n"
+        "} from 'c'\n"
+        "import 'side-effect'\n"
+        "export { e } from './e'\n"
+        "export * as f from './f'\n"
+        "\n"
+        "const lazy = import('dynamic')\n"
+        "export { lazy }\n"
+    )
+
+    # Kept: the blank after the last import, the dynamic import, the local export list.
+    assert checker.counted_lines("x.tsx", source) == 3
+
+
+def test_python_imports_and_the_blanks_between_them_are_not_counted(checker):
+    source = (
+        "import os\n"
+        "from typing import (\n"
+        "    Any,\n"
+        "    cast,\n"
+        ")\n"
+        "\n"
+        "from x import y\n"
+        "\n"
+        "def f():\n"
+        "    import json\n"
+        "    return json\n"
+    )
+
+    assert checker.counted_lines("x.py", source) == 3
+
+
+def test_an_added_import_does_not_grow_a_baselined_file(checker, repo):
+    add(repo, "src/big.ts", "const a = 1\n" * 700)
+    checker.main(["--rebaseline"])
+
+    add(repo, "src/big.ts", "import { b } from './b'\nimport {\n  c,\n} from './c'\n" + "const a = 1\n" * 700)
+
+    assert checker.main([]) == 0
+
+
 def test_generated_test_and_copy_files_are_not_checked(checker):
     for path in (
         "frontends/ui/src/shared/cards/generated.ts",

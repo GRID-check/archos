@@ -37,7 +37,7 @@ import {
   humanMentions,
   reconcileMentions,
   type DraftMention,
-} from './mention-text'
+} from '@/lib/mentions/mention-text'
 
 /** Which of the three statements the addressee line makes. */
 export type AddresseeMode = 'agent' | 'people' | 'thread'

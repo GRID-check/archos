@@ -6,7 +6,7 @@ WHY THIS EXISTS
 Every drawing page an upload carries costs one generative vision call today
 (``adapter._analyze_drawing_page_with_vlm``): about 25 s for a multi-view sheet,
 56 s when the reply runs past its budget and is asked again, and it holds one of
-the fleet's ``AIQ_VLM_FLEET_CONCURRENCY`` slots the whole time, so it is also what
+the fleet's ``GRID_VLM_FLEET_CONCURRENCY`` slots the whole time, so it is also what
 every other office's upload waits behind. Jev 1.14 (TypeSafe, on OpenRouter's
 Decisions endpoint) reads images: a ``choice`` says what a page is, a ``box`` says
 where something is on it, in about half a second for about $0.0002 a page.

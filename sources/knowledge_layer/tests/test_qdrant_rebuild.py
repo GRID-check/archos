@@ -3,7 +3,7 @@
 The copy must carry every point with both vectors and its payload into a
 collection of another shard count, the searches must keep working through the
 alias after the switch, and switching back must be the whole rollback. Runs
-against ``AIQ_QDRANT_TEST_URL`` like ``test_qdrant_store.py``; skips locally
+against ``GRID_QDRANT_TEST_URL`` like ``test_qdrant_store.py``; skips locally
 without it and fails on CI without it.
 """
 
@@ -31,12 +31,12 @@ IDENTITY = {"embed_fingerprint": "fp-rebuild", "embed_model": "model-rebuild"}
 
 
 def _server_url() -> str:
-    url = os.environ.get("AIQ_QDRANT_TEST_URL", "").strip()
+    url = os.environ.get("GRID_QDRANT_TEST_URL", "").strip()
     if url:
         return url
     if os.environ.get("CI"):
-        pytest.fail("AIQ_QDRANT_TEST_URL is unset on CI: the Qdrant service container is missing")
-    pytest.skip("AIQ_QDRANT_TEST_URL not set; start a Qdrant 1.19 server to run these")
+        pytest.fail("GRID_QDRANT_TEST_URL is unset on CI: the Qdrant service container is missing")
+    pytest.skip("GRID_QDRANT_TEST_URL not set; start a Qdrant 1.19 server to run these")
 
 
 @pytest.fixture
@@ -48,7 +48,7 @@ def store(monkeypatch):
     alias = f"rebuild_office_{suffix}"
     monkeypatch.setitem(schema.ALIASES, schema.Physical.OFFICE, alias)
     monkeypatch.setitem(schema.ALIASES, schema.Physical.CORPUS, f"rebuild_corpus_{suffix}")
-    monkeypatch.setenv("AIQ_QDRANT_URL", _server_url())
+    monkeypatch.setenv("GRID_QDRANT_URL", _server_url())
     yield QdrantStore(client, IDENTITY)
     for name in (alias + schema.FIRST_VERSION, alias + "_v2"):
         if client.collection_exists(name):
@@ -115,14 +115,14 @@ def test_switch_serves_the_new_collection_and_switching_back_is_the_rollback(sto
 
 
 def test_copy_keeps_the_live_shape_by_default_and_refuses_existing_targets(store, monkeypatch):
-    monkeypatch.setenv("AIQ_QDRANT_SHARD_NUMBER", "3")
+    monkeypatch.setenv("GRID_QDRANT_SHARD_NUMBER", "3")
     store.upsert("proj_rebuild", _records(3))
     alias = schema.ALIASES[schema.Physical.OFFICE]
     with pytest.raises(ValueError):
         rebuild.copy_collection(store.client, schema.Physical.OFFICE, alias + schema.FIRST_VERSION)
     # The process running a rebuild need not carry the backend's settings: the
     # environment says 1 shard here, the live collection has 3, the copy gets 3.
-    monkeypatch.delenv("AIQ_QDRANT_SHARD_NUMBER")
+    monkeypatch.delenv("GRID_QDRANT_SHARD_NUMBER")
     rebuild.copy_collection(store.client, schema.Physical.OFFICE, alias + "_v2")
     assert store.client.get_collection(alias + "_v2").config.params.shard_number == 3
     with pytest.raises(RuntimeError, match="already exists"):
@@ -166,5 +166,5 @@ def test_cli_copies_then_switches_and_exits_two_when_unreachable(store, monkeypa
     assert script.main(["office", "--switch-to", alias + "_v2"]) == 0
     assert rebuild.current_collection(store.client, schema.Physical.OFFICE) == alias + "_v2"
 
-    monkeypatch.setenv("AIQ_QDRANT_URL", "http://127.0.0.1:9")
+    monkeypatch.setenv("GRID_QDRANT_URL", "http://127.0.0.1:9")
     assert script.main(["office", "--switch-to", alias + schema.FIRST_VERSION]) == 2

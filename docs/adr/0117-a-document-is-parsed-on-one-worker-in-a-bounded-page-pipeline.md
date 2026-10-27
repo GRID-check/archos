@@ -40,9 +40,9 @@ get faster and keep scaling out, without ever buying speed with a killed pod.
   working set, never of document length or page count.
 * Wall time per document should approach the longer of its local CPU work and
   its provider-bound work, not their sum.
-* The provider ceiling is fixed: `AIQ_VLM_FLEET_CONCURRENCY` (adapter.py:376)
+* The provider ceiling is fixed: `GRID_VLM_FLEET_CONCURRENCY` (adapter.py:376)
   and the deploy assertion
-  `maxReplicas × perPodConcurrency × AIQ_VLM_BATCH_WORKERS <= 2 × fleetConcurrency`
+  `maxReplicas × perPodConcurrency × GRID_VLM_BATCH_WORKERS <= 2 × fleetConcurrency`
   (deploy/pulumi/src/config.ts:3288) must keep holding.
 * The change lands in slices that are individually shippable and individually
   measurable, because the failing signal (a slow job, a killed pod) is otherwise
@@ -68,7 +68,7 @@ they are.
 
 * **The unit of parallelism inside a job is a window of pages, not the
   document.** A fixed-size window (start at
-  `AIQ_INGEST_PAGE_WINDOW`, default 8) is extracted, screened, rendered and
+  `GRID_INGEST_PAGE_WINDOW`, default 8) is extracted, screened, rendered and
   vision-analysed; a page leaves the window as soon as its outputs (text
   documents, table documents, caption, raster bytes) are materialised into the
   per-file `all_documents` list, which is the same list the serial code builds
@@ -190,13 +190,13 @@ they are.
   parsed objects until `Page.close()`, and no page was closed, so the pass held
   the whole document (77 MiB per CAD sheet of 20 000 paths, 3.3 GiB for 40).
   Two plan collections OOM-killed a 12 GiB worker there, before any raster was
-  touched. Closing each page, and reading a page over `AIQ_PDF_PAGE_MAX_OBJECTS`
+  touched. Closing each page, and reading a page over `GRID_PDF_PAGE_MAX_OBJECTS`
   with PDFium instead of pdfplumber, made the pass flat (366 MiB for the same
   40 sheets). Any window this record builds must keep that property: a page
   leaves pdfplumber closed, or the window bounds nothing.
 
 * Revisit when ingest wall time p95 stops improving under the window, or when the
-  fleet's vision calls already saturate `AIQ_VLM_FLEET_CONCURRENCY` — at that
+  fleet's vision calls already saturate `GRID_VLM_FLEET_CONCURRENCY` — at that
   point the pipeline's win is CPU-only and the next lever is the provider, not
   the pipeline.
 * The open follow-ups, to be measured rather than assumed: how much of the 103 s

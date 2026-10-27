@@ -21,7 +21,7 @@ _OPENROUTER = "https://openrouter.ai/api/v1"
 # Every env var any of these tests touches — cleared before each so the host's
 # real environment can never leak in.
 _ALL_ENVS = (
-    "AIQ_VLM_API_KEY",
+    "GRID_VLM_API_KEY",
     "SOME_FALLBACK_KEY",
     "OPENROUTER_API_KEY",
     "OPENAI_API_KEY",
@@ -158,7 +158,7 @@ def test_base_url_and_model_from_env(monkeypatch):
 
 def test_base_url_env_placeholder_falls_back_to_default(monkeypatch):
     monkeypatch.setenv("PRIMARY_KEY", "k")
-    monkeypatch.setenv("SOME_BASE_URL", "${AIQ_VLM_BASE_URL}")
+    monkeypatch.setenv("SOME_BASE_URL", "${GRID_VLM_BASE_URL}")
     result = resolve_llm_credential(
         primary_env="PRIMARY_KEY",
         default_base_url=_OTHER_HOST,
@@ -176,7 +176,7 @@ def test_base_url_env_placeholder_falls_back_to_default(monkeypatch):
 def test_provider_inference_openrouter(monkeypatch):
     monkeypatch.setenv("OPENROUTER_API_KEY", "or-key")
     result = resolve_llm_credential(
-        primary_env="AIQ_VLM_API_KEY",
+        primary_env="GRID_VLM_API_KEY",
         fallback_envs=("SOME_FALLBACK_KEY",),
         default_base_url=_OPENROUTER,
         default_model="m",

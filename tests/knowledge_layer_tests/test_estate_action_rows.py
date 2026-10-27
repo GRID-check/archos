@@ -18,11 +18,11 @@ What is pinned, per outcome:
 from __future__ import annotations
 
 import pytest
+from knowledge_layer import estate_grep
+from knowledge_layer import estate_listing
 
 from aiq_agent.common import grounding_block
 from aiq_agent.common import turn_status
-from sources.knowledge_layer.src import estate_grep
-from sources.knowledge_layer.src import estate_listing
 from tests.knowledge_layer_tests import test_estate_grep as grep_suite
 from tests.knowledge_layer_tests import test_estate_listing as listing_suite
 from tests.knowledge_layer_tests import test_estate_read as read_suite

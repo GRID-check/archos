@@ -38,7 +38,7 @@ const PROJECT_UPLOAD: readonly ProjectPermission[] = ['project:documents:write',
 import { canManageOfficeShelf } from '@/lib/authz/organizations'
 import { officeShelfCollectionNames } from '@/lib/office-shelf/collection'
 import { isOfficeShelfCollectionName } from '@/lib/office-shelf/collection-prefix'
-import { sessionCollectionName } from '@/lib/collection-scope'
+import { sessionCollectionName } from '@/lib/retrieval-scope/collection-scope'
 import { getProjectFolderAccess, restrictedCollectionBase } from '@/lib/authz/folder-access'
 import type { AuthorizedSession, GridSession } from '@/lib/auth/types'
 import { ForbiddenError, NotFoundError } from '@/lib/api/errors'
@@ -100,7 +100,7 @@ export function resolveRequestContext(
 
 /**
  * Re-exported under the name this module's callers already use. The rule itself
- * lives in `@/lib/collection-scope` — one definition, because a disagreement
+ * lives in `@/lib/retrieval-scope/collection-scope` — one definition, because a disagreement
  * between the name a request is authorized against and the name it is written
  * to is a cross-conversation read.
  */
