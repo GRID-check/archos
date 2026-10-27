@@ -502,3 +502,186 @@ export const manyCallsScene = (): TimedStep[] => {
     }),
   ].sort((a, b) => a.at - b.at)
 }
+
+// ── The filesystem verbs (ADR-0133): ls, glob, grep and read_file ───────────
+//
+// The rows exactly as the estate backend emits them (`estate.py`,
+// `estate_grep.py`, pinned by `test_estate_action_rows.py`): a place (`mount`)
+// and the folder inside it, never a path. Step 1 orients (a folder, a name
+// pattern, a literal search), step 2 reads what step 1 found. The numbers agree
+// as the backend's do: a folder counts everything below it, and the places
+// (`ls /`) count exactly what a grep everywhere searches when nothing fails.
+
+const SPEC = 'Baubeschreibung.pdf'
+
+/** The happy turn: list, glob and grep side by side, then a read, a folder card and a citable grep. */
+export const filesystemScene = (): TimedStep[] =>
+  [
+    retrievalOf(0, 1, 'Erst schauen, was in der Einreichung liegt und wo „Brandabschnitt“ steht.'),
+    ...call('call:fs1', 100, 400, {
+      round: 1,
+      verb: 'list',
+      mount: 'project',
+      target: '03 Einreichung',
+      status: 'ok',
+      counts: { files: 21, folders: 2 },
+    }),
+    ...call('call:fs2', 110, 1600, {
+      round: 1,
+      verb: 'search',
+      mode: 'exact',
+      query: 'Brandabschnitt',
+      mount: 'project',
+      target: '03 Einreichung',
+      status: 'ok',
+      counts: { hits: 14, documents: 3, searched: 21 },
+    }),
+    ...call('call:fs3', 120, 300, {
+      round: 1,
+      verb: 'list',
+      query: '**/*Brandschutz*',
+      mount: 'project',
+      status: 'ok',
+      counts: { files: 2 },
+    }),
+    retrievalOf(
+      2000,
+      2,
+      'Die Baubeschreibung nennt die Brandabschnitte auf S. 4–6; dort nachlesen.'
+    ),
+    ...call('call:fs4', 2100, 700, {
+      round: 2,
+      verb: 'read',
+      target: SPEC,
+      pages: '4-6',
+      shelf: 'project',
+      status: 'ok',
+      counts: { hits: 3, documents: 1 },
+    }),
+    sourcesOf(2800, 'call:fs4', 2, [{ name: SPEC, detail: 'S. 4', kind: 'project' }]),
+    // The folder card (`README.md`): a listing of the folder, with the card's counts.
+    ...call('call:fs5', 2110, 300, {
+      round: 2,
+      verb: 'list',
+      mount: 'project',
+      target: '03 Einreichung/Pläne',
+      status: 'ok',
+      counts: { files: 9, folders: 0 },
+    }),
+    ...call('call:fs6', 2120, 1400, {
+      round: 2,
+      verb: 'search',
+      mode: 'exact',
+      query: 'Fluchtweg',
+      mount: 'estate',
+      status: 'ok',
+      counts: { hits: 3, documents: 1, searched: 41 },
+    }),
+    sourcesOf(3500, 'call:fs6', 2, [{ name: CONCEPT, detail: 'S. 3', kind: 'project' }]),
+  ].sort((a, b) => a.at - b.at)
+
+export const filesystemCitations = (): CitationSource[] => [
+  citation('fs1', 1, SPEC, 'project', { page: 4 }),
+  citation('fs2', 2, CONCEPT, 'project', { page: 3 }),
+]
+
+/** Every outcome of the four verbs that is not a plain hit, one row each, over three steps. */
+export const filesystemEdgesScene = (): TimedStep[] =>
+  [
+    retrievalOf(
+      0,
+      1,
+      'Wörtlich nach der Sprinkleranlage suchen, im Projekt und in der Büroablage.'
+    ),
+    ...call('call:fe1', 100, 1200, {
+      round: 1,
+      verb: 'search',
+      mode: 'exact',
+      query: 'Sprinkler',
+      mount: 'estate',
+      status: 'empty',
+      counts: { hits: 0, documents: 0, searched: 41 },
+    }),
+    // The office's scan failed: 32 of 41 searched, three hits, and the row says it is a floor.
+    ...call('call:fe2', 110, 3000, {
+      round: 1,
+      verb: 'search',
+      mode: 'exact',
+      query: 'Brandabschnitt',
+      mount: 'estate',
+      incomplete: true,
+      status: 'ok',
+      counts: { hits: 3, documents: 1, searched: 32 },
+    }),
+    // The same failure without a hit: no hit in what was searched, and no no.
+    ...call('call:fe3', 120, 3000, {
+      round: 1,
+      verb: 'search',
+      mode: 'regex',
+      query: 'EI\\s?90',
+      mount: 'office',
+      target: 'Vorlagen',
+      incomplete: true,
+      status: 'empty',
+      counts: { hits: 0, documents: 0, searched: 9 },
+    }),
+    // A regex of plain words or'ed together reads as the words.
+    ...call('call:fe9', 130, 900, {
+      round: 1,
+      verb: 'search',
+      mode: 'regex',
+      query: 'EI 90|REI 90',
+      mount: 'project',
+      status: 'ok',
+      counts: { hits: 2, documents: 1, searched: 21 },
+    }),
+    retrievalOf(3200, 2, 'Den Personalordner und die Pläne ansehen.'),
+    // A folder that does not exist, and a restricted one: one answer for both.
+    ...call('call:fe4', 3300, 200, {
+      round: 2,
+      verb: 'list',
+      mount: 'project',
+      target: 'Personal',
+      status: 'empty',
+      missing: true,
+    }),
+    // A guessed path: the name the model asked for, „nicht gefunden“, as for any miss.
+    ...call('call:fe5', 3310, 200, {
+      round: 2,
+      verb: 'read',
+      target: 'Vertrag.pdf',
+      status: 'empty',
+      missing: true,
+    }),
+    ...call('call:fe6', 3320, 200, {
+      round: 2,
+      verb: 'list',
+      query: '*.dwg',
+      mount: 'project',
+      status: 'empty',
+      counts: { files: 0 },
+    }),
+    retrievalOf(3600, 3, 'Was es an Ablagen gibt.'),
+    ...call('call:fe7', 3700, 200, {
+      round: 3,
+      verb: 'list',
+      mount: 'estate',
+      status: 'ok',
+      counts: { files: 41, folders: 3 },
+    }),
+    // A place that is there and holds nothing: „leer“, and nothing for „Offen“.
+    ...call('call:fe10', 3720, 200, {
+      round: 3,
+      verb: 'list',
+      mount: 'chat',
+      status: 'ok',
+      counts: { files: 0, folders: 0 },
+    }),
+    ...call('call:fe8', 3710, 300, {
+      round: 3,
+      verb: 'list',
+      mount: 'law',
+      status: 'ok',
+      counts: { files: 9, folders: 0 },
+    }),
+  ].sort((a, b) => a.at - b.at)

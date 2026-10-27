@@ -732,6 +732,10 @@
     "de": "In der Breitansicht sehen Sie alle Seiten am linken Rand, sodass Sie eine Seite in einem langen Dokument anhand ihres Aussehens statt anhand ihrer Nummer finden."
   },
   {
+    "en": "A word search that could not search all your documents no longer looks complete in the Herleitung. It is drawn with a dashed ring and says that a missing hit is no proof; an incomplete search without a hit appears under „Offen“.",
+    "de": "Eine Wortsuche, die nicht alle Ihre Dokumente durchsuchen konnte, wird in der Herleitung nicht mehr als vollständig angezeigt. Sie ist mit einem gestrichelten Ring markiert und weist darauf hin, dass ein fehlender Treffer kein Beweis ist; eine unvollständige Suche ohne Treffer erscheint unter „Offen“."
+  },
+  {
     "en": "Above the folder view, a named way back such as „Zurück zu Planung“ now accompanies the breadcrumb trail.",
     "de": "Über der Ordneransicht steht jetzt ein benannter Weg nach oben wie „Zurück zu Planung“ neben der Pfadleiste."
   },
@@ -3650,6 +3654,10 @@
   {
     "en": "When Piloti looks into the office's past projects, it now quotes the decisions and requirements those projects wrote down in their project memory first, named by project, and then the documents. Restricted notes show up only in a chat that is yours alone and only if you may read the folder they came from.",
     "de": "Wenn Piloti frühere Projekte des Büros durchsucht, zitiert es jetzt zuerst die dort im Projektgedächtnis festgehaltenen Entscheidungen und Anforderungen, nach Projekt benannt, und danach die Dokumente. Eingeschränkte Notizen werden nur in einem Chat angezeigt, den nur Sie sehen, und nur dann, wenn Sie den Ordner lesen dürfen, aus dem sie stammen."
+  },
+  {
+    "en": "When Piloti looks through your documents, the Herleitung names folders and files the way you do: „Öffnet 03 Einreichung · 12 Dateien, 2 Ordner“ or „Sucht im Projekt nach PDF-Dateien“. A folder that is not there reads „nicht gefunden“, and one that is there but empty reads „leer“.",
+    "de": "Wenn Piloti Ihre Dokumente durchsucht, nennt die Herleitung Ordner und Dateien so, wie Sie es tun: „Öffnet 03 Einreichung · 12 Dateien, 2 Ordner“ oder „Sucht im Projekt nach PDF-Dateien“. Ein nicht vorhandener Ordner wird als „nicht gefunden“ angezeigt, ein vorhandener, aber leerer als „leer“."
   },
   {
     "en": "When Piloti looks up every place a word appears in your documents, each place now counts once. A word in a chapter heading, or in a passage that runs on to the next page, was counted two or more times and could be listed on pages where it does not stand.",

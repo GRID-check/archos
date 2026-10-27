@@ -146,7 +146,7 @@ _ESTATE_DESCRIPTIONS = {
     ),
     "glob": (
         "Finds files by name. `pattern` takes `*`, `**`, `?`, `[abc]` and `{a,b}` (`**/*Brandschutz*`); case is "
-        "ignored and ä/ae, ö/oe, ü/ue, ß/ss are folded, so `*Plaene*` finds `Pläne`. `path` limits it to one "
+        "ignored and ä/ae, ö/oe, ü/ue, ß/ss are folded, so `*Flaeche*` finds `Flächenwidmung`. `path` limits it to one "
         "folder; without it every mount is searched. Returns absolute paths, each with pages and Dokumentart, at "
         "most 100. Names only: for words inside documents use grep, for a topic knowledge_search."
     ),
