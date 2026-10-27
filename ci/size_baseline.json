@@ -146,7 +146,6 @@
     "frontends/ui/src/lib/product-feedback/service.ts": 815,
     "frontends/ui/src/lib/project-intake/service.ts": 628,
     "frontends/ui/src/lib/project-intake/types.ts": 601,
-    "frontends/ui/src/lib/project-profile/intake-definition.ts": 2539,
     "frontends/ui/src/lib/projects/folder-bin-repository.ts": 717,
     "frontends/ui/src/lib/projects/folder-bin.ts": 707,
     "frontends/ui/src/lib/projects/memory-service.ts": 1263,

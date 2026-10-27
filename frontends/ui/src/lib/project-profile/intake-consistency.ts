@@ -15,17 +15,17 @@
  * Pure and isomorphic — safe on the server or the client, no I/O.
  */
 
+import { answerKeyFor } from './intake-building-keys'
 import {
-  answerKeyFor,
-  answersFromProfile,
   buildingsFromAnswers,
   evaluateIntakeCondition,
   flattenIntakeQuestions,
-  formatIntakeAnswer,
   isIntakeAnswerProvided,
-  projectIntakeDefinitionV1,
-} from './intake-definition'
-import type { ProjectIntakeDefinition, ProjectIntakeQuestion } from './intake-definition'
+} from './intake-conditions'
+import { projectIntakeDefinitionV1 } from './intake-definition'
+import { answersFromProfile } from './intake-profile'
+import { formatIntakeAnswer } from './intake-vocabulary'
+import type { ProjectIntakeDefinition, ProjectIntakeQuestion } from './intake-types'
 import type { ProjectPrimitiveValue, ProjectProfile } from './types'
 
 export type ConsistencySeverity = 'warning' | 'inconsistency'
