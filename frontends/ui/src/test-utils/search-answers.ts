@@ -33,6 +33,7 @@ export function fileSearchHit(file: FileItem, passage: { text: string; page: num
     pagesNotRead: null,
     superseded: false,
     municipality: null,
+    author: null,
     matchedOn: passage ? ['content'] : ['name'],
     passage,
   }
