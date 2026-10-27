@@ -54,7 +54,7 @@ export default async function ProjectOverviewPage({ params }: PageProps): Promis
       getProjectRecord(session, id),
       // Piloti's reading, while its review is open (ADR-0111): the hero links to it.
       findProjectIntake(session.organizationId, id),
-      // The address tile, for whoever may decide the project's held mail (ADR-0134), as Settings › Dokumente's card.
+      // The address tile, for whoever may decide the project's held mail (ADR-0137), as Settings › Dokumente's card.
       isInboundMailEnabled(session) ? requireMailReviewer(session, id).then(() => true, () => false) : false,
     ])
     if (!data) notFound()

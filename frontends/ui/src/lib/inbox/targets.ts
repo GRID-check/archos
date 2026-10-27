@@ -268,7 +268,7 @@ const projectTarget: InboxTargetDescriptor = {
 }
 
 /**
- * Where a row of the E-Mail-Eingang (ADR-0134) lands, or null for any other
+ * Where a row of the E-Mail-Eingang (ADR-0137) lands, or null for any other
  * type. „E-Mails warten“ opens the list at its „Bereit“ section, where each
  * complete mail is one press: the row is one per project and carries no mail's
  * state (no sender, subject or completeness, by construction), so the filing

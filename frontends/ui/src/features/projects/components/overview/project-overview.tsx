@@ -95,7 +95,7 @@ export interface ProjectOverviewProps {
   setupProgress?: OverviewSetupProgress
   access: ProjectOverviewAccess
   /**
-   * The project's mail address tile (ADR-0134), for a reader who may decide the
+   * The project's mail address tile (ADR-0137), for a reader who may decide the
    * project's held mail; it draws itself once an address is active. Absent: no tile.
    */
   inboundMail?: { projectName: string; client?: InboundMailAddressClient }

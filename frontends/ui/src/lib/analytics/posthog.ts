@@ -128,7 +128,7 @@ export type PostHogEvent =
   | 'similar_passage_opened'
   | 'usage_notice_shown'
   | 'usage_notice_dismissed'
-  // The E-Mail-Eingang (ADR-0134): ids, codes and counts only, never a sender, subject, name or address.
+  // The E-Mail-Eingang (ADR-0137): ids, codes and counts only, never a sender, subject, name or address.
   | 'inbound_mail_details_opened'
   | 'inbound_mail_filed_as_suggested'
   | 'inbound_mail_filed_outcome_opened'

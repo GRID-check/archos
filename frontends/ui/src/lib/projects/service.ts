@@ -577,7 +577,7 @@ export async function setProjectStatus(
 
 /**
  * Closing ends every follow of the project's E-Mail-Verläufe (`project_closed`,
- * ADR-0134): a standing decision to file replies ends with the work. After the
+ * ADR-0137): a standing decision to file replies ends with the work. After the
  * close committed, so a failure is logged, never an error for a close that
  * happened; sweep 12 ends what this missed.
  */
