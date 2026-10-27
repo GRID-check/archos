@@ -266,6 +266,8 @@ export interface DocumentSearchRow {
   projectName: string | null
   folderId: string | null
   folderName: string | null
+  /** `project_folders.path`, the stored path from the shelf root; '' at the root. */
+  folderPath: string
   collectionName: string
   status: string
   contentType: string | null
@@ -310,6 +312,8 @@ export async function searchDocumentPage(
         projectName: projects.name,
         folderId: documents.folderId,
         folderName: projectFolders.name,
+        // The path is stored and rewritten with every rename and move (`documents/shelf-folders.ts`), so the page reads it off the join it already has.
+        folderPath: sql<string>`coalesce(${projectFolders.path}, '')`,
         collectionName: documents.collectionName,
         status: documents.status,
         contentType: documents.contentType,

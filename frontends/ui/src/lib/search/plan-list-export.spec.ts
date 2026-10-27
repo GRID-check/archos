@@ -24,7 +24,8 @@ const hit = (overrides: Partial<DocumentHit> = {}): DocumentHit => ({
   projectId: 'p1',
   projectName: 'Hubergasse 14',
   folderId: null,
-  folderName: 'Einreichung',
+  folderName: 'Grundrisse',
+  folderPath: '03 Einreichung/Grundrisse',
   status: 'completed',
   contentType: 'application/pdf',
   uploadedAt: '2026-10-20T08:00:00.000Z',
@@ -58,6 +59,7 @@ describe('renderPlanListCsv', () => {
     expect(header.split(';').slice(0, 4)).toEqual(['"Plannummer"', '"Index"', '"Planstand"', '"Maßstab"'])
     expect(first).toContain('"Einreichplan"')
     expect(first).toContain('"Hubergasse 14"')
+    expect(first).toContain('"03 Einreichung/Grundrisse"')
     expect(first).toContain('"ja"')
     expect(second).toContain('"Büroablage"')
     expect(second).toContain('"nein"')

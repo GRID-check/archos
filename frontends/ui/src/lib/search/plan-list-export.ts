@@ -50,7 +50,7 @@ const COLUMNS: ReadonlyArray<{ key: ColumnKey; value: (hit: DocumentHit, diction
   },
   { key: 'author', value: (hit) => hit.author, width: 22 },
   { key: 'project', value: (hit, dictionary) => hit.projectName ?? (hit.shelf === 'office_shelf' ? dictionary.searchExport.officeShelf : null), width: 24 },
-  { key: 'folder', value: (hit) => hit.folderName, width: 20 },
+  { key: 'folder', value: (hit) => hit.folderPath || null, width: 28 },
   { key: 'documentDate', value: (hit) => hit.documentDate, width: 12 },
   { key: 'uploadedAt', value: (hit) => hit.uploadedAt.slice(0, 10), width: 12 },
   { key: 'uploadedBy', value: (hit) => hit.uploadedBy, width: 20 },

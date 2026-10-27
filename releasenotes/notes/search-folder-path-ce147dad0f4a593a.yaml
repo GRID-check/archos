@@ -1,0 +1,6 @@
+---
+improvements:
+  - >
+    The exported plan list now names each document's full folder path, such
+    as 03 Einreichung/Grundrisse, and hovering the folder in the search
+    register shows the same path.

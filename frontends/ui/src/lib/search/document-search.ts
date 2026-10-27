@@ -177,6 +177,7 @@ function toDocumentHit(row: DocumentSearchRow, passage: BackendSearchHit | undef
     projectName: row.projectName,
     folderId: row.folderId,
     folderName: row.folderName,
+    folderPath: row.folderPath,
     status: row.status,
     contentType: row.contentType,
     uploadedAt: row.createdAt.toISOString(),
