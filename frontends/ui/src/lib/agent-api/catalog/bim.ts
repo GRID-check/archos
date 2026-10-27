@@ -99,9 +99,11 @@ export const bimOperations = [
     summary: 'File a drawn diagram into a project',
     description:
       'File a diagram as documents of the project: the `svg` and its `source` (mermaid or excalidraw), a `title`, ' +
-      'and `runId`, the id of the answer it was drawn in (filing the same diagram twice files nothing twice). ' +
-      'Optionally `conversationId` so restricted-folder rules apply, and `edited: true` when a person reworked the drawing, ' +
-      'so the files name both authors. Returns `{ svg, pdf }`, `pdf` null when only ' +
+      'and `runId`, an id unique to this diagram: derive it from the answer it was drawn in and the diagram source, ' +
+      'so two diagrams in one answer get two ids. Filing again with the same `runId` files nothing twice and returns ' +
+      'the existing files. Optionally `answerId`, the answer the diagram came from, which links the filing to that ' +
+      'answer\'s trace; `conversationId` so restricted-folder rules apply; and `edited: true` when a person reworked ' +
+      'the drawing, so the files name both authors. Returns `{ svg, pdf }`, `pdf` null when only ' +
       'the SVG landed. Needs project:documents:write and project:documents:generate.',
     method: 'POST',
     path: '/api/projects/[id]/diagrams',

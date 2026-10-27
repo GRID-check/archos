@@ -20,7 +20,13 @@ export const fileDiagramSchema = z.object({
    * this line is the seam, and it is worth one comment rather than a wrong name
    * spreading inwards from it.
    */
-  runId: z.string().min(1).max(200),
+  runId: z
+    .string()
+    .min(1)
+    .max(200)
+    .describe(
+      'Unique to this diagram, derived from the answer it was drawn in and its source; the same runId files nothing twice'
+    ),
   title: z.string().min(1).max(200),
   sourceKind: z.enum(DIAGRAM_SOURCE_KINDS),
   /**
