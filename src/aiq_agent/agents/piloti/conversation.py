@@ -58,8 +58,7 @@ from aiq_agent.turn.commission import CommissionRefused
 
 from .clarify import ClarifyFn
 from .history import compact_tool_results
-from .history import prune_tool_results
-from .history import trim_message_history
+from .history import history_window
 from .markers import detect_and_strip_confidence_marker
 from .markers import detect_and_strip_escalation_marker
 from .models import ClarifyRequest
@@ -203,7 +202,7 @@ def _answer_update(
     cut to the passages the answer CITED (``history.compact_tool_results``);
     an uncited passage keeps its header so the next turn knows it exists.
     Older turns are pruned to what was said when the next turn's history is
-    built (``history.prune_tool_results``), so the budget holds answers, plus
+    built (``history.history_window``), so the budget holds answers, plus
     one turn of cited evidence.
     """
     update: dict[str, Any] = {field: getattr(result, source) for source, field in ANSWER_LIFTS}
@@ -410,9 +409,9 @@ class ConversationGraph:
         self._graph = self._build_graph()
 
     def _trimmed(self, state: ConversationState) -> list[BaseMessage]:
-        # The previous turn's tool results stay (a follow-up answers from
-        # them); older turns keep what was said. Then the token budget.
-        return trim_message_history(prune_tool_results(state.messages), self.max_history_tokens)
+        # The previous turn's tool results stay while they fit (a follow-up
+        # answers from them); what was said always stays. Then the token budget.
+        return history_window(state.messages, self.max_history_tokens)
 
     async def _clarifier_node(self, state: ConversationState) -> Command:
         original_query = get_latest_user_query(state.messages)

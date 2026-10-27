@@ -81,6 +81,7 @@ import {
   getAsk,
   recordAskOutcome,
 } from './service'
+import { CHAT_TURN_DEADLINE_SECONDS, DEFAULT_ASK_MAX_SECONDS } from './ask-wire'
 
 const SECRET = 'internal-secret'
 const ORG = 'org_1'
@@ -488,10 +489,17 @@ describe('getAsk and cancelAsk', () => {
     expect(endAsk).not.toHaveBeenCalled()
   })
 
+  it('leaves an ask alone while its turn may still answer, up to the chat turn deadline', async () => {
+    // The old bound (30 minutes) ended an ask whose turn the socket lets run 45.
+    row = askRow({ state: 'working', createdAt: new Date(Date.now() - (CHAT_TURN_DEADLINE_SECONDS - 60) * 1_000) })
+    expect((await getAsk(SESSION, row.id)).state).toBe('working')
+    expect(endAsk).not.toHaveBeenCalled()
+  })
+
   it('reads the longest an ask stays open from GRID_PILOTI_ASK_MAX_SECONDS', () => {
     expect(askMaxSeconds({ GRID_PILOTI_ASK_MAX_SECONDS: '600' })).toBe(600)
-    expect(askMaxSeconds({ GRID_PILOTI_ASK_MAX_SECONDS: 'x' })).toBe(1_800)
-    expect(askMaxSeconds({})).toBe(1_800)
+    expect(askMaxSeconds({ GRID_PILOTI_ASK_MAX_SECONDS: 'x' })).toBe(DEFAULT_ASK_MAX_SECONDS)
+    expect(askMaxSeconds({})).toBe(DEFAULT_ASK_MAX_SECONDS)
   })
 })
 
