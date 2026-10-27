@@ -253,6 +253,11 @@ without spending an attempt):
    (`lib/mail-thread/originals.ts`; `original_move_pending_at` makes it
    retry-safe, sweep 13 finishes it).
 
+`mail-thread-get` lists each entry's attachments by position: a filed one by
+its name when the reader may open its document, and one that was not filed
+(waiting, dismissed, infected, name-stopped, never staged) by its reason only,
+never its name, since that name became no document (RT-S13).
+
 A binned, deleted or archived Verlauf document is `last_failure:
 thread_document_gone`. A thread at 200 entries or 2 MiB refuses an append
 (`thread_full`).

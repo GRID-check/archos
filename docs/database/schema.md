@@ -1221,7 +1221,7 @@ One row per attachment a filed message carried, whatever became of it.
 | `id`, `organization_id`, `project_id` | | | |
 | `entry_id` | `uuid` | FK to `mail_thread_entries` CASCADE; unique `(entry_id, position)` | |
 | `position` | `integer` | ≥ 0 | The part's position; a file never staged follows the staged ones |
-| `filename` | `text` | 1..500 or NULL | Shown only to a reader who may see the document it became |
+| `filename` | `text` | 1..500 or NULL | Shown only to a reader who may see the document it became; a `not_filed` row's name to nobody (`mail-thread-get` returns null) |
 | `disposition` | `text` | `filed`/`already_present`/`not_filed` | |
 | `not_filed_reason` | `text` | exactly when `not_filed`; 15 codes (`pending`, `dismissed`, `expired`, `infected`, `scan_failed`, `type_not_accepted`, `encrypted`, `archive`, `size`, `limit`, `empty`, `screened`, `access`, `name_taken`, `unreadable`) | A not-filed file's bytes live only in the original |
 | `document_id` | `uuid` | FK `(document_id, project_id)` → `documents`, `SET NULL (document_id)`; none when `not_filed` | |

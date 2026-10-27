@@ -231,7 +231,7 @@ export interface MailThreadUnfollowResultView {
  */
 export interface MailThreadAttachmentView {
   position: number
-  /** The name as it arrived; null when hidden from this viewer or the file came without one. */
+  /** The name as it arrived; null when hidden from this viewer, not filed (`not_filed`), or the file came without one. */
   filename: string | null
   disposition: MailThreadAttachmentDisposition
   notFiledReason?: MailThreadAttachmentNotFiledReason

@@ -8,8 +8,9 @@ import 'server-only'
  *
  * What a thread view names is the reader's too: each entry's attachments are
  * listed by position (D36), but a document in a folder the reader may not
- * open is listed without its name or ids, so the count of what came with a
- * message stays true and nothing restricted is named. The waiting count is for
+ * open is listed without its name or ids, and one that was not filed without
+ * its name, so the count of what came with a message stays true and nothing
+ * restricted is named. The waiting count is for
  * people who may file mail (`project:documents:write`), and null for everyone
  * else. The original `.eml` of an entry is downloaded through its own route
  * (`…/entries/[entryId]/original`), never through these views.
@@ -66,7 +67,12 @@ function summaryView(thread: ThreadRow, follows: readonly MailThreadFollowRow[],
 /**
  * The attachments of one entry as this reader may see them (D36). Pure: an
  * attachment filed into a folder the reader may not open keeps its position
- * and disposition and loses its name and ids (`visible: false`).
+ * and disposition and loses its name and ids (`visible: false`). One that was
+ * not filed (waiting, dismissed, infected, name-stopped, never staged) keeps
+ * its reason and never its name: that name became no document anyone may
+ * read, and before filing only a reviewer reads it, so a thread reader, Piloti
+ * or an outside agent learns none (RT-S13; the rendered Verlauf prints none
+ * either).
  */
 export function attachmentViews(attachments: readonly EntryAttachment[], hiddenFolders: ReadonlySet<string>): MailThreadAttachmentView[] {
   return attachments.map((attachment) => {
@@ -76,7 +82,7 @@ export function attachmentViews(attachments: readonly EntryAttachment[], hiddenF
     if (!visible) return { position: attachment.position, filename: null, disposition: attachment.disposition, visible: false }
     return {
       position: attachment.position,
-      filename: attachment.filename,
+      filename: filed ? attachment.filename : null,
       disposition: attachment.disposition,
       ...(attachment.notFiledReason ? { notFiledReason: attachment.notFiledReason } : {}),
       ...(attachment.documentId ? { documentId: attachment.documentId } : {}),

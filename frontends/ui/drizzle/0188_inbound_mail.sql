@@ -424,7 +424,8 @@ CREATE TABLE IF NOT EXISTS "mail_thread_entry_attachments" (
   "position" integer NOT NULL,
   -- The name as it arrived, kept as the mail's own record of what it carried;
   -- NULL for a file that came without one. Shown only to a reader who may see
-  -- the document it became (`mail-thread-get`).
+  -- the document it became (`mail-thread-get`); a `not_filed` row's name is
+  -- shown to nobody, since it became no document.
   "filename" text,
   "disposition" text NOT NULL,
   "not_filed_reason" text,

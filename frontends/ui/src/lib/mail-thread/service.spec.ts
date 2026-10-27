@@ -31,7 +31,7 @@ const attachment = (overrides: Partial<EntryAttachment>): EntryAttachment => ({
 })
 
 describe('an entry’s attachments for the reader', () => {
-  it('names what the reader may open, and what was not filed', () => {
+  it('names what the reader may open, and never what was not filed (review D, finding 3)', () => {
     expect(
       attachmentViews(
         [attachment({}), attachment({ position: 2, filename: 'Plan.dwg', disposition: 'not_filed', notFiledReason: 'type_not_accepted', documentId: null, document: null })],
@@ -39,7 +39,8 @@ describe('an entry’s attachments for the reader', () => {
       ),
     ).toEqual([
       { position: 1, filename: 'S-101_C.pdf', disposition: 'filed', documentId: 'doc-1', visible: true },
-      { position: 2, filename: 'Plan.dwg', disposition: 'not_filed', notFiledReason: 'type_not_accepted', visible: true },
+      // Waiting, dismissed, infected or name-stopped: its name is the mail's, not a document's, and only a reviewer reads it.
+      { position: 2, filename: null, disposition: 'not_filed', notFiledReason: 'type_not_accepted', visible: true },
     ])
   })
 
