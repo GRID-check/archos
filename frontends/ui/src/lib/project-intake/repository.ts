@@ -41,7 +41,7 @@ export const MAX_OPEN_INTAKE_LOOKUP = 100
 /** Most dismissed values an intake keeps; the oldest go first. Each one is a key and a value. */
 export const MAX_DISMISSED_VALUES = 500
 
-const lenientArray = <T extends z.ZodTypeAny>(item: T) =>
+const lenientArray = <T extends z.ZodType>(item: T) =>
   z
     .array(z.unknown())
     .catch([])

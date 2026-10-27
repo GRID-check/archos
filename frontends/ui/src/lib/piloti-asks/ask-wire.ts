@@ -55,7 +55,7 @@ export const createAskSchema = z
       .describe('The question or request for Piloti, in the words the person would use, German or English.'),
     projectId: z
       .string()
-      .uuid()
+      .guid()
       .optional()
       .describe('The project Piloti should answer in, from project-list. Omit for the office as a whole.'),
     conversationId: conversationIdSchema
@@ -79,7 +79,7 @@ export const createAskSchema = z
 export type CreateAskRequest = z.infer<typeof createAskSchema>
 
 export const askParamsSchema = z.object({
-  id: z.string().uuid().describe('The ask id, from piloti-ask-create.'),
+  id: z.guid().describe('The ask id, from piloti-ask-create.'),
 })
 
 export const getAskQuerySchema = z

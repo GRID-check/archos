@@ -114,7 +114,7 @@ export const modelSearchQuerySchema = z.object({
 })
 
 export const modelConfigPutSchema = z.object({
-  overrides: z.record(
+  overrides: z.partialRecord(
     z.enum(AGENT_GROUP_IDS as [string, ...string[]]),
     // BYOK-aware shape (`author/slug` OR provider-native id, ADR-0022);
     // catalog membership is the real gate.
@@ -131,7 +131,7 @@ export const orgSettingsPutSchema = z.object({
   displayName: z.string().trim().max(200).nullable().optional(),
   defaultLocale: z.enum(locales).nullable().optional(),
   settings: z
-    .record(z.unknown())
+    .record(z.string(), z.unknown())
     .refine((bag) => !(CHAT_EFFORT_SETTING in bag) || isChatEffort(bag[CHAT_EFFORT_SETTING]), {
       message: `${CHAT_EFFORT_SETTING} must be one of: ${CHAT_EFFORTS.join(', ')}`,
       path: [CHAT_EFFORT_SETTING],

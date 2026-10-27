@@ -9,7 +9,7 @@ import { z } from 'zod'
 /** The most documents one cleanup may name. */
 export const CLEANUP_MAX_DOCUMENTS = 2000
 
-const ids = z.array(z.string().uuid()).max(CLEANUP_MAX_DOCUMENTS)
+const ids = z.array(z.guid()).max(CLEANUP_MAX_DOCUMENTS)
 
 /** `POST …/cleanup`: what the person decided, and what Piloti had proposed. */
 export const confirmCleanupSchema = z.object({ documentIds: ids, proposedIds: ids, aiUsed: z.boolean() }).strict()

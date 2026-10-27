@@ -55,6 +55,10 @@
               "de": "Eine von Piloti in einem Projekt gezeichnete Prozessdarstellung oder Kontur lässt sich jetzt manuell überarbeiten: „Als Skizze bearbeiten“ öffnet sie auf einer Zeichenfläche, und Ihre Version wird als SVG und PDF im Projekt abgelegt – gekennzeichnet als von Piloti entworfen und von Ihnen bearbeitet."
             },
             {
+              "en": "Ask Piloti for a Skizze, such as rooms by how they connect, a site with its access or two options side by side, and it draws one in Excalidraw right in the chat, never to scale. Inside a project you can file the sketch, or open it in Excalidraw, change it and file your version.",
+              "de": "Bitten Sie Piloti um eine Skizze, etwa von Räumen und ihren Verbindungen, einem Grundstück mit seiner Zufahrt oder zwei Optionen nebeneinander. Piloti erstellt sie direkt im Chat in Excalidraw, nie maßstabsgetreu. In einem Projekt können Sie die Skizze ablegen oder in Excalidraw öffnen, bearbeiten und Ihre Version ablegen."
+            },
+            {
               "en": "Piloti now finds and reads your documents the same way on every question: it lists a folder, searches the wording, and opens the pages it needs, and the Herleitung shows each of those steps by what it looked at. When no passage answers what you asked, Piloti says so and names what it searched, rather than calling the matter unregulated.",
               "de": "Piloti findet und liest Ihre Dokumente jetzt bei jeder Frage auf dieselbe Weise: Es listet Ordner auf, durchsucht den Wortlaut und öffnet die benötigten Seiten. Die Herleitung zeigt jeden dieser Schritte anhand der Inhalte, die Piloti dafür herangezogen hat. Wenn keine Textstelle Ihre Frage beantwortet, sagt Piloti das und nennt, wonach es gesucht hat, statt den Sachverhalt als ungeregelt zu bezeichnen."
             },
