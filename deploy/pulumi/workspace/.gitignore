@@ -1,0 +1,2 @@
+# Generated at deploy time by ../scripts/workspace-stack-file.mjs (ADR-0147).
+Pulumi.*.yaml

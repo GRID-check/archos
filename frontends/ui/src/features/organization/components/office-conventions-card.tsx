@@ -14,6 +14,7 @@
 import { type FC, useCallback, useEffect, useState } from 'react'
 import { toast } from 'sonner'
 
+import { decideOfficeConvention, getOfficeConventions } from '@/adapters/api/office-conventions-client'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
@@ -25,8 +26,6 @@ import type {
   ConventionLineView,
   OfficeConventionsView,
 } from '@/lib/office-conventions/office-conventions-wire'
-
-const ENDPOINT = '/api/organization/office-conventions'
 
 type Translate = ReturnType<typeof useTranslations>
 
@@ -97,10 +96,8 @@ export const OfficeConventionsCard: FC = () => {
 
   useEffect(() => {
     let cancelled = false
-    fetch(ENDPOINT)
-      .then(async (res) => {
-        if (!res.ok) throw new Error(String(res.status))
-        const body = (await res.json()) as OfficeConventionsView
+    getOfficeConventions()
+      .then((body) => {
         if (!cancelled) setView(body)
       })
       .catch(() => {
@@ -115,13 +112,7 @@ export const OfficeConventionsCard: FC = () => {
     async (lineKey: string, decision: 'confirmed' | 'declined' | 'undecided') => {
       setBusy(true)
       try {
-        const res = await fetch(ENDPOINT, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ lineKey, decision }),
-        })
-        if (!res.ok) throw new Error(String(res.status))
-        setView((await res.json()) as OfficeConventionsView)
+        setView(await decideOfficeConvention(lineKey, decision))
       } catch {
         toast.error(t('officeConventions.saveError'))
       } finally {

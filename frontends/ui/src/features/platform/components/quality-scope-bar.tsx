@@ -45,7 +45,7 @@ import {
   utcDay,
   type QualityScope,
 } from '@/lib/quality/scope'
-import type { QualityScopeOptions } from '@/lib/quality/scope-options'
+import { getQualityScopeOptions, type QualityScopeOptions } from '@/adapters/api/quality-scope-client'
 
 export interface QualityScopeBarProps {
   scope: QualityScope
@@ -59,8 +59,6 @@ export interface QualityScopeOptionsState {
   loading: boolean
   failed: boolean
 }
-
-const OPTIONS_ROUTE = '/api/platform/quality/scope-options'
 
 /** Why a custom range cannot be applied, or null. The API checks the same. */
 export function customRangeError(from: string, to: string): 'invalid' | 'inverted' | 'tooLong' | null {
@@ -100,10 +98,8 @@ export function useQualityScopeOptions(scope: QualityScope): QualityScopeOptions
   useEffect(() => {
     const controller = new AbortController()
     setState((previous) => ({ ...previous, loading: true, failed: false }))
-    fetch(`${OPTIONS_ROUTE}?${search}`, { signal: controller.signal })
-      .then(async (res) => {
-        if (!res.ok) throw new Error(String(res.status))
-        const body = (await res.json()) as QualityScopeOptions
+    getQualityScopeOptions(search, { signal: controller.signal })
+      .then((body) => {
         if (!controller.signal.aborted) setState({ options: body, loading: false, failed: false })
       })
       .catch(() => {

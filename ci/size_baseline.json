@@ -43,7 +43,6 @@
     "frontends/ui/src/features/bim/hooks/use-model-viewport.ts": 686,
     "frontends/ui/src/features/chat/components/AgentResponse.tsx": 1991,
     "frontends/ui/src/features/chat/components/ChatThinking.tsx": 989,
-    "frontends/ui/src/features/chat/components/SourcePreview.tsx": 2019,
     "frontends/ui/src/features/chat/components/reasoning/ReasoningFlow.tsx": 2110,
     "frontends/ui/src/features/chat/hooks/use-websocket-chat.ts": 1500,
     "frontends/ui/src/features/chat/lib/citations/model.ts": 1083,
