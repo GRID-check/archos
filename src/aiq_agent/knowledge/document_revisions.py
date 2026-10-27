@@ -203,7 +203,7 @@ def _json_object(content: str) -> dict[str, Any] | None:
         body = fenced.group(1)
     try:
         decoded = json.loads(body)
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         return None
     return decoded if isinstance(decoded, dict) else None
 

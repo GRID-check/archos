@@ -338,7 +338,7 @@ async def _call(
     except httpx.HTTPError as exc:
         logger.warning("Folder proposal LLM call failed: %s", type(exc).__name__)
         return None, "llm_request_failed", trace_id
-    except (KeyError, IndexError, TypeError, ValueError):
+    except KeyError, IndexError, TypeError, ValueError:
         logger.warning("Folder proposal LLM response had an unexpected shape")
         return None, "llm_response_malformed", trace_id
 

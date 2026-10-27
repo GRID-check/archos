@@ -109,7 +109,7 @@ class LLMProvider:
             f"No LLM configured for role '{role}' and no default LLM set. Call set_default() or configure() first."
         )
 
-    def with_model_overrides(self, overrides: Mapping[str, str]) -> "LLMProvider":
+    def with_model_overrides(self, overrides: Mapping[str, str]) -> LLMProvider:
         """Return a provider with per-org model overrides applied per group.
 
         Returns ``self`` unchanged when no override targets any group this
@@ -147,7 +147,7 @@ class LLMProvider:
             derived._llms[role] = _resolve(llm, self._groups.get(role))
         return derived
 
-    def with_reasoning_efforts(self, efforts: Mapping[str, str]) -> "LLMProvider":
+    def with_reasoning_efforts(self, efforts: Mapping[str, str]) -> LLMProvider:
         """Return a provider with the platform owner's thinking level applied per group.
 
         ``efforts`` is ``{agent_group: effort}`` as ``get_reasoning_efforts``
@@ -181,7 +181,7 @@ class LLMProvider:
             derived._llms[role] = _resolve(llm, self._groups.get(role))
         return derived
 
-    def with_zdr(self, zdr_only: bool) -> "LLMProvider":
+    def with_zdr(self, zdr_only: bool) -> LLMProvider:
         """Return a provider whose every OpenRouter LLM is pinned to ZDR endpoints.
 
         Like ``with_credential``, a ZDR policy applies to ALL groups — it is a
@@ -212,7 +212,7 @@ class LLMProvider:
             derived._llms[role] = _resolve(llm)
         return derived
 
-    def with_credential(self, credential) -> "LLMProvider":
+    def with_credential(self, credential) -> LLMProvider:
         """Return a provider whose every LLM uses the org's BYOK credential.
 
         Unlike model overrides, a credential applies to ALL groups — BYOK

@@ -12,13 +12,14 @@ from aiq_agent.agents.piloti.quote_patch import accept
 from aiq_agent.agents.piloti.quote_patch import patch_quotes
 from aiq_agent.agents.piloti.quote_patch import select
 from aiq_agent.agents.piloti.quote_patch import splice
-from aiq_agent.common import citation_verification
-from aiq_agent.common.citation_verification import SourceEntry
-from aiq_agent.common.citation_verification import SourceRegistry
-from aiq_agent.common.citation_verification import UnverifiedQuote
-from aiq_agent.common.citation_verification import closeness
-from aiq_agent.common.citation_verification import verify_citations
-from aiq_agent.common.citation_verification import verify_quoted_spans
+from aiq_agent.citations import quote_matching
+from aiq_agent.citations import quote_verification
+from aiq_agent.citations.entries import SourceEntry
+from aiq_agent.citations.quote_matching import UnverifiedQuote
+from aiq_agent.citations.quote_matching import closeness
+from aiq_agent.citations.quote_verification import verify_quoted_spans
+from aiq_agent.citations.registry import SourceRegistry
+from aiq_agent.citations.verification import verify_citations
 
 PASSAGE = (
     "Vorher steht ein Satz über Geländer und Brüstungen. Die lichte Durchgangshöhe von Treppen muss "
@@ -200,8 +201,8 @@ def test_select_reuses_the_verifiers_closeness(monkeypatch):
     def no_second_pass(*args: object) -> float:
         raise AssertionError("select() recomputed closeness")
 
-    monkeypatch.setattr(citation_verification, "_normalized_closeness", no_second_pass)
-    monkeypatch.setattr(citation_verification, "closeness", no_second_pass)
+    monkeypatch.setattr(quote_verification, "normalized_closeness", no_second_pass)
+    monkeypatch.setattr(quote_matching, "closeness", no_second_pass)
 
     assert flagged.nearest_closeness >= PATCH_FLOOR
     assert select([flagged]) == [flagged]

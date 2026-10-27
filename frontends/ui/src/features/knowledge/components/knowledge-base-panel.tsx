@@ -30,6 +30,7 @@ import {
 } from '@/components/ui/item'
 import { Skeleton } from '@/components/ui/skeleton'
 import { StatCard } from '@/components/ui/stat-card'
+import { getKnowledgeBase } from '@/adapters/api/knowledge-client'
 import { DocumentStatusBadge, documentStatusVariant, fileTypeIcon } from '@/features/documents/components/document-status'
 import { useLocale, useTranslations } from '@/i18n'
 import type { KnowledgeBaseStatus, KnowledgeFile, KnowledgeFileState } from '@/lib/knowledge/service'
@@ -196,10 +197,7 @@ export function KnowledgeBasePanel({ projectId }: KnowledgeBasePanelProps) {
   const load = useCallback(() => {
     setIsLoading(true)
     setHasError(false)
-    const corpusRequest = fetch('/api/knowledge-base').then((r) => {
-      if (!r.ok) throw new Error(`Failed to load knowledge base (${r.status})`)
-      return r.json() as Promise<KnowledgeBaseStatus>
-    })
+    const corpusRequest = getKnowledgeBase()
     // Project documents are complementary; their failure must not blank the
     // corpus view, so they resolve to an empty list instead of rejecting.
     // Every page: the stat cards count the project's documents, and a count
