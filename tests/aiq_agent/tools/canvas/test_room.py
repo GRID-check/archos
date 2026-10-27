@@ -3,16 +3,15 @@
 from __future__ import annotations
 
 import pytest
+from agent_testing.canvas import DOCUMENT
+from agent_testing.canvas import OK_BODY
+from agent_testing.canvas import ROOM_BODY
+from agent_testing.canvas import answering
 
 from aiq_agent.tools.canvas import presence
 from aiq_agent.tools.canvas.register import run_highlight
 from aiq_agent.tools.canvas.register import run_point
 from aiq_agent.tools.canvas.register import run_room
-
-from .conftest import DOCUMENT
-from .conftest import OK_BODY
-from .conftest import ROOM_BODY
-from .conftest import answering
 
 
 class TestTheRoom:

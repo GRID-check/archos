@@ -94,8 +94,9 @@ class TestInlineImageRedactionProcessor:
 
 class TestPipelineWiring:
     async def test_it_runs_ahead_of_every_other_processor(self):
+        from agent_testing.langfuse import _make_config
+
         from aiq_agent.observability.otel_header_redaction_exporter import otelcollector_redaction_telemetry_exporter
-        from tests.aiq_agent.observability.test_langfuse_trace_attributes import _make_config
 
         async with otelcollector_redaction_telemetry_exporter(_make_config(), None) as exporter:
             positions = exporter._processor_names

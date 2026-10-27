@@ -26,7 +26,7 @@ NVIDIA base-image removal — see §2, apart from the stock `qdrant/qdrant`,
 | `ingest-worker` | Ingestion tier (`GRID_ROLE=ingest-worker`): the one process that claims the durable ingest queue `POST /v1/ingest` fills (ADR-0076). Without it uploads sit pending. Mirrors the K8s ingest-worker Deployment | No (internal) |
 | `qdrant` | Shared Qdrant vector store (ADR-0115) — port 6333, with the API key Coolify generates (`SERVICE_PASSWORD_QDRANT`). One store every backend role (`aiq-agent`, `aiq-api`, `agent-worker`, `ingest-worker`) queries over HTTP. Mirrors the K8s Qdrant StatefulSet, single node | No (internal) |
 | `seaweedfs` | S3-compatible object storage — port 8333 | **Yes** (presigned PDF URLs) |
-| `postgres` | Three logical DBs: `aiq_jobs`, `aiq_checkpoints`, `grid_app` | No (internal) |
+| `postgres` | Three logical DBs: `jobs`, `checkpoints`, `grid_app` | No (internal) |
 | `dragonfly` | Redis-protocol shared cache + conversation bus (ADR-0020/0028) | No (internal) |
 | `gotenberg` | Office → PDF converter (ADR-0070), called by the frontend BFF only — port 3000. Required: Word, presentation, `.xls` and `.ods` files are indexed from its PDF (ADR-0071) | No (internal) |
 | `purger` | Grace-period hard-delete worker | No |

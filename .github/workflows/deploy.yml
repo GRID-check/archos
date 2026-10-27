@@ -462,6 +462,54 @@ jobs:
           POSTHOG_PROJECT_ID: ${{ vars.POSTHOG_PROJECT_ID }}
           POSTHOG_CLI_HOST: ${{ vars.POSTHOG_CLI_HOST }}
 
+      # ── ADR-0147 step 1b: the `workspace` project, previewed and never applied ──
+      #
+      # The namespace move runs the same program as a second project,
+      # `workspace`, beside this one. These two steps prove it can plan before
+      # the expand step creates anything: its ESC environment exists with every
+      # key renamed, its stack file (generated from Pulumi.dev.yaml, never
+      # committed) resolves, `main: ..` loads the program, and every secret
+      # decrypts. Both are best effort and run after the apply above, so neither
+      # can stop or change the staging deploy. Expand makes them required.
+      - name: Workspace stack - ESC environment (ADR-0147)
+        continue-on-error: true
+        working-directory: deploy/pulumi
+        run: |
+          export PATH="$HOME/.pulumi/bin:$PATH"
+          # Develop's workflow can run against an older DEPLOY_SHA (gotchas.md).
+          [ -x scripts/esc-workspace-env.sh ] || { echo "::notice::not in ${DEPLOY_SHA}; skipped"; exit 0; }
+          scripts/esc-workspace-env.sh matthiasbigl dev Pulumi.dev.yaml warn
+        env:
+          PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
+
+      - name: Workspace stack - preview only (ADR-0147)
+        continue-on-error: true
+        working-directory: deploy/pulumi
+        run: |
+          export PATH="$HOME/.pulumi/bin:$PATH"
+          [ -f workspace/Pulumi.yaml ] || { echo "::notice::not in ${DEPLOY_SHA}; skipped"; exit 0; }
+          node scripts/workspace-stack-file.mjs Pulumi.dev.yaml workspace/Pulumi.dev.yaml
+          cd workspace
+          pulumi stack select --create matthiasbigl/workspace/dev
+          pulumi config set workspace:imageTag "$IMAGE_TAG"
+          pulumi config set workspace:backendImage "$BACKEND_IMAGE_REF"
+          pulumi config set workspace:frontendImage "$FRONTEND_IMAGE_REF"
+          pulumi config set workspace:webImage "$WEB_IMAGE_REF"
+          if ! pulumi preview --policy-pack ../policy --json > .plan.json; then
+            echo "::warning::workspace preview failed (ADR-0147 step 1b) — the reason follows"
+            pulumi preview --policy-pack ../policy || true
+            exit 1
+          fi
+          {
+            echo "## Workspace stack preview (not applied)"
+            echo
+            echo '```json'
+            node -e 'console.log(JSON.stringify(require("./.plan.json").changeSummary ?? {}, null, 2))'
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+        env:
+          PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
+
   # Mirrors the staging job above (same runner, checkout action/version,
   # toolchain setup, working directories, secret mechanism, plan gates and
   # error handling) against the fully-configured prod stack. All staging-only

@@ -9,7 +9,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { SearchField } from '@/components/ui/search-field'
 import { Spinner } from '@/components/ui/spinner'
-import { useChatStore } from '@/features/chat'
+import { useChatStore } from '@/features/chat/store'
 import { useTranslations } from '@/i18n'
 import { assignPerson, listAssignmentCandidates, releasePerson } from '@/lib/assignments/client'
 import type { FileAssignee } from './project-file-workspace'

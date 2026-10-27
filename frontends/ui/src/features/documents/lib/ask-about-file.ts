@@ -3,7 +3,7 @@
  * The user types the question; retrieval is told the filename separately.
  */
 
-import { useChatStore } from '@/features/chat'
+import { useChatStore } from '@/features/chat/store'
 import type { DraftMention } from '@/lib/mentions/mention-text'
 import { documentDisplayName } from '@/lib/documents/display-name'
 import type { FileItem } from '../components/project-file-workspace'
