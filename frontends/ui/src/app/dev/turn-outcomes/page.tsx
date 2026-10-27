@@ -41,7 +41,7 @@ const config: AppConfig = { authRequired: false, fileUpload: getFileUploadConfig
 // `useWebSocketChat` resets any other user id on mount, and the cross-user
 // guard then empties the thread (gotchas.md).
 const USER = 'default-user'
-const HARNESS_STORAGE_KEY = 'aiq-chat-store:turn-outcomes'
+const HARNESS_STORAGE_KEY = 'grid-chat-store:turn-outcomes'
 const CONVERSATION_ID = 'turn-outcomes'
 
 interface TurnOutcomesProbe {

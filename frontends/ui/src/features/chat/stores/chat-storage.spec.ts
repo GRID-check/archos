@@ -23,7 +23,7 @@ import {
   type PersistedChatState,
 } from './chat-storage'
 
-const KEY = 'aiq-chat-store-spec'
+const KEY = 'grid-chat-store-spec'
 const NO_DRAFTS: Record<string, string> = {}
 
 const text = (id: string, content: string, extra: Partial<ChatMessage> = {}): ChatMessage => ({

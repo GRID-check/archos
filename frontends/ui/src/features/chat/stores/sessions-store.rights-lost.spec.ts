@@ -43,7 +43,7 @@ import { useChatStore } from '../store'
 import type { ChatMessage, Conversation } from '../types'
 import { chatMessagesKey, isAwaitingServerMessages } from './chat-storage'
 
-const STORE = 'aiq-chat-store'
+const STORE = 'grid-chat-store'
 const flush = () => new Promise((resolve) => setTimeout(resolve, 20))
 
 /** The error the adapter throws for a 403 `RESOURCE_RIGHTS_LOST`; the store knows it by name. */
