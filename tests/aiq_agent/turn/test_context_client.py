@@ -264,3 +264,33 @@ def test_a_missing_or_malformed_workspace_block_reads_as_none(request_context, o
     opener.open.return_value.read.return_value = json.dumps({"data": body}).encode("utf-8")
 
     assert client.fetch_turn_context(request_context).workspace is None
+
+
+def test_server_timing_is_recorded_as_phase_facts(request_context, opener):
+    response = opener.open.return_value
+    response.headers = {
+        "Server-Timing": (
+            'session;dur=3.2, access;dur=11, memory;dur=812.4;desc="ranked", cross-project;dur=2, total;dur=830.1'
+        )
+    }
+    blocks = client.fetch_turn_context(request_context, query="Wie hoch?")
+    assert blocks.timing == {
+        "bff_session_ms": 3.2,
+        "bff_access_ms": 11.0,
+        "bff_memory_ms": 812.4,
+        "bff_memory_desc": "ranked",
+        "bff_cross_project_ms": 2.0,
+        "bff_total_ms": 830.1,
+    }
+    # The blocks themselves are what they were: timing is beside them, never in them.
+    assert replace(blocks, timing={}) == ContextBlocks("PROFILE", "MEMORY", "POLICY")
+
+
+@pytest.mark.parametrize(
+    "header",
+    [None, "", "garbage", "memory;dur=abc", 'memory;dur=1;desc="Wie hoch ist die Attika?"', "Memory Phase;dur=1"],
+)
+def test_a_malformed_or_wordy_server_timing_puts_nothing_in_the_trace(header):
+    facts = client.parse_server_timing(header)
+    assert not any("Attika" in str(value) for value in facts.values())
+    assert "bff_memory_desc" not in facts

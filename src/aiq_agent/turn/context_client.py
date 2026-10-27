@@ -9,9 +9,12 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import urllib.error
 import urllib.request
 from dataclasses import dataclass
+from dataclasses import field
+from dataclasses import replace
 
 from aiq_agent.project_context import MEMORY_HEADER_MAX_CHARS
 from aiq_agent.project_context import GridRequestContext
@@ -40,6 +43,11 @@ class ContextBlocks:
     #: The WORKSPACE block (ADR-0123): who asks, where, and what is open now,
     #: this conversation's proposals included. None from an older BFF.
     workspace: str | None = None
+    #: Where the BFF spent its time, read off the route's ``Server-Timing``
+    #: (``bff_<phase>_ms``, and ``bff_memory_desc``: whether the memory read
+    #: waited for the query embed). Scalars only, never content; empty from an
+    #: older BFF. Recorded on the ``setup.project_context`` phase.
+    timing: dict[str, float | str] = field(default_factory=dict)
 
 
 #: The catalog is a dozen short lines; anything longer is cut at a line.
@@ -119,6 +127,35 @@ def _nullable_text(data: dict[str, object], field: str) -> str | None:
     return value
 
 
+#: A ``Server-Timing`` metric name or description the agent records: short tokens only.
+_TIMING_TOKEN = re.compile(r"^[a-z][a-z0-9-]{0,31}$")
+
+
+def parse_server_timing(header: str | None) -> dict[str, float | str]:
+    """``Server-Timing`` (W3C) as phase facts: ``bff_<name>_ms`` per metric, ``bff_<name>_desc`` per description. Pure.
+
+    Never raises: a malformed entry is skipped, and anything but a short token
+    is dropped, so nothing a header carries can put content into a trace.
+    """
+    facts: dict[str, float | str] = {}
+    for entry in (header or "").split(","):
+        name, *params = (part.strip() for part in entry.split(";"))
+        if not _TIMING_TOKEN.match(name):
+            continue
+        key = name.replace("-", "_")
+        for param in params:
+            label, _, value = param.partition("=")
+            value = value.strip().strip('"')
+            if label == "dur":
+                try:
+                    facts[f"bff_{key}_ms"] = round(float(value), 1)
+                except ValueError:
+                    continue
+            elif label == "desc" and _TIMING_TOKEN.match(value):
+                facts[f"bff_{key}_desc"] = value
+    return facts
+
+
 def _parse_blocks(body: object) -> ContextBlocks:
     if not isinstance(body, dict) or not isinstance(body.get("data"), dict):
         raise TurnContextError("the turn-context API returned an invalid data envelope")
@@ -167,10 +204,11 @@ def fetch_turn_context(request: GridRequestContext, *, query: str | None = None)
             if not 200 <= response.status < 300:
                 raise TurnContextError("the turn-context API refused the call", status=response.status)
             body = json.loads(response.read().decode("utf-8"))
+            timing = parse_server_timing(response.headers.get("Server-Timing"))
     except urllib.error.HTTPError as exc:
         raise TurnContextError(f"the turn-context API refused the call ({exc.code})", status=exc.code) from exc
     except (urllib.error.URLError, OSError) as exc:
         raise TurnContextError("the turn-context API could not be reached") from exc
     except (ValueError, UnicodeDecodeError) as exc:
         raise TurnContextError("the turn-context API returned malformed JSON") from exc
-    return _parse_blocks(body)
+    return replace(_parse_blocks(body), timing=timing)

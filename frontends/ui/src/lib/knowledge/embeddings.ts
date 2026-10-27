@@ -44,6 +44,12 @@ const EMBED_TIMEOUT_MS = 20_000
 export interface EmbedOptions {
   /** Per-call ceiling; the caller on a hot path knows its own budget. */
   timeoutMs?: number
+  /**
+   * Stop waiting when the caller learns the vector cannot matter (the memory
+   * digest starts the query embed beside its first read and drops it when that
+   * read finds nothing to rank). An aborted call answers null, silently.
+   */
+  signal?: AbortSignal
 }
 
 export interface EmbeddedNote {
@@ -83,9 +89,12 @@ export async function embedNotes(
         'x-grid-internal-token': process.env.GRID_INTERNAL_API_TOKEN ?? '',
       },
       body: JSON.stringify({ texts: batch }),
-      signal: AbortSignal.timeout(options.timeoutMs ?? EMBED_TIMEOUT_MS),
+      signal: options.signal
+        ? AbortSignal.any([options.signal, AbortSignal.timeout(options.timeoutMs ?? EMBED_TIMEOUT_MS)])
+        : AbortSignal.timeout(options.timeoutMs ?? EMBED_TIMEOUT_MS),
     })
   } catch (error) {
+    if (options.signal?.aborted) return null
     console.warn('[embeddings] Backend unreachable; staying on the lexical path:', error)
     return null
   }

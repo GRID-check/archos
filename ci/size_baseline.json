@@ -158,7 +158,7 @@
     "frontends/ui/src/lib/project-profile/intake-definition.ts": 2549,
     "frontends/ui/src/lib/projects/folder-bin-repository.ts": 725,
     "frontends/ui/src/lib/projects/folder-bin.ts": 791,
-    "frontends/ui/src/lib/projects/memory-service.ts": 1297,
+    "frontends/ui/src/lib/projects/memory-service.ts": 1280,
     "frontends/ui/src/lib/projects/repository.ts": 700,
     "frontends/ui/src/lib/projects/service.ts": 848,
     "frontends/ui/src/lib/request-context.ts": 652,
