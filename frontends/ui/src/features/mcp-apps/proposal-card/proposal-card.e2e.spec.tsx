@@ -116,9 +116,21 @@ async function connect() {
   return { client, bridge, app, contexts, delivered: () => delivered }
 }
 
+/** The proposal routes, as the door reaches them: a read answers the stored state, a press moves it. */
+function serveProposal(initial: 'proposed' | 'applied') {
+  let state: 'proposed' | 'applied' = initial
+  vi.mocked(callOperation).mockReset().mockImplementation(async (op) => {
+    if (op.name === 'proposal-apply') state = 'applied'
+    return { status: 200, ok: true, body: { proposal: proposal(state) } }
+  })
+  return { decideElsewhere: () => (state = 'applied') }
+}
+
+const calledOperations = () => vi.mocked(callOperation).mock.calls.map(([op]) => op.name)
+
 describe('the proposal card in a host', () => {
   it('draws proposal-get’s result in the host’s theme and language, and a press applies it through the door as the person', async () => {
-    vi.mocked(callOperation).mockResolvedValueOnce({ status: 200, ok: true, body: { proposal: proposal('proposed') } })
+    serveProposal('proposed')
     const { client, bridge, app, contexts, delivered } = await connect()
 
     // The host's model calls the tool; the host hands its result to the view.
@@ -136,17 +148,39 @@ describe('the proposal card in a host', () => {
     // A token the host did not give keeps Piloti's own value.
     expect(document.documentElement.style.getPropertyValue('--muted-foreground')).toBe('')
 
-    vi.mocked(callOperation).mockResolvedValueOnce({ status: 200, ok: true, body: { proposal: proposal('applied') } })
+    // The seed may be a stored result the host replays: the open card reads the proposal again, once.
+    await waitFor(() => expect(calledOperations()).toEqual(['proposal-get', 'proposal-get']))
     await act(async () => {
       await userEvent.click(screen.getByRole('button', { name: 'Übernehmen' }))
     })
 
     expect(await screen.findByText('Die Aktion wurde ausgeführt.')).toBeInTheDocument()
-    const [op, input, person] = vi.mocked(callOperation).mock.calls[1] ?? []
-    expect(op?.name).toBe('proposal-apply')
-    expect(input).toEqual({ params: { id: ID }, body: {} })
-    expect(person).toBe(session)
-    await waitFor(() => expect(contexts).toEqual([expect.stringContaining(`proposal ${ID}`)]))
+    const apply = vi.mocked(callOperation).mock.calls.find(([op]) => op.name === 'proposal-apply')
+    expect(apply?.[1]).toEqual({ params: { id: ID }, body: {} })
+    expect(apply?.[2]).toBe(session)
+    await waitFor(() =>
+      expect(contexts).toEqual([`Piloti proposal ${ID} is applied by Anna Berger; it is no longer open; do not apply or dismiss it.`]),
+    )
+
+    await app.close()
+    await bridge.close()
+    await client.close()
+  })
+
+  it('shows a replayed result that was decided since as decided, and tells the model it is no longer open', async () => {
+    const server = serveProposal('proposed')
+    const { client, bridge, app, contexts, delivered } = await connect()
+    // The host stored yesterday's open result; somebody applied the proposal since.
+    const result = (await client.callTool({ name: 'proposal-get', arguments: { params: { id: ID } } })) as CallToolResult
+    server.decideElsewhere()
+    await bridge.sendToolResult(result)
+    await waitFor(() => expect(delivered()).not.toBeNull())
+
+    render(<ProposalCardFrame result={delivered()} hostContext={app.getHostContext()} app={app} />)
+    expect(await screen.findByText('Die Aktion wurde ausgeführt.')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Übernehmen' })).toBeNull()
+    expect(calledOperations()).not.toContain('proposal-apply')
+    await waitFor(() => expect(contexts).toEqual([expect.stringContaining(`${ID} is applied`)]))
 
     await app.close()
     await bridge.close()

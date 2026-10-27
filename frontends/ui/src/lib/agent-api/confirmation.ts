@@ -17,7 +17,8 @@ import 'server-only'
  *    asks, its writes stay proposals;
  *  - the client declared form elicitation in the request's capabilities;
  *  - the operation is one the caller may see, the decision is `run`, and its
- *    annotations mark it a destructive write;
+ *    annotations mark it a destructive write, or it is a decision the person
+ *    makes (`personDecides`: applying or dismissing a proposal, ADR-0142);
  *  - a signing key exists ({@link requestStateKey}).
  *
  * The yes runs the call through `runOperation`'s whole path again:
@@ -130,10 +131,15 @@ export function declaresFormElicitation(req: ServerContext): boolean {
   return elicitation.form !== undefined || elicitation.url === undefined
 }
 
-/** The operation `call` names if the person must confirm it: visible, run, a destructive write. */
+/**
+ * The operation `call` names if the person must confirm it: visible, run, and
+ * a destructive write or a decision the person makes (`personDecides`: applying
+ * or dismissing a proposal, which the model never decides for them).
+ */
 function operationToConfirm(principal: AgentPrincipal, call: PendingCall): AgentOperation | null {
   const op = findVisibleOperation(principal, call.operation)
   if (!op || callDecision(principal, op) !== 'run') return null
+  if (op.personDecides) return op
   const annotations = annotationsOf(op)
   return !annotations.readOnlyHint && annotations.destructiveHint ? op : null
 }

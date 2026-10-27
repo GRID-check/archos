@@ -11,8 +11,10 @@
  * host's theme (`host-theme.ts`) and the host's language (`hostContext.locale`).
  * Its buttons call the app-only tools (`proposal-card-apply`,
  * `proposal-card-dismiss`) through the host, which run the proposal routes as
- * the person. After a decision the model is told what the person decided
- * (`ui/update-model-context`), so the next turn does not offer it again.
+ * the person. Whenever the card settles on a proposal that is no longer open
+ * (the person's press, a 409's re-read, a replayed result that turned out
+ * decided), the model is told it is no longer open (`ui/update-model-context`),
+ * so the next turn does not offer to apply it.
  *
  * `ProposalCardFrame` is the part a spec or a `/dev` preview drives without a
  * host: a tool result, a host context and something that calls tools.
@@ -37,23 +39,33 @@ export const APP_INFO = { name: 'piloti-proposal-card', version: '1.0.0' } as co
 
 type HostApp = Pick<App, 'callServerTool' | 'updateModelContext'>
 
-/** What the model reads after the person decided on the card: one line, in the catalog's words. */
-export function decisionContext(response: ProposalResponse): string {
+/** What the model reads once the card shows a proposal that is no longer open: one line, in the catalog's words. */
+export function settledContext(response: ProposalResponse): string {
   const { proposal } = response
-  return `The person ${proposal.status === 'dismissed' ? 'discarded' : `decided (${proposal.status})`} Piloti proposal ${proposal.id} on its card. Do not propose it again.`
+  const by = proposal.decidedByName ? ` by ${proposal.decidedByName}` : ''
+  return `Piloti proposal ${proposal.id} is ${proposal.status}${by}; it is no longer open; do not apply or dismiss it.`
 }
 
-/** The transport, telling the model about each decision. A host that refuses the context update changes nothing. */
+/**
+ * The transport, telling the model each settled state the card reads, once per
+ * proposal and status: a decision on the card, a 409's re-read, a replayed
+ * result that is already decided. A host that refuses the update changes nothing.
+ */
 function reportingTransport(app: HostApp, initial: ProposalResponse | null): ProposalTransport {
   const base = appProposalTransport(app, initial)
+  const told = new Set<string>()
   const report = async (response: ProposalResponse): Promise<ProposalResponse> => {
+    const key = `${response.proposal.id}:${response.proposal.status}`
+    if (response.proposal.status === 'proposed' || told.has(key)) return response
+    told.add(key)
     await app
-      .updateModelContext({ content: [{ type: 'text', text: decisionContext(response) }] })
+      .updateModelContext({ content: [{ type: 'text', text: settledContext(response) }] })
       .catch(() => undefined)
     return response
   }
   return {
     ...base,
+    get: (id) => base.get(id).then(report),
     apply: (id, body) => base.apply(id, body).then(report),
     dismiss: (id) => base.dismiss(id).then(report),
   }
@@ -67,21 +79,25 @@ function CardBody({ result, app }: { result: CallToolResult | null; app: HostApp
   if (!result) {
     return <p className="card-caption text-muted-foreground" data-testid="mcp-app-waiting">{t('cards.mcpApp.waiting')}</p>
   }
-  if (!initial) {
-    return <p className="text-muted-foreground text-sm" data-testid="mcp-app-unreadable">{t('cards.mcpApp.unreadable')}</p>
-  }
-  const card = cardOfProposal(initial.proposal, {
+  if (!initial) return <Unreadable />
+  const drawn = cardOfProposal(initial.proposal, {
     files: (count) => t('cards.mcpApp.fileTitle', { count }),
     memory: t('cards.mcpApp.memoryTitle'),
   })
-  if (!card) {
+  if (drawn.kind === 'not-drawn') {
     return <p className="text-muted-foreground text-sm" data-testid="mcp-app-decide-in-piloti">{t('cards.mcpApp.decideInPiloti')}</p>
   }
+  if (drawn.kind === 'invalid') return <Unreadable />
   return (
     <ProposalTransportProvider value={transport}>
-      <A2uiCard card={card} surfaceKey={`proposal-${initial.proposal.id}`} render={renderProposalCard} />
+      <A2uiCard card={drawn.card} surfaceKey={`proposal-${initial.proposal.id}`} render={renderProposalCard} />
     </ProposalTransportProvider>
   )
+}
+
+function Unreadable() {
+  const t = useTranslations('chat')
+  return <p className="text-muted-foreground text-sm" data-testid="mcp-app-unreadable">{t('cards.mcpApp.unreadable')}</p>
 }
 
 export function ProposalCardFrame({
@@ -121,7 +137,22 @@ export function ProposalCardApp() {
   useEffect(() => {
     if (app) setHostContext((previous) => ({ ...app.getHostContext(), ...previous }))
   }, [app])
-  if (error) console.error('[mcp-app] could not connect to the host', error)
+  if (error) {
+    console.error('[mcp-app] could not connect to the host', error)
+    return <UnconnectedFrame />
+  }
   if (!app) return null
   return <ProposalCardFrame result={result} hostContext={hostContext} app={app} />
+}
+
+/** No host to talk to: the unreadable line, in the browser's language, so the frame is never blank. */
+function UnconnectedFrame() {
+  const locale = resolveLocale(typeof navigator === 'undefined' ? undefined : navigator.language)
+  return (
+    <I18nProvider initialLocale={locale} fixedLocale>
+      <main className="text-foreground font-sans antialiased" data-testid="mcp-app-proposal-card">
+        <Unreadable />
+      </main>
+    </I18nProvider>
+  )
 }

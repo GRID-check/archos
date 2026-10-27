@@ -6,9 +6,11 @@
  * connected their assistant, through the proposal's own routes.
  *
  * The first read is the tool result the host handed the view: the card is
- * drawn without a round trip, and every later read (a 409's re-read) asks the
- * server again. There is no realtime channel in a host frame, so a colleague's
- * decision shows on the next read, not live.
+ * drawn without a round trip. A host may replay a stored result (a
+ * conversation reopened a day later), so the seed can be stale: with no channel
+ * (`live: false`) the card re-reads an open proposal once in the background
+ * (`useServerProposal`), and every later read (that one, a 409's) asks the
+ * server. A colleague's decision shows on the next read, not live.
  */
 
 import type { App } from '@modelcontextprotocol/ext-apps/react-with-deps'

@@ -685,8 +685,10 @@ sequenceDiagram
 | The resource | One HTML document, the same for every office: script and styles inline, CSP declared empty (no origin to load, connect to or frame), no permission, `prefersBorder: false`. Listed in `resources/list` and read with `text/html;profile=mcp-app` | built by `scripts/build-mcp-app-views.ts` into `frontends/ui/mcp-app-views/` (`bun run build:mcp-apps`; `build` and `dev:next` run it; gitignored; copied into the image) |
 | The link | `proposal-get` carries `_meta.ui.resourceUri` (and the deprecated flat `ui/resourceUri`). In `search` mode it is listed beside the meta-tools: a host links a view to a tool, and `call-operation` runs every operation | `drawsResultOf` in `APP_VIEWS` |
 | The buttons | `proposal-card-apply`, `proposal-card-dismiss`: `_meta.ui.visibility: ["app"]`, not catalog operations (no search hit, `call-operation` answers unknown). Each runs the operation it names (`proposal-apply`, `proposal-dismiss`) through `executeOperation`, so the route's `authz`, rate limit and schema decide; a refusal carries `{ status, code }` | `APP_TOOLS`; exposure `app: true` |
-| Who gets it | An outside agent on an office door. Not Piloti (it draws its own cards and never decides a proposal), not the platform door | `offersAppViews`, `isAppToolFor` |
-| Telemetry | A press is `agent_operation_called` / `agent-tool-call` with `decision_source: app`; the decision is the proposal's (`piloti.proposal.decided`, the decider the person) | `telemetry.ts` |
+| Who gets it | An outside agent on an office door whose client can draw it: on the 2026-07-28 era, one whose request capabilities name `io.modelcontextprotocol/ui` with `text/html;profile=mcp-app` (read off each request's `_meta` before the SDK serves it); on the 2025 era, which carries no capabilities, every outside client, as before. Not Piloti (it draws its own cards and never decides a proposal), not the platform door | `declaresMcpApps`, `appHostOf`, `offersAppViews`, `isAppToolFor` |
+| A model's own decision | `proposal-apply` and `proposal-dismiss` carry `personDecides`: an outside agent's call is put to the person first through elicitation, like a destructive write, on a 2026-07-28 client that declares form elicitation; elsewhere it runs as before | `confirmation.ts` |
+| Telemetry | A press is `agent_operation_called` / `agent-tool-call` with `decision_source: app` from a client that declared MCP Apps, `app-unverified` from one that declared nothing (the 2025 era); either is the host's word, not a signed answer like `elicitation`. The decision is the proposal's (`piloti.proposal.decided`, the decider the person) | `telemetry.ts` |
+| The view's data | `structuredContent` of `proposal-get` and the buttons' operations is never dropped for length; only the text is capped | `VIEW_DATA_OPERATIONS` in `discovery.ts` |
 
 **The view** draws the catalog card for the proposal's kind (`operation`,
 `file_operation`, `memory`) through `A2uiCard` with the chat's own receipts;
@@ -701,8 +703,16 @@ renderer (a view draws no `Text` leaf) and every dictionary namespace but
 
 **What the server cannot tell.** A view's `tools/call` and a model's look the
 same on the wire; the host enforces visibility. The buttons grant nothing an
-outside agent did not have (`proposal-apply` stays offered to it), and a host
-that does not render MCP Apps lists them to its model as two more tools.
+outside agent did not have (`proposal-apply` stays offered to it). A 2026-07-28
+client that does not declare MCP Apps never sees them; a 2025-era client that
+does not render MCP Apps lists them to its model as two more tools, and a call
+of one is recorded `app-unverified`.
+
+**A replayed result.** A host may replay a stored tool result. With no
+realtime channel in the frame, an open card re-reads the proposal once
+(`useServerProposal`), and every settled state, however the card reached it,
+is told to the model in one line ("is applied; it is no longer open; do not
+apply or dismiss it").
 
 **See it.** `/dev/mcp-apps` draws the built document in five host frames with
 the SDK's own `AppBridge`: host theme light and dark, no host styles, a German

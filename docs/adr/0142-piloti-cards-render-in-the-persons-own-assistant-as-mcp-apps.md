@@ -118,16 +118,40 @@ Chosen option 1.
   as the person (`callOperation`, the acting session), its `authz`, its rate
   limit and its schema. A refusal carries the route's status in
   `structuredContent` (`{ status, code }`), so the card shows a 409 as the
-  earlier decision it is. A call is recorded with `decisionSource: app`
-  (PostHog `agent_operation_called`, Langfuse `agent-tool-call`); the decision
-  itself is the proposal's (`decidedBy`, audit `piloti.proposal.decided`), as
-  for a press in Piloti.
-* **After a decision** the view tells the model in one line
-  (`ui/update-model-context`) that the person decided proposal X, so the next
-  turn does not offer it again.
-* **The extension** is declared in `capabilities.extensions` on the 2026-07-28
-  era to an outside agent. Nothing depends on the client declaring it back
-  (below).
+  earlier decision it is. The status and code travel as data from
+  `executeOperation` (`OperationRefusal`), never parsed from the message. A
+  call is recorded with `decisionSource: app` when the client declared MCP
+  Apps, `app-unverified` when it declared nothing (PostHog
+  `agent_operation_called`, Langfuse `agent-tool-call`); the decision itself is
+  the proposal's (`decidedBy`, audit `piloti.proposal.decided`), as for a press
+  in Piloti. The view's data (`structuredContent`) is never dropped for length:
+  only the text the model reads is capped (`VIEW_DATA_OPERATIONS`).
+* **A model's own decision.** `proposal-apply` and `proposal-dismiss` stay
+  operations an outside agent may call, and carry `personDecides`: on the
+  2026-07-28 era, to a client that declares form elicitation, the call is put
+  to the person first (`confirmThenRun`), as a destructive write is. A proposal
+  the model would apply may itself delete. Elsewhere (the 2025 era, or a client
+  without elicitation) the call runs as before, after the client's own
+  confirmation of a write.
+* **Every settled state is told to the model** (`ui/update-model-context`):
+  "Piloti proposal X is applied by Anna; it is no longer open; do not apply or
+  dismiss it", whether the card settled by the person's press, a 409's re-read
+  or a replayed result that turned out decided, once per proposal and status.
+* **A replayed result is re-read.** A host may hand the view a stored result
+  (a conversation reopened later). With no realtime channel in the frame
+  (`transport.live: false`), an open card reads the proposal once more in the
+  background (`useServerProposal`), so a proposal decided since shows decided.
+* **Who is offered the views.** MCP Apps 2026-01-26 negotiates on the
+  client's side: the client declares `io.modelcontextprotocol/ui` with its
+  `mimeTypes` in its capabilities, and servers SHOULD check before registering
+  UI-enabled tools. On the 2026-07-28 era the capabilities ride on every
+  request, so the door registers the resource, the link and the buttons only
+  when they name `text/html;profile=mcp-app` (`declaresMcpApps`), and then
+  echoes the extension in its own `capabilities.extensions` for a client that
+  reads `server/discover` (the 2026-01-26 spec does not ask the server to). A
+  2025-era request carries no capabilities (the door is stateless, there is no
+  `initialize` to read them from), so every outside client is offered the
+  views there, as below.
 
 ### Amends ADR-0065
 
@@ -161,19 +185,22 @@ dictionary namespaces its cards read are bundled
   view.
 * **What the server cannot know.** A `tools/call` from a view and one from a
   model look the same on the wire. The server does not treat a press as more
-  than what it is: it runs `proposal-apply` as the person, which an outside
-  agent could already call itself. The app-only tool grants nothing new; what
-  it adds is that a host that follows the spec carries the person's click and
-  not the model's guess. `decisionSource: app` is recorded as the host
-  reported it, as `elicitation` is.
-* **A host that does not render MCP Apps** lists the two app-only tools to its
-  model as ordinary tools. Their descriptions say they are the card's buttons.
-  Running one is running `proposal-apply` as the person, exactly as before;
-  nothing is widened. The 2025-era path (stateless, no `initialize` on the
-  request that lists tools) cannot condition the listing on the client's
-  declared capability, which the spec asks for with a SHOULD; on the 2026-07-28
-  era the capability is on every request and a later slice may narrow the
-  listing to clients that declare it.
+  than what it is: it runs `proposal-apply` as the person. The app-only tool
+  grants nothing new; what it adds is that a host that follows the spec
+  carries the person's click and not the model's guess. `decisionSource: app`
+  is therefore the host's word, given by a client that declared it renders MCP
+  Apps, and nothing more: unlike `elicitation`, whose yes is bound to an
+  HMAC-signed `requestState` the server minted for that one call, nothing here
+  proves a person pressed.
+* **A host that does not render MCP Apps.** On the 2026-07-28 era it is offered
+  none of it: no resource, no link, no button (`appHostOf`, tested). On the
+  2025 era it lists the two app-only tools to its model as ordinary tools,
+  their descriptions saying they are the card's buttons. A model's call of one
+  runs `proposal-apply` or `proposal-dismiss` as the person, without the
+  elicitation a model's direct call gets on the 2026-07-28 era, and is recorded
+  `app-unverified`, never `app`. That is the 2025 era's limit, accepted here
+  because the hosts that render MCP Apps today speak it, and recorded so a
+  later slice can drop the views from 2025-era clients once those hosts move.
 * **Piloti's own door and the platform door** get neither the resource, the
   link nor the buttons (`offersAppViews`, `isAppToolFor`): Piloti draws its
   cards itself and never decides a proposal (ADR-0105), and the platform door
@@ -204,8 +231,11 @@ with the SDK's `applyHostStyleVariables`; then each Piloti token in
 A token the host does not give keeps Piloti's value; a host that gives
 nothing gets Piloti's card. `hostContext.theme` sets Piloti's `.dark` class
 and the SDK's `data-theme` / `color-scheme`, so a host's `light-dark()` values
-and Piloti's dark tokens agree. Fonts come from `styles.css.fonts`
-(`applyHostFonts`). The language is `hostContext.locale` (`de-AT` → German).
+and Piloti's dark tokens agree. The host's `--font-sans` names its family,
+which applies where that family is installed; the host's `@font-face` rules
+(`styles.css.fonts`) are not applied, since the empty `resourceDomains` CSP
+would block a font served from the host's origin. The language is
+`hostContext.locale` (`de-AT` → German).
 
 ### What is withheld
 
@@ -235,8 +265,9 @@ and Piloti's dark tokens agree. Fonts come from `styles.css.fonts`
 * Bad, because the document is about 1.7 MB with A2UI 0.14 (React, the SDK with its own zod,
   A2UI, the receipts, three namespaces in two languages), read once per
   connection; `view-build.spec.ts` holds it under 2 MiB.
-* Bad, because a host that does not render MCP Apps shows its model two more
-  tools, and `search` mode lists seven tools instead of four (five to a model).
+* Bad, because on the 2025 era a host that does not render MCP Apps shows its
+  model two more tools, and `search` mode lists seven tools instead of four to
+  an MCP Apps client (five to its model).
 * Bad, because the host decides what the frame looks like around the card and
   whether it renders at all; Cursor's reported regressions are outside our
   reach.
@@ -253,16 +284,23 @@ and Piloti's dark tokens agree. Fonts come from `styles.css.fonts`
   parses as the card's input; the buttons are app-only (the SDK host helper
   `isToolVisibilityAppOnly`), absent from search and refused by
   `call-operation`, and run `proposal-apply` / `proposal-dismiss` through
-  `callOperation` as the person, with the route's status on a refusal; Piloti
-  and the platform door get none of it.
+  `callOperation` as the person, with the route's status on a refusal (the
+  route's, the read gate's and a thrown `ApiError`'s); Piloti and the platform
+  door get none of it, and `isAppToolFor` refuses Piloti's audience; a
+  2026-07-28 client that declared no MCP Apps gets none of it, a 2025-era press
+  is `app-unverified`; a model's `proposal-apply` / `proposal-dismiss` asks the
+  person first; a 50k-character proposal keeps its `structuredContent`.
 * `frontends/ui/src/lib/agent-api/operation-proposals.integration.spec.ts`
   (`task db:test:rls`): against Postgres, a member without the right who
-  presses the card's button is refused with the route's 403 and the proposal
-  stays open; the admin's press decides it; a second press is the 409.
+  presses the card's button (apply or dismiss) is refused with the route's 403
+  and the proposal stays open; the admin's press decides it; a second press is
+  the 409. A member who cannot read a target may not dismiss it in Piloti
+  either.
 * `frontends/ui/src/features/mcp-apps/proposal-card/proposal-card.e2e.spec.tsx`:
   the SDK's `App` and `AppBridge` and an MCP `Client` against the real door:
   the host's call of `proposal-get`, the card in the host's theme and language,
-  a press that runs `proposal-apply` as the person, the model told.
+  a press that runs `proposal-apply` as the person, the model told; a replayed
+  result decided since is re-read and shown decided.
 * `vocabulary.spec.tsx`: every card the view draws, in both languages, with the
   view's three namespaces only. `view-build.spec.ts`: the built document loads
   nothing, carries no secret or origin, and stays under budget.
@@ -274,15 +312,14 @@ and Piloti's dark tokens agree. Fonts come from `styles.css.fonts`
 * Spec: `specification/2026-01-26/apps.mdx` and `specification/draft/apps.mdx`
   in `modelcontextprotocol/ext-apps` (read 2026-10-27); SDK docs
   `docs/migrate-to-2.md`, `docs/testing-mcp-apps.md`.
-* **Found while proving the gate, not changed here.** `POST /api/proposals/[id]/dismiss`
-  asks only the kind's right in the proposal's project (`requireDecider`),
-  while `canDecide` also asks that the reader may read every target
-  (`readsEveryTarget`). A member who may decide in the project but cannot read
-  an operation proposal's target sees no buttons, yet the route lets them
-  dismiss it, in Piloti and through the card alike (the card shows no button,
-  so only a direct call reaches it). The card inherits the route's rule, as it
-  must; whether dismiss should ask `readsEveryTarget` too is a question for
-  `lib/proposals/service.ts` and its own change.
+* **Found while proving the gate, and fixed in the same change.**
+  `POST /api/proposals/[id]/dismiss` asked only the kind's right in the
+  proposal's project (`requireDecider`), while `canDecide` also asks that the
+  reader may read every target (`readsEveryTarget`). A member who could decide
+  in the project but not read an operation proposal's target saw no buttons,
+  yet a direct call dismissed it. Dismiss now asks
+  `requireTargetsOfOperationReadable` as apply does
+  (`lib/proposals/service.ts`), proven against Postgres.
 * Revisit when: the draft's server-side metadata location becomes stable and a
   host reads only one of the two places; a host starts sending the UI
   capability on 2025-era requests; or the bundle passes 2 MiB (then option 3,

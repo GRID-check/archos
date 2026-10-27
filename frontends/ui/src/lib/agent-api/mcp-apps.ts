@@ -21,11 +21,18 @@ import 'server-only'
  *    refuses them from any other server's view. Each runs the catalog
  *    operation it names through `executeOperation`, the path every call takes:
  *    the read gate, the route as the person, its `authz`, rate limit and
- *    schema. Recorded with `decisionSource: app`.
+ *    schema. Recorded with `decisionSource: app` when the client declared it
+ *    renders MCP Apps, `app-unverified` when it declared nothing.
  *
- * Offered to an outside agent on an office door only (`offersAppViews`):
- * Piloti's own door draws its cards itself, and decides no proposal; the
- * platform door has no card.
+ * Offered to an outside agent on an office door only (`offersAppViews`), and
+ * only to a client that can draw them: on a 2026-07-28 request, one whose
+ * capabilities name the extension with the MCP Apps mime type (MCP Apps,
+ * "Capability Negotiation": servers SHOULD check). A 2025-era request carries
+ * no capabilities (the door is stateless, so there is no `initialize` to read
+ * them from), and every outside client is offered them there, as before: a
+ * client that cannot render them lists the two app-only tools to its model,
+ * and a call of one is recorded as `app-unverified`. Piloti's own door draws
+ * its cards itself, and decides no proposal; the platform door has no card.
  */
 
 import { readFile } from 'node:fs/promises'
@@ -78,9 +85,31 @@ export function viewDocument(view: Pick<AppView, 'file'>, dir: string = VIEWS_DI
   return read
 }
 
-/** Whether `ctx`'s caller is offered the views: an outside agent on an office door. */
-export function offersAppViews(ctx: Pick<McpCallContext, 'principal'>): boolean {
-  return doorOfPrincipal(ctx.principal) === 'office' && audienceOf(ctx.principal) === 'external'
+/**
+ * Whether a 2026-07-28 request's client capabilities (`_meta`
+ * `io.modelcontextprotocol/clientCapabilities`) declare that it renders MCP
+ * Apps: the extension, with `text/html;profile=mcp-app` among its mime types.
+ */
+export function declaresMcpApps(capabilities: unknown): boolean {
+  const extensions = isRecord(capabilities) ? capabilities.extensions : undefined
+  const ui = isRecord(extensions) ? extensions[UI_EXTENSION] : undefined
+  const mimeTypes = isRecord(ui) ? ui.mimeTypes : undefined
+  return Array.isArray(mimeTypes) && mimeTypes.includes(RESOURCE_MIME_TYPE)
+}
+
+/** What a server for this request knows of its client's MCP Apps support (`McpCallContext.appHost`). */
+export function appHostOf(era: 'modern' | 'legacy', clientCapabilities: unknown): McpCallContext['appHost'] {
+  if (era === 'legacy') return 'unknown'
+  return declaresMcpApps(clientCapabilities) ? 'declared' : undefined
+}
+
+/** Whether `ctx`'s caller is offered the views: an outside agent on an office door, whose client may draw them. */
+export function offersAppViews(ctx: Pick<McpCallContext, 'principal' | 'appHost'>): boolean {
+  return ctx.appHost !== undefined && doorOfPrincipal(ctx.principal) === 'office' && audienceOf(ctx.principal) === 'external'
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
 /** The view that draws `operation`'s result, if one does. */
@@ -89,7 +118,7 @@ export function viewOf(operation: string): AppView | undefined {
 }
 
 /** The `_meta` a tool for `operation` carries on this caller's door: the view's URI, or nothing. */
-export function viewMetaOf(ctx: Pick<McpCallContext, 'principal'>, operation: string): { ui: { resourceUri: string } } | undefined {
+export function viewMetaOf(ctx: Pick<McpCallContext, 'principal' | 'appHost'>, operation: string): { ui: { resourceUri: string } } | undefined {
   const view = offersAppViews(ctx) ? viewOf(operation) : undefined
   return view ? { ui: { resourceUri: view.uri } } : undefined
 }
@@ -112,21 +141,18 @@ function registerViewResources(server: McpServer): void {
   }
 }
 
-/** The route's status in a refusal's own words (`(HTTP 409, CONFLICT)`), for the card to tell a 409 apart. */
-function refusalOf(result: CallToolResult, fallback = 500): AppToolRefusal {
-  const text = result.content.find((item) => item.type === 'text')
-  const match = text && 'text' in text ? /\(HTTP (\d{3})(?:, ([A-Z_]+))?/.exec(text.text) : null
-  return match ? { status: Number(match[1]), ...(match[2] ? { code: match[2] } : {}) } : { status: fallback }
+/** A refusal as the card reads it: the text, and the status and code in `structuredContent`. */
+function refused(result: CallToolResult, refusal: AppToolRefusal): CallToolResult {
+  return { ...result, isError: true, structuredContent: { status: refusal.status, ...(refusal.code ? { code: refusal.code } : {}) } }
 }
 
-function refused(result: CallToolResult, fallback?: number): CallToolResult {
-  return { ...result, isError: true, structuredContent: { ...refusalOf(result, fallback) } }
-}
+const notOffered = (tool: AppTool): CallToolResult =>
+  refused({ content: [{ type: 'text', text: `${tool.name} is not offered on this connection.` }] }, { status: 404, code: 'NOT_FOUND' })
 
-/** The operation input an app-only tool's flat arguments stand for. */
+/** The operation input an app-only tool's flat arguments stand for: the id is the path's, the rest the body (`sendsBody`). */
 function inputOf(tool: AppTool, args: Record<string, unknown>): OperationInput {
   const { id, ...rest } = args as { id: string } & Record<string, unknown>
-  return tool.operation === 'proposal-apply' ? { params: { id }, body: rest } : { params: { id } }
+  return tool.sendsBody ? { params: { id }, body: rest } : { params: { id } }
 }
 
 /**
@@ -137,19 +163,21 @@ function inputOf(tool: AppTool, args: Record<string, unknown>): OperationInput {
  */
 export async function runAppTool(ctx: McpCallContext, tool: AppTool, args: unknown): Promise<CallToolResult> {
   const op: AgentOperation | undefined = findOperation(tool.operation)
+  if (!op || !isOnDoor(op.name) || !offersAppViews(ctx) || !isAppToolFor(audienceOf(ctx.principal), tool.name)) return notOffered(tool)
   const parsed = tool.input.safeParse(args ?? {})
-  if (!op || !isOnDoor(op.name) || !isAppToolFor(audienceOf(ctx.principal), tool.name)) {
-    return refused({ content: [{ type: 'text', text: `${tool.name} is not offered on this connection.` }] }, 404)
-  }
   if (!parsed.success) {
-    return refused({ content: [{ type: 'text', text: `${tool.name}: ${parsed.error.issues[0]?.message ?? 'invalid input'}` }] }, 400)
+    const text = `${tool.name}: ${parsed.error.issues[0]?.message ?? 'invalid input'}`
+    return refused({ content: [{ type: 'text', text }] }, { status: 400, code: 'VALIDATION_ERROR' })
   }
   const input = inputOf(tool, parsed.data)
-  const outcome = await executeOperation({ ...ctx, decisionSource: 'app' }, op, input)
-  if ('refusal' in outcome) return refused(outcome.refusal)
+  const decisionSource = ctx.appHost === 'declared' ? 'app' : 'app-unverified'
+  const outcome = await executeOperation({ ...ctx, decisionSource }, op, input)
+  if ('refusal' in outcome) return refused(outcome.refusal, outcome)
   const result = fromOperationResult(op, outcome.result, input)
-  if (!outcome.result.ok) return { ...result, isError: true, structuredContent: { ...refusalOf(result, outcome.result.status), status: outcome.result.status } }
-  return result
+  if (outcome.result.ok) return result
+  const body = outcome.result.body
+  const code = isRecord(body) && typeof body.code === 'string' ? body.code : undefined
+  return refused(result, { status: outcome.result.status, ...(code ? { code } : {}) })
 }
 
 function registerAppTools(server: McpServer, ctx: McpCallContext): void {

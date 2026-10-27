@@ -26,7 +26,6 @@
 
 import {
   applyDocumentTheme,
-  applyHostFonts,
   applyHostStyleVariables,
   type McpUiHostContext,
   type McpUiStyleVariableKey,
@@ -97,5 +96,7 @@ export function applyHostTheme(context: McpUiHostContext | undefined, root: HTML
       else root.style.removeProperty(token)
     }
   }
-  if (styles?.css?.fonts) applyHostFonts(styles.css.fonts)
+  // `styles.css.fonts` (the host's @font-face rules) is not applied: the view's CSP declares no resource
+  // domain, so a font the host serves from its own origin could not load. `--font-sans` names the host's
+  // family, which applies where that family is installed, and falls back to Piloti's stack otherwise.
 }

@@ -85,6 +85,7 @@ describe.skipIf(!url)('Piloti’s proposed operations against Postgres', () => {
   let proposeOperation: typeof import('./operation-proposals').proposeOperation
   let getProposal: typeof import('@/lib/proposals/service').getProposal
   let applyProposal: typeof import('@/lib/proposals/service').applyProposal
+  let dismissProposal: typeof import('@/lib/proposals/service').dismissProposal
   let rename: import('./operation').AgentOperation
   const conversation = `conv_opprop_${STAMP}`
 
@@ -119,6 +120,7 @@ describe.skipIf(!url)('Piloti’s proposed operations against Postgres', () => {
     proposeOperation = (await import('./operation-proposals')).proposeOperation
     getProposal = (await import('@/lib/proposals/service')).getProposal
     applyProposal = (await import('@/lib/proposals/service')).applyProposal
+    dismissProposal = (await import('@/lib/proposals/service')).dismissProposal
     const found = (await import('./catalog')).findOperation('project-rename')
     if (!found) throw new Error('project-rename left the catalog: pick another write for this suite')
     rename = found
@@ -210,6 +212,8 @@ describe.skipIf(!url)('Piloti’s proposed operations against Postgres', () => {
     await expect(
       asMember(() => applyProposal(member, proposalId, new Request('http://localhost/api/proposals/apply', { method: 'POST' })))
     ).rejects.toMatchObject({ status: 403 })
+    // Nor may they dismiss it: no button means no decision, either way (it used to let the dismiss through).
+    await expect(asMember(() => dismissProposal(member, proposalId))).rejects.toMatchObject({ status: 403 })
     expect((await inOrg(() => getProposal(admin, proposalId))).status).toBe('proposed')
   })
 
@@ -224,6 +228,7 @@ describe.skipIf(!url)('Piloti’s proposed operations against Postgres', () => {
     const outside = (who: AuthorizedSession) => ({
       principal: { actor: 'external_agent' as const, clientId: 'client_claude', scopes: [], session: who },
       mode: 'tools' as const,
+      appHost: 'declared' as const,
     })
     // Filed in a conversation of the admin's own, then shared with the member, who reads the card and may not
     // decide it: its target is hidden from them.
@@ -247,6 +252,8 @@ describe.skipIf(!url)('Piloti’s proposed operations against Postgres', () => {
     const refused = await runAppTool(outside(member), tool('proposal-card-apply'), { id: proposalId })
     expect(refused.isError).toBe(true)
     expect(refused.structuredContent).toMatchObject({ status: 403 })
+    const dismissRefused = await runAppTool(outside(member), tool('proposal-card-dismiss'), { id: proposalId })
+    expect(dismissRefused.structuredContent).toMatchObject({ status: 403 })
     expect((await inOrg(() => getProposal(admin, proposalId))).status).toBe('proposed')
 
     const decided = await runAppTool(outside(admin), tool('proposal-card-dismiss'), { id: proposalId })

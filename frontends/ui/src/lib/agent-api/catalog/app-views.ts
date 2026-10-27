@@ -55,8 +55,10 @@ export interface AppTool {
   readonly operation: OperationName
   readonly title: string
   readonly description: string
-  /** Flat arguments, as a view's `callServerTool` sends them. */
+  /** Flat arguments, as a view's `callServerTool` sends them: `id` is the operation's path id. */
   readonly input: z.ZodObject<z.ZodRawShape>
+  /** Whether the arguments besides `id` are the operation's body; otherwise it is called with no body. */
+  readonly sendsBody: boolean
 }
 
 /** The proposal card's two buttons. Reading it again is `proposal-get` itself, which the model may call too. */
@@ -74,6 +76,7 @@ export const APP_TOOLS = [
         memoryScope: z.enum(['project']).optional().describe('A note: keep it in the project memory only.'),
       })
       .strict(),
+    sendsBody: true,
   },
   {
     name: 'proposal-card-dismiss',
@@ -83,6 +86,7 @@ export const APP_TOOLS = [
     description:
       'Pressed by the person on the proposal card. Discards the proposal through the proposal-dismiss route; nothing in the workspace changes.',
     input: z.object({ id: proposalIdArgument }).strict(),
+    sendsBody: false,
   },
 ] as const satisfies readonly AppTool[]
 

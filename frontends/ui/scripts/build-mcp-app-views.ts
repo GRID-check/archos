@@ -15,7 +15,7 @@
  *
  * Run by `bun run build` before `next build` and by `bun run dev:next`; the
  * output is not committed (`.gitignore`). `next build` does not bundle it: the
- * door reads the file at request time (`lib/agent-api/apps/views.ts`).
+ * door reads the file at request time (`viewDocument` in `lib/agent-api/mcp-apps.ts`).
  */
 
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
@@ -23,6 +23,7 @@ import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import postcss from 'postcss'
 import tailwind from '@tailwindcss/postcss'
+import { APP_VIEWS } from '../src/lib/agent-api/catalog/app-views'
 
 /** The slice of Bun's build API this script uses; `@types/bun` is not installed (Bun is the toolchain here, ADR-0103). */
 interface BunResolveArgs {
@@ -43,15 +44,17 @@ declare const Bun: {
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 
-/** One view: its document, its entry and its stylesheet. Each `file` is an `APP_VIEWS` entry's (`catalog/app-views.ts`). */
-const VIEWS = [
-  {
-    file: 'proposal-card.html',
-    title: 'Piloti proposal',
-    entry: 'src/features/mcp-apps/proposal-card/main.tsx',
-    css: 'src/features/mcp-apps/proposal-card/view.css',
-  },
-] as const
+/**
+ * Each view of the catalog (`APP_VIEWS`, `catalog/app-views.ts`): its document
+ * is its `file`, its code lives in `src/features/mcp-apps/<name>/`, entered at
+ * `main.tsx` and styled by `view.css`.
+ */
+const VIEWS = APP_VIEWS.map((view) => ({
+  file: view.file,
+  title: view.title,
+  entry: `src/features/mcp-apps/${view.name}/main.tsx`,
+  css: `src/features/mcp-apps/${view.name}/view.css`,
+}))
 
 /** A script inlined in HTML must not close its own element. */
 const inlineScript = (code: string): string => code.replace(/<\/script/gi, '<\\/script')

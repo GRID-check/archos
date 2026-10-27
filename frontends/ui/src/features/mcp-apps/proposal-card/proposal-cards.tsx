@@ -30,15 +30,19 @@ export interface ProposalTitles {
 }
 
 /**
- * The catalog card for `proposal`, or null for a kind this frame does not draw.
- * Validated by the card's own generated schema, the one a card in the chat is
+ * What the frame draws for `proposal`: its catalog card; `not-drawn` for a kind
+ * this frame does not draw (decided in Piloti); `invalid` for one whose card
+ * the card's own schema refuses, which is unreadable, not a kind to send away.
+ * Validated by the card's generated schema, the one a card in the chat is
  * validated by, which also fills its defaults.
  */
-export function cardOfProposal(proposal: ProposedChangeView, titles: ProposalTitles): GridCard | null {
+export type DrawnProposal = { kind: 'card'; card: GridCard } | { kind: 'not-drawn' } | { kind: 'invalid' }
+
+export function cardOfProposal(proposal: ProposedChangeView, titles: ProposalTitles): DrawnProposal {
   const raw = rawCardOf(proposal, titles)
-  if (!raw) return null
+  if (!raw) return { kind: 'not-drawn' }
   const parsed = gridCardSchema.safeParse(raw)
-  return parsed.success ? parsed.data : null
+  return parsed.success ? { kind: 'card', card: parsed.data } : { kind: 'invalid' }
 }
 
 function rawCardOf(proposal: ProposedChangeView, titles: ProposalTitles): Record<string, unknown> | null {

@@ -137,6 +137,13 @@ export function useServerProposal<K extends ProposedChangeKind>(
   useEffect(() => {
     if (channelStatus === 'live') reread()
   }, [channelStatus, reread])
+  // No channel (an MCP Apps host frame, ADR-0142): the first read may be a copy
+  // the host kept (a stored tool result it replays), so a card that shows the
+  // proposal open asks the server once more, in the background.
+  const shownOpen = open && !transport.live
+  useEffect(() => {
+    if (shownOpen) reread()
+  }, [shownOpen, reread])
 
   // `busy` reaches `live` only on the next render, so two presses in one tick
   // would both pass it; this ref is set before the first await.

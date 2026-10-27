@@ -97,17 +97,27 @@ right in your conversation: what the change would do, what it touches, every
 value in full, and **Apply** and **Discard**. Ask it, for example, „Show me
 what Piloti proposes for the Lindengasse project“.
 
-- **You press the button, not the assistant.** The buttons are part of the
-  card; your assistant's model cannot press them. Applying runs the change as
-  you, with your rights, exactly as the button in Piloti does: if you may not
-  decide it, the card says so and nothing changes.
+- **You press the button, not the assistant.** In an assistant that shows the
+  card, its buttons are yours: the assistant keeps them from its model, as MCP
+  Apps requires. Applying runs the change as you, with your rights, exactly as
+  the button in Piloti does: if you may not decide it, the card says so and
+  nothing changes.
+- **When the assistant wants to decide it itself.** If your assistant tries to
+  apply or discard a proposal on its own, Piloti asks you first in the
+  assistant's chat, where the assistant supports such questions (MCP's
+  elicitation, in clients on the 2026 protocol). Older clients cannot carry the
+  question; there the assistant applies a proposal only through its own
+  confirmation of a change, so read what it shows you before you agree.
 - **The card looks like your assistant.** It takes your assistant's colours,
   font, light or dark mode and language, and keeps Piloti's layout and words.
 - **Which assistants show it.** Claude (claude.ai and Claude Desktop), ChatGPT,
   VS Code and other clients that support MCP Apps. Cursor shows it from
   version 2.6, with occasional display problems in some versions. Everywhere
   else the proposal arrives as text, and your assistant can still apply it for
-  you when you say so.
+  you when you say so. An assistant that says it shows MCP Apps gets the card;
+  one on the 2026 protocol that does not say so gets only the text.
+- **An old conversation.** When you reopen a conversation, the card reads the
+  proposal again, so one decided in the meantime shows as decided.
 - **One kind is decided in Piloti.** A change to the project context (its
   facts) is compared with the current values, which only Piloti can show. The
   card says so; open the project in Piloti to decide it.

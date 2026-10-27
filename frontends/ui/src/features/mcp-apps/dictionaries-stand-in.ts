@@ -23,8 +23,14 @@ import { nav as deNav } from '@/i18n/dictionaries/de/nav'
 /** The namespaces a view reads; `proposal-card/vocabulary.spec.tsx` holds the card to them. */
 export const VIEW_NAMESPACES = ['chat', 'common', 'nav'] as const
 
-export const en = { chat: enChat, common: enCommon, nav: enNav } as unknown as Dictionary
-export const de = { chat: deChat, common: deCommon, nav: deNav } as unknown as Dictionary
+type ViewDictionary = Pick<Dictionary, (typeof VIEW_NAMESPACES)[number]>
+
+const enView: ViewDictionary = { chat: enChat, common: enCommon, nav: enNav }
+const deView: ViewDictionary = { chat: deChat, common: deCommon, nav: deNav }
+
+// The module stands in for `@/i18n/dictionaries`, whose type is the whole Dictionary; the view reads only these three.
+export const en = enView as Dictionary
+export const de = deView as Dictionary
 
 export const dictionaries: Record<Locale, Dictionary> = { en, de }
 
