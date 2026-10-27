@@ -86,17 +86,17 @@ services:
       # Same split as Kubernetes (ADR-0083): the first three go through the
       # transaction pooler (`pgbouncer`); what needs ONE server connection across
       # statements goes straight to `postgres`.
-      - NAT_JOB_STORE_DB_URL=postgresql+asyncpg://app:${SERVICE_PASSWORD_POSTGRES}@pgbouncer:5432/jobs
-      - GRID_CHECKPOINT_DB=postgresql://app:${SERVICE_PASSWORD_POSTGRES}@pgbouncer:5432/checkpoints
+      - NAT_JOB_STORE_DB_URL=postgresql+asyncpg://agent:${SERVICE_PASSWORD_POSTGRES}@pgbouncer:5432/jobs
+      - GRID_CHECKPOINT_DB=postgresql://agent:${SERVICE_PASSWORD_POSTGRES}@pgbouncer:5432/checkpoints
       # A research job's deep checkpoint: resume on another worker instead of starting over.
-      - GRID_DEEP_CHECKPOINT_DB=postgresql://app:${SERVICE_PASSWORD_POSTGRES}@pgbouncer:5432/checkpoints
-      - GRID_SUMMARY_DB=postgresql+psycopg://app:${SERVICE_PASSWORD_POSTGRES}@pgbouncer:5432/jobs
+      - GRID_DEEP_CHECKPOINT_DB=postgresql://agent:${SERVICE_PASSWORD_POSTGRES}@pgbouncer:5432/checkpoints
+      - GRID_SUMMARY_DB=postgresql+psycopg://agent:${SERVICE_PASSWORD_POSTGRES}@pgbouncer:5432/jobs
       # SSE LISTEN/NOTIFY: a notification reaches the one server session that ran
       # LISTEN, which a transaction pooler does not keep for the client.
-      - GRID_LISTEN_DB_URL=postgresql://app:${SERVICE_PASSWORD_POSTGRES}@postgres:5432/jobs
+      - GRID_LISTEN_DB_URL=postgresql://agent:${SERVICE_PASSWORD_POSTGRES}@postgres:5432/jobs
       # Session advisory locks (leader election, the re-ingest lock, the ghost-job
       # reaper): held by a session, so never through the pooler.
-      - GRID_LOCK_DB_URL=postgresql://app:${SERVICE_PASSWORD_POSTGRES}@postgres:5432/jobs
+      - GRID_LOCK_DB_URL=postgresql://agent:${SERVICE_PASSWORD_POSTGRES}@postgres:5432/jobs
       # ── Shared cache (Dragonfly, ADR-0020) ──
       - REDIS_URL=redis://dragonfly:6379/0
       # Stateless chat tier via the Dragonfly pub/sub conversation bus (ADR-0028).
@@ -492,7 +492,7 @@ services:
     environment:
       # Schema owner: DDL and data backfills. RLS does not apply to a table's
       # owner, which is what keeps backfills working.
-      - GRID_APP_MIGRATION_DATABASE_URL=postgresql://app:${SERVICE_PASSWORD_POSTGRES}@postgres:5432/grid_app
+      - GRID_APP_MIGRATION_DATABASE_URL=postgresql://agent:${SERVICE_PASSWORD_POSTGRES}@postgres:5432/grid_app
       # Read only so `ensure-rls-roles` can keep grid_app_rw's login in step
       # with the credential the app actually uses.
       - GRID_APP_DATABASE_URL=postgresql://grid_app_rw:${SERVICE_PASSWORD_GRIDRUNTIME}@pgbouncer:5432/grid_app
@@ -774,7 +774,7 @@ services:
       - WORKOS_API_KEY=${WORKOS_API_KEY:-}
       - GRID_PLATFORM_ORG_EXTERNAL_ID=${GRID_PLATFORM_ORG_EXTERNAL_ID:-grid-platform}
       # Schema owner: the carry-over reads every organization's folder grants.
-      - GRID_APP_MIGRATION_DATABASE_URL=postgresql://app:${SERVICE_PASSWORD_POSTGRES}@postgres:5432/grid_app
+      - GRID_APP_MIGRATION_DATABASE_URL=postgresql://agent:${SERVICE_PASSWORD_POSTGRES}@postgres:5432/grid_app
     depends_on:
       frontend:
         condition: service_healthy
@@ -958,7 +958,7 @@ services:
       context: ./deploy
       dockerfile: compose/postgres.Dockerfile
     environment:
-      POSTGRES_USER: app
+      POSTGRES_USER: agent
       POSTGRES_PASSWORD: ${SERVICE_PASSWORD_POSTGRES}
       POSTGRES_DB: jobs
     expose:
@@ -966,7 +966,7 @@ services:
     volumes:
       - postgres-data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U app -d postgres"]
+      test: ["CMD-SHELL", "pg_isready -U agent -d postgres"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -974,7 +974,7 @@ services:
     restart: unless-stopped
 
   # Renames the databases and the owner role from their AI-Q names to jobs,
-  # checkpoints and app (ADR-0145 row 10d), once, before anything that
+  # checkpoints and agent (ADR-0145 row 10d), once, before anything that
   # connects starts: every service that waits on postgres waits on this too.
   # A volume made with the new names, and the second run, change nothing. The
   # same script runs as the Kubernetes Job `pg-rename-legacy-names`.
@@ -985,7 +985,7 @@ services:
     command: ["sh", "/rename-legacy-names.sh"]
     environment:
       PGHOST: postgres
-      PGUSER: app
+      PGUSER: agent
       PGPASSWORD: ${SERVICE_PASSWORD_POSTGRES}
       ROLE_PASSWORD: ${SERVICE_PASSWORD_POSTGRES}
     depends_on:
@@ -1011,7 +1011,7 @@ services:
   pgbouncer:
     image: edoburu/pgbouncer:v1.26.0-p0@sha256:b17551c776ef7e5769ef80b956d20f85e2fd25dd8912d31d58f782aad495b711
     environment:
-      DATABASE_URLS: postgres://app:${SERVICE_PASSWORD_POSTGRES}@postgres:5432/jobs,postgres://app:${SERVICE_PASSWORD_POSTGRES}@postgres:5432/checkpoints,postgres://grid_app_rw:${SERVICE_PASSWORD_GRIDRUNTIME}@postgres:5432/grid_app
+      DATABASE_URLS: postgres://agent:${SERVICE_PASSWORD_POSTGRES}@postgres:5432/jobs,postgres://agent:${SERVICE_PASSWORD_POSTGRES}@postgres:5432/checkpoints,postgres://grid_app_rw:${SERVICE_PASSWORD_GRIDRUNTIME}@postgres:5432/grid_app
       POOL_MODE: transaction
       AUTH_TYPE: scram-sha-256
       MAX_CLIENT_CONN: "2000"

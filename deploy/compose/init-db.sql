@@ -32,9 +32,9 @@ SELECT 'CREATE DATABASE checkpoints' WHERE NOT EXISTS (SELECT FROM pg_database W
 SELECT 'CREATE DATABASE grid_app' WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'grid_app')\gexec
 
 -- Grant permissions
-GRANT ALL PRIVILEGES ON DATABASE jobs TO app;
-GRANT ALL PRIVILEGES ON DATABASE checkpoints TO app;
-GRANT ALL PRIVILEGES ON DATABASE grid_app TO app;
+GRANT ALL PRIVILEGES ON DATABASE jobs TO agent;
+GRANT ALL PRIVILEGES ON DATABASE checkpoints TO agent;
+GRANT ALL PRIVILEGES ON DATABASE grid_app TO agent;
 
 -- =============================================================================
 -- Langfuse (ADR-0044) — its own role, its own database
@@ -45,7 +45,7 @@ GRANT ALL PRIVILEGES ON DATABASE grid_app TO app;
 -- directory, so making it conditional would mean anyone who enables the
 -- profile later has to drop their volume or run this by hand.
 --
--- Separate from `app` on the same reasoning Kubernetes uses (see
+-- Separate from `agent` on the same reasoning Kubernetes uses (see
 -- `LANGFUSE.databaseUser`): Langfuse runs its own Prisma migrations, so its
 -- credential is one with DDL rights, and that has no business reaching
 -- `grid_app` where every tenant's conversations live. NOCREATEDB / NOCREATEROLE
@@ -77,8 +77,8 @@ SELECT 'CREATE DATABASE langfuse OWNER langfuse_app' WHERE NOT EXISTS (SELECT FR
 -- creates whichever roles are absent and keeps `grid_app_rw`'s password in step
 -- with GRID_APP_DATABASE_URL instead.
 --
--- WHO ACTUALLY OWNS THE SCHEMA HERE: `app`, the compose superuser — not
--- `grid_app_owner`. This stack points GRID_APP_MIGRATION_DATABASE_URL at `app`,
+-- WHO ACTUALLY OWNS THE SCHEMA HERE: `agent`, the compose superuser — not
+-- `grid_app_owner`. This stack points GRID_APP_MIGRATION_DATABASE_URL at `agent`,
 -- and only the test harness (`scripts/rls-test-db.sh`) migrates as
 -- `grid_app_owner`. That is deliberate: the harness runs the restricted shape on
 -- purpose, because it is the shape that catches privilege mistakes a

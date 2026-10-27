@@ -30,7 +30,7 @@ pytestmark = pytest.mark.skipif(
 
 OLD_DATABASES = ("aiq_jobs", "aiq_checkpoints")
 NEW_DATABASES = ("jobs", "checkpoints")
-ROLES = ("aiq", "app", "rename_helper")
+ROLES = ("aiq", "agent", "rename_helper")
 
 
 def _env(user: str) -> dict[str, str]:
@@ -98,14 +98,14 @@ def _assert_renamed(*, with_data: bool = True) -> None:
     assert set(NEW_DATABASES) <= databases
     assert not set(OLD_DATABASES) & databases
     roles = _roles()
-    assert "app" in roles
+    assert "agent" in roles
     assert not {"aiq", "rename_helper"} & roles
     for name in NEW_DATABASES:
-        assert _psql(f"SELECT pg_get_userbyid(datdba) FROM pg_database WHERE datname = '{name}'") == "app"
+        assert _psql(f"SELECT pg_get_userbyid(datdba) FROM pg_database WHERE datname = '{name}'") == "agent"
         assert _psql(f"SELECT datallowconn FROM pg_database WHERE datname = '{name}'") == "t"
     # The data came along, and the renamed role reaches it.
     if with_data:
-        assert _psql("SELECT count(*) FROM job_info", user="app", database="jobs") == "0"
+        assert _psql("SELECT count(*) FROM job_info", user="agent", database="jobs") == "0"
 
 
 def test_kubernetes_shape_renames_under_a_live_connection_and_a_second_run_is_a_no_op():
@@ -125,7 +125,7 @@ def test_kubernetes_shape_renames_under_a_live_connection_and_a_second_run_is_a_
         first = _run_script(_superuser())
         assert first.returncode == 0, first.stderr
         assert "aiq_jobs -> jobs" in first.stdout
-        assert "role aiq -> app" in first.stdout
+        assert "role aiq -> agent" in first.stdout
         assert held.wait(timeout=30) != 0, "the connection to the old database survived the rename"
     finally:
         held.kill()
@@ -142,21 +142,21 @@ def test_compose_shape_renames_the_superuser_it_logs_in_as():
     # script under the new name, which does not exist yet.
     _old_install(superuser=True)
 
-    first = _run_script("app")
+    first = _run_script("agent")
     assert first.returncode == 0, first.stderr
-    assert "role aiq -> app" in first.stdout
+    assert "role aiq -> agent" in first.stdout
     _assert_renamed()
 
-    second = _run_script("app")
+    second = _run_script("agent")
     assert second.returncode == 0, second.stderr
     assert "->" not in second.stdout
     _assert_renamed()
 
 
 def test_a_fresh_install_without_the_old_names_is_left_alone():
-    _psql("CREATE ROLE app LOGIN")
+    _psql("CREATE ROLE agent LOGIN")
     for name in NEW_DATABASES:
-        _psql(f"CREATE DATABASE {name} OWNER app")
+        _psql(f"CREATE DATABASE {name} OWNER agent")
 
     result = _run_script(_superuser())
 

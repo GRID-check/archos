@@ -4,7 +4,7 @@
 #
 #   aiq_jobs        -> jobs
 #   aiq_checkpoints -> checkpoints
-#   role aiq        -> app
+#   role aiq        -> agent
 #
 # Run on every deploy before the backend starts: the Kubernetes Job
 # `pg-rename-legacy-names` (deploy/pulumi/src/data/postgres-rename.ts) and the
@@ -40,14 +40,14 @@ wait_for_server() {
   done
 }
 
-# Compose logs in as the superuser it creates, `app` on a fresh volume and `aiq`
+# Compose logs in as the superuser it creates, `agent` on a fresh volume and `aiq`
 # on one from before this script. Kubernetes logs in as `postgres`, whose
 # password the operator sets a moment after superuser access is switched on,
 # so a refused login is retried for a while before it fails the run.
 log_in() {
   tries=0
   until q -c "SELECT 1" >/dev/null 2>&1; do
-    if [ "${PGUSER:-}" = app ] && (PGUSER=aiq && export PGUSER && q -c "SELECT 1" >/dev/null 2>&1); then
+    if [ "${PGUSER:-}" = agent ] && (PGUSER=aiq && export PGUSER && q -c "SELECT 1" >/dev/null 2>&1); then
       PGUSER=aiq
       export PGUSER
       return
@@ -126,8 +126,8 @@ wait_for_server
 log_in
 rename_database aiq_jobs jobs
 rename_database aiq_checkpoints checkpoints
-rename_role aiq app
-set_password app
+rename_role aiq agent
+set_password agent
 # Left behind only by a run that died between creating and dropping it.
 q -c "DROP ROLE IF EXISTS rename_helper"
 echo "rename of the legacy names: done"

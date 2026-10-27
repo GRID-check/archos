@@ -21,8 +21,8 @@ from aiq_api.plugin import AIQAPIWorker
 from aiq_api.roles import WebRole
 from nat.front_ends.fastapi.fastapi_front_end_plugin_worker import FastApiFrontEndPluginWorker
 
-POOLED = "postgresql+psycopg://app:pw@grid-pg-pooler-rw:5432/jobs"  # pragma: allowlist secret
-DIRECT = "postgresql://app:pw@grid-pg-rw:5432/jobs"  # pragma: allowlist secret
+POOLED = "postgresql+psycopg://agent:pw@grid-pg-pooler-rw:5432/jobs"  # pragma: allowlist secret
+DIRECT = "postgresql://agent:pw@grid-pg-rw:5432/jobs"  # pragma: allowlist secret
 
 
 @pytest.fixture(autouse=True)

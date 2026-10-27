@@ -69,11 +69,11 @@ Every other HTTP route is [`aiq-api`](#aiq-api-the-api-role)'s.
 | Variable | Default |
 |----------|---------|
 | `APP_ENV` | `production` |
-| `NAT_JOB_STORE_DB_URL` | `postgresql+asyncpg://app:aiq_dev@pgbouncer:5432/jobs` (pooled) |
-| `GRID_CHECKPOINT_DB` | `postgresql://app:aiq_dev@pgbouncer:5432/checkpoints` (pooled) |
-| `GRID_SUMMARY_DB` | `postgresql+psycopg://app:aiq_dev@pgbouncer:5432/jobs` (pooled) |
-| `GRID_LISTEN_DB_URL` | `postgresql://app:aiq_dev@postgres:5432/jobs` (direct: SSE LISTEN/NOTIFY) |
-| `GRID_LOCK_DB_URL` | `postgresql://app:aiq_dev@postgres:5432/jobs` (direct: session advisory locks) |
+| `NAT_JOB_STORE_DB_URL` | `postgresql+asyncpg://agent:aiq_dev@pgbouncer:5432/jobs` (pooled) |
+| `GRID_CHECKPOINT_DB` | `postgresql://agent:aiq_dev@pgbouncer:5432/checkpoints` (pooled) |
+| `GRID_SUMMARY_DB` | `postgresql+psycopg://agent:aiq_dev@pgbouncer:5432/jobs` (pooled) |
+| `GRID_LISTEN_DB_URL` | `postgresql://agent:aiq_dev@postgres:5432/jobs` (direct: SSE LISTEN/NOTIFY) |
+| `GRID_LOCK_DB_URL` | `postgresql://agent:aiq_dev@postgres:5432/jobs` (direct: session advisory locks) |
 | `GRID_ROLE` | `chat` |
 | `GRID_QDRANT_URL` | `http://qdrant:6333` (the `qdrant` service; no published port, no API key on the internal network; no embedded fallback: the backend keeps no volume) |
 | `GRID_QDRANT_API_KEY` | empty (set it with a Qdrant elsewhere that wants one) |
@@ -433,7 +433,7 @@ PostgreSQL 16 database.
 | CPU | 2 | 1 |
 | Memory | 4G | 2G |
 
-**Healthcheck**: `pg_isready -U app -d postgres` — interval 5s, timeout 5s, retries 5.
+**Healthcheck**: `pg_isready -U agent -d postgres` — interval 5s, timeout 5s, retries 5.
 
 **Restart**: `unless-stopped`.
 

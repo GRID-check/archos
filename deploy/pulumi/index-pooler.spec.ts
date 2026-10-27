@@ -155,7 +155,7 @@ describe("Postgres routing", () => {
     const pooled = postgresDsns().filter(({ url }) => url.hostname === POOLER);
     const pairs = new Set(pooled.map(({ url }) => `${url.pathname.slice(1)}/${decodeURIComponent(url.username)}`));
     const budgeted = new Set(
-      POOLED_POOLS.map(({ database, login }) => `${database}/${login === "app" ? "app" : "grid_app_rw"}`),
+      POOLED_POOLS.map(({ database, login }) => `${database}/${login === "app" ? "agent" : "grid_app_rw"}`),
     );
 
     expect(pairs).toEqual(budgeted);

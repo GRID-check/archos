@@ -25,7 +25,7 @@ export const RENAME_SCRIPT = resolve(__dirname, "../../../postgres/rename-legacy
  * It logs in as CloudNativePG's `postgres` superuser (`enableSuperuserAccess`
  * on the Cluster, its Secret `<cluster>-superuser`): a database can only be
  * renamed by a superuser or by its owner holding CREATEDB, and a role never by
- * itself, and the app role has neither. A rename refuses new sessions to the
+ * itself, and the agent role has neither. A rename refuses new sessions to the
  * old database and ends the open ones, so the deploy that carries it is a short
  * outage for the backend tiers, which the release note says. The operator sets
  * the renamed role's password from the app Secret itself; the script sets it

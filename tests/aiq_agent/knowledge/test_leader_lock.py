@@ -20,8 +20,8 @@ from aiq_agent.knowledge.leader_lock import leader_lock
 from aiq_agent.knowledge.leader_lock import leader_lock_async
 from aiq_agent.knowledge.leader_lock import require_direct_dsns
 
-DIRECT = "postgresql://app:pw@grid-pg-rw:5432/jobs"  # pragma: allowlist secret
-POOLED = "postgresql+psycopg://app:pw@grid-pg-pooler-rw:5432/jobs"  # pragma: allowlist secret
+DIRECT = "postgresql://agent:pw@grid-pg-rw:5432/jobs"  # pragma: allowlist secret
+POOLED = "postgresql+psycopg://agent:pw@grid-pg-pooler-rw:5432/jobs"  # pragma: allowlist secret
 
 
 @pytest.fixture(autouse=True)

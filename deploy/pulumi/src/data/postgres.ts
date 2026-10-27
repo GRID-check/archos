@@ -362,7 +362,7 @@ export function installPostgres(
 
   // 3. The Postgres cluster. `jobs` is the bootstrapped app DB; the other
   //    two databases are created by postInitSQL (as superuser, once) owned by
-  //    the app role, so the same credentials reach all three. A cluster made
+  //    the agent role, so the same credentials reach all three. A cluster made
   //    before ADR-0145 has them as `aiq_*`, renamed by `pg-rename-legacy-names`.
   const cluster = new k8s.apiextensions.CustomResource(
     "grid-pg",
@@ -405,7 +405,7 @@ export function installPostgres(
         // migration Job runs — and migration 0030 asserts exactly that rather
         // than trying to create them.
         // `<cluster>-superuser`, the only login that can rename a database or
-        // the app role (`postgres-rename.ts`).
+        // the agent role (`postgres-rename.ts`).
         enableSuperuserAccess: true,
         managed: {
           roles: [

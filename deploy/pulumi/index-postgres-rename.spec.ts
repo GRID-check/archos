@@ -57,7 +57,7 @@ describe("the rename of the AI-Q databases and role", () => {
     expect(graph.waitsOn(JOB, "pg-rename-legacy-names", CLUSTER, "grid-pg")).toBe(true);
   });
 
-  it("logs in as the Cluster's superuser and sets the app role's password", async () => {
+  it("logs in as the Cluster's superuser and sets the agent role's password", async () => {
     expect(inputs(CLUSTER, "grid-pg").spec.enableSuperuserAccess).toBe(true);
     const job = inputs(JOB, "pg-rename-legacy-names");
     const container = job.spec.template.spec.containers[0];
@@ -75,7 +75,7 @@ describe("the rename of the AI-Q databases and role", () => {
   it("bootstraps a fresh cluster with the new names", () => {
     const initdb = inputs(CLUSTER, "grid-pg").spec.bootstrap.initdb;
     expect(initdb.database).toBe("jobs");
-    expect(initdb.owner).toBe("app");
-    expect(initdb.postInitSQL[0]).toBe("CREATE DATABASE checkpoints OWNER app");
+    expect(initdb.owner).toBe("agent");
+    expect(initdb.postInitSQL[0]).toBe("CREATE DATABASE checkpoints OWNER agent");
   });
 });
