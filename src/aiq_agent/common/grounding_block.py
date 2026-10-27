@@ -310,7 +310,10 @@ def render_grounding_block(block: GroundingBlock) -> str:
     if block.coverage_gap:
         lines.append(f"{COVERAGE_GAP_LABEL} {_line(block.coverage_gap)}")
     lines.append("")
-    for index, hit in enumerate(block.hits, 1):
+    # Numbered on from the turn's earlier blocks (ADR-0139): an answer that
+    # writes [N] without its Quellen list names one passage of the turn, never
+    # „Result 1" of whichever of three calls it meant.
+    for index, hit in enumerate(block.hits, _reserve_result_numbers(len(block.hits))):
         lines.extend(_hit_lines(index, hit))
     lines.append("## Trace-Lanes")
     lines.append(_lanes_line(block.lanes))
@@ -519,14 +522,34 @@ def _doc_class_label(doc_class: str) -> str:
 #: to still be looked up.
 _MAX_CAPTURED_BLOCKS = 64
 
-_captured_blocks: ContextVar[OrderedDict[str, GroundingBlock] | None] = ContextVar(
-    "grid_captured_grounding_blocks", default=None
-)
+
+class _Capture(OrderedDict[str, GroundingBlock]):
+    """One turn's filed blocks, and the next passage number a block of the turn starts at."""
+
+    next_number: int = 1
+
+
+_captured_blocks: ContextVar[_Capture | None] = ContextVar("grid_captured_grounding_blocks", default=None)
 
 
 def begin_grounding_capture() -> Token:
     """Start filing this turn's rendered blocks. Pair with :func:`end_grounding_capture`."""
-    return _captured_blocks.set(OrderedDict())
+    return _captured_blocks.set(_Capture())
+
+
+def _reserve_result_numbers(count: int) -> int:
+    """The number this turn's next block starts at, and reserve ``count`` from it; 1 outside a turn.
+
+    One turn numbers every passage it reads once, across its blocks, so
+    „Result 3" of a turn names one passage. Outside a turn (a test, the job
+    runner, the MCP door) a block numbers from 1, as before.
+    """
+    captured = _captured_blocks.get()
+    if captured is None:
+        return 1
+    start = captured.next_number
+    captured.next_number = start + count
+    return start
 
 
 def end_grounding_capture(token: Token) -> None:

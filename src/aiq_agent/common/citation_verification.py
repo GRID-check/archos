@@ -1064,32 +1064,110 @@ def _look_entry(hit: GroundingHit, tool_name: str) -> SourceEntry:
     return entry
 
 
-def turn_numbering(results: Sequence[tuple[str, Any, Any]]) -> list[SourceEntry | None]:
-    """What each ``[N]`` names when the answer wrote no source list: this turn's one numbered block, else nothing.
+_RESULT_HEADER_RE = re.compile(r"^--- Result (\d+) ---$", re.MULTILINE)
 
-    ``results`` are this turn's tool results as ``(tool name, content,
-    artifact)``. A grounding block numbers its passages „Result 1", „Result 2"
-    …, so in a turn that read exactly one block, ``[N]`` can only mean its N-th
-    passage. In a turn that read two or more, the model's numbers follow none
-    of them: two stored answers of 2026-10-22/23 that read a search and two
-    passages cited Punkt 12 to the search's second hit (OIB-RL 2.1 p.4) and
-    drawings to OIB pages, by position. So a second block leaves every number
-    naming nothing, and it is labelled. Never the conversation's registry
-    order either: the model never saw that numbering (ADR-0139).
+
+def _cited_file(entry: SourceEntry) -> str:
+    """The file a passage is cited from: its citation key up to the page."""
+    key = entry.citation_key or entry.title or ""
+    return re.split(r",\s*(?:p\.|S\.|page)", key, maxsplit=1)[0].strip()
+
+
+def turn_passages(results: Sequence[tuple[str, Any, Any]]) -> dict[int, list[SourceEntry]]:
+    """This turn's passages by the „Result N" the model read them under; a number two blocks used holds both.
+
+    ``results`` are the turn's tool results as ``(tool name, content,
+    artifact)``. A turn numbers its passages on across its blocks
+    (``grounding_block._reserve_result_numbers``), so a number names one
+    passage; a block rendered outside a turn, or replayed, numbers from 1 and
+    can collide with another, and the collision is left for
+    :func:`resolve_unlisted_numbers` to settle by content.
     """
     from aiq_agent.common.citation_collector import hits_from_artifact
 
-    blocks: list[list[SourceEntry]] = []
+    numbered: dict[int, list[SourceEntry]] = {}
     for tool_name, content, artifact in results:
         hits = hits_from_artifact(artifact)
+        text = content if isinstance(content, str) else ""
         if hits is None:
-            block = get_grounding_block(content) if isinstance(content, str) else None
+            block = get_grounding_block(text) if text else None
             hits = block.hits if block is not None else None
-        if hits:
-            blocks.append([_entry_from_hit(hit, tool_name) for hit in hits])
-    if len(blocks) != 1:
+        if not hits:
+            continue
+        printed = [int(number) for number in _RESULT_HEADER_RE.findall(text)]
+        numbers = printed if len(printed) == len(hits) else list(range(1, len(hits) + 1))
+        for number, hit in zip(numbers, hits, strict=True):
+            entry = _entry_from_hit(hit, tool_name)
+            held = numbered.setdefault(number, [])
+            if not any(
+                _cited_file(other) == _cited_file(entry) and other.citation_key == entry.citation_key for other in held
+            ):
+                held.append(entry)
+    return numbered
+
+
+_SENTENCE_RE = re.compile(r"(?<=[.!?])\s+|\n+")
+_KEY_WORD_RE = re.compile(r"[^\W\d_][^\W_]{3,}")
+
+
+def _overlap(sentence: str, entry: SourceEntry) -> float:
+    """The share of the sentence's key words (four letters or more) the passage text holds."""
+    words = {word.casefold() for word in _KEY_WORD_RE.findall(_INLINE_CITATION_RE.sub("", sentence))}
+    if not words:
+        return 0.0
+    held = (entry.chunk_text or "").casefold()
+    return sum(1 for word in words if word in held) / len(words)
+
+
+def _best_by_content(sentences: Sequence[str], entries: Sequence[SourceEntry]) -> SourceEntry | None:
+    """The one passage the sentences read most like, when it holds half their key words and no other ties it."""
+    scored = sorted(
+        ((max((_overlap(s, e) for s in sentences), default=0.0), i) for i, e in enumerate(entries)), reverse=True
+    )
+    if not scored or scored[0][0] < 0.5 or (len(scored) > 1 and scored[1][0] == scored[0][0]):
+        return None
+    return entries[scored[0][1]]
+
+
+def resolve_unlisted_numbers(text: str, numbered: dict[int, list[SourceEntry]]) -> list[SourceEntry | None]:
+    """What each ``[N]`` of an answer with no source list names, at position N-1; None where nothing does.
+
+    In order: the passage of a file the sentence carrying ``[N]`` names
+    („Wien-Lacknergasse-Schnitt-section.pdf zeigt … [1]"), preferring the one
+    numbered N; else the one passage numbered N; else, when a number names
+    several, the one whose text the sentence reads like. A number nothing
+    settles is labelled. Never a position in the conversation's registry: the
+    model never saw that numbering (ADR-0139).
+    """
+    every = list({id(entry): entry for held in numbered.values() for entry in held}.values())
+    sentences = [part for part in _SENTENCE_RE.split(text) if part.strip()]
+    # Two blocks that both printed „Result 1" (rendered outside a turn, or
+    # before blocks were numbered on): the numbers the model wrote follow no
+    # one block, so every number is settled by content among all passages.
+    collided = any(len(held) > 1 for held in numbered.values())
+    resolved: dict[int, SourceEntry] = {}
+    for number in sorted(_inline_citation_numbers(text)):
+        carrying = [sentence for sentence in sentences if f"[{number}]" in sentence]
+        candidates = every if collided else numbered.get(number, [])
+        named = [
+            entry
+            for entry in every
+            if len(_cited_file(entry)) >= 6
+            and any(_cited_file(entry).casefold() in sentence.casefold() for sentence in carrying)
+        ]
+        pick: SourceEntry | None = None
+        if named:
+            own = [entry for entry in named if entry in candidates]
+            pick = own[0] if own else named[0] if len(named) == 1 else _best_by_content(carrying, named)
+        elif len(candidates) == 1:
+            pick = candidates[0]
+        elif candidates:
+            pick = _best_by_content(carrying, candidates)
+        if pick is not None:
+            resolved[number] = pick
+    if not resolved:
         return []
-    return list(blocks[0])
+    return [resolved.get(position) for position in range(1, max(resolved) + 1)]
 
 
 def _entry_from_hit(hit: GroundingHit, tool_name: str) -> SourceEntry:
@@ -3936,7 +4014,7 @@ def verify_citations(
         reference_sources: Optional writer-facing source list, in the same
             numbering order the writer saw. Used only to synthesize a missing
             source section. A ``None`` at a position names nothing: that
-            number is labelled (:func:`turn_numbering`).
+            number is labelled (:func:`resolve_unlisted_numbers`).
         label_dropped: Put :data:`DROPPED_CITATION_MARKER` where an
             unresolvable inline citation stood instead of deleting it silently
             (chat, ADR-0125). Also applies to an empty registry: every number
