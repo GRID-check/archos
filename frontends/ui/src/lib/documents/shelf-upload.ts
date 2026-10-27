@@ -33,10 +33,9 @@ import { ConflictError, NotFoundError } from '@/lib/api/errors'
 import { folderReadOnlyError, getProjectFolderAccess } from '@/lib/authz/folder-access'
 import { assertIfcMayBeFiledIn } from '@/lib/projects/ifc-folder-guard'
 import { acceptedUploadBatchId } from '@/lib/upload-batches/service'
-import { assertUploadNameAllowed, auditScreeningOverride } from '@/lib/upload-screening/service'
+import { auditScreeningOverride, type NameGateResult } from '@/lib/upload-screening/service'
 import { assertMayReplaceHeld } from '@/lib/upload-screening/quarantine-reviewers'
 import { recordAuditEvent } from '@/lib/audit/service'
-import { assertWithinStorageQuota } from '@/lib/storage/service'
 import { admitOrDiscard, admitReplacementOrDiscard } from '@/lib/storage/admission'
 import { publishShelfChanged } from './shelf-live'
 import type { AuthorizedSession } from '@/lib/auth/types'
@@ -55,6 +54,7 @@ import { shelfOwner, type DocumentShelf } from './shelf'
 // Type only: `service.ts` imports this module, and a value import would be a cycle.
 import type { IngestPriority } from './service'
 import { requireShelfWrite } from './shelf-authz'
+import { admitUpload } from './upload-admission'
 import { shelfCollectionName } from './shelf-collection'
 import type { DispatchDocumentResult } from './service'
 
@@ -198,7 +198,7 @@ interface PlaceUploadInput {
   /** Whether the session may write into a folder of this shelf (a superseded document's). */
   mayWriteFolder: (folderId: string | null) => boolean
   /** The screening matches the uploader released (ADR-0086), audited once stored. */
-  screeningOverridden: Awaited<ReturnType<typeof assertUploadNameAllowed>>['overridden']
+  screeningOverridden: NameGateResult['overridden']
 }
 
 type Placed =
@@ -360,20 +360,9 @@ async function prepareUpload(
   shelf: DocumentShelf,
   input: ShelfUploadInput,
 ): Promise<PlaceUploadInput> {
-  // Through the service's own exports, imported late: `service.ts` calls this
-  // module, and these two are what it owns (the same device `lifecycle.ts` uses
-  // for the dispatcher).
-  const { assertUploadTypeAllowed, assertFileSizeAllowed } = await import('./service')
   const { file, folderId } = input
 
   await requireShelfWrite(session, shelf)
-  await assertUploadTypeAllowed(session, file.name)
-  await assertFileSizeAllowed(session.organizationId, file.size, file.name)
-  // Org-wide ceiling, checked after the per-file one so the caller gets the more
-  // specific complaint first, and BEFORE any bytes reach SeaweedFS so a refusal
-  // leaves no orphan object behind (ADR-0042).
-  await assertWithinStorageQuota(session.organizationId, file.size)
-
   const shelfCollection = await shelfCollectionName(shelf, session.organizationId)
   if (!shelfCollection) throw new NotFoundError('Project not found')
   // Before anything reads the folder's path: a folder this uploader may not
@@ -392,16 +381,18 @@ async function prepareUpload(
     }
   }
   const originPath = sanitizeOriginPath(input.originPath)
-  // The name gate's server-side repeat (ADR-0086), before a byte is stored. It
-  // reads the whole path, not the stored label: a folder past the label's cut
-  // would pass a screening that read only what is kept.
-  const nameGate = await assertUploadNameAllowed(
-    session.organizationId,
-    { filename: file.name, originPath: normalizeOriginPath(input.originPath), folderPath },
-    input.screeningRelease === true,
-    // A project's own name terms apply to uploads into it (migration 0154).
-    shelf.kind === 'project' ? shelf.projectId : null,
-  )
+  // Name screen, type, size and quota (ADR-0086), before a byte is stored, so a
+  // refusal leaves no orphan object behind (ADR-0042). The name screen reads
+  // the whole path, not the stored label: a folder past the label's cut would
+  // pass a screening that read only what is kept.
+  const nameGate = await admitUpload(session, {
+    filename: file.name,
+    size: file.size,
+    originPath: normalizeOriginPath(input.originPath),
+    folderPath,
+    projectId: shelf.kind === 'project' ? shelf.projectId : null,
+    screeningRelease: input.screeningRelease === true,
+  })
   const uploadBatchId = await acceptedUploadBatchId(session, input.uploadBatchId, shelfOwner(shelf, session.organizationId))
   const filename = documentNameKey(file.name)
   if (shelf.kind === 'project') {

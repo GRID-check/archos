@@ -22,7 +22,7 @@
  * `@/lib/api/errors`.
  */
 
-import { assertUploadNameAllowed, auditScreeningOverride } from '@/lib/upload-screening/service'
+import { auditScreeningOverride } from '@/lib/upload-screening/service'
 import { normalizeOriginPath } from '@/lib/documents/origin-path'
 import { assertMayReplaceHeld, shelfReaderFor } from '@/lib/upload-screening/quarantine-reviewers'
 import { acceptedUploadBatchId } from '@/lib/upload-batches/service'
@@ -36,13 +36,8 @@ import { sessionCollectionName } from '@/lib/collection-scope'
 import { requireResourceAccess } from '@/lib/sharing/access'
 import { assertNoActiveHold } from '@/lib/compliance/holds'
 import { assertConversationAcceptsUploads, createConversation } from '@/lib/conversations/service'
-import {
-  assertFileSizeAllowed,
-  assertUploadTypeAllowed,
-  dispatchDocument,
-  type DispatchDocumentResult,
-} from '@/lib/documents/service'
-import { assertWithinStorageQuota } from '@/lib/storage/service'
+import { dispatchDocument, type DispatchDocumentResult } from '@/lib/documents/service'
+import { admitUpload } from '@/lib/documents/upload-admission'
 import { admitOrDiscard, admitReplacementOrDiscard } from '@/lib/storage/admission'
 import { contentDigest } from '@/lib/documents/content-digest'
 import { documentNameKey } from '@/lib/documents/name-match'
@@ -181,19 +176,17 @@ export async function uploadSessionDocument(
   // Authorization + the row the document's foreign key needs, in one call.
   await createConversation(session, { id: conversationId, projectId: input.projectId ?? null })
 
-  // The name gate's server-side repeat (ADR-0086), before a byte is stored.
-  // A chat attachment reaches the model as surely as a project file does, and
-  // the folders it was dropped from are screened as the browser screened them.
-  const nameGate = await assertUploadNameAllowed(
-    session.organizationId,
-    { filename: file.name, originPath: normalizeOriginPath(input.originPath) },
-    input.screeningRelease === true,
-  )
-  await assertUploadTypeAllowed(session, file.name)
-  await assertFileSizeAllowed(session.organizationId, file.size, file.name)
-  // The same org ceiling as every other shelf: a chat attachment is bytes in
-  // the tenant's bucket, so it must not be the way around the quota (ADR-0042).
-  await assertWithinStorageQuota(session.organizationId, file.size)
+  // The same admission as every other shelf (ADR-0086), before a byte is
+  // stored: a chat attachment reaches the model as surely as a project file
+  // does, the folders it was dropped from are screened as the browser screened
+  // them, and it is bytes in the tenant's bucket, so not the way around the
+  // quota (ADR-0042).
+  const nameGate = await admitUpload(session, {
+    filename: file.name,
+    size: file.size,
+    originPath: normalizeOriginPath(input.originPath),
+    screeningRelease: input.screeningRelease === true,
+  })
 
   const collectionName = sessionCollectionName(conversationId)
   const uploadBatchId = await acceptedUploadBatchId(session, input.uploadBatchId, { scope: 'session', projectId: null })

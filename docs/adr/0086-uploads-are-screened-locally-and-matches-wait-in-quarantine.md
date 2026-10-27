@@ -724,7 +724,7 @@ counts, never terms.
 - **Both name gates use it.** The browser reads the project's policy for an
   upload into the project (`loadUploadScreeningPolicy(projectId)`), and the
   BFF's repeat applies the same one (`assertUploadNameAllowed(…, projectId)`,
-  from `shelf-upload.ts`). Unreadable is a refusal, as for the office's list.
+  from `upload-admission.ts`). Unreadable is a refusal, as for the office's list.
 - **Why `project:manage` may set a term aside.** The project's managers already
   review its quarantine and may release any held file in it one by one; the
   override changes the default, not who may decide. A switched-off office list
@@ -733,6 +733,31 @@ counts, never terms.
   hand-in (`document-role-field.tsx`) still reads the office's list in the
   browser; the server applies the project's, so a project term surfaces there
   as the server's refusal.
+
+## Amendment (2026-10-27): one admission for both upload doors
+
+There are two server doors for a person's file: `uploadToShelf`
+(`lib/documents/shelf-upload.ts`: the project, the Archiv, and through it
+revision upload, photo capture and mail import) and `uploadSessionDocument`
+(`lib/session-documents/service.ts`: a chat attachment). Each restated the
+gates, and they had drifted: the chat ran the name gate first, the shelves
+last. Both now call `admitUpload` (`lib/documents/upload-admission.ts`), which
+runs them in one order before a byte is stored:
+
+1. the name gate (`422 UPLOAD_SCREENED`, `503 UPLOAD_SCREENING_UNAVAILABLE`),
+   first, as in the browser;
+2. type (`400`);
+3. size (`413 FILE_TOO_LARGE`);
+4. quota (`507 STORAGE_QUOTA_EXCEEDED`), after the per-file limit (ADR-0042).
+
+Each gate keeps its error. What changed on the shelves is only which refusal a
+file failing two gates gets: a held-back `.exe` is now refused for its name, as
+the chat already refused it; and on the shelves the folder checks the name gate
+needs (visible, writable) now come before type, size and quota, so a wrong-type
+file into a folder the uploader may not write is refused for the folder. Mail import asks the byte-free half
+(`admitFileBeforeReading`: type, then size) before it fetches an attachment, and
+the full admission when it files one. `upload-admission.spec.ts` drives all
+three shelves through every gate and every refusal.
 
 ## More Information
 

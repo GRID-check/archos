@@ -9,9 +9,12 @@ vi.mock('@/lib/documents/repository', () => ({
   findLiveDocumentByFilename: vi.fn(async () => null),
   findProjectCollectionsHoldingFilename: vi.fn(async () => []),
 }))
+// The gates the import asks before reading an attachment, mocked where they
+// live: `admitFileBeforeReading` (`@/lib/documents/upload-admission`) imports
+// them from there.
+vi.mock('@/lib/documents/upload-type', () => ({ assertUploadTypeAllowed: vi.fn() }))
+vi.mock('@/lib/storage/upload-limit', () => ({ assertFileSizeAllowed: vi.fn() }))
 vi.mock('@/lib/documents/service', () => ({
-  assertUploadTypeAllowed: vi.fn(),
-  assertFileSizeAllowed: vi.fn(),
   uploadDocument: vi.fn(async () => ({ documentId: 'd', jobId: null, status: 'uploaded', filename: 'x' })),
 }))
 vi.mock('@/lib/projects/folder-service', () => ({
@@ -51,7 +54,9 @@ import type { AuthorizedSession } from '@/lib/auth/types'
 import type { MailImport } from '@/lib/db/schema'
 import { resolveShelfFolderPath } from '@/lib/documents/folder-path'
 import { findLiveDocumentByFilename, findProjectCollectionsHoldingFilename } from '@/lib/documents/repository'
-import { assertFileSizeAllowed, assertUploadTypeAllowed, uploadDocument } from '@/lib/documents/service'
+import { uploadDocument } from '@/lib/documents/service'
+import { assertUploadTypeAllowed } from '@/lib/documents/upload-type'
+import { assertFileSizeAllowed } from '@/lib/storage/upload-limit'
 import { FOLDER_NAME_TAKEN } from '@/lib/documents/shelf-folders'
 import { createProjectFolder, ensureProjectFolderPaths } from '@/lib/projects/folder-service'
 import { ScreenedUploadError } from '@/lib/upload-screening/service'
