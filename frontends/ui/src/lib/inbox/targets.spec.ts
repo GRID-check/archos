@@ -223,8 +223,9 @@ describe('the project target', () => {
     vi.mocked(requireProjectAccess).mockResolvedValueOnce({ role: 'project-viewer', closed: false, readsBecauseClosed: false })
     const access = await projectTarget.resolve(makeSession(), 'proj_1')
     const list = '/app/projects/proj_1/files/mail'
-    // Collapsed rows count several mails, or the address: the list, where the address dialog is too.
-    expect(access!.deepLink({ itemType: 'inbound_mail.waiting', anchorId: 'mail-9' })).toBe(list)
+    // Mail waits: the list at „Bereit“, where a complete mail is one press.
+    expect(access!.deepLink({ itemType: 'inbound_mail.waiting', anchorId: 'mail-9' })).toBe(`${list}#ready`)
+    // The other collapsed rows count several mails, or the address: the list, where the address dialog is too.
     expect(access!.deepLink({ itemType: 'inbound_mail.expiring', anchorId: 'mail-9' })).toBe(list)
     expect(access!.deepLink({ itemType: 'inbound_mail.cap_reached', anchorId: 'address-1' })).toBe(list)
     // A failed filing opens its mail, for the decider who may file it again.

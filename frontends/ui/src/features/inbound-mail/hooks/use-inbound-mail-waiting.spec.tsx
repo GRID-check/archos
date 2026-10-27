@@ -18,8 +18,8 @@ describe('useInboundMailWaiting', () => {
     const list = vi.spyOn(client, 'list')
     const first = renderHook(() => useInboundMailWaiting('p', true, client))
     const second = renderHook(() => useInboundMailWaiting('p', true, client))
-    await waitFor(() => expect(first.result.current.count).toBe(8))
-    expect(second.result.current).toEqual({ count: 8, more: true })
+    await waitFor(() => expect(first.result.current.count).toBe(9))
+    expect(second.result.current).toEqual({ count: 9, more: true })
     expect(list).toHaveBeenCalledTimes(1)
   })
 

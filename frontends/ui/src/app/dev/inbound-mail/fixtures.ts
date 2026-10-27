@@ -442,7 +442,34 @@ export const DETAIL_VARIANTS: Record<string, DetailFixture> = {
     view: mail({ key: 'full-thread', parts: [messagePart({ id: fixtureId('message:ft') })], threadCandidates: [thread({ full: true, preselected: false, nextVersion: 201 })] }),
     text: text(),
   },
-  revision: { view: mail({ key: 'revision', parts: [messagePart({ id: fixtureId('message:rev') }), statik()] }), text: text() },
+  revision: {
+    view: mail({ key: 'revision', subject: 'AW: Stellplatznachweis – Statik S-101 Index C', parts: [messagePart({ id: fixtureId('message:rev') }), statik()] }),
+    text: text(),
+  },
+  // The MA 37 writes from its own signed domain into the project's Verlauf with the authority: complete, so „Bereit“.
+  'authority-statement': {
+    view: mail({
+      key: 'authority-statement',
+      subject: 'Stellungnahme Brandschutz – Bauplatz 12',
+      sender: { name: 'Mag. Karin Huber', address: 'k.huber@ma37.wien.gv.at', domain: 'ma37.wien.gv.at', signerDomain: 'wien.gv.at', trust: 'external_verified', reason: 'dkim_pass', flags: [] },
+      receivedAt: minutesAgo(45),
+      parts: [
+        messagePart({ id: fixtureId('message:authority') }),
+        part({
+          name: 'Stellungnahme_MA37_Brandschutz.pdf',
+          sizeBytes: 864_000,
+          suggestion: suggestion('Behörde', 'Gutachten', 'Stellungnahmen der MA 37 liegen in Behörde.'),
+        }),
+      ],
+      threadCandidates: [
+        thread({ threadId: fixtureId('thread:ma37'), documentId: fixtureId('doc:ma37'), name: 'Verfahren MA 37', folderPath: 'Behörde', nextVersion: 3 }),
+      ],
+    }),
+    text: text({
+      ownText: 'Sehr geehrte Frau Huber,\n\nanbei die Stellungnahme zum Brandschutzkonzept. Die Fluchtwege der Tiefgarage sind so genehmigungsfähig.\n\nMit freundlichen Grüßen\nKarin Huber\nMA 37 – Baupolizei',
+      quoted: [],
+    }),
+  },
   duplicate: {
     view: mail({
       key: 'duplicate',
@@ -609,12 +636,21 @@ const quietMails = [
   DETAIL_VARIANTS['external-unverified'].view,
 ]
 
+/**
+ * The list as the owner's scene has it (WOW §1): three mails ready to file as
+ * suggested (the Statik's new Fassung and Miriam's forwarded Bescheid continue
+ * „Stellplatznachweis“, the MA 37's statement continues its own Verlauf), and
+ * four that need a person, each for its own reason: six attachments to look
+ * at, a reply whose Verlauf the sender cannot vouch for, a mail posing as
+ * Miriam, a name the name check stopped. Two quiet ones at the end.
+ */
 const allMails = [
   v('member-verified'),
+  v('revision'),
+  v('authority-statement'),
   v('mixed-attachments'),
   v('unverified-thread'),
   v('impersonation'),
-  v('content-finding'),
   v('name-stop'),
   ...quietMails,
 ]
@@ -636,7 +672,8 @@ export const LIST_VARIANTS: Record<string, ListFixture> = {
   error: { items: [], load: 'error' },
   one: { items: [summaryOf(v('member-verified'))] },
   many: { items: allMails.map((view) => summaryOf(view)), nextCursor: 'more', open: v('member-verified').id },
-  'thread-group': { items: [...groupMails.map((view) => summaryOf(view)), summaryOf(v('mixed-attachments'))] },
+  // One conversation, split: three ready replies go in one press, two that need a look are gone through in order.
+  'thread-group': { items: [...groupMails.map((view) => summaryOf(view)), summaryOf(v('mixed-attachments')), summaryOf(v('name-stop'))] },
   'unverified-group': { items: [summaryOf(v('member-verified')), ...quietMails.map((view) => summaryOf(view))] },
   selected: { items: [...groupMails.map((view) => summaryOf(view)), summaryOf(v('revision'))], checked: [groupMails[0].id, groupMails[1].id] },
   // A member's mail addressed to others needs its sender confirmed, which a bulk request never carries.

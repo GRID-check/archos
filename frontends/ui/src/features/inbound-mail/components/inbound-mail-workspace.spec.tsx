@@ -1,7 +1,9 @@
 /**
  * Dateien › E-Mail-Eingang: the list beside the open mail, its states, the
  * keyboard (J/K walk, X selects, Enter opens, ⌫ asks to dismiss the
- * selection), and the bulk filing that is only offered for complete mails.
+ * selection), „Bereit“ and „Braucht Sie“, and filing as suggested, by one
+ * row's press, the „Bereit“ heading, a thread group or a selection: one rule
+ * for all of them, only for complete mails, never for an impersonation.
  */
 
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -9,12 +11,15 @@ import userEvent from '@testing-library/user-event'
 
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn(), info: vi.fn() } }))
 const nav = vi.hoisted(() => ({ push: vi.fn(), replace: vi.fn() }))
+vi.mock('@/lib/analytics/posthog', () => ({ capturePosthog: vi.fn() }))
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: nav.push, replace: nav.replace, back: vi.fn(), refresh: vi.fn(), prefetch: vi.fn() }),
   usePathname: () => '/app/projects/p/files/mail',
   useSearchParams: () => new URLSearchParams(),
 }))
 
+import { toast } from 'sonner'
+import { capturePosthog } from '@/lib/analytics/posthog'
 import { act, fireEvent, render, screen, waitFor, within } from '@/test-utils'
 import {
   ADDRESS_VARIANTS,
@@ -68,19 +73,90 @@ describe('InboundMailWorkspace', () => {
   it('groups a conversation with one button that files it as suggested', async () => {
     renderWorkspace('selected')
     const group = screen.getByRole('region', { name: /Mail thread “Stellplatznachweis” · 4 new mails/ })
-    expect(within(group).getByTestId('thread-group-file')).toHaveTextContent('File 4 mails in mail thread “Stellplatznachweis” (becomes revisions 4–7)')
+    expect(within(group).getByTestId('thread-group-file')).toHaveTextContent('File all 4 (becomes revisions 4–7)')
     await userEvent.click(within(group).getByTestId('thread-group-file'))
     const destinations = await screen.findByTestId('bulk-destinations')
     expect(destinations).toHaveTextContent('In mail thread “Stellplatznachweis”: 4')
     expect(destinations).toHaveTextContent('In “Tragwerk”: 1')
   })
 
-  it('opens the first mail of a group that cannot go in one press', async () => {
+  it('splits a conversation: its ready replies go in one press, the ones that need a look are gone through in order', () => {
     renderWorkspace('thread-group')
+    const ready = screen.getByRole('region', { name: /3 new mails/ })
+    expect(within(ready).getByTestId('thread-group-file')).toHaveTextContent('File all 3 (becomes revisions 4–6)')
+    const waiting = screen.getByRole('region', { name: /2 new mails/ })
+    expect(within(waiting).queryByTestId('thread-group-file')).toBeNull()
+    expect(within(waiting).getByTestId('thread-group-open')).toHaveAttribute('href', expect.stringContaining('/files/mail/'))
+    expect(screen.getByTestId('readiness-ready').compareDocumentPosition(ready) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(screen.getByTestId('readiness-needs_you').compareDocumentPosition(waiting) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  })
+
+  it('opens the first mail of a group that changed since the list was read and no longer goes in one press', async () => {
+    const { client } = renderWorkspace('selected')
+    const get = client.get.bind(client)
+    vi.spyOn(client, 'get').mockImplementation(async (projectId, mailId) => ({ ...(await get(projectId, mailId)), incompleteReason: 'scanning' }))
     const group = screen.getByRole('region', { name: /4 new mails/ })
     await userEvent.click(within(group).getByTestId('thread-group-file'))
     await waitFor(() => expect(nav.push).toHaveBeenCalledWith(expect.stringContaining('/files/mail/')))
     expect(screen.queryByTestId('bulk-destinations')).not.toBeInTheDocument()
+  })
+
+  it('heads the list with „Bereit“ and „Braucht Sie“, and says on each waiting row what it needs', () => {
+    renderWorkspace('many')
+    expect(screen.getByTestId('readiness-ready')).toHaveTextContent('Ready (3)')
+    expect(screen.getByTestId('readiness-needs_you')).toHaveTextContent('Needs you (4)')
+    const nameStop = screen.getByTestId(`inbound-mail-row-${DETAIL_VARIANTS['name-stop'].view.id}`)
+    expect(within(nameStop).getByTestId('inbound-mail-row-reason')).toHaveTextContent('Check an attachment')
+    // The server's first reason: the Statik the sender cannot vouch for as the next Fassung comes before the thread.
+    const unvouched = screen.getByTestId(`inbound-mail-row-${DETAIL_VARIANTS['unverified-thread'].view.id}`)
+    expect(within(unvouched).getByTestId('inbound-mail-row-reason')).toHaveAttribute('data-reason', 'needs_person')
+    // The forged mail says its stop in red instead, and is never one press away.
+    const forged = screen.getByTestId(`inbound-mail-row-${DETAIL_VARIANTS.impersonation.view.id}`)
+    expect(within(forged).queryByTestId('inbound-mail-row-reason')).toBeNull()
+    expect(within(forged).queryByTestId('inbound-mail-row-file')).toBeNull()
+    expect(within(nameStop).queryByTestId('inbound-mail-row-file')).toBeNull()
+  })
+
+  it('files a ready row in one press: the same request as bulk, no confirmation, and says where everything goes', async () => {
+    const { client } = renderWorkspace('many')
+    const file = vi.spyOn(client, 'file')
+    const id = DETAIL_VARIANTS['authority-statement'].view.id
+    await userEvent.click(within(screen.getByTestId(`inbound-mail-row-${id}`)).getByTestId('inbound-mail-row-file'))
+    await waitFor(() => expect(file).toHaveBeenCalledTimes(1))
+    const body = file.mock.calls[0][1]
+    expect(body.mails).toHaveLength(1)
+    expect(body.mails[0]).toMatchObject({ mailId: id, message: { thread: { action: 'append' } }, parts: [{ name: 'Stellungnahme_MA37_Brandschutz.pdf' }] })
+    expect(body.mails[0]).not.toHaveProperty('acknowledgeSender')
+    expect(body.mails[0]).not.toHaveProperty('acknowledgeRisk')
+    expect(screen.queryByTestId('bulk-destinations')).not.toBeInTheDocument()
+    expect(toast.success).toHaveBeenCalledWith('1 mail is being filed as suggested', {
+      description: 'In mail thread “Verfahren MA 37”: 1 · In “Behörde”: 1',
+    })
+    expect(capturePosthog).toHaveBeenCalledWith('inbound_mail_filed_as_suggested', { surface: 'row', mails: 1, files: 1, texts: 1 })
+  })
+
+  it('reads a ready row again before its press and files nothing that changed meanwhile', async () => {
+    const { client } = renderWorkspace('many')
+    const file = vi.spyOn(client, 'file')
+    const get = client.get.bind(client)
+    vi.spyOn(client, 'get').mockImplementation(async (projectId, mailId) => ({ ...(await get(projectId, mailId)), incompleteReason: 'scanning' }))
+    const id = DETAIL_VARIANTS['authority-statement'].view.id
+    await userEvent.click(within(screen.getByTestId(`inbound-mail-row-${id}`)).getByTestId('inbound-mail-row-file'))
+    await waitFor(() => expect(toast.error).toHaveBeenCalledWith('1 mail is still being checked for malware.'))
+    expect(file).not.toHaveBeenCalled()
+  })
+
+  it('files every ready mail from the „Bereit“ heading after the bulk confirmation', async () => {
+    const { client } = renderWorkspace('many')
+    const file = vi.spyOn(client, 'file')
+    await userEvent.click(screen.getByTestId('readiness-file-all'))
+    const destinations = await screen.findByTestId('bulk-destinations')
+    expect(destinations).toHaveTextContent('In mail thread “Stellplatznachweis”: 2')
+    expect(destinations).toHaveTextContent('In mail thread “Verfahren MA 37”: 1')
+    await userEvent.click(screen.getByTestId('bulk-file-confirm'))
+    await waitFor(() => expect(file).toHaveBeenCalledTimes(1))
+    expect(file.mock.calls[0][1].mails).toHaveLength(3)
+    expect(capturePosthog).toHaveBeenCalledWith('inbound_mail_filed_as_suggested', expect.objectContaining({ surface: 'ready_section', mails: 3 }))
   })
 
   it('keeps unconfirmed and automatic mail in a quiet group, listed when opened', async () => {

@@ -19,13 +19,6 @@ export const inboundMail = {
     label: 'Show',
     waiting: 'Waiting to be filed',
     handled: 'Handled',
-    outcome: {
-      label: 'Outcome',
-      all: 'All',
-      filed: 'Filed',
-      dismissed: 'Dismissed',
-      expired: 'Expired',
-    },
   },
 
   empty: {
@@ -63,12 +56,30 @@ export const inboundMail = {
       dismissed: '{count, plural, one {# part dismissed} other {# parts dismissed}}',
       expired: '{count, plural, one {# part expired} other {# parts expired}}',
     },
+    fileAsSuggested: 'File “{subject}” as suggested',
+    needs: {
+      not_waiting: 'Already handled',
+      project_closed: 'The project is closed',
+      sender: 'Check the sender',
+      scanning: 'An attachment is still being checked …',
+      needs_person: 'Check an attachment',
+      no_thread: 'Choose a mail thread',
+      folder_missing: 'Choose a folder',
+    },
     textFollowed: 'Text added to the mail thread (following)',
+  },
+
+  readiness: {
+    ready: 'Ready ({count})',
+    needs_you: 'Needs you ({count})',
+    readyHint: 'Domain verified, a place for every part, nothing to check.',
+    fileAll: 'File all {count} as suggested',
   },
 
   group: {
     thread: 'Mail thread “{name}” · {count, plural, one {# new mail} other {# new mails}}',
-    threadAction: 'File {count} mails in mail thread “{name}” (becomes revisions {first}–{last})',
+    threadAction: 'File all {count} (becomes revisions {first}–{last})',
+    reviewInOrder: 'Go through them in order',
     quiet: 'Domain not verified or automatic ({count})',
     quietHint: 'These are listed in full. Piloti makes no suggestions for them, and they file nothing on their own.',
   },
@@ -301,7 +312,6 @@ export const inboundMail = {
 
   toast: {
     filed: '{count, plural, one {# file filed} other {# files filed}}',
-    filedIn: '{count, plural, one {# file filed in “{folder}”} other {# files filed in “{folder}”}}',
     textFiled: 'Text filed in mail thread “{name}”',
     textFiledNew: 'Text filed as a new mail thread',
     filing: 'Being filed …',
@@ -310,7 +320,7 @@ export const inboundMail = {
     dismissedMany: '{count, plural, one {# mail dismissed} other {# mails dismissed}}',
     undo: 'Undo',
     restored: 'Mail restored',
-    bulkFiled: '{count, plural, one {# mail is being filed} other {# mails are being filed}}',
+    filedAsSuggested: '{count, plural, one {# mail is being filed as suggested} other {# mails are being filed as suggested}}',
     failed: 'That did not work. Try again.',
   },
 

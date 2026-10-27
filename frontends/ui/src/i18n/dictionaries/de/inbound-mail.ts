@@ -22,13 +22,6 @@ export const inboundMail: typeof en.inboundMail = {
     label: 'Anzeigen',
     waiting: 'Wartet auf Ablage',
     handled: 'Bearbeitet',
-    outcome: {
-      label: 'Ergebnis',
-      all: 'Alle',
-      filed: 'Abgelegt',
-      dismissed: 'Verworfen',
-      expired: 'Abgelaufen',
-    },
   },
 
   empty: {
@@ -67,11 +60,31 @@ export const inboundMail: typeof en.inboundMail = {
       expired: '{count, plural, one {# Teil abgelaufen} other {# Teile abgelaufen}}',
     },
     textFollowed: 'Text dem E-Mail-Verlauf angefügt (Verlauf folgen)',
+    fileAsSuggested: '„{subject}“ wie vorgeschlagen ablegen',
+    /** Was eine E-Mail braucht, bevor sie wie vorgeschlagen abgelegt werden kann, in wenigen Worten (`incompleteReason`). */
+    needs: {
+      not_waiting: 'Schon bearbeitet',
+      project_closed: 'Projekt ist abgeschlossen',
+      sender: 'Absender prüfen',
+      scanning: 'Anhang wird noch geprüft …',
+      needs_person: 'Anhang prüfen',
+      no_thread: 'E-Mail-Verlauf wählen',
+      folder_missing: 'Ordner wählen',
+    },
+  },
+
+  /** Die zwei Hälften der wartenden E-Mails: was ein Klick ablegt, und was eine Entscheidung braucht. */
+  readiness: {
+    ready: 'Bereit ({count})',
+    needs_you: 'Braucht Sie ({count})',
+    readyHint: 'Domain bestätigt, für jeden Teil ein Ziel, nichts zu prüfen.',
+    fileAll: 'Alle {count} wie vorgeschlagen ablegen',
   },
 
   group: {
     thread: 'E-Mail-Verlauf „{name}“ · {count, plural, one {# neue E-Mail} other {# neue E-Mails}}',
-    threadAction: '{count} E-Mails in E-Mail-Verlauf „{name}“ ablegen (wird Fassung {first}–{last})',
+    threadAction: 'Alle {count} ablegen (wird Fassung {first}–{last})',
+    reviewInOrder: 'Der Reihe nach ansehen',
     quiet: 'Domain nicht bestätigt oder automatisch ({count})',
     quietHint: 'Sie stehen vollständig hier. Piloti macht für sie keine Vorschläge, und von selbst wird nichts davon abgelegt.',
   },
@@ -306,7 +319,6 @@ export const inboundMail: typeof en.inboundMail = {
 
   toast: {
     filed: '{count, plural, one {# Datei abgelegt} other {# Dateien abgelegt}}',
-    filedIn: '{count, plural, one {# Datei in „{folder}“ abgelegt} other {# Dateien in „{folder}“ abgelegt}}',
     textFiled: 'Text in E-Mail-Verlauf „{name}“ abgelegt',
     textFiledNew: 'Text als neuer E-Mail-Verlauf abgelegt',
     filing: 'Wird abgelegt …',
@@ -315,7 +327,7 @@ export const inboundMail: typeof en.inboundMail = {
     dismissedMany: '{count, plural, one {# E-Mail verworfen} other {# E-Mails verworfen}}',
     undo: 'Rückgängig',
     restored: 'E-Mail wiederhergestellt',
-    bulkFiled: '{count, plural, one {# E-Mail wird abgelegt} other {# E-Mails werden abgelegt}}',
+    filedAsSuggested: '{count, plural, one {# E-Mail wird wie vorgeschlagen abgelegt} other {# E-Mails werden wie vorgeschlagen abgelegt}}',
     failed: 'Das hat nicht geklappt. Bitte erneut versuchen.',
   },
 

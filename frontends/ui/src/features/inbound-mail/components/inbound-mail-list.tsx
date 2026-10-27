@@ -2,26 +2,41 @@
 
 /**
  * The E-Mail-Eingang's list pane: the two lists („Wartet auf Ablage ·
- * Bearbeitet“, the second faceted into Abgelegt, Verworfen and Abgelaufen),
- * the rows in their sections (thread groups, the quiet group of unconfirmed
- * and automatic mail), and every state the list can be in, each with its own
- * words: loading, failed, never used (which teaches the address in place),
- * all done, nothing handled yet.
+ * Bearbeitet“), the waiting rows under „Bereit“ and „Braucht Sie“ in their
+ * sections (thread groups, the quiet group of unconfirmed and automatic mail),
+ * and every state the list can be in, each with its own words: loading,
+ * failed, never used (which teaches the address in place), all done, nothing
+ * handled yet.
+ *
+ * „Bearbeitet“ is one list: each row already says what became of its mail, so
+ * the facets it had (Abgelegt, Verworfen, Abgelaufen) were cut (the owner's
+ * review, 2026-10-27). The route still takes `?outcome=`, and so does the
+ * `inbound-mail-list` operation: only the buttons went.
  */
 
 import type { JSX, ReactNode } from 'react'
+import Link from 'next/link'
 import { ChevronDown, CheckCircle2, History, Inbox as InboxGlyph, MailOpen, Repeat2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { BusyButton } from '@/components/ui/busy-button'
 import { CountPill } from '@/components/ui/count-pill'
 import { EmptyState } from '@/components/ui/empty-state'
+import { SectionLabel } from '@/components/ui/section-label'
 import { LoadError } from '@/components/ui/load-error'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { useTranslations } from '@/i18n'
-import type { InboundMailListStatus, InboundMailOutcome, InboundMailSummaryView, InboundMailThreadGroupView } from '@/lib/inbound-mail/inbound-mail-wire'
+import {
+  INBOUND_MAIL_DECISION_MAX_MAILS,
+  type InboundMailListStatus,
+  type InboundMailOutcome,
+  type InboundMailSummaryView,
+  type InboundMailThreadGroupView,
+} from '@/lib/inbound-mail/inbound-mail-wire'
 import { cn } from '@/lib/utils'
+import { isReady } from '../lib/completeness'
 import type { ListSection } from '../lib/list-sections'
+import { INBOUND_MAIL_READY_ANCHOR } from '../lib/paths'
 import { InboundMailRow } from './inbound-mail-row'
 
 export type ListState =
@@ -33,7 +48,6 @@ export interface InboundMailListProps {
   state: ListState
   sections: ListSection[]
   status: InboundMailListStatus
-  outcome: InboundMailOutcome | null
   onFilterChange: (status: InboundMailListStatus, outcome: InboundMailOutcome | null) => void
   /** The waiting count beside the first filter; null while unknown. */
   waitingCount: number | null
@@ -48,6 +62,12 @@ export interface InboundMailListProps {
   /** File a whole thread group as suggested. */
   onFileGroup: (threadId: string, mailIds: string[]) => void
   fileGroupBusy: string | null
+  /** File one ready mail as suggested, from its row. */
+  onFileOne: (mailId: string) => void
+  /** The ready row whose press is in flight. */
+  fileOneBusy: string | null
+  /** File every ready mail of the page (at most one request's worth) as suggested, after the confirmation. */
+  onFileReady: (mailIds: string[]) => void
   onRetry: () => void
   onLoadMore: () => void
   loadingMore: boolean
@@ -63,7 +83,7 @@ export interface InboundMailListProps {
 
 export function InboundMailList(props: InboundMailListProps): JSX.Element {
   const t = useTranslations('inboundMail')
-  const { status, outcome, onFilterChange, waitingCount } = props
+  const { status, onFilterChange, waitingCount } = props
 
   return (
     <div className="flex min-h-0 flex-1 flex-col" data-testid="inbound-mail-list">
@@ -84,23 +104,6 @@ export function InboundMailList(props: InboundMailListProps): JSX.Element {
             {t('filters.handled')}
           </ToggleGroupItem>
         </ToggleGroup>
-        {status === 'handled' && (
-          <ToggleGroup
-            type="single"
-            variant="inverted"
-            size="sm"
-            value={outcome ?? 'all'}
-            onValueChange={(value) => value && onFilterChange('handled', value === 'all' ? null : (value as InboundMailOutcome))}
-            aria-label={t('filters.outcome.label')}
-            className="flex-wrap"
-          >
-            {(['all', 'filed', 'dismissed', 'expired'] as const).map((value) => (
-              <ToggleGroupItem key={value} value={value} data-testid={`filter-outcome-${value}`}>
-                {t(`filters.outcome.${value}`)}
-              </ToggleGroupItem>
-            ))}
-          </ToggleGroup>
-        )}
       </div>
       {props.notice}
       <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
@@ -125,6 +128,9 @@ function ListBody({
   onQuietOpenChange,
   onFileGroup,
   fileGroupBusy,
+  onFileOne,
+  fileOneBusy,
+  onFileReady,
   onRetry,
   onLoadMore,
   loadingMore,
@@ -190,9 +196,12 @@ function ListBody({
     )
   }
 
-  const row = (mail: InboundMailSummaryView): JSX.Element => (
+  const row = (mail: InboundMailSummaryView, inGroup = false): JSX.Element => (
     <InboundMailRow
       key={mail.id}
+      inGroup={inGroup}
+      onFileAsSuggested={status === 'waiting' ? () => onFileOne(mail.id) : undefined}
+      filingAsSuggested={fileOneBusy === mail.id}
       mail={mail}
       href={hrefFor(mail.id)}
       open={mail.id === openId}
@@ -208,28 +217,64 @@ function ListBody({
     <div className="flex flex-col">
       {sections.map((section) => {
         if (section.kind === 'mail') return <ul key={section.mail.id} className="border-b">{row(section.mail)}</ul>
-        if (section.kind === 'thread') {
+        if (section.kind === 'readiness') {
+          const ready = section.readiness === 'ready'
+          const batch = section.mails.slice(0, INBOUND_MAIL_DECISION_MAX_MAILS)
           return (
-            <section key={section.threadId} className="bg-muted/20 border-b" aria-label={t('group.thread', { name: section.name, count: section.mails.length })} data-testid={`thread-group-${section.threadId}`}>
+            <div
+              key={`readiness-${section.readiness}`}
+              // The Postfach's „E-Mails warten“ row links here (`lib/inbox/targets.ts`).
+              id={ready ? INBOUND_MAIL_READY_ANCHOR : undefined}
+              className="flex scroll-mt-2 flex-col gap-1 border-b px-3 pt-3 pb-2 sm:px-4"
+              data-testid={`readiness-${section.readiness}`}
+            >
+              <div className="flex min-h-7 items-center justify-between gap-2">
+                <SectionLabel as="h3">{t(`readiness.${section.readiness}`, { count: section.mails.length })}</SectionLabel>
+                {ready && batch.length > 1 && (
+                  <Button type="button" size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={() => onFileReady(batch.map((mail) => mail.id))} data-testid="readiness-file-all">
+                    {t('readiness.fileAll', { count: batch.length })}
+                  </Button>
+                )}
+              </div>
+              {ready && <p className="text-muted-foreground text-xs">{t('readiness.readyHint')}</p>}
+            </div>
+          )
+        }
+        if (section.kind === 'thread') {
+          // A thread's ready and waiting halves are two groups (`listSections`): the first mail tells them apart.
+          const groupKey = `${section.threadId}:${section.mails[0]?.id ?? ''}`
+          return (
+            <section key={groupKey} className="bg-muted/20 border-b" aria-label={t('group.thread', { name: section.name, count: section.mails.length })} data-testid={`thread-group-${section.threadId}`}>
               <div className="flex flex-col gap-2 px-3 pt-3 sm:px-4">
                 <p className="text-muted-foreground flex items-start gap-1.5 text-xs font-medium">
                   <Repeat2 className="mt-px size-3.5 shrink-0" aria-hidden />
                   <span className="min-w-0 [overflow-wrap:anywhere]">{t('group.thread', { name: section.name, count: section.mails.length })}</span>
                 </p>
-                <BusyButton
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  className="h-auto min-h-8 w-full justify-start whitespace-normal py-1.5 text-left"
-                  busy={fileGroupBusy === section.threadId}
-                  busyLabel={t('bulk.fileSuggestedBusy')}
-                  onClick={() => onFileGroup(section.threadId, section.mails.map((mail) => mail.id))}
-                  data-testid="thread-group-file"
-                >
-                  {t('group.threadAction', { count: section.mails.length, name: section.name, first: section.firstVersion, last: section.lastVersion })}
-                </BusyButton>
+                {section.mails.every(isReady) ? (
+                  <BusyButton
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="h-auto min-h-8 w-full justify-start whitespace-normal py-1.5 text-left"
+                    busy={fileGroupBusy === groupKey}
+                    busyLabel={t('bulk.fileSuggestedBusy')}
+                    onClick={() => onFileGroup(groupKey, section.mails.map((mail) => mail.id))}
+                    data-testid="thread-group-file"
+                  >
+                    {/* The line above names the thread; the button says only what the press does. */}
+                    {t('group.threadAction', { count: section.mails.length, first: section.firstVersion, last: section.lastVersion })}
+                  </BusyButton>
+                ) : (
+                  // Every mail of this half needs the person, so no press files it: the way in is its first mail. No
+                  // Fassung range either, which would depend on what is filed before it.
+                  <Button asChild size="sm" variant="outline" className="h-auto min-h-8 w-full justify-start whitespace-normal py-1.5 text-left">
+                    <Link href={hrefFor(section.mails[0].id)} data-testid="thread-group-open">
+                      {t('group.reviewInOrder')}
+                    </Link>
+                  </Button>
+                )}
               </div>
-              <ul className="divide-y">{section.mails.map(row)}</ul>
+              <ul className="divide-y">{section.mails.map((mail) => row(mail, true))}</ul>
             </section>
           )
         }
@@ -248,7 +293,7 @@ function ListBody({
             {quietOpen && (
               <>
                 <p className="text-muted-foreground px-3 pb-2 text-xs sm:px-4">{t('group.quietHint')}</p>
-                <ul className="divide-y border-t">{section.mails.map(row)}</ul>
+                <ul className="divide-y border-t">{section.mails.map((mail) => row(mail))}</ul>
               </>
             )}
           </section>
