@@ -2384,6 +2384,10 @@
     "de": "Piloti findet vergleichbare frühere Projekte jetzt anhand der im Briefing angegebenen Bauweise, Nutzung und Gebäudeklasse jedes einzelnen Gebäudes. Bisher verglich Piloti nur nach Bundesland und Art der Leistung."
   },
   {
+    "en": "Piloti now goes through your documents like a colleague on the drive: it lists a folder, finds every place a word stands across the shelves you may see, and reads the pages that hold it. Each quote names its page, and a search that could not reach everything says what it left out instead of answering that nothing was found.",
+    "de": "Piloti durchsucht Ihre Dokumente jetzt wie ein Kollege im Laufwerk: Es listet Ordnerinhalte auf, findet alle Vorkommen eines Begriffs in den für Sie sichtbaren Ablagen und liest die entsprechenden Seiten. Jedes Zitat nennt die Seitenzahl. Kann eine Suche nicht alles erfassen, weist sie darauf hin, was ausgelassen wurde, statt zu melden, dass nichts gefunden wurde."
+  },
+  {
     "en": "Piloti now knows how you filed your project documents: it can say what is in Brandschutz, name the folder when it points at a file, and search one folder including its subfolders. Renaming or moving a folder updates what it sees without re-uploading anything.",
     "de": "Piloti kennt jetzt Ihre Ablage: Es sagt, was im Ordner Brandschutz liegt, nennt den Ordner, wenn es auf eine Datei verweist, und durchsucht einen Ordner samt Unterordnern. Umbenennen oder Verschieben eines Ordners übernimmt es sofort, ohne dass etwas neu hochgeladen werden muss."
   },
