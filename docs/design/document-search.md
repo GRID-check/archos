@@ -197,7 +197,15 @@ yet for the same reason.
    Dateien, result list with passages and a register view. Serves 08:55 and
    09:10.
 4. **The Planliste.** CSV and XLSX export of the current register. Serves 09:10.
-5. **Saved searches** per person, shareable within the office.
+5. **Saved searches** per person, shareable within the office. A row of
+   `saved_searches` (migration 0186) holds the question only: the scope and
+   the body without its cursor, never a result. Running a shared one is an
+   ordinary search by the reader, with the reader's reach, so sharing a
+   question shares nothing the reader could not already find. Only the owner
+   renames, shares or deletes one; anyone else's answers 404.
+   `GET/POST /api/search/saved`, `PATCH/DELETE /api/search/saved/[id]`,
+   operations `saved-search-list`, `-create`, `-update`, `-delete`
+   (`lib/search/saved-search-*.ts`).
 
 Next, not in this change: tasks and memory as kinds, Piloti's `list_files` reading
 the core for its structured filters, Planfred-style "who received which Index"

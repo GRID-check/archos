@@ -18,6 +18,7 @@ import { organizationOperations } from './organization'
 import { platformOperations } from './platform'
 import { projectsOperations } from './projects'
 import { reviewOperations } from './review'
+import { savedSearchOperations } from './saved-searches'
 import { skillsOperations } from './skills'
 import { tasksOperations } from './tasks'
 
@@ -28,6 +29,7 @@ import { tasksOperations } from './tasks'
 export type OperationName = (
   | typeof projectsOperations
   | typeof documentsOperations
+  | typeof savedSearchOperations
   | typeof foldersOperations
   | typeof reviewOperations
   | typeof conversationsOperations
@@ -44,6 +46,7 @@ export type OperationName = (
 const unordered: readonly AgentOperation[] = [
   ...projectsOperations,
   ...documentsOperations,
+  ...savedSearchOperations,
   ...foldersOperations,
   ...reviewOperations,
   ...conversationsOperations,

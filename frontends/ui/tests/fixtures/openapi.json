@@ -6822,6 +6822,297 @@
         }
       }
     },
+    "/api/search/saved": {
+      "post": {
+        "operationId": "saved-search-create",
+        "summary": "Save a search question",
+        "description": "Saves a search question under a `name` unique among the caller’s own: `scope` and `query` as the search operation takes them (query without `cursor`). `shared: true` shows it to every member of the office; each runs it with their own rights. Stores the question only, never results. Any member may save one, up to 200. Returns `{ savedSearch }`; a name already used answers 409.",
+        "tags": [
+          "documents"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 120,
+                    "description": "Unique among your own saved searches."
+                  },
+                  "scope": {
+                    "type": "object",
+                    "properties": {
+                      "scope": {
+                        "type": "string",
+                        "enum": [
+                          "office",
+                          "project",
+                          "office_shelf"
+                        ],
+                        "description": "Default `office`: every shelf the person may read."
+                      },
+                      "projectId": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "folderId": {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "A folder of the project or the office shelf, its subfolders included."
+                      }
+                    },
+                    "additionalProperties": true,
+                    "description": "Where to look, as the search operation takes it in its query; {} is the whole office."
+                  },
+                  "query": {
+                    "type": "object",
+                    "additionalProperties": {},
+                    "description": "The question: the body of the search operation (text, kinds, filters, annotationFilters, sort, dir, limit, facets), without a cursor."
+                  },
+                  "shared": {
+                    "type": "boolean",
+                    "description": "Every member of the office sees and runs it, each with their own rights."
+                  }
+                },
+                "required": [
+                  "name",
+                  "scope",
+                  "query"
+                ],
+                "additionalProperties": true
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success. The body is the route’s JSON answer; no response schema is declared for it yet, so read the operation description for what it contains.",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          }
+        },
+        "x-mcp-annotations": {
+          "title": "Save a search question",
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": false,
+          "openWorldHint": false
+        }
+      },
+      "get": {
+        "operationId": "saved-search-list",
+        "summary": "List saved searches",
+        "description": "The caller’s own saved searches and the ones colleagues shared with the office, newest first: `{ savedSearches: [{ id, name, scope, query, shared, ownedByMe, createdAt }], nextCursor }`, a page of `limit` (default 50, max 200). To run one, pass its `scope` as the query and its `query` as the body of the search operation; it runs with the caller’s own rights, so a shared one finds only what the caller may read. Only rows with `ownedByMe` can be changed with saved-search-update or saved-search-delete.",
+        "tags": [
+          "documents"
+        ],
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "description": "Default 50, max 200."
+            },
+            "description": "Default 50, max 200."
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 64
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. The body is the route’s JSON answer; no response schema is declared for it yet, so read the operation description for what it contains.",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          }
+        },
+        "x-mcp-annotations": {
+          "title": "List saved searches",
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        }
+      }
+    },
+    "/api/search/saved/{id}": {
+      "delete": {
+        "operationId": "saved-search-delete",
+        "summary": "Delete a saved search",
+        "description": "Permanently deletes one of the caller’s own saved searches, by its id from saved-search-list; colleagues it was shared with lose it too. Documents are untouched. A colleague’s answers 404.",
+        "tags": [
+          "documents"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "description": "The saved search id, from saved-search-list."
+            },
+            "description": "The saved search id, from saved-search-list."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. The body is the route’s JSON answer; no response schema is declared for it yet, so read the operation description for what it contains.",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          }
+        },
+        "x-mcp-annotations": {
+          "title": "Delete a saved search",
+          "readOnlyHint": false,
+          "destructiveHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        }
+      },
+      "patch": {
+        "operationId": "saved-search-update",
+        "summary": "Rename or share a saved search",
+        "description": "Renames (`name`) or shares and unshares (`shared`) one of the caller’s own saved searches, by its id from saved-search-list. A colleague’s answers 404. Returns `{ savedSearch }`; a name already used answers 409.",
+        "tags": [
+          "documents"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "description": "The saved search id, from saved-search-list."
+            },
+            "description": "The saved search id, from saved-search-list."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 120,
+                    "description": "Unique among your own saved searches."
+                  },
+                  "shared": {
+                    "type": "boolean"
+                  }
+                },
+                "additionalProperties": true
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success. The body is the route’s JSON answer; no response schema is declared for it yet, so read the operation description for what it contains.",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          }
+        },
+        "x-mcp-annotations": {
+          "title": "Rename or share a saved search",
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        }
+      }
+    },
     "/api/session/documents/upload": {
       "post": {
         "operationId": "session-document-upload",
