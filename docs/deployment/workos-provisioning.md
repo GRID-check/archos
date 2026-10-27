@@ -133,7 +133,6 @@ Organization.
 |---|---|---|
 | `organization` | — | System root. Carries org-tier and platform-tier permissions. |
 | `project` | `organization` | Tenant workspace: documents, memory, conversations. |
-| `skill` | `project` | A scheduled agent-skill job attached to a project (Agent Skills). |
 | `folder` | `project` | A project folder with its own access list (ADR-0097). Who may read or change it is a folder role (§2a) assigned on it to a person. |
 
 **Only a folder with its own list is a resource**, and it sits directly under
@@ -153,11 +152,16 @@ About 5,000 resources of one type per organization is WorkOS's soft limit.
 > the parent project, enforced in `lib/documents/service.ts`. See ADR-0038.
 >
 > The `workflow` resource type and its three permissions/roles met the same
-> fate when Agent Skills replaced Workflows: the catalog now defines the
-> `skill` type instead. Environments the old feature reached still carry the
-> `workflow:*` leftovers — the provisioning script reports them as
-> `UNKNOWN … absent from the catalog`, which is how they stay visible until an
-> operator deletes them in the dashboard.
+> fate when Agent Skills replaced Workflows. Environments the old feature
+> reached still carry the `workflow:*` leftovers — the provisioning script
+> reports them as `UNKNOWN … absent from the catalog`, which is how they stay
+> visible until an operator deletes them in the dashboard.
+>
+> So did the `skill` type and `skill:view` / `skill:run` / `skill:manage`
+> (2026-10-27, ADR-0038's amendment): no skill resource was ever created and no
+> role held them, so a skill schedule is decided by its project's permissions
+> (`project:skills:manage`, `project:view`). They were deleted in both
+> environments when the catalog dropped them.
 
 ### 1. Organization-tier permissions (resource type: Organization)
 
@@ -192,20 +196,7 @@ project access comes from project-scoped roles.
 | `project:members:manage` | Grant and revoke project roles |
 | `project:skills:manage` | Create, edit, delete and run skill schedules in a project (Agent Skills Phase A) |
 
-### 1b. Skill-tier permissions (resource type: Skill)
-
-| Slug | Meaning |
-|---|---|
-| `skill:view` | See a skill schedule's definition, schedule and run history |
-| `skill:run` | Trigger it manually, outside its schedule (spends budget) |
-| `skill:manage` | Edit its definition/schedule, or delete it |
-
-Creating a skill schedule is `project:skills:manage` (there is no schedule yet
-to check against); operating an existing one is skill-tier, with the
-project-tier fallback in `lib/authz/decide.ts` keeping project admins working
-without provisioning per-skill roles.
-
-### 1c. Folder-tier permissions (resource type: Folder)
+### 1b. Folder-tier permissions (resource type: Folder)
 
 | Slug | Meaning |
 |---|---|
@@ -270,9 +261,9 @@ change, which is the property that silently broke for `org:audit:view` and
 to key off the role slug `admin`, so a custom administrator role reached no
 project at all however many `org:*` permissions it held. It is a permission now —
 grant it to any role that should administer every project in its organization.
-Existing `admin` sessions keep it through the bounded catalog implication in
-`lib/authz/permissions.ts`, so nobody re-logs-in; a custom role needs it
-provisioned before it can hold it.
+A session holds it when its token's `permissions` claim names it, and nothing
+else (the role-name implication was retired, ADR-0038's 2026-10-27 amendment);
+a role needs it provisioned before it can hold it.
 
 **A catalog change is not live until `--apply` has run against the environment.**
 The project tier reads its grants from WorkOS at request time and has no
@@ -520,9 +511,9 @@ the Staging WorkOS environment.
 | `piloti-notices` | entitlement | Piloti notices a new Fassung (ADR-0130): when a document is linked as the newer Fassung of another, the `revision_notice` job compares the changed pages with a vision model and proposes marks on the new Fassung where something moved, as the person whose upload or link made it, with one message in their thread about the document and one inbox row. Read per organization when the job is queued (`isOrgFeatureEnabled`) and from that person's pinned session when it runs (`isPilotiNoticesEnabled`). Off: a new Fassung is announced as before and compared only when someone opens „Vergleichen“. An entitlement because a notice is a vision call nobody asked for. **State (2026-10-22):** created; ON for every organization in Staging and in Production. |
 | `piloti-acts` | entitlement | Piloti acts when asked (ADR-0105): sets a mark born open, changes one (resolve, reopen, dismiss, take over, assign, date, reword) or deletes one the person set, in the asker's name, through `POST /api/internal/document-annotations` (ops `create`, `update`, `delete`). Read from the asker's pinned session on that route (`isPilotiActsEnabled`, `lib/authz/feature-flags.ts`). Off: those ops are refused with a 403, code `PILOTI_ACTS_OFF`, `details.reason` `piloti-acts-off`, and Piloti proposes the mark instead or tells the person to make the change themselves; reads, the room, pointing, highlighting, thread replies and proposals are unaffected. An entitlement so an office starts with Piloti proposing only and switches acting on once it trusts it. **Not created yet in either environment**: create it OFF, then switch it on per organization; an organization that already relies on acting needs it targeted in the same release |
 | `agent-mcp` | entitlement | The agent door (ADR-0122): external agents (Claude, Cursor, ChatGPT) reach the workspace as a person through the MCP server at `POST /api/mcp`, authenticated by a WorkOS AuthKit bearer token. Read per organization from the token's `org_id` (`isOrgFeatureEnabled`, `lib/agent-api/principal.ts`), because a bearer token carries no `feature_flags` claim; off: the call is refused with a 403 and a message naming the flag. Piloti's own in-product calls to the same server (signed request-context envelope) are not gated by it. An entitlement: it lets software outside the browser act with a person's rights, so nobody has it until an operator targets the organization. **State (2026-10-22):** created; ON for every organization in Staging and in Production. |
-| `agent-mcp-access` | entitlement | The organization's second opt-in for the agent door (ADR-0122, "Sensitive operations"): with it on, an external agent may be offered the operations marked `sensitivity: 'access'` (sharing grants and visibility, folder access, custom role definitions). Read per organization with `agent-mcp` (`lib/agent-api/principal.ts`); off: those operations are absent from `tools/list` and search, and a call names an unknown operation. The client must also hold the `piloti:sensitive` scope, which counts only once `SENSITIVE_SCOPE_ENFORCED_BY_WORKOS` is set in `lib/agent-api/policy.ts`. Piloti in-product never sees them. An entitlement: it lets an agent change who may see what. **State (2026-10-22):** created; ON for every organization in Staging, OFF in Production: the per-organization opt-in it is, switched on for an organization that asks. |
-| `agent-mcp-secrets` | entitlement | The same opt-in for the operations marked `sensitivity: 'secret'`: the organization's LLM provider keys (list, connect, revoke, verify, mode) and the audit-log Admin Portal link. **Since the amendment of ADR-0122 (2026-10-21) every one of them is withheld from the agent door, so this flag offers nothing today**; it applies again if one is offered. A key is write-only through the agent door as everywhere: no answer carries it. Same reading, scope requirement and Piloti exclusion as `agent-mcp-access`. **State (2026-10-22):** created; ON for every organization in Staging, OFF in Production: the per-organization opt-in it is, switched on for an organization that asks. |
-| `agent-mcp-controls` | entitlement | The same opt-in for the operations marked `sensitivity: 'control'`, which turn a security or compliance control down or off: zero data retention, the upload screening policy (the office's and a project's), letting a held file through screening, lifting a legal hold, download-log retention and the deleted-folder content policy. **Since the amendment of ADR-0122 (2026-10-21) only letting a held file through and lifting a legal hold are on the agent door**; the policies are withheld as product configuration. Same reading, scope requirement and Piloti exclusion as `agent-mcp-access`. **State (2026-10-22):** created; ON for every organization in Staging, OFF in Production: the per-organization opt-in it is, switched on for an organization that asks. |
+| `agent-mcp-access` | entitlement | The organization's second opt-in for the agent door (ADR-0122, "Sensitive operations"): with it on, an external agent may be offered the operations marked `sensitivity: 'access'` (sharing grants and visibility, folder access, custom role definitions). Read per organization with `agent-mcp` (`lib/agent-api/principal.ts`); off: those operations are absent from `tools/list` and search, and a call names an unknown operation. The client must also hold the `piloti:sensitive` scope, which counts only once `SENSITIVE_SCOPE_ENFORCED_BY_WORKOS` is set in `lib/agent-api/policy.ts`. Piloti in-product never sees them. An entitlement: it lets an agent change who may see what. **State (2026-10-27):** created; ON for every organization in Staging and in Production (Production switched to every organization on 2026-10-27, at the product owner's request). Switching Production back to SOME makes it the per-organization opt-in again, switched on for an organization that asks. |
+| `agent-mcp-secrets` | entitlement | The same opt-in for the operations marked `sensitivity: 'secret'`: the organization's LLM provider keys (list, connect, revoke, verify, mode) and the audit-log Admin Portal link. **Since the amendment of ADR-0122 (2026-10-21) every one of them is withheld from the agent door, so this flag offers nothing today**; it applies again if one is offered. A key is write-only through the agent door as everywhere: no answer carries it. Same reading, scope requirement and Piloti exclusion as `agent-mcp-access`. **State (2026-10-27):** created; ON for every organization in Staging and in Production (Production switched to every organization on 2026-10-27, at the product owner's request). Switching Production back to SOME makes it the per-organization opt-in again, switched on for an organization that asks. |
+| `agent-mcp-controls` | entitlement | The same opt-in for the operations marked `sensitivity: 'control'`, which turn a security or compliance control down or off: zero data retention, the upload screening policy (the office's and a project's), letting a held file through screening, lifting a legal hold, download-log retention and the deleted-folder content policy. **Since the amendment of ADR-0122 (2026-10-21) only letting a held file through and lifting a legal hold are on the agent door**; the policies are withheld as product configuration. Same reading, scope requirement and Piloti exclusion as `agent-mcp-access`. **State (2026-10-27):** created; ON for every organization in Staging and in Production (Production switched to every organization on 2026-10-27, at the product owner's request). Switching Production back to SOME makes it the per-organization opt-in again, switched on for an organization that asks. |
 | `piloti-ask` | entitlement | Agents consult Piloti (ADR-0124): an agent acting for a person asks Piloti a question (`piloti-ask-create` on the agent door, `SendMessage` / `message/send` on the A2A door at `/api/a2a`) and Piloti answers in a turn run as that person, in their own private thread, on their and the organization's LLM budget. Read from the person's session on `POST /api/piloti-asks` (`isPilotiAskEnabled`); off: the ask is refused with 403 (`piloti-ask-off`) and nothing else changes. The agent door itself still needs `agent-mcp`, which the A2A door shares. An entitlement because every ask is a model turn nobody typed. **State (2026-10-22):** created; ON for every organization in Staging and in Production. |
 | `platform-agent-mcp` | entitlement | The platform door (ADR-0126): a platform operator's agent reaches the operator console through its own MCP server at `POST /api/platform/mcp`, with a WorkOS AuthKit token for that door's audience. Read for the **GRID Platform organization only**, from the token's `org_id` (`lib/agent-api/principal.ts`); a token of any other organization is refused before the flag is read, so targeting it at an office does nothing. Off: the call is refused with a 403. The office door's `agent-mcp` does not open it, and it does not open the office door. The caller must also be platform staff (`isPlatformStaff`), and each operation's route still checks its own `platform:*` permission, so Platform Support stays read-only. The `secret` opt-in (`agent-mcp-secrets`) of the platform organization governs the one sensitive console operation, the audit-log Admin Portal link, under the same scope rule as the office door. An entitlement: every write there reaches every tenant. **State (2026-10-22):** created; ON in Staging and in Production. Target only the GRID Platform organization. The door also needs its resource indicator registered (`docs/architecture/agent-surface.md`, "WorkOS dashboard setup") |
 | `mail-import` | entitlement | The Outlook archive import into a project's Dateien (ADR-0085): the **Outlook-Archiv importieren** action and the routes that start and complete an import (`isMailImportEnabled`, `lib/authz/feature-flags.ts`). **Not created yet in either environment**, so the import is off for everybody until it is: create it OFF, then switch it on per organization once its Art. 28 notice covers imported correspondence |
@@ -734,14 +725,14 @@ Three things follow, and each has cost somebody an afternoon:
 
 1. **Dashboard** (still manual — the SDK cannot create resource types): create
    the resource types from §0 — `project` (parent `organization`), then
-   `skill` and `folder` (each parent `project`). Descriptions are capped at 150
+   `folder` (parent `project`). Descriptions are capped at 150
    characters.
 2. **Script**: `WORKOS_API_KEY=<key> npm run provision:workos-env -- --apply`
    from `frontends/ui` creates organization **GRID Platform** with external id
    `grid-platform` (the app resolves it by external id, so the name may differ
    but the external id may not). Was dashboard-only before.
 3. **Script**: `WORKOS_API_KEY=<key> npm run provision:authz -- --apply`.
-   This creates every permission from §1/§1a/§1b/§1c/§2 and every role from §2a,
+   This creates every permission from §1/§1a/§1b/§2 and every role from §2a,
    including the two platform-org roles, and is idempotent. Nothing to do if
    the environment is the one a stack deploys against: the
    `grid-app-authz-catalog` Job runs it on the next rollout.
@@ -868,7 +859,7 @@ environment; the migration that drops it also deletes the
   `org-platform-owner`/`org-platform-support` (cached lookup) or the break-glass
   allowlist.
 - **Per-resource**: `lib/authz/resource-check.ts` is the single FGA round-trip
-  for both the project and skill tiers, and fails closed.
+  for the project tier, and fails closed.
 - **Folders** (ADR-0097): `lib/authz/folder-roles.ts` holds every WorkOS call of
   the folder tier. A person's levels in a project are two
   `listResourcesForMembership` calls (`folder:read`, `folder:write`) scoped to

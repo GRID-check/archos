@@ -202,6 +202,14 @@ class FileRow:
     revision_facts: Mapping[str, Any] | None = field(default=None, compare=False)
     #: Pages the document has, when the store knows (None: not recorded, never "zero").
     page_count: int | None = None
+    #: What the ingest read the document to be (the dossier's ``document_type``), the facts it
+    #: states (``key value unit (p. N)``), what it points at, and how much of it was fully read.
+    document_type: str | None = None
+    facts: tuple[str, ...] = ()
+    references: tuple[str, ...] = ()
+    pages_not_read: int = 0
+    #: What the facts say differently from the Fassung this one replaced: ``key before → after``.
+    fact_changes: tuple[str, ...] = ()
 
     @property
     def document_date(self) -> str | None:
@@ -252,7 +260,46 @@ def file_row(row: Any) -> FileRow | None:
         change_basis=(str(_attr(row, "change_basis") or "").strip() or None),
         revision_facts=revision_facts if isinstance(revision_facts, dict) and revision_facts else None,
         page_count=page_number(_attr(row, "page_count")),
+        **_reading_fields(row),
     )
+
+
+#: What a listing row shows of the ingest's reading: a few facts and references, never the lot.
+MAX_ROW_FACTS = 6
+MAX_ROW_REFERENCES = 8
+
+
+def _reading_fields(row: Any) -> dict[str, Any]:
+    """The dossier's type and facts, the references and the unread pages, as :class:`FileRow` fields."""
+    dossier = _attr(row, "dossier")
+    dossier = dossier if isinstance(dossier, dict) else {}
+    facts = []
+    for fact in dossier.get("facts") or []:
+        if not isinstance(fact, dict) or not fact.get("key") or not fact.get("value"):
+            continue
+        unit = f" {fact['unit']}" if fact.get("unit") else ""
+        page = f" (p. {fact['page']})" if fact.get("page") else ""
+        facts.append(f"{fact['key']} {fact['value']}{unit}{page}")
+    references = [
+        str(ref.get("label") or ref.get("key"))
+        for ref in (_attr(row, "doc_references") or [])
+        if isinstance(ref, dict) and (ref.get("label") or ref.get("key"))
+    ]
+    coverage = _attr(row, "coverage")
+    not_read = coverage.get("not_read") if isinstance(coverage, dict) else 0
+    document_type = dossier.get("document_type")
+    changes = [
+        f"{change['key']} {change.get('before') or '–'} → {change.get('after') or '–'}"
+        for change in dossier.get("changes") or []
+        if isinstance(change, dict) and change.get("key")
+    ]
+    return {
+        "fact_changes": tuple(changes[:MAX_ROW_FACTS]),
+        "document_type": str(document_type) if document_type else None,
+        "facts": tuple(facts[:MAX_ROW_FACTS]),
+        "references": tuple(references[:MAX_ROW_REFERENCES]),
+        "pages_not_read": not_read if isinstance(not_read, int) and not_read > 0 else 0,
+    }
 
 
 def file_rows(rows: Iterable[Any]) -> list[FileRow]:
@@ -613,8 +660,12 @@ def _row_line(row: FileRow, *, show_shelf: bool, mark: str | None = None) -> str
     bits.append(f"Folder: {row.folder}" if row.folder else "Folder: (top level)")
     if row.doc_class:
         bits.append(f"Dokumentart: {row.doc_class}")
+    if row.document_type and row.document_type != "other":
+        bits.append(f"Type: {row.document_type.replace('_', ' ')}")
     if row.page_count:
         bits.append(f"{row.page_count} page{'' if row.page_count == 1 else 's'}")
+    if row.pages_not_read:
+        bits.append(f"{row.pages_not_read} page(s) not fully read: content there may be missing from search")
     if row.tags:
         bits.append(f"Tags: {', '.join(row.tags)}")
     if row.topics:
@@ -627,6 +678,12 @@ def _row_line(row: FileRow, *, show_shelf: bool, mark: str | None = None) -> str
     title_block = title_block_label(row.revision_facts)
     if title_block:
         bits.append(f"Plankopf: {title_block}")
+    if row.facts:
+        bits.append(f"States: {'; '.join(row.facts)}")
+    if row.references:
+        bits.append(f"Refers to: {', '.join(row.references)}")
+    if row.fact_changes:
+        bits.append(f"Facts changed against the previous Fassung: {'; '.join(row.fact_changes)}")
     if mark:
         bits.append(mark)
     change = _change_bit(row)

@@ -58,7 +58,7 @@ from .schema import TEXT_STEM_FIELD
 LLAMA_INTERNAL_KEYS = frozenset({"_node_content", "_node_type", "doc_id", "ref_doc_id", "document_id"})
 
 #: Fields multi-valued by nature: a scalar is wrapped, so a filter can match any.
-LIST_FIELDS = frozenset({"tags", "topics", FOLDER_FIELD, PARAGRAPH_FIELD})
+LIST_FIELDS = frozenset({"tags", "topics", FOLDER_FIELD, PARAGRAPH_FIELD, "references", "dossier_facts", "parties"})
 
 #: Payload field keeping the Dokumentart the chunk was ingested with (its own
 #: ``doc_class`` metadata, "" for none), so clearing a person's class can put
@@ -202,7 +202,69 @@ def document_facts(document: Any | None) -> dict[str, Any]:
     # Stated even when unknown (None), so a date a person or a re-read removed stops matching a range.
     facts[DOCUMENT_DATE_FIELD] = _document_date(document)
     facts[ADDED_AT_FIELD] = as_rfc3339(getattr(document, "added_at", None))
+    facts.update(reading_facts(document))
     return facts
+
+
+def reference_value(kind: str, key: str) -> str:
+    """One reference as the ``references`` field holds it: ``norm:önorm b 1600``, ``plan:ep-05``."""
+    return f"{kind}:{key}".casefold()
+
+
+def fact_value(key: str, value: Any, unit: Any = None) -> str:
+    """One stated fact as the ``dossier_facts`` field holds it: ``building_class=4``, ``room_height=2.6 m``.
+
+    The value is folded so two spellings of one statement match: case, spaces, a decimal
+    comma, and a Gebäudeklasse written "GK 4" or "Gebäudeklasse IV" read as its number.
+    """
+    text = " ".join(str(value).split()).casefold().replace(",", ".")
+    if key == "building_class":
+        roman = {"i": "1", "ii": "2", "iii": "3", "iv": "4", "v": "5"}
+        last = text.split()[-1] if text.split() else text
+        text = roman.get(last, "".join(ch for ch in text if ch.isdigit()) or text)
+    unit_text = " ".join(str(unit).split()).casefold() if unit else ""
+    return f"{key}={text} {unit_text}".strip()
+
+
+def reading_facts(document: Any) -> dict[str, Any]:
+    """What the ingest read of the whole document, as filterable payload (``docs/architecture/document-dossier.md``).
+
+    Copied onto every chunk of the document, like the tags: ``document_type`` (the dossier's),
+    ``references`` (``kind:key``), ``dossier_facts`` (``key=value unit``), ``parties`` (names,
+    case-folded) and ``pages_not_read``. Each is stated even when empty, so a re-read that
+    found nothing stops a stale value from matching. One indexed condition then answers
+    "every passage of a document citing ÖNORM B 1600" or "of a fire safety concept".
+    """
+    dossier = getattr(document, "dossier", None)
+    dossier = dossier if isinstance(dossier, Mapping) else {}
+    references = getattr(document, "doc_references", None) or []
+    coverage = getattr(document, "coverage", None)
+    not_read = coverage.get("not_read") if isinstance(coverage, Mapping) else 0
+    return {
+        "document_type": dossier.get("document_type") or None,
+        "references": list(
+            dict.fromkeys(
+                reference_value(str(ref["kind"]), str(ref["key"]))
+                for ref in references
+                if isinstance(ref, Mapping) and ref.get("kind") and ref.get("key")
+            )
+        ),
+        "dossier_facts": list(
+            dict.fromkeys(
+                fact_value(str(fact["key"]), fact["value"], fact.get("unit"))
+                for fact in dossier.get("facts") or []
+                if isinstance(fact, Mapping) and fact.get("key") and fact.get("value")
+            )
+        ),
+        "parties": list(
+            dict.fromkeys(
+                " ".join(str(party["name"]).split()).casefold()
+                for party in dossier.get("parties") or []
+                if isinstance(party, Mapping) and party.get("name")
+            )
+        ),
+        "pages_not_read": not_read if isinstance(not_read, int) and not_read > 0 else 0,
+    }
 
 
 def _document_date(document: Any) -> str | None:
@@ -301,11 +363,13 @@ def chunk_own_payload(scope: str, record: ChunkRecord) -> dict[str, Any]:
 
 
 #: Fields the store adds for filtering. A hit's metadata leaves them out, so a
-#: chunk read back carries exactly the metadata the chunker gave it; the facts
-#: themselves are read from the metadata store, their authority.
+#: chunk read back carries the metadata the chunker gave it; the facts
+#: themselves are read from the metadata store, their authority. The one job
+#: field a hit keeps is ``grid_document_id``: it is the document's identity, which
+#: grouping (``document_groups.document_key``) and the BFF join a hit by.
 STORE_ONLY_FIELDS = frozenset(
     {TEXT_FIELD, TEXT_STEM_FIELD, SCOPE_FIELD, CHUNK_ID_FIELD, READING_ORDER_FIELD}
-    | {"office_id", "project_id", "grid_document_id"}
+    | {"office_id", "project_id"}
     | {
         CHUNK_ORDINAL_FIELD,
         "folder_path",

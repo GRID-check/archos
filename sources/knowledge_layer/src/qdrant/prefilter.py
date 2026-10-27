@@ -95,6 +95,10 @@ class Pushdown:
     folder: str | None = None
     #: False when the caller named a file: naming one is the way back to an older Fassung.
     hide_superseded: bool = True
+    #: The dossier's document type the passages' documents must have (``payload.reading_facts``).
+    document_type: str | None = None
+    #: ``kind:key`` values (``payload.reference_value``): the document must refer to one of them.
+    references: tuple[str, ...] = ()
 
     def clauses(self, *, user_shelf: bool) -> list[dict[str, Any]]:
         """The conditions for one collection; superseded Fassungen are hidden on user shelves only.
@@ -110,6 +114,10 @@ class Pushdown:
         if self.hide_superseded and user_shelf:
             # ``$ne`` keeps a point the mirror has not stamped yet (scope.py).
             clauses.append({"superseded": {"$ne": True}})
+        if self.document_type:
+            clauses.append({"document_type": self.document_type})
+        if self.references:
+            clauses.append({"references": {"$in": list(self.references)}})
         return clauses
 
     def narrow(self, filters: dict[str, Any] | None, *, user_shelf: bool) -> dict[str, Any] | None:
@@ -128,14 +136,38 @@ class Pushdown:
                 ("doc_class", bool(self.doc_class)),
                 (FOLDER_FIELD, bool(self.folder)),
                 ("superseded", self.hide_superseded and user_shelves),
+                ("document_type", bool(self.document_type)),
+                ("references", bool(self.references)),
             )
             if used
         ]
 
 
-def plan(*, doc_class: str | None, folder: str | None, file_name: str | None) -> Pushdown:
-    """The pushdown for one search."""
-    return Pushdown(doc_class=doc_class or None, folder=folder_key(folder), hide_superseded=not file_name)
+def plan(
+    *,
+    doc_class: str | None,
+    folder: str | None,
+    file_name: str | None,
+    document_type: str | None = None,
+    refers_to: str | None = None,
+) -> Pushdown:
+    """The pushdown for one search.
+
+    ``refers_to`` is what the caller names ("ÖNORM B 1600", "EP-05", "Brandschutzkonzept"),
+    read into the ``references`` values a document carries (``references.reference_keys_for``).
+    """
+    from knowledge_layer.references import reference_keys_for
+
+    from .payload import reference_value
+
+    references = tuple(reference_value(kind, key) for kind, key in reference_keys_for(refers_to or ""))
+    return Pushdown(
+        doc_class=doc_class or None,
+        folder=folder_key(folder),
+        hide_superseded=not file_name,
+        document_type=(document_type or "").strip() or None,
+        references=references,
+    )
 
 
 def post_filtered(*, title_contains: str | None, file_name: str | None) -> bool:

@@ -49,6 +49,14 @@ def test_the_log_lists_the_stages_in_the_fixed_order(caplog):
     assert _perf_lines(caplog) == ["[ingest-perf] Plan.pdf text=1.000 screen=0.500 write=2.000"]
 
 
+def test_the_transcription_of_scans_is_a_stage_of_its_own(caplog):
+    with caplog.at_level(logging.INFO, logger=_LOGGER):
+        adapter._log_ingest_perf("Scan.pdf", {"renders": 1.0, "ocr": 42.0, "screen": 0.5})
+
+    # Page transcription is a vision call per scanned page; its seconds were missing from the line.
+    assert _perf_lines(caplog) == ["[ingest-perf] Scan.pdf screen=0.500 ocr=42.000 renders=1.000"]
+
+
 def test_no_line_when_no_stage_was_reached(caplog):
     with caplog.at_level(logging.INFO, logger=_LOGGER):
         adapter._log_ingest_perf("Plan.pdf", {})
@@ -67,7 +75,7 @@ def test_a_clean_file_logs_its_stages_and_a_held_one_stops_before_tables(tmp_pat
     [clean] = _perf_lines(caplog)
     assert clean.startswith("[ingest-perf] BSK.pdf ")
     assert "text=" in clean and "screen=" in clean
-    assert clean.index("text=") < clean.index("screen=") < clean.index("embedding=")
+    assert clean.index("text=") < clean.index("screen=") < clean.index("ocr=") < clean.index("embedding=")
 
     caplog.clear()
     with caplog.at_level(logging.INFO, logger=_LOGGER):

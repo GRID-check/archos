@@ -322,6 +322,21 @@ class FileInfo(BaseModel):
             "never for a model."
         ),
     )
+    dossier: dict[str, Any] | None = Field(
+        None,
+        description=(
+            "What the ingest read the document to be: document_type, title, summary, parties, dates, place and "
+            "facts with page and quote (docs/architecture/document-dossier.md)."
+        ),
+    )
+    doc_references: list[dict[str, Any]] | None = Field(
+        None,
+        description="What the document points at: norms, laws, plans, named documents, each with its pages.",
+    )
+    coverage: dict[str, Any] | None = Field(
+        None,
+        description="How much of the document was read: pages, read as text, transcribed, drawings read, not read.",
+    )
     superseded_by: str | None = Field(
         None,
         description=(
@@ -565,6 +580,9 @@ class AvailableDocument(BaseModel):
     change_summary: str | None = None
     change_basis: str | None = None
     page_count: int | None = None
+    dossier: dict[str, Any] | None = None
+    doc_references: list[dict[str, Any]] | None = None
+    coverage: dict[str, Any] | None = None
     added_at: str | None = None
     collection: str | None = None
     shelf: str | None = None

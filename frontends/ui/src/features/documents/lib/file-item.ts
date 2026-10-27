@@ -38,6 +38,9 @@ type OptionalWireField =
   | 'topics'
   | 'capture'
   | 'revisionFacts'
+  | 'dossier'
+  | 'docReferences'
+  | 'coverage'
   | 'queueAhead'
   | 'originPath'
   | 'contentHash'
@@ -71,6 +74,9 @@ export function toFileItem(row: DocumentWireRow): FileItem {
     topics: row.topics ?? null,
     capture: row.capture ?? null,
     revisionFacts: row.revisionFacts ?? null,
+    dossier: row.dossier ?? null,
+    docReferences: row.docReferences ?? null,
+    coverage: row.coverage ?? null,
     revision: row.revision ?? null,
     queueAhead: row.queueAhead ?? null,
     assignees: row.assignees ?? EMPTY_ASSIGNEES,
@@ -113,6 +119,9 @@ const TRAILING_METADATA: ReadonlySet<keyof FileItem> = new Set<keyof FileItem>([
   'topics',
   'capture',
   'revisionFacts',
+  'dossier',
+  'docReferences',
+  'coverage',
 ])
 
 /** What a stale in-flight read would take back along with the status. */
