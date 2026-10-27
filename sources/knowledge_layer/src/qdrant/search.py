@@ -29,6 +29,7 @@ from __future__ import annotations
 import re
 from collections.abc import Sequence
 from dataclasses import dataclass
+from dataclasses import replace
 from typing import Any
 from typing import Literal
 
@@ -116,6 +117,9 @@ class Hit:
     fused: float
     #: Cosine similarity between the query and the chunk's dense vector.
     cosine: float
+    #: A lexical channel ranked it (BM25, or an exact term): the chunk holds a word of the query.
+    #: Stated by :func:`grouped_search` only; False elsewhere.
+    lexical: bool = False
 
 
 def phrase(term: str) -> models.FieldCondition:
@@ -333,11 +337,9 @@ def grouped_search(
             scopes, query_filter, vector, lexical_text, exact_terms, candidates, RANKING, store.bm25_length(scopes[0])
         )
     ]
-    # One flat fused ranking, grouped here in its order. Qdrant's group query
-    # is no substitute: with a fusion as its query it fuses again for every
-    # round of groups it collects, so each round's best passage scores rank 0
-    # and the groups interleave by round instead of by relevance (measured on
-    # 1.19.2; ``test_qdrant_boost.py`` pins it).
+    # One flat fused ranking, grouped here in its order. Qdrant's group query is no substitute: with a fusion as its
+    # query it fuses again for every round of groups it collects, so each round's best passage scores rank 0 and the
+    # groups interleave by round instead of by relevance (measured on 1.19.2; ``test_qdrant_boost.py`` pins it).
     result = store.client.query_points(
         alias,
         prefetch=prefetch,
@@ -352,9 +354,52 @@ def grouped_search(
         cosines = _cosines(store, alias, scopes, vector, [point.id for point in points])
         points.sort(key=lambda point: _tie_order(_hit(point, cosines)))
     collected = _group_in_order(points, group_by, groups, group_size)
+    kept = [point.id for group in collected.values() for point in group]
     if cosines is None:
-        cosines = _cosines(store, alias, scopes, vector, [point.id for group in collected.values() for point in group])
-    return [(key, [_hit(point, cosines) for point in group]) for key, group in collected.items()]
+        cosines = _cosines(store, alias, scopes, vector, kept)
+    lexical = _lexical_ids(store, alias, scopes, query_filter, vector, lexical_text, exact_terms, kept)
+    return [(key, _stated(group, cosines, lexical)) for key, group in collected.items()]
+
+
+def _stated(points: Sequence[Any], cosines: dict[str, float], lexical: set[str]) -> list[Hit]:
+    """``points`` as hits, each saying whether a lexical channel ranked it."""
+    return [replace(_hit(point, cosines), lexical=str(point.id) in lexical) for point in points]
+
+
+def _lexical_ids(
+    store: QdrantStore,
+    alias: str,
+    scopes: Sequence[str],
+    query_filter: models.Filter,
+    vector: Sequence[float],
+    lexical_text: str,
+    exact_terms: Sequence[str],
+    ids: Sequence[Any],
+) -> set[str]:
+    """Which of ``ids`` a lexical channel ranks, in one query over those points only.
+
+    The fused ranking says where a passage stands, not why: RRF over the dense
+    channel always fills its candidates, so a word nobody wrote („qwxzv“) still
+    returns the nearest passages. The BM25 channel ranks only a passage sharing
+    a query term (a sparse query scores nothing else) and an exact-term channel
+    only one holding the phrase, so membership here is "it holds the words",
+    told apart from "it is near in meaning" (the workspace search's floor,
+    ``aiq_api/routes/document_search.py``).
+    """
+    if not ids or (not lexical_text.strip() and not exact_terms):
+        return set()
+    among = models.Filter(must=[query_filter, models.HasIdCondition(has_id=list(ids))])
+    channels = _prefetches(
+        scopes, among, vector, lexical_text, exact_terms, len(ids), RANKING, store.bm25_length(scopes[0])
+    )[1:]
+    result = store.client.query_points(
+        alias,
+        prefetch=channels,
+        query=models.RrfQuery(rrf=models.Rrf(k=RANKING.rrf_k)),
+        limit=len(ids),
+        with_payload=False,
+    )
+    return {str(point.id) for point in result.points}
 
 
 def _group_in_order(points: Sequence[Any], group_by: str, groups: int, group_size: int) -> dict[str, list[Any]]:
