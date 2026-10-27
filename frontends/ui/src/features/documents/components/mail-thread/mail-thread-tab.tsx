@@ -34,7 +34,7 @@ import { mailThreadClient, type MailThreadClient } from './client'
 import { DetachDialog } from './detach-dialog'
 import { FollowControl } from './follow-control'
 import { MailThreadEntryItem } from './mail-thread-entry'
-import { currentVersionNumber, entriesNewestFirst, focusedEntryId, mayWrite } from './mail-thread-model'
+import { currentVersionNumber, entriesNewestFirst, entriesSayingTrust, focusedEntryId, mayWrite } from './mail-thread-model'
 
 type Load = { kind: 'loading' } | { kind: 'failed' } | { kind: 'ready'; view: MailThreadView }
 
@@ -127,6 +127,7 @@ export function MailThreadTab({
   const writable = mayWrite(view)
   const current = currentVersionNumber(versions, view.entries)
   const entries = entriesNewestFirst(view.entries)
+  const sayingTrust = entriesSayingTrust(entries)
 
   const detached = (result: MailThreadEntryDetachResultView, targetName: string | null): void => {
     setDetaching(null)
@@ -176,6 +177,7 @@ export function MailThreadTab({
               entry={entry}
               versions={versions}
               focused={entry.id === focused}
+              showTrust={sayingTrust.has(entry.id)}
               // The thread's only mail cannot leave it (`last_entry`): the document is deleted instead.
               onDetach={writable && view.entries.length > 1 ? setDetaching : undefined}
               client={client}

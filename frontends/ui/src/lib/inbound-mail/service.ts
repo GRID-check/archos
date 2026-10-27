@@ -154,6 +154,7 @@ function partView(mail: InboundMailRow, part: InboundMailPartRow, candidates: Vi
     offered: part.kind === 'message' || !part.riskFlags.includes('type_not_accepted'),
     lastFailure: part.lastFailure,
     documentId: part.documentId && candidates.readsDocument(part.documentId) ? part.documentId : null,
+    filedAs: candidates.filedAs(part),
     duplicateOf: matched.duplicateOf,
     revisionCandidate: matched.revisionCandidate,
     revisionCandidateHidden: matched.revisionCandidateHidden,

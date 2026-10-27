@@ -12,7 +12,8 @@
  *
  * A row that cannot be filed says why in words and offers no checkbox it
  * could not honour: a running or failed scan, malware, a type the office does
- * not file.
+ * not file. A clean scan is the normal case and is silent: scanning shows only
+ * when it is running or found something.
  */
 
 import type { JSX } from 'react'
@@ -21,7 +22,6 @@ import Link from 'next/link'
 import {
   AlertTriangle,
   Ban,
-  CheckCircle2,
   Copy,
   FileStack,
   FolderInput,
@@ -30,7 +30,6 @@ import {
   Loader2,
   Lock,
   ShieldAlert,
-  ShieldCheck,
   ShieldQuestion,
   Undo2,
 } from 'lucide-react'
@@ -53,6 +52,7 @@ import { targetForPath, type AttachmentDraft, type FolderOption, type FolderTarg
 import { folderLeaf, readSuggestion } from '../lib/suggestion'
 import { AttachmentTargetDialog } from './attachment-target-dialog'
 import { AttachmentThumbnail } from './attachment-thumbnail'
+import { FiledTo } from './filed-to'
 import { CheckLine, FactLine } from './inbound-mail-atoms'
 
 export interface AttachmentRowProps {
@@ -91,7 +91,8 @@ export function AttachmentRow({
   const [pickerOpen, setPickerOpen] = useState(false)
   const [editOpen, setEditOpen] = useState(false)
   const { part, status, selectable } = entry
-  const name = part.filename ?? draft.name
+  // Filed, the bytes and their name are gone (D6): the document's name is what it is now called.
+  const name = part.filedAs?.name ?? part.filename ?? draft.name
   const suggestion = useMemo(() => readSuggestion(part.suggestion), [part.suggestion])
   const destinations = useMemo(
     () =>
@@ -202,19 +203,7 @@ export function AttachmentRow({
           </FactLine>
         )
       case 'filed':
-        return (
-          <FactLine icon={CheckCircle2} tone="default" testId="status-filed">
-            {t('attachments.status.filed')}
-            {part.documentId && (
-              <>
-                {' · '}
-                <Link className="underline-offset-2 hover:underline" href={documentFilesHref(projectId, part.documentId)}>
-                  {t('attachments.open')}
-                </Link>
-              </>
-            )}
-          </FactLine>
-        )
+        return <FiledTo projectId={projectId} part={part} />
       case 'dismissed':
       case 'expired':
         return (
@@ -264,16 +253,8 @@ export function AttachmentRow({
         <div className="flex min-w-0 items-baseline gap-2">
           <MiddleTruncate text={name} className={cn('min-w-0 text-sm font-medium', !selectable && status !== 'filed' && 'text-muted-foreground')} />
         </div>
-        <p className="text-muted-foreground flex flex-wrap items-center gap-x-1.5 text-xs tabular-nums">
-          <span>{facts}</span>
-          {part.scan === 'clean' && status !== 'filed' && (
-            // No separator dot: where the line wraps, a dot would open the second line.
-            <span className="inline-flex items-center gap-1" title={t('attachments.status.clean')}>
-              <ShieldCheck className="size-3" aria-hidden />
-              <span>{t('attachments.status.clean')}</span>
-            </span>
-          )}
-        </p>
+        {/* A clean scan is the normal case and says nothing: only a running, failed or infected scan has a line (`statusLine`). */}
+        <p className="text-muted-foreground text-xs tabular-nums">{facts}</p>
         {statusLine()}
         {status === 'waiting' && entry.notes.map(noteLine)}
 

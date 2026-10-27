@@ -22,7 +22,8 @@ import 'server-only'
  * - **The system ends a follow** when the follow job finds the follower's
  *   access gone or the thread's document gone ({@link endFollowBySystem}).
  *   Expiry is sweep 12's; an address change and a detach end the follows they
- *   affect in their own transactions.
+ *   affect in their own transactions; closing the project ends every follow
+ *   on it ({@link endFollowsOnProjectClose}).
  *
  * Every start, renewal and end is a line in the audit trail
  * (`mail_thread.follow_started`, `mail_thread.follow_ended`) and a PostHog
@@ -36,10 +37,13 @@ import { SYSTEM_ACTORS } from '@/lib/audit/service'
 import type { AuthorizedSession } from '@/lib/auth/types'
 import { getHiddenFolderIds, requireFolderWrite } from '@/lib/authz/folder-access'
 import { requireProjectAccess } from '@/lib/authz/projects'
+import { getDb } from '@/lib/db'
 import type { MailThreadFollowRow } from '@/lib/db/schema'
 import { memberReader } from '@/lib/documents/document-reader'
 import { managesProject, requireInboundMailEnabled, requireMailReviewer } from '@/lib/inbound-mail/access'
 import { settleFollowExpiring } from '@/lib/inbound-mail/announce'
+import { auditFollowsEnded } from '@/lib/inbound-mail/audit'
+import { endProjectFollows } from '@/lib/inbound-mail/repository'
 import { publishProjectChanged } from '@/lib/realtime/door-events'
 import { endFollow, findRunningFollow, renewFollow, startFollow, type FollowEnd } from './follow-repository'
 import type {
@@ -167,12 +171,13 @@ export async function unfollowMailThread(
 
 /**
  * End a follow because the system noticed (the follow job: the follower's
- * access or the thread's document is gone; a renewal: it ran out). Whether
- * this call ended it.
+ * access or the thread's document is gone; a renewal: it ran out; sweep 12:
+ * it ran out, its document is gone, or its project was closed and the close
+ * did not end it). Whether this call ended it.
  */
 export async function endFollowBySystem(
   follow: Pick<MailThreadFollowRow, 'id'>,
-  reason: Extract<FollowEnd['reason'], 'access_lost' | 'document_gone' | 'expired'>,
+  reason: Extract<FollowEnd['reason'], 'access_lost' | 'document_gone' | 'expired' | 'project_closed'>,
   now: Date = new Date(),
 ): Promise<boolean> {
   const ended = await endFollow(follow.id, { reason, endedBy: null }, now)
@@ -181,6 +186,36 @@ export async function endFollowBySystem(
   await settleFollowExpiring(ended.organizationId, [ended.id])
   publishProjectChanged(ended.organizationId, ended.projectId)
   return true
+}
+
+/**
+ * Closing a project ends every running follow on it (`project_closed`, the
+ * coordinator's decision of 2026-10-27): a follow is a standing decision to
+ * file replies, and it ends with the work. Mail that still arrives waits in
+ * the closed project for a person, as it always did (D10); only the standing
+ * decision goes. Ended as the person who closed it, each with its audit line,
+ * its PostHog end and its renewal request settled. Reopening the project
+ * starts no follow again: following is the follower's own act.
+ *
+ * Called after the close committed; the caller treats a failure as a log
+ * line, and sweep 12 ends what this missed (`findEndingFollows`).
+ */
+export async function endFollowsOnProjectClose(session: AuthorizedSession, projectId: string, at: Date = new Date()): Promise<number> {
+  const ended = await endProjectFollows(getDb(), projectId, { endedBy: session.userId, reason: 'project_closed' }, at)
+  if (ended.length === 0) return 0
+  auditFollowsEnded(session.organizationId, projectId, session.userId, ended, 'project_closed')
+  // One end per follow, as every other end is counted.
+  ended.forEach(() =>
+    captureServer({
+      event: 'mail_thread_followed',
+      distinctId: session.userId,
+      organizationId: session.organizationId,
+      properties: { action: 'end', reason: 'project_closed' },
+    })
+  )
+  await settleFollowExpiring(session.organizationId, ended.map((follow) => follow.id))
+  publishProjectChanged(session.organizationId, projectId)
+  return ended.length
 }
 
 function recordFollowStarted(

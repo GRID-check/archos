@@ -258,7 +258,7 @@ CREATE TABLE IF NOT EXISTS "mail_thread_follows" (
        AND ("ended_by" IS NULL OR "ended_at" IS NOT NULL)),
   CONSTRAINT "mail_thread_follows_ended_reason_known"
     CHECK ("ended_reason" IS NULL OR "ended_reason" IN
-      ('unfollowed', 'expired', 'access_lost', 'address_rotated', 'detached', 'document_gone', 'revoked_by_manager')),
+      ('unfollowed', 'expired', 'access_lost', 'address_rotated', 'detached', 'document_gone', 'revoked_by_manager', 'project_closed')),
   -- The follower ends their own follow; a manager ends someone else's.
   CONSTRAINT "mail_thread_follows_ended_by_person"
     CHECK ("ended_by" IS NULL OR "ended_by" ~ '^user_[0-9A-Z]{26}$'),

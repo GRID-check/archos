@@ -30,6 +30,7 @@ export const mailThread = {
     detached: 'A mail was detached from the mail thread',
     document_gone: 'The mail thread was deleted',
     revoked_by_manager: 'Ended by a project manager',
+    project_closed: 'The project was closed',
   },
 
   /** The „E-Mails“ tab of a thread document's preview (D16). */
@@ -108,6 +109,7 @@ export const mailThread = {
   /** „Verlauf folgen“ in the tab: the viewer's own follow, and for managers everybody's. */
   follow: {
     offer: 'Follow this mail thread',
+    start: 'Follow',
     explain:
       'Replies from verified domains already writing in the mail thread are added without a click. Attachments keep waiting in Project mail.',
     following: 'You follow this mail thread until {date}',

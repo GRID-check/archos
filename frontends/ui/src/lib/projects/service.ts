@@ -9,6 +9,7 @@
 
 import 'server-only'
 import { getWorkOS } from '@/lib/workos/client'
+import { endFollowsOnProjectClose } from '@/lib/mail-thread/follows'
 import { requireProjectAccess, type ProjectPermission } from '@/lib/authz/projects'
 import { CHAT_PERMISSIONS } from '@/lib/authz/chat'
 import { hasPermission, ORG_PERMISSIONS } from '@/lib/authz/permissions'
@@ -545,6 +546,7 @@ export async function setProjectStatus(
     throw new ConflictError('The project changed meanwhile.', { reason: 'invalid-transition', from, to: change.status })
   }
   if (change.status === 'active') await rearmParkedOneShots(projectId, session.organizationId)
+  if (change.status === 'closed') await endFollowsOfClosedProject(session, projectId, now)
   // The status is on every chunk of the project, for the cross-project search's
   // filters (design §7). Never throws; the weekly sync repairs a failed copy.
   await syncProjectFacts(session.organizationId, projectId)
@@ -571,6 +573,20 @@ export async function setProjectStatus(
     request,
   })
   return project
+}
+
+/**
+ * Closing ends every follow of the project's E-Mail-Verläufe (`project_closed`,
+ * ADR-0134): a standing decision to file replies ends with the work. After the
+ * close committed, so a failure is logged, never an error for a close that
+ * happened; sweep 12 ends what this missed.
+ */
+async function endFollowsOfClosedProject(session: AuthorizedSession, projectId: string, now: Date): Promise<void> {
+  try {
+    await endFollowsOnProjectClose(session, projectId, now)
+  } catch (error) {
+    console.error('[projects] ending the follows of a closed project failed; sweep 12 ends them:', error)
+  }
 }
 
 /**

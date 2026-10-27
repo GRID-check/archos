@@ -6,7 +6,7 @@
  * rights, how a second call renews rather than duplicates, that a follow run
  * out is ended before a new one starts, who may end whose follow, and that
  * every start, renewal and end reaches the audit trail and PostHog with ids
- * and codes only.
+ * and codes only; and that closing a project ends every follow on it.
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -33,6 +33,8 @@ vi.mock('@/lib/audit/after-commit', () => ({ recordAuditEventAfterCommit: vi.fn(
 vi.mock('@/lib/analytics/posthog-server', () => ({ captureServer: vi.fn() }))
 vi.mock('@/lib/realtime/door-events', () => ({ publishProjectChanged: vi.fn() }))
 vi.mock('@/lib/inbound-mail/announce', () => ({ settleFollowExpiring: vi.fn(async () => undefined) }))
+vi.mock('@/lib/inbound-mail/repository', () => ({ endProjectFollows: vi.fn(async () => []) }))
+vi.mock('@/lib/db', () => ({ getDb: vi.fn(() => 'db') }))
 
 import { ForbiddenError, NotFoundError } from '@/lib/api/errors'
 import { captureServer } from '@/lib/analytics/posthog-server'
@@ -43,8 +45,10 @@ import { requireProjectAccess } from '@/lib/authz/projects'
 import type { MailThreadFollowRow } from '@/lib/db/schema'
 import { managesProject, requireInboundMailEnabled, requireMailReviewer } from '@/lib/inbound-mail/access'
 import { settleFollowExpiring } from '@/lib/inbound-mail/announce'
+import { endProjectFollows } from '@/lib/inbound-mail/repository'
+import { publishProjectChanged } from '@/lib/realtime/door-events'
 import { endFollow, findRunningFollow, renewFollow, startFollow } from './follow-repository'
-import { endFollowBySystem, followMailThread, unfollowMailThread } from './follows'
+import { endFollowBySystem, endFollowsOnProjectClose, followMailThread, unfollowMailThread } from './follows'
 import type { ThreadRow } from './repository'
 import { findVisibleThread } from './repository'
 import { findWritableThread, type WritableThread } from './write-repository'
@@ -248,6 +252,36 @@ describe('endFollowBySystem', () => {
   it('records once: a follow already ended is left as it is', async () => {
     vi.mocked(endFollow).mockResolvedValue(null)
     expect(await endFollowBySystem({ id: 'f-1' }, 'document_gone')).toBe(false)
+    expect(recordAuditEventAfterCommit).not.toHaveBeenCalled()
+    expect(settleFollowExpiring).not.toHaveBeenCalled()
+  })
+})
+
+describe('endFollowsOnProjectClose', () => {
+  it('ends every running follow of the project as the person who closed it, each audited, counted and its renewal settled', async () => {
+    const at = new Date('2026-10-27T09:00:00Z')
+    vi.mocked(endProjectFollows).mockResolvedValueOnce([
+      { id: 'f-1', threadId: THREAD, userId: ME },
+      { id: 'f-2', threadId: THREAD, userId: COLLEAGUE },
+    ])
+    expect(await endFollowsOnProjectClose(session, PROJECT, at)).toBe(2)
+    expect(endProjectFollows).toHaveBeenCalledWith('db', PROJECT, { endedBy: ME, reason: 'project_closed' }, at)
+    const lines = vi.mocked(recordAuditEventAfterCommit).mock.calls.map(([event]) => event)
+    expect(lines).toHaveLength(2)
+    for (const line of lines) {
+      expect(line).toMatchObject({ action: 'mail_thread.follow_ended', actor: { userId: ME }, metadata: { projectId: PROJECT, reason: 'project_closed' } })
+    }
+    expect(lines.map((line) => line.metadata?.followerUserId)).toEqual([ME, COLLEAGUE])
+    expect(vi.mocked(captureServer).mock.calls.map(([event]) => event.properties)).toEqual([
+      { action: 'end', reason: 'project_closed' },
+      { action: 'end', reason: 'project_closed' },
+    ])
+    expect(settleFollowExpiring).toHaveBeenCalledWith('org_1', ['f-1', 'f-2'])
+    expect(publishProjectChanged).toHaveBeenCalledWith('org_1', PROJECT)
+  })
+
+  it('does nothing more where nobody follows', async () => {
+    expect(await endFollowsOnProjectClose(session, PROJECT)).toBe(0)
     expect(recordAuditEventAfterCommit).not.toHaveBeenCalled()
     expect(settleFollowExpiring).not.toHaveBeenCalled()
   })

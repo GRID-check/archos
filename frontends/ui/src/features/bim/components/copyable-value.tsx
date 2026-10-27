@@ -23,9 +23,11 @@ import { cn } from '@/lib/utils'
 export interface CopyableValueProps {
   value: string
   className?: string
+  /** After the value reached the clipboard (a surface that counts its copies). */
+  onCopied?: () => void
 }
 
-export function CopyableValue({ value, className }: CopyableValueProps): JSX.Element {
+export function CopyableValue({ value, className, onCopied }: CopyableValueProps): JSX.Element {
   const t = useTranslations('bim')
   const [copied, raise] = useTransientFlag()
 
@@ -33,7 +35,10 @@ export function CopyableValue({ value, className }: CopyableValueProps): JSX.Ele
     // Absent in a non-secure context, rejected when the document is not
     // focused. Neither is worth an error: the value is on screen in full and
     // can still be selected by hand.
-    void navigator.clipboard?.writeText(value).then(raise, () => {})
+    void navigator.clipboard?.writeText(value).then(() => {
+      raise()
+      onCopied?.()
+    }, () => {})
   }
 
   return (

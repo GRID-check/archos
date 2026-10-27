@@ -10,11 +10,14 @@ const alertVariants = cva(
       variant: {
         default: 'bg-card text-card-foreground',
         // Destructive is an error surface, not a quiet card with red text:
-        // the danger tint fill + AA error ink + signal hairline (the token's
-        // own alpha keeps it subtle — no slash modifier, static @utilities
-        // cannot take one). Other variants unchanged.
+        // the danger tint fill + signal hairline (the token's own alpha keeps
+        // it subtle — no slash modifier, static @utilities cannot take one),
+        // the signal red on the glyph and the words in ink. Red words on the
+        // tint measured 4.08:1 (axe, 2026-10-27), under the 4.5:1 AA asks of
+        // body text: the same cure as a warning line, glyph coloured, words
+        // in ink (`grid-design-language.md`, „Measured contrasts“).
         destructive:
-          'border-danger bg-danger-subtle text-error [&>svg]:text-current *:data-[slot=alert-description]:text-error',
+          'border-danger bg-danger-subtle text-foreground [&>svg]:text-error *:data-[slot=alert-description]:text-foreground',
         success:
           'bg-success-subtle text-success [&>svg]:text-current',
         warning:

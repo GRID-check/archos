@@ -15,8 +15,7 @@
 
 import type { JSX } from 'react'
 import { useId, useMemo, useState } from 'react'
-import { AlertTriangle, CheckCircle2, FolderInput, Mail, MailCheck, Repeat2 } from 'lucide-react'
-import Link from 'next/link'
+import { AlertTriangle, CheckCircle2, FolderInput, Mail, MailCheck } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { FilingChip } from '@/components/ui/filing-chip'
@@ -24,7 +23,6 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { FolderPickerSheet } from '@/features/documents/components/folder-picker-sheet'
-import { documentFilesHref } from '@/features/documents/lib/document-question'
 import { useTranslations } from '@/i18n'
 import { INBOUND_MAIL_FILE_NAME_MAX, type InboundMailView } from '@/lib/inbound-mail/inbound-mail-wire'
 import { cn } from '@/lib/utils'
@@ -38,6 +36,7 @@ import {
   type MessageDraft,
 } from '../lib/draft'
 import { folderLeaf } from '../lib/suggestion'
+import { FiledTo } from './filed-to'
 import { CheckLine, FactLine } from './inbound-mail-atoms'
 
 const NEW_THREAD = 'new'
@@ -79,17 +78,7 @@ export function MessageRow({ projectId, view, draft, folders, copy, threadNameSt
         <div className="flex min-w-0 flex-col gap-1">
           <p className="text-sm font-medium">{t('message.label')}</p>
           {part.state === 'filed' ? (
-            <FactLine icon={view.followedBy ? Repeat2 : CheckCircle2} tone="default" testId="message-filed">
-              {view.followedBy ? t('message.followed') : t('message.filed')}
-              {part.documentId && (
-                <>
-                  {' · '}
-                  <Link className="underline-offset-2 hover:underline" href={documentFilesHref(projectId, part.documentId)}>
-                    {t('message.openThread')}
-                  </Link>
-                </>
-              )}
-            </FactLine>
+            <FiledTo projectId={projectId} part={part} followed={view.followedBy !== null} />
           ) : (
             <FactLine icon={Mail}>{t(`attachments.status.${part.state}`)}</FactLine>
           )}

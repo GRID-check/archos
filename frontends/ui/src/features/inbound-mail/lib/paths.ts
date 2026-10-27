@@ -8,6 +8,9 @@
 
 import type { InboundMailListStatus, InboundMailOutcome } from '@/lib/inbound-mail/inbound-mail-wire'
 
+/** The id of the list's „Bereit“ heading: the Postfach's „E-Mails warten“ row lands on it. */
+export const INBOUND_MAIL_READY_ANCHOR = 'ready'
+
 export interface InboundMailPaths {
   /** The list, with its filter. */
   list: (filter: { status: InboundMailListStatus; outcome: InboundMailOutcome | null }) => string
@@ -32,4 +35,9 @@ export function inboundMailPaths(projectId: string): InboundMailPaths {
     mail: (mailId, filter) => `${base}/${encodeURIComponent(mailId)}${filterQuery(filter)}`,
     files: `/app/projects/${encodeURIComponent(projectId)}/files`,
   }
+}
+
+/** The waiting list at its „Bereit“ section: the Postfach row's way to one-press filing. */
+export function inboundMailReadyPath(projectId: string): string {
+  return `${inboundMailPaths(projectId).list({ status: 'waiting', outcome: null })}#${INBOUND_MAIL_READY_ANCHOR}`
 }

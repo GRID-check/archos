@@ -656,6 +656,33 @@ describe.skipIf(!url)('the E-Mail-Eingang’s sweeps against Postgres', () => {
 
       expect(await one(sql`SELECT ended_reason FROM mail_thread_follows WHERE id = ${follow}::uuid`)).toEqual({ ended_reason: 'document_gone' })
     })
+
+    it('ends a follow the close of its project left running (`project_closed`), which the database takes as a reason', async () => {
+      const documentId = (
+        await one<{ id: string }>(sql`
+          INSERT INTO documents (organization_id, created_by, filename, storage_key, collection_name, status, scope, project_id)
+          VALUES (${ORG}, ${MANAGER}, 'Statik Keller.md', ${`k/sweep/${STAMP}/closed`}, 'coll', 'completed', 'project', ${project}::uuid)
+          RETURNING id`)
+      ).id
+      const thread = await seedThread({ documentId })
+      const { id: follow } = await one<{ id: string }>(sql`
+        INSERT INTO mail_thread_follows (organization_id, project_id, thread_id, user_id, expires_at)
+        VALUES (${ORG}, ${project}::uuid, ${thread}::uuid, ${FOLLOWER}, now() + interval '30 days') RETURNING id`)
+      await rows(
+        sql`UPDATE projects SET status = 'closed', closed_at = now(), closed_by = ${MANAGER}, closed_outcome = 'completed', ended_on = '2026-10-01' WHERE id = ${project}::uuid`
+      )
+      try {
+        await sweep.sweepFollows(now())
+      } finally {
+        await rows(sql`UPDATE projects SET status = 'active', closed_at = NULL, closed_by = NULL, closed_outcome = NULL, ended_on = NULL WHERE id = ${project}::uuid`)
+      }
+
+      expect(await one(sql`SELECT ended_reason, ended_by FROM mail_thread_follows WHERE id = ${follow}::uuid`)).toEqual({ ended_reason: 'project_closed', ended_by: null })
+      expect(audit.events).toContainEqual({
+        action: 'mail_thread.follow_ended',
+        metadata: { projectId: project, followId: follow, reason: 'project_closed', followerUserId: FOLLOWER },
+      })
+    })
   })
 
   describe('sweep 9: threads whose document is gone', () => {

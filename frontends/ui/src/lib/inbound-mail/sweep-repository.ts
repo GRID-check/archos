@@ -666,15 +666,25 @@ export interface DueFollow {
 const followFacts = sql`f.id, f.organization_id AS "organizationId", f.project_id AS "projectId",
   f.thread_id AS "threadId", f.user_id AS "userId", t.document_id AS "threadDocumentId"`
 
-/** Running follows past their end, or whose thread's document is gone. Platform scope. */
-export async function findEndingFollows(now: Date, limit: number): Promise<Array<DueFollow & { reason: 'expired' | 'document_gone' }>> {
-  return select<DueFollow & { reason: 'expired' | 'document_gone' }>(sql`
+/** Why sweep 12 ends a running follow. */
+export type FollowEndingReason = 'expired' | 'document_gone' | 'project_closed'
+
+/**
+ * Running follows past their end, whose thread's document is gone, or in a
+ * closed project (closing ends them, `endFollowsOnProjectClose`; this catches
+ * a close whose ending failed after it committed). Platform scope.
+ */
+export async function findEndingFollows(now: Date, limit: number): Promise<Array<DueFollow & { reason: FollowEndingReason }>> {
+  return select<DueFollow & { reason: FollowEndingReason }>(sql`
     SELECT ${followFacts},
-           CASE WHEN t.document_id IS NULL THEN 'document_gone' ELSE 'expired' END AS reason
+           CASE WHEN t.document_id IS NULL THEN 'document_gone'
+                WHEN p.status = 'closed' THEN 'project_closed'
+                ELSE 'expired' END AS reason
       FROM mail_thread_follows f
       JOIN mail_threads t ON t.id = f.thread_id
+      JOIN projects p ON p.id = f.project_id
      WHERE f.ended_at IS NULL
-       AND (f.expires_at < ${now.toISOString()}::timestamptz OR t.document_id IS NULL)
+       AND (f.expires_at < ${now.toISOString()}::timestamptz OR t.document_id IS NULL OR p.status = 'closed')
      ORDER BY f.expires_at
      LIMIT ${limit}`)
 }

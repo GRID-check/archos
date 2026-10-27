@@ -173,6 +173,8 @@ export const MAIL_THREAD_FOLLOW_END_REASONS = [
   'detached',
   'document_gone',
   'revoked_by_manager',
+  /** The project was closed: a standing decision to file replies ends with the work (the coordinator's call, 2026-10-27). */
+  'project_closed',
 ] as const
 export type MailThreadFollowEndReason = (typeof MAIL_THREAD_FOLLOW_END_REASONS)[number]
 

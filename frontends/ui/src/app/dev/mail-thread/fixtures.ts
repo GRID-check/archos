@@ -236,6 +236,26 @@ function worstCase(): MailThreadView {
 
 export const MAIL_THREAD_VARIANTS: Record<string, MailThreadFixture> = {
   'three-messages': fixture({ view: thread({ waitingCount: 2 }) }),
+  // The structural engineer answers three times in a row: „Domain bestätigt: statik-weber.at“ is said once, on the newest.
+  'same-sender': fixture({
+    view: thread({
+      entries: [
+        ...threeMessages().slice(0, 2),
+        ...[3, 4].map((version) =>
+          entry({
+            key: `statik-${version}`,
+            version,
+            heading: `${version === 3 ? '10' : '12'}.10.2026, 08:${version}5 · DI Petra Weber (statik-weber.at)`,
+            senderName: 'DI Petra Weber',
+            senderDomain: 'statik-weber.at',
+            signerDomain: 'statik-weber.at',
+            sentAt: daysAgo(15 - version * 2),
+            receivedAt: daysAgo(15 - version * 2),
+          })
+        ),
+      ],
+    }),
+  }),
   followed: fixture({
     view: thread({ followed: true, follows: [follow({ userId: VIEWER_ID })], waitingCount: 0 }),
   }),

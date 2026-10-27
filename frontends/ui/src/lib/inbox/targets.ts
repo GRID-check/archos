@@ -50,7 +50,7 @@ import {
 import { findOwnUploadBatch } from '@/lib/upload-batches/service'
 import { getOwnProductFeedback } from '@/lib/product-feedback/repository'
 import { feedbackThreadHref } from '@/lib/product-feedback/types'
-import { inboundMailPaths } from '@/features/inbound-mail/lib/paths'
+import { inboundMailPaths, inboundMailReadyPath } from '@/features/inbound-mail/lib/paths'
 
 /** Row-level context a deep link may use. */
 export interface InboxTargetLinkContext {
@@ -268,9 +268,12 @@ const projectTarget: InboxTargetDescriptor = {
 }
 
 /**
- * Where a row of the E-Mail-Eingang (ADR-0137) lands, or null for any other
- * type. Collapsed rows (mail waits, mail expires, the address is full) open
- * the list, where the address dialog is too; a failed filing opens its mail,
+ * Where a row of the E-Mail-Eingang (ADR-0134) lands, or null for any other
+ * type. „E-Mails warten“ opens the list at its „Bereit“ section, where each
+ * complete mail is one press: the row is one per project and carries no mail's
+ * state (no sender, subject or completeness, by construction), so the filing
+ * itself is not on the row. The other collapsed rows (mail expires, the
+ * address is full) open the list, where the address dialog is too; a failed filing opens its mail,
  * for the decider who may file it again. A decided mail is told to its sender,
  * who may read the project without deciding its mail (D9): the list would
  * answer them 404, so it opens Dateien, at the folder the files went to when
@@ -282,6 +285,7 @@ function inboundMailLink(projectId: string, context: InboxTargetLinkContext): st
   const waiting = { status: 'waiting', outcome: null } as const
   switch (context.itemType) {
     case 'inbound_mail.waiting':
+      return inboundMailReadyPath(projectId)
     case 'inbound_mail.expiring':
     case 'inbound_mail.cap_reached':
       return paths.list(waiting)

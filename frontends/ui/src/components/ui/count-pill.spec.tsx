@@ -8,7 +8,9 @@ describe('CountPill', () => {
     const pill = screen.getByText('5 Dokumente')
     expect(pill).toHaveAttribute('data-slot', 'count-pill')
     expect(pill).toHaveClass('bg-muted')
-    expect(pill).toHaveClass('text-muted-foreground')
+    // Ink at 70 %: muted ink on the muted fill was 4.44:1, under WCAG AA.
+    expect(pill).toHaveClass('text-foreground/70')
+    expect(pill).not.toHaveClass('text-muted-foreground')
     expect(pill).toHaveClass('tabular-nums')
   })
 

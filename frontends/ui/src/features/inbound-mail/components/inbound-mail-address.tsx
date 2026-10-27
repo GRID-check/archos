@@ -3,13 +3,19 @@
 /**
  * The project's mail address, where people learn it (DECISION §9, „Entry
  * points“): `InboundMailAddressDialog` from the upload menu („Per E-Mail
- * senden …“), and `InboundMailAddressCard` in Settings › Dokumente, where a
- * manager creates, replaces or switches it off.
+ * senden …“) and the E-Mail-Eingang's „Adresse“, the never-used list, the
+ * project overview's tile (`InboundMailAddressTile`), and
+ * `InboundMailAddressCard` in Settings › Dokumente, where a manager creates,
+ * replaces or switches it off.
  *
- * Both show the same block: the address in full and copyable (it is 30
- * characters of token nobody types), „Als Kontakt sichern“ (a vCard, which is
- * what makes forwarding from a phone one tap), the three rules that make it
- * safe to hand out, and how often the office's own mail arrives confirmed.
+ * Every one leads with what the address is FOR (the owner's review,
+ * 2026-10-27): put it in Cc when writing to the authority, the structural
+ * engineer or the client, and the answers arrive here to be filed. Then the
+ * address in full and copyable (30 characters of token nobody types) and „Als
+ * Kontakt sichern“ (a vCard, which makes forwarding from a phone one tap).
+ * The safety is one sentence, last: nothing is filed until someone confirms.
+ * How often the office's own domain signs its mail (RT-X6) is a manager's
+ * fact, so only the settings card shows it, and only to a manager.
  *
  * Replacing the address is behind a warning that says everything it ends: the
  * old address refuses mail at once, and every „Folgen“ on the project stops.
@@ -18,21 +24,25 @@
 import type { JSX } from 'react'
 import { useState } from 'react'
 import { toast } from 'sonner'
-import { BookOpen, CircleSlash, ContactRound, ExternalLink, MailPlus, RefreshCw, ScanLine, ShieldCheck, UserCheck } from 'lucide-react'
+import { AtSign, BookOpen, CircleSlash, ContactRound, ExternalLink, Forward, MailPlus, RefreshCw, UserCheck } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { BusyButton } from '@/components/ui/busy-button'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { LoadError } from '@/components/ui/load-error'
 import { Skeleton } from '@/components/ui/skeleton'
+import { BentoTile } from '@/components/ui/bento'
 import { CopyableValue } from '@/features/bim/components/copyable-value'
 import { SettingsPanel } from '@/features/projects/components/settings/settings-panel'
 import { useLocale, useTranslations } from '@/i18n'
+import { capturePosthog } from '@/lib/analytics/posthog'
 import { startBrowserDownload } from '@/lib/browser-download'
 import type { InboundMailAddressView } from '@/lib/inbound-mail/inbound-mail-wire'
 import { formatRelativeTime } from '@/lib/format'
+import { cn } from '@/lib/utils'
 import { type InboundMailAddressClient } from '../lib/client'
 import { refusalOf } from '../lib/refusal'
+import { inboundMailPaths } from '../lib/paths'
 import { contactCard, contactCardFileName } from '../lib/vcard'
 import { useInboundMailAddress, type AddressState } from '../hooks/use-inbound-mail-address'
 import { FactLine } from './inbound-mail-atoms'
@@ -46,15 +56,77 @@ function saveContact(address: string, projectName: string, name: string, note: s
   window.setTimeout(() => URL.revokeObjectURL(url), 10_000)
 }
 
-/** The address itself and what it is for: shared by the dialog and the card. */
+/** Where the address was shown, for PostHog: which door people take to it. */
+export type AddressSurface = 'dialog' | 'never_used' | 'overview' | 'settings'
+
+/** What the address is for, in the office's own work: three lines, the promise last. */
+function AddressUses(): JSX.Element {
+  const t = useTranslations('inboundMail')
+  return (
+    <ul className="flex flex-col gap-2" aria-label={t('address.usesLabel')} data-testid="address-uses">
+      <li>
+        <FactLine icon={AtSign} tone="default">
+          {t('address.uses.cc')}
+        </FactLine>
+      </li>
+      <li>
+        <FactLine icon={Forward} tone="default">
+          {t('address.uses.forward')}
+        </FactLine>
+      </li>
+      <li>
+        <FactLine icon={UserCheck} tone="default">
+          {t('address.uses.held')}
+        </FactLine>
+      </li>
+    </ul>
+  )
+}
+
+/** The address in full, a press copies it; each copy counted by the door it was taken from. */
+function AddressValue({ value, surface, className }: { value: string; surface: AddressSurface; className?: string }): JSX.Element {
+  return (
+    <CopyableValue
+      value={value}
+      className={cn('text-foreground mx-0 text-left font-mono text-sm', className)}
+      // Whether the address reaches anyone's Cc line: the first step of the funnel to the first mail.
+      onCopied={() => capturePosthog('inbound_mail_address_copied', { surface })}
+    />
+  )
+}
+
+/** „Als Kontakt sichern“: a vCard, which makes forwarding from a phone one tap. */
+function SaveContactButton({ value, projectName, surface }: { value: string; projectName: string; surface: AddressSurface }): JSX.Element {
+  const t = useTranslations('inboundMail')
+  return (
+    <Button
+      type="button"
+      variant="outline"
+      size="sm"
+      onClick={() => {
+        saveContact(value, projectName, t('address.contactName', { project: projectName }), t('address.contactNote'))
+        capturePosthog('inbound_mail_address_contact_saved', { surface })
+      }}
+      data-testid="address-save-contact"
+    >
+      <ContactRound className="size-4" aria-hidden />
+      {t('address.saveContact')}
+    </Button>
+  )
+}
+
+/** The address itself, copyable and savable as a contact: shared by the dialog, the never-used list and the settings card. */
 export function InboundMailAddressBlock({
   address,
   projectName,
-  showRules = true,
+  surface,
+  showUses = true,
 }: {
   address: InboundMailAddressView
   projectName: string
-  showRules?: boolean
+  surface: AddressSurface
+  /** The three lines of what it is for; off where the surrounding copy says it already. */
+  showUses?: boolean
 }): JSX.Element {
   const t = useTranslations('inboundMail')
   const { locale } = useLocale()
@@ -62,20 +134,12 @@ export function InboundMailAddressBlock({
   const value = address.address
   return (
     <div className="flex flex-col gap-4" data-testid="inbound-mail-address">
+      {showUses && <AddressUses />}
       <div className="bg-muted/40 flex flex-col gap-2 rounded-lg border p-3">
         <p className="text-muted-foreground text-[10.5px] font-medium uppercase tracking-wider">{t('address.label')}</p>
-        <CopyableValue value={value} className="text-foreground mx-0 w-full justify-between text-left font-mono text-sm" />
+        <AddressValue value={value} surface={surface} className="w-full justify-between" />
         <div className="flex flex-wrap gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => saveContact(value, projectName, t('address.contactName', { project: projectName }), t('address.contactNote'))}
-            data-testid="address-save-contact"
-          >
-            <ContactRound className="size-4" aria-hidden />
-            {t('address.saveContact')}
-          </Button>
+          <SaveContactButton value={value} projectName={projectName} surface={surface} />
         </div>
         <p className="text-muted-foreground text-xs">
           {address.lastReceivedAt
@@ -84,26 +148,6 @@ export function InboundMailAddressBlock({
           {address.droppedLast30Days > 0 && <> · {t('address.dropped', { count: address.droppedLast30Days })}</>}
         </p>
       </div>
-      {showRules && (
-        <ul className="flex flex-col gap-2" aria-label={t('address.label')}>
-          <li>
-            <FactLine icon={UserCheck} tone="default">
-              {t('address.rules.held')}
-            </FactLine>
-          </li>
-          <li>
-            <FactLine icon={ShieldCheck} tone="default">
-              {t('address.rules.trust')}
-            </FactLine>
-          </li>
-          <li>
-            <FactLine icon={ScanLine} tone="default">
-              {t('address.rules.scanned')}
-            </FactLine>
-          </li>
-        </ul>
-      )}
-      <OwnDomainDkimLine share={address.ownDomainVerifiedShare} />
       <a
         href={t('address.helpUrl')}
         target="_blank"
@@ -115,6 +159,41 @@ export function InboundMailAddressBlock({
         <ExternalLink className="text-muted-foreground size-3" aria-hidden />
       </a>
     </div>
+  )
+}
+
+export interface InboundMailAddressTileProps {
+  projectId: string
+  projectName: string
+  client?: InboundMailAddressClient
+}
+
+/**
+ * The project overview's tile (Settings › Übersicht): the address where people
+ * look at the project, with what it is for, copy and „Als Kontakt sichern“,
+ * and the E-Mail-Eingang as the tile's link like every other tile's section.
+ * Nothing until there is an address: creating one is the settings card's.
+ */
+export function InboundMailAddressTile({ projectId, projectName, client }: InboundMailAddressTileProps): JSX.Element | null {
+  const t = useTranslations('inboundMail')
+  const address = useInboundMailAddress(projectId, true, client)
+  const ready = address.state.kind === 'ready' ? address.state.address : null
+  if (!ready || ready.state !== 'active' || !ready.address) return null
+  return (
+    <BentoTile
+      label={t('address.label')}
+      icon={AtSign}
+      span="wide"
+      href={inboundMailPaths(projectId).list({ status: 'waiting', outcome: null })}
+      linkLabel={t('address.openInbox')}
+      data-testid="inbound-mail-address-tile"
+    >
+      <p className="text-sm">{t('address.tileLead')}</p>
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+        <AddressValue value={ready.address} surface="overview" className="max-w-full" />
+        <SaveContactButton value={ready.address} projectName={projectName} surface="overview" />
+      </div>
+    </BentoTile>
   )
 }
 
@@ -215,7 +294,7 @@ export function InboundMailAddressDialog({ projectId, projectName, open, onOpenC
           <DialogDescription>{t('address.dialogDescription')}</DialogDescription>
         </DialogHeader>
         {address.state.kind === 'ready' && address.state.address.state === 'active' ? (
-          <InboundMailAddressBlock address={address.state.address} projectName={projectName} />
+          <InboundMailAddressBlock address={address.state.address} projectName={projectName} surface="dialog" />
         ) : (
           <AddressStatus state={address.state} onRetry={() => void address.reload()} onCreate={actions.create} />
         )}
@@ -248,7 +327,11 @@ export function InboundMailAddressCard({ projectId, projectName, client }: Inbou
     >
       <div className="flex flex-col gap-4">
         {ready?.state === 'active' ? (
-          <InboundMailAddressBlock address={ready} projectName={projectName} showRules={false} />
+          <>
+            <InboundMailAddressBlock address={ready} projectName={projectName} surface="settings" showUses={false} />
+            {/* The office's own signing (RT-X6) is a manager's to fix, so only a manager reads it. */}
+            {ready.canManage && <OwnDomainDkimLine share={ready.ownDomainVerifiedShare} />}
+          </>
         ) : (
           <AddressStatus state={address.state} onRetry={() => void address.reload()} onCreate={actions.create} />
         )}

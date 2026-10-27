@@ -4,8 +4,8 @@
  * One held mail, decided part by part (`InboundMailDetail`, DECISION §9).
  *
  * Top to bottom, in the order a person reads before deciding: who it is from
- * and how far that is confirmed, what the content check found in the text and
- * what to do about it, the text itself (plain, inert), where the text goes
+ * and how far that is confirmed, the text itself (plain, inert), what the
+ * content check found in it and what to do about it, where the text goes
  * (its E-Mail-Verlauf), each attachment with its case and its target, and the
  * decision bar pinned to the bottom. After filing: what landed, what did not
  * and why, and the offer to follow the conversation.
@@ -31,7 +31,7 @@ import { SectionLabel } from '@/components/ui/section-label'
 import { Skeleton } from '@/components/ui/skeleton'
 import { documentFilesHref } from '@/features/documents/lib/document-question'
 import { useLocale, useTranslations } from '@/i18n'
-import type { InboundMailTextView, InboundMailView } from '@/lib/inbound-mail/inbound-mail-wire'
+import type { InboundMailPartView, InboundMailTextView, InboundMailView } from '@/lib/inbound-mail/inbound-mail-wire'
 import { formatCalendarDate } from '@/lib/format'
 import { attachmentCase, notStagedSummary } from '../lib/attachment-case'
 import type { InboundMailClient } from '../lib/client'
@@ -46,6 +46,7 @@ import {
   type FolderOption,
   type MailDraft,
 } from '../lib/draft'
+import { filedLines, type FiledLine } from '../lib/filed'
 import { refusalNeedsReload, refusalOf, refusalTerms } from '../lib/refusal'
 import { guardImpersonation, impersonationWarningOf } from '../lib/impersonation'
 import { followOffered } from '../lib/sender'
@@ -217,8 +218,8 @@ export function InboundMailDetail({
 
   const summary = view && draft ? draftSummary(view, draft) : null
 
-  /** Read the mail until no part is being filed, then report what landed. */
-  const follow = async (sent: InboundMailView, filedIds: string[], textFiled: { name: string | null } | null): Promise<void> => {
+  /** Read the mail until no part is being filed, then report what landed and where, Fassung by Fassung. */
+  const follow = async (sent: InboundMailView, filedIds: string[]): Promise<void> => {
     let current = sent
     let delay = pollMs
     for (let round = 0; round < 40 && current.parts.some((part) => part.state === 'filing'); round += 1) {
@@ -232,14 +233,17 @@ export function InboundMailDetail({
       }
     }
     const byId = new Map(current.parts.map((part) => [part.id, part]))
-    const landed = filedIds.filter((id) => byId.get(id)?.state === 'filed')
-    const firstDocument = landed.map((id) => byId.get(id)?.documentId).find((id): id is string => !!id)
-    const viewAction = firstDocument
-      ? { action: { label: t('toast.view'), onClick: () => router.push(documentFilesHref(projectId, firstDocument)) } }
-      : {}
-    if (landed.length > 0) toast.success(t('toast.filed', { count: landed.length }), viewAction)
-    if (textFiled && byId.get(sent.parts.find((part) => part.kind === 'message')?.id ?? '')?.state === 'filed') {
-      toast.success(textFiled.name ? t('toast.textFiled', { name: textFiled.name }) : t('toast.textFiledNew'))
+    const landed = filedIds.map((id) => byId.get(id)).filter((part): part is InboundMailPartView => part?.state === 'filed')
+    const files = landed.filter((part) => part.kind === 'attachment').length
+    const text = landed.some((part) => part.kind === 'message')
+    const firstDocument = landed.map((part) => part.documentId).find((id): id is string => !!id)
+    if (landed.length > 0) {
+      const lines = filedLines(current.parts, filedIds, t('suggestion.root'))
+      toast.success(files > 0 && text ? t('toast.filedBoth', { count: files }) : files > 0 ? t('toast.filed', { count: files }) : t('toast.textFiled'), {
+        // Where each part went, with the Fassung it became: the proof the filing did the right thing.
+        description: lines.length > 0 ? <FiledLines lines={lines} /> : undefined,
+        ...(firstDocument ? { action: { label: t('toast.view'), onClick: () => router.push(documentFilesHref(projectId, firstDocument)) } } : {}),
+      })
     }
     onChanged()
   }
@@ -255,8 +259,7 @@ export function InboundMailDetail({
       const sent = result.mails.find((mail) => mail.id === view.id)
       if (!sent || !alive.current) return
       setState({ kind: 'ready', view: sent })
-      const appended = draft.message?.target.kind === 'append' ? view.threadCandidates.find((c) => c.threadId === (draft.message?.target as { threadId: string }).threadId) : null
-      await follow(sent, decision.parts.map((part) => part.partId), decision.message ? { name: appended?.name ?? null } : null)
+      await follow(sent, [...decision.parts.map((part) => part.partId), ...(decision.message ? [decision.message.partId] : [])])
     } catch (error) {
       const code = refusalOf(error)
       if (code === 'name_stop' && decision.message?.thread.action === 'create') setThreadNameStop(refusalTerms(error))
@@ -333,6 +336,7 @@ export function InboundMailDetail({
   const notStaged = notStagedSummary(view.notStaged)
   const waitingParts = view.parts.filter((part) => part.state === 'waiting')
   const anyFiling = view.parts.some((part) => part.state === 'filing')
+  const anyFiled = view.parts.some((part) => part.state === 'filed')
   const dismissedOrExpired = view.parts.filter((part) => part.state === 'dismissed' || part.state === 'expired')
   const restorableUntil = view.parts.map((part) => part.restorableUntil).find((until): until is string => !!until)
   const showBar = view.status === 'waiting' && waitingParts.length > 0 && !anyFiling && draft && summary
@@ -387,9 +391,15 @@ export function InboundMailDetail({
         {waitingParts.length === 0 && dismissedOrExpired.length > 0 && restorableUntil && (
           <div className="bg-muted/40 flex flex-col gap-2 rounded-lg border p-3 sm:flex-row sm:items-center sm:justify-between" data-testid="detail-restorable">
             <p className="text-sm">
-              {t(dismissedOrExpired.some((part) => part.state === 'expired') ? 'state.expired' : 'state.dismissed', {
-                date: formatCalendarDate(restorableUntil, locale),
-              })}
+              {/* A mail of which something was filed was not thrown away: say how many parts were, not „Verworfen“. */}
+              {anyFiled
+                ? t(dismissedOrExpired.some((part) => part.state === 'expired') ? 'state.partsExpired' : 'state.partsDismissed', {
+                    count: dismissedOrExpired.length,
+                    date: formatCalendarDate(restorableUntil, locale),
+                  })
+                : t(dismissedOrExpired.some((part) => part.state === 'expired') ? 'state.expired' : 'state.dismissed', {
+                    date: formatCalendarDate(restorableUntil, locale),
+                  })}
             </p>
             <BusyButton
               type="button"
@@ -413,8 +423,13 @@ export function InboundMailDetail({
           view={view}
           forwarded={text.kind === 'ready' ? text.text.forwardedFrom : null}
           originalUrl={client.originalUrl(projectId, view.id)}
+          now={now}
         />
 
+
+        <MailText state={text} onRetry={() => void loadText()} />
+
+        {/* After the text, beside the choice it shapes: on a phone the mail itself is the first screen. */}
         {!stopped && messagePart?.state === 'waiting' && messagePart.contentFindings.length > 0 && draft?.message?.findingChoice && (
           <ContentFindingChoice
             findings={messagePart.contentFindings}
@@ -423,8 +438,6 @@ export function InboundMailDetail({
             disabled={filing}
           />
         )}
-
-        <MailText state={text} onRetry={() => void loadText()} />
 
         {/* The forged mail's way to filing is one deliberate press, never the page's default. */}
         {impersonation && view.status === 'waiting' && waitingParts.length > 0 && (
@@ -544,6 +557,21 @@ export function InboundMailDetail({
         />
       )}
     </article>
+  )
+}
+
+/** A filing's confirmation, one line per part: „S-101_C.pdf → Tragwerk · Fassung 3“. */
+function FiledLines({ lines }: { lines: FiledLine[] }): JSX.Element {
+  const t = useTranslations('inboundMail')
+  return (
+    <ul className="flex flex-col gap-0.5" data-testid="filed-lines">
+      {lines.map((line, index) => (
+        <li key={`${line.kind}-${index}`} className="[overflow-wrap:anywhere]">
+          {line.kind === 'message' ? t('toast.lineText', { name: line.place.name }) : t('toast.lineFile', { name: line.place.name, folder: line.place.folder })}
+          {line.place.version != null && ` · ${t('attachments.status.version', { version: line.place.version })}`}
+        </li>
+      ))}
+    </ul>
   )
 }
 

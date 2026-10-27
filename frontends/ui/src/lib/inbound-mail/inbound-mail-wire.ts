@@ -292,6 +292,16 @@ export interface InboundMailDocumentRefView {
   folderPath: string | null
 }
 
+/** Where a filed part went, as the viewer may read it (`filedAs`). */
+export interface InboundMailFiledAsView {
+  /** The document's name now (the E-Mail-Verlauf's, for the text). */
+  name: string
+  /** Its folder; null at the project's top level. */
+  folderPath: string | null
+  /** The Fassung this part became (1: a new document); null when that Fassung is no longer there. */
+  version: number | null
+}
+
 /** One part of a held mail: the mail's text, or one attachment. Names and flags, never bytes. */
 export interface InboundMailPartView {
   id: string
@@ -315,6 +325,13 @@ export interface InboundMailPartView {
   lastFailure: InboundMailFilingFailure | null
   /** The filed document, when the viewer may read it. */
   documentId: string | null
+  /**
+   * Where a filed part went: the document's name, its folder and the Fassung it
+   * became, so a filing can say „S-101_C.pdf → Tragwerk · Fassung 3“. Set exactly
+   * when `documentId` is (filed, and the viewer may read the document): it names
+   * a filed document, never anything of a held mail (D22).
+   */
+  filedAs: InboundMailFiledAsView | null
   duplicateOf: InboundMailDocumentRefView | null
   /** The document this would become the next Fassung of („wird Fassung N davon“). */
   revisionCandidate: (InboundMailDocumentRefView & { nextVersion: number }) | null

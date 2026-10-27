@@ -212,7 +212,7 @@ export function updateMessage(draft: MailDraft, change: Partial<Omit<MessageDraf
   return draft.message ? { ...draft, message: { ...draft.message, ...change } } : draft
 }
 
-/** The content-check choice also decides the target: „Als eigenen E-Mail-Verlauf ablegen“ makes a new one. */
+/** The content-check choice also decides the target: „Getrennt ablegen (eigener E-Mail-Verlauf)“ makes a new one. */
 export function chooseFinding(
   draft: MailDraft,
   choice: ContentFindingChoice,

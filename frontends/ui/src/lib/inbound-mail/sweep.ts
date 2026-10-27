@@ -331,7 +331,7 @@ export async function sweepKeptMails(now: Date): Promise<SweepCounts> {
   return result
 }
 
-/** Sweep 12: follows that ran out, or whose document is gone, end (audited); five days left asks to renew, once. */
+/** Sweep 12: follows that ran out, whose document is gone, or in a closed project end (audited); five days left asks to renew, once. */
 export async function sweepFollows(now: Date): Promise<SweepCounts> {
   const result = counts('ended', 'told')
   const ending = await discover('follows that end', () => sweeps.findEndingFollows(now, SWEEP_BATCH))

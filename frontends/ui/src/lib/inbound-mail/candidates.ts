@@ -33,9 +33,16 @@ import {
 } from '@/lib/mail-thread/mail-threading'
 import type {
   InboundMailDocumentRefView,
+  InboundMailFiledAsView,
   InboundMailThreadCandidateView,
 } from './inbound-mail-wire'
-import { findCandidateDocuments, findThreadDocuments, type CandidateDocument, type ThreadDocument } from './repository'
+import {
+  findCandidateDocuments,
+  findThreadDocuments,
+  findVersionNumbers,
+  type CandidateDocument,
+  type ThreadDocument,
+} from './repository'
 
 /** What the stored sender evidence of a mail says, in the shape the thread core reads. */
 export function senderEvidenceOf(mail: Pick<InboundMailRow, 'senderTrust' | 'senderFlags' | 'signedHeaders'>): SenderEvidence {
@@ -125,6 +132,26 @@ export function partCandidatesFor(
   }
 }
 
+/**
+ * Where a filed part went, for this viewer: its document's name and folder and
+ * the Fassung it became, or null when it is not filed or the viewer may not
+ * read the document (the same rule as `documentId`). Pure.
+ */
+export function filedAsFor(
+  part: Pick<InboundMailPartRow, 'documentId' | 'documentVersionId'>,
+  documents: ReadonlyMap<string, CandidateDocument>,
+  versions: ReadonlyMap<string, number>,
+  hiddenFolders: ReadonlySet<string>,
+): InboundMailFiledAsView | null {
+  const document = part.documentId ? documents.get(part.documentId) : undefined
+  if (!document || !readable(document.folderId, hiddenFolders)) return null
+  return {
+    name: document.name,
+    folderPath: document.folderPath,
+    version: part.documentVersionId ? (versions.get(part.documentVersionId) ?? null) : null,
+  }
+}
+
 /** Everything one read needs to judge candidates for its viewer, loaded once for a page of mails. */
 export interface ViewerCandidates {
   threads(mail: Pick<InboundMailRow, 'threadMatch' | 'senderTrust' | 'senderFlags' | 'signedHeaders'>): {
@@ -136,26 +163,31 @@ export interface ViewerCandidates {
   readsFolder(folderId: string | null): boolean
   /** Whether the viewer may read this document, one of the parts' (`documentId` included): screened, live, in a folder they see. */
   readsDocument(documentId: string): boolean
+  /** Where a filed part went, when the viewer may read its document (`filedAsFor`). */
+  filedAs(part: Pick<InboundMailPartRow, 'documentId' | 'documentVersionId'>): InboundMailFiledAsView | null
 }
 
 /**
  * Load the candidates of these mails and parts for `session`: the matched
- * threads' documents, the parts' matched documents, and the folders the viewer
- * may not read, three reads for the whole page.
+ * threads' documents, the parts' matched and filed documents, the Fassungen
+ * the filed parts became, and the folders the viewer may not read, four reads
+ * for the whole page.
  */
 export async function candidatesFor(
   session: AuthorizedSession,
   projectId: string,
   mails: ReadonlyArray<Pick<InboundMailRow, 'threadMatch'>>,
-  parts: ReadonlyArray<Pick<InboundMailPartRow, 'duplicateOfDocumentId' | 'revisionCandidateDocumentId' | 'documentId'>>,
+  parts: ReadonlyArray<Pick<InboundMailPartRow, 'duplicateOfDocumentId' | 'revisionCandidateDocumentId' | 'documentId' | 'documentVersionId'>>,
 ): Promise<ViewerCandidates> {
   const threadIds = mails.flatMap((mail) => mail.threadMatch.map((match) => match.threadId))
   const documentIds = parts.flatMap((part) =>
     [part.duplicateOfDocumentId, part.revisionCandidateDocumentId, part.documentId].filter((id): id is string => id !== null),
   )
-  const [threadRows, documentRows, hiddenIds] = await Promise.all([
+  const versionIds = parts.flatMap((part) => (part.documentVersionId ? [part.documentVersionId] : []))
+  const [threadRows, documentRows, versions, hiddenIds] = await Promise.all([
     findThreadDocuments(projectId, threadIds),
     findCandidateDocuments(projectId, documentIds),
+    findVersionNumbers(projectId, versionIds),
     getHiddenFolderIds(session, projectId),
   ])
   const threads = new Map(threadRows.map((thread) => [thread.threadId, thread]))
@@ -169,5 +201,6 @@ export async function candidatesFor(
       const document = documents.get(documentId)
       return document !== undefined && readable(document.folderId, hidden)
     },
+    filedAs: (part) => filedAsFor(part, documents, versions, hidden),
   }
 }

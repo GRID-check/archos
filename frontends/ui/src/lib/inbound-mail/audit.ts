@@ -17,7 +17,7 @@ import 'server-only'
 import { recordAuditEventAfterCommit } from '@/lib/audit/after-commit'
 import { recordAuditEventOrThrow } from '@/lib/audit/service'
 import type { InboundMailDecisionRow } from '@/lib/db/schema'
-import type { EndedFollow } from './repository'
+import type { EndedFollow, ProjectFollowEnd } from './repository'
 import { findPartKinds, markDecisionsAudited } from './repository'
 
 /** The metadata of one decision's line: ids, codes and the person's acknowledgements. Absent values are left out. */
@@ -84,15 +84,17 @@ export async function auditDecisions(decisions: readonly InboundMailDecisionRow[
 }
 
 /**
- * The lines for the follows an address change ended (D31: replacing or
- * switching off the address ends every follow on the project), as the person
- * who changed it. After commit, best effort: the follow rows say it already.
+ * The lines for the follows that ended for a whole project at once, as the
+ * person who caused it: an address change (D31: replacing or switching off the
+ * address ends every follow on the project) or the project's close. After
+ * commit, best effort: the follow rows say it already.
  */
 export function auditFollowsEnded(
   organizationId: string,
   projectId: string,
   endedBy: string,
   follows: readonly EndedFollow[],
+  reason: ProjectFollowEnd = 'address_rotated',
 ): void {
   for (const follow of follows) {
     recordAuditEventAfterCommit({
@@ -102,7 +104,7 @@ export function auditFollowsEnded(
       targetType: 'mail_thread',
       targetId: follow.threadId,
       alsoTargets: [{ type: 'project', id: projectId }],
-      metadata: { projectId, followId: follow.id, reason: 'address_rotated', followerUserId: follow.userId },
+      metadata: { projectId, followId: follow.id, reason, followerUserId: follow.userId },
       idempotencyKey: `mail_thread.follow_ended:${follow.id}`,
     })
   }

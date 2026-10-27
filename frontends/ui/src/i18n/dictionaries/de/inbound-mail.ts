@@ -22,19 +22,12 @@ export const inboundMail: typeof en.inboundMail = {
     label: 'Anzeigen',
     waiting: 'Wartet auf Ablage',
     handled: 'Bearbeitet',
-    outcome: {
-      label: 'Ergebnis',
-      all: 'Alle',
-      filed: 'Abgelegt',
-      dismissed: 'Verworfen',
-      expired: 'Abgelaufen',
-    },
   },
 
   empty: {
     neverTitle: 'Noch keine E-Mails an dieses Projekt',
     neverText:
-      'Leiten Sie E-Mails mit Unterlagen an die E-Mail-Adresse des Projekts weiter. Sie warten hier, bis jemand sie ablegt. Ins Projekt kommt nur, was eine Person bestätigt.',
+      'Setzen Sie die Adresse unten in Cc, wenn Sie an Behörde, Statik oder Bauherrschaft schreiben. Die Antworten landen hier, und abgelegt wird erst, was jemand bestätigt.',
     doneTitle: 'Nichts wartet auf Ablage',
     doneText: 'Neue E-Mails an die E-Mail-Adresse des Projekts erscheinen hier.',
     showHandled: 'Bearbeitete anzeigen',
@@ -67,11 +60,33 @@ export const inboundMail: typeof en.inboundMail = {
       expired: '{count, plural, one {# Teil abgelaufen} other {# Teile abgelaufen}}',
     },
     textFollowed: 'Text dem E-Mail-Verlauf angefügt (Verlauf folgen)',
+    fileAsSuggested: '„{subject}“ wie vorgeschlagen ablegen',
+    /** Was eine E-Mail braucht, bevor sie wie vorgeschlagen abgelegt werden kann, in wenigen Worten (`incompleteReason`). */
+    needs: {
+      not_waiting: 'Schon bearbeitet',
+      project_closed: 'Projekt ist abgeschlossen',
+      sender: 'Absender prüfen',
+      scanning: 'Anhang wird noch geprüft …',
+      needs_person: 'Anhang prüfen',
+      no_thread: 'E-Mail-Verlauf wählen',
+      folder_missing: 'Ordner wählen',
+    },
+  },
+
+  /** Die zwei Hälften der wartenden E-Mails: was ein Klick ablegt, und was eine Entscheidung braucht. */
+  readiness: {
+    ready: 'Bereit ({count})',
+    needs_you: 'Braucht Sie ({count})',
+    readyHint: 'Domain bestätigt, für jeden Teil ein Ziel, nichts zu prüfen.',
+    fileAll: 'Alle {count} wie vorgeschlagen ablegen',
+    fileFirst: 'Die ersten {count} wie vorgeschlagen ablegen',
   },
 
   group: {
     thread: 'E-Mail-Verlauf „{name}“ · {count, plural, one {# neue E-Mail} other {# neue E-Mails}}',
-    threadAction: '{count} E-Mails in E-Mail-Verlauf „{name}“ ablegen (wird Fassung {first}–{last})',
+    threadAction: 'Alle {count} ablegen (wird Fassung {first}–{last})',
+    threadActionFirst: 'Die ersten {count} ablegen (wird Fassung {first}–{last})',
+    reviewInOrder: 'Der Reihe nach ansehen',
     quiet: 'Domain nicht bestätigt oder automatisch ({count})',
     quietHint: 'Sie stehen vollständig hier. Piloti macht für sie keine Vorschläge, und von selbst wird nichts davon abgelegt.',
   },
@@ -105,20 +120,22 @@ export const inboundMail: typeof en.inboundMail = {
   },
 
   header: {
-    from: 'Von {name} ‹{address}›',
-    received: 'Eingegangen {time}',
-    sent: 'Gesendet {time}',
+    fromShort: '{name} ‹{address}›',
+    details: 'Details',
+    sentLabel: 'Gesendet',
+    receivedLabel: 'Eingegangen',
+    waitsLabel: 'Wartet',
+    waitsUntil: 'bis {date}, danach läuft sie ab',
+    expiresSoon: 'Wartet nur noch bis {date}',
     to: 'An',
     cc: 'Cc',
     replyTo: 'Antwort an',
-    participants: 'Empfänger',
     forwardedFrom: 'Ursprünglich von {who} · nicht geprüft',
     forwardedExplain: 'Aus dem weitergeleiteten Text gelesen. Niemand hat diese Angabe geprüft.',
     original: 'Original (.eml) herunterladen',
     originalHint: 'Öffnet sich im Mailprogramm; Bilder von außen werden dort geladen.',
     originalNotClean: 'Das Original enthält Schadsoftware und kann nicht heruntergeladen werden.',
     originalScanning: 'Das Original wird auf Schadsoftware geprüft.',
-    expires: 'Wartet bis {date}',
   },
 
   findings: {
@@ -132,7 +149,7 @@ export const inboundMail: typeof en.inboundMail = {
     choiceLabel: 'Wie der Text abgelegt wird',
     masked: 'Unkenntlich ablegen',
     maskedHint: 'Die Fundstellen werden im E-Mail-Verlauf unkenntlich gemacht. Das Original bleibt unverändert.',
-    own_thread: 'Als eigenen E-Mail-Verlauf ablegen',
+    own_thread: 'Getrennt ablegen (eigener E-Mail-Verlauf)',
     own_threadHint: 'Der ganze Text kommt in einen neuen E-Mail-Verlauf, getrennt vom bestehenden.',
     full: 'Ungekürzt in den E-Mail-Verlauf',
     fullHint: 'Der ganze E-Mail-Verlauf wird zurückgehalten, bis jemand ihn prüft.',
@@ -172,7 +189,8 @@ export const inboundMail: typeof en.inboundMail = {
     unreadable: 'Der Text konnte nicht gelesen werden und lässt sich daher nicht ablegen. Das Original enthält ihn.',
     followed: 'Text dem E-Mail-Verlauf angefügt (Verlauf folgen)',
     filed: 'In einem E-Mail-Verlauf abgelegt',
-    openThread: 'Öffnen',
+    filedTo: 'In E-Mail-Verlauf „{name}“ abgelegt',
+    followedTo: 'Dem E-Mail-Verlauf „{name}“ angefügt (Verlauf folgen)',
     nameStop: 'Namensprüfung: „{terms}“',
     releaseName: 'Trotzdem ablegen',
     blocks: {
@@ -198,10 +216,11 @@ export const inboundMail: typeof en.inboundMail = {
       scan_pending: 'Wird auf Schadsoftware geprüft …',
       scan_failed: 'Prüfung fehlgeschlagen, wird wiederholt',
       scan_infected: 'Schadsoftware gefunden · lässt sich nicht ablegen',
-      clean: 'Auf Schadsoftware geprüft',
       not_offered: 'Dateityp wird in diesem Büro nicht abgelegt · im Original enthalten',
       filing: 'Wird abgelegt …',
       filed: 'In Dateien abgelegt',
+      filedTo: 'Abgelegt in {folder}',
+      version: 'Fassung {version}',
       dismissed: 'Verworfen',
       expired: 'Abgelaufen',
     },
@@ -297,6 +316,8 @@ export const inboundMail: typeof en.inboundMail = {
     quotaFull: 'Der Speicher des Büros ist voll. Es wurde nichts abgelegt; die E-Mail wartet weiter.',
     expired: 'Abgelaufen · wiederherstellbar bis {date}',
     dismissed: 'Verworfen · wiederherstellbar bis {date}',
+    partsExpired: '{count, plural, one {# Teil abgelaufen} other {# Teile abgelaufen}} · wiederherstellbar bis {date}',
+    partsDismissed: '{count, plural, one {# Teil verworfen} other {# Teile verworfen}} · wiederherstellbar bis {date}',
     restore: 'Wiederherstellen',
     restoreBusy: 'Wird wiederhergestellt …',
     settled: 'Alles an dieser E-Mail ist bearbeitet.',
@@ -305,16 +326,17 @@ export const inboundMail: typeof en.inboundMail = {
 
   toast: {
     filed: '{count, plural, one {# Datei abgelegt} other {# Dateien abgelegt}}',
-    filedIn: '{count, plural, one {# Datei in „{folder}“ abgelegt} other {# Dateien in „{folder}“ abgelegt}}',
-    textFiled: 'Text in E-Mail-Verlauf „{name}“ abgelegt',
-    textFiledNew: 'Text als neuer E-Mail-Verlauf abgelegt',
+    filedBoth: '{count, plural, one {# Datei und der E-Mail-Text abgelegt} other {# Dateien und der E-Mail-Text abgelegt}}',
+    textFiled: 'E-Mail-Text abgelegt',
+    lineFile: '{name} → {folder}',
+    lineText: 'E-Mail-Text → „{name}“',
     filing: 'Wird abgelegt …',
     view: 'Ansehen',
     dismissed: 'E-Mail verworfen',
     dismissedMany: '{count, plural, one {# E-Mail verworfen} other {# E-Mails verworfen}}',
     undo: 'Rückgängig',
     restored: 'E-Mail wiederhergestellt',
-    bulkFiled: '{count, plural, one {# E-Mail wird abgelegt} other {# E-Mails werden abgelegt}}',
+    filedAsSuggested: '{count, plural, one {# E-Mail wird wie vorgeschlagen abgelegt} other {# E-Mails werden wie vorgeschlagen abgelegt}}',
     failed: 'Das hat nicht geklappt. Bitte erneut versuchen.',
   },
 
@@ -396,19 +418,21 @@ export const inboundMail: typeof en.inboundMail = {
   },
 
   address: {
-    dialogTitle: 'Per E-Mail senden',
-    dialogDescription:
-      'Leiten Sie E-Mails mit Unterlagen an die E-Mail-Adresse des Projekts weiter. Sie warten im E-Mail-Eingang, bis jemand sie ablegt.',
+    dialogTitle: 'E-Mail-Adresse des Projekts',
+    dialogDescription: 'So landet die Korrespondenz im Projekt, ohne dass jemand sie von Hand abspeichert.',
     label: 'E-Mail-Adresse des Projekts',
     copy: 'Kopieren',
     saveContact: 'Als Kontakt sichern',
     contactName: 'Piloti · {project}',
     contactNote: 'E-Mails an diese Adresse warten in Piloti, bis jemand sie ablegt.',
-    rules: {
-      held: 'Abgelegt wird erst, wenn eine Person es bestätigt.',
-      trust: 'Jede E-Mail zeigt, ob die Domain des Absenders bestätigt ist.',
-      scanned: 'Anhänge werden auf Schadsoftware geprüft, bevor jemand sie ablegen kann.',
+    usesLabel: 'Wofür die Adresse da ist',
+    uses: {
+      cc: 'Setzen Sie sie in Cc, wenn Sie an Behörde, Statik oder Bauherrschaft schreiben: die Antworten landen im E-Mail-Eingang.',
+      forward: 'Leiten Sie Unterlagen aus Ihrem Mailprogramm an sie weiter.',
+      held: 'Abgelegt wird erst, was jemand bestätigt.',
     },
+    tileLead: 'In Cc gesetzt, bringt sie die Antworten von Behörde, Statik und Bauherrschaft in den E-Mail-Eingang, bereit zum Ablegen.',
+    openInbox: 'Zum E-Mail-Eingang',
     guide: 'Anleitung',
     helpUrl: 'https://piloti.at/e-mail-eingang/',
     none: 'Dieses Projekt hat noch keine E-Mail-Adresse.',
@@ -444,7 +468,7 @@ export const inboundMail: typeof en.inboundMail = {
   },
 
   follow: {
-    offer: 'Diesem E-Mail-Verlauf folgen',
+    offer: 'Folgen',
     thread: 'E-Mail-Verlauf „{name}“',
     explain:
       'Antworten von bestätigten Domains, die schon im E-Mail-Verlauf schreiben, werden ohne Klick angefügt. Anhänge warten weiter hier.',

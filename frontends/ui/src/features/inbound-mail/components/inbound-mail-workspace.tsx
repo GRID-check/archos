@@ -19,12 +19,16 @@
  * the same control a pointer would press, so busy and confirm states hold.
  * None of them fires while a field has the focus or a dialog is open.
  *
- * BULK. A selection files „wie vorgeschlagen“ only when every selected mail
- * is complete (`incompleteReason`, the server's, on each row): the bar knows
- * that without a read. Pressing it reads the selected mails (at most twenty,
- * the most one request may decide) to build the request and checks them once
- * more as they are now. The request carries no acknowledgement (RT-S5), and
- * its confirmation lists where everything goes.
+ * „WIE VORGESCHLAGEN ABLEGEN“ comes in four sizes, all through one rule
+ * (`fileableReason`, `asSuggested` in `../lib/completeness.ts`): a ready row's
+ * own button (one mail, one press, no confirmation: the row already says
+ * where its text goes, and the toast says where everything went), the „Bereit“
+ * heading's „Alle … ablegen“, a thread group's press, and a selection's bulk
+ * bar. Each knows from the list whether its mails are complete
+ * (`incompleteReason`, the server's, on each row), reads them (at most twenty,
+ * the most one request may decide) and checks them once more as they are now
+ * before anything is sent. The request carries no acknowledgement (RT-S5); the
+ * several-mail sizes confirm first, listing where everything goes.
  */
 
 import type { JSX } from 'react'
@@ -46,14 +50,16 @@ import {
   type InboundMailListView,
   type InboundMailOutcome,
   type InboundMailTextView,
+  type InboundMailDecision,
   type InboundMailView,
   type IncompleteReason,
 } from '@/lib/inbound-mail/inbound-mail-wire'
+import { capturePosthog } from '@/lib/analytics/posthog'
 import { cn } from '@/lib/utils'
 import { bulkSelectable } from '../lib/impersonation'
 import { inboundMailAddressClient, inboundMailClient, type InboundMailAddressClient, type InboundMailClient } from '../lib/client'
-import { bulkPlan, type BulkPlan } from '../lib/completeness'
-import { decisionOf, initialDraft, type DraftCopy, type FolderOption } from '../lib/draft'
+import { asSuggested, fileableReason, type BulkDestination, type BulkPlan } from '../lib/completeness'
+import type { DraftCopy, FolderOption } from '../lib/draft'
 import { listSections, visibleMails } from '../lib/list-sections'
 import { inboundMailPaths, type InboundMailPaths } from '../lib/paths'
 import { refusalOf } from '../lib/refusal'
@@ -89,6 +95,9 @@ export interface InboundMailWorkspaceProps {
   /** Mails checked on arrival (a preview of the selection). */
   initialChecked?: readonly string[]
 }
+
+/** Where a filing as suggested was pressed, for PostHog. */
+type AsSuggestedSurface = 'row' | 'ready_section' | 'thread_group' | 'selection'
 
 function isTyping(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false
@@ -194,7 +203,8 @@ export function InboundMailWorkspace({
   const [views, setViews] = useState<Map<string, InboundMailView>>(new Map())
   const [bulkFiling, setBulkFiling] = useState<string | null>(null)
   const [bulkDismissing, setBulkDismissing] = useState(false)
-  const [confirmFile, setConfirmFile] = useState<{ ids: string[]; plan: BulkPlan } | null>(null)
+  const [confirmFile, setConfirmFile] = useState<{ decisions: InboundMailDecision[]; plan: BulkPlan; surface: AsSuggestedSurface } | null>(null)
+  const [rowFiling, setRowFiling] = useState<string | null>(null)
   const [confirmDismiss, setConfirmDismiss] = useState(false)
 
   /** Read the mails a bulk filing sends (at most twenty), keeping what is already read and current. */
@@ -228,45 +238,86 @@ export function InboundMailWorkspace({
   const summaryReason = useCallback(
     (id: string): IncompleteReason | null => {
       const mail = items.find((candidate) => candidate.id === id)
-      return mail ? mail.incompleteReason : 'not_waiting'
+      return mail ? fileableReason(mail) : 'not_waiting'
     },
     [items]
   )
   const selectionBlock = blockFor(selectedIds, summaryReason)
 
-  const askFile = async (ids: string[], groupId: string | null): Promise<void> => {
-    const openFirst = (block: BulkBlock): boolean => {
+  /** The destinations of a filing, in the confirmation's words: „In „Behörde/Bescheide“: 1“. */
+  const destinationLine = (destination: BulkDestination): string =>
+    destination.kind === 'folder' && destination.label === ''
+      ? t('bulk.destination.root', { count: destination.count })
+      : t(`bulk.destination.${destination.kind}`, { label: destination.label, count: destination.count })
+
+  /**
+   * Read these mails as they are now and build their filing as suggested; on a
+   * refusal, say why (or open a group's first mail) and answer null.
+   */
+  const prepare = async (ids: string[], groupId: string | null): Promise<Extract<ReturnType<typeof asSuggested>, { ok: true }> | null> => {
+    const refuse = (block: BulkBlock): boolean => {
       if (!block) return false
       // A group that cannot go in one press is opened at its first mail.
       if (groupId) router.push(paths.mail(ids[0], filter))
       else toast.error(t(`bulk.blocked.${block.reason}`, { count: block.count, max: INBOUND_MAIL_DECISION_MAX_MAILS }))
       return true
     }
-    if (openFirst(blockFor(ids, summaryReason))) return
-    if (groupId) setBulkFiling(groupId)
+    if (refuse(blockFor(ids, summaryReason))) return null
     const read = await readViews(ids)
-    if (groupId) setBulkFiling(null)
     // The mails as they are now: one may have changed since the list was read.
-    if (openFirst(blockFor(ids, (id) => { const view = read.get(id); return view ? view.incompleteReason : 'not_waiting' }))) return
-    const entries = ids.map((id) => {
-      const view = read.get(id) as InboundMailView
-      return { view, draft: initialDraft(view, folders, copy) }
+    const current = ids.map((id) => read.get(id)).filter((view): view is InboundMailView => !!view)
+    if (current.length < ids.length) {
+      refuse({ reason: 'not_waiting', count: ids.length - current.length })
+      changed()
+      return null
+    }
+    const built = asSuggested(current, folders, copy)
+    if (!built.ok) {
+      refuse({ reason: built.reason, count: built.count })
+      changed()
+      return null
+    }
+    return built
+  }
+
+  const askFile = async (ids: string[], groupId: string | null, surface: AsSuggestedSurface): Promise<void> => {
+    if (groupId) setBulkFiling(groupId)
+    const built = await prepare(ids, groupId).finally(() => groupId && setBulkFiling(null))
+    if (built) setConfirmFile({ decisions: built.decisions, plan: built.plan, surface })
+  }
+
+  /** Send a filing as suggested and say where everything goes. */
+  const send = async (decisions: InboundMailDecision[], plan: BulkPlan, surface: AsSuggestedSurface): Promise<void> => {
+    await client.file(projectId, { mails: decisions })
+    toast.success(t('toast.filedAsSuggested', { count: decisions.length }), {
+      description: plan.destinations.map(destinationLine).join(' · '),
     })
-    setConfirmFile({ ids, plan: bulkPlan(entries) })
+    // Whether „Bereit“ is the way people file: by surface, how many mails per press.
+    capturePosthog('inbound_mail_filed_as_suggested', { surface, mails: decisions.length, files: plan.files, texts: plan.texts })
+    changed()
+  }
+
+  /** A ready row's own press: one mail, read again and checked, then filed with no confirmation. */
+  const fileOne = async (mailId: string): Promise<void> => {
+    if (rowFiling) return
+    setRowFiling(mailId)
+    try {
+      const built = await prepare([mailId], null)
+      if (built) await send(built.decisions, built.plan, 'row')
+    } catch (error) {
+      toast.error(t(`refusals.${refusalOf(error)}`))
+      changed()
+    } finally {
+      setRowFiling(null)
+    }
   }
 
   const fileConfirmed = async (): Promise<void> => {
     if (!confirmFile) return
     setBulkFiling('selection')
     try {
-      const mails = confirmFile.ids.map((id) => {
-        const view = views.get(id) as InboundMailView
-        return decisionOf(view, initialDraft(view, folders, copy), { bulk: true })
-      })
-      await client.file(projectId, { mails })
-      toast.success(t('toast.bulkFiled', { count: mails.length }))
+      await send(confirmFile.decisions, confirmFile.plan, confirmFile.surface)
       setChecked(new Set())
-      changed()
     } catch (error) {
       toast.error(t(`refusals.${refusalOf(error)}`))
       changed()
@@ -379,7 +430,7 @@ export function InboundMailWorkspace({
         max={INBOUND_MAIL_DECISION_MAX_MAILS}
         filing={bulkFiling === 'selection'}
         dismissing={bulkDismissing}
-        onFile={() => void askFile(selectedIds, null)}
+        onFile={() => void askFile(selectedIds, null, 'selection')}
         onDismiss={() => setConfirmDismiss(true)}
         onClear={() => setChecked(new Set())}
       />
@@ -419,7 +470,6 @@ export function InboundMailWorkspace({
             state={list}
             sections={sections}
             status={status}
-            outcome={outcome}
             onFilterChange={(nextStatus, nextOutcome) => {
               setChecked(new Set())
               router.replace(paths.list({ status: nextStatus, outcome: nextOutcome }))
@@ -433,8 +483,11 @@ export function InboundMailWorkspace({
             hrefFor={(id) => paths.mail(id, filter)}
             quietOpen={quietOpen}
             onQuietOpenChange={setQuietOpen}
-            onFileGroup={(threadId, ids) => void askFile(ids, threadId)}
+            onFileGroup={(threadId, ids) => void askFile(ids, threadId, 'thread_group')}
             fileGroupBusy={bulkFiling}
+            onFileOne={(id) => void fileOne(id)}
+            fileOneBusy={rowFiling}
+            onFileReady={(ids) => void askFile(ids, null, 'ready_section')}
             onRetry={() => reload()}
             onLoadMore={async () => {
               if (list.kind !== 'ready' || !list.nextCursor) return
@@ -457,7 +510,7 @@ export function InboundMailWorkspace({
             }}
             loadingMore={loadingMore}
             everReceived={everReceived}
-            addressBlock={address ? <InboundMailAddressBlock address={address} projectName={projectName} showRules={false} /> : null}
+            addressBlock={address ? <InboundMailAddressBlock address={address} projectName={projectName} surface="never_used" showUses={false} /> : null}
             selectionBar={selectionBar}
             notice={notice}
           />
@@ -498,9 +551,7 @@ export function InboundMailWorkspace({
               <ul className="flex flex-col gap-1" data-testid="bulk-destinations">
                 {confirmFile.plan.destinations.map((destination) => (
                   <li key={`${destination.kind}:${destination.label}`} className="[overflow-wrap:anywhere]">
-                    {destination.kind === 'folder' && destination.label === ''
-                      ? t('bulk.destination.root', { count: destination.count })
-                      : t(`bulk.destination.${destination.kind}`, { label: destination.label, count: destination.count })}
+                    {destinationLine(destination)}
                   </li>
                 ))}
               </ul>

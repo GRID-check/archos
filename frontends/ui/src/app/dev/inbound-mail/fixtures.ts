@@ -17,6 +17,8 @@
 
 import type {
   InboundMailAddressView,
+  InboundMailDecision,
+  InboundMailFiledAsView,
   InboundMailListView,
   InboundMailPartView,
   InboundMailSummaryView,
@@ -80,6 +82,7 @@ export function part(overrides: Partial<InboundMailPartView> & { name?: string }
     offered: true,
     lastFailure: null,
     documentId: null,
+    filedAs: null,
     duplicateOf: null,
     revisionCandidate: null,
     revisionCandidateHidden: false,
@@ -395,6 +398,11 @@ export const DETAIL_VARIANTS: Record<string, DetailFixture> = {
     }),
     text: text(),
   },
+  // Three days left: „Wartet nur noch bis …“ comes forward from „Details“ into the header.
+  'expires-soon': {
+    view: mail({ key: 'expires-soon', expiresAt: daysAhead(3), parts: [messagePart({ id: fixtureId('message:es') }), permitDecision()] }),
+    text: text(),
+  },
   'scan-pending': {
     view: mail({ key: 'scan-pending', parts: [messagePart({ id: fixtureId('message:sp') }), statik({ scan: 'pending', scannedAt: null }), permitDecision({ scan: 'failed' })] }),
     text: text(),
@@ -437,7 +445,34 @@ export const DETAIL_VARIANTS: Record<string, DetailFixture> = {
     view: mail({ key: 'full-thread', parts: [messagePart({ id: fixtureId('message:ft') })], threadCandidates: [thread({ full: true, preselected: false, nextVersion: 201 })] }),
     text: text(),
   },
-  revision: { view: mail({ key: 'revision', parts: [messagePart({ id: fixtureId('message:rev') }), statik()] }), text: text() },
+  revision: {
+    view: mail({ key: 'revision', subject: 'AW: Stellplatznachweis – Statik S-101 Index C', parts: [messagePart({ id: fixtureId('message:rev') }), statik()] }),
+    text: text(),
+  },
+  // The MA 37 writes from its own signed domain into the project's Verlauf with the authority: complete, so „Bereit“.
+  'authority-statement': {
+    view: mail({
+      key: 'authority-statement',
+      subject: 'Stellungnahme Brandschutz – Bauplatz 12',
+      sender: { name: 'Mag. Karin Huber', address: 'k.huber@ma37.wien.gv.at', domain: 'ma37.wien.gv.at', signerDomain: 'wien.gv.at', trust: 'external_verified', reason: 'dkim_pass', flags: [] },
+      receivedAt: minutesAgo(45),
+      parts: [
+        messagePart({ id: fixtureId('message:authority') }),
+        part({
+          name: 'Stellungnahme_MA37_Brandschutz.pdf',
+          sizeBytes: 864_000,
+          suggestion: suggestion('Behörde', 'Gutachten', 'Stellungnahmen der MA 37 liegen in Behörde.'),
+        }),
+      ],
+      threadCandidates: [
+        thread({ threadId: fixtureId('thread:ma37'), documentId: fixtureId('doc:ma37'), name: 'Verfahren MA 37', folderPath: 'Behörde', nextVersion: 3 }),
+      ],
+    }),
+    text: text({
+      ownText: 'Sehr geehrte Frau Huber,\n\nanbei die Stellungnahme zum Brandschutzkonzept. Die Fluchtwege der Tiefgarage sind so genehmigungsfähig.\n\nMit freundlichen Grüßen\nKarin Huber\nMA 37 – Baupolizei',
+      quoted: [],
+    }),
+  },
   duplicate: {
     view: mail({
       key: 'duplicate',
@@ -495,7 +530,20 @@ export const DETAIL_VARIANTS: Record<string, DetailFixture> = {
       status: 'handled',
       sender: { name: 'Mag. Huber', address: 'k.huber@ma37.wien.gv.at', domain: 'ma37.wien.gv.at', signerDomain: 'wien.gv.at', trust: 'external_verified', reason: 'dkim_pass', flags: [] },
       originalHeld: false,
-      parts: [messagePart({ id: fixtureId('message:fo'), state: 'filed', documentId: fixtureId('doc:stellplatz') }), permitDecision({ state: 'filed', documentId: fixtureId('doc:bescheid-neu') }), part({ name: 'Beilage_alt.pdf', state: 'dismissed', restorableUntil: daysAhead(7) })],
+      parts: [
+        messagePart({
+          id: fixtureId('message:fo'),
+          state: 'filed',
+          documentId: fixtureId('doc:stellplatz'),
+          filedAs: { name: 'Stellplatznachweis', folderPath: 'Korrespondenz', version: 7 },
+        }),
+        permitDecision({
+          state: 'filed',
+          documentId: fixtureId('doc:bescheid-neu'),
+          filedAs: { name: 'Bescheid_MA37_2026-10-14.pdf', folderPath: 'Behörde/Bescheide', version: 1 },
+        }),
+        part({ name: 'Beilage_alt.pdf', state: 'dismissed', restorableUntil: daysAhead(7) }),
+      ],
     }),
     text: text(),
   },
@@ -604,15 +652,29 @@ const quietMails = [
   DETAIL_VARIANTS['external-unverified'].view,
 ]
 
+/**
+ * The list as the owner's scene has it (WOW §1): three mails ready to file as
+ * suggested (the Statik's new Fassung and Miriam's forwarded Bescheid continue
+ * „Stellplatznachweis“, the MA 37's statement continues its own Verlauf), and
+ * four that need a person, each for its own reason: six attachments to look
+ * at, a reply whose Verlauf the sender cannot vouch for, a mail posing as
+ * Miriam, a name the name check stopped. Two quiet ones at the end.
+ */
 const allMails = [
   v('member-verified'),
+  v('revision'),
+  v('authority-statement'),
   v('mixed-attachments'),
   v('unverified-thread'),
   v('impersonation'),
-  v('content-finding'),
   v('name-stop'),
   ...quietMails,
 ]
+
+/** Twenty-four replies to one Verlauf, more than one request may decide (the worst-case list). */
+const bulkMails = Array.from({ length: 24 }, (_, index) =>
+  mail({ key: `bulk-${index}`, subject: index % 2 ? null : `RE: ${'Sehr langer Betreff '.repeat(index % 5)}`, receivedAt: minutesAgo(60 * index) })
+)
 
 /**
  * Each mail by id, the FIRST fixture of an id winning: later variants reuse a
@@ -620,7 +682,10 @@ const allMails = [
  * list's detail must show the mail's own text, not the Statik mail's.
  */
 export const DETAIL_BY_ID = new Map<string, DetailFixture>()
-for (const fixture of [...Object.values(DETAIL_VARIANTS), ...groupMails.map((view) => ({ view, text: text() })), ...quietMails.map((view) => ({ view, text: text() }))]) {
+for (const fixture of [
+  ...Object.values(DETAIL_VARIANTS),
+  ...[...groupMails, ...quietMails, ...bulkMails].map((view) => ({ view, text: text() })),
+]) {
   if (!DETAIL_BY_ID.has(fixture.view.id)) DETAIL_BY_ID.set(fixture.view.id, fixture)
 }
 
@@ -631,7 +696,8 @@ export const LIST_VARIANTS: Record<string, ListFixture> = {
   error: { items: [], load: 'error' },
   one: { items: [summaryOf(v('member-verified'))] },
   many: { items: allMails.map((view) => summaryOf(view)), nextCursor: 'more', open: v('member-verified').id },
-  'thread-group': { items: [...groupMails.map((view) => summaryOf(view)), summaryOf(v('mixed-attachments'))] },
+  // One conversation, split: three ready replies go in one press, two that need a look are gone through in order.
+  'thread-group': { items: [...groupMails.map((view) => summaryOf(view)), summaryOf(v('mixed-attachments')), summaryOf(v('name-stop'))] },
   'unverified-group': { items: [summaryOf(v('member-verified')), ...quietMails.map((view) => summaryOf(view))] },
   selected: { items: [...groupMails.map((view) => summaryOf(view)), summaryOf(v('revision'))], checked: [groupMails[0].id, groupMails[1].id] },
   // A member's mail addressed to others needs its sender confirmed, which a bulk request never carries.
@@ -643,7 +709,7 @@ export const LIST_VARIANTS: Record<string, ListFixture> = {
   closed: { closed: true, items: [summaryOf(v('closed')), summaryOf(v('member-verified'))], open: v('closed').id },
   followed: { items: [summaryOf(v('followed')), summaryOf(v('revision'))] },
   'worst-case': {
-    items: [summaryOf(v('worst-case')), ...Array.from({ length: 24 }, (_, index) => summaryOf(mail({ key: `bulk-${index}`, subject: index % 2 ? null : `RE: ${'Sehr langer Betreff '.repeat(index % 5)}`, receivedAt: minutesAgo(60 * index) }), { attachments: index * 11, senderName: index % 4 ? null : 'Jo' }))],
+    items: [summaryOf(v('worst-case')), ...bulkMails.map((view, index) => summaryOf(view, { attachments: index * 11, senderName: index % 4 ? null : 'Jo' }))],
     nextCursor: 'more',
     open: v('worst-case').id,
   },
@@ -684,6 +750,26 @@ const pending = <T,>(): Promise<T> => new Promise<T>(() => {})
 const failing = <T,>(): Promise<T> => Promise.reject(new Error('fixture: refused'))
 
 /** A client over the fixtures: reads answer at once, decisions change the fixture in memory. */
+/** Where a decided part will have gone once the fixture's filing settles: what the server's `filedAs` would say. */
+function filedAsOf(view: InboundMailView, decision: InboundMailDecision, partId: string): InboundMailFiledAsView | null {
+  const message = decision.message
+  if (message?.partId === partId) {
+    if (message.thread.action === 'append') {
+      const threadId = message.thread.mailThreadId
+      const candidate = view.threadCandidates.find((entry) => entry.threadId === threadId)
+      return candidate ? { name: candidate.name, folderPath: candidate.folderPath, version: candidate.nextVersion } : null
+    }
+    const folder = FOLDERS.find((entry) => entry.id === (message.thread as { folderId: string | null }).folderId)
+    return { name: message.thread.name, folderPath: folder?.path ?? message.thread.newFolderPath ?? null, version: 1 }
+  }
+  const choice = decision.parts.find((entry) => entry.partId === partId)
+  if (!choice) return null
+  const revision = view.parts.find((entry) => entry.id === partId)?.revisionCandidate
+  if (choice.revisionOf && revision) return { name: revision.name, folderPath: revision.folderPath, version: revision.nextVersion }
+  const folder = FOLDERS.find((entry) => entry.id === choice.folderId)
+  return { name: choice.name, folderPath: folder?.path ?? choice.newFolderPath ?? null, version: 1 }
+}
+
 export function fixtureClient(options: { list?: ListFixture; detail?: DetailFixture } = {}): InboundMailClient {
   const views = new Map<string, InboundMailView>()
   for (const [id, fixture] of DETAIL_BY_ID) views.set(id, fixture.view)
@@ -722,7 +808,11 @@ export function fixtureClient(options: { list?: ListFixture; detail?: DetailFixt
           ...view,
           ifMatch: `${view.ifMatch}+`,
           parts: view.parts.map((candidate) =>
-            candidate.state !== 'waiting' ? candidate : filed.has(candidate.id) ? { ...candidate, state: 'filing' as const } : { ...candidate, state: 'dismissed' as const, restorableUntil: daysAhead(7) }
+            candidate.state !== 'waiting'
+              ? candidate
+              : filed.has(candidate.id)
+                ? { ...candidate, state: 'filing' as const, filedAs: filedAsOf(view, decision, candidate.id) }
+                : { ...candidate, state: 'dismissed' as const, restorableUntil: daysAhead(7) }
           ),
         })
         views.set(view.id, next)

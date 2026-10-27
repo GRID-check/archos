@@ -156,8 +156,8 @@ describe('file copy never calls a file a plan', () => {
  *   „E-Mail-Verlauf“, never a bare „Verlauf“ (the chat's), „Thread“ or
  *   „Unterhaltung“.
  * - „Abgelegt“ is the upload status `stored`; a mail never wears it as a
- *   state. It stays allowed as the handled list's facet, the one place the
- *   decision shows it, and inside sentences („2 Dateien abgelegt“).
+ *   state. It stays allowed inside sentences („2 Dateien abgelegt“). The
+ *   handled list's facet that once wore it alone is gone (2026-10-27).
  */
 const MAIL_NAMESPACES = ['inboundMail', 'mailThread', 'files.inboundMail', 'nav.inboundMailWaiting', 'projects.card.mailWaiting'] as const
 
@@ -165,9 +165,6 @@ const MAIL_FORBIDDEN: Record<'de' | 'en', RegExp> = {
   de: /Projektadresse|Posteingang|Postfach|Quarantäne|Durchsicht|durchsehen|annehmen|ablehnen|freigeben|zulassen|\bNachrichte?n?\b|\bThreads?\b|Unterhaltung|\bInbox\b|Schriftverkehr|abonnieren|(?<!E-Mail-)\bVerl(?:auf|äufe)\b(?! folgen\))/u,
   en: /\binbox\b|\bintake\b|project address|\bmessages?\b|(?<!mail )\bthreads?\b|\bapprove|\bdecline|\baccept(?!ed)|\bquarantine/i,
 }
-
-/** Where „Abgelegt“ alone is the right value: the facet that filters what was filed. */
-const MAIL_FACET_PATHS = new Set(['inboundMail.filters.outcome.filed'])
 
 describe('the E-Mail-Eingang keeps its own words', () => {
   for (const [locale, dictionary] of [
@@ -188,7 +185,7 @@ describe('the E-Mail-Eingang keeps its own words', () => {
 
   it('de: „Abgelegt“ is never a mail\'s state', () => {
     const offenders = MAIL_NAMESPACES.flatMap((path) => leaves(subtree(de, path), path))
-      .filter(([path, text]) => /^\s*Abgelegt\s*$/u.test(text) && !MAIL_FACET_PATHS.has(path))
+      .filter(([, text]) => /^\s*Abgelegt\s*$/u.test(text))
       .map(([path, text]) => `${path}: ${text}`)
     expect(offenders).toEqual([])
   })

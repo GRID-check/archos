@@ -137,9 +137,10 @@ export function FollowControl({ projectId, view, viewerUserId, client, onChanged
 
       {(canFollow || own.kind === 'following') && (
         <div className="flex flex-wrap gap-2">
+          {/* The line above says what this is; the button only what the press does. */}
           {canFollow && (
-            <BusyButton type="button" size="sm" variant="outline" busy={pending === 'follow'} busyLabel={t('follow.offer')} onClick={() => void follow()} data-testid="mail-thread-follow-start">
-              {t('follow.offer')}
+            <BusyButton type="button" size="sm" variant="outline" busy={pending === 'follow'} busyLabel={t('follow.start')} onClick={() => void follow()} data-testid="mail-thread-follow-start">
+              {t('follow.start')}
             </BusyButton>
           )}
           {own.kind === 'following' && own.renewable && (

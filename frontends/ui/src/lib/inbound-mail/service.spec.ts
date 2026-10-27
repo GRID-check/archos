@@ -28,6 +28,7 @@ vi.mock('./candidates', () => ({
     part: () => ({ duplicateOf: null, revisionCandidate: null, revisionCandidateHidden: false }),
     readsFolder: () => true,
     readsDocument: () => true,
+    filedAs: () => null,
   })),
 }))
 vi.mock('./audit', () => ({ auditDecisions: vi.fn(async () => true) }))
@@ -207,6 +208,7 @@ describe('what a mail asks of the person, on the wire', () => {
       part: () => ({ duplicateOf: null, revisionCandidate: null, revisionCandidateHidden: false }),
       readsFolder: () => true,
       readsDocument: () => true,
+      filedAs: () => null,
     } as never)
     const later = heldMail({ id: 'mail-later', sentAt: new Date('2026-10-14T09:00:00Z'), receivedAt: new Date('2026-10-14T09:01:00Z') })
     const earlier = heldMail({ id: 'mail-earlier', sentAt: new Date('2026-10-13T09:00:00Z'), receivedAt: new Date('2026-10-14T09:02:00Z') })

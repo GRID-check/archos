@@ -99,38 +99,51 @@ export function SenderTrustGlyph({
   )
 }
 
-/** The detail's trust line, its flags under it, each a fact with its glyph; the explanation behind an info toggletip. */
-export function SenderTrustLines({ sender, impersonation }: { sender: InboundMailSenderView; impersonation: ImpersonationBasis | null }): JSX.Element {
+/**
+ * The detail's trust, in the header's one line: glyph, words and the
+ * toggletip that says what they mean. Trust is never folded behind „Details“:
+ * it is the one fact about the sender a person reads before the text.
+ */
+export function SenderTrustLine({ sender, impersonation }: { sender: InboundMailSenderView; impersonation: ImpersonationBasis | null }): JSX.Element {
   const t = useTranslations('inboundMail')
   const label = useTrustLabel()
   const line = senderTrustLine(sender, impersonation)
   const tone = senderTone(line)
-  const flags = senderFlagLines(sender)
   return (
-    <div className="flex flex-col gap-1 text-xs" data-testid="sender-trust">
-      <p
-        className={cn(
-          'flex min-w-0 items-center gap-1.5',
-          // Gold on the glyph, ink on the words: the warning tone is under 4.5:1 as 12px text.
-          tone === 'warning' ? 'text-foreground font-medium [&>svg:first-child]:text-warning' : tone === 'confirmed' ? 'text-foreground' : 'text-muted-foreground'
-        )}
-        data-tone={tone}
-      >
-        <TrustGlyph line={line} />
-        <span className="min-w-0 [overflow-wrap:anywhere]">{label(line)}</span>
-        <Toggletip>
-          <TooltipTrigger asChild>
-            <button
-              type="button"
-              className="text-muted-foreground hover:text-foreground touch-target inline-flex size-4 shrink-0 items-center justify-center rounded-sm outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring/60"
-              aria-label={t(`trust.explain.${explainKey(line)}`)}
-            >
-              <Info className="size-3.5" aria-hidden />
-            </button>
-          </TooltipTrigger>
-          <TooltipContent className="max-w-72">{t(`trust.explain.${explainKey(line)}`)}</TooltipContent>
-        </Toggletip>
-      </p>
+    <span
+      className={cn(
+        'inline-flex min-w-0 items-center gap-1.5 text-xs',
+        // Gold on the glyph, ink on the words: the warning tone is under 4.5:1 as 12px text.
+        tone === 'warning' ? 'text-foreground font-medium [&>svg:first-child]:text-warning' : tone === 'confirmed' ? 'text-foreground' : 'text-muted-foreground'
+      )}
+      data-testid="sender-trust"
+      data-tone={tone}
+    >
+      <TrustGlyph line={line} />
+      <span className="min-w-0 [overflow-wrap:anywhere]">{label(line)}</span>
+      <Toggletip>
+        <TooltipTrigger asChild>
+          <button
+            type="button"
+            className="text-muted-foreground hover:text-foreground touch-target inline-flex size-4 shrink-0 items-center justify-center rounded-sm outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring/60"
+            aria-label={t(`trust.explain.${explainKey(line)}`)}
+          >
+            <Info className="size-3.5" aria-hidden />
+          </button>
+        </TooltipTrigger>
+        <TooltipContent className="max-w-72">{t(`trust.explain.${explainKey(line)}`)}</TooltipContent>
+      </Toggletip>
+    </span>
+  )
+}
+
+/** The sender's flags that change what filing needs, each a fact with its glyph; nothing when there is none. */
+export function SenderFlagLines({ sender }: { sender: InboundMailSenderView }): JSX.Element | null {
+  const t = useTranslations('inboundMail')
+  const flags = senderFlagLines(sender)
+  if (flags.length === 0) return null
+  return (
+    <div className="flex flex-col gap-1 text-xs" data-testid="sender-flags">
       {flags.map((flag) => (
         <p key={flag} className="text-foreground flex items-center gap-1.5 font-medium" data-testid={`sender-flag-${flag}`}>
           <ShieldAlert className="text-warning size-3.5 shrink-0" aria-hidden />

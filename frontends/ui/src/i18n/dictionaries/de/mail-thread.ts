@@ -30,6 +30,7 @@ export const mailThread: typeof en.mailThread = {
     detached: 'Eine E-Mail wurde aus dem E-Mail-Verlauf herausgelöst',
     document_gone: 'Der E-Mail-Verlauf wurde gelöscht',
     revoked_by_manager: 'Von der Projektverwaltung beendet',
+    project_closed: 'Das Projekt wurde abgeschlossen',
   },
 
   /** Der Reiter „E-Mails“ in der Vorschau eines E-Mail-Verlaufs (D16). */
@@ -109,6 +110,7 @@ export const mailThread: typeof en.mailThread = {
   /** „Verlauf folgen“ im Reiter: das eigene Folgen, und für die Projektverwaltung das aller. */
   follow: {
     offer: 'Diesem E-Mail-Verlauf folgen',
+    start: 'Folgen',
     explain:
       'Antworten von bestätigten Domains, die schon im E-Mail-Verlauf schreiben, werden ohne Klick angefügt. Anhänge warten weiter im E-Mail-Eingang.',
     following: 'Sie folgen diesem E-Mail-Verlauf bis {date}',
