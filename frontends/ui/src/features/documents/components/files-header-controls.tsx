@@ -54,6 +54,8 @@ export interface FilesHeaderControlsProps {
    * follow `moreEntries` in the ⋯; on a wide screen they get a ⋯ of their own.
    */
   advancedEntries?: readonly ActionMenuEntry[]
+  /** First in the WIDE row: what the shelf adds before the view choice (its search). A phone reaches it through `moreEntries`. */
+  leading?: ReactNode
 }
 
 export function FilesHeaderControls({
@@ -67,6 +69,7 @@ export function FilesHeaderControls({
   upload,
   moreEntries,
   advancedEntries,
+  leading,
 }: FilesHeaderControlsProps): JSX.Element {
   const t = useTranslations('files')
   const choose = (value: string): void => {
@@ -144,6 +147,7 @@ export function FilesHeaderControls({
 
   return (
     <div className="flex min-w-0 flex-wrap items-center justify-end gap-2" data-testid="files-controls">
+      {leading}
       <ToggleGroup
         type="single"
         value={view}
