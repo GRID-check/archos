@@ -67,7 +67,7 @@ case that was recorded (9 sources down to 2). Any rewrite it does adopt still sw
 These are all the data points in the repo:
 
 - ADR-0066: 5 repairs in one 25-question sweep, 0 in the next.
-- `docs/architecture/turns-per-answer-audit-2026-09.md:125-131`: a repair fired on a citation
+- `docs/audit/turns-per-answer-audit-2026-09.md:125-131`: a repair fired on a citation
   nobody had lost. Merged duplicates were counted as failures, and the pass cost 16 s and 23 s.
   Fixed at the cause with `lost_citations`.
 - The same file, lines 171-180: both RIS questions ended every run in a repair. The model had

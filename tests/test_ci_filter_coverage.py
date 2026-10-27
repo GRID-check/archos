@@ -47,7 +47,6 @@ UNFILTERED = {
     # docs) and `be:test:harness` runs the product-framing test over the
     # first-impression docs among it.
     "docs/**": "documentation",
-    "plans/**": "working notes",
     "*.md": "root documentation (README, AGENTS, VISION, CONTEXT, CONTRIBUTING, CLAUDE)",
     "NOTICE": "licence notice",
     "data/oib/README.md": "says the corpus is operator-provided; nothing reads it",

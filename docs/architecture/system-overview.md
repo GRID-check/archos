@@ -467,7 +467,7 @@ What lives where in the checkout.
 | `frontends/benchmarks/` | Evaluation harnesses |
 | `configs/` | Workflow configs. **LLM-agnostic** — any OpenAI-compatible endpoint (set `base_url`/key per config). **`config_oib_openrouter.yml` is the working reference config** (`config_grid_oib.yml`/Kimi is currently unmaintained). The `model_name` values are only the **boot fallback**: the live default per agent group is admin-controlled (Platform → Models, `platform_model_defaults`) and a tenant may override it (Organization → Models) — see `docs/architecture/org-model-configuration.md`. Do not edit the YAML to move the fleet to a new model. |
 | `deploy/` | Docker Compose assets and environment templates; `deploy/pulumi/` holds the Pulumi (TypeScript) Kubernetes deployment (see `docs/deployment/kubernetes.md`) |
-| `docs/architecture/` | Architecture docs (see `backend-deep-dive.md`, `project-memory-design.md`, `citation-system-audit-2026-07.md` for the citation pipeline as built) |
+| `docs/architecture/` | Architecture docs (see `backend-deep-dive.md`, `project-memory-design.md`, `docs/audit/citation-system-audit-2026-07.md` for the citation pipeline as built) |
 | `skills/` | API-consumer skill examples |
 | `scripts/` | Utility scripts, including `scripts/upload_oib_corpus.py` |
 | `releasenotes/` | reno release notes — one YAML file per user-visible change, published to piloti.at/changelog |

@@ -178,7 +178,7 @@ tasks:
     env:
       PYTHONPATH: src:frontends/benchmarks/oib_retrieval/src:sources/knowledge_layer/src
     cmds:
-      # qdrant-retrieval-design.md §10; last run: docs/architecture/qdrant-gates-2026-10.md.
+      # qdrant-retrieval-design.md §10; last run: docs/audit/qdrant-gates-2026-10.md.
       # Embeds the corpus once with the production model through make_embed_model
       # (cached under .cache/qdrant_parity, about $0.12 cold), writes it into Qdrant
       # through ingestion's write_chunks and reads it through the production

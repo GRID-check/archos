@@ -223,7 +223,7 @@ meta-only rule and the everything-outranks-lessons framing.
 - **Injection is O(1) in feedback volume.** The digest is capped whatever the
   table holds; per-turn cost never grows with reports. This is the deliberate
   contrast with project memory's known walls
-  ([`memory-system-audit-2026-07.md`](memory-system-audit-2026-07.md) F2/F3).
+  ([`docs/audit/memory-system-audit-2026-07.md`](../audit/memory-system-audit-2026-07.md) F2/F3).
 - **Serving is cached twice** (BFF Dragonfly 5 min, Python in-process 60 s):
   one internal GET per worker per minute, independent of fleet size.
 - **The pipeline is linear in down-votes and embarrassingly parallel.** Each

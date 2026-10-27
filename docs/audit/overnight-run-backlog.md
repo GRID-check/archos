@@ -1,4 +1,12 @@
-# Overnight Run Backlog — live ranked queue
+# Overnight Run Backlog — ranked queue
+
+> **Archived.** Frozen record of the overnight loop's queue, moved here from
+> `backlog.md` in the repo root in 2026-10; its last entry is from 2026-10-08.
+> It is stale in both directions: some open items are closed at HEAD, and the
+> project lifecycle (PF-6) has shipped as ADR-0098. Do not append. The one live
+> backlog is the [continuous-improvement ledger](../roadmap/continuous-improvement-ledger.md);
+> the cycle log is [`overnight-run-log.md`](overnight-run-log.md).
+> Context: [`README.md`](README.md).
 
 > Loop state file. Re-triaged every cycle. Tiers: 1=Security, 2=Bugs, 3=Stability, 4=Features, 5=Docs.
 > Item ids are stable (`T<tier>-<n>`). Demoted/blocked items keep their id with a note.
@@ -33,7 +41,7 @@
 
 ## Tier 2 — Bugs
 
-- **T2-CIT1** [OPEN — measured 2026-07-28] **Quote verification is blind to meaning-inverting micro-elisions.** `verify_quoted_spans` allows a verified quote to skip up to `_QUOTE_MAX_ELIDED_GAP = 6` characters of passage text. Measured against the real OIB corpus, elision detection is a step function on that budget: splices dropping ≤6 chars are caught **0%** of the time, ≥8 chars 100%. German legal prose inverts on short words, so a quote that silently drops `nicht` (5 chars) — or `kein`, `nur`, `außer` — passes as verbatim, turning an OIB prohibition into a permission while the answer presents it as a checked, confidence-carrying quotation. Worst case family scored 13/22 wrong. NOT fixable by tuning: gap=4 still misses a 4-char elision *and* introduces false positives (0.4%), and the other two constants are already optimal (see `docs/architecture/quote-verification-calibration-2026-07.md`). FIX: a polarity-aware check that disqualifies eliding a negation/quantifier token regardless of length — i.e. compare the *set* of polarity-bearing tokens in the quote against the aligned passage span, independently of the character budget.
+- **T2-CIT1** [OPEN — measured 2026-07-28] **Quote verification is blind to meaning-inverting micro-elisions.** `verify_quoted_spans` allows a verified quote to skip up to `_QUOTE_MAX_ELIDED_GAP = 6` characters of passage text. Measured against the real OIB corpus, elision detection is a step function on that budget: splices dropping ≤6 chars are caught **0%** of the time, ≥8 chars 100%. German legal prose inverts on short words, so a quote that silently drops `nicht` (5 chars) — or `kein`, `nur`, `außer` — passes as verbatim, turning an OIB prohibition into a permission while the answer presents it as a checked, confidence-carrying quotation. Worst case family scored 13/22 wrong. NOT fixable by tuning: gap=4 still misses a 4-char elision *and* introduces false positives (0.4%), and the other two constants are already optimal (see `docs/audit/quote-verification-calibration-2026-07.md`). FIX: a polarity-aware check that disqualifies eliding a negation/quantifier token regardless of length — i.e. compare the *set* of polarity-bearing tokens in the quote against the aligned passage span, independently of the character budget.
 
 - **T2-10** [OPEN — suspicion from 2026-07-21 adversarial review, pre-existing] The deep-research job-submission chat path (`use-websocket-chat.ts` `resolvedJobId` branch) may share the orphaned-streaming-bubble structure fixed for queue rejections: answer text streams as deltas before the terminal `deep_research_job_id` extra, and the terminal handling never calls `stopStreaming()` (comment says the deep-research SSE releases it). Verify whether an SSE failure/early exit leaves a permanently "streaming" bubble; if so, apply the same finalize-on-terminal defense.
 
@@ -97,7 +105,7 @@ REMAINING (per triage plan):
 
 ## Pilot feedback (Matthias, 2026-09-01) — verified, not yet fixed
 
-Full triage with evidence: [`docs/audit/pilot-feedback-triage-2026-09.md`](docs/audit/pilot-feedback-triage-2026-09.md).
+Full triage with evidence: [`docs/audit/pilot-feedback-triage-2026-09.md`](pilot-feedback-triage-2026-09.md).
 Eight items were fixed in the same pass; these are what is left, ranked by
 (user trust × cheapness). Ids are stable (`PF-n`).
 
@@ -117,7 +125,7 @@ Eight items were fixed in the same pass; these are what is left, ranked by
 - **PF-14 (SMALL) let the agent ask which shelves to search.** `ask_user` exists and is instructed, but its description forbids asking what a search could establish, and shelf selection is a UI chip the agent receives and never negotiates. Worth revisiting now that a subject no longer costs the turn its building code.
 - **PF-15 (product work, named in the code) user-defined categories for the Archiv.** The chip filter over real tags exists and says so out loud: "no custom-category creation (that needs product work)".
 - **PF-16 (SMALL) per-organization ingest blacklist.** Only a deployment-wide extension allow-list and a global platform exclusion file exist. The org `settings` jsonb is the obvious empty home.
-- ~~**PF-17 (MED) scanned PDFs lose every page past the 20th, silently.**~~ Done 2026-09-29: `page_triage` sends scanned and garbled (`(cid:n)`, mojibake) pages to `transcription`, which reads them verbatim through the configured VLM route (no local OCR), indexes the result as page text, caps at `AIQ_MAX_OCR_PAGES` (500) and counts every page it could not read on the file's job status. The 20-page cap now applies to drawings only, and is counted too. [`visual-ingestion.md`](docs/architecture/visual-ingestion.md#scans-and-garbled-text-layers).
+- ~~**PF-17 (MED) scanned PDFs lose every page past the 20th, silently.**~~ Done 2026-09-29: `page_triage` sends scanned and garbled (`(cid:n)`, mojibake) pages to `transcription`, which reads them verbatim through the configured VLM route (no local OCR), indexes the result as page text, caps at `AIQ_MAX_OCR_PAGES` (500) and counts every page it could not read on the file's job status. The 20-page cap now applies to drawings only, and is counted too. [`visual-ingestion.md`](../architecture/visual-ingestion.md#scans-and-garbled-text-layers).
 
 ## Blocked / waiting on human
 

@@ -320,7 +320,7 @@ What `low` lost, beyond the four `kind` checks both runs miss:
 speed. The YAML's `medium` is a deliberate fallback
 (`configs/config_oib_openrouter.yml`, the `research_llm` comment), and the
 live level is the platform owner's, per agent group, in Platform → Models
-([`org-model-configuration.md`](org-model-configuration.md#thinking-level-reasoning-effort)):
+([`docs/architecture/org-model-configuration.md`](../architecture/org-model-configuration.md#thinking-level-reasoning-effort)):
 moving it is a save, not a commit, and this table is what that save trades.
 The open question is a **per-turn effort**:
 `low` for a lookup the turn decision is confident about, `medium` otherwise.

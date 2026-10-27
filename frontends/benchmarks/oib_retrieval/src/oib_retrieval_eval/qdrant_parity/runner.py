@@ -13,7 +13,7 @@ now compares against that path's numbers from the final gate run, ``baseline.py`
 printed beside every Qdrant row; the exact mode compares ``find_text`` with a full
 regex scan of the corpus, which is what Chroma's ``$regex`` was.
 
-What it measures, how, and what it does not: ``docs/architecture/qdrant-gates-2026-10.md``
+What it measures, how, and what it does not: ``docs/audit/qdrant-gates-2026-10.md``
 and the package docstring. Results are printed as markdown and written as
 ``results.json`` + ``report.md`` under ``--out``.
 """

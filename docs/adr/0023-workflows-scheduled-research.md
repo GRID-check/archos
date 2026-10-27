@@ -218,6 +218,6 @@ service refuses to start when the deployment-level gate is off.
 
 - `docs/architecture/agent-skills.md` (the successor subsystem; the workflows
   subsystem doc was removed with the feature)
-- `docs/architecture/scaling-review-2026-07.md` §4
+- `docs/audit/scaling-review-2026-07.md` §4
 - `frontends/ui/purger/index.js` (worker precedent)
 - `frontends/aiq_api/src/aiq_api/jobs/submit.py` (admission control)

@@ -4,9 +4,9 @@
 > chunking → embedding), the Chroma store, the hybrid lexical+vector channel,
 > reciprocal-rank fusion, cross-collection merge, LLM-judge reranking, and the
 > grounding block handed to the agent. Complements
-> [citation-system-audit-2026-07.md](./citation-system-audit-2026-07.md) (which
+> [citation-system-audit-2026-07.md](citation-system-audit-2026-07.md) (which
 > covers what happens *after* retrieval) and
-> [backend-deep-dive.md](./backend-deep-dive.md).
+> [backend-deep-dive.md](../architecture/backend-deep-dive.md).
 >
 > Scope reviewed: `sources/knowledge_layer/src/llamaindex/adapter.py`,
 > `sources/knowledge_layer/src/llamaindex/{hybrid,processing}.py`,

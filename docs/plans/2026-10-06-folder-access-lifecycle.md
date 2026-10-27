@@ -1,12 +1,12 @@
 # Folder access: read/write per role, and what happens when access changes
 
-> **Numbers as written.** This branch's migrations 0104–0112 are 0109–0115 since develop took 0104–0106 (#847), and its ADR-0079, 0080, 0081 are ADR-0086, 0087, 0088. Older numbers here (0106–0115) are those before the stack's collapse; [`database/schema.md`](../docs/database/schema.md) has the numbers as shipped.
+> **Numbers as written.** This branch's migrations 0104–0112 are 0109–0115 since develop took 0104–0106 (#847), and its ADR-0079, 0080, 0081 are ADR-0086, 0087, 0088. Older numbers here (0106–0115) are those before the stack's collapse; [`database/schema.md`](../database/schema.md) has the numbers as shipped.
 
 Status: decided by the product owner, 6 Oct 2026 (decisions at the end). Builds on
 ADR-0080; becomes ADR-0081.
 
 > **Who is on a folder's list changed on 9 Oct 2026
-> ([ADR-0097](../docs/adr/0097-who-holds-a-folder-s-own-list-is-a-workos-folder-role.md)).**
+> ([ADR-0097](../adr/0097-who-holds-a-folder-s-own-list-is-a-workos-folder-role.md)).**
 > A list names people, not roles: the folder is a WorkOS `folder` resource and
 > each person on it holds a folder role (`folder-reader` for Lesen,
 > `folder-editor` for Bearbeiten). „Alle Projektmitglieder dürfen lesen" is a
@@ -180,7 +180,7 @@ DPA template say so, and an organization can shorten the retention.
    of being refused).
 5. **Download log** for every download, plus opens in folders with an own
    list; an admin view; 12-month retention. **Built**: see
-   [`docs/user-guides/download-log.md`](../docs/user-guides/download-log.md).
+   [`docs/user-guides/download-log.md`](../user-guides/download-log.md).
    A failed record refuses the hand-over under a folder with its own list
    (there the log is the control) and only warns elsewhere.
 6. **Deletion**: folders join the deletion pipeline (Papierkorb, purge,

@@ -185,7 +185,7 @@ session uploads.
   today. Current lean: yes.
 - Does `ifc_query` become shelf-aware, or stay project-pinned? A session-scoped
   model has no viewer home.
-- `backlog.md:58` claims ~14 pre-existing failing frontend specs; the suite is
+- `docs/audit/overnight-run-backlog.md:58` claims ~14 pre-existing failing frontend specs; the suite is
   green as of 2026-08-12 (477 files / 6223 tests). The stale note should be
   removed.
 

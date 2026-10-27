@@ -2,7 +2,7 @@
 
 > How Piloti produces a diagram an architect can use in a conversation, and then
 > keep as a real file in the project. See also
-> [agent-authored documents](../superpowers/specs/2026-08-20-agent-authored-documents-design.md)
+> [agent-authored documents](../specs/2026-08-20-agent-authored-documents-design.md)
 > (the pipeline this is the second and third producer of),
 > [cards.md](cards.md) (the doctrine this must not break) and
 > [ADR-0042](../adr/0042-object-storage-durability-and-quota.md).

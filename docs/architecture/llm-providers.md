@@ -102,7 +102,7 @@ bounded by per-org/member/project budgets — see
 - No call site sets provider prompt-caching hints on static prompt prefixes
   (orchestrator/planner/researcher/writer system prompts, tool registry,
   source registry) — every LLM call resends them in full. See
-  [`scaling-review-2026-07.md`](scaling-review-2026-07.md) §6.1 for the cost
+  [`docs/audit/scaling-review-2026-07.md`](../audit/scaling-review-2026-07.md) §6.1 for the cost
   impact. On the deep-research graph specifically, provider caching used to
   be further undercut by `ToolResultPruningMiddleware` shifting message
   bytes on nearly every model call; that truncation is now monotonic
@@ -132,7 +132,7 @@ bounded by per-org/member/project budgets — see
   middleware) are still independent and uncoordinated (no shared budget or
   deadline), but the worst case per logical turn is now on the order of a
   handful of attempts, not ~33. See
-  [`scaling-review-2026-07.md`](scaling-review-2026-07.md) §6.3 for the
+  [`docs/audit/scaling-review-2026-07.md`](../audit/scaling-review-2026-07.md) §6.3 for the
   cross-run multiplication this still doesn't address (bounded fan-out, not
   a shared retry budget).
 - **`api_type: responses` is a per-ROLE opt-in, not a fleet default.**

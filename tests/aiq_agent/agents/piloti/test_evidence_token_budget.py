@@ -5,7 +5,7 @@ call (o200k), by stating each tool's contract once, moving what a result can say
 and leaving the schema fields bare. The tool surface is sent on every call of every round, so a line
 added back is paid many times per turn: this pins the totals, as characters / 4 (the estimate the
 prompt audit uses, and one that needs no tokenizer download), with some slack. Before adding a line,
-read the slice-6 entry of ``docs/architecture/prompt-value-audit-2026-10.md``.
+read the slice-6 entry of ``docs/audit/prompt-value-audit-2026-10.md``.
 """
 
 from __future__ import annotations
