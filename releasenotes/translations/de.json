@@ -4148,7 +4148,11 @@
     "de": "„Offen“ wird jetzt überall gleich gezählt: Vorschläge von Piloti, die niemand übernommen hat, werden in Dateien, in der Prüfansicht oder vor einer Freigabe nicht mehr als offen gezählt. Sie werden separat ausgewiesen: „2 offen · 12 Vorschläge“, damit die Zahl mit „Offene Punkte“ und dem Protokoll übereinstimmt."
   },
   {
-    "en": "Search finds anything the office holds, from anywhere with Ctrl+K: documents with the passage and page, annotations, folders, projects and chats, filtered by document type, parties, place, facts or cited norms. Its register shows one row per document, sortable by any column and exportable as a CSV or Excel drawing list.",
-    "de": "Die Suche findet alles, was das Büro hat, von überall mit Strg+K: Dokumente mit der Fundstelle und Seite, Anmerkungen, Ordner, Projekte und Chats, gefiltert nach Dokumentart, Beteiligten, Ort, Angaben oder zitierten Normen. Ihre Planliste zeigt eine Zeile je Dokument, nach jeder Spalte sortierbar und als CSV oder Excel exportierbar."
+    "en": "Search finds anything the office holds, from anywhere with Ctrl+K: documents by their name, by what they are and by what they say, with the matching passage and page, plus annotations, folders, projects and conversations. It searches every project and the office shelf at once, or inside one project or folder.",
+    "de": "Die Suche findet alles, was das Büro hat, von überall mit Strg+K: Dokumente nach ihrem Namen, nach ihrer Art und nach ihrem Inhalt, mit der passenden Fundstelle und Seite, dazu Anmerkungen, Ordner, Projekte und Unterhaltungen. Sie durchsucht alle Projekte und die Büroablage auf einmal oder nur ein Projekt oder einen Ordner."
+  },
+  {
+    "en": "Filter documents by type, drawing number, revision, scale, parties, place, stated facts such as building class, cited norms, dates and status, and sort them like a drawing register with one row per document. Save the search, or export the result as a CSV or Excel drawing list.",
+    "de": "Filtern Sie Dokumente nach Dokumentart, Plannummer, Index, Maßstab, Beteiligten, Ort, Angaben wie der Gebäudeklasse, zitierten Normen, Daten und Status, und sortieren Sie sie wie eine Planliste mit einer Zeile je Dokument. Speichern Sie die Suche oder exportieren Sie das Ergebnis als CSV- oder Excel-Planliste."
   }
 ]
