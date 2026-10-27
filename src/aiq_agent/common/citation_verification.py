@@ -3216,8 +3216,8 @@ UNVERIFIED_QUOTE_MARKER = "[nicht wörtlich in der Quelle belegt]"
 #: (``verify_citations(label_dropped=True)``): no retrieved source behind the
 #: number, or a § / Punkt beside it the cited passage does not hold. The claim
 #: stays, as it always did; what changed is that it no longer reads like every
-#: other unmarked sentence (the per-sentence class ``cited_dropped``,
-#: ``common/claim_provenance.py``). Reader-facing German, like the quote marker.
+#: other unmarked sentence, and the answer check reads the label too
+#: (``common/claim_judge.py``). Reader-facing German, like the quote marker.
 DROPPED_CITATION_MARKER = "[Beleg nicht verifiziert]"
 
 #: Why a cited occurrence lost its number although its source line resolved.
@@ -3943,7 +3943,7 @@ def verify_citations(
     report_text: str,
     registry: SourceRegistry,
     *,
-    reference_sources: Sequence[SourceEntry] | None = None,
+    reference_sources: Sequence[SourceEntry | None] | None = None,
     label_dropped: bool = False,
     check_locus: bool = False,
 ) -> CitationVerificationResult:
@@ -3967,8 +3967,8 @@ def verify_citations(
         report_text: The full report text with citations.
         registry: SourceRegistry populated from tool call results.
         reference_sources: Optional writer-facing source list, in the same
-            numbering order the writer saw. Used only to synthesize a missing
-            source section.
+            numbering order the writer saw, ``None`` where a number names
+            nothing. Used only to synthesize a missing source section.
         label_dropped: Put :data:`DROPPED_CITATION_MARKER` where an
             unresolvable inline citation stood instead of deleting it silently
             (chat, ADR-0125). Also applies to an empty registry: every number
@@ -4022,7 +4022,7 @@ def verify_citations(
             line
             for i in cited_numbers
             if 1 <= i <= len(writer_sources)
-            if (line := _format_registry_reference(i, writer_sources[i - 1]))
+            if (entry := writer_sources[i - 1]) is not None and (line := _format_registry_reference(i, entry))
         ]
         if not reference_lines:
             logger.warning("[CitationVerify] No source section found and no renderable writer-facing sources")

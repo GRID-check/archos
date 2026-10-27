@@ -32,19 +32,22 @@ with a reason in its own envelope; `conversation.py` only routes on it. A label
 decided before the answer can only withhold a capability the answer turned out
 to need.
 
-**Confidence is held to the weakest sentence, and the law has its own currency**
-(ADR-0125). `finalize_answer` stamps every sentence of the final text with a
-provenance class and a claim type (`common/claim_provenance.py`); the surfaced
-level is the self-report under the weakest load-bearing sentence's ceiling
-(`markers.surface_claim_confidence`). A cited passage, a workspace record, an
-action or a measurement each lets its sentence reach `high`, but only a passage
-grounds a normative sentence: a record or a measurement beside a statement
-about the law leaves that statement uncited and the answer `low`. That is what
-keeps a basement measurement, or a member list, from grounding a legal verdict.
-Records come from this turn's `workspace__call` results
-(`common/workspace_records.py`) and never enter the `SourceRegistry`; a state
-without claim stamps (deep research, a stored turn) is judged by the old
-answer-level floors (rule 1), and `answer_confidence_version` says which.
+**Confidence is a groundedness check of the answer** (ADR-0139).
+`finalize_answer` hands ONE model call (`common/claim_judge.py`, the org's
+follow-ups model, temperature 0, after the prose streamed, bounded by
+`JUDGE_TIMEOUT_S`) the question, the final answer and everything the turn
+registered (`answer_pipeline._evidence`): the passages in full up to a budget,
+this turn's workspace records and the turn context's profile and inventory
+(`common/workspace_records.py`, never the `SourceRegistry`), the measurements,
+the readings, and which quotations the quote check found. The evidence is
+delimited data; an instruction inside it is ignored. The reply is a level and
+the statements the answer relies on that are unbacked or contradicted
+(`confidence_check`). The one rule on top is the quote gate
+(`markers._quote_cap`); the self-report sets no level. No model, a timeout, an
+error or an unreadable reply surfaces NO level, never a guessed one. Do not put
+rules back in front of the grader: five rounds of word lists, sentence classes
+and aggregation each moved the errors to the other side (ADR-0139). Deep
+research keeps rule 1, the answer-level floors.
 
 ## Obligations
 
@@ -62,7 +65,7 @@ answer-level floors (rule 1), and `answer_confidence_version` says which.
 | Add a line to `piloti_static.md` | Pass the value test first: the agent cannot find it out where it matters (a tool result, a description, the turn context), no code enforces it, and its absence gives a wrong answer nothing catches. State it once, calmly, with its reason. Stay within 5,000 tokens (characters / 4) | `test_static_prompt_split.py::TestByteIdentity::test_the_static_prompt_stays_within_its_budget`; the line-by-line record is `docs/audit/prompt-value-audit-2026-10.md` |
 | Edit `piloti_static.md`'s envelope examples or its field-order sentence | Keep `kind` and the masthead fields before `answer`, then `cards` (ADR-0066; `common/answer_prose_stream.py` reads them in that order). Run the answer suite and `test_answer_prose_stream.py`, then `task prompts:push` checks it and `-- --apply` publishes it (a one-way door: ask first) | Nothing: streaming fails open and the masthead just arrives late |
 | Edit a table, status or directive rule in `piloti_static.md`'s `<formatting>` (RICH BLOCKS) | Keep the header names, status words and directive names in `frontends/ui/src/shared/components/MarkdownRenderer/table-shape.ts`, `status-marks.ts` and `directives.ts` in step, the dialect names in `cards/catalog.RETIRED_CARD_REPLACEMENTS`, and the block, marker and `:project` key lists in `common/answer_dialect.py` and `frontends/ui/src/lib/text/answer-directives.ts` | `tests/aiq_agent/common/test_answer_dialect_parity.py` for the two lists; otherwise nothing: the table renders plain, a directive shows as its literal `:::` lines, and a block the server does not know is unwrapped |
-| Change what a sentence of the answer is stamped with, or a ceiling | Keep the record and measurement classes out of normative grounding (`claim_provenance.ceiling`), keep records out of the `SourceRegistry`, and run the stamps on the FINAL text, after the quote stamps (`answer_pipeline._claim_provenance`) | `tests/aiq_agent/common/test_claim_provenance.py`, `test_claim_provenance_pipeline.py` and `conversation/test_measurement_confidence.py::TestRuleTwoKeepsTheLaunderingPathShut` |
+| Change what the answer check is handed or asked, or how its level surfaces | Hand it the FINAL text and everything the turn registered, passages whole up to `EVIDENCE_BUDGET_CHARS`; keep the evidence inside the delimited data block and the system prompt's data instruction; keep records out of the `SourceRegistry`; keep a failed check as no level. Re-run the live harness over `tests/fixtures/answer_check/stored_answers_2026-10.json` and put the table in the PR | `tests/aiq_agent/common/test_claim_judge.py` (the injection probe, the budget, the binding, every failure) and `test_answer_check_pipeline.py`; the grading itself only the harness sees |
 | Change what the clarify step is given | Edit `ClarifierSettings` on `chat_deepresearcher_agent`, and leave `AgentGroup.CLARIFIER` alone: an org's model choice is stored against it | An org's pinned clarifier model silently stops applying |
 
 ## The names that stay

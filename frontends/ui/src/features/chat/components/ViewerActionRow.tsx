@@ -12,10 +12,11 @@
  * person's choice whether Piloti opens places on its own (the same switch is on
  * the profile page); it starts off under reduced motion.
  *
- * Only the asker's page has rows, and only once the answer is there: the
- * actions are held while the turn runs (`viewer-actions.ts`), and none is
- * stored with the answer, so a spectator or a reload sees the answer without
- * them. Only the status text is a live region: the person hears that their
+ * Only the asker's page has rows, and none is stored with the answer, so a
+ * spectator or a reload sees the answer without them. While the turn runs the
+ * actions are held (`viewer-actions.ts`): the row appears with the answer's
+ * first words, says each place waits for the finished answer, and „Anzeigen“
+ * opens one at once. Only the status text is a live region: the person hears that their
  * viewer moved and where, not the buttons and the switch again.
  */
 
@@ -69,6 +70,7 @@ export const viewerActionStatusText = (t: T, entry: ViewerActionEntry): string =
     case 'refused':
       return t(`viewerActions.refused.${entry.refusal ?? 'unavailable'}`)
     case 'held':
+      return t('viewerActions.status.held')
     case 'pending':
       return t('viewerActions.status.pending')
     default:
@@ -92,7 +94,7 @@ const Row: FC<{ entry: ViewerActionEntry }> = ({ entry }) => {
           {viewerActionStatusText(t, entry)}
         </span>
       </span>
-      {entry.status === 'shown' && (
+      {entry.status === 'shown' && !entry.left && (
         <Button
           variant="ghost"
           size="sm"
@@ -103,7 +105,7 @@ const Row: FC<{ entry: ViewerActionEntry }> = ({ entry }) => {
           {t('viewerActions.undo')}
         </Button>
       )}
-      {(entry.status === 'offered' || entry.status === 'undone') && (
+      {(entry.status === 'held' || entry.status === 'offered' || entry.status === 'undone') && (
         <Button
           variant="outline"
           size="sm"

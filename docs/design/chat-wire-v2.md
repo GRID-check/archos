@@ -318,6 +318,14 @@ client reads leniently:**
   dropped. The fold passes over it, so its `seq` still counts and the turn
   settles; the Herleitung draws nothing for it.
 
+Changing what a known field may hold is a break. `answer_confidence_version`
+is the worked example: the confidence rule changed (the answer check,
+ADR-0139), and a `3` would have failed every open tab's `1 | 2`. A checked
+answer therefore travels as `2`, and the new `confidence_check` tells it apart
+from a stored per-sentence turn; an older bundle strips it and shows the level.
+`tests/aiq_agent/common/test_wire_v2_open_tabs.py` checks a checked and an
+unavailable `RUN_FINISHED` against the schema as it stood before.
+
 So a new field on `TurnResult`, a new step kind, a new `CUSTOM` or a new event
 type needs no client release first. An old tab simply does not show it, and
 `RUN_FINISHED` stays authoritative for the answer. A new *terminal* type is the
