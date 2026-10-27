@@ -14,8 +14,8 @@
  */
 
 import { z } from 'zod'
-import { collectPages } from '@/lib/api/offset-page'
 import { ApiRequestError } from './api-error'
+import { listProjectMembers } from './project-members-client'
 
 const FolderPersonSchema = z.object({
   userId: z.string(),
@@ -72,18 +72,6 @@ export async function setFolderAccess(
   return FolderAccessResultSchema.parse(await response.json())
 }
 
-const ProjectMembersSchema = z.object({
-  members: z.array(
-    z.object({
-      userId: z.string(),
-      name: z.string(),
-      email: z.string().nullable(),
-      role: z.string().nullable(),
-    })
-  ),
-  nextCursor: z.string().nullable().optional(),
-})
-
 /** Someone a folder's own list may name: a member of the project. */
 export interface ProjectPerson {
   userId: string
@@ -93,20 +81,12 @@ export interface ProjectPerson {
 
 /**
  * The project's members, the people a folder's own list may name: the role
- * holders, every page of the paged roster (a project past one page would
- * otherwise lose people from the picker without a word). Needs
+ * holders, read through the shared members client. Needs
  * `project:members:manage` or `project:manage`, which whoever may change a
  * folder's list holds.
  */
 export async function listProjectPeople(projectId: string): Promise<ProjectPerson[]> {
-  const members = await collectPages(async (cursor) => {
-    const query = new URLSearchParams({ limit: '200' })
-    if (cursor) query.set('cursor', cursor)
-    const response = await fetch(`/api/projects/${encodeURIComponent(projectId)}/members?${query}`)
-    if (!response.ok) throw await failure(response, 'Failed to load the project members')
-    const page = ProjectMembersSchema.parse(await response.json())
-    return { items: page.members, nextCursor: page.nextCursor }
-  })
+  const members = await listProjectMembers(projectId)
   return members
     .filter((member) => member.role !== null)
     .map(({ userId, name, email }) => ({ userId, name, email }))
