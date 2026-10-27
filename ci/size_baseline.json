@@ -161,7 +161,7 @@
     "frontends/ui/src/lib/projects/memory-service.ts": 1297,
     "frontends/ui/src/lib/projects/repository.ts": 700,
     "frontends/ui/src/lib/projects/service.ts": 848,
-    "frontends/ui/src/lib/request-context.ts": 652,
+    "frontends/ui/src/lib/request-context.ts": 651,
     "frontends/ui/src/lib/runs/service.ts": 687,
     "frontends/ui/src/lib/sharing/service.ts": 645,
     "frontends/ui/src/lib/skills/service.ts": 960,
