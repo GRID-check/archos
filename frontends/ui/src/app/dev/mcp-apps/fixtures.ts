@@ -30,7 +30,7 @@ export const OPERATION_PROPOSAL: ProposedChangeView = {
   payload: {
     operation: 'folder-rename',
     summary: 'Rename the folder „Pläne alt“ to „Archiv 2025“ in Wohnhaus Lindengasse',
-    input: { params: { id: 'Wohnhaus Lindengasse', folderId: 'f-118' }, body: { name: 'Archiv 2025' } },
+    input: { params: { id: '3d1c2f7a-5b8e-4c1d-9f20-6a7b8c9d0e1f', folderId: 'f-118' }, body: { name: 'Archiv 2025' } },
   },
   targets: [
     { type: 'project', id: '3d1c2f7a-5b8e-4c1d-9f20-6a7b8c9d0e1f', name: 'Wohnhaus Lindengasse' },

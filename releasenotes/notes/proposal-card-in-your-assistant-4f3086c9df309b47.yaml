@@ -6,3 +6,7 @@ features:
     assistant's colours and language. You apply or discard the change there
     with one press, with your rights, and the assistant keeps the card's
     buttons from its own model.
+improvements:
+  - >
+    A proposed action's card in the chat now names each input in words, such
+    as Folder or Project, instead of its technical name, in German and English.

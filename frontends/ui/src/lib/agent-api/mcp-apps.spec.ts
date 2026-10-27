@@ -60,7 +60,7 @@ vi.mock('./read-gate', async (importOriginal) => {
   return { ...actual, readGateFor: vi.fn(actual.readGateFor) }
 })
 
-import { ConflictError } from '@/lib/api/errors'
+import { ConflictError, NotFoundError } from '@/lib/api/errors'
 import { getProposal } from '@/lib/proposals/service'
 import type { ProposedChangeView } from '@/lib/proposals/types'
 import { proposalResponseSchema } from '@/lib/proposals/types'
@@ -396,6 +396,18 @@ describe('a model deciding a proposal itself', () => {
         '(document-delete), on document "Grundriss EG.pdf". In project "Wohnhaus Lindengasse". Nothing happens unless you confirm.',
     )
     expect(questionOf(apply)).not.toContain(PROPOSAL_ID)
+  })
+
+  it('asks in the operation’s own words when the proposal cannot be read as the person, and tells nothing of it', async () => {
+    vi.stubEnv('GRID_INTERNAL_API_TOKEN', 'a-real-internal-token-for-the-mcp-apps-spec')
+    vi.mocked(getProposal).mockRejectedValueOnce(new NotFoundError('Proposal not found'))
+    const apply = await callTool(outside, 'search', 'call-operation', { name: 'proposal-apply', input: { params: { id: PROPOSAL_ID } } }, ELICITS)
+    const question = questionOf(apply)
+    expect(question).toMatch(/^An agent connected to Piloti wants to make this change as you: Apply a proposed change/)
+    expect(question).toMatch(/Nothing changes unless you confirm\.$/)
+    // Neither the proposal's summary, its kind nor a project: nothing the person may not read.
+    expect(question).not.toMatch(/this Piloti proposal|Rename the folder|In project|an action/)
+    expect(callOperation).not.toHaveBeenCalled()
   })
 
   it('asks a discard in the words of a file proposal', async () => {

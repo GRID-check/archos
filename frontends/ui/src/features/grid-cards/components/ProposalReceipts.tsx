@@ -131,15 +131,23 @@ function OperationTargets({ targets }: { targets: readonly OperationTargetView[]
  */
 function OperationInput({
   rows,
+  targets,
   unfolded,
   onToggle,
 }: {
   rows: readonly OperationInputRow[]
+  targets: readonly OperationTargetView[]
   unfolded: ReadonlySet<string>
   onToggle: (key: string) => void
 }) {
   const t = useTranslations('chat')
   if (rows.length === 0) return null
+  // A path id is the object the action acts on: named after what it resolved to ("Project"), not "ID".
+  const labelOf = (row: OperationInputRow): string => {
+    const target = row.source === 'params' && row.key === 'id' ? targets.find((candidate) => candidate.id === row.value) : undefined
+    if (target) return t(`cards.operationProposal.targetType.${target.type}`)
+    return isNamedInputKey(row.key) ? t(`cards.operationProposal.inputKeys.${row.key}`) : humanizeKey(row.key)
+  }
   return (
     <dl
       className="card-caption text-muted-foreground flex flex-col gap-0.5"
@@ -153,7 +161,7 @@ function OperationInput({
           <div key={key} className="flex flex-col gap-0.5 sm:flex-row sm:gap-x-1.5">
             {/* The field in words; its technical name stays on hover, for whoever checks it against the action. */}
             <dt className="shrink-0 font-medium" title={row.key} data-key={row.key}>
-              {isNamedInputKey(row.key) ? t(`cards.operationProposal.inputKeys.${row.key}`) : humanizeKey(row.key)}
+              {labelOf(row)}
             </dt>
             <dd className="min-w-0 break-words" data-testid="operation-input-value">
               {open ? <span className="whitespace-pre-wrap">{row.value}</span> : previewOf(row)}
@@ -221,7 +229,7 @@ export function OperationReceipt({
             {t('cards.operationProposal.operation', { operation: shownOperation })}
           </p>
           <OperationTargets targets={proposal?.targets ?? []} />
-          <OperationInput rows={rows} unfolded={unfolded} onToggle={toggle} />
+          <OperationInput rows={rows} targets={proposal?.targets ?? []} unfolded={unfolded} onToggle={toggle} />
         </>
       }
       acceptBlocked={unread > 0 ? t('cards.operationProposal.readAllFirst', { count: unread }) : undefined}

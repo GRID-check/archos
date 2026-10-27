@@ -52,7 +52,7 @@ import { type OperationInput, OperationInputError, validateOperationInput } from
 import { type AgentOperation, annotationsOf } from './operation'
 import { describeTargets, targetsOf } from './operation-targets'
 import { findProjectName } from './operation-targets-repository'
-import { summaryOfOperation } from './operation-proposals'
+import { clip, summaryOfOperation } from './operation-proposals'
 import { callDecision, findVisibleOperation } from './policy'
 import type { AgentPrincipal } from './principal'
 import { type McpCallContext, recordOperationCalled } from './telemetry'
@@ -160,31 +160,28 @@ async function namedTargets(principal: AgentPrincipal, op: AgentOperation, input
   }
 }
 
-/** At most `max` characters of `text`, on one line. */
-const clip = (text: string, max = 160): string => {
-  const line = text.replace(/\s+/g, ' ').trim()
-  return line.length <= max ? line : `${line.slice(0, max - 1)}…`
-}
+/** At most `max` characters of `text`, on one line: the summaries' own `clip`, after the line breaks are gone. */
+const oneLine = (text: string, max = 160): string => clip(text.replace(/\s+/g, ' ').trim(), max)
 
 /** What a proposal would do, in the person's terms: its kind, its summary and what it names. */
 export function describeProposal(proposal: ProposedChangeView): string {
   switch (proposal.kind) {
     case 'operation': {
       const named = (proposal.targets ?? []).flatMap((target) =>
-        target.name ? [`${target.type.replace('_', ' ')} "${clip(target.name, 80)}"`] : [],
+        target.name ? [`${target.type.replace('_', ' ')} "${oneLine(target.name, 80)}"`] : [],
       )
       const on = named.length > 0 ? `, on ${named.join(', ')}` : ''
-      return `an action, "${clip(proposal.payload.summary)}" (${proposal.payload.operation})${on}`
+      return `an action, "${oneLine(proposal.payload.summary)}" (${proposal.payload.operation})${on}`
     }
     case 'file_operation': {
-      const files = proposal.payload.operations.map((item) => (item.document ? `"${clip(item.document, 80)}"` : "a file"))
+      const files = proposal.payload.operations.map((item) => (item.document ? `"${oneLine(item.document, 80)}"` : 'a file'))
       const shown = files.length > 3 ? `${files.slice(0, 3).join(', ')} and ${files.length - 3} more` : files.join(', ')
       return `a file ${proposal.payload.operation} of ${files.length === 1 ? 'one file' : `${files.length} files`}: ${shown}`
     }
     case 'memory':
-      return `a note for Piloti to remember (${proposal.payload.kind}): "${clip(proposal.payload.content)}"`
+      return `a note for Piloti to remember (${proposal.payload.kind}): "${oneLine(proposal.payload.content)}"`
     case 'project_profile':
-      return `a change to the project context, "${clip(proposal.payload.title)}"`
+      return `a change to the project context, "${oneLine(proposal.payload.title)}"`
   }
 }
 
@@ -214,7 +211,7 @@ async function decisionMessage(principal: AgentPrincipal, op: AgentOperation, in
   const read = await decidedProposal(principal, input)
   if (!read) return null
   const verb = op.name === 'proposal-dismiss' ? 'discard' : 'apply'
-  const where = read.project ? ` In project "${clip(read.project, 80)}".` : ''
+  const where = read.project ? ` In project "${oneLine(read.project, 80)}".` : ''
   const effect = verb === 'discard' ? ' Discarding changes nothing in the workspace.' : ''
   return (
     `An agent connected to Piloti wants to ${verb} this Piloti proposal as you: ${describeProposal(read.proposal)}.` +

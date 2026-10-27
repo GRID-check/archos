@@ -18,6 +18,8 @@ export interface OperationInputRow {
   value: string
   /** Shown in part until the reader unfolds it; the card refuses „Apply“ until then. */
   long: boolean
+  /** Where the field sits in the call: a path parameter is the object the action acts on. */
+  source: 'body' | 'query' | 'params'
 }
 
 /** Longest value shown whole without unfolding. */
@@ -31,23 +33,23 @@ function show(value: unknown): string {
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value)
 
-function rowOf(key: string, value: unknown): OperationInputRow {
+function rowOf(key: string, value: unknown, source: OperationInputRow['source']): OperationInputRow {
   const text = show(value)
-  return { key, value: text, long: text.length > PREVIEW_LENGTH || text.includes('\n') }
+  return { key, value: text, long: text.length > PREVIEW_LENGTH || text.includes('\n'), source }
 }
 
-function rowsOf(record: unknown): OperationInputRow[] {
+function rowsOf(record: unknown, source: OperationInputRow['source']): OperationInputRow[] {
   if (!isRecord(record)) return []
   return Object.entries(record)
     .filter(([, value]) => value !== undefined && value !== null && value !== '')
-    .map(([key, value]) => rowOf(key, value))
+    .map(([key, value]) => rowOf(key, value, source))
 }
 
 /** Every row of `input`, body first, then query, then path parameters. */
 export function operationInputRows(input: Record<string, unknown>): OperationInputRow[] {
   const body = input.body
-  const bodyRows = isRecord(body) ? rowsOf(body) : body === undefined || body === null ? [] : [rowOf('body', body)]
-  return [...bodyRows, ...rowsOf(input.query), ...rowsOf(input.params)]
+  const bodyRows = isRecord(body) ? rowsOf(body, 'body') : body === undefined || body === null ? [] : [rowOf('body', body, 'body')]
+  return [...bodyRows, ...rowsOf(input.query, 'query'), ...rowsOf(input.params, 'params')]
 }
 
 /** The start of a long value, on one line, marked as cut. */
@@ -58,20 +60,56 @@ export function previewOf(row: OperationInputRow): string {
 
 /**
  * The input fields most actions take, named in the person's language
- * (`cards.operationProposal.inputKeys`). Any other field reads as its name in
- * words (`humanizeKey`): `memoryScope` is "Memory scope", never `memoryScope`.
+ * (`cards.operationProposal.inputKeys`): the fields of the catalog's writes by
+ * how often they occur (October 2026), and the proposal card's own. Any other
+ * field reads as its name in words (`humanizeKey`, English), so a field that
+ * shows up often on a German card belongs here.
  */
 export const NAMED_INPUT_KEYS = [
   'id',
   'name',
   'title',
   'description',
+  'scope',
+  'memoryScope',
   'projectId',
   'folderId',
   'parentId',
   'documentId',
   'conversationId',
+  'messageId',
+  'versionId',
+  'annotationId',
+  'taskId',
+  'itemId',
+  'skillId',
+  'categoryId',
+  'resourceType',
+  'resourceId',
   'targetFolder',
+  'body',
+  'note',
+  'comment',
+  'content',
+  'message',
+  'question',
+  'reason',
+  'decision',
+  'kind',
+  'role',
+  'status',
+  'enabled',
+  'pinned',
+  'confidence',
+  'locale',
+  'fileName',
+  'files',
+  'names',
+  'displayName',
+  'email',
+  'visibility',
+  'permissions',
+  'sortOrder',
 ] as const
 
 export type NamedInputKey = (typeof NAMED_INPUT_KEYS)[number]
