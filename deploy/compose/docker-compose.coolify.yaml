@@ -711,6 +711,8 @@ services:
       - GRID_BFF_JOBS_CONCURRENCY=${GRID_BFF_JOBS_CONCURRENCY:-2}
       - GRID_BFF_JOBS_DRAIN_SECONDS=${GRID_BFF_JOBS_DRAIN_SECONDS:-30}
       - GRID_BFF_JOBS_MAX_PER_ORG=${GRID_BFF_JOBS_MAX_PER_ORG:-0}
+      # `inprocess` runs the slices without spawning the BFF (ADR-0079 amendment 1).
+      - GRID_BFF_JOBS_MODE=${GRID_BFF_JOBS_MODE:-http}
       # The runner stops the BFF only after it has drained.
       - GRID_SHUTDOWN_DRAIN_MS=5000
     # The runner gives claims back for up to the drain budget; docker's default

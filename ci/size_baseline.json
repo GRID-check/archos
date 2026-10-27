@@ -1,7 +1,7 @@
 {
   "files": {
-    "deploy/pulumi/src/app/config.ts": 846,
-    "deploy/pulumi/src/config.ts": 3521,
+    "deploy/pulumi/src/app/config.ts": 791,
+    "deploy/pulumi/src/config.ts": 3505,
     "deploy/pulumi/src/constants.ts": 862,
     "deploy/pulumi/src/data/postgres.ts": 964,
     "deploy/pulumi/src/data/seaweedfs-split.ts": 640,
@@ -12,7 +12,7 @@
     "frontends/aiq_api/src/aiq_api/jobs/event_store.py": 672,
     "frontends/aiq_api/src/aiq_api/jobs/ingest_dispatch.py": 603,
     "frontends/aiq_api/src/aiq_api/jobs/run_ledger_fold.py": 720,
-    "frontends/aiq_api/src/aiq_api/jobs/runner.py": 2541,
+    "frontends/aiq_api/src/aiq_api/jobs/runner.py": 1620,
     "frontends/aiq_api/src/aiq_api/models/requests.py": 1059,
     "frontends/aiq_api/src/aiq_api/routes/documents.py": 839,
     "frontends/aiq_api/src/aiq_api/routes/jobs.py": 2055,
@@ -255,7 +255,6 @@
     "frontends/aiq_api/src/aiq_api/jobs/runner.py::_run_agent": 116,
     "frontends/aiq_api/src/aiq_api/jobs/runner.py::_run_deep_research_reflection": 106,
     "frontends/aiq_api/src/aiq_api/jobs/runner.py::_update_status_if_not_terminal": 79,
-    "frontends/aiq_api/src/aiq_api/jobs/runner.py::run_agent_job": 962,
     "frontends/aiq_api/src/aiq_api/jobs/submit.py::_build_run_agent_payload": 85,
     "frontends/aiq_api/src/aiq_api/jobs/submit.py::submit_agent_job": 316,
     "frontends/aiq_api/src/aiq_api/plugin.py::AIQAPIWorker.build_app": 71,

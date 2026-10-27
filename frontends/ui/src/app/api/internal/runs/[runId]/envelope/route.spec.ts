@@ -19,7 +19,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 vi.mock('@/lib/tasks/repository', () => ({ findRunById: vi.fn() }))
 vi.mock('@/lib/auth/pinned-session', () => ({ resolvePinnedRequesterSession: vi.fn() }))
 vi.mock('@/lib/authz/projects', () => ({ requireProjectAccess: vi.fn() }))
-vi.mock('@/lib/collection-scope-request', () => ({ authorizeConversationScope: vi.fn() }))
+vi.mock('@/lib/retrieval-scope/collection-scope-request', () => ({ authorizeConversationScope: vi.fn() }))
 // Partial: the input the envelope is signed from is the real one, so the
 // success case proves the renewal signs what the submission signs.
 vi.mock('@/lib/jobs/run-context', async (importOriginal) => ({
@@ -35,7 +35,7 @@ import { resolvePinnedRequesterSession } from '@/lib/auth/pinned-session'
 import type { AuthorizedSession } from '@/lib/auth/types'
 import { FEATURE_FLAGS } from '@/lib/authz/feature-flags'
 import { requireProjectAccess } from '@/lib/authz/projects'
-import { authorizeConversationScope } from '@/lib/collection-scope-request'
+import { authorizeConversationScope } from '@/lib/retrieval-scope/collection-scope-request'
 import type { TaskRun } from '@/lib/db/schema'
 import { resolveRunContext, type RunContext } from '@/lib/jobs/run-context'
 import { GRID_REQUEST_CONTEXT_MAX_AGE_MS, verifyGridRequestContextEnvelope } from '@/lib/request-context'

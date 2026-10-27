@@ -106,8 +106,6 @@ tasks:
 
   prompts:pull:
     desc: 'Bring a Langfuse prompt version into review: task prompts:pull [-- --label <label>]'
-    env:
-      PYTHONPATH: src
     cmds:
       # Git is the platform prompt's source of truth (ADR-0060 (a)). This only
       # ever READS Langfuse: it writes the version under a label into
@@ -117,8 +115,6 @@ tasks:
 
   langfuse:provision:
     desc: 'Check (or with -- --apply, create) the score configs, review queue, judges and golden dataset Grid declares in Langfuse'
-    env:
-      PYTHONPATH: src
     cmds:
       # CHECK by default: prints what is missing or has drifted and writes
       # nothing. `--apply` creates what is missing and never changes or
@@ -128,8 +124,6 @@ tasks:
 
   prompts:push:
     desc: 'Check (or with -- --apply, publish) the committed platform prompt under a Langfuse label: task prompts:push [-- --label <label> [--apply]]'
-    env:
-      PYTHONPATH: src
     cmds:
       # CHECK by default: prints what publishing would change and writes
       # nothing. `--apply` (with `--label` named, production included) creates
@@ -222,7 +216,8 @@ tasks:
       # Sets SURE_CONFIDENCE (frontends/ui/src/lib/filing/root-sort-types.ts).
       # Run before and after a change to the sort prompt, the scoring or the
       # threshold; writes tests/fixtures/root_sort/eval_<date>.json. A few cents.
-      - 'PYTHONPATH=../../src:src ../../.venv/bin/python -I ../../scripts/root_sort_eval.py {{.CLI_ARGS}}'
+      # `-I` ignores PYTHONPATH: the venv's editable installs are what resolve the imports.
+      - '../../.venv/bin/python -I ../../scripts/root_sort_eval.py {{.CLI_ARGS}}'
 
   be:eval:decisions:vision:
     desc: 'Decision-model eval for page images — Jev 1.14 reads a drawing page: kind, view, title block and drawing boxes on the fixture drawings (NEEDS OPENROUTER_API_KEY; no backend)'
@@ -263,8 +258,6 @@ tasks:
 
   be:eval:answer-suite:
     desc: 'Answer suite — the reference questions through the real agent, timed and checked, with a report (NEEDS OPENROUTER_API_KEY and the corpus ingested; -- --ingest ingests it first, in the suite process)'
-    env:
-      PYTHONPATH: src
     cmds:
       # The end-to-end check: seconds, reasoning tokens and the answer's own
       # expectations per question, medians over runs, a baseline diff.
