@@ -23,6 +23,19 @@
 -- for ranges. `search_vector` is generated from `search_text` (title, summary,
 -- parties, place, plan number, reference labels, topics), German stemming.
 --
+-- ## Indexes
+--
+-- B-tree only, each leading with the organization the RLS policy pins. No GIN
+-- on the token arrays or the full-text vector: the runtime role reads this
+-- table under row-level security, and the planner never turns a
+-- non-leakproof operator (`@>`, `&&`, `@@`, `LIKE`) into an index condition
+-- below the policy's qual, so such an index is written on every refresh and
+-- read by nobody. Measured on a 60,000-row seed (`search-latency.integration.
+-- spec.ts`): the five GIN indexes held about 19 MB and served 0 scans as
+-- `grid_app_rw`; every filter on them runs as a filter over the
+-- organization's rows, which the search joins to `documents` anyway.
+-- `docs/contributing/gotchas.md` has the symptom.
+--
 -- ## document_search_shelves
 --
 -- One row per shelf: when its facets were last refreshed, from which
@@ -83,16 +96,6 @@ CREATE INDEX IF NOT EXISTS "document_search_facets_org_plan_idx" ON "document_se
 CREATE INDEX IF NOT EXISTS "document_search_facets_org_plan_date_idx" ON "document_search_facets" ("organization_id", "plan_date");
 --> statement-breakpoint
 CREATE INDEX IF NOT EXISTS "document_search_facets_org_document_date_idx" ON "document_search_facets" ("organization_id", "document_date");
---> statement-breakpoint
-CREATE INDEX IF NOT EXISTS "document_search_facets_tags_idx" ON "document_search_facets" USING gin ("tags");
---> statement-breakpoint
-CREATE INDEX IF NOT EXISTS "document_search_facets_references_idx" ON "document_search_facets" USING gin ("reference_tokens");
---> statement-breakpoint
-CREATE INDEX IF NOT EXISTS "document_search_facets_facts_idx" ON "document_search_facets" USING gin ("fact_tokens");
---> statement-breakpoint
-CREATE INDEX IF NOT EXISTS "document_search_facets_party_roles_idx" ON "document_search_facets" USING gin ("party_roles");
---> statement-breakpoint
-CREATE INDEX IF NOT EXISTS "document_search_facets_vector_idx" ON "document_search_facets" USING gin ("search_vector");
 --> statement-breakpoint
 SELECT grid_secure_table('document_search_facets', 'organization_id = grid_current_org()');
 --> statement-breakpoint
