@@ -2626,7 +2626,7 @@ class TestADirectReplyMayStillEmitACard:
         rules = rendered.split("<rules>")[1].split("</rules>")[0]
         assert "A file you did not open is not described" in rules
         assert "„nicht gelesen“" in rules
-        assert "Abdeckung: unzureichend" in rules
+        assert "Abdeckung: unzureichend" not in rules
         assert "`conclusion`" not in rules
         procedures = (
             "at most two searches",
