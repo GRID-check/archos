@@ -8,7 +8,7 @@ import { baseStackConfig } from "./test-support/stack-config";
 /**
  * The one OpenRouter key's budget (ADR-0076, ADR-0081), as the stack files state it.
  *
- * Vision calls are held to `AIQ_VLM_FLEET_CONCURRENCY` fleet-wide whatever the
+ * Vision calls are held to `GRID_VLM_FLEET_CONCURRENCY` fleet-wide whatever the
  * replica count, so an ingest tier sized past that number only queues: replicas
  * that hold memory and wait for a slot, and a wait that can outlast the client's
  * own timeout. The two numbers are set in different places and neither looks
@@ -173,8 +173,8 @@ describe("the budget reaches the pods that spend it", () => {
       imagePullSecrets: [],
     };
     const expected = {
-      AIQ_VLM_FLEET_CONCURRENCY: "40",
-      AIQ_VLM_BATCH_WORKERS: "5",
+      GRID_VLM_FLEET_CONCURRENCY: "40",
+      GRID_VLM_BATCH_WORKERS: "5",
       GRID_PROVIDER_LIMIT_CEILING: "100",
       GRID_PROVIDER_MODEL_LIMIT_CEILING: "20",
     };
@@ -197,10 +197,10 @@ describe("the budget reaches the pods that spend it", () => {
     const python = (path: string[], pattern: RegExp) => Number(read(...path).match(pattern)?.[1]);
 
     expect(cfg.providerLimits.vlmFleetConcurrency).toBe(
-      python(["sources", "knowledge_layer", "src", "llamaindex", "adapter.py"], /VLM_FLEET_CONCURRENCY = _env_int\("AIQ_VLM_FLEET_CONCURRENCY", (\d+)\)/),
+      python(["sources", "knowledge_layer", "src", "llamaindex", "adapter.py"], /VLM_FLEET_CONCURRENCY = _env_int\("GRID_VLM_FLEET_CONCURRENCY", (\d+)\)/),
     );
     expect(cfg.providerLimits.vlmBatchWorkers).toBe(
-      python(["sources", "knowledge_layer", "src", "llamaindex", "processing.py"], /os\.environ\.get\("AIQ_VLM_BATCH_WORKERS", "(\d+)"\)/),
+      python(["sources", "knowledge_layer", "src", "llamaindex", "processing.py"], /os\.environ\.get\("GRID_VLM_BATCH_WORKERS", "(\d+)"\)/),
     );
     expect(cfg.providerLimits.limitCeiling).toBe(
       python(["src", "aiq_agent", "common", "provider_limiter.py"], /^_DEFAULT_CEILING = (\d+)$/m),

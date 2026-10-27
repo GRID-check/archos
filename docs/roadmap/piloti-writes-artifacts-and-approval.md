@@ -74,7 +74,7 @@ the "second hundred lines of something general" the doctrine says to look up
 a library for first. The prior exploration reached the same verdict
 (`piloti-filesystem-design.md` §12b).
 
-**Storage.** `langgraph.store.postgres.PostgresStore` on `AIQ_CHECKPOINT_DB`
+**Storage.** `langgraph.store.postgres.PostgresStore` on `GRID_CHECKPOINT_DB`
 (the Python service's own Postgres database, `aiq_checkpoints`, already
 pooled in `common/__init__.py`). No table in `grid_app`; the single-writer
 rule holds. Namespace `("conversation", <id>, "drafts")`. A byte ceiling per

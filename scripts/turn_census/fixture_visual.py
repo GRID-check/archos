@@ -95,5 +95,5 @@ class VisualWorkspace(FilesWorkspace):
             "SEAWEED_ENDPOINT": bff_url,
             "NO_PROXY": "127.0.0.1,localhost",
             "no_proxy": "127.0.0.1,localhost",
-            "AIQ_VIEW_IMAGES_ENABLED": "1" if look else "0",
+            "GRID_VIEW_IMAGES_ENABLED": "1" if look else "0",
         }

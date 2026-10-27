@@ -118,7 +118,7 @@ def format_user_facing_tool_error(
 ) -> str:
     """Format a tool-unavailability error appropriate for the current deployment mode.
 
-    In local development (``AIQ_DEV_ENV=cli``), the full tool details are
+    In local development (``GRID_DEV_ENV=cli``), the full tool details are
     returned so developers can diagnose quickly.  In all other modes
     (e2e, web, production, unset) a generic message is returned to avoid
     leaking infrastructure details to end users in the web UI.
@@ -142,12 +142,12 @@ def format_user_facing_tool_error(
 
     logger.warning(detailed.strip())
 
-    dev_env = os.environ.get("AIQ_DEV_ENV", "")
+    dev_env = os.environ.get("GRID_DEV_ENV", "")
     if dev_env == "cli":
         return detailed
 
     # Detailed diagnostics (tool names, missing keys) are only shown when
-    # AIQ_DEV_ENV is "cli", which deploy/.env.example sets for local development.
+    # GRID_DEV_ENV is "cli", which deploy/.env.example sets for local development.
     return TOOLS_UNAVAILABLE_MESSAGE
 
 

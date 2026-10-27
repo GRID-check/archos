@@ -22,13 +22,8 @@ import type { GridSession } from '@/lib/auth/types'
  */
 export { isAuthRequired }
 
-/**
- * Resolve the backend base URL, stripping any trailing slash.
- */
-export const getBackendUrl = (): string => {
-  const url = process.env.BACKEND_URL || process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000'
-  return url.replace(/\/$/, '')
-}
+/** Re-exported from the leaf `@/lib/backend-url`, which session-less code imports directly. */
+export { getBackendUrl } from '@/lib/backend-url'
 
 /**
  * Resolve the current Grid session, or null when REQUIRE_AUTH=false.

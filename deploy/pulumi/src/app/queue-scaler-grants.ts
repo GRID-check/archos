@@ -147,7 +147,7 @@ export function installQueueScalerGrants(
         JOBS_DSN: w.dsn({ db: "aiq_jobs", via: "direct" }),
         APP_DSN: w.dsn({ db: "grid_app", via: "direct" }),
         NAT_JOB_STORE_DB_URL: w.dsn({ db: "aiq_jobs", via: "direct", driver: "postgresql+asyncpg" }),
-        AIQ_SUMMARY_DB: w.dsn({ db: "aiq_jobs", via: "direct", driver: "postgresql+psycopg" }),
+        GRID_SUMMARY_DB: w.dsn({ db: "aiq_jobs", via: "direct", driver: "postgresql+psycopg" }),
       },
     },
     { provider: w.provider },

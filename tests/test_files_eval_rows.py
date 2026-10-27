@@ -171,8 +171,9 @@ class TestTheArms:
             files_eval.arm_overrides("lexical", self.TOOLS)
 
     def test_the_overrides_name_keys_the_config_and_its_schema_accept(self):
+        from knowledge_layer.register import KnowledgeRetrievalConfig
+
         from aiq_agent.agents.piloti.register import ResearchAgentConfig
-        from sources.knowledge_layer.src.register import KnowledgeRetrievalConfig
 
         for arm in ("semantic", "grep"):
             pairs = dict(files_eval.arm_overrides(arm, self.TOOLS))

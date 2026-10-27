@@ -162,6 +162,12 @@ RUN for script in provision-workos-authz migrate-folder-grants-to-workos; do \
         --outfile="dist-scripts/$script.mjs" || exit 1; \
     done
 
+# The `bff-jobs` slice entry, the same way: our services inlined, packages left
+# to the production node_modules. `workers/jobs/index.js` imports it when
+# `GRID_BFF_JOBS_MODE=inprocess`, and then spawns no `node server.js` (ADR-0079
+# amendment 1). Its own script, for the shims Next would otherwise provide.
+RUN bun scripts/build-jobs-bundle.ts
+
 # Remove devDependencies — keeps dev-only packages out of the production image
 RUN bun install --frozen-lockfile --production --ignore-scripts
 
@@ -206,6 +212,7 @@ COPY --from=builder --chown=nextjs:nodejs /app/observability ./observability
 COPY --from=builder --chown=nextjs:nodejs /app/workers ./workers
 COPY --from=builder --chown=nextjs:nodejs /app/scripts ./scripts
 COPY --from=builder --chown=nextjs:nodejs /app/dist-scripts ./dist-scripts
+COPY --from=builder --chown=nextjs:nodejs /app/dist-jobs ./dist-jobs
 # The only `src/` file the runtime needs: the audit action+schema registry the
 # deploy-time provisioning script reconciles into WorkOS. It is shared with the
 # app (which reaches it through the bundle, not from disk), so it lives in

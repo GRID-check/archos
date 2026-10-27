@@ -10,9 +10,6 @@ to pass back verbatim.
 import importlib
 from types import SimpleNamespace
 
-# NOTE: `knowledge_layer.read_passage` as an ATTRIBUTE is the registered NAT
-# function (see `knowledge_layer/__init__.py`); the module holding the helpers
-# is reached through the import system instead.
 rp = importlib.import_module("knowledge_layer.read_passage")
 
 
