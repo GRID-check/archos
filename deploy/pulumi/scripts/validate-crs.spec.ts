@@ -264,7 +264,7 @@ describe("the deploy's CR schema validator", () => {
       urn: "urn:pulumi:test::grid-oib::kubernetes:postgresql.cnpg.io/v1:Database::database",
       inputs: {
         apiVersion: "postgresql.cnpg.io/v1", kind: "Database",
-        metadata: { name: "database" }, spec: { name: "aiq_jobs", cluster: { name: "grid-pg" } },
+        metadata: { name: "database" }, spec: { name: "grid_jobs", cluster: { name: "grid-pg" } },
       },
     } }] };
     const result = run(plan);

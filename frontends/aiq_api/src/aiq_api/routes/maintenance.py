@@ -1,7 +1,7 @@
 """Internal maintenance endpoints used by the purger service and the BFF's sweep.
 
 Deletes the Python-side resources of a purged project: the collection's
-chunks in Qdrant (+ its summaries), aiq_jobs rows, and LangGraph checkpoints.
+chunks in Qdrant (+ its summaries), grid_jobs rows, and LangGraph checkpoints.
 Guarded by GRID_INTERNAL_API_TOKEN; never exposed to end users.
 All operations are idempotent — re-running on already-deleted data is a no-op.
 

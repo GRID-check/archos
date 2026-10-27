@@ -21,8 +21,8 @@ import pytest
 import aiq_api.routes.jobs as jobs_routes
 from aiq_agent.knowledge import leader_lock
 
-POOLED = "postgresql+asyncpg://aiq:pw@grid-pg-pooler-rw:5432/aiq_jobs"  # pragma: allowlist secret
-DIRECT = "postgresql://aiq:pw@grid-pg-rw:5432/aiq_jobs"  # pragma: allowlist secret
+POOLED = "postgresql+asyncpg://grid:pw@grid-pg-pooler-rw:5432/grid_jobs"  # pragma: allowlist secret
+DIRECT = "postgresql://grid:pw@grid-pg-rw:5432/grid_jobs"  # pragma: allowlist secret
 
 
 def _engine(monkeypatch, *, wins: bool):

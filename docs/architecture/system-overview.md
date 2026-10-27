@@ -100,7 +100,7 @@ flowchart TB
     end
 
     subgraph Data["Stateful infrastructure"]
-        PG[("PostgreSQL<br/>grid_app · aiq_jobs · aiq_checkpoints")]
+        PG[("PostgreSQL<br/>grid_app · grid_jobs · grid_checkpoints")]
         SEAWEED[("SeaweedFS — grid-documents bucket")]
         QDRANT[("Qdrant — vector store")]
     end
@@ -126,7 +126,7 @@ flowchart TB
 |---|---|---|
 | **frontend** | Next.js 16, React 18, TypeScript | The UI, the BFF (all `/api/*`), and the `server.js` gateway. System of record for `grid_app`. |
 | **aiq-agent / aiq-api** | Python 3.14, FastAPI, NAT, LangGraph | Stateless AI orchestration, one image run as separate roles (ADR-0082): `aiq-agent` is the `chat` role (the chat socket), `aiq-api` the `api` role (every other HTTP route), beside the `agent-worker` and `ingest-worker`. Owns the vector store and the job/checkpoint DBs. |
-| **postgres** | PostgreSQL 16 | Three logical DBs: `grid_app` (app state), `aiq_jobs` (jobs/events/summaries), `aiq_checkpoints` (LangGraph state). |
+| **postgres** | PostgreSQL 16 | Three logical DBs: `grid_app` (app state), `grid_jobs` (jobs/events/summaries), `grid_checkpoints` (LangGraph state). |
 | **seaweedfs** | SeaweedFS (S3-compatible) | Object storage for OIB PDFs and uploaded documents (`grid-documents` bucket). |
 | **Qdrant** | shared `qdrant` server (HTTP) | Vector store: two physical collections behind aliases, `piloti_corpus` and `piloti_office`, persisted to a volume and queried by every backend role (ADR-0115). |
 | **purger** | same image as frontend, `node purger/index.js` | Scheduled worker that hard-deletes soft-deleted projects after the grace period. |
@@ -323,7 +323,7 @@ happens in the inbox, where the person was told about the result.
 
 Two naming collisions to keep straight. The `task_definitions`/`task_runs`
 tables live in `grid_app` (the collapsed successor of `jobs`/`job_runs`/
-`tasks`); the backend async jobs live in `aiq_jobs` (deep-research runs,
+`tasks`); the backend async jobs live in `grid_jobs` (deep-research runs,
 §5.5) — a `task_runs.backend_job_id` value names one of the latter. And
 `compliance_check` is a **task kind**, not a chat tool or an agent: the
 purpose-built compliance checker is deleted, and a full Soll-Ist runs as a
@@ -368,8 +368,8 @@ marks it purged. Restore is possible only while the row is un-claimed.
 | Store | Owner | Holds |
 |---|---|---|
 | **`grid_app`** (Postgres) | BFF (single writer) | projects, conversations, messages, documents, folders, **project_memory**, **platform_lessons** (+ reports/events), **deletion_queue**, **legal_holds**, user_preferences, **tasks** (the work object), **jobs** (recurring triggers) + **job_runs** (receipts), **skills** |
-| **`aiq_jobs`** (Postgres) | backend | backend async-run info/access/events (deep research) — not the BFF `jobs` schedule table (§5.12), document summaries |
-| **`aiq_checkpoints`** (Postgres) | backend | LangGraph conversation checkpoints (thread state) |
+| **`grid_jobs`** (Postgres) | backend | backend async-run info/access/events (deep research) — not the BFF `jobs` schedule table (§5.12), document summaries |
+| **`grid_checkpoints`** (Postgres) | backend | LangGraph conversation checkpoints (thread state) |
 | **SeaweedFS** (`grid-documents`) | BFF writes, backend/purger read | OIB PDFs + uploaded documents, keyed by org/project |
 | **Qdrant** | backend | two physical collections, `piloti_corpus` (the legal corpus, `oib_knowledge`) and `piloti_office` (everything an office uploads). The logical collections `archiv_<org>`, `proj_<id>`, `<proj>_r<folder>` and `s_<conversation>` are payload fields, and a request's scope is one filter compiled in `scope_filter` (ADR-0116). Memory and lessons are not in Qdrant — they live in `grid_app`, with row-resident embeddings for recall ([semantic-notes.md](./semantic-notes.md)). |
 

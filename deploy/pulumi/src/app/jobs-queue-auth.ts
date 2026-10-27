@@ -9,7 +9,7 @@ export const JOBS_QUEUE_AUTH = "jobs-queue-auth";
 
 /**
  * How KEDA reads the Python claim queues (ADR-0076, ADR-0079): `ingest_job_queue`
- * and `research_job_queue` live in one database (`aiq_jobs`), so the ingest tier
+ * and `research_job_queue` live in one database (`grid_jobs`), so the ingest tier
  * and the research tier share one credential and one TriggerAuthentication,
  * created once here rather than by whichever tier happens to be enabled.
  *

@@ -21,6 +21,8 @@
 #
 # Usage: rename-to-grid.sh
 set -eu
+PGOPTIONS="${PGOPTIONS:-} -c client_min_messages=warning"
+export PGOPTIONS
 
 q() { psql -X -v ON_ERROR_STOP=1 -tAq -d postgres "$@"; }
 database_exists() { [ "$(q -c "SELECT 1 FROM pg_database WHERE datname = '$1'")" = 1 ]; }

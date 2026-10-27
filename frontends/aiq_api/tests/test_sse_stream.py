@@ -22,7 +22,7 @@ from aiq_api.jobs.connection_manager import reset_connection_manager
 from aiq_api.jobs.event_store import EventStore
 
 #: The direct (non-pooled) DSN LISTEN connects to: `GRID_LISTEN_DB_URL` in a deployment.
-DIRECT_DSN = "postgresql://aiq:pw@grid-pg-rw:5432/aiq_jobs"  # pragma: allowlist secret
+DIRECT_DSN = "postgresql://grid:pw@grid-pg-rw:5432/grid_jobs"  # pragma: allowlist secret
 
 
 @pytest.fixture
@@ -133,7 +133,7 @@ async def test_listen_connects_to_the_direct_dsn_never_the_job_store_url(db_url,
     await asyncio.wait_for(gen.__anext__(), timeout=5.0)
     await gen.aclose()
 
-    connect.assert_awaited_once_with("postgres://aiq:pw@grid-pg-rw:5432/aiq_jobs")  # pragma: allowlist secret
+    connect.assert_awaited_once_with("postgres://grid:pw@grid-pg-rw:5432/grid_jobs")  # pragma: allowlist secret
 
 
 @pytest.mark.asyncio

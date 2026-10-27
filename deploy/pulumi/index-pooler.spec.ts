@@ -138,7 +138,7 @@ describe("Postgres routing", () => {
     const lock = postgresDsns().find(({ id }) => id === "grid-secrets/GRID_LOCK_DB_URL")!.url;
     const listen = postgresDsns().find(({ id }) => id === "grid-secrets/GRID_LISTEN_DB_URL")!.url;
 
-    expect(lock.pathname).toBe("/aiq_jobs");
+    expect(lock.pathname).toBe("/grid_jobs");
     expect(lock.username).toBe(listen.username);
     expect(lock.port).toBe("5432");
   });
@@ -155,7 +155,7 @@ describe("Postgres routing", () => {
     const pooled = postgresDsns().filter(({ url }) => url.hostname === POOLER);
     const pairs = new Set(pooled.map(({ url }) => `${url.pathname.slice(1)}/${decodeURIComponent(url.username)}`));
     const budgeted = new Set(
-      POOLED_POOLS.map(({ database, login }) => `${database}/${login === "app" ? "aiq" : "grid_app_rw"}`),
+      POOLED_POOLS.map(({ database, login }) => `${database}/${login === "app" ? "grid" : "grid_app_rw"}`),
     );
 
     expect(pairs).toEqual(budgeted);

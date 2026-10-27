@@ -59,7 +59,7 @@ Backend agents fetch no arbitrary URLs themselves (only internal BFF call in
 
 | Component | Image (pinning) | Data held |
 |---|---|---|
-| PostgreSQL | `postgres:16-alpine` (floating minor) | `grid_app` (projects, docs metadata, memory, usage ledger, model config), `aiq_jobs`, `aiq_checkpoints` (**full conversation/agent state**) |
+| PostgreSQL | `postgres:16-alpine` (floating minor) | `grid_app` (projects, docs metadata, memory, usage ledger, model config), `grid_jobs`, `grid_checkpoints` (**full conversation/agent state**) |
 | SeaweedFS | `chrislusf/seaweedfs:3.80` | Raw uploaded documents (`grid-documents`) |
 | Qdrant | `qdrant/qdrant:v1.19.2` (pinned; ADR-0115) | Embeddings + chunk text (OIB corpus + user docs); daily shard snapshots in the in-cluster SeaweedFS bucket `qdrant-snapshots`. Replaced Chroma, whose volume (`data-chroma-0` on Kubernetes, `chroma_data` in Compose) holds the same data until it is deleted after the migration |
 | Dragonfly | `dragonflydb/dragonfly:v1.27.1` (pinned) | Transient cache, rate-limit counters (no persistence) |

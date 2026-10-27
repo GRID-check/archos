@@ -3,7 +3,7 @@
     "deploy/pulumi/src/app/config.ts": 853,
     "deploy/pulumi/src/config.ts": 3534,
     "deploy/pulumi/src/constants.ts": 862,
-    "deploy/pulumi/src/data/postgres.ts": 983,
+    "deploy/pulumi/src/data/postgres.ts": 941,
     "deploy/pulumi/src/data/seaweedfs-split.ts": 654,
     "deploy/pulumi/src/platform/langfuse.ts": 740,
     "frontends/aiq_api/src/aiq_api/chat_socket.py": 2028,
