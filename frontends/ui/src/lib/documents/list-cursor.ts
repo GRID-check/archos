@@ -42,7 +42,7 @@ export const CURSOR_TIMESTAMP_FORMAT = 'YYYY-MM-DD"T"HH24:MI:SS.US'
 
 const cursorSchema = z.object({
   t: z.string().regex(MICROSECOND_UTC),
-  i: z.string().uuid(),
+  i: z.guid(),
 })
 
 /** Longest cursor the routes accept; a real one is well under 100 characters. */
@@ -113,7 +113,7 @@ const levelCursorSchema = z
     s: z.enum(DOCUMENT_LEVEL_SORTS),
     d: z.enum(DOCUMENT_LEVEL_DIRECTIONS),
     v: z.string().max(LEVEL_CURSOR_VALUE_MAX_LENGTH),
-    i: z.string().uuid(),
+    i: z.guid(),
   })
   .refine(({ s, v }) => (s === 'added' ? MICROSECOND_UTC.test(v) : s === 'size' ? INTEGER_TEXT.test(v) : true))
 

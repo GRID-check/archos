@@ -25,7 +25,9 @@
           "maxLength": 1024
         },
         "limit": {
-          "type": "integer"
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 500
         }
       },
       "required": [
@@ -58,13 +60,9 @@
           "type": "string"
         },
         "description": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
+          "type": [
+            "string",
+            "null"
           ]
         },
         "card": {
@@ -81,21 +79,16 @@
                   ]
                 },
                 "generated_at": {
-                  "anyOf": [
-                    {
-                      "type": "string"
-                    },
-                    {
-                      "type": "null"
-                    }
+                  "type": [
+                    "string",
+                    "null"
                   ]
                 }
               },
               "required": [
                 "status",
                 "generated_at"
-              ],
-              "additionalProperties": true
+              ]
             },
             {
               "type": "null"
@@ -110,8 +103,7 @@
         "path",
         "description",
         "card"
-      ],
-      "additionalProperties": true
+      ]
     },
     "EstateTreeDocument": {
       "type": "object",
@@ -124,13 +116,9 @@
           "type": "string"
         },
         "display_name": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
+          "type": [
+            "string",
+            "null"
           ]
         },
         "folder_id": {
@@ -145,36 +133,24 @@
           ]
         },
         "folder_path": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
+          "type": [
+            "string",
+            "null"
           ]
         },
         "collection": {
           "type": "string"
         },
         "content_type": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
+          "type": [
+            "string",
+            "null"
           ]
         },
         "file_size": {
-          "anyOf": [
-            {
-              "type": "integer"
-            },
-            {
-              "type": "null"
-            }
+          "type": [
+            "integer",
+            "null"
           ]
         },
         "status": {
@@ -184,66 +160,42 @@
           "type": "string"
         },
         "document_type": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
+          "type": [
+            "string",
+            "null"
           ]
         },
         "page_count": {
-          "anyOf": [
-            {
-              "type": "integer"
-            },
-            {
-              "type": "null"
-            }
+          "type": [
+            "integer",
+            "null"
           ]
         },
         "superseded": {
           "type": "boolean"
         },
         "plan_number": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
+          "type": [
+            "string",
+            "null"
           ]
         },
         "plan_index": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
+          "type": [
+            "string",
+            "null"
           ]
         },
         "plan_date": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
+          "type": [
+            "string",
+            "null"
           ]
         },
         "published_version": {
-          "anyOf": [
-            {
-              "type": "integer"
-            },
-            {
-              "type": "null"
-            }
+          "type": [
+            "integer",
+            "null"
           ]
         },
         "version_count": {
@@ -277,8 +229,7 @@
         "version_count",
         "created_at",
         "updated_at"
-      ],
-      "additionalProperties": true
+      ]
     },
     "EstateTreeResponse": {
       "type": "object",
@@ -321,13 +272,9 @@
                 "type": "string"
               },
               "description": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
+                "type": [
+                  "string",
+                  "null"
                 ]
               },
               "card": {
@@ -344,21 +291,16 @@
                         ]
                       },
                       "generated_at": {
-                        "anyOf": [
-                          {
-                            "type": "string"
-                          },
-                          {
-                            "type": "null"
-                          }
+                        "type": [
+                          "string",
+                          "null"
                         ]
                       }
                     },
                     "required": [
                       "status",
                       "generated_at"
-                    ],
-                    "additionalProperties": true
+                    ]
                   },
                   {
                     "type": "null"
@@ -373,8 +315,7 @@
               "path",
               "description",
               "card"
-            ],
-            "additionalProperties": true
+            ]
           }
         },
         "folders_truncated": {
@@ -393,13 +334,9 @@
                 "type": "string"
               },
               "display_name": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
+                "type": [
+                  "string",
+                  "null"
                 ]
               },
               "folder_id": {
@@ -414,36 +351,24 @@
                 ]
               },
               "folder_path": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
+                "type": [
+                  "string",
+                  "null"
                 ]
               },
               "collection": {
                 "type": "string"
               },
               "content_type": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
+                "type": [
+                  "string",
+                  "null"
                 ]
               },
               "file_size": {
-                "anyOf": [
-                  {
-                    "type": "integer"
-                  },
-                  {
-                    "type": "null"
-                  }
+                "type": [
+                  "integer",
+                  "null"
                 ]
               },
               "status": {
@@ -453,66 +378,42 @@
                 "type": "string"
               },
               "document_type": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
+                "type": [
+                  "string",
+                  "null"
                 ]
               },
               "page_count": {
-                "anyOf": [
-                  {
-                    "type": "integer"
-                  },
-                  {
-                    "type": "null"
-                  }
+                "type": [
+                  "integer",
+                  "null"
                 ]
               },
               "superseded": {
                 "type": "boolean"
               },
               "plan_number": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
+                "type": [
+                  "string",
+                  "null"
                 ]
               },
               "plan_index": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
+                "type": [
+                  "string",
+                  "null"
                 ]
               },
               "plan_date": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
+                "type": [
+                  "string",
+                  "null"
                 ]
               },
               "published_version": {
-                "anyOf": [
-                  {
-                    "type": "integer"
-                  },
-                  {
-                    "type": "null"
-                  }
+                "type": [
+                  "integer",
+                  "null"
                 ]
               },
               "version_count": {
@@ -546,18 +447,13 @@
               "version_count",
               "created_at",
               "updated_at"
-            ],
-            "additionalProperties": true
+            ]
           }
         },
         "next_cursor": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
+          "type": [
+            "string",
+            "null"
           ]
         }
       },
@@ -568,8 +464,7 @@
         "folders_truncated",
         "documents",
         "next_cursor"
-      ],
-      "additionalProperties": true
+      ]
     }
   }
 }

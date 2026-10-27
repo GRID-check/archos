@@ -25,6 +25,7 @@ import { createAndActivateVersion, getOrgModelConfig } from '@/lib/model-config/
 import { isZdrOnlyForOrg } from '@/lib/organizations/service'
 import { modelConfigPutSchema } from '@/lib/organizations/organization-wire'
 import { recordAuditEvent } from '@/lib/audit/service'
+import { definedValues } from '@/lib/utils/defined-values'
 
 export const GET = apiRoute(
   async ({ session }) => {
@@ -101,7 +102,8 @@ export const PUT = apiRoute(
       console.error('[Model Config API] Model catalog unavailable:', error)
       throw catalogUnavailableError(error)
     }
-    const flat = Object.fromEntries(Object.entries(input.overrides).map(([g, v]) => [g, v.model]))
+    const overrides = definedValues(input.overrides)
+    const flat = Object.fromEntries(Object.entries(overrides).map(([g, v]) => [g, v.model]))
     const validation = validateOverrides(catalog.models, flat, catalog.validation === 'full', catalog.zdr)
     if (!validation.ok) {
       throw new UnprocessableError('Model validation failed', validation.errors)
@@ -109,7 +111,7 @@ export const PUT = apiRoute(
 
     const version = await createAndActivateVersion({
       organizationId: session.organizationId,
-      overrides: input.overrides,
+      overrides,
       modelSnapshot: {
         ...validation.snapshot,
         _catalog: {
