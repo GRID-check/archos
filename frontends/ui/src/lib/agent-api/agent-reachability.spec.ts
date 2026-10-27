@@ -29,6 +29,7 @@ import { toJsonSchema } from '@/lib/api/zod-json-schema'
 import { AGENT_OPERATIONS, RENAMED_OPERATIONS, findOperation, renamedTo } from './catalog'
 import { isOnDoor } from './exposure'
 import { EXPOSURE, type Exposure, type WithheldCategory } from './exposure.config'
+import { validateOperationInput } from './dispatch'
 import { type Sensitivity, pathParams, withInputDefaults } from './operation'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
@@ -444,6 +445,18 @@ describe('renamed operations (one release)', () => {
     expect(withDefaults(upload, { body: { files: [], fields: { folderId: 'f1' } } }).body).toEqual({
       files: [],
       fields: { scope: 'office_shelf', folderId: 'f1' },
+    })
+  })
+
+  it('ask the one search what document-search asked, its fields under their new names', () => {
+    const projectId = '0b6f0c1e-3a55-4c0e-9a1d-7f2b5d0e1a01'
+    expect(validateOperationInput(findOperation('document-search')!, { body: { q: 'Fluchtweg', topK: 10, projectId } })).toEqual({
+      query: { projectId },
+      body: { text: 'Fluchtweg', limit: 10, kinds: ['document'], facets: false },
+    })
+    expect(validateOperationInput(findOperation('office-shelf-document-search')!, { body: { q: 'Fluchtweg' } })).toEqual({
+      query: { scope: 'office_shelf' },
+      body: { text: 'Fluchtweg', kinds: ['document'], facets: false },
     })
   })
 })

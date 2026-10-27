@@ -1297,6 +1297,18 @@
           "description": "The search phrase these documents matched",
           "title": "Query"
         },
+        "search": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/DocumentGridSearch"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "The workspace search these documents came from; the card offers to open the search page asking it"
+        },
         "title": {
           "description": "Short heading, e.g. 'Relevante Dokumente \u2013 Fluchtwege'",
           "minLength": 1,
@@ -1315,6 +1327,34 @@
         "documents"
       ],
       "title": "DocumentGridCard",
+      "type": "object"
+    },
+    "DocumentGridSearch": {
+      "description": "The ``workspace-search`` question a browse ran, so the reader can open the full result.\n\nSet by ``surface_documents`` only when the files came from that operation; the\ncard then links to the search page with the same text and scope.",
+      "properties": {
+        "scope": {
+          "description": "Where it looked: this project, the office shelf, or both (the office)",
+          "enum": [
+            "office",
+            "project",
+            "office_shelf"
+          ],
+          "title": "Scope",
+          "type": "string"
+        },
+        "text": {
+          "description": "The search text, as the operation was asked",
+          "maxLength": 500,
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "text",
+        "scope"
+      ],
+      "title": "DocumentGridSearch",
       "type": "object"
     },
     "EgressDiagramCard": {

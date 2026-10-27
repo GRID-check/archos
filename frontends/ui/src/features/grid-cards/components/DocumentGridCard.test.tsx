@@ -11,7 +11,7 @@ import { render, screen, waitFor } from '@/test-utils'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { server } from '@/mocks/server'
-import { DocumentGridCard } from './DocumentGridCard'
+import { DocumentGridCard, documentGridSearchHref } from './DocumentGridCard'
 import { resetSurfacedDocumentsCache } from '@/features/documents/hooks/use-surfaced-documents'
 import { resetThumbnailCache } from '@/features/documents/components/file-card'
 import { resetFilePeekBinding } from '@/features/documents/lib/open-file-peek'
@@ -211,5 +211,58 @@ describe('DocumentGridCard', () => {
     expect(screen.getByTestId('document-grid-unresolved')).toHaveAttribute('href', '/app/office-shelf')
     expect(screen.getByText('Open in Office filing')).toBeInTheDocument()
     expect(screen.queryByText('Project')).not.toBeInTheDocument()
+  })
+
+  it('offers the workspace search with the same question when the files came from it', async () => {
+    server.use(
+      shelfPost('project', '/api/documents/by-name', () =>
+        HttpResponse.json({ documents: [row('p1', 'Grundriss EG.pdf'), row('p2', 'Grundriss OG.pdf')] }),
+      ),
+      shelfPost('office_shelf', '/api/documents/by-name', () => HttpResponse.json({}, { status: 403 })),
+      http.get('/api/documents/:id/thumbnail', () => HttpResponse.json({}, { status: 404 })),
+    )
+
+    render(
+      <DocumentGridCard
+        title="Grundrisse"
+        query="Grundriss"
+        search={{ text: 'Grundriss', scope: 'project' }}
+        documents={[
+          { file_name: 'Grundriss EG.pdf', source: 'project' },
+          { file_name: 'Grundriss OG.pdf', source: 'project' },
+        ]}
+        projectId="0d7b3a5e-7c1c-4a4e-9a63-6a4a1f5f1c11"
+      />,
+    )
+
+    const link = await screen.findByTestId('document-grid-open-search')
+    expect(link).toHaveTextContent('Open in search')
+    expect(link).toHaveAttribute('href', '/app/search?q=Grundriss&project=0d7b3a5e-7c1c-4a4e-9a63-6a4a1f5f1c11')
+  })
+
+  it('offers no search when the files did not come from one', async () => {
+    server.use(
+      shelfPost('project', '/api/documents/by-name', () => HttpResponse.json({ documents: [row('p1', 'Plan.pdf')] })),
+      shelfPost('office_shelf', '/api/documents/by-name', () => HttpResponse.json({}, { status: 403 })),
+      http.get('/api/documents/:id/thumbnail', () => HttpResponse.json({}, { status: 404 })),
+    )
+
+    render(<DocumentGridCard title="Plan" documents={[{ file_name: 'Plan.pdf', source: 'project' }]} projectId="proj-1" />)
+
+    await waitFor(() => expect(screen.getByText(/Plan\.pdf/)).toBeInTheDocument())
+    expect(screen.queryByTestId('document-grid-open-search')).not.toBeInTheDocument()
+  })
+})
+
+describe('documentGridSearchHref', () => {
+  it('opens the scope the search ran in', () => {
+    expect(documentGridSearchHref({ text: 'Statik', scope: 'office' }, 'p1')).toBe('/app/search?q=Statik')
+    expect(documentGridSearchHref({ text: 'Statik', scope: 'office_shelf' }, null)).toBe(
+      '/app/office-shelf?q=Statik&mode=search',
+    )
+  })
+
+  it('widens a project search to the office when the card knows no project', () => {
+    expect(documentGridSearchHref({ text: 'Statik', scope: 'project' }, null)).toBe('/app/search?q=Statik')
   })
 })

@@ -836,9 +836,10 @@ What a shelf may differ in is exactly the fields of `FileShelf`:
 
 The tag chips of the old Archiv grid are „Kategorie" in the shared filter menu
 (`FileFilters.tags`, any-of), so they work under folders and on every shelf. The
-Archiv's semantic search is the pane's own, pointed at `/api/documents/search` with `scope: office_shelf`
-(`projectSearchScope` / `OFFICE_SHELF_SEARCH_SCOPE`); a search is shelf-wide and
-escapes the open folder exactly as in Dateien.
+Archiv's semantic search is the pane's own: the one search (`POST /api/search`, ADR-0136) for
+documents only, with `?scope=office_shelf` or `?projectId=` (`projectSearchScope` /
+`OFFICE_SHELF_SEARCH_SCOPE`); a search is shelf-wide and escapes the open folder exactly as in
+Dateien. A result shows the passage and its page and keeps the search's order; it shows no score.
 
 **Preview:** `/dev/office-shelf-library` renders the real workspace over fixtures
 (`?state=readonly|loading|empty`, `?folder=f-plan`).

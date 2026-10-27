@@ -18,7 +18,7 @@ export interface LegacyRoute {
  */
 const OFFICE_SHELF_DOCUMENT_ROUTES: readonly LegacyRoute[] = ['/api/office-shelf/documents', '/api/archiv/documents'].flatMap(
   (prefix) => [
-    ...['summary', 'by-name', 'name-matches', 'revision-candidates', 'search', 'upload'].map((name) => ({
+    ...['summary', 'by-name', 'name-matches', 'revision-candidates', 'upload'].map((name) => ({
       from: `${prefix}/${name}`,
       to: `/api/documents/${name}?scope=office_shelf`,
     })),

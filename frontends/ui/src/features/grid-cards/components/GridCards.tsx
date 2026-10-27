@@ -303,6 +303,7 @@ export const GridCardView: FC<GridCardViewProps> = ({
           title={card.title}
           query={card.query}
           documents={(card.documents ?? []) as SurfacedDocument[]}
+          search={card.search ?? null}
           projectId={projectId}
         />
       </FadeIn>

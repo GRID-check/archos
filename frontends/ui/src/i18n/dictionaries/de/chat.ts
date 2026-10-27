@@ -77,6 +77,8 @@ export const chat: typeof en.chat = {
     // Projektdateien öffnen) statt einer stummen toten Kachel.
     unresolvedHint: 'Der Assistent hat diese Datei referenziert.',
     openInOfficeShelf: 'In der Büroablage öffnen',
+    // Die Auswahl zeigt nur die besten Treffer; der Link öffnet dieselbe Suche mit allen.
+    openInSearch: 'In der Suche öffnen',
     openInFiles: 'In den Projektdateien öffnen',
     // Der Auflösungs-Abruf ist fehlgeschlagen — eine Wiederholaktion statt einer
     // dauerhaft toten Kachel.

@@ -1207,8 +1207,9 @@ def stated_result_fields(payload: Any) -> int:
 
 
 # ── Document-surfacing card (system-emitted) ─────────────────────────────────
-# Surfaced by the `surface_documents` tool from a REAL vector search over the
-# project + Büroablage corpus — never fabricated by the model (it is a system
+# Surfaced by the `surface_documents` tool from a REAL search over the
+# project + Büroablage (the `workspace-search` operation for a browse, the
+# vector corpora otherwise) — never fabricated by the model (it is a system
 # card, so `emit_card` refuses it). Each entry names a real indexed file so the
 # frontend can resolve it to the live document row (id, thumbnail, preview) and
 # render the same rich file-explorer card the Files page uses.
@@ -1227,6 +1228,19 @@ class SurfacedDocument(CardModel):
     )
 
 
+class DocumentGridSearch(CardModel):
+    """The ``workspace-search`` question a browse ran, so the reader can open the full result.
+
+    Set by ``surface_documents`` only when the files came from that operation; the
+    card then links to the search page with the same text and scope.
+    """
+
+    text: str = Field(min_length=1, max_length=500, description="The search text, as the operation was asked")
+    scope: Literal["office", "project", "office_shelf"] = Field(
+        description="Where it looked: this project, the office shelf, or both (the office)"
+    )
+
+
 class DocumentGridCard(CardModel):
     """Project/Büroablage files the user asked to see.
 
@@ -1240,6 +1254,10 @@ class DocumentGridCard(CardModel):
     title: str = Field(min_length=1, description="Short heading, e.g. 'Relevante Dokumente – Fluchtwege'")
     query: str | None = Field(default=None, description="The search phrase these documents matched")
     documents: list[SurfacedDocument] = Field(min_length=1, description="The surfaced files, best match first")
+    search: DocumentGridSearch | None = Field(
+        default=None,
+        description="The workspace search these documents came from; the card offers to open the search page asking it",
+    )
 
 
 # ── Draft card (system-emitted) ──────────────────────────────────────────────

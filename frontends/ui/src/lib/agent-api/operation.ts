@@ -142,6 +142,13 @@ export interface AgentOperation {
    */
   readonly inputDefaults?: OperationExample
   /**
+   * An old name's input rewritten into this operation's shape, when the rename
+   * also renamed fields (`document-search`'s `body.q` is `workspace-search`'s
+   * `body.text`). Set only on the operation an old name resolves to; runs
+   * before {@link inputDefaults}.
+   */
+  readonly rewriteInput?: (given: OperationExample) => OperationExample
+  /**
    * The kind of object the answer holds, when a person can open it in the app:
    * the door adds `url`, that object's page, to the answer itself or to each
    * row one level in (`links.ts`), where the deployment pins its origin.
