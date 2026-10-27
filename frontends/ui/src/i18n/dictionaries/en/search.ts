@@ -148,6 +148,17 @@ export const search = {
   register: {
     caption: 'One row per document, as Piloti read it.',
     sortBy: 'Sort by {column}',
+    currentOnly: 'Current version only',
+    columnsMenu: 'Columns',
+    columnsMenuTitle: 'Show columns',
+    columnsReset: 'Default columns',
+    sortMenu: 'Sort',
+    sortMenuLabel: 'Sorted by {column}, {direction}',
+    sortMenuTitle: 'Sort by',
+    sortMenuHint: 'Choosing the active column again reverses the order.',
+    ascending: 'ascending',
+    descending: 'descending',
+    scrollLabel: 'Register, scrolls sideways',
     columns: {
       planNumber: 'Drawing no.',
       planIndex: 'Index',
@@ -155,6 +166,7 @@ export const search = {
       scale: 'Scale',
       title: 'Title',
       documentType: 'Document type',
+      author: 'Author',
       project: 'Project',
       folder: 'Folder',
       uploaded: 'Uploaded',
@@ -168,6 +180,7 @@ export const search = {
     xlsx: 'Register as Excel',
     failed: 'The export did not work. Try again.',
     fileName: 'Register',
+    allColumns: 'The file holds every column of the register, hidden ones too.',
   },
   saved: {
     label: 'Saved searches',
