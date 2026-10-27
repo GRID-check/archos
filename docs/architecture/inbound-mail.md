@@ -114,9 +114,12 @@ One log line per delivery, ids and codes only; a refusal is a PostHog
    blocks, calendar invitations; then the content check on the own text after
    the signature was removed (`content_findings`);
 9. **redact every other project's address** in the subject, participants, text,
-   quotes and invitations; the receiving project's own address is kept, so a
-   filed section that quotes it shows it (a Verlauf's headings and participant
-   lines name people by name and domain, never by address);
+   quotes and invitations; the receiving project's own address is kept here,
+   so the person deciding sees which address was written to. Filing redacts it
+   too (`filedForm` in `file-job.ts`): a Verlauf can be shared or exported, so
+   no section names an address that mail could be sent to, and a participant
+   without a display name, printed by its local part, has its address redacted
+   as well;
 10. **match the project's threads** and look the Message-ID up
     (`message_id_reused`, `already_filed`); ids and strengths only
     (`thread_match`);
