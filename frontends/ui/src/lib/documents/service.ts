@@ -628,6 +628,8 @@ export interface BackendSearchHit {
    * search, whose hits are ordered by `score`.
    */
   rank?: number
+  /** The document's id, when the backend states it (the grouped search, from the chunk's payload). */
+  grid_document_id?: string
 }
 
 /**
@@ -814,6 +816,12 @@ export interface GroupedSearchFilters {
   disciplines?: string[]
   project_facts?: Partial<ProjectFactsWire>
   project_status?: Array<'active' | 'paused' | 'closed'>
+  /** Only passages of these documents (their ids, `grid_document_id` on the chunks); at most 1000. */
+  document_ids?: string[]
+  /** The dossier's `document_type` (`site_plan`, ...), any of; not `document_types`, which reads the tags. */
+  reading_types?: string[]
+  /** Documents referring to any of these: typed text ("ÖNORM B 1600", "EP-05") or a `kind:key` token; at most 8. */
+  refers_to?: string[]
 }
 
 /** What narrows and what lifts a grouped search, applied inside its one query. */
