@@ -1,6 +1,6 @@
 # Search: find anything the office has, from anywhere
 
-Status: first slices built, 2026-10-27. Decision record: [ADR-0133](../adr/0133-search-is-one-query-over-a-projection-beside-the-index.md).
+Status: designed, 2026-10-27; slices below are built in order. Decision record: [ADR-0133](../adr/0133-search-is-one-query-over-a-projection-beside-the-index.md).
 What a document knows about itself: [`document-dossier.md`](../architecture/document-dossier.md).
 
 ## What Planfred is trying to be
@@ -156,13 +156,20 @@ agent database). Filtering it there would mean the agent database deciding
 visibility it cannot see, or the BFF shipping every readable document id to it;
 counting there would count what the reader may not open. ADR-0133 records this.
 
-The projection is derived, never authored, and refreshed per shelf by a BFF job
-(`search_facets_sync`) from the collection listing the file panel already reads.
-A search finds a shelf whose fingerprint (document count and newest change)
-moved since its last sync and queues one refresh, at most one per shelf per
-interval, the pattern `office_conventions` uses. A shelf that was never synced
-is still searched: by name, status and content, and the answer says its facets
-are being built.
+Postgres decides which documents are in a result; Qdrant only ranks their
+passages. With text, the content search is pre-filtered for recall: by
+`grid_document_id` in the SQL candidates when they are few, else by the payload
+fields ingestion mirrors onto every chunk (`document_type`, `references`,
+`dossier_facts`). No Qdrant count is ever shown.
+
+The projection is derived, never authored. A row is written when its document
+settles, from the reading the status reconciliation already parses; a BFF job
+(`search_facets_sync`) refreshes a whole shelf as the backstop, queued when a
+search finds the shelf's fingerprint (document count and newest change) moved,
+at most once per shelf per interval, the pattern `office_conventions` uses. The
+projector fails closed: a listing that came back without the reading blanks
+nothing. A shelf never synced is still searched by name, status and content,
+and the answer says its facets are being built.
 
 ### What "everything" covers in this change
 
@@ -192,9 +199,7 @@ yet for the same reason.
 4. **The Planliste.** CSV and XLSX export of the current register. Serves 09:10.
 5. **Saved searches** per person, shareable within the office.
 
-Next, not in this change: push a selective filter's file names into the Qdrant
-query (better recall for "Brandschutzkonzepte mentioning Fluchtweg" across
-hundreds of projects), tasks and memory as kinds, Piloti's `list_files` reading
+Next, not in this change: tasks and memory as kinds, Piloti's `list_files` reading
 the core for its structured filters, Planfred-style "who received which Index"
 from the version access log.
 

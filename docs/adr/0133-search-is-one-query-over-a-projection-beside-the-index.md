@@ -49,9 +49,24 @@ filters on what a document is.
   folders' access, held uploads or closed projects: the BFF would send it every
   readable document id (thousands per office), and its counts would be over rows
   the BFF then drops.
-* **Filter in Qdrant.** Put the dossier on every chunk's payload. Every fact
-  repeated on every passage, a re-upsert of all chunks when a fact changes, and
-  still no document-level count or sort.
+* **Filter in Qdrant.** Since commit 1693fcd0d every chunk carries its
+  document's `document_type`, `references`, `dossier_facts`, `parties` and
+  `pages_not_read` as indexed payload, mirrored by filter with `set_payload`.
+  Good for narrowing a content query. It cannot own the result set:
+  - its facet API counts points, approximately and ten values by default, so a
+    300-chunk document counts 300
+    ([Qdrant, facet counts](https://qdrant.tech/documentation/manage-data/payload/), read 2026-10-27);
+  - grouped results cannot be paged: a fused `query_points_groups` interleaves
+    groups by round on the pinned 1.19.2 (`qdrant/search.py`, measured), so the
+    backend groups a 200-passage candidate budget in code, with no total and no
+    cursor;
+  - `order_by` needs a numeric or datetime index and switches paging off
+    ([Qdrant, points](https://qdrant.tech/documentation/manage-data/points/), read 2026-10-27),
+    so no register sorted by plan number;
+  - `dossier_facts` is a keyword, so no numeric range on a fact;
+  - failed, held, quarantined, archived and binned documents have no chunks
+    (ADR-0086, ADR-0104, ADR-0092), and uploader, upload date, status, file type,
+    Plannummer and Index are not on the payload.
 * **Filter after the page.** Read the listing, merge the metadata, filter in
   memory. Exactly the per-shelf cap the listing has (500 a page), and wrong
   counts.
@@ -62,38 +77,40 @@ filters on what a document is.
 
 ## Decision Outcome
 
-Chosen option: "A projection in the BFF database", because it is the only one
-where the filter, the sort, the facet counts and the authorization are the same
-SQL statement.
+Chosen option: "A projection in the BFF database", with Qdrant ranking content
+inside it: Postgres decides which documents are in a result, Qdrant only ranks
+their passages. Authorization, filters, sort, paging, facet counts and the
+collaboration kinds have to be answered in the BFF anyway; a second engine on
+that path would add a store without removing one.
 
 1. **`document_search_facets`** (migration 0185) holds, per document: type,
    tags, topics, title, summary, parties, place, facts (text and numeric),
-   references as `kind:key` tokens, Plankopf facts, capture, page count, pages
-   not read, whether a newer Fassung replaces it, a full-text vector, and the
-   fingerprint of what it was built from. Tenant table under
-   `grid_secure_table`. It is never authored: the projector replaces each row
-   whole.
-2. **`document_search_shelves`** holds per shelf when it was synced, from which
-   fingerprint, and when a refresh was last queued.
-3. **The projector** (`lib/search/facets-projector.ts`) runs as the BFF job
-   `search_facets_sync`, one shelf per job, as the system: it decides nothing
-   about who reads what. It reads the shelf's rows and the collection listings,
-   maps them with the listing's own parsers (`parseDossier`,
-   `parseRevisionFacts`, `parsePhotoCapture`), upserts changed rows and deletes
-   rows of documents that left the shelf.
-4. **Staleness is noticed by a search**, as `office_conventions` notices it: a
-   shelf whose fingerprint (count and newest `updated_at` of its documents)
-   differs from its sync, or whose sync is older than an hour, gets one refresh
-   queued, at most one per shelf per ten minutes.
-5. **One core** (`lib/search`): the query model, the reach (computed once per
+   references as `kind:key` tokens (the payload's own tokens), Plankopf facts,
+   capture, page count, pages not read, whether a newer Fassung replaces it, a
+   full-text vector, and the fingerprint of what it was built from. Tenant table
+   under `grid_secure_table`. It is never authored: each row is replaced whole.
+2. **A row is written when its document settles.** The status reconciliation
+   already parses the reading (`extractMetadata` in `reconcile-status.ts`) when a
+   row comes to rest; the projection row is upserted there. A per-shelf job
+   (`search_facets_sync`) is the backstop: a search that finds a shelf's
+   fingerprint (count and newest change of its documents) moved since its last
+   sync queues one refresh, at most one per shelf per ten minutes, the pattern
+   `office_conventions` uses. Sync state per shelf is `document_search_shelves`.
+3. **The projector fails closed.** The collection listing answers 200 without
+   the reading when the agent's metadata store errors; a row whose listing entry
+   carries no reading is left as it is, never blanked.
+4. **One core** (`lib/search`): the query model, the reach (computed once per
    search from the listing's own gates), and one provider per kind (document,
    annotation, folder, project, conversation). Scope is a parameter. The route
    `POST /api/search` and the operation `search` are thin over it.
-6. **Content** is the backend's grouped hybrid search over the reach's
-   collections, joined back to rows by collection and file name
-   (`joinHitsToFiles`' rule); the structured filters then apply in SQL to the
-   joined ids.
-7. **Cross-document findings** (contradiction, missing plan or document) are not
+5. **Content** is the backend's grouped hybrid search over the reach's
+   collections, pre-filtered for recall: `grid_document_id` in the SQL
+   candidates when they are few (up to 1,000), else the payload's
+   `document_type`, `references` and `dossier_facts` conditions. Hits are
+   joined back to rows by `grid_document_id`. A Qdrant number is never shown:
+   counts are counts of the joined SQL set, "at least N" when the candidate
+   budget was reached.
+6. **Cross-document findings** (contradiction, missing plan or document) are not
    projected: they depend on which documents the reader may see. In a project
    they come from `getProjectDocumentFindings` for the reader; the projection
    carries only the document's own `incomplete_read`.
@@ -103,14 +120,14 @@ SQL statement.
 * Good, because every filter, sort and count is over exactly what the listing
   would show this reader, in one statement.
 * Good, because the UI, Piloti and outside agents run one search.
-* Bad, because the projection lags ingestion by up to one job: a document read
-  a moment ago is found by name and content at once, by its facts after the
-  refresh. The answer names the shelves still being built.
+* Bad, because a projection can lag: written when a document settles, it misses
+  a fact changed later on the agent side (a person's tags, a Fassung link) until
+  the shelf's backstop refresh. The answer names the shelves still being built.
 * Bad, because a second copy of the dossier's filterable part exists. It is
   replaced whole and fingerprinted, so it cannot drift silently.
-* Neutral: content recall under a very selective filter depends on the content
-  search's candidate budget; pushing the filtered file names into Qdrant is the
-  next slice.
+* Bad, because two filter compilers exist (SQL for membership, the payload
+  pre-filter for recall). The pre-filter only ever narrows what SQL already
+  decides, so a disagreement costs recall, never visibility.
 
 ### Confirmation
 
