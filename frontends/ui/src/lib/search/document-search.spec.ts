@@ -111,13 +111,24 @@ describe('runSearch', () => {
     expect(fetchGroupedSemanticHits).toHaveBeenCalledWith(['proj_a', 'office_org_1'], 'Fluchtweg', 20, 400, {})
     expect(repository.listCandidateDocumentIds).not.toHaveBeenCalled()
     const query = repository.searchDocumentPage.mock.calls[0][1]
-    expect(query.text).toEqual({ text: 'Fluchtweg', contentKeys: ['proj_a\u0000bsk.pdf'] })
+    expect(query.text).toEqual({ text: 'Fluchtweg', contentKeys: ['proj_a\u0000bsk.pdf'], contentIds: [''] })
     expect(repository.searchDocumentPage.mock.calls[0][2]).toEqual({ sort: 'relevance', dir: 'desc', limit: 25, offset: 0 })
     const [hit] = answer.sections.document?.hits ?? []
     expect(hit.passage).toEqual({ text: 'Fluchtweglänge max. 40 m', page: 7 })
     expect(hit.matchedOn).toEqual(['reading', 'content'])
     expect(hit.uploadedBy).toBe('Lena Huber')
     expect(answer.building).toEqual(['office_shelf'])
+  })
+
+  it('joins a hit that names its document by id, whatever the file is called now', async () => {
+    vi.mocked(fetchGroupedSemanticHits).mockResolvedValue([
+      { file_name: 'old-name.pdf', collection: 'proj_a', snippet: 'Auflage 3', page_number: 2, score: 0.7, rank: 0, grid_document_id: 'd1' },
+    ])
+
+    const answer = await runSearch(session, {}, { text: 'Auflage', kinds: ['document'] })
+
+    expect(repository.searchDocumentPage.mock.calls[0][1].text.contentIds).toEqual(['d1'])
+    expect(answer.sections.document?.hits[0].passage).toEqual({ text: 'Auflage 3', page: 2 })
   })
 
   it('still answers from names and the reading when the content search is down, and says the total may be more', async () => {

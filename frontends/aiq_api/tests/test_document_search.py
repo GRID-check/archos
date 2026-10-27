@@ -443,6 +443,19 @@ async def test_grouped_search_names_the_searched_collection_not_the_chunks_claim
 
 
 @pytest.mark.asyncio
+async def test_grouped_search_names_each_documents_id_when_its_chunks_carry_it(app):
+    known = _ranked("a.pdf", 0.9, 0.03)
+    known.metadata["grid_document_id"] = "0b0e9c1e-1111-4111-8111-111111111111"
+    unknown = _ranked("b.pdf", 0.8, 0.02)
+    set_active_retriever(_grouped_retriever([("proj_a", [known, unknown])]))
+
+    async with _client(app) as client:
+        res = await client.post("/v1/collections/search", json={"query": "q", "collections": ["proj_a"]})
+
+    assert [h["grid_document_id"] for h in res.json()["hits"]] == ["0b0e9c1e-1111-4111-8111-111111111111", None]
+
+
+@pytest.mark.asyncio
 async def test_grouped_search_hands_filters_and_boost_to_the_retriever_as_its_grammar(app):
     retriever = _grouped_retriever([])
     set_active_retriever(retriever)

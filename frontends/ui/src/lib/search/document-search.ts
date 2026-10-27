@@ -248,8 +248,19 @@ async function searchDocuments(
   const text = body.text?.trim() || null
   const structured: DocumentQuery = { filters, text: null, citedBy, citing }
   const content = text && text.length >= CONTENT_MIN_CHARS ? await rankedContent(reach, structured, text) : { hits: [], partial: false }
-  const passages = new Map((content?.hits ?? []).map((hit) => [contentKey(hit.collection, hit.file_name), hit]))
-  const query: DocumentQuery = { ...structured, text: text ? { text, contentKeys: [...passages.keys()] } : null }
+  const found = content?.hits ?? []
+  const passages = new Map(found.map((hit) => [contentKey(hit.collection, hit.file_name), hit]))
+  const passagesById = new Map(found.flatMap((hit) => (hit.grid_document_id ? [[hit.grid_document_id, hit] as const] : [])))
+  const query: DocumentQuery = {
+    ...structured,
+    text: text
+      ? {
+          text,
+          contentKeys: found.map((hit) => contentKey(hit.collection, hit.file_name)),
+          contentIds: found.map((hit) => hit.grid_document_id ?? ''),
+        }
+      : null,
+  }
   const order = documentOrder(body)
   const [result, counts] = await Promise.all([
     searchDocumentPage(reach, query, { ...order, ...page }),
@@ -257,7 +268,11 @@ async function searchDocuments(
   ])
   const people = await resolvePeople(reach.organizationId, [...new Set(result.rows.map((row) => row.createdBy))])
   const hits = result.rows.map((row) =>
-    toDocumentHit(row, passages.get(contentKey(row.collectionName, row.filename)), people.get(row.createdBy)?.name ?? null)
+    toDocumentHit(
+      row,
+      passagesById.get(row.id) ?? passages.get(contentKey(row.collectionName, row.filename)),
+      people.get(row.createdBy)?.name ?? null
+    )
   )
   const nextOffset = page.offset + hits.length
   return {

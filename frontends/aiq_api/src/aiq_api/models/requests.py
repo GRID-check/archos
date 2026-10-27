@@ -458,6 +458,9 @@ class DocumentSearchHit(BaseModel):
     snippet: str = Field(..., description="Snippet (300 chars unless asked for more) of the best-matching chunk")
     page_number: int | None = Field(None, description="Page number of the best-matching chunk (None if N/A)")
     collection: str = Field(..., description="Collection the document belongs to")
+    grid_document_id: str | None = Field(
+        None, description="The BFF's id of the document, when its chunks carry it (the search joins hits by it)"
+    )
 
 
 class DocumentSearchResponse(BaseModel):

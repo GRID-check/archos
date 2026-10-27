@@ -167,6 +167,12 @@ def _fused(chunk: Chunk) -> float:
     return float(value) if isinstance(value, (int, float)) else 0.0
 
 
+def _document_id(chunk: Chunk) -> str | None:
+    """The document's BFF id from the chunk's metadata, when the store put it there."""
+    value = chunk.metadata.get("grid_document_id")
+    return value if isinstance(value, str) and value else None
+
+
 def _ranked_group_hits(
     grouped: list[tuple[str, list[Chunk]]], files_per_group: int, snippet_max_chars: int
 ) -> list[DocumentSearchHit]:
@@ -199,6 +205,7 @@ def _ranked_group_hits(
                 snippet=_snippet(chunk.content, snippet_max_chars),
                 page_number=chunk.page_number,
                 collection=collection,
+                grid_document_id=_document_id(chunk),
             )
             ranked.append((-_fused(chunk), group_index, file_index, hit))
     ranked.sort(key=lambda entry: entry[:3])

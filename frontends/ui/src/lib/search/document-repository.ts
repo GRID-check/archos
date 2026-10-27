@@ -43,6 +43,12 @@ export interface TextMatch {
   text: string
   /** `collection \0 filename` of the content search's documents, best first. */
   contentKeys: readonly string[]
+  /**
+   * The same documents' ids, aligned with `contentKeys` (`''` where the hit did
+   * not carry one). An id joins exactly; a key joins only a document a person
+   * uploaded, as `joinHitsToFiles` does: a machine-written row can share a name.
+   */
+  contentIds?: readonly string[]
 }
 
 export interface DocumentQuery {
@@ -152,7 +158,10 @@ function textWhere(text: TextMatch): SQL {
     nameContains(text.text),
     sql`${SEARCH_VECTOR} @@ ${tsQuery(text.text)}`,
     squashed.length >= 2 ? sql`${f.planNumberKey} LIKE ${`${squashed.replace(/[\\%_]/g, '\\$&')}%`}` : undefined,
-    text.contentKeys.length > 0 ? sql`${contentKeyOf} = ANY(${sql`ARRAY[${sql.join(text.contentKeys.map((key) => sql`${key}`), sql`, `)}]::text[]`})` : undefined
+    text.contentKeys.length > 0
+      ? sql`(${documents.authoredBy} = 'user' AND ${contentKeyOf} = ANY(${pgTextArray(text.contentKeys)}))`
+      : undefined,
+    contentIdsOf(text).length > 0 ? sql`${documents.id}::text = ANY(${pgTextArray(contentIdsOf(text))})` : undefined
   ) as SQL
 }
 
@@ -174,11 +183,17 @@ function pgTextArray(values: readonly string[]): SQL {
   return values.length === 0 ? sql`ARRAY[]::text[]` : sql`ARRAY[${sql.join(values.map((value) => sql`${value}`), sql`, `)}]::text[]`
 }
 
+/** The ids a content search named, without the blanks of hits that carried none. */
+function contentIdsOf(text: TextMatch): string[] {
+  return (text.contentIds ?? []).filter((id) => id !== '')
+}
+
 /** The relevance of a row to the text: content rank first, then the reading, then the name. */
 function relevance(text: TextMatch): SQL<number> {
   const keys = pgTextArray(text.contentKeys)
+  const ids = pgTextArray(text.contentIds ?? [])
   return sql<number>`(
-    coalesce(1.0 / (5 + array_position(${keys}, ${contentKeyOf})), 0)
+    coalesce(1.0 / (5 + coalesce(array_position(${ids}, ${documents.id}::text), array_position(${keys}, ${contentKeyOf}))), 0)
     + coalesce(ts_rank(${SEARCH_VECTOR}, ${tsQuery(text.text)}), 0)
     + CASE WHEN ${nameContains(text.text) ?? sql`false`} THEN 0.3 ELSE 0 END
   )`
