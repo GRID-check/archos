@@ -163,19 +163,19 @@ This is a simple bearer token. Change it from the default before deploying to pr
 Embeddings and the VLM route through OpenRouter with `OPENROUTER_API_KEY`; the
 embeddings client is LlamaIndex's `NVIDIAEmbedding` class pointed at an
 OpenAI-compatible endpoint, and the key reaches it through the shared credential
-resolver (`AIQ_EMBED_API_KEY`, else the key inferred from `AIQ_EMBED_BASE_URL`).
+resolver (`GRID_EMBED_API_KEY`, else the key inferred from `GRID_EMBED_BASE_URL`).
 `NVIDIA_API_KEY` is not read anywhere.
 
 ### What's Needed For VLM Features
 
 Vision-Language Model features (table extraction, image extraction, chart
-extraction) are on by default (`AIQ_EXTRACT_*`, set `false` to disable one);
+extraction) are on by default (`GRID_EXTRACT_*`, set `false` to disable one);
 they need only a VLM key, and the model and host default to OpenRouter:
 
 ```bash
 # defaults, shown for completeness
-AIQ_VLM_MODEL=openai/gpt-6-luna
-AIQ_VLM_BASE_URL=https://openrouter.ai/api/v1
+GRID_VLM_MODEL=openai/gpt-6-luna
+GRID_VLM_BASE_URL=https://openrouter.ai/api/v1
 ```
 
 ## PostgreSQL

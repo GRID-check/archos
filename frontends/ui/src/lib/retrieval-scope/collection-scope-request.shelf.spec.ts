@@ -25,14 +25,14 @@ vi.mock('@/lib/user-preferences/repository', () => ({ findUserPreferencesForSess
 // Passthrough: the real scope assembly runs, so these specs exercise the names
 // actually put on the wire. One test overrides it to inject a collection the
 // BFF never built — the only way to reach the "cannot attribute" branch.
-vi.mock('@/lib/collection-scope', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/lib/collection-scope')>()
+vi.mock('@/lib/retrieval-scope/collection-scope', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/retrieval-scope/collection-scope')>()
   return { ...actual, computeCollectionScope: vi.fn(actual.computeCollectionScope) }
 })
 
 import type { AuthorizedSession } from '@/lib/auth/types'
 import { requireProjectAccess } from '@/lib/authz/projects'
-import { computeCollectionScope } from '@/lib/collection-scope'
+import { computeCollectionScope } from '@/lib/retrieval-scope/collection-scope'
 import { findConversationTenancy } from '@/lib/conversations/repository'
 import { findProjectCollectionName } from '@/lib/projects/repository'
 import { findUserPreferencesForSession } from '@/lib/user-preferences/repository'

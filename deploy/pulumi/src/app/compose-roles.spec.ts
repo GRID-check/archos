@@ -99,8 +99,8 @@ describe.each(COMPOSE_FILES)("%s", (file) => {
     for (const name of ["chat", "api", "agent-worker", "ingest-worker"]) {
       expect(Object.keys(services[name].depends_on ?? {}), name).toContain("qdrant");
       const vars = effectiveEnv(file, name);
-      expect(vars.AIQ_QDRANT_URL, name).toContain("http://qdrant:6333");
-      expect(vars.AIQ_QDRANT_API_KEY, name).toBeDefined();
+      expect(vars.GRID_QDRANT_URL, name).toContain("http://qdrant:6333");
+      expect(vars.GRID_QDRANT_API_KEY, name).toBeDefined();
     }
   });
 
@@ -111,7 +111,7 @@ describe.each(COMPOSE_FILES)("%s", (file) => {
     expect(Object.keys(services).filter((name) => /chroma/i.test(name))).toEqual([]);
     for (const name of Object.keys(services)) {
       const retired = Object.keys(effectiveEnv(file, name)).filter(
-        (k) => k.startsWith("AIQ_CHROMA") || k === "AIQ_VECTOR_BACKEND",
+        (k) => k.startsWith("GRID_CHROMA") || k === "GRID_VECTOR_BACKEND",
       );
       expect(retired, name).toEqual([]);
     }

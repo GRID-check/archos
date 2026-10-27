@@ -24,7 +24,7 @@ Resolution order (see :func:`resolve_llm_credential`):
 Every env read goes through :func:`read_api_key_env`, which treats an
 unresolved ``${...}`` placeholder as unset — docker compose ``env_file`` does
 NOT interpolate ``${VAR}`` references, so a line like
-``AIQ_VLM_API_KEY=${OPENROUTER_API_KEY}`` reaches the process as a literal
+``GRID_VLM_API_KEY=${OPENROUTER_API_KEY}`` reaches the process as a literal
 placeholder rather than a key.
 """
 
@@ -80,7 +80,7 @@ def read_api_key_env(name: str) -> str:
     """Read an env var, treating an unresolved ``${...}`` placeholder as unset.
 
     docker compose ``env_file`` does not interpolate ``${VAR}`` references, so a
-    line like ``AIQ_VLM_API_KEY=${OPENROUTER_API_KEY}`` reaches the process as a
+    line like ``GRID_VLM_API_KEY=${OPENROUTER_API_KEY}`` reaches the process as a
     literal placeholder string rather than a resolved value. Returning ``""`` for
     such values keeps a mis-wired compose file from being read as a configured
     key/URL (which would, e.g., make ``vlm_available`` lie).

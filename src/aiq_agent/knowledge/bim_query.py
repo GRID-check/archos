@@ -17,12 +17,10 @@ path still exists for the model — an ingested Markdown digest — but it answe
 
 from __future__ import annotations
 
-import json
 import logging
-import os
-import urllib.error
-import urllib.request
 from typing import Any
+
+from aiq_agent.common import bff_http
 
 logger = logging.getLogger(__name__)
 
@@ -48,7 +46,7 @@ def _timeout_for(query: dict[str, Any]) -> int:
     return _LONG_TIMEOUT_SECONDS if query.get("op") in _LONG_OPERATIONS else _REQUEST_TIMEOUT_SECONDS
 
 
-class BimQueryUnavailableError(RuntimeError):
+class BimQueryUnavailableError(bff_http.BffError):
     """The internal endpoint could not be reached or refused the request.
 
     Distinct from "the model has no such elements": the tool must tell the user
@@ -56,7 +54,7 @@ class BimQueryUnavailableError(RuntimeError):
     """
 
 
-class BimQueryRejectedError(ValueError):
+class BimQueryRejectedError(bff_http.BffError, ValueError):
     """The endpoint understood the request and refused it as malformed.
 
     Distinct from :class:`BimQueryUnavailableError`, and the distinction is the
@@ -97,7 +95,7 @@ def _issue_summary(details: Any) -> str:
     return "; ".join(parts)[:300]
 
 
-def _rejection_message(exc: urllib.error.HTTPError) -> str:
+def _rejection_message(exc: bff_http.BffRefusedError) -> str:
     """The endpoint's own explanation of why it refused, or a bare status.
 
     The envelope is ``{error, code, details}`` — see `errorResponse` in
@@ -107,13 +105,7 @@ def _rejection_message(exc: urllib.error.HTTPError) -> str:
     ("gt/gte/lt/lte need a numeric value", the unrecognised filter key named
     by `.strict()`) reached the agent as "the query was refused (400)".
     """
-    try:
-        body = json.loads(exc.read().decode("utf-8", errors="replace"))
-    except Exception:  # noqa: BLE001 — an unreadable body is just no message
-        return f"the query was refused ({exc.code})"
-    if not isinstance(body, dict):
-        return f"the query was refused ({exc.code})"
-
+    body = exc.body
     # `message` is accepted as a fallback so this keeps working if the envelope
     # ever grows one; `error` is what it actually carries today.
     headline = body.get("error") or body.get("message")
@@ -122,30 +114,12 @@ def _rejection_message(exc: urllib.error.HTTPError) -> str:
 
     if headline and issues:
         return f"{headline} — {issues}"
-    return headline or issues or f"the query was refused ({exc.code})"
+    return headline or issues or f"the query was refused ({exc.status})"
 
 
-class _NoRedirectHandler(urllib.request.HTTPRedirectHandler):
-    """Refuse redirects — a 3xx means an auth middleware intercepted the call.
-
-    Following it would drop the POST body and the service-token header and
-    surface a misleading downstream error. Mirrors the project-memory client.
-    """
-
-    def redirect_request(self, req, fp, code, msg, headers, newurl):  # noqa: ANN001
-        raise urllib.error.HTTPError(req.full_url, code, f"unexpected redirect to {newurl}", headers, fp)
-
-
-_opener = urllib.request.build_opener(_NoRedirectHandler)
-
-
-def _internal_base_url() -> str:
-    url = os.environ.get("FRONTEND_INTERNAL_URL") or os.environ.get("FRONTEND_URL") or "http://frontend:3000"
-    return url.rstrip("/")
-
-
-def _service_token() -> str | None:
-    return os.environ.get("GRID_INTERNAL_API_TOKEN") or None
+def is_correctable(exc: bff_http.BffRefusedError) -> bool:
+    """A 4xx the caller can fix by changing the request; not an auth or rate refusal."""
+    return 400 <= exc.status < 500 and exc.status not in (401, 403, 429)
 
 
 def run_bim_query(
@@ -167,10 +141,6 @@ def run_bim_query(
     :raises BimQueryUnavailableError: transport failure, missing service token,
         or a non-2xx status — i.e. cases where nothing was looked up at all.
     """
-    token = _service_token()
-    if not token:
-        raise BimQueryUnavailableError("GRID_INTERNAL_API_TOKEN is not configured")
-
     payload: dict[str, Any] = {"organizationId": organization_id, "query": query}
     if project_id:
         payload["projectId"] = project_id
@@ -181,38 +151,27 @@ def run_bim_query(
     if compare_with_name:
         payload["compareWithName"] = compare_with_name
 
-    request = urllib.request.Request(
-        f"{_internal_base_url()}/api/internal/bim/query",
-        data=json.dumps(payload).encode("utf-8"),
-        headers={
-            "Content-Type": "application/json",
-            "x-grid-internal-token": token,
-        },
-        method="POST",
-    )
-
     try:
-        with _opener.open(request, timeout=_timeout_for(query)) as response:
-            body = response.read()
-    except urllib.error.HTTPError as exc:
+        parsed = bff_http.post_json("/api/internal/bim/query", payload, timeout=_timeout_for(query))
+    except bff_http.BffNotConfiguredError as exc:
+        raise BimQueryUnavailableError(str(exc)) from exc
+    except bff_http.BffRefusedError as exc:
         # Never log the body: it can carry element names and property values
         # from a tenant's model. The status is what a reader needs.
-        logger.warning("BIM query rejected by the frontend (status=%s)", exc.code)
-        if 400 <= exc.code < 500 and exc.code not in (401, 403, 429):
+        logger.warning("BIM query rejected by the frontend (status=%s)", exc.status)
+        if is_correctable(exc):
             # The endpoint understood the request and refused it. Its message
             # was written for a caller who can fix the arguments, so it is the
             # one part of the body worth reading — and it describes the
             # REQUEST, never the tenant's model.
             raise BimQueryRejectedError(_rejection_message(exc)) from exc
-        raise BimQueryUnavailableError(f"internal BIM endpoint returned {exc.code}") from exc
-    except Exception as exc:  # noqa: BLE001 — urllib raises a wide family here
-        logger.warning("BIM query could not reach the frontend: %s", type(exc).__name__)
+        raise BimQueryUnavailableError(f"internal BIM endpoint returned {exc.status}") from exc
+    except bff_http.BffMalformedResponseError as exc:
+        raise BimQueryUnavailableError("internal BIM endpoint returned a non-JSON body") from exc
+    except bff_http.BffError as exc:
+        logger.warning("BIM query could not reach the frontend: %s", type(exc.__cause__).__name__)
         raise BimQueryUnavailableError("internal BIM endpoint unreachable") from exc
 
-    try:
-        parsed = json.loads(body)
-    except json.JSONDecodeError as exc:
-        raise BimQueryUnavailableError("internal BIM endpoint returned a non-JSON body") from exc
     if not isinstance(parsed, dict):
         raise BimQueryUnavailableError("internal BIM endpoint returned an unexpected body")
     return parsed

@@ -1,12 +1,12 @@
 """Postgres session advisory locks for work that must not run twice at once.
 
 Every session-scoped advisory lock in the backend is taken here, on one engine
-built from ``AIQ_LOCK_DB_URL`` and nowhere else (ADR-0083). A session lock lives
+built from ``GRID_LOCK_DB_URL`` and nowhere else (ADR-0083). A session lock lives
 as long as the server connection that took it. Behind a transaction pooler
 that connection is not the client's: the lock is acquired on whichever server
 connection PgBouncer hands over, "released" on another, and the first stays
 locked until the pooler recycles it. Nothing raises, and the work the lock
-guarded simply stops running. ``AIQ_LOCK_DB_URL`` is therefore the direct
+guarded simply stops running. ``GRID_LOCK_DB_URL`` is therefore the direct
 (non-pooled) DSN, and the engine behind it never pools either, so closing a
 lock's connection ends its session.
 
@@ -52,13 +52,13 @@ import threading
 logger = logging.getLogger(__name__)
 
 #: The direct Postgres DSN every session lock is taken on.
-LOCK_DB_ENV = "AIQ_LOCK_DB_URL"
+LOCK_DB_ENV = "GRID_LOCK_DB_URL"
 #: The direct Postgres DSN the job SSE streams LISTEN on.
-LISTEN_DB_ENV = "AIQ_LISTEN_DB_URL"
+LISTEN_DB_ENV = "GRID_LISTEN_DB_URL"
 
 # Databases a process may be configured with. A process that has one of these on
 # Postgres and no lock DSN is misconfigured, not single-node: see `require_direct_dsns`.
-_DATABASE_ENVS = ("AIQ_SUMMARY_DB", "NAT_JOB_STORE_DB_URL")
+_DATABASE_ENVS = ("GRID_SUMMARY_DB", "NAT_JOB_STORE_DB_URL")
 
 
 def _postgres_configured() -> bool:
@@ -199,7 +199,7 @@ def leader_lock(lock_id: int):
     Yields False when another replica holds the Postgres advisory lock, and also
     when the lock cannot be taken at all (logged at WARNING): nobody leads that
     cycle and the next tick tries again. Releases on exit. Never raises on a
-    database fault; a process that has Postgres but no ``AIQ_LOCK_DB_URL`` is a
+    database fault; a process that has Postgres but no ``GRID_LOCK_DB_URL`` is a
     configuration error and does raise.
     """
     url = _lock_url()

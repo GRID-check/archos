@@ -21,18 +21,13 @@ Pydantic twin.
 from __future__ import annotations
 
 import asyncio
-import json
 import logging
-import os
-import urllib.error
-import urllib.request
 from dataclasses import dataclass
 from typing import Any
 from typing import Literal
 
-from aiq_agent.tools.documents.filing import SignedEnvelope
-from aiq_agent.tools.proposals_client import _internal_base_url
-from aiq_agent.tools.proposals_client import _NoRedirectHandler
+from aiq_agent.common import bff_http
+from aiq_agent.common.bff_http import SignedEnvelope
 
 logger = logging.getLogger(__name__)
 
@@ -46,16 +41,12 @@ PAGE_MAX = 500
 
 Shelf = Literal["project", "office_shelf", "session"]
 
-_opener = urllib.request.build_opener(_NoRedirectHandler)
 
-
-class EstateTreeError(RuntimeError):
+class EstateTreeError(bff_http.BffError):
     """The route refused, or could not be reached. ``status`` and ``code`` say which."""
 
     def __init__(self, message: str, *, status: int | None = None, code: str | None = None) -> None:
-        super().__init__(message)
-        self.status = status
-        self.code = code
+        super().__init__(message, status=status, code=code)
 
     @property
     def not_found(self) -> bool:
@@ -186,43 +177,19 @@ def parse_tree(body: dict[str, Any]) -> EstateTree:
         raise EstateTreeError("the estate tree answered outside its contract") from exc
 
 
-def _error_body(exc: urllib.error.HTTPError) -> dict[str, Any]:
-    try:
-        payload = json.loads(exc.read().decode("utf-8"))
-    except Exception:  # noqa: BLE001 - the body may be empty, unreadable or not JSON
-        return {}
-    return payload if isinstance(payload, dict) else {}
-
-
 def post_tree(payload: dict[str, Any], envelope: SignedEnvelope) -> dict[str, Any]:
     """POST one request and return the parsed body. Blocking; :func:`read_estate_tree` runs it in a thread."""
-    token = os.environ.get("GRID_INTERNAL_API_TOKEN")
-    if not token:
-        raise EstateTreeError("GRID_INTERNAL_API_TOKEN is not configured")
-    request = urllib.request.Request(
-        f"{_internal_base_url()}{ESTATE_TREE_PATH}",
-        data=json.dumps(payload).encode("utf-8"),
-        headers={
-            "Content-Type": "application/json",
-            "X-Grid-Internal-Token": token,
-            # Who this is, forwarded exactly as the BFF minted it for the turn.
-            "X-Grid-Request-Context": envelope.header,
-            "X-Grid-Request-Context-Sig": envelope.signature,
-        },
-        method="POST",
-    )
     try:
-        with _opener.open(request, timeout=REQUEST_TIMEOUT_SECONDS) as response:
-            body = json.loads(response.read().decode("utf-8"))
-    except urllib.error.HTTPError as exc:
-        error = _error_body(exc)
-        detail, code = error.get("error"), error.get("code")
+        body = bff_http.post_json(
+            ESTATE_TREE_PATH, payload, timeout=REQUEST_TIMEOUT_SECONDS, headers=envelope.headers()
+        )
+    except bff_http.BffNotConfiguredError as exc:
+        raise EstateTreeError(str(exc)) from exc
+    except bff_http.BffRefusedError as exc:
         raise EstateTreeError(
-            detail if isinstance(detail, str) and detail.strip() else f"the estate tree was refused ({exc.code})",
-            status=exc.code,
-            code=code if isinstance(code, str) else None,
+            exc.error_text or f"the estate tree was refused ({exc.status})", status=exc.status, code=exc.code
         ) from exc
-    except (urllib.error.URLError, OSError, ValueError) as exc:
+    except bff_http.BffError as exc:
         logger.warning("Estate tree request failed", exc_info=True)
         raise EstateTreeError("the estate tree could not be reached") from exc
     if not isinstance(body, dict):

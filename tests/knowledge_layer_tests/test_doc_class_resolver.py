@@ -11,11 +11,12 @@ import tempfile
 from pathlib import Path
 from types import SimpleNamespace
 
+from knowledge_layer.register import _format_results
+
 from aiq_agent.knowledge.document_metadata_store import DocumentMetadataStore
 from aiq_agent.knowledge.factory import configure_summary_db
 from aiq_agent.knowledge.factory import register_summary
 from aiq_agent.knowledge.factory import set_document_doc_class
-from sources.knowledge_layer.src.register import _format_results
 
 
 def _chunk(*, file_name: str, collection: str, doc_class: str | None):

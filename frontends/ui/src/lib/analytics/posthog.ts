@@ -82,6 +82,7 @@ import {
   type PostHogConfig,
   type PostHogIdentity,
 } from './posthog-config'
+import { isControlFlowExceptionEvent, isFrameworkControlFlow } from './control-flow-error'
 import { SENSITIVE_QUERY_KEYS, scrubDeep } from './posthog-scrub'
 
 export { DISABLED_POSTHOG_CONFIG, postHogConfigFromEnv, type PostHogConfig, type PostHogIdentity }
@@ -267,6 +268,9 @@ export const buildSessionRecordingOptions = (sampleRate: number): SessionRecordi
  */
 export const scrubEvent: BeforeSendFn = (capture) => {
   if (!capture) return capture
+  // Autocapture reports an unhandled rejection that carries a `redirect()` (a
+  // server action that navigates); that is Next's control flow, not a defect.
+  if (isControlFlowExceptionEvent(capture.event, capture.properties)) return null
   const properties =
     capture.event === '$snapshot'
       ? Object.fromEntries(
@@ -386,7 +390,7 @@ export const capturePosthog = (event: PostHogEvent, properties?: PostHogProperti
  * (`app/error.tsx`, `app/global-error.tsx`) reports it here.
  */
 export const capturePosthogException = (error: unknown, properties?: PostHogProperties): void => {
-  if (!initialized) return
+  if (!initialized || isFrameworkControlFlow(error)) return
   posthog.captureException(error, properties)
 }
 

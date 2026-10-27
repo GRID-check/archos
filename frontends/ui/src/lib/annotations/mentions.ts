@@ -31,7 +31,7 @@ import { PRODUCT_NAME } from '@/lib/brand'
 import { mayOpenDocument, type OpenableDocument } from '@/lib/documents/may-open'
 import { AGENT_MENTION_ID } from '@/lib/mentions/types'
 import { loadOrganizationDirectory } from '@/lib/sharing/directory'
-import { reconcileMentions } from '@/features/collaboration/lib/mention-text'
+import { reconcileMentions } from '@/lib/mentions/mention-text'
 import type { MarkMention } from './types'
 
 /**

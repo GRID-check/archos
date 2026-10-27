@@ -15,14 +15,11 @@ bodies this tool builds against that file. There is no Pydantic twin.
 
 from __future__ import annotations
 
-import json
 import logging
-import os
-import urllib.error
-import urllib.request
 from typing import Any
 
-from ..documents.filing import SignedEnvelope
+from aiq_agent.common import bff_http
+from aiq_agent.common.bff_http import SignedEnvelope
 
 logger = logging.getLogger(__name__)
 
@@ -36,36 +33,11 @@ BRIEF_PATH = "/api/internal/cross-project/brief"
 REQUEST_TIMEOUT_SECONDS = 30
 
 
-class CrossProjectLookupError(RuntimeError):
+class CrossProjectLookupError(bff_http.BffError):
     """The route refused, or could not be reached. ``status`` and ``code`` say which."""
 
     def __init__(self, message: str, *, status: int | None = None, code: str | None = None) -> None:
-        super().__init__(message)
-        self.status = status
-        self.code = code
-
-
-class _NoRedirectHandler(urllib.request.HTTPRedirectHandler):
-    """Refuse redirects: a 3xx means an auth middleware intercepted the call."""
-
-    def redirect_request(self, req, fp, code, msg, headers, newurl):  # noqa: ANN001
-        raise urllib.error.HTTPError(req.full_url, code, f"unexpected redirect to {newurl}", headers, fp)
-
-
-_opener = urllib.request.build_opener(_NoRedirectHandler)
-
-
-def _internal_base_url() -> str:
-    url = os.environ.get("FRONTEND_INTERNAL_URL") or os.environ.get("FRONTEND_URL") or "http://frontend:3000"
-    return url.rstrip("/")
-
-
-def _error_body(exc: urllib.error.HTTPError) -> dict[str, Any]:
-    try:
-        payload = json.loads(exc.read().decode("utf-8"))
-    except Exception:  # noqa: BLE001 - the body may be empty, unreadable or not JSON
-        return {}
-    return payload if isinstance(payload, dict) else {}
+        super().__init__(message, status=status, code=code)
 
 
 def post_lookup(path: str, payload: dict[str, Any], envelope: SignedEnvelope) -> dict[str, Any]:
@@ -75,34 +47,15 @@ def post_lookup(path: str, payload: dict[str, Any], envelope: SignedEnvelope) ->
     the BFF's ``error`` sentence when it sent one: the refusals the reader must
     hear (a shared chat) are worded there, in German.
     """
-    token = os.environ.get("GRID_INTERNAL_API_TOKEN")
-    if not token:
-        raise CrossProjectLookupError("GRID_INTERNAL_API_TOKEN is not configured")
-    request = urllib.request.Request(
-        f"{_internal_base_url()}{path}",
-        data=json.dumps(payload).encode("utf-8"),
-        headers={
-            "Content-Type": "application/json",
-            "X-Grid-Internal-Token": token,
-            # Who this is, forwarded exactly as the BFF minted it for the turn.
-            "X-Grid-Request-Context": envelope.header,
-            "X-Grid-Request-Context-Sig": envelope.signature,
-        },
-        method="POST",
-    )
     try:
-        with _opener.open(request, timeout=REQUEST_TIMEOUT_SECONDS) as response:
-            body = json.loads(response.read().decode("utf-8"))
-    except urllib.error.HTTPError as exc:
-        error = _error_body(exc)
-        detail = error.get("error")
-        code = error.get("code")
+        body = bff_http.post_json(path, payload, timeout=REQUEST_TIMEOUT_SECONDS, headers=envelope.headers())
+    except bff_http.BffNotConfiguredError as exc:
+        raise CrossProjectLookupError(str(exc)) from exc
+    except bff_http.BffRefusedError as exc:
         raise CrossProjectLookupError(
-            detail if isinstance(detail, str) and detail.strip() else f"the lookup was refused ({exc.code})",
-            status=exc.code,
-            code=code if isinstance(code, str) else None,
+            exc.error_text or f"the lookup was refused ({exc.status})", status=exc.status, code=exc.code
         ) from exc
-    except (urllib.error.URLError, OSError, ValueError) as exc:
+    except bff_http.BffError as exc:
         logger.warning("Cross-project lookup %s failed", path, exc_info=True)
         raise CrossProjectLookupError("the lookup could not be reached") from exc
     if not isinstance(body, dict):

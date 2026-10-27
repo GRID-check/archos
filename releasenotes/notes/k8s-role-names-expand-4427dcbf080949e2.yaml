@@ -1,0 +1,7 @@
+---
+operators:
+  - >
+    On Kubernetes the chat and api tiers start running a second time under
+    their new names, chat and api, beside aiq-agent and aiq-api, which keep
+    serving every request. Until a later release switches traffic and removes
+    the old tiers, the cluster needs room for both.

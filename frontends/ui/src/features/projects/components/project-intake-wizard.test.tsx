@@ -5,7 +5,7 @@
  * freshness, and numeric validation. The deterministic rule under test is the
  * fossil-fuel-on-a-new-build conflict (E1=gas + A5 includes Neubau).
  */
-import { projectTourUrl } from '@/features/onboarding/lib/product-tour'
+import { projectTourUrl } from '@/lib/onboarding/product-tour'
 import { fireEvent, render, screen, waitFor, within } from '@/test-utils'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'

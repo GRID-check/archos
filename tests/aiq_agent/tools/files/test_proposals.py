@@ -1,6 +1,6 @@
 """The proposal as a server object: what goes over the wire, as whom, and what happens when it cannot.
 
-Only the transport is faked (``client._opener.open``), so the request the test
+Only the transport is faked (``bff_http._opener.open``), so the request the test
 reads is the one ``post_proposal`` really builds, headers included. The tool,
 the card and the client above the socket are the real ones. The client is
 shared by the three kinds (``file_operation``, ``memory``, ``project_profile``);
@@ -51,6 +51,7 @@ from aiq_agent.cards.models import grid_card_adapter
 from aiq_agent.cards.registry import CardRegistry
 from aiq_agent.cards.registry import reset_card_registry
 from aiq_agent.cards.registry import set_card_registry
+from aiq_agent.common import bff_http
 from aiq_agent.knowledge.inventory import set_turn_documents
 from aiq_agent.knowledge.schema import AvailableDocument
 from aiq_agent.tools import proposals_client as client
@@ -127,7 +128,7 @@ def turn(monkeypatch):
 def transport(monkeypatch):
     def install(*answers: Any) -> FakeTransport:
         fake = FakeTransport(*answers)
-        monkeypatch.setattr(client._opener, "open", fake)
+        monkeypatch.setattr(bff_http._opener, "open", fake)
         return fake
 
     return install
@@ -375,7 +376,7 @@ class TestTheIndexIsTheCardsRealPosition:
             registry.add({"type": "document_draft"})
             return inner(request, timeout)
 
-        monkeypatch.setattr(client._opener, "open", sibling_lands_first)
+        monkeypatch.setattr(bff_http._opener, "open", sibling_lands_first)
         await _propose("create_folder", new_name="Fotos")
 
         assert [body["originCardIndex"] for body in fake.bodies()] == [0]

@@ -7,7 +7,7 @@ import { ForbiddenError, NotFoundError } from '@/lib/api/errors'
 import type { Document } from '@/lib/db/schema'
 
 vi.mock('server-only', () => ({}))
-vi.mock('@/lib/backend-proxy', () => ({ getBackendUrl: () => 'http://backend.test' }))
+vi.mock('@/lib/backend-proxy', () => ({ getBackendUrl: () => 'http://backend:8000' }))
 vi.mock('./access', () => ({ getAccessibleDocument: vi.fn() }))
 
 import { getAccessibleDocument } from './access'
@@ -53,6 +53,7 @@ function documentsById(...docs: Document[]) {
 
 describe('compareRevisionVisually', () => {
   beforeEach(() => {
+    vi.stubEnv('GRID_INTERNAL_API_TOKEN', 'test-token')
     vi.stubGlobal('fetch', mockFetch)
     mockFetch.mockReset()
     mockFetch.mockResolvedValue(answer({ regions: [REGION], summary: ['Die Wand ist nach Osten gerückt.'] }))
@@ -62,6 +63,7 @@ describe('compareRevisionVisually', () => {
 
   afterEach(() => {
     vi.unstubAllGlobals()
+    vi.unstubAllEnvs()
   })
 
   it('asks for READ access to both documents, tells the backend their file names and the page, and returns boxes and words', async () => {
@@ -71,7 +73,7 @@ describe('compareRevisionVisually', () => {
     expect(getAccessibleDocument).toHaveBeenCalledWith(session, 'doc-a', 'read')
     expect(mockFetch).toHaveBeenCalledTimes(1)
     const [url, init] = mockFetch.mock.calls[0]
-    expect(url).toBe('http://backend.test/v1/collections/proj_abc/revision-compare')
+    expect(url).toBe('http://backend:8000/v1/collections/proj_abc/revision-compare')
     expect(init.method).toBe('POST')
     expect(JSON.parse(init.body)).toEqual({ older: 'Grundriss_A.pdf', newer: 'Grundriss_B.pdf', page: 2, purpose: 'person' })
     expect(init.headers).toMatchObject({ 'x-grid-organization-id': 'org-1', 'x-grid-user-id': 'user-1' })
@@ -88,7 +90,7 @@ describe('compareRevisionVisually', () => {
 
     await compareRevisionVisually(session, 'doc-b', 'doc-a', 1)
 
-    expect(mockFetch.mock.calls[0][0]).toBe('http://backend.test/v1/collections/archiv_org%201/revision-compare')
+    expect(mockFetch.mock.calls[0][0]).toBe('http://backend:8000/v1/collections/archiv_org%201/revision-compare')
   })
 
   describe('privacy', () => {
@@ -254,6 +256,7 @@ describe('compareRevisionPage (a notice, ADR-0130)', () => {
   const TRACE = 'a'.repeat(32)
 
   beforeEach(() => {
+    vi.stubEnv('GRID_INTERNAL_API_TOKEN', 'test-token')
     vi.stubGlobal('fetch', mockFetch)
     mockFetch.mockReset()
     vi.mocked(getAccessibleDocument).mockReset()
@@ -262,6 +265,7 @@ describe('compareRevisionPage (a notice, ADR-0130)', () => {
 
   afterEach(() => {
     vi.unstubAllGlobals()
+    vi.unstubAllEnvs()
   })
 
   it('says it is a notice and keeps the trace of the call; the browser path never sees it', async () => {
@@ -283,6 +287,7 @@ describe('compareRevisionPage (a notice, ADR-0130)', () => {
 
 describe('changedRevisionPages', () => {
   beforeEach(() => {
+    vi.stubEnv('GRID_INTERNAL_API_TOKEN', 'test-token')
     vi.stubGlobal('fetch', mockFetch)
     mockFetch.mockReset()
     vi.mocked(getAccessibleDocument).mockReset()
@@ -291,6 +296,7 @@ describe('changedRevisionPages', () => {
 
   afterEach(() => {
     vi.unstubAllGlobals()
+    vi.unstubAllEnvs()
   })
 
   it('asks the index under the same checks, and keeps only real page numbers', async () => {
@@ -298,7 +304,7 @@ describe('changedRevisionPages', () => {
 
     const result = await changedRevisionPages(session, 'doc-b', 'doc-a')
 
-    expect(mockFetch.mock.calls[0][0]).toBe('http://backend.test/v1/collections/proj_abc/revision-pages')
+    expect(mockFetch.mock.calls[0][0]).toBe('http://backend:8000/v1/collections/proj_abc/revision-pages')
     expect(JSON.parse(mockFetch.mock.calls[0][1].body)).toEqual({ older: 'Grundriss_A.pdf', newer: 'Grundriss_B.pdf' })
     expect(result).toEqual({ pages: [2, 7], newerPageCount: 9, comparable: true })
   })

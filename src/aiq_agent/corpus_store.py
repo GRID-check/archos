@@ -2,7 +2,7 @@
 
 A base-corpus PDF has exactly one source of record, the object
 ``base-corpus/<file name>`` in ``SEAWEED_BUCKET``. One table in the knowledge
-database (``AIQ_SUMMARY_DB``), ``oib_corpus_files``, lists what is in the corpus
+database (``GRID_SUMMARY_DB``), ``oib_corpus_files``, lists what is in the corpus
 and keeps what ingestion needs to know about each file:
 
 ====================== ======================================================
@@ -188,11 +188,11 @@ def _require_name(name: str) -> None:
 
 
 def _db_url() -> str:
-    url = os.environ.get("AIQ_SUMMARY_DB") or os.environ.get("NAT_JOB_STORE_DB_URL")
+    url = os.environ.get("GRID_SUMMARY_DB") or os.environ.get("NAT_JOB_STORE_DB_URL")
     if not url:
         # A silent fall back to a local SQLite file would bring back exactly the
         # per-replica state the corpus store exists to remove.
-        raise CorpusStoreError("the base corpus needs AIQ_SUMMARY_DB (the shared knowledge database)")
+        raise CorpusStoreError("the base corpus needs GRID_SUMMARY_DB (the shared knowledge database)")
     return url
 
 

@@ -8,11 +8,11 @@
  */
 
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { isTokenSafeDestination } from '@/lib/internal-auth'
 import {
   _clearDefaultsCache,
   getGroupDefaultSources,
   getGroupDefaults,
-  isTokenSafeDestination,
   splitGroupDefault,
 } from './backend-defaults'
 
