@@ -58,7 +58,7 @@ Trace metadata on the root:
 | `ifc_op`, `ifc_outcome`, `ifc_model`, … | what a building-model tool did (`tools/bim/trace.py`) |
 | `answer_precedent_sources`, `answer_precedent_projects` | cited sources from another project (ADR-0094), and from how many projects: the office's experience reaching the answer |
 | `reference_projects_offered`, `precedent_p`, `reference_prefetch` | the turn's start: how many reference projects the catalog listed, the decision's p(precedent), and whether round 0 searched them on its own (`agents/piloti/register.py`) |
-| `skills_offered`, `skills_pinned` | the turn's skills (ADR-0141): how many the catalog listed, and the one the turn-start decision pinned in full, if any (`agents/piloti/register.py`). `skills_activated` above is what reached the model: a `read_file` of a `SKILL.md`, or a pinned body the envelope named |
+| `skills_offered`, `skills_pinned` | the turn's skills (ADR-0135): how many the catalog listed, and the one the turn-start decision pinned in full, if any (`agents/piloti/register.py`). `skills_activated` above is what reached the model: a `read_file` of a `SKILL.md`, or a pinned body the envelope named |
 | `reference_fit_scored`, `reference_fit_top`, `reference_fit_fitting` | the reference fit (ADR-0064 use 10): how many catalog lines it scored, the best p(fits), how many moved ahead |
 | `organization_id`, `project_id` | the tenant, only with identity attributes on |
 | `$posthog_session_id` | the asker's PostHog browser session, only with identity attributes on and a UUIDv7 ([PostHog export](#posthog-export)) |

@@ -30,7 +30,14 @@ describe('the sketch editor stays out of the chat bundle', () => {
   })
 
   it('reaches sketch-canvas only through a dynamic import, and only from the dialog', () => {
-    const statics = files.filter(({ text }) => /from\s+['"][^'"]*sketch-canvas['"]/.test(text) && !/import\s+type\b[^;]*sketch-canvas/.test(text))
+    // A whole `import type … from '…'` statement is erased at compile time, so
+    // it is cut out first; whatever still names sketch-canvas in a `from` (an
+    // import or a re-export) or a bare side-effect import is a static edge.
+    // Testing the file for "has an import type" instead let a value import in
+    // the same file through.
+    const TYPE_ONLY_IMPORT = /import\s+type\s[^'"]*?from\s*['"][^'"]+['"]/g
+    const STATIC_EDGE = /(?:from\s*|import\s+)['"][^'"]*sketch-canvas['"]/
+    const statics = files.filter(({ text }) => STATIC_EDGE.test(text.replace(TYPE_ONLY_IMPORT, '')))
     expect(statics.map(({ path }) => path)).toEqual([])
     const dynamics = files.filter(({ text }) => /import\(\s*['"][^'"]*sketch-canvas['"]\s*\)/.test(text))
     expect(dynamics.map(({ path }) => path)).toEqual(['features/diagrams/sketch/sketch-dialog.tsx'])
