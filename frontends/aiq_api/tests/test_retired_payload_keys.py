@@ -29,7 +29,7 @@ import pytest
 
 from aiq_api.jobs import queue
 from aiq_api.jobs import worker as worker_mod
-from aiq_api.jobs.runner import run_agent_job
+from aiq_api.jobs.agent_job import run_agent_job
 
 from .test_job_queue import _age_heartbeat
 

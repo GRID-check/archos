@@ -43,7 +43,7 @@ GRID_ROLE=api dotenv -f deploy/.env run nat serve --config configs/config_oib_op
 │                                                                 │
 │   frontends/aiq_api/src/aiq_api/                                │
 │   ├── jobs/                                                     │
-│   │   ├── runner.py           # run_agent_job (generic)         │
+│   │   ├── agent_job.py        # run_agent_job, in phases        │
 │   │   ├── submit.py           # submit_agent_job                │
 │   │   ├── callbacks.py        # SSE event generation            │
 │   │   ├── event_store.py      # Persistent event storage       │

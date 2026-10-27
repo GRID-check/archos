@@ -42,7 +42,7 @@ found that **no locale/language signal currently reaches the backend**:
   (see `src/aiq_agent/project_context.py`, `cost_tracking.py`). There is no
   locale parsing anywhere in `src/aiq_agent` or `frontends/aiq_api`.
 - The async-job path (deep research) does **not** transparently forward
-  request headers. `frontends/aiq_api/src/aiq_api/jobs/runner.py` manually
+  request headers. `frontends/aiq_api/src/aiq_api/jobs/agent_job_setup.py` manually
   re-threads a **whitelist** of headers onto the reconstructed request
   (collection scope, project context, model overrides, budget). A new locale
   header would have to be added to that whitelist too, or async-job bubbles
