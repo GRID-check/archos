@@ -75,13 +75,13 @@ from aiq_agent.common.turn_status import emit_answer_repair
 from aiq_agent.common.turn_status import emit_citation_check
 from aiq_agent.common.workspace_records import filed_proposal_ids
 from aiq_agent.common.workspace_records import records_from_messages
+from aiq_agent.observability.answer_scores import dialect_scores
+from aiq_agent.observability.answer_scores import quote_patch_scores
 from aiq_agent.observability.langfuse_scores import card_validity_score
 from aiq_agent.observability.langfuse_scores import claim_scores
-from aiq_agent.observability.answer_scores import dialect_scores
 from aiq_agent.observability.langfuse_scores import emit_scores
 from aiq_agent.observability.langfuse_scores import formula_provenance_score
 from aiq_agent.observability.langfuse_scores import look_scores
-from aiq_agent.observability.answer_scores import quote_patch_scores
 from aiq_agent.observability.langfuse_scores import work_unfiled_scores
 from aiq_agent.observability.langfuse_trace_attributes import record_trace_metadata
 

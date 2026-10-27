@@ -192,7 +192,7 @@ class _Sketch:
 
 
 def _scan(lines: Sequence[str]) -> tuple[list[_Block], list[bool], int, list[_Sketch]]:
-    """The blocks, which lines are code, how many drawings, and the sketch fences: ``scanDirectiveFences``, kept structured."""
+    """The blocks, code lines, drawing count and sketch fences: ``scanDirectiveFences``, kept structured."""
     blocks: list[_Block] = []
     stack: list[int] = []
     code = [False] * len(lines)
@@ -245,8 +245,10 @@ def _scan(lines: Sequence[str]) -> tuple[list[_Block], list[bool], int, list[_Sk
     return blocks, code, diagrams, sketches
 
 
-def _refused_sketches(lines: list[str], sketches: Sequence[_Sketch], repairs: list[dict[str, str]]) -> list[SketchCheck]:
-    """Each sketch's verdict; a refused one's opener is retagged in ``lines`` so every reader shows its source."""
+def _refused_sketches(
+    lines: list[str], sketches: Sequence[_Sketch], repairs: list[dict[str, str]]
+) -> list[SketchCheck]:
+    """Each sketch's verdict; a refused one's opener is retagged in ``lines`` so no reader tries it again."""
     checks: list[SketchCheck] = []
     for sketch in sketches:
         check = check_sketch("\n".join(sketch.body))

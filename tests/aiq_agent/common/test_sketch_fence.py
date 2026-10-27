@@ -14,9 +14,7 @@ from aiq_agent.common.sketch_fence import check_sketch
 from aiq_agent.common.sketch_fence import sketch_census
 from aiq_agent.observability.answer_scores import sketch_scores
 
-FIXTURES = (
-    Path(__file__).resolve().parents[3] / "frontends/ui/src/lib/diagrams/__fixtures__/sketch-fences.json"
-)
+FIXTURES = Path(__file__).resolve().parents[3] / "frontends/ui/src/lib/diagrams/__fixtures__/sketch-fences.json"
 CASES = json.loads(FIXTURES.read_text(encoding="utf-8"))["cases"]
 
 
@@ -60,7 +58,7 @@ def test_a_sketch_over_the_drawing_budget_is_logged_not_removed():
 
 
 def test_a_listing_that_mentions_excalidraw_is_not_a_sketch():
-    result = validate_dialect("```json\n{\"type\": \"excalidraw\"}\n```", None)
+    result = validate_dialect('```json\n{"type": "excalidraw"}\n```', None)
     assert result.sketches == []
 
 

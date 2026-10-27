@@ -15,13 +15,16 @@ from .langfuse_scores import RuntimeScore
 
 
 def dialect_scores(repairs: list[dict[str, str]], sketches: Iterable[Any] = ()) -> list[RuntimeScore]:
-    """The dialect pass's repairs on one answer, zero included (a clean answer is a measurement too), and its sketches."""
+    """The dialect pass's repairs on one answer, zero included (a clean answer is a measurement), and its sketches."""
     kinds = sorted({repair.get("repair", "") for repair in repairs if repair.get("repair")})
-    return [RuntimeScore("dialect-repairs", float(len(repairs)), comment=", ".join(kinds) or None), *sketch_scores(sketches)]
+    return [
+        RuntimeScore("dialect-repairs", float(len(repairs)), comment=", ".join(kinds) or None),
+        *sketch_scores(sketches),
+    ]
 
 
 def sketch_scores(checks: Iterable[Any]) -> list[RuntimeScore]:
-    """One ``sketch-drawn`` per sketch fence (``common/sketch_fence.SketchCheck``); nothing for an answer without one."""
+    """One ``sketch-drawn`` per sketch fence (``sketch_fence.SketchCheck``); nothing for an answer without one."""
     return [
         RuntimeScore(
             "sketch-drawn",
