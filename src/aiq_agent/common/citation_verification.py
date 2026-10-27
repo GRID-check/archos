@@ -315,22 +315,35 @@ def _parse_citation_ref(key: str) -> tuple[str, Shelf | None, int | None]:
         filename = filename[: qualifier_match.start()].rstrip(", ").strip()
     from_path = citation_key_of_path(filename)
     if from_path is not None:
-        filename, path_shelf = from_path
+        filename, path_shelf = from_path[0][0], from_path[1]
         shelf = shelf or path_shelf
     return filename, shelf, page
 
 
-def citation_key_of_path(text: str) -> tuple[str, Shelf | None] | None:
-    """``(file name, shelf)`` a path-shaped citation names; ``None`` when ``text`` is no estate path.
+def _key_file_names(key: str) -> list[str]:
+    """The file names a citation key may mean: its own, or each a path-shaped one can stand for."""
+    filename = _parse_citation_ref(key)[0]
+    raw = _PAGE_RE.split(key, maxsplit=1)[0].rstrip(", ").strip()
+    from_path = citation_key_of_path(_SCOPE_QUALIFIER_RE.sub("", raw))
+    return from_path[0] if from_path is not None else [filename]
+
+
+#: An estate path inside a source line, up to the page or the end of the line.
+_ESTATE_PATH_IN_LINE_RE = re.compile(r"/(?:project|office|chat|law/oib)/[^\n,]+")
+
+
+def citation_key_of_path(text: str) -> tuple[list[str], Shelf | None] | None:
+    """``(file names, shelf)`` a path-shaped citation names; ``None`` when ``text`` is no estate path.
 
     The model reads paths since ADR-0133 (a hit's ``Path:``, a ``read_file`` header), so a citation
-    written as ``/project/Gutachten/Brandschutzkonzept.pdf.md, p.3`` is likely. The key it means is
-    the file name: the last segment, with the ``.md`` a document's text is served under dropped
-    (``Notiz.md``, a text file under its own name, keeps it). The mount states the shelf, the way a
-    qualifier does. Verification would otherwise drop the citation and the answer lose its source
-    without a word; this is that correction held by code rather than by prompt prose.
+    written as ``/project/Gutachten/Brandschutzkonzept.pdf.md, p.3`` is likely. The file names it may
+    mean are the leaf's candidates, as the estate resolves them (``estate_paths.file_name_candidates``:
+    ``x.pdf.md`` is ``x.pdf`` or itself, ``Plan.md`` itself or ``Plan``); the registry matches any. The
+    mount states the shelf, the way a qualifier does. Verification would otherwise drop the citation and
+    the answer lose its source without a word; this is that correction held by code, not prompt prose.
     """
     from aiq_agent.common.estate_paths import MOUNT_SHELVES
+    from aiq_agent.common.estate_paths import file_name_candidates
     from aiq_agent.common.estate_paths import mount_of_path
 
     candidate = text.strip()
@@ -342,9 +355,7 @@ def citation_key_of_path(text: str) -> tuple[str, Shelf | None] | None:
     leaf = candidate.rstrip("/").rsplit("/", 1)[-1]
     if not leaf or candidate.endswith("/"):
         return None
-    if leaf.lower().endswith(".md") and "." in leaf[:-3]:
-        leaf = leaf[:-3]
-    return leaf, parse_shelf(MOUNT_SHELVES[mount])
+    return file_name_candidates(leaf), parse_shelf(MOUNT_SHELVES[mount])
 
 
 def _entry_shelf(entry: SourceEntry) -> Shelf | None:
@@ -612,11 +623,13 @@ class SourceRegistry:
         source over a qualifier the model mistyped, and the unqualified filename
         was already proof enough that the document was retrieved.
         """
-        target_file, target_shelf, target_page = _parse_citation_ref(key)
-        target_lower = target_file.lower()
-        matches = [
-            entry for entry in self._citation_keys if _parse_citation_key(entry.citation_key)[0].lower() == target_lower
-        ]
+        _target_file, target_shelf, target_page = _parse_citation_ref(key)
+        matches: list[SourceEntry] = []
+        for name in _key_file_names(key):
+            wanted = name.lower()
+            matches = [e for e in self._citation_keys if _parse_citation_key(e.citation_key)[0].lower() == wanted]
+            if matches:
+                break
         if target_shelf:
             scoped = [entry for entry in matches if _entry_shelf(entry) == target_shelf]
             if scoped:
@@ -4020,6 +4033,7 @@ def verify_citations(
     # already start with a token are left as-is (idempotent).
     origin_tokens: dict[int, str] = {}
     dropped_urls: dict[int, str] = {}  # key-verified line -> the link it carried
+    cited_paths: dict[int, tuple[str, str]] = {}  # key-verified line -> (the path it named, the file name)
 
     for line_match in _CITATION_LINE_RE.finditer(ref_section):
         num = int(line_match.group(1))
@@ -4048,6 +4062,9 @@ def verify_citations(
             url_replacements[source.line_url] = source.url
         if source.citation_key and source.line_url:
             dropped_urls[num] = source.line_url
+        if source.citation_key and (cited_path := _ESTATE_PATH_IN_LINE_RE.search(match_text)):
+            # The line shows the file's name, as its chip does, never the path the model copied.
+            cited_paths[num] = (cited_path.group(0).rstrip(), _parse_citation_key(source.citation_key)[0])
         if not already_tokenized and (entry := source.entry(registry)):
             if token := source_origin_token(entry):
                 origin_tokens[num] = token
@@ -4136,6 +4153,8 @@ def verify_citations(
                 continue
             if (dropped := dropped_urls.get(num)) is not None:
                 line = _drop_url(line, dropped)
+            if (cited := cited_paths.get(num)) is not None:
+                line = line.replace(*cited)
             if (token := origin_tokens.get(num)) is not None:
                 line = _inject_origin_token(line, token)
         cleaned_ref_lines.append(line)

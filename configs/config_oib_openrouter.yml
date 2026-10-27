@@ -613,8 +613,8 @@ functions:
   # The locator beside the search: open the passage a conclusion NAMED
   # (document + Punkt, or document + page) instead of searching for it again.
   # Bound by deep research, intake and the door; Piloti's chat reads with
-  # `read_file` instead (ADR-0133 slice 6), and a `read_passage` call there is
-  # answered with the replacement call (`common/retired_calls.py`).
+  # `read_file` instead (ADR-0133 slice 6); a `read_passage` call there is
+  # answered by the tool node with the tools it has.
   # Deterministic — one filtered fetch, no reranker, no requery judge, no LLM.
   # Collection scope, base corpus and file exclusions are read off the
   # `knowledge_search` instance named here rather than restated, so the two
@@ -629,9 +629,8 @@ functions:
   # not. Deterministic, no LLM, and it reads only the scope `knowledge_search`
   # reads. Its partner, Ctrl+F across the files, is `knowledge_search(match=
   # "exact")` for deep research and intake, and `grep` for Piloti's chat, which
-  # binds `list_files` for Fassungen only (`revisions_of`, `compare_to`;
-  # `knowledge_layer.chat_binding`) and lists with `ls` and `glob`
-  # (docs/architecture/agent-tool-surface.md).
+  # binds `list_files` without its tree view (`ls(depth=…)` draws the tree;
+  # `knowledge_layer.chat_binding`) (docs/architecture/agent-tool-surface.md).
   list_files:
     _type: list_files
     knowledge_search: knowledge_search
@@ -775,9 +774,9 @@ functions:
     # scope (ADR-0133): `ls`, `glob`, `grep` and `read_file` over /project/,
     # /office/, /chat/ and /law/oib/, beside the conversation's drafts under
     # /drafts/. They are built per turn (the drafts are per conversation), not
-    # listed below. They replace `read_passage` and the listing form of
-    # `list_files` on this binding (slice 6); `knowledge_search` and
-    # `list_files` are rebound to Piloti's contracts at build time.
+    # listed below. They replace `read_passage` and the literal modes of
+    # `knowledge_search` on this binding (slice 6); `knowledge_search` and
+    # `list_files` are rebound at build time, only when this is set.
     filesystem: knowledge_search
     # Explicit list (replaces registry inheritance) so the non-data-source
     # `remember` and `ask_user` tools are included alongside search/knowledge.

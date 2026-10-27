@@ -73,7 +73,7 @@ def test_the_static_prompt_teaches_the_workspace_facts_and_the_work_kind():
 
     static = (ROOT / "src/aiq_agent/agents/piloti/prompts/piloti_static.md").read_text(encoding="utf-8")
     rules = static.split("<rules>")[1].split("</rules>")[0]
-    assert "write the search query in English" in rules
+    assert "A `workspace__search` query is in English" in rules
     assert "never with `[N]`" in static.split("CITATIONS.")[1]
     assert "never claim it is done" in DESCRIPTIONS["call"]
     assert "`kind` to one of `direct`, `walkthrough`, `ruling`, `handoff`, `work`" in static

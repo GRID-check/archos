@@ -408,7 +408,7 @@ class TestTheRoundCostIsStatedAsAFact:
         """
         from sources.knowledge_layer.src.register import _KNOWLEDGE_SEARCH_DESCRIPTION as description
 
-        assert "every member is then open at the level `read_passage(document=…)` opens it" in description
+        assert "every member is then open at the level a read of one document opens it" in description
         assert "what is left to open is a Punkt by number" in description
 
 

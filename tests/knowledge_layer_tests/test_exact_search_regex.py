@@ -136,7 +136,7 @@ class TestUserPattern:
     def test_a_pattern_that_is_not_a_regex_is_refused_with_the_way_out(self, text):
         compiled, refusal = user_pattern(text)
         assert compiled is None
-        assert "not a valid regex" in refusal and 'match="exact"' in refusal
+        assert "not a valid regex" in refusal and "search literally" in refusal
 
     def test_a_pattern_longer_than_the_bound_is_refused(self):
         compiled, refusal = user_pattern("a" * 301)

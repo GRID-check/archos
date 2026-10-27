@@ -435,6 +435,7 @@ def prefetch_calls(
     question: str,
     *,
     focus_file_name: str | None = None,
+    focus_shelf: str | None = None,
     previous_message: str | None = None,
     reference_projects: int = 0,
 ) -> list[dict[str, Any]]:
@@ -442,7 +443,7 @@ def prefetch_calls(
 
     The question itself, when the corpus is one the knowledge tool searches
     and the message can be searched on its own — pinned to the open document
-    (``file_name``) when one is open and the corpus is the project's or the
+    (by its ``path``) when one is open and the corpus is the project's or the
     office's own files, which is the audit's cleanest case: the subject was
     known before the model ran, and a pinned lookup skips the judge. A
     message that cannot be searched on its own (a follow-up) prefetches
@@ -486,7 +487,7 @@ def prefetch_calls(
     query = prefetch_query(question)
     if not query:
         return []
-    calls = _corpus_prefetch(decisions, query, focus_file_name, question)
+    calls = _corpus_prefetch(decisions, query, focus_file_name, question, focus_shelf)
     if reference_projects > 0 and decisions.wants_reference:
         calls.append(
             {
@@ -528,25 +529,34 @@ def literal_terms(question: str) -> list[str]:
 
 
 def _corpus_prefetch(
-    decisions: TurnDecisions, query: str, focus_file_name: str | None, question: str
+    decisions: TurnDecisions, query: str, focus_file_name: str | None, question: str, focus_shelf: str | None = None
 ) -> list[dict[str, Any]]:
-    """The chosen corpus's own search, and the chosen families' overviews for a law question."""
+    """The chosen corpus's own search, and the chosen families' overviews for a law question.
+
+    Scoped by ``path`` only, the argument every binding of the search takes. A quoted term or a code
+    is a ``grep`` (ADR-0133 slice 6) returning citable passages, as round 0's literal search did; a
+    binding without ``grep`` drops the call. The open document narrows the grep by ``glob``, under
+    its shelf's mount, so a stale folder cannot make the path miss it.
+    """
     if decisions.corpus not in {"baurecht", "projekt", "buero"} or decisions.corpus_p < CORPUS_THRESHOLD:
         return []
     from aiq_agent.common.norm_registry import family_query_number
 
-    args: dict[str, Any] = {"query": query}
-    if focus_file_name and decisions.corpus in {"projekt", "buero"}:
-        args["file_name"] = focus_file_name
-    calls: list[dict[str, Any]] = [{"name": KNOWLEDGE_SEARCH, "args": args}]
     shelf = _LITERAL_SHELF.get(decisions.corpus)
+    focus = focus_file_name if shelf else None
+    focus_shelf = focus_shelf or shelf
+    args: dict[str, Any] = {"query": query}
+    if focus and (path := estate_path(focus_shelf, None, focus)):
+        args["path"] = path
+    calls: list[dict[str, Any]] = [{"name": KNOWLEDGE_SEARCH, "args": args}]
     if shelf:
-        # The literal search is `grep` under its standard name (ADR-0133 slice 6): Piloti's
-        # `knowledge_search` has no `match=` mode, and a binding without `grep` drops the call.
-        path = (estate_path(shelf, None, focus_file_name) if focus_file_name else None) or MOUNT_ROOTS[
-            SHELF_MOUNTS[shelf]
-        ]
-        calls.extend({"name": GREP, "args": {"pattern": term, "path": path}} for term in literal_terms(question))
+        scope = {"path": MOUNT_ROOTS.get(SHELF_MOUNTS.get(str(focus_shelf), ""), MOUNT_ROOTS[SHELF_MOUNTS[shelf]])}
+        if focus:
+            scope["glob"] = re.sub(r"([*?\[\]{}])", r"[\1]", focus.rsplit("/", 1)[-1])
+        calls.extend(
+            {"name": GREP, "args": {"pattern": term, "output_mode": "content", **scope}}
+            for term in literal_terms(question)
+        )
     if decisions.corpus == "baurecht" and family_query_number(query) is None:
         calls.extend(
             {"name": KNOWLEDGE_SEARCH, "args": {"query": f"OIB-Richtlinie {key}"}}

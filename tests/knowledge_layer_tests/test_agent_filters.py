@@ -141,10 +141,11 @@ def test_knowledge_search_takes_the_checkpoint_as_an_optional_argument() -> None
 
 
 def test_the_description_says_what_a_piloti_document_may_be_cited_for() -> None:
-    """The tool description is the prompt for the tool, and this is the one
-    sentence that separates "the office decided this" from "the OIB requires
-    this" for a document the office approved but Piloti wrote."""
-    desc = _KNOWLEDGE_SEARCH_DESCRIPTION
-    assert "Piloti-Dokument" in desc
-    assert "never a source for a normative value" in desc
-    assert "what the office decided" in desc and "what the OIB requires" in desc
+    """The sentence that separates "the office decided this" from "the OIB requires this" for a
+    document the office approved but Piloti wrote. Since ADR-0133 slice 6 it rides the hit's own
+    `Herkunft:` line, so every tool that returns such a passage says it where it is read."""
+    from aiq_agent.common.grounding_block import AGENT_DOCUMENT_NOTE
+
+    assert "Piloti-Dokument" not in _KNOWLEDGE_SEARCH_DESCRIPTION
+    assert "never a source for a normative value" in AGENT_DOCUMENT_NOTE
+    assert "what the office decided" in AGENT_DOCUMENT_NOTE

@@ -192,6 +192,15 @@ def call_mount(tool: str, args: Any) -> Mount | Literal["estate"] | None:
     return mount if mount is not None else "estate"
 
 
+#: The verbs a binding holds when it reads the estate by path (ADR-0133); the drafts' verbs alone do not.
+ESTATE_VERBS = frozenset({"ls", "glob", "grep", "read_file"})
+
+
+def reads_the_estate(tool_names: Any) -> bool:
+    """Whether a binding with these tool names reads the estate by path: the one test of it, per turn."""
+    return ESTATE_VERBS <= frozenset(tool_names)
+
+
 def reaches_drafts_only(tool: str, args: Any) -> bool:
     """Whether a filesystem call stays off the estate, in the drafts or the skills.
 
@@ -265,17 +274,15 @@ def file_name_candidates(leaf: str) -> list[str]:
     """The stored file names a leaf may stand for, most likely first.
 
     ``Plan.pdf.md`` -> ``Plan.pdf`` (the text of a PDF), then ``Plan.pdf.md``
-    (a real Markdown file of that name); the bare ``Plan.pdf`` -> ``Plan.pdf``;
-    a text file's own name -> itself.
+    (a real Markdown file of that name); ``Plan.md`` -> ``Plan.md``, then ``Plan`` (a file
+    with no extension, served as its text); the bare ``Plan.pdf`` -> ``Plan.pdf``.
     """
     name = nfc(leaf).strip()
-    out: list[str] = []
-    if name.lower().endswith(".md"):
-        stem = name[:-3]
-        if "." in stem.rsplit("/", 1)[-1]:
-            out.append(stem)
-    out.append(name)
-    return list(dict.fromkeys(out))
+    if not name.lower().endswith(".md"):
+        return [name]
+    stem = name[:-3]
+    has_extension = "." in stem.rsplit("/", 1)[-1]
+    return list(dict.fromkeys([stem, name] if has_extension else [name, stem]))
 
 
 def action_place(path: str | None) -> dict[str, str]:

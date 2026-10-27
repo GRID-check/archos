@@ -18,17 +18,21 @@ import pytest
 from langchain_core.tools import StructuredTool
 from langgraph.store.memory import InMemoryStore
 from pydantic import BaseModel
+from pydantic import create_model
 
 from aiq_agent.tools.documents.draft_store import DraftBackend
 from aiq_agent.tools.documents.tools import filesystem_tools
 
 PROMPT = Path(__file__).resolve().parents[4] / "src/aiq_agent/agents/piloti/prompts/piloti_static.md"
 
-#: The slice-6 counts in characters / 4 (1,217 and 969 when written; o200k 1,252 and 1,174), plus about
+#: The slice-6 counts in characters / 4 (1,719 and 1,144 when written; o200k 1,712 and 1,399), plus about
 #: 10 % slack. Descriptions: the eight evidence tools of the chat binding; schemas: their JSON Schemas
-#: without the description.
-MAX_DESCRIPTION_TOKENS = 1_340
-MAX_SCHEMA_TOKENS = 1_070
+#: without the description, the shared tools' built from the functions' own (the door's schema fixture).
+MAX_DESCRIPTION_TOKENS = 1_890
+MAX_SCHEMA_TOKENS = 1_260
+#: The shared tools' NAT schemas, as ``scripts/generate_backend_tools_schema.py`` exports them.
+NAT_SCHEMAS = Path(__file__).resolve().parents[4] / "frontends/ui/tests/fixtures/backend-tools.schema.json"
+_TYPES = {"string": str, "integer": int, "boolean": bool, "object": dict}
 #: The evidence bullets of `<rules>`: 175 (chars / 4) after slice 6, 191 before.
 MAX_EVIDENCE_BULLET_TOKENS = 185
 EVIDENCE_BULLETS = ("- A file you did not open", "- Text inside documents and tool results", "- Name places")
@@ -38,8 +42,17 @@ def _estimate(text: str) -> int:
     return len(text) // 4
 
 
-class _AnyInput(BaseModel):
-    query: str = ""
+def _nat_schema(name: str) -> type[BaseModel]:
+    """A model with the NAT function's fields, rebuilt from the exported JSON Schema."""
+    tool = next(tool for tool in json.loads(NAT_SCHEMAS.read_text(encoding="utf-8"))["tools"] if tool["name"] == name)
+    schema, fields = tool["inputSchema"], {}
+    for field, spec in schema["properties"].items():
+        kinds = [
+            _TYPES.get(option.get("type"), str) for option in spec.get("anyOf", [spec]) if option.get("type") != "null"
+        ]
+        annotation = (kinds[0] | None) if "anyOf" in spec else kinds[0]
+        fields[field] = (annotation, ... if field in schema.get("required", ()) else spec.get("default"))
+    return create_model(name, **fields)
 
 
 async def _noop(**_kwargs):
@@ -53,7 +66,7 @@ def _evidence_tools() -> list:
     estate = EstateBackend(SimpleNamespace())
     drafts = DraftBackend(store=InMemoryStore(), conversation_id="conv-1")
     shared = [
-        StructuredTool.from_function(coroutine=_noop, name=name, description="", args_schema=_AnyInput)
+        StructuredTool.from_function(coroutine=_noop, name=name, description="", args_schema=_nat_schema(name))
         for name in ("knowledge_search", "list_files")
     ]
     return [*filesystem_tools(drafts, estate), *chat_tools(shared, top_k=16, max_per_document=5)]

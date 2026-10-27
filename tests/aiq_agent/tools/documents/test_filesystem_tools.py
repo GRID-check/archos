@@ -204,7 +204,7 @@ class TestTheRound:
 
     async def test_the_tool_step_says_which_mount(self, monkeypatch) -> None:
         emitted: list = []
-        monkeypatch.setattr(turn_status, "emit_step", lambda step, started=False: emitted.append(step))
+        monkeypatch.setattr(turn_status, "emit_step", lambda step, started=False, **_: emitted.append(step))
         callback = turn_status.ToolStepCallback()
         run = uuid4()
         await callback.on_tool_start({"name": "read_file"}, "", run_id=run, inputs={"file_path": PATH})

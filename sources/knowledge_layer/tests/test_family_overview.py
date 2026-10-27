@@ -206,13 +206,13 @@ class TestTheFamilyIsTheAnswer:
         said nothing about that: the model read the preamble as a search
         result, announced it would now open the Richtlinie properly, and spent
         a whole round re-reading the passages it was holding. The Punkt is
-        where the next open pays, and `_outline_instruction()` below says how.
+        where the next open pays, and `_OUTLINE_INSTRUCTION` below says how.
         """
         corpus(MEMBERS)
 
         out = await _search()
 
-        assert "These parts are therefore open at the level `read_passage` opens a document at" in out
+        assert "These parts are therefore open at the level a read of one document opens it at" in out
         assert "deeper goes only a single Punkt from a Gliederung" in out
 
     async def test_a_part_the_corpus_lacks_is_never_claimed(self, corpus):
@@ -315,7 +315,7 @@ class TestTheOneTrailer:
 
         out = await _search()
 
-        assert out.count(rp._outline_instruction()) == 1
+        assert out.count(rp._OUTLINE_INSTRUCTION) == 1
 
     async def test_the_index_lists_chapters_and_not_sub_clauses(self, corpus):
         """Four members at the single-document budget is 4 to 6k tokens of index
@@ -451,7 +451,7 @@ class TestAnOverviewThatFailsSaysSo:
         out = await _search()
 
         assert out.startswith("Note: the overview of the parts of OIB-Richtlinie 2 could not be built")
-        assert "`read_passage`" in out
+        assert "each part opens on its own by its file name" in out
 
     async def test_a_search_that_names_no_family_carries_no_notice(self, corpus):
         corpus(MEMBERS)

@@ -37,4 +37,4 @@ Relevance Score: 0.71
   - Punkt 2.9: Löschwasser (p. 5)
   - Punkt 2.10: Blitzschutz (p. 5)
 
-Open a listed Punkt with `read_passage(document=…, clause=…)`. The Gliederung is an index, not evidence: only the passages above carry a Citation.
+Open a listed Punkt by its number. The Gliederung is an index, not evidence: only the passages above carry a Citation.

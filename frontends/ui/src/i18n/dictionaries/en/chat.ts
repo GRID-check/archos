@@ -1448,6 +1448,26 @@ export const chat = {
     reasoningGraphLabel: 'Reasoning trace',
     stepsLabel: 'Thinking steps',
     stepsHeading: 'Intermediate steps',
+    // Subagents a turn ran (AG-UI 1.0 SUBAGENT_*): today an in-chat deep
+    // research with its planning, research and report.
+    subagents: {
+      heading: 'Subagents',
+      steps: '{count, plural, one {# step} other {# steps}}',
+      status: {
+        running: 'working',
+        ok: 'done',
+        error: 'failed',
+        ended: 'stopped',
+      },
+      name: {
+        deepResearcher: 'Deep research',
+        planner: 'Planning',
+        researcher: 'Research',
+        writer: 'Report',
+        sourceRouter: 'Source choice',
+        generalPurpose: 'General agent',
+      },
+    },
     sourcesFanOut: 'Sources',
     hitCount: '{count} hits',
     hitCountOne: '1 hit',

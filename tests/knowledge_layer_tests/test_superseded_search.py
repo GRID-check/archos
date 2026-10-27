@@ -155,7 +155,7 @@ class TestTheExclusion:
         out = await _ranked_search(query="Bewehrung der Decke")
 
         assert "Older Fassungen left out: Statik_Index_B.pdf" in out
-        assert "file_name=" in out.split("Older Fassungen left out", 1)[1].splitlines()[0]
+        assert "readable when it is named" in out.split("Older Fassungen left out", 1)[1].splitlines()[0]
 
     async def test_naming_the_file_reads_it_and_hides_nothing(self, search):
         store = search(POOLS, REPLACED)

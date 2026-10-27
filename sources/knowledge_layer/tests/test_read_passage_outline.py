@@ -298,7 +298,7 @@ class TestTheClauseOutline:
             "  - Punkt 2.1: Abstände (p. 4)",
             "  - Punkt 2.2: Löschwasser (p. 6)",
             "- Punkt 3: Brandschutz (p. 5) — Text zu Brandschutz.",
-            rp._outline_instruction(),
+            rp._OUTLINE_INSTRUCTION,
         ]
 
     async def test_a_split_clause_is_one_line_not_two(self, store):
@@ -342,7 +342,7 @@ class TestTheClauseOutline:
 
         out = await _read(document=OIB)
 
-        assert "read_passage(document=…, clause=…)" in out
+        assert "Open a listed Punkt by its number" in out
         assert "not evidence" in out
 
     async def test_a_document_without_clause_zero_opens_its_first_clause(self, store):
@@ -432,7 +432,7 @@ class TestThePerPageFallback:
 
         assert "## Gliederung" not in out
         assert "not structured in Punkte" in out
-        assert "read_passage(document=…, page=…)" in out
+        assert "further pages open by their number" in out
 
     async def test_pages_come_back_in_page_order(self, store):
         store.page_chunks = [_page_chunk(page, f"Seite {page}") for page in (3, 1, 2)]

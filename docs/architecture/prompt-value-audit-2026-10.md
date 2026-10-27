@@ -210,7 +210,8 @@ facts about our own tools; whether hybrid wins is the answer suite's three
 arms to measure.
 
 **Tool surface** (descriptions and schemas of the eight evidence tools,
-o200k): 5,560 → 2,426 per call. The base is the commit with slices 2 to 4,
+o200k): 5,560 → 3,111 per call (2,426 in the first cut, which also dropped
+`list_files`' listing; review kept its date filter and paging, +565). The base is the commit with slices 2 to 4,
 which bound the estate verbs beside `read_passage`, the listing `list_files`
 and the literal `knowledge_search`. `tests/aiq_agent/agents/piloti/test_evidence_token_budget.py`
 holds it.
@@ -239,13 +240,21 @@ tokens (o200k); the static prompt 4,872 → 4,865. The coverage sentence
 | "Speculatively batch read_file calls", "When in doubt, check if a skill exists" (stock) | not taken | overtriggering (Prompting best practices) | — |
 | Field descriptions of the stock schemas | cut | they repeat the description | bare fields; `conclusion` the one described |
 
-**Retired names.** `read_passage`, `list_files` with listing arguments and
+**Retired names.** `read_passage`, `list_files`' tree view and
 `knowledge_search(match=…)` left Piloti's chat binding; deep research, intake
-and the door keep them. A call to one is answered as an error with the exact
-replacement call (`common/retired_calls.py`), and a hint a shared tool returns
-names the caller's own tool (`common/tool_vocabulary.py`). A citation written
-as a path resolves to its key in code (`citation_verification.citation_key_of_path`),
-so CITATIONS needed no new prose.
+and the door keep them. An unbound name is answered by the tool node; a
+retired argument is rejected by the schema with its replacement named
+(`common/retired_calls.py`). The hints shared tools return state facts and
+name no tool, because three agents with different tools read them. A citation
+written as a path resolves to its key in code
+(`citation_verification.citation_key_of_path`), and the answer's source line
+names the file, so CITATIONS needed no new prose.
+
+**The query's language.** `knowledge_search` asks for the documents' language:
+the corpus is German, and beside the multilingual dense channel the lexical
+ones (German BM25, the exact-term phrases) match only the documents' words.
+The static rule on English queries now names `workspace__search`, which it
+always meant.
 
 Not measured: the answer suite has not been run on slice 6 (no model access in
 the build container). Run it as above, with `--set files` and all three arms,

@@ -262,13 +262,20 @@ class TestThePrefetch:
         calls = prefetch_calls(self._decided("projekt"), q)
         assert calls == [
             {"name": "knowledge_search", "args": {"query": q}},
-            {"name": "grep", "args": {"pattern": "Rauchabzug", "path": "/project/"}},
+            {"name": "grep", "args": {"pattern": "Rauchabzug", "output_mode": "content", "path": "/project/"}},
         ]
 
     def test_an_exact_prefetch_stays_in_the_open_document(self):
         q = "Wo steht „Rauchabzug“?"
         calls = prefetch_calls(self._decided("projekt"), q, focus_file_name="Gutachten.pdf")
-        assert calls[1] == {"name": "grep", "args": {"pattern": "Rauchabzug", "path": "/project/Gutachten.pdf.md"}}
+        assert calls[0]["args"] == {"query": q, "path": "/project/Gutachten.pdf.md"}
+        # Citable passages, under the mount, narrowed to the open document by its name (a glob, escaped).
+        assert calls[1] == {
+            "name": "grep",
+            "args": {"pattern": "Rauchabzug", "output_mode": "content", "path": "/project/", "glob": "Gutachten.pdf"},
+        }
+        odd = prefetch_calls(self._decided("projekt"), q, focus_file_name="Plan [A].pdf", focus_shelf="session")
+        assert odd[1]["args"]["path"] == "/chat/" and odd[1]["args"]["glob"] == "Plan [[]A[]].pdf"
 
     def test_codes_and_file_names_are_literal_terms_at_most_two_and_the_office_shelf_follows_the_corpus(self):
         q = "Vergleiche A-101, EG_02, 04-112 und Grundriss_EG.pdf"
@@ -394,7 +401,10 @@ class TestTheOpenDocument:
     def test_a_project_question_with_a_file_open_is_pinned_to_it(self):
         decided = TurnDecisions(decided=True, needs_evidence=0.9, corpus="projekt", corpus_p=0.9)
         assert prefetch_calls(decided, "Fass den Plan zusammen.", focus_file_name="EG_Grundriss.pdf") == [
-            {"name": "knowledge_search", "args": {"query": "Fass den Plan zusammen.", "file_name": "EG_Grundriss.pdf"}}
+            {
+                "name": "knowledge_search",
+                "args": {"query": "Fass den Plan zusammen.", "path": "/project/EG_Grundriss.pdf.md"},
+            }
         ]
 
     def test_a_law_question_with_a_file_open_searches_the_corpus_not_the_file(self):
