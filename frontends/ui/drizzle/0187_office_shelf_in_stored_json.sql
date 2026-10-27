@@ -48,7 +48,7 @@
 -- as the owner, so every tenant's rows are rewritten. The helper function exists only for the
 -- length of this migration.
 
-CREATE OR REPLACE FUNCTION grid_0187_shelf(t text) RETURNS text
+CREATE OR REPLACE FUNCTION tmp_0187_shelf(t text) RETURNS text
   LANGUAGE sql IMMUTABLE AS $$
   SELECT regexp_replace(
            regexp_replace(t, '("shelf"[[:space:]]*:[[:space:]]*)"archiv"', '\1"office_shelf"', 'g'),
@@ -56,24 +56,24 @@ CREATE OR REPLACE FUNCTION grid_0187_shelf(t text) RETURNS text
 $$;
 
 --> statement-breakpoint
-UPDATE "messages" SET metadata = grid_0187_shelf(metadata::text)::jsonb
+UPDATE "messages" SET metadata = tmp_0187_shelf(metadata::text)::jsonb
  WHERE metadata::text ~ '"shelf\\?"[[:space:]]*:[[:space:]]*\\?"archiv';
 
 --> statement-breakpoint
-UPDATE "messages" SET content = grid_0187_shelf(content)
+UPDATE "messages" SET content = tmp_0187_shelf(content)
  WHERE content ~ '"shelf\\?"[[:space:]]*:[[:space:]]*\\?"archiv';
 
 --> statement-breakpoint
-UPDATE "tasks" SET plan = grid_0187_shelf(plan::text)::jsonb
+UPDATE "tasks" SET plan = tmp_0187_shelf(plan::text)::jsonb
  WHERE plan::text ~ '"shelf\\?"[[:space:]]*:[[:space:]]*\\?"archiv';
 
 --> statement-breakpoint
-UPDATE "task_definitions" SET plan = grid_0187_shelf(plan::text)::jsonb
+UPDATE "task_definitions" SET plan = tmp_0187_shelf(plan::text)::jsonb
  WHERE plan::text ~ '"shelf\\?"[[:space:]]*:[[:space:]]*\\?"archiv';
 
 --> statement-breakpoint
-UPDATE "task_runs" SET plan = grid_0187_shelf(plan::text)::jsonb
+UPDATE "task_runs" SET plan = tmp_0187_shelf(plan::text)::jsonb
  WHERE plan::text ~ '"shelf\\?"[[:space:]]*:[[:space:]]*\\?"archiv';
 
 --> statement-breakpoint
-DROP FUNCTION grid_0187_shelf(text);
+DROP FUNCTION tmp_0187_shelf(text);

@@ -5,7 +5,7 @@
 -- including the ones a build after 0170 wrote that way to begin with. The older build reads
 -- both spellings as the office shelf, so nothing it shows changes.
 
-CREATE OR REPLACE FUNCTION grid_0187_shelf_down(t text) RETURNS text
+CREATE OR REPLACE FUNCTION tmp_0187_shelf_down(t text) RETURNS text
   LANGUAGE sql IMMUTABLE AS $$
   SELECT regexp_replace(
            regexp_replace(t, '("shelf"[[:space:]]*:[[:space:]]*)"office_shelf"', '\1"archiv"', 'g'),
@@ -13,24 +13,24 @@ CREATE OR REPLACE FUNCTION grid_0187_shelf_down(t text) RETURNS text
 $$;
 
 --> statement-breakpoint
-UPDATE "messages" SET metadata = grid_0187_shelf_down(metadata::text)::jsonb
+UPDATE "messages" SET metadata = tmp_0187_shelf_down(metadata::text)::jsonb
  WHERE metadata::text ~ '"shelf\\?"[[:space:]]*:[[:space:]]*\\?"office_shelf';
 
 --> statement-breakpoint
-UPDATE "messages" SET content = grid_0187_shelf_down(content)
+UPDATE "messages" SET content = tmp_0187_shelf_down(content)
  WHERE content ~ '"shelf\\?"[[:space:]]*:[[:space:]]*\\?"office_shelf';
 
 --> statement-breakpoint
-UPDATE "tasks" SET plan = grid_0187_shelf_down(plan::text)::jsonb
+UPDATE "tasks" SET plan = tmp_0187_shelf_down(plan::text)::jsonb
  WHERE plan::text ~ '"shelf\\?"[[:space:]]*:[[:space:]]*\\?"office_shelf';
 
 --> statement-breakpoint
-UPDATE "task_definitions" SET plan = grid_0187_shelf_down(plan::text)::jsonb
+UPDATE "task_definitions" SET plan = tmp_0187_shelf_down(plan::text)::jsonb
  WHERE plan::text ~ '"shelf\\?"[[:space:]]*:[[:space:]]*\\?"office_shelf';
 
 --> statement-breakpoint
-UPDATE "task_runs" SET plan = grid_0187_shelf_down(plan::text)::jsonb
+UPDATE "task_runs" SET plan = tmp_0187_shelf_down(plan::text)::jsonb
  WHERE plan::text ~ '"shelf\\?"[[:space:]]*:[[:space:]]*\\?"office_shelf';
 
 --> statement-breakpoint
-DROP FUNCTION grid_0187_shelf_down(text);
+DROP FUNCTION tmp_0187_shelf_down(text);
