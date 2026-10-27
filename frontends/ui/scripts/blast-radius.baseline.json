@@ -275,6 +275,7 @@
   "src/lib/skills/service.ts": 287,
   "src/lib/skills/skill-category-repository.ts": 288,
   "src/lib/skills/types.ts": 292,
+  "src/lib/source-kinds.ts": 547,
   "src/lib/storage/admission.ts": 283,
   "src/lib/storage/bucket.ts": 297,
   "src/lib/storage/contract.ts": 291,

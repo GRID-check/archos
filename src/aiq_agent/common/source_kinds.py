@@ -69,9 +69,9 @@ class SourceKind:
     css_token: str
 
 
-#: The canonical registry. Extend here (and add the matching ``--source-*`` CSS
-#: tokens + the mirror in ``frontends/ui/.../source-kinds.ts``) to introduce a
-#: new kind — every rendering surface picks it up automatically.
+#: The canonical registry. Extend here, run ``scripts/generate_vocabularies.py``
+#: (the UI's ``SOURCE_KINDS`` is generated from these keys) and give the kind its
+#: ``--source-*`` tint in ``frontends/ui/src/lib/source-kinds.ts``.
 SOURCE_KINDS: dict[str, SourceKind] = {
     "building_law": SourceKind(
         key="building_law",
