@@ -179,17 +179,37 @@ export function squashDrawingNumber(value: string): string {
   return value.normalize('NFC').toLowerCase().replace(/[\s\-_]+/g, '')
 }
 
-const escapeRegExp = (value: string): string => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+const LETTER_OR_DIGIT = /[\p{L}\p{N}]/u
+const DIGIT = /\p{N}/u
+const NUMBER_SEPARATOR = /[\s\-_.]/
+
+/** The length of `key` matched at `start` of `name`, separators allowed between its characters; -1 when it does not. */
+function matchAt(name: readonly string[], start: number, key: readonly string[]): number {
+  let at = start
+  for (let index = 0; index < key.length; index++) {
+    if (index > 0) while (at < name.length && NUMBER_SEPARATOR.test(name[at]!)) at++
+    if (name[at] !== key[index]) return -1
+    at++
+  }
+  return at
+}
 
 /**
  * Does the file name carry the drawing number? „EP-05“ matches
  * `EP05_Grundriss_EG.pdf` and `ep 05 Grundriss.pdf`, never `EP-050.pdf`
- * or `STEP-05.pdf`: the number stands on its own in the name.
+ * or `STEP-05.pdf`: the number stands on its own in the name. A linear scan,
+ * not a pattern built from the key: the key is a document's text.
  */
 function fileNameCarries(filename: string, squashedKey: string): boolean {
   if (squashedKey.length < 2) return false
-  const pattern = [...squashedKey].map(escapeRegExp).join('[\\s\\-_.]*')
-  return new RegExp(`(?<![\\p{L}\\p{N}])${pattern}(?!\\p{N})`, 'iu').test(filename.normalize('NFC'))
+  const name = [...filename.normalize('NFC').toLowerCase()]
+  const key = [...squashedKey.toLowerCase()]
+  for (let start = 0; start < name.length; start++) {
+    if (start > 0 && LETTER_OR_DIGIT.test(name[start - 1]!)) continue
+    const end = matchAt(name, start, key)
+    if (end >= 0 && !(end < name.length && DIGIT.test(name[end]!))) return true
+  }
+  return false
 }
 
 /** The squashed forms a drawing reference may be found under: the key, and for „3/A-501“ the sheet `A-501`. */
