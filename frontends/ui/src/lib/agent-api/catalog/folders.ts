@@ -26,12 +26,7 @@ import {
   sealUploadBatchSchema,
   uploadHistoryQuerySchema,
 } from '@/lib/upload-batches/batch-wire'
-import {
-  MAIL_IMPORT_LIST_PAGE_MAX,
-  MAIL_IMPORT_LIST_PAGE_SIZE,
-  mailImportListQuerySchema,
-  startMailImportSchema,
-} from '@/lib/mail-import/types'
+import { mailImportListQuerySchema, startMailImportSchema } from '@/lib/mail-import/types'
 import type { AgentOperation } from '../operation'
 import { rawBodySchema } from '../upload-wire'
 
@@ -313,10 +308,8 @@ export const foldersOperations = [
     domain: 'documents',
     summary: 'List a project’s mail imports',
     description:
-      "The project's Outlook archive imports with their status and counts, newest first, " +
-      `${MAIL_IMPORT_LIST_PAGE_SIZE} a page by default and at most ${MAIL_IMPORT_LIST_PAGE_MAX} (\`limit\`); pass \`nextCursor\` back ` +
-      'as `cursor` for the next page, null on the last. Import ids feed ' +
-      'mail-import-get and mail-import-cancel.',
+      "The project's Outlook archive imports with their status and counts, newest first. " +
+      'Import ids feed mail-import-get and mail-import-cancel.',
     method: 'GET',
     path: '/api/projects/[id]/mail-imports',
     params: projectParams,
@@ -340,9 +333,8 @@ export const foldersOperations = [
     domain: 'documents',
     summary: 'Cancel a mail import',
     description:
-      'Cancels an import for good: the parts already sent and the staged archive are discarded, and it cannot be resumed. ' +
-      'Mails already filed stay in the project (move them to the bin with document-bin). Only the person who started it, or an org ' +
-      'project administrator, may cancel. Import ids come from mail-import-list.',
+      'Cancels an import for good: sent parts and the staged archive are discarded. Filed mails stay (document-bin removes them). ' +
+      'Only the person who started it, or an org project administrator, may cancel. Import ids come from mail-import-list.',
     method: 'DELETE',
     path: '/api/projects/[id]/mail-imports/[importId]',
     params: mailImportParams,

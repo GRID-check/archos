@@ -6249,7 +6249,7 @@
       "delete": {
         "operationId": "mail-import-cancel",
         "summary": "Cancel a mail import",
-        "description": "Cancels an import for good: the parts already sent and the staged archive are discarded, and it cannot be resumed. Mails already filed stay in the project (move them to the bin with document-bin). Only the person who started it, or an org project administrator, may cancel. Import ids come from mail-import-list.",
+        "description": "Cancels an import for good: sent parts and the staged archive are discarded. Filed mails stay (document-bin removes them). Only the person who started it, or an org project administrator, may cancel. Import ids come from mail-import-list.",
         "tags": [
           "documents"
         ],
@@ -6439,7 +6439,7 @@
       "get": {
         "operationId": "mail-import-list",
         "summary": "List a project’s mail imports",
-        "description": "The project's Outlook archive imports with their status and counts, newest first, 20 a page by default and at most 50 (`limit`); pass `nextCursor` back as `cursor` for the next page, null on the last. Import ids feed mail-import-get and mail-import-cancel.",
+        "description": "The project's Outlook archive imports with their status and counts, newest first. Import ids feed mail-import-get and mail-import-cancel.",
         "tags": [
           "documents"
         ],
