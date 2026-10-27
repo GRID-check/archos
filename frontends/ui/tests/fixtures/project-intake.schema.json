@@ -9,7 +9,6 @@
           "type": "object",
           "properties": {
             "op": {
-              "type": "string",
               "const": "needs"
             },
             "jobId": {
@@ -28,7 +27,6 @@
           "type": "object",
           "properties": {
             "op": {
-              "type": "string",
               "const": "record"
             },
             "jobId": {
@@ -123,7 +121,6 @@
           "type": "object",
           "properties": {
             "op": {
-              "type": "string",
               "const": "withdraw"
             },
             "jobId": {
@@ -153,7 +150,6 @@
           "type": "object",
           "properties": {
             "op": {
-              "type": "string",
               "const": "progress"
             },
             "jobId": {
@@ -182,7 +178,6 @@
           "type": "object",
           "properties": {
             "op": {
-              "type": "string",
               "const": "finish"
             },
             "jobId": {
@@ -381,7 +376,6 @@
                   "maximum": 180
                 },
                 "country": {
-                  "type": "string",
                   "const": "at"
                 },
                 "federalState": {
@@ -711,7 +705,6 @@
           "type": "object",
           "properties": {
             "kind": {
-              "type": "string",
               "const": "document"
             },
             "fileName": {
@@ -747,11 +740,9 @@
           "type": "object",
           "properties": {
             "kind": {
-              "type": "string",
               "const": "geocoder"
             },
             "provider": {
-              "type": "string",
               "const": "photon"
             },
             "label": {
@@ -775,7 +766,6 @@
           "type": "object",
           "properties": {
             "kind": {
-              "type": "string",
               "const": "derivation"
             },
             "rule": {
@@ -845,7 +835,6 @@
           "type": "object",
           "properties": {
             "kind": {
-              "type": "string",
               "const": "person"
             },
             "userId": {
@@ -924,7 +913,6 @@
                   "maximum": 180
                 },
                 "country": {
-                  "type": "string",
                   "const": "at"
                 },
                 "federalState": {
@@ -1150,7 +1138,6 @@
                       "type": "object",
                       "properties": {
                         "kind": {
-                          "type": "string",
                           "const": "document"
                         },
                         "fileName": {
@@ -1186,11 +1173,9 @@
                       "type": "object",
                       "properties": {
                         "kind": {
-                          "type": "string",
                           "const": "geocoder"
                         },
                         "provider": {
-                          "type": "string",
                           "const": "photon"
                         },
                         "label": {
@@ -1214,7 +1199,6 @@
                       "type": "object",
                       "properties": {
                         "kind": {
-                          "type": "string",
                           "const": "derivation"
                         },
                         "rule": {
@@ -1284,7 +1268,6 @@
                       "type": "object",
                       "properties": {
                         "kind": {
-                          "type": "string",
                           "const": "person"
                         },
                         "userId": {
@@ -1346,7 +1329,6 @@
                             "type": "object",
                             "properties": {
                               "kind": {
-                                "type": "string",
                                 "const": "document"
                               },
                               "fileName": {
@@ -1382,11 +1364,9 @@
                             "type": "object",
                             "properties": {
                               "kind": {
-                                "type": "string",
                                 "const": "geocoder"
                               },
                               "provider": {
-                                "type": "string",
                                 "const": "photon"
                               },
                               "label": {
@@ -1410,7 +1390,6 @@
                             "type": "object",
                             "properties": {
                               "kind": {
-                                "type": "string",
                                 "const": "derivation"
                               },
                               "rule": {
@@ -1480,7 +1459,6 @@
                             "type": "object",
                             "properties": {
                               "kind": {
-                                "type": "string",
                                 "const": "person"
                               },
                               "userId": {
@@ -1845,7 +1823,6 @@
                             "type": "object",
                             "properties": {
                               "kind": {
-                                "type": "string",
                                 "const": "document"
                               },
                               "fileName": {
@@ -1881,11 +1858,9 @@
                             "type": "object",
                             "properties": {
                               "kind": {
-                                "type": "string",
                                 "const": "geocoder"
                               },
                               "provider": {
-                                "type": "string",
                                 "const": "photon"
                               },
                               "label": {
@@ -1909,7 +1884,6 @@
                             "type": "object",
                             "properties": {
                               "kind": {
-                                "type": "string",
                                 "const": "derivation"
                               },
                               "rule": {
@@ -1979,7 +1953,6 @@
                             "type": "object",
                             "properties": {
                               "kind": {
-                                "type": "string",
                                 "const": "person"
                               },
                               "userId": {
@@ -2041,7 +2014,6 @@
                                   "type": "object",
                                   "properties": {
                                     "kind": {
-                                      "type": "string",
                                       "const": "document"
                                     },
                                     "fileName": {
@@ -2077,11 +2049,9 @@
                                   "type": "object",
                                   "properties": {
                                     "kind": {
-                                      "type": "string",
                                       "const": "geocoder"
                                     },
                                     "provider": {
-                                      "type": "string",
                                       "const": "photon"
                                     },
                                     "label": {
@@ -2105,7 +2075,6 @@
                                   "type": "object",
                                   "properties": {
                                     "kind": {
-                                      "type": "string",
                                       "const": "derivation"
                                     },
                                     "rule": {
@@ -2175,7 +2144,6 @@
                                   "type": "object",
                                   "properties": {
                                     "kind": {
-                                      "type": "string",
                                       "const": "person"
                                     },
                                     "userId": {
@@ -2402,7 +2370,6 @@
                               "type": "object",
                               "properties": {
                                 "kind": {
-                                  "type": "string",
                                   "const": "document"
                                 },
                                 "fileName": {
@@ -2438,11 +2405,9 @@
                               "type": "object",
                               "properties": {
                                 "kind": {
-                                  "type": "string",
                                   "const": "geocoder"
                                 },
                                 "provider": {
-                                  "type": "string",
                                   "const": "photon"
                                 },
                                 "label": {
@@ -2466,7 +2431,6 @@
                               "type": "object",
                               "properties": {
                                 "kind": {
-                                  "type": "string",
                                   "const": "derivation"
                                 },
                                 "rule": {
@@ -2536,7 +2500,6 @@
                               "type": "object",
                               "properties": {
                                 "kind": {
-                                  "type": "string",
                                   "const": "person"
                                 },
                                 "userId": {
@@ -2598,7 +2561,6 @@
                                     "type": "object",
                                     "properties": {
                                       "kind": {
-                                        "type": "string",
                                         "const": "document"
                                       },
                                       "fileName": {
@@ -2634,11 +2596,9 @@
                                     "type": "object",
                                     "properties": {
                                       "kind": {
-                                        "type": "string",
                                         "const": "geocoder"
                                       },
                                       "provider": {
-                                        "type": "string",
                                         "const": "photon"
                                       },
                                       "label": {
@@ -2662,7 +2622,6 @@
                                     "type": "object",
                                     "properties": {
                                       "kind": {
-                                        "type": "string",
                                         "const": "derivation"
                                       },
                                       "rule": {
@@ -2732,7 +2691,6 @@
                                     "type": "object",
                                     "properties": {
                                       "kind": {
-                                        "type": "string",
                                         "const": "person"
                                       },
                                       "userId": {

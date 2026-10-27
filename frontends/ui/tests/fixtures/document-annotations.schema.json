@@ -9,7 +9,6 @@
           "type": "object",
           "properties": {
             "op": {
-              "type": "string",
               "const": "list"
             },
             "answerMessageId": {
@@ -30,7 +29,6 @@
           "type": "object",
           "properties": {
             "op": {
-              "type": "string",
               "const": "propose"
             },
             "answerMessageId": {
@@ -142,7 +140,6 @@
           "type": "object",
           "properties": {
             "op": {
-              "type": "string",
               "const": "create"
             },
             "answerMessageId": {
@@ -254,7 +251,6 @@
           "type": "object",
           "properties": {
             "op": {
-              "type": "string",
               "const": "update"
             },
             "answerMessageId": {
@@ -339,7 +335,6 @@
           "type": "object",
           "properties": {
             "op": {
-              "type": "string",
               "const": "delete"
             },
             "answerMessageId": {
@@ -365,7 +360,6 @@
           "type": "object",
           "properties": {
             "op": {
-              "type": "string",
               "const": "reply"
             },
             "answerMessageId": {
@@ -397,7 +391,6 @@
           "type": "object",
           "properties": {
             "op": {
-              "type": "string",
               "const": "room"
             },
             "answerMessageId": {
@@ -418,7 +411,6 @@
           "type": "object",
           "properties": {
             "op": {
-              "type": "string",
               "const": "point"
             },
             "answerMessageId": {
@@ -461,7 +453,6 @@
           "type": "object",
           "properties": {
             "op": {
-              "type": "string",
               "const": "highlight"
             },
             "answerMessageId": {
@@ -517,7 +508,6 @@
           "type": "object",
           "properties": {
             "op": {
-              "type": "string",
               "const": "look"
             },
             "answerMessageId": {
@@ -563,7 +553,6 @@
           "type": "object",
           "properties": {
             "op": {
-              "type": "string",
               "const": "leave"
             },
             "answerMessageId": {
@@ -631,7 +620,6 @@
                     "type": "number"
                   }
                 ],
-                "items": false,
                 "minItems": 4,
                 "maxItems": 4
               },
@@ -1226,7 +1214,6 @@
           "type": "string"
         },
         "ok": {
-          "type": "boolean",
           "const": true
         }
       },

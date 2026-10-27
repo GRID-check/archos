@@ -9,7 +9,6 @@
           "type": "object",
           "properties": {
             "op": {
-              "type": "string",
               "const": "create"
             },
             "projectId": {
@@ -44,7 +43,6 @@
           "type": "object",
           "properties": {
             "op": {
-              "type": "string",
               "const": "update"
             },
             "documentId": {
@@ -77,7 +75,6 @@
           "type": "object",
           "properties": {
             "op": {
-              "type": "string",
               "const": "submit"
             },
             "documentId": {

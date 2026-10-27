@@ -30,10 +30,13 @@
  *   and `email` carry zod's validating regex as a `pattern` too; an agent pays
  *   for every token of a tool list, and the format already says it. A `.regex()`
  *   of our own stays.
- * - **The noise is dropped**: the default safe-integer bounds zod writes on
- *   every `.int()`, the `$schema` line on every node, and the empty
- *   `additionalProperties: {}` of a loose object, which is what an absent one
- *   already means.
+ * - **The noise is dropped**, each a keyword that says what its absence
+ *   already says: the default safe-integer bounds zod writes on every `.int()`,
+ *   the `$schema` line on every node, the empty `additionalProperties: {}` of a
+ *   loose object, the `type` beside a literal's `const`, a record's
+ *   `propertyNames: { type: 'string' }` and a tuple's `items: false` (its
+ *   `maxItems` already closes it). An agent pays for every token of a tool list,
+ *   and `mcp-server.spec.ts` holds the list to a budget.
  *
  * Two shapes it would otherwise lose are put back: a discriminated union keeps
  * OpenAPI's `discriminator`, and `z.string().transform(trim).pipe(...)` is
@@ -99,7 +102,24 @@ function override({ zodSchema, jsonSchema }: OverrideContext): void {
     if (jsonSchema.maximum === Number.MAX_SAFE_INTEGER) delete jsonSchema.maximum
     return
   }
+  if (def.type === 'literal' && 'const' in jsonSchema) {
+    delete jsonSchema.type
+    return
+  }
+  if (def.type === 'record' && isPlainStringSchema(jsonSchema.propertyNames)) {
+    delete jsonSchema.propertyNames
+    return
+  }
+  if (def.type === 'tuple' && jsonSchema.items === false) {
+    delete jsonSchema.items
+    return
+  }
   if (def.type === 'object') objectNode(def as z.core.$ZodObjectDef, jsonSchema)
+}
+
+/** `{ type: 'string' }` and nothing else: what every JSON object key already is. */
+function isPlainStringSchema(value: unknown): boolean {
+  return typeof value === 'object' && value !== null && Object.keys(value).length === 1 && (value as JsonSchemaNode).type === 'string'
 }
 
 function objectNode(def: z.core.$ZodObjectDef, jsonSchema: JsonSchemaNode): void {

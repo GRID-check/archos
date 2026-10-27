@@ -410,7 +410,6 @@
                         "maximum": 180
                       },
                       "country": {
-                        "type": "string",
                         "const": "at"
                       },
                       "federalState": {
@@ -919,7 +918,6 @@
                               "maxLength": 200
                             },
                             "action": {
-                              "type": "string",
                               "const": "confirm"
                             },
                             "alternativeIndex": {
@@ -943,7 +941,6 @@
                               "maxLength": 200
                             },
                             "action": {
-                              "type": "string",
                               "const": "dismiss"
                             },
                             "alternativeIndex": {
@@ -967,7 +964,6 @@
                               "maxLength": 200
                             },
                             "action": {
-                              "type": "string",
                               "const": "answer"
                             },
                             "value": {
@@ -1009,7 +1005,6 @@
                               "maxLength": 200
                             },
                             "action": {
-                              "type": "string",
                               "const": "unknown"
                             }
                           },
@@ -1294,7 +1289,6 @@
                         ]
                       },
                       {
-                        "type": "string",
                         "const": ""
                       }
                     ]
@@ -2447,9 +2441,6 @@
                   "facts": {
                     "default": {},
                     "type": "object",
-                    "propertyNames": {
-                      "type": "string"
-                    },
                     "additionalProperties": {
                       "type": "object",
                       "properties": {
@@ -2476,7 +2467,6 @@
                           ]
                         },
                         "confidence": {
-                          "type": "string",
                           "const": "confirmed"
                         },
                         "source": {
@@ -2499,7 +2489,6 @@
                                 "type": "object",
                                 "properties": {
                                   "kind": {
-                                    "type": "string",
                                     "const": "document"
                                   },
                                   "fileName": {
@@ -2535,11 +2524,9 @@
                                 "type": "object",
                                 "properties": {
                                   "kind": {
-                                    "type": "string",
                                     "const": "geocoder"
                                   },
                                   "provider": {
-                                    "type": "string",
                                     "const": "photon"
                                   },
                                   "label": {
@@ -2563,7 +2550,6 @@
                                 "type": "object",
                                 "properties": {
                                   "kind": {
-                                    "type": "string",
                                     "const": "derivation"
                                   },
                                   "rule": {
@@ -2633,7 +2619,6 @@
                                 "type": "object",
                                 "properties": {
                                   "kind": {
-                                    "type": "string",
                                     "const": "person"
                                   },
                                   "userId": {
@@ -2695,7 +2680,6 @@
                                       "type": "object",
                                       "properties": {
                                         "kind": {
-                                          "type": "string",
                                           "const": "document"
                                         },
                                         "fileName": {
@@ -2731,11 +2715,9 @@
                                       "type": "object",
                                       "properties": {
                                         "kind": {
-                                          "type": "string",
                                           "const": "geocoder"
                                         },
                                         "provider": {
-                                          "type": "string",
                                           "const": "photon"
                                         },
                                         "label": {
@@ -2759,7 +2741,6 @@
                                       "type": "object",
                                       "properties": {
                                         "kind": {
-                                          "type": "string",
                                           "const": "derivation"
                                         },
                                         "rule": {
@@ -2829,7 +2810,6 @@
                                       "type": "object",
                                       "properties": {
                                         "kind": {
-                                          "type": "string",
                                           "const": "person"
                                         },
                                         "userId": {
@@ -2878,9 +2858,6 @@
                   "goals": {
                     "default": {},
                     "type": "object",
-                    "propertyNames": {
-                      "type": "string"
-                    },
                     "additionalProperties": {
                       "anyOf": [
                         {
@@ -2914,9 +2891,6 @@
                   "assumptions": {
                     "default": {},
                     "type": "object",
-                    "propertyNames": {
-                      "type": "string"
-                    },
                     "additionalProperties": {
                       "type": "object",
                       "properties": {
@@ -2943,7 +2917,6 @@
                           ]
                         },
                         "status": {
-                          "type": "string",
                           "const": "unconfirmed"
                         },
                         "reason": {
@@ -2968,7 +2941,6 @@
                                 "type": "object",
                                 "properties": {
                                   "kind": {
-                                    "type": "string",
                                     "const": "document"
                                   },
                                   "fileName": {
@@ -3004,11 +2976,9 @@
                                 "type": "object",
                                 "properties": {
                                   "kind": {
-                                    "type": "string",
                                     "const": "geocoder"
                                   },
                                   "provider": {
-                                    "type": "string",
                                     "const": "photon"
                                   },
                                   "label": {
@@ -3032,7 +3002,6 @@
                                 "type": "object",
                                 "properties": {
                                   "kind": {
-                                    "type": "string",
                                     "const": "derivation"
                                   },
                                   "rule": {
@@ -3102,7 +3071,6 @@
                                 "type": "object",
                                 "properties": {
                                   "kind": {
-                                    "type": "string",
                                     "const": "person"
                                   },
                                   "userId": {
@@ -3164,7 +3132,6 @@
                                       "type": "object",
                                       "properties": {
                                         "kind": {
-                                          "type": "string",
                                           "const": "document"
                                         },
                                         "fileName": {
@@ -3200,11 +3167,9 @@
                                       "type": "object",
                                       "properties": {
                                         "kind": {
-                                          "type": "string",
                                           "const": "geocoder"
                                         },
                                         "provider": {
-                                          "type": "string",
                                           "const": "photon"
                                         },
                                         "label": {
@@ -3228,7 +3193,6 @@
                                       "type": "object",
                                       "properties": {
                                         "kind": {
-                                          "type": "string",
                                           "const": "derivation"
                                         },
                                         "rule": {
@@ -3298,7 +3262,6 @@
                                       "type": "object",
                                       "properties": {
                                         "kind": {
-                                          "type": "string",
                                           "const": "person"
                                         },
                                         "userId": {
@@ -3753,7 +3716,6 @@
                     "type": "object",
                     "properties": {
                       "status": {
-                        "type": "string",
                         "const": "active"
                       }
                     },
@@ -3766,7 +3728,6 @@
                     "type": "object",
                     "properties": {
                       "status": {
-                        "type": "string",
                         "const": "paused"
                       }
                     },
@@ -3779,7 +3740,6 @@
                     "type": "object",
                     "properties": {
                       "status": {
-                        "type": "string",
                         "const": "closed"
                       },
                       "outcome": {
@@ -4705,7 +4665,6 @@
             "in": "query",
             "required": false,
             "schema": {
-              "type": "string",
               "const": "true"
             }
           },
@@ -4725,7 +4684,6 @@
             "schema": {
               "anyOf": [
                 {
-                  "type": "string",
                   "const": "root"
                 },
                 {
@@ -5522,7 +5480,6 @@
             "in": "query",
             "required": false,
             "schema": {
-              "type": "string",
               "const": "true"
             }
           },
@@ -5878,7 +5835,6 @@
                   },
                   "screeningRelease": {
                     "description": "Send \"name\" only when a reviewer released this file’s name from the upload screening.",
-                    "type": "string",
                     "const": "name"
                   },
                   "uploadBatchId": {
@@ -6781,9 +6737,6 @@
                   "query": {
                     "description": "The question: the body of workspace-search (text, kinds, filters, annotationFilters, sort, dir, limit, facets), without a cursor.",
                     "type": "object",
-                    "propertyNames": {
-                      "type": "string"
-                    },
                     "additionalProperties": {}
                   },
                   "shared": {
@@ -7063,7 +7016,6 @@
                   },
                   "screeningRelease": {
                     "description": "Send \"name\" only when a reviewer released this file’s name from the upload screening.",
-                    "type": "string",
                     "const": "name"
                   },
                   "uploadBatchId": {
@@ -7974,9 +7926,6 @@
               "schema": {
                 "description": "The question: the body of workspace-search (text, kinds, filters, sort, dir); kinds and paging are ignored.",
                 "type": "object",
-                "propertyNames": {
-                  "type": "string"
-                },
                 "additionalProperties": {}
               }
             }
@@ -8120,9 +8069,6 @@
                   "filters": {
                     "description": "workspace-search filters; the dimension’s own is ignored.",
                     "type": "object",
-                    "propertyNames": {
-                      "type": "string"
-                    },
                     "additionalProperties": {}
                   }
                 },
@@ -8686,7 +8632,6 @@
                     "type": "object",
                     "properties": {
                       "mode": {
-                        "type": "string",
                         "const": "inherit"
                       }
                     },
@@ -8699,7 +8644,6 @@
                     "type": "object",
                     "properties": {
                       "mode": {
-                        "type": "string",
                         "const": "custom"
                       },
                       "everyoneReads": {
@@ -9027,7 +8971,6 @@
             "required": false,
             "schema": {
               "description": "Adds `documentCount` (filed directly in it) per folder.",
-              "type": "string",
               "const": "true"
             },
             "description": "Adds `documentCount` (filed directly in it) per folder."
@@ -10263,7 +10206,6 @@
                     "type": "boolean"
                   },
                   "carryToCurrent": {
-                    "type": "boolean",
                     "const": true
                   }
                 },
@@ -12727,9 +12669,6 @@
                     "type": "array",
                     "items": {
                       "type": "object",
-                      "propertyNames": {
-                        "type": "string"
-                      },
                       "additionalProperties": {}
                     }
                   }
@@ -12816,7 +12755,6 @@
                   "subjectResourceType": {
                     "anyOf": [
                       {
-                        "type": "string",
                         "const": "document"
                       },
                       {
@@ -13337,9 +13275,6 @@
                       },
                       "metadata": {
                         "type": "object",
-                        "propertyNames": {
-                          "type": "string"
-                        },
                         "additionalProperties": {}
                       },
                       "createdAt": {
@@ -13411,9 +13346,6 @@
                         },
                         "metadata": {
                           "type": "object",
-                          "propertyNames": {
-                            "type": "string"
-                          },
                           "additionalProperties": {}
                         },
                         "createdAt": {
@@ -14487,7 +14419,6 @@
                         "type": "object",
                         "properties": {
                           "kind": {
-                            "type": "string",
                             "const": "stored"
                           },
                           "documentId": {
@@ -14505,7 +14436,6 @@
                         "type": "object",
                         "properties": {
                           "kind": {
-                            "type": "string",
                             "const": "base"
                           },
                           "fileName": {
@@ -15367,7 +15297,6 @@
                     "type": "object",
                     "properties": {
                       "all": {
-                        "type": "boolean",
                         "const": true
                       }
                     },
@@ -15380,7 +15309,6 @@
                     "type": "object",
                     "properties": {
                       "resourceType": {
-                        "type": "string",
                         "const": "document"
                       },
                       "resourceId": {
@@ -15405,7 +15333,6 @@
                     "type": "object",
                     "properties": {
                       "resourceType": {
-                        "type": "string",
                         "const": "document"
                       },
                       "resourceId": {
@@ -15414,7 +15341,6 @@
                         "maxLength": 200
                       },
                       "marksSet": {
-                        "type": "boolean",
                         "const": true
                       }
                     },
@@ -15725,7 +15651,6 @@
             "in": "query",
             "required": true,
             "schema": {
-              "type": "string",
               "const": "document"
             }
           },
@@ -15910,7 +15835,6 @@
                 "type": "object",
                 "properties": {
                   "memoryScope": {
-                    "type": "string",
                     "const": "project"
                   }
                 },
@@ -16762,7 +16686,6 @@
                     "type": "object",
                     "properties": {
                       "escalate": {
-                        "type": "boolean",
                         "const": true
                       }
                     },
@@ -17064,9 +16987,6 @@
                 "properties": {
                   "prefs": {
                     "type": "object",
-                    "propertyNames": {
-                      "type": "string"
-                    },
                     "additionalProperties": {}
                   }
                 },
@@ -18584,9 +18504,6 @@
                   },
                   "metadata": {
                     "type": "object",
-                    "propertyNames": {
-                      "type": "string"
-                    },
                     "additionalProperties": {
                       "type": "string"
                     }
@@ -18856,9 +18773,6 @@
                   },
                   "metadata": {
                     "type": "object",
-                    "propertyNames": {
-                      "type": "string"
-                    },
                     "additionalProperties": {
                       "type": "string"
                     }
@@ -19934,7 +19848,6 @@
                     "type": "object",
                     "properties": {
                       "op": {
-                        "type": "string",
                         "const": "overview"
                       }
                     },
@@ -19947,7 +19860,6 @@
                     "type": "object",
                     "properties": {
                       "op": {
-                        "type": "string",
                         "const": "health"
                       }
                     },
@@ -19960,7 +19872,6 @@
                     "type": "object",
                     "properties": {
                       "op": {
-                        "type": "string",
                         "const": "schedule"
                       }
                     },
@@ -19973,7 +19884,6 @@
                     "type": "object",
                     "properties": {
                       "op": {
-                        "type": "string",
                         "const": "compliance"
                       },
                       "buildingClass": {
@@ -20019,7 +19929,6 @@
                     "type": "object",
                     "properties": {
                       "op": {
-                        "type": "string",
                         "const": "compliance-diff"
                       },
                       "baseModelId": {
@@ -20069,7 +19978,6 @@
                     "type": "object",
                     "properties": {
                       "op": {
-                        "type": "string",
                         "const": "profile"
                       }
                     },
@@ -20082,7 +19990,6 @@
                     "type": "object",
                     "properties": {
                       "op": {
-                        "type": "string",
                         "const": "takeoff"
                       },
                       "quantity": {
@@ -20214,7 +20121,6 @@
                     "type": "object",
                     "properties": {
                       "op": {
-                        "type": "string",
                         "const": "compare"
                       },
                       "baseModelId": {
@@ -20237,7 +20143,6 @@
                     "type": "object",
                     "properties": {
                       "op": {
-                        "type": "string",
                         "const": "types"
                       }
                     },
@@ -20250,7 +20155,6 @@
                     "type": "object",
                     "properties": {
                       "op": {
-                        "type": "string",
                         "const": "elements"
                       },
                       "filter": {
@@ -20384,7 +20288,6 @@
                     "type": "object",
                     "properties": {
                       "op": {
-                        "type": "string",
                         "const": "element"
                       },
                       "globalId": {
@@ -20403,7 +20306,6 @@
                     "type": "object",
                     "properties": {
                       "op": {
-                        "type": "string",
                         "const": "properties"
                       },
                       "ifcType": {
@@ -20427,7 +20329,6 @@
                     "type": "object",
                     "properties": {
                       "op": {
-                        "type": "string",
                         "const": "aggregate"
                       },
                       "filter": {
@@ -22947,9 +22848,6 @@
                   },
                   "settings": {
                     "type": "object",
-                    "propertyNames": {
-                      "type": "string"
-                    },
                     "additionalProperties": {}
                   }
                 }
@@ -23445,15 +23343,12 @@
               "description": "A range ending today, used when `from` and `to` are absent. Default 30.",
               "anyOf": [
                 {
-                  "type": "number",
                   "const": 7
                 },
                 {
-                  "type": "number",
                   "const": 30
                 },
                 {
-                  "type": "number",
                   "const": 90
                 }
               ]
@@ -23635,7 +23530,6 @@
             "required": false,
             "schema": {
               "description": "1 regenerates the digest instead of reading the cache.",
-              "type": "string",
               "const": "1"
             },
             "description": "1 regenerates the digest instead of reading the cache."
@@ -23712,15 +23606,12 @@
               "description": "A range ending today, used when `from` and `to` are absent. Default 30.",
               "anyOf": [
                 {
-                  "type": "number",
                   "const": 7
                 },
                 {
-                  "type": "number",
                   "const": 30
                 },
                 {
-                  "type": "number",
                   "const": 90
                 }
               ]
@@ -23920,7 +23811,6 @@
             "required": false,
             "schema": {
               "description": "weekly: a CSV per organization and ISO week instead of the votes.",
-              "type": "string",
               "const": "weekly"
             },
             "description": "weekly: a CSV per organization and ISO week instead of the votes."
@@ -24006,15 +23896,12 @@
               "description": "A range ending today, used when `from` and `to` are absent. Default 30.",
               "anyOf": [
                 {
-                  "type": "number",
                   "const": 7
                 },
                 {
-                  "type": "number",
                   "const": 30
                 },
                 {
-                  "type": "number",
                   "const": 90
                 }
               ]
@@ -24252,15 +24139,12 @@
               "description": "A range ending today, used when `from` and `to` are absent. Default 30.",
               "anyOf": [
                 {
-                  "type": "number",
                   "const": 7
                 },
                 {
-                  "type": "number",
                   "const": 30
                 },
                 {
-                  "type": "number",
                   "const": 90
                 }
               ]
@@ -24583,15 +24467,12 @@
               "description": "A range ending today, used when `from` and `to` are absent. Default 30.",
               "anyOf": [
                 {
-                  "type": "number",
                   "const": 7
                 },
                 {
-                  "type": "number",
                   "const": 30
                 },
                 {
-                  "type": "number",
                   "const": 90
                 }
               ]
@@ -24696,15 +24577,12 @@
               "description": "A range ending today, used when `from` and `to` are absent. Default 30.",
               "anyOf": [
                 {
-                  "type": "number",
                   "const": 7
                 },
                 {
-                  "type": "number",
                   "const": 30
                 },
                 {
-                  "type": "number",
                   "const": 90
                 }
               ]
@@ -25996,7 +25874,6 @@
                     "type": "object",
                     "properties": {
                       "version": {
-                        "type": "number",
                         "const": 1
                       },
                       "corpus_collection": {
@@ -26010,9 +25887,6 @@
                       "states": {
                         "default": {},
                         "type": "object",
-                        "propertyNames": {
-                          "type": "string"
-                        },
                         "additionalProperties": {
                           "type": [
                             "string",
@@ -26992,15 +26866,12 @@
               "description": "A range ending today, used when `from` and `to` are absent. Default 30.",
               "anyOf": [
                 {
-                  "type": "number",
                   "const": 7
                 },
                 {
-                  "type": "number",
                   "const": 30
                 },
                 {
-                  "type": "number",
                   "const": 90
                 }
               ]
@@ -27125,15 +26996,12 @@
               "description": "A range ending today, used when `from` and `to` are absent. Default 30.",
               "anyOf": [
                 {
-                  "type": "number",
                   "const": 7
                 },
                 {
-                  "type": "number",
                   "const": 30
                 },
                 {
-                  "type": "number",
                   "const": 90
                 }
               ]
@@ -27392,9 +27260,6 @@
                 "properties": {
                   "settings": {
                     "type": "object",
-                    "propertyNames": {
-                      "type": "string"
-                    },
                     "additionalProperties": {
                       "type": "integer"
                     }
@@ -27735,9 +27600,6 @@
                   },
                   "metadata": {
                     "type": "object",
-                    "propertyNames": {
-                      "type": "string"
-                    },
                     "additionalProperties": {
                       "type": "string"
                     }
@@ -27936,9 +27798,6 @@
                   },
                   "metadata": {
                     "type": "object",
-                    "propertyNames": {
-                      "type": "string"
-                    },
                     "additionalProperties": {
                       "type": "string"
                     }

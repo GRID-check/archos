@@ -277,7 +277,6 @@
           "type": "object",
           "properties": {
             "op": {
-              "type": "string",
               "const": "append"
             },
             "steps": {
@@ -475,7 +474,6 @@
           "type": "object",
           "properties": {
             "op": {
-              "type": "string",
               "const": "finish"
             },
             "result": {

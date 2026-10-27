@@ -9,7 +9,6 @@
           "type": "object",
           "properties": {
             "op": {
-              "type": "string",
               "const": "create"
             },
             "answerMessageId": {
@@ -21,7 +20,6 @@
               "minimum": 0
             },
             "kind": {
-              "type": "string",
               "const": "file_operation"
             },
             "payload": {
@@ -229,7 +227,6 @@
           "type": "object",
           "properties": {
             "op": {
-              "type": "string",
               "const": "create"
             },
             "answerMessageId": {
@@ -241,7 +238,6 @@
               "minimum": 0
             },
             "kind": {
-              "type": "string",
               "const": "memory"
             },
             "payload": {
@@ -309,7 +305,6 @@
           "type": "object",
           "properties": {
             "op": {
-              "type": "string",
               "const": "create"
             },
             "answerMessageId": {
@@ -321,7 +316,6 @@
               "minimum": 0
             },
             "kind": {
-              "type": "string",
               "const": "project_profile"
             },
             "payload": {
@@ -714,7 +708,6 @@
       "type": "object",
       "properties": {
         "memoryScope": {
-          "type": "string",
           "const": "project"
         }
       },
@@ -836,7 +829,6 @@
               "type": "boolean"
             },
             "kind": {
-              "type": "string",
               "const": "file_operation"
             },
             "payload": {
@@ -1166,7 +1158,6 @@
               "type": "boolean"
             },
             "kind": {
-              "type": "string",
               "const": "memory"
             },
             "payload": {
@@ -1356,7 +1347,6 @@
               "type": "boolean"
             },
             "kind": {
-              "type": "string",
               "const": "project_profile"
             },
             "payload": {
@@ -1545,7 +1535,6 @@
               "type": "boolean"
             },
             "kind": {
-              "type": "string",
               "const": "operation"
             },
             "payload": {
@@ -1561,18 +1550,12 @@
                   "properties": {
                     "params": {
                       "type": "object",
-                      "propertyNames": {
-                        "type": "string"
-                      },
                       "additionalProperties": {
                         "type": "string"
                       }
                     },
                     "query": {
                       "type": "object",
-                      "propertyNames": {
-                        "type": "string"
-                      },
                       "additionalProperties": {}
                     },
                     "body": {},
@@ -1775,7 +1758,6 @@
                   "type": "boolean"
                 },
                 "kind": {
-                  "type": "string",
                   "const": "file_operation"
                 },
                 "payload": {
@@ -2105,7 +2087,6 @@
                   "type": "boolean"
                 },
                 "kind": {
-                  "type": "string",
                   "const": "memory"
                 },
                 "payload": {
@@ -2295,7 +2276,6 @@
                   "type": "boolean"
                 },
                 "kind": {
-                  "type": "string",
                   "const": "project_profile"
                 },
                 "payload": {
@@ -2484,7 +2464,6 @@
                   "type": "boolean"
                 },
                 "kind": {
-                  "type": "string",
                   "const": "operation"
                 },
                 "payload": {
@@ -2500,18 +2479,12 @@
                       "properties": {
                         "params": {
                           "type": "object",
-                          "propertyNames": {
-                            "type": "string"
-                          },
                           "additionalProperties": {
                             "type": "string"
                           }
                         },
                         "query": {
                           "type": "object",
-                          "propertyNames": {
-                            "type": "string"
-                          },
                           "additionalProperties": {}
                         },
                         "body": {},
