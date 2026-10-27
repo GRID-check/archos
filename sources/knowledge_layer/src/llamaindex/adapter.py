@@ -2562,6 +2562,12 @@ def _parse_drawing_fields(caption: str) -> dict[str, str]:
     return out
 
 
+#: Output budget of one drawing analysis. The schema-v5 JSON of a sheet with five
+#: or more views runs past 3000 tokens, and a truncated reply is asked again from
+#: the start (``_vlm_chat_create``), so the budget covers the dense sheet at once.
+DRAWING_ANALYSIS_MAX_TOKENS = 6000
+
+
 def _analyze_drawing_page_with_vlm(
     image_bytes: bytes,
     vlm_model: str = DEFAULT_VLM_MODEL,
@@ -2618,7 +2624,11 @@ def _analyze_drawing_page_with_vlm(
             # budget sized for that would truncate mid-object and forfeit the
             # whole structure to the fallback parser on every multi-segment
             # sheet. (_vlm_chat_create still doubles this once on truncation.)
-            max_tokens=3000,
+            # The retry starts the reply over, so a sheet over budget paid for
+            # both replies and waited for both: a dense multi-view sheet
+            # measured 56 s with the retry against 25 s for one under budget.
+            # Unused budget costs nothing, so it is sized for the dense sheet.
+            max_tokens=DRAWING_ANALYSIS_MAX_TOKENS,
         ).strip()
         if not reply:
             return ("[Drawing - empty VLM response]", {})
@@ -2924,7 +2934,18 @@ class _PdfScreen(NamedTuple):
 
 
 #: The order ``[ingest-perf]`` lists a file's stages in, so two lines compare.
-_INGEST_PERF_ORDER = ("text", "tables", "screen", "renders", "rasters", "vision", "summary", "embedding", "write")
+_INGEST_PERF_ORDER = (
+    "text",
+    "tables",
+    "screen",
+    "ocr",
+    "renders",
+    "rasters",
+    "vision",
+    "summary",
+    "embedding",
+    "write",
+)
 
 
 @contextlib.contextmanager
@@ -4869,6 +4890,9 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
                         elif ext == ".webp":
                             image_format = "webp"
                     is_image = image_format is not None and not is_pdf
+                    # The image branch reads the camera facts; stored with the
+                    # metadata rows after indexing. Reset here, before the branch.
+                    photo = None
 
                     mode_str = "text"
                     if is_image or (is_pdf and (extract_tables or extract_images)):
@@ -4951,19 +4975,22 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
                                 held = self._screen_tables(job, i, screening_rules, table_documents, screen.checked)
                             if held:
                                 continue
-                        page_routes = _transcription.route_pdf_pages(
-                            source_path,
-                            text_pages,
-                            page_texts_for_visual_heuristic(text_pages),
-                            vlm_api_key=vlm_api_key,
-                            model=ocr_model,
-                            base_url=vlm_base_url,
-                            min_text_chars=VISUAL_PAGE_MIN_TEXT_CHARS,
-                            min_paths=VISUAL_PAGE_MIN_PATHS,
-                            max_ocr_pages=MAX_OCR_PAGES,
-                            max_dim=PAGE_RENDER_MAX_DIM,
-                            **screen.routing(),
-                        )
+                        # Scans and garbled pages are transcribed here, one vision call
+                        # each: on a scanned file this is most of the wall time.
+                        with _stage(stages, "ocr"):
+                            page_routes = _transcription.route_pdf_pages(
+                                source_path,
+                                text_pages,
+                                page_texts_for_visual_heuristic(text_pages),
+                                vlm_api_key=vlm_api_key,
+                                model=ocr_model,
+                                base_url=vlm_base_url,
+                                min_text_chars=VISUAL_PAGE_MIN_TEXT_CHARS,
+                                min_paths=VISUAL_PAGE_MIN_PATHS,
+                                max_ocr_pages=MAX_OCR_PAGES,
+                                max_dim=PAGE_RENDER_MAX_DIM,
+                                **screen.routing(),
+                            )
                         self._record_file_counts(job, i, **page_routes.counts())
                         # What the vision model read off scanned pages is text
                         # too, screened before summaries, captions or embeddings
@@ -5110,7 +5137,6 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
                     tags_future = None
                     topics_future = None
                     doc_class_future = None
-                    photo = None
                     executor = None
                     drawing_pages: list[dict[str, Any]] = []
 
