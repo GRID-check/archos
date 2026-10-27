@@ -212,6 +212,12 @@ class GroundingHit(BaseModel):
     #: the model reads a passage as one party's message and not as the document's finding, and
     #: ``lane_for_hit`` places it in the mail lane. ``None`` for every other document: no line.
     source_format: str | None = None
+    #: Where the model reads this document again (ADR-0133): its absolute estate path,
+    #: ``/project/Gutachten/Brandschutzkonzept.pdf.md``. Rendered as the ``Path:`` line, so
+    #: ``read_file`` can open the page around a hit. ``None`` renders nothing: a hit of
+    #: another project (not mounted), the web, RIS. Not the citation key: a path is how the
+    #: model FINDS a file, the key is what it cites.
+    path: str | None = None
 
     @property
     def authored_by(self) -> str | None:
@@ -422,6 +428,8 @@ def _header_lines(hit: GroundingHit) -> Iterator[str]:
         yield f"Projekt: {_project_line(hit.project)}"
         if hit.project.federal_state_note:
             yield f"Bundesland: {_line(hit.project.federal_state_note)}"
+    if hit.path:
+        yield f"Path: {_line(hit.path)}"
     if hit.collection:
         yield f"Collection: {_line(hit.collection)}"
     if hit.shelf is not None:

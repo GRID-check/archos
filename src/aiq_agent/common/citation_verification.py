@@ -891,10 +891,15 @@ def extract_sources_from_tool_result(
     tool_name: str,
     content: str,
     source_id: str | None = None,
+    artifact: Any = None,
 ) -> list[SourceEntry]:
     """Extract sources from a tool's output.
 
     Strategy:
+    00. If the result carries its records on ``ToolMessage.artifact``
+       (``common.citation_collector``, the filesystem tools, ADR-0133), copy
+       their fields. The artifact travels with the message, so it holds for a
+       message whose text the turn's capture no longer knows.
     0. If this exact text was rendered from a grounding block during this turn,
        copy the fields off the records the producer stated (ADR-0061). No
        parsing, and nothing the passage body can forge.
@@ -926,6 +931,12 @@ def extract_sources_from_tool_result(
     :func:`aiq_agent.common.data_source_registry.get_source_id_for_tool`,
     but it does not gate the fallback.
     """
+    from aiq_agent.common.citation_collector import hits_from_artifact
+
+    carried = hits_from_artifact(artifact)
+    if carried is not None:
+        return [_entry_from_hit(hit, tool_name) for hit in carried]
+
     block = get_grounding_block(content)
     if block is not None:
         # Block order is load-bearing: ``SourceRegistry.add`` merges a repeated
@@ -1597,6 +1608,21 @@ register_source_parser(lambda name: name.endswith("list_files"), lambda content,
 # ``look`` answers in the same grammar when it read a project or office document
 # (``tools/look/place.py``): the reading is the passage, the region its box.
 register_source_parser(is_look_tool, _parse_look)
+# The filesystem tools (ADR-0133). ``read_file`` and ``grep`` answer in the same grammar on the estate, so
+# a replayed turn reads their passages back here; a DRAFT read through ``read_file`` carries no
+# ``Citation:`` line, and the parser's answer (none) is final, so a draft never becomes a source. ``ls``
+# and ``glob`` are an index, like ``list_files``: never evidence. Exact basenames, or a group-qualified
+# one (``x__read_file``), never a substring: ``read_file`` must not catch some other ``*read_file*``.
+_FILESYSTEM_PASSAGE_TOOLS = ("read_file", "grep")
+_FILESYSTEM_INDEX_TOOLS = ("ls", "glob")
+
+
+def _is_filesystem_tool(names: tuple[str, ...]) -> Callable[[str], bool]:
+    return lambda name: any(name == base or name.endswith(f"__{base}") for base in names)
+
+
+register_source_parser(_is_filesystem_tool(_FILESYSTEM_PASSAGE_TOOLS), _parse_knowledge_layer)
+register_source_parser(_is_filesystem_tool(_FILESYSTEM_INDEX_TOOLS), lambda content, tool_name: [])
 
 # ---------------------------------------------------------------------------
 # Citation parsing and source-section layout normalization

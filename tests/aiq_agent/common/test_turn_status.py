@@ -276,7 +276,9 @@ class TestRetrieval:
             "edit_file": "status.action.draftEdit",
         }
         for index, (verb, key) in enumerate(verbs.items()):
-            turn_status.emit_retrieval([{"name": verb, "args": {"file_path": "/drafts/a.md"}}], round_index=index)
+            # `ls` takes `path`; on the drafts each verb keeps its draft line (ADR-0133: the mount decides).
+            args = {"path": "/drafts/"} if verb == "ls" else {"file_path": "/drafts/a.md"}
+            turn_status.emit_retrieval([{"name": verb, "args": args}], round_index=index)
         assert [payload.key for payload in _live(steps)] == list(verbs.values())
 
     def test_a_file_verb_is_an_action_and_never_a_retrieval(self, steps) -> None:
@@ -1069,3 +1071,21 @@ def test_a_call_that_still_names_punkt_reads_as_the_same_clause():
     new = {"name": "read_passage", "args": {"document": "OIB-Richtlinie 2", "clause": "3.5.2"}}
 
     assert turn_status.fetch_signature(old) == turn_status.fetch_signature(new)
+
+
+class TestToolBasename:
+    """The one resolver every caller of a group-qualified tool name reads (grounding, steering, the status line)."""
+
+    @pytest.mark.parametrize(
+        ("qualified", "base"),
+        [
+            ("ifc_measure", "ifc_measure"),
+            ("bim__ifc_measure", "ifc_measure"),
+            ("mcp__piloti__ifc_measure", "ifc_measure"),
+            ("canvas.mark", "mark"),
+            ("group__sub.tool", "tool"),
+            ("", ""),
+        ],
+    )
+    def test_it_returns_the_final_segment(self, qualified: str, base: str) -> None:
+        assert turn_status.tool_basename(qualified) == base

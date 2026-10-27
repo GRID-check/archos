@@ -56,6 +56,13 @@ reported not applicable; horizon rows are listed, never run.
     python scripts/turn_census/suite.py --set precedent --runs 2
     python scripts/turn_census/suite.py --set visual --runs 2 [--look off]
     python scripts/turn_census/suite.py --set north-star --runs 2
+    python scripts/turn_census/suite.py --set files --arm all --runs 3 --out /tmp/fs/before
+    python scripts/turn_census/suite.py --set files --arm all --runs 3 --out /tmp/fs/after --baseline /tmp/fs/before
+    python scripts/turn_census/suite.py --compare /tmp/fs/before /tmp/fs/after   # no model calls
+
+Every run records what the provider billed for the turn (``cost_usd``, OpenRouter's ``usage.cost``), and
+``compare.py`` turns runs into the before/after table: accuracy, rounds, tool calls, tokens and cost per
+answer and latency, per arm and per row.
 """
 
 from __future__ import annotations
@@ -149,6 +156,10 @@ class Run:
     max_reasoning_tokens: int = 0
     output_tokens: int = 0
     input_tokens: int = 0
+    #: What the provider billed for every model call of the turn, in USD (OpenRouter's ``usage.cost``);
+    #: None in a results.json from before it was captured. ``cost_missing`` counts calls billed without one.
+    cost_usd: float | None = None
+    cost_missing: int = 0
     signals: list[str] = field(default_factory=list)
     kind: str = ""
     cited_families: list[str] = field(default_factory=list)
@@ -270,6 +281,13 @@ def _usage(entry: dict) -> tuple[int, int, int]:
     )
 
 
+def turn_cost(rows: list[dict]) -> tuple[float, int]:
+    """USD billed over every recorded call, and how many calls carried usage but no ``cost``."""
+    billed = [row["usage"] for row in rows if row.get("usage")]
+    costs = [float(usage["cost"]) for usage in billed if isinstance(usage.get("cost"), int | float)]
+    return round(sum(costs), 6), len(billed) - len(costs)
+
+
 def final_answer(log_text: str) -> str:
     """The answer the pipeline delivered: `nat run`'s Workflow Result, minus the colour codes."""
     plain = _ANSI.sub("", log_text)
@@ -367,6 +385,7 @@ def observe(
     # The call that ends last need not start last: quote patches and checks overlap.
     run.wall_s = round(max(row["t_end"] for row in rows) - rows[0]["t_start"], 1)
     _read_calls(run, research, answered_at, rows[0]["t_start"])
+    run.cost_usd, run.cost_missing = turn_cost(rows)
     run.signals = log_signals(log_text)
     run.precedent_p = precedent_of(log_text)
     run.answer = final_answer(log_text)
@@ -1412,7 +1431,11 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--runs", type=int, default=2)
     parser.add_argument("--workers", type=int, default=3)
     parser.add_argument("--out", type=Path, default=Path("/tmp/answer_suite") / time.strftime("%Y%m%d-%H%M%S"))
-    parser.add_argument("--baseline", type=Path, help="an earlier results.json to compare medians against")
+    parser.add_argument(
+        "--baseline",
+        type=Path,
+        help="an earlier results.json (or --arm all directory) to compare against; also writes compare.md",
+    )
     parser.add_argument("--report", type=Path, help="re-render a results.json; no model calls")
     parser.add_argument("--ingest", action="store_true", help="sync the OIB corpus into Qdrant first")
     parser.add_argument(
@@ -1441,19 +1464,34 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument(
         "--arm",
-        choices=("search", "navigate", "both"),
-        default="both",
-        help="--set files: search = ranked search only; navigate = list, read, literal search; both = as shipped",
+        choices=("semantic", "grep", "hybrid", "all", "search", "navigate", "both"),
+        default="hybrid",
+        help=(
+            "--set files (ADR-0133): semantic = ranked search only; grep = list, read and literal search; "
+            "hybrid = as shipped; all = the three in turn, each into its own directory under --out. "
+            "search, navigate and both are the earlier names of the three"
+        ),
+    )
+    parser.add_argument(
+        "--compare",
+        nargs=2,
+        type=Path,
+        metavar=("BEFORE", "AFTER"),
+        help="compare two runs (each a results.json or an --arm all directory) arm by arm; no model calls",
     )
     args = parser.parse_args(argv)
     if args.corpus is not None and not args.ingest:
         parser.error("--corpus is what --ingest reads; give both")
-    if args.arm != "both" and args.set != "files":
+    if args.arm != "hybrid" and args.set != "files":
         parser.error("--arm is for --set files")
     if args.look != "on" and args.set != "visual":
         parser.error("--look is for --set visual")
-    baseline = json.loads(args.baseline.read_text()) if args.baseline else None
+    if args.baseline is not None and not args.baseline.exists():
+        parser.error(f"--baseline {args.baseline} does not exist")
+    if args.compare:
+        return write_compare(*args.compare)
     if args.report:
+        baseline = json.loads(args.baseline.read_text()) if args.baseline else None
         return _rerender(args.report, baseline)
     # The ids first: a typo must not cost an ingest.
     not_applicable: list[str] = []
@@ -1506,32 +1544,90 @@ def main(argv: list[str] | None = None) -> int:
         # a run from reading an older seed: the E-Mail-Verlauf's rows (ADR-0137) need its chunks as the
         # real Markdown chunker cuts them, and its records on the metadata row.
         print(f"seeded {sum(seed().values())} chunk(s) of the office-file project")
-    if args.set == "files":
-        from files_eval import arm_overrides
-        from files_eval import configured_tools
-
-        args.override = [*arm_overrides(args.arm, configured_tools()), *(args.override or [])]
     questions, skipped = selected
     families = corpus_families() if args.set not in ("workspace", *fixture_sets) else None
     not_in_corpus = [f"{q['id']} ({lacking})" for q in questions if (lacking := lacking_family(q, families))]
     questions = [q for q in questions if lacking_family(q, families) is None]
     commit = source_commit()
     _warn_if_dirty(commit)
+    arms = arms_for(args)
     stamp = run_stamp()
-    meta = {
-        "started": time.strftime("%Y-%m-%d %H:%M"),
-        "commit": commit,
-        "config": "configs/config_oib_openrouter.yml",
-        "runs_per_question": args.runs,
-        "overrides": args.override or [],
-        "stamp": stamp,
-        "set": args.set,
-        "arm": args.arm if args.set == "files" else None,
-        "look": args.look if args.set == "visual" else None,
-        "not_applicable": not_applicable,
-        "horizon": horizon,
-    }
-    print(f"{len(questions)} question(s) × {args.runs} run(s), {args.workers} at a time → {args.out}")
+    for arm in arms:
+        # Its own directory and conversation ids per arm: a shared id would answer one arm with another's history.
+        arm_args = argparse.Namespace(
+            **{
+                **vars(args),
+                "out": args.out / arm if len(arms) > 1 else args.out,
+                "override": [*arm_pairs(arm), *(args.override or [])],
+                "arm": arm,
+            }
+        )
+        arm_stamp = f"{stamp}-{arm}" if len(arms) > 1 else stamp
+        meta = {
+            "started": time.strftime("%Y-%m-%d %H:%M"),
+            "commit": commit,
+            "config": "configs/config_oib_openrouter.yml",
+            "runs_per_question": args.runs,
+            "overrides": arm_args.override,
+            "stamp": arm_stamp,
+            "set": args.set,
+            "arm": arm,
+            "look": args.look if args.set == "visual" else None,
+            "not_applicable": not_applicable,
+            "horizon": horizon,
+        }
+        measure(questions, arm_args, arm_stamp, meta, skipped, not_in_corpus, baseline_for(args.baseline, arm))
+    if len(arms) > 1:
+        from compare import arms_report
+        from compare import load
+
+        (args.out / "arms.md").write_text(arms_report(load(args.out)), encoding="utf-8")
+        print(f"Written: {args.out / 'arms.md'}")
+    if args.baseline:
+        write_compare(args.baseline, args.out)
+    return 0
+
+
+def arms_for(args: argparse.Namespace) -> list[str | None]:
+    """The arms this invocation runs: the files set's one or three, None for every other set."""
+    if args.set != "files":
+        return [None]
+    from files_eval import arms_of
+
+    return list(arms_of(args.arm))
+
+
+def arm_pairs(arm: str | None) -> list[list[str]]:
+    """The ``--override`` pairs that restrict the agent to ``arm`` (``files_eval.arm_overrides``)."""
+    if arm is None:
+        return []
+    from files_eval import arm_overrides
+    from files_eval import configured_tools
+
+    return arm_overrides(arm, configured_tools())
+
+
+def baseline_for(baseline: Path | None, arm: str | None) -> dict | None:
+    """The earlier results.json an arm's report diffs against: the file given, or the arm's in a directory."""
+    if baseline is None:
+        return None
+    candidates = [baseline] if baseline.is_file() else [baseline / str(arm) / "results.json", baseline / "results.json"]
+    found = next((path for path in candidates if path.is_file()), None)
+    return json.loads(found.read_text(encoding="utf-8")) if found else None
+
+
+def measure(
+    questions: list[dict],
+    args: argparse.Namespace,
+    stamp: str,
+    meta: dict,
+    skipped: list[str],
+    not_in_corpus: list[str],
+    baseline: dict | None,
+) -> list[Run]:
+    """One arm's runs, written to ``args.out`` as results.json and report.md."""
+    arm = f" (arm {meta['arm']})" if meta.get("arm") else ""
+    print(f"{len(questions)} question(s) × {args.runs} run(s){arm}, {args.workers} at a time → {args.out}")
     args.out.mkdir(parents=True, exist_ok=True)
     if args.set == "north-star":
         runs = run_north_star(questions, args, stamp)
@@ -1543,6 +1639,23 @@ def main(argv: list[str] | None = None) -> int:
     (args.out / "report.md").write_text(report)
     print(report)
     print(f"Written: {args.out / 'report.md'}, {args.out / 'results.json'}")
+    return runs
+
+
+def write_compare(before: Path, after: Path) -> int:
+    """``--compare``: the before/after report, printed and written beside ``after`` as compare.md."""
+    from compare import compare_report
+    from compare import load
+
+    try:
+        report = compare_report(load(before), load(after))
+    except (FileNotFoundError, ValueError) as exc:
+        print(f"compare: {exc}", file=sys.stderr)
+        return 2
+    target = (after if after.is_dir() else after.parent) / "compare.md"
+    target.write_text(report, encoding="utf-8")
+    print(report)
+    print(f"Written: {target}")
     return 0
 
 

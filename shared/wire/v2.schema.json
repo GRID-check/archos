@@ -2766,6 +2766,21 @@
           ],
           "title": "Step"
         },
+        "subagent_run_id": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "The subagent invocation that took the step (AG-UI `subagentRunId`). Absent: the turn's own agent.",
+          "title": "Subagent Run Id"
+        },
         "ts": {
           "minimum": 0,
           "title": "Ts",
@@ -2856,6 +2871,21 @@
           ],
           "title": "Step"
         },
+        "subagent_run_id": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "The subagent invocation that took the step (AG-UI `subagentRunId`). Absent: the turn's own agent.",
+          "title": "Subagent Run Id"
+        },
         "ts": {
           "minimum": 0,
           "title": "Ts",
@@ -2889,6 +2919,241 @@
         "v"
       ],
       "title": "StepStarted",
+      "type": "object"
+    },
+    "SubagentError": {
+      "additionalProperties": false,
+      "properties": {
+        "code": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Machine-readable, e.g. the exception class.",
+          "title": "Code"
+        },
+        "conversation_id": {
+          "minLength": 1,
+          "title": "Conversation Id",
+          "type": "string"
+        },
+        "message": {
+          "description": "For a person to read; never the raw exception.",
+          "maxLength": 300,
+          "minLength": 1,
+          "title": "Message",
+          "type": "string"
+        },
+        "seq": {
+          "minimum": 0,
+          "title": "Seq",
+          "type": "integer"
+        },
+        "subagent_run_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Subagent Run Id",
+          "type": "string"
+        },
+        "ts": {
+          "minimum": 0,
+          "title": "Ts",
+          "type": "integer"
+        },
+        "turn_id": {
+          "minLength": 1,
+          "title": "Turn Id",
+          "type": "string"
+        },
+        "type": {
+          "const": "SUBAGENT_ERROR",
+          "default": "SUBAGENT_ERROR",
+          "title": "Type",
+          "type": "string"
+        },
+        "v": {
+          "const": 2,
+          "default": 2,
+          "title": "V",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "subagent_run_id",
+        "message",
+        "conversation_id",
+        "turn_id",
+        "seq",
+        "ts",
+        "type",
+        "v"
+      ],
+      "title": "SubagentError",
+      "type": "object"
+    },
+    "SubagentFinished": {
+      "additionalProperties": false,
+      "properties": {
+        "conversation_id": {
+          "minLength": 1,
+          "title": "Conversation Id",
+          "type": "string"
+        },
+        "seq": {
+          "minimum": 0,
+          "title": "Seq",
+          "type": "integer"
+        },
+        "subagent_run_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Subagent Run Id",
+          "type": "string"
+        },
+        "ts": {
+          "minimum": 0,
+          "title": "Ts",
+          "type": "integer"
+        },
+        "turn_id": {
+          "minLength": 1,
+          "title": "Turn Id",
+          "type": "string"
+        },
+        "type": {
+          "const": "SUBAGENT_FINISHED",
+          "default": "SUBAGENT_FINISHED",
+          "title": "Type",
+          "type": "string"
+        },
+        "v": {
+          "const": 2,
+          "default": 2,
+          "title": "V",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "subagent_run_id",
+        "conversation_id",
+        "turn_id",
+        "seq",
+        "ts",
+        "type",
+        "v"
+      ],
+      "title": "SubagentFinished",
+      "type": "object"
+    },
+    "SubagentStarted": {
+      "additionalProperties": false,
+      "properties": {
+        "conversation_id": {
+          "minLength": 1,
+          "title": "Conversation Id",
+          "type": "string"
+        },
+        "description": {
+          "anyOf": [
+            {
+              "maxLength": 160,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "What this invocation is for, in the model's words, clipped.",
+          "title": "Description"
+        },
+        "name": {
+          "description": "Which subagent, e.g. 'planner-agent'; reusable.",
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "parent_subagent_run_id": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "The subagent invocation that spawned this one; absent: the turn's own agent did.",
+          "title": "Parent Subagent Run Id"
+        },
+        "parent_tool_call_id": {
+          "anyOf": [
+            {
+              "maxLength": 128,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "The tool call that spawned it, when a subagent is a tool.",
+          "title": "Parent Tool Call Id"
+        },
+        "seq": {
+          "minimum": 0,
+          "title": "Seq",
+          "type": "integer"
+        },
+        "subagent_run_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Subagent Run Id",
+          "type": "string"
+        },
+        "ts": {
+          "minimum": 0,
+          "title": "Ts",
+          "type": "integer"
+        },
+        "turn_id": {
+          "minLength": 1,
+          "title": "Turn Id",
+          "type": "string"
+        },
+        "type": {
+          "const": "SUBAGENT_STARTED",
+          "default": "SUBAGENT_STARTED",
+          "title": "Type",
+          "type": "string"
+        },
+        "v": {
+          "const": 2,
+          "default": 2,
+          "title": "V",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "subagent_run_id",
+        "name",
+        "conversation_id",
+        "turn_id",
+        "seq",
+        "ts",
+        "type",
+        "v"
+      ],
+      "title": "SubagentStarted",
       "type": "object"
     },
     "TextAnswer": {
@@ -3087,6 +3352,28 @@
           "default": "tool",
           "title": "Kind",
           "type": "string"
+        },
+        "mount": {
+          "anyOf": [
+            {
+              "enum": [
+                "drafts",
+                "skills",
+                "project",
+                "office",
+                "chat",
+                "law",
+                "estate"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Which part of Piloti's filesystem a file tool reached (ADR-0133): a mount, or `estate` for a call over every mount the person may see. Absent on every other tool, and on a file tool of a turn stored before the field existed, which only ever reached the drafts.",
+          "title": "Mount"
         },
         "scope": {
           "default": "chat",
@@ -3871,6 +4158,9 @@
           "STATE_SNAPSHOT": "#/$defs/StateSnapshot",
           "STEP_FINISHED": "#/$defs/StepFinished",
           "STEP_STARTED": "#/$defs/StepStarted",
+          "SUBAGENT_ERROR": "#/$defs/SubagentError",
+          "SUBAGENT_FINISHED": "#/$defs/SubagentFinished",
+          "SUBAGENT_STARTED": "#/$defs/SubagentStarted",
           "TEXT_MESSAGE_CONTENT": "#/$defs/TextMessageContent",
           "TEXT_MESSAGE_END": "#/$defs/TextMessageEnd",
           "TEXT_MESSAGE_START": "#/$defs/TextMessageStart"
@@ -3898,6 +4188,15 @@
         },
         {
           "$ref": "#/$defs/StepFinished"
+        },
+        {
+          "$ref": "#/$defs/SubagentStarted"
+        },
+        {
+          "$ref": "#/$defs/SubagentFinished"
+        },
+        {
+          "$ref": "#/$defs/SubagentError"
         },
         {
           "$ref": "#/$defs/RunFinished"

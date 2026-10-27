@@ -1659,14 +1659,10 @@ function ZoneBlocks({
         return (
           // The zone grouping is a quiet surface off the four-token ladder
           // (`bg-muted`), not a 5% tint of the ACTION ink: `bg-primary/5`
-          // invented a fifth surface that no token controls. The left rule
-          // stays — it is INK, which is allowed; `border` + `border-l-2` used
-          // to draw that edge twice, so the shorthand now names the other
-          // three sides only.
-          <div
-            key={use}
-            className="border-l-primary bg-muted rounded-xl border-y border-l-2 border-r px-4 py-4"
-          >
+          // invented a fifth surface that no token controls. One full
+          // hairline closes it; the „Zone" eyebrow names it. No left accent:
+          // side stripes are discouraged (grid-design-language.md).
+          <div key={use} className="bg-muted rounded-xl border px-4 py-4">
             <p className="text-primary mb-3 font-mono text-[11px] uppercase tracking-wider">
               Zone · {label}
             </p>
