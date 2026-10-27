@@ -11,6 +11,8 @@ coverage/
 public/mockServiceWorker.js
 # pdf.js runtime assets (staged by scripts/copy-pdfjs-assets.mjs on install, dev and build)
 public/pdfjs/
+# Excalidraw fonts for the sketch editor (staged by scripts/copy-excalidraw-assets.mjs on install, dev and build)
+public/excalidraw/
 
 # Next.js
 .next/

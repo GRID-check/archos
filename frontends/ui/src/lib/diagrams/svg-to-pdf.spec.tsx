@@ -321,6 +321,32 @@ describe.each(TAUGHT_GRAMMARS)('real mermaid $grammar', ({ grammar, minLabels })
   })
 })
 
+/**
+ * A sketch filed from the editor (ADR-0141): the bytes Chromium posted from
+ * `/dev/diagram-sketch`, through Excalidraw's `exportToSvg`, `fileableSketchSvg`
+ * and this validator. Seven boxes and two edge labels: every one must print,
+ * and the rough strokes must stay vector paths.
+ */
+describe('real Excalidraw sketch', () => {
+  const svg = readFileSync(join(__dirname, '__fixtures__/excalidraw-sketch.svg'), 'utf8')
+
+  it('is accepted by the validator and becomes a PDF whose labels print', async () => {
+    const diagram = acceptDiagram({ svg, sourceKind: 'excalidraw', source: '{"type":"excalidraw"}' }, MARKING)
+    const pdf = await renderDiagramPdf({
+      root: diagram.root,
+      viewport: diagram.viewport,
+      title: 'Skizze',
+      projectName: 'Straßenhäuser',
+      marking: MARKING.notice,
+      provenance: PROVENANCE,
+      createdAt: new Date('2026-10-27T00:00:00Z'),
+    })
+    const streams = contentStreams(pdf).join('\n')
+    expect(streams.match(/\bTJ\b/g)?.length ?? 0).toBeGreaterThanOrEqual(8)
+    expect(streams.match(/\bc\b/g)?.length ?? 0).toBeGreaterThan(50)
+  })
+})
+
 describe('where a label prints', () => {
   // The PDF renderer reads `x`/`y` as numbers and ignores `dx`/`dy`, while
   // mermaid's newer grammars place labels with exactly those. Before these

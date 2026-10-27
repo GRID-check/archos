@@ -298,6 +298,15 @@ the end.
 - **Relations are drawn.** A process or decision path, a tree or outline of a
   Regelwerk, a handoff between parties, a schedule of dated phases, and the
   shares of one whole each become a diagram.
+- **A drawing can be reworked by hand.** Inside a project, a drawn process or
+  outline offers „Als Skizze bearbeiten". It opens a drawing canvas
+  (Excalidraw) with Piloti's drawing as the starting point: move boxes, add
+  steps, notes and freehand lines, then „Im Projekt ablegen" files your version
+  as an SVG and a PDF. Both files say „Von Piloti entworfen, von einer Person
+  bearbeitet" and „nicht maßstäblich, ohne Maßangabe". A sketch is never a
+  measured drawing, whatever is drawn on it. Each save files a new document;
+  a filed sketch cannot be reopened yet. Closing with unsaved changes asks
+  first.
 - **Your question stays at the top.** A sent question is anchored near the top
   of the view and the answer grows below it. A short answer does not drop when
   it finishes.
