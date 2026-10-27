@@ -23,7 +23,7 @@
 # BUILD
 # -----------------------------------------------------------------------------
 #
-#   docker build -f deploy/Dockerfile -t aiq-blueprint-ui:latest .
+#   docker build -f deploy/Dockerfile -t grid-frontend:latest .
 #
 # -----------------------------------------------------------------------------
 # RUN
@@ -39,7 +39,7 @@
 #     -e WORKOS_API_KEY=sk_test_xxx \
 #     -e WORKOS_REDIRECT_URI=https://your-domain.com/api/auth/callback \
 #     -e WORKOS_COOKIE_PASSWORD=$(openssl rand -hex 32) \
-#     aiq-blueprint-ui:latest
+#     grid-frontend:latest
 #
 # Without authentication (development/testing):
 #
@@ -47,7 +47,7 @@
 #     -e BACKEND_URL=http://backend:8000 \
 #     -e BACKEND_CHAT_URL=http://backend-chat:8000 \
 #     -e REQUIRE_AUTH=false \
-#     aiq-blueprint-ui:latest
+#     grid-frontend:latest
 #
 # -----------------------------------------------------------------------------
 # ENVIRONMENT VARIABLES (all runtime - no rebuild needed)
@@ -242,7 +242,7 @@ COPY --from=builder --chown=nextjs:nodejs /app/src/lib/limits/ws-frames.js ./src
 COPY --from=builder --chown=nextjs:nodejs /app/src/lib/proxy/ws-upgrade-headers.js ./src/lib/proxy/ws-upgrade-headers.js
 # And this one to classify and log WebSocket teardown after the upgrade.
 COPY --from=builder --chown=nextjs:nodejs /app/src/lib/proxy/ws-teardown.js ./src/lib/proxy/ws-teardown.js
-# And this one to pick which aiq-agent address a chat socket dials (ADR-0080).
+# And this one to pick which chat address a chat socket dials (ADR-0080).
 COPY --from=builder --chown=nextjs:nodejs /app/src/lib/proxy/backend-target.js ./src/lib/proxy/backend-target.js
 # And this one to build a chat turn's headers and signed envelope (ADR-0106).
 COPY --from=builder --chown=nextjs:nodejs /app/src/lib/turns/turn-headers.js ./src/lib/turns/turn-headers.js

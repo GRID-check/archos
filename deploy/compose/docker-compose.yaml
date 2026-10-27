@@ -1,14 +1,14 @@
 # =============================================================================
-# AI-Q Blueprint - Docker Compose
+# Piloti - Docker Compose
 # =============================================================================
 #
 # Services:
-#   aiq-agent    - Backend, chat role (GRID_ROLE=chat): the chat WebSocket
-#   aiq-api      - Backend, api role (GRID_ROLE=api): every other HTTP route
+#   chat         - Backend, chat role (GRID_ROLE=chat): the chat WebSocket
+#   api          - Backend, api role (GRID_ROLE=api): every other HTTP route
 #   agent-worker - Backend, research jobs (GRID_ROLE=worker)
 #   ingest-worker - Backend, ingestion (GRID_ROLE=ingest-worker)
 #   qdrant       - The shared vector store the four roles above talk to
-#   frontend     - Next.js UI (aiq-blueprint-ui)
+#   frontend     - Next.js UI (grid-frontend)
 #   postgres     - PostgreSQL for jobs and checkpoints
 #
 # One backend image runs as four processes (ADR-0082). The frontend reaches the
@@ -26,23 +26,23 @@
 #   BUILD_TARGET=release docker compose --env-file ../.env -f docker-compose.yaml up -d --build
 #
 #   # Use pre-built images from registry (skip --build)
-#   BACKEND_IMAGE=nvcr.io/nvidia/blueprint/aiq-agent:2.0.0 \
-#   FRONTEND_IMAGE=nvcr.io/nvidia/blueprint/aiq-frontend:2.0.0 \
+#   BACKEND_IMAGE=ghcr.io/grid-check/grid-oib-backend:<tag> \
+#   FRONTEND_IMAGE=ghcr.io/grid-check/grid-oib-frontend:<tag> \
 #   docker compose --env-file ../.env -f docker-compose.yaml up -d
 #
 # Frontend image:
-#   The frontend is built from frontends/ui/Dockerfile.
+#   The frontend is built from frontends/ui/deploy/Dockerfile.
 #
 # =============================================================================
 
 services:
-  aiq-agent:
-    image: ${BACKEND_IMAGE:-nvcr.io/nvidia/blueprint/aiq-agent:2.0.0}
+  chat:
+    image: ${BACKEND_IMAGE:-grid-oib-backend:local}
     build:
       context: ../..
       dockerfile: deploy/Dockerfile
       target: ${BUILD_TARGET:-release}
-    container_name: aiq-agent
+    container_name: grid-chat
     env_file:
       - ../.env
     # The backend's environment, once: the other roles of the image alias it and
@@ -132,12 +132,12 @@ services:
       PORT: "8000"
     ports:
       # Not the API: the chat WebSocket, for a client that talks to it directly
-      # (the evals do). The API is published by `aiq-api` on ${PORT:-8000}.
+      # (the evals do). The API is published by `api` on ${PORT:-8000}.
       - "${CHAT_PORT:-8001}:8000"
     volumes:
       - ../../configs:/app/configs:ro
     networks:
-      - aiq-network
+      - grid-network
     depends_on:
       seaweedfs:
         condition: service_healthy
@@ -159,18 +159,18 @@ services:
       start_period: 30s
     restart: unless-stopped
 
-  aiq-api:
+  api:
     # The api role of the backend image (ADR-0082): every HTTP route but the chat
     # socket (knowledge, jobs and their SSE streams, the LLM utilities, admin,
     # housekeeping). It is what BACKEND_URL names. Same image, same environment
-    # as `aiq-agent` (aliased, so the two cannot drift) and GRID_ROLE=api; the
+    # as `chat` (aliased, so the two cannot drift) and GRID_ROLE=api; the
     # roles call each other nowhere.
-    image: ${BACKEND_IMAGE:-nvcr.io/nvidia/blueprint/aiq-agent:2.0.0}
+    image: ${BACKEND_IMAGE:-grid-oib-backend:local}
     build:
       context: ../..
       dockerfile: deploy/Dockerfile
       target: ${BUILD_TARGET:-release}
-    container_name: aiq-api
+    container_name: grid-api
     env_file:
       - ../.env
     environment:
@@ -182,7 +182,7 @@ services:
     volumes:
       - ../../configs:/app/configs:ro
     networks:
-      - aiq-network
+      - grid-network
     depends_on:
       seaweedfs:
         condition: service_healthy
@@ -207,12 +207,12 @@ services:
     # Deployment in deploy/pulumi/src/app/agent-worker.ts: the backend image as
     # GRID_ROLE=worker claims jobs from Postgres (FOR UPDATE SKIP LOCKED) and
     # reads and writes the shared Qdrant. No web port.
-    image: ${BACKEND_IMAGE:-nvcr.io/nvidia/blueprint/aiq-agent:2.0.0}
+    image: ${BACKEND_IMAGE:-grid-oib-backend:local}
     build:
       context: ../..
       dockerfile: deploy/Dockerfile
       target: ${BUILD_TARGET:-release}
-    container_name: aiq-agent-worker
+    container_name: grid-agent-worker
     env_file:
       - ../.env
     environment:
@@ -223,7 +223,7 @@ services:
     volumes:
       - ../../configs:/app/configs:ro
     networks:
-      - aiq-network
+      - grid-network
     # The drain budget (GRID_RESEARCH_WORKER_DRAIN_SECONDS, 600 s) and the time
     # to give back what is still running; docker's default 10 s would kill it first.
     stop_grace_period: 660s
@@ -259,12 +259,12 @@ services:
     # queue; this is the one process that claims it, fairly across
     # organizations, and runs it against the shared Qdrant. With it stopped,
     # uploads sit pending. No web port.
-    image: ${BACKEND_IMAGE:-nvcr.io/nvidia/blueprint/aiq-agent:2.0.0}
+    image: ${BACKEND_IMAGE:-grid-oib-backend:local}
     build:
       context: ../..
       dockerfile: deploy/Dockerfile
       target: ${BUILD_TARGET:-release}
-    container_name: aiq-ingest-worker
+    container_name: grid-ingest-worker
     env_file:
       - ../.env
     environment:
@@ -277,7 +277,7 @@ services:
     volumes:
       - ../../configs:/app/configs:ro
     networks:
-      - aiq-network
+      - grid-network
     # Time to give back the claims it still holds after its drain budget.
     stop_grace_period: 660s
     depends_on:
@@ -312,7 +312,7 @@ services:
     # A fresh stack has an empty volume, and the run stores nothing. Remove this
     # service, the `aiq-data` volume and aiq_agent/legacy_corpus_import.py
     # together once every installation has run it.
-    image: ${BACKEND_IMAGE:-nvcr.io/nvidia/blueprint/aiq-agent:2.0.0}
+    image: ${BACKEND_IMAGE:-grid-oib-backend:local}
     env_file:
       - ../.env
     environment:
@@ -325,7 +325,7 @@ services:
       - aiq-data:/legacy/data:ro
       - ../../data/oib:/legacy/oib:ro
     networks:
-      - aiq-network
+      - grid-network
     depends_on:
       frontend:
         condition: service_healthy
@@ -336,14 +336,14 @@ services:
   qdrant:
     # The vector store (ADR-0115), the single-node mirror of
     # deploy/pulumi/src/data/qdrant.ts. No published port: only the backend
-    # roles on aiq-network reach it, which is why it runs without an API key
+    # roles on grid-network reach it, which is why it runs without an API key
     # here (Pulumi sets one).
     image: ${QDRANT_IMAGE:-qdrant/qdrant:v1.19.2}
     environment:
       QDRANT__TELEMETRY_DISABLED: "true"
       # /metrics on its own port without the key, as on the Pulumi peers.
       # Nothing here scrapes it (compose runs no collector); it is the same
-      # endpoint `curl qdrant:6336/metrics` reads from inside aiq-network.
+      # endpoint `curl qdrant:6336/metrics` reads from inside grid-network.
       QDRANT__SERVICE__METRICS_PORT: "6336"
       # Writes refused with 507 near the memory limit or a full volume, rather
       # than an OOM kill or a WAL that cannot grow; the ingest queue retries a
@@ -355,7 +355,7 @@ services:
     volumes:
       - qdrant_data:/qdrant/storage
     networks:
-      - aiq-network
+      - grid-network
     healthcheck:
       # The image ships bash but no curl: probe /readyz over /dev/tcp. $$s keeps
       # compose from interpolating it away.
@@ -418,7 +418,7 @@ services:
       SEAWEED_ACCESS_KEY: ${SEAWEED_ACCESS_KEY:-seaweedadmin}
       SEAWEED_SECRET_KEY: ${SEAWEED_SECRET_KEY:?set it in deploy/.env — see the SeaweedFS section of deploy/.env.example}
       # The READ-ONLY identity the agent tier uses (ADR-0039). It was missing
-      # from this file entirely, so `aiq-agent` and `agent-worker` ran on the
+      # from this file entirely, so `chat` and `agent-worker` ran on the
       # write-capable `grid` credential — able to overwrite or delete any
       # document object in any bucket, for a tool that only ever calls
       # get_object. That made the compose stack a weaker authorization model than
@@ -472,7 +472,7 @@ services:
       retries: 10
       start_period: 15s
     networks:
-      - aiq-network
+      - grid-network
     restart: unless-stopped
 
   seaweedfs-init:
@@ -519,7 +519,7 @@ services:
       seaweedfs:
         condition: service_healthy
     networks:
-      - aiq-network
+      - grid-network
     restart: "no"
 
   # One-shot migrator. Separate from `frontend` so the long-lived container that
@@ -528,11 +528,11 @@ services:
   # very process RLS exists to constrain (ADR-0041). Kubernetes already worked
   # this way; compose now matches it.
   grid-migrate:
-    image: ${FRONTEND_IMAGE:-nvcr.io/nvidia/blueprint/aiq-frontend:2.0.0}
+    image: ${FRONTEND_IMAGE:-grid-oib-frontend:local}
     build:
       context: ../../frontends/ui
       dockerfile: deploy/Dockerfile
-    container_name: aiq-blueprint-migrate
+    container_name: grid-migrate
     restart: "no"
     command:
       - sh
@@ -549,7 +549,7 @@ services:
       postgres:
         condition: service_healthy
     networks:
-      - aiq-network
+      - grid-network
 
   # One-shot audit-schema reconciler, and the compose half of what the
   # Kubernetes Job `grid-app-audit-schemas` does (deploy/pulumi/src/app/
@@ -578,11 +578,11 @@ services:
   # so re-running on every `up` is a no-op against an environment that already
   # matches. Bare `node`: the runtime image ships no npm and no devDependencies.
   grid-audit-schemas:
-    image: ${FRONTEND_IMAGE:-nvcr.io/nvidia/blueprint/aiq-frontend:2.0.0}
+    image: ${FRONTEND_IMAGE:-grid-oib-frontend:local}
     build:
       context: ../../frontends/ui
       dockerfile: deploy/Dockerfile
-    container_name: aiq-blueprint-audit-schemas
+    container_name: grid-audit-schemas
     restart: "no"
     command:
       - sh
@@ -596,14 +596,14 @@ services:
     environment:
       - WORKOS_API_KEY=${WORKOS_API_KEY:-}
     networks:
-      - aiq-network
+      - grid-network
 
   frontend:
-    image: ${FRONTEND_IMAGE:-nvcr.io/nvidia/blueprint/aiq-frontend:2.0.0}
+    image: ${FRONTEND_IMAGE:-grid-oib-frontend:local}
     build:
       context: ../../frontends/ui
       dockerfile: deploy/Dockerfile
-    container_name: aiq-blueprint-ui
+    container_name: grid-frontend
     # The image CMD migrates then serves; migration has moved to grid-migrate,
     # so this container only serves.
     command: ["node", "server.js"]
@@ -623,19 +623,19 @@ services:
       # Every backend HTTP call goes to the api role. Only the WebSocket proxy
       # (server.js) goes to the chat role, and it has no fallback to BACKEND_URL:
       # the api role serves no socket (ADR-0082).
-      - BACKEND_URL=${BACKEND_URL:-http://aiq-api:8000}
-      - BACKEND_CHAT_URL=${BACKEND_CHAT_URL:-http://aiq-agent:8000}
+      - BACKEND_URL=${BACKEND_URL:-http://api:8000}
+      - BACKEND_CHAT_URL=${BACKEND_CHAT_URL:-http://chat:8000}
       # Runtime connection: the least-privilege role, subject to row-level
       # security (ADR-0041). A repository that forgets its organization
       # predicate returns no rows instead of another tenant's.
       - GRID_APP_DATABASE_URL=${GRID_APP_DATABASE_URL:-postgresql://grid_app_rw:${GRID_APP_RUNTIME_PASSWORD:-grid_app_rw_dev}@pgbouncer:5432/grid_app}
-      # Shared service token for the internal memory endpoint (must match aiq-agent)
+      # Shared service token for the internal memory endpoint (must match chat)
       - GRID_INTERNAL_API_TOKEN=${GRID_INTERNAL_API_TOKEN:-grid-internal-dev-token}
       # S1 security default: agent org-wide memory writes are OFF unless explicitly
       # enabled here (see app/api/internal/memory/route.ts). Leave false in production.
       - GRID_ALLOW_AGENT_ORG_MEMORY=${GRID_ALLOW_AGENT_ORG_MEMORY:-false}
       # Admin token for the backend's /v1/admin/oib/* endpoints (must match
-      # aiq-agent). Powers the platform-owner base-knowledge management UI.
+      # chat). Powers the platform-owner base-knowledge management UI.
       - GRID_ADMIN_TOKEN=${GRID_ADMIN_TOKEN:-}
       # Corpus tarball (/api/internal/oib-corpus). No caller since the answer-suite CI workflow was removed. Unset = disabled.
       - GRID_CORPUS_EXPORT_TOKEN=${GRID_CORPUS_EXPORT_TOKEN:-}
@@ -735,7 +735,7 @@ services:
     ports:
       - "${FRONTEND_PORT:-3000}:3000"
     networks:
-      - aiq-network
+      - grid-network
       # The only way into gotenberg; see that service.
       - gotenberg-internal
     depends_on:
@@ -746,9 +746,9 @@ services:
       # unreconciled environment serves a Piloti that files nothing.
       grid-audit-schemas:
         condition: service_completed_successfully
-      aiq-agent:
+      chat:
         condition: service_healthy
-      aiq-api:
+      api:
         condition: service_healthy
       seaweedfs:
         condition: service_healthy
@@ -792,11 +792,11 @@ services:
   # No key, no WorkOS, exit 0, as for grid-audit-schemas. Bundled by the image
   # build: the runtime keeps neither bun nor tsx.
   grid-workos-authz:
-    image: ${FRONTEND_IMAGE:-nvcr.io/nvidia/blueprint/aiq-frontend:2.0.0}
+    image: ${FRONTEND_IMAGE:-grid-oib-frontend:local}
     build:
       context: ../../frontends/ui
       dockerfile: deploy/Dockerfile
-    container_name: aiq-blueprint-workos-authz
+    container_name: grid-workos-authz
     restart: "no"
     command:
       - sh
@@ -817,7 +817,7 @@ services:
       frontend:
         condition: service_healthy
     networks:
-      - aiq-network
+      - grid-network
 
   bff-jobs:
     # The BFF's background pool (ADR-0079): the frontend image, internal only.
@@ -837,7 +837,7 @@ services:
     # be removed without Compose's `!reset` tag, and no other reader of this
     # file understands it.) The runner's knobs (GRID_BFF_JOBS_*) keep their code
     # defaults here; set them on this service to change them.
-    image: ${FRONTEND_IMAGE:-nvcr.io/nvidia/blueprint/aiq-frontend:2.0.0}
+    image: ${FRONTEND_IMAGE:-grid-oib-frontend:local}
     build:
       context: ../../frontends/ui
       dockerfile: deploy/Dockerfile
@@ -845,7 +845,7 @@ services:
     command: ["node", "workers/jobs/index.js"]
     environment: *frontend-environment
     networks:
-      - aiq-network
+      - grid-network
       # Office rendition runs here (the `office_rendition` job, ADR-0079).
       - gotenberg-internal
     # The runner gives claims back for up to its drain budget (60 s by default)
@@ -854,7 +854,7 @@ services:
     depends_on:
       grid-migrate:
         condition: service_completed_successfully
-      aiq-api:
+      api:
         condition: service_healthy
       seaweedfs:
         condition: service_healthy
@@ -873,7 +873,7 @@ services:
     restart: unless-stopped
 
   purger:
-    image: ${FRONTEND_IMAGE:-nvcr.io/nvidia/blueprint/aiq-frontend:2.0.0}
+    image: ${FRONTEND_IMAGE:-grid-oib-frontend:local}
     build:
       context: ../../frontends/ui
       dockerfile: deploy/Dockerfile
@@ -884,7 +884,7 @@ services:
       # organization, so it steps up to grid_app_platform per transaction
       # — see frontends/ui/workers/platform-scope.js.
       - GRID_APP_DATABASE_URL=${GRID_APP_DATABASE_URL:-postgresql://grid_app_rw:${GRID_APP_RUNTIME_PASSWORD:-grid_app_rw_dev}@pgbouncer:5432/grid_app}
-      - BACKEND_URL=${BACKEND_URL:-http://aiq-api:8000}
+      - BACKEND_URL=${BACKEND_URL:-http://api:8000}
       # A chat erasure the delete request could not finish is retried through
       # the BFF, which owns its steps.
       - FRONTEND_INTERNAL_URL=${FRONTEND_INTERNAL_URL:-http://frontend:3000}
@@ -900,7 +900,7 @@ services:
       - WORKOS_API_KEY=${WORKOS_API_KEY}
       - PURGER_POLL_INTERVAL_MS=${PURGER_POLL_INTERVAL_MS:-60000}
     networks:
-      - aiq-network
+      - grid-network
     depends_on:
       grid-migrate:
         condition: service_completed_successfully
@@ -912,7 +912,7 @@ services:
         condition: service_healthy
       seaweedfs-init:
         condition: service_completed_successfully
-      aiq-api:
+      api:
         condition: service_healthy
     restart: unless-stopped
 
@@ -924,7 +924,7 @@ services:
     # lacks the `skills` WorkOS flag. Every tick it also POSTs the BFF's run
     # reconciler, which closes runs whose ending never reached the BFF
     # (lib/runs/reconcile.ts).
-    image: ${FRONTEND_IMAGE:-nvcr.io/nvidia/blueprint/aiq-frontend:2.0.0}
+    image: ${FRONTEND_IMAGE:-grid-oib-frontend:local}
     build:
       context: ../../frontends/ui
       dockerfile: deploy/Dockerfile
@@ -952,7 +952,7 @@ services:
       - GRID_SKILL_SCHEDULER_BATCH=${GRID_SKILL_SCHEDULER_BATCH:-20}
       - GRID_SKILL_RUNS_RETENTION_DAYS=${GRID_SKILL_RUNS_RETENTION_DAYS:-90}
     networks:
-      - aiq-network
+      - grid-network
     depends_on:
       grid-migrate:
         condition: service_completed_successfully
@@ -977,19 +977,19 @@ services:
     # loop of its own; this calls its housekeeping routes (ghost-job reaper,
     # job-event cleanup, chat checkpoint reaper) on the cadences Kubernetes runs
     # as CronJobs. Off the frontend image, like the purger: workers/housekeeping-clock.js.
-    image: ${FRONTEND_IMAGE:-nvcr.io/nvidia/blueprint/aiq-frontend:2.0.0}
+    image: ${FRONTEND_IMAGE:-grid-oib-frontend:local}
     build:
       context: ../../frontends/ui
       dockerfile: deploy/Dockerfile
     container_name: grid-housekeeping
     command: ["node", "workers/housekeeping-clock.js"]
     environment:
-      - BACKEND_URL=${BACKEND_URL:-http://aiq-api:8000}
+      - BACKEND_URL=${BACKEND_URL:-http://api:8000}
       - GRID_INTERNAL_API_TOKEN=${GRID_INTERNAL_API_TOKEN:-grid-internal-dev-token}
     networks:
-      - aiq-network
+      - grid-network
     depends_on:
-      aiq-api:
+      api:
         condition: service_healthy
     deploy:
       resources:
@@ -1022,7 +1022,7 @@ services:
     #   - --libreoffice-auto-start: start soffice at boot so the first upload
     #     does not pay its cold start inside the 120s budget.
     image: gotenberg/gotenberg:8.37.0-libreoffice
-    container_name: aiq-gotenberg
+    container_name: grid-gotenberg
     command:
       [
         "gotenberg",
@@ -1068,7 +1068,7 @@ services:
     # least 256MiB per thread, so 2 threads would need a 512MiB cap. One
     # thread keeps the 256MiB footprint and is ample for a small cache.
     image: dragonflydb/dragonfly:v1.27.1
-    container_name: aiq-dragonfly
+    container_name: grid-dragonfly
     command:
       [
         "dragonfly",
@@ -1082,7 +1082,7 @@ services:
     ulimits:
       memlock: -1
     networks:
-      - aiq-network
+      - grid-network
     # Observability only — nothing depends_on this being healthy: both app
     # tiers fail open to in-process caches (ADR-0020), so a broken cache must
     # never block a deployment.
@@ -1096,7 +1096,7 @@ services:
 
   postgres:
     image: postgres:16-alpine
-    container_name: aiq-postgres
+    container_name: grid-postgres
     environment:
       POSTGRES_USER: aiq
       POSTGRES_PASSWORD: aiq_dev
@@ -1107,7 +1107,7 @@ services:
       - postgres-data:/var/lib/postgresql/data
       - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql:ro
     networks:
-      - aiq-network
+      - grid-network
     stdin_open: true
     tty: true
     deploy:
@@ -1144,7 +1144,7 @@ services:
   # passwords are interpolated into URLs, so they cannot contain `:`, `@` or `/`.
   pgbouncer:
     image: edoburu/pgbouncer:v1.26.0-p0@sha256:b17551c776ef7e5769ef80b956d20f85e2fd25dd8912d31d58f782aad495b711
-    container_name: aiq-pgbouncer
+    container_name: grid-pgbouncer
     environment:
       DATABASE_URLS: postgres://aiq:aiq_dev@postgres:5432/aiq_jobs,postgres://aiq:aiq_dev@postgres:5432/aiq_checkpoints,postgres://grid_app_rw:${GRID_APP_RUNTIME_PASSWORD:-grid_app_rw_dev}@postgres:5432/grid_app  # pragma: allowlist secret (compose dev default)
       POOL_MODE: transaction
@@ -1155,7 +1155,7 @@ services:
       # What the CloudNativePG Pooler ignores, too.
       IGNORE_STARTUP_PARAMETERS: extra_float_digits,options
     networks:
-      - aiq-network
+      - grid-network
     depends_on:
       postgres:
         condition: service_healthy
@@ -1191,7 +1191,7 @@ services:
   clickhouse:
     # 26.8 LTS: Langfuse v4 needs ClickHouse 25.12 or newer.
     image: clickhouse/clickhouse-server:26.8
-    container_name: aiq-clickhouse
+    container_name: grid-clickhouse
     profiles: [langfuse]
     environment:
       CLICKHOUSE_DB: langfuse
@@ -1207,7 +1207,7 @@ services:
     volumes:
       - clickhouse-data:/var/lib/clickhouse
     networks:
-      - aiq-network
+      - grid-network
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:8123/ping | grep -q Ok"]
       interval: 5s
@@ -1222,7 +1222,7 @@ services:
     # queue entry is a trace that silently never arrives, because the event
     # itself is already sitting intact and unreferenced in S3.
     image: dragonflydb/dragonfly:v1.27.1
-    container_name: aiq-langfuse-queue
+    container_name: grid-langfuse-queue
     profiles: [langfuse]
     command:
       [
@@ -1237,7 +1237,7 @@ services:
     ulimits:
       memlock: -1
     networks:
-      - aiq-network
+      - grid-network
     healthcheck:
       test: ["CMD-SHELL", "redis-cli -p 6379 ping | grep -q PONG"]
       interval: 5s
@@ -1253,7 +1253,7 @@ services:
     # Pinned to the version the Pulumi digests carry (deploy/pulumi/src/config.ts);
     # web and worker must stay on the same one, so bump the two lines together.
     image: ghcr.io/langfuse/langfuse:4.71.0
-    container_name: aiq-langfuse-web
+    container_name: grid-langfuse-web
     profiles: [langfuse]
     ports:
       - "3100:3000" # 3000 is taken by the frontend
@@ -1308,7 +1308,7 @@ services:
       seaweedfs-init:
         condition: service_completed_successfully
     networks:
-      - aiq-network
+      - grid-network
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:3000/api/public/health >/dev/null"]
       interval: 10s
@@ -1321,7 +1321,7 @@ services:
 
   langfuse-worker:
     image: ghcr.io/langfuse/langfuse-worker:4.71.0
-    container_name: aiq-langfuse-worker
+    container_name: grid-langfuse-worker
     profiles: [langfuse]
     environment:
       DATABASE_URL: postgresql://langfuse_app:langfuse_dev@postgres:5432/langfuse  # pragma: allowlist secret (compose dev default, fixed by init-db.sql)
@@ -1354,7 +1354,7 @@ services:
       langfuse-web:
         condition: service_healthy
     networks:
-      - aiq-network
+      - grid-network
     restart: unless-stopped
 
 volumes:
@@ -1375,7 +1375,7 @@ volumes:
     driver: local
 
 networks:
-  aiq-network:
+  grid-network:
     driver: bridge
   # No route out of the host: gotenberg and the frontend only (ADR-0070).
   gotenberg-internal:

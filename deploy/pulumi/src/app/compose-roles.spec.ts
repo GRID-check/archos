@@ -53,8 +53,8 @@ function effectiveEnv(file: string, name: string): Record<string, string> {
  */
 describe.each(COMPOSE_FILES)("%s", (file) => {
   it("runs one service per role of the image, each under its own GRID_ROLE", () => {
-    expect(roleOf(file, "aiq-agent")).toBe("chat");
-    expect(roleOf(file, "aiq-api")).toBe("api");
+    expect(roleOf(file, "chat")).toBe("chat");
+    expect(roleOf(file, "api")).toBe("api");
     expect(roleOf(file, "agent-worker")).toBe("worker");
     expect(roleOf(file, "ingest-worker")).toBe("ingest-worker");
   });
@@ -72,8 +72,8 @@ describe.each(COMPOSE_FILES)("%s", (file) => {
   it("gives the frontend the api service for HTTP and the chat service for the socket", () => {
     const frontend = env(compose(file).services.frontend);
 
-    expect(frontend.BACKEND_URL).toContain("http://aiq-api:8000");
-    expect(frontend.BACKEND_CHAT_URL).toContain("http://aiq-agent:8000");
+    expect(frontend.BACKEND_URL).toContain("http://api:8000");
+    expect(frontend.BACKEND_CHAT_URL).toContain("http://chat:8000");
   });
 
   it("points every other HTTP consumer of the backend at the api service", () => {
@@ -83,20 +83,20 @@ describe.each(COMPOSE_FILES)("%s", (file) => {
       .filter(([, url]) => url !== undefined);
 
     expect(consumers.map(([name]) => name)).toEqual(expect.arrayContaining(["housekeeping", "purger"]));
-    for (const [name, url] of consumers) expect(url, name).toContain("http://aiq-api:8000");
+    for (const [name, url] of consumers) expect(url, name).toContain("http://api:8000");
   });
 
   it("starts the services that call the api role only after it is up", () => {
     const services = compose(file).services;
     for (const name of ["frontend", "housekeeping", "purger"]) {
       const dependsOn = services[name].depends_on ?? {};
-      expect(Object.keys(dependsOn), name).toContain("aiq-api");
+      expect(Object.keys(dependsOn), name).toContain("api");
     }
   });
 
   it("holds the shared Qdrant ahead of every backend role and points each at it", () => {
     const services = compose(file).services;
-    for (const name of ["aiq-agent", "aiq-api", "agent-worker", "ingest-worker"]) {
+    for (const name of ["chat", "api", "agent-worker", "ingest-worker"]) {
       expect(Object.keys(services[name].depends_on ?? {}), name).toContain("qdrant");
       const vars = effectiveEnv(file, name);
       expect(vars.AIQ_QDRANT_URL, name).toContain("http://qdrant:6333");

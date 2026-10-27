@@ -2,8 +2,8 @@
 
 The Docker Compose file is at `deploy/compose/docker-compose.yaml`. It defines
 24 services, several named volumes, and 2 bridge networks. The backend image
-runs as four of them (ADR-0082): the `chat` role (`aiq-agent`), the `api` role
-(`aiq-api`), the research `agent-worker` and the `ingest-worker`, all against the
+runs as four of them (ADR-0082): the `chat` role (`chat`), the `api` role
+(`api`), the research `agent-worker` and the `ingest-worker`, all against the
 shared `qdrant` vector store (ADR-0115). This page describes the core ones; the observability stack
 (`dragonfly`, `clickhouse`, the three `langfuse-*` services) and the four
 background workers (`purger`,
@@ -36,32 +36,32 @@ BUILD_TARGET=release docker compose --env-file ../.env -f docker-compose.yaml up
 To use pre-built images from a registry (skips local build):
 
 ```bash
-BACKEND_IMAGE=nvcr.io/nvidia/blueprint/aiq-agent:2.0.0 \
-FRONTEND_IMAGE=nvcr.io/nvidia/blueprint/aiq-frontend:2.0.0 \
+BACKEND_IMAGE=ghcr.io/grid-check/grid-oib-backend:<tag> \
+FRONTEND_IMAGE=ghcr.io/grid-check/grid-oib-frontend:<tag> \
 docker compose --env-file ../.env -f docker-compose.yaml up -d
 ```
 
 ## Services
 
-### aiq-agent (the `chat` role)
+### chat (the `chat` role)
 
 The Python backend running NAT + FastAPI as `GRID_ROLE=chat`: the chat WebSocket
 and the answers running on it, the only way a turn runs (NAT's HTTP turn routes,
 `/generate`, `/chat`, `/v1/chat/completions` and the rest, are not mounted). It
 serves no other route but `/health` and NAT's few that run no turn. The frontend's gateway
-reaches it with `BACKEND_CHAT_URL=http://aiq-agent:8000`, and nothing else does.
-Every other HTTP route is [`aiq-api`](#aiq-api-the-api-role)'s.
+reaches it with `BACKEND_CHAT_URL=http://chat:8000`, and nothing else does.
+Every other HTTP route is [`api`](#api-the-api-role)'s.
 
 | Property | Value |
 |----------|-------|
-| Image | `nvcr.io/nvidia/blueprint/aiq-agent:2.0.0` (override with `BACKEND_IMAGE`) |
+| Image | `grid-oib-backend:local` (override with `BACKEND_IMAGE`) |
 | Build context | `../../` (repo root) |
 | Dockerfile | `deploy/Dockerfile` |
 | Build target | `${BUILD_TARGET:-dev}` (dev = CLI included, release = web only) |
-| Container name | `aiq-agent` |
+| Container name | `chat` |
 | Ports | `${CHAT_PORT:-8001}:8000` (the WebSocket, for a client that dials it directly, such as `task be:eval:loop`) |
 | Env file | `../.env` |
-| Networks | `aiq-network` |
+| Networks | `grid-network` |
 
 **Key environment variables** (set in compose, can be overridden via .env):
 
@@ -81,7 +81,7 @@ Every other HTTP route is [`aiq-api`](#aiq-api-the-api-role)'s.
 | `PORT` | `8000` |
 
 The environment is written once, on this service, as a YAML anchor
-(`&backend-environment`); `aiq-api`, `agent-worker` and `ingest-worker` alias it
+(`&backend-environment`); `api`, `agent-worker` and `ingest-worker` alias it
 and set their own `GRID_ROLE`, so the four cannot drift.
 
 **Volumes**:
@@ -106,23 +106,23 @@ the shared `qdrant` service.
 
 **Restart**: `unless-stopped`.
 
-### aiq-api (the `api` role)
+### api (the `api` role)
 
-The same image as `aiq-agent`, started as `GRID_ROLE=api`: the Knowledge API
+The same image as `chat`, started as `GRID_ROLE=api`: the Knowledge API
 (collections, documents, search, ingest enqueue), the Async Job API with its SSE
 streams, the LLM utilities (titles, summaries, consistency check, feedback digest,
 lesson distillation, skill review, note embeddings), admin, the housekeeping
-routes. It is what `BACKEND_URL=http://aiq-api:8000` names,
+routes. It is what `BACKEND_URL=http://api:8000` names,
 for the frontend, the purger and the `housekeeping` clock. It serves no chat
 socket. [`docs/api/python-endpoints.md`](../api/python-endpoints.md) lists which
 role serves which route.
 
 | Property | Value |
 |----------|-------|
-| Container name | `aiq-api` |
+| Container name | `api` |
 | Ports | `${PORT:-8000}:8000` (the API and `/docs`) |
-| Environment | `aiq-agent`'s, with `GRID_ROLE=api` |
-| Healthcheck | the same `/health` probe as `aiq-agent` |
+| Environment | `chat`'s, with `GRID_ROLE=api` |
+| Healthcheck | the same `/health` probe as `chat` |
 | Depends on | `seaweedfs`, `postgres`, `pgbouncer`, `qdrant` (healthy) |
 
 ### agent-worker
@@ -135,7 +135,7 @@ is 660 s, the 600 s drain budget plus the time to give claims back.
 ### ingest-worker
 
 The same image as `GRID_ROLE=ingest-worker` (ADR-0076): `POST /v1/ingest`, served
-by `aiq-api`, only puts a job in the durable ingest queue, and this is the one
+by `api`, only puts a job in the durable ingest queue, and this is the one
 process that claims it, fairly across organizations. With it stopped, uploads sit
 pending. `AIQ_INGEST_MAX_WORKERS` (default 2) is the jobs it runs at once. No web
 port. Healthy while `/tmp/ingest-worker.alive` is fresh.
@@ -175,7 +175,7 @@ S3-compatible object storage for documents (single `weed server -s3` process).
 | Image | `chrislusf/seaweedfs:3.80` |
 | Container name | (auto-generated) |
 | Ports | `8333:8333` (S3 API), `8888:8888` (Filer UI), `9333:9333` (Master) |
-| Networks | `aiq-network` |
+| Networks | `grid-network` |
 
 **Environment**:
 
@@ -218,7 +218,7 @@ app services wait on this via `service_completed_successfully`.
 |----------|-------|
 | Image | `chrislusf/seaweedfs:3.80` |
 | Entrypoint | `/bin/sh -c` |
-| Networks | `aiq-network` |
+| Networks | `grid-network` |
 
 **Command**:
 ```bash
@@ -293,8 +293,8 @@ already was for authentication.
 
 | Property | Value |
 |----------|-------|
-| Image | `${FRONTEND_IMAGE:-…/aiq-frontend:2.0.0}` (the frontend image) |
-| Container name | `aiq-blueprint-audit-schemas` |
+| Image | `${FRONTEND_IMAGE:-grid-oib-frontend:local}` (the frontend image) |
+| Container name | `grid-audit-schemas` |
 | Environment | `WORKOS_API_KEY` (optional) |
 | Depends on | nothing — it only needs egress to WorkOS |
 | Restart | `"no"` |
@@ -308,20 +308,20 @@ The Next.js UI application.
 
 | Property | Value |
 |----------|-------|
-| Image | `nvcr.io/nvidia/blueprint/aiq-frontend:2.0.0` (override with `FRONTEND_IMAGE`) |
+| Image | `grid-oib-frontend:local` (override with `FRONTEND_IMAGE`) |
 | Build context | `../../frontends/ui` |
 | Dockerfile | `deploy/Dockerfile` |
-| Container name | `aiq-blueprint-ui` |
+| Container name | `grid-frontend` |
 | Ports | `${FRONTEND_PORT:-3000}:3000` |
-| Networks | `aiq-network`, `gotenberg-internal` |
+| Networks | `grid-network`, `gotenberg-internal` |
 
 **Environment**:
 
 | Variable | Default / Source |
 |----------|------------------|
 | `REQUIRE_AUTH` | `${REQUIRE_AUTH:-false}` |
-| `BACKEND_URL` | `${BACKEND_URL:-http://aiq-api:8000}` (the api role: every HTTP call) |
-| `BACKEND_CHAT_URL` | `${BACKEND_CHAT_URL:-http://aiq-agent:8000}` (the chat role: the WebSocket proxy alone; required, no fallback to `BACKEND_URL`) |
+| `BACKEND_URL` | `${BACKEND_URL:-http://api:8000}` (the api role: every HTTP call) |
+| `BACKEND_CHAT_URL` | `${BACKEND_CHAT_URL:-http://chat:8000}` (the chat role: the WebSocket proxy alone; required, no fallback to `BACKEND_URL`) |
 | `GRID_APP_DATABASE_URL` | `${GRID_APP_DATABASE_URL:-postgresql://grid_app_rw:${GRID_APP_RUNTIME_PASSWORD:-grid_app_rw_dev}@pgbouncer:5432/grid_app}` — the least-privilege role, subject to row-level security (ADR-0041), through the pooler. Migrations use the owner credential in `GRID_APP_MIGRATION_DATABASE_URL`, set only on `grid-migrate`, straight to `postgres`. |
 | `WORKOS_CLIENT_ID` | `${WORKOS_CLIENT_ID}` |
 | `WORKOS_API_KEY` | `${WORKOS_API_KEY}` |
@@ -344,7 +344,7 @@ The Next.js UI application.
 
 **Healthcheck**: `curl -f http://localhost:3000/api/healthz` — interval 15s, timeout 10s, start period 60s, retries 5. The dependency-free `/api/healthz`, not `/` (a full SSR render) and not `/api/health` (which proxies the backend and reports 502 while the agent boots).
 
-**Depends on**: `grid-migrate` (completed successfully), `grid-audit-schemas` (completed successfully), `aiq-agent` (healthy), `aiq-api` (healthy), `seaweedfs` (healthy), `seaweedfs-init` (completed successfully), `postgres` (healthy), `gotenberg` (started, not healthy: a broken converter fails Word and presentation ingests retryably, and must not also take down the UI and every other upload type).
+**Depends on**: `grid-migrate` (completed successfully), `grid-audit-schemas` (completed successfully), `chat` (healthy), `api` (healthy), `seaweedfs` (healthy), `seaweedfs-init` (completed successfully), `postgres` (healthy), `gotenberg` (started, not healthy: a broken converter fails Word and presentation ingests retryably, and must not also take down the UI and every other upload type).
 
 **Restart**: `unless-stopped`.
 
@@ -363,7 +363,7 @@ preview or thumbnail.
 | Property | Value |
 |----------|-------|
 | Image | `gotenberg/gotenberg:8.37.0-libreoffice` (pinned, LibreOffice-only variant; Pulumi pins the same tag, and `deploy/pulumi/src/app/gotenberg.spec.ts` fails when they differ) |
-| Container name | `aiq-gotenberg` |
+| Container name | `grid-gotenberg` |
 | Ports | none published |
 | Networks | `gotenberg-internal` only |
 
@@ -406,9 +406,9 @@ PostgreSQL 16 database.
 | Property | Value |
 |----------|-------|
 | Image | `postgres:16-alpine` |
-| Container name | `aiq-postgres` |
+| Container name | `grid-postgres` |
 | Ports | `5432:5432` |
-| Networks | `aiq-network` |
+| Networks | `grid-network` |
 
 **Environment**:
 
@@ -445,8 +445,8 @@ a direct connection fails here and not first in production.
 | Property | Value |
 |----------|-------|
 | Image | `edoburu/pgbouncer:v1.26.0-p0`, digest-pinned (PgBouncer 1.26.0; `max_prepared_statements` needs 1.21 or newer) |
-| Container name | `aiq-pgbouncer` |
-| Ports | none published; `pgbouncer:5432` on `aiq-network` |
+| Container name | `grid-pgbouncer` |
+| Ports | none published; `pgbouncer:5432` on `grid-network` |
 | Pool mode | `transaction` |
 
 **Environment**: `DATABASE_URLS` (one login per pooled role, from which the
@@ -475,7 +475,7 @@ Langfuse's `DATABASE_URL` go straight to `postgres`, as in Kubernetes.
 
 | Name | Driver | Services |
 |------|--------|----------|
-| `aiq-network` | bridge | Every service except `gotenberg` |
+| `grid-network` | bridge | Every service except `gotenberg` |
 | `gotenberg-internal` | bridge, `internal: true` (no route off the host) | `gotenberg`, `frontend` |
 
 ## Build Targets

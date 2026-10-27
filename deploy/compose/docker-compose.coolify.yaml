@@ -43,7 +43,7 @@ services:
   # which would expose the backend (8000) to the public internet. Keep it on
   # `expose:` only — it stays reachable in-cluster over Coolify's managed
   # network (service-name DNS; see the networking note below).
-  aiq-agent:
+  chat:
     build:
       # Paths are relative to the Compose *project directory*, which Coolify sets
       # to the repo root (Base Directory `/`) via `--project-directory`. So all
@@ -247,7 +247,7 @@ services:
 
   # ── Deep-research worker tier (ADR-0021), the docker-compose mirror of the
   #    Kubernetes Deployment in deploy/pulumi/src/app/agent-worker.ts ──
-  # Same backend image and env as aiq-agent (via `extends`, so the two can never
+  # Same backend image and env as chat (via `extends`, so the two can never
   # drift — critically, they share AIQ_EMBED_MODEL, so ingest- and query-side
   # vectors always match), but launched with GRID_ROLE=worker: the entrypoint
   # then execs `python -m aiq_api.jobs.worker` instead of the web server. Workers
@@ -255,7 +255,7 @@ services:
   # Qdrant — no web port.
   agent-worker:
     extends:
-      service: aiq-agent
+      service: chat
     environment:
       # GRID_ROLE flips entrypoint.py to the worker module (no uvicorn).
       - GRID_ROLE=worker
@@ -273,7 +273,7 @@ services:
         condition: service_healthy
       dragonfly:
         condition: service_started
-    # The web healthcheck inherited from aiq-agent would never pass (no HTTP
+    # The web healthcheck inherited from chat would never pass (no HTTP
     # server here). Mirror the K8s liveness marker instead: worker.py touches
     # /tmp/research-worker.alive each claim-loop tick; fail if it is missing or
     # stale (loop hung). The long start_period covers the cold import + DB/Qdrant
@@ -294,12 +294,12 @@ services:
   #    Deployment in deploy/pulumi/src/app/api.ts ──
   # Every HTTP route of the backend but the chat socket: knowledge, jobs and their
   # SSE streams, the LLM utilities, admin, housekeeping. It is what BACKEND_URL
-  # names. Same image and env as aiq-agent (via `extends`, so the two cannot
-  # drift) and GRID_ROLE=api. Like aiq-agent it has no `ports:`: Coolify would
+  # names. Same image and env as chat (via `extends`, so the two cannot
+  # drift) and GRID_ROLE=api. Like chat it has no `ports:`: Coolify would
   # publish it on the host.
-  aiq-api:
+  api:
     extends:
-      service: aiq-agent
+      service: chat
     environment:
       - GRID_ROLE=api
     # extends does NOT carry depends_on — declare the role's own start ordering.
@@ -324,7 +324,7 @@ services:
   # No web port.
   ingest-worker:
     extends:
-      service: aiq-agent
+      service: chat
     environment:
       - GRID_ROLE=ingest-worker
       # Ingestion jobs this process runs at once (K8s: ingestWorker.concurrency).
@@ -369,7 +369,7 @@ services:
     # service, the `aiq-data` volume and aiq_agent/legacy_corpus_import.py
     # together once every installation has run it.
     extends:
-      service: aiq-agent
+      service: chat
     entrypoint: ["python", "-m", "aiq_agent.legacy_corpus_import"]
     command: ["/legacy/data", "/legacy/oib"]
     volumes:
@@ -408,7 +408,7 @@ services:
       - SEAWEED_TENANT_ADMIN_SECRET_KEY=${SERVICE_PASSWORD_SEAWEEDTENANT}
       # The READ-ONLY identity the agent tier uses (ADR-0039), with its own
       # Coolify-generated secret. It was missing from this file entirely, so
-      # `aiq-agent` and `agent-worker` ran on the write-capable `grid`
+      # `chat` and `agent-worker` ran on the write-capable `grid`
       # credential — able to overwrite or delete any document object in any
       # bucket, for a tool that only ever calls get_object.
       - SEAWEED_READONLY_ACCESS_KEY=${SEAWEED_READONLY_ACCESS_KEY:-grid-backend-read}
@@ -559,8 +559,8 @@ services:
       # Every backend HTTP call goes to the api role. Only the WebSocket proxy
       # (server.js) goes to the chat role, and it has no fallback to BACKEND_URL:
       # the api role serves no socket (ADR-0082).
-      - BACKEND_URL=http://aiq-api:8000
-      - BACKEND_CHAT_URL=http://aiq-agent:8000
+      - BACKEND_URL=http://api:8000
+      - BACKEND_CHAT_URL=http://chat:8000
       # Least-privilege runtime role: DML only, subject to row-level security
       # (ADR-0041). The container's CMD synchronises this role's login from
       # this very URL before starting, so there is one source of truth.
@@ -572,7 +572,7 @@ services:
       # enabled here (see app/api/internal/memory/route.ts). Leave false in production.
       - GRID_ALLOW_AGENT_ORG_MEMORY=${GRID_ALLOW_AGENT_ORG_MEMORY:-false}
       # Admin token for the backend's /v1/admin/oib/* endpoints (must match the
-      # aiq-agent value). Powers the platform-owner base-knowledge management UI.
+      # chat value). Powers the platform-owner base-knowledge management UI.
       - GRID_ADMIN_TOKEN=${GRID_ADMIN_TOKEN:?set GRID_ADMIN_TOKEN}
       # Corpus tarball (/api/internal/oib-corpus). No caller since the answer-suite CI workflow was removed. Unset = disabled.
       - GRID_CORPUS_EXPORT_TOKEN=${GRID_CORPUS_EXPORT_TOKEN:-}
@@ -661,9 +661,9 @@ services:
       # the schemas are reconciled before this container serves.
       grid-audit-schemas:
         condition: service_completed_successfully
-      aiq-agent:
+      chat:
         condition: service_healthy
-      aiq-api:
+      api:
         condition: service_healthy
       seaweedfs:
         condition: service_healthy
@@ -719,7 +719,7 @@ services:
     depends_on:
       grid-migrate:
         condition: service_completed_successfully
-      aiq-api:
+      api:
         condition: service_healthy
       seaweedfs:
         condition: service_healthy
@@ -772,7 +772,7 @@ services:
       # Least-privilege runtime role (ADR-0041). This worker spans tenants, so
       # it steps up to grid_app_platform per transaction.
       - GRID_APP_DATABASE_URL=postgresql://grid_app_rw:${SERVICE_PASSWORD_GRIDRUNTIME}@pgbouncer:5432/grid_app
-      - BACKEND_URL=http://aiq-api:8000
+      - BACKEND_URL=http://api:8000
       # A chat erasure the delete request could not finish is retried through
       # the BFF, which owns its steps.
       - FRONTEND_INTERNAL_URL=http://frontend:3000
@@ -799,7 +799,7 @@ services:
         condition: service_healthy
       seaweedfs-init:
         condition: service_completed_successfully
-      aiq-api:
+      api:
         condition: service_healthy
     restart: unless-stopped
 
@@ -841,10 +841,10 @@ services:
       dockerfile: deploy/Dockerfile
     command: ["node", "workers/housekeeping-clock.js"]
     environment:
-      - BACKEND_URL=http://aiq-api:8000
+      - BACKEND_URL=http://api:8000
       - GRID_INTERNAL_API_TOKEN=${SERVICE_PASSWORD_INTERNALTOKEN}
     depends_on:
-      aiq-api:
+      api:
         condition: service_healthy
     restart: unless-stopped
 
@@ -1005,7 +1005,7 @@ volumes:
 
 # NOTE: intentionally NO top-level `networks:` block. Coolify auto-creates one
 # managed bridge network per compose stack (named after the resource UUID) and
-# attaches every service to it, so service-name DNS (aiq-agent, frontend,
+# attaches every service to it, so service-name DNS (chat, frontend,
 # postgres, seaweedfs, dragonfly, …) already works across the stack. Declaring a
 # custom network here would make each container DUAL-HOMED — attached to BOTH
 # the custom bridge and Coolify's managed network. Coolify's Traefik proxy sits

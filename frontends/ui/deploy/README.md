@@ -26,7 +26,7 @@ Browser  -->  UI Container (HTTP + WebSocket Proxy)  -->  Backend
 From the **`frontends/ui/`** directory:
 
 ```bash
-docker build -f deploy/Dockerfile -t aiq-blueprint-ui:latest .
+docker build -f deploy/Dockerfile -t grid-frontend:latest .
 ```
 
 ### 2. Run the Container
@@ -38,7 +38,7 @@ docker run -p 3000:3000 \
   -e BACKEND_URL=http://backend:8000 \
   -e BACKEND_CHAT_URL=http://backend-chat:8000 \
   -e REQUIRE_AUTH=false \
-  aiq-blueprint-ui:latest
+  grid-frontend:latest
 ```
 
 **With WorkOS AuthKit authentication:**
@@ -52,7 +52,7 @@ docker run -p 3000:3000 \
   -e WORKOS_API_KEY=sk_test_xxx \
   -e WORKOS_REDIRECT_URI=https://your-domain.com/api/auth/callback \
   -e WORKOS_COOKIE_PASSWORD=$(openssl rand -hex 32) \
-  aiq-blueprint-ui:latest
+  grid-frontend:latest
 ```
 
 ## Environment Variables
@@ -86,7 +86,7 @@ All environment variables are **runtime configurable** - no rebuild needed when 
 ```yaml
 services:
   frontend:
-    image: aiq-blueprint-ui:latest
+    image: grid-frontend:latest
     environment:
       - BACKEND_URL=http://backend:8000
       - BACKEND_CHAT_URL=http://backend-chat:8000
@@ -115,7 +115,7 @@ docker run -p 3000:3000 \
   -e BACKEND_URL=http://host.docker.internal:8000 \
   -e BACKEND_CHAT_URL=http://host.docker.internal:8001 \
   -e REQUIRE_AUTH=false \
-  aiq-blueprint-ui:latest
+  grid-frontend:latest
 ```
 
 ## Troubleshooting

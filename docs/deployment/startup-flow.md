@@ -13,7 +13,7 @@ docker compose up -d --build
          │      • Determines build order from depends_on
          │
          ├── 2. postgres:16-alpine starts
-         │      • Container name: aiq-postgres
+         │      • Container name: grid-postgres
          │      • Runs /docker-entrypoint-initdb.d/init-db.sql
          │      │   • Creates aiq_checkpoints database
          │      │   • Creates grid_app database
@@ -41,8 +41,8 @@ docker compose up -d --build
          │      • echo 's3.bucket.create -name grid-documents' | weed shell -master=seaweedfs:9333
          │      • Container exits (one-shot)
          │
-         ├── 5. aiq-agent starts (depends on postgres + seaweedfs healthy)
-         │      • Container name: aiq-agent
+         ├── 5. chat starts (depends on postgres + seaweedfs healthy)
+         │      • Container name: chat
          │      • ENTRYPOINT: python /app/deploy/entrypoint.py
          │      │
          │      │   entrypoint.py:
@@ -72,7 +72,7 @@ docker compose up -d --build
          │      └── AIQ API worker starts (async job processing with SSE)
          │
          ├── 6. grid-migrate runs to completion (depends on postgres healthy)
-         │      • Container name: aiq-blueprint-migrate
+         │      • Container name: grid-migrate
          │      • One-shot (restart: "no"); everything below waits for it to exit 0
          │      │
          │      │   Step 6a: node scripts/ensure-rls-roles.mjs
@@ -86,8 +86,8 @@ docker compose up -d --build
          │          • Runs pending migrations from drizzle/ directory
          │
          └── 7. frontend starts (depends on grid-migrate completed, plus
-                aiq-agent + postgres + seaweedfs healthy)
-                • Container name: aiq-blueprint-ui
+                chat + postgres + seaweedfs healthy)
+                • Container name: grid-frontend
                 • command: ["node", "server.js"] — it serves, it does not migrate.
                   The serving container never holds the owner credential (ADR-0041).
                 • Connects as grid_app_rw via GRID_APP_DATABASE_URL
@@ -110,8 +110,8 @@ docker compose up -d --build
 Docker Compose uses `depends_on: condition: service_healthy` which means each service only starts after its dependencies pass their healthchecks:
 
 ```
-postgres ──► aiq-agent ──► frontend
-seaweedfs ─► seaweedfs-init ──► aiq-agent ──► frontend
+postgres ──► chat ──► frontend
+seaweedfs ─► seaweedfs-init ──► chat ──► frontend
                            postgres ─────► frontend
 ```
 
@@ -121,7 +121,7 @@ If a dependency fails its healthcheck within the retry limit, the dependent serv
 
 - **PostgreSQL**: PostgreSQL manages its own connections. The Docker healthcheck runs `pg_isready` on all 3 databases every 5 seconds.
 - **SeaweedFS**: Healthcheck runs `wget http://localhost:9333/cluster/status` every 5 seconds.
-- **aiq-agent**: The agent relies on Docker's `restart: unless-stopped` for crash recovery. There is no built-in reconnection to PostgreSQL or SeaweedFS if they become unavailable after startup.
+- **chat**: The agent relies on Docker's `restart: unless-stopped` for crash recovery. There is no built-in reconnection to PostgreSQL or SeaweedFS if they become unavailable after startup.
 - **frontend**: Same `restart: unless-stopped` policy. No built-in reconnection logic beyond Docker restart.
 
 ## Manual Step: Uploading the OIB corpus
