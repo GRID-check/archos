@@ -279,6 +279,15 @@ return citable passages, which this search does not (a passage here is a
 pointer to read). Making `list_files` take its structured filters from the core
 is the next step, once the answer suite measures it (ADR-0127's eval set).
 
+When a person browses their files in chat (`surface_documents` with
+`mode=many`), Piloti asks `workspace-search` once per shelf the turn reads
+(this project, the office shelf), and the `document_grid` card it shows carries
+the question (`search`: text and scope) and an „In der Suche öffnen“ link to
+the search page asking it, so the rest of the result is one click away. A run
+with no signed request context (an eval, the CLI) browses the vector corpora as
+before and links nothing. The search text is written in the documents'
+language; English is only for finding an operation.
+
 The Files pane's semantic search asks the core too: `POST /api/search` with the
 shelf as its query and `kinds: ['document']`. `POST /api/documents/search` and
 the operation `document-search` are gone; the old name leads to

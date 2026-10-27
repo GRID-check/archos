@@ -13,7 +13,16 @@
 import { withDocumentLocus } from '@/features/documents/lib/document-locus'
 import { documentHref } from '@/features/uploads/lib/upload-summary'
 import type { SavedSearchView } from '@/lib/search/saved-search-client'
-import type { AnnotationHit, ConversationHit, DocumentHit, FolderHit, ProjectHit, SearchHit } from '@/lib/search/search-wire'
+import type {
+  AnnotationHit,
+  ConversationHit,
+  DocumentHit,
+  FolderHit,
+  ProjectHit,
+  SearchBody,
+  SearchHit,
+  SearchScopeQuery,
+} from '@/lib/search/search-wire'
 import { SHELF_SEARCH_MODE, SHELF_SEARCH_MODE_PARAM } from '../hooks/use-shelf-search-mode'
 import { EMPTY_SEARCH_STATE, fromSearchBody, writeSearchParams } from './search-url'
 
@@ -51,16 +60,25 @@ export function searchPageHref(text: string, projectId: string | null = null): s
   return query ? `/app/search?${query}` : '/app/search'
 }
 
-/** Where a saved search runs: the office shelf's own search for a question asked there, else the search page. */
-export function savedSearchHref(item: Pick<SavedSearchView, 'scope' | 'query'>): string {
-  if (item.scope.scope === 'office_shelf') {
-    const params = writeSearchParams(fromSearchBody(item.query))
+/**
+ * Where a question asked of `workspace-search` runs for a person: the office
+ * shelf's own search for one asked there, else the search page, narrowed to the
+ * project it was asked in.
+ */
+export function searchHref(scope: SearchScopeQuery, body: SearchBody): string {
+  if (scope.scope === 'office_shelf') {
+    const params = writeSearchParams(fromSearchBody(body))
     params.set(SHELF_SEARCH_MODE_PARAM, SHELF_SEARCH_MODE)
     return `/app/office-shelf?${params.toString()}`
   }
-  const projectId = item.scope.scope === 'project' ? (item.scope.projectId ?? null) : null
-  const query = writeSearchParams(fromSearchBody(item.query, projectId)).toString()
+  const projectId = scope.scope === 'project' ? (scope.projectId ?? null) : null
+  const query = writeSearchParams(fromSearchBody(body, projectId)).toString()
   return query ? `/app/search?${query}` : '/app/search'
+}
+
+/** Where a saved search runs (see {@link searchHref}). */
+export function savedSearchHref(item: Pick<SavedSearchView, 'scope' | 'query'>): string {
+  return searchHref(item.scope, item.query)
 }
 
 export function hitHref(hit: SearchHit): string {
