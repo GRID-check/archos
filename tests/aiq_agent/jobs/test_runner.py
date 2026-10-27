@@ -56,8 +56,8 @@ from aiq_api.jobs.callbacks import EventCategory
 from aiq_api.jobs.callbacks import EventData
 from aiq_api.jobs.callbacks import EventState
 from aiq_api.jobs.callbacks import IntermediateStepEvent
-from tests.conftest import NAT_LLM_CONFIG
-from tests.conftest import nat_langchain_client
+from tests.provider_doubles import NAT_LLM_CONFIG
+from tests.provider_doubles import nat_langchain_client
 
 
 @pytest.fixture(name="event_store_cache_guard", autouse=True)

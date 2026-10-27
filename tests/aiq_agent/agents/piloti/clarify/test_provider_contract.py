@@ -32,7 +32,7 @@ from aiq_agent.agents.piloti.clarify import clarify
 from aiq_agent.agents.piloti.models import ClarificationResponse
 from aiq_agent.agents.piloti.models import ClarifyRequest
 from aiq_agent.common import LLMProvider
-from tests.conftest import ProviderContractError
+from tests.provider_doubles import ProviderContractError
 
 #: The window the conversation graph hands the step on an escalated turn: the
 #: user's question followed by the shallow answer that triggered the escalation.
