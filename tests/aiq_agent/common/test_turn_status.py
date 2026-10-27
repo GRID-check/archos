@@ -130,6 +130,20 @@ class TestRetrieval:
         assert payload.key == "status.retrieval.plain"
         assert payload.values == {"corpus": "otherProjects"}
 
+    @pytest.mark.parametrize(
+        "call",
+        [
+            {"name": "ls", "args": {"path": "/project/03 Einreichung/"}},
+            {"name": "read_file", "args": {"file_path": "/project/Plan.pdf.md"}},
+        ],
+    )
+    def test_a_filesystem_address_is_never_quoted_as_a_query(self, steps, call) -> None:
+        """„Sucht in Ihren Unterlagen: „/project/03 Einreichung/““ read a path as what was asked (ADR-0133)."""
+        turn_status.emit_retrieval([call], round_index=0)
+        payload = _live(steps)[0]
+        assert "query" not in payload.values
+        assert "/project/" not in " ".join(payload.values.values())
+
     def test_a_search_with_no_query_uses_the_other_template(self, steps) -> None:
         turn_status.emit_retrieval([{"name": "web_search_tool", "args": {}}], round_index=0)
         payload = _live(steps)[0]

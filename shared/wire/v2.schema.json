@@ -133,6 +133,19 @@
           "title": "Id",
           "type": "string"
         },
+        "incomplete": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "A literal search that could not search everything (a place did not answer, the scan ran out of time or stopped at its cap): its count is a floor, and no hit is no no.",
+          "title": "Incomplete"
+        },
         "kind": {
           "const": "action",
           "default": "action",
@@ -156,6 +169,26 @@
           "default": null,
           "description": "A search's match mode.",
           "title": "Mode"
+        },
+        "mount": {
+          "anyOf": [
+            {
+              "enum": [
+                "project",
+                "office",
+                "chat",
+                "law",
+                "estate"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "The place a path-based call reached (ADR-0133), `estate` for every place the person may see. With it, `target` is the folder inside that place, absent at its root.",
+          "title": "Mount"
         },
         "pages": {
           "anyOf": [

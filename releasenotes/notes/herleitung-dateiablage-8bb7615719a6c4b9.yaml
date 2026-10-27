@@ -1,0 +1,13 @@
+---
+improvements:
+  - >
+    When Piloti looks through your documents, the Herleitung names folders and
+    files the way you do: „Listet 03 Einreichung · 12 Dateien, 2 Ordner“ or
+    „Durchsucht das Projekt wörtlich nach „Brandabschnitt“ · 14 Treffer in 3
+    Dokumenten“. A search without a hit says how many documents it searched, and
+    a folder that is not there reads „nicht gefunden“.
+fixes:
+  - >
+    A word search that could not search all your documents no longer looks
+    complete in the Herleitung. It reads „unvollständig“, says that a missing
+    hit is no proof, and appears under „Offen“.

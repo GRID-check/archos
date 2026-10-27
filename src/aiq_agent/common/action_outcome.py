@@ -41,6 +41,8 @@ class ActionOutcome:
     target: str | None = None
     #: The call returned something from a restricted folder not admitted yet: counted as found, never counted.
     unnamed: bool = False
+    #: A literal search that could not search everything: its count is a floor, and no hit is no no.
+    incomplete: bool = False
 
     def record_chunks(self, chunks: Iterable[Any]) -> None:
         """Hits are the chunks returned; documents are the distinct files they come from."""
@@ -84,6 +86,8 @@ class ActionOutcome:
             "files": self.files,
             "folders": self.folders,
         }
+        if self.incomplete:
+            fields = {**fields, "incomplete": True}
         row.finish(self.status(default=default), counts=counts, **fields)
 
 
