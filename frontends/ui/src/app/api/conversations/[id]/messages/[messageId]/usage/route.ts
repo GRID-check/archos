@@ -15,7 +15,7 @@ import { getAnswerUsage } from '@/lib/budgets/service'
 type Params = { id: string; messageId: string }
 
 /** `messages.id` is a uuid; so is the answer id the backend derives. */
-const messageIdSchema = z.string().uuid()
+const messageIdSchema = z.guid()
 
 export const GET = apiRoute<Params>(
   async ({ session, params }) => {

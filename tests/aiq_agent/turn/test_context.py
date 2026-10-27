@@ -234,15 +234,23 @@ class TestLoadTurnContext:
         monkeypatch.setattr(context_mod, "resolve_platform_lessons", slow_lessons)
         monkeypatch.setattr(context_mod, "fetch_memory_digest", slow_digest)
         monkeypatch.setattr(context_mod, "resolve_turn_flags", slow_flags)
+
+        async def load() -> None:
+            # An organization, so the flag round-trip actually runs and there
+            # are three waits to overlap rather than two.
+            await load_turn_context(
+                _request(project_id="p1", organization_id="org"),
+                conversation_id="c1",
+                query_text="q",
+                resolve_stages=True,
+            )
+
+        # Untimed first: the first call imports what its body imports lazily
+        # (NAT, ~0.7 s), which is no measure of overlap. The shared conftest
+        # used to hide that by importing NAT before every test.
+        await load()
         started = time.perf_counter()
-        # An organization, so the flag round-trip actually runs and there are
-        # three waits to overlap rather than two.
-        await load_turn_context(
-            _request(project_id="p1", organization_id="org"),
-            conversation_id="c1",
-            query_text="q",
-            resolve_stages=True,
-        )
+        await load()
         assert time.perf_counter() - started < 0.12
 
 

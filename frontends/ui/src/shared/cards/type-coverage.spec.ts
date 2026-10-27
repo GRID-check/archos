@@ -35,6 +35,7 @@
  * who adds a card type there still sees the obligation without running vitest.
  */
 
+import { discriminatedOptions } from '@/lib/api/zod-union'
 import { describe, expect, it } from 'vitest'
 import { gridCardSchema } from './schemas'
 // The canonical card JSON Schema, generated from `models.py` and the input the
@@ -63,7 +64,7 @@ const document = cardJsonSchema as unknown as JsonSchemaDocument
 const CATALOG_TYPES = Object.keys(document.discriminator.mapping).sort()
 
 /** Every card type the frontend union will actually parse. */
-const UNION_TYPES = [...gridCardSchema.optionsMap.keys()]
+const UNION_TYPES = [...discriminatedOptions(gridCardSchema).keys()]
   .filter((type): type is string => typeof type === 'string')
   .sort()
 

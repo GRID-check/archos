@@ -20,7 +20,8 @@
           "minLength": 1
         },
         "issuedAt": {
-          "type": "integer"
+          "type": "integer",
+          "exclusiveMinimum": 0
         }
       },
       "required": [

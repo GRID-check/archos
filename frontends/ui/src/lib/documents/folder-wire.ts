@@ -18,7 +18,7 @@ export const folderListQuerySchema = z.object({
 
 export const createFolderSchema = z.object({
   name: z.string().min(1).max(255),
-  parentId: z.string().uuid().nullable().optional(),
+  parentId: z.guid().nullable().optional(),
 })
 
 /** `PATCH …/folders/[folderId]`. */
@@ -28,7 +28,7 @@ export const updateFolderSchema = z
     // Explicit `null` moves the folder to the shelf root, which is why this is
     // `.nullable().optional()` and not merely optional: absent and null mean
     // different things here.
-    parentId: z.string().uuid().nullable().optional(),
+    parentId: z.guid().nullable().optional(),
     /**
      * What belongs in the folder (migration 0145). `null` or blank clears it.
      * Bounded above the column's 500 so the service, which folds whitespace
@@ -46,7 +46,7 @@ export const ensureFoldersSchema = z.object({
    * The level the paths are relative to — the folder the reader was standing in
    * when they dropped the tree. `null` is the shelf root.
    */
-  parentId: z.string().uuid().nullable().optional(),
+  parentId: z.guid().nullable().optional(),
   /**
    * Distinct directory paths out of the dropped tree.
    *
