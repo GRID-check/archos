@@ -521,17 +521,17 @@ ceiling.
    ([testing-and-verification.md](../contributing/testing-and-verification.md#the-workspace-set));
    its `uses` rows check the job got done with the native tool.
 
-**What it holds today** (346 entries: 339 operations, 7 read tools):
+**What it holds today** (347 entries: 340 operations, 7 read tools):
 
 | Column | Count |
 |---|---|
-| `external: true` | 242 |
-| `piloti: true` | 203 |
+| `external: true` | 243 |
+| `piloti: true` | 204 |
 | `piloti: 'native:…'` | 16 |
 | `piloti: false` | 127 (49 withheld, 55 platform, 12 sensitive, 3 asks, 3 decisions, 3 Outlook archive bytes, 2 skill reads) |
 | `platform: true` | 55 |
 | `withheld` | 49 (29 `product-config`, 13 `ui-state`, 4 `external-service`, 3 `model-compute`) |
-| `app: true` | 2 (the proposal card's buttons; 337 entries with them) |
+| `app: true` | 2 (the proposal card's buttons; 347 entries with them) |
 
 | Piloti uses | Instead of |
 |---|---|
