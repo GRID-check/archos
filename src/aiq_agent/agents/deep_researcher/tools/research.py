@@ -29,6 +29,7 @@ from aiq_agent.common.turn_status import emit_repeat_fetch
 from aiq_agent.common.turn_status import fetch_signature
 from aiq_agent.common.turn_status import record_round_announcement
 from aiq_agent.common.turn_status import retrieval_round_scope
+from aiq_agent.common.turn_status import subagent_run
 
 from ..control import note_write_now_honoured
 from ..control import take_added_documents
@@ -57,6 +58,10 @@ WRITE_NOW_NOTICE = (
 )
 logger = logging.getLogger(__name__)
 _NOTE_SLUG_MAX_LENGTH = 64
+
+#: The researcher worker's subagent name: its skills scope (``factory``) and
+#: its name on the chat wire's SUBAGENT_* events.
+RESEARCHER_AGENT = "researcher-agent"
 
 
 def _positive_int_env(name: str, default: int) -> int:
@@ -226,7 +231,10 @@ async def _run_research_query(
     length — it is treated as a failed worker so the orchestrator resubmits
     instead of persisting an empty note that silently drops the work.
     """
-    async with semaphore:
+    # One worker is one subagent invocation on the chat wire (AG-UI 1.0
+    # SUBAGENT_*): its steps carry its run id, and a worker that returns no
+    # usable note failed, the same as one that raised.
+    async with semaphore, subagent_run(RESEARCHER_AGENT, description=query.query):
         try:
             result = await researcher_runnable.ainvoke(
                 researcher_invoke_state(query, runtime), config=_worker_config(callbacks)
@@ -241,12 +249,12 @@ async def _run_research_query(
         except Exception as exc:  # noqa: BLE001 - captured as per-item failure
             raise RuntimeError(f"researcher worker failed for query {query.query!r}: {exc}") from exc
 
-    note = _structured_research_notes(result)
-    if not note.findings and not note.summary.strip():
-        raise ValueError(
-            f"researcher worker returned an empty ResearchNotes (no findings and blank summary) "
-            f"for query {query.query!r}"
-        )
+        note = _structured_research_notes(result)
+        if not note.findings and not note.summary.strip():
+            raise ValueError(
+                f"researcher worker returned an empty ResearchNotes (no findings and blank summary) "
+                f"for query {query.query!r}"
+            )
     return note
 
 
