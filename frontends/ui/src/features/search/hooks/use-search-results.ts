@@ -22,6 +22,18 @@ export interface SearchResults {
   loadMore: (kind: SearchKind) => void
 }
 
+/** `earlier` and then the hits of `later` it does not already hold: a document is one row, once. */
+export function appendUnique<T extends { id: string }>(earlier: readonly T[], later: readonly T[]): T[] {
+  const seen = new Set(earlier.map((hit) => hit.id))
+  const out = [...earlier]
+  for (const hit of later) {
+    if (seen.has(hit.id)) continue
+    seen.add(hit.id)
+    out.push(hit)
+  }
+  return out
+}
+
 /**
  * The answer to one question, and its sections' further pages.
  *
@@ -29,6 +41,13 @@ export interface SearchResults {
  * a moment ago never lands over the answer to the words typed now. A section's
  * next page asks the same question for that kind alone, from the cursor the
  * last page gave (`nextCursor`, ADR-0131).
+ *
+ * Each cursor is asked once per question. The end of a list can be reached
+ * twice before a re-render (the observer and a click in one frame), and both
+ * read the same `more`; the cursors asked live in a ref, which they share. A
+ * page that hands back a cursor already asked has not moved on, so the
+ * section ends there instead of asking it again, and a document a later page
+ * repeats is dropped (`appendUnique`): React keys rows by id.
  */
 export function useSearchResults(scope: SearchScopeQuery, body: SearchBody): SearchResults {
   const key = JSON.stringify([scope, body])
@@ -38,11 +57,13 @@ export function useSearchResults(scope: SearchScopeQuery, body: SearchBody): Sea
   const [attempt, setAttempt] = useState(0)
   const [more, setMore] = useState<Partial<Record<SearchKind, MorePage>>>({})
   const current = useRef(key)
+  const asked = useRef<Partial<Record<SearchKind, Set<string>>>>({})
 
   useEffect(() => {
     const [askedScope, askedBody] = JSON.parse(key) as [SearchScopeQuery, SearchBody]
     const controller = new AbortController()
     current.current = key
+    asked.current = {}
     setLoading(true)
     setFailed(false)
     postSearch(askedScope, askedBody, controller.signal)
@@ -65,19 +86,26 @@ export function useSearchResults(scope: SearchScopeQuery, body: SearchBody): Sea
       const page = more[kind]
       const cursor = page ? page.nextCursor : section?.nextCursor
       if (!cursor || page?.loading) return
-      const asked = key
+      const cursors = (asked.current[kind] ??= new Set())
+      if (cursors.has(cursor)) return
+      cursors.add(cursor)
+      const question = key
       setMore((pages) => ({ ...pages, [kind]: { hits: page?.hits ?? [], nextCursor: cursor, loading: true, failed: false } }))
       postSearch(scope, { ...body, kinds: [kind], cursor, facets: false })
         .then((answer) => {
-          if (current.current !== asked) return
+          if (current.current !== question) return
           const next = answer.sections[kind]
+          const nextCursor = next?.nextCursor ?? null
+          const stalled = nextCursor !== null && cursors.has(nextCursor)
           setMore((pages) => ({
             ...pages,
-            [kind]: { hits: [...(pages[kind]?.hits ?? []), ...(next?.hits ?? [])], nextCursor: next?.nextCursor ?? null, loading: false, failed: false },
+            [kind]: { hits: [...(pages[kind]?.hits ?? []), ...(next?.hits ?? [])], nextCursor: stalled ? null : nextCursor, loading: false, failed: false },
           }))
         })
         .catch(() => {
-          if (current.current !== asked) return
+          if (current.current !== question) return
+          // A failed page may be asked again, by the reader's click.
+          cursors.delete(cursor)
           setMore((pages) => ({ ...pages, [kind]: { hits: pages[kind]?.hits ?? [], nextCursor: cursor, loading: false, failed: true } }))
         })
     },
@@ -90,7 +118,7 @@ export function useSearchResults(scope: SearchScopeQuery, body: SearchBody): Sea
       if (!section) continue
       const page = more[kind]
       out[kind] = {
-        hits: [...section.hits, ...(page?.hits ?? [])],
+        hits: appendUnique(section.hits, page?.hits ?? []),
         total: section.total,
         totalIsLowerBound: section.totalIsLowerBound,
         nextCursor: page ? page.nextCursor : section.nextCursor,
