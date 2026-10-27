@@ -925,6 +925,15 @@ def _fetch_results(
     return results
 
 
+def _turn_inventory(state: Any) -> str:
+    """The document inventory the turn context showed the model, for the answer's records (ADR-0139)."""
+    from aiq_agent.knowledge.inventory import in_scope_shelves_from_context
+    from aiq_agent.knowledge.inventory import render_inventory_block
+
+    documents = [doc.model_dump() for doc in (getattr(state, "available_documents", None) or [])]
+    return render_inventory_block(documents, in_scope_shelves=in_scope_shelves_from_context() or None)
+
+
 def _capture_sources(
     tool_name: str,
     content: str,
@@ -1585,6 +1594,7 @@ class PilotiAgent:
             card_repair=self._card_repairer(),
             measured_values=[measurement.value_text for measurement in turn_measurements],
             project_context=state.project_context,
+            inventory=_turn_inventory(state),
         )
         self._emit_final_report(final)
         # The "already read" digest, appended at turn end: this turn's captures

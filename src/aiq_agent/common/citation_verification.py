@@ -1067,21 +1067,13 @@ def _look_entry(hit: GroundingHit, tool_name: str) -> SourceEntry:
 _RESULT_HEADER_RE = re.compile(r"^--- Result (\d+) ---$", re.MULTILINE)
 
 
-def _cited_file(entry: SourceEntry) -> str:
-    """The file a passage is cited from: its citation key up to the page."""
-    key = entry.citation_key or entry.title or ""
-    return re.split(r",\s*(?:p\.|S\.|page)", key, maxsplit=1)[0].strip()
-
-
 def turn_passages(results: Sequence[tuple[str, Any, Any]]) -> dict[int, list[SourceEntry]]:
-    """This turn's passages by the „Result N" the model read them under; a number two blocks used holds both.
+    """This turn's passages by the „Result N" each block printed them under; a number two blocks printed holds both.
 
     ``results`` are the turn's tool results as ``(tool name, content,
-    artifact)``. A turn numbers its passages on across its blocks
-    (``grounding_block._reserve_result_numbers``), so a number names one
-    passage; a block rendered outside a turn, or replayed, numbers from 1 and
-    can collide with another, and the collision is left for
-    :func:`resolve_unlisted_numbers` to settle by content.
+    artifact)``. Every block numbers from 1, and the model's own numbers follow
+    no block reliably, so the number is only a tie-break for
+    :func:`resolve_unlisted_numbers`.
     """
     from aiq_agent.common.citation_collector import hits_from_artifact
 
@@ -1099,72 +1091,42 @@ def turn_passages(results: Sequence[tuple[str, Any, Any]]) -> dict[int, list[Sou
         for number, hit in zip(numbers, hits, strict=True):
             entry = _entry_from_hit(hit, tool_name)
             held = numbered.setdefault(number, [])
-            if not any(
-                _cited_file(other) == _cited_file(entry) and other.citation_key == entry.citation_key for other in held
-            ):
+            if all(other.citation_key != entry.citation_key or other.chunk_text != entry.chunk_text for other in held):
                 held.append(entry)
     return numbered
 
 
 _SENTENCE_RE = re.compile(r"(?<=[.!?])\s+|\n+")
-_KEY_WORD_RE = re.compile(r"[^\W\d_][^\W_]{3,}")
-
-
-def _overlap(sentence: str, entry: SourceEntry) -> float:
-    """The share of the sentence's key words (four letters or more) the passage text holds."""
-    words = {word.casefold() for word in _KEY_WORD_RE.findall(_INLINE_CITATION_RE.sub("", sentence))}
-    if not words:
-        return 0.0
-    held = (entry.chunk_text or "").casefold()
-    return sum(1 for word in words if word in held) / len(words)
-
-
-def _best_by_content(sentences: Sequence[str], entries: Sequence[SourceEntry]) -> SourceEntry | None:
-    """The one passage the sentences read most like, when it holds half their key words and no other ties it."""
-    scored = sorted(
-        ((max((_overlap(s, e) for s in sentences), default=0.0), i) for i, e in enumerate(entries)), reverse=True
-    )
-    if not scored or scored[0][0] < 0.5 or (len(scored) > 1 and scored[1][0] == scored[0][0]):
-        return None
-    return entries[scored[0][1]]
 
 
 def resolve_unlisted_numbers(text: str, numbered: dict[int, list[SourceEntry]]) -> list[SourceEntry | None]:
     """What each ``[N]`` of an answer with no source list names, at position N-1; None where nothing does.
 
-    In order: the passage of a file the sentence carrying ``[N]`` names
-    („Wien-Lacknergasse-Schnitt-section.pdf zeigt … [1]"), preferring the one
-    numbered N; else the one passage numbered N; else, when a number names
-    several, the one whose text the sentence reads like. A number nothing
-    settles is labelled. Never a position in the conversation's registry: the
-    model never saw that numbering (ADR-0139).
+    By content, never by position: ``[N]`` names the passage of this turn that
+    holds every sentence carrying it (its numbers and half its key words,
+    ``claim_provenance.passage_holds``). The number only breaks a tie between
+    passages that all hold them; passages of one citation key are one source.
+    A number no passage holds, or two sources hold equally, is labelled. The
+    model's numbers follow neither the registry nor any one block: read as
+    positions they cited Punkt 12 to OIB-RL 2.1 p.4 and drawings to OIB pages
+    (ADR-0139).
     """
-    every = list({id(entry): entry for held in numbered.values() for entry in held}.values())
+    from aiq_agent.common.claim_provenance import passage_holds
+
+    every = [entry for held in numbered.values() for entry in held]
     sentences = [part for part in _SENTENCE_RE.split(text) if part.strip()]
-    # Two blocks that both printed „Result 1" (rendered outside a turn, or
-    # before blocks were numbered on): the numbers the model wrote follow no
-    # one block, so every number is settled by content among all passages.
-    collided = any(len(held) > 1 for held in numbered.values())
     resolved: dict[int, SourceEntry] = {}
     for number in sorted(_inline_citation_numbers(text)):
         carrying = [sentence for sentence in sentences if f"[{number}]" in sentence]
-        candidates = every if collided else numbered.get(number, [])
-        named = [
+        holding = [
             entry
             for entry in every
-            if len(_cited_file(entry)) >= 6
-            and any(_cited_file(entry).casefold() in sentence.casefold() for sentence in carrying)
+            if all(passage_holds(s, entry.chunk_text or "", sources=[entry.citation_key]) for s in carrying)
         ]
-        pick: SourceEntry | None = None
-        if named:
-            own = [entry for entry in named if entry in candidates]
-            pick = own[0] if own else named[0] if len(named) == 1 else _best_by_content(carrying, named)
-        elif len(candidates) == 1:
-            pick = candidates[0]
-        elif candidates:
-            pick = _best_by_content(carrying, candidates)
-        if pick is not None:
-            resolved[number] = pick
+        if len({entry.citation_key for entry in holding}) > 1:
+            holding = [entry for entry in holding if entry in numbered.get(number, [])]
+        if holding and len({entry.citation_key for entry in holding}) == 1:
+            resolved[number] = holding[0]
     if not resolved:
         return []
     return [resolved.get(position) for position in range(1, max(resolved) + 1)]

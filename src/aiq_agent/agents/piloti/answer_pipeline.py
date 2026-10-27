@@ -76,6 +76,7 @@ from aiq_agent.common.turn_status import emit_anatomy_dropped
 from aiq_agent.common.turn_status import emit_answer_repair
 from aiq_agent.common.turn_status import emit_citation_check
 from aiq_agent.common.workspace_records import filed_proposal_ids
+from aiq_agent.common.workspace_records import inventory_record
 from aiq_agent.common.workspace_records import profile_record
 from aiq_agent.common.workspace_records import records_from_messages
 from aiq_agent.observability.langfuse_scores import card_validity_score
@@ -523,9 +524,9 @@ class _Verified:
 def _writer_numbering(turn: Sequence[Any], content: str) -> list[SourceEntry | None] | None:
     """What each ``[N]`` of an answer without a source list names among this turn's passages (ADR-0139).
 
-    A turn numbers its passages on across its blocks, so „[3]" names the third
-    passage it read; a sentence naming a file it read settles a number that
-    does not (``resolve_unlisted_numbers``). ``None`` when nothing resolves, so
+    By content: a number names the passage of this turn that holds every
+    sentence carrying it, the printed „Result N" only breaking a tie
+    (``resolve_unlisted_numbers``). ``None`` when nothing resolves, so
     every such number is labelled (``NO_SOURCE_LIST_REASON``). The list that
     comes back is appended as the answer's sources: the reader always gets the
     Quellen list the prompt asks for.
@@ -558,7 +559,7 @@ def _verify(
     # Labelled, not stripped: a claim whose pointer did not hold must not read
     # like every other unmarked sentence (ADR-0125). The locus beside a marker
     # is held to the passage it resolves to. The writer-facing list is THIS
-    # turn's numbered blocks (``_writer_numbering``): Piloti's model never sees
+    # turn's passages, by content (``_writer_numbering``): Piloti's model never sees
     # the registry numbered, and reading [N] as a registry position (the
     # registry is cumulative across the conversation) cited project drawings
     # to OIB passages of the turn before (ADR-0139).
@@ -1152,12 +1153,14 @@ async def finalize_answer(
     card_repair: CardRepairFn | None = None,
     measured_values: Sequence[str] = (),
     project_context: str | None = None,
+    inventory: str | None = None,
 ) -> FinalAnswer:
     """Run every post-answer stage and return the answer as the reader gets it.
 
     ``project_context`` is the turn context's project block
-    (``PROJECT_CONTEXT v1``): its confirmed rows are a record a sentence can be
-    read off (``workspace_records.profile_record``).
+    (``PROJECT_CONTEXT v1``) and ``inventory`` its document inventory: each is
+    a record a sentence can be read off (``workspace_records.profile_record``,
+    ``inventory_record``).
 
     ``turn_sources`` is this turn's capture, which the caller must pass when it
     finalises AFTER ``end_turn_capture``: the ContextVar is back to its prior
@@ -1228,7 +1231,14 @@ async def finalize_answer(
     pairs = [(source.entry, source.number) for source in cited if not is_look_place(source.entry)]
     stamps = await asyncio.to_thread(stamp_quote_lines, content, pairs, registry.all_sources())
     claims = _claim_provenance(
-        content, cited, stamps, turn, measured_values, relied_readings(looks, cited), project_context=project_context
+        content,
+        cited,
+        stamps,
+        turn,
+        measured_values,
+        relied_readings(looks, cited),
+        project_context=project_context,
+        inventory=inventory,
     )
     _emit_look_scores(looks, looks_made, claims.stamps, cited)
     final_messages = list(messages)
@@ -1298,6 +1308,7 @@ def _claim_provenance(
     readings: Sequence[str] = (),
     *,
     project_context: str | None = None,
+    inventory: str | None = None,
 ) -> _Claims:
     """Stamp each sentence of the final text with where it comes from (``common/claim_provenance``).
 
@@ -1325,8 +1336,16 @@ def _claim_provenance(
             for source in cited
             if source.number is not None and not is_look_place(source.entry)
         },
+        sources={
+            source.number: source.entry.citation_key
+            for source in cited
+            if source.number is not None and not is_look_place(source.entry)
+        },
         quote_stamps=quote_stamps,
-        records=[*records_from_messages(turn), *filter(None, [profile_record(project_context)])],
+        records=[
+            *records_from_messages(turn),
+            *filter(None, [profile_record(project_context), inventory_record(inventory)]),
+        ],
         measured_values=tuple(value for value in measured_values if value),
         readings=tuple(readings),
     )

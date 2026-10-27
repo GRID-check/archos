@@ -235,6 +235,9 @@ class ClaimEvidence:
     #: or sentence drawn from a cited lead-in (``reasoning``) that states a
     #: number counts half only when the passage holds it (:func:`_drawn_from`).
     passages: Mapping[int, str] = field(default_factory=dict)
+    #: The citation key of the passage each cited ``[N]`` resolved to, by number:
+    #: the file the sentence may name, which is no content the passage holds.
+    sources: Mapping[int, str] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -294,6 +297,14 @@ class ClaimStamp:
     #: The rows of one table or list under a lead-in, with that lead-in, share
     #: a group: one claim (:func:`claim_supports`), not one per row.
     group: int | None = None
+    #: The sentence that introduces its group („Die Grenzwerte lauten [1]:").
+    lead_in: bool = False
+    #: ``quoted`` (by its stamp), or ``cited`` and the passage its pointer resolved to holds it
+    #: (:func:`passage_holds`). Without it a citation counts half.
+    checked: bool = False
+    #: ``cited``, and it states a number its passage does not hold
+    #: (:func:`numbers_missing`): the citation counts nothing.
+    misnumbered: bool = False
 
     @property
     def is_next_step(self) -> bool:
@@ -337,6 +348,7 @@ class _Unit:
     quote_wording: str | None = None
     #: The lead-in block this row or list item stands under, if any.
     group: int | None = None
+    lead_in: bool = False
 
 
 # ---------------------------------------------------------------------------
@@ -502,14 +514,18 @@ def _record_match(sentence: str, records: Sequence[WorkspaceRecord]) -> tuple[Wo
     ]
     best: tuple[int, WorkspaceRecord] | None = None
     for record in records:
-        word_hits = max(
-            (sum(1 for word in words if _whole_word_in(word, item)) for item in record.items or (record.haystack,)),
-            default=0,
-        )
-        number_hits = sum(1 for number in numbers if _number_in(number, record))
         # One shared word is a coincidence („Schnitt" in a recommendation);
-        # two in one row, or a number, is a sentence read off the record.
-        hits = word_hits + 2 * number_hits
+        # two in one row, or a word and a number in one row, is a sentence read
+        # off the record. A number alone matches nothing: „3 Stiegenhäuser"
+        # against a profile that holds a 3 somewhere is no reading of it.
+        item_hits = 0
+        for item in record.items or (record.haystack,):
+            item_words = sum(1 for word in words if _whole_word_in(word, item))
+            if item_words:
+                item_numbers = sum(1 for number in numbers if _whole_word_in(number, item))
+                item_hits = max(item_hits, item_words + 2 * item_numbers)
+        counted = sum(1 for number in numbers if number.replace(",", ".").isdigit() and int(number) in record.counts)
+        hits = item_hits + (2 * counted if item_hits else 0)
         if hits >= _MIN_RECORD_HITS and (best is None or hits > best[0]):
             best = (hits, record)
     if best is None:
@@ -872,6 +888,8 @@ def classify_claims(
         _, level = _place_level(unit, evidence)
         # A place beside a passage pointer: the sentence is held to the weaker of the two.
         cap = level if provenance in _PASSAGE_CLASSES else None
+        passage = " ".join(evidence.passages.get(number, "") for number in _numbers(unit.text))
+        sources = [evidence.sources.get(number, "") for number in _numbers(unit.text)]
         if provenance in _PASSAGE_CLASSES and cap is None and _observed(unit.text, evidence.readings):
             cap = "medium"
         stamps.append(
@@ -889,6 +907,11 @@ def classify_claims(
                 hedged=is_hedged(unit.text),
                 dropped=_pointer_dropped(unit, evidence),
                 group=unit.group,
+                lead_in=unit.lead_in,
+                # A verified quotation is checked by its stamp; a citation by its passage.
+                checked=provenance == "quoted"
+                or (provenance == "cited" and passage_holds(unit.text, passage, sources=sources)),
+                misnumbered=provenance == "cited" and numbers_missing(unit.text, passage, sources=sources),
                 drawn=(
                     provenance == "model_knowledge"
                     and unit.paragraph in supported
@@ -907,7 +930,7 @@ def _with_lead_ins(units: list[_Unit]) -> list[_Unit]:
             continue
         before = units[index - 1]
         if before.group is None and before.text.rstrip().rstrip("*_").endswith(":"):
-            joined[index - 1] = replace(before, group=unit.group)
+            joined[index - 1] = replace(before, group=unit.group, lead_in=True)
     return joined
 
 
@@ -917,27 +940,65 @@ def _with_lead_ins(units: list[_Unit]) -> list[_Unit]:
 _DRAWN_WORD_SHARE = 0.5
 
 
+def _checked_text(sentence: str, sources: Sequence[str]) -> str:
+    text = _MARKER_RE.sub("", sentence.replace(DROPPED_CITATION_MARKER, " ").replace(UNVERIFIED_QUOTE_MARKER, " "))
+    for name in filter(None, (_file_name(source) for source in sources)):
+        text = re.sub(re.escape(name), " ", text, flags=re.IGNORECASE)
+    return text
+
+
+def numbers_missing(sentence: str, passage: str, *, sources: Sequence[str] = ()) -> bool:
+    """Whether the sentence states a number a passage with text does not hold: the pointer does not stand behind it.
+
+    Numbers are exact where key words are not: „Fluchtwege" beside
+    „Fluchtweglänge" is an inflection, „R 60" beside a passage without 60 is a
+    value from elsewhere.
+    """
+    return bool(passage.strip()) and not _value_tokens(_checked_text(sentence, sources)) <= _value_tokens(passage)
+
+
+def passage_holds(sentence: str, passage: str, *, sources: Sequence[str] = ()) -> bool:
+    """Whether ``passage`` holds the sentence: every number it states and at least half its key words.
+
+    ``sources`` are the citation keys of the passage: the file name a sentence
+    names („Tectum-Projektplakate Kopie 2.pdf zeigt …") is left out of the
+    check, neither held nor missing, since a page's text rarely prints it.
+
+    The one content check a pointer is held to (ADR-0139): a cited sentence
+    counts whole only when its passage holds it, a row under a cited lead-in
+    counts half only then, and an ``[N]`` written with no source list names
+    the passage of the turn that holds its sentences
+    (``citation_verification.resolve_unlisted_numbers``).
+    """
+    if not passage.strip():
+        return False
+    text = _checked_text(sentence, sources)
+    stated = _value_tokens(text)
+    if not stated <= _value_tokens(passage):
+        return False
+    words = {word.casefold() for word in _WORD_RE.findall(text)} - _STOPWORDS
+    if not words:
+        return bool(stated)
+    held = passage.casefold()
+    return sum(1 for word in words if word in held) >= _DRAWN_WORD_SHARE * len(words)
+
+
 def _drawn_from(sentence: str, numbers: Sequence[int], evidence: ClaimEvidence) -> bool:
     """Whether a sentence with no pointer of its own states what the passage its paragraph cites holds.
 
-    A sentence stating no number is drawn from it, as before: it restates or
-    orders what the cited sentence says. One stating a number is drawn only
-    when the passage text (:attr:`ClaimEvidence.passages`) holds every number
-    it states and at least :data:`_DRAWN_WORD_SHARE` of its key words. A table
-    of limits under „Die Grenzwerte lauten [1]:" that the passage does not
-    hold is invented, however confidently it was introduced.
+    One stating no number is drawn from it, as before: it restates or orders
+    what the cited sentence says. One stating a number only when the passage
+    holds it (:func:`passage_holds`): a table of limits under „Die Grenzwerte
+    lauten [1]:" that the passage does not hold is invented.
     """
-    stated = _value_tokens(sentence)
-    if not stated:
+    if not _value_tokens(sentence):
         return True
-    passage = " ".join(evidence.passages.get(number, "") for number in numbers)
-    if not passage.strip() or not stated <= _value_tokens(passage):
-        return False
-    words = {word.casefold() for word in _WORD_RE.findall(_MARKER_RE.sub("", sentence))} - _STOPWORDS
-    if not words:
-        return True
-    held = passage.casefold()
-    return sum(1 for word in words if word in held) >= _DRAWN_WORD_SHARE * len(words)
+    return passage_holds(sentence, " ".join(evidence.passages.get(number, "") for number in numbers))
+
+
+def _file_name(citation_key: str) -> str:
+    """The file or act a citation key names: „a.pdf, p.4" → „a.pdf", „WBTV 2023, § 1" → „WBTV 2023"."""
+    return re.sub(r",\s*(?:(?:p|S)\.\s*[\d–-]+|§).*$", "", citation_key).strip()
 
 
 def mark_load_bearing(stamps: list[ClaimStamp]) -> list[ClaimStamp]:
@@ -1009,13 +1070,15 @@ def ceiling(
     if provenance == "observed":
         if law:
             return "low"
-        return "high" if exact else "medium"
+        return "medium" if ctype == "normative" or not exact else "high"
     if provenance == "reasoning" and ctype == "value" and value_supported:
         return "medium"
     if provenance in _FACT_CLASSES:
         if law:
             return "low"
-        return "medium" if unmatched else "high"
+        # A normative sentence the requirement test reads as no verdict may still
+        # be one it missed: off a record it reaches half, never high (fail safe).
+        return "medium" if unmatched or ctype == "normative" else "high"
     if ctype != "descriptive":
         return "low"
     return "medium"
@@ -1047,95 +1110,96 @@ def stamp_ceiling(stamp: ClaimStamp) -> Level:
 #: honest hedge half, nothing behind it nothing.
 _SUPPORT: dict[Level, float] = {"low": 0.0, "medium": 0.5, "high": 1.0}
 
-#: The share of load-bearing sentences with NOTHING behind them (support 0)
-#: above which an answer reads „low": a strict majority. A grounded answer with
-#: one next step the normative net caught (one of two) is not floored by it.
+#: The share of claims less than half backed (support below 0.5: nothing
+#: behind a sentence, or a table whose rows mostly are not in its passage) above
+#: which an answer reads „low": a strict majority.
 UNBACKED_SHARE = 0.5
 
-#: A legal conclusion: the sentence says a requirement is met, needed, allowed
-#: or missed. Narrow on purpose: a next step („muss im Einzelnen geöffnet
-#: werden") or a fact about the corpus („39 Dateien des OIB-Korpus") is caught
-#: by the wide normative net but concludes nothing, and must not floor an
-#: answer the way an uncited verdict does (:func:`claims_ceiling`).
-_VERDICT_RE = re.compile(
-    r"\b(?:erfüll|erfuell|eingehalten|einhält|einhaelt|unterschritten|überschritten|ueberschritten"
-    r"|zulässig|zulaessig|unzulässig|unzulaessig|bewilligungsfähig|bewilligungsfaehig"
-    r"|genehmigungsfähig|genehmigungsfaehig|bewilligungspflichtig|genehmigungspflichtig"
-    r"|erforderlich|vorgeschrieben|entspricht|entsprechen|widerspricht|verstößt|verstoesst|ausreichend"
-    r"|überschreit|ueberschreit|unterschreit|einzuhalten|bewilligt|genehmigt|einschlägig|einschlaegig"
-    r"|anwendbar|greift|gilt\s+nicht|genügt|genuegt|ausreicht|reicht\s+(?:nicht|aus)|nötig|noetig|notwendig|vorzulegen|nachzuweisen"
-    r"|zu\s+(?:schmal|gering|hoch|niedrig|klein|kurz|lang|breit|eng|steil|flach|weit|nah)\b"
-    r"|complies|compliant|permitted|permissible|required|meets|satisf|applies|exceed|too\s+(?:narrow|low|high|small|short|steep))",
+#: Words that conclude something about the law: met, needed, allowed, missed.
+_VERDICT_WORD_RE = re.compile(
+    r"\b(?:erfüll|erfuell|eingehalten|einhalten|einhält|einhaelt|einzuhalten|unterschritten|unterschreit"
+    r"|überschritten|ueberschritten|überschreit|ueberschreit|zulässig|zulaessig|unzulässig|unzulaessig"
+    r"|bewilligungsfähig|bewilligungsfaehig|genehmigungsfähig|genehmigungsfaehig|bewilligungspflichtig"
+    r"|genehmigungspflichtig|bewilligt|genehmigt|erforderlich|vorgeschrieben|gefordert|pflicht|verpflichtend"
+    r"|zwingend|nötig|noetig|notwendig|entspricht|entsprechen|widerspricht|verstößt|verstoesst|ausreichend"
+    r"|ausreicht|einschlägig|einschlaegig|anwendbar|begrenzt|beschränkt|beschraenkt|höchstens|hoechstens"
+    r"|mindestens|maximal|maßgeblich|massgeblich|verbindlich|complies|compliant|permitted|permissible|required"
+    r"|requires|exceed)"
+    r"|\bzu\s+(?:schmal|gering|hoch|niedrig|klein|kurz|lang|breit|eng|steil|flach|weit|nah)\s*(?:[.;:!?]|$)"
+    r"|\btoo\s+(?:narrow|low|high|small|short|steep)\b",
     re.IGNORECASE,
 )
-#: A requirement's modal („muss", „darf", „ist … zu", „vorzulegen"). Alone it
-#: is a next step as often as a rule; beside a value or a named instrument it
-#: states the rule.
+#: A requirement's modal: „muss", „darf", „braucht", „ist … zu prüfen", „vorzulegen".
 _MODAL_RE = re.compile(
-    r"\b(?:muss|müssen|muessen|darf|dürfen|duerfen|soll|sollen|gilt|gelten|must|shall|may\s+not)\b"
-    r"|\b(?:ist|sind)\s+(?:\w+\s+){0,3}zu\s+\w+en\b"
-    r"|\b\w+zu\w+en\b",
+    r"\b(?:muss|müssen|muessen|darf|dürfen|duerfen|soll|sollen|braucht|benötigt|benoetigt|must|shall)\b"
+    r"|\b(?:ist|sind)\s+(?:\w+\s+){0,6}zu\s+\w+en\b|\b\w+zu\w+en\b",
     re.IGNORECASE,
 )
-#: An instrument of the law named in the sentence: a paragraph, an OIB guideline, a code or a standard.
+#: A verb that states the law only beside a named instrument: „gilt § 5", „Das genügt nach § 5".
+_INSTRUMENT_VERB_RE = re.compile(r"\b(?:gilt|gelten|genügt|genuegt|reicht|greift|anzuwenden)\b", re.IGNORECASE)
 _INSTRUMENT_RE = re.compile(
     r"§|\bOIB\b|\bOIB-|richtlinie|bauordnung|bautechnikverordnung|\bÖNORM|\bOENORM|\bEN\s?\d|\bDIN\b|\bBO\b",
     re.IGNORECASE,
 )
-#: What a next step, a question left open or an offer reads like: it asserts
-#: nothing the answer could be wrong about. „Ob GK 5 hier richtig ist, muss …
-#: geprüft werden", „Als Nächstes wäre … auszuwerten", „muss im Einzelnen
-#: geöffnet werden", „Eine kurze Nachricht genügt".
-_NEXT_STEP_VERBS = (
-    r"(?:prüf|klär|öffn|oeffn|abstimm|bestätig|bestaetig|auswert|les|kontrollier|verifizier|nachfrag|anfrag"
-    r"|ermittel|entscheid|feststell|aufschlag|ergänz|ergaenz|nachreich|abklär|abklaer)"
-)
+#: A next step, a question left open, an offer, or the answer's account of its
+#: own reading. Narrow on purpose: a missed next step only keeps an answer
+#: below high, a verdict mistaken for one would lift it (fail safe, ADR-0139).
 _NEXT_STEP_RE = re.compile(
-    r"^\s*(?:ob|welche[rsnm]?|wie|wann|wo|wer)\b[^.?!]*,\s*(?:muss|müssen|muessen|sollte|sollten|ist|sind|wäre|waere|bleibt)\b"
-    r"|\bals\s+nächste[srnm]?\b|\bals\s+naechste[srnm]?\b|\bnächste[rn]?\s+schritt|\bnaechste[rn]?\s+schritt"
-    r"|\b(?:muss|müssen|muessen|sollte|sollten|wäre|waere)\b[^.?!]*\b(?:ge)?"
-    + _NEXT_STEP_VERBS
-    + r"\w*\s*(?:werden|lassen)?\s*[.?!]?\s*$"
-    r"|\b(?:ist|sind|wäre|waere)\b[^.?!]*\bzu\s+" + _NEXT_STEP_VERBS + r"\w*\b"
-    r"|\b\w*zu" + _NEXT_STEP_VERBS + r"\w*en\b"
-    r"|^\s*(?:ich\s+kann|wenn\s+sie\b|gerne\b|sagen\s+sie|eine\s+kurze\s+(?:nachricht|rückmeldung|rueckmeldung)"
-    r"|i\s+can\b|if\s+you\b|let\s+me\s+know)"
-    # The answer's account of its own reading: „Nicht gelesen habe ich …",
-    # „… habe ich nicht geprüft", „… nenne ich erst nach dem Aufschlagen",
-    # „Dafür brauche ich eine gezielte Abfrage". Scope, not a claim.
+    r"^\s*(?:ob|welche[rsnm]?)\b[^.?!]*,\s*(?:muss|müssen|muessen|sollte|sollten|ist|sind|wäre|waere|bleibt)\b"
+    r"|^\s*als\s+n(?:ä|ae)chste[srnm]?\b|\bn(?:ä|ae)chste[rn]?\s+schritt"
+    r"|^\s*(?:ich\s+kann|gerne\b|sagen\s+sie|eine\s+kurze\s+(?:nachricht|r(?:ü|ue)ckmeldung))"
     r"|^\s*nicht\s+(?:\w+\s+)?(?:gelesen|geprüft|geprueft|geöffnet|geoeffnet|ausgezählt|ausgezaehlt)\s+habe\s+ich\b"
     r"|\b(?:habe|hab)\s+ich\b[^.?!]*\bnicht\b[^.?!]*\b(?:gelesen|geprüft|geprueft|geöffnet|geoeffnet|ausgezählt"
     r"|ausgezaehlt|ausgewertet|nachgeprüft|nachgeprueft)\b"
-    r"|\b(?:nenne|liefere|prüfe|pruefe)\s+ich\s+erst\b|\b(?:brauche|bräuchte|braeuchte|benötige|benoetige)\s+ich\b"
-    r"|\b(?:needs?\s+to\s+be|must\s+be|should\s+be)\s+(?:checked|verified|confirmed|clarified|opened|reviewed)\b"
-    r"|\bnext\s+step\b|^\s*whether\b",
+    r"|\b(?:nenne|liefere)\s+ich\s+erst\b|\b(?:brauche|bräuchte|braeuchte|benötige|benoetige)\s+ich\b"
+    r"|^\s*(?:i\s+can|let\s+me\s+know|whether)\b|\bnext\s+step\b",
+    re.IGNORECASE,
+)
+
+
+#: What a next step does with an open question: check it, settle it, open it.
+_CHECK_VERB_RE = re.compile(
+    r"\b(?:ge)?(?:prüf|pruef|klär|klaer|öffn|oeffn|geöffnet|geoeffnet|bestätig|bestaetig|ermittel|festgestell"
+    r"|nachgeseh|nachseh|abgeklärt|abgeklaert|gelesen|lesen|ausgewertet|auswert)\w*",
     re.IGNORECASE,
 )
 
 
 def is_next_step(sentence: str) -> bool:
-    """Whether a sentence is a next step, a question left open or an offer (:data:`_NEXT_STEP_RE`)."""
-    return _NEXT_STEP_RE.search(_MARKER_RE.sub("", sentence)) is not None
+    """Whether a sentence is a next step, a question left open or an offer (:data:`_NEXT_STEP_RE`).
+
+    Never when its main clause concludes something about the law: „Ob GK 5
+    richtig ist, muss geprüft werden" is one, „Ob mit oder ohne Sprinkler, ist
+    eine Brandwand erforderlich" is not, and nor is „Welche Nutzung auch
+    geplant ist, muss die Brandwand REI 90 aufweisen": after „ob" or „welche"
+    a modal is a next step only beside a verb of checking.
+    """
+    text = _MARKER_RE.sub("", sentence)
+    if _NEXT_STEP_RE.search(text) is None:
+        return False
+    if not re.match(r"\s*(?:ob|welche[rsnm]?)\b", text, re.IGNORECASE):
+        return _VERDICT_WORD_RE.search(text) is None
+    main = text.split(",", 1)[1]
+    if _VERDICT_WORD_RE.search(main):
+        return False
+    return _MODAL_RE.search(main) is None or _CHECK_VERB_RE.search(main) is not None
 
 
 def states_verdict(sentence: str) -> bool:
-    """Whether a sentence concludes something about the law: met, needed, allowed, or a requirement it states.
+    """Whether a sentence states a requirement of the law, read wide (fail safe, ADR-0139).
 
-    A verdict word (:data:`_VERDICT_RE`: „erfüllt", „nötig", „zu schmal",
-    „vorzulegen"), or a requirement's modal beside a value or a named
-    instrument („muss mindestens 1,20 m breit sein", „muss nach § 5 bewilligt
-    werden"). Never a next step (:func:`is_next_step`): „Ob ein zweiter
-    Fluchtweg erforderlich ist, muss geprüft werden" leaves the question open.
-    A modal alone („muss im Einzelnen geöffnet werden") is how a next step
-    reads, and an instrument alone („die 39 Dateien des OIB-Korpus") is a fact
-    about the corpus.
+    A verdict word („erfüllt", „nötig", „gefordert", „zu schmal."), a
+    requirement's modal („muss eingebaut werden", „darf nicht", „es braucht",
+    „ist vorzulegen"), or „gilt"/„genügt" beside a named instrument; never a
+    next step (:func:`is_next_step`). Read wide because a sentence read as one
+    needs a passage, so a false hit only drops a level, never lifts one.
     """
     text = _MARKER_RE.sub("", sentence)
     if is_next_step(text):
         return False
-    if _VERDICT_RE.search(text):
+    if _VERDICT_WORD_RE.search(text) or _MODAL_RE.search(text):
         return True
-    return _MODAL_RE.search(text) is not None and (bool(_value_tokens(text)) or _INSTRUMENT_RE.search(text) is not None)
+    return _INSTRUMENT_VERB_RE.search(text) is not None and _INSTRUMENT_RE.search(text) is not None
 
 
 def support(stamp: ClaimStamp) -> float:
@@ -1155,6 +1219,13 @@ def support(stamp: ClaimStamp) -> float:
             return 0.0
         if level == "low":
             level = "medium"
+    # High needs content checked: a cited passage that does not hold the
+    # sentence, or a pointer that did not hold, keeps it at half (fail safe);
+    # a number the passage does not hold, at nothing.
+    if stamp.misnumbered:
+        return 0.0
+    if (stamp.provenance == "cited" and not stamp.checked) or stamp.dropped:
+        level = min(level, "medium", key=_LEVELS.index)
     return _SUPPORT[level]
 
 
@@ -1166,25 +1237,26 @@ def claim_supports(stamps: Sequence[ClaimStamp]) -> list[float]:
     """The support of each claim the answer makes, in order: a load-bearing sentence, or a group as one.
 
     A table or a list under a lead-in is one statement (:attr:`ClaimStamp.group`):
-    its rows and lead-in count once, with the mean of their supports. Nine
+    its rows and lead-in count once, with the mean of its rows' supports. Nine
     rows of a table of contents must not outvote five cited sentences, nor be
     outvoted by them.
     """
     supports: list[float] = []
-    groups: dict[int, list[float]] = {}
+    groups: dict[int, list[ClaimStamp]] = {}
     slot: dict[int, int] = {}
     for stamp in _bearing(stamps):
-        value = support(stamp)
         if stamp.group is None:
-            supports.append(value)
+            supports.append(support(stamp))
             continue
         if stamp.group not in groups:
             groups[stamp.group] = []
             slot[stamp.group] = len(supports)
             supports.append(0.0)
-        groups[stamp.group].append(value)
-    for group, values in groups.items():
-        supports[slot[group]] = sum(values) / len(values)
+        groups[stamp.group].append(stamp)
+    for group, members in groups.items():
+        # The rows say what the table claims; a cited lead-in does not lift invented rows.
+        rows = [stamp for stamp in members if not stamp.lead_in] or members
+        supports[slot[group]] = sum(support(stamp) for stamp in rows) / len(rows)
     return supports
 
 
@@ -1227,8 +1299,8 @@ def claims_ceiling(stamps: Sequence[ClaimStamp]) -> Level:
 
     - ``high`` when every claim has support 1: „14 von 14 Aussagen belegt" is
       high, and nothing less is.
-    - ``low`` when more than :data:`UNBACKED_SHARE` of them have nothing behind
-      them, or when the answer concludes something about the law
+    - ``low`` when more than :data:`UNBACKED_SHARE` of them are less than
+      half backed, or when the answer concludes something about the law
       (:attr:`ClaimStamp.is_verdict`) and none of its normative sentences has a
       passage: a measurement or a record beside an uncited verdict does not
       lift it.
@@ -1243,9 +1315,11 @@ def claims_ceiling(stamps: Sequence[ClaimStamp]) -> Level:
     supports = claim_supports(bearing)
     if not supports:
         return NO_CLAIMS_CEILING
-    if sum(1 for value in supports if value == 0.0) > UNBACKED_SHARE * len(supports):
+    if sum(1 for value in supports if value < 0.5) > UNBACKED_SHARE * len(supports):
         return "low"
-    read_the_law = any(stamp.claim_type == "normative" and stamp.provenance in _PASSAGE_CLASSES for stamp in bearing)
+    read_the_law = any(
+        stamp.claim_type == "normative" and stamp.provenance in _PASSAGE_CLASSES and stamp.checked for stamp in bearing
+    )
     if any(_uncited_law(stamp) for stamp in bearing) and not read_the_law:
         return "low"
     if all(value == 1.0 for value in supports):

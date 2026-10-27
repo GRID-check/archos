@@ -1,5 +1,5 @@
 {
- "about": "Answers stored in the dev workspace between 2026-10-22 and 2026-10-27 (conversation-message-list with include=metadata,citations; passage-read for the OIB-RL 2 page 4 text), re-graded under rule 3 (ADR-0139). An entry holds its stored stamps ('stamps'), or its text with what its pointers resolve to: 'cited' and 'passages' when the model wrote a Quellen list, 'turn' (this turn's passages by the Result number they were printed under) when it did not, and 'project_context' when the turn context held the confirmed project profile. 'expected' is the ceiling under rule 3; 'judged' says what the answer actually rests on.",
+ "about": "Answers stored in the dev workspace between 2026-10-22 and 2026-10-27, and one of 2026-09-28 (conversation-message-list with include=metadata,citations; passage-read for page texts), re-graded under rule 3 (ADR-0139). An entry holds its stored stamps ('stamps'), or its text with what its pointers resolve to: 'cited', 'passages' and 'sources' when the model wrote a Quellen list, 'turn' (this turn's passages by the Result number they were printed under) when it did not, and 'project_context' when the turn context held the confirmed project profile. 'expected' is the ceiling under rule 3; 'judged' says what the answer actually rests on. Backed means support 1: a passage that holds the sentence, or a record or measurement of a sentence that states no law.",
  "answers": [
   {
    "id": "folder-listing",
@@ -82,7 +82,7 @@
    "question": "aber ich hab ja noch gnaz viele andere pdfs bist du dir sicher ?",
    "rule_2": "low",
    "expected": "medium",
-   "judged": "4 of 5: the counts per shelf are read off list_files; „Dazu kommen die 39 Dateien des OIB-Korpus“ states a number the stored listing stamps do not hold. Not a verdict, so nothing is named; not backed, so not high.",
+   "judged": "4 of 5: the counts per shelf are read off list_files. „Dazu kommen die 39 Dateien des OIB-Korpus“ is read off the turn context's inventory (inventory_record), which these stored stamps predate; the net reads it normative (it names OIB), and a record of a normative sentence counts half, never whole (fail safe). So medium either way, never high.",
    "stamps": [
     [
      "Ja, die Liste ist vollständig.",
@@ -162,7 +162,7 @@
    ],
    "note": "[1] is the IFC model summary (IfcDoor | 77), cited by the model's own Quellen list: the citation held.",
    "expected": "medium",
-   "judged": "1 of 2: the door count is cited to the IFC summary the model listed (IfcDoor | 77); the sentence about the earlier answer's sources has nothing behind it."
+   "judged": "0 of 2 whole: the door count is cited to the IFC summary (IfcDoor | 77), a stored stamp with no passage text, so it counts half; the sentence about the earlier answer's sources has nothing behind it."
   },
   {
    "id": "project-overview-from-profile",
@@ -176,7 +176,7 @@
    "project_context": "PROJECT_CONTEXT v1\n\nconfirmed:\n- bauherrschaft=privat\n- build_to_plot_boundary=true\n- building_class=GK5\n- building_lines=true\n- building_position@bldg1=attached\n- building_type@bldg1=building\n- commercial_facility=false\n- conditioning@bldg1=heated\n- construction_method@bldg1=timber\n- contaminated_land=false\n- country=at\n- development_pattern=closed\n- development_plan=true\n- district_heating=false\n- drinking_water=true\n- elevator@bldg1=true\n- escape_level=11-22m\n- escape_level_m@bldg1=12\n- existing_year_built=1910\n- federal_state=vienna\n- fire_brigade_access=true\n- fire_safety_systems@bldg1=open\n- fireplaces@bldg1=false\n- funding=open\n- hazard_zones=none\n- heat_supply@bldg1=open\n- heritage_protection=false\n- max_building_height=3\n- noise_situation=urban\n- old_town_protection_zone=true\n- project_name=Holzbau Wien\n- project_phase=preliminary_design\n- protected_area=false\n- public_access@bldg1=false\n- pv@bldg1=true\n- residential_form@bldg1@residential=conventional\n- site_address=Lacknergasse 98\n- storeys_above_ground@bldg1=5\n- storeys_below_ground@bldg1=1\n- tree_stock=false\n- units_under_400@bldg1=true\n- uses@bldg1=residential\n- water_rights=false\n- work_type=extension\n- workplace@bldg1=false\n- zone_position@bldg1@residential=above_ground\n- zoning=residential\n\nunknown:\n- certification\n- context_conflicts\n- context_description\n- context_goals\n- context_other\n- context_plot\n- context_special_solutions\n- cooling@bldg1\n- development_density\n- development_plan_notes\n- district_heating_zone\n- dwelling_units@bldg1@residential\n- gfa_above_ground@bldg1\n- infiltration@bldg1\n- katastralgemeinde\n- laerm_nacht\n- laerm_tag\n- sewer\n- use_units@bldg1\n- ventilation@bldg1\n- zone_area@bldg1@residential\n- zoning_original",
    "note": "All 26 sentences; project_context rendered from project-profile-get (version 5) as prompt-view.ts does.",
    "expected": "medium",
-   "judged": "10 of 13 read off the confirmed project profile. A restated PROJECT_MEMORY note (no confirmed fact, by the prompt's own words) has nothing behind it, and two honest „nicht belegt“ count half."
+   "judged": "5 of 13 whole, 6 half: the value rows are read off the confirmed project profile; the rows the net reads normative (Gebäudeklasse, Fluchtniveau, Widmung) count half off a record (fail safe), and a restated PROJECT_MEMORY note has nothing behind it."
   },
   {
    "id": "oib2-overview-2026-10-27",
@@ -201,7 +201,7 @@
     "6": "Es ist zu beachten, dass gegebenenfalls zusätzlich auch einige\nBestimmungen der OIB-Richtlinie 2 relevant sein können (z.B. Punkt 3.4 Schächte, Kanäle, Leitungen und sonstige Einbauten, Punkt 3.5.10 Kleinteile ohne tragende Funktion bei Fassaden,\nPunkt 3.6.3 Parken von Aufzügen mit offenen Fahrkorb- und Schachttüren).\nZu Punkt 11: Sondergebäude\nDa für die verbleibenden Gebäudetypen aufgrund ihrer Besonderheiten keine allgemein gültigen\nAnforderungen gestellt werden können, ist für jedes dieser Bauvorhaben ein Brandschutzkonzept\nauszuarbeiten."
    },
    "expected": "medium",
-   "judged": "7 of 10: the table of parts and the Erläuterungen are cited; the list under „im Überblick [1]:“ is one claim, partly drawn from page 4, whose Punkte 3 to 12 are not on it."
+   "judged": "4 of 10: the table of parts and the quotation are held by their passages; the list under „im Überblick [1]:“ is one claim whose Punkte 7 and 12 are not on page 4, and the cited sentences page 4 does not hold count half."
   },
   {
    "id": "oib2-overview-2026-10-23",
@@ -218,7 +218,7 @@
     "2": "OIB-Richtlinie 2 — Brandschutz\n\n12 Bauführungen im Bestand\nBei Änderungen an bestehenden Bauwerken mit Auswirkungen auf bestehende Bauwerksteile sind\nfür die bestehenden Bauwerksteile Abweichungen von den aktuellen Anforderungen dieser OIB-\nRichtlinie zulässig, wenn das ursprüngliche Anforderungsniveau des rechtmäßigen Bestandes\nnicht verschlechtert wird.\nTabelle 1a: Allgemeine Anforderungen an das Brandverhalten\nTabelle 1b: Allgemeine Anforderungen an den Feuerwiderstand von Bauteilen\nTabelle 2a: Anforderungen an Treppenhäuser bzw. Außentreppen im Verlauf\ndes einzigen Fluchtweges gemäß Punkt 5.1.1 b) in Gebäuden der\nGebäudeklassen 2, 3 und 4\nTabelle 2b: Anforderungen an Treppenhäuser bzw. Außentreppen im Verlauf\ndes einzigen Fluchtweges gemäß Punkt 5.1.1 b) in Gebäuden der\nGebäudeklasse 5\nTabelle 3: Anforderungen an Treppenhäuser bzw. Außentreppen im Verlauf von\nFluchtwegen gemäß Punkt 5.1.1 c)\nTabelle 4: Anforderungen an Brandabschnitte von Verkaufsflächen\nTabelle 5: Anforderungen an Pflegeheime und bettenführende Stationen von\nKrankenhäusern\nTabelle 6: Anwendungsbereiche für Sicherheitsbeleuchtung"
    },
    "expected": "medium",
-   "judged": "3 of 7: the Gliederung table is one claim, mostly not on p.4 (Punkt 0 to 2 only); the project paragraph has one uncited verdict („2.3 … nicht einschlägig“) beside the cited Punkt 12."
+   "judged": "3 of 8: the Gliederung table is one claim, mostly not on p.4 (Punkt 0 to 2 only); the project paragraph has one uncited verdict („2.3 … nicht einschlägig“) beside the cited, checked Punkt 12."
   },
   {
    "id": "plans-2026-10-23",
@@ -231,32 +231,32 @@
     {
      "number": 1,
      "citation_key": "Wien-Lacknergasse-Ansichten-views.pdf, p.2",
-     "text": ""
+     "text": "Das Blatt zeigt die Ostansicht eines zweigeschossigen Gebäudes mit detaillierten Höhenkoten von -1,60 m bis 20,45 m und einem grafischen Maßstab.\nProjekt: ANSICHT OST / EAST ELEVATION\nAnsicht — ANSICHT OST / EAST ELEVATION (Maßstab grafischer Maßstab (0-10m))\nOstansicht eines zweigeschossigen Gebäudes mit symmetrischer Fensterfront, zentralem Eingang über eine doppelläufige Treppe und markanten Dachaufbauten.\nGeschosse/Ebenen: EG, 1.OG, DG\nBeschriftungen/Maße: ANSICHT OST, EAST ELEVATION, 20,45, 15,05, 10,34, 9,365, 5,80, 1,80, 0,80, -1,60, 18,70, 14,70, 0, 1, 5, 10m\nKennwert: Höhenkote — Firsthöhe / Maximalhöhe: 20.45 m"
     },
     {
      "number": 2,
      "citation_key": "Wien-Lacknergasse-Grundrisse-floorplans.pdf, p.3",
-     "text": ""
+     "text": "Grundriss des Obergeschosses mit detaillierter Raumaufteilung, Materialkennzeichnung für Ziegelmauerwerk und Stahlbeton sowie einem grafischen Maßstab bis 10m.\nProjekt: OBERGESCHOSS / UPPER FLOOR\nGrundriss — OBERGESCHOSS / UPPER FLOOR (Maßstab grafischer Maßstab)\nGrundriss des Obergeschosses mit zentralem Erschließungsgang, mehreren Zimmern, einem großen Schlafsaal, Büro, Küche und Sanitärräumen.\nMaterialien: Ziegelmauerwerk, Stahlbeton"
     },
     {
      "number": 3,
      "citation_key": "Tectum-Projektplakate Kopie 2.pdf, p.1",
-     "text": ""
+     "text": "Der Plan zeigt den Grundriss des 3. Obergeschosses im Maßstab 1:200 mit mehreren Wohneinheiten samt Galerien und einer großzügigen Terrasse.\nProjekt: Grundriss 3. Obergeschoss\nGrundriss — Grundriss 3. Obergeschoss (Maßstab 1:200)\nBeschriftungen/Maße: Grundriss 3. Obergeschoss 1:200, WOHNEN, Galerie, 1P., 2P., +13,85, A"
     },
     {
      "number": 4,
      "citation_key": "pd8280-2.pdf, p.1",
-     "text": ""
+     "text": "Offizielles Plandokument 8280 der Stadt Wien für den Flächenwidmungs- und Bebauungsplan im Bereich Innen-Südwest im Maßstab 1:2000.\nLageplan — Flächenwidmungs- und Bebauungsplan (Maßstab 1:2000)"
     },
     {
      "number": 5,
      "citation_key": "220724_Aufsicht_1_100.pdf, p.1",
-     "text": ""
+     "text": "Die Zeichnung zeigt eine ringförmige architektonische Anlage mit zentralem Freiraum, Steg, Treppen und umgebender Landschaft in der Draufsicht."
     },
     {
      "number": 6,
      "citation_key": "220725_P4_final (verschoben) 2.pdf, p.1",
-     "text": ""
+     "text": "Das Blatt zeigt eine axonometrische Darstellung einer in eine Burgruine integrierten spiralförmigen Rampe sowie ein begleitendes Diagramm zu den vielfältigen Nutzungsmöglichkeiten des Entwurfs."
     },
     {
      "number": 7,
@@ -269,29 +269,29 @@
      "text": ""
     },
     {
-     "number": 9,
+     "number": 1,
      "citation_key": "Wien-Lacknergasse-Schnitt-section.pdf, p.1",
-     "text": ""
+     "text": "Ein Gebäudeschnitt, der die Tragstruktur aus Ziegelmauerwerk und Stahlbeton sowie die Erschließung über mehrere Ebenen darstellt.\nProjekt: SCHNITT / SECTION\nGeschosse/Ebenen: KG, EG, 1.OG, DG\nBeschriftungen/Maße: SCHNITT, SECTION, Ziegelmauerwerk, Stahlbeton, 10,10, 9,25, 5,80, 1,80, 0,00, -1,60, -2,10, 0,80, -0,39\nKennwert: Dachoberkante rechts — Höhe: 10,10 m\nKennwert: Referenzniveau EG — Höhe: 0,00 m"
     },
     {
-     "number": 10,
+     "number": 2,
      "citation_key": "250120_PerspektivischerSchnitt.pdf, p.1",
-     "text": ""
+     "text": "Die Seite zeigt einen detaillierten perspektivischen Schnitt eines mehrgeschossigen Wohngebäudes zur Veranschaulichung des räumlichen Gefüges und der inneren Erschließung.\nSchnitt — Perspektivischer Schnitt"
     },
     {
-     "number": 11,
+     "number": 3,
      "citation_key": "AC20-Institute-Var-2.ifc",
      "text": ""
     },
     {
-     "number": 12,
+     "number": 4,
      "citation_key": "wizard_konzept (1).md",
      "text": ""
     }
    ],
-   "turn_note": "No source list from the model; each sentence names the file it read. The list_files result is not stored, so the record behind „Die Höhen widersprechen sich“ is missing here: a lower bound.",
+   "turn_note": "No source list from the model. Two searches numbered from 1 each (1..8, then 1..4), as the turn printed them; each text is the page's drawing passage as passage-read returned it on 2026-10-27, standing in for the hit. The list_files result is not stored, so the record behind „Die Höhen widersprechen sich“ is missing: a lower bound.",
    "expected": "medium",
-   "judged": "5 of 6: each drawing sentence names the file it read and resolves to it; „Die Höhen widersprechen sich“ was read off list_files, which is not stored, so it counts nothing here (a lower bound)."
+   "judged": "1 of 6: the colliding numbers are settled by content alone. [1] resolves to the Schnitt (only its drawing passage holds 0,00 m and 10,10 m) and counts half, its words not all on it; [4] resolves to the Tectum poster, printed under 3, and is held; [2], [3] and [5] no passage holds (1:100, „Westansicht (S. 1)“), so they are labelled. „Die Höhen widersprechen sich“ was read off list_files, which is not stored, so it counts nothing here (a lower bound)."
   },
   {
    "id": "oib2-overview-2026-10-22",
@@ -311,8 +311,8 @@
     "3": "OIB-Richtlinie 2.2 — Brandschutz bei Garagen, überdachten Stellplätzen und Parkdecks\n\n0 Vorbemerkungen\nDie zitierten Normen und sonstigen technischen Regelwerke gelten in der im Dokument „OIB-\nRichtlinien – Zitierte Normen und sonstige technische Regelwerke“ angeführten Fassung.\nWerden in dieser Richtlinie Anforderungen an die Feuerwiderstandsklasse in Verbindung mit Anforderungen an Baustoffe der Klasse A2 gestellt, gilt dies auch als erfüllt, wenn\n• die für die Tragfähigkeit wesentlichen Bestandteile der Bauteile der Klasse A2 und\n• die sonstigen Bestandteile aus Baustoffen der Klasse B bestehen.\nFür überdachte Stellplätze und Garagen mit jeweils höchstens 15 m² Nutzfläche, die auf eigenem\nGrund oder von Verkehrsflächen für die Brandbekämpfung zugänglich sind, werden keine Anforderungen hinsichtlich des Brandschutzes gestellt.\nBei Garagen und überdachten Stellplätzen von anerkannten Einsatzorganisationen sind Ausnahmen in Bezug auf Lagerungen (z.B. Materialien, Ausrüstungen, Treibstoffe) und untergeordneten\nNutzungen zulässig, sofern sie zur Erfüllung der gesetzlichen Aufgaben erforderlich sind und keine\nbrandschutztechnischen Bedenken bestehen.\nEs wird darauf hingewiesen, dass",
     "4": "OIB-Richtlinie 2.3 — Brandschutz bei Gebäuden mit einem Fluchtniveau von mehr als 22 m\n\n0 Vorbemerkungen\nDie zitierten Normen und sonstigen technischen Regelwerke gelten in der im Dokument „OIB-\nRichtlinien – Zitierte Normen und sonstige technische Regelwerke“ angeführten Fassung.\nWerden in dieser Richtlinie Anforderungen an die Feuerwiderstandsklasse in Verbindung mit Anforderungen an Baustoffe der Klasse A2 gestellt, gilt dies auch als erfüllt, wenn\n• die für die Tragfähigkeit wesentlichen Bestandteile der Bauteile der Klasse A2 entsprechen und\n• die sonstigen Bestandteile aus Baustoffen der Klasse B bestehen.\nEs wird darauf hingewiesen, dass parallel zu den Bestimmungen dieser Richtlinie gegebenenfalls\neinzelne Bestimmungen der OIB-Richtlinie 2 „Brandschutz“ zu berücksichtigen sind.\nVon den Anforderungen dieser OIB-Richtlinie kann entsprechend den jeweiligen landesrechtlichen\nBestimmungen abgewichen werden, wenn vom Bauwerber nachgewiesen wird, dass das gleiche\nSchutzniveau wie bei Anwendung der Richtlinie erreicht wird. Hierbei ist der OIB-Leitfaden „Abweichungen im Brandschutz und Brandschutzkonzepte“ anzuwenden."
    },
-   "expected": "medium",
-   "judged": "7 of 9: cited throughout; one uncited verdict („OIB-RL 2.3 greift damit nicht“) is named, and one pointer that did not hold."
+   "expected": "low",
+   "judged": "3 of 10, 6 with nothing: page 4 Punkt 0 is cited for the Gliederung (Punkt 8 to 12, 22 m), numbers it does not hold, so those citations count nothing; one uncited verdict („OIB-RL 2.3 greift damit nicht“) and one pointer that did not hold."
   },
   {
    "id": "oib2-haus-josef-2026-10-22",
@@ -373,8 +373,8 @@
     }
    ],
    "turn_note": "No source list from the model; the verifier appended one by registry position. The turn read a search (8 hits) and two read_passage blocks, each numbered from 1 then, so the numbers collide and are settled by content (resolve_unlisted_numbers). Two hits' texts were not stored and are empty.",
-   "expected": "medium",
-   "judged": "2 of 7, two with nothing: the numbers collide across three blocks and are settled by content, [1] to page 4 Punkt 0, [2] to Punkt 12 on page 23 (not OIB-RL 2.1 p.4, as the registry position had it)."
+   "expected": "low",
+   "judged": "1 of 7, 4 with nothing: the numbers collide across three blocks and are settled by content. [2] resolves to Punkt 12 on page 23 (not OIB-RL 2.1 p.4, as the registry position had it), the same under the turn's real numbering and under one numbering on across blocks; no passage holds every sentence [1] carries (the table rows), so [1] is labelled."
   },
   {
    "id": "views-doors-2026-10-22",
@@ -450,8 +450,45 @@
     ]
    ],
    "note": "Rule 2 did not rate it low: a regression guard.",
-   "expected": "high",
-   "judged": "2 of 2: both views cited to the pages it read. Rule 2 rated it medium (the model's own level, which still holds the surfaced level below the ceiling)."
+   "expected": "medium",
+   "judged": "0 of 2 whole: both door counts are cited to the view pages, but they are the model's reading of the drawing and the stored stamps carry no passage to check them against, so each counts half. Rule 2 rated it medium too."
+  },
+  {
+   "id": "refusal-knowledge-off-2026-10-22",
+   "conversation": "s_d66e87dc_2080_4871_9d4f_e6a1904e83ff",
+   "message": "27e72195",
+   "question": "Welche Brandschutzanforderungen gelten für das Treppenhaus bei Haus Josef (Gebäudeklasse 5, 12 Geschosse, Holzbau-Aufstockung)?",
+   "rule_2": "none",
+   "note": "The knowledge base was switched off for the conversation; nothing was retrieved (lookupFoundNothing). Rule 2 surfaced no level.",
+   "content": "Die Wissensbasis (OIB-Richtlinien und Projektunterlagen) ist für dieses Gespräch ausgeschaltet, deshalb habe ich sie nicht konsultiert. Ich kann daher weder die Tabelle der OIB-Richtlinie 2 nennen noch einen Feuerwiderstand für das Treppenhaus angeben. Eine Zahl aus dem Gedächtnis wäre für eine Einreichung nicht belastbar.\n\nDie Frage hängt an zwei Angaben aus dem Projektprofil, die ich dafür heranziehen würde: Gebäudeklasse 5 (bestätigt) und ein Fluchtniveau von 14 m bei 12 oberirdischen Geschoßen (bestätigt). Beides ist bereits erfasst; die Tabelle, in der der Feuerwiderstand je Gebäudeklasse und Bauteil steht, fehlt mir ohne Zugriff auf die Richtlinie.\n\nSobald die Wissensbasis wieder eingeschaltet ist, suche ich die Tabelle der OIB-RL 2 zu Treppenhäusern in GK 5 und lese sie mit Fundstelle. Dabei prüfe ich auch, ob die Holzbau-Aufstockung eigene Anforderungen auslöst, und ob die Ausgabe Mai 2023 in Wien verbindlich ist.",
+   "expected": "low",
+   "judged": "0 of 5: nothing is retrieved and no profile reached the turn, so the profile facts it repeats (GK 5, 14 m) have nothing behind them. An honest refusal, and low says exactly that: nothing here is backed."
+  },
+  {
+   "id": "gk4-2026-09-28",
+   "conversation": "s_3a94bb4d_0493_4eda_aedb_3189e6eb31a6",
+   "message": "497daee8",
+   "question": "was weißt du zur gk 4",
+   "rule_2": "unknown",
+   "note": "Stored before the claim stamps existed. The GK 4 definition is cited to the Begriffsbestimmungen page that defines GK 1 and GK 2, and the Tabelle 1b values (R 30, R 60, REI 60) to page 23, which holds only the table's caption.",
+   "content": "GK 4 erfasst Gebäude mit **höchstens vier oberirdischen Geschoßen und einem Fluchtniveau von höchstens 11 m**; zusätzlich muss eine der beiden Einheiten-Konstellationen passen [1].\n\n| GK-4-Fall | Einheiten | Flächenbedingung | Fundstelle |\n|---|---|---|---|\n| Mehrere Wohnungen oder Betriebseinheiten | Mehrere | Jede einzelne höchstens 400 m² Nutzfläche in den oberirdischen Geschoßen | [1] |\n| Eine Wohnung oder Betriebseinheit | Eine | Keine Begrenzung der BGF der oberirdischen Geschoße | [1] |\n\n[[card:1]]\n\n### Brandschutz: Anforderungen hängen von Bauteil und Lage ab\n\nBeispiele aus Tabelle 1b der OIB-Richtlinie 2, Ausgabe Mai 2023: Tragende Bauteile brauchen im obersten Geschoß R 30, in den sonstigen oberirdischen Geschoßen R 60; Trennwände in oberirdischen Geschoßen sind mit REI 60 beziehungsweise EI 60 ausgewiesen [2]. Das sind einzelne Tabellenwerte, kein vollständiger Brandschutznachweis.\n\nFür Kaiserstraße 43 ist GK 4 derzeit **nicht festgestellt**: Die oberirdische Geschoßzahl und die Wohnnutzung allein reichen dafür nicht; das Fluchtniveau und die Flächen je Wohneinheit sind noch offen. Da es sich um einen Umbau handelt, ist außerdem die Bestandsregel relevant: Abweichungen bei bestehenden Bauwerksteilen sind nach OIB-RL 2 zulässig, wenn das ursprüngliche Anforderungsniveau des rechtmäßigen Bestands nicht verschlechtert wird [2].\n\nFür die rechtliche Anwendung in Wien verweist § 1 der Wiener Bautechnikverordnung 2023 auf die in ihren Anlagen enthaltenen OIB-Richtlinien [3]. Der abgerufene Paragraph nennt die konkrete Ausgabe der einschlägigen Anlage nicht; die Werte oben sind daher ausdrücklich der OIB-Ausgabe Mai 2023 zugeordnet und nicht als abschließende Prüfung der in Wien maßgeblichen Ausgabe zu verstehen.\n\n## Quellen\n- [1] [KB] oib-rl_begriffsbestimmungen_ausgabe_mai_2023.pdf, p.8\n- [2] [KB] oib-rl_2_ausgabe_mai_2023.pdf, p.23, p.26\n- [3] [RIS] Wiener Bautechnikverordnung 2023, § 1\n",
+   "cited": [
+    1,
+    2,
+    3
+   ],
+   "passages": {
+    "1": "Österreichisches Institut für Bautechnik OIB-330-003/23 Begriffsbestimmungen\nFluchtweg\nWeg, der den Benützern eines Bauwerkes im Gefahrenfall grundsätzlich ohne fremde Hilfe das Erreichen\neines sicheren Ortes des angrenzenden Geländes im Freien – in der Regel eine Verkehrsfläche – ermög-\nlicht.\nGarage\nGebäude oder Teil eines Gebäudes zum Einstellen von Kraftfahrzeugen.\nGebäude der Gebäudeklasse 1 (GK1)\nFreistehende, an mindestens drei Seiten auf eigenem Grund oder von Verkehrsflächen für die Brandbe-\nkämpfung von außen zugängliche Gebäude mit nicht mehr als drei oberirdischen Geschoßen, mit einem\nFluchtniveau von nicht mehr als 7,00 m und insgesamt nicht mehr als 400 m² Brutto-Grundfläche der ober-\nirdischen Geschoße, bestehend aus nicht mehr als zwei Wohnungen oder einer Betriebseinheit.\nGebäude der Gebäudeklasse 2 (GK2)\na) Gebäude mit nicht mehr als drei oberirdischen Geschoßen und mit einem Fluchtniveau von nicht mehr\nals 7,00 m von insgesamt nicht mehr als 400 m² Brutto-Grundfläche der oberirdischen Geschoße,\nb) Reihenhäuser mit nicht mehr als drei oberirdischen Geschoßen und mit einem Fluchtniveau von nicht\nmehr als 7,00 m, bestehend aus Wohnungen bzw. Betriebseinheiten von",
+    "2": "OIB-Richtlinie 2 — Brandschutz\n\n12 Bauführungen im Bestand\nBei Änderungen an bestehenden Bauwerken mit Auswirkungen auf bestehende Bauwerksteile sind\nfür die bestehenden Bauwerksteile Abweichungen von den aktuellen Anforderungen dieser OIB-\nRichtlinie zulässig, wenn das ursprüngliche Anforderungsniveau des rechtmäßigen Bestandes\nnicht verschlechtert wird.\nTabelle 1a: Allgemeine Anforderungen an das Brandverhalten\nTabelle 1b: Allgemeine Anforderungen an den Feuerwiderstand von Bauteilen\nTabelle 2a: Anforderungen an Treppenhäuser bzw. Außentreppen im Verlauf\ndes einzigen Fluchtweges gemäß Punkt 5.1.1 b) in Gebäuden der\nGebäudeklassen 2, 3 und 4\nTabelle 2b: Anforderungen an Treppenhäuser bzw. Außentreppen im Verlauf\ndes einzigen Fluchtweges gemäß Punkt 5.1.1 b) in Gebäuden der\nGebäudeklasse 5\nTabelle 3: Anforderungen an Treppenhäuser bzw. Außentreppen im Verlauf von\nFluchtwegen gemäß Punkt 5.1.1 c)\nTabelle 4: Anforderungen an Brandabschnitte von Verkaufsflächen\nTabelle 5: Anforderungen an Pflegeheime und bettenführende Stationen von\nKrankenhäusern\nTabelle 6: Anwendungsbereiche für Sicherheitsbeleuchtung",
+    "3": "§ 1.\nDen im 9. Teil der Bauordnung für Wien festgelegten bautechnischen Vorschriften wird entsprochen, wenn die in den Anlagen enthaltenen Richtlinien des Österreichischen Instituts für Bautechnik, soweit in ihnen bautechnische Anforderungen geregelt werden, eingehalten werden. Ausgenommen sind die Punkte 2.1.5 und 2.1.6 der Anlage 11, Punkt 5 der Anlage 12 und die Buchstaben A und B des Punktes 4.10 der Anlage 13 aufgrund der Vorgaben des § 118e Abs. 3 der Bauordnung für Wien. Weiters tritt in der Anlage 13 der Begriff der Beherbergungsstätte nach § 120 Abs. 4 der Bauordnung für Wien an die Stelle des Begriffs des Beherbergungsbetriebs und es sind für die Ausstellung von Energieausweisen nur die jeweiligen Muster der Anlage 13 ohne QR-Code heranzuziehen."
+   },
+   "sources": {
+    "1": "oib-rl_begriffsbestimmungen_ausgabe_mai_2023.pdf, p.8",
+    "2": "oib-rl_2_ausgabe_mai_2023.pdf, p.23",
+    "3": "Wiener Bautechnikverordnung 2023, § 1"
+   },
+   "expected": "medium",
+   "judged": "2 of 8, 4 with nothing: every citation that states a number its passage does not hold (11 m, R 30, R 60) counts nothing; Punkt 12 and § 1 are held."
   }
  ]
 }

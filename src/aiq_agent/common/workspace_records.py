@@ -42,10 +42,12 @@ model read, so it is all a sentence can have been written from:
   its ``confirmed:`` rows, ADR-0139) is a read too: the person confirmed each
   row in the intake, and the prompt hands the rows to the model verbatim.
   :func:`profile_record` makes one item per row, its English tokens followed
-  by the German the answer writes them in (:data:`_PROFILE_WORDS`), so
+  by the German the answer writes them in (:func:`_profile_german`), so
   „Geschoße · 5 oberirdisch" or „Widmung · Wohngebiet" is a sentence read off
-  the profile. Notes (``PROJECT_MEMORY``), unknowns and assumptions are not:
-  the prompt itself calls a note neither a confirmed fact nor law;
+  the profile. Notes (``PROJECT_MEMORY``), unknowns, assumptions and
+  contested facts are not: the prompt itself calls a note neither a confirmed
+  fact nor law. The turn context's document inventory is read the same way, one
+  item per shelf (:func:`inventory_record`);
 - anything else (a refusal, which the tool words „Error …", or a notice the
   agent's own guards answered the call with) is no JSON and no record.
 
@@ -74,6 +76,10 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Any
 from typing import Literal
+
+from aiq_agent.profile_names import LEGACY_DERIVATION_RULES
+from aiq_agent.profile_names import LEGACY_PROFILE_KEYS
+from aiq_agent.profile_names import LEGACY_PROFILE_TOKENS
 
 #: The function group the workspace tools are registered under (``configs``,
 #: ``function_groups.workspace``) and its one tool that reads or proposes.
@@ -183,82 +189,79 @@ def listing_record(text: str) -> WorkspaceRecord | None:
 #: The operation a record of the confirmed project profile names.
 PROFILE_OPERATION = "project-profile"
 
-#: The German an answer writes a profile token in, by token: the intake's own
-#: question and option labels (``frontends/ui/src/lib/project-profile/
-#: intake-definition.ts``), cut to the words a sentence repeats. A token
-#: missing here still matches on its numbers and its own spelling; the table
-#: only lets a row like „Widmung · Wohngebiet" match without one.
-_PROFILE_WORDS: dict[str, tuple[str, ...]] = {
+#: The spoken German of a profile token that its stored German name
+#: (``profile_names``, held to ``legacy-names.json``) does not hold: „Maßnahme"
+#: for ``work_type``, whose old name was ``vorhabensart``. Every token here is
+#: one the intake writes (``test_confidence_evidence_share`` checks it against
+#: ``frontends/ui/src/lib/project-profile``). A token missing everywhere still
+#: matches on its own spelling; it only cannot let a German row match, which
+#: drops the row, never lifts it.
+_PROFILE_SPOKEN: dict[str, tuple[str, ...]] = {
     # Keys
-    "zoning": ("widmung", "flächenwidmung", "flaechenwidmung"),
+    "zoning": ("widmung",),
     "work_type": ("maßnahme", "massnahme", "vorhaben"),
-    "construction_method": ("bauweise", "tragstruktur"),
-    "storeys_above_ground": ("geschoße", "geschosse", "oberirdisch", "oberirdische"),
-    "storeys_below_ground": ("geschoße", "geschosse", "unterirdisch", "unterirdische", "untergeschoß"),
-    "uses": ("nutzung", "nutzungen"),
-    "residential_form": ("wohnform",),
-    "building_class": ("gebäudeklasse", "gebaeudeklasse"),
-    "escape_level": ("fluchtniveau",),
-    "escape_level_m": ("fluchtniveau", "rechenwert"),
-    "elevator": ("aufzug",),
+    "construction_method": ("tragstruktur",),
+    "storeys_above_ground": ("oberirdische",),
+    "storeys_below_ground": ("unterirdische", "untergeschoß"),
+    "uses": ("nutzung",),
+    "escape_level_m": ("rechenwert",),
     "pv": ("photovoltaik", "photovoltaikanlage"),
-    "heritage_protection": ("denkmalschutz",),
-    "protected_area": ("schutzgebiet",),
-    "contaminated_land": ("altlast", "altlasten"),
-    "old_town_protection_zone": ("altstadterhaltungszone", "schutzzone", "altstadt"),
-    "development_pattern": ("bebauungsweise", "bauweise"),
-    "existing_year_built": ("baujahr", "bestand", "bestandsgebäude"),
-    "site_address": ("adresse", "standort"),
+    "contaminated_land": ("altlasten",),
+    "old_town_protection_zone": ("altstadterhaltungszone",),
+    "development_pattern": ("bauweise",),
+    "existing_year_built": ("bestandsgebäude",),
     "project_name": ("projekt",),
-    "federal_state": ("bundesland",),
-    "project_phase": ("phase", "projektphase"),
-    "bauherrschaft": ("bauherrschaft", "bauherr"),
-    "max_building_height": ("höchstgebäudehöhe", "gebäudehöhe", "bauklasse"),
-    "building_position": ("gebäudestellung",),
-    "conditioning": ("konditionierung",),
-    "development_plan": ("bebauungsplan",),
-    "noise_situation": ("lärm", "lärmsituation"),
-    "fire_brigade_access": ("feuerwehr", "feuerwehrzufahrt"),
-    "drinking_water": ("trinkwasser",),
-    "district_heating": ("fernwärme",),
-    "building_lines": ("baufluchtlinien", "baugrenzen"),
-    "build_to_plot_boundary": ("grundgrenze", "anbau"),
-    "workplace": ("arbeitsstätte",),
-    "public_access": ("öffentlich", "publikumsverkehr"),
-    "fireplaces": ("feuerstätten", "rauchfänge"),
-    "commercial_facility": ("betriebsanlage",),
-    "water_rights": ("wasserrecht", "wasserrechtliche"),
-    "tree_stock": ("baumbestand",),
-    "funding": ("förderung", "zertifizierung"),
-    "hazard_zones": ("gefahrenzonen", "standortrisiken"),
-    "heat_supply": ("wärmeversorgung",),
-    "fire_safety_systems": ("brandschutz", "anlagentechnischer"),
-    "building_type": ("bauwerkstyp",),
+    "project_phase": ("phase",),
+    "max_building_height": ("höchstgebäudehöhe", "bauklasse"),
+    "noise_situation": ("lärm",),
+    "fire_brigade_access": ("feuerwehrzufahrt",),
+    "fireplaces": ("rauchfänge",),
+    "water_rights": ("wasserrechtliche",),
+    "funding": ("zertifizierung",),
+    "hazard_zones": ("standortrisiken",),
+    "fire_safety_systems": ("anlagentechnischer",),
+    "building_lines": ("baugrenzen",),
+    "public_access": ("öffentlich",),
     "country": ("land",),
     # Values
-    "residential": ("wohnen", "wohngebiet", "wohnnutzung", "wohngebäude", "wohnhaus"),
-    "office": ("büro", "verwaltung"),
-    "lodging": ("beherbergung",),
-    "extension": ("zubau",),
-    "new_build": ("neubau",),
-    "conversion": ("umbau",),
-    "timber": ("holz", "holzbau", "holzbauweise"),
-    "closed": ("geschlossen", "geschlossene"),
-    "open": ("offen", "offene"),
-    "preliminary_design": ("vorentwurf",),
-    "vienna": ("wien",),
-    "attached": ("angebaut",),
-    "heated": ("beheizt",),
-    "conventional": ("konventionell", "klassisch"),
-    "urban": ("innerstädtisch", "städtisch"),
-    "above_ground": ("oberirdisch",),
-    "building": ("gebäude",),
-    "private": ("privat",),
+    "residential": ("wohnnutzung", "wohngebäude", "wohnhaus"),
+    "office": ("verwaltung",),
+    "timber": ("holz", "holzbauweise"),
+    "closed": ("geschlossene",),
+    "open": ("offene",),
+    "urban": ("städtisch",),
+    "conventional": ("konventionell",),
     "at": ("österreich",),
     "true": ("ja",),
     "false": ("nein", "kein", "keine", "keinen"),
     "none": ("keine", "kein"),
 }
+
+
+def _german_spellings(stored: str) -> set[str]:
+    """The words of a stored German name as an answer writes them: „feuerstaetten" → „feuerstätten" too."""
+    words: set[str] = set()
+    for part in stored.split("_"):
+        if len(part) < 4:
+            continue
+        umlaut = re.sub(r"(?<![aeiou])([aou])e", lambda m: {"a": "ä", "o": "ö", "u": "ü"}[m.group(1)], part)
+        words |= {part, umlaut, umlaut.replace("ss", "ß")}
+    return words
+
+
+def _profile_german() -> dict[str, frozenset[str]]:
+    """Each profile token's German, from the names the profile stored before migration 0159 (``profile_names``)."""
+    german: dict[str, set[str]] = {}
+    pairs = [*LEGACY_PROFILE_KEYS.items(), *LEGACY_DERIVATION_RULES.items()]
+    pairs += [pair for tokens in LEGACY_PROFILE_TOKENS.values() for pair in tokens.items()]
+    for stored, token in pairs:
+        german.setdefault(token, set()).update(_german_spellings(stored))
+    for token, spoken in _PROFILE_SPOKEN.items():
+        german.setdefault(token, set()).update(spoken)
+    return {token: frozenset(words) for token, words in german.items()}
+
+
+_PROFILE_GERMAN = _profile_german()
 _PROFILE_ROW_RE = re.compile(r"^-\s*([^=\s][^=]*)=(.*)$")
 
 
@@ -269,8 +272,8 @@ def _profile_spellings(token: str) -> list[str]:
     words = [folded, " ".join(parts)]
     # „gk5" is written „GK 5", „11-22m" as „11–22 m".
     words.append(re.sub(r"(?<=[^\W\d_])(?=\d)|(?<=\d)(?=[^\W\d_])", " ", re.sub(r"[-–]", " ", folded)))
-    for name in (folded.split("@")[0], *[value.strip() for value in folded.split(",")], *parts):
-        words.extend(_PROFILE_WORDS.get(name, ()))
+    for name in (folded.split("@")[0], *[value.strip() for value in folded.split(",")]):
+        words.extend(sorted(_PROFILE_GERMAN.get(name, ())))
     return words
 
 
@@ -278,30 +281,57 @@ def profile_record(project_context: str | None) -> WorkspaceRecord | None:
     """The record the confirmed rows of ``PROJECT_CONTEXT v1`` make, one item per row; None without one.
 
     Read from the same text the prompt renders (``prompt-view.ts``,
-    ``buildProjectPromptView``): the ``confirmed:`` section, up to the next
-    blank line. A row's key and value tokens are followed by their German.
+    ``buildProjectPromptView``): the ``confirmed:`` section. A row's key and
+    value tokens are followed by their German. A fact the ``contested:``
+    section lists (it has alternatives) is not confirmed and grounds nothing.
     """
     if not project_context or "PROJECT_CONTEXT v1" not in project_context:
         return None
-    items: list[str] = []
-    in_confirmed = False
+    rows: dict[str, str] = {}
+    contested: set[str] = set()
+    section = ""
     for line in project_context.splitlines():
         stripped = line.strip()
-        if stripped == "confirmed:":
-            in_confirmed = True
+        if stripped.endswith(":") and not stripped.startswith("-"):
+            section = stripped
             continue
-        if not stripped or not stripped.startswith("-"):
-            # A blank line or the next section's header ends the confirmed rows.
-            in_confirmed = False
+        if not stripped.startswith("-"):
+            section = "" if not stripped else section
             continue
-        match = _PROFILE_ROW_RE.match(stripped) if in_confirmed else None
-        if match is None:
-            continue
-        key, value = match.group(1), match.group(2)
-        items.append("\n".join([*_profile_spellings(key), *_profile_spellings(value)]))
+        if section == "confirmed:" and (match := _PROFILE_ROW_RE.match(stripped)):
+            rows[match.group(1).strip()] = match.group(2)
+        elif section == "contested:":
+            contested.add(stripped[1:].split(":", 1)[0].strip())
+    items = [
+        "\n".join([*_profile_spellings(key), *_profile_spellings(value)])
+        for key, value in rows.items()
+        if key not in contested
+    ]
     if not items:
         return None
     return WorkspaceRecord(PROFILE_OPERATION, "read", "\n".join(items), frozenset(), tuple(items))
+
+
+#: The operation a record of the turn context's document inventory names.
+INVENTORY_OPERATION = "inventory"
+
+
+def inventory_record(inventory: str | None) -> WorkspaceRecord | None:
+    """The record the turn context's document inventory makes, one item per shelf; None without one.
+
+    The block ``knowledge/inventory.render_inventory_block`` renders: under
+    each ``### shelf`` heading, its files or its count („39 files — the
+    platform corpus"). An index, never a source to cite; a sentence read off it
+    („Dazu kommen die 39 Dateien des OIB-Korpus im Basiswissen") is a record,
+    like a ``list_files`` listing.
+    """
+    if not inventory or "### " not in inventory:
+        return None
+    sections = [section for section in inventory.split("\n### ")[1:] if section.strip()]
+    items = tuple(section[:LISTING_MAX_CHARS].casefold() for section in sections)
+    if not items:
+        return None
+    return WorkspaceRecord(INVENTORY_OPERATION, "read", "\n".join(items), frozenset(), items)
 
 
 def _piloti_authored(value: dict[str, Any]) -> bool:
