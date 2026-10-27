@@ -227,6 +227,7 @@ dev = [
     { name = "import-linter" },
     { name = "knowledge-layer", extra = ["all"] },
     { name = "mypy" },
+    { name = "oib-retrieval" },
     { name = "pre-commit" },
     { name = "pytest" },
     { name = "pytest-asyncio" },
@@ -295,6 +296,7 @@ dev = [
     { name = "import-linter", specifier = ">=2.15" },
     { name = "knowledge-layer", extras = ["all"], editable = "sources/knowledge_layer" },
     { name = "mypy", specifier = ">=2.3.0" },
+    { name = "oib-retrieval", editable = "evals/oib-retrieval" },
     { name = "pre-commit", specifier = ">=3.5.0" },
     { name = "pytest", specifier = ">=9.1.1" },
     { name = "pytest-asyncio", specifier = ">=0.21.0" },
@@ -2982,6 +2984,27 @@ dependencies = [
 wheels = [
     { url = "https://files.pythonhosted.org/packages/8c/79/017fab2f7167a9a9795665f894d04f77aafceca80821b51589bb4b23ff5c/nvidia_sphinx_theme-0.0.9.post1-py3-none-any.whl", hash = "sha256:21ca60206dff2f380d7783d64bbaf71a5b9cacae53c7d0686f089c16b5a3d45a", size = 143816, upload-time = "2025-11-09T23:16:55.719Z" },
 ]
+
+[[package]]
+name = "oib-retrieval"
+version = "1.0.0"
+source = { editable = "evals/oib-retrieval" }
+dependencies = [
+    { name = "numpy" },
+    { name = "nvidia-nat-eval" },
+    { name = "pydantic" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "httpx", marker = "extra == 'record'", specifier = ">=0.27" },
+    { name = "numpy", specifier = ">=1.26" },
+    { name = "nvidia-nat-eval", specifier = "==1.9.0" },
+    { name = "pdfplumber", marker = "extra == 'record'", specifier = ">=0.11" },
+    { name = "pydantic", specifier = ">=2.0.0" },
+    { name = "sentence-transformers", marker = "extra == 'dense'", specifier = ">=5.0.0" },
+]
+provides-extras = ["dense", "record"]
 
 [[package]]
 name = "openai"

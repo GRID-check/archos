@@ -54,7 +54,7 @@ htmlcov/
 .tox/
 .ruff_cache/
 tests/
-frontends/benchmarks/
+evals/
 
 # ---- Documentation (not needed at runtime) ----
 *.md
@@ -94,6 +94,6 @@ temp/
 external/
 
 # ---- Evaluation outputs ----
-frontends/benchmarks/*/results/
-frontends/benchmarks/*/aggregated_results_*/
-frontends/benchmarks/*/analysis/
+evals/*/results/
+evals/*/aggregated_results_*/
+evals/*/analysis/

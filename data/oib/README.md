@@ -7,7 +7,7 @@ through the same admin route); see
 [`docs/technical-reference/oib-sync.md`](../../docs/technical-reference/oib-sync.md).
 
 What reads `data/oib` is the offline tooling: the retrieval benchmarks
-(`frontends/benchmarks/oib_retrieval`), the answer-suite census and the filename
+(`evals/oib-retrieval`), the answer-suite census and the filename
 tests in `tests/aiq_agent/common/test_norm_registry.py`. They need the
 Richtlinien PDFs on disk, and the corpus is licensed material that belongs to
 whoever operates the platform, so this directory ships **empty**: 71 MB of

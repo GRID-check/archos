@@ -32,15 +32,15 @@ from .event_store import EventStore
 from .outcome_notify import notify_job_outcome
 from .phase_events import PHASE_DONE
 from .phase_events import emit_phase_event
+from .run_result import build_job_output
+from .run_result import extract_answer_transparency
+from .run_result import extract_result
+from .run_result import extract_skills_activated
+from .run_result import extract_verified_sources
+from .run_result import mark_degraded
 from .runner import _DEGRADED_EVENT_FIELDS
 from .runner import JOB_DEGRADED_EVENT_TYPE
-from .runner import _build_job_output
-from .runner import _extract_answer_transparency
-from .runner import _extract_result
-from .runner import _extract_skills_activated
-from .runner import _extract_verified_sources
 from .runner import _lost_claim
-from .runner import _mark_degraded
 from .runner import _merge_job_cards
 from .runner import _produces_report
 from .runner import _run_report_passes
@@ -89,7 +89,7 @@ async def persist(
     Everything here is bookkeeping ABOUT a finished answer: each step is
     best-effort and none of them can fail the job.
     """
-    report = _extract_result(result)
+    report = extract_result(result)
     # Grid cards, anatomy and follow-ups run together, then the memory reflection,
     # which the chat path skips for deep jobs because the report exists only now.
     # An agent that declares ``produces_report = False`` gets none of them.
@@ -122,14 +122,14 @@ async def persist(
     # Flush buffered events before the status changes.
     if hasattr(scope.event_store, "flush"):
         scope.event_store.flush()
-    sources = _extract_verified_sources(result)
+    sources = extract_verified_sources(result)
     return JobOutcome(
         report=report,
         cards=cards,
         transparency=transparency,
         sources=sources,
-        skills_activated=_extract_skills_activated(result),
-        output=_build_job_output(report, cards=cards, transparency=transparency, sources=sources),
+        skills_activated=extract_skills_activated(result),
+        output=build_job_output(report, cards=cards, transparency=transparency, sources=sources),
     )
 
 
@@ -143,7 +143,7 @@ def _transparency(
     """
     transparency: dict[str, Any] = {}
     try:
-        transparency = _extract_answer_transparency(result)
+        transparency = extract_answer_transparency(result)
         if anatomy.answer_meta:
             transparency["answer_meta"] = anatomy.answer_meta
         if anatomy.findings:
@@ -153,7 +153,7 @@ def _transparency(
         # Post-hoc card generation is the runner's own step, so its failure is
         # recorded here: the report is whole, the proposals derived from it are not.
         if cards_failed:
-            _mark_degraded(transparency, DEGRADED_CARDS_GENERATION_FAILED)
+            mark_degraded(transparency, DEGRADED_CARDS_GENERATION_FAILED)
         if scope.event_store is not None and (
             transparency.get("research_truncated") or transparency.get("degraded_reasons")
         ):
