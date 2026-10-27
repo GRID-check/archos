@@ -11,8 +11,10 @@ fresh interpreter, because this one has long since imported everything.
 
 from __future__ import annotations
 
+import importlib
 import json
 import os
+import pkgutil
 import subprocess
 import sys
 from pathlib import Path
@@ -21,8 +23,11 @@ import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 
-# Packages whose ``__init__`` re-exports lazily (``aiq_agent.lazy_exports``):
-# importing the package loads none of its own submodules but that helper.
+# Packages whose ``__init__`` was an eager barrel and now loads nothing of its
+# own but ``aiq_agent.lazy_exports``, nothing heavy, and re-exports no name that
+# is also a submodule's: the import system binds a submodule's name to the
+# module whenever it is imported, so such an export reads the function or the
+# module depending on import order.
 LAZY_PACKAGES = [
     "aiq_agent",
     "aiq_agent.agents",
@@ -32,8 +37,9 @@ LAZY_PACKAGES = [
     "knowledge_layer",
 ]
 
-# What the root conftest may not load: each is a second or more, and most tests
-# never touch it. A fixture that needs one imports it in its body.
+# What a package ``__init__`` or a conftest every test loads may not load: each
+# is a second or more, and most tests never touch it. A fixture that needs one
+# imports it in its body.
 HEAVY = ["langchain_core", "langgraph", "nat", "qdrant_client", "llama_index", "openai", "aiq_agent.common"]
 
 
@@ -54,18 +60,36 @@ def _loaded_by(statement: str) -> list[str]:
     return json.loads(done.stdout.strip().splitlines()[-1])
 
 
+def _heavy(loaded: list[str]) -> list[str]:
+    return sorted({top for top in HEAVY for name in loaded if name == top or name.startswith(f"{top}.")})
+
+
 @pytest.mark.parametrize("package", LAZY_PACKAGES)
 def test_a_lazy_package_loads_none_of_its_submodules(package):
-    own = [name for name in _loaded_by(f"import {package}") if name.startswith(f"{package}.")]
+    loaded = _loaded_by(f"import {package}")
+    own = [name for name in loaded if name.startswith(f"{package}.")]
 
     assert own in ([], ["aiq_agent.lazy_exports"]), f"{package}/__init__.py imports {own}"
+    assert _heavy([name for name in loaded if not name.startswith(package)]) == []
 
 
-def test_the_root_conftest_loads_nothing_heavy():
-    loaded = _loaded_by("import tests.conftest")
-    heavy = sorted({top for top in HEAVY for name in loaded if name == top or name.startswith(f"{top}.")})
+@pytest.mark.parametrize("package", LAZY_PACKAGES)
+def test_a_lazy_package_exports_no_name_a_submodule_has(package):
+    module = importlib.import_module(package)
+    submodules = {info.name for info in pkgutil.iter_modules(module.__path__)}
 
-    assert heavy == [], f"tests/conftest.py loads {heavy}: import it inside the fixture that needs it"
+    assert set(getattr(module, "__all__", ())) & submodules == set()
+
+
+@pytest.mark.parametrize("conftest", ["tests/conftest.py", "frontends/aiq_api/tests/conftest.py"], ids=["core", "api"])
+def test_a_conftest_every_test_loads_loads_nothing_heavy(conftest):
+    loaded = _loaded_by(
+        "import importlib.util\n"
+        f"spec = importlib.util.spec_from_file_location('conftest_under_test', {conftest!r})\n"
+        "spec.loader.exec_module(importlib.util.module_from_spec(spec))"
+    )
+
+    assert _heavy(loaded) == [], f"{conftest} loads {_heavy(loaded)}: import it inside the fixture that needs it"
 
 
 def test_every_knowledge_layer_tool_module_is_an_entry_point():

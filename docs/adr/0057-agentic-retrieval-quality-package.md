@@ -49,7 +49,7 @@ We will add four retrieval-side improvements to the knowledge layer, all
    `aiq_agent.knowledge.factory` (`get_document_doc_classes` /
    `get_document_display_titles`) with chunk metadata as fallback. Invalid
    `doc_class` values return the allowed vocabulary instead of an empty result.
-2. **Hybrid lexical + vector retrieval**: when `AIQ_HYBRID_RETRIEVAL` (default
+2. **Hybrid lexical + vector retrieval**: when `GRID_HYBRID_RETRIEVAL` (default
    on; config key `hybrid_search`) is enabled, an extra exact-term lexical query
    per collection (up to 3 technical tokens via the shared token-based utility
    `src/aiq_agent/common/legal_terms.py::extract_exact_terms` — **no regex**),
@@ -67,9 +67,9 @@ We will add four retrieval-side improvements to the knowledge layer, all
    trimming to `top_k`. Fail-open to the original order.
 4. **Multimodal answer-time page/image viewing**: new NAT tool
    `view_knowledge_image` (`llamaindex/view_image.py`) gated on
-   `AIQ_VIEW_IMAGES_ENABLED` (default on) plus a resolvable VLM key. It covers
+   `GRID_VIEW_IMAGES_ENABLED` (default on) plus a resolvable VLM key. It covers
    both source shapes: **PDF pages** are re-rendered on demand (pypdfium2 →
-   JPEG, long edge `AIQ_PAGE_RENDER_MAX_DIM`, default 2048) — base-corpus PDFs
+   JPEG, long edge `GRID_PAGE_RENDER_MAX_DIM`, default 2048) — base-corpus PDFs
    from disk, project/Archiv PDFs from SeaweedFS bytes — and **standalone
    image uploads** (PNG/JPG project/Archiv documents) are fetched from
    SeaweedFS and re-encoded to JPEG directly. It returns a
@@ -134,7 +134,7 @@ All changes ship with unit tests under `tests/knowledge_layer_tests/`
 - Hybrid lexical queries add a second Chroma query per collection per term
   (≤3 terms) — latency bounded by `top_k` scale; over-fetch factor 3 increases
   candidate work.
-- Two new env knobs (`AIQ_HYBRID_RETRIEVAL`, `AIQ_VIEW_IMAGES_ENABLED`) and two
+- Two new env knobs (`GRID_HYBRID_RETRIEVAL`, `GRID_VIEW_IMAGES_ENABLED`) and two
   config keys (`hybrid_search`, `rerank_llm`/`rerank_candidates`) — each has a
   fail-open default, per the capability doctrine (flags are product decisions,
   never derived capability duplicates).
@@ -147,8 +147,8 @@ All changes ship with unit tests under `tests/knowledge_layer_tests/`
   channel; mitigated by term extraction (≤3 technical tokens) and RRF k=60
   dampening.
 - Answer-time page rendering exposes PDF render cost in the chat path;
-  mitigated by per-page on-demand rendering, `AIQ_PAGE_RENDER_MAX_DIM` bounds,
-  and the gate itself: availability is the default-on `AIQ_VIEW_IMAGES_ENABLED`
+  mitigated by per-page on-demand rendering, `GRID_PAGE_RENDER_MAX_DIM` bounds,
+  and the gate itself: availability is the default-on `GRID_VIEW_IMAGES_ENABLED`
   flag AND a resolvable VLM key (the derived capability, per the capability
   doctrine); without a key the tool explains itself in text.
 - The aiq-agent tier now holds a SeaweedFS S3 credential (attack-surface

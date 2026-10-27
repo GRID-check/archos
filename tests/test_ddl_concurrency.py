@@ -73,8 +73,8 @@ def outcomes():
 
     # The LangGraph sites take a session lock on the direct DSN (`keyed_lock`). An advisory lock is
     # per database, so one fixed database serves them all: the creators still exclude each other.
-    previous_lock_url = os.environ.get("AIQ_LOCK_DB_URL")
-    os.environ["AIQ_LOCK_DB_URL"] = _SERVER
+    previous_lock_url = os.environ.get("GRID_LOCK_DB_URL")
+    os.environ["GRID_LOCK_DB_URL"] = _SERVER
     context = multiprocessing.get_context("spawn")
     barrier, results = context.Barrier(PROCESSES), context.Queue()
     processes = [context.Process(target=ensure_in_child, args=(i, barrier, tasks, results)) for i in range(PROCESSES)]
@@ -97,9 +97,9 @@ def outcomes():
                 conn.execute(text(f'DROP DATABASE IF EXISTS "{name}" WITH (FORCE)'))
         admin.dispose()
         if previous_lock_url is None:
-            os.environ.pop("AIQ_LOCK_DB_URL", None)
+            os.environ.pop("GRID_LOCK_DB_URL", None)
         else:
-            os.environ["AIQ_LOCK_DB_URL"] = previous_lock_url
+            os.environ["GRID_LOCK_DB_URL"] = previous_lock_url
 
 
 def _tables(url: str) -> set[str]:

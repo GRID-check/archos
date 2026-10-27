@@ -16,10 +16,10 @@ ROOT = next(path for path in Path(__file__).resolve().parents if (path / "Taskfi
 FOLDER_CARDS_SCHEMA = ROOT / "frontends/ui/tests/fixtures/folder-cards.schema.json"
 
 
-_POSTGRES = os.environ.get("AIQ_TEST_POSTGRES_URL")
+_POSTGRES = os.environ.get("GRID_TEST_POSTGRES_URL")
 _BACKENDS = [
     "sqlite",
-    pytest.param("postgres", marks=pytest.mark.skipif(not _POSTGRES, reason="AIQ_TEST_POSTGRES_URL not set")),
+    pytest.param("postgres", marks=pytest.mark.skipif(not _POSTGRES, reason="GRID_TEST_POSTGRES_URL not set")),
 ]
 _BUILDER_TABLES = ("folder_card_queue", "folder_card_collections", "folder_card_usage", "folder_card_manifests")
 

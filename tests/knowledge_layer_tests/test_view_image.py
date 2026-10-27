@@ -23,7 +23,7 @@ _JPEG_BYTES = b"\xff\xd8\xff\xe0test-jpeg-payload"
 
 
 def _patch_env(monkeypatch, *, enabled: bool = True, vlm_key: str = "sk-test") -> None:
-    monkeypatch.setenv("AIQ_VIEW_IMAGES_ENABLED", "true" if enabled else "false")
+    monkeypatch.setenv("GRID_VIEW_IMAGES_ENABLED", "true" if enabled else "false")
     monkeypatch.setattr(llm_adapter, "_get_vlm_api_key", lambda: vlm_key)
 
 
@@ -125,14 +125,14 @@ async def test_no_vlm_key_returns_text_only(monkeypatch, tmp_path) -> None:
 
 
 def test_is_enabled_respects_flag(monkeypatch) -> None:
-    monkeypatch.delenv("AIQ_VIEW_IMAGES_ENABLED", raising=False)
+    monkeypatch.delenv("GRID_VIEW_IMAGES_ENABLED", raising=False)
     assert _is_enabled() is True
 
     for off in ("0", "false", "no", "off", "OFF"):
-        monkeypatch.setenv("AIQ_VIEW_IMAGES_ENABLED", off)
+        monkeypatch.setenv("GRID_VIEW_IMAGES_ENABLED", off)
         assert _is_enabled() is False
 
-    monkeypatch.setenv("AIQ_VIEW_IMAGES_ENABLED", "true")
+    monkeypatch.setenv("GRID_VIEW_IMAGES_ENABLED", "true")
     assert _is_enabled() is True
 
 

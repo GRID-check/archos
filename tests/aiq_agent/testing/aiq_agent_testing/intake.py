@@ -1,6 +1,6 @@
 """Doubles for the Erfassungs-Agent's suite: the BFF's intake route, the signed run, a project's pages.
 
-Only the transport is faked (``client._opener.open``), so every body a test
+Only the transport is faked (``bff_http._opener.open``), so every body a test
 reads is the one ``post_intake`` really built, headers included.
 """
 
@@ -15,10 +15,10 @@ from jsonschema import Draft202012Validator
 from jsonschema import FormatChecker
 
 import aiq_agent.project_context as pc
-from aiq_agent.agents.intake import client
 from aiq_agent.agents.intake import reading
 from aiq_agent.agents.intake.read_log import bind_read_log
 from aiq_agent.agents.intake.read_log import reset_read_log
+from aiq_agent.common import bff_http
 from aiq_agent.knowledge.schema import AvailableDocument
 from scripts.intake_eval.bff import FakeIntakeRoute as _IntakeRoute
 
@@ -124,7 +124,7 @@ def unsigned_run(monkeypatch):
 def route(monkeypatch):
     def install(**answers: Any) -> FakeIntakeRoute:
         fake = FakeIntakeRoute(**answers)
-        monkeypatch.setattr(client._opener, "open", fake)
+        monkeypatch.setattr(bff_http._opener, "open", fake)
         return fake
 
     return install

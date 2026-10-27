@@ -68,8 +68,8 @@ echo "================================================"
 echo ""
 
 check_env() {
-    export AIQ_DEV_ENV=e2e
-    echo "Set AIQ_DEV_ENV=e2e"
+    export GRID_DEV_ENV=e2e
+    echo "Set GRID_DEV_ENV=e2e"
 
     if [ -f "./deploy/.env" ]; then
         set -a  # Automatically export all variables

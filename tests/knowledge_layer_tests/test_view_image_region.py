@@ -221,7 +221,7 @@ def test_an_uploaded_image_is_cropped_to_the_box():
 
 @pytest.fixture
 def _viewable(monkeypatch, tmp_path):
-    monkeypatch.setenv("AIQ_VIEW_IMAGES_ENABLED", "true")
+    monkeypatch.setenv("GRID_VIEW_IMAGES_ENABLED", "true")
     monkeypatch.setattr(llm_adapter, "_get_vlm_api_key", lambda: "sk-test")
     path = tmp_path / "Grundriss_EG.pdf"
     path.write_bytes(_pdf(*A4))

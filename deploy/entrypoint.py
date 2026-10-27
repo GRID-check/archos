@@ -6,9 +6,34 @@ import os
 import signal
 import subprocess
 import sys
+from collections.abc import MutableMapping
 
 #: The values of ``GRID_ROLE``; the two web roles both start ``start_web.py``.
 ROLES = ("chat", "api", "worker", "ingest-worker")
+
+#: The prefix the variables carried before they took the house prefix ``GRID_``.
+#: Read for one release, then this fallback goes (ADR-0145 row 10b).
+LEGACY_PREFIX = "AIQ_"
+PREFIX = "GRID_"
+
+
+def adopt_legacy_names(environ: MutableMapping[str, str]) -> list[str]:
+    """Copy each ``AIQ_X`` onto ``GRID_X`` where that is unset, warning once per name.
+
+    The one place an old name is still read: every process of the image starts
+    here and inherits the result, so no reader in the code knows the old names.
+    Returns the new names it set.
+    """
+    adopted = []
+    for legacy in sorted(name for name in environ if name.startswith(LEGACY_PREFIX)):
+        name = PREFIX + legacy.removeprefix(LEGACY_PREFIX)
+        if name in environ:
+            print(f"WARNING: {legacy} is deprecated and ignored, {name} is set", file=sys.stderr, flush=True)
+            continue
+        environ[name] = environ[legacy]
+        adopted.append(name)
+        print(f"WARNING: {legacy} is deprecated; rename it to {name}", file=sys.stderr, flush=True)
+    return adopted
 
 
 def _terminate_process(proc: subprocess.Popen[str] | None) -> None:
@@ -22,6 +47,7 @@ def _terminate_process(proc: subprocess.Popen[str] | None) -> None:
 
 
 def main() -> int:
+    adopt_legacy_names(os.environ)
     if len(sys.argv) > 1:
         os.execvp(sys.argv[1], sys.argv[1:])
 

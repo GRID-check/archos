@@ -38,7 +38,7 @@ stores = reingest.stores
 def processes(tmp_path, monkeypatch, stores, qdrant_store):
     """``(worker, api)``: two ingestors over one status store and one Qdrant."""
     url = f"sqlite:///{tmp_path / 'jobs.db'}"
-    monkeypatch.setenv("AIQ_SUMMARY_DB", url)
+    monkeypatch.setenv("GRID_SUMMARY_DB", url)
 
     def encrypted(_path):
         raise ValueError("PDF is encrypted")

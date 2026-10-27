@@ -11,7 +11,7 @@ package-dir = {"ris_adapter" = "src"}
 [project]
 name = "ris-adapter"
 version = "1.0.0"
-description = "NAT tools for the Austrian OGD-RIS API: search law/case law and fetch entire documents on demand"
+description = "Austrian federal and state law and case law for Piloti, read from the open RIS API and returned as citable passages"
 readme = "README.md"
 requires-python = ">=3.14,<3.15"
 license = {text = "Apache-2.0"}

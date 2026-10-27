@@ -2,7 +2,7 @@
 
 What a test of the store or the adapter checks is the server's behaviour as
 the knowledge layer drives it (filters, strict mode, BM25, deletes by filter),
-so these run against the server at ``AIQ_QDRANT_TEST_URL``: the CI backend job
+so these run against the server at ``GRID_QDRANT_TEST_URL``: the CI backend job
 runs a Qdrant 1.19 service container and sets it for every step. Locally,
 without the variable, a test that asks for the store skips; on CI it fails
 instead, so the suites cannot quietly stop covering it.
@@ -44,12 +44,12 @@ IDENTITY = {"aiq:embed_fingerprint": "test-fp", "aiq:embed_model": "test-model"}
 
 def server_url() -> str:
     """The test server's URL; skips locally without one, fails on CI."""
-    url = os.environ.get("AIQ_QDRANT_TEST_URL", "").strip()
+    url = os.environ.get("GRID_QDRANT_TEST_URL", "").strip()
     if url:
         return url
     if os.environ.get("CI"):
-        pytest.fail("AIQ_QDRANT_TEST_URL is unset on CI: the Qdrant service container is missing")
-    pytest.skip("AIQ_QDRANT_TEST_URL not set; start a Qdrant 1.19 server to run these")
+        pytest.fail("GRID_QDRANT_TEST_URL is unset on CI: the Qdrant service container is missing")
+    pytest.skip("GRID_QDRANT_TEST_URL not set; start a Qdrant 1.19 server to run these")
 
 
 def vector(seed: str) -> list[float]:
@@ -103,8 +103,8 @@ def _point_at(monkeypatch, suffix: str) -> store_module.QdrantStore:
     url = server_url()
     monkeypatch.setitem(schema.ALIASES, schema.Physical.CORPUS, f"test_corpus_{suffix}")
     monkeypatch.setitem(schema.ALIASES, schema.Physical.OFFICE, f"test_office_{suffix}")
-    monkeypatch.setenv("AIQ_QDRANT_URL", url)
-    monkeypatch.delenv("AIQ_QDRANT_API_KEY", raising=False)
+    monkeypatch.setenv("GRID_QDRANT_URL", url)
+    monkeypatch.delenv("GRID_QDRANT_API_KEY", raising=False)
     store_module.reset_store()
     return store_module.get_store(IDENTITY)
 
@@ -115,12 +115,12 @@ def _collections() -> list[str]:
 
 def _delete_shared_collections() -> None:
     """At exit, the shared pair, so a local server does not collect one per run."""
-    if not os.environ.get("AIQ_QDRANT_TEST_URL", "").strip():
+    if not os.environ.get("GRID_QDRANT_TEST_URL", "").strip():
         return
     try:
         from qdrant_client import QdrantClient
 
-        client = QdrantClient(url=os.environ["AIQ_QDRANT_TEST_URL"], check_compatibility=False)
+        client = QdrantClient(url=os.environ["GRID_QDRANT_TEST_URL"], check_compatibility=False)
         for suffix in _SHARED_SUFFIXES.values():
             for prefix in ("test_corpus_", "test_office_"):
                 name = f"{prefix}{suffix}{schema.FIRST_VERSION}"

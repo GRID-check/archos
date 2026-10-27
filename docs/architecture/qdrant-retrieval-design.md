@@ -1,7 +1,7 @@
 # Retrieval on Qdrant, from first principles
 
 Status: **accepted 2026-10-13; built. Qdrant is the only vector store:
-Chroma, its mirror and the `AIQ_VECTOR_BACKEND` flag are gone (slice 3, §12).**
+Chroma, its mirror and the `GRID_VECTOR_BACKEND` flag are gone (slice 3, §12).**
 The two decisions it rests on are
 [ADR-0115](../adr/0115-qdrant-replaces-chroma-reached-through-qdrant-client.md)
 (the store and the client) and
@@ -572,8 +572,8 @@ it changes, which is the path ADR-0072 itself named for this case.
 | Growth | Add a node, then `replicate_shard` / `move_shard`. A shape change means a new collection, a scroll-and-upsert copy of stored vectors, and an alias switch | No resharding or auto-rebalancing in OSS |
 | Large office | Tiered multitenancy (1.16) promotes one office to its own shard. It requires custom sharding chosen at collection creation | Decided in the spike from the largest office's point count (Q4) |
 
-New environment variables (`AIQ_QDRANT_URL`, `AIQ_QDRANT_API_KEY`,
-`AIQ_QDRANT_READ_ONLY_KEY`) get their rows in
+New environment variables (`GRID_QDRANT_URL`, `GRID_QDRANT_API_KEY`,
+`GRID_QDRANT_READ_ONLY_KEY`) get their rows in
 [`environment-variables.md`](../deployment/environment-variables.md) in the
 change that adds them.
 
@@ -694,8 +694,8 @@ change took Chroma out. What was built:
 | Registry reads from Qdrant: a file listing is one payload-limited scroll (no text); a collection's chunks and files are an exact count and a facet; `list_collections` is one facet per physical collection; a text sample is a structural fetch; visual details and `collection_pages.read_pages` scroll by filter. `get_collection` never answers "missing": a collection is a scope, and an empty one has no chunks (ADR-0116) | `adapter.py` — `_indexed_files`, `_collection_info`, `list_collections`; `collection_pages.py` |
 | A collection's `updated_at` (what the reaper of conversation uploads reads) is the newest `indexed_at` on its points, an ordered scroll | `schema.INDEXED_AT_FIELD`, `store.newest` |
 | A fact copy follows the rows a register or unregister changes the meaning of: the rows whose `superseded_by` names the file are copied again, so a Fassung that became current is not hidden by `superseded != true` | `factory.register_summary`, `unregister_summary`; `DocumentMetadataStore.files_linked_to` |
-| Deleted: Chroma's client and collections, `AIQ_VECTOR_BACKEND`, `qdrant/mirror.py` and `ordered_delete`, the Postgres `chunk_text` mirror, the `$contains` channel and its pricing, `exp(-d)` score recovery, `embed_fingerprint_mismatch` (the identity lives in Qdrant's collection metadata only), the Chroma backfill (`backfill_qdrant.py`, `backfill_chunk_text.py`), and `chromadb` plus `llama-index-vector-stores-chroma` from the dependencies | — |
-| One test fixture for every store test: unique aliases per test, the process-wide store pointed at them, both deleted after; skips locally without `AIQ_QDRANT_TEST_URL`, fails on CI | `sources/knowledge_layer/testing/knowledge_layer_testing/qdrant.py` |
+| Deleted: Chroma's client and collections, `GRID_VECTOR_BACKEND`, `qdrant/mirror.py` and `ordered_delete`, the Postgres `chunk_text` mirror, the `$contains` channel and its pricing, `exp(-d)` score recovery, `embed_fingerprint_mismatch` (the identity lives in Qdrant's collection metadata only), the Chroma backfill (`backfill_qdrant.py`, `backfill_chunk_text.py`), and `chromadb` plus `llama-index-vector-stores-chroma` from the dependencies | — |
+| One test fixture for every store test: unique aliases per test, the process-wide store pointed at them, both deleted after; skips locally without `GRID_QDRANT_TEST_URL`, fails on CI | `sources/knowledge_layer/testing/knowledge_layer_testing/qdrant.py` |
 | The import boundary forbids `chromadb` everywhere but the migration tool | `test_qdrant_import_boundary.py` |
 | The gate harness runs Qdrant alone: the corpus written through `write_chunks`, read through the production retriever, every number printed beside the Chroma path's from the gate run (fixed, `baseline.py`); exact mode held to a full regex scan, which is what Chroma's `$regex` was | `task be:eval:qdrant-parity`, `qdrant_parity/` |
 
@@ -715,7 +715,7 @@ itself.
 | The store: two collections behind aliases, dense + German BM25, TurboQuant, strict mode, payload indexes created before data | `sources/knowledge_layer/src/qdrant/schema.py`, `store.py` |
 | Every read filter from one function, refusing an empty scope | `qdrant/scope.py` |
 | Hybrid search in one Query API call (dense, BM25 with per-scope IDF, exact-term phrase channels, RRF k=60) and the true cosine per hit | `qdrant/search.py` — `hybrid_search` |
-| Retrieval, exact search (`find_text`) and the health check reading Qdrant under `AIQ_VECTOR_BACKEND=qdrant`; the chunk contract unchanged | `llamaindex/adapter.py` — `_qdrant_chunks`, `_find_text_sync`, `health_check` |
+| Retrieval, exact search (`find_text`) and the health check reading Qdrant under `GRID_VECTOR_BACKEND=qdrant`; the chunk contract unchanged | `llamaindex/adapter.py` — `_qdrant_chunks`, `_find_text_sync`, `health_check` |
 | Every Chroma write mirrored (insert, retire, discard, delete file, delete collection), vectors copied, never re-embedded. Removed in slice 3 | `qdrant/mirror.py` (deleted) |
 | Person-set facts (tags, topics, Dokumentart, Fassung, folder) mirrored onto points when they change | `aiq_agent/knowledge/factory.py` — `_mirror_facts` |
 | The move off Chroma: an exporter in its own environment writing the neutral format `piloti-vectors/1`, and an importer with `--prune`, `--verify`, `--verify-only`, `--dry-run` (it replaced the backfill that read Chroma directly) | `deploy/migration/chroma_export.py`; `qdrant/import_vectors.py`, `scripts/import_vectors.py` |
@@ -863,7 +863,7 @@ rest stands.
   Dokumentart or Fassung is copied onto points wherever it changes
   (`factory._mirror_facts`, reached from the chat agent's tools as well as the
   API), each of which may create a collection on first use
-  (`QdrantStore.ensure`). Handing a tier `AIQ_QDRANT_READ_ONLY_API_KEY` needs
+  (`QdrantStore.ensure`). Handing a tier `GRID_QDRANT_READ_ONLY_API_KEY` needs
   two things first: a second client in `store.py` that the read paths
   (`retrieval.search`, `search_grouped`, `term_frequencies`, `find_text`,
   `healthy`, `QdrantStore.exists`, `check_identity`) use with the read-only
@@ -871,7 +871,7 @@ rest stands.
   mirror and the deletes behind the ingest worker. Two keys in one process buy
   nothing: whoever has the process has both.
 * **Corpus at RF 2, not on every peer.** `create_collection` gives both
-  collections `AIQ_QDRANT_REPLICATION_FACTOR`; §9 wants the corpus on every
+  collections `GRID_QDRANT_REPLICATION_FACTOR`; §9 wants the corpus on every
   peer. The runbook adds the third replica with one `replicate_shard` (drilled,
   4 s).
 * **`write_consistency_factor` is 1, decided by a drill.** On 2026-10-13,

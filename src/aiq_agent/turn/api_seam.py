@@ -17,9 +17,10 @@ elsewhere binds the API tier's own class by identity, which is what
 ``test_auth_error_is_the_api_tiers_class`` pins. A lazy re-export cannot be
 used in an ``except`` clause without a call.
 
-``tests/aiq_agent/turn/test_api_seam.py`` enforces the rule above by walking
-every module under ``aiq_agent`` and subtracting a named exemption list, so a
-new importer anywhere in the package fails rather than going unseen.
+The ``agent-api-seam`` import-linter contract in ``pyproject.toml`` enforces the
+rule above over the whole package, lazy imports included, with this module and
+the two older ``auth`` importers as its only exemptions; ``lint-imports`` runs
+it in ``task be:lint``, so a new importer anywhere fails rather than going unseen.
 """
 
 from __future__ import annotations
