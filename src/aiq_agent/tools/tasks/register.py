@@ -37,7 +37,8 @@ SAY it created one, in one sentence, and never to claim the work is done.
 
 ## Why the kinds are closed
 
-Four members, mirrored from `DELEGATABLE_TASK_KINDS` on the BFF side, because
+Four members, `TaskKind` in `cards/models.py` (the BFF's `DELEGATABLE_TASK_KINDS`
+is generated from it), because
 each one names an ENGINE that already exists — a norm check by the general
 agent, the Einreichcheck skill, the drafting tools, the revision path. An open `kind` string
 would let the model delegate „Kostenschätzung" to a queue that has nothing to run
@@ -49,8 +50,10 @@ from __future__ import annotations
 import asyncio
 import logging
 from typing import Any
+from typing import get_args
 
 from aiq_agent import project_context
+from aiq_agent.cards.models import TaskKind
 from nat.plugin_api import Builder
 from nat.plugin_api import FunctionBaseConfig
 from nat.plugin_api import FunctionInfo
@@ -73,11 +76,8 @@ MAX_GOAL_CHARS = 500
 #: because slicing a comma list can leave a different, still-valid schedule.
 MAX_CADENCE_CHARS = 120
 
-#: The kinds, mirrored from `DELEGATABLE_TASK_KINDS`
-#: (`frontends/ui/src/lib/db/schema/tasks.ts`). Same parse-independently rule the
-#: request-context headers follow; `tests/aiq_agent/tools/tasks/` is what catches
-#: the drift.
-TASK_KINDS: tuple[str, ...] = ("compliance_check", "submission_check", "document", "revision")
+#: The kinds, read from `TaskKind`, the set the BFF's `DELEGATABLE_TASK_KINDS` is generated from.
+TASK_KINDS: tuple[str, ...] = get_args(TaskKind)
 
 #: Kinds as they were stored before migration 0167. A conversation that already holds a
 #: ``create_task(kind="einreichcheck")`` call invites the model to repeat it, so the tool

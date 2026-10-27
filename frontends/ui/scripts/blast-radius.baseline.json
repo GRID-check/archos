@@ -361,6 +361,7 @@
   "src/shared/components/MarkdownRenderer/table-shape.ts": 414,
   "src/shared/config/file-upload.ts": 355,
   "src/shared/config/request-body-limit.ts": 873,
+  "src/shared/vocabularies.generated.ts": 798,
   "src/test-utils/index.tsx": 321,
   "workers/database-unavailable.js": 391
  }

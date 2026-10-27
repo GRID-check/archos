@@ -224,7 +224,7 @@
     "src/aiq_agent/agents/piloti/conversation_register.py": 622,
     "src/aiq_agent/agents/piloti/register.py": 755,
     "src/aiq_agent/cards/catalog.py": 1128,
-    "src/aiq_agent/cards/models.py": 2693,
+    "src/aiq_agent/cards/models.py": 2691,
     "src/aiq_agent/cards/surface_documents.py": 798,
     "src/aiq_agent/common/answer_envelope.py": 1384,
     "src/aiq_agent/common/citation_events.py": 627,
