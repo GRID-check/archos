@@ -196,7 +196,7 @@ describe.skipIf(!url)('the estate tree against Postgres', () => {
     expect(rows.map((row) => row.path)).toEqual(['Einreichung', 'Einreichung/Pläne', 'Leer'])
     expect(rows.find((row) => row.path === 'Leer')).toMatchObject({ description: 'Noch nichts darin', cardStatus: null })
     expect(rows.find((row) => row.path === 'Einreichung')).toMatchObject({ cardStatus: 'fresh', parentId: null })
-    expect(rows.find((row) => row.path === 'Einreichung/Pläne')?.parentId).toBe(folder.Einreichung)
+    expect(rows.find((row) => row.path === 'Einreichung/Pläne')?.parentId).toBe(folder['Einreichung'])
   })
 
   it('pages the documents without a restricted, binned, held or archived one, and without a gap or a repeat', async () => {
@@ -220,14 +220,14 @@ describe.skipIf(!url)('the estate tree against Postgres', () => {
   })
 
   it('reads a folder subtree as the reach scopes it', async () => {
-    const scoped = { ...reach, folderIds: [folder.Einreichung, folder['Einreichung/Pläne']] }
+    const scoped = { ...reach, folderIds: [folder['Einreichung'], folder['Einreichung/Pläne']] }
     expect((await as(ORG, () => repo.listTreeFolders(scoped))).rows.map((row) => row.path)).toEqual(['Einreichung', 'Einreichung/Pläne'])
     expect(await allDocuments({ kind: 'reach', reach: scoped })).toHaveLength(6)
   })
 
   it('resolves a path to a living folder of the shelf only', async () => {
     const { projectShelf } = await import('@/lib/documents/shelf')
-    expect(await as(ORG, () => repo.findFolderIdByPath(ORG, projectShelf(projectId), 'Leer'))).toBe(folder.Leer)
+    expect(await as(ORG, () => repo.findFolderIdByPath(ORG, projectShelf(projectId), 'Leer'))).toBe(folder['Leer'])
     expect(await as(ORG, () => repo.findFolderIdByPath(ORG, projectShelf(projectId), 'Alt'))).toBeNull()
     expect(await as(OTHER_ORG, () => repo.findFolderIdByPath(OTHER_ORG, projectShelf(projectId), 'Leer'))).toBeNull()
   })
