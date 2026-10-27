@@ -7,7 +7,7 @@
 > (standard tools over our own backend, hybrid with ranked search) and
 > [ADR-0134](../adr/0134-extracted-page-text-is-stored-per-version.md) (page text is
 > stored per version). Written 2026-10-27, before slice 0; nothing below is built
-> unless it says so. The write side, and why the estate is never writable through
+> unless it says so (slice 7 says so). The write side, and why the estate is never writable through
 > filesystem verbs, is [`piloti-filesystem-design.md`](piloti-filesystem-design.md) §2.
 > Today's tools and their costs: [`agent-tool-surface.md`](agent-tool-surface.md).
 > Output examples use the `files_eval` fixture project
@@ -325,8 +325,20 @@ confirm the file.
 
 The tree comes from inventory rows (`without_restricted`), as `list_files` builds it
 today. Empty folders and folder descriptions need the BFF's tree, and a folder name is
-itself a name, so that waits for a route that filters for the conversation's whole
-audience (slice 7).
+itself a name, so the BFF serves it filtered for the conversation's whole audience
+(slice 7, **built**): `POST /api/internal/estate-tree`, one shelf (`project`,
+`office_shelf`, `session`) per call, the shelf taken from the signed envelope and its
+signed scope, never from the body. It lists every living folder, empty ones included,
+with its description and whether it has a card, and a keyset page of documents with
+the search projection's Dokumentart, pages, Plankopf and superseded mark and the
+published Fassung. Who may list what is the search's reach (`reachForAudience` with
+`includeOwnProject`, `lib/search/reach.ts`), narrowed by `listingReach` so a
+restricted folder is absent in every audience, a solo chat's included; held uploads,
+binned folders and archived documents are absent too. The contract is
+[`docs/api/bff-routes.md`](../api/bff-routes.md) (`/api/internal/estate-tree`); the
+agent's client is `aiq_agent/knowledge/estate_tree_client.py`, which the estate backend
+of slices 2–3 calls. A missing, binned and restricted folder all answer the same 404,
+so `ls` renders each as the same "No file".
 
 ## 6. Herleitung and wire
 
@@ -421,7 +433,7 @@ the suite is in ADR-0133's More Information.
 4. `grep` under its own name.
 5. `/law/oib/`, `/office/`, `/chat/`; `knowledge_search(path=…)`.
 6. The prompt around four verbs; aliases retired.
-7. The audience-aware BFF tree route.
+7. The audience-aware BFF tree route. **Built** (2026-10-27): the route and its client; no tool reads it until slice 3's `ls`.
 
 ## 10. Open questions
 
