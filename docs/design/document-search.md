@@ -302,7 +302,8 @@ yet for the same reason.
    shared one carries `ownerName`, from the office's people directory
    (`lib/sharing/directory.ts`), so the list says whose question it is. Under
    each name one muted line says what the search asks, the words quoted and
-   the filters in their chips' words (`savedSearchSummary`), so a name alone
+   the filters in the chips' words, a Dokumentart or a switch by its value
+   alone (`savedSearchSummary`), so a name alone
    never has to be trusted. One's own carries a ⋯ (Teilen or Nicht mehr
    teilen, Umbenennen, Löschen), not a switch in the row. A
    delete in the page is held for the undo toast's window and sent when it

@@ -106,7 +106,8 @@ export function SavedSearchesMenu(props: SavedSearchesMenuProps): JSX.Element {
     <>
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>{trigger}</PopoverTrigger>
-        <PopoverContent align="end">
+        {/* A row carries its name and the line of what it asks: wider than the kit's 18rem, so that line is rarely cut (the kit clamps it to the room there is). */}
+        <PopoverContent align="end" className="w-96">
           <PanelBody>
             <SectionLabel as="h3">{t('label')}</SectionLabel>
             {body}

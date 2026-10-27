@@ -44,7 +44,7 @@ describe('SavedSearchesMenu', () => {
     german(<SavedSearchesMenu {...menu()} />)
     await userEvent.click(screen.getByTestId('saved-searches'))
     const summaries = (await screen.findAllByTestId('saved-search-summary')).map((line) => line.textContent)
-    expect(summaries).toEqual(['Planliste · Dokumentart: Einreichplan · Nur aktuelle Fassung', 'Verweist auf: ÖNORM B 1600'])
+    expect(summaries).toEqual(['Planliste · Einreichplan · Nur aktuelle Fassung', 'Verweist auf: ÖNORM B 1600'])
   })
 
   it('shares, stops sharing, renames and deletes one’s own in its ⋯; a colleague’s has none', async () => {

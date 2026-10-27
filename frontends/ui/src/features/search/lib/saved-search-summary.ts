@@ -1,8 +1,8 @@
 /**
  * What a saved search asks, in one line under its name: the words in
- * quotes, „Planliste“ when it opens the register, then its filters as their
- * chips say them („„Fluchtweg“ · Dokumentart: Einreichplan · Nur aktuelle
- * Fassung“). A name is what the person chose to call it; this is what it will
+ * quotes, „Planliste“ when it opens the register, then its filters in the
+ * chips' words („„Fluchtweg“ · Einreichplan · Nur aktuelle Fassung · Verweist
+ * auf: ÖNORM B 1600“; which words is the caller's, `useSavedSearchSummary`). A name is what the person chose to call it; this is what it will
  * do, so a colleague's „Zitiert ÖNORM B 1600“ can be told from one's own
  * before it runs.
  *
