@@ -8,35 +8,30 @@ corpus is a dozen synthetic chunks with hashed vectors, so the numbers are wirin
 what is asserted is that the store holds every chunk and that the exact mode and
 the phrase channel behave as the report claims.
 
-Same server contract as ``test_qdrant_store.py``: ``AIQ_QDRANT_TEST_URL``, skipped
+Same server contract as ``test_qdrant_store.py``: ``GRID_QDRANT_TEST_URL``, skipped
 locally without it, failed on CI.
 """
 
 from __future__ import annotations
 
 import os
-import sys
 from pathlib import Path
 
 import pytest
+from oib_retrieval.qdrant_parity import runner
+from oib_retrieval.qdrant_parity import sample
 
 REPO = Path(__file__).resolve().parents[3]
-BENCHMARK = REPO / "frontends" / "benchmarks" / "oib_retrieval"
-sys.path.insert(0, str(BENCHMARK / "src"))
-
-from oib_retrieval_eval.qdrant_parity import runner  # noqa: E402
-from oib_retrieval_eval.qdrant_parity import sample  # noqa: E402
-
-HARD_CASES = BENCHMARK / "fixtures" / "qdrant_lexical_hard_cases.json"
+HARD_CASES = REPO / "evals" / "oib-retrieval" / "fixtures" / "qdrant_lexical_hard_cases.json"
 
 
 def _server_url() -> str:
-    url = os.environ.get("AIQ_QDRANT_TEST_URL", "").strip()
+    url = os.environ.get("GRID_QDRANT_TEST_URL", "").strip()
     if url:
         return url
     if os.environ.get("CI"):
-        pytest.fail("AIQ_QDRANT_TEST_URL is unset on CI: the Qdrant service container is missing")
-    pytest.skip("AIQ_QDRANT_TEST_URL not set; start a Qdrant 1.19 server to run these")
+        pytest.fail("GRID_QDRANT_TEST_URL is unset on CI: the Qdrant service container is missing")
+    pytest.skip("GRID_QDRANT_TEST_URL not set; start a Qdrant 1.19 server to run these")
 
 
 @pytest.fixture(scope="module")
@@ -83,8 +78,8 @@ def test_the_report_renders(report):
 
 
 def test_the_ranking_sweep_measures_every_variant_against_the_baseline(report):
-    from oib_retrieval_eval.qdrant_parity import decompound
-    from oib_retrieval_eval.qdrant_parity import variants
+    from oib_retrieval.qdrant_parity import decompound
+    from oib_retrieval.qdrant_parity import variants
 
     sweep = report["variants"]
     catalogue = variants.catalogue()

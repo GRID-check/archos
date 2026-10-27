@@ -72,7 +72,7 @@ _PG_REAP_LOCK_ID = 0x41495149_4E475250
 
 def db_url() -> str | None:
     """The database the queue lives in: the ingest status store's."""
-    url = os.environ.get("AIQ_SUMMARY_DB") or os.environ.get("NAT_JOB_STORE_DB_URL")
+    url = os.environ.get("GRID_SUMMARY_DB") or os.environ.get("NAT_JOB_STORE_DB_URL")
     return url or None
 
 

@@ -114,7 +114,7 @@ export const AGENT_GROUPS: AgentGroupDefinition[] = [
     label: 'Document vision (ingestion)',
     description:
       'Captions images and describes vector/scanned drawings (plans, sections, elevations, perspectives) during document ingestion. Must be a vision model that accepts image input.',
-    // The ingestion VLM is env-configured (AIQ_VLM_MODEL), not a `llms:` entry;
+    // The ingestion VLM is env-configured (GRID_VLM_MODEL), not a `llms:` entry;
     // the backend reports its default under the synthetic `vlm` key from
     // /v1/config/llm-defaults (see config_info.py) so this group still shows a
     // "workflow default".

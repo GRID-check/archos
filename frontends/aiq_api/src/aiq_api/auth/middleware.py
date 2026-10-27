@@ -12,17 +12,18 @@ Three independent checks:
 
 CONTEXTVAR PROPAGATION
 -----------------------
-The middleware stores the resolved user dict in a ``ContextVar`` so that
+The middleware binds the resolved user dict in the agent tier's ``ContextVar``
+(``aiq_agent.auth.request_identity``) so that
 NAT workflow functions (which do not receive the ASGI ``Request`` object)
 can read the caller type without framework coupling.
 
-    from aiq_api.auth.middleware import get_current_user
+    from aiq_agent.auth.request_identity import get_current_user
     user = get_current_user()          # {"type": "jwt"|"internal"|"anonymous"|...}
     skip = user.get("skip_clarifier")  # True / False
 
 ENVIRONMENT VARIABLES
 ----------------------
-``AIQ_EXTERNAL_HOSTNAMES``
+``GRID_EXTERNAL_HOSTNAMES``
     Comma-separated list of external-facing hostnames.  Requests that arrive
     with a ``Host`` header matching one of these are treated as external (auth
     + path filter applied).
@@ -33,15 +34,15 @@ ENVIRONMENT VARIABLES
     run.  Defaults to ``"false"`` (safe default; configure ``"true"`` in
     production).
 
-``AIQ_JWT_ISSUER``
+``GRID_JWT_ISSUER``
     OIDC issuer URL used for JWT signature verification
     (e.g. ``https://accounts.google.com``).  Required when ``REQUIRE_AUTH=true``.
 
-``AIQ_JWT_AUDIENCE``
+``GRID_JWT_AUDIENCE``
     Optional ``aud`` claim to verify.  Leave unset to skip audience
     verification.
 
-``AIQ_TRACE_USER_IDENTITY_MODE``
+``GRID_TRACE_USER_IDENTITY_MODE``
     Controls whether verified user identity is attached to active trace spans.
     Supported values:
     - ``none``: do not attach any user identity tags
@@ -51,23 +52,23 @@ ENVIRONMENT VARIABLES
       ``aiq.user.name`` when present
     Defaults to ``none``.
 
-``AIQ_TRACE_USER_IDENTITY_HMAC_SECRET``
+``GRID_TRACE_USER_IDENTITY_HMAC_SECRET``
     Secret used to derive pseudonymous trace user IDs from verified subjects
-    when ``AIQ_TRACE_USER_IDENTITY_MODE`` is ``id`` or ``full``. If unset,
+    when ``GRID_TRACE_USER_IDENTITY_MODE`` is ``id`` or ``full``. If unset,
     user identity tagging is disabled even when a mode is configured.
 
-``AIQ_TRACE_CLIENT_ID_MODE``
+``GRID_TRACE_CLIENT_ID_MODE``
     Controls whether a pseudonymous client identifier is attached to trace spans.
     Supported values:
     - ``none``: do not attach a client identifier
     - ``ip``: derive a pseudonymous client ID from the request IP
     Defaults to ``none``.
 
-``AIQ_TRACE_CLIENT_ID_HMAC_SECRET``
+``GRID_TRACE_CLIENT_ID_HMAC_SECRET``
     Secret used to derive pseudonymous client IDs. Falls back to
-    ``AIQ_TRACE_USER_IDENTITY_HMAC_SECRET`` when unset.
+    ``GRID_TRACE_USER_IDENTITY_HMAC_SECRET`` when unset.
 
-``AIQ_TRACE_CLIENT_IP_HEADERS``
+``GRID_TRACE_CLIENT_IP_HEADERS``
     Comma-separated header names to check for the client IP before falling back
     to the ASGI client address. Defaults to ``x-real-ip,x-forwarded-for``.
 """
@@ -76,14 +77,14 @@ import inspect
 import json
 import logging
 import os
-from contextlib import contextmanager
-from contextvars import ContextVar
 from typing import Any
 
 from starlette.types import ASGIApp
 from starlette.types import Receive
 from starlette.types import Scope
 from starlette.types import Send
+
+from aiq_agent.auth.request_identity import user_context
 
 from . import utils as auth_utils
 from .request_trace import get_request_trace_tags
@@ -104,37 +105,10 @@ logger = logging.getLogger(__name__)
 _build_pseudonymous_trace_user_id = auth_utils._build_pseudonymous_trace_user_id
 _build_pseudonymous_trace_client_id = auth_utils._build_pseudonymous_trace_client_id
 
-# ---------------------------------------------------------------------------
-# ContextVar — carries the resolved caller identity through the call stack
-# ---------------------------------------------------------------------------
-_current_user: ContextVar[dict[str, Any]] = ContextVar(
-    "_current_user",
-    default={"type": "internal", "skip_clarifier": False},
-)
-
-
-def get_current_user() -> dict[str, Any]:
-    """Return the caller identity dict set by ``AuthMiddleware`` for this request.
-
-    Returns the default ``{"type": "internal", "skip_clarifier": False}`` when
-    the middleware is not registered or when called outside a request context.
-    """
-    return _current_user.get()
-
 
 def get_current_trace_tags() -> dict[str, str]:
     """Return request trace tags resolved by ``AuthMiddleware`` for this request."""
     return get_request_trace_tags()
-
-
-@contextmanager
-def user_context(user: dict[str, Any]):
-    """Temporarily bind a resolved caller identity in the auth ContextVar."""
-    token = _current_user.set(user)
-    try:
-        yield
-    finally:
-        _current_user.reset(token)
 
 
 def build_request_trace_tags(
@@ -185,8 +159,8 @@ AUTH_EXEMPT_PATHS: set[str] = {"/health", "/docs", "/redoc", "/openapi.json"}
 
 
 def _load_external_hostnames() -> set[str]:
-    """Read ``AIQ_EXTERNAL_HOSTNAMES`` env var; fall back to staging hostname."""
-    env = os.getenv("AIQ_EXTERNAL_HOSTNAMES", "")
+    """Read ``GRID_EXTERNAL_HOSTNAMES`` env var; fall back to staging hostname."""
+    env = os.getenv("GRID_EXTERNAL_HOSTNAMES", "")
     names = {h.strip() for h in env.split(",") if h.strip()}
     return names
 
@@ -316,7 +290,7 @@ class AuthMiddleware:
         validators: Ordered list of token validators to try.
         require_auth: When ``True``, external requests must carry a valid token.
         external_hostnames: Hostnames considered "external".
-            Defaults to ``AIQ_EXTERNAL_HOSTNAMES`` env var.
+            Defaults to ``GRID_EXTERNAL_HOSTNAMES`` env var.
     """
 
     def __init__(

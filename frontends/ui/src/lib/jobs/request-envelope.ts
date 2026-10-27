@@ -15,7 +15,7 @@
  */
 
 import type { GridSession } from '@/lib/auth/types'
-import type { ScopedCollection } from '@/lib/collection-scope'
+import type { ScopedCollection } from '@/lib/retrieval-scope/collection-scope'
 import {
   buildGridRequestContextWireHeaders,
   requesterOf,

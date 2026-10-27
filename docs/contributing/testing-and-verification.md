@@ -90,9 +90,9 @@ Backend job.** `tests/aiq_agent/common/test_claim_queue.py`,
 SQLite, which ranks in Python, and on Postgres, which runs production's claim
 SQL. The folder card builder's suites (`tests/aiq_agent/knowledge/folder_cards/`:
 dirty queue, budget, manifests, worker) run on both too, through the
-`database_url` and `agent_db` fixtures in their `conftest.py`. Without `AIQ_TEST_POSTGRES_URL` the Postgres parameter skips, so the task
+`database_url` and `agent_db` fixtures in their `conftest.py`. Without `GRID_TEST_POSTGRES_URL` the Postgres parameter skips, so the task
 reuses `scripts/rls-test-db.sh --exec` for a throwaway cluster and names a
-scratch database in it. Each file carries an `AIQ_TEST_POSTGRES_REQUIRED` guard,
+scratch database in it. Each file carries an `GRID_TEST_POSTGRES_REQUIRED` guard,
 set in CI, that fails instead of skipping. A new suite with a Postgres parameter
 joins the task's list.
 
@@ -192,7 +192,7 @@ Piloti's reading of its own prompt: a greeting or a question
 about the assistant answers without calling a search tool, and a commissioned
 report („erstelle mir einen vollständigen Prüfbericht …") escalates to deep
 research before it retrieves anything.
-[`tests/benchmarks/test_turn_shapes_live.py`](../../tests/benchmarks/test_turn_shapes_live.py)
+[`evals/turn-shapes/test_turn_shapes_live.py`](../../evals/turn-shapes/test_turn_shapes_live.py)
 pins both, plus a control question that must still search. It runs the real
 agent on the real prompt against Piloti's own model through OpenRouter, with
 stub tools in place of retrieval, and reads the trace from the turn's own
@@ -314,7 +314,7 @@ offline by [`tests/test_loop_eval.py`](../../tests/test_loop_eval.py).
 ## Cross-service contract fixtures
 
 Where a wire format has a producer in one language and a consumer in another,
-the contract is a JSON fixture under `tests/fixtures/` that **both** suites read,
+the contract is one JSON fixture that **both** suites read,
 never two assertions that each pin their own side. Two tests that agree with
 themselves prove nothing about a boundary: ADR-0046 records the internal-token
 header spelled one way by every caller and read the other way by the guard,
@@ -328,11 +328,13 @@ Two of these exist:
 | `grid_request_context.json` | `request-context.spec.ts` builds the headers | `test_project_context.py` parses them back |
 | `job_fire_headers.json` | `tests/lib/jobs/fire-headers.test.ts` fires a real submit and captures what went out | `test_fire_path_contract.py` asserts each backend-required set is a subset |
 
-Each is duplicated verbatim into `frontends/ui/tests/fixtures/`, because
+Such a fixture lives in `frontends/ui/tests/fixtures/`, once.
 `frontends/ui/Dockerfile.typecheck`'s build context is scoped to `frontends/ui`
-and cannot `COPY` from outside it. **Copy the repo-root file over the twin when
-you change it** — `test_fire_path_contract.py` compares the two byte for byte,
-so drift fails a test rather than splitting the contract in half.
+and cannot `COPY` from outside it, while the Python suite reads the whole
+repository, so that is the one place both can reach. A copy of it anywhere else
+is a second contract that drifts: `tests/test_no_twin_fixtures.py` fails any
+file under the repo-root `tests/` that is byte-identical to one under
+`frontends/ui/tests/fixtures/`.
 
 ## Security and static analysis
 
@@ -494,7 +496,7 @@ its passage; this asks what the reader waited for and what they got.
 - **No stack needed:** `--ingest --corpus data/oib` takes the base corpus
   from that directory's PDFs instead of the object store, so the suite runs
   on a machine with no BFF and no SeaweedFS. The table, the ingest queue and
-  the ingestion itself are the real ones (a SQLite `AIQ_SUMMARY_DB` holds
+  the ingestion itself are the real ones (a SQLite `GRID_SUMMARY_DB` holds
   them); only the bytes come from the directory. Unchanged files are not
   ingested again on the next run.
 
@@ -611,7 +613,7 @@ the case to `tests/fixtures/derivation/loop_eval_questions.yaml` with a
 
 It needs `OPENROUTER_API_KEY` (or `OPENROUTER_KEY`) and the corpus
 (uploaded with `scripts/upload_oib_corpus.py`, or `-- --corpus data/oib`)
-ingested into the Qdrant at `AIQ_QDRANT_URL` (`-- --ingest` queues the corpus's
+ingested into the Qdrant at `GRID_QDRANT_URL` (`-- --ingest` queues the corpus's
 ingest jobs and runs them in the suite's own process first; the 39 OIB PDFs took
 about ten minutes on 4 CPUs on 2026-10-13). Every run costs model calls: the core set
 at two runs is twelve turns, about four minutes three at a time, and a turn
@@ -628,7 +630,7 @@ September 2026 measurements it grew out of are in
 Measure a committed, clean tree, where the document inventory is. Each
 question starts a fresh process from the working tree, so editing code
 mid-run measures two codebases (the report marks the commit `-dirty`). And
-`AIQ_SUMMARY_DB` defaults to a relative `./summaries.db`, so a `git worktree`
+`GRID_SUMMARY_DB` defaults to a relative `./summaries.db`, so a `git worktree`
 reads an empty inventory and runs every turn ~7 s slower without family
 overviews; the suite refuses to start on an empty one.
 
@@ -749,8 +751,8 @@ Paste `compare.md` into the PR. How to read it (`scripts/turn_census/compare.py`
 
 The project has to exist where the tools read it. The suite seeds it itself
 (`scripts/turn_census/fixture_files.py`: each file cut by the ingest job's own
-chunkers, `adapter.text_chunks_for_pages`, into the Qdrant at `AIQ_QDRANT_URL`, the
-documents into the metadata store at `AIQ_SUMMARY_DB`, which must be a database URL).
+chunkers, `adapter.text_chunks_for_pages`, into the Qdrant at `GRID_QDRANT_URL`, the
+documents into the metadata store at `GRID_SUMMARY_DB`, which must be a database URL).
 The cut matters: a section chunk repeats its heading breadcrumb and overlaps its
 neighbour, and the `pf-count-*` rows ask for counts that are wrong when either is
 counted. Seeding is idempotent and embeds only what changed; a file cut another way

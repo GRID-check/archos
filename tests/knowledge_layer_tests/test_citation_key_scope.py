@@ -16,12 +16,13 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 
+from knowledge_layer.register import _ambiguous_file_names
+from knowledge_layer.register import _format_results
+
 from aiq_agent.citations.entries import SourceEntry
 from aiq_agent.citations.extraction import extract_sources_from_tool_result
 from aiq_agent.citations.registry import SourceRegistry
 from aiq_agent.common.source_kinds import Shelf
-from sources.knowledge_layer.src.register import _ambiguous_file_names
-from sources.knowledge_layer.src.register import _format_results
 
 
 def _chunk(*, file_name: str, collection: str, shelf: str | None = None, page: int | None = 3):

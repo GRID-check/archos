@@ -11,8 +11,8 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 
-from sources.knowledge_layer.src.register import _apply_agent_filters
-from sources.knowledge_layer.src.register import _empty_search_message
+from knowledge_layer.register import _apply_agent_filters
+from knowledge_layer.register import _empty_search_message
 
 
 def _chunk(file_name: str, collection: str) -> SimpleNamespace:

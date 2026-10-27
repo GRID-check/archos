@@ -5,19 +5,19 @@ from __future__ import annotations
 from unittest.mock import MagicMock
 
 import pytest
+from knowledge_layer.browse import ListFilesConfig
+from knowledge_layer.browse import abstract_lines
+from knowledge_layer.browse import file_rows
+from knowledge_layer.browse import folder_cards
+from knowledge_layer.browse import list_files
+from knowledge_layer.browse import render_tree
+from knowledge_layer.register import KnowledgeRetrievalConfig
 
 from aiq_agent.common.source_kinds import Shelf
 from aiq_agent.knowledge.folder_cards import ListedAbstract
 from aiq_agent.knowledge.inventory import set_turn_documents
 from aiq_agent.knowledge.schema import AvailableDocument
 from aiq_agent.knowledge.scoping import ScopedCollection
-from sources.knowledge_layer.src.browse import ListFilesConfig
-from sources.knowledge_layer.src.browse import abstract_lines
-from sources.knowledge_layer.src.browse import file_rows
-from sources.knowledge_layer.src.browse import folder_cards
-from sources.knowledge_layer.src.browse import list_files
-from sources.knowledge_layer.src.browse import render_tree
-from sources.knowledge_layer.src.register import KnowledgeRetrievalConfig
 
 
 def _doc(name: str, folder: str | None = None) -> AvailableDocument:

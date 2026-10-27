@@ -111,7 +111,7 @@ class TestTheQuestionSet:
         """
         import json
 
-        index_path = REPO_ROOT / "frontends" / "benchmarks" / "oib_retrieval" / "fixtures" / "clause_index.json"
+        index_path = REPO_ROOT / "evals" / "oib-retrieval" / "fixtures" / "clause_index.json"
         index = json.loads(index_path.read_text(encoding="utf-8"))
         unknown = [
             (q.id, q.family, q.clause)

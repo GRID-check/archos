@@ -13,6 +13,9 @@ from types import SimpleNamespace
 from uuid import uuid4
 
 import pytest
+from knowledge_layer import stored_pages
+from knowledge_layer.browse import FileRow
+from knowledge_layer.estate import EstateBackend
 from langgraph.store.memory import InMemoryStore
 
 from aiq_agent.citations.extraction import extract_sources_from_tool_result
@@ -28,9 +31,6 @@ from aiq_agent.tools.documents.filesystem import NO_DRAFTS
 from aiq_agent.tools.documents.filesystem import PilotiFilesystem
 from aiq_agent.tools.documents.filesystem import composite_backend
 from aiq_agent.tools.documents.tools import filesystem_tools
-from sources.knowledge_layer.src import stored_pages
-from sources.knowledge_layer.src.browse import FileRow
-from sources.knowledge_layer.src.estate import EstateBackend
 
 PATH = "/project/Gutachten/Brandschutzkonzept.pdf.md"
 ROW = FileRow(file_name="Brandschutzkonzept.pdf", shelf="project", collection="proj_a", folder="Gutachten")
@@ -285,7 +285,7 @@ class TestGrepOnTheDrafts:
 
 class TestKnowledgeSearchPath:
     def test_a_path_compiles_to_shelf_folder_and_file(self) -> None:
-        from sources.knowledge_layer.src.register import _path_scope
+        from knowledge_layer.register import _path_scope
 
         assert _path_scope("/project/Gutachten/", None, None, None) == ("project", "Gutachten", None)
         assert _path_scope("/office/", None, None, None) == ("office", None, None)
@@ -295,7 +295,7 @@ class TestKnowledgeSearchPath:
 
     @pytest.mark.parametrize("path", ["/drafts/a.md", "project/x", "/nowhere/"])
     def test_a_path_that_names_no_place_is_refused(self, path: str) -> None:
-        from sources.knowledge_layer.src.register import _path_scope
+        from knowledge_layer.register import _path_scope
 
         with pytest.raises(ValueError):
             _path_scope(path, None, None, None)

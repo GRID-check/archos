@@ -14,7 +14,7 @@ older first. The model returns boxes on the NEWER page in page-relative
 defensively (at most 12 boxes, a malformed or off-page one dropped).
 
 **The drawing analysis's credential path.** The endpoint, key and data policy
-are the organization's vision credential (BYOK first, then ``AIQ_VLM_*``), and
+are the organization's vision credential (BYOK first, then ``GRID_VLM_*``), and
 the model is the organization's ``ingest_vlm`` choice when it made one: a
 comparison is the same eyes on the same drawings as the page's caption. The
 call queues as interactive, since a person waits on it (ADR-0081), and is traced

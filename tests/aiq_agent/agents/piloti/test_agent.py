@@ -3851,7 +3851,7 @@ class TestTheTidyingRulesLiveInTheTools:
 class TestTheThreeDraftingTurnShapes:
     """Commission, revise, file — the same three cases the live eval runs.
 
-    ``tests/benchmarks/test_turn_shapes_live.py`` puts these prompts to the
+    ``evals/turn-shapes/test_turn_shapes_live.py`` puts these prompts to the
     real model and skips without a key, so nothing about a drafting turn was
     checked on any PR (ledger row 5). These are the same cases, the same
     assertion (``tests/fixtures/drafting_turns.py``) and the same real tools —

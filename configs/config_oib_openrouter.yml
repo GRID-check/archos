@@ -508,7 +508,7 @@ functions:
   # VLM captions OF drawings and the model never saw a drawing: NAT only binds a
   # function that appears under `functions:`.
   #
-  # It fails closed on its own: no vision key, or `AIQ_VIEW_IMAGES_ENABLED`
+  # It fails closed on its own: no vision key, or `GRID_VIEW_IMAGES_ENABLED`
   # off, and it returns a sentence saying so rather than an image.
   look:
     _type: look
@@ -549,7 +549,7 @@ functions:
       - oib-rl_zitierte_normen_und_sonstige_technische_regelwerke_ausgabe_mai_2023.pdf
     generate_summary: true
     summary_model: summary_llm
-    summary_db: ${AIQ_SUMMARY_DB:-sqlite+aiosqlite:///./summaries.db}
+    summary_db: ${GRID_SUMMARY_DB:-sqlite+aiosqlite:///./summaries.db}
     # top_k=16 with a 5-per-document diversity cap still spans >=4 distinct
     # Richtlinien on cross-cutting questions instead of 5 chunks from the 1-2
     # top-scoring PDFs, and gives each of them enough consecutive text to reason
@@ -583,15 +583,15 @@ functions:
     # `qwen/qwen3-reranker-8b`, multilingual, which a German corpus needs, and
     # served from a zero-data-retention endpoint, which every rerank is pinned to
     # (`cohere/rerank-v3.5`, the default until 2026-09, has none).
-    # `AIQ_RERANKER_MODEL` / `AIQ_RERANKER_BASE_URL` override per deployment.
+    # `GRID_RERANKER_MODEL` / `GRID_RERANKER_BASE_URL` override per deployment.
     #
     # Fail-open: a key that does not resolve or any provider error falls back to
     # the judge (first failure per 5 min warns, the rest debug; 5 consecutive
     # failures disable the cross-encoder for 5 min). A provider that HANGS costs
-    # `AIQ_RERANKER_TIMEOUT_SECONDS` (3s) before that fallback, so worst case a
+    # `GRID_RERANKER_TIMEOUT_SECONDS` (3s) before that fallback, so worst case a
     # turn pays 3s + the judge's own 30s bound — never the other way round. Set
     # `reranker_provider: none` to hand reranking back to the judge. No offline
-    # eval covers reranking (`frontends/benchmarks/
+    # eval covers reranking (`evals/
     # oib_retrieval` stops upstream of it); the golden compliance eval and the
     # profiler's `tool` spans for `knowledge_search` are the before/after.
     reranker_provider: openrouter
@@ -1005,12 +1005,12 @@ functions:
     # Durable checkpointing for async deep-research jobs (T3-8), mirroring
     # workflow.checkpoint_db below: re-invoking the same job_id resumes from
     # the last persisted checkpoint instead of starting over. STRICTLY OPT-IN:
-    # empty/unset AIQ_DEEP_CHECKPOINT_DB means no durability (in-memory graph,
+    # empty/unset GRID_DEEP_CHECKPOINT_DB means no durability (in-memory graph,
     # today's behavior). Do NOT default to a relative sqlite path here — the
     # container's working directory is not guaranteed writable, and a default-on
     # value took application startup down (post-#72 incident). Point the env var
     # at a writable volume path or a Postgres DSN to enable resume-by-job_id.
-    checkpoint_db: ${AIQ_DEEP_CHECKPOINT_DB:-}
+    checkpoint_db: ${GRID_DEEP_CHECKPOINT_DB:-}
 
   # The Erfassungs-Agent (ADR-0111, docs/design/agentic-project-intake.md):
   # Piloti sets a new project's profile up from its documents, as a background
@@ -1057,7 +1057,7 @@ workflow:
     log_response_max_chars: 2000
     verbose: true
   use_async_deep_research: true
-  checkpoint_db: ${AIQ_CHECKPOINT_DB:-./checkpoints.db}
+  checkpoint_db: ${GRID_CHECKPOINT_DB:-./checkpoints.db}
   # Enables the async post-answer memory-reflection stage (reuses the cheap
   # card_llm). This only makes the capability AVAILABLE; whether it runs is
   # decided per TURN by the BFF (`GET /api/internal/stages`) from the

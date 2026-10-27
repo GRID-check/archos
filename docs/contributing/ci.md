@@ -308,7 +308,7 @@ not production. [`ci/pr_selection.py`](../../ci/pr_selection.py) decides, and
 runs the full suite on a pull request whenever testmon cannot see the change:
 a conftest, a Python fixture, the lockfile or a `pyproject.toml`, how the
 backend jobs run, Python outside the tested packages (tests load `scripts/` and
-`frontends/benchmarks/` by path or in a subprocess), package data or a fixture
+`deploy/` by path or in a subprocess), package data or a fixture
 no test names, or no recorded database. A data fixture under `tests/fixtures/`
 adds the tests that name it or one of its directories, as tests read whole
 fixture directories. A non-Python file that a helper or conftest reads (a

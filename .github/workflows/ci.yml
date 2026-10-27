@@ -383,7 +383,7 @@ jobs:
         ports:
           - 6333:6333
     env:
-      AIQ_QDRANT_TEST_URL: http://localhost:6333
+      GRID_QDRANT_TEST_URL: http://localhost:6333
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -462,7 +462,7 @@ jobs:
         ports:
           - 6333:6333
     env:
-      AIQ_QDRANT_TEST_URL: http://localhost:6333
+      GRID_QDRANT_TEST_URL: http://localhost:6333
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -482,7 +482,7 @@ jobs:
         run: task be:test:migration
 
       # The suites above run each claim queue on SQLite only: their Postgres
-      # parameter skips without AIQ_TEST_POSTGRES_URL, and production runs the
+      # parameter skips without GRID_TEST_POSTGRES_URL, and production runs the
       # Postgres SQL. ubuntu-latest ships the server binaries; the RLS script
       # builds the throwaway cluster, as in the frontend job.
       - name: Claim queues on real Postgres
@@ -490,7 +490,7 @@ jobs:
         run: task be:test:postgres
         env:
           # Turns "the Postgres branch skipped" into a failure for THIS step only.
-          AIQ_TEST_POSTGRES_REQUIRED: "1"
+          GRID_TEST_POSTGRES_REQUIRED: "1"
 
   # A pull request whose change testmon can see runs only the tests that
   # change reaches, per suite, from the database the last green develop push
@@ -527,7 +527,7 @@ jobs:
         ports:
           - 6333:6333
     env:
-      AIQ_QDRANT_TEST_URL: http://localhost:6333
+      GRID_QDRANT_TEST_URL: http://localhost:6333
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -572,10 +572,10 @@ jobs:
           EXTRA_JSON: ${{ needs.changes.outputs.py_extra }}
         run: |
           # The named test files that belong to this suite, in its first shard.
-          case "$SUITE" in core) root=tests/ ;; api) root=frontends/aiq_api/tests/ ;; sources) root=sources/ ;; esac
+          case "$SUITE" in core) root='^(tests|evals)/' ;; api) root='^frontends/aiq_api/tests/' ;; sources) root='^sources/' ;; esac
           extra=""
           if [ -z "$SHARD" ] || [ "${SHARD%%/*}" = 1 ]; then
-            extra="$(jq -r --arg root "$root" '[.[] | select(startswith($root))] | join(" ")' <<<"$EXTRA_JSON")"
+            extra="$(jq -r --arg root "$root" '[.[] | select(test($root))] | join(" ")' <<<"$EXTRA_JSON")"
           fi
           task be:test:affected SUITE="$SUITE" SHARD="$SHARD" EXTRA="$extra"
       # Saved red or green: a failed test is recorded as failed and re-runs.
@@ -592,7 +592,7 @@ jobs:
         if: matrix.suite == 'api'
         run: task be:test:postgres
         env:
-          AIQ_TEST_POSTGRES_REQUIRED: "1"
+          GRID_TEST_POSTGRES_REQUIRED: "1"
 
   # Records which test runs which code, for `backend-affected`. On every push
   # to develop, reused or not: a squash merge of a green pull request skips the
@@ -611,7 +611,7 @@ jobs:
         ports:
           - 6333:6333
     env:
-      AIQ_QDRANT_TEST_URL: http://localhost:6333
+      GRID_QDRANT_TEST_URL: http://localhost:6333
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -805,13 +805,10 @@ jobs:
         with:
           node-version: "22"
       - uses: ./.github/actions/setup-bun
-      - run: bun install --frozen-lockfile
-        working-directory: deploy/pulumi
-      # The policy pack is its own Node program with its own lockfile; a rule
-      # that no longer compiles would otherwise surface only at deploy time.
-      - run: bun install --frozen-lockfile
-        working-directory: deploy/pulumi/policy
       - uses: ./.github/actions/setup-task
+      # The program and the policy pack, each from its own lockfile; a policy
+      # rule that no longer compiles would otherwise surface only at deploy time.
+      - run: task infra:install
       # What can run on an untrusted PR: the types (every CRD `spec`, and the
       # policy pack) and the manifests under `pulumi.runtime.setMocks` (a
       # renamed flag, a Service missing a port, a probe on the wrong endpoint).

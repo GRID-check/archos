@@ -175,7 +175,7 @@ __all__ = [
 ]
 
 
-# @environment_variable AIQ_VERBOSE
+# @environment_variable GRID_VERBOSE
 # @category Debug
 # @type bool
 # @default false
@@ -183,7 +183,7 @@ __all__ = [
 # Enable verbose logging output. Accepts true/1/yes or false/0/no.
 def is_verbose(config_verbose: bool) -> bool:
     """Check if verbose mode is enabled via env var or config."""
-    env_verbose = os.getenv("AIQ_VERBOSE", "").lower()
+    env_verbose = os.getenv("GRID_VERBOSE", "").lower()
     if env_verbose in ("true", "1", "yes"):
         return True
     if env_verbose in ("false", "0", "no"):

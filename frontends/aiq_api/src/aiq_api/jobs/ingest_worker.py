@@ -4,7 +4,7 @@ Run as its own container: ``GRID_ROLE=ingest-worker`` makes the entrypoint start
 ``python -m aiq_api.jobs.ingest_worker``. It builds the NAT workflow once, which
 activates the ingestor exactly as the web roles do (same summary model, same
 shared Qdrant, same object store), attaches the durable queue to it, and then
-does nothing but claim: its ``AIQ_INGEST_MAX_WORKERS`` threads take the next job
+does nothing but claim: its ``GRID_INGEST_MAX_WORKERS`` threads take the next job
 fairly across every organisation, run it, and come back for another.
 
 No web server, no port, no state of its own: jobs live in Postgres, vectors in
@@ -21,7 +21,7 @@ leaves its claims to go stale and be claimed again.
 
 Config (env):
   CONFIG_FILE / NAT_CONFIG_FILE        the NAT config the web tier runs
-  AIQ_INGEST_MAX_WORKERS               jobs this process runs at once (default 2)
+  GRID_INGEST_MAX_WORKERS               jobs this process runs at once (default 2)
   GRID_INGEST_WORKER_DRAIN_SECONDS     drain budget on SIGTERM (default 600)
   GRID_WORKER_LIVENESS_FILE            touched while the loop is alive
 """
@@ -74,7 +74,7 @@ async def run(stop: asyncio.Event) -> None:
         if ingestor is None:
             raise RuntimeError(f"{config_file} activates no ingestor; there is nothing to run jobs with")
         if not ingest_dispatch.attach(ingestor):
-            raise RuntimeError("the ingest queue is off or has no database (GRID_INGEST_QUEUE, AIQ_SUMMARY_DB)")
+            raise RuntimeError("the ingest queue is off or has no database (GRID_INGEST_QUEUE, GRID_SUMMARY_DB)")
         logger.info("Ingest worker %s claiming", ingest_dispatch.worker_id())
         clock.ready()
         boot_timing.flush()

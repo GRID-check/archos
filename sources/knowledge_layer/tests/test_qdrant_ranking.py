@@ -1,7 +1,7 @@
 """``search.Ranking``: what each knob the parity sweep measures sends to Qdrant.
 
 Offline: the requests are built, not run. The sweep
-(``oib_retrieval_eval.qdrant_parity.variants``) swaps ``search.RANKING`` and
+(``oib_retrieval.qdrant_parity.variants``) swaps ``search.RANKING`` and
 reads through production, so a knob that silently sent nothing would measure the
 baseline under another name. What each setting does to the ranking is measured
 by ``task be:eval:qdrant-parity -- --variants all`` (``qdrant-gates-2026-10.md``).
@@ -87,16 +87,16 @@ def test_a_tie_straddling_the_cut_is_fetched_whole_before_it_is_cut():
     assert search._tie_slack(60) == 15 and search._tie_slack(3) == 4
 
 
-# ---------------------------------------------------------------- against a real Qdrant (AIQ_QDRANT_TEST_URL)
+# ---------------------------------------------------------------- against a real Qdrant (GRID_QDRANT_TEST_URL)
 
 
 @pytest.fixture
 def store(monkeypatch):
-    url = os.environ.get("AIQ_QDRANT_TEST_URL", "").strip()
+    url = os.environ.get("GRID_QDRANT_TEST_URL", "").strip()
     if not url:
         if os.environ.get("CI"):
-            pytest.fail("AIQ_QDRANT_TEST_URL is unset on CI: the Qdrant service container is missing")
-        pytest.skip("AIQ_QDRANT_TEST_URL not set; start a Qdrant 1.19 server to run these")
+            pytest.fail("GRID_QDRANT_TEST_URL is unset on CI: the Qdrant service container is missing")
+        pytest.skip("GRID_QDRANT_TEST_URL not set; start a Qdrant 1.19 server to run these")
     from qdrant_client import QdrantClient
 
     client = QdrantClient(url=url, cloud_inference=True, timeout=30, check_compatibility=False)

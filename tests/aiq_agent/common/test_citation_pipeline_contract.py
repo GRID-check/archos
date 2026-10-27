@@ -28,6 +28,8 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
+from knowledge_layer.register import _CHUNK_TRUNCATE_CHARS
+from knowledge_layer.register import _format_results
 from ris_adapter.lookup.address import Address
 from ris_adapter.lookup.passages import SCORE_ADDRESSED
 from ris_adapter.lookup.passages import SCORE_RANKED_TOP
@@ -44,8 +46,6 @@ from aiq_agent.citations.verification import verify_citations
 from aiq_agent.citations.wire import source_entry_to_wire
 from aiq_agent.common.grounding_block import begin_grounding_capture
 from aiq_agent.common.grounding_block import end_grounding_capture
-from sources.knowledge_layer.src.register import _CHUNK_TRUNCATE_CHARS
-from sources.knowledge_layer.src.register import _format_results
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 FIXTURE_DIR = REPO_ROOT / "tests" / "fixtures" / "citation_pipeline"
