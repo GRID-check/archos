@@ -259,26 +259,31 @@ SCORE_DEFINITIONS: tuple[ScoreDefinition, ...] = (
         min_value=0,
     ),
     ScoreDefinition(
+        "confidence-judged-level",
+        "CATEGORICAL",
+        "The level the answer check gave the answer (ADR-0139): one model call grading the final answer "
+        "against everything the turn registered, before the quote gate. Not written when the check was "
+        "unavailable or the answer graded nothing.",
+        categories=("low", "medium", "high"),
+    ),
+    ScoreDefinition(
+        "confidence-judge-unavailable",
+        "BOOLEAN",
+        "On a turn whose answer was to be graded: true when the answer check could not run (no model, a "
+        "timeout, an error, an unreadable reply) and the turn surfaced no level.",
+    ),
+    ScoreDefinition(
         "claims-by-class",
         "CATEGORICAL",
-        "One score per provenance class present in the answer (ADR-0125): where its sentences come from. "
-        "The comment and metadata carry how many sentences of that class.",
-        categories=(
-            "quoted",
-            "cited",
-            "cited_dropped",
-            "record",
-            "action",
-            "measured",
-            "observed",
-            "reasoning",
-            "model_knowledge",
+        "Retired with the per-sentence provenance classes (ADR-0139); no longer written. Kept so older traces chart.",
+        categories=tuple(  # noqa: SIM905 - one line for a retired list
+            "quoted cited cited_dropped record action measured observed reasoning model_knowledge".split()
         ),
     ),
     ScoreDefinition(
         "claims-normative-uncited",
         "NUMERIC",
-        "Sentences about the law (the normative detector) with no quoted or cited passage behind them.",
+        "Retired with the normative-claim detector (ADR-0139); no longer written. Kept so older traces chart.",
         min_value=0,
     ),
     ScoreDefinition(
@@ -459,23 +464,16 @@ def work_unfiled_scores(dropped: int) -> list[RuntimeScore]:
     return [RuntimeScore("work-proposals-unfiled", float(max(0, dropped)))]
 
 
-def claim_scores(stamps: Iterable[Any], *, dropped: int) -> list[RuntimeScore]:
-    """The answer's per-sentence provenance (``common/claim_provenance.py``), zeros included.
+def answer_check_scores(level: str | None) -> list[RuntimeScore]:
+    """The answer check's level, or that it was unavailable (``common/claim_judge.py``, ADR-0139)."""
+    if level is None:
+        return [_boolean("confidence-judge-unavailable", True)]
+    return [_boolean("confidence-judge-unavailable", False), RuntimeScore("confidence-judged-level", level)]
 
-    ``stamps`` are ``ClaimStamp`` objects; ``dropped`` is how many labels the
-    final text carries where a citation did not resolve.
-    """
-    from aiq_agent.common.claim_provenance import class_counts
-    from aiq_agent.common.claim_provenance import normative_uncited
 
-    stamps = list(stamps)
-    scores = [
-        RuntimeScore("claims-by-class", name, comment=str(count), item=name, metadata={"count": count})
-        for name, count in class_counts(stamps).items()
-    ]
-    scores.append(RuntimeScore("claims-normative-uncited", float(normative_uncited(stamps))))
-    scores.append(RuntimeScore("citations-dropped-labelled", float(max(0, dropped))))
-    return scores
+def dropped_citation_scores(dropped: int) -> list[RuntimeScore]:
+    """How many places the final text labels a citation that did not resolve; zero included."""
+    return [RuntimeScore("citations-dropped-labelled", float(max(0, dropped)))]
 
 
 def look_scores(*, looks: int, drawing_value: bool, region_look_first: bool) -> list[RuntimeScore]:

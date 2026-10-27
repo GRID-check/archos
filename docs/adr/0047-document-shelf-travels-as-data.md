@@ -1,6 +1,10 @@
+---
+status: accepted
+---
+
 # ADR-0047: A document's shelf travels as data, not as a name or a label
 
-- **Status:** Accepted (Phase 1 and Phase 2 implemented; see the 2026-09-27 amendment)
+- **Status note:** Phase 1 and Phase 2 implemented; see the 2026-09-27 amendment
 - **Date:** 2026-08-12
 - **Deciders:** Grid engineering
 - **Related:** ADR-0024 (org-wide Archiv), ADR-0026 (source-kind taxonomy), ADR-0045 (IFC models as a queryable building)
@@ -181,7 +185,7 @@ session uploads.
   today. Current lean: yes.
 - Does `ifc_query` become shelf-aware, or stay project-pinned? A session-scoped
   model has no viewer home.
-- `backlog.md:58` claims ~14 pre-existing failing frontend specs; the suite is
+- `docs/audit/overnight-run-backlog.md:58` claims ~14 pre-existing failing frontend specs; the suite is
   green as of 2026-08-12 (477 files / 6223 tests). The stale note should be
   removed.
 

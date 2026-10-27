@@ -68,7 +68,10 @@ binds one model per role:
 
 There is no generic `llm` field on deep research, so changing
 `orchestrator_llm` moves every role you did not set. Piloti reads `llm:`
-(`research_llm`). The clarify step is configured by the `clarifier:` block on
+(`research_llm`), and `claim_judge_llm` (`follow_ups_llm`) for the answer check
+that grades each answer against everything its turn registered (ADR-0139),
+resolved per turn on the `follow_ups` agent group and bound to temperature 0.
+The clarify step is configured by the `clarifier:` block on
 `chat_deepresearcher_agent` (`ClarifierSettings` in
 `src/aiq_agent/agents/piloti/clarify.py`): `llm` asks the questions and
 `planner_llm` writes the plan, falling back to `llm` when unset.
@@ -130,7 +133,7 @@ bounded by per-org/member/project budgets — see
   middleware) are still independent and uncoordinated (no shared budget or
   deadline), but the worst case per logical turn is now on the order of a
   handful of attempts, not ~33. See
-  [`scaling-review-2026-07.md`](scaling-review-2026-07.md) §6.3 for the
+  [`docs/audit/scaling-review-2026-07.md`](../audit/scaling-review-2026-07.md) §6.3 for the
   cross-run multiplication this still doesn't address (bounded fan-out, not
   a shared retry budget).
 - **`api_type: responses` is a per-ROLE opt-in, not a fleet default.**

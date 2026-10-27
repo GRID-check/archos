@@ -7,7 +7,7 @@
 > repo's primitives, and the two prior documents the first revision had not
 > read: [`piloti-filesystem-design.md`](../architecture/piloti-filesystem-design.md)
 > (the exploration, with its threat model and the work/estate line) and
-> [`2026-08-20-agent-authored-documents-design.md`](../superpowers/specs/2026-08-20-agent-authored-documents-design.md)
+> [`agent-authored-documents.md`](../architecture/agent-authored-documents.md)
 > (the build spec, one producer, with the seams it left open). §9 lists what
 > the review broke and what changed.
 >

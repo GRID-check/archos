@@ -112,15 +112,31 @@ When no session exists, `getGridSession()` returns `null`.
 
 ### requireGridSession()
 
-`frontends/ui/src/lib/auth/require-auth.ts:18`
+`frontends/ui/src/lib/auth/session.ts`
 
-Requires any valid session. Throws `Error('Unauthorized: Grid session required')` if no session is present.
+Requires any valid session. Throws `SessionRequiredError` (`lib/api/errors`, an
+`UnauthorizedError`) if no session is present.
 
 ### requireAuthorizedSession()
 
-`frontends/ui/src/lib/auth/require-auth.ts:18`
+`frontends/ui/src/lib/auth/require-auth.ts`
 
-Extends `requireGridSession()` and additionally requires an `organizationId`. If the user has not selected an organization, it redirects to `/onboarding/organization`. Returns `AuthorizedSession` (guarantees `organizationId`, `orgMembershipId`, `role`, `permissions` are non-null).
+Extends `requireGridSession()` and additionally requires an `organizationId`.
+Without one it throws `NoOrganizationError` (a `ForbiddenError`); the page
+variant, `requireAuthorizedPageSession()`, redirects to
+`/app/onboarding/organization` instead. Returns `AuthorizedSession` (guarantees
+`organizationId`, `orgMembershipId`, `role`, `permissions` are non-null).
+
+### What a refusal is answered
+
+Server code tells an authorization refusal by type: `isAuthzRefusal`
+(`lib/api/errors`) is any `ApiError` with status 401, 403 or 404. The route
+wrapper (`apiRoute`) answers both session guards `403 { error: 'Forbidden',
+code: 'FORBIDDEN' }`, the answer they had while they were plain `Error`s
+matched by message; HTTP would say 401 for no session, and moving to it is its
+own decision. Every other `ApiError` is answered with its own status. The
+client error boundary (`app/error.tsx`) still classifies by message, because a
+server-thrown class does not survive the RSC boundary.
 
 ## Anonymous mode
 

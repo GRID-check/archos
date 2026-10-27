@@ -22,7 +22,6 @@ vi.mock('@/lib/auth/require-auth', () => ({
     role: 'member',
     permissions: [],
   }),
-  authzErrorResponse: () => null,
 }))
 
 const requireProjectAccessMock = vi.hoisted(() => vi.fn())

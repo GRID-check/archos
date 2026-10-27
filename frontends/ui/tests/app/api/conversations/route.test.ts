@@ -7,7 +7,6 @@ vi.mock('@/lib/auth/require-auth', () => ({
   requireAuthorizedSession: vi.fn(),
   // The route calls this in its catch block; the real impl returns null for a
   // non-authz error (so the original error rethrows). Mirror that here.
-  authzErrorResponse: vi.fn(() => null),
 }))
 
 vi.mock('@/lib/db', () => ({

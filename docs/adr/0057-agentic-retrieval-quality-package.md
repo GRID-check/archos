@@ -1,6 +1,9 @@
+---
+status: accepted
+---
+
 # ADR-0057: Agentic retrieval quality package (filters, hybrid RRF, LLM-judge reranker)
 
-- **Status:** Accepted
 - **Date:** 2026-08-03
 - **Deciders:** Matthias Bigl (maintainer), opencode agent session
 - **Related:** ADR-0010 (LLM-agnostic OpenAI-compatible), ADR-0020 (shared cache), ADR-0025 (norm registry), ADR-0026 (source-kind model), ADR-0028 (agent scaling)

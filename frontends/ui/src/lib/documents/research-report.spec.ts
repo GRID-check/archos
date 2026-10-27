@@ -566,7 +566,7 @@ describe('fileResearchReport', () => {
    * the ordering is what it is.
    *
    * What the READER ends up with is the report itself, unaffected: it is a chat
-   * answer first and a document second, and `fileReportIfCommissioned` swallows
+   * answer first and a document second, and `fileCommissionedReport` swallows
    * this exactly as it swallows a quota refusal. They are not told why the file
    * is missing, which is a gap the success banner owes rather than one this
    * module can close.

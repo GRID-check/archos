@@ -209,7 +209,7 @@ paired with icon + label so color is never the only carrier (a11y).
 | Home project grid + Archiv card | `/app/projects` grid exists (create, soft-delete, restore) | Restyle; add status chip, last-activity, per-card settings, Archiv entry card |
 | Sidebar: Frag Piloti/Workflows/Dateien/Archiv/Historie + Einstellungen | Overview/Chat/Files/Knowledge/Research/Workflows/Members | **Re-cut nav** (FB-9): Chat, Files, Workflows*, Archiv*, History, Settings. Research merges into history (FB-10). Overview+Members fold into Settings |
 | Composer: scope/sources/deep-research/shortcuts | DataSourcesPanel exists; deep research auto-escalates; no scope UI; no shortcuts | Restyle composer; sources chip = existing panel; scope picker display-only; DR toggle = intent hint; shortcut chips = data-source presets |
-| Herleitung trace | ChatThinking (per-turn steps) + ResearchPanel (Tasks/Thinking/Report) | **Shipped (source-hero):** `docs/superpowers/specs/2026-07-18-herleitung-source-hero-design.md` — bar + per-doc source cards; full stage spine/gaps deferred |
+| Herleitung trace | ChatThinking (per-turn steps) + ResearchPanel (Tasks/Thinking/Report) | **Shipped (source-hero):** `docs/specs/2026-07-18-herleitung-source-hero-design.md` at `56ee3329` — bar + per-doc source cards; full stage spine/gaps deferred |
 | Folgewege branch picker | HITL `system_interaction` (choice prompts) exists, plainly styled | Restyle as branch cards when backend sends decision-class interactions (part of §7 contract, UI shell can come earlier) |
 | Ergebnis structured card | grid-cards: LegalBasis, RequirementChecklist, Summary + roughjs schematics | Compose + restyle; add "Belegt durch" chip row + status chip |
 | Citation chips → source preview modal | Origin badges behind flag; **no click-through** (FB-4); PdfViewerDialog exists unwired | Build source-preview popover/modal wired to citations (high value, independent of CoT) |
@@ -330,7 +330,7 @@ WS-2..WS-6 in parallel, WS-7/8/9 as a second wave.
 ## 7. Herleitung / chain-of-thought — contract (+ source-hero v1)
 
 Owner: was deferred to backend-overhaul; **v1 (source-hero) is live** in chat.
-Design: `docs/superpowers/specs/2026-07-18-herleitung-source-hero-design.md`.
+Design: `docs/specs/2026-07-18-herleitung-source-hero-design.md` at `56ee3329`.
 
 **Shipped in v1:** collapsible bar `Herleitung · n Zwischenschritte · m Quellen`;
 parallel per-document source cards (lane tab · name · detail · Treffer) from KB

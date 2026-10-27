@@ -8,18 +8,22 @@ from langchain_core.messages import AnyMessage
 from langgraph.graph.message import add_messages
 from pydantic import BaseModel
 
-from aiq_agent.common.claim_provenance import CONFIDENCE_RULE_VERSION
 from aiq_agent.common.steering import AppliedSteer
 from aiq_agent.common.wire_v2 import FocusRegion
 from aiq_agent.common.wire_v2 import TurnTrigger
 from aiq_agent.knowledge import AvailableDocument
 
+from ..markers import CONFIDENCE_RULE_VERSION
 from ..markers import CappedReason
 from ..markers import ConfidenceLevel
-from ..markers import answer_confidence_capped_reason
-from ..markers import claim_confidence_capped_reason
-from ..markers import surface_answer_confidence
-from ..markers import surface_claim_confidence
+from ..markers import checked_confidence_capped_reason
+from ..markers import surface_checked_confidence
+
+
+def _checked_level(check: dict[str, Any] | None) -> ConfidenceLevel | None:
+    """The level a judged answer check gave; None when it was unavailable or never ran."""
+    return check.get("level") if check and check.get("status") == "judged" else None
+
 
 #: What KIND of turn the answering agent made of it, read off what it did.
 #: Only two of the four ``routing_decision`` values can be observed here —
@@ -188,29 +192,15 @@ class ResearchAgentState(BaseModel):
     # correctly measured number used to be capped to "low" for lacking evidence
     # it structurally cannot have. Set by the tools node as a sticky OR across
     # the tool loop (never un-set by a later refusal); per-turn by construction,
-    # because the chat node builds a fresh state each turn. Lifts the surfaced
-    # confidence off the "low" floor to at most "medium" — and only when
-    # ``answer_normative_claim_uncited`` is False. Defaults to False.
+    # because the chat node builds a fresh state each turn. The answer check
+    # reads the measurement itself; this flag says a measurement ran (the
+    # ledger, the retrieval budget). Defaults to False.
     answer_measurement_grounded: bool = False
-    # The anti-laundering brake. True when the answer talks about regulatory
-    # material or passes a verdict („erfüllt damit OIB 4 Punkt 2.1", „ausreichend",
-    # „Gebäudeklasse 3") while carrying NO verified citation. A measurement grounds
-    # the measurement; it must not ground a claim about the Bauordnung, and there
-    # is no per-sentence confidence to separate them with — so the mixed answer
-    # keeps the "low" it gets today and says why (`normative_claim_uncited`)
-    # instead of resolving silently in the measurement's favour. Set by ``run()``
-    # from the final, cleaned answer text; only meaningful alongside
-    # ``answer_measurement_grounded``. Defaults to False.
-    answer_normative_claim_uncited: bool = False
-    # One stamp per sentence of the final answer (``common/claim_provenance.py``,
-    # wire-ready dicts): its provenance class, its claim type, whether it is
-    # load-bearing. Set by ``ledger.assemble_result``. None means the pipeline
-    # did not stamp this answer, and the guard falls back to rule 1.
-    claim_stamps: list[dict[str, Any]] | None = None
-    # The weakest load-bearing sentence's ceiling, and its (class, type): what
-    # rule 2 holds the self-report under. None with no sentence to hold it to.
-    answer_claims_ceiling: Literal["low", "medium", "high"] | None = None
-    answer_weakest_claim: list[str] | None = None
+    # What the answer check found (``common/claim_judge.py``, ADR-0139),
+    # wire-ready: ``{"status": "judged", "level", "findings"}`` or
+    # ``{"status": "unavailable"}``. Set by ``ledger.assemble_result``. None when
+    # the answer graded nothing (a direct reply).
+    confidence_check: dict[str, Any] | None = None
     # A passage lookup ran and found nothing, and the answer shipped anyway with
     # every unsupported sentence labelled as model knowledge (ADR-0125). The
     # reader is shown a banner; presence is the fact.
@@ -363,55 +353,32 @@ class ResearchAgentState(BaseModel):
 
     @property
     def answer_confidence_version(self) -> int | None:
-        """Which rule computed :attr:`answer_confidence`: 2 for the per-sentence formula, 1 for the floors.
+        """Which rule computed :attr:`answer_confidence`; None when nothing is surfaced.
 
-        None when nothing is surfaced. The reader renders a turn's level and
-        its explanation under the rule it was computed with.
+        A checked answer travels as :data:`CONFIDENCE_RULE_VERSION` (2): an open
+        tab reads the field as ``1 | 2``, and ``confidence_check`` tells the
+        check apart from a stored per-sentence turn.
         """
-        if self.answer_confidence_marker is None:
-            return None
-        return CONFIDENCE_RULE_VERSION if self.claim_stamps is not None else 1
+        return CONFIDENCE_RULE_VERSION if self.answer_confidence is not None else None
 
     @property
     def answer_confidence(self) -> ConfidenceLevel | None:
-        """The self-assessment as it may be SURFACED, after the overconfidence guard.
+        """The answer check's level under the quote gate (ADR-0139); None when no check graded the answer.
 
-        ``answer_confidence_marker`` is what the model claimed. With claim
-        stamps it is held under the weakest load-bearing sentence
-        (:func:`~aiq_agent.agents.piloti.markers.surface_claim_confidence`,
-        ADR-0125); without them, under the answer-level floors.
+        The self-report ``answer_confidence_marker`` sets no level: it only
+        says the answer is one to grade, and the check runs then.
         """
-        if self.claim_stamps is not None:
-            return surface_claim_confidence(
-                self.answer_confidence_marker,
-                self.answer_claims_ceiling,
-                quotes_verified=self.answer_quotes_verified,
-                citation_grounded=self.answer_citation_grounded,
-            )
-        return surface_answer_confidence(
-            self.answer_confidence_marker,
-            self.answer_citation_grounded,
-            self.answer_quotes_verified,
-            measurement_grounded=self.answer_measurement_grounded,
-            normative_claim_uncited=self.answer_normative_claim_uncited,
+        return surface_checked_confidence(
+            _checked_level(self.confidence_check),
+            quotes_verified=self.answer_quotes_verified,
+            citation_grounded=self.answer_citation_grounded,
         )
 
     @property
     def answer_confidence_capped_reason(self) -> CappedReason | None:
-        """Why the guard lowered the model's own level, when it did; else None."""
-        if self.claim_stamps is not None:
-            weakest = self.answer_weakest_claim
-            return claim_confidence_capped_reason(
-                self.answer_confidence_marker,
-                self.answer_claims_ceiling,
-                (weakest[0], weakest[1]) if weakest and len(weakest) == 2 else None,
-                quotes_verified=self.answer_quotes_verified,
-                citation_grounded=self.answer_citation_grounded,
-            )
-        return answer_confidence_capped_reason(
-            self.answer_confidence_marker,
-            self.answer_citation_grounded,
-            self.answer_quotes_verified,
-            measurement_grounded=self.answer_measurement_grounded,
-            normative_claim_uncited=self.answer_normative_claim_uncited,
+        """``quote_unverified`` when the quote gate lowered the check's level; else None."""
+        return checked_confidence_capped_reason(
+            _checked_level(self.confidence_check),
+            quotes_verified=self.answer_quotes_verified,
+            citation_grounded=self.answer_citation_grounded,
         )

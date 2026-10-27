@@ -4,6 +4,7 @@
  * The compact handshake keeps scope/budget gates but does not load prompt blocks.
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { NotFoundError } from '@/lib/api/errors'
 
 vi.mock('@/lib/db/tenant-context', () => ({ tenantSlotRoute: (handler: unknown) => handler }))
 const isAuthRequired = vi.fn()
@@ -228,7 +229,7 @@ describe('GET /api/auth/websocket-scope gate-then-fanout', () => {
   })
 
   it('preserves the scope authorization gate', async () => {
-    buildCollectionScopeFromRequest.mockRejectedValue(new Error('Not found'))
+    buildCollectionScopeFromRequest.mockRejectedValue(new NotFoundError())
 
     const response = await upgrade()
 
@@ -282,7 +283,7 @@ describe('GET /api/auth/websocket-scope gate-then-fanout', () => {
   it('preserves prompt access refusals in anonymous legacy mode', async () => {
     isAuthRequired.mockReturnValue(false)
     getGridSession.mockResolvedValue(null)
-    loadProjectPromptView.mockRejectedValueOnce(new Error('Not found'))
+    loadProjectPromptView.mockRejectedValueOnce(new NotFoundError())
     expect((await upgrade()).status).toBe(403)
   })
 })

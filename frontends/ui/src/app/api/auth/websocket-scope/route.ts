@@ -20,7 +20,7 @@ import { NextResponse } from 'next/server'
 import { tenantSlotRoute } from '@/lib/db/tenant-context'
 import { getGridSession } from '@/lib/auth/session'
 import { resolveTurnContext, TurnBudgetExhaustedError } from '@/lib/turns/turn-context'
-import { isAuthzError } from '@/lib/auth-utils'
+import { isAuthzRefusal } from '@/lib/api/errors'
 import { isAuthRequired } from '@/lib/backend-proxy'
 
 export const GET = tenantSlotRoute(async function GET(req: Request): Promise<Response> {
@@ -42,7 +42,7 @@ export const GET = tenantSlotRoute(async function GET(req: Request): Promise<Res
     if (error instanceof TurnBudgetExhaustedError) {
       return NextResponse.json({ error: 'Budget exhausted', reason: error.message }, { status: 403 })
     }
-    if (isAuthzError(error)) {
+    if (isAuthzRefusal(error)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 

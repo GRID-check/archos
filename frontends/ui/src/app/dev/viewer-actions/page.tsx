@@ -13,6 +13,8 @@
  *      and the row says only that it is not available.
  *   3. The reader turned it off: the place is offered with „Anzeigen“.
  *   4. The reader was typing when it was released: offered, not opened.
+ *   5. The turn still runs: the place is held, the row says it waits for the
+ *      finished answer, and „Anzeigen“ opens it at once.
  * The panel on the right reads `useFilePreviewStore`, the store the chat peek
  * draws: which document is open, at which page, with what marked.
  *
@@ -106,6 +108,7 @@ const ANSWERS = [
   { id: 'answer-2', content: 'Die Brandschutzauflagen stehen im Bescheid vom März, S. 2.' },
   { id: 'answer-3', content: 'Im Grundriss EG liegt der Technikraum oben rechts.' },
   { id: 'answer-4', content: 'Die Raumhöhe im DG steht in der Baubeschreibung auf S. 7.' },
+  { id: 'answer-5', content: 'Die Stiegenbreite steht in der Baubeschreibung auf S. 5, und' },
 ]
 
 let played: Promise<void> | null = null
@@ -150,6 +153,8 @@ async function play(): Promise<void> {
   proposeViewerAction('answer-4', call('va_5', 'open_document', { page: 7 }))
   await releaseViewerActions('answer-4')
   noteTypedAt(Number.NEGATIVE_INFINITY)
+  // Its turn still runs: held, never released here.
+  proposeViewerAction('answer-5', call('va_6', 'highlight_passage', { page: 5, passage: 'Stiegenbreite 1,20 m' }))
 }
 
 /** What the chat peek would draw: the store it reads. */
@@ -211,6 +216,7 @@ export default function ViewerActionsPreview() {
                   'Kein Zugriff: nichts bewegt',
                   'Automatisch aus: angeboten',
                   'Während des Schreibens: angeboten',
+                  'Die Antwort läuft noch: gehalten, mit Anzeigen',
                 ][index]!
               }
             >
