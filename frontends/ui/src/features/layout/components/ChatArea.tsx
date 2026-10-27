@@ -26,17 +26,9 @@ import { ArrowDown, Check, FileText, Lock, WifiOff } from 'lucide-react'
 import { useShallow } from 'zustand/react/shallow'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
-import {
-  useChatStore,
-  AgentPrompt,
-  AgentResponse,
-  ErrorBanner,
-  UserMessage,
-  ChatThinking,
-  useElapsedSeconds,
-  formatElapsed,
-} from '@/features/chat'
-import type { ChatMessage } from '@/features/chat'
+import { useChatStore } from '@/features/chat/store'
+import { AgentPrompt, AgentResponse, ErrorBanner, UserMessage, ChatThinking, useElapsedSeconds, formatElapsed } from '@/features/chat'
+import type { ChatMessage } from '@/features/chat/types'
 import type { StoredThinkingStep } from '@/lib/conversations/message-provenance'
 import type { ThinkingEnding } from '@/features/chat/components/ChatThinking'
 import type { TurnView } from '@/features/chat/lib/turn-fold'

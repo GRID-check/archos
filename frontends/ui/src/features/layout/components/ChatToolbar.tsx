@@ -26,7 +26,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Spinner } from '@/components/ui/spinner'
 import { useAuth } from '@/adapters/auth'
-import { useChatStore } from '@/features/chat'
+import { useChatStore } from '@/features/chat/store'
 import { useConversationOnServer } from '@/features/chat/lib/conversation-on-server'
 import { hasLiveRun } from '@/features/chat/lib/session-activity'
 import { AccessChip } from '@/features/collaboration/components/AccessChip'

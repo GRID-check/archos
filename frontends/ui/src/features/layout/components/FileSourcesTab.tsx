@@ -18,15 +18,12 @@ import { FileSourceCard, FileSourceCardSkeleton } from './FileSourceCard'
 import { DeleteFileConfirmationModal } from './DeleteFileConfirmationModal'
 import { useUploadDestination } from './UploadDestination'
 import { FilePreviewDialog } from '@/features/documents/components/file-preview-dialog'
-import {
-  useFileUpload,
-  useDocumentsStore,
-  FileUploadZone,
-  mapToDisplayStatus,
-} from '@/features/documents'
+import { useFileUpload, FileUploadZone } from '@/features/documents'
+import { useDocumentsStore } from '@/features/documents/store'
+import { mapToDisplayStatus } from '@/features/documents/utils'
 import { trackedFileToFileItem } from '@/features/documents/types'
 import { failedWhileReading } from '@/features/documents/lib/ingest-failure'
-import type { TrackedFile } from '@/features/documents'
+import type { TrackedFile } from '@/features/documents/types'
 import { sessionHasKnownCollection } from '@/features/documents/persistence'
 import { useChatStore } from '@/features/chat/store'
 import { useLayoutStore } from '../store'

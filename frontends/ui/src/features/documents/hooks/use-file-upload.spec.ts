@@ -94,7 +94,7 @@ vi.mock('../store', () => {
   return { useDocumentsStore }
 })
 
-vi.mock('@/features/chat', () => {
+vi.mock('@/features/chat/store', () => {
   const mockChatState = { addFileUploadStatusCard: vi.fn() }
   const useChatStore = (selector: (state: typeof mockChatState) => unknown) =>
     selector(mockChatState)

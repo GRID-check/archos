@@ -1,4 +1,4 @@
-// @disk-inputs: ../../shared/wire/v2/**, ../../src/aiq_agent/common/turn_status.py, ../../src/aiq_agent/skills/events.py, ../shared/wire/v2, shared/wire/v2
+// @disk-inputs: ../../shared/wire/v2/**, ../../src/aiq_agent/common/status_keys.py, ../../src/aiq_agent/skills/events.py, ../shared/wire/v2, shared/wire/v2
 /**
  * @vitest-environment node
  */
@@ -90,7 +90,7 @@ describe('every key the backend can emit has words in every locale', () => {
   }
 
   const backendKeys = [
-    ...registry('src/aiq_agent/common/turn_status.py', 'ALL_STATUS_KEYS'),
+    ...registry('src/aiq_agent/common/status_keys.py', 'ALL_STATUS_KEYS'),
     ...registry('src/aiq_agent/skills/events.py', 'ALL_SKILL_KEYS'),
   ]
 

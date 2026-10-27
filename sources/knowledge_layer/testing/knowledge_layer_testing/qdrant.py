@@ -14,9 +14,8 @@ same pair, and empties both after every test. Creating a pair is 62 payload
 indexes, one request each: over four seconds, which every test used to pay.
 A test of the collection's own life (created or adopted, its indexes, its
 metadata, its aliases) asks for :func:`fresh_qdrant_store`, a pair of its own
-deleted afterwards. Imported by path
-(``sources.knowledge_layer.tests.qdrant_testing``), as ``sources/AGENTS.md``
-asks, and registered as fixtures by each suite's ``conftest.py``.
+deleted afterwards. Imported as ``knowledge_layer_testing.qdrant`` and
+registered as fixtures by each suite's ``conftest.py``.
 """
 
 from __future__ import annotations

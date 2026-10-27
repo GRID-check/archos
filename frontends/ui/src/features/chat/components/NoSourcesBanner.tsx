@@ -24,7 +24,7 @@ import { HeightArrival } from '@/components/motion/height-arrival'
 import { useTranslations } from '@/i18n'
 import { chatCopy } from '@/i18n/namespaces/chat'
 import { useLayoutStore } from '@/features/layout/store'
-import { useDocumentsStore } from '@/features/documents'
+import { useDocumentsStore } from '@/features/documents/store'
 import { useChatStore } from '../store'
 
 /**

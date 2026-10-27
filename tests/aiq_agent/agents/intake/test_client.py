@@ -7,14 +7,14 @@ exported from ``lib/project-intake/types.ts``. There is no Pydantic twin.
 from __future__ import annotations
 
 import pytest
+from agent_testing.intake import HEADER
+from agent_testing.intake import JOB
+from agent_testing.intake import NEEDS_BODY
+from agent_testing.intake import SIGNATURE
+from agent_testing.intake import TOKEN
+from agent_testing.intake import validator
 
 from aiq_agent.agents.intake import client
-from tests.aiq_agent.agents.intake.conftest import HEADER
-from tests.aiq_agent.agents.intake.conftest import JOB
-from tests.aiq_agent.agents.intake.conftest import NEEDS_BODY
-from tests.aiq_agent.agents.intake.conftest import SIGNATURE
-from tests.aiq_agent.agents.intake.conftest import TOKEN
-from tests.aiq_agent.agents.intake.conftest import validator
 
 REQUEST = "InternalIntakeRequest"
 

@@ -61,7 +61,8 @@ import {
   useMotionToken,
 } from '@/components/motion'
 import { HeightArrival } from '@/components/motion/height-arrival'
-import { useWebSocketChat, useChatStore, useIsCurrentSessionBusy } from '@/features/chat'
+import { useWebSocketChat, useIsCurrentSessionBusy } from '@/features/chat'
+import { useChatStore } from '@/features/chat/store'
 import { ChatScreeningNotice } from '@/features/chat/components/ChatScreeningNotice'
 import { OtherProjectsNotice } from '@/features/chat/components/OtherProjectsNotice'
 import { useRestrictingOtherProjects } from '@/features/chat/hooks/use-restricting-other-projects'
@@ -96,7 +97,7 @@ import {
 import { photoIntake, prepareSitePhotos } from '@/features/documents/lib/site-photo'
 import { ComposerAttach, type AttachSource } from './ComposerAttach'
 import { useFileUpload } from '@/features/documents'
-import type { TrackedFile } from '@/features/documents'
+import type { TrackedFile } from '@/features/documents/types'
 import { trackedFileToFileItem } from '@/features/documents/types'
 import { FilePreviewDialog } from '@/features/documents/components/file-preview-dialog'
 import { ComposerSubjectBar } from '@/features/documents/components/composer-subject-bar'
