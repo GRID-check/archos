@@ -1,12 +1,16 @@
 /**
- * What an imported mail is called, and what its note says (ADR-0085). Pure.
+ * What an imported mail's folder, its files and its E-Mail-Verlauf are called
+ * (ADR-0085, DECISION D33). Pure.
  *
  * **No subject in a name.** A folder name and a filename become storage keys,
  * audit targets and search titles, and a subject is the one header that carries
  * content ("Kündigung Frau M.", "Befund Statik"). So names carry only the date
- * and the sender, as the project mail inbox (#831) decided; the subject is
- * inside the note, which is a document like any other and goes where documents
- * go.
+ * and a party, as the project mail inbox (#831) decided; the subject is
+ * inside the Verlauf, which is a document like any other and goes where
+ * documents go. A Verlauf the import opens is named after the conversation's
+ * other party and its day, `{Gegenüber} {yyyy-mm-dd}`: no person confirmed a
+ * subject, so ADR-0085 §6 forbids it here, where an address's Verlauf may take
+ * the subject a person confirmed (D11).
  *
  * **Names are unique per project, not per folder.** A document is identified by
  * its filename across the whole project (`uniq_documents_live_name_per_collection`),
@@ -16,7 +20,6 @@
  */
 
 import { normalizeFolderName } from '@/lib/projects/folders'
-import { escapeInline, escapeMarkdown } from '@/lib/text/markdown-escape'
 
 const VIENNA = 'Europe/Vienna'
 const MAX_FOLDER_NAME = 120
@@ -25,17 +28,6 @@ const MAX_FILENAME = 240
 export interface MailAddress {
   name: string
   address: string
-}
-
-export interface MailForNote {
-  subject: string
-  sender: MailAddress | null
-  to: MailAddress[]
-  cc: MailAddress[]
-  sentAt: string | null
-  receivedAt: string | null
-  folderPath: string[]
-  body: { text: string; truncated: boolean }
 }
 
 /** `2026-09-30 10.15`, Vienna time. Dots, not a colon: the name is also a path segment. */
@@ -111,11 +103,6 @@ export function outlookFolderName(raw: string): string {
   return RESERVED.has(name.toLowerCase()) || /^\.+$/.test(name) ? `${name}_` : name
 }
 
-/** The note's filename: the mail's folder name, as Markdown. */
-export function noteFilename(mailFolder: string): string {
-  return `${mailFolder}.md`
-}
-
 /** An attachment's filename: the mail's folder name, then the file's own name. */
 export function attachmentFilename(mailFolder: string, original: string): string {
   const name = cleanSegment(original) || 'Anhang'
@@ -132,55 +119,28 @@ export function archiveFolderName(filename: string): string {
   return outlookFolderName(stem) || 'Outlook-Archiv'
 }
 
+/** The longest party name a Verlauf's name carries; the date and a number follow it. */
+const MAX_PARTY_NAME = 120
+
 /**
- * The mail as a Markdown note: the headers a reader needs, then the text.
- *
- * Everything that came with the mail is escaped (`lib/text/markdown-escape.ts`):
- * the subject, every header and the body are what a stranger wrote, and the
- * note is chunked one section per heading. Unescaped, a body line
- * `## 14.10.2026 · MA 37` was a citable section of the note under a heading
- * the Behörde never sent, and an unclosed fence hid every section after it.
- * Only the note's own frame (its heading, the labels, the rule, the two
- * remarks in italics) is Markdown.
+ * An E-Mail-Verlauf the archive import opens (D33): `{Gegenüber} {yyyy-mm-dd}`,
+ * the conversation's other party, by name, else by address, else `unknown` (the
+ * thread's locale's word), and the day of the mail that opened it, Vienna. The
+ * caller makes it a filename (`threadDocumentFilename`) and numbers it when the
+ * project already holds that name.
  */
-export function mailNote(mail: MailForNote, attachments: string[]): string {
-  const subject = oneLine(mail.subject)
-  const lines = [`# ${subject ? escapeMarkdown(subject) : '(kein Betreff)'}`, '']
-  const header: Array<[string, string]> = [
-    ['Von', mail.sender ? formatAddress(mail.sender) : ''],
-    ['An', mail.to.map(formatAddress).join(', ')],
-    ['Cc', mail.cc.map(formatAddress).join(', ')],
-    ['Gesendet', readableTime(mail.sentAt)],
-    ['Empfangen', readableTime(mail.receivedAt)],
-    ['Outlook-Ordner', mail.folderPath.map(oneLine).join(' / ')],
-    ['Anhänge', attachments.map(oneLine).join(', ')],
-  ]
-  for (const [label, value] of header) {
-    // One line after the label, so nothing in it stands at a line's start.
-    if (value) lines.push(`- **${label}:** ${escapeInline(oneLine(value))}`)
-  }
-  lines.push('', '---', '', mail.body.text ? escapeMarkdown(mail.body.text) : '*(Diese E-Mail hat keinen Text.)*')
-  if (mail.body.truncated) lines.push('', '*(Der Text war länger und wurde beim Import gekürzt.)*')
-  return `${lines.join('\n')}\n`
-}
-
-function formatAddress(address: MailAddress): string {
-  const name = oneLine(address.name)
-  if (!address.address || address.address === name) return name || address.address
-  return name ? `${name} <${address.address}>` : `<${address.address}>`
-}
-
-function readableTime(iso: string | null): string {
-  if (!iso) return ''
-  const stamp = mailTimestamp(iso)
-  return stamp === 'ohne Datum' ? '' : stamp.replace(/(\d{2})\.(\d{2})$/, '$1:$2')
+export function archiveThreadName(party: MailAddress | null, at: Date, unknown: string): string {
+  const who = cleanSegment(party?.name || party?.address || '').slice(0, MAX_PARTY_NAME).trim() || unknown
+  const stamp = mailTimestamp(at.toISOString())
+  const day = stamp === 'ohne Datum' ? '' : stamp.slice(0, 10)
+  return day ? `${who} ${day}` : who
 }
 
 /**
  * Runs of white space as one space. The separators JavaScript's `\s` misses but
  * Python's `splitlines()` ends a line at (`\x1c`–`\x1e`, `\x85`) count too:
- * the chunker reads the note with Python, so a header that is one line here
- * must be one line there.
+ * a name is printed into a Verlauf's rendition, which the chunker reads with
+ * Python, so a name that is one line here must be one line there.
  */
 function oneLine(value: string): string {
   return value.replace(/[\s\x1c-\x1f\x85]+/g, ' ').trim()

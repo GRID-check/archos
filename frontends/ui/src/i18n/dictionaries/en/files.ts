@@ -951,7 +951,7 @@ export const files = {
     action: 'Import Outlook archive',
     title: 'Import an Outlook archive',
     description:
-      'Choose a .pst or .ost file. Each email becomes a folder under “E-Mail-Import” with its attachments and a note holding its text and headers.',
+      'Choose a .pst or .ost file. Each email’s attachments go into a folder under “E-Mail-Import”, its text into the project’s email threads. Emails the project already has are not filed twice.',
     privacy:
       'An archive holds the correspondence of everyone who wrote to this mailbox. Import what the project needs, not a whole mailbox.',
     choose: 'Choose archive…',
@@ -1002,6 +1002,8 @@ export const files = {
     progress: '{done} of {total} items',
     filed: '{mails, plural, one {# email} other {# emails}}, {files, plural, one {# attachment} other {# attachments}}',
     skipped: '{count, plural, one {# skipped} other {# skipped}}',
+    threads: '{created, plural, one {# new email thread} other {# new email threads}}, {appended, plural, one {# added to} other {# added to}}',
+    alreadyInProject: '{count, plural, one {# email already in the project} other {# emails already in the project}}',
     skippedItem: '{file} in {mail}: {reason}',
     skippedMail: '{mail}: {reason}',
     status: {

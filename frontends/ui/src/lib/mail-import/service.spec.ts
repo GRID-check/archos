@@ -45,6 +45,7 @@ import {
   missingParts,
   putMailImportPart,
   startMailImport,
+  toView,
 } from './service'
 import * as staging from './staging'
 
@@ -85,6 +86,9 @@ function row(overrides: Partial<MailImport> = {}): MailImport {
     filesFiled: 0,
     itemsSkipped: 0,
     filesSkipped: 0,
+    threadsCreated: 0,
+    threadsAppended: 0,
+    alreadyInProject: 0,
     skippedSamples: [],
     failureStreak: 0,
     errorCode: null,
@@ -278,6 +282,13 @@ describe('completeMailImportUpload', () => {
         payload: expect.objectContaining({ importId: IMPORT, projectId: PROJECT }),
       }),
     )
+  })
+})
+
+describe('toView', () => {
+  it('carries the Verläufe the import opened and joined, and the mails the project already had (D33)', () => {
+    const view = toView(row({ threadsCreated: 12, threadsAppended: 3, alreadyInProject: 7 }), session)
+    expect(view).toMatchObject({ threadsCreated: 12, threadsAppended: 3, alreadyInProject: 7 })
   })
 })
 

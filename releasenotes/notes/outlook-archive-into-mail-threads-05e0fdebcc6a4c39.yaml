@@ -1,0 +1,10 @@
+---
+features:
+  - >
+    An imported Outlook archive now files each mail's text into the project's
+    email threads, beside the mail that came to the project's address, instead
+    of a note per mail. A reply joins its conversation, and a mail the project
+    already has is not filed twice.
+  - >
+    The list of Outlook imports shows how many email threads an import started
+    or added to, and how many mails the project already had.

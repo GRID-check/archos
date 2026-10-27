@@ -21,7 +21,7 @@
  */
 
 import 'server-only'
-import { and, desc, eq, inArray, isNotNull, isNull, or, sql } from 'drizzle-orm'
+import { and, desc, eq, inArray, isNotNull, isNull, or, sql, type SQL } from 'drizzle-orm'
 import { getDb } from '@/lib/db'
 import { isUniqueViolation } from '@/lib/db/errors'
 import type { DbExecutor, DbTransaction } from '@/lib/db/executor'
@@ -313,13 +313,20 @@ const MAX_THREAD_CANDIDATES = 50
  * ladder reads (`matchThread`): any thread that received or was referred to by
  * one of the mail's ids, shares its Outlook conversation GUID, or has its base
  * subject. Only threads with a live document: a thread being written for the
- * first time, or whose document is gone, is nothing to file into.
+ * first time, or whose document is gone, is nothing to file into. The one
+ * exception is the archive import's own (`pendingOfImport`): a Verlauf a slice
+ * opened has its first Fassung only at the slice's end, and the slice's later
+ * mails of the same conversation belong in it (`lib/mail-thread/archive.ts`).
  *
  * The id and participant lists hold only what the mail shares with each
  * thread, which is all the ladder asks of them; a 200-entry thread's whole
  * history is never loaded for one mail.
  */
-export async function findThreadCandidates(projectId: string, keys: ThreadKeys): Promise<ThreadCandidate[]> {
+export async function findThreadCandidates(
+  projectId: string,
+  keys: ThreadKeys,
+  options: { pendingOfImport?: string } = {},
+): Promise<ThreadCandidate[]> {
   const db = getDb()
   const ids = [...new Set(keys.messageIds)].slice(0, 64)
   const byIds =
@@ -340,7 +347,7 @@ export async function findThreadCandidates(projectId: string, keys: ThreadKeys):
     .where(
       and(
         eq(mailThreads.projectId, projectId),
-        isNotNull(mailThreads.documentId),
+        or(isNotNull(mailThreads.documentId), pendingOfImport(options.pendingOfImport)),
         or(
           byIds ? inArray(mailThreads.id, byIds) : undefined,
           keys.threadIndexGuid ? eq(mailThreads.threadIndexGuid, keys.threadIndexGuid) : undefined,
@@ -374,6 +381,16 @@ export async function findThreadCandidates(projectId: string, keys: ThreadKeys):
     participants: shared.get(thread.threadId) ?? [],
     lastEntryAt: thread.lastEntryAt ? new Date(thread.lastEntryAt) : null,
   }))
+}
+
+/** A thread with no document yet that this archive import opened and has not rendered (`render_pending_at`). */
+function pendingOfImport(importId: string | undefined): SQL | undefined {
+  if (!importId) return undefined
+  return and(
+    isNull(mailThreads.documentId),
+    isNotNull(mailThreads.renderPendingAt),
+    sql`EXISTS (SELECT 1 FROM ${mailThreadEntries} e WHERE e.thread_id = ${mailThreads.id} AND e.mail_import_id = ${importId}::uuid)`,
+  )
 }
 
 /** Which of `addresses` took part in each thread, as a sender or a recipient of a filed entry. */

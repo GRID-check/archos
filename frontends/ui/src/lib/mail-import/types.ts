@@ -61,6 +61,12 @@ export interface MailImportView {
   filesFiled: number
   itemsSkipped: number
   filesSkipped: number
+  /** E-Mail-Verläufe the import opened, named `{Gegenüber} {yyyy-mm-dd}` (D33). */
+  threadsCreated: number
+  /** Verläufe that were there before the import and took at least one of its mails. */
+  threadsAppended: number
+  /** Mails whose text the project already held (the same Message-ID), not filed again; their attachments were. */
+  alreadyInProject: number
   skippedSamples: MailImportSkippedSample[]
   /** Why it ended without filing everything; the dialog words it. */
   errorCode: MailImportErrorCode | null

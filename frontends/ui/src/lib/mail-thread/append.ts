@@ -6,7 +6,8 @@ import 'server-only'
  *
  * Called by the filing job (`lib/inbound-mail/file-job.ts`) as the person who
  * decided, and by the follow job (D10) as the follower; the archive import
- * renders through `./render.ts` itself (D11). What it guarantees:
+ * (`./archive.ts`, D11) writes its entries itself and renders each Verlauf it
+ * touched once per slice through {@link uploadThreadVersion}. What it guarantees:
  *
  * 1. **One writer per thread at a time.** The thread's render lease
  *    (`mail_threads.render_lease_*`) is taken before the entries are read and
@@ -68,7 +69,7 @@ import type {
 import { contentDigest } from '@/lib/documents/content-digest'
 import { memberReader } from '@/lib/documents/document-reader'
 import { documentNameKey } from '@/lib/documents/name-match'
-import { uploadDocument } from '@/lib/documents/service'
+import { uploadDocument, type IngestPriority } from '@/lib/documents/service'
 import { THREAD_DOCUMENT_TYPE } from '@/lib/inbound-mail/decision'
 import type {
   InboundMailFilingFailure,
@@ -489,6 +490,8 @@ export interface ThreadVersionUpload {
   /** A new thread under a name the Namensprüfung stopped, which the person released. */
   screeningRelease: boolean
   uploadBatchId: string | null
+  /** `bulk` for a Fassung a machine files on the person's behalf in quantity (the archive import, ADR-0085). */
+  priority?: IngestPriority
   request: Request
 }
 
@@ -533,6 +536,7 @@ export async function uploadThreadVersion(upload: ThreadVersionUpload): Promise<
         file: new File([bytes], upload.filename, { type: 'text/markdown' }),
         screeningRelease: upload.screeningRelease,
         uploadBatchId: upload.uploadBatchId,
+        ...(upload.priority ? { priority: upload.priority } : {}),
         documentType: THREAD_DOCUMENT_TYPE,
         mailThread: upload.facts,
       },

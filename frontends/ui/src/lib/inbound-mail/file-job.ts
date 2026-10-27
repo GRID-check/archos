@@ -61,6 +61,7 @@ import { mailOriginIngestFacts } from '@/lib/mail-thread/ingest-facts'
 import { domainOf } from '@/lib/mail-thread/mail-threading'
 import type { MailThreadLocale } from '@/lib/mail-thread/mail-thread-vocabulary'
 import { finishOriginalMove } from '@/lib/mail-thread/originals'
+import { newThreadLocaleFor } from '@/lib/mail-thread/thread-locale'
 import {
   decidePendingAttachment,
   findCurrentVersions,
@@ -68,12 +69,9 @@ import {
   findThreadRow,
   findVersionTimes,
 } from '@/lib/mail-thread/write-repository'
-import { findOrganization } from '@/lib/organizations/repository'
 import { publishProjectChanged } from '@/lib/realtime/door-events'
 import { chatScreeningRules } from '@/lib/upload-screening/content-screen'
 import { gatePolicy } from '@/lib/upload-screening/service'
-import { findUserPreferences } from '@/lib/user-preferences/repository'
-import { isLocale } from '@/i18n/config'
 import { INBOUND_ATTACHMENT_EFFECTS, INBOUND_THREAD_APPEND_EFFECTS } from './batch-effects'
 import {
   findFilingWork,
@@ -132,22 +130,9 @@ const threadBatch = (run: FilingRun) =>
 const held = (run: FilingRun) =>
   run.once('held', () => projectIsHeld(run.projectId, run.session.organizationId))
 
-/**
- * The locale a new thread is rendered in, for its whole life: the decider's
- * own, else their office's default (the chain the UI resolves them by,
- * `user-preferences/locale.ts`), else German, the language an office's mail
- * to its projects is written in.
- */
+/** The locale a new thread is rendered in, for its whole life (`newThreadLocaleFor`), asked once per run. */
 const newThreadLocale = (run: FilingRun): Promise<MailThreadLocale> =>
-  run.once('locale', async () => {
-    const preferences = await findUserPreferences(
-      run.session.userId,
-      run.session.organizationId
-    ).catch(() => null)
-    if (isLocale(preferences?.locale)) return preferences.locale
-    const organization = await findOrganization(run.session.organizationId).catch(() => null)
-    return isLocale(organization?.defaultLocale) ? organization.defaultLocale : 'de'
-  })
+  run.once('locale', () => newThreadLocaleFor(run.session))
 
 const sha256 = (bytes: Uint8Array): string => createHash('sha256').update(bytes).digest('hex')
 
