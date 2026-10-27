@@ -6,7 +6,8 @@ import { installPdb, onNodeGroup, spreadAcrossNodes } from "../platform/scheduli
 import { hardenedContainerSecurityContext } from "../platform/security";
 import { agentWorkerRollout, gracefulShutdown, secretChecksumAnnotations, surgeRollout } from "../platform/rollout";
 import { withLangfuseKeysChecksum } from "../platform/langfuse";
-import { AppSecrets, AppWiring, BFF_QUEUE_DSN_KEY, SCALER_SECRET_NAME, bffJobsEnv } from "./config";
+import { AppSecrets, AppWiring, BFF_QUEUE_DSN_KEY, SCALER_SECRET_NAME } from "./config";
+import { bffJobsEnv } from "./bff-jobs-env";
 import { installQueueScaledObject, installTriggerAuth, queueDepthQuery } from "./keda-scaling";
 import { PORT, UID } from "../constants";
 

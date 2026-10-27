@@ -85,7 +85,8 @@ describe("the bff-jobs pool", () => {
     });
     const { loadConfig } = await import("../config");
     const { installBffJobs } = await import("./bff-jobs");
-    const { buildSecrets, bffJobsEnv } = await import("./config");
+    const { buildSecrets } = await import("./config");
+    const { bffJobsEnv } = await import("./bff-jobs-env");
     const { installNetworkPolicies } = await import("../platform/network-policies");
     const cfg = loadConfig();
     drainSeconds = cfg.bffJobs.drainSeconds;
