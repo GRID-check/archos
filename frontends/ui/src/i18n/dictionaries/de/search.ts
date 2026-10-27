@@ -20,7 +20,6 @@ export const search: typeof en.search = {
       office_shelf: 'In der Büroablage suchen…',
     },
     placeholderShort: 'Suchen…',
-    modKey: 'Strg',
     label: 'Suchen',
     clear: 'Suche leeren',
   },
@@ -280,7 +279,8 @@ export const search: typeof en.search = {
   composerPicker: {
     label: 'Dokumente',
     hint: 'Name, Plannummer oder ein Wort aus dem Inhalt eingeben',
-    keys: 'Tastatur: Pfeile wählen, Enter fügt ein, Esc schließt',
+    // Wie die Fußzeile der Befehlspalette: Taste, dann ihr Wort.
+    hints: { move: 'bewegen', open: 'einfügen', close: 'schließen' },
   },
   palette: {
     allResults: 'Alle Treffer für „{text}“',

@@ -225,6 +225,20 @@ describe('SearchWorkspaceView', () => {
     expect(within(replaced).getByTestId('superseded-mark')).toBeInTheDocument()
   })
 
+  it('runs the name of a document without a plan head on into its empty Planstand and Maßstab, and keeps every row as wide as the header', () => {
+    german(<Harness initial={{ ...EMPTY_SEARCH_STATE, view: 'register' }} onChange={() => {}} />)
+    const register = screen.getByTestId('search-register')
+    const headers = within(register).getAllByRole('columnheader').length
+    const width = (row: HTMLElement): number => Array.from(row.querySelectorAll('td')).reduce((sum, cell) => sum + cell.colSpan, 0)
+    const concept = screen.getByTestId('search-register-row-d0000000-0000-4000-8000-000000000001')
+    const name = within(concept).getByRole('link', { name: 'Brandschutzkonzept Wohnhaus Seestadt J7' }).closest('td')!
+    expect(name.colSpan).toBe(3)
+    expect(width(concept)).toBe(headers)
+    const drawing = screen.getByTestId('search-register-row-d0000000-0000-4000-8000-000000000003')
+    expect(Array.from(drawing.querySelectorAll('td')).every((cell) => cell.colSpan === 1)).toBe(true)
+    expect(width(drawing)).toBe(headers)
+  })
+
   it('offers the ways out of an empty answer while shelves are read: archived, and the whole office from a project', () => {
     const empty = { ...SEARCH_FIXTURE_RESPONSE, sections: { document: { hits: [], total: 0, totalIsLowerBound: false, nextCursor: null } }, building: ['p1', 'p2'] }
     german(

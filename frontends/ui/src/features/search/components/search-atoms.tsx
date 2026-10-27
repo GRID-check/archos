@@ -19,14 +19,16 @@ import Link from 'next/link'
 import type { LucideIcon } from 'lucide-react'
 import { Archive, ChevronRight, Folder, FolderKanban, History, Users, X } from 'lucide-react'
 
+import { ShortcutKeys } from '@/components/shell/shortcut-keys'
+import { MOD, type KeySegment } from '@/components/shell/shortcuts'
 import { Button } from '@/components/ui/button'
 import { Chip, ChipLabel } from '@/components/ui/chip'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
+import { CommandHints, type CommandHintLabels } from '@/components/ui/command'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { FOCUS_RING_INSET } from '@/components/ui/focus-ring'
 import { HorizontalScroll } from '@/components/ui/horizontal-scroll'
 import { Item, ItemContent, ItemMedia } from '@/components/ui/item'
-import { Kbd, KbdGroup } from '@/components/ui/kbd'
 import { Label } from '@/components/ui/label'
 import { SectionLabel } from '@/components/ui/section-label'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -135,15 +137,16 @@ export function ToolbarLabel({ children }: { children: ReactNode }): JSX.Element
   return <span className="max-sm:sr-only">{children}</span>
 }
 
-/** The shortcut that focuses the field, inside it: ⌘ K or Strg K. (`SearchField` hides it on a phone and under a finger.) */
-export function FieldShortcut({ modifier }: { modifier: string }): JSX.Element {
-  return (
-    <KbdGroup>
-      <Kbd>{modifier}</Kbd>
-      <Kbd>K</Kbd>
-    </KbdGroup>
-  )
+/**
+ * The shortcut that focuses the field, inside it: ⌘ K or Strg K, from the
+ * shell's one key renderer so it names the key as the palette does.
+ * (`SearchField` hides it on a phone and under a finger.)
+ */
+export function FieldShortcut(): JSX.Element {
+  return <ShortcutKeys segments={FOCUS_FIELD_KEYS} />
 }
+
+const FOCUS_FIELD_KEYS: readonly KeySegment[] = [{ kind: 'chord', caps: [MOD, 'K'] }]
 
 /** A hint about keys, in a status line: gone under a finger and on a phone-sized screen. */
 export function KeysHint({ children }: { children: ReactNode }): JSX.Element {
@@ -153,11 +156,12 @@ export function KeysHint({ children }: { children: ReactNode }): JSX.Element {
 /**
  * A row of choices that may be wider than the column (the kinds with their
  * counts, on a phone): it scrolls sideways, and the edge that hides one says
- * so with a fade.
+ * so with a fade and a chevron. The fade alone faded into the strip's own pale
+ * well and read as its end, with Projekte and Chats past it.
  */
 export function ChoiceStrip({ label, children }: { label: string; children: ReactNode }): JSX.Element {
   return (
-    <HorizontalScroll aria-label={label} className="-mx-1 px-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+    <HorizontalScroll cue aria-label={label} className="-mx-1 px-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
       {children}
     </HorizontalScroll>
   )
@@ -511,8 +515,10 @@ export function MetaPart({ children, code = false }: { children: ReactNode; code
  * either end of a line: each part carries its dot before it, in a gutter the
  * line pulls into its clipped left edge, so the dot of a part that starts a
  * wrapped line is cut away with the gutter. `lead` parts (where it lives: the
- * shelf's mark, then the folder with its own chevron) come first with no dot
- * between them.
+ * shelf's mark, then the folder) come first with no dot between them, but
+ * every part keeps the full gutter, a dot in it or not: a narrower one let the
+ * clip that eats a wrapped line's dot eat half the folder icon of a lead part
+ * that started the phone's second line.
  */
 export function MetaLine({
   parts,
@@ -527,7 +533,7 @@ export function MetaLine({
     <span className="block min-w-0 max-w-full overflow-hidden">
       <span className="-ml-3 flex min-w-0 flex-wrap items-center gap-y-0.5">
         {items.map((item, index) => (
-          <span key={index} className={cn('relative inline-flex min-w-0 max-w-full items-center', item.dot ? 'pl-3' : 'pl-1')}>
+          <span key={index} data-meta-part className="relative inline-flex min-w-0 max-w-full items-center pl-3">
             {item.dot ? (
               <span className="absolute left-0 w-3 text-center text-muted-foreground/60" aria-hidden>
                 ·
@@ -566,15 +572,15 @@ export function ShelfMark({ shelf, label, wrap = false }: { shelf: 'project' | '
 
 /**
  * A folder in the where line: an icon and its name, in ink, never a colour.
- * After a shelf mark (`after`) it is set apart by space, not by a chevron: the
+ * After a shelf mark it is set apart by the meta line's gutter, not by a chevron: the
  * tinted mark and the folder glyph already read as two steps, and a chevron
  * that wrapped with the folder started the phone's second line on a lone „›“.
  * `label` („Ordner“) is read before the name by a screen reader, which does
  * not see the icon.
  */
-export function WherePart({ children, label, after = false }: { children: ReactNode; label: string; after?: boolean }): JSX.Element {
+export function WherePart({ children, label }: { children: ReactNode; label: string }): JSX.Element {
   return (
-    <span className={cn('inline-flex min-w-0 items-center gap-1 text-foreground/75', after && 'ml-0.5')}>
+    <span className="inline-flex min-w-0 items-center gap-1 text-foreground/75">
       <Folder className="size-3 shrink-0 text-muted-foreground" aria-hidden />
       <span className="min-w-0 [overflow-wrap:anywhere]">
         <span className="sr-only">{label} </span>
@@ -887,14 +893,18 @@ export function RegisterCell({
   children,
   kind = 'text',
   title,
+  span,
 }: {
   children?: ReactNode
   /** `mark`: a chip (where it is kept, a state) that gives way to its column's width. */
   kind?: 'text' | 'strong' | 'code' | 'figure' | 'muted' | 'mark'
   title?: string
+  /** Columns the cell covers: the name runs on into the empty cells after it (`titleSpan`). */
+  span?: number
 }): JSX.Element {
   return (
     <TableCell
+      colSpan={span && span > 1 ? span : undefined}
       className={cn(
         'truncate px-2 py-1.5',
         kind === 'strong' && 'font-medium text-foreground',
@@ -1163,26 +1173,17 @@ export const REGISTER_ACTIONS_WIDTH = 2.75
 /**
  * The composer's `#` panel: the surface of the composer's other pickers (`@`,
  * `/`): a popover card above the composer, the list scrolling inside it, and
- * the keys as a footer for a fine pointer only (a phone has no arrows).
+ * the keys as a footer for a fine pointer only (a phone has no arrows), the
+ * palette's own footer (`CommandHints`), so each key reads as it does there.
  */
-export function ComposerPickerFrame({ children, keysLabel, testId }: { children: ReactNode; keysLabel: string; testId?: string }): JSX.Element {
+export function ComposerPickerFrame({ children, hints, testId }: { children: ReactNode; hints: CommandHintLabels; testId?: string }): JSX.Element {
   return (
     <div
       className="flex max-h-[360px] w-full flex-col overflow-hidden rounded-xl border bg-popover text-popover-foreground shadow-lg animate-in fade-in-0 slide-in-from-bottom-1 duration-snap ease-out motion-reduce:animate-none"
       data-testid={testId}
     >
       <div className="min-h-0 flex-1 overflow-y-auto">{children}</div>
-      <div className="flex shrink-0 items-center gap-2 border-t bg-muted px-3 py-2 pointer-coarse:hidden" aria-label={keysLabel}>
-        <span className="font-mono text-xs text-muted-foreground/70" aria-hidden>
-          #
-        </span>
-        <KbdGroup>
-          <Kbd>↑</Kbd>
-          <Kbd>↓</Kbd>
-        </KbdGroup>
-        <Kbd>↵</Kbd>
-        <Kbd>Esc</Kbd>
-      </div>
+      <CommandHints labels={hints} className="pointer-coarse:hidden" />
     </div>
   )
 }

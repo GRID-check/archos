@@ -179,7 +179,7 @@ function useWhere(): (shelf: 'project' | 'office_shelf', projectId: string | nul
       <ShelfMark key="shelf" shelf="project" label={projectName} wrap={wrap} />
     ) : null
     const folder = folderName ? (
-      <WherePart key="folder" label={tWhere('folder')} after={mark !== null}>
+      <WherePart key="folder" label={tWhere('folder')}>
         {folderName}
       </WherePart>
     ) : null

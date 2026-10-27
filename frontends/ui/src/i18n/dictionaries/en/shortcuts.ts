@@ -23,6 +23,8 @@ export const shortcuts = {
     title: 'Keyboard shortcuts',
     description: 'Navigate Piloti without leaving the keyboard.',
     thenSeparator: 'then',
+    /** The control key as the keyboard prints it; `⌘` on a Mac. */
+    controlKey: 'Ctrl',
     orSeparator: 'or',
     groups: {
       general: 'General',

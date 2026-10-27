@@ -16,7 +16,6 @@ export const search = {
     /** On a phone, where the long placeholder is cut mid-word. */
     placeholderShort: 'Search…',
     /** The modifier key of the shortcut shown in the field, where the platform is not a Mac. */
-    modKey: 'Ctrl',
     label: 'Search',
     clear: 'Clear search',
   },
@@ -277,7 +276,7 @@ export const search = {
   composerPicker: {
     label: 'Documents',
     hint: 'Type a name, a drawing number or a word from the content',
-    keys: 'Keyboard: arrows to choose, Enter to insert, Esc to close',
+    hints: { move: 'move', open: 'insert', close: 'close' },
   },
   palette: {
     allResults: 'All results for “{text}”',

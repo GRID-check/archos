@@ -25,6 +25,8 @@ export const shortcuts: typeof en.shortcuts = {
     title: 'Tastaturkürzel',
     description: 'Piloti bedienen, ohne die Tastatur zu verlassen.',
     thenSeparator: 'dann',
+    /** The control key as a German keyboard prints it; `⌘` on a Mac. */
+    controlKey: 'Strg',
     orSeparator: 'oder',
     groups: {
       general: 'Allgemein',

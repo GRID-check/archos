@@ -13,15 +13,22 @@ import { Kbd, KbdGroup } from '@/components/ui/kbd'
 import { useTranslations } from '@/i18n'
 import { MOD, modifierLabel, type KeySegment } from './shortcuts'
 
+/**
+ * The `'mod'` keycap's label, the one every shortcut hint shows: `⌘` on Apple
+ * platforms, else the control key as the reader's keyboard prints it („Strg“
+ * in German, „Ctrl“ in English). A surface never spells it itself, so a search
+ * field and the palette beside it cannot name one key two ways.
+ */
 export function useModifierLabel(): string {
-  const [label, setLabel] = React.useState('Ctrl')
+  const t = useTranslations('shortcuts.cheatsheet')
+  const [apple, setApple] = React.useState(false)
   React.useEffect(() => {
     const uaPlatform = (
       window.navigator as Navigator & { userAgentData?: { platform?: string } }
     ).userAgentData?.platform
-    setLabel(modifierLabel(uaPlatform || window.navigator.platform))
+    setApple(modifierLabel(uaPlatform || window.navigator.platform) === '⌘')
   }, [])
-  return label
+  return apple ? '⌘' : t('controlKey')
 }
 
 function Joiner({ children }: { children: React.ReactNode }): React.JSX.Element {

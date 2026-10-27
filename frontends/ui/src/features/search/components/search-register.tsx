@@ -34,6 +34,7 @@ import {
   type RegisterColumn,
 } from '../lib/search-sort'
 import { compactFilters, type SearchUrlState } from '../lib/search-url'
+import { titleSpan } from '../lib/register-cells'
 import type { SectionView } from '../lib/sections'
 import { DocumentHitMenu, useHitMenus } from './hit-actions-menu'
 import {
@@ -305,6 +306,10 @@ function RegisterLine({ hit, columns, active, id }: { hit: DocumentHit; columns:
   const menus = useHitMenus()
   const labels = useSearchLabels()
   const exception = useReadException(hit)
+  // The name runs on into the empty cells after it, as a spreadsheet's text does.
+  const span = titleSpan(columns, hit)
+  const at = columns.indexOf('title')
+  const shown = columns.filter((_, index) => index <= at || index >= at + span)
   const cell = (column: RegisterColumn): JSX.Element => {
     switch (column) {
       case 'planNumber':
@@ -317,7 +322,7 @@ function RegisterLine({ hit, columns, active, id }: { hit: DocumentHit; columns:
         return <RegisterCell key={column} kind="code">{hit.scale}</RegisterCell>
       case 'title':
         return (
-          <RegisterCell key={column} kind="strong" title={hit.title ?? hit.name}>
+          <RegisterCell key={column} kind="strong" title={hit.title ?? hit.name} span={span}>
             <RegisterTitle mark={hit.superseded ? <SupersededMark /> : null}>
               <RegisterLink href={documentHitHref(hit, from)}>{hit.title ?? hit.name}</RegisterLink>
             </RegisterTitle>
@@ -355,7 +360,7 @@ function RegisterLine({ hit, columns, active, id }: { hit: DocumentHit; columns:
   }
   return (
     <RegisterRow active={active} id={id} testId={`search-register-row-${hit.id}`}>
-      {columns.map(cell)}
+      {shown.map(cell)}
       {menus ? (
         <RegisterActionsCell>
           <DocumentHitMenu hit={hit} />

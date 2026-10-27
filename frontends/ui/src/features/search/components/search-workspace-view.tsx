@@ -132,12 +132,10 @@ export function SearchWorkspaceView({
   const field = useRef<HTMLInputElement | null>(null)
   const filterCount = activeFilterCount(state)
   const officeWide = surface.kind === 'office'
-  const [modifier, setModifier] = useState(t('field.modKey'))
 
   // ⌘K / Strg+K: here it is the field, the page's own command line. Caught
   // before the shell's palette chord, which would open the palette over it.
   useEffect(() => {
-    if (/Mac|iPhone|iPad/.test(navigator.platform)) setModifier('⌘')
     const onKey = (event: globalThis.KeyboardEvent): void => {
       if (event.key.toLowerCase() !== 'k' || !(event.metaKey || event.ctrlKey) || event.altKey || event.shiftKey) return
       event.preventDefault()
@@ -315,7 +313,7 @@ export function SearchWorkspaceView({
                 label={t('field.label')}
                 clearLabel={t('field.clear')}
                 inputRef={field}
-                hint={<FieldShortcut modifier={modifier} />}
+                hint={<FieldShortcut />}
                 combobox={{ controls, expanded: order.length > 0, activeDescendant: activeHit ? optionId(activeHit) : null }}
               />
             }

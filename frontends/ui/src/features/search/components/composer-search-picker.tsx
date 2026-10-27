@@ -92,7 +92,7 @@ export const ComposerSearchPicker = forwardRef<ComposerSearchPickerHandle, Compo
   const words = query.trim()
   return (
     <div ref={rootRef}>
-      <ComposerPickerFrame keysLabel={t('keys')} testId="composer-search-picker">
+      <ComposerPickerFrame hints={{ move: t('hints.move'), open: t('hints.open'), close: t('hints.close') }} testId="composer-search-picker">
         <Command
           shouldFilter={false}
           loop
