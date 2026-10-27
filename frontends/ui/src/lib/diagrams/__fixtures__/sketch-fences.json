@@ -128,6 +128,13 @@
    "name": "a child id that is not text",
    "body": "[{\"type\": \"rectangle\", \"id\": \"a\", \"x\": 0, \"y\": 0}, {\"type\": \"frame\", \"children\": [[\"a\"]]}]",
    "refusal": "dangling-binding"
+  },
+  {
+   "name": "a body escaped twice is read once unescaped",
+   "body": "{\\\"title\\\":\\\"Ablauf\\\",\\\"elements\\\":[{\\\"type\\\":\\\"rectangle\\\",\\\"id\\\":\\\"a\\\",\\\"x\\\":0,\\\"y\\\":0,\\\"label\\\":{\\\"text\\\":\\\"Einreichung\\\"}},{\\\"type\\\":\\\"text\\\",\\\"x\\\":0,\\\"y\\\":120,\\\"text\\\":\\\"Zusagen\\\\nfesthalten\\\"},{\\\"type\\\":\\\"arrow\\\",\\\"x\\\":40,\\\"y\\\":110,\\\"points\\\":[[0,0],[0,-30]],\\\"end\\\":{\\\"id\\\":\\\"a\\\"}}]}",
+   "refusal": null,
+   "elements": 3,
+   "dimension_labels": 0
   }
  ]
 }

@@ -1,6 +1,6 @@
 /**
  * Excalidraw is 2.5 MB gzipped and must never reach the chat bundle (ADR-0141,
- * ADR-0145).
+ * ADR-0146).
  *
  * The chat stays at its size only while two things hold: `@excalidraw/excalidraw`
  * is imported by the editor (`sketch-canvas.tsx`) and the sketch renderer

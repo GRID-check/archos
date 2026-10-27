@@ -1,4 +1,4 @@
-"""The server's sketch fence check, held to the cases the browser's check runs too (ADR-0145)."""
+"""The server's sketch fence check, held to the cases the browser's check runs too (ADR-0146)."""
 
 from __future__ import annotations
 
@@ -12,7 +12,7 @@ from aiq_agent.common.sketch_fence import REFUSED_SKETCH_FENCE_INFO
 from aiq_agent.common.sketch_fence import SKETCH_REFUSALS
 from aiq_agent.common.sketch_fence import check_sketch
 from aiq_agent.common.sketch_fence import sketch_census
-from aiq_agent.observability.langfuse_scores import sketch_scores
+from aiq_agent.observability.answer_scores import sketch_scores
 
 FIXTURES = (
     Path(__file__).resolve().parents[3] / "frontends/ui/src/lib/diagrams/__fixtures__/sketch-fences.json"
@@ -76,3 +76,11 @@ def test_the_trace_and_the_scores_name_each_sketch():
         ("drawn", "1", None),
         ("refused", "2", "malformed-json"),
     ]
+
+
+def test_a_body_escaped_twice_is_drawn_and_counted():
+    [case] = [case for case in CASES if case["name"] == "a body escaped twice is read once unescaped"]
+    check = check_sketch(case["body"])
+    assert check.drawn and check.unescaped
+    assert sketch_census([check])["unescaped"] == 1
+    assert not check_sketch(CASES[0]["body"]).unescaped

@@ -4,7 +4,7 @@
  * „Als Skizze bearbeiten": a drawing Piloti made, opened in Excalidraw so a
  * person can rework it and file their own version into the project. The
  * drawing is a flow or a Gliederung laid out as a sketch (`sketchFromModel`),
- * or a sketch Piloti drew itself (an ```excalidraw fence, ADR-0145).
+ * or a sketch Piloti drew itself (an ```excalidraw fence, ADR-0146).
  *
  * The canvas (`sketch-canvas.tsx`) is loaded with `next/dynamic` when the
  * dialog opens, never before, so a chat with diagrams in it downloads none of

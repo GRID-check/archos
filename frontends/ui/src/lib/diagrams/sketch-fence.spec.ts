@@ -45,7 +45,7 @@ describe('what reaches Excalidraw', () => {
       title: 'Zonen',
       dimensionLabels: 0,
       elements: [
-        { type: 'rectangle', id: 'a', x: 0, y: 0, label: { text: 'Wohnen', fontFamily: 2 } },
+        { type: 'rectangle', id: 'a', x: 0, y: 0, label: { text: 'Wohnen', fontFamily: 2, fontSize: 16 } },
         { type: 'text', x: 0, y: 90, text: 'Notiz', fontSize: 64, fontFamily: 2 },
         { type: 'arrow', x: 0, y: 0, points: [[0, 0], [40, 0]], end: { id: 'a' }, endArrowhead: null },
       ],
@@ -89,6 +89,10 @@ describe('a sketch still being written', () => {
   it('reads a bare array, and nothing before the array opens', () => {
     expect(streamedSketchElements('[{"type":"text","x":0,"y":0,"text":"N"},{"type":')).toHaveLength(1)
     expect(streamedSketchElements('{"title": "Zon')).toEqual([])
+  })
+
+  it('reads a body escaped twice as it streams', () => {
+    expect(streamedSketchElements('{\\"elements\\":[{\\"type\\":\\"text\\",\\"x\\":0,\\"y\\":0,\\"text\\":\\"N\\"},')).toHaveLength(1)
   })
 
   it('skips an element that would be refused rather than the whole sketch', () => {

@@ -259,3 +259,13 @@ always meant.
 Not measured: the answer suite has not been run on slice 6 (no model access in
 the build container). Run it as above, with `--set files` and all three arms,
 before this is called done.
+
+## Sketches (ADR-0146, 2026-10-27)
+
+| Line | Decision | Value test | Where it lives now |
+|---|---|---|---|
+| "A drawing opens as an Excalidraw sketch, so draw one when asked for Excalidraw or a Skizze" | replaced | it sent a request for a Skizze to mermaid, which has no grammar for rooms, a site or a wireframe | "A Skizze, Excalidraw, rooms, a site, a wireframe or a board: an ```excalidraw fence, per the `excalidraw-sketch` skill" |
+| `<formatting>` Mermaid: "the chain of instruments" | cut | the `flowchart` example already covers a chain; the clause paid for the line above | — |
+| How to write a sketch (format, layout, the six recurring shapes) | not taken into the prompt | read only on a turn that draws one | the `excalidraw-sketch` skill (ADR-0135) |
+
+The static prompt is 4,998 of its 5,000 tokens after the change.

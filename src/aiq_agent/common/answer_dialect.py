@@ -46,6 +46,7 @@ from .sketch_fence import SketchCheck
 from .sketch_fence import check_sketch
 from .sketch_fence import is_sketch_fence
 from .sketch_fence import refused_fence_info
+from .sketch_fence import sketch_census
 
 logger = logging.getLogger(__name__)
 
@@ -172,11 +173,14 @@ class DialectResult:
     sketches: list[SketchCheck] = field(default_factory=list)
 
     def as_trace(self) -> dict[str, Any]:
-        """The census and the repairs by kind, for the trace metadata."""
-        return {
+        """The census, the repairs by kind and the sketches (``sketch_census``), for the trace metadata."""
+        trace: dict[str, Any] = {
             "blocks": dict(self.census),
             "repairs": dict(Counter(repair["repair"] for repair in self.repairs)),
         }
+        if self.sketches:
+            trace["sketches"] = sketch_census(self.sketches)
+        return trace
 
 
 @dataclass

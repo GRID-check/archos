@@ -1,7 +1,7 @@
 /**
  * A sketch fence drawn: Excalidraw turns the skeletons Piloti wrote into a
  * scene, and the scene into the SVG the chat shows and the project files
- * (ADR-0145).
+ * (ADR-0146).
  *
  * The second module that imports `@excalidraw/excalidraw`, and like the first
  * (`sketch-canvas.tsx`) it is reached only by a dynamic import, from

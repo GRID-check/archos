@@ -197,7 +197,7 @@ SCORE_DEFINITIONS: tuple[ScoreDefinition, ...] = (
     ScoreDefinition(
         "sketch-drawn",
         "CATEGORICAL",
-        "One per excalidraw fence in an answer (ADR-0145): drawn, or refused by the fence check and shown as "
+        "One per excalidraw fence in an answer (ADR-0146): drawn, or refused by the fence check and shown as "
         "its source. The comment names the refusal; metadata counts the elements and the labels that read "
         "like a measurement, which a sketch must not claim.",
         categories=("drawn", "refused"),
@@ -484,31 +484,6 @@ def look_scores(*, looks: int, drawing_value: bool, region_look_first: bool) -> 
     if drawing_value:
         scores.append(_boolean("looked-before-measurement", region_look_first))
     return scores
-
-
-def dialect_scores(repairs: list[dict[str, str]]) -> list[RuntimeScore]:
-    """The dialect pass's repairs on one answer, zero included: a clean answer is a measurement too."""
-    kinds = sorted({repair.get("repair", "") for repair in repairs if repair.get("repair")})
-    return [RuntimeScore("dialect-repairs", float(len(repairs)), comment=", ".join(kinds) or None)]
-
-
-def sketch_scores(checks: Iterable[Any]) -> list[RuntimeScore]:
-    """One ``sketch-drawn`` per sketch fence (``common/sketch_fence.SketchCheck``); nothing for an answer without one."""
-    return [
-        RuntimeScore(
-            "sketch-drawn",
-            "drawn" if check.drawn else "refused",
-            comment=check.refusal,
-            item=str(index),
-            metadata={"elements": check.elements, "dimension_labels": check.dimension_labels},
-        )
-        for index, check in enumerate(checks)
-    ]
-
-
-def quote_patch_scores(patched: int) -> list[RuntimeScore]:
-    """How many quotes the repair pass corrected on one answer."""
-    return [RuntimeScore("quotes-patched", float(max(0, patched)))]
 
 
 #: The tool basenames that navigate the office's files (ADR-0127). ``knowledge_search`` is the search

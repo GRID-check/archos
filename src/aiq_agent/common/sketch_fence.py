@@ -5,7 +5,7 @@ Piloti writes a sketch as a fenced block of Excalidraw's element skeleton
 shapes with a ``label``, free text, arrows and lines with ``points`` and
 ``start``/``end`` bound by element id, frames around groups. The browser fills
 in what the skeleton leaves out (sizes from labels, arrow ends, ids, seeds).
-ADR-0145 says why the model may write this at all; the doctrine it keeps is in
+ADR-0146 says why the model may write this at all; the doctrine it keeps is in
 ``frontends/ui/src/lib/diagrams/diagram-sources.ts``: a sketch claims no
 dimension.
 
@@ -39,6 +39,7 @@ import re
 from collections import Counter
 from dataclasses import dataclass
 from dataclasses import field
+from dataclasses import replace
 from typing import Any
 
 #: The info string of a fence the model writes, and of one the server refused.
@@ -86,6 +87,8 @@ class SketchCheck:
     """One fence's verdict: drawn or refused (and why), what it holds."""
 
     refusal: str | None = None
+    #: The body was escaped twice (``{\\"title\\": …``) and was read once unescaped.
+    unescaped: bool = False
     elements: int = 0
     kinds: dict[str, int] = field(default_factory=dict)
     dimension_labels: int = 0
@@ -203,6 +206,19 @@ def _checked(scene: Any) -> SketchCheck:
     )
 
 
+#: A body whose JSON was escaped twice: a model writing the fence inside the
+#: envelope's ``answer`` string sometimes escapes its quotes once too often, and
+#: the reader then gets ``{\"title\": …``. Seen on dev on 2026-10-27.
+_OVER_ESCAPED = re.compile(r'^\s*[\[{][\s\[{]*\\"')
+_ESCAPE = re.compile(r'\\(["\\/bfnrt])')
+_UNESCAPED = {'"': '"', "\\": "\\", "/": "/", "b": "\b", "f": "\f", "n": "\n", "r": "\r", "t": "\t"}
+
+
+def _unescaped_once(body: str) -> str:
+    """``body`` with one level of JSON string escaping taken off (``sketch-fence.ts`` ``unescapedOnce``)."""
+    return _ESCAPE.sub(lambda match: _UNESCAPED[match.group(1)], body)
+
+
 def _not_json(token: str) -> Any:
     raise ValueError(f"{token} is not JSON")
 
@@ -211,13 +227,14 @@ def check_sketch(body: str) -> SketchCheck:
     """The verdict on one fence's body (the text between its fences)."""
     if len(body.encode("utf-8")) > MAX_SKETCH_SOURCE_BYTES:
         return SketchCheck(refusal="too-large")
+    unescaped = bool(_OVER_ESCAPED.match(body))
     try:
         # ``NaN`` and ``Infinity`` are not JSON, and the browser's parser refuses them.
-        scene = json.loads(body, parse_constant=_not_json)
+        scene = json.loads(_unescaped_once(body) if unescaped else body, parse_constant=_not_json)
     except ValueError:
         return SketchCheck(refusal="malformed-json")
     try:
-        return _checked(scene)
+        return replace(_checked(scene), unescaped=unescaped)
     except _Refused as refused:
         return SketchCheck(refusal=refused.refusal)
 
@@ -240,6 +257,7 @@ def sketch_census(checks: list[SketchCheck]) -> dict[str, Any]:
     return {
         "drawn": sum(1 for check in checks if check.drawn),
         "refused": dict(Counter(check.refusal for check in checks if check.refusal)),
+        "unescaped": sum(1 for check in checks if check.unescaped),
         "elements": sum(check.elements for check in checks),
         "kinds": dict(sum((Counter(check.kinds) for check in checks), Counter())),
         "dimension_labels": sum(check.dimension_labels for check in checks),

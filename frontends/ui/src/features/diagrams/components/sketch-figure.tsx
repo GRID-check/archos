@@ -2,7 +2,7 @@
 
 /**
  * An ```` ```excalidraw ```` fence in an answer, drawn: a sketch Piloti wrote in
- * Excalidraw's own element format (ADR-0145).
+ * Excalidraw's own element format (ADR-0146).
  *
  * ## The states
  *
@@ -35,7 +35,6 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { AnimatePresence } from 'motion/react'
-import { HorizontalScroll } from '@/components/ui/horizontal-scroll'
 import { CodeBlock } from '@/shared/components/CodeBlock'
 import { useTranslations } from '@/i18n'
 import {
@@ -43,7 +42,7 @@ import {
   streamedSketchElements,
   type SceneSkeleton,
 } from '@/lib/diagrams/sketch-fence'
-import { diagramFrameStyle } from '../diagram-size'
+import { viewBoxWidth } from '../diagram-size'
 import { useDiagramFiling } from '../use-diagram-filing'
 import type { RenderedSketch } from '../sketch/sketch-render'
 import { SketchDialog } from '../sketch/sketch-dialog'
@@ -110,7 +109,6 @@ function useRenderedSketch(elements: readonly SceneSkeleton[] | null) {
 
 export function SketchFigure({ source, isStreaming = false, refused = false }: SketchFigureProps) {
   const t = useTranslations('diagrams')
-  const tCommon = useTranslations('common')
   const fence = useMemo(() => (isStreaming || refused ? null : readSketchFence(source)), [source, isStreaming, refused])
   const streamed = useMemo(() => (isStreaming ? streamedSketchElements(source) : null), [source, isStreaming])
   const elements = fence?.ok ? fence.elements : streamed
@@ -153,10 +151,7 @@ export function SketchFigure({ source, isStreaming = false, refused = false }: S
       aria-busy={drawn ? undefined : true}
       aria-label={label}
     >
-      <HorizontalScroll
-        className="border-border rounded-xl border bg-white p-2 dark:[filter:invert(93%)_hue-rotate(180deg)] [&_svg]:h-auto [&_svg]:max-w-full"
-        aria-label={tCommon('markdown.scrollDiagram')}
-      >
+      <div className="border-border rounded-xl border bg-white p-2 dark:[filter:invert(93%)_hue-rotate(180deg)] [&_svg]:h-auto [&_svg]:w-full">
         <DrawingReveal drawn={Boolean(rendered)}>
           {rendered ? (
             <div
@@ -164,14 +159,17 @@ export function SketchFigure({ source, isStreaming = false, refused = false }: S
               // skeletons and `fileableSketchSvg` re-serialised the result through
               // `lib/diagrams/svg.ts` (see the header).
               // nosemgrep: typescript.react.security.audit.react-dangerouslysetinnerhtml.react-dangerouslysetinnerhtml
-              style={diagramFrameStyle(rendered.svg)}
+              // At its own width, or the column's: a sketch is a picture, and one
+              // scrolled sideways hides its right half (a comparison board's
+              // second column). The editor is where a reader zooms in.
+              style={{ width: `${viewBoxWidth(rendered.svg) ?? 720}px`, maxWidth: '100%' }}
               dangerouslySetInnerHTML={{ __html: rendered.svg }}
             />
           ) : (
             <DrawingSkeleton />
           )}
         </DrawingReveal>
-      </HorizontalScroll>
+      </div>
       <AnimatePresence initial={false}>
         {drawn ? (
           <DrawingCaption

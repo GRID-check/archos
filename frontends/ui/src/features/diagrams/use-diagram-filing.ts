@@ -153,7 +153,7 @@ export interface DiagramFilingOptions {
   /**
    * Whether a person changed the sketch before filing it. True for the editor,
    * the default; false for a sketch Piloti drew in an ```excalidraw fence and
-   * the reader files as drawn (ADR-0145). An unedited sketch is keyed by its
+   * the reader files as drawn (ADR-0146). An unedited sketch is keyed by its
    * fence, so filing it again after a reload finds the same document, and its
    * files say Piloti made it.
    */

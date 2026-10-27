@@ -8,6 +8,8 @@ informed: everyone working in this repo
 
 # A person reworks Piloti's drawing as an Excalidraw sketch; the model still writes mermaid
 
+**Amended by [ADR-0146](0146-piloti-draws-sketches-in-excalidraws-own-format.md) (2026-10-27):** Piloti also writes sketches, in Excalidraw's element skeleton (option 2 below, re-checked), and its option 1 misread ADR-0065, which rejected our own cards as MCP App iframes, not hosting an office's MCP apps.
+
 ## Context and Problem Statement
 
 Piloti draws a Verfahren, a decision path or a Gliederung from a mermaid fence

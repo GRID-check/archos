@@ -112,7 +112,7 @@ Chosen option 1.
   its PDF does not draw a fence.
 * **Observable.** One `sketch-drawn` score per fence (`drawn | refused`, the
   refusal as comment, `elements` and `dimension_labels` in metadata) and the
-  turn's trace metadata `sketches`. Filing still scores `diagram-filed`.
+  turn's trace metadata `answer_dialect.sketches`. Filing still scores `diagram-filed`.
 
 ### Consequences
 

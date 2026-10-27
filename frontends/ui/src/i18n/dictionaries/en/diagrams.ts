@@ -83,7 +83,7 @@ export const diagrams = {
     'Drafted by Piloti, edited by a person — AI-assisted, not reviewed. Sketch: not to scale, no dimensions are claimed. Not a certificate; check every statement before passing this on.',
   /**
    * The same block for a sketch Piloti drew itself (an ```excalidraw fence,
-   * ADR-0145) and the reader filed as drawn. „Sketch: not to scale" rather than
+   * ADR-0146) and the reader filed as drawn. „Sketch: not to scale" rather than
    * „Schematic": a sketch places things by hand, a site outline included.
    */
   markingSketch:

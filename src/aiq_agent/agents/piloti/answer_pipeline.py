@@ -41,7 +41,6 @@ from aiq_agent.common import content_to_text
 from aiq_agent.common import get_source_id_for_tool
 from aiq_agent.common.answer_dialect import DialectResult
 from aiq_agent.common.answer_dialect import validate_dialect
-from aiq_agent.common.sketch_fence import sketch_census
 from aiq_agent.common.answer_envelope import TAKEAWAYS_MIN_PROSE_CHARS
 from aiq_agent.common.answer_envelope import AnswerMeta
 from aiq_agent.common.answer_envelope import drop_unfiled_proposals
@@ -78,12 +77,11 @@ from aiq_agent.common.workspace_records import filed_proposal_ids
 from aiq_agent.common.workspace_records import records_from_messages
 from aiq_agent.observability.langfuse_scores import card_validity_score
 from aiq_agent.observability.langfuse_scores import claim_scores
-from aiq_agent.observability.langfuse_scores import dialect_scores
-from aiq_agent.observability.langfuse_scores import sketch_scores
+from aiq_agent.observability.answer_scores import dialect_scores
 from aiq_agent.observability.langfuse_scores import emit_scores
 from aiq_agent.observability.langfuse_scores import formula_provenance_score
 from aiq_agent.observability.langfuse_scores import look_scores
-from aiq_agent.observability.langfuse_scores import quote_patch_scores
+from aiq_agent.observability.answer_scores import quote_patch_scores
 from aiq_agent.observability.langfuse_scores import work_unfiled_scores
 from aiq_agent.observability.langfuse_trace_attributes import record_trace_metadata
 
@@ -1105,9 +1103,7 @@ def _held_to_dialect(content: str, meta: AnswerMeta | None) -> DialectResult:
     dialect = validate_dialect(content, meta.kind if meta is not None else None)
     if dialect.census or dialect.repairs:
         record_trace_metadata(answer_dialect=dialect.as_trace())
-    if dialect.sketches:
-        record_trace_metadata(sketches=sketch_census(dialect.sketches))
-    emit_scores(dialect_scores(dialect.repairs) + sketch_scores(dialect.sketches), writer="piloti")
+    emit_scores(dialect_scores(dialect.repairs, dialect.sketches), writer="piloti")
     return dialect
 
 

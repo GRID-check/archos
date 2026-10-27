@@ -13,7 +13,7 @@ from aiq_agent.observability.langfuse_scores import SCORE_DEFINITIONS
 from aiq_agent.observability.langfuse_scores import RuntimeScore
 from aiq_agent.observability.langfuse_scores import card_validity_score
 from aiq_agent.observability.langfuse_scores import citation_scores
-from aiq_agent.observability.langfuse_scores import dialect_scores
+from aiq_agent.observability.answer_scores import dialect_scores
 from aiq_agent.observability.langfuse_scores import emit_scores
 from aiq_agent.observability.langfuse_scores import score_body
 from aiq_agent.observability.langfuse_scores import score_id

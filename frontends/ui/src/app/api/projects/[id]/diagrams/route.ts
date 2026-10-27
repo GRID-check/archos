@@ -87,7 +87,7 @@ export const POST = apiRoute<Params>(
         svg: body.svg,
         // An edited sketch has two authors and its files say so; „Von Piloti
         // erstellt" on a drawing a person reworked would be half false. A
-        // sketch Piloti drew (ADR-0145) says „nicht maßstäblich", not
+        // sketch Piloti drew (ADR-0146) says „nicht maßstäblich", not
         // „Schematisch": it places things by hand.
         marking: body.edited
           ? dictionary.diagrams.markingEdited

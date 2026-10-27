@@ -528,9 +528,8 @@ today's scene schema. The kind stays in the vocabulary (`DIAGRAM_SOURCE_KINDS`)
 and the server already accepts it, so adding a renderer later is one entry in
 `DIAGRAM_RENDERERS`, not a vocabulary migration over stored rows.
 
-**Since ADR-0141 Excalidraw ships as an editor, not as a renderer.** The
-argument above is about drawing a model's source, and it still holds: the model
-writes mermaid, never Excalidraw. The new use is a person reworking a drawing
+**Since ADR-0141 Excalidraw ships as an editor.** The argument above is about
+drawing a mermaid source through Excalidraw, and it still holds for mermaid. The new use is a person reworking a drawing
 Piloti made. A drawn flow or Gliederung inside a project offers „Als Skizze
 bearbeiten" (`features/diagrams/sketch/`):
 
@@ -559,6 +558,37 @@ bearbeiten" (`features/diagrams/sketch/`):
 `DIAGRAM_RENDERERS.excalidraw` stays `null`: nothing renders a stored scene
 yet. Reopening a filed sketch, and saving a new Fassung instead of a new pair
 of documents, is the next slice.
+
+**Since ADR-0146 the model writes Excalidraw too, as a sketch.** Mermaid has no
+grammar for what an architect mostly sketches (rooms by adjacency, a site, a
+wireframe, a board), so Piloti writes an ```` ```excalidraw ```` fence of
+Excalidraw's element skeleton when asked for a Skizze or when the picture is
+spatial or free-form; flows and hierarchies stay mermaid. The doctrine holds by
+subject: a sketch claims no dimension, and says so.
+
+- **Taught by a skill.** `excalidraw-sketch`
+  (`src/aiq_agent/skills/builtin/drawing/`) holds the format, the layout rules
+  and the recurring shapes, read on demand (ADR-0135); the static prompt only
+  points at it.
+- **Checked twice.** `common/sketch_fence.py` runs in the dialect pass and
+  retags a refused fence `excalidraw-refused` (shown as its source with one
+  line); `lib/diagrams/sketch-fence.ts` applies the same rules in the browser
+  and keeps an allow-list of fields, texts in Helvetica. Both run
+  `lib/diagrams/__fixtures__/sketch-fences.json`. Caps: 32 KiB, 150 elements,
+  coordinates within ±10 000.
+- **Drawn as it streams.** `components/sketch-figure.tsx` draws every element
+  that has arrived whole (`streamedSketchElements`), one Excalidraw render at a
+  time, through `sketch/sketch-render.ts` (`convertToExcalidrawElements`,
+  `exportToSvg` on paper, `fileableSketchSvg`). That module is the second
+  importer of `@excalidraw/excalidraw`, reached only by a dynamic import, so
+  the first sketch a reader sees loads the 2.46 MB the editor would.
+- **The sheet is paper.** A sketch shows on white with Excalidraw's own dark
+  filter (`invert(93%) hue-rotate(180deg)`) in dark mode, so the screen, the
+  editor and the file are one drawing. Under it: „Skizze — nicht maßstäblich,
+  ohne Maßangabe.", and inside a project „Im Projekt ablegen" (as drawn, keyed
+  by the fence, marked `diagrams.markingSketch`) and „Als Skizze bearbeiten".
+- **Observable.** `sketch-drawn` per fence and trace metadata `answer_dialect.sketches`
+  (`docs/observability/langfuse.md`).
 
 ## Known limits
 

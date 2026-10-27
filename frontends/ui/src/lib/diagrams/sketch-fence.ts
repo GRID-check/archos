@@ -1,6 +1,6 @@
 /**
  * An ```` ```excalidraw ```` fence in an answer: the sketch Piloti drew, checked
- * and reduced to what the browser may hand Excalidraw (ADR-0145).
+ * and reduced to what the browser may hand Excalidraw (ADR-0146).
  *
  * The fence holds Excalidraw's element skeleton (`ExcalidrawElementSkeleton`,
  * the input of `convertToExcalidrawElements`), either as a bare array or as
@@ -44,6 +44,12 @@ export const MAX_SKETCH_TITLE_CHARS = 120
 
 /** Excalidraw's `FONT_FAMILY.Helvetica`; why, in `features/diagrams/sketch/sketch-from-model.ts`. */
 const SKETCH_FONT_FAMILY = 2
+/**
+ * The size a text gets when the fence names none. Excalidraw's own default is
+ * 20, and at 20 a label in a 180-wide bubble broke mid-word („Kochen/Ess en")
+ * in the first sketches a model wrote. 16 is the editor's (`SKETCH_FONT_SIZE`).
+ */
+const SKETCH_TEXT_SIZE = 16
 
 export const SKETCH_ELEMENT_TYPES = ['rectangle', 'ellipse', 'diamond', 'text', 'arrow', 'line', 'frame'] as const
 export type SketchElementType = (typeof SKETCH_ELEMENT_TYPES)[number]
@@ -218,7 +224,7 @@ function kept(field: string, value: unknown): unknown {
 }
 
 function labelOf(label: Json): Json {
-  const out: Json = { fontFamily: SKETCH_FONT_FAMILY }
+  const out: Json = { fontFamily: SKETCH_FONT_FAMILY, fontSize: SKETCH_TEXT_SIZE }
   for (const field of LABEL_FIELDS) {
     const value = label[field] == null ? undefined : kept(field, label[field])
     if (value !== undefined) out[field] = value
@@ -235,7 +241,10 @@ function skeletonOf(element: Json): SceneSkeleton {
     const value = kept(field, element[field])
     if (value !== undefined) out[field] = value
   }
-  if (type === 'text') out.fontFamily = SKETCH_FONT_FAMILY
+  if (type === 'text') {
+    out.fontFamily = SKETCH_FONT_FAMILY
+    out.fontSize ??= SKETCH_TEXT_SIZE
+  }
   return out
 }
 
@@ -260,12 +269,25 @@ function checked(scene: unknown): SketchFence {
   }
 }
 
+/**
+ * A body whose JSON was escaped twice (`{\"title\": …`): a model writing the
+ * fence inside the envelope's `answer` string sometimes escapes its quotes once
+ * too often. Read once unescaped, as the server does (`_OVER_ESCAPED`).
+ */
+const OVER_ESCAPED = /^\s*[[{][\s[{]*\\"/
+const ESCAPE = /\\(["\\/bfnrt])/g
+const UNESCAPED: Record<string, string> = { '"': '"', '\\': '\\', '/': '/', b: '\b', f: '\f', n: '\n', r: '\r', t: '\t' }
+
+function unescapedOnce(body: string): string {
+  return OVER_ESCAPED.test(body) ? body.replace(ESCAPE, (_, char: string) => UNESCAPED[char]) : body
+}
+
 /** The verdict on one fence's body, and on a pass the skeletons to draw. */
 export function readSketchFence(body: string): SketchFence {
   if (new TextEncoder().encode(body).length > MAX_SKETCH_SOURCE_BYTES) return { ok: false, refusal: 'too-large' }
   let scene: unknown
   try {
-    scene = JSON.parse(body)
+    scene = JSON.parse(unescapedOnce(body))
   } catch {
     return { ok: false, refusal: 'malformed-json' }
   }
@@ -320,7 +342,8 @@ function completeObjects(text: string, from: number): string[] {
  * has not arrived yet is left off until it has. The finished fence is judged by
  * `readSketchFence` as a whole, and that verdict is the one that stays.
  */
-export function streamedSketchElements(partial: string): SceneSkeleton[] {
+export function streamedSketchElements(written: string): SceneSkeleton[] {
+  const partial = unescapedOnce(written)
   const at = arrayStart(partial)
   if (at < 0) return []
   const elements: Json[] = []
