@@ -32,7 +32,7 @@ import {
   type FacetKey,
   type ReferenceTargets,
 } from './document-repository'
-import { reachCollections, reachFor, reachShelves, resolveScope, type SearchReach } from './reach'
+import { narrowReach, reachCollections, reachFor, reachShelves, resolveScope, type SearchReach } from './reach'
 import {
   SEARCH_KINDS,
   SEARCH_LIMIT_DEFAULT,
@@ -75,6 +75,12 @@ const FACET_KEYS: Record<SearchFacetDimension, FacetKey> = {
   state: 'status',
   fileType: 'fileType',
   uploader: 'uploader',
+}
+
+/** The reach every kind reads: cut to the projects a `projectIds` filter names, when it names any. */
+function narrowedTo(reach: SearchReach, body: Pick<SearchBody, 'filters'>): SearchReach {
+  const projectIds = body.filters?.projectIds ?? []
+  return projectIds.length > 0 ? narrowReach(reach, projectIds) : reach
 }
 
 /** A cursor names one kind and an offset; opaque on the wire. */
@@ -258,14 +264,17 @@ async function searchDocuments(
   const structured: DocumentQuery = { filters, text: null, citedBy, citing }
   const content = text && text.length >= CONTENT_MIN_CHARS ? await rankedContent(reach, structured, text) : { hits: [], partial: false }
   const found = content?.hits ?? []
-  const passages = new Map(found.map((hit) => [contentKey(hit.collection, hit.file_name), hit]))
+  // A hit names its document by id when it can; only a hit without one is joined by name (ADR-0133 item 5).
   const passagesById = new Map(found.flatMap((hit) => (hit.grid_document_id ? [[hit.grid_document_id, hit] as const] : [])))
+  const passagesByKey = new Map(
+    found.flatMap((hit) => (hit.grid_document_id ? [] : [[contentKey(hit.collection, hit.file_name), hit] as const]))
+  )
   const query: DocumentQuery = {
     ...structured,
     text: text
       ? {
           text,
-          contentKeys: found.map((hit) => contentKey(hit.collection, hit.file_name)),
+          contentKeys: found.map((hit) => (hit.grid_document_id ? '' : contentKey(hit.collection, hit.file_name))),
           contentIds: found.map((hit) => hit.grid_document_id ?? ''),
         }
       : null,
@@ -280,7 +289,8 @@ async function searchDocuments(
   const hits = result.rows.map((row) =>
     toDocumentHit(
       row,
-      passagesById.get(row.id) ?? passages.get(contentKey(row.collectionName, row.filename)),
+      passagesById.get(row.id) ??
+        (row.authoredBy === 'user' ? passagesByKey.get(contentKey(row.collectionName, row.filename)) : undefined),
       people.get(row.createdBy)?.name ?? null
     )
   )
@@ -290,7 +300,7 @@ async function searchDocuments(
       hits,
       total: result.total,
       // Content found more than it could rank, or could not run: more documents may say it.
-      totalIsLowerBound: Boolean(text) && (content === null || content.partial || passages.size >= CONTENT_CANDIDATES),
+      totalIsLowerBound: Boolean(text) && (content === null || content.partial || found.length >= CONTENT_CANDIDATES),
       nextCursor: nextOffset < result.total && nextOffset <= SEARCH_OFFSET_MAX ? encodeSearchCursor('document', nextOffset) : null,
     },
     facets: counts ? labelFacets(reach, counts, Object.keys(FACET_KEYS) as SearchFacetDimension[], people) : null,
@@ -316,7 +326,7 @@ function sectionOf<T extends SearchResponse['sections'][SearchKind]>(
 /** Run one search as `session`. */
 export async function runSearch(session: AuthorizedSession, scopeQuery: SearchScopeQuery, body: SearchBody): Promise<SearchResponse> {
   const scope = resolveScope(scopeQuery)
-  const reach = await reachFor(session, scope)
+  const reach = narrowedTo(await reachFor(session, scope), body)
   const kinds = SEARCH_KINDS.filter((kind) => !body.kinds || body.kinds.includes(kind))
   const single = kinds.length === 1
   if (body.cursor && !single) throw new BadRequestError('A cursor pages one kind: ask with kinds set to that kind alone')
@@ -366,7 +376,7 @@ export async function listSearchDocumentsForExport(
   body: SearchBody,
   max: number
 ): Promise<{ scope: SearchReach['scope']; hits: DocumentHit[] }> {
-  const reach = await reachFor(session, resolveScope(scopeQuery))
+  const reach = narrowedTo(await reachFor(session, resolveScope(scopeQuery)), body)
   const { section } = await searchDocuments(reach, { ...body, cursor: undefined }, { limit: max + 1, offset: 0 }, false)
   if (section.hits.length > max) {
     throw new UnprocessableError(`A plan list carries at most ${max} documents; narrow the search with a filter.`, {

@@ -14,9 +14,13 @@ vi.mock('@/lib/projects/service', () => ({ listProjects: vi.fn() }))
 vi.mock('@/lib/projects/repository', () => ({ findProjectInOrg: vi.fn() }))
 vi.mock('@/lib/office-shelf/collection', () => ({ officeShelfCollectionName: () => 'office_org_1' }))
 vi.mock('@/lib/db', () => ({ getDb: vi.fn() }))
+vi.mock('@/lib/conversations/restricted-use-repository', () => ({ readConversationAudience: vi.fn() }))
 
 import type { AuthorizedSession } from '@/lib/auth/types'
 import { audienceReach } from '@/lib/cross-project/audience-reach'
+import { readConversationAudience } from '@/lib/conversations/restricted-use-repository'
+import { findProjectInOrg } from '@/lib/projects/repository'
+import { requireProjectAccess } from '@/lib/authz/projects'
 import type { Project } from '@/lib/db/schema'
 import { BadRequestError } from '@/lib/api/errors'
 import { reachForAudience, reachReader, resolveScope } from './reach'
@@ -42,6 +46,18 @@ describe('reachForAudience', () => {
     expect(reach.projects[0].hiddenFolderIds).toEqual(expect.arrayContaining(['f-hidden', 'f-restricted']))
     expect(reach.officeShelf).toEqual({ collection: 'office_org_1', reviewsQuarantine: false })
     expect(reachReader(reach)).toEqual({ kind: 'screened-only' })
+  })
+
+  it('adds the conversation\'s own project when asked, pruned like the audience, after its project:view', async () => {
+    vi.mocked(audienceReach).mockResolvedValue({ projects: [], restrictedFolders: false, key: 'k' })
+    vi.mocked(readConversationAudience).mockResolvedValue({ exists: true, projectId: 'p1', createdBy: 'u2', visibility: 'project', grantees: [] })
+    vi.mocked(findProjectInOrg).mockResolvedValue(project)
+
+    const reach = await reachForAudience(session, 'conv_1', { kind: 'project', projectId: 'p1' }, { includeOwnProject: true })
+
+    expect(requireProjectAccess).toHaveBeenCalledWith(session, 'p1', 'project:view')
+    expect(reach.projects[0]).toMatchObject({ collections: ['proj_a'], reviewsQuarantine: false })
+    expect(reach.projects[0].hiddenFolderIds).toContain('f-restricted')
   })
 
   it('does not find a project outside the audience', async () => {

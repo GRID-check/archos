@@ -192,6 +192,9 @@ export function conversationTagsNamedBy(text: string): string[] {
  * conversation lives there.
  */
 export function conversationReachOf(reach: SearchReach): ConversationReach {
+  if (reach.narrowedToProjects) {
+    return { projectIds: reach.projects.map((reached) => reached.project.id), withoutContainer: false }
+  }
   if (reach.scope.kind === 'office') {
     return {
       projectIds: reach.projects.map((reached) => reached.project.id),

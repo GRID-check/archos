@@ -2035,6 +2035,7 @@ INSERT INTO document_search_shelves (organization_id, shelf_key, project_id, sou
 SQL
 check_in grid_documentsearch "SELECT count(*) FROM document_search_facets WHERE search_vector @@ websearch_to_tsquery('german', 'Brandschutzkonzepte Fluchtweg')" "1" "0185: the German vector finds a plural and a singular"
 check_in grid_documentsearch "SELECT count(*) FROM document_search_facets WHERE reference_tokens @> ARRAY['norm:önorm b 1600'] AND (fact_numbers->>'building_class')::numeric BETWEEN 3 AND 4" "1" "0185: a reference token and a numeric fact range"
+refused_in grid_documentsearch "INSERT INTO document_search_facets (document_id, organization_id, fingerprint) VALUES ('d1d1d1d1-0000-4000-8000-000000000185', 'org_other', 'f2') ON CONFLICT (document_id) DO UPDATE SET organization_id = excluded.organization_id" "document_search_facets_document_tenant_fkey" "0185: a search row cannot move to another organization than its document's"
 refused_in grid_documentsearch "INSERT INTO document_search_shelves (organization_id, shelf_key, project_id) VALUES ('org_0185', 'project:other', 'aaaaaaaa-0000-4000-8000-000000000185')" "document_search_shelves_key_shape" "0185: a shelf key names its own project"
 sql_in grid_documentsearch <<'SQL'
 DELETE FROM documents WHERE id = 'd1d1d1d1-0000-4000-8000-000000000185';

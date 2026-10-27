@@ -47,6 +47,12 @@
 -- Tenant tables keyed by their organization. Listed in `rls-coverage.spec.ts`
 -- BOUNDARY_MIGRATIONS.
 
+-- A search row belongs to its document's organization, by the database's word
+-- and not only by the writer's care: the composite key below lets the facets
+-- reference (id, organization_id), so a row written under the wrong tenant is
+-- refused. `id` is already unique, so the index adds no constraint on documents.
+CREATE UNIQUE INDEX IF NOT EXISTS "documents_id_organization_id_key" ON "documents" ("id", "organization_id");
+--> statement-breakpoint
 CREATE TABLE IF NOT EXISTS "document_search_facets" (
   "document_id" uuid PRIMARY KEY NOT NULL REFERENCES "documents"("id") ON DELETE CASCADE,
   "organization_id" text NOT NULL,
@@ -86,7 +92,9 @@ CREATE TABLE IF NOT EXISTS "document_search_facets" (
   CONSTRAINT document_search_facets_labels_object CHECK (jsonb_typeof("reference_labels") = 'object'),
   CONSTRAINT document_search_facets_text_bounded CHECK (char_length("search_text") <= 20000),
   CONSTRAINT document_search_facets_pages CHECK ("page_count" IS NULL OR "page_count" >= 0),
-  CONSTRAINT document_search_facets_unread CHECK ("pages_not_read" IS NULL OR "pages_not_read" >= 0)
+  CONSTRAINT document_search_facets_unread CHECK ("pages_not_read" IS NULL OR "pages_not_read" >= 0),
+  CONSTRAINT document_search_facets_document_tenant_fkey FOREIGN KEY ("document_id", "organization_id")
+    REFERENCES "documents" ("id", "organization_id") ON DELETE CASCADE
 );
 --> statement-breakpoint
 CREATE INDEX IF NOT EXISTS "document_search_facets_org_type_idx" ON "document_search_facets" ("organization_id", "document_type");

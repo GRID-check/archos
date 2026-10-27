@@ -44,9 +44,11 @@ export interface TextMatch {
   /** {@link contentKey} of the content search's documents, best first. */
   contentKeys: readonly string[]
   /**
-   * The same documents' ids, aligned with `contentKeys` (`''` where the hit did
-   * not carry one). An id joins exactly; a key joins only a document a person
-   * uploaded, as `joinHitsToFiles` does: a machine-written row can share a name.
+   * The same documents' ids, aligned with `contentKeys`. A hit joins by its id
+   * when it carries one (its key is then `''`), else by its key (its id `''`),
+   * and a key joins only a document a person uploaded, as `joinHitsToFiles`
+   * does: a machine-written row can share a name, and a row is never handed
+   * another document's passage.
    */
   contentIds?: readonly string[]
 }
@@ -215,7 +217,7 @@ function contentIdsOf(text: TextMatch): string[] {
 function contentPosition(text: TextMatch): SQL<number | null> {
   return sql<number | null>`coalesce(
     array_position(${pgTextArray(text.contentIds ?? [])}, ${documents.id}::text),
-    array_position(${pgTextArray(text.contentKeys)}, ${contentKeyOf})
+    CASE WHEN ${documents.authoredBy} = 'user' THEN array_position(${pgTextArray(text.contentKeys)}, ${contentKeyOf}) END
   )`
 }
 
@@ -269,6 +271,8 @@ export interface DocumentSearchRow {
   contentType: string | null
   createdAt: Date
   createdBy: string
+  /** Whose hand wrote it: a content hit joined by name may only become a person's own upload. */
+  authoredBy: string
   documentType: string | null
   title: string | null
   planNumber: string | null
@@ -311,6 +315,7 @@ export async function searchDocumentPage(
         contentType: documents.contentType,
         createdAt: documents.createdAt,
         createdBy: documents.createdBy,
+        authoredBy: documents.authoredBy,
         documentType: f.documentType,
         title: f.title,
         planNumber: f.planNumber,

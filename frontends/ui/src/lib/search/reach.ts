@@ -26,6 +26,7 @@ import { SCREENED_ONLY, type DocumentReader } from '@/lib/documents/document-rea
 import { OFFICE_SHELF, projectShelf, shelfFolderWhere, type DocumentShelf } from '@/lib/documents/shelf'
 import { officeShelfCollectionName } from '@/lib/office-shelf/collection'
 import { audienceReach } from '@/lib/cross-project/audience-reach'
+import { readConversationAudience } from '@/lib/conversations/restricted-use-repository'
 import { findProjectInOrg } from '@/lib/projects/repository'
 import { listProjects } from '@/lib/projects/service'
 import { escapeLikePattern } from '@/lib/text/like-pattern'
@@ -57,6 +58,11 @@ export interface SearchReach {
    * for the asker alone must not reach the other readers.
    */
   screenedOnly?: boolean
+  /**
+   * The reach was cut to named projects (a `projectIds` filter): no office
+   * shelf, and no conversation outside those projects.
+   */
+  narrowedToProjects?: boolean
 }
 
 /** Projects whose folder access is read at once. Each is a tenancy probe and a folder-tree read. */
@@ -168,9 +174,10 @@ export async function reachFor(session: AuthorizedSession, scope: SearchScope): 
 export async function reachForAudience(
   session: AuthorizedSession,
   conversationId: string,
-  scope: SearchScope
+  scope: SearchScope,
+  options: { includeOwnProject?: boolean } = {}
 ): Promise<SearchReach> {
-  const audience = await audienceReach(session, conversationId)
+  const audience = await withOwnProject(session, conversationId, await audienceReach(session, conversationId), options)
   const base = {
     organizationId: session.organizationId,
     userId: session.userId,
@@ -207,6 +214,45 @@ export async function reachForAudience(
         )
       : null
   return { ...base, projects, officeShelf: scope.kind === 'project' ? null : shelfOffice, folderIds }
+}
+
+/**
+ * The reach cut to `projectIds`, for every kind at once: a `projectIds` filter
+ * names the projects a search may say anything about, so the folders, projects,
+ * conversations and annotations it finds come from those projects alone, and
+ * the office shelf drops out. A project outside the reach stays out.
+ */
+export function narrowReach(reach: SearchReach, projectIds: readonly string[]): SearchReach {
+  const wanted = new Set(projectIds)
+  return {
+    ...reach,
+    projects: reach.projects.filter((reached) => wanted.has(reached.project.id)),
+    officeShelf: null,
+    narrowedToProjects: true,
+  }
+}
+
+/**
+ * The audience's projects with the conversation's own project added, when
+ * asked (`includeOwnProject`): `audienceReach` answers which OTHER projects a
+ * lookup may search, and a shared chat's own project is not among them, while
+ * a reader of the conversation reads its project (the agent's `/project/`).
+ * Asked of the asker's `project:view`, as every project read is; the folder
+ * pruning of the audience applies to it like to the rest.
+ */
+async function withOwnProject(
+  session: AuthorizedSession,
+  conversationId: string,
+  audience: Awaited<ReturnType<typeof audienceReach>>,
+  options: { includeOwnProject?: boolean }
+): Promise<Awaited<ReturnType<typeof audienceReach>>> {
+  if (!options.includeOwnProject) return audience
+  const row = await readConversationAudience(getDb(), session.organizationId, conversationId)
+  const ownId = row.projectId
+  if (!ownId || audience.projects.some((project) => project.id === ownId)) return audience
+  await requireProjectAccess(session, ownId, 'project:view')
+  const own = await findProjectInOrg(ownId, session.organizationId)
+  return own ? { ...audience, projects: [own, ...audience.projects] } : audience
 }
 
 /** The shelves a reach covers, for the projection's staleness check. */

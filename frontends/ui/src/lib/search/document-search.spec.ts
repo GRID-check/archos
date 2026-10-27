@@ -74,6 +74,7 @@ const row = (overrides: Partial<DocumentSearchRow> = {}): DocumentSearchRow => (
   contentType: 'application/pdf',
   createdAt: new Date('2026-10-20T08:00:00Z'),
   createdBy: 'user_1',
+  authoredBy: 'user',
   documentType: 'fire_safety_concept',
   title: 'Brandschutzkonzept',
   planNumber: null,
@@ -133,6 +134,40 @@ describe('runSearch', () => {
 
     expect(repository.searchDocumentPage.mock.calls[0][1].text.contentIds).toEqual(['d1'])
     expect(answer.sections.document?.hits[0].passage).toEqual({ text: 'Auflage 3', page: 2 })
+  })
+
+  it('never hands a passage to another document, nor a person\'s passage to a machine-written row of the same name', async () => {
+    vi.mocked(fetchGroupedSemanticHits).mockResolvedValue([
+      { file_name: 'bsk.pdf', collection: 'proj_a', snippet: 'of R', page_number: 3, score: 0.9, rank: 0, grid_document_id: 'other' },
+      { file_name: 'bericht.pdf', collection: 'proj_a', snippet: 'of a person', page_number: 1, score: 0.8, rank: 1 },
+    ])
+    repository.searchDocumentPage.mockResolvedValue({
+      rows: [row(), row({ id: 'm1', filename: 'bericht.pdf', authoredBy: 'agent' })],
+      total: 2,
+    })
+
+    const answer = await runSearch(session, {}, { text: 'Bericht', kinds: ['document'] })
+
+    expect(answer.sections.document?.hits.map((hit) => hit.passage)).toEqual([null, null])
+    expect(repository.searchDocumentPage.mock.calls[0][1].text).toMatchObject({
+      contentKeys: ['', 'proj_a\u001fbericht.pdf'],
+      contentIds: ['other', ''],
+    })
+  })
+
+  it('cuts every kind to the projects a projectIds filter names, and leaves the office shelf out', async () => {
+    const other = { ...reach.projects[0], project: { ...reach.projects[0].project, id: 'p-other' } }
+    vi.mocked(reachFor).mockResolvedValue({ ...reach, projects: [...reach.projects, other] })
+    vi.mocked(fetchGroupedSemanticHits).mockResolvedValue([])
+    repository.listCandidateDocumentIds.mockResolvedValue(['d1'])
+
+    await runSearch(session, {}, { text: 'Einreichung', filters: { projectIds: [PROJECT] } })
+
+    const narrowed = providers.searchFolders.mock.calls[0][0] as SearchReach
+    expect(narrowed.projects.map((reached) => reached.project.id)).toEqual([PROJECT])
+    expect(narrowed.officeShelf).toBeNull()
+    expect(narrowed.narrowedToProjects).toBe(true)
+    expect((repository.searchDocumentPage.mock.calls[0][0] as SearchReach).officeShelf).toBeNull()
   })
 
   it('still answers from names and the reading when the content search is down, and says the total may be more', async () => {

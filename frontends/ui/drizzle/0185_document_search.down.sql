@@ -6,3 +6,5 @@
 DROP TABLE IF EXISTS "document_search_shelves";
 --> statement-breakpoint
 DROP TABLE IF EXISTS "document_search_facets";
+--> statement-breakpoint
+DROP INDEX IF EXISTS "documents_id_organization_id_key";
