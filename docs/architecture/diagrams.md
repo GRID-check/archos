@@ -265,7 +265,7 @@ verification learned this the hard way: a mermaid label is written
 label as a quoted claim, none of them were in a retrieved passage, and the
 annotation went in after the closing quote — inside the bracket. The diagram
 stopped parsing, and the same flags capped the turn's confidence to "low".
-`_code_spans` in `common/citation_verification.py` now excludes fenced and
+`code_spans` in `citations/markdown_code.py` now excludes fenced and
 inline code from that scan. Any future pass over the answer body owes a diagram
 the same courtesy.
 

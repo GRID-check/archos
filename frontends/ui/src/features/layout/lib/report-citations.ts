@@ -65,7 +65,7 @@ const SOURCE_ENTRY_RE = /^\s*(?:[-*+]\s+)?(?:\[(\d{1,3})\]|(\d{1,3})[.)])\s+(.+)
 
 /**
  * Leading backend origin token on a source entry, e.g. "[KB] ...".
- * Deterministic backend output (see citation_verification.source_origin_token);
+ * Deterministic backend output (see citations.binding.source_origin_token);
  * stripped from the display text and mapped to `sourceKind`.
  */
 const SOURCE_KIND_TOKEN_RE = /^\[(KB|Web|RIS)\]\s*/i

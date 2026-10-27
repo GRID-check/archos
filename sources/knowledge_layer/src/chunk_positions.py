@@ -116,7 +116,7 @@ def _int(value: Any) -> int | None:
         return value
     try:
         return int(str(value))
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         return None
 
 

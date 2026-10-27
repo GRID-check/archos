@@ -93,7 +93,7 @@ def revision_facts_from_documents(documents: Sequence[Any]) -> dict[str, Any] | 
         try:
             title_block = (json.loads(raw).get("document") or {}).get("title_block")
             page = int(metadata.get("page_label"))
-        except (AttributeError, TypeError, ValueError):
+        except AttributeError, TypeError, ValueError:
             continue
         facts = normalise_revision_facts({**title_block, "page": page}) if isinstance(title_block, dict) else None
         if facts:

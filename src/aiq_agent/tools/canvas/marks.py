@@ -125,7 +125,7 @@ def _clipped(value: object, limit: int) -> str:
 def _share(value: object) -> str:
     try:
         return f"{float(value):.2f}"
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         return "?"
 
 

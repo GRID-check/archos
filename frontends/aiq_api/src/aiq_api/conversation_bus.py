@@ -162,7 +162,7 @@ class RunningMarker:
         try:
             d = json.loads(raw)
             return RunningMarker(replica=str(d["replica"]), turn_id=str(d["turn_id"]))
-        except (ValueError, KeyError, TypeError):
+        except ValueError, KeyError, TypeError:
             return None
 
 

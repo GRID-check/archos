@@ -392,7 +392,7 @@ class DocumentMetadataStore:
                 if engine:
                     try:
                         engine.dispose()
-                    except (RuntimeError, OSError):
+                    except RuntimeError, OSError:
                         pass
 
     # ------------------------------------------------------------------
@@ -1013,7 +1013,7 @@ class DocumentMetadataStore:
             return None
         try:
             decoded = json.loads(raw)
-        except (TypeError, ValueError):
+        except TypeError, ValueError:
             logger.warning("Ignoring unreadable provenance for %s in %s", filename, collection)
             return None
         return decoded if isinstance(decoded, dict) else None
@@ -1528,7 +1528,7 @@ class DocumentMetadataStore:
 
         try:
             decoded = json.loads(raw)
-        except (TypeError, ValueError):
+        except TypeError, ValueError:
             return None
         if isinstance(decoded, list):
             tags = [t for t in decoded if isinstance(t, str)]
@@ -1544,7 +1544,7 @@ class DocumentMetadataStore:
             return None
         try:
             decoded = json.loads(raw)
-        except (TypeError, ValueError):
+        except TypeError, ValueError:
             return None
         return decoded if isinstance(decoded, kind) and decoded else None
 
@@ -1572,7 +1572,7 @@ class DocumentMetadataStore:
 
         try:
             decoded = json.loads(raw)
-        except (TypeError, ValueError):
+        except TypeError, ValueError:
             return None
         if not isinstance(decoded, dict):
             return None
@@ -1595,7 +1595,7 @@ class DocumentMetadataStore:
 
         try:
             return normalise_revision_facts(json.loads(raw))
-        except (TypeError, ValueError):
+        except TypeError, ValueError:
             return None
 
     @staticmethod
@@ -1638,7 +1638,7 @@ class DocumentMetadataStore:
 
         try:
             return cls._normalise_suggestion(json.loads(raw))
-        except (TypeError, ValueError):
+        except TypeError, ValueError:
             return None
 
     def _row_to_document(self, row: Any, collection: str | None = None) -> AvailableDocument:
@@ -1918,14 +1918,14 @@ class DocumentMetadataStore:
             if engine:
                 try:
                     engine.dispose()
-                except (RuntimeError, OSError):
+                except RuntimeError, OSError:
                     pass
 
             engine = cls._async_engine_cache.pop(db_url, (None,))[0]
             if engine:
                 try:
                     await engine.dispose()
-                except (RuntimeError, OSError):
+                except RuntimeError, OSError:
                     pass
 
     @classmethod
@@ -1945,7 +1945,7 @@ class DocumentMetadataStore:
             if engine:
                 try:
                     engine.dispose()
-                except (RuntimeError, OSError):
+                except RuntimeError, OSError:
                     pass
 
             engine = cls._async_engine_cache.pop(db_url, (None,))[0]
@@ -1957,7 +1957,7 @@ class DocumentMetadataStore:
                         loop.create_task(coro)
                     except RuntimeError:
                         asyncio.run(coro)
-                except (RuntimeError, OSError):
+                except RuntimeError, OSError:
                     pass
 
     @classmethod
@@ -1969,7 +1969,7 @@ class DocumentMetadataStore:
             for key, (engine, _) in list(cls._sync_engine_cache.items()):
                 try:
                     engine.dispose()
-                except (RuntimeError, OSError):
+                except RuntimeError, OSError:
                     pass
             cls._sync_engine_cache.clear()
 
@@ -1981,7 +1981,7 @@ class DocumentMetadataStore:
                         loop.create_task(coro)
                     except RuntimeError:
                         asyncio.run(coro)
-                except (RuntimeError, OSError):
+                except RuntimeError, OSError:
                     pass
             cls._async_engine_cache.clear()
 
