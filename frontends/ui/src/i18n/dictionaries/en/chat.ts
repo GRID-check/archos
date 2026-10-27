@@ -1656,6 +1656,12 @@ export const chat = {
     noted: 'Piloti noted',
     notedAria: 'Piloti noted {count, plural, one {# item} other {# items}}',
     addedToMemory: 'Added to project memory',
+    updated: 'Memory updated',
+    updatedAria:
+      'Piloti updated its memory: {count, plural, one {# item} other {# items}}, {corrected} of them corrected',
+    updatedInMemory: 'Project memory updated',
+    correctedLabel: 'Corrected',
+    replaced: 'Replaces:',
     manageHint: 'You can manage and delete these entries in the project memory.',
     kinds: {
       decision: 'Decision',
