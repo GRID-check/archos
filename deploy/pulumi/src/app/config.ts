@@ -5,6 +5,7 @@ import { APP_DEFAULTS, KEDA_SCALER_ROLE, LANGFUSE, PORT, QDRANT } from "../const
 import { CHECKPOINTS_DB, JOBS_DB, type Postgres } from "../data/postgres";
 import { FRONTEND_DRAIN_SECONDS, secretChecksum } from "../platform/rollout";
 import { frontendLangfuseEnv, LANGFUSE_SECRETS_NAME, LANGFUSE_SECRET_KEYS } from "../platform/langfuse";
+import { logicalName, objectName } from "../names";
 
 type EnvVar = k8s.types.input.core.v1.EnvVar;
 
@@ -30,8 +31,8 @@ export interface AppWiring {
   imagePullSecrets: { name: string }[];
 }
 
-export const SECRET_NAME = "grid-secrets"; // pragma: allowlist secret (Kubernetes Secret resource name, not a credential)
-export const PULL_SECRET_NAME = "grid-registry-pull"; // pragma: allowlist secret (Kubernetes Secret resource name, not a credential)
+export const SECRET_NAME = objectName("appSecret"); // pragma: allowlist secret (Kubernetes Secret resource name, not a credential)
+export const PULL_SECRET_NAME = objectName("registryPullSecret"); // pragma: allowlist secret (Kubernetes Secret resource name, not a credential)
 
 /**
  * dockerconfigjson pull Secret for the app namespace, created only when
@@ -61,7 +62,7 @@ export function buildRegistryPullSecret(
     }),
   );
   return new k8s.core.v1.Secret(
-    "grid-registry-pull",
+    logicalName("grid-registry-pull"),
     {
       metadata: { name: PULL_SECRET_NAME, namespace },
       type: "kubernetes.io/dockerconfigjson",
@@ -86,7 +87,7 @@ export interface AppSecrets {
 }
 
 /** The Secret KEDA's TriggerAuthentications read the queue DSNs from; no pod references it. */
-export const SCALER_SECRET_NAME = "grid-keda-scaler"; // pragma: allowlist secret (Kubernetes Secret resource name, not a credential)
+export const SCALER_SECRET_NAME = objectName("kedaScalerSecret"); // pragma: allowlist secret (Kubernetes Secret resource name, not a credential)
 
 /**
  * The Secret key of the DSN KEDA reads the Python claim queues (`jobs`)
@@ -124,7 +125,7 @@ export function buildScalerSecret(w: AppWiring): k8s.core.v1.Secret {
       clusterWide: true,
     });
   return new k8s.core.v1.Secret(
-    "grid-keda-scaler",
+    logicalName("grid-keda-scaler"),
     {
       metadata: { name: SCALER_SECRET_NAME, namespace: w.namespace },
       stringData: {
@@ -208,7 +209,7 @@ export function buildSecrets(w: AppWiring): AppSecrets {
   };
 
   const secret = new k8s.core.v1.Secret(
-    "grid-secrets",
+    logicalName("grid-secrets"),
     {
       metadata: { name: SECRET_NAME, namespace: w.namespace },
       stringData: values,

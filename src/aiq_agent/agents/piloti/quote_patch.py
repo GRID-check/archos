@@ -43,12 +43,12 @@ from typing import Any
 from langchain_core.messages import HumanMessage
 from langchain_core.messages import SystemMessage
 
+from aiq_agent.citations.quote_matching import MIN_QUOTE_LEN
+from aiq_agent.citations.quote_matching import QUOTED_SPAN_RE
+from aiq_agent.citations.quote_matching import UnverifiedQuote
+from aiq_agent.citations.quote_matching import normalize_for_quote_match
+from aiq_agent.citations.quote_verification import QUOTE_MAX_WORDS
 from aiq_agent.common import content_to_text
-from aiq_agent.common.citation_verification import _QUOTE_MAX_WORDS
-from aiq_agent.common.citation_verification import _QUOTED_SPAN_RE
-from aiq_agent.common.citation_verification import MIN_QUOTE_LEN
-from aiq_agent.common.citation_verification import UnverifiedQuote
-from aiq_agent.common.citation_verification import _normalize_for_quote_match
 
 logger = logging.getLogger(__name__)
 
@@ -146,7 +146,7 @@ def _reads_back_as_one_quote(corrected: str, span: str) -> bool:
     """
     if len(span) < 2:
         return True
-    match = _QUOTED_SPAN_RE.fullmatch(f"{span[0]}{corrected}{span[-1]}")
+    match = QUOTED_SPAN_RE.fullmatch(f"{span[0]}{corrected}{span[-1]}")
     return match is not None and next((group for group in match.groups() if group is not None), None) == corrected
 
 
@@ -156,7 +156,7 @@ def _on_one_line(text: str) -> str:
     A PDF or OCR passage carries its line breaks and hyphen wraps, and a
     correction copied from it carries them too: spliced into a table row it
     breaks the row, and a blank line splits the paragraph. The verifier reads
-    past exactly these (:func:`_normalize_for_quote_match`), so the flattened
+    past exactly these (:func:`normalize_for_quote_match`), so the flattened
     wording verifies as the wrapped one would.
     """
     text = re.sub(r"-\n", "", text)
@@ -178,17 +178,17 @@ def accept(original: str, corrected: str | None, passage: str, *, span: str = ""
     corrected = _on_one_line(_unwrapped(corrected))
     if not corrected or corrected.upper() == "NONE":
         return None
-    norm = _normalize_for_quote_match(corrected)
-    if len(norm) < MIN_QUOTE_LEN or len(corrected.split()) > _QUOTE_MAX_WORDS:
+    norm = normalize_for_quote_match(corrected)
+    if len(norm) < MIN_QUOTE_LEN or len(corrected.split()) > QUOTE_MAX_WORDS:
         return None
     if not _reads_back_as_one_quote(corrected, span):
         return None
     # Verbatim, not merely verified: the verifier's fuzzy threshold tolerates
     # OCR noise, and a corrected "2,50 m" against a passage saying "2,10 m"
     # clears it. A correction is copied from the passage or it is not one.
-    if norm not in _normalize_for_quote_match(passage):
+    if norm not in normalize_for_quote_match(passage):
         return None
-    similarity = difflib.SequenceMatcher(None, _normalize_for_quote_match(original), norm).ratio()
+    similarity = difflib.SequenceMatcher(None, normalize_for_quote_match(original), norm).ratio()
     return corrected if similarity >= MIN_SIMILARITY else None
 
 

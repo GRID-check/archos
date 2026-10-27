@@ -1,3 +1,4 @@
+// @disk-inputs: src/app/app/(shell)/projects/**, src/app/app/onboarding/**, src/app/dev/create-project/**, src/app/dev/intake/**, src/app/dev/onboarding/**, src/app/dev/project-memory-restricted/**, src/app/dev/project-setup/**, src/app/dev/projects-home/**, src/components/projects/**, src/features/onboarding/**, src/features/project-intake/**, src/features/projects/**
 /**
  * Two phone defects the projects surfaces had, held in the source so a third
  * occurrence is caught by a test and not by someone holding an iPhone.

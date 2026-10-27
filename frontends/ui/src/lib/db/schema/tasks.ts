@@ -27,6 +27,7 @@ import type { PlanDocuments } from '@/lib/runs/plan-documents'
 import { check, index, jsonb, numeric, pgTable, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core'
 import type { SkillSnapshot } from '@/lib/skills/types'
 import {
+  DELEGATABLE_TASK_KINDS,
   TASK_KINDS,
   TASK_REVIEWS,
   TASK_STATUSES,
@@ -65,17 +66,13 @@ export { TASK_KINDS, type TaskKind }
  * The kinds a person may ask for by delegating — `create_task` from chat, and
  * the reviewer's „Piloti überarbeiten lassen".
  *
- * DERIVED as the complement of the two job outputs rather than listed a second
- * time: `deep-research` and `chat` describe how a JOB delivers its result and
- * are set by `fireJob` from `jobs.output`, so a caller asking for one of them
- * would be naming a delivery channel where a piece of work belongs.
+ * Every kind but the two job outputs: `deep-research` and `chat` describe how a
+ * JOB delivers its result and are set by `fireJob` from `jobs.output`, so a
+ * caller asking for one of them would be naming a delivery channel where a
+ * piece of work belongs. Generated from the agent's `TaskKind`, the set
+ * `create_task` asks for (`shared/vocabularies.generated.ts`).
  */
-export const DELEGATABLE_TASK_KINDS = [
-  'compliance_check',
-  'submission_check',
-  'document',
-  'revision',
-] as const satisfies readonly TaskKind[]
+export { DELEGATABLE_TASK_KINDS }
 export type DelegatableTaskKind = (typeof DELEGATABLE_TASK_KINDS)[number]
 
 /**

@@ -21,7 +21,7 @@
 
 import 'server-only'
 import { getBackendUrl } from '@/lib/backend-proxy'
-import type { Document } from '@/lib/db/schema'
+import type { Document } from '@/lib/db/schema/documents'
 import {
   collectionFileRef,
   type CollectionFileRef,

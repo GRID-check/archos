@@ -1,7 +1,7 @@
 """A card the deep run EMITS reaches the job result, beside the post-hoc ones, at the index it was addressed by.
 
 Module under test: ``aiq_api.jobs.runner`` — ``_bound_card_registry``, ``_merge_job_cards``
-and the ``_build_job_output`` they feed.
+and the ``build_job_output`` they feed.
 
 Until now the runner never bound a ``CardRegistry`` around the deep run, so
 ``emit_card`` and ``surface_documents`` inside a job answered "no card channel"
@@ -15,8 +15,8 @@ from __future__ import annotations
 import pytest
 
 from aiq_agent.cards.registry import get_card_registry
+from aiq_api.jobs.run_result import build_job_output
 from aiq_api.jobs.runner import _bound_card_registry
-from aiq_api.jobs.runner import _build_job_output
 from aiq_api.jobs.runner import _merge_job_cards
 from aiq_api.jobs.runner import _run_agent
 
@@ -66,7 +66,7 @@ async def test_a_card_emitted_during_the_deep_run_lands_in_the_job_output_before
     with _bound_card_registry() as registry:
         report = await _run_agent(agent, "Brandschutz", _NeverCancels())
     cards = _merge_job_cards(registry.snapshot(), [SUMMARY, LEGAL_BASIS])
-    output = _build_job_output(report, cards=cards, transparency={}, sources=None)
+    output = build_job_output(report, cards=cards, transparency={}, sources=None)
 
     assert agent.saw_registry is True
     # Index 0 is the card the model addressed as [[card:1]] during the run.
@@ -90,7 +90,7 @@ def test_nothing_emitted_and_nothing_generated_is_absent_not_empty():
     """No ``cards`` key for ``None``: a run that made none is not a run with an empty list."""
     assert _merge_job_cards([], None) is None
     assert _merge_job_cards([], []) is None
-    assert "cards" not in _build_job_output("r", cards=_merge_job_cards([], None), transparency={}, sources=None)
+    assert "cards" not in build_job_output("r", cards=_merge_job_cards([], None), transparency={}, sources=None)
 
 
 def test_generated_cards_alone_are_unchanged():

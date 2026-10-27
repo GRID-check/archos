@@ -21,7 +21,7 @@ from pathlib import Path
 
 import pytest
 
-from aiq_agent.common.citation_verification import extract_sources_from_tool_result
+from aiq_agent.citations.extraction import extract_sources_from_tool_result
 from aiq_agent.common.grounding_block import COVERAGE_GAP_LABEL
 from aiq_agent.common.grounding_block import COVERAGE_GAP_NOTE
 from aiq_agent.common.grounding_block import GroundingBlock
@@ -568,8 +568,8 @@ class TestAPassageAcrossAPageBreakShowsItsRange:
         assert "\nPage: 4\n" in self._render(page_end=end)
 
     def test_the_registry_entry_carries_the_range_and_the_wire_states_it(self):
-        from aiq_agent.common.citation_verification import _entry_from_hit
-        from aiq_agent.common.citation_verification import source_entry_to_wire
+        from aiq_agent.citations.extraction import _entry_from_hit
+        from aiq_agent.citations.wire import source_entry_to_wire
 
         entry = _entry_from_hit(
             _hit(citation_key="a.pdf, p.4", file_name="a.pdf", page=4, page_end=5), "knowledge_search"

@@ -1,3 +1,4 @@
+// @disk-inputs: ../../shared/wire/v2.schema.json, src/adapters/api/wire-v2.generated.ts
 /**
  * The wire generator's unions, and the drift of what it wrote.
  *

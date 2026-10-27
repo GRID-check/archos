@@ -646,7 +646,7 @@ its own tokens: the words left after the German analysis, about 0.30 per model
 token on our text. A copy reads each chunk's length back out of the weights it
 stored, and when the mean is more than 10 % from the live collection's
 `avg_len` it creates the target with the measured mean (recorded in the
-collection metadata as `aiq:bm25_length`) and recomputes every lexical vector
+collection metadata as `bm25_length`) and recomputes every lexical vector
 from the chunk text, server side; dense vectors are copied as stored. The same
 copy gives every chunk written before the stemmed exact search existed its
 `text_stem` field, which `knowledge_search(match="exact", stemmed=true)` needs
@@ -667,7 +667,7 @@ kubectl -n grid exec deploy/aiq-api -- python scripts/qdrant_chunk_length_stats.
 Then schedule it like any rebuild above (snapshot, stop ingestion, copy, check,
 switch). The copy log says `BM25 length … (recomputed)` or `(copied as stored)`.
 `--bm25-avg-len`, `--bm25-k` and `--bm25-b` set the values outright (a parity
-sweep's result, `frontends/benchmarks/oib_retrieval`); `--keep-bm25` copies the
+sweep's result, `evals/oib-retrieval`); `--keep-bm25` copies the
 lexical vectors untouched.
 
 ```bash

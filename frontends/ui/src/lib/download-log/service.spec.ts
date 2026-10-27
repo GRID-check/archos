@@ -1,3 +1,4 @@
+// @disk-inputs: scheduler/db.js, workers/platform-scope.js
 /**
  * @vitest-environment node
  */

@@ -1,5 +1,6 @@
 import * as pulumi from "@pulumi/pulumi";
 import { createHmac } from "node:crypto";
+import { objectName } from "./names";
 import { hostsOutsideZone, managedHosts } from "./platform/dns";
 import {
   GEOCODER,
@@ -2647,7 +2648,7 @@ export function loadConfig(): GridConfig {
   }
 
   return {
-    namespace: cfg.get("namespace") ?? "grid",
+    namespace: cfg.get("namespace") ?? objectName("namespace"),
     kubeconfig: cfg.requireSecret("kubeconfig"),
 
     images: {

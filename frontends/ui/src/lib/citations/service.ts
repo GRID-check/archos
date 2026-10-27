@@ -9,16 +9,7 @@
  */
 
 import 'server-only'
-import {
-  CITATION_BASELINE_KIND,
-  CITATION_EVENT_KINDS,
-  CITATION_PRECISION_KIND,
-  type CitationEvent,
-  type CitationEventAgent,
-  type CitationEventKind,
-  type CitationEventSeverity,
-  type NewCitationEvent,
-} from '@/lib/db/schema'
+import { CITATION_BASELINE_KIND, CITATION_EVENT_KINDS, CITATION_PRECISION_KIND, type CitationEvent, type CitationEventAgent, type CitationEventKind, type CitationEventSeverity, type NewCitationEvent } from '@/lib/db/schema/citation-events'
 import { getOrganizationDisplayNames } from '@/lib/organizations/display-names'
 import { getKnowledgeBaseStatus } from '@/lib/knowledge/service'
 import { getNormRegistry } from '@/lib/norms/service'

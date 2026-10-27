@@ -864,7 +864,7 @@ def _compound_angle(value: Any) -> float | None:
         return None
     try:
         parts = [int(component) for component in value]
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         return None
     if len(parts) < 3:
         return None
@@ -994,7 +994,7 @@ def _parse_instant(when_iso: str, method: str) -> tuple[dt.datetime | None, Answ
     """
     try:
         parsed = dt.datetime.fromisoformat(str(when_iso).replace("Z", "+00:00"))
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         return None, undecidable(
             from_=[],
             method=method,

@@ -43,7 +43,7 @@ export default defineConfig({
       'eslint-rules/**/*.spec.mjs',
     ],
     exclude: ['**/mocks/**', '**/node_modules/**'],
-    setupFiles: ['./config/vitest/polyfills.ts', './config/vitest/vitest.setup.ts'],
+    setupFiles: ['./config/vitest/polyfills.ts', './config/vitest/disk-inputs.ts', './config/vitest/vitest.setup.ts'],
     clearMocks: true,
     // Shards by recorded time (tests/vitest-durations.json), not file count.
     sequence: { sequencer: DurationSequencer },

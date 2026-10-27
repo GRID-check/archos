@@ -20,6 +20,7 @@ import {
   POSTGRES_POOLER,
   POSTGRES_TUNING,
 } from "../constants";
+import { logicalName, objectName } from "../names";
 
 /**
  * Where a connection goes (ADR-0083). There is no default, on purpose: a caller
@@ -78,7 +79,7 @@ export interface Postgres {
   langfuseStoreDeps: pulumi.Resource[];
 }
 
-export const CLUSTER_NAME = "grid-pg";
+export const CLUSTER_NAME = objectName("pgCluster");
 
 /**
  * Which TLS query parameter this driver understands.
@@ -298,7 +299,7 @@ export function installPostgres(
   //     provider's StorageClasses reclaim `Delete`, so WAL archiving + scheduled
   //     base backups to SeaweedFS are the only path to point-in-time recovery
   //     after an accidental PVC/volume loss.
-  const backupSecretName = "grid-pg-backup-s3"; // pragma: allowlist secret
+  const backupSecretName = objectName("pgBackupSecret"); // pragma: allowlist secret
   const backupSecret = cfg.postgres.backups.enabled
     ? new k8s.core.v1.Secret(
         "pg-backup-s3",
@@ -365,7 +366,7 @@ export function installPostgres(
   //    the agent role, so the same credentials reach all three. A cluster made
   //    before ADR-0145 has them as `aiq_*`, renamed by `pg-rename-legacy-names`.
   const cluster = new k8s.apiextensions.CustomResource(
-    "grid-pg",
+    logicalName("grid-pg"),
     {
       apiVersion: "postgresql.cnpg.io/v1",
       kind: "Cluster",
@@ -559,7 +560,7 @@ export function installPostgres(
   // node.
   const poolerPods = { "cnpg.io/poolerName": POSTGRES_POOLER.name };
   const pooler = new k8s.apiextensions.CustomResource(
-    "grid-pg-pooler-rw",
+    logicalName("grid-pg-pooler-rw"),
     {
       apiVersion: "postgresql.cnpg.io/v1",
       kind: "Pooler",
@@ -924,7 +925,7 @@ export function installScheduledBackup(
     {
       apiVersion: "postgresql.cnpg.io/v1",
       kind: "ScheduledBackup",
-      metadata: { name: "grid-pg-nightly", namespace, labels: commonLabels("postgres") },
+      metadata: { name: objectName("pgScheduledBackup"), namespace, labels: commonLabels("postgres") },
       spec: {
         schedule: cfg.postgres.backups.schedule,
         backupOwnerReference: "self",

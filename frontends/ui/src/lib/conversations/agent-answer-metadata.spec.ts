@@ -402,10 +402,11 @@ describe('normalizeAgentAnswerMetadata', () => {
   })
 
   it('stores the English names for a source an older pod still describes in German', () => {
+    // The kind has no German reader any more (migration 0163); the lane, binding and Punkt do.
     const result = normalizeAgentAnswerMetadata({
       sources: [
         kbSource({
-          kind: 'baurecht',
+          kind: 'building_law',
           lane: 'baurecht_oib_leitfaden',
           binding_status: 'verbindlich_erklaert',
           rank: 'landesgesetz',

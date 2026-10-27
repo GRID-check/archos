@@ -7,7 +7,7 @@
  * reaches the person whose save triggered it.
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import type { Project } from '@/lib/db/schema'
+import type { Project } from '@/lib/db/schema/projects'
 import { makeProject } from '@/test-utils/db-fixtures'
 
 vi.mock('server-only', () => ({}))

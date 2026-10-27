@@ -1,3 +1,4 @@
+// @disk-inputs: tests/fixtures/backend-tools.schema.json
 /**
  * @vitest-environment node
  */

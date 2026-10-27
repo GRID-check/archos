@@ -54,20 +54,60 @@ BM25_OPTIONS: dict[str, Any] = {"language": "german", "ascii_folding": True}
 #: an edit here. A collection without the key was written with Qdrant's defaults
 #: (:data:`BM25_DEFAULT_LENGTH`), which is every collection made before the key existed and every
 #: collection made by anything but a rebuild.
-BM25_LENGTH_KEY = "aiq:bm25_length"
+BM25_LENGTH_KEY = "bm25_length"
 #: Qdrant's own BM25 length parameters (the ``qdrant/bm25`` model's defaults).
 BM25_DEFAULT_LENGTH: dict[str, float] = {"k": 1.2, "b": 0.75, "avg_len": 256.0}
 _BM25_LENGTH_KEYS = frozenset(BM25_DEFAULT_LENGTH)
 
 
+#: The collection metadata keys this code writes, unprefixed. Before ADR-0145
+#: (row 10d) each carried the prefix below; for one release a key is read under it
+#: where the bare one is missing and written under both, so a process of the
+#: previous release still finds its own. Then the prefix goes.
+METADATA_KEYS = frozenset({"embed_fingerprint", "embed_model", "bm25_length", "vector_import"})
+LEGACY_METADATA_PREFIX = "aiq:"
+
+
+def current_metadata(metadata: dict[str, Any] | None) -> dict[str, Any]:
+    """``metadata`` with each legacy ``aiq:`` key read under its bare name wherever that one is missing."""
+    current = dict(metadata or {})
+    for key in METADATA_KEYS:
+        legacy = LEGACY_METADATA_PREFIX + key
+        if legacy in current:
+            current.setdefault(key, current[legacy])
+    return current
+
+
+def with_legacy_keys(metadata: dict[str, Any]) -> dict[str, Any]:
+    """``metadata`` with each of our keys written again under its legacy name, for the previous release."""
+    legacy = {LEGACY_METADATA_PREFIX + key: value for key, value in metadata.items() if key in METADATA_KEYS}
+    return {**metadata, **legacy}
+
+
+def adopt_legacy_metadata(client: QdrantClient, collection: str) -> dict[str, Any]:
+    """Write the bare keys a collection holds only under the legacy prefix; returns what it wrote.
+
+    The copy every collection made before the rename needs, run by every
+    process before it reads one, so nobody runs it by hand. Idempotent: a
+    collection that has the keys gets no write. Qdrant merges the keys into the
+    metadata, so the legacy ones stay for the previous release's readers.
+    """
+    stored = client.get_collection(collection).config.metadata or {}
+    missing = {key: value for key, value in current_metadata(stored).items() if key not in stored}
+    if missing:
+        client.update_collection(collection, metadata=missing)
+        logger.info("Qdrant collection %s: copied metadata %s from the aiq: prefix", collection, sorted(missing))
+    return missing
+
+
 def bm25_length_of(metadata: dict[str, Any] | None) -> dict[str, float]:
     """The BM25 length parameters a collection's metadata records; ``{}`` (Qdrant's defaults) when none."""
-    stored = (metadata or {}).get(BM25_LENGTH_KEY)
+    stored = current_metadata(metadata).get(BM25_LENGTH_KEY)
     if not isinstance(stored, dict):
         return {}
     try:
         length = {key: float(value) for key, value in stored.items() if key in _BM25_LENGTH_KEYS}
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         return {}
     return length if all(value > 0 for value in length.values()) else {}
 
@@ -290,7 +330,7 @@ INDEXED_FIELDS = frozenset(KEYWORD_FIELDS + INTEGER_FIELDS + DATETIME_FIELDS + B
 TENANT_PREFIXES = (*OFFICE_SHELF_COLLECTION_PREFIXES, "proj_", "s_")
 
 #: Collection metadata keys naming the embedder every dense vector came from.
-EMBED_IDENTITY_KEYS = ("aiq:embed_fingerprint", "aiq:embed_model")
+EMBED_IDENTITY_KEYS = ("embed_fingerprint", "embed_model")
 
 
 class Physical(StrEnum):
@@ -384,10 +424,14 @@ def create_collection(
 
 def _metadata(identity: dict[str, Any], bm25_length: dict[str, float] | None) -> dict[str, Any]:
     """The new collection's metadata: the embedder's identity, and its own BM25 length or none (never a copy's)."""
-    metadata = {key: value for key, value in identity.items() if key != BM25_LENGTH_KEY}
+    metadata = {
+        key: value
+        for key, value in current_metadata(identity).items()
+        if key != BM25_LENGTH_KEY and not key.startswith(LEGACY_METADATA_PREFIX)
+    }
     if bm25_length:
         metadata[BM25_LENGTH_KEY] = {key: float(value) for key, value in bm25_length.items()}
-    return metadata
+    return with_legacy_keys(metadata)
 
 
 def text_index_drift(params: Any) -> str | None:
@@ -412,7 +456,11 @@ def ensure_payload_indexes(client: QdrantClient, collection: str) -> list[str]:
     other parameters than :data:`TEXT_INDEX` is reported, loudly, and left:
     rebuilding it is a new collection and an alias switch, never a silent
     drop under a running cluster.
+
+    It also copies metadata held only under the legacy prefix
+    (:func:`adopt_legacy_metadata`), the other migration every collection needs.
     """
+    adopt_legacy_metadata(client, collection)
     schema = client.get_collection(collection).payload_schema or {}
     text = schema.get(TEXT_FIELD)
     drift = text_index_drift(text.params) if text is not None else None
@@ -454,7 +502,7 @@ def _create_alias(client: QdrantClient, name: str, alias: str) -> None:
 
 def identity_mismatch(stored: dict[str, Any] | None, identity: dict[str, str]) -> str | None:
     """Why the collection's vectors are not from this process's embedder, or None when they are."""
-    stored = stored or {}
+    stored = current_metadata(stored)
     fingerprint = EMBED_IDENTITY_KEYS[0]
     if stored.get(fingerprint) == identity.get(fingerprint):
         return None

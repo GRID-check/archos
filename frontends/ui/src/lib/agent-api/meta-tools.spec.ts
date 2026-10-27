@@ -1,3 +1,4 @@
+// @disk-inputs: ../../src/aiq_agent/tools/workspace/meta_tools.json
 /**
  * @vitest-environment node
  */

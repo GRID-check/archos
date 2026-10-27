@@ -1,3 +1,4 @@
+// @disk-inputs: src/lib/agent-api/door/**
 /**
  * @vitest-environment node
  */

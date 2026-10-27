@@ -864,7 +864,7 @@ def _ingest_corpus(poll_seconds: float = 5.0, timeout_seconds: float = 3600.0) -
     from aiq_agent import oib_sync
     from aiq_api.jobs import ingest_dispatch
 
-    print("queueing the corpus:", oib_sync.sync())
+    print("queueing the corpus:", oib_sync.sync(enqueue=ingest_dispatch.enqueue_only))
     if not ingest_dispatch.attach(oib_sync._get_oib_ingestor()):
         return (
             "the ingest queue is off or has no database (GRID_INGEST_QUEUE, GRID_SUMMARY_DB): "
@@ -873,7 +873,7 @@ def _ingest_corpus(poll_seconds: float = 5.0, timeout_seconds: float = 3600.0) -
     unfinished = (oib_sync.JobProgress.WAITING, oib_sync.JobProgress.RUNNING)
     deadline = time.monotonic() + timeout_seconds
     while time.monotonic() < deadline:
-        result = oib_sync.sync()
+        result = oib_sync.sync(enqueue=ingest_dispatch.enqueue_only)
         rows = corpus_store.list_files()
         waiting = [
             name

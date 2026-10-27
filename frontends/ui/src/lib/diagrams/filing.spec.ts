@@ -87,7 +87,7 @@ vi.mock('@/lib/documents/service', () => ({
   dispatchIngest: (...args: unknown[]) => dispatchIngest(...args),
 }))
 
-import type { NewDocument } from '@/lib/db/schema'
+import type { NewDocument } from '@/lib/db/schema/documents'
 import type { AuthorizedSession } from '@/lib/auth/types'
 import { makeProject } from '@/test-utils/db-fixtures'
 import { generatedDocumentMarking } from '@/lib/documents/generated'
