@@ -36,7 +36,7 @@ The earlier vision doc (`cross-project-rag-vision.md`, superseded by `office-exp
 
 ## 7. Backend DB migration mechanism
 **Value: medium (hygiene). Effort: M. Risk: low.**
-`init-db.sql` only runs on first-ever volume init, so schema changes to the backend DBs (grid_jobs/grid_checkpoints) never re-apply — a latent footgun (the research-runs feature sidestepped it with runtime `ALTER TABLE IF NOT EXISTS`). Add a lightweight, idempotent migration runner in the backend entrypoint, mirroring what the UI's drizzle-kit does.
+`init-db.sql` only runs on first-ever volume init, so schema changes to the backend DBs (jobs/checkpoints) never re-apply — a latent footgun (the research-runs feature sidestepped it with runtime `ALTER TABLE IF NOT EXISTS`). Add a lightweight, idempotent migration runner in the backend entrypoint, mirroring what the UI's drizzle-kit does.
 
 ## 8. Deep-research input balance revisit
 **Value: medium. Effort: S. Risk: medium.**

@@ -86,17 +86,17 @@ services:
       # Same split as Kubernetes (ADR-0083): the first three go through the
       # transaction pooler (`pgbouncer`); what needs ONE server connection across
       # statements goes straight to `postgres`.
-      - NAT_JOB_STORE_DB_URL=postgresql+asyncpg://grid:${SERVICE_PASSWORD_POSTGRES}@pgbouncer:5432/grid_jobs
-      - GRID_CHECKPOINT_DB=postgresql://grid:${SERVICE_PASSWORD_POSTGRES}@pgbouncer:5432/grid_checkpoints
+      - NAT_JOB_STORE_DB_URL=postgresql+asyncpg://app:${SERVICE_PASSWORD_POSTGRES}@pgbouncer:5432/jobs
+      - GRID_CHECKPOINT_DB=postgresql://app:${SERVICE_PASSWORD_POSTGRES}@pgbouncer:5432/checkpoints
       # A research job's deep checkpoint: resume on another worker instead of starting over.
-      - GRID_DEEP_CHECKPOINT_DB=postgresql://grid:${SERVICE_PASSWORD_POSTGRES}@pgbouncer:5432/grid_checkpoints
-      - GRID_SUMMARY_DB=postgresql+psycopg://grid:${SERVICE_PASSWORD_POSTGRES}@pgbouncer:5432/grid_jobs
+      - GRID_DEEP_CHECKPOINT_DB=postgresql://app:${SERVICE_PASSWORD_POSTGRES}@pgbouncer:5432/checkpoints
+      - GRID_SUMMARY_DB=postgresql+psycopg://app:${SERVICE_PASSWORD_POSTGRES}@pgbouncer:5432/jobs
       # SSE LISTEN/NOTIFY: a notification reaches the one server session that ran
       # LISTEN, which a transaction pooler does not keep for the client.
-      - GRID_LISTEN_DB_URL=postgresql://grid:${SERVICE_PASSWORD_POSTGRES}@postgres:5432/grid_jobs
+      - GRID_LISTEN_DB_URL=postgresql://app:${SERVICE_PASSWORD_POSTGRES}@postgres:5432/jobs
       # Session advisory locks (leader election, the re-ingest lock, the ghost-job
       # reaper): held by a session, so never through the pooler.
-      - GRID_LOCK_DB_URL=postgresql://grid:${SERVICE_PASSWORD_POSTGRES}@postgres:5432/grid_jobs
+      - GRID_LOCK_DB_URL=postgresql://app:${SERVICE_PASSWORD_POSTGRES}@postgres:5432/jobs
       # ── Shared cache (Dragonfly, ADR-0020) ──
       - REDIS_URL=redis://dragonfly:6379/0
       # Stateless chat tier via the Dragonfly pub/sub conversation bus (ADR-0028).
@@ -492,7 +492,7 @@ services:
     environment:
       # Schema owner: DDL and data backfills. RLS does not apply to a table's
       # owner, which is what keeps backfills working.
-      - GRID_APP_MIGRATION_DATABASE_URL=postgresql://grid:${SERVICE_PASSWORD_POSTGRES}@postgres:5432/grid_app
+      - GRID_APP_MIGRATION_DATABASE_URL=postgresql://app:${SERVICE_PASSWORD_POSTGRES}@postgres:5432/grid_app
       # Read only so `ensure-rls-roles` can keep grid_app_rw's login in step
       # with the credential the app actually uses.
       - GRID_APP_DATABASE_URL=postgresql://grid_app_rw:${SERVICE_PASSWORD_GRIDRUNTIME}@pgbouncer:5432/grid_app
@@ -723,6 +723,8 @@ services:
       - GRID_BFF_JOBS_CONCURRENCY=${GRID_BFF_JOBS_CONCURRENCY:-2}
       - GRID_BFF_JOBS_DRAIN_SECONDS=${GRID_BFF_JOBS_DRAIN_SECONDS:-30}
       - GRID_BFF_JOBS_MAX_PER_ORG=${GRID_BFF_JOBS_MAX_PER_ORG:-0}
+      # `inprocess` runs the slices without spawning the BFF (ADR-0079 amendment 1).
+      - GRID_BFF_JOBS_MODE=${GRID_BFF_JOBS_MODE:-http}
       # The runner stops the BFF only after it has drained.
       - GRID_SHUTDOWN_DRAIN_MS=5000
     # The runner gives claims back for up to the drain budget; docker's default
@@ -772,7 +774,7 @@ services:
       - WORKOS_API_KEY=${WORKOS_API_KEY:-}
       - GRID_PLATFORM_ORG_EXTERNAL_ID=${GRID_PLATFORM_ORG_EXTERNAL_ID:-grid-platform}
       # Schema owner: the carry-over reads every organization's folder grants.
-      - GRID_APP_MIGRATION_DATABASE_URL=postgresql://grid:${SERVICE_PASSWORD_POSTGRES}@postgres:5432/grid_app
+      - GRID_APP_MIGRATION_DATABASE_URL=postgresql://app:${SERVICE_PASSWORD_POSTGRES}@postgres:5432/grid_app
     depends_on:
       frontend:
         condition: service_healthy
@@ -949,43 +951,43 @@ services:
   # binds the published host port on the server regardless of Traefik routing,
   # which would expose Postgres (5432) publicly. In-cluster access only.
   postgres:
-    # Custom image bakes in init-db.sql (creates grid_checkpoints + grid_app on
+    # Custom image bakes in init-db.sql (creates checkpoints + grid_app on
     # first boot) and the rename script `postgres-rename` runs. Not a bind mount: Coolify pre-creates bind-mount sources as
     # directories, which breaks single-file mounts. See postgres.Dockerfile.
     build:
       context: ./deploy
       dockerfile: compose/postgres.Dockerfile
     environment:
-      POSTGRES_USER: grid
+      POSTGRES_USER: app
       POSTGRES_PASSWORD: ${SERVICE_PASSWORD_POSTGRES}
-      POSTGRES_DB: grid_jobs
+      POSTGRES_DB: jobs
     expose:
       - "5432"
     volumes:
       - postgres-data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U grid -d postgres"]
+      test: ["CMD-SHELL", "pg_isready -U app -d postgres"]
       interval: 5s
       timeout: 5s
       retries: 5
       start_period: 120s
     restart: unless-stopped
 
-  # Renames the databases and the owner role from their AI-Q names to grid_jobs,
-  # grid_checkpoints and grid (ADR-0145 row 10d), once, before anything that
+  # Renames the databases and the owner role from their AI-Q names to jobs,
+  # checkpoints and app (ADR-0145 row 10d), once, before anything that
   # connects starts: every service that waits on postgres waits on this too.
   # A volume made with the new names, and the second run, change nothing. The
-  # same script runs as the Kubernetes Job `pg-rename-to-grid`.
+  # same script runs as the Kubernetes Job `pg-rename-legacy-names`.
   postgres-rename:
     build:
       context: ./deploy
       dockerfile: compose/postgres.Dockerfile
-    command: ["sh", "/rename-to-grid.sh"]
+    command: ["sh", "/rename-legacy-names.sh"]
     environment:
       PGHOST: postgres
-      PGUSER: grid
+      PGUSER: app
       PGPASSWORD: ${SERVICE_PASSWORD_POSTGRES}
-      GRID_PASSWORD: ${SERVICE_PASSWORD_POSTGRES}
+      ROLE_PASSWORD: ${SERVICE_PASSWORD_POSTGRES}
     depends_on:
       postgres:
         condition: service_healthy
@@ -1009,7 +1011,7 @@ services:
   pgbouncer:
     image: edoburu/pgbouncer:v1.26.0-p0@sha256:b17551c776ef7e5769ef80b956d20f85e2fd25dd8912d31d58f782aad495b711
     environment:
-      DATABASE_URLS: postgres://grid:${SERVICE_PASSWORD_POSTGRES}@postgres:5432/grid_jobs,postgres://grid:${SERVICE_PASSWORD_POSTGRES}@postgres:5432/grid_checkpoints,postgres://grid_app_rw:${SERVICE_PASSWORD_GRIDRUNTIME}@postgres:5432/grid_app
+      DATABASE_URLS: postgres://app:${SERVICE_PASSWORD_POSTGRES}@postgres:5432/jobs,postgres://app:${SERVICE_PASSWORD_POSTGRES}@postgres:5432/checkpoints,postgres://grid_app_rw:${SERVICE_PASSWORD_GRIDRUNTIME}@postgres:5432/grid_app
       POOL_MODE: transaction
       AUTH_TYPE: scram-sha-256
       MAX_CLIENT_CONN: "2000"

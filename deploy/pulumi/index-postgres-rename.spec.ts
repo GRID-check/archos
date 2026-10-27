@@ -5,7 +5,7 @@ import { DependencyGraph } from "./src/test-support/dependency-graph";
 
 /**
  * The databases and the owner role are renamed from their AI-Q names on the
- * deploy that carries ADR-0145 row 10d, by `pg-rename-to-grid`. It must run
+ * deploy that carries ADR-0145 row 10d, by `pg-rename-legacy-names`. It must run
  * before anything connects with the new names (every tier waits on the init
  * Job, so the init Job waits on it), as the superuser the Cluster now exposes,
  * and the Cluster must bootstrap a fresh stack with the new names directly.
@@ -51,15 +51,15 @@ describe("the rename of the AI-Q databases and role", () => {
   }, 120_000);
 
   it("runs before the init Job, and so before every tier that connects", () => {
-    expect(graph.waitsOn(JOB, "pg-init-tables", JOB, "pg-rename-to-grid")).toBe(true);
-    expect(graph.waitsOn(STATEFULSET, "aiq-agent", JOB, "pg-rename-to-grid")).toBe(true);
-    expect(graph.waitsOn(DEPLOYMENT, "api", JOB, "pg-rename-to-grid")).toBe(true);
-    expect(graph.waitsOn(JOB, "pg-rename-to-grid", CLUSTER, "grid-pg")).toBe(true);
+    expect(graph.waitsOn(JOB, "pg-init-tables", JOB, "pg-rename-legacy-names")).toBe(true);
+    expect(graph.waitsOn(STATEFULSET, "aiq-agent", JOB, "pg-rename-legacy-names")).toBe(true);
+    expect(graph.waitsOn(DEPLOYMENT, "api", JOB, "pg-rename-legacy-names")).toBe(true);
+    expect(graph.waitsOn(JOB, "pg-rename-legacy-names", CLUSTER, "grid-pg")).toBe(true);
   });
 
   it("logs in as the Cluster's superuser and sets the app role's password", async () => {
     expect(inputs(CLUSTER, "grid-pg").spec.enableSuperuserAccess).toBe(true);
-    const job = inputs(JOB, "pg-rename-to-grid");
+    const job = inputs(JOB, "pg-rename-legacy-names");
     const container = job.spec.template.spec.containers[0];
     const env = Object.fromEntries(
       (container.env as Array<{ name: string; value?: string; valueFrom?: { secretKeyRef: { name: string } } }>).map(
@@ -68,14 +68,14 @@ describe("the rename of the AI-Q databases and role", () => {
     );
     expect(env.PGUSER).toBe("grid-pg-superuser");
     expect(env.PGPASSWORD).toBe("grid-pg-superuser");
-    expect(env.GRID_PASSWORD).toBeDefined();
-    expect(container.command).toEqual(["sh", "/script/rename-to-grid.sh"]);
+    expect(env.ROLE_PASSWORD).toBeDefined();
+    expect(container.command).toEqual(["sh", "/script/rename-legacy-names.sh"]);
   });
 
   it("bootstraps a fresh cluster with the new names", () => {
     const initdb = inputs(CLUSTER, "grid-pg").spec.bootstrap.initdb;
-    expect(initdb.database).toBe("grid_jobs");
-    expect(initdb.owner).toBe("grid");
-    expect(initdb.postInitSQL[0]).toBe("CREATE DATABASE grid_checkpoints OWNER grid");
+    expect(initdb.database).toBe("jobs");
+    expect(initdb.owner).toBe("app");
+    expect(initdb.postInitSQL[0]).toBe("CREATE DATABASE checkpoints OWNER app");
   });
 });

@@ -27,7 +27,7 @@ their own namespaces.
 | KEDA (`keda` namespace) | Helm release, chart pinned to the release the plan's CRDs are validated against | 1 operator | — | n/a; what it may read and reach is §6.3d |
 | `purger` | Deployment | 1 | — | n/a (SKIP LOCKED-safe) |
 | `skill-scheduler` | Deployment (always; fires every due schedule — the BFF skips one whose organization lacks the `skills` flag — and drives the run reconciler) | 1 | — | n/a (DB-claimed ticks) |
-| `postgres` (`grid_jobs`, `grid_checkpoints`, `grid_app`) | CloudNativePG `Cluster` | 1 (→3 HA) | RWO PVC | Add replicas |
+| `postgres` (`jobs`, `checkpoints`, `grid_app`) | CloudNativePG `Cluster` | 1 (→3 HA) | RWO PVC | Add replicas |
 | `dragonfly` (Redis-proto cache) | Deployment | 1 | — (cache) | — |
 | `gotenberg` (office → PDF, ADR-0070; required to index Word, presentation, `.xls` and `.ods` files, ADR-0071; `gotenbergEnabled`, default on) | Deployment | `gotenbergReplicas` (sized to the `bff-jobs` pool's conversion ceiling, prod 2; §6.3c) | — | n/a (stateless. A conversion it drops fails that ingest retryably, so a rollout drains for up to 120s) |
 | `geocoder` (Photon, the project dialog's address search, ADR-0120; `geocoderEnabled`, default off) | StatefulSet | 1 | RWO PVC `/data` (the jar and the Austrian index, a download), `Retain` | n/a (the frontend fails open to a plain text field while it restarts) |
@@ -836,8 +836,8 @@ carries.
 
 ## 5. Postgres (CloudNativePG)
 
-A single `Cluster` hosts all three logical databases. `grid_jobs` is the
-bootstrapped app DB; `grid_checkpoints` and `grid_app` are created (owned by the
+A single `Cluster` hosts all three logical databases. `jobs` is the
+bootstrapped app DB; `checkpoints` and `grid_app` are created (owned by the
 `aiq` role) at bootstrap via `postInitSQL`. An idempotent Job creates the job +
 checkpoint tables; the frontend's `drizzle-kit migrate` Job owns `grid_app`'s
 schema.
@@ -1248,6 +1248,10 @@ died half way left no record of which half. Both are now jobs:
   interactive before bulk, then oldest), heartbeats, and POSTs each slice to
   its own pod's `/api/internal/jobs/run`. **There is no Service and no
   HTTPRoute**, and the work runs here, never on the pods that proxy chat.
+  With `bffJobsMode: inprocess` (default `http`) the pod spawns no BFF: the
+  loop runs each slice from the services bundled at image build
+  (`dist-jobs/slice.mjs`) and answers the probes' `/api/healthz` itself
+  (ADR-0079 amendment 1).
 - **A drain never costs an attempt; a failure always does.** On SIGTERM the loop stops claiming, lets
   the slice in hand finish (`bffJobsDrainSeconds`, 60), gives every claim back
   without spending an attempt, and only then stops the BFF; the pod's grace
@@ -1349,7 +1353,7 @@ parts that are not about their own signal, and `keda-scaling.spec.ts` holds it.
   (declared with the other roles on the Cluster, `data/postgres.ts`), a login with
   nothing but `LOGIN` whose rights are SELECT on the `status` column (the one its
   `COUNT(*) … WHERE status NOT IN ('dead', 'cancelled')` reads, so a leaked DSN cannot read a
-  payload) of `ingest_job_queue` and `research_job_queue` in `grid_jobs` and of
+  payload) of `ingest_job_queue` and `research_job_queue` in `jobs` and of
   `bff_job_queue` in `grid_app`. That last table is secured per organisation, so the role reads it through a policy of
   its own (`FOR SELECT TO grid_keda_scaler`), not through `BYPASSRLS`. Its password
   is `pgScalerPassword`, or an HMAC of `pgAppPassword` when unset, and its DSNs sit

@@ -9,15 +9,15 @@ import { onNodeGroup } from "../platform/scheduling";
 import { hardenedJobSecurityContext } from "../platform/security";
 
 /** The application databases. Before ADR-0145 (row 10d) they were `aiq_jobs` and `aiq_checkpoints`. */
-export const JOBS_DB = "grid_jobs";
-export const CHECKPOINTS_DB = "grid_checkpoints";
+export const JOBS_DB = "jobs";
+export const CHECKPOINTS_DB = "checkpoints";
 
 /** The script that renames the databases and the owner role, shared with Compose's `postgres-rename`. */
-export const RENAME_SCRIPT = resolve(__dirname, "../../../postgres/rename-to-grid.sh");
+export const RENAME_SCRIPT = resolve(__dirname, "../../../postgres/rename-legacy-names.sh");
 
 /**
  * The Job that renames `aiq_jobs`, `aiq_checkpoints` and the role `aiq` to their
- * grid names (`deploy/postgres/rename-to-grid.sh`), on every deploy before
+ * names without a brand (`deploy/postgres/rename-legacy-names.sh`), on every deploy before
  * anything connects with the new names: the init Job waits on it, and every
  * tier on the init Job. The second run, and a fresh cluster bootstrapped with
  * the new names, change nothing.
@@ -40,14 +40,14 @@ export function installPostgresRename(
   const labels = commonLabels("pg-rename");
   const script = new k8s.core.v1.ConfigMap(
     "pg-rename-script",
-    { metadata: { namespace, labels }, data: { "rename-to-grid.sh": readFileSync(RENAME_SCRIPT, "utf8") } },
+    { metadata: { namespace, labels }, data: { "rename-legacy-names.sh": readFileSync(RENAME_SCRIPT, "utf8") } },
     // The Job runs again when the script changes.
     { provider, replaceOnChanges: ["data"] },
   );
   const fromSecret = (name: pulumi.Input<string>, key: string) => ({ secretKeyRef: { name, key } });
 
   return new k8s.batch.v1.Job(
-    "pg-rename-to-grid",
+    "pg-rename-legacy-names",
     {
       metadata: { namespace, labels },
       spec: {
@@ -71,9 +71,9 @@ export function installPostgresRename(
                   { name: "PGSSLMODE", value: "require" },
                   { name: "PGUSER", valueFrom: fromSecret(opts.superuserSecret, "username") },
                   { name: "PGPASSWORD", valueFrom: fromSecret(opts.superuserSecret, "password") },
-                  { name: "GRID_PASSWORD", valueFrom: fromSecret(opts.appSecret, "password") },
+                  { name: "ROLE_PASSWORD", valueFrom: fromSecret(opts.appSecret, "password") },
                 ],
-                command: ["sh", "/script/rename-to-grid.sh"],
+                command: ["sh", "/script/rename-legacy-names.sh"],
                 volumeMounts: [{ name: "script", mountPath: "/script" }],
               },
             ],

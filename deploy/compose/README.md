@@ -57,11 +57,11 @@ Choose one database configuration in `deploy/.env`:
 
 **PostgreSQL (recommended):**
 - Set `NAT_JOB_STORE_DB_URL` to
-  `postgresql+asyncpg://grid:aiq_dev@postgres:5432/grid_jobs`.
+  `postgresql+asyncpg://app:aiq_dev@postgres:5432/jobs`.
 - Set `GRID_CHECKPOINT_DB` to
-  `postgresql://grid:aiq_dev@postgres:5432/grid_checkpoints`.
+  `postgresql://app:aiq_dev@postgres:5432/checkpoints`.
 - Set `GRID_SUMMARY_DB` to
-  `postgresql+psycopg://grid:aiq_dev@postgres:5432/grid_jobs`.
+  `postgresql+psycopg://app:aiq_dev@postgres:5432/jobs`.
 
 **SQLite (dev environment):**
 - Set `NAT_JOB_STORE_DB_URL` to
@@ -183,7 +183,7 @@ curl http://localhost:8000/health
 
 **Database connection:**
 ```bash
-docker exec -it aiq-postgres psql -U grid -d grid_jobs
+docker exec -it aiq-postgres psql -U app -d jobs
 ```
 
 **Rebuild:**

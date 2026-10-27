@@ -22,7 +22,7 @@ import { JOBS_DB } from "../data/postgres-rename";
  * reads exist (ADR-0079).
  *
  * KEDA's `postgresql` scaler runs one `COUNT(*)` per queue. It used to do so as
- * the schema owner of `grid_jobs` and of `grid_app`, which meant a credential
+ * the schema owner of `jobs` and of `grid_app`, which meant a credential
  * held by an operator in another namespace could write every table in both. The
  * login it reads through now (`KEDA_SCALER_ROLE`, declared with the other roles
  * in `data/postgres.ts`) has SELECT on the queue tables and nothing else. That
@@ -59,7 +59,7 @@ import { JOBS_DB } from "../data/postgres-rename";
  * (`ON_ERROR_STOP`); the role CloudNativePG reconciles asynchronously is waited for.
  */
 
-/** The queue tables of the grid_jobs database the scaler reads: the ingest tier's and the research tier's. */
+/** The queue tables of the jobs database the scaler reads: the ingest tier's and the research tier's. */
 export function jobsDatabaseTables(): string[] {
   return [INGEST_TABLE, RESEARCH_TABLE];
 }
@@ -78,7 +78,7 @@ function scalerTableGrants(tables: string): string {
   );
 }
 
-/** The `GRANT` for the Python queues, as run against `grid_jobs`. */
+/** The `GRANT` for the Python queues, as run against `jobs`. */
 export function jobsGrantsSql(tables: string[]): string {
   return scalerTableGrants(tables.join(", "));
 }

@@ -215,7 +215,7 @@ export function installPostgres(
   /**
    * Login for `grid_keda_scaler`, the read-only role KEDA's `postgresql` scaler
    * counts the queue tables with (ADR-0079), where it used to borrow the owner
-   * (`grid_jobs`) and the schema owner (`grid_app`): a credential held by an
+   * (`jobs`) and the schema owner (`grid_app`): a credential held by an
    * operator in another namespace that could write every table in both.
    *
    * Declared here, with the other roles, because CloudNativePG reconciles it as
@@ -360,10 +360,10 @@ export function installPostgres(
       }
     : {};
 
-  // 3. The Postgres cluster. `grid_jobs` is the bootstrapped app DB; the other
+  // 3. The Postgres cluster. `jobs` is the bootstrapped app DB; the other
   //    two databases are created by postInitSQL (as superuser, once) owned by
   //    the app role, so the same credentials reach all three. A cluster made
-  //    before ADR-0145 has them as `aiq_*`, renamed by `pg-rename-to-grid`.
+  //    before ADR-0145 has them as `aiq_*`, renamed by `pg-rename-legacy-names`.
   const cluster = new k8s.apiextensions.CustomResource(
     "grid-pg",
     {
@@ -610,7 +610,7 @@ export function installPostgres(
   /**
    * The filer's database, declared rather than bootstrapped.
    *
-   * `bootstrap.initdb.postInitSQL` — where `grid_checkpoints` and `grid_app` are
+   * `bootstrap.initdb.postInitSQL` — where `checkpoints` and `grid_app` are
    * created — runs EXACTLY ONCE, at cluster initialisation. Adding a fourth
    * database there would create it on a fresh stack and silently do nothing on
    * every existing one, which is the worst of both: the manifest would claim a
@@ -736,7 +736,7 @@ export function installPostgres(
   };
 
   // 4. Idempotent table bootstrap. Waits for the cluster's -rw service to
-  //    answer, then applies the DDL to grid_jobs and grid_checkpoints.
+  //    answer, then applies the DDL to jobs and checkpoints.
   const initSqlCm = new k8s.core.v1.ConfigMap(
     "pg-init-sql",
     {

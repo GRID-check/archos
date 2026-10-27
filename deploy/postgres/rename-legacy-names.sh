@@ -1,13 +1,13 @@
 #!/bin/sh
 # Rename the databases and the application role the platform inherited from the
-# AI-Q blueprint to their grid names (ADR-0145 row 10d):
+# AI-Q blueprint to names without a brand (ADR-0145 row 10d):
 #
-#   aiq_jobs        -> grid_jobs
-#   aiq_checkpoints -> grid_checkpoints
-#   role aiq        -> grid
+#   aiq_jobs        -> jobs
+#   aiq_checkpoints -> checkpoints
+#   role aiq        -> app
 #
 # Run on every deploy before the backend starts: the Kubernetes Job
-# `pg-rename-to-grid` (deploy/pulumi/src/data/postgres-rename.ts) and the
+# `pg-rename-legacy-names` (deploy/pulumi/src/data/postgres-rename.ts) and the
 # Compose service `postgres-rename`. Idempotent: a name already renamed is left
 # alone, and a fresh install that never had the old names is left alone too, so
 # the second run is a no-op.
@@ -15,11 +15,11 @@
 # It connects as a superuser to the maintenance database `postgres`, from the
 # libpq environment (PGHOST, PGPORT, PGUSER, PGPASSWORD). A database is renamed
 # with new connections refused and the open ones terminated: the deploy that
-# carries this is a short outage, which the release note says. GRID_PASSWORD,
+# carries this is a short outage, which the release note says. ROLE_PASSWORD,
 # when set, becomes the role's password afterwards, because a rename clears an
 # MD5 hash (a SCRAM one survives).
 #
-# Usage: rename-to-grid.sh
+# Usage: rename-legacy-names.sh
 set -eu
 PGOPTIONS="${PGOPTIONS:-} -c client_min_messages=warning"
 export PGOPTIONS
@@ -40,14 +40,14 @@ wait_for_server() {
   done
 }
 
-# Compose logs in as the superuser it creates, `grid` on a fresh volume and `aiq`
+# Compose logs in as the superuser it creates, `app` on a fresh volume and `aiq`
 # on one from before this script. Kubernetes logs in as `postgres`, whose
 # password the operator sets a moment after superuser access is switched on,
 # so a refused login is retried for a while before it fails the run.
 log_in() {
   tries=0
   until q -c "SELECT 1" >/dev/null 2>&1; do
-    if [ "${PGUSER:-}" = grid ] && (PGUSER=aiq && export PGUSER && q -c "SELECT 1" >/dev/null 2>&1); then
+    if [ "${PGUSER:-}" = app ] && (PGUSER=aiq && export PGUSER && q -c "SELECT 1" >/dev/null 2>&1); then
       PGUSER=aiq
       export PGUSER
       return
@@ -99,15 +99,15 @@ rename_role() {
     echo "role $old -> $new"
     return
   fi
-  helper=grid_rename_helper
+  helper=rename_helper
   helper_password=$(head -c 24 /dev/urandom | od -An -tx1 | tr -d ' \n')
   q -c "DROP ROLE IF EXISTS $helper" -c "CREATE ROLE $helper SUPERUSER LOGIN PASSWORD '$helper_password'"
   as_role "$helper" "$helper_password" -c "ALTER ROLE $old RENAME TO $new"
   # The superuser is now called $new. Its password survives unless the hash was
   # MD5, so set it before logging in under the new name.
-  if [ -n "${GRID_PASSWORD:-}" ]; then
-    echo "ALTER ROLE $new PASSWORD :'password'" | as_role "$helper" "$helper_password" -v password="$GRID_PASSWORD"
-    PGPASSWORD=$GRID_PASSWORD
+  if [ -n "${ROLE_PASSWORD:-}" ]; then
+    echo "ALTER ROLE $new PASSWORD :'password'" | as_role "$helper" "$helper_password" -v password="$ROLE_PASSWORD"
+    PGPASSWORD=$ROLE_PASSWORD
   fi
   PGUSER=$new
   export PGUSER PGPASSWORD
@@ -117,17 +117,17 @@ rename_role() {
 
 set_password() {
   role=$1
-  [ -n "${GRID_PASSWORD:-}" ] || return 0
+  [ -n "${ROLE_PASSWORD:-}" ] || return 0
   role_exists "$role" || return 0
-  echo "ALTER ROLE $role PASSWORD :'password'" | q -v password="$GRID_PASSWORD"
+  echo "ALTER ROLE $role PASSWORD :'password'" | q -v password="$ROLE_PASSWORD"
 }
 
 wait_for_server
 log_in
-rename_database aiq_jobs grid_jobs
-rename_database aiq_checkpoints grid_checkpoints
-rename_role aiq grid
-set_password grid
+rename_database aiq_jobs jobs
+rename_database aiq_checkpoints checkpoints
+rename_role aiq app
+set_password app
 # Left behind only by a run that died between creating and dropping it.
-q -c "DROP ROLE IF EXISTS grid_rename_helper"
-echo "rename to grid names: done"
+q -c "DROP ROLE IF EXISTS rename_helper"
+echo "rename of the legacy names: done"
