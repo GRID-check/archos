@@ -38,7 +38,7 @@
 import { useEffect, useRef, useState, type CSSProperties, type FC, type ReactNode } from 'react'
 import { capturePosthog } from '@/lib/analytics/posthog'
 import { ChevronDown, ChevronUp, Download, ExternalLink, Link2, PanelRight, TextSearch } from 'lucide-react'
-import { citationViewerAction, runViewerActionNow, viewerBesideChat } from '../lib/viewer-actions'
+import { citationViewerAction, runViewerActionNow, useViewerBesideChat } from '../lib/viewer-actions'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { useTranslations } from '@/i18n'
@@ -927,9 +927,12 @@ export const CitationDocumentDialog: FC<{
     onOpenChange(next)
   }
   // The same viewer action Piloti proposes (ADR-0144), on the reader's own
-  // click: the document beside the chat at this place, through the BFF's gate.
-  // Only where the peek has room beside a chat (not on a phone, not on Files).
-  const beside = target.document.type === 'stored' && viewerBesideChat() ? target.document : null
+  // click: the document beside the chat at this place, read again as the person.
+  // Only where the peek has room beside a chat (not on a phone, not on Files),
+  // and never for a chat attachment: it is on no shelf, so the read refuses it.
+  const besideChat = useViewerBesideChat()
+  const beside =
+    besideChat && target.document.type === 'stored' && target.document.shelf !== 'session' ? target.document : null
   const openBeside = async (): Promise<void> => {
     if (!beside) return
     const result = await runViewerActionNow(
@@ -942,7 +945,7 @@ export const CitationDocumentDialog: FC<{
       })
     )
     if (result.outcome === 'shown') closeDialog(false)
-    else toast.error(t(result.outcome === 'refused' ? 'viewerActions.status.refused' : 'viewerActions.status.failed'))
+    else toast.error(t(result.outcome === 'refused' ? `viewerActions.refused.${result.reason}` : 'viewerActions.status.failed'))
   }
   const similarRail = similar.request && (
     <SimilarPassagesPanel

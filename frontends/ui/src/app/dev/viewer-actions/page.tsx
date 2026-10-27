@@ -4,18 +4,20 @@
  * `/dev/viewer-actions` — Piloti's viewer actions (ADR-0144) through the real
  * row, the real runner and the real peek store.
  *
- * Four answers, each with the row its viewer actions leave:
+ * Four answers, each with the row its viewer actions leave once the answer is
+ * there (the actions are held while a turn runs and released at its end):
  *   1. „Baubeschreibung S. 4“: the passage opened beside the chat, with
- *      „Zurück“; the Fassung comparison of the same answer only offered,
+ *      „Zurücknehmen“; the Fassung comparison of the same answer only offered,
  *      because it would cover the chat.
- *   2. A document the reader may not see: the BFF answers 404 and nothing moves.
+ *   2. A document the reader may not see: the read answers 404, nothing moves,
+ *      and the row says only that it is not available.
  *   3. The reader turned it off: the place is offered with „Anzeigen“.
- *   4. The reader was typing when it arrived: offered, not opened.
+ *   4. The reader was typing when it was released: offered, not opened.
  * The panel on the right reads `useFilePreviewStore`, the store the chat peek
  * draws: which document is open, at which page, with what marked.
  *
- * `/api/documents/{id}/viewer-place` is stubbed over `window.fetch` at module
- * scope. Development only (the `/dev` layout 404s elsewhere).
+ * `GET /api/documents/{id}` is stubbed over `window.fetch` at module scope.
+ * Development only (the `/dev` layout 404s elsewhere).
  */
 
 import { useEffect, useState, type FC, type ReactNode } from 'react'
@@ -25,6 +27,7 @@ import {
   noteTypedAt,
   proposeViewerAction,
   registerViewerActionRunner,
+  releaseViewerActions,
   resetViewerActions,
   setViewerActionsAuto,
   type ViewerActionCall,
@@ -46,11 +49,21 @@ const row = (id: string, filename: string) => ({
   createdAt: '2026-10-20T08:00:00Z',
   pageCount: 12,
   projectId: 'proj-lacknergasse',
+  collectionName: 'proj_lacknergasse',
+  revision: null as null | { supersededBy: null; supersedes: { id: string; filename: string }[]; suggestion: null; changeSummary: null },
 })
 
 const VISIBLE: Record<string, ReturnType<typeof row>> = {
   'doc-bb': row('doc-bb', 'Baubeschreibung.pdf'),
-  'doc-eg': row('doc-eg', 'Grundriss EG.pdf'),
+  'doc-eg': {
+    ...row('doc-eg', 'Grundriss EG.pdf'),
+    revision: {
+      supersededBy: null,
+      supersedes: [{ id: 'doc-eg-alt', filename: 'Grundriss EG_Vorentwurf.pdf' }],
+      suggestion: null,
+      changeSummary: null,
+    },
+  },
   'doc-eg-alt': row('doc-eg-alt', 'Grundriss EG_Vorentwurf.pdf'),
 }
 
@@ -58,13 +71,11 @@ if (typeof window !== 'undefined') {
   const real = window.fetch.bind(window)
   window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = new URL(String(input), window.location.origin)
-    const match = url.pathname.match(/^\/api\/documents\/([^/]+)\/viewer-place$/)
+    const match = url.pathname.match(/^\/api\/documents\/([^/]+)$/)
     if (!match) return real(input as RequestInfo, init)
     const document = VISIBLE[decodeURIComponent(match[1]!)]
-    const againstId = url.searchParams.get('against')
-    const against = againstId ? VISIBLE[againstId] : undefined
-    if (!document || (againstId && !against)) return new Response(null, { status: 404 })
-    return new Response(JSON.stringify({ document, ...(against ? { against } : {}) }), {
+    if (!document) return new Response(null, { status: 404 })
+    return new Response(JSON.stringify({ document }), {
       status: 200,
       headers: { 'content-type': 'application/json' },
     })
@@ -106,17 +117,17 @@ async function play(): Promise<void> {
     createViewerActionRunner({
       hasRoom: () => true,
       openCompare: () => {},
-      closeCompare: () => {},
+      closeCompare: () => true,
       navigate: () => {},
-      back: () => {},
+      currentHref: () => window.location.pathname,
     })
   )
   setViewerActionsAuto(true)
-  await proposeViewerAction(
+  proposeViewerAction(
     'answer-1',
     call('va_1', 'highlight_passage', { page: 4, passage: 'Die Fluchtwege sind mindestens 1,20 m breit.' })
   )
-  await proposeViewerAction(
+  proposeViewerAction(
     'answer-1',
     call('va_2', 'compare_revisions', {
       document_id: 'doc-eg',
@@ -125,15 +136,19 @@ async function play(): Promise<void> {
       against_document_name: 'Grundriss EG_Vorentwurf.pdf',
     })
   )
-  await proposeViewerAction('answer-2', call('va_3', 'open_document', { document_id: 'doc-secret', document_name: 'Bescheid_Brandschutz.pdf', page: 2 }))
+  await releaseViewerActions('answer-1')
+  proposeViewerAction('answer-2', call('va_3', 'open_document', { document_id: 'doc-secret', document_name: 'Bescheid_Brandschutz.pdf', page: 2 }))
+  await releaseViewerActions('answer-2')
   setViewerActionsAuto(false)
-  await proposeViewerAction(
+  proposeViewerAction(
     'answer-3',
     call('va_4', 'highlight_region', { document_id: 'doc-eg', document_name: 'Grundriss EG.pdf', page: 1, region: [0.62, 0.08, 0.3, 0.22] })
   )
+  await releaseViewerActions('answer-3')
   setViewerActionsAuto(true)
   noteTypedAt(Date.now() + 60_000)
-  await proposeViewerAction('answer-4', call('va_5', 'open_document', { page: 7 }))
+  proposeViewerAction('answer-4', call('va_5', 'open_document', { page: 7 }))
+  await releaseViewerActions('answer-4')
   noteTypedAt(Number.NEGATIVE_INFINITY)
 }
 
@@ -192,7 +207,7 @@ export default function ViewerActionsPreview() {
               key={answer.id}
               title={
                 [
-                  'Geöffnet, mit Zurück; der Vergleich nur angeboten',
+                  'Geöffnet, mit Zurücknehmen; der Vergleich nur angeboten',
                   'Kein Zugriff: nichts bewegt',
                   'Automatisch aus: angeboten',
                   'Während des Schreibens: angeboten',

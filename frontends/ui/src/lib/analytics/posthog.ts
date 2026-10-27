@@ -128,6 +128,8 @@ export type PostHogEvent =
   | 'similar_passage_opened'
   | 'usage_notice_shown'
   | 'usage_notice_dismissed'
+  | 'viewer_action_outcome'
+  | 'viewer_actions_auto_changed'
 
 let initialized = false
 

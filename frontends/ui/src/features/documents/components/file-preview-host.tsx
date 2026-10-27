@@ -31,6 +31,7 @@ import { FilePreviewPane } from './file-preview-pane'
 import { fileItemFromStatus } from '../lib/document-question'
 import { refreshedFileFields } from '../lib/file-item'
 import { STATUS_FIELDS } from '../lib/document-status-reads'
+import { peekHasRoom } from '../lib/peek-room'
 import type { FileItem } from './project-file-workspace'
 import {
   defaultPeekWidth,
@@ -120,7 +121,7 @@ export function FilePreviewHost({
   const carrying = handoff && !onChat
   const overlay = mode === 'modal' || (mode === 'expanded' && onChat && !hidden) || carrying
   const peeking =
-    inSplit || (mode === 'peek' && onChat && !hidden && !isMobile)
+    inSplit || (mode === 'peek' && peekHasRoom(pathname, isMobile) && !hidden)
   const chromeVisible = file !== null && (overlay || peeking)
   // Keep the pane mounted across Files → Chat so an IFC viewport is not remounted
   // (and its camera reset) when Ask flips mode to peek while still on /files.
@@ -448,8 +449,7 @@ export function useFilePeekPlacement(): FilePeekPlacement {
   const mode = useFilePreviewStore((state) => state.mode)
   const hidden = useFilePreviewStore((state) => state.hidden)
 
-  const roomForIt =
-    file !== null && mode === 'peek' && Boolean(pathname?.includes('/chat')) && !isMobile
+  const roomForIt = file !== null && mode === 'peek' && peekHasRoom(pathname, isMobile)
   if (!roomForIt) return 'away'
   return hidden ? 'dismissed' : 'beside'
 }
@@ -457,11 +457,10 @@ export function useFilePeekPlacement(): FilePeekPlacement {
 /**
  * Whether the peek is ON SCREEN beside the conversation right now.
  *
- * Six conditions, and the point of exporting it is that they are six: a file
+ * Five conditions, and the point of exporting it is that they are five: a file
  * can be open in the store, unhidden, in `peek` mode — and still invisible,
- * because the reader is on Files, or on a phone, or has the research panel
- * across the same half of the row. Everything that offers to bring the file
- * BACK has to ask this question, and the copy of it that the composer bar was
+ * because the reader is on Files or on a phone (`peekHasRoom`). Everything that
+ * offers to bring the file BACK has to ask this question, and the copy of it that the composer bar was
  * asking (mode and `hidden`, nothing else) answered "it is visible" for three
  * states in which nothing was on screen — so the one control that could have
  * restored the file was the control being hidden.

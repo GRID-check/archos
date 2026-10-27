@@ -12,7 +12,6 @@ import {
   updateTagsSchema,
 } from '@/lib/documents/document-wire'
 import { nameProbeRequestSchema } from '@/lib/documents/name-probe-types'
-import { viewerPlaceQuerySchema } from '@/lib/documents/viewer-place-wire'
 import { DOCUMENT_STATUSES } from '@/lib/documents/document-status'
 import { SHELF_SCOPES } from '@/lib/documents/shelf-scope'
 import type { AgentOperation } from '../operation'
@@ -185,19 +184,6 @@ export const documentsOperations = [
     path: '/api/documents/[id]/status',
     params: documentParams,
     load: () => import('@/app/api/documents/[id]/status/route'),
-  },
-  {
-    name: 'document-viewer-place-get',
-    domain: 'documents',
-    summary: 'Check where a viewer action may open a document',
-    description:
-      'Whether the person may see this document, and, with `against`, an older revision on the same shelf, read as ' +
-      'their listing rows. The person’s own page asks it before a viewer action moves their screen.',
-    method: 'GET',
-    path: '/api/documents/[id]/viewer-place',
-    params: documentParams,
-    query: viewerPlaceQuerySchema,
-    load: () => import('@/app/api/documents/[id]/viewer-place/route'),
   },
   {
     name: 'document-text-get',

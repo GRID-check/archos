@@ -1,57 +1,105 @@
 /**
  * Piloti's viewer actions on the asker's own screen (ADR-0144).
  *
- * A `viewer_action` event is an AG-UI frontend tool call from an allow-list
- * (`wire_v2.ViewerActionName`): open a document at a page, mark a passage or a
- * box, compare two Fassungen, select a model element. It is a PROPOSAL of
- * navigation. This module decides whether the page carries it out, and keeps
- * what the chat shows about it: a row under the answer that says what moved and
- * offers „Zurück“, or offers „Anzeigen“ when it did not move.
+ * A `viewer_action` event is an AG-UI frontend tool call from an allow-list:
+ * open a document at a page, mark a passage or a box, compare two Fassungen,
+ * select a model element. It is a PROPOSAL of navigation. This module decides
+ * whether the page carries it out, and keeps what the chat shows about it: a
+ * row under the answer that says what moved and offers „Zurücknehmen“, or offers
+ * „Anzeigen“ when it did not move.
  *
  * The rules a person can rely on:
+ *  - The tool exists only for a turn whose page declared it can run it
+ *    (`viewerClientTools`, sent as `user_message.client_tools`), so a phone, a
+ *    tab one release older and a background run are never offered it.
  *  - Only the asker's live page runs one. The driver hands this module only
  *    the actions of turns it asked itself (`use-websocket-chat.ts`); a
  *    spectator, a replay after a reload and another tab never move anything.
- *  - The person can turn it off (`setViewerActionsAuto`); with reduced motion
- *    asked of the system it starts off. Off, the row offers the place instead.
+ *  - Nothing moves before the answer is there. An action is held while the
+ *    turn runs and released when it ends with an answer
+ *    (`releaseViewerActions`); a turn that fails, is stopped or ends without an
+ *    answer drops what it held (`dropViewerActions`).
+ *  - One place per answer moves on its own; any other is offered.
+ *  - The person can turn it off (`setViewerActionsAuto`, in the row and on the
+ *    profile page); with reduced motion asked of the system it starts off.
  *  - It never moves the viewer while the person is typing. It waits for a pause
  *    and offers the place if none comes.
  *  - A comparison covers the conversation and a building model leaves it, so
  *    those two are always offered, never run on their own (`CONTEXT_CHANGING`).
- *  - What it may open is decided by the BFF in the person's session, by the
- *    runner (`features/documents/lib/viewer-action-runner.ts`); a document they
- *    may not see is refused and nothing moves.
+ *  - What it may open is decided by the BFF in the person's session, through
+ *    the runner (`features/documents/lib/viewer-action-runner.ts`); a document
+ *    they may not see is refused and nothing moves.
+ *  - „Zurücknehmen“ says so only when it put something back: a viewer the
+ *    person has since changed is left as they made it.
+ *
+ * A name off this bundle's allow-list (a newer server's sixth action) is passed
+ * over, not refused: the wire reads it as a string (`isViewerAction`).
  *
  * The runner lives with the documents feature and registers itself, the way
  * `canvas-bridge.ts` lets the review reach the chat: no import from here to there.
  */
 
 import { create } from 'zustand'
-import type { WireEvent } from '@/adapters/api/wire-v2'
+import { MAX_VIEWER_PASSAGE_CHARS, type WireEvent } from '@/adapters/api/wire-v2'
+import { capturePosthog } from '@/lib/analytics/posthog'
 
-/** One viewer action as the wire carries it: `tool_call_id`, `tool_call_name`, `args`. */
-export type ViewerActionCall = Extract<WireEvent, { type: 'CUSTOM'; name: 'viewer_action' }>['value']
-export type ViewerActionName = ViewerActionCall['tool_call_name']
+/** The allow-list this bundle can run. The wire carries any name; one not here is passed over. */
+export const VIEWER_ACTION_NAMES = [
+  'open_document',
+  'highlight_passage',
+  'highlight_region',
+  'compare_revisions',
+  'focus_ifc_element',
+] as const
+export type ViewerActionName = (typeof VIEWER_ACTION_NAMES)[number]
+
+/** The frontend tool the server binds for a turn whose page declares it (`user_message.client_tools`). */
+export const VIEWER_CLIENT_TOOL = 'show_in_viewer'
+
+type WireViewerAction = Extract<WireEvent, { type: 'CUSTOM'; name: 'viewer_action' }>['value']
+
+/** One viewer action of the allow-list: `tool_call_id`, `tool_call_name`, `args`. */
+export type ViewerActionCall = Omit<WireViewerAction, 'tool_call_name'> & { tool_call_name: ViewerActionName }
+
+const KNOWN: ReadonlySet<string> = new Set(VIEWER_ACTION_NAMES)
+
+/** Whether this bundle can run `call`; a newer server's action is passed over. */
+export const isViewerAction = (call: WireViewerAction): call is ViewerActionCall => KNOWN.has(call.tool_call_name)
 
 /**
- * What became of one action. `shown`: the viewer moved and can go back.
- * `offered`: it did not move (`reason` says why) and the row offers it.
- * `refused`: the BFF will not open it for this person. `failed`: it could not be read.
+ * What became of one action. `held`: its turn is still running. `shown`: the
+ * viewer moved and can go back. `offered`: it did not move (`reason` says why)
+ * and the row offers it. `refused`: the BFF will not open it for this person.
+ * `failed`: it could not be read. `undone`: „Zurücknehmen“ put the viewer back.
+ * `kept`: „Zurücknehmen“ found the viewer changed since, and left it.
  */
-export type ViewerActionStatus = 'pending' | 'shown' | 'offered' | 'refused' | 'failed' | 'undone'
-export type OfferReason = 'off' | 'typing' | 'leaves' | 'noRoom' | 'unavailable'
+export type ViewerActionStatus = 'held' | 'pending' | 'shown' | 'offered' | 'refused' | 'failed' | 'undone' | 'kept'
+export type OfferReason = 'off' | 'typing' | 'leaves' | 'noRoom' | 'unavailable' | 'another'
+/** Why a document was refused: not there for this person, or not two Fassungen of one document. */
+export type RefusalReason = 'unavailable' | 'notRevisions'
+
+/** Where a shown action put the place: beside the chat, over it (no room), the comparison, the model view. */
+export type ShownWhere = 'beside' | 'over' | 'compare' | 'model'
 
 export interface ViewerActionEntry {
   call: ViewerActionCall
   answerId: string
   status: ViewerActionStatus
   reason?: OfferReason
+  refusal?: RefusalReason
+  where?: ShownWhere
 }
 
-export type ViewerActionOutcome = { outcome: 'shown'; undo: () => void } | { outcome: 'refused' } | { outcome: 'failed' }
+/** An undo says whether it put anything back. */
+export type ViewerActionUndo = () => boolean
+
+export type ViewerActionOutcome =
+  | { outcome: 'shown'; where: ShownWhere; undo: ViewerActionUndo }
+  | { outcome: 'refused'; reason: RefusalReason }
+  | { outcome: 'failed' }
 
 export interface ViewerActionRunner {
-  /** Whether the viewer has room beside the chat for an action now (not on a phone, not away from the chat). */
+  /** Whether the peek has room beside the chat now (`peekHasRoom`); without it a place opens over the chat. */
   hasRoom: () => boolean
   run: (call: ViewerActionCall) => Promise<ViewerActionOutcome>
 }
@@ -65,15 +113,7 @@ const TYPING_POLL_MS = 250
 export const VIEWER_ACTIONS_AUTO_KEY = 'grid.viewerActions.auto'
 
 let runner: ViewerActionRunner | null = null
-const undos = new Map<string, () => void>()
-
-/** The viewer offers itself. Returns the withdrawal, which leaves a later registration alone. */
-export const registerViewerActionRunner = (next: ViewerActionRunner): (() => void) => {
-  runner = next
-  return () => {
-    if (runner === next) runner = null
-  }
-}
+const undos = new Map<string, ViewerActionUndo>()
 
 const readAuto = (): boolean => {
   try {
@@ -93,15 +133,52 @@ interface ViewerActionState {
   latestAnswer: string | null
   /** Whether Piloti may move the viewer on its own. Read once on first use. */
   auto: boolean | null
+  /** Whether a viewer is mounted and has room beside the chat now: what a page declares, and what a citation offers. */
+  besideChat: boolean
 }
 
-export const useViewerActionStore = create<ViewerActionState>(() => ({ entries: {}, byAnswer: {}, latestAnswer: null, auto: null }))
+export const useViewerActionStore = create<ViewerActionState>(() => ({
+  entries: {},
+  byAnswer: {},
+  latestAnswer: null,
+  auto: null,
+  besideChat: false,
+}))
 
-const patch = (id: string, next: Partial<ViewerActionEntry>): void =>
-  useViewerActionStore.setState((state) => {
-    const entry = state.entries[id]
-    return entry ? { entries: { ...state.entries, [id]: { ...entry, ...next } } } : state
+/** One outcome, for the product question „does anyone want this?“: kinds only, never a name or a passage. */
+const record = (entry: ViewerActionEntry): void => {
+  if (entry.status === 'held' || entry.status === 'pending') return
+  capturePosthog('viewer_action_outcome', {
+    action: entry.call.tool_call_name,
+    outcome: entry.status,
+    reason: entry.reason ?? entry.refusal ?? null,
   })
+}
+
+const patch = (id: string, next: Partial<ViewerActionEntry>): void => {
+  const entry = useViewerActionStore.getState().entries[id]
+  if (!entry) return
+  const updated = { ...entry, ...next }
+  useViewerActionStore.setState((state) => ({ entries: { ...state.entries, [id]: updated } }))
+  if (next.status && next.status !== entry.status) record(updated)
+}
+
+/** The viewer offers itself. Returns the withdrawal, which leaves a later registration alone. */
+export const registerViewerActionRunner = (next: ViewerActionRunner): (() => void) => {
+  runner = next
+  useViewerActionStore.setState({ besideChat: next.hasRoom() })
+  return () => {
+    if (runner !== next) return
+    runner = null
+    useViewerActionStore.setState({ besideChat: false })
+  }
+}
+
+/** The host says whether the peek has room now; a citation's „Neben dem Chat öffnen“ follows it. */
+export const noteViewerRoom = (room: boolean): void => {
+  const besideChat = room && runner !== null
+  if (useViewerActionStore.getState().besideChat !== besideChat) useViewerActionStore.setState({ besideChat })
+}
 
 /** Whether Piloti moves the viewer on its own: the person's choice, else on unless they asked for reduced motion. */
 export const autoPreference = (state: { auto: boolean | null }): boolean =>
@@ -111,12 +188,25 @@ export const viewerActionsAuto = (): boolean => autoPreference(useViewerActionSt
 
 export const setViewerActionsAuto = (on: boolean): void => {
   useViewerActionStore.setState({ auto: on })
+  capturePosthog('viewer_actions_auto_changed', { on })
   try {
     window.localStorage.setItem(VIEWER_ACTIONS_AUTO_KEY, on ? 'on' : 'off')
   } catch {
     // Storage unavailable: the choice holds for this page.
   }
 }
+
+/**
+ * The frontend tools this page can run for the next turn (AG-UI's
+ * `RunAgentInput.tools`, by name): the viewer, when one is mounted with room
+ * beside the chat. Empty on a phone, away from the chat, and before the viewer
+ * registered; the server then never offers the tool to the model.
+ */
+export const viewerClientTools = (): string[] =>
+  useViewerActionStore.getState().besideChat ? [VIEWER_CLIENT_TOOL] : []
+
+/** Whether a citation offers „Neben dem Chat öffnen“: a viewer with room beside the chat, now. Reactive. */
+export const useViewerBesideChat = (): boolean => useViewerActionStore((state) => state.besideChat)
 
 // --- typing -----------------------------------------------------------------
 
@@ -163,16 +253,20 @@ const execute = async (id: string): Promise<void> => {
   const result = await runner.run(entry.call).catch((): ViewerActionOutcome => ({ outcome: 'failed' }))
   if (result.outcome === 'shown') {
     undos.set(id, result.undo)
-    patch(id, { status: 'shown', reason: undefined })
+    patch(id, { status: 'shown', reason: undefined, where: result.where })
     return
   }
-  patch(id, { status: result.outcome })
+  if (result.outcome === 'refused') {
+    patch(id, { status: 'refused', refusal: result.reason })
+    return
+  }
+  patch(id, { status: 'failed' })
 }
 
 /**
  * The actions that change the person's context rather than the viewer beside
  * the chat: a comparison covers the conversation, a model view leaves it. They
- * are offered and run only on a click (WCAG 3.2.5, change on request).
+ * are offered and run only on a click.
  */
 export const CONTEXT_CHANGING: ReadonlySet<ViewerActionName> = new Set(['compare_revisions', 'focus_ifc_element'])
 
@@ -180,37 +274,69 @@ const offerReason = (call: ViewerActionCall): OfferReason | null => {
   if (CONTEXT_CHANGING.has(call.tool_call_name)) return 'leaves'
   if (!viewerActionsAuto()) return 'off'
   if (!runner) return 'unavailable'
+  // No room beside the chat (a phone, a route away from it): offered, and „Anzeigen“ opens it over the chat.
   if (!runner.hasRoom()) return 'noRoom'
   return null
 }
 
 /**
- * A viewer action of a turn this page asked arrived. It is kept for the chat's
- * row and run when the person allows it and is not typing; otherwise offered.
+ * A viewer action of a turn this page asked arrived. It is held until the turn
+ * ends: {@link releaseViewerActions} runs or offers it, {@link dropViewerActions}
+ * forgets it.
  */
-export const proposeViewerAction = async (answerId: string, call: ViewerActionCall): Promise<void> => {
+export const proposeViewerAction = (answerId: string, call: ViewerActionCall): void => {
   const id = call.tool_call_id
   if (useViewerActionStore.getState().entries[id]) return
   listenForTyping()
   useViewerActionStore.setState((state) => ({
-    entries: { ...state.entries, [id]: { call, answerId, status: 'pending' } },
+    entries: { ...state.entries, [id]: { call, answerId, status: 'held' } },
     byAnswer: { ...state.byAnswer, [answerId]: [...(state.byAnswer[answerId] ?? []), id] },
     latestAnswer: answerId,
   }))
-  const reason = offerReason(call)
-  if (reason) {
-    patch(id, { status: 'offered', reason })
-    return
-  }
-  if (!(await pause())) {
-    patch(id, { status: 'offered', reason: 'typing' })
-    return
-  }
-  await execute(id)
 }
 
-/** Whether a viewer beside the chat is mounted and has room now (a citation offers „Neben dem Chat öffnen“ only then). */
-export const viewerBesideChat = (): boolean => runner?.hasRoom() ?? false
+/**
+ * The turn ended with its answer on screen: the first held action that may run
+ * on its own runs (after a pause in the person's typing), and every other is
+ * offered. One place per answer moves the viewer.
+ */
+export const releaseViewerActions = async (answerId: string): Promise<void> => {
+  const held = (useViewerActionStore.getState().byAnswer[answerId] ?? []).filter(
+    (id) => useViewerActionStore.getState().entries[id]?.status === 'held'
+  )
+  let moved = false
+  for (const id of held) {
+    const entry = useViewerActionStore.getState().entries[id]
+    if (!entry) continue
+    const reason = moved ? 'another' : offerReason(entry.call)
+    if (reason) {
+      patch(id, { status: 'offered', reason })
+      continue
+    }
+    moved = true
+    patch(id, { status: 'pending' })
+    if (!(await pause())) {
+      patch(id, { status: 'offered', reason: 'typing' })
+      continue
+    }
+    await execute(id)
+  }
+}
+
+/** The turn ended without an answer (an error, a Stop, a hand-off): what it held never reaches the screen. */
+export const dropViewerActions = (answerId: string): void => {
+  const state = useViewerActionStore.getState()
+  const ids = state.byAnswer[answerId] ?? []
+  const dropped = ids.filter((id) => state.entries[id]?.status === 'held')
+  if (dropped.length === 0) return
+  const entries = { ...state.entries }
+  for (const id of dropped) delete entries[id]
+  const kept = ids.filter((id) => !dropped.includes(id))
+  const byAnswer = { ...state.byAnswer }
+  if (kept.length) byAnswer[answerId] = kept
+  else delete byAnswer[answerId]
+  useViewerActionStore.setState({ entries, byAnswer })
+}
 
 /**
  * The person asked for a place themselves (a citation's „Neben dem Chat öffnen“):
@@ -257,7 +383,7 @@ export const citationViewerAction = (cited: {
   if (cited.page && cited.box) {
     return { tool_call_id: id, tool_call_name: 'highlight_region', args: { ...base, region: asWireRegion(cited.box) } }
   }
-  const passage = cited.passage?.trim().slice(0, 400)
+  const passage = cited.passage?.trim().slice(0, MAX_VIEWER_PASSAGE_CHARS)
   if (cited.page && passage) {
     return { tool_call_id: id, tool_call_name: 'highlight_passage', args: { ...base, passage } }
   }
@@ -267,32 +393,37 @@ export const citationViewerAction = (cited: {
 /** The person pressed „Anzeigen“: run it now, whatever the setting says. */
 export const showViewerAction = (id: string): Promise<void> => execute(id)
 
-/** The person pressed „Zurück“: the viewer goes back to where it was before this action. */
+/**
+ * The person pressed „Zurücknehmen“. The row says „Zurückgenommen“ only when the
+ * viewer was put back; a viewer the person changed since is left, and said so.
+ */
 export const undoViewerAction = (id: string): void => {
   const undo = undos.get(id)
   if (!undo) return
   undos.delete(id)
-  undo()
-  patch(id, { status: 'undone' })
+  patch(id, { status: undo() ? 'undone' : 'kept' })
 }
 
-/** The actions of one answer, in arrival order, for its row. */
+/** The actions of one answer, in arrival order, for its row; none while its turn still runs. */
 export const viewerActionsOf = (state: ViewerActionState, answerId: string): ViewerActionEntry[] =>
-  (state.byAnswer[answerId] ?? []).flatMap((id) => (state.entries[id] ? [state.entries[id]] : []))
+  (state.byAnswer[answerId] ?? []).flatMap((id) => {
+    const entry = state.entries[id]
+    return entry && entry.status !== 'held' ? [entry] : []
+  })
 
-/** The actions in `view` that `previous` did not hold yet, in arrival order. */
+/** The actions in `next` that `previous` did not hold yet, in arrival order, and only those this bundle can run. */
 export const newViewerActions = (
-  previous: readonly ViewerActionCall[] | undefined,
-  next: readonly ViewerActionCall[] | undefined
+  previous: readonly WireViewerAction[] | undefined,
+  next: readonly WireViewerAction[] | undefined
 ): ViewerActionCall[] => {
   if (!next || next === previous) return []
   const seen = new Set((previous ?? []).map((call) => call.tool_call_id))
-  return next.filter((call) => !seen.has(call.tool_call_id))
+  return next.filter((call) => !seen.has(call.tool_call_id)).filter(isViewerAction)
 }
 
 /** Test hook: forget every action, the runner, the choice and the typing clock. */
 export const resetViewerActions = (): void => {
-  useViewerActionStore.setState({ entries: {}, byAnswer: {}, latestAnswer: null, auto: null })
+  useViewerActionStore.setState({ entries: {}, byAnswer: {}, latestAnswer: null, auto: null, besideChat: false })
   undos.clear()
   runner = null
   lastTypedAt = Number.NEGATIVE_INFINITY

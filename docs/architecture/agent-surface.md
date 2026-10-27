@@ -522,10 +522,12 @@ fails when a tool of the `canvas` group, `look` or `show_in_viewer` is missing
 from it, or an entry names a tool Piloti is not bound to.
 
 `show_in_viewer` is the one capability here that moves a person's screen
-(ADR-0144). It is an allow-listed AG-UI frontend tool call that only the asker's
-live page runs, after asking the BFF in that person's session
-(`document-viewer-place-get`). That operation is withheld from every door as
-`ui-state`: no agent moves somebody else's screen. Regenerate with
+(ADR-0144). It is an allow-listed AG-UI frontend tool call, bound only for a
+turn whose page declared it (`user_message.client_tools`), and only the asker's
+live page runs it, after reading the document again in that person's session
+with `document-get`, the read every door already offers. It has no route of
+its own: no agent moves somebody else's screen, because the tool is Piloti's
+own and the page that runs it is the asker's. Regenerate with
 `UPDATE_FIXTURES=1 bunx vitest run src/lib/surface-parity/parity.config.spec.ts`.
 
 ## What deserves a tool

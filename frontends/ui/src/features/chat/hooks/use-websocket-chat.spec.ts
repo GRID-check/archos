@@ -8,7 +8,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ClientMessage, WireEvent } from '@/adapters/api/wire-v2'
 import type { TurnSocketOptions, TurnSocketStatus } from '@/adapters/api/turn-socket'
 import { eventOf, frameOf, wireEvents } from '@/test-utils/wire-v2-fixtures'
-import { registerViewerActionRunner, resetViewerActions, setViewerActionsAuto, type ViewerActionCall } from '../lib/viewer-actions'
+import {
+  noteViewerRoom,
+  registerViewerActionRunner,
+  resetViewerActions,
+  setViewerActionsAuto,
+  useViewerActionStore,
+  type ViewerActionCall,
+} from '../lib/viewer-actions'
 
 const sockets = vi.hoisted(() => [] as Array<{ options: TurnSocketOptions; sent: unknown[]; open: boolean; offers: Set<string>; connect: ReturnType<typeof vi.fn>; close: ReturnType<typeof vi.fn>; reconnect: ReturnType<typeof vi.fn> }>)
 vi.mock('@/adapters/api/turn-socket', () => ({
@@ -912,40 +919,70 @@ describe('a phone away: locked, offline, or a network that gave up', () => {
   })
 })
 
-// ADR-0144: a viewer action moves only the asker's live page.
+// ADR-0144: a viewer action moves only the asker's live page, and only once the answer is there.
 describe('Piloti’s viewer actions', () => {
   const recorded = wireEvents('turn-viewer-action.jsonl')
   const VIEWER_CONVERSATION = recorded[0]!.conversation_id
-  const run = vi.fn(async (_call: ViewerActionCall) => ({ outcome: 'shown' as const, undo: () => {} }))
+  const finishedAt = recorded.findIndex((event) => event.type === 'RUN_FINISHED')
+  const run = vi.fn(async (_call: ViewerActionCall) => ({ outcome: 'shown' as const, where: 'beside' as const, undo: () => true }))
 
   beforeEach(() => {
     resetViewerActions()
+    run.mockClear()
     setViewerActionsAuto(true)
     registerViewerActionRunner({ hasRoom: () => true, run })
   })
   afterEach(() => resetViewerActions())
 
-  it('runs the actions of a turn this page asked, once each', async () => {
+  const ask = () => {
     const { result } = open(conversationOf(VIEWER_CONVERSATION))
     act(() => void result.current.sendMessage('Wo steht die Fluchtwegbreite?'))
-    const turnId = sentOf('user_message')[0]!.message_id as string
+    return sentOf('user_message')[0]!.message_id as string
+  }
+  const settle = () => act(async () => void (await Promise.resolve()))
 
-    deliver(retarget(recorded, VIEWER_CONVERSATION, turnId))
-    deliver(retarget(recorded, VIEWER_CONVERSATION, turnId))
-    await act(async () => void (await Promise.resolve()))
+  it('declares the viewer tool with the question while the viewer has room beside the chat', () => {
+    ask()
+    expect(sentOf('user_message')[0]).toMatchObject({ client_tools: ['show_in_viewer'] })
+  })
 
-    // The peek actions run; the comparison and the model element only offer themselves.
-    expect(run.mock.calls.map(([call]) => call.tool_call_name)).toEqual([
-      'highlight_passage',
-      'highlight_region',
-      'open_document',
-    ])
+  it('declares nothing without room: a phone is never offered the tool', () => {
+    noteViewerRoom(false)
+    ask()
+    expect(sentOf('user_message')[0]).not.toHaveProperty('client_tools')
+  })
+
+  it('holds the actions while the turn runs and moves one place once the answer is there', async () => {
+    const turnId = ask()
+    const turn = retarget(recorded, VIEWER_CONVERSATION, turnId)
+
+    deliver(turn.slice(0, finishedAt))
+    await settle()
+    expect(run).not.toHaveBeenCalled()
+
+    deliver(turn.slice(finishedAt))
+    deliver(turn)
+    await settle()
+    // One place per answer moves the viewer; the others, and the comparison and the model element, are offered.
+    expect(run.mock.calls.map(([call]) => call.tool_call_name)).toEqual(['highlight_passage'])
+  })
+
+  it('drops what the turn held when it fails', async () => {
+    const turnId = ask()
+    const turn = retarget(recorded, VIEWER_CONVERSATION, turnId)
+    const failure = { ...turn[finishedAt]!, type: 'RUN_ERROR', code: 'internal', message: 'boom' } as unknown as WireEvent
+
+    deliver([...turn.slice(0, finishedAt), failure])
+    await settle()
+
+    expect(run).not.toHaveBeenCalled()
+    expect(Object.keys(useViewerActionStore.getState().entries)).toEqual([])
   })
 
   it('runs nothing of a turn it did not ask: a reload’s attach, a spectator’s view', async () => {
     openTurn(recorded)
     deliver(recorded)
-    await act(async () => void (await Promise.resolve()))
+    await settle()
 
     expect(run).not.toHaveBeenCalled()
   })

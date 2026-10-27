@@ -3856,6 +3856,25 @@
           "default": null,
           "title": "Author Name"
         },
+        "client_tools": {
+          "anyOf": [
+            {
+              "items": {
+                "maxLength": 64,
+                "minLength": 1,
+                "type": "string"
+              },
+              "maxItems": 16,
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "The frontend tools this page can run for this turn, by name (AG-UI's RunAgentInput.tools). A tool named here is offered to the model for this turn only; a name the server does not know is ignored. Absent or empty: none, which is what every headless sender gets. Sent only to a server whose hello accepts 'user_message.client_tools'.",
+          "title": "Client Tools"
+        },
         "context_only": {
           "anyOf": [
             {
@@ -4156,7 +4175,7 @@
     },
     "ViewerActionArgs": {
       "additionalProperties": false,
-      "description": "Where the viewer goes: a stored document the BFF let this turn see, and the place on it.\n\n``document_id`` is a workspace document's id, resolved and checked against\nthe BFF by the tool before the event is sent. The browser asks the BFF again,\nin the asker's own session, before it moves anything\n(``GET /api/documents/{id}/viewer-place``).",
+      "description": "Where the viewer goes: a stored document the BFF let this turn see, and the place on it.\n\n``document_id`` is a workspace document's id, resolved and checked against\nthe BFF by the tool before the event is sent. The browser reads it again, in\nthe asker's own session, before it moves anything: ``GET /api/documents/{id}``,\nthe read Files and every agent door already use.",
       "properties": {
         "against_document_id": {
           "anyOf": [
@@ -4271,7 +4290,7 @@
     },
     "ViewerActionValue": {
       "additionalProperties": false,
-      "description": "One frontend tool call: AG-UI's ``toolCallId``, ``toolCallName`` and ``args``, whole in one frame.\n\nAG-UI streams a tool call's arguments as ``TOOL_CALL_ARGS`` deltas and takes\nits result back in the next run. Neither fits: the arguments are complete\nonce the tool has checked them, and nothing comes back, because the\nperson's screen is not the agent's state. So the call rides ``CUSTOM`` under\nAG-UI's field names (``docs/design/chat-wire-v2.md`` §a).",
+      "description": "One frontend tool call: AG-UI's ``toolCallId``, ``toolCallName`` and ``args``, whole in one frame.\n\nAG-UI would carry it as ``TOOL_CALL_CHUNK`` (one frame the client expands to\n``TOOL_CALL_START`` / ``ARGS`` / ``END``), with ``TOOL_CALL_RESULT`` optional.\nThis wire keeps every tool out of ``TOOL_CALL_*`` (``docs/design/chat-wire-v2.md``\n§a), and nothing returns to the model, so the call rides ``CUSTOM`` under\nAG-UI's field names. Returning the person's \"not now\" to the model would be\nthe reason to move it to ``TOOL_CALL_*`` (ADR-0144).\n\nThe server writes only a name of the allow-list. The JSON Schema says\n``string``, so a page one release older passes over a sixth action instead\nof refusing the frame; the page holds its own allow-list (``viewer-actions.ts``).",
       "properties": {
         "args": {
           "$ref": "#/$defs/ViewerActionArgs"
@@ -4283,13 +4302,9 @@
           "type": "string"
         },
         "tool_call_name": {
-          "enum": [
-            "open_document",
-            "highlight_passage",
-            "highlight_region",
-            "compare_revisions",
-            "focus_ifc_element"
-          ],
+          "description": "A viewer action's name.",
+          "maxLength": 64,
+          "minLength": 1,
           "title": "Tool Call Name",
           "type": "string"
         }

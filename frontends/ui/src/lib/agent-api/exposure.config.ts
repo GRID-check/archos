@@ -203,16 +203,6 @@ export const EXPOSURE = {
   },
   'document-unarchive': OFFERED,
   'document-upload': OFFERED,
-  'document-viewer-place-get': {
-    external: false,
-    piloti: false,
-    withheld: {
-      category: 'ui-state',
-      reason:
-        'the gate of the person’s own document viewer (ADR-0144): Piloti proposes a viewer action with its native ' +
-        '`show_in_viewer` and only the asker’s page runs it; no agent drives a person’s screen from outside',
-    },
-  },
   'document-visual-details-get': OFFERED,
   'hold-create': OFFERED,
   'hold-list': OFFERED,

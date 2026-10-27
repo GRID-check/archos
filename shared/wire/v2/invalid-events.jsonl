@@ -5,4 +5,4 @@
 {"conversation_id":"5f5b7a5c-1f0e-4a9d-9c3a-2f2f9a1b7c11","turn_id":"msg_1759000000000_3","seq":-1,"ts":1759000000100,"v":2,"type":"RUN_STARTED","message_id":"m"}
 {"conversation_id":"5f5b7a5c-1f0e-4a9d-9c3a-2f2f9a1b7c11","turn_id":"msg_1759000000000_3","seq":3,"ts":1759000000100,"v":2,"type":"CUSTOM","name":"interaction_request","value":{"interaction_id":"a","input":"approval","text":"OK?","expires_at":1}}
 {"v":2,"type":"REASONING_MESSAGE_START","ts":1759000000100,"message_id":"r"}
-{"v":2,"type":"CUSTOM","conversation_id":"5f5b7a5c-1f0e-4a9d-9c3a-2f2f9a1b7c11","turn_id":"msg_1759000800000_31","seq":2,"ts":1759000802100,"name":"viewer_action","value":{"tool_call_id":"va_1","tool_call_name":"navigate_to_url","args":{"document_id":"d","document_name":"x.pdf"}}}
+{"v":2,"type":"CUSTOM","conversation_id":"5f5b7a5c-1f0e-4a9d-9c3a-2f2f9a1b7c11","turn_id":"msg_1759000800000_31","seq":2,"ts":1759000802100,"name":"viewer_action","value":{"tool_call_id":"va_1","tool_call_name":"open_document","args":{"document_name":"x.pdf"}}}

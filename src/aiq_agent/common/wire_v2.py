@@ -74,6 +74,7 @@ from pydantic import Field
 from pydantic import SerializationInfo
 from pydantic import SerializerFunctionWrapHandler
 from pydantic import TypeAdapter
+from pydantic import WithJsonSchema
 from pydantic import model_serializer
 from pydantic import model_validator
 
@@ -726,9 +727,9 @@ class ViewerActionArgs(_Model):
     """Where the viewer goes: a stored document the BFF let this turn see, and the place on it.
 
     ``document_id`` is a workspace document's id, resolved and checked against
-    the BFF by the tool before the event is sent. The browser asks the BFF again,
-    in the asker's own session, before it moves anything
-    (``GET /api/documents/{id}/viewer-place``).
+    the BFF by the tool before the event is sent. The browser reads it again, in
+    the asker's own session, before it moves anything: ``GET /api/documents/{id}``,
+    the read Files and every agent door already use.
     """
 
     document_id: str = Field(min_length=1, max_length=128)
@@ -760,15 +761,23 @@ class ViewerActionArgs(_Model):
 class ViewerActionValue(_Model):
     """One frontend tool call: AG-UI's ``toolCallId``, ``toolCallName`` and ``args``, whole in one frame.
 
-    AG-UI streams a tool call's arguments as ``TOOL_CALL_ARGS`` deltas and takes
-    its result back in the next run. Neither fits: the arguments are complete
-    once the tool has checked them, and nothing comes back, because the
-    person's screen is not the agent's state. So the call rides ``CUSTOM`` under
-    AG-UI's field names (``docs/design/chat-wire-v2.md`` §a).
+    AG-UI would carry it as ``TOOL_CALL_CHUNK`` (one frame the client expands to
+    ``TOOL_CALL_START`` / ``ARGS`` / ``END``), with ``TOOL_CALL_RESULT`` optional.
+    This wire keeps every tool out of ``TOOL_CALL_*`` (``docs/design/chat-wire-v2.md``
+    §a), and nothing returns to the model, so the call rides ``CUSTOM`` under
+    AG-UI's field names. Returning the person's "not now" to the model would be
+    the reason to move it to ``TOOL_CALL_*`` (ADR-0144).
+
+    The server writes only a name of the allow-list. The JSON Schema says
+    ``string``, so a page one release older passes over a sixth action instead
+    of refusing the frame; the page holds its own allow-list (``viewer-actions.ts``).
     """
 
     tool_call_id: str = Field(min_length=1, max_length=64)
-    tool_call_name: ViewerActionName
+    tool_call_name: Annotated[
+        ViewerActionName,
+        WithJsonSchema({"type": "string", "minLength": 1, "maxLength": 64, "description": "A viewer action's name."}),
+    ]
     args: ViewerActionArgs
 
     @model_validator(mode="after")
@@ -869,6 +878,7 @@ ACCEPTED_CLIENT_FIELDS: tuple[str, ...] = (
     "user_message.reply_in_thread",
     "user_message.trigger",
     "user_message.if_idle",
+    "user_message.client_tools",
     # A whole message type, not a field: a server that does not name it refuses
     # the frame (``invalid_message``), so the client keeps the note for the next
     # question instead of sending it.
@@ -1250,6 +1260,16 @@ class UserMessage(_ClientBase):
             "Run only if the conversation has no running turn: a running one is never superseded, and the "
             "question is refused with rejected{busy} instead, so the sender can retry later. Sent only to a "
             "server whose hello accepts 'user_message.if_idle'."
+        ),
+    )
+    client_tools: list[Annotated[str, Field(min_length=1, max_length=64)]] | None = Field(
+        default=None,
+        max_length=16,
+        description=(
+            "The frontend tools this page can run for this turn, by name (AG-UI's RunAgentInput.tools). A tool "
+            "named here is offered to the model for this turn only; a name the server does not know is ignored. "
+            "Absent or empty: none, which is what every headless sender gets. Sent only to a server whose hello "
+            "accepts 'user_message.client_tools'."
         ),
     )
 

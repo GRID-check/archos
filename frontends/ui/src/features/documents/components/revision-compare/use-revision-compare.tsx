@@ -1,7 +1,7 @@
 'use client'
 
 import type { JSX } from 'react'
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import { RevisionCompare } from './revision-compare'
 import type { CompareFile, CompareRegion, SourceLoader } from './types'
 
@@ -18,8 +18,12 @@ export interface RevisionCompareHandle {
     newer: CompareFile,
     overlays?: readonly CompareRegion[],
   ) => void
-  /** Shut the comparison, as its own close button does (a viewer action's „Zurück“, ADR-0144). */
-  closeRevisionCompare: () => void
+  /**
+   * Shut the comparison of THIS pair, as its own close button does (a viewer
+   * action's „Zurücknehmen“, ADR-0144). A comparison the person opened since,
+   * of another pair, stays; the return says whether anything was shut.
+   */
+  closeRevisionCompare: (older: CompareFile, newer: CompareFile) => boolean
   /** Render this once, anywhere in the tree; it is nothing while the comparison is shut. */
   compareElement: JSX.Element | null
 }
@@ -49,12 +53,29 @@ export function useRevisionCompare(
 ): RevisionCompareHandle {
   const { onOpenTextCompare } = options
   const [open, setOpen] = useState<OpenState | null>(null)
+  // What is open NOW, read by a close that must not shut somebody else's pair; the state lags a render.
+  const current = useRef<OpenState | null>(null)
 
   const openRevisionCompare = useCallback<RevisionCompareHandle['openRevisionCompare']>(
-    (older, newer, overlays = []) => setOpen({ older, newer, overlays }),
+    (older, newer, overlays = []) => {
+      current.current = { older, newer, overlays }
+      setOpen(current.current)
+    },
     [],
   )
-  const close = useCallback(() => setOpen(null), [])
+  const close = useCallback(() => {
+    current.current = null
+    setOpen(null)
+  }, [])
+  const closeRevisionCompare = useCallback<RevisionCompareHandle['closeRevisionCompare']>(
+    (older, newer) => {
+      const shown = current.current
+      if (!shown || shown.older.id !== older.id || shown.newer.id !== newer.id) return false
+      close()
+      return true
+    },
+    [close],
+  )
 
   const compareElement = useMemo(
     () =>
@@ -80,5 +101,5 @@ export function useRevisionCompare(
     [open, close, loadSource, onOpenTextCompare],
   )
 
-  return { openRevisionCompare, closeRevisionCompare: close, compareElement }
+  return { openRevisionCompare, closeRevisionCompare, compareElement }
 }

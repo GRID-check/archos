@@ -12,12 +12,14 @@ import pytest
 
 from aiq_agent import project_context
 from aiq_agent.common import turn_status
+from aiq_agent.common.client_tools import set_turn_client_tools
 from aiq_agent.common.wire_v2 import ViewerActionBody
 from aiq_agent.common.wire_v2 import ViewerActionName
 from aiq_agent.tools.canvas.client import CanvasRequestError
 from aiq_agent.tools.viewer.register import ACTIONS
 from aiq_agent.tools.viewer.register import DESCRIPTION
 from aiq_agent.tools.viewer.register import run_show_in_viewer
+from tests.aiq_agent.tools.canvas.conftest import DOCUMENT as DOCUMENT_ID
 from tests.aiq_agent.tools.canvas.conftest import LIST_BODY
 from tests.aiq_agent.tools.canvas.conftest import OTHER_DOCUMENT
 from tests.aiq_agent.tools.canvas.conftest import answering
@@ -29,6 +31,12 @@ GLOBAL_ID = "1kTvQ9x8n5RfBW2$hK0aZq"
 def no_base_corpus(monkeypatch):
     """No file of these tests is a platform-corpus file, unless a test says so."""
     monkeypatch.setattr(view, "_find_pdf", lambda _name: None)
+
+
+@pytest.fixture(autouse=True)
+def page_runs_the_viewer():
+    """The asking page declared it can run the tool (``user_message.client_tools``), unless a test says not."""
+    set_turn_client_tools(["show_in_viewer"])
 
 
 @pytest.fixture
@@ -115,7 +123,9 @@ class TestADocumentThePersonMayNotSee:
 
         result = await run_show_in_viewer("open_document", "Grundriss_EG.pdf", page=2)
 
-        assert "may not read it" in result or "may not change anything" in result
+        # Worded as the read it is, never as a change the person may not make.
+        assert ("may not open" in result) if status == 403 else ("not available to the person" in result)
+        assert "change" not in result
         assert sent == []
 
     async def test_a_name_the_turn_cannot_see_is_never_looked_up(self, monkeypatch, calls, lookups, sent) -> None:
@@ -166,3 +176,83 @@ class TestAModelElement:
 
         assert result.startswith("Proposed")
         assert sent[0].value.args.element == GLOBAL_ID
+
+
+class TestOnlyWhereThePageCanRunIt:
+    async def test_a_turn_whose_page_declared_nothing_asks_nothing_and_sends_nothing(
+        self, monkeypatch, calls, lookups, sent
+    ) -> None:
+        set_turn_client_tools(None)
+        answering(monkeypatch, calls, LIST_BODY)
+
+        result = await run_show_in_viewer("open_document", "Grundriss_EG.pdf")
+
+        assert result.startswith("Not possible") and "cannot show a place" in result
+        assert calls == [] and lookups == [] and sent == []
+
+    async def test_a_name_the_server_does_not_know_declares_nothing(self, monkeypatch, calls, sent) -> None:
+        set_turn_client_tools(["navigate_to_url"])
+
+        result = await run_show_in_viewer("open_document", "Grundriss_EG.pdf")
+
+        assert "cannot show a place" in result and sent == []
+
+
+class TestOncePerTurn:
+    async def test_a_second_call_is_refused_and_only_the_first_is_sent(self, monkeypatch, calls, lookups, sent) -> None:
+        answering(monkeypatch, calls, LIST_BODY)
+
+        first = await run_show_in_viewer("open_document", "Grundriss_EG.pdf", page=1)
+        second = await run_show_in_viewer("open_document", "Grundriss_EG.pdf", page=2)
+
+        assert first.startswith("Proposed") and second.startswith("Not shown: one place per answer")
+        assert [body.value.args.page for body in sent] == [1]
+
+    async def test_two_calls_in_one_round_send_one(self, monkeypatch, calls, lookups, sent) -> None:
+        import asyncio
+
+        answering(monkeypatch, calls, LIST_BODY)
+
+        results = await asyncio.gather(
+            run_show_in_viewer("open_document", "Grundriss_EG.pdf", page=1),
+            run_show_in_viewer("open_document", "Grundriss_EG.pdf", page=2),
+        )
+
+        assert sum(result.startswith("Proposed") for result in results) == 1
+        assert len(sent) == 1
+
+    async def test_a_refused_call_leaves_the_turn_its_one_place(self, monkeypatch, calls, lookups, sent) -> None:
+        answering(monkeypatch, calls, LIST_BODY)
+
+        refused = await run_show_in_viewer("focus_ifc_element", "Grundriss_EG.pdf", element=GLOBAL_ID)
+        shown = await run_show_in_viewer("open_document", "Grundriss_EG.pdf")
+
+        assert "no building model" in refused and shown.startswith("Proposed") and len(sent) == 1
+
+
+class TestAChatAttachment:
+    async def test_a_file_attached_to_the_chat_is_refused_before_the_bff_is_asked(
+        self, monkeypatch, calls, lookups, sent
+    ) -> None:
+        from aiq_agent.knowledge import AvailableDocument
+        from aiq_agent.knowledge.inventory import set_turn_documents
+
+        # The person's own upload: on no shelf, so the page's GET /api/documents/{id} could never open it.
+        set_turn_documents([AvailableDocument(file_name="Skizze.pdf", shelf="session", collection="s_conv_1")])
+        answering(monkeypatch, calls, LIST_BODY)
+
+        result = await run_show_in_viewer("open_document", "Skizze.pdf")
+
+        assert "attached to this chat" in result
+        assert calls == [] and sent == []
+
+
+class TestOneRead:
+    async def test_a_document_named_by_id_is_read_once(self, monkeypatch, calls, lookups, sent) -> None:
+        answering(monkeypatch, calls, LIST_BODY)
+
+        result = await run_show_in_viewer("open_document", DOCUMENT_ID)
+
+        assert result.startswith("Proposed")
+        # Resolving the id read the document through the BFF for its name; that read stands.
+        assert [payload["op"] for payload, _ in calls] == ["list"]

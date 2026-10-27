@@ -326,7 +326,7 @@
    "tool": "show_in_viewer",
    "annotationOp": null,
    "operations": [
-    "document-viewer-place-get"
+    "document-get"
    ],
    "canvas": {
     "kind": "rendering",

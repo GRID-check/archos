@@ -88,7 +88,13 @@ import {
 import { STAGE_COUNT } from '../lib/turn-projection'
 import { runErrorCard, type RunErrorCard } from '../lib/run-error'
 import { isSteerRead, type TurnView } from '../lib/turn-fold'
-import { newViewerActions, proposeViewerAction } from '../lib/viewer-actions'
+import {
+  dropViewerActions,
+  newViewerActions,
+  proposeViewerAction,
+  releaseViewerActions,
+  viewerClientTools,
+} from '../lib/viewer-actions'
 import type { DocumentVersionState } from '@/lib/documents/lifecycle-types'
 import type { ChatMessage, Conversation, PendingInteraction } from '../types'
 
@@ -628,8 +634,17 @@ const createTurnDriver = (conversationId: string, projectId: string | undefined,
   const react = (previous: TurnView | undefined, view: TurnView | undefined): void => {
     if (!view) return
     if (asked.has(view.turnId) && view.messageId) {
+      // Held while the turn runs; nothing moves before the answer is on screen (ADR-0144).
       for (const call of newViewerActions(previous?.viewerActions, view.viewerActions)) {
-        void proposeViewerAction(view.messageId, call)
+        proposeViewerAction(view.messageId, call)
+      }
+      const ended = view.phase !== 'running' && (previous === undefined || previous.phase === 'running')
+      // An answer releases them; an error, a Stop, a refusal or a hand-off drops them. A retracted
+      // stream is a round, not the answer (`answer_retracted`), so it neither releases nor drops.
+      if (ended && view.phase === 'finished' && view.outcome === 'answered' && view.text) {
+        void releaseViewerActions(view.messageId)
+      } else if (ended) {
+        dropViewerActions(view.messageId)
       }
     }
     if (view.phase !== 'running' && previous?.phase === 'running') settleSteers(view)
@@ -1297,6 +1312,7 @@ export const useWebSocketChat = (options: UseWebSocketChatOptions = {}): UseWebS
       })
       // `focus_region` and `reply_in_thread` are being added to the wire; until
       // the generated type carries them they ride on this wider local type.
+      const clientTools = viewerClientTools()
       const question: UserMessage & { focus_region?: CanvasFocusRegion | null; reply_in_thread?: boolean } = {
         type: 'user_message',
         conversation_id: conversationId,
@@ -1314,6 +1330,9 @@ export const useWebSocketChat = (options: UseWebSocketChatOptions = {}): UseWebS
         reasoning_effort: effort,
         // Omitted, not null, while PostHog is off: `forServer` keys on presence.
         ...(posthogSessionId ? { posthog_session_id: posthogSessionId } : {}),
+        // The frontend tools this page can run (AG-UI's RunAgentInput.tools): the viewer, when it has
+        // room beside the chat. Omitted otherwise, so the server never offers the model the tool (ADR-0144).
+        ...(clientTools.length ? { client_tools: clientTools } : {}),
       }
       ensureDriver(conversationId).ask(question)
       return true
