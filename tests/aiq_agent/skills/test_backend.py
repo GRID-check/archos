@@ -87,6 +87,48 @@ class TestReadOnly:
         assert [m["path"] for m in backend.glob("**/SKILL.md").matches or []] == ["/office/fire-safety/SKILL.md"]
 
 
+class TestAMissSaysWhatExists:
+    """A hallucinated path costs no extra round: the error names the paths to read instead."""
+
+    def _skill(self, name: str) -> Skill:
+        return Skill(name=name, description=f"{name}.", body=f"body {name}")
+
+    def test_with_few_skills_every_offered_path_is_listed(self) -> None:
+        runtime = SkillRuntime.office((self._skill("building-class"), self._skill("fire-safety")))
+        error = runtime.mounted().read("/skills/office/brandschutz/SKILL.md").error or ""
+        assert error.startswith("/skills/office/brandschutz/SKILL.md does not exist.")
+        assert "/skills/office/building-class/SKILL.md" in error
+        assert "/skills/office/fire-safety/SKILL.md" in error
+        assert "Call read_file with one of these paths" in error
+        assert runtime.activated == ()
+
+    def test_with_many_skills_the_closest_are_named(self) -> None:
+        names = [f"method-{i}" for i in range(20)] + ["fire-safety"]
+        runtime = SkillRuntime.office(tuple(self._skill(n) for n in names))
+        error = runtime.mounted().read("/skills/office/fire-safty/SKILL.md").error or ""
+        assert "The closest skills: /skills/office/fire-safety/SKILL.md" in error
+        assert "method-3" not in error
+
+    def test_with_nothing_close_it_says_how_to_find_one(self) -> None:
+        runtime = SkillRuntime.office(tuple(self._skill(f"method-{i}") for i in range(20)))
+        error = runtime.mounted().read("/skills/office/zzz/SKILL.md").error or ""
+        assert "no skill is named like it" in error
+        assert "as the Skills section lists it" in error
+
+    async def test_the_model_reads_it_through_read_file(self) -> None:
+        from types import SimpleNamespace
+
+        from aiq_agent.tools.documents.tools import draft_tools
+
+        runtime = SkillRuntime.office((self._skill("building-class"),))
+        (read,) = draft_tools(None, skills=runtime.backend)
+        message = await read.coroutine(
+            "/skills/office/gebaeudeklasse/SKILL.md", SimpleNamespace(tool_call_id="c1"), offset=0, limit=1000
+        )
+        text = message if isinstance(message, str) else message.content
+        assert "/skills/office/building-class/SKILL.md" in text
+
+
 @pytest.fixture(autouse=True)
 def _reset_cache():
     shared_cache.reset_local_store()

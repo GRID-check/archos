@@ -146,8 +146,11 @@ with the new backend counted; `src/` as a whole lost 213 lines net.
   (`turn_status.is_skill_read`), and a stored turn from before still says
   `use_skill` in its tool history.
 * Bad, because the catalog grows by one line per skill (the path), and the
-  model must pass a path rather than a name, so a hallucinated name now reads
-  as "not found" instead of an error listing the available names.
+  model must pass a path rather than a name. A path that is no skill is
+  answered the way `use_skill` answered an unknown name: a prescriptive error
+  naming the paths offered this turn (all of them up to twelve, else the three
+  closest by name) and telling the model to call `read_file` with one, so a
+  hallucinated name costs no round to rediscover them (`SkillsBackend._miss`).
 * Bad, because Piloti depends on two middleware hooks called outside an agent
   (`before_agent`, `modify_request`) and on `StateBackend._read_files`, a
   private hook. The contract test guards all three.

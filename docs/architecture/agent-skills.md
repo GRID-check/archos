@@ -452,8 +452,10 @@ A later source wins a name clash, which is the middleware's own layering.
   never write). Piloti gets the same verb from `tools/documents/tools.py`: the
   skills backend is a `/skills/` route beside the working directory, so one
   `read_file` reads drafts and skills, and a turn without a conversation gets
-  `read_file` for its skills alone. A path that is not a skill reads as not
-  found. The `grid-cards` block rides on that read.
+  `read_file` for its skills alone. A path that is not a skill gets a
+  prescriptive error naming the paths to read instead (every offered path up
+  to twelve, else the three closest by name), so a hallucinated name costs no
+  round. The `grid-cards` block rides on that read.
 - **Pinned — the shortcut.** The turn-start decision (ADR-0064) asks a `skill`
   choice over every resolved skill with `none`, verified by one "fits" noul per
   skill, and the ONE chosen body is pinned (`SkillRuntime.pin`): it rides this

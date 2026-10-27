@@ -31,6 +31,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from collections.abc import Mapping
 from collections.abc import Sequence
+from difflib import get_close_matches
 from typing import Any
 
 import yaml
@@ -52,6 +53,10 @@ SKILLS_ROOT = "/skills/"
 OFFICE_SOURCE = "office"
 
 _READ_ONLY = "the skills mount is read-only"
+
+#: A miss lists every skill when the run offers at most this many, else the closest few.
+_LIST_ALL_UNDER = 12
+_CLOSEST = 3
 
 
 def skill_document(skill: Skill) -> str:
@@ -103,10 +108,41 @@ class SkillsBackend(StateBackend):
     def _read_files(self) -> dict[str, Any]:
         return self._files
 
+    def _miss(self, file_path: str) -> str:
+        """A prescriptive error for a path that is no skill: what exists, and what to call.
+
+        ``use_skill`` answered an unknown name with the names offered; a bare
+        "not found" would cost the model a round to rediscover them. With few
+        skills every path is listed, otherwise the closest by skill name.
+        """
+        shown = f"{SKILLS_ROOT.rstrip('/')}{file_path}"
+        paths = sorted(self._skills)
+        if not paths:
+            return f"{shown} does not exist: no skills are offered this turn. Continue without one."
+        if len(paths) > _LIST_ALL_UNDER:
+            asked = file_path.rstrip("/").removesuffix("/SKILL.md").rsplit("/", 1)[-1]
+            names = get_close_matches(asked, [self._skills[p].name for p in paths], n=_CLOSEST, cutoff=0.4)
+            close = [p for p in paths if self._skills[p].name in names]
+            if close:
+                paths, intro = close, "The closest skills"
+            else:
+                return (
+                    f"{shown} does not exist, and no skill is named like it. Read a path exactly as the "
+                    "Skills section lists it, or continue without a skill."
+                )
+        else:
+            intro = "The skills offered this turn"
+        listed = ", ".join(f"{SKILLS_ROOT.rstrip('/')}{p}" for p in paths)
+        return (
+            f"{shown} does not exist. {intro}: {listed}. "
+            "Call read_file with one of these paths, or continue without one."
+        )
+
     def read(self, file_path: str, offset: int = 0, limit: int = 2000) -> ReadResult:
         skill = self._skills.get(file_path)
         if skill is None:
-            return super().read(file_path, offset=offset, limit=limit)
+            result = super().read(file_path, offset=offset, limit=limit)
+            return ReadResult(error=self._miss(file_path)) if result.error else result
         file_data = self._files[file_path]
         suffix = self._read_suffix(skill) if self._read_suffix else None
         if suffix:
