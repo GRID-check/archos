@@ -25,7 +25,7 @@ import {
 import type { DocumentFindingsResponse } from './findings-wire'
 import { documentLevelQuery, DOCUMENT_LEVEL_LIMIT_MAX } from './list-query'
 import type { ProfileFacts } from './profile-contradictions'
-import { listDocumentsPage } from './service'
+import { listDocumentsPage } from './shelf-page'
 import { findProjectProfileInOrg } from '@/lib/projects/repository'
 
 /** Pages of the shelf one read follows: 4 × 500 documents, a bound, not a design limit. */

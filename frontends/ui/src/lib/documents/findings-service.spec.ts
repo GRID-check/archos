@@ -5,7 +5,7 @@ import type { ListedDocument } from './shelf-listing'
 
 vi.mock('server-only', () => ({}))
 const listDocumentsPage = vi.fn()
-vi.mock('./service', () => ({ listDocumentsPage: (...args: unknown[]) => listDocumentsPage(...args) }))
+vi.mock('./shelf-page', () => ({ listDocumentsPage: (...args: unknown[]) => listDocumentsPage(...args) }))
 const findProjectProfileInOrg = vi.fn()
 vi.mock('@/lib/projects/repository', () => ({
   findProjectProfileInOrg: (...args: unknown[]) => findProjectProfileInOrg(...args),
