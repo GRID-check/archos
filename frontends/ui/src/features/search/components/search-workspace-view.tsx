@@ -153,6 +153,8 @@ export function SearchWorkspaceView({
 
   const order = useMemo(() => walkOrder(state.view, sections), [state.view, sections])
   const [activeKey, setActiveKey] = useState<string | null>(null)
+  // The keys are taught where they work: in the field, until the first arrow.
+  const [fieldFocused, setFieldFocused] = useState(false)
   const [menuKey, setMenuKey] = useState<string | null>(null)
   const hitMenus = useMemo<HitMenuState>(() => ({ openKey: menuKey, onOpenKeyChange: setMenuKey }), [menuKey])
   // The combobox's ids: each kind's listbox (or the register's table) and each hit's option.
@@ -219,12 +221,14 @@ export function SearchWorkspaceView({
   const oneKind = state.view === 'list' && state.kinds?.length === 1 ? state.kinds[0] : null
   // Kinds a filter that is set cannot narrow are not searched (`setAsideKinds`); the list says which, once.
   const setAside = state.view === 'list' ? (response?.setAside ?? {}) : {}
-  const setAsideNote = (['document_filters', 'annotation_filters'] as const).flatMap((reason) => {
+  // On a phone the note is one line and the greyed tab carries the whole sentence.
+  const setAsideNotes = (['document_filters', 'annotation_filters'] as const).flatMap((reason) => {
     const named = SEARCH_KINDS.filter((kind) => setAside[kind] === reason && (officeWide || kind !== 'project'))
     if (named.length === 0) return []
     const kinds = new Intl.ListFormat(locale, { type: 'conjunction' }).format(named.map((kind) => t(`kinds.${kind}`)))
-    return [t(`setAside.${reason}`, { kinds })]
+    return [{ reason, long: t(`setAside.${reason}`, { kinds }), short: t('setAside.short', { kinds }) }]
   })
+  const setAsideNote = setAsideNotes.map((note) => (phone ? note.short : note.long))
 
   const status = failed
     ? null
@@ -236,7 +240,8 @@ export function SearchWorkspaceView({
   // The shelves still being read are said once, short, in the status line;
   // when a filter that is set depends on what they hold, the same clause says
   // what that costs.
-  const buildingNote = filtersByReading(state) ? 'notes.buildingFiltered' : 'notes.buildingShort'
+  // On a phone the short clause always: the line above the first hit stays one line.
+  const buildingNote = filtersByReading(state) && !phone ? 'notes.buildingFiltered' : 'notes.buildingShort'
   const statusLine = status && building > 0 && anyHits && !loading ? `${status} · ${t(buildingNote, { count: building })}` : status
 
   // The typed filters an office reaches for first lead, always open; the
@@ -309,6 +314,7 @@ export function SearchWorkspaceView({
                 value={fieldValue}
                 onChange={onFieldChange}
                 onKeyDown={onFieldKeyDown}
+                onFocusChange={setFieldFocused}
                 placeholder={placeholder}
                 label={t('field.label')}
                 clearLabel={t('field.clear')}
@@ -397,7 +403,7 @@ export function SearchWorkspaceView({
                   key={kind}
                   value={kind}
                   disabled={Boolean(asideReason) && state.kinds?.[0] !== kind}
-                  title={asideReason ? t('setAside.tab') : undefined}
+                  title={asideReason ? (setAsideNotes.find((note) => note.reason === asideReason)?.long ?? t('setAside.tab')) : undefined}
                   data-set-aside={asideReason}
                   data-testid={`search-kind-${kind}`}
                 >
@@ -413,7 +419,7 @@ export function SearchWorkspaceView({
       )}
       <ResultsStatus busy={loading && !failed}>
         {statusLine}
-        {status && anyHits ? <KeysHint>{` · ${t('keys')}`}</KeysHint> : null}
+        {status && anyHits && fieldFocused && activeKey === null ? <KeysHint>{` · ${t('keys')}`}</KeysHint> : null}
       </ResultsStatus>
       {setAsideNote.map((note) => (
         <SearchNote key={note} icon={FilterX} testId="search-note-set-aside">

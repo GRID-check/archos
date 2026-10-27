@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import { searchBodySchema } from '@/lib/search/search-wire'
 import {
+  activeFilterCount,
   EMPTY_SEARCH_STATE,
   fromSearchBody,
   hasSearchParams,
@@ -136,6 +137,14 @@ describe('„Nur aktuelle Fassung“, each view’s own default', () => {
     expect(withView(listCurrent, 'register').filters.currentOnly).toBe(true)
     const registerAll = { ...list, view: 'register' as const }
     expect(withView(registerAll, 'list').filters.currentOnly).toBeUndefined()
+  })
+})
+
+describe('the phone’s filter count', () => {
+  it('leaves out „Nur aktuelle Fassung“ in the Planliste, where it is the switch above the table', () => {
+    const filters: SearchUrlState['filters'] = { currentOnly: true, documentTypes: ['submission_drawing'] }
+    expect(activeFilterCount({ ...EMPTY_SEARCH_STATE, view: 'register', filters })).toBe(1)
+    expect(activeFilterCount({ ...EMPTY_SEARCH_STATE, view: 'list', filters })).toBe(2)
   })
 })
 

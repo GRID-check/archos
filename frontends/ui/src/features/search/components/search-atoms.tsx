@@ -37,9 +37,11 @@ import { Spinner } from '@/components/ui/spinner'
 import { Switch } from '@/components/ui/switch'
 import { TableBody, TableCell, TableHeader, TableRow } from '@/components/ui/table'
 import { useTranslations } from '@/i18n'
+import { keepUnitsTogether } from '@/lib/text/keep-units'
 import type { TextSegment } from '@/lib/text/term-segments'
 import { sourceTint } from '@/lib/ui/source-tint'
 import { cn } from '@/lib/utils'
+import { fitColumns, minimumRem, type ColumnFit } from '../lib/register-fit'
 
 // ─── Frame ──────────────────────────────────────────────────────────────────
 
@@ -637,7 +639,7 @@ export function PassageQuote({ segments, page }: { segments: readonly TextSegmen
               {segment.text}
             </MatchMark>
           ) : (
-            <span key={index}>{segment.text}</span>
+            <span key={index}>{keepUnitsTogether(segment.text)}</span>
           )
         )}
         “
@@ -752,21 +754,19 @@ export function LabelledSwitch({
   )
 }
 
-/** The narrowest the name column gets before the register scrolls sideways instead. */
-const REGISTER_NAME_MIN_REM = 12
-
 /**
  * The register's box. The page is its one vertical scroller, so the header row
- * stays put above the rows as the page scrolls. The columns have widths and the
- * name takes the rest; only when the chosen columns cannot fit beside a
- * readable name does the table scroll sideways, behind the kit's fade and
- * chevron, which say there is more to the right.
+ * stays put above the rows as the page scrolls. Each column claims the width
+ * its header needs and the width its values on the page need, and the room is
+ * shared out by `fitColumns`, the name taking the rest; only when the chosen
+ * columns cannot fit beside a readable name does the table scroll sideways,
+ * behind the kit's fade and chevron, which say there is more to the right.
  */
 export function RegisterTable({
   children,
   caption,
   testId,
-  columnWidths,
+  columns,
   scrollLabel,
   id,
   actionsRem = 0,
@@ -776,8 +776,8 @@ export function RegisterTable({
   testId?: string
   /** The id the search field's `aria-controls` names. */
   id?: string
-  /** One per column in order, in rem; null is the column that takes the rest. */
-  columnWidths: ReadonlyArray<number | null>
+  /** One per column in order: what it needs and what it would like, in rem (`register-fit.ts`). */
+  columns: readonly ColumnFit[]
   /** The name of the region when it scrolls sideways. */
   scrollLabel: string
   /**
@@ -788,23 +788,25 @@ export function RegisterTable({
   actionsRem?: number
 }): JSX.Element {
   const box = useRef<HTMLDivElement>(null)
-  const [wide, setWide] = useState(false)
-  const flexible = columnWidths.filter((width) => width === null).length
-  const minRem = columnWidths.reduce<number>((sum, width) => sum + (width ?? 0), 0) + flexible * REGISTER_NAME_MIN_REM
+  // The box's width in rem; 0 until measured, which is every minimum.
+  const [boxRem, setBoxRem] = useState(0)
+  const minRem = minimumRem(columns)
+  const wide = boxRem > 0 && minRem > boxRem + 0.0625
+  const columnWidths = fitColumns(columns, boxRem - actionsRem)
 
   useLayoutEffect(() => {
     const element = box.current
     if (!element) return
     const update = (): void => {
       const rem = Number.parseFloat(getComputedStyle(document.documentElement).fontSize) || 16
-      setWide(minRem * rem > element.clientWidth + 1)
+      setBoxRem(element.clientWidth / rem)
     }
     update()
     if (typeof ResizeObserver === 'undefined') return
     const observer = new ResizeObserver(update)
     observer.observe(element)
     return () => observer.disconnect()
-  }, [minRem])
+  }, [])
 
   const table = (
     <table className="w-full table-fixed caption-bottom border-separate border-spacing-0 text-sm" style={{ minWidth: `${minRem}rem` }}>

@@ -106,7 +106,7 @@ describe('SearchWorkspaceView', () => {
     )
     expect(screen.getByTestId('search-section-conversation')).toHaveTextContent('Fluchtweglängen nach OIB-RL 2 für GK 4')
     // The shelf still being read is said once, short, in the status line.
-    expect(screen.getByTestId('search-status')).toHaveTextContent('Treffer · eine Ablage wird noch gelesen ·')
+    expect(screen.getByTestId('search-status')).toHaveTextContent(/Treffer · eine Ablage wird noch gelesen$/)
   })
 
   it('sets the searched words apart in a name, and then does not say the name matched', () => {
@@ -162,7 +162,11 @@ describe('SearchWorkspaceView', () => {
     )
     for (const kind of ['folder', 'project', 'conversation']) {
       expect(screen.getByTestId(`search-kind-${kind}`)).toBeDisabled()
-      expect(screen.getByTestId(`search-kind-${kind}`)).toHaveAttribute('title', 'Mit diesen Filtern nicht durchsucht')
+      // The greyed tab carries the whole sentence, so a phone's one-line note loses nothing.
+      expect(screen.getByTestId(`search-kind-${kind}`)).toHaveAttribute(
+        'title',
+        'Die Filter gelten für Dokumente und ihre Anmerkungen. Ordner, Projekte und Chats werden so lange nicht durchsucht.'
+      )
     }
     expect(screen.getByTestId('search-kind-annotation')).toBeEnabled()
     expect(screen.getByTestId('search-note-set-aside')).toHaveTextContent(
@@ -338,6 +342,16 @@ describe('SearchWorkspaceView', () => {
     expect(options[0]).toHaveAttribute('aria-selected', 'false')
     expect(options[0].id).not.toBe('')
     expect(new Set(screen.getAllByRole('option').map((option) => option.id)).size).toBe(screen.getAllByRole('option').length)
+  })
+
+  it('teaches the keys in the status line only while the field has them, until the first arrow', async () => {
+    german(<Harness initial={{ ...EMPTY_SEARCH_STATE, text: 'Fluchtweg' }} onChange={() => {}} />)
+    const keys = /Enter öffnet/
+    expect(screen.queryByText(keys)).toBeNull()
+    await userEvent.click(screen.getByRole('combobox', { name: 'Suchen' }))
+    expect(screen.getByText(keys)).toBeInTheDocument()
+    await userEvent.keyboard('{ArrowDown}')
+    expect(screen.queryByText(keys)).toBeNull()
   })
 
   it('in the register, the combobox controls the table and names the active row', async () => {
@@ -544,6 +558,30 @@ describe('SearchWorkspaceView on a phone', () => {
     expect(within(sheet).getByTestId('search-sheet-clear')).toBeDisabled()
     await userEvent.click(within(sheet).getByTestId('search-sheet-show'))
     await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Filter' })).toBeNull())
+  })
+
+  it('keeps the caveats above the first hit to a line each: the short reading clause and the short set-aside note', () => {
+    const state: SearchUrlState = { ...EMPTY_SEARCH_STATE, text: 'Fluchtweg GK 4', filters: { documentTypes: ['submission_drawing'], planNumber: 'EP-0' } }
+    const answer = { ...searchFixtureAnswer(state), building: ['p1'] }
+    const sections = Object.fromEntries(Object.entries(answer.sections).map(([kind, section]) => [kind, sectionView(section!)]))
+    german(
+      <SearchWorkspaceView
+        surface={{ kind: 'office' }}
+        state={state}
+        onStateChange={() => {}}
+        fieldValue={state.text}
+        onFieldChange={() => {}}
+        response={answer}
+        sections={sections}
+        loading={false}
+        failed={false}
+        onRetry={() => {}}
+        onLoadMore={() => {}}
+      />
+    )
+    expect(screen.getByTestId('search-status')).toHaveTextContent('eine Ablage wird noch gelesen')
+    expect(screen.getByTestId('search-status')).not.toHaveTextContent('die Filter finden dort noch nicht alles')
+    expect(screen.getByTestId('search-note-set-aside')).toHaveTextContent(/^Ordner, Projekte und Chats: mit Filtern nicht durchsucht$/)
   })
 
   it('keeps one saved-searches button, its list a sheet with saving inside, and the export only in the Planliste', async () => {

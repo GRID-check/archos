@@ -66,6 +66,8 @@ export const search: typeof en.search = {
     document_filters: 'Die Filter gelten für Dokumente und ihre Anmerkungen. {kinds} werden so lange nicht durchsucht.',
     annotation_filters: 'Die Filter gelten nur für Anmerkungen. {kinds} werden so lange nicht durchsucht.',
     tab: 'Mit diesen Filtern nicht durchsucht',
+    /** Auf dem Telefon, eine Zeile; den ganzen Satz trägt der ausgegraute Reiter. */
+    short: '{kinds}: mit Filtern nicht durchsucht',
   },
   notes: {
     buildingShort: '{count, plural, one {eine Ablage wird noch gelesen} other {# Ablagen werden noch gelesen}}',
@@ -86,7 +88,7 @@ export const search: typeof en.search = {
     superseded: 'Ersetzt',
     supersededHint: 'Eine neuere Fassung ersetzt dieses Dokument',
     changed: 'Gegenüber der Vorfassung:',
-    changedValue: '{fact} {before} → {after}',
+    changedValue: '{fact} {before}\u00A0→\u00A0{after}',
     changedAdded: '{fact} neu: {after}',
     changedRemoved: '{fact} nicht mehr angegeben',
     pagesNotRead: '{count, plural, one {1 Seite nicht gelesen} other {# Seiten nicht gelesen}}',

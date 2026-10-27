@@ -36,6 +36,8 @@ export interface SearchFieldProps {
   hint?: ReactNode
   /** Keys the field handles itself (Escape, the arrows over a result list). */
   onKeyDown?: (event: ReactKeyboardEvent<HTMLInputElement>) => void
+  /** The field took or lost focus (a page that teaches its keys only while they work). */
+  onFocusChange?: (focused: boolean) => void
   /**
    * The field drives a result list from the keyboard (WAI-ARIA combobox
    * pattern, list autocomplete): it stays focused while ↑ ↓ move an active
@@ -73,6 +75,7 @@ export function SearchField({
   trailing,
   hint,
   onKeyDown,
+  onFocusChange,
   combobox,
 }: SearchFieldProps): JSX.Element {
   const canClear = Boolean(clearLabel)
@@ -89,6 +92,8 @@ export function SearchField({
         value={value}
         onChange={(event) => onChange(event.target.value)}
         onKeyDown={onKeyDown}
+        onFocus={onFocusChange ? () => onFocusChange(true) : undefined}
+        onBlur={onFocusChange ? () => onFocusChange(false) : undefined}
         placeholder={placeholder}
         aria-label={label}
         {...(combobox
@@ -123,12 +128,14 @@ export function SearchField({
         spellCheck={false}
         className={cn(
           'h-9 pl-8 [&::-webkit-search-cancel-button]:hidden',
-          // Focus is the field's own: its border turns ink with the soft halo
-          // (`FIELD_FOCUS_RING`). The global keyboard outline drew a second ink
-          // box 2px outside it, and a search field takes focus on arrival
-          // (⌘K, autofocus), so that double frame was the loudest thing on the
-          // page. The ink border alone is well over 3:1 on paper and charcoal.
-          'focus-visible:outline-none!',
+          // Focus is the field's own: its border turns ink, and nothing more.
+          // The global keyboard outline drew a second ink box 2px outside it,
+          // and `FIELD_FOCUS_RING`'s halo a third band, and a search field
+          // takes focus on arrival (⌘K, autofocus) and keeps it while the
+          // arrows walk the results, so that frame was the loudest thing on a
+          // page whose job is reading what it found. The ink border alone is
+          // well over 3:1 on paper and charcoal.
+          'focus-visible:outline-none! focus-visible:ring-0',
           // Reserve the clear gutter even when empty so typing does not shift text.
           // Under a finger the clear grows to 44px (the Button's own
           // `pointer-coarse:size-11`), so the gutter grows with it and the end

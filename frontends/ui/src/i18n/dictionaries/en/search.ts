@@ -64,6 +64,7 @@ export const search = {
     document_filters: 'The filters apply to documents and their annotations. {kinds} are not searched while they are set.',
     annotation_filters: 'The filters apply to annotations only. {kinds} are not searched while they are set.',
     tab: 'Not searched with these filters',
+    short: '{kinds}: not searched with filters',
   },
   notes: {
     buildingShort: '{count, plural, one {one shelf still being read} other {# shelves still being read}}',
@@ -83,7 +84,7 @@ export const search = {
   document: {
     superseded: 'Replaced',
     changed: 'Against the previous version:',
-    changedValue: '{fact} {before} → {after}',
+    changedValue: '{fact} {before}\u00A0→\u00A0{after}',
     changedAdded: '{fact} new: {after}',
     changedRemoved: '{fact} no longer stated',
     supersededHint: 'A newer version replaces this document',

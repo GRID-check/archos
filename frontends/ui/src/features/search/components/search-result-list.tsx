@@ -8,6 +8,7 @@ import { LoadMore } from '@/components/ui/load-more'
 import { useLocale, useTranslations } from '@/i18n'
 import { ANNOTATION_KINDS, ANNOTATION_STATUSES } from '@/lib/annotations/types'
 import { formatRelativeTime } from '@/lib/format'
+import { keepUnitsTogether } from '@/lib/text/keep-units'
 import { termSegments } from '@/lib/text/term-segments'
 import {
   SEARCH_KINDS,
@@ -238,9 +239,9 @@ function DocumentRow({ hit, text, active, id }: { hit: DocumentHit; text: string
           testId="search-changed-facts"
           parts={hit.changedFacts.map((change) => {
             const fact = labels.factKey(change.key)
-            if (change.before === null) return t('document.changedAdded', { fact, after: change.after ?? '' })
+            if (change.before === null) return t('document.changedAdded', { fact, after: keepUnitsTogether(change.after ?? '') })
             if (change.after === null) return t('document.changedRemoved', { fact })
-            return t('document.changedValue', { fact, before: change.before, after: change.after })
+            return t('document.changedValue', { fact, before: keepUnitsTogether(change.before), after: keepUnitsTogether(change.after) })
           })}
         />
       ) : null}

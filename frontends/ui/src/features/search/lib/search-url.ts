@@ -411,10 +411,16 @@ export function fromSearchBody(body: SearchBody, projectId: string | null = null
   }
 }
 
-/** How many filters are set, for the phone's „Filter (3)“. A list counts once per value. */
+/**
+ * How many filters are set, for the phone's „Filter (3)“. A list counts once
+ * per value. The Planliste's „Nur aktuelle Fassung“ is its own switch above
+ * the table, with no chip, so it is not counted there either: „Filter (2)“
+ * stood over a single chip.
+ */
 export function activeFilterCount(state: SearchUrlState): number {
   let total = state.projectId ? 1 : 0
-  for (const value of Object.values(compactFilters(state.filters))) {
+  for (const [key, value] of Object.entries(compactFilters(state.filters))) {
+    if (key === 'currentOnly' && state.view === 'register') continue
     total += Array.isArray(value) ? value.length : 1
   }
   return total

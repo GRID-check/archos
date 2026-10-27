@@ -38,7 +38,9 @@ export function SearchActiveFilters({
       })}
       {filters.length > 1 ? (
         <Button type="button" variant="link" size="sm" onClick={() => onChange(clearFilters(state))} data-testid="search-clear-filters">
-          {t('clearAll')}
+          {/* On a phone the short words keep it on the chips' line rather than a line of its own. */}
+          <span className="max-sm:hidden">{t('clearAll')}</span>
+          <span className="sm:hidden">{t('clearAllShort')}</span>
         </Button>
       ) : null}
     </ActiveFilters>
