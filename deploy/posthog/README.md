@@ -46,4 +46,18 @@ code and a key the code reads that the dictionary lacks.
 The older workflow „Piloti feedback → Slack" (`01a163d8-dfc6-0000-3e2d-82d9d653bc47`)
 posted from PostHog's own `$conversation_message_received`, which cannot say
 which deployment a ticket came from, so its claim button always pointed at
-production. Disable it once both deployments send the server events above.
+production. It also posted every report a second time, to `#posthog-inbox`.
+Archived on 2026-10-27, after the per-deployment destination was seen posting
+the same reports to `#support-tickets`.
+
+## Answer quality to Slack
+
+No `.hog` file: the destination is PostHog's own Slack template with its inputs
+set, so there is no code of ours to review.
+
+| Destination in PostHog | Trigger | What it does |
+|---|---|---|
+| „Piloti answers: thumbs-down with a reason → Slack (prod)" `01a17e99-0271-0000-4f5a-8c22030a5fd0` | `answer_feedback_submitted` with `verdict = down`, `reason` set and `$host = app.piloti.at` | Posts to `#support-tickets`: the reason („Ungenau", „Falsche Quelle", „Zu langsam", „Sonstiges"), the office, the page, the conversation and message ids, and links to Platform → Answer quality and the person's replays. The vote's comment never reaches PostHog, so it is not in the post |
+
+A thumbs-down without a reason does not post: it is the cheapest click in the
+app and on its own says too little to act on.
