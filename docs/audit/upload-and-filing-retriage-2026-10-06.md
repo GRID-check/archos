@@ -135,7 +135,7 @@ WorkOS, not project roles, so a grant means the same thing in every project.
   by `(collection, filename)` (`src/aiq_agent/knowledge/factory.py:508-534`),
   so a cross-shelf move must carry them.
 - **GDPR.** [V] The office decided that deleting is the GDPR path, with no
-  separate „DSGVO" button (`docs/plans/2026-10-06-folder-access-lifecycle.md:76-87`).
+  separate „DSGVO" button (`docs/plans/2026-10-06-folder-access-lifecycle.md at `56ee3329`:76-87`).
   [I] Names of former staff and externals are personal data collected from
   someone other than the person. Plausible basis: legitimate interest,
   Art. 6(1)(f); storage limitation, Art. 5(1)(e); information duty under

@@ -27,7 +27,7 @@ office and text-format extractors. The BFF calls no external model on upload
 (Gotenberg and the IFC parse run in the cluster).
 
 We asked whether the NVIDIA Agent Toolkit can do this. It cannot, as installed
-or as published (evidence in `docs/plans/2026-10-01-upload-governance-worklog.md`):
+or as published (evidence in `docs/plans/2026-10-01-upload-governance-worklog.md` at `56ee3329`):
 NAT 1.9's middleware hooks registered functions, not document ingestion, which
 runs in our own ingestor; the optional `nvidia-nat-security` package's
 `pii_defense` is Presidio with `language="en"` hard-coded and inspects function
@@ -736,5 +736,5 @@ counts, never terms.
 
 ## More Information
 
-* Evidence and the two NVIDIA evaluations: `docs/plans/2026-10-01-upload-governance-worklog.md`.
+* Evidence and the two NVIDIA evaluations: `docs/plans/2026-10-01-upload-governance-worklog.md` at `56ee3329`.
 * Triage of the surrounding tickets: `docs/audit/upload-and-filing-triage-2026-10.md`.

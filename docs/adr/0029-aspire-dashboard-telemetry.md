@@ -34,7 +34,7 @@ tool, not a log archive.
 Deploy `mcr.microsoft.com/dotnet/aspire-dashboard` as a standard Kubernetes
 Deployment via the existing Pulumi stack
 (`deploy/pulumi/src/platform/observability.ts`). Design spec:
-`docs/specs/2026-07-27-aspire-otel-dashboard-design.md`.
+`docs/specs/2026-07-27-aspire-otel-dashboard-design.md` at `56ee3329`.
 
 Key decisions within the approach:
 
@@ -445,7 +445,7 @@ a token or a cost.)*
 
 ## References
 
-- Design spec: `docs/specs/2026-07-27-aspire-otel-dashboard-design.md`
+- Design spec: `docs/specs/2026-07-27-aspire-otel-dashboard-design.md` at `56ee3329`
 - Dashboard standalone: https://aspire.dev/dashboard/standalone/
 - Dashboard configuration: https://aspire.dev/dashboard/configuration/
 - ADR-0016: Platform owner model
