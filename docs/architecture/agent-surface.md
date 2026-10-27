@@ -298,7 +298,7 @@ Every call answers one JSON body to a client that accepts JSON
 (`createAgentDoorHandler`, `mcp-server.ts`), with one exception on the
 2026-07-28 era: the handler answers `responseMode: 'auto'`, which upgrades a
 call to SSE only when it sends a message before its result, and the only such
-call is `piloti-ask-create` with a `progressToken` ([Consulting Piloti](#consulting-piloti-and-the-a2a-door)).
+call is `agent-ask-create` with a `progressToken` ([Consulting Piloti](#consulting-piloti-and-the-a2a-door)).
 The server declares no `logging`, and asking for input is a result, not a
 message; `ask-calls.spec.ts` holds every other call to `application/json`. The
 2025-era path (Piloti's own client) is its own transport with
@@ -356,7 +356,7 @@ Piloti for what it cannot get elsewhere. The office door offers
   (`ifc-*`, `bim-*`), `files-list`, and the domain features that make an office
   artifact (`project-summary-generate`, `project-consistency-check`,
   `project-experience-extract`);
-- **Piloti itself**: `piloti-ask`.
+- **Piloti itself**: `agent-ask-create`, `agent-ask-get`, `agent-ask-cancel`.
 
 And it offers **Piloti's own cards**: an outside agent's host that renders MCP
 Apps draws Piloti's proposal card in the person's own chat, where they apply
@@ -959,7 +959,7 @@ reads `read-only-writes.spec.ts` lists with why they return no secret, and:
   (403): accepting a card the agent worded is not the confirmation such a change
   needs (its entry says `piloti: false`, and `exposure.config.spec.ts` holds
   that). Nor does it see the person's own decisions: `proposal-apply`,
-  `proposal-dismiss` and `piloti-change-undo`, which the applier also refuses at
+  `proposal-dismiss` and `agent-change-undo`, which the applier also refuses at
   the click (`PROPOSAL_DECISION_OPERATIONS` in `operation-applier.ts`, its own
   reason), so a card Piloti worded never applies another.
 - **An external agent sees one only when its organization switched the class
@@ -1120,10 +1120,10 @@ The workspace set of the answer suite measures all of it
 
 An agent can also ask Piloti itself (ADR-0124,
 [`../adr/0124-agents-consult-piloti-over-mcp-and-a2a.md`](../adr/0124-agents-consult-piloti-over-mcp-and-a2a.md)).
-`piloti-ask-create` (`catalog/consult.ts`) calls `POST /api/piloti-asks`, which
+`agent-ask-create` (`catalog/consult.ts`) calls `POST /api/agent-asks`, which
 runs a headless turn (ADR-0106) as the person in their own private thread, with
 the trigger `agent_consult`, waits up to 40 seconds and otherwise answers
-`working` for `piloti-ask-get` to poll. The organization's `piloti-ask` switch
+`working` for `agent-ask-get` to poll. The organization's `piloti-ask` switch
 gates it, and the turn's budget pays for it.
 A completed answer carries `answer.sources` (`documentId`, `name`, `page`, and a
 `url` that opens the cited page in Piloti for the asker) and `answer.confidence`,
@@ -1135,13 +1135,13 @@ call whose wait is ours; `task-run-start`, the uploads and `document-reingest`
 queue work and answer at once, so they have nothing to report. A client chooses
 how to wait, per call, in standard MCP:
 
-- *Progress.* A `piloti-ask-create` call carrying `_meta.progressToken` starts
-  the ask without the route's wait, then reads it with `piloti-ask-get` in waits
+- *Progress.* A `agent-ask-create` call carrying `_meta.progressToken` starts
+  the ask without the route's wait, then reads it with `agent-ask-get` in waits
   of at most five seconds and sends `notifications/progress` between them:
   `progress` is the elapsed seconds, `total` the wait budget (`waitSeconds`,
   default 40), `message` the ask's state. The call ends with the ask as
-  `piloti-ask-create` would have answered it. Each read is recorded as a
-  `piloti-ask-get` call.
+  `agent-ask-create` would have answered it. Each read is recorded as a
+  `agent-ask-get` call.
 - *Tasks.* The server advertises the `io.modelcontextprotocol/tasks` extension
   (SEP-2663) in `server/discover` to a caller that runs the ask operations
   itself. A call whose own `clientCapabilities` declares it gets a
@@ -1149,11 +1149,11 @@ how to wait, per call, in standard MCP:
   the ask id as `taskId`, `ttlMs: null` (the ask lives with its conversation)
   and `pollIntervalMs` from `pollAfterSeconds`; an ask that ended at once
   (budget, a busy thread) is answered as the plain call instead. `tasks/get`
-  reads the ask through `piloti-ask-get`: `submitted` and `working` are
+  reads the ask through `agent-ask-get`: `submitted` and `working` are
   `working`, `canceled` is `cancelled`, and every other end is `completed` with
   the tool result inline (a `failed` or `rejected` ask is a tool result, as
   today; the task status `failed` is for JSON-RPC errors). `tasks/cancel` runs
-  `piloti-ask-cancel` and acknowledges, also for an ask that had ended;
+  `agent-ask-cancel` and acknowledges, also for an ask that had ended;
   `tasks/update` acknowledges, since an ask never asks back. Each runs as the
   person, so the route's own rule (the asker only) decides; an id that names
   none of theirs is `-32602`, a request that does not declare the extension
@@ -1167,7 +1167,7 @@ waits up to 40 seconds.
 **The recursion lock.** In-product Piloti only proposes writes, and
 `lib/proposals/operation-applier.ts` neither files nor applies an ask, so no
 turn asks Piloti again. Piloti does not see the three operations either
-(`piloti: false` in the exposure config), so it cannot name one or run `piloti-ask-get`.
+(`piloti: false` in the exposure config), so it cannot name one or run `agent-ask-get`.
 
 **The A2A door.** `POST /api/a2a` serves the same asks to agents that speak A2A
 (1.0, and 0.3 without an `A2A-Version` header), through the official SDK

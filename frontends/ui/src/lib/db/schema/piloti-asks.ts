@@ -1,6 +1,6 @@
 import { sql } from 'drizzle-orm'
 import { check, foreignKey, index, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core'
-import { ASK_STATES, type AskState } from '@/lib/piloti-asks/ask-wire'
+import { ASK_STATES, type AskState } from '@/lib/agent-asks/ask-wire'
 import { conversations } from './conversations'
 
 const list = (values: readonly string[]) => sql.raw(values.map((value) => `'${value}'`).join(', '))
@@ -8,7 +8,7 @@ const list = (values: readonly string[]) => sql.raw(values.map((value) => `'${va
 /**
  * A question another agent asked Piloti on a person's behalf (ADR-0124,
  * migration 0179): one row per ask, whether it came through the MCP door
- * (`piloti-ask-create`) or the A2A door (`SendMessage`), which calls the same
+ * (`agent-ask-create`) or the A2A door (`SendMessage`), which calls the same
  * route.
  *
  * The row is the A2A task. Its id is three things at once: the ask, the turn

@@ -2,7 +2,7 @@
  * The A2A door's request handler (ADR-0124): the SDK's `A2ARequestHandler`,
  * answered by the ask routes.
  *
- * Not a second path to the asks: every method calls `/api/piloti-asks` through
+ * Not a second path to the asks: every method calls `/api/agent-asks` through
  * `callOperation`, the dispatcher the MCP door and accepted proposals use, as
  * the person the token names. The route's `authz`, rate limit (`chat-turn`),
  * tenant slot, body schema, the `piloti-ask` switch and the budget apply
@@ -12,10 +12,10 @@
  *
  * | A2A method (1.0 / 0.3) | Route |
  * |---|---|
- * | `SendMessage` / `message/send` | `POST /api/piloti-asks`, then `GET …/[id]?waitSeconds=` until the task ends; with `returnImmediately` (0.3: `blocking: false`) the ask waits 0 seconds and the task answers as it stands |
+ * | `SendMessage` / `message/send` | `POST /api/agent-asks`, then `GET …/[id]?waitSeconds=` until the task ends; with `returnImmediately` (0.3: `blocking: false`) the ask waits 0 seconds and the task answers as it stands |
  * | `SendStreamingMessage` / `message/stream` | the same without the wait, as server-sent events: the task, each change of state, the artifacts, the end; an ask that ended at once is one event, the whole task |
- * | `GetTask` / `tasks/get` | `GET /api/piloti-asks/[id]` |
- * | `CancelTask` / `tasks/cancel` | `POST /api/piloti-asks/[id]/cancel` |
+ * | `GetTask` / `tasks/get` | `GET /api/agent-asks/[id]` |
+ * | `CancelTask` / `tasks/cancel` | `POST /api/agent-asks/[id]/cancel` |
  * | `SubscribeToTask` / `tasks/resubscribe` | the stream of an existing task |
  *
  * A `contextId` the client made up starts a new conversation, whose id the
@@ -57,7 +57,7 @@ import { callOperation, type OperationInput, type OperationResult } from '@/lib/
 import type { AgentPrincipal } from '@/lib/agent-api/principal'
 import { recordOperationCalled } from '@/lib/agent-api/telemetry'
 import type { AuthorizedSession } from '@/lib/auth/types'
-import { ASK_WAIT_SECONDS, isTerminalAskState, type AskView } from '@/lib/piloti-asks/ask-wire'
+import { ASK_WAIT_SECONDS, isTerminalAskState, type AskView } from '@/lib/agent-asks/ask-wire'
 import { askInputOf, artifactsOf, taskOf } from './task-mapping'
 
 /** The longest a blocking `SendMessage` holds its request before it answers the task still working. */
@@ -181,17 +181,17 @@ export class PilotiA2ARequestHandler implements A2ARequestHandler {
   private async ask(params: SendMessageRequest, waitSeconds?: number): Promise<AskView> {
     const input = askInputOf(params.message, params.metadata)
     const body = waitSeconds === undefined ? input : { ...input, waitSeconds }
-    const result = await this.run('piloti-ask-create', { body })
+    const result = await this.run('agent-ask-create', { body })
     if (result.status === 404 && body.conversationId) {
       const { conversationId: _unknown, ...fresh } = body
-      return viewOf(await this.run('piloti-ask-create', { body: fresh }), 'malformed')
+      return viewOf(await this.run('agent-ask-create', { body: fresh }), 'malformed')
     }
     return viewOf(result, 'malformed')
   }
 
   private async read(id: string, waitSeconds: number, recorded = true): Promise<AskView> {
     const query = waitSeconds > 0 ? { waitSeconds } : {}
-    return viewOf(await this.run('piloti-ask-get', { params: { id }, query }, recorded), 'task')
+    return viewOf(await this.run('agent-ask-get', { params: { id }, query }, recorded), 'task')
   }
 
   /** Poll until the ask ends or `deadline` passes; the last view. */
@@ -245,7 +245,7 @@ export class PilotiA2ARequestHandler implements A2ARequestHandler {
   }
 
   async cancelTask(params: CancelTaskRequest): Promise<Task> {
-    const result = await this.run('piloti-ask-cancel', { params: { id: params.id } })
+    const result = await this.run('agent-ask-cancel', { params: { id: params.id } })
     if (result.status === 409) throw new TaskNotCancelableError(routeMessage(result))
     return taskOf(viewOf(result, 'task'))
   }

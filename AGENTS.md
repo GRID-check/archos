@@ -225,7 +225,7 @@ are clients of it, and the UI is another. Each tool is an operation in
 calls; the route stays the gate, so authz, rate limit and body schema apply
 unchanged. Writes need the person's yes. The door offers the office's workspace
 (its data and the actions on it), Piloti's domain knowledge (the legal corpus,
-BIM/IFC analysis of the office's models) and Piloti itself (`piloti-ask`). It
+BIM/IFC analysis of the office's models) and Piloti itself (`agent-ask-*`). It
 does not offer what a calling agent already has or what is how Piloti itself
 works: a service we only proxy (web search, geocoding), product configuration
 (models, keys, budgets, screening and retention policies, settings), model work

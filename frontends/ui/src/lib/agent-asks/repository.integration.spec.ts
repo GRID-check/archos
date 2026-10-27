@@ -5,7 +5,7 @@
  * restricted runtime role:
  *
  *   GRID_TEST_DATABASE_URL=postgres://grid_app_rw@host:port/grid_app \
- *     npx vitest run src/lib/piloti-asks/repository.integration.spec.ts
+ *     npx vitest run src/lib/agent-asks/repository.integration.spec.ts
  *
  * The unit specs mock this module; these prove the SQL the service rests on:
  * another organization neither reads nor ends an ask (each function states its

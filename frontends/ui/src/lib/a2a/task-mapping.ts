@@ -22,7 +22,7 @@ import {
   RequestMalformedError,
   UnsupportedOperationError,
 } from '@a2a-js/sdk/errors'
-import type { AskDocument, AskState, AskView, CreateAskRequest } from '@/lib/piloti-asks/ask-wire'
+import type { AskDocument, AskState, AskView, CreateAskRequest } from '@/lib/agent-asks/ask-wire'
 import { conversationIdSchema } from '@/lib/session-documents/conversation-id'
 
 export const TASK_STATE_OF: Readonly<Record<AskState, TaskState>> = {

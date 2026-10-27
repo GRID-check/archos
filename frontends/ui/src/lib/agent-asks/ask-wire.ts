@@ -1,6 +1,6 @@
 /**
  * The contract of a question another agent asks Piloti (ADR-0124): the routes
- * under `/api/piloti-asks`, the MCP operations in
+ * under `/api/agent-asks`, the MCP operations in
  * `lib/agent-api/catalog/consult.ts`, and the A2A door (`lib/a2a/`) all read
  * it from here. Pure: no database, no service (`lib/api/wire-modules.spec.ts`).
  *
@@ -27,10 +27,10 @@ export const isTerminalAskState = (state: AskState): boolean => TERMINAL_ASK_STA
  * Piloti's own door never files one as a proposal and never applies one
  * (`lib/proposals/operation-applier.ts`), so a turn cannot ask Piloti again.
  */
-export const PILOTI_ASK_OPERATIONS = ['piloti-ask-create', 'piloti-ask-get', 'piloti-ask-cancel'] as const
+export const AGENT_ASK_OPERATIONS = ['agent-ask-create', 'agent-ask-get', 'agent-ask-cancel'] as const
 
-export const isPilotiAskOperation = (name: string): boolean =>
-  (PILOTI_ASK_OPERATIONS as readonly string[]).includes(name)
+export const isAgentAskOperation = (name: string): boolean =>
+  (AGENT_ASK_OPERATIONS as readonly string[]).includes(name)
 
 /** The longest question an agent may send: a long brief, not a document (attach those to the project). */
 export const MAX_QUESTION_CHARS = 8_000
@@ -61,7 +61,7 @@ export const createAskSchema = z
     conversationId: conversationIdSchema
       .optional()
       .describe(
-        'Continue an earlier ask: its conversationId, from piloti-ask-create or piloti-ask-get. ' +
+        'Continue an earlier ask: its conversationId, from agent-ask-create or agent-ask-get. ' +
           'Piloti then sees the earlier questions and answers. Omit to start a new conversation.',
       ),
     waitSeconds: z
@@ -72,14 +72,14 @@ export const createAskSchema = z
       .optional()
       .describe(
         `How long to wait for the answer before returning (default and most ${ASK_WAIT_SECONDS}); 0 returns the ` +
-          'ask at once, and piloti-ask-get reads it later.',
+          'ask at once, and agent-ask-get reads it later.',
       ),
   })
   .strict()
 export type CreateAskRequest = z.infer<typeof createAskSchema>
 
 export const askParamsSchema = z.object({
-  id: z.guid().describe('The ask id, from piloti-ask-create.'),
+  id: z.guid().describe('The ask id, from agent-ask-create.'),
 })
 
 export const getAskQuerySchema = z
@@ -152,6 +152,6 @@ export interface AskView {
   createdAt: string
   updatedAt: string
   endedAt: string | null
-  /** While not terminal: how long to wait before asking again with piloti-ask-get. */
+  /** While not terminal: how long to wait before asking again with agent-ask-get. */
   pollAfterSeconds: number | null
 }

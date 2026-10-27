@@ -47,7 +47,7 @@ import { withPlatformAccess, withTenant } from '@/lib/db/tenant-context'
 import { memberReader } from '@/lib/documents/document-reader'
 import { findDocumentInOrg } from '@/lib/documents/repository'
 import { announcePilotiWork } from '@/lib/annotations/piloti-work'
-import { recordAskOutcome } from '@/lib/piloti-asks/service'
+import { recordAskOutcome } from '@/lib/agent-asks/service'
 import type { TurnOutcomeRequest, TurnOutcomeResponse } from './outcome-types'
 
 /** What the wake records when a turn failed or was refused without saying why. */

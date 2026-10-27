@@ -1,5 +1,5 @@
 /**
- * An agent asks Piloti (ADR-0124): the service behind `/api/piloti-asks`.
+ * An agent asks Piloti (ADR-0124): the service behind `/api/agent-asks`.
  *
  * A connected agent (through the MCP door, or the A2A door, which calls the
  * same routes) asks Piloti a question for the person it acts for. The answer is
@@ -17,7 +17,7 @@
  * 4. A wait of up to {@link ASK_WAIT_SECONDS}: the chat socket reports the
  *    turn's end to `/api/internal/turns/outcome` (`recordAskOutcome`), on
  *    whichever replica, and this polls the row. Past the wait the caller gets
- *    `working` and polls `GET /api/piloti-asks/[id]`.
+ *    `working` and polls `GET /api/agent-asks/[id]`.
  *
  * The recursion lock is not here: in-product Piloti never runs a write, it
  * proposes it, and `lib/proposals/operation-applier.ts` refuses to file or
@@ -228,7 +228,7 @@ async function startTurn(
         state: 'rejected',
         reason:
           'Piloti is still answering in this conversation, and an ask never interrupts a running turn. ' +
-          'Read the earlier ask with piloti-ask-get until it ends, then ask again; ' +
+          'Read the earlier ask with agent-ask-get until it ends, then ask again; ' +
           'or ask in a new conversation by leaving out conversationId.',
       }
     case 'refused':
@@ -432,7 +432,7 @@ export async function cancelAsk(session: AuthorizedSession, id: string): Promise
   const refused = outcome.kind === 'unavailable' || outcome.kind === 'rejected'
   if (refused && row.state !== 'submitted') {
     const why = outcome.kind === 'rejected' ? outcome.code : outcome.reason
-    throw new ConflictError(`The ask could not be stopped: ${why}`, { reason: 'piloti-ask-cancel-failed' })
+    throw new ConflictError(`The ask could not be stopped: ${why}`, { reason: 'agent-ask-cancel-failed' })
   }
   const current = (await findAsk(row.organizationId, row.id)) ?? row
   let settled = await waitForEnd(current, Date.now() + CANCEL_WAIT_MS)

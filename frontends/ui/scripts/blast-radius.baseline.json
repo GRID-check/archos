@@ -219,7 +219,7 @@
   "src/lib/pdf/printable-text.tsx": 288,
   "src/lib/pdf/ReactPdfDocument.tsx": 285,
   "src/lib/pdf/report-document.ts": 285,
-  "src/lib/piloti-asks/ask-wire.ts": 772,
+  "src/lib/agent-asks/ask-wire.ts": 772,
   "src/lib/pricing/repository.ts": 306,
   "src/lib/pricing/service.ts": 306,
   "src/lib/product-feedback/repository.ts": 283,

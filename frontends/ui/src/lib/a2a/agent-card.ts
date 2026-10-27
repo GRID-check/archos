@@ -20,7 +20,7 @@ import { type AgentCard, AgentCard as AgentCardCodec } from '@a2a-js/sdk'
 import { duplicateInterfacesForLegacy } from '@a2a-js/sdk/compat/v0_3'
 import { a2aResourceUrl, authkitIssuer, MCP_SCOPES_SUPPORTED, mcpResourceUrl } from '@/lib/agent-api/mcp-config'
 import { PRODUCT_NAME } from '@/lib/brand'
-import { ASK_WAIT_SECONDS } from '@/lib/piloti-asks/ask-wire'
+import { ASK_WAIT_SECONDS } from '@/lib/agent-asks/ask-wire'
 
 /** The name the security scheme goes by in `securitySchemes` and `securityRequirements`. */
 export const A2A_SECURITY_SCHEME = 'workos-authkit'

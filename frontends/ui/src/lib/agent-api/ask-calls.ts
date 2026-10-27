@@ -6,10 +6,10 @@ import 'server-only'
  * that asked for it:
  *
  *  - **Progress** (`notifications/progress`): a `tools/call` of
- *    `piloti-ask-create` that carries a `progressToken` starts the ask without
- *    waiting, then reads it with `piloti-ask-get` in short waits and reports
+ *    `agent-ask-create` that carries a `progressToken` starts the ask without
+ *    waiting, then reads it with `agent-ask-get` in short waits and reports
  *    the elapsed seconds against the wait budget between them. The call still
- *    ends with the ask as `piloti-ask-create` would have answered it.
+ *    ends with the ask as `agent-ask-create` would have answered it.
  *  - **Tasks** (the `io.modelcontextprotocol/tasks` extension, SEP-2663): a
  *    client that declares the extension on the call gets a `CreateTaskResult`
  *    whose `taskId` is the ask id, the moment the ask is stored. `tasks/get`
@@ -17,7 +17,7 @@ import 'server-only'
  *    ask never needs input). No new state: the ask row is the task.
  *
  * Both run through {@link executeOperation}, so each read is the person's own
- * `piloti-ask-get` (the route refuses an ask that is not theirs), with the same
+ * `agent-ask-get` (the route refuses an ask that is not theirs), with the same
  * gate and telemetry as call-operation. A client that asks for neither, the
  * 2025-era path (Piloti's own client among it), and every actor whose writes
  * are proposals get today's call, unchanged.
@@ -33,7 +33,7 @@ import {
   type ServerContext,
 } from '@modelcontextprotocol/server'
 import { z } from 'zod'
-import { ASK_WAIT_SECONDS, type AskState, type AskView, isTerminalAskState } from '@/lib/piloti-asks/ask-wire'
+import { ASK_WAIT_SECONDS, type AskState, type AskView, isTerminalAskState } from '@/lib/agent-asks/ask-wire'
 import { executeOperation, fromOperationResult, runOperation } from './discovery'
 import { type OperationInput, type OperationResult, OperationInputError, validateOperationInput } from './dispatch'
 import type { AgentOperation } from './operation'
@@ -44,9 +44,9 @@ import type { McpCallContext } from './telemetry'
 /** The extension's identifier (SEP-2663). */
 export const TASKS_EXTENSION = 'io.modelcontextprotocol/tasks'
 
-export const ASK_CREATE = 'piloti-ask-create'
-const ASK_GET = 'piloti-ask-get'
-const ASK_CANCEL = 'piloti-ask-cancel'
+export const ASK_CREATE = 'agent-ask-create'
+const ASK_GET = 'agent-ask-get'
+const ASK_CANCEL = 'agent-ask-cancel'
 
 /** The longest single read between two progress notifications. */
 export const PROGRESS_STEP_SECONDS = 5
@@ -111,7 +111,7 @@ const STATUS_TEXT: Readonly<Record<AskState, string>> = {
 }
 
 /**
- * `piloti-ask-create` for a call that may carry a progress token or declare
+ * `agent-ask-create` for a call that may carry a progress token or declare
  * tasks (`call` is null on the 2025-era path). Everything else is
  * {@link runOperation}, so a refusal reads exactly as it does today.
  */
@@ -246,7 +246,7 @@ export function registerAskTasks(server: McpServer, ctx: McpCallContext): void {
     requireDeclared(call)
     const { view, result } = await readTask(ctx, ops.get, taskId)
     const task = taskOf(view)
-    // A finished ask is the tool call's result, as piloti-ask-create would have answered it; `failed` is kept for JSON-RPC errors.
+    // A finished ask is the tool call's result, as agent-ask-create would have answered it; `failed` is kept for JSON-RPC errors.
     return task.status === 'completed' ? { ...task, result: fromOperationResult(ops.create, result) } : { ...task }
   })
   server.server.setRequestHandler('tasks/cancel', { params: taskParams }, async ({ taskId }, call) => {

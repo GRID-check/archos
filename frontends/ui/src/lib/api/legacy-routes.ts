@@ -44,4 +44,8 @@ export const LEGACY_ROUTES: readonly LegacyRoute[] = [
   { from: '/api/projects/:id/jobs/:taskId/run', to: '/api/projects/:id/tasks/:taskId/run' },
   { from: '/api/projects/:id/jobs/:taskId/runs', to: '/api/projects/:id/runs?taskId=:taskId' },
   { from: '/api/projects/:id/tasks/:runId/review', to: '/api/projects/:id/runs/:runId/review' },
+  // The product's name left the routes (docs/contributing/code-conventions.md#no-brand-names).
+  { from: '/api/piloti-asks/:id/cancel', to: '/api/agent-asks/:id/cancel' },
+  { from: '/api/piloti-asks/:id', to: '/api/agent-asks/:id' },
+  { from: '/api/piloti-asks', to: '/api/agent-asks' },
 ]

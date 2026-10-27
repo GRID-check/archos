@@ -23,7 +23,7 @@ import { describe, expect, it, vi } from 'vitest'
 
 vi.mock('server-only', () => ({}))
 
-import { PILOTI_ASK_OPERATIONS } from '@/lib/piloti-asks/ask-wire'
+import { AGENT_ASK_OPERATIONS } from '@/lib/agent-asks/ask-wire'
 import { PROPOSAL_DECISION_OPERATIONS } from '@/lib/proposals/operation-applier'
 import { BACKEND_OPERATIONS, PILOTI_TOOL_FOR } from './backend-operations'
 import { AGENT_OPERATIONS } from './catalog'
@@ -83,7 +83,7 @@ describe('the exposure config', () => {
     for (const op of AGENT_OPERATIONS) {
       if (op.sensitivity && !entry(op.name).withheld) expect(entry(op.name).piloti, op.name).toBe(false)
     }
-    for (const name of [...PILOTI_ASK_OPERATIONS, ...PROPOSAL_DECISION_OPERATIONS]) {
+    for (const name of [...AGENT_ASK_OPERATIONS, ...PROPOSAL_DECISION_OPERATIONS]) {
       expect(entry(name).piloti, name).toBe(false)
     }
   })

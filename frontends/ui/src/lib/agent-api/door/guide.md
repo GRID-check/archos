@@ -22,7 +22,7 @@ The catalog lists actions. What a document or the law says is read with:
 - `knowledge-search`: quotable passages from the project, the office shelf and the building-law corpus. The documents are mostly German, so query in German.
 - `passage-read`: one passage you already know (document and clause or page), in reading order.
 - `law-lookup`: a provision of Austrian law, from RIS.
-- `piloti-ask-create`: Piloti answers the question itself, with sources, as a colleague would.
+- `agent-ask-create`: Piloti answers the question itself, with sources, as a colleague would.
 
 Quote what these return, with its place. The office relies on a citation being real: a normative value without a retrieved source is a guess, and should read as one.
 

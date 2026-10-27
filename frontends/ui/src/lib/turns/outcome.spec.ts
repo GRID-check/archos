@@ -29,7 +29,7 @@ vi.mock('@/lib/audit/service', () => ({ recordAuditEvent: vi.fn() }))
 vi.mock('@/lib/documents/repository', () => ({ findDocumentInOrg: vi.fn() }))
 vi.mock('@/lib/sharing/directory', () => ({ loadOrganizationDirectory: vi.fn() }))
 vi.mock('@/lib/realtime/document-channel', () => ({ publishToDocumentRoom: vi.fn() }))
-vi.mock('@/lib/piloti-asks/service', () => ({ recordAskOutcome: vi.fn() }))
+vi.mock('@/lib/agent-asks/service', () => ({ recordAskOutcome: vi.fn() }))
 
 import { onWakeEnded } from '@/lib/annotations/attention'
 import { delegationEventId, documentThreadConversationId, wakeTurnId } from '@/lib/annotations/wake-ids'
@@ -40,7 +40,7 @@ import { findDocumentInOrg } from '@/lib/documents/repository'
 import { publishToDocumentRoom } from '@/lib/realtime/document-channel'
 import { recordAuditEvent, type AuditEventInput } from '@/lib/audit/service'
 import { loadOrganizationDirectory } from '@/lib/sharing/directory'
-import { recordAskOutcome } from '@/lib/piloti-asks/service'
+import { recordAskOutcome } from '@/lib/agent-asks/service'
 import { expectRegistered } from '@/test-utils/audit'
 import { DEFAULT_FAILURE_REASON, recordTurnOutcome, wakeEndOf } from './outcome'
 import type { TurnOutcomeRequest } from './outcome-types'

@@ -3,18 +3,18 @@
  * the person asks Piloti a question; Piloti answers in a turn run as that
  * person, in their own thread, on their budget. The request waits up to
  * `ASK_WAIT_SECONDS` for the answer and answers 200 with it, or 202 with the
- * ask still `working`, which `GET /api/piloti-asks/[id]` then polls.
+ * ask still `working`, which `GET /api/agent-asks/[id]` then polls.
  *
- * The MCP operation is `piloti-ask-create`; the A2A door's `SendMessage`
+ * The MCP operation is `agent-ask-create`; the A2A door's `SendMessage`
  * calls this route through the same dispatcher. Charged as a chat turn
  * (`chat-turn`), because it is one. Thin handler; the rules live in
- * `@/lib/piloti-asks/service`, the contract in `@/lib/piloti-asks/ask-wire`.
+ * `@/lib/agent-asks/service`, the contract in `@/lib/agent-asks/ask-wire`.
  */
 
 import { apiRoute, parseJsonBody } from '@/lib/api/handler'
 import { CHAT_TURN_LIMIT } from '@/lib/limits/catalog'
-import { createAskSchema, isTerminalAskState } from '@/lib/piloti-asks/ask-wire'
-import { askPiloti } from '@/lib/piloti-asks/service'
+import { createAskSchema, isTerminalAskState } from '@/lib/agent-asks/ask-wire'
+import { askPiloti } from '@/lib/agent-asks/service'
 
 export const dynamic = 'force-dynamic'
 
