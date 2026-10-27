@@ -60,11 +60,11 @@ export interface DocumentVersionDiffProps {
 
 /** Per-kind chrome. One place, so a row cannot be styled two ways. */
 const ROW_STYLES = {
-  added: 'border-foreground bg-accent text-foreground',
-  removed: 'border-muted-foreground/70 border-dashed bg-surface-sunken text-muted-foreground',
+  added: 'bg-accent text-foreground',
+  removed: 'bg-surface-sunken text-muted-foreground',
   // Unchanged lines keep the container's own ground, so the two fills above are
   // the only ones on screen and both read as a mark rather than as a material.
-  context: 'border-transparent text-muted-foreground',
+  context: 'text-muted-foreground',
 } as const satisfies Record<'added' | 'removed' | 'context', string>
 
 const MARKERS = { added: '+', removed: '−', context: ' ' } as const
@@ -140,7 +140,7 @@ function DiffRowItem({ row, t }: { row: DiffRow; t: Translator }): JSX.Element {
   const changed = row.kind !== 'context'
   return (
     <li
-      className={cn('flex min-w-0 gap-2 border-l-2 px-2', ROW_STYLES[row.kind])}
+      className={cn('flex min-w-0 gap-2 px-2', ROW_STYLES[row.kind])}
       data-testid="document-version-diff-row"
       data-kind={row.kind}
     >

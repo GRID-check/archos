@@ -202,12 +202,16 @@ describe('InboxItemRow — registry-driven rendering (IB-6)', () => {
   })
 
   test('an unread row is visually distinct from a read one', () => {
-    const { unmount } = render(<InboxItemRow item={item()} />)
+    const { container, unmount } = render(<InboxItemRow item={item()} />)
     expect(screen.getByRole('link')).toHaveClass('font-semibold')
+    // The attention dot in the gutter, not a bar down the row's edge.
+    expect(container.querySelector('[data-slot="attention-dot"]')).not.toBeNull()
+    expect(container.innerHTML).not.toContain('before:w-[3px]')
     unmount()
 
-    render(<InboxItemRow item={item({ state: 'read' })} />)
+    const { container: read } = render(<InboxItemRow item={item({ state: 'read' })} />)
     expect(screen.getByRole('link')).not.toHaveClass('font-semibold')
+    expect(read.querySelector('[data-slot="attention-dot"]')).toBeNull()
   })
 })
 

@@ -126,6 +126,8 @@ import { SHARING_ERROR_REASONS } from '@/lib/sharing/types'
 import { InvokedSkillChip } from '@/features/skills/components/InvokedSkillChip'
 import { SlashCommandPicker } from '@/features/skills/components/SlashCommandPicker'
 import { useSlashCommand } from '@/features/skills/hooks/use-slash-command'
+import { ComposerSearchPicker, useDocumentReference } from '@/features/search'
+import type { DocumentHit } from '@/lib/search/search-wire'
 import type { SendMessageOutcome } from '@/features/chat/hooks/use-websocket-chat'
 
 /** Connection mode for the chat */
@@ -1149,6 +1151,7 @@ export const InputArea: FC<InputAreaProps> = memo(function InputArea({
       if (sessionId) setComposerDraft(sessionId, value)
       syncMentionQuery(value, caret)
       syncSlashQueryRef.current?.(value, caret ?? value.length)
+      syncReferenceQueryRef.current?.(value, caret ?? value.length)
       // Tell the thread. Throttled inside the hook, so this is a comparison on
       // most keystrokes; emptying the box withdraws the claim rather than letting
       // it expire, because "cleared the draft" is exactly when a colleague should
@@ -1201,6 +1204,7 @@ export const InputArea: FC<InputAreaProps> = memo(function InputArea({
     (element: HTMLTextAreaElement) => {
       syncMentionQuery(element.value, element.selectionStart)
       syncSlashQueryRef.current?.(element.value, element.selectionStart)
+      syncReferenceQueryRef.current?.(element.value, element.selectionStart)
     },
     [syncMentionQuery]
   )
@@ -1234,6 +1238,36 @@ export const InputArea: FC<InputAreaProps> = memo(function InputArea({
     onReplaceText: replaceComposerText,
   })
   syncSlashQueryRef.current = slash.syncQuery
+
+  /*
+    `#` puts a document of the workspace into the message (`useDocumentReference`):
+    the live workspace search, documents only, in this chat's project. A pick
+    writes the name into the text and makes the document the message's subject,
+    exactly what „Piloti fragen" on a file does (`askAboutFile`), so the subject
+    bar, the peek and the turn's focus follow from the one mechanism. Published
+    through a ref for the reason the slash one is.
+  */
+  const syncReferenceQueryRef = useRef<((text: string, caret: number) => void) | null>(null)
+  const referenceScope = useMemo(() => (projectId ? { scope: 'project' as const, projectId } : {}), [projectId])
+  const pickReference = useCallback(
+    (hit: DocumentHit) =>
+      setComposerSubject({
+        resourceType: 'document',
+        resourceId: hit.id,
+        title: hit.title ?? hit.name,
+        filename: hit.filename,
+        shelf: hit.shelf,
+      }),
+    [setComposerSubject]
+  )
+  const reference = useDocumentReference({
+    text: message,
+    enabled: !cannotContribute,
+    scope: referenceScope,
+    onReplaceText: replaceComposerText,
+    onPick: pickReference,
+  })
+  syncReferenceQueryRef.current = reference.syncQuery
 
   // A transcript goes in at the caret, or at the end when there was none, and
   // never over existing text. Through `replaceComposerText`, so the draft, the
@@ -1564,6 +1598,8 @@ export const InputArea: FC<InputAreaProps> = memo(function InputArea({
       // only exists while the caret is inside the message's opening token), so
       // the order here is a formality rather than a precedence rule.
       if (slash.handleKeyDown(e, handleSubmit)) return
+      // The `#` picker likewise: its fragment and the others' never share a caret.
+      if (reference.handleKeyDown(e, handleSubmit)) return
 
       // While the picker is open it owns the navigation keys. The single most
       // important detail: Enter must INSERT, never submit — a message sent because
@@ -1623,7 +1659,7 @@ export const InputArea: FC<InputAreaProps> = memo(function InputArea({
       e.preventDefault()
       handleSubmit()
     },
-    [handleSubmit, mentionPickerOpen, slash]
+    [handleSubmit, mentionPickerOpen, slash, reference]
   )
 
   // Whether an Escape from <body> is still the composer's: true while the
@@ -1947,13 +1983,14 @@ export const InputArea: FC<InputAreaProps> = memo(function InputArea({
           spanning its full width — the Slack/Linear placement. Caret-pixel tracking
           inside a textarea is fragile and buys nothing here. */}
       <Popover
-        open={mentionPickerOpen || slash.open}
+        open={mentionPickerOpen || slash.open || reference.open}
         onOpenChange={(open) => {
           if (open) return
-          // Dismiss whichever panel was showing. Both can be told to close: only
-          // one of them is open, and the other's flag is already false.
+          // Dismiss whichever panel was showing. All can be told to close: only
+          // one of them is open, and the others' flags are already false.
           setMentionDismissed(true)
           slash.dismiss()
+          reference.dismiss()
         }}
       >
         <PopoverAnchor asChild>
@@ -2168,19 +2205,23 @@ export const InputArea: FC<InputAreaProps> = memo(function InputArea({
               // `aria-controls` points at exists only then, and a chat composer that
               // announces itself as a combobox at all times is worse for a screen
               // reader than one that announces the popup when it appears.
-              role={mentionPickerOpen || slash.open ? 'combobox' : undefined}
-              aria-expanded={mentionPickerOpen || slash.open ? true : undefined}
-              aria-haspopup={mentionPickerOpen || slash.open ? 'listbox' : undefined}
-              aria-autocomplete={mentionPickerOpen || slash.open ? 'list' : undefined}
+              role={mentionPickerOpen || slash.open || reference.open ? 'combobox' : undefined}
+              aria-expanded={mentionPickerOpen || slash.open || reference.open ? true : undefined}
+              aria-haspopup={mentionPickerOpen || slash.open || reference.open ? 'listbox' : undefined}
+              aria-autocomplete={mentionPickerOpen || slash.open || reference.open ? 'list' : undefined}
               aria-controls={
-                slash.open
+                reference.open
+                  ? (reference.aria.listboxId ?? undefined)
+                  : slash.open
                   ? (slash.aria.listboxId ?? undefined)
                   : mentionPickerOpen
                     ? (mentionAria.listboxId ?? undefined)
                     : undefined
               }
               aria-activedescendant={
-                slash.open
+                reference.open
+                  ? (reference.aria.activeOptionId ?? undefined)
+                  : slash.open
                   ? (slash.aria.activeOptionId ?? undefined)
                   : mentionPickerOpen
                     ? (mentionAria.activeOptionId ?? undefined)
@@ -2654,7 +2695,15 @@ export const InputArea: FC<InputAreaProps> = memo(function InputArea({
             if (target && composerRef.current?.contains(target)) event.preventDefault()
           }}
         >
-          {slash.open ? (
+          {reference.open ? (
+            <ComposerSearchPicker
+              ref={reference.pickerRef}
+              query={reference.query}
+              search={reference.search}
+              onPick={reference.select}
+              onAriaChange={reference.onAriaChange}
+            />
+          ) : slash.open ? (
             <SlashCommandPicker
               ref={slash.pickerRef}
               query={slash.query}

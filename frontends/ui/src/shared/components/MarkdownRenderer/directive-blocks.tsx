@@ -15,6 +15,7 @@ import type { Element } from 'hast'
 import type { ExtraProps } from 'react-markdown'
 import { Chip } from '@/components/ui/chip'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
+import { Quote } from '@/components/ui/quote'
 import { useTranslations } from '@/i18n'
 import {
   CompareStackFrame,
@@ -241,7 +242,7 @@ export function AnswerBlockquote({ node, children }: React.ComponentPropsWithout
   const number = prop(element, 'dataExcerpt')
   if (!number) {
     return (
-      <blockquote className="border-base text-subtle my-3 border-l-2 pl-4 italic leading-relaxed">{children}</blockquote>
+      <Quote className="my-3 leading-relaxed">{children}</Quote>
     )
   }
   const href = prop(element, 'dataExcerptHref') ?? null

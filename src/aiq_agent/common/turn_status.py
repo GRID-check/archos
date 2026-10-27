@@ -93,11 +93,14 @@ from __future__ import annotations
 import json
 import logging
 import time
+from collections.abc import AsyncIterator
 from collections.abc import Iterator
 from collections.abc import Sequence
+from contextlib import asynccontextmanager
 from contextlib import contextmanager
 from contextvars import ContextVar
 from contextvars import Token
+from dataclasses import dataclass
 from typing import Any
 from typing import Literal
 from uuid import UUID
@@ -105,6 +108,7 @@ from uuid import uuid4
 
 from langchain_core.callbacks import AsyncCallbackHandler
 from langgraph.config import get_stream_writer
+from langgraph.errors import GraphBubbleUp
 
 from aiq_agent.common.source_kinds import canonical_shelf_value
 from aiq_agent.common.wire_v2 import ActionCounts
@@ -120,6 +124,9 @@ from aiq_agent.common.wire_v2 import StatusStep
 from aiq_agent.common.wire_v2 import Step
 from aiq_agent.common.wire_v2 import StepFinishedBody
 from aiq_agent.common.wire_v2 import StepStartedBody
+from aiq_agent.common.wire_v2 import SubagentErrorBody
+from aiq_agent.common.wire_v2 import SubagentFinishedBody
+from aiq_agent.common.wire_v2 import SubagentStartedBody
 from aiq_agent.common.wire_v2 import ToolStep
 from aiq_agent.common.workspace_records import is_workspace_call
 
@@ -152,12 +159,120 @@ def step_scope(scope: Scope) -> Iterator[None]:
         _step_scope.reset(token)
 
 
-def emit_step(step: Step, *, started: bool = False) -> None:
-    """Emit one Herleitung row: STEP_STARTED for a step with a duration, else STEP_FINISHED."""
+@dataclass
+class SubagentFrame:
+    """The subagent invocation the code running here belongs to (AG-UI 1.0 subagents)."""
+
+    run_id: str
+    parent_run_id: str | None
+    #: The tool call that spawned it, when the subagent is a tool (deepagents' ``task``).
+    tool_call_id: str | None = None
+    #: Its SUBAGENT_ERROR is sent: the invocation is closed, and no FINISHED follows.
+    failed: bool = False
+
+
+#: The innermost subagent invocation running in this context, or None for the
+#: turn's own agent. Bound by :func:`subagent_run` and inherited the way every
+#: ContextVar is: by the tasks LangGraph and ``asyncio.gather`` start inside it,
+#: so a subagent's nodes, tools and callbacks see it without being told.
+_subagent: ContextVar[SubagentFrame | None] = ContextVar("grid_subagent", default=None)
+
+#: What a person reads when a subagent fails. The exception stays in the logs
+#: and the trace: its text may carry a tool's output, which never rides the wire.
+SUBAGENT_FAILED_MESSAGE = "The subagent failed; the turn goes on without its result."
+
+
+def current_subagent() -> SubagentFrame | None:
+    """The subagent invocation running in this context, if any."""
+    return _subagent.get()
+
+
+def _clip(text: str | None, limit: int) -> str | None:
+    """``text`` on one line and at most ``limit`` characters, or None when empty."""
+    flat = " ".join((text or "").split())
+    if not flat:
+        return None
+    return flat if len(flat) <= limit else flat[: limit - 1].rstrip() + "…"
+
+
+@asynccontextmanager
+async def subagent_run(
+    name: str, *, description: str | None = None, parent_tool_call_id: str | None = None
+) -> AsyncIterator[SubagentFrame]:
+    """Run the block as one subagent invocation: SUBAGENT_STARTED, its steps attributed, then FINISHED or ERROR.
+
+    A nested block names the enclosing invocation as its parent. A failure is
+    reported and re-raised: whether the turn goes on is the caller's to decide,
+    as AG-UI leaves it to the parent agent. A cancellation reports nothing (the
+    turn's terminal closes every open group), and neither does LangGraph's
+    ``GraphBubbleUp``, which is a pause, not a failure: pausing a run is
+    ADR-0140's. Outside a graph run every emit is a no-op, so a deep-research
+    job worker pays nothing for it.
+    """
+    parent = _subagent.get()
+    frame = SubagentFrame(
+        run_id=f"sa_{uuid4().hex[:20]}",
+        parent_run_id=parent.run_id if parent else None,
+        tool_call_id=parent_tool_call_id[:128] if parent_tool_call_id else None,
+    )
+    emit(
+        SubagentStartedBody(
+            subagent_run_id=frame.run_id,
+            name=name[:64],
+            description=_clip(description, 160),
+            parent_subagent_run_id=frame.parent_run_id,
+            parent_tool_call_id=frame.tool_call_id,
+        )
+    )
+    token = _subagent.set(frame)
+    try:
+        yield frame
+    except GraphBubbleUp:
+        raise
+    except Exception as exc:
+        logger.info("Subagent %s (%s) failed: %s", name, frame.run_id, type(exc).__name__)
+        fail_subagent(frame, type(exc).__name__)
+        raise
+    else:
+        if not frame.failed:
+            emit(SubagentFinishedBody(subagent_run_id=frame.run_id))
+    finally:
+        _subagent.reset(token)
+
+
+def fail_subagent(frame: SubagentFrame, code: str) -> None:
+    """Report ``frame`` failed, once: also for a spawning tool that came back as an error result instead of raising.
+
+    An invocation ends exactly once, so the block it runs in sends no
+    SUBAGENT_FINISHED after this.
+    """
+    if frame.failed:
+        return
+    frame.failed = True
+    emit(SubagentErrorBody(subagent_run_id=frame.run_id, message=SUBAGENT_FAILED_MESSAGE, code=code[:64] or None))
+
+
+#: ``emit_step``'s default: attribute the row to the subagent running here.
+_INHERIT: Any = object()
+
+
+def emit_step(step: Step, *, started: bool = False, subagent_run_id: str | None = _INHERIT) -> None:
+    """Emit one Herleitung row: STEP_STARTED for a step with a duration, else STEP_FINISHED.
+
+    The row is attributed to the subagent running here, unless the caller
+    names the invocation itself (``None``: the turn's own agent).
+    """
     scope = _step_scope.get()
     if scope != step.scope:
         step = step.model_copy(update={"scope": scope})
-    emit(StepStartedBody(step=step) if started else StepFinishedBody(step=step))
+    if subagent_run_id is _INHERIT:
+        frame = _subagent.get()
+        subagent_run_id = frame.run_id if frame else None
+    emit(
+        StepStartedBody(step=step, subagent_run_id=subagent_run_id)
+        if started
+        else StepFinishedBody(step=step, subagent_run_id=subagent_run_id)
+    )
 
 
 #: Which retrieval round the agent is in RIGHT NOW — the slot ``emit_retrieval``
@@ -664,12 +779,14 @@ class ToolStepCallback(AsyncCallbackHandler):
     """
 
     def __init__(self) -> None:
-        self._running: dict[UUID, str] = {}
+        self._running: dict[UUID, tuple[str, str | None, str | None]] = {}
 
     async def on_tool_start(self, serialized: dict[str, Any], input_str: str, *, run_id: UUID, **kwargs: Any) -> None:
         tool = tool_basename(str(serialized.get("name") or kwargs.get("name") or "")) or "tool"
-        self._running[run_id] = tool
-        emit_step(ToolStep(id=f"tool:{run_id}", tool=tool), started=True)
+        mount = _tool_mount(tool, kwargs.get("inputs"))
+        subagent = _tool_subagent(kwargs.get("tool_call_id"))
+        self._running[run_id] = (tool, mount, subagent)
+        emit_step(ToolStep(id=f"tool:{run_id}", tool=tool, mount=mount), started=True, subagent_run_id=subagent)
 
     async def on_tool_end(self, output: Any, *, run_id: UUID, **kwargs: Any) -> None:
         self._finish(run_id, "ok")
@@ -678,9 +795,38 @@ class ToolStepCallback(AsyncCallbackHandler):
         self._finish(run_id, "error")
 
     def _finish(self, run_id: UUID, status: Literal["ok", "error"]) -> None:
-        tool = self._running.pop(run_id, None)
-        if tool is not None:
-            emit_step(ToolStep(id=f"tool:{run_id}", tool=tool, status=status))
+        running = self._running.pop(run_id, None)
+        if running is not None:
+            tool, mount, subagent = running
+            emit_step(ToolStep(id=f"tool:{run_id}", tool=tool, status=status, mount=mount), subagent_run_id=subagent)
+
+
+def _tool_subagent(tool_call_id: Any) -> str | None:
+    """Which invocation a tool call belongs to. The call that SPAWNED a subagent is its parent's.
+
+    A subagent is bound around the tool that spawns it (deepagents' ``task``),
+    so that tool's own callbacks already see it; they hand the row up a level.
+    """
+    frame = _subagent.get()
+    if frame is None:
+        return None
+    if frame.tool_call_id is not None and isinstance(tool_call_id, str) and tool_call_id[:128] == frame.tool_call_id:
+        return frame.parent_run_id
+    return frame.run_id
+
+
+def _tool_mount(tool: str, inputs: Any) -> str | None:
+    """The mount a file tool's call reached, for the wire's ``mount`` (ADR-0133); ``None`` for any other tool.
+
+    The step stores the tool's name and never its arguments, so without this an
+    estate ``read_file`` and a draft ``read_file`` were one step, drawn as a draft.
+    """
+    from aiq_agent.common.estate_paths import WRITE_TOOLS
+    from aiq_agent.common.estate_paths import call_mount
+
+    if tool not in FILESYSTEM_READ_TOOLS and tool not in WRITE_TOOLS:
+        return None
+    return call_mount(tool, inputs if isinstance(inputs, dict) else None)
 
 
 # --- What each moment is called ---------------------------------------------
@@ -703,6 +849,9 @@ class ToolStepCallback(AsyncCallbackHandler):
 #: them — three readers, one spelling.
 KNOWLEDGE_SEARCH_TOOL = "knowledge_search"
 READ_PASSAGE_TOOL = "read_passage"
+#: The filesystem reader (ADR-0133): on the estate it opens a named passage as ``read_passage`` does, so it is
+#: a locator too; on ``/drafts/`` it reads a draft, which is no retrieval at all (:func:`_call_corpus`).
+READ_FILE_TOOL = "read_file"
 
 _SEARCH_CORPORA: tuple[tuple[str, str], ...] = (
     (KNOWLEDGE_SEARCH_TOOL, "knowledge"),
@@ -779,7 +928,7 @@ def _action_key(base: str, args: Any, name: str = "") -> str | None:
 
 
 #: Argument names a retrieval query hides behind, in preference order.
-_QUERY_KEYS = ("query", "search_query", "question", "q", "text", "name_contains")
+_QUERY_KEYS = ("query", "search_query", "question", "q", "text", "name_contains", "pattern")
 
 #: Arguments that pick what a call does or which record it reads, never what
 #: was asked: ``project_lookup``'s ``action`` and ``scope``, and every id. The
@@ -823,15 +972,15 @@ CHECKPOINT_FROM_NONE = "none"
 #: The tool itself stamps :data:`READ_PASSAGE_TOOL` on its hits
 #: (:func:`lane_tool_scope`), so the name is spelled once and the producer and
 #: the matcher cannot drift.
-LOCATOR_TOOL_BASENAMES = frozenset({READ_PASSAGE_TOOL})
+LOCATOR_TOOL_BASENAMES = frozenset({READ_PASSAGE_TOOL, READ_FILE_TOOL})
 
 #: Room for the document name on a locator line, after the label and the Punkt
 #: or page that follows it. Same budget as the quoted query and for the same
 #: reason: the line has one row.
 MAX_DOCUMENT_CHARS = 32
 
-#: Function-group separators used by NAT-qualified tool names (mirrors
-#: ``piloti.agent._TOOL_NAME_SEPARATORS``).
+#: Function-group separators used by NAT-qualified tool names: ``group__tool``
+#: for a function group or an MCP server, ``group.tool`` for a dotted one.
 _TOOL_NAME_SEPARATORS = ("__", ".")
 
 
@@ -851,6 +1000,27 @@ def _search_corpus(base: str) -> str | None:
     return None
 
 
+#: The filesystem tools that read the estate (ADR-0133); ``write_file`` and ``edit_file`` only ever reach drafts.
+FILESYSTEM_READ_TOOLS = frozenset({"ls", "glob", "grep", READ_FILE_TOOL})
+
+
+def _call_corpus(base: str, args: Any) -> str | None:
+    """The corpus one call reads: by its tool, and for a filesystem tool by its mount.
+
+    A call under ``/drafts/`` reads no corpus (it keeps its draft line); one on
+    ``/law/oib/`` reads the knowledge corpus; any other estate call reads the
+    reader's own files, „in Ihren Unterlagen“.
+    """
+    if base not in FILESYSTEM_READ_TOOLS:
+        return _search_corpus(base)
+    from aiq_agent.common.estate_paths import call_mount
+
+    mount = call_mount(base, args)
+    if mount in (None, "drafts", "skills"):
+        return None
+    return "knowledge" if mount == "law" else "documents"
+
+
 def tool_fetches_evidence(base: str) -> bool:
     """Does a tool with this BASENAME return hits of its own?
 
@@ -859,6 +1029,9 @@ def tool_fetches_evidence(base: str) -> bool:
     not the calls they came from. The retrieval ledger reads it to tell which
     of a round's tools could have produced the documents it returned.
     """
+    if base in FILESYSTEM_READ_TOOLS:
+        # Asked of a NAME, the mount is unknown: a filesystem tool could have produced documents.
+        return True
     return bool(base) and _search_corpus(base) is not None
 
 
@@ -890,7 +1063,10 @@ def is_search_call(call: Any) -> bool:
     """
     if not isinstance(call, dict):
         return False
-    return tool_fetches_evidence(tool_basename(str(call.get("name") or "")))
+    base = tool_basename(str(call.get("name") or ""))
+    if base in FILESYSTEM_READ_TOOLS:
+        return _call_corpus(base, call.get("args")) is not None
+    return tool_fetches_evidence(base)
 
 
 def is_retrieval_round(tool_calls: list[dict[str, Any]] | None) -> bool:
@@ -1039,7 +1215,49 @@ def fetch_signature(call: Any) -> str | None:
         return _search_signature(args)
     if base == "read_passage":
         return _passage_signature(args)
+    if base in (READ_FILE_TOOL, "grep"):
+        return _filesystem_signature(base, args)
     return None
+
+
+def _filesystem_signature(base: str, args: dict[str, Any]) -> str | None:
+    """What an estate ``read_file`` OPENS or an estate ``grep`` LOOKS FOR; ``None`` for a call on ``/drafts/``.
+
+    A draft read after ``edit_file`` is not a repeat: it reads what the edit
+    changed, so a call under ``/drafts/`` is never signed (ADR-0133 §6). The
+    path is case- and NFC-folded, so two spellings of one path are one read.
+    """
+    from aiq_agent.common.estate_paths import nfc
+    from aiq_agent.common.estate_paths import reaches_drafts_only
+
+    if reaches_drafts_only(base, args):
+        return None
+    if base == READ_FILE_TOOL and not _argument_text(args, "file_path"):
+        # A read that names no file cannot be read, and a guard that cannot read a call must not take it away.
+        return None
+    if base == READ_FILE_TOOL:
+        parts = [
+            READ_FILE_TOOL,
+            nfc(_argument_text(args, "file_path", fold_case=True)),
+            _pages_text(args.get("pages")),
+            _clause_argument(args).strip("."),
+            _page_text(args.get("offset")),
+            _page_text(args.get("limit")),
+        ]
+        return _SIGNATURE_SEPARATOR.join(parts)
+    return _SIGNATURE_SEPARATOR.join(
+        [
+            "grep",
+            " ".join(str(args.get("pattern") or "").split()).casefold(),
+            nfc(_argument_text(args, "path", fold_case=True)),
+            _argument_text(args, "glob", fold_case=True),
+            _argument_text(args, "output_mode") or "files_with_matches",
+            _argument_text(args, "mode") or "exact",
+            _argument_text(args, "stemmed", fold_case=True),
+            _argument_text(args, "context"),
+            _argument_text(args, "max_count"),
+        ]
+    )
 
 
 def _locator_line(args: Any) -> tuple[str, dict[str, str]] | None:
@@ -1053,7 +1271,7 @@ def _locator_line(args: Any) -> tuple[str, dict[str, str]] | None:
     """
     if not isinstance(args, dict):
         return None
-    document = str(args.get("document") or "").strip()
+    document = str(args.get("document") or "").strip() or _file_path_document(args)
     if not document:
         return None
     values = {"document": clip(document, MAX_DOCUMENT_CHARS)}
@@ -1066,6 +1284,16 @@ def _locator_line(args: Any) -> tuple[str, dict[str, str]] | None:
     if page is not None and str(page).strip():
         return KEY_RETRIEVAL_PAGE, {**values, "page": str(page).strip()}
     return None
+
+
+def _file_path_document(args: dict[str, Any]) -> str:
+    """The document a ``read_file`` path names: its leaf, without the ``.md`` the text is served under."""
+    path = str(args.get("file_path") or "").strip().rstrip("/")
+    if not path:
+        return ""
+    leaf = path.rsplit("/", 1)[-1]
+    stem = leaf[:-3] if leaf.lower().endswith(".md") and "." in leaf[:-3] else leaf
+    return stem
 
 
 def _query_text(args: Any) -> str | None:
@@ -1264,7 +1492,7 @@ def _describe_calls(calls: list[dict[str, Any]]) -> dict[str, Any]:
             # thing twice, worse.
             continue
         tools.append(base)
-        corpus = _search_corpus(base)
+        corpus = _call_corpus(base, call.get("args"))
         if corpus is not None:
             if corpus not in corpora:
                 corpora.append(corpus)

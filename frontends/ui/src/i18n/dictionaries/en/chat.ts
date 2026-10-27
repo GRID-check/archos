@@ -84,6 +84,7 @@ export const chat = {
     // files) rather than a silent dead tile.
     unresolvedHint: 'The assistant referenced this file.',
     openInOfficeShelf: 'Open in Office filing',
+    openInSearch: 'Open in search',
     openInFiles: 'Open in project files',
     // The resolve fetch failed — a retry affordance, not a permanent dead tile.
     loadError: 'Documents couldn’t be loaded.',
@@ -1367,6 +1368,26 @@ export const chat = {
     reasoningGraphLabel: 'Reasoning trace',
     stepsLabel: 'Thinking steps',
     stepsHeading: 'Intermediate steps',
+    // Subagents a turn ran (AG-UI 1.0 SUBAGENT_*): today an in-chat deep
+    // research with its planning, research and report.
+    subagents: {
+      heading: 'Subagents',
+      steps: '{count, plural, one {# step} other {# steps}}',
+      status: {
+        running: 'working',
+        ok: 'done',
+        error: 'failed',
+        ended: 'stopped',
+      },
+      name: {
+        deepResearcher: 'Deep research',
+        planner: 'Planning',
+        researcher: 'Research',
+        writer: 'Report',
+        sourceRouter: 'Source choice',
+        generalPurpose: 'General agent',
+      },
+    },
     sourcesFanOut: 'Sources',
     hitCount: '{count} hits',
     hitCountOne: '1 hit',
@@ -1656,6 +1677,12 @@ export const chat = {
     noted: 'Piloti noted',
     notedAria: 'Piloti noted {count, plural, one {# item} other {# items}}',
     addedToMemory: 'Added to project memory',
+    updated: 'Memory updated',
+    updatedAria:
+      'Piloti updated its memory: {count, plural, one {# item} other {# items}}, {corrected} of them corrected',
+    updatedInMemory: 'Project memory updated',
+    correctedLabel: 'Corrected',
+    replaced: 'Replaces:',
     manageHint: 'You can manage and delete these entries in the project memory.',
     kinds: {
       decision: 'Decision',

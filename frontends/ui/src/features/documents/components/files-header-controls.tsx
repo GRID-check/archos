@@ -41,6 +41,8 @@ export interface FilesHeaderControlsProps {
     onChange: (value: string) => void
     onSubmit: () => void
     onClear: () => void
+    /** Enter opens the shelf's search rather than the listing's: the placeholder says so where there is room. */
+    opensSearch?: boolean
   }
   /**
    * The upload control for the WIDE row. Absent on a phone, where the same
@@ -79,7 +81,7 @@ export function FilesHeaderControls({
       onChange={search.onChange}
       onSubmit={search.onSubmit}
       onClear={search.onClear}
-      placeholder={t('browser.searchPlaceholder')}
+      placeholder={search.opensSearch && !phone ? t('browser.searchPlaceholderEverything') : t('browser.searchPlaceholder')}
       searchLabel={t('browser.searchLabel')}
       resetLabel={t('browser.resetSearch')}
     />

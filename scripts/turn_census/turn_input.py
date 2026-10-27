@@ -15,6 +15,8 @@ What a row's two harness needs mean here:
 - ``trigger``: the turn is the headless one an upload starts (``frontends/ui/src/lib/document-check/job.ts``,
   ``checkTurnMessage``): the row's question is the fixed instruction, and the message carries the open
   document (``focus_file_name``, ``focus_shelf``, ``focus_document_id``) and ``trigger: new_document``;
+- ``open`` (a files-set row's key, the document's name): the turn is asked with that document open
+  (``focus_file_name``, ``focus_shelf``, ``focus_document_id``), as the composer's "Asking about" sends it;
 - ``canvas``: the turn is asked with a document open (``focus_file_name``, on the project's shelf), the
   way the canvas chat is, so the turn's surface is ``review_canvas`` and ``canvas__*`` is in play.
 """
@@ -42,6 +44,8 @@ def message_fields(row: dict[str, Any]) -> dict[str, Any] | None:
     """
     if row.get("trigger"):
         return trigger_fields(row)
+    if row.get("open"):
+        return open_fields(row)
     if row.get("box") != "given":
         return None
     gold = row.get("gold") or []
@@ -75,6 +79,25 @@ def trigger_fields(row: dict[str, Any]) -> dict[str, Any]:
         "focus_shelf": "project",
         "focus_document_id": fixture_files.document_id(project, name),
         "trigger": {"kind": "new_document", "event_id": str(row["id"]), "annotation_id": None},
+    }
+
+
+def open_fields(row: dict[str, Any]) -> dict[str, Any]:
+    """A files-set row's ``open``: the turn is asked with that fixture document open, as the composer sends it.
+
+    The open document is a hint to the turn, not its scope (ADR-0133: scope by path is advised, never
+    automatic); the ``pf-outside-*`` rows ask about another document to measure that.
+    """
+    import fixture_files
+
+    name = str(row["open"])
+    project = fixture_files.load_project()
+    if name not in project.names:
+        raise ValueError(f"{row.get('id')}: open: {name} is not in the fixture project")
+    return {
+        "focus_file_name": name,
+        "focus_shelf": "project",
+        "focus_document_id": fixture_files.document_id(project, name),
     }
 
 
