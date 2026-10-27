@@ -61,7 +61,7 @@ The Archiv collection is injected in `buildCollectionScopeFromRequest` (which ha
 
 ## Frontend: `collection-scope.ts`
 
-**File**: `frontends/ui/src/lib/collection-scope.ts`
+**File**: `frontends/ui/src/lib/retrieval-scope/collection-scope.ts`
 
 ### `computeCollectionScope(session, context)`
 
@@ -96,7 +96,7 @@ function buildCollectionScopeHeader(scope: string[]): string
 
 ## Frontend BFF: `collection-scope-request.ts`
 
-**File**: `frontends/ui/src/lib/collection-scope-request.ts`
+**File**: `frontends/ui/src/lib/retrieval-scope/collection-scope-request.ts`
 
 ### `buildCollectionScopeFromRequest(session, context)`
 

@@ -149,7 +149,7 @@ does not exist, so a moved file is caught; a missing row is not.
 
 | Concept | Owning code | Doc of record | Decision |
 |---|---|---|---|
-| Shelves (`office_shelf`/`project`/`session`/`base`), TypeScript | `frontends/ui/src/lib/collection-scope.ts` — `CollectionShelf`, `computeCollectionScope` | [`docs/technical-reference/collection-scoping.md`](../technical-reference/collection-scoping.md) | ADR-0006, ADR-0047 (shelf travels as data) |
+| Shelves (`office_shelf`/`project`/`session`/`base`), TypeScript | `frontends/ui/src/lib/retrieval-scope/collection-scope.ts` — `CollectionShelf`, `computeCollectionScope` | [`docs/technical-reference/collection-scoping.md`](../technical-reference/collection-scoping.md) | ADR-0006, ADR-0047 (shelf travels as data) |
 | Shelves, Python | `src/aiq_agent/common/source_kinds.py` — `Shelf`, `parse_shelf` | same | ADR-0047 |
 | Shelf the turn is restricted to | `src/aiq_agent/common/focus_file.py` — `shelves_for_turn` | same | — |
 | The org-wide Archiv shelf | `frontends/ui/src/lib/office-shelf/service.ts`, `frontends/ui/src/lib/office-shelf/collection.ts` | [`docs/user-guides/documents.md`](../user-guides/documents.md) | ADR-0024 |
@@ -406,7 +406,7 @@ does not exist, so a moved file is caught; a missing row is not.
 | The agent's client of the BFF: base URL, service token, the no-redirect opener, `BffError` | `src/aiq_agent/common/bff_http.py` — `send`, `get_json`, `post_json`, `SignedEnvelope`; held by `tests/aiq_agent/common/test_bff_http_ratchet.py` | [`backend-deep-dive.md`](backend-deep-dive.md#project-memory-implemented) | ADR-0003, ADR-0055 |
 | The BFF's address for the backend, and the service token it sends | `frontends/ui/src/lib/backend-url.ts` — `getBackendUrl`; `frontends/ui/src/lib/internal-auth.ts` — `internalServiceHeaders`, `InternalServiceUnavailableError` (inbound: `requireInternalToken`) | this table | ADR-0084 |
 | BFF proxy to the agent | `frontends/ui/src/lib/backend-proxy.ts` | [`docs/technical-reference/bff-proxy-pattern.md`](../technical-reference/bff-proxy-pattern.md) | ADR-0003 |
-| Collection scope header | `frontends/ui/src/lib/collection-scope-request.ts` | [`docs/technical-reference/collection-scoping.md`](../technical-reference/collection-scoping.md) | ADR-0013 |
+| Collection scope header | `frontends/ui/src/lib/retrieval-scope/collection-scope-request.ts` | [`docs/technical-reference/collection-scoping.md`](../technical-reference/collection-scoping.md) | ADR-0013 |
 | Brand mark and every icon rendered from it (favicons, touch and manifest icons, the inline logos in both apps and PDF exports) | `shared/brand/piloti-mark.svg`, rendered into both apps by `frontends/web/scripts/build-brand-assets.mjs` | [`frontends/web/AGENTS.md`](../../frontends/web/AGENTS.md#head-and-seo) | — |
 | Public site head: meta, Open Graph, JSON-LD, sitemap, robots, RSS, llms.txt | `frontends/web/src/components/seo/SeoHead.astro`, `frontends/web/src/lib/seo.ts` | [`frontends/web/AGENTS.md`](../../frontends/web/AGENTS.md#head-and-seo) | — |
 
