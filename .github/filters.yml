@@ -34,10 +34,6 @@ backend:
   # It used to arrive here via the `retrieval` filter; that filter is gone
   # (see below) and this line is what replaces it.
   - 'frontends/benchmarks/**'
-  # uv workspace members (pyproject.toml), installed into the backend env;
-  # tests/test_answer_suite.py imports aiq_debug.
-  - 'frontends/cli/**'
-  - 'frontends/debug/**'
   # The recorded wire v2 turns and their schema: the contract fixtures
   # tests/aiq_agent/common/test_wire_v2.py holds the producer to.
   - 'shared/wire/**'

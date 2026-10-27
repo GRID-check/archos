@@ -177,7 +177,7 @@ greeting is not; switched-off decisions warm nothing).
 |---|---|---|
 | Start the requery writer beside the verdicts, discard it when they say "sufficient" | ~0.6 s on the ~30% of turns that requery | one small-model call on the other ~70% |
 | ~~Drop the round-0 requery and let the agent search again in its own round~~ | measured: **+3.4 s** per turn where it applied | rejected, §3.5 |
-| Warm the adapter at worker boot | 0.9-1.5 s on a process's first turn only | none; matters only with frequent restarts |
+| ~~Warm the adapter at worker boot~~ | measured 2.2 s (4.3 s without bytecode) on a process's first turn | **landed** 2026-10-27, §3.6 |
 | ~~Embed the family branch's per-document lookups without a query~~ | landed with Qdrant, see below | none |
 
 **Structural reads on Qdrant (2026-10-13).** `read_passage` and the family
@@ -252,6 +252,53 @@ To measure it again when the model or the judge changes, rebuild it from this
 description: a `knowledge_search` config flag that skips the sufficiency
 requery for a call the prefetch node marked through a `ContextVar` in
 `common/turn_status.py`, set around its `_tools_node` call.
+
+### 3.6 Landed: the first turn of a process (2026-10-27)
+
+Read off one dev trace (Langfuse observations exported to PostHog): the first
+turn of a process took **9.2 s** from the workflow span to the first model
+call, later turns about 1.8 s. Three gaps made it up:
+
+| Gap | First turn | Later turns | Cause, measured locally |
+|---|---|---|---|
+| workflow span → LangGraph span | 1.05 s | 0.95-1.5 s | the setup I/O before the graph. No phase had a Langfuse row, so it could not be split: unattributed until the observations below report |
+| `shallow_research` node → `shallow_research_agent` | 3.1 s | 5 ms | `history.trim` loading tiktoken's `cl100k_base` on first use, synchronously on the event loop: 0.95-1.1 s with an empty cache (the image had none, so every process downloaded it), 0.19 s from disk. The rest of the 3.1 s is not reproduced off the cluster; `history.trim` now reports it |
+| `prefetch` before the retriever's work | 4.7 s | (no prefetch) | the retrieval stack's lazy initialisation on the first search: `llama_index.core` and `qdrant_client` imports and the embedding client, 2.2 s with bytecode, 4.3-4.9 s without |
+
+And underneath both: **the image shipped no bytecode.** The runtime stages set
+`PYTHONDONTWRITEBYTECODE=1` and nothing compiled at build, so every process
+compiled every module it imported from source. The agent's boot imports took
+11.0 s instead of 4.0 s, and every lazy import on a first turn paid the same
+factor.
+
+What changed:
+
+* The image compiles bytecode (`UV_COMPILE_BYTECODE=1`, and `compileall` over
+  the editable workspace sources) and bakes the BPE table into
+  `TIKTOKEN_CACHE_DIR` (`deploy/Dockerfile`).
+* The chat workflow loads the encoder at build, off the loop
+  (`history.warm_token_encoder`): `history.trim` on a first turn 1.1 s → 0.6 ms.
+* The knowledge tool initialises its retriever and imports the search body's
+  lazy modules at build, off the loop (`knowledge_layer.register._warm_search_path`,
+  `LlamaIndexRetriever.warm_components`): the first search's initialisation
+  2.2 s → 0 ms (4.3 s → 0 ms without bytecode). It reads no network, so a store
+  that is down fails the search where it always did.
+* Every phase before the first model call is an observation with its real
+  latency ([`langfuse.md`](../observability/langfuse.md#a-chat-turns-root-observation)),
+  and `decide.<slot>` spans its call.
+
+Measured locally in fresh processes that first did the boot imports, each
+piece timed on its own: an empty `TIKTOKEN_CACHE_DIR` for the download, and
+`PYTHONDONTWRITEBYTECODE=1` with `-X pycache_prefix` on an empty directory to
+stand in for the image's missing bytecode. The cluster numbers after the deploy are the check:
+`history.trim` and the first `knowledge_search` of a fresh pod, and the
+`setup.*` rows of every turn, which split the 1-1.5 s that remains on every turn.
+
+Not done: the first connection to each provider (embedding, rerank, Jev) still
+pays its TLS handshake on the first turn (the first embedding call measured
+0.1-0.3 s slower than the second), and the first search per process still reads
+each Qdrant collection's metadata (aliases, payload indexes, BM25 length,
+embedder identity) before it ranks. Neither was measured on the cluster.
 
 ## 4. Search rounds
 
@@ -352,7 +399,7 @@ checkout at one commit, so they stand.
 | 1 | Per-turn reasoning effort (`low` for confident lookups) | up to ~10 s on the turns it applies to | open; needs the decision signal and a suite |
 | 2 | Round-0 requery: start the writer beside the verdicts | ~0.6 s on the ~30% of turns that requery | open. Dropping it instead was measured and costs 3.4 s (§3.5) |
 | 3 | `use_skill` preloading for skills the decision did not pick | 2-3 s per such round | open |
-| 4 | Warm the adapter at boot | 0.9-1.5 s, first turn per process | open |
+| 4 | Warm the adapter at boot | 2.2 s, first turn per process (4.3 s without bytecode) | **landed** §3.6, with the tiktoken encoder and the image's bytecode |
 | 5 | Question embedding beside the decision | ≈ 0.4-0.5 s per searching turn | **landed** §3.2 (`register._warm_question`) |
 | 6 | RIS paragraph lists in one call | one round (≈ 11 s) where it applied | **landed** (`ris_adapter` `Address.sections`) |
 | 7 | Reasoning items kept across tool rounds | none measured | **landed** (langchain-openai 1.6.6), kept for correctness |
