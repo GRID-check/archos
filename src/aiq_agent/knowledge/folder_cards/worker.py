@@ -278,7 +278,7 @@ def _stored_manifest(claim: queue.Claim) -> incremental.Manifest | None:
     stored = queue.get_manifest(claim.collection, claim.folder_path)
     try:
         return incremental.Manifest.from_json(stored) if stored else None
-    except (ValueError, TypeError, AttributeError):  # unreadable: a full rebuild writes a new one
+    except ValueError, TypeError, AttributeError:  # unreadable: a full rebuild writes a new one
         return None
 
 

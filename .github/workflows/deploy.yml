@@ -180,6 +180,12 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           # Deploy the exact commit whose images were just published.
+          #
+          # The steps of this job come from develop's head, not from this
+          # checkout (workflow_run always runs the default branch's file), so a
+          # step that calls a file the same PR adds meets a checkout that does
+          # not have it whenever an older commit deploys. Guard such a step on
+          # the file existing. docs/contributing/gotchas.md has the case.
           ref: ${{ env.DEPLOY_SHA }}
           # Full history: the image resolver walks develop's first-parent line
           # back from this commit, and its downgrade guard asks whether the
@@ -299,10 +305,19 @@ jobs:
       # so a missing grant shows up as a warning on an ordinary deploy rather
       # than as a failure halfway through the move. `warn` until the expand
       # step, which switches it to `fail`.
+      #
+      # Best effort, and the script may be missing: this job runs the workflow
+      # file from develop's head against the checkout of DEPLOY_SHA, which can
+      # be an older commit than the one that added the script.
       - name: Preflight - ESC write on workspace/* (ADR-0147)
+        continue-on-error: true
         working-directory: deploy/pulumi
         run: |
           export PATH="$HOME/.pulumi/bin:$PATH"
+          if [ ! -x scripts/esc-write-preflight.sh ]; then
+            echo "::notice::scripts/esc-write-preflight.sh is not in ${DEPLOY_SHA}; skipping the ESC preflight"
+            exit 0
+          fi
           scripts/esc-write-preflight.sh matthiasbigl warn
         env:
           PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}

@@ -501,7 +501,7 @@ describe('fileResearchReport', () => {
 
     /**
      * The report's own „Quellen" section is the writer agent's text, normalised
-     * by `citation_verification.sanitize_report` — heading spelling, one source
+     * by `citations.sanitize.sanitize_report` — heading spelling, one source
      * per line, renumbering, unsafe URLs removed. The export does not re-render
      * it, does not move it and does not add a second one: it appends after it.
      */
@@ -526,7 +526,7 @@ describe('fileResearchReport', () => {
       // cards appended after. The thing this test was written to protect is
       // unchanged and is what is asserted — the section is not duplicated, and
       // the `[OIB]` / `[KB]` / `[Web]` / `[RIS]` tokens the backend's
-      // `citation_verification.sanitize_report` put there survive the round
+      // `citations.sanitize.sanitize_report` put there survive the round
       // trip, which is what a second hand-rolled parser would have lost.
       expect(pdf.text.match(/Quellen/g)).toHaveLength(1)
       expect(pdf.text).toContain(normalizePdfText('Quellen 1 [OIB] OIB-Richtlinie 2, Ausgabe Mai 2023'))

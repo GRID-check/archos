@@ -20,7 +20,6 @@ from collections.abc import Iterator
 from collections.abc import Mapping
 from collections.abc import Sequence
 from typing import Any
-from typing import TypeVar
 
 import httpx
 from qdrant_client import QdrantClient
@@ -80,8 +79,6 @@ BM25_LENGTH_TTL_SECONDS = 300.0
 #: refusal (4xx) is final and is never retried.
 RETRY_BACKOFF_SECONDS = (0.2, 0.8, 2.0)
 
-T = TypeVar("T")
-
 
 def _transient(error: BaseException) -> bool:
     """True for a failure a retry can cure: no connection, a timeout, a 5xx. Never a 4xx."""
@@ -96,7 +93,7 @@ def _sleep(seconds: float) -> None:
     time.sleep(seconds)
 
 
-def with_retry(label: str, work: Callable[[], T]) -> T:
+def with_retry[T](label: str, work: Callable[[], T]) -> T:
     """Run one write, or a read whose answer decides one, retrying a transient failure after each pause.
 
     Every write this store makes is idempotent (an upsert or set by point id

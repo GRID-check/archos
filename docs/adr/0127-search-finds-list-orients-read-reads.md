@@ -375,7 +375,7 @@ questions.
   range and well above the corpus's clause chunks, which is the opposite of the 640 to
   1,024 the plan assumed. So nothing is set by hand: the `_vN` rebuild measures the source
   collection's mean from its stored weights, records it on the new collection
-  (`aiq:bm25_length`) and recomputes the lexical vectors when it moved more than 10 %; `k`
+  (`bm25_length`) and recomputes the lexical vectors when it moved more than 10 %; `k`
   and `b` stay Qdrant's until a parity sweep sets them (`scripts/qdrant_rebuild.py
   --bm25-k/--bm25-b`). The steps are in `docs/deployment/qdrant-runbook.md`.
 * Inflected forms are an option, not a default. `match="exact"` stays literal; with

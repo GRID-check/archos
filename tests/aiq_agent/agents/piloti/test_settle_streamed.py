@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 from aiq_agent.agents.piloti.answer_pipeline import settle_streamed_citations
-from aiq_agent.common.citation_verification import DROPPED_CITATION_MARKER
-from aiq_agent.common.citation_verification import UNVERIFIED_QUOTE_MARKER
-from aiq_agent.common.citation_verification import SourceEntry
-from aiq_agent.common.citation_verification import SourceRegistry
+from aiq_agent.citations.entries import DROPPED_CITATION_MARKER
+from aiq_agent.citations.entries import UNVERIFIED_QUOTE_MARKER
+from aiq_agent.citations.entries import SourceEntry
+from aiq_agent.citations.registry import SourceRegistry
 
 
 def _registry() -> SourceRegistry:
