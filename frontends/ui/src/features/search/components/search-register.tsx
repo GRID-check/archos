@@ -275,7 +275,6 @@ export function SearchRegister({ state, section, onStateChange, onLoadMore, hide
 }
 
 function useStatus(hit: DocumentHit): { node: ReactNode; quiet: boolean } {
-  const t = useTranslations('search')
   const labels = useSearchLabels()
   if (hit.superseded) return { node: <SupersededMark />, quiet: false }
   const family = documentReadFamily(hit.status)
