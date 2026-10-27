@@ -39,6 +39,13 @@ export const profile: typeof en.profile = {
     label: 'Technische Herleitung anzeigen',
     hint: 'Zeigt die einzelnen technischen Schritte (welcher Agent bzw. welches Werkzeug lief). Standardmäßig aus — normalerweise sehen Sie die verständliche Herleitung.',
   },
+  viewerActions: {
+    title: 'Stellen im Viewer',
+    description:
+      'Wenn eine Antwort auf einer Stelle in einem Dokument beruht, kann Piloti sie neben dem Chat öffnen, mit der Stelle markiert. Unter der Antwort steht, was geöffnet wurde, mit „Zurücknehmen“.',
+    label: 'Automatisch öffnen',
+    hint: 'Gilt für diesen Browser. Aus: Piloti schlägt die Stelle unter der Antwort nur vor.',
+  },
   usageAnalytics: {
     title: 'Nutzungsanalyse',
     description:

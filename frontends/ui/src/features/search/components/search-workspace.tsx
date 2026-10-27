@@ -7,13 +7,14 @@ import { toast } from 'sonner'
 import { useTranslations } from '@/i18n'
 import { capturePosthog } from '@/lib/analytics/posthog'
 import { SEARCH_LIMIT_DEFAULT } from '@/lib/search/search-wire'
+import { SuggestSourceProvider, type SuggestSource } from '../hooks/use-filter-suggestions'
 import { useSavedSearches } from '../hooks/use-saved-searches'
 import { SearchReturnProvider } from '../hooks/use-search-return'
 import { useSearchResults, type AnsweredSearch } from '../hooks/use-search-results'
 import { useOpenedHitCapture, useSearchTracker } from '../hooks/use-search-tracker'
 import { useSearchUrlState } from '../hooks/use-search-url-state'
 import { useSuggestedSearchName } from '../hooks/use-suggested-search-name'
-import { exportSearch, type SearchExportFormat } from '../lib/search-client'
+import { exportSearch, postSuggest, type SearchExportFormat } from '../lib/search-client'
 import { captureRefinements, captureSavedSearchRun, filterDimensions, parseServerTiming, telemetrySurface } from '../lib/search-telemetry'
 import { fromSearchBody, toSearchBody, type SearchUrlState } from '../lib/search-url'
 import { projectFromSavedScope, surfaceScope, type SearchSurface } from '../lib/search-surface'
@@ -53,6 +54,12 @@ export function SearchWorkspace({ surface, leading, currentUserId, autoFocus = f
   const body = useMemo(
     () => toSearchBody(state, { limit: state.view === 'register' ? REGISTER_LIMIT : SEARCH_LIMIT_DEFAULT, facets: true }),
     [state]
+  )
+  // The filter fields complete from where this search looks, under its other filters.
+  const filters = body.filters
+  const suggest = useCallback<SuggestSource>(
+    async (question, signal) => (await postSuggest(scope, { ...question, ...(filters ? { filters } : {}) }, signal)).values,
+    [scope, filters]
   )
   const tracker = useSearchTracker(telemetrySurface(surface))
   const onAnswered = useCallback(
@@ -126,5 +133,9 @@ export function SearchWorkspace({ surface, leading, currentUserId, autoFocus = f
     />
   )
   // Every hit drawn here returns to this search on closing (`back`).
-  return <SearchReturnProvider>{inset ? <SearchInset>{view}</SearchInset> : view}</SearchReturnProvider>
+  return (
+    <SearchReturnProvider>
+      <SuggestSourceProvider value={suggest}>{inset ? <SearchInset>{view}</SearchInset> : view}</SuggestSourceProvider>
+    </SearchReturnProvider>
+  )
 }

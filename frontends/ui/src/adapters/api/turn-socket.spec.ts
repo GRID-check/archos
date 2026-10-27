@@ -472,6 +472,34 @@ describe('optional fields, by what the hello accepts', () => {
     })
   })
 
+  describe('the frontend tools a page declares (client_tools, ADR-0144)', () => {
+    const question = {
+      type: 'user_message' as const,
+      conversation_id: 'conv_1',
+      message_id: 'q1',
+      text: 'Wo steht das?',
+      client_tools: ['show_in_viewer'],
+    }
+    const { client_tools: _tools, ...bareQuestion } = question
+
+    it('go to a server whose hello names them', async () => {
+      const { socket } = setup()
+      await socket.connect()
+      latest().open()
+      latest().receive({ ...HELLO, value: { build: 'new', accepts: ['user_message.client_tools'] } })
+      socket.send(question)
+      expect(latest().sent).toEqual([question])
+    })
+
+    it('are left out for an older server, which answers with no viewer actions', async () => {
+      const { socket } = setup()
+      await socket.connect()
+      latest().greet()
+      socket.send(question)
+      expect(latest().sent).toEqual([bareQuestion])
+    })
+  })
+
   it('takes a hello naming fields this page has never heard of', async () => {
     const { socket, statuses } = setup()
     await socket.connect()

@@ -8,12 +8,16 @@ import { DateInput } from '@/components/ui/date-input'
 import { Field, FieldDescription, FieldError, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { SuggestInput, type SuggestOption } from '@/components/ui/suggest-input'
 import { Switch } from '@/components/ui/switch'
 import { useLocale, useTranslations } from '@/i18n'
 import { DOSSIER_FACT_KEYS, type DossierFactKey } from '@/lib/documents/dossier'
-import type { DocumentFilters } from '@/lib/search/search-wire'
+import { DOCUMENT_REFERENCE_KINDS } from '@/lib/documents/dossier'
+import type { DocumentFilters, FacetCount, SuggestDimension } from '@/lib/search/search-wire'
+import { useFilterSuggestions, type SuggestQuestion } from '../hooks/use-filter-suggestions'
 import { useSearchLabels } from '../hooks/use-search-labels'
 import { splitList } from '../lib/active-filters'
+import { captureSuggestionPicked } from '../lib/search-telemetry'
 import { compactFilters, NUMERIC_FACT_KEYS, type SearchUrlState } from '../lib/search-url'
 import { FieldPair, FieldStack, KeyFieldRow, RailBody, RailSection } from './search-atoms'
 
@@ -52,6 +56,7 @@ export function SearchKeyFilters({ state, onChange }: Pick<SearchFilterFormProps
             placeholder={t('planNumberPlaceholder')}
             value={f.planNumber ?? ''}
             onCommit={(value) => set({ planNumber: value || undefined })}
+            suggest={{ dimension: 'planNumber' }}
             testId="filter-plan-number"
           />
           <CommitText
@@ -60,6 +65,8 @@ export function SearchKeyFilters({ state, onChange }: Pick<SearchFilterFormProps
             title={t('listHint')}
             value={(f.planIndex ?? []).join(', ')}
             onCommit={(value) => set({ planIndex: splitList(value) })}
+            suggest={{ dimension: 'planIndex' }}
+            list
             testId="filter-plan-index"
           />
         </KeyFieldRow>
@@ -99,6 +106,8 @@ export function SearchFilterForm({ state, onChange, currentUserId, defaultOpen =
           title={t('listHint')}
           value={(f.scale ?? []).join(', ')}
           onCommit={(value) => set({ scale: splitList(value) })}
+          suggest={{ dimension: 'scale' }}
+          list
           testId="filter-scale"
         />
         <CommitText
@@ -107,6 +116,7 @@ export function SearchFilterForm({ state, onChange, currentUserId, defaultOpen =
           title={t('placeHint')}
           value={f.place ?? ''}
           onCommit={(value) => set({ place: value || undefined })}
+          suggest={{ dimension: 'place' }}
           testId="filter-place"
         />
         <FactAdder onAdd={(fact) => set({ facts: [...(f.facts ?? []), fact] })} />
@@ -143,8 +153,8 @@ export function SearchFilterForm({ state, onChange, currentUserId, defaultOpen =
   )
 }
 
-/** A text field that takes effect on Enter or blur, keyed to its committed value so the URL resets it. */
-function CommitText(props: {
+/** The props of {@link CommitText}. */
+interface CommitTextProps {
   label: string
   hint?: string
   placeholder?: string
@@ -152,9 +162,37 @@ function CommitText(props: {
   value: string
   onCommit: (value: string) => void
   clearOnCommit?: boolean
+  /** Offer the values the documents hold for this filter (`useFilterSuggestions`). */
+  suggest?: Omit<SuggestQuestion, 'prefix'>
+  /** A comma-separated list: the completions are for the entry being typed, and a taken one is appended. */
+  list?: boolean
   testId?: string
-}): JSX.Element {
+}
+
+/**
+ * A text field that takes effect on Enter or blur, keyed to its committed
+ * value so the URL resets it. With `suggest` it completes from what the
+ * office's documents hold, each value with its count, so a person picks
+ * „Atelier Lindner ZT GmbH“ instead of guessing its spelling; taking one
+ * applies it at once.
+ */
+function CommitText(props: CommitTextProps): JSX.Element {
   return <CommitTextField key={props.value} {...props} />
+}
+
+/** The words a completion shows: the documents' own spelling, and for a reference its kind. */
+function useSuggestOptions(dimension: SuggestDimension | undefined): (values: readonly FacetCount[]) => SuggestOption[] {
+  const t = useTranslations('search.filters')
+  return (values) =>
+    values.map((facet) => {
+      const kind = dimension === 'cites' ? facet.value.slice(0, facet.value.indexOf(':')) : ''
+      return {
+        value: facet.value,
+        label: facet.label ?? facet.value,
+        count: facet.count,
+        hint: (DOCUMENT_REFERENCE_KINDS as readonly string[]).includes(kind) ? t(`referenceKinds.${kind}`) : undefined,
+      }
+    })
 }
 
 function CommitTextField({
@@ -165,21 +203,21 @@ function CommitTextField({
   value,
   onCommit,
   clearOnCommit = false,
+  suggest,
+  list = false,
   testId,
-}: {
-  label: string
-  hint?: string
-  placeholder?: string
-  title?: string
-  value: string
-  onCommit: (value: string) => void
-  clearOnCommit?: boolean
-  testId?: string
-}): JSX.Element {
+}: CommitTextProps): JSX.Element {
+  const t = useTranslations('search.filters')
   const id = useId()
   const [draft, setDraft] = useState(value)
-  const commit = (): void => {
-    const next = draft.trim()
+  const [focused, setFocused] = useState(false)
+  const typing = list ? (draft.split(',').at(-1) ?? '') : draft
+  const values = useFilterSuggestions(suggest ?? null, typing, focused)
+  const toOptions = useSuggestOptions(suggest?.dimension)
+  const taken = new Set(list ? splitList(draft).map((entry) => entry.toLocaleLowerCase()) : [])
+  const options = toOptions(values.filter((facet) => !taken.has(facet.value.toLocaleLowerCase())))
+  const commit = (text: string = draft): void => {
+    const next = text.trim()
     if (next === value) return
     onCommit(next)
     if (clearOnCommit) setDraft('')
@@ -190,19 +228,41 @@ function CommitTextField({
       commit()
     }
   }
+  const pick = (option: SuggestOption, index: number): void => {
+    if (suggest) captureSuggestionPicked(suggest.dimension, index + 1, typing)
+    const text = list ? [...splitList(draft.slice(0, Math.max(0, draft.lastIndexOf(',')))), option.value].join(', ') : option.value
+    setDraft(text)
+    commit(text)
+  }
   return (
     <Field>
       <FieldLabel htmlFor={id}>{label}</FieldLabel>
-      <Input
-        id={id}
-        value={draft}
-        placeholder={placeholder}
-        title={title}
-        onChange={(event) => setDraft(event.target.value)}
-        onBlur={commit}
-        onKeyDown={onKeyDown}
-        data-testid={testId}
-      />
+      {suggest ? (
+        <SuggestInput
+          id={id}
+          value={draft}
+          onValueChange={setDraft}
+          options={options}
+          onPick={pick}
+          onCommit={() => commit()}
+          onFocusChange={setFocused}
+          listLabel={t('suggestions')}
+          placeholder={placeholder}
+          title={title}
+          data-testid={testId}
+        />
+      ) : (
+        <Input
+          id={id}
+          value={draft}
+          placeholder={placeholder}
+          title={title}
+          onChange={(event) => setDraft(event.target.value)}
+          onBlur={() => commit()}
+          onKeyDown={onKeyDown}
+          data-testid={testId}
+        />
+      )}
       {hint ? <FieldDescription>{hint}</FieldDescription> : null}
     </Field>
   )
@@ -324,7 +384,34 @@ export function PartyNameFilter({ state, onChange }: Pick<SearchFilterFormProps,
         onCommit={(value) => {
           if (value) onChange({ ...state, filters: compactFilters({ ...f, parties: [...(f.parties ?? []), { name: value.slice(0, 120) }] }) })
         }}
+        suggest={{ dimension: 'party' }}
         testId="filter-party-name"
+      />
+    </RailBody>
+  )
+}
+
+/**
+ * A reference beyond the ones the Verweist auf group counts, inside that
+ * group: the counts list the thirty most cited, a norm cited twice is found by
+ * typing. Taking a completion adds its token; Enter on typed words adds them
+ * as they are, which the filter matches in any reference's number or label.
+ */
+export function CitesFilter({ state, onChange }: Pick<SearchFilterFormProps, 'state' | 'onChange'>): JSX.Element {
+  const t = useTranslations('search.filters')
+  const f = state.filters
+  return (
+    <RailBody>
+      <CommitText
+        label={t('citesFind')}
+        placeholder={t('citesPlaceholder')}
+        value=""
+        clearOnCommit
+        onCommit={(value) => {
+          if (value && !(f.cites ?? []).includes(value)) onChange({ ...state, filters: compactFilters({ ...f, cites: [...(f.cites ?? []), value.slice(0, 120)] }) })
+        }}
+        suggest={{ dimension: 'cites' }}
+        testId="search-facet-cites-more"
       />
     </RailBody>
   )
@@ -338,6 +425,7 @@ function FactAdder({ onAdd }: { onAdd: (fact: { key: DossierFactKey; equals?: st
   const [equals, setEquals] = useState('')
   const [min, setMin] = useState('')
   const [max, setMax] = useState('')
+  const [focused, setFocused] = useState(false)
   const numeric = NUMERIC_FACT_KEYS.has(key)
   const lower = numberOrUndefined(min)
   const upper = numberOrUndefined(max)
@@ -346,13 +434,15 @@ function FactAdder({ onAdd }: { onAdd: (fact: { key: DossierFactKey; equals?: st
   // Never greyed out (a disabled button cannot say why): a press with nothing to add says so under the fields.
   const [tried, setTried] = useState(false)
   const missing = tried && !ready && !inverted
-  const add = (): void => {
-    if (!ready) {
+  const factValues = useFilterSuggestions(numeric ? null : { dimension: 'fact', factKey: key }, equals, focused)
+  const toOptions = useSuggestOptions('fact')
+  const add = (picked?: string): void => {
+    if (!ready && picked === undefined) {
       setTried(true)
       return
     }
     setTried(false)
-    const value = equals.trim()
+    const value = (picked ?? equals).trim()
     onAdd(numeric ? { key, ...(lower !== undefined ? { min: lower } : {}), ...(upper !== undefined ? { max: upper } : {}) } : { key, equals: value.slice(0, 120) })
     setEquals('')
     setMin('')
@@ -382,11 +472,27 @@ function FactAdder({ onAdd }: { onAdd: (fact: { key: DossierFactKey; equals?: st
           <Input inputMode="decimal" placeholder={t('max')} aria-label={t('max')} value={max} onChange={(event) => setMax(event.target.value)} onKeyDown={onKeyDown} data-testid="filter-fact-max" />
         </FieldPair>
       ) : (
-        <Input placeholder={t('factValue')} aria-label={t('factValue')} value={equals} onChange={(event) => setEquals(event.target.value)} onKeyDown={onKeyDown} data-testid="filter-fact-value" />
+        // The values the documents state for this Angabe, „GK 4“ as they write it; taking one adds it.
+        <SuggestInput
+          placeholder={t('factValue')}
+          aria-label={t('factValue')}
+          value={equals}
+          onValueChange={setEquals}
+          options={toOptions(factValues)}
+          onPick={(option, index) => {
+            captureSuggestionPicked('fact', index + 1, equals)
+            add(option.value)
+          }}
+          onCommit={() => add()}
+          commitOnBlur={false}
+          onFocusChange={setFocused}
+          listLabel={t('suggestions')}
+          data-testid="filter-fact-value"
+        />
       )}
       {inverted ? <FieldError>{t('rangeInvalid')}</FieldError> : null}
       {missing ? <FieldError>{numeric ? t('factBoundMissing') : t('factValueMissing')}</FieldError> : null}
-      <Button type="button" variant="secondary" size="sm" className="self-start" onClick={add} data-testid="filter-fact-add">
+      <Button type="button" variant="secondary" size="sm" className="self-start" onClick={() => add()} data-testid="filter-fact-add">
         {t('add')}
       </Button>
     </Field>

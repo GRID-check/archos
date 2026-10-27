@@ -74,6 +74,7 @@ from pydantic import Field
 from pydantic import SerializationInfo
 from pydantic import SerializerFunctionWrapHandler
 from pydantic import TypeAdapter
+from pydantic import WithJsonSchema
 from pydantic import model_serializer
 from pydantic import model_validator
 
@@ -714,6 +715,97 @@ class SteerAppliedValue(_Model):
     round: int = Field(ge=1)
 
 
+# --- Viewer actions: AG-UI frontend tool calls, allow-listed (ADR-0144) ------
+
+#: The allow-list: the only ways Piloti may move the asker's own document viewer.
+#: Each is a frontend tool in AG-UI's sense: Piloti names it and its arguments,
+#: and the asker's browser runs it on their own screen. No other name parses.
+ViewerActionName = Literal[
+    "open_document",
+    "highlight_passage",
+    "highlight_region",
+    "compare_revisions",
+    "focus_ifc_element",
+]
+
+#: What each action needs beyond the document; :class:`ViewerActionValue` holds a call to it.
+VIEWER_ACTION_REQUIRES: dict[str, tuple[str, ...]] = {
+    "open_document": (),
+    "highlight_passage": ("page", "passage"),
+    "highlight_region": ("page", "region"),
+    "compare_revisions": ("against_document_id",),
+    "focus_ifc_element": ("element",),
+}
+
+#: The longest passage a highlight carries: a sentence or two, found on the page by the viewer.
+MAX_VIEWER_PASSAGE_CHARS = 400
+
+
+class ViewerActionArgs(_Model):
+    """Where the viewer goes: a stored document the BFF let this turn see, and the place on it.
+
+    ``document_id`` is a workspace document's id, resolved and checked against
+    the BFF by the tool before the event is sent. The browser reads it again, in
+    the asker's own session, before it moves anything: ``GET /api/documents/{id}``,
+    the read Files and every agent door already use.
+    """
+
+    document_id: str = Field(min_length=1, max_length=128)
+    document_name: str = Field(min_length=1, max_length=300, description="The file name, for the chat's row.")
+    page: int | None = Field(default=None, ge=1, description="The page, from 1.")
+    passage: str | None = Field(
+        default=None, min_length=1, max_length=MAX_VIEWER_PASSAGE_CHARS, description="Text to mark on the page."
+    )
+    region: list[float] | None = Field(
+        default=None, min_length=4, max_length=4, description="`[x, y, w, h]`, shares of the page as shown."
+    )
+    against_document_id: str | None = Field(
+        default=None, min_length=1, max_length=128, description="The older Fassung a comparison is made against."
+    )
+    against_document_name: str | None = Field(default=None, min_length=1, max_length=300)
+    element: str | None = Field(default=None, pattern=r"^[0-9A-Za-z_$]{22}$", description="An IFC GlobalId.")
+
+    @model_validator(mode="after")
+    def _region_on_the_page(self) -> ViewerActionArgs:
+        if self.region is None:
+            return self
+        x, y, w, h = self.region
+        inside = all(0 <= v <= 1 for v in self.region) and w > 0 and h > 0
+        if not inside or x + w > 1 + _EDGE_EPSILON or y + h > 1 + _EDGE_EPSILON:
+            raise ValueError("the region is not a box on the page: shares from 0 to 1, x + w and y + h at most 1")
+        return self
+
+
+class ViewerActionValue(_Model):
+    """One frontend tool call: AG-UI's ``toolCallId``, ``toolCallName`` and ``args``, whole in one frame.
+
+    AG-UI would carry it as ``TOOL_CALL_CHUNK`` (one frame the client expands to
+    ``TOOL_CALL_START`` / ``ARGS`` / ``END``), with ``TOOL_CALL_RESULT`` optional.
+    This wire keeps every tool out of ``TOOL_CALL_*`` (``docs/design/chat-wire-v2.md``
+    §a), and nothing returns to the model, so the call rides ``CUSTOM`` under
+    AG-UI's field names. Returning the person's "not now" to the model would be
+    the reason to move it to ``TOOL_CALL_*`` (ADR-0144).
+
+    The server writes only a name of the allow-list. The JSON Schema says
+    ``string``, so a page one release older passes over a sixth action instead
+    of refusing the frame; the page holds its own allow-list (``viewer-actions.ts``).
+    """
+
+    tool_call_id: str = Field(min_length=1, max_length=64)
+    tool_call_name: Annotated[
+        ViewerActionName,
+        WithJsonSchema({"type": "string", "minLength": 1, "maxLength": 64, "description": "A viewer action's name."}),
+    ]
+    args: ViewerActionArgs
+
+    @model_validator(mode="after")
+    def _has_what_it_needs(self) -> ViewerActionValue:
+        missing = [name for name in VIEWER_ACTION_REQUIRES[self.tool_call_name] if getattr(self.args, name) is None]
+        if missing:
+            raise ValueError(f"{self.tool_call_name} needs {', '.join(missing)}")
+        return self
+
+
 class _CustomBody(_Model):
     type: Literal["CUSTOM"] = "CUSTOM"
 
@@ -786,6 +878,13 @@ class SteerAppliedBody(_CustomBody):
     value: SteerAppliedValue
 
 
+class ViewerActionBody(_CustomBody):
+    """Piloti proposes to move the asker's document viewer (ADR-0144). Only the asker's live page runs it."""
+
+    name: Literal["viewer_action"] = "viewer_action"
+    value: ViewerActionValue
+
+
 #: The optional client fields this server reads, as ``<type>.<field>``, named in
 #: the hello. The server reads client messages strictly (``extra="forbid"``), so
 #: a client sends an optional field only to a server whose hello names it: a tab
@@ -797,6 +896,7 @@ ACCEPTED_CLIENT_FIELDS: tuple[str, ...] = (
     "user_message.reply_in_thread",
     "user_message.trigger",
     "user_message.if_idle",
+    "user_message.client_tools",
     # A whole message type, not a field: a server that does not name it refuses
     # the frame (``invalid_message``), so the client keeps the note for the next
     # question instead of sending it.
@@ -930,6 +1030,10 @@ class SteerApplied(Envelope, SteerAppliedBody):
     pass
 
 
+class ViewerAction(Envelope, ViewerActionBody):
+    pass
+
+
 CustomEvent = Annotated[
     Masthead
     | Card
@@ -941,7 +1045,8 @@ CustomEvent = Annotated[
     | InteractionResolved
     | Rejected
     | SteerReceived
-    | SteerApplied,
+    | SteerApplied
+    | ViewerAction,
     Field(discriminator="name"),
 ]
 
@@ -986,6 +1091,7 @@ EventBody = (
     | RejectedBody
     | SteerReceivedBody
     | SteerAppliedBody
+    | ViewerActionBody
 )
 
 _EVENT_OF_BODY: dict[type[BaseModel], type[Envelope]] = {
@@ -1012,6 +1118,7 @@ _EVENT_OF_BODY: dict[type[BaseModel], type[Envelope]] = {
     RejectedBody: Rejected,
     SteerReceivedBody: SteerReceived,
     SteerAppliedBody: SteerApplied,
+    ViewerActionBody: ViewerAction,
 }
 
 
@@ -1171,6 +1278,16 @@ class UserMessage(_ClientBase):
             "Run only if the conversation has no running turn: a running one is never superseded, and the "
             "question is refused with rejected{busy} instead, so the sender can retry later. Sent only to a "
             "server whose hello accepts 'user_message.if_idle'."
+        ),
+    )
+    client_tools: list[Annotated[str, Field(min_length=1, max_length=64)]] | None = Field(
+        default=None,
+        max_length=16,
+        description=(
+            "The frontend tools this page can run for this turn, by name (AG-UI's RunAgentInput.tools). A tool "
+            "named here is offered to the model for this turn only; a name the server does not know is ignored. "
+            "Absent or empty: none, which is what every headless sender gets. Sent only to a server whose hello "
+            "accepts 'user_message.client_tools'."
         ),
     )
 

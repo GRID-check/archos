@@ -45,6 +45,7 @@ export const chat: typeof en.chat = {
     renditionNote: 'PDF-Vorschau des Originals',
     renditionPending: 'PDF-Vorschau wird erstellt…',
     downloadOriginal: 'Original herunterladen',
+    openBesideChat: 'Neben dem Chat öffnen',
     // Coarse source kind (ADR-0026) shown in the info popover. Preferred
     // over `origins` because the origin token is kb/ris/web only, so a
     // knowledge-base copy of a legal text reads as project material.
@@ -699,6 +700,63 @@ export const chat: typeof en.chat = {
       eyebrow: 'Aktion',
       // „{operation}“ ist der technische Name der Aktion, er bleibt unübersetzt.
       operation: 'Aktion: {operation}',
+      // Die Eingabefelder, die die meisten Aktionen haben, wie die Karte sie nennt (`NAMED_INPUT_KEYS`).
+      inputKeys: {
+        id: 'ID',
+        name: 'Name',
+        title: 'Titel',
+        description: 'Beschreibung',
+        projectId: 'Projekt',
+        folderId: 'Ordner',
+        parentId: 'Übergeordneter Ordner',
+        documentId: 'Dokument',
+        conversationId: 'Chat',
+        targetFolder: 'Zielordner',
+        scope: 'Geltungsbereich',
+        memoryScope: 'Wo gemerkt',
+        messageId: 'Nachricht',
+        versionId: 'Fassung',
+        annotationId: 'Anmerkung',
+        taskId: 'Aufgabe',
+        itemId: 'Eintrag',
+        skillId: 'Skill',
+        categoryId: 'Kategorie',
+        resourceType: 'Art des Objekts',
+        resourceId: 'Objekt',
+        body: 'Text',
+        note: 'Notiz',
+        comment: 'Kommentar',
+        content: 'Inhalt',
+        message: 'Nachrichtentext',
+        question: 'Frage',
+        reason: 'Grund',
+        decision: 'Entscheidung',
+        kind: 'Art',
+        role: 'Rolle',
+        status: 'Status',
+        enabled: 'Eingeschaltet',
+        pinned: 'Angeheftet',
+        confidence: 'Sicherheit',
+        locale: 'Sprache',
+        fileName: 'Dateiname',
+        files: 'Dateien',
+        names: 'Namen',
+        displayName: 'Anzeigename',
+        email: 'E-Mail',
+        visibility: 'Sichtbarkeit',
+        permissions: 'Berechtigungen',
+        sortOrder: 'Reihenfolge',
+      },
+      // Eine Pfad-ID, nach dem Objekt benannt, das sie bezeichnet.
+      targetType: {
+        project: 'Projekt',
+        document: 'Dokument',
+        folder: 'Ordner',
+        conversation: 'Chat',
+        bim_model: 'Modell',
+        upload_batch: 'Upload',
+        proposal: 'Vorschlag',
+      },
       inputLabel: 'Eingaben',
       // Ein langer Wert ist erst gekürzt; „Übernehmen“ wartet, bis jeder ganz gelesen ist.
       showAll: 'Ganz anzeigen ({length} Zeichen)',
@@ -716,6 +774,19 @@ export const chat: typeof en.chat = {
       },
       applied: 'Die Aktion wurde ausgeführt.',
       dismissed: 'Verworfen. Die Aktion wurde nicht ausgeführt.',
+    },
+    // Die Vorschlagskarte im Chat eines anderen Assistenten (Claude, ChatGPT,
+    // VS Code), als MCP App von Pilotis MCP-Server gezeichnet (ADR-0142). Dieselbe
+    // Quittung wie in Piloti; hier nur die Zeilen, die dieser Rahmen braucht.
+    mcpApp: {
+      source: 'Von Piloti',
+      fileTitle: '{count, plural, one {Eine Änderung an einer Datei} other {# Änderungen an Dateien}}',
+      memoryTitle: 'Eine Notiz, die Piloti sich merken soll',
+      // Eine Profiländerung zeigt Vorher und Nachher am aktuellen Profil, das der
+      // Rahmen nicht lesen kann: Darüber wird in Piloti entschieden.
+      decideInPiloti: 'Dieser Vorschlag ändert den Projektkontext. Öffnen Sie das Projekt in Piloti, um ihn mit den aktuellen Werten zu vergleichen und zu entscheiden.',
+      unreadable: 'Dieser Vorschlag konnte nicht angezeigt werden.',
+      waiting: 'Der Vorschlag wird geladen …',
     },
     // Was Piloti an einem Dokument getan hat: Anmerkungen gesetzt, in einem
     // Thread geantwortet. Je Anmerkung ein „Übernehmen“ oder „Verwerfen“, und
@@ -1693,6 +1764,49 @@ export const chat: typeof en.chat = {
   noSources: {
     warning:
       'Keine Datenquellen ausgewählt und keine Dateien verfügbar. Antworten sind eher ungenau oder veraltet, sofern keine externen Datenquellen hinzugefügt werden.',
+  },
+  viewerActions: {
+    region: 'Was Piloti Ihnen im Viewer gezeigt hat',
+    place: '{name}, S. {page}',
+    what: {
+      open_document: '{place}',
+      highlight_passage: 'Stelle in {place}',
+      highlight_region: 'Bereich in {place}',
+      compare_revisions: '{name} mit {against} vergleichen',
+      focus_ifc_element: 'Bauteil in {name}',
+    },
+    status: {
+      pending: 'Wird geöffnet …',
+      undone: 'Zurückgenommen',
+      kept: 'Nicht zurückgenommen: Sie haben den Viewer inzwischen geändert',
+      failed: 'Konnte nicht geöffnet werden',
+    },
+    shown: {
+      beside: 'Piloti hat es neben dem Chat geöffnet',
+      over: 'Piloti hat es über dem Chat geöffnet',
+      compare: 'Vergleich geöffnet',
+      model: 'Modellansicht geöffnet',
+    },
+    refused: {
+      // Neutral: ein 404 sagt nicht, ob es das Dokument gibt.
+      unavailable: 'Nicht geöffnet: Dokument nicht verfügbar',
+      notRevisions: 'Nicht geöffnet: keine zwei Fassungen desselben Dokuments',
+    },
+    offered: {
+      off: 'Piloti schlägt diese Stelle vor',
+      typing: 'Nicht geöffnet, während Sie geschrieben haben',
+      leaves: 'Öffnet sich über dem Chat',
+      model: 'Öffnet die Modellansicht',
+      noRoom: 'Neben dem Chat ist kein Platz: öffnet sich darüber',
+      unavailable: 'Piloti schlägt diese Stelle vor',
+      another: 'Eine weitere Stelle, die Piloti vorschlägt',
+    },
+    undo: 'Zurücknehmen',
+    undoAria: '„{what}“ zurücknehmen',
+    show: 'Anzeigen',
+    showAria: '{what} anzeigen',
+    auto: 'Automatisch öffnen',
+    autoHint: 'Piloti darf die Stellen, die es zitiert, neben dem Chat öffnen. Aus: Piloti schlägt sie hier nur vor.',
   },
   memory: {
     noted: 'Piloti hat sich gemerkt',

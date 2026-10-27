@@ -13,7 +13,7 @@ import {
 import { nameProbeRequestSchema } from '@/lib/documents/name-probe-types'
 import { DOCUMENT_STATUSES } from '@/lib/documents/document-status'
 import { SHELF_SCOPES } from '@/lib/documents/shelf-scope'
-import { searchBodyInputSchema, searchBodySchema, searchExportQuerySchema, searchScopeQuerySchema } from '@/lib/search/search-wire'
+import { searchBodyInputSchema, searchBodySchema, searchExportQuerySchema, searchScopeQuerySchema, suggestBodySchema } from '@/lib/search/search-wire'
 import type { AgentOperation } from '../operation'
 import { MAX_UPLOAD_BYTES, documentUploadFields, uploadBodySchemaWith } from '../upload-wire'
 
@@ -265,13 +265,27 @@ export const documentsOperations = [
     load: () => import('@/app/api/search/route'),
   },
   {
+    name: 'workspace-search-suggest',
+    domain: 'documents',
+    summary: 'Complete a search filter from document values',
+    description:
+      'Values documents in reach hold for one workspace-search filter, starting as `prefix`, with document ' +
+      'counts, under the same scope and `filters`. `cites` values are tokens.',
+    method: 'POST',
+    path: '/api/search/suggest',
+    query: searchScopeQuerySchema,
+    body: suggestBodySchema,
+    readOnly: true,
+    spansProjects: 'unlessScoped',
+    load: () => import('@/app/api/search/suggest/route'),
+  },
+  {
     name: 'workspace-search-export',
     domain: 'documents',
     summary: 'Export the documents a search finds as a drawing register file',
     description:
-      'The documents of a search (same scope and body as workspace-search) as a drawing register: csv (semicolon, German locale) or ' +
-      'xlsx, with drawing number, revision, plan date, scale, name, title, type, project, folder, dates, uploader, pages and ' +
-      'whether it is the current revision, in the search order. Refused above 5000 documents: narrow the filters.',
+      'The documents of a search (same scope and body as workspace-search) as a drawing register, csv (semicolon) or xlsx, ' +
+      'one row per document in the search order. Refused above 5000 documents: narrow the filters.',
     method: 'POST',
     path: '/api/search/export',
     query: searchExportQuerySchema,

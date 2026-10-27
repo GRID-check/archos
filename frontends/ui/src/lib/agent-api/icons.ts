@@ -79,6 +79,8 @@ export const RESOURCE_ICONS = {
   glossary: glyph('M4 5h16v11H10l-4 4v-4H4Z'),
   catalog: glyph('M9 7h11M9 12h11M9 17h11M4.5 7h.01M4.5 12h.01M4.5 17h.01'),
   project: glyph('M3 6h6l2 2h10v11H3Z'),
+  // The proposal card (an MCP App view, ADR-0142): a card with a tick.
+  'proposal-card': glyph('M4 5h16v14H4ZM8 12l3 3 5-6'),
 } as const
 
 export const PROMPT_ICONS = {

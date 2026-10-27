@@ -50,6 +50,7 @@ export const chat = {
     renditionNote: 'PDF preview of the original',
     renditionPending: 'Creating PDF preview…',
     downloadOriginal: 'Download original',
+    openBesideChat: 'Open beside the chat',
     // Coarse source kind (ADR-0026) shown in the info popover. Preferred
     // over `origins` because the origin token is kb/ris/web only, so a
     // knowledge-base copy of a legal text reads as project material.
@@ -695,6 +696,63 @@ export const chat = {
       eyebrow: 'Action',
       // `{operation}` is the action's technical name; it is not translated.
       operation: 'Action: {operation}',
+      // The input fields most actions take, as the card names them (`NAMED_INPUT_KEYS`).
+      inputKeys: {
+        id: 'ID',
+        name: 'Name',
+        title: 'Title',
+        description: 'Description',
+        projectId: 'Project',
+        folderId: 'Folder',
+        parentId: 'Parent folder',
+        documentId: 'Document',
+        conversationId: 'Conversation',
+        targetFolder: 'Target folder',
+        scope: 'Scope',
+        memoryScope: 'Where to keep it',
+        messageId: 'Message',
+        versionId: 'Version',
+        annotationId: 'Comment thread',
+        taskId: 'Task',
+        itemId: 'Item',
+        skillId: 'Skill',
+        categoryId: 'Category',
+        resourceType: 'Kind of object',
+        resourceId: 'Object',
+        body: 'Text',
+        note: 'Note',
+        comment: 'Comment',
+        content: 'Content',
+        message: 'Message text',
+        question: 'Question',
+        reason: 'Reason',
+        decision: 'Decision',
+        kind: 'Kind',
+        role: 'Role',
+        status: 'Status',
+        enabled: 'Switched on',
+        pinned: 'Pinned',
+        confidence: 'Confidence',
+        locale: 'Language',
+        fileName: 'File name',
+        files: 'Files',
+        names: 'Names',
+        displayName: 'Display name',
+        email: 'Email',
+        visibility: 'Visibility',
+        permissions: 'Permissions',
+        sortOrder: 'Order',
+      },
+      // A path id named after the object it resolved to.
+      targetType: {
+        project: 'Project',
+        document: 'Document',
+        folder: 'Folder',
+        conversation: 'Conversation',
+        bim_model: 'Model',
+        upload_batch: 'Upload',
+        proposal: 'Proposal',
+      },
       inputLabel: 'Inputs',
       // A long value is shortened at first; „Apply“ waits until every one has been read in full.
       showAll: 'Show all ({length} characters)',
@@ -712,6 +770,19 @@ export const chat = {
       },
       applied: 'The action was carried out.',
       dismissed: 'Discarded. The action was not carried out.',
+    },
+    // The proposal card inside another assistant's chat (Claude, ChatGPT, VS Code),
+    // drawn as an MCP App from Piloti's MCP server (ADR-0142). The same receipt
+    // as in Piloti; these are the lines only that frame needs.
+    mcpApp: {
+      source: 'From Piloti',
+      fileTitle: '{count, plural, one {A change to one file} other {# changes to files}}',
+      memoryTitle: 'A note for Piloti to remember',
+      // A profile change shows before and after against the live profile, which
+      // the frame cannot read: it is decided in Piloti.
+      decideInPiloti: 'This proposal changes the project context. Open the project in Piloti to compare it with the current values and decide.',
+      unreadable: 'This proposal could not be shown.',
+      waiting: 'Loading the proposal…',
     },
     // What Piloti did on a document: marks it set, threads it answered in.
     // One „take over" or „discard" per mark, and the way into the review at
@@ -1672,6 +1743,49 @@ export const chat = {
   noSources: {
     warning:
       'No data sources selected and no files are available. Responses are more likely to be inaccurate or outdated unless external data sources are added.',
+  },
+  viewerActions: {
+    region: 'What Piloti showed you in the viewer',
+    place: '{name}, p. {page}',
+    what: {
+      open_document: '{place}',
+      highlight_passage: 'Passage in {place}',
+      highlight_region: 'Area in {place}',
+      compare_revisions: 'Compare {name} with {against}',
+      focus_ifc_element: 'Element in {name}',
+    },
+    status: {
+      pending: 'Opening …',
+      undone: 'Undone',
+      kept: 'Not undone: you have changed the viewer since',
+      failed: 'Could not be opened',
+    },
+    shown: {
+      beside: 'Piloti opened it beside the chat',
+      over: 'Piloti opened it over the chat',
+      compare: 'Comparison opened',
+      model: 'Model view opened',
+    },
+    refused: {
+      // Neutral: a 404 does not say whether the document exists.
+      unavailable: 'Not opened: document not available',
+      notRevisions: 'Not opened: not two revisions of one document',
+    },
+    offered: {
+      off: 'Piloti suggests this place',
+      typing: 'Not opened while you were typing',
+      leaves: 'Opens over the chat',
+      model: 'Opens the model view',
+      noRoom: 'No room beside the chat: opens over it',
+      unavailable: 'Piloti suggests this place',
+      another: 'Another place Piloti suggests',
+    },
+    undo: 'Undo',
+    undoAria: 'Undo “{what}”',
+    show: 'Show',
+    showAria: 'Show {what}',
+    auto: 'Open automatically',
+    autoHint: 'Piloti may open the places it cites beside the chat. Off: it only suggests them here.',
   },
   memory: {
     noted: 'Piloti noted',

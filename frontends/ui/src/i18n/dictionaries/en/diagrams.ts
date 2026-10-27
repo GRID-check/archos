@@ -73,6 +73,35 @@ export const diagrams = {
    */
   marking:
     'Created by Piloti — AI-generated, not reviewed. Schematic: no dimensions are claimed. Not a certificate; check every statement before passing this on.',
+  /**
+   * The same block for a drawing a person reworked in the sketch editor before
+   * filing it. „Created by Piloti" would be half false; editing is not a review
+   * either, so „not reviewed" stays. „Not to scale" because a person's hand
+   * can now have drawn anything, a site outline included.
+   */
+  markingEdited:
+    'Drafted by Piloti, edited by a person — AI-assisted, not reviewed. Sketch: not to scale, no dimensions are claimed. Not a certificate; check every statement before passing this on.',
+  /**
+   * The sketch editor: Excalidraw, opened on a drawing Piloti made, so a person
+   * can rework it and file their own version. Only flows and Gliederungen have
+   * one; the other views are not node graphs.
+   */
+  sketch: {
+    action: 'Edit as sketch',
+    title: 'Edit sketch',
+    description: 'Starts from Piloti’s drawing. A sketch is not to scale and claims no dimensions.',
+    loading: 'Loading the canvas…',
+    loadFailed: 'The canvas could not be loaded.',
+    save: 'File in project',
+    saving: 'Filing…',
+    close: 'Close',
+    /** A close with unsaved changes asks once, in place, rather than losing the work. */
+    discardQuestion: 'Discard your changes?',
+    discard: 'Discard',
+    keepEditing: 'Keep editing',
+    /** The default file name, when the drawing's source names none. */
+    defaultTitle: 'Sketch',
+  },
   rejected: {
     empty: 'The diagram was empty.',
     'too-large': 'The diagram is too large to file.',

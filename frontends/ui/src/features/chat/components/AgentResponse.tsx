@@ -88,6 +88,7 @@ import { NestedMarkdownPluginsProvider } from '@/shared/components/MarkdownRende
 import { SkillsUsedDisclosure } from '@/features/skills/components/SkillsUsedDisclosure'
 import { AnswerSourcesRow } from './AnswerSourcesRow'
 import { MemoryNotedChip } from './MemoryNotedChip'
+import { ViewerActionRow } from './ViewerActionRow'
 import { turnMemoryItems } from '../lib/turn-memory'
 import { answerMetaToAnatomy, summaryDuplicatesBody } from '../lib/answer-meta-cards'
 import { AnatomyBlock, AnatomyMasthead, mastheadShows } from './AnswerAnatomy'
@@ -1723,6 +1724,10 @@ const AgentResponseComponent: FC<AgentResponseProps> = ({
   // retracted answer keeps its frame (above).
   if (blank && !retracted) return null
 
+  // What Piloti showed the reader in their viewer during this answer (ADR-0144).
+  // The reader's own answers only: a shared answer moved nobody's viewer here.
+  const viewerActionRow = !readOnly && messageId ? <ViewerActionRow messageId={messageId} /> : null
+
   // While a retracted answer has nothing to show, one quiet line says the
   // answer is still coming, in the room the withdrawn words held.
   const retractionLine =
@@ -1775,6 +1780,7 @@ const AgentResponseComponent: FC<AgentResponseProps> = ({
             its last word. Cards the answer placed with a marker are spliced
             into this body. */}
               {retractionLine}
+              {viewerActionRow}
               <CardSlotLiveProvider value={live}>
                 <MarkdownSlotProvider render={renderCardSlot}>
                   <div ref={proseRef} className={proseClass(ledeClass)}>
@@ -1954,6 +1960,7 @@ const AgentResponseComponent: FC<AgentResponseProps> = ({
               its last word. Cards the answer placed with a marker are spliced
               into this body. */}
                 {retractionLine}
+                {viewerActionRow}
                 <AnswerOutline markdown={body} scopeRef={proseRef} enabled={!live && !failed && !retracted}>
                   <CardSlotLiveProvider value={live}>
                     <MarkdownSlotProvider render={renderCardSlot}>
