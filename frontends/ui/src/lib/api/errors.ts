@@ -5,10 +5,20 @@
  * the route-handler wrapper in `@/lib/api/handler` maps them to the JSON
  * error envelope. This keeps HTTP concerns out of the service layer while
  * guaranteeing every route returns consistent, non-leaky error responses.
+ *
+ * About 850 specs reach this module, so it is a leaf: type imports only, or
+ * everything it imports is re-run with them (`errors-leaf.spec.ts`).
  */
 
 import type { RateLimitDecision } from '@/lib/limits/types'
-import { BYTES_PER_MB } from '@/shared/config/request-body-limit'
+
+/**
+ * Bytes in a decimal MB. Declared here rather than imported from
+ * `@/shared/config/request-body-limit` to keep this module a leaf, the
+ * convention that file states for itself; `errors-leaf.spec.ts` holds the two
+ * equal.
+ */
+const BYTES_PER_MB = 1e6
 
 export class ApiError extends Error {
   constructor(

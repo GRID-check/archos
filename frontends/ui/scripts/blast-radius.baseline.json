@@ -360,7 +360,7 @@
   "src/shared/components/MarkdownRenderer/status-marks.ts": 415,
   "src/shared/components/MarkdownRenderer/table-shape.ts": 414,
   "src/shared/config/file-upload.ts": 355,
-  "src/shared/config/request-body-limit.ts": 873,
+  "src/shared/config/request-body-limit.ts": 597,
   "src/test-utils/index.tsx": 321,
   "workers/database-unavailable.js": 391
  }
