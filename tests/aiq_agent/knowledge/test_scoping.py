@@ -328,7 +328,7 @@ class TestSignedEnvelopePrecedence:
 
     def test_signed_envelope_scope_wins_over_forged_raw_header(self, monkeypatch):
         secret = "unit-test-internal-token"
-        monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", secret)
+        monkeypatch.setenv("INTERNAL_API_TOKEN", secret)
 
         trusted = ["oib_knowledge", "s_my_conversation"]
         envelope, sig = self._envelope(trusted, secret)
@@ -352,7 +352,7 @@ class TestSignedEnvelopePrecedence:
 
     def test_tampered_envelope_signature_is_not_honored(self, monkeypatch):
         secret = "unit-test-internal-token"
-        monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", secret)
+        monkeypatch.setenv("INTERNAL_API_TOKEN", secret)
 
         privileged = ["another_tenant_corpus"]
         envelope, _good_sig = self._envelope(privileged, secret)
@@ -373,7 +373,7 @@ class TestSignedEnvelopePrecedence:
     def test_raw_header_honored_when_no_envelope(self, monkeypatch):
         # Anonymous / internal-service / legacy path: no envelope present, so the
         # raw header is still used (parity with pre-envelope behavior).
-        monkeypatch.delenv("GRID_INTERNAL_API_TOKEN", raising=False)
+        monkeypatch.delenv("INTERNAL_API_TOKEN", raising=False)
         scope = ["oib_knowledge", "s_conv"]
         header = base64.urlsafe_b64encode(json.dumps(scope).encode()).decode()
         ctx = _HeaderContext({"x-grid-collection-scope": header})

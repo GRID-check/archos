@@ -188,7 +188,7 @@ describe("the api tier", () => {
   });
 
   it("is the chat tier's env without what only chat reads", () => {
-    const chatOnly = ["CHAT_DRAIN_SECONDS", "GRID_CHAT_AFFINITY", "CONVERSATION_BUS"];
+    const chatOnly = ["CHAT_DRAIN_SECONDS", "CHAT_AFFINITY", "CONVERSATION_BUS"];
     for (const name of chatOnly) {
       expect(chatEnvValues[name], name).toBeDefined();
       expect(apiEnvValues[name], name).toBeUndefined();
@@ -228,7 +228,7 @@ describe("the api tier", () => {
   });
 
   it("runs research on the database queue alone: the api workload carries no execution switch", () => {
-    expect(apiEnvValues).not.toHaveProperty("GRID_JOB_EXECUTION");
+    expect(apiEnvValues).not.toHaveProperty("JOB_EXECUTION");
   });
 
   it("is reachable from the frontend and the CronJobs through the namespace-wide ingress allow", async () => {

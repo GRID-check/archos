@@ -83,7 +83,7 @@ beforeEach(() => {
   vi.clearAllMocks()
   process.env.WORKOS_AUTHKIT_DOMAIN = DOMAIN
   process.env.MCP_RESOURCE_URL = RESOURCE
-  process.env.GRID_INTERNAL_API_TOKEN = SECRET
+  process.env.INTERNAL_API_TOKEN = SECRET
   vi.mocked(resolvePinnedRequesterSession).mockResolvedValue(session)
   vi.mocked(isOrgFeatureEnabled).mockResolvedValue(true)
 })

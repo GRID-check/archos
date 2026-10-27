@@ -200,7 +200,7 @@ is now the single builder: `buildGridRequestContextWireHeaders` returns every
 individual header PLUS one consolidated, signed `X-Grid-Request-Context`
 header (base64url JSON of the same fields, plus the structured `federal_state`
 fact — §6b) and `X-Grid-Request-Context-Sig` (hex HMAC-SHA256 of the raw
-JSON, keyed on `GRID_INTERNAL_API_TOKEN`). Legacy HTTP/job producers retain
+JSON, keyed on `INTERNAL_API_TOKEN`). Legacy HTTP/job producers retain
 this **dual-write transition**. Authenticated WebSocket handshakes instead
 carry compact claims with `contextTransport: "bff"` and omit project context,
 memory and office instructions from both the individual headers and the
@@ -246,7 +246,7 @@ routes (`/chat`, `/generate`, `/v1/chat/completions`, `/v1/workflow`, ...) are
 not mounted at all: a turn runs on the chat socket alone (`AIQAPIConfig`,
 ADR-0068), and deny by default is what closes a route a later NAT adds. Always exempt:
 anonymous mode and internal-token-authenticated service calls. Dev fail-open note:
-when `GRID_INTERNAL_API_TOKEN` is unset, signature verification is skipped
+when `INTERNAL_API_TOKEN` is unset, signature verification is skipped
 but envelope *presence* is still required for authenticated requests.
 
 ### 2b-bis. Ingest-only turns: how a message reaches the graph WITHOUT a turn
@@ -332,9 +332,9 @@ backend pieces live in `chat_socket.py` and `conversation_bus.py`; the design is
   it when the turn ends, a dead owner's expires on its TTL, and a turn that
   cannot get it in time is refused, never run beside the stale one. With the
   bus down the claim fails open to the local registry, and so does the marker
-  while `GRID_CHAT_AFFINITY` is on; with it off the question is refused.
+  while `CHAT_AFFINITY` is on; with it off the question is refused.
 - **The owner fences itself** (`aiq_api/turn_fence.py`, `aiq_agent/common/write_fence.py`;
-  only with `GRID_CHAT_AFFINITY` off). The marker's TTL can run out under a
+  only with `CHAT_AFFINITY` off). The marker's TTL can run out under a
   turn that is still running (a renewal task starved or late, Dragonfly
   unreachable from this replica), and a newer turn on another replica may then
   take it. So the turn keeps a deadline of its own: the start of its last
@@ -1951,7 +1951,7 @@ The agent can now persist curated findings across turns. Full design:
   The backend `remember` tool never touches the DB — it POSTs to the internal
   BFF endpoint `POST /api/internal/memory`
   (`frontends/ui/src/app/api/internal/memory/route.ts`), authenticated by the
-  shared service token `GRID_INTERNAL_API_TOKEN` (`x-grid-internal-token`
+  shared service token `INTERNAL_API_TOKEN` (`x-grid-internal-token`
   header; the route fails closed with 503 when the token is unconfigured).
   Backend client: `src/aiq_agent/knowledge/project_memory.py`, over
   `src/aiq_agent/common/bff_http.py`, the one client every agent-side call to

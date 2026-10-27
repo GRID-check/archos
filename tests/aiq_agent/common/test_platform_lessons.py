@@ -17,7 +17,7 @@ DIGEST = 'PLATFORM_LESSONS v1\n- [wrong_source | 3x] "Vor dem Zitieren die Richt
 @pytest.fixture(autouse=True)
 def _clean_cache(monkeypatch):
     reset_platform_lessons_cache()
-    monkeypatch.delenv("GRID_INTERNAL_API_TOKEN", raising=False)
+    monkeypatch.delenv("INTERNAL_API_TOKEN", raising=False)
     monkeypatch.delenv("FRONTEND_INTERNAL_URL", raising=False)
     yield
     reset_platform_lessons_cache()
@@ -79,41 +79,41 @@ class TestResolution:
         assert calls["n"] == 0
 
     def test_digest_resolves(self, monkeypatch):
-        monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", "tok")
+        monkeypatch.setenv("INTERNAL_API_TOKEN", "tok")
         _mock_bff(monkeypatch, {"digest": DIGEST})
         assert get_platform_lessons_digest() == DIGEST
 
     def test_null_digest_resolves_to_none(self, monkeypatch):
-        monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", "tok")
+        monkeypatch.setenv("INTERNAL_API_TOKEN", "tok")
         _mock_bff(monkeypatch, {"digest": None})
         assert get_platform_lessons_digest() is None
 
     def test_http_error_fails_open(self, monkeypatch):
-        monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", "tok")
+        monkeypatch.setenv("INTERNAL_API_TOKEN", "tok")
         _mock_bff(monkeypatch, error=httpx.ConnectError("down"))
         assert get_platform_lessons_digest() is None
 
     def test_malformed_payload_fails_open(self, monkeypatch):
-        monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", "tok")
+        monkeypatch.setenv("INTERNAL_API_TOKEN", "tok")
         _mock_bff(monkeypatch, ["not", "a", "dict"])
         assert get_platform_lessons_digest() is None
 
     def test_cache_avoids_repeat_fetch(self, monkeypatch):
-        monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", "tok")
+        monkeypatch.setenv("INTERNAL_API_TOKEN", "tok")
         calls = _mock_bff(monkeypatch, {"digest": DIGEST})
         assert get_platform_lessons_digest() == DIGEST
         assert get_platform_lessons_digest() == DIGEST
         assert calls["n"] == 1
 
     def test_negative_result_cached(self, monkeypatch):
-        monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", "tok")
+        monkeypatch.setenv("INTERNAL_API_TOKEN", "tok")
         calls = _mock_bff(monkeypatch, {"digest": None})
         assert get_platform_lessons_digest() is None
         assert get_platform_lessons_digest() is None
         assert calls["n"] == 1
 
     def test_frontend_internal_url_and_token_respected(self, monkeypatch):
-        monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", "tok")
+        monkeypatch.setenv("INTERNAL_API_TOKEN", "tok")
         monkeypatch.setenv("FRONTEND_INTERNAL_URL", "http://bff:3000/")
         calls = _mock_bff(monkeypatch, {"digest": None})
         get_platform_lessons_digest()
@@ -165,7 +165,7 @@ class TestHoldout:
 
 class TestHoldoutSuppression:
     def test_holdout_conversation_receives_no_digest(self, monkeypatch):
-        monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", "tok")
+        monkeypatch.setenv("INTERNAL_API_TOKEN", "tok")
         calls = _mock_bff(monkeypatch, {"digest": DIGEST})
         monkeypatch.setattr(
             "aiq_agent.common.retrieval_settings.get_retrieval_setting",
@@ -176,7 +176,7 @@ class TestHoldoutSuppression:
         assert calls["n"] == 0
 
     def test_treated_conversation_still_receives_the_digest(self, monkeypatch):
-        monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", "tok")
+        monkeypatch.setenv("INTERNAL_API_TOKEN", "tok")
         _mock_bff(monkeypatch, {"digest": DIGEST})
         monkeypatch.setattr(
             "aiq_agent.common.retrieval_settings.get_retrieval_setting",
@@ -185,7 +185,7 @@ class TestHoldoutSuppression:
         assert get_platform_lessons_digest("conv-1") == DIGEST
 
     def test_unreadable_setting_fails_open_to_treated(self, monkeypatch):
-        monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", "tok")
+        monkeypatch.setenv("INTERNAL_API_TOKEN", "tok")
         _mock_bff(monkeypatch, {"digest": DIGEST})
 
         def _boom(key, fallback):
@@ -240,7 +240,7 @@ class TestResolutionCarriesTheArmAndTheLessons:
     """What the trace records: the arm, and the ids of the lessons in the injected digest."""
 
     def test_a_treated_turn_carries_the_digest_and_its_lesson_ids(self, monkeypatch):
-        monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", "tok")
+        monkeypatch.setenv("INTERNAL_API_TOKEN", "tok")
         _mock_bff(monkeypatch, {"digest": DIGEST, "lessonIds": [LESSON_A, LESSON_B]})
         _holdout_pct(monkeypatch, 0)
         resolution = resolve_platform_lessons("conv-0")
@@ -249,7 +249,7 @@ class TestResolutionCarriesTheArmAndTheLessons:
         assert resolution.arm == "off"
 
     def test_arm_is_treated_when_the_holdout_measures_and_the_conversation_is_outside_it(self, monkeypatch):
-        monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", "tok")
+        monkeypatch.setenv("INTERNAL_API_TOKEN", "tok")
         _mock_bff(monkeypatch, {"digest": DIGEST, "lessonIds": [LESSON_A]})
         _holdout_pct(monkeypatch, 10)
         assert not is_in_holdout_slice("conv-0", 10)
@@ -257,7 +257,7 @@ class TestResolutionCarriesTheArmAndTheLessons:
         assert (resolution.arm, resolution.digest, resolution.lesson_ids) == ("treated", DIGEST, (LESSON_A,))
 
     def test_arm_is_holdout_with_no_digest_and_no_ids_and_no_fetch(self, monkeypatch):
-        monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", "tok")
+        monkeypatch.setenv("INTERNAL_API_TOKEN", "tok")
         calls = _mock_bff(monkeypatch, {"digest": DIGEST, "lessonIds": [LESSON_A]})
         _holdout_pct(monkeypatch, 10)
         assert is_in_holdout_slice("conv-8", 10)
@@ -266,34 +266,34 @@ class TestResolutionCarriesTheArmAndTheLessons:
         assert calls["n"] == 0
 
     def test_arm_is_off_without_a_conversation_to_key_on(self, monkeypatch):
-        monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", "tok")
+        monkeypatch.setenv("INTERNAL_API_TOKEN", "tok")
         _mock_bff(monkeypatch, {"digest": DIGEST, "lessonIds": [LESSON_A]})
         _holdout_pct(monkeypatch, 100)
         resolution = resolve_platform_lessons(None)
         assert (resolution.arm, resolution.digest) == ("off", DIGEST)
 
     def test_an_unreadable_setting_still_injects_but_claims_no_arm(self, monkeypatch):
-        monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", "tok")
+        monkeypatch.setenv("INTERNAL_API_TOKEN", "tok")
         _mock_bff(monkeypatch, {"digest": DIGEST, "lessonIds": [LESSON_A]})
         _holdout_pct(monkeypatch, RuntimeError("settings down"))
         resolution = resolve_platform_lessons("conv-8")
         assert (resolution.arm, resolution.digest) == ("off", DIGEST)
 
     def test_ids_without_a_digest_are_dropped(self, monkeypatch):
-        monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", "tok")
+        monkeypatch.setenv("INTERNAL_API_TOKEN", "tok")
         _mock_bff(monkeypatch, {"digest": None, "lessonIds": [LESSON_A]})
         _holdout_pct(monkeypatch, 0)
         assert resolve_platform_lessons("conv-0").lesson_ids == ()
 
     def test_an_older_bff_without_ids_still_resolves(self, monkeypatch):
-        monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", "tok")
+        monkeypatch.setenv("INTERNAL_API_TOKEN", "tok")
         _mock_bff(monkeypatch, {"digest": DIGEST})
         _holdout_pct(monkeypatch, 0)
         resolution = resolve_platform_lessons("conv-0")
         assert (resolution.digest, resolution.lesson_ids) == (DIGEST, ())
 
     def test_the_cache_keeps_the_ids_with_the_digest(self, monkeypatch):
-        monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", "tok")
+        monkeypatch.setenv("INTERNAL_API_TOKEN", "tok")
         calls = _mock_bff(monkeypatch, {"digest": DIGEST, "lessonIds": [LESSON_A]})
         _holdout_pct(monkeypatch, 0)
         assert resolve_platform_lessons("conv-0").lesson_ids == (LESSON_A,)

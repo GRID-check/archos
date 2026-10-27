@@ -7,7 +7,7 @@ overriding — and what a reset returns to.
 
 Reachable only over the compose network in practice (the middleware already
 distinguishes internal callers); additionally guarded with the shared
-``GRID_INTERNAL_API_TOKEN`` when one is configured, mirroring the BFF's
+``INTERNAL_API_TOKEN`` when one is configured, mirroring the BFF's
 internal endpoints. Model names are not secrets — the guard is consistency,
 not confidentiality.
 """
@@ -26,7 +26,7 @@ logger = logging.getLogger(__name__)
 
 
 def _token_ok(request: Request) -> bool:
-    expected = os.environ.get("GRID_INTERNAL_API_TOKEN")
+    expected = os.environ.get("INTERNAL_API_TOKEN")
     if not expected:
         # Dev/anonymous deployments run without the shared token; the
         # middleware's internal-caller classification is the remaining guard.
@@ -58,7 +58,7 @@ def add_config_info_routes(router: APIRouter, llm_configs: Mapping[str, Any]) ->
     # the same contract the `llms` map above serves for the model.
     reasoning_efforts = {name: getattr(config, "reasoning_effort", None) for name, config in llm_configs.items()}
 
-    # The ingestion VLM is env-configured (GRID_VLM_MODEL), not a `llms:` entry,
+    # The ingestion VLM is env-configured (VLM_MODEL), not a `llms:` entry,
     # so surface its resolved default under a stable synthetic `vlm` key. The
     # org model-config UI's `ingest_vlm` group maps to this via configLlmRefs so
     # it too shows a "workflow default" (and what a reset returns to).
@@ -68,7 +68,7 @@ def add_config_info_routes(router: APIRouter, llm_configs: Mapping[str, Any]) ->
         vlm_cred = resolve_vlm_credential()
         if vlm_cred.model:
             defaults.setdefault("vlm", vlm_cred.model)
-        # The VLM sits on its own credential plane (GRID_VLM_BASE_URL), which is
+        # The VLM sits on its own credential plane (VLM_BASE_URL), which is
         # routinely a different provider from the `llms:` block — the shipped
         # default routes to NVIDIA while the chat models route to OpenRouter. Its
         # base URL is reported separately for exactly that reason.

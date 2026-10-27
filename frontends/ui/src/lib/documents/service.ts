@@ -665,7 +665,7 @@ export async function fetchGroupedSemanticHits(
   if (unique.length === 0) return []
   const scopeHeaders = buildGridRequestContextWireHeaders(
     { collectionScope: unique },
-    process.env.GRID_INTERNAL_API_TOKEN
+    process.env.INTERNAL_API_TOKEN
   )
   let res: Response
   try {

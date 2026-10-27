@@ -295,7 +295,7 @@ effective skill set for one run:
      (`aiq_agent.common.cache`, ADR-0020) keyed
      `skills:{organization_id}:{agent}` for
      `SKILLS_CACHE_TTL_SECONDS` (default 60s).
-   - Any failure (no `GRID_INTERNAL_API_TOKEN`, timeout, non-2xx, malformed
+   - Any failure (no `INTERNAL_API_TOKEN`, timeout, non-2xx, malformed
      payload) degrades to the builtin set — skills are an additive
      capability and must never take chat down.
 3. Per-agent filtering (below).
@@ -1004,7 +1004,7 @@ is about to write into would destroy the output to tidy up a row.
 ## Backend internal route (Python, aiq_api)
 
 `POST /v1/internal/skills/submit` (`aiq_api.routes.skills`) — guarded by
-`GRID_INTERNAL_API_TOKEN` (constant-time compare, dev-default-token refusal
+`INTERNAL_API_TOKEN` (constant-time compare, dev-default-token refusal
 outside dev — the `maintenance.py` pattern; NOT on the external-path
 allowlist). It wraps `submit_agent_job`, so admission control, cost tracking
 and `job_access` ownership apply exactly like the public submit route; the
@@ -1214,10 +1214,10 @@ renaming them is a deployment change with no user-visible gain.
 | `SKILL_RUNS_RETENTION_DAYS` | skill-scheduler | `90` | Run-history retention |
 | `SKILLS_CACHE_TTL_SECONDS` | aiq-agent | `60` | Backend org-skill resolution cache TTL (ADR-0020) |
 
-(Existing: `GRID_APP_DATABASE_URL`, `FRONTEND_INTERNAL_URL`,
-`GRID_INTERNAL_API_TOKEN`, `BACKEND_URL` are reused, not new.)
+(Existing: `APP_DATABASE_URL`, `FRONTEND_INTERNAL_URL`,
+`INTERNAL_API_TOKEN`, `BACKEND_URL` are reused, not new.)
 
-The workflow-era names (`GRID_WORKFLOWS_ENABLED`,
+The workflow-era names (`WORKFLOWS_ENABLED`,
 `GRID_WORKFLOW_SCHEDULER_POLL_MS`, `GRID_WORKFLOW_SCHEDULER_BATCH`,
 `GRID_WORKFLOW_RUNS_RETENTION_DAYS`, `GRID_WORKFLOW_MIN_INTERVAL_MINUTES`) are
 **not** read as fallbacks: they gated a feature that never shipped enabled, so

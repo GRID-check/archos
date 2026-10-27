@@ -149,9 +149,9 @@ def _env_switch(name: str) -> bool:
 # already holds a key for, so captioning needs no second credential. It takes
 # image input (verified on OpenRouter); caption quality on OIB tables and
 # drawings is still unevaluated, like its predecessor's was.
-DEFAULT_VLM_MODEL = os.environ.get("GRID_VLM_MODEL", "openai/gpt-6-luna")
+DEFAULT_VLM_MODEL = os.environ.get("VLM_MODEL", "openai/gpt-6-luna")
 # Default VLM model base URL
-DEFAULT_VLM_BASE_URL = os.environ.get("GRID_VLM_BASE_URL", "https://openrouter.ai/api/v1")
+DEFAULT_VLM_BASE_URL = os.environ.get("VLM_BASE_URL", "https://openrouter.ai/api/v1")
 
 
 def retrieval_dependency_faults() -> list[tuple[str, BaseException]]:
@@ -905,8 +905,8 @@ def resolve_vlm_credential(organization_id: str | None = None):
       0. **BYOK** — when ``organization_id`` is given and the org has a
          bring-your-own credential, the org's key + base URL win (never the
          model — mirrors ADR-0022/0014).
-      1. explicit override           — ``GRID_VLM_API_KEY``
-      2. deployment provider key     — inferred from ``GRID_VLM_BASE_URL``
+      1. explicit override           — ``VLM_API_KEY``
+      2. deployment provider key     — inferred from ``VLM_BASE_URL``
          (``OPENROUTER_API_KEY`` for the default OpenRouter host)
 
     Passing ``organization_id`` is what makes per-project/Archiv uploads use the
@@ -916,11 +916,11 @@ def resolve_vlm_credential(organization_id: str | None = None):
     from aiq_agent.common.credential_resolution import resolve_llm_credential
 
     return resolve_llm_credential(
-        primary_env="GRID_VLM_API_KEY",
+        primary_env="VLM_API_KEY",
         default_base_url=DEFAULT_VLM_BASE_URL,
         default_model=DEFAULT_VLM_MODEL,
-        base_url_env="GRID_VLM_BASE_URL",
-        model_env="GRID_VLM_MODEL",
+        base_url_env="VLM_BASE_URL",
+        model_env="VLM_MODEL",
         organization_id=organization_id,
     )
 
@@ -3214,8 +3214,8 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
         EXTRACT_TABLES: Set "false" to disable table extraction (on by default)
         EXTRACT_CHARTS: Set "false" to disable chart typing (on by default)
         EXTRACT_IMAGES: Set "false" to disable image extraction (on by default)
-        GRID_VLM_MODEL: VLM model for captioning
-        GRID_VLM_BASE_URL: Default VLM base URL
+        VLM_MODEL: VLM model for captioning
+        VLM_BASE_URL: Default VLM base URL
         COLLECTION_TTL_HOURS: Hours before stale collections are deleted (default: 24)
         TTL_CLEANUP_INTERVAL_SECONDS: Seconds between cleanup runs (default: 3600)
     """
@@ -5249,7 +5249,7 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
                                 job,
                                 i,
                                 FileStatus.FAILED,
-                                error="vlm_not_configured: image ingestion requires GRID_VLM_API_KEY",
+                                error="vlm_not_configured: image ingestion requires VLM_API_KEY",
                             )
                             logger.warning("Image ingestion skipped (VLM not configured): %s", file_name)
                             continue

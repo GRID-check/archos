@@ -39,7 +39,7 @@ afterEach(() => {
 
 describe('POST /api/internal/maintenance/reconcile-vectors', () => {
   it('runs the reconciler with a valid token and answers with its counts', async () => {
-    vi.stubEnv('GRID_INTERNAL_API_TOKEN', REAL_TOKEN)
+    vi.stubEnv('INTERNAL_API_TOKEN', REAL_TOKEN)
     reconcileMock.mockResolvedValueOnce(RESULT)
 
     const response = await POST(makeRequest(REAL_TOKEN))
@@ -52,7 +52,7 @@ describe('POST /api/internal/maintenance/reconcile-vectors', () => {
   })
 
   it('refuses a wrong token before touching the store (403)', async () => {
-    vi.stubEnv('GRID_INTERNAL_API_TOKEN', REAL_TOKEN)
+    vi.stubEnv('INTERNAL_API_TOKEN', REAL_TOKEN)
 
     const response = await POST(makeRequest('wrong-token'))
 
@@ -61,7 +61,7 @@ describe('POST /api/internal/maintenance/reconcile-vectors', () => {
   })
 
   it('refuses a missing token (403)', async () => {
-    vi.stubEnv('GRID_INTERNAL_API_TOKEN', REAL_TOKEN)
+    vi.stubEnv('INTERNAL_API_TOKEN', REAL_TOKEN)
 
     const response = await POST(makeRequest())
 
@@ -70,7 +70,7 @@ describe('POST /api/internal/maintenance/reconcile-vectors', () => {
   })
 
   it('is disabled when no token is configured (503)', async () => {
-    vi.stubEnv('GRID_INTERNAL_API_TOKEN', '')
+    vi.stubEnv('INTERNAL_API_TOKEN', '')
 
     const response = await POST(makeRequest(REAL_TOKEN))
 
@@ -79,7 +79,7 @@ describe('POST /api/internal/maintenance/reconcile-vectors', () => {
   })
 
   it('refuses the well-known dev default token outside dev environments (503)', async () => {
-    vi.stubEnv('GRID_INTERNAL_API_TOKEN', 'grid-internal-dev-token')
+    vi.stubEnv('INTERNAL_API_TOKEN', 'grid-internal-dev-token')
     vi.stubEnv('APP_ENV', 'production')
     vi.stubEnv('NODE_ENV', 'production')
 
@@ -90,7 +90,7 @@ describe('POST /api/internal/maintenance/reconcile-vectors', () => {
   })
 
   it('a reconciler that throws is a 5xx, so the CronJob run fails rather than reporting success', async () => {
-    vi.stubEnv('GRID_INTERNAL_API_TOKEN', REAL_TOKEN)
+    vi.stubEnv('INTERNAL_API_TOKEN', REAL_TOKEN)
     reconcileMock.mockRejectedValueOnce(new Error('database unreachable'))
 
     const response = await POST(makeRequest(REAL_TOKEN))

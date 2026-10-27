@@ -148,7 +148,7 @@ describe("the program constructs in the split topology", () => {
       expect(container.volumeMounts ?? []).toEqual([]);
       const env = container.env ?? [];
       expect(env.find((e) => e.name === "QDRANT_URL")?.value).toBeDefined();
-      for (const gone of ["GRID_CHROMA_DIR", "OIB_UPLOADS_DIR", "GRID_BASE_CORPUS_STORE"]) {
+      for (const gone of ["CHROMA_DIR", "OIB_UPLOADS_DIR", "BASE_CORPUS_STORE"]) {
         expect(env.find((e) => e.name === gone)).toBeUndefined();
       }
     }
@@ -345,7 +345,7 @@ describe("the program constructs in the split topology", () => {
       const names = (env ?? []).map((e) => e.name);
       expect(names, name).toContain("QDRANT_URL");
       expect(names, name).toContain("QDRANT_API_KEY");
-      expect(names.filter((n) => n.startsWith("GRID_CHROMA") || n === "GRID_VECTOR_BACKEND"), name).toEqual([]);
+      expect(names.filter((n) => n.startsWith("CHROMA") || n === "VECTOR_BACKEND"), name).toEqual([]);
     }
   });
 

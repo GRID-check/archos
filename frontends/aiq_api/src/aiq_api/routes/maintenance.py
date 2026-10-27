@@ -2,7 +2,7 @@
 
 Deletes the Python-side resources of a purged project: the collection's
 chunks in Qdrant (+ its summaries), aiq_jobs rows, and LangGraph checkpoints.
-Guarded by GRID_INTERNAL_API_TOKEN; never exposed to end users.
+Guarded by INTERNAL_API_TOKEN; never exposed to end users.
 All operations are idempotent — re-running on already-deleted data is a no-op.
 
 Also reconciles the summaries table against the vector store

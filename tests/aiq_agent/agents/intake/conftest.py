@@ -133,14 +133,14 @@ def recorded_all(outcome: str = "suggested"):
 def signed_run(monkeypatch):
     """A background run that carries its requester's envelope, with a service token."""
     monkeypatch.setattr(pc, "get_request_envelope_from_context", lambda: (HEADER, SIGNATURE))
-    monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", TOKEN)
+    monkeypatch.setenv("INTERNAL_API_TOKEN", TOKEN)
     monkeypatch.setenv("FRONTEND_INTERNAL_URL", "http://bff.test")
 
 
 @pytest.fixture
 def unsigned_run(monkeypatch):
     monkeypatch.setattr(pc, "get_request_envelope_from_context", lambda: (None, None))
-    monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", TOKEN)
+    monkeypatch.setenv("INTERNAL_API_TOKEN", TOKEN)
 
 
 @pytest.fixture

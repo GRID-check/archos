@@ -220,7 +220,7 @@ describe.skipIf(!url)('cross-project use against Postgres (migration 0125)', () 
   }
 
   beforeAll(async () => {
-    process.env.GRID_APP_DATABASE_URL = url
+    process.env.APP_DATABASE_URL = url
     const context = await import('@/lib/db/tenant-context')
     withTenant = context.withTenant
     withPlatformAccess = context.withPlatformAccess

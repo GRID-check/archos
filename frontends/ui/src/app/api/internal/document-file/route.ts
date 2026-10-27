@@ -5,7 +5,7 @@
  * can fetch the raw bytes for a project/Archiv document that lives only in
  * SeaweedFS (never on the backend's disk).
  *
- * Service-to-service only: guarded by `GRID_INTERNAL_API_TOKEN` via
+ * Service-to-service only: guarded by `INTERNAL_API_TOKEN` via
  * `internalApiRoute` (fail-closed when the token is unconfigured). Read-only:
  * returns the storage key AND its bucket, not the bytes (the backend fetches
  * those itself from SeaweedFS).

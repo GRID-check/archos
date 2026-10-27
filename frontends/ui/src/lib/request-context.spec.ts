@@ -17,7 +17,7 @@ import {
   encodeGridTextHeader,
   encodeModelOverridesHeader,
   GRID_HEADER_NAMES,
-  GRID_REQUEST_CONTEXT_MAX_AGE_MS,
+  REQUEST_CONTEXT_MAX_AGE_MS,
   signGridRequestContextEnvelope,
   verifyGridRequestContextEnvelope,
   type GridRequestContextInput,
@@ -401,17 +401,17 @@ describe('verifyGridRequestContextEnvelope', () => {
     const { header, signature } = valid()
     // `issuedAt` is INSIDE the signed bytes, so a caller cannot refresh it.
     expect(
-      verifyGridRequestContextEnvelope(header, signature, SECRET, NOW + GRID_REQUEST_CONTEXT_MAX_AGE_MS + 1),
+      verifyGridRequestContextEnvelope(header, signature, SECRET, NOW + REQUEST_CONTEXT_MAX_AGE_MS + 1),
     ).toBeNull()
     expect(
-      verifyGridRequestContextEnvelope(header, signature, SECRET, NOW - GRID_REQUEST_CONTEXT_MAX_AGE_MS - 1),
+      verifyGridRequestContextEnvelope(header, signature, SECRET, NOW - REQUEST_CONTEXT_MAX_AGE_MS - 1),
     ).toBeNull()
   })
 
   it('accepts an envelope at the edge of the window', () => {
     const { header, signature } = valid()
     expect(
-      verifyGridRequestContextEnvelope(header, signature, SECRET, NOW + GRID_REQUEST_CONTEXT_MAX_AGE_MS),
+      verifyGridRequestContextEnvelope(header, signature, SECRET, NOW + REQUEST_CONTEXT_MAX_AGE_MS),
     ).not.toBeNull()
   })
 

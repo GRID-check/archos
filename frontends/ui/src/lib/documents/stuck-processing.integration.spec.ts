@@ -90,7 +90,7 @@ describe.skipIf(!url)('background-work sweeps against live Postgres', () => {
   }
 
   beforeAll(async () => {
-    process.env.GRID_APP_DATABASE_URL = url
+    process.env.APP_DATABASE_URL = url
     context = await import('@/lib/db/tenant-context')
     documents = await import('./repository')
     tasks = await import('@/lib/tasks/repository')

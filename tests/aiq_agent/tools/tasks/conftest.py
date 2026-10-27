@@ -83,7 +83,7 @@ def registry() -> Any:
 @pytest.fixture(autouse=True)
 def _context(monkeypatch: pytest.MonkeyPatch) -> None:
     """A signed, project-scoped chat turn, as the WS upgrade would leave it."""
-    monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", SECRET)
+    monkeypatch.setenv("INTERNAL_API_TOKEN", SECRET)
     bind_context(
         monkeypatch,
         headers={

@@ -580,8 +580,8 @@ free-text check has been smoke-tested against a configured LLM.
 then deleted, together with every env fallback that only mattered while it was
 off (`SKILLS_ENABLED`, `COLLABORATION_ENABLED`,
 `MAIL_IMPORT_ENABLED`, `IFC_MODELS_ENABLED`,
-`AGENT_AUTHORED_DOCUMENTS_ENABLED`, `GRID_PROJECT_KNOWLEDGE_PAGE_ENABLED`,
-`MEMORY_REFLECTION_ENABLED`, `GRID_STAGE_FOLLOW_UPS_ENABLED`). With it on,
+`AGENT_AUTHORED_DOCUMENTS_ENABLED`, `PROJECT_KNOWLEDGE_PAGE_ENABLED`,
+`MEMORY_REFLECTION_ENABLED`, `STAGE_FOLLOW_UPS_ENABLED`). With it on,
 every one of those was dead config in both stacks, and compose and local dev,
 which ran it off, rehearsed a different code path from the one that shipped.
 WorkOS is the control plane for features: per organization, per flag, no
@@ -817,9 +817,9 @@ changed is never carried over again and every later deploy's run is a no-op.
 By hand, for an environment no stack deploys against, from `frontends/ui`:
 
 ```bash
-WORKOS_API_KEY=sk_… GRID_APP_MIGRATION_DATABASE_URL=postgres://… \
+WORKOS_API_KEY=sk_… APP_MIGRATION_DATABASE_URL=postgres://… \
   bun run migrate:folder-grants             # the plan, changes nothing
-WORKOS_API_KEY=sk_… GRID_APP_MIGRATION_DATABASE_URL=postgres://… \
+WORKOS_API_KEY=sk_… APP_MIGRATION_DATABASE_URL=postgres://… \
   bun run migrate:folder-grants -- --apply  # register the folders, assign the roles
 ```
 

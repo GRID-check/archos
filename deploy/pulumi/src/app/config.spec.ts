@@ -34,8 +34,8 @@ function envNamesReadBy(source: string): string[] {
  *
  * This is the bug that shipped Agent Skills as an invisible feature. The
  * scheduler worker and the BFF moved to `SKILLS_ENABLED` /
- * `GRID_SKILL_SCHEDULER_*` when Workflows was replaced; this file kept emitting
- * `GRID_WORKFLOWS_ENABLED` / `GRID_WORKFLOW_SCHEDULER_*`, whose readers had been
+ * `SKILL_SCHEDULER_*` when Workflows was replaced; this file kept emitting
+ * `WORKFLOWS_ENABLED` / `WORKFLOW_SCHEDULER_*`, whose readers had been
  * deleted. Nothing failed: the stack planned clean, applied clean, every unit
  * suite on both sides passed, and the container started, read an unset start
  * gate and exited 0 exactly as designed. The only symptom was a user saying the
@@ -130,7 +130,7 @@ describe("frontendEnv", () => {
     // Every feature is a WorkOS flag per organization now
     // (`frontends/ui/src/lib/authz/feature-flags.ts`). An env switch emitted
     // here would read as a lever and move nothing, which is how
-    // `GRID_WORKFLOWS_ENABLED` once shipped a feature with no way to turn it on.
+    // `WORKFLOWS_ENABLED` once shipped a feature with no way to turn it on.
     // Read from source rather than by calling frontendEnv: it touches most of
     // GridConfig, and a stub deep enough to call it would assert more about the
     // stub than about the program.
@@ -142,7 +142,7 @@ describe("frontendEnv", () => {
       "IFC_MODELS_ENABLED",
       "AGENT_AUTHORED_DOCUMENTS_ENABLED",
       "MEMORY_REFLECTION_ENABLED",
-      "GRID_WORKFLOWS_ENABLED",
+      "WORKFLOWS_ENABLED",
     ]) {
       expect(configSource).not.toContain(`name: "${name}"`);
     }

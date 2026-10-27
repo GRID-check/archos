@@ -64,7 +64,7 @@ Variables set in `docker-compose.yaml` under `environment:` take precedence over
 > nothing else.** `grid_app_rw_dev` and `aiq_dev` are in this repository, so they
 > are public; they exist so `docker compose up` works on a laptop against a
 > throwaway Postgres that is not reachable from anywhere. A deployment must
-> inject its own — compose reads `GRID_APP_RUNTIME_PASSWORD` and
+> inject its own — compose reads `APP_RUNTIME_PASSWORD` and
 > `SERVICE_PASSWORD_POSTGRES` from the environment, Coolify supplies them per
 > stack, and Kubernetes takes them from the `pg-runtime-credentials` and
 > `pg-app-credentials` Secrets. If you can reach your database from outside the
@@ -74,10 +74,10 @@ Variables set in `docker-compose.yaml` under `environment:` take precedence over
 
 | Variable | Required | Default (Docker) | Default (Local) | Description |
 |----------|----------|------------------|-----------------|-------------|
-| `GRID_APP_DATABASE_URL` | Yes | `postgresql://grid_app_rw:grid_app_rw_dev@postgres:5432/grid_app` <!-- pragma: allowlist secret (documented compose default) --> | `postgresql://grid_app_rw:…@localhost:5432/grid_app` | PostgreSQL URL for the Next.js BFF application database (Drizzle ORM), and for the purger and skill-scheduler workers. Connects as **`grid_app_rw`**, the least-privilege role: DML only, no DDL, and subject to row-level security, so a query that loses its organization filter returns no rows rather than another tenant's (ADR-0041). Pointing this at the owner credential silently disables enforcement — RLS does not apply to a table's owner. |
-| `GRID_APP_RUNTIME_PASSWORD` | No | `grid_app_rw_dev` | n/a | Compose only, and only a substitution into the DSNs below — the ROLE's password is set from `GRID_APP_DATABASE_URL` by `scripts/ensure-rls-roles.mjs`, so the two cannot drift. On Kubernetes CloudNativePG reconciles the role from the `pg-runtime-credentials` Secret (Pulumi config `pgRuntimePassword`, which is **required and has no fallback** — sharing the owner's password would let a runtime-DSN holder authenticate as the owner, who is exempt from every policy); this variable is not used there. |
-| `GRID_APP_MIGRATION_DATABASE_URL` | No | `postgresql://aiq:aiq_dev@postgres:5432/grid_app` | unset | Owner credential, set only on the workload that runs `drizzle-kit migrate`. DDL needs the schema owner, and a data backfill run as `grid_app_rw` would silently update zero rows. `drizzle.config.ts` prefers this and falls back to `GRID_APP_DATABASE_URL`. |
-| `GRID_DB_POOL_MAX` | No | `10` | `10` | Max PostgreSQL connections the BFF connection pool holds open. Bounds resource use so connection acquisition fails fast under load instead of piling requests up behind a saturated/unreachable database. Invalid/non-positive values fall back to `10`. |
+| `APP_DATABASE_URL` | Yes | `postgresql://grid_app_rw:grid_app_rw_dev@postgres:5432/grid_app` <!-- pragma: allowlist secret (documented compose default) --> | `postgresql://grid_app_rw:…@localhost:5432/grid_app` | PostgreSQL URL for the Next.js BFF application database (Drizzle ORM), and for the purger and skill-scheduler workers. Connects as **`grid_app_rw`**, the least-privilege role: DML only, no DDL, and subject to row-level security, so a query that loses its organization filter returns no rows rather than another tenant's (ADR-0041). Pointing this at the owner credential silently disables enforcement — RLS does not apply to a table's owner. |
+| `APP_RUNTIME_PASSWORD` | No | `grid_app_rw_dev` | n/a | Compose only, and only a substitution into the DSNs below — the ROLE's password is set from `APP_DATABASE_URL` by `scripts/ensure-rls-roles.mjs`, so the two cannot drift. On Kubernetes CloudNativePG reconciles the role from the `pg-runtime-credentials` Secret (Pulumi config `pgRuntimePassword`, which is **required and has no fallback** — sharing the owner's password would let a runtime-DSN holder authenticate as the owner, who is exempt from every policy); this variable is not used there. |
+| `APP_MIGRATION_DATABASE_URL` | No | `postgresql://aiq:aiq_dev@postgres:5432/grid_app` | unset | Owner credential, set only on the workload that runs `drizzle-kit migrate`. DDL needs the schema owner, and a data backfill run as `grid_app_rw` would silently update zero rows. `drizzle.config.ts` prefers this and falls back to `APP_DATABASE_URL`. |
+| `DB_POOL_MAX` | No | `10` | `10` | Max PostgreSQL connections the BFF connection pool holds open. Bounds resource use so connection acquisition fails fast under load instead of piling requests up behind a saturated/unreachable database. Invalid/non-positive values fall back to `10`. |
 | `NAT_JOB_STORE_DB_URL` | No (SQLite fallback) | `postgresql+asyncpg://aiq:aiq_dev@postgres:5432/aiq_jobs` | `sqlite+aiosqlite:///./jobs.db` | NAT job store URL. PostgreSQL for Docker, SQLite for local dev. |
 | `CHECKPOINT_DB` | No (SQLite fallback) | `postgresql://aiq:aiq_dev@postgres:5432/aiq_checkpoints` | `./checkpoints.db` | LangGraph conversation checkpoint database, and the LangGraph store behind the chat working directory (the per-conversation drafts `write_file`/`edit_file` produce). PostgreSQL for Docker, SQLite for local dev — a non-Postgres value keeps the checkpointer on SQLite and puts the working directory in memory, so drafts do not survive a restart of the agent process. |
 | `DEEP_CHECKPOINT_DB` | No | unset (durability OFF — strictly opt-in) | unset | Optional durable LangGraph checkpointing for **async deep-research jobs** (backlog T3-8, 2026-07-16) — separate from `CHECKPOINT_DB` above, which only covers the sync chat graph. Sets `deep_research_agent.checkpoint_db`; a worker crash no longer loses execution state (`thread_id = job_id`, `durability="async"`), but resume is manual-resubmit-based, not automatic. Unset/empty = durability off. MUST point at a writable volume path or Postgres DSN — a default-on relative path crashed container startup on read-only workdirs (post-#72 hotfix); an unopenable value now fails open with a warning instead of failing startup. |
@@ -124,11 +124,11 @@ Variables set in `docker-compose.yaml` under `environment:` take precedence over
 | `INGEST_WAIT_SECONDS` | No | `20` | How long a chat turn holds for a file that is still being indexed into a collection the turn can read (a just-uploaded attachment), polling once a second, before answering with the inventory's "still being read" note instead. `0` disables the hold. The live status line says the turn is waiting. |
 | `AVAILABLE_DOCUMENTS_MAX` | No | `50` | Caps how many documents are listed in the agent's `available_documents` prompt block. User-shelf files (Büroablage / Projekt / session) are kept first so the OIB corpus cannot evict them; within a shelf the cut is filename-sorted and deterministic. `0`/negative disables the cap. |
 | `EXTRACT_TABLES` | No | `true` (set `false` to disable) | Adds a PDF's uncaptioned tables to the index as `[TABLE from page N]` chunks; off, they stay garbled inside the page text. Captioned tables (a „Tabelle 3“ with its caption) are always read as tables and indexed, whatever this says; the extra pass skips any table the captioned pass already took. Only `false`/`0`/`no`/`off` switch it off; no deployment sets it. |
-| `EXTRACT_IMAGES` | No | `true` (set `false` to disable) | Extraction of **embedded raster images** (image XObjects) from PDFs for VLM captioning, so a photo inside a plan set is findable and can be shown with `look`. For a document the BFF dispatched (project/Archiv/session upload, i.e. one with a `document_id`) each extracted raster is also stored beside the file as `_img/<index>.jpg` through the BFF presign route, at most `MAX_STORED_IMAGES_PER_DOCUMENT` (64) per document; the caption chunk records `image_key` and the tool can show the image itself instead of the page. Needs `FRONTEND_INTERNAL_URL` + `GRID_INTERNAL_API_TOKEN` on the aiq-agent tier; without them captions are kept and rasters dropped, as before. Does NOT capture vector CAD drawings — see `RENDER_VISUAL_PAGES`. A page rendered whole as a visual page contributes no embedded rasters (the render already covers them, so each page is analysed once), and at most `MAX_IMAGES_PER_DOCUMENT` rasters per PDF are analysed. Only `false`/`0`/`no`/`off` switch it off; no deployment sets it. |
+| `EXTRACT_IMAGES` | No | `true` (set `false` to disable) | Extraction of **embedded raster images** (image XObjects) from PDFs for VLM captioning, so a photo inside a plan set is findable and can be shown with `look`. For a document the BFF dispatched (project/Archiv/session upload, i.e. one with a `document_id`) each extracted raster is also stored beside the file as `_img/<index>.jpg` through the BFF presign route, at most `MAX_STORED_IMAGES_PER_DOCUMENT` (64) per document; the caption chunk records `image_key` and the tool can show the image itself instead of the page. Needs `FRONTEND_INTERNAL_URL` + `INTERNAL_API_TOKEN` on the aiq-agent tier; without them captions are kept and rasters dropped, as before. Does NOT capture vector CAD drawings — see `RENDER_VISUAL_PAGES`. A page rendered whole as a visual page contributes no embedded rasters (the render already covers them, so each page is analysed once), and at most `MAX_IMAGES_PER_DOCUMENT` rasters per PDF are analysed. Only `false`/`0`/`no`/`off` switch it off; no deployment sets it. |
 | `EXTRACT_CHARTS` | No | `true` (set `false` to disable) | A visual the VLM types as a chart is indexed as a `chart` chunk. Off, the same chart is indexed as an `image` chunk rather than dropped (the analysis is already paid for). With `EXTRACT_IMAGES=false` and this on, embedded rasters are still analysed and only charts are kept. Only `false`/`0`/`no`/`off` switch it off; no deployment sets it. |
 | `MAX_IMAGES_PER_DOCUMENT` | No | `64` | Most embedded rasters per PDF sent to the VLM, each a paid call. Past it the largest (by pixel area) are kept, since the small rasters that pass the icon filter are stamps and logos; the number left out is recorded on the file's ingest job status as `file_details[].metadata.images_over_cap` and logged. 64 matches the BFF's `MAX_STORED_IMAGES_PER_DOCUMENT`, so every analysed raster can also be stored. `0` analyses none. Rendered visual pages have their own cap, `MAX_RENDERED_PAGES`. |
 | `MAX_IMAGE_PIXELS` | No | `268435456` | Refuse an embedded raster with more pixels than this, decided from its metadata (`get_px_size`) before a single bitmap is allocated. pypdfium2 has no reduced-scale decode for an embedded image (`PdfImage.get_bitmap()` takes no scale), so `width x height` is the only bound on one decode's allocation, about 4 bytes a pixel (≈1 GiB at the default). The default, 256 MP, admits every realistic architectural scan — A0 at 300 dpi ≈ 139.5 MP, A0 at 400 dpi ≈ 248 MP, A2 at 600 dpi ≈ 139 MP — and refuses only the pathological: A0 at 600 dpi ≈ 558 MP, a 20000x20000 px raster ≈ 400 MP. A raster refused here is counted on the file's ingest job status as `file_details[].metadata.images_over_pixel_budget` and logged with its page, index and pixel size; the page keeps its text layer (a raster-only page is a scan and is transcribed instead, under `MAX_OCR_PAGES`). `0` refuses every embedded raster. Kubernetes: Pulumi `ingestWorkerMaxImagePixels`. |
-| `RENDER_VISUAL_PAGES` | No | `true` | Render **text-sparse / vector-heavy PDF pages** to a full-page image and VLM-caption them (captures architectural/CAD drawings — vector plans, sections, elevations, perspectives — that carry almost no extractable text and no embedded raster image, so text and image extraction both miss them). Effective only when a VLM key resolves (`GRID_VLM_API_KEY`); fires only on pages the heuristic flags as visual, so ordinary text PDFs cost nothing extra. The rendered-page description also feeds the document summary for such PDFs, so the summary describes the drawing (type + scale) instead of a watermark. It does not govern transcription of scanned or garbled pages: `MAX_OCR_PAGES=0` stops that. |
+| `RENDER_VISUAL_PAGES` | No | `true` | Render **text-sparse / vector-heavy PDF pages** to a full-page image and VLM-caption them (captures architectural/CAD drawings — vector plans, sections, elevations, perspectives — that carry almost no extractable text and no embedded raster image, so text and image extraction both miss them). Effective only when a VLM key resolves (`VLM_API_KEY`); fires only on pages the heuristic flags as visual, so ordinary text PDFs cost nothing extra. The rendered-page description also feeds the document summary for such PDFs, so the summary describes the drawing (type + scale) instead of a watermark. It does not govern transcription of scanned or garbled pages: `MAX_OCR_PAGES=0` stops that. |
 | `PAGE_RENDER_MAX_DIM` | No | `2048` | Long-edge target (px) for a full-page render before it is sent to the VLM. ~2048px keeps linework, room labels and scale bars legible while staying at/below current VLM vision-encoder caps (higher just gets downsampled provider-side). Scale is computed per page from its point size, so A0 and A4 sheets both land near this target. |
 | `VISUAL_PAGE_MIN_TEXT_CHARS` | No | `200` | Page triage (`page_triage.classify_page`): a PDF page with less watermark-stripped text than this is "text-low". A text-low page whose largest raster covers at least half of it is a **scan** and is transcribed (see `MAX_OCR_PAGES`); one with any real linework (20 or more paths) or a picture is a **drawing**, so a simple sketch is described too; a practically empty one stays text. A text layer that decodes to `(cid:n)` runs or mojibake is **garbled** and transcribed whatever its length. |
 | `VISUAL_PAGE_MIN_PATHS` | No | `300` | Tells a CAD sheet from a text page with a broken font: a page whose text layer is garbled and that carries at least this many vector paths is analysed as a drawing rather than transcribed. It does not decide whether a text-low page is a drawing (any real linework does), and a table-ruled page with plenty of text stays text however many cell borders it has. |
@@ -137,17 +137,17 @@ Variables set in `docker-compose.yaml` under `environment:` take precedence over
 | `PDF_PAGE_MAX_OBJECTS` | No | `50000` | Page objects (paths, text runs, rasters, counted by PDFium's `FPDFPage_CountObjects`) past which a PDF page's text is read by PDFium instead of pdfplumber. pdfplumber builds a Python dict per vector path and runs its table finder over every edge, measured at about 4 KiB and 0.1 ms per object: one CAD sheet of 500 000 paths took 2.6 GiB and 53 s for its title block, 0.4 GiB and 1 s under the ceiling. A page over it keeps its text, without captioned tables, uncaptioned tables or line styles, and is counted as `file_details[].metadata.pages_read_without_layout`; drawing triage and rendering are unchanged. `0` lifts the ceiling. |
 | `HYBRID_RETRIEVAL` | No | `true` | Enable **hybrid lexical + vector retrieval** (ADR-0039): German BM25 and an exact-term phrase channel per selective technical token (the shared `extract_exact_terms` utility) beside the dense one, fused in Qdrant by reciprocal rank fusion (k=60). Fixes exact-keyword misses without re-embedding. `false`/`0`/`no`/`off` disables it (dense retrieval only). Fail-open. Backend (aiq-agent) service. |
 | `DROP_OCR_NOISE` | No | `false` | Leave **OCR debris** out of `knowledge_search`'s ranked pool: a text passage whose glyphs sit mostly on debris lines of a scanned drawing's text layer (rotated labels one glyph group per line, spaced capitals one letter per token) or whose text is garbled (`chunk_noise.judge_text`), dropped before the reranker and the per-document cap so its slot goes to a real passage. Drawing, chart, image and table passages are never judged, and `match="exact"`/`"regex"` are never filtered. The result says how many were left out; the `retrieve.knowledge_search` span carries `dropped_as_noise`. `true`/`1`/`yes`/`on` enables it; the `drop_ocr_noise` config field overrides it. Off until the answer suite has measured it. Backend (aiq-agent) service. |
-| `VIEW_IMAGES_ENABLED` | No | `true` | Enable the `look` NAT tool (ADR-0039, ADR-0128): returns a knowledge visual as a **multimodal image block during a research turn**, so the model can see plans/drawings at answer time — not only at ingestion. Covers PDF pages (pypdfium2 → JPEG, long edge `PAGE_RENDER_MAX_DIM`; base corpus from disk, project/Archiv from SeaweedFS bytes), standalone image uploads (PNG/JPG, fetched from SeaweedFS) and stored embedded rasters (`image_index` from a hit's `Image:` line, fetched by the derived key the BFF resolves). Capped at `MAX_IMAGE_VIEWS_PER_TURN` (6, `src/aiq_agent/common/image_view_budget.py`) calls per turn; past that the tool answers with a text block. Project/Archiv resolution needs `FRONTEND_INTERNAL_URL` + `GRID_INTERNAL_API_TOKEN` (BFF lookup) and the `SEAWEED_*` set on the aiq-agent tier; a base-corpus-only deployment works without them. Effective only when a VLM key resolves (`GRID_VLM_API_KEY`); every failure path degrades to a text-only explanation block. `false`/`0`/`no`/`off` disables the tool. Backend (aiq-agent) service. |
+| `VIEW_IMAGES_ENABLED` | No | `true` | Enable the `look` NAT tool (ADR-0039, ADR-0128): returns a knowledge visual as a **multimodal image block during a research turn**, so the model can see plans/drawings at answer time — not only at ingestion. Covers PDF pages (pypdfium2 → JPEG, long edge `PAGE_RENDER_MAX_DIM`; base corpus from disk, project/Archiv from SeaweedFS bytes), standalone image uploads (PNG/JPG, fetched from SeaweedFS) and stored embedded rasters (`image_index` from a hit's `Image:` line, fetched by the derived key the BFF resolves). Capped at `MAX_IMAGE_VIEWS_PER_TURN` (6, `src/aiq_agent/common/image_view_budget.py`) calls per turn; past that the tool answers with a text block. Project/Archiv resolution needs `FRONTEND_INTERNAL_URL` + `INTERNAL_API_TOKEN` (BFF lookup) and the `SEAWEED_*` set on the aiq-agent tier; a base-corpus-only deployment works without them. Effective only when a VLM key resolves (`VLM_API_KEY`); every failure path degrades to a text-only explanation block. `false`/`0`/`no`/`off` disables the tool. Backend (aiq-agent) service. |
 | `VLM_BATCH_WORKERS` | No | `4` | Max concurrent VLM caption calls per file in `enrich_vlm_batch` (embedded images + rendered drawing pages share one pool). Keep modest to avoid saturating the provider rate limit; with `INGEST_MAX_WORKERS` jobs in flight, peak VLM concurrency is workers × jobs. Kubernetes: Pulumi `vlmBatchWorkers`. |
 | `VLM_SECOND_PASS_DELAY_SECONDS` | No | `10` | Seconds the vision batch (`enrich_vlm_batch`) waits before it reads the pages and images that failed once more. A failed reply is never cached, so the second pass asks the model again; an item that fails twice is skipped and counted in the file's coverage (`vision_failed`). A negative value turns the second pass off. |
 | `VLM_TIMEOUT_SECONDS` | No | `180` | Per-request timeout on the VLM OpenAI client (both image and drawing call sites), with a single retry — so a hung request is bounded to ~2×, and one caption to ~3× (the truncation retry adds at most one more request, with SDK retries disabled). Previously SDK defaults (≈600s × 2 retries) let one hung provider park an ingest worker for ~20 minutes. Clamped to ≥ 1s, so a misconfigured `0` cannot fail every caption instantly and silently disable captioning. |
 | `EMBED_TIMEOUT_SECONDS` | No | `60` | Per-request timeout on the INGESTION embeddings client, with two retries; queries use `QUERY_EMBED_TIMEOUT_SECONDS`. The client's own defaults were 120s and five retries, so a hung embeddings endpoint could hold a chat turn for ten minutes; now the retrieval fails open after at most three bounded attempts like every other retrieval step. |
 | `QUERY_EMBED_TIMEOUT_SECONDS` | No | `3` | Per-request timeout on the query embeddings a chat turn waits on, with two retries. A query embeds one short text (0.66 s median, 8.5 s p99 measured); bounding it tightly and retrying turns an 11 s tail request into about 4 s. |
 | `EMBED_BATCH_SIZE` | No | `64` | Texts per embedding HTTP call (`NVIDIAEmbedding.embed_batch_size`, ingestor and retriever alike). The llama-index default of 10 serialized ~50 round-trips for a 500-chunk document on the ingest worker. |
-| `GRID_VLM_MODEL` | No | `openai/gpt-6-luna` | VLM model for vision-language tasks (image captioning during ingestion). |
-| `OCR_MODEL` | No | (the VLM model) | Model that transcribes scanned and garbled PDF pages, on the VLM's endpoint and key (`resolve_vlm_credential`, BYOK included). Unset, `GRID_VLM_MODEL` transcribes. An org's `ingest_vlm` override wins over both. |
-| `GRID_VLM_BASE_URL` | No | `https://openrouter.ai/api/v1` | Base URL for the VLM API. Drives provider inference for the VLM key (the default resolves `OPENROUTER_API_KEY`). |
-| `GRID_VLM_API_KEY` | No | the provider key inferred from `GRID_VLM_BASE_URL` | Explicit VLM key override. Resolution chain: org **BYOK** (for per-project/Archiv uploads — `/v1/ingest` forwards `x-grid-organization-id`) → `GRID_VLM_API_KEY` → provider inference from the base URL. This one resolver (`resolve_vlm_credential`) is the single source of truth both ingestion and the `vlm_available` capability bit consult; an org's `ingest_vlm` runtime model override is applied on top (see `docs/architecture/org-model-configuration.md`). |
+| `VLM_MODEL` | No | `openai/gpt-6-luna` | VLM model for vision-language tasks (image captioning during ingestion). |
+| `OCR_MODEL` | No | (the VLM model) | Model that transcribes scanned and garbled PDF pages, on the VLM's endpoint and key (`resolve_vlm_credential`, BYOK included). Unset, `VLM_MODEL` transcribes. An org's `ingest_vlm` override wins over both. |
+| `VLM_BASE_URL` | No | `https://openrouter.ai/api/v1` | Base URL for the VLM API. Drives provider inference for the VLM key (the default resolves `OPENROUTER_API_KEY`). |
+| `VLM_API_KEY` | No | the provider key inferred from `VLM_BASE_URL` | Explicit VLM key override. Resolution chain: org **BYOK** (for per-project/Archiv uploads — `/v1/ingest` forwards `x-grid-organization-id`) → `VLM_API_KEY` → provider inference from the base URL. This one resolver (`resolve_vlm_credential`) is the single source of truth both ingestion and the `vlm_available` capability bit consult; an org's `ingest_vlm` runtime model override is applied on top (see `docs/architecture/org-model-configuration.md`). |
 | `EMBED_API_KEY` | No | the provider key inferred from `EMBED_BASE_URL` | Explicit embeddings key override (read by the adapter). Chain: `EMBED_API_KEY` → provider inference. Inference only selects the key for the configured base URL; it never changes the base URL (embeddings need an embeddings-capable endpoint). |
 | `EMBED_MODEL` | No | `openai/text-embedding-3-large` | Embedding model id. Keep it stable across redeploys: stored vectors are only comparable to query vectors from the same model. |
 | `INGEST_MAX_WORKERS` | No | `2` | Ingestion jobs one process runs at once: a backend pod's pool, or one ingest-worker replica (Pulumi `ingestWorkerConcurrency`). Shared fairly between organisations (the one with the fewest running jobs goes next, `ingest_scheduler`), never FIFO. |
@@ -173,15 +173,15 @@ Variables set in `docker-compose.yaml` under `environment:` take precedence over
 | `PROVIDER_MODEL_LIMIT_FLOOR` | No | `2` | The least one model's adaptive limit falls to however often its provider answers 429. |
 | `PROVIDER_LIMIT_INTERVAL_SECONDS` | No | `5` | Each interval without a 429 adds one call to every adaptive limit (the key-wide one and each model's), up to its ceiling. Recovery from the floor to a ceiling of 128 therefore takes about ten minutes. |
 | `FILE_TRACKING_RETENTION_SECONDS` | No | `86400` (24h) | How long a finished job's row in the shared `ingest_jobs` table is kept before it is pruned (hourly, by every ingestor's heartbeat). The row is the only record of a file that failed, so the file drops off the listing with it; SUCCESS files stay listed, read from the chunks in Qdrant. A job that is live, or that the durable queue still holds, is never pruned. |
-| `GRID_MAX_ACTIVE_JOBS_PER_ORG` | No | `3` | Max async research jobs one organization runs AT ONCE, so one tenant cannot occupy the whole cluster. It is the claim's per-organization cap, read by the research workers: a job over it waits in the queue (ADR-0079). `0` disables. |
+| `MAX_ACTIVE_JOBS_PER_ORG` | No | `3` | Max async research jobs one organization runs AT ONCE, so one tenant cannot occupy the whole cluster. It is the claim's per-organization cap, read by the research workers: a job over it waits in the queue (ADR-0079). `0` disables. |
 | `MAX_QUEUED_JOBS_PER_ORG` | No | `50` | Max research jobs one organization may have WAITING in the queue. Past it a submit is refused with 429 (+Retry-After): abuse protection against a runaway caller, and the only 429 left, because capacity itself makes a job wait. A scheduled task past it is recorded as `skipped`. `0` disables the bound. |
 | `MAX_ACTIVE_TURNS` | No | `24` | Admission control for INTERACTIVE chat turns (ADR-0040 L3): max turns running concurrently across all orgs. A separate pool from the research queue on purpose — that partition is what stops background deep research from starving chat, and vice versa. Past the cap a turn answers with a friendly "busy, try again" message rather than queueing. `0` disables. It is the only concurrency gate on chat turns: the chat socket's NAT session manager runs with `max_concurrency=0`, because NAT's default semaphore (8 per replica, held for the whole run, a HITL wait included) queued the ninth turn silently behind its heartbeat. |
 | `MAX_ACTIVE_TURNS_PER_ORG` | No | `6` | Max concurrent interactive chat turns per organization. Without it, one shared conversation with ten members answering at once starts ten multi-agent runs and only the euro budget (ADR-0015) ever says no — after the money is spent. `0` disables. |
 | `TURN_LEASE_SECONDS` | No | `120` | How long an admission slot survives without its turn renewing it. A running turn renews every third of the lease (`turn_admission.admit_turn_async`), so this bounds only how long a replica killed mid-turn keeps its slots, not how long a turn may run. Leases rather than a counter: a killed replica would otherwise leak its slot forever and shrink the pool permanently. Was `900`, taken once and never renewed, which a 40-minute deep-research turn outlived and the pool then over-admitted. |
-| `CHAT_RUNNING_TTL_SECONDS` | No | `12` | How long a conversation's running-turn marker (`conv:<id>:running`, ADR-0080) survives without its owner renewing it. The owner renews every quarter of this while its turn runs and deletes the marker when the turn ends. It bounds two things in opposite directions. How long a newer question waits behind a replica that died mid-turn (up to this value, so it must stay under `CHAT_SUPERSEDE_WAIT_SECONDS`, which stays under the client's 15 s acknowledgement bound). And, with `GRID_CHAT_AFFINITY` off, how long a Dragonfly blip the owner survives: it stops writing and cancels its turn once a successful renewal is older than this minus a fixed 4 s margin (one guarded write, 3 s, plus 1 s), so a blip shorter than this value minus 6 s is always ridden out (a failed renewal is retried every second, outside the bus's fail-fast window) and a longer one may end the answer. Must be above 4; the backend refuses to start with affinity off otherwise. With affinity on nothing is fenced and this bounds only the dead-owner wait. |
+| `CHAT_RUNNING_TTL_SECONDS` | No | `12` | How long a conversation's running-turn marker (`conv:<id>:running`, ADR-0080) survives without its owner renewing it. The owner renews every quarter of this while its turn runs and deletes the marker when the turn ends. It bounds two things in opposite directions. How long a newer question waits behind a replica that died mid-turn (up to this value, so it must stay under `CHAT_SUPERSEDE_WAIT_SECONDS`, which stays under the client's 15 s acknowledgement bound). And, with `CHAT_AFFINITY` off, how long a Dragonfly blip the owner survives: it stops writing and cancels its turn once a successful renewal is older than this minus a fixed 4 s margin (one guarded write, 3 s, plus 1 s), so a blip shorter than this value minus 6 s is always ridden out (a failed renewal is retried every second, outside the bus's fail-fast window) and a longer one may end the answer. Must be above 4; the backend refuses to start with affinity off otherwise. With affinity on nothing is fenced and this bounds only the dead-owner wait. |
 | `CHAT_SUPERSEDE_WAIT_SECONDS` | No | `13.5` | How long a newer question waits for the conversation's running turn to stop (and its marker to clear) before it is refused as "still finishing the previous answer", never run beside it. Keep it above `CHAT_RUNNING_TTL_SECONDS`, so a replica that died mid-turn never costs a refusal, and under the client's 15 s acknowledgement bound (`RUN_STARTED` follows the wait). Only used while the conversation bus spans replicas. |
 | `CHAT_DRAIN_SECONDS` | No | `2700` | How long a terminating `chat` replica (`aiq-agent`) waits for the chat turns it runs before it cancels them (each ends with a cancelled terminal and is persisted). It must fit inside the pod's grace period and, to lose no turn, cover `CHAT_TURN_DEADLINE_SECONDS`. Pulumi derives the grace period from `backendDrainSeconds`, the value it sets here. |
-| `GRID_CHAT_AFFINITY` | No | `1` (on) | Whether the BFF pins each conversation to one `aiq-agent` replica by a hash of its id (ADR-0028). **On by default**: routing is the hash and the replica count is static. Set to `0` on the BFF and the backend together (Pulumi: `chatAffinity: false`) and sockets go to the load-balanced Service while the conversation bus decides which replica runs each turn (ADR-0080), which is what lets KEDA scale the tier. The backend reads it for one decision: with it on, a question that cannot be fenced on a down bus still runs; with it off, it is refused. |
+| `CHAT_AFFINITY` | No | `1` (on) | Whether the BFF pins each conversation to one `aiq-agent` replica by a hash of its id (ADR-0028). **On by default**: routing is the hash and the replica count is static. Set to `0` on the BFF and the backend together (Pulumi: `chatAffinity: false`) and sockets go to the load-balanced Service while the conversation bus decides which replica runs each turn (ADR-0080), which is what lets KEDA scale the tier. The backend reads it for one decision: with it on, a question that cannot be fenced on a down bus still runs; with it off, it is refused. |
 | `WIRE_V2_ADDITIVE_FIELDS` | No | `on` | Whether the chat socket's frames carry the server-to-client fields the lenient-parsing release added (`STAGED_SERVER_FIELDS` in `aiq_api/chat_socket.py`): the hello's `accepts` and `RUN_FINISHED.result.reasoning_effort`. It was off for that one release, while a tab opened before the deploy could still run a bundle that parsed every frame strictly. Every bundle since parses leniently, so it is on; `off` is the rollback. Off, the hello names nothing it accepts, so the page sends no `focus_region`, `reply_in_thread`, `steer` or `cancel_turn.shown`: a canvas question reaches Piloti without its box, a Stop stores everything streamed so far, and the answer shows the level the asker chose (the stored row keeps the resolved level). Read per frame on the `chat` role. Planned: the flag goes once the rollback is no longer needed. See [`chat-wire-v2.md`](../design/chat-wire-v2.md#compatibility-additive-changes-are-safe). |
 | `MAX_RUN_COMPLETION_TOKENS` | No | `0` (disabled) | Per-run completion (output) token ceiling for `deep_research_agent` jobs, enforced across every LLM call in the run including concurrent researcher workers (backlog T4-4, 2026-07-16). Exceeding it fails the job with an explicit budget-exceeded message rather than a generic internal error. Independent of the USD budget ledger below. |
 | `RESEARCHER_RECURSION_LIMIT` | No | `100` | Per-worker LangGraph step cap for single-query researcher runnables (`RESEARCHER_RECURSION_LIMIT` in `tools/research.py`). A stuck researcher hits this and is caught by the `GraphRecursionError` → terminal unresearchable-note path instead of burning its budget or looping through plan → batch → resubmit. `0`/invalid values fall back to `100`. |
@@ -254,7 +254,7 @@ The renderer runs the production permit pen over the precedent fixture office, *
 | `REC_OUT` | Set by the census | — | Path of the JSON-lines file `scripts/turn_census/sitecustomize.py` appends one record per model call to. `census.py` sets it for the agent process it starts; do not set it by hand. Empty or unset, nothing is recorded. The application never reads it. |
 | `STARTUP_PROBE_IN_TREE` | Set by the startup probe | — | Marks the process `scripts/turn_census/startup_probe.py` re-executed with this checkout first on `PYTHONPATH`, so it does not re-execute again. Do not set it by hand. |
 | `EVAL_ENVELOPE` | Set by the suite | — | The signed `X-Grid-Request-Context` envelope `scripts/turn_census/suite.py` mints for each run of the precedent eval (`--set precedent`). `scripts/turn_census/sitecustomize.py` hands it to the agent's `project_context` as the header a chat turn carries, so the turn reads the fixture office as the BFF would send it. Never set in a deployment; the agent reads the real header from the request. |
-| `EVAL_ENVELOPE_SIG` | Set by the suite | — | The signature over `EVAL_ENVELOPE`, made with the run's `GRID_INTERNAL_API_TOKEN`, read by the same `sitecustomize.py` patch as the signature header. Set together with `EVAL_ENVELOPE`; the agent verifies it as it would a real one. Never set in a deployment. |
+| `EVAL_ENVELOPE_SIG` | Set by the suite | — | The signature over `EVAL_ENVELOPE`, made with the run's `INTERNAL_API_TOKEN`, read by the same `sitecustomize.py` patch as the signature header. Set together with `EVAL_ENVELOPE`; the agent verifies it as it would a real one. Never set in a deployment. |
 | `SUITE_JUDGE_MODEL` | No | `openai/gpt-6-luna` | The OpenRouter model `scripts/turn_census/judge.py` asks for the precedent eval's meaning checks (`says_none`, `caveat`): one yes/no question per check about what the answer means. Read once at import. Changing it changes the judge, so re-validate the rubric on captured answers before trusting a new score. Development and eval runs only. |
 
 ---
@@ -280,9 +280,9 @@ The renderer runs the production permit pen over the precedent fixture office, *
 |----------|----------|---------|-------------|
 | `BACKEND_URL` | Yes | `http://aiq-api:8000` (Docker), `http://localhost:8000` (local) | The backend's **`api` role** (ADR-0082): every HTTP call of the BFF, the purger, the housekeeping clock and the workers goes here. It serves no chat socket. |
 | `BACKEND_CHAT_URL` | Yes (the gateway, `server.js`) | `http://aiq-agent:8000` (Docker), `http://localhost:8001` (local) | The backend's **`chat` role**, dialled by the WebSocket proxy and by the wake job of the `bff-jobs` pod (`lib/turns/headless-turn.ts`, ADR-0106), and by nothing else. Required with no fallback to `BACKEND_URL`: the gateway refuses to start without it. |
-| `BACKEND_REPLICAS` | No | `1` | Kubernetes only (Pulumi-injected). The modulus of the conversation-id hash while `GRID_CHAT_AFFINITY` is on, so it must equal the StatefulSet's replica count. With one replica, or with affinity off, every socket goes to `BACKEND_CHAT_URL`. |
+| `BACKEND_REPLICAS` | No | `1` | Kubernetes only (Pulumi-injected). The modulus of the conversation-id hash while `CHAT_AFFINITY` is on, so it must equal the StatefulSet's replica count. With one replica, or with affinity off, every socket goes to `BACKEND_CHAT_URL`. |
 | `BACKEND_POD_WS_TEMPLATE` | No | unset | Kubernetes only (Pulumi-injected). The per-pod WebSocket address with a literal `{i}`, e.g. `ws://aiq-agent-{i}.aiq-agent-headless:8000`. Unset means every socket goes to `BACKEND_CHAT_URL`. |
-| `GRID_CHAT_AFFINITY` | No | `1` (on) | See [Backend Configuration](#backend-configuration). Read by the gateway at start-up: off sends every chat socket to `BACKEND_CHAT_URL`. |
+| `CHAT_AFFINITY` | No | `1` (on) | See [Backend Configuration](#backend-configuration). Read by the gateway at start-up: off sends every chat socket to `BACKEND_CHAT_URL`. |
 | `NEXT_PUBLIC_BACKEND_URL` | No | `http://localhost:8000` | Public-facing backend URL. Fallback if `BACKEND_URL` is not set. Never a fallback for `BACKEND_CHAT_URL`. |
 | `FRONTEND_INTERNAL_URL` | No | `http://frontend:3000` | In-cluster base URL of the BFF, for the services that call its token-guarded `/api/internal/*` routes: the aiq-agent tier, the skill-scheduler (fires definitions) and the **purger**, which retries a chat erasure its delete request could not finish through `POST /api/internal/conversations/[id]/erase` (`docs/architecture/deletion-pipeline.md`). Set in both compose files and by Pulumi; not read by the frontend itself. The agent tier reads it in one place, `src/aiq_agent/common/bff_http.py`, which falls back to `FRONTEND_URL` and then to the default; the corpus store and the permit-records client refuse to run without it instead. |
 | `PORT` | No | `3000` | Node.js gateway listen port. |
@@ -301,8 +301,8 @@ The renderer runs the production permit pen over the precedent fixture office, *
 
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
-| `GRID_ADMIN_TOKEN` | No | `change-me-in-production` | Bearer token for admin-protected endpoints. Change in production. |
-| `CORPUS_EXPORT_TOKEN` | No | (unset — export disabled) | Token for `GET /api/internal/oib-corpus`, which streams the OIB base corpus as one `.tar.gz` (the PDFs the sync ingests, flat under their basenames). Its only consumer was the answer-suite CI workflow, which has been removed; `task be:eval:answer-suite` ingests `data/oib` from disk instead, and the export stays until someone decides to delete it. Sent in the `x-grid-internal-token` header, like the other internal routes, but checked against this secret only: it lived outside the cluster, in a repository secret, so a leak opens this one route and not the service token's memory writes. Fail-closed: unset or empty is 503. The backend export it proxies (`/v1/admin/oib/corpus.tar.gz`) also refuses without `GRID_ADMIN_TOKEN`, unlike the other admin routes. On Kubernetes set via `grid-oib:gridCorpusExportToken`. Frontend service only. |
+| `ADMIN_TOKEN` | No | `change-me-in-production` | Bearer token for admin-protected endpoints. Change in production. |
+| `CORPUS_EXPORT_TOKEN` | No | (unset — export disabled) | Token for `GET /api/internal/oib-corpus`, which streams the OIB base corpus as one `.tar.gz` (the PDFs the sync ingests, flat under their basenames). Its only consumer was the answer-suite CI workflow, which has been removed; `task be:eval:answer-suite` ingests `data/oib` from disk instead, and the export stays until someone decides to delete it. Sent in the `x-grid-internal-token` header, like the other internal routes, but checked against this secret only: it lived outside the cluster, in a repository secret, so a leak opens this one route and not the service token's memory writes. Fail-closed: unset or empty is 503. The backend export it proxies (`/v1/admin/oib/corpus.tar.gz`) also refuses without `ADMIN_TOKEN`, unlike the other admin routes. On Kubernetes set via `grid-oib:gridCorpusExportToken`. Frontend service only. |
 | `AUDIT_LOGS_ENABLED` | No | `false` | Gates WorkOS-native audit-trail emission (`recordAuditEvent` in `frontends/ui/src/lib/audit/service.ts`). Unset or anything but `true` suppresses every emit silently; `'true'` enables. Frontend service; on Kubernetes it is set from the Pulumi stack key `grid-oib:auditLogsEnabled` (see `deploy/pulumi/README.md`), not by hand. The audit viewer portal link is unaffected. |
 
 ---
@@ -311,11 +311,11 @@ The renderer runs the production permit pen over the precedent fixture office, *
 
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
-| `GRID_INTERNAL_API_TOKEN` | Yes (agent memory) | — | Shared service token authenticating the backend agent's memory writes to the internal BFF endpoint (`POST /api/internal/memory`). Must match between the `aiq-agent` and `frontend` services. Never ship the dev default outside dev. The frontend also derives from it (HMAC over a domain label) the key that signs the agent door's `requestState` when it asks the person to confirm an outside agent's destructive call (`lib/agent-api/confirmation.ts`); unset, or the dev default outside dev, the door asks nothing and runs the call as before. Every frontend pod must hold the same value, or a confirmation answered on another pod is refused. |
+| `INTERNAL_API_TOKEN` | Yes (agent memory) | — | Shared service token authenticating the backend agent's memory writes to the internal BFF endpoint (`POST /api/internal/memory`). Must match between the `aiq-agent` and `frontend` services. Never ship the dev default outside dev. The frontend also derives from it (HMAC over a domain label) the key that signs the agent door's `requestState` when it asks the person to confirm an outside agent's destructive call (`lib/agent-api/confirmation.ts`); unset, or the dev default outside dev, the door asks nothing and runs the call as before. Every frontend pod must hold the same value, or a confirmation answered on another pod is refused. |
 | `memory_reflection_llm` *(NAT config key, not env)* | No | unset | LLM ref in the chat-agent config that makes the async post-answer memory-reflection stage **available**. Unset = the stage is compiled out (no extra LLM call ever). Being available is necessary but not sufficient — each turn is still gated at runtime (next two rows). Set in `config_oib_openrouter.yml`. See `docs/architecture/project-memory-design.md` §3.5. |
 | `STAGE_MAX_CONCURRENCY` | No | `4` | Maximum post-answer stage handlers running concurrently per backend process, **shared across all stages** (memory reflection and follow-up questions). Stages share the event loop with live chat turns; this bounds their background LLM traffic. Replaces `MEMORY_REFLECTION_MAX_CONCURRENCY`, which the stage primitive superseded — see `docs/architecture/post-answer-stages.md` §7.9. |
 | `STAGE_MAX_PENDING` | No | `16` | Maximum post-answer stage handlers in flight per backend process, counted across all stages. Beyond the cap a stage is **dropped, not queued**, and records `outcome:"skipped", reason:"pending_cap"` so load-shedding is a number rather than a silent absence. Replaces `MEMORY_REFLECTION_MAX_PENDING`. |
-| `GRID_ALLOW_AGENT_ORG_MEMORY` | No | `false` | When `true`, the internal memory endpoint accepts **agent-authored organization-scoped** writes. Default-deny: org-wide memory reaches every project in the tenant and the service-token endpoint cannot verify the human's org role, so an autonomous/prompt-injected write would poison the tenant (audit finding S1). Leave unset unless you accept that risk; org-wide findings are otherwise a human-only action via the org-memory panel. |
+| `ALLOW_AGENT_ORG_MEMORY` | No | `false` | When `true`, the internal memory endpoint accepts **agent-authored organization-scoped** writes. Default-deny: org-wide memory reaches every project in the tenant and the service-token endpoint cannot verify the human's org role, so an autonomous/prompt-injected write would poison the tenant (audit finding S1). Leave unset unless you accept that risk; org-wide findings are otherwise a human-only action via the org-memory panel. |
 
 ---
 
@@ -336,25 +336,25 @@ The org skill toolbox, and project-level **definitions** — a prompt on a timer
 | `RUN_RECONCILE_UNKNOWN_GRACE_MINUTES` | No | `120` | A run the job store has no record of (404, e.g. expired after its 24 hours), or one that never got a backend job id, is closed as failed with a "could not be recovered" reason once it is this old. Never shorter than the stale window. 120 is three times the deep-research wall clock (2400 s), so a run that did start has ended by then. Frontend service. |
 | `SKILLS_CACHE_TTL_SECONDS` | No | `60` | Seconds an organization's resolved skill set (builtin + org, shadowing applied) is cached in the shared Dragonfly/Redis cache (`aiq_agent.skills.resolver`, ADR-0020) before re-resolving via the BFF internal endpoint — cutting per-turn resolution across replicas and restarts. Cache-only/fail-open: a miss or fetch error falls back to the builtin set. `0`/invalid falls back to `60`. Backend (aiq-agent) service. See `docs/architecture/agent-skills.md`. |
 
-The scheduler also reuses `GRID_APP_DATABASE_URL`, `FRONTEND_INTERNAL_URL`, and `GRID_INTERNAL_API_TOKEN`. Scheduled runs go through the same submit as interactive research, as `bulk` priority. A full cluster makes a run wait in the research queue (it is recorded `queued` until a worker starts it), so capacity never skips an occurrence; only an organization's waiting queue past `MAX_QUEUED_JOBS_PER_ORG` does, and that occurrence is recorded as `skipped` and not retried until its next slot.
+The scheduler also reuses `APP_DATABASE_URL`, `FRONTEND_INTERNAL_URL`, and `INTERNAL_API_TOKEN`. Scheduled runs go through the same submit as interactive research, as `bulk` priority. A full cluster makes a run wait in the research queue (it is recorded `queued` until a worker starts it), so capacity never skips an occurrence; only an organization's waiting queue past `MAX_QUEUED_JOBS_PER_ORG` does, and that occurrence is recorded as `skipped` and not retried until its next slot.
 
 ---
 
 ## BFF Jobs Pool (ADR-0079)
 
-Read by `frontends/ui/workers/jobs/index.js`, the entry point of the `bff-jobs` pod: the frontend image, internal only, running the claim loop over `bff_job_queue` and the host its slices run in (the BFF, `node server.js`, by default; the bundled services with `GRID_BFF_JOBS_MODE=inprocess`). The pod also needs the frontend's whole environment (the jobs call the same services the routes do), which Pulumi and Compose give it. `GRID_APP_DATABASE_URL` is required, and `GRID_INTERNAL_API_TOKEN` in `http` mode; every variable below has a default.
+Read by `frontends/ui/workers/jobs/index.js`, the entry point of the `bff-jobs` pod: the frontend image, internal only, running the claim loop over `bff_job_queue` and the host its slices run in (the BFF, `node server.js`, by default; the bundled services with `BFF_JOBS_MODE=inprocess`). The pod also needs the frontend's whole environment (the jobs call the same services the routes do), which Pulumi and Compose give it. `APP_DATABASE_URL` is required, and `INTERNAL_API_TOKEN` in `http` mode; every variable below has a default.
 
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
-| `GRID_BFF_JOBS_MODE` | No | `http` | Where a slice runs. `http`: in a `node server.js` the supervisor spawns, asked per slice over the internal route. `inprocess`: in the supervisor itself, from the services bundled at image build (`dist-jobs/slice.mjs`); no server is spawned, and the supervisor answers the probes' `/api/healthz` on `PORT` (ADR-0079 amendment 1). Any other value stops the pod at start. Pulumi `bffJobsMode`. |
+| `BFF_JOBS_MODE` | No | `http` | Where a slice runs. `http`: in a `node server.js` the supervisor spawns, asked per slice over the internal route. `inprocess`: in the supervisor itself, from the services bundled at image build (`dist-jobs/slice.mjs`); no server is spawned, and the supervisor answers the probes' `/api/healthz` on `PORT` (ADR-0079 amendment 1). Any other value stops the pod at start. Pulumi `bffJobsMode`. |
 | `BFF_JOBS_URL` | No | `http://127.0.0.1:$PORT` | `http` mode: the pod's own BFF, which the loop asks to run each slice (`POST /api/internal/jobs/run`). Leave unset: nothing else may run a job's work. |
 | `BFF_JOBS_CONCURRENCY` | No | `2` | Jobs one replica runs at once. Pulumi `bffJobsConcurrency`, also KEDA's jobs-per-replica target. |
 | `BFF_JOBS_POLL_MS` | No | `2000` | Idle wait between claims. |
-| `GRID_BFF_JOBS_DRAIN_SECONDS` | No | `60` | After SIGTERM the loop lets the slice in hand finish for up to this long, gives every claim back **without spending an attempt**, then stops the BFF. Pulumi `bffJobsDrainSeconds`; the pod's grace period is this plus 30 s. |
+| `BFF_JOBS_DRAIN_SECONDS` | No | `60` | After SIGTERM the loop lets the slice in hand finish for up to this long, gives every claim back **without spending an attempt**, then stops the BFF. Pulumi `bffJobsDrainSeconds`; the pod's grace period is this plus 30 s. |
 | `BFF_JOBS_STALE_SECONDS` | No | `180` | A claim whose worker has sent no heartbeat for this long is claimed again by another worker. Never below four heartbeats (60 s). |
-| `GRID_BFF_JOBS_MAX_ATTEMPTS` | No | `3` | Claims of one job before it is marked `dead` (its reason kept in `last_error`, its payload reduced to ids; deleted after `GRID_BFF_JOBS_DEAD_RETENTION_DAYS`). Only a drain, a cap or a slice that says it waits (`notBefore`, a wake of Piloti whose person's thread is busy) gives an attempt back: a failed slice, a slice timeout and a BFF that did not answer all spend one. |
+| `BFF_JOBS_MAX_ATTEMPTS` | No | `3` | Claims of one job before it is marked `dead` (its reason kept in `last_error`, its payload reduced to ids; deleted after `BFF_JOBS_DEAD_RETENTION_DAYS`). Only a drain, a cap or a slice that says it waits (`notBefore`, a wake of Piloti whose person's thread is busy) gives an attempt back: a failed slice, a slice timeout and a BFF that did not answer all spend one. |
 | `BFF_JOBS_RETRY_BACKOFF_SECONDS` | No | `30` | How long a failed job waits before its second attempt; each further attempt doubles it, to at most 15 minutes. `0` retries at once. |
-| `GRID_BFF_JOBS_DEAD_RETENTION_DAYS` | No | `14` | How long a `dead` job is kept as a trace before it is deleted (checked every ten minutes by every `bff-jobs` replica). A project's purge deletes its jobs at once. |
+| `BFF_JOBS_DEAD_RETENTION_DAYS` | No | `14` | How long a `dead` job is kept as a trace before it is deleted (checked every ten minutes by every `bff-jobs` replica). A project's purge deletes its jobs at once. |
 | `BFF_JOBS_MAX_PER_ORG` | No | `0` | Most jobs one organisation may run **across the whole fleet**; 0 for no cap. The claim is fair without it. Hard: a claim that raced past the cap gives its job back. Pulumi `bffJobsMaxPerOrg`. |
 | `BFF_JOBS_SLICE_TIMEOUT_MS` | No | `300000` | Ceiling on one slice's request to the BFF; a slice that outlives it is a failed attempt. |
 
@@ -379,7 +379,7 @@ When a document is linked as the newer Fassung of another, an organization with 
 
 ### Wakes of Piloti (ADR-0106)
 
-An event on an Anmerkung (a reply that addresses Piloti, a reply on Piloti's own open question, a delegation to Piloti) wakes Piloti through the `piloti_wake` job, which opens the chat socket as the person who acted. Only for an organization with the WorkOS flag `piloti-wakes` (off by default). The job dials the backend's chat role exactly as the gateway does, so the `bff-jobs` pod reads `BACKEND_CHAT_URL`, `BACKEND_REPLICAS`, `BACKEND_POD_WS_TEMPLATE` and `GRID_CHAT_AFFINITY` ([Frontend](#frontend)) and signs with `GRID_INTERNAL_API_TOKEN`. The caps are read by the BFF that takes the reply (at enqueue) and by the `bff-jobs` BFF (at claim), so set them on both.
+An event on an Anmerkung (a reply that addresses Piloti, a reply on Piloti's own open question, a delegation to Piloti) wakes Piloti through the `piloti_wake` job, which opens the chat socket as the person who acted. Only for an organization with the WorkOS flag `piloti-wakes` (off by default). The job dials the backend's chat role exactly as the gateway does, so the `bff-jobs` pod reads `BACKEND_CHAT_URL`, `BACKEND_REPLICAS`, `BACKEND_POD_WS_TEMPLATE` and `CHAT_AFFINITY` ([Frontend](#frontend)) and signs with `INTERNAL_API_TOKEN`. The caps are read by the BFF that takes the reply (at enqueue) and by the `bff-jobs` BFF (at claim), so set them on both.
 
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
@@ -388,7 +388,7 @@ An event on an Anmerkung (a reply that addresses Piloti, a reply on Piloti's own
 
 ### Asks to Piloti (ADR-0124)
 
-An agent asks Piloti through `POST /api/piloti-asks` (the MCP operation `piloti-ask-create`, the A2A door's `SendMessage`); the BFF that takes the ask opens the chat socket as `bff-jobs` does for a wake, so it reads the same `BACKEND_CHAT_URL` and signs with `GRID_INTERNAL_API_TOKEN`. Without either, an ask ends `failed` with the reason, never a 500.
+An agent asks Piloti through `POST /api/piloti-asks` (the MCP operation `piloti-ask-create`, the A2A door's `SendMessage`); the BFF that takes the ask opens the chat socket as `bff-jobs` does for a wake, so it reads the same `BACKEND_CHAT_URL` and signs with `INTERNAL_API_TOKEN`. Without either, an ask ends `failed` with the reason, never a 500.
 
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
@@ -410,7 +410,7 @@ An agent asks Piloti through `POST /api/piloti-asks` (the MCP operation `piloti-
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
 | `APP_ENV` | No | `development` | Application environment. Set to `production` in release Docker build. |
-| `GRID_GIT_SHA` | No | — (`unknown`) | The commit the running image was built from. **Not set by hand:** CI's image build (`.github/actions/build-image`) passes `--build-arg GRID_GIT_SHA=${{ github.sha }}` and both Dockerfiles re-export it as an env var, so every published image carries the commit that built it. An image whose inputs did not change is re-tagged rather than rebuilt, so this is the commit its code came from, which can be older than the deployed tag. Nothing inside a container can read its own image tag, which is why a pilot report could not name a build. It appears in the `[boot]` startup line on **both** services and as `sha` on `/api/healthz` (BFF) and `/health` (aiq-agent) — so a deployment can be asked what it is running, over HTTP, days later. Unset (a locally built or hand-tagged image) reads back as `unknown` rather than a guess. Both services. |
+| `GIT_SHA` | No | — (`unknown`) | The commit the running image was built from. **Not set by hand:** CI's image build (`.github/actions/build-image`) passes `--build-arg GIT_SHA=${{ github.sha }}` and both Dockerfiles re-export it as an env var, so every published image carries the commit that built it. An image whose inputs did not change is re-tagged rather than rebuilt, so this is the commit its code came from, which can be older than the deployed tag. Nothing inside a container can read its own image tag, which is why a pilot report could not name a build. It appears in the `[boot]` startup line on **both** services and as `sha` on `/api/healthz` (BFF) and `/health` (aiq-agent) — so a deployment can be asked what it is running, over HTTP, days later. Unset (a locally built or hand-tagged image) reads back as `unknown` rather than a guess. Both services. |
 | `LOG_LEVEL` | No | `INFO` | Logging level: DEBUG, INFO, WARNING, ERROR. |
 | `PYTHONWARNINGS` | No | `ignore` | Python warnings filter. |
 | `TIKTOKEN_CACHE_DIR` | No | `/app/tiktoken-cache` in the backend image; tiktoken's own temp-dir default elsewhere | Where tiktoken reads its BPE tables. The backend image downloads `cl100k_base` there at build (`deploy/Dockerfile`), and the chat workflow loads it at boot (`agents/piloti/history.warm_token_encoder`), so no turn downloads it. Unset outside the image: the first process on a machine downloads it once into the temp dir. Backend image. |
@@ -467,7 +467,7 @@ exports.
 |----------|----------|---------|-------------|
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | No | unset | OTLP/HTTP collector endpoint. Python tiers get the FULL path (`http://otel-collector:4318/v1/traces` — the NAT exporter posts as-is); the frontend gets the BASE URL (the BFF exports no traces). Every exporter derives its own signal path from either (`/v1/logs`, `/v1/metrics`): `otlp_resource.py`, `observability/otlp.js`. Unset → no log or metric export, and no meter provider. |
 | `OTEL_SERVICE_NAME` | No | per-tier | `service.name` resource: `grid-ui` / `grid-aiq-agent` / `grid-agent-worker`. Every signal also carries `service.instance.id` from `HOSTNAME` (the pod name Kubernetes sets) and `process.pid`. |
-| `GRID_TRACE_IDENTITY_ATTRIBUTES` | No | unset (off) | When `true`, keeps the `user.id` NAT 1.9 sets from the verified subject and stamps `langfuse.session.id` and the organization onto every span; when off, Grid strips NAT's `user.id` and `<prefix>.user.id` before export (`UserIdentityStripProcessor`) (`src/aiq_agent/observability/langfuse_trace_attributes.py`), which is what turns anonymous spans into traces attributable to a user and a tenant. Keyed off the Langfuse tier (ADR-0044) rather than observability generally, and Kubernetes-only. Off by default because it is a privacy posture rather than a performance knob: ADR-0029 accepted that traces carry user content on the grounds that access is gated to platform operators, and making every span attributable to a named individual is a further step that should arrive with the product decision needing it. The processor runs ahead of NAT's redaction processor, so these attributes stay redactable. Session grouping and input/output need no flag: NAT already emits `session.id` and OpenInference `input.value`/`output.value`. Backend (aiq-agent) and agent-worker services. |
+| `TRACE_IDENTITY_ATTRIBUTES` | No | unset (off) | When `true`, keeps the `user.id` NAT 1.9 sets from the verified subject and stamps `langfuse.session.id` and the organization onto every span; when off, Grid strips NAT's `user.id` and `<prefix>.user.id` before export (`UserIdentityStripProcessor`) (`src/aiq_agent/observability/langfuse_trace_attributes.py`), which is what turns anonymous spans into traces attributable to a user and a tenant. Keyed off the Langfuse tier (ADR-0044) rather than observability generally, and Kubernetes-only. Off by default because it is a privacy posture rather than a performance knob: ADR-0029 accepted that traces carry user content on the grounds that access is gated to platform operators, and making every span attributable to a named individual is a further step that should arrive with the product decision needing it. The processor runs ahead of NAT's redaction processor, so these attributes stay redactable. Session grouping and input/output need no flag: NAT already emits `session.id` and OpenInference `input.value`/`output.value`. Backend (aiq-agent) and agent-worker services. |
 
 ## PostHog (ADR-0100)
 
@@ -662,7 +662,7 @@ init container, which runs `deploy/migration/chroma_export.py` through
 |----------|----------|---------|-------------|
 | `OPENROUTER_API_KEY` | No | — | Frontend container: authenticates the OpenRouter model-catalog fetch for the org model-config picker/validation (catalog also works unauthenticated). Same key the backend uses for LLM calls. |
 | `OPENROUTER_BASE_URL` | No | `https://openrouter.ai/api/v1` | Override the catalog endpoint (tests / self-hosted gateways). |
-| `GRID_BUDGET_EUR_PER_USD` | — | — | **Removed** (ADR-0053). Nothing converts currency any more: cost is shown in USD as OpenRouter charges it, tenants see credits, and the margin and credit price are set under Platform → Overview → Price list. Setting the variable has no effect. |
+| `BUDGET_EUR_PER_USD` | — | — | **Removed** (ADR-0053). Nothing converts currency any more: cost is shown in USD as OpenRouter charges it, tenants see credits, and the margin and credit price are set under Platform → Overview → Price list. Setting the variable has no effect. |
 | `BYOK_SECRET_BACKEND` | No | `vault` when `WORKOS_API_KEY` is set, else `local` | BYOK key store (ADR-0022). `vault` uses WorkOS Vault; `local` encrypts with AES-256-GCM under `BYOK_LOCAL_KEK`. Frontend service. |
 | `BYOK_LOCAL_KEK` | Required when `BYOK_SECRET_BACKEND=local` | — | 32-byte base64 key-encryption key (`openssl rand -base64 32`) for the `local` BYOK backend. Frontend service. |
 | `BYOK_ALLOW_PRIVATE_BASE_URLS` | No | `false` | `true` lets org admins point BYOK base URLs at private-network hosts, for self-hosted OpenAI-compatible gateways. Frontend service. |
@@ -709,7 +709,7 @@ HTML (a baked host is how prod once linked at the dev app).
 
 ## Renamed variables
 
-No variable carries the product's name. Every variable that started `GRID_`, or `AIQ_` before that, is now read under the rest of its name: `GRID_MAX_ACTIVE_JOBS_PER_ORG` is `MAX_ACTIVE_JOBS_PER_ORG` (`docs/contributing/code-conventions.md#no-brand-names`). For one release both images still read an old name: the backend's entrypoint (`deploy/entrypoint.py`, `adopt_legacy_names`) and every Node process of the UI image (`frontends/ui/scripts/legacy-env-names.cjs`, loaded through `NODE_OPTIONS`) copy `GRID_X`, else `AIQ_X`, onto `X` when that is unset (with a deprecation warning, once the deployments themselves have moved to the new names), and the Compose files interpolate `${X:-${GRID_X:-${AIQ_X:-default}}}`. A name already set wins. The release after drops all of it.
+No variable carries the product's name. Every variable that started `GRID_`, or `AIQ_` before that, is now read under the rest of its name: `GRID_MAX_ACTIVE_JOBS_PER_ORG` is `MAX_ACTIVE_JOBS_PER_ORG` (`docs/contributing/code-conventions.md#no-brand-names`). For one release both images still read an old name: the backend's entrypoint (`deploy/entrypoint.py`, `adopt_legacy_names`) and every Node process of the UI image (`frontends/ui/scripts/legacy-env-names.cjs`, loaded through `NODE_OPTIONS`) copy `GRID_X`, else `AIQ_X`, onto `X` when that is unset and log a deprecation warning, and the Compose files interpolate `${X:-${GRID_X:-${AIQ_X:-default}}}`. A name already set wins. The release after drops all of it.
 
 Where the bare name would collide with a variable a library or the platform already reads, or would still carry the product's name, the variable took a name of its own:
 
@@ -719,6 +719,239 @@ Where the bare name would collide with a variable a library or the platform alre
 | `GRID_VERBOSE` | `AGENT_VERBOSE` | `VERBOSE` is read by build tools and shells |
 | `GRID_LANGFUSE_TRACE_RETENTION_DAYS` | `TRACE_RETENTION_DAYS` | `LANGFUSE_` is the Langfuse SDK's and server's namespace |
 | `GRID_PILOTI_ASK_MAX_SECONDS` | `AGENT_ASK_MAX_SECONDS` | the bare name still carries the product's name |
+
+Every renamed variable (228), old name first:
+
+| Old name | New name |
+|---|---|
+| `GRID_ADMIN_TOKEN` | `ADMIN_TOKEN` |
+| `GRID_AGENT_AUTHORED_DOCUMENTS_ENABLED` | `AGENT_AUTHORED_DOCUMENTS_ENABLED` |
+| `GRID_ALLOW_AGENT_ORG_MEMORY` | `ALLOW_AGENT_ORG_MEMORY` |
+| `GRID_APP_DATABASE_URL` | `APP_DATABASE_URL` |
+| `GRID_APP_MIGRATION_DATABASE_URL` | `APP_MIGRATION_DATABASE_URL` |
+| `GRID_APP_RUNTIME_PASSWORD` | `APP_RUNTIME_PASSWORD` |
+| `GRID_AUDIT_LOGS_ENABLED` | `AUDIT_LOGS_ENABLED` |
+| `GRID_AUTHZ_CACHE_TTL_MS` | `AUTHZ_CACHE_TTL_MS` |
+| `GRID_AUTHZ_SLOW_CALL_MS` | `AUTHZ_SLOW_CALL_MS` |
+| `GRID_AVAILABLE_DOCUMENTS_MAX` | `AVAILABLE_DOCUMENTS_MAX` |
+| `GRID_BACKEND_URL` | `BACKEND_URL` |
+| `GRID_BASE_CORPUS_CACHE_DIR` | `BASE_CORPUS_CACHE_DIR` |
+| `GRID_BFF_JOBS_CONCURRENCY` | `BFF_JOBS_CONCURRENCY` |
+| `GRID_BFF_JOBS_DEAD_RETENTION_DAYS` | `BFF_JOBS_DEAD_RETENTION_DAYS` |
+| `GRID_BFF_JOBS_DRAIN_SECONDS` | `BFF_JOBS_DRAIN_SECONDS` |
+| `GRID_BFF_JOBS_MAX_ATTEMPTS` | `BFF_JOBS_MAX_ATTEMPTS` |
+| `GRID_BFF_JOBS_MAX_PER_ORG` | `BFF_JOBS_MAX_PER_ORG` |
+| `GRID_BFF_JOBS_MODE` | `BFF_JOBS_MODE` |
+| `GRID_BFF_JOBS_POLL_MS` | `BFF_JOBS_POLL_MS` |
+| `GRID_BFF_JOBS_RETRY_BACKOFF_SECONDS` | `BFF_JOBS_RETRY_BACKOFF_SECONDS` |
+| `GRID_BFF_JOBS_SLICE_TIMEOUT_MS` | `BFF_JOBS_SLICE_TIMEOUT_MS` |
+| `GRID_BFF_JOBS_STALE_SECONDS` | `BFF_JOBS_STALE_SECONDS` |
+| `GRID_BFF_JOBS_URL` | `BFF_JOBS_URL` |
+| `GRID_BUDGET_EUR_PER_USD` | `BUDGET_EUR_PER_USD` |
+| `GRID_BYOK_ALLOW_PRIVATE_BASE_URLS` | `BYOK_ALLOW_PRIVATE_BASE_URLS` |
+| `GRID_BYOK_LOCAL_KEK` | `BYOK_LOCAL_KEK` |
+| `GRID_BYOK_SECRET_BACKEND` | `BYOK_SECRET_BACKEND` |
+| `GRID_CAPABILITY_GAP_LOG` | `CAPABILITY_GAP_LOG` |
+| `GRID_CHAT_AFFINITY` | `CHAT_AFFINITY` |
+| `GRID_CHAT_CHECKPOINT_RETENTION_SECONDS` | `CHAT_CHECKPOINT_RETENTION_SECONDS` |
+| `GRID_CHAT_DRAIN_SECONDS` | `CHAT_DRAIN_SECONDS` |
+| `GRID_CHAT_RUNNING_TTL_SECONDS` | `CHAT_RUNNING_TTL_SECONDS` |
+| `GRID_CHAT_SUPERSEDE_WAIT_SECONDS` | `CHAT_SUPERSEDE_WAIT_SECONDS` |
+| `GRID_CHAT_TURN_DEADLINE_SECONDS` | `CHAT_TURN_DEADLINE_SECONDS` |
+| `GRID_CHECKPOINT_DB` | `CHECKPOINT_DB` |
+| `GRID_CHECKPOINT_POOL_MAX_SIZE` | `CHECKPOINT_POOL_MAX_SIZE` |
+| `GRID_CHECKPOINT_POOL_MIN_SIZE` | `CHECKPOINT_POOL_MIN_SIZE` |
+| `GRID_CHROMA_DIR` | `CHROMA_DIR` |
+| `GRID_CHROMA_URL` | `CHROMA_URL` |
+| `GRID_CITATION_EVENTS_ENABLED` | `CITATION_EVENTS_ENABLED` |
+| `GRID_CITATION_REGISTRY_TTL_SECONDS` | `CITATION_REGISTRY_TTL_SECONDS` |
+| `GRID_COLLABORATION_ENABLED` | `COLLABORATION_ENABLED` |
+| `GRID_COLLECTION_TTL_HOURS` | `COLLECTION_TTL_HOURS` |
+| `GRID_COLLECTION_VERSION_MEMO_SECONDS` | `COLLECTION_VERSION_MEMO_SECONDS` |
+| `GRID_CONVERSATION_BUS` | `CONVERSATION_BUS` |
+| `GRID_CONV_STREAM_MAXLEN` | `CONV_STREAM_MAXLEN` |
+| `GRID_CONV_STREAM_TTL_SECONDS` | `CONV_STREAM_TTL_SECONDS` |
+| `GRID_CORPUS_EXPORT_TOKEN` | `CORPUS_EXPORT_TOKEN` |
+| `GRID_DB_POOL_MAX` | `DB_POOL_MAX` |
+| `GRID_DECISIONS_API_KEY` | `DECISIONS_API_KEY` |
+| `GRID_DECISIONS_ENABLED` | `DECISIONS_ENABLED` |
+| `GRID_DECISIONS_MODEL` | `DECISIONS_MODEL` |
+| `GRID_DECISIONS_URL` | `DECISIONS_URL` |
+| `GRID_DEEP_CHECKPOINT_DB` | `DEEP_CHECKPOINT_DB` |
+| `GRID_DEFAULT_MODEL` | `DEFAULT_MODEL` |
+| `GRID_DEFAULT_STORAGE_QUOTA_BYTES` | `DEFAULT_STORAGE_QUOTA_BYTES` |
+| `GRID_DEV_ENV` | `DEV_ENV` |
+| `GRID_DICTATION_FALLBACK_MODEL` | `DICTATION_FALLBACK_MODEL` |
+| `GRID_DICTATION_MODEL` | `DICTATION_MODEL` |
+| `GRID_DISABLE_SELF_SERVE_ORGS` | `DISABLE_SELF_SERVE_ORGS` |
+| `GRID_DOCUMENT_CHECK_DAILY_LIMIT` | `DOCUMENT_CHECK_DAILY_LIMIT` |
+| `GRID_DOCUMENT_CHECK_MAX_BATCH` | `DOCUMENT_CHECK_MAX_BATCH` |
+| `GRID_DROP_OCR_NOISE` | `DROP_OCR_NOISE` |
+| `GRID_EMBED_API_KEY` | `EMBED_API_KEY` |
+| `GRID_EMBED_BASE_URL` | `EMBED_BASE_URL` |
+| `GRID_EMBED_BATCH_SIZE` | `EMBED_BATCH_SIZE` |
+| `GRID_EMBED_MODEL` | `EMBED_MODEL` |
+| `GRID_EMBED_TIMEOUT_SECONDS` | `EMBED_TIMEOUT_SECONDS` |
+| `GRID_ENFORCE_FEATURE_FLAGS` | `ENFORCE_FEATURE_FLAGS` |
+| `GRID_EVAL_CHECKPOINT_DB` | `EVAL_CHECKPOINT_DB` |
+| `GRID_EVAL_ENVELOPE` | `EVAL_ENVELOPE` |
+| `GRID_EVAL_ENVELOPE_SIG` | `EVAL_ENVELOPE_SIG` |
+| `GRID_EVAL_USER_MESSAGE` | `EVAL_USER_MESSAGE` |
+| `GRID_EXTERNAL_HOSTNAMES` | `EXTERNAL_HOSTNAMES` |
+| `GRID_EXTRACT_CHARTS` | `EXTRACT_CHARTS` |
+| `GRID_EXTRACT_IMAGES` | `EXTRACT_IMAGES` |
+| `GRID_EXTRACT_TABLES` | `EXTRACT_TABLES` |
+| `GRID_FILE_TRACKING_RETENTION_SECONDS` | `FILE_TRACKING_RETENTION_SECONDS` |
+| `GRID_FILING_SUGGESTIONS` | `FILING_SUGGESTIONS` |
+| `GRID_FOLDER_CARDS_MONTHLY_TOKENS` | `FOLDER_CARDS_MONTHLY_TOKENS` |
+| `GRID_GEOCODER_URL` | `GEOCODER_URL` |
+| `GRID_GIT_SHA` | `GIT_SHA` |
+| `GRID_HITL_RESPONSE_TIMEOUT_SECONDS` | `HITL_RESPONSE_TIMEOUT_SECONDS` |
+| `GRID_HYBRID_RETRIEVAL` | `HYBRID_RETRIEVAL` |
+| `GRID_IFC_MODELS_ENABLED` | `IFC_MODELS_ENABLED` |
+| `GRID_INGEST_CLAIM_MAX_ATTEMPTS` | `INGEST_CLAIM_MAX_ATTEMPTS` |
+| `GRID_INGEST_CLAIM_STALE_SECONDS` | `INGEST_CLAIM_STALE_SECONDS` |
+| `GRID_INGEST_DEAD_RETENTION_DAYS` | `INGEST_DEAD_RETENTION_DAYS` |
+| `GRID_INGEST_MAX_JOB_SECONDS` | `INGEST_MAX_JOB_SECONDS` |
+| `GRID_INGEST_MAX_PER_ORG` | `INGEST_MAX_PER_ORG` |
+| `GRID_INGEST_MAX_WORKERS` | `INGEST_MAX_WORKERS` |
+| `GRID_INGEST_PROGRESS_TIMEOUT_SECONDS` | `INGEST_PROGRESS_TIMEOUT_SECONDS` |
+| `GRID_INGEST_QUEUE` | `INGEST_QUEUE` |
+| `GRID_INGEST_WAIT_SECONDS` | `INGEST_WAIT_SECONDS` |
+| `GRID_INGEST_WORKER_DRAIN_SECONDS` | `INGEST_WORKER_DRAIN_SECONDS` |
+| `GRID_INTERNAL_API_TOKEN` | `INTERNAL_API_TOKEN` |
+| `GRID_JOB_INFO_DELETE_GRACE_SECONDS` | `JOB_INFO_DELETE_GRACE_SECONDS` |
+| `GRID_JOB_PAYLOAD_KEK` | `JOB_PAYLOAD_KEK` |
+| `GRID_JWT_AUDIENCE` | `JWT_AUDIENCE` |
+| `GRID_JWT_ISSUER` | `JWT_ISSUER` |
+| `GRID_KEYED_LOCK_TIMEOUT_SECONDS` | `KEYED_LOCK_TIMEOUT_SECONDS` |
+| `GRID_LANDING_URL` | `LANDING_URL` |
+| `GRID_LANGFUSE_TRACE_RETENTION_DAYS` | `TRACE_RETENTION_DAYS` |
+| `GRID_LISTEN_DB_URL` | `LISTEN_DB_URL` |
+| `GRID_LOCK_DB_URL` | `LOCK_DB_URL` |
+| `GRID_LOOP_EVAL_URL` | `LOOP_EVAL_URL` |
+| `GRID_MAIL_IMPORT_ENABLED` | `MAIL_IMPORT_ENABLED` |
+| `GRID_MAIL_IMPORT_MAX_BYTES` | `MAIL_IMPORT_MAX_BYTES` |
+| `GRID_MAX_ACTIVE_JOBS_PER_ORG` | `MAX_ACTIVE_JOBS_PER_ORG` |
+| `GRID_MAX_ACTIVE_TURNS` | `MAX_ACTIVE_TURNS` |
+| `GRID_MAX_ACTIVE_TURNS_PER_ORG` | `MAX_ACTIVE_TURNS_PER_ORG` |
+| `GRID_MAX_IMAGES_PER_DOCUMENT` | `MAX_IMAGES_PER_DOCUMENT` |
+| `GRID_MAX_IMAGE_PIXELS` | `MAX_IMAGE_PIXELS` |
+| `GRID_MAX_OCR_PAGES` | `MAX_OCR_PAGES` |
+| `GRID_MAX_QUERY_SUBMISSIONS` | `MAX_QUERY_SUBMISSIONS` |
+| `GRID_MAX_QUEUED_JOBS_PER_ORG` | `MAX_QUEUED_JOBS_PER_ORG` |
+| `GRID_MAX_RENDERED_PAGES` | `MAX_RENDERED_PAGES` |
+| `GRID_MAX_RUN_COMPLETION_TOKENS` | `MAX_RUN_COMPLETION_TOKENS` |
+| `GRID_MCP_RESOURCE_URL` | `MCP_RESOURCE_URL` |
+| `GRID_MEMORY_REFLECTION_ENABLED` | `MEMORY_REFLECTION_ENABLED` |
+| `GRID_NORMS_DIR` | `NORMS_DIR` |
+| `GRID_OCR_MODEL` | `OCR_MODEL` |
+| `GRID_PAGE_RENDER_MAX_DIM` | `PAGE_RENDER_MAX_DIM` |
+| `GRID_PDF_PAGE_MAX_OBJECTS` | `PDF_PAGE_MAX_OBJECTS` |
+| `GRID_PILOTI_ASK_MAX_SECONDS` | `AGENT_ASK_MAX_SECONDS` |
+| `GRID_PLATFORM_ORG_EXTERNAL_ID` | `PLATFORM_ORG_EXTERNAL_ID` |
+| `GRID_PLATFORM_OWNER_EMAIL` | `PLATFORM_OWNER_EMAIL` |
+| `GRID_PLATFORM_OWNER_EMAILS` | `PLATFORM_OWNER_EMAILS` |
+| `GRID_PROVIDER_LIMITER` | `PROVIDER_LIMITER` |
+| `GRID_PROVIDER_LIMIT_CEILING` | `PROVIDER_LIMIT_CEILING` |
+| `GRID_PROVIDER_LIMIT_FLOOR` | `PROVIDER_LIMIT_FLOOR` |
+| `GRID_PROVIDER_LIMIT_INTERVAL_SECONDS` | `PROVIDER_LIMIT_INTERVAL_SECONDS` |
+| `GRID_PROVIDER_MODEL_LIMIT_CEILING` | `PROVIDER_MODEL_LIMIT_CEILING` |
+| `GRID_PROVIDER_MODEL_LIMIT_FLOOR` | `PROVIDER_MODEL_LIMIT_FLOOR` |
+| `GRID_PST_FIXTURE_DIR` | `PST_FIXTURE_DIR` |
+| `GRID_QDRANT_API_KEY` | `QDRANT_API_KEY` |
+| `GRID_QDRANT_REPLICATION_FACTOR` | `QDRANT_REPLICATION_FACTOR` |
+| `GRID_QDRANT_SHARD_NUMBER` | `QDRANT_SHARD_NUMBER` |
+| `GRID_QDRANT_TEST_URL` | `QDRANT_TEST_URL` |
+| `GRID_QDRANT_URL` | `QDRANT_URL` |
+| `GRID_QUERY_EMBED_CACHE_SIZE` | `QUERY_EMBED_CACHE_SIZE` |
+| `GRID_QUERY_EMBED_TIMEOUT_SECONDS` | `QUERY_EMBED_TIMEOUT_SECONDS` |
+| `GRID_REGEN_GOLDEN` | `REGEN_GOLDEN` |
+| `GRID_RENDER_VISUAL_PAGES` | `RENDER_VISUAL_PAGES` |
+| `GRID_REQUEST_CONTEXT_MAX_AGE_MS` | `REQUEST_CONTEXT_MAX_AGE_MS` |
+| `GRID_RERANKER_API_KEY` | `RERANKER_API_KEY` |
+| `GRID_RERANKER_BASE_URL` | `RERANKER_BASE_URL` |
+| `GRID_RERANKER_MAX_DOC_CHARS` | `RERANKER_MAX_DOC_CHARS` |
+| `GRID_RERANKER_MODEL` | `RERANKER_MODEL` |
+| `GRID_RERANKER_PROVIDER` | `RERANKER_PROVIDER` |
+| `GRID_RERANKER_TIMEOUT_SECONDS` | `RERANKER_TIMEOUT_SECONDS` |
+| `GRID_RESEARCHER_RECURSION_LIMIT` | `RESEARCHER_RECURSION_LIMIT` |
+| `GRID_RESEARCH_DEAD_RETENTION_DAYS` | `RESEARCH_DEAD_RETENTION_DAYS` |
+| `GRID_RESEARCH_WORKERS` | `RESEARCH_WORKERS` |
+| `GRID_RESEARCH_WORKER_DRAIN_SECONDS` | `RESEARCH_WORKER_DRAIN_SECONDS` |
+| `GRID_RESEARCH_WORKER_HEARTBEAT_SECONDS` | `RESEARCH_WORKER_HEARTBEAT_SECONDS` |
+| `GRID_RESEARCH_WORKER_MAX_ATTEMPTS` | `RESEARCH_WORKER_MAX_ATTEMPTS` |
+| `GRID_RESEARCH_WORKER_POLL_SECONDS` | `RESEARCH_WORKER_POLL_SECONDS` |
+| `GRID_RESEARCH_WORKER_STALE_SECONDS` | `RESEARCH_WORKER_STALE_SECONDS` |
+| `GRID_RETRIEVER_TOP_K` | `RETRIEVER_TOP_K` |
+| `GRID_REVISION_NOTICE_DELAY_SECONDS` | `REVISION_NOTICE_DELAY_SECONDS` |
+| `GRID_REVISION_NOTICE_MAX_PAGES` | `REVISION_NOTICE_MAX_PAGES` |
+| `GRID_RIS_CACHE_TTL_DAYS` | `RIS_CACHE_TTL_DAYS` |
+| `GRID_RLS_MIGRATION_CHECKS` | `RLS_MIGRATION_CHECKS` |
+| `GRID_RLS_SUITE_REQUIRED` | `RLS_SUITE_REQUIRED` |
+| `GRID_ROLE` | `PROCESS_ROLE` |
+| `GRID_RUN_RECONCILE_STALE_MINUTES` | `RUN_RECONCILE_STALE_MINUTES` |
+| `GRID_RUN_RECONCILE_UNKNOWN_GRACE_MINUTES` | `RUN_RECONCILE_UNKNOWN_GRACE_MINUTES` |
+| `GRID_SEARCH_LATENCY` | `SEARCH_LATENCY` |
+| `GRID_SEARCH_LATENCY_KEEP` | `SEARCH_LATENCY_KEEP` |
+| `GRID_SEARCH_LATENCY_RUNS` | `SEARCH_LATENCY_RUNS` |
+| `GRID_SEARCH_LATENCY_SCALE` | `SEARCH_LATENCY_SCALE` |
+| `GRID_SHUTDOWN_DRAIN_MS` | `SHUTDOWN_DRAIN_MS` |
+| `GRID_SKILLS_CACHE_TTL_SECONDS` | `SKILLS_CACHE_TTL_SECONDS` |
+| `GRID_SKILLS_ENABLED` | `SKILLS_ENABLED` |
+| `GRID_SKILL_MIN_INTERVAL_MINUTES` | `SKILL_MIN_INTERVAL_MINUTES` |
+| `GRID_SKILL_RUNS_RETENTION_DAYS` | `SKILL_RUNS_RETENTION_DAYS` |
+| `GRID_SKILL_SCHEDULER_BATCH` | `SKILL_SCHEDULER_BATCH` |
+| `GRID_SKILL_SCHEDULER_POLL_MS` | `SKILL_SCHEDULER_POLL_MS` |
+| `GRID_STAGE_MAX_CONCURRENCY` | `STAGE_MAX_CONCURRENCY` |
+| `GRID_STAGE_MAX_PENDING` | `STAGE_MAX_PENDING` |
+| `GRID_STATIC_RESULT_CACHE_COLLECTIONS` | `STATIC_RESULT_CACHE_COLLECTIONS` |
+| `GRID_STATIC_RESULT_CACHE_TTL_SECONDS` | `STATIC_RESULT_CACHE_TTL_SECONDS` |
+| `GRID_STORAGE_ALERT_THRESHOLD_PERCENT` | `STORAGE_ALERT_THRESHOLD_PERCENT` |
+| `GRID_SUGGEST_EXPLAIN` | `SUGGEST_EXPLAIN` |
+| `GRID_SUMMARY_DB` | `SUMMARY_DB` |
+| `GRID_TEST_CORPUS_DB` | `TEST_CORPUS_DB` |
+| `GRID_TEST_DATABASE_URL` | `TEST_DATABASE_URL` |
+| `GRID_TEST_LEASE` | `TEST_LEASE` |
+| `GRID_TEST_OWNER_DATABASE_URL` | `TEST_OWNER_DATABASE_URL` |
+| `GRID_TEST_PG_URL` | `TEST_PG_URL` |
+| `GRID_TEST_POSTGRES_REQUIRED` | `TEST_POSTGRES_REQUIRED` |
+| `GRID_TEST_POSTGRES_URL` | `TEST_POSTGRES_URL` |
+| `GRID_TRACE_CLIENT_ID_HMAC_SECRET` | `TRACE_CLIENT_ID_HMAC_SECRET` |
+| `GRID_TRACE_CLIENT_ID_MODE` | `TRACE_CLIENT_ID_MODE` |
+| `GRID_TRACE_CLIENT_IP_HEADERS` | `TRACE_CLIENT_IP_HEADERS` |
+| `GRID_TRACE_IDENTITY_ATTRIBUTES` | `TRACE_IDENTITY_ATTRIBUTES` |
+| `GRID_TRACE_USER_IDENTITY_HMAC_SECRET` | `TRACE_USER_IDENTITY_HMAC_SECRET` |
+| `GRID_TRACE_USER_IDENTITY_MODE` | `TRACE_USER_IDENTITY_MODE` |
+| `GRID_TTL_CLEANUP_INTERVAL_SECONDS` | `TTL_CLEANUP_INTERVAL_SECONDS` |
+| `GRID_TURN_LEASE_SECONDS` | `TURN_LEASE_SECONDS` |
+| `GRID_VECTOR_IMPORT_PENDING` | `VECTOR_IMPORT_PENDING` |
+| `GRID_VERBOSE` | `AGENT_VERBOSE` |
+| `GRID_VIEW_IMAGES_ENABLED` | `VIEW_IMAGES_ENABLED` |
+| `GRID_VISUAL_DOMAINS` | `VISUAL_DOMAINS` |
+| `GRID_VISUAL_PAGE_MIN_PATHS` | `VISUAL_PAGE_MIN_PATHS` |
+| `GRID_VISUAL_PAGE_MIN_TEXT_CHARS` | `VISUAL_PAGE_MIN_TEXT_CHARS` |
+| `GRID_VLM_API_KEY` | `VLM_API_KEY` |
+| `GRID_VLM_BASE_URL` | `VLM_BASE_URL` |
+| `GRID_VLM_BATCH_WORKERS` | `VLM_BATCH_WORKERS` |
+| `GRID_VLM_FLEET_CONCURRENCY` | `VLM_FLEET_CONCURRENCY` |
+| `GRID_VLM_MODEL` | `VLM_MODEL` |
+| `GRID_VLM_RATE_LIMIT_RETRIES` | `VLM_RATE_LIMIT_RETRIES` |
+| `GRID_VLM_SECOND_PASS_DELAY_SECONDS` | `VLM_SECOND_PASS_DELAY_SECONDS` |
+| `GRID_VLM_TIMEOUT_SECONDS` | `VLM_TIMEOUT_SECONDS` |
+| `GRID_VOCABULARY_PATH` | `VOCABULARY_PATH` |
+| `GRID_WAKE_MAX_PER_MARK_HOUR` | `WAKE_MAX_PER_MARK_HOUR` |
+| `GRID_WAKE_MAX_PER_PERSON_DAY` | `WAKE_MAX_PER_PERSON_DAY` |
+| `GRID_WEB_PUSH_SUBJECT` | `WEB_PUSH_SUBJECT` |
+| `GRID_WEB_PUSH_VAPID_PRIVATE_KEY` | `WEB_PUSH_VAPID_PRIVATE_KEY` |
+| `GRID_WEB_PUSH_VAPID_PUBLIC_KEY` | `WEB_PUSH_VAPID_PUBLIC_KEY` |
+| `GRID_WIRE_V2_ADDITIVE_FIELDS` | `WIRE_V2_ADDITIVE_FIELDS` |
+| `GRID_WORKER_LIVENESS_FILE` | `WORKER_LIVENESS_FILE` |
+| `GRID_WRITER_CHAR_BUDGET` | `WRITER_CHAR_BUDGET` |
+| `GRID_WS_MESSAGE_LIMITS` | `WS_MESSAGE_LIMITS` |
+| `GRID_WS_SCOPE_CACHE_TTL_MS` | `WS_SCOPE_CACHE_TTL_MS` |
+| `GRID_WS_UPGRADE_MAX_INFLIGHT` | `WS_UPGRADE_MAX_INFLIGHT` |
+| `GRID_WS_UPGRADE_RATE_LIMIT` | `WS_UPGRADE_RATE_LIMIT` |
 
 The earlier `AIQ_` to `GRID_` rename, for reference (each `AIQ_X` is now read as `X`, like its `GRID_X`):
 

@@ -48,5 +48,5 @@ export const runEnvelopeErrorSchema = z
   .strict()
 export type RunEnvelopeError = z.infer<typeof runEnvelopeErrorSchema>
 
-/** Renew once the carried envelope is this old; the envelope itself lives 6 h (`GRID_REQUEST_CONTEXT_MAX_AGE_MS`). */
+/** Renew once the carried envelope is this old; the envelope itself lives 6 h (`REQUEST_CONTEXT_MAX_AGE_MS`). */
 export const RUN_ENVELOPE_RENEW_AFTER_MS = 60 * 60 * 1000

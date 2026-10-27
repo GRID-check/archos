@@ -612,7 +612,7 @@ waits, so its L3 is the same order and ceiling ingestion has.
   running fleet-wide, then the one served longest ago. One office's sweep of
   twenty scheduled runs does not make another office's question wait for all of
   them.
-- **The per-organisation cap is a claim cap.** `GRID_MAX_ACTIVE_JOBS_PER_ORG` is
+- **The per-organisation cap is a claim cap.** `MAX_ACTIVE_JOBS_PER_ORG` is
   how many of an organisation's jobs run at once; the rest wait their turn.
 - **Priority inside an office.** A scheduled fire is `bulk`; an escalated
   question and a person pressing "run now" are `interactive`. The scheduler no

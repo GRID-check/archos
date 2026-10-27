@@ -181,7 +181,7 @@ describe.skipIf(!url)('permit records against live Postgres', () => {
   const contents = (found: Awaited<ReturnType<typeof search>>) => found.flatMap((record) => record.requirements.map((item) => item.content))
 
   beforeAll(async () => {
-    process.env.GRID_APP_DATABASE_URL = url
+    process.env.APP_DATABASE_URL = url
     const context = await import('@/lib/db/tenant-context')
     withTenant = context.withTenant
     withPlatformAccess = context.withPlatformAccess

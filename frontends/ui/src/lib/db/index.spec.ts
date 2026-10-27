@@ -44,30 +44,30 @@ describe('resolveDbPoolMax', () => {
     vi.unstubAllEnvs()
   })
 
-  it('defaults to 10 when GRID_DB_POOL_MAX is unset', () => {
-    vi.stubEnv('GRID_DB_POOL_MAX', '')
+  it('defaults to 10 when DB_POOL_MAX is unset', () => {
+    vi.stubEnv('DB_POOL_MAX', '')
     expect(resolveDbPoolMax()).toBe(10)
   })
 
   it('honours a valid positive override', () => {
-    vi.stubEnv('GRID_DB_POOL_MAX', '25')
+    vi.stubEnv('DB_POOL_MAX', '25')
     expect(resolveDbPoolMax()).toBe(25)
   })
 
   it('floors a fractional value to an integer connection count', () => {
-    vi.stubEnv('GRID_DB_POOL_MAX', '12.9')
+    vi.stubEnv('DB_POOL_MAX', '12.9')
     expect(resolveDbPoolMax()).toBe(12)
   })
 
   it('falls back to the default rather than disabling the bound on non-positive input', () => {
-    vi.stubEnv('GRID_DB_POOL_MAX', '0')
+    vi.stubEnv('DB_POOL_MAX', '0')
     expect(resolveDbPoolMax()).toBe(10)
-    vi.stubEnv('GRID_DB_POOL_MAX', '-5')
+    vi.stubEnv('DB_POOL_MAX', '-5')
     expect(resolveDbPoolMax()).toBe(10)
   })
 
   it('falls back to the default on unparseable input', () => {
-    vi.stubEnv('GRID_DB_POOL_MAX', 'not-a-number')
+    vi.stubEnv('DB_POOL_MAX', 'not-a-number')
     expect(resolveDbPoolMax()).toBe(10)
   })
 })
@@ -112,7 +112,7 @@ describe('contextStatement', () => {
 
 describe('the BFF client behind a transaction pooler', () => {
   beforeEach(async () => {
-    vi.stubEnv('GRID_APP_DATABASE_URL', 'postgresql://grid_app_rw:pw@grid-pg-pooler-rw:5432/grid_app?sslmode=require')  // pragma: allowlist secret
+    vi.stubEnv('APP_DATABASE_URL', 'postgresql://grid_app_rw:pw@grid-pg-pooler-rw:5432/grid_app?sslmode=require')  // pragma: allowlist secret
     await closeDb()
     driver.calls.transactions.length = 0
     driver.postgres.mockClear()

@@ -12,7 +12,7 @@
  * `documentId` is optional: the backfill knows only a collection and a file
  * name, and a live file name is unique per collection, so it finds the row.
  *
- * Service-to-service only: `GRID_INTERNAL_API_TOKEN` via `internalApiRoute`,
+ * Service-to-service only: `INTERNAL_API_TOKEN` via `internalApiRoute`,
  * fail-closed when unconfigured. The organization is the one the ingest was
  * dispatched for; the project and the folder restriction are the document's
  * own (`lib/permits/service.ts`), never the body's.

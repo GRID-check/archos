@@ -403,7 +403,7 @@ with the service token (`knowledge_layer/llamaindex/document_presence.py`,
   successful file, does not write one either.
 
 Only a definite "gone" discards. No BFF configured (`FRONTEND_INTERNAL_URL`,
-`GRID_INTERNAL_API_TOKEN`), a timeout, a non-200 (including the 404 of a BFF
+`INTERNAL_API_TOKEN`), a timeout, a non-200 (including the 404 of a BFF
 that predates the route) or a body without a boolean `exists` all read as
 "present", and the file indexes as it did before: an unreachable BFF must never
 cost a live document its chunks. A job without a `document_id` (the OIB sync,

@@ -29,7 +29,7 @@ const request = (
 describe('GET /api/internal/document-exists', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    process.env.GRID_INTERNAL_API_TOKEN = 'test-token'
+    process.env.INTERNAL_API_TOKEN = 'test-token'
     process.env.APP_ENV = 'development'
   })
 
@@ -40,7 +40,7 @@ describe('GET /api/internal/document-exists', () => {
   })
 
   it('fails closed when the token is unconfigured', async () => {
-    delete process.env.GRID_INTERNAL_API_TOKEN
+    delete process.env.INTERNAL_API_TOKEN
     expect((await GET(request())).status).toBe(503)
   })
 

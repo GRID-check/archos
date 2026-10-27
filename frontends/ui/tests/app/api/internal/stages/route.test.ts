@@ -41,7 +41,7 @@ function makeRequest(query: string, token?: string): Request {
 
 beforeEach(() => {
   vi.clearAllMocks()
-  vi.stubEnv('GRID_INTERNAL_API_TOKEN', REAL_TOKEN)
+  vi.stubEnv('INTERNAL_API_TOKEN', REAL_TOKEN)
   mockEnabled.mockResolvedValue(['memory_reflection'])
   mockDeepResearch.mockResolvedValue(true)
   mockTasks.mockResolvedValue(true)

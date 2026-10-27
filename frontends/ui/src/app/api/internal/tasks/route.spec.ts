@@ -32,7 +32,7 @@ import { withTenant } from '@/lib/db/tenant-context'
 import {
   GRID_HEADER_NAMES,
   buildGridRequestContextEnvelope,
-  GRID_REQUEST_CONTEXT_MAX_AGE_MS,
+  REQUEST_CONTEXT_MAX_AGE_MS,
 } from '@/lib/request-context'
 import { DELEGATABLE_TASK_KINDS } from '@/lib/db/schema'
 import { commissionResearchRun, delegateTask } from '@/lib/tasks/delegation'
@@ -120,7 +120,7 @@ const CREATE = { op: 'create', projectId: PROJECT, kind: 'submission_check', goa
 
 beforeEach(() => {
   vi.clearAllMocks()
-  process.env.GRID_INTERNAL_API_TOKEN = SECRET
+  process.env.INTERNAL_API_TOKEN = SECRET
   vi.mocked(resolvePinnedRequesterSession).mockResolvedValue(session)
   vi.mocked(isDeepResearchEnabledForOrg).mockResolvedValue(true)
   vi.mocked(isTaskAutomationEnabledForOrg).mockResolvedValue(true)
@@ -150,7 +150,7 @@ describe('identity', () => {
   })
 
   it('refuses an envelope older than its window', async () => {
-    const stale = envelopeHeaders({ issuedAt: Date.now() - GRID_REQUEST_CONTEXT_MAX_AGE_MS - 1000 })
+    const stale = envelopeHeaders({ issuedAt: Date.now() - REQUEST_CONTEXT_MAX_AGE_MS - 1000 })
     expect((await call(CREATE, stale)).status).toBe(401)
   })
 

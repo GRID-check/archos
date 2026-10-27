@@ -123,7 +123,7 @@ elicitation`, and a tool-call trace with `decision_source: elicitation`.
 
 The call travels between the two rounds in `requestState`, signed with the
 SDK's `createRequestStateCodec` under a key derived from
-`GRID_INTERNAL_API_TOKEN` (HMAC over `grid:mcp-request-state:v1`), bound to the
+`INTERNAL_API_TOKEN` (HMAC over `grid:mcp-request-state:v1`), bound to the
 organization, the person and the OAuth client, and valid for five minutes. The
 SDK refuses a state that fails verification before any handler runs; the
 second round must repeat the same call, or nothing runs. An answer without

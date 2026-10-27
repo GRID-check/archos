@@ -4,7 +4,7 @@ Same separation of concerns as :mod:`aiq_agent.knowledge.project_memory`: the
 ``grid_app`` database has exactly one owner, the Next.js BFF, and the backend
 never opens a connection to it. The ``ifc_query`` tool posts to the internal
 endpoint ``POST /api/internal/bim/query`` over the compose network,
-authenticated with the shared service token (``GRID_INTERNAL_API_TOKEN`` set on
+authenticated with the shared service token (``INTERNAL_API_TOKEN`` set on
 both services).
 
 Why a structured query instead of retrieval: a model question ("how many

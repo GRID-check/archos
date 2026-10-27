@@ -64,8 +64,8 @@ describe('the Compose housekeeping clock', () => {
   })
 
   it('refuses to start without a backend URL and a token', () => {
-    expect(() => configFromEnv({ BACKEND_URL: 'http://aiq-api:8000' })).toThrow(/GRID_INTERNAL_API_TOKEN/)
-    expect(configFromEnv({ BACKEND_URL: 'http://aiq-api:8000/', GRID_INTERNAL_API_TOKEN: 't' })).toEqual({
+    expect(() => configFromEnv({ BACKEND_URL: 'http://aiq-api:8000' })).toThrow(/INTERNAL_API_TOKEN/)
+    expect(configFromEnv({ BACKEND_URL: 'http://aiq-api:8000/', INTERNAL_API_TOKEN: 't' })).toEqual({
       backendUrl: 'http://aiq-api:8000',
       internalToken: 't',
     })

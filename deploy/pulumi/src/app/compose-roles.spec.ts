@@ -111,7 +111,7 @@ describe.each(COMPOSE_FILES)("%s", (file) => {
     expect(Object.keys(services).filter((name) => /chroma/i.test(name))).toEqual([]);
     for (const name of Object.keys(services)) {
       const retired = Object.keys(effectiveEnv(file, name)).filter(
-        (k) => k.startsWith("GRID_CHROMA") || k === "GRID_VECTOR_BACKEND",
+        (k) => k.startsWith("CHROMA") || k === "VECTOR_BACKEND",
       );
       expect(retired, name).toEqual([]);
     }
@@ -145,11 +145,11 @@ describe("the retired role and claim switch", () => {
     join("deploy", "pulumi", "src", "app", "backend.ts"),
   ];
 
-  it.each(files)("%s has no PROCESS_ROLE=web and no GRID_INGEST_QUEUE_CLAIM", (file) => {
+  it.each(files)("%s has no PROCESS_ROLE=web and no INGEST_QUEUE_CLAIM", (file) => {
     const source = read(file);
 
     expect(source).not.toMatch(/PROCESS_ROLE[=:"' ]+web\b/);
-    expect(source).not.toContain("GRID_INGEST_QUEUE_CLAIM");
+    expect(source).not.toContain("INGEST_QUEUE_CLAIM");
   });
 
   it("is no longer read anywhere under the Python image sources", () => {
@@ -158,13 +158,13 @@ describe("the retired role and claim switch", () => {
       .map((f) => read("frontends", "aiq_api", "src", "aiq_api", f))
       .join("\n");
 
-    expect(python).not.toContain("GRID_INGEST_QUEUE_CLAIM");
+    expect(python).not.toContain("INGEST_QUEUE_CLAIM");
   });
 });
 
 /** Research runs on the database queue alone: no execution switch, scheduler address or worker-pool knob survives. */
 describe("the research queue is the only execution path", () => {
-  const retired = /GRID_JOB_EXECUTION|NAT_DASK_SCHEDULER_ADDRESS|NAT_USE_DASK_THREADS|DASK_|GRID_MAX_ACTIVE_JOBS(?!_)/;
+  const retired = /JOB_EXECUTION|NAT_DASK_SCHEDULER_ADDRESS|NAT_USE_DASK_THREADS|DASK_|MAX_ACTIVE_JOBS(?!_)/;
   const files = [
     ...COMPOSE_FILES.map((f) => join("deploy", "compose", f)),
     join("deploy", ".env.example"),

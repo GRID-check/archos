@@ -675,7 +675,7 @@ jobs:
           # unit shards legitimately have no database.
           RLS_SUITE_REQUIRED: "1"
           # The per-migration checks only when a migration or the script moved.
-          GRID_RLS_MIGRATION_CHECKS: ${{ needs.changes.outputs.migrations == 'true' && '1' || '0' }}
+          RLS_MIGRATION_CHECKS: ${{ needs.changes.outputs.migrations == 'true' && '1' || '0' }}
 
   frontend-test:
     name: Frontend tests (shard ${{ matrix.shard }}/8)

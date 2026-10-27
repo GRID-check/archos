@@ -7,7 +7,7 @@
  * and every signal is a sibling path on it.
  *
  * The resource names the tier (`service.name`), the build (`service.version`,
- * the commit the Dockerfile stamps as GRID_GIT_SHA) and the process
+ * the commit the Dockerfile stamps as GIT_SHA) and the process
  * (`service.instance.id`, the pod; `process.pid`). The process matters most to
  * metrics: bff-jobs runs its claim loop and a `server.js` child in one pod under
  * one service name, and a cumulative counter from two processes under one
@@ -27,7 +27,7 @@ function signalUrl(endpoint, signal) {
 /** The resource every exported record and reading carries; blank values are left out. */
 function resourceAttributes(env, pid = process.pid) {
   const attributes = { 'service.name': String(env.OTEL_SERVICE_NAME ?? '').trim() || 'grid-ui', 'process.pid': pid }
-  const sha = String(env.GRID_GIT_SHA ?? '').trim()
+  const sha = String(env.GIT_SHA ?? '').trim()
   if (sha) attributes['service.version'] = sha
   const instance = String(env.HOSTNAME ?? '').trim()
   if (instance) attributes['service.instance.id'] = instance

@@ -80,7 +80,7 @@ beforeEach(() => {
   vi.clearAllMocks()
   process.env.WORKOS_AUTHKIT_DOMAIN = 'auth.piloti.test'
   process.env.MCP_RESOURCE_URL = URL_
-  process.env.GRID_INTERNAL_API_TOKEN = SECRET
+  process.env.INTERNAL_API_TOKEN = SECRET
   process.env.WORKOS_REDIRECT_URI = 'https://app.piloti.test/api/auth/callback'
   vi.mocked(resolvePinnedRequesterSession).mockResolvedValue(session)
   vi.mocked(enforceLimit).mockResolvedValue({

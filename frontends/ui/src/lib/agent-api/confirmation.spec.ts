@@ -69,7 +69,7 @@ beforeAll(() => {
 })
 
 beforeEach(() => {
-  vi.stubEnv('GRID_INTERNAL_API_TOKEN', 'a-real-internal-token-for-the-confirmation-spec')
+  vi.stubEnv('INTERNAL_API_TOKEN', 'a-real-internal-token-for-the-confirmation-spec')
   vi.mocked(callOperation).mockReset().mockResolvedValue({ status: 200, ok: true, body: { deleted: true } })
   vi.mocked(describeTargets).mockReset().mockResolvedValue([{ type: 'project', id: 'p-1', name: 'Haus Josef' }])
   vi.mocked(proposeOperation).mockReset().mockResolvedValue({ proposalId: 'prop_1', summary: 'Delete a project (id: p-1)' })
@@ -303,14 +303,14 @@ describe('everyone the feature does not reach is answered as before', () => {
   })
 
   it('asks nothing when no signing key is configured', async () => {
-    vi.stubEnv('GRID_INTERNAL_API_TOKEN', '')
+    vi.stubEnv('INTERNAL_API_TOKEN', '')
     const first = await modernCall(outside, DELETE_P1)
     expect(first.result?.content?.[0].text).toBe('{"deleted":true}')
   })
 
   it('answers a 2025-era call byte for byte as it did without the feature', async () => {
     const withKey = await legacyCall(outside, DELETE_P1)
-    vi.stubEnv('GRID_INTERNAL_API_TOKEN', '')
+    vi.stubEnv('INTERNAL_API_TOKEN', '')
     const withoutKey = await legacyCall(outside, DELETE_P1)
     expect(withKey).toBe(withoutKey)
     expect(JSON.parse(withKey).result.content[0].text).toBe('{"deleted":true}')

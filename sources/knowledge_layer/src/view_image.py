@@ -86,13 +86,13 @@ _JPEG_QUALITY = 90
 _IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp", ".tif", ".tiff"}
 
 # BFF internal lookup + SeaweedFS (S3) fetch. FRONTEND_INTERNAL_URL +
-# GRID_INTERNAL_API_TOKEN are already present on the aiq-agent tier; the
+# INTERNAL_API_TOKEN are already present on the aiq-agent tier; the
 # SEAWEED_* set is injected by the same tier once the backend fetches bytes
 # directly (the client itself is `aiq_agent.common.seaweed_s3`, shared with the
 # base-corpus store). All are read lazily so a base-corpus-only deployment (no
 # project uploads) needs none of them.
 _FRONTEND_INTERNAL_URL_ENV = "FRONTEND_INTERNAL_URL"
-_INTERNAL_TOKEN_ENV = "GRID_INTERNAL_API_TOKEN"
+_INTERNAL_TOKEN_ENV = "INTERNAL_API_TOKEN"
 
 
 def default_max_dim() -> int:

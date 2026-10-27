@@ -131,7 +131,7 @@ async function startGateway(env: Record<string, string> = {}): Promise<number> {
       // Isolate the behaviour under test from the per-IP limiter: every request
       // here comes from 127.0.0.1, which is exactly the case it does cover.
       WS_UPGRADE_RATE_LIMIT: '0',
-      GRID_INTERNAL_API_TOKEN: SECRET,
+      INTERNAL_API_TOKEN: SECRET,
       ...env,
     },
     stdio: ['ignore', 'pipe', 'pipe'],
@@ -275,7 +275,7 @@ describe('gateway compact turn-context transport', () => {
   })
 
   it('fails closed for authenticated compact context when its service token is unavailable', async () => {
-    const port = await startGateway({ GRID_INTERNAL_API_TOKEN: '' })
+    const port = await startGateway({ INTERNAL_API_TOKEN: '' })
     expect(await upgrade(port, 'session=no-service-token')).toBe(503)
     expect(backendHeaders).toEqual({})
   })
@@ -287,7 +287,7 @@ describe('gateway compact turn-context transport', () => {
       projectMemory: 'legacy memory',
       orgInstructions: 'legacy instructions',
     }
-    const port = await startGateway({ GRID_INTERNAL_API_TOKEN: '' })
+    const port = await startGateway({ INTERNAL_API_TOKEN: '' })
     expect(await upgrade(port, 'session=anonymous')).toBe(101)
     const payload = JSON.parse(Buffer.from(backendHeaders['x-grid-request-context'] as string, 'base64url').toString('utf8'))
     expect(payload).not.toHaveProperty('contextTransport')

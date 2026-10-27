@@ -57,7 +57,7 @@ vi.mock('@/lib/authz/platform', () => ({
 
 describe.skipIf(!url)('platform default bootstrap against live Postgres', () => {
   beforeEach(async () => {
-    process.env.GRID_APP_DATABASE_URL = url
+    process.env.APP_DATABASE_URL = url
     vi.clearAllMocks()
     getWorkflowLlmBaseUrls.mockResolvedValue(
       Object.fromEntries(allRefs.map((ref) => [ref, OPENROUTER])),

@@ -51,7 +51,7 @@ describe.skipIf(!url)('citation-health scope against live Postgres', () => {
   let repo: typeof import('./repository')
 
   beforeAll(async () => {
-    process.env.GRID_APP_DATABASE_URL = url
+    process.env.APP_DATABASE_URL = url
     const context = await import('@/lib/db/tenant-context')
     platform = (fn) => context.withPlatformAccess('test: citation scope', fn)
     repo = await import('./repository')

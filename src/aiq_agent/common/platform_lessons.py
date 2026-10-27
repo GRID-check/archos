@@ -122,7 +122,7 @@ def sanitize_lesson_ids(value: object) -> tuple[str, ...]:
 
 def _fetch_digest() -> tuple[str | None, tuple[str, ...]]:
     """One HTTP round-trip to the BFF's internal platform-lessons endpoint: the digest and its lesson ids."""
-    token = os.environ.get("GRID_INTERNAL_API_TOKEN")
+    token = os.environ.get("INTERNAL_API_TOKEN")
     if not token:
         # No internal-token trust channel — no lessons, and no error.
         return None, ()

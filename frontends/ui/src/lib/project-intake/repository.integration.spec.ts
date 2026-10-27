@@ -72,7 +72,7 @@ describe.skipIf(!url)('project intakes against live Postgres', () => {
     repo.claimIntakeReading(ORG, projectId, { jobId, requestedBy: USER, forgetRead: false, now: new Date() })
 
   beforeAll(async () => {
-    process.env.GRID_APP_DATABASE_URL = url
+    process.env.APP_DATABASE_URL = url
     const context = await import('@/lib/db/tenant-context')
     withTenant = context.withTenant
     withPlatformAccess = context.withPlatformAccess

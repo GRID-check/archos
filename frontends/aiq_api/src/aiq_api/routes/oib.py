@@ -34,7 +34,7 @@ from ..models.requests import OibUploadedMember
 
 logger = logging.getLogger(__name__)
 
-_ADMIN_TOKEN = os.environ.get("GRID_ADMIN_TOKEN")
+_ADMIN_TOKEN = os.environ.get("ADMIN_TOKEN")
 
 # Upper bound for a single base-corpus PDF (the largest shipped OIB PDF is ~15 MB).
 # Also the cap applied per member AND to the total extracted payload of a ZIP.
@@ -55,7 +55,7 @@ def _require_admin_token_strict(x_admin_token: str | None = Header(default=None)
     """The admin token, failing CLOSED when none is configured.
 
     ``_require_admin_token`` lets every request through on a deployment without
-    ``GRID_ADMIN_TOKEN`` (local dev). An export hands the whole licensed corpus
+    ``ADMIN_TOKEN`` (local dev). An export hands the whole licensed corpus
     to whoever asks, so it never runs unguarded.
     """
     if not _ADMIN_TOKEN:

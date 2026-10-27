@@ -32,7 +32,7 @@ Budgets view read-only from Platform → Übersicht (`/app/platform/organization
 aggregates and each organization's limits as an hourly snapshot:
 [`org-spend-in-posthog.md`](../observability/org-spend-in-posthog.md).
 
-There is no currency conversion anywhere. The old `GRID_BUDGET_EUR_PER_USD`
+There is no currency conversion anywhere. The old `BUDGET_EUR_PER_USD`
 rate is gone: a hand-set rate was neither the bank's nor OpenRouter's, and a
 figure nobody is charged is not worth showing. What a credit costs a tenant in
 euros is the contract's business.
@@ -379,6 +379,6 @@ same limits; this is not a separate platform-only commercial ceiling.
 
 | Variable | Default | Purpose |
 |---|---|---|
-| `GRID_INTERNAL_API_TOKEN` | dev token | guards `/api/internal/usage` (both services) |
+| `INTERNAL_API_TOKEN` | dev token | guards `/api/internal/usage` (both services) |
 | `OPENROUTER_API_KEY` | — | frontend: catalog listing (model config); backend: LLM calls |
 | `OPENROUTER_BASE_URL` | `https://openrouter.ai/api/v1` | catalog override for tests/self-hosting |

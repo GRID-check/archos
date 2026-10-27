@@ -99,7 +99,7 @@ describe('where people sign in (REQUIRE_AUTH=true): WorkOS decides, fail-closed'
       'SKILLS_ENABLED',
       'COLLABORATION_ENABLED',
       'MAIL_IMPORT_ENABLED',
-      'GRID_PROJECT_KNOWLEDGE_PAGE_ENABLED',
+      'PROJECT_KNOWLEDGE_PAGE_ENABLED',
     ]) {
       vi.stubEnv(name, 'true')
     }

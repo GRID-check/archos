@@ -77,7 +77,7 @@ describe.skipIf(!url)('shelf folders against Postgres', () => {
   }
 
   beforeAll(async () => {
-    process.env.GRID_APP_DATABASE_URL = url
+    process.env.APP_DATABASE_URL = url
     withTenant = (await import('@/lib/db/tenant-context')).withTenant
     db = (await import('@/lib/db')).getDb()
     folders = await import('./shelf-folders')

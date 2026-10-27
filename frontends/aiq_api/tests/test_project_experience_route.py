@@ -64,7 +64,7 @@ def _body() -> dict[str, Any]:
 
 @pytest.fixture
 def app(monkeypatch: pytest.MonkeyPatch) -> FastAPI:
-    monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", TOKEN)
+    monkeypatch.setenv("INTERNAL_API_TOKEN", TOKEN)
     app = FastAPI()
     router = APIRouter()
     add_project_experience_routes(router)

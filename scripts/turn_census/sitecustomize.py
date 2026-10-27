@@ -183,7 +183,7 @@ def _eval_envelope():
     precedent``): the agent then reads the two request headers a chat turn
     carries (``X-Grid-Request-Context`` and its signature) from these
     variables, and every other header as before. The envelope is signed with
-    the run's ``GRID_INTERNAL_API_TOKEN``, so the agent verifies it like a
+    the run's ``INTERNAL_API_TOKEN``, so the agent verifies it like a
     real one; nothing else about the turn is faked here.
     """
     header = os.environ.get("EVAL_ENVELOPE")

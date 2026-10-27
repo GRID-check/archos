@@ -42,7 +42,7 @@ export const RESEARCH_QUEUE_DEPTH_QUERY = queueDepthQuery(QUEUE_TABLE);
  * and asks for ceil(depth / concurrency) replicas between `minReplicas` and
  * `maxReplicas`; an empty queue shrinks the tier to its floor (zero in dev).
  * The claim is fair across organizations and holds one to
- * `GRID_MAX_ACTIVE_JOBS_PER_ORG` jobs at once, so a deep queue from one office
+ * `MAX_ACTIVE_JOBS_PER_ORG` jobs at once, so a deep queue from one office
  * does not make the tier scale past what any single office may use of it.
  *
  * ROLLOUT NOTE — on SIGTERM the worker stops claiming and awaits its in-flight

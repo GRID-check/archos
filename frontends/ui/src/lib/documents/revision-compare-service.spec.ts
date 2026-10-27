@@ -53,7 +53,7 @@ function documentsById(...docs: Document[]) {
 
 describe('compareRevisionVisually', () => {
   beforeEach(() => {
-    vi.stubEnv('GRID_INTERNAL_API_TOKEN', 'test-token')
+    vi.stubEnv('INTERNAL_API_TOKEN', 'test-token')
     vi.stubGlobal('fetch', mockFetch)
     mockFetch.mockReset()
     mockFetch.mockResolvedValue(answer({ regions: [REGION], summary: ['Die Wand ist nach Osten gerückt.'] }))
@@ -256,7 +256,7 @@ describe('compareRevisionPage (a notice, ADR-0130)', () => {
   const TRACE = 'a'.repeat(32)
 
   beforeEach(() => {
-    vi.stubEnv('GRID_INTERNAL_API_TOKEN', 'test-token')
+    vi.stubEnv('INTERNAL_API_TOKEN', 'test-token')
     vi.stubGlobal('fetch', mockFetch)
     mockFetch.mockReset()
     vi.mocked(getAccessibleDocument).mockReset()
@@ -287,7 +287,7 @@ describe('compareRevisionPage (a notice, ADR-0130)', () => {
 
 describe('changedRevisionPages', () => {
   beforeEach(() => {
-    vi.stubEnv('GRID_INTERNAL_API_TOKEN', 'test-token')
+    vi.stubEnv('INTERNAL_API_TOKEN', 'test-token')
     vi.stubGlobal('fetch', mockFetch)
     mockFetch.mockReset()
     vi.mocked(getAccessibleDocument).mockReset()

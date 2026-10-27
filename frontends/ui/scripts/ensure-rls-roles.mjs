@@ -14,7 +14,7 @@
  *
  *   1. creates `grid_app_platform` and `grid_app_rw` if they are absent,
  *   2. grants the membership that makes the platform step-up legal,
- *   3. syncs `grid_app_rw`'s password to whatever `GRID_APP_DATABASE_URL` says.
+ *   3. syncs `grid_app_rw`'s password to whatever `APP_DATABASE_URL` says.
  *
  * The password is not a separate variable to keep in sync: it is read from the
  * URL the app is about to connect with, so the two cannot drift.
@@ -32,8 +32,8 @@ import postgres from "postgres";
 const RUNTIME_ROLE = "grid_app_rw";
 const PLATFORM_ROLE = "grid_app_platform";
 
-const runtimeUrl = process.env.GRID_APP_DATABASE_URL;
-const ownerUrl = process.env.GRID_APP_MIGRATION_DATABASE_URL;
+const runtimeUrl = process.env.APP_DATABASE_URL;
+const ownerUrl = process.env.APP_MIGRATION_DATABASE_URL;
 
 function log(message) {
   console.log(`[ensure-rls-roles] ${message}`);
@@ -44,7 +44,7 @@ if (!runtimeUrl || !ownerUrl) {
   // There is no privilege split to bootstrap. Name the one that is actually
   // missing — telling an operator the wrong variable sends them to fix
   // something that was never set wrong.
-  log(`${runtimeUrl ? "GRID_APP_MIGRATION_DATABASE_URL" : "GRID_APP_DATABASE_URL"} not set — nothing to do.`);
+  log(`${runtimeUrl ? "APP_MIGRATION_DATABASE_URL" : "APP_DATABASE_URL"} not set — nothing to do.`);
   process.exit(0);
 }
 
@@ -52,7 +52,7 @@ let parsed;
 try {
   parsed = new URL(runtimeUrl);
 } catch {
-  log("GRID_APP_DATABASE_URL is not a parseable URL — leaving it to the app to report.");
+  log("APP_DATABASE_URL is not a parseable URL — leaving it to the app to report.");
   process.exit(0);
 }
 
@@ -66,7 +66,7 @@ if (runtimeUser !== RUNTIME_ROLE) {
   process.exit(0);
 }
 if (!runtimePassword) {
-  log(`no password in GRID_APP_DATABASE_URL — assuming trust auth, skipping.`);
+  log(`no password in APP_DATABASE_URL — assuming trust auth, skipping.`);
   process.exit(0);
 }
 
@@ -108,7 +108,7 @@ try {
       SELECT format('ALTER ROLE %I LOGIN NOINHERIT PASSWORD %L', ${RUNTIME_ROLE}::text, ${runtimePassword}::text) AS statement
     `;
     await sql.unsafe(built.statement);
-    log(`${RUNTIME_ROLE} login synchronised with GRID_APP_DATABASE_URL.`);
+    log(`${RUNTIME_ROLE} login synchronised with APP_DATABASE_URL.`);
   }
 
   // Idempotent, and the step-up is useless without it.
@@ -117,7 +117,7 @@ try {
   log(`could not provision the row-level-security roles (${error.message}) — continuing.`);
   log(`if migration 0030 then reports missing roles, create them as an admin:`);
   log(`  CREATE ROLE ${PLATFORM_ROLE} NOLOGIN BYPASSRLS;`);
-  log(`  CREATE ROLE ${RUNTIME_ROLE} LOGIN NOINHERIT PASSWORD '<the one in GRID_APP_DATABASE_URL>';`);
+  log(`  CREATE ROLE ${RUNTIME_ROLE} LOGIN NOINHERIT PASSWORD '<the one in APP_DATABASE_URL>';`);
   log(`  GRANT ${PLATFORM_ROLE} TO ${RUNTIME_ROLE};`);
 } finally {
   await sql.end({ timeout: 5 });

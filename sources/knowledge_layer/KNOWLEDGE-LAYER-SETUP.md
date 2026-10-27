@@ -131,8 +131,8 @@ By default, LlamaIndex ingests text only and calls the embedding and VLM models 
 | `MAX_IMAGES_PER_DOCUMENT` | `64` | Most embedded images per PDF sent to the VLM, largest first; the count left out is on the file's job status as `images_over_cap` |
 | `MAX_IMAGE_PIXELS` | `268435456` | Refuse an embedded raster over this many pixels (256 MP) before decoding it, from its metadata; pypdfium2 cannot downscale an embedded image on decode, so this bounds one bitmap's allocation (~1 GiB at the default). Counted as `images_over_pixel_budget`; a page refused this way keeps its text layer |
 | **Vision Model** | | |
-| `GRID_VLM_MODEL` | `openai/gpt-6-luna` | VLM for image captioning — house model, image input verified on OpenRouter; caption quality on OIB tables/drawings still unevaluated (TODO) |
-| `GRID_VLM_BASE_URL` | `https://openrouter.ai/api/v1` | VLM API base URL (any OpenAI-compatible chat endpoint that takes images) |
+| `VLM_MODEL` | `openai/gpt-6-luna` | VLM for image captioning — house model, image input verified on OpenRouter; caption quality on OIB tables/drawings still unevaluated (TODO) |
+| `VLM_BASE_URL` | `https://openrouter.ai/api/v1` | VLM API base URL (any OpenAI-compatible chat endpoint that takes images) |
 
 To switch one off, set it in `deploy/.env`:
 

@@ -17,7 +17,7 @@ export default defineConfig({
     // pointed at a single-credential throwaway database still works; it is not a
     // supported way to migrate a deployment.
     url:
-      process.env.GRID_APP_MIGRATION_DATABASE_URL ?? process.env.GRID_APP_DATABASE_URL,
+      process.env.APP_MIGRATION_DATABASE_URL ?? process.env.APP_DATABASE_URL,
   },
 })
 ```
@@ -25,7 +25,7 @@ export default defineConfig({
 - **Schema source:** `./src/lib/db/schema/*.ts` (6 files, barrel-exported)
 - **Output directory:** `./drizzle/`
 - **Dialect:** PostgreSQL
-- **Connection:** via `GRID_APP_MIGRATION_DATABASE_URL` — the schema OWNER, and what every deployment must use. `GRID_APP_DATABASE_URL` is only a fallback for a local single-credential database; it is the DML-only runtime role, which cannot run DDL and whose backfills would touch zero rows under row-level security (ADR-0041). Either way it must point at the `grid_app` database.
+- **Connection:** via `APP_MIGRATION_DATABASE_URL` — the schema OWNER, and what every deployment must use. `APP_DATABASE_URL` is only a fallback for a local single-credential database; it is the DML-only runtime role, which cannot run DDL and whose backfills would touch zero rows under row-level security (ADR-0041). Either way it must point at the `grid_app` database.
 
 ---
 
@@ -46,12 +46,12 @@ This reads the current schema, diffs against the last snapshot in `drizzle/meta/
 
 ### 3. Apply Migration
 
-> **Migrations connect as the schema OWNER.** `GRID_APP_DATABASE_URL` now points
+> **Migrations connect as the schema OWNER.** `APP_DATABASE_URL` now points
 > at `grid_app_rw`, which holds DML only and is subject to row-level security —
 > correct for serving requests, useless for DDL, and actively dangerous for a
 > data backfill, which would silently touch zero rows. Set
-> `GRID_APP_MIGRATION_DATABASE_URL` to the owner credential; `drizzle.config.ts`
-> prefers it and falls back to `GRID_APP_DATABASE_URL` for a throwaway local
+> `APP_MIGRATION_DATABASE_URL` to the owner credential; `drizzle.config.ts`
+> prefers it and falls back to `APP_DATABASE_URL` for a throwaway local
 > database. See [row-level-security.md](row-level-security.md) and ADR-0041.
 >
 > **A new table must join the tenant boundary in the same migration that creates

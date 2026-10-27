@@ -33,10 +33,10 @@ describe('readConfig', () => {
     expect(c.retentionDays).toBe(90)
   })
 
-  it('reads the GRID_SKILL_SCHEDULER_* overrides and strips a trailing slash from the frontend URL', () => {
+  it('reads the SKILL_SCHEDULER_* overrides and strips a trailing slash from the frontend URL', () => {
     const c = readConfig({
       FRONTEND_INTERNAL_URL: 'http://frontend:3000/',
-      GRID_INTERNAL_API_TOKEN: 'tok',
+      INTERNAL_API_TOKEN: 'tok',
       SKILL_SCHEDULER_POLL_MS: '5000',
       SKILL_SCHEDULER_BATCH: '7',
       SKILL_RUNS_RETENTION_DAYS: '30',
@@ -49,11 +49,11 @@ describe('readConfig', () => {
   })
 
 
-  it('prefers the new GRID_SKILL_* name when both new and old are set (no warning)', () => {
+  it('ignores the retired WORKFLOW_ name when the SKILL_ one is set (no warning)', () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
     const c = readConfig({
       SKILL_SCHEDULER_POLL_MS: '1000',
-      GRID_WORKFLOW_SCHEDULER_POLL_MS: '9000',
+      WORKFLOW_SCHEDULER_POLL_MS: '9000',
     })
     expect(c.pollMs).toBe(1000)
     expect(warn).not.toHaveBeenCalled()

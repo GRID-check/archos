@@ -69,7 +69,7 @@ const STORED = { id: '11111111-1111-4111-8111-111111111111', storageKey: 'org/o1
 describe('GET /api/internal/document-file', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    process.env.GRID_INTERNAL_API_TOKEN = 'test-token'
+    process.env.INTERNAL_API_TOKEN = 'test-token'
     process.env.APP_ENV = 'development'
   })
 
@@ -80,7 +80,7 @@ describe('GET /api/internal/document-file', () => {
   })
 
   it('fails closed when the token is unconfigured', async () => {
-    delete process.env.GRID_INTERNAL_API_TOKEN
+    delete process.env.INTERNAL_API_TOKEN
     expect((await GET(request())).status).toBe(503)
   })
 

@@ -7,7 +7,7 @@
  * `submitAgentRun` minted and echoes it from the run's tools, so `file_draft`,
  * the canvas tools and `propose_file_change` act as the person who commissioned
  * the run. That envelope is accepted for six hours
- * (`GRID_REQUEST_CONTEXT_MAX_AGE_MS`), and a research run can be queued behind
+ * (`REQUEST_CONTEXT_MAX_AGE_MS`), and a research run can be queued behind
  * an office's own questions for most of that. Past the renewal age
  * (`RUN_ENVELOPE_RENEW_AFTER_MS`) the worker asks here for a new one.
  *
@@ -179,12 +179,12 @@ async function signFor(run: TaskRun, now: number): Promise<RunEnvelopeOutcome> {
   const context = await resolveRunContext(subject, run.plan.prompt)
   const { header, signature } = buildGridRequestContextEnvelope(
     runRequestContextInput(subject, context, conversationId, now),
-    process.env.GRID_INTERNAL_API_TOKEN,
+    process.env.INTERNAL_API_TOKEN,
   )
   // An unsigned envelope is no acting identity (`verifyGridRequestContextEnvelope`
   // refuses it). The route's own token check already failed closed without the
   // secret, so reaching this is a deployment fault, not a refusal.
-  if (!signature) throw new Error('GRID_INTERNAL_API_TOKEN is not configured; cannot sign a run envelope')
+  if (!signature) throw new Error('INTERNAL_API_TOKEN is not configured; cannot sign a run envelope')
   warnIfRunEnvelopeLarge({ envelope: header, signature }, run.id)
 
   await recordAuditEvent({

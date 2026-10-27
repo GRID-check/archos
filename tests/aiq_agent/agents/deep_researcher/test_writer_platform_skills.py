@@ -14,7 +14,7 @@ that carries the body.
 
 The second test is the more important one. A skill is additive; a report is the
 product. If the BFF cannot be reached — an anonymous run, an unset
-``GRID_INTERNAL_API_TOKEN``, a restarting frontend — the run must still produce
+``INTERNAL_API_TOKEN``, a restarting frontend — the run must still produce
 its report, with no skills section and nothing under ``/skills/office/`` to read.
 """
 
@@ -266,7 +266,7 @@ async def test_the_report_is_still_written_when_skills_cannot_be_resolved(llm_pr
     """A BFF that does not answer costs the run its voice, never its report.
 
     The whole resolution path is allowed to fail here — the way it fails on an
-    anonymous run or with ``GRID_INTERNAL_API_TOKEN`` unset — and the assertion
+    anonymous run or with ``INTERNAL_API_TOKEN`` unset — and the assertion
     is that the run reaches its finished Markdown anyway, with no skills section
     promising instructions that never arrived.
     """

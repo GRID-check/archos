@@ -41,7 +41,7 @@ Two failure modes make the naive fix worse than the gap:
    behaviour of a write-capable agent over its own RAG corpus, not a rare
    prompt going wrong.
 2. **Writing it from the backend.** The agent's principal is **wider** than the
-   user's, not narrower: it holds the shared `GRID_INTERNAL_API_TOKEN`, and the
+   user's, not narrower: it holds the shared `INTERNAL_API_TOKEN`, and the
    internal memory route says so in its own comment — *"this service-token
    endpoint cannot verify the human's org role"*
    (`app/api/internal/memory/route.ts`). A project-scoped write through

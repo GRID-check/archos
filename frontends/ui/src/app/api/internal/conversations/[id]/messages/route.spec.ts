@@ -49,7 +49,7 @@ afterEach(() => {
 
 describe('POST /api/internal/conversations/[id]/messages', () => {
   it('returns 503 when the internal token is not configured', async () => {
-    vi.stubEnv('GRID_INTERNAL_API_TOKEN', '')
+    vi.stubEnv('INTERNAL_API_TOKEN', '')
 
     const response = await POST(makeRequest(validPayload, REAL_TOKEN), routeContext)
 
@@ -58,7 +58,7 @@ describe('POST /api/internal/conversations/[id]/messages', () => {
   })
 
   it('returns 403 for a wrong token', async () => {
-    vi.stubEnv('GRID_INTERNAL_API_TOKEN', REAL_TOKEN)
+    vi.stubEnv('INTERNAL_API_TOKEN', REAL_TOKEN)
 
     const response = await POST(makeRequest(validPayload, 'wrong-token'), routeContext)
 
@@ -67,7 +67,7 @@ describe('POST /api/internal/conversations/[id]/messages', () => {
   })
 
   it('returns 403 when the token header is missing', async () => {
-    vi.stubEnv('GRID_INTERNAL_API_TOKEN', REAL_TOKEN)
+    vi.stubEnv('INTERNAL_API_TOKEN', REAL_TOKEN)
 
     const response = await POST(makeRequest(validPayload), routeContext)
 
@@ -75,7 +75,7 @@ describe('POST /api/internal/conversations/[id]/messages', () => {
   })
 
   it('refuses the well-known dev default token outside dev environments (503)', async () => {
-    vi.stubEnv('GRID_INTERNAL_API_TOKEN', DEV_DEFAULT_TOKEN)
+    vi.stubEnv('INTERNAL_API_TOKEN', DEV_DEFAULT_TOKEN)
     vi.stubEnv('APP_ENV', 'production')
     vi.stubEnv('NODE_ENV', 'production')
 
@@ -86,7 +86,7 @@ describe('POST /api/internal/conversations/[id]/messages', () => {
   })
 
   it('persists the assistant message with a valid token, org-scoped (201)', async () => {
-    vi.stubEnv('GRID_INTERNAL_API_TOKEN', REAL_TOKEN)
+    vi.stubEnv('INTERNAL_API_TOKEN', REAL_TOKEN)
     vi.mocked(persistInternalConversationMessages).mockResolvedValue([
       { id: validPayload.id } as never,
     ])
@@ -112,7 +112,7 @@ describe('POST /api/internal/conversations/[id]/messages', () => {
   })
 
   it('is idempotent: onConflictDoNothing means a replayed id no-ops (empty result, still 201)', async () => {
-    vi.stubEnv('GRID_INTERNAL_API_TOKEN', REAL_TOKEN)
+    vi.stubEnv('INTERNAL_API_TOKEN', REAL_TOKEN)
     // A second write with the same deterministic id conflicts and returns [].
     vi.mocked(persistInternalConversationMessages).mockResolvedValue([])
 
@@ -124,7 +124,7 @@ describe('POST /api/internal/conversations/[id]/messages', () => {
   })
 
   it('maps a cross-org / unknown conversation to 404 (no token bypass of tenancy)', async () => {
-    vi.stubEnv('GRID_INTERNAL_API_TOKEN', REAL_TOKEN)
+    vi.stubEnv('INTERNAL_API_TOKEN', REAL_TOKEN)
     vi.mocked(persistInternalConversationMessages).mockRejectedValue(new NotFoundError())
 
     const response = await POST(makeRequest(validPayload, REAL_TOKEN), routeContext)
@@ -133,7 +133,7 @@ describe('POST /api/internal/conversations/[id]/messages', () => {
   })
 
   it('rejects a body missing the organizationId (400)', async () => {
-    vi.stubEnv('GRID_INTERNAL_API_TOKEN', REAL_TOKEN)
+    vi.stubEnv('INTERNAL_API_TOKEN', REAL_TOKEN)
     const { organizationId: _omit, ...withoutOrg } = validPayload
 
     const response = await POST(makeRequest(withoutOrg, REAL_TOKEN), routeContext)

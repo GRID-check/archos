@@ -31,14 +31,14 @@ const CASES: Array<{ name: string; env: Record<string, string>; expected: string
   {
     name: 'a published image that signs people in',
     env: {
-      GRID_GIT_SHA: '0f1e2d3c4b5a69788796a5b4c3d2e1f00f1e2d3c', // pragma: allowlist secret
+      GIT_SHA: '0f1e2d3c4b5a69788796a5b4c3d2e1f00f1e2d3c', // pragma: allowlist secret
       REQUIRE_AUTH: 'true',
     },
     expected: '[boot] sha=0f1e2d3c4b5a69788796a5b4c3d2e1f00f1e2d3c flags=workos', // pragma: allowlist secret
   },
   {
     name: 'REQUIRE_AUTH=false is the anonymous deployment, not WorkOS',
-    env: { GRID_GIT_SHA: 'abc1234', REQUIRE_AUTH: 'false' },
+    env: { GIT_SHA: 'abc1234', REQUIRE_AUTH: 'false' },
     expected: '[boot] sha=abc1234 flags=defaults',
   },
   {
@@ -48,7 +48,7 @@ const CASES: Array<{ name: string; env: Record<string, string>; expected: string
   },
   {
     name: 'case is ignored and the sha is trimmed, as an env_file produces them',
-    env: { GRID_GIT_SHA: '  deadbeef  ', REQUIRE_AUTH: 'TRUE' },
+    env: { GIT_SHA: '  deadbeef  ', REQUIRE_AUTH: 'TRUE' },
     expected: '[boot] sha=deadbeef flags=workos',
   },
   {
@@ -57,8 +57,8 @@ const CASES: Array<{ name: string; env: Record<string, string>; expected: string
     expected: '[boot] sha=unknown flags=defaults',
   },
   {
-    name: 'an empty GRID_GIT_SHA is an unstamped image, not an empty sha',
-    env: { GRID_GIT_SHA: '' },
+    name: 'an empty GIT_SHA is an unstamped image, not an empty sha',
+    env: { GIT_SHA: '' },
     expected: '[boot] sha=unknown flags=defaults',
   },
 ]

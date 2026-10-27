@@ -9,7 +9,7 @@ through ``/api/mcp`` and the BFF forwards the call here
 
 Two credentials, as for every act of a person on this tier:
 
-* the internal token (``GRID_INTERNAL_API_TOKEN``) says the caller is the BFF;
+* the internal token (``INTERNAL_API_TOKEN``) says the caller is the BFF;
 * the signed ``X-Grid-Request-Context`` envelope says WHO asked and what they
   may read: the organization, the user, the project and the collection scope
   the BFF checked before it signed. The tools read all of it from the turn
@@ -78,7 +78,7 @@ def _verified_context(request: Request) -> GridRequestContext:
     BFF verifier's window in both directions. Here no user is asserted by the caller, so the
     envelope names the user it speaks for.
     """
-    secret = os.environ.get("GRID_INTERNAL_API_TOKEN")
+    secret = os.environ.get("INTERNAL_API_TOKEN")
     context = GridRequestContext.from_envelope(
         request.headers.get(REQUEST_CONTEXT_ENVELOPE_HEADER),
         request.headers.get(REQUEST_CONTEXT_ENVELOPE_SIG_HEADER),

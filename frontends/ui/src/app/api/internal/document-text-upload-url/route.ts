@@ -5,7 +5,7 @@
  * per ingested PDF, after its screen; the read side is the agent's file reader
  * (ADR-0133), the delete side the `_text/` sweep in `lib/documents/object-cleanup.ts`.
  *
- * Service-to-service only, like `document-image-upload-url`: `GRID_INTERNAL_API_TOKEN`
+ * Service-to-service only, like `document-image-upload-url`: `INTERNAL_API_TOKEN`
  * via `internalApiRoute`, the row addressed by the dispatched `documentId` AND its
  * collection, and the key built from the row's own storage key and a part from a
  * closed list (`PAGE_TEXT_PARTS`), so nothing else can be minted under the prefix.

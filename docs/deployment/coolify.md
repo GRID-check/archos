@@ -88,7 +88,7 @@ You still need, at deploy time:
   auto-generated preview subdomains).
 - Two API keys total: **`OPENROUTER_API_KEY`** (LLMs, embeddings, and VLM — all
   through OpenRouter) and **`TAVILY_API_KEY`** (web search). See §6.
-- A **`GRID_ADMIN_TOKEN`** (any high-entropy string, e.g. `openssl rand -hex 32`)
+- A **`ADMIN_TOKEN`** (any high-entropy string, e.g. `openssl rand -hex 32`)
   gating the admin re-ingestion route — now required (see §4).
 - For production auth (default on): **`WORKOS_CLIENT_ID`**, **`WORKOS_API_KEY`**,
   **`WORKOS_COOKIE_PASSWORD`** — see the Auth section in §4.
@@ -127,10 +127,10 @@ own domains, DB password, and internal token with no manual input.
    ```
    OPENROUTER_API_KEY=sk-or-...
    TAVILY_API_KEY=tvly-...
-   GRID_ADMIN_TOKEN=$(openssl rand -hex 32)
+   ADMIN_TOKEN=$(openssl rand -hex 32)
    ```
    The same OpenRouter key drives LLMs, embeddings, and the VLM (§6).
-   `GRID_ADMIN_TOKEN` gates the admin re-ingestion route. The `${...:?}` markers
+   `ADMIN_TOKEN` gates the admin re-ingestion route. The `${...:?}` markers
    make all three **required** (the deploy fails fast if missing). Because
    `REQUIRE_AUTH` defaults to `true` (see the Auth section below), a production
    deploy also needs `WORKOS_CLIENT_ID`, `WORKOS_API_KEY`, and
@@ -277,7 +277,7 @@ frontend FQDN as defense-in-depth: should the backend's port 8000 ever be
 exposed under that domain, requests would be forced through the path allowlist
 and auth instead of being trusted as internal.
 
-`GRID_ADMIN_TOKEN` is **required** (`${...:?}`) — it gates the admin
+`ADMIN_TOKEN` is **required** (`${...:?}`) — it gates the admin
 re-ingestion route (`POST /v1/admin/oib/sync`). An empty value made that route
 fail *open*, so the deploy now fails fast if it is unset. Generate one with
 `openssl rand -hex 32`.
@@ -461,7 +461,7 @@ docker compose -f docker-compose.coolify.yaml up -d
 | Deep-research execution | dedicated `agent-worker` + shared `qdrant` store (mirrors K8s) |
 | Docker network | custom `aiq-network` (bridge) | none declared — Coolify's managed per-stack network (avoids dual-homed 504/DNS failures) |
 | Host ports | published (3000, 8000, 5432, 8333/8888) | none — proxy + FQDN vars |
-| Secrets | `deploy/.env` literals | Coolify UI (`${VAR:?}`) + generated passwords; `OPENROUTER_API_KEY`, `TAVILY_API_KEY`, `GRID_ADMIN_TOKEN` all required |
+| Secrets | `deploy/.env` literals | Coolify UI (`${VAR:?}`) + generated passwords; `OPENROUTER_API_KEY`, `TAVILY_API_KEY`, `ADMIN_TOKEN` all required |
 | Auth (`REQUIRE_AUTH`) | `false` (dev convenience) | **`true`** by default (WorkOS required; opt out per-preview) |
 | External-host classification | unset | `EXTERNAL_HOSTNAMES` = frontend FQDN (defense-in-depth) |
 | Frontend/SeaweedFS exposure | `localhost:PORT` | `SERVICE_FQDN_*` https domains |

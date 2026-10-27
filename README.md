@@ -110,14 +110,14 @@ See [`docs/architecture/backend-deep-dive.md`](docs/architecture/backend-deep-di
 cp deploy/.env.example deploy/.env
 # Edit deploy/.env — set your LLM/embedding provider key (OPENROUTER_API_KEY for
 # the reference config; any OpenAI-compatible endpoint works) and TAVILY_API_KEY.
-# Also set a real GRID_INTERNAL_API_TOKEN and, for auth, the WORKOS_* values.
+# Also set a real INTERNAL_API_TOKEN and, for auth, the WORKOS_* values.
 
 # 2. Build and start the full stack
 docker compose -f deploy/compose/docker-compose.yaml --env-file deploy/.env up -d --build
 
 # 3. The OIB knowledge base starts empty. Upload the Richtlinien PDFs in the
 #    platform-admin UI, or from a directory of PDFs (the backend is on :8000):
-GRID_ADMIN_TOKEN=... uv run python scripts/upload_oib_corpus.py data/oib
+ADMIN_TOKEN=... uv run python scripts/upload_oib_corpus.py data/oib
 #    Each upload queues its own ingestion; anything not indexed yet is picked up
 #    by the housekeeping service every ten minutes. Watch the container logs:
 docker compose -f deploy/compose/docker-compose.yaml --env-file deploy/.env logs -f aiq-agent

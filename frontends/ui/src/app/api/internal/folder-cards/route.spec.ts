@@ -50,7 +50,7 @@ const get = (query: string, method: 'GET' | 'DELETE' = 'GET', token: string | nu
 describe('/api/internal/folder-cards', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    process.env.GRID_INTERNAL_API_TOKEN = 'test-token'
+    process.env.INTERNAL_API_TOKEN = 'test-token'
     process.env.APP_ENV = 'development'
   })
 
@@ -62,7 +62,7 @@ describe('/api/internal/folder-cards', () => {
   })
 
   it('fails closed when the token is unconfigured', async () => {
-    delete process.env.GRID_INTERNAL_API_TOKEN
+    delete process.env.INTERNAL_API_TOKEN
     expect((await PUT(put())).status).toBe(503)
   })
 

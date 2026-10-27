@@ -45,7 +45,7 @@ describe.skipIf(!url)('profiler directory scope against live Postgres', () => {
   let repo: typeof import('./repository')
 
   beforeAll(async () => {
-    process.env.GRID_APP_DATABASE_URL = url
+    process.env.APP_DATABASE_URL = url
     const context = await import('@/lib/db/tenant-context')
     platform = (fn) => context.withPlatformAccess('test: profiler scope', fn)
     repo = await import('./repository')

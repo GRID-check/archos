@@ -172,7 +172,7 @@ async def test_a_job_that_finishes_inside_the_drain_is_not_given_back(fleet, mon
 
 async def test_the_worker_claims_with_the_per_organization_cap(fleet, monkeypatch):
     db_url, _ = fleet
-    monkeypatch.setenv("GRID_MAX_ACTIVE_JOBS_PER_ORG", "1")
+    monkeypatch.setenv("MAX_ACTIVE_JOBS_PER_ORG", "1")
     for n in range(2):
         queue.enqueue(db_url, f"a{n}", {"input_text": "x"}, "org-a")
     seen: list[int] = []

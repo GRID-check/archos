@@ -67,9 +67,7 @@ def test_an_old_name_is_adopted_without_its_prefix_and_warns(capsys):
         "GRID_CHECKPOINT_DB": "old",
     }
 
-    module = _entrypoint_module()
-    module.WARN = True
-    adopted = module.adopt_legacy_names(environ)
+    adopted = _entrypoint_module().adopt_legacy_names(environ)
 
     assert adopted == ["QDRANT_URL", "SUMMARY_DB", "LOCK_DB_URL"]
     assert environ["QDRANT_URL"] == "http://qdrant:6333"
@@ -129,3 +127,4 @@ def test_a_process_the_entrypoint_starts_reads_the_new_name():
     )
 
     assert result.stdout.strip() == "1"
+    assert "GRID_VERBOSE is deprecated; rename it to AGENT_VERBOSE" in result.stderr

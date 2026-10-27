@@ -25,7 +25,7 @@ describe('GET /api/internal/oib-corpus', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     process.env.CORPUS_EXPORT_TOKEN = 'export-token'
-    process.env.GRID_INTERNAL_API_TOKEN = 'service-token'
+    process.env.INTERNAL_API_TOKEN = 'service-token'
     process.env.APP_ENV = 'development'
   })
 

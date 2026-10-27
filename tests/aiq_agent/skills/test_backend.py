@@ -145,7 +145,7 @@ class TestTenancy:
 
     @pytest.fixture
     def resolver(self, monkeypatch: pytest.MonkeyPatch) -> SkillResolver:
-        monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", "test-token")
+        monkeypatch.setenv("INTERNAL_API_TOKEN", "test-token")
         return SkillResolver(agent="researcher")
 
     def _runtime_for(self, resolver: SkillResolver, org: str, rows: dict[str, list[dict[str, object]]]) -> SkillRuntime:
@@ -183,7 +183,7 @@ class TestTenancy:
 
 class TestCuration:
     def test_a_curated_offer_is_absent_until_the_organization_takes_it_up(self, monkeypatch) -> None:
-        monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", "test-token")
+        monkeypatch.setenv("INTERNAL_API_TOKEN", "test-token")
         resolver = SkillResolver(agent="researcher")
         offer = next(s for s in resolver.builtin if _is_curated(s))
         with mock.patch.object(resolver, "_fetch_org_skills", return_value=[]):

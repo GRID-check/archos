@@ -72,9 +72,9 @@ async def test_an_unknown_priority_is_refused_before_anything_is_persisted():
 
 
 def test_the_per_organization_cap_is_one_name_read_in_one_place(monkeypatch):
-    monkeypatch.setenv("GRID_MAX_ACTIVE_JOBS_PER_ORG", "7")
+    monkeypatch.setenv("MAX_ACTIVE_JOBS_PER_ORG", "7")
     assert queue.max_active_per_org() == 7
-    monkeypatch.setenv("GRID_MAX_ACTIVE_JOBS_PER_ORG", "not a number")
+    monkeypatch.setenv("MAX_ACTIVE_JOBS_PER_ORG", "not a number")
     assert queue.max_active_per_org() == 3
-    monkeypatch.delenv("GRID_MAX_ACTIVE_JOBS_PER_ORG")
+    monkeypatch.delenv("MAX_ACTIVE_JOBS_PER_ORG")
     assert queue.max_active_per_org() == 3

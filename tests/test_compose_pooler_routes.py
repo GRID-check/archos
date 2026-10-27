@@ -89,10 +89,10 @@ def test_the_bff_pools_its_runtime_role_and_migrates_directly(name):
     services = _services(name)
     for service in services:
         env = _environment(services, service)
-        if "GRID_APP_DATABASE_URL" in env:
-            assert _host(env["GRID_APP_DATABASE_URL"]) == "pgbouncer", f"{name}: {service}"
-        if "GRID_APP_MIGRATION_DATABASE_URL" in env:
-            assert _host(env["GRID_APP_MIGRATION_DATABASE_URL"]) == "postgres", f"{name}: {service}"
+        if "APP_DATABASE_URL" in env:
+            assert _host(env["APP_DATABASE_URL"]) == "pgbouncer", f"{name}: {service}"
+        if "APP_MIGRATION_DATABASE_URL" in env:
+            assert _host(env["APP_MIGRATION_DATABASE_URL"]) == "postgres", f"{name}: {service}"
 
 
 @pytest.mark.parametrize("name", FILES)

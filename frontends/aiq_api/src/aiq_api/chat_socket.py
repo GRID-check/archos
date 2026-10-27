@@ -282,7 +282,7 @@ BUSY_REFUSAL = "The conversation is running another turn; ask again once it has 
 
 
 def chat_affinity_enabled() -> bool:
-    """Whether the BFF still pins a conversation to one replica (``GRID_CHAT_AFFINITY``, on by default).
+    """Whether the BFF still pins a conversation to one replica (``CHAT_AFFINITY``, on by default).
 
     The backend reads the flag the BFF routes by, for one decision: what a
     question does when the bus cannot say whether another replica is running
@@ -291,7 +291,7 @@ def chat_affinity_enabled() -> bool:
     so the fence fails open. With it off, nothing else knows, and the question
     is refused instead.
     """
-    return os.getenv("GRID_CHAT_AFFINITY", "1").strip().lower() not in ("0", "false", "no", "off", "")
+    return os.getenv("CHAT_AFFINITY", "1").strip().lower() not in ("0", "false", "no", "off", "")
 
 
 # @environment_variable WIRE_V2_ADDITIVE_FIELDS
@@ -442,7 +442,7 @@ def _handshake_envelope(scope: Mapping[str, Any]) -> GridRequestContext | None:
     return GridRequestContext.from_envelope(
         headers.get(REQUEST_CONTEXT_ENVELOPE_HEADER),
         headers.get(REQUEST_CONTEXT_ENVELOPE_SIG_HEADER),
-        os.environ.get("GRID_INTERNAL_API_TOKEN"),
+        os.environ.get("INTERNAL_API_TOKEN"),
     )
 
 

@@ -199,8 +199,8 @@ Migrations and runtime use **different credentials**:
 
 | Variable | Role | Set on |
 |---|---|---|
-| `GRID_APP_DATABASE_URL` | `grid_app_rw` | frontend, purger, skill-scheduler |
-| `GRID_APP_MIGRATION_DATABASE_URL` | the table owner (`aiq`) | the `grid-migrate` service (compose) / the migration Job (Kubernetes) |
+| `APP_DATABASE_URL` | `grid_app_rw` | frontend, purger, skill-scheduler |
+| `APP_MIGRATION_DATABASE_URL` | the table owner (`aiq`) | the `grid-migrate` service (compose) / the migration Job (Kubernetes) |
 
 `drizzle.config.ts` prefers the migration URL and falls back to the runtime one,
 so a local checkout pointed at a throwaway database still works with one
@@ -209,12 +209,12 @@ variable.
 - **Compose** — `deploy/compose/init-db.sql` creates the roles, but ONLY when
   Postgres initialises a fresh data directory. On an upgraded stack it never
   runs, so `scripts/ensure-rls-roles.mjs` creates them and syncs
-  `grid_app_rw`'s password from `GRID_APP_DATABASE_URL` — one source of truth,
+  `grid_app_rw`'s password from `APP_DATABASE_URL` — one source of truth,
   no manual step. It runs in the one-shot `grid-migrate` service **before**
   `drizzle-kit migrate`, because migration 0030 asserts the roles and aborts
   without them. `frontend`, `purger` and `skill-scheduler` all wait on that
   service via `depends_on: service_completed_successfully`.
-  `GRID_APP_RUNTIME_PASSWORD` only substitutes into the compose DSNs; the role's
+  `APP_RUNTIME_PASSWORD` only substitutes into the compose DSNs; the role's
   password follows the DSN, not the variable.
 - **Kubernetes** — CloudNativePG owns the roles declaratively via the Cluster's
   `managed.roles`, reconciling them (including `grid_app_rw`'s password, from
@@ -248,9 +248,9 @@ variable.
 
 ### Rolling back
 
-Point `GRID_APP_DATABASE_URL` back at the credential that OWNS the tables —
+Point `APP_DATABASE_URL` back at the credential that OWNS the tables —
 `aiq` in compose and Kubernetes, i.e. the same value as
-`GRID_APP_MIGRATION_DATABASE_URL`. (Not `grid_app_owner`: that role owns
+`APP_MIGRATION_DATABASE_URL`. (Not `grid_app_owner`: that role owns
 nothing outside the test harness and holds no grants, so pointing at it is an
 outage, not a rollback.) RLS does not apply
 to a table's owner, so enforcement stops immediately with no schema change and

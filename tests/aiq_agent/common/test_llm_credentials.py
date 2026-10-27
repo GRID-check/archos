@@ -124,5 +124,5 @@ class TestResolveOrgLlmCredential:
             assert fetch.call_count == 1
 
     def test_requires_internal_token(self, monkeypatch):
-        monkeypatch.delenv("GRID_INTERNAL_API_TOKEN", raising=False)
+        monkeypatch.delenv("INTERNAL_API_TOKEN", raising=False)
         assert llm_credentials._fetch_credential("org_1") is None

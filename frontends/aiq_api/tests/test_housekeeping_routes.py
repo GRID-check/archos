@@ -15,7 +15,7 @@ DB_URL = "postgresql://grid@db/grid"
 
 @pytest.fixture
 def client(monkeypatch: pytest.MonkeyPatch) -> TestClient:
-    monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", TOKEN)
+    monkeypatch.setenv("INTERNAL_API_TOKEN", TOKEN)
     monkeypatch.setenv("APP_ENV", "production")
     app = FastAPI()
     jobs_routes._add_housekeeping_routes(app, job_store=object(), db_url=DB_URL, expiry_seconds=86400)

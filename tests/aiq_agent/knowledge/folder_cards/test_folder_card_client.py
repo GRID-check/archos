@@ -67,7 +67,7 @@ class _Reply(io.BytesIO):
 
 class TestTransport:
     def test_get_keys_cards_by_path(self, monkeypatch):
-        monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", "t")
+        monkeypatch.setenv("INTERNAL_API_TOKEN", "t")
         seen = {}
 
         def opened(request, timeout):
@@ -81,7 +81,7 @@ class TestTransport:
         assert "organization_id=org_1" in seen["url"] and "collection=proj" in seen["url"]
 
     def test_read_collection_lists_every_owned_folder_even_undescribed(self, monkeypatch):
-        monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", "t")
+        monkeypatch.setenv("INTERNAL_API_TOKEN", "t")
         reply = {
             "cards": [],
             "folders": [
@@ -96,13 +96,13 @@ class TestTransport:
         assert (cards, descriptions, owned) == ({}, {"B": "Pläne"}, {"A", "B"})
 
     def test_a_reply_without_folders_owns_nothing_known(self, monkeypatch):
-        monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", "t")
+        monkeypatch.setenv("INTERNAL_API_TOKEN", "t")
         monkeypatch.setattr(bff_http._opener, "open", lambda request, timeout: _Reply(b'{"cards": []}'))
 
         assert client.read_collection("org_1", "proj")[2] is None
 
     def test_a_404_on_put_is_no_folder(self, monkeypatch):
-        monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", "t")
+        monkeypatch.setenv("INTERNAL_API_TOKEN", "t")
 
         def refused(request, timeout):
             raise urllib.error.HTTPError(request.full_url, 404, "not found", {}, io.BytesIO(b"{}"))
@@ -113,7 +113,7 @@ class TestTransport:
         assert client.delete_card("org_1", "proj", "A") is False
 
     def test_no_token_is_an_error_not_a_silent_success(self, monkeypatch):
-        monkeypatch.delenv("GRID_INTERNAL_API_TOKEN", raising=False)
+        monkeypatch.delenv("INTERNAL_API_TOKEN", raising=False)
 
         with pytest.raises(client.FolderCardsError):
             client.get_cards("org_1", "proj")

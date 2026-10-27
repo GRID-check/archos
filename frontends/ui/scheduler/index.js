@@ -42,9 +42,9 @@
  * See ADR-0046 and docs/architecture/agent-skills.md ("Scheduler worker").
  *
  * Environment:
- *   GRID_APP_DATABASE_URL              - grid_app Postgres DSN (required)
+ *   APP_DATABASE_URL              - grid_app Postgres DSN (required)
  *   FRONTEND_INTERNAL_URL              - BFF base URL (default http://frontend:3000)
- *   GRID_INTERNAL_API_TOKEN            - shared token for the internal fire endpoint
+ *   INTERNAL_API_TOKEN            - shared token for the internal fire endpoint
  *   SKILL_SCHEDULER_POLL_MS       - tick interval (default 30000)
  *   SKILL_SCHEDULER_BATCH         - max claims per tick (default 20)
  *   SKILL_RUNS_RETENTION_DAYS     - run-history retention (default 90)
@@ -116,7 +116,7 @@ function readConfig(env) {
     traceRetentionDays: traceRetention.days,
     traceRetentionClamped: traceRetention.clamped,
     frontendUrl: (env.FRONTEND_INTERNAL_URL || 'http://frontend:3000').replace(/\/$/, ''),
-    internalToken: env.GRID_INTERNAL_API_TOKEN || '',
+    internalToken: env.INTERNAL_API_TOKEN || '',
     pollMs: toPositiveInt(env.SKILL_SCHEDULER_POLL_MS, 30000),
     batch: toPositiveInt(env.SKILL_SCHEDULER_BATCH, 20),
     retentionDays: toPositiveInt(env.SKILL_RUNS_RETENTION_DAYS, 90),

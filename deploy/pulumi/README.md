@@ -247,7 +247,7 @@ All keys live under the `grid-oib:` namespace. **Bold** = required (no default).
 | `backendIngestMaxWorkers` | `2` | Concurrent ingestion bound |
 | `backendConfigFile` | `config_oib_openrouter.yml` | Baked backend config path |
 | `backendReplicas` | `2` | Chat replicas. The floor once the chat tier autoscales |
-| `chatAffinity` | `true` | `GRID_CHAT_AFFINITY` (ADR-0080): the gateway pins a conversation to a replica by hash (the replica count is then static). `false` sends sockets to the `aiq-agent` Service and lets the conversation bus decide per turn; needs `conversationBus`. Prod keeps `true` until the cross-replica path is validated on dev |
+| `chatAffinity` | `true` | `CHAT_AFFINITY` (ADR-0080): the gateway pins a conversation to a replica by hash (the replica count is then static). `false` sends sockets to the `aiq-agent` Service and lets the conversation bus decide per turn; needs `conversationBus`. Prod keeps `true` until the cross-replica path is validated on dev |
 | `backendMaxReplicas` | `3` | Ceiling KEDA scales the chat tier to. Used only with `chatAffinity: false` and a ceiling above `backendReplicas`; prod pins `1` |
 | `backendTurnsPerReplica` | `8` | Fleet-wide running chat turns per replica that the KEDA `metrics-api` trigger aims for (`GET /v1/internal/chat-occupancy`) |
 | `backendCpuTargetPercent` | `70` | CPU utilisation (% of requests) of the KEDA `cpu` trigger beside it |
@@ -274,7 +274,7 @@ All keys live under the `grid-oib:` namespace. **Bold** = required (no default).
 | `bffJobsMinReplicas` / `bffJobsMaxReplicas` | 1 / 4 | KEDA bounds for the `bff-jobs` pool, which scales on `bff_job_queue` depth |
 | `bffJobsConcurrency` / `bffJobsDrainSeconds` | 2 / 60 | Jobs per pod (also KEDA's target) / SIGTERM budget; the grace period is the drain plus 30 s |
 | `bffJobsMaxPerOrg` | `0` | Most jobs one organisation may run fleet-wide at once; 0 = no cap (the claim is fair regardless) |
-| `bffJobsMode` | `http` | `GRID_BFF_JOBS_MODE`: where a slice runs. `http` spawns the BFF (`node server.js`) in each pod and asks it per slice; `inprocess` runs the services bundled at image build in the supervisor and spawns no server (ADR-0079 amendment 1). Any other value fails the plan |
+| `bffJobsMode` | `http` | `BFF_JOBS_MODE`: where a slice runs. `http` spawns the BFF (`node server.js`) in each pod and asks it per slice; `inprocess` runs the services bundled at image build in the supervisor and spawns no server (ADR-0079 amendment 1). Any other value fails the plan |
 | `bffJobsRenditionConcurrency` | `1` | `GOTENBERG_MAX_CONCURRENCY` in a `bff-jobs` pod: Office conversions one pod runs at Gotenberg at once. The fleet's conversion ceiling is this times `bffJobsMaxReplicas` (`renditionCeiling`), and it is held to `gotenbergReplicas` (below): raise either side of the product and Gotenberg's replicas must follow, or conversions queue inside the converter and run out their API timeout |
 | `installKeda` | `true` | Install KEDA (chart pinned in `src/platform/keda.ts`, the release the plan's CRDs are validated against). `false` when the cluster already runs one, which must then be the same release |
 | **Provider budget** (ADR-0076, ADR-0081) | | |

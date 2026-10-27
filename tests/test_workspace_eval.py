@@ -110,7 +110,7 @@ def test_the_agents_own_client_reads_the_doors_answer(tmp_path: Path, monkeypatc
     bff = FixtureBFF(TOKEN, tmp_path / "requests.jsonl", workspace=FixtureWorkspace()).start()
     try:
         monkeypatch.setenv("FRONTEND_INTERNAL_URL", bff.url)
-        monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", TOKEN)
+        monkeypatch.setenv("INTERNAL_API_TOKEN", TOKEN)
         envelope = SignedEnvelope(header="e30", signature="sig")
         result = call_tool_result("search-operations", {"query": "list project members"}, envelope)
         assert "project-member-list" in result.text

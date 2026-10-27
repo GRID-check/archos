@@ -949,7 +949,7 @@ export interface GridConfig {
      */
     drainSeconds: number;
     /**
-     * `GRID_CHAT_AFFINITY` (ADR-0080): the BFF pins a conversation to one
+     * `CHAT_AFFINITY` (ADR-0080): the BFF pins a conversation to one
      * replica by hash (on, ADR-0028) or hands the socket to the aiq-agent
      * Service and lets the conversation bus decide per turn (off). Prod stays
      * on until the cross-replica path is validated on dev.
@@ -1083,7 +1083,7 @@ export interface GridConfig {
     /** Most jobs one organisation may run fleet-wide at once; 0 = no cap (the claim is fair regardless). */
     maxPerOrg: number;
     /**
-     * Where a slice runs (`GRID_BFF_JOBS_MODE`): `http`, in a `node server.js`
+     * Where a slice runs (`BFF_JOBS_MODE`): `http`, in a `node server.js`
      * the pod spawns, or `inprocess`, in the supervisor from the bundled
      * services (`dist-jobs/slice.mjs`, ADR-0079 amendment 1). `http` until the
      * in-process host has run in every environment.

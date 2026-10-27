@@ -478,7 +478,7 @@ class TestTheReadRouteIsScopedToTheConversation:
     """
 
     def test_both_scopes_reach_the_url(self, monkeypatch) -> None:
-        monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", "internal-token")
+        monkeypatch.setenv("INTERNAL_API_TOKEN", "internal-token")
         seen: list[str] = []
 
         class _Response:

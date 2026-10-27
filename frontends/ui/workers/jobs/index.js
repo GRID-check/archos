@@ -8,7 +8,7 @@
  * host the slices run in, so the heavy work a job does (walking ten thousand
  * documents, converting an office file, parsing an IFC) runs in THIS pod and
  * never in a user-facing frontend pod that also proxies chat. The host is one
- * of two, by `GRID_BFF_JOBS_MODE`:
+ * of two, by `BFF_JOBS_MODE`:
  *
  *   http (default) - the BFF itself (`node server.js`, a child process), asked
  *      for one slice at a time over `POST /api/internal/jobs/run`;
@@ -23,17 +23,17 @@
  * gets its SIGTERM after the drain; in process, the bundle flushes after it.
  *
  * Environment (the BFF's own, `frontendEnv`, plus):
- *   GRID_APP_DATABASE_URL            - grid_app Postgres DSN (the queue lives there)
- *   GRID_BFF_JOBS_MODE               - `http` (default) or `inprocess`: where a slice runs
- *   GRID_INTERNAL_API_TOKEN          - shared token for the internal run route (http mode)
+ *   APP_DATABASE_URL            - grid_app Postgres DSN (the queue lives there)
+ *   BFF_JOBS_MODE               - `http` (default) or `inprocess`: where a slice runs
+ *   INTERNAL_API_TOKEN          - shared token for the internal run route (http mode)
  *   BFF_JOBS_URL                - the pod's own BFF (http mode; default http://127.0.0.1:$PORT)
  *   BFF_JOBS_CONCURRENCY        - jobs one replica runs at once (default 2)
  *   BFF_JOBS_POLL_MS            - idle wait between claims (default 2000)
- *   GRID_BFF_JOBS_DRAIN_SECONDS      - SIGTERM budget to finish a slice (default 60)
+ *   BFF_JOBS_DRAIN_SECONDS      - SIGTERM budget to finish a slice (default 60)
  *   BFF_JOBS_STALE_SECONDS      - a claim silent this long is claimed again (default 180)
- *   GRID_BFF_JOBS_MAX_ATTEMPTS       - claims one job gets before it is dead (default 3)
+ *   BFF_JOBS_MAX_ATTEMPTS       - claims one job gets before it is dead (default 3)
  *   BFF_JOBS_RETRY_BACKOFF_SECONDS - wait before a failed job's second attempt, doubling per attempt, at most 15 min; 0 retries at once (default 30)
- *   GRID_BFF_JOBS_DEAD_RETENTION_DAYS - how long a dead job is kept before it is deleted (default 14)
+ *   BFF_JOBS_DEAD_RETENTION_DAYS - how long a dead job is kept before it is deleted (default 14)
  *   BFF_JOBS_MAX_PER_ORG        - most jobs one organization runs fleet-wide; 0 = no cap (default 0)
  *   BFF_JOBS_SLICE_TIMEOUT_MS   - ceiling on one slice's request (default 300000)
  */
@@ -67,7 +67,7 @@ const HOST_SHUTDOWN_MS = 2000
 function readMode(raw) {
   const mode = (raw ?? '').trim() || 'http'
   const known = MODES.find((candidate) => candidate === mode)
-  if (!known) throw new Error(`GRID_BFF_JOBS_MODE must be one of ${MODES.join(', ')}, not "${mode}"`)
+  if (!known) throw new Error(`BFF_JOBS_MODE must be one of ${MODES.join(', ')}, not "${mode}"`)
   return known
 }
 
@@ -86,11 +86,11 @@ function readConfig(env) {
   const port = toInt(env.PORT, 3000)
   const heartbeatMs = 15_000
   return {
-    mode: readMode(env.GRID_BFF_JOBS_MODE),
+    mode: readMode(env.BFF_JOBS_MODE),
     port,
     url: (env.BFF_JOBS_URL || `http://127.0.0.1:${port}`).replace(/\/$/, ''),
-    internalToken: env.GRID_INTERNAL_API_TOKEN || '',
-    drainMs: toInt(env.GRID_BFF_JOBS_DRAIN_SECONDS, 60) * 1000,
+    internalToken: env.INTERNAL_API_TOKEN || '',
+    drainMs: toInt(env.BFF_JOBS_DRAIN_SECONDS, 60) * 1000,
     sliceTimeoutMs: toInt(env.BFF_JOBS_SLICE_TIMEOUT_MS, 300_000),
     runner: {
       workerPrefix: `bff-jobs-${env.HOSTNAME || os.hostname()}`,
@@ -99,14 +99,14 @@ function readConfig(env) {
       heartbeatMs,
       // Never shorter than a few beats, or a healthy slice's claim would look dead.
       staleSeconds: Math.max(toInt(env.BFF_JOBS_STALE_SECONDS, 180), (heartbeatMs / 1000) * 4),
-      maxAttempts: toInt(env.GRID_BFF_JOBS_MAX_ATTEMPTS, 3),
+      maxAttempts: toInt(env.BFF_JOBS_MAX_ATTEMPTS, 3),
       perLaneCap: toInt(env.BFF_JOBS_MAX_PER_ORG, 0, { min: 0 }),
       // A claim gives its slot back between slices after this long (runner.js, runClaim).
       yieldAfterMs: 10 * 60_000,
       reapEveryMs: 60_000,
       transientBackoffMs: 5_000,
       retryBackoffSeconds: toInt(env.BFF_JOBS_RETRY_BACKOFF_SECONDS, queue.DEFAULT_RETRY_BACKOFF_SECONDS, { min: 0 }),
-      deadRetentionSeconds: toInt(env.GRID_BFF_JOBS_DEAD_RETENTION_DAYS, 14) * 86_400,
+      deadRetentionSeconds: toInt(env.BFF_JOBS_DEAD_RETENTION_DAYS, 14) * 86_400,
       purgeEveryMs: 600_000,
     },
   }
@@ -205,7 +205,7 @@ async function startWorkHost(config, deps) {
     }
   }
 
-  if (!config.internalToken) throw new Error('GRID_INTERNAL_API_TOKEN is not defined')
+  if (!config.internalToken) throw new Error('INTERNAL_API_TOKEN is not defined')
   const spawnServer = deps.spawnServer ?? (() => spawn(process.execPath, ['server.js'], { stdio: 'inherit', env: process.env }))
   const server = spawnServer()
   server.once('exit', deps.onServerExit)
@@ -227,8 +227,8 @@ async function main() {
   initOtelLogs()
   initOtelMetrics()
   const config = readConfig(process.env)
-  const databaseUrl = process.env.GRID_APP_DATABASE_URL
-  if (!databaseUrl) throw new Error('GRID_APP_DATABASE_URL is not defined')
+  const databaseUrl = process.env.APP_DATABASE_URL
+  if (!databaseUrl) throw new Error('APP_DATABASE_URL is not defined')
 
   const sql = postgres(databaseUrl, { prepare: false, max: config.runner.concurrency + 2 })
   let draining = false

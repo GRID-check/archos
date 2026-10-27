@@ -25,7 +25,7 @@ import 'server-only'
  * Not recorded. The score says what was decided and about what, never by whom:
  * Langfuse's readers are platform staff, scores reach PostHog with their
  * metadata, and a user id on a score would sit outside the gate that keeps
- * identity off traces (`GRID_TRACE_IDENTITY_ATTRIBUTES`,
+ * identity off traces (`TRACE_IDENTITY_ATTRIBUTES`,
  * `docs/observability/langfuse.md`). `decidedBy` stays in the signature
  * because the caller holds it; the ledger of who decided is the proposal, the
  * mark and the change rows.

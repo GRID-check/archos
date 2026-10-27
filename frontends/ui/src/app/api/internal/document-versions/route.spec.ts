@@ -37,7 +37,7 @@ import { withTenant } from '@/lib/db/tenant-context'
 import {
   GRID_HEADER_NAMES,
   buildGridRequestContextEnvelope,
-  GRID_REQUEST_CONTEXT_MAX_AGE_MS,
+  REQUEST_CONTEXT_MAX_AGE_MS,
 } from '@/lib/request-context'
 import {
   AGENT_REACHABLE_OPS,
@@ -100,7 +100,7 @@ function call(body: unknown, headers: Record<string, string> = envelopeHeaders()
 
 beforeEach(() => {
   vi.clearAllMocks()
-  process.env.GRID_INTERNAL_API_TOKEN = SECRET
+  process.env.INTERNAL_API_TOKEN = SECRET
   vi.mocked(resolvePinnedRequesterSession).mockResolvedValue(session)
   vi.mocked(fileAgentDocumentDraft).mockResolvedValue({
     documentId: DOC,
@@ -210,7 +210,7 @@ describe('identity comes from the signed envelope, never from the body', () => {
   it('refuses a replayed envelope once its window has passed', async () => {
     const response = await call(
       { op: 'submit', documentId: DOC, versionId: VERSION },
-      envelopeHeaders({ issuedAt: Date.now() - GRID_REQUEST_CONTEXT_MAX_AGE_MS - 1000 }),
+      envelopeHeaders({ issuedAt: Date.now() - REQUEST_CONTEXT_MAX_AGE_MS - 1000 }),
     )
     expect(response.status).toBe(401)
   })

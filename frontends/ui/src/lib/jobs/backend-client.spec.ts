@@ -46,7 +46,7 @@ const fetchMock = vi.fn()
 
 beforeEach(() => {
   vi.stubGlobal('fetch', fetchMock)
-  vi.stubEnv('GRID_INTERNAL_API_TOKEN', 'secret')
+  vi.stubEnv('INTERNAL_API_TOKEN', 'secret')
   vi.stubEnv('BACKEND_URL', 'http://backend:8000')
   fetchMock.mockReset()
 })
@@ -65,7 +65,7 @@ describe('submitJob', () => {
   })
 
   it('throws 503 SubmitError when the internal token is unconfigured', async () => {
-    vi.stubEnv('GRID_INTERNAL_API_TOKEN', '')
+    vi.stubEnv('INTERNAL_API_TOKEN', '')
     await expect(submitJob(payload, {})).rejects.toMatchObject({ status: 503 })
     expect(fetchMock).not.toHaveBeenCalled()
   })
@@ -232,7 +232,7 @@ describe('fetchBackendJobOutcome', () => {
   })
 
   it('refuses to ask without the internal token', async () => {
-    vi.stubEnv('GRID_INTERNAL_API_TOKEN', '')
+    vi.stubEnv('INTERNAL_API_TOKEN', '')
     await expect(fetchBackendJobOutcome('job-1', 'org_1')).rejects.toMatchObject({ status: 503 })
     expect(fetchMock).not.toHaveBeenCalled()
   })

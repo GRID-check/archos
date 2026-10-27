@@ -948,7 +948,7 @@ def _run_user_info(user_info: dict | None, envelope_headers: dict[str, str] | No
     from aiq_agent.project_context import GridRequestContext
     from aiq_agent.turn.context import user_info_for
 
-    request = GridRequestContext.from_headers(envelope_headers, secret=os.environ.get("GRID_INTERNAL_API_TOKEN"))
+    request = GridRequestContext.from_headers(envelope_headers, secret=os.environ.get("INTERNAL_API_TOKEN"))
     return user_info_for(request)
 
 

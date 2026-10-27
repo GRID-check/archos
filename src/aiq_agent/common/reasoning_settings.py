@@ -106,7 +106,7 @@ def sanitize_reasoning_efforts(data: object) -> dict[str, str]:
 
 def _fetch_efforts() -> dict[str, str]:
     """One HTTP round-trip to the BFF's internal reasoning-efforts endpoint."""
-    token = os.environ.get("GRID_INTERNAL_API_TOKEN")
+    token = os.environ.get("INTERNAL_API_TOKEN")
     if not token:
         # No internal-token trust channel — fall back to build-time values.
         return {}

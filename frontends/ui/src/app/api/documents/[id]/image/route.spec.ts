@@ -99,7 +99,7 @@ function signedQuery(documentId = DOC, variant: 'original' | 'thumb' = 'original
 
 describe('GET /api/documents/[id]/image', () => {
   beforeEach(() => {
-    vi.stubEnv('GRID_INTERNAL_API_TOKEN', 'test-signing-secret')
+    vi.stubEnv('INTERNAL_API_TOKEN', 'test-signing-secret')
     vi.mocked(s3Client.send).mockReset()
     isFolderVisibleToMember.mockReset().mockResolvedValue(true)
   })
@@ -247,7 +247,7 @@ describe('GET /api/documents/[id]/image', () => {
 
   it('is disabled rather than open when no signing secret is configured', async () => {
     const query = signedQuery()
-    vi.stubEnv('GRID_INTERNAL_API_TOKEN', '')
+    vi.stubEnv('INTERNAL_API_TOKEN', '')
     await stubDocument(imageRow)
 
     const response = await call(query)

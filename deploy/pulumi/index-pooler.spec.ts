@@ -54,11 +54,11 @@ const EXPECTED_HOSTS: Record<string, string> = {
   "grid-secrets/CHECKPOINT_DB": POOLER,  // pragma: allowlist secret
   "grid-secrets/DEEP_CHECKPOINT_DB": POOLER,
   "grid-secrets/SUMMARY_DB": POOLER,
-  "grid-secrets/GRID_APP_DATABASE_URL": POOLER,
+  "grid-secrets/APP_DATABASE_URL": POOLER,
   // Session-scoped: LISTEN/NOTIFY, session advisory locks, DDL under the owner.
   "grid-secrets/LISTEN_DB_URL": DIRECT,
   "grid-secrets/LOCK_DB_URL": DIRECT,
-  "grid-secrets/GRID_APP_MIGRATION_DATABASE_URL": DIRECT,
+  "grid-secrets/APP_MIGRATION_DATABASE_URL": DIRECT,
   // KEDA polls from another namespace, so by FQDN, and straight to the primary.
   "grid-keda-scaler/KEDA_JOBS_QUEUE_DB_URL": KEDA_DIRECT,
   "grid-keda-scaler/KEDA_BFF_QUEUE_DB_URL": KEDA_DIRECT,
@@ -129,7 +129,7 @@ describe("Postgres routing", () => {
     // reading a failure sees the reason and not only a diff of hostnames.
     const hosts = Object.fromEntries(postgresDsns().map(({ id, url }) => [id, url.hostname]));
 
-    for (const key of ["LISTEN_DB_URL", "LOCK_DB_URL", "GRID_APP_MIGRATION_DATABASE_URL"]) {
+    for (const key of ["LISTEN_DB_URL", "LOCK_DB_URL", "APP_MIGRATION_DATABASE_URL"]) {
       expect(hosts[`grid-secrets/${key}`], key).toBe(DIRECT);
     }
   });

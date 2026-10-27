@@ -87,9 +87,9 @@ function start(config, fetchImpl = fetch) {
 /** @returns {{ backendUrl: string, internalToken: string }} */
 function configFromEnv(env = process.env) {
   const backendUrl = (env.BACKEND_URL ?? '').replace(/\/+$/, '')
-  const internalToken = env.GRID_INTERNAL_API_TOKEN ?? ''
+  const internalToken = env.INTERNAL_API_TOKEN ?? ''
   if (!backendUrl || !internalToken) {
-    throw new Error(`${LOG} BACKEND_URL and GRID_INTERNAL_API_TOKEN are required`)
+    throw new Error(`${LOG} BACKEND_URL and INTERNAL_API_TOKEN are required`)
   }
   return { backendUrl, internalToken }
 }

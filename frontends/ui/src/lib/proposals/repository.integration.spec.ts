@@ -111,7 +111,7 @@ describe.skipIf(!url)('proposed changes against live Postgres', () => {
   const stale = () => new Date(Date.now() - 5 * 60 * 1000)
 
   beforeAll(async () => {
-    process.env.GRID_APP_DATABASE_URL = url
+    process.env.APP_DATABASE_URL = url
     const context = await import('@/lib/db/tenant-context')
     withTenant = context.withTenant
     withPlatformAccess = context.withPlatformAccess

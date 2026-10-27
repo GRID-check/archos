@@ -305,7 +305,7 @@ class TestWireDetails:
     def test_the_delete_url_encodes_the_name_exactly_once(self, monkeypatch):
         seen: dict = {}
         monkeypatch.setenv("FRONTEND_INTERNAL_URL", "http://frontend:3000/")
-        monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", "tok")
+        monkeypatch.setenv("INTERNAL_API_TOKEN", "tok")
 
         def fake_delete(url, headers, timeout):
             seen.update(url=url, headers=headers)
@@ -321,7 +321,7 @@ class TestWireDetails:
     def test_the_upload_url_request_carries_the_name_and_the_token(self, monkeypatch):
         seen: dict = {}
         monkeypatch.setenv("FRONTEND_INTERNAL_URL", "http://frontend:3000")
-        monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", "tok")
+        monkeypatch.setenv("INTERNAL_API_TOKEN", "tok")
 
         def fake_post(url, json, headers, timeout):
             seen.update(url=url, json=json, headers=headers)
@@ -338,7 +338,7 @@ class TestWireDetails:
 
     def test_a_refused_upload_url_request_is_an_error(self, monkeypatch):
         monkeypatch.setenv("FRONTEND_INTERNAL_URL", "http://frontend:3000")
-        monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", "tok")
+        monkeypatch.setenv("INTERNAL_API_TOKEN", "tok")
         monkeypatch.setattr(httpx, "post", lambda *_a, **_k: httpx.Response(400, json={"error": "bad name"}))
 
         with pytest.raises(corpus_store.CorpusStoreError, match="HTTP 400"):
@@ -371,7 +371,7 @@ class TestWireDetails:
 
     def test_writes_need_the_bff_settings(self, monkeypatch):
         monkeypatch.delenv("FRONTEND_INTERNAL_URL", raising=False)
-        monkeypatch.delenv("GRID_INTERNAL_API_TOKEN", raising=False)
+        monkeypatch.delenv("INTERNAL_API_TOKEN", raising=False)
 
         with pytest.raises(corpus_store.CorpusStoreError, match="FRONTEND_INTERNAL_URL"):
             corpus_store._request_upload_url("a.pdf")

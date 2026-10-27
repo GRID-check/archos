@@ -62,7 +62,7 @@ class FakeArchive:
 
 @pytest.fixture
 def client(monkeypatch):
-    monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", TOKEN)
+    monkeypatch.setenv("INTERNAL_API_TOKEN", TOKEN)
     holder = {"archive": FakeArchive()}
 
     @contextmanager

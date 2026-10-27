@@ -15,7 +15,7 @@ runs on too, so this module is only what is research's own: its table, its lane
   all twenty.
 * PRIORITISED. Inside one organisation an ``interactive`` job (a question the
   reader escalated, a "run now") goes before a ``bulk`` one (a scheduled fire).
-* CAPPED PER ORGANISATION, by claiming. ``GRID_MAX_ACTIVE_JOBS_PER_ORG`` is how
+* CAPPED PER ORGANISATION, by claiming. ``MAX_ACTIVE_JOBS_PER_ORG`` is how
   many of an organisation's jobs run at once; the rest wait their turn.
 * KEPT WHEN DEAD. A job that crashed every worker that took it is moved to
   ``status='dead'`` with a reason, not deleted: dead rows are the trace, counted
@@ -102,7 +102,7 @@ POISON_CLAIM_MARKER = "poison"
 # routes/jobs.py. "AIQRXHS" in hex.
 _PG_REAP_EXHAUSTED_LOCK_ID = 0x41495152_58485300
 
-# @environment_variable GRID_MAX_ACTIVE_JOBS_PER_ORG
+# @environment_variable MAX_ACTIVE_JOBS_PER_ORG
 # @category Server
 # @type int
 # @default 3
@@ -110,7 +110,7 @@ _PG_REAP_EXHAUSTED_LOCK_ID = 0x41495152_58485300
 # Research jobs one organization may RUN at once, fleet-wide, so one tenant cannot
 # occupy every worker. It is the claim's per-lane cap: a job over it waits in the
 # queue instead of being refused. 0 or negative disables it.
-_MAX_ACTIVE_PER_ORG_ENV = "GRID_MAX_ACTIVE_JOBS_PER_ORG"
+_MAX_ACTIVE_PER_ORG_ENV = "MAX_ACTIVE_JOBS_PER_ORG"
 _DEFAULT_MAX_ACTIVE_PER_ORG = 3
 
 # @environment_variable MAX_QUEUED_JOBS_PER_ORG

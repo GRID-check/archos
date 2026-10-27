@@ -6,7 +6,7 @@
  * the platform bucket at `base-corpus/<fileName>`; the delete side is
  * `DELETE /api/internal/base-corpus/[fileName]`.
  *
- * Service-to-service only: `GRID_INTERNAL_API_TOKEN` via `internalApiRoute`,
+ * Service-to-service only: `INTERNAL_API_TOKEN` via `internalApiRoute`,
  * fail-closed when unconfigured. 400 for a name that is not a plain `.pdf`
  * basename.
  */

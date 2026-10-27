@@ -153,7 +153,7 @@ async function fetchSimilarFromBackend(
   collections: readonly string[]
 ): Promise<BackendSimilarResponse> {
   const scope = [...new Set([source.collection, ...collections])]
-  const headers = buildGridRequestContextWireHeaders({ collectionScope: scope }, process.env.GRID_INTERNAL_API_TOKEN)
+  const headers = buildGridRequestContextWireHeaders({ collectionScope: scope }, process.env.INTERNAL_API_TOKEN)
   let res: Response
   try {
     res = await fetch(`${getBackendUrl()}/v1/collections/similar`, {

@@ -372,7 +372,7 @@ describe('runJobSlice', () => {
       expect(runBimExtractJob.mock.calls[0][2]).toEqual({ last: true })
 
       // The runner's own knob, read where the BFF in the same pod can see it.
-      vi.stubEnv('GRID_BFF_JOBS_MAX_ATTEMPTS', '5')
+      vi.stubEnv('BFF_JOBS_MAX_ATTEMPTS', '5')
       await runJobSlice('job-1', 'w-0')
       expect(runBimExtractJob.mock.calls[1][2]).toEqual({ last: false })
     })

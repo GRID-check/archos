@@ -29,7 +29,7 @@ afterEach(() => {
 
 describe('GET /api/internal/health', () => {
   it('returns 200 {ok:true} with a valid token', async () => {
-    vi.stubEnv('GRID_INTERNAL_API_TOKEN', REAL_TOKEN)
+    vi.stubEnv('INTERNAL_API_TOKEN', REAL_TOKEN)
 
     const response = await GET(makeRequest(REAL_TOKEN))
 
@@ -39,7 +39,7 @@ describe('GET /api/internal/health', () => {
   })
 
   it('returns 403 for a wrong token', async () => {
-    vi.stubEnv('GRID_INTERNAL_API_TOKEN', REAL_TOKEN)
+    vi.stubEnv('INTERNAL_API_TOKEN', REAL_TOKEN)
 
     const response = await GET(makeRequest('wrong-token'))
 
@@ -47,7 +47,7 @@ describe('GET /api/internal/health', () => {
   })
 
   it('returns 403 when the token header is missing', async () => {
-    vi.stubEnv('GRID_INTERNAL_API_TOKEN', REAL_TOKEN)
+    vi.stubEnv('INTERNAL_API_TOKEN', REAL_TOKEN)
 
     const response = await GET(makeRequest())
 
@@ -55,7 +55,7 @@ describe('GET /api/internal/health', () => {
   })
 
   it('returns 503 when the internal token is not configured', async () => {
-    vi.stubEnv('GRID_INTERNAL_API_TOKEN', '')
+    vi.stubEnv('INTERNAL_API_TOKEN', '')
 
     const response = await GET(makeRequest(REAL_TOKEN))
 
@@ -63,7 +63,7 @@ describe('GET /api/internal/health', () => {
   })
 
   it('refuses the well-known dev default token outside dev environments (503)', async () => {
-    vi.stubEnv('GRID_INTERNAL_API_TOKEN', DEV_DEFAULT_TOKEN)
+    vi.stubEnv('INTERNAL_API_TOKEN', DEV_DEFAULT_TOKEN)
     vi.stubEnv('APP_ENV', 'production')
     vi.stubEnv('NODE_ENV', 'production')
 

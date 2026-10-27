@@ -508,7 +508,7 @@ export async function callBackendOperation(
   }
 
   // The token authenticates the call and is the key the envelope is signed with.
-  const secret = process.env.GRID_INTERNAL_API_TOKEN
+  const secret = process.env.INTERNAL_API_TOKEN
   const base = getBackendUrl()
   let tokenHeaders: Record<string, string>
   try {

@@ -6,7 +6,7 @@
  *
  * Internal routes carry a static service token and no user
  * (`lib/internal-auth.ts`), and the agent's principal is WIDER than any human's
- * — it holds the shared `GRID_INTERNAL_API_TOKEN`, and the internal memory
+ * — it holds the shared `INTERNAL_API_TOKEN`, and the internal memory
  * route says so in its own comment: *"this service-token endpoint cannot verify
  * the human's org role"*. A route that took `userId` from its own body would let
  * anything holding that token write into any tenant as anybody. So the acting

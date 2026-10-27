@@ -2,7 +2,7 @@
  * Bundle the `bff-jobs` slice entry (`src/lib/jobs-queue/slice-entry.ts`) into
  * one ESM file, `dist-jobs/slice.mjs`, that plain Node imports (ADR-0079,
  * amendment 1). `workers/jobs/runner.js` loads it when
- * `GRID_BFF_JOBS_MODE=inprocess`, so a job pod runs its slices without booting
+ * `BFF_JOBS_MODE=inprocess`, so a job pod runs its slices without booting
  * the Next server.
  *
  *   bun scripts/build-jobs-bundle.ts [--outdir <dir>]

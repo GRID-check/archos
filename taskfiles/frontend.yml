@@ -18,7 +18,7 @@ tasks:
       - bun install --frozen-lockfile
 
   fe:build:jobs:
-    desc: Bundle the bff-jobs slice entry into dist-jobs/slice.mjs, what `GRID_BFF_JOBS_MODE=inprocess` imports
+    desc: Bundle the bff-jobs slice entry into dist-jobs/slice.mjs, what `BFF_JOBS_MODE=inprocess` imports
     dir: '{{.UI}}'
     cmds:
       - bun run build:jobs

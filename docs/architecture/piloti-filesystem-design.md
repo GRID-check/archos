@@ -685,10 +685,10 @@ set actually is.
 
 **Let the agent write as the user.** **[CORRECTED — the premise was false.]**
 This section claimed the agent holds a *narrower* principal than the user. It
-does not. It holds the shared `GRID_INTERNAL_API_TOKEN`, and the internal memory
+does not. It holds the shared `INTERNAL_API_TOKEN`, and the internal memory
 route says so itself: *"this service-token endpoint cannot verify the human's
 org role"* (`app/api/internal/memory/route.ts`). The org-memory denial is one
-env flag (`GRID_ALLOW_AGENT_ORG_MEMORY`) on one endpoint, not a principal;
+env flag (`ALLOW_AGENT_ORG_MEMORY`) on one endpoint, not a principal;
 project-scoped writes resolve through `withOptionalTenant(undefined)` →
 `withPlatformAccess`. The agent's principal is **wider**.
 

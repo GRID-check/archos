@@ -140,7 +140,7 @@ verbatim. Accepting a correction retires the note it quotes
 
 Piloti proposes one only where it may not write the note itself: the `remember`
 tool, when an organization-scoped write is refused by the deployment
-(`GRID_ALLOW_AGENT_ORG_MEMORY` unset) and the turn is not restricted. So the
+(`ALLOW_AGENT_ORG_MEMORY` unset) and the turn is not restricted. So the
 tool's proposals are organization-scoped today; `project` is in the contract
 for the day a project note needs a person.
 

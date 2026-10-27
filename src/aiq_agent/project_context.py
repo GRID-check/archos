@@ -89,7 +89,7 @@ USER_ID_HEADER = "x-grid-user-id"
 # individual x-grid-* headers above carry (minus the internal token, which is
 # deliberately out of scope — see the module docstring), and
 # `X-Grid-Request-Context-Sig` carries the hex HMAC-SHA256 of the raw JSON
-# keyed on GRID_INTERNAL_API_TOKEN. Minted in one place on the TS side
+# keyed on INTERNAL_API_TOKEN. Minted in one place on the TS side
 # (`buildGridRequestContextEnvelope` in `frontends/ui/src/lib/request-context.ts`,
 # duplicated with a pinning comment in `server.js` because it is plain
 # CommonJS). Producers DUAL-WRITE: the envelope is sent ALONGSIDE the
@@ -512,7 +512,7 @@ class GridRequestContext:
         envelope = cls.from_envelope(
             _read_header(REQUEST_CONTEXT_ENVELOPE_HEADER),
             _read_header(REQUEST_CONTEXT_ENVELOPE_SIG_HEADER),
-            os.environ.get("GRID_INTERNAL_API_TOKEN"),
+            os.environ.get("INTERNAL_API_TOKEN"),
         )
         if envelope is not None:
             return envelope
@@ -556,7 +556,7 @@ class GridRequestContext:
           logged as a WARNING, since a present-but-wrong signature is a
           tamper signal worth surfacing, not routine absence.
 
-        When ``secret`` is falsy (``GRID_INTERNAL_API_TOKEN`` unset — dev
+        When ``secret`` is falsy (``INTERNAL_API_TOKEN`` unset — dev
         only), signature verification is skipped and the envelope is
         accepted on shape alone: the token is how the two BFF/backend
         processes share a secret, so without it there is nothing to verify
@@ -819,7 +819,7 @@ def get_signed_request_context() -> GridRequestContext | None:
     return GridRequestContext.from_envelope(
         _read_header(REQUEST_CONTEXT_ENVELOPE_HEADER),
         _read_header(REQUEST_CONTEXT_ENVELOPE_SIG_HEADER),
-        os.environ.get("GRID_INTERNAL_API_TOKEN"),
+        os.environ.get("INTERNAL_API_TOKEN"),
     )
 
 

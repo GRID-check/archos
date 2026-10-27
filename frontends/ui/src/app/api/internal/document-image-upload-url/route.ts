@@ -6,7 +6,7 @@
  * image; the read side is `GET /api/internal/document-file?imageIndex=`, and
  * the delete side is the `_img/` sweep in `lib/documents/object-cleanup.ts`.
  *
- * Service-to-service only: `GRID_INTERNAL_API_TOKEN` via `internalApiRoute`,
+ * Service-to-service only: `INTERNAL_API_TOKEN` via `internalApiRoute`,
  * fail-closed when unconfigured. The row is addressed by the `documentId` the
  * dispatch sent AND the collection it was sent for — both unguessable, and
  * requiring both means one document's id cannot mint objects under it from

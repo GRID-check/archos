@@ -34,7 +34,7 @@
 #   SERVICE_PASSWORD_GRIDRUNTIME -> login for grid_app_rw, the least-privilege
 #     role the app connects as under row-level security (ADR-0041). The
 #     frontend container synchronises the role's password from its own
-#     GRID_APP_DATABASE_URL at startup, so nothing else needs to know it.
+#     APP_DATABASE_URL at startup, so nothing else needs to know it.
 # =============================================================================
 
 services:
@@ -80,8 +80,8 @@ services:
       # via the shared resolver). An explicitly set value wins; otherwise the
       # OpenRouter key is used even if provider inference is ever disabled.
       - EMBED_API_KEY=${EMBED_API_KEY:-${GRID_EMBED_API_KEY:-${AIQ_EMBED_API_KEY:-${OPENROUTER_API_KEY}}}}
-      - GRID_VLM_MODEL=${GRID_VLM_MODEL:-${AIQ_VLM_MODEL:-openai/gpt-6-luna}}
-      - GRID_VLM_BASE_URL=${GRID_VLM_BASE_URL:-${AIQ_VLM_BASE_URL:-https://openrouter.ai/api/v1}}
+      - VLM_MODEL=${VLM_MODEL:-${GRID_VLM_MODEL:-${AIQ_VLM_MODEL:-openai/gpt-6-luna}}}
+      - VLM_BASE_URL=${VLM_BASE_URL:-${GRID_VLM_BASE_URL:-${AIQ_VLM_BASE_URL:-https://openrouter.ai/api/v1}}}
       # ── Databases (single Postgres, three logical DBs; see init-db.sql) ──
       # Same split as Kubernetes (ADR-0083): the first three go through the
       # transaction pooler (`pgbouncer`); what needs ONE server connection across
@@ -112,7 +112,7 @@ services:
       - JOB_PAYLOAD_KEK=${JOB_PAYLOAD_KEK:-${GRID_JOB_PAYLOAD_KEK:-}}
       # ── Single-writer memory bridge to the frontend BFF ──
       - FRONTEND_INTERNAL_URL=http://frontend:3000
-      - GRID_INTERNAL_API_TOKEN=${SERVICE_PASSWORD_INTERNALTOKEN}
+      - INTERNAL_API_TOKEN=${SERVICE_PASSWORD_INTERNALTOKEN}
       # Object storage for `look` (ADR-0039). Without these the
       # tool fails its credential guard and every project/Archiv image silently
       # degrades to a text-only block — no error anyone would look at.
@@ -156,7 +156,7 @@ services:
       # Required: gates POST /v1/admin/oib/sync (KB re-ingestion). An empty value
       # makes routes/oib.py fail OPEN, so the deploy fails fast if it is unset
       # (matches the :? pattern used for OPENROUTER_API_KEY / TAVILY_API_KEY).
-      - GRID_ADMIN_TOKEN=${GRID_ADMIN_TOKEN:?set GRID_ADMIN_TOKEN}
+      - ADMIN_TOKEN=${ADMIN_TOKEN:-${GRID_ADMIN_TOKEN:?set ADMIN_TOKEN}}
       # Default ON for this production compose; kept consistent with the frontend.
       # REQUIRE_AUTH gates the token check only for EXTERNAL requests (Host in
       # EXTERNAL_HOSTNAMES). It also turns on job access control (owner, or the
@@ -172,7 +172,7 @@ services:
       # the container and this line only matters for a locally built or
       # hand-tagged image. It appears in the `[boot]` log line and on the health
       # endpoints, and it is what makes a pilot report nameable.
-      - GRID_GIT_SHA=${GRID_GIT_SHA:-}
+      - GIT_SHA=${GIT_SHA:-${GRID_GIT_SHA:-}}
       # Defense-in-depth: hostnames the backend treats as external. Bare domain,
       # comma-separated, no scheme/port — matched against the request Host header
       # (see auth/middleware.py::_load_external_hostnames). If port 8000 is ever
@@ -484,10 +484,10 @@ services:
     environment:
       # Schema owner: DDL and data backfills. RLS does not apply to a table's
       # owner, which is what keeps backfills working.
-      - GRID_APP_MIGRATION_DATABASE_URL=postgresql://aiq:${SERVICE_PASSWORD_POSTGRES}@postgres:5432/grid_app
+      - APP_MIGRATION_DATABASE_URL=postgresql://aiq:${SERVICE_PASSWORD_POSTGRES}@postgres:5432/grid_app
       # Read only so `ensure-rls-roles` can keep grid_app_rw's login in step
       # with the credential the app actually uses.
-      - GRID_APP_DATABASE_URL=postgresql://grid_app_rw:${SERVICE_PASSWORD_GRIDRUNTIME}@pgbouncer:5432/grid_app
+      - APP_DATABASE_URL=postgresql://grid_app_rw:${SERVICE_PASSWORD_GRIDRUNTIME}@pgbouncer:5432/grid_app
     depends_on:
       postgres:
         condition: service_healthy
@@ -564,16 +564,16 @@ services:
       # Least-privilege runtime role: DML only, subject to row-level security
       # (ADR-0041). The container's CMD synchronises this role's login from
       # this very URL before starting, so there is one source of truth.
-      - GRID_APP_DATABASE_URL=postgresql://grid_app_rw:${SERVICE_PASSWORD_GRIDRUNTIME}@pgbouncer:5432/grid_app
-      # No GRID_APP_MIGRATION_DATABASE_URL here, deliberately: the owner
+      - APP_DATABASE_URL=postgresql://grid_app_rw:${SERVICE_PASSWORD_GRIDRUNTIME}@pgbouncer:5432/grid_app
+      # No APP_MIGRATION_DATABASE_URL here, deliberately: the owner
       # credential belongs to `grid-migrate` above and nowhere else.
-      - GRID_INTERNAL_API_TOKEN=${SERVICE_PASSWORD_INTERNALTOKEN}
+      - INTERNAL_API_TOKEN=${SERVICE_PASSWORD_INTERNALTOKEN}
       # S1 security default: agent org-wide memory writes are OFF unless explicitly
       # enabled here (see app/api/internal/memory/route.ts). Leave false in production.
-      - GRID_ALLOW_AGENT_ORG_MEMORY=${GRID_ALLOW_AGENT_ORG_MEMORY:-false}
+      - ALLOW_AGENT_ORG_MEMORY=${ALLOW_AGENT_ORG_MEMORY:-${GRID_ALLOW_AGENT_ORG_MEMORY:-false}}
       # Admin token for the backend's /v1/admin/oib/* endpoints (must match the
       # aiq-agent value). Powers the platform-owner base-knowledge management UI.
-      - GRID_ADMIN_TOKEN=${GRID_ADMIN_TOKEN:?set GRID_ADMIN_TOKEN}
+      - ADMIN_TOKEN=${ADMIN_TOKEN:-${GRID_ADMIN_TOKEN:?set ADMIN_TOKEN}}
       # Corpus tarball (/api/internal/oib-corpus). No caller since the answer-suite CI workflow was removed. Unset = disabled.
       - CORPUS_EXPORT_TOKEN=${CORPUS_EXPORT_TOKEN:-${GRID_CORPUS_EXPORT_TOKEN:-}}
       # WorkOS AuthKit — only consumed when REQUIRE_AUTH=true. Safe to leave the
@@ -637,7 +637,7 @@ services:
       # the container and this line only matters for a locally built or
       # hand-tagged image. It appears in the `[boot]` log line and on the health
       # endpoints, and it is what makes a pilot report nameable.
-      - GRID_GIT_SHA=${GRID_GIT_SHA:-}
+      - GIT_SHA=${GIT_SHA:-${GRID_GIT_SHA:-}}
       # Features are WorkOS flags per organization, with no env switches
       # (frontends/ui/src/lib/authz/feature-flags.ts). With REQUIRE_AUTH=true
       # this stack reads them from its WorkOS environment, exactly as
@@ -709,10 +709,10 @@ services:
     command: ["node", "workers/jobs/index.js"]
     environment:
       - BFF_JOBS_CONCURRENCY=${BFF_JOBS_CONCURRENCY:-${GRID_BFF_JOBS_CONCURRENCY:-2}}
-      - GRID_BFF_JOBS_DRAIN_SECONDS=${GRID_BFF_JOBS_DRAIN_SECONDS:-30}
+      - BFF_JOBS_DRAIN_SECONDS=${BFF_JOBS_DRAIN_SECONDS:-${GRID_BFF_JOBS_DRAIN_SECONDS:-30}}
       - BFF_JOBS_MAX_PER_ORG=${BFF_JOBS_MAX_PER_ORG:-${GRID_BFF_JOBS_MAX_PER_ORG:-0}}
       # `inprocess` runs the slices without spawning the BFF (ADR-0079 amendment 1).
-      - GRID_BFF_JOBS_MODE=${GRID_BFF_JOBS_MODE:-http}
+      - BFF_JOBS_MODE=${BFF_JOBS_MODE:-${GRID_BFF_JOBS_MODE:-http}}
       # The runner stops the BFF only after it has drained.
       - SHUTDOWN_DRAIN_MS=5000
     # The runner gives claims back for up to the drain budget; docker's default
@@ -760,7 +760,7 @@ services:
       - WORKOS_API_KEY=${WORKOS_API_KEY:-}
       - PLATFORM_ORG_EXTERNAL_ID=${PLATFORM_ORG_EXTERNAL_ID:-${GRID_PLATFORM_ORG_EXTERNAL_ID:-grid-platform}}
       # Schema owner: the carry-over reads every organization's folder grants.
-      - GRID_APP_MIGRATION_DATABASE_URL=postgresql://aiq:${SERVICE_PASSWORD_POSTGRES}@postgres:5432/grid_app
+      - APP_MIGRATION_DATABASE_URL=postgresql://aiq:${SERVICE_PASSWORD_POSTGRES}@postgres:5432/grid_app
     depends_on:
       frontend:
         condition: service_healthy
@@ -773,12 +773,12 @@ services:
     environment:
       # Least-privilege runtime role (ADR-0041). This worker spans tenants, so
       # it steps up to grid_app_platform per transaction.
-      - GRID_APP_DATABASE_URL=postgresql://grid_app_rw:${SERVICE_PASSWORD_GRIDRUNTIME}@pgbouncer:5432/grid_app
+      - APP_DATABASE_URL=postgresql://grid_app_rw:${SERVICE_PASSWORD_GRIDRUNTIME}@pgbouncer:5432/grid_app
       - BACKEND_URL=http://aiq-api:8000
       # A chat erasure the delete request could not finish is retried through
       # the BFF, which owns its steps.
       - FRONTEND_INTERNAL_URL=http://frontend:3000
-      - GRID_INTERNAL_API_TOKEN=${SERVICE_PASSWORD_INTERNALTOKEN}
+      - INTERNAL_API_TOKEN=${SERVICE_PASSWORD_INTERNALTOKEN}
       - SEAWEED_ENDPOINT=http://seaweedfs:8333
       - SEAWEED_ACCESS_KEY=${SEAWEED_ACCESS_KEY:-seaweedadmin}
       - SEAWEED_SECRET_KEY=${SERVICE_PASSWORD_SEAWEEDFS}
@@ -819,9 +819,9 @@ services:
     environment:
       # Least-privilege runtime role (ADR-0041). This worker spans tenants, so
       # it steps up to grid_app_platform per transaction.
-      - GRID_APP_DATABASE_URL=postgresql://grid_app_rw:${SERVICE_PASSWORD_GRIDRUNTIME}@pgbouncer:5432/grid_app
+      - APP_DATABASE_URL=postgresql://grid_app_rw:${SERVICE_PASSWORD_GRIDRUNTIME}@pgbouncer:5432/grid_app
       - FRONTEND_INTERNAL_URL=http://frontend:3000
-      - GRID_INTERNAL_API_TOKEN=${SERVICE_PASSWORD_INTERNALTOKEN}
+      - INTERNAL_API_TOKEN=${SERVICE_PASSWORD_INTERNALTOKEN}
       - SKILL_SCHEDULER_POLL_MS=${SKILL_SCHEDULER_POLL_MS:-${GRID_SKILL_SCHEDULER_POLL_MS:-30000}}
       - SKILL_SCHEDULER_BATCH=${SKILL_SCHEDULER_BATCH:-${GRID_SKILL_SCHEDULER_BATCH:-20}}
       - SKILL_RUNS_RETENTION_DAYS=${SKILL_RUNS_RETENTION_DAYS:-${GRID_SKILL_RUNS_RETENTION_DAYS:-90}}
@@ -844,7 +844,7 @@ services:
     command: ["node", "workers/housekeeping-clock.js"]
     environment:
       - BACKEND_URL=http://aiq-api:8000
-      - GRID_INTERNAL_API_TOKEN=${SERVICE_PASSWORD_INTERNALTOKEN}
+      - INTERNAL_API_TOKEN=${SERVICE_PASSWORD_INTERNALTOKEN}
     depends_on:
       aiq-api:
         condition: service_healthy

@@ -107,7 +107,7 @@ describe.skipIf(!url)('the files the closing extraction may read, against live P
     inOrg(organizationId, () => readable.extractableFileNames(organizationId, owner, collection))
 
   beforeAll(async () => {
-    process.env.GRID_APP_DATABASE_URL = url
+    process.env.APP_DATABASE_URL = url
     const context = await import('@/lib/db/tenant-context')
     withTenant = context.withTenant
     withPlatformAccess = context.withPlatformAccess

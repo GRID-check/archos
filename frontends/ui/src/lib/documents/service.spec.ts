@@ -3354,7 +3354,7 @@ describe('thumbnails ignore empty objects', () => {
   })
 
   it('streamDocumentImage 404s an empty thumbnail object', async () => {
-    vi.stubEnv('GRID_INTERNAL_API_TOKEN', 'test-secret')
+    vi.stubEnv('INTERNAL_API_TOKEN', 'test-secret')
     const imageUrl = new URL(buildDocumentImageUrl('org-1', 'user-1', 'doc-1', 'thumb')!, 'https://grid.test')
     vi.mocked(s3Client.send).mockResolvedValue({ ContentLength: 0, Body: undefined } as never)
 

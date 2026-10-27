@@ -3,8 +3,8 @@
 A scanned page has no text layer, and a garbled one has a text layer that
 decodes to glyph ids (``page_triage``). Both are rendered and sent to the SAME
 OpenAI-compatible endpoint the drawing analysis uses, with the same credential
-(``resolve_vlm_credential``: org BYOK, then ``GRID_VLM_API_KEY``, then the
-provider key for ``GRID_VLM_BASE_URL``), and the reply becomes the page's text.
+(``resolve_vlm_credential``: org BYOK, then ``VLM_API_KEY``, then the
+provider key for ``VLM_BASE_URL``), and the reply becomes the page's text.
 It is then chunked like any other page: a transcription is text, not a visual,
 so it never enters the drawing schema.
 
@@ -39,7 +39,7 @@ PROMPT_VERSION = 1
 #: The file failure for a scan with no vision model to read it. Same
 #: ``reason: text`` shape as the image path's, so the failed-document UX offers
 #: the same remedy instead of "no content extracted".
-SCAN_NEEDS_VLM = "vlm_not_configured: scanned PDF pages need a vision model to be transcribed (GRID_VLM_API_KEY)"
+SCAN_NEEDS_VLM = "vlm_not_configured: scanned PDF pages need a vision model to be transcribed (VLM_API_KEY)"
 
 #: Reply that says the page carries no text worth indexing (blank, a photo).
 NO_TEXT_MARKER = "[KEIN TEXT]"
@@ -73,7 +73,7 @@ Sonderfälle — dann antwortest du NUR mit der Markierung:
 # @default (the ingestion VLM model)
 # @required false
 # Model that transcribes scanned and garbled PDF pages. Unset, the ingestion
-# VLM transcribes them (GRID_VLM_MODEL, or the org's `ingest_vlm` override).
+# VLM transcribes them (VLM_MODEL, or the org's `ingest_vlm` override).
 # Same endpoint and key as the VLM.
 OCR_MODEL_ENV = "OCR_MODEL"
 

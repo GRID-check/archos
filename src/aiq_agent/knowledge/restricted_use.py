@@ -217,7 +217,7 @@ def _post(use: RestrictedUse, body: dict[str, Any]) -> dict[str, Any] | None:
             f"/api/internal/conversations/{conversation}/restricted-use", payload, timeout=_TIMEOUT_SECONDS
         )
     except bff_http.BffNotConfiguredError:
-        logger.warning("Restricted use for %s not checked: GRID_INTERNAL_API_TOKEN is not set", use.conversation_id)
+        logger.warning("Restricted use for %s not checked: INTERNAL_API_TOKEN is not set", use.conversation_id)
         return None
     except bff_http.BffError:
         logger.warning("Restricted-use check for conversation %s failed", use.conversation_id, exc_info=True)

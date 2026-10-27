@@ -157,7 +157,7 @@ The fields per file are `file_name`, `state`, `size_bytes`, `chunk_count`, `inge
 |----------|---------|-------------|
 | `BASE_CORPUS_CACHE_DIR` | `/tmp/base-corpus` | This process's cache of corpus files. May be lost at any restart |
 | `SUMMARY_DB` | none | The knowledge database; holds `oib_corpus_files`. Required |
-| `FRONTEND_INTERNAL_URL`, `GRID_INTERNAL_API_TOKEN` | none | How the backend reaches the BFF to write and delete objects |
+| `FRONTEND_INTERNAL_URL`, `INTERNAL_API_TOKEN` | none | How the backend reaches the BFF to write and delete objects |
 | `SEAWEED_ENDPOINT`, `SEAWEED_ACCESS_KEY`, `SEAWEED_SECRET_KEY`, `SEAWEED_BUCKET` | none, none, none, `grid-documents` | The read-only credential and bucket the backend downloads with |
 | `INGEST_QUEUE` | on when a database is set | `off` turns the durable ingest queue off. The base corpus then cannot be ingested: uploads and sync cycles fail loudly |
 | `OIB_COLLECTION_NAME` | `oib_knowledge` | Target collection (a scope in Qdrant's corpus collection) |
@@ -170,7 +170,7 @@ The fields per file are `file_name`, `state`, `size_bytes`, `chunk_count`, `inge
 Upload them in the platform-admin UI. A developer with a directory of PDFs runs
 
 ```bash
-GRID_ADMIN_TOKEN=... uv run python scripts/upload_oib_corpus.py data/oib --url http://localhost:8000
+ADMIN_TOKEN=... uv run python scripts/upload_oib_corpus.py data/oib --url http://localhost:8000
 ```
 
 which sends each PDF through `POST /v1/admin/oib/documents` (header `X-Admin-Token`). The upload queues one ingest job per file; watch `/v1/oib/status`.

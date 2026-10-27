@@ -1070,7 +1070,7 @@ def precedent_envelope(
     """The signed request-context envelope the BFF would mint for a turn in the fixture office's current project.
 
     Base64url JSON, HMAC-SHA256 over the exact bytes with the run's
-    ``GRID_INTERNAL_API_TOKEN``: the agent verifies it like a real one
+    ``INTERNAL_API_TOKEN``: the agent verifies it like a real one
     (``GridRequestContext.from_envelope``). A solo chat, as the conversation
     has no row: the fixture BFF searches every project in the office. ``extra`` adds payload
     fields (``--set files`` states the project's ``collectionScope`` this way).
@@ -1120,7 +1120,7 @@ def start_workspace_bff(out: Path) -> tuple[Any, Any]:
         )
         return {
             "FRONTEND_INTERNAL_URL": bff.url,
-            "GRID_INTERNAL_API_TOKEN": token,
+            "INTERNAL_API_TOKEN": token,
             "EVAL_ENVELOPE": header,
             "EVAL_ENVELOPE_SIG": signature,
         }
@@ -1150,7 +1150,7 @@ def start_files_bff(out: Path) -> tuple[Any, Any]:
         )
         return {
             "FRONTEND_INTERNAL_URL": bff.url,
-            "GRID_INTERNAL_API_TOKEN": token,
+            "INTERNAL_API_TOKEN": token,
             "EVAL_ENVELOPE": header,
             "EVAL_ENVELOPE_SIG": signature,
             # A row an upload starts carries its trigger and open document, as the headless turn does.
@@ -1183,7 +1183,7 @@ def start_visual_bff(out: Path, look: bool = True) -> tuple[Any, Any]:
         )
         return {
             "FRONTEND_INTERNAL_URL": bff.url,
-            "GRID_INTERNAL_API_TOKEN": token,
+            "INTERNAL_API_TOKEN": token,
             "EVAL_ENVELOPE": header,
             "EVAL_ENVELOPE_SIG": signature,
             **workspace.env(bff.url, look),
@@ -1213,7 +1213,7 @@ def start_fixture_bff(out: Path) -> tuple[Any, Any]:
         header, signature = precedent_envelope(office.office, conversation_id, token, office.current)
         return {
             "FRONTEND_INTERNAL_URL": bff.url,
-            "GRID_INTERNAL_API_TOKEN": token,
+            "INTERNAL_API_TOKEN": token,
             "EVAL_ENVELOPE": header,
             "EVAL_ENVELOPE_SIG": signature,
         }

@@ -31,7 +31,7 @@ const call = (fileName: string, token: string | null = 'test-token'): Promise<Re
 describe('DELETE /api/internal/base-corpus/[fileName]', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    process.env.GRID_INTERNAL_API_TOKEN = 'test-token'
+    process.env.INTERNAL_API_TOKEN = 'test-token'
     process.env.APP_ENV = 'development'
     send.mockResolvedValue({})
   })
@@ -43,7 +43,7 @@ describe('DELETE /api/internal/base-corpus/[fileName]', () => {
   })
 
   it('fails closed when the token is unconfigured', async () => {
-    delete process.env.GRID_INTERNAL_API_TOKEN
+    delete process.env.INTERNAL_API_TOKEN
     expect((await call('x.pdf')).status).toBe(503)
     expect(send).not.toHaveBeenCalled()
   })

@@ -66,14 +66,14 @@ def _verified_collection_scope(http_request: Request) -> list[str] | None:
     the raw, forgeable ``X-Grid-Collection-Scope`` header on its own — because
     collection names are guessable (``proj_<uuid>`` / ``archiv_<orgId>`` / ``office_shelf_<orgId>``), so an
     attacker who could set a raw scope header would read another tenant's corpus.
-    When ``GRID_INTERNAL_API_TOKEN`` is unset (dev), ``from_envelope`` accepts the
+    When ``INTERNAL_API_TOKEN`` is unset (dev), ``from_envelope`` accepts the
     envelope on shape alone, mirroring the rest of the codebase's fail-open dev
     posture. Returns ``None`` when no valid signed envelope is present.
     """
     ctx = GridRequestContext.from_envelope(
         http_request.headers.get(REQUEST_CONTEXT_ENVELOPE_HEADER),
         http_request.headers.get(REQUEST_CONTEXT_ENVELOPE_SIG_HEADER),
-        os.environ.get("GRID_INTERNAL_API_TOKEN"),
+        os.environ.get("INTERNAL_API_TOKEN"),
     )
     if ctx is None:
         return None

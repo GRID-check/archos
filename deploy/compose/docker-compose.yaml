@@ -86,7 +86,7 @@ services:
       # Project Memory: the `remember` tool writes via the frontend's internal
       # API (single-writer separation — the backend never touches grid_app).
       FRONTEND_INTERNAL_URL: ${FRONTEND_INTERNAL_URL:-http://frontend:3000}
-      GRID_INTERNAL_API_TOKEN: ${GRID_INTERNAL_API_TOKEN:-grid-internal-dev-token}
+      INTERNAL_API_TOKEN: ${INTERNAL_API_TOKEN:-${GRID_INTERNAL_API_TOKEN:-grid-internal-dev-token}}
       # Object storage, for `look` (ADR-0039): the tool asks the
       # BFF where a document is and then reads the bytes from SeaweedFS itself.
       # These were only ever wired in the Kubernetes deployment, so in compose
@@ -318,7 +318,7 @@ services:
     environment:
       - SUMMARY_DB=${SUMMARY_DB:-${GRID_SUMMARY_DB:-${AIQ_SUMMARY_DB:-postgresql+psycopg://aiq:aiq_dev@pgbouncer:5432/aiq_jobs}}}
       - FRONTEND_INTERNAL_URL=${FRONTEND_INTERNAL_URL:-http://frontend:3000}
-      - GRID_INTERNAL_API_TOKEN=${GRID_INTERNAL_API_TOKEN:-grid-internal-dev-token}
+      - INTERNAL_API_TOKEN=${INTERNAL_API_TOKEN:-${GRID_INTERNAL_API_TOKEN:-grid-internal-dev-token}}
     entrypoint: ["python", "-m", "aiq_agent.legacy_corpus_import"]
     command: ["/legacy/data", "/legacy/oib"]
     volumes:
@@ -541,10 +541,10 @@ services:
     environment:
       # Schema owner: DDL and data backfills. RLS does not apply to a table's
       # owner, which is what keeps backfills working.
-      - GRID_APP_MIGRATION_DATABASE_URL=${GRID_APP_MIGRATION_DATABASE_URL:-postgresql://aiq:aiq_dev@postgres:5432/grid_app}
+      - APP_MIGRATION_DATABASE_URL=${APP_MIGRATION_DATABASE_URL:-${GRID_APP_MIGRATION_DATABASE_URL:-postgresql://aiq:aiq_dev@postgres:5432/grid_app}}
       # Read only so `ensure-rls-roles` can keep grid_app_rw's login in step
       # with the credential the app actually uses.
-      - GRID_APP_DATABASE_URL=${GRID_APP_DATABASE_URL:-postgresql://grid_app_rw:${GRID_APP_RUNTIME_PASSWORD:-grid_app_rw_dev}@pgbouncer:5432/grid_app}
+      - APP_DATABASE_URL=${APP_DATABASE_URL:-${GRID_APP_DATABASE_URL:-postgresql://grid_app_rw:${APP_RUNTIME_PASSWORD:-grid_app_rw_dev}@pgbouncer:5432/grid_app}}
     depends_on:
       postgres:
         condition: service_healthy
@@ -614,9 +614,9 @@ services:
       # the container and this line only matters for a locally built or
       # hand-tagged image. It appears in the `[boot]` log line and on the health
       # endpoints, and it is what makes a pilot report nameable.
-      - GRID_GIT_SHA=${GRID_GIT_SHA:-}
+      - GIT_SHA=${GIT_SHA:-${GRID_GIT_SHA:-}}
       # APP_ENV lets the internal memory route distinguish dev from prod: the
-      # well-known dev default GRID_INTERNAL_API_TOKEN is only accepted when
+      # well-known dev default INTERNAL_API_TOKEN is only accepted when
       # APP_ENV is development/dev/local (NODE_ENV is always 'production' in
       # the built image, so it cannot be used for this).
       - APP_ENV=${APP_ENV:-production}
@@ -628,15 +628,15 @@ services:
       # Runtime connection: the least-privilege role, subject to row-level
       # security (ADR-0041). A repository that forgets its organization
       # predicate returns no rows instead of another tenant's.
-      - GRID_APP_DATABASE_URL=${GRID_APP_DATABASE_URL:-postgresql://grid_app_rw:${GRID_APP_RUNTIME_PASSWORD:-grid_app_rw_dev}@pgbouncer:5432/grid_app}
+      - APP_DATABASE_URL=${APP_DATABASE_URL:-${GRID_APP_DATABASE_URL:-postgresql://grid_app_rw:${APP_RUNTIME_PASSWORD:-grid_app_rw_dev}@pgbouncer:5432/grid_app}}
       # Shared service token for the internal memory endpoint (must match aiq-agent)
-      - GRID_INTERNAL_API_TOKEN=${GRID_INTERNAL_API_TOKEN:-grid-internal-dev-token}
+      - INTERNAL_API_TOKEN=${INTERNAL_API_TOKEN:-${GRID_INTERNAL_API_TOKEN:-grid-internal-dev-token}}
       # S1 security default: agent org-wide memory writes are OFF unless explicitly
       # enabled here (see app/api/internal/memory/route.ts). Leave false in production.
-      - GRID_ALLOW_AGENT_ORG_MEMORY=${GRID_ALLOW_AGENT_ORG_MEMORY:-false}
+      - ALLOW_AGENT_ORG_MEMORY=${ALLOW_AGENT_ORG_MEMORY:-${GRID_ALLOW_AGENT_ORG_MEMORY:-false}}
       # Admin token for the backend's /v1/admin/oib/* endpoints (must match
       # aiq-agent). Powers the platform-owner base-knowledge management UI.
-      - GRID_ADMIN_TOKEN=${GRID_ADMIN_TOKEN:-}
+      - ADMIN_TOKEN=${ADMIN_TOKEN:-${GRID_ADMIN_TOKEN:-}}
       # Corpus tarball (/api/internal/oib-corpus). No caller since the answer-suite CI workflow was removed. Unset = disabled.
       - CORPUS_EXPORT_TOKEN=${CORPUS_EXPORT_TOKEN:-${GRID_CORPUS_EXPORT_TOKEN:-}}
       - WORKOS_CLIENT_ID=${WORKOS_CLIENT_ID}
@@ -717,7 +717,7 @@ services:
       # the container and this line only matters for a locally built or
       # hand-tagged image. It appears in the `[boot]` log line and on the health
       # endpoints, and it is what makes a pilot report nameable.
-      - GRID_GIT_SHA=${GRID_GIT_SHA:-}
+      - GIT_SHA=${GIT_SHA:-${GRID_GIT_SHA:-}}
       # Features are WorkOS flags per organization, with no env switches
       # (frontends/ui/src/lib/authz/feature-flags.ts). With REQUIRE_AUTH=true
       # this stack reads them from its WorkOS environment, exactly as
@@ -812,7 +812,7 @@ services:
       - WORKOS_API_KEY=${WORKOS_API_KEY:-}
       - PLATFORM_ORG_EXTERNAL_ID=${PLATFORM_ORG_EXTERNAL_ID:-${GRID_PLATFORM_ORG_EXTERNAL_ID:-grid-platform}}
       # Schema owner: the carry-over reads every organization's folder grants.
-      - GRID_APP_MIGRATION_DATABASE_URL=${GRID_APP_MIGRATION_DATABASE_URL:-postgresql://aiq:aiq_dev@postgres:5432/grid_app}
+      - APP_MIGRATION_DATABASE_URL=${APP_MIGRATION_DATABASE_URL:-${GRID_APP_MIGRATION_DATABASE_URL:-postgresql://aiq:aiq_dev@postgres:5432/grid_app}}
     depends_on:
       frontend:
         condition: service_healthy
@@ -883,12 +883,12 @@ services:
       # Least-privilege runtime role (ADR-0041). This worker sweeps every
       # organization, so it steps up to grid_app_platform per transaction
       # — see frontends/ui/workers/platform-scope.js.
-      - GRID_APP_DATABASE_URL=${GRID_APP_DATABASE_URL:-postgresql://grid_app_rw:${GRID_APP_RUNTIME_PASSWORD:-grid_app_rw_dev}@pgbouncer:5432/grid_app}
+      - APP_DATABASE_URL=${APP_DATABASE_URL:-${GRID_APP_DATABASE_URL:-postgresql://grid_app_rw:${APP_RUNTIME_PASSWORD:-grid_app_rw_dev}@pgbouncer:5432/grid_app}}
       - BACKEND_URL=${BACKEND_URL:-http://aiq-api:8000}
       # A chat erasure the delete request could not finish is retried through
       # the BFF, which owns its steps.
       - FRONTEND_INTERNAL_URL=${FRONTEND_INTERNAL_URL:-http://frontend:3000}
-      - GRID_INTERNAL_API_TOKEN=${GRID_INTERNAL_API_TOKEN:-grid-internal-dev-token}
+      - INTERNAL_API_TOKEN=${INTERNAL_API_TOKEN:-${GRID_INTERNAL_API_TOKEN:-grid-internal-dev-token}}
       - SEAWEED_ENDPOINT=http://seaweedfs:8333
       - SEAWEED_PUBLIC_ENDPOINT=${SEAWEED_PUBLIC_ENDPOINT:-http://localhost:8333}
       - SEAWEED_ACCESS_KEY=${SEAWEED_ACCESS_KEY:-seaweedadmin}
@@ -934,9 +934,9 @@ services:
       # Least-privilege runtime role (ADR-0041). This worker sweeps every
       # organization, so it steps up to grid_app_platform per transaction
       # — see frontends/ui/workers/platform-scope.js.
-      - GRID_APP_DATABASE_URL=${GRID_APP_DATABASE_URL:-postgresql://grid_app_rw:${GRID_APP_RUNTIME_PASSWORD:-grid_app_rw_dev}@pgbouncer:5432/grid_app}
+      - APP_DATABASE_URL=${APP_DATABASE_URL:-${GRID_APP_DATABASE_URL:-postgresql://grid_app_rw:${APP_RUNTIME_PASSWORD:-grid_app_rw_dev}@pgbouncer:5432/grid_app}}
       - FRONTEND_INTERNAL_URL=${FRONTEND_INTERNAL_URL:-http://frontend:3000}
-      - GRID_INTERNAL_API_TOKEN=${GRID_INTERNAL_API_TOKEN:-grid-internal-dev-token}
+      - INTERNAL_API_TOKEN=${INTERNAL_API_TOKEN:-${GRID_INTERNAL_API_TOKEN:-grid-internal-dev-token}}
       # Object storage, for `look` (ADR-0039): the tool asks the
       # BFF where a document is and then reads the bytes from SeaweedFS itself.
       # These were only ever wired in the Kubernetes deployment, so in compose
@@ -985,7 +985,7 @@ services:
     command: ["node", "workers/housekeeping-clock.js"]
     environment:
       - BACKEND_URL=${BACKEND_URL:-http://aiq-api:8000}
-      - GRID_INTERNAL_API_TOKEN=${GRID_INTERNAL_API_TOKEN:-grid-internal-dev-token}
+      - INTERNAL_API_TOKEN=${INTERNAL_API_TOKEN:-${GRID_INTERNAL_API_TOKEN:-grid-internal-dev-token}}
     networks:
       - aiq-network
     depends_on:
@@ -1146,7 +1146,7 @@ services:
     image: edoburu/pgbouncer:v1.26.0-p0@sha256:b17551c776ef7e5769ef80b956d20f85e2fd25dd8912d31d58f782aad495b711
     container_name: aiq-pgbouncer
     environment:
-      DATABASE_URLS: postgres://aiq:aiq_dev@postgres:5432/aiq_jobs,postgres://aiq:aiq_dev@postgres:5432/aiq_checkpoints,postgres://grid_app_rw:${GRID_APP_RUNTIME_PASSWORD:-grid_app_rw_dev}@postgres:5432/grid_app  # pragma: allowlist secret (compose dev default)
+      DATABASE_URLS: postgres://aiq:aiq_dev@postgres:5432/aiq_jobs,postgres://aiq:aiq_dev@postgres:5432/aiq_checkpoints,postgres://grid_app_rw:${APP_RUNTIME_PASSWORD:-${GRID_APP_RUNTIME_PASSWORD:-grid_app_rw_dev}}@postgres:5432/grid_app  # pragma: allowlist secret (compose dev default)
       POOL_MODE: transaction
       AUTH_TYPE: scram-sha-256
       MAX_CLIENT_CONN: "2000"

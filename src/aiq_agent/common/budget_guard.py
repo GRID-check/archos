@@ -83,7 +83,7 @@ def _parse_completion_token_ceiling(raw: str | None) -> int:
     """Parse ``MAX_RUN_COMPLETION_TOKENS`` defensively.
 
     Mirrors the fail-safe-to-disabled parsing style used for other numeric
-    env knobs in this codebase (e.g. ``GRID_DB_POOL_MAX``): missing, blank,
+    env knobs in this codebase (e.g. ``DB_POOL_MAX``): missing, blank,
     unparseable, or non-positive values all fall back to disabled (0) rather
     than raising or silently picking an arbitrary default ceiling.
     """

@@ -170,7 +170,7 @@ const audienceOf = (solo: boolean) => ({
 
 beforeEach(() => {
   vi.clearAllMocks()
-  process.env.GRID_INTERNAL_API_TOKEN = SECRET
+  process.env.INTERNAL_API_TOKEN = SECRET
   process.env.MCP_RESOURCE_URL = 'https://app.piloti.test/api/mcp'
   vi.mocked(resolvePinnedRequesterSession).mockResolvedValue(session)
   vi.mocked(callOperation).mockResolvedValue({

@@ -67,7 +67,7 @@ EXEMPT (enforcement never applies):
   ``AuthMiddleware`` already classified the caller as ``"internal"``/
   ``"unverified_jwt"`` (not ``"jwt"``), or because the request explicitly
   carries a valid ``x-internal-token``/``x-grid-internal-token`` matching
-  ``GRID_INTERNAL_API_TOKEN`` (the two internal-auth header names used
+  ``INTERNAL_API_TOKEN`` (the two internal-auth header names used
   elsewhere in this codebase — ``routes/internal_auth.py`` and
   ``routes/config_info.py`` respectively);
 - the ``ENVELOPE_EXEMPT_HTTP_PATH_PREFIXES``: health, collection/document
@@ -77,7 +77,7 @@ EXEMPT (enforcement never applies):
   routes fail the second half: they authorize a job by the scope the envelope
   signs (ADR-0084), so they are enforced like the submit.
 
-Fail-open note (dev): when ``GRID_INTERNAL_API_TOKEN`` is unset,
+Fail-open note (dev): when ``INTERNAL_API_TOKEN`` is unset,
 ``GridRequestContext.from_envelope`` skips HMAC verification but still
 requires the envelope header to be present and well-formed — so local dev
 without the token configured still exercises the "did every producer
@@ -170,7 +170,7 @@ def _is_internal_token_call(headers: dict[bytes, bytes]) -> bool:
     this exemption holds even in configurations where a service call happens
     to also present a bearer token that resolves to ``type != "internal"``.
     """
-    secret = os.environ.get("GRID_INTERNAL_API_TOKEN")
+    secret = os.environ.get("INTERNAL_API_TOKEN")
     if not secret:
         return False
     for name in _INTERNAL_TOKEN_HEADER_NAMES:
@@ -183,7 +183,7 @@ def _is_internal_token_call(headers: dict[bytes, bytes]) -> bool:
 def _has_valid_envelope(headers: dict[bytes, bytes]) -> bool:
     envelope = _header(headers, REQUEST_CONTEXT_ENVELOPE_HEADER)
     sig = _header(headers, REQUEST_CONTEXT_ENVELOPE_SIG_HEADER)
-    secret = os.environ.get("GRID_INTERNAL_API_TOKEN")
+    secret = os.environ.get("INTERNAL_API_TOKEN")
     return GridRequestContext.from_envelope(envelope, sig, secret) is not None
 
 

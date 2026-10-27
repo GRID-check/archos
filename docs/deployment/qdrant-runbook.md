@@ -1200,7 +1200,7 @@ Chroma above.
 **Never roll back by deploying an older image tag** (a Deploy (staging)
 dispatch with `imageTag`, or pinning `imageTag` in `Pulumi.prod.yaml`). That
 deploys the current program, which has no Chroma, with a backend image from
-before the change, which has no Qdrant code. Without `GRID_CHROMA_URL` that
+before the change, which has no Qdrant code. Without `CHROMA_URL` that
 backend falls back to an embedded Chroma per pod under `/tmp/chroma_data`:
 every retrieval answers from nothing, without an error, and every upload is
 written into a pod's temporary directory and lost with the pod. Both deploy

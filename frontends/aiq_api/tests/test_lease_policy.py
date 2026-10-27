@@ -52,9 +52,9 @@ def _bff_default(name: str) -> int:
 
 def test_the_bff_claim_loop_shares_the_lease_defaults_that_are_meant_to_be_shared():
     """Max attempts and dead retention are one policy. The drain is not: a BFF slice is a minute, a run ten."""
-    assert _bff_default("GRID_BFF_JOBS_MAX_ATTEMPTS") == lease_policy.MAX_ATTEMPTS
-    assert _bff_default("GRID_BFF_JOBS_DEAD_RETENTION_DAYS") == lease_policy.DEAD_RETENTION_DAYS
-    assert _bff_default("GRID_BFF_JOBS_DRAIN_SECONDS") == 60
+    assert _bff_default("BFF_JOBS_MAX_ATTEMPTS") == lease_policy.MAX_ATTEMPTS
+    assert _bff_default("BFF_JOBS_DEAD_RETENTION_DAYS") == lease_policy.DEAD_RETENTION_DAYS
+    assert _bff_default("BFF_JOBS_DRAIN_SECONDS") == 60
     assert lease_policy.DRAIN_SECONDS == 600
 
 

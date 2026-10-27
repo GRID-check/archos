@@ -73,13 +73,13 @@ describe('toolCallBatch', () => {
     expect(text).not.toContain('user_1')
     expect(unknown.batch[1]).toMatchObject({ body: { name: 'mcp.unknown', level: 'WARNING', statusMessage: 'HTTP 404' } })
 
-    vi.stubEnv('GRID_TRACE_IDENTITY_ATTRIBUTES', 'true')
+    vi.stubEnv('TRACE_IDENTITY_ATTRIBUTES', 'true')
     expect(toolCallBatch(call, ids).batch[0]).toMatchObject({ body: { userId: 'user_1', tags: expect.arrayContaining(['org:org_1']) } })
   })
 
   it('files the trace under the deployment’s environment and release', () => {
     vi.stubEnv('APP_ENV', 'Staging EU')
-    vi.stubEnv('GRID_GIT_SHA', 'abc123')
+    vi.stubEnv('GIT_SHA', 'abc123')
     expect(toolCallBatch(call, ids).batch[0]).toMatchObject({ body: { environment: 'staging-eu', release: 'abc123' } })
   })
 })

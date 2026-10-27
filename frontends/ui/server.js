@@ -43,7 +43,7 @@ const crypto = require('crypto')
 // with `new Function`, so a reference to anything outside its own body breaks
 // the pin rather than the line.
 function bootLogLine(env) {
-  const sha = (env.GRID_GIT_SHA || '').trim() || 'unknown'
+  const sha = (env.GIT_SHA || '').trim() || 'unknown'
   const flags = (env.REQUIRE_AUTH || '').toLowerCase() === 'true' ? 'workos' : 'defaults'
   return `[boot] sha=${sha} flags=${flags}`
 }
@@ -83,7 +83,7 @@ const BACKEND_WS_URL = BACKEND_CHAT_URL.replace(/^http/, 'ws')
 const NEXT_INTERNAL_URL = process.env.NEXT_INTERNAL_URL || 'http://localhost:3001'
 
 // ── Conversation affinity (horizontal aiq-agent scaling) ──
-// With GRID_CHAT_AFFINITY on (the default, ADR-0028) each conversation is pinned
+// With CHAT_AFFINITY on (the default, ADR-0028) each conversation is pinned
 // to one aiq-agent pod by a stable hash of conversationId -> that pod's stable
 // DNS name, so the in-process socket, HITL future and running task are always
 // reachable. With it off (ADR-0080) every socket goes to the load-balanced
@@ -98,7 +98,7 @@ const BACKEND_REPLICAS = Math.max(1, parseInt(process.env.BACKEND_REPLICAS || '1
 // aiq-agent-{i}.aiq-agent-headless:8000 (ws, in-cluster only) supplied via env.
 // nosemgrep: javascript.lang.security.detect-insecure-websocket.detect-insecure-websocket
 const BACKEND_POD_WS_TEMPLATE = process.env.BACKEND_POD_WS_TEMPLATE || ''
-const CHAT_AFFINITY = affinityEnabled(process.env.GRID_CHAT_AFFINITY)
+const CHAT_AFFINITY = affinityEnabled(process.env.CHAT_AFFINITY)
 const pickBackendWsTarget = createBackendTargetPicker({
   replicas: BACKEND_REPLICAS,
   podTemplate: BACKEND_POD_WS_TEMPLATE,
@@ -603,7 +603,7 @@ const startServer = async () => {
           return
         }
         if (result.ok && result.header) {
-          if (result.data?.organizationId && result.data?.userId && !process.env.GRID_INTERNAL_API_TOKEN) {
+          if (result.data?.organizationId && result.data?.userId && !process.env.INTERNAL_API_TOKEN) {
             console.warn('[WS Proxy] Signed turn context unavailable: internal service token is not configured')
             socket.write('HTTP/1.1 503 Service Unavailable\r\nConnection: close\r\n\r\n')
             socket.destroy()
@@ -628,7 +628,7 @@ const startServer = async () => {
             turnContextHeaders(result.data, {
               // Minted HERE: the envelope's age is the age of THIS handshake.
               issuedAt: Date.now(),
-              secret: process.env.GRID_INTERNAL_API_TOKEN,
+              secret: process.env.INTERNAL_API_TOKEN,
             })
           )
         } else if (result.status === 401 || result.status === 403) {
@@ -689,7 +689,7 @@ const startServer = async () => {
           req,
           socket,
           head,
-          // Conversation affinity (GRID_CHAT_AFFINITY): pin this conversation to
+          // Conversation affinity (CHAT_AFFINITY): pin this conversation to
           // its owning backend replica, or hand it to the Service when off.
           { target: pickBackendWsTarget(conversationId), changeOrigin: true },
           // http-proxy also calls this AFTER the upgrade, for an upstream socket

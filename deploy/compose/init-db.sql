@@ -75,10 +75,10 @@ SELECT 'CREATE DATABASE langfuse OWNER langfuse_app' WHERE NOT EXISTS (SELECT FR
 -- Note this file runs ONLY when Postgres initialises a fresh data directory.
 -- On an existing volume the `grid-migrate` service's `ensure-rls-roles.mjs`
 -- creates whichever roles are absent and keeps `grid_app_rw`'s password in step
--- with GRID_APP_DATABASE_URL instead.
+-- with APP_DATABASE_URL instead.
 --
 -- WHO ACTUALLY OWNS THE SCHEMA HERE: `aiq`, the compose superuser — not
--- `grid_app_owner`. This stack points GRID_APP_MIGRATION_DATABASE_URL at `aiq`,
+-- `grid_app_owner`. This stack points APP_MIGRATION_DATABASE_URL at `aiq`,
 -- and only the test harness (`scripts/rls-test-db.sh`) migrates as
 -- `grid_app_owner`. That is deliberate: the harness runs the restricted shape on
 -- purpose, because it is the shape that catches privilege mistakes a
@@ -107,7 +107,7 @@ BEGIN
     CREATE ROLE grid_app_platform NOLOGIN BYPASSRLS;
   END IF;
   IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'grid_app_rw') THEN
-    CREATE ROLE grid_app_rw LOGIN NOINHERIT PASSWORD 'grid_app_rw_dev';  -- pragma: allowlist secret (dev default; real deployments set GRID_APP_RUNTIME_PASSWORD)
+    CREATE ROLE grid_app_rw LOGIN NOINHERIT PASSWORD 'grid_app_rw_dev';  -- pragma: allowlist secret (dev default; real deployments set APP_RUNTIME_PASSWORD)
   END IF;
 END
 $$;

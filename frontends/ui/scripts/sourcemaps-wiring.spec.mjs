@@ -14,7 +14,7 @@ import config, { posthogSourcemapConfig } from '../next.config.ts'
  *  - nothing configured, nothing changes: a fork, a pull request, a local
  *    build and the running server get the config exactly as written;
  *  - configured, the release is `grid-ui` at the commit being built, so an
- *    error's release is the `GRID_GIT_SHA` the running container reports;
+ *    error's release is the `GIT_SHA` the running container reports;
  *  - the key comes from a BuildKit secret, exported only inside the RUN that
  *    builds, and never reaches a build argument;
  *  - no `.map` survives in the served trees, because Next serves `.next/static`
@@ -26,14 +26,14 @@ const SHA = '0123456789abcdef0123456789abcdef01234567'
 const configured = {
   POSTHOG_CLI_API_KEY: 'phx_secret',
   POSTHOG_PROJECT_ID: '269895',
-  GRID_GIT_SHA: SHA,
+  GIT_SHA: SHA,
 }
 
 describe('posthogSourcemapConfig', () => {
   it.each([
     ['nothing', {}],
-    ['only the project id', { POSTHOG_PROJECT_ID: '269895', GRID_GIT_SHA: SHA }],
-    ['only the key', { POSTHOG_CLI_API_KEY: 'phx_secret', GRID_GIT_SHA: SHA }],
+    ['only the project id', { POSTHOG_PROJECT_ID: '269895', GIT_SHA: SHA }],
+    ['only the key', { POSTHOG_CLI_API_KEY: 'phx_secret', GIT_SHA: SHA }],
   ])('is off with %s', (_what, env) => {
     expect(posthogSourcemapConfig(env)).toBeNull()
   })
@@ -61,8 +61,8 @@ describe('posthogSourcemapConfig', () => {
   })
 
   it('refuses to upload without the commit, because a release needs one', () => {
-    expect(() => posthogSourcemapConfig({ ...configured, GRID_GIT_SHA: ' ' })).toThrow(
-      /GRID_GIT_SHA/
+    expect(() => posthogSourcemapConfig({ ...configured, GIT_SHA: ' ' })).toThrow(
+      /GIT_SHA/
     )
   })
 })
@@ -123,7 +123,7 @@ describe('the image build wiring', () => {
 
   it('declares the release version and the project id before the build reads them', () => {
     const build = builder.indexOf('bun run build')
-    expect(builder.indexOf('ARG GRID_GIT_SHA=""')).toBeLessThan(build)
+    expect(builder.indexOf('ARG GIT_SHA=""')).toBeLessThan(build)
     expect(builder.indexOf('ARG POSTHOG_PROJECT_ID=""')).toBeLessThan(build)
   })
 

@@ -81,7 +81,7 @@ describe.skipIf(!url)('bff-jobs slices through the bundle, against live Postgres
     dir = mkdtempSync(path.join(UI_ROOT, 'node_modules', '.cache', 'jobs-bundle-it-'))
     const build = spawnSync('bun', ['scripts/build-jobs-bundle.ts', '--outdir', dir], { cwd: UI_ROOT, encoding: 'utf8' })
     if (build.status !== 0) throw new Error(`the jobs bundle did not build: ${build.stderr}`)
-    process.env.GRID_APP_DATABASE_URL = url
+    process.env.APP_DATABASE_URL = url
     bundle = await import(pathToFileURL(path.join(dir, 'slice.mjs')).href)
   }, 120_000)
 

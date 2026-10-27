@@ -164,9 +164,9 @@ export function askMessage(input: {
 type SocketTarget = { url: string; secret: string } | { unavailable: string }
 
 function socketTarget(conversationId: string): SocketTarget {
-  const secret = process.env.GRID_INTERNAL_API_TOKEN
+  const secret = process.env.INTERNAL_API_TOKEN
   // Without it the envelope is unsigned and the backend would not trust it.
-  if (!secret) return { unavailable: 'this deployment cannot sign a turn (GRID_INTERNAL_API_TOKEN)' }
+  if (!secret) return { unavailable: 'this deployment cannot sign a turn (INTERNAL_API_TOKEN)' }
   try {
     return { url: chatSocketUrl(conversationId), secret }
   } catch {

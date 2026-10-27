@@ -38,7 +38,7 @@ const inheritedByBffJobs = (env: EnvVar) =>
 /**
  * bff-jobs pool environment (ADR-0079): the whole frontend environment, because
  * the jobs call the same services the routes do (the database, object storage,
- * the backend, WorkOS), plus what the runner reads. Every `GRID_BFF_JOBS_` name
+ * the backend, WorkOS), plus what the runner reads. Every `BFF_JOBS_` name
  * here must be one `frontends/ui/workers/jobs/index.js` reads; `bff-jobs.spec.ts`
  * holds the two together.
  */
@@ -47,11 +47,11 @@ export function bffJobsEnv(w: AppWiring): EnvVar[] {
   return [
     ...frontendEnv(w).filter(inheritedByBffJobs),
     { name: "BFF_JOBS_CONCURRENCY", value: String(cfg.bffJobs.concurrency) },
-    { name: "GRID_BFF_JOBS_DRAIN_SECONDS", value: String(cfg.bffJobs.drainSeconds) },
+    { name: "BFF_JOBS_DRAIN_SECONDS", value: String(cfg.bffJobs.drainSeconds) },
     { name: "BFF_JOBS_MAX_PER_ORG", value: String(cfg.bffJobs.maxPerOrg) },
     // `http` spawns the BFF and asks it per slice; `inprocess` runs the bundled
     // services in the supervisor and serves the probes' /api/healthz itself.
-    { name: "GRID_BFF_JOBS_MODE", value: cfg.bffJobs.mode },
+    { name: "BFF_JOBS_MODE", value: cfg.bffJobs.mode },
     // Office conversions this pod runs at Gotenberg at once. The BFF in the pod
     // reads it as it does in the frontend (`rendition.ts`); here it is the
     // per-pod factor of the pool's ceiling (`renditionCeiling`), which

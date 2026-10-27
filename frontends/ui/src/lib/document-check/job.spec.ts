@@ -97,7 +97,7 @@ const mark = (id: string, page: number, body: string) => ({ id, page, number: pa
 beforeEach(() => {
   vi.resetAllMocks()
   vi.stubEnv('REQUIRE_AUTH', 'true')
-  vi.stubEnv('GRID_INTERNAL_API_TOKEN', 'secret')
+  vi.stubEnv('INTERNAL_API_TOKEN', 'secret')
   vi.mocked(resolvePinnedRequesterSession).mockResolvedValue(session)
   vi.mocked(getAccessibleDocument).mockResolvedValue(DOCUMENT)
   vi.mocked(unaskedSpendAllowed).mockResolvedValue(true)

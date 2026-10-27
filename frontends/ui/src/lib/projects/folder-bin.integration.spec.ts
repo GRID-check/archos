@@ -354,7 +354,7 @@ describe.skipIf(!url)('the Papierkorb against live Postgres (migration 0115)', (
   }
 
   beforeAll(async () => {
-    process.env.GRID_APP_DATABASE_URL = url
+    process.env.APP_DATABASE_URL = url
     const context = await import('@/lib/db/tenant-context')
     withTenant = context.withTenant
     withPlatformAccess = context.withPlatformAccess

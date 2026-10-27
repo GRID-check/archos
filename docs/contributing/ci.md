@@ -113,7 +113,7 @@ a changelog commit. It built the web image. The frontend and backend changes of
 five merged pull requests were never built, and staging kept running the old
 images until someone dispatched a rebuild by hand.
 
-`GRID_GIT_SHA` inside an image is the commit that *built* it. An image whose
+`GIT_SHA` inside an image is the commit that *built* it. An image whose
 inputs did not change is re-tagged, not rebuilt, so a container reports the
 commit its code came from.
 
@@ -127,7 +127,7 @@ deploy exactly as before.
 
 | Piece | Where | What it does |
 |---|---|---|
-| Source maps and release | `image-push` for the frontend image, inside `next build` in the Docker build (`@posthog/nextjs-config`, wired in `frontends/ui/next.config.ts`) | At the end of the build, injects a chunk id into the shipped JavaScript, uploads the maps to PostHog, deletes them. The release is `grid-ui` at the commit that built the image, which is the `GRID_GIT_SHA` the container reports |
+| Source maps and release | `image-push` for the frontend image, inside `next build` in the Docker build (`@posthog/nextjs-config`, wired in `frontends/ui/next.config.ts`) | At the end of the build, injects a chunk id into the shipped JavaScript, uploads the maps to PostHog, deletes them. The release is `grid-ui` at the commit that built the image, which is the `GIT_SHA` the container reports |
 | Backend release | `deploy.yml` (staging), before the plan (`PostHog/resolve-release`) | Finds or creates release `grid-agent` at the backend image's commit and hands its id to the Python tiers as `POSTHOG_RELEASE_ID` (below) |
 | Deploy marker | `deploy.yml`, after each `Pulumi up` (`deploy/pulumi/scripts/posthog-annotate.sh`) | A project annotation `deploy dev <sha>` or `deploy prod <sha>` at the time the apply finished. `continue-on-error`: a PostHog outage never turns a deploy red |
 
@@ -182,7 +182,7 @@ Why it is built this way:
   the binary. It has to: `bun install --production` over an existing
   `node_modules` does not prune devDependencies (measured with bun 1.3.11), so
   the later production install would let it ship in the runtime image.
-- Caching: `ARG GRID_GIT_SHA` is declared before `bun run build`, because the
+- Caching: `ARG GIT_SHA` is declared before `bun run build`, because the
   release version is read during the build. That costs nothing a rebuild did
   not already pay: an image is rebuilt only when its inputs changed, and then
   the build layer re-runs anyway. `POSTHOG_PROJECT_ID` is an arg before the

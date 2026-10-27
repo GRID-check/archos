@@ -401,7 +401,7 @@ async def test_api_closes_its_sse_streams_and_waits_for_no_chat_turn(drains):
 def test_each_role_mounts_one_health_route_that_names_the_build_and_the_role(apps, monkeypatch, role):
     from fastapi.testclient import TestClient
 
-    monkeypatch.setenv("GRID_GIT_SHA", "abc1234")
+    monkeypatch.setenv("GIT_SHA", "abc1234")
 
     health = [r for r in apps[role].routes if getattr(r, "path", None) == "/health"]
     answer = TestClient(apps[role]).get("/health")

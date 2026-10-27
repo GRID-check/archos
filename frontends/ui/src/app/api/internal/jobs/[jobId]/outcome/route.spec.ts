@@ -77,7 +77,7 @@ afterEach(() => {
 
 describe('POST /api/internal/jobs/[jobId]/outcome', () => {
   it('rejects a missing or wrong token before touching anything', async () => {
-    vi.stubEnv('GRID_INTERNAL_API_TOKEN', REAL_TOKEN)
+    vi.stubEnv('INTERNAL_API_TOKEN', REAL_TOKEN)
     const body = { organizationId: 'org-1', status: 'success' }
 
     expect((await POST(makeRequest(body), routeContext)).status).toBe(403)
@@ -86,7 +86,7 @@ describe('POST /api/internal/jobs/[jobId]/outcome', () => {
   })
 
   it('records the outcome for the run the backend id names', async () => {
-    vi.stubEnv('GRID_INTERNAL_API_TOKEN', REAL_TOKEN)
+    vi.stubEnv('INTERNAL_API_TOKEN', REAL_TOKEN)
     vi.mocked(loadRunForOutcome).mockResolvedValue(run)
     vi.mocked(recordRunOutcome).mockResolvedValue({ notified: true, filed: null, closed: true })
 
@@ -110,7 +110,7 @@ describe('POST /api/internal/jobs/[jobId]/outcome', () => {
   })
 
   it('is a 404 for a backend id the BFF has no run for', async () => {
-    vi.stubEnv('GRID_INTERNAL_API_TOKEN', REAL_TOKEN)
+    vi.stubEnv('INTERNAL_API_TOKEN', REAL_TOKEN)
     vi.mocked(loadRunForOutcome).mockResolvedValue(null)
 
     const response = await POST(makeRequest({ organizationId: 'org-1', status: 'success' }, REAL_TOKEN), routeContext)
@@ -122,7 +122,7 @@ describe('POST /api/internal/jobs/[jobId]/outcome', () => {
   })
 
   it('settles the reading of a project’s documents when the job is an intake’s, in the body’s organization', async () => {
-    vi.stubEnv('GRID_INTERNAL_API_TOKEN', REAL_TOKEN)
+    vi.stubEnv('INTERNAL_API_TOKEN', REAL_TOKEN)
     vi.mocked(loadRunForOutcome).mockResolvedValue(null)
     vi.mocked(settleIntakeOutcome).mockResolvedValue({
       projectId: 'proj-1',
@@ -139,7 +139,7 @@ describe('POST /api/internal/jobs/[jobId]/outcome', () => {
   })
 
   it('asks no intake when a run row knows the job', async () => {
-    vi.stubEnv('GRID_INTERNAL_API_TOKEN', REAL_TOKEN)
+    vi.stubEnv('INTERNAL_API_TOKEN', REAL_TOKEN)
     vi.mocked(loadRunForOutcome).mockResolvedValue(run)
     vi.mocked(recordRunOutcome).mockResolvedValue({ notified: true, filed: null, closed: true })
 
@@ -149,7 +149,7 @@ describe('POST /api/internal/jobs/[jobId]/outcome', () => {
   })
 
   it('refuses a run whose tenant disagrees with the caller, as a 404', async () => {
-    vi.stubEnv('GRID_INTERNAL_API_TOKEN', REAL_TOKEN)
+    vi.stubEnv('INTERNAL_API_TOKEN', REAL_TOKEN)
     vi.mocked(loadRunForOutcome).mockResolvedValue(run)
 
     const response = await POST(makeRequest({ organizationId: 'org-2', status: 'success' }, REAL_TOKEN), routeContext)
@@ -159,7 +159,7 @@ describe('POST /api/internal/jobs/[jobId]/outcome', () => {
   })
 
   it('rejects an unknown status', async () => {
-    vi.stubEnv('GRID_INTERNAL_API_TOKEN', REAL_TOKEN)
+    vi.stubEnv('INTERNAL_API_TOKEN', REAL_TOKEN)
 
     const response = await POST(makeRequest({ organizationId: 'org-1', status: 'done' }, REAL_TOKEN), routeContext)
 
@@ -167,7 +167,7 @@ describe('POST /api/internal/jobs/[jobId]/outcome', () => {
   })
 
   it('carries the report through for the filing arm', async () => {
-    vi.stubEnv('GRID_INTERNAL_API_TOKEN', REAL_TOKEN)
+    vi.stubEnv('INTERNAL_API_TOKEN', REAL_TOKEN)
     vi.mocked(loadRunForOutcome).mockResolvedValue(run)
     vi.mocked(recordRunOutcome).mockResolvedValue({ notified: true, filed: { documentId: 'doc-1', filename: 'a.pdf' }, closed: true })
 

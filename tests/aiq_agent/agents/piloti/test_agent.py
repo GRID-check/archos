@@ -3584,7 +3584,7 @@ def _bind_signed_turn(monkeypatch, *, conversation_id: str) -> None:
     )
     header = base64.urlsafe_b64encode(payload.encode("utf-8")).decode("ascii").rstrip("=")
     signature = hmac.new(secret.encode("utf-8"), payload.encode("utf-8"), hashlib.sha256).hexdigest()
-    monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", secret)
+    monkeypatch.setenv("INTERNAL_API_TOKEN", secret)
 
     class _Ctx:
         metadata = SimpleNamespace(

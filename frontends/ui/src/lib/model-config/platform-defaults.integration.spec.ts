@@ -19,7 +19,7 @@ const url = process.env.TEST_DATABASE_URL
 
 describe.skipIf(!url)('platform model defaults against live Postgres', () => {
   beforeAll(() => {
-    process.env.GRID_APP_DATABASE_URL = url
+    process.env.APP_DATABASE_URL = url
   })
 
   afterAll(async () => {

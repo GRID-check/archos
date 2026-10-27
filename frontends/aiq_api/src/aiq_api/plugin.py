@@ -529,7 +529,7 @@ class AIQAPIWorker(FastApiFrontEndPluginWorker):
         boot_timing.flush()
 
         # Non-blocking startup handshake against the frontend's internal API:
-        # surfaces a GRID_INTERNAL_API_TOKEN mismatch / unreachable BFF at deploy
+        # surfaces a INTERNAL_API_TOKEN mismatch / unreachable BFF at deploy
         # time instead of only when the first `remember` tool call fails. Fire-
         # and-forget (never awaited, never fatal) — add_routes has no clean
         # "after everything is up" hook and blocking here would delay serving,

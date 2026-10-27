@@ -24,7 +24,7 @@ describe.skipIf(!url)('budgets service against live Postgres', () => {
   }
 
   beforeAll(() => {
-    process.env.GRID_APP_DATABASE_URL = url
+    process.env.APP_DATABASE_URL = url
   })
 
   afterAll(async () => {

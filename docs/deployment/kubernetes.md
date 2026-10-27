@@ -100,7 +100,7 @@ with, SELECT on the `status` column of three tables and nothing else, with no
 password is `pgScalerPassword`, or derived from `pgAppPassword` when unset.
 
 Migration `0030` therefore only *asserts* the roles, failing with a hint rather
-than half-applying the boundary. `GRID_APP_MIGRATION_DATABASE_URL` carries the
+than half-applying the boundary. `APP_MIGRATION_DATABASE_URL` carries the
 `aiq` owner credential and is set only on the migration Job — never on a
 long-lived Pod.
 
@@ -852,9 +852,9 @@ schema.
   `Pooler` running PgBouncer in **transaction** mode, and `grid-pg-rw` is the
   primary itself. Every DSN picks one (`via: "pooler" | "direct"`, no default in
   `data/postgres.ts`). Pooled: `NAT_JOB_STORE_DB_URL`, `CHECKPOINT_DB`,
-  `DEEP_CHECKPOINT_DB`, `SUMMARY_DB` and `GRID_APP_DATABASE_URL`. Direct:
+  `DEEP_CHECKPOINT_DB`, `SUMMARY_DB` and `APP_DATABASE_URL`. Direct:
   `LISTEN_DB_URL` (LISTEN/NOTIFY), `LOCK_DB_URL` (session advisory
-  locks), `GRID_APP_MIGRATION_DATABASE_URL`, the KEDA scaler DSNs, the init and
+  locks), `APP_MIGRATION_DATABASE_URL`, the KEDA scaler DSNs, the init and
   grants Jobs, Langfuse and the SeaweedFS filer. Anything that needs the same
   server connection across statements must be direct: through the pooler a
   session lock leaks and a LISTEN hears nothing, with no error. Transaction
@@ -1263,9 +1263,9 @@ died half way left no record of which half. Both are now jobs:
   it (a handler that threw, a slice past `BFF_JOBS_SLICE_TIMEOUT_MS`, a BFF
   that answered 5xx or not at all) and the job waits `BFF_JOBS_RETRY_BACKOFF_SECONDS`,
   doubling, before the next, so a job that always times out or kills the BFF
-  ends. After `GRID_BFF_JOBS_MAX_ATTEMPTS` the row is marked `dead` with its
+  ends. After `BFF_JOBS_MAX_ATTEMPTS` the row is marked `dead` with its
   reason in `last_error` and its payload (a report, the requester, storage keys)
-  reduced to ids; it is deleted `GRID_BFF_JOBS_DEAD_RETENTION_DAYS` later, or at
+  reduced to ids; it is deleted `BFF_JOBS_DEAD_RETENTION_DAYS` later, or at
   once with its project. It reports the `grid.queue.*` meters as `queue="bff"`
   (`workers/jobs/queue-metrics.js`), beside the Python queues, and each death is
   also a `[bff-jobs] … now dead` ERROR line.
@@ -1480,7 +1480,7 @@ so the count is part of the routing and stays at `backendReplicas`. Setting
 the tier autoscale:
 
 - **Routing.** The gateway sends every socket to the `aiq-agent` Service
-  (`GRID_CHAT_AFFINITY=0` on the frontend). A socket on any replica is a relay
+  (`CHAT_AFFINITY=0` on the frontend). A socket on any replica is a relay
   for the conversation's Dragonfly stream; the replica that receives a question
   runs that turn and publishes its frames. A running turn never moves.
 - **One running turn per conversation.** A newer question stops the stale one,
@@ -1503,7 +1503,7 @@ the tier autoscale:
   `metrics-api` trigger holds `backendTurnsPerReplica` of them per replica
   (AverageValue), and a `cpu` trigger at `backendCpuTargetPercent` sits beside it
   for work that is not a turn. The route is internal-token only (a
-  `TriggerAuthentication` reads `GRID_INTERNAL_API_TOKEN` from `grid-secrets`),
+  `TriggerAuthentication` reads `INTERNAL_API_TOKEN` from `grid-secrets`),
   a NetworkPolicy lets the KEDA operator pod reach port 8000 of the backend pods,
   and an unreadable count is a 503, which makes the HPA hold the current count.
 - **Floor and ceiling.** `backendReplicas` is the floor and `backendMaxReplicas`
@@ -2026,7 +2026,7 @@ Chroma, the vector store of the time):
 > it. The `err2issue*` and `feedbackIssues*` keys are ignored; the next
 > `pulumi up` deletes the sink's Deployment, Secret and NetworkPolicy and the
 > collector's `logs/err2issue` pipeline, and the frontend loses
-> `GRID_GITHUB_TOKEN` and `GRID_FEEDBACK_ISSUES_REPO`. Delete the ESC secrets
+> `GITHUB_TOKEN` and `FEEDBACK_ISSUES_REPO`. Delete the ESC secrets
 > `err2issueGithubToken` and `err2issueAnthropicApiKey` and revoke the PAT.
 
 **Gating:** `grid-oib:observabilityEnabled` (default `true`) is the product
@@ -2611,7 +2611,7 @@ sends metrics.
 Consequence to know: a Langfuse outage long enough to fill the exporter's
 bounded sending queue (2000 batches) drops spans. Nothing is in a request path.
 
-When the tier is on, the agent tiers get `GRID_TRACE_IDENTITY_ATTRIBUTES=true`,
+When the tier is on, the agent tiers get `TRACE_IDENTITY_ATTRIBUTES=true`,
 which stamps `langfuse.user.id`, `langfuse.session.id` and the organization onto
 every span. Without it Langfuse receives traces that are anonymous — technically
 working, and missing most of the point. It is deliberately keyed off *this* tier

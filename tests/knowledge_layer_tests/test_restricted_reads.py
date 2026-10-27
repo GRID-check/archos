@@ -421,7 +421,7 @@ async def test_the_lookup_echoes_the_turns_signed_envelope(monkeypatch):
             return SimpleNamespace(status_code=200, json=lambda: {"storageKey": "k"})
 
     monkeypatch.setenv("FRONTEND_INTERNAL_URL", "http://frontend:3000")
-    monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", "tok")
+    monkeypatch.setenv("INTERNAL_API_TOKEN", "tok")
     monkeypatch.setattr(httpx, "AsyncClient", _Client)
     monkeypatch.setattr("aiq_agent.project_context.get_request_envelope_from_context", lambda: ("ZW52ZWxvcGU", "c2ln"))
 
@@ -456,7 +456,7 @@ async def test_the_lookup_carries_the_revision_the_bff_names(monkeypatch):
             return SimpleNamespace(status_code=200, json=lambda: body)
 
     monkeypatch.setenv("FRONTEND_INTERNAL_URL", "http://frontend:3000")
-    monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", "tok")
+    monkeypatch.setenv("INTERNAL_API_TOKEN", "tok")
     monkeypatch.setattr(httpx, "AsyncClient", _Client)
 
     location = await _resolve_storage_location(PROJ, "plan.png")

@@ -71,7 +71,7 @@ describe.skipIf(!url)('the retry rule in SQL against live Postgres', () => {
   const ids: Record<string, string> = {}
 
   beforeAll(async () => {
-    process.env.GRID_APP_DATABASE_URL = url
+    process.env.APP_DATABASE_URL = url
     context = await import('@/lib/db/tenant-context')
     repository = await import('./repository')
     db = (await import('@/lib/db')).getDb()

@@ -154,7 +154,7 @@ describe("the chat tier's scale-out", () => {
 
   it("sends the shared internal token from the Secret the pods read it from", async () => {
     const spec = await resolve(find(AUTH, "chat-occupancy-auth").inputs.spec);
-    expect(spec.secretTargetRef).toEqual([{ parameter: "apiKey", name: "grid-secrets", key: "GRID_INTERNAL_API_TOKEN" }]);
+    expect(spec.secretTargetRef).toEqual([{ parameter: "apiKey", name: "grid-secrets", key: "INTERNAL_API_TOKEN" }]);
     const scaled = await resolve(find(SCALED, "chat").inputs.spec);
     const trigger = scaled.triggers.find((t: { type: string }) => t.type === "metrics-api");
     expect(trigger.authenticationRef.name).toBe("chat-occupancy-auth");
@@ -203,10 +203,10 @@ describe("the chat tier's scale-out", () => {
   });
 
   it("hands both tiers the one affinity flag, in the spelling each reads", () => {
-    expect(backendEnvNames.GRID_CHAT_AFFINITY).toBe("0");
-    expect(frontendEnvNames.GRID_CHAT_AFFINITY).toBe("0");
-    expect(chatSocket).toContain('"GRID_CHAT_AFFINITY"');
-    expect(read("frontends", "ui", "server.js")).toContain("GRID_CHAT_AFFINITY");
+    expect(backendEnvNames.CHAT_AFFINITY).toBe("0");
+    expect(frontendEnvNames.CHAT_AFFINITY).toBe("0");
+    expect(chatSocket).toContain('"CHAT_AFFINITY"');
+    expect(read("frontends", "ui", "server.js")).toContain("CHAT_AFFINITY");
   });
 
   it("leaves the replica count to KEDA once it exists", () => {

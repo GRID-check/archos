@@ -37,7 +37,7 @@ describe.skipIf(!url)('inbox paging against Postgres', () => {
   const OFFSETS = [0, 0, 0, 1, 2, 999, 1000, 1000, 1500, 2000, 3001, 3001, 5000, 9000, 9001, 12000, 12000, 20000]
 
   beforeAll(async () => {
-    process.env.GRID_APP_DATABASE_URL = url
+    process.env.APP_DATABASE_URL = url
     const context = await import('@/lib/db/tenant-context')
     withTenant = context.withTenant
     withPlatformAccess = context.withPlatformAccess
@@ -99,7 +99,7 @@ describe.skipIf(!url)('a deleted reply’s rows against Postgres', () => {
   const asMe = <T>(run: () => Promise<T>): Promise<T> => withTenant({ organizationId: REPLY_ORG, userId: ME }, run)
 
   beforeAll(async () => {
-    process.env.GRID_APP_DATABASE_URL = url
+    process.env.APP_DATABASE_URL = url
     const context = await import('@/lib/db/tenant-context')
     withTenant = context.withTenant
     withPlatformAccess = context.withPlatformAccess
@@ -183,7 +183,7 @@ describe.skipIf(!url)('retracting and rewording rows in place against Postgres',
     ).then((result) => Array.from(result))
 
   beforeAll(async () => {
-    process.env.GRID_APP_DATABASE_URL = url
+    process.env.APP_DATABASE_URL = url
     const context = await import('@/lib/db/tenant-context')
     withTenant = context.withTenant
     withPlatformAccess = context.withPlatformAccess
@@ -305,7 +305,7 @@ describe.skipIf(!url)('unread anchors of a document against Postgres', () => {
   const asMe = <T>(run: () => Promise<T>): Promise<T> => withTenant({ organizationId: ORG_ANCHORS, userId: ME }, run)
 
   beforeAll(async () => {
-    process.env.GRID_APP_DATABASE_URL = url
+    process.env.APP_DATABASE_URL = url
     const context = await import('@/lib/db/tenant-context')
     withTenant = context.withTenant
     withPlatformAccess = context.withPlatformAccess

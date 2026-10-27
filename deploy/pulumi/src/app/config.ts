@@ -152,8 +152,8 @@ export function buildSecrets(w: AppWiring): AppSecrets {
   const values: Record<string, pulumi.Input<string>> = {
     OPENROUTER_API_KEY: cfg.llm.openrouterApiKey,
     TAVILY_API_KEY: cfg.llm.tavilyApiKey,
-    GRID_INTERNAL_API_TOKEN: cfg.internal.apiToken,
-    GRID_ADMIN_TOKEN: cfg.internal.adminToken,
+    INTERNAL_API_TOKEN: cfg.internal.apiToken,
+    ADMIN_TOKEN: cfg.internal.adminToken,
     CORPUS_EXPORT_TOKEN: cfg.internal.corpusExportToken,
     JOB_PAYLOAD_KEK: cfg.internal.jobPayloadKek,
     WEB_PUSH_VAPID_PRIVATE_KEY: cfg.webPush.privateKey,
@@ -196,12 +196,12 @@ export function buildSecrets(w: AppWiring): AppSecrets {
     // The app tier connects as the least-privilege role, so row-level security
     // applies to it (ADR-0041). Migrations get the owner credential below —
     // RLS does not apply to a table's owner, so DDL and backfills still work.
-    GRID_APP_DATABASE_URL: w.dsn({
+    APP_DATABASE_URL: w.dsn({
       db: "grid_app",
       via: "pooler",
       as: { user: "grid_app_rw", password: cfg.postgres.runtimePassword },
     }),
-    GRID_APP_MIGRATION_DATABASE_URL: w.dsn({ db: "grid_app", via: "direct" }),
+    APP_MIGRATION_DATABASE_URL: w.dsn({ db: "grid_app", via: "direct" }),
     // The read-write key (ADR-0115): the ingest tier writes, and the backend
     // tiers share one env.
     QDRANT_API_KEY: cfg.qdrant.apiKey,
@@ -320,14 +320,14 @@ export function backendEnv(w: AppWiring, otelServiceName = "grid-aiq-agent"): En
     // The flag the BFF routes by (ADR-0080). The backend reads it for one
     // decision: with the bus down, affinity on fails the one-running-turn fence
     // open (every turn of a conversation reaches one process), off refuses.
-    { name: "GRID_CHAT_AFFINITY", value: cfg.backend.chatAffinity ? "1" : "0" },
+    { name: "CHAT_AFFINITY", value: cfg.backend.chatAffinity ? "1" : "0" },
     // How long a terminating replica waits for its turns; the pod's grace period
     // is this plus the endpoint drain and slack (`backendRollout`).
     { name: "CHAT_DRAIN_SECONDS", value: String(cfg.backend.drainSeconds) },
     // Project-memory write path (backend → frontend BFF).
     { name: "FRONTEND_INTERNAL_URL", value: `http://frontend:${PORT.frontend}` },
-    sref("GRID_INTERNAL_API_TOKEN"),
-    sref("GRID_ADMIN_TOKEN"),
+    sref("INTERNAL_API_TOKEN"),
+    sref("ADMIN_TOKEN"),
     // WorkOS, the same two values the frontend gets (frontendEnv). With
     // REQUIRE_AUTH=true the backend enforces job ownership and the signed-envelope
     // rule for JWT callers, and it refuses to boot without a validator, which
@@ -367,7 +367,7 @@ export function backendEnv(w: AppWiring, otelServiceName = "grid-aiq-agent"): En
     // there is a store that groups traces by user. A stack that exports only
     // PostHog logs gets no identity attributes at all.
     ...(cfg.langfuse.enabled
-      ? [{ name: "GRID_TRACE_IDENTITY_ATTRIBUTES", value: "true" }]
+      ? [{ name: "TRACE_IDENTITY_ATTRIBUTES", value: "true" }]
       : []),
     // The agent writes its answer checks as Langfuse scores (ADR-0089) through
     // the public API, on the in-cluster Service: `allow-backend-to-langfuse`
@@ -375,7 +375,7 @@ export function backendEnv(w: AppWiring, otelServiceName = "grid-aiq-agent"): En
     // capability only: the prompt store stays off until LANGFUSE_PROMPTS_ENABLED.
     ...langfuseApiEnv(cfg),
     // Admission control (bounds concurrent heavy work — §4.2).
-    { name: "GRID_MAX_ACTIVE_JOBS_PER_ORG", value: String(cfg.backend.maxActiveJobsPerOrg) },
+    { name: "MAX_ACTIVE_JOBS_PER_ORG", value: String(cfg.backend.maxActiveJobsPerOrg) },
     { name: "MAX_QUEUED_JOBS_PER_ORG", value: String(cfg.backend.maxQueuedJobsPerOrg) },
     { name: "INGEST_MAX_WORKERS", value: String(cfg.backend.ingestMaxWorkers) },
     { name: "INGEST_MAX_PER_ORG", value: String(cfg.ingestWorker.maxPerOrg) },
@@ -388,9 +388,9 @@ export function backendEnv(w: AppWiring, otelServiceName = "grid-aiq-agent"): En
     { name: "EMBED_MODEL", value: cfg.llm.embedModel },
     { name: "EMBED_BASE_URL", value: cfg.llm.embedBaseUrl },
     srefAs("EMBED_API_KEY", "OPENROUTER_API_KEY"),
-    { name: "GRID_VLM_MODEL", value: cfg.llm.vlmModel },
-    { name: "GRID_VLM_BASE_URL", value: cfg.llm.vlmBaseUrl },
-    srefAs("GRID_VLM_API_KEY", "OPENROUTER_API_KEY"),
+    { name: "VLM_MODEL", value: cfg.llm.vlmModel },
+    { name: "VLM_BASE_URL", value: cfg.llm.vlmBaseUrl },
+    srefAs("VLM_API_KEY", "OPENROUTER_API_KEY"),
     // What the one OpenRouter key is asked to carry (ADR-0076, ADR-0081). Set
     // from the stack so the budget is read where `ingestWorkerMaxReplicas` is:
     // `assertVlmPeakFitsCeiling` holds the two together.
@@ -398,7 +398,7 @@ export function backendEnv(w: AppWiring, otelServiceName = "grid-aiq-agent"): En
     { name: "VLM_BATCH_WORKERS", value: String(cfg.providerLimits.vlmBatchWorkers) },
     { name: "PROVIDER_LIMIT_CEILING", value: String(cfg.providerLimits.limitCeiling) },
     { name: "PROVIDER_MODEL_LIMIT_CEILING", value: String(cfg.providerLimits.modelLimitCeiling) },
-    // No GRID_EXTRACT_* here: tables, images and charts are on in code and a
+    // No EXTRACT_* here: tables, images and charts are on in code and a
     // flag only switches one off. Setting them per deployment is how production
     // ran without tables and dropped every chart it had paid to analyse.
     // Object storage for the `look` tool (ADR-0039): the backend
@@ -445,7 +445,7 @@ function backendQdrantEnv(w: AppWiring): EnvVar[] {
  * What only the `chat` role reads: its drain, the affinity flag it fences turns
  * by, and the conversation bus. The `api` role runs none of them.
  */
-const CHAT_ONLY_ENV = new Set(["CHAT_DRAIN_SECONDS", "GRID_CHAT_AFFINITY", "CONVERSATION_BUS"]);
+const CHAT_ONLY_ENV = new Set(["CHAT_DRAIN_SECONDS", "CHAT_AFFINITY", "CONVERSATION_BUS"]);
 
 /** The chat tier's (`aiq-agent` StatefulSet) environment: the backend env and `PROCESS_ROLE=chat`. */
 export function chatEnv(w: AppWiring): EnvVar[] {
@@ -528,7 +528,7 @@ export function frontendEnv(w: AppWiring): EnvVar[] {
     // ADR-0080: "0" hands every socket to the load-balanced Service and lets the
     // conversation bus decide per turn which replica runs it, so the backend can
     // autoscale (backend-scaling.ts). "1" is the hash above, byte for byte.
-    { name: "GRID_CHAT_AFFINITY", value: cfg.backend.chatAffinity ? "1" : "0" },
+    { name: "CHAT_AFFINITY", value: cfg.backend.chatAffinity ? "1" : "0" },
     // In-cluster headless-service pod address; traffic never leaves the pod
     // network, so the non-TLS ws scheme below is intentional.
     // nosemgrep: javascript.lang.security.detect-insecure-websocket.detect-insecure-websocket
@@ -536,13 +536,13 @@ export function frontendEnv(w: AppWiring): EnvVar[] {
     // Frontend replica baseline — lets server.js warn if a multi-replica deploy
     // is missing REDIS_URL (shared cache + WS rate limiter would diverge per pod).
     { name: "FRONTEND_REPLICAS", value: String(cfg.frontend.minReplicas) },
-    sref("GRID_APP_DATABASE_URL"),
-    sref("GRID_INTERNAL_API_TOKEN"),
-    sref("GRID_ADMIN_TOKEN"),
+    sref("APP_DATABASE_URL"),
+    sref("INTERNAL_API_TOKEN"),
+    sref("ADMIN_TOKEN"),
     // The corpus export (`/api/internal/oib-corpus`). No caller since the
     // answer-suite CI workflow was removed; unset disables it.
     sref("CORPUS_EXPORT_TOKEN"),
-    { name: "GRID_ALLOW_AGENT_ORG_MEMORY", value: String(cfg.auth.allowAgentOrgMemory) },
+    { name: "ALLOW_AGENT_ORG_MEMORY", value: String(cfg.auth.allowAgentOrgMemory) },
     // WorkOS AuthKit.
     { name: "WORKOS_CLIENT_ID", value: cfg.auth.workosClientId },
     // The agent doors' authorization server (ADR-0122); empty = the doors answer 503.
@@ -691,12 +691,12 @@ export function langfuseApiEnv(cfg: GridConfig): EnvVar[] {
 export function purgerEnv(w: AppWiring): EnvVar[] {
   const { cfg } = w;
   return [
-    sref("GRID_APP_DATABASE_URL"),
+    sref("APP_DATABASE_URL"),
     { name: "BACKEND_URL", value: BACKEND_URL },
     // A chat erasure the delete request could not finish is retried through the
     // BFF, which owns its steps (`purger/purge-conversation.js`).
     { name: "FRONTEND_INTERNAL_URL", value: `http://frontend:${PORT.frontend}` },
-    sref("GRID_INTERNAL_API_TOKEN"),
+    sref("INTERNAL_API_TOKEN"),
     { name: "SEAWEED_ENDPOINT", value: w.seaweedInternalEndpoint },
     { name: "SEAWEED_ACCESS_KEY", value: cfg.seaweedfs.accessKey },
     sref("SEAWEED_SECRET_KEY"),
@@ -725,16 +725,16 @@ export function purgerEnv(w: AppWiring): EnvVar[] {
  * Skill-scheduler worker environment.
  *
  * Every name here must match what `frontends/ui/scheduler/index.js` reads. It
- * did not: the worker moved to the `GRID_SKILL_*` names with Agent Skills and
- * this block kept emitting the `GRID_WORKFLOW_*` ones, so the container saw an
+ * did not: the worker moved to the `SKILL_*` names with Agent Skills and
+ * this block kept emitting the `WORKFLOW_*` ones, so the container saw an
  * unset start gate and exited 0 as a no-op on every deployment.
  */
 export function schedulerEnv(w: AppWiring): EnvVar[] {
   const { cfg } = w;
   return [
-    sref("GRID_APP_DATABASE_URL"),
+    sref("APP_DATABASE_URL"),
     { name: "FRONTEND_INTERNAL_URL", value: `http://frontend:${PORT.frontend}` },
-    sref("GRID_INTERNAL_API_TOKEN"),
+    sref("INTERNAL_API_TOKEN"),
     { name: "SKILL_SCHEDULER_POLL_MS", value: String(APP_DEFAULTS.schedulerPollMs) },
     { name: "SKILL_SCHEDULER_BATCH", value: String(APP_DEFAULTS.schedulerBatch) },
     { name: "SKILL_RUNS_RETENTION_DAYS", value: String(APP_DEFAULTS.skillRunsRetentionDays) },
@@ -761,10 +761,10 @@ export function schedulerEnv(w: AppWiring): EnvVar[] {
 
 /** Minimal env for the drizzle migration Job. */
 export function migrationEnv(): EnvVar[] {
-  // drizzle.config.ts prefers this over GRID_APP_DATABASE_URL: DDL needs the
+  // drizzle.config.ts prefers this over APP_DATABASE_URL: DDL needs the
   // schema owner, and a backfill run as the RLS-bound runtime role would
   // silently update zero rows (ADR-0041).
-  return [sref("GRID_APP_MIGRATION_DATABASE_URL")];
+  return [sref("APP_MIGRATION_DATABASE_URL")];
 }
 
 /**
@@ -794,5 +794,5 @@ export function authzCatalogEnv(cfg: GridConfig): EnvVar[] {
  * every organization and the RLS-bound runtime role would see none of it.
  */
 export function folderGrantsCarryOverEnv(): EnvVar[] {
-  return [sref("WORKOS_API_KEY"), sref("GRID_APP_MIGRATION_DATABASE_URL")];
+  return [sref("WORKOS_API_KEY"), sref("APP_MIGRATION_DATABASE_URL")];
 }

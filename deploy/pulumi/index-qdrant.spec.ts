@@ -349,7 +349,7 @@ describe("Qdrant, three peers on the data group", () => {
       expect(env.QDRANT_SHARD_NUMBER?.value, name).toBe("6");
       expect(env.QDRANT_REPLICATION_FACTOR?.value, name).toBe("2");
       // Qdrant is the only store: nothing points a tier at Chroma or picks between the two.
-      const retired = Object.keys(env).filter((k) => k.startsWith("GRID_CHROMA") || k === "GRID_VECTOR_BACKEND");
+      const retired = Object.keys(env).filter((k) => k.startsWith("CHROMA") || k === "VECTOR_BACKEND");
       expect(retired, name).toEqual([]);
     }
     expect(secretData("grid-secrets").QDRANT_API_KEY).toBe("qd-rw");

@@ -308,9 +308,9 @@ class SkillResolver:
         return tuple(s for s in _build_org_skills(rows) if s.name in known)
 
     def _fetch_org_skills(self, organization_id: str) -> list[Any]:
-        token = os.environ.get("GRID_INTERNAL_API_TOKEN")
+        token = os.environ.get("INTERNAL_API_TOKEN")
         if not token:
-            raise RuntimeError("GRID_INTERNAL_API_TOKEN unset; org skills unavailable")
+            raise RuntimeError("INTERNAL_API_TOKEN unset; org skills unavailable")
         import httpx
 
         base_url = (os.environ.get("FRONTEND_INTERNAL_URL") or "http://frontend:3000").rstrip("/")
@@ -353,7 +353,7 @@ def resolve_served_skills(agent: str, organization_id: str | None) -> tuple[Skil
     skills whose instructions call ``execute``.
 
     And it never raises. ``resolve`` already fails open on a bad payload or an
-    unreachable BFF, but ``GRID_INTERNAL_API_TOKEN`` being unset raises out of
+    unreachable BFF, but ``INTERNAL_API_TOKEN`` being unset raises out of
     ``_fetch_org_skills`` and a deep-research job must not die because the house
     voice could not be fetched — a report written without it is worth far more
     than no report. The degradation is silent to the reader and loud in the log.

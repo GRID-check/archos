@@ -54,7 +54,7 @@ const request = (body: unknown, token: string | null = 'test-token'): Request =>
 describe('POST /api/internal/citation-events', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    process.env.GRID_INTERNAL_API_TOKEN = 'test-token'
+    process.env.INTERNAL_API_TOKEN = 'test-token'
     process.env.APP_ENV = 'development'
   })
 
@@ -65,7 +65,7 @@ describe('POST /api/internal/citation-events', () => {
   })
 
   it('fails closed when the token is unconfigured', async () => {
-    delete process.env.GRID_INTERNAL_API_TOKEN
+    delete process.env.INTERNAL_API_TOKEN
     expect((await POST(request(VALID_BATCH, 'anything'))).status).toBe(503)
   })
 

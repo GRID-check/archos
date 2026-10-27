@@ -119,7 +119,7 @@ def capture_request_envelope(
 
 def _verify(envelope: RunEnvelope) -> GridRequestContext | None:
     """The envelope's verified payload, or None. Verifies; never signs."""
-    secret = os.environ.get("GRID_INTERNAL_API_TOKEN")
+    secret = os.environ.get("INTERNAL_API_TOKEN")
     if not secret:
         return None
     context = GridRequestContext.from_envelope(envelope.header, envelope.signature, secret)

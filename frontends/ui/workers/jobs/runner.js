@@ -32,7 +32,7 @@
  * TWO DOORS TO THE WORK. The claim loop is plain Node with no build step, like
  * the purger and the scheduler, so it cannot import the TypeScript services
  * from source. By default they run behind the internal route, in a BFF the pod
- * spawns ({@link createSliceRunner}). With `GRID_BFF_JOBS_MODE=inprocess` they
+ * spawns ({@link createSliceRunner}). With `BFF_JOBS_MODE=inprocess` they
  * run in this process from `dist-jobs/slice.mjs`, the services bundled at image
  * build ({@link createInProcessSliceRunner}, ADR-0079 amendment 1), and no
  * server is spawned. Either way the heavy work lands on `bff-jobs` pods and

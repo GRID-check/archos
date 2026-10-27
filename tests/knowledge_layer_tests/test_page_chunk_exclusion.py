@@ -124,7 +124,7 @@ def search_harness(monkeypatch, qdrant_store):
         monkeypatch.setattr("knowledge_layer.register._initialize_ingestor", lambda config, llm: None)
         monkeypatch.setattr("aiq_agent.knowledge.factory.configure_summary_db", lambda url: None)
         monkeypatch.setattr("aiq_agent.knowledge.norm_store.configure_norm_store", lambda url: None)
-        monkeypatch.delenv("GRID_INTERNAL_API_TOKEN", raising=False)
+        monkeypatch.delenv("INTERNAL_API_TOKEN", raising=False)
         reset_retrieval_settings_cache()
 
     return install

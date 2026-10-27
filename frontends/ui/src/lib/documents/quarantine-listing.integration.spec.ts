@@ -79,7 +79,7 @@ describe.skipIf(!url)('quarantined documents in listings, against Postgres', () 
   const names = (rows: ReadonlyArray<{ filename: string }>): string[] => rows.map((row) => row.filename).sort()
 
   beforeAll(async () => {
-    process.env.GRID_APP_DATABASE_URL = url
+    process.env.APP_DATABASE_URL = url
     const context = await import('@/lib/db/tenant-context')
     withTenant = context.withTenant
     db = (await import('@/lib/db')).getDb()

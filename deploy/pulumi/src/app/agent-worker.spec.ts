@@ -203,7 +203,7 @@ describe("the agent-worker tier", () => {
     const names = new Set([...env, ...backendEnvVars].map((e) => e.name));
     const queue = read("frontends", "aiq_api", "src", "aiq_api", "jobs", "queue.py");
 
-    for (const name of ["GRID_MAX_ACTIVE_JOBS_PER_ORG", "MAX_QUEUED_JOBS_PER_ORG"]) {
+    for (const name of ["MAX_ACTIVE_JOBS_PER_ORG", "MAX_QUEUED_JOBS_PER_ORG"]) {
       expect(names.has(name), name).toBe(true);
       expect(queue).toContain(`"${name}"`);
     }

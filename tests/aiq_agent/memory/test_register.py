@@ -528,7 +528,7 @@ def proposals(monkeypatch):
 
     _patch_context(monkeypatch)
     monkeypatch.setattr(pc, "get_request_envelope_from_context", lambda: (_HEADER, _SIGNATURE))
-    monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", "internal-token")
+    monkeypatch.setenv("INTERNAL_API_TOKEN", "internal-token")
     monkeypatch.setenv("FRONTEND_INTERNAL_URL", "http://bff.test")
     registry = CardRegistry()
     token = set_card_registry(registry)

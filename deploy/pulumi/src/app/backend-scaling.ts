@@ -67,7 +67,7 @@ export function installBackendScaling(
     name: `${name}-occupancy-auth`,
     parameter: "apiKey",
     secretName: SECRET_NAME,
-    key: "GRID_INTERNAL_API_TOKEN",
+    key: "INTERNAL_API_TOKEN",
     labels,
     dependsOn,
   });

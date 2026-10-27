@@ -57,7 +57,7 @@ const REQUEST = {
 }
 
 beforeEach(() => {
-  vi.stubEnv('GRID_INTERNAL_API_TOKEN', TOKEN)
+  vi.stubEnv('INTERNAL_API_TOKEN', TOKEN)
   vi.mocked(drawableRestrictedCollections).mockResolvedValue([CONTRACTS])
   vi.mocked(recordedRestrictedFolders).mockResolvedValue(['folder-vertraege'])
 })

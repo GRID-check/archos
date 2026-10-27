@@ -1167,7 +1167,7 @@ Per stage, config-driven, no deploy:
    **rollout** in the registry (`FLAG_KINDS`), so a deployment where nobody
    signs in runs every stage. There is no env fallback: the
    `StageSpec.env_default` field and the `MEMORY_REFLECTION_ENABLED` /
-   `GRID_STAGE_FOLLOW_UPS_ENABLED` variables it named were removed when flag
+   `STAGE_FOLLOW_UPS_ENABLED` variables it named were removed when flag
    enforcement became unconditional. A new stage ships with its flag created
    OFF in WorkOS.
 2. **Capability bit:** a stage whose `AgentGroup` resolves no LLM is a no-op, as

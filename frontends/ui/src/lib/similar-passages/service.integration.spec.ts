@@ -177,7 +177,7 @@ describe.skipIf(!url)('similar passages against live Postgres', () => {
   }
 
   beforeAll(async () => {
-    process.env.GRID_APP_DATABASE_URL = url
+    process.env.APP_DATABASE_URL = url
     process.env.AUTHZ_CACHE_TTL_MS = '0'
     const context = await import('@/lib/db/tenant-context')
     withTenant = context.withTenant

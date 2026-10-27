@@ -72,7 +72,7 @@ def _app() -> FastAPI:
 
 @pytest.mark.asyncio
 async def test_the_route_is_guarded_by_the_internal_token_and_bounded(copied, monkeypatch):
-    monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", "s3cr3t")
+    monkeypatch.setenv("INTERNAL_API_TOKEN", "s3cr3t")
     monkeypatch.setenv("APP_ENV", "production")
     path = "/v1/maintenance/refresh-document-facts"
     async with AsyncClient(transport=ASGITransport(app=_app()), base_url="http://test") as client:

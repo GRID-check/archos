@@ -40,7 +40,7 @@ flowchart LR
     PL[_ingest_job A:4674<br/>the per-file pipeline]
   end
   subgraph Providers["OpenRouter"]
-    VLM[vision model<br/>GRID_VLM_MODEL]
+    VLM[vision model<br/>VLM_MODEL]
     JEV[Jev decisions]
     LLM[summary model]
     EMB[embeddings]

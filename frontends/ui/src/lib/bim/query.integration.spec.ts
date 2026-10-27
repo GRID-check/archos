@@ -111,7 +111,7 @@ describe.skipIf(!url)('BIM queries against live Postgres', () => {
   }
 
   beforeAll(async () => {
-    process.env.GRID_APP_DATABASE_URL = url
+    process.env.APP_DATABASE_URL = url
     const { getDb, closeDb: close } = await import('@/lib/db')
     const tenantContext = await import('@/lib/db/tenant-context')
     withPlatformAccess = tenantContext.withPlatformAccess

@@ -455,7 +455,7 @@ def _post_batch(payload: dict[str, Any]) -> None:
         bff_http.send("POST", "/api/internal/citation-events", timeout=_REQUEST_TIMEOUT_SECONDS, body=payload)
     except bff_http.BffNotConfiguredError:
         logger.warning(
-            "GRID_INTERNAL_API_TOKEN not configured — dropping %d citation event(s)", len(payload.get("events") or ())
+            "INTERNAL_API_TOKEN not configured — dropping %d citation event(s)", len(payload.get("events") or ())
         )
     except bff_http.BffRefusedError as error:
         logger.warning("Internal citation-events endpoint rejected batch: HTTP %s", error.status)

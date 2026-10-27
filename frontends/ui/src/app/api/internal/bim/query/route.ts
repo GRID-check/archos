@@ -4,7 +4,7 @@
  *
  * Keeps `grid_app` single-writer and single-owner: the Python backend never
  * opens a connection to it, it calls this route over the compose network with
- * the shared service token (`GRID_INTERNAL_API_TOKEN`), exactly like the
+ * the shared service token (`INTERNAL_API_TOKEN`), exactly like the
  * `remember` tool's `POST /api/internal/memory`.
  *
  * ## Why the tool does not have to know a model id

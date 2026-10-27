@@ -103,7 +103,7 @@ def corpus(monkeypatch):
         )
         for name in ("get_document_doc_classes", "get_document_display_titles", "get_document_folder_paths"):
             monkeypatch.setattr(f"aiq_agent.knowledge.factory.{name}", lambda _c, _f: {})
-        monkeypatch.delenv("GRID_INTERNAL_API_TOKEN", raising=False)
+        monkeypatch.delenv("INTERNAL_API_TOKEN", raising=False)
         return store
 
     return install

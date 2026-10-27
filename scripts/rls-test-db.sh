@@ -218,9 +218,9 @@ TEST_DATABASE_URL="postgres://grid_app_rw:$RUNTIME_PASSWORD@127.0.0.1:$PORT/grid
 # migrated to just before it, seeded with the old shapes, checked row by row,
 # then taken down. Those claims read nothing but frontends/ui/drizzle/ and this
 # script, and they are ~60% of this script's time. CI's Plan sets
-# GRID_RLS_MIGRATION_CHECKS=0 when neither changed (the `migrations` tier in
+# RLS_MIGRATION_CHECKS=0 when neither changed (the `migrations` tier in
 # .github/filters.yml); unset, as locally, they run.
-if [ "${GRID_RLS_MIGRATION_CHECKS:-1}" = "0" ]; then
+if [ "${RLS_MIGRATION_CHECKS:-1}" = "0" ]; then
   echo "==> per-migration backfill and down checks skipped: no migration and not this script changed"
   exit 0
 fi

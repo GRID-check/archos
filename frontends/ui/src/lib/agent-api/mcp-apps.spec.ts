@@ -373,7 +373,7 @@ describe('a model deciding a proposal itself', () => {
     ['tools', 'proposal-apply', { params: { id: PROPOSAL_ID }, body: {} }],
     ['tools', 'proposal-dismiss', { params: { id: PROPOSAL_ID } }],
   ] as const)('is put to the person first (%s, %s %j), and nothing runs yet', async (mode, name, args) => {
-    vi.stubEnv('GRID_INTERNAL_API_TOKEN', 'a-real-internal-token-for-the-mcp-apps-spec')
+    vi.stubEnv('INTERNAL_API_TOKEN', 'a-real-internal-token-for-the-mcp-apps-spec')
     const result = await callTool(outside, mode, name, args, ELICITS)
     expect(result.resultType, JSON.stringify(result)).toBe('input_required')
     expect(callOperation).not.toHaveBeenCalled()
@@ -383,7 +383,7 @@ describe('a model deciding a proposal itself', () => {
     (result as unknown as { inputRequests: { confirm: { params: { message: string } } } }).inputRequests.confirm.params.message
 
   it('asks in the words of the proposal: what it does, what it names, in which project', async () => {
-    vi.stubEnv('GRID_INTERNAL_API_TOKEN', 'a-real-internal-token-for-the-mcp-apps-spec')
+    vi.stubEnv('INTERNAL_API_TOKEN', 'a-real-internal-token-for-the-mcp-apps-spec')
     vi.mocked(getProposal).mockResolvedValueOnce({
       ...proposal('proposed'),
       projectId: '3d1c2f7a-5b8e-4c1d-9f20-6a7b8c9d0e1f',
@@ -399,7 +399,7 @@ describe('a model deciding a proposal itself', () => {
   })
 
   it('asks in the operation’s own words when the proposal cannot be read as the person, and tells nothing of it', async () => {
-    vi.stubEnv('GRID_INTERNAL_API_TOKEN', 'a-real-internal-token-for-the-mcp-apps-spec')
+    vi.stubEnv('INTERNAL_API_TOKEN', 'a-real-internal-token-for-the-mcp-apps-spec')
     vi.mocked(getProposal).mockRejectedValueOnce(new NotFoundError('Proposal not found'))
     const apply = await callTool(outside, 'search', 'call-operation', { name: 'proposal-apply', input: { params: { id: PROPOSAL_ID } } }, ELICITS)
     const question = questionOf(apply)
@@ -411,7 +411,7 @@ describe('a model deciding a proposal itself', () => {
   })
 
   it('asks a discard in the words of a file proposal', async () => {
-    vi.stubEnv('GRID_INTERNAL_API_TOKEN', 'a-real-internal-token-for-the-mcp-apps-spec')
+    vi.stubEnv('INTERNAL_API_TOKEN', 'a-real-internal-token-for-the-mcp-apps-spec')
     vi.mocked(getProposal).mockResolvedValueOnce({
       ...proposal('proposed'),
       kind: 'file_operation',
@@ -426,7 +426,7 @@ describe('a model deciding a proposal itself', () => {
   })
 
   it('is not asked about on the card: a press is the person’s, and runs', async () => {
-    vi.stubEnv('GRID_INTERNAL_API_TOKEN', 'a-real-internal-token-for-the-mcp-apps-spec')
+    vi.stubEnv('INTERNAL_API_TOKEN', 'a-real-internal-token-for-the-mcp-apps-spec')
     vi.mocked(callOperation).mockResolvedValue({ status: 200, ok: true, body: { proposal: proposal('applied') } })
     const result = await callTool(outside, 'search', 'proposal-card-apply', { id: PROPOSAL_ID }, ELICITS)
     expect(result.resultType).not.toBe('input_required')

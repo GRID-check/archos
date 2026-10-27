@@ -28,7 +28,7 @@ describe.skipIf(!url)('bff_job_queue reads and writes from the BFF', () => {
   let repo: typeof import('./repository')
 
   beforeAll(async () => {
-    process.env.GRID_APP_DATABASE_URL = url
+    process.env.APP_DATABASE_URL = url
     context = await import('@/lib/db/tenant-context')
     db = (await import('@/lib/db')).getDb()
     repo = await import('./repository')

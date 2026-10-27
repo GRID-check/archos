@@ -154,13 +154,13 @@ describe("the bff-jobs pool", () => {
     expect(emitted.filter((name) => !readByRunner.has(name))).toEqual([]);
     // What the runner and the BFF in its pod cannot start without.
     const names = env.map((e) => e.name);
-    expect(names).toEqual(expect.arrayContaining(["GRID_APP_DATABASE_URL", "GRID_INTERNAL_API_TOKEN"]));
+    expect(names).toEqual(expect.arrayContaining(["APP_DATABASE_URL", "INTERNAL_API_TOKEN"]));
   });
 
   it("runs slices in a spawned BFF unless told otherwise, and refuses a mode the runner does not know", async () => {
     const { bffJobsMode } = await import("../config");
 
-    expect(env.find((e) => e.name === "GRID_BFF_JOBS_MODE")?.value).toBe("http");
+    expect(env.find((e) => e.name === "BFF_JOBS_MODE")?.value).toBe("http");
     expect(bffJobsMode("inprocess")).toBe("inprocess");
     expect(() => bffJobsMode("in-process")).toThrow(/bffJobsMode/);
     // The runner's own list of modes is the one this mirrors.

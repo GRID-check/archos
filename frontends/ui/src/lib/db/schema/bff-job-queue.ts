@@ -21,7 +21,7 @@ export type BffJobPriority = (typeof BFF_JOB_PRIORITY)[BffJobPriorityName]
 
 /**
  * `dead` is a job that failed every claim it had; it stays for an operator until
- * its retention (`dead_at` plus `GRID_BFF_JOBS_DEAD_RETENTION_DAYS`), and nothing
+ * its retention (`dead_at` plus `BFF_JOBS_DEAD_RETENTION_DAYS`), and nothing
  * claims it. Its payload is reduced to identifiers when it goes dead.
  */
 export type BffJobStatus = 'queued' | 'claimed' | 'dead'

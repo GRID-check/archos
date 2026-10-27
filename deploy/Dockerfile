@@ -167,14 +167,14 @@ ENV PYTHONDONTWRITEBYTECODE=1
 ENV TIKTOKEN_CACHE_DIR=/app/tiktoken-cache
 ENV PATH="/app/.venv/bin:$PATH"
 
-# The commit this image was built from. `--build-arg GRID_GIT_SHA=$(git rev-parse
+# The commit this image was built from. `--build-arg GIT_SHA=$(git rev-parse
 # HEAD)` in the image build (publish-images.yml / docker-build.yml); unset
 # everywhere else, and the boot line then prints `sha=unknown` rather than
 # guessing. There is no `.git` in the image, so a build arg is the only way the
 # running container can answer "which commit am I", and it is the question a
 # pilot report cannot be actioned without.
-ARG GRID_GIT_SHA=""
-ENV GRID_GIT_SHA=$GRID_GIT_SHA
+ARG GIT_SHA=""
+ENV GIT_SHA=$GIT_SHA
 
 EXPOSE 8000
 
@@ -206,14 +206,14 @@ ENV TIKTOKEN_CACHE_DIR=/app/tiktoken-cache
 ENV PATH="/app/.venv/bin:$PATH"
 ENV APP_ENV=production
 
-# The commit this image was built from. `--build-arg GRID_GIT_SHA=$(git rev-parse
+# The commit this image was built from. `--build-arg GIT_SHA=$(git rev-parse
 # HEAD)` in the image build (publish-images.yml / docker-build.yml); unset
 # everywhere else, and the boot line then prints `sha=unknown` rather than
 # guessing. There is no `.git` in the image, so a build arg is the only way the
 # running container can answer "which commit am I", and it is the question a
 # pilot report cannot be actioned without.
-ARG GRID_GIT_SHA=""
-ENV GRID_GIT_SHA=$GRID_GIT_SHA
+ARG GIT_SHA=""
+ENV GIT_SHA=$GIT_SHA
 
 EXPOSE 8000
 

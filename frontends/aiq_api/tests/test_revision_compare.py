@@ -67,9 +67,9 @@ def _gateway(data: dict | None = None, error: Exception | None = None):
 
 @pytest.fixture(autouse=True)
 def _environment(monkeypatch):
-    monkeypatch.setenv("GRID_VLM_API_KEY", "test-key")  # pragma: allowlist secret
-    monkeypatch.setenv("GRID_VLM_BASE_URL", "https://openrouter.ai/api/v1")
-    monkeypatch.setenv("GRID_VLM_MODEL", "openai/test-vlm")
+    monkeypatch.setenv("VLM_API_KEY", "test-key")  # pragma: allowlist secret
+    monkeypatch.setenv("VLM_BASE_URL", "https://openrouter.ai/api/v1")
+    monkeypatch.setenv("VLM_MODEL", "openai/test-vlm")
     cache.reset_local_store()
     yield
     cache.reset_local_store()
@@ -255,7 +255,7 @@ class TestRefusals:
         assert {asked[2] for asked in pages.asked} == {1}
 
     async def test_without_a_vision_key_it_is_a_503(self, pages, ingested, monkeypatch):
-        for name in ("GRID_VLM_API_KEY", "OPENROUTER_API_KEY", "OPENROUTER_KEY"):
+        for name in ("VLM_API_KEY", "OPENROUTER_API_KEY", "OPENROUTER_KEY"):
             monkeypatch.delenv(name, raising=False)
         response, post = await _post()
 

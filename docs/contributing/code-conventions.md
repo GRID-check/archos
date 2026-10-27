@@ -60,7 +60,7 @@ or `piloti` in an identifier, file or folder name, environment variable,
 route, header, table, metric, event, resource or tool name. The product was
 AI-Q, then Grid, now Piloti, and the next name is coming; every earlier rename
 was a code change across thousands of lines. Name the thing for what it does:
-`MAX_ACTIVE_JOBS_PER_ORG`, not `GRID_MAX_ACTIVE_JOBS_PER_ORG`; a wake job, not
+`MAX_ACTIVE_JOBS_PER_ORG`, not `MAX_ACTIVE_JOBS_PER_ORG`; a wake job, not
 `piloti_wakes`. The product's name is copy, read from one place.
 
 `scripts/check_brand_names.py`, the `brand-names` hook in `task lint:repo`
@@ -204,7 +204,7 @@ never an environment variable.** Environment variables are for operator tuning
 (a budget, a delay, a page cap) and wiring (a URL, a token). A flag is decided
 per organization, changed in the dashboard with no deploy, and reaches the
 Python tier through the BFF (`GET /api/internal/stages`), which has no WorkOS
-client of its own. `GRID_FOLDER_CARDS` and `GRID_OFFICE_CONVENTIONS` were built
+client of its own. `FOLDER_CARDS` and `OFFICE_CONVENTIONS` were built
 as variables and replaced by the `folder-cards` and `office-conventions` flags;
 their tuning (`FOLDER_CARDS_MONTHLY_TOKENS`) stayed. Registering a flag:
 [`workos-provisioning.md`](../deployment/workos-provisioning.md).

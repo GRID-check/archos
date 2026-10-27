@@ -14,7 +14,7 @@ loop of its own, and this calls its `/v1/maintenance/housekeeping/*` routes on
 the cadences Kubernetes runs as CronJobs. One of them is the base-corpus sync
 (`base-corpus`, every ten minutes), which queues an ingest job for each uploaded OIB PDF that is
 not indexed yet (the `ingest-worker` service claims and runs it); the backend does no sync at boot. `bff-jobs` (ADR-0079) is the frontend image
-running `workers/jobs/index.js`: the BFF (or, with `GRID_BFF_JOBS_MODE=inprocess`,
+running `workers/jobs/index.js`: the BFF (or, with `BFF_JOBS_MODE=inprocess`,
 the services bundled into `dist-jobs/slice.mjs` and no server) plus the claim loop that runs the jobs
 in `bff_job_queue` (project reindex, failed-ingestion rescan, IFC extraction,
 Office rendition through `gotenberg`, research-report filing), with no
@@ -242,7 +242,7 @@ initialises a **fresh** data directory, so an upgraded stack would otherwise
 never get them.
 
 It is the only long-running-image container that holds
-`GRID_APP_MIGRATION_DATABASE_URL` (the schema owner). Keeping that credential
+`APP_MIGRATION_DATABASE_URL` (the schema owner). Keeping that credential
 out of the container that serves requests is the point: row-level security does
 not apply to a table's owner, so a bug that reached it would have a full bypass
 inside the very process the boundary is meant to constrain. `frontend`,
@@ -323,7 +323,7 @@ The Next.js UI application.
 | `REQUIRE_AUTH` | `${REQUIRE_AUTH:-false}` |
 | `BACKEND_URL` | `${BACKEND_URL:-http://aiq-api:8000}` (the api role: every HTTP call) |
 | `BACKEND_CHAT_URL` | `${BACKEND_CHAT_URL:-http://aiq-agent:8000}` (the chat role: the WebSocket proxy alone; required, no fallback to `BACKEND_URL`) |
-| `GRID_APP_DATABASE_URL` | `${GRID_APP_DATABASE_URL:-postgresql://grid_app_rw:${GRID_APP_RUNTIME_PASSWORD:-grid_app_rw_dev}@pgbouncer:5432/grid_app}` — the least-privilege role, subject to row-level security (ADR-0041), through the pooler. Migrations use the owner credential in `GRID_APP_MIGRATION_DATABASE_URL`, set only on `grid-migrate`, straight to `postgres`. |
+| `APP_DATABASE_URL` | `${APP_DATABASE_URL:-postgresql://grid_app_rw:${APP_RUNTIME_PASSWORD:-grid_app_rw_dev}@pgbouncer:5432/grid_app}` — the least-privilege role, subject to row-level security (ADR-0041), through the pooler. Migrations use the owner credential in `APP_MIGRATION_DATABASE_URL`, set only on `grid-migrate`, straight to `postgres`. |
 | `WORKOS_CLIENT_ID` | `${WORKOS_CLIENT_ID}` |
 | `WORKOS_API_KEY` | `${WORKOS_API_KEY}` |
 | `NEXT_PUBLIC_WORKOS_REDIRECT_URI` | `${NEXT_PUBLIC_WORKOS_REDIRECT_URI:-${WORKOS_REDIRECT_URI:-http://localhost:3000/api/auth/callback}}` |
@@ -456,8 +456,8 @@ image writes its userlist), `POOL_MODE=transaction`, `AUTH_TYPE=scram-sha-256`,
 `IGNORE_STARTUP_PARAMETERS=extra_float_digits,options`. Passwords are written
 into URLs, so they cannot contain `:`, `@` or `/`.
 
-**Routing**: the pooled DSNs above and every `GRID_APP_DATABASE_URL` go through
-it. `LISTEN_DB_URL`, `LOCK_DB_URL`, `GRID_APP_MIGRATION_DATABASE_URL` and
+**Routing**: the pooled DSNs above and every `APP_DATABASE_URL` go through
+it. `LISTEN_DB_URL`, `LOCK_DB_URL`, `APP_MIGRATION_DATABASE_URL` and
 Langfuse's `DATABASE_URL` go straight to `postgres`, as in Kubernetes.
 
 **Healthcheck**: `pg_isready -h 127.0.0.1 -p 5432` — interval 5s, timeout 3s, retries 5.

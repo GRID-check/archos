@@ -79,5 +79,5 @@ export function signJobRequestContext(
     requester: requesterOf(session),
     ...submit,
   }
-  return buildGridRequestContextWireHeaders(input, process.env.GRID_INTERNAL_API_TOKEN)
+  return buildGridRequestContextWireHeaders(input, process.env.INTERNAL_API_TOKEN)
 }

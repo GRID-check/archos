@@ -1,7 +1,7 @@
 /**
  * INTERNAL skill resolution endpoint - `src/aiq_agent/skills/resolver.py` (via
  * FRONTEND_INTERNAL_URL) asks the BFF which skills apply to an organization/agent.
- * Shared-token guarded (GRID_INTERNAL_API_TOKEN); the organization comes from the
+ * Shared-token guarded (INTERNAL_API_TOKEN); the organization comes from the
  * query string, so tenancy is declared from the payload/query rather than a session.
  */
 

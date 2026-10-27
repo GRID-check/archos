@@ -1,7 +1,7 @@
 /**
  * Which aiq-agent address the chat WebSocket proxy in `server.js` dials.
  *
- * Two modes, picked by `GRID_CHAT_AFFINITY` (ADR-0080), on by default:
+ * Two modes, picked by `CHAT_AFFINITY` (ADR-0080), on by default:
  *
  * - **Affinity on** (ADR-0028): a stable hash of the conversation id picks one
  *   replica's own DNS name, `aiq-agent-<i>.aiq-agent-headless`, so a
@@ -20,7 +20,7 @@
  * production image copies it in by path (`deploy/Dockerfile`).
  */
 
-/** `GRID_CHAT_AFFINITY`: anything but an explicit off value is on, so an unset variable keeps today's routing. */
+/** `CHAT_AFFINITY`: anything but an explicit off value is on, so an unset variable keeps today's routing. */
 function affinityEnabled(raw) {
   const value = String(raw === undefined ? '1' : raw).trim().toLowerCase()
   return !['0', 'false', 'no', 'off'].includes(value)

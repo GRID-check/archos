@@ -92,7 +92,7 @@ function isDevEnvironment(): boolean {
 /**
  * The HMAC key, or null when signing must not happen.
  *
- * Keyed on `GRID_INTERNAL_API_TOKEN` — already provisioned in every deployment
+ * Keyed on `INTERNAL_API_TOKEN` — already provisioned in every deployment
  * path (compose and Pulumi) and never exposed by an HMAC — with the domain
  * prefix above separating these tokens from any other use of the same secret.
  * Fail-closed on both counts, matching `@/lib/internal-auth`: an unset secret
@@ -100,17 +100,17 @@ function isDevEnvironment(): boolean {
  * where it would let anyone mint a URL for any document.
  */
 function signingSecret(): string | null {
-  const secret = process.env.GRID_INTERNAL_API_TOKEN
+  const secret = process.env.INTERNAL_API_TOKEN
   if (!secret) {
-    warnDisabledOnce('GRID_INTERNAL_API_TOKEN is not set')
+    warnDisabledOnce('INTERNAL_API_TOKEN is not set')
     return null
   }
   if (secret === DEV_DEFAULT_TOKEN && !isDevEnvironment()) {
     warnDisabledOnce(
-      `GRID_INTERNAL_API_TOKEN is the well-known dev default and APP_ENV is ` +
+      `INTERNAL_API_TOKEN is the well-known dev default and APP_ENV is ` +
         `"${process.env.APP_ENV ?? process.env.NODE_ENV ?? 'production'}". Anyone who has read ` +
         `the compose file could otherwise mint an image URL for any document, so signing is off. ` +
-        `Set a real GRID_INTERNAL_API_TOKEN on this environment (note that APP_ENV is "production" ` +
+        `Set a real INTERNAL_API_TOKEN on this environment (note that APP_ENV is "production" ` +
         `on every deployed stack, dev ones included).`,
     )
     return null

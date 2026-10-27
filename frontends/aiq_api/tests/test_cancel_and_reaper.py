@@ -344,7 +344,7 @@ class TestKillActiveRoute:
 
         notify = AsyncMock(return_value=True)
         monkeypatch.setattr(jobs_routes, "notify_job_outcome_from_access", notify)
-        monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", "secret")
+        monkeypatch.setenv("INTERNAL_API_TOKEN", "secret")
 
         _insert_job_info(db_url, "job-running", status="running")
         _insert_job_info(db_url, "job-queued", status="submitted")

@@ -15,7 +15,7 @@
  * after this runs, the list is the people who held the role today.
  *
  *   Usage (from frontends/ui):
- *     WORKOS_API_KEY=sk_… GRID_APP_MIGRATION_DATABASE_URL=postgres://… \
+ *     WORKOS_API_KEY=sk_… APP_MIGRATION_DATABASE_URL=postgres://… \
  *       bun run migrate:folder-grants             # show the plan, change nothing
  *     … bun run migrate:folder-grants -- --apply  # register the folders and assign the roles
  *
@@ -39,7 +39,7 @@
  * removes a folder role.
  *
  * It reads `project_folder_grants` across every organization, so it needs the
- * schema owner's connection (`GRID_APP_MIGRATION_DATABASE_URL`); the runtime
+ * schema owner's connection (`APP_MIGRATION_DATABASE_URL`); the runtime
  * role is subject to row-level security and would see nothing.
  */
 
@@ -54,9 +54,9 @@ const RESOURCE_TYPE = 'folder'
 const apply = process.argv.includes('--apply')
 const finish = new Set(process.argv.filter((arg) => arg.startsWith('--finish=')).map((arg) => arg.slice('--finish='.length)))
 const apiKey = process.env.WORKOS_API_KEY
-const databaseUrl = process.env.GRID_APP_MIGRATION_DATABASE_URL ?? process.env.GRID_APP_DATABASE_URL
+const databaseUrl = process.env.APP_MIGRATION_DATABASE_URL ?? process.env.APP_DATABASE_URL
 if (!apiKey || !databaseUrl) {
-  console.error('WORKOS_API_KEY and GRID_APP_MIGRATION_DATABASE_URL (or GRID_APP_DATABASE_URL) are required.')
+  console.error('WORKOS_API_KEY and APP_MIGRATION_DATABASE_URL (or APP_DATABASE_URL) are required.')
   process.exit(2)
 }
 

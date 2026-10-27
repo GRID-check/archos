@@ -905,7 +905,7 @@ ACCEPTED_CLIENT_FIELDS: tuple[str, ...] = (
 
 
 class HelloValue(_Model):
-    build: str = Field(min_length=1, description="The deployed commit (GRID_GIT_SHA), or 'unknown', as /health has it.")
+    build: str = Field(min_length=1, description="The deployed commit (GIT_SHA), or 'unknown', as /health has it.")
     accepts: list[str] = Field(
         default_factory=list,
         description=(

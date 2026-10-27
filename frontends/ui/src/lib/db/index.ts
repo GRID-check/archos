@@ -12,7 +12,7 @@ import {
 let client: ReturnType<typeof postgres> | null = null;
 let dbInstance: ReturnType<typeof drizzle> | null = null;
 
-// Default upper bound on pooled connections when GRID_DB_POOL_MAX is unset.
+// Default upper bound on pooled connections when DB_POOL_MAX is unset.
 const DEFAULT_DB_POOL_MAX = 10;
 // Cancel any single statement that runs longer than this (ms). Keeps a runaway
 // query from hanging a request past Cloudflare's ~100s origin timeout. Applied
@@ -23,14 +23,14 @@ const DEFAULT_DB_POOL_MAX = 10;
 const STATEMENT_TIMEOUT_MS = 30_000;
 
 /**
- * Resolve the pool ceiling from GRID_DB_POOL_MAX, falling back to a safe
+ * Resolve the pool ceiling from DB_POOL_MAX, falling back to a safe
  * default. An unbounded postgres-js pool lets a slow/unreachable backend or a
  * burst of concurrent requests exhaust Postgres' connection slots, compounding
  * the request pile-up behind Cloudflare's origin timeout. Invalid / non-positive
  * values fall back to the default rather than silently disabling the bound.
  */
 export function resolveDbPoolMax(): number {
-  const raw = process.env.GRID_DB_POOL_MAX;
+  const raw = process.env.DB_POOL_MAX;
   if (!raw) return DEFAULT_DB_POOL_MAX;
   const parsed = Number(raw);
   return Number.isFinite(parsed) && parsed > 0 ? Math.floor(parsed) : DEFAULT_DB_POOL_MAX;
@@ -84,7 +84,7 @@ function reportSlotWait(waitedMs: number): void {
   lastSlotWaitLogAt = now;
   console.warn(
     `[db] waited ${Math.round(waitedMs)}ms for a connection from a pool of ` +
-      `${resolveDbPoolMax()} (GRID_DB_POOL_MAX). Callers queue silently past this ` +
+      `${resolveDbPoolMax()} (DB_POOL_MAX). Callers queue silently past this ` +
       `bound; if this persists, raise the bound or find what is holding slots.`,
   );
 }
@@ -286,10 +286,10 @@ export function createDb() {
     return dbInstance;
   }
 
-  const connectionString = process.env.GRID_APP_DATABASE_URL;
+  const connectionString = process.env.APP_DATABASE_URL;
 
   if (!connectionString) {
-    throw new Error("GRID_APP_DATABASE_URL is not defined");
+    throw new Error("APP_DATABASE_URL is not defined");
   }
 
   client = postgres(connectionString, {

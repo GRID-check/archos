@@ -100,7 +100,7 @@ def test_the_guard_admits_a_request_carrying_exactly_the_contract_headers(
     `_require_internal_token` against a request built from the fixture, so the
     contract is exercised rather than merely compared.
     """
-    monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", "a-real-deployment-token")
+    monkeypatch.setenv("INTERNAL_API_TOKEN", "a-real-deployment-token")
     monkeypatch.setenv("APP_ENV", "production")
 
     class _Request:

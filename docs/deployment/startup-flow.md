@@ -77,10 +77,10 @@ docker compose up -d --build
          │      │
          │      │   Step 6a: node scripts/ensure-rls-roles.mjs
          │      │   • Creates grid_app_rw / grid_app_platform if absent
-         │      │   • Syncs the runtime password from GRID_APP_DATABASE_URL
+         │      │   • Syncs the runtime password from APP_DATABASE_URL
          │      │
          │      └── Step 6b: node node_modules/drizzle-kit/bin.cjs migrate
-         │          • Reads GRID_APP_MIGRATION_DATABASE_URL — the schema OWNER
+         │          • Reads APP_MIGRATION_DATABASE_URL — the schema OWNER
          │          • DDL and backfills need it; row-level security exempts the
          │            owner, which is what keeps a backfill from touching 0 rows
          │          • Runs pending migrations from drizzle/ directory
@@ -90,7 +90,7 @@ docker compose up -d --build
                 • Container name: aiq-blueprint-ui
                 • command: ["node", "server.js"] — it serves, it does not migrate.
                   The serving container never holds the owner credential (ADR-0041).
-                • Connects as grid_app_rw via GRID_APP_DATABASE_URL
+                • Connects as grid_app_rw via APP_DATABASE_URL
                 │
                 │   server.js starts
                 │   • Production mode (NODE_ENV=production)
@@ -131,7 +131,7 @@ The backend ingests nothing at boot. The base corpus lives in SeaweedFS and the
 uploaded: in the platform-admin UI, or from a directory of PDFs with
 
 ```bash
-GRID_ADMIN_TOKEN=... uv run python scripts/upload_oib_corpus.py data/oib --url http://localhost:8000
+ADMIN_TOKEN=... uv run python scripts/upload_oib_corpus.py data/oib --url http://localhost:8000
 ```
 
 Each upload stores the file and queues its ingest job at once; the ingest workers
@@ -154,9 +154,9 @@ one-shot `grid-migrate` service runs, in order:
 
 1. `node scripts/ensure-rls-roles.mjs` — creates `grid_app_rw` and
    `grid_app_platform` if absent and syncs the runtime password from
-   `GRID_APP_DATABASE_URL`. Idempotent and fail-soft.
+   `APP_DATABASE_URL`. Idempotent and fail-soft.
 2. `node node_modules/drizzle-kit/bin.cjs migrate` — as the schema owner via
-   `GRID_APP_MIGRATION_DATABASE_URL`, because DDL and backfills need the owner
+   `APP_MIGRATION_DATABASE_URL`, because DDL and backfills need the owner
    (row-level security does not apply to it).
 
 `frontend` then starts with `command: ["node", "server.js"]` and connects as

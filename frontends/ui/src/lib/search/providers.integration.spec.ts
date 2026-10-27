@@ -187,7 +187,7 @@ describe.skipIf(!url)('the search providers against live Postgres', () => {
   const titles = (hits: ReadonlyArray<{ title: string }>) => hits.map((hit) => hit.title).sort()
 
   beforeAll(async () => {
-    process.env.GRID_APP_DATABASE_URL = url
+    process.env.APP_DATABASE_URL = url
     const context = await import('@/lib/db/tenant-context')
     withTenant = context.withTenant
     withPlatformAccess = context.withPlatformAccess

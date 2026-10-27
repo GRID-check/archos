@@ -393,7 +393,7 @@ def derive_project_collection(collection_scope: list[str] | None) -> str | None:
 
 
 #: How long a signed envelope may authorize a job request, in milliseconds.
-#: The BFF verifier's window, ``GRID_REQUEST_CONTEXT_MAX_AGE_MS`` in
+#: The BFF verifier's window, ``REQUEST_CONTEXT_MAX_AGE_MS`` in
 #: ``frontends/ui/src/lib/request-context.ts``. The two must stay equal.
 JOB_ENVELOPE_MAX_AGE_MS = 6 * 60 * 60 * 1000
 
@@ -440,7 +440,7 @@ def verified_envelope(
     caller says it is, and inside the BFF verifier's window, counted in both
     directions. Any failure is the same as no envelope.
     """
-    secret = os.environ.get("GRID_INTERNAL_API_TOKEN")
+    secret = os.environ.get("INTERNAL_API_TOKEN")
     if not secret or not user_id:
         return None
     context = GridRequestContext.from_envelope(

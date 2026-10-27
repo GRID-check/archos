@@ -117,7 +117,7 @@ analysis, `[KEIN TEXT]` (a blank page) indexes nothing.
 
 **Same credential, same cache.** Transcription calls the endpoint the drawing
 analysis calls, with `resolve_vlm_credential` (org BYOK, then
-`GRID_VLM_API_KEY`, then the provider key). The model is the org's `ingest_vlm`
+`VLM_API_KEY`, then the provider key). The model is the org's `ingest_vlm`
 override, else `OCR_MODEL`, else the VLM model. A separate `ingest_ocr`
 agent group was not added: it would be a new picker row, a bootstrap default
 and a BFF config key for a choice no tenant has asked to make separately.

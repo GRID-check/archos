@@ -4,7 +4,7 @@
  * Called just-in-time by the Python backend for invocations whose request
  * context carries no `x-grid-model-overrides` header — endpoints the BFF does
  * not front (direct HTTP), or turns where the best-effort WebSocket-scope
- * injection failed. Guarded by `GRID_INTERNAL_API_TOKEN`, same as the BYOK
+ * injection failed. Guarded by `INTERNAL_API_TOKEN`, same as the BYOK
  * credential route.
  *
  * `overrides` is the EFFECTIVE selection: the platform-owner defaults

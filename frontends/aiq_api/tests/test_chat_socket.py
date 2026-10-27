@@ -220,7 +220,7 @@ def _envelope(payload: dict, *, secret: str = _SECRET) -> list[tuple[bytes, byte
 
 @pytest.fixture(autouse=True)
 def _wiring(monkeypatch):
-    monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", _SECRET)
+    monkeypatch.setenv("INTERNAL_API_TOKEN", _SECRET)
     configure_websocket_auth(validators=[_Validator()], require_auth=True, external_hostnames={"public.test"})
     reset_bus_for_tests()
     persisted: list[dict] = []
@@ -352,7 +352,7 @@ async def test_any_other_wire_version_is_closed_4426(harness, query):
 
 
 async def test_the_first_frame_is_hello_before_any_client_message(harness, monkeypatch):
-    monkeypatch.setenv("GRID_GIT_SHA", "abc1234")
+    monkeypatch.setenv("GIT_SHA", "abc1234")
     monkeypatch.setenv("WIRE_V2_ADDITIVE_FIELDS", "on")
     sock = harness().connect()
     await until(lambda: sock.frames)
@@ -373,7 +373,7 @@ async def test_the_first_frame_is_hello_before_any_client_message(harness, monke
 
 
 async def test_a_build_without_a_sha_says_unknown_like_health(harness, monkeypatch):
-    monkeypatch.delenv("GRID_GIT_SHA", raising=False)
+    monkeypatch.delenv("GIT_SHA", raising=False)
     sock = harness().connect()
     await until(lambda: sock.frames)
 
@@ -1069,7 +1069,7 @@ async def test_a_failing_stage_never_changes_the_answer_frames(harness, one_fram
     from aiq_agent.stages.spec import StageSpec
     from aiq_agent.stages.spec import TurnFacts
 
-    monkeypatch.delenv("GRID_INTERNAL_API_TOKEN")  # no BFF to ask for the stage model's settings
+    monkeypatch.delenv("INTERNAL_API_TOKEN")  # no BFF to ask for the stage model's settings
     if handler is not None:
         one_frame_stage.register_stage(
             StageSpec(
@@ -1515,7 +1515,7 @@ async def test_a_drain_that_runs_out_cancels_the_turn_with_a_terminal(harness):
 
 async def test_with_the_bus_down_and_affinity_on_the_fence_fails_open(harness, monkeypatch):
     owner, _, shared = _replicas()
-    monkeypatch.delenv("GRID_CHAT_AFFINITY", raising=False)
+    monkeypatch.delenv("CHAT_AFFINITY", raising=False)
     _bus_down(monkeypatch, shared, "set_nx", "get", "publish", "xadd")
     sock = harness(answering, owner).connect()
     sock.client(type="user_message", message_id="t1", text="?")
@@ -1527,7 +1527,7 @@ async def test_with_the_bus_down_and_affinity_on_the_fence_fails_open(harness, m
 
 async def test_with_the_bus_down_and_affinity_off_a_question_is_refused_not_run(harness, monkeypatch):
     owner, _, shared = _replicas()
-    monkeypatch.setenv("GRID_CHAT_AFFINITY", "0")
+    monkeypatch.setenv("CHAT_AFFINITY", "0")
     _bus_down(monkeypatch, shared, "set_nx", "get", "publish", "xadd")
     h = harness(answering, owner)
     sock = h.connect()
@@ -1611,7 +1611,7 @@ def test_the_row_is_the_typed_result_in_wire_spelling():
 
 async def test_the_hello_names_nothing_it_accepts_while_the_additive_fields_are_off(harness, monkeypatch):
     """The rollback: a hello with no ``accepts``, as for a tab that parses the hello strictly."""
-    monkeypatch.setenv("GRID_GIT_SHA", "abc1234")
+    monkeypatch.setenv("GIT_SHA", "abc1234")
     monkeypatch.setenv("WIRE_V2_ADDITIVE_FIELDS", "off")
     sock = harness().connect()
     await until(lambda: sock.frames)
@@ -2032,7 +2032,7 @@ def _fenced_cluster(monkeypatch, log: WriteLog) -> tuple[FencedReplica, FencedRe
     from aiq_api import conversation_bus
     from aiq_api import turn_fence
 
-    monkeypatch.setenv("GRID_CHAT_AFFINITY", "0")
+    monkeypatch.setenv("CHAT_AFFINITY", "0")
     monkeypatch.setattr(conversation_bus, "RUNNING_TTL_SECONDS", FENCE_TTL)
     monkeypatch.setattr(turn_fence, "GUARDED_WRITE_TIMEOUT_SECONDS", FENCE_WRITE_TIMEOUT)
     monkeypatch.setattr(turn_fence, "FENCE_SLACK_SECONDS", FENCE_SLACK)
@@ -2251,7 +2251,7 @@ async def test_with_affinity_on_an_owner_that_cannot_renew_keeps_running_as_befo
     """Affinity keeps both turns of a conversation in one process: the fence fails open, as the bus does."""
     from aiq_api import conversation_bus
 
-    monkeypatch.delenv("GRID_CHAT_AFFINITY", raising=False)
+    monkeypatch.delenv("CHAT_AFFINITY", raising=False)
     monkeypatch.setattr(conversation_bus, "RUNNING_TTL_SECONDS", FENCE_TTL)
     owner, _, shared = _replicas()
     gate = Gate()
@@ -2858,7 +2858,7 @@ async def test_a_headless_turn_with_no_result_reports_failed_once(harness, bff, 
 
 async def test_a_headless_question_the_fence_refuses_still_reports(harness, bff, monkeypatch, outcome_contract):
     owner, _, shared = _replicas()
-    monkeypatch.setenv("GRID_CHAT_AFFINITY", "0")
+    monkeypatch.setenv("CHAT_AFFINITY", "0")
     _bus_down(monkeypatch, shared, "set_nx", "get", "publish", "xadd")
     sock = harness(answering, owner).connect(headers=HEADLESS)
     sock.client(type="user_message", message_id=WAKE, text="?")

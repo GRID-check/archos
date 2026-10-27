@@ -99,7 +99,7 @@ _STREAM_TTL_SECONDS = int(os.environ.get("CONV_STREAM_TTL_SECONDS", "3600") or "
 # things in opposite directions. How long a newer question waits behind a
 # replica that died mid-turn: up to this value, and it must stay under
 # `CHAT_SUPERSEDE_WAIT_SECONDS`, which must stay under the client's 15 s
-# acknowledgement bound. And, with `GRID_CHAT_AFFINITY` off, how long a Dragonfly
+# acknowledgement bound. And, with `CHAT_AFFINITY` off, how long a Dragonfly
 # blip the owner survives: it stops writing and cancels its turn once a
 # successful renewal is older than this minus a 4 s margin (one guarded write,
 # 3 s, plus 1 s). A failed renewal is retried every second, so a blip shorter
@@ -477,7 +477,7 @@ class ConversationBus:
         """Restart the marker's expiry, while it still names this replica and turn. False once it has been lost.
 
         Not gated by the fail-fast window: a renewal refused without I/O moves
-        the turn's deadline no further, and with ``GRID_CHAT_AFFINITY`` off a
+        the turn's deadline no further, and with ``CHAT_AFFINITY`` off a
         turn whose deadline passes is cancelled. One failed ``publish_frame``
         for any conversation would otherwise cost every turn here its window.
         """

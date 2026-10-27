@@ -3,7 +3,7 @@
 ## The gap this closes
 
 Async research jobs have had admission control since the scaling review
-(``GRID_MAX_ACTIVE_JOBS_PER_ORG`` in ``aiq_api.jobs.queue``): a deliberate ceiling
+(``MAX_ACTIVE_JOBS_PER_ORG`` in ``aiq_api.jobs.queue``): a deliberate ceiling
 on how many long runs one organization may run at once. Interactive chat turns
 had none. A single shared conversation with ten members answering at once starts
 ten multi-agent runs, and the only thing that

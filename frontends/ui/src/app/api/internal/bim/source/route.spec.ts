@@ -67,7 +67,7 @@ const post = (body: unknown): Promise<Response> =>
 describe('POST /api/internal/bim/source', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    process.env.GRID_INTERNAL_API_TOKEN = 'test-token'
+    process.env.INTERNAL_API_TOKEN = 'test-token'
     process.env.APP_ENV = 'development'
     vi.mocked(listBimModels).mockResolvedValue([NEW, OLD])
     vi.mocked(isOrgFeatureEnabled).mockResolvedValue(true)

@@ -205,7 +205,7 @@ async def otelcollector_redaction_telemetry_exporter(
             )
 
     # Langfuse session/user attribution (ADR-0044). Same availability rule as
-    # the exporter itself: the deployment sets GRID_TRACE_IDENTITY_ATTRIBUTES
+    # the exporter itself: the deployment sets TRACE_IDENTITY_ATTRIBUTES
     # only where the Langfuse tier exists, so a stack without it builds the
     # identical pipeline it did before.
     #

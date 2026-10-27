@@ -26,10 +26,10 @@ The Python agent continues to own `aiq_jobs` (job metadata, summaries) and `aiq_
 
 The BFF connects via **Drizzle ORM** with the **`postgres` driver**.
 
-- **Environment variable:** `GRID_APP_DATABASE_URL`
+- **Environment variable:** `APP_DATABASE_URL`
 - **Role:** `grid_app_rw` — DML only, no DDL, and **subject to row-level
   security** (ADR-0041). Migrations use the owner credential in
-  `GRID_APP_MIGRATION_DATABASE_URL` instead.
+  `APP_MIGRATION_DATABASE_URL` instead.
 - **Client file:** `frontends/ui/src/lib/db/index.ts`
 
 > **Every query carries a tenant.** `frontends/ui/src/lib/db/index.ts` wraps the
@@ -77,12 +77,12 @@ export default defineConfig({
   out: "./drizzle",
   dialect: "postgresql",
   dbCredentials: {
-    // The OWNER credential (ADR-0041). `GRID_APP_DATABASE_URL` is the runtime
+    // The OWNER credential (ADR-0041). `APP_DATABASE_URL` is the runtime
     // role: DML only, RLS-enforced, and unable to run DDL — a migration pointed
     // at it fails, and a backfill pointed at it "succeeds" having touched
     // nothing. The fallback covers a local single-credential database only.
     url:
-      process.env.GRID_APP_MIGRATION_DATABASE_URL ?? process.env.GRID_APP_DATABASE_URL!,
+      process.env.APP_MIGRATION_DATABASE_URL ?? process.env.APP_DATABASE_URL!,
   },
 });
 ```
@@ -119,7 +119,7 @@ The `grid_app` database is created alongside `aiq_jobs` and `aiq_checkpoints` in
 - **Databases created:** `aiq_jobs`, `aiq_checkpoints`, `grid_app`
 - **Default user/password:** `aiq` / `aiq_dev`
 
-The init script is idempotent (`IF NOT EXISTS`) and runs automatically when the PostgreSQL container starts with an empty data directory. The BFF service receives `GRID_APP_DATABASE_URL` via the environment.
+The init script is idempotent (`IF NOT EXISTS`) and runs automatically when the PostgreSQL container starts with an empty data directory. The BFF service receives `APP_DATABASE_URL` via the environment.
 
 ---
 

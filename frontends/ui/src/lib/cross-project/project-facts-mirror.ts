@@ -144,7 +144,7 @@ async function putFacts(collection: string, body: ProjectFactsUpdateWire): Promi
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
-        ...buildGridRequestContextWireHeaders({ collectionScope: [collection] }, process.env.GRID_INTERNAL_API_TOKEN),
+        ...buildGridRequestContextWireHeaders({ collectionScope: [collection] }, process.env.INTERNAL_API_TOKEN),
       },
       body: JSON.stringify(body),
       signal: AbortSignal.timeout(PUSH_TIMEOUT_MS),

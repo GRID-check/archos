@@ -7,7 +7,7 @@ import 'server-only'
  *
  * Every internal route carries the same static service token and no user, and
  * the agent's principal is WIDER than any human's — so a route that took
- * `userId` from its own body would let anything holding `GRID_INTERNAL_API_TOKEN`
+ * `userId` from its own body would let anything holding `INTERNAL_API_TOKEN`
  * write into any tenant as anybody. `POST /api/internal/document-versions` was
  * the first route to close that, with the two helpers below written inside it;
  * `POST /api/internal/tasks` is the second, and a second copy of an identity
@@ -46,7 +46,7 @@ export function requireVerifiedContext(request: Request): VerifiedGridRequestCon
   const context = verifyGridRequestContextEnvelope(
     request.headers.get(GRID_HEADER_NAMES.REQUEST_CONTEXT),
     request.headers.get(GRID_HEADER_NAMES.REQUEST_CONTEXT_SIG),
-    process.env.GRID_INTERNAL_API_TOKEN,
+    process.env.INTERNAL_API_TOKEN,
   )
   if (!context) throw new UnauthorizedError('Missing or invalid request context envelope')
   return context

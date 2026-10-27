@@ -40,7 +40,7 @@ const configuredPatterns = nextConfig.images?.localPatterns
 
 beforeAll(() => {
   // The signing secret gates URL building; any non-default value will do.
-  process.env.GRID_INTERNAL_API_TOKEN = 'test-secret-for-local-pattern-check'
+  process.env.INTERNAL_API_TOKEN = 'test-secret-for-local-pattern-check'
 })
 
 describe('images.localPatterns admits the URLs we actually render', () => {

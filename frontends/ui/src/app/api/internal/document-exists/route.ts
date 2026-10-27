@@ -12,7 +12,7 @@
  * discards on a definite "no" only, and a 404 is also what a BFF that predates
  * this route answers. Anything but a 200 it reads as "present".
  *
- * Service-to-service only: `GRID_INTERNAL_API_TOKEN` via `internalApiRoute`,
+ * Service-to-service only: `INTERNAL_API_TOKEN` via `internalApiRoute`,
  * fail-closed when unconfigured. Addressed like the image presign route, by
  * document id AND collection; `organizationId` (the org the ingest was
  * dispatched for) narrows the lookup to that tenant when sent. Read-only, and

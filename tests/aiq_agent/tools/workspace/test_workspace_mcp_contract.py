@@ -39,7 +39,7 @@ FIXTURES = REPO / "frontends" / "ui" / "tests" / "fixtures"
 REQUESTS_PATH = FIXTURES / "workspace_mcp_requests.json"
 RESPONSES_PATH = FIXTURES / "workspace_mcp_responses.json"
 
-TOKEN_PLACEHOLDER = "<GRID_INTERNAL_API_TOKEN>"  # noqa: S105  # pragma: allowlist secret
+TOKEN_PLACEHOLDER = "<INTERNAL_API_TOKEN>"  # noqa: S105  # pragma: allowlist secret
 SIGNATURE_PLACEHOLDER = "<ENVELOPE_SIGNATURE>"
 
 #: The payload the spec signs (with a fresh ``issuedAt``). ``issuedAt`` is 0 here: the
@@ -105,7 +105,7 @@ class _Reply:
 
 @pytest.fixture(autouse=True)
 def _wire(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", "real-token-never-in-a-fixture")  # pragma: allowlist secret
+    monkeypatch.setenv("INTERNAL_API_TOKEN", "real-token-never-in-a-fixture")  # pragma: allowlist secret
     monkeypatch.setenv("FRONTEND_INTERNAL_URL", "http://frontend:3000")
 
 

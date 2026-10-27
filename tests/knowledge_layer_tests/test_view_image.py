@@ -418,7 +418,7 @@ async def test_resolve_storage_key_fail_open(monkeypatch) -> None:
 
     # Unconfigured env -> None without any HTTP call.
     monkeypatch.delenv("FRONTEND_INTERNAL_URL", raising=False)
-    monkeypatch.delenv("GRID_INTERNAL_API_TOKEN", raising=False)
+    monkeypatch.delenv("INTERNAL_API_TOKEN", raising=False)
     assert await _resolve_storage_key("proj_1", "plan.png") is None
 
     class _Response:
@@ -449,7 +449,7 @@ async def test_resolve_storage_key_fail_open(monkeypatch) -> None:
             return self.response
 
     monkeypatch.setenv("FRONTEND_INTERNAL_URL", "http://frontend:3000")
-    monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", "tok")
+    monkeypatch.setenv("INTERNAL_API_TOKEN", "tok")
     monkeypatch.setattr(httpx, "AsyncClient", _Client)
 
     assert await _resolve_storage_key("proj_1", "plan.png") == ("org/o1/k.png", None)

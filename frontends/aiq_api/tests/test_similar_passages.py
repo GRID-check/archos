@@ -96,7 +96,7 @@ def stack(monkeypatch):
     monkeypatch.setitem(schema.ALIASES, schema.Physical.OFFICE, f"similar_office_{suffix}")
     monkeypatch.setenv("QDRANT_URL", url)
     monkeypatch.setenv("REQUIRE_AUTH", "true")
-    monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", SECRET)
+    monkeypatch.setenv("INTERNAL_API_TOKEN", SECRET)
     monkeypatch.setattr(socket, "getaddrinfo", _GETADDRINFO)
     store_module.reset_store()
     retriever = LlamaIndexRetriever({"embed_model": "test-model", "embed_base_url": "https://test"})

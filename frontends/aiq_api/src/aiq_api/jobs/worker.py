@@ -3,7 +3,7 @@
 Run as a dedicated container: ``python -m aiq_api.jobs.worker``. It claims
 ``research_job_queue`` rows on the claim substrate (``aiq_agent.common.claim_queue``:
 fairly across organizations, interactive before bulk inside one, at most
-``GRID_MAX_ACTIVE_JOBS_PER_ORG`` of an organization's jobs running at once),
+``MAX_ACTIVE_JOBS_PER_ORG`` of an organization's jobs running at once),
 executes the ``run_agent_job`` body, heartbeats the claim
 so a crash is reclaimed, and marks the row done. Worker replicas scale research
 execution horizontally, independently of the web tier, and KEDA scales them on the
@@ -26,7 +26,7 @@ Config (env):
   RESEARCH_WORKER_HEARTBEAT_SECONDS  heartbeat cadence (default 30)
   RESEARCH_WORKER_DRAIN_SECONDS   drain budget on SIGTERM (default 600)
   RESEARCH_DEAD_RETENTION_DAYS    how long a dead row is kept (default 14)
-  GRID_MAX_ACTIVE_JOBS_PER_ORG    one organization's concurrent jobs (default 3)
+  MAX_ACTIVE_JOBS_PER_ORG    one organization's concurrent jobs (default 3)
 """
 
 from __future__ import annotations

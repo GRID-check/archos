@@ -349,7 +349,7 @@ records it as `project.memory.restriction_judged`, acted by
 its folders, never its text, `outcome: stored`. A "none" is what leaves a note
 open, so it is the verdict the trail exists for. That includes a `remember`
 with scope organization that the deployment refuses
-(`GRID_ALLOW_AGENT_ORG_MEMORY` unset, the default): no item exists, but the
+(`ALLOW_AGENT_ORG_MEMORY` unset, the default): no item exists, but the
 "none" decided that the agent offers the finding as a card that writes it
 open, organization-wide at the widest: a `memory` proposal the accepting
 person's session applies on the server (ADR-0105,

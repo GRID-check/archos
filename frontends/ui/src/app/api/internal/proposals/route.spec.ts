@@ -103,7 +103,7 @@ const post = (body: unknown, token = SECRET) =>
 
 beforeEach(() => {
   vi.clearAllMocks()
-  process.env.GRID_INTERNAL_API_TOKEN = SECRET
+  process.env.INTERNAL_API_TOKEN = SECRET
   vi.mocked(requireVerifiedContext).mockReturnValue(CONTEXT)
   vi.mocked(requirePinnedSession).mockResolvedValue(SESSION)
   vi.mocked(requireProjectAccess).mockResolvedValue({ role: 'project-viewer', closed: false, readsBecauseClosed: false })
@@ -115,7 +115,7 @@ beforeEach(() => {
 })
 
 afterEach(() => {
-  delete process.env.GRID_INTERNAL_API_TOKEN
+  delete process.env.INTERNAL_API_TOKEN
 })
 
 describe('POST /api/internal/proposals', () => {
