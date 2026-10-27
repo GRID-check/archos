@@ -26,7 +26,7 @@ import { I18nProvider } from '@/i18n'
 import { GridCardItem } from '@/features/grid-cards/components/GridCards'
 import type { GridCard } from '@/shared/cards/schemas'
 
-const OIB = (rl: string, section: string) => ({ document: `OIB-Richtlinie ${rl}`, section, edition: 'Ausgabe Mai 2023' })
+const OIB = (guideline: string, section: string) => ({ document: `OIB-Richtlinie ${guideline}`, section, edition: 'Ausgabe Mai 2023' })
 
 const WALL = {
   type: 'formula',
