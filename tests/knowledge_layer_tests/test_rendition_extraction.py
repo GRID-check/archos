@@ -25,10 +25,10 @@ from knowledge_layer.llamaindex.adapter import LlamaIndexIngestor
 from knowledge_layer.renditions import OFFICE_RENDITION_REQUIRED
 from knowledge_layer.renditions import align_extraction_paths
 from knowledge_layer.renditions import requires_rendition
+from knowledge_layer_testing.qdrant import FakeEmbedder
+from knowledge_layer_testing.qdrant import capture_indexed_documents
 
 from aiq_agent.common.credential_resolution import ResolvedCredential
-from sources.knowledge_layer.tests.qdrant_testing import FakeEmbedder
-from sources.knowledge_layer.tests.qdrant_testing import capture_indexed_documents
 
 pptx = pytest.importorskip("pptx")
 

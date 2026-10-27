@@ -1,6 +1,6 @@
 """The answer check through ``finalize_answer`` and the state (ADR-0139): what it is handed, what it sets.
 
-The check's model is the deterministic stub (``tests/aiq_agent/claim_judge_stub.py``):
+The check's model is the deterministic stub (``agent_testing.claim_judge_stub``):
 these tests are about what the turn hands it (the question, the final answer,
 every passage, record, measurement and reading, the quote check) and what the
 pipeline does with its reply, never about how a model grades.
@@ -10,6 +10,8 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 
+from agent_testing.claim_judge_stub import failing_judge
+from agent_testing.claim_judge_stub import stub_judge
 from langchain_core.messages import AIMessage
 from langchain_core.messages import HumanMessage
 from langchain_core.messages import ToolMessage
@@ -23,8 +25,6 @@ from aiq_agent.citations.entries import SourceEntry
 from aiq_agent.citations.registry import SourceRegistry
 from aiq_agent.common.claim_judge import Evidence
 from aiq_agent.common.claim_judge import Finding
-from tests.aiq_agent.claim_judge_stub import failing_judge
-from tests.aiq_agent.claim_judge_stub import stub_judge
 
 APPROVALS = (
     '{"items": [{"assignee": "Anna Berger", "status": "pending", "document": "Einreichplan EG"},'

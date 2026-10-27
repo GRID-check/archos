@@ -26,8 +26,8 @@ from aiq_agent.common import load_prompt
 from aiq_agent.common import validate_tool_availability
 from aiq_agent.common.plan_documents import PlanDocuments
 from aiq_agent.common.plan_documents import unread_basis
-from aiq_agent.common.turn_status import CUTOFF_USER_REQUESTED
-from aiq_agent.common.turn_status import DEGRADED_NO_REPORT_FILE
+from aiq_agent.common.turn_notices import CUTOFF_USER_REQUESTED
+from aiq_agent.common.turn_notices import DEGRADED_NO_REPORT_FILE
 from aiq_agent.common.turn_status import begin_lane_capture
 from aiq_agent.common.turn_status import end_lane_capture
 from aiq_agent.common.turn_status import get_lane_captures

@@ -25,7 +25,7 @@ import { findConversationInOrg, listMessagesForConversation } from '@/lib/conver
 import { findProjectInOrg } from '@/lib/projects/repository'
 import { requireResourceAccess } from '@/lib/sharing/access'
 import { getLocale, getTranslations } from '@/i18n/server'
-import { stripCardMarkers } from '@/features/chat/lib/answer-markdown'
+import { stripCardMarkers } from '@/lib/text/card-markers'
 import { buildAnswerDocument, type AnswerConfidence } from './answer-document'
 import { DOCX_MEDIA_TYPE, renderDocx } from './docx'
 import { sanitizeQuoteStamps } from '@/lib/conversations/message-quote-stamps'

@@ -68,7 +68,9 @@ def _offenders(repo: pathlib.Path = REPO) -> list[str]:
     allowed = repo / "sources" / "knowledge_layer" / "src" / "qdrant"
     for path in files:
         relative = path.relative_to(repo)
-        if not any(root in path.parents for root in roots) or allowed in path.parents or "tests" in relative.parts:
+        # Tests and their support packages (`testing/`) may reach the client.
+        test_code = {"tests", "testing"} & set(relative.parts)
+        if not any(root in path.parents for root in roots) or allowed in path.parents or test_code:
             continue
         if IMPORT.search(path.read_text(encoding="utf-8", errors="ignore")):
             offenders.append(str(relative))

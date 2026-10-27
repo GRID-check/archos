@@ -248,8 +248,9 @@ class TestPipelineWiring:
         `position=0` so the attributes it adds stay redactable like every other
         attribute we add — the ordering NAT's redaction pass depends on.
         """
+        from agent_testing.langfuse import _make_config
+
         from aiq_agent.observability.otel_header_redaction_exporter import otelcollector_redaction_telemetry_exporter
-        from tests.aiq_agent.observability.test_langfuse_trace_attributes import _make_config
 
         async with otelcollector_redaction_telemetry_exporter(_make_config(), None) as exporter:
             positions = exporter._processor_names

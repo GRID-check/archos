@@ -10,6 +10,18 @@ a finding that was recorded, and what the BFF confirmed lands on the card.
 from __future__ import annotations
 
 import pytest
+from agent_testing.canvas import ANNOTATION
+from agent_testing.canvas import DOCUMENT
+from agent_testing.canvas import HEADER
+from agent_testing.canvas import LIST_BODY
+from agent_testing.canvas import NAME
+from agent_testing.canvas import PROPOSAL
+from agent_testing.canvas import PROPOSE_BODY
+from agent_testing.canvas import PROPOSED
+from agent_testing.canvas import REPLY_BODY
+from agent_testing.canvas import SIGNATURE
+from agent_testing.canvas import answering
+from agent_testing.canvas import listed
 
 from aiq_agent import project_context
 from aiq_agent.tools.canvas import calls as canvas_calls
@@ -17,19 +29,6 @@ from aiq_agent.tools.canvas.client import CanvasRequestError
 from aiq_agent.tools.canvas.register import run_mark
 from aiq_agent.tools.canvas.register import run_marks
 from aiq_agent.tools.canvas.register import run_reply
-
-from .conftest import ANNOTATION
-from .conftest import DOCUMENT
-from .conftest import HEADER
-from .conftest import LIST_BODY
-from .conftest import NAME
-from .conftest import PROPOSAL
-from .conftest import PROPOSE_BODY
-from .conftest import PROPOSED
-from .conftest import REPLY_BODY
-from .conftest import SIGNATURE
-from .conftest import answering
-from .conftest import listed
 
 
 class TestWhoItActsAs:

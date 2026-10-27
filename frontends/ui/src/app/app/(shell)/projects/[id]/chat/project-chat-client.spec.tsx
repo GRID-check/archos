@@ -84,7 +84,7 @@ const chatState = {
   }),
 } satisfies DeepPartial<ChatStoreWithHydration>
 
-vi.mock('@/features/chat', () => ({
+vi.mock('@/features/chat/store', () => ({
   useChatStore: Object.assign(
     (selector?: StoreSelector<ChatStoreWithHydration>) =>
       selector ? selector(asStoreState<ChatStoreWithHydration>(chatState)) : chatState,
