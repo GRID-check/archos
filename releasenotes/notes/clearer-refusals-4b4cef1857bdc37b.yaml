@@ -1,0 +1,6 @@
+---
+fixes:
+  - >
+    When Piloti may not show you something, you now see that access was refused
+    instead of a general error. A file that fails more than one upload check is
+    now refused for the same reason in project files, the Archiv and the chat.
