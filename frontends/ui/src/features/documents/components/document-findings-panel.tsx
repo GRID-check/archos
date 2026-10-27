@@ -53,10 +53,10 @@ function SourceItem({ source, projectId }: { source: FindingSource; projectId: s
   const pages = pagesLabel(t, source.pages)
   return (
     <span className="inline-flex items-baseline gap-1">
-      <DocumentLink projectId={projectId} document={source} />
-      {source.value !== undefined && (
-        <span className="text-foreground">: {source.unit ? `${source.value} ${source.unit}` : source.value}</span>
-      )}
+      <span className="text-foreground">
+        <DocumentLink projectId={projectId} document={source} />
+        {source.value !== undefined && `: ${source.unit ? `${source.value} ${source.unit}` : source.value}`}
+      </span>
       {pages && <span className="text-muted-foreground tabular-nums">({pages})</span>}
     </span>
   )
