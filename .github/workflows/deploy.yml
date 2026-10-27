@@ -461,6 +461,8 @@ jobs:
         working-directory: deploy/pulumi
         run: |
           export PATH="$HOME/.pulumi/bin:$PATH"
+          # Develop's workflow can run against an older DEPLOY_SHA (gotchas.md).
+          [ -x scripts/esc-workspace-env.sh ] || { echo "::notice::not in ${DEPLOY_SHA}; skipped"; exit 0; }
           scripts/esc-workspace-env.sh matthiasbigl dev Pulumi.dev.yaml warn
         env:
           PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
@@ -470,6 +472,7 @@ jobs:
         working-directory: deploy/pulumi
         run: |
           export PATH="$HOME/.pulumi/bin:$PATH"
+          [ -f workspace/Pulumi.yaml ] || { echo "::notice::not in ${DEPLOY_SHA}; skipped"; exit 0; }
           node scripts/workspace-stack-file.mjs Pulumi.dev.yaml workspace/Pulumi.dev.yaml
           cd workspace
           pulumi stack select --create matthiasbigl/workspace/dev
