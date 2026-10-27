@@ -45,7 +45,12 @@ vi.mock('@/lib/authz/project-membership', () => ({
   resolveSubjectMembership: vi.fn(async (_org: string, userId: string) => ({
     organizationMembershipId: userId.replace(/^user_/, 'om_'),
     role: 'member',
+    roles: ['member'],
   })),
+}))
+// What WorkOS says the roles hold: Admin carries the org-wide project bypass.
+vi.mock('@/lib/authz/org-role-permissions', () => ({
+  rolesHoldPermission: vi.fn(async (_org: string, roles: readonly string[]) => roles.includes('admin')),
 }))
 vi.mock('@/lib/conversations/restricted-use-repository', () => ({ readConversationAudience: vi.fn() }))
 vi.mock('@/lib/auth/membership-roles', () => ({ resolveMembershipRoles: vi.fn() }))

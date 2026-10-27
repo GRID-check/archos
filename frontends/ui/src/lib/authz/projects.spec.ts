@@ -16,6 +16,7 @@ vi.mock('@/lib/projects/repository', () => ({
 import { requireProjectAccess } from './projects'
 import { setCacheStore, type CacheStore } from '@/lib/cache'
 import type { AuthorizedSession } from '@/lib/auth/types'
+import { NotFoundError } from '@/lib/api/errors'
 
 /**
  * Controllable in-process store. Ignores TTL expiry (tests assert hits within
@@ -75,17 +76,14 @@ describe('requireProjectAccess', () => {
   const authzKeys = () => store.getKeys.filter((k) => k.startsWith('authz:check:'))
 
   describe('the org-wide project bypass is a PERMISSION, not a role name', () => {
-    it('a legacy admin session still bypasses FGA entirely (no WorkOS calls)', async () => {
-      // `hasPermission`'s bounded catalog implication: the session carries the
-      // role slug and no claims, and the catalog says Admin holds
-      // `org:projects:administer`. Nobody has to re-log-in for the fix.
-      const result = await requireProjectAccess(
-        session({ role: 'admin' }),
-        PROJECT_ID,
-        'project:edit'
+    it('a role named admin without the permission in its token gets no bypass', async () => {
+      // The token is the answer; the role's name is not. Such a session is asked
+      // of FGA like anyone else.
+      check.mockResolvedValue({ authorized: false })
+      await expect(requireProjectAccess(session({ role: 'admin' }), PROJECT_ID, 'project:edit')).rejects.toBeInstanceOf(
+        NotFoundError
       )
-      expect(result).toEqual({ role: 'project-admin', closed: false, readsBecauseClosed: false })
-      expect(check).not.toHaveBeenCalled()
+      expect(check).toHaveBeenCalled()
     })
 
     it('a session holding the permission bypasses, whatever its role is called', async () => {

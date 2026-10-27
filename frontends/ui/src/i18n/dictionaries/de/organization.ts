@@ -177,7 +177,6 @@ export const organization: typeof en.organization = {
     tiers: {
       org: 'Organisation',
       project: 'Projekt',
-      skill: 'Skill-Zeitplan',
       folder: 'Ordner',
       platform: 'Plattform',
     },

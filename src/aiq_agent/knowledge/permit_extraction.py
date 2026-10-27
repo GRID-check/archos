@@ -49,6 +49,10 @@ MAX_TEXT_CHARS = 24_000
 #: The bounds the BFF validates (``POST /api/internal/permit-records``).
 MAX_REQUIREMENTS = 60
 MAX_CONTENT_CHARS = 1000
+#: Output budget of one extraction. It runs on the summary model, whose own cap
+#: (``summary_llm.max_tokens``, 100) is sized for one sentence: a notice with a
+#: few Auflagen was cut off mid-object and failed the schema, so no record landed.
+MAX_OUTPUT_TOKENS = 8000
 
 #: Intake vocabulary for ``federal_state`` (``norm_registry.FEDERAL_STATE_TOKENS``,
 #: without ``outside_austria``: a permit is by definition Austrian).
@@ -330,7 +334,10 @@ def extract_permit_record(text: str, llm: Any, *, file_name: str) -> PermitRecor
         return None
     messages = [SystemMessage(content=PERMIT_SYSTEM_PROMPT), HumanMessage(content=_user_prompt(text, file_name))]
     try:
-        response = llm.bind(response_format=strict_json_response_format(PermitExtraction)).invoke(messages)
+        structured = llm.bind(
+            max_tokens=MAX_OUTPUT_TOKENS, response_format=strict_json_response_format(PermitExtraction)
+        )
+        response = structured.invoke(messages)
         parsed = extract_json(content_to_text(getattr(response, "content", response)))
         if not isinstance(parsed, dict):
             logger.warning("Permit extraction for %s: the reply was not a JSON object", file_name)

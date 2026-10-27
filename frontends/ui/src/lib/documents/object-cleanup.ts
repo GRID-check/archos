@@ -19,7 +19,13 @@
 
 import 'server-only'
 import { DeleteObjectCommand, ListObjectsV2Command } from '@aws-sdk/client-s3'
-import { s3Client, buildImageDerivedPrefix, buildRenditionStorageKey, buildThumbnailStorageKey } from '@/lib/s3'
+import {
+  s3Client,
+  buildImageDerivedPrefix,
+  buildPageTextPrefix,
+  buildRenditionStorageKey,
+  buildThumbnailStorageKey,
+} from '@/lib/s3'
 import { resolveDocumentBucket } from '@/lib/storage/bucket'
 import { deleteBimDerivedObjects } from '@/lib/bim/service'
 import type { Document } from '@/lib/db/schema'
@@ -110,7 +116,7 @@ function resolveBucket(doc: StoredObjectRef): { bucket: string } | { failure: Ex
 
 /**
  * Remove what the pipelines derived from a document — the `_thumb.jpg` and
- * `_render.pdf` siblings, the `_img/` rasters and the `_bim/` derivatives — and
+ * `_render.pdf` siblings, the `_img/` rasters, the `_text/` page text and the `_bim/` derivatives — and
  * leave the file itself in place.
  *
  * Written for the replace path, which no longer needs it: since ADR-0054 a
@@ -154,6 +160,15 @@ export async function deleteDerivedObjects(doc: StoredObjectRef): Promise<Extern
       deleteObjectsUnderPrefix(resolved.bucket, imagePrefix),
     )
     if (!images.ok) return images
+  }
+
+  // The page text the pipeline read (ADR-0134): what each page says is as private as the file.
+  const textPrefix = buildPageTextPrefix(storageKey)
+  if (textPrefix) {
+    const text = await attemptObjectDelete(`stored page text under ${textPrefix}`, () =>
+      deleteObjectsUnderPrefix(resolved.bucket, textPrefix),
+    )
+    if (!text.ok) return text
   }
 
   return attemptObjectDelete(`bim derivatives of ${storageKey}`, () =>

@@ -44,7 +44,6 @@ import { ApiError } from '@/lib/api/errors'
 import { requireVerifiedContext, requirePinnedSession } from '@/lib/api/internal-envelope'
 import { resolvePinnedRequesterSession } from '@/lib/auth/pinned-session'
 import type { AuthorizedSession } from '@/lib/auth/types'
-import { FRESH_MEMBERSHIP_TTL_MS } from '@/lib/authz/project-membership'
 import { FEATURE_FLAGS, type KnownFeatureFlag } from '@/lib/authz/feature-flags'
 import { getPlatformOrganizationId, isPlatformStaff } from '@/lib/authz/platform'
 import { isUuid } from '@/lib/ids'
@@ -255,11 +254,11 @@ async function externalPrincipal(request: Request, deps: PrincipalDeps): Promise
 }
 
 /**
- * A token outlives the membership it was issued for; the fresh lookup makes a
- * removal or a role change bite within a minute here, not the session cache's ten.
+ * A token outlives the membership it was issued for; the membership lookup is at
+ * most a minute old, so a removal or a role change bites within a minute here.
  */
 function freshSession(userId: string, organizationId: string): Promise<AuthorizedSession | null> {
-  return resolvePinnedRequesterSession({ userId, email: null, organizationId }, { membershipTtlMs: FRESH_MEMBERSHIP_TTL_MS })
+  return resolvePinnedRequesterSession({ userId, email: null, organizationId })
 }
 
 /**

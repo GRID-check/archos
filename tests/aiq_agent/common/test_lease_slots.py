@@ -100,3 +100,60 @@ def test_a_full_pool_is_waited_out_past_the_deadline_never_bypassed(store, monke
         assert "other" not in store.pools["pool"]
         assert len(store.pools["pool"]) == 1
     assert store.acquires > 20
+
+
+class TestFairShareBetweenLanes:
+    """The vision pool shared between organisations, on the real script (fakeredis runs the Lua)."""
+
+    @pytest.fixture
+    def redis(self, monkeypatch):
+        import fakeredis
+
+        client = fakeredis.FakeRedis()
+        monkeypatch.setattr(
+            lease_slots.cache,
+            "eval_script",
+            lambda script, keys, args: client.eval(script, len(keys), *keys, *args),
+        )
+        return client
+
+    def _take(self, lane: str, n: int, *, limit: int = 4, now: float = 1000.0) -> int:
+        return lease_slots.cache.eval_script(
+            lease_slots.FAIR_ACQUIRE_LUA,
+            ["pool", "pool:waiting"],
+            [now, 300, limit, f"{lane}|{n}", lane, lease_slots.WAITING_PATIENCE_SECONDS],
+        )
+
+    def test_a_lane_alone_takes_the_whole_pool(self, redis):
+        assert [self._take("office-a", n) for n in range(5)] == [1, 1, 1, 1, 0]
+
+    def test_a_lane_over_its_share_gives_the_next_slot_to_a_waiting_lane(self, redis):
+        assert [self._take("office-a", n) for n in range(3)] == [1, 1, 1]
+        # The pool has one slot left; A holds 3 of 4 while B now waits.
+        redis.zadd("pool:waiting", {"office-b|0": 1000.0})
+        assert self._take("office-a", 9) == 0
+        assert self._take("office-b", 0) == 1
+
+    def test_a_full_pool_refuses_everyone_and_records_the_waiter(self, redis):
+        assert [self._take("office-a", n) for n in range(4)] == [1, 1, 1, 1]
+        assert self._take("office-b", 0) == 0
+        assert redis.zscore("pool:waiting", "office-b|0") == 1000.0
+
+    def test_when_a_slot_frees_the_waiting_lane_gets_it_not_the_lane_over_its_share(self, redis):
+        assert [self._take("office-a", n) for n in range(4)] == [1, 1, 1, 1]
+        assert self._take("office-b", 0) == 0
+        redis.zrem("pool", "office-a|0")
+        assert self._take("office-a", 7) == 0
+        assert self._take("office-b", 0) == 1
+        assert redis.zscore("pool:waiting", "office-b|0") is None
+
+    def test_a_waiter_that_gave_up_stops_counting(self, redis):
+        assert [self._take("office-a", n) for n in range(3)] == [1, 1, 1]
+        redis.zadd("pool:waiting", {"office-b|0": 1000.0 - lease_slots.WAITING_PATIENCE_SECONDS - 1})
+        assert self._take("office-a", 3) == 1
+
+    def test_hold_with_a_lane_takes_and_gives_back_a_laned_slot(self, redis):
+        with lease_slots.hold("pool", 2, lease_seconds=60, max_wait_seconds=1, lane="office-a"):
+            (member,) = redis.zrange("pool", 0, -1)
+            assert member.decode().startswith("office-a|")
+        assert redis.zcard("pool") == 0

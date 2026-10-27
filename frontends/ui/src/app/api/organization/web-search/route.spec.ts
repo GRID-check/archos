@@ -15,7 +15,7 @@ const session = {
   organizationId: 'org_1',
   email: 'admin@grid.com',
   role: 'admin',
-  permissions: [] as string[],
+  permissions: adminPermissions(),
 }
 
 vi.mock('@/lib/auth/require-auth', () => ({
@@ -52,6 +52,7 @@ vi.mock('@/lib/workos/feature-flags', () => ({ isOrgFeatureEnabled: vi.fn(), WEB
 
 import { findOperation } from '@/lib/agent-api/catalog'
 import { PUT } from './route'
+import { adminPermissions } from '@/test-utils/admin-permissions'
 
 const put = (body: unknown): Promise<Response> =>
   PUT(

@@ -89,7 +89,7 @@ export async function getPlatformOverview(): Promise<PlatformOverview> {
       return {
         id: org.id,
         name: org.name,
-        createdAt: org.createdAt,
+        createdAt: org.createdAt.toISOString(),
         isPlatformOrg: org.id === platformOrgId,
         projectCount: projectCounts.get(org.id) ?? 0,
         day: orgSpend?.day ?? EMPTY_SPEND_WINDOW,

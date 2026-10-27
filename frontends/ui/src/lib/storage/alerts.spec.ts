@@ -28,6 +28,11 @@ vi.mock('@/lib/inbox/repository', () => ({
 vi.mock('@/lib/organizations/service', () => ({ listOrganizationMembersWithRoles: vi.fn() }))
 vi.mock('./repository', () => ({ aggregateStorageUsageByOrganization: vi.fn() }))
 vi.mock('./service', () => ({ getStorageQuotaBytes: vi.fn() }))
+// WorkOS's answer for what a role holds: Admin holds the alert permission, as
+// the catalog provisions it. The recipient filter's own spec covers custom roles.
+vi.mock('@/lib/authz/org-role-permissions', () => ({
+  rolesHoldPermission: vi.fn(async (_org: string, roles: readonly string[]) => roles.includes('admin')),
+}))
 
 import { emitInboxItems } from '@/lib/inbox/service'
 import { archiveInboxItemsOfType, findLiveInboxGroupKeys } from '@/lib/inbox/repository'

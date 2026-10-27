@@ -2054,6 +2054,8 @@ async def knowledge_retrieval(config: KnowledgeRetrievalConfig, _builder: Builde
         group_by: Literal["document"] | None = None,
         stemmed: bool = False,
         shelf: str | None = None,
+        document_type: str | None = None,
+        refers_to: str | None = None,
         conclusion: str = "",
     ) -> str:
         """Read and cite passages from the ingested knowledge base.
@@ -2102,6 +2104,16 @@ async def knowledge_retrieval(config: KnowledgeRetrievalConfig, _builder: Builde
                 corpus (building law) included. For "is X in OUR documents" pass
                 "project" or "office" (or both in turn); an exact or regex answer
                 also counts matches and documents per shelf.
+            document_type (str | None): Only documents Piloti read to be this kind,
+                the "Type:" `list_files` prints with underscores (e.g.
+                "fire_safety_concept", "building_description", "permit",
+                "submission_drawing"). Project and office documents only.
+            refers_to (str | None): Only documents that refer to this: a norm
+                ("ÖNORM B 1600"), a law ("§ 33 BayBO"), a plan number ("EP-05") or a
+                kind of document, named the way the documents write it. For "which
+                documents cite this standard", "what points to plan EP-05", "who
+                relies on the fire safety concept". `list_files` prints each
+                document's "Refers to:".
             stemmed (bool): Exact only: also find each word's inflected forms
                 (German stemming: "Fluchtwegbreite" finds "Fluchtwegbreiten" and
                 the reverse). Off by default: the exact search is literal.
@@ -2125,6 +2137,8 @@ async def knowledge_retrieval(config: KnowledgeRetrievalConfig, _builder: Builde
                 group_by,
                 stemmed,
                 shelf,
+                document_type,
+                refers_to,
             )
         except BaseException:
             row.finish("error")
@@ -2146,6 +2160,8 @@ async def knowledge_retrieval(config: KnowledgeRetrievalConfig, _builder: Builde
         group_by: str | None,
         stemmed: bool,
         shelf: str | None,
+        document_type: str | None = None,
+        refers_to: str | None = None,
     ) -> str:
         # `conclusion` is deliberately unread HERE. It is a checkpoint channel,
         # not a retrieval parameter: the researcher's agent node reads it off
@@ -2177,6 +2193,15 @@ async def knowledge_retrieval(config: KnowledgeRetrievalConfig, _builder: Builde
                     "Omit `doc_class` to search every Dokumentart."
                 )
             doc_class = current_doc_class
+        document_type = (document_type or "").strip().casefold().replace(" ", "_") or None
+        if document_type is not None:
+            from aiq_agent.knowledge.dossier import DOCUMENT_TYPES
+
+            if document_type not in DOCUMENT_TYPES:
+                return (
+                    f"Invalid document_type {document_type!r}. Valid values: {', '.join(DOCUMENT_TYPES)}. "
+                    "Omit `document_type` to search every kind of document."
+                )
 
         # Platform-tunable counts (Platform → Retrieval), resolved per call so
         # an admin save takes effect without a redeploy; fail-open to the YAML
@@ -2191,7 +2216,13 @@ async def knowledge_retrieval(config: KnowledgeRetrievalConfig, _builder: Builde
         # the search (`qdrant/prefilter.py`), so only the filters left after it do.
         from .qdrant import prefilter as qdrant_prefilter
 
-        pushdown = qdrant_prefilter.plan(doc_class=doc_class, folder=folder, file_name=file_name)
+        pushdown = qdrant_prefilter.plan(
+            doc_class=doc_class,
+            folder=folder,
+            file_name=file_name,
+            document_type=document_type,
+            refers_to=refers_to,
+        )
         narrowed = qdrant_prefilter.post_filtered(title_contains=title_contains, file_name=file_name)
         candidate_k = effective_top_k * _AGENT_FILTER_OVERFETCH if narrowed else effective_top_k
         if rerank_llm_obj is not None or cross_encoder is not None:

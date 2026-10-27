@@ -55,11 +55,6 @@ import { useTranslations } from '@/i18n'
 export const ACCESS_TIER_ORDER: readonly PermissionTier[] = [
   'org',
   'project',
-  // Skill schedules are per-resource, like the workflows they replaced. Their
-  // tier was added to the catalog without being added here, so every skill role
-  // and skill permission was silently dropped from this reference — the one
-  // screen whose whole job is to show an administrator what exists.
-  'skill',
   // Folders with their own access list (ADR-0097): a role on one folder.
   'folder',
   'platform',

@@ -76,7 +76,7 @@ describe('/api/auth/callback', () => {
   })
 
   describe('user_signed_in (PostHog)', () => {
-    const signedIn = (createdAt: string): Promise<void> | void =>
+    const signedIn = (createdAt: Date): Promise<void> | void =>
       authkitOptions.onSuccess?.({
         user: { id: 'user_1', createdAt },
         organizationId: 'org_1',
@@ -84,7 +84,7 @@ describe('/api/auth/callback', () => {
       })
 
     it('reports the sign-in as the WorkOS user, in their organization, with the method', async () => {
-      await signedIn(new Date(Date.now() - 30 * 24 * 3_600_000).toISOString())
+      await signedIn(new Date(Date.now() - 30 * 24 * 3_600_000))
 
       expect(captureServer).toHaveBeenCalledWith({
         event: 'user_signed_in',
@@ -95,7 +95,7 @@ describe('/api/auth/callback', () => {
     })
 
     it('flags an account created minutes ago as a new user', async () => {
-      await signedIn(new Date(Date.now() - 60_000).toISOString())
+      await signedIn(new Date(Date.now() - 60_000))
 
       expect(captureServer).toHaveBeenCalledWith(
         expect.objectContaining({ properties: expect.objectContaining({ is_new_user: true }) })
@@ -103,7 +103,7 @@ describe('/api/auth/callback', () => {
     })
 
     it('sends no new-user flag when WorkOS gave no usable creation time', async () => {
-      await signedIn('not a date')
+      await signedIn(new Date('not a date'))
 
       const sent = (captureServer.mock.calls[0] as unknown as [{ properties: Record<string, unknown> }])[0]
       expect(sent.properties.is_new_user).toBeUndefined()
@@ -111,7 +111,7 @@ describe('/api/auth/callback', () => {
 
     it('carries no email, name or token', async () => {
       await authkitOptions.onSuccess?.({
-        user: { id: 'user_1', createdAt: new Date().toISOString(), email: 'a@b.at', firstName: 'Anna' },
+        user: { id: 'user_1', createdAt: new Date(), email: 'a@b.at', firstName: 'Anna' },
         accessToken: 'jwt',
         refreshToken: 'refresh',
         organizationId: 'org_1',

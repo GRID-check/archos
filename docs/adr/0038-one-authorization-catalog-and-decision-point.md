@@ -212,3 +212,48 @@ constructible without code changes.
 merged. Conversations remain on Postgres grants and projects on FGA, which we
 believe is correct — but "one decision point" is not yet "one engine", and this
 ADR should not be read as claiming otherwise.
+
+## Amendment, 2026-10-27: WorkOS is the only answer
+
+**§5 is retired.** `hasPermission` reads the AuthKit token's `permissions`
+claim and nothing else. The bounded implication existed because the catalog
+shipped ahead of provisioning; since the deploy applies the catalog to its
+environment (Job `grid-app-authz-catalog`), that gap is the minutes a token
+takes to refresh. Checked before removal: every catalog org role and platform
+role is held in full by WorkOS in Staging and Production (Production's Admin
+and Knowledge Manager through `org:archiv:manage`, which the rename alias in
+`acceptedPermissionSlugs` still answers for). The implication's cost was the
+one it named itself: a role called `admin` held the whole Admin bundle whatever
+WorkOS said.
+
+**A third party's permissions come from WorkOS alone.**
+`lib/authz/org-role-permissions.ts` was three lookups (environment roles,
+organization roles, and the catalog as a fallback for both). It is one:
+`listOrganizationRoles`, which returns the environment's roles and the office's
+own, cached a minute per organization, failing closed. The acting session
+Piloti runs in (`lib/auth/pinned-session.ts`) took its permissions from the
+catalog's table, so an office's custom role held one set of permissions in the
+browser and none for Piloti; it now takes WorkOS's.
+
+**One membership lookup.** The session's membership id (ten minutes), its
+roles (a minute), a third party's membership (ten minutes, or a minute under a
+second key on the agent door) and the platform tier's (an in-process map) were
+four lookups of one fact. `lookupSubjectMembership` in
+`lib/authz/project-membership.ts` is the one: active memberships only, id and
+every role, a minute old at most. A signed-in request makes one WorkOS call a
+minute instead of two.
+
+**The skill tier is gone from `decide.ts`.** No `skill` resource was ever
+created and no role held a `skill:*` permission, so every skill decision fell
+through to a fixed project permission, and nothing called `decide` with one.
+The three `skill:*` permissions and the Skill resource type followed the same
+day: dropped from the catalog, then deleted in both environments right after
+the change merged, so the provisioning Job never saw the two disagree.
+
+**Next, not done here.** The project tier still asks up to three `check` calls
+per request and derives a role from them, and `GET /api/projects` checks every
+project. WorkOS answers both natively (`listEffectivePermissionsByExternalId`
+for what a member holds on one project, `listResourcesForMembership` for which
+projects they reach). Neither was adopted in this change because neither could be
+exercised against a live environment from where it was written; they belong in a
+change that can measure them.

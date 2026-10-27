@@ -1,0 +1,11 @@
+---
+features:
+  - >
+    When an upload to a project has been read, its inbox notice says what it
+    brought: how many documents of which kind, the findings it opened or
+    settled, references the project cannot answer and pages not read in full,
+    with a link to the project's findings.
+  - >
+    A project's findings now show where a document states a different building
+    class, storey count, plot area, construction method, use or federal state
+    than the project profile, side by side with links to both.
