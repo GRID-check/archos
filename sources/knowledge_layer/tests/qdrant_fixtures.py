@@ -4,7 +4,7 @@ They import :mod:`qdrant_testing`, and with it the Qdrant client, only when a
 test asks for a store: `tests/conftest.py` and `frontends/aiq_api/tests/conftest.py`
 load for every test of their suites, and importing the client up front made each
 of those tests pay for it (docs/audit/blast-radius-2026-10.md). Imported by
-path, as ``sources/AGENTS.md`` asks.
+path, like every helper a suite under `sources/` shares.
 """
 
 from __future__ import annotations
