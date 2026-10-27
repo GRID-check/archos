@@ -162,22 +162,29 @@ export const placeLabel = (t: Translator, place: ActionPlace): string => {
       })
 }
 
+/**
+ * A folder of another place after its article: „den Chat › Pläne“, „im Chat ›
+ * Pläne“. The crumb, not the place's own phrase, comes before the breadcrumb:
+ * „die Dateien dieses Chats › Pläne“ says Dateien twice.
+ */
+const placedFolder = (t: Translator, place: ActionPlace, form: 'object' | 'in'): string =>
+  t('thinking.work.place.folderIn', {
+    place: `${t(`thinking.work.place.article.${place.mount}.${form}`)} ${t(`thinking.work.place.crumb.${place.mount}`)}`,
+    folder: breadcrumb(place.folder),
+  })
+
 /** The place as the object of a verb: „das Projekt“, „03 Einreichung › Pläne“, „die Büroablage › Vorlagen“. */
 export const placeName = (t: Translator, place: ActionPlace): string => {
-  const named = t(`thinking.work.place.${place.mount}`)
-  if (!place.folder) return named
-  const folder = breadcrumb(place.folder)
-  return bareFolder(place) ? folder : t('thinking.work.place.folderIn', { place: named, folder })
+  if (!place.folder) return t(`thinking.work.place.${place.mount}`)
+  return bareFolder(place) ? breadcrumb(place.folder) : placedFolder(t, place, 'object')
 }
 
 /** The place after its preposition: „im Projekt“, „in 03 Einreichung“, „in der Büroablage › Vorlagen“. */
 export const placeIn = (t: Translator, place: ActionPlace): string => {
-  const named = t(`thinking.work.placeIn.${place.mount}`)
-  if (!place.folder) return named
-  const folder = breadcrumb(place.folder)
+  if (!place.folder) return t(`thinking.work.placeIn.${place.mount}`)
   return bareFolder(place)
-    ? t('thinking.work.placeIn.folder', { folder })
-    : t('thinking.work.place.folderIn', { place: named, folder })
+    ? t('thinking.work.placeIn.folder', { folder: breadcrumb(place.folder) })
+    : placedFolder(t, place, 'in')
 }
 
 /** `*.pdf`, `**\/*.dwg`: files of one type. */
@@ -226,11 +233,12 @@ const wordList = (t: Translator, words: readonly string[]): string => {
 /**
  * A regex of words matches as the literal search does only where the literal
  * search's folding adds nothing: the store compiles a person's regex
- * case-insensitively (`compile_user_regex`), but never folds „ü“ into „ue“ as
- * the literal search does. Words with an umlaut or ß are searched for, not
- * „wörtlich“.
+ * case-insensitively (`compile_user_regex`), but never folds „ü“ and „ue“
+ * into one as the literal search does. Words with an umlaut, ß or a spelled-out
+ * one (ae, oe, ue, ss) are searched for, not „wörtlich“; a word like „Feuer“
+ * loses the word too, which is never wrong, only less precise.
  */
-const FOLDED_LETTERS = /[äöüÄÖÜß]/
+const FOLDED_LETTERS = /[äöüß]|ae|oe|ue|ss/i
 
 /** A filesystem search's object: wörtlich, by the words a simple regex names, or by its pattern. */
 const grepObject = (t: Translator, action: StoredAction, place: ActionPlace): string => {

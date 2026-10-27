@@ -1095,6 +1095,12 @@ export const chat: typeof en.chat = {
           chat: 'Chat',
           law: 'OIB-Richtlinien',
         },
+        // Der Artikel vor dem Namen, wenn ein Ordner folgt: „den Chat › Pläne“, „im Chat › Pläne“.
+        article: {
+          office: { object: 'die', in: 'in der' },
+          chat: { object: 'den', in: 'im' },
+          law: { object: 'die', in: 'in den' },
+        },
       },
       // … und nach „in“: „Sucht Dateien „*.pdf“ im Projekt“.
       placeIn: {

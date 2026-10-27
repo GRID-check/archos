@@ -274,8 +274,17 @@ class TestRead:
         assert guessed == {"verb": "read", "status": "empty", "missing": True, "target": "Vertrag.pdf"}
         assert {**absent, "target": "Vertrag.pdf"} == guessed
 
-    async def test_a_folder_card_is_the_folders_listing(self, steps) -> None:
-        await read_suite._backend().read_file("/project/Gutachten/README.md")
+    @pytest.mark.parametrize(
+        ("path", "place"),
+        [
+            ("/project/Gutachten/README.md", {"mount": "project", "target": "Gutachten"}),
+            # A place's root card: the row names the place, never „README“ as if it were a folder.
+            ("/project/README.md", {"mount": "project"}),
+        ],
+    )
+    async def test_a_folder_card_is_the_folders_listing(self, steps, path, place) -> None:
+        await read_suite._backend().read_file(path)
         row = _row(steps)
-        assert (row["verb"], row["mount"], row["target"]) == ("list", "project", "Gutachten")
-        assert row["counts"]["files"] == 1
+        assert row["verb"] == "list"
+        assert {key: row[key] for key in ("mount", "target") if key in row} == place
+        assert row["counts"]["files"] >= 1

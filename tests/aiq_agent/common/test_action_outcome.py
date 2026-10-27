@@ -103,3 +103,14 @@ def test_a_complete_search_carries_no_incomplete_flag(monkeypatch):
     row = ActionRow("search", query="Brandabschnitt", mode="exact")
     ActionOutcome(hits=3, documents=1).settle(row)
     assert steps[-1].incomplete is None
+
+
+def test_a_settled_place_replaces_the_running_one(monkeypatch):
+    """A row that settles at a place's root drops the name it showed while running (ADR-0132)."""
+    from aiq_agent.common import turn_status
+
+    steps: list = []
+    monkeypatch.setattr(turn_status, "emit_step", lambda step, started=False: steps.append(step))
+    row = ActionRow("read", target="README")
+    row.finish("ok", verb="list", mount="project")
+    assert (steps[-1].verb, steps[-1].mount, steps[-1].target) == ("list", "project", None)

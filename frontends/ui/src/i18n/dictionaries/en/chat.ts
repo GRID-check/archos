@@ -1090,9 +1090,15 @@ export const chat = {
         // after “in” “in the office filing › Templates”, quoted without an article “Office filing › Templates”.
         folderIn: '{place} ›\u00A0{folder}',
         crumb: {
-          office: 'Office filing',
-          chat: 'Chat',
+          office: 'office filing',
+          chat: 'chat',
           law: 'OIB guidelines',
+        },
+        // The article before the name when a folder follows: “the chat › Pläne”, “in the chat › Pläne”.
+        article: {
+          office: { object: 'the', in: 'in the' },
+          chat: { object: 'the', in: 'in the' },
+          law: { object: 'the', in: 'in the' },
         },
       },
       // … and after “in”: “Looks for files named “*.pdf” in the project”.

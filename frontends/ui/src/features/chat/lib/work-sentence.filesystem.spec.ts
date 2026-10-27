@@ -78,7 +78,17 @@ describe('a filesystem row names a place, never a path', () => {
     ).toBe(`Durchsucht die Büroablage ›${NB}Vorlagen wörtlich nach „x“`)
     expect(
       sentence({ verb: 'list', status: 'ok', query: '*.pdf', mount: 'chat', target: 'Pläne' })
-    ).toBe(`Sucht in den Dateien dieses Chats ›${NB}Pläne nach PDF-Dateien`)
+    ).toBe(`Sucht im Chat ›${NB}Pläne nach PDF-Dateien`)
+    expect(sentence({ verb: 'list', status: 'ok', mount: 'chat', target: 'Pläne' })).toBe(
+      `Öffnet den Chat ›${NB}Pläne`
+    )
+    expect(
+      sentence({ verb: 'search', mode: 'exact', status: 'ok', query: 'x', mount: 'law', target: 'RL 2' })
+    ).toBe(`Durchsucht die OIB-Richtlinien ›${NB}RL 2 wörtlich nach „x“`)
+    // The root keeps its own phrase.
+    expect(sentence({ verb: 'list', status: 'ok', mount: 'chat', counts: { files: 0, folders: 0 } })).toBe(
+      'Öffnet die Dateien dieses Chats: leer'
+    )
     expect(sentence({ verb: 'list', status: 'ok', mount: 'law' })).toBe('Öffnet die OIB-Richtlinien')
   })
 
@@ -105,6 +115,9 @@ describe('a filesystem row names a place, never a path', () => {
     expect(
       sentence({ verb: 'search', mode: 'regex', status: 'ok', mount: 'project', query: 'Tür|Türe' })
     ).toBe('Durchsucht das Projekt nach „Tür“ oder „Türe“')
+    expect(
+      sentence({ verb: 'search', mode: 'regex', status: 'ok', mount: 'project', query: 'Strasse|Tuer' })
+    ).toBe('Durchsucht das Projekt nach „Strasse“ oder „Tuer“')
   })
 
   test('a regex of plain words reads as the words, a real pattern as the pattern', () => {

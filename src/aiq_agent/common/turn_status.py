@@ -701,11 +701,18 @@ class ActionRow:
         counts: dict[str, int | None] | None = None,
         **fields: Any,
     ) -> None:
-        """Settle the row once: its outcome, its counts and its time. A second call is ignored."""
+        """Settle the row once: its outcome, its counts and its time. A second call is ignored.
+
+        A settled ``mount`` is the whole place the call reached: it replaces the running row's ``mount`` and
+        ``target``, so a place's root (no ``target``) never keeps the name the running row showed.
+        """
         if self._done:
             return
         self._done = True
         self._release_call()
+        if "mount" in fields:
+            self._fields.pop("mount", None)
+            self._fields.pop("target", None)
         self._fields.update(_clip_action(fields))
         self._fields["status"] = status
         self._fields["elapsed_ms"] = max(0, round((time.monotonic() - self._started) * 1000))
