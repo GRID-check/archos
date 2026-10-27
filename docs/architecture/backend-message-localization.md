@@ -42,7 +42,7 @@ found that **no locale/language signal currently reaches the backend**:
   (see `src/aiq_agent/project_context.py`, `cost_tracking.py`). There is no
   locale parsing anywhere in `src/aiq_agent` or `frontends/aiq_api`.
 - The async-job path (deep research) does **not** transparently forward
-  request headers. `frontends/aiq_api/src/aiq_api/jobs/runner.py` manually
+  request headers. `frontends/aiq_api/src/aiq_api/jobs/agent_job_setup.py` manually
   re-threads a **whitelist** of headers onto the reconstructed request
   (collection scope, project context, model overrides, budget). A new locale
   header would have to be added to that whitelist too, or async-job bubbles
@@ -74,7 +74,7 @@ decision rather than implemented ad hoc.
    `req.headers['x-grid-locale'] = result.data.locale` (a short BCP-47 tag,
    e.g. `de`, `en`). Absent header ⇒ default to `en` (fail-open).
 3. **Thread through async jobs.** Add `x-grid-locale` to the header whitelist
-   reconstructed in `frontends/aiq_api/src/aiq_api/jobs/runner.py` so deep-
+   reconstructed in `frontends/aiq_api/src/aiq_api/jobs/agent_job_setup.py` (`_inject_scope_headers`) so deep-
    research/job bubbles localize consistently with chat.
 4. **Parse in one place.** Add a small helper next to the existing header
    readers in `src/aiq_agent/project_context.py`, e.g.
