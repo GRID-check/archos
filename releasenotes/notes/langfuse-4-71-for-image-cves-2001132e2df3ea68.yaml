@@ -1,0 +1,6 @@
+---
+security:
+  - >
+    Langfuse moves to 4.71.0 on both images, clearing a critical
+    ca-certificates finding on its base and the body-parser and Sentry
+    findings its 4.68.0 images carried.

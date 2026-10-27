@@ -3126,11 +3126,10 @@ export function loadConfig(): GridConfig {
       enabled: langfuseEnabled,
       domain: langfuseDomain,
       // Digest-pinned on the same terms as the ADR-0029 images, and scanned by
-      // the same trivy gate: langfuse 4.68.0 (web + worker, which MUST be the
+      // the same trivy gate: langfuse 4.71.0 (web + worker, which MUST be the
       // same version) and ClickHouse 26.8.33.10 LTS, which v4 needs (>= 25.12).
-      // The langfuse digests are what GHCR's `4.68.0` tags resolve to (multi-arch
-      // index, read anonymously from the registry on 2026-10-22, the day 4.68.0
-      // was published); `26.8` is a moving tag upstream and this is the digest
+      // The langfuse digests are what GHCR's `4.71.0` tags resolve to (multi-arch
+      // index, read anonymously from the registry on 2026-10-27); `26.8` is a moving tag upstream and this is the digest
       // it resolved to when pinned (2026-10-22, 26.8.33.10; moved within the
       // 26.8 line off 26.8.15.10, whose Ubuntu 22.04 base had OpenSSL
       // 3.0.2-0ubuntu1.29, CVE-2026-84782; 26.8.33.10 carries 0ubuntu1.30, read
@@ -3144,16 +3143,20 @@ export function loadConfig(): GridConfig {
       // package manifests and build info by a local trivy scan, not from
       // release notes. 4.68.0 also turns on project API key permissions by
       // default (API_AUTH_MIGRATION=enforce); keys without a role assignment are
-      // backfilled with their legacy role on first use. 4.56.0 moved both images
+      // backfilled with their legacy role on first use. It moved 4.68.0 -> 4.71.0
+      // on 2026-10-27 because the 4.68.0 images failed the promotion's trivy
+      // gate: ca-certificates on the UBI 9 base (CVE-2026-114406, CRITICAL),
+      // body-parser 2.3.0 (CVE-2026-111181) and @sentry/nextjs 10.64.0
+      // (CVE-2026-114139). 4.56.0 moved both images
       // off node:24-alpine onto UBI 9 micro; the uid (1001), entrypoints and
       // commands are unchanged since. v3 (3.225.11) shipped next 16.2.11, whose
       // next/og RCE (GHSA-vcvr-r3jv-pc5j) no 3.x release fixes.
       webImage:
         cfg.get("langfuseWebImage") ??
-        "ghcr.io/langfuse/langfuse@sha256:b29c245d72ab49b2b109190618829f9d5fbba229b11468d501cfe4f493885bf0",
+        "ghcr.io/langfuse/langfuse@sha256:1e600bc28c40fa0c028b9ed313e51d421132fe423ba84986fb9242fc40b7cd42",
       workerImage:
         cfg.get("langfuseWorkerImage") ??
-        "ghcr.io/langfuse/langfuse-worker@sha256:f3afef571845b2365a3b991aab4977a53d75862077e3c9e9e4d1e32949ab15f7",
+        "ghcr.io/langfuse/langfuse-worker@sha256:8e7cfec29f6322a8aff64e8ff4f9194c5c8181d4286514be0e3727b199605949",
       clickhouseImage:
         cfg.get("clickhouseImage") ??
         "clickhouse/clickhouse-server@sha256:1c0b76ac42e16b4eeb0be84013c67269b660701971d29bab9ad0d01b0ba6c10d",
