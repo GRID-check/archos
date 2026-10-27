@@ -242,17 +242,20 @@ The office: three organizations, the measured one with 120 projects and
 20,000 documents (5% held, 3% archived, 10% superseded, 2% in a hidden
 folder), 40,000 more beside it; ANALYZEd after the seed.
 
-2026-10-27, 4 vCPU Xeon @ 2.3 GHz, PostgreSQL 16, 40 runs after 3 warm-ups, ms:
+2026-10-27, 4 vCPU Xeon @ 2.3 GHz, PostgreSQL 16, 40 runs after 3 warm-ups, ms
+(second run, after the facets of a text search became one statement):
 
 | Query | p50 | p95 |
 |---|---|---|
-| office, no text, first page by plan number, with total (18,105 matched) | 96 | 104 |
-| office, text „Brandschutz“ with 50 content hits, by relevance | 98 | 130 |
-| office, two types + building class 3–5 + cites „ÖNORM B 1600“ | 54 | 70 |
-| the same, cites as the token `norm:önorm b 1600` | 41 | 52 |
-| one project's register, current only, by plan number, 100 rows | 6 | 12 |
-| facet counts, all eight dimensions, office-wide | 132 | 151 |
-| facet counts, all eight dimensions, text „Brandschutz“ | 199 | 231 |
+| office, no text, first page by plan number, with total (18,105 matched) | 93 | 107 |
+| office, text „Brandschutz“ with 50 content hits, by relevance | 94 | 112 |
+| office, two types + building class 3–5 + cites „ÖNORM B 1600“ | 54 | 68 |
+| the same, cites as the token `norm:önorm b 1600` | 40 | 48 |
+| one project's register, current only, by plan number, 100 rows | 6 | 10 |
+| facet counts, all eight dimensions, office-wide | 124 | 152 |
+| facet counts, all eight dimensions, text „Brandschutz“ (one statement) | 82 | 94 |
+
+The first run measured the text facets as eight statements side by side: 199/231.
 
 What the time is, from `EXPLAIN (ANALYZE, BUFFERS)`: every office-wide
 statement visits each matched document once (about 18,000 here) and joins its
@@ -264,9 +267,11 @@ filters that are not authorization are a minority of the work, and under
 row-level security the planner never uses an index for a non-leakproof
 operator (`@>`, `&&`, `@@`, `LIKE`), which is why 0185 carries B-trees only.
 
+Counting all eight facets in one statement over a materialized match is
+slower without text (210 ms on one core) and faster with it, because the text
+predicate then runs once instead of eight times; so a text search counts that
+way (`facetCountsOnce`) and a search without text side by side
+(`facetCountsSideBySide`), and the integration spec holds both to one answer.
 Measured, not built: sorting the matched ids first and joining the display
 columns to the page alone (a deferred join) took the page from 104–119 to
-59–69 ms. Counting all eight facets in one statement over a materialized
-match was slower without text (210 ms on one core) and faster with it
-(110–140 ms), because the text predicate then runs once instead of eight
-times.
+59–69 ms.
