@@ -217,6 +217,7 @@ a name is written but not declared, or declared but not listed here.
 | `quotes-patched` | numeric | agent | misremembered quotes the repair corrected (ADR-0067) |
 | `dialect-repairs` | numeric | agent | answer-dialect blocks repaired; 0 is a measurement |
 | `card-validity` | categorical | agent | per envelope card that missed its schema: `repaired`, `dropped` |
+| `formula-input-provenance` | numeric 0..1 | agent | per formula card (ADR-0141): the share of its given inputs that say where the value is written (`source` or a norm `reference`); metadata `formula`, `inputs`, `given`, `sourced`, `unknown` |
 | `claims-by-class` | categorical | agent | one score per provenance class present in the answer (`quoted`, `cited`, `cited_dropped`, `record`, `action`, `measured`, `observed`, `reasoning`, `model_knowledge`; `common/claim_provenance.py`, ADR-0125); the comment and `metadata.count` say how many sentences |
 | `claims-normative-uncited` | numeric | agent | sentences about the law with no quoted or cited passage behind them |
 | `look-count` | numeric | agent, at the terminal | looks Piloti made in the turn (ADR-0128), whether or not the answer relies on them; written on every answered chat turn, zero included |

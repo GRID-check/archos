@@ -960,6 +960,31 @@
       "title": "DaylightIncidenceCard",
       "type": "object"
     },
+    "DaylightRatioFormula": {
+      "description": "Lichteintrittsfl\u00e4che as a percentage of the room's Bodenfl\u00e4che (OIB-Richtlinie 3, Pkt. 9.1.1).",
+      "properties": {
+        "floor_area": {
+          "$ref": "#/$defs/FormulaInput",
+          "description": "Bodenfl\u00e4che of the room in m\u00b2"
+        },
+        "glazing_area": {
+          "$ref": "#/$defs/FormulaInput",
+          "description": "Lichteintrittsfl\u00e4che (architectural opening) in m\u00b2"
+        },
+        "name": {
+          "const": "daylight_ratio",
+          "title": "Name",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "glazing_area",
+        "floor_area"
+      ],
+      "title": "DaylightRatioFormula",
+      "type": "object"
+    },
     "DimensionCheck": {
       "description": "One measured dimension drawn on a schematic and checked against a limit.\n\n`value` is the project's actual measurement (drawn to scale); `required` is\nthe OIB limit. If `value` is unknown, leave it null and set status\n'needs_input'.\n\n## Why a number here carries where it came from\n\nThis block used to be `label / value / required / unit / comparator /\nstatus` and nothing else, and that made the card the least honest surface in\nthe product. `ifc_measure` answers \u201egemessen: 2.47 m (\u00b15 mm) \u2014 aus der\nGeometrie berechnet, nicht deklariert\u201c, the assistant repeats that in the\nprose, and the card beside it drew **2.47 m \u2713** \u2014 indistinguishable from a\nfigure the architect had stated in their own file. The card is the part a\nreviewer screenshots into a submission, so the surface that dropped the\nqualifier was the surface most likely to be forwarded without it.\n\nThree fields close that, and all three are OPTIONAL: a card built from the\nBestimmung alone (a limit with no model behind it) has nothing to put in\nthem, and a null here means \"not stated\", never \"declared\".",
       "properties": {
@@ -1383,6 +1408,53 @@
       "title": "EgressSegment",
       "type": "object"
     },
+    "EscapeRouteLengthFormula": {
+      "description": "The Gehwegl\u00e4nge: the legs of one escape route added up (OIB-Richtlinie 2, Pkt. 5.1.1).",
+      "properties": {
+        "name": {
+          "const": "escape_route_length",
+          "title": "Name",
+          "type": "string"
+        },
+        "segments": {
+          "description": "The legs in walking order",
+          "items": {
+            "$ref": "#/$defs/EscapeRouteSegment"
+          },
+          "maxItems": 8,
+          "minItems": 1,
+          "title": "Segments",
+          "type": "array"
+        }
+      },
+      "required": [
+        "name",
+        "segments"
+      ],
+      "title": "EscapeRouteLengthFormula",
+      "type": "object"
+    },
+    "EscapeRouteSegment": {
+      "description": "One leg of the escape route, measured along the walking line.",
+      "properties": {
+        "label": {
+          "description": "The leg, e.g. 'Raum \u2192 Gang', 'Gang \u2192 Treppenhaus'",
+          "minLength": 1,
+          "title": "Label",
+          "type": "string"
+        },
+        "length": {
+          "$ref": "#/$defs/FormulaInput",
+          "description": "Length in m"
+        }
+      },
+      "required": [
+        "label",
+        "length"
+      ],
+      "title": "EscapeRouteSegment",
+      "type": "object"
+    },
     "FileOperationItem": {
       "description": "One proposed change, in the vocabulary of the operation that owns it.\n\nDeliberately flat with per-operation fields rather than a nested union: the\ncard is built by the tool, validated once here, and rendered by one\ncomponent that switches on the CARD's `operation` \u2014 a shape the frontend's\ngenerated Zod can narrow without a second discriminator inside every row.\n:meth:`FileOperationProposalCard._require_operation_fields` is what keeps a\nrow from carrying another operation's fields.\n\n``document`` is a FILE NAME and never an id. The agent's inventory\n(``knowledge/inventory.py``) knows files by ``(collection, file_name)`` and\nhas no document ids in it at all, so a card carrying an id would be\ncarrying something the tool invented. The reader's session resolves the\nname against their own document list when they accept.",
       "properties": {
@@ -1690,6 +1762,250 @@
         "reference"
       ],
       "title": "FireAccessPlanCard",
+      "type": "object"
+    },
+    "FormulaCard": {
+      "description": "Emit for a number worked out by one of the named rules, so the reader can ask \"what if\" on the card.\n\nThe rules: a U-value from its layers (u_value), the Schrittma\u00dfregel\n(stair_step_rule), an escape route's Gehwegl\u00e4nge (escape_route_length), and\nthe Lichteintrittsfl\u00e4che against the Bodenfl\u00e4che (daylight_ratio). Anything\nelse worked out is a `calculation`.\n\nYOU SUPPLY THE INPUTS AND THE CITED LIMITS, NEVER THE RESULT. Fill each input\nfrom the project's documents, the user's own figures or the norm, and say in\n`source` where each one is written. An input you do not have stays null: the\ncard says it cannot judge, and the reader can enter an assumption. The card\ncomputes, recomputes when the reader changes an input, marks a changed value\nas the reader's assumption, and judges each result against `limits`. A limit\nyou cannot cite with its Punkt stays out, and then the card judges nothing.",
+      "properties": {
+        "formula": {
+          "description": "The rule, by `name`, with its inputs",
+          "discriminator": {
+            "mapping": {
+              "daylight_ratio": "#/$defs/DaylightRatioFormula",
+              "escape_route_length": "#/$defs/EscapeRouteLengthFormula",
+              "stair_step_rule": "#/$defs/StairStepRuleFormula",
+              "u_value": "#/$defs/UValueFormula"
+            },
+            "propertyName": "name"
+          },
+          "oneOf": [
+            {
+              "$ref": "#/$defs/UValueFormula"
+            },
+            {
+              "$ref": "#/$defs/StairStepRuleFormula"
+            },
+            {
+              "$ref": "#/$defs/EscapeRouteLengthFormula"
+            },
+            {
+              "$ref": "#/$defs/DaylightRatioFormula"
+            }
+          ],
+          "title": "Formula"
+        },
+        "limits": {
+          "description": "The Bestimmungen the results are held against, each cited. Empty: the card judges nothing",
+          "items": {
+            "$ref": "#/$defs/FormulaLimit"
+          },
+          "maxItems": 4,
+          "title": "Limits",
+          "type": "array"
+        },
+        "note": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Optional one-line caveat, e.g. what the rule leaves out",
+          "title": "Note"
+        },
+        "title": {
+          "description": "What is worked out, e.g. 'U-Wert Au\u00dfenwand \u2013 20 cm D\u00e4mmung'",
+          "minLength": 1,
+          "title": "Title",
+          "type": "string"
+        },
+        "type": {
+          "const": "formula",
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "title",
+        "formula"
+      ],
+      "title": "FormulaCard",
+      "type": "object"
+    },
+    "FormulaInput": {
+      "description": "One input of a named formula: the value the source gives, and whether the reader may change it.\n\nThe UNIT is the formula's, not this object's: it is stated in the field that\nholds this input (``riser``: cm), and the renderer prints it.",
+      "properties": {
+        "editable": {
+          "default": true,
+          "description": "Whether the reader may change it for a what-if. False only for a figure that is not a design choice in this question (an existing wall's thickness the question does not touch)",
+          "title": "Editable",
+          "type": "boolean"
+        },
+        "max": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Highest plausible value, in the field's unit; omit if none",
+          "title": "Max"
+        },
+        "min": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Lowest plausible value, in the field's unit; omit if none",
+          "title": "Min"
+        },
+        "provenance": {
+          "anyOf": [
+            {
+              "enum": [
+                "declared",
+                "computed",
+                "inferred"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Where `value` came from, copied from the ifc_measure answer: 'declared', 'computed', 'inferred'. Null for a figure the user stated or one read from a document or a norm",
+          "title": "Provenance"
+        },
+        "reference": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/NormReference"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "When the value is a norm's own figure (a tabulated \u03bb): where it is written. Never invent one"
+        },
+        "source": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Half a line naming WHERE the value is written: 'Einreichplan, Schnitt A-A', 'Ihre Angabe', 'Produktdatenblatt'. Shown beside the input, so the reader knows what they are changing",
+          "title": "Source"
+        },
+        "step": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "The increment the arrow keys move by, e.g. 0.5 for cm, 0.001 for \u03bb",
+          "title": "Step"
+        },
+        "value": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "The value as the SOURCE gives it, in the unit the field names. Null when it is not known: the card then says it cannot judge, and the reader may type an assumption of their own",
+          "title": "Value"
+        }
+      },
+      "title": "FormulaInput",
+      "type": "object"
+    },
+    "FormulaLimit": {
+      "description": "A Bestimmung one result is held against: a cited statement, which the reader cannot change.",
+      "properties": {
+        "comparator": {
+          "description": "At most, at least, or inside a range",
+          "enum": [
+            "<=",
+            ">=",
+            "between"
+          ],
+          "title": "Comparator",
+          "type": "string"
+        },
+        "label": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Optional name, e.g. 'Schrittma\u00dfregel'",
+          "title": "Label"
+        },
+        "reference": {
+          "$ref": "#/$defs/NormReference",
+          "description": "Where the bound is written, with its Punkt. Required: a limit nobody can look up is left out"
+        },
+        "target": {
+          "description": "Which quantity: 'u_value' (W/(m\u00b2K)); 'step_measure', 'riser' or 'going' (cm); 'route_length' (m); 'daylight_ratio' (%). The bound is in that unit",
+          "title": "Target",
+          "type": "string"
+        },
+        "upper": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "With 'between': the upper bound. Otherwise omit",
+          "title": "Upper"
+        },
+        "value": {
+          "description": "The bound, as the Bestimmung states it. With 'between', the LOWER bound",
+          "title": "Value",
+          "type": "number"
+        }
+      },
+      "required": [
+        "target",
+        "comparator",
+        "value",
+        "reference"
+      ],
+      "title": "FormulaLimit",
       "type": "object"
     },
     "GuardrailCheckCard": {
@@ -3403,6 +3719,31 @@
       "title": "StairDiagramCard",
       "type": "object"
     },
+    "StairStepRuleFormula": {
+      "description": "The Schrittma\u00dfregel: 2 \u00d7 Stufenh\u00f6he + Stufenauftritt (OIB-Richtlinie 4, Pkt. 3.2.1).",
+      "properties": {
+        "going": {
+          "$ref": "#/$defs/FormulaInput",
+          "description": "Stufenauftritt a in cm"
+        },
+        "name": {
+          "const": "stair_step_rule",
+          "title": "Name",
+          "type": "string"
+        },
+        "riser": {
+          "$ref": "#/$defs/FormulaInput",
+          "description": "Stufenh\u00f6he (Steigung) s in cm"
+        }
+      },
+      "required": [
+        "name",
+        "riser",
+        "going"
+      ],
+      "title": "StairStepRuleFormula",
+      "type": "object"
+    },
     "SurfaceCard": {
       "description": "Several cards composed into one A2UI surface: variants as tabs, related cards side by side.\n\n`components` is an A2UI v0.9 component list (a2ui.org): flat, each entry\n`{\"id\", \"component\", \u2026props}`, children referenced by id, exactly one\n`\"id\": \"root\"`. Containers are `Row` and `Column` (`children`: ids) and\n`Tabs` (`tabs`: `[{title, child}]`); `Text` (`text`: Markdown) holds what\nthe answer would write in prose, a table or a list; every other component\nis a card, named by its type, with that card's own fields as props. Validated twice: the\nstructure by `a2ui-core` (unique ids, a root, no dangling reference, no\ncycle, no orphan), each card by its own model.",
       "properties": {
@@ -3602,6 +3943,69 @@
       ],
       "title": "TaskCreatedCard",
       "type": "object"
+    },
+    "UValueFormula": {
+      "description": "U = 1 / (R_si + \u03a3 d/\u03bb + R_se), for a component of homogeneous layers (\u00d6NORM EN ISO 6946).\n\nThe surface resistances are the standard's conventional values for the heat\nflow direction, fixed by the renderer. Air layers, inhomogeneous layers and\nthe standard's corrections are out of scope: say so in the card's `note`\nwhen the component has them.",
+      "properties": {
+        "heat_flow": {
+          "description": "Direction of heat flow: 'horizontal' (a wall), 'upward' (a roof), 'downward' (a floor above air)",
+          "enum": [
+            "horizontal",
+            "upward",
+            "downward"
+          ],
+          "title": "Heat Flow",
+          "type": "string"
+        },
+        "layers": {
+          "description": "The layers, inside to outside",
+          "items": {
+            "$ref": "#/$defs/UValueLayer"
+          },
+          "maxItems": 8,
+          "minItems": 1,
+          "title": "Layers",
+          "type": "array"
+        },
+        "name": {
+          "const": "u_value",
+          "title": "Name",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "heat_flow",
+        "layers"
+      ],
+      "title": "UValueFormula",
+      "type": "object"
+    },
+    "UValueLayer": {
+      "description": "One homogeneous layer of a component, inside to outside.",
+      "properties": {
+        "conductivity": {
+          "$ref": "#/$defs/FormulaInput",
+          "description": "Thermal conductivity \u03bb in W/(m\u00b7K), the design value"
+        },
+        "label": {
+          "description": "The layer, e.g. 'Mineralwolle', 'Stahlbeton', 'Innenputz'",
+          "minLength": 1,
+          "title": "Label",
+          "type": "string"
+        },
+        "thickness": {
+          "$ref": "#/$defs/FormulaInput",
+          "description": "Thickness d in cm"
+        }
+      },
+      "required": [
+        "label",
+        "thickness",
+        "conductivity"
+      ],
+      "title": "UValueLayer",
+      "type": "object"
     }
   },
   "discriminator": {
@@ -3616,6 +4020,7 @@
       "egress_diagram": "#/$defs/EgressDiagramCard",
       "file_operation_proposal": "#/$defs/FileOperationProposalCard",
       "fire_access_plan": "#/$defs/FireAccessPlanCard",
+      "formula": "#/$defs/FormulaCard",
       "guardrail_check": "#/$defs/GuardrailCheckCard",
       "ifc_compliance": "#/$defs/IfcComplianceCard",
       "ifc_diff": "#/$defs/IfcDiffCard",
@@ -3641,6 +4046,9 @@
     },
     {
       "$ref": "#/$defs/CalculationCard"
+    },
+    {
+      "$ref": "#/$defs/FormulaCard"
     },
     {
       "$ref": "#/$defs/BuildingSectionCard"

@@ -79,6 +79,7 @@ from aiq_agent.observability.langfuse_scores import card_validity_score
 from aiq_agent.observability.langfuse_scores import claim_scores
 from aiq_agent.observability.langfuse_scores import dialect_scores
 from aiq_agent.observability.langfuse_scores import emit_scores
+from aiq_agent.observability.langfuse_scores import formula_provenance_score
 from aiq_agent.observability.langfuse_scores import look_scores
 from aiq_agent.observability.langfuse_scores import quote_patch_scores
 from aiq_agent.observability.langfuse_scores import work_unfiled_scores
@@ -423,6 +424,9 @@ async def _register_envelope_cards(
             continue
         await register_envelope_card(registry, validated)
         positions[index + 1] = len(registry)
+        provenance = formula_provenance_score(validated, index=len(registry))
+        if provenance is not None:
+            emit_scores([provenance], writer="piloti")
         logger.info("answer envelope registered a '%s' card as card %d", validated["type"], len(registry))
     return _renumber_envelope_markers(content, handed=handed, positions=positions, count=len(raw), fallbacks=fallbacks)
 

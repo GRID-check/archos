@@ -159,6 +159,7 @@ export const answerExport = {
     fire_access_plan: 'Fire-brigade access',
     document_grid: 'Documents',
     calculation: 'Calculation',
+    formula: 'Formula',
     surface: 'Composition',
     ifc_viewer: 'Model view',
     ifc_compliance: 'Model compliance',
@@ -256,6 +257,12 @@ export const answerExport = {
       straight: 'straight',
       left: 'left',
       right: 'right',
+    },
+    /** `formula.formula.heat_flow` — the direction the U-value's surface resistances are taken for. */
+    heat_flow: {
+      horizontal: 'horizontal (wall)',
+      upward: 'upward (roof)',
+      downward: 'downward (floor)',
     },
   },
   /** Yes/no for the boolean fields a card carries. */
@@ -403,5 +410,21 @@ export const answerExport = {
     // StagingAreaPlan
     length: 'Length',
     distance_to_facade: 'Distance to the facade',
+    // The formula card (ADR-0141). Exported as the source's inputs and limits.
+    formula: 'Rule',
+    name: 'Name',
+    heat_flow: 'Heat flow',
+    layers: 'Layers',
+    thickness: 'Thickness d (cm)',
+    conductivity: 'Thermal conductivity λ (W/(m·K))',
+    riser: 'Riser height s (cm)',
+    going: 'Going a (cm)',
+    glazing_area: 'Glazing area (m²)',
+    floor_area: 'Floor area (m²)',
+    editable: 'Reader may change it',
+    min: 'Lowest value',
+    max: 'Highest value',
+    limits: 'Limits',
+    target: 'Checked quantity',
   },
 }

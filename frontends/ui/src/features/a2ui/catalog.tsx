@@ -20,7 +20,7 @@
  * and of the import cycle that would bring.
  */
 
-import { createContext, useContext, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
+import { createContext, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { z } from 'zod'
 import { Catalog, componentId, type ComponentApi } from '@a2ui/web_core/v0_9'
 import { createComponentImplementation, type ReactComponentImplementation } from '@a2ui/react/v0_9'
@@ -31,6 +31,7 @@ import { useHeightGlide } from '@/components/motion/height-glide'
 import { cn } from '@/lib/utils'
 import { MarkdownRenderer } from '@/shared/components/MarkdownRenderer/MarkdownRenderer'
 import { useNestedMarkdownPlugins } from '@/shared/components/MarkdownRenderer/nested-plugins-context'
+import { dataModelStore, ReaderInputsProvider } from './reader-inputs'
 
 /** The catalog's identity on the wire; `createSurface.catalogId` must equal it. */
 export const PILOTI_CATALOG_ID = 'https://piloti.at/a2ui/catalogs/cards/v1'
@@ -86,12 +87,16 @@ function cardComponent(schema: CardSchema): ReactComponentImplementation {
   return createComponentImplementation(api, function A2uiCardComponent({ props, context }) {
     const render = useContext(CardRendererContext)
     useReportDrawn()
+    // The leaf's reader inputs are bound into this surface's data model
+    // (`reader-inputs.ts`, ADR-0141); a card without inputs never reads them.
+    const leafId = context.componentModel.id
+    const store = useMemo(() => dataModelStore(context.dataContext, leafId), [context.dataContext, leafId])
     if (!render) return null
     // `display: contents`: no box of its own. The attribute is how the host
     // knows A2UI has drawn a real component rather than its placeholder.
     return (
       <div className="contents" data-a2ui-node={type}>
-        {render({ ...(props as object), type } as GridCard, context.componentModel.id)}
+        <ReaderInputsProvider store={store}>{render({ ...(props as object), type } as GridCard, leafId)}</ReaderInputsProvider>
       </div>
     )
   })

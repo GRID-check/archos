@@ -907,6 +907,244 @@ class CalculationCard(CardModel):
         return self
 
 
+# ── Formula card: a named rule whose inputs the reader may change ────────────
+#
+# `formula` is `calculation`'s sibling for the handful of rules an Austrian
+# architect computes again and again, where the question after the answer is
+# always "and what if?" (ADR-0141): the insulation that would meet the U-value,
+# the riser that keeps the Schrittmaß, the shorter escape route. The model names
+# the rule from a CLOSED set and fills its inputs from cited sources; the
+# renderer owns the arithmetic (`frontends/ui/src/features/grid-cards/lib/
+# formulas.ts`), recomputes it in the browser when the reader changes an input,
+# and judges every result against the cited limits.
+#
+# Three things are deliberately not on the wire:
+#
+#   - a RESULT, for the reason `calculation` has none: a stated result that
+#     disagreed with its inputs is the worst artefact this product can make;
+#   - a UNIT: each input's unit is fixed by its formula, so a thickness cannot
+#     arrive in metres where the rule expects centimetres;
+#   - an EXPRESSION: the rule is a name, its arithmetic a tested function. A
+#     formula string would be code the browser must parse and trust.
+#
+# A limit is a cited statement, never an input: it carries its NormReference,
+# with the Punkt, and the reader cannot change it.
+
+FormulaHeatFlow = Literal["horizontal", "upward", "downward"]
+
+
+class FormulaInput(CardModel):
+    """One input of a named formula: the value the source gives, and whether the reader may change it.
+
+    The UNIT is the formula's, not this object's: it is stated in the field that
+    holds this input (``riser``: cm), and the renderer prints it.
+    """
+
+    value: float | None = Field(
+        default=None,
+        description=(
+            "The value as the SOURCE gives it, in the unit the field names. Null when it is not known: the "
+            "card then says it cannot judge, and the reader may type an assumption of their own"
+        ),
+    )
+    editable: bool = Field(
+        default=True,
+        description=(
+            "Whether the reader may change it for a what-if. False only for a figure that is not a design "
+            "choice in this question (an existing wall's thickness the question does not touch)"
+        ),
+    )
+    min: float | None = Field(default=None, description="Lowest plausible value, in the field's unit; omit if none")
+    max: float | None = Field(default=None, description="Highest plausible value, in the field's unit; omit if none")
+    step: float | None = Field(
+        default=None, gt=0, description="The increment the arrow keys move by, e.g. 0.5 for cm, 0.001 for λ"
+    )
+    provenance: Provenance | None = Field(
+        default=None,
+        description=(
+            "Where `value` came from, copied from the ifc_measure answer: 'declared', 'computed', 'inferred'. "
+            "Null for a figure the user stated or one read from a document or a norm"
+        ),
+    )
+    source: str | None = Field(
+        default=None,
+        description=(
+            "Half a line naming WHERE the value is written: 'Einreichplan, Schnitt A-A', 'Ihre Angabe', "
+            "'Produktdatenblatt'. Shown beside the input, so the reader knows what they are changing"
+        ),
+    )
+    reference: NormReference | None = Field(
+        default=None,
+        description="When the value is a norm's own figure (a tabulated λ): where it is written. Never invent one",
+    )
+
+    @model_validator(mode="after")
+    def _range_is_consistent(self) -> "FormulaInput":
+        if self.min is not None and self.max is not None and self.min >= self.max:
+            raise ValueError("`min` must be below `max`")
+        if self.value is not None:
+            if self.min is not None and self.value < self.min:
+                raise ValueError("`value` lies below `min`")
+            if self.max is not None and self.value > self.max:
+                raise ValueError("`value` lies above `max`")
+        return self
+
+
+class UValueLayer(CardModel):
+    """One homogeneous layer of a component, inside to outside."""
+
+    label: str = Field(min_length=1, description="The layer, e.g. 'Mineralwolle', 'Stahlbeton', 'Innenputz'")
+    thickness: FormulaInput = Field(description="Thickness d in cm")
+    conductivity: FormulaInput = Field(description="Thermal conductivity λ in W/(m·K), the design value")
+
+
+class UValueFormula(CardModel):
+    """U = 1 / (R_si + Σ d/λ + R_se), for a component of homogeneous layers (ÖNORM EN ISO 6946).
+
+    The surface resistances are the standard's conventional values for the heat
+    flow direction, fixed by the renderer. Air layers, inhomogeneous layers and
+    the standard's corrections are out of scope: say so in the card's `note`
+    when the component has them.
+    """
+
+    name: Literal["u_value"]
+    heat_flow: FormulaHeatFlow = Field(
+        description="Direction of heat flow: 'horizontal' (a wall), 'upward' (a roof), 'downward' (a floor above air)"
+    )
+    layers: list[UValueLayer] = Field(min_length=1, max_length=8, description="The layers, inside to outside")
+
+
+class StairStepRuleFormula(CardModel):
+    """The Schrittmaßregel: 2 × Stufenhöhe + Stufenauftritt (OIB-Richtlinie 4, Pkt. 3.2.1)."""
+
+    name: Literal["stair_step_rule"]
+    riser: FormulaInput = Field(description="Stufenhöhe (Steigung) s in cm")
+    going: FormulaInput = Field(description="Stufenauftritt a in cm")
+
+
+class EscapeRouteSegment(CardModel):
+    """One leg of the escape route, measured along the walking line."""
+
+    label: str = Field(min_length=1, description="The leg, e.g. 'Raum → Gang', 'Gang → Treppenhaus'")
+    length: FormulaInput = Field(description="Length in m")
+
+
+class EscapeRouteLengthFormula(CardModel):
+    """The Gehweglänge: the legs of one escape route added up (OIB-Richtlinie 2, Pkt. 5.1.1)."""
+
+    name: Literal["escape_route_length"]
+    segments: list[EscapeRouteSegment] = Field(min_length=1, max_length=8, description="The legs in walking order")
+
+
+class DaylightRatioFormula(CardModel):
+    """Lichteintrittsfläche as a percentage of the room's Bodenfläche (OIB-Richtlinie 3, Pkt. 9.1.1)."""
+
+    name: Literal["daylight_ratio"]
+    glazing_area: FormulaInput = Field(description="Lichteintrittsfläche (architectural opening) in m²")
+    floor_area: FormulaInput = Field(description="Bodenfläche of the room in m²")
+
+
+FormulaSpec = Annotated[
+    UValueFormula | StairStepRuleFormula | EscapeRouteLengthFormula | DaylightRatioFormula,
+    Field(discriminator="name"),
+]
+
+#: What a limit may be checked against, per formula: its results, and the inputs
+#: a Bestimmung bounds on their own (OIB-RL 4's Stufenhöhe and Auftritt).
+#: Mirrored in `formulas.ts` (`FORMULA_TARGETS`); the shared fixture
+#: `shared/cards/formula-cases.json` holds the two to the same set.
+FORMULA_TARGETS: dict[str, frozenset[str]] = {
+    "u_value": frozenset({"u_value"}),
+    "stair_step_rule": frozenset({"step_measure", "riser", "going"}),
+    "escape_route_length": frozenset({"route_length"}),
+    "daylight_ratio": frozenset({"daylight_ratio"}),
+}
+
+
+class FormulaLimit(CardModel):
+    """A Bestimmung one result is held against: a cited statement, which the reader cannot change."""
+
+    target: str = Field(
+        description=(
+            "Which quantity: 'u_value' (W/(m²K)); 'step_measure', 'riser' or 'going' (cm); 'route_length' (m); "
+            "'daylight_ratio' (%). The bound is in that unit"
+        )
+    )
+    comparator: Literal["<=", ">=", "between"] = Field(description="At most, at least, or inside a range")
+    value: float = Field(description="The bound, as the Bestimmung states it. With 'between', the LOWER bound")
+    upper: float | None = Field(default=None, description="With 'between': the upper bound. Otherwise omit")
+    label: str | None = Field(default=None, description="Optional name, e.g. 'Schrittmaßregel'")
+    reference: NormReference = Field(
+        description="Where the bound is written, with its Punkt. Required: a limit nobody can look up is left out"
+    )
+
+    @model_validator(mode="after")
+    def _bound_is_well_formed(self) -> "FormulaLimit":
+        if self.comparator == "between":
+            if self.upper is None or self.upper <= self.value:
+                raise ValueError("a 'between' limit needs an `upper` above `value`")
+        elif self.upper is not None:
+            raise ValueError("`upper` is only meaningful with comparator 'between'")
+        if not (self.reference.section or "").strip():
+            raise ValueError("a limit's reference names its Punkt or Tabelle (`section`)")
+        return self
+
+
+class FormulaCard(CardModel):
+    """Emit for a number worked out by one of the named rules, so the reader can ask "what if" on the card.
+
+    The rules: a U-value from its layers (u_value), the Schrittmaßregel
+    (stair_step_rule), an escape route's Gehweglänge (escape_route_length), and
+    the Lichteintrittsfläche against the Bodenfläche (daylight_ratio). Anything
+    else worked out is a `calculation`.
+
+    YOU SUPPLY THE INPUTS AND THE CITED LIMITS, NEVER THE RESULT. Fill each input
+    from the project's documents, the user's own figures or the norm, and say in
+    `source` where each one is written. An input you do not have stays null: the
+    card says it cannot judge, and the reader can enter an assumption. The card
+    computes, recomputes when the reader changes an input, marks a changed value
+    as the reader's assumption, and judges each result against `limits`. A limit
+    you cannot cite with its Punkt stays out, and then the card judges nothing.
+    """
+
+    type: Literal["formula"]
+    title: str = Field(min_length=1, description="What is worked out, e.g. 'U-Wert Außenwand – 20 cm Dämmung'")
+    formula: FormulaSpec = Field(description="The rule, by `name`, with its inputs")
+    limits: list[FormulaLimit] = Field(
+        default_factory=list,
+        max_length=4,
+        description="The Bestimmungen the results are held against, each cited. Empty: the card judges nothing",
+    )
+    note: str | None = Field(default=None, description="Optional one-line caveat, e.g. what the rule leaves out")
+
+    @model_validator(mode="after")
+    def _limits_name_this_formulas_quantities(self) -> "FormulaCard":
+        allowed = FORMULA_TARGETS[self.formula.name]
+        for limit in self.limits:
+            if limit.target not in allowed:
+                raise ValueError(
+                    f"a '{self.formula.name}' limit targets one of {sorted(allowed)}, not '{limit.target}'"
+                )
+        return self
+
+
+_FORMULA_SLOTS: dict[str, tuple[str, ...]] = {
+    "stair_step_rule": ("riser", "going"),
+    "daylight_ratio": ("glazing_area", "floor_area"),
+}
+
+
+def formula_inputs(card: dict[str, Any]) -> list[dict[str, Any]]:
+    """Every input object of a validated formula card's dict, in reading order. Pure."""
+    formula = card.get("formula") or {}
+    name = formula.get("name")
+    if name == "u_value":
+        return [layer[key] for layer in formula.get("layers") or [] for key in ("thickness", "conductivity")]
+    if name == "escape_route_length":
+        return [segment["length"] for segment in formula.get("segments") or []]
+    return [formula[slot] for slot in _FORMULA_SLOTS.get(str(name), ()) if isinstance(formula.get(slot), dict)]
+
+
 # ── Document-surfacing card (system-emitted) ─────────────────────────────────
 # Surfaced by the `surface_documents` tool from a REAL vector search over the
 # project + Büroablage corpus — never fabricated by the model (it is a system
@@ -2082,6 +2320,7 @@ class SurfaceCard(CardModel):
 GridCard = (
     ProjectProfilePatchCard
     | CalculationCard
+    | FormulaCard
     | BuildingSectionCard
     | StairDiagramCard
     | DimensionDiagramCard
@@ -2118,6 +2357,9 @@ __all__ = [
     "CalculationStep",
     "CanvasActivityCard",
     "CardModel",
+    "FormulaCard",
+    "FormulaInput",
+    "FormulaLimit",
     "DocumentDraftCard",
     "DocumentGridCard",
     "GridCard",

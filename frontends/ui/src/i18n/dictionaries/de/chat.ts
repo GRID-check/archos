@@ -518,6 +518,71 @@ export const chat: typeof en.chat = {
       computedNote:
         'Das Ergebnis wird von dieser Karte aus den obigen Werten berechnet, nicht aus der Antwort übernommen.',
     },
+    // Eine benannte Rechenregel, deren Eingangswerte die Lesenden ändern
+    // können (ADR-0141). Gerechnet wird im Browser; eine geänderte Zahl ist
+    // „Ihre Annahme", nicht die der Quelle, und wird nirgends gespeichert.
+    formula: {
+      eyebrow: 'Was wäre wenn',
+      hint: 'Ändern Sie einen Wert: Das Ergebnis rechnet sofort neu. Gespeichert wird nichts.',
+      inputsLabel: 'Eingangswerte',
+      derivationLabel: 'Rechenweg',
+      checksLabel: 'Beurteilung',
+      // Neben einem Wert, den die Lesenden geändert haben. Er ist ihre Annahme,
+      // nicht die Angabe der Quelle, und das muss man sehen, bevor man ihn
+      // weitergibt.
+      yourAssumption: 'Ihre Annahme',
+      sourceValue: 'Quelle: {value}',
+      sourceMissing: 'Quelle: kein Wert',
+      // Steht in einem leeren Feld, dessen Wert die Quelle nicht nennt.
+      missingPlaceholder: 'fehlt',
+      fixed: 'fest',
+      reset: 'Zurücksetzen',
+      resetLabel: 'Alle Werte auf die Angaben der Quelle zurücksetzen',
+      withAssumptions: 'Gerechnet mit Ihren Annahmen, nicht mit den Werten der Quelle.',
+      noLimits: 'Kein zitierter Grenzwert: Die Karte rechnet, beurteilt aber nichts.',
+      cannotJudge: 'Ein Wert fehlt: Ohne ihn kann die Karte nicht beurteilen.',
+      undefinedResult: 'Durch null geteilt: Das Ergebnis ist nicht definiert.',
+      invalidNumber: 'Keine Zahl.',
+      outOfRange: 'Zulässig sind {min} bis {max} {unit}.',
+      // Für Screenreader, wenn das Ergebnis nach einer Eingabe neu gerechnet ist.
+      recomputed: 'Neu berechnet: {verdict}',
+      heatFlow: {
+        horizontal: 'Wärmestrom horizontal (Wand)',
+        upward: 'Wärmestrom nach oben (Dach)',
+        downward: 'Wärmestrom nach unten (Boden)',
+      },
+      input: {
+        riser: 'Stufenhöhe s',
+        going: 'Stufenauftritt a',
+        thickness: 'Dicke d',
+        conductivity: 'Wärmeleitfähigkeit λ',
+        length: 'Länge',
+        glazingArea: 'Lichteintrittsfläche',
+        floorArea: 'Bodenfläche',
+      },
+      term: {
+        surfaceInside: 'R_si',
+        surfaceOutside: 'R_se',
+        layerResistance: 'R {layer}',
+        totalResistance: 'R_T',
+      },
+      line: {
+        layerResistance: 'Wärmedurchlasswiderstand {layer}',
+        totalResistance: 'Wärmedurchgangswiderstand R_T',
+        uValue: 'U-Wert',
+        stepMeasure: 'Schrittmaß 2s + a',
+        routeLength: 'Gehweglänge',
+        daylightRatio: 'Lichteintrittsfläche je Bodenfläche',
+      },
+      target: {
+        uValue: 'U-Wert',
+        stepMeasure: 'Schrittmaß',
+        riser: 'Stufenhöhe',
+        going: 'Stufenauftritt',
+        routeLength: 'Gehweglänge',
+        daylightRatio: 'Lichteintrittsfläche',
+      },
+    },
     // Ein Dokument, das Piloti in den Arbeitsordner dieser Unterhaltung
     // geschrieben hat. Keine Projektunterlage: nichts davon ist abgelegt,
     // indexiert oder zitierfähig, bis eine Person es ins Projekt übernimmt —

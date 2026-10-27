@@ -96,6 +96,35 @@ const RAW_FIXTURES: CardInput[] = [
     },
   },
   {
+    // The hard state for a what-if card: one input the source does not give.
+    // The Auftritt is missing, so the Schrittmaß cannot be judged until the
+    // reader enters an assumption, while the Stufenhöhe already can.
+    type: 'formula',
+    title: 'Schrittmaßregel – Stiege Haus B',
+    formula: {
+      name: 'stair_step_rule',
+      riser: { value: 17.5, min: 10, max: 25, step: 0.5, source: 'Einreichplan, Schnitt B-B' },
+      going: { value: null, min: 20, max: 40, step: 0.5 },
+    },
+    limits: [
+      {
+        target: 'step_measure',
+        comparator: 'between',
+        value: 59,
+        upper: 65,
+        label: 'Schrittmaßregel',
+        reference: { document: 'OIB-Richtlinie 4', section: 'Pkt. 3.2.1', edition: 'Ausgabe Mai 2023' },
+      },
+      {
+        target: 'riser',
+        comparator: '<=',
+        value: 18,
+        label: 'Stufenhöhe',
+        reference: { document: 'OIB-Richtlinie 4', section: 'Pkt. 3.2.1, Tabelle 3', edition: 'Ausgabe Mai 2023' },
+      },
+    ],
+  },
+  {
     type: 'project_profile_patch',
     title: 'Projektkontext aktualisieren: Fluchtniveau',
     rationale:

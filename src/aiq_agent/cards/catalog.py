@@ -377,6 +377,15 @@ _CARD_TRIGGERS: tuple[tuple[str, str, str], ...] = (
         'renders „nicht berechenbar". Never for a number merely cited: one operand is the '
         "sentence beside it, typeset twice.",
     ),
+    (
+        "a U-value from its layers, the Schrittmaßregel, an escape route's Gehweglänge, or a "
+        "Lichteintrittsfläche against the Bodenfläche",
+        "formula",
+        "Name the rule and fill each input from a source, with `source` saying where it is written; an "
+        "input you do not have stays null. A limit goes in only with its Punkt. The card computes, judges "
+        "and lets the reader change the inputs for a what-if, so the prose names the verdict and points "
+        "at the card instead of restating the computed number.",
+    ),
 )
 
 #: Withheld from the post-hoc surface, row and craft together (`include_ifc_triggers=False`).
@@ -576,6 +585,42 @@ CARD_EXAMPLES: dict[str, dict] = {
             "reference": {"document": "OIB-Richtlinie 4", "section": "Pkt. 3.2", "edition": "Ausgabe Mai 2023"},
         },
     },
+}
+
+
+# The formula card's example is the north-star question (ADR-0141): how much
+# insulation does the wall need. It shows the three things the model must get
+# right and the renderer cannot: each input's `source`, a reader-adjustable
+# range on the layer the question is about, and a limit that carries its Punkt.
+# It has no result: 0,167 W/(m²K) is the card's, worked out in the browser.
+CARD_EXAMPLES["formula"] = {
+    "type": "formula",
+    "title": "U-Wert Außenwand – 20 cm Dämmung",
+    "formula": {
+        "name": "u_value",
+        "heat_flow": "horizontal",
+        "layers": [
+            {
+                "label": "Stahlbeton",
+                "thickness": {"value": 18, "source": "Wandaufbau AW 01"},
+                "conductivity": {"value": 2.3, "source": "Wandaufbau AW 01"},
+            },
+            {
+                "label": "EPS-F",
+                "thickness": {"value": 20, "min": 0, "max": 40, "step": 1, "source": "Wandaufbau AW 01"},
+                "conductivity": {"value": 0.035, "step": 0.001, "source": "Produktdatenblatt"},
+            },
+        ],
+    },
+    "limits": [
+        {
+            "target": "u_value",
+            "comparator": "<=",
+            "value": 0.35,
+            "label": "Wände gegen Außenluft",
+            "reference": {"document": "OIB-Richtlinie 6", "section": "Pkt. 4.4.1", "edition": "Ausgabe Mai 2023"},
+        }
+    ],
 }
 
 

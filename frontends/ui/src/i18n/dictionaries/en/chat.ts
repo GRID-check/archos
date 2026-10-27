@@ -521,6 +521,70 @@ export const chat = {
       computedNote:
         'The result is computed by this card from the figures above, not copied from the answer.',
     },
+    // A named rule whose inputs the reader can change (ADR-0141). Computed in
+    // the browser; a changed figure is "your assumption", not the source's, and
+    // is saved nowhere.
+    formula: {
+      eyebrow: 'What if',
+      hint: 'Change a value and the result recomputes at once. Nothing is saved.',
+      inputsLabel: 'Inputs',
+      derivationLabel: 'Derivation',
+      checksLabel: 'Assessment',
+      // Beside a value the reader changed. It is their assumption, not the
+      // source's statement, and that has to be visible before it is passed on.
+      yourAssumption: 'Your assumption',
+      sourceValue: 'Source: {value}',
+      sourceMissing: 'Source: no value',
+      // Shown in an empty field whose value the source does not give.
+      missingPlaceholder: 'missing',
+      fixed: 'fixed',
+      reset: 'Reset',
+      resetLabel: 'Reset every value to the source',
+      withAssumptions: "Computed with your assumptions, not the source's values.",
+      noLimits: 'No cited limit: the card computes, but judges nothing.',
+      cannotJudge: 'A value is missing: without it the card cannot judge.',
+      undefinedResult: 'Divided by zero: the result is not defined.',
+      invalidNumber: 'Not a number.',
+      outOfRange: 'Allowed: {min} to {max} {unit}.',
+      // For screen readers, when the result has been recomputed after an input.
+      recomputed: 'Recomputed: {verdict}',
+      heatFlow: {
+        horizontal: 'Heat flow horizontal (wall)',
+        upward: 'Heat flow upward (roof)',
+        downward: 'Heat flow downward (floor)',
+      },
+      input: {
+        riser: 'Riser height s',
+        going: 'Going a',
+        thickness: 'Thickness d',
+        conductivity: 'Thermal conductivity λ',
+        length: 'Length',
+        glazingArea: 'Glazing area',
+        floorArea: 'Floor area',
+      },
+      term: {
+        surfaceInside: 'R_si',
+        surfaceOutside: 'R_se',
+        layerResistance: 'R {layer}',
+        totalResistance: 'R_T',
+      },
+      line: {
+        layerResistance: 'Thermal resistance {layer}',
+        totalResistance: 'Total resistance R_T',
+        uValue: 'U-value',
+        stepMeasure: 'Step measure 2s + a',
+        routeLength: 'Escape route length',
+        daylightRatio: 'Glazing area per floor area',
+      },
+      target: {
+        uValue: 'U-value',
+        stepMeasure: 'Step measure',
+        riser: 'Riser height',
+        going: 'Going',
+        routeLength: 'Escape route length',
+        daylightRatio: 'Glazing area',
+      },
+    },
     // A document Piloti wrote into this conversation's working directory. Not a
     // project document: nothing here is filed, indexed or citable until a
     // person takes it into the project — which is what the (still inert)

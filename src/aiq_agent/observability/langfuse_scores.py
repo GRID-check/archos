@@ -217,6 +217,15 @@ SCORE_DEFINITIONS: tuple[ScoreDefinition, ...] = (
         categories=("repaired", "dropped"),
     ),
     ScoreDefinition(
+        "formula-input-provenance",
+        "NUMERIC",
+        "Per formula card the answer carries (ADR-0141): the share of its inputs with a value that say where "
+        "the value is written (a `source`, or a norm `reference`). Below 1 is a default the reader cannot "
+        "trace before changing it. Metadata names the formula and counts inputs, sourced and unknown.",
+        min_value=0,
+        max_value=1,
+    ),
+    ScoreDefinition(
         "work-report-matches",
         "BOOLEAN",
         "On a work turn (kind work, ADR-0123): true when the report lists as many proposals as the turn put "
@@ -510,6 +519,37 @@ def steer_scores(inbox: Any) -> list[RuntimeScore]:
         return []
     applied = len(getattr(inbox, "applied", None) or [])
     return [RuntimeScore("steer-count", float(received), comment=f"applied {applied}")]
+
+
+def formula_provenance_score(card: dict[str, Any], *, index: int) -> RuntimeScore | None:
+    """How many of a formula card's given defaults say where they are written; ``None`` for any other card.
+
+    An input with no value is not counted against the card: it is shown as
+    unknown, which is the honest outcome, and counted in the metadata instead.
+    A card whose inputs are all unknown scores 1 — nothing on it is untraced.
+    """
+    if card.get("type") != "formula":
+        return None
+    from aiq_agent.cards.models import formula_inputs
+
+    inputs = formula_inputs(card)
+    given = [item for item in inputs if item.get("value") is not None]
+    sourced = [item for item in given if (item.get("source") or "").strip() or item.get("reference")]
+    share = round(len(sourced) / len(given), 4) if given else 1.0
+    name = str((card.get("formula") or {}).get("name"))
+    return RuntimeScore(
+        "formula-input-provenance",
+        share,
+        comment=f"{len(sourced)} of {len(given)} given inputs sourced",
+        item=str(index),
+        metadata={
+            "formula": name,
+            "inputs": len(inputs),
+            "given": len(given),
+            "sourced": len(sourced),
+            "unknown": len(inputs) - len(given),
+        },
+    )
 
 
 def card_validity_score(*, outcome: str, card_type: str, index: int) -> RuntimeScore:

@@ -9,6 +9,7 @@ import { CanvasActivityCard } from './CanvasActivityCard'
 import { LookCard } from './LookCard'
 import { RevisionCompareCard } from './RevisionCompareCard'
 import { CalculationCard } from './CalculationCard'
+import { FormulaCard } from './FormulaCard'
 import { BuildingSectionCard } from '../schematics/BuildingSectionCard'
 import { StairDiagramCard } from '../schematics/StairDiagramCard'
 import { DimensionDiagramCard } from '../schematics/DimensionDiagramCard'
@@ -119,6 +120,14 @@ export const GridCardView: FC<GridCardViewProps> = ({
 }) => {
   // The identity an interactive card's persisted decision is stored under.
   const key = leafId === undefined ? cardKey(card, index) : `${cardKey(card, index)}.${leafId}`
+
+  if (card.type === 'formula') {
+    return (
+      <FadeIn distance={6}>
+        <FormulaCard title={card.title} formula={card.formula} limits={card.limits} note={card.note} />
+      </FadeIn>
+    )
+  }
 
   if (card.type === 'calculation') {
     return (
