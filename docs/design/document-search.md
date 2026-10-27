@@ -300,7 +300,11 @@ yet for the same reason.
    reader never learns a project exists that the projects list hides. Only the owner
    renames, shares or deletes one; anyone else's answers 404. A colleague's
    shared one carries `ownerName`, from the office's people directory
-   (`lib/sharing/directory.ts`), so the list says whose question it is. A
+   (`lib/sharing/directory.ts`), so the list says whose question it is. Under
+   each name one muted line says what the search asks, the words quoted and
+   the filters in their chips' words (`savedSearchSummary`), so a name alone
+   never has to be trusted. One's own carries a ⋯ (Teilen or Nicht mehr
+   teilen, Umbenennen, Löschen), not a switch in the row. A
    delete in the page is held for the undo toast's window and sent when it
    closes (`useUndoableArchive`), so „Rückgängig“ never has to re-create one.
    `GET/POST /api/search/saved`, `PATCH/DELETE /api/search/saved/[id]`,

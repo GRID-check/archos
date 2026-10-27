@@ -101,6 +101,11 @@ function Preview({
           failed={false}
           onApply={() => {}}
           onToggleShare={(item) => setSaved((list) => list.map((entry) => (entry.id === item.id ? { ...entry, shared: !entry.shared } : entry)))}
+          onRename={async (item, name) => {
+            if (saved.some((entry) => entry.id !== item.id && entry.ownedByMe && entry.name === name)) return 'taken'
+            setSaved((list) => list.map((entry) => (entry.id === item.id ? { ...entry, name } : entry)))
+            return 'renamed'
+          }}
           onDelete={(item) => setDeleting((ids) => new Set(ids).add(item.id))}
           onUndoDelete={(item) => setDeleting((ids) => new Set([...ids].filter((id) => id !== item.id)))}
           suggestedName={suggestedName}

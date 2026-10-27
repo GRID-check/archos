@@ -1014,14 +1014,20 @@ export function RegisterStackRow({
 
 // ─── Saved searches ─────────────────────────────────────────────────────────
 
-/** A saved search in the list: its name applies it, the controls after it share or delete it. */
+/**
+ * A saved search in the list: its name applies it, one muted line under it
+ * says what it asks (whole in the tooltip when cut), and the control after it
+ * is its ⋯ or, for a colleague's, the colleague's mark.
+ */
 export function SavedSearchRow({
   name,
+  summary,
   detail,
   onApply,
   controls,
 }: {
   name: string
+  summary?: string
   detail?: string
   onApply: () => void
   controls?: ReactNode
@@ -1035,24 +1041,15 @@ export function SavedSearchRow({
         data-testid="saved-search-apply"
       >
         <span className="line-clamp-2 text-sm font-medium text-foreground [overflow-wrap:anywhere]">{name}</span>
+        {summary ? (
+          <span className="block truncate text-xs text-muted-foreground" title={summary} data-testid="saved-search-summary">
+            {summary}
+          </span>
+        ) : null}
         {detail ? <span className="block truncate text-xs text-muted-foreground">{detail}</span> : null}
       </button>
       {controls ? <div className="flex shrink-0 items-center gap-1">{controls}</div> : null}
     </li>
-  )
-}
-
-/**
- * A compact switch with its word beside it („Geteilt“), the word part of its
- * label, so it is read and clicked as one. The row-sized twin of
- * {@link LabelledSwitch}, for a switch inside a menu row.
- */
-export function SwitchCaption({ label, children }: { label: string; children: ReactNode }): JSX.Element {
-  return (
-    <label className="flex cursor-pointer items-center gap-1.5 text-xs text-muted-foreground">
-      {children}
-      <span>{label}</span>
-    </label>
   )
 }
 
