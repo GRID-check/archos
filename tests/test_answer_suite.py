@@ -379,9 +379,8 @@ def test_the_frontend_plugins_a_run_loads_come_from_this_checkout():
     import census
 
     packages = census.source_packages()
-    for name in ("aiq_api",):
-        assert packages[name].is_relative_to(census.ROOT.resolve())
-        assert (packages[name] / "__init__.py").exists()
+    assert packages["aiq_api"].is_relative_to(census.ROOT.resolve())
+    assert (packages["aiq_api"] / "__init__.py").exists()
 
 
 def test_one_failing_run_does_not_sink_the_suite(tmp_path, monkeypatch):
