@@ -141,6 +141,7 @@ import { recordDocumentAccess } from '@/lib/download-log/service'
 import { findOpenVersion, listDocumentVersionSummaries } from './version-repository'
 import { eraseDocumentObjectsOrKeepRow } from './object-cleanup'
 import { isIfcFilename } from '@/lib/bim/types'
+import { refreshSearchRows } from '@/lib/search/refresh-rows'
 import {
   INLINE_PREVIEW_CONTENT_TYPES,
   TEXT_PREVIEW_CONTENT_TYPES as SHARED_TEXT_PREVIEW_CONTENT_TYPES,
@@ -2343,7 +2344,12 @@ export async function updateDocumentTags(
   }
   if (!res.ok) throw new UpstreamError('The document service rejected the tag update')
 
-  const body = await res.json().catch(() => ({}))
+  // Tags and topics are search filters: the person who set them finds the
+  // document by them at once (ADR-0136). Never fails the write.
+  const [body] = await Promise.all([
+    res.json().catch(() => ({})),
+    refreshSearchRows(session.organizationId, [doc]),
+  ])
   const answer: { id: string; tags: string[]; topics?: string[] } = {
     id: doc.id,
     tags: Array.isArray(body.tags) ? body.tags : tags,

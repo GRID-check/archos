@@ -24,11 +24,13 @@ vi.mock('./shelf-live', () => ({ publishShelfChanged: vi.fn() }))
 // The search row's own mapping is `lib/search/facets.spec.ts`'s subject; here
 // it is which readings reconciliation hands over, and when.
 vi.mock('@/lib/search/facets-projector', () => ({ projectReadings: vi.fn().mockResolvedValue(0) }))
+vi.mock('@/lib/search/facets-repository', () => ({ listCollectionDocumentsForProjection: vi.fn().mockResolvedValue([]) }))
 
 import { getDb } from '@/lib/db'
 import { onDocumentsSettled } from '@/lib/upload-batches/settle'
 import { publishShelfChanged } from './shelf-live'
 import { projectReadings } from '@/lib/search/facets-projector'
+import { listCollectionDocumentsForProjection } from '@/lib/search/facets-repository'
 import { asDb } from '@/test-utils/db-fixtures'
 import {
   reconcileDocumentStatuses,
@@ -1005,6 +1007,44 @@ describe('reconcileDocumentStatuses enrichment on a status transition', () => {
         metadata: expect.objectContaining({ summary: 'A ground-floor plan.', tags: ['Grundriss'] }),
       }),
     ])
+  })
+
+  it('writes the search row of the document a settled Fassung replaces, from the same listing', async () => {
+    makeDbMock()
+    const older = { file_id: 'f-0', file_name: 'plan-a.pdf', status: 'success', summary: 'The earlier plan.', superseded_by: 'plan.pdf' }
+    routeBackend(
+      { 'job-1': { status: 'completed', file_details: [{ status: 'success' }] } },
+      { current: [{ ...indexedPlan, supersedes: ['plan-a.pdf'] }, older] }
+    )
+    vi.mocked(listCollectionDocumentsForProjection).mockResolvedValueOnce([
+      { id: 'doc-a', filename: 'plan-a.pdf', collectionName: 'proj_abc', authoredBy: 'user', publishedVersionId: null },
+      // A machine-written row sharing the name owns nothing over there.
+      { id: 'doc-agent', filename: 'plan-a.pdf', collectionName: 'proj_abc', authoredBy: 'agent', publishedVersionId: null },
+    ])
+    const fetchesBefore = collectionCalls().length
+
+    await reconcileDocumentStatuses([makeRow()], 'org-1')
+    await vi.waitFor(() => expect(projectReadings).toHaveBeenCalledTimes(2))
+
+    expect(listCollectionDocumentsForProjection).toHaveBeenCalledWith('org-1', 'proj_abc', ['plan-a.pdf'])
+    expect(projectReadings).toHaveBeenLastCalledWith('org-1', [
+      expect.objectContaining({ documentId: 'doc-a', superseded: true, metadata: expect.objectContaining({ summary: 'The earlier plan.' }) }),
+    ])
+    expect(collectionCalls().length - fetchesBefore).toBe(1)
+  })
+
+  it('never counts Piloti\'s suggestion as a replaced Fassung', async () => {
+    makeDbMock()
+    routeBackend(
+      { 'job-1': { status: 'completed', file_details: [{ status: 'success' }] } },
+      { current: [{ ...indexedPlan, revision_suggestion: { of: 'plan-a.pdf', confidence: 0.9, reason: 'r', basis: 'title_block' } }] }
+    )
+
+    await reconcileDocumentStatuses([makeRow()], 'org-1')
+
+    expect(projectReadings).toHaveBeenCalledTimes(1)
+    expect(projectReadings).toHaveBeenCalledWith('org-1', [expect.objectContaining({ documentId: 'doc-1', superseded: false })])
+    expect(listCollectionDocumentsForProjection).not.toHaveBeenCalled()
   })
 
   it('hands nothing to the search projection for a row that failed or was already at rest', async () => {

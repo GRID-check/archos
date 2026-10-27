@@ -162,14 +162,39 @@ passages. With text, the content search is pre-filtered for recall: by
 fields ingestion mirrors onto every chunk (`document_type`, `references`,
 `dossier_facts`). No Qdrant count is ever shown.
 
-The projection is derived, never authored. A row is written when its document
-settles, from the reading the status reconciliation already parses; a BFF job
-(`search_facets_sync`) refreshes a whole shelf as the backstop, queued when a
-search finds the shelf's fingerprint (document count and newest change) moved,
-at most once per shelf per interval, the pattern `office_conventions` uses. The
-projector fails closed: a listing that came back without the reading blanks
-nothing. A shelf never synced is still searched by name, status and content,
-and the answer says its facets are being built.
+The projection is derived, never authored. A row is written:
+
+- **when its document settles**, from the reading the status reconciliation
+  already parses (`reconcile-status.ts`). A re-upload under the same name is a
+  new version of the same document: it is read again and settles again, so its
+  row is rewritten, never marked superseded. A Fassung filed at upload
+  (`revisionOf`) is linked when the new file is read; the documents its listing
+  entry says it `supersedes` are rewritten from the same listing at that moment.
+- **when a person changes what it derives**, after the write landed: tags and
+  topics (`updateDocumentTags`), a Fassung link confirmed or taken back
+  (`setRevisionLink`, both documents). The service calls
+  `refreshSearchRows` (`lib/search/refresh-rows.ts`), which reads the
+  collection fresh and rewrites those rows before the answer goes back, so the
+  person's next search sees the change. It never fails the write: a listing it
+  cannot read marks the shelves stale (`markShelvesStale`) and the next search
+  queues their refresh.
+- **by the backstop**: a BFF job (`search_facets_sync`) refreshes a whole shelf,
+  queued when a search finds the shelf's fingerprint (document count and newest
+  change) moved, the sync older than an hour, or the shelf marked stale, at
+  most once per shelf per interval, the pattern `office_conventions` uses. It
+  catches what the agent writes on its own side.
+
+`superseded` is the listing's `superseded_by`, which only a person's
+confirmation writes; Piloti's `revision_suggestion` never counts. Name, folder,
+status and lifecycle are not projected: the search reads them from `documents`
+in the same query, so a rename, a move, an archive or a role declared in the
+project (roles are not a search facet) is current without a rewrite.
+
+The projector fails closed: a listing that came back without the reading
+blanks nothing, and a document with no reading at all has no row, so a Fassung
+decision about it reaches the search only once it has one. A shelf never synced
+is still searched by name, status and content, and the answer says its facets
+are being built.
 
 ### What "everything" covers in this change
 

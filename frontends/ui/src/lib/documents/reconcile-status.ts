@@ -38,6 +38,7 @@ import { setDocumentReconciledStatus } from './repository'
 import { documentShelf } from './shelf'
 import { publishShelfChanged } from './shelf-live'
 import { projectReadings } from '@/lib/search/facets-projector'
+import { listCollectionDocumentsForProjection } from '@/lib/search/facets-repository'
 import { parseIngestFailureCategory, type IngestFailureFacts } from './retry-policy'
 
 /**
@@ -851,6 +852,15 @@ export const readCollectionReadings = async (
   const files = await loadCollectionFilesFresh(collectionName)
   // A listing without the reading says nothing about it: the refresh retries rather than records it.
   if (!files || files.readingUnavailable) return null
+  return readingsIn(files, collectionName, refs)
+}
+
+/** The readings of `refs` in one listing. Only the confirmed `superseded_by` counts: a suggestion is Piloti's guess. */
+function readingsIn(
+  files: CollectionFiles,
+  collectionName: string,
+  refs: readonly CollectionFileRef[]
+): Map<string, ListedReading> {
   const readings = new Map<string, ListedReading>()
   for (const ref of refs) {
     if (ref.collectionName !== collectionName || files.ambiguousNames.has(ref.filename)) continue
@@ -859,6 +869,50 @@ export const readCollectionReadings = async (
     readings.set(ref.filename, { metadata: extractMetadata(files, ref), superseded: Boolean(file.revision?.supersededBy) })
   }
   return readings
+}
+
+/** The documents one settled row replaces, by file name, in the listing it was read from. */
+interface ReplacedFassungen {
+  collectionName: string
+  files: CollectionFiles
+  names: readonly string[]
+}
+
+/**
+ * Write the search rows of the documents settled Fassungen replace, from the
+ * listing the settling read already holds (ADR-0136). A listing without the
+ * reading writes nothing; the shelf's backstop refresh follows.
+ */
+async function projectReplacedDocuments(
+  organizationId: string,
+  replaced: readonly ReplacedFassungen[]
+): Promise<void> {
+  const byCollection = new Map<string, { files: CollectionFiles; names: Set<string> }>()
+  for (const { collectionName, files, names } of replaced) {
+    if (files.readingUnavailable) continue
+    const group = byCollection.get(collectionName) ?? { files, names: new Set<string>() }
+    for (const name of names) group.names.add(name)
+    byCollection.set(collectionName, group)
+  }
+  for (const [collectionName, { files, names }] of byCollection) {
+    const documents = await listCollectionDocumentsForProjection(organizationId, collectionName, [...names])
+    const refs = documents.flatMap((document) => {
+      const ref = collectionFileRef(document)
+      return ref ? [{ id: document.id, ref }] : []
+    })
+    const readings = readingsIn(
+      files,
+      collectionName,
+      refs.map((entry) => entry.ref)
+    )
+    await projectReadings(
+      organizationId,
+      refs.flatMap((entry) => {
+        const reading = readings.get(entry.ref.filename)
+        return reading ? [{ documentId: entry.id, ...reading }] : []
+      })
+    )
+  }
 }
 
 /**
@@ -1065,6 +1119,8 @@ export async function reconcileDocumentStatuses<T extends ReconcilableDocument>(
 
   const metaByRow = new Map<string, DocumentMetadata>()
   const supersededRows = new Set<string>()
+  // What each row's listing says it replaces, by file name, and the listing it was read from.
+  const replacesByRow = new Map<string, ReplacedFassungen>()
   await Promise.all(
     rows.map(async (row) => {
       // The authorship gate, ahead of the fetch. A machine-authored row is not
@@ -1075,7 +1131,9 @@ export async function reconcileDocumentStatuses<T extends ReconcilableDocument>(
       const files = await listingFor(row.collectionName)
       const meta = extractMetadata(files, ref)
       if (meta) metaByRow.set(row.id, meta)
-      if (files?.byName.get(ref.filename)?.revision?.supersededBy) supersededRows.add(row.id)
+      const revision = files?.byName.get(ref.filename)?.revision
+      if (revision?.supersededBy) supersededRows.add(row.id)
+      if (files && revision && revision.supersedes.length > 0) replacesByRow.set(row.id, { collectionName: row.collectionName, files, names: revision.supersedes })
     })
   )
 
@@ -1089,6 +1147,18 @@ export async function reconcileDocumentStatuses<T extends ReconcilableDocument>(
       organizationId,
       readNow.map(([id]) => ({ documentId: id, metadata: metaByRow.get(id) ?? null, superseded: supersededRows.has(id) }))
     ).catch((error: unknown) => console.warn('[search] projecting settled readings failed', error))
+    // A Fassung filed at upload (`revisionOf`) is linked when the new file is
+    // read: the documents it replaces are superseded from now on, and the
+    // search's „Nur aktuelle Fassung“ says so at once.
+    const replaced = readNow.flatMap(([id]) => {
+      const entry = replacesByRow.get(id)
+      return entry ? [entry] : []
+    })
+    if (replaced.length > 0) {
+      void projectReplacedDocuments(organizationId, replaced).catch((error: unknown) =>
+        console.warn('[search] projecting replaced Fassungen failed', error)
+      )
+    }
   }
 
   // Tell PostHog which uploads came to rest, once the counts are in. The same
