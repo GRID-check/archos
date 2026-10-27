@@ -26,7 +26,13 @@ export class SearchRequestError extends Error {
   }
 }
 
-export async function postSearch(scope: SearchScopeQuery, body: SearchBody, signal?: AbortSignal): Promise<SearchResponse> {
+/** Ask one question. `onServerTiming` hears the route's `Server-Timing` header, raw (`search-telemetry.ts` parses it). */
+export async function postSearch(
+  scope: SearchScopeQuery,
+  body: SearchBody,
+  signal?: AbortSignal,
+  onServerTiming?: (header: string | null) => void
+): Promise<SearchResponse> {
   const query = scopeQueryString(scope)
   const response = await fetch(`/api/search${query ? `?${query}` : ''}`, {
     method: 'POST',
@@ -35,6 +41,7 @@ export async function postSearch(scope: SearchScopeQuery, body: SearchBody, sign
     signal,
   })
   if (!response.ok) throw new SearchRequestError(response.status)
+  onServerTiming?.(response.headers.get('server-timing'))
   return (await response.json()) as SearchResponse
 }
 
