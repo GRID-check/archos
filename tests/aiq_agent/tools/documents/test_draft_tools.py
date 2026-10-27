@@ -46,10 +46,14 @@ class TestWhichToolsAreBound:
     def test_exactly_the_four_verbs(self, backend: DraftBackend) -> None:
         assert [tool.name for tool in draft_tools(backend)] == list(DRAFT_TOOL_NAMES)
 
-    def test_nothing_that_searches_or_executes_is_bound(self, backend: DraftBackend) -> None:
-        """`glob`/`grep` buy nothing over one flat directory; `execute` has no sandbox."""
+    def test_nothing_that_searches_executes_or_deletes_is_bound(self, backend: DraftBackend) -> None:
+        """`glob`/`grep` buy nothing over one flat directory; `execute` has no sandbox.
+
+        `delete` arrived with DeepAgents 0.7 and is offered whenever the backend
+        implements it, which `StoreBackend` does: only the allowlist keeps it off.
+        """
         names = {tool.name for tool in draft_tools(backend)}
-        assert not names & {"glob", "grep", "execute"}
+        assert not names & {"glob", "grep", "execute", "delete"}
 
 
 class TestTheDescriptions:
@@ -73,11 +77,13 @@ class TestTheDescriptions:
         edit = next(tool for tool in draft_tools(backend) if tool.name == "edit_file")
         assert "heading" in edit.description
         assert "paragraph" in edit.description
-        assert "line numbers" in edit.description
+        assert "@@ lines" in edit.description
 
-    def test_read_warns_that_line_numbers_are_not_in_the_file(self, backend: DraftBackend) -> None:
+    def test_read_warns_that_the_header_is_not_in_the_file(self, backend: DraftBackend) -> None:
+        """DeepAgents 0.7 prints a ``@@ lines … @@`` header and no line numbers."""
         read = next(tool for tool in draft_tools(backend) if tool.name == "read_file")
-        assert "line number" in read.description
+        assert "@@ lines" in read.description
+        assert "line number" not in read.description
 
     def test_write_names_the_document_kinds_and_the_root(self, backend: DraftBackend) -> None:
         write = next(tool for tool in draft_tools(backend) if tool.name == "write_file")

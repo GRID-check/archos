@@ -68,11 +68,30 @@ orchestrator and all subagents:
 | `ModelRetryMiddleware` (langchain) | Retries model calls with backoff |
 
 The orchestrator additionally gets DeepAgents runtime middleware
-(TodoList, Filesystem, SubAgents) from `create_deep_agent`. Researcher
-workers are separate `create_agent` runnables with `FilesystemMiddleware`,
-summarization middleware, `PatchToolCallsMiddleware`, and structured
-`ResearchNotes` output — no TodoList. When no sandbox is configured, a
-`ToolVisibilityMiddleware` hides the `execute` tool.
+(Filesystem, SubAgents, summarization, `PatchToolCalls`) from
+`create_deep_agent`. Two pieces of it are ours, passed in `middleware=` by
+`factory.planning_middleware` for the orchestrator and every declarative
+subagent:
+
+- `TodoListMiddleware` (`write_todos`). deepagents 0.7.0 stopped adding it by
+  default; `orchestrator.j2` and `planner.j2` offer it and the job's todo
+  artifact is built from it, so it is added back.
+- `FilesystemMiddleware` built with the `FILESYSTEM_TOOL_NAMES` allowlist. It
+  replaces the stock instance by name and is re-bound to that agent's
+  permissions. The allowlist leaves out `delete`, the recursive tool
+  deepagents 0.7 offers whenever the backend implements it (every backend
+  here does).
+
+Researcher workers are separate `create_agent` runnables with the same
+allowlisted `FilesystemMiddleware`, summarization middleware,
+`PatchToolCallsMiddleware`, and structured `ResearchNotes` output — no
+TodoList. When no sandbox is configured, a `ToolVisibilityMiddleware` hides
+the `execute` tool.
+
+Since deepagents 0.7 `create_deep_agent` appends no base prompt of its own,
+and the filesystem and `task` middlewares add no system-prompt prose: each
+agent's system prompt is the rendered `.j2` alone, with tool usage carried by
+the tool descriptions.
 
 ## Workflow Phases
 
@@ -287,7 +306,10 @@ general research requests.
 ## Known limitations
 
 Verified against the installed `deepagents==0.6.8`, `langchain==1.3.4`, and
-`langgraph==1.2.4` source. These are documented as current behavior, not
+`langgraph==1.2.4` source; re-read on 2026-10-27 against `deepagents==0.7.32`,
+`langchain==1.4.7` and `langgraph==1.2.16`, with the changes noted inline.
+`tests/aiq_agent/test_deepagents_contract.py` checks the assumptions that the
+code rests on. These are documented as current behavior, not
 aspirational fixes. Several items below were fixed 2026-07-16; each is
 marked with the commit that fixed it.
 
@@ -392,10 +414,15 @@ generically, since bound names are a config concern.
 
 ### StateBackend write-once plus per-search planner ceremony — reduced (`77a4d7a`)
 
-deepagents' `StateBackend.write()` is write-once: a second `write_file` to
-an existing path returns an error (`"already exists"`); recovery is via
-`edit_file`. `planner.j2` accounts for this (`write_file` to create
-`/shared/plan.json`, `edit_file` to revise it). It previously also mandated a
+Up to deepagents 0.6, `StateBackend.write()` was write-once: a second
+`write_file` to an existing path returned an error (`"already exists"`) and
+recovery was via `edit_file`. **Since 0.7.0 it creates or overwrites**, so a
+second `write_file` replaces the file silently. `planner.j2` still asks for
+`write_file` once and `edit_file` after (now a convention, not a constraint the
+backend enforces); nothing in the run depends on the refusal, because each
+`/shared/` file has one writer (the planner, the writer, `run_research_batch`).
+The chat working directory, which does depend on it, enforces create-only
+itself (`tools/documents/draft_store.py`). It previously also mandated a
 todo-list ceremony (`write_todos` before decomposing) and a `think` call
 after every search ("What did I learn? Internal or external? ... What
 constraints should I add?"), adding several pure-ceremony LLM turns per

@@ -1,13 +1,16 @@
 """the four file verbs Piloti gets, and nothing else.
 
 ``ls``, ``read_file``, ``write_file``, ``edit_file`` — stock DeepAgents tools
-over :class:`~aiq_agent.tools.documents.draft_store.DraftBackend`. ``glob``,
-``grep`` and ``execute`` are built by the same middleware and dropped here:
-over one flat directory of at most a handful of files, a search verb buys
-nothing and costs a tool call, and ``execute`` has no sandbox behind it.
+over :class:`~aiq_agent.tools.documents.draft_store.DraftBackend`. The
+middleware's ``tools=`` allowlist builds only these four: ``glob`` and ``grep``
+buy nothing over one flat directory of at most a handful of files, ``execute``
+has no sandbox behind it, and ``delete`` (DeepAgents 0.7, recursive, offered
+whenever the backend implements it, which ``StoreBackend`` does) would let the
+model drop a draft the reader has a card for.
 
-The descriptions are German, because the model writes German documents and the
-tool description is the last thing it reads before choosing a verb. Two things
+The descriptions are our own (English, like everything an agent reads; the
+documents the model writes are German), because the tool description is the
+last thing it reads before choosing a verb. Two things
 they deliberately do NOT say:
 
 * **"You must read the file before editing it."** DeepAgents' stock text claims
@@ -34,13 +37,15 @@ from .draft_store import get_draft_backend
 logger = logging.getLogger(__name__)
 
 #: The verbs bound into Piloti's tool node, in the order the model
-#: meets them. Everything else the middleware builds is dropped.
+#: meets them, and the middleware's allowlist: nothing else is built.
 DRAFT_TOOL_NAMES = ("ls", "read_file", "write_file", "edit_file")
 
 #: Model-facing text, replacing DeepAgents' defaults. ``edit_file`` carries the
 #: two things that actually make an exact-string replacement land: anchor on a
 #: heading, and copy the paragraph rather than retyping it — with the warning
-#: that ``read_file`` prints line numbers that are not part of the file.
+#: that ``read_file`` prints a ``@@ lines … @@`` header that is not part of the
+#: file (since DeepAgents 0.7 the body below it is verbatim, without the line
+#: numbers and tabs it used to carry).
 _TOOL_DESCRIPTIONS = {
     "ls": (
         "Lists the drafts of this conversation. The working directory is at "
@@ -49,9 +54,10 @@ _TOOL_DESCRIPTIONS = {
         "path of the draft is not known."
     ),
     "read_file": (
-        "Reads a draft from the working directory. The output has a line number "
-        "and a tab prepended to the text of each line; both belong to the display and not to the "
-        "document. Read before a revision, so that `old_string` comes verbatim from the document. "
+        "Reads a draft from the working directory. The output starts with a header line "
+        "`@@ lines … @@` that belongs to the display and not to the document; the lines below it "
+        "are the document verbatim. Read before a revision, so that `old_string` comes verbatim "
+        "from the document. "
         "What stands here, the answer wrote itself; evidence comes from the "
         "source tools."
     ),
@@ -68,8 +74,8 @@ _TOOL_DESCRIPTIONS = {
         "Revises an existing draft by replacing `old_string` exactly once with "
         "`new_string`. `old_string` must be unique in the document: anchor on a "
         "heading and take over the whole paragraph from the heading to the end of the text to "
-        "change, verbatim from the output of `read_file` — without the "
-        "prepended line numbers and tabs. If the text occurs several times, the "
+        "change, verbatim from the output of `read_file` — without its "
+        "`@@ lines … @@` header line. If the text occurs several times, the "
         "tool reports the count; then retry with more surrounding context. For a new document "
         "use `write_file`."
     ),
@@ -97,7 +103,8 @@ def draft_tools(backend: DraftBackend) -> list[BaseTool]:
     middleware = FilesystemMiddleware(
         backend=backend,
         custom_tool_descriptions=_TOOL_DESCRIPTIONS,
-        _permissions=_PERMISSIONS,
+        permissions=_PERMISSIONS,
+        tools=list(DRAFT_TOOL_NAMES),
     )
     by_name = {tool.name: tool for tool in middleware.tools}
     return [by_name[name] for name in DRAFT_TOOL_NAMES if name in by_name]
