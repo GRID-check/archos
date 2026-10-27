@@ -47,6 +47,34 @@ export interface FindingsDocument {
   documentNumber: string | null
 }
 
+/** What a listing row (`ListedDocument`) or a file item (`FileItem`) carries that the findings read. */
+export interface FindingsRow {
+  id: string
+  filename: string
+  displayName?: string | null
+  tags?: readonly string[] | null
+  dossier?: Dossier | null
+  docReferences?: readonly DocumentReference[] | null
+  coverage?: ReadingCoverage | null
+  revisionFacts?: { documentNumber?: string } | null
+  revision?: { supersededBy: unknown } | null
+}
+
+/** One row as the findings read it. */
+export function toFindingsDocument(row: FindingsRow): FindingsDocument {
+  return {
+    id: row.id,
+    name: row.displayName ?? row.filename,
+    filename: row.filename,
+    superseded: Boolean(row.revision?.supersededBy),
+    tags: row.tags ?? [],
+    dossier: row.dossier ?? null,
+    references: row.docReferences ?? [],
+    coverage: row.coverage ?? null,
+    documentNumber: row.revisionFacts?.documentNumber ?? null,
+  }
+}
+
 /** A document a finding or a reference points at. */
 export interface DocumentPointer {
   documentId: string
@@ -84,7 +112,7 @@ export type DocumentFinding =
  */
 export interface ResolvedReference {
   reference: DocumentReference
-  status: 'resolved' | 'missing' | 'self' | 'external'
+  resolution: 'resolved' | 'missing' | 'self' | 'external'
   targets: DocumentPointer[]
 }
 
@@ -200,10 +228,10 @@ export function resolveReferences(
 ): ResolvedReference[] {
   return document.references.map((reference) => {
     const found = targetsOf(reference, documents)
-    if (found === null) return { reference, status: 'external', targets: [] }
+    if (found === null) return { reference, resolution: 'external', targets: [] }
     const others = found.filter((target) => target.id !== document.id)
-    if (others.length > 0) return { reference, status: 'resolved', targets: others.map(pointer) }
-    return { reference, status: found.length > 0 ? 'self' : 'missing', targets: [] }
+    if (others.length > 0) return { reference, resolution: 'resolved', targets: others.map(pointer) }
+    return { reference, resolution: found.length > 0 ? 'self' : 'missing', targets: [] }
   })
 }
 

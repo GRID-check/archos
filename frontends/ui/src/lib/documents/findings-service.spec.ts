@@ -46,7 +46,7 @@ describe('getProjectDocumentFindings', () => {
     expect(result.truncated).toBe(false)
     expect(result.findings).toEqual([])
     expect(result.document?.references[0]).toMatchObject({
-      status: 'resolved',
+      resolution: 'resolved',
       targets: [{ documentId: ID_B, name: 'Grundriss EG' }],
     })
   })

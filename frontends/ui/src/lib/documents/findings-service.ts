@@ -10,29 +10,19 @@
 
 import 'server-only'
 import type { AuthorizedSession } from '@/lib/auth/types'
-import { deriveDocumentFindings, referencedBy, resolveReferences, type FindingsDocument } from './findings'
+import {
+  deriveDocumentFindings,
+  referencedBy,
+  resolveReferences,
+  toFindingsDocument,
+  type FindingsDocument,
+} from './findings'
 import type { DocumentFindingsResponse } from './findings-wire'
 import { documentLevelQuery, DOCUMENT_LEVEL_LIMIT_MAX } from './list-query'
 import { listDocumentsPage } from './service'
-import type { ListedDocument } from './shelf-listing'
 
 /** Pages of the shelf one read follows: 4 × 500 documents, a bound, not a design limit. */
 const MAX_PAGES = 4
-
-/** A listing row as the findings read it. */
-export function toFindingsDocument(row: ListedDocument): FindingsDocument {
-  return {
-    id: row.id,
-    name: row.displayName ?? row.filename,
-    filename: row.filename,
-    superseded: Boolean(row.revision?.supersededBy),
-    tags: row.tags ?? [],
-    dossier: row.dossier ?? null,
-    references: row.docReferences ?? [],
-    coverage: row.coverage ?? null,
-    documentNumber: row.revisionFacts?.documentNumber ?? null,
-  }
-}
 
 async function readShelf(
   session: AuthorizedSession,

@@ -116,11 +116,11 @@ describe('resolveReferences', () => {
 
   it('resolves a drawing number through the file name, case, space and hyphen aside', () => {
     const [ep05, ep07, fire, soil, norm] = resolveReferences(description, project)
-    expect(ep05).toMatchObject({ status: 'resolved', targets: [{ documentId: 'ep05', name: 'Grundriss EG' }] })
-    expect(ep07.status).toBe('missing')
-    expect(fire).toMatchObject({ status: 'resolved', targets: [{ documentId: 'brandschutz' }] })
-    expect(soil.status).toBe('missing')
-    expect(norm).toEqual({ reference: norm.reference, status: 'external', targets: [] })
+    expect(ep05).toMatchObject({ resolution: 'resolved', targets: [{ documentId: 'ep05', name: 'Grundriss EG' }] })
+    expect(ep07.resolution).toBe('missing')
+    expect(fire).toMatchObject({ resolution: 'resolved', targets: [{ documentId: 'brandschutz' }] })
+    expect(soil.resolution).toBe('missing')
+    expect(norm).toEqual({ reference: norm.reference, resolution: 'external', targets: [] })
   })
 
   it('prefers the title block number over a file name', () => {
@@ -132,19 +132,19 @@ describe('resolveReferences', () => {
 
   it('does not match a longer number or a number inside a word', () => {
     const others = [doc('x', { filename: 'EP-050_Schnitt.pdf' }), doc('y', { filename: 'STEP-05.pdf' })]
-    expect(resolveReferences(description, [description, ...others])[0].status).toBe('missing')
+    expect(resolveReferences(description, [description, ...others])[0].resolution).toBe('missing')
   })
 
   it('finds the sheet of a detail reference', () => {
     const source = doc('s', { references: [ref('plan', '3/a-501', 'Detail 3/A-501')] })
     const sheet = doc('t', { documentNumber: 'A-501' })
-    expect(resolveReferences(source, [source, sheet])[0]).toMatchObject({ status: 'resolved', targets: [{ documentId: 't' }] })
+    expect(resolveReferences(source, [source, sheet])[0]).toMatchObject({ resolution: 'resolved', targets: [{ documentId: 't' }] })
   })
 
   it('answers a broad Gutachten reference with a specific report', () => {
     const source = doc('s', { references: [ref('document', 'expert_report', 'Gutachten')] })
     const soil = doc('b', { dossier: dossier({ documentType: 'soil_report' }) })
-    expect(resolveReferences(source, [source, soil])[0].status).toBe('resolved')
+    expect(resolveReferences(source, [source, soil])[0].resolution).toBe('resolved')
   })
 
   it('reads a reference only the document itself answers as self, not missing', () => {
@@ -152,7 +152,7 @@ describe('resolveReferences', () => {
       dossier: dossier({ documentType: 'building_description' }),
       references: [ref('document', 'building_description', 'Baubeschreibung')],
     })
-    expect(resolveReferences(own, [own])[0].status).toBe('self')
+    expect(resolveReferences(own, [own])[0].resolution).toBe('self')
   })
 })
 

@@ -15,6 +15,7 @@ import { projects } from './projects'
 import { chat } from './chat'
 import { collaboration } from './collaboration'
 import { files } from './files'
+import { dossier } from './dossier'
 import { officeShelf } from './office-shelf'
 import { bim } from './bim'
 import { knowledge } from './knowledge'
@@ -59,6 +60,7 @@ export const en = {
   chat,
   collaboration,
   files,
+  dossier,
   officeShelf,
   bim,
   knowledge,
