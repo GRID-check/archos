@@ -164,21 +164,24 @@ first. "BFF" is the word ADR-0003 and the code already use.
    `backend`/`be:` already matches.
 5. **No brand in a code or infrastructure name**: not `aiq`, not `grid`, not
    `piloti`. That covers paths, packages and distributions, imports,
-   identifiers, environment variables, wire and telemetry names, images and
-   deploy names. Piloti is due a rebrand, and a name that carries the brand
-   moves the day the brand does. So the agent is `packages/agent` importing
-   `agent`, and the backend app's import is `backend`; neither name is taken
-   in the environment today (checked on 2026-10-27). Brands stay where people
-   read them: copy, i18n, docs prose, and the assets in `packages/brand`,
-   whose path names no brand. `grid` the CSS layout is a word, not the
-   company. Vendors appear where the adapter is one vendor's
-   (`tavily-web-search`).
-6. **No `aiq` at the end.** It is the brand with the most names (the
-   inventory below), so it gets its own row in the plan: no path,
-   identifier, wire name, deploy name or stored key carries it. History is exempt: accepted ADRs and
-   `releasenotes/` say what was true then.
+   identifiers, environment variables, wire, telemetry and operation names,
+   images, deploy names and stored keys. Piloti is due a rebrand, and a name
+   that carries the brand moves the day the brand does. So the agent is
+   `packages/agent` importing `agent`, and the backend app imports
+   `backend`. Neither import is taken in the environment (checked on
+   2026-10-27), but both distribution names are taken on PyPI (`agent`,
+   `backend`). A workspace member always resolves to the member, so that is
+   only a risk where something installs by name from an index; nothing may
+   (`pip install agent`, an exported requirements file, an image stage
+   that runs `uv pip install` without the workspace). Brands stay where people
+   read them: copy, i18n, docs prose, and the assets in `packages/brand`.
+   `grid` the CSS layout is a word, not the company. Vendors appear where the
+   adapter is one vendor's (`tavily-web-search`). `aiq` goes first, because
+   it carries the most names (the inventory below). History is exempt: ADRs,
+   `releasenotes/`, `docs/audit/` and migrations say what was true then, and
+   are not renamed.
 
-### The `aiq` inventory
+### The brand inventory
 
 Every category found on 39f8628, what replaces it, and the row that does it:
 
@@ -188,14 +191,16 @@ Every category found on 39f8628, what replaces it, and the row that does it:
 | Python symbols | `AIQAPIConfig`, `AIQAPIWorker`, `register_aiq_api`, … | `Backend…`, `register_backend` | 10a |
 | Entry points | group `aiq_api.validators`; NAT plugins `aiq_*` | `backend.validators`; the plugin's job (`research`, `chat`, …). No `NAT_PLUGIN_*` list exists in `deploy/` or `configs/`; re-check before renaming | 10a |
 | Environment variables | 87 `AIQ_*`, renamed to `GRID_*` by #1270 (192 variables in all) | a neutral prefix, chosen in the 10b PR: `GRID_` is the company. Read both for one release, warn on the old one, then drop it | 10b |
-| Wire names | headers `X-AIQ-Mode`, `x-aiq-access-channel` | a neutral `X-…` name. The BFF and the backend deploy separately, so the receiver accepts both for one release | 10b |
-| Telemetry names | span attributes `aiq.auth.*`, `aiq.user.*`, `aiq.access.channel`; OTel services `grid-aiq-agent`, `grid-aiq-api`; `LANGCHAIN_PROJECT=aiq-research` | `app.*`; `backend-chat`, `backend-api`. Langfuse and PostHog views that filter on the old names are re-pointed in the same PR | 10b |
+| Wire names | headers `X-AIQ-Mode`, `x-aiq-access-channel` | a neutral `X-…` name, chosen with the prefix. The BFF and the backend deploy separately, so the receiver accepts both for one release | 10b |
+| Telemetry names | span attributes `aiq.auth.*`, `aiq.user.*`, `aiq.access.channel`; OTel services `grid-aiq-agent`, `grid-aiq-api`; `LANGCHAIN_PROJECT=aiq-research` | a neutral namespace chosen with the prefix, not `app.*`, which OpenTelemetry's semantic conventions already use; `backend-chat`, `backend-api`. Langfuse and PostHog views that filter on the old names are re-pointed in the same PR | 10b |
 | Kubernetes | `aiq-agent`, `aiq-agent-headless`, `aiq-api`, Secret `aiq-agent-occupancy-auth`, `agent-worker`; and by rule 4, `frontend`, `web` | `chat`, `chat-headless`, `api`, `chat-occupancy-auth`, `research-worker`; `workspace`, `site` | 10c |
 | Compose | services and containers `aiq-*`, `aiq-blueprint-*`, network `aiq-network`, the NVIDIA image tags in the comments | role names as in Kubernetes; the Compose default network | 10c |
 | Images | CI images `grid-oib-backend`, `grid-oib-frontend`, `grid-oib-web` | `backend`, `workspace`, `site` (rules 4 and 5; the registry path already names the owner) | 10c |
 | Persisted names | Postgres databases `aiq_jobs`, `aiq_checkpoints`, role `aiq`; vector metadata keys `aiq:embed_fingerprint`, `aiq:embed_model`, `aiq:bm25_length`; browser key `aiq-chat-store`; Compose volume `aiq-data` | `jobs`, `checkpoints`, role `agent`; `embed_fingerprint`, `embed_model`, `bm25_length`; `chat-store`; `data`. Renamed last, each with a migration that reads the old name. The Postgres rename is a one-way door for the operator and gets its own plan when scheduled | 10d |
 | Other distributions | `@grid/ifc-spatial`, `grid-oib-pulumi`, `grid-oib-policy`, `aiq-blueprint-ui`, `piloti-web` | `ifc-spatial`, `infra`, `infra-policy`, `workspace`, `site` | the row that moves each, else 10a |
-| Other paths | 131 names under `docs/`, the site's art and downloads, the UI's card modules (`grid-cards`), fixtures (`grid_request_context.json`), counted in `ci/brand_names_baseline.json` | renamed with the code around them; the count only falls | each row |
+| Agent-door names | MCP operations `piloti-ask-create`, `-get`, `-cancel`, `piloti-change-undo`; resources `piloti://guide`, `catalog`, `glossary`, `operation`, `project`; the `piloti-mcp-mode` header | the operation's job (`ask-create`, …) and a neutral URI scheme, the old names served beside the new for one release, because outside agents have them configured | 10b |
+| Deploy names | `grid-app-*` Kubernetes objects and Jobs (`grid-app-authz-catalog`, `grid-app-migrate`, `grid-app-folder-grants`, …) | role names, as in the Kubernetes row | 10c |
+| Other paths | 124 path names, most of them the site's art and downloads, the UI's card modules (`grid-cards`), docs and fixtures (`grid_request_context.json`), counted in `ci/brand_names_baseline.json` with the 7 distributions above | renamed with the code around them; the count only falls | each row |
 | Docs and tests | prose and test names | follow the row that renames the thing they describe | each row |
 
 ### Inside `apps/workspace`
@@ -268,7 +273,7 @@ open PRs touching that tree have drained or been rebased by their authors.
 | 5 | Import hygiene: `sources.<pkg>.src.X` → the installed name (338 lines), and the 69 dotted `tests.aiq_agent.…` imports → an importable helpers module. This ends the double identity and makes rows 6 and 7 pure renames | ~410 | open retrieval and agent-test PRs |
 | 6 | `sources/*` + `tests/knowledge_layer_tests` → `packages/<distribution>` | ~470 | row 5 |
 | 7 | `frontends/aiq_api`, `deploy/Dockerfile` with `entrypoint.py` and `start_web.py` → `apps/backend`. Paths only | ~220 | open backend-route PRs |
-| 8 | `src/aiq_agent` + `tests/aiq_agent` → `packages/agent`: the `git mv`, then the pyproject split as its own commit. The distribution stays `aiq-agent` until 10a; the layout test allowlists that | ~1,020 | row 5; open agent PRs |
+| 8 | `src/aiq_agent` + `tests/aiq_agent` → `packages/agent`: the `git mv`, then the pyproject split as its own commit. The distribution stays `aiq-agent` until 10a; the layout test allowlists that. Lowers `aiq_agent` in the brand baseline from 2 to 1 | ~1,020 | row 5; open agent PRs |
 | 9 | `frontends/ui` → `apps/workspace`, with `app/ ui/ bff/` inside, in two commits; task namespace `fe:` → `workspace:` and CI tier `frontend` → `workspace` | 1,464 | the in-flight UI queue |
 | 10a | Python rename: imports, distributions, symbols, entry points | ~10,800 | an empty Python PR queue |
 | 10b | Environment variables, wire names, telemetry names, each read-both for one release | ~150 names | 10a |
@@ -404,11 +409,16 @@ them:
   - The number of tracked lines containing `aiq` (case-insensitive, history
     and `tests/.test_durations` excluded) may only fall from its baseline of
     about 13,000. After 10d it is zero, except names allowlisted with a reason.
-- `tests/test_brand_names.py`: no new path or package name carries `aiq`,
-  `grid` or `piloti`. `ci/brand_names_baseline.json` counts the existing ones
-  by name, not path, so a move leaves it alone, and a count only falls.
-  History (accepted ADRs, `releasenotes/`, `docs/audit/`, migrations) is
-  exempt, and `grid` the CSS layout is listed as not the brand.
+- `tests/test_brand_names.py`, in the harness Repo checks runs on every pull
+  request: no new path or package name carries `aiq`, `grid` or `piloti`.
+  `ci/brand_names_baseline.json` counts the existing ones by name, not path,
+  so a move leaves it alone unless it merges two directories of one name
+  (row 8 turns `aiq_agent: 2` into 1, and lowers it). A count only falls,
+  and the update never raises one. History is exempt, and `grid` the CSS
+  layout is listed as not the brand. Identifiers, environment variables and
+  wire names are not counted yet: the 819 files reading `GRID_` can grow
+  until 10b picks the prefix, and then a line ratchet like the `aiq` one
+  takes them.
 - The filter-coverage test catches a moved path that no CI filter matches.
 - After row 9, two count ratchets on `apps/workspace/bff/`: client modules
   (hooks or `'use client'`, 6 today) and imports from `@/features`

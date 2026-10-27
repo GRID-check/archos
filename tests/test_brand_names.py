@@ -9,10 +9,12 @@ tracked paths that end in a component with a brand word in it, plus each
 `pyproject.toml` and `package.json` distribution name. It is keyed by the name,
 not by the path, so a directory move leaves it alone. A count may only fall: a
 name over its count fails, and so does one under it, so the baseline follows
-every rename. Rerun with UPDATE_BRAND_NAMES=1.
+every rename: UPDATE_BRAND_NAMES=1 lowers it, and never raises a count or adds
+a name.
 
-Exempt as history, whose file names say what was true then: accepted ADRs,
-`releasenotes/`, `docs/audit/` and migrations, which are never renamed.
+Exempt as history, whose file names say what was true then: ADRs,
+`releasenotes/`, `docs/audit/` and migration files, which are never renamed.
+A migration's directory and the ones above it still count.
 """
 
 from __future__ import annotations
@@ -32,7 +34,8 @@ BRAND = re.compile(r"aiq|grid|piloti", re.IGNORECASE)
 NOT_A_BRAND = frozenset(
     {"document-grid", "file-grid.tsx", "grid-tile.tsx", "projects-grid.spec.tsx", "projects-grid.tsx"}
 )
-HISTORY = re.compile(r"^(docs/adr|docs/audit|releasenotes)/|(^|/)(drizzle|migrations)/")
+HISTORY = re.compile(r"^(docs/adr|docs/audit|releasenotes)/")
+MIGRATIONS = frozenset({"drizzle", "migrations"})
 
 
 def brand_names(paths: list[str]) -> Counter[str]:
@@ -42,10 +45,15 @@ def brand_names(paths: list[str]) -> Counter[str]:
         for path in paths
         if not HISTORY.search(path)
         for parts in [path.split("/")]
-        for index, part in enumerate(parts)
+        for index, part in enumerate(parts[: _first_migration(parts)])
         if BRAND.search(part) and part not in NOT_A_BRAND
     }
     return Counter(end.rsplit("/", 1)[-1] for end in ends)
+
+
+def _first_migration(parts: list[str]) -> int:
+    """How many components count: a migration's own file name (below `drizzle/` or `migrations/`) does not."""
+    return next((index + 1 for index, part in enumerate(parts[:-1]) if part in MIGRATIONS), len(parts))
 
 
 def _distribution(path: str) -> str | None:
@@ -56,7 +64,11 @@ def _distribution(path: str) -> str | None:
 
 
 def package_names(paths: list[str]) -> Counter[str]:
-    manifests = [path for path in paths if path.rsplit("/", 1)[-1] in {"package.json", "pyproject.toml"}]
+    manifests = [
+        path
+        for path in paths
+        if path.rsplit("/", 1)[-1] in {"package.json", "pyproject.toml"} and not HISTORY.search(path)
+    ]
     names = [name for path in manifests if (name := _distribution(path)) and BRAND.search(name)]
     return Counter(f"package:{name}" for name in names)
 
@@ -75,22 +87,33 @@ def test_a_name_is_counted_once_wherever_it_moves():
         "apps/site/public/piloti-mark.svg",
         "releasenotes/notes/piloti-launch.yaml",
         "frontends/ui/drizzle/0081_grid_agents.sql",
+        "packages/piloti-tool/migrations/0001_piloti.sql",
         "apps/site/src/neutral.ts",
         "apps/workspace/ui/file-grid.tsx",
     ]
 
-    assert brand_names(paths) == {"aiq_agent": 2, "piloti": 1, "piloti-mark.svg": 1}
+    assert brand_names(paths) == {"aiq_agent": 2, "piloti": 1, "piloti-mark.svg": 1, "piloti-tool": 1}
     assert brand_names([path.replace("src/", "packages/agent/src/") for path in paths[:2]]) == {
         "aiq_agent": 1,
         "piloti": 1,
     }
 
 
+def lowered(baseline: dict[str, int], current: dict[str, int]) -> dict[str, int]:
+    """The baseline after an update: each count falls to the current one, and none rises or appears."""
+    return {name: low for name, count in baseline.items() if (low := min(count, current.get(name, 0)))}
+
+
+def test_the_update_only_lowers():
+    assert lowered({"aiq_agent": 2, "piloti-mark.svg": 1}, {"aiq_agent": 1, "piloti-badge.tsx": 1}) == {"aiq_agent": 1}
+
+
 def test_no_new_path_or_package_name_carries_a_brand():
     current = _current()
-    if os.environ.get("UPDATE_BRAND_NAMES"):
-        BASELINE_PATH.write_text(json.dumps(current, indent=2) + "\n", encoding="utf-8")
     baseline: dict[str, int] = json.loads(BASELINE_PATH.read_text(encoding="utf-8"))
+    if os.environ.get("UPDATE_BRAND_NAMES"):
+        baseline = lowered(baseline, current)
+        BASELINE_PATH.write_text(json.dumps(baseline, indent=2) + "\n", encoding="utf-8")
 
     grown = {name: (baseline.get(name, 0), count) for name, count in current.items() if count > baseline.get(name, 0)}
     assert not grown, (
