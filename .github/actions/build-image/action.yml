@@ -51,7 +51,7 @@ runs:
   using: composite
   steps:
     # The web build reprocesses every blog image on a cold cache, and the layer
-    # cache cannot help it (`COPY . .` comes first). CI's web job writes this
+    # cache cannot help it (`COPY . .` comes first). CI's site job writes this
     # cache; restoring it into the build context lets the container start warm.
     # apps/site/.dockerignore leaves `.astro-cache` in the context for this,
     # and the runner stage copies only dist/, so it never reaches the image.

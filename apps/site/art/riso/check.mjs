@@ -10,7 +10,7 @@
  *   - a work's JOBS table does not evaluate (bad format, plate, alt text ...)
  *   - a site or app job's file is not exported (public/art/<file> missing in
  *     apps/site or frontends/ui)
- *   - a manifest (src/data/art.json for the site, ../ui/src/lib/art/art.json
+ *   - a manifest (src/data/art.json for the site, ../../frontends/ui/src/lib/art/art.json
  *     for the app) differs from what the JOBS tables and the files on disk give
  *     (stale alt text, a re-export whose ?v= hash was not written, a hand
  *     edit): run node art/riso/export.mjs --manifest, or a full export
@@ -23,7 +23,7 @@
  *   - a file in either public/art/ is in no manifest entry (an orphan)
  *   - the site's or the app's src/ names an art id not in its own manifest, or
  *     a /art/ file path at all: the site reaches art by id through
- *     src/lib/art.ts, the app through ../ui/src/lib/art/
+ *     src/lib/art.ts, the app through ../../frontends/ui/src/lib/art/
  *   - public/downloads/ (the out and app files, for the unlisted image page)
  *     lacks a job's file, holds a file no job names, has a file over 1 MB or
  *     of other pixel size, a separation that is not grayscale, or

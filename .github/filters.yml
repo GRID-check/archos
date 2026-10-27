@@ -114,6 +114,8 @@ site:
   # both apps' copies to the master (packages/brand/build-brand-assets.mjs --check).
   - 'packages/brand/**'
   - 'frontends/ui/src/app/icon.svg'
+  # The app's inline copy of the mark's path, held by the same --check.
+  - 'frontends/ui/src/lib/brand.ts'
   # The app's riso art: exported from apps/site/art/riso and held to its
   # JOBS tables by the site's `npm run check` (art/riso/check.mjs).
   - 'frontends/ui/public/art/**'
@@ -126,6 +128,10 @@ site:
   - '.github/actions/setup-task/**'
 infra:
   - 'deploy/**'
+  # deploy/pulumi/src/app/web.spec.ts reads the site's Dockerfile and the
+  # server its CMD starts.
+  - 'apps/site/Dockerfile'
+  - 'apps/site/runtime/server.mjs'
   # deploy/pulumi/src/data/qdrant-alerts.spec.ts reads the runbook it links.
   - 'docs/deployment/qdrant-runbook.md'
   - 'Taskfile.yml'

@@ -27,10 +27,10 @@
  * transmittance T), turned into ink alpha by pageFrom() below.
  *
  * site -> public/art/ (committed; the pre-commit hook refuses files > 1 MB)
- * app  -> ../ui/public/art/ (the product app; committed, same limit)
+ * app  -> ../../frontends/ui/public/art/ (the product app; committed, same limit)
  * out  -> art/riso/out/<work>/ (gitignored; reproducible from the pin)
  * Always ends by rewriting the manifests from every work's JOBS table:
- * src/data/art.json for the site, ../ui/src/lib/art/art.json for the app, each
+ * src/data/art.json for the site, ../../frontends/ui/src/lib/art/art.json for the app, each
  * src versioned with ?v=<sha256 of the file> so a re-export busts caches.
  * Then publishes the out and app files into public/downloads/ for the unlisted
  * image page (downloads.mjs).

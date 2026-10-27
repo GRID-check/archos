@@ -5,7 +5,7 @@
  *
  * Source of record: OIB-Richtlinien, Begriffsbestimmungen, Ausgabe Mai 2023.
  * The repo holds GK 4 verbatim and the office's published reading of GK 1 to 5
- * („sinngemäß", `apps/site/src/data/landing/glossar.ts`, „Die fünf
+ * („sinngemäß", `apps/site/src/data/landing/glossary.ts`, „Die fünf
  * Gebäudeklassen in Kürze"). Each rule below names which of the two it
  * encodes. The Richtlinie and the `gebaeudeklasse` skill stay the authority;
  * where this code and the Wortlaut disagree, the Wortlaut wins.

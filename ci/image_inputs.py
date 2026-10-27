@@ -138,6 +138,15 @@ def _git(*args: str) -> str:
     return subprocess.run(["git", *args], cwd=ROOT, check=True, capture_output=True, text=True).stdout
 
 
+def _tracks(rev: str, path: str) -> bool:
+    return (
+        subprocess.run(
+            ["git", "cat-file", "-e", f"{rev}:{path}"], check=False, cwd=ROOT, capture_output=True
+        ).returncode
+        == 0
+    )
+
+
 def inputs(image: Image, rev: str = "HEAD") -> list[str]:
     """The repository paths whose content is this image's content."""
     dockerfile = _git("show", f"{rev}:{image.dockerfile}")
@@ -191,9 +200,16 @@ def plan_pull_request(base: str, *, week: str) -> tuple[list[dict], list[dict]]:
     change the pull request made.
     """
     merge_base = _git("merge-base", base, "HEAD").strip()
-    head, before = hashes("HEAD", week=week), hashes(merge_base, week=week)
+    head = hashes("HEAD", week=week)
+    # An image whose Dockerfile the base does not have (new, or moved with its
+    # directory) has no inputs there to compare: it is a change, and is built.
+    before = {
+        image.name: input_hash(image, merge_base, week=week)
+        for image in IMAGES
+        if _tracks(merge_base, image.dockerfile)
+    }
     images = [_entry(image, head[image.name]) for image in IMAGES]
-    return [entry for entry in images if head[entry["name"]] != before[entry["name"]]], images
+    return [entry for entry in images if head[entry["name"]] != before.get(entry["name"])], images
 
 
 Published = Callable[[str, str], bool | None]
