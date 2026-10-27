@@ -112,7 +112,7 @@ The same image as `aiq-agent`, started as `GRID_ROLE=api`: the Knowledge API
 (collections, documents, search, ingest enqueue), the Async Job API with its SSE
 streams, the LLM utilities (titles, summaries, consistency check, feedback digest,
 lesson distillation, skill review, note embeddings), admin, the housekeeping
-routes, and the debug console. It is what `BACKEND_URL=http://aiq-api:8000` names,
+routes. It is what `BACKEND_URL=http://aiq-api:8000` names,
 for the frontend, the purger and the `housekeeping` clock. It serves no chat
 socket. [`docs/api/python-endpoints.md`](../api/python-endpoints.md) lists which
 role serves which route.

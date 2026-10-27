@@ -55,7 +55,6 @@ Starts the NAT FastAPI server for deep research with async job support.
 | Endpoint | Description |
 |----------|-------------|
 | `http://localhost:8000/docs` | API Documentation (Swagger UI) |
-| `http://localhost:8000/debug` | Debug Console for testing async jobs |
 | `http://localhost:8000/health` | Health check |
 | `http://localhost:8000/v1/jobs/async/agents` | List available agent types |
 | `http://localhost:8000/v1/jobs/async/submit` | Submit async job (POST) |
