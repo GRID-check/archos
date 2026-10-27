@@ -480,7 +480,10 @@ its passage; this asks what the reader waited for and what they got.
 - **Output:** `report.md` and `results.json` in `--out`. `--baseline` adds,
   in brackets after the wall-seconds and reasoning-token medians, the change
   against an earlier `results.json`'s median for the same question, when it is
-  1 or more; nothing else is compared. `--report` re-renders a `results.json`
+  1 or more, and writes `compare.md` beside the new run: accuracy, rounds, tool calls,
+  tokens and cost per answer and latency, before, after and the change (the files set
+  below says how to read it; `--compare <before> <after>` renders it from two saved
+  runs). `--report` re-renders a `results.json`
   and re-checks it against the question set as it is now, re-reading each
   run's recording beside it, without paying for the runs again.
 - **Flags:** `--only <id> …` runs the named questions (an unknown id, or
@@ -616,7 +619,9 @@ cost about two US cents on the boot-default models that day.
 
 Run it yourself, before and after, as above, and put the report in the PR.
 Its bookkeeping is also covered offline by
-[`tests/test_answer_suite.py`](../../tests/test_answer_suite.py). The
+[`tests/test_answer_suite.py`](../../tests/test_answer_suite.py), and the
+before/after report and the arms run by
+[`tests/test_answer_suite_compare.py`](../../tests/test_answer_suite_compare.py). The
 September 2026 measurements it grew out of are in
 [turns-per-answer-audit-2026-09.md](../architecture/turns-per-answer-audit-2026-09.md).
 
@@ -679,9 +684,13 @@ task be:eval:answer-suite -- --set workspace --out /tmp/ws/before
 task be:eval:answer-suite -- --set workspace --out /tmp/ws/after --baseline /tmp/ws/before/results.json
 ```
 
-**The files set** (`-- --set files --arm search|navigate|both`, ADR-0127) asks about
+**The files set** (`-- --set files --arm semantic|grep|hybrid|all`, ADR-0127, ADR-0133) asks about
 a project's own files: what is in a folder, where a document is, how many, what a
-page range says, every occurrence of a word and how often it stands. About 20 `pf-*` rows
+page range says, every occurrence of a word and how often it stands, an exact lookup
+(a Plannummer, a clause, `REI 90`, "is X mentioned anywhere" with a true negative beside
+a true positive), and a fact outside the document that is open (`open:` on a row, sent
+as the composer's "Asking about"), which tests that a path or open document is a hint
+the agent weighs, never a scope it is locked into. About 30 `pf-*` rows
 (`tests/fixtures/files_eval/files_questions.yaml`, whose header says what each check
 means) run through the real `list_files`, `knowledge_search` and `read_passage` in a
 fixture project (`tests/fixtures/files_eval/project.yaml`, the intake eval's project
@@ -691,11 +700,50 @@ tokens, seconds, the moves each row made and the `status:budget|repeat|width`
 counts. A row with `needs:` waits for a tool argument a later slice adds and is
 listed as not applicable until the tool schema shows it.
 
-The arms measure each way of finding alone: `search` unbinds `list_files` and
-`read_passage` and keeps `match=meaning`; `navigate` drops the round-0 prefetch
+The arms measure each way of finding alone, through `--override` on the knobs the
+agent already reads (`files_eval.arm_overrides`): `semantic` unbinds every listing,
+reading and literal tool (`list_files`, `read_passage`, and ADR-0133's `ls`, `glob`,
+`grep`, `read_file`) and keeps `match=meaning`; `grep` drops the round-0 prefetch
 (`prefetch: false` on the agent) and keeps the literal modes (`match_modes` on
-`knowledge_search`); `both` is production. Both knobs are eval-only and default to
-today's behaviour. Run each arm with `--runs 3`, as the judge rows are noisy.
+`knowledge_search`), or unbinds `knowledge_search` once `grep` is a configured tool;
+`hybrid` is production. Both knobs are eval-only and default to today's behaviour.
+`search`, `navigate` and `both` are the arms' earlier names and still work. Run with
+`--runs 3`, as the judge rows are noisy.
+
+The same rows run before and after the ADR-0133 rename. `files_eval.canonical` reads a
+call by a coming name as the call it stands for today (`ls`/`glob` as `list_files`,
+`read_file` as `read_passage`, `grep` as `knowledge_search(match=exact|regex)`, a
+`path` as its `folder` and `file_name`), on both the recorded call and the row's
+expectation, so `{knowledge_search: {match: exact}}` holds for `grep("Fluchtweg")`.
+
+**Before and after the filesystem move, one command each:**
+
+```bash
+task be:eval:answer-suite -- --set files --arm all --runs 3 --out /tmp/fs/before   # on the base commit
+task be:eval:answer-suite -- --set files --arm all --runs 3 --out /tmp/fs/after --baseline /tmp/fs/before
+task be:eval:answer-suite -- --compare /tmp/fs/before /tmp/fs/after                # re-render, no model calls
+```
+
+`--arm all` runs the three arms in turn, each into `<out>/<arm>/` (its own
+`results.json` and `report.md`, and its own conversation ids), and writes
+`<out>/arms.md`, the arms side by side. `--baseline` (a `results.json` or such a
+directory) also writes `<out>/compare.md`; `--compare` writes it beside the second run.
+Paste `compare.md` into the PR. How to read it (`scripts/turn_census/compare.py`):
+
+- **Accuracy** is the share of finished runs whose ANSWER checks all held: the values
+  it must name, the claims it must not make, a judged meaning, a filed proposal. The
+  tool, round and envelope checks are counted apart in **All checks**: an arm that
+  unbinds a tool fails that tool's check by construction, so only accuracy compares
+  across arms. `n` is the runs with an answer check; an errored run is under Errors.
+- **Rounds** (model calls up to the answer), **tool calls**, **input/output tokens**
+  (the research calls') and **cost** are means per finished run; **wall s** is the
+  median. Cost is what the provider billed for every call of the turn, OpenRouter's
+  `usage.cost` on each recorded call (`Run.cost_usd`); a call without it is counted as
+  uncosted, and a `results.json` from before the capture shows `–`.
+- **Δ** rows are after minus before, accuracy in percentage points. **Rows that moved**
+  lists each row whose accuracy changed or whose mean rounds moved by half a round, as
+  `correct/graded · rounds · input tokens`. At three runs a row, one run either way is
+  noise; read the arm totals, and the rows only for why.
 
 The project has to exist where the tools read it. The suite seeds it itself
 (`scripts/turn_census/fixture_files.py`: each file cut by the ingest job's own
@@ -706,12 +754,6 @@ neighbour, and the `pf-count-*` rows ask for counts that are wrong when either i
 counted. Seeding is idempotent and embeds only what changed; a file cut another way
 before loses its stale points. It needs the deployment's embedding key. Reseed after
 editing `project.yaml` by running the suite again.
-
-```bash
-task be:eval:answer-suite -- --set files --arm both --runs 3 --out /tmp/pf/both
-task be:eval:answer-suite -- --set files --arm search --runs 3 --out /tmp/pf/search
-task be:eval:answer-suite -- --set files --arm navigate --runs 3 --out /tmp/pf/navigate
-```
 
 The suite starts each run from the working tree: edit nothing under `src/`
 while it runs, or run it from an exported copy of the commit

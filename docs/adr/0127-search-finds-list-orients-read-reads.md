@@ -252,7 +252,8 @@ flowchart LR
 
 ### Confirmation
 
-* `task be:eval:answer-suite -- --set files --arm search|navigate|both`, before and
+* `task be:eval:answer-suite -- --set files --arm semantic|grep|hybrid|all` (named
+  `search|navigate|both` until ADR-0133, and still accepted), before and
   after each slice that changes an answer (the AGENTS.md obligation). Rows live in
   `tests/fixtures/files_eval/files_questions.yaml`; `tests/test_files_eval_rows.py`
   fails a row without `expect.tools`, and a row that names a file the fixture does not

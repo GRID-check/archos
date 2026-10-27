@@ -7,13 +7,22 @@ agent and the real ``list_files``, ``knowledge_search`` and ``read_passage``, in
 (``judge.py``). What it adds is the question the set exists for: did the turn use the move that
 fits (list to orient, search to find, read to read), and was the answer right.
 
-Three arms (``--arm``) change what the agent may do, through ``--override`` pairs on the one config:
+Three arms (``--arm``, ADR-0133's Confirmation) change what the agent may do, through ``--override``
+pairs on the one config, by today's tool names and by the ones ADR-0133 brings (``ls``, ``glob``,
+``grep``, ``read_file``):
 
-- ``search``: ranked search only. ``list_files`` and ``read_passage`` are unbound and
+- ``semantic``: ranked search only. Every listing, reading and literal tool is unbound and
   ``knowledge_search`` accepts ``match=meaning`` alone.
-- ``navigate``: no round-0 prefetch and no ranked search: ``knowledge_search`` accepts the literal
-  modes only.
-- ``both``: production's configuration.
+- ``grep``: no round-0 prefetch and no ranked search: ``knowledge_search`` accepts the literal
+  modes only or, once ``grep`` is a tool of its own, is unbound.
+- ``hybrid``: production's configuration.
+
+``--arm all`` runs the three in turn. The names before ADR-0133 (``search``, ``navigate``, ``both``)
+are read as these, so a results.json written with them still compares.
+
+The same rows run before and after the rename: a recorded call by a coming name is read as the call
+it stands for today (:func:`canonical`), and so is a row's expectation, so ``{knowledge_search:
+{match: exact}}`` holds for ``grep("Fluchtweg")`` and ``list_files`` for ``ls("/project/")``.
 
 The row's ``needs`` names an argument that exists only after its slice lands. A row whose argument
 the tools do not have yet is "not applicable on this commit": it is not run, so the baseline is
@@ -41,7 +50,19 @@ CHECK_KEYS = frozenset(
     {"tools", "max_research_calls", "mentions", "not_mentions", "at_least", "judge", "no_repeat", "proposals", "marks"}
 )
 TOOL_KEYS = frozenset({"must", "any", "must_not"})
-ARMS = ("search", "navigate", "both")
+ARMS = ("semantic", "grep", "hybrid")
+#: The arm names before ADR-0133, read as the arm each was.
+LEGACY_ARMS = {"search": "semantic", "navigate": "grep", "both": "hybrid"}
+#: The tools that list, read or match literally, by today's names and by ADR-0133's (§8).
+LITERAL_TOOLS = frozenset({"list_files", "read_passage", "ls", "glob", "grep", "read_file"})
+#: ADR-0133 §8: each coming tool, the tool it stands for today, and its arguments' names today.
+#: ``path`` and ``file_path`` are not renamed: each becomes the scope it addresses (:func:`path_scope`).
+TOOL_ALIASES: dict[str, tuple[str, dict[str, str]]] = {
+    "ls": ("list_files", {}),
+    "glob": ("list_files", {"pattern": "name_contains"}),
+    "read_file": ("read_passage", {}),
+    "grep": ("knowledge_search", {"pattern": "query", "mode": "match"}),
+}
 
 #: An argument a slice adds, and where the tools' own schema shows it: ``needs`` -> (tool, argument).
 #: ``regex`` is a value of ``match``, which the schema cannot show; the tool's description says it.
@@ -91,22 +112,41 @@ def split_applicable(rows: list[dict], available: set[str] | None = None) -> tup
 # --- the arms --------------------------------------------------------------------
 
 
-def arm_overrides(arm: str, tools: list[str]) -> list[list[str]]:
-    """The ``--override`` pairs of an arm. ``tools`` is the agent's configured tool list (the config's own)."""
-    if arm not in ARMS:
+def arm_name(arm: str | None) -> str:
+    """The arm as ADR-0133 names it: a name from before it is read as the arm it was, none as hybrid."""
+    name = LEGACY_ARMS.get(str(arm or "hybrid"), str(arm or "hybrid"))
+    if name not in ARMS:
         raise ValueError(f"unknown arm {arm!r}; one of {', '.join(ARMS)}")
-    if arm == "both":
+    return name
+
+
+def arms_of(arm: str) -> list[str]:
+    """The arms ``--arm`` names: one, or all three for ``all``."""
+    return list(ARMS) if arm == "all" else [arm_name(arm)]
+
+
+_TOOLS_KEY = "functions.shallow_research_agent.tools"
+_MODES_KEY = "functions.knowledge_search.match_modes"
+_PREFETCH_KEY = "functions.shallow_research_agent.prefetch"
+
+
+def arm_overrides(arm: str, tools: list[str]) -> list[list[str]]:
+    """The ``--override`` pairs of an arm. ``tools`` is the agent's configured tool list (the config's own).
+
+    The arm restricts what is bound through the knobs the agent already reads: its tool list, the
+    search's ``match_modes`` and the round-0 ``prefetch``. Literal search is a mode of
+    ``knowledge_search`` today; once ``grep`` is configured it is a tool, and the grep arm unbinds the
+    ranked one instead of narrowing its modes.
+    """
+    arm = arm_name(arm)
+    if arm == "hybrid":
         return []
-    if arm == "search":
-        kept = [name for name in tools if name not in ("list_files", "read_passage")]
-        return [
-            ["functions.shallow_research_agent.tools", ",".join(kept)],
-            ["functions.knowledge_search.match_modes", "meaning"],
-        ]
-    return [
-        ["functions.shallow_research_agent.prefetch", "false"],
-        ["functions.knowledge_search.match_modes", "exact,regex"],
-    ]
+    if arm == "semantic":
+        pairs = [[_TOOLS_KEY, ",".join(name for name in tools if name not in LITERAL_TOOLS)]]
+        return [*pairs, [_MODES_KEY, "meaning"]] if "knowledge_search" in tools else pairs
+    if "grep" in tools:
+        return [[_TOOLS_KEY, ",".join(name for name in tools if name != "knowledge_search")], [_PREFETCH_KEY, "false"]]
+    return [[_PREFETCH_KEY, "false"], [_MODES_KEY, "exact,regex"]]
 
 
 def configured_tools(config: Path | None = None) -> list[str]:
@@ -148,13 +188,72 @@ def _matches(wanted: Any, actual: Any) -> bool:
     )
 
 
+def path_scope(path: Any) -> dict[str, str]:
+    """What an ADR-0133 path addresses, in today's scope arguments: ``shelf``, ``folder``, ``file_name``.
+
+    ``/project/Gutachten/Brandschutz/Brandschutzkonzept.pdf.md`` is the file ``Brandschutzkonzept.pdf``
+    in ``Gutachten/Brandschutz`` on the ``project`` shelf; ``/project/Behörde/`` is a folder. A last
+    segment with a dot is a file, and the ``.md`` a document's text carries is dropped from its name.
+    """
+    text = str(path or "")
+    parts = [part for part in text.split("/") if part]
+    if not parts:
+        return {}
+    scope, folders = {"shelf": parts[0]}, parts[1:]
+    if folders and "." in folders[-1] and not text.endswith("/"):
+        name = folders.pop()
+        scope["file_name"] = name[: -len(".md")] if name.endswith(".md") and name.count(".") > 1 else name
+    if folders:
+        scope["folder"] = "/".join(folders)
+    return scope
+
+
+def _scoped(value: Any) -> dict[str, Any]:
+    """:func:`path_scope` of a path, or of each option of an expectation's list (a list per argument)."""
+    if not isinstance(value, list):
+        return path_scope(value)
+    scopes = [path_scope(option) for option in value]
+    return {key: [scope[key] for scope in scopes if key in scope] for key in {k for s in scopes for k in s}}
+
+
+def canonical(call: dict[str, Any], *, defaults: bool = True) -> dict[str, Any]:
+    """A call by a coming name (``ls``, ``glob``, ``grep``, ``read_file``) as the call it stands for today.
+
+    ``path`` and ``file_path`` become the ``shelf``, ``folder`` and ``file_name`` they address, a
+    ``read_file``'s file its ``document``, and ``grep`` without a ``mode`` is ``match=exact``, its
+    default. ``defaults`` is False for an expectation, where an argument left out means any value and a
+    path's mount (its ``shelf``) is not asked.
+    """
+    name = _basename(str(call.get("name") or ""))
+    target, renames = TOOL_ALIASES.get(name, (name, {}))
+    out: dict[str, Any] = {}
+    for key, value in (call.get("arguments") or {}).items():
+        if key in ("path", "file_path"):
+            for scoped_key, scoped_value in _scoped(value).items():
+                # An expectation's mount is not asked of the call: today's calls seldom name their shelf.
+                if defaults or scoped_key != "shelf":
+                    out.setdefault(scoped_key, scoped_value)
+        else:
+            out[renames.get(key, key)] = value
+    if name == "read_file" and "file_name" in out:
+        out.setdefault("document", out.pop("file_name"))
+    if name == "grep" and defaults:
+        out.setdefault("match", "exact")
+    return {"name": target, "arguments": out}
+
+
 def called(item: Any, calls: list[dict[str, Any]]) -> bool:
-    """Whether the turn made a call ``item`` names: a tool name, or ``{tool: {argument: value | [values]}}``."""
+    """Whether the turn made a call ``item`` names: a tool name, or ``{tool: {argument: value | [values]}}``.
+
+    Both sides are read by today's names (:func:`canonical`), so a row written for ``list_files`` holds
+    for ``ls`` and one written for ``grep`` holds for ``knowledge_search(match="exact")``.
+    """
     tool, wanted = next(iter(item.items())) if isinstance(item, dict) else (str(item), {})
+    want = canonical({"name": tool, "arguments": wanted}, defaults=False)
     return any(
-        tool in (call["name"], _basename(call["name"]))
-        and all(_matches(v, call["arguments"].get(k)) for k, v in wanted.items())
-        for call in calls
+        made["name"] == want["name"]
+        and all(_matches(value, made["arguments"].get(key)) for key, value in want["arguments"].items())
+        for made in (canonical(call) for call in calls)
     )
 
 
@@ -241,7 +340,8 @@ def files_checks(
     for item in tools.get("must_not") or []:
         checks[f"must_not:{_label(item)}"] = not called(item, calls)
     for name in expect.get("no_repeat") or []:
-        checks[f"no_repeat:{name}"] = sum(_basename(c["name"]) == name for c in calls) <= 1
+        tool = canonical({"name": name})["name"]
+        checks[f"no_repeat:{name}"] = sum(canonical(call)["name"] == tool for call in calls) <= 1
     if expect.get("max_research_calls"):
         checks[f"rounds<={expect['max_research_calls']}"] = research_calls <= int(expect["max_research_calls"])
     if expect.get("at_least"):
@@ -266,24 +366,38 @@ def _label(item: Any) -> str:
 # --- the report ------------------------------------------------------------------
 
 
+def move(call: dict[str, Any]) -> str | None:
+    """The move one call made: ``list``, ``search`` (meaning), ``grep`` (literal) or ``read``; None for another tool."""
+    made = canonical(call)
+    if made["name"] == "knowledge_search":
+        literal = str(made["arguments"].get("match") or "meaning").casefold() in ("exact", "regex")
+        return "grep" if literal else "search"
+    return {"list_files": "list", "read_passage": "read"}.get(made["name"])
+
+
 def moves(run_calls: list[dict[str, Any]]) -> str:
-    """Which moves a run made: ``list``, ``search``, ``read``, joined; ``none`` when it called no file tool."""
-    names = {_basename(call["name"]) for call in run_calls}
-    found = [
-        word
-        for tool, word in (("list_files", "list"), ("knowledge_search", "search"), ("read_passage", "read"))
-        if tool in names
-    ]
-    return "+".join(found) or "none"
+    """Which moves a run made, in the order list, search, grep, read; ``none`` when it made none of them."""
+    made = {move(call) for call in run_calls}
+    return "+".join(word for word in ("list", "search", "grep", "read") if word in made) or "none"
 
 
 def report_lines(runs: list[Any], meta: dict[str, Any] | None = None) -> list[str]:
     """The set's own totals, per row and over all: pass rate, rounds, tokens, seconds and the budget signals."""
     meta = meta or {}
     ok = [run for run in runs if not run.error]
-    head = [f"## Office files (arm: {meta.get('arm') or 'both'})", ""]
+    head = [f"## Office files (arm: {arm_name(meta.get('arm'))})", ""]
     if not ok:
         return [*head, "No run finished."]
+    from dataclasses import asdict
+
+    from compare import HEADER
+    from compare import RULE
+    from compare import by_row
+    from compare import correct
+    from compare import line
+    from compare import totals
+
+    stored = [asdict(run) for run in runs]
     held = [all(run.checks.values()) for run in ok if run.checks]
     median = statistics.median
     signal_counts = {
@@ -295,21 +409,29 @@ def report_lines(runs: list[Any], meta: dict[str, Any] | None = None) -> list[st
         f"- runs where every check held: {sum(held)}/{len(held)} ({sum(held) / max(1, len(held)):.0%})",
         f"- rounds (research calls to the answer), median: {median([r.research_calls for r in ok]):g}, "
         f"mean {sum(r.research_calls for r in ok) / len(ok):.2f}",
-        f"- input tokens per run, median: {median([r.input_tokens for r in ok]):g}; output "
-        f"{median([r.output_tokens for r in ok]):g}; reasoning {median([r.reasoning_tokens for r in ok]):g}",
-        f"- wall seconds per run, median: {median([r.wall_s for r in ok]):g}",
+        f"- reasoning tokens per run, median: {median([r.reasoning_tokens for r in ok]):g}",
         f"- runs that hit status:budget {signal_counts['budget']}, status:repeat {signal_counts['repeat']}, "
         f"status:width {signal_counts['width']}",
         "",
-        "| row | passed | rounds | moves | seconds |",
-        "|---|---|---|---|---|",
+        HEADER,
+        RULE,
+        line(arm_name(meta.get("arm")), totals(stored)),
+        "",
+        "| row | passed | correct | rounds | tool calls | input tok | output tok | cost | seconds | moves |",
+        "|---|---|---|---|---|---|---|---|---|---|",
     ]
+    per_row = by_row(stored)
     for question_id in dict.fromkeys(run.question_id for run in ok):
         rows = [run for run in ok if run.question_id == question_id]
         passed = sum(all(r.checks.values()) for r in rows if r.checks)
+        graded = [verdict for r in rows if (verdict := correct(asdict(r))) is not None]
+        t = per_row[question_id]
+        cost = "–" if t["cost_usd"] is None else f"${t['cost_usd']:.4f}"
         lines.append(
-            f"| {question_id} | {passed}/{len(rows)} | {median([r.research_calls for r in rows]):g} | "
-            f"{' / '.join(sorted({moves(r.tool_args) for r in rows}))} | {median([r.wall_s for r in rows]):g} |"
+            f"| {question_id} | {passed}/{len(rows)} | {f'{sum(graded)}/{len(graded)}' if graded else 'n/a'} "
+            f"| {median([r.research_calls for r in rows]):g} | {t['tool_calls']:.1f} | {t['input_tokens']:,.0f} "
+            f"| {t['output_tokens']:,.0f} | {cost} | {median([r.wall_s for r in rows]):g} "
+            f"| {' / '.join(sorted({moves(r.tool_args) for r in rows}))} |"
         )
     if meta.get("not_applicable"):
         lines += [

@@ -209,7 +209,9 @@ Gates that will enforce it. None of them exists yet; each lands with the slice t
 needs it, and until then review is the only gate.
 
 * `task be:eval:answer-suite -- --set files` with three arms, grep only, semantic
-  only and hybrid, before and after every slice.
+  only and hybrid, before and after every slice. Exists since slice 0:
+  `--arm all` runs the three, `--baseline` or `--compare` diffs two runs arm by arm,
+  and the rows match the coming tool names through `files_eval.canonical`.
 * A test that a restricted document's path returns the same text as a path that
   does not exist, for `read_file`, `ls` of its folder and `glob`.
 * A pinned-version test that builds the tools from `FilesystemMiddleware` and fails

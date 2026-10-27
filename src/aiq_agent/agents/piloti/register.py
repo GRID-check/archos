@@ -221,7 +221,7 @@ class ResearchAgentConfig(FunctionBaseConfig, name="research_agent"):
             "EVAL KNOB, not a product setting: false turns round 0's prefetched fetches off, so the "
             "answer suite can measure the navigation tools (`list_files`, `read_passage`, exact search) "
             "without a ranked search already in the model's first request (`suite.py --set files "
-            "--arm navigate`, ADR-0127). Production keeps the default."
+            "--arm grep`, ADR-0127, ADR-0133). Production keeps the default."
         ),
     )
     envelope_json_mode_with_tools: bool = Field(

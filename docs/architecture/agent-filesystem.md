@@ -411,8 +411,10 @@ as a backend route.
 ## 9. Slices
 
 Each measured on `task be:eval:answer-suite -- --set files` before and after, with the
-arms grep only, semantic only and hybrid from slice 4. The table with what each reads off
-the suite is in ADR-0133's More Information.
+arms grep only, semantic only and hybrid (`--arm all`, with `--baseline` or `--compare`
+for the before/after table; [the files set](../contributing/testing-and-verification.md#the-answer-suite)).
+The rows match the old and the new tool names alike, so one row set measures every slice.
+The table with what each reads off the suite is in ADR-0133's More Information.
 
 0. A realistic fixture document cut by the real section chunker.
 1. Grep's double count in the overlap and breadcrumb matches, fixed inside today's tool.
