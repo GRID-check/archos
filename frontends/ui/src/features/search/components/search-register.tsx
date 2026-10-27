@@ -358,10 +358,11 @@ function RegisterStackLine({ hit, columns, active, id }: { hit: DocumentHit; col
       case 'author':
         return hit.author
       case 'project':
+        // A line of its own on a phone, so the project's name is read whole.
         return hit.shelf === 'office_shelf' ? (
-          <ShelfMark shelf="office_shelf" label={t('where.officeShelf')} />
+          <ShelfMark shelf="office_shelf" label={t('where.officeShelf')} wrap />
         ) : hit.projectName ? (
-          <ShelfMark shelf="project" label={hit.projectName} />
+          <ShelfMark shelf="project" label={hit.projectName} wrap />
         ) : null
       case 'folder':
         return hit.folderName

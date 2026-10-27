@@ -37,31 +37,61 @@ export interface SavedSearchesMenuProps {
 }
 
 /**
+ * A narrow toolbar has no room for the two buttons, so its „Mehr“ menu opens
+ * the list and the save dialog instead, and holds their open state.
+ */
+export interface NarrowSavedSearches {
+  listOpen: boolean
+  onListOpenChange: (open: boolean) => void
+  saveOpen: boolean
+  onSaveOpenChange: (open: boolean) => void
+}
+
+/**
  * The reader's saved searches and the ones colleagues shared: a name applies
  * one, the person who saved it shares it with the switch beside its word or
  * deletes it (with „Rückgängig“ in a toast), a colleague's names the colleague,
  * and the current search is saved from here under a name it already proposes.
+ *
+ * Two presentations of the one list. Wide: two toolbar buttons, the list in a
+ * popover at the first. Narrow (`narrow`): no buttons, the parent's „Mehr“
+ * menu opens the list, which is then the kit's bottom sheet, since there is no
+ * button left to hang a popover from.
  */
-export function SavedSearchesMenu({
-  items,
-  failed,
-  onApply,
-  onToggleShare,
-  onDelete,
-  onUndoDelete,
-  onSave,
-  suggestedName = '',
-  undoMs = SAVED_SEARCH_UNDO_MS,
-}: SavedSearchesMenuProps): JSX.Element {
+export function SavedSearchesMenu({ narrow, ...props }: SavedSearchesMenuProps & { narrow?: NarrowSavedSearches | null }): JSX.Element {
   const t = useTranslations('search.saved')
-  const [open, setOpen] = useState(false)
-  const [saving, setSaving] = useState(false)
-  const remove = (item: SavedSearchView): void => {
-    onDelete(item)
-    toast(t('deleted', { name: item.name }), {
-      duration: undoMs,
-      action: { label: t('undo'), onClick: () => onUndoDelete(item) },
-    })
+  const [wideOpen, setWideOpen] = useState(false)
+  const [wideSaving, setWideSaving] = useState(false)
+  const open = narrow ? narrow.listOpen : wideOpen
+  const setOpen = narrow ? narrow.onListOpenChange : setWideOpen
+  const saving = narrow ? narrow.saveOpen : wideSaving
+  const setSaving = narrow ? narrow.onSaveOpenChange : setWideSaving
+  const body = (
+    <SavedSearchesBody
+      {...props}
+      onApplied={() => setOpen(false)}
+      onSaveRequested={() => {
+        setOpen(false)
+        setSaving(true)
+      }}
+    />
+  )
+  const dialog = <SaveSearchDialog open={saving} onOpenChange={setSaving} suggestedName={props.suggestedName ?? ''} onSave={props.onSave} />
+  if (narrow) {
+    return (
+      <>
+        <Dialog open={open} onOpenChange={setOpen}>
+          <DialogContent data-testid="saved-searches-sheet">
+            <DialogHeader>
+              <DialogTitle>{t('label')}</DialogTitle>
+              <DialogDescription className="sr-only">{t('dialogDescription')}</DialogDescription>
+            </DialogHeader>
+            {body}
+          </DialogContent>
+        </Dialog>
+        {dialog}
+      </>
+    )
   }
   return (
     <>
@@ -75,64 +105,7 @@ export function SavedSearchesMenu({
         <PopoverContent align="end">
           <PanelBody>
             <SectionLabel as="h3">{t('label')}</SectionLabel>
-            {failed ? (
-              <QuietLine>{t('loadFailed')}</QuietLine>
-            ) : items !== null && items.length === 0 ? (
-              <QuietLine>{t('empty')}</QuietLine>
-            ) : (
-              <SavedSearchList>
-                {(items ?? []).map((item) => (
-                  <SavedSearchRow
-                    key={item.id}
-                    name={item.name}
-                    detail={item.ownedByMe ? undefined : item.ownerName ? t('byColleague', { name: item.ownerName }) : t('fromColleague')}
-                    onApply={() => {
-                      setOpen(false)
-                      onApply(item)
-                    }}
-                    controls={
-                      item.ownedByMe ? (
-                        <>
-                          <SwitchCaption label={t('sharedSwitch')}>
-                            <Switch
-                              checked={item.shared}
-                              onCheckedChange={() => onToggleShare(item)}
-                              aria-label={t('shareToggle', { name: item.name })}
-                              data-testid="saved-search-share"
-                            />
-                          </SwitchCaption>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            aria-label={t('delete', { name: item.name })}
-                            onClick={() => remove(item)}
-                            data-testid="saved-search-delete"
-                          >
-                            <Trash2 aria-hidden />
-                          </Button>
-                        </>
-                      ) : (
-                        <ColleagueMark />
-                      )
-                    }
-                  />
-                ))}
-              </SavedSearchList>
-            )}
-            <RailAction>
-              <Button
-                type="button"
-                size="sm"
-                onClick={() => {
-                  setOpen(false)
-                  setSaving(true)
-                }}
-                data-testid="saved-search-save"
-              >
-                {t('save')}
-              </Button>
-            </RailAction>
+            {body}
           </PanelBody>
         </PopoverContent>
       </Popover>
@@ -140,13 +113,105 @@ export function SavedSearchesMenu({
         <BookmarkPlus aria-hidden />
         <ToolbarLabel>{t('saveShort')}</ToolbarLabel>
       </Button>
-      <Dialog open={saving} onOpenChange={setSaving}>
-        <DialogContent>
-          {/* Mounted with each opening, so it starts from the search as it is now. */}
-          <SaveSearchForm suggestedName={suggestedName} onSave={onSave} onDone={() => setSaving(false)} />
-        </DialogContent>
-      </Dialog>
+      {dialog}
     </>
+  )
+}
+
+/** The list and the save action, in whichever container the width gives them. */
+function SavedSearchesBody({
+  items,
+  failed,
+  onApply,
+  onToggleShare,
+  onDelete,
+  onUndoDelete,
+  undoMs = SAVED_SEARCH_UNDO_MS,
+  onApplied,
+  onSaveRequested,
+}: SavedSearchesMenuProps & { onApplied: () => void; onSaveRequested: () => void }): JSX.Element {
+  const t = useTranslations('search.saved')
+  const remove = (item: SavedSearchView): void => {
+    onDelete(item)
+    toast(t('deleted', { name: item.name }), {
+      duration: undoMs,
+      action: { label: t('undo'), onClick: () => onUndoDelete(item) },
+    })
+  }
+  return (
+    <>
+      {failed ? (
+        <QuietLine>{t('loadFailed')}</QuietLine>
+      ) : items !== null && items.length === 0 ? (
+        <QuietLine>{t('empty')}</QuietLine>
+      ) : (
+        <SavedSearchList>
+          {(items ?? []).map((item) => (
+            <SavedSearchRow
+              key={item.id}
+              name={item.name}
+              detail={item.ownedByMe ? undefined : item.ownerName ? t('byColleague', { name: item.ownerName }) : t('fromColleague')}
+              onApply={() => {
+                onApplied()
+                onApply(item)
+              }}
+              controls={
+                item.ownedByMe ? (
+                  <>
+                    <SwitchCaption label={t('sharedSwitch')}>
+                      <Switch
+                        checked={item.shared}
+                        onCheckedChange={() => onToggleShare(item)}
+                        aria-label={t('shareToggle', { name: item.name })}
+                        data-testid="saved-search-share"
+                      />
+                    </SwitchCaption>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      aria-label={t('delete', { name: item.name })}
+                      onClick={() => remove(item)}
+                      data-testid="saved-search-delete"
+                    >
+                      <Trash2 aria-hidden />
+                    </Button>
+                  </>
+                ) : (
+                  <ColleagueMark />
+                )
+              }
+            />
+          ))}
+        </SavedSearchList>
+      )}
+      <RailAction>
+        <Button type="button" size="sm" onClick={onSaveRequested} data-testid="saved-search-save">
+          {t('save')}
+        </Button>
+      </RailAction>
+    </>
+  )
+}
+
+function SaveSearchDialog({
+  open,
+  onOpenChange,
+  suggestedName,
+  onSave,
+}: {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  suggestedName: string
+  onSave: (draft: { name: string; shared: boolean }) => Promise<boolean>
+}): JSX.Element {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        {/* Mounted with each opening, so it starts from the search as it is now. */}
+        <SaveSearchForm suggestedName={suggestedName} onSave={onSave} onDone={() => onOpenChange(false)} />
+      </DialogContent>
+    </Dialog>
   )
 }
 

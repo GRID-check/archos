@@ -128,7 +128,7 @@ describe('CommandPalette: the workspace search', () => {
   it('before anything is typed: what the search reaches, the recent searches and the saved ones, and the commands', async () => {
     window.localStorage.setItem(RECENT_SEARCHES_KEY, JSON.stringify(['EP-05', 'Fluchtweg']))
     render(palette())
-    expect(screen.getByTestId('palette-search-hint')).toHaveTextContent('Inhalt (mit Seite)')
+    expect(screen.getByTestId('palette-search-hint')).toHaveTextContent('Name, Plankopf, Art und Inhalt')
     const recent = screen.getByTestId('palette-recent')
     expect(within(recent).getAllByRole('option').map((row) => row.textContent)).toEqual(['EP-05', 'Fluchtweg'])
     const saved = await screen.findByTestId('palette-saved')

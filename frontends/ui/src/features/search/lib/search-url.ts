@@ -413,3 +413,38 @@ export function activeFilterCount(state: SearchUrlState): number {
   }
   return total
 }
+
+/**
+ * The filters answered from what Piloti read (`document_search_facets`), not
+ * from the filing: on a shelf still being read they can miss a document that
+ * matches. Name, folder, upload, status and file type are the filing's.
+ */
+const READ_FILTER_FIELDS: ReadonlyArray<keyof DocumentFilters> = [
+  'documentTypes',
+  'tags',
+  'planNumber',
+  'planIndex',
+  'planDate',
+  'scale',
+  'currentOnly',
+  'parties',
+  'place',
+  'municipalities',
+  'facts',
+  'cites',
+  'citedBy',
+  'citing',
+  'documentDate',
+]
+
+/** Whether the search narrows by something read from the documents, which a shelf still being read may not know yet. */
+export function filtersByReading(state: SearchUrlState): boolean {
+  const f = compactFilters(state.filters)
+  return READ_FILTER_FIELDS.some((field) => f[field] !== undefined)
+}
+
+/** The same question asked of the whole office: the office-wide page, every project. */
+export function officeSearchHref(state: SearchUrlState): string {
+  const query = writeSearchParams({ ...state, projectId: null }).toString()
+  return query ? `/app/search?${query}` : '/app/search'
+}
