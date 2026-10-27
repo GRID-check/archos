@@ -71,6 +71,10 @@ class TestTheRegistry:
             ),
             # A German page reference survives the rewrite.
             ("Plan.pdf, p.3", "[1] /project/Einreichung/Plan.pdf.md S. 3", "[1] Plan.pdf S. 3"),
+            # Text after the page is no part of the path.
+            ("Plan.pdf, p.3", "[1] /project/A/Plan.pdf.md, p.3 – Abschnitt 2", "[1] Plan.pdf, p.3 – Abschnitt 2"),
+            # A path inside parentheses keeps the closing one.
+            ("Plan.pdf, p.3", "[1] Plan.pdf, p.3 (siehe /project/A/Plan.pdf.md)", "[1] Plan.pdf, p.3 (siehe Plan.pdf)"),
         ],
     )
     def test_the_rewrite_replaces_exactly_the_path(self, stored, line, shown):
