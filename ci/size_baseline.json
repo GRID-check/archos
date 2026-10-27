@@ -1,7 +1,7 @@
 {
   "files": {
-    "deploy/pulumi/src/app/config.ts": 853,
-    "deploy/pulumi/src/config.ts": 3534,
+    "deploy/pulumi/src/app/config.ts": 798,
+    "deploy/pulumi/src/config.ts": 3520,
     "deploy/pulumi/src/constants.ts": 862,
     "deploy/pulumi/src/data/postgres.ts": 983,
     "deploy/pulumi/src/data/seaweedfs-split.ts": 654,
