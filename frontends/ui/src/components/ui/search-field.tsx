@@ -123,6 +123,12 @@ export function SearchField({
         spellCheck={false}
         className={cn(
           'h-9 pl-8 [&::-webkit-search-cancel-button]:hidden',
+          // Focus is the field's own: its border turns ink with the soft halo
+          // (`FIELD_FOCUS_RING`). The global keyboard outline drew a second ink
+          // box 2px outside it, and a search field takes focus on arrival
+          // (⌘K, autofocus), so that double frame was the loudest thing on the
+          // page. The ink border alone is well over 3:1 on paper and charcoal.
+          'focus-visible:outline-none!',
           // Reserve the clear gutter even when empty so typing does not shift text.
           // Under a finger the clear grows to 44px (the Button's own
           // `pointer-coarse:size-11`), so the gutter grows with it and the end

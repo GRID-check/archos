@@ -67,14 +67,14 @@ const COLUMN_WIDTH: Readonly<Record<RegisterColumn, number | null>> = {
   planNumber: 7,
   planIndex: 4.5,
   title: null,
-  planDate: 7,
+  planDate: 6.5,
   scale: 5.5,
   documentType: 8.5,
   // Verfasser and Projekt carry the words that tell two rows apart („Atelier
   // Lindner ZT GmbH“, „Wohnhaus Seestadt J7“): the width Status gave a column
   // of „Gelesen“ went to them.
   author: 11,
-  project: 11.5,
+  project: 13,
   folder: 8,
   uploaded: 7.5,
   pages: 5,

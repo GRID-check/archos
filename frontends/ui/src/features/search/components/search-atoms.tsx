@@ -263,7 +263,7 @@ export function FacetOption({
 
 /** A field over a facet group's values that narrows them by name, once the whole list is open. */
 export function FacetFind({ children }: { children: ReactNode }): JSX.Element {
-  return <div className="px-1 pb-1.5 [&_input]:h-8 [&_input]:text-sm">{children}</div>
+  return <div className="px-1 pb-1.5 pointer-fine:[&_input]:h-8">{children}</div>
 }
 
 /** A control under a rail group or a form, at its own width: „Alle zeigen“, „Hinzufügen“. */
@@ -271,9 +271,12 @@ export function RailAction({ children }: { children: ReactNode }): JSX.Element {
   return <div className="flex min-w-0 flex-wrap items-center gap-2 px-1">{children}</div>
 }
 
-/** The typed filters' column. */
+/**
+ * The typed filters' column. Its fields are the rail's compact size under a
+ * mouse (32px, as the toolbar's controls), the full 44px under a finger.
+ */
 export function RailBody({ children }: { children: ReactNode }): JSX.Element {
-  return <div className="flex min-w-0 flex-col gap-3 px-1 pb-2 pt-1">{children}</div>
+  return <div className="flex min-w-0 flex-col gap-3 px-1 pb-2 pt-1 pointer-fine:[&_input]:h-8">{children}</div>
 }
 
 /** Two fields one above the other: a date's from and to, which do not fit side by side in the rail. */
