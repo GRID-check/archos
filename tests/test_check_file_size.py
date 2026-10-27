@@ -54,6 +54,10 @@ def function(name: str, body_lines: int) -> str:
     return f"def {name}():\n" + "".join(f"    y{n} = {n}\n" for n in range(body_lines - 1))
 
 
+def method(decorator: str, name: str, body_lines: int) -> str:
+    return "".join(f"    {line}\n" for line in [decorator, *function(name, body_lines).splitlines()])
+
+
 def test_a_new_file_over_the_limit_fails(checker, repo, capsys):
     add(repo, "src/small.py", lines(10))
     add(repo, "src/giant.tsx", "const a = 1;\n" * 601)
@@ -108,11 +112,23 @@ def test_a_shrink_asks_for_the_baseline_to_follow_and_update_only_lowers_it(chec
     assert json.loads((repo / "ci" / "size_baseline.json").read_text())["files"] == {"src/big.py": 680}
 
 
+def test_a_second_definition_under_one_name_is_held_to_its_own_count(checker, repo, capsys):
+    getter = method("@property", "p", 81)
+    add(repo, "src/a.py", f"class A:\n{getter}{method('@p.setter', 'p', 70)}")
+    checker.main(["--rebaseline"])
+
+    add(repo, "src/a.py", f"class A:\n{getter}{method('@p.setter', 'p', 75)}")
+
+    assert checker.main([]) == 1
+    assert "src/a.py::A.p#2: grew from 70 to 75 lines" in capsys.readouterr().err
+
+
 def test_generated_test_and_copy_files_are_not_checked(checker):
     for path in (
         "frontends/ui/src/shared/cards/generated.ts",
         "frontends/ui/src/adapters/api/wire-v2.generated.ts",
         "frontends/ui/src/features/chat/ChatArea.spec.tsx",
+        "frontends/ui/scheduler/index.spec.mjs",
         "tests/aiq_agent/test_runner.py",
         "frontends/ui/src/app/dev/_fixtures/stream-frames.ts",
         "frontends/ui/src/i18n/dictionaries/de/chat.ts",
@@ -120,7 +136,12 @@ def test_generated_test_and_copy_files_are_not_checked(checker):
         "README.md",
     ):
         assert not checker.is_checked(path), path
-    for path in ("frontends/ui/src/features/layout/components/InputArea.tsx", "src/aiq_agent/common/x.py"):
+    for path in (
+        "frontends/ui/src/features/layout/components/InputArea.tsx",
+        "frontends/ui/src/lib/documents/generated.ts",  # hand-written: documents nobody wrote, not generated code
+        "frontends/ui/server.js",
+        "src/aiq_agent/common/x.py",
+    ):
         assert checker.is_checked(path), path
 
 

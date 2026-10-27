@@ -153,7 +153,10 @@ repos:
         entry: .venv/bin/python scripts/check_file_size.py
         language: system
         pass_filenames: false
-        files: \.(py|tsx?)$|^ci/size_baseline\.json$
+        # Always, not on matching files: a commit that only deletes a baselined
+        # file passes no filename, and its stale entry would fail the next
+        # person's commit instead. The check takes about three seconds.
+        always_run: true
 
       - id: env-docs
         name: the queue workers' environment variables have a row in the env reference

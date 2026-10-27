@@ -19,7 +19,7 @@ A ratchet, in the style of `tests/test_english_names.py`: limits for everything
 new, and a baseline (`ci/size_baseline.json`) holding what was already over them
 when the check arrived.
 
-- A source file (`.py`, `.ts`, `.tsx`) may have at most ``FILE_LIMIT`` lines.
+- A source file (Python, TypeScript or JavaScript) may have at most ``FILE_LIMIT`` lines.
 - A Python function may span at most ``FUNCTION_LIMIT`` lines, from its `def`
   to its last line (``end_lineno - lineno + 1``), the bar
   `docs/contributing/code-conventions.md` sets ("Sixty lines is long").
@@ -57,20 +57,20 @@ from pathlib import Path
 FILE_LIMIT = 600
 FUNCTION_LIMIT = 60
 BASELINE = Path("ci/size_baseline.json")
-SUFFIXES = (".py", ".ts", ".tsx")
+SUFFIXES = (".py", ".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs")
 
 # Matched against the repo-relative POSIX path. Each line says what it is and
 # why its length is not a design choice.
 EXCLUDED = re.compile(
     "|".join(
         (
-            r"(^|/)generated\.ts$",  # card schemas, rendered from cards/models.py
+            r"^frontends/ui/src/shared/cards/generated\.ts$",  # card schemas, rendered from cards/models.py
             r"\.generated\.",  # wire-v2.generated.ts and its kind
             r"\.d\.ts$",  # type declarations
             r"(^|/)(tests?|__tests__|e2e|_?fixtures|__fixtures__|test-utils)/",  # suites and their data
             r"(^|/)i18n/dictionaries/|^frontends/web/src/(i18n|data)/",  # copy: its length is the copy's
             r"(^|/)(test_[^/]*|[^/]*_test|conftest)\.py$",
-            r"\.(spec|test)\.tsx?$",
+            r"\.(spec|test)\.[cm]?[jt]sx?$",
             r"(^|/)migrations/",  # Alembic and Drizzle history, written once
         )
     )
@@ -99,10 +99,11 @@ def tracked_sources(root: Path) -> list[str]:
 def function_lengths(source: str) -> dict[str, int]:
     """Each function's span in lines, keyed by its qualified name (`Class.method`, `outer.inner`).
 
-    Two definitions under one name (a property's getter and setter, a
-    conditional `def`) keep the longer one.
+    A second definition under one name (a property's setter, a conditional
+    `def`) is keyed `name#2`, so each is held to its own count.
     """
     lengths: dict[str, int] = {}
+    seen: dict[str, int] = {}
 
     def visit(node: ast.AST, prefix: str) -> None:
         for child in ast.iter_child_nodes(node):
@@ -110,9 +111,11 @@ def function_lengths(source: str) -> dict[str, int]:
                 visit(child, prefix)
                 continue
             name = f"{prefix}{child.name}"
+            seen[name] = seen.get(name, 0) + 1
+            if seen[name] > 1:
+                name = f"{name}#{seen[name]}"
             if not isinstance(child, ast.ClassDef):
-                span = (child.end_lineno or child.lineno) - child.lineno + 1
-                lengths[name] = max(span, lengths.get(name, 0))
+                lengths[name] = (child.end_lineno or child.lineno) - child.lineno + 1
             visit(child, f"{name}.")
 
     visit(ast.parse(source), "")
@@ -124,7 +127,9 @@ def measure(root: Path, paths: list[str]) -> Sizes:
     sizes = Sizes()
     for path in paths:
         source = (root / path).read_text(encoding="utf-8", errors="replace")
-        lines = len(source.splitlines())
+        # Counted as `wc -l` does, plus an unterminated last line. Not splitlines(),
+        # which also breaks on U+2028 and form feeds inside a string.
+        lines = source.count("\n") + int(bool(source) and not source.endswith("\n"))
         if lines > FILE_LIMIT:
             sizes.files[path] = lines
         if not path.endswith(".py"):

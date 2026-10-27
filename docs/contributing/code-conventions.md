@@ -6,7 +6,8 @@ tooling (`ruff`, `oxlint`, `tsconfig`), not here.
 
 ## Size limits
 
-A source file (`.py`, `.ts`, `.tsx`) has at most **600 lines**, and a Python
+A source file (`.py`, `.ts`, `.tsx`, `.js`, `.jsx`, `.mjs`, `.cjs`) has at most
+**600 lines**, and a Python
 function at most **60**, from its `def` to its last line. Files reached three
 to seven thousand lines and one function 962 one reasonable hunk at a time,
 and review passed every hunk, so the limit is a check rather than a request:
@@ -36,7 +37,8 @@ measuring them needs the TypeScript parser, which lives in the UI's
 `node_modules` that the Repo checks job does not install.
 
 Not checked, because their length follows their input rather than a design
-choice: generated files (`generated.ts`, `*.generated.*`, `*.d.ts`), tests,
+choice: generated files (the card schemas' `shared/cards/generated.ts`,
+`*.generated.*`, `*.d.ts`), tests,
 specs, fixtures and test helpers, migrations, and copy (the i18n dictionaries,
 the site's `src/data/` and `src/i18n/`). The list is `EXCLUDED` in the script.
 
