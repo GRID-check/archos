@@ -6656,7 +6656,7 @@
       "get": {
         "operationId": "project-document-findings",
         "summary": "List what a project’s documents say about each other",
-        "description": "Findings read from the project's documents at ingest: `contradiction` (two current documents state one fact, e.g. storeys_above_ground, with different values), `missing_document` (a document points at a document type the project does not hold), `missing_plan` (a drawing number no document matches) and `incomplete_read` (pages Piloti could not fully read). Each finding names its documents and pages in `sources`; open them with document-get. Pass `documentId` to also get that document’s references resolved to project documents and the documents that point at it.",
+        "description": "Findings read from the project's documents at ingest: `profile_contradiction` (a current document states a fact, e.g. building_class, that differs from the confirmed project profile; `profileValue` is the profile side), `contradiction` (two current documents state one fact, e.g. storeys_above_ground, with different values), `missing_document` (a document points at a document type the project does not hold), `missing_plan` (a drawing number no document matches) and `incomplete_read` (pages Piloti could not fully read). Each finding names its documents and pages in `sources`; open them with document-get. Pass `documentId` to also get that document’s references resolved to project documents and the documents that point at it.",
         "tags": [
           "documents"
         ],
@@ -14500,7 +14500,7 @@
       "get": {
         "operationId": "inbox-list",
         "summary": "List the person’s inbox",
-        "description": "The person’s own inbox, newest first. `filter`: `requests` (waits on them), `unread`, `pending` (unread OR open request), `archived`, `all` (default); `type` and `projectId` narrow it. Page with `nextCursor`.",
+        "description": "The person’s own inbox, newest first. `filter`: `requests` (waits on them), `unread`, `pending` (unread OR open request), `archived`, `all` (default); `type` and `projectId` narrow it. Page with `nextCursor`. An `upload.completed` item of a project upload carries `uploadReport`: documents read by document type, new findings (read them with project-document-findings), references the project cannot resolve and pages not read in full.",
         "tags": [
           "collaboration"
         ],
