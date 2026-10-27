@@ -22,7 +22,7 @@ import { hitHref } from '../lib/search-hrefs'
 import { useSearchReturn } from '../hooks/use-search-return'
 import { surfaceScope, type SearchSurface } from '../lib/search-surface'
 import { activeFilterCount, filtersByReading, officeSearchHref, withView, type SearchUrlState, type SearchView } from '../lib/search-url'
-import type { SectionView } from '../lib/sections'
+import { kindCountsKnown, type SectionView } from '../lib/sections'
 import { HitMenuProvider, type HitMenuState } from './hit-actions-menu'
 import { SearchActiveFilters } from './search-active-filters'
 import {
@@ -221,6 +221,9 @@ export function SearchWorkspaceView({
   const oneKind = state.view === 'list' && state.kinds?.length === 1 ? state.kinds[0] : null
   // Kinds a filter that is set cannot narrow are not searched (`setAsideKinds`); the list says which, once.
   const setAside = state.view === 'list' ? (response?.setAside ?? {}) : {}
+  const kindTabs = SEARCH_KINDS.filter((kind) => officeWide || kind !== 'project')
+  // Every tab its count, or none: a count shows only once it is known (`kindCountsKnown`).
+  const countsKnown = kindCountsKnown(response, kindTabs)
   const setAsideNote = (['document_filters', 'annotation_filters'] as const).flatMap((reason) => {
     const named = SEARCH_KINDS.filter((kind) => setAside[kind] === reason && (officeWide || kind !== 'project'))
     if (named.length === 0) return []
@@ -391,8 +394,8 @@ export function SearchWorkspaceView({
             data-testid="search-kind"
           >
             <ToggleGroupItem value={ALL_KINDS}>{t('kindFilter.all')}</ToggleGroupItem>
-            {SEARCH_KINDS.filter((kind) => officeWide || kind !== 'project').map((kind) => {
-              const section = response?.sections[kind]
+            {kindTabs.map((kind) => {
+              const section = countsKnown ? response?.sections[kind] : undefined
               const asideReason = setAside[kind]
               return (
                 <ToggleGroupItem
@@ -437,6 +440,8 @@ export function SearchWorkspaceView({
           title={building > 0 ? t('empty.readingTitle') : t('empty.title')}
           description={emptyDescription}
           action={emptyActions.length > 0 ? <EmptyActions>{emptyActions}</EmptyActions> : undefined}
+          // Bare, as Dateien draws a filter that matches nothing: the answer is the page, not a card on it.
+          variant="bare"
           data-testid="search-empty"
         />
       ) : (

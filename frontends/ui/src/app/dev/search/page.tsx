@@ -33,7 +33,7 @@ import { SavedSearchesMenu } from '@/features/search/components/saved-searches-m
 import { useSuggestedSearchName } from '@/features/search/hooks/use-suggested-search-name'
 import { EMPTY_SEARCH_STATE, type SearchUrlState } from '@/features/search/lib/search-url'
 import { sectionView } from '@/features/search/lib/sections'
-import type { SearchKind, SearchResponse } from '@/lib/search/search-wire'
+import { SEARCH_KINDS, type SearchKind, type SearchResponse } from '@/lib/search/search-wire'
 import type { SearchSurface } from '@/features/search/lib/search-surface'
 import { SEARCH_FIXTURE_RESPONSE, SEARCH_FIXTURE_SAVED } from '../_fixtures/search'
 import { searchFixtureAnswer } from '../_fixtures/search-answer'
@@ -50,7 +50,8 @@ type PreviewState = 'answer' | 'empty' | 'loading' | 'error'
 
 const EMPTY_RESPONSE: SearchResponse = {
   ...SEARCH_FIXTURE_RESPONSE,
-  sections: { document: { hits: [], total: 0, totalIsLowerBound: false, nextCursor: null } },
+  // The answer to words: every kind was searched and found nothing, so each tab knows its count.
+  sections: Object.fromEntries(SEARCH_KINDS.map((kind) => [kind, { hits: [], total: 0, totalIsLowerBound: false, nextCursor: null }])),
   facets: {},
   building: ['office_shelf', 'p-hernals'],
 }
