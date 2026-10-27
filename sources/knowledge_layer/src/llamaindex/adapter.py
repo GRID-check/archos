@@ -526,6 +526,9 @@ JOB_RETENTION_SECONDS = 3600  # 1 hour
 # call over the document, then the BFF embeds its requirements). Past it the
 # record is skipped, never the file.
 PERMIT_RECORD_TIMEOUT_SECONDS = 90
+#: How long storing a version's page text may take (two presigns, two PUTs).
+PAGE_TEXT_TIMEOUT_SECONDS = 30
+
 #: The Langfuse trace one file's ingest is recorded under (``_file_trace``).
 INGEST_TRACE_NAME = "ingest-file"
 
@@ -5405,6 +5408,34 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
                             not_transcribed=len(page_routes.not_transcribed),
                             vision_configured=bool(vlm_api_key) and RENDER_VISUAL_PAGES,
                         )
+
+                        # What each page says, stored once per version beside the file
+                        # (ADR-0134): the screen has passed and the drawings are read, so
+                        # this is the page as the pipeline read it. A re-chunk reads it
+                        # instead of the PDF; the agent's file reader serves it. Bounded,
+                        # fail-open, only for a document the BFF dispatched.
+                        if config.get("document_id"):
+                            from knowledge_layer.llamaindex import page_text_store
+
+                            self._bounded(
+                                "Page text",
+                                file_name,
+                                PAGE_TEXT_TIMEOUT_SECONDS,
+                                page_text_store.store_page_text,
+                                page_text_store.pdf_pages(
+                                    text_pages,
+                                    transcribed=page_routes.outcome.texts,
+                                    ocr_model=ocr_model,
+                                    drawings=drawing_pages,
+                                    vision_model=vlm_model,
+                                    tables=tables,
+                                ),
+                                page_count=getattr(text_pages, "page_count", 0) or len(text_pages),
+                                failed_pages=getattr(text_pages, "failed_pages", ()),
+                                document_id=str(config["document_id"]),
+                                collection=collection_name,
+                                organization_id=organization_id,
+                            )
 
                         # Keep the rasters the VLM just captioned, beside the
                         # document, so `look` can show one at

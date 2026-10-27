@@ -7,7 +7,10 @@
  * A finding is a pointer for a person, never a verdict: every one names the
  * documents and pages it rests on, so the reader can look for themselves.
  *
- * Four kinds:
+ * Five kinds:
+ *  - `profile_contradiction`: a current document states a fact the project's
+ *    profile (the Steckbrief) holds otherwise (`./profile-contradictions`).
+ *    Only with the profile passed in.
  *  - `missing_document`: a current document points at a document type no
  *    document in the project has (by its dossier type or its tags).
  *  - `missing_plan`: a current document points at a drawing number no
@@ -22,6 +25,12 @@
  */
 
 import { DOCUMENT_TYPE_TAGS } from './tag-vocabulary'
+import {
+  profileDisagreements,
+  PROFILE_COMPARED_KEYS,
+  type ProfileComparedKey,
+  type ProfileFacts,
+} from './profile-contradictions'
 import type {
   CoverageReason,
   DocumentReference,
@@ -90,13 +99,23 @@ export interface FindingSource extends DocumentPointer {
   unit?: string | null
 }
 
-export const DOCUMENT_FINDING_KINDS = ['contradiction', 'missing_document', 'missing_plan', 'incomplete_read'] as const
+export const DOCUMENT_FINDING_KINDS = ['profile_contradiction', 'contradiction', 'missing_document', 'missing_plan', 'incomplete_read'] as const
 export type DocumentFindingKind = (typeof DOCUMENT_FINDING_KINDS)[number]
 
 export type DocumentFinding =
   | { kind: 'missing_document'; documentType: DossierDocumentType; label: string; sources: FindingSource[] }
   | { kind: 'missing_plan'; key: string; label: string; sources: FindingSource[] }
   | { kind: 'contradiction'; factKey: DossierFactKey; sources: FindingSource[] }
+  | {
+      kind: 'profile_contradiction'
+      /** The dossier fact key, or `federal_state` for the Land of the document's place. */
+      subject: ProfileComparedKey
+      /** The profile key it is held under (`uses`, `federal_state`). */
+      profileKey: string
+      /** The confirmed value as the intake shows it; for the Gebäudeklasse the bare number(s). */
+      profileValue: string
+      sources: FindingSource[]
+    }
   | {
       kind: 'incomplete_read'
       pages: number
@@ -179,17 +198,37 @@ export function squashDrawingNumber(value: string): string {
   return value.normalize('NFC').toLowerCase().replace(/[\s\-_]+/g, '')
 }
 
-const escapeRegExp = (value: string): string => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+const LETTER_OR_DIGIT = /[\p{L}\p{N}]/u
+const DIGIT = /\p{N}/u
+const NUMBER_SEPARATOR = /[\s\-_.]/
+
+/** The length of `key` matched at `start` of `name`, separators allowed between its characters; -1 when it does not. */
+function matchAt(name: readonly string[], start: number, key: readonly string[]): number {
+  let at = start
+  for (let index = 0; index < key.length; index++) {
+    if (index > 0) while (at < name.length && NUMBER_SEPARATOR.test(name[at]!)) at++
+    if (name[at] !== key[index]) return -1
+    at++
+  }
+  return at
+}
 
 /**
  * Does the file name carry the drawing number? „EP-05“ matches
  * `EP05_Grundriss_EG.pdf` and `ep 05 Grundriss.pdf`, never `EP-050.pdf`
- * or `STEP-05.pdf`: the number stands on its own in the name.
+ * or `STEP-05.pdf`: the number stands on its own in the name. A linear scan,
+ * not a pattern built from the key: the key is a document's text.
  */
 function fileNameCarries(filename: string, squashedKey: string): boolean {
   if (squashedKey.length < 2) return false
-  const pattern = [...squashedKey].map(escapeRegExp).join('[\\s\\-_.]*')
-  return new RegExp(`(?<![\\p{L}\\p{N}])${pattern}(?!\\p{N})`, 'iu').test(filename.normalize('NFC'))
+  const name = [...filename.normalize('NFC').toLowerCase()]
+  const key = [...squashedKey.toLowerCase()]
+  for (let start = 0; start < name.length; start++) {
+    if (start > 0 && LETTER_OR_DIGIT.test(name[start - 1]!)) continue
+    const end = matchAt(name, start, key)
+    if (end >= 0 && !(end < name.length && DIGIT.test(name[end]!))) return true
+  }
+  return false
 }
 
 /** The squashed forms a drawing reference may be found under: the key, and for „3/A-501“ the sheet `A-501`. */
@@ -312,6 +351,37 @@ function contradictionFindings(current: readonly FindingsDocument[]): DocumentFi
   return findings
 }
 
+/**
+ * One finding per compared key on which current documents disagree with the
+ * profile's confirmed value, naming each such document and what it states.
+ */
+function profileFindings(current: readonly FindingsDocument[], profile: ProfileFacts | null): DocumentFinding[] {
+  if (!profile?.facts) return []
+  const byKey = new Map<ProfileComparedKey, { profileKey: string; profileValue: string; sources: FindingSource[] }>()
+  for (const document of current) {
+    for (const disagreement of profileDisagreements(document.dossier, profile)) {
+      const entry = byKey.get(disagreement.profile.key) ?? {
+        profileKey: disagreement.profile.profileKey,
+        profileValue: disagreement.profile.display,
+        sources: [],
+      }
+      for (const statement of disagreement.statements) {
+        entry.sources.push({ ...pointer(document), pages: statement.pages, value: statement.value, unit: statement.unit })
+      }
+      byKey.set(disagreement.profile.key, entry)
+    }
+  }
+  return [...byKey.entries()]
+    .sort(([a], [b]) => PROFILE_COMPARED_KEYS.indexOf(a) - PROFILE_COMPARED_KEYS.indexOf(b))
+    .map(([subject, entry]) => ({
+      kind: 'profile_contradiction' as const,
+      subject,
+      profileKey: entry.profileKey,
+      profileValue: entry.profileValue,
+      sources: entry.sources.sort(byName),
+    }))
+}
+
 function incompleteReadFindings(current: readonly FindingsDocument[]): DocumentFinding[] {
   return current
     .filter((document) => (document.coverage?.notRead ?? 0) > 0)
@@ -332,14 +402,44 @@ const byNamePointer = (a: FindingsDocument, b: FindingsDocument): number => a.na
 
 /**
  * Every finding over a project's documents, contradictions first (they ask
- * for a decision), then what is missing, then what was not read.
+ * for a decision; the profile's before the documents' among themselves), then
+ * what is missing, then what was not read. Without `profile`, nothing is
+ * compared with the Steckbrief.
  */
-export function deriveDocumentFindings(documents: readonly FindingsDocument[]): DocumentFinding[] {
+export function deriveDocumentFindings(
+  documents: readonly FindingsDocument[],
+  profile: ProfileFacts | null = null
+): DocumentFinding[] {
   const current = documents.filter((document) => !document.superseded)
   const rank = (finding: DocumentFinding): number => DOCUMENT_FINDING_KINDS.indexOf(finding.kind)
-  return [...contradictionFindings(current), ...missingFindings(current, documents), ...incompleteReadFindings(current)].sort(
+  return [
+    ...profileFindings(current, profile),
+    ...contradictionFindings(current),
+    ...missingFindings(current, documents),
+    ...incompleteReadFindings(current),
+  ].sort(
     (a, b) => rank(a) - rank(b)
   )
+}
+
+/**
+ * A finding's identity across two reads of one project: same kind, same key.
+ * What `uploadReport` diffs before against after with; the sources may change
+ * while the finding stays the same one.
+ */
+export function findingIdentity(finding: DocumentFinding): string {
+  switch (finding.kind) {
+    case 'profile_contradiction':
+      return `${finding.kind}:${finding.subject}`
+    case 'contradiction':
+      return `${finding.kind}:${finding.factKey}`
+    case 'missing_document':
+      return `${finding.kind}:${finding.documentType}`
+    case 'missing_plan':
+      return `${finding.kind}:${squashDrawingNumber(finding.key)}`
+    case 'incomplete_read':
+      return `${finding.kind}:${finding.sources[0]?.documentId ?? ''}`
+  }
 }
 
 /** Does this finding rest on the document? */

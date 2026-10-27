@@ -20,6 +20,7 @@ from fastapi import Depends
 from fastapi import File
 from fastapi import Header
 from fastapi import HTTPException
+from fastapi import Response
 from fastapi import UploadFile
 from pydantic import BaseModel
 from pydantic import ConfigDict
@@ -63,6 +64,10 @@ logger = logging.getLogger(__name__)
 
 # Upper bound on job ids per batch-status request (request validation).
 BATCH_STATUS_MAX_IDS = 200
+
+
+#: Set on a listing whose metadata (summaries, dossiers, references, coverage) could not be read.
+READING_UNAVAILABLE_HEADER = "X-Grid-Reading-Unavailable"
 
 
 def _merge_summaries(
@@ -419,9 +424,16 @@ def add_document_routes(router: APIRouter):
     )
     async def list_documents(
         collection_name: str,
+        response: Response,
         ingestor: BaseIngestor = Depends(_require_ingestor),
     ) -> list[FileInfo]:
-        """List all documents in a collection."""
+        """List all documents in a collection.
+
+        When the metadata store cannot be read the files are still listed, without their
+        summaries and readings, and the ``X-Grid-Reading-Unavailable: 1`` header says so: a
+        reader that projects the readings (the BFF's search facets) must keep what it has
+        instead of taking the empty fields as "nothing was read".
+        """
         # Verify collection exists
         await require_collection(ingestor, collection_name)
 
@@ -441,6 +453,7 @@ def add_document_routes(router: APIRouter):
             await asyncio.to_thread(_merge_summaries, files, summaries, _held_names_of(collection_name))
         except Exception as e:
             logger.warning(f"Failed to merge summaries for {collection_name}: {e}")
+            response.headers[READING_UNAVAILABLE_HEADER] = "1"
 
         return files
 

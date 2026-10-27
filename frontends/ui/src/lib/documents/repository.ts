@@ -1455,6 +1455,55 @@ export async function findStorageKeyByCollectionAndFilename(
  * live, user-authored (this feeds a presigned WRITE under the document's
  * prefix), and org-narrowed when the caller carries one.
  */
+/**
+ * The row a version's stored page text is written for (ADR-0134): its storage key, bucket and content
+ * hash, and the number of the version those mirror. Same lookup and same guards as
+ * {@link findStorageKeyByIdAndCollection}; the version comes from the published version it points at.
+ */
+export async function findPageTextTarget(
+  documentId: string,
+  collectionName: string,
+  organizationId?: string,
+): Promise<{ storageKey: string; storageBucket: string | null; contentHash: string | null; version: number | null } | null> {
+  const db = getDb()
+  const [row] = await withOptionalTenant(
+    organizationId,
+    'internal page-text presign: the service-token caller identifies the row by its ' +
+      'unguessable document id and collection name and carries no organization',
+    () =>
+      db
+        .select({
+          storageKey: documents.storageKey,
+          storageBucket: documents.storageBucket,
+          contentHash: documents.contentHash,
+          version: documentVersions.versionNumber,
+        })
+        .from(documents)
+        .leftJoin(
+          documentVersions,
+          and(eq(documentVersions.id, documents.publishedVersionId), eq(documentVersions.documentId, documents.id)),
+        )
+        .where(
+          and(
+            eq(documents.id, documentId),
+            eq(documents.collectionName, collectionName),
+            eq(documents.authoredBy, 'user'),
+            ...(organizationId ? [eq(documents.organizationId, organizationId)] : []),
+            // The pipeline writes the text after its screen; the row is held until it finishes.
+            documentVisibleTo(internalRead('ingest')),
+          ),
+        )
+        .limit(1),
+  )
+  if (!row?.storageKey) return null
+  return {
+    storageKey: row.storageKey,
+    storageBucket: row.storageBucket ?? null,
+    contentHash: row.contentHash ?? null,
+    version: row.version === null || row.version === undefined ? null : Number(row.version),
+  }
+}
+
 export async function findStorageKeyByIdAndCollection(
   documentId: string,
   collectionName: string,

@@ -5,9 +5,13 @@
  * the „Piloti reading“ rail of a Baubeschreibung with its type, parties, dates,
  * place, facts, references (resolved, missing, norms and laws), „Verwiesen
  * von“ and the coverage line; beside it, a drawing's rail; and above both the
- * project's „Befunde aus den Dokumenten“ panel. The findings and the resolved
- * references are computed by the real pure functions (`lib/documents/findings.ts`)
- * over the fixtures, so the preview shows what the route would serve.
+ * project's „Befunde aus den Dokumenten“ panel, compared with a Steckbrief
+ * that holds GK 3 and Holzbau (`profile_contradiction`). Below them, the
+ * Eingangsbericht the inbox row shows for an upload that brought the drawing
+ * and the Brandschutzkonzept. The findings, the resolved references and the
+ * report are computed by the real pure functions (`lib/documents/findings.ts`,
+ * `lib/upload-batches/upload-report.ts`) over the fixtures, so the preview
+ * shows what the route and the settle would serve.
  *
  * Pinned to German, the copy under review. Links point at a project that does
  * not exist; they are there to be seen, not followed.
@@ -21,6 +25,9 @@ import { DocumentFindingsList } from '@/features/documents/components/document-f
 import type { FileItem } from '@/features/documents/file-types'
 import { deriveDocumentFindings, referencedBy, resolveReferences, toFindingsDocument } from '@/lib/documents/findings'
 import type { DocumentFindingsResponse, DocumentLinks } from '@/lib/documents/findings-wire'
+import type { ProfileFacts } from '@/lib/documents/profile-contradictions'
+import { UploadReportLines } from '@/features/uploads/components/upload-report'
+import { uploadReport, type UploadReport } from '@/lib/upload-batches/upload-report'
 
 const PROJECT_ID = 'proj-hubergasse'
 
@@ -102,17 +109,46 @@ const GROUND_FLOOR = makeFile('doc-ep05', 'EP05_Grundriss_EG_Index-C.pdf', {
 
 const FIRE_CONCEPT = makeFile('doc-fire', 'Brandschutzkonzept_V2.pdf', {
   tags: ['Gutachten', 'Brandschutz'],
+  dossier: {
+    documentType: 'fire_safety_concept',
+    title: 'Brandschutzkonzept Hubergasse 14',
+    summary: null,
+    parties: [],
+    dates: [],
+    place: { state: 'Wien' },
+    facts: [
+      { key: 'building_class', value: 'GK 4', unit: null, page: 2, quote: 'Gebäudeklasse 4 gem. OIB-RL 2' },
+      { key: 'construction_method', value: 'Stahlbeton', unit: null, page: 3, quote: 'Tragwerk in Stahlbeton' },
+    ],
+  },
   docReferences: [{ kind: 'document', key: 'building_description', label: 'Baubeschreibung', pages: [2] }],
 })
 
 const FILES = [DESCRIPTION, GROUND_FLOOR, FIRE_CONCEPT]
 
 const DOCUMENTS = FILES.map(toFindingsDocument)
+
+/** The Steckbrief: confirmed GK 3, Holzbau, Wien. */
+const PROFILE: ProfileFacts = {
+  facts: {
+    building_class: { value: 'GK3' },
+    construction_method: { value: ['timber'] },
+    federal_state: { value: 'vienna' },
+    storeys_above_ground: { value: 4 },
+  },
+}
+
 const RESPONSE: DocumentFindingsResponse = {
-  findings: deriveDocumentFindings(DOCUMENTS),
+  findings: deriveDocumentFindings(DOCUMENTS, PROFILE),
   documentCount: DOCUMENTS.length,
   truncated: false,
   document: null,
+}
+
+/** The upload that brought the drawing and the Brandschutzkonzept, onto a project that held the Baubeschreibung. */
+const REPORT: UploadReport = {
+  projectId: PROJECT_ID,
+  ...uploadReport([GROUND_FLOOR, FIRE_CONCEPT].map(toFindingsDocument), DOCUMENTS, PROFILE),
 }
 
 const linksOf = (file: FileItem): DocumentLinks => {
@@ -137,6 +173,12 @@ export default function DocumentDossierDevPage(): JSX.Element {
       <main className="bg-muted/40 min-h-screen p-6" data-testid="dev-document-dossier">
         <div className="flex max-w-[780px] flex-col gap-6">
           <DocumentFindingsList projectId={PROJECT_ID} response={RESPONSE} />
+          <div className="flex max-w-[520px] flex-col gap-2" data-testid="dev-upload-report">
+            <p className="text-muted-foreground px-1 text-xs">Eingangsbericht (inbox row „Ihr Upload ist gelesen“)</p>
+            <InspectorGroup className="p-3">
+              <UploadReportLines report={REPORT} />
+            </InspectorGroup>
+          </div>
           <div className="flex flex-wrap items-start gap-6">
             <Rail file={DESCRIPTION} title={DESCRIPTION.filename} />
             <Rail file={GROUND_FLOOR} title={GROUND_FLOOR.filename} />
