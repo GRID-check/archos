@@ -461,6 +461,7 @@ describe.skipIf(!url)('the search documents SQL against Postgres', () => {
     await withPlatformAccess('test teardown', async () => {
       for (const org of [ORG, ORG_B]) {
         await db.execute(sql`DELETE FROM document_search_facets WHERE organization_id = ${org}`)
+        await db.execute(sql`DELETE FROM document_search_shelves WHERE organization_id = ${org}`)
         await db.execute(sql`DELETE FROM documents WHERE organization_id = ${org}`)
         await db.execute(sql`DELETE FROM project_folders WHERE organization_id = ${org}`)
         await db.execute(sql`DELETE FROM projects WHERE organization_id = ${org}`)
@@ -729,6 +730,57 @@ describe.skipIf(!url)('the search documents SQL against Postgres', () => {
         sorted(tally(rows.flatMap((row) => [...new Set((seedOf(row).metadata?.dossier?.parties ?? []).map((party) => party.role))]))))
       expect(sorted(facets.cites)).toEqual(
         sorted(tally(rows.flatMap((row) => [...new Set((seedOf(row).metadata?.docReferences ?? []).map((ref) => `${ref.kind}:${ref.key}`.toLowerCase()))]))))
+    })
+  })
+
+  describe("a person's edit reaches the projection", () => {
+    it('a Fassung decision flips „current only“ at once, and taking it back flips it again', async () => {
+      const { toSearchFacets } = await import('./facets')
+      const { upsertSearchFacets } = await import('./facets-repository')
+      const seed = SEEDS.find((candidate) => candidate.key === 'A4')!
+      const write = (superseded: boolean) =>
+        upsertSearchFacets(ORG, [toSearchFacets({ documentId: ids.A4, organizationId: ORG, superseded }, seed.metadata)!])
+      const current = () => found(officeReach(), query({ currentOnly: true }))
+
+      expect(await write(true)).toBe(1)
+      expect(await current()).not.toContain('A4')
+      expect(await write(false)).toBe(1)
+      expect(await current()).toContain('A4')
+    })
+
+    it('marks a synced shelf stale without unsyncing it, and lets the next search claim its refresh at once', async () => {
+      const { claimShelfRefresh, markShelfSynced, markShelvesStale, readShelfSyncStates, STALE_FINGERPRINT } = await import(
+        './facets-repository'
+      )
+      const { isStale } = await import('./shelf-projection')
+      const p1 = { kind: 'project' as const, projectId: projectIds.p1 }
+      const p2 = { kind: 'project' as const, projectId: projectIds.p2 }
+      await markShelfSynced(ORG, p1, '7@x')
+      expect(await claimShelfRefresh(ORG, p1, 10 * 60 * 1000)).toBe(true)
+      // p2 has a claim and no sync: the CHECK keeps its fingerprint null.
+      expect(await claimShelfRefresh(ORG, p2, 10 * 60 * 1000)).toBe(true)
+
+      await markShelvesStale(ORG, [p1, p2])
+
+      const states = new Map((await readShelfSyncStates(ORG, [`project:${projectIds.p1}`, `project:${projectIds.p2}`])).map((s) => [s.shelfKey, s]))
+      const synced = states.get(`project:${projectIds.p1}`)!
+      expect(synced.syncedAt).not.toBeNull()
+      expect(synced.sourceFingerprint).toBe(STALE_FINGERPRINT)
+      expect(isStale(synced, '7@x', new Date())).toBe(true)
+      expect(states.get(`project:${projectIds.p2}`)!.sourceFingerprint).toBeNull()
+      expect(await claimShelfRefresh(ORG, p1, 10 * 60 * 1000)).toBe(true)
+      expect(await claimShelfRefresh(ORG, p2, 10 * 60 * 1000)).toBe(true)
+    })
+
+    it('finds the documents a settled Fassung names, by file name, in its collection and organization only', async () => {
+      const { listCollectionDocumentsForProjection } = await import('./facets-repository')
+      const a4 = SEEDS.find((candidate) => candidate.key === 'A4')!
+
+      const listed = await listCollectionDocumentsForProjection(ORG, C2, [a4.filename, 'nicht-da.pdf'])
+
+      expect(listed.map((row) => row.id)).toEqual([ids.A4])
+      expect(await listCollectionDocumentsForProjection(ORG_B, C2, [a4.filename])).toEqual([])
+      expect(await listCollectionDocumentsForProjection(ORG, C1, [a4.filename])).toEqual([])
     })
   })
 })

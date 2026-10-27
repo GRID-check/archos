@@ -20,6 +20,9 @@ import {
 import { withTenant } from '@/lib/db/tenant-context'
 import { shelfDocumentWhere, type DocumentShelf } from '@/lib/documents/shelf'
 
+/** The fingerprint of a shelf marked stale: `shelfSourceFingerprints` never answers it, so the next search refreshes. */
+export const STALE_FINGERPRINT = 'stale'
+
 /** Rows one projection slice reads and writes. */
 export const PROJECTION_PAGE_SIZE = 200
 
@@ -201,4 +204,64 @@ export async function markShelfSynced(organizationId: string, shelf: DocumentShe
         set: { sourceFingerprint, syncedAt: now },
       })
   )
+}
+
+/**
+ * Mark shelves stale: their next search queues a refresh, however recently one
+ * was queued or ran. For a refresh of edited documents that could not follow
+ * the edit (`./refresh-rows.ts`). A shelf never synced has no state and is
+ * stale already. The sync time stays (the shelf is not "being built" again,
+ * and migration 0185 keeps it and the fingerprint set together); the
+ * fingerprint becomes {@link STALE_FINGERPRINT}, which no shelf ever has.
+ */
+export async function markShelvesStale(organizationId: string, shelves: readonly DocumentShelf[]): Promise<void> {
+  if (shelves.length === 0) return
+  await withTenant({ organizationId }, () =>
+    getDb()
+      .update(documentSearchShelves)
+      .set({
+        sourceFingerprint: sql`CASE WHEN ${documentSearchShelves.syncedAt} IS NULL THEN NULL ELSE ${STALE_FINGERPRINT} END`,
+        refreshRequestedAt: null,
+      })
+      .where(
+        and(
+          eq(documentSearchShelves.organizationId, organizationId),
+          inArray(documentSearchShelves.shelfKey, shelves.map(shelfKey))
+        )
+      )
+  )
+}
+
+/**
+ * The documents of one collection stored under `filenames`, for the projector:
+ * a settled Fassung names the documents it replaces by file name
+ * (`reconcileDocumentStatuses`). Every row, held ones included, as on the
+ * shelf's walk; the projector's own gate (`collectionFileRef`) drops the rows
+ * that own nothing under the name.
+ */
+export async function listCollectionDocumentsForProjection(
+  organizationId: string,
+  collectionName: string,
+  filenames: readonly string[]
+): Promise<ProjectionDocument[]> {
+  if (filenames.length === 0) return []
+  return withTenant({ organizationId }, () =>
+    getDb()
+      .select({
+        id: documents.id,
+        filename: documents.filename,
+        collectionName: documents.collectionName,
+        authoredBy: documents.authoredBy,
+        publishedVersionId: documents.publishedVersionId,
+      })
+      .from(documents)
+      .where(
+        and(
+          eq(documents.organizationId, organizationId),
+          eq(documents.collectionName, collectionName),
+          inArray(documents.filename, [...filenames])
+        )
+      )
+      .limit(PROJECTION_PAGE_SIZE)
+  ) as Promise<ProjectionDocument[]>
 }
