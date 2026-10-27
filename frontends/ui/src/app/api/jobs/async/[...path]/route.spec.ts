@@ -47,8 +47,8 @@ vi.mock('@/lib/project-profile/prompt-view', () => ({
 // The commissioned-report filing, mocked at its own module so this suite
 // asserts the WIRING — is it called, with what, and does its outcome reach the
 // user's answer — and not the filing's own behaviour, which
-// `lib/documents/research-report.spec.ts` owns.
-vi.mock('@/lib/documents/research-report', () => ({
+// `lib/documents/commissioned-report.spec.ts` owns.
+vi.mock('@/lib/documents/commissioned-report', () => ({
   fileCommissionedReport: vi.fn(),
 }))
 vi.mock('@/lib/projects/repository', () => ({
@@ -61,7 +61,7 @@ import { requireAuthorizedSession } from '@/lib/auth/require-auth'
 import { getEffectiveModelOverrides } from '@/lib/model-config/service'
 import { buildCollectionScopeFromRequest } from '@/lib/collection-scope-request'
 import { loadProjectFederalState } from '@/lib/project-profile/prompt-view'
-import { fileCommissionedReport } from '@/lib/documents/research-report'
+import { fileCommissionedReport } from '@/lib/documents/commissioned-report'
 import { verifyGridRequestContextEnvelope } from '@/lib/request-context'
 
 const originalRequireAuth = process.env.REQUIRE_AUTH
@@ -436,7 +436,7 @@ describe('/api/jobs/async/[...path] proxy — signed X-Grid-Request-Context enve
  * A finished run's report used to be read once, rendered into a chat message
  * and discarded with the run's whole file system. This is the point at which
  * the BFF observes that completion. The filing itself is
- * `fileCommissionedReport` (`lib/documents/research-report.spec.ts` owns its
+ * `fileCommissionedReport` (`lib/documents/commissioned-report.spec.ts` owns its
  * behaviour); this suite asserts the WIRING: which path calls it, with what,
  * and how each outcome reaches the answer.
  */

@@ -40,7 +40,7 @@
  * the BFF, and therefore where the report stops being a chat message that dies
  * with the run's file system and becomes a `documents` row the project can
  * find, assign, preview and delete (`fileCommissionedReport` in
- * `@/lib/documents/research-report`; this route only matches the path).
+ * `@/lib/documents/commissioned-report`; this route only matches the path).
  *
  * @see docs/api/bff-routes.md - Deep Research / Async Jobs, incl. the additive
  *      `filed` object this route adds to the report response
@@ -71,7 +71,7 @@ import {
 import { parseQueryContext, resolveRequestContext } from '@/lib/proxy/collection-authz'
 import { buildProxyUrl, resolveSessionAndBearer } from '@/lib/proxy/proxy-request'
 import type { GridSession } from '@/lib/auth/types'
-import { fileCommissionedReport } from '@/lib/documents/research-report'
+import { fileCommissionedReport } from '@/lib/documents/commissioned-report'
 import { findProjectTenancy } from '@/lib/projects/repository'
 import { isProjectClosed, projectClosedError } from '@/lib/projects/project-status'
 

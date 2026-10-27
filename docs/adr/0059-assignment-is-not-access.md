@@ -193,7 +193,7 @@ into `authored_by` than it can carry.
 
 **The report's provenance is established by the server.** The BFF fetches the
 finished report from the backend's job endpoint and files it in the same request
-(`fileCommissionedReport`, `frontends/ui/src/lib/documents/research-report.ts`,
+(`fileCommissionedReport`, `frontends/ui/src/lib/documents/commissioned-report.ts`,
 called by `frontends/ui/src/app/api/jobs/async/[...path]/route.ts`). The bytes never pass
 through the browser: `readReportMarkdown` reads them off the upstream response,
 and `authorize_job_access` (`frontends/aiq_api/src/aiq_api/jobs/access.py`) has
