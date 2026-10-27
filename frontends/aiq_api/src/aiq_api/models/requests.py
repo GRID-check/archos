@@ -375,7 +375,7 @@ class GroupedSearchFilters(BaseModel):
     ``document_ids``, ``reading_types`` and ``refers_to`` read what ingestion
     put on every chunk (``grid_document_id`` and the dossier's
     ``document_type`` and ``references``), so the BFF's search core can narrow
-    the content query to its own candidates for recall (ADR-0133, item 5).
+    the content query to its own candidates for recall (ADR-0136, item 5).
     """
 
     model_config = ConfigDict(extra="forbid")

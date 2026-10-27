@@ -472,7 +472,7 @@ export const files: typeof en.files = {
       noResultsDescription:
         'Nichts in diesem Projekt entsprach dem Sinn Ihrer Anfrage. Versuchen Sie eine andere Formulierung oder löschen Sie die Suche, um alle Dateien zu durchsuchen.',
       page: 'Seite {page}',
-      relevance: '{percent}% Relevanz',
+      rank: 'Treffer {rank} der Rangfolge',
     },
   },
   folders: {

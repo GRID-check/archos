@@ -56,7 +56,7 @@ const SEES_EVERY_ROW: Record<string, string> = {
     "Discarding a chat erases every attachment's objects, held ones first among them.",
 
   'lib/search/facets-repository.ts#listShelfDocumentsForProjection':
-    "Sweep: the search projection's backstop walks a shelf's ids to rewrite their derived rows (ADR-0133). Ids to a job; every search joins the rows under the reader's predicate.",
+    "Sweep: the search projection's backstop walks a shelf's ids to rewrite their derived rows (ADR-0136). Ids to a job; every search joins the rows under the reader's predicate.",
   'lib/search/facets-repository.ts#shelfSourceFingerprints':
     "Staleness probe: a count and newest change per shelf, compared with the projection's last sync. Numbers to a job, nothing to a person.",
 
@@ -309,7 +309,7 @@ const ELEVATED_READERS: Record<string, { makes: string[]; why: string }> = {
  */
 const COMPOSING_HELPERS: Record<string, string> = {
   'lib/search/document-repository.ts#reachWhere':
-    "The search reach's documents predicate (ADR-0133): every search provider joins `documents` under it, and it ANDs `documentVisibleTo(reachReader(reach))`.",
+    "The search reach's documents predicate (ADR-0136): every search provider joins `documents` under it, and it ANDs `documentVisibleTo(reachReader(reach))`.",
 }
 
 /** A relative or `@/` import, as a path under `src`; null for a package. */

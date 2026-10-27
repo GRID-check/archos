@@ -1,5 +1,5 @@
 /**
- * The search (ADR-0133): one question, every kind, any scope. The route
+ * The search (ADR-0136): one question, every kind, any scope. The route
  * `POST /api/search`, the agent operation `search` and the export are thin over
  * {@link runSearch}; nothing else evaluates a query.
  *
@@ -264,7 +264,7 @@ async function searchDocuments(
   const structured: DocumentQuery = { filters, text: null, citedBy, citing }
   const content = text && text.length >= CONTENT_MIN_CHARS ? await rankedContent(reach, structured, text) : { hits: [], partial: false }
   const found = content?.hits ?? []
-  // A hit names its document by id when it can; only a hit without one is joined by name (ADR-0133 item 5).
+  // A hit names its document by id when it can; only a hit without one is joined by name (ADR-0136 item 5).
   const passagesById = new Map(found.flatMap((hit) => (hit.grid_document_id ? [[hit.grid_document_id, hit] as const] : [])))
   const passagesByKey = new Map(
     found.flatMap((hit) => (hit.grid_document_id ? [] : [[contentKey(hit.collection, hit.file_name), hit] as const]))
@@ -332,7 +332,8 @@ export async function runSearch(session: AuthorizedSession, scopeQuery: SearchSc
   if (body.cursor && !single) throw new BadRequestError('A cursor pages one kind: ask with kinds set to that kind alone')
   const offset = body.cursor ? decodeSearchCursor(body.cursor, kinds[0]) : 0
   const limit = body.limit ?? SEARCH_LIMIT_DEFAULT
-  const pageFor = (kind: SearchKind) => ({ limit: single || kind === 'document' ? limit : SEARCH_SECTION_PREVIEW, offset })
+  // Beside the documents another kind shows a preview, never more than was asked (the ⌘K palette asks three).
+  const pageFor = (kind: SearchKind) => ({ limit: single || kind === 'document' ? limit : Math.min(limit, SEARCH_SECTION_PREVIEW), offset })
   const text = body.text?.trim() || null
 
   const freshness = refreshStaleShelves(reach.organizationId, reachShelves(reach))

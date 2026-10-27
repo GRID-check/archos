@@ -1,5 +1,5 @@
 /**
- * What one person may read, for one search (ADR-0133): computed once, from the
+ * What one person may read, for one search (ADR-0136): computed once, from the
  * gates the listing already uses, and handed to every provider. No provider
  * asks a gate of its own, so the kinds cannot disagree about a project.
  *
@@ -175,9 +175,17 @@ export async function reachForAudience(
   session: AuthorizedSession,
   conversationId: string,
   scope: SearchScope,
-  options: { includeOwnProject?: boolean } = {}
+  options: {
+    includeOwnProject?: boolean
+    /**
+     * A listing (the agent's folder tree): restricted folders are left out even
+     * in the asker's own chat, where a search may still reach them.
+     */
+    listing?: boolean
+  } = {}
 ): Promise<SearchReach> {
   const audience = await withOwnProject(session, conversationId, await audienceReach(session, conversationId), options)
+  const pruneRestricted = !audience.restrictedFolders || options.listing === true
   const base = {
     organizationId: session.organizationId,
     userId: session.userId,
@@ -193,13 +201,13 @@ export async function reachForAudience(
   if (scope.kind === 'project' && inScope.length === 0) throw new NotFoundError('Project not found')
   const projects = await inPool(inScope, PROJECTS_AT_ONCE, async (project) => {
     const reached = await reachProject(session, project)
-    if (audience.restrictedFolders) return reached
+    if (!pruneRestricted) return reached
     const restricted = await getRestrictedFolderIds(session.organizationId, project.id)
     return {
       ...reached,
       hiddenFolderIds: [...new Set([...reached.hiddenFolderIds, ...restricted])],
       collections: [project.collectionName],
-      reviewsQuarantine: false,
+      reviewsQuarantine: audience.restrictedFolders ? reached.reviewsQuarantine : false,
     }
   })
   const officeShelf = scope.kind === 'project' ? null : await reachOfficeShelf(session)

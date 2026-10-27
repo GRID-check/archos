@@ -105,7 +105,7 @@ export function OrgHeader({
               active={pathname === '/app/office-shelf' || pathname.startsWith('/app/office-shelf/')}
             />
           )}
-          {/* The workspace search (ADR-0133); ⌘K reaches it from anywhere too. */}
+          {/* The workspace search (ADR-0136); ⌘K reaches it from anywhere too. */}
           <OrgHeaderIconLink
             href="/app/search"
             label={t('sections.search')}

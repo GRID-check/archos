@@ -2015,7 +2015,7 @@ check_in grid_feedbacknotice "SELECT count(*) FROM information_schema.columns WH
 echo "==> 0184 product feedback reply notice and down migration verified"
 
 # ---------------------------------------------------------------------------
-# Migration 0185: the search projection (ADR-0133). The full-text vector is
+# Migration 0185: the search projection (ADR-0136). The full-text vector is
 # generated with German stemming, so a plural finds the singular; the shelf key
 # names its project or the office shelf and nothing else; a row goes with its
 # document; the down drops both tables and 0185 applies again after it.
@@ -2048,7 +2048,7 @@ check_in grid_documentsearch "SELECT count(*) FROM information_schema.tables WHE
 echo "==> 0185 search projection and down migration verified"
 
 # ---------------------------------------------------------------------------
-# Migration 0186: saved searches (ADR-0133, slice 5). A saved search holds a
+# Migration 0186: saved searches (ADR-0136, slice 5). A saved search holds a
 # question, never an answer: scope and query are objects, the query is bounded,
 # a name is 1 to 120 characters and unique per owner (two owners may share one
 # name); the down drops the table and 0186 applies again after it.

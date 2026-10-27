@@ -28,7 +28,7 @@ vi.mock('@/lib/search/saved-search-service', async () => {
   return {
     updateSavedSearch: vi.fn().mockImplementation(async (_owner: unknown, id: string, patch: { name?: string }) => {
       if (id !== '11111111-1111-4111-8111-111111111111') throw new NotFoundError('Saved search not found')
-      return { id, name: patch.name ?? 'Brandschutz', scope: {}, query: {}, shared: false, ownedByMe: true, createdAt: 'x' }
+      return { id, name: patch.name ?? 'Brandschutz', scope: {}, query: {}, shared: false, ownedByMe: true, ownerName: null, createdAt: 'x' }
     }),
     deleteSavedSearch: vi.fn().mockImplementation(async (_owner: unknown, id: string) => {
       if (id !== '11111111-1111-4111-8111-111111111111') throw new NotFoundError('Saved search not found')

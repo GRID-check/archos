@@ -437,6 +437,7 @@ def test_project_record_names_the_three_file_blocks_and_says_look_before_missing
 
     for key in ("documents:", "documents_missing:", "documents_unreadable:"):
         assert key in record
-    assert "list_files" in record and "knowledge_search" in record
+    # `glob` since ADR-0133 slice 3 (`list_files` stays bound as its alias for one release).
+    assert "`glob`" in record and "knowledge_search" in record
     without = render_prompt_template(system_prompt_template(), **{**PINNED, "project_context": "name: X"})
     assert "documents_missing:" not in without

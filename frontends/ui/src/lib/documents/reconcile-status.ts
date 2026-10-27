@@ -1080,7 +1080,7 @@ export async function reconcileDocumentStatuses<T extends ReconcilableDocument>(
   )
 
   // A row that came to rest read is searchable by what it is from now on
-  // (ADR-0133): its search row is written here, from the reading this read
+  // (ADR-0136): its search row is written here, from the reading this read
   // already parsed. Never awaited and never thrown: the shelf's backstop
   // refresh writes whatever this misses.
   const readNow = settled.filter(([id, resolution]) => resolution.status === 'completed' && metaByRow.has(id))

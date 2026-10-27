@@ -5,15 +5,15 @@
  * Which shelf and which reach the estate tree reads under. The SQL is
  * `repository.integration.spec.ts`'s; here the repository is a double, so what
  * is held is the decision: the shelf must be the turn's and in its signed scope,
- * the reach is the audience's (`reachForAudience`), restricted folders are not
- * listed even in a solo chat, and every refusal is one 404.
+ * the reach is the audience's listing reach (`reachForAudience` with `listing`,
+ * which hides restricted folders even in a solo chat: `lib/search/reach.spec.ts`),
+ * and every refusal is one 404.
  */
 
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('server-only', () => ({}))
 vi.mock('@/lib/search/reach', () => ({ reachForAudience: vi.fn() }))
-vi.mock('@/lib/authz/folder-access', () => ({ getRestrictedFolderIds: vi.fn() }))
 vi.mock('./repository', async (importOriginal) => ({
   ...(await importOriginal<typeof import('./repository')>()),
   findFolderIdByPath: vi.fn(),
@@ -23,7 +23,6 @@ vi.mock('./repository', async (importOriginal) => ({
 
 import { NotFoundError } from '@/lib/api/errors'
 import type { AuthorizedSession } from '@/lib/auth/types'
-import { getRestrictedFolderIds } from '@/lib/authz/folder-access'
 import type { Project } from '@/lib/db/schema'
 import type { VerifiedGridRequestContext } from '@/lib/request-context'
 import { reachForAudience, type SearchReach } from '@/lib/search/reach'
@@ -83,28 +82,20 @@ const ID = (n: number) => `00000000-0000-4000-8000-00000000000${n}`
 beforeEach(() => {
   vi.clearAllMocks()
   vi.mocked(reachForAudience).mockResolvedValue(reach())
-  vi.mocked(getRestrictedFolderIds).mockResolvedValue(['f-restricted', 'f-restricted-child'])
   vi.mocked(listTreeFolders).mockResolvedValue({ rows: [], truncated: false })
   vi.mocked(listTreeDocuments).mockResolvedValue([])
 })
 
 describe('readEstateTree: the project shelf', () => {
-  it('reads the audience’s reach for the envelope’s project, restricted folders hidden even in a solo chat', async () => {
+  it('reads the audience’s listing reach for the envelope’s project, and lists under it unchanged', async () => {
+    const listing = reach()
+    vi.mocked(reachForAudience).mockResolvedValue(listing)
     const answer = await readEstateTree(context(), session, { shelf: 'project' })
 
-    expect(reachForAudience).toHaveBeenCalledWith(session, 's_conv_1', { kind: 'project', projectId: PROJECT }, { includeOwnProject: true })
-    const listed = vi.mocked(listTreeFolders).mock.calls[0][0]
-    expect(listed.projects[0].hiddenFolderIds).toEqual(['f-binned', 'f-restricted', 'f-restricted-child'])
-    expect(vi.mocked(listTreeDocuments).mock.calls[0][0]).toEqual({ kind: 'reach', reach: listed })
+    expect(reachForAudience).toHaveBeenCalledWith(session, 's_conv_1', { kind: 'project', projectId: PROJECT }, { listing: true, includeOwnProject: true })
+    expect(vi.mocked(listTreeFolders).mock.calls[0][0]).toBe(listing)
+    expect(vi.mocked(listTreeDocuments).mock.calls[0][0]).toEqual({ kind: 'reach', reach: listing })
     expect(answer).toMatchObject({ shelf: 'project', collection: 'proj_1', next_cursor: null })
-  })
-
-  it('keeps a shared audience’s reach as it is: it hides the restricted folders already', async () => {
-    const shared = reach({ screenedOnly: true })
-    vi.mocked(reachForAudience).mockResolvedValue(shared)
-    await readEstateTree(context(), session, { shelf: 'project' })
-    expect(getRestrictedFolderIds).not.toHaveBeenCalled()
-    expect(vi.mocked(listTreeFolders).mock.calls[0][0]).toBe(shared)
   })
 
   it.each([
@@ -135,13 +126,14 @@ describe('readEstateTree: a folder', () => {
     vi.mocked(findFolderIdByPath).mockResolvedValue('f-plans')
     vi.mocked(reachForAudience).mockResolvedValue(reach({ folderIds: ['f-plans', 'f-plans-old'] }))
     await readEstateTree(context(), session, { shelf: 'project', folder_path: 'Einreichung/Pläne' })
-    expect(reachForAudience).toHaveBeenCalledWith(session, 's_conv_1', { kind: 'project', projectId: PROJECT, folderId: 'f-plans' }, { includeOwnProject: true })
+    expect(reachForAudience).toHaveBeenCalledWith(session, 's_conv_1', { kind: 'project', projectId: PROJECT, folderId: 'f-plans' }, { listing: true, includeOwnProject: true })
     expect(vi.mocked(listTreeFolders).mock.calls[0][0].folderIds).toEqual(['f-plans', 'f-plans-old'])
   })
 
   it('answers a restricted folder exactly as a missing one, in a solo chat too', async () => {
+    // The listing reach leaves a restricted folder out of `folderIds` (reach.spec.ts); the path still resolves to it.
     vi.mocked(findFolderIdByPath).mockResolvedValue('f-restricted')
-    vi.mocked(reachForAudience).mockResolvedValue(reach({ folderIds: ['f-restricted', 'f-restricted-child'] }))
+    vi.mocked(reachForAudience).mockResolvedValue(reach({ folderIds: [] }))
     const restricted = await readEstateTree(context(), session, { shelf: 'project', folder_path: 'Personal' }).catch((e: Error) => e.message)
 
     vi.mocked(findFolderIdByPath).mockResolvedValue(null)
@@ -163,7 +155,7 @@ describe('readEstateTree: the office shelf and the conversation’s files', () =
   it('reads the office shelf under the audience’s reach when the signed scope holds it', async () => {
     vi.mocked(reachForAudience).mockResolvedValue(reach({ projects: [], officeShelf: { collection: 'archiv_org_1', reviewsQuarantine: false } }))
     const answer = await readEstateTree(context(), session, { shelf: 'office_shelf' })
-    expect(reachForAudience).toHaveBeenCalledWith(session, 's_conv_1', { kind: 'office_shelf' }, { includeOwnProject: true })
+    expect(reachForAudience).toHaveBeenCalledWith(session, 's_conv_1', { kind: 'office_shelf' }, { listing: true, includeOwnProject: true })
     expect(answer.shelf).toBe('office_shelf')
   })
 

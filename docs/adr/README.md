@@ -196,6 +196,7 @@ Consequences, where a reader looks for them.
 | [0132](0132-the-herleitung-shows-the-work-one-row-per-call.md) | The Herleitung shows the work: one row per call, grouped by round, with what it found | Proposed |
 | [0133](0133-piloti-reads-the-estate-through-standard-filesystem-tools.md) | Piloti reads the office's documents through ls, glob, grep and read_file over its own backend, beside ranked search | Proposed |
 | [0134](0134-extracted-page-text-is-stored-per-version.md) | Extracted page text is stored per version, and the index is derived from it | Proposed |
+| [0135](0135-skills-run-on-deep-agents-skills-middleware.md) | Skills run on Deep Agents' SkillsMiddleware, in chat and in deep research | Proposed |
 | [0136](0136-search-is-one-query-over-a-projection-beside-the-index.md) | Search is one query over a projection beside the index: the dossier's facts are filtered where authorization lives | Proposed |
 
 > Note: 0027, 0039, 0044 and 0047 were each independently used twice, every

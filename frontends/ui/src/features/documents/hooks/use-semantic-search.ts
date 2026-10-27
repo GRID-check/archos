@@ -1,24 +1,27 @@
 'use client'
 
 import { useCallback, useRef, useState } from 'react'
+import type { DocumentHit, SearchResponse } from '@/lib/search/search-wire'
 import type { FileItem } from '../components/project-file-workspace'
 
 /**
- * A file browser result carrying its semantic-search match evidence: the base
- * {@link FileItem} plus WHY it matched — the best snippet, the page it came
- * from, and the 0..1 relevance score. Mirrors the backend's document-centric
- * search contract (`POST /v1/collections/{c}/search`).
+ * A file browser result carrying its match evidence: the base {@link FileItem}
+ * plus WHY it matched (the passage and its page) and its place in the ranking.
+ * The search (`POST /api/search`, ADR-0136) ranks and never shows a score, so
+ * the rank is the order the answer came in.
  */
 export interface SemanticHit extends FileItem {
+  /** The matched passage; empty when the name or the reading matched, not the text. */
   snippet: string
   page: number | null
-  score: number
+  /** 1 is the best match. */
+  rank: number
 }
 
 interface UseSemanticSearchOptions {
-  /** BFF search route, `/api/documents/search`, the shelf in the body. */
+  /** The search route with the shelf as its query (`/api/search?projectId=…`). */
   endpoint: string
-  /** Extra body fields merged into every request (e.g. `{ projectId }`). */
+  /** Body fields merged into every request (`kinds: ['document']`). */
   extraBody?: Record<string, unknown>
 }
 
@@ -37,29 +40,28 @@ export interface SemanticSearchState {
   reset: () => void
 }
 
-/** Normalize a raw BFF search hit into a {@link SemanticHit} — the same field
- * mapping the workspaces apply to the plain document list, plus match evidence. */
-function toSemanticHit(d: Record<string, unknown>): SemanticHit {
+/** A document result of the search as a row of the file browser, with its match evidence. */
+export function toSemanticHit(hit: DocumentHit, index: number): SemanticHit {
   return {
-    id: d.id as string,
-    filename: d.filename as string,
-    displayName: (d.displayName as string | null) ?? null,
-    fileSize: (d.fileSize as number | null) ?? null,
-    contentType: (d.contentType as string | null) ?? null,
-    status: (d.status as string | null) ?? null,
-    folderId: (d.folderId as string | null) ?? null,
-    createdAt: d.createdAt as string,
-    errorMessage: (d.errorMessage as string | null) ?? null,
-    summary: (d.summary as string | null) ?? null,
-    pageCount: (d.pageCount as number | null) ?? null,
-    chunkCount: (d.chunkCount as number | null) ?? null,
-    contentTypes: (d.contentTypes as string[] | null) ?? null,
-    tags: (d.tags as string[] | null) ?? null,
+    id: hit.id,
+    filename: hit.filename,
+    displayName: hit.name === hit.filename ? null : hit.name,
+    fileSize: null,
+    contentType: hit.contentType,
+    status: hit.status,
+    folderId: hit.folderId,
+    createdAt: hit.uploadedAt,
+    errorMessage: null,
+    summary: null,
+    pageCount: hit.pageCount,
+    chunkCount: null,
+    contentTypes: null,
+    tags: null,
     topics: null,
     capture: null,
-    snippet: (d.snippet as string | null) ?? '',
-    page: (d.page as number | null) ?? null,
-    score: typeof d.score === 'number' ? d.score : 0,
+    snippet: hit.passage?.text ?? '',
+    page: hit.passage?.page ?? null,
+    rank: index + 1,
   }
 }
 
@@ -88,15 +90,15 @@ export function useSemanticSearch({ endpoint, extraBody }: UseSemanticSearchOpti
       void fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ q, ...extraBody }),
+        body: JSON.stringify({ text: q, ...extraBody }),
       })
         .then((r) => {
           if (!r.ok) throw new Error(`Search failed (${r.status})`)
-          return r.json() as Promise<{ hits?: Array<Record<string, unknown>> }>
+          return r.json() as Promise<Pick<SearchResponse, 'sections'>>
         })
         .then((data) => {
           if (requestId.current !== id) return
-          setHits((data.hits ?? []).map(toSemanticHit))
+          setHits((data.sections?.document?.hits ?? []).map(toSemanticHit))
         })
         .catch(() => {
           if (requestId.current !== id) return

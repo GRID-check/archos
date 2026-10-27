@@ -1,5 +1,5 @@
 /**
- * Write the search rows of documents whose reading is known (ADR-0133): the
+ * Write the search rows of documents whose reading is known (ADR-0136): the
  * one door into `document_search_facets`. Called where a document settles
  * (`reconcileDocumentStatuses`) and by the shelf's backstop refresh
  * (`./shelf-projection.ts`). A reading the listing did not carry writes

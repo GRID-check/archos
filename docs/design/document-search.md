@@ -154,7 +154,7 @@ with, so the search and the grid cannot disagree.
 The dossier itself stays where ingestion writes it (`document_metadata` in the
 agent database). Filtering it there would mean the agent database deciding
 visibility it cannot see, or the BFF shipping every readable document id to it;
-counting there would count what the reader may not open. ADR-0133 records this.
+counting there would count what the reader may not open. ADR-0136 records this.
 
 Postgres decides which documents are in a result; Qdrant only ranks their
 passages. With text, the content search is pre-filtered for recall: by
@@ -212,7 +212,11 @@ yet for the same reason.
    the body without its cursor, never a result. Running a shared one is an
    ordinary search by the reader, with the reader's reach, so sharing a
    question shares nothing the reader could not already find. Only the owner
-   renames, shares or deletes one; anyone else's answers 404.
+   renames, shares or deletes one; anyone else's answers 404. A colleague's
+   shared one carries `ownerName`, from the office's people directory
+   (`lib/sharing/directory.ts`), so the list says whose question it is. A
+   delete in the page is held for the undo toast's window and sent when it
+   closes (`useUndoableArchive`), so „Rückgängig“ never has to re-create one.
    `GET/POST /api/search/saved`, `PATCH/DELETE /api/search/saved/[id]`,
    operations `saved-search-list`, `-create`, `-update`, `-delete`
    (`lib/search/saved-search-*.ts`).
@@ -234,9 +238,20 @@ export carries every column whatever is shown, and its menu says so. On a
 phone the register is a stack: Plannummer and Index over the title, the other
 chosen columns on a line under it, the order in a menu.
 
-- `/app/search`: the whole office. The rail's „Suche“ (`g u`), the header's
-  magnifier, and ⌘K, whose first row carries what was typed
-  (`/app/search?q=…`). The project facet narrows it to one project.
+- `/app/search`: the whole office. The rail's „Suche“ (`g u`) and the header's
+  magnifier open it. The project facet narrows it to one project.
+- ⌘K, from anywhere: what is typed is searched live (150 ms after the last
+  key, three hits of each kind, no facet counts; in a project, that project),
+  the hits grouped by kind and drawn by the page's own row components
+  (`HitRow` inside the palette's option), Enter on the first. The last search
+  row, „Alle Treffer für …“, opens the page with the question
+  (`/app/search?q=…`). With nothing typed the palette says in one line what the
+  search reaches and offers the recent searches (this browser, five) and the
+  saved ones. The palette's commands stay below. On the search page itself ⌘K
+  focuses the page's field, which is the same search.
+- The field is a WAI-ARIA combobox: ↑ ↓ move an active option while focus
+  stays in the field (`aria-activedescendant`), each kind's rows are a listbox
+  (the register's rows, its table), and the active row carries a 2px ink rule.
 - A project's Dateien and the Büroablage: „Suche“ in the header switches the
   listing to the search (`?mode=search`), scoped to the shelf and the open
   folder (`?folder=`).
@@ -264,9 +279,13 @@ return citable passages, which this search does not (a passage here is a
 pointer to read). Making `list_files` take its structured filters from the core
 is the next step, once the answer suite measures it (ADR-0127's eval set).
 
+The Files pane's semantic search asks the core too: `POST /api/search` with the
+shelf as its query and `kinds: ['document']`. `POST /api/documents/search` and
+the operation `document-search` are gone; the old name leads to
+`workspace-search` for one release, its fields rewritten.
+
 Next, not in this change: tasks and memory as kinds, `list_files` on the core,
-Planfred-style "who received which Index" from the version access log, the
-Files pane's semantic search (`POST /api/documents/search`) moved onto the core.
+Planfred-style "who received which Index" from the version access log.
 
 ## Measured
 

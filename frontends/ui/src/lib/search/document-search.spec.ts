@@ -223,6 +223,13 @@ describe('runSearch', () => {
     expect(providers.searchFolders).toHaveBeenCalledTimes(2)
   })
 
+  it('shows no more of another kind than was asked: the palette asks three of each', async () => {
+    providers.searchFolders.mockResolvedValue({ hits: [{ kind: 'folder', id: 'f1' }], total: 12 })
+    vi.mocked(fetchGroupedSemanticHits).mockResolvedValue([])
+    await runSearch(session, {}, { text: 'Einreichung', limit: 3, facets: false })
+    expect(providers.searchFolders).toHaveBeenLastCalledWith(reach, 'Einreichung', { limit: 3, offset: 0 })
+  })
+
   it('refuses a cursor with several kinds, or one written for another kind', async () => {
     await expect(runSearch(session, {}, { text: 'x', cursor: encodeSearchCursor('folder', 5) })).rejects.toThrow('cursor')
     expect(() => decodeSearchCursor(encodeSearchCursor('folder', 5), 'document')).toThrow('cursor')

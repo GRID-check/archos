@@ -514,7 +514,7 @@ DOC_B = "7f3a9d10-aaaa-4bbb-8ccc-dddddddddddd"
 
 @pytest.mark.asyncio
 async def test_grouped_search_narrows_to_documents_reading_types_and_references_inside_the_query(app):
-    """ADR-0133 item 5: the BFF's candidates, the dossier's type and its references are pre-filters, any of each."""
+    """ADR-0136 item 5: the BFF's candidates, the dossier's type and its references are pre-filters, any of each."""
     retriever = _grouped_retriever([])
     set_active_retriever(retriever)
 

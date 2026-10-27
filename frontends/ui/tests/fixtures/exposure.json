@@ -587,16 +587,6 @@
    "withheld": null,
    "reason": null
   },
-  "document-search": {
-   "kind": "catalog",
-   "domain": "documents",
-   "sensitivity": null,
-   "external": true,
-   "piloti": "native:knowledge_search",
-   "platform": false,
-   "withheld": null,
-   "reason": "a hit of this search is no citable source; Piloti’s own `knowledge_search` returns quotable passages"
-  },
   "document-status": {
    "kind": "catalog",
    "domain": "documents",
@@ -2306,7 +2296,7 @@
    "piloti": false,
    "platform": false,
    "withheld": null,
-   "reason": "Piloti is given the office’s skills at turn start and loads one with its own `use_skill`, which the turn records; the door offers them to outside agents"
+   "reason": "Piloti is given the office’s skills at turn start and reads one with its own `read_file`, which the turn records; the door offers them to outside agents"
   },
   "skill-invocable-list": {
    "kind": "catalog",
@@ -2349,7 +2339,7 @@
    "piloti": false,
    "platform": false,
    "withheld": null,
-   "reason": "Piloti is given the office’s skills at turn start and loads one with its own `use_skill`, which the turn records; the door offers them to outside agents"
+   "reason": "Piloti is given the office’s skills at turn start and reads one with its own `read_file`, which the turn records; the door offers them to outside agents"
   },
   "skill-update": {
    "kind": "catalog",

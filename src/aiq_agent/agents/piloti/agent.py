@@ -4,7 +4,7 @@ Built ONCE per process (``register.py`` constructs it at boot): the prompt
 template is read once, the LangGraph is compiled once, and the boot tool set
 is bound once. What a turn may vary from that is a :class:`TurnConfig`: the
 model override (BYOK / ZDR / per-org model), the tool set (the per-turn
-``use_skill`` closure, the working directory) and the data sources this
+file verbs over the working directory and the skills) and the data sources this
 conversation has switched off — which narrow what the tools ANSWER, never what
 is bound.
 
@@ -52,7 +52,6 @@ from langgraph.prebuilt import tools_condition
 from aiq_agent.common import LLMProvider
 from aiq_agent.common import LLMRole
 from aiq_agent.common import content_to_text
-from aiq_agent.common import get_source_id_for_tool
 from aiq_agent.common.citation_verification import SourceRegistry
 from aiq_agent.common.citation_verification import begin_turn_capture
 from aiq_agent.common.citation_verification import end_turn_capture
@@ -66,6 +65,7 @@ from aiq_agent.common.citation_verification import reset_session_registry
 from aiq_agent.common.citation_verification import set_session_registry
 from aiq_agent.common.cost_tracking import grid_cost_tracker_var
 from aiq_agent.common.data_sources import disabled_source_notice
+from aiq_agent.common.data_sources import source_id_for_call
 from aiq_agent.common.deferred_tool_loading import DeferredToolBinding
 from aiq_agent.common.deferred_tool_loading import DeferredToolLoadingSettings
 from aiq_agent.common.deferred_tool_loading import bind_tools_deferred
@@ -104,6 +104,7 @@ from aiq_agent.common.turn_status import end_lane_capture
 from aiq_agent.common.turn_status import fetch_signature
 from aiq_agent.common.turn_status import get_lane_captures
 from aiq_agent.common.turn_status import is_retrieval_round
+from aiq_agent.common.turn_status import is_skill_read
 from aiq_agent.common.turn_status import record_round_announcement
 from aiq_agent.common.turn_status import retrieval_round_scope
 from aiq_agent.common.wire_v2 import SteerAppliedBody
@@ -311,13 +312,22 @@ def _call_name(call: Any) -> str:
     return str(name or "")
 
 
+def _call_args(call: Any) -> Any:
+    """One call's arguments, however the provider spelled the call."""
+    return call.get("args") if isinstance(call, dict) else getattr(call, "args", None)
+
+
+#: How a ``read_file`` of a skill appears in a run's shape, apart from a draft read.
+SKILL_READ_SHAPE = "read_skill"
+
+
 def _call_basenames(message: Any) -> list[str]:
-    """The basenames of one message's tool calls, in order."""
+    """The basenames of one message's tool calls, in order; a skill read as :data:`SKILL_READ_SHAPE`."""
     names: list[str] = []
     for call in getattr(message, "tool_calls", None) or []:
         name = call.get("name") if isinstance(call, dict) else getattr(call, "name", None)
         if name:
-            names.append(tool_basename(str(name)))
+            names.append(SKILL_READ_SHAPE if is_skill_read(call) else tool_basename(str(name)))
     return names
 
 
@@ -325,7 +335,7 @@ def _tool_call_shape(messages: Sequence[Any], *, limit: int = 24) -> list[str]:
     """The ordered basenames of every tool this run called.
 
     The SHAPE of a question, standing in for the question itself: a truncated
-    ``use_skill>use_skill>knowledge_search>find_elements>…`` is the fingerprint
+    ``read_skill>read_skill>knowledge_search>find_elements>…`` is the fingerprint
     of an OIB 3 daylight chain, and grouping truncations by it is how "on which
     question shapes" gets answered. The tool names and never the arguments: a
     query string is the reader's own words. Capped, because it is a
@@ -377,7 +387,8 @@ def _withheld_calls(
     refused = [
         (call, sentence)
         for call in calls
-        if id(call) not in seen and (sentence := disabled_source_notice(_call_name(call), disabled)) is not None
+        if id(call) not in seen
+        and (sentence := disabled_source_notice(_call_name(call), disabled, _call_args(call))) is not None
     ]
     seen |= {id(call) for call, _ in refused}
     over_width = _over_width([call for call in calls if id(call) not in seen], max_calls)
@@ -932,6 +943,7 @@ def _capture_sources(
     content: str,
     source_tool_names: frozenset[str],
     registry: SourceRegistry,
+    artifact: Any = None,
 ) -> None:
     """Register the sources one tool result carries, gated twice.
 
@@ -944,13 +956,13 @@ def _capture_sources(
     """
     if tool_name not in source_tool_names:
         return
-    source_id = get_source_id_for_tool(tool_name)
+    source_id = source_id_for_call(tool_name)
     # `look` is no data source: it registers the PLACE it read, when it read a
     # project or office document (`tools/look/place.py`), and nothing else.
     if source_id is None and not is_look_tool(tool_name):
         logger.debug("[CitationRegistry] Skipping non-data-source tool result from %s", tool_name)
         return
-    sources = extract_sources_from_tool_result(tool_name, content, source_id=source_id)
+    sources = extract_sources_from_tool_result(tool_name, content, source_id=source_id, artifact=artifact)
     for source in sources:
         registry.add(source)
     # A place is no retrieval: it must not ground a trailer value or count as a retrieved source.
@@ -1035,7 +1047,7 @@ class PilotiAgent:
                 LLM decisions that asked for tools — the turn may spend before
                 synthesis is forced. A round costs one whatever it asked for:
                 five parallel ``read_passage`` opens are one round, and so is a
-                single ``use_skill``. The name is a wire name; see the field
+                single skill read. The name is a wire name; see the field
                 note on ``ResearchAgentState.tool_iterations``.
             max_input_tokens_per_turn: Cumulative INPUT tokens the turn may
                 spend before synthesis is forced, read off the cost tracker
@@ -1088,7 +1100,7 @@ class PilotiAgent:
         # in-process BM25 over tool name + description, built here once: a
         # turn never pays for it, and a deployment that does not ask for it
         # does not even tokenize its tool descriptions. Indexed over the BOOT
-        # tools; a tool a turn adds (``use_skill``) is never withheld.
+        # tools; a tool a turn adds (the file verbs) is never withheld.
         self._tool_search_index: ToolSearchIndex | None = ToolSearchIndex(self.tools) if self.tool_search else None
         # Selected-tool-set → bound LLM, for the boot binding only.
         self._narrowed_bindings: dict[frozenset[str], Any] = {}
@@ -1160,7 +1172,7 @@ class PilotiAgent:
         rebinding anything, and that is the point of row 6: the tool set does
         not change with a toggle, so neither does the payload the provider's
         cache is keyed on. Only the model override and the turn's added tools
-        (``use_skill``, the working directory) ever cost a ``bind_tools``.
+        (the file verbs over drafts and skills) ever cost a ``bind_tools``.
         """
         if turn is None:
             return self._boot
@@ -1368,7 +1380,7 @@ class PilotiAgent:
             state.tool_iterations,
             input_tokens,
             binding.max_input_tokens,
-            shape.count("use_skill"),
+            shape.count(SKILL_READ_SHAPE),
             ">".join(shape) or "-",
         )
         if cutoff == CUTOFF_INPUT_TOKENS:
@@ -1536,7 +1548,9 @@ class PilotiAgent:
             # A look answers in blocks (text, then the image): its text is the grounding block.
             content = content_to_text(message.content) if isinstance(message.content, list) else str(message.content)
             measured = measured or tool_result_is_measurement(tool_name, content)
-            _capture_sources(tool_name, content, binding.source_tool_names, registry)
+            _capture_sources(
+                tool_name, content, binding.source_tool_names, registry, getattr(message, "artifact", None)
+            )
         return measured
 
     # -- the turn ---------------------------------------------------------------

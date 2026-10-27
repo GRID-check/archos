@@ -60,6 +60,14 @@ describe('reachForAudience', () => {
     expect(reach.projects[0].hiddenFolderIds).toContain('f-restricted')
   })
 
+  it('leaves restricted folders out of a listing even in the asker\'s own chat, keeping their own held uploads', async () => {
+    vi.mocked(audienceReach).mockResolvedValue({ projects: [project], restrictedFolders: true, key: 'k' })
+    const reach = await reachForAudience(session, 'conv_1', { kind: 'office' }, { listing: true })
+    expect(reach.projects[0].hiddenFolderIds).toEqual(expect.arrayContaining(['f-hidden', 'f-restricted']))
+    expect(reach.projects[0].collections).toEqual(['proj_a'])
+    expect(reach.screenedOnly).toBe(false)
+  })
+
   it('does not find a project outside the audience', async () => {
     vi.mocked(audienceReach).mockResolvedValue({ projects: [], restrictedFolders: true, key: 'k' })
     await expect(reachForAudience(session, 'conv_1', { kind: 'project', projectId: 'p1' })).rejects.toThrow('Project not found')

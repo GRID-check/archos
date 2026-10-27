@@ -54,7 +54,7 @@ import { BFF_JOB_PRIORITY, type BffJobPriority } from '@/lib/db/schema'
  * wait (`notBefore`) for its answer and leave what it found. Does nothing when
  * the organization's `piloti-notices` is off.
  * `search_facets_sync` walks one shelf's documents a page per slice as the
- * system (ADR-0133): it rewrites their derived search rows from the reading the
+ * system (ADR-0136): it rewrites their derived search rows from the reading the
  * agent stored, and decides nothing about who may read them.
  * The other three are one bounded step each and run as the system, because the
  * person's permission was checked when the work was requested and what they do
@@ -513,7 +513,7 @@ export interface JobSliceResult<TPayload> {
 }
 
 /**
- * `search_facets_sync`: refresh one shelf's search rows (ADR-0133), a page of
+ * `search_facets_sync`: refresh one shelf's search rows (ADR-0136), a page of
  * its documents per slice, by id. `sourceFingerprint` is the shelf's
  * fingerprint when the refresh was queued, recorded as synced when the walk
  * ends, so a change during the walk is found stale by the next search.

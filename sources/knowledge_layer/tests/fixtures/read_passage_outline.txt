@@ -2,6 +2,7 @@ Read 2 passage(s) of oib-rl_2_ausgabe_mai_2023.pdf, in reading order:
 
 --- Result 1 ---
 Source: OIB-Richtlinie 2, Ausgabe Mai 2023
+Path: /law/oib/oib-rl_2_ausgabe_mai_2023.pdf.md
 Collection: oib_knowledge
 Shelf: base
 Page: 3
@@ -14,6 +15,7 @@ Diese Richtlinie gilt für …
 
 --- Result 2 ---
 Source: OIB-Richtlinie 2, Ausgabe Mai 2023
+Path: /law/oib/oib-rl_2_ausgabe_mai_2023.pdf.md
 Collection: oib_knowledge
 Shelf: base
 Page: 3

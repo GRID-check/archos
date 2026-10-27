@@ -1,5 +1,5 @@
 /**
- * The backstop that keeps a shelf's search rows current (ADR-0133).
+ * The backstop that keeps a shelf's search rows current (ADR-0136).
  *
  * A row is written when its document settles (`reconcileDocumentStatuses`).
  * What that misses (a person's tags or a Fassung link written on the agent

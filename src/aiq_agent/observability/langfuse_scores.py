@@ -195,8 +195,9 @@ SCORE_DEFINITIONS: tuple[ScoreDefinition, ...] = (
         "file-tools-used",
         "CATEGORICAL",
         "Which of the office-file moves a turn used (ADR-0127), as the files eval's arms define them: search "
-        "(knowledge_search ranked by meaning, round 0 included), navigate (list_files, read_passage, and "
-        "knowledge_search in a literal mode, exact or regex), both, or none. Written on every turn that called "
+        "(knowledge_search ranked by meaning, round 0 included), navigate (ls, glob, grep and read_file on the "
+        "office's documents, their aliases list_files and read_passage, and knowledge_search in a literal mode, "
+        "exact or regex), both, or none. A file call on the drafts is neither. Written on every turn that called "
         "a tool.",
         categories=("none", "search", "navigate", "both"),
     ),
@@ -471,7 +472,10 @@ def quote_patch_scores(patched: int) -> list[RuntimeScore]:
 #: The tool basenames that navigate the office's files (ADR-0127). ``knowledge_search`` is the search
 #: move when it ranks by meaning and a navigate move in a literal mode (``match="exact"`` or ``"regex"``),
 #: as the files eval's ``navigate`` arm defines it (``scripts/turn_census/files_eval.py``).
-NAVIGATE_TOOLS = frozenset({"list_files", "read_passage"})
+#: The filesystem verbs (ADR-0133) are navigate moves on the estate: ``grep`` is the literal search under its
+#: standard name. A file call that stayed in the drafts arrives as ``draft:<tool>`` (``chat_socket.tool_called_by``)
+#: and is neither. ``list_files`` and ``read_passage`` stay for the release their aliases live.
+NAVIGATE_TOOLS = frozenset({"list_files", "read_passage", "ls", "glob", "grep", "read_file"})
 SEARCH_TOOLS = frozenset({"knowledge_search"})
 
 

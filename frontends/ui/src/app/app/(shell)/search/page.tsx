@@ -1,5 +1,5 @@
 /**
- * The office-wide search (ADR-0133, `docs/design/document-search.md`, 08:55):
+ * The office-wide search (ADR-0136, `docs/design/document-search.md`, 08:55):
  * every shelf the reader may open, every kind of thing the office works with.
  * Reached from the rail's „Suche“, the header's magnifier and ⌘K.
  *

@@ -401,6 +401,12 @@ functions:
           # The file browser reads the same files through the same scope, so
           # switching the knowledge base off must take it too.
           - list_files
+          # The filesystem verbs (`ls`, `glob`, `grep`, `read_file`, ADR-0133)
+          # read the same files through the same scope, and belong to this
+          # source for the same reason. They are not NAT functions, so they are
+          # not listed here: `common/data_sources.source_id_for_call` maps them
+          # to the source `knowledge_search` belongs to, PER MOUNT, so a call
+          # under /drafts/ is never refused and never captured as a source.
           # Other projects' uploaded documents (ADR-0094). Without this line
           # nothing the lookup returns is captured as a citable source, and a
           # turn whose only finding was a precedent was replaced by the canned
@@ -762,6 +768,11 @@ functions:
   shallow_research_agent:
     _type: research_agent
     llm: research_llm
+    # The filesystem verbs read the office's documents through this search's
+    # scope (ADR-0133): `read_file` over /project/, /office/, /chat/ and
+    # /law/oib/, beside the conversation's drafts under /drafts/. They are
+    # built per turn (the drafts are per conversation), not listed below.
+    filesystem: knowledge_search
     # Explicit list (replaces registry inheritance) so the non-data-source
     # `remember` and `ask_user` tools are included alongside search/knowledge.
     tools:
@@ -908,18 +919,13 @@ functions:
     # shape in a few thousand tokens — instead of costing the full-context
     # round the `emit_card` retry used to. Unset = drop it and record it.
     card_repair_llm: card_llm
-    # Agent skills (progressive-disclosure `use_skill` tool) active on research
-    # turns. Empty allowlist = every resolved skill (builtin + org) is offered.
+    # Agent skills (ADR-0135): Deep Agents' SkillsMiddleware catalog in the turn
+    # context, each SKILL.md read with `read_file` under /skills/. Empty
+    # allowlist = every resolved skill (builtin + org) is offered. No body
+    # rides the prompt by size; the turn-start decision below pins the ONE
+    # method the question is the subject of (~400 tokens, or the IFC method on
+    # a model question).
     skills_enabled: true
-    # No skill body rides the prompt by size (ADR-0063, amended): all nine
-    # chat methods together were ~4 600 tokens on every call, for methods most
-    # turns never use. The turn-start decision below picks the ONE method the
-    # question is the subject of and reads that body in (~400 tokens, or the
-    # IFC method on a model question); the rest stay a catalog line behind
-    # `use_skill`. These two are an opt-in budget for an org that wants a
-    # method on every turn regardless.
-    skills_inline_max_body_chars: 0
-    skills_inline_budget_chars: 0
     # The turn-start decision (ADR-0064): one decision-model request beside
     # the skill resolution — does the message need evidence, which corpus and
     # which OIB families, which skill, which card types — acted on by ADDING

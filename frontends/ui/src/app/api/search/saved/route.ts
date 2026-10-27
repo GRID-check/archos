@@ -1,5 +1,5 @@
 /**
- * Saved searches (ADR-0133 slice 5).
+ * Saved searches (ADR-0136 slice 5).
  *
  * GET  — the caller's own saved searches and the office's shared ones, newest
  *        first, a page of `limit` with `nextCursor`.

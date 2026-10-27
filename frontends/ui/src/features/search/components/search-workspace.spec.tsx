@@ -28,7 +28,7 @@ vi.mock('next/navigation', () => ({
   useSearchParams: () => new URLSearchParams(currentSearch),
 }))
 
-vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
+vi.mock('sonner', () => ({ toast: Object.assign(vi.fn(), { success: vi.fn(), error: vi.fn() }) }))
 
 const PROJECT = '0b6f0c1e-3a55-4c0e-9a1d-7f2b5d0e1a01'
 
@@ -83,10 +83,11 @@ describe('SearchWorkspaceView', () => {
     german(<Harness initial={{ ...EMPTY_SEARCH_STATE, text: 'Fluchtweg GK 4' }} onChange={() => {}} />)
     const concept = screen.getByTestId('search-hit-document-d0000000-0000-4000-8000-000000000001')
     expect(concept).toHaveTextContent('Brandschutzkonzept Wohnhaus Seestadt J7')
-    // What it is and where it sits on one line; the project as its provenance mark.
-    expect(concept).toHaveTextContent('Brandschutzkonzept·Brandschutz')
-    expect(concept).toHaveTextContent('Wohnhaus Seestadt Baufeld J7')
+    // Where it lives on its own line: the project as its provenance mark, whole, then the folder.
+    expect(concept).toHaveTextContent('Wohnhaus Seestadt Baufeld J7Ordner Brandschutz')
     expect(concept).toHaveTextContent('S. 7')
+    // What the words were found in, quietly.
+    expect(within(concept).getByTestId('search-matched-on')).toHaveTextContent('Gefunden in was Piloti las · Inhalt')
     // The words searched for are set apart in the passage.
     expect(within(concept).getAllByText('Fluchtweg', { selector: 'mark' }).length).toBeGreaterThan(0)
     // It opens at the passage's page, the passage to light up there.
@@ -101,6 +102,16 @@ describe('SearchWorkspaceView', () => {
     )
     expect(screen.getByTestId('search-section-conversation')).toHaveTextContent('Fluchtweglängen nach OIB-RL 2 für GK 4')
     expect(screen.getByTestId('search-note-building')).toBeInTheDocument()
+  })
+
+  it('marks a replaced Fassung in ink with its icon and word, never in the Büroablage’s amber', () => {
+    german(<Harness initial={{ ...EMPTY_SEARCH_STATE, text: 'Fluchtweg GK 4' }} onChange={() => {}} />)
+    const replaced = screen.getByTestId('search-hit-document-d0000000-0000-4000-8000-000000000003')
+    const mark = within(replaced).getByTestId('superseded-mark')
+    expect(mark).toHaveTextContent('Ersetzt')
+    expect(mark).toHaveAttribute('title', 'Eine neuere Fassung ersetzt dieses Dokument')
+    expect(mark.className).not.toMatch(/warning/)
+    expect(mark.querySelector('svg')).not.toBeNull()
   })
 
   it('walks the results with the arrow keys, opens one with Enter and clears the words with Escape', async () => {
@@ -121,14 +132,45 @@ describe('SearchWorkspaceView', () => {
         onLoadMore={() => {}}
       />
     )
-    const field = screen.getByRole('searchbox', { name: 'Suchen' })
+    const field = screen.getByRole('combobox', { name: 'Suchen' })
     await userEvent.click(field)
     await userEvent.keyboard('{ArrowDown}{ArrowDown}')
-    expect(screen.getByTestId('search-hit-document-d0000000-0000-4000-8000-000000000002')).toHaveAttribute('aria-current', 'true')
+    const second = screen.getByTestId('search-hit-document-d0000000-0000-4000-8000-000000000002')
+    expect(second).toHaveAttribute('aria-selected', 'true')
+    // Focus stays in the field; a screen reader follows the active option through it.
+    expect(field).toHaveFocus()
+    expect(field).toHaveAttribute('aria-activedescendant', second.id)
     await userEvent.keyboard('{ArrowUp}{Enter}')
     expect(routerPush).toHaveBeenCalledWith(CONCEPT_AT_PASSAGE)
     await userEvent.keyboard('{Escape}')
     expect(onField).toHaveBeenCalledWith('')
+  })
+
+  it('is a combobox over one listbox per kind, each hit an option with a stable id', () => {
+    german(<Harness initial={{ ...EMPTY_SEARCH_STATE, text: 'Fluchtweg' }} onChange={() => {}} />)
+    const field = screen.getByRole('combobox', { name: 'Suchen' })
+    expect(field).toHaveAttribute('aria-autocomplete', 'list')
+    expect(field).toHaveAttribute('aria-expanded', 'true')
+    expect(field).not.toHaveAttribute('aria-activedescendant')
+    const lists = screen.getAllByRole('listbox')
+    expect(lists.map((list) => list.getAttribute('aria-label'))).toEqual(['Dokumente', 'Anmerkungen', 'Chats'])
+    expect(field.getAttribute('aria-controls')?.split(' ')).toEqual(lists.map((list) => list.id))
+    const options = within(lists[0]).getAllByRole('option')
+    expect(options[0]).toHaveAttribute('aria-selected', 'false')
+    expect(options[0].id).not.toBe('')
+    expect(new Set(screen.getAllByRole('option').map((option) => option.id)).size).toBe(screen.getAllByRole('option').length)
+  })
+
+  it('in the register, the combobox controls the table and names the active row', async () => {
+    german(<Harness initial={{ ...EMPTY_SEARCH_STATE, view: 'register' }} onChange={() => {}} />)
+    const field = screen.getByRole('combobox', { name: 'Suchen' })
+    const register = screen.getByTestId('search-register')
+    expect(field).toHaveAttribute('aria-controls', register.id)
+    await userEvent.click(field)
+    await userEvent.keyboard('{ArrowDown}')
+    const row = screen.getByTestId('search-register-row-d0000000-0000-4000-8000-000000000001')
+    expect(row).toHaveAttribute('aria-selected', 'true')
+    expect(field).toHaveAttribute('aria-activedescendant', row.id)
   })
 
   it('offers to clear the filters when they exclude everything, and keeps the words on a failed search', async () => {
@@ -269,7 +311,7 @@ describe('SearchWorkspace', () => {
     currentSearch = 'folder=f1'
     german(<SearchWorkspace surface={{ kind: 'office' }} />)
     await waitFor(() => expect(asked).toHaveLength(1))
-    await userEvent.type(screen.getByRole('searchbox', { name: 'Suchen' }), 'EP-03')
+    await userEvent.type(screen.getByRole('combobox', { name: 'Suchen' }), 'EP-03')
     await waitFor(() => expect(routerReplace).toHaveBeenCalledWith('/app/search?folder=f1&q=EP-03', { scroll: false }))
     expect(routerReplace).toHaveBeenCalledTimes(1)
   })

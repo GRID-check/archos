@@ -13,11 +13,11 @@
  * page scrolls its rows, and a stack of entries on a phone. The organisms arrange them and never style them.
  */
 
-import type { JSX, ReactNode } from 'react'
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import type { ComponentType, FormEvent, JSX, ReactNode } from 'react'
+import { createContext, useContext, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import type { LucideIcon } from 'lucide-react'
-import { Archive, ChevronRight, FolderKanban, History, X } from 'lucide-react'
+import { Archive, ChevronRight, Folder, FolderKanban, History, Users, X } from 'lucide-react'
 
 import { Chip, ChipLabel } from '@/components/ui/chip'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
@@ -31,7 +31,8 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { SortableHead } from '@/components/ui/sortable-head'
 import { Spinner } from '@/components/ui/spinner'
 import { Switch } from '@/components/ui/switch'
-import { TableBody, TableCell, TableHeader, TableRow } from '@/components/ui/table'
+import { TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { useTranslations } from '@/i18n'
 import type { TextSegment } from '@/lib/text/term-segments'
 import { sourceTint } from '@/lib/ui/source-tint'
 import { cn } from '@/lib/utils'
@@ -254,12 +255,15 @@ export function ResultSection({
   children,
   footer,
   testId,
+  listId,
 }: {
   title: string
   count: string
   children: ReactNode
   footer?: ReactNode
   testId?: string
+  /** The rows' listbox, which the search field's combobox controls. */
+  listId?: string
 }): JSX.Element {
   return (
     <section className="flex min-w-0 flex-col" data-testid={testId}>
@@ -267,53 +271,106 @@ export function ResultSection({
         <SectionLabel as="h2">{title}</SectionLabel>
         <span className="text-xs tabular-nums text-muted-foreground">{count}</span>
       </header>
-      <ul className="flex min-w-0 flex-col divide-y divide-border/70 border-y border-border/70">{children}</ul>
+      <ul id={listId} role="listbox" aria-label={title} className="flex min-w-0 flex-col divide-y divide-border/70 border-y border-border/70">
+        {children}
+      </ul>
       {footer}
     </section>
   )
 }
 
-/** One hit: an icon, its name in the strong weight, one muted line of where and what, what matched under it. */
+/**
+ * How a hit's row sits in something other than the result list: the ⌘K
+ * palette hands its own option (a cmdk item) here, so the palette and the page
+ * draw one hit with the same parts, in the same order, from the same row
+ * components. Absent, the row is the list's link.
+ */
+export interface ResultRowFrameProps {
+  href: string
+  testId?: string
+  /** The row's layout, for the frame's own box. */
+  className: string
+  children: ReactNode
+}
+const ResultRowFrameContext = createContext<ComponentType<ResultRowFrameProps> | null>(null)
+export const ResultRowFrameProvider = ResultRowFrameContext.Provider
+
+/** The row's box: icon, then the name over the meta line, the mark at the end; on a phone the mark drops under the name. */
+const RESULT_ROW_LAYOUT = 'items-start gap-x-3 gap-y-1.5 px-2 py-2.5 max-sm:flex-wrap'
+
+/**
+ * The row the arrow keys are on: a 2px ink rule down its leading edge over the
+ * selected tint, so it reads as where the keyboard is, never as the pointer's
+ * hover, which tints alone.
+ */
+const ACTIVE_ROW = 'aria-selected:bg-accent/60 aria-selected:shadow-[inset_2px_0_0_0_var(--foreground)]'
+
+/**
+ * One hit: an icon, its name in the strong weight, then where it lives
+ * (project and folder), one muted line of what it is, and what matched under
+ * it. The where line comes first because it is what tells two „Grundriss
+ * Erdgeschoss“ apart.
+ */
 export function ResultRow({
   href,
   icon: Icon,
   title,
+  where,
   meta,
   aside,
   children,
   active = false,
   testId,
+  id,
 }: {
   href: string
   icon: LucideIcon
   title: ReactNode
-  /** One line: „Projekt · Ordner · EP-03 · Index C · 14.10.2026“. */
+  /** Where it lives: the `ShelfMark` and the folder (`WherePart`). */
+  where?: ReactNode
+  /** One line of what it is: „Einreichplan · EP-03 · Index C · 1:100 · 14.10.2026“. */
   meta?: ReactNode
-  /** At the row's end: where it is kept (`ShelfMark`), a state. */
+  /** At the row's end: a state (`SupersededMark`). */
   aside?: ReactNode
   /** The passage, the excerpt. */
   children?: ReactNode
   /** The row the arrow keys are on. */
   active?: boolean
   testId?: string
+  /** The option's id, which the field's `aria-activedescendant` names while the row is active. */
+  id?: string
 }): JSX.Element {
+  const Frame = useContext(ResultRowFrameContext)
   const ref = useRef<HTMLAnchorElement>(null)
   useEffect(() => {
     if (active) ref.current?.scrollIntoView({ block: 'nearest' })
   }, [active])
+  const content = (
+    <>
+      <ItemMedia className="size-5 pt-0.5 text-muted-foreground">
+        <Icon className="size-4" aria-hidden />
+      </ItemMedia>
+      <ItemContent className="flex flex-col gap-0.5">
+        <span className="text-sm font-semibold tracking-tight text-foreground max-sm:line-clamp-2 sm:truncate">{title}</span>
+        {where ? <span className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-1 py-0.5 text-xs">{where}</span> : null}
+        {meta ? <span className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs text-muted-foreground">{meta}</span> : null}
+        {children}
+      </ItemContent>
+      {aside ? <span className="ml-auto flex shrink-0 items-center gap-1.5 pt-0.5 max-sm:ml-8 max-sm:basis-full max-sm:pt-0">{aside}</span> : null}
+    </>
+  )
+  if (Frame) {
+    return (
+      <Frame href={href} testId={testId} className={RESULT_ROW_LAYOUT}>
+        {content}
+      </Frame>
+    )
+  }
   return (
-    <li className="list-none">
-      <Item asChild className="items-start gap-x-3 gap-y-1.5 px-2 py-2.5 max-sm:flex-wrap">
-        <Link ref={ref} href={href} data-testid={testId} aria-current={active ? 'true' : undefined}>
-          <ItemMedia className="size-5 pt-0.5 text-muted-foreground">
-            <Icon className="size-4" aria-hidden />
-          </ItemMedia>
-          <ItemContent className="flex flex-col gap-0.5">
-            <span className="truncate text-sm font-semibold tracking-tight text-foreground">{title}</span>
-            {meta ? <span className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs text-muted-foreground">{meta}</span> : null}
-            {children}
-          </ItemContent>
-          {aside ? <span className="ml-auto flex shrink-0 items-center gap-1.5 pt-0.5 max-sm:ml-8 max-sm:basis-full max-sm:pt-0">{aside}</span> : null}
+    <li role="none" className="list-none">
+      <Item asChild className={cn(RESULT_ROW_LAYOUT, ACTIVE_ROW)}>
+        <Link ref={ref} id={id} href={href} role="option" aria-selected={active} data-testid={testId}>
+          {content}
         </Link>
       </Item>
     </li>
@@ -322,7 +379,7 @@ export function ResultRow({
 
 /** A part of the meta line; identifiers (Plannummer, Index, Maßstab) in the mono face, as the design language sets them. */
 export function MetaPart({ children, code = false }: { children: ReactNode; code?: boolean }): JSX.Element {
-  return <span className={cn('whitespace-nowrap', code && 'font-mono text-[11px] text-foreground/80')}>{children}</span>
+  return <span className={cn('whitespace-nowrap', code && 'font-mono text-xs text-foreground/80')}>{children}</span>
 }
 
 /** The meta line's parts that are there, a dot between each. */
@@ -344,18 +401,60 @@ export function MetaLine({ parts }: { parts: ReadonlyArray<ReactNode | null | un
   )
 }
 
-/** Where a hit is kept, by the provenance signal: icon, label and colour together. */
-export function ShelfMark({ shelf, label }: { shelf: 'project' | 'office_shelf'; label: string }): JSX.Element {
+/**
+ * Where a hit is kept, by the provenance signal: icon, label and colour
+ * together. In a cell (`wrap` off) it keeps to one line and gives the full
+ * name to its title; in a result row's where line it wraps, so a long project
+ * name is read whole without a pointer.
+ */
+export function ShelfMark({ shelf, label, wrap = false }: { shelf: 'project' | 'office_shelf'; label: string; wrap?: boolean }): JSX.Element {
   const Icon = shelf === 'office_shelf' ? Archive : FolderKanban
   return (
     <span
-      className="inline-flex h-5 max-w-40 items-center gap-1 rounded-md px-1.5 text-[11px] font-medium"
+      className={cn(
+        'inline-flex min-h-5 items-center gap-1 rounded-md px-1.5 text-xs font-medium',
+        wrap ? 'max-w-full py-0.5 leading-tight' : 'max-w-40 md:max-w-56'
+      )}
       style={sourceTint(shelf === 'office_shelf' ? 'office' : 'project')}
-      title={label}
+      title={wrap ? undefined : label}
     >
       <Icon className="size-3 shrink-0" aria-hidden />
-      <span className="truncate">{label}</span>
+      <span className={wrap ? 'min-w-0 [overflow-wrap:anywhere]' : 'truncate'}>{label}</span>
     </span>
+  )
+}
+
+/**
+ * A folder in the where line: an icon and its name, in ink, never a colour.
+ * After a shelf mark it leads with a quiet chevron, kept with the name so a
+ * wrapped line never ends on the chevron alone. `label` („Ordner“) is read
+ * before the name by a screen reader, which does not see the icon.
+ */
+export function WherePart({ children, label, after = false }: { children: ReactNode; label: string; after?: boolean }): JSX.Element {
+  return (
+    <span className="inline-flex min-w-0 items-center gap-1 text-foreground/75">
+      {after ? <ChevronRight className="size-3 shrink-0 text-muted-foreground/60" aria-hidden /> : null}
+      <Folder className="size-3 shrink-0 text-muted-foreground" aria-hidden />
+      <span className="min-w-0 [overflow-wrap:anywhere]">
+        <span className="sr-only">{label} </span>
+        {children}
+      </span>
+    </span>
+  )
+}
+
+/**
+ * „Ersetzt“: a newer Fassung replaces this document. Ink outline and the
+ * History icon, never the warning amber, which the provenance signal already
+ * spends on the Büroablage (design language, principle 2).
+ */
+export function SupersededMark({ className }: { className?: string }): JSX.Element {
+  const t = useTranslations('search.document')
+  return (
+    <Chip size="sm" variant="outline" className={cn('gap-1 text-muted-foreground', className)} title={t('supersededHint')} data-testid="superseded-mark">
+      <History aria-hidden />
+      {t('superseded')}
+    </Chip>
   )
 }
 
@@ -368,15 +467,26 @@ export function HitBadge({ children, tone = 'muted' }: { children: ReactNode; to
   )
 }
 
-/** The words that matched, set apart by weight on a faint ink wash, with the page they are on. */
+/**
+ * The passage that matched, behind a quiet rule like a quotation, with the
+ * page it is on first, so the page stands in the same place on every row. The
+ * matched words are set apart by weight on a faint ink wash, the wash exactly
+ * as wide as the match: no padding, so the rest of a compound („Fluchtweg|e“)
+ * runs on without a gap.
+ */
 export function PassageQuote({ segments, page }: { segments: readonly TextSegment[]; page?: string }): JSX.Element {
   return (
-    <p className="mt-1 flex min-w-0 items-baseline gap-2 text-[13px] leading-relaxed text-foreground/80" data-testid="search-passage">
+    <p className="mt-1 flex min-w-0 items-baseline gap-2 border-l-2 border-border pl-2.5 text-sm leading-relaxed text-foreground/80" data-testid="search-passage">
+      {page ? (
+        <Chip size="sm" variant="outline" className="shrink-0 tabular-nums">
+          {page}
+        </Chip>
+      ) : null}
       <span className="line-clamp-2 min-w-0 text-pretty">
         „
         {segments.map((segment, index) =>
           segment.match ? (
-            <mark key={index} className="rounded-[2px] bg-foreground/[0.07] px-px font-semibold text-foreground">
+            <mark key={index} className="rounded-[2px] bg-foreground/[0.08] font-semibold text-foreground [box-decoration-break:clone]" data-testid="search-passage-match">
               {segment.text}
             </mark>
           ) : (
@@ -385,18 +495,22 @@ export function PassageQuote({ segments, page }: { segments: readonly TextSegmen
         )}
         “
       </span>
-      {page ? (
-        <Chip size="sm" variant="outline">
-          {page}
-        </Chip>
-      ) : null}
     </p>
   )
 }
 
 /** A plain excerpt (an annotation's body, a folder's description). */
 export function Excerpt({ children }: { children: ReactNode }): JSX.Element {
-  return <p className="mt-0.5 line-clamp-2 text-pretty text-[13px] text-foreground/75">{children}</p>
+  return <p className="mt-0.5 line-clamp-2 text-pretty text-sm text-foreground/75">{children}</p>
+}
+
+/** What the words were found in („Gefunden in Name · Inhalt“): present, never loud. */
+export function MatchHint({ label, parts }: { label: string; parts: readonly string[] }): JSX.Element {
+  return (
+    <span className="mt-0.5 text-xs text-muted-foreground/90" data-testid="search-matched-on">
+      {label} {parts.join(' · ')}
+    </span>
+  )
 }
 
 /** The shape of the first answer while it is on its way. */
@@ -465,16 +579,6 @@ export function LabelledSwitch({
   )
 }
 
-/** A document a newer Fassung replaces: ink, not a warning; the clock-back glyph says „older“ with the word. */
-export function SupersededMark({ label, title }: { label: string; title?: string }): JSX.Element {
-  return (
-    <Chip size="sm" variant="outline" title={title} className="text-muted-foreground" data-testid="superseded-mark">
-      <History aria-hidden />
-      {label}
-    </Chip>
-  )
-}
-
 /** The narrowest the name column gets before the register scrolls sideways instead. */
 const REGISTER_NAME_MIN_REM = 12
 
@@ -491,10 +595,13 @@ export function RegisterTable({
   testId,
   columnWidths,
   scrollLabel,
+  id,
 }: {
   children: ReactNode
   caption: string
   testId?: string
+  /** The id the search field's `aria-controls` names. */
+  id?: string
   /** One per column in order, in rem; null is the column that takes the rest. */
   columnWidths: ReadonlyArray<number | null>
   /** The name of the region when it scrolls sideways. */
@@ -531,7 +638,7 @@ export function RegisterTable({
     </table>
   )
   return (
-    <div ref={box} className="min-w-0" data-testid={testId} data-wide={wide || undefined}>
+    <div ref={box} id={id} className="min-w-0" data-testid={testId} data-wide={wide || undefined}>
       {wide ? (
         <HorizontalScroll cue aria-label={scrollLabel}>
           {table}
@@ -577,7 +684,7 @@ export function RegisterBody({ children }: { children: ReactNode }): JSX.Element
   return <TableBody>{children}</TableBody>
 }
 
-export function RegisterRow({ children, active = false, testId }: { children: ReactNode; active?: boolean; testId?: string }): JSX.Element {
+export function RegisterRow({ children, active = false, testId, id }: { children: ReactNode; active?: boolean; testId?: string; id?: string }): JSX.Element {
   const ref = useRef<HTMLTableRowElement>(null)
   useEffect(() => {
     if (active) ref.current?.scrollIntoView({ block: 'nearest' })
@@ -585,9 +692,11 @@ export function RegisterRow({ children, active = false, testId }: { children: Re
   return (
     <TableRow
       ref={ref}
+      id={id}
       data-state={active ? 'selected' : undefined}
       aria-selected={active || undefined}
-      className="h-9 border-b-0 even:bg-secondary/30 [&>td]:border-b [&>td]:border-border/50"
+      // The row the arrow keys are on: the list's 2px ink rule, on the first cell (a row draws no shadow of its own).
+      className="h-9 border-b-0 even:bg-secondary/30 [&>td]:border-b [&>td]:border-border/50 aria-selected:[&>td:first-child]:shadow-[inset_2px_0_0_0_var(--foreground)]"
       data-testid={testId}
     >
       {children}
@@ -634,9 +743,9 @@ export function RegisterLink({ href, children }: { href: string; children: React
 }
 
 /** The register on a phone: no table to scroll sideways, one stacked entry per document. */
-export function RegisterStack({ children, label, testId }: { children: ReactNode; label: string; testId?: string }): JSX.Element {
+export function RegisterStack({ children, label, testId, id }: { children: ReactNode; label: string; testId?: string; id?: string }): JSX.Element {
   return (
-    <ul className="flex min-w-0 flex-col divide-y divide-border/70 border-y border-border/70" aria-label={label} data-testid={testId}>
+    <ul id={id} role="listbox" className="flex min-w-0 flex-col divide-y divide-border/70 border-y border-border/70" aria-label={label} data-testid={testId}>
       {children}
     </ul>
   )
@@ -655,6 +764,7 @@ export function RegisterStackRow({
   aside,
   active = false,
   testId,
+  id,
 }: {
   href: string
   /** „EP-03 · C“; absent for a document without a number. */
@@ -664,22 +774,26 @@ export function RegisterStackRow({
   aside?: ReactNode
   active?: boolean
   testId?: string
+  /** The option's id, named by the field's `aria-activedescendant` while it is active. */
+  id?: string
 }): JSX.Element {
   const ref = useRef<HTMLAnchorElement>(null)
   useEffect(() => {
     if (active) ref.current?.scrollIntoView({ block: 'nearest' })
   }, [active])
   return (
-    <li className="list-none">
+    <li role="none" className="list-none">
       <Link
         ref={ref}
+        id={id}
         href={href}
+        role="option"
+        aria-selected={active}
         data-testid={testId}
-        aria-current={active ? 'true' : undefined}
         className={cn(
           'flex min-w-0 flex-col gap-0.5 px-1 py-2.5 transition-colors duration-snap ease-out hover:bg-secondary/60 motion-reduce:transition-none',
           FOCUS_RING_INSET,
-          active && 'bg-secondary'
+          ACTIVE_ROW
         )}
       >
         {code || aside ? (
@@ -717,12 +831,40 @@ export function SavedSearchRow({
         className={cn('min-w-0 flex-1 rounded-sm text-left', FOCUS_RING_INSET)}
         data-testid="saved-search-apply"
       >
-        <span className="block truncate text-sm font-medium text-foreground">{name}</span>
+        <span className="line-clamp-2 text-sm font-medium text-foreground [overflow-wrap:anywhere]">{name}</span>
         {detail ? <span className="block truncate text-xs text-muted-foreground">{detail}</span> : null}
       </button>
       {controls ? <div className="flex shrink-0 items-center gap-1">{controls}</div> : null}
     </li>
   )
+}
+
+/**
+ * A compact switch with its word beside it („Geteilt“), the word part of its
+ * label, so it is read and clicked as one. The row-sized twin of
+ * {@link LabelledSwitch}, for a switch inside a menu row.
+ */
+export function SwitchCaption({ label, children }: { label: string; children: ReactNode }): JSX.Element {
+  return (
+    <label className="flex cursor-pointer items-center gap-1.5 text-xs text-muted-foreground">
+      {children}
+      <span>{label}</span>
+    </label>
+  )
+}
+
+/** A dialog's form: header, fields and footer apart by the dialog's own rhythm. */
+export function DialogForm({ children, onSubmit }: { children: ReactNode; onSubmit: (event: FormEvent<HTMLFormElement>) => void }): JSX.Element {
+  return (
+    <form className="flex min-w-0 flex-col gap-5" onSubmit={onSubmit} noValidate>
+      {children}
+    </form>
+  )
+}
+
+/** Beside a colleague's saved search, where the owner's controls would be: who it came from, as a mark. */
+export function ColleagueMark(): JSX.Element {
+  return <Users className="size-4 shrink-0 text-muted-foreground" aria-hidden />
 }
 
 export function SavedSearchList({ children }: { children: ReactNode }): JSX.Element {
@@ -742,4 +884,45 @@ export function QuietLine({ children }: { children: ReactNode }): JSX.Element {
 /** The search inside a shelf's own frame (Dateien, Büroablage), which lends no page padding. */
 export function SearchInset({ children }: { children: ReactNode }): JSX.Element {
   return <div className="min-w-0 px-4 py-4 md:px-6">{children}</div>
+}
+
+// ─── ⌘K palette ─────────────────────────────────────────────────────────────
+
+/**
+ * A hit's row inside the palette's option box. The palette sizes every glyph
+ * to 16px; the shelf mark keeps its own 12px, as on the page. Under a finger
+ * the row is 44px like the palette's other rows.
+ */
+export const PALETTE_HIT_CLASS = 'py-2 [&_svg.size-3]:size-3! pointer-coarse:min-h-11'
+
+/** Hits of an earlier question while the next answer is on its way: quieter, as the page's `ResultsBody` dims them. */
+export const PALETTE_STALE_CLASS = 'opacity-60 transition-opacity duration-quick motion-reduce:transition-none'
+
+/** A palette row's glyph, in the muted ink the palette's commands use; `top` holds it on the first line of a two-line row. */
+export function PaletteGlyph({ icon: Icon, top = false }: { icon: LucideIcon; top?: boolean }): JSX.Element {
+  return <Icon className={cn('text-muted-foreground', top && 'mt-0.5 self-start')} aria-hidden />
+}
+
+/** A palette row's words: the label on one line, and under it, when given, one muted line saying more. */
+export function PaletteLabel({ children, hint, hintTestId }: { children: ReactNode; hint?: ReactNode; hintTestId?: string }): JSX.Element {
+  if (!hint) return <span className="min-w-0 flex-1 truncate">{children}</span>
+  return (
+    <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+      <span className="truncate">{children}</span>
+      <span className="text-pretty text-xs text-muted-foreground" data-testid={hintTestId}>
+        {hint}
+      </span>
+    </span>
+  )
+}
+
+/** At a palette row's end: a quiet state (searching, nothing found, from a colleague), announced as it changes. */
+export function PaletteAside({ children, busy = false, testId }: { children: ReactNode; busy?: boolean; testId?: string }): JSX.Element {
+  return (
+    // At most under half the row: the row's own name keeps the room, the aside gives way first.
+    <span className="ml-auto flex min-w-0 max-w-[45%] items-center gap-1.5 text-xs text-muted-foreground" aria-live="polite" data-testid={testId}>
+      {busy ? <Spinner className="size-3 shrink-0" /> : null}
+      <span className="truncate">{children}</span>
+    </span>
+  )
 }

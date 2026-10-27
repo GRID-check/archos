@@ -112,7 +112,7 @@ exists only as a stream.
 |---|---|---|---|---|---|
 | 1 | **The estate** — `documents` + `project_folders` + SeaweedFS + Chroma + `document_metadata` | the user, through the BFF | read, and only through retrieval (`knowledge_search`) or `surface_documents` | permanent | yes — the Files/Archiv panes |
 | 2 | **Run scratch** — DeepAgents `StateBackend` (`deepagents_runtime.py`) | the deep researcher | full read/write | the run | no |
-| 3 | **Skills mount** — `FilesystemBackend(/skills/, virtual_mode=True)` + the `skills` table | this repository / an org admin | read | permanent | partly (org rows) |
+| 3 | **Skills mount** — `SkillsBackend` at `/skills/` (ADR-0135): one run's resolved skills, builtin files and the `skills` table's rows, in memory and read-only (until 2026-10-27 a `FilesystemBackend(/skills/, virtual_mode=True)` over the builtins alone) | this repository / an org admin | read | permanent | partly (org rows) |
 | 4 | **Memory** — `project_memory` rows | agent (`remember`), user | insert, never update | permanent | yes — memory panels |
 | 5 | **Work products** — BCF export, Raumbuch, Massenermittlung, the deep-research report, every card | the agent, per request | writes them to a *stream* | **none** | for one screenful |
 
@@ -502,7 +502,7 @@ author, and a one-line description. Below that, the current view. Nothing else.
 
 The description field is what makes a file system legible to a model at all —
 it is the same L1/L2 progressive disclosure the skills substrate already uses
-(`description` in the prompt, `body` only via `use_skill`). For uploads the
+(`description` in the prompt, `body` only via `read_file`, ADR-0135). For uploads the
 existing summarizer writes it; for agent-authored nodes the author writes it,
 and a write without one is rejected by the validator. A file nobody can describe
 in a line is a file nobody will find.

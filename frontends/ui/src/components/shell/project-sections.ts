@@ -202,7 +202,7 @@ const PROJECT_SECTIONS: readonly ProjectSection[] = [
     group: 'org',
   },
   {
-    // The workspace search (ADR-0133): every shelf the reader may open, from
+    // The workspace search (ADR-0136): every shelf the reader may open, from
     // anywhere. Org-scoped like the Archiv, so a cross-project doorway; ⌘K
     // reaches it too, carrying what was typed. A project's own search is a
     // mode of its Dateien, not a second rail entry.

@@ -17,9 +17,7 @@
  * A listing reaches the prompt before any admission, and a folder name is itself
  * a name, so restricted folders are never LISTED, not even in a chat that is the
  * asker's alone, where the search may read them (ADR-0088, `restricted_use.py`'s
- * `without_restricted`). {@link listingReach} narrows the audience's reach to
- * that; it adds the same `getRestrictedFolderIds` the shared-audience reach
- * already hides, and nothing else.
+ * `without_restricted`). `reachForAudience`'s `listing` option gives that reach.
  *
  * ## Which shelves, and who asks
  *
@@ -39,7 +37,6 @@
 import 'server-only'
 import { NotFoundError } from '@/lib/api/errors'
 import type { AuthorizedSession } from '@/lib/auth/types'
-import { getRestrictedFolderIds } from '@/lib/authz/folder-access'
 import { sessionCollectionName } from '@/lib/collection-scope'
 import { OFFICE_SHELF, projectShelf } from '@/lib/documents/shelf'
 import { officeShelfCollectionNames } from '@/lib/office-shelf/collection'
@@ -66,27 +63,6 @@ import {
 
 const notInScope = () => new NotFoundError('No such shelf in this turn.')
 const noFolder = () => new NotFoundError('No folder with that path.')
-
-/**
- * The audience's reach, narrowed to what may be LISTED: every folder not every
- * member may read hidden, in every audience. A shared audience's reach hides
- * them already; a solo chat's searches them, so they are added here.
- *
- * TODO(document-search): ask `reachForAudience` for a listing reach (an option
- * such as `{ list: true }`) once it has one, and delete this.
- */
-export async function listingReach(reach: SearchReach): Promise<SearchReach> {
-  if (reach.screenedOnly) return reach
-  const projects = await Promise.all(
-    reach.projects.map(async (reached) => {
-      const restricted = await getRestrictedFolderIds(reach.organizationId, reached.project.id)
-      return { ...reached, hiddenFolderIds: [...new Set([...reached.hiddenFolderIds, ...restricted])] }
-    }),
-  )
-  const hidden = new Set(projects.flatMap((reached) => reached.hiddenFolderIds))
-  const folderIds = reach.folderIds ? reach.folderIds.filter((id) => !hidden.has(id)) : null
-  return { ...reach, projects, folderIds }
-}
 
 /** The reach a shelf is read under, and its own collection; a 404 when the turn does not hold the shelf. */
 async function resolveShelf(
@@ -136,7 +112,7 @@ async function listed(
   try {
     // `includeOwnProject`: `audienceReach` names the OTHER projects a lookup may search (ADR-0094), and a shared
     // chat's own project is not among them; a reader of the conversation reads its project.
-    reach = await listingReach(await reachForAudience(session, conversationId, scope, { includeOwnProject: true }))
+    reach = await reachForAudience(session, conversationId, scope, { listing: true, includeOwnProject: true })
   } catch (error) {
     if (error instanceof NotFoundError) throw folderId ? noFolder() : notInScope()
     throw error

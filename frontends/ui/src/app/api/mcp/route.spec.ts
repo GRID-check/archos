@@ -252,7 +252,7 @@ describe('MCP round trip as Piloti', () => {
 
   it('lists one tool per operation in tools mode, chosen by query or header', async () => {
     // project-folder-access-set is sensitive: Piloti may not propose it, so it never sees it (M4).
-    const expected = ['project-list', 'project-member-add', 'project-delete', 'document-search', 'report-missing-operation']
+    const expected = ['project-list', 'project-member-add', 'project-delete', 'workspace-search', 'report-missing-operation']
     expect(await toolNames(`${URL_}?mode=tools`)).toEqual(expected)
     expect(await toolNames(URL_, { 'x-piloti-mcp-mode': 'tools' })).toEqual(expected)
   })

@@ -1,5 +1,5 @@
 /**
- * Saved searches (ADR-0133 slice 5, migration 0186): what the routes under
+ * Saved searches (ADR-0136 slice 5, migration 0186): what the routes under
  * `/api/search/saved`, the agent operations `saved-search-*` and the browser
  * parse against.
  *
@@ -87,6 +87,12 @@ export interface SavedSearchView {
   shared: boolean
   /** The reader saved it: only then may they rename, share or delete it. */
   ownedByMe: boolean
+  /**
+   * Who saved it, by the office's people directory, on a colleague's shared
+   * one; null on the reader's own, and when the directory cannot name the
+   * person (left the office, WorkOS not answering).
+   */
+  ownerName: string | null
   createdAt: string
 }
 
