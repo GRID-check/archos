@@ -63,6 +63,7 @@ from aiq_agent.common.citation_verification import is_look_tool
 from aiq_agent.common.citation_verification import record_turn_capture
 from aiq_agent.common.citation_verification import reset_session_registry
 from aiq_agent.common.citation_verification import set_session_registry
+from aiq_agent.common.claim_judge import JudgeFn
 from aiq_agent.common.cost_tracking import grid_cost_tracker_var
 from aiq_agent.common.data_sources import disabled_source_notice
 from aiq_agent.common.data_sources import source_id_for_call
@@ -1028,6 +1029,7 @@ class PilotiAgent:
         envelope_json_mode_with_tools: bool = False,
         repair_pass: bool = True,
         card_repair_llm: BaseChatModel | None = None,
+        claim_judge_llm: BaseChatModel | None = None,
     ) -> None:
         """Build the agent once.
 
@@ -1069,8 +1071,13 @@ class PilotiAgent:
                 thousand tokens instead of the full-context round the
                 ``emit_card`` retry used to cost. ``None`` drops a card that
                 fails validation, and records that it did.
+            claim_judge_llm: The model that checks each sentence of the answer
+                against its evidence (``common/claim_judge.py``, ADR-0139),
+                resolved per turn like the follow-ups stage's model. ``None``
+                leaves every stamp unjudged and the level at medium.
         """
         self.card_repair_llm = card_repair_llm
+        self.claim_judge_llm = claim_judge_llm
         self.llm_provider = llm_provider
         self.tools = list(tools)
         self.max_tool_iterations = max_tool_iterations
@@ -1449,6 +1456,15 @@ class PilotiAgent:
             return None
         return quote_patcher(self.card_repair_llm)
 
+    def _claim_judge(self) -> JudgeFn | None:
+        """The turn's claim judge on the org's follow-ups model (override, BYOK); ``None`` when none is configured."""
+        from aiq_agent.common.claim_judge import llm_judge
+        from aiq_agent.common.model_overrides import AgentGroup
+        from aiq_agent.stages.runner import resolve_group_llm
+
+        llm = resolve_group_llm(self.claim_judge_llm, AgentGroup.FOLLOW_UPS, label="claim judge")
+        return llm_judge(llm) if llm is not None else None
+
     def _card_repairer(self) -> CardRepairFn | None:
         """The turn's card repair on the small model; ``None`` when none is configured."""
         llm = self.card_repair_llm
@@ -1595,6 +1611,7 @@ class PilotiAgent:
             measured_values=[measurement.value_text for measurement in turn_measurements],
             project_context=state.project_context,
             inventory=_turn_inventory(state),
+            judge=self._claim_judge(),
         )
         self._emit_final_report(final)
         # The "already read" digest, appended at turn end: this turn's captures

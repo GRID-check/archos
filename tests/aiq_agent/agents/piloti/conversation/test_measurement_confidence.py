@@ -274,12 +274,20 @@ class TestRuleTwoKeepsTheLaunderingPathShut:
 
     @staticmethod
     def _stamped(*stamps: tuple[str, str, str]) -> ResearchAgentState:
+        """Each ``(text, provenance, kind)`` judged supported against its evidence (the measurement, or none)."""
+        from aiq_agent.common.claim_judge import Judgement
         from aiq_agent.common.claim_provenance import ClaimStamp
         from aiq_agent.common.claim_provenance import claims_ceiling
-        from aiq_agent.common.claim_provenance import mark_load_bearing
         from aiq_agent.common.claim_provenance import weakest_claim
+        from aiq_agent.common.claim_provenance import with_judgements
 
-        claims = mark_load_bearing([ClaimStamp(text, provenance, ctype) for text, provenance, ctype in stamps])
+        claims = with_judgements(
+            [
+                ClaimStamp(text, provenance, "value", evidence="2.703 m" if provenance == "measured" else "")
+                for text, provenance, _ in stamps
+            ],
+            [Judgement("supported", kind) for _, _, kind in stamps],
+        )
         weakest = weakest_claim(claims)
         return ResearchAgentState(
             messages=[AIMessage(content=" ".join(text for text, _, _ in stamps))],
@@ -287,26 +295,28 @@ class TestRuleTwoKeepsTheLaunderingPathShut:
             answer_measurement_grounded=True,
             claim_stamps=[claim.to_wire() for claim in claims],
             answer_claims_ceiling=claims_ceiling(claims),
-            answer_weakest_claim=[weakest.provenance, weakest.claim_type] if weakest else None,
+            answer_weakest_claim=[weakest.provenance, "normative" if weakest.is_verdict else "value"]
+            if weakest
+            else None,
         )
 
     def test_a_measured_descriptive_answer_reaches_the_models_own_level(self):
-        state = self._stamped((KELLER_MEASURED, "measured", "value"))
+        state = self._stamped((KELLER_MEASURED, "measured", "fact"))
         assert state.answer_confidence == "high"
         assert state.answer_confidence_capped_reason is None
         assert state.answer_confidence_version == CONFIDENCE_RULE_VERSION
 
-    def test_a_verdict_beside_the_measurement_floors_the_answer(self):
+    def test_a_verdict_beside_the_measurement_counts_nothing_and_is_named(self):
         state = self._stamped(
-            ("Der Keller ist 2,70 m hoch.", "measured", "value"),
-            ("Er erfüllt damit OIB 4 Punkt 2.1.", "model_knowledge", "normative"),
+            ("Der Keller ist 2,70 m hoch.", "measured", "fact"),
+            ("Er erfüllt damit OIB 4 Punkt 2.1.", "model_knowledge", "verdict"),
         )
-        assert state.answer_confidence == "low"
+        assert state.answer_confidence == "medium"
         assert state.answer_confidence_capped_reason == "normative_claim_uncited"
 
     def test_a_verdict_the_measurement_sentence_carries_itself_is_still_floored(self):
-        # A measured sentence that is also normative: the measurement grounds
+        # A measured sentence that is also a verdict: the measurement grounds
         # the number, never the verdict in the same sentence.
-        state = self._stamped((KELLER_MEASURED_PLUS_VERDICT, "measured", "normative"))
+        state = self._stamped((KELLER_MEASURED_PLUS_VERDICT, "measured", "verdict"))
         assert state.answer_confidence == "low"
         assert state.answer_confidence_capped_reason == "normative_claim_uncited"

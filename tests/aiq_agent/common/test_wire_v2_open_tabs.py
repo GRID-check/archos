@@ -41,7 +41,8 @@ def _rule_three_finish(version: int) -> dict[str, Any]:
     frame = next(json.loads(line) for line in lines if '"RUN_FINISHED"' in line)
     result = frame["result"]
     result["claim_stamps"] = [
-        {**stamp, "support": 1.0, "verdict": True, "dropped": True, "group": 1} for stamp in result["claim_stamps"]
+        {**stamp, "support": 1.0, "verdict": True, "judged": "supported", "dropped": True, "group": 1}
+        for stamp in result["claim_stamps"]
     ]
     result["answer_confidence_version"] = version
     # The golden file leaves the clock out so it stays byte-stable; a live frame carries it.

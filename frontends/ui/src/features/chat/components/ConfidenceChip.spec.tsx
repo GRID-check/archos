@@ -224,6 +224,31 @@ describe('ConfidenceChip under the evidence share', () => {
     expect(screen.getByRole('button')).toHaveTextContent('3 of 4 statements backed · citation unverified')
   })
 
+  test('counts a partly backed claim as partly, and says when the judge could not check', () => {
+    // Round 5 of #1231: „0 von 2 belegt" on two cited claims read as unbacked.
+    const partly = [
+      { text: 'The door is 1 m wide [1].', provenance: 'observed', claimType: 'value', loadBearing: true, support: 0.5, judged: 'supported' },
+      { text: 'The alarm covers all 4 floors [2].', provenance: 'cited', claimType: 'value', loadBearing: true, support: 1, judged: 'supported' },
+    ] as const
+    const { unmount } = render(<ConfidenceChip confidence="medium" version={2} claimStamps={[...partly]} />)
+    expect(screen.getByRole('button')).toHaveTextContent('1 of 2 statements backed · 1 partly')
+    unmount()
+
+    const unchecked = partly.map((stamp) => ({ ...stamp, support: 0.5, judged: 'unavailable' }) as const)
+    render(<ConfidenceChip confidence="medium" version={2} claimStamps={unchecked} />)
+    expect(screen.getByRole('button')).toHaveTextContent('0 of 2 statements backed · 2 partly · evidence check unavailable')
+  })
+
+  test('names a legal statement its own source contradicts', () => {
+    const contradicted = [
+      ...stamps.slice(0, 3),
+      { text: 'Spiral stairs are allowed [1].', provenance: 'cited', claimType: 'normative', loadBearing: true, support: 0, verdict: true, judged: 'contradicted' },
+    ] as const
+    render(<ConfidenceChip confidence="low" version={2} claimStamps={[...contradicted]} />)
+
+    expect(screen.getByRole('button')).toHaveTextContent('3 of 4 statements backed · contradicts its source')
+  })
+
   test('a rule-3 answer whose stamps carry no support falls back to the level', () => {
     const bare = stamps.map(({ support: _support, ...stamp }) => stamp)
     render(<ConfidenceChip confidence="medium" version={2} claimStamps={bare} />)

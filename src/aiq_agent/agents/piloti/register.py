@@ -157,6 +157,15 @@ class ResearchAgentConfig(FunctionBaseConfig, name="research_agent"):
             "turns off the quote repair (`repair_pass`), which runs on this model."
         ),
     )
+    claim_judge_llm: LLMRef | None = Field(
+        default=None,
+        description=(
+            "The small model that checks each sentence of the answer against the passage, record or "
+            "measurement it points at, in one structured call after the answer streamed (ADR-0139). "
+            "Resolved per turn like the follow-ups stage's model (the org's override and BYOK for that "
+            "group). Unset leaves every claim unjudged and the confidence at medium."
+        ),
+    )
     verbose: bool = Field(default=False, description="Whether to enable verbose logging")
     skills_enabled: bool = Field(
         default=True,
@@ -692,6 +701,7 @@ async def research_agent(config: ResearchAgentConfig, builder: Builder):
             if config.card_repair_llm
             else None
         ),
+        claim_judge_llm=await get_langchain_llm(builder, config.claim_judge_llm) if config.claim_judge_llm else None,
     )
     deployment = _Deployment(
         config=config, agent=agent, provider=provider, tools=tools, estate=_estate_backend(config, builder)

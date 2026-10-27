@@ -317,21 +317,25 @@ INVENTORY_OPERATION = "inventory"
 
 
 def inventory_record(inventory: str | None) -> WorkspaceRecord | None:
-    """The record the turn context's document inventory makes, one item per shelf; None without one.
+    """The record the turn context's document inventory makes, one item per line; None without one.
 
     The block ``knowledge/inventory.render_inventory_block`` renders: under
     each ``### shelf`` heading, its files or its count („39 files — the
-    platform corpus"). An index, never a source to cite; a sentence read off it
-    („Dazu kommen die 39 Dateien des OIB-Korpus im Basiswissen") is a record,
-    like a ``list_files`` listing.
+    platform corpus"). Each line is an item, prefixed with its shelf, so
+    „Im Basiswissen liegen 39 Dateien" is read off one line and two file
+    names on two lines ground nothing together. An index, never a source to
+    cite: what a document CONTAINS is no line of it, and the claim judge reads
+    the line, not the document.
     """
     if not inventory or "### " not in inventory:
         return None
-    sections = [section for section in inventory.split("\n### ")[1:] if section.strip()]
-    items = tuple(section[:LISTING_MAX_CHARS].casefold() for section in sections)
+    items: list[str] = []
+    for section in inventory[:LISTING_MAX_CHARS].split("\n### ")[1:]:
+        shelf, _, body = section.partition("\n")
+        items += [f"{shelf.strip()}: {line.strip()}".casefold() for line in body.splitlines() if line.strip()]
     if not items:
         return None
-    return WorkspaceRecord(INVENTORY_OPERATION, "read", "\n".join(items), frozenset(), items)
+    return WorkspaceRecord(INVENTORY_OPERATION, "read", "\n".join(items), frozenset(), tuple(items))
 
 
 def _piloti_authored(value: dict[str, Any]) -> bool:

@@ -1856,15 +1856,17 @@ export const chat = {
     // cap fires, and names it.
     byShare: {
       label: '{backed} of {claims} statements backed',
+      partial: '{count} partly',
+      unchecked: 'evidence check unavailable',
       ariaLabel: '{backed} of {claims} load-bearing statements backed, confidence {level}',
       tooltip:
-        'Counted are the load-bearing statements: about the law, numbers, classes and deadlines. Backed means a cited source, a workspace record or a measurement from this answer stands behind it.',
+        'Counted are the load-bearing statements: facts and legal statements, not next steps or assessments. Backed means the source, workspace record or measurement the statement rests on says the same; a language model checks this per statement. Only a source backs a legal statement.',
       selfAssessment: 'Assistant self-assessment: {level}',
       levelMeanings: {
         high: 'High: every load-bearing statement is backed.',
         medium:
-          'Medium: not every load-bearing statement is backed: an assessment, a legal statement without a source or an unverified citation remains.',
-        low: 'Low: most load-bearing statements have nothing behind them that this answer read, or its legal conclusion has no cited source.',
+          'Medium: some load-bearing statements are backed, others not or only partly, or the check was not possible.',
+        low: 'Low: no load-bearing statement is backed, or a legal statement contradicts its source.',
       },
       capLabels: {
         ungrounded: 'too little backed',
@@ -1873,8 +1875,10 @@ export const chat = {
         measurementOnly: 'measured only',
         citationFallback: 'source attached',
         citationUnverified: 'citation unverified',
+        claimContradicted: 'contradicts its source',
       },
       cappedReasons: {
+        claimContradicted: 'A legal statement in this answer contradicts the source it rests on.',
         ungrounded: 'Capped: too many load-bearing statements have no evidence behind them.',
         quoteUnverified: 'Capped: a quotation could not be confirmed verbatim in its source.',
         normativeClaimUncited:

@@ -23,6 +23,7 @@ import re
 from collections.abc import Awaitable
 from collections.abc import Callable
 from collections.abc import Collection
+from collections.abc import Mapping
 from collections.abc import Sequence
 from dataclasses import dataclass
 from dataclasses import field
@@ -57,19 +58,24 @@ from aiq_agent.common.citation_verification import annotate_unverified_quotes
 from aiq_agent.common.citation_verification import drop_ungrounded_trailer_values
 from aiq_agent.common.citation_verification import expand_grouped_citations
 from aiq_agent.common.citation_verification import get_turn_captures
+from aiq_agent.common.citation_verification import has_source_section
 from aiq_agent.common.citation_verification import is_look_place
 from aiq_agent.common.citation_verification import merged_citations
 from aiq_agent.common.citation_verification import resolve_unlisted_numbers
 from aiq_agent.common.citation_verification import sanitize_report
 from aiq_agent.common.citation_verification import turn_passages
+from aiq_agent.common.citation_verification import unlisted_candidates
 from aiq_agent.common.citation_verification import verify_citations
 from aiq_agent.common.citation_verification import verify_quoted_spans
+from aiq_agent.common.claim_judge import JudgeFn
 from aiq_agent.common.claim_provenance import ClaimEvidence
 from aiq_agent.common.claim_provenance import ClaimStamp
 from aiq_agent.common.claim_provenance import LookPlace
 from aiq_agent.common.claim_provenance import claims_ceiling
 from aiq_agent.common.claim_provenance import classify_claims
+from aiq_agent.common.claim_provenance import judge_items
 from aiq_agent.common.claim_provenance import weakest_claim
+from aiq_agent.common.claim_provenance import with_judgements
 from aiq_agent.common.quote_stamps import stamp_quote_lines
 from aiq_agent.common.tool_validation import validate_tool_availability
 from aiq_agent.common.turn_status import emit_anatomy_dropped
@@ -521,24 +527,15 @@ class _Verified:
     unverified_quotes: tuple[UnverifiedQuote, ...]
 
 
-def _writer_numbering(turn: Sequence[Any], content: str) -> list[SourceEntry | None] | None:
-    """What each ``[N]`` of an answer without a source list names among this turn's passages (ADR-0139).
-
-    By content: a number names the passage of this turn that holds every
-    sentence carrying it, the printed „Result N" only breaking a tie
-    (``resolve_unlisted_numbers``). ``None`` when nothing resolves, so
-    every such number is labelled (``NO_SOURCE_LIST_REASON``). The list that
-    comes back is appended as the answer's sources: the reader always gets the
-    Quellen list the prompt asks for.
-    """
-    numbered = turn_passages(
+def _turn_numbered(turn: Sequence[Any]) -> dict[int, list[SourceEntry]]:
+    """This turn's passages by the „Result N" each block printed them under (``turn_passages``)."""
+    return turn_passages(
         [
             (getattr(msg, "name", "") or "", msg.content, getattr(msg, "artifact", None))
             for msg in turn
             if isinstance(msg, ToolMessage)
         ]
     )
-    return resolve_unlisted_numbers(content, numbered) or None
 
 
 def _verify(
@@ -1154,13 +1151,15 @@ async def finalize_answer(
     measured_values: Sequence[str] = (),
     project_context: str | None = None,
     inventory: str | None = None,
+    judge: JudgeFn | None = None,
 ) -> FinalAnswer:
     """Run every post-answer stage and return the answer as the reader gets it.
 
     ``project_context`` is the turn context's project block
     (``PROJECT_CONTEXT v1``) and ``inventory`` its document inventory: each is
     a record a sentence can be read off (``workspace_records.profile_record``,
-    ``inventory_record``).
+    ``inventory_record``). ``judge`` checks each sentence against its evidence
+    (``common/claim_judge.py``); without one the level falls back to medium.
 
     ``turn_sources`` is this turn's capture, which the caller must pass when it
     finalises AFTER ``end_turn_capture``: the ContextVar is back to its prior
@@ -1193,10 +1192,15 @@ async def finalize_answer(
     if not any(not is_look_place(source) for source in sources):
         ruling = extracted.meta is not None and extracted.meta.kind == "ruling"
         found_nothing = _require_retrieval(_passage_lookup_attempted(turn), tools, ruling=ruling)
+    # An answer with no source list: each [N] names the passage of this turn
+    # that carries its sentences (ADR-0139), and the judge reads every passage it
+    # may name. One with a list is held to the list.
+    numbered = _turn_numbered(turn) if sources else {}
+    unlisted = {} if has_source_section(extracted.content) else unlisted_candidates(extracted.content, numbered)
     if sources:
         emit_citation_check(source_count=len(sources))
         verified = await _verify_with_quote_patch(
-            extracted.content, registry, repair, _writer_numbering(turn, extracted.content)
+            extracted.content, registry, repair, resolve_unlisted_numbers(extracted.content, numbered) or None
         )
     else:
         # Nothing to resolve against: every [N] the model wrote is labelled.
@@ -1230,7 +1234,8 @@ async def finalize_answer(
     # like the quote check it repeats: each line reads the registry's passages.
     pairs = [(source.entry, source.number) for source in cited if not is_look_place(source.entry)]
     stamps = await asyncio.to_thread(stamp_quote_lines, content, pairs, registry.all_sources())
-    claims = _claim_provenance(
+    renumber = sanitized.renumber_map or {}
+    claims = await _claim_provenance(
         content,
         cited,
         stamps,
@@ -1239,6 +1244,8 @@ async def finalize_answer(
         relied_readings(looks, cited),
         project_context=project_context,
         inventory=inventory,
+        candidates={renumber.get(number, number): entries for number, entries in unlisted.items()},
+        judge=judge,
     )
     _emit_look_scores(looks, looks_made, claims.stamps, cited)
     final_messages = list(messages)
@@ -1292,14 +1299,12 @@ class _Claims:
     weakest: tuple[str, str] | None
 
 
-def _weakest_kind(stamp: ClaimStamp) -> str:
-    """The claim type the capped reason reads: „normative" only for a verdict on the law (ADR-0139)."""
-    if stamp.claim_type == "normative" and not stamp.is_verdict:
-        return "value"
-    return stamp.claim_type
+def _passage_text(entries: Sequence[SourceEntry]) -> str:
+    """The passages a pointer may name, each under its citation key, for the claim judge."""
+    return "\n\n".join(f"[{entry.citation_key}]\n{entry.chunk_text}" for entry in entries if entry.chunk_text)
 
 
-def _claim_provenance(
+async def _claim_provenance(
     content: str,
     cited: Sequence[CitedSource],
     quote_stamps: Sequence[dict[str, Any]],
@@ -1309,18 +1314,27 @@ def _claim_provenance(
     *,
     project_context: str | None = None,
     inventory: str | None = None,
+    candidates: Mapping[int, Sequence[SourceEntry]] | None = None,
+    judge: JudgeFn | None = None,
 ) -> _Claims:
-    """Stamp each sentence of the final text with where it comes from (``common/claim_provenance``).
+    """Stamp each sentence of the final text with where it comes from, then judge it against that evidence.
 
     Runs on the text the reader gets, with the ``[N]`` it shows, after the
-    quote stamps it reads. Records come from this turn's workspace calls
-    (``common/workspace_records``), never from the source registry. Observed
-    as three scores.
+    quote stamps it reads. Records come from this turn's workspace calls and
+    the turn context (``common/workspace_records``), never from the source
+    registry. ``candidates`` are the passages an ``[N]`` of an answer without
+    a source list may name. One judge call for every sentence
+    (``common/claim_judge.py``); ``None`` from it, or no judge, marks the
+    stamps ``unavailable``. Observed as three scores.
     """
+    extra = candidates or {}
+    passages = {
+        source.number: _passage_text([source.entry, *(e for e in extra.get(source.number, ()) if e != source.entry)])
+        for source in cited
+        if source.number is not None and not is_look_place(source.entry)
+    }
     evidence = ClaimEvidence(
-        cited_numbers=frozenset(
-            source.number for source in cited if source.number is not None and not is_look_place(source.entry)
-        ),
+        cited_numbers=frozenset(passages),
         looks={
             source.number: LookPlace(
                 read=source.entry.read,
@@ -1331,16 +1345,7 @@ def _claim_provenance(
             for source in cited
             if source.number is not None and source.entry.read
         },
-        passages={
-            source.number: source.entry.chunk_text or ""
-            for source in cited
-            if source.number is not None and not is_look_place(source.entry)
-        },
-        sources={
-            source.number: source.entry.citation_key
-            for source in cited
-            if source.number is not None and not is_look_place(source.entry)
-        },
+        passages=passages,
         quote_stamps=quote_stamps,
         records=[
             *records_from_messages(turn),
@@ -1350,10 +1355,11 @@ def _claim_provenance(
         readings=tuple(readings),
     )
     stamps = classify_claims(prose_without_references(content), evidence, normative=answer_mentions_normative_claim)
+    stamps = with_judgements(stamps, await judge(judge_items(stamps)) if judge is not None and stamps else None)
     weakest = weakest_claim(stamps)
     emit_scores(claim_scores(stamps, dropped=content.count(DROPPED_CITATION_MARKER)), writer="piloti")
     return _Claims(
         stamps=tuple(stamps),
         ceiling=claims_ceiling(stamps),
-        weakest=(weakest.provenance, _weakest_kind(weakest)) if weakest is not None else None,
+        weakest=(weakest.provenance, "normative" if weakest.is_verdict else "value") if weakest is not None else None,
     )

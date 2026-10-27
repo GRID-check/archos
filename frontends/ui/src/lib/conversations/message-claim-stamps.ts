@@ -31,6 +31,10 @@ export type ClaimProvenance = (typeof CLAIM_PROVENANCES)[number]
 export const CLAIM_TYPES = ['normative', 'value', 'descriptive'] as const
 export type ClaimType = (typeof CLAIM_TYPES)[number]
 
+/** What the claim judge found against the sentence's evidence (rule 3, ADR-0139). */
+export const CLAIM_JUDGEMENTS = ['supported', 'contradicted', 'not_addressed', 'unavailable'] as const
+export type ClaimJudgement = (typeof CLAIM_JUDGEMENTS)[number]
+
 export interface ClaimStamp {
   /** The sentence as the final text writes it, capped. */
   text: string
@@ -42,12 +46,14 @@ export interface ClaimStamp {
   operation?: string
   /**
    * What the sentence contributes to the answer's count of backed claims
-   * (rule 3, ADR-0139): 1 evidence of its own; 0.5 an Einschätzung drawn from
-   * a cited passage or a hedge about a fact; 0 nothing, and every uncited
-   * verdict on the law, hedged or not. Computed by the agent, never here;
+   * (rule 3, ADR-0139): 1 its evidence supports it; 0.5 unchecked or capped (a
+   * reading, a pointer that did not hold); 0 nothing behind it, and every
+   * verdict on the law without a passage. Computed by the agent, never here;
    * absent on older answers.
    */
   support?: 0 | 0.5 | 1
+  /** Rule 3: what the claim judge found; `unavailable` when it could not run. */
+  judged?: ClaimJudgement
   /** Rule 3: it concludes something about the law, so only a passage grounds it. */
   verdict?: boolean
   /** Rule 3: it carried a pointer that did not hold (labelled in the text). */
@@ -88,6 +94,8 @@ function sanitizeStamp(input: unknown): ClaimStamp | undefined {
   const operation = cap(input.operation, MAX_OPERATION_CHARS)
   if (operation) stamp.operation = operation
   if (input.support === 0 || input.support === 0.5 || input.support === 1) stamp.support = input.support
+  const judged = oneOf(input.judged, CLAIM_JUDGEMENTS)
+  if (judged) stamp.judged = judged
   if (typeof input.verdict === 'boolean') stamp.verdict = input.verdict
   if (input.dropped === true) stamp.dropped = true
   if (typeof input.group === 'number' && Number.isInteger(input.group) && input.group >= 0 && input.group < 1000)
@@ -123,43 +131,59 @@ function claimsOf(stamps: readonly ClaimStamp[]): ClaimStamp[][] {
   return claims
 }
 
-/** How many load-bearing sentences the answer has, and how many carry evidence of their own. */
+/** The answer's claims, those backed whole, those backed in part, and whether the judge could not check some. */
 export interface ClaimEvidenceCount {
   backed: number
+  partial: number
   claims: number
+  unchecked: boolean
 }
 
 /**
  * The count the confidence chip leads with under rule 3 („12 von 14 Aussagen
- * belegt"): the claims (a load-bearing sentence, or a table under a lead-in as
- * one), and those every sentence of which the agent computed as backed whole.
- * Null when the stamps carry no support (an answer stored before rule 3) or
- * nothing bears load.
+ * belegt · 1 teilweise"): the claims (a load-bearing sentence, or a table
+ * under a lead-in as one), those the agent computed as backed whole, and
+ * those backed in part (a capped reading, a table whose rows are partly
+ * backed, a claim the judge could not check). A partly backed claim is never
+ * counted as unbacked. Null when the stamps carry no support (an answer
+ * stored before rule 3) or nothing bears load.
  */
 export function claimEvidenceCount(stamps: readonly ClaimStamp[]): ClaimEvidenceCount | null {
   const claims = claimsOf(stamps)
   if (claims.length === 0 || claims.some((claim) => claim.some((stamp) => stamp.support === undefined)))
     return null
+  // A group's lead-in („Die Grenzwerte lauten [1]:") is no row: the agent scores the rows (claim_supports).
+  const rows = (claim: ClaimStamp[]) =>
+    claim.length > 1 && claim[0].text.trimEnd().endsWith(':') ? claim.slice(1) : claim
+  const mean = (claim: ClaimStamp[]) =>
+    rows(claim).reduce((sum, stamp) => sum + (stamp.support ?? 0), 0) / rows(claim).length
   return {
-    backed: claims.filter((claim) => claim.every((stamp) => stamp.support === 1)).length,
+    backed: claims.filter((claim) => mean(claim) === 1).length,
+    partial: claims.filter((claim) => mean(claim) > 0 && mean(claim) < 1).length,
     claims: claims.length,
+    unchecked: stamps.some((stamp) => stamp.loadBearing && stamp.judged === 'unavailable'),
   }
 }
 
 /** What the chip names beside the count under rule 3, read off the stamps alone. */
-export type ClaimWarning = 'normativeClaimUncited' | 'citationUnverified'
+export type ClaimWarning = 'claimContradicted' | 'normativeClaimUncited' | 'citationUnverified'
 
 /**
  * The warning the stamps themselves call for (ADR-0139), whatever the model
- * said of itself: an uncited VERDICT on the law first (a next step or a fact
- * the normative net caught is no verdict, and a pure listing names nothing),
- * then a load-bearing pointer that did not hold. Null when neither. The chip
- * used to warn only when a cap on the self-report fired, so a self-report that
- * already matched the ceiling left an uncited verdict unnamed.
+ * said of itself: a verdict on the law its own source contradicts first, then a
+ * verdict nothing backs (a next step or a fact is no verdict, and a pure
+ * listing names nothing), then a load-bearing pointer that did not hold. Null
+ * when none.
  */
 export function claimWarning(stamps: readonly ClaimStamp[]): ClaimWarning | null {
   const bearing = stamps.filter((stamp) => stamp.loadBearing)
-  if (bearing.some((stamp) => isVerdict(stamp) && !PASSAGE.has(stamp.provenance)))
+  if (bearing.some((stamp) => isVerdict(stamp) && stamp.judged === 'contradicted')) return 'claimContradicted'
+  if (
+    bearing.some(
+      (stamp) =>
+        isVerdict(stamp) && (stamp.support !== undefined ? stamp.support === 0 : !PASSAGE.has(stamp.provenance)),
+    )
+  )
     return 'normativeClaimUncited'
   if (bearing.some(isDropped)) return 'citationUnverified'
   return null

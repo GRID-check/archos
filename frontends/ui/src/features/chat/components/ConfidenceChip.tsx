@@ -121,6 +121,8 @@ export const ConfidenceChip: FC<ConfidenceChipProps> = ({
   const label = count
     ? [
         t('confidence.byShare.label', { backed: count.backed, claims: count.claims }),
+        count.partial > 0 ? t('confidence.byShare.partial', { count: count.partial }) : null,
+        count.unchecked ? t('confidence.byShare.unchecked') : null,
         warnKey ? t(`confidence.byShare.capLabels.${warnKey}`) : null,
       ]
         .filter(Boolean)

@@ -259,21 +259,27 @@ SCORE_DEFINITIONS: tuple[ScoreDefinition, ...] = (
     ScoreDefinition(
         "claims-normative-uncited",
         "NUMERIC",
-        "Sentences about the law (the normative detector) with no quoted or cited passage behind them.",
+        "Verdicts on the law (the claim judge's reading, ADR-0139) that nothing backs: no passage, or one that "
+        "does not state them.",
         min_value=0,
     ),
     ScoreDefinition(
         "claims-evidence-share",
         "NUMERIC",
-        "The mean support of the answer's claims (ADR-0139; a table under a lead-in is one): a quotation, or a "
-        "citation whose passage holds the sentence, counts 1, as does a record, an action or a measurement of a "
-        "sentence that states no law; a citation whose passage misses its words, a pointer that did not hold, a "
-        "record of a normative sentence, an Einschätzung drawn from a cited passage or a hedge about a fact 0.5; "
-        "nothing, a cited number its passage does not hold, and any uncited verdict on the law 0. The trend a "
-        "calibration of rule 3 reads; the level counts instead. Not written on an answer with no load-bearing "
-        "sentence.",
+        "The mean support of the answer's claims (ADR-0139; a table under a lead-in is one): 1 when the claim "
+        "judge found the claim's evidence supports it, 0.5 when it could not check or the evidence is capped (a "
+        "reading off an overview, a pointer that did not hold), 0 when nothing stands behind it, its evidence does "
+        "not address or contradicts it, or it is a verdict on the law with no passage. The trend a calibration of "
+        "rule 3 reads; the level counts instead. Not written on an answer with no load-bearing sentence.",
         min_value=0,
         max_value=1,
+    ),
+    ScoreDefinition(
+        "claims-unjudged",
+        "NUMERIC",
+        "Load-bearing claims with evidence the claim judge could not check (a timeout, an error, no model "
+        "configured; ADR-0139). Each counts half, and the answer reads medium at best.",
+        min_value=0,
     ),
     ScoreDefinition(
         "look-count",
@@ -470,6 +476,8 @@ def claim_scores(stamps: Iterable[Any], *, dropped: int) -> list[RuntimeScore]:
     ]
     scores.append(RuntimeScore("claims-normative-uncited", float(normative_uncited(stamps))))
     scores.append(RuntimeScore("citations-dropped-labelled", float(max(0, dropped))))
+    unjudged = sum(1 for stamp in stamps if stamp.load_bearing and stamp.judged == "unavailable")
+    scores.append(RuntimeScore("claims-unjudged", float(unjudged)))
     share = evidence_share(stamps)
     if share is not None:
         scores.append(RuntimeScore("claims-evidence-share", round(share, 3)))

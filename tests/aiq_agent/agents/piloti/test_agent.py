@@ -23,6 +23,7 @@ from aiq_agent.common.citation_verification import set_session_registry
 from aiq_agent.common.data_source_registry import populate_from_config
 from aiq_agent.common.data_source_registry import reset_registry
 from aiq_agent.common.retrieval_rounds import assistant_checkpoint
+from tests.aiq_agent.claim_judge_stub import stub_judge
 from tests.fixtures.drafting_turns import COMMISSION
 from tests.fixtures.drafting_turns import FILE
 from tests.fixtures.drafting_turns import REVISE
@@ -2887,6 +2888,11 @@ class TestMeasurementSourcesDoNotGroundCitations:
     these tests are what keep the Herleitung from re-opening it.
     """
 
+    @pytest.fixture(autouse=True)
+    def _claim_judge(self, monkeypatch):
+        """The claim judge's deterministic stand-in (``tests/aiq_agent/claim_judge_stub.py``)."""
+        monkeypatch.setattr(PilotiAgent, "_claim_judge", lambda self: stub_judge())
+
     @pytest.fixture
     def mock_llm(self):
         llm = MagicMock()
@@ -2951,8 +2957,8 @@ class TestMeasurementSourcesDoNotGroundCitations:
         assert result.answer_citation_grounded is False
         assert result.answer_normative_claim_uncited is True
 
-        # The composition the guard performs, on this turn's own stamps (rule 2,
-        # ADR-0125): the verdict sentence is normative with no passage behind it.
+        # The composition the guard performs, on this turn's own stamps (rule 3,
+        # ADR-0139): the verdict has a measurement and no passage behind it.
         assert [stamp["claim_type"] for stamp in result.claim_stamps] == ["normative"]
         assert result.answer_claims_ceiling == "low"
         assert surface_claim_confidence("high", result.answer_claims_ceiling) == "low"

@@ -1879,15 +1879,17 @@ export const chat: typeof en.chat = {
     // erscheint nur, wenn eine benannte Grenze greift, und nennt sie.
     byShare: {
       label: '{backed} von {claims} Aussagen belegt',
+      partial: '{count} teilweise',
+      unchecked: 'Belegprüfung nicht verfügbar',
       ariaLabel: '{backed} von {claims} tragenden Aussagen belegt, Einschätzung {level}',
       tooltip:
-        'Gezählt sind die tragenden Aussagen: zum Recht, zu Zahlen, Klassen und Fristen. Belegt heißt: eine zitierte Quelle, ein Eintrag im Arbeitsbereich oder eine Messung aus dieser Antwort steht dahinter.',
+        'Gezählt sind die tragenden Aussagen: Feststellungen und Rechtsaussagen, keine nächsten Schritte und Einschätzungen. Belegt heißt: die Quelle, der Eintrag im Arbeitsbereich oder die Messung, auf die sich die Aussage stützt, sagt dasselbe; ein Sprachmodell prüft das je Aussage. Eine Rechtsaussage belegt nur eine Quelle.',
       selfAssessment: 'Eigene Einschätzung des Assistenten: {level}',
       levelMeanings: {
         high: 'Hoch: jede tragende Aussage ist belegt.',
         medium:
-          'Mittel: nicht jede tragende Aussage ist belegt: eine Einschätzung, eine Rechtsaussage ohne Quelle oder ein nicht verifizierter Beleg bleibt.',
-        low: 'Niedrig: hinter den meisten tragenden Aussagen steht nichts, was diese Antwort gelesen hat, oder ihr rechtlicher Schluss hat keine zitierte Quelle.',
+          'Mittel: manche tragenden Aussagen sind belegt, andere nicht oder nur teilweise, oder die Prüfung war nicht möglich.',
+        low: 'Niedrig: keine tragende Aussage ist belegt, oder eine Rechtsaussage widerspricht ihrer Quelle.',
       },
       // Kurz, im Chip selbst hinter der Zählung, nur wenn die Grenze greift.
       capLabels: {
@@ -1897,8 +1899,10 @@ export const chat: typeof en.chat = {
         measurementOnly: 'nur gemessen',
         citationFallback: 'Quelle ergänzt',
         citationUnverified: 'Beleg nicht verifiziert',
+        claimContradicted: 'widerspricht der Quelle',
       },
       cappedReasons: {
+        claimContradicted: 'Eine Rechtsaussage dieser Antwort widerspricht der Quelle, auf die sie sich stützt.',
         ungrounded: 'Begrenzt: hinter zu vielen tragenden Aussagen steht kein Beleg.',
         quoteUnverified:
           'Begrenzt: ein Zitat konnte nicht wörtlich in der Quelle bestätigt werden.',

@@ -16,7 +16,9 @@ from aiq_agent.agents.piloti import answer_pipeline
 from aiq_agent.agents.piloti.answer_pipeline import finalize_answer
 from aiq_agent.agents.piloti.ledger import assemble_result
 from aiq_agent.common.citation_verification import SourceRegistry
+from aiq_agent.common.claim_judge import Judgement
 from aiq_agent.common.claim_provenance import CONFIDENCE_RULE_VERSION
+from tests.aiq_agent.claim_judge_stub import stub_judge
 
 APPROVALS = (
     '{"items": [{"assignee": "Anna Berger", "status": "pending", "document": "Einreichplan EG"},'
@@ -42,9 +44,11 @@ def _workspace_read(call_id: str = "w1") -> list:
     ]
 
 
-async def _finalize(messages: list, registry: SourceRegistry | None = None):
+async def _finalize(messages: list, registry: SourceRegistry | None = None, judge=None):
     registry = registry if registry is not None else SourceRegistry()
-    final = await finalize_answer(messages, registry=registry, tools=[], repair=None, turn_sources=[])
+    final = await finalize_answer(
+        messages, registry=registry, tools=[], repair=None, turn_sources=[], judge=judge or stub_judge()
+    )
     return final, assemble_result({"messages": messages}, final, turn_sources=[], turn_measurements=[])
 
 
@@ -65,9 +69,11 @@ async def test_a_record_never_grounds_a_claim_about_the_law():
     prose = "Anna Berger hat 3 Freigaben. Der Einreichplan EG muss nach § 5 bewilligt werden."
     messages = [HumanMessage("Was liegt bei Anna?"), *_workspace_read(), AIMessage(ANSWER_ENVELOPE.format(prose=prose))]
 
-    _, state = await _finalize(messages)
+    final, state = await _finalize(messages)
 
-    assert state.answer_confidence == "low"
+    # The record sentence is supported; the verdict beside it counts nothing and is named.
+    assert [stamp["support"] for stamp in final.claim_stamps] == [1.0, 0.0]
+    assert state.answer_confidence == "medium"
     assert state.answer_confidence_capped_reason == "normative_claim_uncited"
 
 
@@ -128,7 +134,7 @@ async def test_the_three_scores_are_written(monkeypatch):
     prose = "Anna Berger hat 3 Freigaben. Laut OIB gilt das immer [4]."
     messages = [HumanMessage("Was liegt bei Anna?"), *_workspace_read(), AIMessage(ANSWER_ENVELOPE.format(prose=prose))]
 
-    await _finalize(messages)
+    await _finalize(messages, judge=stub_judge({"Laut OIB": Judgement("not_addressed", "verdict")}))
 
     by_name = {(score.name, score.item): score.value for score in written}
     assert by_name[("claims-by-class", "record")] == "record"
@@ -204,7 +210,7 @@ async def test_a_work_turn_still_floors_on_a_legal_sentence_without_a_passage():
 
     _, state = await _finalize(messages)
 
-    assert state.answer_confidence == "low"
+    assert state.answer_confidence == "medium"
     assert state.answer_confidence_capped_reason == "normative_claim_uncited"
 
 
@@ -299,12 +305,13 @@ async def test_a_reading_beside_a_legal_statement_does_not_ground_it():
         prose = "Der Fluchtweg ist 1,20 m breit. Das genügt nach § 5 der Bauordnung."
         messages = [HumanMessage("Passt der Fluchtweg?"), AIMessage(ANSWER_ENVELOPE.format(prose=prose))]
 
-        final, state = await _finalize(messages)
+        final, state = await _finalize(messages, judge=stub_judge({"genügt": Judgement("not_addressed", "verdict")}))
     finally:
         reset_card_registry(token)
 
     assert [stamp["provenance"] for stamp in final.claim_stamps] == ["observed", "model_knowledge"]
-    assert state.answer_confidence == "low"
+    assert [stamp["support"] for stamp in final.claim_stamps] == [0.5, 0.0]
+    assert state.answer_confidence == "medium" and state.answer_confidence_capped_reason == "normative_claim_uncited"
 
 
 async def test_a_value_with_no_look_behind_it_is_not_observed():
@@ -371,7 +378,8 @@ async def test_a_place_is_a_citation_and_no_grounding_for_the_law():
 
     assert final.citation_grounded is False
     assert final.normative_claim_uncited is True
-    assert state.answer_confidence == "low"
+    assert [stamp["support"] for stamp in final.claim_stamps] == [1.0, 0.0]
+    assert state.answer_confidence == "medium" and state.answer_confidence_capped_reason == "normative_claim_uncited"
 
 
 async def test_a_place_cited_for_a_legal_sentence_is_refused_the_law():
@@ -448,30 +456,17 @@ async def test_a_turn_with_no_drawing_value_writes_no_looked_before_measurement(
     assert "look-count" in names and "looked-before-measurement" not in names
 
 
-async def test_honest_absence_that_concludes_nothing_counts_half():
-    """„… ist in keinem Dokument nachgewiesen": an honest absence, no verdict (ADR-0139, round 3 of #1231).
-
-    The net reads it as normative; it concludes nothing about the law, so the
-    hedge holds it at „medium" and the chip names no uncited verdict.
-    """
-    prose = "Für den Gang ja; der Abstand zum Treppenhaus ist in keinem Dokument nachgewiesen."
+async def test_an_honest_absence_the_judge_reads_as_a_next_step_bears_no_load():
+    """„… ist in keinem Dokument nachgewiesen" concludes nothing about the law: no verdict, no claim."""
+    prose = "Die Fluchtwegbreite beträgt 1,20 m [1]. Der Abstand zum Treppenhaus ist in keinem Dokument nachgewiesen."
+    absence = Judgement("not_addressed", "next_step")
+    registry = SourceRegistry()
+    registry.add(_look_place_entry())
     messages = [HumanMessage("Reicht der Fluchtweg?"), AIMessage(ANSWER_ENVELOPE.format(prose=prose))]
 
-    final, state = await _finalize(messages)
+    final, _ = await _finalize(messages, registry, judge=stub_judge({"keinem Dokument": absence}))
 
-    assert final.claim_stamps[0]["claim_type"] == "normative"
-    assert final.claim_stamps[0]["verdict"] is False
-    assert final.claims_ceiling == "medium"
-
-
-async def test_honest_absence_about_a_fact_still_counts_half():
-    prose = "Die Anzahl der Stellplätze ist in keinem Dokument angegeben."
-    messages = [HumanMessage("Wie viele Stellplätze?"), AIMessage(ANSWER_ENVELOPE.format(prose=prose))]
-
-    final, _ = await _finalize(messages)
-
-    assert [(stamp["claim_type"], stamp["support"]) for stamp in final.claim_stamps] == [("descriptive", 0.5)]
-    assert final.claims_ceiling == "medium"
+    assert [(stamp["verdict"], stamp["load_bearing"]) for stamp in final.claim_stamps][-1] == (False, False)
 
 
 async def test_a_look_on_a_page_with_a_retrieved_caption_does_not_borrow_the_captions_authority():

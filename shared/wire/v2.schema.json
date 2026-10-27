@@ -675,6 +675,24 @@
           "default": null,
           "title": "Group"
         },
+        "judged": {
+          "anyOf": [
+            {
+              "enum": [
+                "supported",
+                "contradicted",
+                "not_addressed",
+                "unavailable"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Judged"
+        },
         "load_bearing": {
           "default": false,
           "title": "Load Bearing",

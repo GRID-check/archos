@@ -405,15 +405,18 @@ class ClaimStamp(_Model):
     #: For a ``record``: numbers the sentence states that no record this turn held.
     unmatched: list[str] = Field(default_factory=list)
     #: What the sentence contributes to the turn's count of backed claims
-    #: (rule 3, ADR-0139): 1 evidence of its own; 0.5 an Einschätzung drawn
-    #: from a cited passage or a hedge about a fact; 0 nothing, and every
-    #: uncited verdict on the law, hedged or not. Absent on a turn stored
-    #: before rule 3; its presence is what tells rule 3 apart on the wire.
+    #: (rule 3, ADR-0139): 1 its evidence supports it; 0.5 unjudged (the claim
+    #: judge could not run) or capped (a reading, a pointer that did not hold);
+    #: 0 nothing behind it, or a verdict on the law with no passage. Absent on a
+    #: turn stored before rule 3; its presence is what tells rule 3 apart.
     support: float | None = Field(default=None, ge=0, le=1)
     #: Rule 3: the sentence concludes something about the law, so only a
     #: passage grounds it; the chip warns on an uncited one. Optional, as
     #: ``support`` is, so an open tab's bundle strips it.
     verdict: bool | None = None
+    #: Rule 3: what the claim judge found against the sentence's evidence
+    #: (``common/claim_judge.py``); ``unavailable`` when it could not run.
+    judged: Literal["supported", "contradicted", "not_addressed", "unavailable"] | None = None
     #: Rule 3: it carried a pointer that did not hold; its class is what is
     #: left without it.
     dropped: bool | None = None

@@ -1097,39 +1097,76 @@ def turn_passages(results: Sequence[tuple[str, Any, Any]]) -> dict[int, list[Sou
 
 
 _SENTENCE_RE = re.compile(r"(?<=[.!?])\s+|\n+")
+_HOLD_WORD_RE = re.compile(r"[^\W\d_][^\W_]{3,}")
+_HOLD_NUMBER_RE = re.compile(r"(?<![\w-])\d+(?:[.,]\d+)?(?!\w)")
+
+
+def _holds(sentence: str, entry: SourceEntry) -> bool:
+    """Whether ``entry``'s text carries the sentence: every number it states and half its key words.
+
+    A choice between passages, never a judgement of support: whether the
+    passage says what the sentence says is the claim judge's
+    (``common/claim_judge.py``). The file the sentence names is left out: a
+    page's text rarely prints its own file name.
+    """
+    text = (entry.chunk_text or "").casefold()
+    if not text.strip():
+        return False
+    named = entry.citation_key.split(", ")[0].casefold()
+    plain = re.sub(r"\[\d+\]", " ", sentence.casefold()).replace(named, " ")
+    if not set(_HOLD_NUMBER_RE.findall(plain)) <= set(_HOLD_NUMBER_RE.findall(text)):
+        return False
+    words = set(_HOLD_WORD_RE.findall(plain))
+    held = set(_HOLD_WORD_RE.findall(text))
+    return bool(words) and len(words & held) * 2 >= len(words)
+
+
+def _carrying(text: str, number: int) -> list[str]:
+    return [part for part in _SENTENCE_RE.split(text) if f"[{number}]" in part]
 
 
 def resolve_unlisted_numbers(text: str, numbered: dict[int, list[SourceEntry]]) -> list[SourceEntry | None]:
     """What each ``[N]`` of an answer with no source list names, at position N-1; None where nothing does.
 
-    By content, never by position: ``[N]`` names the passage of this turn that
-    holds every sentence carrying it (its numbers and half its key words,
-    ``claim_provenance.passage_holds``). The number only breaks a tie between
-    passages that all hold them; passages of one citation key are one source.
-    A number no passage holds, or two sources hold equally, is labelled. The
-    model's numbers follow neither the registry nor any one block: read as
-    positions they cited Punkt 12 to OIB-RL 2.1 p.4 and drawings to OIB pages
-    (ADR-0139).
+    By content, never by position: ``[N]`` names the passage of this turn
+    that carries most of the sentences citing it (:func:`_holds`), each
+    sentence counted on its own; the printed „Result N" breaks a tie, then the
+    turn's order. A number no passage carries is labelled. The model's numbers
+    follow neither the registry nor any one block: read as positions they
+    cited Punkt 12 to OIB-RL 2.1 p.4 and drawings to OIB pages (ADR-0139).
     """
-    from aiq_agent.common.claim_provenance import passage_holds
-
     every = [entry for held in numbered.values() for entry in held]
-    sentences = [part for part in _SENTENCE_RE.split(text) if part.strip()]
     resolved: dict[int, SourceEntry] = {}
     for number in sorted(_inline_citation_numbers(text)):
-        carrying = [sentence for sentence in sentences if f"[{number}]" in sentence]
-        holding = [
-            entry
-            for entry in every
-            if all(passage_holds(s, entry.chunk_text or "", sources=[entry.citation_key]) for s in carrying)
-        ]
-        if len({entry.citation_key for entry in holding}) > 1:
-            holding = [entry for entry in holding if entry in numbered.get(number, [])]
-        if holding and len({entry.citation_key for entry in holding}) == 1:
-            resolved[number] = holding[0]
+        carrying = _carrying(text, number)
+        counts = [(sum(_holds(sentence, entry) for sentence in carrying), entry) for entry in every]
+        best = max((count for count, _ in counts), default=0)
+        if best == 0:
+            continue
+        tied = [entry for count, entry in counts if count == best]
+        printed = [entry for entry in tied if entry in numbered.get(number, [])]
+        resolved[number] = (printed or tied)[0]
     if not resolved:
         return []
     return [resolved.get(position) for position in range(1, max(resolved) + 1)]
+
+
+def unlisted_candidates(text: str, numbered: dict[int, list[SourceEntry]]) -> dict[int, list[SourceEntry]]:
+    """Every passage of the turn an ``[N]`` with no source list may name: printed under N, or carrying a sentence.
+
+    What the claim judge reads each such sentence against, so each occurrence
+    is checked on its own: „Sie gilt für Gebäude [1]" against the page that
+    says so, whatever the table rows that also cite [1] point at.
+    """
+    every = [entry for held in numbered.values() for entry in held]
+    candidates: dict[int, list[SourceEntry]] = {}
+    for number in sorted(_inline_citation_numbers(text)):
+        carrying = _carrying(text, number)
+        found = list(numbered.get(number, []))
+        found += [entry for entry in every if entry not in found and any(_holds(s, entry) for s in carrying)]
+        if found:
+            candidates[number] = found
+    return candidates
 
 
 def _entry_from_hit(hit: GroundingHit, tool_name: str) -> SourceEntry:
@@ -3018,6 +3055,11 @@ def _normalize_source_section_layout(ref_section: str) -> str:
         lines[0] = "## Quellen" if _GERMAN_REFERENCE_HEADING_LABEL_RE.search(lines[0]) else "## Sources"
         ref_section = "\n".join(lines)
     return "\n".join(_split_collapsed_source_line(line) for line in ref_section.split("\n"))
+
+
+def has_source_section(text: str) -> bool:
+    """Whether the answer writes its own source list („Quellen:"), which its ``[N]`` are then held to."""
+    return _REFERENCE_SECTION_RE.search(text) is not None
 
 
 def _inline_citation_numbers(text: str) -> set[int]:
