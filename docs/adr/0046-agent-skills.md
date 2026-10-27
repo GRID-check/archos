@@ -1,7 +1,7 @@
 # ADR-0046: Agent skills — user-selected, progressive-disclosure instruction packages
 
 - **Status:** Proposed
-- **Date:** 2026-08-10, amended 2026-08-11
+- **Date:** 2026-08-10, amended 2026-08-11, amended 2026-10-27
 - **Deciders:** Platform
 - **Related:** ADR-0018 (per-run state), ADR-0020 (Dragonfly shared cache),
   ADR-0022 (org BYOK), ADR-0023 (Workflows — **superseded by this ADR**),
@@ -23,6 +23,23 @@
 >    skill (migrations 0043/0044). New sections: "A job is a prompt on a timer",
 >    "A chat job lands in a real conversation" and "The wire rename is tolerated
 >    for one deploy window".
+
+> **Amended 2026-10-27, in place** — still Proposed, so the engine decision is
+> changed here rather than superseded; everything else in this record stands.
+> Skills now run on Deep Agents' `SkillsMiddleware` in chat AND deep research,
+> over one read-only backend of the run's resolved skills
+> ([ADR-0135](0135-skills-run-on-deep-agents-skills-middleware.md)). That
+> replaces "a GRID-owned skills engine for the chat side", the L2 `use_skill`
+> tool, the deep side's `FilesystemBackend` mount and the writer's second
+> channel. The rejections "Reuse deepagents `SkillsMiddleware` for the chat
+> side" and "One engine for both sides" below stay as written, and their
+> premises no longer hold, each checked on that day: request-driven forcing was
+> gone (ADR-0060; `skills/runtime.py` "Nothing in this module can REQUIRE a
+> skill"), and the middleware renders a name, description and path catalog the
+> model opts into (deepagents 0.7.32, `middleware/skills.py`, "Progressive
+> Disclosure"). Resolution, shadowing, `grid-agents`, curation, the BFF and jobs
+> are unchanged. Where this record says `use_skill` below, read "a `read_file`
+> of the skill's `SKILL.md`".
 
 ## Context
 
