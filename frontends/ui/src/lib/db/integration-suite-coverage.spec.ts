@@ -15,6 +15,13 @@ import { describe, expect, it } from 'vitest'
 
 const UI = process.cwd()
 const SCRIPT = join(UI, '..', '..', 'scripts', 'rls-test-db.sh')
+const TASKFILE = join(UI, '..', '..', 'taskfiles', 'frontend.yml')
+
+/**
+ * Measurements, not gates: each runs only when asked, through its own task in
+ * `taskfiles/frontend.yml`, which hands the file to `rls-test-db.sh --only`.
+ */
+const RUN_ON_DEMAND = new Set(['src/lib/search/search-latency.integration.spec.ts'])
 
 /** Specs that predate this check and are not in the run. Remove a line when its spec joins the script. */
 const NOT_YET_RUN = new Set([
@@ -39,12 +46,18 @@ describe('the Postgres integration suite', () => {
   )
 
   it('runs every spec that needs Postgres', () => {
-    const missing = needingPostgres.filter((path) => !script.includes(path) && !NOT_YET_RUN.has(path))
+    const missing = needingPostgres.filter((path) => !script.includes(path) && !NOT_YET_RUN.has(path) && !RUN_ON_DEMAND.has(path))
     expect(missing, 'Add these to scripts/rls-test-db.sh, or nothing ever runs them').toEqual([])
   })
 
   it('keeps the exemptions honest', () => {
     const stale = [...NOT_YET_RUN].filter((path) => script.includes(path) || !needingPostgres.includes(path))
     expect(stale, 'These run now (or are gone): drop them from NOT_YET_RUN').toEqual([])
+  })
+
+  it('gives every on-demand measurement a task that runs it', () => {
+    const taskfile = readFileSync(TASKFILE, 'utf8')
+    const orphaned = [...RUN_ON_DEMAND].filter((path) => !taskfile.includes(`rls-test-db.sh --only ${path}`) || !needingPostgres.includes(path))
+    expect(orphaned, 'Run these through rls-test-db.sh --only from a task in taskfiles/frontend.yml, or drop them').toEqual([])
   })
 })
