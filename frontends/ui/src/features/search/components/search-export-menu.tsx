@@ -9,7 +9,7 @@ import { useTranslations } from '@/i18n'
 import type { SearchExportFormat } from '../lib/search-client'
 import { ToolbarLabel } from './search-atoms'
 
-/** The Planliste of the current result, as CSV or XLSX. */
+/** The Planliste of the current result, as CSV or XLSX, with every column of the register. */
 export function SearchExportMenu({
   onExport,
   busy,
@@ -24,6 +24,10 @@ export function SearchExportMenu({
       entries={[
         { type: 'item', id: 'csv', label: t('csv'), icon: FileText, onSelect: () => onExport('csv'), testId: 'search-export-csv' },
         { type: 'item', id: 'xlsx', label: t('xlsx'), icon: FileSpreadsheet, onSelect: () => onExport('xlsx'), testId: 'search-export-xlsx' },
+        // The file's columns are fixed (`plan-list-export.ts`), whatever the
+        // register shows: said here, where the reader decides, not in a tooltip.
+        { type: 'separator' },
+        { type: 'label', label: t('allColumns') },
       ]}
       trigger={
         <Button type="button" variant="outline" size="sm" aria-label={t('label')} aria-busy={busy || undefined} disabled={busy} data-testid="search-export">

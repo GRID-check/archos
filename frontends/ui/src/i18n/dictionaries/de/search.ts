@@ -153,6 +153,17 @@ export const search: typeof en.search = {
   register: {
     caption: 'Eine Zeile je Dokument, so wie Piloti es gelesen hat.',
     sortBy: 'Nach {column} sortieren',
+    currentOnly: 'Nur aktuelle Fassung',
+    columnsMenu: 'Spalten',
+    columnsMenuTitle: 'Spalten zeigen',
+    columnsReset: 'Standardspalten',
+    sortMenu: 'Sortieren',
+    sortMenuLabel: 'Sortiert nach {column}, {direction}',
+    sortMenuTitle: 'Sortieren nach',
+    sortMenuHint: 'Die aktive Spalte noch einmal wählen kehrt die Reihenfolge um.',
+    ascending: 'aufsteigend',
+    descending: 'absteigend',
+    scrollLabel: 'Planliste, seitlich scrollbar',
     columns: {
       planNumber: 'Plannummer',
       planIndex: 'Index',
@@ -160,6 +171,7 @@ export const search: typeof en.search = {
       scale: 'Maßstab',
       title: 'Titel',
       documentType: 'Dokumentart',
+      author: 'Verfasser',
       project: 'Projekt',
       folder: 'Ordner',
       uploaded: 'Hochgeladen',
@@ -173,6 +185,7 @@ export const search: typeof en.search = {
     xlsx: 'Planliste als Excel',
     failed: 'Der Export hat nicht geklappt. Bitte erneut versuchen.',
     fileName: 'Planliste',
+    allColumns: 'Die Datei enthält alle Spalten der Planliste, auch ausgeblendete.',
   },
   saved: {
     label: 'Gespeicherte Suchen',

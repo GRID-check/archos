@@ -10,8 +10,8 @@ import type { SavedSearchView } from '@/lib/search/saved-search-client'
 
 const P_SEESTADT = '0b6f0c1e-3a55-4c0e-9a1d-7f2b5d0e1a01'
 const P_HERNALS = '0b6f0c1e-3a55-4c0e-9a1d-7f2b5d0e1a02'
-const F_EINREICHUNG = '5d1a2c3b-1111-4a2b-8c3d-000000000001'
-const F_BRANDSCHUTZ = '5d1a2c3b-1111-4a2b-8c3d-000000000002'
+const F_SUBMISSION = '5d1a2c3b-1111-4a2b-8c3d-000000000001'
+const F_FIRE_SAFETY = '5d1a2c3b-1111-4a2b-8c3d-000000000002'
 
 function doc(partial: Partial<DocumentHit> & Pick<DocumentHit, 'id' | 'name'>): DocumentHit {
   return {
@@ -20,7 +20,7 @@ function doc(partial: Partial<DocumentHit> & Pick<DocumentHit, 'id' | 'name'>): 
     shelf: 'project',
     projectId: P_SEESTADT,
     projectName: 'Wohnhaus Seestadt Baufeld J7',
-    folderId: F_EINREICHUNG,
+    folderId: F_SUBMISSION,
     folderName: 'Einreichung',
     status: 'success',
     contentType: 'application/pdf',
@@ -49,7 +49,7 @@ export const SEARCH_FIXTURE_DOCUMENTS: DocumentHit[] = [
     id: 'd0000000-0000-4000-8000-000000000001',
     name: 'Brandschutzkonzept_GK4_Seestadt_J7',
     title: 'Brandschutzkonzept Wohnhaus Seestadt J7',
-    folderId: F_BRANDSCHUTZ,
+    folderId: F_FIRE_SAFETY,
     folderName: 'Brandschutz',
     documentType: 'fire_safety_concept',
     documentDate: '2026-09-30',
@@ -147,7 +147,7 @@ export const SEARCH_FIXTURE_RESPONSE: SearchResponse = {
       hits: [
         {
           kind: 'folder',
-          id: F_BRANDSCHUTZ,
+          id: F_FIRE_SAFETY,
           name: 'Brandschutz',
           shelf: 'project',
           projectId: P_SEESTADT,
@@ -235,4 +235,40 @@ export const SEARCH_FIXTURE_SAVED: SavedSearchView[] = [
     ownedByMe: false,
     createdAt: '2026-10-02T13:00:00.000Z',
   },
+]
+
+const drawing = (n: number, partial: Partial<DocumentHit> & Pick<DocumentHit, 'name'>): DocumentHit =>
+  doc({ id: `d0000000-0000-4000-8000-0000000001${String(n).padStart(2, '0')}`, matchedOn: ['reading'], ...partial })
+
+/**
+ * The rest of the Seestadt Einreichung, for the register at 09:10: a
+ * Planliste has more than three rows. Only the register preview reads these;
+ * the list's answer stays Lena's 08:55 search.
+ */
+export const SEARCH_FIXTURE_REGISTER_DOCUMENTS: DocumentHit[] = [
+  drawing(1, { name: 'EP-01_Lageplan', title: 'Lageplan', planNumber: 'EP-01', planIndex: 'A', planDate: '2026-09-12', scale: '1:500' }),
+  drawing(2, { name: 'EP-02_Grundriss_KG', title: 'Grundriss Kellergeschoss', planNumber: 'EP-02', planIndex: 'B', planDate: '2026-10-01', scale: '1:100' }),
+  drawing(3, { name: 'EP-04_Grundriss_1OG_IndexB', title: 'Grundriss 1. Obergeschoss', planNumber: 'EP-04', planIndex: 'B', planDate: '2026-10-14', scale: '1:100' }),
+  drawing(4, {
+    name: 'EP-04_Grundriss_1OG_IndexA',
+    title: 'Grundriss 1. Obergeschoss',
+    planNumber: 'EP-04',
+    planIndex: 'A',
+    planDate: '2026-08-02',
+    scale: '1:100',
+    superseded: true,
+    uploadedAt: '2026-08-03T10:00:00.000Z',
+  }),
+  drawing(5, { name: 'EP-06_Ansichten_Nord_Sued', title: 'Ansichten Nord und Süd', planNumber: 'EP-06', planIndex: 'A', planDate: '2026-10-14', scale: '1:100' }),
+  drawing(6, {
+    name: 'TW-01_Positionsplan_Decke_EG',
+    title: 'Positionsplan Decke über EG',
+    planNumber: 'TW-01',
+    planIndex: 'A',
+    planDate: '2026-10-09',
+    scale: '1:50',
+    author: 'Haas Tragwerksplanung ZT GmbH',
+    pageCount: 2,
+  }),
+  drawing(7, { name: 'Einreichung_Deckblatt', title: 'Deckblatt Einreichung', planDate: '2026-10-14' }),
 ]

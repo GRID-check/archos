@@ -48,6 +48,7 @@ const COLUMNS: ReadonlyArray<{ key: ColumnKey; value: (hit: DocumentHit, diction
       hit.documentType ? ((dictionary.dossier.documentTypes as Record<string, string>)[hit.documentType] ?? hit.documentType) : null,
     width: 22,
   },
+  { key: 'author', value: (hit) => hit.author, width: 22 },
   { key: 'project', value: (hit, dictionary) => hit.projectName ?? (hit.shelf === 'office_shelf' ? dictionary.searchExport.officeShelf : null), width: 24 },
   { key: 'folder', value: (hit) => hit.folderName, width: 20 },
   { key: 'documentDate', value: (hit) => hit.documentDate, width: 12 },

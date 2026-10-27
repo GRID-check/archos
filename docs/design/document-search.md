@@ -223,6 +223,17 @@ One organism, `frontends/ui/src/features/search` (`SearchWorkspace`), at every
 scope; the question lives in the URL (`?q=…&type=…&view=register&sort=…`), so
 a search is a link and Back walks its filters.
 
+The register is the 09:10 view by default: without words it reads by
+Plannummer (documents without a number last, either way), „Nur aktuelle
+Fassung“ is on (`current=0` turns it off; the list's default is off, and
+`current=1` turns it on there), and it shows Plannummer, Index, Titel,
+Planstand, Maßstab, Dokumentart, Verfasser, Projekt (office scope only) and
+Status. The column menu adds Ordner, Hochgeladen and Seiten; the choice is
+`cols=` in the URL, in the register's order. Every column header sorts. The
+export carries every column whatever is shown, and its menu says so. On a
+phone the register is a stack: Plannummer and Index over the title, the other
+chosen columns on a line under it, the order in a menu.
+
 - `/app/search`: the whole office. The rail's „Suche“ (`g u`), the header's
   magnifier, and ⌘K, whose first row carries what was typed
   (`/app/search?q=…`). The project facet narrows it to one project.

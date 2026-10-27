@@ -194,13 +194,42 @@ describe('SearchWorkspaceView', () => {
     const register = screen.getByTestId('search-register')
     expect(within(register).getAllByRole('row')).toHaveLength(1 + SEARCH_FIXTURE_RESPONSE.sections.document!.hits.length)
 
-    await userEvent.click(within(register).getByRole('button', { name: 'Nach Plannummer sortieren' }))
-    expect(onChange).toHaveBeenLastCalledWith(expect.objectContaining({ sort: 'plan_number', dir: 'asc' }))
+    // The register reads by Plannummer from the start: the first click turns it round.
     await userEvent.click(within(register).getByRole('button', { name: 'Nach Plannummer sortieren' }))
     expect(onChange).toHaveBeenLastCalledWith(expect.objectContaining({ sort: 'plan_number', dir: 'desc' }))
-    // Maßstab is shown, not ordered by.
-    expect(within(register).queryByRole('button', { name: 'Nach Maßstab sortieren' })).toBeNull()
+    await userEvent.click(within(register).getByRole('button', { name: 'Nach Plannummer sortieren' }))
+    expect(onChange).toHaveBeenLastCalledWith(expect.objectContaining({ sort: 'plan_number', dir: 'asc' }))
+    // Every column orders the search, Maßstab and Verfasser among them.
+    await userEvent.click(within(register).getByRole('button', { name: 'Nach Maßstab sortieren' }))
+    expect(onChange).toHaveBeenLastCalledWith(expect.objectContaining({ sort: 'scale', dir: 'asc' }))
+    await userEvent.click(within(register).getByRole('button', { name: 'Nach Verfasser sortieren' }))
+    expect(onChange).toHaveBeenLastCalledWith(expect.objectContaining({ sort: 'author', dir: 'asc' }))
+    // Ordner is a column the reader asks for.
+    expect(within(register).queryByRole('button', { name: 'Nach Ordner sortieren' })).toBeNull()
     expect(within(register).getByText('Ersetzt')).toBeInTheDocument()
+  })
+
+  it('shows „Nur aktuelle Fassung“ above the register, and switches it off into the URL state', async () => {
+    const onChange = vi.fn()
+    german(<Harness initial={{ ...EMPTY_SEARCH_STATE, view: 'register', filters: { currentOnly: true } }} onChange={onChange} />)
+    const toggle = screen.getByRole('switch', { name: 'Nur aktuelle Fassung' })
+    expect(toggle).toBeChecked()
+    await userEvent.click(toggle)
+    expect(onChange).toHaveBeenLastCalledWith(expect.objectContaining({ filters: {} }))
+  })
+
+  it('adds a column from the column menu, in its place', async () => {
+    const onChange = vi.fn()
+    german(<Harness initial={{ ...EMPTY_SEARCH_STATE, view: 'register' }} onChange={onChange} />)
+    await userEvent.click(screen.getByTestId('search-register-columns'))
+    await userEvent.click(await screen.findByRole('menuitemcheckbox', { name: 'Ordner' }))
+    expect(onChange).toHaveBeenLastCalledWith(
+      expect.objectContaining({ columns: ['planNumber', 'planIndex', 'title', 'planDate', 'scale', 'documentType', 'author', 'project', 'folder', 'status'] })
+    )
+    // The menu stays open for the next pick; Escape closes it.
+    expect(screen.getByRole('menuitemcheckbox', { name: 'Ordner' })).toBeChecked()
+    await userEvent.keyboard('{Escape}')
+    expect(within(screen.getByTestId('search-register')).getByRole('button', { name: 'Nach Ordner sortieren' })).toBeInTheDocument()
   })
 })
 
@@ -252,7 +281,7 @@ describe('SearchWorkspace', () => {
     const rows = await screen.findAllByTestId('saved-search-apply')
     await userEvent.click(rows[0])
     expect(routerPush).toHaveBeenCalledWith(
-      `/app/search?view=register&sort=plan_number&dir=asc&project=${PROJECT}&type=submission_drawing&current=1`,
+      `/app/search?view=register&sort=plan_number&dir=asc&project=${PROJECT}&type=submission_drawing`,
       { scroll: false }
     )
   })

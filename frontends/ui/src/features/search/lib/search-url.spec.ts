@@ -12,6 +12,7 @@ import {
   withoutSearchParams,
   writeFactParam,
   writeSearchParams,
+  withView,
   type SearchUrlState,
 } from './search-url'
 
@@ -24,6 +25,7 @@ const EVERYTHING: SearchUrlState = {
   sort: 'plan_number',
   dir: 'asc',
   projectId: PROJECT,
+  columns: ['planNumber', 'planIndex', 'title', 'folder', 'uploaded', 'pages'],
   filters: {
     documentTypes: ['submission_drawing', 'fire_safety_concept'],
     tags: ['Brandschutz'],
@@ -82,6 +84,59 @@ describe('the URL and the search state', () => {
   })
 })
 
+describe('the register’s columns in the URL', () => {
+  const register: SearchUrlState = { ...EMPTY_SEARCH_STATE, view: 'register', filters: { currentOnly: true } }
+
+  it('writes nothing for the default columns, and reads the default back', () => {
+    expect(writeSearchParams(register).has('cols')).toBe(false)
+    expect(parseSearchParams(writeSearchParams(register)).columns).toBeNull()
+  })
+
+  it('round-trips a choice, in the register’s order whatever order the link names', () => {
+    const chosen: SearchUrlState = { ...register, columns: ['planNumber', 'title', 'folder', 'pages'] }
+    const params = writeSearchParams(chosen)
+    expect(params.get('cols')).toBe('planNumber,title,folder,pages')
+    expect(parseSearchParams(params)).toEqual(chosen)
+    expect(parseSearchParams(new URLSearchParams('view=register&cols=pages,folder,planNumber')).columns).toEqual(['planNumber', 'title', 'folder', 'pages'])
+  })
+
+  it('keeps the title, drops what it cannot name, and reads a link naming the defaults as the default', () => {
+    expect(parseSearchParams(new URLSearchParams('cols=planNumber,colour')).columns).toEqual(['planNumber', 'title'])
+    expect(parseSearchParams(new URLSearchParams('cols=colour,,')).columns).toBeNull()
+    const defaults = 'planNumber,planIndex,title,planDate,scale,documentType,author,project,status'
+    expect(parseSearchParams(new URLSearchParams(`cols=${defaults}`)).columns).toBeNull()
+  })
+
+  it('is a search parameter: leaving search mode drops it', () => {
+    expect(hasSearchParams(new URLSearchParams('cols=title'))).toBe(true)
+    expect(withoutSearchParams(new URLSearchParams('folder=f1&cols=title')).toString()).toBe('folder=f1')
+  })
+})
+
+describe('„Nur aktuelle Fassung“, each view’s own default', () => {
+  it('is on in the register unless the link says current=0', () => {
+    expect(parseSearchParams(new URLSearchParams('view=register')).filters.currentOnly).toBe(true)
+    expect(parseSearchParams(new URLSearchParams('view=register&current=0')).filters.currentOnly).toBeUndefined()
+    expect(writeSearchParams({ ...EMPTY_SEARCH_STATE, view: 'register', filters: { currentOnly: true } }).toString()).toBe('view=register')
+    expect(writeSearchParams({ ...EMPTY_SEARCH_STATE, view: 'register' }).toString()).toBe('view=register&current=0')
+  })
+
+  it('is off in the list unless the link says current=1', () => {
+    expect(parseSearchParams(new URLSearchParams('')).filters.currentOnly).toBeUndefined()
+    expect(parseSearchParams(new URLSearchParams('current=1')).filters.currentOnly).toBe(true)
+  })
+
+  it('follows the new view’s default when the reader left it alone, and keeps a choice they made', () => {
+    const list = EMPTY_SEARCH_STATE
+    expect(withView(list, 'register').filters.currentOnly).toBe(true)
+    expect(withView(withView(list, 'register'), 'list').filters.currentOnly).toBeUndefined()
+    const listCurrent = { ...list, filters: { currentOnly: true } }
+    expect(withView(listCurrent, 'register').filters.currentOnly).toBe(true)
+    const registerAll = { ...list, view: 'register' as const }
+    expect(withView(registerAll, 'list').filters.currentOnly).toBeUndefined()
+  })
+})
+
 describe('fact and party parameters', () => {
   it('reads equals and ranges, open at either end', () => {
     expect(parseFactParam('building_class=GK 4')).toEqual({ key: 'building_class', equals: 'GK 4' })
@@ -112,6 +167,11 @@ describe('the body a search state asks', () => {
       sort: 'plan_number',
       dir: 'asc',
     })
+  })
+
+  it('asks the register by Plannummer when no column is chosen, and by relevance with words', () => {
+    expect(toSearchBody({ ...EMPTY_SEARCH_STATE, view: 'register' })).toEqual({ kinds: ['document'], sort: 'plan_number', dir: 'asc' })
+    expect(toSearchBody({ ...EMPTY_SEARCH_STATE, view: 'register', text: 'Schnitt' })).toEqual({ text: 'Schnitt', kinds: ['document'] })
   })
 
   it('never asks for relevance without words to be relevant to', () => {
