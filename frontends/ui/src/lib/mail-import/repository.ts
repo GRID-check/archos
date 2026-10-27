@@ -181,6 +181,12 @@ export interface MailImportAdvance {
   filesFiled: number
   itemsSkipped: number
   filesSkipped: number
+  /** The mail opened an E-Mail-Verlauf (D33). */
+  threadsCreated: number
+  /** The mail was the import's first into a Verlauf that was there before it. */
+  threadsAppended: number
+  /** The mail's text was in the project already (its Message-ID), so it was not filed again. */
+  alreadyInProject: number
   skippedSamples: MailImportSkippedSample[]
 }
 
@@ -203,6 +209,9 @@ export async function advanceMailImport(
         filesFiled: sql`${mailImports.filesFiled} + ${advance.filesFiled}`,
         itemsSkipped: sql`${mailImports.itemsSkipped} + ${advance.itemsSkipped}`,
         filesSkipped: sql`${mailImports.filesSkipped} + ${advance.filesSkipped}`,
+        threadsCreated: sql`${mailImports.threadsCreated} + ${advance.threadsCreated}`,
+        threadsAppended: sql`${mailImports.threadsAppended} + ${advance.threadsAppended}`,
+        alreadyInProject: sql`${mailImports.alreadyInProject} + ${advance.alreadyInProject}`,
         skippedSamples: advance.skippedSamples,
         // A mail filed: whatever failed before it has passed.
         failureStreak: 0,
@@ -211,6 +220,27 @@ export async function advanceMailImport(
         updatedAt: new Date(),
       })
       .where(and(eq(mailImports.id, id), eq(mailImports.status, 'importing'), eq(mailImports.nextPosition, from)))
+      .returning({ id: mailImports.id }),
+  )
+  return rows.length > 0
+}
+
+/**
+ * Count `count` more files skipped and keep these samples, while the import
+ * is still open: an E-Mail-Verlauf the upload path refused at a slice's end
+ * (`./job.ts`), which no cursor move counts. False when it moved on.
+ */
+export async function recordSkippedFiles(
+  organizationId: string,
+  id: string,
+  count: number,
+  skippedSamples: MailImportSkippedSample[],
+): Promise<boolean> {
+  const rows = await withTenant({ organizationId }, () =>
+    getDb()
+      .update(mailImports)
+      .set({ filesSkipped: sql`${mailImports.filesSkipped} + ${count}`, skippedSamples, updatedAt: new Date() })
+      .where(and(eq(mailImports.id, id), inArray(mailImports.status, OPEN_STATUSES)))
       .returning({ id: mailImports.id }),
   )
   return rows.length > 0

@@ -40,7 +40,16 @@ vi.mock('./filing', async (importOriginal) => {
     ...actual,
     createFolderWithFreeName: vi.fn(async () => ({ id: 'folder_archive', name: 'Büro 2019' })),
     filingContext: vi.fn((input: object) => ({ ...input, folders: new Map() })),
-    fileMail: vi.fn(async () => ({ folderName: 'm', filesFiled: 2, filesSkipped: 1, skipped: [{ mail: 'm', file: 'x.exe', reason: 'type' }], nameStops: [] })),
+    fileMail: vi.fn(async () => ({
+      folderName: 'm',
+      filesFiled: 2,
+      filesSkipped: 1,
+      skipped: [{ mail: 'm', file: 'x.exe', reason: 'type' }],
+      nameStops: [],
+      threadsCreated: 1,
+      threadsAppended: 0,
+      alreadyInProject: 0,
+    })),
     recordNameStops: vi.fn(async () => {}),
   }
 })
@@ -64,8 +73,14 @@ vi.mock('./repository', () => ({
   findMailImport: vi.fn(),
   updateMailImport: vi.fn(),
   advanceMailImport: vi.fn(async () => true),
+  recordSkippedFiles: vi.fn(async () => true),
   listStaleOpenImports: vi.fn(async () => []),
 }))
+vi.mock('@/lib/mail-thread/archive', () => ({
+  renderPendingThreads: vi.fn(async () => ({ rendered: 0, waiting: 0, skipped: [], quotaFull: false })),
+}))
+vi.mock('@/lib/mail-thread/append', () => ({ RENDER_LEASE_RETRY_MS: 15_000 }))
+vi.mock('@/lib/mail-thread/thread-locale', () => ({ newThreadLocaleFor: vi.fn(async () => 'en') }))
 
 import type { AuthorizedSession } from '@/lib/auth/types'
 import type { MailImport } from '@/lib/db/schema'
@@ -80,6 +95,8 @@ import { requireShelfWrite } from '@/lib/documents/shelf-authz'
 import { enqueueJob } from '@/lib/jobs-queue/enqueue'
 import { findOpenJobId } from '@/lib/jobs-queue/repository'
 import { readArchivePage, UnreadableArchiveError, type ArchivePage } from './archive-client'
+import { renderPendingThreads } from '@/lib/mail-thread/archive'
+import { ARCHIVE_THREAD_RENDER_EFFECTS } from '@/lib/inbound-mail/batch-effects'
 import { openUploadBatch, sealJobUploadBatch } from '@/lib/upload-batches/service'
 import {
   createFolderWithFreeName,
@@ -89,6 +106,7 @@ import {
   ImportMovedOnError,
   MailImportQuotaError,
   SliceBudgetSpentError,
+  ThreadBusyError,
 } from './filing'
 import { runMailImportSlice, sweepStaleMailImports } from './job'
 import * as repository from './repository'
@@ -120,6 +138,9 @@ function row(overrides: Partial<MailImport> = {}): MailImport {
     filesFiled: 0,
     itemsSkipped: 0,
     filesSkipped: 0,
+    threadsCreated: 0,
+    threadsAppended: 0,
+    alreadyInProject: 0,
     skippedSamples: [],
     failureStreak: 0,
     errorCode: null,
@@ -146,9 +167,13 @@ const mail = {
   sender: null,
   to: [],
   cc: [],
+  bcc: [],
   sent_at: null,
   received_at: null,
   message_id: null,
+  in_reply_to: null,
+  references: null,
+  conversation_index: null,
   body: { text: '', source: 'none', truncated: false },
   attachments: [],
 }
@@ -174,7 +199,7 @@ describe('runMailImportSlice', () => {
     expect(result.done).toBe(true)
     expect(fileMail).toHaveBeenCalledOnce()
     expect(repository.advanceMailImport).toHaveBeenNthCalledWith(1, 'org_1', payload.importId, 0, expect.objectContaining({
-      to: 1, mailsFiled: 1, filesFiled: 2, filesSkipped: 1,
+      to: 1, mailsFiled: 1, filesFiled: 2, filesSkipped: 1, threadsCreated: 1, threadsAppended: 0, alreadyInProject: 0,
     }))
     // A contact is counted, not sampled: a calendar walked first would fill every sample.
     expect(repository.advanceMailImport).toHaveBeenNthCalledWith(2, 'org_1', payload.importId, 1, expect.objectContaining({
@@ -370,6 +395,133 @@ describe('runMailImportSlice', () => {
       status: 'failed', errorCode: 'access',
     }))
     expect(enqueueJob).not.toHaveBeenCalled()
+  })
+})
+
+describe('runMailImportSlice, E-Mail-Verläufe (D33)', () => {
+  const rendered = (result: Partial<Awaited<ReturnType<typeof renderPendingThreads>>> = {}) => ({
+    rendered: 0,
+    waiting: 0,
+    skipped: [],
+    quotaFull: false,
+    ...result,
+  })
+
+  it('renders each Verlauf the slice wrote into once, after its last mail, and only then completes', async () => {
+    vi.mocked(repository.findMailImport).mockResolvedValueOnce(row())
+    vi.mocked(readArchivePage).mockResolvedValueOnce(page([mail, { ...mail, position: 1 }], null))
+
+    expect((await runMailImportSlice(session, payload, 'org_1')).done).toBe(true)
+    expect(fileMail).toHaveBeenCalledTimes(2)
+    expect(renderPendingThreads).toHaveBeenCalledOnce()
+    const renderedAt = vi.mocked(renderPendingThreads).mock.invocationCallOrder[0]
+    expect(renderedAt).toBeGreaterThan(vi.mocked(fileMail).mock.invocationCallOrder[1])
+    const completedAt = vi.mocked(repository.updateMailImport).mock.calls.findIndex(([, , , patch]) => patch.status === 'completed')
+    expect(vi.mocked(repository.updateMailImport).mock.invocationCallOrder[completedAt]).toBeGreaterThan(renderedAt)
+    // The Verläufe' words are the starter's locale.
+    expect(vi.mocked(filingContext).mock.calls[0][0]).toMatchObject({ locale: 'en' })
+  })
+
+  it('counts the Verläufe a mail opened or joined and a text the project already held as its cursor moves', async () => {
+    vi.mocked(repository.findMailImport).mockResolvedValueOnce(row())
+    vi.mocked(readArchivePage).mockResolvedValueOnce(page([mail, { ...mail, position: 1 }], null))
+    vi.mocked(fileMail)
+      .mockResolvedValueOnce({ folderName: 'a', filesFiled: 0, filesSkipped: 0, skipped: [], nameStops: [], threadsCreated: 0, threadsAppended: 1, alreadyInProject: 0 })
+      .mockResolvedValueOnce({ folderName: 'b', filesFiled: 1, filesSkipped: 0, skipped: [], nameStops: [], threadsCreated: 0, threadsAppended: 0, alreadyInProject: 1 })
+
+    await runMailImportSlice(session, payload, 'org_1')
+    expect(repository.advanceMailImport).toHaveBeenNthCalledWith(1, 'org_1', payload.importId, 0, expect.objectContaining({ threadsAppended: 1, alreadyInProject: 0 }))
+    expect(repository.advanceMailImport).toHaveBeenNthCalledWith(2, 'org_1', payload.importId, 1, expect.objectContaining({ threadsAppended: 0, alreadyInProject: 1 }))
+  })
+
+  it('does not complete while a Verlauf still owes a Fassung: it comes back shortly, counting no failure', async () => {
+    vi.mocked(repository.findMailImport).mockResolvedValueOnce(row())
+    vi.mocked(readArchivePage).mockResolvedValueOnce(page([mail], null, 1))
+    vi.mocked(renderPendingThreads).mockResolvedValueOnce(rendered({ rendered: 2, waiting: 1 }))
+    const before = Date.now()
+
+    const result = await runMailImportSlice(session, payload, 'org_1')
+    expect(result.done).toBe(false)
+    expect(result.notBefore!.getTime()).toBeGreaterThanOrEqual(before + 15_000)
+    expect(repository.updateMailImport).not.toHaveBeenCalledWith('org_1', payload.importId, expect.anything(), expect.objectContaining({ status: 'completed' }))
+    expect(repository.updateMailImport).not.toHaveBeenCalledWith('org_1', payload.importId, expect.anything(), expect.objectContaining({ failureStreak: expect.any(Number) }))
+    expect(enqueueJob).not.toHaveBeenCalled()
+  })
+
+  it('ends the slice when a mail’s Verlauf is another filing’s, renders what it wrote, and comes back without a failure', async () => {
+    vi.mocked(repository.findMailImport).mockResolvedValueOnce(row())
+    vi.mocked(readArchivePage).mockResolvedValueOnce(page([mail], null, 1))
+    vi.mocked(fileMail).mockRejectedValueOnce(new ThreadBusyError())
+
+    const result = await runMailImportSlice(session, payload, 'org_1')
+    expect(result).toMatchObject({ done: false, notBefore: expect.any(Date) })
+    expect(repository.advanceMailImport).not.toHaveBeenCalled()
+    expect(renderPendingThreads).toHaveBeenCalledOnce()
+    expect(enqueueJob).not.toHaveBeenCalled()
+  })
+
+  it('renders what a slice wrote before a passing failure, then hands the import on', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => {})
+    vi.mocked(repository.findMailImport).mockResolvedValue(row())
+    vi.mocked(readArchivePage).mockResolvedValueOnce(page([mail, { ...mail, position: 1 }], null))
+    vi.mocked(fileMail).mockResolvedValueOnce({ folderName: 'a', filesFiled: 0, filesSkipped: 0, skipped: [], nameStops: [], threadsCreated: 1, threadsAppended: 0, alreadyInProject: 0 })
+    vi.mocked(fileMail).mockRejectedValueOnce(new Error('the archive reader answered 502'))
+
+    await runMailImportSlice(session, payload, 'org_1')
+    expect(renderPendingThreads).toHaveBeenCalledOnce()
+    expect(enqueueJob).toHaveBeenCalledOnce()
+    vi.mocked(repository.findMailImport).mockReset()
+  })
+
+  it('still renders what was written when the import was cancelled under the slice', async () => {
+    vi.mocked(repository.findMailImport).mockResolvedValueOnce(row())
+    vi.mocked(readArchivePage).mockResolvedValueOnce(page([mail], null, 1))
+    vi.mocked(fileMail).mockRejectedValueOnce(new ImportMovedOnError())
+
+    expect((await runMailImportSlice(session, payload, 'org_1')).done).toBe(true)
+    expect(renderPendingThreads).toHaveBeenCalledOnce()
+  })
+
+  it('ends the import when the storage fills up while a Verlauf is rendered', async () => {
+    vi.mocked(repository.findMailImport).mockResolvedValueOnce(row())
+    vi.mocked(readArchivePage).mockResolvedValueOnce(page([mail], null, 1))
+    vi.mocked(renderPendingThreads).mockResolvedValueOnce(rendered({ quotaFull: true, waiting: 1 }))
+
+    await runMailImportSlice(session, payload, 'org_1')
+    expect(repository.updateMailImport).toHaveBeenCalledWith('org_1', payload.importId, ['queued', 'importing'], expect.objectContaining({
+      status: 'failed', errorCode: 'quota',
+    }))
+  })
+
+  it('names a Verlauf the upload path refused on the import and counts it skipped', async () => {
+    vi.mocked(repository.findMailImport).mockResolvedValueOnce(row({ skippedSamples: [{ mail: '#1', file: null, reason: 'unreadable' }] }))
+    vi.mocked(readArchivePage).mockResolvedValueOnce(page([], null, 0))
+    vi.mocked(renderPendingThreads).mockResolvedValueOnce(rendered({ skipped: [{ name: 'Statik Huber 2025-03-12', reason: 'screened' }] }))
+
+    await runMailImportSlice(session, payload, 'org_1')
+    expect(repository.recordSkippedFiles).toHaveBeenCalledWith('org_1', payload.importId, 1, [
+      { mail: '#1', file: null, reason: 'unreadable' },
+      { mail: 'Statik Huber 2025-03-12', file: null, reason: 'screened' },
+    ])
+  })
+
+  it('renders into a Verlauf batch of the import’s own, quiet as D35 says, and rolls it over', async () => {
+    const threads0 = importBatchId(row().id, 0, 'threads')
+    vi.mocked(repository.findMailImport).mockResolvedValueOnce(row())
+    vi.mocked(readArchivePage).mockResolvedValueOnce(page([], null, 0))
+    vi.mocked(renderPendingThreads).mockImplementationOnce(async (_filing, target) => {
+      expect(await target.uploadBatchId()).toBe(threads0)
+      target.counted()
+      expect(await target.uploadBatchId()).toBe(threads0)
+      return rendered({ rendered: 1 })
+    })
+
+    await runMailImportSlice(session, payload, 'org_1')
+    expect(openUploadBatch).toHaveBeenCalledWith(session, expect.objectContaining({ id: threads0, effects: ARCHIVE_THREAD_RENDER_EFFECTS }))
+    expect(openUploadBatch).toHaveBeenCalledTimes(2)
+    expect(batchStore.get(threads0)).toEqual({ sealed: true, documents: 0 })
+    // The files batch is never the quiet one.
+    expect(vi.mocked(openUploadBatch).mock.calls.find(([, input]) => input.id === importBatchId(row().id, 0))?.[1]).not.toHaveProperty('effects')
   })
 })
 

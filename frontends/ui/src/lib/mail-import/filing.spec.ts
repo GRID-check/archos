@@ -27,6 +27,13 @@ vi.mock('./archive-client', async (importOriginal) => {
   return { ...actual, readArchiveAttachment: vi.fn(async () => new Uint8Array([1, 2, 3])) }
 })
 vi.mock('./repository', () => ({ markInflight: vi.fn(async () => true) }))
+vi.mock('@/lib/mail-thread/archive', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/mail-thread/archive')>()
+  return {
+    ...actual,
+    appendArchiveEntry: vi.fn(async () => ({ kind: 'filed', threadId: 'thread_1', threadCreated: true, threadJoined: false })),
+  }
+})
 const batchStore = vi.hoisted(() => new Map<string, { sealed: boolean; documents: number }>())
 vi.mock('@/lib/upload-batches/service', () => ({
   UPLOAD_BATCH_MAX_FILES: 2,
@@ -63,14 +70,24 @@ import {
   ImportMovedOnError,
   MailImportQuotaError,
   SliceBudgetSpentError,
+  ThreadBusyError,
   type FilingContext,
 } from './filing'
 import { markInflight } from './repository'
+import { appendArchiveEntry, type ArchiveAttachmentOutcome } from '@/lib/mail-thread/archive'
 import { openUploadBatch, recordJobUploadExclusions, sealJobUploadBatch } from '@/lib/upload-batches/service'
 import { importBatchId, type ImportBatch } from './upload-batch'
 
 const session = { userId: 'user_anna', organizationId: 'org_1' } as AuthorizedSession
-const mailImport = { id: 'imp_1', organizationId: 'org_1', userId: 'user_anna', projectId: 'p1', inflightPosition: null, inflightFolderId: null } as unknown as MailImport
+const mailImport = {
+  id: 'imp_1',
+  organizationId: 'org_1',
+  userId: 'user_anna',
+  projectId: 'p1',
+  inflightPosition: null,
+  inflightFolderId: null,
+  createdAt: new Date('2026-10-01T00:00:00Z'),
+} as unknown as MailImport
 
 const mail: ArchiveMail = {
   kind: 'mail',
@@ -81,9 +98,13 @@ const mail: ArchiveMail = {
   sender: { name: 'Anna Berger', address: 'anna@buero.at' },
   to: [],
   cc: [],
+  bcc: [],
   sent_at: '2026-09-30T08:15:00Z',
   received_at: null,
   message_id: null,
+  in_reply_to: null,
+  references: null,
+  conversation_index: null,
   body: { text: 'Hallo', source: 'plain', truncated: false },
   attachments: [
     { index: 0, filename: 'Plan.pdf', content_type: 'application/pdf', size: 3, inline: false, embedded_message: false },
@@ -95,11 +116,12 @@ const mail: ArchiveMail = {
 const LEAF = '2026-09-30 10.15 – Anna Berger'
 
 const BATCH_0 = importBatchId('imp_1', 0)
+const batch = (documents = 0): ImportBatch => ({ id: BATCH_0, kind: 'files', generation: 0, documents })
 
 async function context(
   overrides: Partial<MailImport> = {},
   deadline?: number,
-  uploadBatch: ImportBatch = { id: BATCH_0, generation: 0, documents: 0 },
+  uploadBatch: ImportBatch = batch(),
 ): Promise<FilingContext> {
   return filingContext({
     session,
@@ -109,7 +131,13 @@ async function context(
     request: new Request('http://bff-jobs.internal'),
     deadline,
     uploadBatch,
+    locale: 'de',
   })
+}
+
+/** What the mail's entry was told about its attachments (D36). */
+function entryOutcomes(call = 0): readonly ArchiveAttachmentOutcome[] {
+  return vi.mocked(appendArchiveEntry).mock.calls[call][2].outcomes
 }
 
 function uploadedNames(): string[] {
@@ -138,7 +166,7 @@ beforeEach(() => {
 })
 
 describe('fileMail', () => {
-  it('files the attachment and the note into a new mail folder under the Outlook path, skipping inline and embedded', async () => {
+  it('files the attachment into a new mail folder under the Outlook path, skipping inline and embedded, and no note', async () => {
     const result = await fileMail(await context(), mail)
 
     expect(ensureProjectFolderPaths).toHaveBeenCalledWith(
@@ -147,10 +175,90 @@ describe('fileMail', () => {
     )
     expect(createProjectFolder).toHaveBeenCalledWith({ projectId: 'p1', parentId: 'folder:Posteingang/Behörde', name: LEAF }, session)
     expect(markInflight).toHaveBeenCalledWith('org_1', 'imp_1', 7, 'folder_mail')
-    expect(uploadedNames()).toEqual([`${LEAF} – Plan.pdf`, `${LEAF}.md`])
+    // D33: the mail's text is an entry of a Verlauf now, never a `.md` note beside its attachments.
+    expect(uploadedNames()).toEqual([`${LEAF} – Plan.pdf`])
+    expect(uploadedNames().some((name) => name.endsWith('.md'))).toBe(false)
     expect(vi.mocked(uploadDocument).mock.calls[0][1]).toMatchObject({ folderId: 'folder_mail', priority: 'bulk' })
     expect(readArchiveAttachment).toHaveBeenCalledTimes(1)
     expect(result).toMatchObject({ filesFiled: 1, filesSkipped: 1, skipped: [{ file: 'Fwd', reason: 'embedded_message' }] })
+  })
+
+  it('files the text after the attachments, telling the entry what became of each one but the inline picture (D36)', async () => {
+    vi.mocked(resolveShelfFolderPath).mockResolvedValueOnce(`E-Mail-Import/Büro/Posteingang/Behörde/${LEAF}`)
+    vi.mocked(uploadDocument).mockResolvedValueOnce({ documentId: 'doc_plan', jobId: null, status: 'uploaded', filename: 'x' } as never)
+
+    await fileMail(await context(), mail)
+
+    expect(appendArchiveEntry).toHaveBeenCalledTimes(1)
+    const [filing, filedMail, attachments] = vi.mocked(appendArchiveEntry).mock.calls[0]
+    expect(filedMail).toBe(mail)
+    expect(filing).toMatchObject({ archiveFolderId: 'folder_archive', locale: 'de' })
+    expect(attachments.folder).toEqual({ id: 'folder_mail', path: `E-Mail-Import/Büro/Posteingang/Behörde/${LEAF}` })
+    expect(entryOutcomes()).toEqual([
+      { index: 0, filename: 'Plan.pdf', filed: true, documentId: 'doc_plan', documentName: `${LEAF} – Plan.pdf`, folderId: 'folder_mail' },
+      { index: 2, filename: 'Fwd', filed: false, reason: 'embedded_message' },
+    ])
+    // The entry is written after the last attachment was uploaded.
+    expect(vi.mocked(appendArchiveEntry).mock.invocationCallOrder[0]).toBeGreaterThan(
+      vi.mocked(uploadDocument).mock.invocationCallOrder.at(-1)!,
+    )
+  })
+
+  it('carries the mail into ingestion with each attachment, as not checked and never with an address', async () => {
+    await fileMail(await context(), { ...mail, received_at: '2026-09-30T08:16:00Z' })
+    expect(vi.mocked(uploadDocument).mock.calls[0][1].mailOrigin).toEqual({
+      sent_at: '2026-09-30T08:15:00Z',
+      received_at: '2026-09-30T08:16:00Z',
+      from_name: 'Anna Berger',
+      from_domain: 'buero.at',
+      sender_trust: 'not_checked',
+      locale: 'de',
+    })
+  })
+
+  it('makes no folder for a mail without an attachment to file, and still files its text', async () => {
+    const plain: ArchiveMail = {
+      ...mail,
+      attachments: [
+        { index: 0, filename: 'logo.png', content_type: 'image/png', size: 3, inline: true, embedded_message: false },
+        { index: 1, filename: 'Fwd', content_type: null, size: 0, inline: false, embedded_message: true },
+      ],
+    }
+    const result = await fileMail(await context(), plain)
+
+    expect(createProjectFolder).not.toHaveBeenCalled()
+    expect(ensureProjectFolderPaths).not.toHaveBeenCalled()
+    expect(markInflight).not.toHaveBeenCalled()
+    expect(uploadDocument).not.toHaveBeenCalled()
+    expect(vi.mocked(appendArchiveEntry).mock.calls[0][2]).toEqual({
+      folder: null,
+      outcomes: [{ index: 1, filename: 'Fwd', filed: false, reason: 'embedded_message' }],
+    })
+    // The import's list still names the mail by its date and sender.
+    expect(result.skipped).toEqual([{ mail: LEAF, file: 'Fwd', reason: 'embedded_message' }])
+  })
+
+  it.each([
+    [{ kind: 'filed', threadId: 't', threadCreated: true, threadJoined: false }, { threadsCreated: 1, threadsAppended: 0, alreadyInProject: 0 }],
+    [{ kind: 'filed', threadId: 't', threadCreated: false, threadJoined: true }, { threadsCreated: 0, threadsAppended: 1, alreadyInProject: 0 }],
+    [{ kind: 'filed', threadId: 't', threadCreated: false, threadJoined: false }, { threadsCreated: 0, threadsAppended: 0, alreadyInProject: 0 }],
+    [{ kind: 'already_in_project' }, { threadsCreated: 0, threadsAppended: 0, alreadyInProject: 1 }],
+  ] as const)('counts what became of the text: %o', async (outcome, counts) => {
+    vi.mocked(appendArchiveEntry).mockResolvedValueOnce(outcome)
+    expect(await fileMail(await context(), mail)).toMatchObject(counts)
+  })
+
+  it('files a duplicate mail’s attachments by the import’s own rules all the same', async () => {
+    vi.mocked(appendArchiveEntry).mockResolvedValueOnce({ kind: 'already_in_project' })
+    const result = await fileMail(await context(), mail)
+    expect(uploadedNames()).toEqual([`${LEAF} – Plan.pdf`])
+    expect(result).toMatchObject({ filesFiled: 1, alreadyInProject: 1 })
+  })
+
+  it('ends the slice when the mail’s Verlauf is another writer’s, its folder recorded for the retry', async () => {
+    vi.mocked(appendArchiveEntry).mockResolvedValueOnce({ kind: 'busy' })
+    await expect(fileMail(await context(), mail)).rejects.toBeInstanceOf(ThreadBusyError)
+    expect(markInflight).toHaveBeenCalledWith('org_1', 'imp_1', 7, 'folder_mail')
   })
 
   it('numbers the mail folder when a sibling already has its name', async () => {
@@ -160,7 +268,7 @@ describe('fileMail', () => {
 
     await fileMail(await context(), mail)
     expect(vi.mocked(createProjectFolder).mock.calls[1][0].name).toBe(`${LEAF} (2)`)
-    expect(uploadedNames()).toContain(`${LEAF} (2).md`)
+    expect(uploadedNames()).toEqual([`${LEAF} (2) – Plan.pdf`])
   })
 
   it('resumes into the folder a died slice recorded instead of making a second one', async () => {
@@ -172,36 +280,50 @@ describe('fileMail', () => {
   })
 
   it('numbers a file whose name another folder of the project already has, and reuses it in its own folder', async () => {
+    const two: ArchiveMail = {
+      ...mail,
+      attachments: [
+        { index: 0, filename: 'Plan.pdf', content_type: 'application/pdf', size: 3, inline: false, embedded_message: false },
+        { index: 1, filename: 'Schnitt.pdf', content_type: 'application/pdf', size: 3, inline: false, embedded_message: false },
+      ],
+    }
     projectHolds({
       [`${LEAF} – Plan.pdf`]: [{ collection: 'collection_p1', folderId: 'folder_somewhere_else' }],
-      [`${LEAF}.md`]: [{ collection: 'collection_p1', folderId: 'folder_mail' }],
+      [`${LEAF} – Schnitt.pdf`]: [{ collection: 'collection_p1', folderId: 'folder_mail' }],
     })
 
-    await fileMail(await context(), mail)
-    expect(uploadedNames()).toEqual([`${LEAF} – Plan (2).pdf`, `${LEAF}.md`])
+    await fileMail(await context(), two)
+    expect(uploadedNames()).toEqual([`${LEAF} – Plan (2).pdf`, `${LEAF} – Schnitt.pdf`])
   })
 
   it('probes a name across every collection of the project, so a restricted folder’s document is numbered past, not superseded', async () => {
+    const two: ArchiveMail = {
+      ...mail,
+      attachments: [
+        { index: 0, filename: 'Plan.pdf', content_type: 'application/pdf', size: 3, inline: false, embedded_message: false },
+        { index: 1, filename: 'Schnitt.pdf', content_type: 'application/pdf', size: 3, inline: false, embedded_message: false },
+      ],
+    }
     projectHolds({
       // Filed in a folder with its own access list, which keeps its own collection (ADR-0087).
       [`${LEAF} – Plan.pdf`]: [{ collection: 'collection_p1_restricted', folderId: 'folder_vertraulich' }],
       // The same name in two collections: no folder of this mail holds it alone.
-      [`${LEAF}.md`]: [
+      [`${LEAF} – Schnitt.pdf`]: [
         { collection: 'collection_p1', folderId: 'folder_other' },
         { collection: 'collection_p1_restricted', folderId: 'folder_mail' },
       ],
     })
 
-    await fileMail(await context(), mail)
-    expect(uploadedNames()).toEqual([`${LEAF} – Plan (2).pdf`, `${LEAF} (2).md`])
+    await fileMail(await context(), two)
+    expect(uploadedNames()).toEqual([`${LEAF} – Plan (2).pdf`, `${LEAF} – Schnitt (2).pdf`])
     expect(findProjectCollectionsHoldingFilename).toHaveBeenCalledWith('org_1', 'p1', `${LEAF} – Plan.pdf`)
   })
 
   it('files a retry into a restricted mail folder under the same name, its own collection holding it', async () => {
-    projectHolds({ [`${LEAF}.md`]: [{ collection: 'collection_p1_restricted', folderId: 'folder_mail' }] })
+    projectHolds({ [`${LEAF} – Plan.pdf`]: [{ collection: 'collection_p1_restricted', folderId: 'folder_mail' }] })
 
     await fileMail(await context(), mail)
-    expect(uploadedNames()).toContain(`${LEAF}.md`)
+    expect(uploadedNames()).toEqual([`${LEAF} – Plan.pdf`])
   })
 
   it('skips a file whose name the project claimed elsewhere between the probe and the upload, and files the rest', async () => {
@@ -210,23 +332,25 @@ describe('fileMail', () => {
     const result = await fileMail(await context(), mail)
     expect(result.skipped).toContainEqual({ mail: LEAF, file: 'Plan.pdf', reason: 'name_taken' })
     expect(result).toMatchObject({ filesFiled: 0 })
-    expect(uploadedNames().at(-1)).toBe(`${LEAF}.md`)
+    expect(entryOutcomes()).toContainEqual({ index: 0, filename: 'Plan.pdf', filed: false, reason: 'name_taken' })
+    expect(appendArchiveEntry).toHaveBeenCalledTimes(1)
   })
 
   it('skips a file into a folder that turned read-only under the import, without failing the mail', async () => {
-    vi.mocked(uploadDocument).mockRejectedValueOnce(folderReadOnlyError()).mockRejectedValueOnce(folderReadOnlyError())
+    vi.mocked(uploadDocument).mockRejectedValueOnce(folderReadOnlyError())
 
     const result = await fileMail(await context(), mail)
     expect(result.skipped).toEqual([
       { mail: LEAF, file: 'Plan.pdf', reason: 'access' },
       { mail: LEAF, file: 'Fwd', reason: 'embedded_message' },
-      { mail: LEAF, file: `${LEAF}.md`, reason: 'access' },
     ])
+    expect(appendArchiveEntry).toHaveBeenCalledTimes(1)
   })
 
-  it('lets any other refusal of the upload fail the mail', async () => {
+  it('lets any other refusal of the upload fail the mail, before its text is filed', async () => {
     vi.mocked(uploadDocument).mockRejectedValueOnce(new ForbiddenError())
     await expect(fileMail(await context(), mail)).rejects.toBeInstanceOf(ForbiddenError)
+    expect(appendArchiveEntry).not.toHaveBeenCalled()
   })
 
   it('skips an attachment the upload gate refuses, without reading its bytes', async () => {
@@ -237,6 +361,7 @@ describe('fileMail', () => {
     const result = await fileMail(await context(), mail)
     expect(readArchiveAttachment).not.toHaveBeenCalled()
     expect(result.skipped).toContainEqual({ mail: LEAF, file: 'Plan.pdf', reason: 'type' })
+    expect(entryOutcomes()).toContainEqual({ index: 0, filename: 'Plan.pdf', filed: false, reason: 'type' })
     vi.mocked(assertUploadTypeAllowed).mockReset()
   })
 
@@ -249,7 +374,7 @@ describe('fileMail', () => {
     vi.mocked(uploadDocument).mockRejectedValueOnce(new FileTooLargeError({ fileSize: 3, maxSizeBytes: 1 }))
     const during = await fileMail(await context(), mail)
     expect(during.skipped).toContainEqual({ mail: LEAF, file: 'Plan.pdf', reason: 'size' })
-    expect(uploadedNames().at(-1)).toBe(`${LEAF}.md`)
+    expect(appendArchiveEntry).toHaveBeenCalledTimes(2)
   })
 
   it('numbers the second of two same-named attachments of one mail instead of overwriting the first', async () => {
@@ -261,15 +386,15 @@ describe('fileMail', () => {
       ],
     }
     await fileMail(await context(), twins)
-    expect(uploadedNames()).toEqual([`${LEAF} – scan.pdf`, `${LEAF} – scan (2).pdf`, `${LEAF}.md`])
+    expect(uploadedNames()).toEqual([`${LEAF} – scan.pdf`, `${LEAF} – scan (2).pdf`])
 
     // A retry of the mail, both already in its folder, arrives at the same two names.
     vi.mocked(uploadDocument).mockClear()
     const inEarlier = [{ collection: 'collection_p1', folderId: 'folder_earlier' }]
-    projectHolds({ [`${LEAF} – scan.pdf`]: inEarlier, [`${LEAF} – scan (2).pdf`]: inEarlier, [`${LEAF}.md`]: inEarlier })
+    projectHolds({ [`${LEAF} – scan.pdf`]: inEarlier, [`${LEAF} – scan (2).pdf`]: inEarlier })
     vi.mocked(resolveShelfFolderPath).mockResolvedValueOnce(`E-Mail-Import/Büro/${LEAF}`)
     await fileMail(await context({ inflightPosition: 7, inflightFolderId: 'folder_earlier' }), twins)
-    expect(uploadedNames()).toEqual([`${LEAF} – scan.pdf`, `${LEAF} – scan (2).pdf`, `${LEAF}.md`])
+    expect(uploadedNames()).toEqual([`${LEAF} – scan.pdf`, `${LEAF} – scan (2).pdf`])
   })
 
   it('skips a file the office’s name screening holds back and carries on with the next one', async () => {
@@ -290,11 +415,13 @@ describe('fileMail', () => {
       filesSkipped: 1,
       skipped: [{ mail: LEAF, file: 'Vertrag.pdf', reason: 'screened' }],
     })
-    expect(uploadedNames()).toEqual([`${LEAF} – Vertrag.pdf`, `${LEAF} – Plan.pdf`, `${LEAF}.md`])
+    expect(uploadedNames()).toEqual([`${LEAF} – Vertrag.pdf`, `${LEAF} – Plan.pdf`])
     // The stop travels with the mail: nothing is counted until the mail is
     // done, so a retried mail does not count it twice.
     expect(result.nameStops).toEqual([[{ term: 'Vertrag', segment: `${LEAF} – Vertrag.pdf`, kind: 'file' }]])
     expect(recordJobUploadExclusions).not.toHaveBeenCalled()
+    // The Verlauf's section counts it and never names it (`not_filed`, `screened`).
+    expect(entryOutcomes()[0]).toEqual({ index: 0, filename: 'Vertrag.pdf', filed: false, reason: 'screened' })
   })
 
   it('counts a done mail’s name stops on the batch by term, never by name', async () => {
@@ -308,6 +435,9 @@ describe('fileMail', () => {
         [{ term: 'Vertrag', segment: `${LEAF} – Vertrag.pdf`, kind: 'file' }],
         [{ term: 'Vertrag', segment: `${LEAF} – Vertrag (2).pdf`, kind: 'file' }],
       ],
+      threadsCreated: 0,
+      threadsAppended: 0,
+      alreadyInProject: 0,
     })
     expect(recordJobUploadExclusions).toHaveBeenCalledWith('org_1', importBatchId('imp_1', 0), 'user_anna', [
       { term: 'Vertrag', count: 2 },
@@ -331,7 +461,7 @@ describe('fileMail', () => {
 
   describe('a retry over a file the content gate still holds (ADR-0086)', () => {
     const PLAN = `${LEAF} – Plan.pdf`
-    const held = { folderId: 'folder_earlier', authoredBy: 'user', screeningOutcome: null, contentHash: 'h1', screenedHash: null }
+    const held = { id: 'doc_held', folderId: 'folder_earlier', authoredBy: 'user', screeningOutcome: null, contentHash: 'h1', screenedHash: null }
 
     async function retry(existing: Record<string, unknown>) {
       // The project-wide probe finds the one holder, the mail's own folder's collection.
@@ -348,7 +478,7 @@ describe('fileMail', () => {
         }
         return { documentId: 'd', jobId: null, status: 'uploaded', filename: input.file.name } as never
       })
-      vi.mocked(resolveShelfFolderPath).mockResolvedValueOnce(`E-Mail-Import/Büro/${LEAF}`)
+      vi.mocked(resolveShelfFolderPath).mockResolvedValue(`E-Mail-Import/Büro/${LEAF}`)
       return fileMail(await context({ inflightPosition: 7, inflightFolderId: 'folder_earlier' }), mail)
     }
 
@@ -356,21 +486,29 @@ describe('fileMail', () => {
       vi.mocked(findProjectCollectionsHoldingFilename).mockImplementation(async () => [])
       vi.mocked(findLiveDocumentByFilename).mockReset()
       vi.mocked(uploadDocument).mockReset()
+      vi.mocked(resolveShelfFolderPath).mockReset()
     })
 
     it.each(['quarantined', 'processing'])('counts a %s file this import filed as filed, without uploading it again', async (status) => {
       const result = await retry({ ...held, status, createdBy: 'user_anna' })
 
-      expect(uploadedNames()).toEqual([`${LEAF}.md`])
+      expect(uploadedNames()).toEqual([])
       expect(result).toMatchObject({ filesFiled: 1, filesSkipped: 1, skipped: [{ file: 'Fwd', reason: 'embedded_message' }] })
-      const note = await vi.mocked(uploadDocument).mock.calls[0][1].file.text()
-      expect(note).toContain(`**Anhänge:** ${PLAN}`)
+      // The entry names the document the first run filed (the note used to list it).
+      expect(entryOutcomes()[0]).toEqual({
+        index: 0,
+        filename: 'Plan.pdf',
+        filed: true,
+        documentId: 'doc_held',
+        documentName: PLAN,
+        folderId: 'folder_earlier',
+      })
     })
 
     it.each(['quarantined', 'processing'])('takes the next free name over a %s file somebody else put there', async (status) => {
       const result = await retry({ ...held, status, createdBy: 'user_bert' })
 
-      expect(uploadedNames()).toEqual([`${LEAF} – Plan (2).pdf`, `${LEAF}.md`])
+      expect(uploadedNames()).toEqual([`${LEAF} – Plan (2).pdf`])
       expect(result.filesFiled).toBe(1)
     })
   })
@@ -379,19 +517,22 @@ describe('fileMail', () => {
     vi.mocked(readArchiveAttachment).mockRejectedValueOnce(new AttachmentUnreadableError())
     const result = await fileMail(await context(), mail)
     expect(result.skipped).toContainEqual({ mail: LEAF, file: 'Plan.pdf', reason: 'unreadable' })
-    expect(uploadedNames()).toEqual([`${LEAF}.md`])
+    expect(uploadedNames()).toEqual([])
+    expect(entryOutcomes()[0]).toEqual({ index: 0, filename: 'Plan.pdf', filed: false, reason: 'unreadable' })
   })
 
   it('stops between two files when the slice is out of time, its folder recorded for the next one', async () => {
     await expect(fileMail(await context({}, Date.now() - 1), mail)).rejects.toBeInstanceOf(SliceBudgetSpentError)
     expect(markInflight).toHaveBeenCalledWith('org_1', 'imp_1', 7, 'folder_mail')
     expect(uploadDocument).not.toHaveBeenCalled()
+    expect(appendArchiveEntry).not.toHaveBeenCalled()
   })
 
   it('files nothing into a folder when the import moved on under the slice', async () => {
     vi.mocked(markInflight).mockResolvedValueOnce(false)
     await expect(fileMail(await context(), mail)).rejects.toBeInstanceOf(ImportMovedOnError)
     expect(uploadDocument).not.toHaveBeenCalled()
+    expect(appendArchiveEntry).not.toHaveBeenCalled()
   })
 
   it('turns a full quota into the error that ends the import', async () => {
@@ -407,20 +548,27 @@ describe('fileMail, upload batch', () => {
     const filing = await context()
     await fileMail(filing, mail)
 
-    expect(batchIds()).toEqual([BATCH_0, BATCH_0])
-    expect(filing.uploadBatch).toMatchObject({ id: BATCH_0, documents: 2 })
+    expect(batchIds()).toEqual([BATCH_0])
+    expect(filing.uploadBatch).toMatchObject({ id: BATCH_0, documents: 1 })
   })
 
   it('seals a full batch and files the rest into the next one', async () => {
     batchStore.set(BATCH_0, { sealed: false, documents: 1 })
-    const filing = await context({}, undefined, { id: BATCH_0, generation: 0, documents: 1 })
-    await fileMail(filing, mail)
+    const filing = await context({}, undefined, batch(1))
+    const two: ArchiveMail = {
+      ...mail,
+      attachments: [
+        { index: 0, filename: 'Plan.pdf', content_type: 'application/pdf', size: 3, inline: false, embedded_message: false },
+        { index: 1, filename: 'Schnitt.pdf', content_type: 'application/pdf', size: 3, inline: false, embedded_message: false },
+      ],
+    }
+    await fileMail(filing, two)
 
     const next = importBatchId('imp_1', 1)
     expect(batchIds()).toEqual([BATCH_0, next])
     expect(sealJobUploadBatch).toHaveBeenCalledWith('org_1', BATCH_0, 'user_anna')
     expect(openUploadBatch).toHaveBeenCalledWith(session, expect.objectContaining({ id: next, scope: 'project', projectId: 'p1' }))
-    expect(filing.uploadBatch).toMatchObject({ id: next, generation: 1, documents: 1 })
+    expect(filing.uploadBatch).toMatchObject({ id: next, kind: 'files', generation: 1, documents: 1 })
   })
 
   it('does not count a file whose bytes were already there', async () => {
@@ -428,6 +576,6 @@ describe('fileMail, upload batch', () => {
     const filing = await context()
     await fileMail(filing, mail)
 
-    expect(filing.uploadBatch.documents).toBe(1)
+    expect(filing.uploadBatch.documents).toBe(0)
   })
 })

@@ -42,6 +42,15 @@ export const MAIL_IMPORT_PAGE_SIZE = 20
  */
 export const MAIL_IMPORT_SLICE_BUDGET_MS = 120_000
 
+/**
+ * How long past its filing budget a slice still starts rendering the
+ * E-Mail-Verläufe it wrote into (D33: one Fassung per Verlauf per slice). One
+ * Fassung is one upload of at most 2 MiB; a Verlauf not started in time is
+ * rendered by the next slice. With the filing budget, one read's overrun and a
+ * Verlauf's lease wait, a slice still ends inside the runner's five minutes.
+ */
+export const MAIL_IMPORT_RENDER_BUDGET_MS = 20_000
+
 /** The longest one backend read (a page, an attachment) may take. */
 export const MAIL_ARCHIVE_READ_TIMEOUT_MS = 90_000
 

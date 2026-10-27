@@ -2595,6 +2595,12 @@ check_in grid_inbound "SELECT (SELECT count(*) FROM inbound_mail_addresses WHERE
   "0" "0186: a project purge takes its addresses, mails, parts, decisions and threads"
 check_in grid_inbound "SELECT count(*) FROM inbound_mails WHERE organization_id = 'org_0184_b'" "1" "0186: and nothing of another project"
 
+# D33: the archive import counts the Verläufe it opened and joined and the mails the project already held.
+sql_in grid_inbound <<<"INSERT INTO mail_imports (id, organization_id, project_id, user_id, filename, size_bytes, staging_bucket, staging_key) VALUES ('ab000000-0000-4000-8000-000000000186', 'org_0184_b', 'b0000000-0000-4000-8000-000000000184', 'user_01J0MA1LUSERB00000000000B1', 'Postfach.pst', 10, 'b', 'org/org_0184_b/project/b0000000-0000-4000-8000-000000000184/mail-imports/ab000000-0000-4000-8000-000000000186/archive');"
+check_in grid_inbound "SELECT threads_created || ',' || threads_appended || ',' || already_in_project FROM mail_imports WHERE id = 'ab000000-0000-4000-8000-000000000186'" \
+  "0,0,0" "0186: an import has opened, joined and skipped no Verlauf before it files a mail"
+refused_in grid_inbound "UPDATE mail_imports SET already_in_project = -1 WHERE id = 'ab000000-0000-4000-8000-000000000186'" "mail_imports_thread_counts_non_negative" "a negative Verlauf count on an import"
+
 # Down: refused while a row names an object, clean once none does; 0186 applies again.
 apply_in grid_inbound 0186_inbound_mail.sql
 check_in grid_inbound "SELECT count(*) FROM inbound_mails" "2" "0186 re-applies and keeps the mail"
@@ -2611,10 +2617,12 @@ UPDATE inbound_mails SET raw_storage_key = NULL;
 SQL
 apply_in grid_inbound 0186_inbound_mail.down.sql
 check_in grid_inbound "SELECT count(*) FROM pg_tables WHERE tablename LIKE 'inbound\_mail%' OR tablename LIKE 'mail\_thread%'" "0" "0186 down drops the nine tables"
+check_in grid_inbound "SELECT count(*) FROM information_schema.columns WHERE table_name = 'mail_imports' AND column_name IN ('threads_created', 'threads_appended', 'already_in_project')" "0" "0186 down drops the import's Verlauf counts"
 check_in grid_inbound "SELECT string_agg(type, ',') FROM inbox_items WHERE organization_id = 'org_0184_b'" "document.new_revision" "0186 down removes the mail notices and nothing else"
 check_in grid_inbound "SELECT count(*) FROM pg_proc WHERE proname IN ('grid_inbound_mail_decisions_guard', 'grid_inbound_mail_parts_decision_guard', 'grid_inbound_mail_parts_document_guard', 'grid_refuse_held_project_row_delete', 'grid_mail_thread_entry_attachments_guard')" "0" "0186 down drops its functions"
 check_in grid_inbound "SELECT count(*) FROM documents WHERE id = 'd3000000-0000-4000-8000-000000000184'" "1" "0186 down leaves the documents"
 check_in grid_inbound "SELECT count(*) FROM pg_indexes WHERE indexname = 'inbound_mail_decisions_project_follow_idx'" "0" "0186 down drops the project follow-cap index"
 apply_in grid_inbound 0186_inbound_mail.sql
 check_in grid_inbound "SELECT count(*) FROM pg_tables WHERE tablename LIKE 'inbound\_mail%' OR tablename LIKE 'mail\_thread%'" "9" "0186 applies again after its down"
+check_in grid_inbound "SELECT count(*) FROM information_schema.columns WHERE table_name = 'mail_imports' AND column_name IN ('threads_created', 'threads_appended', 'already_in_project')" "3" "0186 adds the import's Verlauf counts again after its down"
 echo "==> 0186 inbound mail, threads and follows and their down migration verified"

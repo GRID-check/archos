@@ -416,7 +416,7 @@ export const collaboration: typeof en.collaboration = {
       // Ein Outlook-Archiv ist importiert. {subject} ist der Dateiname des Archivs.
       mailImportCompleted: {
         title: '„{subject}“ ist importiert',
-        body: 'Piloti hat die E-Mails und ihre Anhänge im Projekt unter E-Mail-Import abgelegt.',
+        body: 'Piloti hat die Anhänge unter E-Mail-Import und die E-Mails in den E-Mail-Verläufen des Projekts abgelegt.',
       },
       mailImportFailed: {
         title: 'Der Import von „{subject}“ wurde abgebrochen',

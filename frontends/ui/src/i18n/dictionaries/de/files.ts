@@ -922,7 +922,7 @@ export const files: typeof en.files = {
     action: 'Outlook-Archiv importieren',
     title: 'Outlook-Archiv importieren',
     description:
-      'Wählen Sie eine .pst- oder .ost-Datei. Jede E-Mail wird ein Ordner unter „E-Mail-Import“ mit ihren Anhängen und einer Notiz mit Text und Kopfzeilen.',
+      'Wählen Sie eine .pst- oder .ost-Datei. Die Anhänge jeder E-Mail kommen in einen Ordner unter „E-Mail-Import“, ihr Text in die E-Mail-Verläufe des Projekts. Was das Projekt schon hat, wird nicht doppelt abgelegt.',
     privacy:
       'Ein Outlook-Archiv enthält die Korrespondenz aller, die diesem Postfach geschrieben haben. Importieren Sie, was das Projekt braucht, nicht ein ganzes Postfach.',
     choose: 'Outlook-Archiv auswählen…',
@@ -974,6 +974,9 @@ export const files: typeof en.files = {
     progress: '{done} von {total} Einträgen',
     filed: '{mails, plural, one {# E-Mail} other {# E-Mails}}, {files, plural, one {# Anhang} other {# Anhänge}}',
     skipped: '{count, plural, one {# übersprungen} other {# übersprungen}}',
+    // Die E-Mail-Verläufe, die der Import angelegt oder ergänzt hat (die Texte der E-Mails liegen dort).
+    threads: '{created, plural, one {# neuer E-Mail-Verlauf} other {# neue E-Mail-Verläufe}}, {appended, plural, one {# ergänzt} other {# ergänzt}}',
+    alreadyInProject: '{count, plural, one {# E-Mail schon im Projekt} other {# E-Mails schon im Projekt}}',
     skippedItem: '{file} in {mail}: {reason}',
     skippedMail: '{mail}: {reason}',
     status: {

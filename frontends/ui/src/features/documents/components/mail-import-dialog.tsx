@@ -308,6 +308,9 @@ function ImportRow({
           {row.status === 'importing' && total !== null
             ? t('mailImport.progress', { done: row.processedItems, total })
             : t('mailImport.filed', { mails: row.mailsFiled, files: row.filesFiled })}
+          {row.threadsCreated + row.threadsAppended > 0 &&
+            ` · ${t('mailImport.threads', { created: row.threadsCreated, appended: row.threadsAppended })}`}
+          {row.alreadyInProject > 0 && ` · ${t('mailImport.alreadyInProject', { count: row.alreadyInProject })}`}
           {row.itemsSkipped + row.filesSkipped > 0 &&
             ` · ${t('mailImport.skipped', { count: row.itemsSkipped + row.filesSkipped })}`}
           {!row.ownedByViewer && row.startedBy.email && ` · ${t('mailImport.startedBy', { email: row.startedBy.email })}`}

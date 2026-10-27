@@ -357,7 +357,7 @@ export const mailOperations = [
     domain: 'mail',
     summary: 'Start an Outlook archive import',
     description:
-      'Registers a .pst or .ost (`filename`, `sizeBytes`, up to 25 GB) and answers the upload plan. Send parts with mail-import-part-upload, then mail-import-complete. The mails are then filed as you into "E-Mail-Import/<archive name>" without a proposal, each through the upload checks.',
+      'Registers a .pst or .ost (`filename`, `sizeBytes`, up to 25 GB) and answers the upload plan. Send parts with mail-import-part-upload, then mail-import-complete. Then filed as you, without a proposal, through the upload checks: attachments into "E-Mail-Import/<archive name>", each mail\'s text into the project\'s email threads, skipping mails the project already has.',
     method: 'POST',
     path: '/api/projects/[id]/mail-imports',
     params: projectParams,

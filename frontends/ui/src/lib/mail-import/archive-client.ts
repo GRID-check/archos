@@ -45,9 +45,21 @@ const messageSchema = z.discriminatedUnion('kind', [
     sender: addressSchema.nullable(),
     to: z.array(addressSchema),
     cc: z.array(addressSchema),
+    /** Sent items only: received mail never shows its Bcc. Never rendered, never indexed. */
+    bcc: z.array(addressSchema).default([]),
     sent_at: z.string().nullable(),
     received_at: z.string().nullable(),
     message_id: z.string().nullable(),
+    /**
+     * The thread properties (D4, D12), each as the archive stores it: In-Reply-To
+     * and References as header text (`parseInReplyTo`, `parseReferences`), and the
+     * Outlook conversation index base64, as an inbound `Thread-Index` header
+     * carries it (`threadIndexGuid`). `./archive.ts` in `lib/mail-thread` matches
+     * the mail to its E-Mail-Verlauf with them.
+     */
+    in_reply_to: z.string().nullable().default(null),
+    references: z.string().nullable().default(null),
+    conversation_index: z.string().nullable().default(null),
     body: z.object({ text: z.string(), source: z.string(), truncated: z.boolean() }),
     attachments: z.array(attachmentSchema),
   }),

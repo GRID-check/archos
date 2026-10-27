@@ -292,6 +292,17 @@ export async function commitAppend(commit: AppendCommit): Promise<'committed' | 
       .set({ ...commit.threadUpdate, renderPendingAt: null })
       .where(eq(mailThreads.id, commit.threadId))
     await tx.insert(mailThreadEntries).values(commit.entry)
+    // An archive entry written into the thread since its last Fassung (D33,
+    // `./archive.ts`, under the same lease) is in this Fassung too, which
+    // clears `render_pending_at` above: it first appears here.
+    if (commit.entry.firstVersionId) {
+      await tx
+        .update(mailThreadEntries)
+        .set({ firstVersionId: commit.entry.firstVersionId })
+        .where(
+          and(eq(mailThreadEntries.threadId, commit.threadId), isNull(mailThreadEntries.firstVersionId))
+        )
+    }
     await insertMessageIds(tx, commit.entry, commit.messageIds)
     if (commit.attachments.length > 0)
       await tx.insert(mailThreadEntryAttachments).values([...commit.attachments])
@@ -320,7 +331,12 @@ export async function commitAppend(commit: AppendCommit): Promise<'committed' | 
   })
 }
 
-async function insertMessageIds(
+/**
+ * The entry's Message-IDs in one statement: the one it received (keyed per
+ * entry, RT-S1) and each it names, once. Shared with the archive import
+ * (`./archive-repository.ts`), which records an entry the same way.
+ */
+export async function insertMessageIds(
   tx: DbTransaction,
   entry: NewMailThreadEntryRow,
   ids: { received: string | null; referenced: readonly string[] }

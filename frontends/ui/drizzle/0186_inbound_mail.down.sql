@@ -23,7 +23,9 @@
 -- Filed documents, an E-Mail-Verlauf and its Fassungen included, are ordinary
 -- documents and stay, without their entries and without the record of which
 -- mail brought which Fassung (D36): the thread's next reply starts a
--- new Verlauf, and nobody follows anything.
+-- new Verlauf, and nobody follows anything. An Outlook archive imported
+-- meanwhile keeps its Verläufe as documents; the import's three Verlauf counts
+-- go, and an import still running files one note per mail again (ADR-0085).
 --
 -- The inbox rows that announced mail and threads go (an older build has no
 -- presentation for their types), and so do the inbound mail jobs on the queue
@@ -94,3 +96,13 @@ DROP TABLE IF EXISTS "mail_thread_entries";
 DROP TABLE IF EXISTS "mail_thread_follows";
 --> statement-breakpoint
 DROP TABLE IF EXISTS "mail_threads";
+--> statement-breakpoint
+-- The archive import's counts of Verläufe (D33). An older build files notes and
+-- never reads them; what they counted stays in the Verläufe themselves.
+ALTER TABLE "mail_imports" DROP CONSTRAINT IF EXISTS "mail_imports_thread_counts_non_negative";
+--> statement-breakpoint
+ALTER TABLE "mail_imports" DROP COLUMN IF EXISTS "threads_created";
+--> statement-breakpoint
+ALTER TABLE "mail_imports" DROP COLUMN IF EXISTS "threads_appended";
+--> statement-breakpoint
+ALTER TABLE "mail_imports" DROP COLUMN IF EXISTS "already_in_project";

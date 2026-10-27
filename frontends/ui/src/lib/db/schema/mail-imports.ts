@@ -71,6 +71,12 @@ export const mailImports = pgTable(
     filesFiled: integer('files_filed').notNull().default(0),
     itemsSkipped: integer('items_skipped').notNull().default(0),
     filesSkipped: integer('files_skipped').notNull().default(0),
+    /** E-Mail-Verläufe the import opened (D33, migration 0186). */
+    threadsCreated: integer('threads_created').notNull().default(0),
+    /** Verläufe that were there before the import and took at least one of its mails. */
+    threadsAppended: integer('threads_appended').notNull().default(0),
+    /** Mails whose text the project already held (the same Message-ID), so it was not filed again. */
+    alreadyInProject: integer('already_in_project').notNull().default(0),
     skippedSamples: jsonb('skipped_samples').$type<MailImportSkippedSample[]>().notNull().default([]),
     errorCode: text('error_code').$type<MailImportErrorCode>(),
     lastError: text('last_error'),

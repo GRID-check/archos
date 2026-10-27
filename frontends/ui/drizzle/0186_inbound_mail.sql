@@ -1229,6 +1229,24 @@ CREATE TRIGGER "mail_thread_entry_attachments_legal_hold_guard"
   BEFORE DELETE ON "mail_thread_entry_attachments"
   FOR EACH ROW EXECUTE FUNCTION grid_refuse_held_project_row_delete();
 --> statement-breakpoint
+-- The Outlook archive import renders into the same E-Mail-Verläufe (D33): its
+-- mails' text becomes entries of `mail_thread_entries` (`source = 'archive'`)
+-- instead of one Markdown note per mail. What the person sees counted on the
+-- import: the Verläufe it opened, the ones it added to that were there before
+-- it, and the mails whose text the project already held (the same
+-- Message-ID), which are not filed again. Counted when the cursor passes a
+-- mail, so a retried mail counts once (`lib/mail-import/job.ts`).
+ALTER TABLE "mail_imports" ADD COLUMN IF NOT EXISTS "threads_created" integer DEFAULT 0 NOT NULL;
+--> statement-breakpoint
+ALTER TABLE "mail_imports" ADD COLUMN IF NOT EXISTS "threads_appended" integer DEFAULT 0 NOT NULL;
+--> statement-breakpoint
+ALTER TABLE "mail_imports" ADD COLUMN IF NOT EXISTS "already_in_project" integer DEFAULT 0 NOT NULL;
+--> statement-breakpoint
+ALTER TABLE "mail_imports" DROP CONSTRAINT IF EXISTS "mail_imports_thread_counts_non_negative";
+--> statement-breakpoint
+ALTER TABLE "mail_imports" ADD CONSTRAINT "mail_imports_thread_counts_non_negative"
+  CHECK ("threads_created" >= 0 AND "threads_appended" >= 0 AND "already_in_project" >= 0);
+--> statement-breakpoint
 SELECT grid_secure_table('inbound_mail_addresses', 'organization_id = grid_current_org()');
 --> statement-breakpoint
 SELECT grid_secure_table('inbound_mails', 'organization_id = grid_current_org()');

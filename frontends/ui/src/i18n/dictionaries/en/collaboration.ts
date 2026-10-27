@@ -571,7 +571,7 @@ export const collaboration = {
       // An Outlook archive was imported. {subject} is the archive's file name.
       mailImportCompleted: {
         title: '“{subject}” has been imported',
-        body: 'Piloti filed the emails and their attachments in the project under E-Mail-Import.',
+        body: 'Piloti filed the attachments under E-Mail-Import and the emails in the project’s email threads.',
       },
       mailImportFailed: {
         title: 'The import of “{subject}” stopped',
