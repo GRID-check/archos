@@ -7,3 +7,6 @@ fixes:
   - >
     Signing in from a new browser or a private window no longer bounces back
     and forth until the browser gives up with too many redirects.
+  - >
+    When your office gives someone a role of its own, Piloti now acts with
+    exactly what that role allows, as the person does themselves.
