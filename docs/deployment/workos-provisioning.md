@@ -270,9 +270,9 @@ change, which is the property that silently broke for `org:audit:view` and
 to key off the role slug `admin`, so a custom administrator role reached no
 project at all however many `org:*` permissions it held. It is a permission now —
 grant it to any role that should administer every project in its organization.
-Existing `admin` sessions keep it through the bounded catalog implication in
-`lib/authz/permissions.ts`, so nobody re-logs-in; a custom role needs it
-provisioned before it can hold it.
+A session holds it when its token's `permissions` claim names it, and nothing
+else (the role-name implication was retired, ADR-0038's 2026-10-27 amendment);
+a role needs it provisioned before it can hold it.
 
 **A catalog change is not live until `--apply` has run against the environment.**
 The project tier reads its grants from WorkOS at request time and has no

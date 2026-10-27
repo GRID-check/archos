@@ -37,7 +37,7 @@ const GRANTED = new Set<string>()
 const CLEARED_FOLDERS = new Set<string>()
 
 vi.mock('@/lib/auth/membership-roles', () => ({ resolveMembershipRoles: vi.fn(async () => ['member']) }))
-vi.mock('@/lib/authz/org-role-permissions', () => ({ orgRoleHoldsPermission: vi.fn(async () => false) }))
+vi.mock('@/lib/authz/org-role-permissions', () => ({ rolesHoldPermission: vi.fn(async () => false) }))
 vi.mock('@/lib/workos/client', () => ({
   getWorkOS: () => ({
     authorization: {

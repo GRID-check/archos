@@ -24,11 +24,11 @@
  *    held write on every mutating platform route.
  *
  * A session holds platform permissions when:
- *  1. its ACTIVE org is the platform org — the permissions are its JWT claims,
- *    plus the bounded catalog implication for its role slug (fast path, no I/O);
+ *  1. its ACTIVE org is the platform org — the permissions are its JWT claims
+ *    (fast path, no I/O);
  *  2. it holds an active platform-org membership while browsing a TENANT org —
- *    the permissions are that membership's role's, resolved from WorkOS and
- *    cached. Any platform-org role counts, not only `org-platform-owner`:
+ *    the permissions are what that membership's roles hold, as WorkOS says, at
+ *    most a minute old. Any platform-org role counts, not only `org-platform-owner`:
  *    Support was previously invisible on this path and got nothing at all; or
  *  3. break-glass bootstrap: their email is in GRID_PLATFORM_OWNER_EMAILS
  *     (documented in docs/deployment/workos-provisioning.md; intended for
@@ -39,42 +39,20 @@
 import 'server-only'
 import { getWorkOS } from '@/lib/workos/client'
 import { recordAuditEvent } from '@/lib/audit/service'
-import { organizationRolePermissions } from './org-role-permissions'
-import {
-  ALL_PLATFORM_PERMISSION_SLUGS,
-  PLATFORM_PERMISSIONS,
-  permissionsForPlatformRole,
-  type PlatformPermission,
-} from './permissions'
+import { rolePermissions } from './org-role-permissions'
+import { ALL_PLATFORM_PERMISSION_SLUGS, PLATFORM_PERMISSIONS, type PlatformPermission } from './permissions'
+import { resolveSubjectMembership } from './project-membership'
 import type { GridSession } from '@/lib/auth/types'
 
 export const PLATFORM_ORG_EXTERNAL_ID = process.env.GRID_PLATFORM_ORG_EXTERNAL_ID ?? 'grid-platform'
 export const PLATFORM_OWNER_ROLE_SLUG = 'org-platform-owner'
 
-const MEMBERSHIP_CACHE_TTL_MS = 60_000
 const PLATFORM_ORG_CACHE_TTL_MS = 300_000
 // A *missing* platform org is cached briefly so provisioning takes effect
 // quickly (runbook first-run), while the found id can live longer.
 const PLATFORM_ORG_NEGATIVE_TTL_MS = 30_000
-const MEMBERSHIP_CACHE_MAX_ENTRIES = 500
 
 let platformOrgCache: { fetchedAt: number; organizationId: string | null } | null = null
-/**
- * Cached platform-org membership, as the PERMISSION SET it confers.
- *
- * Was a boolean `isOwner`, which is what made Support invisible on this path:
- * the only question it could answer was "is this the owner role", so a session
- * holding a different platform-org role got nothing at all while browsing a
- * tenant org. `null` means "not a member" and is cached the same way, so a
- * non-member still costs one lookup per TTL rather than one per request.
- */
-const membershipCache = new Map<
-  string,
-  { fetchedAt: number; permissions: ReadonlySet<string> | null }
->()
-
-// Break-glass access is evaluated on every authz check; audit it at most
-// once per actor per hour so the trail shows env-var access without flooding.
 const BREAK_GLASS_AUDIT_INTERVAL_MS = 60 * 60 * 1000
 const breakGlassAuditedAt = new Map<string, number>()
 
@@ -134,56 +112,19 @@ function bootstrapEmails(): string[] {
 }
 
 /**
- * The permissions a user's platform-org membership confers, or `null` when they
- * hold no active membership. **Fails closed**: any lookup error is `null`.
+ * The platform permissions a user's platform-org membership confers, or `null`
+ * when they hold no active membership. Both halves come from the shared lookups
+ * (`resolveSubjectMembership`, `rolePermissions`), each at most a minute old.
+ * **Fails closed**: a lookup that fails is `null` or grants nothing.
  */
 async function platformMembershipPermissions(
   userId: string,
   platformOrgId: string
 ): Promise<ReadonlySet<string> | null> {
-  const cacheKey = `${userId}:${platformOrgId}`
-  const cached = membershipCache.get(cacheKey)
-  if (cached && Date.now() - cached.fetchedAt < MEMBERSHIP_CACHE_TTL_MS) {
-    return cached.permissions
-  }
-  let permissions: ReadonlySet<string> | null = null
-  try {
-    const workos = getWorkOS()
-    const memberships = await workos.userManagement.listOrganizationMemberships({
-      userId,
-      organizationId: platformOrgId,
-      statuses: ['active'],
-      limit: 1,
-    })
-    const roleSlug = memberships.data[0]?.role?.slug ?? null
-    if (roleSlug) {
-      // What the role HOLDS, asked of WorkOS (cached, catalog fallback) — not
-      // inferred from its slug. `org-platform-support` is a platform-org role
-      // like any other; matching one hardcoded name is what hid it here.
-      //
-      // Filtered to `platform:*`, exactly as the fast path filters the JWT
-      // claims. Without it, ANY non-empty permission list made the membership
-      // read as platform staff: a plain `member` of the GRID Platform
-      // organization holds `org:projects:create`, which is not nothing, so
-      // `isPlatformStaff` said yes and opened a Platform nav entry and shell
-      // whose every subsection then answered 403.
-      const held = await organizationRolePermissions(platformOrgId, roleSlug)
-      permissions = new Set(
-        [...held].filter((permission) =>
-          (ALL_PLATFORM_PERMISSION_SLUGS as readonly string[]).includes(permission)
-        )
-      )
-    }
-  } catch {
-    permissions = null // fail closed
-  }
-  // Bounded: the cache only ever needs the handful of platform staff, but
-  // every signed-in user probes it once per TTL — clear rather than grow.
-  if (membershipCache.size >= MEMBERSHIP_CACHE_MAX_ENTRIES) {
-    membershipCache.clear()
-  }
-  membershipCache.set(cacheKey, { fetchedAt: Date.now(), permissions })
-  return permissions
+  const membership = await resolveSubjectMembership(platformOrgId, userId)
+  if (!membership) return null
+  const held = await rolePermissions(platformOrgId, membership.roles)
+  return new Set(ALL_PLATFORM_PERMISSION_SLUGS.filter((permission) => held.has(permission)))
 }
 
 /**
@@ -217,9 +158,7 @@ export async function platformPermissions(
     const claimed = session.permissions.filter((permission) =>
       (ALL_PLATFORM_PERMISSION_SLUGS as readonly string[]).includes(permission)
     )
-    const implied = permissionsForPlatformRole(session.role)
-    if (claimed.length === 0 && implied.size === 0) return null
-    return new Set([...claimed, ...implied])
+    return claimed.length === 0 ? null : new Set(claimed)
   }
 
   // Cross-org path: platform staff browsing a tenant org.
@@ -286,6 +225,5 @@ export async function requirePlatformPermission(
 /** Test hook. */
 export function _clearPlatformCaches(): void {
   platformOrgCache = null
-  membershipCache.clear()
   breakGlassAuditedAt.clear()
 }

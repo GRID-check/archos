@@ -16,7 +16,7 @@ const session = {
   organizationId: 'org_1',
   email: 'admin@grid.com',
   role: 'admin' as string | null,
-  permissions: [] as string[],
+  permissions: adminPermissions(),
 }
 vi.mock('@/lib/auth/require-auth', () => ({
   requireAuthorizedSession: vi.fn().mockImplementation(async () => session),
@@ -67,6 +67,7 @@ vi.mock('@/lib/audit/service', () => ({
 import { GET } from './route'
 import { PUT } from './retention/route'
 import { PUT as PUT_SETTINGS } from '../settings/route'
+import { adminPermissions } from '@/test-utils/admin-permissions'
 
 const get = (query = ''): Promise<Response> => GET(new Request(`http://localhost/api/organization/download-log${query}`))
 const put = (body: unknown): Promise<Response> =>
@@ -81,7 +82,7 @@ const put = (body: unknown): Promise<Response> =>
 beforeEach(() => {
   vi.clearAllMocks()
   session.role = 'admin'
-  session.permissions = []
+  session.permissions = adminPermissions()
   stored.settings = {}
   listAccessLog.mockResolvedValue([])
 })

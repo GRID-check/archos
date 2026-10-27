@@ -4,10 +4,9 @@
 /**
  * The Policy Decision Point's own spec.
  *
- * `decide.ts` shipped with ADR-0038 as the front door across all four tiers and
- * had no test of any kind — 298 lines of security-critical dispatch, including
- * the only implementation of the skill tier, resting on review alone. These are
- * the properties the module claims in its own header, asserted.
+ * `decide.ts` shipped with ADR-0038 as the front door across the tiers and had
+ * no test of any kind: security-critical dispatch resting on review alone. These
+ * are the properties the module claims in its own header, asserted.
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -23,17 +22,9 @@ vi.mock('./platform', () => ({
   hasPlatformPermission: (...args: unknown[]) => hasPlatformPermission(...args),
 }))
 
-const findJob = vi.fn()
-vi.mock('@/lib/jobs/repository', () => ({ findJob: (...args: unknown[]) => findJob(...args) }))
-
 const findProjectTenancy = vi.fn()
 vi.mock('@/lib/projects/repository', () => ({
   findProjectTenancy: (...args: unknown[]) => findProjectTenancy(...args),
-}))
-
-const checkResourcePermission = vi.fn()
-vi.mock('./resource-check', () => ({
-  checkResourcePermission: (...args: unknown[]) => checkResourcePermission(...args),
 }))
 
 import { authorize, can, decide } from './decide'
@@ -55,15 +46,12 @@ const session = (overrides: Partial<GridSession> = {}): GridSession =>
   }) as GridSession
 
 const PROJECT = { type: 'project', id: 'proj_1' } as const
-const SKILL = { type: 'skill', id: 'job_1' } as const
 
 beforeEach(() => {
   vi.clearAllMocks()
   requireProjectAccess.mockResolvedValue({ role: 'project-viewer' })
   hasPlatformPermission.mockResolvedValue(false)
   findProjectTenancy.mockResolvedValue({ organizationId: 'org_1', deletedAt: null })
-  findJob.mockResolvedValue({ projectId: 'proj_1' })
-  checkResourcePermission.mockResolvedValue(false)
 })
 
 describe('rule 1 — no session, no decision', () => {
@@ -72,7 +60,6 @@ describe('rule 1 — no session, no decision', () => {
       ['org:settings:manage', undefined],
       ['platform:settings:manage', undefined],
       ['project:view', PROJECT],
-      ['skill:run', SKILL],
     ] as const) {
       const decision = await decide(null, permission, resource)
       expect(decision.allowed).toBe(false)
@@ -93,10 +80,9 @@ describe('unknown permissions fail closed', () => {
     await expect(decide(session(), 'project:view')).rejects.toThrow(/requires a resource/)
   })
 
-  it('refuses a resource of the wrong type for the tier', async () => {
-    await expect(decide(session(), 'project:view', SKILL)).rejects.toThrow(
-      /project-tier but was given a skill resource/
-    )
+  it('refuses a tier it does not decide rather than answering it', async () => {
+    // `skill:*` stays in the catalog because WorkOS holds it; nothing grants it.
+    await expect(decide(session(), 'skill:run' as never, PROJECT)).rejects.toThrow(/does not decide/)
   })
 })
 
@@ -109,9 +95,9 @@ describe('claims tiers', () => {
     expect(decision).toMatchObject({ allowed: true, rule: 'jwt-permission', tier: 'org' })
   })
 
-  it('allows from the bounded catalog implication when the claim is absent', async () => {
-    const decision = await decide(session({ role: 'admin' }), 'org:models:manage')
-    expect(decision).toMatchObject({ allowed: true, rule: 'legacy-role-implication' })
+  it('denies a role named admin whose token does not carry the permission', async () => {
+    const decision = await decide(session({ role: 'admin', permissions: [] }), 'org:models:manage')
+    expect(decision).toMatchObject({ allowed: false, rule: 'no-grant' })
   })
 
   it('denies a permission the role does not hold', async () => {
@@ -188,42 +174,6 @@ describe('project tier', () => {
   })
 })
 
-describe('skill tier', () => {
-  it('checks tenancy from the job row first, and never bypasses it', async () => {
-    findJob.mockResolvedValue(null)
-    const decision = await decide(session(), 'skill:run', SKILL)
-    expect(decision).toMatchObject({ allowed: false, rule: 'tenancy-mismatch' })
-    expect(requireProjectAccess).not.toHaveBeenCalled()
-  })
-
-  it('inherits from the parent project via the documented fallback map', async () => {
-    const decision = await decide(session(), 'skill:run', SKILL)
-    // skill:run falls back to project:skills:manage, NOT to project:view.
-    expect(requireProjectAccess).toHaveBeenCalledWith(
-      expect.anything(),
-      'proj_1',
-      'project:skills:manage'
-    )
-    expect(decision).toMatchObject({ allowed: true, rule: 'project-inherited' })
-  })
-
-  it('maps skill:view onto project:view, so any project viewer sees the schedule', async () => {
-    await decide(session(), 'skill:view', SKILL)
-    expect(requireProjectAccess).toHaveBeenCalledWith(expect.anything(), 'proj_1', 'project:view')
-  })
-
-  it('does not ask WorkOS about a resource type nothing provisions', async () => {
-    await decide(session(), 'skill:manage', SKILL)
-    expect(checkResourcePermission).not.toHaveBeenCalled()
-  })
-
-  it('denies when the parent project denies', async () => {
-    requireProjectAccess.mockRejectedValue(new NotFoundError())
-    const decision = await decide(session(), 'skill:manage', SKILL)
-    expect(decision).toMatchObject({ allowed: false, rule: 'no-grant' })
-  })
-})
-
 describe('authorize() denial shapes', () => {
   it('throws 403 for claims tiers and 404 for resource tiers', async () => {
     await expect(authorize(session(), 'org:models:manage')).rejects.toBeInstanceOf(ForbiddenError)
@@ -234,7 +184,6 @@ describe('authorize() denial shapes', () => {
     await expect(authorize(session(), 'project:view', PROJECT)).rejects.toBeInstanceOf(
       NotFoundError
     )
-    await expect(authorize(session(), 'skill:manage', SKILL)).rejects.toBeInstanceOf(NotFoundError)
   })
 
   it('returns the decision when allowed, so callers can log the rule', async () => {
