@@ -91,7 +91,7 @@ items, not a sequence of `.eml` files, so the inbox's parser does not apply.
    the one header that carries content. A filename is unique per project, not
    per folder, so every file of a mail is prefixed with its folder's name and
    numbered when it still collides.
-7. **The mail itself is filed, as a Markdown note.** Its headers (subject,
+7. **The mail itself is filed, as a Markdown note** (replaced by the amendment of 2026-10-22 below: the text now becomes a section of an E-Mail-Verlauf). Its headers (subject,
    from, to, cc, dates, Outlook folder, the attachments filed) and its text, from
    the plain body, else the HTML, else the RTF (`striprtf`). `.md` is indexed
    today, so the correspondence is searchable and citable; the inbox (#831)
@@ -128,3 +128,42 @@ another slice moved the cursor, the endings) and the naming.
 ## More Information
 
 The flow, the routes and the operator steps: `docs/architecture/mail-import.md`.
+
+## Amendment, 2026-10-22: the archive renders into the E-Mail-Verläufe
+
+*Product owner, from the project-mail work (ADR-0134, DECISION D33, owner
+answer C).*
+
+§6–7's per-mail note is replaced. Each mail's attachments are still filed as
+the person into a folder of its own (§6; a mail without an attachment to file
+gets no folder), and its text is written as an entry of the project's
+E-Mail-Verläufe (ADR-0134), the same documents mail to the project's address is
+filed into: one shape for mail, whichever way it arrives. The import appends
+only on a strong match (a reference or Outlook's conversation index, each with
+an equal subject, or a Verlauf that already cites the mail) and only into a
+Verlauf the person may write; otherwise it opens a Verlauf named
+`{Gegenüber} {yyyy-mm-dd}`, never the subject (§6 holds: no person saw it).
+Mail the project already holds is deduplicated by Message-ID, both ways. Each
+touched Verlauf gets one Fassung per slice, under the thread's render lease.
+
+§7's "the inbox (#831) files attachments only" is reversed: the inbound mail
+feature (ADR-0134) files a mail's text as a Verlauf section too, and an archive
+is a person's correspondence, so its text belongs in the same conversations
+rather than beside them as notes nobody can follow as a thread.
+
+The import stays direct: starting it is the person's decision (ADR-0134 keeps
+review for mail that arrives on its own). Notes written before this amendment
+stay as they are; nothing rewrites them (FU15 would, per project, opt-in).
+Entries are `sender_trust = 'not_checked'` and their headings say „aus dem
+Outlook-Archiv“, so nothing in an archive is cited as a confirmed sender. The
+reader now also returns what threads a mail (`in_reply_to`, `references`,
+`conversation_index`) and the Bcc of sent items. The import counts the
+Verläufe it opened (`threads_created`), the existing ones it added to
+(`threads_appended`) and the mails whose text the project already had
+(`already_in_project`), columns of `mail_imports` (migration 0186).
+
+Confirmation: `lib/mail-thread/archive.spec.ts`, `archive.integration.spec.ts`
+(Postgres: dedupe both ways, one Fassung per slice, no append into an
+unwritable Verlauf), `lib/mail-import/*.spec.ts`, and the shared Thread-Index
+fixture `shared/thread-index.json` read by both `mail-threading.spec.ts` and
+`test_mail_archive_reader.py`. The flow: [`mail-import.md`](../architecture/mail-import.md).

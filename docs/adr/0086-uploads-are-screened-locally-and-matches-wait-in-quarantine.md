@@ -748,6 +748,56 @@ counts, never terms.
   browser; the server applies the project's, so a project term surfaces there
   as the server's refusal.
 
+## Amendment (2026-10-27): mail sent to a project is name-checked, and a match is a flag
+
+*Product owner, from the project-mail work (ADR-0134, D10, RT-X14).*
+
+### Context
+
+A mail sent to a project's address is held until a person files it
+(ADR-0134). Its attachments' names are a stranger's, and refusing a matching
+file on receipt would lose it: the sender has no screen to release it from, and
+the person deciding never sees what arrived.
+
+### Decision
+
+- **On receipt, a match is a flag, not a drop.** The receive job runs the
+  Namensprüfung with the project's policy (`gatePolicy`) on each attachment's
+  name and on the mail's base subject (`lib/inbound-mail/screening.ts`). A match
+  sets the part's `risk_flags` `name_stop` and its `name_stop_terms`; the part
+  is shown unselected with „Namensprüfung: „…““ and „Trotzdem ablegen“.
+- **Filing it is the person's override.** The decision carries
+  `screeningRelease: 'name'` for that part, refused in a request about more
+  than one mail and on a Piloti card; the filing job uploads it with the
+  release, audited as `document.screening_overridden` like an upload's.
+- **The names a person types are screened when they decide.** A new
+  E-Mail-Verlauf's name and a new folder path are checked in
+  `lib/inbound-mail/decision.ts`; a match answers 409 `name_stop` with the term,
+  and the person files it anyway with `screeningRelease: 'name'` on the
+  thread's creation. A detach into a new Verlauf is screened the same way.
+- **A name never reaches a model or a rendition once stopped.** Piloti's
+  suggestion reads only names that passed the check, and a Verlauf section
+  never prints a stopped attachment's name (it counts it).
+- **The content gate is unchanged after filing.** A filed attachment and every
+  Verlauf Fassung pass the Inhaltsprüfung as any upload does. The mail's own
+  text is checked before filing too: a finding there is decided by the person
+  (mask, own Verlauf, or file in full and hold the Verlauf), ADR-0134.
+
+### Consequences
+
+- Good, because a stranger's file with a stopped name is neither lost nor filed
+  unseen; the decision and its override are the person's, in the trail.
+- Bad, because a mail can carry a matching name to the reviewer's screen. The
+  reviewer is someone who may add documents to the project anyway, and the
+  bytes are not readable by any model before filing.
+
+### Confirmation
+
+`lib/inbound-mail/screening.spec.ts` (the flag), `decision.spec.ts` (the 409 on
+a Verlauf name and folder path, the release refused in bulk and on a card),
+`review-first.e2e.spec.ts`, and the migration's CHECK
+`inbound_mail_parts_name_stop_terms` (terms only with the flag).
+
 ## More Information
 
 * Evidence and the two NVIDIA evaluations: `plans/2026-10-01-upload-governance-worklog.md`.
