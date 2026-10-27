@@ -21,7 +21,7 @@ from pathlib import Path
 
 from aiq_agent.skills.models import Skill
 
-REPO_ROOT = Path(__file__).resolve().parents[3]
+REPO_ROOT = next(path for path in Path(__file__).resolve().parents if (path / "Taskfile.yml").is_file())
 DRIZZLE_DIR = REPO_ROOT / "frontends" / "ui" / "drizzle"
 
 #: The columns the seeds insert, in the order they insert them. Parsing is

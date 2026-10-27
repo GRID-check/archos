@@ -9,7 +9,7 @@
 
 Docker Compose (`deploy/compose/docker-compose.yaml`):
 
-- **postgres** — 3 logical DBs: `aiq_jobs`, `aiq_checkpoints`, `grid_app`.
+- **postgres** — 3 logical DBs: `jobs`, `checkpoints`, `grid_app`.
 - **seaweedfs** — object storage, bucket `grid-documents`. Published to the host at
   `localhost:8333`; internal DNS name `seaweedfs:8333`.
 - **aiq-agent** — FastAPI + NeMo Agent Toolkit (NAT)

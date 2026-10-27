@@ -23,7 +23,8 @@ import { citedFileName, resolveCitationTarget } from '../lib/citations/target'
 import { useChatStore } from '../store'
 import { CitationOpenButton, LocusLine } from './CitationPeek'
 import { useCitationScope } from './CitationScope'
-import { SourceDocumentDialog, useSourcePreviewIndex } from './SourcePreview'
+import { SourceDocumentDialog } from './source-preview/source-document-dialog'
+import { useSourcePreviewIndex } from './source-preview/use-source-preview-index'
 
 export const CitationExcerptSource: FC<ExcerptSourceProps> = ({ number, stamp }) => {
   const scope = useCitationScope()

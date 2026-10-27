@@ -373,8 +373,8 @@ def _store_retriever():
 
 def _seed(name: str, rows: list[tuple[str, str, int, dict]]) -> None:
     """Write ``(file_name, text, page, metadata)`` rows into collection ``name``, as ingestion writes chunks."""
-    from sources.knowledge_layer.tests.qdrant_testing import record
-    from sources.knowledge_layer.tests.qdrant_testing import write
+    from knowledge_layer_testing.qdrant import record
+    from knowledge_layer_testing.qdrant import write
 
     write(name, [record(text, file_name, page_label=str(page), **meta) for file_name, text, page, meta in rows])
 

@@ -21,6 +21,7 @@ on either side of the hop, or a missing kwarg anywhere along it, fails here.
 from __future__ import annotations
 
 import pytest
+from agent_testing.conversation import turn
 from langchain_core.messages import AIMessage
 from langchain_core.messages import HumanMessage
 
@@ -29,7 +30,6 @@ from aiq_agent.agents.piloti.markers import ESCALATION_MARKER
 from aiq_agent.agents.piloti.models import ConversationState
 from aiq_agent.agents.piloti.models import ResearchAgentState
 from aiq_agent.turn.response import build_result
-from tests.aiq_agent.agents.piloti.conversation import turn
 
 VOICE = "piloti-voice"
 CARDS = "piloti-cards"
