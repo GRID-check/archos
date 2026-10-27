@@ -47,6 +47,10 @@
               "de": "Ein Projekt listet Erkenntnisse aus seinen Dokumenten auf: ein referenziertes Dokument oder eine Plannummer, die dem Projekt nicht vorliegt, sowie zwei Dokumente, die denselben Sachverhalt unterschiedlich darstellen – jeweils mit den Seiten, auf die sich der Befund stützt."
             },
             {
+              "en": "Piloti now goes through your documents like a colleague on the drive: it lists a folder, finds every place a word stands across the shelves you may see, and reads the pages that hold it. Each quote names its page, and a search that could not reach everything says what it left out instead of answering that nothing was found.",
+              "de": "Piloti durchsucht Ihre Dokumente jetzt wie ein Kollege im Laufwerk: Es listet Ordnerinhalte auf, findet alle Vorkommen eines Begriffs in den für Sie sichtbaren Ablagen und liest die entsprechenden Seiten. Jedes Zitat nennt die Seitenzahl. Kann eine Suche nicht alles erfassen, weist sie darauf hin, was ausgelassen wurde, statt zu melden, dass nichts gefunden wurde."
+            },
+            {
               "en": "If you work in more than one office, you can now switch between them from the menu behind your picture, under „Switch organization“.",
               "de": "Wenn Sie in mehreren Büros arbeiten, können Sie jetzt im Menü hinter Ihrem Profilbild unter „Organisation wechseln“ zwischen den Büros wechseln."
             },
