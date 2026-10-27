@@ -331,17 +331,13 @@ source (`register_source_parser` for `list_files` still returns nothing), no
 `[N]` resolves to it, and `browse.py` still tells the model not to cite it. The
 provenance is the stamp, not a citation marker.
 
-## Amendment, 2026-10-27: the aggregation moved to ADR-0139
+## Amendment, 2026-10-27: the confidence rule is superseded by ADR-0139
 
-The per-sentence provenance classes above stand, and so does the rule that only
-a passage grounds a claim about the law. The answer's level is no longer the
-weakest load-bearing sentence's ceiling: a small model checks each sentence
-against the evidence its class points at, and the level counts the claims it
-found supported (high only when all are, low when none is or a verdict
-contradicts its source) ([ADR-0139](0139-confidence-counts-the-claims-evidence-carries.md)).
-The per-class ceilings, the claim types as a decider of load, and the hedge
-list of the 2026-10-22 amendment are retired with it: the judge reads which
-sentence is a verdict, a fact, an assessment or a next step. The minimum let
-one sentence caught by the wide normative net floor the stored answers of
-2026-10. ADR-0139 also stops reading `[N]` as a registry position when an answer
-writes no source list, and makes the confirmed project profile a record.
+The level is no longer held to the weakest load-bearing sentence. A model
+grades the whole answer against everything the turn registered (ADR-0139), and
+the per-sentence classes, claim types and ceilings this record introduced are
+gone from new turns; a stored turn keeps its `claim_stamps` and renders as it
+did. What stands: an unresolvable `[N]` is labelled where it stood
+(`DROPPED_CITATION_MARKER`), a lookup that found nothing ships its answer with
+the banner, and workspace records travel their own channel, never the
+`SourceRegistry`.

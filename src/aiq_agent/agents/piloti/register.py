@@ -160,10 +160,10 @@ class ResearchAgentConfig(FunctionBaseConfig, name="research_agent"):
     claim_judge_llm: LLMRef | None = Field(
         default=None,
         description=(
-            "The small model that checks each sentence of the answer against the passage, record or "
-            "measurement it points at, in one structured call after the answer streamed (ADR-0139). "
-            "Resolved per turn like the follow-ups stage's model (the org's override and BYOK for that "
-            "group). Unset leaves every claim unjudged and the confidence at medium."
+            "The model that grades the final answer against everything the turn registered (passages, "
+            "records, measurements, readings, the quote check), in one structured call at temperature 0 "
+            "after the answer streamed (ADR-0139). Resolved per turn like the follow-ups stage's model "
+            "(the org's override and BYOK for that group). Unset surfaces no confidence level."
         ),
     )
     verbose: bool = Field(default=False, description="Whether to enable verbose logging")

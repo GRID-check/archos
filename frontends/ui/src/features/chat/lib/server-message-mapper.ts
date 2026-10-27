@@ -41,15 +41,12 @@ export interface ServerMessageInput {
   metadata?: unknown
   authorUserId?: string | null
 }
-import {
-  CAPPED_REASONS,
-  isAnswerConfidenceVersion,
-  sanitizeThinkingSteps,
-} from '@/lib/conversations/message-provenance'
+import { CAPPED_REASONS, sanitizeThinkingSteps } from '@/lib/conversations/message-provenance'
 import { sanitizeAnswerMeta } from '@/lib/conversations/message-answer-meta'
 import { sanitizeFindings } from '@/lib/conversations/message-findings'
 import { sanitizeRetrievalLedger } from '@/lib/conversations/message-retrieval-ledger'
 import { sanitizeQuoteStamps } from '@/lib/conversations/message-quote-stamps'
+import { sanitizeConfidenceCheck } from '@/lib/conversations/confidence-check'
 import { sanitizeClaimStamps } from '@/lib/conversations/message-claim-stamps'
 import { isChatEffort } from '@/lib/reasoning-settings/catalog'
 import { sanitizeStages } from '@/lib/conversations/message-stages'
@@ -365,7 +362,9 @@ const restoreProvenance = (value: unknown): Partial<ChatMessage> => {
   if (stamps) out.quoteStamps = stamps
   const claims = sanitizeClaimStamps(provenance.claimStamps)
   if (claims) out.claimStamps = claims
-  if (isAnswerConfidenceVersion(provenance.answerConfidenceVersion)) {
+  const check = sanitizeConfidenceCheck(provenance.confidenceCheck)
+  if (check) out.confidenceCheck = check
+  if (provenance.answerConfidenceVersion === 1 || provenance.answerConfidenceVersion === 2) {
     out.answerConfidenceVersion = provenance.answerConfidenceVersion
   }
   if (provenance.lookupFoundNothing === true) out.lookupFoundNothing = true

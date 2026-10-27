@@ -684,148 +684,6 @@
       "title": "CitationsRemoved",
       "type": "object"
     },
-    "ClaimStamp": {
-      "additionalProperties": false,
-      "description": "Where one sentence of ``text`` comes from (``common/claim_provenance.py``, ADR-0125), in document order.\n\n``provenance`` is the strongest evidence the sentence has; ``claim_type``\nwhether it states the law, a value, or a description. ``load_bearing``\nsentences are the ones the turn's confidence is held to.",
-      "properties": {
-        "claim_type": {
-          "enum": [
-            "normative",
-            "value",
-            "descriptive"
-          ],
-          "title": "Claim Type",
-          "type": "string"
-        },
-        "dropped": {
-          "anyOf": [
-            {
-              "type": "boolean"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Dropped"
-        },
-        "group": {
-          "anyOf": [
-            {
-              "type": "integer"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Group"
-        },
-        "judged": {
-          "anyOf": [
-            {
-              "enum": [
-                "supported",
-                "contradicted",
-                "not_addressed",
-                "unavailable"
-              ],
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Judged"
-        },
-        "load_bearing": {
-          "default": false,
-          "title": "Load Bearing",
-          "type": "boolean"
-        },
-        "numbers": {
-          "items": {
-            "type": "integer"
-          },
-          "title": "Numbers",
-          "type": "array"
-        },
-        "operation": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Operation"
-        },
-        "provenance": {
-          "enum": [
-            "quoted",
-            "cited",
-            "cited_dropped",
-            "record",
-            "action",
-            "measured",
-            "observed",
-            "reasoning",
-            "model_knowledge"
-          ],
-          "title": "Provenance",
-          "type": "string"
-        },
-        "support": {
-          "anyOf": [
-            {
-              "maximum": 1,
-              "minimum": 0,
-              "type": "number"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Support"
-        },
-        "text": {
-          "description": "The sentence as the final text writes it, cut at 300 characters.",
-          "maxLength": 300,
-          "title": "Text",
-          "type": "string"
-        },
-        "unmatched": {
-          "items": {
-            "type": "string"
-          },
-          "title": "Unmatched",
-          "type": "array"
-        },
-        "verdict": {
-          "anyOf": [
-            {
-              "type": "boolean"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Verdict"
-        }
-      },
-      "required": [
-        "text",
-        "provenance",
-        "claim_type"
-      ],
-      "title": "ClaimStamp",
-      "type": "object"
-    },
     "ClarificationStep": {
       "additionalProperties": false,
       "description": "The clarify step started: the one row it contributes before its first question.",
@@ -893,6 +751,86 @@
           "$ref": "#/$defs/Steer"
         }
       ]
+    },
+    "ConfidenceCheck": {
+      "additionalProperties": false,
+      "description": "What the answer check found (``common/claim_judge.py``, ADR-0139).\n\n``judged``: ``answer_confidence`` is its level (under the quote gate), and\n``findings`` names what holds it down. ``unavailable``: the check could not\nrun, and the turn surfaces no level.",
+      "properties": {
+        "findings": {
+          "items": {
+            "$ref": "#/$defs/ConfidenceFinding"
+          },
+          "title": "Findings",
+          "type": "array"
+        },
+        "level": {
+          "anyOf": [
+            {
+              "enum": [
+                "low",
+                "medium",
+                "high"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Level"
+        },
+        "status": {
+          "enum": [
+            "judged",
+            "unavailable"
+          ],
+          "title": "Status",
+          "type": "string"
+        }
+      },
+      "required": [
+        "status"
+      ],
+      "title": "ConfidenceCheck",
+      "type": "object"
+    },
+    "ConfidenceFinding": {
+      "additionalProperties": false,
+      "description": "A statement the answer relies on that its evidence does not back, or contradicts.",
+      "properties": {
+        "problem": {
+          "enum": [
+            "unbacked",
+            "contradicted"
+          ],
+          "title": "Problem",
+          "type": "string"
+        },
+        "reason": {
+          "maxLength": 300,
+          "title": "Reason",
+          "type": "string"
+        },
+        "source": {
+          "maxLength": 200,
+          "title": "Source",
+          "type": "string"
+        },
+        "statement": {
+          "maxLength": 300,
+          "title": "Statement",
+          "type": "string"
+        }
+      },
+      "required": [
+        "statement",
+        "problem",
+        "reason",
+        "source"
+      ],
+      "title": "ConfidenceFinding",
+      "type": "object"
     },
     "EmptyValue": {
       "additionalProperties": false,
@@ -3753,12 +3691,16 @@
           ],
           "default": null
         },
-        "claim_stamps": {
-          "items": {
-            "$ref": "#/$defs/ClaimStamp"
-          },
-          "title": "Claim Stamps",
-          "type": "array"
+        "confidence_check": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ConfidenceCheck"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
         },
         "escalation_reason": {
           "anyOf": [

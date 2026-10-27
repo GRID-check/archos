@@ -157,102 +157,59 @@ describe('ConfidenceChip under the per-sentence rule', () => {
   })
 })
 
-/**
- * Rule 3 (ADR-0139): the chip leads with what the answer rests on, the count of
- * load-bearing statements backed, and warns only when a named cap fired.
- */
-describe('ConfidenceChip under the evidence share', () => {
-  const stamps = [
-    { text: 'The escape route leads outside [1].', provenance: 'cited', claimType: 'normative', loadBearing: true, support: 1 },
-    { text: 'There are 2 drawings [1].', provenance: 'cited', claimType: 'value', loadBearing: true, support: 1 },
-    { text: 'The alarm covers all 4 floors [2].', provenance: 'cited', claimType: 'value', loadBearing: true, support: 1 },
-    { text: 'No sprinklers are planned [2].', provenance: 'cited', claimType: 'descriptive', loadBearing: false, support: 1 },
-    { text: 'Each drawing must be opened.', provenance: 'model_knowledge', claimType: 'normative', loadBearing: true, support: 0 },
-  ] as const
+describe('ConfidenceChip for a checked answer (ADR-0139)', () => {
+  const finding = {
+    statement: 'The stair is 1.50 m wide',
+    problem: 'contradicted',
+    reason: 'the section gives 1.10 m',
+    source: '[1] Section A-A.pdf, p.2',
+  } as const
 
-  test('leads with the count and names the cap that fired', () => {
+  test('names what the check found unbacked, and the source it checked against', async () => {
+    const user = userEvent.setup()
     render(
-      <ConfidenceChip confidence="medium" cappedReason="normative_claim_uncited" version={2} claimStamps={[...stamps]} />
+      <ConfidenceChip
+        confidence="low"
+        reason="Everything is backed."
+        version={2}
+        check={{ status: 'judged', level: 'low', findings: [finding] }}
+      />
     )
 
-    expect(screen.getByRole('button')).toHaveTextContent('3 of 4 statements backed · legal statement uncited')
-    expect(screen.queryByText(/Confidence: medium/)).not.toBeInTheDocument()
-  })
-
-  test('stays muted and names no cap when none fired, the level in the tooltip', async () => {
-    const user = userEvent.setup()
-    render(<ConfidenceChip confidence="high" version={2} claimStamps={[...stamps.slice(0, 4)]} />)
-
-    expect(screen.getByRole('button')).toHaveTextContent('3 of 3 statements backed')
-    expect(screen.getByRole('button')).not.toHaveTextContent('·')
+    expect(screen.getByRole('button')).toHaveAccessibleName('Evidence check of the answer: low')
     await user.hover(screen.getByRole('button'))
-    expect((await screen.findAllByText(/Assistant self-assessment: high/)).length).toBeGreaterThan(0)
+
+    const findings = (await screen.findAllByTestId('confidence-check-findings'))[0]
+    expect(findings).toHaveTextContent('The stair is 1.50 m wide')
+    expect(findings).toHaveTextContent('contradicts the source: the section gives 1.10 m')
+    expect(findings).toHaveTextContent('checked against [1] Section A-A.pdf, p.2')
+    // The level is the check's, so the model's reason for its own self-report is not shown as if it were.
+    expect(screen.queryByText(/Everything is backed\./)).not.toBeInTheDocument()
   })
 
-  test('names an uncited statement about the law from the stamps, though no cap fired', () => {
-    // The self-report already matched the ceiling, so nothing capped it: the
-    // warning must not depend on the model having over-reported (review of #1231).
-    render(<ConfidenceChip confidence="medium" version={2} claimStamps={[...stamps]} />)
+  test('says when a quote the server could not find capped the level', async () => {
+    const user = userEvent.setup()
+    render(
+      <ConfidenceChip
+        confidence="medium"
+        cappedReason="quote_unverified"
+        check={{ status: 'judged', level: 'high', findings: [] }}
+      />
+    )
 
-    const chip = screen.getByRole('button')
-    expect(chip).toHaveTextContent('3 of 4 statements backed · legal statement uncited')
-    expect(chip).toHaveClass('text-warning')
+    await user.hover(screen.getByRole('button'))
+
+    expect((await screen.findAllByText(/A quotation could not be confirmed word for word/)).length).toBeGreaterThan(0)
+    expect(screen.queryByTestId('confidence-check-findings')).not.toBeInTheDocument()
   })
 
-  test('a listing whose only normative sentence concludes nothing reads backed, muted, with nothing named', () => {
-    // Round 3 of #1231: a pure list_files answer showed „Rechtsaussage ohne Beleg" for a next step.
-    const listing = [
-      { text: 'Abgabepläne · 8 · …', provenance: 'record', claimType: 'value', loadBearing: true, support: 1, verdict: false },
-      { text: 'Berichte · 2 · …', provenance: 'record', claimType: 'value', loadBearing: true, support: 1, verdict: false },
-      { text: 'Welche Maßstäbe sie tragen, muss im Einzelnen geöffnet werden.', provenance: 'model_knowledge', claimType: 'normative', loadBearing: false, support: 0, verdict: false },
-    ] as const
-    render(<ConfidenceChip confidence="high" version={2} claimStamps={[...listing]} />)
+  test('an unavailable check shows no level and says the check did not run', async () => {
+    const user = userEvent.setup()
+    render(<ConfidenceChip confidence={null} check={{ status: 'unavailable', findings: [] }} />)
 
-    const chip = screen.getByRole('button')
-    expect(chip).toHaveTextContent('2 of 2 statements backed')
-    expect(chip).not.toHaveTextContent('·')
-    expect(chip).not.toHaveClass('text-warning')
-  })
-
-  test('names a citation that did not hold', () => {
-    const dropped = [
-      ...stamps.slice(0, 3),
-      { text: 'The stair is 1.20 m wide [Beleg nicht verifiziert].', provenance: 'cited_dropped', claimType: 'value', loadBearing: true, support: 0 },
-    ] as const
-    render(<ConfidenceChip confidence="medium" version={2} claimStamps={[...dropped]} />)
-
-    expect(screen.getByRole('button')).toHaveTextContent('3 of 4 statements backed · citation unverified')
-  })
-
-  test('counts a partly backed claim as partly, and says when the judge could not check', () => {
-    // Round 5 of #1231: „0 von 2 belegt" on two cited claims read as unbacked.
-    const partly = [
-      { text: 'The door is 1 m wide [1].', provenance: 'observed', claimType: 'value', loadBearing: true, support: 0.5, judged: 'supported' },
-      { text: 'The alarm covers all 4 floors [2].', provenance: 'cited', claimType: 'value', loadBearing: true, support: 1, judged: 'supported' },
-    ] as const
-    const { unmount } = render(<ConfidenceChip confidence="medium" version={2} claimStamps={[...partly]} />)
-    expect(screen.getByRole('button')).toHaveTextContent('1 of 2 statements backed · 1 partly')
-    unmount()
-
-    const unchecked = partly.map((stamp) => ({ ...stamp, support: 0.5, judged: 'unavailable' }) as const)
-    render(<ConfidenceChip confidence="medium" version={2} claimStamps={unchecked} />)
-    expect(screen.getByRole('button')).toHaveTextContent('0 of 2 statements backed · 2 partly · evidence check unavailable')
-  })
-
-  test('names a legal statement its own source contradicts', () => {
-    const contradicted = [
-      ...stamps.slice(0, 3),
-      { text: 'Spiral stairs are allowed [1].', provenance: 'cited', claimType: 'normative', loadBearing: true, support: 0, verdict: true, judged: 'contradicted' },
-    ] as const
-    render(<ConfidenceChip confidence="low" version={2} claimStamps={[...contradicted]} />)
-
-    expect(screen.getByRole('button')).toHaveTextContent('3 of 4 statements backed · contradicts its source')
-  })
-
-  test('a rule-3 answer whose stamps carry no support falls back to the level', () => {
-    const bare = stamps.map(({ support: _support, ...stamp }) => stamp)
-    render(<ConfidenceChip confidence="medium" version={2} claimStamps={bare} />)
-
-    expect(screen.getByText('Confidence: medium')).toBeInTheDocument()
+    expect(screen.getByTestId('confidence-check-unavailable')).toHaveTextContent('Evidence check unavailable')
+    expect(screen.queryByText(/Confidence:/)).not.toBeInTheDocument()
+    await user.hover(screen.getByRole('button'))
+    expect((await screen.findAllByText(/so Piloti shows no level/)).length).toBeGreaterThan(0)
   })
 })

@@ -1,8 +1,9 @@
 """Tests for self-assessed answer-confidence surfacing in Piloti.
 
 Covers the node-level assembly (`_finalize_answer`) and end-to-end
-propagation through ``ConversationGraph.stream()``: the guard caps ungrounded
-self-reports, escalation/error branches surface nothing, and a control marker
+propagation through ``ConversationGraph.stream()``: the level is the answer
+check's (``confidence_check``, ADR-0139) under the quote gate, never the
+self-report; escalation/error branches surface nothing, and a control marker
 left in the text is always stripped from the user-visible answer.
 
 The signals are Piloti's structured state fields
@@ -30,20 +31,50 @@ def _signals(**fields) -> ResearchAgentState:
     return ResearchAgentState(messages=[], **fields)
 
 
+def _judged(level: str) -> dict:
+    return {"status": "judged", "level": level, "findings": []}
+
+
 class TestFinalizeAnswer:
     """Node-level assembly of the answer update dict."""
 
     def test_grounded_high_surfaces_high_and_strips_a_leaked_marker(self):
         msg = AIMessage(content="OIB-Richtlinie 2 [1].\n\n[CONFIDENCE:high]")
-        update = _finalize_answer(msg, _signals(answer_citation_grounded=True, answer_confidence_marker="high"))
+        update = _finalize_answer(
+            msg,
+            _signals(answer_citation_grounded=True, answer_confidence_marker="high", confidence_check=_judged("high")),
+        )
         assert update["answer_confidence"] == "high"
         assert update["escalate_to_deep"] is False
         assert update["messages"][0].content == "OIB-Richtlinie 2 [1]."
 
-    def test_ungrounded_high_capped_to_low(self):
-        update = _finalize_answer(AIMessage(content="Some claim."), _signals(answer_confidence_marker="high"))
+    def test_the_check_sets_the_level_not_the_self_report(self):
+        update = _finalize_answer(
+            AIMessage(content="Some claim."), _signals(answer_confidence_marker="high", confidence_check=_judged("low"))
+        )
         assert update["answer_confidence"] == "low"
-        assert update["answer_confidence_capped_reason"] == "ungrounded"
+        assert update["answer_confidence_capped_reason"] is None
+
+    def test_an_unavailable_check_surfaces_no_level_and_says_so(self):
+        update = _finalize_answer(
+            AIMessage(content="Some claim."),
+            _signals(answer_confidence_marker="high", confidence_check={"status": "unavailable"}),
+        )
+        assert update["answer_confidence"] is None
+        assert update["confidence_check"] == {"status": "unavailable"}
+
+    def test_a_quote_no_passage_holds_caps_the_checked_level(self):
+        update = _finalize_answer(
+            AIMessage(content="„Ein Zitat, das nirgends steht“ [1]."),
+            _signals(
+                answer_citation_grounded=True,
+                answer_quotes_verified=False,
+                answer_confidence_marker="high",
+                confidence_check=_judged("high"),
+            ),
+        )
+        assert update["answer_confidence"] == "medium"
+        assert update["answer_confidence_capped_reason"] == "quote_unverified"
 
     def test_no_marker_surfaces_nothing(self):
         msg = AIMessage(content="A plain answer with no marker.")
@@ -79,6 +110,7 @@ class TestFinalizeAnswer:
                 answer_citation_grounded=True,
                 answer_confidence_marker="medium",
                 answer_confidence_marker_reason="Keine Quelle zur Sonderregel",
+                confidence_check=_judged("medium"),
             ),
         )
         assert update["answer_confidence"] == "medium"
@@ -119,6 +151,7 @@ class TestConfidenceEndToEnd:
         escalation_requested: bool = False,
         confidence_marker=None,
         confidence_reason: str | None = None,
+        checked: str | None = None,
     ):
         """The real Piloti state: the answer text is already marker-free and
         the signals arrive on structured fields, as ``PilotiAgent.run()`` sets them."""
@@ -130,6 +163,7 @@ class TestConfidenceEndToEnd:
                 escalation_requested=escalation_requested,
                 answer_confidence_marker=confidence_marker,
                 answer_confidence_marker_reason=confidence_reason,
+                confidence_check=_judged(checked) if checked else None,
             )
 
         return research
@@ -149,16 +183,18 @@ class TestConfidenceEndToEnd:
     @pytest.mark.asyncio
     async def test_grounded_high_surfaces_high(self, deep_fn):
         result = await self._run(
-            self._research_returning("OIB 2 [1].", grounded=True, confidence_marker="high"), deep_fn, "t1"
+            self._research_returning("OIB 2 [1].", grounded=True, confidence_marker="high", checked="high"),
+            deep_fn,
+            "t1",
         )
         assert result.answer_confidence == "high"
 
     @pytest.mark.asyncio
-    async def test_ungrounded_high_capped_to_low(self, deep_fn):
+    async def test_a_self_report_without_a_check_surfaces_nothing(self, deep_fn):
         result = await self._run(
             self._research_returning("Claim.", grounded=False, confidence_marker="high"), deep_fn, "t2"
         )
-        assert result.answer_confidence == "low"
+        assert result.answer_confidence is None
 
     @pytest.mark.asyncio
     async def test_no_marker_surfaces_nothing(self, deep_fn):
@@ -204,7 +240,11 @@ class TestConfidenceEndToEnd:
     @pytest.mark.asyncio
     async def test_structured_reason_reaches_state(self, deep_fn):
         research = self._research_returning(
-            "OIB 2 [1].", grounded=True, confidence_marker="high", confidence_reason="Direkt durch OIB-RL 2 belegt"
+            "OIB 2 [1].",
+            grounded=True,
+            confidence_marker="high",
+            confidence_reason="Direkt durch OIB-RL 2 belegt",
+            checked="high",
         )
         result = await self._run(research, deep_fn, "s4")
         assert result.answer_confidence == "high"
@@ -224,13 +264,8 @@ class TestConfidenceEndToEnd:
         assert result.answer_confidence_reason is None
 
     @pytest.mark.asyncio
-    async def test_capped_confidence_keeps_model_reason(self, deep_fn):
-        # The guard caps the level but the model's reason still surfaces (it
-        # describes the raw self-assessment; the cap note explains the level).
-        research = self._research_returning(
-            "Claim.", grounded=False, confidence_marker="high", confidence_reason="Modell hält es für belegt"
-        )
+    async def test_the_check_reaches_the_conversation_state(self, deep_fn):
+        research = self._research_returning("Claim.", grounded=False, confidence_marker="high", checked="low")
         result = await self._run(research, deep_fn, "s7")
         assert result.answer_confidence == "low"
-        assert result.answer_confidence_capped_reason == "ungrounded"
-        assert result.answer_confidence_reason == "Modell hält es für belegt"
+        assert result.confidence_check == {"status": "judged", "level": "low", "findings": []}

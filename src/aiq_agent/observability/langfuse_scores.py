@@ -251,10 +251,23 @@ SCORE_DEFINITIONS: tuple[ScoreDefinition, ...] = (
         min_value=0,
     ),
     ScoreDefinition(
+        "confidence-judged-level",
+        "CATEGORICAL",
+        "The level the answer check gave the answer (ADR-0139): one model call grading the final answer "
+        "against everything the turn registered, before the quote gate. Not written when the check was "
+        "unavailable or the answer graded nothing.",
+        categories=("low", "medium", "high"),
+    ),
+    ScoreDefinition(
+        "confidence-judge-unavailable",
+        "BOOLEAN",
+        "On a turn whose answer was to be graded: true when the answer check could not run (no model, a "
+        "timeout, an error, an unreadable reply) and the turn surfaced no level.",
+    ),
+    ScoreDefinition(
         "claims-by-class",
         "CATEGORICAL",
-        "One score per provenance class present in the answer (ADR-0125): where its sentences come from. "
-        "The comment and metadata carry how many sentences of that class.",
+        "Retired with the per-sentence provenance classes (ADR-0139); no longer written. Kept so older traces chart.",
         categories=(
             "quoted",
             "cited",
@@ -270,26 +283,7 @@ SCORE_DEFINITIONS: tuple[ScoreDefinition, ...] = (
     ScoreDefinition(
         "claims-normative-uncited",
         "NUMERIC",
-        "Verdicts on the law (the claim judge's reading, ADR-0139) that nothing backs: no passage, or one that "
-        "does not state them.",
-        min_value=0,
-    ),
-    ScoreDefinition(
-        "claims-evidence-share",
-        "NUMERIC",
-        "The mean support of the answer's claims (ADR-0139; a table under a lead-in is one): 1 when the claim "
-        "judge found the claim's evidence supports it, 0.5 when it could not check or the evidence is capped (a "
-        "reading off an overview, a pointer that did not hold), 0 when nothing stands behind it, its evidence does "
-        "not address or contradicts it, or it is a verdict on the law with no passage. The trend a calibration of "
-        "rule 3 reads; the level counts instead. Not written on an answer with no load-bearing sentence.",
-        min_value=0,
-        max_value=1,
-    ),
-    ScoreDefinition(
-        "claims-unjudged",
-        "NUMERIC",
-        "Load-bearing claims with evidence the claim judge could not check (a timeout, an error, no model "
-        "configured; ADR-0139). Each counts half, and the answer reads medium at best.",
+        "Retired with the normative-claim detector (ADR-0139); no longer written. Kept so older traces chart.",
         min_value=0,
     ),
     ScoreDefinition(
@@ -470,29 +464,16 @@ def work_unfiled_scores(dropped: int) -> list[RuntimeScore]:
     return [RuntimeScore("work-proposals-unfiled", float(max(0, dropped)))]
 
 
-def claim_scores(stamps: Iterable[Any], *, dropped: int) -> list[RuntimeScore]:
-    """The answer's per-sentence provenance (``common/claim_provenance.py``), zeros included.
+def answer_check_scores(level: str | None) -> list[RuntimeScore]:
+    """The answer check's level, or that it was unavailable (``common/claim_judge.py``, ADR-0139)."""
+    if level is None:
+        return [_boolean("confidence-judge-unavailable", True)]
+    return [_boolean("confidence-judge-unavailable", False), RuntimeScore("confidence-judged-level", level)]
 
-    ``stamps`` are ``ClaimStamp`` objects; ``dropped`` is how many labels the
-    final text carries where a citation did not resolve.
-    """
-    from aiq_agent.common.claim_provenance import class_counts
-    from aiq_agent.common.claim_provenance import evidence_share
-    from aiq_agent.common.claim_provenance import normative_uncited
 
-    stamps = list(stamps)
-    scores = [
-        RuntimeScore("claims-by-class", name, comment=str(count), item=name, metadata={"count": count})
-        for name, count in class_counts(stamps).items()
-    ]
-    scores.append(RuntimeScore("claims-normative-uncited", float(normative_uncited(stamps))))
-    scores.append(RuntimeScore("citations-dropped-labelled", float(max(0, dropped))))
-    unjudged = sum(1 for stamp in stamps if stamp.load_bearing and stamp.judged == "unavailable")
-    scores.append(RuntimeScore("claims-unjudged", float(unjudged)))
-    share = evidence_share(stamps)
-    if share is not None:
-        scores.append(RuntimeScore("claims-evidence-share", round(share, 3)))
-    return scores
+def dropped_citation_scores(dropped: int) -> list[RuntimeScore]:
+    """How many places the final text labels a citation that did not resolve; zero included."""
+    return [RuntimeScore("citations-dropped-labelled", float(max(0, dropped)))]
 
 
 def look_scores(*, looks: int, drawing_value: bool, region_look_first: bool) -> list[RuntimeScore]:

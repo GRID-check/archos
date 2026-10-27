@@ -7,9 +7,8 @@ with the turn's ONE repair (an unresolvable ``[N]`` is labelled where it
 stood, never silently removed), the dialect validator
 (``common/answer_dialect``), sanitisation, the restated-mindmap drop,
 re-citing the composed cards, the ``answer_meta`` gates, card suppression,
-callout resolution, the normative-claim brake, the quote-line stamps
-(``common/quote_stamps``), and last the per-sentence provenance stamps
-(``common/claim_provenance``) the confidence is computed from. Not all pure:
+callout resolution, the quote-line stamps (``common/quote_stamps``), and
+last the answer check (``common/claim_judge``) the confidence comes from. Not all pure:
 card registration, re-citing and suppression write the turn's card registry.
 :func:`finalize_answer` runs them and returns a :class:`FinalAnswer`; the
 agent copies its signal fields onto the state (``ledger.assemble_result``).
@@ -23,7 +22,6 @@ import re
 from collections.abc import Awaitable
 from collections.abc import Callable
 from collections.abc import Collection
-from collections.abc import Mapping
 from collections.abc import Sequence
 from dataclasses import dataclass
 from dataclasses import field
@@ -58,36 +56,29 @@ from aiq_agent.common.citation_verification import annotate_unverified_quotes
 from aiq_agent.common.citation_verification import drop_ungrounded_trailer_values
 from aiq_agent.common.citation_verification import expand_grouped_citations
 from aiq_agent.common.citation_verification import get_turn_captures
-from aiq_agent.common.citation_verification import has_source_section
 from aiq_agent.common.citation_verification import is_look_place
 from aiq_agent.common.citation_verification import merged_citations
+from aiq_agent.common.citation_verification import quoted_spans
 from aiq_agent.common.citation_verification import resolve_unlisted_numbers
 from aiq_agent.common.citation_verification import sanitize_report
 from aiq_agent.common.citation_verification import turn_passages
-from aiq_agent.common.citation_verification import unlisted_candidates
 from aiq_agent.common.citation_verification import verify_citations
 from aiq_agent.common.citation_verification import verify_quoted_spans
+from aiq_agent.common.claim_judge import Check
+from aiq_agent.common.claim_judge import Evidence
 from aiq_agent.common.claim_judge import JudgeFn
-from aiq_agent.common.claim_provenance import ClaimEvidence
-from aiq_agent.common.claim_provenance import ClaimStamp
-from aiq_agent.common.claim_provenance import LookPlace
-from aiq_agent.common.claim_provenance import claims_ceiling
-from aiq_agent.common.claim_provenance import classify_claims
-from aiq_agent.common.claim_provenance import judge_items
-from aiq_agent.common.claim_provenance import weakest_claim
-from aiq_agent.common.claim_provenance import with_judgements
+from aiq_agent.common.claim_judge import Passage
 from aiq_agent.common.quote_stamps import stamp_quote_lines
 from aiq_agent.common.tool_validation import validate_tool_availability
 from aiq_agent.common.turn_status import emit_anatomy_dropped
 from aiq_agent.common.turn_status import emit_answer_repair
 from aiq_agent.common.turn_status import emit_citation_check
 from aiq_agent.common.workspace_records import filed_proposal_ids
-from aiq_agent.common.workspace_records import inventory_record
-from aiq_agent.common.workspace_records import profile_record
 from aiq_agent.common.workspace_records import records_from_messages
+from aiq_agent.observability.langfuse_scores import answer_check_scores
 from aiq_agent.observability.langfuse_scores import card_validity_score
-from aiq_agent.observability.langfuse_scores import claim_scores
 from aiq_agent.observability.langfuse_scores import dialect_scores
+from aiq_agent.observability.langfuse_scores import dropped_citation_scores
 from aiq_agent.observability.langfuse_scores import emit_scores
 from aiq_agent.observability.langfuse_scores import formula_provenance_score
 from aiq_agent.observability.langfuse_scores import look_scores
@@ -97,7 +88,6 @@ from aiq_agent.observability.langfuse_trace_attributes import record_trace_metad
 
 from .answer_shape import drop_restated_mindmaps
 from .dsml import strip_and_salvage_dsml_tool_calls
-from .grounding import answer_mentions_normative_claim
 from .markers import detect_and_strip_confidence_marker
 from .markers import detect_and_strip_escalation_marker
 from .quote_patch import QuotePatchFn
@@ -143,7 +133,6 @@ class FinalAnswer:
     citation_grounded: bool = False
     quotes_verified: bool = True
     unverified_quote_count: int = 0
-    normative_claim_uncited: bool = False
     escalation_requested: bool | None = None
     #: The envelope said ``kind: "handoff"`` — the answer IS the hand-off and
     #: nothing else. The prompt makes the two escalating shapes different:
@@ -166,14 +155,10 @@ class FinalAnswer:
     quote_stamps: tuple[dict[str, Any], ...] = ()
     #: What the dialect validator repaired (``common/answer_dialect.py``), one entry per repair.
     dialect_repairs: tuple[dict[str, str], ...] = ()
-    #: One stamp per sentence of ``content``: where it comes from and what kind
-    #: of claim it is (``common/claim_provenance.py``), wire-ready.
-    claim_stamps: tuple[dict[str, Any], ...] = ()
-    #: The claims ceiling (the evidence share, ADR-0139): what the surfaced
-    #: confidence is held under; and the ``(class, type)`` of the sentence
-    #: that most explains a cap.
-    claims_ceiling: str | None = None
-    weakest_claim: tuple[str, str] | None = None
+    #: What the answer check found (``common/claim_judge.py``, ADR-0139),
+    #: wire-ready: ``{"status": "judged", "level", "findings"}`` or
+    #: ``{"status": "unavailable"}``. None when the answer graded nothing.
+    confidence_check: dict[str, Any] | None = None
     #: A lookup ran and retrieved nothing, and the answer ships anyway, every
     #: sentence labelled as the model's own knowledge (a ruling is refused instead).
     lookup_found_nothing: bool = False
@@ -996,17 +981,6 @@ def _gated_meta(
     return reported
 
 
-def _normative_claim_uncited(content: str, grounding: _Grounding) -> bool:
-    """The anti-laundering brake, read off the FINAL user-visible text.
-
-    Only meaningful when the citation gate already failed: with no verified
-    citation, "mentions the law" and "asserts the law without support" are the
-    same thing. The confidence reads the per-sentence stamps instead
-    (ADR-0125); this answer-level flag stays for the trace and the ledger.
-    """
-    return not grounding.citation_grounded and answer_mentions_normative_claim(prose_without_references(content))
-
-
 #: Short-overview card floor. Below this a non-ruling answer without a
 #: copyable verdict has not earned cards: the prose IS the answer and a card
 #: under it is a trailer on a one-screen reply. It was 800 while a card cost
@@ -1171,11 +1145,10 @@ async def finalize_answer(
 ) -> FinalAnswer:
     """Run every post-answer stage and return the answer as the reader gets it.
 
-    ``project_context`` is the turn context's project block
-    (``PROJECT_CONTEXT v1``) and ``inventory`` its document inventory: each is
-    a record a sentence can be read off (``workspace_records.profile_record``,
-    ``inventory_record``). ``judge`` checks each sentence against its evidence
-    (``common/claim_judge.py``); without one the level falls back to medium.
+    ``judge`` grades the final answer against everything the turn registered
+    (``common/claim_judge.py``), the turn context's ``project_context`` and
+    ``inventory`` among it; without one an answer that graded itself surfaces
+    no level, only that the check was unavailable.
 
     ``turn_sources`` is this turn's capture, which the caller must pass when it
     finalises AFTER ``end_turn_capture``: the ContextVar is back to its prior
@@ -1209,10 +1182,8 @@ async def finalize_answer(
         ruling = extracted.meta is not None and extracted.meta.kind == "ruling"
         found_nothing = _require_retrieval(_passage_lookup_attempted(turn), tools, ruling=ruling)
     # An answer with no source list: each [N] names the passage of this turn
-    # that carries its sentences (ADR-0139), and the judge reads every passage it
-    # may name. One with a list is held to the list.
+    # that carries its sentences (ADR-0139), never a registry position.
     numbered = _turn_numbered(turn) if sources else {}
-    unlisted = {} if has_source_section(extracted.content) else unlisted_candidates(extracted.content, numbered)
     if sources:
         emit_citation_check(source_count=len(sources))
         verified = await _verify_with_quote_patch(
@@ -1250,20 +1221,24 @@ async def finalize_answer(
     # like the quote check it repeats: each line reads the registry's passages.
     pairs = [(source.entry, source.number) for source in cited if not is_look_place(source.entry)]
     stamps = await asyncio.to_thread(stamp_quote_lines, content, pairs, registry.all_sources())
-    renumber = sanitized.renumber_map or {}
-    claims = await _claim_provenance(
-        content,
-        cited,
-        stamps,
-        turn,
-        measured_values,
-        relied_readings(looks, cited),
-        project_context=project_context,
-        inventory=inventory,
-        candidates={renumber.get(number, number): entries for number, entries in unlisted.items()},
-        judge=judge,
-    )
-    _emit_look_scores(looks, looks_made, claims.stamps, cited)
+    readings = relied_readings(looks, cited)
+    _emit_look_scores(looks, looks_made, content, cited, readings)
+    emit_scores(dropped_citation_scores(content.count(DROPPED_CITATION_MARKER)), writer="piloti")
+    check = None
+    if extracted.confidence is not None:
+        evidence = _evidence(
+            messages,
+            content,
+            cited,
+            [*_trailer_captures(turn_sources), *sources],
+            stamps,
+            grounding,
+            turn=turn,
+            measured_values=measured_values,
+            readings=readings,
+            context=[part for part in (project_context, inventory) if part],
+        )
+        check = await _check_answer(evidence, judge)
     final_messages = list(messages)
     final_messages[index] = messages[index].model_copy(update={"content": content})
     return FinalAnswer(
@@ -1273,7 +1248,6 @@ async def finalize_answer(
         citation_grounded=grounding.citation_grounded,
         quotes_verified=not grounding.unverified_quotes,
         unverified_quote_count=len(grounding.unverified_quotes),
-        normative_claim_uncited=_normative_claim_uncited(content, grounding),
         escalation_requested=extracted.escalation_requested,
         answer_is_handoff=bool(extracted.meta is not None and extracted.meta.kind == "handoff"),
         confidence_marker=extracted.confidence,
@@ -1286,96 +1260,86 @@ async def finalize_answer(
         removed_citations=grounding.removed_citations,
         quote_stamps=tuple(stamps),
         dialect_repairs=tuple(dialect.repairs),
-        claim_stamps=tuple(claim.to_wire() for claim in claims.stamps),
-        claims_ceiling=claims.ceiling,
-        weakest_claim=claims.weakest,
+        confidence_check=check,
         lookup_found_nothing=found_nothing,
     )
 
 
 def _emit_look_scores(
-    looks: Sequence[dict[str, Any]], looks_made: int, stamps: Sequence[ClaimStamp], cited: Sequence[CitedSource]
+    looks: Sequence[dict[str, Any]],
+    looks_made: int,
+    content: str,
+    cited: Sequence[CitedSource],
+    readings: Sequence[str],
 ) -> None:
     """``look-count`` and ``looked-before-measurement`` at the turn's end (ADR-0128, docs/observability/langfuse.md)."""
     from aiq_agent.tools.look.cards import drawing_value_status
 
-    drawing_value, region_look_first = drawing_value_status(looks, stamps, cited)
+    drawing_value, region_look_first = drawing_value_status(looks, content, cited, readings)
     emit_scores(
         look_scores(looks=looks_made, drawing_value=drawing_value, region_look_first=region_look_first),
         writer="piloti",
     )
 
 
-@dataclass(frozen=True)
-class _Claims:
-    """The answer's per-sentence stamps and what the confidence reads off them."""
-
-    stamps: tuple[ClaimStamp, ...]
-    ceiling: str | None
-    weakest: tuple[str, str] | None
+def _question(messages: Sequence[Any]) -> str:
+    """The newest question: the last ``HumanMessage``'s text."""
+    human = next((msg for msg in reversed(messages) if isinstance(msg, HumanMessage)), None)
+    return content_to_text(human.content) if human is not None else ""
 
 
-def _passage_text(entries: Sequence[SourceEntry]) -> str:
-    """The passages a pointer may name, each under its citation key, for the claim judge."""
-    return "\n\n".join(f"[{entry.citation_key}]\n{entry.chunk_text}" for entry in entries if entry.chunk_text)
-
-
-async def _claim_provenance(
+def _evidence(
+    messages: Sequence[Any],
     content: str,
     cited: Sequence[CitedSource],
+    registered: Sequence[SourceEntry],
     quote_stamps: Sequence[dict[str, Any]],
+    grounding: _Grounding,
+    *,
     turn: Sequence[Any],
     measured_values: Sequence[str],
-    readings: Sequence[str] = (),
-    *,
-    project_context: str | None = None,
-    inventory: str | None = None,
-    candidates: Mapping[int, Sequence[SourceEntry]] | None = None,
-    judge: JudgeFn | None = None,
-) -> _Claims:
-    """Stamp each sentence of the final text with where it comes from, then judge it against that evidence.
+    readings: Sequence[str],
+    context: Sequence[str],
+) -> Evidence:
+    """Everything the turn registered that the answer could rest on, for the answer check.
 
-    Runs on the text the reader gets, with the ``[N]`` it shows, after the
-    quote stamps it reads. Records come from this turn's workspace calls and
-    the turn context (``common/workspace_records``), never from the source
-    registry. ``candidates`` are the passages an ``[N]`` of an answer without
-    a source list may name. One judge call for every sentence
-    (``common/claim_judge.py``); ``None`` from it, or no judge, marks the
-    stamps ``unavailable``. Observed as three scores.
+    The answer's cited passages under the ``[N]`` it shows, then every other
+    passage the turn retrieved; this turn's workspace records and the turn
+    context (profile, inventory), never Piloti's own earlier words
+    (``workspace_records``); the measurements and readings; and which
+    quotations the server's quote check found in their passage.
     """
-    extra = candidates or {}
-    passages = {
-        source.number: _passage_text([source.entry, *(e for e in extra.get(source.number, ()) if e != source.entry)])
-        for source in cited
-        if source.number is not None and not is_look_place(source.entry)
-    }
-    evidence = ClaimEvidence(
-        cited_numbers=frozenset(passages),
-        looks={
-            source.number: LookPlace(
-                read=source.entry.read,
-                crop=bool(source.entry.regions),
-                place_only=is_look_place(source.entry),
-                passage=source.entry.chunk_text or "",
-            )
-            for source in cited
-            if source.number is not None and source.entry.read
-        },
+    passages: list[Passage] = []
+    seen: set[tuple[str, str]] = set()
+    labelled = [(f"[{s.number}] {s.entry.citation_key}", s.entry, True) for s in cited if s.number is not None]
+    for label, entry, is_cited in [*labelled, *((e.citation_key, e, False) for e in registered)]:
+        key = (entry.citation_key, entry.chunk_text or "")
+        if not entry.chunk_text or key in seen or is_look_place(entry):
+            continue
+        seen.add(key)
+        passages.append(Passage(label, entry.chunk_text, is_cited))
+    not_found = [quote.quote for quote in grounding.unverified_quotes]
+    not_found += [stamp["text"] for stamp in quote_stamps if stamp.get("status") == "not_found"]
+    found = [stamp["text"] for stamp in quote_stamps if stamp.get("status") == "verbatim"]
+    if passages:
+        found += [quote for quote in quoted_spans(content) if quote not in not_found]
+    records = [f"{record.operation} ({record.outcome}): {record.text}" for record in records_from_messages(turn)]
+    return Evidence(
+        question=_question(messages),
+        answer=prose_without_references(content),
         passages=passages,
-        quote_stamps=quote_stamps,
-        records=[
-            *records_from_messages(turn),
-            *filter(None, [profile_record(project_context), inventory_record(inventory)]),
-        ],
-        measured_values=tuple(value for value in measured_values if value),
-        readings=tuple(readings),
+        records=[*records, *context],
+        measurements=[value for value in measured_values if value],
+        readings=[*readings, *(f"[{s.number}] {s.entry.read}" for s in cited if s.entry.read)],
+        quotes_found=found,
+        quotes_not_found=not_found,
     )
-    stamps = classify_claims(prose_without_references(content), evidence, normative=answer_mentions_normative_claim)
-    stamps = with_judgements(stamps, await judge(judge_items(stamps)) if judge is not None and stamps else None)
-    weakest = weakest_claim(stamps)
-    emit_scores(claim_scores(stamps, dropped=content.count(DROPPED_CITATION_MARKER)), writer="piloti")
-    return _Claims(
-        stamps=tuple(stamps),
-        ceiling=claims_ceiling(stamps),
-        weakest=(weakest.provenance, "normative" if weakest.is_verdict else "value") if weakest is not None else None,
-    )
+
+
+async def _check_answer(evidence: Evidence, judge: JudgeFn | None) -> dict[str, Any]:
+    """One judge call; the check wire-ready, ``unavailable`` without a judge or a usable reply. Scored."""
+    check: Check | None = await judge(evidence) if judge is not None else None
+    emit_scores(answer_check_scores(check.level if check is not None else None), writer="piloti")
+    if check is None:
+        return {"status": "unavailable"}
+    return {"status": "judged", "level": check.level, "findings": [f.to_wire() for f in check.findings]}

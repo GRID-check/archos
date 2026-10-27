@@ -60,10 +60,7 @@ import {
 import { MarkdownSlotProvider } from '@/shared/components/MarkdownRenderer/slot-context'
 import type { GridCard } from '@/shared/cards/schemas'
 import type { CitationSource } from '../types'
-import type {
-  AnswerConfidenceCappedReason,
-  AnswerConfidenceVersion,
-} from '@/lib/conversations/message-provenance'
+import type { AnswerConfidenceCappedReason } from '@/lib/conversations/message-provenance'
 import { ANSWER_DEGRADED_REASONS, TRUNCATION_REASONS } from '@/lib/conversations/message-provenance'
 import type { MessageStages } from '@/lib/conversations/message-stages'
 import type { CardInteractions } from '@/features/grid-cards/card-decision'
@@ -103,6 +100,7 @@ import { AnswerActions } from './AnswerActions'
 import { CardSlot, CardSlotLiveProvider, forgetArrivals } from './CardSlotArrival'
 import type { RetrievalLedger } from '@/lib/conversations/message-retrieval-ledger'
 import type { QuoteStamp } from '@/lib/conversations/message-quote-stamps'
+import type { ConfidenceCheck } from '@/lib/conversations/confidence-check'
 import type { ClaimStamp } from '@/lib/conversations/message-claim-stamps'
 import { projectKeysIn } from '@/lib/text/answer-directives'
 import { AnswerDataProvider, type AnswerData } from '@/shared/components/MarkdownRenderer/answer-block-context'
@@ -266,8 +264,10 @@ export interface AgentResponseProps {
   answerConfidenceReason?: string
   /** Where each sentence comes from (`TurnResult.claim_stamps`); the chip explains its level with them. */
   claimStamps?: ClaimStamp[]
+  /** What the answer check found (`TurnResult.confidence_check`, ADR-0139); the chip names its findings. */
+  confidenceCheck?: ConfidenceCheck
   /** Which rule computed the confidence: 2 the per-sentence formula; absent on older answers. */
-  answerConfidenceVersion?: AnswerConfidenceVersion
+  answerConfidenceVersion?: 1 | 2
   /** A search ran and found nothing; the answer is the model's own knowledge, said in a note. */
   lookupFoundNothing?: true
   /**
@@ -793,6 +793,7 @@ const AnswerDetails = memo(function AnswerDetails({
   answerConfidenceCappedReason,
   answerConfidenceReason,
   claimStamps,
+  confidenceCheck,
   answerConfidenceVersion,
   skillsActivated,
   skillsHidden,
@@ -816,7 +817,8 @@ const AnswerDetails = memo(function AnswerDetails({
   answerConfidenceCappedReason?: AnswerConfidenceCappedReason
   answerConfidenceReason?: string
   claimStamps?: ClaimStamp[]
-  answerConfidenceVersion?: AnswerConfidenceVersion
+  confidenceCheck?: ConfidenceCheck
+  answerConfidenceVersion?: 1 | 2
   skillsActivated?: string[]
   skillsHidden?: string[]
   showReasoning?: boolean
@@ -906,6 +908,7 @@ const AnswerDetails = memo(function AnswerDetails({
               cappedReason={answerConfidenceCappedReason}
               reason={answerConfidenceReason}
               claimStamps={claimStamps}
+              check={confidenceCheck}
               version={answerConfidenceVersion}
             />
           )}
@@ -961,6 +964,7 @@ const AgentResponseComponent: FC<AgentResponseProps> = ({
   answerConfidenceCappedReason,
   answerConfidenceReason,
   claimStamps,
+  confidenceCheck,
   answerConfidenceVersion,
   lookupFoundNothing,
   citationsRemoved,
@@ -1367,8 +1371,12 @@ const AgentResponseComponent: FC<AgentResponseProps> = ({
   // nothing without a level, and the feedback row needs a `messageId` — gating
   // the row on anything less let it mount as an empty band (bare spacer + its
   // own gap) on a meta turn that has neither.
+  // An unavailable answer check has no level and still says so.
   const hasConfidence =
-    answerConfidence === 'low' || answerConfidence === 'medium' || answerConfidence === 'high'
+    answerConfidence === 'low' ||
+    answerConfidence === 'medium' ||
+    answerConfidence === 'high' ||
+    confidenceCheck?.status === 'unavailable'
   // Rating somebody else's answer is not the reader's to do (readOnly).
   const hasFeedback = !readOnly && Boolean(messageId)
   // The copy actions. A still-arriving answer cannot be copied — half a
@@ -1831,6 +1839,7 @@ const AgentResponseComponent: FC<AgentResponseProps> = ({
                       answerConfidenceCappedReason={answerConfidenceCappedReason}
                       answerConfidenceReason={answerConfidenceReason}
                       claimStamps={claimStamps}
+                      confidenceCheck={confidenceCheck}
                       answerConfidenceVersion={answerConfidenceVersion}
                       skillsActivated={skillsActivated}
                       skillsHidden={skillsHidden}
@@ -2033,6 +2042,7 @@ const AgentResponseComponent: FC<AgentResponseProps> = ({
                           answerConfidenceCappedReason={answerConfidenceCappedReason}
                           answerConfidenceReason={answerConfidenceReason}
                           claimStamps={claimStamps}
+                          confidenceCheck={confidenceCheck}
                           answerConfidenceVersion={answerConfidenceVersion}
                           skillsActivated={skillsActivated}
                           skillsHidden={skillsHidden}

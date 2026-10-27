@@ -1,22 +1,18 @@
 'use client'
 
 /**
- * Dev preview: what an answer rests on, sentence by sentence (ADR-0125, ADR-0139).
+ * Dev preview: what an answer rests on, sentence by sentence (ADR-0125).
  *
  * Four answers through the real `AgentResponse`, and the confidence chip on its
  * own beside each, so its tooltip can be hovered without opening the details:
  *
- *   1. A WORKSPACE ANSWER read from records: the chip leads with
- *      „1 von 1 Aussagen belegt", muted.
- *   1b. AN ANSWER FROM FILES IT READ, with one next step the normative net
- *      catches: „3 von 4 Aussagen belegt · Rechtsaussage ohne Beleg". Rule 2
- *      showed „niedrig" (the bug ADR-0139 fixes).
+ *   1. A WORKSPACE ANSWER read from records: „hoch", with the mix
+ *      „2 Aussagen belegt". Under the old rule it showed „niedrig".
  *   2. A MIXED ANSWER: a record and a cited passage, and a statement about the
  *      law with no source beside them. „niedrig", and the tooltip says which.
  *   3. A SEARCH THAT FOUND NOTHING: the answer shows, with the note under it,
  *      and the label „[Beleg nicht verifiziert]" where it cited anyway.
- *   4. STORED ANSWERS from before: rule 2 keeps its level and its copy; no
- *      version keeps the answer-level copy.
+ *   4. A STORED ANSWER from before the change: no version, the old copy.
  *
  * 404s outside development. Pinned to German.
  */
@@ -36,7 +32,6 @@ const WORKSPACE: ClaimStamp[] = [
     provenance: 'record',
     claimType: 'value',
     loadBearing: true,
-    support: 1,
     operation: 'project-approvals-list',
   },
   {
@@ -44,7 +39,6 @@ const WORKSPACE: ClaimStamp[] = [
     provenance: 'record',
     claimType: 'descriptive',
     loadBearing: false,
-    support: 1,
     operation: 'project-approvals-list',
   },
 ]
@@ -55,7 +49,6 @@ const MIXED: ClaimStamp[] = [
     provenance: 'record',
     claimType: 'value',
     loadBearing: true,
-    support: 1,
     operation: 'project-approvals-list',
   },
   {
@@ -63,21 +56,18 @@ const MIXED: ClaimStamp[] = [
     provenance: 'cited',
     claimType: 'normative',
     loadBearing: true,
-    support: 1,
   },
   {
     text: 'Das betrifft auch das Dachgeschoß.',
     provenance: 'reasoning',
     claimType: 'descriptive',
     loadBearing: false,
-    support: 0.5,
   },
   {
     text: 'Der Einreichplan muss nach § 5 bewilligt werden.',
     provenance: 'model_knowledge',
     claimType: 'normative',
     loadBearing: true,
-    support: 0,
   },
 ]
 
@@ -87,52 +77,12 @@ const NOTHING_FOUND: ClaimStamp[] = [
     provenance: 'cited_dropped',
     claimType: 'normative',
     loadBearing: true,
-    support: 0,
   },
   {
     text: 'Ab 22 m Fluchtniveau gelten zusätzliche Anforderungen.',
     provenance: 'model_knowledge',
     claimType: 'normative',
     loadBearing: true,
-    support: 0,
-  },
-]
-
-const FILES_READ: ClaimStamp[] = [
-  {
-    text: 'Der Fluchtweg führt über das Treppenhaus T1 ins Freie [1].',
-    provenance: 'cited',
-    claimType: 'normative',
-    loadBearing: true,
-    support: 1,
-  },
-  {
-    text: 'Eine Sprinkleranlage ist nicht vorgesehen [2].',
-    provenance: 'cited',
-    claimType: 'descriptive',
-    loadBearing: false,
-    support: 1,
-  },
-  {
-    text: 'Für die Einreichung sind 2 Pläne vorhanden [1].',
-    provenance: 'cited',
-    claimType: 'value',
-    loadBearing: true,
-    support: 1,
-  },
-  {
-    text: 'Die Brandmeldeanlage deckt alle 4 Geschoße ab [2].',
-    provenance: 'cited',
-    claimType: 'value',
-    loadBearing: true,
-    support: 1,
-  },
-  {
-    text: 'Welche Brandabschnitte die Pläne zeigen, muss im Einzelnen geöffnet werden.',
-    provenance: 'model_knowledge',
-    claimType: 'normative',
-    loadBearing: true,
-    support: 0,
   },
 ]
 
@@ -157,8 +107,41 @@ function Preview() {
       className="text-foreground mx-auto flex w-full max-w-[760px] flex-col gap-10 p-4 sm:p-6"
     >
       <Block
+        title="Geprüfte Antwort (ADR-0139)"
+        note="Ein Prüfmodell hat die Antwort gegen alles gelesen, was sie abgerufen hat; der Tooltip nennt, was nicht belegt ist."
+      >
+        <ConfidenceChip
+          confidence="low"
+          version={2}
+          check={{
+            status: 'judged',
+            level: 'low',
+            findings: [
+              {
+                statement: 'Die Treppe ist 1,50 m breit',
+                problem: 'contradicted',
+                reason: 'Der Schnitt nennt 1,10 m Laufbreite.',
+                source: '[1] Schnitt A-A.pdf, S. 2',
+              },
+              {
+                statement: 'Ein zweiter Fluchtweg ist erforderlich',
+                problem: 'unbacked',
+                reason: 'Keine abgerufene Stelle sagt das.',
+                source: 'none',
+              },
+            ],
+          }}
+        />
+      </Block>
+      <Block
+        title="Belegprüfung nicht verfügbar"
+        note="Das Prüfmodell lief nicht (kein Modell, Zeitüberschreitung, Fehler): keine Einschätzung, und der Chip sagt es."
+      >
+        <ConfidenceChip confidence={null} check={{ status: 'unavailable', findings: [] }} />
+      </Block>
+      <Block
         title="Antwort aus dem Arbeitsbereich"
-        note="Zwei Sätze, beide aus gelesenen Einträgen: „1 von 1 Aussagen belegt“, ruhig."
+        note="Zwei Sätze, beide aus gelesenen Einträgen: „hoch“. Unter der alten Regel stand hier „niedrig“."
       >
         <ConfidenceChip confidence="high" version={2} claimStamps={WORKSPACE} />
         <AgentResponse
@@ -171,22 +154,11 @@ function Preview() {
         />
       </Block>
       <Block
-        title="Aus gelesenen Dateien, mit einem nächsten Schritt"
-        note="Vier Aussagen zitiert, ein nächster Schritt fängt sich im Rechtsnetz: „3 von 4 Aussagen belegt · Rechtsaussage ohne Beleg“. Unter Regel 2 stand hier „niedrig“."
-      >
-        <ConfidenceChip
-          confidence="medium"
-          cappedReason="normative_claim_uncited"
-          version={2}
-          claimStamps={FILES_READ}
-        />
-      </Block>
-      <Block
         title="Gemischte Antwort"
-        note="Ein Eintrag und eine zitierte Stelle, daneben eine Rechtsaussage ohne Quelle: die Zählung, die benannte Grenze, und der Tooltip sagt warum."
+        note="Ein Eintrag und eine zitierte Stelle, daneben eine Rechtsaussage ohne Quelle: „niedrig“, und der Tooltip sagt warum."
       >
         <ConfidenceChip
-          confidence="medium"
+          confidence="low"
           cappedReason="normative_claim_uncited"
           version={2}
           claimStamps={MIXED}
@@ -202,7 +174,7 @@ function Preview() {
           timestamp={at}
           routingDecision="shallow"
           answerConfidence="low"
-          answerConfidenceCappedReason="ungrounded"
+          answerConfidenceCappedReason="normative_claim_uncited"
           answerConfidenceVersion={2}
           claimStamps={NOTHING_FOUND}
           lookupFoundNothing
@@ -210,14 +182,8 @@ function Preview() {
       </Block>
       <Block
         title="Gespeicherte Antwort von vorher"
-        note="Regel 2 (gespeichert vor ADR-0139): die Stufe, mit der Aufschlüsselung im Tooltip. Ohne Version: die Texte der alten Regel, keine Aufschlüsselung."
+        note="Ohne Version: die Texte der alten Regel, keine Aufschlüsselung."
       >
-        <ConfidenceChip
-          confidence="low"
-          cappedReason="normative_claim_uncited"
-          version={2}
-          claimStamps={MIXED}
-        />
         <ConfidenceChip confidence="low" cappedReason="ungrounded" />
       </Block>
     </main>

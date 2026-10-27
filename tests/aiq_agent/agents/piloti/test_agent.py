@@ -23,7 +23,6 @@ from aiq_agent.common.citation_verification import set_session_registry
 from aiq_agent.common.data_source_registry import populate_from_config
 from aiq_agent.common.data_source_registry import reset_registry
 from aiq_agent.common.retrieval_rounds import assistant_checkpoint
-from tests.aiq_agent.claim_judge_stub import stub_judge
 from tests.fixtures.drafting_turns import COMMISSION
 from tests.fixtures.drafting_turns import FILE
 from tests.fixtures.drafting_turns import REVISE
@@ -1312,9 +1311,6 @@ class TestPilotiSourceRegistryGating:
 
         assert result.answer_lookup_found_nothing is True
         assert result.messages[-1].content == f"Hochhäuser regelt die OIB-RL 2.3 {DROPPED_CITATION_MARKER}."
-        assert [(stamp["provenance"], stamp.get("dropped")) for stamp in result.claim_stamps] == [
-            ("model_knowledge", True)
-        ]
         assert result.verified_sources is None
 
     @pytest.mark.asyncio
@@ -1946,9 +1942,6 @@ class TestPilotiAnswerGrounding:
         assert answer.content == f"The building height limit is 12 m {DROPPED_CITATION_MARKER}."
         assert "OIB Richtlinie" not in answer.content
         assert result.answer_citation_grounded is False
-        assert [(stamp["provenance"], stamp.get("dropped")) for stamp in result.claim_stamps] == [
-            ("model_knowledge", True)
-        ]
 
     # --- verified_sources emission: only THIS turn's cited sources become chips ---
 
@@ -2883,17 +2876,11 @@ class TestMeasurementSourcesDoNotGroundCitations:
 
     Giving measurements a derivation trail means they now travel on the citation
     WIRE, beside the retrieved sources. If that also put them in the
-    ``SourceRegistry``, ``citation_grounded`` would flip true off (a) and the
-    normative brake — which is gated on its ABSENCE — would never run, so (b)
-    would ride out at the model's own "high" on the strength of a basement
-    measurement. That is the laundering path ``grounding`` exists to close, and
-    these tests are what keep the Herleitung from re-opening it.
+    ``SourceRegistry``, ``citation_grounded`` would flip true off (a), and the
+    answer check would read the measurement as a passage that (b) could rest
+    on. That is the laundering path ``source_kinds`` describes, and these tests
+    are what keep the Herleitung from re-opening it.
     """
-
-    @pytest.fixture(autouse=True)
-    def _claim_judge(self, monkeypatch):
-        """The claim judge's deterministic stand-in (``tests/aiq_agent/claim_judge_stub.py``)."""
-        monkeypatch.setattr(PilotiAgent, "_claim_judge", lambda self: stub_judge())
 
     @pytest.fixture
     def mock_llm(self):
@@ -2929,17 +2916,16 @@ class TestMeasurementSourcesDoNotGroundCitations:
     # -- the property that must not regress -----------------------------------
 
     @pytest.mark.asyncio
-    async def test_measured_answer_with_uncited_normative_claim_still_surfaces_low(self, mock_llm_provider, mock_llm):
+    async def test_measured_answer_with_uncited_normative_claim_never_reaches_the_registry(
+        self, mock_llm_provider, mock_llm
+    ):
         """THE mixed case, after measurements appear in the Herleitung.
 
-        Named so a reviewer looking for the laundering guard finds it. The
-        assertion is deliberately the whole chain the chat node walks — the
-        measurement IS in the derivation trail, and the answer is STILL "low"
-        for ``normative_claim_uncited``.
+        Named so a reviewer looking for the laundering guard finds it: the
+        measurement IS in the derivation trail and never in the registry, so it
+        is no passage. Whether the verdict beside it is backed is the answer
+        check's, told that a measurement never backs one (ADR-0139).
         """
-        from aiq_agent.agents.piloti.markers import claim_confidence_capped_reason
-        from aiq_agent.agents.piloti.markers import surface_claim_confidence
-
         tools = self._measuring_turn(
             mock_llm,
             "Der Keller ist 2,70 m hoch und erfüllt damit die Mindestraumhöhe nach OIB-Richtlinie 4.",
@@ -2957,17 +2943,6 @@ class TestMeasurementSourcesDoNotGroundCitations:
         # never saw it.
         assert registry.all_sources() == []
         assert result.answer_citation_grounded is False
-        assert result.answer_normative_claim_uncited is True
-
-        # The composition the guard performs, on this turn's own stamps (rule 3,
-        # ADR-0139): the verdict has a measurement and no passage behind it.
-        assert [stamp["claim_type"] for stamp in result.claim_stamps] == ["normative"]
-        assert result.answer_claims_ceiling == "low"
-        assert surface_claim_confidence("high", result.answer_claims_ceiling) == "low"
-        assert (
-            claim_confidence_capped_reason("high", result.answer_claims_ceiling, tuple(result.answer_weakest_claim))
-            == "normative_claim_uncited"
-        )
 
     @pytest.mark.asyncio
     async def test_a_lone_measurement_is_never_a_citation(self, mock_llm_provider, mock_llm):
@@ -2989,27 +2964,6 @@ class TestMeasurementSourcesDoNotGroundCitations:
         assert result.answer_citation_grounded is False
         answer = next(m for m in reversed(result.messages) if isinstance(m, AIMessage) and not m.tool_calls)
         assert "[1]" not in answer.content
-
-    @pytest.mark.asyncio
-    async def test_measured_descriptive_answer_reaches_the_models_own_level(self, mock_llm_provider, mock_llm):
-        """Same turn as above minus the legal claim: the sentence states the measured value.
-
-        Rule 1 held it at "medium" for want of a per-sentence split; rule 2 has
-        one (ADR-0125), so a measured sentence that states no law allows "high".
-        """
-        from aiq_agent.agents.piloti.markers import surface_claim_confidence
-
-        tools = self._measuring_turn(mock_llm, "Der Keller ist 2,70 m hoch.")
-        agent = PilotiAgent(llm_provider=mock_llm_provider, tools=tools)
-        state = ResearchAgentState(
-            messages=[HumanMessage(content="Wie hoch ist der Keller?")],
-        )
-        result, _ = await _run_with_captured_registry(agent, state)
-
-        assert result.answer_measurement_grounded is True
-        assert result.answer_normative_claim_uncited is False
-        assert [stamp["provenance"] for stamp in result.claim_stamps] == ["measured"]
-        assert surface_claim_confidence("high", result.answer_claims_ceiling) == "high"
 
     @pytest.mark.asyncio
     async def test_failed_retrieval_is_still_reported_even_when_the_turn_measured(self, mock_llm_provider, mock_llm):

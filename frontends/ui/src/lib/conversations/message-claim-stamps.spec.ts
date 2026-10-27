@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { claimEvidenceCount, claimMix, claimWarning, sanitizeClaimStamps } from './message-claim-stamps'
+import { claimMix, sanitizeClaimStamps } from './message-claim-stamps'
 import { sanitizeProvenance } from './message-provenance'
 import { provenanceFromBackendMetadata } from './agent-answer-metadata'
 
@@ -104,110 +104,5 @@ describe('claim stamps', () => {
       lookupFoundNothing: false,
     })
     expect(provenance).toEqual({ answerConfidence: 'high' })
-  })
-
-  test('rule 3 is stored as version 2, and the support each stamp carries survives', () => {
-    const provenance = sanitizeProvenance({
-      answerConfidence: 'medium',
-      answerConfidenceVersion: 2,
-      claimStamps: [
-        { text: 'A.', provenance: 'cited', claim_type: 'value', load_bearing: true, support: 1 },
-        { text: 'B.', provenance: 'reasoning', claim_type: 'normative', load_bearing: true, support: 0.5 },
-        { text: 'C.', provenance: 'model_knowledge', claim_type: 'normative', load_bearing: true, support: 0.7 },
-      ],
-    })
-    expect(provenance?.answerConfidenceVersion).toBe(2)
-    expect(provenance?.claimStamps?.map((stamp) => stamp.support)).toEqual([1, 0.5, undefined])
-  })
-
-  test('the evidence count reads the support the agent computed', () => {
-    const stamps = sanitizeClaimStamps([
-      { text: 'A.', provenance: 'cited', claim_type: 'value', load_bearing: true, support: 1 },
-      { text: 'B.', provenance: 'reasoning', claim_type: 'normative', load_bearing: true, support: 0.5 },
-      { text: 'C.', provenance: 'cited', claim_type: 'descriptive', load_bearing: false, support: 1 },
-    ])
-    expect(claimEvidenceCount(stamps ?? [])).toEqual({ backed: 1, partial: 1, claims: 2, unchecked: false })
-    expect(claimEvidenceCount([{ text: 'A.', provenance: 'cited', claimType: 'value', loadBearing: true }])).toBeNull()
-  })
-})
-
-describe('claimWarning', () => {
-  const stamp = (provenance: string, claimType: string, loadBearing = true) =>
-    sanitizeClaimStamps([{ text: 'S.', provenance, claim_type: claimType, load_bearing: loadBearing }])?.[0]
-  const stamps = (...items: ReturnType<typeof stamp>[]) => items.filter((item) => item !== undefined)
-
-  test('names an uncited statement about the law first', () => {
-    expect(
-      claimWarning(stamps(stamp('cited', 'value'), stamp('reasoning', 'normative'), stamp('cited_dropped', 'value')))
-    ).toBe('normativeClaimUncited')
-  })
-
-  test('a record or a measurement beside the law does not count as its source', () => {
-    expect(claimWarning(stamps(stamp('measured', 'normative')))).toBe('normativeClaimUncited')
-    expect(claimWarning(stamps(stamp('record', 'normative')))).toBe('normativeClaimUncited')
-  })
-
-  test('then a citation that did not hold; nothing for a cited or a non-bearing statement', () => {
-    expect(claimWarning(stamps(stamp('cited', 'normative'), stamp('cited_dropped', 'value')))).toBe('citationUnverified')
-    expect(claimWarning(stamps(stamp('cited', 'normative'), stamp('model_knowledge', 'normative', false)))).toBeNull()
-  })
-})
-
-describe('rule 3 fields (round 3 of #1231)', () => {
-  test('a normative sentence the agent says concludes nothing is no warning: a listing names nothing', () => {
-    const stamps = sanitizeClaimStamps([
-      { text: 'Abgabepläne · 8', provenance: 'record', claim_type: 'value', load_bearing: true, support: 1, verdict: false },
-      { text: 'Die Höhen widersprechen sich.', provenance: 'record', claim_type: 'normative', load_bearing: true, support: 1, verdict: false },
-    ])
-    expect(claimWarning(stamps ?? [])).toBeNull()
-    expect(claimMix(stamps ?? []).normativeUncited).toBe(0)
-  })
-
-  test('an uncited verdict is named, and a dropped pointer is a flag, not a class', () => {
-    const stamps = sanitizeClaimStamps([
-      { text: 'Die Treppe ist 1,10 m breit.', provenance: 'measured', claim_type: 'value', load_bearing: true, support: 1, verdict: false, dropped: true },
-      { text: 'Die Treppe ist damit zu schmal.', provenance: 'model_knowledge', claim_type: 'normative', load_bearing: true, support: 0, verdict: true },
-    ])
-    expect(stamps?.[0].dropped).toBe(true)
-    expect(claimWarning(stamps ?? [])).toBe('normativeClaimUncited')
-    expect(claimWarning((stamps ?? []).slice(0, 1))).toBe('citationUnverified')
-  })
-
-  test('a table under a lead-in counts as one claim, backed only when every row is', () => {
-    const stamps = sanitizeClaimStamps([
-      { text: 'A [1].', provenance: 'cited', claim_type: 'value', load_bearing: true, support: 1 },
-      { text: 'Gliederung [1]:', provenance: 'cited', claim_type: 'normative', load_bearing: true, support: 1, group: 1 },
-      { text: '2 · Tragfähigkeit', provenance: 'reasoning', claim_type: 'value', load_bearing: true, support: 0.5, group: 1 },
-      { text: '3 · Ausbreitung', provenance: 'reasoning', claim_type: 'value', load_bearing: true, support: 0, group: 1 },
-    ])
-    expect(claimEvidenceCount(stamps ?? [])).toEqual({ backed: 1, partial: 1, claims: 2, unchecked: false })
-  })
-})
-
-describe('rule 3 judged by the claim judge (round 5 of #1231)', () => {
-  test('two cited claims the judge found supported read 2 of 2, never 0 of 2', () => {
-    const stamps = sanitizeClaimStamps([
-      { text: 'Ansicht West · 1 Tür · [1]', provenance: 'cited', claim_type: 'value', load_bearing: true, support: 1, judged: 'supported' },
-      { text: 'Ansicht Ost · 1 Tür · [2]', provenance: 'cited', claim_type: 'value', load_bearing: true, support: 1, judged: 'supported' },
-    ])
-    expect(claimEvidenceCount(stamps ?? [])).toEqual({ backed: 2, partial: 0, claims: 2, unchecked: false })
-  })
-
-  test('a claim the judge could not check counts as partly backed and says so', () => {
-    const stamps = sanitizeClaimStamps([
-      { text: 'A [1].', provenance: 'cited', claim_type: 'value', load_bearing: true, support: 0.5, judged: 'unavailable' },
-    ])
-    expect(stamps?.[0].judged).toBe('unavailable')
-    expect(claimEvidenceCount(stamps ?? [])).toEqual({ backed: 0, partial: 1, claims: 1, unchecked: true })
-  })
-
-  test('a verdict its source contradicts is named first; an unknown judgement is dropped', () => {
-    const stamps = sanitizeClaimStamps([
-      { text: 'Wendeltreppen sind zulässig [1].', provenance: 'cited', claim_type: 'normative', load_bearing: true, support: 0, verdict: true, judged: 'contradicted' },
-      { text: 'Die Treppe ist zu schmal.', provenance: 'model_knowledge', claim_type: 'normative', load_bearing: true, support: 0, verdict: true, judged: 'maybe' },
-    ])
-    expect(stamps?.[1].judged).toBeUndefined()
-    expect(claimWarning(stamps ?? [])).toBe('claimContradicted')
-    expect(claimWarning((stamps ?? []).slice(1))).toBe('normativeClaimUncited')
   })
 })

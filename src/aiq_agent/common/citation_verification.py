@@ -1171,7 +1171,7 @@ def _holds(sentence: str, entry: SourceEntry) -> bool:
     """Whether ``entry``'s text carries the sentence: every number it states and half its key words.
 
     A choice between passages, never a judgement of support: whether the
-    passage says what the sentence says is the claim judge's
+    passage says what the sentence says is the answer check's
     (``common/claim_judge.py``). The file the sentence names is left out: a
     page's text rarely prints its own file name.
     """
@@ -1215,24 +1215,6 @@ def resolve_unlisted_numbers(text: str, numbered: dict[int, list[SourceEntry]]) 
     if not resolved:
         return []
     return [resolved.get(position) for position in range(1, max(resolved) + 1)]
-
-
-def unlisted_candidates(text: str, numbered: dict[int, list[SourceEntry]]) -> dict[int, list[SourceEntry]]:
-    """Every passage of the turn an ``[N]`` with no source list may name: printed under N, or carrying a sentence.
-
-    What the claim judge reads each such sentence against, so each occurrence
-    is checked on its own: „Sie gilt für Gebäude [1]" against the page that
-    says so, whatever the table rows that also cite [1] point at.
-    """
-    every = [entry for held in numbered.values() for entry in held]
-    candidates: dict[int, list[SourceEntry]] = {}
-    for number in sorted(_inline_citation_numbers(text)):
-        carrying = _carrying(text, number)
-        found = list(numbered.get(number, []))
-        found += [entry for entry in every if entry not in found and any(_holds(s, entry) for s in carrying)]
-        if found:
-            candidates[number] = found
-    return candidates
 
 
 def _entry_from_hit(hit: GroundingHit, tool_name: str) -> SourceEntry:
@@ -3123,11 +3105,6 @@ def _normalize_source_section_layout(ref_section: str) -> str:
     return "\n".join(_split_collapsed_source_line(line) for line in ref_section.split("\n"))
 
 
-def has_source_section(text: str) -> bool:
-    """Whether the answer writes its own source list („Quellen:"), which its ``[N]`` are then held to."""
-    return _REFERENCE_SECTION_RE.search(text) is not None
-
-
 def _inline_citation_numbers(text: str) -> set[int]:
     """Return numeric inline citation labels present in text."""
     return {int(match.group(1)) for match in _INLINE_CITATION_RE.finditer(text)}
@@ -3326,8 +3303,8 @@ UNVERIFIED_QUOTE_MARKER = "[nicht wörtlich in der Quelle belegt]"
 #: (``verify_citations(label_dropped=True)``): no retrieved source behind the
 #: number, or a § / Punkt beside it the cited passage does not hold. The claim
 #: stays, as it always did; what changed is that it no longer reads like every
-#: other unmarked sentence (the per-sentence class ``cited_dropped``,
-#: ``common/claim_provenance.py``). Reader-facing German, like the quote marker.
+#: other unmarked sentence, and the answer check reads the label too
+#: (``common/claim_judge.py``). Reader-facing German, like the quote marker.
 DROPPED_CITATION_MARKER = "[Beleg nicht verifiziert]"
 
 #: Why a cited occurrence lost its number although its source line resolved.
@@ -3886,6 +3863,11 @@ def _quoted_spans(body: str, min_quote_len: int) -> Iterator[tuple[re.Match[str]
         norm_quote = _normalize_for_quote_match(inner)
         if len(norm_quote) >= min_quote_len:
             yield match, inner, norm_quote
+
+
+def quoted_spans(answer_text: str) -> list[str]:
+    """The quotations in the answer body long enough to check, as written (the answer check reads which held)."""
+    return [inner for _, inner, _ in _quoted_spans(_answer_body_before_sources(answer_text), MIN_QUOTE_LEN)]
 
 
 def verify_quoted_spans(

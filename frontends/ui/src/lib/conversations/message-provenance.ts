@@ -36,6 +36,7 @@ import { modernizeTurnEventKey, modernizeTurnEventValueName } from './legacy-tur
 import type { RetrievalLedger } from './message-retrieval-ledger'
 import { sanitizeRetrievalLedger } from './message-retrieval-ledger'
 import { sanitizeQuoteStamps, type QuoteStamp } from './message-quote-stamps'
+import { sanitizeConfidenceCheck, type ConfidenceCheck } from './confidence-check'
 import { sanitizeClaimStamps, type ClaimStamp } from './message-claim-stamps'
 import { isChatEffort, type ChatEffort } from '@/lib/reasoning-settings/catalog'
 
@@ -231,19 +232,6 @@ export type StepDetailValue = string | number | boolean | string[]
 export type AnswerConfidenceCappedReason = (typeof CAPPED_REASONS)[number]
 
 /**
- * Which rule computed an answer's confidence: 1 the answer-level floors, 2 the
- * per-sentence stamps (ADR-0125). Rule 3 (ADR-0139) is also 2 on the wire and
- * is told apart by its stamps carrying `support`: a tab opened before it reads
- * this field as `1 | 2`, and a 3 would drop the turn's RUN_FINISHED. The chip
- * renders a stored answer under the rule it was computed with.
- */
-export const ANSWER_CONFIDENCE_VERSIONS = [1, 2] as const
-export type AnswerConfidenceVersion = (typeof ANSWER_CONFIDENCE_VERSIONS)[number]
-
-export const isAnswerConfidenceVersion = (value: unknown): value is AnswerConfidenceVersion =>
-  (ANSWER_CONFIDENCE_VERSIONS as readonly unknown[]).includes(value)
-
-/**
  * WHY a deep-research run stopped before it was finished, as the backend's own
  * stable token (`deep_researcher/models/state.py`):
  *
@@ -348,14 +336,14 @@ export interface MessageProvenance {
    * confidence chip explains its level as their mix.
    */
   claimStamps?: ClaimStamp[]
+  /** What the answer check found (`confidence-check.ts`, ADR-0139). */
+  confidenceCheck?: ConfidenceCheck
   /**
-   * Which rule computed `answerConfidence`: 2 the per-sentence stamps,
-   * held to the weakest (ADR-0125) or, when the stamps carry `support`, the
-   * count of backed claims (rule 3, ADR-0139, which keeps 2 for open tabs).
-   * Absent on every answer stored before rule 2, which renders under the
-   * answer-level floors it was computed with.
+   * Which rule computed `answerConfidence`: 2 the per-sentence formula
+   * (ADR-0125). Absent on every answer stored before it, which renders under
+   * the answer-level floors it was computed with.
    */
-  answerConfidenceVersion?: AnswerConfidenceVersion
+  answerConfidenceVersion?: 1 | 2
   /** A search ran and found nothing; the answer is the model's own knowledge. Present or absent. */
   lookupFoundNothing?: true
 }
@@ -830,7 +818,9 @@ export function sanitizeProvenance(input: unknown): MessageProvenance | null {
 
   const claims = sanitizeClaimStamps(input.claimStamps)
   if (claims) out.claimStamps = claims
-  if (isAnswerConfidenceVersion(input.answerConfidenceVersion)) {
+  const check = sanitizeConfidenceCheck(input.confidenceCheck)
+  if (check) out.confidenceCheck = check
+  if (input.answerConfidenceVersion === 1 || input.answerConfidenceVersion === 2) {
     out.answerConfidenceVersion = input.answerConfidenceVersion
   }
   if (input.lookupFoundNothing === true) out.lookupFoundNothing = true

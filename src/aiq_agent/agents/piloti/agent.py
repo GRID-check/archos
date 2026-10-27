@@ -927,7 +927,7 @@ def _fetch_results(
 
 
 def _turn_inventory(state: Any) -> str:
-    """The document inventory the turn context showed the model, for the answer's records (ADR-0139)."""
+    """The document inventory the turn context showed the model, for the answer check (ADR-0139)."""
     from aiq_agent.knowledge.inventory import in_scope_shelves_from_context
     from aiq_agent.knowledge.inventory import render_inventory_block
 
@@ -1071,10 +1071,10 @@ class PilotiAgent:
                 thousand tokens instead of the full-context round the
                 ``emit_card`` retry used to cost. ``None`` drops a card that
                 fails validation, and records that it did.
-            claim_judge_llm: The model that checks each sentence of the answer
-                against its evidence (``common/claim_judge.py``, ADR-0139),
-                resolved per turn like the follow-ups stage's model. ``None``
-                leaves every stamp unjudged and the level at medium.
+            claim_judge_llm: The model that grades the final answer against
+                everything the turn registered (``common/claim_judge.py``,
+                ADR-0139), resolved per turn like the follow-ups stage's model.
+                ``None`` leaves the check unavailable and the turn with no level.
         """
         self.card_repair_llm = card_repair_llm
         self.claim_judge_llm = claim_judge_llm
@@ -1457,7 +1457,7 @@ class PilotiAgent:
         return quote_patcher(self.card_repair_llm)
 
     def _claim_judge(self) -> JudgeFn | None:
-        """The turn's claim judge on the org's follow-ups model (override, BYOK); ``None`` when none is configured."""
+        """The turn's answer check on the org's follow-ups model (override, BYOK); ``None`` when none is configured."""
         from aiq_agent.common.claim_judge import llm_judge
         from aiq_agent.common.model_overrides import AgentGroup
         from aiq_agent.stages.runner import resolve_group_llm

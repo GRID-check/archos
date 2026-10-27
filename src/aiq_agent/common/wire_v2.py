@@ -406,44 +406,27 @@ class QuoteStamp(_Model):
     url: str | None = None
 
 
-class ClaimStamp(_Model):
-    """Where one sentence of ``text`` comes from (``common/claim_provenance.py``, ADR-0125), in document order.
+class ConfidenceFinding(_Model):
+    """A statement the answer relies on that its evidence does not back, or contradicts."""
 
-    ``provenance`` is the strongest evidence the sentence has; ``claim_type``
-    whether it states the law, a value, or a description. ``load_bearing``
-    sentences are the ones the turn's confidence is held to.
+    statement: str = Field(max_length=300)
+    problem: Literal["unbacked", "contradicted"]
+    reason: str = Field(max_length=300)
+    #: The evidence it was checked against, as the check labelled it; ``none`` when nothing addressed it.
+    source: str = Field(max_length=200)
+
+
+class ConfidenceCheck(_Model):
+    """What the answer check found (``common/claim_judge.py``, ADR-0139).
+
+    ``judged``: ``answer_confidence`` is its level (under the quote gate), and
+    ``findings`` names what holds it down. ``unavailable``: the check could not
+    run, and the turn surfaces no level.
     """
 
-    text: str = Field(max_length=300, description="The sentence as the final text writes it, cut at 300 characters.")
-    provenance: Literal[
-        "quoted", "cited", "cited_dropped", "record", "action", "measured", "observed", "reasoning", "model_knowledge"
-    ]
-    claim_type: Literal["normative", "value", "descriptive"]
-    load_bearing: bool = False
-    numbers: list[int] = Field(default_factory=list)
-    #: For a ``record`` or ``action``: the workspace operation it came from.
-    operation: str | None = None
-    #: For a ``record``: numbers the sentence states that no record this turn held.
-    unmatched: list[str] = Field(default_factory=list)
-    #: What the sentence contributes to the turn's count of backed claims
-    #: (rule 3, ADR-0139): 1 its evidence supports it; 0.5 unjudged (the claim
-    #: judge could not run) or capped (a reading, a pointer that did not hold);
-    #: 0 nothing behind it, or a verdict on the law with no passage. Absent on a
-    #: turn stored before rule 3; its presence is what tells rule 3 apart.
-    support: float | None = Field(default=None, ge=0, le=1)
-    #: Rule 3: the sentence concludes something about the law, so only a
-    #: passage grounds it; the chip warns on an uncited one. Optional, as
-    #: ``support`` is, so an open tab's bundle strips it.
-    verdict: bool | None = None
-    #: Rule 3: what the claim judge found against the sentence's evidence
-    #: (``common/claim_judge.py``); ``unavailable`` when it could not run.
-    judged: Literal["supported", "contradicted", "not_addressed", "unavailable"] | None = None
-    #: Rule 3: it carried a pointer that did not hold; its class is what is
-    #: left without it.
-    dropped: bool | None = None
-    #: Rule 3: the table or list under one lead-in this sentence belongs to;
-    #: the group counts as one claim.
-    group: int | None = None
+    status: Literal["judged", "unavailable"]
+    level: Literal["low", "medium", "high"] | None = None
+    findings: list[ConfidenceFinding] = Field(default_factory=list)
 
 
 class TurnResult(_Model):
@@ -477,13 +460,11 @@ class TurnResult(_Model):
     retrieval_ledger: list[dict[str, Any]] = Field(default_factory=list)
     #: One stamp per quote line of ``text``, in document order.
     quote_stamps: list[QuoteStamp] = Field(default_factory=list)
-    #: One stamp per sentence of ``text``, in document order (ADR-0125).
-    claim_stamps: list[ClaimStamp] = Field(default_factory=list)
-    #: Which rule computed ``answer_confidence``: 2 the per-sentence stamps
-    #: (ADR-0125). Rule 3 (ADR-0139) is also 2 here, told apart by the stamps'
-    #: ``support``: an open tab's bundle reads this field as ``1 | 2`` and
-    #: would drop a ``RUN_FINISHED`` carrying 3. Absent on every turn stored
-    #: before rule 2, which the reader renders under the answer-level floors.
+    #: What the answer check found; absent when the answer graded nothing (ADR-0139).
+    confidence_check: ConfidenceCheck | None = None
+    #: Which rule computed ``answer_confidence``: 2 a checked answer (told
+    #: apart from a stored per-sentence turn by ``confidence_check``), 1 the
+    #: answer-level floors.
     answer_confidence_version: Literal[1, 2] | None = None
     #: A lookup ran and found nothing; the answer is the model's own knowledge
     #: and says so in a banner. False on every other turn.

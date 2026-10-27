@@ -2078,45 +2078,26 @@ export const chat = {
       citationFallback:
         'Medium confidence: the source shown was attached by the assistant, not cited by the answer itself.',
     },
-    // Since ADR-0139: the chip leads with what the answer rests on („12 of 14
-    // statements backed"), not a self-assessment. A warning shows only when a named
-    // cap fires, and names it.
-    byShare: {
-      label: '{backed} of {claims} statements backed',
-      partial: '{count} partly',
-      unchecked: 'evidence check unavailable',
-      ariaLabel: '{backed} of {claims} load-bearing statements backed, confidence {level}',
+    // The level since ADR-0139: a grading model reads the answer against
+    // everything retrieved for it, and names what is not backed.
+    checked: {
+      ariaLabel: 'Evidence check of the answer: {level}',
       tooltip:
-        'Counted are the load-bearing statements: facts and legal statements, not next steps or assessments. Backed means the source, workspace record or measurement the statement rests on says the same; a language model checks this per statement. Only a source backs a legal statement.',
-      selfAssessment: 'Assistant self-assessment: {level}',
+        'A grading model read the answer against everything retrieved for it: sources, workspace records, measurements and readings. It can be wrong.',
       levelMeanings: {
-        high: 'High: every load-bearing statement is backed.',
-        medium:
-          'Medium: some load-bearing statements are backed, others not or only partly, or the check was not possible.',
-        low: 'Low: no load-bearing statement is backed, or a legal statement contradicts its source.',
+        high: 'High: every statement the answer relies on is backed.',
+        medium: 'Medium: the main point is backed, secondary statements are not.',
+        low: 'Low: the main point is not backed, or a source contradicts the answer.',
       },
-      capLabels: {
-        ungrounded: 'too little backed',
-        quoteUnverified: 'quote unconfirmed',
-        normativeClaimUncited: 'legal statement uncited',
-        measurementOnly: 'measured only',
-        citationFallback: 'source attached',
-        citationUnverified: 'citation unverified',
-        claimContradicted: 'contradicts its source',
-      },
-      cappedReasons: {
-        claimContradicted: 'A legal statement in this answer contradicts the source it rests on.',
-        ungrounded: 'Capped: too many load-bearing statements have no evidence behind them.',
-        quoteUnverified: 'Capped: a quotation could not be confirmed verbatim in its source.',
-        normativeClaimUncited:
-          'Capped: a legal statement has no cited source. A workspace record or a measurement does not back a legal statement.',
-        measurementOnly:
-          'Medium confidence: the value is measured on the model (with tolerance and method) but not backed by a cited source.',
-        citationFallback:
-          'Medium confidence: the source shown was attached by the assistant, not cited by the answer itself.',
-        citationUnverified:
-          'A citation in this answer could not be matched to a source this answer read, and is marked in the text.',
-      },
+      findingsLabel: 'Not backed',
+      problems: { unbacked: 'not backed', contradicted: 'contradicts the source' },
+      // "{source}" is the source as the grading model named it.
+      checkedAgainst: 'checked against {source}',
+      noSource: 'no source',
+      quoteUnverified: 'A quotation could not be confirmed word for word in its source, so the level is capped.',
+      unavailable: 'Evidence check unavailable',
+      unavailableTooltip:
+        'The evidence check could not run for this answer, so Piloti shows no level; the answer itself is unchanged.',
     },
     // The assessment since ADR-0125: computed per statement, not per answer.
     // Older answers keep the copy above, under which they were computed.

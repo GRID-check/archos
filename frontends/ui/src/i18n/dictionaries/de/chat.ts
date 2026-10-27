@@ -2102,47 +2102,27 @@ export const chat: typeof en.chat = {
       citationFallback:
         'Mittlere Sicherheit: die angeführte Quelle wurde ergänzt, nicht von der Antwort selbst zitiert.',
     },
-    // Seit ADR-0139: die Antwort führt mit dem, worauf sie steht („12 von 14
-    // Aussagen belegt"), nicht mit einer Selbsteinschätzung. Eine Warnung
-    // erscheint nur, wenn eine benannte Grenze greift, und nennt sie.
-    byShare: {
-      label: '{backed} von {claims} Aussagen belegt',
-      partial: '{count} teilweise',
-      unchecked: 'Belegprüfung nicht verfügbar',
-      ariaLabel: '{backed} von {claims} tragenden Aussagen belegt, Einschätzung {level}',
+    // Die Einschätzung seit ADR-0139: ein Prüfmodell liest die Antwort gegen
+    // alles, was die Antwort abgerufen hat, und nennt, was nicht belegt ist.
+    checked: {
+      ariaLabel: 'Belegprüfung der Antwort: {level}',
       tooltip:
-        'Gezählt sind die tragenden Aussagen: Feststellungen und Rechtsaussagen, keine nächsten Schritte und Einschätzungen. Belegt heißt: die Quelle, der Eintrag im Arbeitsbereich oder die Messung, auf die sich die Aussage stützt, sagt dasselbe; ein Sprachmodell prüft das je Aussage. Eine Rechtsaussage belegt nur eine Quelle.',
-      selfAssessment: 'Eigene Einschätzung des Assistenten: {level}',
+        'Ein Prüfmodell hat die Antwort gegen alles gelesen, was für sie abgerufen wurde: Quellen, Einträge im Arbeitsbereich, Messungen und Ablesungen. Es kann irren.',
       levelMeanings: {
-        high: 'Hoch: jede tragende Aussage ist belegt.',
-        medium:
-          'Mittel: manche tragenden Aussagen sind belegt, andere nicht oder nur teilweise, oder die Prüfung war nicht möglich.',
-        low: 'Niedrig: keine tragende Aussage ist belegt, oder eine Rechtsaussage widerspricht ihrer Quelle.',
+        high: 'Hoch: jede Aussage, auf die sich die Antwort stützt, ist belegt.',
+        medium: 'Mittel: die Kernaussage ist belegt, Nebenaussagen sind es nicht.',
+        low: 'Niedrig: die Kernaussage ist nicht belegt, oder eine Quelle widerspricht der Antwort.',
       },
-      // Kurz, im Chip selbst hinter der Zählung, nur wenn die Grenze greift.
-      capLabels: {
-        ungrounded: 'zu wenig belegt',
-        quoteUnverified: 'Zitat nicht bestätigt',
-        normativeClaimUncited: 'Rechtsaussage ohne Beleg',
-        measurementOnly: 'nur gemessen',
-        citationFallback: 'Quelle ergänzt',
-        citationUnverified: 'Beleg nicht verifiziert',
-        claimContradicted: 'widerspricht der Quelle',
-      },
-      cappedReasons: {
-        claimContradicted: 'Eine Rechtsaussage dieser Antwort widerspricht der Quelle, auf die sie sich stützt.',
-        ungrounded: 'Begrenzt: hinter zu vielen tragenden Aussagen steht kein Beleg.',
-        quoteUnverified:
-          'Begrenzt: ein Zitat konnte nicht wörtlich in der Quelle bestätigt werden.',
-        normativeClaimUncited:
-          'Begrenzt: eine Rechtsaussage steht ohne zitierte Quelle. Ein Eintrag im Arbeitsbereich oder eine Messung belegt keine Rechtsaussage.',
-        measurementOnly:
-          'Mittlere Sicherheit: die Angabe ist am Modell gemessen (mit Toleranz und Methode), aber nicht durch eine Quelle belegt.',
-        citationFallback:
-          'Mittlere Sicherheit: die angeführte Quelle wurde ergänzt, nicht von der Antwort selbst zitiert.',
-        citationUnverified:
-          'Ein Beleg dieser Antwort ließ sich keiner Quelle zuordnen, die sie gelesen hat, und ist im Text markiert.',
-      },
+      findingsLabel: 'Nicht belegt',
+      problems: { unbacked: 'nicht belegt', contradicted: 'widerspricht der Quelle' },
+      // „{source}" ist die Quelle, wie das Prüfmodell sie benannt hat.
+      checkedAgainst: 'geprüft gegen {source}',
+      noSource: 'keine Quelle',
+      quoteUnverified:
+        'Ein Zitat konnte nicht wörtlich in der Quelle bestätigt werden; die Einschätzung ist deshalb begrenzt.',
+      unavailable: 'Belegprüfung nicht verfügbar',
+      unavailableTooltip:
+        'Die Belegprüfung konnte für diese Antwort nicht laufen. Piloti zeigt deshalb keine Einschätzung; die Antwort selbst ist unverändert.',
     },
     // Die Einschätzung seit ADR-0125: pro Aussage gerechnet, nicht pro Antwort.
     // Ältere Antworten behalten die Texte oben, unter denen sie berechnet wurden.

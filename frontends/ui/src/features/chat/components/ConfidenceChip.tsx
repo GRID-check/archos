@@ -5,17 +5,9 @@ import { Gauge } from 'lucide-react'
 import { Chip } from '@/components/ui/chip'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useTranslations } from '@/i18n'
-import {
-  claimEvidenceCount,
-  claimMix,
-  claimWarning,
-  type ClaimMix,
-  type ClaimStamp,
-} from '@/lib/conversations/message-claim-stamps'
-import type {
-  AnswerConfidenceCappedReason,
-  AnswerConfidenceVersion,
-} from '@/lib/conversations/message-provenance'
+import type { ConfidenceCheck } from '@/lib/conversations/confidence-check'
+import { claimMix, type ClaimMix, type ClaimStamp } from '@/lib/conversations/message-claim-stamps'
+import type { AnswerConfidenceCappedReason } from '@/lib/conversations/message-provenance'
 
 /** The three self-assessment levels the model can report. */
 export type AnswerConfidence = 'low' | 'medium' | 'high'
@@ -61,15 +53,20 @@ interface ConfidenceChipProps {
    */
   reason?: string
   /**
-   * Which rule computed the level. 2 reads the per-sentence stamps: held to the
-   * weakest one (ADR-0125), or, when the stamps carry `support`, counted
-   * (rule 3, ADR-0139), and the chip then leads with the count of backed
-   * claims instead of a level. Absent on an answer stored before rule 2, which
-   * keeps the copy of the answer-level floors it was computed with.
+   * Which rule computed the level. 2 is the per-sentence formula (ADR-0125):
+   * the level is held to the weakest sentence the answer rests on, and the
+   * tooltip says what its sentences rest on. Absent on an answer stored before
+   * it, which keeps the copy of the answer-level floors it was computed with.
    */
-  version?: AnswerConfidenceVersion
-  /** Where each sentence comes from; read under rules 2 and 3. */
+  version?: 1 | 2
+  /** Where each sentence comes from; read only under rule 2. */
   claimStamps?: readonly ClaimStamp[]
+  /**
+   * What the answer check found (ADR-0139). Judged: the level is the check's,
+   * and the tooltip names the statements it found unbacked or contradicted.
+   * Unavailable: there is no level, and the chip says the check did not run.
+   */
+  check?: ConfidenceCheck
 }
 
 /**
@@ -82,15 +79,8 @@ interface ConfidenceChipProps {
  *
  * The tooltip explains the chip in full: what the level means, the model's own
  * reason (when given), the self-assessment caveat, any deterministic cap, and
- * under rules 2 and 3 the mix of what the sentences rest on
+ * under rule 2 the mix of what the sentences rest on
  * („5 Aussagen belegt · 1 Einschätzung · 1 Rechtsaussage ohne Beleg").
- *
- * Under rule 3 (ADR-0139) the chip itself leads with the measured count
- * („12 von 14 Aussagen belegt"), as the field does: what the answer rests on,
- * not how sure the model says it is. It turns to the warning tone only with a
- * named reason, read off the stamps first, and names it beside the count
- * („· Rechtsaussage ohne Beleg"); the level and the model's own assessment
- * move to the tooltip.
  */
 export const ConfidenceChip: FC<ConfidenceChipProps> = ({
   confidence,
@@ -98,45 +88,45 @@ export const ConfidenceChip: FC<ConfidenceChipProps> = ({
   reason,
   version,
   claimStamps,
+  check,
 }) => {
   const t = useTranslations('chat')
 
+  if (check?.status === 'unavailable') {
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Chip asChild variant="muted" size="sm" interactive>
+            <button type="button" data-testid="confidence-check-unavailable">
+              <Gauge aria-hidden="true" />
+              {t('confidence.checked.unavailable')}
+            </button>
+          </Chip>
+        </TooltipTrigger>
+        <TooltipContent className="max-w-xs">{t('confidence.checked.unavailableTooltip')}</TooltipContent>
+      </Tooltip>
+    )
+  }
   if (confidence !== 'low' && confidence !== 'medium' && confidence !== 'high') {
     return null
   }
+  if (check?.status === 'judged') {
+    return <CheckedChip confidence={confidence} check={check} quoteCapped={cappedReason === 'quote_unverified'} />
+  }
 
-  // Rule 3 is version 2 with `support` on its stamps (the wire keeps 2 for open tabs).
-  const count = version === 2 && claimStamps ? claimEvidenceCount(claimStamps) : null
   const byClaim = version === 2
-  // Rule 3 with a count leads with what the answer rests on; every other
-  // answer keeps the copy of the rule it was computed under.
-  const copy = count ? 'confidence.byShare' : byClaim ? 'confidence.byClaim' : 'confidence'
   const levelLabel = t(`confidence.levels.${confidence}`)
-  const capKey = cappedReason ? CAPPED_REASON_KEYS[cappedReason] : undefined
-  // Under rule 3 the warning is read off the stamps first (an uncited statement
-  // about the law, a pointer that did not hold), so it does not depend on the
-  // model having reported more than the evidence allows; a cap on the
-  // self-report that the stamps do not explain (an unconfirmed quote) comes next.
-  const warnKey = count ? ((claimStamps && claimWarning(claimStamps)) ?? capKey) : capKey
-  const label = count
-    ? [
-        t('confidence.byShare.label', { backed: count.backed, claims: count.claims }),
-        count.partial > 0 ? t('confidence.byShare.partial', { count: count.partial }) : null,
-        count.unchecked ? t('confidence.byShare.unchecked') : null,
-        warnKey ? t(`confidence.byShare.capLabels.${warnKey}`) : null,
-      ]
-        .filter(Boolean)
-        .join(' · ')
-    : t('confidence.label', { level: levelLabel })
-  // Under rule 3 the warning tone is a named reason, never the model's own
-  // „low" on its own: the chip says what the answer rests on, and warns only
-  // with a reason (ADR-0139).
-  const variant = (count ? warnKey !== undefined : confidence === 'low') ? 'warning' : 'muted'
+  const label = t('confidence.label', { level: levelLabel })
+  const variant = confidence === 'low' ? 'warning' : 'muted'
   // When the confidence was capped, explain WHY in the tooltip (PB-9) instead of
   // leaving the downgrade silent. Fail-open: an absent/unknown reason keeps the
-  // generic tooltip. Rules 2 and 3 have their own sentences: the cap there is
-  // about the answer's claims.
-  const cappedReasonText = warnKey ? t(`${copy}.cappedReasons.${warnKey}`) : undefined
+  // generic tooltip. Rule 2 has its own sentences: the cap there is a sentence,
+  // not the answer.
+  const cappedReasonText = cappedReason
+    ? t(
+        `${byClaim ? 'confidence.byClaim.cappedReasons' : 'confidence.cappedReasons'}.${CAPPED_REASON_KEYS[cappedReason]}`
+      )
+    : undefined
   // Trim only to DETECT an empty/whitespace-only reason; the reason itself is
   // rendered verbatim, as the wire contract promises.
   const displayReason = reason?.trim() ? reason : undefined
@@ -155,15 +145,7 @@ export const ConfidenceChip: FC<ConfidenceChipProps> = ({
           variant={variant}
           size="sm"
           interactive
-          aria-label={
-            count
-              ? t('confidence.byShare.ariaLabel', {
-                  backed: count.backed,
-                  claims: count.claims,
-                  level: levelLabel,
-                })
-              : t('confidence.ariaLabel', { level: levelLabel })
-          }
+          aria-label={t('confidence.ariaLabel', { level: levelLabel })}
         >
           <button type="button">
             <Gauge aria-hidden="true" />
@@ -172,7 +154,11 @@ export const ConfidenceChip: FC<ConfidenceChipProps> = ({
         </Chip>
       </TooltipTrigger>
       <TooltipContent className="max-w-xs">
-        <span className="block">{t(`${copy}.levelMeanings.${confidence}`)}</span>
+        <span className="block">
+          {t(
+            `${byClaim ? 'confidence.byClaim.levelMeanings' : 'confidence.levelMeanings'}.${confidence}`
+          )}
+        </span>
         {mixText ? (
           <span className="mt-1 block" data-testid="confidence-claim-mix">
             {mixText}
@@ -186,13 +172,58 @@ export const ConfidenceChip: FC<ConfidenceChipProps> = ({
             {displayReason}
           </span>
         ) : null}
-        <span className="mt-1 block">{t(`${copy}.tooltip`)}</span>
-        {count ? (
-          <span className="mt-1 block">
-            {t('confidence.byShare.selfAssessment', { level: levelLabel })}
+        <span className="mt-1 block">
+          {t(byClaim ? 'confidence.byClaim.tooltip' : 'confidence.tooltip')}
+        </span>
+        {cappedReasonText ? <span className="mt-1 block">{cappedReasonText}</span> : null}
+      </TooltipContent>
+    </Tooltip>
+  )
+}
+
+/** The chip of a checked answer (ADR-0139): the check's level, and what it found unbacked. */
+const CheckedChip: FC<{ confidence: AnswerConfidence; check: ConfidenceCheck; quoteCapped: boolean }> = ({
+  confidence,
+  check,
+  quoteCapped,
+}) => {
+  const t = useTranslations('chat')
+  const levelLabel = t(`confidence.levels.${confidence}`)
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Chip
+          asChild
+          variant={confidence === 'low' ? 'warning' : 'muted'}
+          size="sm"
+          interactive
+          aria-label={t('confidence.checked.ariaLabel', { level: levelLabel })}
+        >
+          <button type="button">
+            <Gauge aria-hidden="true" />
+            {t('confidence.label', { level: levelLabel })}
+          </button>
+        </Chip>
+      </TooltipTrigger>
+      <TooltipContent className="max-w-xs">
+        <span className="block">{t(`confidence.checked.levelMeanings.${confidence}`)}</span>
+        {check.findings.length > 0 ? (
+          <span className="mt-1 block" data-testid="confidence-check-findings">
+            <span className="font-medium">{t('confidence.checked.findingsLabel')}:</span>
+            {check.findings.map((finding) => (
+              <span key={`${finding.problem}-${finding.statement}`} className="mt-0.5 block">
+                „{finding.statement}“ – {t(`confidence.checked.problems.${finding.problem}`)}
+                {finding.reason ? `: ${finding.reason}` : ''} (
+                {t('confidence.checked.checkedAgainst', {
+                  source: finding.source === 'none' ? t('confidence.checked.noSource') : finding.source,
+                })}
+                )
+              </span>
+            ))}
           </span>
         ) : null}
-        {cappedReasonText ? <span className="mt-1 block">{cappedReasonText}</span> : null}
+        <span className="mt-1 block">{t('confidence.checked.tooltip')}</span>
+        {quoteCapped ? <span className="mt-1 block">{t('confidence.checked.quoteUnverified')}</span> : null}
       </TooltipContent>
     </Tooltip>
   )

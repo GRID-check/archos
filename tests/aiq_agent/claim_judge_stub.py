@@ -1,50 +1,61 @@
-"""A deterministic stand-in for the claim judge (``common/claim_judge.py``) in unit tests.
+"""A deterministic stand-in for the answer check (``common/claim_judge.py``) in unit tests.
 
-The real judge is a model; what a test checks is the plumbing around it: what
-evidence reaches it, and what the level does with its answer. The stub says
-``supported`` for every sentence with evidence and ``not_addressed`` without,
-and reads the kind off a few words. A test that probes a judgement passes it
-explicitly (``overrides``: a substring of the sentence and the judgement).
+The model's grading is not what these tests are about: they test what the
+pipeline hands the check and what it does with the reply. The stub answers a
+fixed level (``high`` unless told otherwise) and records every
+:class:`~aiq_agent.common.claim_judge.Evidence` it was asked about.
 """
 
 from __future__ import annotations
 
-import re
-from collections.abc import Mapping
+import json
 from collections.abc import Sequence
+from pathlib import Path
 
+from aiq_agent.common.claim_judge import Check
+from aiq_agent.common.claim_judge import Evidence
+from aiq_agent.common.claim_judge import Finding
 from aiq_agent.common.claim_judge import JudgeFn
-from aiq_agent.common.claim_judge import Judgement
+from aiq_agent.common.claim_judge import Level
+from aiq_agent.common.claim_judge import Passage
 
-_VERDICT_RE = re.compile(
-    r"\b(?:muss|müssen|darf|dürfen|zulässig|unzulässig|erfüllt|erforderlich|eingehalten|einschlägig|nötig|"
-    r"gefordert|bewilligungsfähig|bewilligt werden|gilt\s+§|vorzulegen)\b",
-    re.IGNORECASE,
-)
-_NEXT_STEP_RE = re.compile(r"^\s*(?:ob\b|welche|als nächstes|ich kann|nicht gelesen|nicht geprüft|bitte)", re.I)
+#: The measurement set: twelve stored answers with what their turns registered (ADR-0139).
+STORED_ANSWERS = Path(__file__).parents[1] / "fixtures" / "answer_check" / "stored_answers_2026-10.json"
 
 
-def stub_judge(overrides: Mapping[str, Judgement] | None = None, *, calls: list | None = None) -> JudgeFn:
-    """A judge that answers without a model; ``calls`` collects each batch it was asked."""
+def stored_answers() -> list[dict]:
+    return json.loads(STORED_ANSWERS.read_text(encoding="utf-8"))["answers"]
 
-    async def judge(items: Sequence[tuple[str, str]]) -> list[Judgement]:
+
+def stored_evidence(answer: dict) -> Evidence:
+    """What the turn of a stored answer registered, as the check reads it."""
+    passages = [Passage(f"[{n}]", text, cited=True) for n, text in (answer.get("passages") or {}).items()]
+    passages += [Passage(row["citation_key"], row["text"]) for row in answer.get("turn") or [] if row.get("text")]
+    return Evidence(
+        question=answer.get("question", ""),
+        answer=answer["content"],
+        passages=passages,
+        records=[answer["project_context"]] if answer.get("project_context") else [],
+    )
+
+
+def stub_judge(level: Level = "high", findings: Sequence[Finding] = (), calls: list[Evidence] | None = None) -> JudgeFn:
+    """A judge that always answers ``level`` with ``findings``, appending each request to ``calls``."""
+
+    async def judge(evidence: Evidence) -> Check | None:
         if calls is not None:
-            calls.append(list(items))
-        found = []
-        for sentence, evidence in items:
-            override = next((j for key, j in (overrides or {}).items() if key in sentence), None)
-            if override is not None:
-                found.append(override)
-                continue
-            kind = (
-                "next_step" if _NEXT_STEP_RE.search(sentence) else "verdict" if _VERDICT_RE.search(sentence) else "fact"
-            )
-            found.append(Judgement("supported" if evidence.strip() else "not_addressed", kind))
-        return found
+            calls.append(evidence)
+        return Check(level, tuple(findings))
 
     return judge
 
 
-async def failing_judge(items: Sequence[tuple[str, str]]) -> None:
-    """A judge that could not run (a timeout, a refusal): every evidenced claim is ``unavailable``."""
-    return None
+def failing_judge(calls: list[Evidence] | None = None) -> JudgeFn:
+    """A judge that could not run: the turn surfaces no level."""
+
+    async def judge(evidence: Evidence) -> Check | None:
+        if calls is not None:
+            calls.append(evidence)
+        return None
+
+    return judge

@@ -459,11 +459,18 @@ describe('mapServerMessageToChatMessage — the answer’s provenance', () => {
       serverMessage({
         role: 'assistant',
         metadata: {
-          provenance: { ...provenance, claimStamps: [claim], answerConfidenceVersion: 2, lookupFoundNothing: true },
+          provenance: {
+            ...provenance,
+            claimStamps: [claim],
+            confidenceCheck: { status: 'unavailable', findings: [] },
+            answerConfidenceVersion: 2,
+            lookupFoundNothing: true,
+          },
         },
       }),
     )
     expect(mapped!.claimStamps).toEqual([claim])
+    expect(mapped!.confidenceCheck).toEqual({ status: 'unavailable', findings: [] })
     expect(mapped!.answerConfidenceVersion).toBe(2)
     expect(mapped!.lookupFoundNothing).toBe(true)
 
