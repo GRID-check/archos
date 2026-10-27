@@ -19,18 +19,18 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-from aiq_agent_testing.canvas import ANNOTATION
-from aiq_agent_testing.canvas import CREATE_BODY
-from aiq_agent_testing.canvas import DELETE_BODY
-from aiq_agent_testing.canvas import DOCUMENT
-from aiq_agent_testing.canvas import LIST_BODY
-from aiq_agent_testing.canvas import OK_BODY
-from aiq_agent_testing.canvas import PROPOSAL
-from aiq_agent_testing.canvas import PROPOSE_BODY
-from aiq_agent_testing.canvas import REPLY_BODY
-from aiq_agent_testing.canvas import ROOM_BODY
-from aiq_agent_testing.canvas import UPDATE_BODY
-from aiq_agent_testing.canvas import answering
+from agent_testing.canvas import ANNOTATION
+from agent_testing.canvas import CREATE_BODY
+from agent_testing.canvas import DELETE_BODY
+from agent_testing.canvas import DOCUMENT
+from agent_testing.canvas import LIST_BODY
+from agent_testing.canvas import OK_BODY
+from agent_testing.canvas import PROPOSAL
+from agent_testing.canvas import PROPOSE_BODY
+from agent_testing.canvas import REPLY_BODY
+from agent_testing.canvas import ROOM_BODY
+from agent_testing.canvas import UPDATE_BODY
+from agent_testing.canvas import answering
 from jsonschema import Draft202012Validator
 from jsonschema import FormatChecker
 

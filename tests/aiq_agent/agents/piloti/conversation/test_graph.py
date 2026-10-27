@@ -8,7 +8,7 @@ therefore seed the shallow path directly; nothing routes ahead of it.
 """
 
 import pytest
-from aiq_agent_testing.conversation import turn
+from agent_testing.conversation import turn
 from langchain_core.messages import AIMessage
 from langchain_core.messages import HumanMessage
 

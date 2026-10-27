@@ -17,10 +17,10 @@ from __future__ import annotations
 import json
 
 import pytest
-from aiq_agent_testing.exposure import CONFIG
-from aiq_agent_testing.exposure import EXPOSURE
-from aiq_agent_testing.exposure import PILOTI_AGENT
-from aiq_agent_testing.exposure import piloti_tool_names
+from agent_testing.exposure import CONFIG
+from agent_testing.exposure import EXPOSURE
+from agent_testing.exposure import PILOTI_AGENT
+from agent_testing.exposure import piloti_tool_names
 
 
 @pytest.fixture(scope="module")

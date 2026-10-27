@@ -20,11 +20,11 @@ import re
 import tomllib
 
 import pytest
-from aiq_agent_testing.product_framing import FILE_AS_PLAN
-from aiq_agent_testing.product_framing import FIRST_IMPRESSION
-from aiq_agent_testing.product_framing import OLD_FRAME
-from aiq_agent_testing.product_framing import PROMPTS
-from aiq_agent_testing.product_framing import ROOT
+from agent_testing.product_framing import FILE_AS_PLAN
+from agent_testing.product_framing import FIRST_IMPRESSION
+from agent_testing.product_framing import OLD_FRAME
+from agent_testing.product_framing import PROMPTS
+from agent_testing.product_framing import ROOT
 
 
 def _lines(relative: str) -> list[tuple[int, str]]:

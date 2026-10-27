@@ -30,12 +30,12 @@ import json
 import re
 
 import pytest
-from aiq_agent_testing.seeded_skill_rows import DRIZZLE_DIR
-from aiq_agent_testing.seeded_skill_rows import EFFECTIVE_SEEDS
-from aiq_agent_testing.seeded_skill_rows import REPO_ROOT
-from aiq_agent_testing.seeded_skill_rows import RETIRED_NAMES
-from aiq_agent_testing.seeded_skill_rows import SEEDS
-from aiq_agent_testing.seeded_skill_rows import effective_row as _effective_row
+from agent_testing.seeded_skill_rows import DRIZZLE_DIR
+from agent_testing.seeded_skill_rows import EFFECTIVE_SEEDS
+from agent_testing.seeded_skill_rows import REPO_ROOT
+from agent_testing.seeded_skill_rows import RETIRED_NAMES
+from agent_testing.seeded_skill_rows import SEEDS
+from agent_testing.seeded_skill_rows import effective_row as _effective_row
 
 from aiq_agent.cards.catalog import model_facing_card_types
 from aiq_agent.cards.catalog import render_card_details

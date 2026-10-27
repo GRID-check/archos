@@ -94,7 +94,7 @@ class TestInlineImageRedactionProcessor:
 
 class TestPipelineWiring:
     async def test_it_runs_ahead_of_every_other_processor(self):
-        from aiq_agent_testing.langfuse import _make_config
+        from agent_testing.langfuse import _make_config
 
         from aiq_agent.observability.otel_header_redaction_exporter import otelcollector_redaction_telemetry_exporter
 

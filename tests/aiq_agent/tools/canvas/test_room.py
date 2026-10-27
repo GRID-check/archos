@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 import pytest
-from aiq_agent_testing.canvas import DOCUMENT
-from aiq_agent_testing.canvas import OK_BODY
-from aiq_agent_testing.canvas import ROOM_BODY
-from aiq_agent_testing.canvas import answering
+from agent_testing.canvas import DOCUMENT
+from agent_testing.canvas import OK_BODY
+from agent_testing.canvas import ROOM_BODY
+from agent_testing.canvas import answering
 
 from aiq_agent.tools.canvas import presence
 from aiq_agent.tools.canvas.register import run_highlight

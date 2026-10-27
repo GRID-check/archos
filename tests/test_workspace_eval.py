@@ -23,7 +23,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT / "scripts" / "turn_census"))
 
 import workspace_eval  # noqa: E402
-from aiq_agent_testing.exposure import piloti_tool_names  # noqa: E402
+from agent_testing.exposure import piloti_tool_names  # noqa: E402
 from fixture_bff import FixtureBFF  # noqa: E402
 from fixture_workspace import FIXTURES  # noqa: E402
 from fixture_workspace import PROPOSED_TEXT  # noqa: E402

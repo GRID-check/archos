@@ -288,7 +288,7 @@ async def test_a_chat_model_from_the_seam_holds_a_slot_for_every_call(pool, monk
 
 async def test_a_per_request_copy_of_a_seam_model_still_holds_a_slot(pool):
     """The model-override and ZDR seams `model_copy` the model; the copy must keep the limiter."""
-    from aiq_agent_testing.llm_factory import _resolved_through_nat
+    from agent_testing.llm_factory import _resolved_through_nat
 
     from aiq_agent.common.model_overrides import override_model
 

@@ -12,7 +12,7 @@ the contract; nothing here is re-parsed from the answer text.
 """
 
 import pytest
-from aiq_agent_testing.conversation import turn
+from agent_testing.conversation import turn
 from langchain_core.messages import AIMessage
 from langchain_core.messages import HumanMessage
 

@@ -15,8 +15,8 @@ Two things are worth pinning here, and they are not the same thing:
 import json
 
 import pytest
-from aiq_agent_testing.langfuse import ENDPOINT
-from aiq_agent_testing.langfuse import _make_config
+from agent_testing.langfuse import ENDPOINT
+from agent_testing.langfuse import _make_config
 
 from aiq_agent.observability.langfuse_trace_attributes import IDENTITY_ATTRIBUTES_ENV
 from aiq_agent.observability.langfuse_trace_attributes import SESSION_ID_ATTRIBUTE

@@ -26,7 +26,7 @@ from unittest.mock import MagicMock
 from unittest.mock import patch
 
 import pytest
-from aiq_agent_testing.conversation import turn
+from agent_testing.conversation import turn
 from langchain_core.messages import AIMessage
 from langchain_core.messages import HumanMessage
 from langchain_core.messages import ToolMessage

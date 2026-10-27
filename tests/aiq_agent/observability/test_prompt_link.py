@@ -248,7 +248,7 @@ class TestPipelineWiring:
         `position=0` so the attributes it adds stay redactable like every other
         attribute we add — the ordering NAT's redaction pass depends on.
         """
-        from aiq_agent_testing.langfuse import _make_config
+        from agent_testing.langfuse import _make_config
 
         from aiq_agent.observability.otel_header_redaction_exporter import otelcollector_redaction_telemetry_exporter
 

@@ -13,8 +13,8 @@ import json
 from unittest.mock import MagicMock
 
 import pytest
-from aiq_agent_testing.claim_judge_stub import stored_answers
-from aiq_agent_testing.claim_judge_stub import stored_evidence
+from agent_testing.claim_judge_stub import stored_answers
+from agent_testing.claim_judge_stub import stored_evidence
 
 from aiq_agent.agents.piloti.answer_check import turn_check
 from aiq_agent.agents.piloti.models import ResearchAgentState

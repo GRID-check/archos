@@ -139,7 +139,7 @@ class FakeIntakeBff:
 class FakeIntakeRoute:
     """``_opener.open`` answering by op: a dict is a 200 body, an int an HTTP error, an exception raised.
 
-    The agent's intake suite installs it too (``aiq_agent_testing.intake``), with its needs as the default.
+    The agent's intake suite installs it too (``agent_testing.intake``), with its needs as the default.
     """
 
     def __init__(self, **answers: Any) -> None:

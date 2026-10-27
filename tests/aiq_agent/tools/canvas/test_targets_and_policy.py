@@ -3,14 +3,14 @@
 from __future__ import annotations
 
 import pytest
-from aiq_agent_testing.canvas import ANNOTATION
-from aiq_agent_testing.canvas import DOCUMENT
-from aiq_agent_testing.canvas import LIST_BODY
-from aiq_agent_testing.canvas import OK_BODY
-from aiq_agent_testing.canvas import OTHER_DOCUMENT
-from aiq_agent_testing.canvas import PROPOSAL
-from aiq_agent_testing.canvas import PROPOSE_BODY
-from aiq_agent_testing.canvas import answering
+from agent_testing.canvas import ANNOTATION
+from agent_testing.canvas import DOCUMENT
+from agent_testing.canvas import LIST_BODY
+from agent_testing.canvas import OK_BODY
+from agent_testing.canvas import OTHER_DOCUMENT
+from agent_testing.canvas import PROPOSAL
+from agent_testing.canvas import PROPOSE_BODY
+from agent_testing.canvas import answering
 
 from aiq_agent.common.focus_file import set_turn_intent
 from aiq_agent.knowledge.restricted_use import CrossProjectTurn

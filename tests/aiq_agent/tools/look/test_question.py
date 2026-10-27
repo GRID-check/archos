@@ -16,8 +16,8 @@ import knowledge_layer.llamaindex.adapter as llm_adapter
 import knowledge_layer.view_image as view
 import pypdfium2 as pdfium
 import pytest
-from aiq_agent_testing.canvas import DOCUMENT
-from aiq_agent_testing.canvas import answering
+from agent_testing.canvas import DOCUMENT
+from agent_testing.canvas import answering
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
 
 from aiq_agent.common import image_view_budget

@@ -1,6 +1,6 @@
 """The answer check through ``finalize_answer`` and the state (ADR-0139): what it is handed, what it sets.
 
-The check's model is the deterministic stub (``aiq_agent_testing.claim_judge_stub``):
+The check's model is the deterministic stub (``agent_testing.claim_judge_stub``):
 these tests are about what the turn hands it (the question, the final answer,
 every passage, record, measurement and reading, the quote check) and what the
 pipeline does with its reply, never about how a model grades.
@@ -10,8 +10,8 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 
-from aiq_agent_testing.claim_judge_stub import failing_judge
-from aiq_agent_testing.claim_judge_stub import stub_judge
+from agent_testing.claim_judge_stub import failing_judge
+from agent_testing.claim_judge_stub import stub_judge
 from langchain_core.messages import AIMessage
 from langchain_core.messages import HumanMessage
 from langchain_core.messages import ToolMessage

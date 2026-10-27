@@ -7,7 +7,7 @@ not wipe the checkpointed lines.
 """
 
 import pytest
-from aiq_agent_testing.conversation import turn
+from agent_testing.conversation import turn
 from langchain_core.messages import AIMessage
 from langchain_core.messages import HumanMessage
 from langgraph.checkpoint.memory import MemorySaver

@@ -14,10 +14,10 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 import pytest
-from aiq_agent_testing.canvas import DOCUMENT
-from aiq_agent_testing.canvas import answering
-from aiq_agent_testing.look import room  # noqa: F401 - autouse: the canvas route answers
-from aiq_agent_testing.look import stored  # noqa: F401 - fixture, used by `pytestmark`
+from agent_testing.canvas import DOCUMENT
+from agent_testing.canvas import answering
+from agent_testing.look import room  # noqa: F401 - autouse: the canvas route answers
+from agent_testing.look import stored  # noqa: F401 - fixture, used by `pytestmark`
 
 from aiq_agent.common import image_view_budget
 from aiq_agent.common import turn_status

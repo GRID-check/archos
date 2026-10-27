@@ -9,7 +9,7 @@ import knowledge_layer.view_image as view
 import pypdfium2 as pdfium
 import pytest
 
-from aiq_agent_testing.canvas import answering
+from agent_testing.canvas import answering
 
 
 def _pdf() -> bytes:

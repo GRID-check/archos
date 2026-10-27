@@ -14,7 +14,7 @@ that no hand-off happens, and that the reader is left holding an answer.
 """
 
 import pytest
-from aiq_agent_testing.conversation import turn
+from agent_testing.conversation import turn
 from langchain_core.messages import AIMessage
 from langchain_core.messages import HumanMessage
 

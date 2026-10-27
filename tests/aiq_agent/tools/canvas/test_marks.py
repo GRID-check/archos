@@ -10,18 +10,18 @@ a finding that was recorded, and what the BFF confirmed lands on the card.
 from __future__ import annotations
 
 import pytest
-from aiq_agent_testing.canvas import ANNOTATION
-from aiq_agent_testing.canvas import DOCUMENT
-from aiq_agent_testing.canvas import HEADER
-from aiq_agent_testing.canvas import LIST_BODY
-from aiq_agent_testing.canvas import NAME
-from aiq_agent_testing.canvas import PROPOSAL
-from aiq_agent_testing.canvas import PROPOSE_BODY
-from aiq_agent_testing.canvas import PROPOSED
-from aiq_agent_testing.canvas import REPLY_BODY
-from aiq_agent_testing.canvas import SIGNATURE
-from aiq_agent_testing.canvas import answering
-from aiq_agent_testing.canvas import listed
+from agent_testing.canvas import ANNOTATION
+from agent_testing.canvas import DOCUMENT
+from agent_testing.canvas import HEADER
+from agent_testing.canvas import LIST_BODY
+from agent_testing.canvas import NAME
+from agent_testing.canvas import PROPOSAL
+from agent_testing.canvas import PROPOSE_BODY
+from agent_testing.canvas import PROPOSED
+from agent_testing.canvas import REPLY_BODY
+from agent_testing.canvas import SIGNATURE
+from agent_testing.canvas import answering
+from agent_testing.canvas import listed
 
 from aiq_agent import project_context
 from aiq_agent.tools.canvas import calls as canvas_calls

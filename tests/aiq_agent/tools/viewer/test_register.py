@@ -9,10 +9,10 @@ from __future__ import annotations
 
 import knowledge_layer.view_image as view
 import pytest
-from aiq_agent_testing.canvas import DOCUMENT as DOCUMENT_ID
-from aiq_agent_testing.canvas import LIST_BODY
-from aiq_agent_testing.canvas import OTHER_DOCUMENT
-from aiq_agent_testing.canvas import answering
+from agent_testing.canvas import DOCUMENT as DOCUMENT_ID
+from agent_testing.canvas import LIST_BODY
+from agent_testing.canvas import OTHER_DOCUMENT
+from agent_testing.canvas import answering
 
 from aiq_agent import project_context
 from aiq_agent.common import turn_status

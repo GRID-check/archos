@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from aiq_agent_testing.settle_streamed import SOURCES
-from aiq_agent_testing.settle_streamed import _registry
+from agent_testing.settle_streamed import SOURCES
+from agent_testing.settle_streamed import _registry
 
 from aiq_agent.agents.piloti.answer_pipeline import settle_streamed_citations
 from aiq_agent.common.citation_verification import DROPPED_CITATION_MARKER

@@ -3,7 +3,7 @@
 from types import SimpleNamespace
 
 import pytest
-from aiq_agent_testing.llm_factory import _resolved_through_nat
+from agent_testing.llm_factory import _resolved_through_nat
 
 from aiq_agent.common.llm_factory import apply_openrouter_structured_defaults
 

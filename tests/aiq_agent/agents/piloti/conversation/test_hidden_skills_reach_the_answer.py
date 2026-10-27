@@ -21,7 +21,7 @@ on either side of the hop, or a missing kwarg anywhere along it, fails here.
 from __future__ import annotations
 
 import pytest
-from aiq_agent_testing.conversation import turn
+from agent_testing.conversation import turn
 from langchain_core.messages import AIMessage
 from langchain_core.messages import HumanMessage
 

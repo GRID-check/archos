@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 
-from aiq_agent_testing.intake import JOB
+from agent_testing.intake import JOB
 from langchain_core.messages import ToolMessage
 
 from aiq_agent.agents.intake.reading import IntakeToolMiddleware

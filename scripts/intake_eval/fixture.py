@@ -7,7 +7,7 @@ the same four tools it binds in production:
 * ``read_document`` is the agent's own tool, run unchanged: only where its
   pages come from is replaced (``reading.project_documents`` and
   ``reading.fetch_document_pages``, the seams the agent's own suite fakes in
-  ``aiq_agent_testing.intake``).
+  ``agent_testing.intake``).
 * ``list_files``, ``knowledge_search`` and ``read_passage`` are the shared NAT
   tools, which need a vector store and a database. They are rebuilt here with
   the production descriptions (imported, so they cannot drift) and the

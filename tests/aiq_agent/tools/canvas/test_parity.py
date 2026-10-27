@@ -13,18 +13,18 @@ import json
 import urllib.error
 
 import pytest
-from aiq_agent_testing.canvas import ANNOTATION
-from aiq_agent_testing.canvas import CREATE_BODY
-from aiq_agent_testing.canvas import DELETE_BODY
-from aiq_agent_testing.canvas import DOCUMENT
-from aiq_agent_testing.canvas import LIST_BODY
-from aiq_agent_testing.canvas import NAME
-from aiq_agent_testing.canvas import PROPOSAL
-from aiq_agent_testing.canvas import PROPOSE_BODY
-from aiq_agent_testing.canvas import PROPOSED
-from aiq_agent_testing.canvas import REPLY_BODY
-from aiq_agent_testing.canvas import UPDATE_BODY
-from aiq_agent_testing.canvas import answering
+from agent_testing.canvas import ANNOTATION
+from agent_testing.canvas import CREATE_BODY
+from agent_testing.canvas import DELETE_BODY
+from agent_testing.canvas import DOCUMENT
+from agent_testing.canvas import LIST_BODY
+from agent_testing.canvas import NAME
+from agent_testing.canvas import PROPOSAL
+from agent_testing.canvas import PROPOSE_BODY
+from agent_testing.canvas import PROPOSED
+from agent_testing.canvas import REPLY_BODY
+from agent_testing.canvas import UPDATE_BODY
+from agent_testing.canvas import answering
 
 from aiq_agent.common import bff_http
 from aiq_agent.tools.canvas import calls as canvas_calls

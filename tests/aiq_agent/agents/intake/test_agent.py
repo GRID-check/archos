@@ -11,11 +11,11 @@ import logging
 from typing import Any
 
 import pytest
-from aiq_agent_testing.intake import JOB
-from aiq_agent_testing.intake import NEEDS
-from aiq_agent_testing.intake import NEEDS_BODY
-from aiq_agent_testing.intake import recorded_all
-from aiq_agent_testing.intake import validator
+from agent_testing.intake import JOB
+from agent_testing.intake import NEEDS
+from agent_testing.intake import NEEDS_BODY
+from agent_testing.intake import recorded_all
+from agent_testing.intake import validator
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import AIMessage
 from langchain_core.messages import HumanMessage
@@ -309,7 +309,7 @@ class TestWhenNothingCanBeRecorded:
 
 class TestTheOpening:
     def test_it_is_the_projects_state_with_the_last_readings_note(self):
-        from aiq_agent_testing.intake import NEEDS_BODY
+        from agent_testing.intake import NEEDS_BODY
 
         from aiq_agent.agents.intake.agent import first_message
 
@@ -324,9 +324,9 @@ class TestTheOpening:
 class TestThePrompt:
     def test_the_product_framing_scan_reads_this_prompt(self):
         """``tests/aiq_agent/test_product_framing.py`` holds every prompt to VISION.md and CONTEXT.md."""
-        from aiq_agent_testing.product_framing import FILE_AS_PLAN
-        from aiq_agent_testing.product_framing import OLD_FRAME
-        from aiq_agent_testing.product_framing import PROMPTS
+        from agent_testing.product_framing import FILE_AS_PLAN
+        from agent_testing.product_framing import OLD_FRAME
+        from agent_testing.product_framing import PROMPTS
 
         assert "src/aiq_agent/agents/intake/prompts/system.j2" in PROMPTS
         from aiq_agent.agents.intake.agent import system_prompt
