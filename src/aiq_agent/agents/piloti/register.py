@@ -38,8 +38,6 @@ from aiq_agent.common.citation_verification import EmptySourceRegistryError
 from aiq_agent.common.data_source_registry import get_all_sources
 from aiq_agent.common.decisions import SKIPPED_TOO_SHORT
 from aiq_agent.common.decisions import record_skipped
-from aiq_agent.common.deferred_tool_loading import DeferredToolLoadingSettings
-from aiq_agent.common.deferred_tool_loading import verify_deferred_tool_loading
 from aiq_agent.common.openrouter import PLATFORM_FIXED
 from aiq_agent.common.openrouter import pin_chat_model
 from aiq_agent.common.reasoning_settings import effort_of
@@ -179,17 +177,6 @@ class ResearchAgentConfig(FunctionBaseConfig, name="research_agent"):
             "turn's prompt. Every tool stays bound whatever it says; "
             "a decision that cannot run leaves the turn exactly as before. GRID_DECISIONS_ENABLED=false "
             "is the global switch."
-        ),
-    )
-    deferred_tool_loading: DeferredToolLoadingSettings = Field(
-        default_factory=DeferredToolLoadingSettings,
-        description=(
-            "OpenRouter server-side tool search (default OFF). When enabled, the tool "
-            "schemas are declared deferred and held by the provider instead of being sent "
-            "on every request; the model searches, loads and calls one inside a single "
-            "response, so no tool iteration is spent on discovery. Requires an OpenRouter "
-            "LLM with `api_type: responses` — enabling it against anything else fails the "
-            "workflow build rather than silently sending the schemas anyway."
         ),
     )
     prefetch: bool = Field(
@@ -677,12 +664,6 @@ async def research_agent(config: ResearchAgentConfig, builder: Builder):
     llm = await get_langchain_llm(builder, config.llm)
     tools = await _load_tools(config, builder)
 
-    # Deferred tool loading is verified HERE, at build time, against the live
-    # endpoint, before a user turn exists to lose. The failure it guards is a
-    # request that looks configured and defers nothing, which is invisible
-    # from the inside: the only symptom is the token bill.
-    await verify_deferred_tool_loading(llm, settings=config.deferred_tool_loading)
-
     provider = LLMProvider()
     provider.set_default(llm, group=AgentGroup.RESEARCH)
     callbacks = [VerboseTraceCallback()] if is_verbose(config.verbose) else []
@@ -693,7 +674,6 @@ async def research_agent(config: ResearchAgentConfig, builder: Builder):
         max_input_tokens_per_turn=config.max_input_tokens_per_turn,
         max_calls_per_round=config.max_calls_per_round,
         callbacks=callbacks,
-        deferred_tool_loading=config.deferred_tool_loading,
         envelope_json_mode_with_tools=config.envelope_json_mode_with_tools,
         repair_pass=config.repair_pass,
         # No agent group, so no organization chooses it: pinned to

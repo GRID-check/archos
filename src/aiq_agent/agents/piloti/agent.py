@@ -66,9 +66,6 @@ from aiq_agent.common.citation_verification import set_session_registry
 from aiq_agent.common.cost_tracking import grid_cost_tracker_var
 from aiq_agent.common.data_sources import disabled_source_notice
 from aiq_agent.common.data_sources import source_id_for_call
-from aiq_agent.common.deferred_tool_loading import DeferredToolBinding
-from aiq_agent.common.deferred_tool_loading import DeferredToolLoadingSettings
-from aiq_agent.common.deferred_tool_loading import bind_tools_deferred
 from aiq_agent.common.grounding_block import begin_grounding_capture
 from aiq_agent.common.grounding_block import end_grounding_capture
 from aiq_agent.common.grounding_block import strip_trace_lanes
@@ -1019,7 +1016,6 @@ class PilotiAgent:
         max_input_tokens_per_turn: int = _DEFAULT_MAX_INPUT_TOKENS_PER_TURN,
         max_calls_per_round: int = _DEFAULT_MAX_CALLS_PER_ROUND,
         callbacks: list[Any] | None = None,
-        deferred_tool_loading: DeferredToolLoadingSettings | None = None,
         envelope_json_mode_with_tools: bool = False,
         repair_pass: bool = True,
         card_repair_llm: BaseChatModel | None = None,
@@ -1050,8 +1046,6 @@ class PilotiAgent:
                 issued again next round, never deleted from the AIMessage. 0
                 disables it.
             callbacks: Optional LangGraph callbacks.
-            deferred_tool_loading: Optional OpenRouter server-side tool
-                search: whether the bound tools' schemas travel.
             envelope_json_mode_with_tools: Whether provider JSON mode is ALSO
                 bound on tool-bound research iterations, not only on the
                 tool-free forced-synthesis call. Default False: some
@@ -1075,9 +1069,6 @@ class PilotiAgent:
         self.max_calls_per_round = max_calls_per_round
         self.callbacks = callbacks or []
         self.repair_pass = repair_pass
-        self.deferred_tool_loading = (
-            deferred_tool_loading if (deferred_tool_loading is not None and deferred_tool_loading.enabled) else None
-        )
         self.envelope_json_mode_with_tools = envelope_json_mode_with_tools
         self.system_prompt = system_prompt or system_prompt_template()
         self.tools_info = build_tools_info(self.tools)
@@ -1112,13 +1103,8 @@ class PilotiAgent:
         return self.llm_provider.get(LLMRole.RESEARCHER)
 
     def _bind_research_tools(self, llm: BaseChatModel, tools: Sequence[BaseTool]) -> Any:
-        """Bind a RESEARCH-turn tool set, deferring the schemas when configured.
-
-        The single binding seam: the boot binding and every per-turn binding
-        go through it, so the deferral cannot apply to one and silently miss
-        the other.
-        """
-        return bind_tools_deferred(llm, list(tools), settings=self.deferred_tool_loading, parallel_tool_calls=True)
+        """Bind a RESEARCH-turn tool set: the one seam the boot binding and every per-turn binding go through."""
+        return llm.bind_tools(list(tools), parallel_tool_calls=True)
 
     def _bind_turn(self, provider: LLMProvider, tools: tuple[BaseTool, ...]) -> TurnBinding:
         """Resolve one tool set against one provider: the only per-turn cost, one ``bind_tools``."""
@@ -1215,13 +1201,8 @@ class PilotiAgent:
         messages = request_messages(prompt, state.messages, steering)
         # Every round may be the answer, and only its tokens say so; each
         # streams, and the reader shows nothing from a round that is not an
-        # envelope. The deferred binding stays buffered (its fallback would
-        # replay tokens it already streamed).
-        answering, call_config = (
-            (llm_with_tools, None)
-            if isinstance(llm_with_tools, DeferredToolBinding)
-            else streaming_call(llm_with_tools, live=_live_answer(state))
-        )
+        # envelope.
+        answering, call_config = streaming_call(llm_with_tools, live=_live_answer(state))
         if self.envelope_json_mode_with_tools:
             response = await ainvoke_with_envelope_json_mode(answering, messages, call_config)
         else:
