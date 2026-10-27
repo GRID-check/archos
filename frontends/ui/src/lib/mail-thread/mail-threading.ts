@@ -32,7 +32,7 @@ import { type ThreadMatchHeader, type ThreadMatchStrength } from './mail-thread-
 /**
  * A sender's trust (DECISION D4), and the trusts that are an aligned DKIM pass.
  * Declared beside the CHECK they mirror (`inbound-mail-vocabulary.ts`,
- * migration 0186), re-exported here so the thread core reads as one module.
+ * migration 0188), re-exported here so the thread core reads as one module.
  */
 export { SENDER_TRUSTS, VERIFIED_SENDER_TRUSTS, type SenderTrust } from '@/lib/inbound-mail/inbound-mail-vocabulary'
 

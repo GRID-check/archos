@@ -637,7 +637,7 @@ export interface GridConfig {
   };
 
   /**
-   * The malware scanner (ADR-0136, `app/clamav.ts`): clamd with freshclam,
+   * The malware scanner (ADR-0139, `app/clamav.ts`): clamd with freshclam,
    * scanning what strangers send before anyone may file or download it. The
    * frontend and the bff-jobs pool get `GRID_MALWARE_SCAN_URL` exactly when
    * this is on; off, every scan fails closed with `not-configured`, and nothing
@@ -1716,7 +1716,7 @@ function refuseRetiredVectorKeys(cfg: pulumi.Config): void {
 }
 
 /**
- * The malware scanner (ADR-0136). Two refusals, each of which would otherwise
+ * The malware scanner (ADR-0139). Two refusals, each of which would otherwise
  * plan clean:
  *
  * - An image without a digest. The image carries the engine and the parser of
@@ -1732,7 +1732,7 @@ function malwareScanConfig(cfg: pulumi.Config): GridConfig["malwareScan"] {
     throw new Error(
       `grid-oib:malwareScanUrl (${url.startsWith("fake:") ? "the development fake" : "set"}) is refused: a ` +
         "stack scans with its own in-cluster clamd, and the URL the BFF gets is that Service's. Remove it " +
-        "with `pulumi config rm`, and set grid-oib:malwareScanEnabled to true to deploy the scanner (ADR-0136).",
+        "with `pulumi config rm`, and set grid-oib:malwareScanEnabled to true to deploy the scanner (ADR-0139).",
     );
   }
   const image =
@@ -1843,7 +1843,7 @@ function inboundMailConfig(cfg: pulumi.Config, zone: InboundMailZoneContext): Gr
     // cannot file anything.
     throw new Error(
       "grid-oib:inboundMailDomain needs grid-oib:malwareScanEnabled=true: mail from anyone is scanned by " +
-        "the in-cluster ClamAV before it can be filed or downloaded (ADR-0136), and without the scanner " +
+        "the in-cluster ClamAV before it can be filed or downloaded (ADR-0139), and without the scanner " +
         "nothing that arrives could ever be filed.",
     );
   }

@@ -182,7 +182,7 @@ export const SYSTEM_ACTORS = {
    * The receive job of the E-Mail-Eingang (ADR-0137): rule-based, no model. It
    * labels and holds a mail (sender trust, scan, flags) and decides nothing a
    * person would; it can never file, because a decision's `decided_by` must be
-   * a person's id (migration 0186).
+   * a person's id (migration 0188).
    */
   inboundMail: 'system:inbound_mail',
 } as const

@@ -223,7 +223,7 @@ inside it.
 4. Per project: the address switched off or rotated.
 
 `loadConfig` refuses an inbound domain without `malwareScanEnabled`: every
-part of a mail is scanned before it can be filed (ADR-0136). The operator's
+part of a mail is scanned before it can be filed (ADR-0139). The operator's
 runbook, with the owner gates and the launch gates G1–G9:
 [`kubernetes.md` §3c](../deployment/kubernetes.md#3c-project-mail-cloudflare-email-routing-adr-0138).
 

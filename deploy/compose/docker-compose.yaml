@@ -685,7 +685,7 @@ services:
       # you accept that: those files are then marked failed (retryable), and
       # .xlsx/.xlsm index without preview or thumbnail.
       - GOTENBERG_URL=${GOTENBERG_URL-http://gotenberg:3000}
-      # The malware scanner (ADR-0136). Unset, every scan fails `not-configured`
+      # The malware scanner (ADR-0139). Unset, every scan fails `not-configured`
       # and nothing that waits on a clean scan is filed. To scan, start clamd
       # with `--profile malware-scan` and set GRID_MALWARE_SCAN_URL=tcp://clamav:3310
       # in deploy/.env. `fake://` is accepted only with APP_ENV=development.
@@ -1071,7 +1071,7 @@ services:
     restart: unless-stopped
 
   clamav:
-    # The malware scanner (ADR-0136): clamd, and freshclam updating its
+    # The malware scanner (ADR-0139): clamd, and freshclam updating its
     # signatures. OPT-IN (`--profile malware-scan`): it holds about 1 GiB of
     # signatures in memory, twice that while it loads new ones, and nothing
     # scans until GRID_MALWARE_SCAN_URL points here (see the frontend).

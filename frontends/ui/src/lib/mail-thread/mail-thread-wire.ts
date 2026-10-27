@@ -33,7 +33,7 @@ const uuid = z.string().uuid()
 const isoDateTime = z.string().datetime({ offset: true })
 
 // The tuples, bounds and JSON shapes the `mail_thread*` tables CHECK and type
-// are the vocabulary's (migration 0186); the schemas below parse that JSON.
+// are the vocabulary's (migration 0188); the schemas below parse that JSON.
 export {
   MAIL_THREAD_ATTACHMENT_DISPOSITIONS,
   MAIL_THREAD_ATTACHMENT_NOT_FILED_REASONS,

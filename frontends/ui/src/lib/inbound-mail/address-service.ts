@@ -13,7 +13,7 @@ import 'server-only'
  * revokes the old address at once and ends every follow on the project
  * (D31: whoever learned the old address could otherwise keep writing into a
  * followed thread), switching off revokes it and ends the follows too. The
- * rows are history: DELETE is not the app's (migration 0186), a token is never
+ * rows are history: DELETE is not the app's (migration 0188), a token is never
  * minted twice, and a revoked address answers like one never minted.
  */
 

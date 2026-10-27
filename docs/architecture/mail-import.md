@@ -259,7 +259,7 @@ Verläufe. Each batch is:
 reads the first page. Each import shows `threadsCreated`, `threadsAppended`
 (Verläufe that existed before the import and took at least one of its mails)
 and `alreadyInProject` (`MailImportView`, columns of `mail_imports`, migration
-0186). Whether the person already has an import open is asked
+0188). Whether the person already has an import open is asked
 on its own (`findOpenMailImportOf`), never read off a page, so an open import
 older than a page of finished ones still refuses a second start with its id.
 

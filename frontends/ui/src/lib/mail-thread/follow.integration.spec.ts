@@ -1,7 +1,7 @@
 /**
  * @vitest-environment node
  *
- * „Verlauf folgen“ against a REAL Postgres with migration 0186, through the
+ * „Verlauf folgen“ against a REAL Postgres with migration 0188, through the
  * restricted runtime role (`scripts/rls-test-db.sh`):
  *
  *   GRID_TEST_DATABASE_URL=postgres://grid_app_rw@host:port/grid_app \

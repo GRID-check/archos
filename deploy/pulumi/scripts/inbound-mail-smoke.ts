@@ -294,7 +294,7 @@ const MANUAL: Array<[string, string]> = [
       "'infected' and the archive part 'failed', never 'clean'; neither may be filed; the original download of " +
       "the EICAR mail must be refused. Stop freshclam for 49 h on a staging clamd (or point it at an old " +
       "database) and confirm a scan answers 'failed' (stale-signatures). Known gap: clamd scans a zip member " +
-      "only up to MaxFileSize and answers OK without an alert (ADR-0136).",
+      "only up to MaxFileSize and answers OK without an alert (ADR-0139).",
   ],
   ["G7", "`cloudflare` checks it: literal rules for postmaster@ and abuse@ (and every company address) exist."],
   ["G8", "After any COMPATIBILITY_DATE bump (platform/inbound-mail.ts): G1 and G2 again."],

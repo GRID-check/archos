@@ -1,8 +1,8 @@
 /**
- * The vocabulary of the E-Mail-Eingang (ADR-0137, migration 0186), free of
+ * The vocabulary of the E-Mail-Eingang (ADR-0137, migration 0188), free of
  * drizzle and of zod.
  *
- * Every tuple here is also a CHECK in `drizzle/0186_inbound_mail.sql`: the
+ * Every tuple here is also a CHECK in `drizzle/0188_inbound_mail.sql`: the
  * database refuses a value this file does not list, so a new value is a change
  * to both, in one migration. The drizzle schema (`db/schema/inbound-mail.ts`),
  * the wire module, the jobs and the browser import the tuples from here, so a
@@ -189,7 +189,7 @@ export const IMPERSONATION_BASES = ['rejected_signature', 'member_name'] as cons
 export type ImpersonationBasis = (typeof IMPERSONATION_BASES)[number]
 
 /**
- * A malware scan's outcome (ADR-0136, `lib/malware-scan`). Only `clean` lets a
+ * A malware scan's outcome (ADR-0139, `lib/malware-scan`). Only `clean` lets a
  * part be filed or a file be served; `failed` is scanned again.
  */
 export const MALWARE_SCAN_STATUSES = ['pending', 'clean', 'infected', 'failed'] as const

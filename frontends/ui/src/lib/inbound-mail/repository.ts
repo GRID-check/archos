@@ -1,5 +1,5 @@
 /**
- * SQL for the E-Mail-Eingang (ADR-0137, migration 0186). No authorization
+ * SQL for the E-Mail-Eingang (ADR-0137, migration 0188). No authorization
  * here: the service decides who may ask, and row-level security is the
  * backstop. Every list is bounded.
  *
@@ -221,7 +221,7 @@ export async function queueReceiveJob(
 /**
  * A reception that turned out to be a second delivery, or failed half way:
  * its object was erased (or never written), so the row stops naming it. The
- * row stays `receiving`; DELETE is not the app's (migration 0186), and sweep 1
+ * row stays `receiving`; DELETE is not the app's (migration 0188), and sweep 1
  * deletes it once it is fifteen minutes old.
  */
 export async function forgetReceptionObject(mailId: string): Promise<void> {
@@ -1140,7 +1140,7 @@ export interface DecisionsWritten {
  *    has the job that files it and a job never reads a decision that is not there.
  *
  * The database holds the rest: a claim needs a `file` decision about that very
- * part, a clean scan, a person's id (migration 0186).
+ * part, a clean scan, a person's id (migration 0188).
  */
 export async function writeMailDecisions(
   writes: readonly MailDecisionWrite[],

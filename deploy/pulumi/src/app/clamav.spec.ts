@@ -7,7 +7,7 @@ import { load } from "js-yaml";
 import { baseStackConfig } from "../test-support/stack-config";
 
 /**
- * ClamAV, the malware scanner (ADR-0136).
+ * ClamAV, the malware scanner (ADR-0139).
  *
  * Every mistake worth catching here plans clean and runs green, while the
  * scanner quietly vouches for bytes it never inspected:

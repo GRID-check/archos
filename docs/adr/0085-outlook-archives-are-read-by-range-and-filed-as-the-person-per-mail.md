@@ -160,7 +160,7 @@ reader now also returns what threads a mail (`in_reply_to`, `references`,
 `conversation_index`) and the Bcc of sent items. The import counts the
 Verläufe it opened (`threads_created`), the existing ones it added to
 (`threads_appended`) and the mails whose text the project already had
-(`already_in_project`), columns of `mail_imports` (migration 0186).
+(`already_in_project`), columns of `mail_imports` (migration 0188).
 
 Confirmation: `lib/mail-thread/archive.spec.ts`, `archive.integration.spec.ts`
 (Postgres: dedupe both ways, one Fassung per slice, no append into an

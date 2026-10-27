@@ -45,8 +45,8 @@ All schemas are in `frontends/ui/src/lib/db/schema/` and barrel-exported from `i
 | `tasks.ts` | `tasks` — LEGACY since 0086, same |
 | `task-model.ts` | `task_definitions`, `task_runs` — the collapsed model (migration 0086) |
 | `bff-job-queue.ts` | `bff_job_queue`, `bff_job_lane_turns` — the BFF's durable background work (migration 0104, ADR-0079) |
-| `inbound-mail.ts` | `inbound_mail_addresses`, `inbound_mails`, `inbound_mail_parts`, `inbound_mail_decisions` — project mail held until a person files it (migration 0186, ADR-0137) |
-| `mail-thread.ts` | `mail_threads`, `mail_thread_entries`, `mail_thread_entry_attachments`, `mail_thread_message_ids`, `mail_thread_follows` — the E-Mail-Verläufe (migration 0186, ADR-0137) |
+| `inbound-mail.ts` | `inbound_mail_addresses`, `inbound_mails`, `inbound_mail_parts`, `inbound_mail_decisions` — project mail held until a person files it (migration 0188, ADR-0137) |
+| `mail-thread.ts` | `mail_threads`, `mail_thread_entries`, `mail_thread_entry_attachments`, `mail_thread_message_ids`, `mail_thread_follows` — the E-Mail-Verläufe (migration 0188, ADR-0137) |
 | `mail-imports.ts` | `mail_imports` — the Outlook archive import ([`mail-import.md`](../architecture/mail-import.md); its Verlauf counts below) |
 
 Two things drizzle's schema builder cannot declare live only in the migration
@@ -921,13 +921,13 @@ who started it ([`mail-import.md`](../architecture/mail-import.md#what-the-perso
 | `sealed_at` | `timestamptz` | | The uploader's last request is done; a batch no file has come into for 30 min (counted from its newest document, or its opening) is sealed by the sweep |
 | `completed_at` | `timestamptz` | CHECK: only after `sealed_at` | Every document is terminal; set once, by a guarded UPDATE, which is what makes the inbox item exactly-once |
 | `created_at` | `timestamptz(3)` | NOT NULL, `defaultNow()` | |
-| `announces_completion` | `boolean` | NOT NULL, default `true` | **Migration `0185`**. Off: the settle sends no `upload.completed` |
-| `reviews_filing` | `boolean` | NOT NULL, default `true` | **Migration `0185`**. Off: neither filing review is queued, the name review at the seal nor the content review at the settle (`lib/filing/trigger.ts`) |
-| `starts_intake` | `boolean` | NOT NULL, default `true` | **Migration `0185`**. Off: the batch starts no intake reading (`lib/project-intake/trigger.ts`, ADR-0111) |
-| `revision_notice` | `text` | NOT NULL, default `'all'`, CHECK `all`/`marks_only` | **Migration `0185`**. Who hears about a new Fassung a document of this batch makes: `marks_only` reaches only the people on an open mark it leaves behind ([`revisions.md`](../architecture/revisions.md#notifications)) |
-| `runs_document_check` | `boolean` | NOT NULL, default `true` | **Migration `0185`**. Off: no settled document of the batch is checked against the project (`document_check`, ADR-0130, where the office switched it on), so an E-Mail-Verlauf's next Fassung buys no model call |
+| `announces_completion` | `boolean` | NOT NULL, default `true` | **Migration `0187`**. Off: the settle sends no `upload.completed` |
+| `reviews_filing` | `boolean` | NOT NULL, default `true` | **Migration `0187`**. Off: neither filing review is queued, the name review at the seal nor the content review at the settle (`lib/filing/trigger.ts`) |
+| `starts_intake` | `boolean` | NOT NULL, default `true` | **Migration `0187`**. Off: the batch starts no intake reading (`lib/project-intake/trigger.ts`, ADR-0111) |
+| `revision_notice` | `text` | NOT NULL, default `'all'`, CHECK `all`/`marks_only` | **Migration `0187`**. Who hears about a new Fassung a document of this batch makes: `marks_only` reaches only the people on an open mark it leaves behind ([`revisions.md`](../architecture/revisions.md#notifications)) |
+| `runs_document_check` | `boolean` | NOT NULL, default `true` | **Migration `0187`**. Off: no settled document of the batch is checked against the project (`document_check`, ADR-0130, where the office switched it on), so an E-Mail-Verlauf's next Fassung buys no model call |
 
-The five effect columns (migration 0185) say what settling the batch sets
+The five effect columns (migration 0187) say what settling the batch sets
 off. Their defaults are a person's upload, and only a server-side caller sets
 them (`OpenUploadBatchInput.effects` in `lib/upload-batches/service.ts`): the
 route's body has no field for them, so no browser or agent opens a quiet batch.
@@ -951,13 +951,13 @@ sends it once and a failed write is not retried.
 
 ---
 
-## Project mail (migration 0186, ADR-0137)
+## Project mail (migration 0188, ADR-0137)
 
-`frontends/ui/drizzle/0186_inbound_mail.sql` (schema files
+`frontends/ui/drizzle/0188_inbound_mail.sql` (schema files
 `inbound-mail.ts`, `mail-thread.ts`): mail sent to a project waits until a
 person files it, a conversation is one document, its originals are evidence,
 and a person may follow it. The migration's header says why each rule exists;
-`scripts/rls-test-db.sh` (section "Migration 0186") proves each refusal with a
+`scripts/rls-test-db.sh` (section "Migration 0188") proves each refusal with a
 violating statement. The flow: [`inbound-mail.md`](../architecture/inbound-mail.md).
 
 Nine tables, one job each:
@@ -1270,14 +1270,14 @@ sweep 12.
 ### mail_imports: the archive's Verlauf counts
 
 The Outlook archive import ([`mail-import.md`](../architecture/mail-import.md))
-renders into the same Verläufe. 0186 adds three counters to `mail_imports`,
+renders into the same Verläufe. 0188 adds three counters to `mail_imports`,
 `threads_created`, `threads_appended` and `already_in_project` (integer, NOT
 NULL, default 0, CHECK `mail_imports_thread_counts_non_negative`), counted when
 the cursor passes a mail, so a retried mail counts once.
 
-### Reversing 0186
+### Reversing 0188
 
-`0186_inbound_mail.down.sql` **refuses** (`object_in_use`) while any row still
+`0188_inbound_mail.down.sql` **refuses** (`object_in_use`) while any row still
 names a staged object or a kept original: the rows are the only record of
 those keys. Its header lists the queries to find them; erase each object by its
 key, set the column NULL (as the platform role, with the feature paused), and

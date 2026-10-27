@@ -50,7 +50,7 @@
 | **OTLP/Phoenix exporter** | configurable | NAT span export incl. LLM I/O; **no shipped config enables it** (console only). Identity enrichment: `AIQ_TRACE_USER_IDENTITY_MODE=full` adds cleartext email/name to spans (default `none`) | If enabled | Optional, off | workflow YAML; `AIQ_TRACE_*` | `aiq_api/auth/middleware.py:59-89` |
 | **Datadog RUM** | — | Frontend shim, no-ops unless deployment injects `DD_RUM` | If enabled | Optional, off | overlay | `shared/utils/rum.ts` |
 | **Cloudflare** | `api.cloudflare.com` (Pulumi, deploy time) + the zone's authoritative nameservers | DNS operator for `piloti.at` (`dnsEnabled` on dev and prod). Every app host, the apex included, is DNS-only (not proxied); only `www.piloti.at` is proxied, so Cloudflare's edge can redirect it to the apex. **With project mail** (`inboundMailDomain`, ADR-0138): Email Routing is the apex MX, and an Email Worker signs each mail to a project address and posts it to the BFF | DNS: no. DNS lookups for every host; for `www` requests only, the visitor's IP and URL. **Project mail: yes**: every message sent to a project address passes through Cloudflare (sender, recipients, the whole message), kept in Email Routing's activity log as metadata; the Worker logs nothing (observability off, no Logpush) | Yes (dev, prod) | `cloudflareApiToken`, `dnsZoneId` (Pulumi) | `deploy/pulumi/src/platform/dns.ts` (`proxied: false` on host records, `wwwProxied`); `Pulumi.prod.yaml` (`dnsZoneBaseline`) |
-| **ClamAV signature mirror** (Cisco Talos) | `database.clamav.net` (CDN) | freshclam downloads the malware signatures the in-cluster scanner uses, twelve checks a day (ADR-0136). Only where `malwareScanEnabled` is on (Pulumi) or the Compose `malware-scan` profile runs | No. Nothing is uploaded: the cluster's egress IP and freshclam's version string reach the CDN, and signatures come back | Optional, off; required once the scanner is on (signatures older than 48 h make every scan fail) | `malwareScanEnabled` (Pulumi); none in the app | `deploy/compose/clamav/freshclam.conf`; `deploy/pulumi/src/app/clamav.ts` |
+| **ClamAV signature mirror** (Cisco Talos) | `database.clamav.net` (CDN) | freshclam downloads the malware signatures the in-cluster scanner uses, twelve checks a day (ADR-0139). Only where `malwareScanEnabled` is on (Pulumi) or the Compose `malware-scan` profile runs | No. Nothing is uploaded: the cluster's egress IP and freshclam's version string reach the CDN, and signatures come back | Optional, off; required once the scanner is on (signatures older than 48 h make every scan fail) | `malwareScanEnabled` (Pulumi); none in the app | `deploy/compose/clamav/freshclam.conf`; `deploy/pulumi/src/app/clamav.ts` |
 | **Google Fonts** | fonts.googleapis.com | **Build-time only** (`next/font` self-hosts at runtime); Next telemetry disabled in image | No | Build only | — | `app/layout.tsx:13`; `deploy/Dockerfile:104,119` |
 | **Build/CI**: PyPI, npm, Debian/nodesource, `nvcr.io`, GitHub Actions, Semgrep + gitleaks images (run in-CI, no source upload), OSV-Scanner (queries package names/versions against osv.dev) | — | provisioning/CI | Source code stays in CI; only dependency identifiers leave (OSV) | Build/CI | — | `.github/workflows/*` |
 
@@ -65,7 +65,7 @@ Backend agents fetch no arbitrary URLs themselves (only internal BFF call in
 | SeaweedFS | `chrislusf/seaweedfs:3.80` | Raw uploaded documents (`grid-documents`) |
 | Qdrant | `qdrant/qdrant:v1.19.2` (pinned; ADR-0115) | Embeddings + chunk text (OIB corpus + user docs); daily shard snapshots in the in-cluster SeaweedFS bucket `qdrant-snapshots`. Replaced Chroma, whose volume (`data-chroma-0` on Kubernetes, `chroma_data` in Compose) holds the same data until it is deleted after the migration |
 | Dragonfly | `dragonflydb/dragonfly:v1.27.1` (pinned) | Transient cache, rate-limit counters (no persistence) |
-| ClamAV (clamd + freshclam, ADR-0136; off by default) | `clamav/clamav:1.5.4@sha256:…` (digest-pinned, trivy-scanned) | Signatures only. The bytes it scans arrive on a socket and are gone with the reply; nothing is stored and nothing leaves the cluster, so it is no third-party processing |
+| ClamAV (clamd + freshclam, ADR-0139; off by default) | `clamav/clamav:1.5.4@sha256:…` (digest-pinned, trivy-scanned) | Signatures only. The bytes it scans arrive on a socket and are gone with the reply; nothing is stored and nothing leaves the cluster, so it is no third-party processing |
 | Frontend/purger | from `node:22-slim` (floating) | — |
 | Backend | from `debian:bookworm-slim` (floating) | local OIB PDFs, fallback DBs |
 
@@ -138,7 +138,7 @@ Backend agents fetch no arbitrary URLs themselves (only internal BFF call in
    gates (`lib/mail-import/filing.ts`). LibreOffice parses office files inside
    Gotenberg, isolated and without egress (ADR-0070). A customer who needs
    scanning does it upstream today (mail gateway, endpoint). An in-cluster
-   ClamAV now exists for what strangers send (ADR-0136, off by default, fail
+   ClamAV now exists for what strangers send (ADR-0139, off by default, fail
    closed), and scans nothing a member uploads yet; scanning uploads and chat
    attachments is its follow-up. Project mail switches it on: every attachment
    and raw message a stranger sends is scanned before anyone can file it, and

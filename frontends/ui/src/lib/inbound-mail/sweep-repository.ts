@@ -11,7 +11,7 @@ import 'server-only'
  *   compare-and-set on the state discovery saw, so a person or a job that
  *   moved the row in between wins and the sweep changes nothing.
  * - **Deletes** (`delete…`) run as the platform role, because DELETE is revoked
- *   from the runtime role on these tables (migration 0186, „Ending is a
+ *   from the runtime role on these tables (migration 0188, „Ending is a
  *   state“). Each repeats its whole condition, the legal hold included.
  *
  * **Legal hold is a filter, the trigger the backstop (RT-S20).** Every set

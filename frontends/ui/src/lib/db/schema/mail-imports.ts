@@ -71,7 +71,7 @@ export const mailImports = pgTable(
     filesFiled: integer('files_filed').notNull().default(0),
     itemsSkipped: integer('items_skipped').notNull().default(0),
     filesSkipped: integer('files_skipped').notNull().default(0),
-    /** E-Mail-Verläufe the import opened (D33, migration 0186). */
+    /** E-Mail-Verläufe the import opened (D33, migration 0188). */
     threadsCreated: integer('threads_created').notNull().default(0),
     /** Verläufe that were there before the import and took at least one of its mails. */
     threadsAppended: integer('threads_appended').notNull().default(0),

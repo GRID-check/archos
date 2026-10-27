@@ -6,7 +6,7 @@ import 'server-only'
  * authorization here: `./follows.ts` and `lib/inbound-mail/follow-job.ts`
  * decide who may, and row-level security is the backstop.
  *
- * The rules the rows keep are the migration's (0186): one running follow per
+ * The rules the rows keep are the migration's (0188): one running follow per
  * person and thread (`uniq_mail_thread_follows_active`), at most 180 days from
  * its start, an end always with its reason and, for a person's reason, the
  * right person; a follow decision is the follower's own (the composite key to

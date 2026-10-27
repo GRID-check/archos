@@ -212,7 +212,7 @@ export async function batchIdsOfDocuments(organizationId: string, documentIds: r
   return rows.map((row) => row.batchId).filter((id): id is string => id !== null)
 }
 
-/** What a settled document's batch decides about the Fassung it brought (migration 0185). */
+/** What a settled document's batch decides about the Fassung it brought (migration 0187). */
 export type BatchSettleEffects = Pick<UploadBatchEffects, 'revisionNotice' | 'runsDocumentCheck'>
 
 /**

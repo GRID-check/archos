@@ -1,4 +1,4 @@
--- 0186: mail sent to a project waits until a person files it; a conversation is
+-- 0188: mail sent to a project waits until a person files it; a conversation is
 -- one document; its originals are evidence; a person may follow it (ADR-0137).
 --
 -- ## What was missing
@@ -141,7 +141,7 @@ CREATE INDEX IF NOT EXISTS "inbound_mail_addresses_project_created_idx"
   ON "inbound_mail_addresses" ("project_id", "created_at");
 --> statement-breakpoint
 COMMENT ON TABLE "inbound_mail_addresses" IS
-  'Project mail addresses (<slug>.<token>@<domain>), the revoked ones included as rotation history until the project goes. Only the token resolves; a revoked token is the same as an unknown one and is never minted again. Tenant data (migration 0186).';
+  'Project mail addresses (<slug>.<token>@<domain>), the revoked ones included as rotation history until the project goes. Only the token resolves; a revoked token is the same as an unknown one and is never minted again. Tenant data (migration 0188).';
 --> statement-breakpoint
 CREATE TABLE IF NOT EXISTS "mail_threads" (
   "id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
@@ -222,7 +222,7 @@ CREATE INDEX IF NOT EXISTS "mail_threads_render_pending_idx"
   ON "mail_threads" ("render_pending_at") WHERE "render_pending_at" IS NOT NULL;
 --> statement-breakpoint
 COMMENT ON TABLE "mail_threads" IS
-  'An E-Mail-Verlauf: one mail conversation filed as one document of the project, whose next Fassung each later filed message is. Holds no message text; its entries do. Deleted with its entries once its document is gone. Tenant data (migration 0186).';
+  'An E-Mail-Verlauf: one mail conversation filed as one document of the project, whose next Fassung each later filed message is. Holds no message text; its entries do. Deleted with its entries once its document is gone. Tenant data (migration 0188).';
 --> statement-breakpoint
 CREATE TABLE IF NOT EXISTS "mail_thread_follows" (
   "id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
@@ -278,7 +278,7 @@ CREATE INDEX IF NOT EXISTS "mail_thread_follows_expiry_idx"
   ON "mail_thread_follows" ("expires_at") WHERE "ended_at" IS NULL;
 --> statement-breakpoint
 COMMENT ON TABLE "mail_thread_follows" IS
-  'A person''s standing decision to append the text of a thread''s later verified replies as themselves (D31): 60 days by default, at most 180, capped per day, ended with a reason. Never deleted by a tenant session. Tenant data (migration 0186).';
+  'A person''s standing decision to append the text of a thread''s later verified replies as themselves (D31): 60 days by default, at most 180, capped per day, ended with a reason. Never deleted by a tenant session. Tenant data (migration 0188).';
 --> statement-breakpoint
 CREATE TABLE IF NOT EXISTS "mail_thread_entries" (
   "id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
@@ -405,7 +405,7 @@ CREATE INDEX IF NOT EXISTS "mail_thread_entries_mail_import_idx"
   ON "mail_thread_entries" ("mail_import_id") WHERE "mail_import_id" IS NOT NULL;
 --> statement-breakpoint
 COMMENT ON TABLE "mail_thread_entries" IS
-  'One filed message of an E-Mail-Verlauf, from the project address or an Outlook archive: the renderer''s only input, and, for inbound mail, the key of its original .eml (evidence: never indexed, never read by a model). Lives as long as the thread document. Tenant data (migration 0186).';
+  'One filed message of an E-Mail-Verlauf, from the project address or an Outlook archive: the renderer''s only input, and, for inbound mail, the key of its original .eml (evidence: never indexed, never read by a model). Lives as long as the thread document. Tenant data (migration 0188).';
 --> statement-breakpoint
 -- D36: the attachment and its mail know each other, per Fassung. One row per
 -- attachment the message carried, written when the message is filed (inbound)
@@ -483,7 +483,7 @@ CREATE INDEX IF NOT EXISTS "mail_thread_entry_attachments_version_idx"
   ON "mail_thread_entry_attachments" ("document_version_id") WHERE "document_version_id" IS NOT NULL;
 --> statement-breakpoint
 COMMENT ON TABLE "mail_thread_entry_attachments" IS
-  'What came with a filed message (D36), one row per attachment, and what became of it: the document and Fassung it is, or why it was not filed (its bytes then live only in the original). What the thread''s section prints for it is frozen at insert. Lives as long as its entry. Tenant data (migration 0186).';
+  'What came with a filed message (D36), one row per attachment, and what became of it: the document and Fassung it is, or why it was not filed (its bytes then live only in the original). What the thread''s section prints for it is frozen at insert. Lives as long as its entry. Tenant data (migration 0188).';
 --> statement-breakpoint
 -- What a row may still learn after its insert, and nothing else (the
 -- superset invariant keeps the section's words; the trail keeps the rest):
@@ -560,7 +560,7 @@ CREATE INDEX IF NOT EXISTS "mail_thread_message_ids_lookup_idx"
   ON "mail_thread_message_ids" ("project_id", "message_id");
 --> statement-breakpoint
 COMMENT ON TABLE "mail_thread_message_ids" IS
-  'The Message-IDs a mail thread received (one row per entry) or was referred to by, for matching a later reply to its thread. Opaque identifiers only. Tenant data (migration 0186).';
+  'The Message-IDs a mail thread received (one row per entry) or was referred to by, for matching a later reply to its thread. Opaque identifiers only. Tenant data (migration 0188).';
 --> statement-breakpoint
 CREATE TABLE IF NOT EXISTS "inbound_mails" (
   "id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
@@ -801,7 +801,7 @@ CREATE INDEX IF NOT EXISTS "inbound_mails_original_move_idx"
   ON "inbound_mails" ("original_move_pending_at") WHERE "original_move_pending_at" IS NOT NULL;
 --> statement-breakpoint
 COMMENT ON TABLE "inbound_mails" IS
-  'One delivery to a project mail address, held until a person files or dismisses its parts (ADR-0137). Holds what a reviewer needs to decide until it settles, then only ids, counts and the member it came from; the message itself is a staged object named by its key. Deleted after the retention window. Tenant data (migration 0186).';
+  'One delivery to a project mail address, held until a person files or dismisses its parts (ADR-0137). Holds what a reviewer needs to decide until it settles, then only ids, counts and the member it came from; the message itself is a staged object named by its key. Deleted after the retention window. Tenant data (migration 0188).';
 --> statement-breakpoint
 CREATE TABLE IF NOT EXISTS "inbound_mail_parts" (
   "id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
@@ -965,7 +965,7 @@ CREATE INDEX IF NOT EXISTS "inbound_mail_parts_scan_failed_idx"
   ON "inbound_mail_parts" ("scanned_at") WHERE "scan_status" = 'failed';
 --> statement-breakpoint
 COMMENT ON TABLE "inbound_mail_parts" IS
-  'What a person can file from a received mail: its own text or one attachment, and where it stands. An attachment''s bytes are staged only while a person can still decide (and seven days after a dismissal or expiry). A filing or filed part names the file decision of a person; only a clean scan is ever filed. Tenant data (migration 0186).';
+  'What a person can file from a received mail: its own text or one attachment, and where it stands. An attachment''s bytes are staged only while a person can still decide (and seven days after a dismissal or expiry). A filing or filed part names the file decision of a person; only a clean scan is ever filed. Tenant data (migration 0188).';
 --> statement-breakpoint
 CREATE TABLE IF NOT EXISTS "inbound_mail_decisions" (
   "id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
@@ -1089,7 +1089,7 @@ CREATE INDEX IF NOT EXISTS "inbound_mail_decisions_due_idx"
   ON "inbound_mail_decisions" ("decided_at") WHERE "audited_at" IS NULL;
 --> statement-breakpoint
 COMMENT ON TABLE "inbound_mail_decisions" IS
-  'Append-only: every file, dismiss or restore a person decided on a received mail''s part, and how it reached us. The filing job reads what to do from here, the audit trail is sent from here (audited_at). Only audited_at changes, once; a row is deleted only after it was audited, unless its project is purged. Tenant data (migration 0186).';
+  'Append-only: every file, dismiss or restore a person decided on a received mail''s part, and how it reached us. The filing job reads what to do from here, the audit trail is sent from here (audited_at). Only audited_at changes, once; a row is deleted only after it was audited, unless its project is purged. Tenant data (migration 0188).';
 --> statement-breakpoint
 -- A part's decision is a `file` (RT-S7). The composite key already makes it a
 -- decision about this part; what a key cannot say is which action it was.

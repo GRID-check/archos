@@ -50,7 +50,7 @@ and its becoming part of the project, what it becomes, and who may decide.
   not a person. A verdict decides what is suggested and pre-selected, never
   whether a mail is held.
 * **Strangers' bytes are checked before anyone acts on them**, in the cluster
-  (ADR-0136).
+  (ADR-0139).
 
 ## Considered Options
 
@@ -100,7 +100,7 @@ part is a card that person accepted, and it carries no override. The database
 refuses a filed part without such a decision and without a clean scan.
 
 What enforces each half is under Confirmation; the CHECKs and triggers are in
-[`schema.md`](../database/schema.md#project-mail-migration-0186-adr-0137).
+[`schema.md`](../database/schema.md#project-mail-migration-0188-adr-0137).
 
 ### The E-Mail-Eingang: a mail waits outside the project
 
@@ -363,7 +363,7 @@ changed and why.
 ### Who hears what (D35)
 
 Filing is quiet. Each kind of mail filing opens its upload batch with the
-effects of migration 0185 (`lib/inbound-mail/batch-effects.ts`):
+effects of migration 0187 (`lib/inbound-mail/batch-effects.ts`):
 
 | Upload | Completion summary | Content re-judgement | Intake reading | Revision notice | Document check (ADR-0130) |
 |---|---|---|---|---|---|
@@ -429,7 +429,7 @@ on the project (and, for a mail's bytes, a custodian hold on the member it came
 from) pauses every erasure and deletion; ending still happens. The sweeps:
 [`inbound-mail.md`](../architecture/inbound-mail.md#retention-the-sweeps).
 
-### What the database holds the code to (migration 0186)
+### What the database holds the code to (migration 0188)
 
 Decided in the DDL, each deviating from the design document for a reason:
 
@@ -488,7 +488,7 @@ placement review and no document check.
 
 ### Confirmation
 
-- **Database** (`scripts/rls-test-db.sh`, the 0186 section, run by
+- **Database** (`scripts/rls-test-db.sh`, the 0188 section, run by
   `task db:test:rls`): each refusal is a violating insert or update: a filing or
   filed part without a decision, or with a decision that is not a `file`; a
   system decider; a Piloti card with an acknowledgement; a follow decision by
@@ -566,7 +566,7 @@ placement review and no document check.
   basis of this record (the project-mail work, DECISION v2 of 2026-10-22).
   Owner answers: four PRs; keep the original as evidence (B); the archive into
   the same Verläufe (C); ship „Verlauf folgen“ under the hijack conditions (D).
-- Transport: ADR-0138. Scanner: ADR-0136. Amended here: ADR-0085 (archive into
+- Transport: ADR-0138. Scanner: ADR-0139. Amended here: ADR-0085 (archive into
   Verläufe), ADR-0086 (the name flag on mail), ADR-0122 (`evidence`,
   `requiresPersonConfirmation`).
 - Revisit when: an office needs a narrower decider than every
@@ -578,4 +578,4 @@ placement review and no document check.
   FU9 (sender policy), FU11 (merging Verläufe), FU12 (cloud links), FU15
   (re-render old archive notes).
 - The architecture: [`inbound-mail.md`](../architecture/inbound-mail.md). The
-  data: [`schema.md`](../database/schema.md#project-mail-migration-0186-adr-0137).
+  data: [`schema.md`](../database/schema.md#project-mail-migration-0188-adr-0137).

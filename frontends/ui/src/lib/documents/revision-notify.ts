@@ -20,7 +20,7 @@
  * each is listed and not drawn on the new sheet until someone carries it on
  * („Auf aktuelle Fassung übernehmen", `lib/annotations/carry.ts`).
  * An upload batch can narrow that to the mark participants alone
- * (`revision_notice = 'marks_only'`, migration 0185): the next Fassung of an
+ * (`revision_notice = 'marks_only'`, migration 0187): the next Fassung of an
  * E-Mail-Verlauf is news to nobody but the people with an open mark on the
  * one before, who must still hear that it left their mark behind.
  * Assignment is not access, so the list is then cut to those who may open BOTH
@@ -108,7 +108,7 @@ export interface NewRevisionAnnouncement {
   /**
    * Who is told: `all` (the default) or `marks_only`, the people working on an
    * open mark the new Fassung leaves behind and nobody else. Set from the
-   * upload batch that brought the newer document (migration 0185).
+   * upload batch that brought the newer document (migration 0187).
    */
   audience?: UploadBatchRevisionNotice
 }
@@ -414,7 +414,7 @@ async function queueSettledDocumentCheck(organizationId: string, document: Docum
  * neither does a Fassung announced before: a re-read settles the document
  * again, and {@link notifyNewRevision} announces each Fassung once.
  *
- * Who is told, and whether Piloti checks it, is the batch's (migration 0185):
+ * Who is told, and whether Piloti checks it, is the batch's (migration 0187):
  * a document whose batch says `revision_notice = 'marks_only'` reaches the
  * people on its open marks alone, and one whose batch has
  * `runs_document_check` off is not checked (the next Fassung of an

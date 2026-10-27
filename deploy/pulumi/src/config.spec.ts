@@ -475,7 +475,7 @@ describe("chat tier scale-out (ADR-0080)", () => {
 });
 
 /**
- * The malware scanner (ADR-0136). Off by default; on, it runs an image that
+ * The malware scanner (ADR-0139). Off by default; on, it runs an image that
  * parses every hostile file strangers send, so the image is a digest, and the
  * URL the BFF gets is always this stack's own clamd.
  */

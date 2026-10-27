@@ -150,7 +150,7 @@ describe('openUploadBatch', () => {
     )
   })
 
-  it("opens it with every effect of a person's upload unless the caller asks otherwise (migration 0185)", async () => {
+  it("opens it with every effect of a person's upload unless the caller asks otherwise (migration 0187)", async () => {
     const input = { id: BATCH_ID, scope: 'project' as const, projectId: 'proj-1', conversationId: null, expectedCount: 1, excluded: [] }
     await openUploadBatch(session, input)
     expect(insertUploadBatch).toHaveBeenLastCalledWith(expect.objectContaining(DEFAULT_UPLOAD_BATCH_EFFECTS))

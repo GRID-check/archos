@@ -5,7 +5,7 @@
  * Runs AS THE SYSTEM (`SYSTEM_ACTORS.inboundMail`), one step, bulk. It decides
  * nothing a person would and it cannot file: it imports no filing code
  * (`review-first.spec.ts`), and the database refuses a filed part without a
- * person's decision (migration 0186). What it leaves is a `waiting` mail with
+ * person's decision (migration 0188). What it leaves is a `waiting` mail with
  * its parts, and at most two jobs queued for later: Piloti's suggestion
  * (metadata only, D21) and, when a person's standing decision to follow the
  * thread could cover the reply, the follow job, which runs as that person and

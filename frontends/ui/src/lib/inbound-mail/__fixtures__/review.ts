@@ -1,7 +1,7 @@
 /**
  * Rows of a held mail as the review service reads them, for the specs of the
  * decision, the candidates and the service. Each builder answers a mail that
- * keeps every rule of migration 0186 for its state; a spec overrides only the
+ * keeps every rule of migration 0188 for its state; a spec overrides only the
  * fact its case is about.
  */
 

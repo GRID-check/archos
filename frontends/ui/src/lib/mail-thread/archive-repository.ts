@@ -7,7 +7,7 @@ import 'server-only'
  * their rights in `./archive.ts`; row-level security is the backstop. Every
  * list is bounded.
  *
- * The rules the rows keep are migration 0186's: an archive entry is
+ * The rules the rows keep are migration 0188's: an archive entry is
  * `source = 'archive'`, `filed_via = 'archive_import'`, `not_checked`, names
  * its import and has no original; DELETE is revoked, so nothing here takes an
  * entry back. An entry's id is the import's and the mail's (uuid5), so a retry
