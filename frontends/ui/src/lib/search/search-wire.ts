@@ -50,6 +50,16 @@ export const SEARCH_SECTION_PREVIEW = 5
 export const SEARCH_OFFSET_MAX = 5000
 
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/)
+/**
+ * A fact key, checked against the vocabulary rather than spelled out as an enum: the fact filter's `key`
+ * already lists the keys once in the tool schema, and a second copy cost every agent's tool list ~1 KB.
+ */
+const FACT_KEYS: ReadonlySet<string> = new Set(DOSSIER_FACT_KEYS)
+const factKeyName = z
+  .string()
+  .refine((key): key is (typeof DOSSIER_FACT_KEYS)[number] => FACT_KEYS.has(key), 'not a fact key')
+  .describe('A fact key, as the facts filter names them.')
+
 const shortText = z.string().trim().min(1).max(120)
 
 /** A fact the document states: equal to a value, or within a numeric range. */
@@ -110,7 +120,7 @@ export const documentFiltersSchema = z.object({
   states: z.array(z.enum(SEARCH_READ_STATES)).max(5).optional(),
   incompleteRead: z.boolean().optional().describe('Has unread pages.'),
   factsChanged: z.boolean().optional().describe('States facts differently from the revision it replaced.'),
-  changedFacts: z.array(z.enum(DOSSIER_FACT_KEYS)).max(DOSSIER_FACT_KEYS.length).optional().describe('Facts changed against the replaced revision.'),
+  changedFacts: z.array(factKeyName).max(DOSSIER_FACT_KEYS.length).optional().describe('Facts changed against the replaced revision.'),
   fileTypes: z
     .array(z.string().regex(/^[a-z0-9]{1,8}$/))
     .max(12)
@@ -427,7 +437,7 @@ export const suggestBodySchema = z
       .optional()
       .describe('Start of any word; case and accents ignored.'),
     role: z.enum(DOSSIER_PARTY_ROLES).optional().describe('party only.'),
-    factKey: z.enum(DOSSIER_FACT_KEYS).optional().describe('Needed for fact.'),
+    factKey: factKeyName.optional().describe('Needed for fact.'),
     filters: documentFiltersInputSchema.optional(),
   })
   .refine((body) => body.dimension !== 'fact' || body.factKey !== undefined, { message: 'dimension fact needs factKey', path: ['factKey'] })

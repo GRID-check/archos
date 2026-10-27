@@ -284,9 +284,8 @@ export const documentsOperations = [
     domain: 'documents',
     summary: 'Export the documents a search finds as a drawing register file',
     description:
-      'The documents of a search (same scope and body as workspace-search) as a drawing register: csv (semicolon, German locale) or ' +
-      'xlsx, with drawing number, revision, plan date, scale, name, title, type, project, folder, dates, uploader, pages and ' +
-      'whether it is the current revision, in the search order. Refused above 5000 documents: narrow the filters.',
+      'The documents of a search (same scope and body as workspace-search) as a drawing register, csv (semicolon) or xlsx, ' +
+      'one row per document in the search order. Refused above 5000 documents: narrow the filters.',
     method: 'POST',
     path: '/api/search/export',
     query: searchExportQuerySchema,

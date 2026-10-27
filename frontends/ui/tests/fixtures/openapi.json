@@ -7747,25 +7747,7 @@
                         "type": "array",
                         "items": {
                           "type": "string",
-                          "enum": [
-                            "building_class",
-                            "storeys_above_ground",
-                            "storeys_below_ground",
-                            "building_height",
-                            "gross_floor_area",
-                            "usable_floor_area",
-                            "plot_area",
-                            "floor_area_ratio",
-                            "site_coverage_ratio",
-                            "units",
-                            "parking_spaces",
-                            "use",
-                            "construction_method",
-                            "escape_route_length",
-                            "room_height",
-                            "energy_class",
-                            "heating_demand"
-                          ]
+                          "description": "A fact key, as the facts filter names them."
                         },
                         "maxItems": 17,
                         "description": "Facts changed against the replaced revision."
@@ -7919,7 +7901,7 @@
       "post": {
         "operationId": "workspace-search-export",
         "summary": "Export the documents a search finds as a drawing register file",
-        "description": "The documents of a search (same scope and body as workspace-search) as a drawing register: csv (semicolon, German locale) or xlsx, with drawing number, revision, plan date, scale, name, title, type, project, folder, dates, uploader, pages and whether it is the current revision, in the search order. Refused above 5000 documents: narrow the filters.",
+        "description": "The documents of a search (same scope and body as workspace-search) as a drawing register, csv (semicolon) or xlsx, one row per document in the search order. Refused above 5000 documents: narrow the filters.",
         "tags": [
           "documents"
         ],
@@ -8119,26 +8101,7 @@
                   },
                   "factKey": {
                     "type": "string",
-                    "enum": [
-                      "building_class",
-                      "storeys_above_ground",
-                      "storeys_below_ground",
-                      "building_height",
-                      "gross_floor_area",
-                      "usable_floor_area",
-                      "plot_area",
-                      "floor_area_ratio",
-                      "site_coverage_ratio",
-                      "units",
-                      "parking_spaces",
-                      "use",
-                      "construction_method",
-                      "escape_route_length",
-                      "room_height",
-                      "energy_class",
-                      "heating_demand"
-                    ],
-                    "description": "Needed for fact."
+                    "description": "A fact key, as the facts filter names them."
                   },
                   "filters": {
                     "type": "object",
