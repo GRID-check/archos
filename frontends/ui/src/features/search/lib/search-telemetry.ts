@@ -12,7 +12,7 @@
 
 import { BACK_PARAM } from '@/features/documents/lib/open-review'
 import { capturePosthog, type PostHogEvent } from '@/lib/analytics/posthog'
-import type { DocumentFilters, SearchBody, SearchHit, SearchKind, SearchResponse, SearchScopeQuery } from '@/lib/search/search-wire'
+import type { DocumentFilters, SearchBody, SearchHit, SearchKind, SearchResponse, SearchScopeQuery, SuggestDimension } from '@/lib/search/search-wire'
 import type { SearchSurface } from './search-surface'
 
 /** Where a search was asked: the ⌘K palette, the search page, a shelf's Suche, Piloti's composer (reserved, nothing sends it yet). */
@@ -215,6 +215,16 @@ export function savedSearchProperties(item: { shared: boolean; scope: SearchScop
 /** `saved_search_run`: a saved search was opened, from the palette or a search surface's menu. */
 export function captureSavedSearchRun(item: { shared: boolean; scope: SearchScopeQuery }): void {
   capturePosthog('saved_search_run', savedSearchProperties(item))
+}
+
+/** `search_suggestion_picked`: which filter, the place of the value taken (1-based), how many characters were typed. Never the value. */
+export function suggestionPickedProperties(dimension: SuggestDimension, rank: number, prefix: string): Properties {
+  return { dimension, rank, prefix_chars: prefix.trim().length }
+}
+
+/** `search_suggestion_picked`, once a completion was taken. */
+export function captureSuggestionPicked(dimension: SuggestDimension, rank: number, prefix: string): void {
+  capturePosthog('search_suggestion_picked', suggestionPickedProperties(dimension, rank, prefix))
 }
 
 /** `saved_search_created`, once the server kept it. */

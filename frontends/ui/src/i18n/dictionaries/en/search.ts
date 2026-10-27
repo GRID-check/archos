@@ -197,6 +197,15 @@ export const search = {
     rangeInvalid: 'The lower bound is above the upper one.',
     factValueMissing: 'Enter a value.',
     factBoundMissing: 'Enter a minimum or a maximum.',
+    suggestions: 'Suggestions from the documents',
+    citesFind: 'More references',
+    citesPlaceholder: 'ÖNORM, OIB-RL, EP-05',
+    referenceKinds: {
+      norm: 'Standard',
+      law: 'Law',
+      plan: 'Drawing',
+      document: 'Document',
+    },
   },
   register: {
     caption: 'One row per document, as Piloti read it.',

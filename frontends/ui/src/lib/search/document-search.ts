@@ -82,7 +82,7 @@ const FACET_KEYS: Record<SearchFacetDimension, FacetKey> = {
 }
 
 /** The reach every kind reads: cut to the projects a `projectIds` filter names, when it names any. */
-function narrowedTo(reach: SearchReach, body: Pick<SearchBody, 'filters'>): SearchReach {
+export function narrowedTo(reach: SearchReach, body: Pick<SearchBody, 'filters'>): SearchReach {
   const projectIds = body.filters?.projectIds ?? []
   return projectIds.length > 0 ? narrowReach(reach, projectIds) : reach
 }
@@ -271,7 +271,7 @@ async function rankedContent(
  * annotations (through their document) are asked it. Null: a reference filter
  * names a document out of reach, so no document matches.
  */
-async function structuredQuery(reach: SearchReach, filters: DocumentFilters): Promise<Omit<DocumentQuery, 'text'> | null> {
+export async function structuredQuery(reach: SearchReach, filters: DocumentFilters): Promise<Omit<DocumentQuery, 'text'> | null> {
   const [citedBy, citing] = await Promise.all([
     filters.citedBy ? referenceTargets(reach, filters.citedBy, 'citedBy') : null,
     filters.citing ? referenceTargets(reach, filters.citing, 'citing') : null,

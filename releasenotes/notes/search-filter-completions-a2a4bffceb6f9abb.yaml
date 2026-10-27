@@ -1,0 +1,7 @@
+---
+improvements:
+  - >
+    The search filters now complete as you type: party names, place, cited
+    norms and drawings, drawing number, revision, scale and stated facts offer
+    the values your documents actually hold, each with how many documents hold
+    it, so you pick the exact spelling instead of guessing it.
