@@ -1,7 +1,7 @@
 # Qdrant migration gates, measured (2026-10-13)
 
 The move to Qdrant waited on the gates in
-[`qdrant-retrieval-design.md` §10](qdrant-retrieval-design.md#10-spike-gates-before-anything-is-built);
+[`docs/architecture/qdrant-retrieval-design.md` §10](../architecture/qdrant-retrieval-design.md#10-spike-gates-before-anything-is-built);
 it was then made in one change, with no flag and no dual period (ADR-0115).
 The `AIQ_VECTOR_BACKEND` and `AIQ_CHROMA_*` settings below describe how each
 path was measured at the time; none of them exists any more. This page records the first run of the instrument built for them,

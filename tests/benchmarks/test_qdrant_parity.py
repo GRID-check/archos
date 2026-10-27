@@ -177,7 +177,7 @@ def test_the_base_filter_is_the_one_register_builds():
 
 def test_the_reference_is_the_gate_reports_chroma_path_and_names_its_source():
     """The numbers G1b and the report compare against, as ``qdrant-gates-2026-10.md`` records them."""
-    report = (Path(__file__).resolve().parents[2] / "docs" / "architecture" / "qdrant-gates-2026-10.md").read_text()
+    report = (Path(__file__).resolve().parents[2] / "docs" / "audit" / "qdrant-gates-2026-10.md").read_text()
     assert "qdrant-gates-2026-10.md" in baseline.SOURCE
     lexical = baseline.LEXICAL_GOLDEN
     assert f"| {lexical.recall[5]:.3f} | {lexical.recall[10]:.3f} | {lexical.recall[16]:.3f} |" in report

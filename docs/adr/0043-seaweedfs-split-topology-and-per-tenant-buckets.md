@@ -1,6 +1,9 @@
+---
+status: proposed
+---
+
 # ADR-0043: SeaweedFS split topology, a Postgres filer store, and a bucket per tenant
 
-- **Status:** Proposed
 - **Date:** 2026-08-08
 - **Deciders:** Grid Agent team
 - **Related:** [ADR-0005](0005-object-storage-for-documents-minio.md), [ADR-0011](0011-deletion-pipeline.md), [ADR-0038](0038-one-authorization-catalog-and-decision-point.md), [ADR-0057](0057-agentic-retrieval-quality-package.md), [ADR-0042](0042-object-storage-durability-and-quota.md), [`../deployment/kubernetes.md`](../deployment/kubernetes.md)

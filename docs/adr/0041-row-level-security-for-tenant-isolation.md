@@ -1,6 +1,9 @@
+---
+status: accepted
+---
+
 # ADR-0041: Row-level security as the last line of tenant isolation
 
-- **Status:** Accepted
 - **Date:** 2026-08-04
 - **Deciders:** Platform / backend
 - **Related:** ADR-0004 (tenancy, ownership and access model), ADR-0017 (BFF repository/service architecture), ADR-0038 (one authorization catalog and decision point), [`../database/row-level-security.md`](../database/row-level-security.md)

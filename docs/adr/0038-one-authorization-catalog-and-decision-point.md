@@ -1,6 +1,9 @@
+---
+status: accepted
+---
+
 # ADR-0038: One authorization catalog, one decision point, and a coverage gate
 
-- **Status**: Accepted
 - **Date**: 2026-07-30
 - **Deciders**: Grid Agent team (RBAC overhaul commissioned by the platform owner)
 - **Related**: ADR-0016 (platform tier + permission registry), ADR-0004 (tenancy), ADR-0017 (BFF repository/service architecture), ADR-0023 (scheduled workflows), ADR-0024 (org Archiv), ADR-0032 (shareable resource model), `docs/deployment/workos-provisioning.md`

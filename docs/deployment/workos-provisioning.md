@@ -269,7 +269,7 @@ a role needs it provisioned before it can hold it.
 The project tier reads its grants from WorkOS at request time and has no
 fallback, so a project-tier permission that exists only in the catalog is held by
 nobody. The current gap in both environments, and what it costs users, is in
-[`docs/architecture/authorization-audit-2026-08.md`](../architecture/authorization-audit-2026-08.md) §6.
+[`docs/audit/authorization-audit-2026-08.md`](../audit/authorization-audit-2026-08.md) §6.
 
 ### 3. The platform organization + exclusive role
 
@@ -556,7 +556,7 @@ cycle-6 UI flags exist in Staging AND Production (2026-07-14):
 organizations in both; **`chat-confidence-chip` is enabled in Staging but
 intentionally OFF in Production** until the live confidence-marker
 smoke test passes (the answering LLM must emit the `[CONFIDENCE:…]` control
-marker reliably; see FB-6 / backlog.md RUNTIME-SMOKE) — flip it on in
+marker reliably; see FB-6 / docs/audit/overnight-run-backlog.md RUNTIME-SMOKE) — flip it on in
 Production once that check is green. The `image-upload` flag (FB-15a) exists in
 Staging AND Production (2026-07-14); enabled for all orgs in Staging,
 **intentionally OFF in Production** pending a live image-ingestion smoke test

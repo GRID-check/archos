@@ -23,7 +23,7 @@
 > isolation, landing on the count the owner observed. The first item of §8
 > is still to make it a measurement.
 >
-> Complements the [hobble register](hobble-register-2026-09.md) (which
+> Complements the [hobble register](../architecture/hobble-register-2026-09.md) (which
 > constraint sits where), the
 > [latency audit](latency-and-caching-audit-2026-09.md) (what the reader waits
 > for) and the [RAG audit](rag-system-audit-2026-08.md) (whether the right

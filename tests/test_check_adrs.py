@@ -21,10 +21,10 @@ def checker(tmp_path, monkeypatch):
 
 
 def _write(directory: Path, readme_title: str, cited: str) -> Path:
-    old = f"# Old\n\n**Status:** Accepted\n\nPartly superseded by {cited}.\n"
+    old = f"---\nstatus: accepted\n---\n\n# Old\n\nPartly superseded by {cited}.\n"
     (directory / "0010-old.md").write_text(old, encoding="utf-8")
     (directory / "0011-new.md").write_text(
-        "# New\n\n**Status:** Accepted\n\nSupersedes part of ADR-0010.\n", encoding="utf-8"
+        "---\nstatus: accepted\n---\n\n# New\n\nSupersedes part of ADR-0010.\n", encoding="utf-8"
     )
     readme = directory / "README.md"
     readme.write_text(
@@ -48,7 +48,7 @@ def test_an_index_row_pointing_at_a_record_the_file_never_cites_fails(checker, t
     assert errors == ["docs/adr/README.md: 0010-old.md is superseded by 0009, which does not exist."]
 
     errors.clear()
-    (tmp_path / "0009-other.md").write_text("# Other\n\n**Status:** Accepted\n", encoding="utf-8")
+    (tmp_path / "0009-other.md").write_text("---\nstatus: accepted\n---\n\n# Other\n", encoding="utf-8")
     checker.check_superseded_refs(tmp_path / "README.md", errors)
     assert errors == [
         "docs/adr/README.md: 0010-old.md is superseded by 0009 in the index, "
@@ -79,7 +79,7 @@ def test_the_superseding_record_must_cite_the_one_it_supersedes(checker, tmp_pat
     checker.check_superseded_refs(readme, errors)
     assert errors == []
 
-    (tmp_path / "0011-new.md").write_text("# New\n\n**Status:** Accepted\n", encoding="utf-8")
+    (tmp_path / "0011-new.md").write_text("---\nstatus: accepted\n---\n\n# New\n", encoding="utf-8")
     checker.check_superseded_refs(readme, errors)
     assert errors == [
         "docs/adr/README.md: 0010-old.md is superseded by 0011 in the index, but 0011-new.md never cites ADR-0010."
@@ -101,3 +101,42 @@ def test_an_index_row_outside_the_table_or_out_of_order_fails(checker, tmp_path)
     errors.clear()
     checker.index_rows(_write(tmp_path, "Old", "ADR-0011"), errors)
     assert errors == []
+
+
+def _record_errors(checker, tmp_path, text: str) -> list[str]:
+    (tmp_path / "0010-old.md").write_text(text, encoding="utf-8")
+    (tmp_path / "README.md").write_text(
+        "| ADR | Title | Status |\n|---|---|---|\n| [0010](0010-old.md) | Old | Accepted |\n", encoding="utf-8"
+    )
+    errors: list[str] = []
+    checker.check(errors)
+    return errors
+
+
+def test_a_frontmatter_status_passes(checker, tmp_path):
+    assert _record_errors(checker, tmp_path, "---\nstatus: accepted\n---\n\n# Old\n") == []
+
+
+def test_a_status_only_in_the_body_fails(checker, tmp_path):
+    for body in ("- **Status:** Accepted\n", "**Status**: Accepted\n", "## Status\n\nAccepted\n\n## Context\n"):
+        errors = _record_errors(checker, tmp_path, f"# Old\n\n{body}")
+        assert errors == [
+            "0010-old.md: no frontmatter `status:`. Every ADR opens with "
+            "`---`, `status: proposed` (or another legend value), `---`."
+        ], body
+
+
+def test_a_second_status_in_the_body_fails(checker, tmp_path):
+    errors = _record_errors(checker, tmp_path, "---\nstatus: accepted\n---\n\n# Old\n\n- **Status:** Accepted\n")
+    assert len(errors) == 1 and "a second status in the body" in errors[0]
+
+
+def test_a_status_outside_the_legend_fails(checker, tmp_path):
+    for status in ("Accepted", "accepted — partly built", "superseded by 0011", "draft"):
+        errors = _record_errors(checker, tmp_path, f"---\nstatus: {status}\n---\n\n# Old\n")
+        assert any("is not one of proposed, accepted" in error for error in errors), status
+
+
+def test_a_status_note_is_not_a_second_status(checker, tmp_path):
+    text = "---\nstatus: accepted\n---\n\n# Old\n\n- **Status note:** implemented in phase 1.\n"
+    assert _record_errors(checker, tmp_path, text) == []

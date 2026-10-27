@@ -561,7 +561,7 @@ this is a live-view tool, not a log archive.
 
 Deploy `mcr.microsoft.com/dotnet/aspire-dashboard` as a standard Kubernetes
 Deployment via the existing Pulumi stack. See the design spec at
-`docs/superpowers/specs/2026-07-27-aspire-otel-dashboard-design.md`.
+`docs/specs/2026-07-27-aspire-otel-dashboard-design.md`.
 
 Key decisions within the approach:
 - **Auth:** WorkOS AuthKit OIDC claim-gated on `org_id=platform_org` — reuses the
@@ -606,7 +606,7 @@ impractical.
 
 ## References
 
-- Design spec: `docs/superpowers/specs/2026-07-27-aspire-otel-dashboard-design.md`
+- Design spec: `docs/specs/2026-07-27-aspire-otel-dashboard-design.md`
 - Aspire dashboard docs: https://learn.microsoft.com/en-us/dotnet/aspire/fundamentals/dashboard/standalone
 - ADR-0016: Platform owner model
 - ADR-0025: Norm registry

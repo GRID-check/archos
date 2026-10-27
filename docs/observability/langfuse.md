@@ -162,7 +162,7 @@ and in Piloti's own function `setup.skills`, `setup.file_tools` and
 `outcome` (`ok`, `error`, `cancelled`), `ms` and counts; never turn content.
 A `decide.<slot>` generation also spans its call now (its `latency_ms`), where
 it used to read 1 ms. "Where did the first turn's seconds go" is a read of
-these rows: `docs/architecture/turn-latency-measured-2026-09.md` §3.6.
+these rows: `docs/audit/turn-latency-measured-2026-09.md` §3.6.
 
 ### A tool call on the agent door
 

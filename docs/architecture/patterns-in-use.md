@@ -79,7 +79,7 @@ shape: `turn/answer_stream.py` binds the turn's live prose (`_PROSE`, a
 the graph's tasks copy it, and the token handler mutates the one object.
 (Another, `turn_status.prefetch_scope`, marked the turn decision's prefetch
 for a requery switch that was measured 3.4 s slower and removed with it:
-[`turn-latency-measured-2026-09.md`](turn-latency-measured-2026-09.md) §3.5.)
+[`docs/audit/turn-latency-measured-2026-09.md`](../audit/turn-latency-measured-2026-09.md) §3.5.)
 
 A `ContextVar` set inside `asyncio.gather` (or any task) dies with that task,
 because each task runs in a COPIED context: return the value instead. The entry

@@ -1,6 +1,9 @@
+---
+status: superseded by ADR-0046
+---
+
 # ADR-0027: Platform-managed workflow templates
 
-- **Status:** Superseded by [ADR-0046](0046-agent-skills.md)
 - **Date:** 2026-07-23
 - **Deciders:** Grid engineering (platform owner request)
 - **Related:** ADR-0016 (platform tier), ADR-0023 (workflows — also superseded), ADR-0017 (BFF repository/service), ADR-0007 (no cross-tenant FKs), ADR-0046 (Agent Skills — supersedes this ADR)

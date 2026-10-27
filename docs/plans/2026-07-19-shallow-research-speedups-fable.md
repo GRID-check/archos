@@ -1,9 +1,9 @@
 # Shallow Research Answer-Generation — Speed Opportunities (2026-07-19)
 
 > Latency-only analysis of the shallow (and meta) chat turn, built on the
-> touch-point map (`plans/2026-07-19-shallow-research-answer-generation-touchpoints.md`)
+> touch-point map (`docs/plans/2026-07-19-shallow-research-answer-generation-touchpoints.md`)
 > and de-duplicated against the broad audit
-> (`plans/2026-07-18-chat-response-time-perf-audit.md`). Every anchor below was
+> (`docs/plans/2026-07-18-chat-response-time-perf-audit.md`). Every anchor below was
 > verified against the live source. **No change proposed here removes or alters
 > a feature** — each finding states why it is behavior-equivalent.
 >

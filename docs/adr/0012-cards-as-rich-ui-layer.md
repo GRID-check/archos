@@ -1,6 +1,9 @@
+---
+status: accepted
+---
+
 # ADR-0012: Cards as a general rich-UI presentation layer
 
-- **Status:** Accepted
 - **Date:** 2026-07-05
 - **Deciders:** Grid Agent team
 - **Related:** [`../architecture/cards.md`](../architecture/cards.md), [`../architecture/backend-deep-dive.md`](../architecture/backend-deep-dive.md)

@@ -7,7 +7,7 @@
 > truncation notice the model can see. The vector lives on the row rather than
 > in `mem_<project>`, so `embedding_synced` was never needed — the reasoning,
 > and what is still open, is in
-> [`semantic-notes.md`](semantic-notes.md). The findings below are kept as
+> [`docs/architecture/semantic-notes.md`](../architecture/semantic-notes.md). The findings below are kept as
 > written: they are the evidence the fix was built from.
 
 
@@ -15,7 +15,7 @@
 > Full-system audit of the project-memory feature: capture (in-turn `remember`
 > tool + async reflection), the single-writer BFF, the serve/injection path,
 > curation APIs/UI, tenancy, and lifecycle. Complements the earlier
-> [memory-reflection-audit.md](./memory-reflection-audit.md) (which focused on the
+> [memory-reflection-audit.md](../architecture/memory-reflection-audit.md) (which focused on the
 > reflection stage) by covering the whole surface and re-verifying prior fixes.
 >
 > Scope reviewed: `src/aiq_agent/knowledge/project_memory.py`,
@@ -32,7 +32,7 @@
 ## 1. Executive summary
 
 The system is a well-structured **Phase-1** implementation of the design in
-`project-memory-design.md`: itemized rows, a strict single-writer boundary
+`docs/architecture/project-memory-design.md`: itemized rows, a strict single-writer boundary
 (the Python backend never touches the DB — it POSTs to an internal token-guarded
 BFF endpoint), a bounded always-on "core digest" injected via base64url headers,
 two capture paths (in-turn tool + async reflection), user curation UI, and
@@ -264,7 +264,7 @@ curation. Worth revisiting if memory ever feeds compliance logic directly.
 
 ## 5. Prior-audit fixes — re-verification
 
-All items claimed "Fixed"/"Built" in `memory-reflection-audit.md` were confirmed
+All items claimed "Fixed"/"Built" in `docs/architecture/memory-reflection-audit.md` were confirmed
 present:
 
 - **S1** org default-deny — endpoint 403 + reflection project-only. ✅

@@ -575,7 +575,7 @@ functions:
     # exactly that and answers in ~100ms over the FULL chunk, where the judge is
     # one frontier-model call reading 60 excerpts of 1200 chars: ~16k input
     # tokens, ~14s of decoding, on the path to the first answer token of every
-    # research turn (docs/architecture/latency-and-caching-audit-2026-09.md §3.2).
+    # research turn (docs/audit/latency-and-caching-audit-2026-09.md §3.2).
     #
     # `openrouter` because it is the one key every deployment already holds:
     # `OPENROUTER_API_KEY` is the credential, `POST /api/v1/rerank` the route
@@ -606,7 +606,7 @@ functions:
     requery_max_queries: 2
     # The prefetch requeries like any search. Skipping it was measured 3.4 s
     # slower on the turns it applied to, and the switch was removed
-    # (docs/architecture/turn-latency-measured-2026-09.md §3.5).
+    # (docs/audit/turn-latency-measured-2026-09.md §3.5).
     # Who answers the judge's yes/no (ADR-0064). `jev` asks the decision model
     # one noul per passage of the fused head — ~300 ms in parallel, a fraction
     # of a cent — and runs `requery_llm` only when the head is insufficient,

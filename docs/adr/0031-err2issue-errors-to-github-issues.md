@@ -1,10 +1,10 @@
+---
+status: superseded by ADR-0100
+---
+
 # ADR-0031: err2issue — ERROR telemetry becomes deduplicated GitHub issues
 
 Date: 2026-07-28
-
-## Status
-
-Superseded by ADR-0100
 
 ## Context
 
