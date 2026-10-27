@@ -87,6 +87,9 @@ EXCLUDED = re.compile(
             r"^scripts/check_brand_names\.py$|^tests/test_check_brand_names\.py$",  # this check
             # The infrastructure names table: its legacy column holds the old names until ADR-0147's contract step.
             r"^deploy/pulumi/src/names\.ts$",
+            # The one-release fallback that reads the old x-grid-* header names, and its tests.
+            r"^frontends/ui/src/lib/http/legacy-header-names\.|^frontends/aiq_api/src/aiq_api/legacy_headers\.py$",
+            r"^tests/test_legacy_headers\.py$",
         )
     )
 )
