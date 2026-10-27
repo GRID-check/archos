@@ -27,6 +27,7 @@ export const shortcuts = {
     groups: {
       general: 'General',
       navigation: 'Jump to',
+      search: 'Search',
       chat: 'Chat',
       review: 'Review',
       inbox: 'Inbox',
@@ -39,6 +40,8 @@ export const shortcuts = {
       dismiss: 'Close a dialog or menu',
       sendMessage: 'Send message',
       newLine: 'New line',
+      reference: 'Insert a document',
+      searchHitActions: 'Actions of the chosen result',
       mention: 'Mention a colleague',
       chooseOption: 'Pick a numbered option',
       reviewPoint: 'Annotate',

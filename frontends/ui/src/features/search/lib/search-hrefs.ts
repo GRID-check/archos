@@ -47,6 +47,17 @@ export interface HitReturn {
 }
 
 /**
+ * A document hit's open points: its Prüfansicht (`review=1`), which lists the
+ * document's open marks, on the shelf the hit opens on; closing the review
+ * returns to `back`, the search as the reader left it.
+ */
+export function documentReviewHitHref(hit: Pick<DocumentHit, 'id' | 'shelf' | 'projectId'>, { back }: HitReturn = {}): string {
+  const target = { documentId: hit.id }
+  if (hit.shelf === 'project' && hit.projectId) return reviewFilesHref(hit.projectId, target, { back })
+  return withReviewBack(`${shelfBase('office_shelf', null)}?doc=${encodeURIComponent(hit.id)}&review=1`, back)
+}
+
+/**
  * The search page's own address, to return to: path and query, without a
  * `back` it may itself have been handed (a return is one step, not a chain).
  */

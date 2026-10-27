@@ -48,7 +48,7 @@ export const search: typeof en.search = {
   total: '{count, plural, one {# Treffer} other {# Treffer}}',
   totalAtLeast: 'mindestens {count}',
   summaryAtLeast: 'mindestens {count} Treffer',
-  keys: '↑ ↓ wählen, Enter öffnet, Esc leert',
+  keys: '↑ ↓ wählen, Enter öffnet, Umschalt+F10 Aktionen, Esc leert',
   loadMore: 'Mehr zeigen',
   loadingMore: 'Wird geladen…',
   loadMoreFailed: 'Weitere Treffer konnten nicht geladen werden. Bitte erneut versuchen.',
@@ -264,6 +264,24 @@ export const search: typeof en.search = {
   mode: {
     backToFiles: 'Zurück zu den Dateien',
     backToShelf: 'Zurück zur Ablage',
+  },
+  // Das ⋯ eines Dokument-Treffers: von der Suche in den Rest der Arbeitsfläche.
+  hitActions: {
+    label: 'Aktionen für „{name}“',
+    menuLabel: 'Aktionen',
+    column: 'Aktionen',
+    ask: 'Piloti fragen',
+    // Vorbelegt im Eingabefeld, wenn der Treffer eine Fundstelle mit Seite hat; die Person kann ihn ändern.
+    askAtPage: 'Was steht auf S. {page} in „{name}“?',
+    openCurrent: 'Aktuelle Fassung öffnen',
+    openPoints: 'Offene Punkte',
+    currentUnavailable: 'Die aktuelle Fassung lässt sich nicht öffnen.',
+  },
+  // „#“ im Chat-Eingabefeld: ein Dokument aus der Suche in die Nachricht holen.
+  composerPicker: {
+    label: 'Dokumente',
+    hint: 'Name, Plannummer oder ein Wort aus dem Inhalt eingeben',
+    keys: 'Tastatur: Pfeile wählen, Enter fügt ein, Esc schließt',
   },
   palette: {
     allResults: 'Alle Treffer für „{text}“',

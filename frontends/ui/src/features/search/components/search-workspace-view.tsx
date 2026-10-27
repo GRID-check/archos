@@ -37,6 +37,7 @@ import { useSearchReturn } from '../hooks/use-search-return'
 import type { SearchSurface } from '../lib/search-surface'
 import { activeFilterCount, filtersByReading, officeSearchHref, withView, type SearchUrlState, type SearchView } from '../lib/search-url'
 import type { SectionView } from '../lib/sections'
+import { HitMenuProvider, type HitMenuState } from './hit-actions-menu'
 import type { NarrowSavedSearches } from './saved-searches-menu'
 import { SearchActiveFilters } from './search-active-filters'
 import {
@@ -100,6 +101,10 @@ function walkOrder(view: SearchView, sections: Partial<Record<SearchKind, Sectio
 
 const hitKey = (hit: SearchHit): string => `${hit.kind}:${hit.id}`
 
+/** The platform's key for "the menu of the thing I am on": Shift+F10, or the keyboard's own menu key. */
+export const isMenuKey = (event: Pick<KeyboardEvent, 'key' | 'shiftKey'>): boolean =>
+  event.key === 'ContextMenu' || (event.key === 'F10' && event.shiftKey)
+
 /**
  * The search, at any scope: the field, the facets and filters beside the
  * result, the result as a list of what matched or as the register. It holds
@@ -111,8 +116,8 @@ const hitKey = (hit: SearchHit): string => `${hit.kind}:${hit.id}`
  * „Filter“, and folds the saved searches and the export into one „Mehr“.
  *
  * The keyboard: ⌘K / Strg+K focuses the field from anywhere on the page; in
- * the field ↑ and ↓ walk the results, Enter opens the one marked, Escape
- * clears the words.
+ * the field ↑ and ↓ walk the results, Enter opens the one marked, Shift+F10
+ * (or the menu key) opens the marked document's ⋯, Escape clears the words.
  */
 export function SearchWorkspaceView({
   surface,
@@ -169,6 +174,8 @@ export function SearchWorkspaceView({
 
   const order = useMemo(() => walkOrder(state.view, sections), [state.view, sections])
   const [activeKey, setActiveKey] = useState<string | null>(null)
+  const [menuKey, setMenuKey] = useState<string | null>(null)
+  const hitMenus = useMemo<HitMenuState>(() => ({ openKey: menuKey, onOpenKeyChange: setMenuKey }), [menuKey])
   // The combobox's ids: each kind's listbox (or the register's table) and each hit's option.
   const idPrefix = useId()
   const listId = (kind: SearchKind): string => `${idPrefix}-list-${kind}`
@@ -191,6 +198,13 @@ export function SearchWorkspaceView({
       const at = order.findIndex((hit) => hitKey(hit) === activeKey)
       const next = event.key === 'ArrowDown' ? Math.min(order.length - 1, at + 1) : Math.max(0, at - 1)
       setActiveKey(hitKey(order[next]))
+      return
+    }
+    if (isMenuKey(event)) {
+      const hit = order.find((entry) => hitKey(entry) === activeKey)
+      if (hit?.kind !== 'document') return
+      event.preventDefault()
+      setMenuKey(hitKey(hit))
       return
     }
     if (event.key === 'Enter') {
@@ -482,6 +496,7 @@ export function SearchWorkspaceView({
         />
       ) : (
         <ResultsBody stale={loading}>
+          <HitMenuProvider value={hitMenus}>
           {state.view === 'register' ? (
             <SearchRegister
               state={state}
@@ -496,6 +511,7 @@ export function SearchWorkspaceView({
           ) : (
             <SearchResultList sections={sections} onLoadMore={onLoadMore} text={state.text} activeKey={activeKey} listId={listId} optionId={optionId} />
           )}
+          </HitMenuProvider>
         </ResultsBody>
       )}
     </SearchFrame>

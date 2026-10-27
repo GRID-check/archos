@@ -19,6 +19,7 @@ import {
   type SearchKind,
 } from '@/lib/search/search-wire'
 import { useSearchLabels } from '../hooks/use-search-labels'
+import { DocumentHitMenu, useHitMenus } from './hit-actions-menu'
 import { annotationHitHref, conversationHitHref, documentHitHref, folderHitHref, projectHitHref } from '../lib/search-hrefs'
 import { useSearchReturn } from '../hooks/use-search-return'
 import type { SectionView } from '../lib/sections'
@@ -176,6 +177,7 @@ function DocumentRow({ hit, text, active, id }: { hit: DocumentHit; text: string
   const t = useTranslations('search')
   const labels = useSearchLabels()
   const where = useWhere()
+  const menus = useHitMenus()
   const type = labels.documentType(hit.documentType)
   const day = labels.day(hit.planDate ?? hit.documentDate)
   const from = useSearchReturn()
@@ -205,6 +207,7 @@ function DocumentRow({ hit, text, active, id }: { hit: DocumentHit; text: string
         />
       }
       aside={hit.superseded ? <SupersededMark /> : null}
+      actions={menus ? <DocumentHitMenu hit={hit} /> : undefined}
     >
       {hit.passage ? (
         <PassageQuote

@@ -44,7 +44,7 @@ export const search = {
   total: '{count, plural, one {# result} other {# results}}',
   totalAtLeast: 'at least {count}',
   summaryAtLeast: 'at least {count} results',
-  keys: '↑ ↓ to choose, Enter to open, Esc to clear',
+  keys: '↑ ↓ to choose, Enter to open, Shift+F10 for actions, Esc to clear',
   loadMore: 'Show more',
   loadingMore: 'Loading…',
   loadMoreFailed: 'Could not load more. Try again.',
@@ -264,6 +264,21 @@ export const search = {
   mode: {
     backToFiles: 'Back to files',
     backToShelf: 'Back to the filing',
+  },
+  hitActions: {
+    label: 'Actions for “{name}”',
+    menuLabel: 'Actions',
+    column: 'Actions',
+    ask: 'Ask Piloti',
+    askAtPage: 'What does page {page} of “{name}” say?',
+    openCurrent: 'Open current version',
+    openPoints: 'Open points',
+    currentUnavailable: 'The current version cannot be opened.',
+  },
+  composerPicker: {
+    label: 'Documents',
+    hint: 'Type a name, a drawing number or a word from the content',
+    keys: 'Keyboard: arrows to choose, Enter to insert, Esc to close',
   },
   palette: {
     allResults: 'All results for “{text}”',
