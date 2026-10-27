@@ -19,7 +19,7 @@ export interface AppWiring {
   gotenbergUrl?: pulumi.Output<string>;
   /** The self-hosted Photon's URL (set when cfg.geocoder.enabled, ADR-0120). */
   geocoderUrl?: pulumi.Output<string>;
-  /** clamd's `tcp://` URL (set when cfg.malwareScan.enabled, ADR-0133). */
+  /** clamd's `tcp://` URL (set when cfg.malwareScan.enabled, ADR-0136). */
   malwareScanUrl?: pulumi.Output<string>;
   /** The Qdrant cluster's client URL (ADR-0115): the one vector store, so there is no embedded one. */
   qdrantUrl: pulumi.Output<string>;
@@ -642,7 +642,7 @@ export function frontendEnv(w: AppWiring): EnvVar[] {
     // Absent ⇒ the route answers `enabled: false` and the address stays a plain
     // text field. Only ever the in-cluster Photon: an address is client data.
     ...(w.geocoderUrl ? [{ name: "GRID_GEOCODER_URL", value: w.geocoderUrl }] : []),
-    // The malware scanner (ADR-0133): the in-cluster clamd, never anything
+    // The malware scanner (ADR-0136): the in-cluster clamd, never anything
     // else. Inherited by the bff-jobs pool, whose receive jobs scan what
     // arrives; the request path scans an original before serving it. Absent ⇒
     // every scan fails `not-configured`, and nothing waiting on one is filed.
