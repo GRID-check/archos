@@ -653,7 +653,7 @@ export const chat = {
         daylightOtherLaw:
           'The room-depth increment applies unless other law (such as the workplace regulation) provides otherwise.',
         daylightWinterGarden:
-          'Where a winter garden or a glazed loggia lies in front of the window, the requirement applies to the outer and the inner glazing area (Pkt. 9.1.5); the card checks one.',
+          'Where a winter garden or a glazed loggia lies in front of the window, the requirement applies to the outer and the inner glazing area (Pkt. 9.1.5); the card checks only one of them.',
       },
     },
     // A document Piloti wrote into this conversation's working directory. Not a

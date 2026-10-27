@@ -65,14 +65,17 @@ Chosen: **option 3**.
   Richtlinien, for the case the model names. A model that writes a result or a
   `limits` list has it dropped by validation and counted (`card-validity`,
   outcome `stripped`), in a `surface` leaf as on a lone card. The guard on
-  free text is fail-closed: in the title, a layer's or a leg's label, the note
-  and an input's `source`, a digit is refused unless it is part of an
-  allow-listed citation (Pkt. 9.1.4, Tabelle 3, Zeile 1, OIB-RL 2.3, ÖNORM
-  B 8110-7) or identifier (a component code such as AW 01, a storey, a Top, a
-  room number, a plot number; a plan number in a source or a note). A material
-  followed by a number („EPS 200") and a verdict in words or signs (erfüllt,
-  erfuellt, zulässig, passt, genügt, ok, in Ordnung, ✓, „unter dem
-  Grenzwert") are refused outright. A deny-list of figure shapes leaked; an
+  free text is fail-closed, on NFKC-normalised text. A name (the title, a
+  layer's or a leg's label) is built from an alphabet: letters, spaces,
+  – · / , ( ) . - →, and digits only inside an allow-listed citation (Pkt.
+  9.1.4, Tabelle 3, Zeile 1, OIB-RL 2.3, ÖNORM B 8110-7) or identifier (a
+  component code such as AW 01, a storey, a Top, a room number, a variant, a
+  plot number), so a sign or a symbol (≤, ✓, ☑, 👍) is refused as a class. A
+  text (the note, an input's `source`) may also name its documents (a plan
+  code, Index, Rev., Pos., Seite, a date, a year), but no measurement, no
+  comparison sign and no symbol. A verdict in words (erfüllt, erfuellt,
+  konform, i. O., bestanden, passt, „kleiner als gefordert", „unter dem
+  Grenzwert") is refused in both. A deny-list of figure shapes leaked; an
   allow-list cannot leak a shape nobody listed. One judgement is made on
   purpose: an identifier's number is not checked against the card's figures, so
   „AW 20" and „Top 63" pass like „AW 01" and „Top 7", because no rule on the

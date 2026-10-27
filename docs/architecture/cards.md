@@ -170,10 +170,11 @@ refuses a `value` outside its own `min`/`max` and a `min` at or above `max`, the
 TS schema accepts both. The renderer reconciles them (`inputSlots` drops the
 bound the source's value breaks), so a card that reaches the browser either way
 shows the source's value, never as an error. The title, a layer's or a leg's
-label, the note and an input's `source` are guarded fail-closed: a digit
-only inside an allow-listed citation or identifier, no material with a number,
-no verdict word or sign (`_figure_in` in `cards/models.py`); pydantic refuses
-them, the TS schema does not check.
+label is an alphabet (letters, spaces, a few marks, digits only in an
+allow-listed citation or identifier), the note and an input's `source` may
+also name documents (plan code, Index, Rev., Pos., a date) but hold no
+measurement, sign or symbol, and neither holds a verdict word (`_figure_in` in
+`cards/models.py`); pydantic refuses them, the TS schema does not check.
 
 A changed input is written to the card's A2UI surface data model at
 `/inputs/<leaf id>` (`features/a2ui/reader-inputs.ts`): never to the message,

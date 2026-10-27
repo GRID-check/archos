@@ -651,7 +651,7 @@ export const chat: typeof en.chat = {
         daylightOtherLaw:
           'Der Zuschlag für die Raumtiefe gilt, sofern andere Rechtsmaterien (z. B. die Arbeitsstättenverordnung) nichts Abweichendes bestimmen.',
         daylightWinterGarden:
-          'Ist dem Fenster ein Wintergarten oder eine verglaste Loggia vorgelagert, gilt die Anforderung für die äußere und die innere Lichteintrittsfläche (Pkt. 9.1.5); die Karte prüft eine.',
+          'Ist dem Fenster ein Wintergarten oder eine verglaste Loggia vorgelagert, gilt die Anforderung für die äußere und die innere Lichteintrittsfläche (Pkt. 9.1.5); die Karte prüft nur eine davon.',
       },
     },
     // Ein Dokument, das Piloti in den Arbeitsordner dieser Unterhaltung

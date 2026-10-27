@@ -21,6 +21,7 @@ power.
 
 import functools
 import re
+import unicodedata
 from typing import Annotated
 from typing import Any
 from typing import Literal
@@ -949,18 +950,21 @@ FormulaMeasure = Literal["new_build", "renovation", "major_renovation"]
 # The card computes every figure and every verdict; a figure or a verdict
 # written into text beside it disagrees with the card the moment an input
 # moves, and is the line that gets copied into a submission. So the guard is
-# FAIL-CLOSED: in a title, a layer's or a leg's label, a note and an input's
-# `source`, a digit is refused unless it is part of an allow-listed citation
-# or identifier, and a verdict in words or signs is refused outright. A
-# deny-list of figure shapes leaked („U unter 0,35", „20 Zentimeter", „62 ± 3");
-# an allow-list cannot leak a shape nobody listed.
+# FAIL-CLOSED, on text normalised with NFKC first (a superscript ² is a 2):
+#
+#   - a NAME (the title, a layer's or a leg's label) is built from an allowed
+#     alphabet: letters, spaces, the punctuation – · / , ( ) . - →, and digits
+#     only inside an allow-listed citation or identifier. A sign (≤, ✓, ☑, 👍,
+#     🟢) is not in the alphabet, so it is refused as a class;
+#   - a TEXT (the note, an input's `source`) may also name its documents (a
+#     plan code, Index, Rev., Pos., Seite, Variante, a date, a year), but carries
+#     no measurement, no comparison sign and no symbol;
+#   - in both, a verdict in words is refused outright.
 #
 # One judgement, made on purpose: an identifier's number is not checked against
 # the card's figures. „AW 20" (a component code), „Top 63" (a numbered dwelling)
 # and „Büro 2.14" are as legitimate as „AW 01", „Top 7" and „Büro 0.12", and no
-# rule on the text alone can tell a code from a figure written as one. They
-# pass; a material followed by a number („EPS 200"), a bare „Nr." and a decimal
-# after an axis do not.
+# rule on the text alone can tell a code from a figure written as one.
 
 #: Citations: where a rule is written. Stripped before digits are counted.
 _CITATION = re.compile(
@@ -970,7 +974,7 @@ _CITATION = re.compile(
     r"|\b(?:ÖNORM|OENORM|EN|ISO|DIN)(?:\s+(?:EN|ISO|[A-Z]))*\s+\d{2,5}(?:-\d{1,3})*(?::\d{4})?"
 )
 
-#: Identifiers: names of places and components, never quantities.
+#: Identifiers: names of places, components and variants, never quantities.
 _IDENTIFIER = re.compile(
     # component codes of a Bauteilkatalog: Außenwand, Innenwand, Trennwand,
     # Decke, Dach, Fußboden, Flachdach, Brandabschnitt, Bauteil, Bodenplatte
@@ -980,56 +984,84 @@ _IDENTIFIER = re.compile(
     # a numbered dwelling, a numbered or dotted room
     r"|\bTop\s+\d{1,3}[a-z]?\b"
     r"|\b(?:Büro|Raum|Zimmer)\s+\d{1,2}(?:\.\d{2})?\b"
-    # a lettered or numbered building part
-    r"|\b(?:Haus|Stiege|Bauteil|Trakt|Achse)\s+(?:[A-Z]|\d{1,2})\b(?![.,]\d)"
+    # a lettered or numbered building part or variant
+    r"|\b(?:Haus|Stiege|Bauteil|Trakt|Achse|Variante)\s+(?:[A-Z]|\d{1,2})\b(?![.,]\d)"
     # a plot
     r"|\bGst\.?-?Nr\.?\s+\d{1,5}(?:/\d{1,4})?\b"
 )
 
-#: Plan numbers, allowed where a text names a document (`source`, the note), never in a name.
-_PLAN_NUMBER = re.compile(r"\b(?:Plan(?:-?Nr\.?)?|Index)\s+[A-Z]{0,3}\d{1,4}(?:[-_./]\d{1,4})*\b")
+#: Where a text names its documents: a plan code after a plan, section or
+#: elevation, an Index, a revision, a position of the structural analysis, a
+#: page, a date, a year. Allowed in a `source` and a note, never in a name.
+_DOCUMENT_REFERENCE = re.compile(
+    r"\b\w*(?:plan|schnitt|ansicht)\s+(?:Nr\.?\s*)?[A-Z]{0,4}-?\d{1,4}(?:[-_./][A-Z0-9]{1,4})*\b"
+    r"|\bIndex\s+[A-Z0-9]{1,3}\b"
+    r"|\bRev\.?\s*\d{1,3}[a-z]?\b"
+    r"|\bPos\.?\s*\d{1,4}(?:\.\d{1,3})*\b"
+    r"|\bSeite\s+\d{1,4}\b"
+    r"|\b\d{1,2}\.\s?\d{1,2}\.\s?(?:\d{4}|\d{2})\b"
+    r"|\b\d{1,2}/\d{4}\b"
+    r"|\b(?:19|20)\d{2}\b",
+    re.I,
+)
 
 #: „OK" is a verdict, unless it is the Oberkante of a floor build-up.
 _TOP_EDGE = re.compile(r"\bOK\s*(?:FFB|RFB|FBOK|Rohdecke|Fertigfu(?:ß|ss)boden)\b")
 
-#: A verdict, in words or signs, in any of the spellings a model writes.
+_WORD_START = r"(?<![A-Za-zÄÖÜäöüß])"
+_WORD_END = r"(?![A-Za-zÄÖÜäöüß])"
+
+#: A verdict in words, in any of the spellings a model writes.
 _VERDICT = re.compile(
-    r"(?<![A-Za-zÄÖÜäöüß])(?:nicht\s+)?(?:erf(?:ü|ue)llt|zul(?:ä|ae)ssig|unzul(?:ä|ae)ssig|eingehalten"
-    r"|(?:ü|ue)berschritten|unterschritten|gen(?:ü|ue)gt|ausreichend|passt|in\s+Ordnung|okay|ok)(?![A-Za-zÄÖÜäöüß])"
-    r"|[✓✔✗✘❌✅]"
+    _WORD_START + r"(?:nicht\s+)?(?:erf(?:ü|ue)llt|zul(?:ä|ae)ssig|unzul(?:ä|ae)ssig|eingehalten|(?:ü|ue)berschritten"
+    r"|unterschritten|gen(?:ü|ue)gt|ausreichend|unzureichend|passt|in\s+Ordnung|i\.\s?O\.|okay|ok"
+    r"|(?:regel|norm)?konform|bestanden|nachgewiesen|entspricht|verfehlt"
+    r"|pass(?:ed|es)?|fail(?:ed|s)?|(?:non-)?compliant)" + _WORD_END + r"|\bh(?:ä|ae)lt\b[^.;]{0,60}?\bein\b"
     r"|\b(?:unter|(?:ü|ue)ber|unterhalb|oberhalb|innerhalb|au(?:ß|ss)erhalb)\s+(?:dem\s+|des\s+|der\s+)?"
-    r"(?:Grenzwert|H(?:ö|oe)chstwert|Mindestwert|Anforderung|Limit|Soll)",
+    r"(?:Grenzwert|H(?:ö|oe)chstwert|Mindestwert|Anforderung|Limit|Soll)"
+    r"|\b(?:kleiner|gr(?:ö|oe)(?:ß|ss)er|besser|schlechter|weniger|mehr|h(?:ö|oe)her|niedriger)\s+als\s+"
+    r"(?:gefordert|erlaubt|zul(?:ä|ae)ssig|vorgeschrieben|(?:der|die|das)\s+(?:Grenzwert|Anforderung|Soll))",
     re.I,
 )
 
-#: A material code followed by a number is a thickness or a grade, not a name.
-_MATERIAL_FIGURE = re.compile(r"\b(?:EPS|XPS|MW|SW|GW|PU|PUR|PIR|HWF|WF|KS|HLZ|STB|WDVS)(?:-[A-Z]{1,2})?[ -]?\d", re.I)
-
-#: A number with a unit, as a symbol or a word. Checked before any identifier
-#: is stripped, so „Plan 17 Zentimeter" is not a plan number followed by a word.
+#: A number with a unit, as a symbol or a word. Checked before any allow-list is
+#: stripped, so „Plan 17 Zentimeter" is not a plan code followed by a word.
 _MEASURE = re.compile(
-    r"\d[\d.,]*\s*(?:mm|cm|dm|m²|m2|m³|m|%|°|W\b|kWh|Millimeter|Zentimeter|Meter|Quadratmeter|Prozent|Grad)"
-    r"(?![A-Za-zÄÖÜäöüß])",
+    r"\d[\d.,]*\s*(?:mm|cm|dm|m²|m2|m³|m3|m|%|°|W\b|kWh|Millimeter|Zentimeter|Meter|Quadratmeter|Prozent|Grad)"
+    + _WORD_END,
     re.I,
 )
+
+#: A comparison in signs, which no text needs: a sign compares a figure.
+_COMPARISON_SIGN = re.compile(r"[≤≥<>⩽⩾=≈~±≠]")
+
+#: The alphabet of a name, once its citations and identifiers are stripped:
+#: letters, spaces and – · / , ( ) . - →. Anything else, a digit or a sign, is refused.
+_NAME_ALPHABET = re.compile(r"(?:[^\W\d_]|[\s–·/,().\-→])*")
 
 _DIGIT = re.compile(r"\d")
 
 
+def _is_symbol(char: str) -> bool:
+    return unicodedata.category(char) in ("So", "Sm", "Sk")
+
+
 def _figure_in(value: str, *, name: bool) -> str | None:
     """What makes ``value`` carry a figure or a verdict, or None. ``name``: a title or label, not a text."""
-    text = _TOP_EDGE.sub(" ", value)
+    text = _TOP_EDGE.sub(" ", unicodedata.normalize("NFKC", value))
     if _VERDICT.search(text):
         return "a verdict"
-    if _MATERIAL_FIGURE.search(text):
-        return "a material with a number"
     if _MEASURE.search(text):
         return "a measurement"
     stripped = _IDENTIFIER.sub(" ", _CITATION.sub(" ", text))
-    if not name:
-        stripped = _PLAN_NUMBER.sub(" ", stripped)
-    if _DIGIT.search(stripped):
-        return "a number that is neither a citation nor an identifier"
+    if name:
+        if not _NAME_ALPHABET.fullmatch(stripped):
+            return "a character a name does not hold (a number, a sign or a symbol)"
+        return None
+    if _COMPARISON_SIGN.search(text) or any(_is_symbol(char) for char in text if char not in "§°"):
+        return "a sign or a symbol"
+    if _DIGIT.search(_DOCUMENT_REFERENCE.sub(" ", stripped)):
+        return "a number that is neither a citation, an identifier nor a document reference"
     return None
 
 
@@ -1040,7 +1072,8 @@ def _no_figure(value: str | None, field: str, *, name: bool = True) -> str | Non
             f"`{field}` carries {found}: '{value}'. The card computes every figure and every verdict, so a "
             f"{'name names the component, never a value' if name else 'text says where or why, never what'}; "
             "put figures in the inputs. A number is allowed only in a citation (Pkt. 9.1.4, Tabelle 3, "
-            "Zeile 1) or an identifier (AW 01, Top 7, Büro 2.14, 2. OG)"
+            "Zeile 1), an identifier (AW 01, Top 7, Büro 2.14, 2. OG)"
+            f"{'' if name else ' or a document reference (Plan EP-01, Index B, Rev. 3, Pos. 63, a date)'}"
         )
     return value
 

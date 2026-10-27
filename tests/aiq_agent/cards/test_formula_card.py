@@ -414,3 +414,88 @@ class TestAMajorRenovation:
 
         description = UValueFormula.model_fields["measure"].description or ""
         assert "major_renovation" in description and "Pkt. 4.3" in description
+
+
+class TestTheGuardAllowsProvenanceAndRefusesByClass:
+    """Fourth review: real provenance passes; a name is an alphabet, so a sign is refused as a class."""
+
+    @pytest.mark.parametrize(
+        "source",
+        [
+            "Einreichplan EP-01 Index B",
+            "Bestandsplan 1972",
+            "Produktdatenblatt Rev. 3",
+            "Gemäß Statik Pos. 63",
+            "Siehe Seite 17",
+            "Variante 2",
+            "Stand 03/2024",
+            "Fassung vom 12.03.2024",
+        ],
+    )
+    def test_a_document_reference_passes_in_a_source_and_a_note(self, source):
+        card = _stair(note=source)
+        card["formula"]["going"]["source"] = source
+        grid_card_adapter.validate_python(card)
+
+    @pytest.mark.parametrize(
+        "text",
+        [
+            "konform",
+            "regelkonform",
+            "i. O.",
+            "bestanden",
+            "nachgewiesen",
+            "entspricht der Anforderung",
+            "hält die Anforderung ein",
+            "verfehlt",
+            "unzureichend",
+            "pass",
+            "fail",
+            "compliant",
+            "kleiner als gefordert",
+            "größer als erlaubt",
+            "besser als der Grenzwert",
+            "schlechter als die Anforderung",
+            "weniger als gefordert",
+            "mehr als erlaubt",
+            "U ≤ Grenzwert",
+            "Stiege ☑",
+            "👍",
+            "🟢",
+            "Dicke 20 cm²",
+            "U-Wert ⁰,¹⁷",
+        ],
+    )
+    def test_a_verdict_a_sign_or_a_symbol_is_refused_in_a_note(self, text):
+        with pytest.raises(ValidationError, match="carries"):
+            grid_card_adapter.validate_python(_stair(note=text))
+
+    @pytest.mark.parametrize(
+        "title",
+        [
+            "Stiege ☑",
+            "Haus A 👍",
+            "Wand 🟢",
+            "U ≤ 0,35",
+            "U ≥ Soll",
+            "Wand ²",
+            "Stiege A konform",
+            "Stiege A i. O.",
+            "Stiege A bestanden",
+            "Wand nachgewiesen",
+            "Wand verfehlt",
+            "Wand compliant",
+            "Stiege A!",
+            "Stiege A: geprüft",
+        ],
+    )
+    def test_a_name_outside_its_alphabet_is_refused(self, title):
+        with pytest.raises(ValidationError, match="carries"):
+            grid_card_adapter.validate_python(_stair(title=title))
+
+    @pytest.mark.parametrize(
+        "title",
+        ["U-Wert Außenwand AW 01 – Variante 2", "Wohnungseingangstüre → Gang", "Decke über Durchfahrt"],
+    )
+    def test_a_name_inside_its_alphabet_passes(self, title):
+        grid_card_adapter.validate_python(_stair(title=title))
