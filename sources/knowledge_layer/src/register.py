@@ -413,6 +413,49 @@ def _setup_backend(config: KnowledgeRetrievalConfig, summary_llm_obj=None) -> tu
     return BACKEND, backend_config
 
 
+#: Modules the search imports inside its body, on first use. Importing them at
+#: build time takes their cost (``folder_channel`` alone was 136 ms, measured
+#: 2026-10-27) off the first turn.
+_SEARCH_PATH_MODULES = (
+    "knowledge_layer.browse",
+    "knowledge_layer.folder_channel",
+    "knowledge_layer.read_passage",
+    "knowledge_layer.requery",
+    "aiq_agent.observability.retrieval_trace",
+)
+
+
+def _warm_search_path_sync(retriever: Any) -> None:
+    import importlib
+
+    warm = getattr(retriever, "warm_components", None)
+    if callable(warm):
+        warm()
+    for module in _SEARCH_PATH_MODULES:
+        importlib.import_module(module)
+
+
+async def _warm_search_path(retriever: Any) -> None:
+    """Initialise the retriever and import the search path now, off the loop; never raises.
+
+    What the first search of a process otherwise paid before its first
+    embedding call: the retrieval stack's imports and the embedding client
+    (``LlamaIndexRetriever.warm_components``), and the modules the search body
+    imports on first use. It reads no network, so a store that is down costs
+    nothing here and fails the search where it always did. A failure is logged
+    and the first search initialises as before.
+    """
+    import time
+
+    started = time.perf_counter()
+    try:
+        await asyncio.to_thread(_warm_search_path_sync, retriever)
+    except Exception:  # noqa: BLE001 - a warm-up is worth less than the boot
+        logger.warning("Knowledge search warm-up failed; the first search initialises instead", exc_info=True)
+        return
+    logger.info("Knowledge search warmed at build in %.0f ms", 1000 * (time.perf_counter() - started))
+
+
 def _get_retriever(config: KnowledgeRetrievalConfig):
     """Get the retriever singleton from the factory."""
     from aiq_agent.knowledge.factory import get_retriever
@@ -2093,6 +2136,9 @@ async def knowledge_retrieval(config: KnowledgeRetrievalConfig, _builder: Builde
     from aiq_agent.knowledge.factory import set_search_retriever
 
     set_search_retriever(retriever)
+    # The search path's lazy initialisation, at boot instead of inside the
+    # first turn's prefetch (`_warm_search_path`).
+    await _warm_search_path(retriever)
 
     _initialize_ingestor(config, summary_llm_obj)
 
