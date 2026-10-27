@@ -420,4 +420,34 @@ describe.skipIf(!enabled)('search latency over a seeded office', () => {
       return facets.documentType.reduce((sum, entry) => sum + entry.count, 0)
     })
   })
+
+  it('office-wide completions, one keystroke each', async () => {
+    const { suggestValues } = await import('./suggest-repository')
+    // GRID_SUGGEST_EXPLAIN=1 prints the plan of a party completion: how the `raw` fence was found (suggest-repository.ts).
+    if (process.env.GRID_SUGGEST_EXPLAIN === '1') {
+      const { suggestStatement } = await import('./suggest-repository')
+      const { getDb } = await import('@/lib/db')
+      const { withTenant } = await import('@/lib/db/tenant-context')
+      const { executeRows } = await import('@/lib/db/execute-rows')
+      const plan = executeRows<Record<string, string>>(
+        await withTenant({ organizationId: reach.organizationId }, async () =>
+          getDb().execute(sql`EXPLAIN (ANALYZE, BUFFERS) ${suggestStatement(reach, query({}), { dimension: 'party', prefix: 'atel', limit: 10 })}`)
+        )
+      )
+      process.stdout.write(plan.map((row) => Object.values(row)[0]).join('\n') + '\n')
+    }
+    await measure('office, suggest party "atel"', async () => {
+      const values = await suggestValues(reach, query({}), { dimension: 'party', prefix: 'atel', limit: 10 })
+      expect(values.length).toBeGreaterThan(0)
+      return values.length
+    })
+    await measure('office, suggest cites "önorm"', async () => {
+      const values = await suggestValues(reach, query({}), { dimension: 'cites', prefix: 'önorm', limit: 10 })
+      return values.length
+    })
+    await measure('office, suggest planNumber "ep" under currentOnly', async () => {
+      const values = await suggestValues(reach, query({ currentOnly: true }), { dimension: 'planNumber', prefix: 'ep', limit: 10 })
+      return values.length
+    })
+  })
 })

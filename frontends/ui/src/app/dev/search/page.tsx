@@ -18,6 +18,9 @@
  * hit carries its ⋯ (Öffnen, Piloti fragen, Aktuelle Fassung öffnen, Offene Punkte,
  * Im Ordner zeigen, Link kopieren).
  * `?composer=1` is the chat composer's `#` picker (`composer-preview.tsx`).
+ * The rail's free-text filters (Plannummer, Index, Maßstab, Ort, a party's
+ * name, Verweist auf, an Angabe's value) complete from the fixture office
+ * (`searchFixtureSuggest`); `?filters=open` shows them all.
  *
  * German, pinned: the copy that has to fit is German.
  */
@@ -30,6 +33,7 @@ import { I18nProvider } from '@/i18n'
 import type { SavedSearchView } from '@/lib/search/saved-search-client'
 import { SearchWorkspaceView } from '@/features/search'
 import { SavedSearchesMenu } from '@/features/search/components/saved-searches-menu'
+import { SuggestSourceProvider, type SuggestSource } from '@/features/search/hooks/use-filter-suggestions'
 import { useSuggestedSearchName } from '@/features/search/hooks/use-suggested-search-name'
 import { EMPTY_SEARCH_STATE, type SearchUrlState } from '@/features/search/lib/search-url'
 import { sectionView } from '@/features/search/lib/sections'
@@ -37,6 +41,7 @@ import { SEARCH_KINDS, type SearchKind, type SearchResponse } from '@/lib/search
 import type { SearchSurface } from '@/features/search/lib/search-surface'
 import { SEARCH_FIXTURE_RESPONSE, SEARCH_FIXTURE_SAVED } from '../_fixtures/search'
 import { searchFixtureAnswer } from '../_fixtures/search-answer'
+import { searchFixtureSuggest } from '../_fixtures/search-suggest'
 import { ComposerPreview } from './composer-preview'
 
 const sectionsOf = (response: SearchResponse): Partial<Record<SearchKind, ReturnType<typeof sectionView>>> =>
@@ -47,6 +52,9 @@ const sectionsOf = (response: SearchResponse): Partial<Record<SearchKind, Return
 const PROJECT_SURFACE: SearchSurface = { kind: 'project', projectId: '0b6f0c1e-3a55-4c0e-9a1d-7f2b5d0e1a01' }
 
 type PreviewState = 'answer' | 'empty' | 'loading' | 'error'
+
+/** The filter fields' completions, answered from the fixture as the route would (`searchFixtureSuggest`). */
+const FIXTURE_SUGGEST: SuggestSource = async (question) => searchFixtureSuggest(question)
 
 const EMPTY_RESPONSE: SearchResponse = {
   ...SEARCH_FIXTURE_RESPONSE,
@@ -78,42 +86,44 @@ function Preview({
   const [deleting, setDeleting] = useState<ReadonlySet<string>>(new Set())
   const suggestedName = useSuggestedSearchName(state)
   return (
-    <SearchWorkspaceView
-      surface={surface}
-      state={state}
-      onStateChange={setState}
-      fieldValue={field}
-      onFieldChange={(value) => {
-        setField(value)
-        setState((current) => ({ ...current, text: value }))
-      }}
-      response={response}
-      sections={sections}
-      loading={answer === 'loading'}
-      failed={answer === 'error'}
-      onRetry={() => {}}
-      onLoadMore={() => {}}
-      onExport={() => {}}
-      currentUserId="user_lena"
-      filtersOpen={filtersOpen}
-      savedSearches={
-        <SavedSearchesMenu
-          items={saved.filter((entry) => !deleting.has(entry.id))}
-          failed={false}
-          onApply={() => {}}
-          onToggleShare={(item) => setSaved((list) => list.map((entry) => (entry.id === item.id ? { ...entry, shared: !entry.shared } : entry)))}
-          onRename={async (item, name) => {
-            if (saved.some((entry) => entry.id !== item.id && entry.ownedByMe && entry.name === name)) return 'taken'
-            setSaved((list) => list.map((entry) => (entry.id === item.id ? { ...entry, name } : entry)))
-            return 'renamed'
-          }}
-          onDelete={(item) => setDeleting((ids) => new Set(ids).add(item.id))}
-          onUndoDelete={(item) => setDeleting((ids) => new Set([...ids].filter((id) => id !== item.id)))}
-          suggestedName={suggestedName}
-          onSave={async () => true}
-        />
-      }
-    />
+    <SuggestSourceProvider value={FIXTURE_SUGGEST}>
+      <SearchWorkspaceView
+        surface={surface}
+        state={state}
+        onStateChange={setState}
+        fieldValue={field}
+        onFieldChange={(value) => {
+          setField(value)
+          setState((current) => ({ ...current, text: value }))
+        }}
+        response={response}
+        sections={sections}
+        loading={answer === 'loading'}
+        failed={answer === 'error'}
+        onRetry={() => {}}
+        onLoadMore={() => {}}
+        onExport={() => {}}
+        currentUserId="user_lena"
+        filtersOpen={filtersOpen}
+        savedSearches={
+          <SavedSearchesMenu
+            items={saved.filter((entry) => !deleting.has(entry.id))}
+            failed={false}
+            onApply={() => {}}
+            onToggleShare={(item) => setSaved((list) => list.map((entry) => (entry.id === item.id ? { ...entry, shared: !entry.shared } : entry)))}
+            onRename={async (item, name) => {
+              if (saved.some((entry) => entry.id !== item.id && entry.ownedByMe && entry.name === name)) return 'taken'
+              setSaved((list) => list.map((entry) => (entry.id === item.id ? { ...entry, name } : entry)))
+              return 'renamed'
+            }}
+            onDelete={(item) => setDeleting((ids) => new Set(ids).add(item.id))}
+            onUndoDelete={(item) => setDeleting((ids) => new Set([...ids].filter((id) => id !== item.id)))}
+            suggestedName={suggestedName}
+            onSave={async () => true}
+          />
+        }
+      />
+    </SuggestSourceProvider>
   )
 }
 

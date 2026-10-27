@@ -208,6 +208,7 @@ export const EXPOSURE = {
   // Piloti too: the filters (type, facts, references, register order) are what `knowledge_search` cannot ask, and the
   // description says a passage is a pointer to read, not a source to quote.
   'workspace-search': OFFERED,
+  'workspace-search-suggest': OFFERED,
   'workspace-search-export': OFFERED,
   'document-status': OFFERED,
   'document-summary-get': OFFERED,
