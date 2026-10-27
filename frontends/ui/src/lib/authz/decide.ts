@@ -230,8 +230,7 @@ export async function decide(
   }
 
   if (tier !== 'project') {
-    // `skill` and `folder` permissions are WorkOS's shape, decided elsewhere or
-    // not at all: no skill resource exists, and folders are `./folder-access`.
+    // Folder permissions are decided by `./folder-access`, per folder.
     throw new Error(`[authz] permission "${permission}" is ${tier}-tier, which this module does not decide`)
   }
   if (!resource) {

@@ -246,10 +246,9 @@ minute instead of two.
 **The skill tier is gone from `decide.ts`.** No `skill` resource was ever
 created and no role held a `skill:*` permission, so every skill decision fell
 through to a fixed project permission, and nothing called `decide` with one.
-The three `skill:*` permissions and the Skill resource type stay in the catalog
-only because WorkOS still holds them: removing them from the catalog first would
-fail the provisioning Job. Deleting them in both environments, then from the
-catalog, is the remaining step.
+The three `skill:*` permissions and the Skill resource type followed the same
+day: dropped from the catalog, then deleted in both environments right after
+the change merged, so the provisioning Job never saw the two disagree.
 
 **Next, not done here.** The project tier still asks up to three `check` calls
 per request and derives a role from them, and `GET /api/projects` checks every

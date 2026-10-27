@@ -81,8 +81,7 @@ describe('unknown permissions fail closed', () => {
   })
 
   it('refuses a tier it does not decide rather than answering it', async () => {
-    // `skill:*` stays in the catalog because WorkOS holds it; nothing grants it.
-    await expect(decide(session(), 'skill:run' as never, PROJECT)).rejects.toThrow(/does not decide/)
+    await expect(decide(session(), 'folder:read' as never, PROJECT)).rejects.toThrow(/does not decide/)
   })
 })
 
