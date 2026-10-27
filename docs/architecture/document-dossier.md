@@ -60,6 +60,12 @@ building height, storeys) are added to the dossier's own (`lifted_drawing_facts`
 }
 ```
 
+A dossier of a new Fassung also carries `changes` and `changed_against` when the
+Fassung it replaces (a re-upload under the same name, or the one a person linked at
+upload) had a dossier: per fact key, `{key, before, after, page}`, where a key only
+one of them states has `before` or `after` null. At most 12, compared folded (case,
+spaces, decimal comma), no model (`dossier.fact_changes`).
+
 | Field | Vocabulary (`dossier.py`, mirrored in `frontends/ui/src/lib/documents/dossier.ts`) |
 |---|---|
 | `document_type` | `submission_drawing` `construction_drawing` `site_plan` `zoning_plan` `building_description` `fire_safety_concept` `structural_analysis` `energy_certificate` `building_physics` `soil_report` `expert_report` `permit` `application` `meeting_minutes` `correspondence` `offer` `invoice` `contract` `specification` `schedule` `calculation` `photo` `legal_text` `other` |

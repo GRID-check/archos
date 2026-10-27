@@ -113,3 +113,19 @@ def test_a_failed_dossier_keeps_the_old_summary_and_the_references(tmp_path, rea
     assert document.dossier is None
     assert document.summary == "Ein Satz aus der ersten und letzten Seite."
     assert any(r["kind"] == "norm" for r in document.doc_references)
+
+
+def test_the_predecessor_is_the_re_uploaded_name_else_the_linked_fassung():
+    from types import SimpleNamespace
+
+    from knowledge_layer.llamaindex.adapter import _predecessor_dossier
+
+    rows = [
+        SimpleNamespace(file_name="EP-05_Index-B.pdf", dossier={"facts": []}),
+        SimpleNamespace(file_name="EP-05.pdf", dossier={"facts": [{"key": "units", "value": "12"}]}),
+        SimpleNamespace(file_name="Foto.jpg", dossier=None),
+    ]
+    assert _predecessor_dossier(rows, ["EP-05.pdf"], None)[0] == "EP-05.pdf"
+    assert _predecessor_dossier(rows, [], "EP-05_Index-B.pdf")[0] == "EP-05_Index-B.pdf"
+    assert _predecessor_dossier(rows, [], "Foto.jpg") is None
+    assert _predecessor_dossier(rows, [], None) is None

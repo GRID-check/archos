@@ -204,6 +204,8 @@ class FileRow:
     facts: tuple[str, ...] = ()
     references: tuple[str, ...] = ()
     pages_not_read: int = 0
+    #: What the facts say differently from the Fassung this one replaced: ``key before → after``.
+    fact_changes: tuple[str, ...] = ()
 
     @property
     def document_date(self) -> str | None:
@@ -282,7 +284,13 @@ def _reading_fields(row: Any) -> dict[str, Any]:
     coverage = _attr(row, "coverage")
     not_read = coverage.get("not_read") if isinstance(coverage, dict) else 0
     document_type = dossier.get("document_type")
+    changes = [
+        f"{change['key']} {change.get('before') or '–'} → {change.get('after') or '–'}"
+        for change in dossier.get("changes") or []
+        if isinstance(change, dict) and change.get("key")
+    ]
     return {
+        "fact_changes": tuple(changes[:MAX_ROW_FACTS]),
         "document_type": str(document_type) if document_type else None,
         "facts": tuple(facts[:MAX_ROW_FACTS]),
         "references": tuple(references[:MAX_ROW_REFERENCES]),
@@ -670,6 +678,8 @@ def _row_line(row: FileRow, *, show_shelf: bool, mark: str | None = None) -> str
         bits.append(f"States: {'; '.join(row.facts)}")
     if row.references:
         bits.append(f"Refers to: {', '.join(row.references)}")
+    if row.fact_changes:
+        bits.append(f"Facts changed against the previous Fassung: {'; '.join(row.fact_changes)}")
     if mark:
         bits.append(mark)
     change = _change_bit(row)

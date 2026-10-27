@@ -180,3 +180,27 @@ class TestLiftedFacts:
 
     def test_no_analysis_lifts_nothing(self):
         assert d.lifted_drawing_facts([(1, None), (2, {})]) == []
+
+
+class TestFactChanges:
+    def _dossier(self, *facts):
+        return {"facts": [{"key": k, "value": v, "unit": u, "page": p} for k, v, u, p in facts]}
+
+    def test_a_fact_stated_differently_is_a_change_and_one_stated_alike_is_not(self):
+        before = self._dossier(("storeys_above_ground", "4", None, 1), ("room_height", "2,60", "m", 2))
+        after = self._dossier(("storeys_above_ground", "5", None, 1), ("room_height", "2.60", "m", 2))
+
+        assert d.fact_changes(before, after) == [
+            {"key": "storeys_above_ground", "before": "4", "after": "5", "page": 1}
+        ]
+
+    def test_a_fact_newly_stated_or_no_longer_stated(self):
+        before = self._dossier(("units", "12", None, 3))
+        after = self._dossier(("parking_spaces", "14", None, 4))
+
+        changes = {c["key"]: (c["before"], c["after"]) for c in d.fact_changes(before, after)}
+        assert changes == {"units": ("12", None), "parking_spaces": (None, "14")}
+
+    def test_without_both_readings_there_is_nothing_to_compare(self):
+        assert d.fact_changes(None, self._dossier(("units", "12", None, 3))) == []
+        assert d.fact_changes(self._dossier(("units", "12", None, 3)), {"facts": []}) == []
