@@ -5,6 +5,7 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import type { FileItem } from '../file-types'
 import { refreshedFileFields } from '../lib/file-item'
 import type { FileShelf } from '../lib/file-shelf'
+import { clearDocumentLocus } from '../lib/document-locus'
 import { clearReviewParams } from '../lib/open-review'
 import { useFilePreviewStore, type FilePreviewContext } from '../stores/file-preview-store'
 
@@ -137,9 +138,10 @@ export function useDocParamSync({
 
     if (previewMoved) {
       previousDocRef.current = wanted
-      // The review belongs to the document that was open: a different one,
-      // or none, starts without it (`lib/open-review.ts`).
-      const params = clearReviewParams(new URLSearchParams(searchParams?.toString() ?? ''))
+      // The review and the place a link opened at belong to the document that
+      // was open: a different one, or none, starts without them
+      // (`lib/open-review.ts`, `lib/document-locus.ts`).
+      const params = clearDocumentLocus(clearReviewParams(new URLSearchParams(searchParams?.toString() ?? '')))
       const path = pathname ?? ''
       if (openId === null) {
         params.delete('doc')
