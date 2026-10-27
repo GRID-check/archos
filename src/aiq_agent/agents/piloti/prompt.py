@@ -42,6 +42,7 @@ from aiq_agent.common import load_prompt
 from aiq_agent.common import render_prompt_template
 from aiq_agent.common.applicability import render_project_block
 from aiq_agent.common.estate_paths import estate_path
+from aiq_agent.common.estate_paths import reads_the_estate
 from aiq_agent.common.norm_registry import parcel_note
 from aiq_agent.common.page_region_words import percent
 from aiq_agent.common.page_region_words import where_on_the_page_en
@@ -54,7 +55,6 @@ from aiq_agent.common.source_kinds import SHELF_QUALIFIERS
 from aiq_agent.common.source_kinds import parse_shelf
 from aiq_agent.common.steering import AppliedSteer
 from aiq_agent.common.steering import with_steering
-from aiq_agent.common.tool_vocabulary import FILESYSTEM_VERBS
 from aiq_agent.knowledge.already_read import render_already_read_block
 from aiq_agent.observability.langfuse_trace_attributes import current_fallback_identity
 from aiq_agent.observability.langfuse_trace_attributes import record_prompt_link
@@ -240,7 +240,7 @@ def focus_file_path(state: Any, tool_names: Sequence[str]) -> str | None:
     """
     file_name = getattr(state, "focus_file_name", None)
     shelf = getattr(state, "focus_shelf", None)
-    if not file_name or not shelf or not FILESYSTEM_VERBS <= set(tool_names):
+    if not file_name or not shelf or not reads_the_estate(tool_names):
         return None
     parsed = parse_shelf(shelf)
     return estate_path(parsed if parsed is not None else shelf, None, file_name)

@@ -607,6 +607,7 @@ def _turn_prefetch(
             decisions,
             facts.question,
             focus_file_name=state.focus_file_name,
+            focus_shelf=state.focus_shelf,
             previous_message=facts.previous_message,
             reference_projects=facts.reference_projects,
         )
@@ -659,20 +660,22 @@ def _estate_backend(config: ResearchAgentConfig, builder: Builder) -> Any:
 
 
 def _chat_bound(tools: list[Any], config: ResearchAgentConfig, builder: Builder) -> list[Any]:
-    """The shared knowledge-layer tools on Piloti's chat contract (``knowledge_layer.chat_binding``, slice 6).
+    """The shared knowledge-layer tools on the contract of a binding that reads the estate (slice 6).
 
-    ``knowledge_search`` is ranked search only and ``list_files`` the Fassungen of one document,
-    because Piloti reads the estate through ``ls``, ``glob``, ``grep`` and ``read_file``. Deep
-    research and intake bind the same NAT functions with their full contracts. The budget the
-    description states is the search's own configuration.
+    Only when the turns will bind the estate's verbs (``filesystem`` set): ``knowledge_search`` is
+    then ranked search with ``path`` and ``list_files`` loses its tree view, because ``grep`` and
+    ``ls`` do those. A config without the estate (an eval, a benchmark) keeps the full contracts,
+    the literal modes included. The budget the description states is the search's own configuration.
     """
-    from knowledge_layer.chat_binding import KNOWLEDGE_SEARCH
     from knowledge_layer.chat_binding import chat_tools
 
-    try:
-        search = builder.get_function_config(config.filesystem or KNOWLEDGE_SEARCH)
-    except Exception:  # noqa: BLE001 - a config without the search has nothing to rebind
+    from aiq_agent.common.estate_paths import reads_the_estate
+    from aiq_agent.tools.documents.tools import ESTATE_TOOL_NAMES
+
+    estate_verbs = ESTATE_TOOL_NAMES if config.filesystem is not None else ()
+    if not reads_the_estate([*(getattr(tool, "name", "") for tool in tools), *estate_verbs]):
         return tools
+    search = builder.get_function_config(config.filesystem)
     return chat_tools(
         tools,
         top_k=int(getattr(search, "top_k", 5)),
