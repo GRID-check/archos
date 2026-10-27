@@ -144,7 +144,7 @@ class ProjectFacts(BaseModel):
     )
 
     @model_validator(mode="after")
-    def _english_tokens(self) -> "ProjectFacts":
+    def _english_tokens(self) -> ProjectFacts:
         """A German token (``wien``) from a BFF that has not rolled yet is read as the English one."""
         if self.federal_state is not None:
             self.federal_state = normalize_profile_token("federal_state", self.federal_state)

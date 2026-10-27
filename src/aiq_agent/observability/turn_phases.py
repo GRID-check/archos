@@ -55,7 +55,7 @@ def observed_phase(name: str, **facts: Any) -> Iterator[dict[str, Any]]:
     status = "ok"
     try:
         yield outcome
-    except (asyncio.CancelledError, GeneratorExit):
+    except asyncio.CancelledError, GeneratorExit:
         status = "cancelled"
         raise
     except BaseException as exc:

@@ -9,16 +9,16 @@ from __future__ import annotations
 
 import pytest
 
+from aiq_agent.citations.entries import DROPPED_CITATION_MARKER
+from aiq_agent.citations.entries import LOCUS_MISMATCH_REASON
+from aiq_agent.citations.entries import SourceEntry
+from aiq_agent.citations.quote_matching import QUOTE_MATCH_THRESHOLD
+from aiq_agent.citations.quote_matching import quote_coverage
+from aiq_agent.citations.registry import SourceRegistry
+from aiq_agent.citations.verification import verify_citations
 from aiq_agent.common.citation_locus import Locus
 from aiq_agent.common.citation_locus import locus_before
 from aiq_agent.common.citation_locus import locus_in_entry
-from aiq_agent.common.citation_verification import DROPPED_CITATION_MARKER
-from aiq_agent.common.citation_verification import LOCUS_MISMATCH_REASON
-from aiq_agent.common.citation_verification import QUOTE_MATCH_THRESHOLD
-from aiq_agent.common.citation_verification import SourceEntry
-from aiq_agent.common.citation_verification import SourceRegistry
-from aiq_agent.common.citation_verification import quote_coverage
-from aiq_agent.common.citation_verification import verify_citations
 from aiq_agent.common.quote_polarity import polarity_agrees
 
 PASSAGE = (

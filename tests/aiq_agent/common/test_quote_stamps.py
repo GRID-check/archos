@@ -8,7 +8,7 @@ against says nothing, and the passage the line cites wins a tie.
 
 from __future__ import annotations
 
-from aiq_agent.common.citation_verification import SourceEntry
+from aiq_agent.citations.entries import SourceEntry
 from aiq_agent.common.quote_stamps import quote_lines
 from aiq_agent.common.quote_stamps import stamp_quote_lines
 from aiq_agent.common.quote_stamps import verification_for

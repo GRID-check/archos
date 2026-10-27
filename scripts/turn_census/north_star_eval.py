@@ -69,7 +69,7 @@ _EXEMPLAR = re.compile(r"^### (ns-[a-z0-9-]+)\s*$", re.MULTILINE)
 def _region_ok(value: Any) -> bool:
     try:
         x, y, w, h = (float(part) for part in value)
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         return False
     return 0 <= x and 0 <= y and w > 0 and h > 0 and x + w <= 1 and y + h <= 1
 

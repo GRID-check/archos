@@ -67,7 +67,7 @@ def bm25_length_of(metadata: dict[str, Any] | None) -> dict[str, float]:
         return {}
     try:
         length = {key: float(value) for key, value in stored.items() if key in _BM25_LENGTH_KEYS}
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         return {}
     return length if all(value > 0 for value in length.values()) else {}
 
