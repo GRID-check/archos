@@ -1,6 +1,7 @@
 /**
  * Run one slice of a claimed job (ADR-0079): what `POST /api/internal/jobs/run`
- * does for the `bff-jobs` runner.
+ * does for the `bff-jobs` runner, and what `./slice-entry.ts` does for it in
+ * the runner's own process.
  *
  * The runner names a job and itself, and nothing else. Everything the work
  * needs is read from the queue row here, and only a row that worker holds is
@@ -13,6 +14,7 @@ import { ConflictError } from '@/lib/api/errors'
 import { withPlatformAccess, withTenant } from '@/lib/db/tenant-context'
 import { JOB_HANDLERS } from './handlers'
 import { findClaimedJob } from './repository'
+import { runAsJobSlice } from './slice-scope'
 import { isBffJobKind } from './types'
 
 export interface JobSliceOutcome {
@@ -38,9 +40,12 @@ export async function runJobSlice(jobId: string, worker: string): Promise<JobSli
   if (!isBffJobKind(kind)) throw new Error(`No handler for job kind "${kind}"`)
 
   // The lane is the organization, so the work runs inside it and row-level
-  // security applies to everything the handler reads and writes.
-  const result = await withTenant({ organizationId: job.lane }, () =>
-    JOB_HANDLERS[kind]({ organizationId: job.lane, payload: job.payload, attempts: job.attempts })
+  // security applies to everything the handler reads and writes. Marked as a
+  // slice, so nothing it calls reads a request it does not have (`./slice-scope`).
+  const result = await runAsJobSlice(() =>
+    withTenant({ organizationId: job.lane }, () =>
+      JOB_HANDLERS[kind]({ organizationId: job.lane, payload: job.payload, attempts: job.attempts })
+    )
   )
   if (!result.done && result.notBefore) {
     return { done: false, payload: result.payload, notBefore: result.notBefore.toISOString() }
