@@ -27,8 +27,9 @@
  */
 
 import { useId, useMemo, type FC } from 'react'
-import { RotateCcw, SlidersHorizontal } from 'lucide-react'
+import { RotateCcw, SlidersHorizontal, UserPen } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Chip } from '@/components/ui/chip'
 import { QuantityInput } from '@/components/ui/quantity-input'
 import { SectionLabel } from '@/components/ui/section-label'
 import { useReaderOverrides } from '@/features/a2ui/reader-inputs'
@@ -266,9 +267,10 @@ const InputField: FC<{
         // The reader's figure, said in words and beside the source's, so a
         // screenshot of the card cannot pass it off as the plan's.
         <span id={markerId} className="card-meta flex max-w-[8.5rem] flex-wrap items-center justify-end gap-x-1.5 gap-y-0.5 text-right">
-          <span className="rounded-full bg-warning-subtle px-1.5 py-px font-medium text-warning">
+          <Chip variant="warning" size="sm">
+            <UserPen aria-hidden="true" />
             {t('cards.formula.yourAssumption')}
-          </span>
+          </Chip>
           <span className="text-muted-foreground">
             {sourceValue == null
               ? t('cards.formula.sourceMissing')

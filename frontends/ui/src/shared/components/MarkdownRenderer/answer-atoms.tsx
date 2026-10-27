@@ -12,9 +12,10 @@
  */
 
 import { useState, type FC, type ReactNode } from 'react'
-import { ArrowDown, Check, ChevronDown, CircleCheck, ExternalLink, ListPlus, PencilLine } from 'lucide-react'
+import { ArrowDown, Check, ChevronDown, CircleAlert, CircleCheck, ExternalLink, ListPlus, PencilLine } from 'lucide-react'
 import { Chip } from '@/components/ui/chip'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
+import { Quote } from '@/components/ui/quote'
 import { SectionLabel } from '@/components/ui/section-label'
 import { useTranslations } from '@/i18n'
 import { cn } from '@/lib/utils'
@@ -385,7 +386,7 @@ export const EnergyClassChip: FC<{ rating: string }> = ({ rating }) => {
 // ---------------------------------------------------------------------------
 
 /**
- * A Fundstelle excerpt: the passage at a reading measure on the law accent,
+ * A Fundstelle excerpt: the passage at a reading measure on a quiet ground,
  * its source in the margin beside it where there is room and under it where
  * there is not. `LegalBasisCard`'s blockquote, with the Fundstelle moved from
  * the card's header to where a commentary sets it.
@@ -402,14 +403,14 @@ export const ExcerptFigure: FC<{
   <figure className="my-5 @container break-inside-avoid" data-excerpt={number} data-paraphrase={paraphrase ? 'true' : undefined}>
     <div className={cn('grid gap-2', source && '@[36rem]:grid-cols-[minmax(0,1fr)_12rem] @[36rem]:gap-6')}>
       <div className="flex min-w-0 flex-col gap-1.5">
-        <blockquote
-          className={cn(
-            'max-w-prose border-l-2 pl-4 leading-relaxed [&_p]:mb-2 [&_p:last-child]:mb-0',
-            paraphrase ? 'border-dashed border-l-warning not-italic text-muted-foreground' : 'border-l-source-law/40 italic text-default'
-          )}
+        {/* The wording on a quiet ground; a paraphrase upright on a dashed
+            hairline, its stamp below saying so in words. */}
+        <Quote
+          variant={paraphrase ? 'paraphrase' : 'excerpt'}
+          className="max-w-prose leading-relaxed [&_p]:mb-2 [&_p:last-child]:mb-0"
         >
           {children}
-        </blockquote>
+        </Quote>
         {stamp}
       </div>
       {source && <figcaption className="min-w-0 pl-4 @[36rem]:pl-0 @[36rem]:pt-0.5">{source}</figcaption>}
@@ -894,7 +895,7 @@ export const QuoteStampLine: FC<{ verbatim: boolean; number?: number; locus?: st
   return (
     <p data-testid="quote-stamp" data-status={verbatim ? 'verbatim' : 'not_found'} className="flex flex-wrap items-center gap-1.5 pl-4">
       <Chip size="sm" variant={verbatim ? 'success' : 'warning'}>
-        {verbatim ? <CircleCheck aria-hidden="true" /> : null}
+        {verbatim ? <CircleCheck aria-hidden="true" /> : <CircleAlert aria-hidden="true" />}
         {verbatim
           ? number !== undefined
             ? t('markdown.stamp.verbatimNumbered', { n: number })

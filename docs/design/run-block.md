@@ -38,8 +38,9 @@ does this stand".
   bordered boxes read as three cards rather than as one history).
 - **The phase acts** are `dt`/`dd` rows at the version history's own weight: the
   same kind of fact („eingereicht von X am Y") in another vocabulary.
-- **The reviewer's words** are quoted with a `border-l-2`, the adjunct a version
-  row already renders under itself.
+- **The reviewer's words** are quoted with the `Quote` atom (indented, italic,
+  no side stripe, the owner's preference since 2026-10-27), the adjunct a version row already renders
+  under itself.
 - **The document chips** stay the „Belegt durch" chips (`SourceSignalChip` +
   `AuthorityTag`), painted by the shelf the ledger stated: provenance is the one
   thing the design language spends colour on, and which documents a run read is

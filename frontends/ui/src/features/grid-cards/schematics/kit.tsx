@@ -42,6 +42,7 @@ import { PdfViewerDialog } from '@/features/knowledge/components/pdf-viewer-dial
 import { resolveCorpusFileName } from '@/features/knowledge/lib/resolve-corpus-file'
 import { useCorpusFiles } from '@/features/knowledge/lib/use-corpus-files'
 import { cn } from '@/lib/utils'
+import { Quote } from '@/components/ui/quote'
 import { declutterLabels } from './declutter'
 import type { DimensionCheckData, DimStatus, NormReferenceData, Provenance } from './types'
 
@@ -775,9 +776,7 @@ export const NormRefFooter: FC<NormRefFooterProps> = ({ reference, bare = false 
         )}
       </div>
       {reference.excerpt && (
-        <blockquote className="card-caption max-w-prose border-l-2 border-border pl-3 italic text-muted-foreground">
-          {reference.excerpt}
-        </blockquote>
+        <Quote className="card-caption max-w-prose">{reference.excerpt}</Quote>
       )}
       {corpusFileName && viewerOpen && (
         <PdfViewerDialog open onOpenChange={setViewerOpen} fileName={corpusFileName} title={reference.document} />

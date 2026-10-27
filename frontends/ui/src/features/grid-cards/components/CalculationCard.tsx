@@ -297,7 +297,7 @@ export const CalculationCard: FC<CalculationCardProps> = ({ title, steps, limit,
           </CollapsibleTrigger>
 
           <CollapsibleContent>
-            <div className="mt-1.5 flex flex-col gap-1.5 border-l-2 border-border pl-3">
+            <div className="mt-1.5 flex flex-col gap-1.5 pl-3">
               {documented.map((operand, index) => {
                 const unit = operand.unit ?? ''
                 const band = operand.provenance === 'computed' ? fmtTolerance(operand.tolerance, unit) : null

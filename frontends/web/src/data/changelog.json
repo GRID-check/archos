@@ -84,6 +84,10 @@
               "de": "Wenn Piloti während einer Antwort etwas zu Ihrem Projekt festhält, sehen Sie es jetzt direkt bei der Antwort statt unter „Details“. Mit einem Tippen sehen Sie, was festgehalten wurde. Korrigiert eine Notiz eine frühere, steht in der Antwort „Memory aktualisiert“, und die alte Notiz wird durchgestrichen angezeigt."
             },
             {
+              "en": "Quotes, notes, callouts, messages and schedule entries no longer have a coloured bar down their left edge. Quoted words are set in italics, excerpts from a source sit on a quiet background, an unread message shows a dot, and a confirmation or warning says what it is with an icon and a word instead of a coloured stripe.",
+              "de": "Zitate, Notizen, Hinweise, Nachrichten und Termineinträge haben keine farbige Leiste mehr am linken Rand. Zitierte Wörter sind kursiv gesetzt, Auszüge aus einer Quelle heben sich durch einen dezenten Hintergrund ab, ungelesene Nachrichten sind mit einem Punkt gekennzeichnet, und Bestätigungen oder Warnungen werden mit einem Symbol und einer Bezeichnung statt mit einem farbigen Streifen kenntlich gemacht."
+            },
+            {
               "en": "Piloti now opens your office's skills the same way in chat and in deep research, and a deep research report's \"Skills used\" now names every working method it followed, including the report formats Piloti brings along.",
               "de": "Piloti stellt die Skills Ihres Büros jetzt im Chat und in Deep Research auf dieselbe Weise bereit. Unter „Verwendete Skills“ werden in einem Deep-Research-Bericht nun alle angewandten Arbeitsmethoden genannt, einschließlich der von Piloti bereitgestellten Berichtsformate."
             }
