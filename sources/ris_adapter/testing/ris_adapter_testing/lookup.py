@@ -1,4 +1,4 @@
-"""Shared fixtures for the RIS adapter tests."""
+"""The RIS adapter suites' lookup harness, doubles and fixtures (registered by its conftest)."""
 
 from __future__ import annotations
 

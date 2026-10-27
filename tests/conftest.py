@@ -35,7 +35,7 @@ def _isolate_shared_cache():
     by one test is served to the next whenever the two feed the VLM identical
     image bytes: the second test's stubbed VLM is never called and it asserts
     against the first test's caption. Mirrors
-    ``sources/ris_adapter/tests/conftest.py``. No-op on a real Redis backend.
+    ``sources/ris_adapter/testing/ris_adapter_testing/lookup.py``. No-op on a real Redis backend.
     """
     _reset_shared_cache()
     yield
