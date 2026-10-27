@@ -872,7 +872,7 @@ function readingsIn(
 }
 
 /** The documents one settled row replaces, by file name, in the listing it was read from. */
-interface ReplacedFassungen {
+interface ReplacedVersions {
   collectionName: string
   files: CollectionFiles
   names: readonly string[]
@@ -885,7 +885,7 @@ interface ReplacedFassungen {
  */
 async function projectReplacedDocuments(
   organizationId: string,
-  replaced: readonly ReplacedFassungen[]
+  replaced: readonly ReplacedVersions[]
 ): Promise<void> {
   const byCollection = new Map<string, { files: CollectionFiles; names: Set<string> }>()
   for (const { collectionName, files, names } of replaced) {
@@ -1120,7 +1120,7 @@ export async function reconcileDocumentStatuses<T extends ReconcilableDocument>(
   const metaByRow = new Map<string, DocumentMetadata>()
   const supersededRows = new Set<string>()
   // What each row's listing says it replaces, by file name, and the listing it was read from.
-  const replacesByRow = new Map<string, ReplacedFassungen>()
+  const replacesByRow = new Map<string, ReplacedVersions>()
   await Promise.all(
     rows.map(async (row) => {
       // The authorship gate, ahead of the fetch. A machine-authored row is not
