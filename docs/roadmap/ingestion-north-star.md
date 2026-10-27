@@ -312,9 +312,12 @@ says it worked.
 | Findings derived per project (missing document, missing plan, contradiction, incomplete read), served to people and agents | 6 (first half) | `frontends/ui/src/lib/documents/findings.ts` |
 | Transient failures read again on their own, capped, at bulk priority | reliability | `lib/documents/transient-retry.ts` |
 | Piloti sees the type, facts, references and unread pages of each document | 5 | `browse.py`, `inventory.py` |
+| The Eingangsbericht on the uploader's `upload.completed` inbox row: documents read by type, new and settled findings, unresolved references, unread pages, a link to the findings; computed at the settle as the uploader, bounded, fail-open | 6 (second half, inbox) | `lib/upload-batches/upload-report.ts` |
+| Findings compare documents with the confirmed project profile (`profile_contradiction`): GK, storeys, plot area, Bauweise, Nutzung, Bundesland | 6 | `lib/documents/profile-contradictions.ts` |
 
 Not built yet: the page map (slice 2; the eval says title blocks first), the
-two-speed queue (3), the Eingangsbericht in the inbox (6, second half), crop-level
+two-speed queue (3), the Eingangsbericht on the project timeline and profile
+suggestions from it (6, second half; the inbox row is built), crop-level
 reading (7), the visual channel (8). Considered and rejected: an embedding cache.
 A vector is about 60 KB in the cache, and the embedded text carries the folder path,
 so the moves that trigger a re-read change the vectors anyway.

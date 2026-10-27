@@ -31,6 +31,7 @@ import { enqueueInboxPushes } from '@/lib/push/enqueue'
 import { listProjectNamesInOrg } from '@/lib/projects/repository'
 import { resolvePeople } from '@/lib/sharing/directory'
 import { unreadableRunIds, type RunRef } from '@/lib/tasks/subject-access'
+import { parseUploadReport } from '@/lib/upload-batches/upload-report'
 import { findInboxTarget, type InboxTargetAccess, type RunMessageRef } from './targets'
 import {
   archiveInboxItem,
@@ -725,6 +726,8 @@ function toItemView(
     dueOn: access ? coerceDay(payload.dueOn) : null,
     openMarks: access ? coerceCount(payload.openMarks) : null,
     marksRevision: access ? coerceCount(payload.marksRevision ?? payload.marksFassung) : null,
+    // Parsed against the schema the settle wrote it with: a report that does not parse is none.
+    uploadReport: access ? parseUploadReport(payload.report) : null,
     answerIn,
     pilotiWakes: answerIn === 'row' && answers.wakesOn,
     createdAt: row.createdAt.toISOString(),

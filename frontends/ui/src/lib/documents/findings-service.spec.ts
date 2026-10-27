@@ -6,6 +6,10 @@ import type { ListedDocument } from './shelf-listing'
 vi.mock('server-only', () => ({}))
 const listDocumentsPage = vi.fn()
 vi.mock('./service', () => ({ listDocumentsPage: (...args: unknown[]) => listDocumentsPage(...args) }))
+const findProjectProfileInOrg = vi.fn()
+vi.mock('@/lib/projects/repository', () => ({
+  findProjectProfileInOrg: (...args: unknown[]) => findProjectProfileInOrg(...args),
+}))
 
 const { getProjectDocumentFindings } = await import('./findings-service')
 
@@ -19,7 +23,11 @@ const row = (overrides: Partial<ListedDocument>): ListedDocument =>
   ({ id: ID_A, filename: 'a.pdf', displayName: null, tags: null, revision: null, ...overrides }) as ListedDocument
 
 describe('getProjectDocumentFindings', () => {
-  beforeEach(() => listDocumentsPage.mockReset())
+  beforeEach(() => {
+    listDocumentsPage.mockReset()
+    findProjectProfileInOrg.mockReset()
+    findProjectProfileInOrg.mockResolvedValue(null)
+  })
 
   it('reads the shelf through the listing, page after page, and resolves the asked document', async () => {
     listDocumentsPage
@@ -82,5 +90,41 @@ describe('getProjectDocumentFindings', () => {
     const result = await getProjectDocumentFindings(session, 'project-1')
     expect(listDocumentsPage).toHaveBeenCalledTimes(4)
     expect(result.truncated).toBe(true)
+  })
+
+  it('compares the documents with the project profile it reads after the listing', async () => {
+    listDocumentsPage.mockResolvedValueOnce({
+      documents: [
+        row({
+          id: ID_A,
+          filename: 'Brandschutzkonzept.pdf',
+          dossier: {
+            documentType: 'fire_safety_concept',
+            title: null,
+            summary: null,
+            parties: [],
+            dates: [],
+            place: null,
+            facts: [{ key: 'building_class', value: 'GK 4', unit: null, page: 2, quote: null }],
+          },
+        }),
+      ],
+      nextCursor: null,
+    })
+    findProjectProfileInOrg.mockResolvedValueOnce({
+      profile: { facts: { building_class: { value: 'GK3' } }, goals: {}, unknowns: [], assumptions: {} },
+    })
+    const { findings } = await getProjectDocumentFindings(session, 'project-1')
+    expect(findings).toEqual([
+      expect.objectContaining({ kind: 'profile_contradiction', subject: 'building_class', profileValue: '3' }),
+    ])
+    expect(findProjectProfileInOrg).toHaveBeenCalledWith('project-1', 'org-1')
+  })
+
+  it('leaves the comparison out when the profile cannot be read', async () => {
+    listDocumentsPage.mockResolvedValueOnce({ documents: [row({})], nextCursor: null })
+    findProjectProfileInOrg.mockRejectedValueOnce(new Error('db down'))
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+    expect((await getProjectDocumentFindings(session, 'project-1')).findings).toEqual([])
   })
 })

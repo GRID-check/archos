@@ -12,7 +12,7 @@
  * which nobody made.
  */
 
-import { useState, type JSX } from 'react'
+import { useEffect, useRef, useState, type JSX } from 'react'
 import { ChevronDown, FileSearch } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
@@ -23,14 +23,32 @@ import { useTranslations } from '@/i18n'
 import { COVERAGE_REASONS } from '@/lib/documents/dossier'
 import type { DocumentFinding, FindingSource } from '@/lib/documents/findings'
 import type { DocumentFindingsResponse } from '@/lib/documents/findings-wire'
+import type { ProfileComparedKey } from '@/lib/documents/profile-contradictions'
 import { cn } from '@/lib/utils'
 import { useDocumentFindings } from '../hooks/use-document-findings'
-import { DocumentLink, pagesLabel } from './document-dossier'
+import { DocumentLink, pagesLabel, ProjectProfileLink } from './document-dossier'
 
 type Translate = ReturnType<typeof useTranslations>
 
+/** The id the panel carries, so the inbox's upload report can link straight to it. */
+export const DOCUMENT_FINDINGS_ANCHOR = 'document-findings'
+
+/** What a profile contradiction is about: a fact key's label, or the Land. */
+export function profileSubjectLabel(t: Translate, subject: ProfileComparedKey): string {
+  return subject === 'federal_state' ? t('findings.federalState') : t(`factKeys.${subject}`)
+}
+
+/** The Steckbrief's value as the line shows it: the Gebäudeklasse with its „GK“. */
+function profileValueText(t: Translate, finding: Extract<DocumentFinding, { kind: 'profile_contradiction' }>): string {
+  return finding.subject === 'building_class'
+    ? t('findings.buildingClassValue', { value: finding.profileValue })
+    : finding.profileValue
+}
+
 function findingText(t: Translate, finding: DocumentFinding): string {
   switch (finding.kind) {
+    case 'profile_contradiction':
+      return t('findings.profileContradiction', { fact: profileSubjectLabel(t, finding.subject) })
     case 'contradiction':
       return t('findings.contradiction', { fact: t(`factKeys.${finding.factKey}`) })
     case 'missing_document':
@@ -68,7 +86,16 @@ function FindingLine({ finding, projectId }: { finding: DocumentFinding; project
     <li className="flex flex-col gap-0.5 px-3 py-2 text-xs/5" data-testid={`finding-${finding.kind}`}>
       <span className="text-foreground">{findingText(t, finding)}</span>
       <span className="text-muted-foreground flex flex-wrap items-baseline gap-x-2">
-        {finding.kind !== 'incomplete_read' && finding.kind !== 'contradiction' && <span>{t('findings.referredIn')}</span>}
+        {(finding.kind === 'missing_document' || finding.kind === 'missing_plan') && <span>{t('findings.referredIn')}</span>}
+        {finding.kind === 'profile_contradiction' && (
+          <span className="text-foreground" data-testid="finding-profile-value">
+            <ProjectProfileLink projectId={projectId}>{t('findings.profile')}</ProjectProfileLink>
+            {`: ${profileValueText(t, finding)}`}
+            <span className="text-muted-foreground" aria-hidden>
+              {' ·'}
+            </span>
+          </span>
+        )}
         {finding.sources.map((source, index) => (
           <SourceItem key={`${source.documentId}-${index}`} source={source} projectId={projectId} />
         ))}
@@ -89,11 +116,18 @@ export function DocumentFindingsList({
 }): JSX.Element | null {
   const t = useTranslations('dossier')
   const [open, setOpen] = useState(defaultOpen)
+  const section = useRef<HTMLElement>(null)
+  const shown = Boolean(response && response.findings.length > 0)
+  // The inbox's upload report links here (`#document-findings`); the panel
+  // arrives after the page, so the browser's own jump to the anchor misses it.
+  useEffect(() => {
+    if (shown && window.location.hash === `#${DOCUMENT_FINDINGS_ANCHOR}`) section.current?.scrollIntoView({ block: 'start' })
+  }, [shown])
   if (!response || response.findings.length === 0) return null
   const { findings } = response
   return (
     <Collapsible open={open} onOpenChange={setOpen} asChild>
-      <section aria-label={t('findings.title')} data-testid="document-findings-panel">
+      <section ref={section} id={DOCUMENT_FINDINGS_ANCHOR} aria-label={t('findings.title')} data-testid="document-findings-panel">
         <InspectorGroup>
           <CollapsibleTrigger asChild>
             <Button

@@ -39,6 +39,22 @@ export function pagesLabel(t: Translate, pages: readonly number[]): string | nul
   return pages.length === 1 ? t('rail.page', { page: pages[0] }) : t('rail.pages', { pages: pages.join(', ') })
 }
 
+const INLINE_LINK =
+  'text-foreground decoration-border hover:decoration-foreground font-medium underline underline-offset-2'
+
+/** A link to the project's profile, the Steckbrief, where the intake wizard shows and edits it. */
+export function ProjectProfileLink({ projectId, children }: { projectId: string; children: ReactNode }): JSX.Element {
+  return (
+    <Link
+      href={`/app/projects/${encodeURIComponent(projectId)}/intake`}
+      className={INLINE_LINK}
+      data-testid="project-profile-link"
+    >
+      {children}
+    </Link>
+  )
+}
+
 /** A link that opens a document of the project in its Dateien preview (`?doc=`). */
 export function DocumentLink({
   projectId,
@@ -53,7 +69,7 @@ export function DocumentLink({
     <Link
       href={documentFilesHref(projectId, document.documentId)}
       title={document.name}
-      className="text-foreground decoration-border hover:decoration-foreground font-medium underline underline-offset-2"
+      className={INLINE_LINK}
       data-testid="document-link"
     >
       {children ?? document.name}
