@@ -6,6 +6,7 @@ import { commonLabels } from "../platform/namespaces";
 import { hardenedContainerSecurityContext } from "../platform/security";
 import { JOB_DEFAULTS, LIGHT_WORKER_RESOURCES, UID } from "../constants";
 import { AppSecrets, AppWiring, authzCatalogEnv, folderGrantsCarryOverEnv } from "./config";
+import { logicalName } from "../names";
 
 type EnvVar = k8s.types.input.core.v1.EnvVar;
 
@@ -90,7 +91,7 @@ export function reconcileAuthzCatalog(
   dependsOn: pulumi.Resource[],
 ): k8s.batch.v1.Job {
   return workosJob(
-    "grid-app-authz-catalog",
+    logicalName("grid-app-authz-catalog"),
     "authz-catalog",
     "provision-workos-authz.mjs",
     authzCatalogEnv(cfg),
@@ -124,7 +125,7 @@ export function carryOverFolderGrants(
   dependsOn: pulumi.Resource[],
 ): k8s.batch.v1.Job {
   return workosJob(
-    "grid-app-folder-grants",
+    logicalName("grid-app-folder-grants"),
     "folder-grants",
     "migrate-folder-grants-to-workos.mjs",
     folderGrantsCarryOverEnv(),
