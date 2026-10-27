@@ -3,7 +3,7 @@
  * (`piloti.change.applied`, `piloti.change.undone`; the catalog and the actor
  * model are in `lib/audit/schemas.mjs`).
  *
- * The ledger (`piloti_changes`) is the system of record and the card reads it;
+ * The ledger (`agent_changes`) is the system of record and the card reads it;
  * the trail is what an admin reads in the WorkOS viewer. Ids, numbers, field
  * NAMES and statuses only: what a mark or a reply says never leaves the tenant.
  */
@@ -32,7 +32,7 @@ export interface AuditedChange {
   annotationNumber: number | null
   before: ChangeState | null
   after: ChangeState | null
-  /** The `piloti_changes` row, when it was written. */
+  /** The `agent_changes` row, when it was written. */
   changeId: string | null
 }
 

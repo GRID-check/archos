@@ -39,7 +39,7 @@ Piloti“):
 |---|---|---|
 | `document_annotation_replies.addresses_agent` | the reply addresses Piloti: the composer's @Piloti chip, never read from the text | default false |
 | `document_annotations.delegated_by`, `delegated_at` | Piloti is the delegate, working the mark for this person | both or neither (`…_delegation_complete`); only on an open mark (`…_delegated_while_open`) |
-| `piloti_wakes` | one row per event that met a wake rule: its id is the job id and the turn id (uuid5 of the event); trigger, event, the person who acted, and what it came to: `queued`, then `started` and its final word, `answered`, `stopped` or `failed` (a turn that ran), or `suppressed` and `refused` (no turn ran) | a reason exactly for `suppressed`, `refused` and `failed`; `settled_at` exactly when it left `queued`; `ended_at` exactly when it reached its final word (migration `0141_wake_ends.sql`); RLS on the org and the mark's org |
+| `agent_wakes` | one row per event that met a wake rule: its id is the job id and the turn id (uuid5 of the event); trigger, event, the person who acted, and what it came to: `queued`, then `started` and its final word, `answered`, `stopped` or `failed` (a turn that ran), or `suppressed` and `refused` (no turn ran) | a reason exactly for `suppressed`, `refused` and `failed`; `settled_at` exactly when it left `queued`; `ended_at` exactly when it reached its final word (migration `0141_wake_ends.sql`); RLS on the org and the mark's org |
 
 Migration `0150_annotation_mentions.sql` adds whom a text mentions (below,
 „Mentioning a colleague“):
@@ -844,7 +844,7 @@ events wake it, and only these, by a rule people can read (ADR-0036):
 `lib/annotations/wake.ts` decides; the service enqueues the wake **in the
 write's own transaction** (`insertAnnotationReply` / `updateDocumentAnnotation`
 take a hook that runs in it), so a reply that rolls back leaves no wake. The
-wake's id is uuid5 of the event (`wake-ids.ts`), which is its `piloti_wakes`
+wake's id is uuid5 of the event (`wake-ids.ts`), which is its `agent_wakes`
 row, its `bff_job_queue` job (`piloti_wake`) and the turn id: one event wakes
 Piloti at most once.
 
@@ -872,7 +872,7 @@ retried by the queue and recorded as `failed` on the last attempt.
 the document can reply, so only they can wake it. At most
 `GRID_WAKE_MAX_PER_MARK_HOUR` wakes per mark an hour (6) and
 `GRID_WAKE_MAX_PER_PERSON_DAY` per person a day (50), counted over the
-`piloti_wakes` rows at enqueue and again at claim. The WorkOS flag
+`agent_wakes` rows at enqueue and again at claim. The WorkOS flag
 `piloti-wakes`, an entitlement off by default. A wake held before Piloti was
 asked (a cap, the switch, rights lost, the mark gone, the delegation taken
 back) has no trace, so it is on its row and in the audit trail as
@@ -1297,7 +1297,7 @@ Whatever Piloti did on a document in a turn comes back as one
 proposed (`proposed`) or set on request (`created`), changes (`changed`, each
 field before and after, and the note), deletions (`deleted`) and replies. It
 is the way from the chat onto the canvas and back. The card is a window onto
-the change record (`piloti_changes`), not a copy of it: its turn's rows are read
+the change record (`agent_changes`), not a copy of it: its turn's rows are read
 when the card is first seen, and again whenever one of its marks changes, so
 every reader sees the same state. The card's own copy is only the fallback for
 an answer older than the record. Its actions:

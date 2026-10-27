@@ -22,7 +22,7 @@
  * A turn already running in the thread is never superseded (`if_idle`): the
  * answer is `busy`, and the job waits (`notBefore`) without spending an
  * attempt. `duplicate_turn` is a wake already answered. Every way it ends
- * without a turn is recorded on its `piloti_wakes` row and in the audit trail;
+ * without a turn is recorded on its `agent_wakes` row and in the audit trail;
  * a turn that started is in the trail as `piloti.wake.started` and has its
  * trace in Langfuse. A wake that was refused or gave up is then ended as a
  * turn's end is (`lib/turns/outcome.ts`): a delegated mark is handed back, the

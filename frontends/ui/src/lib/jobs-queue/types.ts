@@ -346,7 +346,7 @@ export type MailImportPayload = z.infer<typeof mailImportPayloadSchema>
 /**
  * `piloti_wake`: wake Piloti on an Anmerkung as the person whose act is the
  * event (ADR-0106). The job id is `wakeId`, which is also the turn id and the
- * `piloti_wakes` row (`lib/annotations/wake-ids.ts`). Ids only: the reply's
+ * `agent_wakes` row (`lib/annotations/wake-ids.ts`). Ids only: the reply's
  * text, the mark and the person's rights are read again when it runs, so a
  * queued wake carries no tenant content and a revoked right ends it.
  */

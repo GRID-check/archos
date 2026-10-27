@@ -369,7 +369,7 @@ const GUARDED_TABLES: Record<string, string> = {
   documentAnnotations: 'document_annotations',
   documentAnnotationReplies: 'document_annotation_replies',
   // What Piloti changed on a document's Anmerkungen, and the turn that did (migration 0142, ADR-0109): a document fact.
-  pilotiChanges: 'piloti_changes',
+  pilotiChanges: 'agent_changes',
 }
 
 /** The relational-API names that reach `documents` from another table (`one(documents)`, `many(documents)`). */

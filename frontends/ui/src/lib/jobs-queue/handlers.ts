@@ -154,7 +154,7 @@ const mailImportHandler: JobHandler = async ({ organizationId, payload }) => {
 /**
  * A wake of Piloti (ADR-0106). Not {@link handler}: it resolves the person
  * itself, because a person who left ends the wake WITH a record on its
- * `piloti_wakes` row, and it may answer „not yet" (`notBefore`) while another
+ * `agent_wakes` row, and it may answer „not yet" (`notBefore`) while another
  * turn of the person's thread runs.
  */
 const pilotiWakeHandler: JobHandler = async ({ organizationId, payload, attempts }) =>
