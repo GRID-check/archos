@@ -25,6 +25,7 @@ Node must already be on the PATH. Install lines:
 | Question | Go to |
 |---|---|
 | Where does X live in the code | [`docs/architecture/where-is-what.md`](docs/architecture/where-is-what.md) |
+| Where a directory is headed, and the checklist for moving one | [ADR-0145](docs/adr/0145-the-repository-is-laid-out-by-job.md): the target layout and the move order |
 | What is Piloti, and what is it not | [`VISION.md`](VISION.md) |
 | What does this word mean | [`CONTEXT.md`](CONTEXT.md) for the domain, [`docs/glossary.md`](docs/glossary.md) for the code |
 | Set up, branch, commit, get a PR merged | [`CONTRIBUTING.md`](CONTRIBUTING.md) |
