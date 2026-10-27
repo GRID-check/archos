@@ -103,8 +103,7 @@ TypeScript.
 is extracted. What the triggers asked for is handled by two changes that keep
 one codebase and one image:
 
-- **The BFF code gets its own folder.** ADR-0145 row 9 (the `frontends/ui`
-  move; row 8 is the agent's) moves
+- **The BFF code gets its own folder.** ADR-0145 row 9 moves
   `frontends/ui` to `apps/workspace` with `app/`, `ui/` and `bff/` inside.
   `bff/` is a file move of `src/lib/`, not a rewrite, so the boundary this
   record asked for becomes a directory a reader can see and a seam rule can
