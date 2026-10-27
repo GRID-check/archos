@@ -64,6 +64,7 @@ import {
   type TextLayerHandle,
 } from '../lib/pdfjs-runtime'
 import { pageTextChunks } from '../lib/pdf-text-chunks'
+import { canvasMeasure } from '../lib/canvas-measure'
 import type { PageRegion } from '../lib/page-region'
 import { RegionMarks } from './region-marks'
 import {
@@ -1193,7 +1194,7 @@ export const PdfDocumentView: FC<PdfDocumentViewProps> = ({
           if (cancelled) return
           const unscaled = pdfPage.getViewport({ scale: 1 })
           pageWidths.current.set(number, unscaled.width)
-          index = buildPassageIndex(pageTextChunks(items, unscaled.transform))
+          index = buildPassageIndex(pageTextChunks(items, unscaled.transform), canvasMeasure())
           pageIndexes.current.set(number, index)
         }
         for (const rects of findOccurrences(index, searchedQuery)) found.push({ page: number, rects })
@@ -2015,7 +2016,7 @@ const PdfPageCanvas: FC<PdfPageCanvasProps> = ({
       const unscaled = pdfPage.getViewport({ scale: 1 })
       const items = await readPageTextItems(pdfPage)
       if (cancelled) return
-      const match = locatePassage(pageTextChunks(items, unscaled.transform), highlight)
+      const match = locatePassage(pageTextChunks(items, unscaled.transform), highlight, canvasMeasure())
       if (cancelled) return
       if (match)
         onPassage({
