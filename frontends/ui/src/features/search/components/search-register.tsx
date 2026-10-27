@@ -32,6 +32,9 @@ export interface SearchRegisterProps {
   hideProject?: boolean
   /** The row the arrow keys are on (`document:id`). */
   activeKey: string | null
+  /** The table's id and each row's, which the search field's combobox names. */
+  listId?: string
+  optionId?: (hit: DocumentHit) => string
 }
 
 /** Columns whose values are figures: right-aligned, as a register reads them. */
@@ -43,12 +46,12 @@ const NUMERIC: ReadonlySet<RegisterColumn> = new Set(['pages'])
  * stays put while the rows scroll. It is a view of what Piloti read, not a
  * list anyone maintains.
  */
-export function SearchRegister({ state, section, onStateChange, onLoadMore, hideProject = false, activeKey }: SearchRegisterProps): JSX.Element {
+export function SearchRegister({ state, section, onStateChange, onLoadMore, hideProject = false, activeKey, listId, optionId }: SearchRegisterProps): JSX.Element {
   const t = useTranslations('search')
   const columns = REGISTER_COLUMNS.filter((column) => !(hideProject && column === 'project'))
   return (
     <>
-      <RegisterTable caption={t('register.caption')} testId="search-register">
+      <RegisterTable id={listId} caption={t('register.caption')} testId="search-register">
         <RegisterHead>
           {columns.map((column) => {
             const label = t(`register.columns.${column}`)
@@ -72,7 +75,7 @@ export function SearchRegister({ state, section, onStateChange, onLoadMore, hide
         </RegisterHead>
         <RegisterBody>
           {(section?.hits ?? []).map((hit) => (
-            <RegisterLine key={hit.id} hit={hit} columns={columns} active={activeKey === `document:${hit.id}`} />
+            <RegisterLine key={hit.id} hit={hit} columns={columns} active={activeKey === `document:${hit.id}`} id={optionId?.(hit)} />
           ))}
         </RegisterBody>
       </RegisterTable>
@@ -91,7 +94,7 @@ export function SearchRegister({ state, section, onStateChange, onLoadMore, hide
   )
 }
 
-function RegisterLine({ hit, columns, active }: { hit: DocumentHit; columns: readonly RegisterColumn[]; active: boolean }): JSX.Element {
+function RegisterLine({ hit, columns, active, id }: { hit: DocumentHit; columns: readonly RegisterColumn[]; active: boolean; id?: string }): JSX.Element {
   const t = useTranslations('search')
   const labels = useSearchLabels()
   const cell = (column: RegisterColumn): JSX.Element => {
@@ -139,7 +142,7 @@ function RegisterLine({ hit, columns, active }: { hit: DocumentHit; columns: rea
     }
   }
   return (
-    <RegisterRow active={active} testId={`search-register-row-${hit.id}`}>
+    <RegisterRow active={active} id={id} testId={`search-register-row-${hit.id}`}>
       {columns.map(cell)}
     </RegisterRow>
   )

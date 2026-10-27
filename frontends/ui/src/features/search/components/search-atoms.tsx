@@ -13,8 +13,8 @@
  * rows scroll. The organisms arrange them and never style them.
  */
 
-import type { JSX, ReactNode } from 'react'
-import { useEffect, useRef, useState } from 'react'
+import type { ComponentType, JSX, ReactNode } from 'react'
+import { createContext, useContext, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import type { LucideIcon } from 'lucide-react'
 import { Archive, ChevronRight, FolderKanban, X } from 'lucide-react'
@@ -251,12 +251,15 @@ export function ResultSection({
   children,
   footer,
   testId,
+  listId,
 }: {
   title: string
   count: string
   children: ReactNode
   footer?: ReactNode
   testId?: string
+  /** The rows' listbox, which the search field's combobox controls. */
+  listId?: string
 }): JSX.Element {
   return (
     <section className="flex min-w-0 flex-col" data-testid={testId}>
@@ -264,11 +267,39 @@ export function ResultSection({
         <SectionLabel as="h2">{title}</SectionLabel>
         <span className="text-xs tabular-nums text-muted-foreground">{count}</span>
       </header>
-      <ul className="flex min-w-0 flex-col divide-y divide-border/70 border-y border-border/70">{children}</ul>
+      <ul id={listId} role="listbox" aria-label={title} className="flex min-w-0 flex-col divide-y divide-border/70 border-y border-border/70">
+        {children}
+      </ul>
       {footer}
     </section>
   )
 }
+
+/**
+ * How a hit's row sits in something other than the result list: the ⌘K
+ * palette hands its own option (a cmdk item) here, so the palette and the page
+ * draw one hit with the same parts, in the same order, from the same row
+ * components. Absent, the row is the list's link.
+ */
+export interface ResultRowFrameProps {
+  href: string
+  testId?: string
+  /** The row's layout, for the frame's own box. */
+  className: string
+  children: ReactNode
+}
+const ResultRowFrameContext = createContext<ComponentType<ResultRowFrameProps> | null>(null)
+export const ResultRowFrameProvider = ResultRowFrameContext.Provider
+
+/** The row's box: icon, then the name over the meta line, the mark at the end; on a phone the mark drops under the name. */
+const RESULT_ROW_LAYOUT = 'items-start gap-x-3 gap-y-1.5 px-2 py-2.5 max-sm:flex-wrap'
+
+/**
+ * The row the arrow keys are on: a 2px ink rule down its leading edge over the
+ * selected tint, so it reads as where the keyboard is, never as the pointer's
+ * hover, which tints alone.
+ */
+const ACTIVE_ROW = 'aria-selected:bg-accent/60 aria-selected:shadow-[inset_2px_0_0_0_var(--foreground)]'
 
 /** One hit: an icon, its name in the strong weight, one muted line of where and what, what matched under it. */
 export function ResultRow({
@@ -280,6 +311,7 @@ export function ResultRow({
   children,
   active = false,
   testId,
+  id,
 }: {
   href: string
   icon: LucideIcon
@@ -293,24 +325,39 @@ export function ResultRow({
   /** The row the arrow keys are on. */
   active?: boolean
   testId?: string
+  /** The option's id, which the field's `aria-activedescendant` names while the row is active. */
+  id?: string
 }): JSX.Element {
+  const Frame = useContext(ResultRowFrameContext)
   const ref = useRef<HTMLAnchorElement>(null)
   useEffect(() => {
     if (active) ref.current?.scrollIntoView({ block: 'nearest' })
   }, [active])
+  const content = (
+    <>
+      <ItemMedia className="size-5 pt-0.5 text-muted-foreground">
+        <Icon className="size-4" aria-hidden />
+      </ItemMedia>
+      <ItemContent className="flex flex-col gap-0.5">
+        <span className="truncate text-sm font-semibold tracking-tight text-foreground">{title}</span>
+        {meta ? <span className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs text-muted-foreground">{meta}</span> : null}
+        {children}
+      </ItemContent>
+      {aside ? <span className="ml-auto flex shrink-0 items-center gap-1.5 pt-0.5 max-sm:ml-8 max-sm:basis-full max-sm:pt-0">{aside}</span> : null}
+    </>
+  )
+  if (Frame) {
+    return (
+      <Frame href={href} testId={testId} className={RESULT_ROW_LAYOUT}>
+        {content}
+      </Frame>
+    )
+  }
   return (
-    <li className="list-none">
-      <Item asChild className="items-start gap-x-3 gap-y-1.5 px-2 py-2.5 max-sm:flex-wrap">
-        <Link ref={ref} href={href} data-testid={testId} aria-current={active ? 'true' : undefined}>
-          <ItemMedia className="size-5 pt-0.5 text-muted-foreground">
-            <Icon className="size-4" aria-hidden />
-          </ItemMedia>
-          <ItemContent className="flex flex-col gap-0.5">
-            <span className="truncate text-sm font-semibold tracking-tight text-foreground">{title}</span>
-            {meta ? <span className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs text-muted-foreground">{meta}</span> : null}
-            {children}
-          </ItemContent>
-          {aside ? <span className="ml-auto flex shrink-0 items-center gap-1.5 pt-0.5 max-sm:ml-8 max-sm:basis-full max-sm:pt-0">{aside}</span> : null}
+    <li role="none" className="list-none">
+      <Item asChild className={cn(RESULT_ROW_LAYOUT, ACTIVE_ROW)}>
+        <Link ref={ref} id={id} href={href} role="option" aria-selected={active} data-testid={testId}>
+          {content}
         </Link>
       </Item>
     </li>
@@ -429,9 +476,9 @@ export function ResultsBody({ stale, children }: { stale: boolean; children: Rea
 // ─── Register ───────────────────────────────────────────────────────────────
 
 /** The register's box: it scrolls, so the header row can stay put above the rows. */
-export function RegisterTable({ children, caption, testId }: { children: ReactNode; caption: string; testId?: string }): JSX.Element {
+export function RegisterTable({ children, caption, testId, id }: { children: ReactNode; caption: string; testId?: string; id?: string }): JSX.Element {
   return (
-    <div className="max-h-[calc(100dvh-12rem)] min-w-0 overflow-auto border-y border-border/70" data-testid={testId}>
+    <div id={id} className="max-h-[calc(100dvh-12rem)] min-w-0 overflow-auto border-y border-border/70" data-testid={testId}>
       <table className="w-full caption-bottom border-separate border-spacing-0 text-[13px]">
         <caption className="py-2 text-left text-xs text-muted-foreground">{caption}</caption>
         {children}
@@ -476,7 +523,7 @@ export function RegisterBody({ children }: { children: ReactNode }): JSX.Element
   return <TableBody>{children}</TableBody>
 }
 
-export function RegisterRow({ children, active = false, testId }: { children: ReactNode; active?: boolean; testId?: string }): JSX.Element {
+export function RegisterRow({ children, active = false, testId, id }: { children: ReactNode; active?: boolean; testId?: string; id?: string }): JSX.Element {
   const ref = useRef<HTMLTableRowElement>(null)
   useEffect(() => {
     if (active) ref.current?.scrollIntoView({ block: 'nearest' })
@@ -484,9 +531,11 @@ export function RegisterRow({ children, active = false, testId }: { children: Re
   return (
     <TableRow
       ref={ref}
+      id={id}
       data-state={active ? 'selected' : undefined}
       aria-selected={active || undefined}
-      className="h-9 border-b-0 even:bg-secondary/30 [&>td]:border-b [&>td]:border-border/50"
+      // The row the arrow keys are on: the list's 2px ink rule, on the first cell (a row draws no shadow of its own).
+      className="h-9 border-b-0 even:bg-secondary/30 [&>td]:border-b [&>td]:border-border/50 aria-selected:[&>td:first-child]:shadow-[inset_2px_0_0_0_var(--foreground)]"
       data-testid={testId}
     >
       {children}
@@ -577,4 +626,45 @@ export function QuietLine({ children }: { children: ReactNode }): JSX.Element {
 /** The search inside a shelf's own frame (Dateien, Büroablage), which lends no page padding. */
 export function SearchInset({ children }: { children: ReactNode }): JSX.Element {
   return <div className="min-w-0 px-4 py-4 md:px-6">{children}</div>
+}
+
+// ─── ⌘K palette ─────────────────────────────────────────────────────────────
+
+/**
+ * A hit's row inside the palette's option box. The palette sizes every glyph
+ * to 16px; the shelf mark keeps its own 12px, as on the page. Under a finger
+ * the row is 44px like the palette's other rows.
+ */
+export const PALETTE_HIT_CLASS = 'py-2 [&_svg.size-3]:size-3! pointer-coarse:min-h-11'
+
+/** Hits of an earlier question while the next answer is on its way: quieter, as the page's `ResultsBody` dims them. */
+export const PALETTE_STALE_CLASS = 'opacity-60 transition-opacity duration-quick motion-reduce:transition-none'
+
+/** A palette row's glyph, in the muted ink the palette's commands use; `top` holds it on the first line of a two-line row. */
+export function PaletteGlyph({ icon: Icon, top = false }: { icon: LucideIcon; top?: boolean }): JSX.Element {
+  return <Icon className={cn('text-muted-foreground', top && 'mt-0.5 self-start')} aria-hidden />
+}
+
+/** A palette row's words: the label on one line, and under it, when given, one muted line saying more. */
+export function PaletteLabel({ children, hint, hintTestId }: { children: ReactNode; hint?: ReactNode; hintTestId?: string }): JSX.Element {
+  if (!hint) return <span className="min-w-0 flex-1 truncate">{children}</span>
+  return (
+    <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+      <span className="truncate">{children}</span>
+      <span className="text-pretty text-xs text-muted-foreground" data-testid={hintTestId}>
+        {hint}
+      </span>
+    </span>
+  )
+}
+
+/** At a palette row's end: a quiet state (searching, nothing found, from a colleague), announced as it changes. */
+export function PaletteAside({ children, busy = false, testId }: { children: ReactNode; busy?: boolean; testId?: string }): JSX.Element {
+  return (
+    // At most under half the row: the row's own name keeps the room, the aside gives way first.
+    <span className="ml-auto flex min-w-0 max-w-[45%] items-center gap-1.5 text-xs text-muted-foreground" aria-live="polite" data-testid={testId}>
+      {busy ? <Spinner className="size-3 shrink-0" /> : null}
+      <span className="truncate">{children}</span>
+    </span>
+  )
 }

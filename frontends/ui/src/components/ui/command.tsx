@@ -57,6 +57,12 @@ interface CommandDialogProps extends React.ComponentPropsWithoutRef<typeof Dialo
    * answer (no open or close animation at all) is the right one for it.
    */
   instant?: boolean
+  /**
+   * The cmdk root's own controls: a `filter` that ranks rows the typed words
+   * do not spell (live search hits), and a controlled `value` for the row the
+   * arrows are on.
+   */
+  commandProps?: Pick<React.ComponentPropsWithoutRef<typeof CommandPrimitive>, 'filter' | 'value' | 'onValueChange' | 'loop'>
 }
 
 function CommandHints({ labels }: { labels?: CommandHintLabels }) {
@@ -92,6 +98,7 @@ function CommandDialog({
   showHints = false,
   hintLabels,
   instant = true,
+  commandProps,
   ...props
 }: CommandDialogProps) {
   return (
@@ -103,7 +110,7 @@ function CommandDialog({
       >
         <DialogTitle className="sr-only">{title}</DialogTitle>
         <DialogDescription className="sr-only">{description}</DialogDescription>
-        <Command className="[&_[cmdk-group-heading]]:text-muted-foreground [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1.5 [&_[cmdk-group-heading]]:text-xs [&_[cmdk-group-heading]]:font-medium [&_[cmdk-input-wrapper]_svg]:size-4 [&_[cmdk-item]]:px-2 [&_[cmdk-item]]:py-2 [&_[cmdk-item]_svg]:size-4">
+        <Command {...commandProps} className="[&_[cmdk-group-heading]]:text-muted-foreground [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1.5 [&_[cmdk-group-heading]]:text-xs [&_[cmdk-group-heading]]:font-medium [&_[cmdk-input-wrapper]_svg]:size-4 [&_[cmdk-item]]:px-2 [&_[cmdk-item]]:py-2 [&_[cmdk-item]_svg]:size-4">
           {children}
         </Command>
         {showHints ? <CommandHints labels={hintLabels} /> : null}

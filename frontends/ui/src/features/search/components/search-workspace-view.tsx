@@ -1,7 +1,7 @@
 'use client'
 
 import type { JSX, KeyboardEvent, ReactNode } from 'react'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { BookOpenCheck, Hourglass, List, SearchX, SlidersHorizontal, Table2 } from 'lucide-react'
 
@@ -133,6 +133,14 @@ export function SearchWorkspaceView({
 
   const order = useMemo(() => walkOrder(state.view, sections), [state.view, sections])
   const [activeKey, setActiveKey] = useState<string | null>(null)
+  // The combobox's ids: each kind's listbox (or the register's table) and each hit's option.
+  const idPrefix = useId()
+  const listId = (kind: SearchKind): string => `${idPrefix}-list-${kind}`
+  const registerId = `${idPrefix}-register`
+  const optionId = (hit: SearchHit): string => `${idPrefix}-${hitKey(hit).replace(':', '-')}`
+  const activeHit = order.find((hit) => hitKey(hit) === activeKey)
+  const controls =
+    state.view === 'register' ? registerId : SEARCH_KINDS.filter((kind) => (sections[kind]?.hits.length ?? 0) > 0).map(listId).join(' ')
   // A new answer starts the walk again at the top.
   const [seen, setSeen] = useState(response)
   if (seen !== response) {
@@ -205,6 +213,7 @@ export function SearchWorkspaceView({
                 clearLabel={t('field.clear')}
                 inputRef={field}
                 hint={<FieldShortcut modifier={modifier} />}
+                combobox={{ controls, expanded: order.length > 0, activeDescendant: activeHit ? optionId(activeHit) : null }}
               />
             }
             controls={
@@ -315,9 +324,11 @@ export function SearchWorkspaceView({
               onLoadMore={() => onLoadMore('document')}
               hideProject={!officeWide}
               activeKey={activeKey}
+              listId={registerId}
+              optionId={optionId}
             />
           ) : (
-            <SearchResultList sections={sections} onLoadMore={onLoadMore} text={state.text} activeKey={activeKey} />
+            <SearchResultList sections={sections} onLoadMore={onLoadMore} text={state.text} activeKey={activeKey} listId={listId} optionId={optionId} />
           )}
         </ResultsBody>
       )}

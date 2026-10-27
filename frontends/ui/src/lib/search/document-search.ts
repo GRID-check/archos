@@ -322,7 +322,8 @@ export async function runSearch(session: AuthorizedSession, scopeQuery: SearchSc
   if (body.cursor && !single) throw new BadRequestError('A cursor pages one kind: ask with kinds set to that kind alone')
   const offset = body.cursor ? decodeSearchCursor(body.cursor, kinds[0]) : 0
   const limit = body.limit ?? SEARCH_LIMIT_DEFAULT
-  const pageFor = (kind: SearchKind) => ({ limit: single || kind === 'document' ? limit : SEARCH_SECTION_PREVIEW, offset })
+  // Beside the documents another kind shows a preview, never more than was asked (the ⌘K palette asks three).
+  const pageFor = (kind: SearchKind) => ({ limit: single || kind === 'document' ? limit : Math.min(limit, SEARCH_SECTION_PREVIEW), offset })
   const text = body.text?.trim() || null
 
   const freshness = refreshStaleShelves(reach.organizationId, reachShelves(reach))

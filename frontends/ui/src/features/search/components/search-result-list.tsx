@@ -30,6 +30,9 @@ export interface SearchResultListProps {
   text: string
   /** The hit the arrow keys are on (`kind:id`). */
   activeKey: string | null
+  /** Each kind's listbox id and each hit's option id, which the search field's combobox names. */
+  listId?: (kind: SearchKind) => string
+  optionId?: (hit: SearchHit) => string
 }
 
 /**
@@ -38,16 +41,46 @@ export interface SearchResultListProps {
  * kept on as its provenance mark, and, for a document found by what it says,
  * the passage with the words set apart and its page.
  */
-export function SearchResultList({ sections, onLoadMore, text, activeKey }: SearchResultListProps): JSX.Element {
+export function SearchResultList({ sections, onLoadMore, text, activeKey, listId, optionId }: SearchResultListProps): JSX.Element {
   return (
     <>
       {SEARCH_KINDS.map((kind) => {
         const section = sections[kind]
         if (!section || section.hits.length === 0) return null
-        return <KindSection key={kind} kind={kind} section={section} text={text} activeKey={activeKey} onLoadMore={() => onLoadMore(kind)} />
+        return (
+          <KindSection
+            key={kind}
+            kind={kind}
+            section={section}
+            text={text}
+            activeKey={activeKey}
+            onLoadMore={() => onLoadMore(kind)}
+            listId={listId?.(kind)}
+            optionId={optionId}
+          />
+        )
       })}
     </>
   )
+}
+
+/**
+ * One hit, drawn as its kind draws it. The list renders it as a link; the ⌘K
+ * palette renders the same row inside its own option (`ResultRowFrameProvider`).
+ */
+export function HitRow({ hit, text, active = false, id }: { hit: SearchHit; text: string; active?: boolean; id?: string }): JSX.Element {
+  switch (hit.kind) {
+    case 'document':
+      return <DocumentRow hit={hit} text={text} active={active} id={id} />
+    case 'annotation':
+      return <AnnotationRow hit={hit} active={active} id={id} />
+    case 'folder':
+      return <FolderRow hit={hit} active={active} id={id} />
+    case 'project':
+      return <ProjectRow hit={hit} active={active} id={id} />
+    case 'conversation':
+      return <ConversationRow hit={hit} active={active} id={id} />
+  }
 }
 
 function KindSection({
@@ -56,34 +89,27 @@ function KindSection({
   text,
   activeKey,
   onLoadMore,
+  listId,
+  optionId,
 }: {
   kind: SearchKind
   section: SectionView
   text: string
   activeKey: string | null
   onLoadMore: () => void
+  listId?: string
+  optionId?: (hit: SearchHit) => string
 }): JSX.Element {
   const t = useTranslations('search')
   const total = section.totalIsLowerBound ? t('totalAtLeast', { count: section.total }) : String(section.total)
-  const row = (hit: SearchHit): JSX.Element => {
-    const active = activeKey === `${hit.kind}:${hit.id}`
-    switch (hit.kind) {
-      case 'document':
-        return <DocumentRow key={hit.id} hit={hit} text={text} active={active} />
-      case 'annotation':
-        return <AnnotationRow key={hit.id} hit={hit} active={active} />
-      case 'folder':
-        return <FolderRow key={hit.id} hit={hit} active={active} />
-      case 'project':
-        return <ProjectRow key={hit.id} hit={hit} active={active} />
-      case 'conversation':
-        return <ConversationRow key={hit.id} hit={hit} active={active} />
-    }
-  }
+  const row = (hit: SearchHit): JSX.Element => (
+    <HitRow key={hit.id} hit={hit} text={text} active={activeKey === `${hit.kind}:${hit.id}`} id={optionId?.(hit)} />
+  )
   return (
     <ResultSection
       title={t(`kinds.${kind}`)}
       count={total}
+      listId={listId}
       testId={`search-section-${kind}`}
       footer={
         <LoadMore
@@ -112,7 +138,7 @@ function useShelfMark(): (shelf: 'project' | 'office_shelf', projectName: string
   }
 }
 
-function DocumentRow({ hit, text, active }: { hit: DocumentHit; text: string; active: boolean }): JSX.Element {
+function DocumentRow({ hit, text, active, id }: { hit: DocumentHit; text: string; active: boolean; id?: string }): JSX.Element {
   const t = useTranslations('search')
   const labels = useSearchLabels()
   const mark = useShelfMark()
@@ -124,6 +150,7 @@ function DocumentRow({ hit, text, active }: { hit: DocumentHit; text: string; ac
       icon={FileText}
       title={hit.title ?? hit.name}
       active={active}
+      id={id}
       testId={`search-hit-document-${hit.id}`}
       meta={
         <MetaLine
@@ -154,7 +181,7 @@ function DocumentRow({ hit, text, active }: { hit: DocumentHit; text: string; ac
   )
 }
 
-function AnnotationRow({ hit, active }: { hit: AnnotationHit; active: boolean }): JSX.Element {
+function AnnotationRow({ hit, active, id }: { hit: AnnotationHit; active: boolean; id?: string }): JSX.Element {
   const t = useTranslations('search')
   const mark = useShelfMark()
   const kind = (ANNOTATION_KINDS as readonly string[]).includes(hit.annotationKind) ? t(`annotation.kinds.${hit.annotationKind}`) : hit.annotationKind
@@ -165,6 +192,7 @@ function AnnotationRow({ hit, active }: { hit: AnnotationHit; active: boolean })
       icon={MessageSquareWarning}
       title={t('annotation.on', { document: hit.documentName })}
       active={active}
+      id={id}
       testId={`search-hit-annotation-${hit.id}`}
       meta={<MetaLine parts={[<MetaPart key="kind">{kind}</MetaPart>, <MetaPart key="status">{status}</MetaPart>]} />}
       aside={mark(hit.projectId ? 'project' : 'office_shelf', hit.projectName)}
@@ -174,7 +202,7 @@ function AnnotationRow({ hit, active }: { hit: AnnotationHit; active: boolean })
   )
 }
 
-function FolderRow({ hit, active }: { hit: FolderHit; active: boolean }): JSX.Element {
+function FolderRow({ hit, active, id }: { hit: FolderHit; active: boolean; id?: string }): JSX.Element {
   const mark = useShelfMark()
   return (
     <ResultRow
@@ -182,6 +210,7 @@ function FolderRow({ hit, active }: { hit: FolderHit; active: boolean }): JSX.El
       icon={Folder}
       title={hit.name}
       active={active}
+      id={id}
       aside={mark(hit.shelf, hit.projectName)}
       testId={`search-hit-folder-${hit.id}`}
     >
@@ -190,15 +219,15 @@ function FolderRow({ hit, active }: { hit: FolderHit; active: boolean }): JSX.El
   )
 }
 
-function ProjectRow({ hit, active }: { hit: ProjectHit; active: boolean }): JSX.Element {
+function ProjectRow({ hit, active, id }: { hit: ProjectHit; active: boolean; id?: string }): JSX.Element {
   return (
-    <ResultRow href={projectHitHref(hit)} icon={Building2} title={hit.name} active={active} testId={`search-hit-project-${hit.id}`}>
+    <ResultRow href={projectHitHref(hit)} icon={Building2} title={hit.name} active={active} id={id} testId={`search-hit-project-${hit.id}`}>
       {hit.excerpt ? <Excerpt>{hit.excerpt}</Excerpt> : null}
     </ResultRow>
   )
 }
 
-function ConversationRow({ hit, active }: { hit: ConversationHit; active: boolean }): JSX.Element {
+function ConversationRow({ hit, active, id }: { hit: ConversationHit; active: boolean; id?: string }): JSX.Element {
   const { locale } = useLocale()
   const mark = useShelfMark()
   return (
@@ -207,6 +236,7 @@ function ConversationRow({ hit, active }: { hit: ConversationHit; active: boolea
       icon={MessageSquare}
       title={hit.title}
       active={active}
+      id={id}
       meta={<MetaPart>{formatRelativeTime(hit.updatedAt, locale)}</MetaPart>}
       aside={hit.projectName ? mark('project', hit.projectName) : null}
       testId={`search-hit-conversation-${hit.id}`}

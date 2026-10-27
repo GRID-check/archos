@@ -9,7 +9,10 @@
  */
 
 import { documentHref } from '@/features/uploads/lib/upload-summary'
+import type { SavedSearchView } from '@/lib/search/saved-search-client'
 import type { AnnotationHit, ConversationHit, DocumentHit, FolderHit, ProjectHit, SearchHit } from '@/lib/search/search-wire'
+import { SHELF_SEARCH_MODE, SHELF_SEARCH_MODE_PARAM } from '../hooks/use-shelf-search-mode'
+import { EMPTY_SEARCH_STATE, fromSearchBody, writeSearchParams } from './search-url'
 
 function shelfBase(shelf: 'project' | 'office_shelf', projectId: string | null): string {
   if (shelf === 'project' && projectId) return `/app/projects/${encodeURIComponent(projectId)}/files`
@@ -36,6 +39,24 @@ export function projectHitHref(hit: Pick<ProjectHit, 'id'>): string {
 export function conversationHitHref(hit: Pick<ConversationHit, 'id' | 'projectId'>): string {
   const session = `?session=${encodeURIComponent(hit.id)}`
   return hit.projectId ? `/app/projects/${encodeURIComponent(hit.projectId)}/chat${session}` : `/app/chat${session}`
+}
+
+/** The workspace search page asking `text`, narrowed to one project when the question was asked in one. */
+export function searchPageHref(text: string, projectId: string | null = null): string {
+  const query = writeSearchParams({ ...EMPTY_SEARCH_STATE, text, projectId }).toString()
+  return query ? `/app/search?${query}` : '/app/search'
+}
+
+/** Where a saved search runs: the office shelf's own search for a question asked there, else the search page. */
+export function savedSearchHref(item: Pick<SavedSearchView, 'scope' | 'query'>): string {
+  if (item.scope.scope === 'office_shelf') {
+    const params = writeSearchParams(fromSearchBody(item.query))
+    params.set(SHELF_SEARCH_MODE_PARAM, SHELF_SEARCH_MODE)
+    return `/app/office-shelf?${params.toString()}`
+  }
+  const projectId = item.scope.scope === 'project' ? (item.scope.projectId ?? null) : null
+  const query = writeSearchParams(fromSearchBody(item.query, projectId)).toString()
+  return query ? `/app/search?${query}` : '/app/search'
 }
 
 export function hitHref(hit: SearchHit): string {

@@ -200,7 +200,14 @@ export const search = {
     backToShelf: 'back to the filing',
   },
   palette: {
-    searchFor: 'Search for “{text}”',
+    allResults: 'All results for “{text}”',
     open: 'Open search',
+    noHits: 'Nothing found',
+    recent: 'Recent searches',
+    hint: {
+      office:
+        'Finds documents by name, title block, type and content (with the page), plus annotations, folders, projects and chats across the office.',
+      project: 'Finds documents in this project by name, title block, type and content (with the page), plus annotations, folders and chats.',
+    },
   },
 }
