@@ -6,7 +6,6 @@
  * filed text offers the follow, only where it could ever hold.
  */
 
-import type { ReactNode } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import userEvent from '@testing-library/user-event'
 
@@ -65,10 +64,11 @@ describe('InboundMailDetail', () => {
     await waitFor(() => expect(onChanged).toHaveBeenCalled())
     // One toast that says where each part went and which Fassung it became.
     expect(toast.success).toHaveBeenCalledTimes(1)
-    const [title, options] = vi.mocked(toast.success).mock.calls[0] as [string, { description: ReactNode; action: { label: string } }]
+    const [title, options] = vi.mocked(toast.success).mock.calls[0] ?? []
     expect(title).toBe('Filed 1 file and the mail text')
-    expect(options.action.label).toBe('View')
-    render(<>{options.description}</>)
+    expect(options?.action).toMatchObject({ label: 'View' })
+    const description = options?.description
+    render(<>{typeof description === 'function' ? description() : description}</>)
     const lines = screen.getAllByTestId('filed-lines').at(-1) as HTMLElement
     expect(within(lines).getAllByRole('listitem').map((line) => line.textContent)).toEqual([
       'Mail text → “Stellplatznachweis” · revision 4',
