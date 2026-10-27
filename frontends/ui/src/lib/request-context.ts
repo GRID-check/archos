@@ -54,7 +54,7 @@
  */
 
 import { createHmac, timingSafeEqual } from 'node:crypto'
-import type { ScopedCollection } from '@/lib/collection-scope'
+import type { ScopedCollection } from '@/lib/retrieval-scope/collection-scope'
 
 export interface GridBudgetSnapshot {
   /** Remaining platform-billed cost per scope, USD; null = unlimited. */
