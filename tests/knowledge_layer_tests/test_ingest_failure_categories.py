@@ -36,7 +36,7 @@ def summary_db(tmp_path):
 
 @pytest.fixture
 def ingestor(monkeypatch, summary_db, qdrant_store):
-    from sources.knowledge_layer.tests.qdrant_testing import FakeEmbedder
+    from knowledge_layer_testing.qdrant import FakeEmbedder
 
     ing = LlamaIndexIngestor({"generate_summary": False})
     ing._embed_model = FakeEmbedder()

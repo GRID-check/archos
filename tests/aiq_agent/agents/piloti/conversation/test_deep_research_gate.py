@@ -14,6 +14,7 @@ that no hand-off happens, and that the reader is left holding an answer.
 """
 
 import pytest
+from agent_testing.conversation import turn
 from langchain_core.messages import AIMessage
 from langchain_core.messages import HumanMessage
 
@@ -25,7 +26,6 @@ from aiq_agent.agents.piloti.conversation import _finalize_answer
 from aiq_agent.agents.piloti.models import ConversationState
 from aiq_agent.agents.piloti.models import ResearchAgentState
 from aiq_agent.turn.commission import CommissionRefused
-from tests.aiq_agent.agents.piloti.conversation import turn
 
 
 async def _unused_research(_state):  # pragma: no cover - the commission path never reaches it

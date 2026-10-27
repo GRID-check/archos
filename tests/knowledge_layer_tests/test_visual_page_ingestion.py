@@ -29,11 +29,11 @@ from knowledge_layer.llamaindex.adapter import _parse_drawing_fields
 from knowledge_layer.llamaindex.adapter import _scrub_watermark_phrases
 from knowledge_layer.llamaindex.adapter import _strip_watermark_lines
 from knowledge_layer.llamaindex.adapter import _summary_from_drawing_fields
+from knowledge_layer_testing.qdrant import FakeEmbedder
+from knowledge_layer_testing.qdrant import record
+from knowledge_layer_testing.qdrant import write
 
 from aiq_agent.common.credential_resolution import ResolvedCredential
-from sources.knowledge_layer.tests.qdrant_testing import FakeEmbedder
-from sources.knowledge_layer.tests.qdrant_testing import record
-from sources.knowledge_layer.tests.qdrant_testing import write
 
 
 def _patch_vlm_credential(monkeypatch, api_key: str):
