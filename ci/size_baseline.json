@@ -232,7 +232,6 @@
     "src/aiq_agent/observability/langfuse_trace_attributes.py": 1074,
     "src/aiq_agent/project_context.py": 840,
     "src/aiq_agent/tokenomics/report/_report_template_single.py": 764,
-    "src/aiq_agent/tools/bim/measure_register.py": 1922,
     "src/aiq_agent/tools/bim/register.py": 835,
     "src/aiq_agent/tools/cross_project/register.py": 1076,
     "src/aiq_agent/tools/documents/draft_store.py": 634
