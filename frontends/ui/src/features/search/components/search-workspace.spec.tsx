@@ -303,6 +303,8 @@ describe('SearchWorkspaceView', () => {
     german(<Harness initial={{ ...EMPTY_SEARCH_STATE, view: 'register', filters: { currentOnly: true } }} onChange={onChange} />)
     const toggle = screen.getByRole('switch', { name: 'Nur aktuelle Fassung' })
     expect(toggle).toBeChecked()
+    // One switch for one setting: the rail leaves it to the bar above the table.
+    expect(screen.queryByTestId('filter-current')).toBeNull()
     await userEvent.click(toggle)
     expect(onChange).toHaveBeenLastCalledWith(expect.objectContaining({ filters: {} }))
   })
@@ -398,7 +400,7 @@ describe('SearchWorkspaceView on a phone', () => {
   it('keeps the rail out of the page and opens it as a sheet, with the answer’s size and „Alle entfernen“ at the thumb', async () => {
     const onChange = vi.fn()
     german(<Harness initial={{ ...EMPTY_SEARCH_STATE, filters: { currentOnly: true } }} onChange={onChange} />)
-    expect(screen.getByRole('searchbox', { name: 'Suchen' })).toHaveAttribute('placeholder', 'Suchen…')
+    expect(screen.getByRole('combobox', { name: 'Suchen' })).toHaveAttribute('placeholder', 'Suchen…')
     expect(screen.queryByTestId('search-rail')).toBeNull()
 
     await userEvent.click(screen.getByTestId('search-rail-toggle'))
