@@ -20,7 +20,13 @@ export const fileDiagramSchema = z.object({
    * this line is the seam, and it is worth one comment rather than a wrong name
    * spreading inwards from it.
    */
-  runId: z.string().min(1).max(200),
+  runId: z
+    .string()
+    .min(1)
+    .max(200)
+    .describe(
+      'Unique to this diagram, derived from the answer it was drawn in and its source; the same runId files nothing twice'
+    ),
   title: z.string().min(1).max(200),
   sourceKind: z.enum(DIAGRAM_SOURCE_KINDS),
   /**
@@ -42,4 +48,20 @@ export const fileDiagramSchema = z.object({
    * (ADR-0087). Authorized as a read of that thread before it is used.
    */
   conversationId: z.string().min(1).max(128).optional(),
+  /**
+   * The answer message the diagram was drawn in, when the surface knows it.
+   * Only used to find that turn's Langfuse trace for the `diagram-filed` score;
+   * the identity of the filed files stays `runId`.
+   */
+  answerId: z.string().min(1).max(128).optional(),
+  /**
+   * A person changed the drawing before filing it (the sketch editor). The
+   * files then say so in their own bytes: „Von Piloti entworfen, von einer
+   * Person bearbeitet" instead of „Von Piloti erstellt". The machine marking is
+   * unchanged (`AIHumanReviewed=false`): editing a sketch is not a Freigabe.
+   */
+  edited: z
+    .boolean()
+    .optional()
+    .describe('True when a person edited the drawing before filing it; the files then name both authors'),
 })

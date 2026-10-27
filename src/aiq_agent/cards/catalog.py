@@ -369,13 +369,24 @@ _CARD_TRIGGERS: tuple[tuple[str, str, str], ...] = (
         "Whether a lift is required at all is a sentence with its Fundstelle, not a field.",
     ),
     (
-        "a number the answer WORKED OUT rather than looked up",
+        "a number the answer WORKED OUT rather than looked up, other than the four rules of the row below",
         "calculation",
         "Supply the operands (label, value, unit) and the rule's limit; the card computes, rounds "
         "and judges, and there is no result field, on purpose. The rule's multiplier is a "
         "`factor`, never a second operand, and an operand you do not have stays empty — the card "
         'renders „nicht berechenbar". Never for a number merely cited: one operand is the '
         "sentence beside it, typeset twice.",
+    ),
+    (
+        "a U-value from its layers, the Schrittmaßregel, an escape route's Gehweglänge, or a "
+        "Lichteintrittsfläche against the Bodenfläche",
+        "formula",
+        "Name the rule and its case (`stair_type`, `component` and `measure`, `start`) and fill each input from a "
+        "source, with `source` saying where it is written; an input you do not have stays null. The card "
+        "owns the bounds: it reads them from the Richtlinie's table for that case, so you write no limit "
+        "and no figure in the title, a label or the note. It computes, judges and lets the reader change "
+        "the inputs for a what-if, so the prose names the verdict and points at the card instead of "
+        "restating the computed number.",
     ),
 )
 
@@ -539,42 +550,69 @@ CARD_EXAMPLES: dict[str, dict] = {
         "preview": [{"label": "Escape level", "before": "11–22m", "after": "> 22m"}],
     },
     # The example the model copies has to make the one hard rule obvious: there
-    # is NO result field. It shows the Schrittmaßregel because that is the
-    # arithmetic every Austrian architect knows by heart — 2 × 17 + 30 = 64
-    # against 59–65 — so a model that fills this in wrongly is visibly wrong,
-    # and a reader who sees the card knows immediately what it is claiming to
-    # have done. The rule's own multiplier rides as `factor` rather than as a
-    # second operand, because 2 is part of the Bestimmung and not a quantity
-    # anybody measured, and only a `factor` can say that.
+    # is NO result field. It is a Brandabschnitt's Netto-Grundfläche from its
+    # rooms against OIB-RL 2 Pkt. 3.1.1 (1.600 m² for Büronutzung), because that
+    # is a derivation with a cited bound that is none of the four named rules a
+    # `formula` owns. One operand is our own measurement, with its band, so the
+    # example shows provenance and tolerance as well as the missing result.
     "calculation": {
         "type": "calculation",
-        "title": "Schrittmaßregel – Treppenlauf Haus A",
+        "title": "Netto-Grundfläche Brandabschnitt BA 2",
         "steps": [
             {
-                "label": "Schrittmaß",
+                "label": "Netto-Grundfläche",
                 "operation": "sum",
-                "unit": "cm",
+                "unit": "m²",
                 "operands": [
+                    {"label": "Büros Nord", "value": 612.4, "unit": "m²", "source": "Raumbuch 3. OG"},
+                    {"label": "Büros Süd", "value": 588.0, "unit": "m²", "source": "Raumbuch 3. OG"},
                     {
-                        "label": "Steigung",
-                        "value": 17.0,
-                        "unit": "cm",
-                        "factor": 2,
+                        "label": "Gang und Nebenräume",
+                        "value": 241.6,
+                        "unit": "m²",
                         "provenance": "computed",
-                        "tolerance": 0.5,
-                        "source": "Einreichplan, Schnitt A-A",
+                        "tolerance": 2.0,
+                        "source": "Modell, Geschoß 3. OG",
                     },
-                    {"label": "Auftritt", "value": 30.0, "unit": "cm", "provenance": "declared"},
                 ],
             }
         ],
         "limit": {
-            "comparator": "between",
-            "value": 59,
-            "upper": 65,
-            "label": "Schrittmaßregel",
-            "reference": {"document": "OIB-Richtlinie 4", "section": "Pkt. 3.2", "edition": "Ausgabe Mai 2023"},
+            "comparator": "<=",
+            "value": 1600,
+            "label": "Büronutzung",
+            "reference": {"document": "OIB-Richtlinie 2", "section": "Pkt. 3.1.1", "edition": "Ausgabe Mai 2023"},
         },
+    },
+}
+
+
+# The formula card's example is the north-star question (ADR-0143): how much
+# insulation does the wall need. It shows what the model must get right and the
+# renderer cannot: the case (`component`), each input's `source`, and a
+# reader-adjustable range on the layer the question is about. It has no result
+# and no limit: 0,167 W/(m²K) is the card's, and so is the 0,35 of OIB-RL 6
+# Pkt. 4.4.1 row 1, which the card reads from its own table for a new build
+# (0,266 under Pkt. 4.5 b) for a renovation).
+CARD_EXAMPLES["formula"] = {
+    "type": "formula",
+    "title": "U-Wert Außenwand AW 01",
+    "formula": {
+        "name": "u_value",
+        "component": "external_wall",
+        "measure": "new_build",
+        "layers": [
+            {
+                "label": "Stahlbeton",
+                "thickness": {"value": 18, "source": "Wandaufbau AW 01"},
+                "conductivity": {"value": 2.3, "source": "Wandaufbau AW 01"},
+            },
+            {
+                "label": "EPS-F",
+                "thickness": {"value": 20, "min": 0, "max": 40, "step": 1, "source": "Wandaufbau AW 01"},
+                "conductivity": {"value": 0.035, "step": 0.001, "source": "Produktdatenblatt"},
+            },
+        ],
     },
 }
 

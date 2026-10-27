@@ -58,6 +58,9 @@ class Resolved:
     collection: str = ""
     target: Target | None = None
     signed: SignedEnvelope | None = None
+    #: The BFF already answered for the document while it was resolved (its ``list``, for the name),
+    #: so a caller that only needs to know the person may read it need not ask again.
+    read_by_bff: bool = False
 
 
 def _key(value: str | None) -> str:
@@ -128,10 +131,11 @@ async def _open(document: str) -> Resolved | str:
     target = await resolve_target(document, signed)
     if isinstance(target, Unresolved):
         return target.message
+    read_by_bff = not target.file_name
     file_name = await _file_name(target, signed)
     if not file_name:
         return NO_FILE
-    return Resolved(file_name, await _collection(file_name, target.collection), target, signed)
+    return Resolved(file_name, await _collection(file_name, target.collection), target, signed, read_by_bff)
 
 
 async def resolve_document(document: str) -> Resolved | str:

@@ -39,8 +39,8 @@ class TestTheLines:
         text = render_folder_hits([HIT], "Grundriss EG")
 
         assert "Folder: Einreichung/Pläne — Einreichpläne Index C, Grundrisse und Schnitte." in text
-        assert 'list_files(folder="Einreichung/Pläne", view="tree")' in text
-        assert 'knowledge_search(query="Grundriss EG", folder="Einreichung/Pläne")' in text
+        # A fact, no tool: three agents with different tools read it (ADR-0133 slice 6).
+        assert 'list Einreichung/Pläne or search inside it ("Grundriss EG")' in text
         assert "not a source" in text
 
     def test_a_stale_card_says_so_and_a_long_abstract_is_cut(self):

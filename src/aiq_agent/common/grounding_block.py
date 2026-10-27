@@ -253,7 +253,7 @@ class GroundingBlock(BaseModel):
     trailer: str = ""
     #: Why the hits do NOT answer the question, when a judge that read them
     #: against it said so (``knowledge_layer.requery.judge_coverage``). Rendered
-    #: as the ``Abdeckung: unzureichend — …`` line under the preamble, so the
+    #: as the ``Coverage: insufficient — …`` line under the preamble, so the
     #: model reads the verdict before the passages rather than inferring it
     #: from a score. The reason names how many hits were judged, and the claim
     #: covers those only. ``None`` renders nothing: an unjudged block and a
@@ -266,10 +266,25 @@ class GroundingBlock(BaseModel):
 # ---------------------------------------------------------------------------
 
 
-#: The line that says a block's passages do not answer the question. The
-#: prompt names it (``piloti_static.md`` <rules>), so it is one
-#: constant rather than a spelling each producer picks.
-COVERAGE_GAP_LABEL = "Abdeckung: unzureichend —"
+#: The line that says a block's passages do not answer the question: one
+#: constant rather than a spelling each producer picks. English, like
+#: everything an agent reads.
+COVERAGE_GAP_LABEL = "Coverage: insufficient —"
+
+#: What the coverage line goes on to say, at the moment it matters. It used to
+#: be a rule in the system prompt, paid on every call of every turn; it is
+#: needed only on a block a judge found insufficient, which is exactly when the
+#: line is rendered (slice 6, ``prompt-value-audit-2026-10.md``).
+COVERAGE_GAP_NOTE = (
+    "No passage here states what was asked: say so and what you searched. That is not „Nicht geregelt“; "
+    "the rule may sit in a source this search does not cover."
+)
+
+#: Appended to the ``Herkunft:`` line of a Piloti-authored document, so every
+#: tool that returns one (a search hit, a grep passage, a read) says it where
+#: the passage is. The line still starts with the frozen ``Piloti-Dokument``
+#: token the text parser reads (``citation_verification._parse_kl_authored_by``).
+AGENT_DOCUMENT_NOTE = "what the office decided, never a source for a normative value"
 
 #: The heading of the fan-out JSON every rendered block carries.
 TRACE_LANES_MARKER = "## Trace-Lanes"
@@ -308,7 +323,7 @@ def render_grounding_block(block: GroundingBlock) -> str:
     """
     lines: list[str] = block.preamble.split("\n") if block.preamble else []
     if block.coverage_gap:
-        lines.append(f"{COVERAGE_GAP_LABEL} {_line(block.coverage_gap)}")
+        lines.append(f"{COVERAGE_GAP_LABEL} {_line(block.coverage_gap).rstrip('.')}. {COVERAGE_GAP_NOTE}")
     lines.append("")
     for index, hit in enumerate(block.hits, 1):
         lines.extend(_hit_lines(index, hit))
@@ -431,7 +446,7 @@ def _header_lines(hit: GroundingHit) -> Iterator[str]:
     if hit.doc_class:
         yield f"Dokumentart: {_line(hit.doc_class)} — {_line(_doc_class_label(hit.doc_class))}"
     if hit.provenance is not None:
-        yield f"Herkunft: {_line(provenance_label(hit.provenance))}"
+        yield f"Herkunft: {_line(provenance_label(hit.provenance))} — {AGENT_DOCUMENT_NOTE}"
     if hit.page is not None:
         yield f"Page: {hit.page}–{hit.page_end}" if hit.page_end and hit.page_end > hit.page else f"Page: {hit.page}"
     for region in hit.regions[:MAX_RENDERED_REGIONS]:

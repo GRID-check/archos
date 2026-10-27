@@ -834,4 +834,72 @@ describe.skipIf(!url)('the search documents SQL against Postgres', () => {
       expect(await listCollectionDocumentsForProjection(ORG, C1, [a4.filename])).toEqual([])
     })
   })
+
+  describe('completions (POST /api/search/suggest)', () => {
+    type Request = Parameters<typeof import('./suggest-repository').suggestValues>[2]
+    const suggest = async (reach: SearchReach, request: Omit<Request, 'limit'>, filters: DocumentFilters = {}) => {
+      const { suggestValues } = await import('./suggest-repository')
+      return suggestValues(reach, query(filters), { limit: 10, ...request })
+    }
+    /** Only project p2: what a reader of the other project alone reaches. */
+    const p2Only = (): SearchReach => ({ ...officeReach(), projects: officeReach().projects.slice(1), officeShelf: null })
+
+    it('completes a party from the start of any word, case and accents ignored, a document counted once', async () => {
+      expect(await suggest(officeReach(), { dimension: 'party', prefix: 'atel' })).toEqual([
+        { value: 'Atelier Nord ZT GmbH', label: 'Atelier Nord ZT GmbH', count: 2 },
+      ])
+      expect(await suggest(officeReach(), { dimension: 'party', prefix: 'NORD' })).toEqual([
+        { value: 'Atelier Nord ZT GmbH', label: 'Atelier Nord ZT GmbH', count: 2 },
+      ])
+      expect((await suggest(officeReach(), { dimension: 'party', prefix: 'sud' })).map((entry) => entry.value)).toEqual(['Ingenieurbüro Süd'])
+      // Within a role: Atelier Nord is no client.
+      expect(await suggest(officeReach(), { dimension: 'party', prefix: 'atel', role: 'client' })).toEqual([])
+      // Not the middle of a word.
+      expect(await suggest(officeReach(), { dimension: 'party', prefix: 'telier' })).toEqual([])
+    })
+
+    it('never names a value held only by a hidden folder, a held upload, another project or another office', async () => {
+      // A7 (hidden folder) names Geheim GmbH and EP-07; A8 (held) and B1 (other office) cite ÖNORM B 1600 too.
+      expect(await suggest(officeReach(), { dimension: 'party', prefix: 'geh' })).toEqual([])
+      expect(await suggest(officeReach(), { dimension: 'planNumber', prefix: 'ep-07' })).toEqual([])
+      const everyParty = await suggest(officeReach(), { dimension: 'party', prefix: '' })
+      expect(everyParty.map((entry) => entry.value)).not.toContain('Geheim GmbH')
+      expect(everyParty.reduce((sum, entry) => sum + entry.count, 0)).toBe(6)
+      expect(await suggest(officeReach(), { dimension: 'cites', prefix: 'onorm' })).toEqual([
+        { value: 'norm:önorm b 1600', label: 'ÖNORM B 1600', count: 1 },
+      ])
+      // A reader of project p2 alone never learns what project p1 holds.
+      expect(await suggest(p2Only(), { dimension: 'party', prefix: 'atel' })).toEqual([])
+      expect(await suggest(p2Only(), { dimension: 'cites', prefix: 'önorm' })).toEqual([])
+      // The project's reviewer sees the held upload, and so its citation.
+      expect((await suggest(officeReach({ reviewP1: true }), { dimension: 'cites', prefix: 'önorm' }))[0]?.count).toBe(2)
+    })
+
+    it('completes a place, a drawing number, a scale, a revision and a fact, one value however it is written', async () => {
+      // Wien is A1's and A6's municipality and state: one value, two documents.
+      expect(await suggest(officeReach(), { dimension: 'place', prefix: 'wi' })).toEqual([{ value: 'Wien', label: 'Wien', count: 2 }])
+      expect((await suggest(officeReach(), { dimension: 'place', prefix: 'hauptstr' }))[0]?.value).toBe('Hauptstraße 1')
+      const plan = await suggest(officeReach(), { dimension: 'planNumber', prefix: 'EP0' })
+      expect(plan).toHaveLength(1)
+      expect(plan[0].count).toBe(2)
+      expect(['EP-05', 'EP 05']).toContain(plan[0].value)
+      const scale = await suggest(officeReach(), { dimension: 'scale', prefix: '1:1' })
+      expect(scale.map((entry) => entry.count)).toEqual([2])
+      expect((await suggest(officeReach(), { dimension: 'planIndex', prefix: 'c' })).map((entry) => entry.value)).toEqual(['C'])
+      expect(await suggest(officeReach(), { dimension: 'fact', factKey: 'gross_floor_area', prefix: '24' })).toEqual([
+        { value: '2400', label: '2400', count: 1 },
+      ])
+      // Another fact's value is no value of this one.
+      expect(await suggest(officeReach(), { dimension: 'fact', factKey: 'building_height', prefix: '24' })).toEqual([])
+    })
+
+    it('counts under the other filters of the search', async () => {
+      expect(await suggest(officeReach(), { dimension: 'party', prefix: '' }, { documentTypes: ['structural_analysis'] })).toEqual([
+        { value: 'Holz & Statik OG', label: 'Holz & Statik OG', count: 1 },
+      ])
+      expect(await suggest(officeReach(), { dimension: 'party', prefix: 'atel' }, { currentOnly: true })).toEqual([
+        { value: 'Atelier Nord ZT GmbH', label: 'Atelier Nord ZT GmbH', count: 1 },
+      ])
+    })
+  })
 })

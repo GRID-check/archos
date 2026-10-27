@@ -514,7 +514,7 @@ class TestTheCoverageGate:
         rendered = _format_results(result, "q", coverage_gap="kein Beleg")
         assert rendered.startswith(
             "Found 1 document(s); none of the judged ones answers the question:\n"
-            "Abdeckung: unzureichend — kein Beleg\n\n"
+            "Coverage: insufficient — kein Beleg. No passage here states what was asked"
         )
         assert _format_results(result, "q").startswith("Found 1 relevant document(s):\n\n--- Result 1 ---")
 

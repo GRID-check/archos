@@ -59,7 +59,7 @@
  * `renderPaperDiagram` when a view is shown).
  */
 
-import { useRef, type ReactNode } from 'react'
+import { useRef, useState, type ReactNode } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
 import { motionBase, motionInstant, useMotionToken } from '@/components/motion'
 import { useHeightGlide } from '@/components/motion/height-glide'
@@ -71,8 +71,10 @@ import { renderPaperDiagram, useRenderedDiagram } from '../use-rendered-diagram'
 import { useDiagramModel } from '../use-diagram-model'
 import { DiagramView } from '../views/diagram-views'
 import { titleFromSource, useDiagramFiling } from '../use-diagram-filing'
-import { DiagramFilingControls } from './diagram-filing-controls'
+import { CAPTION_CONTROL, DiagramFilingControls } from './diagram-filing-controls'
 import { DrawingCaption, DrawingReveal } from './drawing-skeleton'
+import { isSketchable } from '../sketch/sketch-from-model'
+import { SketchDialog } from '../sketch/sketch-dialog'
 
 export interface MermaidDiagramProps {
   source: string
@@ -133,6 +135,11 @@ export function MermaidDiagram({ source, isStreaming = false }: MermaidDiagramPr
   const fellBack = settledForm === 'svg' && failed
   const frameRef = useRef<HTMLDivElement>(null)
   useHeightGlide(frameRef, fellBack)
+  // „Als Skizze bearbeiten": a flow or a Gliederung, inside a project (a
+  // sketch is filed there or nowhere). The dialog, and the 2.5 MB canvas it
+  // loads, mount only once a person asks (ADR-0141).
+  const [sketching, setSketching] = useState(false)
+  const sketchable = isSketchable(model) && filing.target !== null
   const crossfade = useMotionToken(motionBase)
 
   let body: ReactNode
@@ -178,9 +185,22 @@ export function MermaidDiagram({ source, isStreaming = false }: MermaidDiagramPr
               className="text-muted-foreground flex flex-wrap items-center gap-x-3 pt-1 text-xs"
             >
               <DiagramFilingControls filing={filing} />
+              {sketchable ? (
+                <button
+                  type="button"
+                  onClick={() => setSketching(true)}
+                  className={CAPTION_CONTROL}
+                  data-testid="diagram-edit-sketch"
+                >
+                  {t('sketch.action')}
+                </button>
+              ) : null}
             </DrawingCaption>
           ) : null}
         </AnimatePresence>
+        {sketching && isSketchable(model) ? (
+          <SketchDialog open={sketching} onOpenChange={setSketching} source={source} model={model} />
+        ) : null}
       </figure>
     )
   } else {

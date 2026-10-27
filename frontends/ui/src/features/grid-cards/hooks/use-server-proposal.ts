@@ -14,11 +14,11 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { applyProposal, dismissProposal, getProposal } from '@/lib/proposals/client'
 import { proposalChannelKey, proposalEventSchema, type ProposalEvent } from '@/lib/proposals/live-events'
 import type { ApplyProposalRequest, ProposedChangeKind, ProposedChangeView } from '@/lib/proposals/types'
 import { useChannel } from '@/features/realtime/use-channel'
 import { useDecidedProposals } from '../decided-proposals'
+import { useProposalTransport } from './proposal-transport'
 
 /** The proposal view of one kind: its payload is that kind's. */
 export type ProposalOfKind<K extends ProposedChangeKind> = Extract<ProposedChangeView, { kind: K }>
@@ -63,6 +63,8 @@ export function useServerProposal<K extends ProposedChangeKind>(
   const [problem, setProblem] = useState<ProposalProblem | null>(null)
   const [busy, setBusy] = useState<ProposalBusy | null>(null)
   const [overtaken, setOvertaken] = useState(false)
+  // Piloti's HTTP client, or the MCP door inside another assistant's chat (ADR-0142).
+  const transport = useProposalTransport()
 
   const onSettledRef = useRef(onSettled)
   onSettledRef.current = onSettled
@@ -82,7 +84,7 @@ export function useServerProposal<K extends ProposedChangeKind>(
 
   useEffect(() => {
     let current = true
-    getProposal(proposalId).then(
+    transport.get(proposalId).then(
       (response) => {
         if (!current) return
         const read = accept(response.proposal)
@@ -96,7 +98,7 @@ export function useServerProposal<K extends ProposedChangeKind>(
     return () => {
       current = false
     }
-  }, [proposalId, accept])
+  }, [proposalId, accept, transport])
 
   const settle = useCallback((next: ProposalOfKind<K>): void => {
     setProposal(next)
@@ -114,7 +116,7 @@ export function useServerProposal<K extends ProposedChangeKind>(
   const live = useRef({ open, busy })
   live.current = { open, busy }
   const reread = useCallback(() => {
-    void getProposal(proposalId).then(
+    void transport.get(proposalId).then(
       (response) => {
         if (!live.current.open || live.current.busy) return
         const read = accept(response.proposal)
@@ -122,9 +124,9 @@ export function useServerProposal<K extends ProposedChangeKind>(
       },
       () => undefined
     )
-  }, [proposalId, accept, settle])
+  }, [proposalId, accept, settle, transport])
   const channel = useChannel<ProposalEvent>(proposalChannelKey(proposalId), {
-    enabled: open,
+    enabled: open && transport.live,
     parse: (event) => {
       const parsed = proposalEventSchema.safeParse(event)
       return parsed.success && parsed.data.proposalId === proposalId ? parsed.data : null
@@ -135,6 +137,13 @@ export function useServerProposal<K extends ProposedChangeKind>(
   useEffect(() => {
     if (channelStatus === 'live') reread()
   }, [channelStatus, reread])
+  // No channel (an MCP Apps host frame, ADR-0142): the first read may be a copy
+  // the host kept (a stored tool result it replays), so a card that shows the
+  // proposal open asks the server once more, in the background.
+  const shownOpen = open && !transport.live
+  useEffect(() => {
+    if (shownOpen) reread()
+  }, [shownOpen, reread])
 
   // `busy` reaches `live` only on the next render, so two presses in one tick
   // would both pass it; this ref is set before the first await.
@@ -146,11 +155,7 @@ export function useServerProposal<K extends ProposedChangeKind>(
       setProblem(null)
       setBusy({ action, withBody: body !== undefined })
       try {
-        const response = await (action === 'dismiss'
-          ? dismissProposal(proposalId)
-          : body
-            ? applyProposal(proposalId, body)
-            : applyProposal(proposalId))
+        const response = await (action === 'dismiss' ? transport.dismiss(proposalId) : transport.apply(proposalId, body))
         const read = accept(response.proposal)
         if (read) settle(read)
         else setProblem(action)
@@ -160,7 +165,7 @@ export function useServerProposal<K extends ProposedChangeKind>(
           return
         }
         setOvertaken(true)
-        await getProposal(proposalId).then(
+        await transport.get(proposalId).then(
           (response) => {
             const read = accept(response.proposal)
             if (read) settle(read)
@@ -173,7 +178,7 @@ export function useServerProposal<K extends ProposedChangeKind>(
         setBusy(null)
       }
     },
-    [proposalId, accept, settle]
+    [proposalId, accept, settle, transport]
   )
 
   return { proposal, problem, busy, overtaken, decide }

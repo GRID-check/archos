@@ -45,6 +45,7 @@ export const chat: typeof en.chat = {
     renditionNote: 'PDF-Vorschau des Originals',
     renditionPending: 'PDF-Vorschau wird erstellt…',
     downloadOriginal: 'Original herunterladen',
+    openBesideChat: 'Neben dem Chat öffnen',
     // Coarse source kind (ADR-0026) shown in the info popover. Preferred
     // over `origins` because the origin token is kb/ris/web only, so a
     // knowledge-base copy of a legal text reads as project material.
@@ -520,6 +521,139 @@ export const chat: typeof en.chat = {
       computedNote:
         'Das Ergebnis wird von dieser Karte aus den obigen Werten berechnet, nicht aus der Antwort übernommen.',
     },
+    // Eine benannte Rechenregel, deren Eingangswerte die Lesenden ändern
+    // können (ADR-0143). Gerechnet wird im Browser; eine geänderte Zahl ist
+    // „Ihre Annahme", nicht die der Quelle, und wird nirgends gespeichert.
+    formula: {
+      eyebrow: 'Was wäre, wenn',
+      hint: 'Ändern Sie einen Wert: Das Ergebnis wird sofort neu berechnet. Gespeichert wird nichts.',
+      inputsLabel: 'Eingangswerte',
+      derivationLabel: 'Rechenweg',
+      checksLabel: 'Beurteilung',
+      notesLabel: 'Hinweise',
+      // Neben einem Wert, den die Lesenden geändert haben, und neben jeder
+      // Beurteilung, die auf ihm beruht. Er ist ihre Annahme, nicht die Angabe
+      // der Quelle, und das muss man sehen, bevor man ihn weitergibt.
+      yourAssumption: 'Ihre Annahme',
+      // Neben der Beurteilung im Kopf der Karte, wenn sie auf einer Annahme beruht.
+      withYourAssumptions: 'mit Ihren Annahmen',
+      sourceValue: 'Quelle: {value}',
+      sourceMissing: 'Quelle: kein Wert',
+      // Steht in einem leeren Feld, dessen Wert die Quelle nicht nennt.
+      missingPlaceholder: 'fehlt',
+      fixed: 'vorgegeben',
+      reset: 'Zurücksetzen',
+      resetLabel: 'Alle Werte auf die Angaben der Quelle zurücksetzen',
+      withAssumptions: 'Gerechnet mit Ihren Annahmen, nicht mit den Werten der Quelle.',
+      cannotJudge: 'Ein Wert fehlt: Ohne ihn kann die Karte nicht beurteilen.',
+      measureUnknown: 'Neubau oder Renovierung ist nicht angegeben: Ohne das kann die Karte nicht beurteilen.',
+      majorRenovationUndecided:
+        'Eine größere Renovierung wird an Energiekennzahlen gemessen (Pkt. 4.3), nicht am U-Wert eines Bauteils: Die Karte beurteilt das nicht.',
+      inputRejected: 'Ein eingegebener Wert ist nicht zulässig: Mit ihm kann die Karte nicht beurteilen.',
+      undefinedResult: 'Durch null geteilt: Das Ergebnis ist nicht definiert.',
+      zeroNotPossible: '{quantity} = 0 ist nicht möglich.',
+      invalidNumber: 'Keine Zahl.',
+      outOfRange: 'Zulässig sind {min} bis {max} {unit}.',
+      // Für Screenreader, nachdem das Ergebnis neu berechnet ist: jede
+      // Beurteilung mit Größe, Wert, Grenzwert und Ergebnis.
+      recomputed: 'Neu berechnet. {checks}',
+      checkSpoken: '{name}: {value}, Grenzwert {bound}, {verdict}.',
+      component: {
+        external_wall: 'Außenwand gegen Außenluft',
+        roof_or_ceiling_to_outside_air: 'Decke oder Dachschräge gegen Außenluft',
+        floor_over_outside_air: 'Decke über Außenluft',
+      },
+      measure: {
+        new_build: 'Neubau',
+        renovation: 'Renovierung',
+        major_renovation: 'Größere Renovierung',
+      },
+      stairType: {
+        main: 'Haupttreppe',
+        dwelling: 'Wohnungstreppe',
+        secondary: 'Nebentreppe',
+      },
+      input: {
+        riser: 'Stufenhöhe s',
+        going: 'Stufenauftritt a',
+        thickness: 'Dicke d',
+        conductivity: 'Wärmeleitfähigkeit λ',
+        length: 'Länge',
+        openingArea: 'Lichteintrittsfläche',
+        floorArea: 'Bodenfläche',
+        roomDepth: 'Raumtiefe',
+        overhangDepth: 'Auskragung',
+      },
+      // Wofür „{quantity} = 0 ist nicht möglich." steht.
+      zeroQuantity: {
+        conductivity: 'λ',
+        floorArea: 'Bodenfläche',
+      },
+      term: {
+        riser: 'Stufenhöhe s',
+        going: 'Stufenauftritt a',
+        thickness: 'd {layer}',
+        conductivity: 'λ {layer}',
+        length: '{layer}',
+        openingArea: 'Lichteintrittsfläche',
+        floorArea: 'Bodenfläche',
+        roomDepth: 'Raumtiefe',
+        overhangDepth: 'Auskragung',
+        surfaceInside: 'R_si',
+        surfaceOutside: 'R_se',
+        layerResistance: 'R {layer}',
+        totalResistance: 'R_T',
+        baseShare: 'Grundanforderung (Pkt. 9.1.1)',
+        raisedShare: 'Auskragung über 1,50 m (Pkt. 9.1.3)',
+        overhangIncrement: 'Auskragung über 3,00 m (Pkt. 9.1.3)',
+        overhangIncrementMetres: 'Auskragung über 3,00 m: {metres} angefangene m (Pkt. 9.1.3)',
+        depthIncrement: 'Raumtiefe über 5,00 m (Pkt. 9.1.4)',
+        depthIncrementMetres: 'Raumtiefe über 5,00 m: {metres} angefangene m (Pkt. 9.1.4)',
+      },
+      line: {
+        layerResistance: 'Wärmedurchlasswiderstand {layer}',
+        totalResistance: 'Wärmedurchgangswiderstand R_T',
+        uValue: 'U-Wert',
+        stepMeasure: 'Schrittmaß 2s + a',
+        routeLength: 'Gehweglänge',
+        daylightShare: 'Lichteintrittsfläche je Bodenfläche',
+        requiredShare: 'Erforderlicher Anteil',
+      },
+      check: {
+        stepRule: 'Schrittmaßregel 62 ± 3 cm',
+        riserMax: 'Stufenhöhe',
+        goingMin: 'Stufenauftritt',
+        uMax: 'U-Wert',
+      uMaxRenovation: 'U-Wert, ohne Sanierungskonzept',
+        routeMax: 'Gehweglänge',
+        daylightMin: 'Lichteintrittsfläche',
+      },
+      caveat: {
+        uValueNewBuild:
+          'Höchstwert für den Neubau (OIB-Richtlinie 6, Pkt. 4.4.1, Zeile {row}). Bei der Renovierung mittels Einzelmaßnahmen gilt Pkt. 4.5.',
+        uValueRenovation:
+          'Renovierung mittels Einzelmaßnahmen ohne Sanierungskonzept (Pkt. 4.5 b): der Höchstwert der Zeile {row} um mindestens 24 % unterschritten. Mit einem Sanierungskonzept nach Pkt. 4.5 a) bestimmt dieses den Wert; eine größere Renovierung fällt nicht unter Pkt. 4.5.',
+        uValueMeasureUnknown:
+          'Ob Neubau (Pkt. 4.4.1) oder Renovierung (Pkt. 4.5), ist nicht angegeben; davon hängt der Höchstwert ab.',
+        uValueMajorRenovation:
+          'Größere Renovierung: Es gelten die Anforderungen an Energiekennzahlen nach Pkt. 4.3, nicht die Höchstwerte einzelner Bauteile; die Karte rechnet den U-Wert, beurteilt ihn aber nicht.',
+        uValueScope:
+          'Homogene Schichten nach ÖNORM EN ISO 6946; Luftschichten, inhomogene Schichten und Korrekturen sind nicht berücksichtigt.',
+        routeFromRoom: 'Gemessen von der entferntesten Stelle des Raumes (Pkt. 5.1.1).',
+        routeFromDwelling:
+          'Gemessen ab der Wohnungseingangstüre (Pkt. 5.1.2): für eine Wohnung über höchstens zwei Geschoße, deren Fluchtweg zu einem Treppenhaus oder einer Außentreppe führt.',
+        routeOnlyGuideline2:
+          'Abgebildet ist nur OIB-Richtlinie 2. Für Betriebsbauten (2.1), Garagen und Parkdecks (2.2) und Gebäude mit einem Fluchtniveau über 22 m (2.3) gelten deren eigene Bestimmungen.',
+        daylightRoomsOnly:
+          'Gilt für Aufenthaltsräume (Pkt. 9.1.1), nicht für Räume, deren Nutzung eine geringere oder keine natürliche Belichtung erfordert (Pkt. 9.1.6).',
+        daylightAngle:
+          'Vorausgesetzt ist ein freier Lichteinfall unter 45° zur Horizontalen, seitlich höchstens 30° verschwenkt (Pkt. 9.1.2); die Karte prüft ihn nicht.',
+        daylightOtherLaw:
+          'Der Zuschlag für die Raumtiefe gilt, sofern andere Rechtsmaterien (z. B. die Arbeitsstättenverordnung) nichts Abweichendes bestimmen.',
+        daylightWinterGarden:
+          'Ist dem Fenster ein Wintergarten oder eine verglaste Loggia vorgelagert, gilt die Anforderung für die äußere und die innere Lichteintrittsfläche (Pkt. 9.1.5); die Karte prüft nur eine davon.',
+      },
+    },
     // Ein Dokument, das Piloti in den Arbeitsordner dieser Unterhaltung
     // geschrieben hat. Keine Projektunterlage: nichts davon ist abgelegt,
     // indexiert oder zitierfähig, bis eine Person es ins Projekt übernimmt —
@@ -699,6 +833,63 @@ export const chat: typeof en.chat = {
       eyebrow: 'Aktion',
       // „{operation}“ ist der technische Name der Aktion, er bleibt unübersetzt.
       operation: 'Aktion: {operation}',
+      // Die Eingabefelder, die die meisten Aktionen haben, wie die Karte sie nennt (`NAMED_INPUT_KEYS`).
+      inputKeys: {
+        id: 'ID',
+        name: 'Name',
+        title: 'Titel',
+        description: 'Beschreibung',
+        projectId: 'Projekt',
+        folderId: 'Ordner',
+        parentId: 'Übergeordneter Ordner',
+        documentId: 'Dokument',
+        conversationId: 'Chat',
+        targetFolder: 'Zielordner',
+        scope: 'Geltungsbereich',
+        memoryScope: 'Wo gemerkt',
+        messageId: 'Nachricht',
+        versionId: 'Fassung',
+        annotationId: 'Anmerkung',
+        taskId: 'Aufgabe',
+        itemId: 'Eintrag',
+        skillId: 'Skill',
+        categoryId: 'Kategorie',
+        resourceType: 'Art des Objekts',
+        resourceId: 'Objekt',
+        body: 'Text',
+        note: 'Notiz',
+        comment: 'Kommentar',
+        content: 'Inhalt',
+        message: 'Nachrichtentext',
+        question: 'Frage',
+        reason: 'Grund',
+        decision: 'Entscheidung',
+        kind: 'Art',
+        role: 'Rolle',
+        status: 'Status',
+        enabled: 'Eingeschaltet',
+        pinned: 'Angeheftet',
+        confidence: 'Sicherheit',
+        locale: 'Sprache',
+        fileName: 'Dateiname',
+        files: 'Dateien',
+        names: 'Namen',
+        displayName: 'Anzeigename',
+        email: 'E-Mail',
+        visibility: 'Sichtbarkeit',
+        permissions: 'Berechtigungen',
+        sortOrder: 'Reihenfolge',
+      },
+      // Eine Pfad-ID, nach dem Objekt benannt, das sie bezeichnet.
+      targetType: {
+        project: 'Projekt',
+        document: 'Dokument',
+        folder: 'Ordner',
+        conversation: 'Chat',
+        bim_model: 'Modell',
+        upload_batch: 'Upload',
+        proposal: 'Vorschlag',
+      },
       inputLabel: 'Eingaben',
       // Ein langer Wert ist erst gekürzt; „Übernehmen“ wartet, bis jeder ganz gelesen ist.
       showAll: 'Ganz anzeigen ({length} Zeichen)',
@@ -716,6 +907,19 @@ export const chat: typeof en.chat = {
       },
       applied: 'Die Aktion wurde ausgeführt.',
       dismissed: 'Verworfen. Die Aktion wurde nicht ausgeführt.',
+    },
+    // Die Vorschlagskarte im Chat eines anderen Assistenten (Claude, ChatGPT,
+    // VS Code), als MCP App von Pilotis MCP-Server gezeichnet (ADR-0142). Dieselbe
+    // Quittung wie in Piloti; hier nur die Zeilen, die dieser Rahmen braucht.
+    mcpApp: {
+      source: 'Von Piloti',
+      fileTitle: '{count, plural, one {Eine Änderung an einer Datei} other {# Änderungen an Dateien}}',
+      memoryTitle: 'Eine Notiz, die Piloti sich merken soll',
+      // Eine Profiländerung zeigt Vorher und Nachher am aktuellen Profil, das der
+      // Rahmen nicht lesen kann: Darüber wird in Piloti entschieden.
+      decideInPiloti: 'Dieser Vorschlag ändert den Projektkontext. Öffnen Sie das Projekt in Piloti, um ihn mit den aktuellen Werten zu vergleichen und zu entscheiden.',
+      unreadable: 'Dieser Vorschlag konnte nicht angezeigt werden.',
+      waiting: 'Der Vorschlag wird geladen …',
     },
     // Was Piloti an einem Dokument getan hat: Anmerkungen gesetzt, in einem
     // Thread geantwortet. Je Anmerkung ein „Übernehmen“ oder „Verwerfen“, und
@@ -1693,6 +1897,49 @@ export const chat: typeof en.chat = {
   noSources: {
     warning:
       'Keine Datenquellen ausgewählt und keine Dateien verfügbar. Antworten sind eher ungenau oder veraltet, sofern keine externen Datenquellen hinzugefügt werden.',
+  },
+  viewerActions: {
+    region: 'Was Piloti Ihnen im Viewer gezeigt hat',
+    place: '{name}, S. {page}',
+    what: {
+      open_document: '{place}',
+      highlight_passage: 'Stelle in {place}',
+      highlight_region: 'Bereich in {place}',
+      compare_revisions: '{name} mit {against} vergleichen',
+      focus_ifc_element: 'Bauteil in {name}',
+    },
+    status: {
+      pending: 'Wird geöffnet …',
+      undone: 'Zurückgenommen',
+      kept: 'Nicht zurückgenommen: Sie haben den Viewer inzwischen geändert',
+      failed: 'Konnte nicht geöffnet werden',
+    },
+    shown: {
+      beside: 'Piloti hat es neben dem Chat geöffnet',
+      over: 'Piloti hat es über dem Chat geöffnet',
+      compare: 'Vergleich geöffnet',
+      model: 'Modellansicht geöffnet',
+    },
+    refused: {
+      // Neutral: ein 404 sagt nicht, ob es das Dokument gibt.
+      unavailable: 'Nicht geöffnet: Dokument nicht verfügbar',
+      notRevisions: 'Nicht geöffnet: keine zwei Fassungen desselben Dokuments',
+    },
+    offered: {
+      off: 'Piloti schlägt diese Stelle vor',
+      typing: 'Nicht geöffnet, während Sie geschrieben haben',
+      leaves: 'Öffnet sich über dem Chat',
+      model: 'Öffnet die Modellansicht',
+      noRoom: 'Neben dem Chat ist kein Platz: öffnet sich darüber',
+      unavailable: 'Piloti schlägt diese Stelle vor',
+      another: 'Eine weitere Stelle, die Piloti vorschlägt',
+    },
+    undo: 'Zurücknehmen',
+    undoAria: '„{what}“ zurücknehmen',
+    show: 'Anzeigen',
+    showAria: '{what} anzeigen',
+    auto: 'Automatisch öffnen',
+    autoHint: 'Piloti darf die Stellen, die es zitiert, neben dem Chat öffnen. Aus: Piloti schlägt sie hier nur vor.',
   },
   memory: {
     noted: 'Piloti hat sich gemerkt',

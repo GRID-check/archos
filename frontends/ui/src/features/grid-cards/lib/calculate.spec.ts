@@ -15,7 +15,7 @@
  */
 
 import { describe, expect, it } from 'vitest'
-import { evaluate, resultDecimals, verdictFor } from './calculate'
+import { evaluate, formatInput, formatResult, resultDecimals, verdictFor } from './calculate'
 import type { CalculationStepData } from '../schematics/types'
 
 const step = (partial: Partial<CalculationStepData> & Pick<CalculationStepData, 'operation' | 'operands'>) =>
@@ -286,5 +286,94 @@ describe('resultDecimals — the printed number cannot contradict the printed ve
     const result = { value: 64, tolerance: null, unit: 'cm', undecidable: null as null }
     expect(resultDecimals(result, { comparator: 'between', value: 59, upper: 65 })).toBe(2)
     expect(resultDecimals(result, null)).toBe(2)
+  })
+})
+
+describe('a value on the bound is on the bound, whatever floating point says', () => {
+  const at = (value: number) => ({ value, tolerance: null, unit: 'm', undecidable: null })
+
+  it('passes 12,3 + 20,6 + 7,1 = 40 against „≤ 40“ (40.00000000000001 in floating point)', () => {
+    const [sum] = evaluate([
+      step({
+        operation: 'sum',
+        unit: 'm',
+        operands: [
+          { label: 'a', value: 12.3 },
+          { label: 'b', value: 20.6 },
+          { label: 'c', value: 7.1 },
+        ],
+      }),
+    ])
+    expect(sum.value).not.toBe(40)
+    expect(verdictFor(sum, { comparator: '<=', value: 40 })).toBe('pass')
+    expect(resultDecimals(sum, { comparator: '<=', value: 40 })).toBe(2)
+  })
+
+  it('passes 4,02 ÷ 33,5 = 12 % against „≥ 12“ (11.999999999999998 in floating point)', () => {
+    const [ratio] = evaluate([
+      step({
+        operation: 'percent_ratio',
+        operands: [
+          { label: 'A', value: 4.02 },
+          { label: 'F', value: 33.5 },
+        ],
+      }),
+    ])
+    expect(ratio.value).not.toBe(12)
+    expect(verdictFor(ratio, { comparator: '>=', value: 12 })).toBe('pass')
+  })
+
+  it('still fails a value a real margin past the bound, and prints it far enough to show it', () => {
+    const over = at(0.2500001)
+    expect(verdictFor(over, { comparator: '<=', value: 0.25 })).toBe('fail')
+    const decimals = resultDecimals(over, { comparator: '<=', value: 0.25 })
+    expect(decimals).toBe(7)
+    // Fixed digits past the house two: the printed number is visibly not 0,25.
+    expect(formatResult(over.value, decimals)).toBe('0,2500001')
+    expect(formatResult(0.2501, 4)).toBe('0,2501')
+  })
+})
+
+describe('printing', () => {
+  it('keeps the house format up to two decimals and fixes the digits when asked', () => {
+    expect(formatResult(64, 2)).toBe('64')
+    expect(formatResult(36.5, 2)).toBe('36,5')
+    expect(formatResult(1.4196894, 4, true)).toBe('1,4197')
+    expect(formatResult(0.13, 4, true)).toBe('0,1300')
+  })
+
+  it('prints an input as it was written, not rounded to two decimals', () => {
+    expect(formatInput(0.035)).toBe('0,035')
+    expect(formatInput(0.0325)).toBe('0,0325')
+    expect(formatInput(1.1 / 100)).toBe('0,011')
+  })
+})
+
+describe('a division by zero carries through the steps built on it', () => {
+  it('makes a later step undefined, not merely missing a figure', () => {
+    const results = evaluate([
+      step({
+        operation: 'quotient',
+        operands: [
+          { label: 'd', value: 0.3 },
+          { label: 'λ', value: 0 },
+        ],
+      }),
+      step({
+        operation: 'sum',
+        operands: [
+          { label: 'R_si', value: 0.1 },
+          { label: 'R', step: 1 },
+        ],
+      }),
+      step({
+        operation: 'quotient',
+        operands: [
+          { label: '', value: 1 },
+          { label: 'R_T', step: 2 },
+        ],
+      }),
+    ])
+    expect(results.map((result) => result.undecidable)).toEqual(['undefined', 'undefined', 'undefined'])
   })
 })

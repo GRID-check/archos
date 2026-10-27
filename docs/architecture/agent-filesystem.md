@@ -135,6 +135,44 @@ for a grep without a path.
    tool, and the `semantic` arm sets `filesystem: null` so the estate verbs reach the drafts
    alone. The answer suite has not been run on any slice (no model access in the build container): every row above is unmeasured.
 
+**Slice 6, the descriptions, the evidence rules, the old names retired** (built). The tool
+texts, the three `<rules>` bullets and the line-by-line fate of each are in
+[`prompt-value-audit-2026-10.md`](prompt-value-audit-2026-10.md#2026-10-27-slice-6-the-evidence-tools-and-their-rules);
+the evidence tool surface went from 5,560 to 3,111 tokens per call (o200k).
+
+| Piece | Where |
+|---|---|
+| The descriptions, bare schema fields, `conclusion` on `grep` and `read_file` | `src/aiq_agent/tools/documents/tools.py` (`_ESTATE_DESCRIPTIONS`), `filesystem.py` |
+| `knowledge_search` (ranked only, `path`) and `list_files` (no tree view) where the estate is read | `sources/knowledge_layer/src/chat_binding.py`, applied in `agents/piloti/register._chat_bound` only when `filesystem` is set (`estate_paths.reads_the_estate`) |
+| A retired argument is an error that names it and its replacement | the chat schemas forbid unknown arguments; `src/aiq_agent/common/retired_calls.py` adds the replacement in `tool_errors.render_tool_error` |
+| Shared hints state facts and name no tool | `read_passage.py`, `register.py`, `browse.py`, `document_groups.py`, `chunk_noise.py`, `qdrant/folders.py`, `already_read.py`, `revision_diff.py` |
+| A citation written as a path resolves to its key | `common/citation_verification.citation_key_of_path` |
+| The coverage line and the `Herkunft:` line say what they mean | `common/grounding_block.COVERAGE_GAP_NOTE`, `AGENT_DOCUMENT_NOTE` |
+| The literal prefetch of a quoted term or a code | `agents/piloti/decisions._corpus_prefetch`: a `grep` with `output_mode="content"` on the shelf's mount, narrowed to the open document by `glob` |
+
+Departures, each with its reason:
+
+1. **The skills moved before this slice** (ADR-0135), so the `/skills/` exception to "tool
+   results are data" ships, and there is no `use_skill` to retire.
+2. **The retired names are unbound, not unregistered**: deep research, intake and the door bind
+   the same NAT functions with their full contracts, so the variant is chosen at bind time, and a
+   config without `filesystem` (an eval arm, a benchmark) keeps the full contracts. A
+   `read_passage` call on the chat is answered by the tool node with the tools there are; a
+   retired argument (`match`, `stemmed`, `context`, `view`) by the schema, with its replacement.
+3. **`list_files` keeps its listing on the chat**, filters and paging included: `ls` lists 40 files
+   a folder and `glob` 100 matches, neither filters by date, and the inventory points at the
+   complete, filtered list. Only its tree view left (`ls(depth=…)` draws the tree). `folder`,
+   `shelf` and `file_name` on `knowledge_search` stay accepted, hidden, and count under the
+   `retired-call` trace tag; when the tag stops firing, they go.
+4. **The already-read digest keeps file names, not paths**: its lines are persisted on the
+   conversation, and `read_file` resolves a mount and a leaf without the folder, so the digest says
+   that instead of changing a stored format.
+5. **The files eval's rows keep their old names**: the suite's `aliases()` and `path_scope()` count
+   a call under every name it is an alias of, both ways, so one row set measures both sides.
+6. **Not run:** the answer suite on this slice (no model access in the build container). The
+   history-with-retired-calls row (a pre-slice conversation resumed on each provider path) is not
+   added yet.
+
 ## 1. Mounts and paths
 
 | Mount | What | Backed by | Writable |
@@ -514,15 +552,19 @@ our own caching stays), the general-purpose subagent, `write_todos`.
 
 | Today | Becomes |
 |---|---|
-| `list_files` | `ls` and `glob`. `revisions_of` and `compare_to` stay on `list_files` until a revisions surface exists |
+| `list_files` | `ls` and `glob` for a folder and a name; `list_files` stays, without its tree view, for the filtered, paged listing (`added_since`, `doc_class`, `topic`, `offset`) and the Fassungen (`revisions_of`, `compare_to`), which neither has |
 | `read_passage` | `read_file` with `pages` and `clause` |
 | `knowledge_search(match="exact"\|"regex")` | `grep` |
 | draft `ls`, `read_file`, `write_file`, `edit_file` | the same tools, on `/drafts/` |
 | `knowledge_search` (meaning) | stays, with `path` |
 | `look`, `ris_lookup`, `web_search_tool`, `ifc_query`, `ifc_measure`, `project_lookup`, `workspace__*`, `canvas__*` and the write tools | stay |
 
-The old names stay registered as aliases for one release: stored and replayed turns name
-them, NAT discovers tools by name, and the answer suite's matcher maps old to new so
+Since slice 6 `read_passage` and the literal `knowledge_search` are off Piloti's chat binding
+where the estate is read. A `read_passage` call is answered by the tool node's own error, which
+names the tools there are; a retired argument (`match`, `stemmed`, `context`, `view`, `depth`) is
+rejected by the schema with its replacement named (`common/retired_calls.py`). `list_files` keeps
+every filter and its paging. The old names stay registered, because stored and replayed turns
+name them, the read side reads them for good, and the answer suite's matcher maps old to new so
 before and after compare. The MCP door keeps its operations (`files-list`,
 `passage-read`, `knowledge-search`) and gains `path`. Deep research and intake keep the
 old names until each is measured on the new ones; deep research never mounts the estate

@@ -1134,8 +1134,13 @@ export function defaultFoldedRounds(_count: number): Set<number> {
   return new Set()
 }
 
-/** The tool that opens a passage of a document the turn already found. */
-const READ_PASSAGE = 'read_passage'
+/**
+ * The tools that open a passage of a document the turn already found: `read_file` on the estate
+ * since ADR-0133 slice 6, `read_passage` before it and for the turns stored with it. A skill read
+ * never reaches a round's tools (`turn_status._describe_calls` skips it), and a draft read returns
+ * no documents, so a `read_file` round with documents opened the office's own.
+ */
+const OPEN_TOOLS: ReadonlySet<string> = new Set(['read_file', 'read_passage'])
 
 /** Tool basename as the round records it (`tool: read_passage` → `read_passage`). */
 const toolBase = (tool: string): string =>
@@ -1146,7 +1151,7 @@ const toolBase = (tool: string): string =>
 
 /** This layer only opened passages — it searched for nothing new. */
 const onlyOpened = (tools: string[]): boolean =>
-  tools.length > 0 && tools.every((tool) => toolBase(tool) === READ_PASSAGE)
+  tools.length > 0 && tools.every((tool) => OPEN_TOOLS.has(toolBase(tool)))
 
 /**
  * WHAT a retrieval layer did, from the facts the spine already owns about it:
@@ -1166,7 +1171,7 @@ const onlyOpened = (tools: string[]): boolean =>
  * the honest word for not knowing which.
  */
 /** Tools that list or open a folder: a round of only these fetched no documents, by design. */
-const BROWSE_TOOLS: ReadonlySet<string> = new Set(['list_files'])
+const BROWSE_TOOLS: ReadonlySet<string> = new Set(['ls', 'glob', 'list_files'])
 
 /**
  * Tools whose round can come back empty. A round of tools outside this set
@@ -1175,6 +1180,8 @@ const BROWSE_TOOLS: ReadonlySet<string> = new Set(['list_files'])
  */
 const SEARCH_TOOLS: ReadonlySet<string> = new Set([
   'knowledge_search',
+  'grep',
+  'read_file',
   'project_lookup',
   'read_passage',
   'surface_documents',

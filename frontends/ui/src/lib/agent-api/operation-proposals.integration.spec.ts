@@ -27,7 +27,11 @@
  *     leaves the card open for somebody who can (it used to end it `failed`);
  *   - in a shared conversation, a change naming a project outside the
  *     audience's reach (ADR-0094) is refused and stores nothing, while one of
- *     the conversation's own project is filed.
+ *     the conversation's own project is filed;
+ *   - a press on the proposal card inside another assistant (an MCP App's
+ *     app-only tool, ADR-0142) goes through the same route and gate as the
+ *     UI's button: the member who may not decide is refused with the route's
+ *     403 and the card stays open; the admin's press decides it.
  */
 
 import { randomUUID } from 'node:crypto'
@@ -81,6 +85,7 @@ describe.skipIf(!url)('Piloti’s proposed operations against Postgres', () => {
   let proposeOperation: typeof import('./operation-proposals').proposeOperation
   let getProposal: typeof import('@/lib/proposals/service').getProposal
   let applyProposal: typeof import('@/lib/proposals/service').applyProposal
+  let dismissProposal: typeof import('@/lib/proposals/service').dismissProposal
   let rename: import('./operation').AgentOperation
   const conversation = `conv_opprop_${STAMP}`
 
@@ -115,6 +120,7 @@ describe.skipIf(!url)('Piloti’s proposed operations against Postgres', () => {
     proposeOperation = (await import('./operation-proposals')).proposeOperation
     getProposal = (await import('@/lib/proposals/service')).getProposal
     applyProposal = (await import('@/lib/proposals/service')).applyProposal
+    dismissProposal = (await import('@/lib/proposals/service')).dismissProposal
     const found = (await import('./catalog')).findOperation('project-rename')
     if (!found) throw new Error('project-rename left the catalog: pick another write for this suite')
     rename = found
@@ -206,7 +212,56 @@ describe.skipIf(!url)('Piloti’s proposed operations against Postgres', () => {
     await expect(
       asMember(() => applyProposal(member, proposalId, new Request('http://localhost/api/proposals/apply', { method: 'POST' })))
     ).rejects.toMatchObject({ status: 403 })
+    // Nor may they dismiss it: no button means no decision, either way (it used to let the dismiss through).
+    await expect(asMember(() => dismissProposal(member, proposalId))).rejects.toMatchObject({ status: 403 })
     expect((await inOrg(() => getProposal(admin, proposalId))).status).toBe('proposed')
+  })
+
+  it('holds a press on the MCP Apps card to the route the UI calls: refused for the member, decided for the admin', async () => {
+    const { runAppTool } = await import('./mcp-apps')
+    const { APP_TOOLS } = await import('./catalog/app-views')
+    const tool = (name: string) => {
+      const found = APP_TOOLS.find((entry) => entry.name === name)
+      if (!found) throw new Error(`${name} left APP_TOOLS`)
+      return found
+    }
+    const outside = (who: AuthorizedSession) => ({
+      principal: { actor: 'external_agent' as const, clientId: 'client_claude', scopes: [], session: who },
+      mode: 'tools' as const,
+      appHost: 'declared' as const,
+    })
+    // Filed in a conversation of the admin's own, then shared with the member, who reads the card and may not
+    // decide it: its target is hidden from them.
+    const own = `${conversation}_card`
+    await inOrg(() =>
+      db.execute(sql`
+        insert into conversations (id, organization_id, created_by, project_id, visibility)
+        values (${own}, ${ORG}, ${ADMIN}, ${ids.visible}::uuid, 'private')`)
+    )
+    const { proposalId } = await proposeOperation({
+      principal: { session: admin, conversationId: own, projectId: ids.visible },
+      op: rename,
+      input: { params: { id: ids.hidden }, body: { name: 'Verborgen, aus Claude' } },
+    })
+    await inOrg(() =>
+      db.execute(sql`
+        insert into resource_shares (organization_id, resource_type, resource_id, subject_user_id, role, granted_by)
+        values (${ORG}, 'conversation', ${own}, ${MEMBER}, 'viewer', ${ADMIN})`)
+    )
+
+    const refused = await runAppTool(outside(member), tool('proposal-card-apply'), { id: proposalId })
+    expect(refused.isError).toBe(true)
+    expect(refused.structuredContent).toMatchObject({ status: 403 })
+    const dismissRefused = await runAppTool(outside(member), tool('proposal-card-dismiss'), { id: proposalId })
+    expect(dismissRefused.structuredContent).toMatchObject({ status: 403 })
+    expect((await inOrg(() => getProposal(admin, proposalId))).status).toBe('proposed')
+
+    const decided = await runAppTool(outside(admin), tool('proposal-card-dismiss'), { id: proposalId })
+    expect(decided.isError).toBeFalsy()
+    expect(decided.structuredContent).toMatchObject({ proposal: { id: proposalId, status: 'dismissed', decidedBy: ADMIN } })
+    // A second press is the route's 409, which the card shows as the earlier decision.
+    const again = await runAppTool(outside(admin), tool('proposal-card-dismiss'), { id: proposalId })
+    expect(again.structuredContent).toMatchObject({ status: 409 })
   })
 
   it('refuses, in a shared conversation, a change to a project not every reader may open, and stores nothing', async () => {

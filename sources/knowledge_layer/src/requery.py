@@ -311,7 +311,7 @@ class CoverageGap:
     unjudged: int = 0
 
     def reason(self) -> str:
-        """The clause after „Abdeckung: unzureichend — ", in English."""
+        """The clause after "Coverage: insufficient — " (``grounding_block.COVERAGE_GAP_LABEL``)."""
         after = ", even after reformulating the search" if self.widened else ""
         which = f"best {self.judged}" if self.unjudged else f"{self.judged} shown"
         rest = f"; the remaining {self.unjudged} passages were not checked" if self.unjudged else ""
