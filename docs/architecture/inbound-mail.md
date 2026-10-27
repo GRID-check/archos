@@ -81,9 +81,12 @@ then:
 9. the body streamed to `raw.eml`, counted and hashed;
 10. the byte count must equal the signed length (else 503 `body-truncated`) and
     the bytes must hash to the signed digest (else 401 `bad-digest`);
-11. the delivery key (`deliveryKey` in `mime.ts`: the authored headers and the
-    body, so a relay's prepended lines do not make a redelivery new); a mail
-    the address already holds answers 200 and its second copy is erased;
+11. the delivery key (`deliveryKey` in `mime.ts`: the authored headers, every
+    DKIM-Signature's `b=` value and the body, so a relay's prepended lines do
+    not make a redelivery new, and a copy whose signature a relay stripped or
+    broke never shadows the signed one); a mail the address already holds
+    answers 200 and its second copy is erased. A header block that cannot be
+    read gets a key of its own delivery, so it is never a duplicate;
 12. `received` and the receive job (`inbound_mail_receive`, job id = mail id) in
     one transaction;
 13. 202.

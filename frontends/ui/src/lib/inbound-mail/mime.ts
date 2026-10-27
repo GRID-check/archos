@@ -249,24 +249,43 @@ export function headerValue(fields: readonly HeaderField[], name: string): strin
 /**
  * What makes two deliveries of one mail the same mail (`delivery_key`): the
  * header fields an author writes (From, To, Cc, Subject, Date, Message-ID, as
- * sent) and the body bytes, hashed. Every relay on the way prepends its own
+ * sent), the signature value (`b=`) of every DKIM-Signature, whitespace
+ * removed, and the body bytes, hashed. Every relay on the way prepends its own
  * Received, ARC and Authentication-Results fields, so a retry by the sending
- * server after a lost answer has other raw bytes and still this key. A copy
- * that shares the key is the same mail in every part a person or a DKIM
- * signature reads, so holding the first and answering the second `duplicate`
- * loses nothing.
+ * server after a lost answer has other raw bytes and still this key.
+ *
+ * The signatures are in it because the copy held is the copy judged: a copy
+ * whose signature a list or forwarder stripped or broke, arriving first, must
+ * not make the signed copy a `duplicate` that is erased while the mail is
+ * held as unverified. Two copies that differ there are both held. A header
+ * block that cannot be read (`rawHeaderFields` is null) says nothing about
+ * which mail it is, so it is never a duplicate: its key is this delivery's own
+ * (`mailId`), and the unique index can never match it to another.
  */
-export function deliveryKey(raw: Uint8Array): string {
+export function deliveryKey(raw: Uint8Array, mailId: string): string {
+  const fields = rawHeaderFields(raw)
+  if (fields === null) return createHash('sha256').update(`unread-header-block:${mailId}`).digest('hex')
   const bytes = asBuffer(raw)
   const offset = bodyOffset(bytes, bytes.length)
-  const fields = rawHeaderFields(raw) ?? []
   const hash = createHash('sha256')
   for (const name of ['from', 'to', 'cc', 'subject', 'date', 'message-id']) {
     for (const field of fields) if (field.name === name) hash.update(`${name}:${field.value.trim()}\n`)
   }
+  for (const field of fields) {
+    if (field.name === 'dkim-signature') hash.update(`dkim-b:${dkimSignatureValue(field.value)}\n`)
+  }
   hash.update('\n')
   hash.update(offset === -1 ? bytes : bytes.subarray(offset))
   return hash.digest('hex')
+}
+
+/** The `b=` tag of a DKIM-Signature, whitespace removed (RFC 6376 §3.5 lets a relay refold it); empty when absent. */
+function dkimSignatureValue(value: string): string {
+  for (const tag of value.split(';')) {
+    const equals = tag.indexOf('=')
+    if (equals !== -1 && tag.slice(0, equals).trim() === 'b') return tag.slice(equals + 1).replace(/\s+/g, '')
+  }
+  return ''
 }
 
 // ---------------------------------------------------------------------------

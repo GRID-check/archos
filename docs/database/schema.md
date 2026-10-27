@@ -1028,7 +1028,7 @@ answers by reading the winner. Index `(project_id, created_at)`.
 | `id`, `organization_id`, `project_id` | | FK to `projects` CASCADE | |
 | `address_id` | `uuid` | NOT NULL, FK `(address_id, project_id, organization_id)` → `inbound_mail_addresses`, **NO ACTION** | An address is revoked, never deleted, while a mail names it; the purge removes both in one statement |
 | `status` | `text` | `receiving`/`received`/`waiting`/`settled`/`dropped` | |
-| `delivery_key` | `text` | 64 hex; required from `received` on; unique per address (`uniq_inbound_mails_address_delivery`) | A hash of the authored headers and the body (`deliveryKey`, `mime.ts`), so a relay's prepended lines do not make a redelivery new |
+| `delivery_key` | `text` | 64 hex; required from `received` on; unique per address (`uniq_inbound_mails_address_delivery`) | A hash of the authored headers, the DKIM signature values and the body (`deliveryKey`, `mime.ts`), so a relay's prepended lines do not make a redelivery new and a stripped signature never shadows the signed copy; an unreadable header block hashes its own mail id, never a duplicate |
 | `envelope_from` | `text` | ≤ 320 | The SMTP MAIL FROM; `''` is a bounce's null sender |
 | `raw_size_bytes` | `bigint` | 0..27262976; required from `received` on | |
 | `staging_bucket` | `text` | NOT NULL | Recorded before the first object is written (ADR-0043) |

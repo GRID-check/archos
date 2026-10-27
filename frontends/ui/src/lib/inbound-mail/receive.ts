@@ -28,9 +28,11 @@
  * 10. The byte count must EQUAL the signed length and the bytes must hash to
  *     the signed digest: a short body is a 503 `body-truncated` (retried), a
  *     tampered one a 401 (`bad-digest`).
- * 11. The delivery key (`deliveryKey`: the authored headers and the body, so a
- *     relay's prepended lines do not make a redelivery new). A mail this
- *     address already holds answers 200 and its second copy is erased.
+ * 11. The delivery key (`deliveryKey`: the authored headers, the DKIM
+ *     signature values and the body, so a relay's prepended lines do not make
+ *     a redelivery new, and a copy with a stripped or broken signature is not
+ *     the signed one). A mail this address already holds answers 200 and its
+ *     second copy is erased. An unreadable header block is never a duplicate.
  * 12. `received` and the receive job, in one transaction.
  * 13. 202.
  *
@@ -347,7 +349,7 @@ async function acceptForAddress(
   })
 
   const raw = await stageRawMessage(request, signature, bucket, key, mailId)
-  const delivery = deliveryKey(raw)
+  const delivery = deliveryKey(raw, mailId)
   const held = await findMailIdByDeliveryKey(address.addressId, delivery)
   const outcome = held
     ? 'duplicate'

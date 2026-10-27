@@ -128,15 +128,35 @@ describe('deliveryKey', () => {
   it('is the same for a redelivery a relay prepended its own headers to', () => {
     const raw = message()
     const relayed = `Received: from mx2 by mx1; ${new Date().toUTCString()}\r\nARC-Seal: i=1; cv=none\r\n${raw}`
-    expect(deliveryKey(bytes(relayed))).toBe(deliveryKey(bytes(raw)))
+    expect(deliveryKey(bytes(relayed), 'mail-2')).toBe(deliveryKey(bytes(raw), 'mail-1'))
   })
 
   it('differs when what an author wrote differs: the body, the recipients, the Message-ID', () => {
-    const key = deliveryKey(bytes(message()))
-    expect(deliveryKey(bytes(message(textPart('text/plain', 'anders'))))).not.toBe(key)
-    expect(deliveryKey(bytes(message(BODY, { Cc: 'x@y.at' })))).not.toBe(key)
-    expect(deliveryKey(bytes(message(BODY, { 'Message-ID': '<m2@buero-muster.at>' })))).not.toBe(key)
+    const key = deliveryKey(bytes(message()), 'mail-1')
+    expect(deliveryKey(bytes(message(textPart('text/plain', 'anders'))), 'mail-2')).not.toBe(key)
+    expect(deliveryKey(bytes(message(BODY, { Cc: 'x@y.at' })), 'mail-2')).not.toBe(key)
+    expect(deliveryKey(bytes(message(BODY, { 'Message-ID': '<m2@buero-muster.at>' })), 'mail-2')).not.toBe(key)
     expect(key).toMatch(/^[0-9a-f]{64}$/)
+  })
+
+  it('differs when the DKIM signature differs, so a stripped or broken copy never shadows the signed one (review D, finding 4)', () => {
+    const signed = (b: string) =>
+      message(BODY, { 'DKIM-Signature': `v=1; a=rsa-sha256; d=buero-muster.at; s=s1; bh=AAAA; b=${b}` })
+    const key = deliveryKey(bytes(signed('c2lnbmVk\r\n\tLXZhbHVl')), 'mail-1')
+    expect(deliveryKey(bytes(message()), 'mail-2')).not.toBe(key)
+    expect(deliveryKey(bytes(signed('YnJva2Vu')), 'mail-2')).not.toBe(key)
+    // The same signature, folded otherwise by a relay, is the same mail.
+    expect(deliveryKey(bytes(signed('c2lnbmVkLXZhbHVl')), 'mail-2')).toBe(key)
+    // The body hash tag is not the signature.
+    expect(deliveryKey(bytes(signed('c2lnbmVkLXZhbHVl').replace('bh=AAAA', 'bh=BBBB')), 'mail-2')).toBe(key)
+  })
+
+  it('is never a duplicate when the header block cannot be read', () => {
+    const malformed = (from: string) => `${from}\r\nthis line is no field\r\n\r\nHallo.\r\n`
+    const key = deliveryKey(bytes(malformed('From: a@x.at')), 'mail-1')
+    expect(key).toMatch(/^[0-9a-f]{64}$/)
+    expect(deliveryKey(bytes(malformed('From: b@y.at')), 'mail-2')).not.toBe(key)
+    expect(deliveryKey(bytes(malformed('From: a@x.at')), 'mail-2')).not.toBe(key)
   })
 })
 
