@@ -14,6 +14,7 @@ from unittest.mock import AsyncMock
 from unittest.mock import MagicMock
 
 import pytest
+from aiq_agent_testing.conversation import turn
 from langchain_core.messages import AIMessage
 from langchain_core.messages import HumanMessage
 from langchain_core.tools import tool
@@ -25,7 +26,6 @@ from aiq_agent.agents.piloti.models import ResearchAgentState
 from aiq_agent.common import LLMProvider
 from aiq_agent.common import render_prompt_template
 from aiq_agent.common.data_source_registry import populate_from_config
-from tests.aiq_agent.agents.piloti.conversation import turn
 
 SUBJECT = "220724_Aufsicht_1_100.pdf"
 

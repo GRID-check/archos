@@ -17,6 +17,7 @@ the answer, so every end-to-end case here seeds Piloti's result and reads
 from unittest.mock import MagicMock
 
 import pytest
+from aiq_agent_testing.conversation import turn
 from langchain_core.messages import AIMessage
 from langchain_core.messages import HumanMessage
 
@@ -36,7 +37,6 @@ from aiq_agent.common.job_admission import JobAdmissionError
 from aiq_agent.common.wire_v2 import TurnResult
 from aiq_agent.turn.commission import CommissionedRun
 from aiq_agent.turn.commission import CommissionRefused
-from tests.aiq_agent.agents.piloti.conversation import turn
 
 
 def _signals(**fields) -> ResearchAgentState:

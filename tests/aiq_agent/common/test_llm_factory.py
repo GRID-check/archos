@@ -3,9 +3,9 @@
 from types import SimpleNamespace
 
 import pytest
+from aiq_agent_testing.llm_factory import _resolved_through_nat
 
 from aiq_agent.common.llm_factory import apply_openrouter_structured_defaults
-from aiq_agent.common.llm_factory import get_langchain_llm
 
 
 class FakeLLM:
@@ -70,22 +70,6 @@ def test_base_url_falls_back_to_client():
     )
     apply_openrouter_structured_defaults(llm)
     assert {"id": "response-healing"} in llm.extra_body["plugins"]
-
-
-async def _resolved_through_nat(**llm_config):
-    """`get_langchain_llm` on a client NAT itself builds from an `_type: openai` block."""
-    import nat.plugins.langchain.llm  # noqa: F401 - registers NAT's LangChain clients
-    from nat.builder.workflow_builder import WorkflowBuilder
-    from nat.llm.openai_llm import OpenAIModelConfig
-
-    config = OpenAIModelConfig(
-        model_name="openai/gpt-5.6-luna",
-        api_key="test-key",  # pragma: allowlist secret
-        **llm_config,
-    )
-    async with WorkflowBuilder() as builder:
-        await builder.add_llm("llm", config)
-        return await get_langchain_llm(builder, "llm")
 
 
 @pytest.mark.asyncio

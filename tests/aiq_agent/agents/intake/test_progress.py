@@ -9,12 +9,12 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 
+from aiq_agent_testing.intake import JOB
 from langchain_core.messages import ToolMessage
 
 from aiq_agent.agents.intake.reading import IntakeToolMiddleware
 from aiq_agent.agents.intake.tools import IntakeSession
 from aiq_agent.agents.intake.tools import report_progress
-from tests.aiq_agent.agents.intake.conftest import JOB
 
 
 def _request(name: str) -> SimpleNamespace:

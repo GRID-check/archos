@@ -19,7 +19,8 @@ CI's 65% coverage gate.
 | Thing | How it works here |
 |---|---|
 | Async tests | `asyncio_mode = "auto"`. No `@pytest.mark.asyncio` needed; the loop is session-scoped |
-| Imports | `--import-mode=importlib` with `pythonpath = [".", "src"]`, so `from tests.provider_doubles import ...` resolves the same under `pytest`, `python -m pytest` and an IDE runner |
+| Imports | `--import-mode=importlib` with `.`, `src` and the test-support packages on pytest's `pythonpath`, so `from tests.provider_doubles import ...` resolves the same under `pytest`, `python -m pytest` and an IDE runner |
+| Helpers another test file needs | In `aiq_agent_testing` (`tests/aiq_agent/testing/`), imported by that name; a conftest only registers its fixtures. Never a dotted path through a suite directory (`tests.aiq_agent.…`): a directory move breaks it (ADR-0145). A module at the top of `tests/` and `tests.fixtures` stay importable as they are |
 | Shared doubles | `tests/provider_doubles.py` holds the provider-contract double and NAT's client shape. Extend it rather than re-mocking a provider per file |
 | `tests/conftest.py` | Every test loads it, so it imports only what every test needs; a fixture imports a heavy package in its body. `tests/test_import_weight.py` fails a conftest that loads LangChain, NAT, Qdrant or a whole package again (docs/audit/blast-radius-2026-10.md) |
 | Fixtures on disk | `tests/fixtures/<area>/`, real captured payloads rather than hand-written approximations |
@@ -30,6 +31,7 @@ CI's 65% coverage gate.
 | When you | You must | What fails you |
 |---|---|---|
 | Fix a bug | Add the test that fails without your fix | Review. A fix with no test is a fix that comes back |
+| Share a helper between test files | Put it in the suite's `<distribution>_testing` package (`aiq_agent_testing`, `knowledge_layer_testing`, `ris_adapter_testing`) and import it by that name | `tests/test_test_imports.py` |
 | Assert on an LLM call | Assert the contract, never the prose: tools bound, prompt block present, bounds respected | The test passes until the model changes its wording, then fails for no reason |
 | Test tenant behaviour | Remember this suite does not exercise row-level security; `task db:test:rls` does, and `task verify` does not run it | A tenancy bug that only RLS would catch |
 | Add a suite under `sources/` | Nothing extra — `task be:test:sources` runs it, in `be:verify` and in CI. Do not add a `tests/__init__.py` to it: a package named `tests` collides with this suite's `tests.conftest` ([`sources/AGENTS.md`](../sources/AGENTS.md)) | The **Backend tests** CI job |

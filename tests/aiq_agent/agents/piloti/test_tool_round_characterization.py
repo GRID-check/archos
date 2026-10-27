@@ -26,6 +26,7 @@ from unittest.mock import MagicMock
 from unittest.mock import patch
 
 import pytest
+from aiq_agent_testing.conversation import turn
 from langchain_core.messages import AIMessage
 from langchain_core.messages import HumanMessage
 from langchain_core.messages import ToolMessage
@@ -59,7 +60,6 @@ from aiq_agent.knowledge.restricted_use import WITHHELD_NOTICE
 from aiq_agent.knowledge.restricted_use import RestrictedUse
 from aiq_agent.knowledge.restricted_use import bind_restricted_use
 from aiq_agent.knowledge.restricted_use import reset_restricted_use
-from tests.aiq_agent.agents.piloti.conversation import turn
 
 _PROMPT = "Du bist Piloti."
 _ANSWER = AIMessage(content='```answer_json\n{"answer": "Fertig.", "kind": "walkthrough"}\n```')

@@ -6,13 +6,9 @@ reads is the one ``post_intake`` really built, headers included.
 
 from __future__ import annotations
 
-import io
 import json
-import urllib.error
-import urllib.request
 from pathlib import Path
 from typing import Any
-from unittest.mock import MagicMock
 
 import pytest
 from jsonschema import Draft202012Validator
@@ -24,8 +20,9 @@ from aiq_agent.agents.intake import reading
 from aiq_agent.agents.intake.read_log import bind_read_log
 from aiq_agent.agents.intake.read_log import reset_read_log
 from aiq_agent.knowledge.schema import AvailableDocument
+from scripts.intake_eval.bff import FakeIntakeRoute as _IntakeRoute
 
-ROOT = Path(__file__).resolve().parents[4]
+ROOT = next(path for path in Path(__file__).resolve().parents if (path / "Taskfile.yml").is_file())
 INTAKE_SCHEMA = ROOT / "frontends" / "ui" / "tests" / "fixtures" / "project-intake.schema.json"
 
 HEADER, SIGNATURE = "eyJzaWduZWQiOiJydW4ifQ", "c0ffee"
@@ -97,31 +94,11 @@ DOCUMENTS = [
 ]
 
 
-class FakeIntakeRoute:
-    """``_opener.open`` answering by op: a dict is a 200 body, an int an HTTP error, an exception raised."""
+class FakeIntakeRoute(_IntakeRoute):
+    """The intake eval's transport double, with this suite's needs as the default ``needs`` answer."""
 
     def __init__(self, **answers: Any) -> None:
-        self.answers = {"needs": NEEDS_BODY, "progress": {"filesOpened": 1}, "finish": {"status": "ready"}, **answers}
-        self.requests: list[urllib.request.Request] = []
-
-    def bodies(self, op: str | None = None) -> list[dict[str, Any]]:
-        bodies = [json.loads(request.data) for request in self.requests]
-        return [body for body in bodies if op is None or body["op"] == op]
-
-    def __call__(self, request: urllib.request.Request, timeout: float) -> Any:
-        self.requests.append(request)
-        body = json.loads(request.data)
-        answer = self.answers[body["op"]]
-        if callable(answer):
-            answer = answer(body)
-        if isinstance(answer, BaseException):
-            raise answer
-        if isinstance(answer, int):
-            error = json.dumps({"error": "stale-reading" if answer == 409 else "nope"}).encode()
-            raise urllib.error.HTTPError(request.full_url, answer, "refused", {}, io.BytesIO(error))
-        response = MagicMock()
-        response.__enter__.return_value.read.return_value = json.dumps(answer).encode("utf-8")
-        return response
+        super().__init__(**{"needs": NEEDS_BODY, **answers})
 
 
 def recorded_all(outcome: str = "suggested"):

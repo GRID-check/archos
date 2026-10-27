@@ -9,15 +9,15 @@ something else (ADR-0096's check, ADR-0064 use 12). Only what passes is sent.
 from __future__ import annotations
 
 import pytest
+from aiq_agent_testing.intake import JOB
+from aiq_agent_testing.intake import NEEDS_BODY
+from aiq_agent_testing.intake import recorded_all
+from aiq_agent_testing.intake import validator
 
 from aiq_agent.agents.intake.tools import IntakeSession
 from aiq_agent.agents.intake.tools import RecordedValue
 from aiq_agent.agents.intake.tools import record_values
 from aiq_agent.agents.intake.tools import withdraw_values
-from tests.aiq_agent.agents.intake.conftest import JOB
-from tests.aiq_agent.agents.intake.conftest import NEEDS_BODY
-from tests.aiq_agent.agents.intake.conftest import recorded_all
-from tests.aiq_agent.agents.intake.conftest import validator
 
 
 @pytest.fixture

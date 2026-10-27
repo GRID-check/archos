@@ -9,6 +9,10 @@ from __future__ import annotations
 
 import knowledge_layer.view_image as view
 import pytest
+from aiq_agent_testing.canvas import DOCUMENT as DOCUMENT_ID
+from aiq_agent_testing.canvas import LIST_BODY
+from aiq_agent_testing.canvas import OTHER_DOCUMENT
+from aiq_agent_testing.canvas import answering
 
 from aiq_agent import project_context
 from aiq_agent.common import turn_status
@@ -19,10 +23,6 @@ from aiq_agent.tools.canvas.client import CanvasRequestError
 from aiq_agent.tools.viewer.register import ACTIONS
 from aiq_agent.tools.viewer.register import DESCRIPTION
 from aiq_agent.tools.viewer.register import run_show_in_viewer
-from tests.aiq_agent.tools.canvas.conftest import DOCUMENT as DOCUMENT_ID
-from tests.aiq_agent.tools.canvas.conftest import LIST_BODY
-from tests.aiq_agent.tools.canvas.conftest import OTHER_DOCUMENT
-from tests.aiq_agent.tools.canvas.conftest import answering
 
 GLOBAL_ID = "1kTvQ9x8n5RfBW2$hK0aZq"
 

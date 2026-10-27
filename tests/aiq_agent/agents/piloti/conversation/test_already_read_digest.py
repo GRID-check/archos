@@ -7,6 +7,7 @@ not wipe the checkpointed lines.
 """
 
 import pytest
+from aiq_agent_testing.conversation import turn
 from langchain_core.messages import AIMessage
 from langchain_core.messages import HumanMessage
 from langgraph.checkpoint.memory import MemorySaver
@@ -17,7 +18,6 @@ from aiq_agent.agents.piloti.conversation import TURN_SCOPED_FIELDS
 from aiq_agent.agents.piloti.conversation import ConversationGraph
 from aiq_agent.agents.piloti.models import ConversationState
 from aiq_agent.agents.piloti.models import ResearchAgentState
-from tests.aiq_agent.agents.piloti.conversation import turn
 
 DIGEST = ["oib-rl_2_ausgabe_mai_2023.pdf | oib_knowledge | Seiten 12 | Punkte 3.5.2 | Turn 1"]
 

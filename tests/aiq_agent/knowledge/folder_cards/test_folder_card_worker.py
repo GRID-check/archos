@@ -3,13 +3,13 @@
 from __future__ import annotations
 
 import pytest
+from aiq_agent_testing.folder_cards import FakeModel
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
 
 from aiq_agent.knowledge import factory
 from aiq_agent.knowledge.folder_cards import queue
 from aiq_agent.knowledge.folder_cards import worker
 from aiq_agent.observability import direct_trace
-from tests.aiq_agent.knowledge.folder_cards.conftest import FakeModel
 
 ORG = "org_1"
 

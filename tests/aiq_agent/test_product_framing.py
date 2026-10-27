@@ -17,39 +17,13 @@ site (frontends/web/scripts/lint-claims.mjs).
 from __future__ import annotations
 
 import re
-from pathlib import Path
 
 import pytest
-
-ROOT = Path(__file__).resolve().parents[2]
-
-#: Where a reader, human or agent, learns what the product is.
-FIRST_IMPRESSION = [
-    "README.md",
-    "AGENTS.md",
-    "CONTEXT.md",
-    "docs/README.md",
-    "docs/architecture/system-overview.md",
-    "docs/architecture/overview.md",
-    "frontends/ui/README.md",
-]
-
-PROMPTS = sorted(
-    path.relative_to(ROOT).as_posix()
-    for path in (ROOT / "src" / "aiq_agent").rglob("prompts/*")
-    if path.suffix in {".j2", ".md"}
-)
-
-#: The old frame. VISION.md names these on purpose (as what Piloti is not), and
-#: docs/product/vision.md quotes the frame it replaced, so neither is scanned.
-OLD_FRAME = re.compile(
-    r"compliance assistant|grid oib|answers oib questions|research assistant for austrian building|oib chatbot",
-    re.IGNORECASE,
-)
-
-#: A file called a plan. Compounds (Lageplan, Bebauungsplan, Bestandspläne) do not
-#: match; a research plan is not a file and is written in the singular here.
-FILE_AS_PLAN = re.compile(r"(?<![\w-])(Pläne|Plänen|Planstand|Planstände|Planständen)(?![\w-])")
+from aiq_agent_testing.product_framing import FILE_AS_PLAN
+from aiq_agent_testing.product_framing import FIRST_IMPRESSION
+from aiq_agent_testing.product_framing import OLD_FRAME
+from aiq_agent_testing.product_framing import PROMPTS
+from aiq_agent_testing.product_framing import ROOT
 
 
 def _lines(relative: str) -> list[tuple[int, str]]:

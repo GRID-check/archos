@@ -12,7 +12,6 @@ import types
 from pathlib import Path
 
 import pytest
-
 from knowledge_layer_testing.qdrant_fixtures import fresh_qdrant_store  # noqa: F401 - a store of its own
 from knowledge_layer_testing.qdrant_fixtures import qdrant_store  # noqa: F401 - the shared store fixture
 

@@ -3,6 +3,14 @@
 from __future__ import annotations
 
 import pytest
+from aiq_agent_testing.canvas import ANNOTATION
+from aiq_agent_testing.canvas import DOCUMENT
+from aiq_agent_testing.canvas import LIST_BODY
+from aiq_agent_testing.canvas import OK_BODY
+from aiq_agent_testing.canvas import OTHER_DOCUMENT
+from aiq_agent_testing.canvas import PROPOSAL
+from aiq_agent_testing.canvas import PROPOSE_BODY
+from aiq_agent_testing.canvas import answering
 
 from aiq_agent.common.focus_file import set_turn_intent
 from aiq_agent.knowledge.restricted_use import CrossProjectTurn
@@ -20,15 +28,6 @@ from aiq_agent.tools.canvas.register import run_marks
 from aiq_agent.tools.canvas.register import run_point
 from aiq_agent.tools.canvas.register import run_reply
 from aiq_agent.tools.canvas.register import run_update
-
-from .conftest import ANNOTATION
-from .conftest import DOCUMENT
-from .conftest import LIST_BODY
-from .conftest import OK_BODY
-from .conftest import OTHER_DOCUMENT
-from .conftest import PROPOSAL
-from .conftest import PROPOSE_BODY
-from .conftest import answering
 
 
 def _use(**fields) -> RestrictedUse:

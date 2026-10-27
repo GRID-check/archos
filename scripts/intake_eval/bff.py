@@ -1,8 +1,7 @@
 """The intake route, faked in-process for the eval: the BFF's own needs and record logic, no database.
 
 ``POST /api/internal/project-intake`` is answered by the transport double the
-agent's suite uses (``FakeIntakeRoute`` in
-``tests/aiq_agent/agents/intake/conftest.py``, installed on
+agent's suite uses too (``FakeIntakeRoute`` below, installed on
 ``client._opener.open``), so every body the agent sends is the one
 ``post_intake`` really built. Behind it, ``needs``, ``record`` and ``withdraw``
 run the TypeScript the route runs (``computeNeeds``, ``staticRefusal``,
@@ -17,12 +16,16 @@ still answers 409, as the route does).
 
 from __future__ import annotations
 
+import io
 import json
 import shutil
 import subprocess
 import threading
+import urllib.error
+import urllib.request
 from pathlib import Path
 from typing import Any
+from unittest.mock import MagicMock
 
 from .fixture import REPO_ROOT
 from .fixture import Fixture
@@ -131,3 +134,33 @@ class FakeIntakeBff:
             return 409
         self.finish_body = body
         return {"status": "ready"}
+
+
+class FakeIntakeRoute:
+    """``_opener.open`` answering by op: a dict is a 200 body, an int an HTTP error, an exception raised.
+
+    The agent's intake suite installs it too (``aiq_agent_testing.intake``), with its needs as the default.
+    """
+
+    def __init__(self, **answers: Any) -> None:
+        self.answers = {"progress": {"filesOpened": 1}, "finish": {"status": "ready"}, **answers}
+        self.requests: list[urllib.request.Request] = []
+
+    def bodies(self, op: str | None = None) -> list[dict[str, Any]]:
+        bodies = [json.loads(request.data) for request in self.requests]
+        return [body for body in bodies if op is None or body["op"] == op]
+
+    def __call__(self, request: urllib.request.Request, timeout: float) -> Any:
+        self.requests.append(request)
+        body = json.loads(request.data)
+        answer = self.answers[body["op"]]
+        if callable(answer):
+            answer = answer(body)
+        if isinstance(answer, BaseException):
+            raise answer
+        if isinstance(answer, int):
+            error = json.dumps({"error": "stale-reading" if answer == 409 else "nope"}).encode()
+            raise urllib.error.HTTPError(request.full_url, answer, "refused", {}, io.BytesIO(error))
+        response = MagicMock()
+        response.__enter__.return_value.read.return_value = json.dumps(answer).encode("utf-8")
+        return response

@@ -67,7 +67,7 @@ EXCLUDED = re.compile(
             r"^frontends/ui/src/shared/cards/generated\.ts$",  # card schemas, rendered from cards/models.py
             r"\.generated\.",  # wire-v2.generated.ts and its kind
             r"\.d\.ts$",  # type declarations
-            r"(^|/)(tests?|__tests__|e2e|_?fixtures|__fixtures__|test-utils)/",  # suites and their data
+            r"(^|/)(tests?|testing|__tests__|e2e|_?fixtures|__fixtures__|test-utils)/",  # suites, their support, data
             r"(^|/)i18n/dictionaries/|^frontends/web/src/(i18n|data)/",  # copy: its length is the copy's
             r"(^|/)(test_[^/]*|[^/]*_test|conftest)\.py$",
             r"\.(spec|test)\.[cm]?[jt]sx?$",

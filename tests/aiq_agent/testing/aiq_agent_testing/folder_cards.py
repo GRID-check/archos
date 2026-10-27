@@ -12,7 +12,7 @@ from typing import Any
 import pytest
 from langchain_core.messages import AIMessage
 
-ROOT = Path(__file__).resolve().parents[4]
+ROOT = next(path for path in Path(__file__).resolve().parents if (path / "Taskfile.yml").is_file())
 FOLDER_CARDS_SCHEMA = ROOT / "frontends/ui/tests/fixtures/folder-cards.schema.json"
 
 

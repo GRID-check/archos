@@ -24,6 +24,7 @@ where the graph went next:
 from unittest.mock import MagicMock
 
 import pytest
+from aiq_agent_testing.conversation import turn
 from langchain_core.messages import AIMessage
 from langchain_core.messages import HumanMessage
 from langgraph.checkpoint.memory import MemorySaver
@@ -33,7 +34,6 @@ from aiq_agent.agents.piloti.markers import ESCALATION_MARKER
 from aiq_agent.agents.piloti.models import ClarifyResult
 from aiq_agent.agents.piloti.models import ConversationState
 from aiq_agent.agents.piloti.models import ResearchAgentState
-from tests.aiq_agent.agents.piloti.conversation import turn
 
 PROCEDURAL_QUESTION = "Wie läuft das Baubewilligungsverfahren in Wien ab?"
 SHALLOW_ANSWER = "Das Verfahren läuft in fünf Schritten ab [1]."
