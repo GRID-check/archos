@@ -474,3 +474,140 @@ class TestToolContract:
         assert "filename=" in desc
         assert "mode=many" in desc
         assert "best matching file" in desc
+
+
+class TestBrowseThroughWorkspaceSearch:
+    """A browse asks `workspace-search`, the search page's own operation, and its card links there.
+
+    The person runs that search on the search page; the card offers it with the
+    same text and scope, so "show me the rest" is one click, not a second question.
+    Without an answer from the operation (no envelope in an eval, an outage) the
+    browse reads the vector corpora as before and the card carries no link.
+    """
+
+    PROJECT_ID = "0d7b3a5e-7c1c-4a4e-9a63-6a4a1f5f1c11"
+
+    @staticmethod
+    def _hit(filename, shelf, page=None, text=None):
+        passage = {"text": text, "page": page} if text else None
+        return {"kind": "document", "id": filename, "filename": filename, "shelf": shelf, "passage": passage}
+
+    @staticmethod
+    def _answer(hits, total=None):
+        return {"sections": {"document": {"hits": hits, "total": len(hits) if total is None else total}}}
+
+    def _make_env(self, monkeypatch, answers):
+        import aiq_agent.cards.surface_documents as surface_module
+        from aiq_agent.common.source_kinds import Shelf
+
+        calls = []
+
+        async def read_operation(name, input):  # noqa: A002 - the server's argument name
+            calls.append((name, input))
+            return answers(input["query"])
+
+        retriever = SimpleNamespace(calls=[])
+
+        async def retrieve(query, collection_name, top_k, filters):
+            retriever.calls.append(collection_name)
+            return SimpleNamespace(chunks=[_chunk("vektor.pdf", 0.9)])
+
+        retriever.retrieve = retrieve
+        registry = SimpleNamespace(add=MagicMock())
+
+        async def fake_meta(_collections):
+            return {}
+
+        scoped = [
+            SimpleNamespace(collection="proj_test", shelf=Shelf.PROJECT),
+            SimpleNamespace(collection="archiv_o", shelf=Shelf.OFFICE_SHELF),
+        ]
+        monkeypatch.setattr("aiq_agent.knowledge.scoping.get_scoped_collections_from_context", lambda: scoped)
+        monkeypatch.setattr("aiq_agent.knowledge.scoping.get_collection_scope_from_context", lambda: None)
+        monkeypatch.setattr("aiq_agent.knowledge.factory.get_active_retriever", lambda: retriever)
+        monkeypatch.setattr("aiq_agent.cards.registry.get_card_registry", lambda: registry)
+        monkeypatch.setattr("aiq_agent.project_context.get_project_id_from_context", lambda: self.PROJECT_ID)
+        monkeypatch.setattr("aiq_agent.tools.workspace.register.read_operation", read_operation)
+        monkeypatch.setattr(surface_module, "_fetch_document_metadata", fake_meta)
+        return calls, retriever, registry
+
+    async def test_a_browse_of_both_shelves_asks_each_and_links_the_office_search(self, monkeypatch):
+        def answers(scope):
+            if scope.get("scope") == "project":
+                return self._answer(
+                    [
+                        self._hit("Grundriss EG.pdf", "project", 2, "Grundriss Erdgeschoss"),
+                        self._hit("Grundriss OG.pdf", "project"),
+                    ],
+                    total=7,
+                )
+            return self._answer([self._hit("Grundriss Referenz.pdf", "office_shelf")])
+
+        calls, retriever, registry = self._make_env(monkeypatch, answers)
+
+        async with surface_documents(SurfaceDocumentsConfig(), MagicMock()) as info:
+            output = await info.single_fn(info.input_schema(query="Grundriss", mode="many"))
+
+        assert [name for name, _ in calls] == ["workspace-search", "workspace-search"]
+        assert [call["query"] for _, call in calls] == [
+            {"scope": "project", "projectId": self.PROJECT_ID},
+            {"scope": "office_shelf"},
+        ]
+        body = calls[0][1]["body"]
+        assert (body["text"], body["kinds"], body["facets"]) == ("Grundriss", ["document"], False)
+        assert retriever.calls == []
+
+        card = registry.add.call_args.args[0]
+        assert [(doc["file_name"], doc["source"]) for doc in card["documents"]] == [
+            ("Grundriss EG.pdf", "project"),
+            ("Grundriss Referenz.pdf", "office"),
+            ("Grundriss OG.pdf", "project"),
+        ]
+        assert card["documents"][0]["page"] == 2
+        assert card["documents"][0]["snippet"] == "Grundriss Erdgeschoss"
+        assert card["search"] == {"text": "Grundriss", "scope": "office"}
+        assert "finds 8 document(s)" in output
+
+    async def test_a_browse_of_one_shelf_links_that_shelf(self, monkeypatch):
+        calls, _retriever, registry = self._make_env(
+            monkeypatch, lambda scope: self._answer([self._hit("Statik.pdf", "office_shelf")])
+        )
+
+        async with surface_documents(SurfaceDocumentsConfig(), MagicMock()) as info:
+            await info.single_fn(info.input_schema(query="Statik", mode="many", shelf="office_shelf"))
+
+        assert [call["query"] for _, call in calls] == [{"scope": "office_shelf"}]
+        assert registry.add.call_args.args[0]["search"] == {"text": "Statik", "scope": "office_shelf"}
+
+    async def test_without_an_answer_the_browse_reads_the_corpora_and_links_nothing(self, monkeypatch):
+        _calls, retriever, registry = self._make_env(monkeypatch, lambda scope: None)
+
+        async with surface_documents(SurfaceDocumentsConfig(), MagicMock()) as info:
+            output = await info.single_fn(info.input_schema(query="Plan", mode="many"))
+
+        assert retriever.calls
+        card = registry.add.call_args.args[0]
+        assert [doc["file_name"] for doc in card["documents"]] == ["vektor.pdf"]
+        assert "search" not in card
+        assert "workspace search" not in output
+
+    async def test_opening_one_file_does_not_search_the_workspace(self, monkeypatch):
+        calls, retriever, _registry = self._make_env(monkeypatch, lambda scope: self._answer([]))
+
+        async with surface_documents(SurfaceDocumentsConfig(), MagicMock()) as info:
+            await info.single_fn(info.input_schema(query="Plan"))
+
+        assert calls == []
+        assert retriever.calls
+
+    async def test_a_browse_keeps_one_kind(self, monkeypatch):
+        hits = [self._hit("foto.jpg", "project"), self._hit("modell.ifc", "project"), self._hit("bild.png", "project")]
+        _calls, _retriever, registry = self._make_env(
+            monkeypatch,
+            lambda scope: self._answer(hits) if scope.get("scope") == "project" else self._answer([]),
+        )
+
+        async with surface_documents(SurfaceDocumentsConfig(), MagicMock()) as info:
+            await info.single_fn(info.input_schema(query="Fotos", mode="many"))
+
+        assert [doc["file_name"] for doc in registry.add.call_args.args[0]["documents"]] == ["foto.jpg", "bild.png"]

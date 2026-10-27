@@ -92,7 +92,10 @@ that path would add a store without removing one.
    under `grid_secure_table`. It is never authored: each row is replaced whole.
 2. **A row is written when its document settles.** The status reconciliation
    already parses the reading (`extractMetadata` in `reconcile-status.ts`) when a
-   row comes to rest; the projection row is upserted there. A per-shelf job
+   row comes to rest; the projection row is upserted there. A person's edit of
+   what a row derives (tags, topics, a Fassung link) rewrites it in the service
+   that wrote the edit (`lib/search/refresh-rows.ts`), never failing the edit.
+   A per-shelf job
    (`search_facets_sync`) is the backstop: a search that finds a shelf's
    fingerprint (count and newest change of its documents) moved since its last
    sync queues one refresh, at most one per shelf per ten minutes, the pattern

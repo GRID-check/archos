@@ -162,14 +162,39 @@ passages. With text, the content search is pre-filtered for recall: by
 fields ingestion mirrors onto every chunk (`document_type`, `references`,
 `dossier_facts`). No Qdrant count is ever shown.
 
-The projection is derived, never authored. A row is written when its document
-settles, from the reading the status reconciliation already parses; a BFF job
-(`search_facets_sync`) refreshes a whole shelf as the backstop, queued when a
-search finds the shelf's fingerprint (document count and newest change) moved,
-at most once per shelf per interval, the pattern `office_conventions` uses. The
-projector fails closed: a listing that came back without the reading blanks
-nothing. A shelf never synced is still searched by name, status and content,
-and the answer says its facets are being built.
+The projection is derived, never authored. A row is written:
+
+- **when its document settles**, from the reading the status reconciliation
+  already parses (`reconcile-status.ts`). A re-upload under the same name is a
+  new version of the same document: it is read again and settles again, so its
+  row is rewritten, never marked superseded. A Fassung filed at upload
+  (`revisionOf`) is linked when the new file is read; the documents its listing
+  entry says it `supersedes` are rewritten from the same listing at that moment.
+- **when a person changes what it derives**, after the write landed: tags and
+  topics (`updateDocumentTags`), a Fassung link confirmed or taken back
+  (`setRevisionLink`, both documents). The service calls
+  `refreshSearchRows` (`lib/search/refresh-rows.ts`), which reads the
+  collection fresh and rewrites those rows before the answer goes back, so the
+  person's next search sees the change. It never fails the write: a listing it
+  cannot read marks the shelves stale (`markShelvesStale`) and the next search
+  queues their refresh.
+- **by the backstop**: a BFF job (`search_facets_sync`) refreshes a whole shelf,
+  queued when a search finds the shelf's fingerprint (document count and newest
+  change) moved, the sync older than an hour, or the shelf marked stale, at
+  most once per shelf per interval, the pattern `office_conventions` uses. It
+  catches what the agent writes on its own side.
+
+`superseded` is the listing's `superseded_by`, which only a person's
+confirmation writes; Piloti's `revision_suggestion` never counts. Name, folder,
+status and lifecycle are not projected: the search reads them from `documents`
+in the same query, so a rename, a move, an archive or a role declared in the
+project (roles are not a search facet) is current without a rewrite.
+
+The projector fails closed: a listing that came back without the reading
+blanks nothing, and a document with no reading at all has no row, so a Fassung
+decision about it reaches the search only once it has one. A shelf never synced
+is still searched by name, status and content, and the answer says its facets
+are being built.
 
 ### What changed, and what is not read yet
 
@@ -288,10 +313,21 @@ chosen columns on a line under it, the order in a menu.
 - The field is a WAI-ARIA combobox: ↑ ↓ move an active option while focus
   stays in the field (`aria-activedescendant`), each kind's rows are a listbox
   (the register's rows, its table), and the active row carries a 2px ink rule.
-- A project's Dateien and the Büroablage: „Suche“ in the header switches the
-  listing to the search (`?mode=search`), scoped to the shelf and the open
-  folder (`?folder=`).
-- `/dev/search`: the organism over a fixture answer, list and register.
+- A project's Dateien and the Büroablage: one field in the header. Typing
+  filters the listing by name; Enter opens the search (`?mode=search&q=…`),
+  scoped to the shelf and the open folder (`?folder=`). There is no second
+  „Suche“ button beside it.
+- `/dev/search`: the organism over a fixture answer, list and register,
+  filtered and sorted in memory to match what is set (`searchFixtureAnswer`),
+  so a capture never contradicts its chips. `?scope=project`,
+  `?state=empty|loading|error`, `?filters=open`.
+
+The rail starts with Plannummer, Index and „Nur aktuelle Fassung“, always
+open; the counted facets follow; the rest folds under „Weitere Filter“. Under
+`md` the rail is a bottom sheet behind „Filter“ with „Alle entfernen“ and
+„N Treffer zeigen“ pinned at the foot; on a phone the saved searches and the
+export fold into one „Mehr“. Dates are typed in the page's locale
+(`components/ui/date-input.tsx`), not in the browser's.
 
 A hit opens where the workspace already shows it: a document in its shelf's
 preview (`?doc=`), an annotation in the review at the mark. A document hit
@@ -305,6 +341,18 @@ The place belongs to the document `doc` names: opening another document, or a
 folder, takes `page` and `highlight` off the address with the review's params.
 A preview that is not a PDF (an image, a text file) ignores both.
 
+A document or annotation hit comes back to the search. Its link carries
+`back`, the search page's own address (query, filters, kinds, view, sort),
+the way Offene Punkte and the Postfach send a reader into a review
+(`features/documents/lib/open-review.ts`): closing the preview
+(`hooks/use-preview-channel.ts`) or the review goes there, by Back when the
+entry behind is that search, else by replacing the address with it. `back` is
+only ever a path of the app (`appReturnPath`). A folder, a project and a
+conversation have nothing to close; Back walks to the search, whose URL holds
+it all. The ⌘K palette's hits carry no `back`: what lies under the palette is
+not a search. The scroll position is not restored: the answer is fetched
+afresh, and its further pages with it.
+
 ### Piloti
 
 Piloti reaches the search as every other client does: `workspace-search` is
@@ -314,6 +362,15 @@ person would, under the person's rights. Its native `list_files` and
 return citable passages, which this search does not (a passage here is a
 pointer to read). Making `list_files` take its structured filters from the core
 is the next step, once the answer suite measures it (ADR-0127's eval set).
+
+When a person browses their files in chat (`surface_documents` with
+`mode=many`), Piloti asks `workspace-search` once per shelf the turn reads
+(this project, the office shelf), and the `document_grid` card it shows carries
+the question (`search`: text and scope) and an „In der Suche öffnen“ link to
+the search page asking it, so the rest of the result is one click away. A run
+with no signed request context (an eval, the CLI) browses the vector corpora as
+before and links nothing. The search text is written in the documents'
+language; English is only for finding an operation.
 
 The Files pane's semantic search asks the core too: `POST /api/search` with the
 shelf as its query and `kinds: ['document']`. `POST /api/documents/search` and
@@ -367,3 +424,11 @@ way (`facetCountsOnce`) and a search without text side by side
 Measured, not built: sorting the matched ids first and joining the display
 columns to the page alone (a deferred join) took the page from 104–119 to
 59–69 ms.
+
+In production the same split is measured per search: the route's
+`Server-Timing` header names `sql` and `content` (the wait on
+`POST /v1/collections/search`), PostHog's `search_issued` carries both with the
+browser's `duration_ms`, and the content query is the Langfuse observation
+`retrieve.workspace_search` with its pre-filter mode and candidate counts
+([`posthog-events.md`](../observability/posthog-events.md),
+[`langfuse.md`](../observability/langfuse.md)).

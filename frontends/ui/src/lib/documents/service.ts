@@ -141,6 +141,7 @@ import { recordDocumentAccess } from '@/lib/download-log/service'
 import { findOpenVersion, listDocumentVersionSummaries } from './version-repository'
 import { eraseDocumentObjectsOrKeepRow } from './object-cleanup'
 import { isIfcFilename } from '@/lib/bim/types'
+import { refreshSearchRows } from '@/lib/search/refresh-rows'
 import {
   INLINE_PREVIEW_CONTENT_TYPES,
   TEXT_PREVIEW_CONTENT_TYPES as SHARED_TEXT_PREVIEW_CONTENT_TYPES,
@@ -686,6 +687,7 @@ export async function fetchGroupedSemanticHits(
         ...(snippetMaxChars ? { snippet_max_chars: snippetMaxChars } : {}),
         ...(options.filters ? { filters: options.filters } : {}),
         ...(options.boost ? { boost: options.boost } : {}),
+        ...(options.purpose ? { purpose: options.purpose } : {}),
       }),
       signal: AbortSignal.timeout(BACKEND_FETCH_TIMEOUT_MS),
     })
@@ -752,6 +754,13 @@ export interface GroupedSearchOptions {
   filters?: GroupedSearchFilters
   /** The current project's facts and the similarity weights (`similarityBoostOf`). */
   boost?: SearchBoostWire | null
+  /**
+   * Who asks, when the backend should trace the search itself: the workspace
+   * search's call is a `retrieve.workspace_search` observation there, because
+   * no NAT run sees it. The cross-project lookup sends none: Piloti's
+   * `project_lookup` tool already traces it as `retrieve.project_lookup`.
+   */
+  purpose?: 'workspace_search'
 }
 
 /** The identity of a document in the backend: its collection and its filename. */
@@ -2343,7 +2352,12 @@ export async function updateDocumentTags(
   }
   if (!res.ok) throw new UpstreamError('The document service rejected the tag update')
 
-  const body = await res.json().catch(() => ({}))
+  // Tags and topics are search filters: the person who set them finds the
+  // document by them at once (ADR-0136). Never fails the write.
+  const [body] = await Promise.all([
+    res.json().catch(() => ({})),
+    refreshSearchRows(session.organizationId, [doc]),
+  ])
   const answer: { id: string; tags: string[]; topics?: string[] } = {
     id: doc.id,
     tags: Array.isArray(body.tags) ? body.tags : tags,

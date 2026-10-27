@@ -150,20 +150,33 @@ export async function contentPrefilter(
   }
 }
 
-/** The content search over the reach's collections, or null when it could not run. */
+/** What the content search found (null: it could not run), whether it covered only part of the reach, and how long the backend took. */
+interface ContentResult {
+  hits: BackendSearchHit[] | null
+  partial: boolean
+  ms: number
+}
+
+const NO_CONTENT: ContentResult = { hits: [], partial: false, ms: 0 }
+
+/** The content search over the reach's collections. One that could not run is partial: more documents may say it. */
 async function contentHits(
   reach: SearchReach,
   text: string,
   filters: GroupedSearchFilters | undefined
-): Promise<{ hits: BackendSearchHit[]; partial: boolean } | null> {
+): Promise<ContentResult> {
   const collections = reachCollections(reach)
-  if (collections.length === 0) return { hits: [], partial: false }
+  if (collections.length === 0) return NO_CONTENT
+  const named = collections.slice(0, BACKEND_SEARCH_MAX_COLLECTIONS)
+  const started = performance.now()
   try {
-    const named = collections.slice(0, BACKEND_SEARCH_MAX_COLLECTIONS)
-    const hits = await fetchGroupedSemanticHits(named, text, CONTENT_FILES_PER_COLLECTION, PASSAGE_CHARS, filters ? { filters } : {})
-    return { hits, partial: named.length < collections.length }
+    const hits = await fetchGroupedSemanticHits(named, text, CONTENT_FILES_PER_COLLECTION, PASSAGE_CHARS, {
+      ...(filters ? { filters } : {}),
+      purpose: 'workspace_search',
+    })
+    return { hits, partial: named.length < collections.length, ms: performance.now() - started }
   } catch (error) {
-    if (error instanceof UpstreamError) return null
+    if (error instanceof UpstreamError) return { hits: null, partial: true, ms: performance.now() - started }
     throw error
   }
 }
@@ -179,6 +192,7 @@ function toDocumentHit(row: DocumentSearchRow, passage: BackendSearchHit | undef
     projectName: row.projectName,
     folderId: row.folderId,
     folderName: row.folderName,
+    folderPath: row.folderPath,
     status: row.status,
     contentType: row.contentType,
     uploadedAt: row.createdAt.toISOString(),
@@ -243,9 +257,9 @@ async function rankedContent(
   reach: SearchReach,
   structured: DocumentQuery,
   text: string
-): Promise<{ hits: BackendSearchHit[]; partial: boolean } | null> {
+): Promise<ContentResult> {
   const prefilter = await contentPrefilter(reach, structured)
-  if (!prefilter) return { hits: [], partial: false }
+  if (!prefilter) return NO_CONTENT
   return contentHits(reach, text, prefilter.filters)
 }
 
@@ -255,7 +269,7 @@ async function searchDocuments(
   body: SearchBody,
   page: { limit: number; offset: number },
   withFacets: boolean
-): Promise<{ section: SearchSection<DocumentHit>; facets: SearchResponse['facets']; unread: number | null; contentPartial: boolean }> {
+): Promise<{ section: SearchSection<DocumentHit>; facets: SearchResponse['facets']; unread: number | null; contentPartial: boolean; contentMs: number }> {
   // Started first and read last: it does not wait on the content search.
   const unreadCount = withFacets ? countUnreadDocuments(reach, body.filters?.includeArchived === true) : Promise.resolve(null)
   // Handled here too, so a failure before it is read is not an unhandled rejection; the await below still throws.
@@ -271,12 +285,13 @@ async function searchDocuments(
       facets: withFacets ? {} : null,
       unread: await unreadCount,
       contentPartial: false,
+      contentMs: 0,
     }
   }
   const text = body.text?.trim() || null
   const structured: DocumentQuery = { filters, text: null, citedBy, citing }
-  const content = text && text.length >= CONTENT_MIN_CHARS ? await rankedContent(reach, structured, text) : { hits: [], partial: false }
-  const found = content?.hits ?? []
+  const content = text && text.length >= CONTENT_MIN_CHARS ? await rankedContent(reach, structured, text) : NO_CONTENT
+  const found = content.hits ?? []
   // A hit names its document by id when it can; only a hit without one is joined by name (ADR-0136 item 5).
   const passagesById = new Map(found.flatMap((hit) => (hit.grid_document_id ? [[hit.grid_document_id, hit] as const] : [])))
   const passagesByKey = new Map(
@@ -313,12 +328,13 @@ async function searchDocuments(
       hits,
       total: result.total,
       // Content found more than it could rank, or could not run: more documents may say it.
-      totalIsLowerBound: Boolean(text) && (content === null || content.partial || found.length >= CONTENT_CANDIDATES),
+      totalIsLowerBound: Boolean(text) && (content.partial || found.length >= CONTENT_CANDIDATES),
       nextCursor: nextOffset < result.total && nextOffset <= SEARCH_OFFSET_MAX ? encodeSearchCursor('document', nextOffset) : null,
     },
     facets: counts ? labelFacets(reach, counts, Object.keys(FACET_KEYS) as SearchFacetDimension[], people) : null,
     unread: await unreadCount,
-    contentPartial: content === null || content.partial,
+    contentPartial: content.partial,
+    contentMs: content.ms,
   }
 }
 
@@ -337,8 +353,32 @@ function sectionOf<T extends SearchResponse['sections'][SearchKind]>(
   } as NonNullable<T>
 }
 
+/**
+ * Where one search's time went, in milliseconds. `content` is the wait on the
+ * backend's content search (`POST /v1/collections/search`: the query's
+ * embedding and Qdrant); `sql` is the rest of `total`, the reach, the
+ * pre-filter, the page, the facets and the other kinds, which are Postgres.
+ * The other kinds run beside the documents, so `sql` is wall time not spent
+ * waiting on content, not a sum of statements.
+ */
+export interface SearchTiming {
+  totalMs: number
+  sqlMs: number
+  contentMs: number
+}
+
 /** Run one search as `session`. */
 export async function runSearch(session: AuthorizedSession, scopeQuery: SearchScopeQuery, body: SearchBody): Promise<SearchResponse> {
+  return (await runTimedSearch(session, scopeQuery, body)).response
+}
+
+/** {@link runSearch}, and where its time went (the route's `Server-Timing`). */
+export async function runTimedSearch(
+  session: AuthorizedSession,
+  scopeQuery: SearchScopeQuery,
+  body: SearchBody
+): Promise<{ response: SearchResponse; timing: SearchTiming }> {
+  const started = performance.now()
   const scope = resolveScope(scopeQuery)
   const reach = narrowedTo(await reachFor(session, scope), body)
   const kinds = SEARCH_KINDS.filter((kind) => !body.kinds || body.kinds.includes(kind))
@@ -355,6 +395,7 @@ export async function runSearch(session: AuthorizedSession, scopeQuery: SearchSc
   let facets: SearchResponse['facets'] = null
   let unread: number | null = null
   let contentPartial = false
+  let contentMs = 0
   await Promise.all(
     kinds.map(async (kind) => {
       if (kind === 'document') {
@@ -363,6 +404,7 @@ export async function runSearch(session: AuthorizedSession, scopeQuery: SearchSc
         facets = documents.facets
         unread = documents.unread
         contentPartial = documents.contentPartial
+        contentMs = documents.contentMs
         return
       }
       // The other kinds are found by their words or, for annotations, by their filters alone.
@@ -379,7 +421,15 @@ export async function runSearch(session: AuthorizedSession, scopeQuery: SearchSc
       }
     })
   )
-  return { scope, sections, facets, unread, building: (await freshness).building, contentPartial }
+  const response: SearchResponse = { scope, sections, facets, unread, building: (await freshness).building, contentPartial }
+  const totalMs = performance.now() - started
+  return { response, timing: { totalMs, contentMs, sqlMs: Math.max(0, totalMs - contentMs) } }
+}
+
+/** The `Server-Timing` header (W3C Server Timing) for one search: `sql`, `content` and `total`, in milliseconds. */
+export function serverTimingHeader(timing: SearchTiming): string {
+  const dur = (ms: number) => Math.round(ms * 10) / 10
+  return `sql;dur=${dur(timing.sqlMs)}, content;dur=${dur(timing.contentMs)}, total;dur=${dur(timing.totalMs)}`
 }
 
 /**

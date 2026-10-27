@@ -137,7 +137,7 @@ export const searchBodySchema = z.object({
     .trim()
     .max(500)
     .optional()
-    .describe('Matches names, what documents are and say (with the page), annotations, folders, projects, conversations.'),
+    .describe('Matches names, what documents are and say (with the page), annotations, folders, projects, conversations. Write it in the language of the documents.'),
   kinds: z.array(z.enum(SEARCH_KINDS)).min(1).max(SEARCH_KINDS.length).optional().describe('Default: every kind.'),
   filters: documentFiltersSchema.optional(),
   annotationFilters: annotationFiltersSchema.optional(),
@@ -179,6 +179,13 @@ export interface DocumentHit {
   projectName: string | null
   folderId: string | null
   folderName: string | null
+  /**
+   * The folder's path from the shelf root, its names joined by "/"
+   * ("03 Einreichung/Grundrisse"); '' at the shelf root. With `shelf` and
+   * `filename` it is where Piloti's filesystem reads the document
+   * (`src/aiq_agent/common/estate_paths.py`).
+   */
+  folderPath: string
   status: string
   contentType: string | null
   uploadedAt: string

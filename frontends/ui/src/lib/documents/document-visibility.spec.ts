@@ -57,6 +57,8 @@ const SEES_EVERY_ROW: Record<string, string> = {
 
   'lib/search/facets-repository.ts#listShelfDocumentsForProjection':
     "Sweep: the search projection's backstop walks a shelf's ids to rewrite their derived rows (ADR-0136). Ids to a job; every search joins the rows under the reader's predicate.",
+  'lib/search/facets-repository.ts#listCollectionDocumentsForProjection':
+    "The search projection: the ids of the documents a settled Fassung replaces, by file name, so their derived rows say so (ADR-0136). Ids to the projector; every search joins the rows under the reader's predicate.",
   'lib/search/facets-repository.ts#shelfSourceFingerprints':
     "Staleness probe: a count and newest change per shelf, compared with the projection's last sync. Numbers to a job, nothing to a person.",
 

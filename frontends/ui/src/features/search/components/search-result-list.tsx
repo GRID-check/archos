@@ -20,6 +20,7 @@ import {
 } from '@/lib/search/search-wire'
 import { useSearchLabels } from '../hooks/use-search-labels'
 import { annotationHitHref, conversationHitHref, documentHitHref, folderHitHref, projectHitHref } from '../lib/search-hrefs'
+import { useSearchReturn } from '../hooks/use-search-return'
 import type { SectionView } from '../lib/sections'
 import {
   Excerpt,
@@ -177,10 +178,15 @@ function DocumentRow({ hit, text, active, id }: { hit: DocumentHit; text: string
   const where = useWhere()
   const type = labels.documentType(hit.documentType)
   const day = labels.day(hit.planDate ?? hit.documentDate)
-  const matchedOn = text.trim() ? MATCHED_ON_ORDER.filter((reason) => hit.matchedOn.includes(reason)) : []
+  const from = useSearchReturn()
+  // „Inhalt“ goes without saying under the passage that shows it; the hint
+  // names only what the row does not show (the name, what Piloti read).
+  const matchedOn = text.trim()
+    ? MATCHED_ON_ORDER.filter((reason) => hit.matchedOn.includes(reason) && !(reason === 'content' && hit.passage))
+    : []
   return (
     <ResultRow
-      href={documentHitHref(hit)}
+      href={documentHitHref(hit, from)}
       icon={FileText}
       title={hit.title ?? hit.name}
       active={active}
@@ -227,10 +233,11 @@ function AnnotationRow({ hit, active, id }: { hit: AnnotationHit; active: boolea
   const t = useTranslations('search')
   const where = useWhere()
   const kind = (ANNOTATION_KINDS as readonly string[]).includes(hit.annotationKind) ? t(`annotation.kinds.${hit.annotationKind}`) : hit.annotationKind
+  const from = useSearchReturn()
   const status = (ANNOTATION_STATUSES as readonly string[]).includes(hit.status) ? t(`annotation.statuses.${hit.status}`) : hit.status
   return (
     <ResultRow
-      href={annotationHitHref(hit)}
+      href={annotationHitHref(hit, from)}
       icon={MessageSquareWarning}
       title={t('annotation.on', { document: hit.documentName })}
       active={active}

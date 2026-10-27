@@ -18,6 +18,7 @@ export function fileSearchHit(file: FileItem, passage: { text: string; page: num
     projectName: null,
     folderId: file.folderId,
     folderName: null,
+    folderPath: '',
     status: file.status ?? 'completed',
     contentType: file.contentType,
     uploadedAt: file.createdAt,

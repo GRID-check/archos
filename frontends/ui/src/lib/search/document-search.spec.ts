@@ -38,7 +38,15 @@ import { UpstreamError } from '@/lib/api/errors'
 import type { AuthorizedSession } from '@/lib/auth/types'
 import type { Project } from '@/lib/db/schema'
 import { fetchGroupedSemanticHits } from '@/lib/documents/service'
-import { contentPrefilter, decodeSearchCursor, documentOrder, encodeSearchCursor, runSearch } from './document-search'
+import {
+  contentPrefilter,
+  decodeSearchCursor,
+  documentOrder,
+  encodeSearchCursor,
+  runSearch,
+  runTimedSearch,
+  serverTimingHeader,
+} from './document-search'
 import type { DocumentSearchRow } from './document-repository'
 import { reachFor, type SearchReach } from './reach'
 
@@ -70,6 +78,7 @@ const row = (overrides: Partial<DocumentSearchRow> = {}): DocumentSearchRow => (
   projectName: 'Hubergasse 14',
   folderId: null,
   folderName: null,
+  folderPath: '',
   collectionName: 'proj_a',
   status: 'completed',
   contentType: 'application/pdf',
@@ -116,7 +125,7 @@ describe('runSearch', () => {
 
     const answer = await runSearch(session, {}, { text: 'Fluchtweg', kinds: ['document'] })
 
-    expect(fetchGroupedSemanticHits).toHaveBeenCalledWith(['proj_a', 'office_org_1'], 'Fluchtweg', 20, 400, {})
+    expect(fetchGroupedSemanticHits).toHaveBeenCalledWith(['proj_a', 'office_org_1'], 'Fluchtweg', 20, 400, { purpose: 'workspace_search' })
     expect(repository.listCandidateDocumentIds).not.toHaveBeenCalled()
     const query = repository.searchDocumentPage.mock.calls[0][1]
     expect(query.text).toEqual({ text: 'Fluchtweg', contentKeys: ['proj_a\u001fbsk.pdf'], contentIds: [''] })
@@ -126,6 +135,21 @@ describe('runSearch', () => {
     expect(hit.matchedOn).toEqual(['reading', 'content'])
     expect(hit.uploadedBy).toBe('Lena Huber')
     expect(answer.building).toEqual(['office_shelf'])
+  })
+
+  it('hands each hit its folder path from the shelf root, the root as an empty path', async () => {
+    vi.mocked(fetchGroupedSemanticHits).mockResolvedValue([])
+    repository.searchDocumentPage.mockResolvedValue({
+      rows: [row({ folderId: 'f2', folderName: 'Grundrisse', folderPath: '03 Einreichung/Grundrisse' }), row({ id: 'd2' })],
+      total: 2,
+    })
+
+    const answer = await runSearch(session, {}, { kinds: ['document'] })
+
+    expect(answer.sections.document?.hits.map((hit) => [hit.folderName, hit.folderPath])).toEqual([
+      ['Grundrisse', '03 Einreichung/Grundrisse'],
+      [null, ''],
+    ])
   })
 
   it('joins a hit that names its document by id, whatever the file is called now', async () => {
@@ -255,6 +279,32 @@ describe('runSearch', () => {
     await expect(runSearch(session, {}, { text: 'x', cursor: encodeSearchCursor('folder', 5) })).rejects.toThrow('cursor')
     expect(() => decodeSearchCursor(encodeSearchCursor('folder', 5), 'document')).toThrow('cursor')
     expect(() => decodeSearchCursor('nonsense', 'document')).toThrow('cursor')
+  })
+})
+
+describe('runTimedSearch', () => {
+  it('splits the time into the wait on the content search and the rest', async () => {
+    vi.mocked(fetchGroupedSemanticHits).mockImplementation(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 30))
+      return []
+    })
+
+    const { response, timing } = await runTimedSearch(session, {}, { text: 'Fluchtweg', kinds: ['document'] })
+
+    expect(response.sections.document?.total).toBe(1)
+    expect(timing.contentMs).toBeGreaterThanOrEqual(25)
+    expect(timing.totalMs).toBeGreaterThanOrEqual(timing.contentMs)
+    expect(timing.sqlMs).toBeCloseTo(timing.totalMs - timing.contentMs, 5)
+  })
+
+  it('spends nothing on content without text', async () => {
+    const { timing } = await runTimedSearch(session, {}, { kinds: ['document'] })
+    expect(fetchGroupedSemanticHits).not.toHaveBeenCalled()
+    expect(timing.contentMs).toBe(0)
+  })
+
+  it('writes the split as a Server-Timing header', () => {
+    expect(serverTimingHeader({ sqlMs: 12.345, contentMs: 80.06, totalMs: 92.4 })).toBe('sql;dur=12.3, content;dur=80.1, total;dur=92.4')
   })
 })
 

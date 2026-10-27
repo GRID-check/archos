@@ -34,6 +34,7 @@ import {
   PALETTE_ALL_RESULTS_VALUE,
   PaletteSearchResults,
   PaletteSearchStart,
+  captureSavedSearchRun,
   paletteFilter,
   isPaletteHitValue,
   paletteHitValue,
@@ -178,13 +179,15 @@ export function CommandPalette({
   }, [firstHit])
   const filter = React.useMemo(() => paletteFilter(defaultFilter), [])
 
+  const { opening } = search
   const openSearchHref = React.useCallback(
     (href: string) => {
       if (words) shortcuts.remember(words)
+      opening(href)
       onOpenChange(false)
       router.push(href)
     },
-    [words, shortcuts, onOpenChange, router],
+    [words, shortcuts, opening, onOpenChange, router],
   )
   // The ↑ ↓ ↵ Esc legend is for a keyboard. Read off the primary pointer, so a
   // touch tablet past `md` drops it as well as a phone does.
@@ -280,7 +283,10 @@ export function CommandPalette({
             recent={shortcuts.recent}
             saved={shortcuts.saved}
             onRecent={setQuery}
-            onSaved={(item) => openSearchHref(savedSearchHref(item))}
+            onSaved={(item) => {
+              captureSavedSearchRun(item)
+              openSearchHref(savedSearchHref(item))
+            }}
             onOpenSearch={() => openSearchHref('/app/search')}
             itemClassName={PALETTE_ITEM_CLASS}
           />

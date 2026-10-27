@@ -2,28 +2,49 @@
 
 import type { JSX, KeyboardEvent, ReactNode } from 'react'
 import { useEffect, useId, useMemo, useRef, useState } from 'react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { BookOpenCheck, Hourglass, List, SearchX, SlidersHorizontal, Table2 } from 'lucide-react'
+import {
+  Bookmark,
+  BookmarkPlus,
+  BookOpenCheck,
+  FileSpreadsheet,
+  FileText,
+  Hourglass,
+  List,
+  MoreHorizontal,
+  SearchX,
+  SlidersHorizontal,
+  Table2,
+} from 'lucide-react'
 
+import { ActionMenu, type ActionMenuEntry } from '@/components/ui/action-menu'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
 import { LoadError } from '@/components/ui/load-error'
 import { SearchField } from '@/components/ui/search-field'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
+import { PHONE_QUERY, useIsMobile } from '@/hooks/use-is-mobile'
+import { useMediaQuery } from '@/hooks/use-media-query'
 import { useTranslations } from '@/i18n'
 import { SEARCH_KINDS, type DocumentHit, type SearchFacetDimension, type SearchHit, type SearchKind, type SearchResponse } from '@/lib/search/search-wire'
 import { clearFilters } from '../lib/active-filters'
 import type { SearchExportFormat } from '../lib/search-client'
 import { toggleFacet } from '../lib/search-facets'
 import { hitHref } from '../lib/search-hrefs'
+import { useSearchReturn } from '../hooks/use-search-return'
 import type { SearchSurface } from '../lib/search-surface'
-import { activeFilterCount, withView, type SearchUrlState, type SearchView } from '../lib/search-url'
+import { activeFilterCount, filtersByReading, officeSearchHref, withView, type SearchUrlState, type SearchView } from '../lib/search-url'
 import type { SectionView } from '../lib/sections'
+import type { NarrowSavedSearches } from './saved-searches-menu'
 import { SearchActiveFilters } from './search-active-filters'
 import {
+  ChoiceStrip,
+  EmptyActions,
   FieldShortcut,
+  FilterSheet,
+  KeysHint,
   KindCount,
-  RailToggleSlot,
   ResultsBody,
   ResultsSkeleton,
   ResultsStatus,
@@ -34,7 +55,7 @@ import {
 } from './search-atoms'
 import { SearchExportMenu } from './search-export-menu'
 import { SearchFacetRail } from './search-facet-rail'
-import { SearchFilterForm } from './search-filter-form'
+import { SearchFilterForm, SearchKeyFilters } from './search-filter-form'
 import { SearchRegister, SearchRegisterBar } from './search-register'
 import { SearchResultList } from './search-result-list'
 
@@ -56,13 +77,17 @@ export interface SearchWorkspaceViewProps {
   /** Absent: no export offered. */
   onExport?: (format: SearchExportFormat) => void
   exporting?: boolean
-  /** The saved searches control (`SavedSearchesMenu`), wired by the caller. */
-  savedSearches?: ReactNode
+  /**
+   * The saved searches control (`SavedSearchesMenu`), wired by the caller.
+   * Given the „Mehr“ menu's state on a phone, where that menu opens it; null
+   * where the toolbar has room for its own buttons.
+   */
+  savedSearches?: (narrow: NarrowSavedSearches | null) => ReactNode
   /** Controls before the view switch: the way back to the Dateien. */
   leading?: ReactNode
   currentUserId?: string
   autoFocus?: boolean
-  /** Open the rail's typed filters from the start. */
+  /** Open the rail's further filters from the start, and under `md` the filter sheet. */
   filtersOpen?: boolean
 }
 
@@ -79,6 +104,10 @@ const hitKey = (hit: SearchHit): string => `${hit.kind}:${hit.id}`
  * result, the result as a list of what matched or as the register. It holds
  * no question of its own; the question is `state`, which the caller keeps in
  * the URL (`SearchWorkspace`) or, in the preview, in memory.
+ *
+ * Under `md` the rail is a sheet behind „Filter“, so the first result sits
+ * under the field. On a phone-sized screen the toolbar keeps the view and
+ * „Filter“, and folds the saved searches and the export into one „Mehr“.
  *
  * The keyboard: ⌘K / Strg+K focuses the field from anywhere on the page; in
  * the field ↑ and ↓ walk the results, Enter opens the one marked, Escape
@@ -106,7 +135,12 @@ export function SearchWorkspaceView({
 }: SearchWorkspaceViewProps): JSX.Element {
   const t = useTranslations('search')
   const router = useRouter()
-  const [railOpen, setRailOpen] = useState(false)
+  const from = useSearchReturn()
+  const sheetLayout = useIsMobile()
+  const phone = useMediaQuery(PHONE_QUERY)
+  const [sheetOpen, setSheetOpen] = useState(filtersOpen)
+  const [savedListOpen, setSavedListOpen] = useState(false)
+  const [saveOpen, setSaveOpen] = useState(false)
   const field = useRef<HTMLInputElement | null>(null)
   const filterCount = activeFilterCount(state)
   const officeWide = surface.kind === 'office'
@@ -161,7 +195,7 @@ export function SearchWorkspaceView({
       const hit = order.find((entry) => hitKey(entry) === activeKey)
       if (!hit) return
       event.preventDefault()
-      router.push(hitHref(hit))
+      router.push(hitHref(hit, from))
       return
     }
     if (event.key === 'Escape' && fieldValue !== '') {
@@ -184,21 +218,94 @@ export function SearchWorkspaceView({
   const total = visibleSections.reduce((sum, section) => sum + section.total, 0)
   const lowerBound = visibleSections.some((section) => section.totalIsLowerBound)
   const documents = sections.document as SectionView<DocumentHit> | undefined
-  const placeholder = t(`field.placeholder.${surface.kind}`)
+  // A phone cut the long placeholder mid-word: there it is one word.
+  const placeholder = phone ? t('field.placeholderShort') : t(`field.placeholder.${surface.kind}`)
+  const building = response?.building.length ?? 0
+  const oneKind = state.view === 'list' && state.kinds?.length === 1 ? state.kinds[0] : null
 
   const status = failed
     ? null
-    : response === null
+    : response === null || loading
       ? t('loading')
-      : loading
-        ? t('loading')
-        : lowerBound
-          ? t('summaryAtLeast', { count: total })
-          : t('total', { count: total })
+      : lowerBound
+        ? t('summaryAtLeast', { count: total })
+        : t('total', { count: total })
+  // The shelves still being read are said once, in the status line; the long
+  // note only where a filter that is set depends on what they hold.
+  const readingNote = building > 0 && anyHits && filtersByReading(state)
+  const statusLine = status && building > 0 && anyHits && !loading && !readingNote ? `${status} · ${t('notes.buildingShort', { count: building })}` : status
+
+  const narrowSaved: NarrowSavedSearches = { listOpen: savedListOpen, onListOpenChange: setSavedListOpen, saveOpen, onSaveOpenChange: setSaveOpen }
+  const moreEntries: ActionMenuEntry[] = [
+    ...(savedSearches
+      ? [
+          { type: 'item' as const, id: 'saved', label: t('more.savedLabel'), icon: Bookmark, onSelect: () => setSavedListOpen(true), testId: 'search-more-saved' },
+          { type: 'item' as const, id: 'save', label: t('saved.save'), icon: BookmarkPlus, onSelect: () => setSaveOpen(true), testId: 'search-more-save' },
+        ]
+      : []),
+    ...(savedSearches && onExport ? [{ type: 'separator' as const }] : []),
+    ...(onExport
+      ? [
+          { type: 'item' as const, id: 'csv', label: t('export.csv'), icon: FileText, disabled: exporting, onSelect: () => onExport('csv'), testId: 'search-export-csv' },
+          { type: 'item' as const, id: 'xlsx', label: t('export.xlsx'), icon: FileSpreadsheet, disabled: exporting, onSelect: () => onExport('xlsx'), testId: 'search-export-xlsx' },
+        ]
+      : []),
+  ]
+
+  // The typed filters an office reaches for first lead, always open; the
+  // counts follow; the rest waits behind „Weitere Filter“.
+  const rail = (
+    <>
+      <SearchKeyFilters state={state} onChange={onStateChange} />
+      <SearchFacetRail state={state} facets={response?.facets ?? null} unread={response?.unread ?? null} onToggle={onFacet} showProjects={officeWide} />
+      <SearchFilterForm state={state} onChange={onStateChange} currentUserId={currentUserId} defaultOpen={filtersOpen} />
+    </>
+  )
+
+  // An empty answer offers the ways out that can change it, not a sentence about them.
+  const emptyActions = [
+    filterCount > 0 ? (
+      <Button key="clear" type="button" variant="outline" size="sm" onClick={() => onStateChange(clearFilters(state))} data-testid="search-empty-clear">
+        {t('filters.clearAll')}
+      </Button>
+    ) : null,
+    oneKind ? (
+      <Button key="kinds" type="button" variant="outline" size="sm" onClick={() => onStateChange({ ...state, kinds: null })} data-testid="search-empty-all-kinds">
+        {t('empty.allKinds')}
+      </Button>
+    ) : null,
+    state.filters.includeArchived ? null : (
+      <Button
+        key="archived"
+        type="button"
+        variant="outline"
+        size="sm"
+        onClick={() => onStateChange({ ...state, filters: { ...state.filters, includeArchived: true } })}
+        data-testid="search-empty-archived"
+      >
+        {t('empty.includeArchived')}
+      </Button>
+    ),
+    officeWide ? null : (
+      <Button key="office" asChild variant="outline" size="sm">
+        <Link href={officeSearchHref(state)} data-testid="search-empty-office">
+          {t('empty.wholeOffice')}
+        </Link>
+      </Button>
+    ),
+  ].filter(Boolean)
+  const emptyDescription =
+    building > 0
+      ? t('empty.reading', { count: building })
+      : filterCount > 0
+        ? t('empty.withFilters')
+        : oneKind
+          ? t('empty.oneKind', { kind: t(`kinds.${oneKind}`) })
+          : t('empty.description')
 
   return (
     <SearchFrame
-      railOpen={railOpen}
+      rail={sheetLayout ? null : rail}
       toolbar={
         <>
           <SearchToolbar
@@ -238,60 +345,99 @@ export function SearchWorkspaceView({
                     <ToolbarLabel>{t('views.register')}</ToolbarLabel>
                   </ToggleGroupItem>
                 </ToggleGroup>
-                {savedSearches}
-                {onExport ? <SearchExportMenu onExport={onExport} busy={exporting} /> : null}
-                <RailToggleSlot>
-                  <Button type="button" variant="outline" size="sm" aria-expanded={railOpen} onClick={() => setRailOpen((open) => !open)} data-testid="search-rail-toggle">
+                {sheetLayout ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    aria-haspopup="dialog"
+                    aria-expanded={sheetOpen}
+                    onClick={() => setSheetOpen(true)}
+                    data-testid="search-rail-toggle"
+                  >
                     <SlidersHorizontal aria-hidden />
                     {filterCount > 0 ? t('filters.toggleCount', { count: filterCount }) : t('filters.toggle')}
                   </Button>
-                </RailToggleSlot>
+                ) : null}
+                {phone ? (
+                  <>
+                    {moreEntries.length > 0 ? (
+                      <ActionMenu
+                        mode="dropdown"
+                        entries={moreEntries}
+                        trigger={
+                          <Button type="button" variant="outline" size="sm" aria-busy={exporting || undefined} data-testid="search-more">
+                            <MoreHorizontal aria-hidden />
+                            {t('more.label')}
+                          </Button>
+                        }
+                      />
+                    ) : null}
+                    {savedSearches?.(narrowSaved)}
+                  </>
+                ) : (
+                  <>
+                    {savedSearches?.(null)}
+                    {onExport ? <SearchExportMenu onExport={onExport} busy={exporting} /> : null}
+                  </>
+                )}
               </>
             }
           />
           <SearchActiveFilters state={state} onChange={onStateChange} projectName={projectName} />
-        </>
-      }
-      rail={
-        <>
-          <SearchFacetRail state={state} facets={response?.facets ?? null} unread={response?.unread ?? null} onToggle={onFacet} showProjects={officeWide} />
-          <SearchFilterForm state={state} onChange={onStateChange} currentUserId={currentUserId} defaultOpen={filtersOpen} />
+          {sheetLayout ? (
+            <FilterSheet
+              open={sheetOpen}
+              onOpenChange={setSheetOpen}
+              title={t('filters.sheetTitle')}
+              description={t('filters.sheetDescription')}
+              closeLabel={t('filters.sheetClose')}
+              clearLabel={t('filters.clearAllShort')}
+              canClear={filterCount > 0}
+              onClear={() => onStateChange(clearFilters(state))}
+              showLabel={response === null || loading ? t('loading') : total > 0 ? t('filters.showResults', { count: total }) : t('filters.showNone')}
+            >
+              {rail}
+            </FilterSheet>
+          ) : null}
         </>
       }
     >
       {state.view === 'list' ? (
-        <ToggleGroup
-          type="single"
-          segmented
-          size="sm"
-          value={state.kinds?.length === 1 ? state.kinds[0] : ALL_KINDS}
-          onValueChange={(value) => {
-            if (value) onStateChange({ ...state, kinds: value === ALL_KINDS ? null : [value as SearchKind] })
-          }}
-          aria-label={t('kindFilter.label')}
-          data-testid="search-kind"
-        >
-          <ToggleGroupItem value={ALL_KINDS}>{t('kindFilter.all')}</ToggleGroupItem>
-          {SEARCH_KINDS.filter((kind) => officeWide || kind !== 'project').map((kind) => {
-            const section = response?.sections[kind]
-            return (
-              <ToggleGroupItem key={kind} value={kind} data-testid={`search-kind-${kind}`}>
-                {t(`kinds.${kind}`)}
-                {section ? <KindCount>{section.totalIsLowerBound ? `${section.total}+` : section.total}</KindCount> : null}
-              </ToggleGroupItem>
-            )
-          })}
-        </ToggleGroup>
+        <ChoiceStrip label={t('kindFilter.label')}>
+          <ToggleGroup
+            type="single"
+            segmented
+            size="sm"
+            value={state.kinds?.length === 1 ? state.kinds[0] : ALL_KINDS}
+            onValueChange={(value) => {
+              if (value) onStateChange({ ...state, kinds: value === ALL_KINDS ? null : [value as SearchKind] })
+            }}
+            aria-label={t('kindFilter.label')}
+            data-testid="search-kind"
+          >
+            <ToggleGroupItem value={ALL_KINDS}>{t('kindFilter.all')}</ToggleGroupItem>
+            {SEARCH_KINDS.filter((kind) => officeWide || kind !== 'project').map((kind) => {
+              const section = response?.sections[kind]
+              return (
+                <ToggleGroupItem key={kind} value={kind} data-testid={`search-kind-${kind}`}>
+                  {t(`kinds.${kind}`)}
+                  {section ? <KindCount>{section.totalIsLowerBound ? `${section.total}+` : section.total}</KindCount> : null}
+                </ToggleGroupItem>
+              )
+            })}
+          </ToggleGroup>
+        </ChoiceStrip>
       ) : (
         <SearchRegisterBar state={state} onStateChange={onStateChange} hideProject={!officeWide} />
       )}
       <ResultsStatus busy={loading && !failed}>
-        {status}
-        {status && anyHits ? ` · ${t('keys')}` : null}
+        {statusLine}
+        {status && anyHits ? <KeysHint>{` · ${t('keys')}`}</KeysHint> : null}
       </ResultsStatus>
-      {response && response.building.length > 0 ? (
+      {readingNote ? (
         <SearchNote icon={Hourglass} testId="search-note-building">
-          {t('notes.building', { count: response.building.length })}
+          {t('notes.building', { count: building })}
         </SearchNote>
       ) : null}
       {response?.contentPartial ? (
@@ -305,16 +451,11 @@ export function SearchWorkspaceView({
         loading ? <ResultsSkeleton /> : null
       ) : !anyHits ? (
         <EmptyState
-          icon={SearchX}
-          title={t('empty.title')}
-          description={filterCount > 0 ? t('empty.withFilters') : t('empty.description')}
-          action={
-            filterCount > 0 ? (
-              <Button type="button" variant="outline" size="sm" onClick={() => onStateChange(clearFilters(state))} data-testid="search-empty-clear">
-                {t('filters.clearAll')}
-              </Button>
-            ) : undefined
-          }
+          icon={building > 0 ? Hourglass : SearchX}
+          title={building > 0 ? t('empty.readingTitle') : t('empty.title')}
+          description={emptyDescription}
+          action={emptyActions.length > 0 ? <EmptyActions>{emptyActions}</EmptyActions> : undefined}
+          data-testid="search-empty"
         />
       ) : (
         <ResultsBody stale={loading}>

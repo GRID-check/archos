@@ -435,6 +435,14 @@ class GroupedDocumentSearchRequest(BaseModel):
     snippet_max_chars: int = Field(300, ge=100, le=1500, description="Max characters of each document's snippet")
     filters: GroupedSearchFilters | None = Field(None, description="Narrow the search before ranking")
     boost: SearchBoost | None = Field(None, description="The current project's facts, to lift similar projects")
+    purpose: Literal["workspace_search"] | None = Field(
+        None,
+        description=(
+            "Who asks, when this route should trace the search itself: `workspace_search` (the BFF's search, "
+            "ADR-0136) is a `retrieve.workspace_search` observation. Absent for the cross-project lookup, which "
+            "Piloti's `project_lookup` tool already traces."
+        ),
+    )
 
 
 class ProjectFactsResult(BaseModel):

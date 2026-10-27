@@ -10,7 +10,11 @@ features:
     Filter documents by type, drawing number, revision, scale, parties, place,
     stated facts such as building class, cited norms, dates and status, and
     sort them like a drawing register with one row per document. Save the
-    search, or export the result as a CSV or Excel drawing list.
+    search, or export the result as a CSV or Excel drawing list that names
+    each document's folder path.
+  - >
+    Closing a document or annotation opened from the search returns to the
+    search as you left it, with its words, filters, view and sort.
   - >
     See what a new version of a document changed: filter for documents whose
     stated facts differ from the version they replaced, such as a new building

@@ -11,6 +11,7 @@ import {
   type SavedSearchDraft,
   type SavedSearchView,
 } from '@/lib/search/saved-search-client'
+import { captureSavedSearchCreated } from '../lib/search-telemetry'
 
 /** How long „Rückgängig“ stays on offer after a delete: the toast's lifetime. */
 export const SAVED_SEARCH_UNDO_MS = 6000
@@ -79,6 +80,7 @@ export function useSavedSearches({ onRemoveFailed, undoMs = SAVED_SEARCH_UNDO_MS
   const save = useCallback(async (draft: SavedSearchDraft) => {
     try {
       const created = await createSavedSearch(draft)
+      captureSavedSearchCreated(created)
       setItems((list) => [created, ...(list ?? [])])
       setFailed(false)
       return created
