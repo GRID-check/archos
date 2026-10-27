@@ -16092,7 +16092,13 @@
                 "annotation.mentioned",
                 "root_sort.ready",
                 "root_sort.failed",
-                "inbound_mail.waiting"
+                "inbound_mail.waiting",
+                "inbound_mail.expiring",
+                "inbound_mail.decided",
+                "inbound_mail.filing_failed",
+                "inbound_mail.cap_reached",
+                "inbound_mail.appended",
+                "mail_thread.follow_expiring"
               ],
               "description": "Only this item type."
             },
