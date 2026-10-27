@@ -20,7 +20,6 @@ import {
 } from '@/lib/knowledge/consolidation'
 import { formatBoundedDigest } from '@/lib/knowledge/digest-format'
 import {
-  cosineSimilaritySql,
   embedNote,
   embedNotes,
   enrichForEmbedding,
@@ -28,6 +27,7 @@ import {
   type EmbeddedNote,
 } from '@/lib/knowledge/embeddings'
 import { daysSince, fuseHybridRelevance, rankByRecallScore } from '@/lib/knowledge/recall-scoring'
+import { RECALL_CANDIDATE_LIMIT, selectRecallCandidates, type DigestTiming } from './memory-recall'
 import { maskChatText } from '@/lib/upload-screening/service'
 
 /** Re-exported so a route reads the bound without importing the schema (ADR-0017). */
@@ -851,12 +851,6 @@ export function formatDigestLines(items: DigestItem[], omitted = 0): string | nu
 }
 
 /**
- * Candidates considered before ranking. Bounded like every list here; past
- * this the tail is by definition the least recently touched.
- */
-const RECALL_CANDIDATE_LIMIT = 200
-
-/**
  * How many of the digest's slots pinned items may take.
  *
  * Pinning used to be unbounded, which made it a silent foot-gun: pin
@@ -900,6 +894,8 @@ export interface MemoryDigestOptions {
    * restricted note is shown.
    */
   admitRestricted?: (folderIds: string[]) => Promise<ReadonlySet<string>>
+  /** Filled with what decided the build's cost, for a caller that reports it (`Server-Timing`). */
+  timing?: DigestTiming
 }
 
 /** The source folders of the restricted notes among `items`, sorted and distinct. */
@@ -962,7 +958,6 @@ export async function buildProjectMemoryDigest(
   options: MemoryDigestOptions = {}
 ): Promise<string | null> {
   if (!projectId && !organizationId) return null
-  const db = getDb()
 
   const scopeConditions = []
   if (projectId) {
@@ -999,45 +994,29 @@ export async function buildProjectMemoryDigest(
   // deliberately ~1s — this sits on the turn's critical path, ahead of the
   // agent's own answer, and the Python side stops waiting for the whole
   // digest at 2.5s; a slower embed is worth less than nothing here.
+  //
+  // The embed (a provider round trip, 280-1000 ms) starts BESIDE the recency
+  // read instead of before it, and that read decides whether the vector can
+  // change anything. With no row in scope, or none carrying a vector while the
+  // window is not full, the ranked read returns exactly these rows in exactly
+  // this order (every relevance NULL, recency breaking the tie), so the turn
+  // does not wait for a vector nothing can be compared with. On dev in
+  // 2026-10 that was six projects of nine, on every turn they took.
   const queryText = options.query?.trim()
-  const embedded = queryText ? await embedNote(queryText, { timeoutMs: 1000 }) : null
-
-  // Cosine is computed in SQL so the vectors never cross the wire — a
-  // 3072-dimension vector per row would dominate this query's cost.
-  const relevanceColumn = embedded
-    ? cosineSimilaritySql(projectMemory.embedding, embedded.vector)
-    : sql<number | null>`null::double precision`
-
-  const rows = await db
-    .select({
-      id: projectMemory.id,
-      scope: projectMemory.scope,
-      kind: projectMemory.kind,
-      content: projectMemory.content,
-      confidence: projectMemory.confidence,
-      verification: projectMemory.verification,
-      restrictedFolderIds: projectMemory.restrictedFolderIds,
-      pinned: projectMemory.pinned,
-      salience: projectMemory.salience,
-      lastReferencedAt: projectMemory.lastReferencedAt,
-      recallCount: projectMemory.recallCount,
-      relevance: relevanceColumn,
-      // Only compare vectors from the model that produced them: a same-size
-      // vector from another embedder is noise wearing the right shape.
-      embeddingModel: projectMemory.embeddingModel,
-    })
-    .from(projectMemory)
-    .where(scope)
-    // The window is the whole quality mechanism's ceiling: everything below
-    // (dedup, decay, hybrid fusion) runs over these rows only. Recency was the
-    // only order it had, so past two hundred notes a relevant old one could
-    // not be recalled at all. With a query, the database ranks by similarity
-    // first and recency breaks ties; without one, recency is still the order.
-    .orderBy(
-      ...(embedded ? [sql`${relevanceColumn} desc nulls last`] : []),
-      desc(projectMemory.updatedAt)
-    )
-    .limit(RECALL_CANDIDATE_LIMIT)
+  const abandon = new AbortController()
+  const embedding = queryText
+    ? embedNote(queryText, { timeoutMs: 1000, signal: abandon.signal })
+    : Promise.resolve(null)
+  const recent = await selectRecallCandidates(scope, null)
+  const denseCanMatter =
+    recent.length > 0 && (recent.length >= RECALL_CANDIDATE_LIMIT || recent.some((row) => Boolean(row.hasEmbedding)))
+  if (!denseCanMatter) abandon.abort()
+  const embedded = denseCanMatter ? await embedding : null
+  // Without a vector the ranked read IS the recency read: no second query.
+  const rows = embedded ? await selectRecallCandidates(scope, embedded) : recent
+  if (options.timing) {
+    options.timing.dense = !queryText ? 'no-query' : !denseCanMatter ? 'skipped' : embedded ? 'ranked' : 'unavailable'
+  }
 
   if (rows.length === 0) return null
 
@@ -1094,7 +1073,11 @@ export async function buildProjectMemoryDigest(
   // it existed) stay on the lexical path until something embeds them. This is
   // that something — a bounded, fire-and-forget batch per digest build, so an
   // ACTIVE project heals itself and a dormant one costs nothing.
-  if (embedded) {
+  if (queryText && !denseCanMatter) {
+    // Every candidate here lacks a vector: the rows the skipped embed would
+    // have had backfilled, so skipping the wait never stops the healing.
+    void backfillMemoryEmbeddings(candidates.slice(0, MEMORY_BACKFILL_BATCH))
+  } else if (embedded) {
     const unembedded = candidates
       .filter((candidate) => candidate.relevance === null)
       .filter((candidate) => !embeddedFingerprintMatches(rows, candidate.id, embedded.fingerprint))

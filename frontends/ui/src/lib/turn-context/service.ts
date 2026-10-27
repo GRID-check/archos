@@ -11,6 +11,7 @@ import { requireResourceAccess } from '@/lib/sharing/access'
 import { loadProjectPromptView } from '@/lib/project-profile/prompt-view'
 import { resolveOrgInstructions } from '@/lib/org-instructions/service'
 import { buildProjectMemoryDigest } from '@/lib/projects/memory-service'
+import type { DigestTiming } from '@/lib/projects/memory-recall'
 import { buildProposalDecisionsBlock, composeMemoryContext } from '@/lib/projects/proposal-decisions'
 import { buildReviewDecisionsBlock } from '@/lib/documents/review-decisions'
 import { buildFolderDescriptionsBlock } from '@/lib/filing/folder-descriptions-block'
@@ -24,6 +25,7 @@ import { findProjectInOrg } from '@/lib/projects/repository'
 import { countActiveRunsInProject } from '@/lib/tasks/repository'
 import { officeConventionsForTurn } from '@/lib/office-conventions/service'
 import type { ProjectAccess } from '@/lib/authz/projects'
+import { TurnContextTiming } from './timing'
 import type { TurnContextRequest, TurnContextResponse } from './wire'
 import {
   MAX_WORKSPACE_PROPOSALS,
@@ -98,12 +100,8 @@ async function loadWorkspaceBlock(
   return renderWorkspaceBlock(facts)
 }
 
-/** Reload prompt data only after today's requester access has been checked. */
-export async function loadTurnContext(
-  session: AuthorizedSession,
-  context: VerifiedGridRequestContext,
-  input: TurnContextRequest,
-): Promise<TurnContextResponse> {
+/** Today's requester may read this project and this conversation; the project access feeds the WORKSPACE block. */
+async function checkAccess(session: AuthorizedSession, context: VerifiedGridRequestContext): Promise<ProjectAccess | null> {
   const { organizationId, projectId, conversationId } = context
   const projectAccess = projectId ? await requireProjectAccess(session, projectId, CHAT_PERMISSIONS) : null
   if (conversationId) {
@@ -118,28 +116,50 @@ export async function loadTurnContext(
       await requireResourceAccess(session, 'conversation', conversationId, 'viewer')
     }
   }
+  return projectAccess
+}
+
+/**
+ * Reload prompt data only after today's requester access has been checked.
+ *
+ * Every read after the checks runs at once, so the build costs its slowest
+ * read; `timing` records each one for the route's `Server-Timing` header.
+ */
+export async function loadTurnContext(
+  session: AuthorizedSession,
+  context: VerifiedGridRequestContext,
+  input: TurnContextRequest,
+  timing: TurnContextTiming = new TurnContextTiming(),
+): Promise<TurnContextResponse> {
+  const { organizationId, projectId, conversationId } = context
+  const projectAccess = await timing.time('access', () => checkAccess(session, context))
+  const query = input.query || undefined
+  const digestTiming: DigestTiming = {}
+  const timed = <T>(name: string, load: () => Promise<T>) => timing.time(name, load)
 
   const [projectContext, orgInstructions, digest, decisions, reviewDecisions, drewOnOthers, referenceProjects, folders, workspace] = await Promise.all([
-    projectId ? loadProjectPromptView(projectId, organizationId) : Promise.resolve(null),
-    resolveOrgInstructions(organizationId),
-    buildProjectMemoryDigest(projectId ?? undefined, organizationId, { query: input.query || undefined }),
+    projectId ? timed('profile', () => loadProjectPromptView(projectId, organizationId)) : Promise.resolve(null),
+    timed('instructions', () => resolveOrgInstructions(organizationId)),
+    timed('memory', () => buildProjectMemoryDigest(projectId ?? undefined, organizationId, { query, timing: digestTiming })),
     projectId
-      ? advisory('load proposal decisions', () => buildProposalDecisionsBlock(projectId, organizationId))
+      ? timed('decisions', () => advisory('load proposal decisions', () => buildProposalDecisionsBlock(projectId, organizationId)))
       : Promise.resolve(null),
     conversationId
-      ? advisory('load review decisions', () => buildReviewDecisionsBlock(conversationId, organizationId))
+      ? timed('reviews', () => advisory('load review decisions', () => buildReviewDecisionsBlock(conversationId, organizationId)))
       : Promise.resolve(null),
     // Not advisory: a turn that wrongly believed its doors open would only be
     // refused at the BFF, but the read is one indexed probe and a failure here
     // is a failure to load the turn's context like any other.
-    conversationId ? drewOnOtherProjects(conversationId, organizationId) : Promise.resolve(false),
+    conversationId ? timed('cross-project', () => drewOnOtherProjects(conversationId, organizationId)) : Promise.resolve(false),
     // The office's closed projects, most like this one first: what the agent may look into on its own.
-    advisory('load reference projects', () => loadReferenceBrief(organizationId, projectId ?? null)),
+    timed('references', () => advisory('load reference projects', () => loadReferenceBrief(organizationId, projectId ?? null))),
     // What a person wrote each folder holds, beside the tree the inventory shows.
-    advisory('load folder descriptions', () => buildFolderDescriptionsBlock(organizationId, projectId ?? null)),
+    timed('folders', () => advisory('load folder descriptions', () => buildFolderDescriptionsBlock(organizationId, projectId ?? null))),
     // Who asks, where, and what is open now: the state office work starts from (ADR-0123).
-    advisory('load the workspace block', () => loadWorkspaceBlock(session, context, projectAccess, input.query || undefined)),
+    timed('workspace', () => advisory('load the workspace block', () => loadWorkspaceBlock(session, context, projectAccess, query))),
   ])
+  // Whether the memory read waited for the query embed is what decides its cost.
+  if (digestTiming.dense) timing.describe('memory', digestTiming.dense)
   return {
     projectContext,
     projectMemory: composeMemoryContext(digest, decisions, reviewDecisions, folders),
