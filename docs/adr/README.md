@@ -202,6 +202,7 @@ Consequences, where a reader looks for them.
 | [0138](0138-project-mail-arrives-through-cloudflare-email-routing-and-a-signed-worker.md) | Project mail arrives through Cloudflare Email Routing and a signed Worker; the BFF authenticates the sender | Proposed |
 | [0139](0139-attachments-from-outside-are-scanned-in-cluster-by-clamav.md) | Attachments from outside are scanned in the cluster by ClamAV before anyone can file or download them | Proposed |
 | [0140](0140-a-turn-that-needs-the-person-pauses-and-a-new-run-resumes-it.md) | A turn that needs the person pauses, and a new run resumes it: LangGraph `interrupt()` with the checkpointer, as AG-UI 1.0's interrupt outcome | Proposed |
+| [0144](0144-piloti-moves-the-askers-viewer-through-allow-listed-frontend-tool-calls.md) | Piloti moves the asker's viewer through allow-listed frontend tool calls | Proposed |
 
 > Note: 0027, 0039, 0044 and 0047 were each independently used twice, every
 > time because two people read the next number off this index instead of off

@@ -50,6 +50,7 @@ export const chat = {
     renditionNote: 'PDF preview of the original',
     renditionPending: 'Creating PDF preview…',
     downloadOriginal: 'Download original',
+    openBesideChat: 'Open beside the chat',
     // Coarse source kind (ADR-0026) shown in the info popover. Preferred
     // over `origins` because the origin token is kb/ris/web only, so a
     // knowledge-base copy of a legal text reads as project material.
@@ -1674,6 +1675,49 @@ export const chat = {
   noSources: {
     warning:
       'No data sources selected and no files are available. Responses are more likely to be inaccurate or outdated unless external data sources are added.',
+  },
+  viewerActions: {
+    region: 'What Piloti showed you in the viewer',
+    place: '{name}, p. {page}',
+    what: {
+      open_document: '{place}',
+      highlight_passage: 'Passage in {place}',
+      highlight_region: 'Area in {place}',
+      compare_revisions: 'Compare {name} with {against}',
+      focus_ifc_element: 'Element in {name}',
+    },
+    status: {
+      pending: 'Opening …',
+      undone: 'Undone',
+      kept: 'Not undone: you have changed the viewer since',
+      failed: 'Could not be opened',
+    },
+    shown: {
+      beside: 'Piloti opened it beside the chat',
+      over: 'Piloti opened it over the chat',
+      compare: 'Comparison opened',
+      model: 'Model view opened',
+    },
+    refused: {
+      // Neutral: a 404 does not say whether the document exists.
+      unavailable: 'Not opened: document not available',
+      notRevisions: 'Not opened: not two revisions of one document',
+    },
+    offered: {
+      off: 'Piloti suggests this place',
+      typing: 'Not opened while you were typing',
+      leaves: 'Opens over the chat',
+      model: 'Opens the model view',
+      noRoom: 'No room beside the chat: opens over it',
+      unavailable: 'Piloti suggests this place',
+      another: 'Another place Piloti suggests',
+    },
+    undo: 'Undo',
+    undoAria: 'Undo “{what}”',
+    show: 'Show',
+    showAria: 'Show {what}',
+    auto: 'Open automatically',
+    autoHint: 'Piloti may open the places it cites beside the chat. Off: it only suggests them here.',
   },
   memory: {
     noted: 'Piloti noted',

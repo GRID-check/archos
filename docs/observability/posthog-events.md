@@ -133,6 +133,8 @@ No-op until `initPosthogClient` ran, which needs the host and project token in
 | `inbound_mail_filed_outcome_opened` | `kind` (`attachment`, `message`) | `features/inbound-mail/components/filed-to.tsx`, „Öffnen“ beside a filed part's „Abgelegt in … · Fassung N“: whether people check where things went |
 | `inbound_mail_address_copied` | `surface` (`dialog`, `never_used`, `overview`, `settings`) | `features/inbound-mail/components/inbound-mail-address.tsx`, after the address reached the clipboard. With the next row, the first step of the funnel project created → address handed out → first `inbound_mail_received` |
 | `inbound_mail_address_contact_saved` | `surface`, as above | `features/inbound-mail/components/inbound-mail-address.tsx`, „Als Kontakt sichern“ |
+| `viewer_action_outcome` | `action` (the allow-list name), `outcome` (`shown`, `offered`, `refused`, `failed`, `undone`, `kept`), `reason` (why it was offered or refused, else null) | `features/chat/lib/viewer-actions.ts`, each change of a viewer action's status on the asker's page (ADR-0144). Never the document or the passage |
+| `viewer_actions_auto_changed` | `on` | `features/chat/lib/viewer-actions.ts`, the „Automatisch öffnen“ switch under an answer or on the profile page |
 
 `organization_created` is still a member of the `PostHogEvent` union, but nothing
 in the browser sends it any more: the route does. Drop it from the union when the
