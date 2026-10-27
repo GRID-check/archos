@@ -149,6 +149,22 @@ describe('FormulaCard', () => {
     expect(resetButton()).toBeDisabled()
   })
 
+  it('clears a refused entry on „Zurücksetzen" even where the source gives no value', async () => {
+    // The source has no Auftritt, and „1x" reports null too: a reset that only
+    // follows the value would leave the text and its error on screen.
+    const user = userEvent.setup()
+    mount(stair(null))
+    const going = () => screen.getByRole('spinbutton', { name: 'Stufenauftritt a' })
+    await enter(user, going(), '1x')
+    expect(screen.getByText('Keine Zahl.')).toBeInTheDocument()
+    expect(resetButton()).toBeEnabled()
+    await user.click(resetButton())
+    expect(going()).toHaveValue('')
+    expect(going()).not.toHaveAttribute('aria-invalid')
+    expect(screen.queryByText('Keine Zahl.')).toBeNull()
+    expect(resetButton()).toBeDisabled()
+  })
+
   it('steps with the arrow keys by the card’s own step, at once', async () => {
     const user = userEvent.setup()
     mount(stair())

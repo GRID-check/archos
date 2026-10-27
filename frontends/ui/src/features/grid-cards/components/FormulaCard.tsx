@@ -391,6 +391,11 @@ export const FormulaCard: FC<FormulaCardProps> = ({ title, formula, note }) => {
   // typing, so component state, never the data model.
   const [issues, setIssues] = useState<Record<string, QuantityIssue>>({})
   const [interacted, setInteracted] = useState(false)
+  // Bumped by „Zurücksetzen" and used as the inputs' key, so every field is
+  // drawn afresh from the source. A field whose source value is null and whose
+  // text was refused („1x") reported null either way, so a value-driven reset
+  // would leave the refused text and its error on screen.
+  const [resetCount, setResetCount] = useState(0)
 
   const slots = useMemo(() => inputSlots(formula), [formula])
   const source = useMemo(() => sourceValues(formula), [formula])
@@ -420,6 +425,7 @@ export const FormulaCard: FC<FormulaCardProps> = ({ title, formula, note }) => {
   const onReset = () => {
     reset()
     setIssues({})
+    setResetCount((count) => count + 1)
     setInteracted(true)
   }
 
@@ -465,7 +471,7 @@ export const FormulaCard: FC<FormulaCardProps> = ({ title, formula, note }) => {
           )}
         </div>
         {caseLine && <span className="card-meta text-muted-foreground">{caseLine}</span>}
-        <InputRows slots={slots} values={values} changed={changed} onChange={onChange} t={t} />
+        <InputRows key={resetCount} slots={slots} values={values} changed={changed} onChange={onChange} t={t} />
       </section>
 
       <section className="flex flex-col gap-2" aria-label={t('cards.formula.derivationLabel')}>
