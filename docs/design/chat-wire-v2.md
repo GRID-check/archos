@@ -227,7 +227,10 @@ are the models. What follows is the decision, per event.
 | `RUN_STARTED` | `message_id`: the answer's deterministic id | AG-UI's name. Sent by the handler before any setup I/O, so it is the delivery ack. It deletes the client's "no response received" timeout that ran before the first backend frame |
 | `TEXT_MESSAGE_START` / `_CONTENT` / `_END` | `message_id`; `delta` (min 1 char) | AG-UI's names and semantics. START is the first prose of a streamed call, CONTENT appends, END marks the envelope's `answer` string as closed. The producer coalesces deltas to at most one per `RELAY_WINDOW_S` (50 ms) |
 | `STATE_SNAPSHOT` | `snapshot: {text, sources[], answer_meta?}` | ADR-0066's settle. AG-UI's STATE_SNAPSHOT means "replace the state you hold", and that is exactly this: text, citations and masthead are replaced, and an absent `answer_meta` removes the masthead. Cards are untouched. It is chosen over MESSAGES_SNAPSHOT, which has no place for sources. It is not a STATE_DELTA, because the settled text is rewritten, not patched |
-| `STEP_STARTED` / `STEP_FINISHED` | `step`: a typed `Step` (below) | One event family for every Herleitung row. A step with a duration (a tool call) sends STARTED, then FINISHED with the same `id`. An instant step (a status line, a round, a skill) sends only FINISHED. The same `id` again replaces the row, newest wins, which is the old name-dedupe made explicit. AG-UI's `TOOL_CALL_*` is deliberately **not** used: it implies streamed arguments and results, and a step must never carry either |
+| `STEP_STARTED` / `STEP_FINISHED` | `step`: a typed `Step` (below); `subagent_run_id?`: the subagent invocation that took it (AG-UI's `subagentRunId`), absent for the turn's own agent | One event family for every Herleitung row. A step with a duration (a tool call) sends STARTED, then FINISHED with the same `id`. An instant step (a status line, a round, a skill) sends only FINISHED. The same `id` again replaces the row, newest wins, which is the old name-dedupe made explicit. AG-UI's `TOOL_CALL_*` is deliberately **not** used: it implies streamed arguments and results, and a step must never carry either |
+| `SUBAGENT_STARTED` | `subagent_run_id`, `name`, `description?` (≤ 160 chars, the model's words), `parent_subagent_run_id?`, `parent_tool_call_id?` | AG-UI 1.0's names and fields, snake case. A subagent invocation began inside this turn: today an in-process deep research (`deep_researcher`), the orchestrator's `task` calls (`planner-agent`, `writer-agent`, `source-router-agent`, `general-purpose`) and each `run_research_batch` worker (`researcher-agent`, its query as `description`). Every step it takes carries its `subagent_run_id`; a nested one names its parent. A run the turn **commissions** is not a subagent: it is a separate run, `result.run` (ADR-0062) |
+| `SUBAGENT_FINISHED` | `subagent_run_id` | The invocation completed. AG-UI's `outcome` is omitted, which AG-UI reads as success; `suspended` arrives with pausing a run ([ADR-0140](../adr/0140-a-turn-that-needs-the-person-pauses-and-a-new-run-resumes-it.md)) |
+| `SUBAGENT_ERROR` | `subagent_run_id`, `message` (a fixed sentence, never the exception), `code?` (the exception class, or `tool_error`) | The invocation failed and the turn goes on, which is why it is not `RUN_ERROR`. An invocation ends exactly once: no `SUBAGENT_FINISHED` follows its error |
 | `RUN_FINISHED` | `outcome: answered \| refused \| handed_off \| cancelled`, `result: TurnResult` | AG-UI's name. The result is authoritative and is what the server persists: text, keyed cards, sources, read_sources, masthead, confidence and its reasons, routing, escalation reason, citations removed, truncation, queue refusal and retry hint, skills, retrieval ledger, the thinking level the answering call ran at (`reasoning_effort`), and the `run` hand-off `{run_id, run_message_id}` (both or neither, structurally) |
 | `RUN_ERROR` | `code: workflow_error \| auth_error \| interaction_expired`, `message`, `details?` | AG-UI's name, used only for failures that **end** the turn. Nothing is persisted, and the client asks the server for a finished answer before it shows the banner |
 | `CUSTOM` `masthead` | `{answer_meta}` | ADR-0066's masthead before the first word. A custom event, not a state delta, because it is set once and the text does not change |
@@ -277,6 +280,10 @@ Each step is compact, typed data. None of them carries a tool's input or output.
 | `look` | `round?`, `document_name`, `document_id?`, `revision_id?` (the Fassung; absent: the current one), `shelf: stored \| base`, `page`, `region?` (`[x, y, w, h]`), `image_index?`, `where?` (the region in words), `question?`, `reading?`. One per look that rendered, id `look:<n>`; a refused look leaves none | `turn_status.emit_look_step`, called by `tools/look/cards.note_look` (ADR-0128) |
 
 `scope: chat | deep` sits on every step. In-process deep research sets `deep`.
+Which *invocation* took a step is not the step's but the event's
+(`subagent_run_id`, as AG-UI attributes every event), and the deepagents `task`
+call that spawns a subagent is its parent's row, not the child's
+(`turn_status._tool_subagent`).
 
 ### Client → server
 
@@ -438,7 +445,7 @@ where it emits in v2:
 | Heartbeat | `websocket_reconnect._beat_while_running` (`GridTurnHeartbeat`) | the same task in the handler, writing a `HeartbeatBody` stamped by the turn's sequencer. The `grid_`-prefixed NAT workaround model is deleted |
 | Stage frames | `stages/delivery.deliver_stage_frame` → `websocket_reconnect.send_stage_frame` (`GridStageMessage`) | `StageFrameSink` becomes `(conversation_id, turn_id, StageValue) -> bool`. The handler stamps it with the turn's sequencer, which the registry keeps after the terminal until the last stage lands or `STAGE_WIRE_TTL_S` (10 min) passes. `GridStageMessage` is deleted. The `rejected` half of `shared/stages/frames.json` becomes schema refusal; the `delivered` half moves into the wire fixtures |
 | HITL: `clarify.py:703` and `ask_user.py:244` → `user_interaction_manager.prompt_user_input(build_human_prompt(...))` | `common/human_prompt.py` (NAT `HumanPromptText`/`Radio`) | **Unchanged for producers** (ADR-0068 §3). The handler's `user_input_callback` maps the NAT prompt to `interaction_request` and the answer back to `HumanResponseText`/`HumanResponseRadio`. The HITL models come from `nat.plugin_api` (1.9), and this mapping is their only use in `aiq_api` |
-| Deep-research progress, when it runs in process on the socket | its `turn_status` calls and its tool calls, inside the deep graph under the conversation graph's node | The same writer: steps carry `scope: "deep"`, set from a `ContextVar` that the deep node binds. A deep-research **job** runs under `ainvoke` in a worker, so its writer calls are no-ops. Its events stay on `job_events` and SSE, unchanged |
+| Deep-research progress, when it runs in process on the socket | its `turn_status` calls and its tool calls, inside the deep graph under the conversation graph's node | The same writer: steps carry `scope: "deep"`, set from a `ContextVar` that the deep node binds. Its subagents are `SUBAGENT_*` events from one producer, `turn_status.subagent_run`, bound around the run (`DeepResearcherAgent.run`), around each orchestrator `task` call (`SubagentEventsMiddleware`, the orchestrator's innermost middleware) and around each researcher worker (`tools/research._run_research_query`); a second `ContextVar` attributes every step inside. A deep-research **job** runs under `ainvoke` in a worker, so its writer calls are no-ops. Its events stay on `job_events` and SSE, unchanged |
 | `retrieval_trace.emit_retrieval_span` (`retrieve.<tool>` NAT steps) | `observability/retrieval_trace.py` | **Unchanged.** It is telemetry, it never reached the reader, and with the adaptor `off` it cannot |
 
 ## c. The route and the handler
@@ -633,7 +640,14 @@ its own text, sources, masthead and cards, which are what was on screen
 (§c, Cancel). A replay or a spectator folds the terminal as sent. **Lanes are derived once, at fold time**:
 a `sources` step's `TraceLane[]` becomes the stored `TraceLaneCard[]` (with its
 `SourceSignal`) when the step is folded, never during a render. The fold ignores
-`seq: 0`: the driver routes `rejected`.
+`seq: 0`: the driver routes `rejected`. **A subagent is one stored row**:
+`SUBAGENT_*` fold into a technical `status` step `subagent:<run id>` (`detail`:
+`name`, `status: running | ok | error`, `description`, `code`), whose
+`subagentRunId` is its parent; a step a subagent took stores its
+`subagentRunId`. So the persisted Herleitung needs no second column, and
+`SubagentGroups` (under the graph) draws the nested groups from the steps
+alone, live, after a reload and for an observer. An error is never undone by
+a later `FINISHED`.
 
 ### e.2 A thin socket client
 
@@ -704,6 +718,7 @@ interface StoredThinkingStep {
   turnEvent?: { key: string; values?: Record<string, string>; reason?: string; tools?: string[] }
   traceLanes?: TraceLaneCard[]; round?: number; tool?: string; slot?: string
   detail?: Record<string, string | number | boolean | string[]>
+  subagentRunId?: string  // the invocation that took it; on a `subagent:` row, its parent
 }
 ```
 
