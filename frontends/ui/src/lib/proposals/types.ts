@@ -169,8 +169,8 @@ export const MAX_OPERATION_SUMMARY_LENGTH = 300
  */
 export const operationInputSchema = z
   .object({
-    params: z.record(z.string()).optional(),
-    query: z.record(z.unknown()).optional(),
+    params: z.record(z.string(), z.string()).optional(),
+    query: z.record(z.string(), z.unknown()).optional(),
     body: z.unknown().optional(),
     /** The version the agent read, sent as If-Match when the proposal is applied: a newer one refuses it. */
     ifMatch: z.string().min(1).max(256).optional(),
@@ -249,7 +249,7 @@ export type ProposedChangeResult = z.infer<typeof proposedChangeResultSchema>
 
 /** The fields every proposed change has, whatever its kind. */
 const proposedChangeBaseSchema = z.object({
-  id: z.string().uuid(),
+  id: z.guid(),
   /**
    * The project. Null only for a Büroablage file operation (0146) and an
    * organization-scoped operation (0176); a memory note and a profile change
@@ -310,7 +310,7 @@ export type ProposalResponse = z.infer<typeof proposalResponseSchema>
  */
 const internalCreateBase = {
   op: z.literal('create'),
-  answerMessageId: z.string().uuid().optional(),
+  answerMessageId: z.guid().optional(),
   /**
    * Which card of that answer this is. With `answerMessageId` it makes the
    * create idempotent: the same card twice returns the first proposal (0143).
@@ -326,7 +326,7 @@ export const internalProposalRequestSchema = z.discriminatedUnion('kind', [
 export type InternalProposalRequest = z.input<typeof internalProposalRequestSchema>
 
 export const internalProposalResponseSchema = z.object({
-  id: z.string().uuid(),
+  id: z.guid(),
   status: z.enum(PROPOSED_CHANGE_STATUSES),
 })
 export type InternalProposalResponse = z.infer<typeof internalProposalResponseSchema>
@@ -366,7 +366,7 @@ export type ProposalListResponse = z.infer<typeof proposalListResponseSchema>
 
 /** The list's own parameters (the catalog reads this object; the route adds the shelf rule below). */
 export const proposalListQueryShape = z.object({
-  projectId: z.string().uuid().optional().describe('The project whose open proposals to list, from project-list.'),
+  projectId: z.guid().optional().describe('The project whose open proposals to list, from project-list.'),
   // `archiv` is the value an open tab or an agent pod not yet rolled still sends. Remove after one release.
   shelf: z
     .preprocess((value) => (value === 'archiv' ? 'office_shelf' : value), z.enum(PROPOSAL_LIST_SHELVES).optional())
@@ -379,7 +379,7 @@ export const proposalListQueryShape = z.object({
     .max(MAX_LISTED_PROPOSALS)
     .default(MAX_LISTED_PROPOSALS)
     .describe(`Page size (default and most ${MAX_LISTED_PROPOSALS}).`),
-  cursor: z.string().uuid().optional().describe('The previous `nextCursor`.'),
+  cursor: z.guid().optional().describe('The previous `nextCursor`.'),
 })
 
 export const proposalListQuerySchema = proposalListQueryShape.refine(

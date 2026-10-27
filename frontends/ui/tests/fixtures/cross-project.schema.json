@@ -12,6 +12,7 @@
           "maxLength": 500
         },
         "scope": {
+          "default": "similar",
           "type": "string",
           "enum": [
             "similar",
@@ -21,14 +22,17 @@
           ]
         },
         "projectIds": {
+          "default": [],
+          "maxItems": 20,
           "type": "array",
           "items": {
             "type": "string",
             "format": "uuid"
-          },
-          "maxItems": 20
+          }
         },
         "documentTypes": {
+          "default": [],
+          "maxItems": 12,
           "type": "array",
           "items": {
             "type": "string",
@@ -46,10 +50,11 @@
               "Foto",
               "Sonstiges"
             ]
-          },
-          "maxItems": 12
+          }
         },
         "disciplines": {
+          "default": [],
+          "maxItems": 6,
           "type": "array",
           "items": {
             "type": "string",
@@ -61,20 +66,27 @@
               "Schallschutz",
               "Energieeinsparung/Wärmeschutz"
             ]
-          },
-          "maxItems": 6
+          }
         },
         "from": {
-          "type": "string"
+          "type": "string",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
         },
         "to": {
-          "type": "string"
+          "type": "string",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
         },
         "offset": {
-          "type": "integer"
+          "default": 0,
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10000
         },
         "limit": {
-          "type": "integer"
+          "default": 10,
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 20
         },
         "answerMessageId": {
           "anyOf": [
@@ -88,20 +100,24 @@
           ]
         },
         "openFoldersOnly": {
+          "default": false,
           "type": "boolean"
         },
         "order": {
+          "default": [],
+          "maxItems": 20,
           "type": "array",
           "items": {
             "type": "string",
             "format": "uuid"
-          },
-          "maxItems": 20
+          }
         },
         "projectFacts": {
           "type": "object",
           "properties": {
             "federal_state": {
+              "minItems": 1,
+              "maxItems": 9,
               "type": "array",
               "items": {
                 "type": "string",
@@ -116,17 +132,21 @@
                   "vorarlberg",
                   "burgenland"
                 ]
-              },
-              "maxItems": 9
+              }
             },
             "building_class": {
+              "minItems": 1,
+              "maxItems": 5,
               "type": "array",
               "items": {
-                "type": "integer"
-              },
-              "maxItems": 5
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 5
+              }
             },
             "construction_method": {
+              "minItems": 1,
+              "maxItems": 4,
               "type": "array",
               "items": {
                 "type": "string",
@@ -136,10 +156,11 @@
                   "timber",
                   "steel"
                 ]
-              },
-              "maxItems": 4
+              }
             },
             "uses": {
+              "minItems": 1,
+              "maxItems": 12,
               "type": "array",
               "items": {
                 "type": "string",
@@ -157,10 +178,11 @@
                   "agriculture",
                   "technical"
                 ]
-              },
-              "maxItems": 12
+              }
             },
             "work_type": {
+              "minItems": 1,
+              "maxItems": 7,
               "type": "array",
               "items": {
                 "type": "string",
@@ -173,8 +195,7 @@
                   "demolition",
                   "external_works"
                 ]
-              },
-              "maxItems": 7
+              }
             }
           },
           "additionalProperties": false
@@ -182,8 +203,7 @@
       },
       "required": [
         "query"
-      ],
-      "additionalProperties": true
+      ]
     },
     "CrossProjectSearchResponse": {
       "type": "object",
@@ -211,13 +231,9 @@
                     ]
                   },
                   "federal_state": {
-                    "anyOf": [
-                      {
-                        "type": "string"
-                      },
-                      {
-                        "type": "null"
-                      }
+                    "type": [
+                      "string",
+                      "null"
                     ]
                   }
                 },
@@ -226,8 +242,7 @@
                   "name",
                   "status",
                   "federal_state"
-                ],
-                "additionalProperties": true
+                ]
               },
               "collection": {
                 "type": "string"
@@ -262,21 +277,16 @@
                       "type": "string"
                     },
                     "page": {
-                      "anyOf": [
-                        {
-                          "type": "string"
-                        },
-                        {
-                          "type": "null"
-                        }
+                      "type": [
+                        "string",
+                        "null"
                       ]
                     }
                   },
                   "required": [
                     "fileName",
                     "page"
-                  ],
-                  "additionalProperties": true
+                  ]
                 }
               },
               "recordedAt": {
@@ -296,11 +306,11 @@
               "evidence",
               "recordedAt",
               "restricted"
-            ],
-            "additionalProperties": true
+            ]
           }
         },
         "permits": {
+          "maxItems": 8,
           "type": "array",
           "items": {
             "type": "object",
@@ -323,13 +333,9 @@
                     ]
                   },
                   "federal_state": {
-                    "anyOf": [
-                      {
-                        "type": "string"
-                      },
-                      {
-                        "type": "null"
-                      }
+                    "type": [
+                      "string",
+                      "null"
                     ]
                   }
                 },
@@ -338,8 +344,7 @@
                   "name",
                   "status",
                   "federal_state"
-                ],
-                "additionalProperties": true
+                ]
               },
               "collection": {
                 "type": "string"
@@ -357,29 +362,22 @@
                 ]
               },
               "authority": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
+                "type": [
+                  "string",
+                  "null"
                 ]
               },
               "municipality": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
+                "type": [
+                  "string",
+                  "null"
                 ]
               },
               "issuedOn": {
                 "anyOf": [
                   {
-                    "type": "string"
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
                   },
                   {
                     "type": "null"
@@ -387,16 +385,13 @@
                 ]
               },
               "reference": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
+                "type": [
+                  "string",
+                  "null"
                 ]
               },
               "requirements": {
+                "maxItems": 6,
                 "type": "array",
                 "items": {
                   "type": "object",
@@ -413,33 +408,21 @@
                       "type": "string"
                     },
                     "evidence": {
-                      "anyOf": [
-                        {
-                          "type": "string"
-                        },
-                        {
-                          "type": "null"
-                        }
+                      "type": [
+                        "string",
+                        "null"
                       ]
                     },
                     "legalBasis": {
-                      "anyOf": [
-                        {
-                          "type": "string"
-                        },
-                        {
-                          "type": "null"
-                        }
+                      "type": [
+                        "string",
+                        "null"
                       ]
                     },
                     "page": {
-                      "anyOf": [
-                        {
-                          "type": "integer"
-                        },
-                        {
-                          "type": "null"
-                        }
+                      "type": [
+                        "integer",
+                        "null"
                       ]
                     }
                   },
@@ -449,10 +432,8 @@
                     "evidence",
                     "legalBasis",
                     "page"
-                  ],
-                  "additionalProperties": true
-                },
-                "maxItems": 6
+                  ]
+                }
               },
               "restricted": {
                 "type": "boolean"
@@ -469,10 +450,8 @@
               "reference",
               "requirements",
               "restricted"
-            ],
-            "additionalProperties": true
-          },
-          "maxItems": 8
+            ]
+          }
         },
         "hits": {
           "type": "array",
@@ -497,13 +476,9 @@
                     ]
                   },
                   "federal_state": {
-                    "anyOf": [
-                      {
-                        "type": "string"
-                      },
-                      {
-                        "type": "null"
-                      }
+                    "type": [
+                      "string",
+                      "null"
                     ]
                   }
                 },
@@ -512,8 +487,7 @@
                   "name",
                   "status",
                   "federal_state"
-                ],
-                "additionalProperties": true
+                ]
               },
               "documentId": {
                 "type": "string"
@@ -522,26 +496,18 @@
                 "type": "string"
               },
               "title": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
+                "type": [
+                  "string",
+                  "null"
                 ]
               },
               "collection": {
                 "type": "string"
               },
               "page": {
-                "anyOf": [
-                  {
-                    "type": "integer"
-                  },
-                  {
-                    "type": "null"
-                  }
+                "type": [
+                  "integer",
+                  "null"
                 ]
               },
               "snippet": {
@@ -571,8 +537,7 @@
               "score",
               "tags",
               "uploadedAt"
-            ],
-            "additionalProperties": true
+            ]
           }
         },
         "projectsInScope": {
@@ -582,13 +547,9 @@
           "type": "integer"
         },
         "nextOffset": {
-          "anyOf": [
-            {
-              "type": "integer"
-            },
-            {
-              "type": "null"
-            }
+          "type": [
+            "integer",
+            "null"
           ]
         }
       },
@@ -599,8 +560,7 @@
         "projectsInScope",
         "projectsSearched",
         "nextOffset"
-      ],
-      "additionalProperties": true
+      ]
     },
     "CrossProjectPermit": {
       "type": "object",
@@ -623,13 +583,9 @@
               ]
             },
             "federal_state": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
+              "type": [
+                "string",
+                "null"
               ]
             }
           },
@@ -638,8 +594,7 @@
             "name",
             "status",
             "federal_state"
-          ],
-          "additionalProperties": true
+          ]
         },
         "collection": {
           "type": "string"
@@ -657,29 +612,22 @@
           ]
         },
         "authority": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
+          "type": [
+            "string",
+            "null"
           ]
         },
         "municipality": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
+          "type": [
+            "string",
+            "null"
           ]
         },
         "issuedOn": {
           "anyOf": [
             {
-              "type": "string"
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
             },
             {
               "type": "null"
@@ -687,16 +635,13 @@
           ]
         },
         "reference": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
+          "type": [
+            "string",
+            "null"
           ]
         },
         "requirements": {
+          "maxItems": 6,
           "type": "array",
           "items": {
             "type": "object",
@@ -713,33 +658,21 @@
                 "type": "string"
               },
               "evidence": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
+                "type": [
+                  "string",
+                  "null"
                 ]
               },
               "legalBasis": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
+                "type": [
+                  "string",
+                  "null"
                 ]
               },
               "page": {
-                "anyOf": [
-                  {
-                    "type": "integer"
-                  },
-                  {
-                    "type": "null"
-                  }
+                "type": [
+                  "integer",
+                  "null"
                 ]
               }
             },
@@ -749,10 +682,8 @@
               "evidence",
               "legalBasis",
               "page"
-            ],
-            "additionalProperties": true
-          },
-          "maxItems": 6
+            ]
+          }
         },
         "restricted": {
           "type": "boolean"
@@ -769,8 +700,7 @@
         "reference",
         "requirements",
         "restricted"
-      ],
-      "additionalProperties": true
+      ]
     },
     "CrossProjectListRequest": {
       "type": "object",
@@ -788,18 +718,25 @@
           ]
         },
         "from": {
-          "type": "string"
+          "type": "string",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
         },
         "to": {
-          "type": "string"
+          "type": "string",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
         },
         "limit": {
-          "type": "integer"
+          "default": 10,
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 30
         },
         "projectFacts": {
           "type": "object",
           "properties": {
             "federal_state": {
+              "minItems": 1,
+              "maxItems": 9,
               "type": "array",
               "items": {
                 "type": "string",
@@ -814,17 +751,21 @@
                   "vorarlberg",
                   "burgenland"
                 ]
-              },
-              "maxItems": 9
+              }
             },
             "building_class": {
+              "minItems": 1,
+              "maxItems": 5,
               "type": "array",
               "items": {
-                "type": "integer"
-              },
-              "maxItems": 5
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 5
+              }
             },
             "construction_method": {
+              "minItems": 1,
+              "maxItems": 4,
               "type": "array",
               "items": {
                 "type": "string",
@@ -834,10 +775,11 @@
                   "timber",
                   "steel"
                 ]
-              },
-              "maxItems": 4
+              }
             },
             "uses": {
+              "minItems": 1,
+              "maxItems": 12,
               "type": "array",
               "items": {
                 "type": "string",
@@ -855,10 +797,11 @@
                   "agriculture",
                   "technical"
                 ]
-              },
-              "maxItems": 12
+              }
             },
             "work_type": {
+              "minItems": 1,
+              "maxItems": 7,
               "type": "array",
               "items": {
                 "type": "string",
@@ -871,8 +814,7 @@
                   "demolition",
                   "external_works"
                 ]
-              },
-              "maxItems": 7
+              }
             }
           },
           "additionalProperties": false
@@ -888,8 +830,7 @@
             }
           ]
         }
-      },
-      "additionalProperties": true
+      }
     },
     "CrossProjectListResponse": {
       "type": "object",
@@ -914,26 +855,18 @@
                 ]
               },
               "federal_state": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
+                "type": [
+                  "string",
+                  "null"
                 ]
               },
               "collection": {
                 "type": "string"
               },
               "address": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
+                "type": [
+                  "string",
+                  "null"
                 ]
               },
               "period": {
@@ -943,21 +876,16 @@
                     "type": "string"
                   },
                   "end": {
-                    "anyOf": [
-                      {
-                        "type": "string"
-                      },
-                      {
-                        "type": "null"
-                      }
+                    "type": [
+                      "string",
+                      "null"
                     ]
                   }
                 },
                 "required": [
                   "start",
                   "end"
-                ],
-                "additionalProperties": true
+                ]
               },
               "oibEdition": {
                 "anyOf": [
@@ -974,8 +902,7 @@
                     "required": [
                       "value",
                       "confirmed"
-                    ],
-                    "additionalProperties": true
+                    ]
                   },
                   {
                     "type": "null"
@@ -996,8 +923,7 @@
               "period",
               "oibEdition",
               "current"
-            ],
-            "additionalProperties": true
+            ]
           }
         },
         "total": {
@@ -1007,8 +933,7 @@
       "required": [
         "projects",
         "total"
-      ],
-      "additionalProperties": true
+      ]
     },
     "CrossProjectBriefRequest": {
       "type": "object",
@@ -1031,8 +956,7 @@
       },
       "required": [
         "projectId"
-      ],
-      "additionalProperties": true
+      ]
     },
     "CrossProjectBriefResponse": {
       "type": "object",
@@ -1055,26 +979,18 @@
               ]
             },
             "federal_state": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
+              "type": [
+                "string",
+                "null"
               ]
             },
             "collection": {
               "type": "string"
             },
             "address": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
+              "type": [
+                "string",
+                "null"
               ]
             },
             "period": {
@@ -1084,21 +1000,16 @@
                   "type": "string"
                 },
                 "end": {
-                  "anyOf": [
-                    {
-                      "type": "string"
-                    },
-                    {
-                      "type": "null"
-                    }
+                  "type": [
+                    "string",
+                    "null"
                   ]
                 }
               },
               "required": [
                 "start",
                 "end"
-              ],
-              "additionalProperties": true
+              ]
             },
             "oibEdition": {
               "anyOf": [
@@ -1115,8 +1026,7 @@
                   "required": [
                     "value",
                     "confirmed"
-                  ],
-                  "additionalProperties": true
+                  ]
                 },
                 {
                   "type": "null"
@@ -1137,17 +1047,12 @@
             "period",
             "oibEdition",
             "current"
-          ],
-          "additionalProperties": true
+          ]
         },
         "summary": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
+          "type": [
+            "string",
+            "null"
           ]
         },
         "facts": {
@@ -1158,8 +1063,7 @@
         "project",
         "summary",
         "facts"
-      ],
-      "additionalProperties": true
+      ]
     }
   }
 }

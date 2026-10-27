@@ -40,13 +40,13 @@ export type UndoRefusal = (typeof UNDO_REFUSALS)[number]
 /** One applied change, as a reader sees it. */
 export const pilotiChangeViewSchema = z
   .object({
-    id: z.string().uuid(),
-    documentId: z.string().uuid(),
-    annotationId: z.string().uuid(),
+    id: z.guid(),
+    documentId: z.guid(),
+    annotationId: z.guid(),
     /** The mark's running number now; null once the mark is gone. */
     annotationNumber: z.number().int().positive().nullable(),
     objectKind: z.enum(PILOTI_CHANGE_OBJECTS),
-    objectId: z.string().uuid(),
+    objectId: z.guid(),
     op: z.enum(PILOTI_CHANGE_OPS),
     before: changeStateSchema.nullable(),
     after: changeStateSchema.nullable(),

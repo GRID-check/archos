@@ -48,6 +48,7 @@ import {
   listPlatformModelDefaults,
   savePlatformModelDefaults,
 } from '@/lib/model-config/platform-defaults'
+import { definedValues } from '@/lib/utils/defined-values'
 
 // `platformApiRoute` supplies the owner gate, the request-bounded slot, the
 // platform scope and the 403 mapping — the four things these handlers used to
@@ -101,7 +102,7 @@ export const PUT = platformApiRoute(
     // the issue list attached, so the shared error mapping covers it.
     const input = await parseJsonBody(request, modelDefaultsPutSchema)
     const flat = Object.fromEntries(
-      Object.entries(input.defaults).map(([group, value]) => [group, value.model])
+      Object.entries(definedValues(input.defaults)).map(([group, value]) => [group, value.model])
     )
 
     // Server-side revalidation against the live platform catalog — the picker

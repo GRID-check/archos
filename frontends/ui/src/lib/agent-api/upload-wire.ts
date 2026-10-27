@@ -53,7 +53,7 @@ const fieldValue = z.string().max(2_000)
  * `uploadBatchId`, ...), each described, so the agent sees the real names. It
  * may be left out when every field is optional.
  */
-export function uploadBodySchemaWith<Shape extends Record<string, z.ZodTypeAny>>(fields: Shape) {
+export function uploadBodySchemaWith<Shape extends Record<string, z.ZodType>>(fields: Shape) {
   const object = z.object(fields).strict().describe('The route’s text fields, sent beside the file as form parts.')
   const allOptional = Object.values(fields).every((field) => field.isOptional())
   return z.object({
@@ -78,15 +78,15 @@ export const documentUploadFields = {
     .describe('Send "name" only when a reviewer released this file’s name from the upload screening.'),
   uploadBatchId: z
     .string()
-    .uuid()
+    .guid()
     .optional()
     .describe('The batch uuid given to upload-batch-open, to file this upload under that batch.'),
-} satisfies Record<string, z.ZodTypeAny>
+} satisfies Record<string, z.ZodType>
 
 /** A multipart body with free-form text fields, for a route whose fields are not fixed. */
 export const uploadBodySchema = z.object({
   files: z.array(uploadFileSchema).min(1).max(MAX_UPLOAD_FILES).describe('The file to upload. Exactly one file.'),
-  fields: z.record(fieldValue).optional().describe('Text fields sent beside the file as form parts.'),
+  fields: z.record(z.string(), fieldValue).optional().describe('Text fields sent beside the file as form parts.'),
 })
 
 /** The body of a `raw` operation: the request body's bytes, sent as application/octet-stream. */
