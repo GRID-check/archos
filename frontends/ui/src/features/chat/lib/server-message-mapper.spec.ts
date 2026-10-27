@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import type { Message } from '@/lib/db/schema'
+import type { Message } from '@/lib/db/schema/messages'
 import { mapServerMessageToChatMessage, mapServerMessagesToChatMessages } from './server-message-mapper'
 
 const serverMessage = (overrides: Partial<Message> = {}): Message =>

@@ -1,3 +1,4 @@
+// @disk-inputs: ../../tests/fixtures/revision_series_cases.json
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'

@@ -1,3 +1,4 @@
+// @disk-inputs: tests/fixtures/precedent/office.json, tests/fixtures/precedent/rendered.json
 /**
  * @vitest-environment node
  */
@@ -18,7 +19,7 @@
 import { readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
-import type { Project } from '@/lib/db/schema'
+import type { Project } from '@/lib/db/schema/projects'
 
 vi.mock('server-only', () => ({}))
 vi.mock('@/lib/projects/repository', () => ({ listProjectsInOrg: vi.fn(), findProjectInOrg: vi.fn() }))

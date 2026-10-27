@@ -1,3 +1,4 @@
+// @disk-inputs: ../../src/aiq_agent/knowledge/document_classification.py
 /**
  * @vitest-environment node
  */

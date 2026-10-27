@@ -12,13 +12,7 @@ import 'server-only'
 import { and, desc, eq, inArray, isNull, lt, or, sql } from 'drizzle-orm'
 import { getDb } from '@/lib/db'
 import { withTenant } from '@/lib/db/tenant-context'
-import {
-  mailImports,
-  type MailImport,
-  type MailImportSkippedSample,
-  type MailImportStatus,
-  type NewMailImport,
-} from '@/lib/db/schema'
+import { mailImports, type MailImport, type MailImportSkippedSample, type MailImportStatus, type NewMailImport } from '@/lib/db/schema/mail-imports'
 import { isUuid } from '@/lib/ids'
 
 /** One project's imports shown at once. Newest first; older ones are history. */

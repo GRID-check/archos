@@ -1,3 +1,4 @@
+// @disk-inputs: ../../src/aiq_agent/skills/builtin.py, ../../src/aiq_agent/skills/builtin/oib/**
 /**
  * @vitest-environment node
  */

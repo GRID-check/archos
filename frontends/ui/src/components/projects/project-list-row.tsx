@@ -31,7 +31,7 @@
 
 import type { JSX } from 'react'
 import { Item } from '@/components/ui/item'
-import type { Project } from '@/lib/db/schema'
+import type { Project } from '@/lib/db/schema/projects'
 import { ProjectStatusMark } from './project-status'
 import {
   ProjectActivity,

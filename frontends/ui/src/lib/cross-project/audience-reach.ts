@@ -25,7 +25,7 @@ import { userHoldsProjectPermission } from '@/lib/authz/project-membership'
 import { audienceKey, isSoloAudience } from '@/lib/conversations/cross-project-use'
 import { readConversationAudience, type ConversationAudienceRow } from '@/lib/conversations/restricted-use-repository'
 import { getDb } from '@/lib/db'
-import type { Project } from '@/lib/db/schema'
+import type { Project } from '@/lib/db/schema/projects'
 import { isProjectClosed } from '@/lib/projects/project-status'
 import { listChatProjects, listChatProjectsAmong } from '@/lib/projects/service'
 

@@ -204,10 +204,9 @@ The UI's `SOURCE_KINDS` and `SHELVES` are generated from it into
 `scripts/generate_vocabularies.py` (the `vocabularies` pre-commit hook), so a
 kind added in Python reaches the chip without a second edit;
 `frontends/ui/src/lib/source-kinds.ts` holds what the UI makes of each kind. The
-German values stored before migration 0163 are read through `LEGACY_SOURCE_KIND`
-in the UI. The fine `norm_registry` lanes are a sub-label within a kind, and the
-lane→kind table is still a mirror, held by `test_collection_scope_parity.py`.
-`doc_class` is human-set and beats every filename guess.
+fine `norm_registry` lanes are a sub-label within a kind, and the lane→kind table
+is still a mirror, held by `test_collection_scope_parity.py`. `doc_class` is
+human-set and beats every filename guess.
 
 **Correlated substrate debt belongs in the change that tripped over it.** YAGNI
 forbids unused features, not known defects on the path you are walking. If B

@@ -294,6 +294,19 @@ jobs:
           curl -fsSL https://get.pulumi.com -o "$RUNNER_TEMP/install-pulumi.sh"
           sh "$RUNNER_TEMP/install-pulumi.sh" --version "$version"
 
+      # ADR-0147 clones the ESC environment `grid-oib/dev` into `workspace/dev`
+      # when the namespace moves. Probe now whether this token may write there,
+      # so a missing grant shows up as a warning on an ordinary deploy rather
+      # than as a failure halfway through the move. `warn` until the expand
+      # step, which switches it to `fail`.
+      - name: Preflight - ESC write on workspace/* (ADR-0147)
+        working-directory: deploy/pulumi
+        run: |
+          export PATH="$HOME/.pulumi/bin:$PATH"
+          scripts/esc-write-preflight.sh matthiasbigl warn
+        env:
+          PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
+
       # One ref per service, all three the commit's own tag when CI triggered
       # this deploy. A rollback pins all three to the operator's tag, after
       # checking GHCR has it for each. A bare dispatch takes, per service, the

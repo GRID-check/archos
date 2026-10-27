@@ -58,7 +58,7 @@ import { BadRequestError, NotFoundError, UpstreamError } from '@/lib/api/errors'
 import type { AuthorizedSession } from '@/lib/auth/types'
 import { clearanceOf, readableFolderIdsFor } from '@/lib/authz/folder-access'
 import { recordCrossProjectHandOut, type HandOutParty } from '@/lib/conversations/cross-project-use'
-import type { Project } from '@/lib/db/schema'
+import type { Project } from '@/lib/db/schema/projects'
 import {
   BACKEND_SEARCH_MAX_COLLECTIONS,
   fetchGroupedSemanticHits,

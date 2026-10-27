@@ -1,3 +1,4 @@
+// @disk-inputs: tests/fixtures/cross-project.schema.json
 /**
  * @vitest-environment node
  */

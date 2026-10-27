@@ -16,7 +16,7 @@
 import 'server-only'
 import { ForbiddenError, NotFoundError } from '@/lib/api/errors'
 import type { AuthorizedSession } from '@/lib/auth/types'
-import type { Document } from '@/lib/db/schema'
+import type { Document } from '@/lib/db/schema/documents'
 import { getAccessibleDocument } from '@/lib/documents/access'
 import { REVISION_MAX_HISTORY } from '@/lib/documents/revision-links'
 import { loadRevisionLinks } from '@/lib/documents/revision-links-loader'

@@ -5,7 +5,7 @@
  * database.
  */
 
-import type { Project } from '@/lib/db/schema'
+import type { Project } from '@/lib/db/schema/projects'
 import type { ListProjectsQuery, ProjectSummary } from './project-wire'
 
 function factText(project: Pick<Project, 'profile'>, key: string): string | null {
