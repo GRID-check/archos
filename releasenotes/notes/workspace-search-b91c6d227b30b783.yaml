@@ -21,3 +21,8 @@ features:
     class or one more storey, and each result names the change, before and
     after. The filter panel also says how many documents Piloti has not read
     yet, so a count never suggests they lack a value.
+  - >
+    A document found by the search opens a menu with Ask Piloti, Open current
+    version and Open points, also with Shift+F10 on the chosen result. In the
+    chat, type # and a word to pick a document from the workspace and ask
+    about it.

@@ -345,7 +345,8 @@ chosen columns on a line under it, the order in a menu.
 - `/dev/search`: the organism over a fixture answer, list and register,
   filtered and sorted in memory to match what is set (`searchFixtureAnswer`),
   so a capture never contradicts its chips. `?scope=project`,
-  `?state=empty|loading|error`, `?filters=open`.
+  `?state=empty|loading|error`, `?filters=open`, `?composer=1` (the
+  composer's `#` picker).
 
 The rail starts with Plannummer, Index and „Nur aktuelle Fassung“, always
 open; the counted facets follow; the rest folds under „Weitere Filter“. Under
@@ -365,6 +366,26 @@ sheet). The link carries the passage's first 200 characters, cut at a word.
 The place belongs to the document `doc` names: opening another document, or a
 folder, takes `page` and `highlight` off the address with the review's params.
 A preview that is not a PDF (an image, a text file) ignores both.
+
+A document hit also leads on, through its ⋯ in the list, the register and the
+phone's stack (the house's `ActionMenu`, `features/search/components/hit-actions-menu.tsx`):
+„Piloti fragen" starts a chat about the file in its project through the one
+ask (`askAboutFile`), the question prefilled with the passage's page when the
+hit was found by one; „Aktuelle Fassung öffnen", on a superseded hit, asks the
+document's status for the newer Fassung this reader may open (the hit carries
+only that one exists) and opens it on the same shelf; „Offene Punkte" opens
+the document's Prüfansicht, and closing it returns to the search. A
+Büroablage document has no chat to start, so it offers no „Piloti fragen".
+With a row marked, Shift+F10 or the menu key opens its ⋯ while the focus
+stays in the field. Each action is an operation that already exists
+(`piloti-ask-create`, `document-status`, `annotation-list`); none is new.
+
+In the chat composer, `#` and a word search the workspace for a document as
+`@` finds a person (`useDocumentReference`): the palette's live results,
+documents only, in the chat's project. A pick writes the name into the
+message („Grundriss EG“, the name the agent retrieves by) and makes the
+document the message's subject, as „Piloti fragen" does. `/dev/search?composer=1`
+shows the picker.
 
 A document or annotation hit comes back to the search. Its link carries
 `back`, the search page's own address (query, filters, kinds, view, sort),
