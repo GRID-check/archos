@@ -729,6 +729,9 @@ export function bffJobsEnv(w: AppWiring): EnvVar[] {
     { name: "GRID_BFF_JOBS_CONCURRENCY", value: String(cfg.bffJobs.concurrency) },
     { name: "GRID_BFF_JOBS_DRAIN_SECONDS", value: String(cfg.bffJobs.drainSeconds) },
     { name: "GRID_BFF_JOBS_MAX_PER_ORG", value: String(cfg.bffJobs.maxPerOrg) },
+    // `http` spawns the BFF and asks it per slice; `inprocess` runs the bundled
+    // services in the supervisor and serves the probes' /api/healthz itself.
+    { name: "GRID_BFF_JOBS_MODE", value: cfg.bffJobs.mode },
     // Office conversions this pod runs at Gotenberg at once. The BFF in the pod
     // reads it as it does in the frontend (`rendition.ts`); here it is the
     // per-pod factor of the pool's ceiling (`renditionCeiling`), which

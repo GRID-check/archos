@@ -3,8 +3,9 @@
  */
 import { describe, expect, it, vi } from 'vitest'
 import { createFailureStreak } from '../failure-streak.js'
-import { readConfig, waitForServer } from './index.js'
-import { createRunner, createSliceRunner } from './runner.js'
+import { EventEmitter } from 'node:events'
+import { readConfig, startWorkHost, waitForServer } from './index.js'
+import { createInProcessSliceRunner, createRunner, createSliceRunner } from './runner.js'
 
 const CONFIG = {
   workerPrefix: 'w',
@@ -402,6 +403,137 @@ describe('the slice request', () => {
     const refused = Object.assign(new Error('fetch failed'), { cause: Object.assign(new Error('x'), { code: 'ECONNREFUSED' }) })
     const outcome = await sliceOver(vi.fn().mockRejectedValue(refused))(CLAIM, 'w-0')
     expect(outcome.kind).toBe('transient')
+  })
+})
+
+describe('the slice in process', () => {
+  const sliceIn = (runSlice, timeoutMs = 1000) => createInProcessSliceRunner({ bundle: { runSlice }, timeoutMs })
+
+  it('asks the bundle for the job and the worker, and passes its outcome through', async () => {
+    const runSlice = vi.fn().mockResolvedValue({ kind: 'more', payload: { cursor: 2 } })
+
+    expect(await sliceIn(runSlice)(CLAIM, 'w-0')).toEqual({ kind: 'more', payload: { cursor: 2 } })
+    expect(runSlice).toHaveBeenCalledWith('job-1', 'w-0')
+  })
+
+  it('reads a wait as a date, and a date it cannot read as no wait, as over HTTP', async () => {
+    const waits = vi.fn().mockResolvedValue({ kind: 'defer', payload: { waits: 1 }, notBefore: '2026-10-13T10:00:30.000Z' })
+    const garbled = vi.fn().mockResolvedValue({ kind: 'defer', payload: {}, notBefore: 'bald' })
+
+    expect(await sliceIn(waits)(CLAIM, 'w-0')).toEqual({
+      kind: 'defer',
+      payload: { waits: 1 },
+      notBefore: new Date('2026-10-13T10:00:30.000Z'),
+    })
+    expect(await sliceIn(garbled)(CLAIM, 'w-0')).toEqual({ kind: 'more', payload: {} })
+  })
+
+  it('reads a slice that outlives its timeout as transient, as an aborted request', async () => {
+    const outcome = await sliceIn(() => new Promise(() => {}), 5)(CLAIM, 'w-0')
+
+    expect(outcome).toMatchObject({ kind: 'transient', failure: { kind: 'slice timeout' } })
+  })
+
+  it('reads a bundle that rejects as the job’s failure', async () => {
+    const outcome = await sliceIn(vi.fn().mockRejectedValue(new Error('boom')))(CLAIM, 'w-0')
+
+    expect(outcome).toEqual({ kind: 'error', message: 'boom' })
+  })
+})
+
+describe('the host the slices run in', () => {
+  const bundle = () => ({
+    initSliceHost: vi.fn().mockResolvedValue(undefined),
+    shutdownSliceHost: vi.fn().mockResolvedValue(undefined),
+    runSlice: vi.fn().mockResolvedValue({ kind: 'done' }),
+  })
+  const fakeServer = () => Object.assign(new EventEmitter(), { kill: vi.fn() })
+
+  it('in process: imports the bundle, starts it, answers the probes, and spawns no server', async () => {
+    const loaded = bundle()
+    const spawnServer = vi.fn()
+    const health = { close: vi.fn() }
+    const serveHealth = vi.fn().mockResolvedValue(health)
+    const config = readConfig({ GRID_BFF_JOBS_MODE: 'inprocess', PORT: '4000' })
+
+    const proc = new EventEmitter()
+    const host = await startWorkHost(config, {
+      spawnServer,
+      importBundle: async () => loaded,
+      serveHealth,
+      process: proc,
+      onServerExit: vi.fn(),
+    })
+
+    expect(spawnServer).not.toHaveBeenCalled()
+    // A late rejection in a service is logged, as the Next server logs it, not fatal.
+    expect(proc.listenerCount('unhandledRejection')).toBe(1)
+    expect(proc.listenerCount('uncaughtException')).toBe(1)
+    expect(loaded.initSliceHost).toHaveBeenCalledTimes(1)
+    expect(serveHealth).toHaveBeenCalledWith(4000)
+    expect(await host.runSlice(CLAIM, 'w-0')).toEqual({ kind: 'done' })
+    expect(loaded.runSlice).toHaveBeenCalledWith('job-1', 'w-0')
+
+    await host.stop()
+    expect(health.close).toHaveBeenCalledTimes(1)
+    expect(loaded.shutdownSliceHost).toHaveBeenCalledTimes(1)
+  })
+
+  it('in process: needs no internal token, because nothing is asked over HTTP', async () => {
+    const config = readConfig({ GRID_BFF_JOBS_MODE: 'inprocess' })
+
+    await expect(
+      startWorkHost(config, {
+        importBundle: async () => bundle(),
+        serveHealth: async () => ({ close() {} }),
+        process: new EventEmitter(),
+        onServerExit: vi.fn(),
+      })
+    ).resolves.not.toBeNull()
+  })
+
+  it('by default: spawns the BFF, waits for it, and stops it after the drain', async () => {
+    const server = fakeServer()
+    const spawnServer = vi.fn().mockReturnValue(server)
+    const importBundle = vi.fn()
+    const config = readConfig({ GRID_INTERNAL_API_TOKEN: 't' })
+
+    const host = await startWorkHost(config, {
+      spawnServer,
+      importBundle,
+      waitForServer: async () => true,
+      onServerExit: vi.fn(),
+    })
+
+    expect(config.mode).toBe('http')
+    expect(spawnServer).toHaveBeenCalledTimes(1)
+    expect(importBundle).not.toHaveBeenCalled()
+    await host.stop()
+    expect(server.kill).toHaveBeenCalledWith('SIGTERM')
+  })
+
+  it('by default: reports a BFF that dies, and gives up on one that never answers', async () => {
+    const server = fakeServer()
+    const onServerExit = vi.fn()
+    const config = readConfig({ GRID_INTERNAL_API_TOKEN: 't' })
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+
+    const host = await startWorkHost(config, { spawnServer: () => server, waitForServer: async () => false, onServerExit })
+    server.emit('exit', 1, null)
+
+    expect(host).toBeNull()
+    expect(server.kill).toHaveBeenCalledWith('SIGTERM')
+    expect(onServerExit).toHaveBeenCalledWith(1, null)
+  })
+
+  it('by default: refuses to start without the internal token', async () => {
+    await expect(startWorkHost(readConfig({}), { spawnServer: vi.fn(), onServerExit: vi.fn() })).rejects.toThrow(
+      /GRID_INTERNAL_API_TOKEN/
+    )
+  })
+
+  it('refuses a mode it does not know, rather than guessing one', () => {
+    expect(() => readConfig({ GRID_BFF_JOBS_MODE: 'in-process' })).toThrow(/GRID_BFF_JOBS_MODE/)
   })
 })
 

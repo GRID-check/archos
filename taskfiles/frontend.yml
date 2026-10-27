@@ -17,6 +17,12 @@ tasks:
       # spawns a real `node`, which rejects the flag and fails the build.
       - bun install --frozen-lockfile
 
+  fe:build:jobs:
+    desc: Bundle the bff-jobs slice entry into dist-jobs/slice.mjs, what `GRID_BFF_JOBS_MODE=inprocess` imports
+    dir: '{{.UI}}'
+    cmds:
+      - bun run build:jobs
+
   fe:lint:
     desc: 'Lint the UI (oxlint, the repo rules included as a JS plugin). CI: task fe:lint -- --format=github'
     dir: '{{.UI}}'

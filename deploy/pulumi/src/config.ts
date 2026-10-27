@@ -1081,6 +1081,13 @@ export interface GridConfig {
     /** Most jobs one organisation may run fleet-wide at once; 0 = no cap (the claim is fair regardless). */
     maxPerOrg: number;
     /**
+     * Where a slice runs (`GRID_BFF_JOBS_MODE`): `http`, in a `node server.js`
+     * the pod spawns, or `inprocess`, in the supervisor from the bundled
+     * services (`dist-jobs/slice.mjs`, ADR-0079 amendment 1). `http` until the
+     * in-process host has run in every environment.
+     */
+    mode: "http" | "inprocess";
+    /**
      * Office conversions ONE pod runs at Gotenberg at once (`GOTENBERG_MAX_
      * CONCURRENCY` in the pod). The fleet's ceiling is this times `maxReplicas`
      * ({@link renditionCeiling}), and a spec holds that to the converter's
@@ -3021,6 +3028,7 @@ export function loadConfig(): GridConfig {
       concurrency: Math.max(1, num(cfg, "bffJobsConcurrency", 2)),
       drainSeconds: Math.max(15, num(cfg, "bffJobsDrainSeconds", 60)),
       maxPerOrg: Math.max(0, num(cfg, "bffJobsMaxPerOrg", 0)),
+      mode: bffJobsMode(cfg.get("bffJobsMode")),
       // One: LibreOffice converts one document at a time, and the second slot
       // Gotenberg is sized for is the next job waiting behind it. A pod running
       // two jobs at once still converts one file at a time.
@@ -3379,6 +3387,13 @@ export function assertHpaTargetIsProportional(
  * it that could run out of its own API timeout.
  */
 export const GOTENBERG_SLOTS_PER_REPLICA = 2;
+
+/** `bffJobsMode`: a value the runner does not know would crash-loop the pool, so it fails the plan. */
+export function bffJobsMode(raw: string | undefined): GridConfig["bffJobs"]["mode"] {
+  const mode = raw?.trim() || "http";
+  if (mode === "http" || mode === "inprocess") return mode;
+  throw new Error(`grid-oib:bffJobsMode must be "http" or "inprocess", not "${mode}"`);
+}
 
 /**
  * The most office conversions the `bff-jobs` pool can have in flight at

@@ -8,6 +8,7 @@
     "dev:next": "node scripts/copy-pdfjs-assets.mjs && node scripts/copy-excalidraw-assets.mjs && bun run build:mcp-apps && next dev --turbopack -p 3001",
     "build": "node scripts/copy-pdfjs-assets.mjs && node scripts/copy-excalidraw-assets.mjs && bun run build:mcp-apps && next build",
     "build:mcp-apps": "bun scripts/build-mcp-app-views.ts",
+    "build:jobs": "bun scripts/build-jobs-bundle.ts",
     "start": "NODE_ENV=production node server.js",
     "postinstall": "node scripts/copy-pdfjs-assets.mjs && node scripts/copy-excalidraw-assets.mjs",
     "lint": "node scripts/check-static-utility-modifiers.mjs && oxlint src tests",

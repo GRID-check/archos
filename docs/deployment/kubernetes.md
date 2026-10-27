@@ -1248,6 +1248,10 @@ died half way left no record of which half. Both are now jobs:
   interactive before bulk, then oldest), heartbeats, and POSTs each slice to
   its own pod's `/api/internal/jobs/run`. **There is no Service and no
   HTTPRoute**, and the work runs here, never on the pods that proxy chat.
+  With `bffJobsMode: inprocess` (default `http`) the pod spawns no BFF: the
+  loop runs each slice from the services bundled at image build
+  (`dist-jobs/slice.mjs`) and answers the probes' `/api/healthz` itself
+  (ADR-0079 amendment 1).
 - **A drain never costs an attempt; a failure always does.** On SIGTERM the loop stops claiming, lets
   the slice in hand finish (`bffJobsDrainSeconds`, 60), gives every claim back
   without spending an attempt, and only then stops the BFF; the pod's grace

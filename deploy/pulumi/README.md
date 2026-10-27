@@ -274,6 +274,7 @@ All keys live under the `grid-oib:` namespace. **Bold** = required (no default).
 | `bffJobsMinReplicas` / `bffJobsMaxReplicas` | 1 / 4 | KEDA bounds for the `bff-jobs` pool, which scales on `bff_job_queue` depth |
 | `bffJobsConcurrency` / `bffJobsDrainSeconds` | 2 / 60 | Jobs per pod (also KEDA's target) / SIGTERM budget; the grace period is the drain plus 30 s |
 | `bffJobsMaxPerOrg` | `0` | Most jobs one organisation may run fleet-wide at once; 0 = no cap (the claim is fair regardless) |
+| `bffJobsMode` | `http` | `GRID_BFF_JOBS_MODE`: where a slice runs. `http` spawns the BFF (`node server.js`) in each pod and asks it per slice; `inprocess` runs the services bundled at image build in the supervisor and spawns no server (ADR-0079 amendment 1). Any other value fails the plan |
 | `bffJobsRenditionConcurrency` | `1` | `GOTENBERG_MAX_CONCURRENCY` in a `bff-jobs` pod: Office conversions one pod runs at Gotenberg at once. The fleet's conversion ceiling is this times `bffJobsMaxReplicas` (`renditionCeiling`), and it is held to `gotenbergReplicas` (below): raise either side of the product and Gotenberg's replicas must follow, or conversions queue inside the converter and run out their API timeout |
 | `installKeda` | `true` | Install KEDA (chart pinned in `src/platform/keda.ts`, the release the plan's CRDs are validated against). `false` when the cluster already runs one, which must then be the same release |
 | **Provider budget** (ADR-0076, ADR-0081) | | |
