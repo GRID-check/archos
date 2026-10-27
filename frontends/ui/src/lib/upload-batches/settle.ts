@@ -1,7 +1,7 @@
 /**
  * What happens when documents come to rest (ADR-0086): their upload completes
  * and its uploader is told, and a quarantined file's quarantine is audited and
- * its reviewers are told. A batch opened quiet (migration 0185) sets off only
+ * its reviewers are told. A batch opened quiet (migration 0187) sets off only
  * the effects it kept; a quarantine is announced whatever the batch says.
  *
  * `onDocumentsSettled` is called by status reconciliation for every row it
@@ -82,7 +82,7 @@ export async function onDocumentsSettled(organizationId: string, settled: readon
  * a completed batch is never settled again, so its item would be lost.
  *
  * What a completion sets off is the batch's own (`UploadBatchEffects`,
- * migration 0185): a batch opened with `announcesCompletion` off tells nobody
+ * migration 0187): a batch opened with `announcesCompletion` off tells nobody
  * here, and the intake and filing triggers read their own switch (the revision
  * notice and the document check read theirs per document). All five
  * are on unless a server-side caller opened the batch quiet.

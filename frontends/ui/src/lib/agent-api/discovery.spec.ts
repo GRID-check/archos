@@ -107,7 +107,7 @@ describe('search-operations', () => {
 
   it('narrows by domain and lists a whole domain for an empty query', () => {
     const result = searchOperations(ctx(person), { query: '', domain: 'documents' })
-    expect(names(result)).toEqual(['document-search'])
+    expect(names(result)).toEqual(['workspace-search'])
   })
 
   it('carries the annotations a client needs to choose', () => {

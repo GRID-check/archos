@@ -78,7 +78,6 @@ def test_the_consultants_steps_hide_these_from_piloti_behind_its_own_tools(expos
         "project-memory-create": "native:remember",
         "organization-memory-create": "native:remember",
         "bim-model-query": "native:ifc_query",
-        "document-search": "native:knowledge_search",
         "task-create": "native:create_task",
         "task-run-commission": "native:create_task",
         "annotation-create": "native:canvas__mark",

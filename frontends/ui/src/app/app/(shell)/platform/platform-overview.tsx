@@ -66,7 +66,7 @@ import { AuditLogButton } from '@/components/audit/audit-log-button'
 import { SpendTrendChart } from '@/components/charts/spend-trend-chart'
 import { PlatformPricingCard } from './platform-pricing-card'
 import { PlatformOrgBudgetDialog } from './platform-org-budget-dialog'
-import { SortableHead, type SortDirection } from './sortable-head'
+import { SortableHead, type SortDirection } from '@/components/ui/sortable-head'
 
 interface SpendWindowDto {
   /** USD as OpenRouter charged it, whoever's key it was. */

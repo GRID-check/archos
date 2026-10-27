@@ -523,13 +523,13 @@ export function installNetworkPolicies(
         })
       : undefined;
 
-  // 22. ClamAV (ADR-0136): the frontend and the bff-jobs pool in. Egress open.
+  // 22. ClamAV (ADR-0139): the frontend and the bff-jobs pool in. Egress open.
   //
   //     clamd authenticates nobody and its whole job is to open hostile files,
   //     so it is withheld from rule 2: the BFF is its only caller, in the
   //     request path (an original's download is scanned whole) and in the
   //     bff-jobs pool (the receive job scans each attachment and raw message).
-  //     Ingress only, as decided in ADR-0136: freshclam needs DNS and HTTPS to
+  //     Ingress only, as decided in ADR-0139: freshclam needs DNS and HTTPS to
   //     database.clamav.net, a CDN no NetworkPolicy can name, and a port-only
   //     rule (as the geocoder's) would admit the whole internet on 443 anyway.
   //     The kubelet's exec probes are not network traffic.

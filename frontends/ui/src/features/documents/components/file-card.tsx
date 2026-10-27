@@ -226,8 +226,8 @@ export interface FileCardProps {
   isSelected: boolean
   onSelect: () => void
   locale: string
-  /** Present on a semantic/surfaced result: the snippet + page + score to show WHY it matched. */
-  match?: { snippet: string; page: number | null; score: number }
+  /** Present on a search result: the passage and its page, WHY it matched. */
+  match?: { snippet: string; page: number | null }
   /** Coarse corpus for a provenance chip in the metadata row (project vs Büroablage). */
   source?: 'project' | 'office' | null
   /** Localized label for the provenance chip. */
@@ -472,7 +472,7 @@ export const FileCard = memo(function FileCard({
               )
             )}
             {match ? (
-              <SemanticMatch snippet={match.snippet} page={match.page} score={match.score} />
+              <SemanticMatch snippet={match.snippet} page={match.page} />
             ) : isFailed ? (
               <p
                 className="mt-1 line-clamp-2 text-xs leading-[1.45] text-destructive"

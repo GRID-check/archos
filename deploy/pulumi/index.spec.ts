@@ -252,7 +252,7 @@ describe("the program constructs in the split topology", () => {
     expect(STACK.geocoderUrl).toBeDefined();
   });
 
-  it("leaves the malware scanner off by default, and the frontend without its URL (ADR-0136)", () => {
+  it("leaves the malware scanner off by default, and the frontend without its URL (ADR-0139)", () => {
     // Prepared, not switched on: a stack opts in with `malwareScanEnabled`.
     // Off, `npm run preview` shows no change, and the BFF fails every scan
     // closed (`not-configured`).

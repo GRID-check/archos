@@ -48,10 +48,12 @@ export type FetchedDownload = { saved: true } | { saved: false; status: number |
  * Fetched rather than navigated to: a refusal (a PDF too long to lay out,
  * access lost meanwhile) comes back as what it was, for the caller to say in a
  * toast, not as a JSON file in the downloads folder or an error filling a tab.
+ * `init` is for a route that builds the file from a posted question (the
+ * search's Planliste export).
  */
-export async function downloadFetched(href: string, fallbackName: string): Promise<FetchedDownload> {
+export async function downloadFetched(href: string, fallbackName: string, init?: RequestInit): Promise<FetchedDownload> {
   try {
-    const response = await fetch(href)
+    const response = await (init ? fetch(href, init) : fetch(href))
     if (!response.ok) {
       const body = (await response.json().catch(() => null)) as { details?: { reason?: unknown } } | null
       const reason = body?.details?.reason

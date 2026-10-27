@@ -44,6 +44,7 @@ import { usePlatformCan } from '@/features/platform/platform-access'
 import { useLocale, useTranslations } from '@/i18n'
 import { PLATFORM_PERMISSIONS } from '@/lib/authz/permissions'
 import { cn } from '@/lib/utils'
+import { Quote } from '@/components/ui/quote'
 
 interface LessonDto {
   id: string
@@ -323,9 +324,7 @@ export const PlatformLessons: FC = () => {
           </DialogHeader>
           {provenance ? (
             <div className="flex flex-col gap-6">
-              <blockquote className="border-l-2 pl-3 text-sm leading-relaxed">
-                {provenance.lesson.content}
-              </blockquote>
+              <Quote className="text-sm leading-relaxed">{provenance.lesson.content}</Quote>
               <section className="space-y-2">
                 <SectionLabel as="h3">{t('lessons.provenanceReports')}</SectionLabel>
                 <ul className="flex flex-col divide-y">

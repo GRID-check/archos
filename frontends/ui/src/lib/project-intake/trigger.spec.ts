@@ -94,7 +94,7 @@ describe('queueIntakeReadsAfterUpload', () => {
     expect(enqueueJob).not.toHaveBeenCalled()
   })
 
-  // Migration 0185: a batch opened with `startsIntake` off starts no reading,
+  // Migration 0187: a batch opened with `startsIntake` off starts no reading,
   // and does not take the project's reading from another batch that does.
   it('starts no reading for a batch opened without one, and lets a later batch of the project start it', async () => {
     expect(

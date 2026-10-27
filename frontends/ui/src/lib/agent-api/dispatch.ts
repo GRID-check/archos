@@ -267,7 +267,7 @@ function refuseUnknownKeys(op: AgentOperation, schema: AgentOperation['params'] 
  * Throws {@link OperationInputError} for input the operation cannot take.
  */
 export function validateOperationInput(op: AgentOperation, given: OperationInput): OperationInput {
-  const input = withInputDefaults(given, op.inputDefaults)
+  const input = withInputDefaults(op.rewriteInput ? { ...given, ...op.rewriteInput(given) } : given, op.inputDefaults)
   const check = (schema: AgentOperation['params'] | AgentOperation['body'], value: unknown, label: string) => {
     if (!schema) return
     const result = schema.safeParse(value ?? {})

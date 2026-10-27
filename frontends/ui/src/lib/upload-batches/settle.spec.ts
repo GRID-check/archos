@@ -158,7 +158,7 @@ describe('settleUploadBatches', () => {
   })
 })
 
-describe('settleUploadBatches — a batch opened quiet (migration 0185)', () => {
+describe('settleUploadBatches — a batch opened quiet (migration 0187)', () => {
   it('tells nobody for a batch opened without its completion, and still completes it', async () => {
     vi.mocked(completeSettledBatches).mockResolvedValue([batch({ announcesCompletion: false })])
 

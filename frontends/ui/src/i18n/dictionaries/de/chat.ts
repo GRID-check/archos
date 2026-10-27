@@ -77,6 +77,8 @@ export const chat: typeof en.chat = {
     // Projektdateien öffnen) statt einer stummen toten Kachel.
     unresolvedHint: 'Der Assistent hat diese Datei referenziert.',
     openInOfficeShelf: 'In der Büroablage öffnen',
+    // Die Auswahl zeigt nur die besten Treffer; der Link öffnet dieselbe Suche mit allen.
+    openInSearch: 'In der Suche öffnen',
     openInFiles: 'In den Projektdateien öffnen',
     // Der Auflösungs-Abruf ist fehlgeschlagen — eine Wiederholaktion statt einer
     // dauerhaft toten Kachel.
@@ -1381,6 +1383,26 @@ export const chat: typeof en.chat = {
     reasoningGraphLabel: 'Herleitung',
     stepsLabel: 'Denkschritte',
     stepsHeading: 'Zwischenschritte',
+    // Teilagenten, die ein Zug laufen ließ (AG-UI 1.0 SUBAGENT_*): heute die
+    // Tiefenrecherche im Chat mit ihrer Planung, ihren Recherchen und dem Bericht.
+    subagents: {
+      heading: 'Teilagenten',
+      steps: '{count, plural, one {# Schritt} other {# Schritte}}',
+      status: {
+        running: 'arbeitet',
+        ok: 'fertig',
+        error: 'fehlgeschlagen',
+        ended: 'abgebrochen',
+      },
+      name: {
+        deepResearcher: 'Tiefenrecherche',
+        planner: 'Planung',
+        researcher: 'Recherche',
+        writer: 'Bericht',
+        sourceRouter: 'Quellenwahl',
+        generalPurpose: 'Allgemeiner Agent',
+      },
+    },
     sourcesFanOut: 'Quellen',
     hitCount: '{count} Treffer',
     hitCountOne: '1 Treffer',
@@ -1676,6 +1698,14 @@ export const chat: typeof en.chat = {
     noted: 'Piloti hat sich gemerkt',
     notedAria: 'Piloti hat sich {count, plural, one {# Notiz} other {# Notizen}} gemerkt',
     addedToMemory: 'In das Projektgedächtnis aufgenommen',
+    // Mindestens eine Notiz hat eine frühere ersetzt (`supersedes`): das
+    // wichtigere Ereignis, daher eigenes Wort und eigenes Symbol am Chip.
+    updated: 'Gedächtnis aktualisiert',
+    updatedAria:
+      'Piloti hat das Gedächtnis aktualisiert: {count, plural, one {# Notiz} other {# Notizen}}, davon {corrected} korrigiert',
+    updatedInMemory: 'Projektgedächtnis aktualisiert',
+    correctedLabel: 'Korrigiert',
+    replaced: 'Ersetzt:',
     manageHint: 'Diese Einträge können Sie im Projektgedächtnis verwalten und löschen.',
     kinds: {
       decision: 'Entscheidung',

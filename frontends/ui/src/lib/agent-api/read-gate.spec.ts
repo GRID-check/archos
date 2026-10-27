@@ -308,6 +308,8 @@ const READS_WITHOUT_PROJECT_CONTENT: Readonly<Record<string, string>> = {
   'skill-list': 'the organization’s skills',
   'skill-invocable-list': 'the skills the person may invoke',
   'skill-category-list': 'the skill categories',
+  'saved-search-list':
+    'search questions the person saved or the office shared, never a result: a scope may name a project by id, none of its content',
 }
 
 describe('every read of no named place either spans projects or carries no project’s content', () => {

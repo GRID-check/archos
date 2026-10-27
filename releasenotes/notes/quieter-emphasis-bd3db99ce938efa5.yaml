@@ -1,0 +1,8 @@
+---
+improvements:
+  - >
+    Quotes, notes, callouts, messages and schedule entries no longer have a
+    coloured bar down their left edge. Quoted words are set in italics,
+    excerpts from a source sit on a quiet background, an unread message shows
+    a dot, and a confirmation or warning says what it is with an icon and a
+    word instead of a coloured stripe.

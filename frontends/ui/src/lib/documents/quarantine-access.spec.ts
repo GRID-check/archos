@@ -82,7 +82,6 @@ import {
   probeProjectDocumentNames,
   renameDocument,
   resolveProjectDocumentsByName,
-  searchProjectDocuments,
   streamDocumentImage,
 } from './service'
 
@@ -345,18 +344,6 @@ describe('the project listing and a quarantined document', () => {
     await probeProjectDocumentNames(projectAdmin, 'proj-1', ['konten.csv'])
     expect(vi.mocked(findProjectDocumentsByNames).mock.calls[0][3]).toMatchObject({ reader: memberReader('member-1') })
     expect(vi.mocked(findProjectDocumentsByNames).mock.calls[1][3]).toMatchObject({ reader: REVIEWER_READER })
-  })
-
-  it('narrows the rows a search hit is joined to the same way', async () => {
-    // A hit names a file; a quarantined row of the same name must not take it.
-    const hit = { file_name: 'konten.csv', score: 0.9, snippet: 's', page_number: 1, collection: 'proj_abc' }
-    vi.stubGlobal('fetch', vi.fn(async () => Response.json({ hits: [hit] })))
-    try {
-      await searchProjectDocuments(member, 'proj-1', 'konto')
-    } finally {
-      vi.unstubAllGlobals()
-    }
-    expect(vi.mocked(findProjectDocumentsByFilenames).mock.calls[0][3]).toMatchObject({ reader: memberReader('member-1') })
   })
 })
 

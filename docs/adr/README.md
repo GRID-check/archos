@@ -111,7 +111,7 @@ Consequences, where a reader looks for them.
 | [0045](0045-ifc-models-as-a-queryable-building-not-a-document.md) | IFC models are a queryable building, not another document | Accepted |
 | [0046](0046-agent-skills.md) | Agent skills — user-selected, progressive-disclosure instruction packages | Proposed |
 | [0047](0047-document-shelf-travels-as-data.md) | A document's shelf travels as data, not as a name or a label | Accepted |
-| [0048](0048-tool-schemas-stay-with-the-provider.md) | Tool schemas stay with the provider, and a namespace is what makes that true | Proposed |
+| [0048](0048-tool-schemas-stay-with-the-provider.md) | Tool schemas stay with the provider, and a namespace is what makes that true | Superseded |
 | [0049](0049-folders-travel-as-a-materialised-path.md) | Folders reach the backend as a materialised path, mirrored on move | Proposed |
 | [0050](0050-scoped-agent-onboarding-guides.md) | Agent onboarding guides are scoped per service and bridged into Claude Code by import | Accepted |
 | [0051](0051-tasks-are-the-durable-unit-of-delegated-work.md) | A task row is the durable unit of delegated work: pinned requester, lifecycle and review, filing at completion | Accepted |
@@ -197,7 +197,9 @@ Consequences, where a reader looks for them.
 | [0133](0133-piloti-reads-the-estate-through-standard-filesystem-tools.md) | Piloti reads the office's documents through ls, glob, grep and read_file over its own backend, beside ranked search | Proposed |
 | [0134](0134-extracted-page-text-is-stored-per-version.md) | Extracted page text is stored per version, and the index is derived from it | Proposed |
 | [0135](0135-skills-run-on-deep-agents-skills-middleware.md) | Skills run on Deep Agents' SkillsMiddleware, in chat and in deep research | Proposed |
-| [0136](0136-attachments-from-outside-are-scanned-in-cluster-by-clamav.md) | Attachments from outside are scanned in the cluster by ClamAV before anyone can file or download them | Proposed |
+| [0136](0136-search-is-one-query-over-a-projection-beside-the-index.md) | Search is one query over a projection beside the index: the dossier's facts are filtered where authorization lives | Proposed |
+| [0139](0139-attachments-from-outside-are-scanned-in-cluster-by-clamav.md) | Attachments from outside are scanned in the cluster by ClamAV before anyone can file or download them | Proposed |
+| [0140](0140-a-turn-that-needs-the-person-pauses-and-a-new-run-resumes-it.md) | A turn that needs the person pauses, and a new run resumes it: LangGraph `interrupt()` with the checkpointer, as AG-UI 1.0's interrupt outcome | Proposed |
 
 > Note: 0027, 0039, 0044 and 0047 were each independently used twice, every
 > time because two people read the next number off this index instead of off
