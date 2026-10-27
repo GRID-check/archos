@@ -1773,6 +1773,39 @@ def _inside_any(obj: dict[str, Any], boxes: list[tuple]) -> bool:
     return any(x0 <= x <= x1 and top <= y <= bottom for x0, top, x1, bottom in boxes)
 
 
+#: The splitter's chunk size and overlap, in tokens, when the job config names none.
+DEFAULT_CHUNK_SIZE = 1024
+DEFAULT_CHUNK_OVERLAP = 128
+
+
+def split_documents(documents: list[Any], *, chunk_size: int, chunk_overlap: int) -> list[Any]:
+    """``documents`` cut into the nodes ingestion stores, in file order: the job's ``SentenceSplitter``. Pure."""
+    from llama_index.core.node_parser import SentenceSplitter
+
+    return SentenceSplitter(chunk_size=chunk_size, chunk_overlap=chunk_overlap).get_nodes_from_documents(documents)
+
+
+def text_chunks_for_pages(
+    text_pages: list[dict[str, Any]],
+    file_name: str,
+    file_size: int,
+    *,
+    chunk_size: int = DEFAULT_CHUNK_SIZE,
+    chunk_overlap: int = DEFAULT_CHUNK_OVERLAP,
+    doc_class: Any = None,
+) -> list[Any]:
+    """The text chunks one PDF's pages become, cut the way an ingest job cuts them, before any embedding.
+
+    :func:`text_documents_for_pages`, the job's metadata stamp and :func:`split_documents`, in that
+    order: overlap, breadcrumbs, ``page_end`` and ``section_part`` exactly as stored. A node's index in
+    the list is its ``chunk_ordinal``. What a fixture seeds, so a test sees what production stores
+    (``scripts/turn_census/fixture_files.py``).
+    """
+    documents = text_documents_for_pages(text_pages, file_name, file_size)
+    _stamp_chunk_metadata(documents, doc_class=doc_class, provenance={}, chunk_size=chunk_size, file_name=file_name)
+    return split_documents(documents, chunk_size=chunk_size, chunk_overlap=chunk_overlap)
+
+
 def text_documents_for_pages(text_pages: list[dict[str, Any]], file_name: str, file_size: int) -> list[Any]:
     """Build the text Documents for one PDF, structure-aware where the document allows it.
 
@@ -4511,12 +4544,11 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
         the chunker's output) is its place in the file: what orders the chunks
         of one page, whose node ids are random.
         """
-        from llama_index.core.node_parser import SentenceSplitter
         from llama_index.core.schema import MetadataMode
 
         from ..qdrant.payload import ChunkRecord
 
-        nodes = SentenceSplitter(chunk_size=chunk_size, chunk_overlap=chunk_overlap).get_nodes_from_documents(documents)
+        nodes = split_documents(documents, chunk_size=chunk_size, chunk_overlap=chunk_overlap)
         if not nodes:
             return []
         vectors = self._embed_model.get_text_embedding_batch(
