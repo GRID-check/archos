@@ -216,10 +216,12 @@ export type AnswerConfidenceCappedReason = (typeof CAPPED_REASONS)[number]
 
 /**
  * Which rule computed an answer's confidence: 1 the answer-level floors, 2 the
- * weakest load-bearing sentence (ADR-0125), 3 the evidence share (ADR-0139).
- * The chip renders a stored answer under the rule it was computed with.
+ * per-sentence stamps (ADR-0125). Rule 3 (ADR-0139) is also 2 on the wire and
+ * is told apart by its stamps carrying `support`: a tab opened before it reads
+ * this field as `1 | 2`, and a 3 would drop the turn's RUN_FINISHED. The chip
+ * renders a stored answer under the rule it was computed with.
  */
-export const ANSWER_CONFIDENCE_VERSIONS = [1, 2, 3] as const
+export const ANSWER_CONFIDENCE_VERSIONS = [1, 2] as const
 export type AnswerConfidenceVersion = (typeof ANSWER_CONFIDENCE_VERSIONS)[number]
 
 export const isAnswerConfidenceVersion = (value: unknown): value is AnswerConfidenceVersion =>

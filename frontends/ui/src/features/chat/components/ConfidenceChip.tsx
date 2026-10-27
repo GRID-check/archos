@@ -8,6 +8,7 @@ import { useTranslations } from '@/i18n'
 import {
   claimEvidenceCount,
   claimMix,
+  claimWarning,
   type ClaimMix,
   type ClaimStamp,
 } from '@/lib/conversations/message-claim-stamps'
@@ -60,11 +61,11 @@ interface ConfidenceChipProps {
    */
   reason?: string
   /**
-   * Which rule computed the level. 2 held it to the weakest sentence the answer
-   * rests on (ADR-0125); 3 is the evidence share (ADR-0139), and the chip then
-   * leads with the count of backed claims instead of a level. Absent on an
-   * answer stored before rule 2, which keeps the copy of the answer-level
-   * floors it was computed with.
+   * Which rule computed the level. 2 reads the per-sentence stamps: held to the
+   * weakest one (ADR-0125), or, when the stamps carry `support`, counted
+   * (rule 3, ADR-0139), and the chip then leads with the count of backed
+   * claims instead of a level. Absent on an answer stored before rule 2, which
+   * keeps the copy of the answer-level floors it was computed with.
    */
   version?: AnswerConfidenceVersion
   /** Where each sentence comes from; read under rules 2 and 3. */
@@ -86,9 +87,10 @@ interface ConfidenceChipProps {
  *
  * Under rule 3 (ADR-0139) the chip itself leads with the measured count
  * („12 von 14 Aussagen belegt"), as the field does: what the answer rests on,
- * not how sure the model says it is. It turns to the warning tone only when a
- * named cap fired, and then names it beside the count („· Rechtsaussage ohne
- * Beleg"); the level and the model's own assessment move to the tooltip.
+ * not how sure the model says it is. It turns to the warning tone only with a
+ * named reason, read off the stamps first, and names it beside the count
+ * („· Rechtsaussage ohne Beleg"); the level and the model's own assessment
+ * move to the tooltip.
  */
 export const ConfidenceChip: FC<ConfidenceChipProps> = ({
   confidence,
@@ -103,30 +105,36 @@ export const ConfidenceChip: FC<ConfidenceChipProps> = ({
     return null
   }
 
-  const count = version === 3 && claimStamps ? claimEvidenceCount(claimStamps) : null
-  const byClaim = version === 2 || version === 3
+  // Rule 3 is version 2 with `support` on its stamps (the wire keeps 2 for open tabs).
+  const count = version === 2 && claimStamps ? claimEvidenceCount(claimStamps) : null
+  const byClaim = version === 2
   // Rule 3 with a count leads with what the answer rests on; every other
   // answer keeps the copy of the rule it was computed under.
   const copy = count ? 'confidence.byShare' : byClaim ? 'confidence.byClaim' : 'confidence'
   const levelLabel = t(`confidence.levels.${confidence}`)
   const capKey = cappedReason ? CAPPED_REASON_KEYS[cappedReason] : undefined
+  // Under rule 3 the warning is read off the stamps first (an uncited statement
+  // about the law, a pointer that did not hold), so it does not depend on the
+  // model having reported more than the evidence allows; a cap on the
+  // self-report that the stamps do not explain (an unconfirmed quote) comes next.
+  const warnKey = count ? ((claimStamps && claimWarning(claimStamps)) ?? capKey) : capKey
   const label = count
     ? [
         t('confidence.byShare.label', { backed: count.backed, claims: count.claims }),
-        capKey ? t(`confidence.byShare.capLabels.${capKey}`) : null,
+        warnKey ? t(`confidence.byShare.capLabels.${warnKey}`) : null,
       ]
         .filter(Boolean)
         .join(' · ')
     : t('confidence.label', { level: levelLabel })
-  // Under rule 3 the warning tone is a named cap firing, never the model's own
+  // Under rule 3 the warning tone is a named reason, never the model's own
   // „low" on its own: the chip says what the answer rests on, and warns only
   // with a reason (ADR-0139).
-  const variant = (count ? capKey !== undefined : confidence === 'low') ? 'warning' : 'muted'
+  const variant = (count ? warnKey !== undefined : confidence === 'low') ? 'warning' : 'muted'
   // When the confidence was capped, explain WHY in the tooltip (PB-9) instead of
   // leaving the downgrade silent. Fail-open: an absent/unknown reason keeps the
   // generic tooltip. Rules 2 and 3 have their own sentences: the cap there is
   // about the answer's claims.
-  const cappedReasonText = capKey ? t(`${copy}.cappedReasons.${capKey}`) : undefined
+  const cappedReasonText = warnKey ? t(`${copy}.cappedReasons.${warnKey}`) : undefined
   // Trim only to DETECT an empty/whitespace-only reason; the reason itself is
   // rendered verbatim, as the wire contract promises.
   const displayReason = reason?.trim() ? reason : undefined

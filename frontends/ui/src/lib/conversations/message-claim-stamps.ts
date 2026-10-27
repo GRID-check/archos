@@ -101,6 +101,24 @@ export function claimEvidenceCount(stamps: readonly ClaimStamp[]): ClaimEvidence
   return { backed: bearing.filter((stamp) => stamp.support === 1).length, claims: bearing.length }
 }
 
+/** What the chip names beside the count under rule 3, read off the stamps alone. */
+export type ClaimWarning = 'normativeClaimUncited' | 'citationUnverified'
+
+/**
+ * The warning the stamps themselves call for (ADR-0139), whatever the model
+ * said of itself: a load-bearing statement about the law with no quoted or
+ * cited passage first, then a load-bearing pointer that did not hold. Null when
+ * neither. The chip used to warn only when a cap on the self-report fired, so a
+ * self-report that already matched the ceiling left an uncited verdict unnamed.
+ */
+export function claimWarning(stamps: readonly ClaimStamp[]): ClaimWarning | null {
+  const bearing = stamps.filter((stamp) => stamp.loadBearing)
+  if (bearing.some((stamp) => stamp.claimType === 'normative' && !PASSAGE.has(stamp.provenance)))
+    return 'normativeClaimUncited'
+  if (bearing.some((stamp) => stamp.provenance === 'cited_dropped')) return 'citationUnverified'
+  return null
+}
+
 /** The stamps, bounded, or null when none survive. */
 export function sanitizeClaimStamps(input: unknown): ClaimStamp[] | null {
   if (!Array.isArray(input)) return null

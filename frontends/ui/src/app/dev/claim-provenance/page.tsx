@@ -160,13 +160,13 @@ function Preview() {
         title="Antwort aus dem Arbeitsbereich"
         note="Zwei Sätze, beide aus gelesenen Einträgen: „1 von 1 Aussagen belegt“, ruhig."
       >
-        <ConfidenceChip confidence="high" version={3} claimStamps={WORKSPACE} />
+        <ConfidenceChip confidence="high" version={2} claimStamps={WORKSPACE} />
         <AgentResponse
           content={WORKSPACE.map((stamp) => stamp.text).join(' ')}
           messageId="claims-workspace"
           timestamp={at}
           answerConfidence="high"
-          answerConfidenceVersion={3}
+          answerConfidenceVersion={2}
           claimStamps={WORKSPACE}
         />
       </Block>
@@ -177,7 +177,7 @@ function Preview() {
         <ConfidenceChip
           confidence="medium"
           cappedReason="normative_claim_uncited"
-          version={3}
+          version={2}
           claimStamps={FILES_READ}
         />
       </Block>
@@ -188,7 +188,7 @@ function Preview() {
         <ConfidenceChip
           confidence="medium"
           cappedReason="normative_claim_uncited"
-          version={3}
+          version={2}
           claimStamps={MIXED}
         />
       </Block>
@@ -203,7 +203,7 @@ function Preview() {
           routingDecision="shallow"
           answerConfidence="low"
           answerConfidenceCappedReason="ungrounded"
-          answerConfidenceVersion={3}
+          answerConfidenceVersion={2}
           claimStamps={NOTHING_FOUND}
           lookupFoundNothing
         />

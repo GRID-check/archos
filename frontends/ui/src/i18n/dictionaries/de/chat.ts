@@ -1748,10 +1748,10 @@ export const chat: typeof en.chat = {
         'Gezählt sind die tragenden Aussagen: zum Recht, zu Zahlen, Klassen und Fristen. Belegt heißt: eine zitierte Quelle, ein Eintrag im Arbeitsbereich oder eine Messung aus dieser Antwort steht dahinter.',
       selfAssessment: 'Eigene Einschätzung des Assistenten: {level}',
       levelMeanings: {
-        high: 'Hoch: mindestens vier von fünf tragenden Aussagen sind belegt, und keine Rechtsaussage steht ohne Quelle.',
+        high: 'Hoch: jede tragende Aussage ist belegt.',
         medium:
-          'Mittel: der größere Teil ist belegt, aber eine Rechtsaussage ohne Quelle, ein nicht verifizierter Beleg oder Einschätzungen bleiben.',
-        low: 'Niedrig: hinter mindestens der Hälfte der tragenden Aussagen steht nichts, was diese Antwort gelesen hat.',
+          'Mittel: nicht jede tragende Aussage ist belegt: eine Einschätzung, eine Rechtsaussage ohne Quelle oder ein nicht verifizierter Beleg bleibt.',
+        low: 'Niedrig: hinter den meisten tragenden Aussagen steht nichts, was diese Antwort gelesen hat, oder ihr rechtlicher Schluss hat keine zitierte Quelle.',
       },
       // Kurz, im Chip selbst hinter der Zählung, nur wenn die Grenze greift.
       capLabels: {
@@ -1760,6 +1760,7 @@ export const chat: typeof en.chat = {
         normativeClaimUncited: 'Rechtsaussage ohne Beleg',
         measurementOnly: 'nur gemessen',
         citationFallback: 'Quelle ergänzt',
+        citationUnverified: 'Beleg nicht verifiziert',
       },
       cappedReasons: {
         ungrounded: 'Begrenzt: hinter zu vielen tragenden Aussagen steht kein Beleg.',
@@ -1771,6 +1772,8 @@ export const chat: typeof en.chat = {
           'Mittlere Sicherheit: die Angabe ist am Modell gemessen (mit Toleranz und Methode), aber nicht durch eine Quelle belegt.',
         citationFallback:
           'Mittlere Sicherheit: die angeführte Quelle wurde ergänzt, nicht von der Antwort selbst zitiert.',
+        citationUnverified:
+          'Ein Beleg dieser Antwort ließ sich keiner Quelle zuordnen, die sie gelesen hat, und ist im Text markiert.',
       },
     },
     // Die Einschätzung seit ADR-0125: pro Aussage gerechnet, nicht pro Antwort.

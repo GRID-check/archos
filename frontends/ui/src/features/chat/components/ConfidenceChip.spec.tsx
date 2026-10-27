@@ -172,7 +172,7 @@ describe('ConfidenceChip under the evidence share', () => {
 
   test('leads with the count and names the cap that fired', () => {
     render(
-      <ConfidenceChip confidence="medium" cappedReason="normative_claim_uncited" version={3} claimStamps={[...stamps]} />
+      <ConfidenceChip confidence="medium" cappedReason="normative_claim_uncited" version={2} claimStamps={[...stamps]} />
     )
 
     expect(screen.getByRole('button')).toHaveTextContent('3 of 4 statements backed · legal statement uncited')
@@ -181,7 +181,7 @@ describe('ConfidenceChip under the evidence share', () => {
 
   test('stays muted and names no cap when none fired, the level in the tooltip', async () => {
     const user = userEvent.setup()
-    render(<ConfidenceChip confidence="high" version={3} claimStamps={[...stamps.slice(0, 4)]} />)
+    render(<ConfidenceChip confidence="high" version={2} claimStamps={[...stamps.slice(0, 4)]} />)
 
     expect(screen.getByRole('button')).toHaveTextContent('3 of 3 statements backed')
     expect(screen.getByRole('button')).not.toHaveTextContent('·')
@@ -189,9 +189,29 @@ describe('ConfidenceChip under the evidence share', () => {
     expect((await screen.findAllByText(/Assistant self-assessment: high/)).length).toBeGreaterThan(0)
   })
 
+  test('names an uncited statement about the law from the stamps, though no cap fired', () => {
+    // The self-report already matched the ceiling, so nothing capped it: the
+    // warning must not depend on the model having over-reported (review of #1231).
+    render(<ConfidenceChip confidence="medium" version={2} claimStamps={[...stamps]} />)
+
+    const chip = screen.getByRole('button')
+    expect(chip).toHaveTextContent('3 of 4 statements backed · legal statement uncited')
+    expect(chip).toHaveClass('text-warning')
+  })
+
+  test('names a citation that did not hold', () => {
+    const dropped = [
+      ...stamps.slice(0, 3),
+      { text: 'The stair is 1.20 m wide [Beleg nicht verifiziert].', provenance: 'cited_dropped', claimType: 'value', loadBearing: true, support: 0 },
+    ] as const
+    render(<ConfidenceChip confidence="medium" version={2} claimStamps={[...dropped]} />)
+
+    expect(screen.getByRole('button')).toHaveTextContent('3 of 4 statements backed · citation unverified')
+  })
+
   test('a rule-3 answer whose stamps carry no support falls back to the level', () => {
     const bare = stamps.map(({ support: _support, ...stamp }) => stamp)
-    render(<ConfidenceChip confidence="medium" version={3} claimStamps={bare} />)
+    render(<ConfidenceChip confidence="medium" version={2} claimStamps={bare} />)
 
     expect(screen.getByText('Confidence: medium')).toBeInTheDocument()
   })

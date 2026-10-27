@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { claimEvidenceCount, claimMix, sanitizeClaimStamps } from './message-claim-stamps'
+import { claimEvidenceCount, claimMix, claimWarning, sanitizeClaimStamps } from './message-claim-stamps'
 import { sanitizeProvenance } from './message-provenance'
 import { provenanceFromBackendMetadata } from './agent-answer-metadata'
 
@@ -100,23 +100,23 @@ describe('claim stamps', () => {
   test('an unknown version or a false flag is not stored', () => {
     const provenance = sanitizeProvenance({
       answerConfidence: 'high',
-      answerConfidenceVersion: 4,
+      answerConfidenceVersion: 3,
       lookupFoundNothing: false,
     })
     expect(provenance).toEqual({ answerConfidence: 'high' })
   })
 
-  test('rule 3 is stored, and the support each stamp carries survives', () => {
+  test('rule 3 is stored as version 2, and the support each stamp carries survives', () => {
     const provenance = sanitizeProvenance({
       answerConfidence: 'medium',
-      answerConfidenceVersion: 3,
+      answerConfidenceVersion: 2,
       claimStamps: [
         { text: 'A.', provenance: 'cited', claim_type: 'value', load_bearing: true, support: 1 },
         { text: 'B.', provenance: 'reasoning', claim_type: 'normative', load_bearing: true, support: 0.5 },
         { text: 'C.', provenance: 'model_knowledge', claim_type: 'normative', load_bearing: true, support: 0.7 },
       ],
     })
-    expect(provenance?.answerConfidenceVersion).toBe(3)
+    expect(provenance?.answerConfidenceVersion).toBe(2)
     expect(provenance?.claimStamps?.map((stamp) => stamp.support)).toEqual([1, 0.5, undefined])
   })
 
@@ -128,5 +128,27 @@ describe('claim stamps', () => {
     ])
     expect(claimEvidenceCount(stamps ?? [])).toEqual({ backed: 1, claims: 2 })
     expect(claimEvidenceCount([{ text: 'A.', provenance: 'cited', claimType: 'value', loadBearing: true }])).toBeNull()
+  })
+})
+
+describe('claimWarning', () => {
+  const stamp = (provenance: string, claimType: string, loadBearing = true) =>
+    sanitizeClaimStamps([{ text: 'S.', provenance, claim_type: claimType, load_bearing: loadBearing }])?.[0]
+  const stamps = (...items: ReturnType<typeof stamp>[]) => items.filter((item) => item !== undefined)
+
+  test('names an uncited statement about the law first', () => {
+    expect(
+      claimWarning(stamps(stamp('cited', 'value'), stamp('reasoning', 'normative'), stamp('cited_dropped', 'value')))
+    ).toBe('normativeClaimUncited')
+  })
+
+  test('a record or a measurement beside the law does not count as its source', () => {
+    expect(claimWarning(stamps(stamp('measured', 'normative')))).toBe('normativeClaimUncited')
+    expect(claimWarning(stamps(stamp('record', 'normative')))).toBe('normativeClaimUncited')
+  })
+
+  test('then a citation that did not hold; nothing for a cited or a non-bearing statement', () => {
+    expect(claimWarning(stamps(stamp('cited', 'normative'), stamp('cited_dropped', 'value')))).toBe('citationUnverified')
+    expect(claimWarning(stamps(stamp('cited', 'normative'), stamp('model_knowledge', 'normative', false)))).toBeNull()
   })
 })

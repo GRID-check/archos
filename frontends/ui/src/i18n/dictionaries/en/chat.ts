@@ -1726,10 +1726,10 @@ export const chat = {
         'Counted are the load-bearing statements: about the law, numbers, classes and deadlines. Backed means a cited source, a workspace record or a measurement from this answer stands behind it.',
       selfAssessment: 'Assistant self-assessment: {level}',
       levelMeanings: {
-        high: 'High: at least four in five load-bearing statements are backed, and no legal statement stands without a source.',
+        high: 'High: every load-bearing statement is backed.',
         medium:
-          'Medium: most is backed, but a legal statement without a source, an unverified citation or assessments remain.',
-        low: 'Low: at least half of the load-bearing statements have nothing behind them that this answer read.',
+          'Medium: not every load-bearing statement is backed: an assessment, a legal statement without a source or an unverified citation remains.',
+        low: 'Low: most load-bearing statements have nothing behind them that this answer read, or its legal conclusion has no cited source.',
       },
       capLabels: {
         ungrounded: 'too little backed',
@@ -1737,6 +1737,7 @@ export const chat = {
         normativeClaimUncited: 'legal statement uncited',
         measurementOnly: 'measured only',
         citationFallback: 'source attached',
+        citationUnverified: 'citation unverified',
       },
       cappedReasons: {
         ungrounded: 'Capped: too many load-bearing statements have no evidence behind them.',
@@ -1747,6 +1748,8 @@ export const chat = {
           'Medium confidence: the value is measured on the model (with tolerance and method) but not backed by a cited source.',
         citationFallback:
           'Medium confidence: the source shown was attached by the assistant, not cited by the answer itself.',
+        citationUnverified:
+          'A citation in this answer could not be matched to a source this answer read, and is marked in the text.',
       },
     },
     // The assessment since ADR-0125: computed per statement, not per answer.
