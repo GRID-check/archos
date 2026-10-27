@@ -63,7 +63,7 @@ const restrictedUseSchema = z.object({
   // The answer this turn writes (`answer_message_id(conversation, turn)` on the
   // agent's side): marked here when the conversation drew on a restricted
   // folder, before the model reads anything (ADR-0093).
-  answerMessageId: z.string().uuid().nullish(),
+  answerMessageId: z.guid().nullish(),
 })
 
 /** The id is written into the record, so it is bounded like every other id the agent sends. */

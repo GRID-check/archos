@@ -1,0 +1,6 @@
+---
+operators:
+  - >
+    The ingestion and research job queues now refuse, in the database, any
+    write that would bring a cancelled or dead job back to life. A hand repair
+    that requeues such a row fails; start the work again as a new job instead.

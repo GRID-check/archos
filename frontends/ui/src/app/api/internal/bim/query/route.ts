@@ -35,8 +35,8 @@ const requestSchema = z
   .object({
     organizationId: z.string().min(1).max(255),
     /** Project scope. Omitted, only `modelId` can select a model. */
-    projectId: z.string().uuid().optional(),
-    modelId: z.string().uuid().optional(),
+    projectId: z.guid().optional(),
+    modelId: z.guid().optional(),
     /** Case-insensitive substring of the model's filename. */
     modelName: z.string().trim().min(1).max(255).optional(),
     /**

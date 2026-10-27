@@ -340,6 +340,6 @@ export function feedbackThreadHref(reportId: string): string {
  * make the server look at a real ticket again.
  */
 export const posthogSupportPokeSchema = z.object({
-  ticketId: z.string().trim().uuid(),
+  ticketId: z.string().trim().guid(),
 })
 export type PosthogSupportPoke = z.infer<typeof posthogSupportPokeSchema>

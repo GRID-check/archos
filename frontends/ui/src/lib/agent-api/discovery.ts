@@ -85,7 +85,7 @@ const GENERIC_NARROWING_HINT = 'Narrow the call to page through it: pass a small
  * filter. A hint naming a parameter the operation lacks sends the agent into a
  * refusal.
  */
-export function narrowingHint(op: { readonly query?: z.ZodObject<z.ZodRawShape>; readonly inputSchema?: JsonSchemaObject }): string {
+export function narrowingHint(op: { readonly query?: z.ZodObject; readonly inputSchema?: JsonSchemaObject }): string {
   const names = op.inputSchema
     ? Object.keys(op.inputSchema.properties ?? {}).filter((name) => name !== 'projectId')
     : Object.keys(op.query?.shape ?? {})
@@ -267,26 +267,10 @@ const IF_MATCH_SCHEMA = {
 
 const schemaCache = new Map<string, JsonSchemaNode>()
 
-/**
- * `node` without what JSON Schema already means when it is absent:
- * `additionalProperties: true` (the zod exporter writes it on every object that
- * is not strict). An agent pays for every token of a tool list, and this one
- * says nothing; validation is unchanged.
- */
-export function withoutDefaults(node: JsonSchemaNode): JsonSchemaNode {
-  if (Array.isArray(node)) return node.map((item) => withoutDefaults(item as JsonSchemaNode)) as unknown as JsonSchemaNode
-  if (typeof node !== 'object' || node === null) return node
-  return Object.fromEntries(
-    Object.entries(node)
-      .filter(([key, value]) => !(key === 'additionalProperties' && value === true))
-      .map(([key, value]) => [key, typeof value === 'object' && value !== null ? withoutDefaults(value as JsonSchemaNode) : value]),
-  ) as JsonSchemaNode
-}
-
 function part(schema: Parameters<typeof toJsonSchema>[0]): { node: JsonSchemaNode; required: boolean } {
   try {
-    const node = withoutDefaults(toJsonSchema(schema))
-    const required = Array.isArray(node.required) ? node.required.length > 0 : !schema.isOptional()
+    const node = toJsonSchema(schema)
+    const required = Array.isArray(node.required) ? node.required.length > 0 : !z.safeParse(schema, undefined).success
     return { node, required }
   } catch {
     // The route's own schema is the gate; the export only shapes what is shown.
@@ -723,15 +707,15 @@ const callInput = z.object({
   name: z.string().min(1),
   input: z
     .object({
-      params: z.record(z.string()).optional(),
-      query: z.record(z.unknown()).optional(),
+      params: z.record(z.string(), z.string()).optional(),
+      query: z.record(z.string(), z.unknown()).optional(),
       body: z.unknown().optional(),
       ifMatch: z.string().min(1).max(IF_MATCH_MAX_LENGTH).optional(),
     })
     .optional(),
 })
 
-const backendCallInput = z.object({ name: z.string().min(1), input: z.record(z.unknown()).optional() })
+const backendCallInput = z.object({ name: z.string().min(1), input: z.record(z.string(), z.unknown()).optional() })
 
 /**
  * The catalog call `args` of call-operation name, or null when they name a read

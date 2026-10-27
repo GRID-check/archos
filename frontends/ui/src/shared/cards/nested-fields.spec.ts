@@ -18,6 +18,7 @@
  * happens to hit first.
  */
 
+import { discriminatedOptions } from '@/lib/api/zod-union'
 import { describe, expect, it } from 'vitest'
 import { z } from 'zod'
 import * as generated from './generated'
@@ -55,21 +56,21 @@ const constOf = (node: JsonSchemaNode | undefined): string | undefined => {
 }
 
 /** Peel `.optional()`, `.nullable()`, `.default()`, arrays and unions. */
-function bottomsOutInAny(schema: z.ZodTypeAny, depth = 0): boolean {
+function bottomsOutInAny(schema: z.core.$ZodType, depth = 0): boolean {
   if (depth > 8) return false
-  const def = schema._def as { typeName: string; [key: string]: unknown }
-  switch (def.typeName) {
-    case 'ZodAny':
-    case 'ZodUnknown':
+  const def = schema._zod.def
+  switch (def.type) {
+    case 'any':
+    case 'unknown':
       return true
-    case 'ZodOptional':
-    case 'ZodNullable':
-    case 'ZodDefault':
-      return bottomsOutInAny(def.innerType as z.ZodTypeAny, depth + 1)
-    case 'ZodArray':
-      return bottomsOutInAny(def.type as z.ZodTypeAny, depth + 1)
-    case 'ZodUnion':
-      return (def.options as z.ZodTypeAny[]).some((option) => bottomsOutInAny(option, depth + 1))
+    case 'optional':
+    case 'nullable':
+    case 'default':
+      return bottomsOutInAny((def as z.core.$ZodOptionalDef).innerType, depth + 1)
+    case 'array':
+      return bottomsOutInAny((def as z.core.$ZodArrayDef).element, depth + 1)
+    case 'union':
+      return (def as z.core.$ZodUnionDef).options.some((option) => bottomsOutInAny(option, depth + 1))
     default:
       return false
   }
@@ -94,7 +95,7 @@ const nestedFields = cardDefNames.flatMap((defName) => {
 })
 
 const schemaFor = (defName: string) =>
-  (generated as unknown as Record<string, z.ZodObject<z.ZodRawShape>>)[
+  (generated as unknown as Record<string, z.ZodObject>)[
     `${defName[0].toLowerCase()}${defName.slice(1)}Schema`
   ]
 
@@ -152,7 +153,7 @@ describe('nested card fields are validated, not waved through', () => {
     // that render fine today. `preview-fixtures.ts` runs its raw fixtures
     // through `validateGridCards`, so a rejected one is simply absent.
     const { CARD_PREVIEW_FIXTURES, PREVIEW_EXCLUDED } = await import('@/features/grid-cards/preview-fixtures')
-    const previewable = [...gridCardSchema.optionsMap.keys()]
+    const previewable = [...discriminatedOptions(gridCardSchema).keys()]
       .filter((type): type is string => typeof type === 'string')
       .filter((type) => !(type in PREVIEW_EXCLUDED))
     expect(Object.keys(CARD_PREVIEW_FIXTURES).sort()).toEqual(previewable.sort())

@@ -66,10 +66,20 @@ fails with `not_in_channel`.
 
 ## Alerts
 
-The plan allows five insight alerts, so each alert covers one area with one
-row per rule: the insight's `rule` column names the rule, `breach` > 0 fires,
-and the Slack message lists every rule that fired. An alert notifies when it
+The plan allows five insight alerts, so each alert covers one area. Its
+insight computes one row per rule internally, then folds them into **one
+row**: `rule` lists every rule that fired, joined with ` | ` („Keine Regel
+verletzt" when none did), and `breach` counts them. An alert notifies when it
 starts firing, not on every check.
+
+Keep the result to one row. A scheduled check of an `any_row` alert over a
+multi-row result errored on every run with only „This alert encountered an
+error" (2026-10-27; the same query ran fine in the SQL editor, and
+`alert-simulate` refuses `any_row` alerts, so nothing shows the real error).
+Fold a new rule in with the same wrapper:
+`SELECT … FROM (SELECT rule AS r, breach AS b FROM (<the per-rule rows>))`.
+The inner columns are renamed because ClickHouse refuses an outer
+`countIf(breach > 0)` over an inner `breach` alias.
 
 | Alert | Insight | Checked | Rules |
 |---|---|---|---|

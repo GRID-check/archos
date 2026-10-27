@@ -118,6 +118,7 @@ export function buildWireSchemaModule(root) {
     const def = clientBound.has(defName) ? defs[defName] : tolerateUnknownKeys(defs[defName])
     const zodExpr = jsonSchemaToZod(def, {
       module: false,
+      zodVersion: 4,
       parserOverride: wireParserOverride,
     })
       // An open model's extra fields (a source's lane, a ledger entry's docs)
