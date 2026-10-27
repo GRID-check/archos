@@ -259,7 +259,7 @@ Its own tests: `tests/benchmarks/test_qdrant_parity.py` (offline: fixture, score
 gate bounds, the reference numbers against the gate report, the regex scan) and
 `sources/knowledge_layer/tests/test_qdrant_parity_harness.py` (the whole run on a
 synthetic corpus against `AIQ_QDRANT_TEST_URL`, which CI provides). The last run's
-numbers: [`docs/architecture/qdrant-gates-2026-10.md`](../../../docs/architecture/qdrant-gates-2026-10.md).
+numbers: [`docs/audit/qdrant-gates-2026-10.md`](../../../docs/audit/qdrant-gates-2026-10.md).
 
 ## Install
 

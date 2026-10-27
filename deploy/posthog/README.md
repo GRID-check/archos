@@ -46,4 +46,54 @@ code and a key the code reads that the dictionary lacks.
 The older workflow „Piloti feedback → Slack" (`01a163d8-dfc6-0000-3e2d-82d9d653bc47`)
 posted from PostHog's own `$conversation_message_received`, which cannot say
 which deployment a ticket came from, so its claim button always pointed at
-production. Disable it once both deployments send the server events above.
+production. It also posted every report a second time, to `#posthog-inbox`.
+Archived on 2026-10-27, after the per-deployment destination was seen posting
+the same reports to `#support-tickets`.
+
+## Slack channels
+
+One channel per question someone acts on. The PostHog Slack app (integration
+91399) must be a member of each channel (`/invite @PostHog`), or every post
+fails with `not_in_channel`.
+
+| Channel | ID | The question it answers | What posts there |
+|---|---|---|---|
+| `#alerts-prod` | `C0CCG0Z1EKF` | Is production broken? | The „Platform health (prod)" alert; error-tracking spikes (`01a15d7e…`) and upstream outages, created and reopened (`01a159e8-d931…`, `01a159e8-dc54…`) |
+| `#support-tickets` | `C0CBG0ZC0TB` | Does a member wait for us? | New reports and replies (`support/`), the 24-hour reminder |
+| `#answer-quality` | `C0CCKAS3TRC` | Where did Piloti answer badly? | Thumbs-down votes with a reason |
+| `#piloti-metrics` | `C0CDFLKKYRE` | What does it cost, and how is the week going? | The „Costs and budgets (prod)" alert, the Monday report |
+| `#posthog-inbox` | `C0CAHK8EYAF` | | Nothing any more: every destination moved to the channels above on 2026-10-27 |
+
+## Alerts
+
+The plan allows five insight alerts, so each alert covers one area with one
+row per rule: the insight's `rule` column names the rule, `breach` > 0 fires,
+and the Slack message lists every rule that fired. An alert notifies when it
+starts firing, not on every check.
+
+| Alert | Insight | Checked | Rules |
+|---|---|---|---|
+| Platform health (prod) | `tqqimEor` | hourly | The five per-area health tables of `docs/observability/metrics.md`, merged, plus „production sends no metrics at all", which the old heartbeat could not see: it only noticed a service that sent and then stopped |
+| Support: feedback ticket waiting 24h+ (prod) | `gsIfpLwh` | hourly | A prod ticket, contact allowed, where the reporter spoke last more than 24 h and less than 7 days ago. Read from `$conversation_message_*` events: PostHog emits no event when a ticket is resolved, so a ticket resolved without a reply stays listed until its 7 days pass |
+| Costs and budgets (prod) | `1GfF4oj1` | hourly | An office at 90 %+ of its monthly budget or blocked by it; today's LLM cost above 25 USD and above twice the 14-day daily average; Claude chat reading under 20 % of its input from the prompt cache over 24 h (it read 0 % for a month until 2026-10-27, `src/aiq_agent/common/prompt_caching.py`). Cost equals price on the price list today, so a negative-margin rule would never fire |
+
+## Destinations outside `support/`
+
+| File | Destination in PostHog | Trigger | What it does |
+|---|---|---|---|
+| none: PostHog's Slack template with its inputs set | „Piloti answers: thumbs-down with a reason → Slack (prod)" `01a17e99-0271-0000-4f5a-8c22030a5fd0` | `answer_feedback_submitted` with `verdict = down`, `reason` set and `$host = app.piloti.at` | Posts to `#answer-quality`: the reason, the office, the page, the conversation and message ids, links to Platform → Answer quality and the person's replays. The vote's comment never reaches PostHog. A thumbs-down without a reason does not post: on its own it says too little to act on |
+| [`surveys/chat-message-count.hog`](surveys/chat-message-count.hog) | „Piloti: count chat messages per person (NPS audience)" `01a17ea6-7a0c-0000-b8fe-252e2147be8c` | `chat_message_sent` | Sets the person property `chat_messages_total`, which the NPS survey targets (≥ 15) |
+
+## Surveys and reports
+
+| What | When | Audience |
+|---|---|---|
+| CSAT „nach Export" | 3 s after `report_exported` | 30 % of people, once per 30 days across surveys |
+| NPS „power users" | 5 s after `chat_message_sent` | `chat_messages_total` ≥ 15, once per 90 days |
+| „Piloti Wochenbericht" (subscription 58130) | Mondays 07:00 UTC | AI-written report to `#piloti-metrics`: usage, answer quality, support, costs, errors, against the week before |
+
+## Announcements
+
+In-app announcements (a window or a banner, for a new guideline or a model
+switch) are PostHog product tours, created in the PostHog UI. How to send one,
+target it and read its reach: [`announcements.md`](announcements.md).

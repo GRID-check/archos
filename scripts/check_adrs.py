@@ -19,7 +19,9 @@ An audit of the 53 records here found four kinds of silent drift:
   existed on disk and appeared nowhere in the index.
 * **Four metadata formats.** ``- **Status:** x``, ``- **Status**: x``, a
   ``## Status`` section, and a bare ``**Status:** x`` with no Deciders at all —
-  so nothing could read the directory programmatically.
+  so nothing could read the directory programmatically. Since 2026-10 every
+  record carries its status in YAML frontmatter, and a status written any
+  other way is refused, so a fifth format cannot start.
 
 None of these have a symptom until somebody acts on a decision that was
 superseded a month ago.
@@ -28,13 +30,15 @@ What it checks
 --------------
 
 Numbers are unique — no exemptions — every ADR is indexed, the index status
-matches the file, statuses come from the legend, new ADRs (0050 and up)
-carry MADR frontmatter, and an index row that says a record is (partly)
+matches the file, every ADR states its status as frontmatter ``status:`` and
+nowhere else, statuses are a legend value exactly, new ADRs (0050 and up)
+carry the rest of the MADR frontmatter, and an index row that says a record is (partly)
 superseded by NNNN names a record that exists and that the superseded record
 itself cites as ADR-NNNN (a renumbering that moves one side and not the other
-leaves the index pointing at an unrelated decision). Records 0001-0049 predate the template and are read
-with a legacy parser rather than being asked to convert, as do the four
-pre-template records renumbered into 0056-0059 (``RENUMBERED_LEGACY``).
+leaves the index pointing at an unrelated decision). Records 0001-0049 predate the template and keep
+their pre-template body; only the status moved, because a status is metadata
+and the decision is not. The same holds for the four pre-template records
+renumbered into 0056-0059 (``RENUMBERED_LEGACY``).
 
 Usage:
     python scripts/check_adrs.py            # validate; exit 1 on drift
@@ -68,11 +72,13 @@ MADR_FROM = 50
 # way to opt a NEW ADR out of the template.
 RENUMBERED_LEGACY = frozenset({56, 57, 58, 59})
 
-STATUSES = ("proposed", "rejected", "accepted", "deprecated", "superseded")
+# The legend, exactly. Bare ``superseded`` is for a record whose replacement is
+# not written yet (0048); it becomes ``superseded by ADR-NNNN`` when it is.
+VALID_STATUS_RE = re.compile(r"^(?:proposed|rejected|accepted|deprecated|superseded(?: by ADR-\d{4})?)$")
 
 FRONTMATTER_RE = re.compile(r"^---\r?\n(.*?)\r?\n---", re.DOTALL)
-# The three legacy shapes, in one pattern: optional bullet, colon inside or
-# outside the bold.
+# The retired shapes, refused wherever they appear: optional bullet, colon
+# inside or outside the bold, or a ``## Status`` section.
 LEGACY_STATUS_RE = re.compile(r"^[-*]?\s*\*\*Status:?\*\*:?\s*(.+)$", re.MULTILINE)
 SECTION_STATUS_RE = re.compile(r"^##\s*Status\s*\n+(.+)$", re.MULTILINE)
 INDEX_ROW_RE = re.compile(r"^\|\s*\[(\d{4})\]\(([^)]+)\)\s*\|([^|]*)\|([^|]*)\|", re.MULTILINE)
@@ -89,17 +95,21 @@ def number_of(path: Path) -> int:
 
 
 def raw_status(path: Path) -> str | None:
-    """The status as written, in whichever of the four formats this file uses."""
+    """The frontmatter ``status:``, or None when the record has none."""
+    fm = FRONTMATTER_RE.match(path.read_text(encoding="utf-8"))
+    if not fm:
+        return None
+    m = re.search(r"^status:\s*(.+)$", fm.group(1), re.MULTILINE)
+    return m.group(1).strip().strip('"').strip("'") if m else None
+
+
+def legacy_status(path: Path) -> str | None:
+    """A status written in one of the retired body formats, if the record has one."""
     text = path.read_text(encoding="utf-8")
-    fm = FRONTMATTER_RE.match(text)
-    if fm:
-        m = re.search(r"^status:\s*(.+)$", fm.group(1), re.MULTILINE)
-        if m:
-            return m.group(1).strip().strip('"').strip("'")
     for pattern in (LEGACY_STATUS_RE, SECTION_STATUS_RE):
         m = pattern.search(text)
         if m:
-            return m.group(1).strip()
+            return m.group(0).strip()
     return None
 
 
@@ -137,7 +147,6 @@ def index_rows(readme: Path, errors: list[str]) -> dict[str, str]:
     return rows
 
 
-SUPERSEDED_RE = re.compile(r"^superseded by ADR-\d{4}$")
 DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 # The heading plus everything up to the next heading, so an empty section
 # is caught: a Confirmation naming no gate is the thing this checks for.
@@ -160,13 +169,6 @@ def check_madr(path: Path, status: str, errors: list[str]) -> None:
             f"(YAML frontmatter). Copy docs/adr/0000-template.md."
         )
         return
-
-    clean = status.strip()
-    if clean not in STATUSES[:4] and not SUPERSEDED_RE.match(clean):
-        errors.append(
-            f"{path.name}: status {clean!r} is not one of {', '.join(STATUSES[:4])}, "
-            f"superseded by ADR-NNNN. Qualifications belong in Consequences."
-        )
 
     body = fm.group(1)
     date = re.search(r"^date:\s*(.+)$", body, re.MULTILINE)
@@ -238,12 +240,21 @@ def check(errors: list[str]) -> int:
 
         status = raw_status(path)
         if status is None:
-            errors.append(f"{path.name}: no status field this script can read.")
-            continue
-        if normalise(status) not in STATUSES:
             errors.append(
-                f"{path.name}: status {status!r} is not one of {', '.join(STATUSES)}. "
-                f"Qualifications belong in Consequences."
+                f"{path.name}: no frontmatter `status:`. Every ADR opens with "
+                f"`---`, `status: proposed` (or another legend value), `---`."
+            )
+            continue
+        if not VALID_STATUS_RE.match(status):
+            errors.append(
+                f"{path.name}: status {status!r} is not one of proposed, accepted, rejected, "
+                f"deprecated, superseded, superseded by ADR-NNNN. Qualifications belong in Consequences."
+            )
+        legacy = legacy_status(path)
+        if legacy:
+            errors.append(
+                f"{path.name}: a second status in the body ({legacy!r}). The frontmatter "
+                f"`status:` is the only one; move a qualification to a `Status note` or Consequences."
             )
 
         if num >= MADR_FROM and num not in RENUMBERED_LEGACY:

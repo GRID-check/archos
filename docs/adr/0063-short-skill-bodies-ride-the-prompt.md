@@ -32,7 +32,7 @@ body arrives one full-context call later, with the whole prefix and every
 message re-sent and 3–8 s of latency. `brandschutz` opens with "load
 `gebaeudeklasse` first", so a fire-safety question paid two rounds before its
 first search. The turns-per-answer audit
-(`docs/architecture/turns-per-answer-audit-2026-09.md`) found the skill
+(`docs/audit/turns-per-answer-audit-2026-09.md`) found the skill
 rounds on every method-shaped question it reconstructed, and on the
 measurement turn they were the round the answer did not need.
 
@@ -193,4 +193,4 @@ exactly the turns it was saved on.
   `common/answer_envelope.py` (`skills_applied`),
   `agents/piloti/register.py` (`_resolve_skill_runtime`, `_report_skills`).
 - The measurement that led here:
-  `docs/architecture/turns-per-answer-audit-2026-09.md`.
+  `docs/audit/turns-per-answer-audit-2026-09.md`.

@@ -1,10 +1,10 @@
 # Night of 6–7 Oct 2026: from one PR to a reviewed stack
 
-> **Numbers as written.** This branch's migrations 0104–0112 are 0109–0115 since develop took 0104–0106 (#847), and its ADR-0079, 0080, 0081 are ADR-0086, 0087, 0088. Older numbers here (0106–0115) are those before the stack's collapse; [`database/schema.md`](../docs/database/schema.md) has the numbers as shipped.
+> **Numbers as written.** This branch's migrations 0104–0112 are 0109–0115 since develop took 0104–0106 (#847), and its ADR-0079, 0080, 0081 are ADR-0086, 0087, 0088. Older numbers here (0106–0115) are those before the stack's collapse; [`database/schema.md`](../database/schema.md) has the numbers as shipped.
 
 The product owner's request (1 Oct, restated 6 Oct 18:00), verbatim in
 [`2026-10-01-upload-governance-worklog.md`](2026-10-01-upload-governance-worklog.md)
-and the ten tickets in [`docs/audit/upload-and-filing-triage-2026-10.md`](../docs/audit/upload-and-filing-triage-2026-10.md).
+and the ten tickets in [`docs/audit/upload-and-filing-triage-2026-10.md`](../audit/upload-and-filing-triage-2026-10.md).
 
 What "done" means tonight, in the product owner's words: "work on this all night
 till it is done and you truly understand everything … use many subagents. Done

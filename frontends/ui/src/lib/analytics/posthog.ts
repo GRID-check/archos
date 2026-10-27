@@ -29,7 +29,9 @@
  *   replays split mid-task. What is stored now is the `ph_<token>_posthog`
  *   cookie and the same-named localStorage entry (365 days), with a
  *   cross-subdomain identifier, plus the survey keys posthog-js writes when a
- *   survey is shown. None of it is strictly necessary. The privacy notice
+ *   survey is shown and the product-tour keys it writes when an announcement
+ *   is shown, closed or completed (`ph_product_tour_*`,
+ *   `ph_last_seen_tour_date_*`, `ph_active_product_tour`). None of it is strictly necessary. The privacy notice
  *   (`lib/legal/content`) discloses exactly this storage and the opt-out, so a
  *   change to `persistence`, the cookie scope or what is stored is a change to
  *   that notice too: edit both in one commit. The opt-out is the profile page's
@@ -39,8 +41,10 @@
  *   hands the server-known id to the SDK at init, so the very first pageview is
  *   already the signed-in person (before it, that pageview was anonymous and
  *   landed on a different person). `organization_id`, `organization_name`,
- *   `user_role` and `locale` are registered as super properties. No email, no
- *   name: pending the owner's explicit permission. `person_profiles:
+ *   `user_role` and `locale` are registered as super properties and also set on
+ *   the person, because surveys and announcements (product tours) target person
+ *   properties, not event properties ("only admins of this office", "only
+ *   English"). No email, no name: pending the owner's explicit permission. `person_profiles:
  *   'identified_only'` means a signed-out visitor never creates a person.
  * - **Tenant context travels as properties, not groups.** PostHog group
  *   analytics is a paid add-on, billed on every identified event once
@@ -417,18 +421,23 @@ const CONTEXT_PROPERTIES = {
 
 /**
  * Register {@link PostHogContext} as super properties, or drop the ones that are
- * empty. Super properties rather than groups: see the header. `reset()` clears
- * them with the rest of the identity. No-op when disabled.
+ * empty, and set the same values on the person, an empty one as `null`, so a
+ * survey or announcement can target them. Super properties rather than groups:
+ * see the header. `reset()` clears the super properties with the rest of the
+ * identity. No-op when disabled.
  */
 export const registerPosthogContext = (context: PostHogContext): void => {
   if (!initialized) return
   const present: Record<string, string> = {}
+  const person: Record<string, string | null> = {}
   for (const key of Object.keys(CONTEXT_PROPERTIES) as Array<keyof PostHogContext>) {
     const value = context[key]
+    person[CONTEXT_PROPERTIES[key]] = value || null
     if (value) present[CONTEXT_PROPERTIES[key]] = value
     else posthog.unregister(CONTEXT_PROPERTIES[key])
   }
   if (Object.keys(present).length > 0) posthog.register(present)
+  posthog.setPersonProperties(person)
 }
 
 /**

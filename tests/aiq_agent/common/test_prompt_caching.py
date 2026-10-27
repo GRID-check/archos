@@ -10,12 +10,15 @@ from langchain_core.messages import AIMessage
 from langchain_core.messages import HumanMessage
 from langchain_core.messages import SystemMessage
 
+from aiq_agent.common.prompt_caching import CACHE_CONTROL_FIELD
 from aiq_agent.common.prompt_caching import PROMPT_CACHE_KEY_FIELD
 from aiq_agent.common.prompt_caching import SESSION_ID_FIELD
 from aiq_agent.common.prompt_caching import begin_stable_prefix
 from aiq_agent.common.prompt_caching import end_stable_prefix
+from aiq_agent.common.prompt_caching import needs_cache_marker
 from aiq_agent.common.prompt_caching import prompt_cache_extra_body
 from aiq_agent.common.prompt_caching import prompt_cache_key
+from aiq_agent.common.prompt_caching import with_cache_marker
 from aiq_agent.common.prompt_caching import with_prompt_cache_routing
 
 TOOLS = [{"type": "function", "name": "knowledge_search", "parameters": {"type": "object"}}]
@@ -117,6 +120,34 @@ def test_the_envelope_response_format_is_part_of_the_key():
     strict = prompt_cache_extra_body(messages, {"response_format": {"type": "json_schema"}})
     loose = prompt_cache_extra_body(messages, {"response_format": {"type": "json_object"}})
     assert strict[SESSION_ID_FIELD] != loose[SESSION_ID_FIELD]
+
+
+class TestClaudeIsAskedToCache:
+    """Anthropic caches only on request; the OpenAI family caches on its own."""
+
+    def test_only_the_opt_in_families_need_the_marker(self):
+        assert needs_cache_marker("anthropic/claude-opus-5.5")
+        assert needs_cache_marker("~anthropic/claude-opus-latest")
+        assert not needs_cache_marker("openai/gpt-6-luna")
+        assert not needs_cache_marker(None)
+
+    def test_a_claude_call_carries_the_marker_and_the_routing_key(self):
+        messages = [SystemMessage(content="You are Piloti."), HumanMessage(content="q")]
+        body = prompt_cache_extra_body(messages, {}, model="anthropic/claude-opus-5.5")
+        assert body[CACHE_CONTROL_FIELD] == {"type": "ephemeral"}
+        assert body[SESSION_ID_FIELD].startswith("grid-")
+
+    def test_a_claude_call_without_a_system_prompt_still_caches(self):
+        body = prompt_cache_extra_body([HumanMessage(content="hi")], {}, model="anthropic/claude-opus-5.5")
+        assert body == {CACHE_CONTROL_FIELD: {"type": "ephemeral"}}
+
+    def test_an_explicit_cache_control_wins(self):
+        mine = {CACHE_CONTROL_FIELD: {"type": "ephemeral", "ttl": "1h"}}
+        assert with_cache_marker(mine, "anthropic/claude-opus-5.5") == mine
+
+    def test_other_models_are_untouched(self):
+        messages = [SystemMessage(content="You are Piloti."), HumanMessage(content="q")]
+        assert CACHE_CONTROL_FIELD not in prompt_cache_extra_body(messages, {}, model="openai/gpt-6-luna")
 
 
 class TestAStablePrefixKeepsTheShard:

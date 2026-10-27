@@ -115,13 +115,13 @@ async def test_get_langchain_llm_resolves_and_hardens_the_chat_model_itself():
 # `extra_body` precisely because that is the one bag both builders forward.
 
 
-def _openrouter_chat_model(**kwargs):
+def _openrouter_chat_model(model="openai/gpt-5.6-luna", **kwargs):
     from langchain_openai import ChatOpenAI
 
     from aiq_agent.common.llm_factory import enforce_chat_request_contract
 
     llm = ChatOpenAI(
-        model="openai/gpt-5.6-luna",
+        model=model,
         api_key="test-key",  # pragma: allowlist secret
         base_url="https://openrouter.ai/api/v1",
         **kwargs,
@@ -191,6 +191,22 @@ def test_usage_include_is_not_sent():
     payload = _sent_payload(_openrouter_chat_model(), _messages(), tools=DEFERRED_TOOLS)
     assert "usage" not in payload
     assert "usage" not in payload["extra_body"]
+
+
+def test_a_claude_call_asks_for_caching_on_both_apis():
+    # Claude caches nothing unless asked: 0 of 60 M prompt tokens over 30 days
+    # in production before this (2026-10-27). The field has to survive both
+    # payload builders, so assert on the wire body.
+    for responses in (False, True):
+        llm = _openrouter_chat_model(model="anthropic/claude-opus-5.5", use_responses_api=responses)
+        payload = _sent_payload(llm, _messages(), tools=DEFERRED_TOOLS)
+        assert payload["extra_body"]["cache_control"] == {"type": "ephemeral"}
+        assert payload["extra_body"]["session_id"].startswith("grid-")
+
+
+def test_an_openai_call_gets_no_cache_marker():
+    payload = _sent_payload(_openrouter_chat_model(), _messages(), tools=DEFERRED_TOOLS)
+    assert "cache_control" not in payload["extra_body"]
 
 
 def test_provider_order_is_not_pinned():

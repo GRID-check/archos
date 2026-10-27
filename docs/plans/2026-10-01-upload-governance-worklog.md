@@ -1,6 +1,6 @@
 # Upload governance — working log (2026-10-01, overnight)
 
-> **Numbers as written.** This branch's migrations 0104–0112 are 0109–0115 since develop took 0104–0106 (#847), and its ADR-0079, 0080, 0081 are ADR-0086, 0087, 0088. Older numbers here (0106–0115) are those before the stack's collapse; [`database/schema.md`](../docs/database/schema.md) has the numbers as shipped.
+> **Numbers as written.** This branch's migrations 0104–0112 are 0109–0115 since develop took 0104–0106 (#847), and its ADR-0079, 0080, 0081 are ADR-0086, 0087, 0088. Older numbers here (0106–0115) are those before the stack's collapse; [`database/schema.md`](../database/schema.md) has the numbers as shipped.
 
 Branch `claude/nvidia-toolkit-data-validation-rbnyi6`. Request, in the user's words:
 can the NVIDIA Agent Toolkit validate that nothing sensitive is uploaded; can an

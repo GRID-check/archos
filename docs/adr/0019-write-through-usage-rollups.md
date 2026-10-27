@@ -1,6 +1,9 @@
+---
+status: accepted
+---
+
 # ADR-0019: Write-through daily rollups for budget enforcement
 
-- **Status:** Accepted
 - **Date:** 2026-07-09
 - **Deciders:** Platform engineering
 - **Related:** ADR-0015 (LLM budgets and usage ledger), ../architecture/usage-budgets.md, ../architecture/scaling-review-2026-07.md

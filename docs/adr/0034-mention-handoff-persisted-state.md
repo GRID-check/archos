@@ -1,6 +1,9 @@
+---
+status: accepted
+---
+
 # ADR-0034: The mention hand-off is persisted conversation state, not the agent's in-memory HITL
 
-- **Status:** Accepted
 - **Date:** 2026-07-29
 - **Deciders:** Platform engineering
 - **Related:** ADR-0028 (conversation bus / in-process HITL futures), ADR-0030

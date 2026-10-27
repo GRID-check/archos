@@ -32,6 +32,13 @@ starts, and every other job reads its answers.
   push. When there is no such commit, or the lookup fails, it diffs against the
   root commit and everything runs.
 
+A skipped tier counts as passed, so a path no tier names is a path whose
+change merges untested. [`tests/test_ci_filter_coverage.py`](../../tests/test_ci_filter_coverage.py)
+fails on any tracked path outside every test tier unless its `UNFILTERED` list
+says why no tier needs it; moving a directory without moving its filter line
+turns Repo checks red. It matches with wcmatch and checks that against
+picomatch, which is what `dorny/paths-filter` uses, wherever node is installed.
+
 The second rule is what makes the rest safe. A push that diffed only against
 its parent let a red commit's tier stop running as soon as an unrelated commit
 landed on top of it, and the deploy shipped the broken code under a green run.

@@ -6,13 +6,13 @@ differs from this design, and why.
 Branch: `claude/piloti-filesystem-write-design-mftg4d`
 
 Related: [file-native work objects](2026-08-13-file-native-ownership-design.md)
-(merged, PR #416), [ADR-0032](../../adr/0032-shareable-resource-model.md),
-[ADR-0042](../../adr/0042-object-storage-durability-and-quota.md),
-[ADR-0047](../../adr/0059-assignment-is-not-access.md),
-[ADR-0038](../../adr/0038-one-authorization-catalog-and-decision-point.md),
-[ADR-0011](../../adr/0011-deletion-pipeline.md).
+(merged, PR #416), [ADR-0032](../adr/0032-shareable-resource-model.md),
+[ADR-0042](../adr/0042-object-storage-durability-and-quota.md),
+[ADR-0047](../adr/0059-assignment-is-not-access.md),
+[ADR-0038](../adr/0038-one-authorization-catalog-and-decision-point.md),
+[ADR-0011](../adr/0011-deletion-pipeline.md).
 Long-form exploration this narrows:
-[`piloti-filesystem-design.md`](../../architecture/piloti-filesystem-design.md).
+[`piloti-filesystem-design.md`](../architecture/piloti-filesystem-design.md).
 
 ## Problem
 
@@ -432,7 +432,7 @@ created") would be worse than silence, and a dead link worse than both.
 **When a filing was promised and then failed, the banner takes the promise
 back.** This is the one absence that is not silent, and it is a distinction the
 first cut of this section did not draw. The report route separates the two
-(`filingFailed`, see [`bff-routes.md`](../../api/bff-routes.md)): the flag is
+(`filingFailed`, see [`bff-routes.md`](../api/bff-routes.md)): the flag is
 raised only when a project was resolved — the same condition under which the
 starting banner printed the disclosure. So the reader who was told „wird
 abgelegt" is exactly the reader who is told it did not happen, and nobody else:
@@ -489,18 +489,18 @@ deployment, which is why they are recorded rather than folded into a fix:
 
 - `docs/database/schema.md` — the columns, the CHECK, the partial index and the
   folder uniqueness.
-- [ADR-0047 addendum](../../adr/0059-assignment-is-not-access.md) — provenance as
+- [ADR-0047 addendum](../adr/0059-assignment-is-not-access.md) — provenance as
   a **fourth** relation, never rendered as responsibility; the `document` purger
   still unimplemented (so grace/hold semantics do not cover these rows, while
   immediate erasure does, via `deleteDocument`); ADR-0042's backup posture still
   Proposed.
-- [ADR-0032 addendum](../../adr/0032-shareable-resource-model.md) — the shareable
+- [ADR-0032 addendum](../adr/0032-shareable-resource-model.md) — the shareable
   model needed no amendment for a machine-authored row, which is the finding.
-- [`docs/api/bff-routes.md`](../../api/bff-routes.md) — the additive `filed`
+- [`docs/api/bff-routes.md`](../api/bff-routes.md) — the additive `filed`
   object and the `projectId` query parameter.
-- [`docs/user-guides/agent-authored-reports.md`](../../user-guides/agent-authored-reports.md)
+- [`docs/user-guides/agent-authored-reports.md`](../user-guides/agent-authored-reports.md)
   — what an architect sees.
-- [`docs/architecture/piloti-filesystem-design.md`](../../architecture/piloti-filesystem-design.md)
+- [`docs/architecture/piloti-filesystem-design.md`](../architecture/piloti-filesystem-design.md)
   — the exploration marked as narrowed **and built**, with the parts that remain
   unbuilt named so it is not read as a plan of record.
 
@@ -524,7 +524,7 @@ stopped its own architects uploading plans.
 
 `project:documents:generate` is now required **in addition** at the seam, never
 instead — a conjunction, argued at the checks themselves and recorded in
-[ADR-0047's third addendum](../../adr/0059-assignment-is-not-access.md): that ADR
+[ADR-0047's third addendum](../adr/0059-assignment-is-not-access.md): that ADR
 adds relations rather than substituting them; a standalone `generate` would let a
 role write bytes it cannot upload and cannot delete, rebuilding in the catalog
 the wider principal decision 4 deleted from the request path; and the conjunction

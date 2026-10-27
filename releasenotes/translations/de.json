@@ -1212,6 +1212,10 @@
     "de": "Chat-Antworten zeigen Anforderungsprüfungen, Verfahrensschritte, Variantenvergleiche und Kennzahlen jetzt als eigene Blöcke. Jede Prüfung zeigt, ob ihr Wert den Grenzwert einhält, und beim Kopieren oder Exportieren einer Antwort bleibt dieser Status erhalten."
   },
   {
+    "en": "Chat answers on a Claude model now use considerably less of your office's monthly budget, because the parts Piloti sends again on every step of an answer are now billed at a tenth of the price.",
+    "de": "Chat-Antworten mit einem Claude-Modell belasten Ihr monatliches Bürobudget jetzt deutlich weniger, da die Teile, die Piloti bei jedem Antwortschritt erneut sendet, nun nur noch mit einem Zehntel des Preises verrechnet werden."
+  },
+  {
     "en": "Chat history now includes this project's deep-research runs in the same list as your conversations, grouped by day, with the research runs shown first. The project's separate History page is gone — everything it showed is in the chat history panel now.",
     "de": "Der Chat-Verlauf enthält jetzt auch die Deep-Research-Läufe dieses Projekts. Sie werden gemeinsam mit Ihren Unterhaltungen nach Tagen gruppiert und zuerst angezeigt. Die separate Verlaufsseite des Projekts gibt es nicht mehr – alle dort angezeigten Inhalte finden Sie jetzt im Chat-Verlauf."
   },
@@ -2482,6 +2486,10 @@
   {
     "en": "Piloti now takes on work that lasts longer than an answer: „Mach den Einreichcheck bis Freitag“ creates a task that runs on its own, under your name and permissions, and reports back when done.",
     "de": "Piloti nimmt jetzt Arbeit an, die länger dauert als eine Antwort: „Mach den Einreichcheck bis Freitag“ legt einen Auftrag an, der unter Ihrem Namen und mit Ihren Rechten selbständig läuft und sich meldet, wenn er fertig ist."
+  },
+  {
+    "en": "Piloti now tells you in the app when something important changes, such as a new guideline or a different model, once and only to the offices, roles or language it concerns. The privacy notice lists the browser entries that remember which notices you have already closed.",
+    "de": "Piloti informiert Sie jetzt in der App einmalig über wichtige Änderungen, etwa eine neue Richtlinie oder ein anderes Modell, und nur die betroffenen Büros, Rollen oder Sprachen. Der Datenschutzhinweis listet die Browser-Einträge auf, die speichern, welche Hinweise Sie bereits geschlossen haben."
   },
   {
     "en": "Piloti now works properly on a phone. Answers can be downloaded as Word documents, and diagrams are real drawings. Excel, PowerPoint and CSV files can be uploaded, and answers cite the right sheet or slide.",

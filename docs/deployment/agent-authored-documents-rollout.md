@@ -11,7 +11,7 @@ Postgres on every frontend CI change, so the forward path has been running
 routinely. What had never been exercised is what this page adds — the guards
 under dirty data, and the down path.
 
-Design: [`../superpowers/specs/2026-08-20-agent-authored-documents-design.md`](../superpowers/specs/2026-08-20-agent-authored-documents-design.md).
+Design: [`../specs/2026-08-20-agent-authored-documents-design.md`](../specs/2026-08-20-agent-authored-documents-design.md).
 Roles: [`../database/row-level-security.md`](../database/row-level-security.md).
 
 ## 0. Before anything — check for duplicate sibling folder names
