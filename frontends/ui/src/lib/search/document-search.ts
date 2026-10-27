@@ -23,6 +23,7 @@ import {
 import { resolvePeople } from '@/lib/sharing/directory'
 import {
   contentKey,
+  countUnreadDocuments,
   documentFacetCounts,
   listCandidateDocumentIds,
   readReferenceSubject,
@@ -75,6 +76,7 @@ const FACET_KEYS: Record<SearchFacetDimension, FacetKey> = {
   state: 'status',
   fileType: 'fileType',
   uploader: 'uploader',
+  changedFact: 'changedFact',
 }
 
 /** The reach every kind reads: cut to the projects a `projectIds` filter names, when it names any. */
@@ -191,6 +193,7 @@ function toDocumentHit(row: DocumentSearchRow, passage: BackendSearchHit | undef
     pageCount: row.pageCount,
     pagesNotRead: row.pagesNotRead,
     superseded: row.superseded,
+    changedFacts: row.changedFacts,
     municipality: row.municipality,
     author: row.author,
     matchedOn: [
@@ -252,14 +255,24 @@ async function searchDocuments(
   body: SearchBody,
   page: { limit: number; offset: number },
   withFacets: boolean
-): Promise<{ section: SearchSection<DocumentHit>; facets: SearchResponse['facets']; contentPartial: boolean }> {
-  const empty = { section: { hits: [], total: 0, totalIsLowerBound: false, nextCursor: null }, facets: withFacets ? {} : null, contentPartial: false }
+): Promise<{ section: SearchSection<DocumentHit>; facets: SearchResponse['facets']; unread: number | null; contentPartial: boolean }> {
+  // Started first and read last: it does not wait on the content search.
+  const unreadCount = withFacets ? countUnreadDocuments(reach, body.filters?.includeArchived === true) : Promise.resolve(null)
+  // Handled here too, so a failure before it is read is not an unhandled rejection; the await below still throws.
+  unreadCount.catch(() => undefined)
   const filters = body.filters ?? {}
   const [citedBy, citing] = await Promise.all([
     filters.citedBy ? referenceTargets(reach, filters.citedBy, 'citedBy') : null,
     filters.citing ? referenceTargets(reach, filters.citing, 'citing') : null,
   ])
-  if ((filters.citedBy && !citedBy) || (filters.citing && !citing)) return empty
+  if ((filters.citedBy && !citedBy) || (filters.citing && !citing)) {
+    return {
+      section: { hits: [], total: 0, totalIsLowerBound: false, nextCursor: null },
+      facets: withFacets ? {} : null,
+      unread: await unreadCount,
+      contentPartial: false,
+    }
+  }
   const text = body.text?.trim() || null
   const structured: DocumentQuery = { filters, text: null, citedBy, citing }
   const content = text && text.length >= CONTENT_MIN_CHARS ? await rankedContent(reach, structured, text) : { hits: [], partial: false }
@@ -304,6 +317,7 @@ async function searchDocuments(
       nextCursor: nextOffset < result.total && nextOffset <= SEARCH_OFFSET_MAX ? encodeSearchCursor('document', nextOffset) : null,
     },
     facets: counts ? labelFacets(reach, counts, Object.keys(FACET_KEYS) as SearchFacetDimension[], people) : null,
+    unread: await unreadCount,
     contentPartial: content === null || content.partial,
   }
 }
@@ -339,6 +353,7 @@ export async function runSearch(session: AuthorizedSession, scopeQuery: SearchSc
   const freshness = refreshStaleShelves(reach.organizationId, reachShelves(reach))
   const sections: SearchResponse['sections'] = {}
   let facets: SearchResponse['facets'] = null
+  let unread: number | null = null
   let contentPartial = false
   await Promise.all(
     kinds.map(async (kind) => {
@@ -346,6 +361,7 @@ export async function runSearch(session: AuthorizedSession, scopeQuery: SearchSc
         const documents = await searchDocuments(reach, body, pageFor(kind), body.facets !== false && offset === 0)
         sections.document = documents.section
         facets = documents.facets
+        unread = documents.unread
         contentPartial = documents.contentPartial
         return
       }
@@ -363,7 +379,7 @@ export async function runSearch(session: AuthorizedSession, scopeQuery: SearchSc
       }
     })
   )
-  return { scope, sections, facets, building: (await freshness).building, contentPartial }
+  return { scope, sections, facets, unread, building: (await freshness).building, contentPartial }
 }
 
 /**

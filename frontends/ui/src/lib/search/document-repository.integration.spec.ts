@@ -102,6 +102,8 @@ const SEEDS: Seed[] = [
         dates: [{ kind: 'issued', date: '2026-03-12' }],
         place: { address: 'Hauptstraße 1', municipality: 'Wien', state: 'Wien' },
         facts: [fact('building_class', 'GK 4'), fact('storeys_above_ground', '5'), fact('building_height', '14,5')],
+        // Index C against Index B (A2): one more storey.
+        changes: [{ key: 'storeys_above_ground', before: '4', after: '5', page: 1 }],
       }),
       docReferences: [
         { kind: 'norm', key: 'önorm b 1600', label: 'ÖNORM B 1600', pages: [1] },
@@ -221,6 +223,7 @@ const SEEDS: Seed[] = [
         parties: [{ role: 'engineer', name: 'Geheim GmbH' }],
         place: { municipality: 'Wien', state: 'Wien' },
         facts: [fact('building_class', '4')],
+        changes: [{ key: 'building_class', before: '3', after: '4', page: 1 }],
       }),
       docReferences: [{ kind: 'norm', key: 'önorm b 1600', label: 'ÖNORM B 1600', pages: [1] }],
       pageCount: 9,
@@ -240,6 +243,7 @@ const SEEDS: Seed[] = [
         documentType: 'fire_safety_concept',
         place: { municipality: 'Wien', state: 'Wien' },
         facts: [fact('building_class', '4')],
+        changes: [{ key: 'building_class', before: '3', after: '4', page: 1 }],
       }),
       docReferences: [{ kind: 'norm', key: 'önorm b 1600', label: 'ÖNORM B 1600', pages: [1] }],
       pageCount: 5,
@@ -320,7 +324,7 @@ const SEEDS: Seed[] = [
 
 /** What the reader may see office-wide with no flags: everything but A7, A8, A10, A11 and B1. */
 const VISIBLE = ['A1', 'A2', 'A3', 'A4', 'A5', 'A6', 'A9', 'A12', 'A13']
-const FACET_KEYS: FacetKey[] = ['documentType', 'tag', 'project', 'partyRole', 'municipality', 'cites', 'status', 'fileType']
+const FACET_KEYS: FacetKey[] = ['documentType', 'tag', 'project', 'partyRole', 'municipality', 'cites', 'status', 'fileType', 'changedFact']
 /** The sorts this spec states the expected order of; scale, folder and status are covered by their own cases. */
 type CheckedSort = Exclude<SearchSort, 'relevance' | 'scale' | 'folder' | 'status' | 'author'>
 const SORTS: CheckedSort[] = [
@@ -513,6 +517,28 @@ describe.skipIf(!url)('the search documents SQL against Postgres', () => {
     it('shows a held upload to its project reviewer, and the office shelf held one to the shelf reviewer', async () => {
       expect(await found(officeReach({ reviewP1: true }), query())).toEqual(keys(...VISIBLE, 'A8'))
       expect(await found(officeReach({ reviewShelf: true }), query())).toEqual(keys(...VISIBLE, 'A11'))
+    })
+
+    it('finds, counts and shows what a Fassung changed, never for a hidden or held document', async () => {
+      expect(await found(officeReach(), query({ factsChanged: true }))).toEqual(keys('A1'))
+      expect(await found(officeReach(), query({ changedFacts: ['storeys_above_ground', 'units'] }))).toEqual(keys('A1'))
+      // A7 (hidden) and A8 (held) changed their Gebäudeklasse; the reader sees neither.
+      expect(await found(officeReach(), query({ changedFacts: ['building_class'] }))).toEqual([])
+      expect(await found(officeReach({ reviewP1: true }), query({ changedFacts: ['building_class'] }))).toEqual(keys('A8'))
+      const facets = await repo.documentFacetCounts(officeReach(), query(), ['changedFact'])
+      expect(facets.changedFact).toEqual([{ value: 'storeys_above_ground', count: 1 }])
+      const { rows } = await repo.searchDocumentPage(officeReach(), query({ factsChanged: true }), ALL)
+      expect(rows[0].changedFacts).toEqual([{ key: 'storeys_above_ground', before: '4', after: '5', page: 1 }])
+      const unchanged = await repo.searchDocumentPage(officeReach(), query({ planNumber: 'EP 05', planIndex: ['B'] }), ALL)
+      expect(unchanged.rows[0].changedFacts).toEqual([])
+    })
+
+    it('counts the documents in reach Piloti has not read, whatever the filters, and none it may not see', async () => {
+      // A9 (the reader's own held upload) and A12; never B1's office or a hidden folder.
+      expect(await repo.countUnreadDocuments(officeReach(), false)).toBe(2)
+      expect(await repo.countUnreadDocuments(officeReach(), true)).toBe(2)
+      const p2Only: SearchReach = { ...officeReach(), projects: officeReach().projects.slice(1), officeShelf: null }
+      expect(await repo.countUnreadDocuments(p2Only, false)).toBe(0)
     })
 
     it('shows archived rows only when asked', async () => {

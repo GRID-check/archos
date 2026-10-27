@@ -39,6 +39,7 @@ const hit = (overrides: Partial<DocumentHit> = {}): DocumentHit => ({
   pageCount: 1,
   pagesNotRead: 0,
   superseded: false,
+  changedFacts: [],
   municipality: 'Wien',
   author: 'Atelier Lindner ZT GmbH',
   matchedOn: [],

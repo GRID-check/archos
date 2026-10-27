@@ -109,6 +109,8 @@ export const documentFiltersSchema = z.object({
   uploadedBy: z.array(z.string().max(100)).max(20).optional().describe('Uploader user ids.'),
   states: z.array(z.enum(SEARCH_READ_STATES)).max(5).optional(),
   incompleteRead: z.boolean().optional().describe('Has unread pages.'),
+  factsChanged: z.boolean().optional().describe('States facts differently from the revision it replaced.'),
+  changedFacts: z.array(z.enum(DOSSIER_FACT_KEYS)).max(DOSSIER_FACT_KEYS.length).optional().describe('Facts changed against the replaced revision.'),
   fileTypes: z
     .array(z.string().regex(/^[a-z0-9]{1,8}$/))
     .max(12)
@@ -191,6 +193,8 @@ export interface DocumentHit {
   pageCount: number | null
   pagesNotRead: number | null
   superseded: boolean
+  /** What this Fassung states differently from the one it replaced; empty when nothing changed or nothing was compared. */
+  changedFacts: Array<{ key: string; before: string | null; after: string | null; page: number | null }>
   municipality: string | null
   /** The Verfasser the reading names (architect, else author), as the document writes it. */
   author: string | null
@@ -270,6 +274,7 @@ export const SEARCH_FACET_DIMENSIONS = [
   'state',
   'fileType',
   'uploader',
+  'changedFact',
 ] as const
 export type SearchFacetDimension = (typeof SEARCH_FACET_DIMENSIONS)[number]
 
@@ -284,6 +289,12 @@ export interface SearchResponse {
   }
   /** Counts over the matched documents, per filter; absent when not asked. */
   facets: Partial<Record<SearchFacetDimension, FacetCount[]>> | null
+  /**
+   * Documents in scope Piloti has not read yet (no projection row), counted
+   * with the facets and absent from every count and reading filter; null when
+   * the facets were not asked.
+   */
+  unread: number | null
   /** Shelves whose documents are not yet filterable by what they are (the projection is being built). */
   building: string[]
   /** The content search covered only part of the scope (more collections than one search names). */

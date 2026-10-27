@@ -7739,6 +7739,37 @@
                         "type": "boolean",
                         "description": "Has unread pages."
                       },
+                      "factsChanged": {
+                        "type": "boolean",
+                        "description": "States facts differently from the revision it replaced."
+                      },
+                      "changedFacts": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "enum": [
+                            "building_class",
+                            "storeys_above_ground",
+                            "storeys_below_ground",
+                            "building_height",
+                            "gross_floor_area",
+                            "usable_floor_area",
+                            "plot_area",
+                            "floor_area_ratio",
+                            "site_coverage_ratio",
+                            "units",
+                            "parking_spaces",
+                            "use",
+                            "construction_method",
+                            "escape_route_length",
+                            "room_height",
+                            "energy_class",
+                            "heating_demand"
+                          ]
+                        },
+                        "maxItems": 17,
+                        "description": "Facts changed against the replaced revision."
+                      },
                       "fileTypes": {
                         "type": "array",
                         "items": {
