@@ -45,7 +45,7 @@ describe('a filesystem row names a place, never a path', () => {
     ).toBe(`Listet 03 Einreichung: 12${NB}Dateien, 2${NB}Ordner`)
     expect(
       sentence({ verb: 'list', status: 'ok', mount: 'project', counts: { files: 0, folders: 4 } })
-    ).toBe(`Listet das Projekt: 0${NB}Dateien, 4${NB}Ordner`)
+    ).toBe(`Listet das Projekt: 4${NB}Ordner`)
   })
 
   test('the places themselves are counted as places', () => {
@@ -63,7 +63,7 @@ describe('a filesystem row names a place, never a path', () => {
         target: 'Vorlagen/Bescheide',
         counts: { files: 3, folders: 0 },
       })
-    ).toBe(`Listet Büroablage ›${NB}Vorlagen › Bescheide: 3${NB}Dateien, 0${NB}Ordner`)
+    ).toBe(`Listet Büroablage ›${NB}Vorlagen › Bescheide: 3${NB}Dateien`)
     expect(sentence({ verb: 'list', status: 'ok', mount: 'law' })).toBe('Listet die OIB-Richtlinien')
   })
 
@@ -245,8 +245,11 @@ describe('„Offen“ for the filesystem', () => {
     expect(open).toContain(
       'Nicht beurteilbar, weil die wörtliche Suche in Büroablage › Vorlagen nach „EI\\s?90“ nicht alles durchsuchen konnte.'
     )
-    expect(open).toContain('Nicht beurteilbar, weil „Personal“ nicht gefunden wurde.')
-    expect(open).toContain('Nicht beurteilbar, weil „Vertrag.pdf“ nicht gefunden wurde.')
+    expect(open).toContain('Nicht beurteilbar, weil der Ordner „Personal“ nicht gefunden wurde.')
+    expect(open).toContain(
+      'Nicht beurteilbar, weil das Dokument „Vertrag.pdf“ nicht gefunden wurde.'
+    )
+    expect(open).toContain('Nicht beurteilbar, weil im Projekt keine Datei auf „*.dwg“ passt.')
     expect(open.join(' ')).not.toMatch(/fehlgeschlagen/)
   })
 
@@ -286,7 +289,7 @@ describe('a row stored before the wire carried `mount`', () => {
         action: { verb: 'list', status: 'ok', target: '/project/03 Einreichung/', counts: { files: 2, folders: 0 } },
       },
     ])!
-    expect(sentence(step.action!)).toBe(`Listet 03 Einreichung: 2${NB}Dateien, 0${NB}Ordner`)
+    expect(sentence(step.action!)).toBe(`Listet 03 Einreichung: 2${NB}Dateien`)
   })
 })
 

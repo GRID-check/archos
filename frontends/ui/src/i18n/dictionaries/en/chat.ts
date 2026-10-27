@@ -1453,7 +1453,10 @@ export const chat = {
         // A literal search without a hit that could not search everything: not a no.
         openIncomplete: 'Cannot be judged: {call} could not search everything.',
         // A folder or document that is not there.
-        openNotFound: 'Cannot be judged: “{name}” was not found.',
+        openNotFoundFolder: 'Cannot be judged: the folder “{name}” was not found.',
+        openNotFoundDocument: 'Cannot be judged: the document “{name}” was not found.',
+        // A file-name search no file matched: `{place}` carries its preposition.
+        openNoFile: 'Cannot be judged: no file {place} matches “{query}”.',
         // A literal filesystem search without a hit: `{place}` carries its preposition (“in every place”).
         openNoHitPlace:
           'Cannot be judged: the literal search {place} for “{query}” found no passage.',

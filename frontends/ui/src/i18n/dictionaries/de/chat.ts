@@ -1467,7 +1467,10 @@ export const chat: typeof en.chat = {
         // Eine wörtliche Suche ohne Treffer, die nicht alles durchsuchen konnte: kein Nein.
         openIncomplete: 'Nicht beurteilbar, weil {call} nicht alles durchsuchen konnte.',
         // Ein Ordner oder Dokument, das es nicht gibt.
-        openNotFound: 'Nicht beurteilbar, weil „{name}“ nicht gefunden wurde.',
+        openNotFoundFolder: 'Nicht beurteilbar, weil der Ordner „{name}“ nicht gefunden wurde.',
+        openNotFoundDocument: 'Nicht beurteilbar, weil das Dokument „{name}“ nicht gefunden wurde.',
+        // Eine Suche nach Dateinamen, auf die keine Datei passt: `{place}` mit Präposition.
+        openNoFile: 'Nicht beurteilbar, weil {place} keine Datei auf „{query}“ passt.',
         // Eine wörtliche Suche im Dateisystem ohne Treffer: `{place}` mit Präposition („in allen Ablagen“).
         openNoHitPlace:
           'Nicht beurteilbar, weil die wörtliche Suche {place} nach „{query}“ keine Fundstelle ergab.',

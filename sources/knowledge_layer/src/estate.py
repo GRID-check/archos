@@ -366,7 +366,8 @@ class EstateBackend(BackendProtocol):
         from aiq_agent.common.turn_status import ActionRow
         from aiq_agent.common.turn_status import lane_tool_scope
 
-        row = ActionRow("read")
+        # Running, the row says what the model asked to read, in its own words; settled, what it may name.
+        row = ActionRow("read", target=asked_document(file_path))
         try:
             with lane_tool_scope(READ_FILE_TOOL):
                 output, fields = await self._read_body(file_path, pages, clause, offset, limit)

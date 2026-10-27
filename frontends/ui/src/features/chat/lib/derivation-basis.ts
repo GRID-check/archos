@@ -211,13 +211,20 @@ const openPoint = (
   if (action.incomplete)
     return t('thinking.node.basis.openIncomplete', { call: callNoun(t, action) })
   const missing = missingName(t, action)
-  if (missing) return t('thinking.node.basis.openNotFound', { name: missing })
+  if (missing)
+    return t(
+      action.verb === 'read'
+        ? 'thinking.node.basis.openNotFoundDocument'
+        : 'thinking.node.basis.openNotFoundFolder',
+      { name: missing }
+    )
   const place = actionPlace(action)
-  if (place && action.query && sentenceKind(action) === 'grep')
-    return t('thinking.node.basis.openNoHitPlace', {
-      place: placeIn(t, place),
-      query: quoteQuery(t, action.query),
-    })
+  const kind = sentenceKind(action)
+  if (place && action.query && (kind === 'grep' || kind === 'glob'))
+    return t(
+      kind === 'grep' ? 'thinking.node.basis.openNoHitPlace' : 'thinking.node.basis.openNoFile',
+      { place: placeIn(t, place), query: quoteQuery(t, action.query) }
+    )
   const { query, target } = action
   if (!query) {
     const parts = workParts(t, action)

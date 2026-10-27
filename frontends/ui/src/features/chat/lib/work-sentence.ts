@@ -319,8 +319,11 @@ const foundOf = (t: Translator, action: StoredAction, counts: StoredAction['coun
   if (action.verb === 'list') {
     if (action.mount === 'estate' && !action.query && files !== undefined && folders !== undefined)
       return t('thinking.work.found.places', { files, folders })
-    if (files !== undefined && folders !== undefined)
+    // A zero beside a count is noise („9 Dateien, 0 Ordner“): the listing says what is there.
+    if (files !== undefined && folders !== undefined && files > 0 && folders > 0)
       return t('thinking.work.found.listing', { files, folders })
+    if (folders !== undefined && folders > 0 && !files)
+      return t('thinking.work.found.folders', { count: folders })
     if (files !== undefined) return t('thinking.work.found.files', { count: files })
     if (folders !== undefined) return t('thinking.work.found.folders', { count: folders })
     return ''

@@ -233,7 +233,7 @@ describe('RoundCalls', () => {
     ])
     const listing = screen.getAllByTestId('work-row').find((row) => row.dataset.verb === 'list')!
     expect(within(listing).queryByRole('button')).toBeNull()
-    expect(listing).toHaveTextContent('Listet 03 Einreichung › Pläne9 Dateien, 0 Ordner')
+    expect(listing).toHaveTextContent('Listet 03 Einreichung › Pläne9 Dateien')
   })
 
   test('a row with a call id is a button that links; its name is the sentence', async () => {

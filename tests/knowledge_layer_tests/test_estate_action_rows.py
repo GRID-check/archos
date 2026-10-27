@@ -194,6 +194,11 @@ class TestRead:
         }
         assert _linked(steps) == 1
 
+    async def test_while_it_runs_a_read_names_what_was_asked_for(self, steps) -> None:
+        await read_suite._backend().read_file(FIRE_CONCEPT, pages="2")
+        running = next(s for s in steps if s.kind == "action" and s.status == "running")
+        assert running.target == "Brandschutzkonzept.pdf"
+
     async def test_a_read_without_pages_says_the_page_it_opened(self, steps) -> None:
         await read_suite._backend().read_file(FIRE_CONCEPT)
         assert _row(steps)["pages"] == "1"
