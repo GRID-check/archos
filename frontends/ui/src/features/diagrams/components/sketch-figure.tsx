@@ -157,14 +157,14 @@ export function SketchFigure({ source, isStreaming = false, refused = false }: S
         <DrawingReveal drawn={Boolean(rendered)}>
           {rendered ? (
             <div
-              // Safe because of what produced the string: Excalidraw drew allow-listed
-              // skeletons and `fileableSketchSvg` re-serialised the result through
-              // `lib/diagrams/svg.ts` (see the header).
-              // nosemgrep: typescript.react.security.audit.react-dangerouslysetinnerhtml.react-dangerouslysetinnerhtml
               // At its own width, or the column's: a sketch is a picture, and one
               // scrolled sideways hides its right half (a comparison board's
               // second column). The editor is where a reader zooms in.
               style={{ width: `${viewBoxWidth(rendered.svg) ?? 720}px`, maxWidth: '100%' }}
+              // Safe because of what produced the string: Excalidraw drew allow-listed
+              // skeletons and `fileableSketchSvg` re-serialised the result through
+              // `lib/diagrams/svg.ts` (see the header).
+              // nosemgrep: typescript.react.security.audit.react-dangerouslysetinnerhtml.react-dangerouslysetinnerhtml
               dangerouslySetInnerHTML={{ __html: rendered.svg }}
             />
           ) : (
