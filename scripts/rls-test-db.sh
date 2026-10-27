@@ -115,6 +115,20 @@ node -e '
   }
 done
 
+# `--only <spec…>`: the migrated cluster and the restricted role, for the specs
+# named and nothing else. For one suite while you work on it, and for the
+# measurements that are not part of the gate (`task fe:search:latency`). The
+# owner's URL is passed too, for a measurement that has to ANALYZE its seed:
+# the runtime role may not, and production's statistics are autovacuum's.
+if [ "${1:-}" = "--only" ]; then
+  shift
+  echo "==> running $* as grid_app_rw"
+  GRID_TEST_DATABASE_URL="postgres://grid_app_rw:$RUNTIME_PASSWORD@127.0.0.1:$PORT/grid_app" \
+  GRID_TEST_OWNER_DATABASE_URL="postgres://grid_app_owner@127.0.0.1:$PORT/grid_app" \
+    npx vitest run "$@"
+  exit 0
+fi
+
 # Every suite here needs the same cluster and the same restricted role. The BIM
 # and memory ones are here rather than in the unit shards because every claim
 # they make is a claim about SQL — jsonb property filters, grouped aggregates,
