@@ -3279,6 +3279,9 @@ export async function getDocumentStatus(session: AuthorizedSession, documentId: 
     topics: reconciled.topics,
     capture: reconciled.capture,
     revisionFacts: reconciled.revisionFacts,
+    dossier: reconciled.dossier,
+    docReferences: reconciled.docReferences,
+    coverage: reconciled.coverage,
     // Resolved for THIS reader: a document they may not open is not in it.
     revision,
     // The place in the ingest queue, null once the job is claimed or settled.
