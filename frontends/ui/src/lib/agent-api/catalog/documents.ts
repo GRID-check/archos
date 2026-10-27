@@ -14,6 +14,7 @@ import {
 import { nameProbeRequestSchema } from '@/lib/documents/name-probe-types'
 import { DOCUMENT_STATUSES } from '@/lib/documents/document-status'
 import { SHELF_SCOPES } from '@/lib/documents/shelf-scope'
+import { searchBodySchema, searchExportQuerySchema, searchScopeQuerySchema } from '@/lib/search/search-wire'
 import type { AgentOperation } from '../operation'
 import { MAX_UPLOAD_BYTES, documentUploadFields, uploadBodySchemaWith } from '../upload-wire'
 
@@ -258,6 +259,56 @@ export const documentsOperations = [
     body: searchDocumentsSchema,
     readOnly: true,
     load: () => import('@/app/api/documents/search/route'),
+  },
+  {
+    name: 'search',
+    domain: 'documents',
+    summary: 'Search everything the person may read, with filters',
+    description:
+      'One search over every shelf the person may read (absent scope), one project (`projectId`, from project-list), a folder ' +
+      'of it (`folderId`) or the office shelf (`scope: office_shelf`). Finds documents by name, by what ingestion read in ' +
+      'them (type, parties, place, stated facts, references, drawing number, revision, scale) and by their content, with the ' +
+      'matching passage and page; also annotations, folders, projects and conversations (`kinds`). Filters narrow the ' +
+      'documents (document type, facts with ranges, cited norms or drawings, dates, uploader, status, current revision only); ' +
+      '`sort` orders them like a drawing register; `facets` counts per filter value. Page one kind with `cursor`. A passage ' +
+      'here points at a page: read the document before quoting it. Read-only.',
+    method: 'POST',
+    path: '/api/search',
+    query: searchScopeQuerySchema,
+    body: searchBodySchema,
+    readOnly: true,
+    spansProjects: 'unlessScoped',
+    examples: [
+      {
+        body: {
+          text: 'Fluchtweg',
+          kinds: ['document'],
+          filters: { documentTypes: ['fire_safety_concept'], facts: [{ key: 'building_class', min: 4 }], currentOnly: true },
+        },
+      },
+      {
+        query: { projectId: '7d0f3c2e-5b1a-4c8e-9f6d-2a4b6c8e0f12' },
+        body: { kinds: ['document'], filters: { cites: ['EP-05'] }, sort: 'plan_number' },
+      },
+    ],
+    load: () => import('@/app/api/search/route'),
+  },
+  {
+    name: 'search-export',
+    domain: 'documents',
+    summary: 'Export the documents a search finds as a drawing register file',
+    description:
+      'The documents of a search (same scope and body as search) as a drawing register: csv (semicolon, German locale) or ' +
+      'xlsx, with drawing number, revision, plan date, scale, name, title, type, project, folder, dates, uploader, pages and ' +
+      'whether it is the current revision, in the search order. Refused above 5000 documents: narrow the filters.',
+    method: 'POST',
+    path: '/api/search/export',
+    query: searchExportQuerySchema,
+    body: searchBodySchema,
+    readOnly: true,
+    spansProjects: 'unlessScoped',
+    binaryResponse: ['text/csv', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'],
+    load: () => import('@/app/api/search/export/route'),
   },
   {
     name: 'document-summary-get',

@@ -36,6 +36,7 @@ import { answerExport } from './answer-export'
 import { diagrams } from './diagrams'
 import { feedback } from './feedback'
 import { feedbackExport } from './feedback-export'
+import { searchExport } from './search-export'
 import { uploadBatches } from './upload-batches'
 import { references } from './references'
 import { projectIntake } from './project-intake'
@@ -79,6 +80,7 @@ export const de: Dictionary = {
   diagrams,
   feedback,
   feedbackExport,
+  searchExport,
   uploadBatches,
   references,
   projectIntake,

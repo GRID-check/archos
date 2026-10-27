@@ -278,3 +278,8 @@ export interface SearchResponse {
   /** The content search covered only part of the scope (more collections than one search names). */
   contentPartial: boolean
 }
+
+/** `POST /api/search/export` query: where to look, and the file. */
+export const searchExportQuerySchema = searchScopeQuerySchema.extend({
+  format: z.enum(['csv', 'xlsx']).describe('csv for a spreadsheet in a German locale (semicolon), xlsx for Excel.'),
+})
