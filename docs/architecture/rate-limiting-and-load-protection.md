@@ -425,6 +425,22 @@ requests; it now takes 200.
 with their budgets unchanged, so that migration was an algorithm change and not a
 silent retune.
 
+**Project mail's webhook is limited after its signature, not at the edge.**
+`POST /api/internal/signed/inbound-mail` has no edge bucket: every office's
+mail arrives from Cloudflare's shared egress, so a per-IP budget would let any
+other Cloudflare traffic defer it (ADR-0135). Its edge bound is a 27 MiB
+`Content-Length` header match. The BFF charges, after the signature and before
+the body is read (`lib/inbound-mail/receive.ts`): `inbound-mail-signing-key`
+3,000/h per signing key, `inbound-mail-organization` 600/h,
+`inbound-mail-address` 120/h, and `inbound-mail-unknown-address` 300/h per
+signing key for tokens no project has, a bucket of its own so a guesser walking
+the token space never spends real mail's budget. On top, byte caps on staged
+raw bytes: 1 GiB per address, 5 GiB per organization; over either the answer
+is 429 (outcome `cap_reached` in the log line) and the managers are told at 80% and 100%
+(`inbound_mail.cap_reached`). There is no count cap: a count cap bounces real
+senders after a backlog. `mail-original-download` (60/h, 10/min per person)
+bounds the ClamAV scan every original download runs.
+
 ### L2b — WebSocket frames (`frontends/ui/server.js`)
 
 The blind spot of §1.2, closed. `src/lib/limits/ws-frames.js` is a passive

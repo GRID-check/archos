@@ -76,6 +76,15 @@ leak its person into the next one.
 **Only `lib/agent-api/dispatch.ts` enters it**, and only with a session built by
 `resolvePinnedRequesterSession`. Never call `runAsActingSession` anywhere else.
 
+The binding also says how the call reached the route. `actingReaderIsAgent()`
+is true for a call whose answer a model reads, and `actingProposalId()` names
+the Piloti proposal whose acceptance the call applies (set by the proposal
+applier through `callOperation`'s `origin`). A route that records how a person
+decided reads them: an E-Mail-Eingang decision's `via` is `piloti_proposal`,
+`agent` or `app` from these, never from the body an agent writes
+(`decisionActor`, `lib/inbound-mail/service.ts`), and a card may then carry no
+acknowledgement or release (ADR-0134).
+
 ### How long a revocation takes
 
 A token outlives the membership it was issued for, so how soon a removal bites
@@ -507,14 +516,14 @@ ceiling.
    ([testing-and-verification.md](../contributing/testing-and-verification.md#the-workspace-set));
    its `uses` rows check the job got done with the native tool.
 
-**What it holds today** (356 entries: 349 operations, 7 read tools):
+**What it holds today** (358 entries: 351 operations, 7 read tools; regenerate from `frontends/ui/tests/fixtures/exposure.json`):
 
 | Column | Count |
 |---|---|
-| `external: true` | 250 |
+| `external: true` | 252 |
 | `piloti: true` | 208 |
 | `piloti: 'native:…'` | 17 |
-| `piloti: false` | 131 (51 withheld, 55 platform, 12 sensitive, 3 asks, 3 decisions, 3 Outlook archive bytes, 2 held mail text and bytes, 2 skill reads) |
+| `piloti: false` | 133 (51 withheld, 55 platform, 13 sensitive, 3 asks, 3 decisions, 3 Outlook archive bytes, 2 held mail text and bytes, 2 skill reads, 1 standing decision: `mail-thread-unfollow`) |
 | `platform: true` | 55 |
 | `withheld` | 51 (29 `product-config`, 13 `ui-state`, 4 `external-service`, 3 `model-compute`, 2 `evidence`) |
 
@@ -680,8 +689,8 @@ Do this in the same change that adds or changes the route. The exemplar is
 `catalog/projects.ts`; copy its shape.
 
 1. **Find the domain file** in `catalog/` (`projects`, `documents`, `folders`,
-   `review`, `conversations`, `collaboration`, `tasks`, `skills`, `knowledge`,
-   `bim`, `organization`, `platform`). A new domain is a new file (its array
+   `mail`, `review`, `conversations`, `collaboration`, `tasks`, `skills`,
+   `knowledge`, `bim`, `organization`, `platform`). A new domain is a new file (its array
    `as const satisfies readonly AgentOperation[]`, so its names are a type), an
    entry in `AGENT_DOMAINS` (`operation.ts`), a spread in `catalog/index.ts` and a
    line in its `OperationName`.
@@ -742,7 +751,13 @@ Do this in the same change that adds or changes the route. The exemplar is
 create, update, delete, rename, move, add, remove, search, export, start, cancel,
 approve, reject, publish, submit, restore, archive, allow and release (a legal hold,
 a hand-off; a held upload is allowed, never released, because "release" collides
-with approval). Pick one of them before inventing another. One operation per route
+with approval). Project mail (ADR-0134) adds `file` (put a held mail's part into
+the project, „ablegen“; never "accept" or "approve", which are Freigabe's),
+`dismiss` (say no to a held mail, restorable seven days; never "reject", which
+is Freigabe's), `rotate` (replace an address, the old one stops at once),
+`follow` / `unfollow` (a standing decision; never "subscribe", which suggests
+notifications only) and `detach` (move a filed message out of its Verlauf;
+never "delete": nothing is unfiled). Pick one of them before inventing another. One operation per route
 method; never two on the same.
 
 The entity is the glossary's word: a `task` is a task definition (standing or
@@ -867,12 +882,19 @@ size). The route's own parsing stays the gate, so name the real form fields in `
 Outlook archive is three operations: `mail-import-start`, `mail-import-part-upload` (once per
 part), `mail-import-complete`. They are offered to outside agents only: Piloti has no archive to
 send, and a part is far past what a proposal may carry (`MAX_PROPOSED_INPUT_CHARS`).
+They live in the `mail` domain (`catalog/mail.ts`) with project mail's operations, moved there
+from `folders` unrenamed.
+
+Bytes going out follow the same rule as bytes coming in: an operation answers a held
+attachment's bytes (`inbound-mail-part-content-get`) only after a clean scan, and never to
+Piloti. The originals of mail, held or filed, are bytes kept as proof and are on no door
+(`withheld`, category `evidence`, ADR-0122).
 
 ### Links into the app
 
 An agent that found a project, a document, a task run or a conversation can hand the person a
 link to it, the way PostHog's MCP puts `_posthogUrl` on its rows. An operation whose answer holds
-such objects declares `links: 'project' | 'document' | 'task-run' | 'conversation'` in its catalog
+such objects declares `links: 'project' | 'document' | 'task-run' | 'conversation' | 'inbound-mail'` in its catalog
 entry, and `fromOperationResult` adds `url`, the absolute page a person opens, through
 `withLinks` (`lib/agent-api/links.ts`). That module is the one table from kind to page: a project
 is `/app/projects/<id>`, a document and a conversation are the sharing registry's own deep links

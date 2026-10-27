@@ -45,6 +45,9 @@ All schemas are in `frontends/ui/src/lib/db/schema/` and barrel-exported from `i
 | `tasks.ts` | `tasks` — LEGACY since 0086, same |
 | `task-model.ts` | `task_definitions`, `task_runs` — the collapsed model (migration 0086) |
 | `bff-job-queue.ts` | `bff_job_queue`, `bff_job_lane_turns` — the BFF's durable background work (migration 0104, ADR-0079) |
+| `inbound-mail.ts` | `inbound_mail_addresses`, `inbound_mails`, `inbound_mail_parts`, `inbound_mail_decisions` — project mail held until a person files it (migration 0186, ADR-0134) |
+| `mail-thread.ts` | `mail_threads`, `mail_thread_entries`, `mail_thread_entry_attachments`, `mail_thread_message_ids`, `mail_thread_follows` — the E-Mail-Verläufe (migration 0186, ADR-0134) |
+| `mail-imports.ts` | `mail_imports` — the Outlook archive import ([`mail-import.md`](../architecture/mail-import.md); its Verlauf counts below) |
 
 Two things drizzle's schema builder cannot declare live only in the migration
 and are kept in step by hand: a foreign key with a column list on its action
@@ -945,6 +948,344 @@ after the reopen. The intake reading (ADR-0111) and the filing-review queue
 start after the uploader was told and cannot undo the completion. The
 quarantine reviewers' inbox item is the exception: the read that moved the row
 sends it once and a failed write is not retried.
+
+---
+
+## Project mail (migration 0186, ADR-0134)
+
+`frontends/ui/drizzle/0186_inbound_mail.sql` (schema files
+`inbound-mail.ts`, `mail-thread.ts`): mail sent to a project waits until a
+person files it, a conversation is one document, its originals are evidence,
+and a person may follow it. The migration's header says why each rule exists;
+`scripts/rls-test-db.sh` (section "Migration 0186") proves each refusal with a
+violating statement. The flow: [`inbound-mail.md`](../architecture/inbound-mail.md).
+
+Nine tables, one job each:
+
+| Table | Holds |
+|---|---|
+| `inbound_mail_addresses` | a project's address, and every address it had (rotation history) |
+| `inbound_mails` | one delivery: who sent it, how far it got, where it is staged |
+| `inbound_mail_parts` | what a person can file: the mail's text or one attachment |
+| `inbound_mail_decisions` | append-only: every act of a person on a part |
+| `mail_threads` | one conversation = one document of the project (the E-Mail-Verlauf) |
+| `mail_thread_entries` | one filed message: the renderer's only input, and its original |
+| `mail_thread_entry_attachments` | what came with a filed message, and which Fassung of which document it became (D36) |
+| `mail_thread_message_ids` | the Message-IDs a thread received or was referred to by |
+| `mail_thread_follows` | a person's standing decision to append a thread's later replies |
+
+**Rules every table keeps.**
+
+- **Tenancy is structural.** Every table carries `organization_id`, is secured
+  by `grid_secure_table(…, 'organization_id = grid_current_org()')`, and every
+  reference carries the organization or the project inside its key (the
+  `document_roles` pattern): a row cannot point at another tenant's project,
+  mail, part, decision, thread, entry or follow. All cascade from `projects`.
+  Listed in `rls-coverage.spec.ts` `BOUNDARY_MIGRATIONS`.
+- **Ending is a state, never a tenant's DELETE.** `REVOKE DELETE … FROM
+  grid_app_rw` on eight tables (all but `mail_thread_message_ids`, which a
+  detach rewrites), after `grid_secure_table` so a re-run revokes again. Only
+  the retention sweeps and the project purge, as the platform role, delete.
+  FK cascades run with the owner's rights, so a purge still cascades.
+- **People are WorkOS user ids**: every person column has a CHECK
+  `~ '^user_[0-9A-Z]{26}$'`, so no `system:*` actor ever decides, files,
+  creates a thread or follows.
+- **Every key is a row's own**, under the project prefix and a reserved
+  segment (`lib/s3.ts` `RESERVED_DERIVED_SEGMENTS` holds `_inbound-mail` and
+  `_mail-originals`): `org/<org>/project/<project>/_inbound-mail/<mailId>/{raw.eml,read.json,<position>}`
+  and `…/_mail-originals/<entryId>.eml`, each held to that exact shape by a
+  CHECK. Erasure is by these keys; the purger reads the buckets from
+  `inbound_mails.staging_bucket` and `mail_thread_entries.original_bucket`.
+- **Legal hold.** `BEFORE DELETE` triggers on `inbound_mails`,
+  `mail_thread_entries` and `mail_thread_entry_attachments`
+  (`grid_refuse_held_project_row_delete`) refuse with SQLSTATE `GLH01` when
+  `grid_legal_hold_blocks('project', project_id, organization_id)`, which is
+  true for a hold on the project **or on anything in it** (a document, a
+  folder, a conversation, a user; migration 0115). The sweeps filter holds in
+  their WHERE; the triggers are the backstop.
+
+### inbound_mail_addresses
+
+| Column | Type | Constraints | Notes |
+|---|---|---|---|
+| `id` | `uuid` | PK | |
+| `organization_id`, `project_id` | | FK `(project_id, organization_id)` → `projects` CASCADE | |
+| `token` | `text` | NOT NULL, `^[a-z2-7]{12}$`, unique across all rows, revoked included (`uniq_inbound_mail_addresses_token`) | 60 bits of lowercase base32; only the token resolves, and a token is never minted twice |
+| `slug` | `text` | NOT NULL, default `''`, `^[a-z0-9-]{0,30}$` | Frozen at mint time; no dots (the parser takes what follows the last dot as the token) |
+| `created_by`, `created_at` | | NOT NULL | |
+| `revoked_at`, `revoked_by`, `revoked_reason` | | all three set together (`…_revocation_attributed`); reason `rotated`/`switched_off` | |
+| `cap_notice` | `text` | `nearly_full`/`full` (`inbound_mail_addresses_cap_notice_known`) | What the managers were last told about the staged-bytes caps (sweep 14) |
+| `cap_noticed_at` | `timestamptz` | set exactly with `cap_notice` (`inbound_mail_addresses_cap_noticed_at`) | |
+
+One active address per project (`uniq_inbound_mail_addresses_active_project`,
+partial on `revoked_at IS NULL`); two lazy mints race into a 23505 the service
+answers by reading the winner. Index `(project_id, created_at)`.
+
+### inbound_mails
+
+| Column | Type | Constraints | Notes |
+|---|---|---|---|
+| `id`, `organization_id`, `project_id` | | FK to `projects` CASCADE | |
+| `address_id` | `uuid` | NOT NULL, FK `(address_id, project_id, organization_id)` → `inbound_mail_addresses`, **NO ACTION** | An address is revoked, never deleted, while a mail names it; the purge removes both in one statement |
+| `status` | `text` | `receiving`/`received`/`waiting`/`settled`/`dropped` | |
+| `delivery_key` | `text` | 64 hex; required from `received` on; unique per address (`uniq_inbound_mails_address_delivery`) | A hash of the authored headers and the body (`deliveryKey`, `mime.ts`), so a relay's prepended lines do not make a redelivery new |
+| `envelope_from` | `text` | ≤ 320 | The SMTP MAIL FROM; `''` is a bounce's null sender |
+| `raw_size_bytes` | `bigint` | 0..27262976; required from `received` on | |
+| `staging_bucket` | `text` | NOT NULL | Recorded before the first object is written (ADR-0043) |
+| `raw_storage_key`, `read_storage_key` | `text` | exact shape (`inbound_mails_staging_keys_shape`); the raw key required while `received` | |
+| `raw_scan_status` | `text` | `pending`/`clean`/`infected`/`failed`, default `pending` | The whole raw message, scanned before the mail is shown |
+| `raw_scan_engine`, `raw_scan_signature`, `raw_scanned_at`, `raw_scan_attempts` | | the signature only when `infected`; `raw_scanned_at` set exactly when not `pending`; attempts 0..100 | |
+| `message_id`, `in_reply_to text[]` (≤ 5), `reference_ids text[]` (≤ 50), `thread_index_guid`, `base_subject` (≤ 500) | | `inbound_mails_identifiers_bounded` | Thread identity, normalized; kept after the mail settles |
+| `thread_match` | `jsonb` | array, ≤ 50 | `[{ threadId, strength, headers }]`, ids and strengths only. Candidates are computed for the viewer at read time, never stored |
+| `sender_address`, `sender_name`, `subject` | `text` | lengths; `sender_address` required while `waiting` | Gone once the mail settles |
+| `participants` | `jsonb` | array ≤ 200 | From, Reply-To, To, Cc, the project addresses taken out |
+| `participant_domains` | `text[]` | ≤ 50 | |
+| `recipient_count` | `integer` | 0..1000 | |
+| `sender_trust` | `text` | `member_verified`/`member_unverified`/`external_verified`/`external_unverified`; required when `waiting` or `settled` | A label and a condition on defaults, never a gate |
+| `sender_user_id` | `text` | set exactly when the trust is `member_*` (`inbound_mails_member_has_user`); person-shaped | Read only under the notice rules |
+| `sender_reason` | `text` | 20 known codes; set exactly with the trust; `dkim_pass` exactly when `*_verified` (`inbound_mails_reason_with_trust`) | |
+| `signer_domain` | `text` | ≤ 253 | |
+| `signed_headers` | `text[]` | ≤ 64, lowercase header names | mailauth's `signingHeaders.keys` of the aligned passing signature |
+| `sender_flags` | `text[]` | `<@` `not_addressed_to_project`, `bcc_own`, `stale_date`, `date_out_of_range`, `message_id_reused`, `already_filed`, `claims_member_name` | `bcc_own` only with `not_addressed_to_project` on `member_verified` (`inbound_mails_bcc_own_paired`); `claims_member_name` only on `external_*` (`inbound_mails_member_name_claim_external`) |
+| `authentication_results` | `text` | ≤ 4096, never containing `spf=` (`inbound_mails_authentication_results_shape`) | Our RFC 8601 line from DKIM and DMARC only |
+| `automatic` | `boolean` | NOT NULL, default false | List, bulk or auto-generated mail: held, announced collapsed, no model spend |
+| `dropped_reason` | `text` | `auto_reply`/`delivery_report`/`self_loop`; set exactly when `dropped` | |
+| `sent_at`, `sent_at_header` | `timestamptz` | | The clamped Date and the sender's claim |
+| `received_at` | `timestamptz` | NOT NULL | |
+| `expires_at` | `timestamptz` | NOT NULL, after `received_at` | Fixed at receipt (30 days) |
+| `settled_at` | `timestamptz` | set exactly when `settled` | |
+| `notified_at`, `expiring_notified_at` | `timestamptz` | | Told once |
+| `not_staged` | `jsonb` | array ≤ 100 | `[{ filename, reason }]` while waiting |
+| `ignored` | `jsonb` | object | Counts by reason after settling |
+| `erasure_deferred_at` | `timestamptz` | | A hold stopped the erasure; sweep 10 retries after release |
+| `original_move_pending_at` | `timestamptz` | | The raw message is moving to a filed entry's original; sweep 13 finishes a stopped move |
+| `created_at`, `updated_at` | | | |
+
+The scrub is a CHECK (`inbound_mails_ended_is_scrubbed`): a `settled` or
+`dropped` mail holds no sender, name, subject, base subject, envelope sender,
+participants or `not_staged`, and no staged key unless `erasure_deferred_at`
+(or, for the raw key only, `original_move_pending_at`). A mail is never
+`waiting` before its raw message was scanned (`inbound_mails_waiting_is_scanned`).
+
+Indexes: `inbound_mails_waiting_idx` (org, project, received_at; waiting),
+`_expiry_idx`, `_receiving_idx` (updated_at; receiving or received),
+`_settled_idx`, `_dropped_idx`, `_message_id_idx` (project, message_id),
+`_erasure_deferred_idx`, `_original_move_idx`.
+
+### inbound_mail_parts
+
+| Column | Type | Constraints | Notes |
+|---|---|---|---|
+| `id`, `organization_id`, `project_id` | | | |
+| `mail_id` | `uuid` | FK `(mail_id, project_id, organization_id)` → `inbound_mails` CASCADE | |
+| `position` | `integer` | ≥ 0, unique per mail | An attachment is staged at `<mail>/<position>` |
+| `kind` | `text` | `message`/`attachment` | |
+| `filename` | `text` | 1..500 or NULL; only while the bytes are there (`inbound_mail_parts_name_with_bytes`); never on the message | |
+| `content_type`, `size_bytes` (0..27262976), `sha256` (64 hex) | | NOT NULL | The message's `sha256` is its own text's, for `already_filed` |
+| `storage_key` | `text` | exact shape; none on the message; required on an attachment while `waiting`/`filing` (`…_bytes_while_open`); NULL once `filed` unless erasure is deferred | |
+| `state` | `text` | `waiting`/`filing`/`filed`/`dismissed`/`expired` | |
+| `scan_status` | `text` | `pending`/`clean`/`infected`/`failed`/`not_applicable`; `not_applicable` exactly for the message (`…_scan_applies`) | The text is covered by the raw message's scan |
+| `scan_engine`, `scan_signature`, `scanned_at`, `scan_attempts` | | signature only when infected; `scanned_at` exactly when scanned; attempts 0..100 | |
+| `risk_flags` | `text[]` | `<@` `macro`, `type_mismatch`, `encrypted`, `name_stop`, `duplicate_of`, `forwarded_inner`, `unreadable`, `unverified_thread`, `type_not_accepted` | |
+| `name_stop_terms` | `text[]` | ≤ 20, only with `name_stop` | |
+| `content_findings` | `text[]` | ≤ 32, only on the message | The kinds `findSpans` found after the signature was removed |
+| `duplicate_of_document_id`, `revision_candidate_document_id` | `uuid` | no FK; the duplicate only with `duplicate_of` | Ids only: what a viewer may see of them is decided at read time |
+| `decision_id` | `uuid` | set exactly when `filing`/`filed` (`inbound_mail_parts_decision_iff_filing`); FK `(decision_id, id)` → `inbound_mail_decisions (id, part_id)` CASCADE | The `file` decision of THIS part; a trigger requires `action = 'file'` |
+| `claim_expires_at` | `timestamptz` | set exactly when `filing` | Sweep 5 |
+| `last_failure` | `text` | 13 known codes, only on `waiting` | Why the last filing made no document |
+| `document_id` | `uuid` | FK `(document_id, project_id)` → `documents`, `ON DELETE SET NULL (document_id)`; only when `filed` | |
+| `document_version_id` | `uuid` | FK `(document_version_id, document_id)` → `document_versions`, `SET NULL (document_version_id)`; only when `filed` | The guard nulls it with the document (below) |
+| `mail_thread_entry_id` | `uuid` | FK to `mail_thread_entries`, `SET NULL`; only on a filed message | |
+| `filed_at` | `timestamptz` | exactly when `filed` | |
+| `ended_at` | `timestamptz` | exactly when `dismissed`/`expired` | Restorable for seven days from here |
+| `erasure_deferred_at` | `timestamptz` | | |
+| `suggestion`, `suggestion_trace_id` | `jsonb`, `text` | an object, only while the bytes are there (the text's until filed) | Piloti's suggestion; written without touching `updated_at`, which is part of `ifMatch` |
+| `created_at`, `updated_at` | | | |
+
+Nothing reaches a project unless its scan said clean
+(`inbound_mail_parts_filed_is_clean`: `filing`/`filed` only with `clean` or
+`not_applicable`).
+
+Triggers:
+- `inbound_mail_parts_decision_guard` (`BEFORE INSERT OR UPDATE OF decision_id`):
+  the named decision must be a `file` (`inbound_mail_parts_decision_files`).
+- `inbound_mail_parts_document_guard` (`BEFORE UPDATE OF document_id`): when
+  the document goes, `document_version_id` goes too. Deleting the document
+  nulls `document_id` first, after which the composite key to the Fassung is
+  MATCH SIMPLE-unchecked and its own SET NULL never fires; without the guard
+  the part kept a dangling version id.
+
+Indexes: `inbound_mail_parts_document_idx`, `_claim_idx` (filing),
+`_ended_bytes_idx` (dismissed/expired with bytes), `_scan_failed_idx`.
+
+### inbound_mail_decisions
+
+Append-only. The filing job reads what to do from here, the audit trail is
+sent from here.
+
+| Column | Type | Constraints | Notes |
+|---|---|---|---|
+| `id`, `organization_id`, `project_id`, `mail_id` | | | |
+| `part_id` | `uuid` | FK `(part_id, mail_id, project_id, organization_id)` → `inbound_mail_parts` CASCADE; unique `(id, part_id)` | |
+| `action` | `text` | `file`/`dismiss`/`restore` | |
+| `decided_by` | `text` | NOT NULL, person-shaped (`inbound_mail_decisions_decider_is_person`) | Always a person |
+| `via` | `text` | `app`/`agent`/`piloti_proposal`/`follow`, default `app` | |
+| `proposal_id` | `uuid` | exactly with `piloti_proposal` | |
+| `follow_id` | `uuid` | exactly with `follow`; FK `(follow_id, mail_thread_id, decided_by, organization_id)` → `mail_thread_follows (id, thread_id, user_id, organization_id)` CASCADE | The decider is the follower |
+| `decided_at` | `timestamptz` | | |
+| `folder_id`, `folder_path` (≤ 1000), `file_name` (1..255), `target_document_id` | | no FKs; `folder_path` required for every `file` except an append (`''` is the root) | The decision carries what was decided even if the folder or document goes |
+| `document_type` | `text` | 1..64, no control characters | Membership in the Dokumentart vocabulary is the code's |
+| `thread_action` | `text` | `append`/`create`; `append` exactly with `mail_thread_id`, `create` with `file_name` | Only for a filed message (trigger) |
+| `mail_thread_id` | `uuid` | | |
+| `message_text` | `text` | `masked`/`full`, exactly with `thread_action` | |
+| `screening_release`, `acknowledged_sender`, `acknowledged_risk` | `boolean` | NOT NULL, default false; only on `file` | Read by the filing job from here and nowhere else |
+| `audited_at` | `timestamptz` | | NULL while owed to the trail |
+
+CHECKs: `inbound_mail_decisions_piloti_cards_file_clean` (a Piloti card carries
+no release and no acknowledgement); `…_follow_appends_text_only` (a follow is
+`file` + `append` with no release or acknowledgement); `…_destination_when_filing`,
+`…_target_only_when_filing`, `…_thread_named`, `…_message_text`, `…_lengths`.
+
+Trigger `inbound_mail_decisions_guard`:
+- INSERT: a follow files a text, never an attachment
+  (`inbound_mail_decisions_follow_files_text`); a thread is chosen for a filed
+  text and only for it (`…_thread_for_text`).
+- UPDATE: nothing changes but `audited_at`, once, NULL to a time (`…_immutable`).
+- DELETE: refused while `audited_at IS NULL` and the project row exists
+  (`…_audited_before_delete`, RT-S8): sweeps wait for the trail, a purge (which
+  deletes the project first) goes through.
+
+Indexes: `(part_id, decided_at)`, `(mail_id)`, `(follow_id, decided_at)` where a
+follow, `inbound_mail_decisions_project_follow_idx` `(project_id, decided_at)
+WHERE via = 'follow'` (the project's daily follow cap), and the due index
+`(decided_at) WHERE audited_at IS NULL` (sweep 11).
+
+### mail_threads
+
+| Column | Type | Constraints | Notes |
+|---|---|---|---|
+| `id`, `organization_id`, `project_id` | | FK to `projects` CASCADE | |
+| `document_id` | `uuid` | FK `(document_id, project_id)` → `documents`, `SET NULL (document_id)`; unique when set | The E-Mail-Verlauf. NULL while its first Fassung is written, and again once deleted (sweep 9 then deletes the thread) |
+| `base_subject` | `text` | NOT NULL, ≤ 500 | RFC 5256 base subject, lowercased: never show it as a name |
+| `thread_index_guid` | `uuid` | | Outlook's conversation GUID |
+| `participant_domains` | `text[]` | ≤ 200 | Every domain that took part, ours excluded (follow condition 5) |
+| `continues_thread_id` | `uuid` | self-FK, `SET NULL`, not itself | Reserved for „Als Fortsetzung ablegen“; not written yet |
+| `entry_count` | `integer` | 0..200 | |
+| `rendered_bytes` | `integer` | 0..2097152 | |
+| `last_entry_at` | `timestamptz` | | |
+| `render_pending_at` | `timestamptz` | | An archive slice wrote entries not rendered yet; `coalesce(render_pending_at, now())` per entry, NULL on its render or when given up |
+| `render_lease_holder`, `render_lease_until` | `uuid`, `timestamptz` | together (`mail_threads_render_lease_together`) | Who writes the next Fassung now (the superset invariant needs one writer at a time) |
+| `locale` | `text` | NOT NULL, `de`/`en` | The rendition's language for the thread's life |
+| `created_by` | `text` | person-shaped | |
+| `created_at` | | | |
+
+Indexes: `uniq_mail_threads_document`, `mail_threads_thread_index_idx`,
+`mail_threads_base_subject_idx` (project, base_subject),
+`mail_threads_without_document_idx` (created_at where no document: sweep 9),
+`mail_threads_render_pending_idx`.
+
+### mail_thread_entries
+
+| Column | Type | Constraints | Notes |
+|---|---|---|---|
+| `id`, `organization_id`, `project_id` | | | |
+| `thread_id` | `uuid` | FK to `mail_threads` CASCADE; unique `(id, thread_id)` | |
+| `source` | `text` | `inbound`/`archive` | |
+| `inbound_mail_id` / `mail_import_id` | `uuid` | exactly one by source (`…_provenance`); no FK | Provenance only: the entry outlives both rows |
+| `message_id` | `text` | 1..998 | Dedupe index, not unique (a forger can take a genuine id first) |
+| `sent_at`, `received_at` | `timestamptz` | NOT NULL | `sent_at` clamped |
+| `heading` | `text` | 1..500, unique per thread | Never changes, so citations hold |
+| `in_reply_to_entry_id` | `uuid` | self-FK, `SET NULL` | |
+| `sender_address`, `sender_name`, `sender_domain`, `signer_domain` | `text` | lengths | |
+| `sender_trust` | `text` | the four inbound labels or `not_checked`; `not_checked` exactly for `archive` | |
+| `authentication_results` | `text` | ≤ 4096, no `spf=` | |
+| `participants` (≤ 50), `quoted` (≤ 50), `calendar` (≤ 20), `masked_spans` (≤ 1000 or NULL) | `jsonb` | arrays | `masked_spans` set when the person chose „Unkenntlich ablegen“ |
+| `own_text` | `text` | ≤ 524288 bytes | |
+| `first_version_id` | `uuid` | FK → `document_versions`, SET NULL | The first Fassung that holds it, whoever wrote that Fassung |
+| `filed_by` | `text` | person-shaped | |
+| `filed_via` | `text` | `app`/`agent`/`piloti_proposal`/`follow`/`archive_import`; `archive_import` exactly for `archive` | |
+| `filed_at`, `created_at` | | | |
+| `original_bucket`, `original_storage_key`, `original_sha256`, `original_bytes`, `original_scan_status` | | all five set or all NULL; none on `archive`; exact key `_mail-originals/<id>.eml`; 64-hex sha; 0..27262976 bytes; scan `pending`/`clean`/`infected`/`failed` | The original `.eml`: evidence, never a document |
+| `original_scanned_at` | `timestamptz` | only with a decided scan | |
+
+Indexes: `mail_thread_entries_message_id_idx` (project, message_id),
+`(thread_id, sent_at)`, `(inbound_mail_id)`, `(mail_import_id)`. Legal-hold
+trigger `mail_thread_entries_legal_hold_guard`.
+
+### mail_thread_entry_attachments (D36)
+
+One row per attachment a filed message carried, whatever became of it.
+
+| Column | Type | Constraints | Notes |
+|---|---|---|---|
+| `id`, `organization_id`, `project_id` | | | |
+| `entry_id` | `uuid` | FK to `mail_thread_entries` CASCADE; unique `(entry_id, position)` | |
+| `position` | `integer` | ≥ 0 | The part's position; a file never staged follows the staged ones |
+| `filename` | `text` | 1..500 or NULL | Shown only to a reader who may see the document it became |
+| `disposition` | `text` | `filed`/`already_present`/`not_filed` | |
+| `not_filed_reason` | `text` | exactly when `not_filed`; 15 codes (`pending`, `dismissed`, `expired`, `infected`, `scan_failed`, `type_not_accepted`, `encrypted`, `archive`, `size`, `limit`, `empty`, `screened`, `access`, `name_taken`, `unreadable`) | A not-filed file's bytes live only in the original |
+| `document_id` | `uuid` | FK `(document_id, project_id)` → `documents`, `SET NULL (document_id)`; none when `not_filed` | |
+| `document_version_id` | `uuid` | FK `(document_version_id, document_id)` → `document_versions`, `SET NULL (document_version_id)` | The Fassung this mail brought |
+| `section_name`, `section_folder_path` | `text` | a name only when not `not_filed`; a folder only with a name | What the section prints, frozen at insert; NULL is counted, never named |
+| `created_at` | | | |
+
+Trigger `grid_mail_thread_entry_attachments_guard` (`BEFORE UPDATE`): a row
+learns only its document or Fassung going (and nulls the version with the
+document, as the parts guard does), and, once, a `pending` attachment being
+decided later (`…_decided_once`); anything else is
+`mail_thread_entry_attachments_frozen`. Indexes on `document_id` and
+`document_version_id` (the document routes' `mailOrigins`). Legal-hold trigger.
+
+### mail_thread_message_ids
+
+| Column | Type | Constraints | Notes |
+|---|---|---|---|
+| `id`, `organization_id`, `project_id`, `thread_id` | | FK to `mail_threads` CASCADE | |
+| `message_id` | `text` | 1..998 | Normalized: no angle brackets, the domain lowercased |
+| `state` | `text` | `received`/`referenced` | |
+| `entry_id` | `uuid` | required for `received`; FK `(entry_id, thread_id)` → `mail_thread_entries` CASCADE, **ON UPDATE CASCADE** | An entry's ids move with it on a detach |
+
+Unique `NULLS NOT DISTINCT (thread_id, message_id, state, entry_id)`: a
+Message-ID received twice (a forger first) is two rows, and neither blocks the
+other. Index `(project_id, message_id)`. DELETE is not revoked here.
+
+### mail_thread_follows
+
+| Column | Type | Constraints | Notes |
+|---|---|---|---|
+| `id`, `organization_id`, `project_id` | | | |
+| `thread_id` | `uuid` | FK to `mail_threads` CASCADE | |
+| `user_id` | `text` | person-shaped | The follower: every append is filed as them |
+| `created_at`, `expires_at` | | `expires_at` after `created_at` and at most 180 days later (`mail_thread_follows_window`) | 60 days by default |
+| `renewed_at` | `timestamptz` | not before `created_at` | |
+| `daily_cap` | `smallint` | 1..50, default 20 | |
+| `expiring_notified_at` | `timestamptz` | | Day 55, once |
+| `ended_at`, `ended_by`, `ended_reason` | | reason exactly with `ended_at`; `unfollowed`/`expired`/`access_lost`/`address_rotated`/`detached`/`document_gone`/`revoked_by_manager`; `unfollowed` only by the follower, `revoked_by_manager` only by someone else (`…_person_reason_attributed`) | `ended_by` NULL when the system noticed |
+
+Unique `(id, thread_id, user_id, organization_id)` (what a follow decision's
+key points at); one running follow per person and thread
+(`uniq_mail_thread_follows_active`, where `ended_at IS NULL`); expiry index for
+sweep 12.
+
+### mail_imports: the archive's Verlauf counts
+
+The Outlook archive import ([`mail-import.md`](../architecture/mail-import.md))
+renders into the same Verläufe. 0186 adds three counters to `mail_imports`,
+`threads_created`, `threads_appended` and `already_in_project` (integer, NOT
+NULL, default 0, CHECK `mail_imports_thread_counts_non_negative`), counted when
+the cursor passes a mail, so a retried mail counts once.
+
+### Reversing 0186
+
+`0186_inbound_mail.down.sql` **refuses** (`object_in_use`) while any row still
+names a staged object or a kept original: the rows are the only record of
+those keys. Its header lists the queries to find them; erase each object by its
+key, set the column NULL (as the platform role, with the feature paused), and
+run it again. It is lossy even then: addresses, waiting mail and decisions go;
+filed Verläufe stay as documents without their entries. It deletes the
+`inbound_mail.*` and `mail_thread.*` inbox rows and the `inbound_mail_*` job
+rows, drops the triggers, functions and tables in FK order, and the three
+`mail_imports` counters.
 
 ---
 

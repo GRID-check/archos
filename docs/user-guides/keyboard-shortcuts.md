@@ -89,6 +89,22 @@ without the mouse:
 | **E** | Archive the item (Undo stays on offer for a few seconds); under *Archived*, restore it |
 | **U** | Mark the item read, or unread again |
 
+## In the E-Mail-Eingang
+
+While a project's E-Mail-Eingang is open (and you are not typing in a field).
+Listed in the cheatsheet only for offices with project mail:
+
+| Shortcut | What it does |
+|---|---|
+| **J** / **K** | Next or previous mail |
+| **Enter** | Open the mail |
+| **X** | Select the mail for a bulk action (never a mail that poses as someone) |
+| **Space** | Preview the attachment |
+| **E** | File as shown („Wie gezeigt ablegen“) |
+| **⌫** | Dismiss the mail |
+
+<!-- W1: the UI rework may change these keys; update from handoffs/W1-to-D17.md. -->
+
 ## The command palette
 
 ⌘K opens a searchable list of everything the UI can already do: jump to one of

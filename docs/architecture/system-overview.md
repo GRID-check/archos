@@ -174,7 +174,7 @@ The workspace surfaces, each with its own doc:
 - **Research and reports:** [reports Piloti writes](../user-guides/agent-authored-reports.md), [deep research report](deep-research-report.md)
 - **Team and access:** [collaboration lifecycle](collaboration-lifecycle.md), [sensitive data and access](../user-guides/sensitive-data-and-access.md)
 - **Office knowledge:** [project memory design](project-memory-design.md)
-- **Mail import:** [Outlook archive import](mail-import.md)
+- **Project mail:** [the E-Mail-Eingang and the E-Mail-Verläufe](inbound-mail.md), [Outlook archive import](mail-import.md)
 
 ### 5.1 Chat & the agent pipeline
 Chat is **WebSocket-only** (ADR 0009). A turn runs through a LangGraph workflow

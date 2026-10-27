@@ -49,7 +49,7 @@
 | **W&B / Jina** | — | Vestigial: env slots documented, **no code reads them** (`wandb` not even in lockfile) | No | Dead — remove | `WANDB_API_KEY`, `JINA_API_KEY` | negative code search |
 | **OTLP/Phoenix exporter** | configurable | NAT span export incl. LLM I/O; **no shipped config enables it** (console only). Identity enrichment: `AIQ_TRACE_USER_IDENTITY_MODE=full` adds cleartext email/name to spans (default `none`) | If enabled | Optional, off | workflow YAML; `AIQ_TRACE_*` | `aiq_api/auth/middleware.py:59-89` |
 | **Datadog RUM** | — | Frontend shim, no-ops unless deployment injects `DD_RUM` | If enabled | Optional, off | overlay | `shared/utils/rum.ts` |
-| **Cloudflare** | `api.cloudflare.com` (Pulumi, deploy time) + the zone's authoritative nameservers | DNS operator for `piloti.at` (`dnsEnabled` on dev and prod). Every app host, the apex included, is DNS-only (not proxied); only `www.piloti.at` is proxied, so Cloudflare's edge can redirect it to the apex | No. DNS lookups for every host; for `www` requests only, the visitor's IP and URL | Yes (dev, prod) | `cloudflareApiToken`, `dnsZoneId` (Pulumi) | `deploy/pulumi/src/platform/dns.ts` (`proxied: false` on host records, `wwwProxied`); `Pulumi.prod.yaml` (`dnsZoneBaseline`) |
+| **Cloudflare** | `api.cloudflare.com` (Pulumi, deploy time) + the zone's authoritative nameservers | DNS operator for `piloti.at` (`dnsEnabled` on dev and prod). Every app host, the apex included, is DNS-only (not proxied); only `www.piloti.at` is proxied, so Cloudflare's edge can redirect it to the apex. **With project mail** (`inboundMailDomain`, ADR-0135): Email Routing is the apex MX, and an Email Worker signs each mail to a project address and posts it to the BFF | DNS: no; DNS lookups for every host, for `www` requests the visitor's IP and URL. **Project mail: yes**: every message sent to a project address passes through Cloudflare (sender, recipients, the whole message), kept in Email Routing's activity log as metadata; the Worker logs nothing (observability off, no Logpush) | Yes (dev, prod) | `cloudflareApiToken`, `dnsZoneId` (Pulumi) | `deploy/pulumi/src/platform/dns.ts` (`proxied: false` on host records, `wwwProxied`); `Pulumi.prod.yaml` (`dnsZoneBaseline`) |
 | **ClamAV signature mirror** (Cisco Talos) | `database.clamav.net` (CDN) | freshclam downloads the malware signatures the in-cluster scanner uses, twelve checks a day (ADR-0133). Only where `malwareScanEnabled` is on (Pulumi) or the Compose `malware-scan` profile runs | No. Nothing is uploaded: the cluster's egress IP and freshclam's version string reach the CDN, and signatures come back | Optional, off; required once the scanner is on (signatures older than 48 h make every scan fail) | `malwareScanEnabled` (Pulumi); none in the app | `deploy/compose/clamav/freshclam.conf`; `deploy/pulumi/src/app/clamav.ts` |
 | **Google Fonts** | fonts.googleapis.com | **Build-time only** (`next/font` self-hosts at runtime); Next telemetry disabled in image | No | Build only | — | `app/layout.tsx:13`; `deploy/Dockerfile:104,119` |
 | **Build/CI**: PyPI, npm, Debian/nodesource, `nvcr.io`, GitHub Actions, Semgrep + gitleaks images (run in-CI, no source upload), OSV-Scanner (queries package names/versions against osv.dev) | — | provisioning/CI | Source code stays in CI; only dependency identifiers leave (OSV) | Build/CI | — | `.github/workflows/*` |
@@ -78,6 +78,10 @@ Backend agents fetch no arbitrary URLs themselves (only internal BFF call in
   a native extension used unmodified as a library from its manylinux wheel; the
   maintainer labels it alpha, and this is its first release with cp314 wheels)
   and `striprtf==0.0.33` (BSD-3, pure Python) for RTF bodies.
+  Inbound mail (`aiq_api.mail`, ADR-0134): `mail-parser-reply==1.36` (MIT, pure
+  Python, no dependencies; the reply and quote split and the signature cut) and
+  `icalendar==7.3.0` (BSD-2-Clause, pure Python; brings `python-dateutil` and
+  `tzdata`, both already in the lock) for calendar invitations.
   Deliberate CVE floors + `override-dependencies` block (`pyproject.toml:214-227`).
 - **Node:** `bun.lock` + `bun install --frozen-lockfile`; Next 16, `@workos-inc/*`,
   `@aws-sdk/client-s3`, `http-proxy` (old but latest), drizzle; security `overrides`
@@ -86,6 +90,17 @@ Backend agents fetch no arbitrary URLs themselves (only internal BFF call in
   OSV-Scanner supports the text `bun.lock` format, so lockfile CVE scanning is
   unaffected by the switch (it does NOT support the binary `bun.lockb`, which
   this repo does not use).
+  Project mail (ADR-0134, ADR-0135), recorded here because no licence-allowlist
+  gate exists: direct `mailauth` ^8.0.2 (resolved 8.0.4, MIT), `postal-mime`
+  ^4.1.4 (MIT-0), `file-type` 22.2.0 (MIT), `http-message-signatures` 1.0.6
+  (ISC) and `structured-headers` 2.1.1 (MIT). Transitive, new in `bun.lock`:
+  MIT (undici 7, tldts, libmime, libbase64, libqp, encoding-japanese,
+  iconv-lite, punycode.js, `@postalsys/vmc`, `@peculiar/asn1-*`, pvtsutils,
+  pvutils, fast-xml-parser, strnum, commander, ipaddr.js, strtok3, token-types,
+  uint8array-extras, `@tokenizer/*`, `@borewit/text-codec` and a few more),
+  MIT-0 (nodemailer) and BSD-3-Clause (joi and `@hapi/*`, asn1js). Nothing
+  copyleft. mailauth 8.0.3 and later need Node ≥ 20.18.1 and file-type 22
+  Node ≥ 22; the UI images run `node:22-slim`.
 - **CI controls:** Semgrep SAST (py+ts/js+actions) + weekly; OSV-Scanner lockfile
   CVEs over all seven lockfiles in the tree; gitleaks full history; Dependabot
   fix PRs. (GitHub dependency-review dropped: it needs GitHub Advanced Security
@@ -125,4 +140,6 @@ Backend agents fetch no arbitrary URLs themselves (only internal BFF call in
    scanning does it upstream today (mail gateway, endpoint). An in-cluster
    ClamAV now exists for what strangers send (ADR-0133, off by default, fail
    closed), and scans nothing a member uploads yet; scanning uploads and chat
-   attachments is its follow-up.
+   attachments is its follow-up. Project mail switches it on: every attachment
+   and raw message a stranger sends is scanned before anyone can file it, and
+   every original download is scanned again (ADR-0134).

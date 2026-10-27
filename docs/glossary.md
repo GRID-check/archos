@@ -35,6 +35,15 @@ list here. A cleanup shrinks the ratchet's baseline
 | Gebäudeklasse, Bauwerk | `buildingClass`, `building` | |
 | Herleitung | `derivation` (`/dev/derivation`) | |
 | Papierkorb | `bin` (`/dev/bin`) | |
+| E-Mail-Eingang | `inbound mail` (`lib/inbound-mail`, `inbound_mails`, `inbound-mail-*`, route `/files/mail`) | `inbox` (the Postfach), `intake` (the project setup) |
+| E-Mail-Adresse des Projekts | `inbound mail address` (`inbound_mail_addresses`, `inbound-mail-address-*`) | `projectAddress` (the site's address) |
+| E-Mail-Verlauf | `mail thread` (`lib/mail-thread`, `mail_threads`); one filed e-mail is a `mail thread entry` | `conversation` (a chat) |
+| ablegen, verwerfen, wiederherstellen (a held mail's part) | `file`, `dismiss`, `restore` | `accept`, `reject`, `approve` (Freigabe's) |
+| Verlauf folgen | `follow` / `unfollow` (`mail_thread_follows`) | `subscribe` |
+| herauslösen | `detach` (`mail-thread-entry-detach`) | `delete`, `remove` |
+| Original (.eml) | `original` (`original_storage_key`, `_mail-originals/`) | `raw` (the staged `raw.eml` before filing) |
+| Korrespondenz (Dokumentart) | `correspondence` | `mail` (the format, `source_format: mail`) |
+| Domain bestätigt / nicht bestätigt | `sender_trust` `*_verified` / `*_unverified` (`not_checked` for the archive) | `trusted`, `authenticated sender` |
 | Punkt, Absatz (of a norm) | `clause`, `subsection` (`clause_chunking.py`, `build_clause_index.py`; the Qdrant keys `clause_id`, `clause_path`, `chunking: "clause"`; the `read_passage` argument `clause`) | |
 | Richtlinie (OIB) | `guideline` (the Qdrant key `guideline`; `norm_registry.oib_doc_class` returns `guideline`, `guide`, `explanatory_note`, `definitions`, `referenced_standards`, `amendment`) | |
 | Nutzung, Bauweise, Vorhabensart | `use` / `uses`, `construction_method`, `work_type` (the boost weights `use`, `use_max`; the `project_facts` payload keys) | |
@@ -146,6 +155,9 @@ replaced `agent_capability_missing`.
 | Ask (`piloti_asks`) | A question another agent puts to Piloti for a person (ADR-0124): `piloti-ask-create` on the MCP door, `SendMessage` on the A2A door. Runs as a headless turn (trigger `agent_consult`) in the person's own thread; its states are the A2A task states. Not an Aufgabe (`task`) and not a task run | [`frontends/ui/src/lib/piloti-asks/service.ts`](../frontends/ui/src/lib/piloti-asks/service.ts) |
 | A2A | The Agent2Agent protocol: how one agent hands work to another. Piloti serves it at `/api/a2a` (JSON-RPC, 1.0 and 0.3) with its agent card at `/.well-known/agent-card.json`. Its words map onto ours: an A2A **task** is an ask, its **context** (`contextId`) the conversation, a **message** a question or an answer in it, a **part** the message's text, an **artifact** the answer or a document Piloti filed | [`docs/adr/0124-agents-consult-piloti-over-mcp-and-a2a.md`](adr/0124-agents-consult-piloti-over-mcp-and-a2a.md) |
 | Piloti vs GRID | Piloti is the name in anything a user reads; GRID is the repository, the `GRID_*` variables, the `x-grid-*` headers and the CSS variables | [`frontends/ui/src/lib/brand.ts`](../frontends/ui/src/lib/brand.ts) |
+| Signed internal route | A BFF route under `/api/internal/signed/`, authenticated by an RFC 9421 HTTP Message Signature (`internalApiRoute`'s `auth: { signature }`) instead of the internal token, and excluded from the Next proxy so its body streams. Today only the project-mail webhook | [`ADR-0135`](adr/0135-project-mail-arrives-through-cloudflare-email-routing-and-a-signed-worker.md), `frontends/ui/src/lib/internal-auth.ts` |
+| Mail standards in project mail | RFC 5321 (SMTP; the envelope, `x-envelope-to` / `x-envelope-from`), RFC 5322 (the message format; one From, the singleton headers), RFC 6376 (DKIM), RFC 9989 (DMARC alignment), RFC 8601 (`Authentication-Results`, our evidence line, never with `spf=`), RFC 3834 (automatic replies, dropped), RFC 5256 (the base subject), RFC 8621 §3 (thread matching by references and subject), RFC 9421 (HTTP Message Signatures) and RFC 9530 (`Content-Digest`) for the Worker's post | [`inbound-mail.md`](architecture/inbound-mail.md) |
+| Render lease | The compare-and-set claim on a mail thread (`render_lease_holder`, `render_lease_until`) every writer of a Verlauf's next Fassung takes, because Fassung N+1 must hold every section of Fassung N and an upload cannot sit inside a transaction | `frontends/ui/src/lib/mail-thread/append.ts`, `write-repository.ts` |
 
 ## The chat wire
 

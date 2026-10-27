@@ -1,9 +1,23 @@
 # Outlook archive import
 
 A member imports an Outlook archive (`.pst`, or the `.ost` Outlook caches from
-Exchange) into a project's Dateien, and every mail in it becomes a folder with
-its attachments and a note holding its text. Why it is built this way:
-[ADR-0085](../adr/0085-outlook-archives-are-read-by-range-and-filed-as-the-person-per-mail.md).
+Exchange) into a project's Dateien. Each mail's attachments go into a folder
+of its own, and its text becomes a section of the project's E-Mail-Verläufe,
+the same Verläufe mail to the project's address is filed into
+([ADR-0134](../adr/0134-mail-sent-to-a-project-waits-until-a-person-files-it.md),
+[`inbound-mail.md`](inbound-mail.md)). Why it is built this way:
+[ADR-0085](../adr/0085-outlook-archives-are-read-by-range-and-filed-as-the-person-per-mail.md)
+and its 2026-10 amendment.
+
+## Two ways mail reaches a project
+
+| | Mail to the project's address | An Outlook archive |
+|---|---|---|
+| Who decides | a person, per part, in the E-Mail-Eingang (or their standing follow, text only) | the person who starts the import: starting it is the decision |
+| Where the text goes | a section of an E-Mail-Verlauf | a section of an E-Mail-Verlauf, the same ones |
+| Sender trust | DKIM and DMARC checked: `*_verified` / `*_unverified` | `not_checked`, headed „aus dem Outlook-Archiv“ |
+| Original `.eml` | kept as evidence beside the section | none: the import never had the message's bytes |
+| Duplicates | `already_filed` when the project holds the Message-ID | skipped and counted `already_in_project` |
 
 ## The flow
 
@@ -19,7 +33,10 @@ browser                     BFF (frontend)                     object store     
   │                                                                               ◀── POST attachment ─ per file
   │                                                                                                     open upload batch
   │                                                                                                     uploadDocument ×n
+  │                                                                                                     write entry (Verlauf, lease)
   │                                                                                                     advance cursor
+  │                                                                                                     … until the budget:
+  │                                                                                                     render each touched Verlauf once
   │                                                                                                     … until done:
   │ inbox: imported / stopped ◀─────────────────────────────────────────────────────────────────────── seal batch, delete staging
   │ inbox: what arrived       ◀── reconciliation / sweep, once every filed document has been read
@@ -39,17 +56,29 @@ browser                     BFF (frontend)                     object store     
   Items are numbered depth-first over the mail tree, so a position is a cursor.
   The folder tree and each folder's message count are read once when the
   archive opens (`Archive._folders`, `total` in `mail_archive/reader.py`), so
-  they cost no message reads; no route returns them yet. A slice reads pages of
+  they cost no message reads; no route returns them yet. Each mail also carries
+  what threads it, for the E-Mail-Verläufe it renders into: `in_reply_to`,
+  `references`, and `conversation_index` (`PR_CONVERSATION_INDEX` base64, the
+  same bytes an inbound mail's `Thread-Index` header carries; one derivation,
+  `threadIndexGuid` in `lib/mail-thread/mail-threading.ts`, held to
+  `shared/thread-index.json` from both sides), and the Bcc of a sent item. An
+  open archive is cached under the object its presigned URL names
+  (`archives.object_of`), never under the key the caller sends. A slice reads pages of
   20 messages, and one read of the archive (a page, an attachment) may take
   90 s (`MAIL_IMPORT_PAGE_SIZE`, `MAIL_ARCHIVE_READ_TIMEOUT_MS` in
   `lib/mail-import/config.ts`).
 - **Filing.** `lib/mail-import/job.ts` runs on the BFF job queue as the person
   who started the import, 120 s of filing per slice, checked before every
-  attachment. `filing.ts` files one mail: its folder, its attachments through
-  `uploadDocument` at `bulk` ingest priority, then the note. The cursor moves
-  past a mail only after it is filed. A retried mail files into the folder it
-  had, under the same names, so each file is the same document again (a new
-  version, or `unchanged` once indexed), never a second one. Every upload
+  attachment. `filing.ts` files one mail: its folder (only when it has an
+  attachment to file; a mail without one gets none), its attachments through
+  `uploadDocument` at `bulk` ingest priority, each carrying the mail it came
+  with (`mail_origin`, `sender_trust: not_checked`), then its text as an entry
+  of an E-Mail-Verlauf (`lib/mail-thread/archive.ts`, below). The cursor moves
+  past a mail only after its text is written. A retried mail files into the
+  folder it had, under the same names, so each file is the same document again
+  (a new version, or `unchanged` once indexed), never a second one; its entry's
+  id is the import's and the mail's (uuid5), so the retry finds it and writes
+  nothing twice. Every upload
   carries the import's upload batch (below). A file it filed that the content
   gate still holds or has quarantined (ADR-0086) counts as filed and is not
   uploaded again, since a quarantined file refuses every re-upload. A held file
@@ -79,19 +108,82 @@ browser                     BFF (frontend)                     object store     
 ```text
 E-Mail-Import/
   Postfach Bauleitung 2025/            ← the archive's name (" (2)" for a second import)
+    Mag. Huber 2025-03-12.md           ← an E-Mail-Verlauf the import opened: `{Gegenüber} {yyyy-mm-dd}`
     Posteingang/Behörde/               ← the Outlook folder path
-      2025-03-12 14.05 – Statik Huber/ ← one folder per mail: date, time (Vienna), sender
-        2025-03-12 14.05 – Statik Huber.md             ← the note: subject, headers, text
-        2025-03-12 14.05 – Statik Huber – Plan.pdf     ← each attachment, prefixed
+      2025-03-12 14.05 – Statik Huber/ ← one folder per mail WITH attachments: date, time (Vienna), sender
+        2025-03-12 14.05 – Statik Huber – S-101_C.pdf  ← each attachment, prefixed
 ```
 
-The subject is in the note, never in a name. A filename is unique per project,
+The subject is never in a name. A filename is unique per project,
 across all its collections (a folder with its own access list keeps its own),
 so a name is probed project-wide (`findProjectCollectionsHoldingFilename`) and
 one held anywhere but the mail's own folder is numbered (`… – Plan (2).pdf`).
 The import never supersedes a document it did not file into that folder.
 
-**The note is text, not Markdown the sender wrote.** Its frame (the subject
+### The mail's text: E-Mail-Verläufe
+
+**No note per mail.** Each mail's text is an entry (`mail_thread_entries`,
+`source = 'archive'`, `sender_trust = 'not_checked'`, `filed_via =
+'archive_import'`, no original) of an E-Mail-Verlauf, and a Verlauf's Fassung is
+the Markdown rendition of its entries (`lib/mail-thread/render.ts`). Per mail
+(`appendArchiveEntry`):
+
+1. **Dedupe by Message-ID.** An entry of the project that received the same id
+   (from the address or any archive) means the text is there already: skipped
+   and counted `already_in_project`; the attachments are filed all the same.
+   The other way round, an inbound mail whose id an archive entry holds is
+   flagged `already_filed` by the receive job (`findFiledMessages`).
+2. **Match strictly.** The ladder of `lib/mail-thread/mail-threading.ts`, but
+   the import joins a Verlauf only on `reference` or `thread_index`, each with
+   an equal base subject, or when a Verlauf already cites this mail's own
+   Message-ID (`referenced`) under the same subject: the archive is walked
+   folder by folder, so a reply is often filed before what it answers. Never on
+   a subject or a shared party alone: nobody looks at the import's choices.
+3. **Only into a Verlauf the person may write**: its document live and readable
+   for them (`findWritableThread`) in a folder they may write, with room (200
+   entries, 2 MiB less a 1 KiB margin for the name). Otherwise the next match,
+   else a new Verlauf in the archive's folder.
+4. **Written under the render lease.** The entry, its Message-IDs and one
+   `mail_thread_entry_attachments` row per attachment (filed as document and
+   Fassung, or `not_filed` with the import's reason: `type` →
+   `type_not_accepted`, `embedded_message` → `unreadable`, the rest 1:1; inline
+   pictures have no row) in one transaction, and the Verlauf marked
+   `render_pending_at`. A lease another writer keeps past 15 s ends the slice
+   with `notBefore` (no failure counted); the retry resumes into the mail's
+   folder.
+
+**One Fassung per Verlauf per slice** (`renderPendingThreads`). When filing
+stops (budget, end of archive, a cancel, a passing failure), every Verlauf with
+entries of this import and `render_pending_at` set is rendered once, under its
+lease, and uploaded as the person through `uploadThreadVersion` at `bulk`
+priority into the import's Verlauf batch. A Verlauf the import opened is named
+`{Gegenüber} {yyyy-mm-dd}` when first rendered: the first recipient of a mail
+the importer sent (From = the import's `user_email`), else the sender, by name,
+else address, else the locale's „Unbekannt“; the day is the clamped send time in
+Vienna; numbered on `name_taken`, and never a document another Verlauf already
+names. A Verlauf that was there keeps its name, folder and
+`participant_domains` (unchecked parties widen no follow, ADR-0134). The import
+completes only once the cursor passed the last item and no Verlauf still waits
+for its Fassung. A render refused for good (Namensprüfung on the name, type,
+size, access) gives the Verlauf up (`render_pending_at` NULL) and names it in
+the import's skip list; a full quota ends the import `quota`. A refused new
+Verlauf keeps its entries without a document until sweep 9 deletes the thread;
+a refused existing one gets them in its next Fassung, whoever writes it.
+
+**The words.** A Verlauf the import opens renders in the importer's locale
+(preference, else the office default, else `de`: `newThreadLocaleFor` in
+`lib/mail-thread/thread-locale.ts`, shared with the inbound filing job). An
+archive section is headed `{dd.mm.yyyy HH:MM} · {name} ({from domain}, aus dem
+Outlook-Archiv)`. The body is the text the reader chose (plain > HTML > RTF);
+quotes are not split off, so a section keeps the history its mail quoted.
+Everything a stranger wrote is escaped by the renderer (`render.spec.ts`;
+`archive.spec.ts` keeps the forged-heading, Python-terminator and
+unclosed-fence cases).
+
+### Notes written before the Verläufe
+
+**The note was text, not Markdown the sender wrote.** Imports before the
+2026-10 amendment wrote one note per mail; they stay as they are. Its frame (the subject
 as its one `#` heading, the labelled headers, a rule, the body) is the only
 structure in it: the subject, every header value and the body pass through
 `escapeMarkdown` (`lib/text/markdown-escape.ts`), and each header is folded
@@ -112,7 +204,8 @@ mirror the Outlook folders and the mail's own folder, so a term in either
 counts), files into a folder
 that turned read-only for the person under the import (`access`), a name another
 document claimed between the probe and the upload (`name_taken`), and messages
-or attachments damaged in the archive. The backend reader's status becomes the
+or attachments damaged in the archive. A Verlauf the upload path refused is
+named in the list by its name, with the reason. The backend reader's status becomes the
 reason (`lib/mail-import/archive-client.ts`): `422` ends the import as an
 unreadable archive, `413` skips an attachment as too large, `409` skips one as
 unreadable. An item the archive cannot read is named by its position (`#412`),
@@ -127,14 +220,23 @@ a mail's inline pictures (signature logos).
 ## What the person is told
 
 Two inbox items, at two moments. `mail_import.completed` (or `.failed`) when
-filing ends: what was filed and what was skipped. Filing ending is not reading
+filing ends: what was filed and what was skipped („Piloti hat die Anhänge unter
+E-Mail-Import und die E-Mails in den E-Mail-Verläufen des Projekts
+abgelegt.“). Filing ending is not reading
 ending, so the files are still being screened and read then. The
 `upload.completed` summary of an upload batch (ADR-0086, „Was ist
 angekommen?") follows once everything the import filed has been read: what
 each file became, and what the screening held back and why. The same summary a
 dropped folder gets.
 
-`lib/mail-import/upload-batch.ts` keeps the import's batch:
+`lib/mail-import/upload-batch.ts` keeps two batches per import, kinds `files`
+and `threads`. The `files` batch keeps the ids imports always had
+(`uuidv5(<id>:<generation>)`) and a person's upload effects; the `threads`
+batch (`uuidv5(<id>:threads:<generation>)`) is opened with
+`ARCHIVE_THREAD_RENDER_EFFECTS` (announces completion, no placement review, no
+intake reading, revision notice `marks_only`, no document check). So the person
+gets one „Was ist angekommen?“ summary for the attachments and one for the
+Verläufe. Each batch is:
 
 - **Opened** by the first slice, as the person who started the import, on the
   project's shelf, announcing no files (nobody knows how many yet).
@@ -154,7 +256,10 @@ dropped folder gets.
 `mail-import-list`) is a keyset page, newest first: 20 by default, at most 50
 (`MAIL_IMPORT_LIST_PAGE_SIZE`, `MAIL_IMPORT_LIST_PAGE_MAX` in
 `lib/mail-import/types.ts`), with `nextCursor` for the next. The import dialog
-reads the first page. Whether the person already has an import open is asked
+reads the first page. Each import shows `threadsCreated`, `threadsAppended`
+(Verläufe that existed before the import and took at least one of its mails)
+and `alreadyInProject` (`MailImportView`, columns of `mail_imports`, migration
+0186). Whether the person already has an import open is asked
 on its own (`findOpenMailImportOf`), never read off a page, so an open import
 older than a page of finished ones still refuses a second start with its id.
 
@@ -206,7 +311,7 @@ document.
 2. Data protection, before the first organization: an archive is the
    correspondence of everyone who wrote to the mailbox. The organization's Art. 28
    notice and the Art. 30 record have to cover imported correspondence; the
-   notes and attachments are ordinary documents afterwards and are deleted the
+   Verläufe and attachments are ordinary documents afterwards and are deleted the
    way documents are.
 
 ## Known limits
@@ -217,8 +322,17 @@ document.
   `completeMailImportUpload`). An upload already started still receives parts
   and can be cancelled; it never completes, and the sweep cancels it
   (`upload_expired`) after 48 h.
-- The To and Cc addresses are in the note, and so in the index.
-- The preview draws a note with the answer renderer (`MarkdownRenderer`,
+- A Verlauf section names recipients by name and domain, never by address
+  (`render.ts`); the Bcc of a sent item is never stored. Notes written by
+  imports before the Verläufe still hold To and Cc addresses.
+- An archive section keeps the quotes its mail carried; only inbound mail
+  splits them off (the archive route does not run `mail-parser-reply`).
+- Who started an import and then left the organization: the import ends
+  `requester_left` without rendering what its last slice wrote; those Verläufe
+  render with their next writer, or (one the import opened) sweep 9 removes
+  them.
+- Notes written by imports before the Verläufe stay as they are; nothing
+  rewrites them (FU15 would, per project, opt-in). The preview draws such a note with the answer renderer (`MarkdownRenderer`,
   through `/text`), whose math and answer-dialect plugins the escape leaves
   alone: `$5 und $10` in a body is drawn as a formula, and a `:::details`
   line as a dialect block. Only the preview; the chunker reads neither.

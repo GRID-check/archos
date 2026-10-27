@@ -49,6 +49,8 @@ export const SHARE_ART = {
   rechenweg: 'tafeln/waage/og',
   /** Plate V, Prüfstand: the quiet card, a clause under the glass (imprint, privacy, 404). */
   legal: 'tafeln/pruefstand/og',
+  /** Plate V, Prüfstand too: the project-mail help page is checked before it is filed, as a clause under the glass. */
+  projectMail: 'tafeln/pruefstand/og',
   /** Plate I, Drei Stützen: why Piloti, three columns under one answer (law, office, project). */
   warum: 'tafeln/stuetzen/og',
   /** Tragwerk II, Drei Säulen: the unlisted image page, all the prints on one slab. */

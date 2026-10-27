@@ -27,6 +27,7 @@ const PAGE_PATHS: [PageKey | 'home', string][] = [
   ['rechenweg', '/rechenweg/'],
   ['impressum', '/impressum/'],
   ['datenschutz', '/datenschutz/'],
+  ['projectMail', '/e-mail-eingang/'],
 ]
 
 const postUrl = (post: BlogPost, locale: Locale, site: URL | undefined) =>

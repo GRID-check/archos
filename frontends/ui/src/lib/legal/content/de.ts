@@ -53,7 +53,7 @@ export const de: LegalContent = {
 
   privacy: {
     title: 'Datenschutzerklärung',
-    updated: '2026-10-10',
+    updated: '2026-10-27',
     intro:
       'Diese Erklärung informiert gemäß Verordnung (EU) 2016/679 (DSGVO) darüber, wie personenbezogene Daten bei der Nutzung von Piloti verarbeitet werden.',
     sections: [
@@ -72,6 +72,7 @@ export const de: LegalContent = {
           'Nutzungs- und Abrechnungsdaten: ein Nutzungsledger, das je KI-Anfrage das angeforderte und das tatsächlich antwortende KI-Modell, Token-Zahlen und Kosten erfasst, zugeordnet zu Organisation, Projekt und Nutzer.',
           'Audit-Daten: privilegierte administrative Aktionen (z. B. Modellkonfigurations-Änderungen, Budgetänderungen, Löschungen, Legal Holds) werden mit handelnder Person, Zeitstempel, IP-Adresse und User-Agent protokolliert.',
           'Technische Daten: Server-Logs, Session-Cookie (Authentifizierung), Cookie für die Spracheinstellung.',
+          'E-Mails an Projektadressen (nur wenn Ihre Organisation die Funktion freigeschaltet hat): E-Mails, die jemand an die E-Mail-Adresse eines Projekts sendet, mit Absender, Empfängern, Betreff, Text, Anhängen und dem Ergebnis der Absenderprüfung (DKIM/DMARC). Sie warten im E-Mail-Eingang des Projekts, bis eine berechtigte Person sie ablegt oder verwirft; abgelegte E-Mails werden Teil der Projektunterlagen, und ihr Original (.eml) wird als Nachweis neben dem E-Mail-Verlauf aufbewahrt. Für diese E-Mails ist die Organisation, die die Adresse bereitstellt, verantwortlich.',
           'Nutzungs- und Gerätedaten (Produktanalyse): Ihre Nutzer-ID (die pseudonyme WorkOS-Kennung), die Kennung und der Name Ihrer Organisation sowie Ihre Rolle; aufgerufene Seiten, Klicks (ohne die Beschriftung der angeklickten Elemente) und Bedienereignisse (z. B. Frage gesendet, Dokument hochgeladen, Export); Browser-, Geräte- und Spracheinstellungen; Fehlermeldungen mit technischem Kontext; bei aufgezeichneten Sitzungen eine Wiedergabe Ihrer Bildschirmansicht, in der Texte und Eingaben maskiert sind und in der Bilder, die PDF-Ansicht und die IFC-Modellansicht nicht aufgezeichnet werden; Antworten auf Umfragen und Nachrichten an den Support, soweit Sie diese absenden. Ihre E-Mail-Adresse und Ihr Name werden nicht an die Produktanalyse übermittelt. Passwörter, API-Schlüssel und Zugangsdaten werden nie erfasst.',
         ],
       },
@@ -90,6 +91,7 @@ export const de: LegalContent = {
         paragraphs: [
           'Zur Erzeugung von Antworten werden Ihre Chat-Nachrichten, relevante Auszüge Ihrer hochgeladenen Dokumente und abgerufene Vorschriftenpassagen über das API-Gateway OpenRouter, Inc. (USA) an externe KI-Modellanbieter übermittelt. Aus Ihren Fragen abgeleitete Web-Recherche-Anfragen gehen an den Suchdienst Tavily. Identität und Anmeldung werden von WorkOS, Inc. (USA) abgewickelt.',
           'Für Produktanalyse, Sitzungsaufzeichnung, Fehlererfassung, Umfragen und Support setzen wir PostHog ein (PostHog, Inc.; Datenspeicherung in der EU-Cloud, Frankfurt am Main). PostHog verarbeitet diese Daten in unserem Auftrag auf Grundlage eines Auftragsverarbeitungsvertrags (Art. 28 DSGVO). Zusätzlich übernimmt PostHog von unserem Tracing-System Langfuse Metadaten zu KI-Anfragen (Zeitpunkt, Modell, Dauer, Token-Zahlen, Kosten, Bezeichnung der Verarbeitungsschritte) und die Bewertungen, die Sie zu Antworten abgeben, einschließlich Ihres Kommentars. Chat-Nachrichten, Antworten und Dokumentinhalte gehören nicht dazu.',
+          'E-Mails an Projektadressen: Solange eine E-Mail im E-Mail-Eingang wartet, liest kein KI-Modell ihren Text oder ihre Anhänge. Für einen Ablagevorschlag erhält das KI-Modell nur Dateinamen der Anhänge, die die Namensprüfung bestanden haben, den Betreff (maskiert durch die Inhaltsprüfung Ihrer Organisation) und die Absender-Domain, dazu die Ordner, die alle Projektmitglieder sehen, und die Ablagegewohnheiten Ihrer Organisation; für E-Mails von nicht bestätigten Domains und automatische E-Mails gibt es keinen Vorschlag. Erst abgelegte E-Mails werden wie andere Projektdokumente verarbeitet. Das Original (.eml) einer E-Mail erhält kein KI-Modell. E-Mails erreichen Piloti über Cloudflare, Inc. (USA, Weiterleitung); Anhänge und Originale werden in unserer eigenen Infrastruktur auf Schadsoftware geprüft (ClamAV).',
         ],
         notice:
           'Wichtig: Welches KI-Modell — und damit welcher vorgelagerte Modellanbieter (z. B. DeepSeek, OpenAI, Anthropic, Google, Meta, Mistral und weitere im OpenRouter-Katalog gelistete Anbieter) — Ihre Anfragen verarbeitet, kann von den Administratorinnen und Administratoren Ihrer Organisation zur Laufzeit konfiguriert werden. Der gesamte KI-Verkehr läuft stets über OpenRouter und niemals über ein anderes Gateway; der tatsächliche nachgelagerte Anbieter — und damit der Ort dieser Verarbeitung (auch außerhalb der EU/des EWR möglich) — hängt jedoch vom Modell ab, das Ihre Organisation auswählt. Jede Modelländerung wird validiert, versioniert, der handelnden Administratorin bzw. dem Administrator zugeordnet und ist nachvollziehbar; das Modell, das eine Anfrage tatsächlich beantwortet hat, wird protokolliert. Die aktuelle Liste externer Dienste finden Sie auf der Seite „Subunternehmer".',
@@ -105,6 +107,7 @@ export const de: LegalContent = {
         heading: '6. Speicherung, Aufbewahrung und Löschung',
         paragraphs: [
           'Projektinhalte werden in unserer Anwendungsdatenbank, im Objektspeicher (hochgeladene Dokumente) und in einem Vektorindex (Dokument-Embeddings) gespeichert — alles in eigener Infrastruktur betrieben. Beim Löschen eines Projekts wird es zunächst als gelöscht markiert und ist während einer Karenzfrist wiederherstellbar; danach entfernt eine automatisierte Bereinigung es dauerhaft aus allen Speichern (Datenbank, Objektspeicher, Vektorindex und zugehörige Berechtigungsdatensätze). Die Löschung kann durch einen Legal Hold (Einschränkung nach Art. 18 DSGVO) ausgesetzt werden, den die Compliance-Rolle Ihrer Organisation setzt; jedes Setzen und Aufheben wird im Audit-Trail protokolliert.',
+          'Eine E-Mail an eine Projektadresse wartet höchstens 30 Tage im E-Mail-Eingang; verworfene oder abgelaufene Teile lassen sich 7 Tage wiederherstellen und werden danach gelöscht, ebenso das Original einer E-Mail, deren Text nicht abgelegt wurde. Das Original einer abgelegten E-Mail wird so lange aufbewahrt wie der E-Mail-Verlauf, zu dem sie gehört. Ein Legal Hold auf das Projekt oder etwas darin setzt diese Löschungen aus.',
           'Nutzungsledger- und Audit-Datensätze werden zu Rechenschafts- und Abrechnungszwecken so lange aufbewahrt, wie es der Vertrag der Organisation und gesetzliche Aufbewahrungsfristen erfordern.',
           'Bei PostHog werden Produktanalyse-Ereignisse (einschließlich Fehlerberichten, Umfrageantworten und den aus Langfuse übernommenen KI-Metadaten) bis zu 12 Monate und Sitzungsaufzeichnungen bis zu 30 Tage gespeichert. Nachrichten an den Support bleiben bis zu ihrer Löschung durch uns erhalten. Auf Ihren Wunsch löschen wir die zu Ihrer Nutzer-ID bei PostHog gespeicherten Daten.',
         ],
@@ -254,7 +257,7 @@ export const de: LegalContent = {
 
   subprocessors: {
     title: 'Externe Dienste & Subunternehmer',
-    updated: '2026-10-22',
+    updated: '2026-10-27',
     intro:
       'Alle externen Dienste, die bei der Nutzung von Piloti Daten verarbeiten können, sowie die vom Betreiber selbst betriebene Infrastruktur. Diese Seite setzt die in der Datenschutzerklärung genannte Transparenzzusage um.',
     sections: [
@@ -335,8 +338,8 @@ export const de: LegalContent = {
             ],
             [
               'Cloudflare, Inc.',
-              'DNS für die Piloti-Domains; Weiterleitung von www.piloti.at auf piloti.at',
-              'DNS-Abfragen der Domainnamen; nur bei Aufrufen von www.piloti.at die IP-Adresse der Besucherin bzw. des Besuchers und die aufgerufene Adresse. Die Anwendung selbst wird direkt erreicht, nicht über Cloudflare',
+              'DNS für die Piloti-Domains; Weiterleitung von www.piloti.at auf piloti.at; Empfang und Weiterleitung von E-Mails an Projektadressen (Email Routing), falls Ihre Organisation die Funktion freigeschaltet hat',
+              'DNS-Abfragen der Domainnamen; nur bei Aufrufen von www.piloti.at die IP-Adresse der Besucherin bzw. des Besuchers und die aufgerufene Adresse. E-Mails an Projektadressen: Absender, Empfänger und die ganze Nachricht auf dem Weg zu Piloti. Die Anwendung selbst wird direkt erreicht, nicht über Cloudflare',
               'USA (weltweites Netzwerk)',
               'Ja',
             ],
@@ -361,6 +364,7 @@ export const de: LegalContent = {
             ['SeaweedFS (S3-kompatibel)', 'Objektspeicher', 'Hochgeladene Dokumente'],
             ['Qdrant', 'Vektorindex', 'Embeddings von Dokumenten und Vorschriften'],
             ['Dragonfly (Redis-kompatibel)', 'Cache, Rate-Limiting', 'Kurzlebige Betriebsdaten'],
+            ['ClamAV', 'Virenprüfung von Anhängen, die Externe senden', 'Keine: geprüfte Dateien werden nicht gespeichert'],
           ],
         },
       },

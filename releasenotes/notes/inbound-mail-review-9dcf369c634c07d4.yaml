@@ -1,0 +1,42 @@
+---
+features:
+  - >
+    For offices that have it switched on, every project can have its own email
+    address, and mail sent to it waits in the project's E-Mail-Eingang in
+    Dateien until someone files it. Nothing becomes part of the project
+    without a person's decision, and every attachment is checked for malware
+    before anyone can open or file it.
+  - >
+    A filed conversation becomes one E-Mail-Verlauf: each mail is a section,
+    each later reply adds a Fassung, and the original mail is kept beside it
+    for download. Piloti answers from it and cites the mail a statement came
+    from.
+  - >
+    You can follow an E-Mail-Verlauf, so the text of later replies from
+    confirmed domains already in the conversation is added without a click.
+    Attachments still wait for you.
+  - >
+    Each waiting mail says whether the sender's domain confirmed it, and a
+    mail that poses as a colleague stands behind a warning with „Verwerfen“
+    as the first button. It can never be filed together with other mails.
+  - >
+    Piloti suggests a folder and a Dokumentart for each attachment of a
+    waiting mail, from the file names, the masked subject and the sender's
+    domain only. Several complete mails can then be filed as suggested with
+    one press.
+  - >
+    A filed Verlauf has an „E-Mails“ tab in its preview, with each mail's
+    attachments, its original, „Vergleichen“ and „Herauslösen …“ for a mail
+    filed into the wrong conversation. A file that came by mail shows which
+    mail brought it, and each Fassung names its mail.
+  - >
+    The Postfach tells you when mail waits, when it is about to expire, when
+    your own mail was filed, when filing failed and when a followed Verlauf
+    grew, without showing a sender, subject or file name.
+operators:
+  - >
+    Project mail (ADR-0134, ADR-0135) stays off until a stack sets
+    inboundMailDomain, which needs the malware scanner, the Cloudflare
+    Workers Paid plan, signing keys and a first promote that is paused. Run
+    launch gates G1 to G9 before unpausing, and switch the inbound-mail
+    entitlement on per office only after the data-protection sign-off.
