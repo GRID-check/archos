@@ -1,7 +1,7 @@
 """Piloti register: skill wiring (resolver → allowlist → runtime → tools).
 
 Covers the seam between the skills engine and the agent registration: the
-per-run resolution + allowlist narrowing + ``use_skill`` tool folding +
+per-run resolution + allowlist narrowing + the skill ``read_file`` (ADR-0135) +
 ``skills_block``/``skills_activated`` propagation declared in
 ``ResearchAgentConfig``. The engine itself (model/resolver/runtime) is
 tested under ``tests/aiq_agent/skills/``.
@@ -50,8 +50,7 @@ def _make_agent_stub():
     """PilotiAgent replacement whose .run echoes the input state.
 
     Records the tools each constructed instance was given so the test can
-    assert the ``use_skill`` tool was folded into (only) the research-turn
-    build.
+    assert the skill read was folded into the turn, never the boot build.
     """
 
     def _factory(*args, **kwargs):
@@ -86,22 +85,31 @@ def _skill_runtime(resolved, *, activated=()):
     nothing, which is the honest default now that a turn can only be OFFERED a
     skill: a catalog the model read past activates none of it.
     """
+    from aiq_agent.skills.backend import SkillsBackend
+
     runtime = MagicMock()
-    runtime.prompt_block.return_value = "## Verfügbare Skills"
-    runtime.build_tools.return_value = [MagicMock(name="use_skill")]
+    runtime.prompt_block.return_value = "## Skills"
+    runtime.backend = SkillsBackend({})
     runtime.activated = list(activated)
     runtime.skills = tuple(resolved)
+    runtime.pinned = ()
     runtime.hidden_activated = ()
-    runtime.inlined = ()
     runtime.record_applied = MagicMock(return_value=())
     return runtime
 
 
+def _patch_runtime(runtime):
+    """Patch the register's ``SkillRuntime``; the register builds one with ``SkillRuntime.office``."""
+    cls = MagicMock()
+    cls.office.return_value = runtime
+    return patch.object(register_module, "SkillRuntime", cls)
+
+
 @pytest.mark.asyncio
 async def test_research_turn_resolves_allows_and_folds_skill_tool():
-    """skills_enabled research turn: resolve → allowlist → runtime → use_skill tool.
+    """skills_enabled research turn: resolve → allowlist → runtime → the skill ``read_file``.
 
-    The rebuilt agent must carry the ``use_skill`` tool; the pre-rendered
+    The turn must carry ``read_file`` over the skills; the pre-rendered
     skills block must land on the state before ``run()`` and the activation
     list must be lifted onto the result.
     """
@@ -118,7 +126,7 @@ async def test_research_turn_resolves_allows_and_folds_skill_tool():
     with (
         patch.object(register_module, "PilotiAgent", stub),
         patch.object(register_module, "get_organization_id_from_context", return_value="org-1"),
-        patch.object(register_module, "SkillRuntime", return_value=runtime) as RuntimeCls,
+        _patch_runtime(runtime) as RuntimeCls,
         patch.object(register_module, "SkillResolver") as ResolverCls,
     ):
         resolver = ResolverCls.return_value
@@ -132,15 +140,15 @@ async def test_research_turn_resolves_allows_and_folds_skill_tool():
         ResolverCls.assert_called_once_with(agent="researcher")
         resolver.resolve.assert_called_once_with("org-1")
         # The catalog and nothing else: the runtime takes no list of names.
-        RuntimeCls.assert_called_once_with(skills=resolved, inline_max_body_chars=0, inline_budget_chars=0)
+        RuntimeCls.office.assert_called_once_with(resolved)
 
-        # The turn got both the search tool and use_skill; the agent itself
-        # was built once, at boot, with the search tool only.
+        # The turn got the search tool and read_file over the skills (no
+        # conversation, so no draft verbs); the agent itself was built once,
+        # at boot, with the search tool only.
         assert len(stub.built) == 1
         turn = stub.built[0].run.await_args.kwargs["turn"]
-        assert [getattr(t, "name", None) for t in turn.tools][0] == "web_search_tool"
-        assert len(turn.tools) == 2
-        assert state.skills_block == "## Verfügbare Skills"
+        assert [getattr(t, "name", None) for t in turn.tools] == ["web_search_tool", "read_file"]
+        assert state.skills_block == "## Skills"
         assert result.skills_activated == ["forecast-analysis"]
         await gen.aclose()
 
@@ -167,7 +175,7 @@ async def test_the_catalog_is_announced_before_the_llm_runs():
     with (
         patch.object(register_module, "PilotiAgent", _make_agent_stub()),
         patch.object(register_module, "get_organization_id_from_context", return_value="org-1"),
-        patch.object(register_module, "SkillRuntime", return_value=runtime),
+        _patch_runtime(runtime),
         patch.object(register_module, "SkillResolver") as ResolverCls,
         patch.object(register_module, "emit_skills_offered", side_effect=lambda rt: announced.append(rt)),
     ):
@@ -212,7 +220,7 @@ async def test_a_mentioned_skill_is_offered_like_any_other():
     """The `/name` invocation is TEXT, and the runtime is given the catalog.
 
     Nothing on the state says which skill the user typed: the mention is in the
-    message, the model reads it there, and the same `use_skill` tool answers it.
+    message, the model reads it there, and the same `read_file` answers it.
     So the register's job is the same on this turn as on any other.
     """
     builder = _FakeBuilder({"web_search_tool": web_search_tool})
@@ -227,7 +235,7 @@ async def test_a_mentioned_skill_is_offered_like_any_other():
     with (
         patch.object(register_module, "PilotiAgent", _make_agent_stub()),
         patch.object(register_module, "get_organization_id_from_context", return_value="org-1"),
-        patch.object(register_module, "SkillRuntime", return_value=runtime) as RuntimeCls,
+        _patch_runtime(runtime) as RuntimeCls,
         patch.object(register_module, "SkillResolver") as ResolverCls,
     ):
         resolver = ResolverCls.return_value
@@ -239,7 +247,7 @@ async def test_a_mentioned_skill_is_offered_like_any_other():
         result = await run_fn(state)
 
         ResolverCls.assert_called_once_with(agent="researcher")
-        RuntimeCls.assert_called_once_with(skills=resolved, inline_max_body_chars=0, inline_budget_chars=0)
+        RuntimeCls.office.assert_called_once_with(resolved)
         assert result.skills_activated == ["forecast-analysis"]
         await gen.aclose()
 
@@ -279,12 +287,11 @@ async def test_allowlist_narrows_resolved_set():
     )
     resolved = (_skill("forecast-analysis"), _skill("data-table-analysis"))
     runtime = _skill_runtime((resolved[0],))
-    runtime.prompt_block.return_value = "## Verfügbare Skills"
 
     with (
         patch.object(register_module, "PilotiAgent", _make_agent_stub()),
         patch.object(register_module, "get_organization_id_from_context", return_value="org-1"),
-        patch.object(register_module, "SkillRuntime", return_value=runtime) as RuntimeCls,
+        _patch_runtime(runtime) as RuntimeCls,
         patch.object(register_module, "SkillResolver") as ResolverCls,
     ):
         resolver = ResolverCls.return_value
@@ -295,7 +302,7 @@ async def test_allowlist_narrows_resolved_set():
         await run_fn(state)
 
         resolver.resolve.assert_called_once_with("org-1")
-        RuntimeCls.assert_called_once_with(skills=(resolved[0],), inline_max_body_chars=0, inline_budget_chars=0)
+        RuntimeCls.office.assert_called_once_with((resolved[0],))
         await gen.aclose()
 
 
@@ -304,8 +311,7 @@ async def test_a_name_the_allowlist_dropped_is_simply_not_in_the_catalog():
     """A skill the deployment does not allow never reaches the runtime.
 
     It is not an error and not a refusal: the model is offered what resolved,
-    and a name it read in the message that is not there comes back from
-    ``use_skill`` as "unknown skill", with the available names listed.
+    and a path it guesses for a name that is not there reads as not found.
     """
     builder = _FakeBuilder({"web_search_tool": web_search_tool})
     config = ResearchAgentConfig(
@@ -319,7 +325,7 @@ async def test_a_name_the_allowlist_dropped_is_simply_not_in_the_catalog():
     with (
         patch.object(register_module, "PilotiAgent", _make_agent_stub()),
         patch.object(register_module, "get_organization_id_from_context", return_value="org-1"),
-        patch.object(register_module, "SkillRuntime", return_value=runtime) as RuntimeCls,
+        _patch_runtime(runtime) as RuntimeCls,
         patch.object(register_module, "SkillResolver") as ResolverCls,
     ):
         resolver = ResolverCls.return_value
@@ -328,7 +334,7 @@ async def test_a_name_the_allowlist_dropped_is_simply_not_in_the_catalog():
         run_fn, gen = await _get_run_fn(config, builder)
         await run_fn(ResearchAgentState(messages=[HumanMessage(content="/mystery-skill bitte")]))
 
-        RuntimeCls.assert_called_once_with(skills=(resolved[0],), inline_max_body_chars=0, inline_budget_chars=0)
+        RuntimeCls.office.assert_called_once_with((resolved[0],))
         await gen.aclose()
 
 
@@ -339,7 +345,7 @@ async def test_the_turn_config_reserves_nothing_on_top_of_the_budget():
     The register used to add one iteration per standard skill, because the
     deployment forced those skills and the turn had to pay for calls nobody
     asked for. Nothing is forced now, so there is nothing to compensate: a
-    ``use_skill`` call is the model's own and is charged like a search.
+    skill read is the model's own and is charged like a search.
     """
     builder = _FakeBuilder({"web_search_tool": web_search_tool})
     config = ResearchAgentConfig(
@@ -355,7 +361,7 @@ async def test_the_turn_config_reserves_nothing_on_top_of_the_budget():
     with (
         patch.object(register_module, "PilotiAgent", stub),
         patch.object(register_module, "get_organization_id_from_context", return_value="org-1"),
-        patch.object(register_module, "SkillRuntime", return_value=runtime),
+        _patch_runtime(runtime),
         patch.object(register_module, "SkillResolver") as ResolverCls,
     ):
         ResolverCls.return_value.resolve.return_value = resolved
@@ -388,7 +394,7 @@ async def test_only_what_was_delivered_is_reported_as_used(caplog):
     with (
         patch.object(register_module, "PilotiAgent", _make_agent_stub()),
         patch.object(register_module, "get_organization_id_from_context", return_value="org-1"),
-        patch.object(register_module, "SkillRuntime", return_value=runtime),
+        _patch_runtime(runtime),
         patch.object(register_module, "SkillResolver") as ResolverCls,
     ):
         ResolverCls.return_value.resolve.return_value = resolved
@@ -488,7 +494,7 @@ async def test_the_skill_resolve_runs_off_the_event_loop():
     with (
         patch.object(register_module, "PilotiAgent", _make_agent_stub()),
         patch.object(register_module, "get_organization_id_from_context", return_value="org-1"),
-        patch.object(register_module, "SkillRuntime", return_value=runtime),
+        _patch_runtime(runtime),
         patch.object(register_module, "SkillResolver") as ResolverCls,
     ):
         ResolverCls.return_value.resolve.side_effect = resolve
@@ -522,7 +528,7 @@ async def test_the_envelope_names_reach_the_runtime_after_the_run():
     with (
         patch.object(register_module, "PilotiAgent", stub),
         patch.object(register_module, "get_organization_id_from_context", return_value="org-1"),
-        patch.object(register_module, "SkillRuntime", return_value=runtime),
+        _patch_runtime(runtime),
         patch.object(register_module, "SkillResolver") as ResolverCls,
     ):
         ResolverCls.return_value.resolve.return_value = resolved
@@ -532,4 +538,62 @@ async def test_the_envelope_names_reach_the_runtime_after_the_run():
         await gen.aclose()
 
     runtime.record_applied.assert_called_once_with(["building-class"])
+    assert result.skills_activated == ["building-class"]
+
+
+@pytest.mark.asyncio
+async def test_skills_disabled_offers_no_catalog_and_no_skill_read():
+    """The flag off: no catalog in the turn context and no ``read_file`` over skills."""
+    builder = _FakeBuilder({"web_search_tool": web_search_tool})
+    config = ResearchAgentConfig(llm="research_llm", tools=["web_search_tool"], skills_enabled=False)
+    stub = _make_agent_stub()
+
+    with patch.object(register_module, "PilotiAgent", stub):
+        run_fn, gen = await _get_run_fn(config, builder)
+        state = ResearchAgentState(messages=[HumanMessage(content="Welche Gebäudeklasse?")])
+        await run_fn(state)
+        await gen.aclose()
+
+    assert state.skills_block is None
+    turn = stub.built[0].run.await_args.kwargs["turn"]
+    assert [getattr(t, "name", None) for t in turn.tools] == ["web_search_tool"]
+
+
+@pytest.mark.asyncio
+async def test_a_real_runtime_serves_the_catalog_and_records_what_the_model_read():
+    """End to end through the register with the real runtime: catalog in, read out, activation reported."""
+    from types import SimpleNamespace
+
+    from aiq_agent.skills.models import Skill
+
+    builder = _FakeBuilder({"web_search_tool": web_search_tool})
+    config = ResearchAgentConfig(llm="research_llm", tools=["web_search_tool"], skills_enabled=True)
+    resolved = (
+        Skill(name="building-class", description="Die GK.", body="# GK\n\nZuerst die Geschosse.", origin="org"),
+        Skill(name="fire-safety", description="Brandschutz.", body="# BS", origin="org"),
+    )
+    stub = _make_agent_stub()
+
+    async def _run(state, turn=None):
+        read = next(t for t in turn.tools if t.name == "read_file")
+        message = await read.coroutine(
+            "/skills/office/building-class/SKILL.md", SimpleNamespace(tool_call_id="c1"), offset=0, limit=1000
+        )
+        assert "Zuerst die Geschosse." in message.content
+        return state
+
+    with (
+        patch.object(register_module, "PilotiAgent", stub),
+        patch.object(register_module, "get_organization_id_from_context", return_value="org-1"),
+        patch.object(register_module, "SkillResolver") as ResolverCls,
+    ):
+        ResolverCls.return_value.resolve.return_value = resolved
+        run_fn, gen = await _get_run_fn(config, builder)
+        stub.built[0].run = AsyncMock(side_effect=_run)
+        state = ResearchAgentState(messages=[HumanMessage(content="hallo")])
+        result = await run_fn(state)
+        await gen.aclose()
+
+    assert "- **building-class**: Die GK." in (state.skills_block or "")
+    assert "Zuerst die Geschosse." not in (state.skills_block or "")
     assert result.skills_activated == ["building-class"]

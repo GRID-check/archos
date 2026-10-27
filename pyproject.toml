@@ -26,10 +26,13 @@ dependencies = [
     "nvidia-nat-langchain[openai]==1.9.0",
     "nvidia-nat-eval==1.9.0",
     "nvidia-nat-profiler==1.9.0",
-    "deepagents>=0.6.12",
+    # Exact: every 0.7 patch release changed a default, a tool's output or a
+    # builder we call. Bump on purpose, then run tests/aiq_agent/test_deepagents_contract.py.
+    # langchain-modal moves with it (0.0.7 needs deepagents>=0.7.32,<0.8).
+    "deepagents==0.7.32",
     "langgraph-checkpoint-postgres>=3.0.0",
     "langgraph-checkpoint-sqlite>=2.0.0",
-    "langchain-modal==0.0.5",
+    "langchain-modal==0.0.7",
     "psycopg[binary]>=3.3.4",
     "asyncpg>=0.29.0",
     "redis>=5.0.0,<9",

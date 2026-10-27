@@ -373,7 +373,7 @@ export type InvocableSkill = {
  * Deliberately level-1 ONLY: name + description, never a body. That is not an
  * optimisation, it is the same contract the agent runs under — at turn start
  * the model sees exactly this much about each skill, and the full instructions
- * enter context only when something calls `use_skill`. The menu a user reads
+ * enter context only when the agent reads its `SKILL.md`. The menu a user reads
  * and the catalogue the model reads are therefore the same text, so a skill
  * whose description does not explain when to use it looks equally unhelpful to
  * both, which is the feedback a skill author needs.

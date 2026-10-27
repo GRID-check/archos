@@ -2069,11 +2069,12 @@ nothing can require one. The model picks from the L1 catalog, which lists every
 resolved skill — nothing a person sets takes a row out of it — and `/name` in
 the composer inserts a mention into the message text rather than a force list on
 the wire. Delivery is
-**progressive disclosure**: L1 is a one-line-per-skill catalog in the system
-prompt (`## Available skills`), L2 is the full body, loaded only when the model
-calls the `use_skill` tool. Per-run `SkillRuntime` (ADR-0018 — never cached on
-the shared agent) records what was DELIVERED for `skills_activated` on the
-terminal frame. Standing instructions are prompt text instead: the platform
+**progressive disclosure** on Deep Agents' `SkillsMiddleware` (ADR-0135): L1
+is the middleware's catalog (`## Skills`, name, description and path per skill),
+L2 is the full `SKILL.md`, read only when the model calls `read_file` on it.
+Per-run `SkillRuntime` (ADR-0018 — never cached on the shared agent) owns the
+run's read-only `SkillsBackend` and records what was DELIVERED for
+`skills_activated` on the terminal frame. Standing instructions are prompt text instead: the platform
 prompt, and the office's own bounded block (`X-Grid-Org-Instructions`, rendered
 in the turn context as `## Anweisungen des Büros`).
 
@@ -2083,12 +2084,13 @@ deterministically, validated strictly) + org rows from the BFF internal
 fail-open and cached in the shared cache
 (`GRID_SKILLS_CACHE_TTL_SECONDS`, default 60). `shallow_research_agent`
 config gate: `skills_enabled` (default true) + `skill_allowlist` (empty =
-all). `use_skill` is bound on every turn like every other tool; whether a
-greeting loads a skill is the model's call (ADR-0052). Deep research loads
-machinery from the filesystem (`DeepResearchSkillsConfig` mounts `oib`/`bim`
-on Piloti and `synthesis` on the writer; curated dirs 404) and
-loads house voice, offers and org skills through `use_skill`
-(`resolve_served_skills`). Full design and tests:
+all). The catalog and the skill `read_file` are there on every turn; whether a
+greeting reads a skill is the model's call (ADR-0052). Piloti renders the
+catalog into its turn context, because its graph cannot host the middleware.
+Deep research lists the same backend through the middleware in each subagent:
+`DeepResearchSkillsConfig` assigns `oib`/`bim` to the researcher and `synthesis`
+to the writer (curated builtins left out), and the writer also lists the
+office's skills (`resolve_served_skills`) under `/skills/office/`. Full design and tests:
 `docs/architecture/agent-skills.md`.
 
 ## 9. Known issues / open items
@@ -2196,9 +2198,11 @@ loads house voice, offers and org skills through `use_skill`
   parser remains as a second line of defense for non-conformant completions
   in general. See the same README section.
 - **Deep-research planner ceremony overhead** — deepagents' `StateBackend`
-  is write-once (a second `write_file` to an existing path errors; recovery
-  is via `edit_file`); the planner prompt mandates `write_todos` before
-  decomposing. As of the 2026-07-16 prompt pass (`77a4d7a`) the todo-list
+  was write-once up to 0.6 (a second `write_file` to an existing path
+  errored; recovery was via `edit_file`; since 0.7.0 it overwrites, see the
+  deep researcher README); the planner prompt mandated `write_todos` before
+  decomposing (`write_todos` itself is no longer a deepagents default since
+  0.7.0 and is added back by `factory.planning_middleware`). As of the 2026-07-16 prompt pass (`77a4d7a`) the todo-list
   ceremony is optional rather than mandatory, the planner's after-every-search
   `think` call is consolidated into a single pre-finalize `think`, and
   orchestrator `write_todos` updates are phase-level instead of per-step —

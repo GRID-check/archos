@@ -908,18 +908,13 @@ functions:
     # shape in a few thousand tokens — instead of costing the full-context
     # round the `emit_card` retry used to. Unset = drop it and record it.
     card_repair_llm: card_llm
-    # Agent skills (progressive-disclosure `use_skill` tool) active on research
-    # turns. Empty allowlist = every resolved skill (builtin + org) is offered.
+    # Agent skills (ADR-0135): Deep Agents' SkillsMiddleware catalog in the turn
+    # context, each SKILL.md read with `read_file` under /skills/. Empty
+    # allowlist = every resolved skill (builtin + org) is offered. No body
+    # rides the prompt by size; the turn-start decision below pins the ONE
+    # method the question is the subject of (~400 tokens, or the IFC method on
+    # a model question).
     skills_enabled: true
-    # No skill body rides the prompt by size (ADR-0063, amended): all nine
-    # chat methods together were ~4 600 tokens on every call, for methods most
-    # turns never use. The turn-start decision below picks the ONE method the
-    # question is the subject of and reads that body in (~400 tokens, or the
-    # IFC method on a model question); the rest stay a catalog line behind
-    # `use_skill`. These two are an opt-in budget for an org that wants a
-    # method on every turn regardless.
-    skills_inline_max_body_chars: 0
-    skills_inline_budget_chars: 0
     # The turn-start decision (ADR-0064): one decision-model request beside
     # the skill resolution — does the message need evidence, which corpus and
     # which OIB families, which skill, which card types — acted on by ADDING

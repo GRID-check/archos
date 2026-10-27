@@ -310,7 +310,7 @@ export interface AgentResponseProps {
   degradedReasons?: string[]
   /**
    * Skills whose full instructions the agent loaded while writing this answer
-   * (`use_skill`), in activation order. Absent on a turn that activated none,
+   * (a `read_file` of its `SKILL.md`), in activation order. Absent on a turn that activated none,
    * which is the common case — availability is not activation.
    */
   skillsActivated?: string[]

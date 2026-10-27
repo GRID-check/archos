@@ -2,7 +2,7 @@
 
 One :class:`PilotiAgent` is built at boot. Per request ``_run_turn``
 computes only what the turn varies (the switched-off data sources, the org's
-skills as a ``use_skill`` tool, the model override) as a :class:`TurnConfig`
+skills behind ``read_file``, the model override) as a :class:`TurnConfig`
 and hands it to ``agent.run``; nothing is compiled, read or re-indexed per turn.
 The tool SET no longer varies with the data-source toggles — a switched-off
 source keeps its tool and refuses the call (``common/data_sources.py``), so
@@ -111,7 +111,7 @@ class ResearchAgentConfig(FunctionBaseConfig, name="research_agent"):
         description=(
             "The research budget in tool-calling ROUNDS — LLM decisions that emitted tool calls — "
             "before synthesis is forced. A round costs one whatever it asked for, so a batch of five "
-            "parallel passage opens is one and so is a single `use_skill`. The graph's recursion "
+            "parallel passage opens is one and so is a single skill read. The graph's recursion "
             "guard is derived from it; nothing else bounds the loop."
         ),
     )
@@ -160,20 +160,14 @@ class ResearchAgentConfig(FunctionBaseConfig, name="research_agent"):
     verbose: bool = Field(default=False, description="Whether to enable verbose logging")
     skills_enabled: bool = Field(
         default=True,
-        description="Whether agent skills (progressive-disclosure `use_skill` tool) are active on research turns.",
+        description=(
+            "Whether agent skills are offered: the SkillsMiddleware catalog in the turn context and "
+            "their SKILL.md behind `read_file` (ADR-0135). False offers no catalog and no skill read."
+        ),
     )
     skill_allowlist: list[str] = Field(
         default_factory=list,
         description="Optional skill-name allowlist; empty = every resolved skill is offered.",
-    )
-    skills_inline_max_body_chars: int = Field(
-        default=0,
-        description=(
-            "OPT-IN budget: a skill whose body is at most this many characters rides the system prompt "
-            "in full on every turn (ADR-0063, amended). 0, the default: no body rides by budget; the "
-            "turn-start decision (ADR-0064) reads the ONE skill the question is the subject of into the "
-            "turn, and the rest stay a catalog line behind `use_skill`."
-        ),
     )
     turn_decisions: bool = Field(
         default=True,
@@ -185,13 +179,6 @@ class ResearchAgentConfig(FunctionBaseConfig, name="research_agent"):
             "turn's prompt. Every tool stays bound whatever it says; "
             "a decision that cannot run leaves the turn exactly as before. GRID_DECISIONS_ENABLED=false "
             "is the global switch."
-        ),
-    )
-    skills_inline_budget_chars: int = Field(
-        default=0,
-        description=(
-            "OPT-IN budget: ceiling on the characters of skill bodies that ride the prompt per turn by "
-            "size alone, filled in catalog order. 0, the default: see skills_inline_max_body_chars."
         ),
     )
     tool_search: ToolSearchSettings = Field(
@@ -279,11 +266,12 @@ async def _resolve_skill_runtime(
 ) -> SkillRuntime | None:
     """The org's skills for THIS run (ADR-0018: never cached on the agent), or None.
 
-    Builtin + org set from the resolver, narrowed by the config allowlist. The
-    catalog is announced BEFORE the LLM runs — how many skills were offered, on
-    the technical channel. The per-skill announcement fires at delivery instead,
-    because a catalog line is an offer until the model calls ``use_skill``. No
-    skills resolved: nothing to offer, no tool to bind, and silence is the
+    Builtin + org set from the resolver, narrowed by the config allowlist, in
+    the one office source of a :class:`SkillRuntime` (ADR-0135). The catalog is
+    announced BEFORE the LLM runs — how many skills were offered, on the
+    technical channel. The per-skill announcement fires at delivery instead,
+    because a catalog line is an offer until the model reads the ``SKILL.md``.
+    No skills resolved: nothing to offer, nothing to read, and silence is the
     correct announcement.
     """
     if not config.skills_enabled:
@@ -303,12 +291,7 @@ async def _resolve_skill_runtime(
         resolved = tuple(skill for skill in resolved if skill.name in allow)
     if not resolved:
         return None
-    runtime = SkillRuntime(
-        skills=resolved,
-        inline_max_body_chars=config.skills_inline_max_body_chars,
-        inline_budget_chars=config.skills_inline_budget_chars,
-    )
-    return runtime
+    return SkillRuntime.office(resolved)
 
 
 async def _active_provider(provider: LLMProvider) -> LLMProvider:
@@ -322,10 +305,6 @@ async def _active_provider(provider: LLMProvider) -> LLMProvider:
     read through too.
     """
     return (await read_request_llm_context()).apply(provider)
-
-
-def _skills_block(runtime: SkillRuntime) -> str:
-    return runtime.prompt_block() or ""
 
 
 def _turn_facts(state: ResearchAgentState, runtime: SkillRuntime | None) -> TurnFacts:
@@ -493,10 +472,10 @@ def _tools_in_scope(tools: list[Any]) -> list[Any]:
 def _apply_decisions(decisions: TurnDecisions, state: ResearchAgentState, runtime: SkillRuntime | None) -> None:
     """The two prompt-side effects: the chosen skill's body, and the likely card shapes.
 
-    The chosen skill rides this turn's prompt in full (``inline_also``), the
+    The chosen skill is pinned: its body rides this turn's prompt in full, the
     one method the question is the subject of; the shapes are its preferred
-    cards beyond the shapes the envelope teaches and ``surface`` — what
-    ``use_skill`` hands over with the body — then the turn decision's card
+    cards beyond the shapes the envelope teaches and ``surface`` — what a
+    ``read_file`` of it hands over with the body — then the turn decision's card
     picks, capped (``attached_card_types``). ``surface`` is left out because
     its shape is the envelope's compose rule, already in the prompt. Still
     offers: the model decides.
@@ -508,7 +487,7 @@ def _apply_decisions(decisions: TurnDecisions, state: ResearchAgentState, runtim
     withheld_shapes = {*ENVELOPE_SHAPE_TYPES, *CHAT_ONLY_CARD_TYPES}
 
     if runtime is not None and decisions.chosen_skill:
-        runtime.inline_also((decisions.chosen_skill,))
+        runtime.pin(decisions.chosen_skill)
     skill_cards = {
         skill.name: [card for card in preferred_cards(skill.metadata) if card not in withheld_shapes]
         for skill in (runtime.skills if runtime is not None else ())
@@ -524,10 +503,10 @@ def _report_skills(result: ResearchAgentState, runtime: SkillRuntime) -> None:
     """Lift what was DELIVERED AND FOLLOWED onto the result.
 
     ``skills_activated`` is rendered to the reader as what shaped this answer,
-    so only a skill whose body reached the model belongs in it: opened through
-    ``use_skill``, or ridden in the prompt and named in the envelope's
+    so only a skill whose body reached the model belongs in it: read with
+    ``read_file``, or pinned in the prompt and named in the envelope's
     ``skills_applied`` (ADR-0063), which the runtime accepts only for a body
-    it inlined. A catalog the model read past is not a miss to report: the
+    it pinned. A catalog the model read past is not a miss to report: the
     offer was the whole mechanism.
     """
     runtime.record_applied(result.skills_applied or ())
@@ -572,10 +551,10 @@ async def _run_turn(deployment: _Deployment, state: ResearchAgentState) -> Resea
     if not is_valid:
         return _reply(state, format_user_facing_tool_error(_RESEARCH_TYPE, unavailable_tools))
 
-    # The runtime's `use_skill` tool is folded into the tool set on every
-    # turn: the model has the catalog and decides whether a skill applies,
-    # the same way it decides whether to search (ADR-0052). A short body rides
-    # the prompt (ADR-0063); a long one still travels on a `use_skill` call.
+    # The skills are served on every turn: the model has the catalog and
+    # decides whether a skill applies, the same way it decides whether to
+    # search (ADR-0052), and reads the one it chooses with `read_file` over the
+    # run's skills backend (ADR-0135). The decision's pick rides the prompt.
     runtime = await _resolve_skill_runtime(config, state)
     # The conversation's working directory, folded in the same way: four file
     # verbs over a store namespaced by conversation, or nothing at all when the
@@ -591,16 +570,18 @@ async def _run_turn(deployment: _Deployment, state: ResearchAgentState) -> Resea
     facts = _turn_facts(state, runtime) if config.turn_decisions else None
     _warm_question(facts)
     draft_tools, decisions, llm_provider, fit = await asyncio.gather(
-        draft_tools_for_turn(), _decide_turn(facts), _active_provider(deployment.provider), _fit_references(facts)
+        draft_tools_for_turn(skills=runtime.backend if runtime is not None else None),
+        _decide_turn(facts),
+        _active_provider(deployment.provider),
+        _fit_references(facts),
     )
     _apply_decisions(decisions, state, runtime)
     _apply_reference_fit(fit, state)
-    # After the decision: the skill it inlined is part of what this turn inlined.
+    # After the decision: the skill it pinned is part of what this turn offers.
     if runtime is not None:
         emit_skills_offered(runtime)
-    turn_tools = _tools_in_scope(
-        list(deployment.tools) + (list(runtime.build_tools()) if runtime is not None else []) + draft_tools
-    )
+        record_trace_metadata(skills_offered=len(runtime.skills), skills_pinned=list(runtime.pinned) or None)
+    turn_tools = _tools_in_scope(list(deployment.tools) + draft_tools)
     turn = TurnConfig(
         llm_provider=llm_provider,
         tools=turn_tools,
@@ -608,7 +589,7 @@ async def _run_turn(deployment: _Deployment, state: ResearchAgentState) -> Resea
         prefetch=_turn_prefetch(decisions, facts, state, enabled=config.prefetch),
     )
     if runtime is not None:
-        state.skills_block = _skills_block(runtime)
+        state.skills_block = runtime.prompt_block()
     result = await _run_agent(deployment, state, turn)
     if isinstance(result, str):
         return _reply(state, result)
