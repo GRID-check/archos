@@ -289,6 +289,7 @@ export function AttachmentRow({
               {draft.revisionOf === null &&
                 (folderTarget ? (
                   <FilingChip
+                    suggested={draft.suggested.folder}
                     target={folderTarget.path === '' ? t('suggestion.root') : folderLeaf(folderTarget.path)}
                     newLabel={folderTarget.kind === 'new' ? t('suggestion.newFolder') : undefined}
                     title={folderLabel(folderTarget, t('suggestion.root'))}

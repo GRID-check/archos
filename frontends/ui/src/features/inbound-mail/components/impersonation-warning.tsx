@@ -12,10 +12,11 @@
  * nothing is pre-selected, and a payment or bank change is checked by phone,
  * never by replying. No dismiss: the one yes is the bar's acknowledgement.
  *
- * Gold on the glyph, words in ink, a step heavier (`grid-design-language.md`,
- * „Warning gold is a glyph colour“): the kit's `Alert variant="warning"`
- * prints its text in the gold that fails 4.5:1, so this is the default
- * `Alert` with a gold glyph and a gold leading rule.
+ * A stop, not a caution: the signal red on the glyph and the leading rule,
+ * the words in ink. Not the kit's `Alert variant="destructive"`, whose red
+ * text on its tint measures 4.08:1 (axe, 2026-10-22), under the 4.5:1 WCAG
+ * AA asks; for the same reason no gold either (`grid-design-language.md`,
+ * „Warning gold is a glyph colour“).
  */
 
 import type { JSX } from 'react'
@@ -27,8 +28,8 @@ import type { ImpersonationWarning as Warning } from '../lib/impersonation'
 export function ImpersonationWarning({ warning }: { warning: Warning }): JSX.Element {
   const t = useTranslations('inboundMail')
   return (
-    <Alert className="border-l-warning border-l-4" data-testid="impersonation-warning" data-basis={warning.basis}>
-      <ShieldAlert aria-hidden className="text-warning" />
+    <Alert className="border-l-4 border-l-[color:var(--color-signal-error)] [&>svg]:text-error" data-testid="impersonation-warning" data-basis={warning.basis}>
+      <ShieldAlert aria-hidden />
       <AlertTitle className="line-clamp-none font-semibold [overflow-wrap:anywhere]">
         {warning.basis === 'member_name'
           ? t('impersonationWarning.memberName', { name: warning.name, address: warning.address })

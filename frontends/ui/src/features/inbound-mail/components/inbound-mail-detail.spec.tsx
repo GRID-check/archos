@@ -75,7 +75,8 @@ describe('InboundMailDetail', () => {
     const file = vi.spyOn(client, 'file')
     renderDetail('impersonation', client)
     expect(screen.getByTestId('sender-trust')).toHaveTextContent('Poses as Miriam Huber')
-    // „Dringend: Kontoänderung Honorarnote“: the person picks what to file; nothing is one press away.
+    // „Dringend: Kontoänderung Honorarnote“: filing is folded away; opening it is the first deliberate press.
+    await userEvent.click(screen.getByTestId('impersonation-file-anyway'))
     expect(screen.getByTestId('message-checkbox')).not.toBeChecked()
     expect(screen.getByTestId('attachment-checkbox')).not.toBeChecked()
     await userEvent.click(screen.getByTestId('message-checkbox'))
@@ -95,8 +96,48 @@ describe('InboundMailDetail', () => {
     expect(warning).toHaveTextContent('Piloti suggests nothing and nothing is preselected. Check payment or bank detail changes by phone, never by replying.')
     // Above the header, before anything can be checked.
     expect(warning.compareDocumentPosition(screen.getByTestId('mail-header')) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    await userEvent.click(screen.getByTestId('impersonation-file-anyway'))
     await userEvent.click(screen.getByTestId('message-checkbox'))
     expect(screen.getByTestId('acknowledge-sender').closest('div')).toHaveTextContent('I checked that the mail is genuine. File it anyway')
+  })
+
+  it('makes an impersonation a stop: „Verwerfen“ is the primary press, filing is folded behind „File anyway …“', async () => {
+    const client = fixtureClient({ detail: DETAIL_VARIANTS.impersonation })
+    const dismiss = vi.spyOn(client, 'dismiss')
+    renderDetail('impersonation', client)
+    expect(screen.queryByTestId('message-checkbox')).toBeNull()
+    expect(screen.queryByTestId('attachment-checkbox')).toBeNull()
+    expect(screen.queryByTestId('decision-file')).toBeNull()
+    expect(screen.queryByTestId('acknowledge-sender')).toBeNull()
+    const discard = screen.getByTestId('decision-dismiss')
+    expect(discard.className).toContain('order-last')
+    expect(discard.className).toContain('bg-primary')
+    const open = screen.getByTestId('impersonation-file-anyway')
+    expect(open).toHaveAttribute('aria-expanded', 'false')
+    await userEvent.click(open)
+    expect(open).toHaveAttribute('aria-expanded', 'true')
+    expect(screen.getByTestId('message-checkbox')).toBeInTheDocument()
+    expect(screen.getByTestId('decision-file')).toBeInTheDocument()
+    await userEvent.click(screen.getByTestId('message-checkbox'))
+    // Opened, filing still needs the yes.
+    expect(screen.getByTestId('decision-file')).toBeDisabled()
+    expect(screen.getByTestId('acknowledge-sender')).toBeInTheDocument()
+    await userEvent.click(screen.getByTestId('decision-dismiss'))
+    await waitFor(() => expect(dismiss).toHaveBeenCalled())
+  })
+
+  it('folds nothing for a mail that poses as nobody', () => {
+    renderDetail('external-unverified')
+    expect(screen.queryByTestId('impersonation-file-anyway')).toBeNull()
+    expect(screen.getByTestId('decision-file')).toBeInTheDocument()
+  })
+
+  it('wears Piloti’s mark only on a folder Piloti suggested, never on the rule’s correspondence folder', () => {
+    renderDetail('external-unverified')
+    // A new thread for an unconfirmed stranger goes to the correspondence folder by rule: a plain folder chip.
+    const chip = screen.getByTestId('detail-new-thread-folder')
+    expect(chip.querySelector('[data-testid="filing-chip-folder"]')).not.toBeNull()
+    expect(chip).not.toHaveAttribute('data-suggested')
   })
 
   it('names the member and the address that is not theirs', () => {
@@ -114,6 +155,7 @@ describe('InboundMailDetail', () => {
     render(
       <InboundMailDetail projectId={PROJECT_ID} mailId={stale.id} initial={stale} initialText={base.text} folders={FOLDERS} client={client} onChanged={vi.fn()} now={FIXTURE_NOW} pollMs={1} />
     )
+    await userEvent.click(screen.getByTestId('impersonation-file-anyway'))
     expect(screen.getByTestId('message-checkbox')).not.toBeChecked()
     expect(screen.getByTestId('attachment-checkbox')).not.toBeChecked()
     await userEvent.click(screen.getByTestId('attachment-checkbox'))

@@ -80,6 +80,7 @@ import {
   type DecisionsWritten,
 } from './repository'
 import { withReviewDefaults, type InboundMailPartBase } from './review-defaults'
+import { senderFactsOf, senderRiskLevel } from './sender-risk'
 import { readStagedObject } from './staging'
 import { readSuggestion, suggestionSkipReason } from './suggest'
 import { scoreMailDecision } from './suggest-scores'
@@ -592,6 +593,8 @@ export async function fileInboundMails(
         suggestion_followed: suggestionFollowed,
         thread_action: message?.threadAction ?? null,
         hours_waiting_bucket: mail ? hoursWaitingBucket(mail.receivedAt, now) : null,
+        // Whether filing a mail posing as someone ever happens (it should not: the detail makes it a stop).
+        risk_level: mail ? senderRiskLevel(senderFactsOf(mail)) : null,
         via: context.actor.via,
       },
     })
@@ -633,7 +636,14 @@ export async function dismissInboundMails(
       event: 'inbound_mail_decided',
       distinctId: session.userId,
       organizationId: session.organizationId,
-      properties: { files: 0, dismissed, suggestion_followed: suggestionFollowed, thread_action: null, via: actor.via },
+      properties: {
+        files: 0,
+        dismissed,
+        suggestion_followed: suggestionFollowed,
+        thread_action: null,
+        risk_level: senderRiskLevel(senderFactsOf(mail)),
+        via: actor.via,
+      },
     })
   }
   await afterDecisions(session, projectId, written, body.mailIds)

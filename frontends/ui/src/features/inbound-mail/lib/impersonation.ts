@@ -14,7 +14,7 @@
  */
 
 import type { ImpersonationBasis } from '@/lib/inbound-mail/inbound-mail-vocabulary'
-import type { InboundMailView } from '@/lib/inbound-mail/inbound-mail-wire'
+import type { InboundMailSummaryView, InboundMailView } from '@/lib/inbound-mail/inbound-mail-wire'
 
 /** What the warning names: why it reads as an impersonation, the name it uses, and the address it really came from. */
 export interface ImpersonationWarning {
@@ -32,6 +32,15 @@ export function impersonationWarningOf(view: Pick<InboundMailView, 'riskLevel' |
     name: view.sender?.name?.trim() || address,
     address,
   }
+}
+
+/**
+ * Whether a mail may be selected for bulk filing. An impersonation never is:
+ * it is opened and decided alone, where the warning stands above it (and the
+ * server refuses it in bulk anyway, `acknowledgement_in_bulk`).
+ */
+export function bulkSelectable(mail: Pick<InboundMailSummaryView, 'riskLevel'>): boolean {
+  return mail.riskLevel !== 'impersonation'
 }
 
 /**

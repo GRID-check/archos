@@ -59,6 +59,7 @@ export const inboundMail: typeof en.inboundMail = {
     automatic: 'Automatisch',
     thread: 'E-Mail-Verlauf „{name}“ · wird Fassung {version}',
     select: '„{subject}“ auswählen',
+    impersonation: 'Gibt sich als {name} aus · nicht ablegen',
     restorableUntil: 'wiederherstellbar bis {date}',
     outcome: {
       filed: '{count, plural, one {# Teil abgelegt} other {# Teile abgelegt}}',
@@ -262,7 +263,9 @@ export const inboundMail: typeof en.inboundMail = {
     rejectedSignature: 'Vorsicht: Diese E-Mail gibt sich als {name} aus. Ihre Signatur ist ungültig oder wurde von der Domain abgelehnt.',
     memberName: 'Vorsicht: Der Name {name} gehört einem Mitglied, die Adresse {address} nicht.',
     consequence:
-      'Piloti macht keinen Vorschlag, nichts ist vorausgewählt. Prüfen Sie Zahlungs- oder Kontoänderungen telefonisch, nicht per Antwort.',
+      'So beginnen Betrugsversuche mit Kontoänderungen. Piloti macht keinen Vorschlag, nichts ist vorausgewählt. Prüfen Sie Zahlungs- oder Kontoänderungen telefonisch, nicht per Antwort.',
+    fileAnyway: 'Trotzdem ablegen …',
+    fileAnywayHint: 'Nur wenn Sie telefonisch geprüft haben, dass die E-Mail echt ist.',
   },
   bar: {
     dismiss: 'Verwerfen',

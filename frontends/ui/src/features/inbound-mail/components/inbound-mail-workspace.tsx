@@ -50,6 +50,7 @@ import {
   type IncompleteReason,
 } from '@/lib/inbound-mail/inbound-mail-wire'
 import { cn } from '@/lib/utils'
+import { bulkSelectable } from '../lib/impersonation'
 import { inboundMailAddressClient, inboundMailClient, type InboundMailAddressClient, type InboundMailClient } from '../lib/client'
 import { bulkPlan, type BulkPlan } from '../lib/completeness'
 import { decisionOf, initialDraft, type DraftCopy, type FolderOption } from '../lib/draft'
@@ -327,7 +328,8 @@ export function InboundMailWorkspace({
       }
       if (key === 'x') {
         const target = index >= 0 ? visible[index] : null
-        if (!target) return
+        // An impersonation is never part of a bulk decision (`bulkSelectable`): its row has no box, and X selects nothing.
+        if (!target || !bulkSelectable(target)) return
         event.preventDefault()
         toggle(target.id, !checked.has(target.id))
         return

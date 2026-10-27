@@ -28,8 +28,14 @@ import { CheckLine, FactLine } from './inbound-mail-atoms'
 export interface DecisionBarProps {
   summary: DraftSummary
   acknowledgeSender: boolean
-  /** The mail reads as someone posing as another: the yes says the person checked it is real. */
+  /**
+   * The mail reads as someone posing as another (`riskLevel: 'impersonation'`):
+   * „Verwerfen“ is the primary press, and filing is offered only once the
+   * person opened „Trotzdem ablegen …“ (`filingOpen`), as the secondary one,
+   * behind a yes that says they checked the mail is real.
+   */
   impersonation?: boolean
+  filingOpen?: boolean
   onAcknowledgeSender: (value: boolean) => void
   onFile: () => void
   onDismiss: () => void
@@ -65,6 +71,7 @@ export function DecisionBar({
   summary,
   acknowledgeSender,
   impersonation = false,
+  filingOpen = true,
   onAcknowledgeSender,
   onFile,
   onDismiss,
@@ -77,6 +84,8 @@ export function DecisionBar({
   const blockers = summary.blockers.filter((blocker) => blocker.kind !== 'sender')
   const blocked = !nothing && summary.blockers.length > 0
   const busy = filing || dismissing
+  // An impersonation offers no filing until the person opened „Trotzdem ablegen …“.
+  const offersFiling = !impersonation || filingOpen
   const messages = blockers.map((blocker) => blockerText(blocker, t)).filter((text): text is string => text !== null)
 
   return (
@@ -88,7 +97,7 @@ export function DecisionBar({
         className
       )}
     >
-      {(summary.needsSenderAcknowledgement || messages.length > 0 || (summary.originalErased && !nothing)) && (
+      {offersFiling && (summary.needsSenderAcknowledgement || messages.length > 0 || (summary.originalErased && !nothing)) && (
         <div className="flex flex-col gap-1.5">
           {summary.needsSenderAcknowledgement && (
             <CheckLine checked={acknowledgeSender} onCheckedChange={onAcknowledgeSender} disabled={busy} testId="acknowledge-sender">
@@ -110,32 +119,36 @@ export function DecisionBar({
           )}
         </div>
       )}
-      {/* DOM order is the phone's stacking order: „Verwerfen“ first, the primary last, nearest the thumb. */}
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+      {/* DOM order is the phone's stacking order: „Verwerfen“ first, the primary last, nearest the thumb.
+          For an impersonation „Verwerfen“ IS the primary: it moves last, and filing (once opened) is the quiet one. */}
+      <div className={cn('flex flex-col gap-2 sm:flex-row sm:items-center', offersFiling ? 'sm:justify-between' : 'sm:justify-end')}>
         <BusyButton
           type="button"
-          variant="ghost"
+          variant={impersonation ? 'default' : 'ghost'}
           busy={dismissing}
           busyLabel={t('bar.dismissBusy')}
           onClick={onDismiss}
           blocked={filing}
-          className="w-full sm:w-auto"
+          className={cn('w-full sm:w-auto', impersonation && 'order-last')}
           data-testid="decision-dismiss"
         >
           {t('bar.dismiss')}
         </BusyButton>
-        <BusyButton
-          type="button"
-          busy={filing}
-          busyLabel={t('bar.busy')}
-          onClick={nothing ? onDismiss : onFile}
-          blocked={dismissing}
-          disabled={blocked}
-          className="w-full min-w-0 sm:w-auto sm:max-w-[min(32rem,100%)] [&_*]:truncate"
-          data-testid="decision-file"
-        >
-          {primaryLabel(summary, t)}
-        </BusyButton>
+        {offersFiling && (
+          <BusyButton
+            type="button"
+            variant={impersonation ? 'outline' : 'default'}
+            busy={filing}
+            busyLabel={t('bar.busy')}
+            onClick={nothing ? onDismiss : onFile}
+            blocked={dismissing}
+            disabled={blocked}
+            className="w-full min-w-0 sm:w-auto sm:max-w-[min(32rem,100%)] [&_*]:truncate"
+            data-testid="decision-file"
+          >
+            {primaryLabel(summary, t)}
+          </BusyButton>
+        )}
       </div>
     </div>
   )

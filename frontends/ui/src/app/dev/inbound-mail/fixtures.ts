@@ -233,7 +233,7 @@ const permitDecision = (overrides: Partial<InboundMailPartView> = {}) =>
   part({
     name: 'Bescheid_MA37_2026-10-14.pdf',
     sizeBytes: 412_000,
-    suggestion: suggestion('Behörde/Bescheide', 'Bescheid', 'Absender ist die MA 37; Bescheide liegen in Behörde/Bescheide.'),
+    suggestion: suggestion('Behörde/Bescheide', 'Bescheid', 'Der Dateiname nennt einen Bescheid der MA 37; Bescheide liegen in Behörde/Bescheide.'),
     ...overrides,
   })
 
@@ -267,7 +267,11 @@ const longName =
   'Einreichplanung_Stellplatznachweis_Tiefgarage_Ebene_-2_Brandabschnitte_und_Fluchtwege_überarbeitet_nach_Verhandlung_vom_14_10_2026_Index_F_final_final2.pdf'
 
 export const DETAIL_VARIANTS: Record<string, DetailFixture> = {
-  'member-verified': { view: memberVerified, text: text() },
+  // Miriam forwards the MA 37's Bescheid from her own, signed domain: the suggestion reads the file's name, never the sender.
+  'member-verified': {
+    view: memberVerified,
+    text: text({ ownText: 'Zur Ablage: der Bescheid zum Stellplatznachweis ist gestern gekommen.\n\nlg Miriam', quoted: [] }),
+  },
   'external-unverified': {
     view: mail({
       key: 'external-unverified',
@@ -610,11 +614,15 @@ const allMails = [
   ...quietMails,
 ]
 
-export const DETAIL_BY_ID = new Map<string, DetailFixture>(
-  [...Object.values(DETAIL_VARIANTS), ...groupMails.map((view) => ({ view, text: text() })), ...quietMails.map((view) => ({ view, text: text() }))].map(
-    (fixture) => [fixture.view.id, fixture]
-  )
-)
+/**
+ * Each mail by id, the FIRST fixture of an id winning: later variants reuse a
+ * mail's view (a filed or followed state of it) with the default text, and the
+ * list's detail must show the mail's own text, not the Statik mail's.
+ */
+export const DETAIL_BY_ID = new Map<string, DetailFixture>()
+for (const fixture of [...Object.values(DETAIL_VARIANTS), ...groupMails.map((view) => ({ view, text: text() })), ...quietMails.map((view) => ({ view, text: text() }))]) {
+  if (!DETAIL_BY_ID.has(fixture.view.id)) DETAIL_BY_ID.set(fixture.view.id, fixture)
+}
 
 export const LIST_VARIANTS: Record<string, ListFixture> = {
   empty: { items: [], everReceived: false },
@@ -626,7 +634,9 @@ export const LIST_VARIANTS: Record<string, ListFixture> = {
   'thread-group': { items: [...groupMails.map((view) => summaryOf(view)), summaryOf(v('mixed-attachments'))] },
   'unverified-group': { items: [summaryOf(v('member-verified')), ...quietMails.map((view) => summaryOf(view))] },
   selected: { items: [...groupMails.map((view) => summaryOf(view)), summaryOf(v('revision'))], checked: [groupMails[0].id, groupMails[1].id] },
-  'bulk-blocked': { items: allMails.map((view) => summaryOf(view)), checked: [v('member-verified').id, v('impersonation').id] },
+  // A member's mail addressed to others needs its sender confirmed, which a bulk request never carries.
+  // (An impersonation cannot be selected at all: `bulkSelectable`.)
+  'bulk-blocked': { items: [...allMails, v('not-addressed')].map((view) => summaryOf(view)), checked: [v('member-verified').id, v('not-addressed').id] },
   settled: { status: 'handled', items: [summaryOf(v('filed-outcome')), summaryOf(v('decided-by-other')), summaryOf(v('expired')), summaryOf(v('dismissed'))] },
   dismissed: { status: 'handled', outcome: 'dismissed', items: [summaryOf(v('dismissed'))] },
   expired: { status: 'handled', outcome: 'expired', items: [summaryOf(v('expired'))] },
