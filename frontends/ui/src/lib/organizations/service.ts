@@ -79,7 +79,7 @@ export async function getOrganizationOverview(
     id: org.id,
     name: org.name,
     domains: org.domains?.map((d) => d.domain) ?? [],
-    createdAt: org.createdAt,
+    createdAt: org.createdAt.toISOString(),
     memberCount,
     memberCountCapped,
     pendingInviteCount,

@@ -41,7 +41,10 @@ vi.mock('@/lib/workos/client', () => ({
 
 import { setProjectMemberRole, removeProjectRoleAssignment } from './members-service'
 
-type Assignment = { id: string; organizationMembershipId: string; role: { slug: string }; createdAt?: string }
+type Assignment = { id: string; organizationMembershipId: string; role: { slug: string }; createdAt: Date }
+
+/** WorkOS dates every assignment; these say nothing about when anyone joined. */
+const UNDATED = new Date('2020-01-01T00:00:00Z')
 
 const session = {
   userId: 'user_1',
@@ -62,11 +65,13 @@ const admin = (id: string, membershipId: string): Assignment => ({
   id,
   organizationMembershipId: membershipId,
   role: { slug: 'project-admin' },
+  createdAt: UNDATED,
 })
 const editor = (id: string, membershipId: string): Assignment => ({
   id,
   organizationMembershipId: membershipId,
   role: { slug: 'project-editor' },
+  createdAt: UNDATED,
 })
 
 beforeEach(() => {
@@ -189,7 +194,7 @@ describe('removeProjectRoleAssignment — last-admin guard', () => {
 })
 
 describe('the project record keeps who worked on the project (ADR-0091)', () => {
-  const dated = (assignment: Assignment, createdAt: string): Assignment => ({ ...assignment, createdAt })
+  const dated = (assignment: Assignment, createdAt: string): Assignment => ({ ...assignment, createdAt: new Date(createdAt) })
 
   it('someone taken off the project stays on as a former member, from the month they joined', async () => {
     stubAssignments([admin('ra_1', 'om_admin'), dated(editor('ra_2', 'om_editor'), '2024-02-14T10:00:00Z')])
