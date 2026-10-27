@@ -23,7 +23,10 @@
 # Facts, read off the fixture: six top folders (Einreichung, Bestand, Behörde, Nachbarn, Gutachten,
 # Korrespondenz); Einreichung holds 6 documents in all (3 directly, 3 in Pläne); EP-01 Index B is
 # current; the Brandschutzkonzept has 14 pages and says „Fluchtweg“ on pages 3, 7 and 11; the newest
-# upload is the MA-37 letter; „Sprinkler“ is written nowhere.
+# upload is the MA-37 letter; „Sprinkler“ is written nowhere. „Rettungsweg“ stands five times in the
+# Brandschutzkonzept (pages 3, 7, 9), „Kopfbolzendübel“ and „Verbunddecke“ once each in the
+# Besprechungsprotokoll (page 2). The `pf-count-*` rows ask for those counts: on chunks cut as
+# production cuts them, a count that read the breadcrumb or the overlap says 8, 2 and 3.
 
 questions:
   - id: pf-orient-project
@@ -146,3 +149,24 @@ questions:
     expect:
       tools: {must: [knowledge_search]}
       mentions: ["Brandschutzkonzept", "OIB"]
+
+  - id: pf-count-overlap
+    question: Wie oft kommt „Kopfbolzendübel“ im Besprechungsprotokoll zur Tragwerksplanung vor?
+    expect:
+      tools: {must: [{knowledge_search: {match: [exact, regex]}}]}
+      mentions: [["einmal", "ein Mal", "1 Mal", "1-mal", "1×", "eine Stelle", "einer Stelle", "ein Treffer", "1 Treffer", "eine Fundstelle", "1 Fundstelle"]]
+      not_mentions: ["zweimal", "zwei Mal", "2 Mal", "2-mal", "2×", "zwei Stellen", "2 Stellen", "zwei Treffer", "2 Treffer", "zwei Fundstellen", "2 Fundstellen"]
+
+  - id: pf-count-heading
+    question: Wie oft steht „Rettungsweg“ im Brandschutzkonzept, und auf welchen Seiten?
+    expect:
+      tools: {must: [{knowledge_search: {match: [exact, regex]}}]}
+      mentions: [["5", "fünf"], "3", "7", "9"]
+      not_mentions: ["achtmal", "acht Mal", "8 Mal", "8-mal", "8×", "acht Stellen", "8 Stellen", "8 Treffer", "acht Treffer", "Seite 8", "S. 8"]
+
+  - id: pf-count-heading-section
+    question: Wie oft kommt das Wort „Verbunddecke“ im Besprechungsprotokoll vor?
+    expect:
+      tools: {must: [{knowledge_search: {match: [exact, regex]}}]}
+      mentions: [["einmal", "ein Mal", "1 Mal", "1-mal", "1×", "eine Stelle", "einer Stelle", "ein Treffer", "1 Treffer", "eine Fundstelle", "1 Fundstelle"]]
+      not_mentions: ["dreimal", "drei Mal", "3 Mal", "3-mal", "3×", "drei Stellen", "3 Stellen", "drei Treffer", "3 Treffer", "Seite 3", "S. 3"]
