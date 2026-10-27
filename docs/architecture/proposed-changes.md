@@ -478,8 +478,10 @@ VS Code as an MCP App (ADR-0142, [`agent-surface.md`](agent-surface.md#mcp-apps-
 `useServerProposal` reads and decides through a `ProposalTransport`
 (`features/grid-cards/hooks/proposal-transport.ts`), the HTTP client here and
 `tools/call` to the door there, so the route and its rules are the same; the
-host frame has no realtime channel, and a colleague's decision shows on the
-next read.
+host frame has no realtime channel, so an open card re-reads once in the
+background (a host may replay a stored result), and a colleague's decision
+shows on the next read. Dismiss asks the same as apply: a decider who cannot
+read an operation proposal's target is refused (403), as `canDecide` shows.
 ### Older answers, and a proposal the server did not store
 
 A card without a `proposal_id` is one the server did not take: an answer older
