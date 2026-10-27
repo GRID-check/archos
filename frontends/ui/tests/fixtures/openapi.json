@@ -7896,7 +7896,8 @@
                       "project",
                       "scale",
                       "folder",
-                      "status"
+                      "status",
+                      "author"
                     ],
                     "description": "Default: relevance with text, else added."
                   },
