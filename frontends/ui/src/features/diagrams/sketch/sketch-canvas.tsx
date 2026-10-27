@@ -67,6 +67,12 @@ export interface SketchCanvasProps {
   onReady: (handle: SketchCanvasHandle) => void
   /** True once the person changed anything, false again only by reopening. */
   onDirtyChange: (dirty: boolean) => void
+  /**
+   * Once filed, the canvas only shows. An edit after filing would be neither in
+   * the project nor guarded by the discard question; a second version starts
+   * again from the answer.
+   */
+  readOnly?: boolean
 }
 
 /** A scene's version: Excalidraw bumps an element's `version` on every edit. */
@@ -84,7 +90,14 @@ export class SketchTooLargeError extends Error {
   }
 }
 
-export default function SketchCanvas({ initialElements, theme, langCode, onReady, onDirtyChange }: SketchCanvasProps) {
+export default function SketchCanvas({
+  initialElements,
+  theme,
+  langCode,
+  onReady,
+  onDirtyChange,
+  readOnly = false,
+}: SketchCanvasProps) {
   const apiRef = useRef<ExcalidrawApi | null>(null)
   const baseline = useRef<number | null>(null)
   const dirty = useRef(false)
@@ -156,6 +169,7 @@ export default function SketchCanvas({ initialElements, theme, langCode, onReady
           }
         }}
         theme={theme}
+        viewModeEnabled={readOnly}
         langCode={langCode}
         UIOptions={{
           canvasActions: {

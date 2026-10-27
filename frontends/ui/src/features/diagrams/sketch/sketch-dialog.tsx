@@ -85,6 +85,9 @@ export function SketchDialog({ open, onOpenChange, source, model }: SketchDialog
     <Dialog open={open} onOpenChange={requestClose}>
       <DialogContent
         mobilePresentation="fullscreen"
+        // Escape is the canvas's (deselect, leave a tool), not the dialog's: a close
+        // by Escape mid-drawing was one keystroke from the discard question.
+        onEscapeKeyDown={(event) => event.preventDefault()}
         data-testid="sketch-dialog"
         className="flex h-[90dvh] w-[calc(100vw-2*max(2.5vw,env(safe-area-inset-left),env(safe-area-inset-right)))] max-w-[calc(100vw-2*max(2.5vw,env(safe-area-inset-left),env(safe-area-inset-right)))] flex-col gap-3 overflow-hidden p-4 sm:max-w-[calc(100vw-2*max(2.5vw,env(safe-area-inset-left),env(safe-area-inset-right)))] sm:p-5 phone:h-dvh phone:max-h-dvh phone:w-screen phone:gap-2 phone:p-0"
       >
@@ -100,6 +103,7 @@ export function SketchDialog({ open, onOpenChange, source, model }: SketchDialog
               langCode={locale === 'de' ? 'de-DE' : 'en'}
               onReady={onReady}
               onDirtyChange={setDirty}
+              readOnly={filed}
             />
           ) : null}
         </div>
