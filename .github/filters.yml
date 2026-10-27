@@ -16,7 +16,9 @@
 # which third-party image pins trivy scans: ci/pinned_images.py.
 #
 # Adding a path: put it in the tier it belongs to, and say why if the reason is
-# not obvious from the path.
+# not obvious from the path. tests/test_ci_filter_coverage.py fails on any
+# tracked path that no tier below names and that its UNFILTERED list does not
+# excuse, so a directory move that forgets this file is caught.
 
 # Every filter also watches the tooling its jobs depend on: the tier's own
 # task file (taskfiles/<tier>.yml, which defines the commands the jobs run),
@@ -32,6 +34,15 @@ backend:
   # It used to arrive here via the `retrieval` filter; that filter is gone
   # (see below) and this line is what replaces it.
   - 'frontends/benchmarks/**'
+  # uv workspace members (pyproject.toml), installed into the backend env;
+  # tests/test_answer_suite.py imports aiq_debug.
+  - 'frontends/cli/**'
+  - 'frontends/debug/**'
+  # The recorded wire v2 turns and their schema: the contract fixtures
+  # tests/aiq_agent/common/test_wire_v2.py holds the producer to.
+  - 'shared/wire/**'
+  # Read by tests/aiq_agent/tools/workspace/test_english_only.py.
+  - 'ci/german_stems.json'
   - 'sources/**'
   # The one-time Chroma exporter's own tests (`be:test:migration`).
   - 'deploy/migration/**'
@@ -89,6 +100,16 @@ frontend:
   # `generated.ts`, which type-checks.
   - 'src/aiq_agent/cards/models.py'
   - 'shared/cards/schemas.json'
+  # The same wire v2 recordings, read by the UI's store and socket specs
+  # (frontends/ui/src/test-utils/wire-v2-fixtures.ts).
+  - 'shared/wire/**'
+  # Data the UI specs read from ci/ and .github/: the German stems
+  # (english-names.spec.ts, english-only.spec.ts), the browser work loops
+  # (browser-work-loops.spec.ts) and the image build action
+  # (scripts/sourcemaps-wiring.spec.mjs).
+  - 'ci/german_stems.json'
+  - 'ci/browser_work_loops.json'
+  - '.github/actions/build-image/**'
 web:
   - 'frontends/web/**'
   # The brand master and the app's copy: web's `npm run check` holds both
@@ -107,6 +128,8 @@ web:
   - '.github/actions/setup-task/**'
 infra:
   - 'deploy/**'
+  # deploy/pulumi/src/data/qdrant-alerts.spec.ts reads the runbook it links.
+  - 'docs/deployment/qdrant-runbook.md'
   - 'Taskfile.yml'
   - 'taskfiles/infra.yml'
   - '.github/workflows/ci.yml'
