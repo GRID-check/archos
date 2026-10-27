@@ -20,6 +20,8 @@ export interface SearchLabels {
   facetValue: (dimension: SearchFacetDimension, facet: Pick<FacetCount, 'value' | 'label'>) => string
   day: (iso: string | null | undefined) => string | null
   activeFilter: (filter: ActiveFilter, projectName: (id: string) => string | null) => string
+  /** The filter's value alone („Einreichplan“, „Nur aktuelle Fassung“); null for a project the page cannot name. */
+  filterValue: (filter: ActiveFilter, projectName: (id: string) => string | null) => string | null
 }
 
 /**
@@ -66,41 +68,36 @@ export function useSearchLabels(): SearchLabels {
       return a !== null ? t('filters.rangeFrom', { from: a }) : t('filters.rangeTo', { to: b ?? '' })
     }
 
-    const activeFilter = (filter: ActiveFilter, projectName: (id: string) => string | null): string => {
-      const label = t(filter.labelKey)
+    const filterValue = (filter: ActiveFilter, projectName: (id: string) => string | null): string | null => {
       const v = filter.value
-      let value: string
       switch (v.kind) {
         case 'text':
-          value = v.text
-          break
+          return v.text
         case 'documentType':
-          value = documentType(v.value) ?? v.value
-          break
+          return documentType(v.value) ?? v.value
         case 'readState':
-          value = readState(v.value)
-          break
+          return readState(v.value)
         case 'partyRole':
-          value = [partyRole(v.role), v.name].filter(Boolean).join(' · ')
-          break
+          return [partyRole(v.role), v.name].filter(Boolean).join(' · ')
         case 'fact': {
-          const key = factKey(v.fact.key)
           const amount = v.fact.equals ?? range(v.fact.min ?? null, v.fact.max ?? null, false)
-          value = `${key} ${amount}`
-          break
+          return `${factKey(v.fact.key)} ${amount}`
         }
         case 'range':
-          value = range(v.from, v.to, filter.id !== 'pages')
-          break
+          return range(v.from, v.to, filter.id !== 'pages')
         case 'project':
-          value = projectName(v.projectId) ?? '…'
-          break
+          return projectName(v.projectId)
         case 'flag':
-          return label
+          return t(filter.labelKey)
       }
-      return t('filters.chip', { label, value })
     }
 
-    return { documentType, partyRole, readState, factKey, facetValue, day, activeFilter }
+    const activeFilter = (filter: ActiveFilter, projectName: (id: string) => string | null): string => {
+      const label = t(filter.labelKey)
+      if (filter.value.kind === 'flag') return label
+      return t('filters.chip', { label, value: filterValue(filter, projectName) ?? '…' })
+    }
+
+    return { documentType, partyRole, readState, factKey, facetValue, day, activeFilter, filterValue }
   }, [t, tDossier, locale])
 }

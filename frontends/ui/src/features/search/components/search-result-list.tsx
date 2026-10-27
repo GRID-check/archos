@@ -21,7 +21,18 @@ import {
 import { useSearchLabels } from '../hooks/use-search-labels'
 import { annotationHitHref, conversationHitHref, documentHitHref, folderHitHref, projectHitHref } from '../lib/search-hrefs'
 import type { SectionView } from '../lib/sections'
-import { Excerpt, HitBadge, MetaLine, MetaPart, PassageQuote, ResultRow, ResultSection, ShelfMark } from './search-atoms'
+import {
+  Excerpt,
+  MatchHint,
+  MetaLine,
+  MetaPart,
+  PassageQuote,
+  ResultRow,
+  ResultSection,
+  ShelfMark,
+  SupersededMark,
+  WherePart,
+} from './search-atoms'
 
 export interface SearchResultListProps {
   sections: Partial<Record<SearchKind, SectionView>>
@@ -34,9 +45,10 @@ export interface SearchResultListProps {
 
 /**
  * The result as a list: one section per kind in the contract's order, each
- * hit with its name, one line of what it is and where it sits, the shelf it is
- * kept on as its provenance mark, and, for a document found by what it says,
- * the passage with the words set apart and its page.
+ * hit with its name, where it lives (the shelf as its provenance mark, then
+ * the folder), one line of what it is, and, for a document found by what it
+ * says, the passage with the words set apart and its page. A document found by
+ * words says, quietly, what they were found in.
  */
 export function SearchResultList({ sections, onLoadMore, text, activeKey }: SearchResultListProps): JSX.Element {
   return (
@@ -103,21 +115,43 @@ function KindSection({
   )
 }
 
-/** Where a hit is kept, as the provenance mark: the project, or the Büroablage. */
-function useShelfMark(): (shelf: 'project' | 'office_shelf', projectName: string | null) => JSX.Element | null {
+/**
+ * Where a hit lives: the shelf as the provenance mark (the project, or the
+ * Büroablage), then its folder. The names wrap rather than cut, so the whole
+ * of a long project name is read without a pointer.
+ */
+function useWhere(): (shelf: 'project' | 'office_shelf', projectName: string | null, folderName?: string | null) => JSX.Element | null {
   const tWhere = useTranslations('search.where')
-  return (shelf, projectName) => {
-    if (shelf === 'office_shelf') return <ShelfMark shelf="office_shelf" label={tWhere('officeShelf')} />
-    return projectName ? <ShelfMark shelf="project" label={projectName} /> : null
+  return (shelf, projectName, folderName = null) => {
+    const mark =
+      shelf === 'office_shelf' ? (
+        <ShelfMark shelf="office_shelf" label={tWhere('officeShelf')} wrap />
+      ) : projectName ? (
+        <ShelfMark shelf="project" label={projectName} wrap />
+      ) : null
+    if (!mark && !folderName) return null
+    return (
+      <>
+        {mark}
+        {folderName ? (
+          <WherePart label={tWhere('folder')} after={mark !== null}>
+            {folderName}
+          </WherePart>
+        ) : null}
+      </>
+    )
   }
 }
+
+const MATCHED_ON_ORDER = ['name', 'reading', 'content'] as const
 
 function DocumentRow({ hit, text, active }: { hit: DocumentHit; text: string; active: boolean }): JSX.Element {
   const t = useTranslations('search')
   const labels = useSearchLabels()
-  const mark = useShelfMark()
+  const where = useWhere()
   const type = labels.documentType(hit.documentType)
   const day = labels.day(hit.planDate ?? hit.documentDate)
+  const matchedOn = text.trim() ? MATCHED_ON_ORDER.filter((reason) => hit.matchedOn.includes(reason)) : []
   return (
     <ResultRow
       href={documentHitHref(hit)}
@@ -125,11 +159,11 @@ function DocumentRow({ hit, text, active }: { hit: DocumentHit; text: string; ac
       title={hit.title ?? hit.name}
       active={active}
       testId={`search-hit-document-${hit.id}`}
+      where={where(hit.shelf, hit.projectName, hit.folderName)}
       meta={
         <MetaLine
           parts={[
             type ? <MetaPart key="type">{type}</MetaPart> : null,
-            hit.folderName ? <MetaPart key="folder">{hit.folderName}</MetaPart> : null,
             hit.planNumber ? <MetaPart key="number" code>{hit.planNumber}</MetaPart> : null,
             hit.planIndex ? <MetaPart key="index">{t('document.index', { index: hit.planIndex })}</MetaPart> : null,
             hit.scale ? <MetaPart key="scale" code>{hit.scale}</MetaPart> : null,
@@ -137,12 +171,7 @@ function DocumentRow({ hit, text, active }: { hit: DocumentHit; text: string; ac
           ]}
         />
       }
-      aside={
-        <>
-          {hit.superseded ? <HitBadge tone="warning">{t('document.superseded')}</HitBadge> : null}
-          {mark(hit.shelf, hit.projectName)}
-        </>
-      }
+      aside={hit.superseded ? <SupersededMark /> : null}
     >
       {hit.passage ? (
         <PassageQuote
@@ -150,13 +179,14 @@ function DocumentRow({ hit, text, active }: { hit: DocumentHit; text: string; ac
           page={hit.passage.page !== null ? t('passage.page', { page: hit.passage.page }) : undefined}
         />
       ) : null}
+      {matchedOn.length > 0 ? <MatchHint label={t('matchedOn.label')} parts={matchedOn.map((reason) => t(`matchedOn.${reason}`))} /> : null}
     </ResultRow>
   )
 }
 
 function AnnotationRow({ hit, active }: { hit: AnnotationHit; active: boolean }): JSX.Element {
   const t = useTranslations('search')
-  const mark = useShelfMark()
+  const where = useWhere()
   const kind = (ANNOTATION_KINDS as readonly string[]).includes(hit.annotationKind) ? t(`annotation.kinds.${hit.annotationKind}`) : hit.annotationKind
   const status = (ANNOTATION_STATUSES as readonly string[]).includes(hit.status) ? t(`annotation.statuses.${hit.status}`) : hit.status
   return (
@@ -166,8 +196,8 @@ function AnnotationRow({ hit, active }: { hit: AnnotationHit; active: boolean })
       title={t('annotation.on', { document: hit.documentName })}
       active={active}
       testId={`search-hit-annotation-${hit.id}`}
+      where={where(hit.shelf, hit.projectName)}
       meta={<MetaLine parts={[<MetaPart key="kind">{kind}</MetaPart>, <MetaPart key="status">{status}</MetaPart>]} />}
-      aside={mark(hit.projectId ? 'project' : 'office_shelf', hit.projectName)}
     >
       <Excerpt>{hit.excerpt}</Excerpt>
     </ResultRow>
@@ -175,14 +205,14 @@ function AnnotationRow({ hit, active }: { hit: AnnotationHit; active: boolean })
 }
 
 function FolderRow({ hit, active }: { hit: FolderHit; active: boolean }): JSX.Element {
-  const mark = useShelfMark()
+  const where = useWhere()
   return (
     <ResultRow
       href={folderHitHref(hit)}
       icon={Folder}
       title={hit.name}
       active={active}
-      aside={mark(hit.shelf, hit.projectName)}
+      where={where(hit.shelf, hit.projectName)}
       testId={`search-hit-folder-${hit.id}`}
     >
       {hit.excerpt ? <Excerpt>{hit.excerpt}</Excerpt> : null}
@@ -200,7 +230,7 @@ function ProjectRow({ hit, active }: { hit: ProjectHit; active: boolean }): JSX.
 
 function ConversationRow({ hit, active }: { hit: ConversationHit; active: boolean }): JSX.Element {
   const { locale } = useLocale()
-  const mark = useShelfMark()
+  const where = useWhere()
   return (
     <ResultRow
       href={conversationHitHref(hit)}
@@ -208,7 +238,7 @@ function ConversationRow({ hit, active }: { hit: ConversationHit; active: boolea
       title={hit.title}
       active={active}
       meta={<MetaPart>{formatRelativeTime(hit.updatedAt, locale)}</MetaPart>}
-      aside={hit.projectName ? mark('project', hit.projectName) : null}
+      where={hit.projectName ? where('project', hit.projectName) : null}
       testId={`search-hit-conversation-${hit.id}`}
     />
   )

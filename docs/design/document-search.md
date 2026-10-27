@@ -212,7 +212,11 @@ yet for the same reason.
    the body without its cursor, never a result. Running a shared one is an
    ordinary search by the reader, with the reader's reach, so sharing a
    question shares nothing the reader could not already find. Only the owner
-   renames, shares or deletes one; anyone else's answers 404.
+   renames, shares or deletes one; anyone else's answers 404. A colleague's
+   shared one carries `ownerName`, from the office's people directory
+   (`lib/sharing/directory.ts`), so the list says whose question it is. A
+   delete in the page is held for the undo toast's window and sent when it
+   closes (`useUndoableArchive`), so „Rückgängig“ never has to re-create one.
    `GET/POST /api/search/saved`, `PATCH/DELETE /api/search/saved/[id]`,
    operations `saved-search-list`, `-create`, `-update`, `-delete`
    (`lib/search/saved-search-*.ts`).

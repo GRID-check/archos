@@ -1,7 +1,7 @@
 'use client'
 
 import type { JSX, ReactNode } from 'react'
-import { useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { toast } from 'sonner'
 
 import { useTranslations } from '@/i18n'
@@ -9,6 +9,7 @@ import { SEARCH_LIMIT_DEFAULT } from '@/lib/search/search-wire'
 import { useSavedSearches } from '../hooks/use-saved-searches'
 import { useSearchResults } from '../hooks/use-search-results'
 import { useSearchUrlState } from '../hooks/use-search-url-state'
+import { useSuggestedSearchName } from '../hooks/use-suggested-search-name'
 import { exportSearch, type SearchExportFormat } from '../lib/search-client'
 import { fromSearchBody, toSearchBody } from '../lib/search-url'
 import { projectFromSavedScope, surfaceScope, type SearchSurface } from '../lib/search-surface'
@@ -44,7 +45,11 @@ export function SearchWorkspace({ surface, leading, currentUserId, autoFocus = f
     [state]
   )
   const results = useSearchResults(scope, body)
-  const saved = useSavedSearches()
+  const onRemoveFailed = useCallback(() => toast.error(t('saved.deleteFailed')), [t])
+  const saved = useSavedSearches({ onRemoveFailed })
+  const facets = results.response?.facets
+  const projectName = useCallback((id: string) => facets?.project?.find((facet) => facet.value === id)?.label ?? null, [facets])
+  const suggestedName = useSuggestedSearchName(state, projectName)
   const [exporting, setExporting] = useState(false)
 
   const onExport = async (format: SearchExportFormat): Promise<void> => {
@@ -82,11 +87,9 @@ export function SearchWorkspace({ surface, leading, currentUserId, autoFocus = f
               if (!ok) toast.error(t('saved.changeFailed'))
             })
           }}
-          onDelete={(item) => {
-            void saved.remove(item).then((ok) => {
-              if (!ok) toast.error(t('saved.deleteFailed'))
-            })
-          }}
+          onDelete={saved.remove}
+          onUndoDelete={saved.undoRemove}
+          suggestedName={suggestedName}
           onSave={async ({ name, shared }) => {
             const created = await saved.save({ name, shared, scope, query: toSearchBody(state) })
             if (created) toast.success(t('saved.savedToast'))

@@ -28,7 +28,7 @@ vi.mock('next/navigation', () => ({
   useSearchParams: () => new URLSearchParams(currentSearch),
 }))
 
-vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
+vi.mock('sonner', () => ({ toast: Object.assign(vi.fn(), { success: vi.fn(), error: vi.fn() }) }))
 
 const PROJECT = '0b6f0c1e-3a55-4c0e-9a1d-7f2b5d0e1a01'
 
@@ -83,10 +83,11 @@ describe('SearchWorkspaceView', () => {
     german(<Harness initial={{ ...EMPTY_SEARCH_STATE, text: 'Fluchtweg GK 4' }} onChange={() => {}} />)
     const concept = screen.getByTestId('search-hit-document-d0000000-0000-4000-8000-000000000001')
     expect(concept).toHaveTextContent('Brandschutzkonzept Wohnhaus Seestadt J7')
-    // What it is and where it sits on one line; the project as its provenance mark.
-    expect(concept).toHaveTextContent('Brandschutzkonzept·Brandschutz')
-    expect(concept).toHaveTextContent('Wohnhaus Seestadt Baufeld J7')
+    // Where it lives on its own line: the project as its provenance mark, whole, then the folder.
+    expect(concept).toHaveTextContent('Wohnhaus Seestadt Baufeld J7Ordner Brandschutz')
     expect(concept).toHaveTextContent('S. 7')
+    // What the words were found in, quietly.
+    expect(within(concept).getByTestId('search-matched-on')).toHaveTextContent('Gefunden in was Piloti las · Inhalt')
     // The words searched for are set apart in the passage.
     expect(within(concept).getAllByText('Fluchtweg', { selector: 'mark' }).length).toBeGreaterThan(0)
     // It opens at the passage's page, the passage to light up there.
@@ -101,6 +102,16 @@ describe('SearchWorkspaceView', () => {
     )
     expect(screen.getByTestId('search-section-conversation')).toHaveTextContent('Fluchtweglängen nach OIB-RL 2 für GK 4')
     expect(screen.getByTestId('search-note-building')).toBeInTheDocument()
+  })
+
+  it('marks a replaced Fassung in ink with its icon and word, never in the Büroablage’s amber', () => {
+    german(<Harness initial={{ ...EMPTY_SEARCH_STATE, text: 'Fluchtweg GK 4' }} onChange={() => {}} />)
+    const replaced = screen.getByTestId('search-hit-document-d0000000-0000-4000-8000-000000000003')
+    const mark = within(replaced).getByTestId('superseded-mark')
+    expect(mark).toHaveTextContent('Ersetzt')
+    expect(mark).toHaveAttribute('title', 'Eine neuere Fassung ersetzt dieses Dokument')
+    expect(mark.className).not.toMatch(/warning/)
+    expect(mark.querySelector('svg')).not.toBeNull()
   })
 
   it('walks the results with the arrow keys, opens one with Enter and clears the words with Escape', async () => {

@@ -273,7 +273,7 @@ export function SearchRegister({ state, section, onStateChange, onLoadMore, hide
 function useStatus(hit: DocumentHit): { node: ReactNode; quiet: boolean } {
   const t = useTranslations('search')
   const labels = useSearchLabels()
-  if (hit.superseded) return { node: <SupersededMark label={t('document.superseded')} title={t('document.supersededHint')} />, quiet: false }
+  if (hit.superseded) return { node: <SupersededMark />, quiet: false }
   const family = documentReadFamily(hit.status)
   return { node: labels.readState(family), quiet: family === 'readable' }
 }
