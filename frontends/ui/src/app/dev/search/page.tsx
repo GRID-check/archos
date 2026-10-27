@@ -7,18 +7,20 @@
  * projects and the Büroablage, and 09:10, the register sorted by Plannummer.
  *
  * The question lives in memory here instead of the URL, so every control
- * works (facets toggle, filters set chips, headers sort) while the answer
- * stays the fixture's. `?view=register` opens on the register, `?view=list`
+ * works (facets toggle, filters set chips, headers sort), and the answer is
+ * the fixture filtered and sorted to match it (`searchFixtureAnswer`): a
+ * capture never shows a chip its rows contradict. `?view=register` opens on the register, `?view=list`
  * on the list; without it both stand one above the other for a capture.
  * `?filters=open` opens the rail's typed filters. `?state=empty` is an answer
  * with no hits while a shelf's facts are still being read, `?state=loading`
  * the first answer on its way, `?state=error` a search that did not answer.
+ * `?scope=project` is the search inside one project's Dateien.
  *
  * German, pinned: the copy that has to fit is German.
  */
 
 import type { JSX } from 'react'
-import { Suspense, useState } from 'react'
+import { Suspense, useMemo, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 
 import { I18nProvider } from '@/i18n'
@@ -28,11 +30,16 @@ import { SavedSearchesMenu } from '@/features/search/components/saved-searches-m
 import { EMPTY_SEARCH_STATE, type SearchUrlState } from '@/features/search/lib/search-url'
 import { sectionView } from '@/features/search/lib/sections'
 import type { SearchKind, SearchResponse } from '@/lib/search/search-wire'
+import type { SearchSurface } from '@/features/search/lib/search-surface'
 import { SEARCH_FIXTURE_RESPONSE, SEARCH_FIXTURE_SAVED } from '../_fixtures/search'
+import { searchFixtureAnswer } from '../_fixtures/search-answer'
 
-const SECTIONS = Object.fromEntries(
-  Object.entries(SEARCH_FIXTURE_RESPONSE.sections).flatMap(([kind, section]) => (section ? [[kind, sectionView(section)]] : []))
-) as Partial<Record<SearchKind, ReturnType<typeof sectionView>>>
+const sectionsOf = (response: SearchResponse): Partial<Record<SearchKind, ReturnType<typeof sectionView>>> =>
+  Object.fromEntries(
+    Object.entries(response.sections).flatMap(([kind, section]) => (section ? [[kind, sectionView(section)]] : []))
+  ) as Partial<Record<SearchKind, ReturnType<typeof sectionView>>>
+
+const PROJECT_SURFACE: SearchSurface = { kind: 'project', projectId: '0b6f0c1e-3a55-4c0e-9a1d-7f2b5d0e1a01' }
 
 type PreviewState = 'answer' | 'empty' | 'loading' | 'error'
 
@@ -43,13 +50,28 @@ const EMPTY_RESPONSE: SearchResponse = {
   building: ['office_shelf', 'p-hernals'],
 }
 
-function Preview({ initial, filtersOpen, answer }: { initial: SearchUrlState; filtersOpen: boolean; answer: PreviewState }): JSX.Element {
+function Preview({
+  initial,
+  filtersOpen,
+  answer,
+  surface,
+}: {
+  initial: SearchUrlState
+  filtersOpen: boolean
+  answer: PreviewState
+  surface: SearchSurface
+}): JSX.Element {
   const [state, setState] = useState(initial)
+  const response = useMemo(
+    () => (answer === 'answer' ? searchFixtureAnswer(state) : answer === 'empty' ? EMPTY_RESPONSE : null),
+    [answer, state]
+  )
+  const sections = useMemo(() => (response && answer === 'answer' ? sectionsOf(response) : {}), [answer, response])
   const [field, setField] = useState(initial.text)
   const [saved, setSaved] = useState<SavedSearchView[]>(SEARCH_FIXTURE_SAVED)
   return (
     <SearchWorkspaceView
-      surface={{ kind: 'office' }}
+      surface={surface}
       state={state}
       onStateChange={setState}
       fieldValue={field}
@@ -57,8 +79,8 @@ function Preview({ initial, filtersOpen, answer }: { initial: SearchUrlState; fi
         setField(value)
         setState((current) => ({ ...current, text: value }))
       }}
-      response={answer === 'answer' ? SEARCH_FIXTURE_RESPONSE : answer === 'empty' ? EMPTY_RESPONSE : null}
-      sections={answer === 'answer' ? SECTIONS : {}}
+      response={response}
+      sections={sections}
       loading={answer === 'loading'}
       failed={answer === 'error'}
       onRetry={() => {}}
@@ -66,8 +88,9 @@ function Preview({ initial, filtersOpen, answer }: { initial: SearchUrlState; fi
       onExport={() => {}}
       currentUserId="user_lena"
       filtersOpen={filtersOpen}
-      savedSearches={
+      savedSearches={(narrow) => (
         <SavedSearchesMenu
+          narrow={narrow}
           items={saved}
           failed={false}
           onApply={() => {}}
@@ -75,7 +98,7 @@ function Preview({ initial, filtersOpen, answer }: { initial: SearchUrlState; fi
           onDelete={(item) => setSaved((list) => list.filter((entry) => entry.id !== item.id))}
           onSave={async () => true}
         />
-      }
+      )}
     />
   )
 }
@@ -85,6 +108,7 @@ function SearchPreview(): JSX.Element {
   const view = params?.get('view')
   const filtersOpen = params?.get('filters') === 'open'
   const stateParam = params?.get('state')
+  const surface = params?.get('scope') === 'project' ? PROJECT_SURFACE : ({ kind: 'office' } as const)
   const answer: PreviewState = stateParam === 'empty' || stateParam === 'loading' || stateParam === 'error' ? stateParam : 'answer'
   const list: SearchUrlState = { ...EMPTY_SEARCH_STATE, text: 'Fluchtweg GK 4' }
   const register: SearchUrlState = {
@@ -98,8 +122,8 @@ function SearchPreview(): JSX.Element {
     <main className="min-h-dvh bg-background px-4 py-8 md:px-8" data-testid="search-preview">
       <h1 className="mb-6 font-mono text-xs text-muted-foreground">/dev/search — Suche ({view ?? 'list + register'})</h1>
       <div className="flex flex-col gap-16">
-        {view !== 'register' ? <Preview initial={list} filtersOpen={filtersOpen} answer={answer} /> : null}
-        {view !== 'list' ? <Preview initial={register} filtersOpen={filtersOpen} answer={answer} /> : null}
+        {view !== 'register' ? <Preview initial={list} filtersOpen={filtersOpen} answer={answer} surface={surface} /> : null}
+        {view !== 'list' ? <Preview initial={register} filtersOpen={filtersOpen} answer={answer} surface={surface} /> : null}
       </div>
     </main>
   )

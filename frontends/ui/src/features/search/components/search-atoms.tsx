@@ -5,7 +5,7 @@
  * the only file under `features/search` that writes Tailwind.
  *
  * Each owns one decision. The frame decides where the rail sits (beside the
- * results from `md`, folded behind „Filter“ under it) and that a hairline,
+ * results from `md`, in a bottom sheet behind „Filter“ under it) and that a hairline,
  * not a box, separates the two; a facet option is one dense row that toggles
  * and counts in tabular figures; a result row is the product's list row
  * (`Item`) as a link, the name in the strong weight and everything else on one
@@ -19,9 +19,12 @@ import Link from 'next/link'
 import type { LucideIcon } from 'lucide-react'
 import { Archive, ChevronRight, FolderKanban, X } from 'lucide-react'
 
+import { Button } from '@/components/ui/button'
 import { Chip, ChipLabel } from '@/components/ui/chip'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { FOCUS_RING_INSET } from '@/components/ui/focus-ring'
+import { HorizontalScroll } from '@/components/ui/horizontal-scroll'
 import { Item, ItemContent, ItemMedia } from '@/components/ui/item'
 import { Kbd, KbdGroup } from '@/components/ui/kbd'
 import { SectionLabel } from '@/components/ui/section-label'
@@ -35,35 +38,82 @@ import { cn } from '@/lib/utils'
 
 // ─── Frame ──────────────────────────────────────────────────────────────────
 
-/** The page: the toolbar and the chips on top, the rail beside the results with a hairline between. */
-export function SearchFrame({
-  toolbar,
-  rail,
-  railOpen,
-  children,
-}: {
-  toolbar: ReactNode
-  rail: ReactNode
-  /** Under `md` the rail is folded away until the reader opens it. */
-  railOpen: boolean
-  children: ReactNode
-}): JSX.Element {
+/**
+ * The page: the toolbar and the chips on top, the rail beside the results with
+ * a hairline between. Under `md` there is no rail beside anything: it opens
+ * in the filter sheet (`FilterSheet`), so the first result stays under the
+ * field instead of a screen of counts further down. `rail` is null there.
+ */
+export function SearchFrame({ toolbar, rail, children }: { toolbar: ReactNode; rail: ReactNode; children: ReactNode }): JSX.Element {
   return (
     <div className="flex min-w-0 flex-col gap-4" data-testid="search-frame">
       <div className="flex min-w-0 flex-col gap-3">{toolbar}</div>
       <div className="flex min-w-0 flex-col gap-6 md:grid md:grid-cols-[14rem_minmax(0,1fr)] md:items-start md:gap-0">
-        <aside
-          className={cn(
-            'min-w-0 flex-col gap-1 md:sticky md:top-4 md:flex md:max-h-[calc(100dvh-2rem)] md:overflow-y-auto md:border-r md:pr-3',
-            railOpen ? 'flex' : 'hidden'
-          )}
-          data-testid="search-rail"
-        >
-          {rail}
-        </aside>
+        {rail ? (
+          <aside
+            className="hidden min-w-0 flex-col gap-1 md:sticky md:top-4 md:flex md:max-h-[calc(100dvh-2rem)] md:overflow-y-auto md:border-r md:pr-3"
+            data-testid="search-rail"
+          >
+            {rail}
+          </aside>
+        ) : null}
         <div className="flex min-w-0 flex-col gap-3 md:pl-6">{children}</div>
       </div>
     </div>
+  )
+}
+
+/**
+ * The rail on a phone: the kit's bottom sheet (a `Dialog`, which below `sm`
+ * anchors to the bottom edge with a grabber and a pinned footer), the facets
+ * and filters scrolling under a fixed title, and two actions where the thumb
+ * is: take every filter off, and go back to the answer with its size on the
+ * button. Filters apply as they are set, so closing it discards nothing.
+ */
+export function FilterSheet({
+  open,
+  onOpenChange,
+  title,
+  description,
+  closeLabel,
+  clearLabel,
+  onClear,
+  canClear,
+  showLabel,
+  children,
+}: {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  title: string
+  description: string
+  closeLabel: string
+  clearLabel: string
+  onClear: () => void
+  canClear: boolean
+  /** „14 Treffer zeigen“. */
+  showLabel: string
+  children: ReactNode
+}): JSX.Element {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent closeLabel={closeLabel} data-testid="search-filter-sheet">
+        <DialogHeader>
+          <DialogTitle>{title}</DialogTitle>
+          <DialogDescription className="sr-only">{description}</DialogDescription>
+        </DialogHeader>
+        <div className="-mx-1 flex min-w-0 flex-col gap-1" data-testid="search-rail">
+          {children}
+        </div>
+        <DialogFooter>
+          <Button type="button" variant="outline" onClick={onClear} disabled={!canClear} data-testid="search-sheet-clear">
+            {clearLabel}
+          </Button>
+          <Button type="button" onClick={() => onOpenChange(false)} data-testid="search-sheet-show">
+            {showLabel}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   )
 }
 
@@ -82,7 +132,7 @@ export function ToolbarLabel({ children }: { children: ReactNode }): JSX.Element
   return <span className="max-sm:sr-only">{children}</span>
 }
 
-/** The shortcut that focuses the field, inside it: ⌘ K or Strg K. */
+/** The shortcut that focuses the field, inside it: ⌘ K or Strg K. (`SearchField` hides it on a phone and under a finger.) */
 export function FieldShortcut({ modifier }: { modifier: string }): JSX.Element {
   return (
     <KbdGroup>
@@ -92,9 +142,22 @@ export function FieldShortcut({ modifier }: { modifier: string }): JSX.Element {
   )
 }
 
-/** Shown only under `md`, where the rail is folded. */
-export function RailToggleSlot({ children }: { children: ReactNode }): JSX.Element {
-  return <div className="md:hidden">{children}</div>
+/** A hint about keys, in a status line: gone under a finger. */
+export function KeysHint({ children }: { children: ReactNode }): JSX.Element {
+  return <span className="pointer-coarse:hidden">{children}</span>
+}
+
+/**
+ * A row of choices that may be wider than the column (the kinds with their
+ * counts, on a phone): it scrolls sideways, and the edge that hides one says
+ * so with a fade.
+ */
+export function ChoiceStrip({ label, children }: { label: string; children: ReactNode }): JSX.Element {
+  return (
+    <HorizontalScroll aria-label={label} className="-mx-1 px-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      {children}
+    </HorizontalScroll>
+  )
 }
 
 // ─── Rail ───────────────────────────────────────────────────────────────────
@@ -105,13 +168,26 @@ export function RailSection({
   children,
   testId,
   defaultOpen = true,
+  fixed = false,
 }: {
   title: string
   children: ReactNode
   testId?: string
   defaultOpen?: boolean
+  /** Always open, its name a plain heading: the group the rail starts with. */
+  fixed?: boolean
 }): JSX.Element {
   const [open, setOpen] = useState(defaultOpen)
+  if (fixed) {
+    return (
+      <section className="flex min-w-0 flex-col border-b border-border/60 py-2 last:border-b-0" data-testid={testId}>
+        <div className="flex h-7 items-center px-1">
+          <SectionLabel as="h3">{title}</SectionLabel>
+        </div>
+        <div className="flex min-w-0 flex-col pt-0.5">{children}</div>
+      </section>
+    )
+  }
   return (
     <Collapsible open={open} onOpenChange={setOpen} asChild>
       <section className="flex min-w-0 flex-col border-b border-border/60 py-2 last:border-b-0" data-testid={testId}>
@@ -154,14 +230,16 @@ export function FacetOption({
       onClick={onToggle}
       data-testid={testId}
       className={cn(
-        'flex h-7 w-full min-w-0 items-center gap-2 rounded-sm px-1 text-left text-[13px] transition-colors duration-snap ease-out motion-reduce:transition-none pointer-coarse:h-11 pointer-coarse:text-sm',
+        // A long name (a project's address) wraps to a second line rather than
+        // ending in an ellipsis whose rest only a tooltip knew.
+        'flex min-h-7 w-full min-w-0 items-start gap-2 rounded-sm px-1 py-1 text-left text-sm leading-5 transition-colors duration-snap ease-out motion-reduce:transition-none pointer-coarse:min-h-11 pointer-coarse:items-center',
         FOCUS_RING_INSET,
         active ? 'bg-secondary font-medium text-foreground' : 'text-foreground/80 hover:bg-secondary/60 hover:text-foreground'
       )}
     >
       <span
         className={cn(
-          'flex size-3.5 shrink-0 items-center justify-center rounded-[3px] border transition-colors duration-snap',
+          'mt-[3px] flex size-3.5 shrink-0 items-center justify-center rounded-[3px] border transition-colors duration-snap pointer-coarse:mt-0',
           active ? 'border-foreground bg-foreground text-background' : 'border-strong bg-background'
         )}
         aria-hidden
@@ -172,10 +250,10 @@ export function FacetOption({
           </svg>
         ) : null}
       </span>
-      <span className="min-w-0 flex-1 truncate" title={label}>
+      <span className="line-clamp-2 min-w-0 flex-1 break-words" title={label.length > 48 ? label : undefined}>
         {label}
       </span>
-      <span className="shrink-0 text-xs tabular-nums text-muted-foreground">{count}</span>
+      <span className="shrink-0 text-xs leading-5 tabular-nums text-muted-foreground">{count}</span>
     </button>
   )
 }
@@ -190,7 +268,12 @@ export function RailBody({ children }: { children: ReactNode }): JSX.Element {
   return <div className="flex min-w-0 flex-col gap-3 px-1 pb-2 pt-1">{children}</div>
 }
 
-/** Two short fields side by side: from and to, min and max, role and name. */
+/** Two fields one above the other: a date's from and to, which do not fit side by side in the rail. */
+export function FieldStack({ children }: { children: ReactNode }): JSX.Element {
+  return <div className="flex min-w-0 flex-col gap-2">{children}</div>
+}
+
+/** Two short fields side by side: min and max, role and name. */
 export function FieldPair({ children }: { children: ReactNode }): JSX.Element {
   return <div className="grid min-w-0 grid-cols-2 gap-2">{children}</div>
 }
@@ -227,14 +310,19 @@ export function ResultsStatus({ children, busy }: { children: ReactNode; busy: b
   )
 }
 
-/** A note about the answer, not an error: facts still being read, content searched in part. */
+/** A note about the answer, not an error: facts still being read, content searched in part. A quiet line, not a box. */
 export function SearchNote({ children, icon: Icon, testId }: { children: ReactNode; icon: LucideIcon; testId?: string }): JSX.Element {
   return (
-    <p className="flex items-start gap-2 text-pretty rounded-md bg-secondary/70 px-3 py-2 text-xs text-muted-foreground" data-testid={testId}>
+    <p className="flex items-start gap-1.5 text-pretty text-xs text-muted-foreground" data-testid={testId}>
       <Icon className="mt-px size-3.5 shrink-0" aria-hidden />
       <span>{children}</span>
     </p>
   )
+}
+
+/** The actions under an empty answer, side by side, wrapping on a phone. */
+export function EmptyActions({ children }: { children: ReactNode }): JSX.Element {
+  return <div className="flex flex-wrap items-center justify-center gap-2">{children}</div>
 }
 
 /** The kinds as a row of choices with their counts. */
@@ -319,7 +407,7 @@ export function ResultRow({
 
 /** A part of the meta line; identifiers (Plannummer, Index, Maßstab) in the mono face, as the design language sets them. */
 export function MetaPart({ children, code = false }: { children: ReactNode; code?: boolean }): JSX.Element {
-  return <span className={cn('whitespace-nowrap', code && 'font-mono text-[11px] text-foreground/80')}>{children}</span>
+  return <span className={cn('whitespace-nowrap', code && 'font-mono text-xs text-foreground/80')}>{children}</span>
 }
 
 /** The meta line's parts that are there, a dot between each. */
@@ -346,7 +434,7 @@ export function ShelfMark({ shelf, label }: { shelf: 'project' | 'office_shelf';
   const Icon = shelf === 'office_shelf' ? Archive : FolderKanban
   return (
     <span
-      className="inline-flex h-5 max-w-40 items-center gap-1 rounded-md px-1.5 text-[11px] font-medium"
+      className="inline-flex h-5 max-w-40 items-center gap-1 rounded-md px-1.5 text-xs font-medium"
       style={sourceTint(shelf === 'office_shelf' ? 'office' : 'project')}
       title={label}
     >
@@ -368,7 +456,7 @@ export function HitBadge({ children, tone = 'muted' }: { children: ReactNode; to
 /** The words that matched, set apart by weight on a faint ink wash, with the page they are on. */
 export function PassageQuote({ segments, page }: { segments: readonly TextSegment[]; page?: string }): JSX.Element {
   return (
-    <p className="mt-1 flex min-w-0 items-baseline gap-2 text-[13px] leading-relaxed text-foreground/80" data-testid="search-passage">
+    <p className="mt-1 flex min-w-0 items-baseline gap-2 text-sm leading-relaxed text-foreground/80" data-testid="search-passage">
       <span className="line-clamp-2 min-w-0 text-pretty">
         „
         {segments.map((segment, index) =>
@@ -393,7 +481,7 @@ export function PassageQuote({ segments, page }: { segments: readonly TextSegmen
 
 /** A plain excerpt (an annotation's body, a folder's description). */
 export function Excerpt({ children }: { children: ReactNode }): JSX.Element {
-  return <p className="mt-0.5 line-clamp-2 text-pretty text-[13px] text-foreground/75">{children}</p>
+  return <p className="mt-0.5 line-clamp-2 text-pretty text-sm text-foreground/75">{children}</p>
 }
 
 /** The shape of the first answer while it is on its way. */
@@ -432,7 +520,7 @@ export function ResultsBody({ stale, children }: { stale: boolean; children: Rea
 export function RegisterTable({ children, caption, testId }: { children: ReactNode; caption: string; testId?: string }): JSX.Element {
   return (
     <div className="max-h-[calc(100dvh-12rem)] min-w-0 overflow-auto border-y border-border/70" data-testid={testId}>
-      <table className="w-full caption-bottom border-separate border-spacing-0 text-[13px]">
+      <table className="w-full caption-bottom border-separate border-spacing-0 text-sm">
         <caption className="py-2 text-left text-xs text-muted-foreground">{caption}</caption>
         {children}
       </table>

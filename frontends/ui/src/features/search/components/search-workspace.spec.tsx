@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ReactElement } from 'react'
 import { useState } from 'react'
 import userEvent from '@testing-library/user-event'
@@ -90,7 +90,54 @@ describe('SearchWorkspaceView', () => {
       `/app/projects/${PROJECT}/files?doc=d0000000-0000-4000-8000-000000000002&review=1&mark=a0000000-0000-4000-8000-000000000001`
     )
     expect(screen.getByTestId('search-section-conversation')).toHaveTextContent('Fluchtweglängen nach OIB-RL 2 für GK 4')
-    expect(screen.getByTestId('search-note-building')).toBeInTheDocument()
+    // The shelf still being read is said once, in the status line; the long
+    // note waits for a filter that depends on it.
+    expect(screen.getByTestId('search-status')).toHaveTextContent('eine Ablage wird noch gelesen')
+    expect(screen.queryByTestId('search-note-building')).toBeNull()
+  })
+
+  it('explains the shelf still being read where a filter set depends on what it holds', () => {
+    german(<Harness initial={{ ...EMPTY_SEARCH_STATE, text: 'Fluchtweg', filters: { documentTypes: ['submission_drawing'] } }} onChange={() => {}} />)
+    expect(screen.getByTestId('search-note-building')).toHaveTextContent('Piloti liest noch')
+  })
+
+  it('leads the rail with Plannummer, Index and the current Fassung, always open', async () => {
+    const onChange = vi.fn()
+    german(<Harness initial={EMPTY_SEARCH_STATE} onChange={onChange} />)
+    const rail = screen.getByTestId('search-rail')
+    const groups = within(rail).getAllByRole('heading', { level: 3 })
+    expect(groups[0]).toHaveTextContent('Plannummer und Fassung')
+    const key = screen.getByTestId('search-key-filters')
+    expect(within(key).queryByRole('button', { name: /Plannummer und Fassung/ })).toBeNull()
+    await userEvent.type(within(key).getByTestId('filter-plan-number'), 'EP-0{Enter}')
+    expect(onChange).toHaveBeenLastCalledWith(expect.objectContaining({ filters: { planNumber: 'EP-0' } }))
+    await userEvent.click(within(key).getByTestId('filter-current'))
+    expect(onChange).toHaveBeenLastCalledWith(expect.objectContaining({ filters: { planNumber: 'EP-0', currentOnly: true } }))
+  })
+
+  it('offers the ways out of an empty answer while shelves are read: archived, and the whole office from a project', () => {
+    const empty = { ...SEARCH_FIXTURE_RESPONSE, sections: { document: { hits: [], total: 0, totalIsLowerBound: false, nextCursor: null } }, building: ['p1', 'p2'] }
+    german(
+      <SearchWorkspaceView
+        surface={{ kind: 'project', projectId: PROJECT }}
+        state={{ ...EMPTY_SEARCH_STATE, text: 'Stiege', kinds: ['document'] }}
+        onStateChange={() => {}}
+        fieldValue="Stiege"
+        onFieldChange={() => {}}
+        response={empty}
+        sections={{ document: sectionView(empty.sections.document) }}
+        loading={false}
+        failed={false}
+        onRetry={() => {}}
+        onLoadMore={() => {}}
+      />
+    )
+    expect(screen.getByTestId('search-empty')).toHaveTextContent('Noch nichts gefunden')
+    expect(screen.getByTestId('search-empty')).toHaveTextContent('Piloti liest noch 2 Ablagen, dort können noch Treffer dazukommen.')
+    expect(screen.getByTestId('search-empty-archived')).toHaveTextContent('Archivierte einschließen')
+    expect(screen.getByTestId('search-empty-all-kinds')).toHaveTextContent('Alles zeigen')
+    expect(screen.getByTestId('search-empty-office')).toHaveAttribute('href', '/app/search?q=Stiege&kind=document')
+    expect(screen.queryByTestId('search-note-building')).toBeNull()
   })
 
   it('walks the results with the arrow keys, opens one with Enter and clears the words with Escape', async () => {
@@ -139,7 +186,7 @@ describe('SearchWorkspaceView', () => {
         onLoadMore={() => {}}
       />
     )
-    expect(screen.getByTestId('search-note-building')).toBeInTheDocument()
+    expect(screen.getByTestId('search-empty')).toHaveTextContent('Piloti liest noch eine Ablage')
     await userEvent.click(screen.getByTestId('search-empty-clear'))
     expect(onChange).toHaveBeenLastCalledWith(expect.objectContaining({ text: 'x', filters: {} }))
     const onRetry = vi.fn()
@@ -245,5 +292,59 @@ describe('SearchWorkspace', () => {
       `/app/search?view=register&sort=plan_number&dir=asc&project=${PROJECT}&type=submission_drawing&current=1`,
       { scroll: false }
     )
+  })
+})
+
+describe('SearchWorkspaceView on a phone', () => {
+  beforeEach(() => {
+    // Every layout query matches: below `md`, phone-sized.
+    vi.spyOn(window, 'matchMedia').mockImplementation(
+      (query: string) =>
+        ({
+          matches: query !== '(pointer: coarse)',
+          media: query,
+          onchange: null,
+          addEventListener: () => {},
+          removeEventListener: () => {},
+          addListener: () => {},
+          removeListener: () => {},
+          dispatchEvent: () => false,
+        }) as MediaQueryList
+    )
+  })
+  afterEach(() => vi.restoreAllMocks())
+
+  it('keeps the rail out of the page and opens it as a sheet, with the answer’s size and „Alle entfernen“ at the thumb', async () => {
+    const onChange = vi.fn()
+    german(<Harness initial={{ ...EMPTY_SEARCH_STATE, filters: { currentOnly: true } }} onChange={onChange} />)
+    expect(screen.getByRole('searchbox', { name: 'Suchen' })).toHaveAttribute('placeholder', 'Suchen…')
+    expect(screen.queryByTestId('search-rail')).toBeNull()
+
+    await userEvent.click(screen.getByTestId('search-rail-toggle'))
+    const sheet = await screen.findByRole('dialog', { name: 'Filter' })
+    expect(within(sheet).getByTestId('search-key-filters')).toBeInTheDocument()
+    expect(within(sheet).getByTestId('search-sheet-show')).toHaveTextContent('16 Treffer zeigen')
+    await userEvent.click(within(sheet).getByTestId('search-sheet-clear'))
+    expect(onChange).toHaveBeenLastCalledWith(expect.objectContaining({ filters: {} }))
+    expect(within(sheet).getByTestId('search-sheet-clear')).toBeDisabled()
+    await userEvent.click(within(sheet).getByTestId('search-sheet-show'))
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Filter' })).toBeNull())
+  })
+
+  it('folds the saved searches and the export into one „Mehr“', async () => {
+    server.use(
+      http.post('*/api/search', () => HttpResponse.json(SEARCH_FIXTURE_RESPONSE)),
+      http.get('*/api/search/saved', () => HttpResponse.json({ savedSearches: SEARCH_FIXTURE_SAVED }))
+    )
+    currentSearch = ''
+    german(<SearchWorkspace surface={{ kind: 'office' }} />)
+    expect(screen.queryByTestId('saved-searches')).toBeNull()
+    expect(screen.queryByTestId('search-export')).toBeNull()
+    await userEvent.click(screen.getByTestId('search-more'))
+    expect(await screen.findByTestId('search-export-csv')).toHaveTextContent('Planliste als CSV')
+    expect(screen.getByTestId('search-more-save')).toHaveTextContent('Diese Suche speichern')
+    await userEvent.click(screen.getByTestId('search-more-saved'))
+    const list = await screen.findByRole('dialog', { name: 'Gespeicherte Suchen' })
+    expect(await within(list).findAllByTestId('saved-search-apply')).toHaveLength(SEARCH_FIXTURE_SAVED.length)
   })
 })
