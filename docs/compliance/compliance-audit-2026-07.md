@@ -148,7 +148,7 @@ audit retention must be contractually confirmed; the audit emitter is non-throwi
    deep-research reports (incl. machine-readable marking + model id per Art. 50(2));
    AI-literacy guide linked from chat first-run and model-config page.
 4. **Prompt hygiene:** remove prompt fulltext from INFO logs; define log retention;
-   forbid `AIQ_TRACE_USER_IDENTITY_MODE=full` and LangSmith/W&B tracing in prod
+   forbid `GRID_TRACE_USER_IDENTITY_MODE=full` and LangSmith/W&B tracing in prod
    without a DPA.
 5. **Contracts & records:** DPA/AVV template with sub-processor list, records of
    processing (Art. 30), TOMs, DPIA, breach process; confirm WorkOS DPA + residency;

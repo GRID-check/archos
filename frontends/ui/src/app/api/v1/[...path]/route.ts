@@ -31,7 +31,7 @@
 
 import { NextResponse } from 'next/server'
 import { tenantSlotRoute } from '@/lib/db/tenant-context'
-import { buildCollectionScopeFromRequest } from '@/lib/collection-scope-request'
+import { buildCollectionScopeFromRequest } from '@/lib/retrieval-scope/collection-scope-request'
 import { isAuthzRefusal } from '@/lib/api/errors'
 import {
   resolveOptionalSession,

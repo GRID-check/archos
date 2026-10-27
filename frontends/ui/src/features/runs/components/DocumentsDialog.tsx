@@ -27,7 +27,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
-import { asShelf, type Shelf } from '@/features/chat/lib/source-kinds'
+import { asShelf, type Shelf } from '@/lib/source-kinds'
 import { useTranslations } from '@/i18n'
 import { planDocumentLabel, type PlanDocument } from '@/lib/runs/plan-documents'
 import { cn } from '@/lib/utils'

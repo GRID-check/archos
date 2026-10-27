@@ -960,7 +960,7 @@ worker, and the worker writes the turn at completion.
 
 The conversation id is minted exactly as the interactive path mints one —
 `s_` + a uuid with hyphens as underscores — because that id doubles as the
-session's Qdrant collection name (`lib/collection-scope.ts`,
+session's Qdrant collection name (`lib/retrieval-scope/collection-scope.ts`,
 `lib/proxy/collection-authz.ts` both key off the `s_` prefix).
 
 Three properties, each forced rather than chosen:

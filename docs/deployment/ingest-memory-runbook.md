@@ -112,7 +112,7 @@ One file on the fixed build produces four lines:
 What each tells you:
 
 - `rasters:start … over_cap=m` — the document held more than
-  `AIQ_MAX_IMAGES_PER_DOCUMENT` (64) rasters and `m` were dropped **before** any
+  `GRID_MAX_IMAGES_PER_DOCUMENT` (64) rasters and `m` were dropped **before** any
   decode. `over_cap=0` means the cap was not in play for this file.
 - `rss` at `rasters:start` against `rss` at `rasters:done` — the decode of the
   kept rasters. Bounded, this is a flat step of about one raster (tens of MiB)
@@ -153,7 +153,7 @@ The fixed build adds three lines, so the window between `file:start` and
 ```
 
 - `text:done` should sit within a few hundred MiB of `file:start` whatever the
-  page count. `without_layout=m` is the pages over `AIQ_PDF_PAGE_MAX_OBJECTS`
+  page count. `without_layout=m` is the pages over `GRID_PDF_PAGE_MAX_OBJECTS`
   that were read by PDFium instead (their text only); the same count is on the
   file's job status as `pages_read_without_layout`.
 - `file:released` comes after `gc.collect()` and `malloc_trim(0)`. It should

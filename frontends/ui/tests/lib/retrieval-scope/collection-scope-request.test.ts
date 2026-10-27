@@ -5,7 +5,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import {
   buildCollectionScopeFromRequest,
   resolveActiveProjectId,
-} from '@/lib/collection-scope-request'
+} from '@/lib/retrieval-scope/collection-scope-request'
 import type { AuthorizedSession } from '@/lib/auth/types'
 
 vi.mock('@/lib/db', () => ({
@@ -22,8 +22,8 @@ vi.mock('@/lib/authz/projects', () => ({
 // `sessionCollectionName`, and left the module's other exports undefined the
 // moment one was added. Spying the real implementations keeps the call
 // assertions while making the double impossible to drift from the module.
-vi.mock('@/lib/collection-scope', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/lib/collection-scope')>()
+vi.mock('@/lib/retrieval-scope/collection-scope', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/retrieval-scope/collection-scope')>()
   return {
     ...actual,
     // NOTE: this fake omits the org-wide Archiv collection that the real

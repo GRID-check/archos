@@ -8,7 +8,7 @@ vi.mock('@/lib/auth/require-auth', () => ({
   requireAuthorizedSession: vi.fn(),
 }))
 
-vi.mock('@/lib/collection-scope-request', () => ({
+vi.mock('@/lib/retrieval-scope/collection-scope-request', () => ({
   buildCollectionScopeFromRequest: vi.fn(),
 }))
 
@@ -20,7 +20,7 @@ vi.mock('@/lib/projects/repository', async (importActual) => ({
 import { GET, POST, DELETE } from '@/app/api/jobs/async/[...path]/route'
 import { findProjectTenancy } from '@/lib/projects/repository'
 import { requireAuthorizedSession } from '@/lib/auth/require-auth'
-import { buildCollectionScopeFromRequest } from '@/lib/collection-scope-request'
+import { buildCollectionScopeFromRequest } from '@/lib/retrieval-scope/collection-scope-request'
 
 const mockRequireAuthorizedSession = vi.mocked(requireAuthorizedSession)
 const mockBuildCollectionScopeFromRequest = vi.mocked(buildCollectionScopeFromRequest)

@@ -77,7 +77,7 @@ New `assertFileSizeAllowed(file.size)` function in the BFF documents service, ca
 ## Open Questions / Follow-ups
 
 - ~~`VLM_BATCH_WORKERS = 4` is hardcoded in `processing.py`.~~ **Resolved**
-  (2026-07 pipeline hardening): now `AIQ_VLM_BATCH_WORKERS` (default 4).
+  (2026-07 pipeline hardening): now `GRID_VLM_BATCH_WORKERS` (default 4).
 - ~~The content-hash VLM cache key does not include the VLM model name.~~
   **Resolved** (2026-07 pipeline hardening): the key is now
   `vlm:caption:{model}:{prompt_type}:{sha256(bytes)}`, so model switches and
@@ -87,9 +87,9 @@ New `assertFileSizeAllowed(file.size)` function in the BFF documents service, ca
   (so a transient provider error is not replayed from cache for the TTL and
   re-ingest can recover the file), adds a truncation
   retry on `finish_reason == "length"`, sets an explicit VLM client timeout
-  (`AIQ_VLM_TIMEOUT_SECONDS`), dedupes identical embedded rasters, scopes the
+  (`GRID_VLM_TIMEOUT_SECONDS`), dedupes identical embedded rasters, scopes the
   end-of-job summary reconciliation to the job's own files, and raises the
-  embedding batch size (`AIQ_EMBED_BATCH_SIZE`, default 64). See
+  embedding batch size (`GRID_EMBED_BATCH_SIZE`, default 64). See
   `docs/architecture/backend-deep-dive.md` §"Multimodal & visual/vector-drawing
   ingestion".
 

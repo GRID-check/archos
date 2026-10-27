@@ -12,7 +12,7 @@
  */
 
 import { z } from 'zod'
-import { BadRequestError } from '@/lib/api/errors'
+import { BadRequestError } from '@/lib/api/api-error'
 import { DOCUMENT_AUTHORS, type DocumentAuthor } from './document-authors'
 import { DOCUMENT_READ_FAMILIES, type DocumentReadFamily } from './document-status'
 import { shelfSelectorFields } from './shelf-scope'

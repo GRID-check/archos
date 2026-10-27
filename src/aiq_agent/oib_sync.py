@@ -176,7 +176,7 @@ def _collection_is_empty(ingestor) -> bool:
     """True when the OIB collection is missing or holds no vectors.
 
     Detects table/vector-store drift. The table says what was ingested, but the
-    vectors live in Qdrant, which can be reset or repointed (``AIQ_QDRANT_URL``
+    vectors live in Qdrant, which can be reset or repointed (``GRID_QDRANT_URL``
     at a fresh cluster) while the table still lists the whole corpus as ingested;
     the change detector would then find nothing to do and leave the collection
     empty forever.
@@ -387,7 +387,7 @@ def mark_for_reingest(name: str) -> bool:
 #: Set while an operator moves an old vector store into a new, still empty one
 #: (the Chroma import, docs/deployment/qdrant-runbook.md). The empty corpus
 #: collection is then expected, not a reset to re-embed the corpus for.
-IMPORT_PENDING_ENV = "AIQ_VECTOR_IMPORT_PENDING"
+IMPORT_PENDING_ENV = "GRID_VECTOR_IMPORT_PENDING"
 
 
 def _forget_everything_if_the_index_was_reset(rows: dict[str, corpus_store.FileRow]) -> dict[str, corpus_store.FileRow]:

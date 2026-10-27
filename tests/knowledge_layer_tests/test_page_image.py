@@ -10,10 +10,9 @@ from __future__ import annotations
 import io
 
 import pytest
+from knowledge_layer import page_image
+from knowledge_layer import view_image
 from PIL import Image
-
-from sources.knowledge_layer.src import page_image
-from sources.knowledge_layer.src import view_image
 
 from .pdf_fixtures import build_pdf
 
