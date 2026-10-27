@@ -11,8 +11,8 @@ Three arms (``--arm``) change what the agent may do, through ``--override`` pair
 
 - ``search``: ranked search only. ``list_files`` and ``read_passage`` are unbound and
   ``knowledge_search`` accepts ``match=meaning`` alone.
-- ``navigate``: no round-0 prefetch and no ranked search: ``knowledge_search`` accepts the literal
-  modes only.
+- ``navigate``: no round-0 prefetch and no ranked search: ``knowledge_search`` is unbound, and the
+  filesystem verbs (``ls``, ``glob``, ``grep``, ``read_file``) are what finds and reads.
 - ``both``: production's configuration.
 
 The row's ``needs`` names an argument that exists only after its slice lands. A row whose argument
@@ -105,9 +105,12 @@ def arm_overrides(arm: str, tools: list[str]) -> list[list[str]]:
             # The filesystem verbs over the estate (ADR-0133) are navigation too; the drafts stay.
             ["functions.shallow_research_agent.filesystem", "null"],
         ]
+    # Piloti's `knowledge_search` has no literal mode since ADR-0133 slice 6, so the knob no longer narrows
+    # it: the ranked search leaves the binding, and `grep`, `ls`, `glob` and `read_file` are what remains.
+    kept = [name for name in tools if name != "knowledge_search"]
     return [
+        ["functions.shallow_research_agent.tools", ",".join(kept)],
         ["functions.shallow_research_agent.prefetch", "false"],
-        ["functions.knowledge_search.match_modes", "exact,regex"],
     ]
 
 

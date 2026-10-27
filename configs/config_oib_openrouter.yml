@@ -614,6 +614,9 @@ functions:
 
   # The locator beside the search: open the passage a conclusion NAMED
   # (document + Punkt, or document + page) instead of searching for it again.
+  # Bound by deep research, intake and the door; Piloti's chat reads with
+  # `read_file` instead (ADR-0133 slice 6), and a `read_passage` call there is
+  # answered with the replacement call (`common/retired_calls.py`).
   # Deterministic — one filtered fetch, no reranker, no requery judge, no LLM.
   # Collection scope, base corpus and file exclusions are read off the
   # `knowledge_search` instance named here rather than restated, so the two
@@ -626,8 +629,10 @@ functions:
   # reader's own shelves — every file, by folder, name, Dokumentart and upload
   # date, paged. The prompt inventory stops at a few dozen names; this does
   # not. Deterministic, no LLM, and it reads only the scope `knowledge_search`
-  # reads. Its partner, Ctrl+F across the files, is NOT a tool: it is
-  # `knowledge_search(match="exact")`, the same verb over the same scope
+  # reads. Its partner, Ctrl+F across the files, is `knowledge_search(match=
+  # "exact")` for deep research and intake, and `grep` for Piloti's chat, which
+  # binds `list_files` for Fassungen only (`revisions_of`, `compare_to`;
+  # `knowledge_layer.chat_binding`) and lists with `ls` and `glob`
   # (docs/architecture/agent-tool-surface.md).
   list_files:
     _type: list_files
@@ -769,16 +774,18 @@ functions:
     _type: research_agent
     llm: research_llm
     # The filesystem verbs read the office's documents through this search's
-    # scope (ADR-0133): `read_file` over /project/, /office/, /chat/ and
-    # /law/oib/, beside the conversation's drafts under /drafts/. They are
-    # built per turn (the drafts are per conversation), not listed below.
+    # scope (ADR-0133): `ls`, `glob`, `grep` and `read_file` over /project/,
+    # /office/, /chat/ and /law/oib/, beside the conversation's drafts under
+    # /drafts/. They are built per turn (the drafts are per conversation), not
+    # listed below. They replace `read_passage` and the listing form of
+    # `list_files` on this binding (slice 6); `knowledge_search` and
+    # `list_files` are rebound to Piloti's contracts at build time.
     filesystem: knowledge_search
     # Explicit list (replaces registry inheritance) so the non-data-source
     # `remember` and `ask_user` tools are included alongside search/knowledge.
     tools:
       - web_search_tool
       - knowledge_search
-      - read_passage
       - list_files
       - look
       # ONE RIS tool on the chat surface. Search → pick → fetch → find the
@@ -818,7 +825,7 @@ functions:
     #   * PARALLEL calls inside one round cost ONE between them. That is the
     #     point: a model that opens all five members of a Richtlinien-Familie in
     #     one batch is using its round well, and „was weißt du über die OIB 2"
-    #     — one `knowledge_search` plus five parallel `read_passage` — used to
+    #     — one `knowledge_search` plus five parallel `read_file` — used to
     #     exhaust a budget of seven on the single most ordinary question the
     #     product answers. The prompt asks for that fan-out; the budget used to
     #     forbid it;
@@ -850,7 +857,7 @@ functions:
     #     find_elements, egressPath+clearWidth over the door list,
     #     fire/doorGraph                                                    = 5
     #   „was weißt du über die OIB 2"  knowledge_search, then the family
-    #     opened in one parallel batch of read_passage                      = 2
+    #     opened in one parallel batch of read_file                         = 2
     #
     # Truncation is still silent TO THE READER — the synthesis anchor says
     # „exhausted your research budget" to the MODEL and asks for no disclosure,

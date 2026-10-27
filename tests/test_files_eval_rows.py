@@ -140,7 +140,7 @@ class TestTheArms:
         pairs = dict(files_eval.arm_overrides("navigate", self.TOOLS))
         assert pairs == {
             "functions.shallow_research_agent.prefetch": "false",
-            "functions.knowledge_search.match_modes": "exact,regex",
+            "functions.shallow_research_agent.tools": "web_search_tool,read_passage,list_files,look",
         }
 
     def test_an_unknown_arm_is_refused(self):
@@ -158,7 +158,12 @@ class TestTheArms:
             if "functions.shallow_research_agent.prefetch" in pairs:
                 ResearchAgentConfig(llm="x", prefetch=pairs["functions.shallow_research_agent.prefetch"])
         tools = files_eval.configured_tools()
-        assert {"knowledge_search", "read_passage", "list_files"} <= set(tools)
+        assert {"knowledge_search", "list_files"} <= set(tools)
+        # Piloti reads with `read_file` over the estate (ADR-0133 slice 6); the navigate arm unbinds the search.
+        assert "read_passage" not in tools
+        assert "knowledge_search" not in dict(files_eval.arm_overrides("navigate", tools))[
+            "functions.shallow_research_agent.tools"
+        ].split(",")
 
     def test_the_config_has_the_functions_the_overrides_path_through(self):
         import yaml

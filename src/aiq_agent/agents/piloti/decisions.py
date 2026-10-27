@@ -70,6 +70,10 @@ from dataclasses import dataclass
 from dataclasses import field
 from typing import Any
 
+from aiq_agent.common.estate_paths import MOUNT_ROOTS
+from aiq_agent.common.estate_paths import SHELF_MOUNTS
+from aiq_agent.common.estate_paths import estate_path
+
 logger = logging.getLogger(__name__)
 
 #: The slot the technical record is filed under: ``status:decision:turn``.
@@ -77,6 +81,8 @@ SLOT = "turn"
 
 #: The knowledge tool the prefetch calls. A wire name (``configs/*.yml``).
 KNOWLEDGE_SEARCH = "knowledge_search"
+#: The literal search a quoted term or a code is prefetched with.
+GREP = "grep"
 
 #: Below this p(needs_evidence) nothing is prefetched. Deliberately low: a
 #: false "no" costs the model its first round, a false "yes" costs one unread
@@ -495,7 +501,7 @@ def prefetch_calls(
 MAX_LITERAL_PREFETCH = 2
 
 #: The shelf an exact prefetch reads, per chosen corpus. The legal base corpus has no literal path here.
-_LITERAL_SHELF = {"projekt": "project", "buero": "office"}
+_LITERAL_SHELF = {"projekt": "project", "buero": "office_shelf"}
 
 _QUOTED = re.compile(r"[„“\"»]([^„“”\"«»\n]{2,60})[“”\"«]|(?<!\w)'([^'\n]{2,60})'(?!\w)")
 _CODE = re.compile(
@@ -535,11 +541,12 @@ def _corpus_prefetch(
     calls: list[dict[str, Any]] = [{"name": KNOWLEDGE_SEARCH, "args": args}]
     shelf = _LITERAL_SHELF.get(decisions.corpus)
     if shelf:
-        scope = {"file_name": focus_file_name} if focus_file_name else {}
-        calls.extend(
-            {"name": KNOWLEDGE_SEARCH, "args": {"query": term, "match": "exact", "shelf": shelf, **scope}}
-            for term in literal_terms(question)
-        )
+        # The literal search is `grep` under its standard name (ADR-0133 slice 6): Piloti's
+        # `knowledge_search` has no `match=` mode, and a binding without `grep` drops the call.
+        path = (estate_path(shelf, None, focus_file_name) if focus_file_name else None) or MOUNT_ROOTS[
+            SHELF_MOUNTS[shelf]
+        ]
+        calls.extend({"name": GREP, "args": {"pattern": term, "path": path}} for term in literal_terms(question))
     if decisions.corpus == "baurecht" and family_query_number(query) is None:
         calls.extend(
             {"name": KNOWLEDGE_SEARCH, "args": {"query": f"OIB-Richtlinie {key}"}}

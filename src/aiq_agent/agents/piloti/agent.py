@@ -76,6 +76,11 @@ from aiq_agent.common.model_vision import chat_model_scope
 from aiq_agent.common.model_vision import model_name_of
 from aiq_agent.common.prompt_caching import begin_stable_prefix
 from aiq_agent.common.prompt_caching import end_stable_prefix
+from aiq_agent.common.retired_calls import RETIRED_CALL_TAG
+from aiq_agent.common.retired_calls import RETIRED_NAMES
+from aiq_agent.common.retired_calls import RetiredNotice
+from aiq_agent.common.retired_calls import known_paths
+from aiq_agent.common.retired_calls import retired_call_notice
 from aiq_agent.common.retrieval_rounds import assistant_checkpoint
 from aiq_agent.common.retrieval_rounds import failed_call_ids
 from aiq_agent.common.retrieval_rounds import ran_signatures
@@ -89,6 +94,8 @@ from aiq_agent.common.steering import current_steer_inbox
 from aiq_agent.common.steering import is_write_call
 from aiq_agent.common.steering import render_note
 from aiq_agent.common.tool_errors import render_tool_error
+from aiq_agent.common.tool_vocabulary import use_vocabulary
+from aiq_agent.common.tool_vocabulary import vocabulary_for
 from aiq_agent.common.turn_status import begin_lane_capture
 from aiq_agent.common.turn_status import emit
 from aiq_agent.common.turn_status import emit_family_coverage
@@ -368,12 +375,15 @@ def _withheld_calls(
     state: ResearchAgentState,
     disabled: frozenset[str],
     max_calls: int = 0,
+    bound: frozenset[str] = frozenset(),
 ) -> tuple[list[Any], list[tuple[Any, str]], list[Any]]:
     """The three guards on this seam, applied once: ``(repeats, refused, over_width)``.
 
     A fetch whose answer the turn already holds (:func:`repeat_fetches`), a
-    call to a source this conversation switched off — each paired with the
-    sentence that answers it — and the calls past the round's width cap
+    call to a retired spelling on this binding (:func:`retired_call_notice`,
+    ``bound`` being the binding's tool names) or to a source this conversation
+    switched off — each paired with the sentence that answers it — and the calls
+    past the round's width cap
     (:func:`_over_width`). Repeats are decided first, so a call that is both is
     counted once and answered as the repeat it is; the cap sees what the other
     two left.
@@ -384,15 +394,27 @@ def _withheld_calls(
     """
     repeats = repeat_fetches(calls, state.executed_fetches)
     seen = {id(call) for call in repeats}
+    paths = _result_paths(state) if bound and any(_call_name(c) in RETIRED_NAMES for c in calls) else {}
     refused = [
         (call, sentence)
         for call in calls
         if id(call) not in seen
-        and (sentence := disabled_source_notice(_call_name(call), disabled, _call_args(call))) is not None
+        and (
+            sentence := retired_call_notice(_call_name(call), _call_args(call), bound, paths)
+            or disabled_source_notice(_call_name(call), disabled, _call_args(call))
+        )
+        is not None
     ]
     seen |= {id(call) for call, _ in refused}
     over_width = _over_width([call for call in calls if id(call) not in seen], max_calls)
     return repeats, refused, over_width
+
+
+def _result_paths(state: ResearchAgentState) -> dict[str, str]:
+    """``file name -> path`` from the ``Path:`` lines of the tool results in the transcript."""
+    return known_paths(
+        content_to_text(message.content) for message in state.messages if isinstance(message, ToolMessage)
+    )
 
 
 def _drop_withheld(
@@ -400,6 +422,7 @@ def _drop_withheld(
     state: ResearchAgentState,
     disabled: frozenset[str],
     max_calls: int = 0,
+    bound: frozenset[str] = frozenset(),
 ) -> list[Any]:
     """The calls that will actually RUN, and the records the withholding leaves.
 
@@ -408,7 +431,16 @@ def _drop_withheld(
     announcement, so a batch that is only withheld calls consumes no
     ``status:retrieval:N`` slot and does not advance the round counter.
     """
-    repeats, refused, over_width = _withheld_calls(calls, state, disabled, max_calls)
+    repeats, refused, over_width = _withheld_calls(calls, state, disabled, max_calls, bound)
+    retired = [call for call, sentence in refused if isinstance(sentence, RetiredNotice)]
+    if retired:
+        add_trace_tag(RETIRED_CALL_TAG)
+        logger.info(
+            "Retired spelling: %d call(s) answered with the replacement call (%s, round=%d)",
+            len(retired),
+            ", ".join(sorted({_call_name(call) for call in retired})),
+            state.retrieval_round,
+        )
     if repeats:
         emit_repeat_fetch(round_index=state.retrieval_round, withheld=len(repeats))
         logger.info(
@@ -491,6 +523,7 @@ def _charge_tool_calls(
     ceiling: int,
     disabled: frozenset[str] = frozenset(),
     max_calls: int = 0,
+    bound: frozenset[str] = frozenset(),
 ) -> tuple[int, int, dict[str, Any] | None]:
     """What this round COSTS and ANNOUNCED: ``(rounds, retrieval_round, record)``.
 
@@ -516,7 +549,7 @@ def _charge_tool_calls(
     calls = getattr(response, "tool_calls", None) or []
     if not calls:
         return state.tool_iterations, state.retrieval_round, None
-    calls = _drop_withheld(calls, state, disabled, max_calls)
+    calls = _drop_withheld(calls, state, disabled, max_calls, bound)
     if not calls:
         return _charge_empty_round(state, ceiling)
     rounds = state.tool_iterations + 1
@@ -661,11 +694,12 @@ def _without_trace_lanes(message: Any) -> Any:
 
 
 def _notice(call: Any, content: str) -> ToolMessage:
-    """The one result a withheld call gets, addressed to the call that asked."""
+    """The one result a withheld call gets, addressed to the call that asked; a retired spelling's is an error."""
     return ToolMessage(
-        content=content,
+        content=str(content),
         name=_call_name(call),
         tool_call_id=str(call.get("id") or ""),
+        status="error" if isinstance(content, RetiredNotice) else "success",
     )
 
 
@@ -749,7 +783,9 @@ class _RoundSplit:
         ]
 
 
-def _split_round(state: ResearchAgentState, disabled: frozenset[str], max_calls: int = 0) -> _RoundSplit:
+def _split_round(
+    state: ResearchAgentState, disabled: frozenset[str], max_calls: int = 0, bound: frozenset[str] = frozenset()
+) -> _RoundSplit:
     """What the tools node runs, derived the way the agent node derived its charge.
 
     :func:`_withheld_calls`, reading the SAME calls, the SAME
@@ -758,7 +794,7 @@ def _split_round(state: ResearchAgentState, disabled: frozenset[str], max_calls:
     and what is executed cannot drift apart.
     """
     calls = _last_tool_calls(state)
-    repeats, refused, over_width = _withheld_calls(calls, state, disabled, max_calls)
+    repeats, refused, over_width = _withheld_calls(calls, state, disabled, max_calls, bound)
     withheld = {id(call) for call in (*repeats, *(call for call, _ in refused), *over_width)}
     return _RoundSplit(
         ran=[call for call in calls if id(call) not in withheld],
@@ -1340,7 +1376,12 @@ class PilotiAgent:
         if _starts_synthesis(response, state):
             emit_synthesis()
         rounds, retrieval_round, round_record = _charge_tool_calls(
-            response, state, binding.ceiling, binding.disabled_sources, binding.max_calls_per_round
+            response,
+            state,
+            binding.ceiling,
+            binding.disabled_sources,
+            binding.max_calls_per_round,
+            binding.source_tool_names,
         )
         update: dict[str, Any] = {
             "messages": [response],
@@ -1475,7 +1516,7 @@ class PilotiAgent:
         for.
         """
         binding = self._turn_binding(config)
-        split = _split_round(state, binding.disabled_sources, binding.max_calls_per_round)
+        split = _split_round(state, binding.disabled_sources, binding.max_calls_per_round, binding.source_tool_names)
         # Derived before the steering hold, from what the agent node charged: a
         # held write is never a fetch, so the stamp is the same either way.
         executing_round = _executing_retrieval_round(state, split.ran)
@@ -1615,7 +1656,9 @@ class PilotiAgent:
             return {}
         announcement = AIMessage(content=PREFETCH_NOTE, tool_calls=calls)
         announced = state.model_copy(update={"messages": [*state.messages, announcement]})
-        split = _split_round(announced, binding.disabled_sources, binding.max_calls_per_round)
+        split = _split_round(
+            announced, binding.disabled_sources, binding.max_calls_per_round, binding.source_tool_names
+        )
         if not split.ran or not is_retrieval_round(split.ran):
             return {}
         searched = emit_retrieval(split.ran, round_index=state.retrieval_round, conclusion=None, prefetch=True)
@@ -1687,7 +1730,10 @@ class PilotiAgent:
         # evidence tool wrote (ADR-0061).
         grounding_capture = begin_grounding_capture()
         try:
-            graph_result = await self._graph.ainvoke(state, config=self._graph_config(binding))
+            # The tool spellings every shared hint of this turn names (ADR-0133 slice 6): the binding's own,
+            # set around the graph so every node and every parallel tool call inherits it.
+            with use_vocabulary(vocabulary_for(binding.source_tool_names)):
+                graph_result = await self._graph.ainvoke(state, config=self._graph_config(binding))
             turn_sources = get_turn_captures()
             turn_measurements = get_measurement_captures()
             lane_hits = get_lane_captures()
