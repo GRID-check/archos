@@ -49,17 +49,15 @@ import asyncio
 import contextvars
 import json
 import logging
-import os
 import re
-import urllib.error
 import urllib.parse
-import urllib.request
 from collections.abc import Iterable
 from collections.abc import Sequence
 from dataclasses import dataclass
 from dataclasses import field
 from typing import Any
 
+from aiq_agent.common import bff_http
 from aiq_agent.knowledge.restricted_collections import is_restricted_collection
 from aiq_agent.knowledge.restricted_collections import restricted_collections_in
 
@@ -67,8 +65,6 @@ logger = logging.getLogger(__name__)
 
 #: One short attempt: the check sits in front of the turn and in a tool round.
 _TIMEOUT_SECONDS = 5.0
-
-_opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
 
 #: What a tool result carrying refused restricted content is replaced with.
 WITHHELD_NOTICE = (
@@ -208,33 +204,22 @@ def without_restricted(entries: Sequence[Any]) -> list[Any]:
     return [entry for entry in entries if not is_restricted_collection(getattr(entry, "collection", None))]
 
 
-def _base_url() -> str:
-    url = os.environ.get("FRONTEND_INTERNAL_URL") or os.environ.get("FRONTEND_URL") or "http://frontend:3000"
-    return url.rstrip("/")
-
-
 def _post(use: RestrictedUse, body: dict[str, Any]) -> dict[str, Any] | None:
     """``POST`` to the restricted-use route; ``None`` on any failure (the caller fails closed)."""
-    token = os.environ.get("GRID_INTERNAL_API_TOKEN")
-    if not token:
-        logger.warning("Restricted use for %s not checked: GRID_INTERNAL_API_TOKEN is not set", use.conversation_id)
-        return None
     payload = {"organizationId": use.organization_id, "userId": use.user_id, **body}
     if use.project_id:
         payload["projectId"] = use.project_id
     if use.answer_message_id:
         payload["answerMessageId"] = use.answer_message_id
     conversation = urllib.parse.quote(use.conversation_id, safe="")
-    request = urllib.request.Request(
-        f"{_base_url()}/api/internal/conversations/{conversation}/restricted-use",
-        data=json.dumps(payload).encode("utf-8"),
-        headers={"Content-Type": "application/json", "X-Grid-Internal-Token": token},
-        method="POST",
-    )
     try:
-        with _opener.open(request, timeout=_TIMEOUT_SECONDS) as response:
-            parsed = json.loads(response.read().decode("utf-8"))
-    except (urllib.error.URLError, OSError, ValueError):
+        parsed = bff_http.post_json(
+            f"/api/internal/conversations/{conversation}/restricted-use", payload, timeout=_TIMEOUT_SECONDS
+        )
+    except bff_http.BffNotConfiguredError:
+        logger.warning("Restricted use for %s not checked: GRID_INTERNAL_API_TOKEN is not set", use.conversation_id)
+        return None
+    except bff_http.BffError:
         logger.warning("Restricted-use check for conversation %s failed", use.conversation_id, exc_info=True)
         return None
     return parsed if isinstance(parsed, dict) else None

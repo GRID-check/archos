@@ -21,12 +21,7 @@
  * mounted tree, and the arithmetic is the part that must be tested hardest.
  */
 
-import type {
-  CalculationLimitData,
-  CalculationOperandData,
-  CalculationStepData,
-  DimStatus,
-} from '../schematics/types'
+import type { CalculationLimitData, CalculationOperandData, CalculationStepData, DimStatus } from '@/shared/cards/schemas'
 
 /** What one evaluated step yields. `value === null` means it cannot be decided. */
 export interface StepResult {

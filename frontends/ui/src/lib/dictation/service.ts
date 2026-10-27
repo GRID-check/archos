@@ -21,7 +21,7 @@ import {
 } from '@/lib/api/errors'
 import type { AuthorizedSession } from '@/lib/auth/types'
 import { getBackendUrl } from '@/lib/backend-proxy'
-import { INTERNAL_TOKEN_HEADER } from '@/lib/internal-auth'
+import { internalServiceHeaders } from '@/lib/internal-auth'
 import {
   MAX_DICTATION_AUDIO_BYTES,
   dictationFormatOf,
@@ -70,12 +70,15 @@ function checkedFormat(audio: Blob): string {
 }
 
 async function postToBackend(session: AuthorizedSession, body: object): Promise<Response> {
+  const backendUrl = getBackendUrl()
+  // Outside the try: a deployment without the token is a 503, not a 502 for the recording.
+  const serviceHeaders = internalServiceHeaders(backendUrl)
   try {
-    return await fetch(`${getBackendUrl()}/v1/dictation`, {
+    return await fetch(`${backendUrl}/v1/dictation`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        [INTERNAL_TOKEN_HEADER]: process.env.GRID_INTERNAL_API_TOKEN ?? '',
+        ...serviceHeaders,
         // Whose credential and data policy, and whose ledger row.
         'x-grid-organization-id': session.organizationId,
         'x-grid-user-id': session.userId,

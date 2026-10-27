@@ -12,8 +12,13 @@
  * numbering, the export walker, or persistence.
  */
 
-import type { AnswerMeta, AnswerMetaWork } from '@/lib/conversations/message-answer-meta'
-import type { CalloutKind, KeyTakeawayData, NormReferenceData } from '@/features/grid-cards/schematics/types'
+import type {
+  AnswerCalloutKind,
+  AnswerMeta,
+  AnswerMetaTakeaway,
+  AnswerMetaWork,
+} from '@/lib/conversations/message-answer-meta'
+import type { NormReferenceData } from '@/shared/cards/schemas'
 
 /**
  * The anatomy's own shapes. They were the `verdict_header`, `callout` and
@@ -32,7 +37,7 @@ export interface AnatomyVerdict {
 
 export interface AnatomyCallout {
   type: 'callout'
-  kind: CalloutKind
+  kind: AnswerCalloutKind
   text: string
   title: string | null
   detail: string | null
@@ -41,7 +46,7 @@ export interface AnatomyCallout {
 export interface AnatomyTakeaways {
   type: 'key_takeaways'
   title: string | null
-  items: KeyTakeawayData[]
+  items: AnswerMetaTakeaway[]
 }
 
 /** The report of an operations turn (`kind: work`, ADR-0123), drawn after the prose. */
@@ -117,7 +122,7 @@ export function answerMetaToAnatomy(meta: AnswerMeta | undefined): AnswerAnatomy
       ? {
           type: 'key_takeaways',
           title: null,
-          items: meta.takeaways.map((t) => ({ text: t.text, detail: t.detail ?? null })),
+          items: meta.takeaways.map((t) => ({ text: t.text, detail: t.detail })),
         }
       : undefined
 
