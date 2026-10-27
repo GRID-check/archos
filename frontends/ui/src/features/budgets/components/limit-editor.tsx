@@ -18,6 +18,8 @@ import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Field, FieldError, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
+import { ApiRequestError } from '@/adapters/api/api-error'
+import { removeBudgetPolicy, setBudgetPolicy } from '@/adapters/api/budgets-client'
 import {
   Dialog,
   DialogContent,
@@ -101,27 +103,22 @@ export const LimitEditor: FC<{
     if (!dailyInput.ok || !monthlyInput.ok) return
     setBusy(true)
     try {
-      const res = await fetch('/api/organization/budgets', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          scope,
-          subjectId,
-          dailyLimit: dailyInput.value,
-          monthlyLimit: monthlyInput.value,
-        }),
+      await setBudgetPolicy({
+        scope,
+        subjectId,
+        dailyLimit: dailyInput.value,
+        monthlyLimit: monthlyInput.value,
       })
-      if (res.status === 422) {
+      toast.success(t('budgets.policySaved'))
+      setOpen(false)
+      await onSaved()
+    } catch (error) {
+      if (error instanceof ApiRequestError && error.status === 422) {
         // The server's validation text is English and technical; the reader
         // gets the sentence in their language, as the organization limits do.
         toast.error(t('budgets.limitsRejected'))
         return
       }
-      if (!res.ok) throw new Error(String(res.status))
-      toast.success(t('budgets.policySaved'))
-      setOpen(false)
-      await onSaved()
-    } catch {
       toast.error(t('budgets.policySaveError'))
     } finally {
       setBusy(false)
@@ -131,12 +128,7 @@ export const LimitEditor: FC<{
   const remove = async (): Promise<void> => {
     setBusy(true)
     try {
-      const res = await fetch('/api/organization/budgets', {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ scope, subjectId }),
-      })
-      if (!res.ok) throw new Error(String(res.status))
+      await removeBudgetPolicy({ scope, subjectId })
       toast.success(t('budgets.policyRemoved'))
       setOpen(false)
       await onSaved()

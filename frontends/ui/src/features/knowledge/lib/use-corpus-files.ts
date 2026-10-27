@@ -8,13 +8,13 @@
  */
 
 import { useEffect, useState } from 'react'
+import { getKnowledgeBase } from '@/adapters/api/knowledge-client'
 import type { CorpusFileCandidate } from './resolve-corpus-file'
 
 let cache: Promise<CorpusFileCandidate[]> | null = null
 
 function fetchCorpusFiles(): Promise<CorpusFileCandidate[]> {
-  cache ??= fetch('/api/knowledge-base')
-    .then((r) => (r.ok ? r.json() : { files: [] }))
+  cache ??= getKnowledgeBase()
     .then((data) =>
       (Array.isArray(data.files) ? data.files : []).map((f: { fileName?: string; state?: string }) => ({
         fileName: String(f.fileName ?? ''),

@@ -21,11 +21,11 @@ from aiq_agent.cards.registry import CardRegistry
 from aiq_agent.cards.registry import get_or_create_card_registry
 from aiq_agent.cards.registry import reset_card_registry
 from aiq_agent.cards.registry import set_card_registry
-from aiq_agent.common.citation_verification import SourceRegistry
-from aiq_agent.common.citation_verification import get_or_create_session_registry
-from aiq_agent.common.citation_verification import persist_session_registry
-from aiq_agent.common.citation_verification import reset_session_registry
-from aiq_agent.common.citation_verification import set_session_registry
+from aiq_agent.citations.registry import SourceRegistry
+from aiq_agent.citations.session import get_or_create_session_registry
+from aiq_agent.citations.session import persist_session_registry
+from aiq_agent.citations.session import reset_session_registry
+from aiq_agent.citations.session import set_session_registry
 from aiq_agent.common.image_view_budget import begin_image_view_budget
 from aiq_agent.common.image_view_budget import end_image_view_budget
 from aiq_agent.common.image_view_budget import get_image_view_budget

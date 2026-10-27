@@ -1724,7 +1724,7 @@ def _window_assignment(model: SpatialModel) -> set[str] | None:
         for global_id in touching:
             try:
                 element = model.file.by_guid(global_id)
-            except (RuntimeError, KeyError):
+            except RuntimeError, KeyError:
                 continue
             if element.is_a("IfcWindow"):
                 lit.add(space_id)
