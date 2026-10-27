@@ -82,8 +82,8 @@ def test_the_agent_text_rewrites_the_verifiers_labels_as_written():
 
     A label reworded here and not there would reach the agent raw and German again.
     """
-    from aiq_agent.common.citation_verification import DROPPED_CITATION_MARKER
-    from aiq_agent.common.citation_verification import UNVERIFIED_QUOTE_MARKER
+    from aiq_agent.citations.entries import DROPPED_CITATION_MARKER
+    from aiq_agent.citations.entries import UNVERIFIED_QUOTE_MARKER
 
     source = TS_AGENT_TEXT.read_text(encoding="utf-8")
     match = re.search(r"export const VERIFICATION_MARKERS = \{(.*?)\} as const", source, re.S)
