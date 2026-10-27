@@ -202,6 +202,35 @@ def _show_proposal(
     return text if shown else text + _PROPOSED_WITHOUT_CARD
 
 
+async def read_operation(name: str, input: dict[str, Any]) -> dict[str, Any] | None:  # noqa: A002 - the server's own argument name
+    """A read operation's ``structuredContent``, run as the turn's person, for a tool that shapes it itself.
+
+    ``None`` when it could not run: no envelope, a refusal, a transport failure, or a result
+    too large to come back structured. The caller falls back or says so; nothing is retried.
+    """
+    envelope = _envelope()
+    if envelope is None:
+        _observe("call", {"tool": SERVER_TOOLS["call"], "operation": name}, {"refused": "no_envelope"})
+        return None
+    try:
+        result = await asyncio.to_thread(
+            call_tool_result,
+            SERVER_TOOLS["call"],
+            {"name": name, "input": input},
+            envelope,
+            answer_message_id=_answer_message_id(),
+        )
+    except WorkspaceError as exc:
+        _observe("call", {"tool": SERVER_TOOLS["call"], "operation": name}, {"error": str(exc), "status": exc.status})
+        return None
+    _observe(
+        "call",
+        {"tool": SERVER_TOOLS["call"], "operation": name},
+        {"chars": len(result.text), "structured": result.structured is not None},
+    )
+    return result.structured
+
+
 async def run_search(query: str, domain: str = "", limit: int = 10) -> str:
     arguments: dict[str, Any] = {"query": query, "limit": limit}
     if (domain or "").strip():

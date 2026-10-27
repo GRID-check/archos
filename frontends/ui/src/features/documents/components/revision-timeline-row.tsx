@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { MiddleTruncate } from '@/components/ui/middle-truncate'
 import { DEFAULT_TAIL_LENGTH } from '@/lib/text/middle-truncate'
 import { cn } from '@/lib/utils'
+import { Quote } from '@/components/ui/quote'
 import { changeLines } from '../lib/revision-timeline'
 
 export interface RevisionTimelineRowProps {
@@ -146,9 +147,9 @@ export function RevisionTimelineRow({
           </div>
         )}
         {comment && (
-          <p className="text-foreground border-l-2 pl-2 text-xs leading-[1.5]" data-testid="document-version-comment">
+          <Quote as="p" className="text-xs leading-[1.5]" data-testid="document-version-comment">
             {comment}
-          </p>
+          </Quote>
         )}
         {change && (
           <div className="flex flex-col gap-1" data-testid={changeTestId}>

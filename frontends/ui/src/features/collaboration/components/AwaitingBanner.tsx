@@ -33,6 +33,7 @@ import { useLocale, useTranslations } from '@/i18n'
 import { formatAbsoluteTime, formatRelativeTime } from '@/lib/format'
 import type { AwaitingStateResponse, PendingMentionView } from '@/lib/mentions/types'
 import { cn } from '@/lib/utils'
+import { Quote } from '@/components/ui/quote'
 
 export interface AwaitingBannerProps {
   /** The derived hand-off state; `null` or empty `pending` renders nothing. */
@@ -189,9 +190,9 @@ export function AwaitingBanner({
           {/* The question that was asked, when there is one — far more useful than
               "you were mentioned" (MN-12). */}
           {single?.note && (
-            <p className="mt-2 border-l border-border pl-2.5 text-sm leading-relaxed text-foreground/80">
+            <Quote as="p" className="mt-2 text-sm leading-relaxed">
               {single.note}
-            </p>
+            </Quote>
           )}
 
           {/* Several people awaited: each one gets its own release, because the
@@ -261,9 +262,9 @@ export function AwaitingBanner({
                         this person" before the question they were asked offers the
                         way out of a wait whose reason has not been said yet. */}
                     {request.note && (
-                      <p className="order-last w-full border-l border-border pl-2.5 text-sm leading-relaxed text-foreground/80">
+                      <Quote as="p" className="order-last w-full text-sm leading-relaxed">
                         {request.note}
-                      </p>
+                      </Quote>
                     )}
                     <Button
                       variant="ghost"

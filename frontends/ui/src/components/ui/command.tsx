@@ -35,7 +35,7 @@ const Command = React.forwardRef<
 ))
 Command.displayName = CommandPrimitive.displayName
 
-interface CommandHintLabels {
+export interface CommandHintLabels {
   move: string
   open: string
   close: string
@@ -57,13 +57,24 @@ interface CommandDialogProps extends React.ComponentPropsWithoutRef<typeof Dialo
    * answer (no open or close animation at all) is the right one for it.
    */
   instant?: boolean
+  /**
+   * The cmdk root's own controls: a `filter` that ranks rows the typed words
+   * do not spell (live search hits), and a controlled `value` for the row the
+   * arrows are on.
+   */
+  commandProps?: Pick<React.ComponentPropsWithoutRef<typeof CommandPrimitive>, 'filter' | 'value' | 'onValueChange' | 'loop'>
 }
 
-function CommandHints({ labels }: { labels?: CommandHintLabels }) {
+/**
+ * The keys of a list you walk with the keyboard, each with its word: the
+ * palette's footer, and the footer of every picker that walks the same way
+ * (the composer's `#`), so one key never has two descriptions.
+ */
+function CommandHints({ labels, className }: { labels?: CommandHintLabels; className?: string }) {
   return (
     <div
       data-slot="command-hints"
-      className="text-muted-foreground flex shrink-0 items-center gap-3 border-t bg-muted/40 px-3 py-2 text-xs"
+      className={cn('text-muted-foreground flex shrink-0 items-center gap-3 border-t bg-muted/40 px-3 py-2 text-xs', className)}
     >
       <span className="inline-flex items-center gap-1.5">
         <KbdGroup>
@@ -92,6 +103,7 @@ function CommandDialog({
   showHints = false,
   hintLabels,
   instant = true,
+  commandProps,
   ...props
 }: CommandDialogProps) {
   return (
@@ -103,7 +115,7 @@ function CommandDialog({
       >
         <DialogTitle className="sr-only">{title}</DialogTitle>
         <DialogDescription className="sr-only">{description}</DialogDescription>
-        <Command className="[&_[cmdk-group-heading]]:text-muted-foreground [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1.5 [&_[cmdk-group-heading]]:text-xs [&_[cmdk-group-heading]]:font-medium [&_[cmdk-input-wrapper]_svg]:size-4 [&_[cmdk-item]]:px-2 [&_[cmdk-item]]:py-2 [&_[cmdk-item]_svg]:size-4">
+        <Command {...commandProps} className="[&_[cmdk-group-heading]]:text-muted-foreground [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1.5 [&_[cmdk-group-heading]]:text-xs [&_[cmdk-group-heading]]:font-medium [&_[cmdk-input-wrapper]_svg]:size-4 [&_[cmdk-item]]:px-2 [&_[cmdk-item]]:py-2 [&_[cmdk-item]_svg]:size-4">
           {children}
         </Command>
         {showHints ? <CommandHints labels={hintLabels} /> : null}
@@ -224,6 +236,7 @@ export {
   CommandDialog,
   CommandEmpty,
   CommandGroup,
+  CommandHints,
   CommandInput,
   CommandItem,
   CommandList,

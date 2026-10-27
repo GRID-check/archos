@@ -151,11 +151,13 @@ export const readPageTextItems = async (
       if (done) return items
       for (const item of value.items) {
         if (!('str' in item)) continue
+        const fontFamily = value.styles[item.fontName]?.fontFamily
         items.push({
           str: item.str,
           width: item.width,
           height: item.height,
           transform: item.transform.map(Number),
+          ...(fontFamily ? { fontFamily } : {}),
         })
       }
     }

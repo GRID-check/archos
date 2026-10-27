@@ -462,13 +462,15 @@ function GridBlock({
       onClick={() => onSelect(block.jobId)}
       title={`${time} · ${name}`}
       data-testid="timetable-block"
-      className="focus-visible:ring-ring/60 absolute overflow-hidden rounded-[5px] border-l-[3px] px-1.5 py-0.5 text-left transition-shadow duration-quick ease-out hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 motion-reduce:transition-none"
+      className="focus-visible:ring-ring/60 absolute overflow-hidden rounded-[5px] border px-1.5 py-0.5 text-left transition-shadow duration-quick ease-out hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 motion-reduce:transition-none"
       style={{
         top: `${top + 1}px`,
         height: `${(BLOCK_MINUTES / 60) * HOUR_PX - 2}px`,
         left: `calc(${block.lane * width}% + 2px)`,
         width: `calc(${width}% - 4px)`,
-        borderLeftColor: color,
+        // A full hairline in the series colour, not an edge of its own: the
+        // tint below already groups, the border only firms the chip's shape.
+        borderColor: `color-mix(in oklab, ${color} 55%, transparent)`,
         // A tint rather than the series colour itself: the label sits on this
         // surface, and the palette's own notes record that three of the eight
         // light steps do not clear 3:1 on a near-white ground. Ink stays
@@ -526,9 +528,15 @@ function Agenda({
                     <button
                       type="button"
                       onClick={() => onSelect(block.jobId)}
-                      className="border-border bg-card focus-visible:ring-ring/60 pointer-coarse:min-h-11 flex w-full items-center gap-2 rounded-lg border border-l-[3px] px-2.5 py-2 text-left focus-visible:outline-none focus-visible:ring-2"
-                      style={{ borderLeftColor: colorOf(block.jobId) }}
+                      className="border-border bg-card focus-visible:ring-ring/60 pointer-coarse:min-h-11 flex w-full items-center gap-2 rounded-lg border px-2.5 py-2 text-left focus-visible:outline-none focus-visible:ring-2"
                     >
+                      {/* The legend's swatch, so the colour that names the job
+                          on the grid names it here too. */}
+                      <span
+                        aria-hidden
+                        className="size-2.5 shrink-0 rounded-[3px]"
+                        style={{ backgroundColor: colorOf(block.jobId) }}
+                      />
                       <span className="text-muted-foreground shrink-0 text-xs tabular-nums">
                         {new Intl.DateTimeFormat(locale, {
                           hour: '2-digit',

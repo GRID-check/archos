@@ -53,7 +53,7 @@ describe('callDecision', () => {
   it('lets in-product Piloti read', () => {
     expect(callDecision(piloti, op('project-list'))).toBe('run')
     // A POST that only searches is still a read.
-    expect(callDecision(piloti, op('document-search'))).toBe('run')
+    expect(callDecision(piloti, op('workspace-search'))).toBe('run')
   })
 
   it('turns every write by in-product Piloti into a proposal', () => {
@@ -119,12 +119,13 @@ describe('visibleOperations', () => {
   })
 
   it('hides from Piloti, and only from Piloti, what Piloti does with a native tool; it stays on the door', () => {
-    const search = op('document-search')
-    expect(nativeToolOf('document-search')).toBe('knowledge_search')
-    expect(canSee(piloti, search)).toBe(false)
-    expect(canSee(person(), search)).toBe(true)
+    // `annotation-create` is Piloti's `canvas__mark` (exposure.config.ts); the fake catalog has no native twin of its own.
+    const mark = { ...op('project-member-add'), name: 'annotation-create' }
+    expect(nativeToolOf('annotation-create')).toBe('canvas__mark')
+    expect(canSee(piloti, mark)).toBe(false)
+    expect(canSee(person(), mark)).toBe(true)
     // Visibility only: the operation is on the office door, so a proposal filed before still applies.
-    expect(isOnDoor('document-search')).toBe(true)
+    expect(isOnDoor('annotation-create')).toBe(true)
     expect(nativeToolOf('project-list')).toBeUndefined()
   })
 

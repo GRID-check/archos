@@ -17,25 +17,30 @@ const render = (ui: ReactElement) =>
   )
 
 describe('ProposalShell', () => {
-  it('accents a pending proposal in ink, never in the warning colour', () => {
-    // Lifecycle is its own axis (§A3). Amber already means "close to a limit"
-    // on a Frist callout, on a tightening change and inside a tolerance band —
-    // spending it on "we are waiting for you" made an unanswered question look
-    // like a compliance risk.
-    const { container } = render(<ProposalShell tone="pending">Merken?</ProposalShell>)
-    const card = container.querySelector('[data-slot="card"]')
-
-    expect(card).toHaveClass('border-l-foreground/40')
-    expect(card, 'warning means "close to a limit" everywhere else in the set').not.toHaveClass(
-      'border-l-warning',
-    )
+  it('draws no accent edge in any state, and never the warning colour', () => {
+    // Side stripes are discouraged (grid-design-language.md, "Emphasis without
+    // a stripe"), and lifecycle is its own axis (§A3): amber means "close to a
+    // limit" everywhere else in the set.
+    for (const tone of ['pending', 'accepted', 'dismissed'] as const) {
+      const { container, unmount } = render(<ProposalShell tone={tone}>Text</ProposalShell>)
+      const card = container.querySelector('[data-slot="card"]')
+      expect(card?.className, tone).not.toMatch(/border-l|warning/)
+      unmount()
+    }
   })
 
-  it('still spends the verdict colours on the two states that are outcomes', () => {
+  it('shows a pending question bare, and an outcome as a glyph beside its words', () => {
+    const { container: pending } = render(<ProposalShell tone="pending">Merken?</ProposalShell>)
+    expect(pending.querySelector('[data-outcome]')).toBeNull()
+
     const { container: accepted } = render(<ProposalShell tone="accepted">Ja</ProposalShell>)
-    expect(accepted.querySelector('[data-slot="card"]')).toHaveClass('border-l-success')
+    const check = accepted.querySelector('[data-outcome="accepted"]')
+    expect(check).toHaveClass('lucide-circle-check', 'text-success')
 
     const { container: dismissed } = render(<ProposalShell tone="dismissed">Nein</ProposalShell>)
-    expect(dismissed.querySelector('[data-slot="card"]')).toHaveClass('border-l-subtle')
+    expect(dismissed.querySelector('[data-outcome="dismissed"]')).toHaveClass(
+      'lucide-circle-minus',
+      'text-muted-foreground',
+    )
   })
 })

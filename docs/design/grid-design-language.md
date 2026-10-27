@@ -14,6 +14,9 @@ The visual language is **warm paper monochrome + provenance signal colors** (ado
 4. **Hierarchy over density.** Dense is fine (architects handle complex data), but every screen has ONE clear focal point and a legible reading order. Whitespace does the separating, not boxes-within-boxes.
 5. **Motion with a reason.** Movement here is an argument, not an ornament: it says where something came from, that a press landed, or that a change took. Entrance fades with a slight rise for arriving content; smooth height only for a block arriving or folding at or below the reading point (see Motion vocabulary → Height); skeleton→content. **Springs are allowed where the motion's trajectory carries information the endpoint does not** — a panel arriving from an edge, a toggle thumb clicking into its detent, a dropped file landing, a row gliding to its new group. They are physics, not personality: the overshoot budget is **1–2 pixels of visible travel**, so the spring is chosen by distance, never by taste. Everything else — colour, opacity, hover, system-initiated entrance — is a tween, 120–240ms. Never a spring on colour, on legal content, on errors, or on anything repeating more than about five times per screen. Respect `prefers-reduced-motion` absolutely: motion must be droppable with no loss of information.
 6. **Every state is designed.** Loading, empty, error, partial, success. Empty states especially are craft opportunities, not afterthoughts — they orient and invite the next action.
+7. **Figma is an inspiration, never a template.** When a surface is a tool (search, a register, a panel, a property sheet), it can help to ask how Figma would approach it: a calm canvas, quiet sections, a command field with its shortcut, keyboard first. Take the spirit, not the look: nothing is copied from it, and this document decides every concrete choice (colour, type, spacing, atoms).
+8. **Nielsen's ten usability heuristics are a must**, not a taste: visibility of system status; match with the real world (the office's own words: Plannummer, Index, Planstand, Maßstab); user control and freedom (undo, clear, back keeps state); consistency and standards; error prevention; recognition rather than recall; flexibility and efficiency of use; aesthetic and minimalist design; help users recognise, diagnose and recover from errors; help and documentation. A new or reworked surface goes through them one by one, and its PR states for each what the surface does about it, next to its screenshots ([Nielsen Norman Group, "10 Usability Heuristics"](https://www.nngroup.com/articles/ten-usability-heuristics/)).
+9. **Question every explanation.** Explanatory copy is welcome where it adds what the surface cannot show (what a search reaches, why a result matched, what a file will hold). Each one first answers why it is needed: when it compensates for an unclear control, change the control, and the sentence may then shrink or go. When it carries real information, keep it short and concrete, in the office's words.
 
 ## Tokens (already defined in src/styles/tokens.css)
 
@@ -434,6 +437,30 @@ costs nothing to learn. `features/tasks/components/task-card.tsx`
 
 Colour is never the only carrier. The swatch is a scan anchor; the status is
 always also stated in words, in the chip under the title.
+
+**Emphasis without a stripe.** Side stripes are discouraged: a coloured or
+ruled bar down the left edge of a box, used as decoration or emphasis. The
+reason is the product owner's preference, stated on 2026-10-27, after the UI had
+grown one on callouts, cards, quotes, toasts, peeks, inbox rows and timetable
+chips. Each did what the task card's rail did (above): the edge became the
+loudest thing on a box whose subject is its content, and where it carried a
+status it carried it in colour alone. This replaces the old quotation rule
+(`border-l-2 border-border` on someone else's words). Prefer, in this order:
+
+| To say | Prefer |
+|---|---|
+| These are someone else's words (a comment, a question asked, a lesson) | `Quote` (`components/ui/quote.tsx`): indented, italic, muted ink |
+| This passage is the source's wording | `Quote variant="excerpt"`: a quiet tinted surface with the card radius |
+| This wording is not verified | `Quote variant="paraphrase"`: upright, a dashed full hairline, and the stamp saying so |
+| This block belongs together / stands apart | A tinted surface (`bg-muted`, the semantic tint) or a full hairline border with radius |
+| This is a success, a warning, a Frist | An icon and a word (`Chip`, `Alert`, the callout's eyebrow), the colour only reinforcing them (WCAG 1.4.1) |
+| This row is unread / this series is this colour | `AttentionDot` in the leading gutter; the 10px swatch beside the name |
+
+A 1px `border-l` is still the right tool as a **structural divider**, where it
+separates two things side by side: a pane seam, a table or timetable column, a
+segmented control's segments, a timeline's axis with its nodes, a tree's guide
+line. If a stripe seems genuinely the clearest answer somewhere else, say why
+in the review.
 
 **Page header** — every content page opens with `PageHeader`
 (`frontends/ui/src/components/ui/page-header.tsx`), so the title stays on-spec
@@ -859,7 +886,7 @@ More than one ambient loop on screen. `ease-linear`. `transition-all`.
 
 ## Domain-specific treatments
 
-- **LegalBasisCard** = the product's proof-of-work. Treat as a first-class quotation: a distinct but quiet card, a thin left accent border in the law signal (`border-l-2 border-l-source-law/40`), the law/Richtlinie + article/§ in a header row (§ refs in `font-mono`), the cited excerpt as an actual blockquote (`border-l` muted, italic optional, readable measure), and a plain-language summary. It should read like an authoritative citation, not a chat bubble.
+- **LegalBasisCard** = the product's proof-of-work. Treat as a first-class quotation: a distinct but quiet card on the card ground, the law/Richtlinie + article/§ in a header row (§ refs in `font-mono`, the law's chip carrying the provenance signal), the cited excerpt as an actual blockquote set with the `Quote` atom (italic, readable measure, no rule down its edge), and a plain-language summary. It should read like an authoritative citation, not a chat bubble. This used to prescribe a law-tinted left accent (`border-l-2 border-l-source-law/40`) and a muted `border-l` on the excerpt; both went on 2026-10-27, when the owner said he prefers boxes without side stripes (see **Emphasis without a stripe**).
 - **Citations/sources** — numbered, verifiable, hover-to-preview where possible; every citation chip carries its provenance signal (icon + label + color); source filenames in the file corpus should feel traceable.
 - **Knowledge gaps ("Lücke")** — missing knowledge is rendered honestly as a first-class source entry in the gray `--source-auto` family (gap icon + label + remediation hint), never hidden.
 - **Deep-research progress** — legible over noisy: a calm task checklist as the primary signal; thinking/tools/files are secondary tabs. Progress should feel like watching a competent analyst work, not a log stream.
@@ -871,7 +898,7 @@ More than one ambient loop on screen. `ease-linear`. `transition-all`.
 - No emojis anywhere in UI. Icons are lucide-react only.
 - No hardcoded colors — tokens only, so dark mode is free.
 - No nested cards (card-inside-card). Flatten with borders/dividers/spacing.
-- No status stripe down a card's edge, and no status tint across a whole card. Status is a 10px rounded swatch on the title line — see **Component patterns**.
+- Avoid side stripes: a coloured or ruled bar down the left (inline-start) edge of a card, callout, quote, toast, peek, row or chip, for status or for emphasis, is discouraged. And no status tint across a whole card. Status is a 10px rounded swatch on the title line, or an icon and a word — see **Emphasis without a stripe**.
 - No purple/generic-AI aesthetic. **Provenance signals are the only chroma** — no blue active states (actions and focus are ink app-wide), and a source color is never used outside its meaning or without its icon + label. No general accent token: one existed briefly and was withdrawn (see §"Accent pop" above). A control that wants to stand out wants contrast, not chroma.
 - No touch size on a `md:` breakpoint, no reveal that only hover can open, no `touch-action` that takes the page scroll from a surface that does not own the gesture, no `vh`, no meaning carried only by a tooltip. See [Touch](#touch).
 - No hand-written breakpoint width in JavaScript; ask `useIsMobile()` or pass a query from `hooks/use-is-mobile.ts`. See [Breakpoints](#breakpoints-four-axes-four-questions).

@@ -95,6 +95,7 @@ export function documentVisibleTo(reader: DocumentReader): SQL | undefined {
         ...(reader.reviewedProjectIds.length > 0
           ? [and(eq(documents.scope, 'project'), inArray(documents.projectId, [...reader.reviewedProjectIds]))]
           : []),
+        ...(reader.reviewsOfficeShelf ? [eq(documents.scope, 'office_shelf')] : []),
       )
     case 'screened-only':
       return passedScreening()

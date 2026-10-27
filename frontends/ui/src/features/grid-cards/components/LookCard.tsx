@@ -25,6 +25,7 @@ import { PagePlaceButton } from '@/features/knowledge/components/page-place-butt
 import type { PagePlace } from '@/features/knowledge/lib/page-place'
 import { useTranslations, type Translator } from '@/i18n'
 import { cn } from '@/lib/utils'
+import { Quote } from '@/components/ui/quote'
 import type { GridCard } from '@/shared/cards/schemas'
 import { CARD_SHELL } from './card-chrome'
 
@@ -95,13 +96,14 @@ export const LookCard: FC<LookCardProps> = ({ document, items, eager }) => {
                   </span>
                   {said && <span className="text-foreground">{said}</span>}
                   {!reference && item.reading && (
-                    <span
+                    <Quote
+                      as="span"
                       data-testid="look-reading"
                       title={t('cards.look.readingNote')}
-                      className="text-foreground border-border border-l-2 border-dashed pl-2 italic"
+                      className="text-foreground"
                     >
                       {t('cards.look.reading', { reading: item.reading })}
-                    </span>
+                    </Quote>
                   )}
                 </span>
               </PagePlaceButton>

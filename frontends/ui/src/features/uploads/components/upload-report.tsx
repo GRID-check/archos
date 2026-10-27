@@ -25,7 +25,7 @@ export function UploadReportLines({ report }: { report: UploadReport }): JSX.Ele
   return (
     <section
       aria-label={t('uploadReport.label')}
-      className="text-muted-foreground mt-1 flex flex-col gap-0.5 border-l border-border pl-2.5 text-sm leading-relaxed"
+      className="text-muted-foreground mt-1 flex flex-col gap-0.5 pl-2.5 text-sm leading-relaxed"
       data-testid="upload-report"
     >
       <p className="text-foreground">{copy.read}</p>
