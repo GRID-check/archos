@@ -395,6 +395,11 @@ export const DETAIL_VARIANTS: Record<string, DetailFixture> = {
     }),
     text: text(),
   },
+  // Three days left: „Wartet nur noch bis …“ comes forward from „Details“ into the header.
+  'expires-soon': {
+    view: mail({ key: 'expires-soon', expiresAt: daysAhead(3), parts: [messagePart({ id: fixtureId('message:es') }), permitDecision()] }),
+    text: text(),
+  },
   'scan-pending': {
     view: mail({ key: 'scan-pending', parts: [messagePart({ id: fixtureId('message:sp') }), statik({ scan: 'pending', scannedAt: null }), permitDecision({ scan: 'failed' })] }),
     text: text(),

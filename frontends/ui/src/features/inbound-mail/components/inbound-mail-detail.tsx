@@ -413,6 +413,7 @@ export function InboundMailDetail({
           view={view}
           forwarded={text.kind === 'ready' ? text.text.forwardedFrom : null}
           originalUrl={client.originalUrl(projectId, view.id)}
+          now={now}
         />
 
         {!stopped && messagePart?.state === 'waiting' && messagePart.contentFindings.length > 0 && draft?.message?.findingChoice && (
