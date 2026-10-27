@@ -27,7 +27,7 @@ import {
 } from './kit'
 import { sketchPolygon, sketchRect, type Point } from './rough'
 import { useTranslations } from '@/i18n'
-import type { DimensionCheckData, NormReferenceData } from './types'
+import type { DimensionCheckData, NormReferenceData } from '@/shared/cards/schemas'
 
 interface StairDiagramCardProps {
   title: string
