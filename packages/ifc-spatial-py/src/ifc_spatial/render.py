@@ -462,7 +462,7 @@ def plan(
     for global_id in highlighted:
         try:
             element = model.file.by_guid(global_id)
-        except (RuntimeError, KeyError):
+        except RuntimeError, KeyError:
             continue
         geo = model.geometry(global_id)
         if geo is None or geo.triangles is None or len(geo.triangles) == 0:

@@ -206,8 +206,7 @@ export async function requirePlanDocumentsOpen(
   documents: readonly PlanDocument[],
   locale: Locale
 ): Promise<void> {
-  const names = documents.filter((document) => // A plan stored before the rename says `archiv`; asShelf reads it as the office shelf.
-      asShelf(document.shelf) !== 'office_shelf').map((document) => document.name)
+  const names = documents.filter((document) => asShelf(document.shelf) !== 'office_shelf').map((document) => document.name)
   if (names.length === 0) return
   const folders = await listProjectFolderTree(organizationId, projectId)
   // No folder has its own list, so every folder is read by every member.

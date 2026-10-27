@@ -154,7 +154,7 @@ def add_generate_summary_routes(router: APIRouter) -> None:
 
         try:
             summary = data["choices"][0]["message"]["content"].strip()
-        except (KeyError, IndexError, AttributeError, TypeError):
+        except KeyError, IndexError, AttributeError, TypeError:
             logger.warning("Summary LLM response had an unexpected shape")
             return GenerateSummaryResponse(summary="", error="llm_response_malformed")
 

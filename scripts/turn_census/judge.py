@@ -114,7 +114,7 @@ def ask(kind: str, question: str, answer: str, *, timeout: float = 60.0) -> bool
         with urllib.request.urlopen(request, timeout=timeout) as response:
             reply = json.loads(response.read().decode("utf-8"))
         text = str(reply["choices"][0]["message"]["content"]).strip().casefold()
-    except (urllib.error.URLError, TimeoutError, KeyError, IndexError, ValueError):
+    except urllib.error.URLError, TimeoutError, KeyError, IndexError, ValueError:
         return None
     if text.startswith("yes"):
         return True

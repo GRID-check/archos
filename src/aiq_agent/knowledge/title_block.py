@@ -30,9 +30,6 @@ from collections.abc import Mapping
 from collections.abc import Sequence
 from datetime import date
 from typing import Any
-from typing import TypeVar
-
-T = TypeVar("T")
 
 #: The title-block fields the vision model is asked for, in the order they are shown.
 TITLE_BLOCK_FIELDS = ("document_number", "revision", "revision_date", "scale", "title")
@@ -195,7 +192,7 @@ def compare_revisions(first: Mapping[str, Any] | None, second: Mapping[str, Any]
     return 0 if by_index == 0 or by_date == 0 else None
 
 
-def newest_first(
+def newest_first[T](
     items: Sequence[T],
     facts_of: Callable[[T], Mapping[str, Any] | None],
     tiebreak: Callable[[T], str],

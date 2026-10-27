@@ -14,7 +14,6 @@ import {
   authorityTag,
   kindForLane,
   modernizeLane,
-  modernizeSourceKind,
   scopeForQualifier,
   type Shelf,
   type SourceKind,
@@ -47,14 +46,9 @@ describe('KIND_TO_SIGNAL', () => {
   })
 })
 
-describe('the German spellings a stored citation or lane still carries', () => {
-  test('a kind reads as its English name', () => {
-    expect(modernizeSourceKind('baurecht')).toBe('building_law')
-    expect(modernizeSourceKind('buero')).toBe('office')
-    expect(modernizeSourceKind('projekt')).toBe('project')
-    expect(modernizeSourceKind('messung')).toBe('measurement')
-    expect(modernizeSourceKind('web')).toBe('web')
-    expect(asSourceKind(modernizeSourceKind('baurecht'))).toBe('building_law')
+describe('the German spellings a stored lane still carries', () => {
+  test('a German kind is no kind: migration 0163 rewrote every stored one', () => {
+    expect(asSourceKind('baurecht')).toBeUndefined()
   })
 
   test('a lane reads as its English key, and still means the same kind and tag', () => {
@@ -137,6 +131,8 @@ describe('Shelf (ADR-0047)', () => {
     expect(asShelf('building_law')).toBeUndefined()
     expect(asShelf('projekt')).toBeUndefined()
     expect(asShelf('archiv_org1')).toBeUndefined()
+    // The office shelf's retired name: migration 0187 rewrote every stored one.
+    expect(asShelf('archiv')).toBeUndefined()
     expect(asShelf('')).toBeUndefined()
     expect(asShelf(null)).toBeUndefined()
     expect(asShelf(undefined)).toBeUndefined()

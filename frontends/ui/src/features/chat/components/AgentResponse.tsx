@@ -454,7 +454,7 @@ const StreamingCaret: FC<{ fading?: boolean; veil?: boolean; idle?: boolean }> =
 
 /**
  * The verification's own vocabulary for dropping a citation
- * (`common/citation_verification.py`). Listed here because THIS is the file
+ * (`citations/`, the backend package). Listed here because THIS is the file
  * that owns the words for them — see {@link localizeToken}.
  */
 const CITATION_REMOVAL_REASONS = [

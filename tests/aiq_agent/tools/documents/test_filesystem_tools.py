@@ -18,10 +18,10 @@ from knowledge_layer.browse import FileRow
 from knowledge_layer.estate import EstateBackend
 from langgraph.store.memory import InMemoryStore
 
+from aiq_agent.citations.extraction import extract_sources_from_tool_result
 from aiq_agent.common import data_sources
 from aiq_agent.common import turn_status
 from aiq_agent.common.citation_collector import hits_from_artifact
-from aiq_agent.common.citation_verification import extract_sources_from_tool_result
 from aiq_agent.common.grounding_block import begin_grounding_capture
 from aiq_agent.common.grounding_block import end_grounding_capture
 from aiq_agent.common.turn_status import fetch_signature

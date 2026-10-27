@@ -16,14 +16,14 @@ from langgraph.types import Checkpointer
 
 from aiq_agent.agents.piloti.markers import ConfidenceLevel
 from aiq_agent.agents.piloti.markers import detect_and_strip_confidence_marker
+from aiq_agent.citations.entries import EmptySourceRegistryError
+from aiq_agent.citations.session import get_session_registry
+from aiq_agent.citations.session import reset_session_registry
+from aiq_agent.citations.session import set_session_registry
 from aiq_agent.common import LLMProvider
 from aiq_agent.common import citation_events
 from aiq_agent.common import load_prompt
 from aiq_agent.common import validate_tool_availability
-from aiq_agent.common.citation_verification import EmptySourceRegistryError
-from aiq_agent.common.citation_verification import get_session_registry
-from aiq_agent.common.citation_verification import reset_session_registry
-from aiq_agent.common.citation_verification import set_session_registry
 from aiq_agent.common.plan_documents import PlanDocuments
 from aiq_agent.common.plan_documents import unread_basis
 from aiq_agent.common.turn_status import CUTOFF_USER_REQUESTED

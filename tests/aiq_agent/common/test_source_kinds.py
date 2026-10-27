@@ -9,8 +9,8 @@ from __future__ import annotations
 
 import pytest
 
-from aiq_agent.common.citation_verification import SourceEntry
-from aiq_agent.common.citation_verification import source_entry_to_wire
+from aiq_agent.citations.entries import SourceEntry
+from aiq_agent.citations.wire import source_entry_to_wire
 from aiq_agent.common.source_kinds import AGENT_AUTHORED_LANE
 from aiq_agent.common.source_kinds import AGENT_AUTHORED_LANE_LABEL
 from aiq_agent.common.source_kinds import DEFAULT_SOURCE_KIND
@@ -224,9 +224,9 @@ class TestShelf:
 
     @pytest.mark.parametrize("qualifier", ["Büroablage", "Büroarchiv"])
     def test_a_key_under_either_name_strips_to_the_file(self, qualifier):
-        from aiq_agent.common.citation_verification import _parse_citation_ref
+        from aiq_agent.citations.citation_keys import parse_citation_ref
 
-        assert _parse_citation_ref(f"Plan.pdf ({qualifier}), p.3") == ("Plan.pdf", Shelf.OFFICE_SHELF, 3)
+        assert parse_citation_ref(f"Plan.pdf ({qualifier}), p.3") == ("Plan.pdf", Shelf.OFFICE_SHELF, 3)
 
 
 class TestLegacyShelfFallback:
