@@ -195,8 +195,8 @@ class TestTheFamilyIsTheAnswer:
 
         out = await _search()
 
-        assert "OIB-Richtlinie 2: 4 Teile im Bestand (2, 2.1, 2.2, 2.3)." in out
-        assert "Treffer 1 bis 4 sind der Geltungsbereich dieser Teile" in out
+        assert "OIB-Richtlinie 2: 4 parts in the corpus (2, 2.1, 2.2, 2.3)." in out
+        assert "Results 1 to 4 are the Geltungsbereich of these parts" in out
 
     async def test_the_preamble_says_the_parts_are_open(self, corpus):
         """The fact that stops the second round.
@@ -212,8 +212,8 @@ class TestTheFamilyIsTheAnswer:
 
         out = await _search()
 
-        assert "Damit sind diese Teile geöffnet, auf der Ebene von `read_passage(document=…)`" in out
-        assert "tiefer führt nur ein einzelner Punkt aus einer Gliederung" in out
+        assert "These parts are therefore open at the level a read of one document opens it at" in out
+        assert "deeper goes only a single Punkt from a Gliederung" in out
 
     async def test_a_part_the_corpus_lacks_is_never_claimed(self, corpus):
         """Membership is derived from what is indexed. A deployment without 2.3
@@ -223,7 +223,7 @@ class TestTheFamilyIsTheAnswer:
 
         out = await _search()
 
-        assert "OIB-Richtlinie 2: 2 Teile im Bestand (2, 2.1)." in out
+        assert "OIB-Richtlinie 2: 2 parts in the corpus (2, 2.1)." in out
         assert _citations(out)[:2] == [f"{MEMBERS['2']}, p.2", f"{MEMBERS['2.1']}, p.2"]
         assert "## Gliederung OIB-Richtlinie 2.3" not in out
 
@@ -235,7 +235,7 @@ class TestTheFamilyIsTheAnswer:
 
         out = await _search()
 
-        assert "OIB-Richtlinie 2: 3 Teile im Bestand (2, 2.1, 2.3)." in out
+        assert "OIB-Richtlinie 2: 3 parts in the corpus (2, 2.1, 2.3)." in out
         assert MEMBERS["2.2"] not in out
 
 
@@ -295,7 +295,7 @@ class TestWhereMembershipComesFrom:
         finally:
             set_norm_families(None)
 
-        assert "OIB-Richtlinie 2: 4 Teile im Bestand (2, 2.1, 2.2, 2.3)." in out
+        assert "OIB-Richtlinie 2: 4 parts in the corpus (2, 2.1, 2.2, 2.3)." in out
         assert len([call for call in store.calls if _outline_file(call["filters"])]) == 4
 
 
@@ -325,7 +325,7 @@ class TestTheOneTrailer:
         out = await _search()
         index = out.split("## Gliederung ", 1)[1]
 
-        assert "- Punkt 2: Anforderungen (S. 4)" in index
+        assert "- Punkt 2: Anforderungen (p. 4)" in index
         assert "Punkt 2.1: Abstände" not in index
 
     async def test_the_trailer_follows_the_fan_out(self, corpus):
@@ -450,8 +450,8 @@ class TestAnOverviewThatFailsSaysSo:
 
         out = await _search()
 
-        assert out.startswith("Hinweis: der Überblick über die Teile der OIB-Richtlinie 2 konnte nicht erstellt")
-        assert "`read_passage(document=…)`" in out
+        assert out.startswith("Note: the overview of the parts of OIB-Richtlinie 2 could not be built")
+        assert "each part opens on its own by its file name" in out
 
     async def test_a_search_that_names_no_family_carries_no_notice(self, corpus):
         corpus(MEMBERS)
@@ -469,7 +469,7 @@ class TestAnOverviewThatFailsSaysSo:
 
         out = await _search()
 
-        assert out.startswith("Hinweis: der Überblick über die Teile der OIB-Richtlinie 2 konnte nicht erstellt")
+        assert out.startswith("Note: the overview of the parts of OIB-Richtlinie 2 could not be built")
         assert _citations(out) == [f"{MEMBERS['2']}, p.12", f"{MEMBERS['2.3']}, p.5"]
 
 

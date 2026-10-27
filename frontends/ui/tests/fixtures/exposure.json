@@ -3749,7 +3749,7 @@
    "domain": "knowledge",
    "sensitivity": null,
    "external": true,
-   "piloti": "native:read_passage",
+   "piloti": "native:read_file",
    "platform": false,
    "withheld": null,
    "reason": "Piloti reads with this native tool itself; the door offers it to outside agents"

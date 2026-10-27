@@ -63,36 +63,49 @@ export const PREVIEW_EXCLUDED: Record<string, 'needsModel' | 'needsDocuments'> =
 const RAW_FIXTURES: CardInput[] = [
   {
     // Carries a MEASURED operand with its band, because that is the hard state:
-    // the result the card computes is 64,0 cm ±1,0, which sits inside the
-    // Schrittmaßregel's 59–65 cm at every point of the band. The gallery reader
-    // should see that the card decided that itself.
+    // the sum the card computes is 1.442,0 m² ±2,0, which sits under OIB-RL 2's
+    // 1.600 m² for Büronutzung at every point of the band. The gallery reader
+    // should see that the card decided that itself. Not the Schrittmaßregel: a
+    // named rule is a `formula` (below), which owns its bounds.
     type: 'calculation',
-    title: 'Schrittmaßregel – Treppenlauf Haus A',
+    title: 'Netto-Grundfläche Brandabschnitt BA 2',
     steps: [
       {
-        label: 'Schrittmaß',
+        label: 'Netto-Grundfläche',
         operation: 'sum',
-        unit: 'cm',
+        unit: 'm²',
         operands: [
+          { label: 'Büros Nord', value: 612.4, unit: 'm²', source: 'Raumbuch 3. OG' },
+          { label: 'Büros Süd', value: 588, unit: 'm²', source: 'Raumbuch 3. OG' },
           {
-            label: 'Steigung',
-            value: 17,
-            unit: 'cm',
-            factor: 2,
+            label: 'Gang und Nebenräume',
+            value: 241.6,
+            unit: 'm²',
             provenance: 'computed',
-            tolerance: 0.5,
-            source: 'Einreichplan, Schnitt A-A',
+            tolerance: 2,
+            source: 'Modell, Geschoß 3. OG',
           },
-          { label: 'Auftritt', value: 30, unit: 'cm', provenance: 'declared' },
         ],
       },
     ],
     limit: {
-      comparator: 'between',
-      value: 59,
-      upper: 65,
-      label: 'Schrittmaßregel',
-      reference: OIB4,
+      comparator: '<=',
+      value: 1600,
+      label: 'Büronutzung',
+      reference: { document: 'OIB-Richtlinie 2', section: 'Pkt. 3.1.1', edition: 'Ausgabe Mai 2023' },
+    },
+  },
+  {
+    // The hard state for a what-if card: one input the source does not give.
+    // The Auftritt is missing, so the Schrittmaß cannot be judged until the
+    // reader enters an assumption, while the Stufenhöhe already can.
+    type: 'formula',
+    title: 'Stiege Haus B',
+    formula: {
+      name: 'stair_step_rule',
+      stair_type: 'main',
+      riser: { value: 17.5, min: 10, max: 25, step: 0.5, source: 'Einreichplan, Schnitt B-B' },
+      going: { value: null, min: 20, max: 40, step: 0.5 },
     },
   },
   {

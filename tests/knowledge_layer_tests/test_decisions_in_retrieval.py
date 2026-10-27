@@ -158,7 +158,7 @@ class TestTheJevReranker:
 
 
 class TestTheCoverageCheck:
-    """„Abdeckung: unzureichend" is claimed on a complete "no", and on nothing less."""
+    """ "Coverage: insufficient" is claimed on a complete "no", and on nothing less."""
 
     async def test_every_passage_below_the_threshold_is_a_gap(self, client):
         client.decide_many.return_value = [_decision(answers=0.2), _decision(answers=0.31)]

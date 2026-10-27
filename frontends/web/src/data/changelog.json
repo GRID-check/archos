@@ -55,6 +55,10 @@
               "de": "Eine von Piloti in einem Projekt gezeichnete Prozessdarstellung oder Kontur lässt sich jetzt manuell überarbeiten: „Als Skizze bearbeiten“ öffnet sie auf einer Zeichenfläche, und Ihre Version wird als SVG und PDF im Projekt abgelegt – gekennzeichnet als von Piloti entworfen und von Ihnen bearbeitet."
             },
             {
+              "en": "Piloti now finds and reads your documents the same way on every question: it lists a folder, searches the wording, and opens the pages it needs, and the Herleitung shows each of those steps by what it looked at. When no passage answers what you asked, Piloti says so and names what it searched, rather than calling the matter unregulated.",
+              "de": "Piloti findet und liest Ihre Dokumente jetzt bei jeder Frage auf dieselbe Weise: Es listet Ordner auf, durchsucht den Wortlaut und öffnet die benötigten Seiten. Die Herleitung zeigt jeden dieser Schritte anhand der Inhalte, die Piloti dafür herangezogen hat. Wenn keine Textstelle Ihre Frage beantwortet, sagt Piloti das und nennt, wonach es gesucht hat, statt den Sachverhalt als ungeregelt zu bezeichnen."
+            },
+            {
               "en": "When an answer rests on one place in a document, Piloti now opens it beside the chat once the answer is there, at that page with the passage or area marked, and a row under the answer undoes it in one click. It opens only what you may see yourself and never while you are typing, and a switch under the answer or on your profile page turns it off.",
               "de": "Wenn eine Antwort auf einer Stelle in einem Dokument beruht, öffnet Piloti das Dokument jetzt neben dem Chat, sobald die Antwort vorliegt – auf der entsprechenden Seite und mit markierter Textstelle oder Fläche. Über eine Zeile unter der Antwort können Sie das mit einem Klick rückgängig machen. Es werden nur Inhalte geöffnet, die Sie selbst sehen dürfen, und nie während Sie tippen. Über einen Schalter unter der Antwort oder auf Ihrer Profilseite können Sie die Funktion deaktivieren."
             },
@@ -77,6 +81,10 @@
             {
               "en": "A project's findings now show where a document states a different building class, storey count, plot area, construction method, use or federal state than the project profile, side by side with links to both.",
               "de": "Die Ergebnisse eines Projekts zeigen jetzt nebeneinander, wo ein Dokument eine andere Gebäudeklasse, Geschossanzahl, Grundstücksfläche, Bauweise, Nutzung oder ein anderes Bundesland als im Projektprofil angibt, jeweils mit Links zu beiden."
+            },
+            {
+              "en": "A U-value, the Schrittmaßregel, an escape route's length or a room's glazing share now comes as a „Was wäre, wenn“ card, held to the Richtlinie's limit for your stair type, component or room. Change an input and the result and the verdict are recomputed on the spot; your value is marked „Ihre Annahme“ beside the source's figure, and nothing is saved.",
+              "de": "Ein U-Wert, die Schrittmaßregel, die Länge eines Fluchtwegs oder der Verglasungsanteil eines Raums wird jetzt als „Was wäre, wenn“-Karte angezeigt und mit dem Grenzwert der Richtlinie für Ihren Treppentyp, Ihr Bauteil oder Ihren Raum abgeglichen. Ändern Sie eine Eingabe, werden Ergebnis und Bewertung sofort neu berechnet; Ihr Wert ist neben dem Quellenwert als „Ihre Annahme“ gekennzeichnet, und nichts wird gespeichert."
             },
             {
               "en": "Search finds anything the office holds, from anywhere with Ctrl+K: documents by their name, by what they are and by what they say, with the matching passage and page, plus annotations, folders, projects and conversations. It searches every project and the office shelf at once, or inside one project or folder.",
@@ -110,6 +118,10 @@
             {
               "en": "Searching a project's documents or the Archiv now also finds a document by its name and by what it is, not only by what it says. Each result shows the matching passage and its page in ranked order, without a relevance percentage.",
               "de": "Bei der Suche in den Dokumenten eines Projekts oder im Archiv werden Dokumente jetzt nicht nur anhand ihres Inhalts, sondern auch anhand ihres Namens und Dokumenttyps gefunden. Die Ergebnisse zeigen den passenden Textabschnitt und die Seitenzahl und sind nach Relevanz sortiert – ohne Prozentangabe zur Relevanz."
+            },
+            {
+              "en": "When Piloti looks through your documents, the Herleitung names folders and files the way you do: „Öffnet 03 Einreichung · 12 Dateien, 2 Ordner“ or „Sucht im Projekt nach PDF-Dateien“. A folder that is not there reads „nicht gefunden“, and one that is there but empty reads „leer“.",
+              "de": "Wenn Piloti Ihre Dokumente durchsucht, nennt die Herleitung Ordner und Dateien so, wie Sie es tun: „Öffnet 03 Einreichung · 12 Dateien, 2 Ordner“ oder „Sucht im Projekt nach PDF-Dateien“. Ein nicht vorhandener Ordner wird als „nicht gefunden“ angezeigt, ein vorhandener, aber leerer als „leer“."
             },
             {
               "en": "A document says how many of its pages were fully read, and why the rest were not, instead of looking complete when a drawing or scan could not be read.",
@@ -149,6 +161,10 @@
               "de": "Die Berechtigungsübersicht im Tab Zugriff führt keine Berechtigungen für Skill-Zeitpläne mehr auf, die keine Rolle jemals haben konnte. Wer einen Zeitplan ausführen und ändern darf, wird wie bisher durch das Projekt festgelegt."
             },
             {
+              "en": "A word search that could not search all your documents no longer looks complete in the Herleitung. It is drawn with a dashed ring and says that a missing hit is no proof; an incomplete search without a hit appears under „Offen“.",
+              "de": "Eine Wortsuche, die nicht alle Ihre Dokumente durchsuchen konnte, wird in der Herleitung nicht mehr als vollständig angezeigt. Sie ist mit einem gestrichelten Ring markiert und weist darauf hin, dass ein fehlender Treffer kein Beweis ist; eine unvollständige Suche ohne Treffer erscheint unter „Offen“."
+            },
+            {
               "en": "Uploaded photos show again when they were taken and with which camera.",
               "de": "Hochgeladene Fotos zeigen wieder, wann und mit welcher Kamera sie aufgenommen wurden."
             },
@@ -159,6 +175,10 @@
             {
               "en": "When Piloti looks up every place a word appears in your documents, each place now counts once. A word in a chapter heading, or in a passage that runs on to the next page, was counted two or more times and could be listed on pages where it does not stand.",
               "de": "Wenn Piloti alle Stellen in Ihren Dokumenten ermittelt, an denen ein Wort vorkommt, zählt jede Stelle jetzt nur einmal. Ein Wort in einer Kapitelüberschrift oder in einem Textabschnitt, der auf der nächsten Seite weitergeht, wurde bisher zwei- oder mehrmals gezählt und konnte auf Seiten aufgeführt werden, auf denen es nicht vorkommt."
+            },
+            {
+              "en": "An answer no longer loses a source because Piloti cited a document by its place in the folders instead of by its name.",
+              "de": "Eine Antwort lässt eine Quelle nicht mehr aus, wenn Piloti ein Dokument anhand seiner Position in der Ordnerstruktur statt anhand seines Namens zitiert."
             },
             {
               "en": "For people who work in more than one office, the top bar above the projects filled the whole window and hid the page. The bar is back to its normal height, and switching offices now lives in the menu behind your picture.",

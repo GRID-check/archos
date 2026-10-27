@@ -217,7 +217,7 @@ _RESULT_BLOCK_RE = re.compile(r"^--- Result \d+ ---$", re.M)
 _CITATION_LINE_RE = re.compile(r"^Citation: (.+)$", re.M)
 #: What stands where an uncited passage stood. English like the block's own
 #: header lines; it names the way back, not the text.
-UNCITED_PASSAGE_NOTE = "[passage not cited by the answer; re-open with read_passage if it is needed]"
+UNCITED_PASSAGE_NOTE = "[passage not cited by the answer; open it again by its Path if it is needed]"
 
 
 def compact_tool_results(messages: list[BaseMessage], cited_keys: set[str]) -> list[BaseMessage]:

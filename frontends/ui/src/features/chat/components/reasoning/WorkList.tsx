@@ -8,13 +8,18 @@
  * dot and „läuft“, a search that found nothing a ring and „kein Treffer“, a
  * call the turn ended under a hollow dot and „abgebrochen“, a failed call a
  * triangle and „fehlgeschlagen“, with what that means for the answer on a
- * second line under the object. Colour is kept for where a source comes from,
- * on the cards below.
+ * second line under the object; a literal search that could not search
+ * everything a dashed ring and „unvollständig“, with its own second line (a
+ * count that is a floor, a no that is no no). Colour is kept for where a
+ * source comes from, on the cards below.
  *
  * Tapping a row lights up the source cards its call returned and sets the
- * others back (`LinkSelection`, joined by `call_id`). A row stored before the
- * wire carried a call id links to nothing; when it names a document it opens
- * that document instead, as it always did. A look row carries its crop, marked
+ * others back (`LinkSelection`, joined by `call_id`). Only a row whose call
+ * returned a card links: a listing, a name search or a literal search for
+ * files is an index and returns none, and a tap that dims every card and
+ * lights nothing is a control without an effect. A row stored before the wire
+ * carried a call id links to nothing; when it names a document it opens that
+ * document instead, as it always did. A look row carries its crop, marked
  * as read off rather than measured; while the look runs, a quiet box of the
  * crop's size holds its place, so settling does not move the rows below.
  */
@@ -25,6 +30,7 @@ import {
   Boxes,
   ChevronDown,
   Circle,
+  CircleDashed,
   FolderOpen,
   FolderSearch,
   Globe,
@@ -91,6 +97,11 @@ export interface RowLinking {
   selection: LinkSelection | null
   onSelect: (selection: LinkSelection | null) => void
   /**
+   * The calls that returned a card. A row links only when one of its calls is
+   * here; absent, every row with a call id links (a caller without cards).
+   */
+  carded?: ReadonlySet<string>
+  /**
    * The name the turn's card gives the document a call named, when there is
    * one: the row then says what the card and „Offen“ say („OIB-Richtlinie 2,
    * Ausgabe Mai 2023“, never „OIB-RL 2, Ausgabe 2023“ beside it).
@@ -104,7 +115,7 @@ const ICON_INLINE = 'mr-1.5 inline-block align-[-2px]'
 /** The result on the row's right edge (or its second line on a phone): shape + word. */
 const ResultWord: FC<{ parts: WorkParts }> = ({ parts }) => {
   if (!parts.result) return null
-  const strong = parts.tone === 'empty' || parts.tone === 'error'
+  const strong = parts.tone === 'empty' || parts.tone === 'error' || parts.tone === 'incomplete'
   return (
     <span
       data-testid="work-row-result"
@@ -135,18 +146,23 @@ const ResultWord: FC<{ parts: WorkParts }> = ({ parts }) => {
       {parts.tone === 'error' && (
         <TriangleAlert aria-hidden strokeWidth={2.4} className={cn(ICON_INLINE, 'size-3')} />
       )}
+      {parts.tone === 'incomplete' && (
+        <CircleDashed aria-hidden strokeWidth={2.4} className={cn(ICON_INLINE, 'size-3')} />
+      )}
       {parts.result}
     </span>
   )
 }
 
-/** What a failed call means for the answer, on its own muted line under the object. */
-const FailedNote: FC<{ parts: WorkParts }> = ({ parts }) => {
-  const t = useTranslations('chat')
-  if (parts.tone !== 'error') return null
+/** What a failed or incomplete call means for the answer, on its own muted line under the object. */
+const ResultNote: FC<{ parts: WorkParts }> = ({ parts }) => {
+  if (!parts.note) return null
   return (
-    <span data-testid="work-row-failed-note" className="text-muted-foreground block">
-      {t('thinking.work.failedNote')}
+    <span
+      data-testid={parts.tone === 'error' ? 'work-row-failed-note' : 'work-row-note'}
+      className="text-muted-foreground block"
+    >
+      {parts.note}
     </span>
   )
 }
@@ -170,7 +186,8 @@ export const WorkRowView: FC<{
     ...(look?.reading ? { reading: look.reading } : {}),
   })
   const sentence = workPartsText(parts)
-  const linkable = row.callIds.length > 0 && Boolean(linking)
+  const linkable =
+    Boolean(linking) && row.callIds.some((id) => (linking?.carded ? linking.carded.has(id) : true))
   const place = linkable ? null : placeOfAction(action)
   const pressed = linkable && linking ? isLinked(linking.selection, row.callIds) : false
   const times = row.fold ? t('thinking.work.times', { count: row.fold.count }) : ''
@@ -180,7 +197,7 @@ export const WorkRowView: FC<{
       {parts.verb && <span className="text-muted-foreground">{parts.verb} </span>}
       <span className="text-foreground">{parts.object}</span>
       {times && <span className="text-muted-foreground tabular-nums">{`\u00A0${times}`}</span>}
-      {!compact && <FailedNote parts={parts} />}
+      {!compact && <ResultNote parts={parts} />}
     </span>
   )
   const body = (
@@ -194,7 +211,7 @@ export const WorkRowView: FC<{
         <span className="flex min-w-0 flex-col">
           {text}
           <ResultWord parts={parts} />
-          <FailedNote parts={parts} />
+          <ResultNote parts={parts} />
         </span>
       ) : (
         <>
@@ -227,6 +244,7 @@ export const WorkRowView: FC<{
       data-testid="work-row"
       data-verb={action.verb}
       data-status={parts.tone === 'interrupted' ? 'interrupted' : row.running ? 'running' : action.status}
+      data-incomplete={action.incomplete ? true : undefined}
       className="flex min-w-0 flex-col"
     >
       {linkable && linking ? (

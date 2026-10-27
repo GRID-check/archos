@@ -28,7 +28,7 @@ import { createTranslator } from '@/i18n/translate'
 import { de, en } from '@/i18n/dictionaries'
 import type { DocBlock } from './blocks'
 import { buildAnswerDocument, type AnswerDocumentInput } from './answer-document'
-import { CARD_EXPORT, isCheck, SKIPPED_FIELDS } from './cards'
+import { CARD_EXPORT, isCheck, SKIPPED_FIELDS, skippedNested } from './cards'
 import { gridCardSchema } from '@/shared/cards/schemas'
 import { previewFixtureFor } from '@/features/grid-cards/preview-fixtures'
 
@@ -867,20 +867,21 @@ describe('every string in the document comes from a dictionary', () => {
    */
   const payloadValues = (card: Record<string, unknown>): string[][] => {
     const expected: string[][] = []
-    const walk = (name: string, value: unknown, direct: boolean): void => {
+    const walk = (path: string, name: string, value: unknown, direct: boolean): void => {
       if (value === null || value === undefined) return
       if (Array.isArray(value)) {
-        for (const entry of value) walk(name, entry, false)
+        for (const entry of value) walk(path, name, entry, false)
         return
       }
       if (typeof value === 'object') {
         const record = value as Record<string, unknown>
         const namedByItsField = isCheck(record) && !direct
         for (const [key, entry] of Object.entries(record)) {
-          // The discriminator is the heading, not a value.
-          if (key === 'type') continue
+          // The discriminator is the heading, and a field's UI state (a formula
+          // input's arrow-key step) is no value: the walker skips both.
+          if (skippedNested(path, key)) continue
           if (key === 'label' && namedByItsField) continue
-          walk(key, entry, false)
+          walk(`${path}.${key}`, key, entry, false)
         }
         return
       }
@@ -897,7 +898,7 @@ describe('every string in the document comes from a dictionary', () => {
       expected.push(word ? [value, word] : [value])
     }
     for (const [name, value] of Object.entries(card)) {
-      if (!SKIPPED_FIELDS.has(name)) walk(name, value, true)
+      if (!SKIPPED_FIELDS.has(name)) walk(`${String(card.type)}.${name}`, name, value, true)
     }
     return expected
   }

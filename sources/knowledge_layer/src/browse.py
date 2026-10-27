@@ -1071,7 +1071,7 @@ def _card_lines(card: FolderCard, about: Sequence[str] = ()) -> list[str]:
     if card.files:
         lines.append(f"  Files here: {' · '.join(card.files)}")
     elif card.direct > MAX_CARD_FILES:
-        call = f'`list_files(folder="{card.path}")`' if card.path else "`list_files()`"
+        call = "a listing of the folder"
         lines.append(
             f"  Files here: {card.direct}, too many to name (a card names them up to {MAX_CARD_FILES}); "
             f"{call} lists them."
@@ -1368,8 +1368,8 @@ def render_revisions(
         "The change note sits on the NEWER Fassung and compares it with the base named beside it; between two "
         "Fassungen that are not neighbours, read the rows in between together. It is a summary by Piloti, not "
         "proof: what changed page by page is shown by `list_files(revisions_of=…, compare_to=…)`, and you check a "
-        "measurement with `read_passage(document=…)`. An older Fassung stays readable on request; otherwise rely "
-        "on the current one. Write file names exactly as they appear here."
+        "measurement by reading the document. An older Fassung stays readable on request; otherwise "
+        "rely on the current one. Write file names exactly as they appear here."
     )
     return "\n".join(lines)
 
@@ -2170,20 +2170,24 @@ def _in_flight(collections: Sequence[str]) -> list[str]:
 # Descriptions
 # ---------------------------------------------------------------------------
 
+#: The tree view, which a binding with ``ls(depth=…)`` leaves out (``chat_binding``).
+TREE_PARAGRAPH = (
+    '`view="tree"` (`depth=` 1-4, default 2) returns a card per folder instead of file lines: counts, '
+    "Dokumentart mix, pages, dates, the current Fassung; filters apply, no paging.\n"
+)
+
 _LIST_FILES_DESCRIPTION = (
     "Lists the reader's OWN files the way the Files pane shows them: which files exist, in which folder, of "
     "which Dokumentart, uploaded when. A deterministic listing, paged, not capped by the prompt inventory. "
-    "It says which files exist, not what they say: use `read_passage` or `knowledge_search` for that, and "
-    '`knowledge_search(match="exact")` to find which files mention a term.\n'
+    "It says which files exist, not what they say: reading or searching the documents does.\n"
     "Inputs, all optional: with none, every file on Projektwissen, Büroablage and Private Sitzung, ordered by "
     "folder, after an overview of the top-level folders with file counts. `folder=` one folder and everything "
     "below it. `name_contains=` words that must all appear in the file name or title (case and umlaut spelling "
     "do not matter). `doc_class=` a Dokumentart key. `added_since=` YYYY-MM-DD. `sort=newest`. `topic=` a Thema "
     "Piloti recognised (Attika, Holzrahmenbau). `shelf=` project | office_shelf | session | base (base, the "
     "platform OIB corpus, is listed only when asked). `offset=` the next page, as the result says.\n"
-    '`view="tree"` (`depth=` 1-4, default 2) returns a card per folder instead of file lines: counts, '
-    "Dokumentart mix, pages, dates, the current Fassung; filters apply, no paging.\n"
-    "`revisions_of=` a file name returns that document's whole chain of Fassungen, newest first, each with "
+    + TREE_PARAGRAPH
+    + "`revisions_of=` a file name returns that document's whole chain of Fassungen, newest first, each with "
     "Index/Datum, upload date and what changed against the one before; every other filter is ignored. With "
     '`compare_to=` another Fassung of the chain (its file name, or "previous"), it returns what changed, page by '
     "page, in the printed text and in the reading of the drawings, with the Plankopf's Index and Stand "
@@ -2466,7 +2470,7 @@ def user_pattern(text: str) -> tuple[Any | None, str]:
     except (regex.error, RecursionError, OverflowError) as error:
         return None, (
             f"`query` is not a valid regex (Python syntax): {error}. Escape a literal ( ) [ ] {{ }} . * + ? | \\ "
-            'with a backslash, or use `match="exact"` for a literal word.'
+            "with a backslash, or search literally for a literal word."
         )
     if compiled.search(""):
         return None, (

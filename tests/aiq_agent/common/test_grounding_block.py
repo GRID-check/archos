@@ -23,6 +23,7 @@ import pytest
 
 from aiq_agent.common.citation_verification import extract_sources_from_tool_result
 from aiq_agent.common.grounding_block import COVERAGE_GAP_LABEL
+from aiq_agent.common.grounding_block import COVERAGE_GAP_NOTE
 from aiq_agent.common.grounding_block import GroundingBlock
 from aiq_agent.common.grounding_block import GroundingHit
 from aiq_agent.common.grounding_block import _line
@@ -261,7 +262,7 @@ class TestTheRenderingDidNotMove:
 
 
 class TestTheCoverageGap:
-    """„Abdeckung: unzureichend" is a field the renderer states, never a string a producer glues on."""
+    """ "Coverage: insufficient" is a field the renderer states, never a string a producer glues on."""
 
     def _block(self, **overrides) -> GroundingBlock:
         fields = {
@@ -277,7 +278,7 @@ class TestTheCoverageGap:
         rendered = render_grounding_block(self._block(coverage_gap="keine der 12 besten Passagen …"))
         assert rendered.startswith(
             "Found 1 document(s); none of the judged ones answers the question:\n"
-            "Abdeckung: unzureichend — keine der 12 besten Passagen …\n\n--- Result 1 ---\n"
+            f"Coverage: insufficient — keine der 12 besten Passagen …. {COVERAGE_GAP_NOTE}\n\n--- Result 1 ---\n"
         )
 
     def test_no_gap_renders_no_line(self):
@@ -298,12 +299,15 @@ class TestTheCoverageGap:
         parsed = extract_sources_from_tool_result("knowledge_search", rendered)
         assert [e.citation_key for e in structured] == [e.citation_key for e in parsed] == ["doc.pdf"]
 
-    def test_the_prompt_tells_the_model_what_the_line_means(self):
-        """The label is a contract with ``piloti_static.md``: renaming one side strands the other."""
+    def test_the_line_tells_the_model_what_it_means(self):
+        """The meaning moved out of the system prompt into the line (slice 6): the model reads it when it applies."""
+        rendered = render_grounding_block(self._block(coverage_gap="kein Beleg"))
+        assert "„Nicht geregelt“" in rendered and "what you searched" in rendered
         prompt = (
             Path(__file__).resolve().parents[3] / "src" / "aiq_agent" / "agents" / "piloti" / "prompts"
         ) / "piloti_static.md"
-        assert COVERAGE_GAP_LABEL.removesuffix(" —") in prompt.read_text(encoding="utf-8")
+        assert "Coverage: insufficient" not in prompt.read_text(encoding="utf-8")
+        assert "Abdeckung: unzureichend" not in prompt.read_text(encoding="utf-8")
 
 
 class TestTheDerivationGetsTheRecords:

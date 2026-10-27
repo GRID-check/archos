@@ -152,8 +152,10 @@ def test_the_locator_is_declared_and_bound_on_both_answering_agents(config: dict
     entry = functions.get("read_passage")
     assert entry is not None, "read_passage must be declared under `functions:`"
     assert entry["_type"] == "read_passage"
-    assert "read_passage" in _tools(config, "shallow_research_agent")
     assert "read_passage" in _tools(config, "deep_research_agent")
+    # Piloti's chat opens the same address with `read_file` over the estate (ADR-0133 slice 6).
+    assert "read_passage" not in _tools(config, "shallow_research_agent")
+    assert config["functions"]["shallow_research_agent"]["filesystem"] == "knowledge_search"
 
 
 def test_the_deep_writer_learns_a_card_shape_without_a_round_trip(config: dict):

@@ -227,7 +227,7 @@ def test_a_small_folder_names_its_files_and_a_large_one_says_it_does_not():
     assert many["E"].files == ()
     text = render_tree(list(many.values()), total_rows=MAX_CARD_FILES + 1)
     assert f"Files here: {MAX_CARD_FILES + 1}, too many to name" in text
-    assert 'list_files(folder="E")' in text
+    assert "a listing of the folder lists them" in text
 
 
 def test_newest_uses_the_documents_own_date_and_says_which_date_it_is():

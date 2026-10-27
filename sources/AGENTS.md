@@ -64,11 +64,12 @@ changed, and they stayed green through every gate because nothing ran them.
   Membership is derived from what is indexed, never listed.
 - A ranked search the requery judge found insufficient is re-read by the `jev`
   decider after the requery round (`requery.judge_coverage`). A complete "no"
-  adds an `Abdeckung: unzureichend — …` line (`GroundingBlock.coverage_gap`)
+  adds a `Coverage: insufficient — …` line (`GroundingBlock.coverage_gap`)
   and keeps the pool whole (ADR-0064: a decision never withholds a passage);
   anything less claims nothing. Say
   "insufficient" through that field, never as text a producer writes itself:
-  the prompt names the label (`COVERAGE_GAP_LABEL`).
+  the line also says what it means (`COVERAGE_GAP_LABEL`, `COVERAGE_GAP_NOTE`),
+  which the system prompt no longer does.
 - The step-by-step for a new tool or data source, from package layout to
   binding it to an agent:
   [`adding-a-tool.md`](../docs/architecture/adding-a-tool.md).

@@ -60,6 +60,7 @@ from .draft_store import DraftBackend
 from .draft_store import get_draft_backend
 from .filesystem import PilotiFilesystem
 from .filesystem import composite_backend
+from .filesystem import with_bare_schema
 
 logger = logging.getLogger(__name__)
 
@@ -73,12 +74,25 @@ ESTATE_TOOL_NAMES = ("ls", "read_file", "glob", "grep")
 #: The tools only a working directory gives: the two that write.
 DRAFT_ONLY_TOOL_NAMES = ("write_file", "edit_file")
 
-#: Model-facing text, replacing DeepAgents' defaults. ``edit_file`` carries the
-#: two things that actually make an exact-string replacement land: anchor on a
-#: heading, and copy the paragraph rather than retyping it — with the warning
-#: that ``read_file`` prints a ``@@ lines … @@`` header that is not part of the
-#: file (since DeepAgents 0.7 the body below it is verbatim, without the line
-#: numbers and tabs it used to carry).
+#: The two writing verbs, one contract whichever namespace they sit in: a draft is written once, and
+#: ``edit_file`` copies its anchor from ``read_file``, whose ``@@ … @@`` header (DeepAgents 0.7) is not
+#: part of the file.
+_WRITE_DESCRIPTIONS = {
+    "write_file": (
+        f"Writes a draft as Markdown at `{DRAFT_ROOT}<name>.md` (short, lowercase, hyphens). For a commissioned "
+        "document (Aktenvermerk, Protokoll, Checkliste, Flächenaufstellung): write it here, complete and starting "
+        "with a `# ` heading, rather than in the answer, which then says in one sentence what was written. A draft "
+        f"is written once: an existing path is refused, and edit_file changes it. Only {DRAFT_ROOT} is writable."
+    ),
+    "edit_file": (
+        "Changes part of a draft: replaces `old_string`, which must occur exactly once (or pass "
+        "`replace_all=true`), with `new_string`. Copy `old_string` verbatim from read_file's output below its "
+        f"`@@ … @@` header, anchored on a heading and covering the whole paragraph you change. Only {DRAFT_ROOT} "
+        "is editable."
+    ),
+}
+
+#: Model-facing text for the drafts alone, replacing DeepAgents' defaults.
 _TOOL_DESCRIPTIONS = {
     "ls": (
         "Lists the drafts of this conversation. The working directory is at "
@@ -94,24 +108,7 @@ _TOOL_DESCRIPTIONS = {
         "What stands here, the answer wrote itself; evidence comes from the "
         "source tools."
     ),
-    "write_file": (
-        "Writes a NEW document into this conversation's working directory, as Markdown "
-        f"under `{DRAFT_ROOT}<name>.md` (short, descriptive file name, lowercase, "
-        "hyphens). For a commissioned document — Aktenvermerk, protocol, "
-        "checklist, area schedule, concept draft: the document is written, not "
-        "described in the answer. The document begins with a heading (`# …`) and is "
-        "complete; the answer then says in one sentence what was written. "
-        "Only creates new files: if the path already exists, `edit_file` is the tool."
-    ),
-    "edit_file": (
-        "Revises an existing draft by replacing `old_string` exactly once with "
-        "`new_string`. `old_string` must be unique in the document: anchor on a "
-        "heading and take over the whole paragraph from the heading to the end of the text to "
-        "change, verbatim from the output of `read_file` — without its "
-        "`@@ lines … @@` header line. If the text occurs several times, the "
-        "tool reports the count; then retry with more surrounding context. For a new document "
-        "use `write_file`."
-    ),
+    **_WRITE_DESCRIPTIONS,
 }
 
 #: Read and write are confined to the one root. The permission is checked in the
@@ -131,63 +128,53 @@ _PERMISSIONS = [
 ]
 
 
-#: The verbs once they read the estate too. Each a contract: what it reads, how it is addressed, what comes back,
-#: what is not evidence, and which of the other verbs fits instead.
+#: The verbs once they read the estate too: Piloti's chat binding (ADR-0133 slice 6). Each is a contract: what
+#: the tool does, its arguments, what comes back, its limits, and one clause on when a neighbouring tool fits
+#: instead. What a result can say at the moment it matters (caps reached, `incomplete:`, a miss, a drawing's
+#: caveat, an unknown path, restricted folders) is said by the result, not here; the schema fields are bare, so
+#: each argument's meaning is stated once. The texts and the sources behind them:
+#: ``docs/architecture/prompt-value-audit-2026-10.md`` (slice 6).
 _ESTATE_DESCRIPTIONS = {
     "ls": (
-        "Lists one folder of the office's documents (read-only) or of this conversation's drafts. `ls(\"/\")` "
-        "shows the places: /project/ (this project), /office/ (the Büroablage), /chat/ (files dropped into this "
-        f"conversation), /law/oib/ (the OIB-Richtlinien) and `{DRAFT_ROOT}`. A folder shows its subfolders with "
-        "document counts and one line per file: the path leaf (`<file name>.md`, the leaf read_file takes), pages, "
-        "Dokumentart, Plankopf Index and the document's own date, and which file replaced it. `depth` 2 to 4 "
-        "returns the tree below the folder as folder cards. Every folder holds a `README.md`: its folder card, "
-        "readable with read_file. At most 40 files per folder are listed; the rest are counted. Restricted folders "
-        "are never listed. An index, not a source: it says which files exist, never what they say, so it is never "
-        "cited; read_file reads, grep finds wording, knowledge_search finds meaning. list_files is the former "
-        "name and stays for one release."
-    ),
-    "grep": (
-        "Finds WORDING in the office's documents, not meaning: every place a word, number, code or phrase "
-        'stands. mode="exact" (default) matches `pattern` literally, folding case, ä/ae, ß/ss, soft hyphens and '
-        'line-break hyphenation; a pattern of 2-3 characters matches a whole word only. mode="regex" takes a '
-        "Python regular expression (case-insensitive). `stemmed=true` also finds inflected forms. `path` limits it "
-        "to a place, a folder or one file (default: every place the person may see; the drafts only under "
-        "/drafts/); `glob` to file names. output_mode: `files_with_matches` (default) lists each file with its "
-        "count and pages, `count` the counts, `content` the matching pages as citable passages (each with a "
-        "`Citation:` and a `Path:` line, up to 8, spread over the files) and, with `context` 1-3, the lines "
-        "around each match. It counts each place in a document once and says how many files it searched. A no "
-        "is a no for the wording only (knowledge_search finds a topic by meaning), and a result marked "
-        "`incomplete` is not a no for what it could not search. Files and counts are an index; only `content` "
-        'passages are cited. knowledge_search(match="exact") is the former name and stays for one release.'
+        "Lists one folder: its subfolders with their document counts, and its files with pages, Dokumentart, "
+        "Plankopf index and date. `path` is an absolute folder path under a mount: /project/ (this project), "
+        "/office/ (the Büroablage), /chat/ (files dropped into this conversation), /law/oib/ (the "
+        f'OIB-Richtlinien), {DRAFT_ROOT} (this conversation\'s drafts), {SKILLS_ROOT} (procedures); `ls("/")` '
+        "lists the mounts this turn has. `depth` 2 to 4 returns the tree below as folder cards; a folder's "
+        "`README.md` is its card. At most 40 files a folder are listed; a listing is an index, never cited. Use "
+        "it to see what a project or folder holds; to find a file by part of its name, glob is quicker."
     ),
     "glob": (
-        "Finds the office's documents by file NAME: `*`, `**`, `?`, `[abc]`, `{a,b}`. A pattern without `/` "
-        "matches the name at any depth (`*Brandschutz*`, `*.pdf`); one with `/` matches the path below `path` "
-        "(`Einreichung/**/*.pdf`), an absolute one the whole path (`/project/**/EP-*`). Case, umlauts (ä/ae) and "
-        "ß/ss do not matter. `path` limits the search to one place or folder (default: every place the person may "
-        "see; drafts only when `path` is under /drafts/). Returns absolute paths, one per line with pages and "
-        "Dokumentart, at most 100. An index, not a source: a name says nothing of the content; grep for wording, "
-        "knowledge_search for meaning, read_file to read."
+        "Finds files by name. `pattern` takes `*`, `**`, `?`, `[abc]` and `{a,b}` (`**/*Brandschutz*`); case is "
+        "ignored and ä/ae, ö/oe, ü/ue, ß/ss are folded, so `*Flaeche*` finds `Flächenwidmung`. `path` limits it to one "
+        "folder; without it every mount is searched. Returns absolute paths, each with pages and Dokumentart, at "
+        "most 100. Names only: for words inside documents use grep, for a topic knowledge_search."
+    ),
+    "grep": (
+        "Finds wording inside documents: which files and pages contain a word, a number, a name, a Geschäftszahl "
+        "or a clause reference, and shows that it stands nowhere else. Literal by default: case, ä/ae, ö/oe, "
+        "ü/ue, ß/ss, soft hyphens and words split at a line break are folded, and a pattern of two or three "
+        'characters matches whole words only. `mode="regex"` takes a regular expression (Python syntax, '
+        "case-insensitive, `MA 37/\\d{6}`). `stemmed=true` also matches inflected German forms. `path` limits "
+        "the search to a folder or one document and `glob` filters file names; without `path` every document "
+        f"mount is searched, the OIB corpus included, and the drafts only with a {DRAFT_ROOT} path.\n"
+        "`output_mode`: `files_with_matches` (default) gives each matching file with its count and pages and how "
+        "many files were searched; `content` gives the matching pages as citable passages (up to 8, spread over "
+        "files) and the lines around each match (`context`, 0 to 3, adds lines); `count` gives occurrences per "
+        "file. `max_count` caps the matches returned. It matches words, not meaning: a question worded "
+        "differently from the documents is knowledge_search's."
     ),
     "read_file": (
-        "Reads one file by its absolute path. Two kinds of file:\n"
-        "- The office's documents (read-only): /project/ (this project), /office/ (the Büroablage), /chat/ "
-        "(files dropped into this conversation), /law/oib/ (the OIB-Richtlinien). A document's text is served as "
-        "`<file name>.md` (Plan.pdf is /project/<folder>/Plan.pdf.md; the bare .pdf path works too). Address a "
-        'paginated document with `pages` ("3", "3-5", "3,7,11"; at most 30) or one Punkt with `clause` '
-        '("3.5.2"); with neither you get the opening page and the Gliederung. A text file (txt, md, csv) is read '
-        "by `offset`/`limit` in lines. Returns one block per page, each with a `Citation:` line to copy verbatim "
-        "(`<file name>, p.N`) and a `Path:` line; at most about 6k tokens per read, and the result names the next "
-        "call. A drawing's text is a vision model's reading, not a measurement. A path you did not get from a "
-        "listing, a search hit or the person may not exist; a miss says so and suggests names. "
-        "`<folder>/README.md` is the folder's card, an index and never cited.\n"
-        f"- This conversation's drafts under `{DRAFT_ROOT}`: read before a revision, so that `old_string` comes "
-        "verbatim from the document. The output starts with a `@@ lines … @@` header that is not part of the file. "
-        "A draft is what the answer wrote itself, never evidence.\n"
-        "Paths come from a hit's `Path:` line, a listing, the turn context or the person. To find which "
-        "document says something, search first: knowledge_search by meaning, grep for a wording. read_passage "
-        "is the former name of this read and stays for one release."
+        f"Reads a file by its absolute path: a document, a draft under {DRAFT_ROOT} or a skill under "
+        f"{SKILLS_ROOT}. A document's text is at its file name plus `.md` (`Brandschutzkonzept.pdf.md`); the bare "
+        '`.pdf` path works too. `pages` ("3", "3-5", "3,7,11"; at most 30) reads those pages and `clause` '
+        '("3.5.2", "Tabelle 3", or the Punkt a hit printed) one Punkt of a structured document such as an '
+        "OIB-Richtlinie; without either you get the first page and the Gliederung. A document comes back one "
+        "citable passage per page, up to about 6k tokens a call. `offset` and `limit` count lines (default 0 and "
+        "100) and apply to drafts, skills and text files; on a paginated document use `pages`. A draft is what "
+        "the answer wrote, never evidence."
     ),
+    **_WRITE_DESCRIPTIONS,
 }
 
 
@@ -211,23 +198,22 @@ def filesystem_tools(
     ``drafts`` the conversation's draft store, or ``None`` on a turn without a
     conversation; ``skills`` the turn's skills backend, a read-only ``/skills/``
     route beside ``/drafts/``. The tools are built per turn because the draft
-    store and the skills are.
+    store and the skills are; their descriptions are the same on every turn, so
+    the tool payload varies only with whether the two writing verbs are bound.
     """
     names = [*ESTATE_TOOL_NAMES, *(DRAFT_ONLY_TOOL_NAMES if drafts is not None else ())]
-    descriptions = {**_TOOL_DESCRIPTIONS, **_ESTATE_DESCRIPTIONS}
     permissions = list(_PERMISSIONS)
     if skills is not None:
-        descriptions["read_file"] = f"{descriptions['read_file']}\n- {_SKILL_READ[0].upper()}{_SKILL_READ[1:]}"
         permissions.insert(0, _SKILL_PERMISSION)
     middleware = PilotiFilesystem(
         estate=estate,
         drafts=drafts is not None,
         backend=composite_backend(drafts, estate, skills=skills),
-        custom_tool_descriptions=descriptions,
+        custom_tool_descriptions=dict(_ESTATE_DESCRIPTIONS),
         permissions=permissions,
         tools=names,
     )
-    by_name = {tool.name: tool for tool in middleware.tools}
+    by_name = {tool.name: with_bare_schema(tool) for tool in middleware.tools}
     order = [*DRAFT_TOOL_NAMES, *(name for name in ESTATE_TOOL_NAMES if name not in DRAFT_TOOL_NAMES)]
     return [by_name[name] for name in order if name in by_name]
 

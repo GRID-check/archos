@@ -523,6 +523,139 @@ export const chat = {
       computedNote:
         'The result is computed by this card from the figures above, not copied from the answer.',
     },
+    // A named rule whose inputs the reader can change (ADR-0143). Computed in
+    // the browser; a changed figure is "your assumption", not the source's, and
+    // is saved nowhere.
+    formula: {
+      eyebrow: 'What if',
+      hint: 'Change a value and the result is recomputed at once. Nothing is saved.',
+      inputsLabel: 'Inputs',
+      derivationLabel: 'Derivation',
+      checksLabel: 'Assessment',
+      notesLabel: 'Notes',
+      // Beside a value the reader changed, and beside every verdict resting on
+      // it. It is their assumption, not the source's statement, and that has to
+      // be visible before it is passed on.
+      yourAssumption: 'Your assumption',
+      // Beside the verdict in the card's header, when it rests on an assumption.
+      withYourAssumptions: 'with your assumptions',
+      sourceValue: 'Source: {value}',
+      sourceMissing: 'Source: no value',
+      // Shown in an empty field whose value the source does not give.
+      missingPlaceholder: 'missing',
+      fixed: 'given',
+      reset: 'Reset',
+      resetLabel: 'Reset every value to the source',
+      withAssumptions: "Computed with your assumptions, not the source's values.",
+      cannotJudge: 'A value is missing: without it the card cannot judge.',
+      measureUnknown: 'New build or renovation is not stated: without it the card cannot judge.',
+      majorRenovationUndecided:
+        'A major renovation is measured by energy figures (Pkt. 4.3), not by one component’s U-value: the card does not judge it.',
+      inputRejected: 'A value you entered is not admissible: with it the card cannot judge.',
+      undefinedResult: 'Divided by zero: the result is not defined.',
+      zeroNotPossible: '{quantity} = 0 is not possible.',
+      invalidNumber: 'Not a number.',
+      outOfRange: 'Allowed: {min} to {max} {unit}.',
+      // For screen readers, once the result is recomputed: every verdict with
+      // its quantity, value, limit and outcome.
+      recomputed: 'Recomputed. {checks}',
+      checkSpoken: '{name}: {value}, limit {bound}, {verdict}.',
+      component: {
+        external_wall: 'External wall against outside air',
+        roof_or_ceiling_to_outside_air: 'Ceiling or roof slope against outside air',
+        floor_over_outside_air: 'Ceiling over outside air',
+      },
+      measure: {
+        new_build: 'New build',
+        renovation: 'Renovation',
+        major_renovation: 'Major renovation',
+      },
+      stairType: {
+        main: 'Main stair',
+        dwelling: 'Stair within a dwelling',
+        secondary: 'Secondary stair',
+      },
+      input: {
+        riser: 'Riser height s',
+        going: 'Going a',
+        thickness: 'Thickness d',
+        conductivity: 'Thermal conductivity λ',
+        length: 'Length',
+        openingArea: 'Glazing area',
+        floorArea: 'Floor area',
+        roomDepth: 'Room depth',
+        overhangDepth: 'Overhang',
+      },
+      // What „{quantity} = 0 is not possible." names.
+      zeroQuantity: {
+        conductivity: 'λ',
+        floorArea: 'Floor area',
+      },
+      term: {
+        riser: 'Riser height s',
+        going: 'Going a',
+        thickness: 'd {layer}',
+        conductivity: 'λ {layer}',
+        length: '{layer}',
+        openingArea: 'Glazing area',
+        floorArea: 'Floor area',
+        roomDepth: 'Room depth',
+        overhangDepth: 'Overhang',
+        surfaceInside: 'R_si',
+        surfaceOutside: 'R_se',
+        layerResistance: 'R {layer}',
+        totalResistance: 'R_T',
+        baseShare: 'Base requirement (Pkt. 9.1.1)',
+        raisedShare: 'Overhang over 1.50 m (Pkt. 9.1.3)',
+        overhangIncrement: 'Overhang over 3.00 m (Pkt. 9.1.3)',
+        overhangIncrementMetres: 'Overhang over 3.00 m: {metres} started m (Pkt. 9.1.3)',
+        depthIncrement: 'Room depth over 5.00 m (Pkt. 9.1.4)',
+        depthIncrementMetres: 'Room depth over 5.00 m: {metres} started m (Pkt. 9.1.4)',
+      },
+      line: {
+        layerResistance: 'Thermal resistance {layer}',
+        totalResistance: 'Total resistance R_T',
+        uValue: 'U-value',
+        stepMeasure: 'Step measure 2s + a',
+        routeLength: 'Escape route length',
+        daylightShare: 'Glazing area per floor area',
+        requiredShare: 'Required share',
+      },
+      check: {
+        stepRule: 'Step rule 62 ± 3 cm',
+        riserMax: 'Riser height',
+        goingMin: 'Going',
+        uMax: 'U-value',
+      uMaxRenovation: 'U-value, without a renovation concept',
+        routeMax: 'Escape route length',
+        daylightMin: 'Glazing area',
+      },
+      caveat: {
+        uValueNewBuild:
+          'Highest value for a new build (OIB-Richtlinie 6, Pkt. 4.4.1, row {row}). A renovation by single measures follows Pkt. 4.5.',
+        uValueRenovation:
+          'Renovation by single measures without a renovation concept (Pkt. 4.5 b): the highest value of row {row} undercut by at least 24 %. With a concept under Pkt. 4.5 a) the concept sets the value; a major renovation is not covered by Pkt. 4.5.',
+        uValueMeasureUnknown:
+          'Whether this is a new build (Pkt. 4.4.1) or a renovation (Pkt. 4.5) is not stated; the highest value depends on it.',
+        uValueMajorRenovation:
+          'Major renovation: the energy-figure requirements of Pkt. 4.3 apply, not the highest values of single components; the card computes the U-value but does not judge it.',
+        uValueScope:
+          'Homogeneous layers per ÖNORM EN ISO 6946; air layers, inhomogeneous layers and corrections are not included.',
+        routeFromRoom: 'Measured from the most remote point of the room (Pkt. 5.1.1).',
+        routeFromDwelling:
+          'Measured from the dwelling’s entrance door (Pkt. 5.1.2): for a dwelling over at most two storeys whose route leads to a stair enclosure or an external stair.',
+        routeOnlyGuideline2:
+          'Only OIB-Richtlinie 2 is modelled. Industrial buildings (2.1), garages and parking decks (2.2) and buildings with an escape level above 22 m (2.3) follow their own provisions.',
+        daylightRoomsOnly:
+          'Applies to habitable rooms (Pkt. 9.1.1), not to rooms whose use needs less or no natural light (Pkt. 9.1.6).',
+        daylightAngle:
+          'A free light angle of 45° to the horizontal is assumed, turned sideways by at most 30° (Pkt. 9.1.2); the card does not check it.',
+        daylightOtherLaw:
+          'The room-depth increment applies unless other law (such as the workplace regulation) provides otherwise.',
+        daylightWinterGarden:
+          'Where a winter garden or a glazed loggia lies in front of the window, the requirement applies to the outer and the inner glazing area (Pkt. 9.1.5); the card checks only one of them.',
+      },
+    },
     // A document Piloti wrote into this conversation's working directory. Not a
     // project document: nothing here is filed, indexed or citable until a
     // person takes it into the project — which is what the (still inert)
@@ -1108,8 +1241,23 @@ export const chat = {
       // A call the turn ended under (Stop, an error, a lost connection): no result.
       interrupted: 'interrupted',
       noHit: 'no hit',
+      // A literal search without a hit, with what it searched.
+      noHitIn: 'no hit in {count, plural, one {#\u00A0document} other {#\u00A0documents}}',
+      // The same on the filesystem, where every count counts files: “no hit in 41 files”.
+      noHitInFiles: 'no hit in {count, plural, one {#\u00A0file} other {#\u00A0files}}',
       nothingFound: 'nothing found',
+      // A folder or document that is not there (a restricted folder answers the same).
+      notFound: 'not found',
+      // A file-name search no file matched.
+      noFile: 'no file',
       failed: 'failed',
+      // A literal search that could not search everything: its count is a floor.
+      // Only without a count; with one, the dashed shape and the note under it say it is a floor.
+      incomplete: 'incomplete',
+      incompleteNote: {
+        hits: 'not everything was searched – there may be more hits',
+        noHit: 'not everything was searched – this is not a no',
+      },
       // After „failed“: what it means for the answer.
       failedNote: 'the answer does not rest on it',
       // More than five calls in one step: the worst first, the rest folded.
@@ -1126,7 +1274,7 @@ export const chat = {
       kind: {
         search: 'Search',
         read: 'Reading',
-        list: 'Open folder',
+        list: 'List',
         look: 'Look',
         model: 'Query the model',
         workspace: 'Workspace',
@@ -1138,6 +1286,38 @@ export const chat = {
         web: 'on the web',
         session: 'in this chat',
       },
+      // The places of the filesystem (ADR-0133) as a row names them: as the object of a verb …
+      place: {
+        project: 'the project',
+        office: 'the office filing',
+        chat: "this chat's files",
+        law: 'the OIB guidelines',
+        estate: 'every place',
+        // … a folder of another place under its name: as an object “the office filing › Templates”,
+        // after “in” “in the office filing › Templates”, quoted without an article “Office filing › Templates”.
+        folderIn: '{place} ›\u00A0{folder}',
+        crumb: {
+          office: 'office filing',
+          chat: 'chat',
+          law: 'OIB guidelines',
+        },
+        // The article before the name when a folder follows: “the chat › Pläne”, “in the chat › Pläne”.
+        article: {
+          office: { object: 'the', in: 'in the' },
+          chat: { object: 'the', in: 'in the' },
+          law: { object: 'the', in: 'in the' },
+        },
+      },
+      // … and after “in”: “Looks for files named “*.pdf” in the project”.
+      placeIn: {
+        project: 'in the project',
+        office: 'in the office filing',
+        chat: "in this chat's files",
+        law: 'in the OIB guidelines',
+        estate: 'in every place',
+        // A folder of the project: “in 03 Einreichung”.
+        folder: 'in {folder}',
+      },
       // The verb sits muted before its object: „Searches for the exact phrase“ „“Brandabschnitt” in the project“.
       verb: {
         search: 'Searches for',
@@ -1146,7 +1326,11 @@ export const chat = {
         searchIn: 'Searches',
         searchExactIn: 'Searches verbatim in',
         searchRegexIn: 'Searches by pattern in',
-        list: 'Opens',
+        list: 'Lists',
+        // The filesystem's literal search: “Searches 03 Einreichung for the exact words “Brandabschnitt””.
+        grep: 'Searches',
+        // The file-name search: “Looks for PDF files in the project”.
+        glob: 'Looks for',
         read: 'Reads',
         look: 'Looks at',
         lookup: 'Searches other projects for',
@@ -1158,7 +1342,9 @@ export const chat = {
       // The settled head of a turn of exactly one call: what WAS done.
       done: {
         search: 'Searched: {name}',
-        list: 'Opened: {name}',
+        list: 'Listed: {name}',
+        grep: 'Searched: {name}',
+        glob: 'Looked for {name}',
         read: 'Read: {name}',
         look: 'Looked at: {name}',
         lookup: 'Searched other projects: {name}',
@@ -1169,7 +1355,7 @@ export const chat = {
       },
       doneFallback: {
         search: 'Searched the documents',
-        list: 'Opened a folder',
+        list: 'Listed a folder',
         read: 'Read a document',
         look: 'Looked at a document',
         lookup: 'Searched other projects',
@@ -1182,6 +1368,21 @@ export const chat = {
         query: '“{query}”',
         queryShelf: '“{query}” {shelf}',
         queryIn: '{target} for “{query}”',
+        grepExact: '{place} for the exact words “{query}”',
+        grepRegex: '{place} for the pattern “{query}”',
+        // A pattern that only ORs words: “the project for the exact words “EI 90” or “REI 90””.
+        // The same words with an umlaut: a pattern search does not fold „ü“ as the literal search does.
+        grepWords: '{place} for {words}',
+        grepAny: '{place} for the exact words {words}',
+        or: 'or',
+        names: '{what} {place}',
+        // What a file-name search looks for, in words where the pattern is simple.
+        namesWhat: {
+          ext: '{ext} files',
+          word: 'files with “{word}” in the name',
+          extWord: '{ext} files with “{word}” in the name',
+          pattern: 'files named “{query}”',
+        },
         pages: '{target}, p.\u00A0{pages}',
         clause: '{target}, {pages}',
         where: '{target}, p.\u00A0{pages}, {where}',
@@ -1191,6 +1392,8 @@ export const chat = {
         documents: '{count, plural, one {#\u00A0document} other {#\u00A0documents}}',
         folders: '{count, plural, one {#\u00A0folder} other {#\u00A0folders}}',
         searches: '{count, plural, one {#\u00A0search} other {#\u00A0searches}}',
+        nameSearches:
+          '{count, plural, one {#\u00A0file-name search} other {#\u00A0file-name searches}}',
         lawSearches: '{count, plural, one {#\u00A0RIS search} other {#\u00A0RIS searches}}',
         webSearches: '{count, plural, one {#\u00A0web search} other {#\u00A0web searches}}',
         lookupSearches:
@@ -1202,7 +1405,7 @@ export const chat = {
       },
       fallback: {
         search: 'Searches the documents',
-        list: 'Opens a folder',
+        list: 'Lists a folder',
         read: 'Reads a document',
         look: 'Looks at a document',
         lookup: 'Searches other projects',
@@ -1214,9 +1417,17 @@ export const chat = {
       found: {
         hits: '{count, plural, one {#\u00A0hit} other {#\u00A0hits}}',
         hitsDocuments:
-          '{hits, plural, one {#\u00A0hit} other {#\u00A0hits}}\u00A0· {documents, plural, one {#\u00A0document} other {#\u00A0documents}}',
+          '{hits, plural, one {#\u00A0hit} other {#\u00A0hits}} in {documents, plural, one {#\u00A0document} other {#\u00A0documents}}',
+        // On the filesystem every count counts files, as the filing counts them.
+        hitsFiles:
+          '{hits, plural, one {#\u00A0hit} other {#\u00A0hits}} in {documents, plural, one {#\u00A0file} other {#\u00A0files}}',
         documents: '{count, plural, one {#\u00A0document} other {#\u00A0documents}}',
-        places: '{count, plural, one {#\u00A0passage} other {#\u00A0passages}}',
+        // A folder that is there and holds nothing: a new project, a chat without uploads.
+        emptyFolder: 'empty',
+        passages: '{count, plural, one {#\u00A0passage} other {#\u00A0passages}}',
+        // The places themselves (`ls /`): how many there are and what they hold.
+        places:
+          '{folders, plural, one {#\u00A0place} other {#\u00A0places}}, {files, plural, one {#\u00A0file} other {#\u00A0files}}',
         listing:
           '{files, plural, one {#\u00A0file} other {#\u00A0files}}, {folders, plural, one {#\u00A0folder} other {#\u00A0folders}}',
         files: '{count, plural, one {#\u00A0file} other {#\u00A0files}}',
@@ -1493,12 +1704,28 @@ export const chat = {
         openEmpty: 'Cannot be judged: a call found nothing ({what}).',
         // From a call that failed or broke off: the call as a noun.
         openFailed: 'Cannot be judged: {call} failed.',
+        // A literal search without a hit that could not search everything: not a no.
+        openIncomplete: 'Cannot be judged: {call} could not search everything.',
+        // A folder or document that is not there.
+        openNotFoundFolder: 'Cannot be judged: the folder “{name}” was not found.',
+        openNotFoundDocument: 'Cannot be judged: the file “{name}” was not found.',
+        // A file-name search without a match: `{place}` carries its preposition, `{what}` reads as on the row.
+        openNoFile: 'Cannot be judged: no {what} were found {place}.',
+        // A filesystem search without a hit: `{call}` says how, where and for what.
+        openNoHitPlace: 'Cannot be judged: {call} found no passage.',
         openInterrupted: 'Cannot be judged: {call} was stopped.',
         callQuery: '{call} for “{query}”',
         callTarget: '{call} “{target}”',
+        callPlace: '{call} {place}',
+        callPlaceQuery: '{call} {place} for “{query}”',
+        // A pattern search: “the search in the office filing › Templates for the pattern “EI\s?90””.
+        callPlacePattern: 'the search {place} for the pattern “{query}”',
         call: {
           search: 'the search',
-          list: 'opening the folder',
+          list: 'listing the folder',
+          grep: 'the literal search',
+          grepRegex: 'the pattern search',
+          glob: 'the file-name search',
           read: 'reading the document',
           look: 'looking at the document',
           lookup: 'the search in other projects',

@@ -262,31 +262,48 @@ class TestThePrefetch:
         calls = prefetch_calls(self._decided("projekt"), q)
         assert calls == [
             {"name": "knowledge_search", "args": {"query": q}},
-            {"name": "knowledge_search", "args": {"query": "Rauchabzug", "match": "exact", "shelf": "project"}},
+            {"name": "grep", "args": {"pattern": "Rauchabzug", "output_mode": "content", "path": "/project/"}},
         ]
 
     def test_an_exact_prefetch_stays_in_the_open_document(self):
         q = "Wo steht „Rauchabzug“?"
         calls = prefetch_calls(self._decided("projekt"), q, focus_file_name="Gutachten.pdf")
-        assert calls[1]["args"] == {
-            "query": "Rauchabzug",
-            "match": "exact",
-            "shelf": "project",
-            "file_name": "Gutachten.pdf",
+        assert calls[0]["args"] == {"query": q, "path": "/project/Gutachten.pdf.md"}
+        # Citable passages, under the mount, narrowed to the open document by its name (a glob, escaped).
+        assert calls[1] == {
+            "name": "grep",
+            "args": {"pattern": "Rauchabzug", "output_mode": "content", "path": "/project/", "glob": "Gutachten.pdf"},
         }
+        odd = prefetch_calls(self._decided("projekt"), q, focus_file_name="Plan [A].pdf", focus_shelf="session")
+        assert odd[1]["args"]["path"] == "/chat/"
+
+    @pytest.mark.parametrize("name", ["Plan [A].pdf", "Plan {A,B}.pdf", "Plan\\x.pdf", "Plan *.pdf"])
+    def test_the_open_document_s_glob_matches_it_and_nothing_else(self, name):
+        """The estate's own matcher (BRACE on) reads the escaped name as the one file it is."""
+        from types import SimpleNamespace
+
+        from knowledge_layer.estate import glob_files
+
+        def file(file_name: str) -> SimpleNamespace:
+            leaf = f"{file_name}.md"
+            return SimpleNamespace(path=f"/project/{leaf}", leaf=leaf, row=SimpleNamespace(file_name=file_name))
+
+        calls = prefetch_calls(self._decided("projekt"), "Wo steht „Rauchabzug“?", focus_file_name=name)
+        files = [file(n) for n in (name, "plan a.pdf", "Plan A.pdf", "Plan B.pdf", "Plan x.pdf", "Plan .pdf")]
+        assert [f.row.file_name for f in glob_files(files, calls[1]["args"]["glob"])] == [name]
 
     def test_codes_and_file_names_are_literal_terms_at_most_two_and_the_office_shelf_follows_the_corpus(self):
         q = "Vergleiche A-101, EG_02, 04-112 und Grundriss_EG.pdf"
         assert literal_terms(q) == ["A-101", "EG_02"]
         assert literal_terms("Was steht in Grundriss_EG.pdf, 04-112?") == ["Grundriss_EG.pdf", "04-112"]
         calls = prefetch_calls(self._decided("buero"), q)
-        assert [c["args"].get("shelf") for c in calls] == [None, "office", "office"]
-        assert all(c["args"]["match"] == "exact" for c in calls[1:])
+        assert [c["args"].get("path") for c in calls] == [None, "/office/", "/office/"]
+        assert all(c["name"] == "grep" for c in calls[1:])
 
     def test_a_law_question_or_a_plain_one_gets_no_literal_search(self):
         assert literal_terms("Wie breit ist der Gang? Es gilt die OIB 2 von 2023.") == []
         calls = prefetch_calls(self._decided("baurecht"), "Was heißt „Fluchtweg“?")
-        assert all("match" not in c["args"] for c in calls)
+        assert all(c["name"] != "grep" for c in calls)
 
     def test_straight_quotes_count_but_an_apostrophe_does_not(self):
         assert literal_terms('Steht "BA-03" drin?') == ["BA-03"]
@@ -399,7 +416,10 @@ class TestTheOpenDocument:
     def test_a_project_question_with_a_file_open_is_pinned_to_it(self):
         decided = TurnDecisions(decided=True, needs_evidence=0.9, corpus="projekt", corpus_p=0.9)
         assert prefetch_calls(decided, "Fass den Plan zusammen.", focus_file_name="EG_Grundriss.pdf") == [
-            {"name": "knowledge_search", "args": {"query": "Fass den Plan zusammen.", "file_name": "EG_Grundriss.pdf"}}
+            {
+                "name": "knowledge_search",
+                "args": {"query": "Fass den Plan zusammen.", "path": "/project/EG_Grundriss.pdf.md"},
+            }
         ]
 
     def test_a_law_question_with_a_file_open_searches_the_corpus_not_the_file(self):

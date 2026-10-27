@@ -1,0 +1,11 @@
+---
+features:
+  - >
+    Piloti now finds and reads your documents the same way on every question: it lists a folder,
+    searches the wording, and opens the pages it needs, and the Herleitung shows each of those
+    steps by what it looked at. When no passage answers what you asked, Piloti says so and names
+    what it searched, rather than calling the matter unregulated.
+fixes:
+  - >
+    An answer no longer loses a source because Piloti cited a document by its place in the
+    folders instead of by its name.

@@ -1,0 +1,350 @@
+{
+  "about": "Hand-computed cases for the formula card (ADR-0143), with the bounds of the Mai 2023 Richtlinien. Each `card` validates against cards/models.py (tests/aiq_agent/cards/test_formula_card.py) and is evaluated by formulas.ts (formulas.spec.ts). A case with `base` takes that case's card and applies `overrides`, a reader's what-if inputs by slot key. `expect.quantities` were worked out by hand (the `work` line), to the relative precision `tolerance` allows; `expect.checks` are the verdicts by check id. `preview` marks the cases the /dev/formula-cards page shows.",
+  "tolerance": 0.0001,
+  "cases": [
+    {
+      "id": "stair-main-within",
+      "preview": true,
+      "work": "Haupttreppe: 2 × 17 + 29 = 63 cm, inside 62 ± 3; s 17 ≤ 18; a 29 ≥ 27 (OIB-RL 4 Tabelle 3)",
+      "card": {
+        "type": "formula",
+        "title": "Stiege Haus A",
+        "formula": {
+          "name": "stair_step_rule",
+          "stair_type": "main",
+          "riser": { "value": 17, "min": 10, "max": 25, "step": 0.5, "source": "Einreichplan, Schnitt A-A" },
+          "going": { "value": 29, "min": 20, "max": 40, "step": 0.5, "source": "Einreichplan, Schnitt A-A" }
+        }
+      },
+      "expect": { "quantities": { "step_measure": 63 }, "checks": { "stepRule": "pass", "riserMax": "pass", "goingMin": "pass" } }
+    },
+    {
+      "id": "stair-main-reader-raises-the-riser",
+      "work": "2 × 19 + 29 = 67 cm, above 65; s 19 > 18",
+      "base": "stair-main-within",
+      "overrides": { "riser": 19 },
+      "expect": { "quantities": { "step_measure": 67 }, "checks": { "stepRule": "fail", "riserMax": "fail", "goingMin": "pass" } }
+    },
+    {
+      "id": "stair-main-going-unknown",
+      "work": "the Auftritt is not in the source: no Schrittmaß and no verdict on it or on a; the riser is still judged",
+      "base": "stair-main-within",
+      "overrides": { "going": null },
+      "expect": { "quantities": { "step_measure": null }, "checks": { "stepRule": "needs_input", "riserMax": "pass", "goingMin": "needs_input" } }
+    },
+    {
+      "id": "stair-dwelling",
+      "work": "Wohnungstreppe: 2 × 19 + 25 = 63 cm; s 19 ≤ 20; a 25 ≥ 24. The same stair as a Haupttreppe fails both rows (19 > 18, 25 < 27)",
+      "card": {
+        "type": "formula",
+        "title": "Innentreppe Maisonette Top 7",
+        "formula": {
+          "name": "stair_step_rule",
+          "stair_type": "dwelling",
+          "riser": { "value": 19, "source": "Polierplan Treppe" },
+          "going": { "value": 25, "source": "Polierplan Treppe" }
+        }
+      },
+      "expect": { "quantities": { "step_measure": 63 }, "checks": { "stepRule": "pass", "riserMax": "pass", "goingMin": "pass" } }
+    },
+    {
+      "id": "stair-dwelling-judged-as-main",
+      "work": "the stair of stair-dwelling as a Haupttreppe: 63 cm passes the rule, s 19 > 18 and a 25 < 27 fail",
+      "card": {
+        "type": "formula",
+        "title": "Innentreppe Maisonette Top 7",
+        "formula": {
+          "name": "stair_step_rule",
+          "stair_type": "main",
+          "riser": { "value": 19, "source": "Polierplan Treppe" },
+          "going": { "value": 25, "source": "Polierplan Treppe" }
+        }
+      },
+      "expect": { "quantities": { "step_measure": 63 }, "checks": { "stepRule": "pass", "riserMax": "fail", "goingMin": "fail" } }
+    },
+    {
+      "id": "stair-secondary-on-every-bound",
+      "work": "Nebentreppe: 2 × 21 + 21 = 63 cm; s 21 ≤ 21 and a 21 ≥ 21 are on the bound and pass",
+      "card": {
+        "type": "formula",
+        "title": "Kellerstiege",
+        "formula": {
+          "name": "stair_step_rule",
+          "stair_type": "secondary",
+          "riser": { "value": 21, "source": "Bestandsplan Keller" },
+          "going": { "value": 21, "source": "Bestandsplan Keller" }
+        }
+      },
+      "expect": { "quantities": { "step_measure": 63 }, "checks": { "stepRule": "pass", "riserMax": "pass", "goingMin": "pass" } }
+    },
+    {
+      "id": "route-within-40-m",
+      "preview": true,
+      "work": "12 + 18,5 + 6 = 36,5 m ≤ 40 m, from the most remote point of the room (OIB-RL 2 Pkt. 5.1.1)",
+      "card": {
+        "type": "formula",
+        "title": "Fluchtweg Büro 2.14",
+        "formula": {
+          "name": "escape_route_length",
+          "start": "room",
+          "segments": [
+            { "label": "Büro 2.14 → Gangtür", "length": { "value": 12, "step": 0.5, "source": "Grundriss 2. OG" } },
+            { "label": "Gang", "length": { "value": 18.5, "step": 0.5, "source": "Grundriss 2. OG" } },
+            { "label": "Vorraum → Treppenhaus", "length": { "value": 6, "step": 0.5, "source": "Grundriss 2. OG" } }
+          ]
+        }
+      },
+      "expect": { "quantities": { "route_length": 36.5 }, "checks": { "routeMax": "pass" } }
+    },
+    {
+      "id": "route-reader-moves-the-door",
+      "work": "12 + 18,5 + 11 = 41,5 m > 40 m",
+      "base": "route-within-40-m",
+      "overrides": { "segments.2.length": 11 },
+      "expect": { "quantities": { "route_length": 41.5 }, "checks": { "routeMax": "fail" } }
+    },
+    {
+      "id": "route-exactly-40-m",
+      "work": "12,3 + 20,6 + 7,1 = 40 m exactly (40.00000000000001 in floating point): on the bound, so it passes",
+      "card": {
+        "type": "formula",
+        "title": "Fluchtweg Top 12",
+        "formula": {
+          "name": "escape_route_length",
+          "start": "dwelling_entrance",
+          "segments": [
+            { "label": "Wohnungseingangstüre → Gang", "length": { "value": 12.3, "source": "Grundriss 4. OG" } },
+            { "label": "Gang", "length": { "value": 20.6, "source": "Grundriss 4. OG" } },
+            { "label": "Schleuse → Treppenhaus", "length": { "value": 7.1, "source": "Grundriss 4. OG" } }
+          ]
+        }
+      },
+      "expect": { "quantities": { "route_length": 40 }, "checks": { "routeMax": "pass" } }
+    },
+    {
+      "id": "daylight-above-12-percent",
+      "preview": true,
+      "work": "3,1 ÷ 25 × 100 = 12,4 % ≥ 12 %: no overhang, depth 4,5 m ≤ 5,00 m (OIB-RL 3 Pkt. 9.1.1)",
+      "card": {
+        "type": "formula",
+        "title": "Wohnzimmer Top 3",
+        "formula": {
+          "name": "daylight_ratio",
+          "opening_area": { "value": 3.1, "step": 0.05, "source": "Fensterliste, Architekturlichte" },
+          "floor_area": { "value": 25, "editable": false, "source": "Raumbuch Top 3" },
+          "room_depth": { "value": 4.5, "source": "Grundriss 1. OG" },
+          "overhang_depth": { "value": 0, "step": 0.1, "source": "Grundriss 1. OG" }
+        }
+      },
+      "expect": { "quantities": { "daylight_ratio": 12.4 }, "checks": { "daylightMin": "pass" } }
+    },
+    {
+      "id": "daylight-balcony-over-1-50-m",
+      "work": "a balcony of 2,0 m over the window raises the share to 15 % (9.1.3): 12,4 % < 15 %",
+      "base": "daylight-above-12-percent",
+      "overrides": { "overhang_depth": 2 },
+      "expect": { "quantities": { "daylight_ratio": 12.4, "required_share": 15 }, "checks": { "daylightMin": "fail" } }
+    },
+    {
+      "id": "daylight-exactly-12-percent",
+      "work": "4,02 ÷ 33,5 × 100 = 12 % exactly (11.999999999999998 in floating point); overhang 1,50 m and depth 5,00 m are on their thresholds and add nothing: passes",
+      "card": {
+        "type": "formula",
+        "title": "Schlafzimmer Top 5",
+        "formula": {
+          "name": "daylight_ratio",
+          "opening_area": { "value": 4.02, "source": "Fensterliste" },
+          "floor_area": { "value": 33.5, "source": "Raumbuch" },
+          "room_depth": { "value": 5, "source": "Grundriss" },
+          "overhang_depth": { "value": 1.5, "source": "Grundriss" }
+        }
+      },
+      "expect": { "quantities": { "daylight_ratio": 12 }, "checks": { "daylightMin": "pass" } }
+    },
+    {
+      "id": "daylight-deep-room-under-a-loggia",
+      "work": "overhang 3,4 m: 15 % + 2 % × 1 started metre over 3,00 m = 17 %; depth 6,2 m: + 1 % × 2 started metres over 5,00 m = 19 %; 5 ÷ 25 × 100 = 20 % ≥ 19 %",
+      "card": {
+        "type": "formula",
+        "title": "Wohnküche Top 9",
+        "formula": {
+          "name": "daylight_ratio",
+          "opening_area": { "value": 5, "source": "Fensterliste" },
+          "floor_area": { "value": 25, "source": "Raumbuch" },
+          "room_depth": { "value": 6.2, "source": "Grundriss" },
+          "overhang_depth": { "value": 3.4, "source": "Schnitt B-B" }
+        }
+      },
+      "expect": { "quantities": { "daylight_ratio": 20, "required_share": 19 }, "checks": { "daylightMin": "pass" } }
+    },
+    {
+      "id": "daylight-overhang-exactly-3-m",
+      "work": "overhang 3,00 m is not over 3,00 m: 15 %, no per-metre increment; 3,75 ÷ 25 × 100 = 15 % on the bound: passes",
+      "card": {
+        "type": "formula",
+        "title": "Kinderzimmer Top 9",
+        "formula": {
+          "name": "daylight_ratio",
+          "opening_area": { "value": 3.75, "source": "Fensterliste" },
+          "floor_area": { "value": 25, "source": "Raumbuch" },
+          "room_depth": { "value": 4, "source": "Grundriss" },
+          "overhang_depth": { "value": 3, "source": "Schnitt B-B" }
+        }
+      },
+      "expect": { "quantities": { "daylight_ratio": 15, "required_share": 15 }, "checks": { "daylightMin": "pass" } }
+    },
+    {
+      "id": "daylight-depth-unknown",
+      "work": "the Raumtiefe is not given: the share is computed (12,4 %) but the required share is not, so the card cannot judge",
+      "base": "daylight-above-12-percent",
+      "overrides": { "room_depth": null },
+      "expect": { "quantities": { "daylight_ratio": 12.4, "required_share": null }, "checks": { "daylightMin": "needs_input" } }
+    },
+    {
+      "id": "daylight-zero-floor-area",
+      "work": "a Bodenfläche of 0 has no ratio: undefined, not judged",
+      "base": "daylight-above-12-percent",
+      "overrides": { "floor_area": 0 },
+      "expect": { "quantities": { "daylight_ratio": null }, "undecidable": { "daylight_ratio": "undefined" }, "checks": { "daylightMin": "needs_input" } }
+    },
+    {
+      "id": "u-value-external-wall",
+      "preview": true,
+      "work": "R_si 0,13 + 0,015/0,7 (0,021429) + 0,18/2,3 (0,078261) + 0,20/0,035 (5,714286) + 0,005/0,7 (0,007143) + R_se 0,04 = 5,991118 m²K/W; U = 0,166914 W/(m²K) ≤ 0,35 (OIB-RL 6 Pkt. 4.4.1 Zeile 1)",
+      "card": {
+        "type": "formula",
+        "title": "U-Wert Außenwand AW 01",
+        "formula": {
+          "name": "u_value",
+          "component": "external_wall",
+          "measure": "new_build",
+          "layers": [
+            { "label": "Innenputz", "thickness": { "value": 1.5, "source": "Wandaufbau AW 01" }, "conductivity": { "value": 0.7, "source": "Produktdatenblatt" } },
+            { "label": "Stahlbeton", "thickness": { "value": 18, "source": "Wandaufbau AW 01" }, "conductivity": { "value": 2.3, "source": "Produktdatenblatt" } },
+            { "label": "EPS-F", "thickness": { "value": 20, "min": 0, "max": 40, "step": 1, "source": "Wandaufbau AW 01" }, "conductivity": { "value": 0.035, "step": 0.001, "source": "Produktdatenblatt" } },
+            { "label": "Außenputz", "thickness": { "value": 0.5, "source": "Wandaufbau AW 01" }, "conductivity": { "value": 0.7, "source": "Produktdatenblatt" } }
+          ]
+        },
+        "note": "Homogene Schichten, ohne Korrekturen für Befestigungen."
+      },
+      "expect": { "quantities": { "u_value": 0.166914, "total_resistance": 5.991118 }, "checks": { "uMax": "pass" } }
+    },
+    {
+      "id": "u-value-reader-cuts-the-insulation",
+      "work": "EPS 4 cm: 0,04/0,035 = 1,142857; R_T = 1,419689; U = 0,704379 > 0,35",
+      "base": "u-value-external-wall",
+      "overrides": { "layers.2.thickness": 4 },
+      "expect": { "quantities": { "u_value": 0.704379, "total_resistance": 1.419689 }, "checks": { "uMax": "fail" } }
+    },
+    {
+      "id": "u-value-roof",
+      "work": "upward heat flow, R_si 0,10: 0,10 + 0,20/2,3 (0,086957) + 0,30/0,04 (7,5) + 0,04 = 7,726957; U = 0,129417 ≤ 0,20 (Zeile 18)",
+      "card": {
+        "type": "formula",
+        "title": "U-Wert Flachdach",
+        "formula": {
+          "name": "u_value",
+          "component": "roof_or_ceiling_to_outside_air",
+          "measure": "new_build",
+          "layers": [
+            { "label": "Stahlbeton", "thickness": { "value": 20 }, "conductivity": { "value": 2.3 } },
+            { "label": "Mineralwolle", "thickness": { "value": 30 }, "conductivity": { "value": 0.04 } }
+          ]
+        }
+      },
+      "expect": { "quantities": { "u_value": 0.129417 }, "checks": { "uMax": "pass" } }
+    },
+    {
+      "id": "u-value-ceiling-over-a-passage",
+      "work": "downward heat flow, R_si 0,17: 0,17 + 0,25/2,3 (0,108696) + 0,12/0,04 (3,0) + 0,04 = 3,318696; U = 0,301323 > 0,20 (Zeile 22)",
+      "card": {
+        "type": "formula",
+        "title": "Decke über Durchfahrt",
+        "formula": {
+          "name": "u_value",
+          "component": "floor_over_outside_air",
+          "measure": "new_build",
+          "layers": [
+            { "label": "Stahlbeton", "thickness": { "value": 25 }, "conductivity": { "value": 2.3 } },
+            { "label": "Mineralwolle", "thickness": { "value": 12 }, "conductivity": { "value": 0.04 } }
+          ]
+        }
+      },
+      "expect": { "quantities": { "u_value": 0.301323 }, "checks": { "uMax": "fail" } }
+    },
+    {
+      "id": "u-value-renovation",
+      "preview": true,
+      "work": "Renovierung ohne Sanierungskonzept (OIB-RL 6 Pkt. 4.5 b): 0,35 − 24 % = 0,76 × 0,35 = 0,266 W/(m²K). EPS 12 cm: R_T = 0,13 + 0,021429 + 0,078261 + 3,428571 + 0,007143 + 0,04 = 3,705404; U = 0,269876 > 0,266, although it would meet a new build's 0,35",
+      "card": {
+        "type": "formula",
+        "title": "U-Wert Außenwand Bestand AW 02",
+        "formula": {
+          "name": "u_value",
+          "component": "external_wall",
+          "measure": "renovation",
+          "layers": [
+            { "label": "Innenputz", "thickness": { "value": 1.5, "source": "Bestandsplan" }, "conductivity": { "value": 0.7, "source": "Produktdatenblatt" } },
+            { "label": "Stahlbeton", "thickness": { "value": 18, "source": "Bestandsplan" }, "conductivity": { "value": 2.3, "source": "Produktdatenblatt" } },
+            { "label": "EPS-F", "thickness": { "value": 12, "min": 0, "max": 40, "step": 1, "source": "Sanierungsvariante" }, "conductivity": { "value": 0.035, "source": "Produktdatenblatt" } },
+            { "label": "Außenputz", "thickness": { "value": 0.5, "source": "Sanierungsvariante" }, "conductivity": { "value": 0.7, "source": "Produktdatenblatt" } }
+          ]
+        }
+      },
+      "expect": { "quantities": { "u_value": 0.269876 }, "checks": { "uMaxRenovation": "fail" } }
+    },
+    {
+      "id": "u-value-renovation-more-insulation",
+      "work": "EPS 14 cm: 0,14/0,035 = 4,0; R_T = 4,276832; U = 0,233818 ≤ 0,266",
+      "base": "u-value-renovation",
+      "overrides": { "layers.2.thickness": 14 },
+      "expect": { "quantities": { "u_value": 0.233818 }, "checks": { "uMaxRenovation": "pass" } }
+    },
+    {
+      "id": "u-value-measure-unknown",
+      "work": "neither new build nor renovation is stated: U is computed (0,269876) but the bound depends on the measure, so the card cannot judge",
+      "card": {
+        "type": "formula",
+        "title": "U-Wert Außenwand AW 02",
+        "formula": {
+          "name": "u_value",
+          "component": "external_wall",
+          "layers": [
+            { "label": "Innenputz", "thickness": { "value": 1.5, "source": "Bestandsplan" }, "conductivity": { "value": 0.7, "source": "Produktdatenblatt" } },
+            { "label": "Stahlbeton", "thickness": { "value": 18, "source": "Bestandsplan" }, "conductivity": { "value": 2.3, "source": "Produktdatenblatt" } },
+            { "label": "EPS-F", "thickness": { "value": 12, "min": 0, "max": 40, "step": 1, "source": "Sanierungsvariante" }, "conductivity": { "value": 0.035, "source": "Produktdatenblatt" } },
+            { "label": "Außenputz", "thickness": { "value": 0.5, "source": "Sanierungsvariante" }, "conductivity": { "value": 0.7, "source": "Produktdatenblatt" } }
+          ]
+        }
+      },
+      "expect": { "quantities": { "u_value": 0.269876 }, "checks": { "uMax": "needs_input" } }
+    },
+    {
+      "id": "u-value-major-renovation",
+      "work": "a größere Renovierung is held to the energy figures of OIB-RL 6 Pkt. 4.3, not to a component's U-value: U is computed (0,269876) and not judged",
+      "card": {
+        "type": "formula",
+        "title": "U-Wert Außenwand Bestand AW 03",
+        "formula": {
+          "name": "u_value",
+          "component": "external_wall",
+          "measure": "major_renovation",
+          "layers": [
+            { "label": "Innenputz", "thickness": { "value": 1.5, "source": "Bestandsplan" }, "conductivity": { "value": 0.7, "source": "Produktdatenblatt" } },
+            { "label": "Stahlbeton", "thickness": { "value": 18, "source": "Bestandsplan" }, "conductivity": { "value": 2.3, "source": "Produktdatenblatt" } },
+            { "label": "EPS-F", "thickness": { "value": 12, "source": "Sanierungsvariante" }, "conductivity": { "value": 0.035, "source": "Produktdatenblatt" } },
+            { "label": "Außenputz", "thickness": { "value": 0.5, "source": "Sanierungsvariante" }, "conductivity": { "value": 0.7, "source": "Produktdatenblatt" } }
+          ]
+        }
+      },
+      "expect": { "quantities": { "u_value": 0.269876 }, "checks": { "uMax": "needs_input" } }
+    },
+    {
+      "id": "u-value-zero-conductivity",
+      "work": "λ = 0 divides by zero: the layer, R_T and U are undefined, and the card cannot judge",
+      "base": "u-value-roof",
+      "overrides": { "layers.1.conductivity": 0 },
+      "expect": { "quantities": { "u_value": null }, "undecidable": { "u_value": "undefined" }, "checks": { "uMax": "needs_input" } }
+    }
+  ]
+}

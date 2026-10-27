@@ -23,6 +23,8 @@ from pydantic import model_validator
 
 from aiq_agent.common.action_outcome import ActionOutcome
 from aiq_agent.common.estate_paths import estate_path
+from aiq_agent.common.turn_status import CONCLUSION_ARG
+from aiq_agent.common.turn_status import CONCLUSION_DESCRIPTION
 from aiq_agent.common.turn_status import ActionRow
 from aiq_agent.common.wire_v2 import TraceLane
 from aiq_agent.common.wire_v2 import TraceLaneSource
@@ -82,17 +84,26 @@ def _is_embedding_mismatch(value: object) -> bool:
 # Agent-facing contract. Distinct from ``surface_documents`` (show a file). A minimal contract:
 # what it does, its inputs, what it returns and where it stops. How and when to use it is the
 # agent's judgement, not this text's (writing-tools-for-agents).
+#: How the search is scoped, the one paragraph a binding replaces (``chat_binding``). The query is
+#: asked for in the documents' language: the corpus is German, and beside the multilingual dense
+#: channel the lexical ones (German BM25, the exact-term phrases) match only the documents' words.
+SCOPE_PARAGRAPH = (
+    "Inputs: `query`, a search query in the documents' language (topic, jurisdiction, year), not the raw user "
+    "message. Narrow with `file_name=` (an indexed name from the inventory or the user; never invent one), "
+    "`folder=` (a path as the inventory prints it after 'Ordner:'; includes everything filed beneath it; never "
+    "invent one), `doc_class=` (Dokumentart key, e.g. oib_guideline), `title_contains=`, and `shelf=` (project, "
+    "office or base; omitted, every shelf is read), or with `path=` as a hit's `Path:` line names a place, a "
+    "folder or one file. "
+)
+#: Said of ``conclusion`` where the schema cannot carry a field description.
+CONCLUSION_LINE = f"\n`{CONCLUSION_ARG}=`: {CONCLUSION_DESCRIPTION}"
+
 _KNOWLEDGE_SEARCH_DESCRIPTION = (
     "Searches the ingested knowledge base (the office's files and the OIB corpus) and returns quotable "
     "passages, each with a Citation key: the evidence tool. It does not put a file on screen "
-    "(`surface_documents` does). To open a document you can already name use `read_passage`; to list which "
-    "files exist use `list_files`.\n"
-    "Inputs: `query`, a search query (topic, jurisdiction, year), not the raw user message. Narrow with "
-    "`file_name=` (an indexed name from the inventory or the user; never invent one), `folder=` (a path as the "
-    "inventory prints it after 'Ordner:'; includes everything filed beneath it; never invent one), `doc_class=` "
-    "(Dokumentart key, e.g. oib_guideline), `title_contains=`, and `shelf=` (project, office or base; omitted, "
-    "every shelf is read). "
-    '`group_by="document"` (ranked search only) returns one entry per document: its best passage and how many '
+    "(`surface_documents` does).\n"
+    + SCOPE_PARAGRAPH
+    + '`group_by="document"` (ranked search only) returns one entry per document: its best passage and how many '
     "passages of the ranked pool it held.\n"
     '`match="exact"` returns EVERY passage that contains the query literally, plus a table of the matching files '
     "with count and pages, and shows a term is written nowhere. Several spellings go in one query separated by "
@@ -106,16 +117,8 @@ _KNOWLEDGE_SEARCH_DESCRIPTION = (
     "every hit. A search that stops at its limit says so, and its counts are then lower bounds.\n"
     "Returns: numbered passages with Source, Citation (cite this key verbatim), Dokumentart, Ordner, page and "
     "text. A query that names a Richtlinie and nothing else ('OIB 2') returns every part of it the corpus "
-    "holds, each with its Geltungsbereich and Gliederung: every member is then open at the level "
-    "`read_passage(document=…)` opens it, and what is left to open is a Punkt by number. A `Folder:` line is a "
-    "pointer, never a source. A hit "
-    "whose Herkunft line says 'Piloti-Dokument' is office knowledge the office has approved, never a source for a "
-    "normative value: cite it for what the office decided, not for what the OIB requires. An empty result says "
-    "how to retry.\n"
-    "`path=` limits the search to a place, a folder or one file as the filesystem tools name them "
-    '("/project/Gutachten/", a hit\'s `Path:`); each hit carries the `Path:` read_file opens. The literal modes '
-    "are also `grep`, under its standard name.\n"
-    "`conclusion=` is optional: one line on what you are looking for; it has no effect on the call."
+    "holds, each with its Geltungsbereich and Gliederung: every member is then open at the level a read of one "
+    "document opens it, and what is left to open is a Punkt by number." + CONCLUSION_LINE
 )
 
 #: The paragraphs of :data:`_KNOWLEDGE_SEARCH_DESCRIPTION` that offer a literal mode, each dropped when
@@ -128,23 +131,38 @@ _REGEX_PARAGRAPH = _KNOWLEDGE_SEARCH_DESCRIPTION[
 ]
 
 
-def knowledge_search_description(match_modes: Sequence[str]) -> str:
+def knowledge_search_description(match_modes: Sequence[str], scope: str | None = None) -> str:
     """The description, offering only the ``match`` modes this configuration accepts.
 
     ``match_modes`` is an eval knob (``KnowledgeRetrievalConfig.match_modes``). A description that
     offered a mode the search then refuses would cost each arm a call to learn so, and bias the
-    comparison the knob exists for.
+    comparison the knob exists for. ``scope`` replaces :data:`SCOPE_PARAGRAPH` (and the
+    ``conclusion`` line, which such a binding's schema describes) for a binding scoped another way.
     """
     modes = set(match_modes)
     text = _KNOWLEDGE_SEARCH_DESCRIPTION
+    if scope is not None:
+        text = text.replace(SCOPE_PARAGRAPH, scope).replace(CONCLUSION_LINE, "")
     if "exact" not in modes:
         text = text.replace(_EXACT_PARAGRAPH, "")
     if "regex" not in modes:
         text = text.replace(_REGEX_PARAGRAPH, "")
-    if "meaning" not in modes:
-        offered = " or ".join(f'`match="{mode}"`' for mode in ("exact", "regex") if mode in modes)
-        text = f"In this configuration the search is literal only: pass {offered} on every call.\n{text}"
     return text
+
+
+def result_budget(top_k: int, max_per_document: int) -> str:
+    """The sentence that states how many passages a search returns, from its configuration."""
+    if max_per_document > 0:
+        diversity = (
+            f"spread across multiple distinct documents (at most {max_per_document} per document "
+            "where possible), so cross-cutting questions see every relevant Richtlinie."
+        )
+    else:
+        diversity = "ranked purely by relevance, with no per-document diversity cap."
+    return (
+        f"Returns up to {top_k} excerpts by default (platform-configurable up to 50; the result header counts "
+        f"them), {diversity}"
+    )
 
 
 # The knowledge layer has one backend (ADR-0072). The name still keys the
@@ -217,10 +235,11 @@ class KnowledgeRetrievalConfig(FunctionBaseConfig, name="knowledge_retrieval"):
     match_modes: list[str] = Field(
         default_factory=lambda: ["meaning", "exact", "regex"],
         description=(
-            "EVAL KNOB, not a product setting: the `match=` modes the search accepts. The answer suite's "
-            "`semantic` arm keeps only `meaning` and its `grep` arm only the literal modes, to measure "
-            "each way of finding on its own (ADR-0127). A comma-separated string is read as a list, which "
-            "is how `nat run --override` hands one over. Production keeps the default: every mode."
+            "EVAL KNOB, not a product setting: the `match=` modes the search accepts on the bindings that "
+            "offer `match` (deep research, intake). The answer suite's `semantic` arm keeps only `meaning`; "
+            "Piloti's chat binds ranked search only since ADR-0133 slice 6, so its `grep` arm unbinds the "
+            "search instead of narrowing it. A comma-separated string is read as a list, which is how "
+            "`nat run --override` hands one over. Production keeps the default: every mode."
         ),
     )
     hybrid_search: bool | None = Field(
@@ -346,6 +365,13 @@ class KnowledgeRetrievalConfig(FunctionBaseConfig, name="knowledge_retrieval"):
         if isinstance(data, dict) and isinstance(data.get("match_modes"), str):
             data = {**data, "match_modes": [mode.strip() for mode in data["match_modes"].split(",") if mode.strip()]}
         return data
+
+    @model_validator(mode="after")
+    def keep_ranked_search(self):
+        """A search without ``meaning`` is refused: literal-only is ``grep``'s, on a binding that reads the estate."""
+        if "meaning" not in self.match_modes:
+            raise ValueError("match_modes must keep `meaning`; a literal-only arm unbinds the search for `grep`.")
+        return self
 
     @model_validator(mode="after")
     def validate_summary_config(self):
@@ -1687,7 +1713,7 @@ def _format_results(
 
     ``coverage_gap`` is why the passages do not answer the question, when the
     decider read them and said so (``requery.judge_coverage``). The block then
-    says „Abdeckung: unzureichend" under a preamble that no longer calls the
+    says "Coverage: insufficient" under a preamble that no longer calls the
     hits relevant; the line itself says how many were judged, and the preamble
     claims nothing about the rest.
 
@@ -1752,9 +1778,8 @@ def _format_results(
 #: names the way back rather than an instruction: the parts are still readable,
 #: one call each.
 _FAMILY_OVERVIEW_FAILED_NOTICE = (
-    "Hinweis: der Überblick über die Teile der OIB-Richtlinie {key} konnte nicht erstellt werden; "
-    "es folgen nur die gerankten Treffer, die Teile sind einzeln mit `read_passage(document=…)` "
-    "zu öffnen.\n\n"
+    "Note: the overview of the parts of OIB-Richtlinie {key} could not be built; only the ranked results "
+    "follow, and each part opens on its own by its file name.\n\n"
 )
 
 
@@ -1815,8 +1840,8 @@ def _hidden_revisions_notice(superseded: dict[str, dict[str, str]]) -> str:
         return ""
     shown = ", ".join(names[:_HIDDEN_REVISIONS_NAMED])
     rest = len(names) - _HIDDEN_REVISIONS_NAMED
-    tail = f" und {rest} weitere" if rest > 0 else ""
-    return f"Ältere Fassungen ausgeblendet: {shown}{tail} — mit file_name=… gezielt lesbar.\n\n"
+    tail = f" and {rest} more" if rest > 0 else ""
+    return f"Older Fassungen left out: {shown}{tail}; each is readable when it is named.\n\n"
 
 
 @dataclass(frozen=True, slots=True)
@@ -2171,6 +2196,8 @@ async def knowledge_retrieval(config: KnowledgeRetrievalConfig, _builder: Builde
             try:
                 shelf, folder, file_name = _path_scope(str(path), shelf, folder, file_name)
             except ValueError as refusal:
+                # Refused before it searched, and still a call the reader sees: an error row that names no folder.
+                ActionRow("search", **_search_row_fields(query, match, None, None, None)).finish("error")
                 return str(refusal)
         outcome = ActionOutcome()
         row = ActionRow("search", **_search_row_fields(query, match, folder, file_name, shelf))
@@ -3031,23 +3058,10 @@ async def knowledge_retrieval(config: KnowledgeRetrievalConfig, _builder: Builde
             if folder_task is not None and not folder_task.done():
                 folder_task.cancel()
 
-    # Yield the function info for NAT registration
-    if max_per_document > 0:
-        diversity_clause = (
-            f"spread across multiple distinct documents (at most {max_per_document} per document "
-            "where possible), so cross-cutting questions see every relevant Richtlinie."
-        )
-    else:
-        diversity_clause = "ranked purely by relevance, with no per-document diversity cap."
     try:
         yield FunctionInfo.from_fn(
             search,
-            description=(
-                f"{knowledge_search_description(config.match_modes)} "
-                f"Returns up to {top_k} excerpts by default "
-                "(platform-configurable up to 50; the result header counts them), "
-                f"{diversity_clause}"
-            ),
+            description=f"{knowledge_search_description(config.match_modes)} {result_budget(top_k, max_per_document)}",
         )
     finally:
         from aiq_agent.knowledge.factory import clear_search_retriever
