@@ -133,11 +133,12 @@ describe('resolveJump', () => {
 })
 
 describe('shortcutSections', () => {
-  test('groups are ordered general → navigation → chat → review → inbox', () => {
+  test('groups are ordered general → navigation → chat → search → review → inbox', () => {
     expect(shortcutSections(ALL).map((section) => section.id)).toEqual([
       'general',
       'navigation',
       'chat',
+      'search',
       'review',
       'inbox',
     ])

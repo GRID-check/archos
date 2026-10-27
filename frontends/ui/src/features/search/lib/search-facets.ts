@@ -8,7 +8,7 @@
  * one project (its scope), the municipality is the `place` filter.
  */
 
-import { DOSSIER_DOCUMENT_TYPES, DOSSIER_PARTY_ROLES } from '@/lib/documents/dossier'
+import { DOSSIER_DOCUMENT_TYPES, DOSSIER_FACT_KEYS, DOSSIER_PARTY_ROLES } from '@/lib/documents/dossier'
 import { ALLOWED_TAGS } from '@/lib/documents/tag-vocabulary'
 import { SEARCH_READ_STATES, type DocumentFilters, type SearchFacetDimension } from '@/lib/search/search-wire'
 import { compactFilters, type SearchUrlState } from './search-url'
@@ -48,6 +48,8 @@ export function isFacetActive(state: SearchUrlState, dimension: SearchFacetDimen
       return includes(f.fileTypes, value)
     case 'uploader':
       return includes(f.uploadedBy, value)
+    case 'changedFact':
+      return includes(f.changedFacts, value)
   }
 }
 
@@ -79,5 +81,7 @@ export function toggleFacet(state: SearchUrlState, dimension: SearchFacetDimensi
       return withFilters({ ...f, fileTypes: toggled(f.fileTypes, value.toLowerCase()) })
     case 'uploader':
       return withFilters({ ...f, uploadedBy: toggled(f.uploadedBy, value) })
+    case 'changedFact':
+      return known(DOSSIER_FACT_KEYS, value) ? withFilters({ ...f, changedFacts: toggled(f.changedFacts, value) }) : state
   }
 }

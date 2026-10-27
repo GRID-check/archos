@@ -19,6 +19,7 @@ import {
   type SearchKind,
 } from '@/lib/search/search-wire'
 import { useSearchLabels } from '../hooks/use-search-labels'
+import { DocumentHitMenu, useHitMenus } from './hit-actions-menu'
 import { annotationHitHref, conversationHitHref, documentHitHref, folderHitHref, projectHitHref } from '../lib/search-hrefs'
 import { useSearchReturn } from '../hooks/use-search-return'
 import type { SectionView } from '../lib/sections'
@@ -176,6 +177,7 @@ function DocumentRow({ hit, text, active, id }: { hit: DocumentHit; text: string
   const t = useTranslations('search')
   const labels = useSearchLabels()
   const where = useWhere()
+  const menus = useHitMenus()
   const type = labels.documentType(hit.documentType)
   const day = labels.day(hit.planDate ?? hit.documentDate)
   const from = useSearchReturn()
@@ -205,11 +207,24 @@ function DocumentRow({ hit, text, active, id }: { hit: DocumentHit; text: string
         />
       }
       aside={hit.superseded ? <SupersededMark /> : null}
+      actions={menus ? <DocumentHitMenu hit={hit} /> : undefined}
     >
       {hit.passage ? (
         <PassageQuote
           segments={termSegments(hit.passage.text, text)}
           page={hit.passage.page !== null ? t('passage.page', { page: hit.passage.page }) : undefined}
+        />
+      ) : null}
+      {hit.changedFacts.length > 0 ? (
+        <MatchHint
+          label={t('document.changed')}
+          testId="search-changed-facts"
+          parts={hit.changedFacts.map((change) => {
+            const fact = labels.factKey(change.key)
+            if (change.before === null) return t('document.changedAdded', { fact, after: change.after ?? '' })
+            if (change.after === null) return t('document.changedRemoved', { fact })
+            return t('document.changedValue', { fact, before: change.before, after: change.after })
+          })}
         />
       ) : null}
       {matchedOn.length > 0 ? <MatchHint label={t('matchedOn.label')} parts={matchedOn.map((reason) => t(`matchedOn.${reason}`))} /> : null}

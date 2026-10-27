@@ -9,6 +9,7 @@ import { server } from '@/mocks/server'
 import { I18nProvider } from '@/i18n'
 import type { SearchBody } from '@/lib/search/search-wire'
 import { SEARCH_FIXTURE_RESPONSE, SEARCH_FIXTURE_SAVED } from '@/app/dev/_fixtures/search'
+import { searchFixtureAnswer } from '@/app/dev/_fixtures/search-answer'
 import { EMPTY_SEARCH_STATE, type SearchUrlState } from '../lib/search-url'
 import { sectionView } from '../lib/sections'
 import { SearchWorkspace } from './search-workspace'
@@ -107,6 +108,44 @@ describe('SearchWorkspaceView', () => {
     expect(screen.queryByTestId('search-note-building')).toBeNull()
   })
 
+  it('shows the kinds a document filter cannot narrow as not searched, and why, rather than unfiltered rows', () => {
+    const state: SearchUrlState = {
+      ...EMPTY_SEARCH_STATE,
+      text: 'Fluchtweg GK 4',
+      filters: { documentTypes: ['submission_drawing'], planNumber: 'EP-0' },
+    }
+    const answer = searchFixtureAnswer(state)
+    const sections = Object.fromEntries(Object.entries(answer.sections).map(([kind, section]) => [kind, sectionView(section!)]))
+    german(
+      <SearchWorkspaceView
+        surface={{ kind: 'office' }}
+        state={state}
+        onStateChange={() => {}}
+        fieldValue={state.text}
+        onFieldChange={() => {}}
+        response={answer}
+        sections={sections}
+        loading={false}
+        failed={false}
+        onRetry={() => {}}
+        onLoadMore={() => {}}
+      />
+    )
+    for (const kind of ['folder', 'project', 'conversation']) {
+      expect(screen.getByTestId(`search-kind-${kind}`)).toBeDisabled()
+      expect(screen.getByTestId(`search-kind-${kind}`)).toHaveAttribute('title', 'Mit diesen Filtern nicht durchsucht')
+    }
+    expect(screen.getByTestId('search-kind-annotation')).toBeEnabled()
+    expect(screen.getByTestId('search-note-set-aside')).toHaveTextContent(
+      'Die Filter gelten für Dokumente und ihre Anmerkungen. Ordner, Projekte und Chats werden so lange nicht durchsucht.'
+    )
+    // The mark on the Einreichplan EP-03 stays: an annotation narrows through its document.
+    expect(screen.getAllByTestId(/^search-hit-annotation-/)).toHaveLength(1)
+    expect(searchFixtureAnswer({ ...state, filters: { documentTypes: ['fire_safety_concept'] } }).sections.annotation?.hits).toEqual([])
+    expect(screen.queryByTestId(/^search-hit-folder-/)).toBeNull()
+    expect(screen.queryByTestId(/^search-hit-conversation-/)).toBeNull()
+  })
+
   it('explains the shelf still being read where a filter set depends on what it holds', () => {
     german(<Harness initial={{ ...EMPTY_SEARCH_STATE, text: 'Fluchtweg', filters: { documentTypes: ['submission_drawing'] } }} onChange={() => {}} />)
     expect(screen.getByTestId('search-note-building')).toHaveTextContent('Piloti liest noch')
@@ -180,6 +219,26 @@ describe('SearchWorkspaceView', () => {
     expect(screen.getByTestId('search-empty-all-kinds')).toHaveTextContent('Alles zeigen')
     expect(screen.getByTestId('search-empty-office')).toHaveAttribute('href', '/app/search?q=Stiege&kind=document')
     expect(screen.queryByTestId('search-note-building')).toBeNull()
+  })
+
+  it('says what a Fassung changed against the one it replaced, in the dossier’s words', () => {
+    german(<Harness initial={{ ...EMPTY_SEARCH_STATE, text: 'Fluchtweg GK 4' }} onChange={() => {}} />)
+    const indexC = screen.getByTestId('search-hit-document-d0000000-0000-4000-8000-000000000002')
+    expect(within(indexC).getByTestId('search-changed-facts')).toHaveTextContent(
+      'Gegenüber der Vorfassung: Fluchtweglänge 38,50 m → 42,10 m · Oberirdische Geschosse 4 → 5'
+    )
+    const unchanged = screen.getByTestId('search-hit-document-d0000000-0000-4000-8000-000000000001')
+    expect(within(unchanged).queryByTestId('search-changed-facts')).toBeNull()
+  })
+
+  it('counts the changed facts as a facet, and says under the facets how many documents are not read yet', async () => {
+    const onChange = vi.fn()
+    german(<Harness initial={EMPTY_SEARCH_STATE} onChange={onChange} />)
+    expect(screen.getByTestId('search-facets-unread')).toHaveTextContent('3 Dokumente noch nicht gelesen, in den Zahlen oben nicht enthalten.')
+    const facet = screen.getByTestId('search-facet-changedFact')
+    expect(facet).toHaveTextContent('Geänderte Angaben')
+    await userEvent.click(within(facet).getByTestId('search-facet-changedFact-escape_route_length'))
+    expect(onChange).toHaveBeenLastCalledWith(expect.objectContaining({ filters: { changedFacts: ['escape_route_length'] } }))
   })
 
   it('marks a replaced Fassung in ink with its icon and word, never in the Büroablage’s amber', () => {

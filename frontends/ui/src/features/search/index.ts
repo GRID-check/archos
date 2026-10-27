@@ -15,6 +15,12 @@ export {
   paletteHitValue,
 } from './components/palette-search'
 export { usePaletteSearch, usePaletteShortcuts } from './hooks/use-palette-search'
+export {
+  ComposerSearchPicker,
+  type ComposerSearchPickerAria,
+  type ComposerSearchPickerHandle,
+} from './components/composer-search-picker'
+export { useDocumentReference } from './hooks/use-document-reference'
 export { savedSearchHref, searchHref, searchPageHref } from './lib/search-hrefs'
 export { captureSavedSearchRun } from './lib/search-telemetry'
 export { useShelfSearchMode } from './hooks/use-shelf-search-mode'

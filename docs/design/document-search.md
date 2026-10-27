@@ -124,7 +124,8 @@ operation's schema is the same zod object:
 - `kinds`: `document`, `annotation`, `folder`, `project`, `conversation`.
   Absent: all of them.
 - `filters`: the document filters below; `annotation` filters (status,
-  assignee, author); common ones (dates, person).
+  assignee, author); common ones (dates, person). A kind a set filter cannot
+  narrow is set aside, and the answer says so (`setAside`, below).
 - `sort` and `dir`: relevance when there is text, else any register column.
 - `limit` and `cursor`, `nextCursor` back (ADR-0131 rule 3).
 
@@ -148,7 +149,7 @@ with, so the search and the grid cannot disagree.
 | Question | Where | Why |
 |---|---|---|
 | who may read it, which shelf, folder, status, uploader, upload date, file type, archived | `documents` (BFF Postgres) | authorization lives there; ADR-0086/0087/0088 are SQL predicates on it |
-| type, parties, place, facts, references, Plankopf, capture, coverage, current Fassung | `document_search_facets` (BFF Postgres, new) | a projection of the dossier keyed by document id, so a filter and the authorization are one query, with facet counts over exactly what the reader may see |
+| type, parties, place, facts, references, Plankopf, capture, coverage, current Fassung, what a Fassung changed | `document_search_facets` (BFF Postgres, new) | a projection of the dossier keyed by document id, so a filter and the authorization are one query, with facet counts over exactly what the reader may see |
 | content | Qdrant, through the backend's grouped search | the passages and their pages are only there |
 
 The dossier itself stays where ingestion writes it (`document_metadata` in the
@@ -196,23 +197,79 @@ decision about it reaches the search only once it has one. A shelf never synced
 is still searched by name, status and content, and the answer says its facets
 are being built.
 
+### What changed, and what is not read yet
+
+Planfred's question about a new Index is "what is new in it"; its answer is a
+history entry. Ours is the facts. A new Fassung's dossier carries `changes`
+(per fact key `{key, before, after, page}`, against the Fassung it replaced:
+a re-upload under the same name or the one linked at upload,
+[`document-dossier.md`](../architecture/document-dossier.md)), and the
+projection keeps them as `changed_facts` with their keys in
+`changed_fact_keys`. So "which documents changed a fact recently" is two
+filters: `factsChanged` (any fact) or `changedFacts` (these keys), with
+`uploaded` for "recently", because the change is as new as the Fassung that
+carries it. The keys are also a facet (`changedFact`, „Geänderte Angaben“), and
+a hit says what changed („Gegenüber der Vorfassung: Fluchtweglänge 38,50 m →
+42,10 m“).
+
+Only documents ingested since the comparison landed carry it; nothing
+backfills the older ones, and the dossier writes `changes` only when something
+differs. An empty list therefore says "nothing changed, or nothing was
+compared", never "unchanged", and the filter finds only positive answers. The
+predecessor's file name (`changed_against`) is not projected: the version
+chain the preview already shows names it better.
+
+A facet counts only what Piloti read: a document without a projection row
+(still reading, failed, uploaded before its shelf's first sync) is in no count
+and found by no reading filter. So the answer carries `unread`, the documents
+in scope without a row, counted with the facets over the reach alone (a reading
+filter admits none of them, so counting under it would always say 0), and the
+rail says it in one line under the facets: „3 Dokumente noch nicht gelesen, in
+den Zahlen oben nicht enthalten.“ It is information the counts cannot show
+(design language, principle 9), so it stays, and it is absent when it is 0.
+`building` remains the per-shelf note above the results.
+
 ### What "everything" covers in this change
 
 | Kind | Matched on | Who sees it |
 |---|---|---|
 | document | name, dossier, plan facts, references, content | the reach's documents predicate |
-| annotation | body and replies | annotations on documents in reach |
+| annotation | body and replies | annotations on documents in reach that the document filters admit |
 | folder | name, description | folders in reach that are not hidden |
 | project | name, address | projects in reach |
 | conversation | title, topic tags | the conversation list's own rule, generalized from one project to the reach; withheld conversations (ADR-0088) are never matched |
 
 The providers live in `lib/search/providers.ts`. Annotations are joined to
-`documents` under the same `reachWhere` the document search uses, so a mark on
-a document in a hidden folder or on someone else's held upload is never found.
+`documents` (and its search row) under the same `documentSearchWhere` the
+document search uses, the reach and the document filters together, so a mark on
+a document in a hidden folder or on someone else's held upload is never found,
+and with „Dokumentart: Einreichplan“ set only the marks on Einreichpläne are.
 Conversations: across the office, every project in reach plus the rows with no
 project (the list's rule for those); in a project, that project's rows only;
 on the office shelf or in a folder, none. A withheld conversation is dropped
 before it is counted.
+
+#### A filter narrows every row shown, or the kind is set aside
+
+A chip claims a narrowing, so every row under it honours it. A filter on what a
+document is (`filters`, `setAsideKinds` in `search-wire.ts`) narrows the
+documents and, through their document, the annotations. A folder, a project or
+a conversation carries nothing such a filter asks about, so while one is set
+those kinds are not searched, and the answer names them in
+`setAside: { folder: 'document_filters', … }`. An annotation filter (status,
+kind, assignee, author) narrows only annotations, so it sets the documents and
+the other kinds aside the same way (`annotation_filters`); with the documents
+set aside there are no facet counts, so no count disagrees with a row. Two
+document filters set nothing aside: `projectIds` cuts the reach every kind
+reads, and `includeArchived` only widens. A kind the words would not have
+searched anyway (a folder without text) is not named.
+
+The list shows a set-aside kind's tab disabled, titled „Mit diesen Filtern
+nicht durchsucht“, and one line above the results says which filters apply
+and which kinds wait: „Die Filter gelten für Dokumente und ihre Anmerkungen.
+Ordner, Projekte und Chats werden so lange nicht durchsucht.“ The line earns
+its place (principle 9): a disabled tab alone does not say why, and a silent
+gap reads as „no folder matched“.
 
 Tasks, task runs, proposals and project memory are not searched yet: each has
 its own subject-access rule (a run's subject document, a memory's restricted
@@ -288,7 +345,8 @@ chosen columns on a line under it, the order in a menu.
 - `/dev/search`: the organism over a fixture answer, list and register,
   filtered and sorted in memory to match what is set (`searchFixtureAnswer`),
   so a capture never contradicts its chips. `?scope=project`,
-  `?state=empty|loading|error`, `?filters=open`.
+  `?state=empty|loading|error`, `?filters=open`, `?composer=1` (the
+  composer's `#` picker).
 
 The rail starts with Plannummer and Index on one row and „Nur aktuelle
 Fassung“, always open; the counted facets follow; the rest folds under
@@ -320,6 +378,26 @@ sheet). The link carries the passage's first 200 characters, cut at a word.
 The place belongs to the document `doc` names: opening another document, or a
 folder, takes `page` and `highlight` off the address with the review's params.
 A preview that is not a PDF (an image, a text file) ignores both.
+
+A document hit also leads on, through its ⋯ in the list, the register and the
+phone's stack (the house's `ActionMenu`, `features/search/components/hit-actions-menu.tsx`):
+„Piloti fragen" starts a chat about the file in its project through the one
+ask (`askAboutFile`), the question prefilled with the passage's page when the
+hit was found by one; „Aktuelle Fassung öffnen", on a superseded hit, asks the
+document's status for the newer Fassung this reader may open (the hit carries
+only that one exists) and opens it on the same shelf; „Offene Punkte" opens
+the document's Prüfansicht, and closing it returns to the search. A
+Büroablage document has no chat to start, so it offers no „Piloti fragen".
+With a row marked, Shift+F10 or the menu key opens its ⋯ while the focus
+stays in the field. Each action is an operation that already exists
+(`piloti-ask-create`, `document-status`, `annotation-list`); none is new.
+
+In the chat composer, `#` and a word search the workspace for a document as
+`@` finds a person (`useDocumentReference`): the palette's live results,
+documents only, in the chat's project. A pick writes the name into the
+message („Grundriss EG“, the name the agent retrieves by) and makes the
+document the message's subject, as „Piloti fragen" does. `/dev/search?composer=1`
+shows the picker.
 
 A document or annotation hit comes back to the search. Its link carries
 `back`, the search page's own address (query, filters, kinds, view, sort),

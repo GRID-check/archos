@@ -15,3 +15,14 @@ features:
   - >
     Closing a document or annotation opened from the search returns to the
     search as you left it, with its words, filters, view and sort.
+  - >
+    See what a new version of a document changed: filter for documents whose
+    stated facts differ from the version they replaced, such as a new building
+    class or one more storey, and each result names the change, before and
+    after. The filter panel also says how many documents Piloti has not read
+    yet, so a count never suggests they lack a value.
+  - >
+    A document found by the search opens a menu with Ask Piloti, Open current
+    version and Open points, also with Shift+F10 on the chosen result. In the
+    chat, type # and a word to pick a document from the workspace and ask
+    about it.

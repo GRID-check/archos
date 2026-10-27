@@ -2,7 +2,22 @@ import { describe, expect, it } from 'vitest'
 import { readDocumentLocus } from '@/features/documents/lib/document-locus'
 import { readDocumentBack, readReviewParams } from '@/features/documents/lib/open-review'
 import type { SearchPassage } from '@/lib/search/search-wire'
-import { annotationHitHref, documentHitHref, folderHitHref, hitHref, searchReturnPath } from './search-hrefs'
+import { annotationHitHref, documentHitHref, documentReviewHitHref, folderHitHref, hitHref, searchReturnPath } from './search-hrefs'
+
+describe('documentReviewHitHref', () => {
+  const SEARCH = '/app/search?q=Brandschutz'
+  const read = (href: string): URL => new URL(href, 'https://piloti.test')
+
+  it('opens the document’s Prüfansicht on its shelf, at no mark, returning to the search', () => {
+    const project = read(documentReviewHitHref({ id: 'd1', shelf: 'project', projectId: 'p1' }, { back: SEARCH }))
+    expect(project.pathname).toBe('/app/projects/p1/files')
+    expect(readReviewParams(project.searchParams)).toMatchObject({ documentId: 'd1', open: true, back: SEARCH })
+    expect(project.searchParams.get('mark')).toBeNull()
+    const shelf = read(documentReviewHitHref({ id: 'd2', shelf: 'office_shelf', projectId: null }, { back: SEARCH }))
+    expect(shelf.pathname).toBe('/app/office-shelf')
+    expect(readReviewParams(shelf.searchParams)).toMatchObject({ documentId: 'd2', open: true, back: SEARCH })
+  })
+})
 
 const projectHit = (passage: SearchPassage | null = null) => ({ id: 'd1', shelf: 'project', projectId: 'p1', passage }) as const
 

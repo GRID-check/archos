@@ -35,9 +35,13 @@ import {
 } from '../lib/search-sort'
 import { compactFilters, type SearchUrlState } from '../lib/search-url'
 import type { SectionView } from '../lib/sections'
+import { DocumentHitMenu, useHitMenus } from './hit-actions-menu'
 import {
   LabelledSwitch,
   MetaPart,
+  REGISTER_ACTIONS_WIDTH,
+  RegisterActionsCell,
+  RegisterActionsHead,
   RegisterBar,
   RegisterBody,
   RegisterCell,
@@ -224,6 +228,7 @@ export function SearchRegister({ state, section, onStateChange, onLoadMore, hide
   const t = useTranslations('search')
   const isMobile = useIsMobile()
   const columns = visibleRegisterColumns(state.columns, { hideProject })
+  const menus = useHitMenus()
   const hits = section?.hits ?? []
   return (
     <>
@@ -239,6 +244,7 @@ export function SearchRegister({ state, section, onStateChange, onLoadMore, hide
           caption={t('register.caption')}
           testId="search-register"
           columnWidths={columns.map((column) => COLUMN_WIDTH[column])}
+          actionsRem={menus ? REGISTER_ACTIONS_WIDTH : 0}
           scrollLabel={t('register.scrollLabel')}
         >
           <RegisterHead>
@@ -257,6 +263,7 @@ export function SearchRegister({ state, section, onStateChange, onLoadMore, hide
                 />
               )
             })}
+            {menus ? <RegisterActionsHead label={t('hitActions.column')} /> : null}
           </RegisterHead>
           <RegisterBody>
             {hits.map((hit) => (
@@ -295,6 +302,7 @@ function useReadException(hit: DocumentHit): string | null {
 function RegisterLine({ hit, columns, active, id }: { hit: DocumentHit; columns: readonly RegisterColumn[]; active: boolean; id?: string }): JSX.Element {
   const from = useSearchReturn()
   const t = useTranslations('search')
+  const menus = useHitMenus()
   const labels = useSearchLabels()
   const exception = useReadException(hit)
   const cell = (column: RegisterColumn): JSX.Element => {
@@ -348,6 +356,11 @@ function RegisterLine({ hit, columns, active, id }: { hit: DocumentHit; columns:
   return (
     <RegisterRow active={active} id={id} testId={`search-register-row-${hit.id}`}>
       {columns.map(cell)}
+      {menus ? (
+        <RegisterActionsCell>
+          <DocumentHitMenu hit={hit} />
+        </RegisterActionsCell>
+      ) : null}
     </RegisterRow>
   )
 }
@@ -358,6 +371,7 @@ function RegisterStackLine({ hit, columns, active, id }: { hit: DocumentHit; col
   const t = useTranslations('search')
   const labels = useSearchLabels()
   const exception = useReadException(hit)
+  const menus = useHitMenus()
   const shown = new Set(columns)
   const code = [shown.has('planNumber') ? hit.planNumber : null, shown.has('planIndex') && hit.planIndex ? `${t('register.columns.planIndex')} ${hit.planIndex}` : null]
     .filter(Boolean)
@@ -400,6 +414,7 @@ function RegisterStackLine({ hit, columns, active, id }: { hit: DocumentHit; col
       aside={hit.superseded ? <SupersededMark /> : shown.has('status') && exception ? <HitBadge>{exception}</HitBadge> : undefined}
       active={active}
       testId={`search-register-row-${hit.id}`}
+      actions={menus ? <DocumentHitMenu hit={hit} /> : undefined}
     />
   )
 }

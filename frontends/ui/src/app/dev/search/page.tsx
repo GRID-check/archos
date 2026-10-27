@@ -14,7 +14,9 @@
  * `?filters=open` opens the rail's typed filters. `?state=empty` is an answer
  * with no hits while a shelf's facts are still being read, `?state=loading`
  * the first answer on its way, `?state=error` a search that did not answer.
- * `?scope=project` is the search inside one project's Dateien.
+ * `?scope=project` is the search inside one project's Dateien. Each document
+ * hit carries its ⋯ (Piloti fragen, Aktuelle Fassung öffnen, Offene Punkte).
+ * `?composer=1` is the chat composer's `#` picker (`composer-preview.tsx`).
  *
  * German, pinned: the copy that has to fit is German.
  */
@@ -34,6 +36,7 @@ import type { SearchKind, SearchResponse } from '@/lib/search/search-wire'
 import type { SearchSurface } from '@/features/search/lib/search-surface'
 import { SEARCH_FIXTURE_RESPONSE, SEARCH_FIXTURE_SAVED } from '../_fixtures/search'
 import { searchFixtureAnswer } from '../_fixtures/search-answer'
+import { ComposerPreview } from './composer-preview'
 
 const sectionsOf = (response: SearchResponse): Partial<Record<SearchKind, ReturnType<typeof sectionView>>> =>
   Object.fromEntries(
@@ -109,6 +112,7 @@ function Preview({
 
 function SearchPreview(): JSX.Element {
   const params = useSearchParams()
+  if (params?.get('composer') === '1') return <ComposerPreview />
   const view = params?.get('view')
   const filtersOpen = params?.get('filters') === 'open'
   const stateParam = params?.get('state')

@@ -102,6 +102,8 @@ export function SearchFilterForm({ state, onChange, currentUserId, defaultOpen =
         <CommitText label={t('place')} hint={t('placeHint')} value={f.place ?? ''} onCommit={(value) => set({ place: value || undefined })} testId="filter-place" />
         <FactAdder onAdd={(fact) => set({ facts: [...(f.facts ?? []), fact] })} />
         <DateRange label={t('uploaded')} value={f.uploaded} onChange={(range) => set({ uploaded: range })} testId="filter-uploaded" />
+        {/* Beside the upload date: "what changed recently" is the two together. */}
+        <Flag label={t('factsChanged')} checked={Boolean(f.factsChanged)} onChange={(on) => set({ factsChanged: on || undefined })} testId="filter-facts-changed" />
         {currentUserId ? (
           <Flag
             label={t('uploadedByMe')}
