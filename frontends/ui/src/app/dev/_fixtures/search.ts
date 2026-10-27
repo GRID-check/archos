@@ -37,6 +37,7 @@ function doc(partial: Partial<DocumentHit> & Pick<DocumentHit, 'id' | 'name'>): 
     pageCount: 1,
     pagesNotRead: 0,
     superseded: false,
+    changedFacts: [],
     municipality: 'Wien',
     author: 'Atelier Lindner ZT GmbH',
     matchedOn: ['reading'],
@@ -67,6 +68,10 @@ export const SEARCH_FIXTURE_DOCUMENTS: DocumentHit[] = [
     planIndex: 'C',
     planDate: '2026-10-14',
     scale: '1:100',
+    changedFacts: [
+      { key: 'escape_route_length', before: '38,50 m', after: '42,10 m', page: 1 },
+      { key: 'storeys_above_ground', before: '4', after: '5', page: 1 },
+    ],
     matchedOn: ['name', 'content'],
     passage: { text: 'Fluchtweg Stiege 2, Länge 42,10 m', page: 1 },
   }),
@@ -215,7 +220,13 @@ export const SEARCH_FIXTURE_RESPONSE: SearchResponse = {
       { value: 'pdf', label: null, count: 13 },
       { value: 'dwg', label: null, count: 1 },
     ],
+    changedFact: [
+      { value: 'escape_route_length', label: null, count: 1 },
+      { value: 'storeys_above_ground', label: null, count: 1 },
+    ],
   },
+  setAside: {},
+  unread: 3,
   building: ['office_shelf'],
   contentPartial: false,
 }

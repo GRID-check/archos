@@ -28,6 +28,16 @@ export interface SearchFacetFact {
   page: number | null
 }
 
+/** One fact a new Fassung states differently from the one it replaced (the dossier's `changes`). */
+export interface SearchFacetChange {
+  key: string
+  /** Null: newly stated. */
+  before: string | null
+  /** Null: no longer stated. */
+  after: string | null
+  page: number | null
+}
+
 export const documentSearchFacets = pgTable('document_search_facets', {
   documentId: uuid('document_id')
     .primaryKey()
@@ -66,6 +76,10 @@ export const documentSearchFacets = pgTable('document_search_facets', {
   pagesNotRead: integer('pages_not_read'),
   /** A newer Fassung replaces it. */
   superseded: boolean('superseded').notNull().default(false),
+  /** What changed against the Fassung it replaced; empty when nothing did or nothing was compared. */
+  changedFacts: jsonb('changed_facts').$type<SearchFacetChange[]>().notNull().default([]),
+  /** The keys of {@link changedFacts}, in its order: what the filter and the facet read. */
+  changedFactKeys: text('changed_fact_keys').array().notNull().default([]),
   searchText: text('search_text').notNull().default(''),
   fingerprint: text('fingerprint').notNull(),
   syncedAt: timestamp('synced_at', { withTimezone: true }).notNull().defaultNow(),

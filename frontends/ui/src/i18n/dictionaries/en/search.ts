@@ -43,7 +43,7 @@ export const search = {
   total: '{count, plural, one {# result} other {# results}}',
   totalAtLeast: 'at least {count}',
   summaryAtLeast: 'at least {count} results',
-  keys: '↑ ↓ to choose, Enter to open, Esc to clear',
+  keys: '↑ ↓ to choose, Enter to open, Shift+F10 for actions, Esc to clear',
   loadMore: 'Show more',
   loadingMore: 'Loading…',
   loadMoreFailed: 'Could not load more. Try again.',
@@ -65,6 +65,11 @@ export const search = {
     wholeOffice: 'Search the whole office',
     withFilters: 'The filters exclude everything that matched. Take one off, or clear them all.',
   },
+  setAside: {
+    document_filters: 'The filters apply to documents and their annotations. {kinds} are not searched while they are set.',
+    annotation_filters: 'The filters apply to annotations only. {kinds} are not searched while they are set.',
+    tab: 'Not searched with these filters',
+  },
   notes: {
     buildingShort: '{count, plural, one {one shelf still being read} other {# shelves still being read}}',
     /** The same, when a filter that is set depends on what Piloti reads there. */
@@ -82,6 +87,10 @@ export const search = {
   },
   document: {
     superseded: 'Replaced',
+    changed: 'Against the previous version:',
+    changedValue: '{fact} {before} → {after}',
+    changedAdded: '{fact} new: {after}',
+    changedRemoved: '{fact} no longer stated',
     supersededHint: 'A newer version replaces this document',
     pagesNotRead: '{count, plural, one {1 page not read} other {# pages not read}}',
     index: 'Index {index}',
@@ -123,6 +132,9 @@ export const search = {
     cites: 'Cites',
     state: 'Status',
     fileType: 'File type',
+    uploader: 'Uploaded by',
+    changedFact: 'Changed facts',
+    unread: '{count, plural, one {1 document not read yet, not in the counts above.} other {# documents not read yet, not in the counts above.}}',
     showAll: 'Show all ({count})',
     showFewer: 'Show fewer',
   },
@@ -172,6 +184,7 @@ export const search = {
     uploadedByMe: 'Uploaded by me',
     uploadedBy: 'Uploaded by',
     incompleteRead: 'Pages not fully read',
+    factsChanged: 'Facts differ from the previous version',
     fileType: 'File type',
     pages: 'Pages',
     includeArchived: 'Include archived',
@@ -252,6 +265,21 @@ export const search = {
   mode: {
     backToFiles: 'Back to files',
     backToShelf: 'Back to the filing',
+  },
+  hitActions: {
+    label: 'Actions for “{name}”',
+    menuLabel: 'Actions',
+    column: 'Actions',
+    ask: 'Ask Piloti',
+    askAtPage: 'What does page {page} of “{name}” say?',
+    openCurrent: 'Open current version',
+    openPoints: 'Open points',
+    currentUnavailable: 'The current version cannot be opened.',
+  },
+  composerPicker: {
+    label: 'Documents',
+    hint: 'Type a name, a drawing number or a word from the content',
+    keys: 'Keyboard: arrows to choose, Enter to insert, Esc to close',
   },
   palette: {
     allResults: 'All results for “{text}”',

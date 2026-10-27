@@ -47,7 +47,7 @@ export const search: typeof en.search = {
   total: '{count, plural, one {# Treffer} other {# Treffer}}',
   totalAtLeast: 'mindestens {count}',
   summaryAtLeast: 'mindestens {count} Treffer',
-  keys: '↑ ↓ wählen, Enter öffnet, Esc leert',
+  keys: '↑ ↓ wählen, Enter öffnet, Umschalt+F10 Aktionen, Esc leert',
   loadMore: 'Mehr zeigen',
   loadingMore: 'Wird geladen…',
   loadMoreFailed: 'Weitere Treffer konnten nicht geladen werden. Bitte erneut versuchen.',
@@ -67,6 +67,11 @@ export const search: typeof en.search = {
     wholeOffice: 'Im ganzen Büro suchen',
     withFilters: 'Die Filter schließen alles aus, was gepasst hat. Einen entfernen oder alle.',
   },
+  setAside: {
+    document_filters: 'Die Filter gelten für Dokumente und ihre Anmerkungen. {kinds} werden so lange nicht durchsucht.',
+    annotation_filters: 'Die Filter gelten nur für Anmerkungen. {kinds} werden so lange nicht durchsucht.',
+    tab: 'Mit diesen Filtern nicht durchsucht',
+  },
   notes: {
     buildingShort: '{count, plural, one {eine Ablage wird noch gelesen} other {# Ablagen werden noch gelesen}}',
     /** Dasselbe, wenn ein gesetzter Filter von dem abhängt, was Piloti dort liest. */
@@ -85,6 +90,10 @@ export const search: typeof en.search = {
   document: {
     superseded: 'Ersetzt',
     supersededHint: 'Eine neuere Fassung ersetzt dieses Dokument',
+    changed: 'Gegenüber der Vorfassung:',
+    changedValue: '{fact} {before} → {after}',
+    changedAdded: '{fact} neu: {after}',
+    changedRemoved: '{fact} nicht mehr angegeben',
     pagesNotRead: '{count, plural, one {1 Seite nicht gelesen} other {# Seiten nicht gelesen}}',
     index: 'Index {index}',
   },
@@ -125,6 +134,9 @@ export const search: typeof en.search = {
     cites: 'Verweist auf',
     state: 'Status',
     fileType: 'Dateityp',
+    uploader: 'Hochgeladen von',
+    changedFact: 'Geänderte Angaben',
+    unread: '{count, plural, one {1 Dokument noch nicht gelesen, in den Zahlen oben nicht enthalten.} other {# Dokumente noch nicht gelesen, in den Zahlen oben nicht enthalten.}}',
     showAll: 'Alle zeigen ({count})',
     showFewer: 'Weniger zeigen',
   },
@@ -172,6 +184,7 @@ export const search: typeof en.search = {
     uploadedByMe: 'Von mir hochgeladen',
     uploadedBy: 'Hochgeladen von',
     incompleteRead: 'Seiten nicht vollständig gelesen',
+    factsChanged: 'Angaben anders als in der Vorfassung',
     fileType: 'Dateityp',
     pages: 'Seiten',
     includeArchived: 'Archivierte einschließen',
@@ -252,6 +265,24 @@ export const search: typeof en.search = {
   mode: {
     backToFiles: 'Zurück zu den Dateien',
     backToShelf: 'Zurück zur Ablage',
+  },
+  // Das ⋯ eines Dokument-Treffers: von der Suche in den Rest der Arbeitsfläche.
+  hitActions: {
+    label: 'Aktionen für „{name}“',
+    menuLabel: 'Aktionen',
+    column: 'Aktionen',
+    ask: 'Piloti fragen',
+    // Vorbelegt im Eingabefeld, wenn der Treffer eine Fundstelle mit Seite hat; die Person kann ihn ändern.
+    askAtPage: 'Was steht auf S. {page} in „{name}“?',
+    openCurrent: 'Aktuelle Fassung öffnen',
+    openPoints: 'Offene Punkte',
+    currentUnavailable: 'Die aktuelle Fassung lässt sich nicht öffnen.',
+  },
+  // „#“ im Chat-Eingabefeld: ein Dokument aus der Suche in die Nachricht holen.
+  composerPicker: {
+    label: 'Dokumente',
+    hint: 'Name, Plannummer oder ein Wort aus dem Inhalt eingeben',
+    keys: 'Tastatur: Pfeile wählen, Enter fügt ein, Esc schließt',
   },
   palette: {
     allResults: 'Alle Treffer für „{text}“',

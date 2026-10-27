@@ -221,6 +221,7 @@ describe('searchAnnotations', () => {
       reach(),
       ' brandschutz ',
       { assignedToMe: true, createdByMe: true },
+      { filters: { documentTypes: ['submission_drawing'] }, citedBy: null, citing: null },
       { limit: 500, offset: 0 }
     )
 
@@ -232,6 +233,8 @@ describe('searchAnnotations', () => {
         kinds: null,
         assigneeUserId: 'user_me',
         createdBy: 'user_me',
+        // The annotation narrows through its document: the documents' question goes along unchanged.
+        documents: { filters: { documentTypes: ['submission_drawing'] }, citedBy: null, citing: null },
       },
       { limit: 100, offset: 0 }
     )
@@ -251,6 +254,7 @@ describe('searchAnnotations', () => {
       reach(),
       null,
       { statuses: ['resolved'], kinds: ['defect'] },
+      { filters: {}, citedBy: null, citing: null },
       { limit: 5, offset: 0 }
     )
     expect(vi.mocked(searchAnnotationRows).mock.calls[0][1]).toMatchObject({

@@ -6,6 +6,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 const repository = vi.hoisted(() => ({
   searchDocumentPage: vi.fn(),
   documentFacetCounts: vi.fn(),
+  countUnreadDocuments: vi.fn(),
   readReferenceSubject: vi.fn(),
   listCandidateDocumentIds: vi.fn(),
 }))
@@ -94,6 +95,7 @@ const row = (overrides: Partial<DocumentSearchRow> = {}): DocumentSearchRow => (
   pageCount: 24,
   pagesNotRead: 0,
   superseded: false,
+  changedFacts: [],
   municipality: 'Wien',
   author: null,
   matchedName: false,
@@ -111,10 +113,58 @@ beforeEach(() => {
     status: [{ value: 'completed', count: 1 }, { value: 'failed', count: 2 }, { value: 'COMPLETED', count: 1 }],
     cites: [{ value: 'norm:önorm b 1600', count: 1 }],
   })
+  repository.countUnreadDocuments.mockResolvedValue(4)
   for (const provider of Object.values(providers)) provider.mockResolvedValue({ hits: [], total: 0 })
 })
 
 describe('runSearch', () => {
+  it('narrows annotations through their document and sets aside the kinds a document filter cannot narrow', async () => {
+    vi.mocked(fetchGroupedSemanticHits).mockResolvedValue([])
+    repository.listCandidateDocumentIds.mockResolvedValue(['d1'])
+    const filters = { documentTypes: ['submission_drawing' as const], planNumber: 'EP-0' }
+
+    const answer = await runSearch(session, {}, { text: 'Brandschutz', filters })
+
+    expect(answer.setAside).toEqual({ folder: 'document_filters', project: 'document_filters', conversation: 'document_filters' })
+    expect(Object.keys(answer.sections).sort()).toEqual(['annotation', 'document'])
+    expect(providers.searchFolders).not.toHaveBeenCalled()
+    expect(providers.searchProjects).not.toHaveBeenCalled()
+    expect(providers.searchConversations).not.toHaveBeenCalled()
+    // The annotations are asked the documents' own question: one rule.
+    expect(providers.searchAnnotations.mock.calls[0][3]).toEqual({ filters, citedBy: null, citing: null })
+    expect(repository.searchDocumentPage.mock.calls[0][1].filters).toEqual(filters)
+  })
+
+  it('sets aside the documents and the other kinds while an annotation filter is set, and drops their facets', async () => {
+    const answer = await runSearch(session, {}, { text: 'Tür', annotationFilters: { assignedToMe: true } })
+
+    expect(answer.setAside).toEqual({
+      document: 'annotation_filters',
+      folder: 'annotation_filters',
+      project: 'annotation_filters',
+      conversation: 'annotation_filters',
+    })
+    expect(Object.keys(answer.sections)).toEqual(['annotation'])
+    expect(answer.facets).toBeNull()
+    expect(repository.searchDocumentPage).not.toHaveBeenCalled()
+  })
+
+  it('sets nothing aside for a project filter, which narrows every kind, nor names a kind it would not have searched', async () => {
+    vi.mocked(fetchGroupedSemanticHits).mockResolvedValue([])
+    repository.listCandidateDocumentIds.mockResolvedValue(['d1'])
+    expect((await runSearch(session, {}, { text: 'Brandschutz', filters: { projectIds: [PROJECT], includeArchived: true } })).setAside).toEqual({})
+    expect(providers.searchFolders).toHaveBeenCalled()
+    // Without words no folder is searched anyway: nothing to set aside.
+    expect((await runSearch(session, {}, { filters: { currentOnly: true } })).setAside).toEqual({})
+  })
+
+  it('finds no annotation when a reference filter names a document out of reach', async () => {
+    repository.readReferenceSubject.mockResolvedValue(null)
+    const answer = await runSearch(session, {}, { text: 'Tür', kinds: ['annotation'], filters: { citedBy: '22222222-2222-4222-8222-222222222222' } })
+    expect(providers.searchAnnotations).not.toHaveBeenCalled()
+    expect(answer.sections.annotation).toEqual({ hits: [], total: 0, totalIsLowerBound: false, nextCursor: null })
+  })
+
   it('joins content passages to the rows by collection and file name, and says what matched', async () => {
     vi.mocked(fetchGroupedSemanticHits).mockResolvedValue([
       { file_name: 'bsk.pdf', collection: 'proj_a', snippet: 'Fluchtweglänge max. 40 m', page_number: 7, score: 0.8, rank: 0 },
@@ -213,6 +263,24 @@ describe('runSearch', () => {
       { value: 'readable', label: null, count: 2 },
       { value: 'failed', label: null, count: 2 },
     ])
+  })
+
+  it('says how many documents in scope are not read yet with the facets, and counts none without them', async () => {
+    const counted = await runSearch(session, {}, { kinds: ['document'], filters: { includeArchived: true } })
+    expect(counted.unread).toBe(4)
+    expect(repository.countUnreadDocuments).toHaveBeenCalledWith(reach, true)
+
+    repository.countUnreadDocuments.mockClear()
+    const palette = await runSearch(session, {}, { kinds: ['document'], facets: false })
+    expect(palette.unread).toBeNull()
+    expect(repository.countUnreadDocuments).not.toHaveBeenCalled()
+  })
+
+  it('hands a hit what its Fassung changed against the one it replaced', async () => {
+    const changedFacts = [{ key: 'building_class', before: '3', after: '4', page: 2 }]
+    repository.searchDocumentPage.mockResolvedValue({ rows: [row({ changedFacts })], total: 1 })
+    const answer = await runSearch(session, {}, { kinds: ['document'], filters: { factsChanged: true } })
+    expect(answer.sections.document?.hits[0].changedFacts).toEqual(changedFacts)
   })
 
   it('answers no documents when a citedBy document is out of reach, without running the query', async () => {

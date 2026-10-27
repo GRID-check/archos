@@ -23,6 +23,7 @@ import {
 import { resolvePeople } from '@/lib/sharing/directory'
 import {
   contentKey,
+  countUnreadDocuments,
   documentFacetCounts,
   listCandidateDocumentIds,
   readReferenceSubject,
@@ -38,6 +39,8 @@ import {
   SEARCH_LIMIT_DEFAULT,
   SEARCH_OFFSET_MAX,
   SEARCH_SECTION_PREVIEW,
+  setAsideKinds,
+  type DocumentFilters,
   type DocumentHit,
   type FacetCount,
   type SearchBody,
@@ -75,6 +78,7 @@ const FACET_KEYS: Record<SearchFacetDimension, FacetKey> = {
   state: 'status',
   fileType: 'fileType',
   uploader: 'uploader',
+  changedFact: 'changedFact',
 }
 
 /** The reach every kind reads: cut to the projects a `projectIds` filter names, when it names any. */
@@ -205,6 +209,7 @@ function toDocumentHit(row: DocumentSearchRow, passage: BackendSearchHit | undef
     pageCount: row.pageCount,
     pagesNotRead: row.pagesNotRead,
     superseded: row.superseded,
+    changedFacts: row.changedFacts,
     municipality: row.municipality,
     author: row.author,
     matchedOn: [
@@ -260,27 +265,44 @@ async function rankedContent(
   return contentHits(reach, text, prefilter.filters)
 }
 
-/** The documents section, and the facets when asked. */
-async function searchDocuments(
-  reach: SearchReach,
-  body: SearchBody,
-  page: { limit: number; offset: number },
-  withFacets: boolean
-): Promise<{ section: SearchSection<DocumentHit>; facets: SearchResponse['facets']; contentPartial: boolean; contentMs: number }> {
-  const empty = {
-    section: { hits: [], total: 0, totalIsLowerBound: false, nextCursor: null },
-    facets: withFacets ? {} : null,
-    contentPartial: false,
-    contentMs: 0,
-  }
-  const filters = body.filters ?? {}
+/**
+ * The documents' question without its text: the filters, and the documents a
+ * reference filter names read for this reader. Both the documents and the
+ * annotations (through their document) are asked it. Null: a reference filter
+ * names a document out of reach, so no document matches.
+ */
+async function structuredQuery(reach: SearchReach, filters: DocumentFilters): Promise<Omit<DocumentQuery, 'text'> | null> {
   const [citedBy, citing] = await Promise.all([
     filters.citedBy ? referenceTargets(reach, filters.citedBy, 'citedBy') : null,
     filters.citing ? referenceTargets(reach, filters.citing, 'citing') : null,
   ])
-  if ((filters.citedBy && !citedBy) || (filters.citing && !citing)) return empty
+  if ((filters.citedBy && !citedBy) || (filters.citing && !citing)) return null
+  return { filters, citedBy, citing }
+}
+
+/** The documents section, and the facets when asked. `documents` null: the filters admit none. */
+async function searchDocuments(
+  reach: SearchReach,
+  body: SearchBody,
+  documents: Omit<DocumentQuery, 'text'> | null,
+  page: { limit: number; offset: number },
+  withFacets: boolean
+): Promise<{ section: SearchSection<DocumentHit>; facets: SearchResponse['facets']; unread: number | null; contentPartial: boolean; contentMs: number }> {
+  // Started first and read last: it does not wait on the content search.
+  const unreadCount = withFacets ? countUnreadDocuments(reach, body.filters?.includeArchived === true) : Promise.resolve(null)
+  // Handled here too, so a failure before it is read is not an unhandled rejection; the await below still throws.
+  unreadCount.catch(() => undefined)
+  if (!documents) {
+    return {
+      section: { hits: [], total: 0, totalIsLowerBound: false, nextCursor: null },
+      facets: withFacets ? {} : null,
+      unread: await unreadCount,
+      contentPartial: false,
+      contentMs: 0,
+    }
+  }
   const text = body.text?.trim() || null
-  const structured: DocumentQuery = { filters, text: null, citedBy, citing }
+  const structured: DocumentQuery = { ...documents, text: null }
   const content = text && text.length >= CONTENT_MIN_CHARS ? await rankedContent(reach, structured, text) : NO_CONTENT
   const found = content.hits ?? []
   // A hit names its document by id when it can; only a hit without one is joined by name (ADR-0136 item 5).
@@ -323,6 +345,7 @@ async function searchDocuments(
       nextCursor: nextOffset < result.total && nextOffset <= SEARCH_OFFSET_MAX ? encodeSearchCursor('document', nextOffset) : null,
     },
     facets: counts ? labelFacets(reach, counts, Object.keys(FACET_KEYS) as SearchFacetDimension[], people) : null,
+    unread: await unreadCount,
     contentPartial: content.partial,
     contentMs: content.ms,
   }
@@ -379,26 +402,34 @@ export async function runTimedSearch(
   // Beside the documents another kind shows a preview, never more than was asked (the ⌘K palette asks three).
   const pageFor = (kind: SearchKind) => ({ limit: single || kind === 'document' ? limit : Math.min(limit, SEARCH_SECTION_PREVIEW), offset })
   const text = body.text?.trim() || null
+  // A kind that cannot honour a filter that is set is not searched, and the answer says so (docs/design/document-search.md).
+  const setAside = setAsideKinds(body)
+  const searched = kinds.filter((kind) => !setAside[kind])
+  const documents = searched.includes('document') || searched.includes('annotation') ? await structuredQuery(reach, body.filters ?? {}) : null
 
   const freshness = refreshStaleShelves(reach.organizationId, reachShelves(reach))
   const sections: SearchResponse['sections'] = {}
   let facets: SearchResponse['facets'] = null
+  let unread: number | null = null
   let contentPartial = false
   let contentMs = 0
   await Promise.all(
-    kinds.map(async (kind) => {
+    searched.map(async (kind) => {
       if (kind === 'document') {
-        const documents = await searchDocuments(reach, body, pageFor(kind), body.facets !== false && offset === 0)
-        sections.document = documents.section
-        facets = documents.facets
-        contentPartial = documents.contentPartial
-        contentMs = documents.contentMs
+        const found = await searchDocuments(reach, body, documents, pageFor(kind), body.facets !== false && offset === 0)
+        sections.document = found.section
+        facets = found.facets
+        unread = found.unread
+        contentPartial = found.contentPartial
+        contentMs = found.contentMs
         return
       }
       // The other kinds are found by their words or, for annotations, by their filters alone.
       if (kind === 'annotation') {
         if (!text && !body.annotationFilters) return
-        sections.annotation = sectionOf('annotation', await searchAnnotations(reach, text, body.annotationFilters ?? {}, pageFor(kind)), offset)
+        sections.annotation = documents
+          ? sectionOf('annotation', await searchAnnotations(reach, text, body.annotationFilters ?? {}, documents, pageFor(kind)), offset)
+          : sectionOf('annotation', { hits: [], total: 0 }, offset)
         return
       }
       if (!text) return
@@ -409,7 +440,7 @@ export async function runTimedSearch(
       }
     })
   )
-  const response: SearchResponse = { scope, sections, facets, building: (await freshness).building, contentPartial }
+  const response: SearchResponse = { scope, setAside, sections, facets, unread, building: (await freshness).building, contentPartial }
   const totalMs = performance.now() - started
   return { response, timing: { totalMs, contentMs, sqlMs: Math.max(0, totalMs - contentMs) } }
 }
@@ -432,7 +463,8 @@ export async function listSearchDocumentsForExport(
   max: number
 ): Promise<{ scope: SearchReach['scope']; hits: DocumentHit[] }> {
   const reach = narrowedTo(await reachFor(session, resolveScope(scopeQuery)), body)
-  const { section } = await searchDocuments(reach, { ...body, cursor: undefined }, { limit: max + 1, offset: 0 }, false)
+  const documents = await structuredQuery(reach, body.filters ?? {})
+  const { section } = await searchDocuments(reach, { ...body, cursor: undefined }, documents, { limit: max + 1, offset: 0 }, false)
   if (section.hits.length > max) {
     throw new UnprocessableError(`A plan list carries at most ${max} documents; narrow the search with a filter.`, {
       reason: 'too-many-documents',

@@ -419,6 +419,7 @@ export function ResultRow({
   active = false,
   testId,
   id,
+  actions,
 }: {
   href: string
   icon: LucideIcon
@@ -434,6 +435,8 @@ export function ResultRow({
   testId?: string
   /** The option's id, which the field's `aria-activedescendant` names while the row is active. */
   id?: string
+  /** The row's ⋯ (`DocumentHitMenu`): beside the link, never inside it, at the row's end. Not drawn in a frame. */
+  actions?: ReactNode
 }): JSX.Element {
   const Frame = useContext(ResultRowFrameContext)
   const compact = Frame !== null
@@ -474,12 +477,13 @@ export function ResultRow({
     )
   }
   return (
-    <li role="none" className="list-none">
-      <Item asChild className={cn(RESULT_ROW_LAYOUT, ACTIVE_ROW)}>
+    <li role="none" className="relative list-none">
+      <Item asChild className={cn(RESULT_ROW_LAYOUT, ACTIVE_ROW, actions && ROW_ACTIONS_ROOM)}>
         <Link ref={ref} id={id} href={href} role="option" aria-selected={active} data-testid={testId}>
           {content}
         </Link>
       </Item>
+      {actions ? <RowActions>{actions}</RowActions> : null}
     </li>
   )
 }
@@ -653,10 +657,10 @@ export function Excerpt({ children }: { children: ReactNode }): JSX.Element {
   return <p className="mt-0.5 line-clamp-2 text-pretty text-sm text-foreground/75">{children}</p>
 }
 
-/** What the words were found in, when the row shows nothing that matched („Gefunden in Zusammenfassung“): present, never loud. */
-export function MatchHint({ label, parts }: { label: string; parts: readonly string[] }): JSX.Element {
+/** A quiet line under a hit: what the words were found in, when the row shows nothing that matched („Gefunden in Zusammenfassung“), what a Fassung changed. Present, never loud. */
+export function MatchHint({ label, parts, testId = 'search-matched-on' }: { label: string; parts: readonly string[]; testId?: string }): JSX.Element {
   return (
-    <span className="mt-0.5 text-xs text-muted-foreground/90" data-testid="search-matched-on">
+    <span className="mt-0.5 text-xs text-muted-foreground/90" data-testid={testId}>
       {label} {parts.join(' · ')}
     </span>
   )
@@ -745,6 +749,7 @@ export function RegisterTable({
   columnWidths,
   scrollLabel,
   id,
+  actionsRem = 0,
 }: {
   children: ReactNode
   caption: string
@@ -755,6 +760,12 @@ export function RegisterTable({
   columnWidths: ReadonlyArray<number | null>
   /** The name of the region when it scrolls sideways. */
   scrollLabel: string
+  /**
+   * The rows' ⋯ column (`RegisterActionsCell`), last, in rem. Its room comes
+   * out of the name's minimum, so the menu never tips a register that fits
+   * into scrolling sideways.
+   */
+  actionsRem?: number
 }): JSX.Element {
   const box = useRef<HTMLDivElement>(null)
   const [wide, setWide] = useState(false)
@@ -783,6 +794,7 @@ export function RegisterTable({
         {columnWidths.map((width, index) => (
           <col key={index} style={width === null ? undefined : { width: `${width}rem` }} />
         ))}
+        {actionsRem > 0 ? <col style={{ width: `${actionsRem}rem` }} /> : null}
       </colgroup>
       {children}
     </table>
@@ -915,6 +927,7 @@ export function RegisterStackRow({
   active = false,
   testId,
   id,
+  actions,
 }: {
   href: string
   /** „EP-03 · C“; absent for a document without a number. */
@@ -926,13 +939,15 @@ export function RegisterStackRow({
   testId?: string
   /** The option's id, named by the field's `aria-activedescendant` while it is active. */
   id?: string
+  /** The entry's ⋯, beside the link at its end. */
+  actions?: ReactNode
 }): JSX.Element {
   const ref = useRef<HTMLAnchorElement>(null)
   useEffect(() => {
     if (active) ref.current?.scrollIntoView({ block: 'nearest' })
   }, [active])
   return (
-    <li role="none" className="list-none">
+    <li role="none" className="relative list-none">
       <Link
         ref={ref}
         id={id}
@@ -943,7 +958,8 @@ export function RegisterStackRow({
         className={cn(
           'flex min-w-0 flex-col gap-0.5 px-1 py-2.5 transition-colors duration-snap ease-out hover:bg-secondary/60 motion-reduce:transition-none',
           FOCUS_RING_INSET,
-          ACTIVE_ROW
+          ACTIVE_ROW,
+          actions && ROW_ACTIONS_ROOM
         )}
       >
         {code || aside ? (
@@ -955,6 +971,7 @@ export function RegisterStackRow({
         <span className="truncate text-sm font-semibold tracking-tight text-foreground">{title}</span>
         {meta ? <span className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs text-muted-foreground">{meta}</span> : null}
       </Link>
+      {actions ? <RowActions>{actions}</RowActions> : null}
     </li>
   )
 }
@@ -1027,8 +1044,12 @@ export function PanelBody({ children }: { children: ReactNode }): JSX.Element {
 }
 
 /** A line of muted text where a list would be. */
-export function QuietLine({ children }: { children: ReactNode }): JSX.Element {
-  return <p className="text-sm text-muted-foreground">{children}</p>
+export function QuietLine({ children, testId }: { children: ReactNode; testId?: string }): JSX.Element {
+  return (
+    <p className="text-sm text-muted-foreground" data-testid={testId}>
+      {children}
+    </p>
+  )
 }
 
 /** The search inside a shelf's own frame (Dateien, Büroablage), which lends no page padding. */
@@ -1074,5 +1095,75 @@ export function PaletteAside({ children, busy = false, testId }: { children: Rea
       {busy ? <Spinner className="size-3 shrink-0" /> : null}
       <span className="truncate">{children}</span>
     </span>
+  )
+}
+
+// ─── Hit actions and the composer's `#` ─────────────────────────────────────
+/** The room a row leaves at its end for its ⋯, so the mark at the end never sits under it. */
+const ROW_ACTIONS_ROOM = 'pr-11'
+
+/** A row's ⋯, over the row's end beside its link (a control inside a link is no control). */
+function RowActions({ children }: { children: ReactNode }): JSX.Element {
+  return <span className="absolute right-1 top-1.5 flex items-center">{children}</span>
+}
+
+/** The header over the rows' ⋯: no words on screen, its name for a screen reader. */
+export function RegisterActionsHead({ label }: { label: string }): JSX.Element {
+  return (
+    <th scope="col" className="h-8 px-1">
+      <span className="sr-only">{label}</span>
+    </th>
+  )
+}
+
+/** A row's ⋯ in the register's last column. */
+export function RegisterActionsCell({ children }: { children: ReactNode }): JSX.Element {
+  return <TableCell className="px-1 py-0.5 text-right">{children}</TableCell>
+}
+
+/** The width of the register's ⋯ column, in rem. */
+export const REGISTER_ACTIONS_WIDTH = 2.75
+
+/**
+ * The composer's `#` panel: the surface of the composer's other pickers (`@`,
+ * `/`): a popover card above the composer, the list scrolling inside it, and
+ * the keys as a footer for a fine pointer only (a phone has no arrows).
+ */
+export function ComposerPickerFrame({ children, keysLabel, testId }: { children: ReactNode; keysLabel: string; testId?: string }): JSX.Element {
+  return (
+    <div
+      className="flex max-h-[360px] w-full flex-col overflow-hidden rounded-xl border bg-popover text-popover-foreground shadow-lg animate-in fade-in-0 slide-in-from-bottom-1 duration-snap ease-out motion-reduce:animate-none"
+      data-testid={testId}
+    >
+      <div className="min-h-0 flex-1 overflow-y-auto">{children}</div>
+      <div className="flex shrink-0 items-center gap-2 border-t bg-muted px-3 py-2 pointer-coarse:hidden" aria-label={keysLabel}>
+        <span className="font-mono text-xs text-muted-foreground/70" aria-hidden>
+          #
+        </span>
+        <KbdGroup>
+          <Kbd>↑</Kbd>
+          <Kbd>↓</Kbd>
+        </KbdGroup>
+        <Kbd>↵</Kbd>
+        <Kbd>Esc</Kbd>
+      </div>
+    </div>
+  )
+}
+
+/**
+ * The `#` picker's list as the ⌘K palette draws its own (`CommandDialog`):
+ * quiet kind headings, the palette's item padding, so a hit looks the same in both.
+ */
+export const COMPOSER_COMMAND_CLASS =
+  'bg-transparent [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1.5 [&_[cmdk-group-heading]]:text-xs [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:text-muted-foreground [&_[cmdk-item]]:px-2 [&_[cmdk-item]]:py-2 [&_[cmdk-item]_svg]:size-4'
+
+/** Where the results have no row to carry it (the composer's `#`): what the search is doing, as a line under the hits. */
+export function PaletteStatusLine({ children, busy = false, testId }: { children: ReactNode; busy?: boolean; testId?: string }): JSX.Element {
+  return (
+    <p className="flex items-center gap-1.5 px-3 py-2 text-xs text-muted-foreground" aria-live="polite" data-testid={testId}>
+      {busy ? <Spinner className="size-3" /> : null}
+      {children}
+    </p>
   )
 }
