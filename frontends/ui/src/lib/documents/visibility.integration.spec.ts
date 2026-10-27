@@ -181,6 +181,12 @@ describe.skipIf(!url)('the hold on a document, against Postgres', () => {
     })],
     ['the projects grid, reviewing this project', () => ({ kind: 'projects', userId: 'user_vis_nobody', reviewedProjectIds: [projectId] })],
     ['the projects grid, reviewing none', () => ({ kind: 'projects', userId: UPLOADER, reviewedProjectIds: [] })],
+    ['the office-wide search, reviewing the office shelf', () => ({
+      kind: 'projects',
+      userId: 'user_vis_nobody',
+      reviewedProjectIds: [],
+      reviewsOfficeShelf: true,
+    })],
   ]
 
   it.each(READERS)('answers %s in SQL exactly as in memory', async (_label, reader) => {

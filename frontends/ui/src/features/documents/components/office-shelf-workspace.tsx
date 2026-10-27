@@ -11,6 +11,7 @@ import type { FileItem } from '../file-types'
 import { useOfficeShelfDocuments } from '../hooks/use-office-shelf-documents'
 import { OFFICE_SHELF_ENDPOINTS, type CardExtras, type FileShelf } from '../lib/file-shelf'
 import { FileWorkspace } from './file-workspace'
+import { SearchWorkspace, ShelfSearchBack, useShelfSearchMode } from '@/features/search'
 
 interface OfficeShelfWorkspaceProps {
   /** Whether the viewer may change the Archiv (holds `org:office_shelf:manage`). */
@@ -48,6 +49,8 @@ export function OfficeShelfWorkspace({
 }: OfficeShelfWorkspaceProps) {
   const t = useTranslations('officeShelf')
   const probe = useMemo(() => createDocumentNameProbeClient(), [])
+  // „Suche“ in place of the listing (`?mode=search`), scoped to the shelf and the open folder.
+  const search = useShelfSearchMode()
 
   /** The gold kind chip, and where the document came from when it says. */
   const cardExtras = useCallback(
@@ -103,9 +106,26 @@ export function OfficeShelfWorkspace({
     showModels,
   }
 
+  if (search.active) {
+    return (
+      <SearchWorkspace
+        surface={{ kind: 'office_shelf', folderId: search.folderId }}
+        inset
+        autoFocus
+        leading={
+          <>
+            <ShelfSearchBack onClose={search.close} label="backToShelf" />
+            {trailingActions}
+          </>
+        }
+      />
+    )
+  }
+
   return (
     <FileWorkspace
       shelf={shelf}
+      onOpenSearch={search.open}
       renderHeader={(controls, { count }) => (
         // Identity row — the gold Büroablage mark, the name of the store, and
         // how much is in it. The count sits with the title: it is a property of

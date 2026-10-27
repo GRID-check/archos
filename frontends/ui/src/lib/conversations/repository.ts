@@ -67,6 +67,58 @@ function grantNamesCaller(organizationId: string, userId: string) {
 }
 
 /**
+ * Which conversations one caller may see, as a WHERE over `conversations`: the
+ * visibility rule of {@link listVisibleConversations}, which reads it, and of the
+ * workspace search (`lib/search/providers.ts`), which reads it over every project
+ * the caller reaches at once. One rule, so the list and the search cannot
+ * disagree about a row.
+ *
+ *   - **`projects` null**: no project claim. Rows the caller created, was granted,
+ *     or that are `organization`-visible, wherever they live.
+ *   - **`projects` given**: the caller has PROVEN they reach each of
+ *     `projectIds`, so inside those only `private` rows need narrowing, to
+ *     creator-or-grantee. A row in a project not named is not returned. With
+ *     `withoutContainer`, a row with a NULL `project_id` is judged on its own
+ *     terms, the ones `resolveResourceAccess` uses when there is no container:
+ *     creator, grantee, or `organization` visibility. The two disjuncts each
+ *     carry their own rule; see {@link listVisibleConversations} for the leak
+ *     sharing one clause between them was.
+ */
+export function visibleConversationsWhere(
+  organizationId: string,
+  userId: string,
+  projects: { projectIds: readonly string[]; withoutContainer: boolean } | null,
+): SQL {
+  const orgScope = eq(conversations.organizationId, organizationId)
+  const mine = eq(conversations.createdBy, userId)
+  const granted = grantNamesCaller(organizationId, userId)
+
+  // The grounds a row is visible on when NO container backs it — the same answer
+  // `resolveResourceAccess` reaches for a null-project resource, and the same
+  // rule the unscoped branch applies.
+  const withoutContainer = or(mine, granted, eq(conversations.visibility, 'organization'))
+  if (!projects) return and(orgScope, withoutContainer) as SQL
+
+  const { projectIds } = projects
+  const inProjects =
+    projectIds.length === 0
+      ? undefined
+      : and(
+          projectIds.length === 1
+            ? eq(conversations.projectId, projectIds[0])
+            : inArray(conversations.projectId, [...projectIds]),
+          // Inside a project the caller has proved they reach, only `private`
+          // needs narrowing.
+          or(ne(conversations.visibility, 'private'), mine, granted),
+        )
+  // Unstamped rows are judged without any project claim, so that the list
+  // agrees with the access resolver instead of advertising titles it will
+  // then 404 on.
+  const unstamped = projects.withoutContainer ? and(isNull(conversations.projectId), withoutContainer) : undefined
+  return and(orgScope, or(inProjects, unstamped) ?? sql`false`) as SQL
+}
+
+/**
  * List the conversations one caller may actually see — the visibility-aware
  * replacement for the old org-scoped list (spec SH-4, ADR-0032).
  *
@@ -108,32 +160,11 @@ export async function listVisibleConversations(
 ): Promise<Conversation[]> {
   const { projectId, limit = CONVERSATION_LIST_LIMIT, after } = options
   const db = getDb()
-  const orgScope = eq(conversations.organizationId, organizationId)
-  const mine = eq(conversations.createdBy, userId)
-  const granted = grantNamesCaller(organizationId, userId)
-
-  // The grounds a row is visible on when NO container backs it — the same answer
-  // `resolveResourceAccess` reaches for a null-project resource, and the same
-  // rule the unscoped branch below applies.
-  const withoutContainer = or(mine, granted, eq(conversations.visibility, 'organization'))
-
-  const scope = projectId
-    ? and(
-        orgScope,
-        or(
-          // Inside the project the caller has proved they reach, only `private`
-          // needs narrowing.
-          and(
-            eq(conversations.projectId, projectId),
-            or(ne(conversations.visibility, 'private'), mine, granted),
-          ),
-          // Unstamped rows are judged without any project claim, so that the list
-          // agrees with the access resolver instead of advertising titles it will
-          // then 404 on.
-          and(isNull(conversations.projectId), withoutContainer),
-        ),
-      )
-    : and(orgScope, withoutContainer)
+  const scope = visibleConversationsWhere(
+    organizationId,
+    userId,
+    projectId ? { projectIds: [projectId], withoutContainer: true } : null,
+  )
 
   const afterCursor = after
     ? sql`(${conversations.updatedAt}, ${conversations.id}) < (select c.updated_at, c.id from conversations c where c.id = ${after} and c.organization_id = ${organizationId})`

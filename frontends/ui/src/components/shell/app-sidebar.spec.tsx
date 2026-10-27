@@ -173,10 +173,10 @@ describe('AppSidebar - office shelf nav item (ADR-0024)', () => {
     const labels = Array.from(navs)
       .flatMap((nav) => Array.from(nav.querySelectorAll('a span[data-slot="rail-nav-label"]')))
       .map((el) => el.textContent)
-    // Ask Piloti · Files · Automation* · Archiv* · Inbox*,
+    // Ask Piloti · Files · Automation* · Archiv* · Suche · Inbox*,
     // per `project-sections.ts`. Automation is absent here because `showSkills`
     // is off.
-    expect(labels).toEqual(['Ask Piloti', 'Files', 'Office filing', 'Inbox'])
+    expect(labels).toEqual(['Ask Piloti', 'Files', 'Office filing', 'Search', 'Inbox'])
   })
 })
 
