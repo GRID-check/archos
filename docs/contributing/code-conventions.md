@@ -4,6 +4,44 @@ House rules that are not obvious from the code, each one written down because
 somebody already paid for it. Language defaults and formatting live in the
 tooling (`ruff`, `oxlint`, `tsconfig`), not here.
 
+## Size limits
+
+A source file (`.py`, `.ts`, `.tsx`, `.js`, `.jsx`, `.mjs`, `.cjs`) has at most
+**600 lines**, and a Python
+function at most **60**, from its `def` to its last line. Files reached three
+to seven thousand lines and one function 962 one reasonable hunk at a time,
+and review passed every hunk, so the limit is a check rather than a request:
+`scripts/check_file_size.py`, the `file-size` hook in `task lint:repo`, which
+CI's **Repo checks** job runs.
+
+It is a ratchet. `ci/size_baseline.json` records every file and function that
+was over when the check arrived, at its size then:
+
+- A file or function **not in the baseline** may not pass the limit. Split it.
+- One **in the baseline** may not grow past its recorded count. Adding to a
+  giant means taking the same lines out of it, or moving the part you touch
+  into a module of its own first.
+- When one **shrinks**, the check fails until the baseline follows: run
+  `.venv/bin/python scripts/check_file_size.py --update`, which lowers and
+  removes entries and never raises or adds one. A split stays split.
+- A **move or rename** re-keys entries, so the baseline conflicts or reports
+  the old path as gone and the new one as new. Regenerate it with
+  `--rebaseline` and check its diff shows only the move.
+
+Why these numbers: sixty lines is the function bar this file already sets
+below. Six hundred lines is about ten such functions, a module a reader can
+hold, and it puts the line where the tree already bends: 56 of the 977
+components in `features/` and `components/` are over it, 27 of them over a
+thousand, while the rest sit well under. TypeScript functions have no limit yet:
+measuring them needs the TypeScript parser, which lives in the UI's
+`node_modules` that the Repo checks job does not install.
+
+Not checked, because their length follows their input rather than a design
+choice: generated files (the card schemas' `shared/cards/generated.ts`,
+`*.generated.*`, `*.d.ts`), tests,
+specs, fixtures and test helpers, migrations, and copy (the i18n dictionaries,
+the site's `src/data/` and `src/i18n/`). The list is `EXCLUDED` in the script.
+
 ## Python
 
 Ruff, line length 120, Python 3.14. New tools use `@register_function` with a
@@ -26,7 +64,8 @@ new or touched:
   last and unindented. `if not x: return` beats wrapping the body in `if x:`.
 - **Sixty lines is long.** Past that, the function is doing two things.
   Split at the point where you would write a comment saying what the next
-  block does; the comment is the function's name.
+  block does; the comment is the function's name. Over sixty fails
+  [the size check](#size-limits).
 - **Pure where it can be.** Take inputs, return outputs. A function that reads
   or writes module-level state cannot be tested without resetting the world,
   and cannot run twice in one process safely. Module-level mutable state is
