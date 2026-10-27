@@ -291,14 +291,14 @@
           ]
         }
       },
-      "expect": { "quantities": { "u_value": 0.269876 }, "checks": { "uMax": "fail" } }
+      "expect": { "quantities": { "u_value": 0.269876 }, "checks": { "uMaxRenovation": "fail" } }
     },
     {
       "id": "u-value-renovation-more-insulation",
       "work": "EPS 14 cm: 0,14/0,035 = 4,0; R_T = 4,276832; U = 0,233818 ≤ 0,266",
       "base": "u-value-renovation",
       "overrides": { "layers.2.thickness": 14 },
-      "expect": { "quantities": { "u_value": 0.233818 }, "checks": { "uMax": "pass" } }
+      "expect": { "quantities": { "u_value": 0.233818 }, "checks": { "uMaxRenovation": "pass" } }
     },
     {
       "id": "u-value-measure-unknown",
@@ -313,6 +313,26 @@
             { "label": "Innenputz", "thickness": { "value": 1.5, "source": "Bestandsplan" }, "conductivity": { "value": 0.7, "source": "Produktdatenblatt" } },
             { "label": "Stahlbeton", "thickness": { "value": 18, "source": "Bestandsplan" }, "conductivity": { "value": 2.3, "source": "Produktdatenblatt" } },
             { "label": "EPS-F", "thickness": { "value": 12, "min": 0, "max": 40, "step": 1, "source": "Sanierungsvariante" }, "conductivity": { "value": 0.035, "source": "Produktdatenblatt" } },
+            { "label": "Außenputz", "thickness": { "value": 0.5, "source": "Sanierungsvariante" }, "conductivity": { "value": 0.7, "source": "Produktdatenblatt" } }
+          ]
+        }
+      },
+      "expect": { "quantities": { "u_value": 0.269876 }, "checks": { "uMax": "needs_input" } }
+    },
+    {
+      "id": "u-value-major-renovation",
+      "work": "a größere Renovierung is held to the energy figures of OIB-RL 6 Pkt. 4.3, not to a component's U-value: U is computed (0,269876) and not judged",
+      "card": {
+        "type": "formula",
+        "title": "U-Wert Außenwand Bestand AW 03",
+        "formula": {
+          "name": "u_value",
+          "component": "external_wall",
+          "measure": "major_renovation",
+          "layers": [
+            { "label": "Innenputz", "thickness": { "value": 1.5, "source": "Bestandsplan" }, "conductivity": { "value": 0.7, "source": "Produktdatenblatt" } },
+            { "label": "Stahlbeton", "thickness": { "value": 18, "source": "Bestandsplan" }, "conductivity": { "value": 2.3, "source": "Produktdatenblatt" } },
+            { "label": "EPS-F", "thickness": { "value": 12, "source": "Sanierungsvariante" }, "conductivity": { "value": 0.035, "source": "Produktdatenblatt" } },
             { "label": "Außenputz", "thickness": { "value": 0.5, "source": "Sanierungsvariante" }, "conductivity": { "value": 0.7, "source": "Produktdatenblatt" } }
           ]
         }

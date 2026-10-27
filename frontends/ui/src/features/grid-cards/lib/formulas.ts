@@ -110,17 +110,21 @@ export const U_MAX_NEW_BUILD: Record<Component, { value: number; row: number; he
  */
 export const RENOVATION_FACTOR = 0.76
 
-/** The U-value bound for a component and a measure; null when the measure is not known. */
+/**
+ * The U-value bound for a component and a measure; null when the measure is not
+ * known, or is a größere Renovierung, which Pkt. 4.3 holds to energy figures
+ * (Energiekennzahlen) rather than to a component's U-value.
+ */
 export const uValueBound = (component: Component, measure: Measure | null | undefined): number | null => {
   const row = U_MAX_NEW_BUILD[component]
-  if (measure == null) return null
+  if (measure == null || measure === 'major_renovation') return null
   // Rounded to the six decimals the table and the factor have, so 0,76 × 0,35 is 0,266 and not 0,26599….
   return measure === 'renovation' ? Number((row.value * RENOVATION_FACTOR).toFixed(6)) : row.value
 }
 
 /**
  * The conventional surface resistances, m²K/W, by direction of heat flow
- * (ÖNORM EN ISO 6946:2017, 6.8 and Annex C). Fixed here, not on the wire: they
+ * (ÖNORM EN ISO 6946:2017; the clause is not verified, see FORMULA_SOURCES). Fixed here, not on the wire: they
  * are the standard's statement, and a model that could set them could tune a
  * U-value.
  */
@@ -150,7 +154,10 @@ export const DAYLIGHT = {
 
 /** Where each rule's METHOD is written; each check carries the Punkt of its own bound. */
 export const FORMULA_SOURCES: Record<FormulaName, NormReferenceData> = {
-  u_value: { document: 'ÖNORM EN ISO 6946', section: 'Abschnitt 6.8, Anhang C', edition: 'EN ISO 6946:2017', excerpt: null },
+  // No section until the owner confirms it against a licensed copy: the
+  // surface resistances agree across published sources, but the clause that
+  // states them (6.8 and Annex C, as reviewed) is not verified here.
+  u_value: { document: 'ÖNORM EN ISO 6946', section: null, edition: 'EN ISO 6946:2017', excerpt: null },
   stair_step_rule: oib('4', 'Pkt. 3.2.1'),
   escape_route_length: oib('2', 'Pkt. 5.1.1'),
   daylight_ratio: oib('3', 'Pkt. 9.1'),
@@ -286,7 +293,7 @@ export interface FormulaWords {
   term(key: TermKey, params?: { group?: string | null; metres?: number }): string
 }
 
-export type CheckId = 'stepRule' | 'riserMax' | 'goingMin' | 'uMax' | 'routeMax' | 'daylightMin'
+export type CheckId = 'stepRule' | 'riserMax' | 'goingMin' | 'uMax' | 'uMaxRenovation' | 'routeMax' | 'daylightMin'
 
 /** One bound the rule holds a quantity against, and where it is written. */
 export interface CheckSpec {
@@ -300,14 +307,19 @@ export interface CheckSpec {
   reference: NormReferenceData
   /** The inputs the verdict depends on, for the reader's-assumption marker and for "which value is missing". */
   dependsOn: string[]
-  /** The bound depends on a case the card was not told (a U-value's `measure`): no verdict, and it says why. */
-  unknownCase?: 'measure'
+  /**
+   * The bound is not one this card can derive: the case was not given (a U-value's
+   * `measure`), or the case is held to a different kind of requirement (a größere
+   * Renovierung, Pkt. 4.3). No verdict, and it says why.
+   */
+  unknownCase?: 'measure' | 'majorRenovation'
 }
 
 export type CaveatKey =
   | 'uValueNewBuild'
   | 'uValueRenovation'
   | 'uValueMeasureUnknown'
+  | 'uValueMajorRenovation'
   | 'uValueScope'
   | 'routeFromRoom'
   | 'routeFromDwelling'
@@ -315,6 +327,7 @@ export type CaveatKey =
   | 'daylightRoomsOnly'
   | 'daylightAngle'
   | 'daylightOtherLaw'
+  | 'daylightWinterGarden'
 
 export interface CompiledFormula {
   steps: CalculationStepData[]
@@ -491,6 +504,7 @@ function compileDaylight(formula: Rule<'daylight_ratio'>, values: FormulaValues,
       { key: 'daylightRoomsOnly' },
       { key: 'daylightAngle' },
       ...((terms.depthMetres ?? 0) > 0 ? [{ key: 'daylightOtherLaw' as const }] : []),
+      { key: 'daylightWinterGarden' },
     ],
     tint: 'daylightMin',
     zeroInput: 'floorArea',
@@ -547,24 +561,30 @@ function compileUValue(formula: Rule<'u_value'>, values: FormulaValues, words: F
   const bound = uValueBound(formula.component, measure)
   const section =
     measure === 'renovation' ? `Pkt. 4.5 b) mit Pkt. 4.4.1, Zeile ${row.row}` : `Pkt. 4.4.1, Zeile ${row.row}`
-  const measureCaveat: CaveatKey =
-    measure === 'renovation' ? 'uValueRenovation' : measure === 'new_build' ? 'uValueNewBuild' : 'uValueMeasureUnknown'
+  const MEASURE_CAVEAT: Record<Measure, CaveatKey> = {
+    new_build: 'uValueNewBuild',
+    renovation: 'uValueRenovation',
+    major_renovation: 'uValueMajorRenovation',
+  }
+  const measureCaveat: CaveatKey = measure ? MEASURE_CAVEAT[measure] : 'uValueMeasureUnknown'
   return {
     steps: [...layerSteps, total, transmittance],
     display: [...layerSteps.map(() => ({ decimals: 4, fixed: true })), { decimals: 4, fixed: true }, { decimals: 3 }],
     checks: [
       {
-        id: 'uMax',
+        // The renovation row says on its label that it is the bound WITHOUT a
+        // Sanierungskonzept: with one, the concept sets the value.
+        id: measure === 'renovation' ? 'uMaxRenovation' : 'uMax',
         quantity: { kind: 'step', index: formula.layers.length + 1 },
         unit: U,
         limit: { comparator: '<=', value: bound ?? row.value },
         reference: oib('6', section),
         dependsOn: keys,
-        ...(bound == null ? { unknownCase: 'measure' as const } : {}),
+        ...(bound == null ? { unknownCase: measure === 'major_renovation' ? ('majorRenovation' as const) : ('measure' as const) } : {}),
       },
     ],
     caveats: [{ key: measureCaveat, params: { row: String(row.row) } }, { key: 'uValueScope' }],
-    tint: 'uMax',
+    tint: measure === 'renovation' ? 'uMaxRenovation' : 'uMax',
     zeroInput: 'conductivity',
   }
 }

@@ -345,6 +345,7 @@ const undecidedText = (
 ): string => {
   if (check.spec.dependsOn.some((key) => issues[key])) return t('cards.formula.inputRejected')
   if (check.spec.unknownCase === 'measure') return t('cards.formula.measureUnknown')
+  if (check.spec.unknownCase === 'majorRenovation') return t('cards.formula.majorRenovationUndecided')
   if (check.quantity.undecidable === 'undefined') {
     return compiled.zeroInput
       ? t('cards.formula.zeroNotPossible', { quantity: zeroQuantity(compiled.zeroInput, t) })

@@ -17,6 +17,7 @@ import { gridCardSchema } from '@/shared/cards/schemas'
 import cases from './formula-cases.json'
 import {
   DAYLIGHT,
+  FORMULA_SOURCES,
   RENOVATION_FACTOR,
   STAIR_TABLE,
   SURFACE_RESISTANCE,
@@ -112,7 +113,7 @@ describe('the hand-computed cases', () => {
     const components = new Set(cards.flatMap((card) => (card.formula.name === 'u_value' ? [card.formula.component] : [])))
     expect([...components].sort()).toEqual(Object.keys(U_MAX_NEW_BUILD).sort())
     const measures = new Set(cards.flatMap((card) => (card.formula.name === 'u_value' ? [card.formula.measure ?? 'unknown'] : [])))
-    expect([...measures].sort()).toEqual(['new_build', 'renovation', 'unknown'])
+    expect([...measures].sort()).toEqual(['major_renovation', 'new_build', 'renovation', 'unknown'])
     for (const name of formulas) {
       expect(fixture.cases.some((entry) => cardOf(entry).formula.name === name && entry.overrides)).toBe(true)
     }
@@ -147,6 +148,12 @@ describe('the bounds are the Richtlinien’s, transcribed', () => {
     expect(uValueBound('external_wall', 'renovation')).toBe(0.266)
     expect(uValueBound('roof_or_ceiling_to_outside_air', 'renovation')).toBe(0.152)
     expect(uValueBound('external_wall', null)).toBeNull()
+    // A größere Renovierung is held to Pkt. 4.3's energy figures, not to a table row.
+    expect(uValueBound('external_wall', 'major_renovation')).toBeNull()
+  })
+
+  it('cites ÖNORM EN ISO 6946 without a clause until the owner confirms it', () => {
+    expect(FORMULA_SOURCES.u_value).toMatchObject({ document: 'ÖNORM EN ISO 6946', section: null, edition: 'EN ISO 6946:2017' })
   })
 
   it('OIB-RL 3 Pkt. 9.1.3 and 9.1.4 count started metres', () => {
@@ -168,6 +175,10 @@ describe('the bounds are the Richtlinien’s, transcribed', () => {
     const unknown = run(cardOf(byId.get('u-value-measure-unknown') as FormulaCase))
     expect(unknown.judged.checks[0].limit).toBeNull()
     expect(unknown.compiled.caveats[0].key).toBe('uValueMeasureUnknown')
+    expect(renovation.judged.checks[0].spec.id).toBe('uMaxRenovation')
+    const major = run(cardOf(byId.get('u-value-major-renovation') as FormulaCase))
+    expect(major.judged.checks[0].spec.unknownCase).toBe('majorRenovation')
+    expect(major.compiled.caveats[0].key).toBe('uValueMajorRenovation')
   })
 })
 
@@ -198,13 +209,18 @@ describe('a Rechenweg that reads the way it adds up', () => {
     const { compiled } = run(cardOf(byId.get('daylight-deep-room-under-a-loggia') as FormulaCase))
     expect(compiled.steps[0].label).toBe('requiredShare')
     expect(compiled.steps[0].operands.map((operand) => operand.value)).toEqual([15, 2, 2])
-    expect(compiled.caveats.map((caveat) => caveat.key)).toEqual(['daylightRoomsOnly', 'daylightAngle', 'daylightOtherLaw'])
+    expect(compiled.caveats.map((caveat) => caveat.key)).toEqual([
+      'daylightRoomsOnly',
+      'daylightAngle',
+      'daylightOtherLaw',
+      'daylightWinterGarden',
+    ])
   })
 
   it('states the Aufenthaltsraum scope and the 45° precondition on every daylight card, raised or not', () => {
     const { compiled } = run(cardOf(byId.get('daylight-above-12-percent') as FormulaCase))
     expect(compiled.steps.map((step) => step.label)).toEqual(['daylightShare'])
-    expect(compiled.caveats.map((caveat) => caveat.key)).toEqual(['daylightRoomsOnly', 'daylightAngle'])
+    expect(compiled.caveats.map((caveat) => caveat.key)).toEqual(['daylightRoomsOnly', 'daylightAngle', 'daylightWinterGarden'])
   })
 
   it('says on every escape route that only OIB-RL 2 is modelled', () => {

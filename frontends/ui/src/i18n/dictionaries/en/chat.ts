@@ -549,6 +549,8 @@ export const chat = {
       withAssumptions: "Computed with your assumptions, not the source's values.",
       cannotJudge: 'A value is missing: without it the card cannot judge.',
       measureUnknown: 'New build or renovation is not stated: without it the card cannot judge.',
+      majorRenovationUndecided:
+        'A major renovation is measured by energy figures (Pkt. 4.3), not by one component’s U-value: the card does not judge it.',
       inputRejected: 'A value you entered is not admissible: with it the card cannot judge.',
       undefinedResult: 'Divided by zero: the result is not defined.',
       zeroNotPossible: '{quantity} = 0 is not possible.',
@@ -566,6 +568,7 @@ export const chat = {
       measure: {
         new_build: 'New build',
         renovation: 'Renovation',
+        major_renovation: 'Major renovation',
       },
       stairType: {
         main: 'Main stair',
@@ -623,6 +626,7 @@ export const chat = {
         riserMax: 'Riser height',
         goingMin: 'Going',
         uMax: 'U-value',
+      uMaxRenovation: 'U-value, without a renovation concept',
         routeMax: 'Escape route length',
         daylightMin: 'Glazing area',
       },
@@ -633,6 +637,8 @@ export const chat = {
           'Renovation by single measures without a renovation concept (Pkt. 4.5 b): the highest value of row {row} undercut by at least 24 %. With a concept under Pkt. 4.5 a) the concept sets the value; a major renovation is not covered by Pkt. 4.5.',
         uValueMeasureUnknown:
           'Whether this is a new build (Pkt. 4.4.1) or a renovation (Pkt. 4.5) is not stated; the highest value depends on it.',
+        uValueMajorRenovation:
+          'Major renovation: the energy-figure requirements of Pkt. 4.3 apply, not the highest values of single components; the card computes the U-value but does not judge it.',
         uValueScope:
           'Homogeneous layers per ÖNORM EN ISO 6946; air layers, inhomogeneous layers and corrections are not included.',
         routeFromRoom: 'Measured from the most remote point of the room (Pkt. 5.1.1).',
@@ -644,7 +650,10 @@ export const chat = {
           'Applies to habitable rooms (Pkt. 9.1.1), not to rooms whose use needs less or no natural light (Pkt. 9.1.6).',
         daylightAngle:
           'A free light angle of 45° to the horizontal is assumed, turned sideways by at most 30° (Pkt. 9.1.2); the card does not check it.',
-        daylightOtherLaw: 'Unless other law (such as the workplace regulation) provides otherwise.',
+        daylightOtherLaw:
+          'The room-depth increment applies unless other law (such as the workplace regulation) provides otherwise.',
+        daylightWinterGarden:
+          'Where a winter garden or a glazed loggia lies in front of the window, the requirement applies to the outer and the inner glazing area (Pkt. 9.1.5); the card checks one.',
       },
     },
     // A document Piloti wrote into this conversation's working directory. Not a

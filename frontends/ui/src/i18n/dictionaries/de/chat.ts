@@ -547,6 +547,8 @@ export const chat: typeof en.chat = {
       withAssumptions: 'Gerechnet mit Ihren Annahmen, nicht mit den Werten der Quelle.',
       cannotJudge: 'Ein Wert fehlt: Ohne ihn kann die Karte nicht beurteilen.',
       measureUnknown: 'Neubau oder Renovierung ist nicht angegeben: Ohne das kann die Karte nicht beurteilen.',
+      majorRenovationUndecided:
+        'Eine größere Renovierung wird an Energiekennzahlen gemessen (Pkt. 4.3), nicht am U-Wert eines Bauteils: Die Karte beurteilt das nicht.',
       inputRejected: 'Ein eingegebener Wert ist nicht zulässig: Mit ihm kann die Karte nicht beurteilen.',
       undefinedResult: 'Durch null geteilt: Das Ergebnis ist nicht definiert.',
       zeroNotPossible: '{quantity} = 0 ist nicht möglich.',
@@ -564,6 +566,7 @@ export const chat: typeof en.chat = {
       measure: {
         new_build: 'Neubau',
         renovation: 'Renovierung',
+        major_renovation: 'Größere Renovierung',
       },
       stairType: {
         main: 'Haupttreppe',
@@ -621,6 +624,7 @@ export const chat: typeof en.chat = {
         riserMax: 'Stufenhöhe',
         goingMin: 'Stufenauftritt',
         uMax: 'U-Wert',
+      uMaxRenovation: 'U-Wert, ohne Sanierungskonzept',
         routeMax: 'Gehweglänge',
         daylightMin: 'Lichteintrittsfläche',
       },
@@ -631,6 +635,8 @@ export const chat: typeof en.chat = {
           'Renovierung mittels Einzelmaßnahmen ohne Sanierungskonzept (Pkt. 4.5 b): der Höchstwert der Zeile {row} um mindestens 24 % unterschritten. Mit einem Sanierungskonzept nach Pkt. 4.5 a) bestimmt dieses den Wert; eine größere Renovierung fällt nicht unter Pkt. 4.5.',
         uValueMeasureUnknown:
           'Ob Neubau (Pkt. 4.4.1) oder Renovierung (Pkt. 4.5), ist nicht angegeben; davon hängt der Höchstwert ab.',
+        uValueMajorRenovation:
+          'Größere Renovierung: Es gelten die Anforderungen an Energiekennzahlen nach Pkt. 4.3, nicht die Höchstwerte einzelner Bauteile; die Karte rechnet den U-Wert, beurteilt ihn aber nicht.',
         uValueScope:
           'Homogene Schichten nach ÖNORM EN ISO 6946; Luftschichten, inhomogene Schichten und Korrekturen sind nicht berücksichtigt.',
         routeFromRoom: 'Gemessen von der entferntesten Stelle des Raumes (Pkt. 5.1.1).',
@@ -643,7 +649,9 @@ export const chat: typeof en.chat = {
         daylightAngle:
           'Vorausgesetzt ist ein freier Lichteinfall unter 45° zur Horizontalen, seitlich höchstens 30° verschwenkt (Pkt. 9.1.2); die Karte prüft ihn nicht.',
         daylightOtherLaw:
-          'Sofern andere Rechtsmaterien (z. B. die Arbeitsstättenverordnung) nichts Abweichendes bestimmen.',
+          'Der Zuschlag für die Raumtiefe gilt, sofern andere Rechtsmaterien (z. B. die Arbeitsstättenverordnung) nichts Abweichendes bestimmen.',
+        daylightWinterGarden:
+          'Ist dem Fenster ein Wintergarten oder eine verglaste Loggia vorgelagert, gilt die Anforderung für die äußere und die innere Lichteintrittsfläche (Pkt. 9.1.5); die Karte prüft eine.',
       },
     },
     // Ein Dokument, das Piloti in den Arbeitsordner dieser Unterhaltung

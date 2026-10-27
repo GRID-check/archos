@@ -64,18 +64,26 @@ Chosen: **option 3**.
   `features/grid-cards/lib/formulas.ts`, transcribed from the Mai 2023
   Richtlinien, for the case the model names. A model that writes a result or a
   `limits` list has it dropped by validation and counted (`card-validity`,
-  outcome `stripped`), in a `surface` leaf as on a lone card. A name (the
-  title, a layer's or a leg's label) carries no number but an identifier („AW
-  01", „Top 7", „Büro 2.14", „2. OG"); a text (the note, an input's `source`)
-  may cite a Punkt or a plan number but carries no measurement, no comparison
-  with a number and no verdict word (erfüllt, zulässig, eingehalten).
+  outcome `stripped`), in a `surface` leaf as on a lone card. The guard on
+  free text is fail-closed: in the title, a layer's or a leg's label, the note
+  and an input's `source`, a digit is refused unless it is part of an
+  allow-listed citation (Pkt. 9.1.4, Tabelle 3, Zeile 1, OIB-RL 2.3, ÖNORM
+  B 8110-7) or identifier (a component code such as AW 01, a storey, a Top, a
+  room number, a plot number; a plan number in a source or a note). A material
+  followed by a number („EPS 200") and a verdict in words or signs (erfüllt,
+  erfuellt, zulässig, passt, genügt, ok, in Ordnung, ✓, „unter dem
+  Grenzwert") are refused outright. A deny-list of figure shapes leaked; an
+  allow-list cannot leak a shape nobody listed. One judgement is made on
+  purpose: an identifier's number is not checked against the card's figures, so
+  „AW 20" and „Top 63" pass like „AW 01" and „Top 7", because no rule on the
+  text alone tells a code from a figure written as one.
 
   | `formula.name` | Case the model names | Bound the renderer derives |
   |---|---|---|
   | `stair_step_rule` | `stair_type`: `main`, `dwelling`, `secondary` | 2s + a = 62 ± 3 cm, and Tabelle 3's row: 18/27, 20/24, 21/21 cm (OIB-RL 4 Pkt. 3.2.1) |
-  | `u_value` | `component`: `external_wall`, `roof_or_ceiling_to_outside_air`, `floor_over_outside_air`; `measure`: `new_build`, `renovation`, or unknown | OIB-RL 6 Pkt. 4.4.1 rows 1, 18, 22: 0,35, 0,20, 0,20 W/(m²K) at a Neubau; at a renovation by single measures without a Sanierungskonzept, Pkt. 4.5 b): 0,76 × the row (0,266, 0,152, 0,152). Unknown measure: no verdict. The heat flow follows the row |
+  | `u_value` | `component`: `external_wall`, `roof_or_ceiling_to_outside_air`, `floor_over_outside_air`; `measure`: `new_build`, `renovation`, `major_renovation`, or unknown | OIB-RL 6 Pkt. 4.4.1 rows 1, 18, 22: 0,35, 0,20, 0,20 W/(m²K) at a Neubau; at a renovation by single measures without a Sanierungskonzept, Pkt. 4.5 b): 0,76 × the row (0,266, 0,152, 0,152), the row labelled „ohne Sanierungskonzept". A größere Renovierung is held to the energy figures of Pkt. 4.3, not to a component's U-value: computed, not judged. Unknown measure: no verdict. The heat flow follows the row |
   | `escape_route_length` | `start`: `room`, `dwelling_entrance` | 40 m, from the most remote point of the room (OIB-RL 2 Pkt. 5.1.1), or from the Wohnungseingangstüre (5.1.2). Only OIB-RL 2: the card says so, since 2.1, 2.2 and 2.3 have their own provisions |
-  | `daylight_ratio` | (none) | 12 % of the Bodenfläche (OIB-RL 3 Pkt. 9.1.1); 15 % with an overhang over 1,50 m, plus 2 % per started metre over 3,00 m (9.1.3); plus 1 % per started metre of depth over 5,00 m (9.1.4). Unknown depth or overhang: no verdict. The Aufenthaltsraum scope (9.1.1, 9.1.6) and the 45° light angle turned sideways by at most 30° (9.1.2) are stated, not checked |
+  | `daylight_ratio` | (none) | 12 % of the Bodenfläche (OIB-RL 3 Pkt. 9.1.1); 15 % with an overhang over 1,50 m, plus 2 % per started metre over 3,00 m (9.1.3); plus 1 % per started metre of depth over 5,00 m (9.1.4). Unknown depth or overhang: no verdict. The Aufenthaltsraum scope (9.1.1, 9.1.6), the 45° light angle turned sideways by at most 30° (9.1.2) and the double requirement behind a Wintergarten or a verglaste Loggia (9.1.5) are stated, not checked |
 
 - **One arithmetic, one verdict rule.** Each rule compiles to
   `CalculationStepData`, the steps a `calculation` carries, so it is evaluated
@@ -153,8 +161,10 @@ longer takes.
   but not compute it.
 - Bad: ÖNORM EN ISO 6946 is a paid standard outside the corpus. Its
   conventional surface resistances (R_si 0,13 / 0,10 / 0,17, R_se 0,04 m²K/W)
-  agree across published sources and are cited as EN ISO 6946:2017, 6.8 and
-  Annex C; a reviewer with the standard confirms them.
+  agree across published sources. The card cites the standard by its edition
+  (EN ISO 6946:2017) and no clause: the clause the review named (6.8, Annex C)
+  is not verified here, and a section presented as fact must be. The owner
+  confirms the values and adds the clause against a licensed copy.
 - Neutral: `calculation` operands could gain the same inputs, and the
   schematics (`stair_diagram`, `guardrail_check`) after them. That is the next
   slice, not this one.

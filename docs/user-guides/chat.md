@@ -326,7 +326,9 @@ against the Bodenfläche (OIB-RL 3 Pkt. 9.1.1 to 9.1.4). The card is headed
   product data sheet, a norm.
 - **The limit is the Richtlinie's, for your case.** A Wohnungstreppe is held to
   its own row of Tabelle 3, a ceiling over a passage to its own row of the
-  U-value table (a renovation 24 % under it, Pkt. 4.5 b), a balcony or a deep
+  U-value table (a renovation without a Sanierungskonzept 24 % under it,
+  Pkt. 4.5 b; a größere Renovierung is measured by energy figures, Pkt. 4.3, so
+  the card computes the U-value and does not judge it), a balcony or a deep
   room raises the required
   Lichteintrittsfläche. Each limit names its Punkt and row, and it cannot be
   changed.
@@ -341,7 +343,8 @@ against the Bodenfläche (OIB-RL 3 Pkt. 9.1.1 to 9.1.4). The card is headed
   judge without it. A value the field does not accept (outside its range,
   λ = 0) is said as such.
 - **What the card does not check is said on it**: the free light angle of 45°
-  for a window, a renovation's own U-value rules (Pkt. 4.5).
+  for a window, a Wintergarten or a verglaste Loggia in front of it, a
+  renovation with a Sanierungskonzept, the other parts of OIB-RL 2.
 - **Nothing is saved.** A reload, a copy or an export shows the source's values
   again, never your what-if.
 

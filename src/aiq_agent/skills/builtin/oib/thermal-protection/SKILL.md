@@ -34,10 +34,11 @@ new-build requirement is cited that then turns out to be the wrong one.
 U-values per envelope component → as a check table, one row per component, the
 value in the `Ist` column, the limit written with ≤ in the `Soll` column.
 A U-value worked out from one component's layers → `formula` with `u_value`,
-the component and the `measure` (new build or renovation, from
-`existing_or_new`; leave it out when that is open, and the card says it cannot
-judge), so the reader can try another insulation; the card takes the bound
-itself.
+the component and the `measure` (new build, renovation, or a größere
+Renovierung, from `existing_or_new`; leave it out when that is open, and the
+card says it cannot judge), so the reader can try another insulation; the card
+takes the bound itself. A größere Renovierung is held to the energy figures of
+Pkt. 4.3, not to the component's U-value: say so, and do not cite the table.
 HWB and energy class → as key figures (value against limit), the energy
 efficiency class named.
 Sound insulation per component pairing → as a check table, the pairing in the

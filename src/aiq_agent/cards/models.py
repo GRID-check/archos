@@ -944,43 +944,92 @@ class CalculationCard(CardModel):
 FormulaStairType = Literal["main", "dwelling", "secondary"]
 FormulaComponent = Literal["external_wall", "roof_or_ceiling_to_outside_air", "floor_over_outside_air"]
 FormulaRouteStart = Literal["room", "dwelling_entrance"]
-FormulaMeasure = Literal["new_build", "renovation"]
+FormulaMeasure = Literal["new_build", "renovation", "major_renovation"]
 
 # The card computes every figure and every verdict; a figure or a verdict
 # written into text beside it disagrees with the card the moment an input
-# moves, and is the line that gets copied into a submission. Two guards:
+# moves, and is the line that gets copied into a submission. So the guard is
+# FAIL-CLOSED: in a title, a layer's or a leg's label, a note and an input's
+# `source`, a digit is refused unless it is part of an allow-listed citation
+# or identifier, and a verdict in words or signs is refused outright. A
+# deny-list of figure shapes leaked („U unter 0,35", „20 Zentimeter", „62 ± 3");
+# an allow-list cannot leak a shape nobody listed.
 #
-#   - a NAME (the title, a layer's or a leg's label) carries no number at all
-#     but an identifier: a component code („AW 01", „BA 2"), a numbered place
-#     („Top 7", „Büro 2.14", „Stiege 3", „Gst.-Nr. 123/4"), a storey („2. OG");
-#   - a TEXT (the note, an input's `source`) may cite a Punkt or a plan number,
-#     but carries no measurement, no comparison with a number and no verdict.
+# One judgement, made on purpose: an identifier's number is not checked against
+# the card's figures. „AW 20" (a component code), „Top 63" (a numbered dwelling)
+# and „Büro 2.14" are as legitimate as „AW 01", „Top 7" and „Büro 0.12", and no
+# rule on the text alone can tell a code from a figure written as one. They
+# pass; a material followed by a number („EPS 200"), a bare „Nr." and a decimal
+# after an axis do not.
 
-#: Identifiers a name may hold. Anything else with a digit in it is a figure.
+#: Citations: where a rule is written. Stripped before digits are counted.
+_CITATION = re.compile(
+    r"\b(?:Pkt\.?|Punkt|Tabelle|Zeile|Abschnitt|Anhang|Abs\.?|Ziffer|Z\.)\s*\d+(?:\.\d+)*(?:\s*[a-z]\))?"
+    r"|§\s*\d+[a-z]?"
+    r"|\bOIB-(?:Richtlinie|RL)\s*\d(?:\.\d)?\b"
+    r"|\b(?:ÖNORM|OENORM|EN|ISO|DIN)(?:\s+(?:EN|ISO|[A-Z]))*\s+\d{2,5}(?:-\d{1,3})*(?::\d{4})?"
+)
+
+#: Identifiers: names of places and components, never quantities.
 _IDENTIFIER = re.compile(
-    r"\b[A-ZÄÖÜ]{2,4}[ -]?\d{1,4}[a-z]?\b"
-    r"|\b\d{1,2}\.\s?(?:OG|UG|DG|KG|EG|Obergescho(?:ß|ss)|Untergescho(?:ß|ss)|Stock|Etage)\b"
-    r"|\b(?:Top|Büro|Raum|Zimmer|Haus|Stiege|Treppe|Wohnung|Whg\.?|Bauteil|Bauplatz|Trakt|Achse|Schnitt|Lauf"
-    r"|Gst\.?-?Nr\.?|Nr\.?)\s+[A-Z]{0,2}-?\d{1,4}(?:[./]\d{1,4})*[a-z]?\b"
+    # component codes of a Bauteilkatalog: Außenwand, Innenwand, Trennwand,
+    # Decke, Dach, Fußboden, Flachdach, Brandabschnitt, Bauteil, Bodenplatte
+    r"\b(?:AW|IW|TW|DE|DA|FB|FD|BA|BT|BP)[ -]?\d{1,2}[a-z]?\b"
+    # storeys
+    r"|\b\d{1,2}\.\s?(?:OG|UG|DG|KG|Obergescho(?:ß|ss)|Untergescho(?:ß|ss)|Dachgescho(?:ß|ss)|Stock)\b"
+    # a numbered dwelling, a numbered or dotted room
+    r"|\bTop\s+\d{1,3}[a-z]?\b"
+    r"|\b(?:Büro|Raum|Zimmer)\s+\d{1,2}(?:\.\d{2})?\b"
+    # a lettered or numbered building part
+    r"|\b(?:Haus|Stiege|Bauteil|Trakt|Achse)\s+(?:[A-Z]|\d{1,2})\b(?![.,]\d)"
+    # a plot
+    r"|\bGst\.?-?Nr\.?\s+\d{1,5}(?:/\d{1,4})?\b"
 )
-_DIGIT = re.compile(r"\d")
 
-#: What a text may not carry: a measurement, a comparison with a number, a stated result, a verdict.
-_MEASUREMENT = re.compile(r"\d+(?:[.,]\d+)?\s*(?:mm|cm|dm|m²|m2|m³|m|%|°|W/|W\b|kWh|K\b)(?![A-Za-zÄÖÜäöüß])")
-_COMPARISON = re.compile(r"(?:[=≤≥<>]|\bmax\.?|\bmin\.?|\bhöchstens|\bmindestens)\s*-?\d")
+#: Plan numbers, allowed where a text names a document (`source`, the note), never in a name.
+_PLAN_NUMBER = re.compile(r"\b(?:Plan(?:-?Nr\.?)?|Index)\s+[A-Z]{0,3}\d{1,4}(?:[-_./]\d{1,4})*\b")
+
+#: „OK" is a verdict, unless it is the Oberkante of a floor build-up.
+_TOP_EDGE = re.compile(r"\bOK\s*(?:FFB|RFB|FBOK|Rohdecke|Fertigfu(?:ß|ss)boden)\b")
+
+#: A verdict, in words or signs, in any of the spellings a model writes.
 _VERDICT = re.compile(
-    r"\b(?:nicht\s+)?(?:erfüllt|zulässig|unzulässig|eingehalten|überschritten|unterschritten)\b", re.I
+    r"(?<![A-Za-zÄÖÜäöüß])(?:nicht\s+)?(?:erf(?:ü|ue)llt|zul(?:ä|ae)ssig|unzul(?:ä|ae)ssig|eingehalten"
+    r"|(?:ü|ue)berschritten|unterschritten|gen(?:ü|ue)gt|ausreichend|passt|in\s+Ordnung|okay|ok)(?![A-Za-zÄÖÜäöüß])"
+    r"|[✓✔✗✘❌✅]"
+    r"|\b(?:unter|(?:ü|ue)ber|unterhalb|oberhalb|innerhalb|au(?:ß|ss)erhalb)\s+(?:dem\s+|des\s+|der\s+)?"
+    r"(?:Grenzwert|H(?:ö|oe)chstwert|Mindestwert|Anforderung|Limit|Soll)",
+    re.I,
 )
+
+#: A material code followed by a number is a thickness or a grade, not a name.
+_MATERIAL_FIGURE = re.compile(r"\b(?:EPS|XPS|MW|SW|GW|PU|PUR|PIR|HWF|WF|KS|HLZ|STB|WDVS)(?:-[A-Z]{1,2})?[ -]?\d", re.I)
+
+#: A number with a unit, as a symbol or a word. Checked before any identifier
+#: is stripped, so „Plan 17 Zentimeter" is not a plan number followed by a word.
+_MEASURE = re.compile(
+    r"\d[\d.,]*\s*(?:mm|cm|dm|m²|m2|m³|m|%|°|W\b|kWh|Millimeter|Zentimeter|Meter|Quadratmeter|Prozent|Grad)"
+    r"(?![A-Za-zÄÖÜäöüß])",
+    re.I,
+)
+
+_DIGIT = re.compile(r"\d")
 
 
 def _figure_in(value: str, *, name: bool) -> str | None:
-    """What makes ``value`` carry a figure or a verdict, or None. ``name``: the stricter rule for a title or label."""
-    if _VERDICT.search(value):
+    """What makes ``value`` carry a figure or a verdict, or None. ``name``: a title or label, not a text."""
+    text = _TOP_EDGE.sub(" ", value)
+    if _VERDICT.search(text):
         return "a verdict"
-    if _MEASUREMENT.search(value) or _COMPARISON.search(value):
-        return "a figure"
-    if name and _DIGIT.search(_IDENTIFIER.sub(" ", value)):
-        return "a number that is not an identifier"
+    if _MATERIAL_FIGURE.search(text):
+        return "a material with a number"
+    if _MEASURE.search(text):
+        return "a measurement"
+    stripped = _IDENTIFIER.sub(" ", _CITATION.sub(" ", text))
+    if not name:
+        stripped = _PLAN_NUMBER.sub(" ", stripped)
+    if _DIGIT.search(stripped):
+        return "a number that is neither a citation nor an identifier"
     return None
 
 
@@ -990,7 +1039,8 @@ def _no_figure(value: str | None, field: str, *, name: bool = True) -> str | Non
         raise ValueError(
             f"`{field}` carries {found}: '{value}'. The card computes every figure and every verdict, so a "
             f"{'name names the component, never a value' if name else 'text says where or why, never what'}; "
-            "put figures in the inputs"
+            "put figures in the inputs. A number is allowed only in a citation (Pkt. 9.1.4, Tabelle 3, "
+            "Zeile 1) or an identifier (AW 01, Top 7, Büro 2.14, 2. OG)"
         )
     return value
 
@@ -1086,8 +1136,10 @@ class UValueFormula(CardModel):
 
     `measure` picks the requirement: a new build (Pkt. 4.4.1, the table), or a
     renovation by single measures or the renewal of a component (Pkt. 4.5),
-    which without a Sanierungskonzept is the table value less 24 %. Unknown:
-    the card cannot judge, because the bound depends on it.
+    which without a Sanierungskonzept is the table value less 24 %. A major
+    renovation (größere Renovierung) is held to the energy figures of Pkt. 4.3,
+    not to a component's U-value, so the card computes U and does not judge it.
+    Unknown: the card cannot judge, because the bound depends on it.
     """
 
     name: Literal["u_value"]
@@ -1100,9 +1152,10 @@ class UValueFormula(CardModel):
     measure: FormulaMeasure | None = Field(
         default=None,
         description=(
-            "'new_build' (Pkt. 4.4.1) or 'renovation' (single measures or a renewed component, Pkt. 4.5). "
-            "Read it from the project context (existing_or_new); null when it is not known, and the card "
-            "then says it cannot judge"
+            "'new_build' (Pkt. 4.4.1), 'renovation' (single measures or a renewed component, Pkt. 4.5) or "
+            "'major_renovation' (a größere Renovierung, held to the energy figures of Pkt. 4.3, which this "
+            "card does not judge). Read it from the project context (existing_or_new); null when it is not "
+            "known, and the card then says it cannot judge"
         ),
     )
     layers: list[UValueLayer] = Field(min_length=1, max_length=8, description="The layers, inside to outside")

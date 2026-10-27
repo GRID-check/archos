@@ -170,6 +170,7 @@ export const answerExport: typeof en.answerExport = {
     measure: {
       new_build: 'Neubau',
       renovation: 'Renovierung',
+      major_renovation: 'größere Renovierung',
     },
     stair_type: {
       main: 'Haupttreppe',

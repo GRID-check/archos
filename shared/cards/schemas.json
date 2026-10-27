@@ -3944,7 +3944,7 @@
       "type": "object"
     },
     "UValueFormula": {
-      "description": "U = 1 / (R_si + \u03a3 d/\u03bb + R_se), for an opaque component of homogeneous layers (\u00d6NORM EN ISO 6946).\n\n`component` picks the row of OIB-RL 6 Pkt. 4.4.1 the card holds the U-value\nagainst, and with it the heat-flow direction for the surface resistances:\nan external wall (row 1, horizontal), a ceiling or roof slope against\noutside air (row 18, upward; a slope steeper than 60\u00b0 counts as a wall),\na ceiling over outside air such as a passage (row 22, downward). Only\ncomponents against outside air: elsewhere R_se is not the standard's 0,04.\nAir layers, inhomogeneous layers and the standard's corrections are out of\nscope.\n\n`measure` picks the requirement: a new build (Pkt. 4.4.1, the table), or a\nrenovation by single measures or the renewal of a component (Pkt. 4.5),\nwhich without a Sanierungskonzept is the table value less 24 %. Unknown:\nthe card cannot judge, because the bound depends on it.",
+      "description": "U = 1 / (R_si + \u03a3 d/\u03bb + R_se), for an opaque component of homogeneous layers (\u00d6NORM EN ISO 6946).\n\n`component` picks the row of OIB-RL 6 Pkt. 4.4.1 the card holds the U-value\nagainst, and with it the heat-flow direction for the surface resistances:\nan external wall (row 1, horizontal), a ceiling or roof slope against\noutside air (row 18, upward; a slope steeper than 60\u00b0 counts as a wall),\na ceiling over outside air such as a passage (row 22, downward). Only\ncomponents against outside air: elsewhere R_se is not the standard's 0,04.\nAir layers, inhomogeneous layers and the standard's corrections are out of\nscope.\n\n`measure` picks the requirement: a new build (Pkt. 4.4.1, the table), or a\nrenovation by single measures or the renewal of a component (Pkt. 4.5),\nwhich without a Sanierungskonzept is the table value less 24 %. A major\nrenovation (gr\u00f6\u00dfere Renovierung) is held to the energy figures of Pkt. 4.3,\nnot to a component's U-value, so the card computes U and does not judge it.\nUnknown: the card cannot judge, because the bound depends on it.",
       "properties": {
         "component": {
           "description": "Which component: 'external_wall', 'roof_or_ceiling_to_outside_air' (a ceiling or roof slope, slopes over 60\u00b0 are walls), 'floor_over_outside_air' (a ceiling over a passage or parking deck)",
@@ -3971,7 +3971,8 @@
             {
               "enum": [
                 "new_build",
-                "renovation"
+                "renovation",
+                "major_renovation"
               ],
               "type": "string"
             },
@@ -3980,7 +3981,7 @@
             }
           ],
           "default": null,
-          "description": "'new_build' (Pkt. 4.4.1) or 'renovation' (single measures or a renewed component, Pkt. 4.5). Read it from the project context (existing_or_new); null when it is not known, and the card then says it cannot judge",
+          "description": "'new_build' (Pkt. 4.4.1), 'renovation' (single measures or a renewed component, Pkt. 4.5) or 'major_renovation' (a gr\u00f6\u00dfere Renovierung, held to the energy figures of Pkt. 4.3, which this card does not judge). Read it from the project context (existing_or_new); null when it is not known, and the card then says it cannot judge",
           "title": "Measure"
         },
         "name": {

@@ -23,13 +23,22 @@ import type { FC } from 'react'
 import type { Translator } from '@/i18n'
 import { cn } from '@/lib/utils'
 import { fmtTolerance, missingLabel, statusColor } from '../schematics/kit'
-import { formatInput, formatResult, type Derivation, type StepDisplay, type StepResult } from '../lib/calculate'
+import {
+  formatInput,
+  formatResult,
+  type Derivation,
+  type StepDisplay,
+  type StepResult,
+} from '../lib/calculate'
 import type { CalculationOperandData, CalculationStepData, DimStatus } from '../schematics/types'
 
 export type { StepDisplay } from '../lib/calculate'
 
 /** The glyph BETWEEN two operands of a step. Symbols, so they need no locale. */
-const operatorFor = (operation: CalculationStepData['operation'], operand: CalculationOperandData): string => {
+const operatorFor = (
+  operation: CalculationStepData['operation'],
+  operand: CalculationOperandData
+): string => {
   if (operation === 'sum') return (operand.factor ?? 1) < 0 ? '−' : '+'
   if (operation === 'quotient' || operation === 'percent_ratio') return '÷'
   return '×'
@@ -55,7 +64,8 @@ const Operand: FC<{
   const fromStep = operand.step != null
   const value = fromStep ? referenced?.value : operand.value
   const unit = fromStep ? (referenced?.unit ?? '') : (operand.unit ?? '')
-  const factor = typeof operand.factor === 'number' && operand.factor !== 1 ? Math.abs(operand.factor) : null
+  const factor =
+    typeof operand.factor === 'number' && operand.factor !== 1 ? Math.abs(operand.factor) : null
   const label = fromStep
     ? stepReference === 'index'
       ? t('cards.calculation.fromStep', { step: String(operand.step) })
@@ -63,13 +73,13 @@ const Operand: FC<{
     : operand.label
 
   return (
-    <span className="flex min-w-0 flex-col items-center">
-      <span className="whitespace-nowrap font-mono text-[13.5px] tabular-nums text-foreground">
+    <span className="flex shrink-0 flex-col items-center">
+      <span className="text-foreground font-mono text-[13.5px] whitespace-nowrap tabular-nums">
         {/* The rule's own multiplier reads as part of the term („2 × 17 cm"),
             because that is what it is — not a quantity anybody measured. */}
         {factor != null && <span className="text-muted-foreground">{formatInput(factor)} × </span>}
         {value == null ? (
-          <span className="font-sans text-xs italic text-muted-foreground">{missingLabel(t)}</span>
+          <span className="text-muted-foreground font-sans text-xs italic">{missingLabel(t)}</span>
         ) : (
           <>
             {fromStep ? printResult(value, referencedDisplay) : formatInput(value)}
@@ -80,7 +90,7 @@ const Operand: FC<{
       {/* Wraps instead of clipping: the label names what the figure above is,
           and a `title` attribute is not shown on a phone. */}
       {label && (
-        <span className="card-meta max-w-[11rem] text-center font-normal [overflow-wrap:anywhere] text-muted-foreground">
+        <span className="card-meta max-w-[11rem] text-center font-normal text-pretty text-muted-foreground [overflow-wrap:anywhere]">
           {label}
         </span>
       )}
@@ -99,22 +109,40 @@ const StepRow: FC<{
   stepReference: 'index' | 'label'
   undefinedText: string | undefined
   t: Translator
-}> = ({ step, index, steps, results, display, tint, emphasis, stepReference, undefinedText, t }) => {
+}> = ({
+  step,
+  index,
+  steps,
+  results,
+  display,
+  tint,
+  emphasis,
+  stepReference,
+  undefinedText,
+  t,
+}) => {
   const result = results[index]
   const band = fmtTolerance(result.tolerance, result.unit)
   // Said once, on the step where it happens: a later step that is undecidable
   // only because it builds on this one has nothing new to say.
-  const inherited = step.operands.some((operand) => operand.step != null && results[operand.step - 1]?.undecidable)
+  const inherited = step.operands.some(
+    (operand) => operand.step != null && results[operand.step - 1]?.undecidable
+  )
   const color = tint ? statusColor(tint) : null
 
   return (
     <li className="flex flex-col gap-1">
-      <span className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">{step.label}</span>
+      <span className="text-muted-foreground text-[11px] font-medium tracking-wider uppercase">
+        {step.label}
+      </span>
       <div className="flex flex-wrap items-start gap-x-2 gap-y-1">
         {step.operands.map((operand, position) => (
           <span key={`${operand.label}-${position}`} className="flex items-start gap-2">
             {position > 0 && (
-              <span aria-hidden="true" className="pt-0.5 font-mono text-[13.5px] text-muted-foreground">
+              <span
+                aria-hidden="true"
+                className="text-muted-foreground pt-0.5 font-mono text-[13.5px]"
+              >
                 {operatorFor(step.operation, operand)}
               </span>
             )}
@@ -132,39 +160,51 @@ const StepRow: FC<{
         {/* A percentage is a ratio times 100, and a share of a base is a
             product over 100: the constant is part of the rule, so the line
             shows it, or the arithmetic above the result does not add up. */}
-        {PERCENT_FACTOR[step.operation] && (
-          <span aria-hidden="true" className="pt-0.5 font-mono text-[13.5px] text-muted-foreground">
-            {PERCENT_FACTOR[step.operation]}
+        {/* „= result" (and a percentage's „× 100" before it) is one unit, so
+            a long sum wraps BEFORE the equals sign, never leaving it alone at
+            the end of a line with its result on the next. */}
+        <span className="flex items-start gap-2">
+          {PERCENT_FACTOR[step.operation] && (
+            <span
+              aria-hidden="true"
+              className="text-muted-foreground pt-0.5 font-mono text-[13.5px]"
+            >
+              {PERCENT_FACTOR[step.operation]}
+            </span>
+          )}
+          <span aria-hidden="true" className="text-muted-foreground pt-0.5 font-mono text-[13.5px]">
+            =
           </span>
-        )}
-        <span aria-hidden="true" className="pt-0.5 font-mono text-[13.5px] text-muted-foreground">
-          =
-        </span>
 
-        <span className="flex min-w-0 flex-col items-start">
-          <span
-            className={cn(
-              'whitespace-nowrap font-mono',
-              emphasis ? 'card-figure-24' : 'pt-0.5 text-[13.5px]',
-              color ? undefined : 'text-foreground'
-            )}
-            style={color ? { color } : undefined}
-          >
-            {result.value == null ? (
-              <span className="font-sans text-xs font-normal italic text-muted-foreground">{missingLabel(t)}</span>
-            ) : (
-              <>
-                {printResult(result.value, display[index])}
-                {result.unit && <span className="font-normal opacity-70"> {result.unit}</span>}
-              </>
+          <span className="flex min-w-0 flex-col items-start">
+            <span
+              className={cn(
+                'font-mono whitespace-nowrap',
+                emphasis ? 'card-figure-24' : 'pt-0.5 text-[13.5px]',
+                color ? undefined : 'text-foreground'
+              )}
+              style={color ? { color } : undefined}
+            >
+              {result.value == null ? (
+                <span className="text-muted-foreground font-sans text-xs font-normal italic">
+                  {missingLabel(t)}
+                </span>
+              ) : (
+                <>
+                  {printResult(result.value, display[index])}
+                  {result.unit && <span className="font-normal opacity-70"> {result.unit}</span>}
+                </>
+              )}
+            </span>
+            {band && (
+              <span className="text-muted-foreground text-[10.5px] leading-tight">{band}</span>
             )}
           </span>
-          {band && <span className="text-[10.5px] leading-tight text-muted-foreground">{band}</span>}
         </span>
       </div>
 
       {result.undecidable && !inherited && (
-        <p className="max-w-prose text-xs leading-relaxed text-muted-foreground">
+        <p className="text-muted-foreground max-w-prose text-xs leading-relaxed">
           {result.undecidable === 'undefined'
             ? (undefinedText ?? t('cards.calculation.undefinedResult'))
             : t('cards.calculation.undecidable')}

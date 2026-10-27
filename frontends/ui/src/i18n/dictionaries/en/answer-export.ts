@@ -269,6 +269,7 @@ export const answerExport = {
     measure: {
       new_build: 'new build',
       renovation: 'renovation',
+      major_renovation: 'major renovation',
     },
     stair_type: {
       main: 'main stair',

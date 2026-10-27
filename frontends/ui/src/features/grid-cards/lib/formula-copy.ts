@@ -66,6 +66,7 @@ export const CHECK_KEYS = {
   riserMax: 'cards.formula.check.riserMax',
   goingMin: 'cards.formula.check.goingMin',
   uMax: 'cards.formula.check.uMax',
+  uMaxRenovation: 'cards.formula.check.uMaxRenovation',
   routeMax: 'cards.formula.check.routeMax',
   daylightMin: 'cards.formula.check.daylightMin',
 } as const satisfies Record<CheckId, string>
@@ -74,6 +75,7 @@ export const CAVEAT_KEYS = {
   uValueNewBuild: 'cards.formula.caveat.uValueNewBuild',
   uValueRenovation: 'cards.formula.caveat.uValueRenovation',
   uValueMeasureUnknown: 'cards.formula.caveat.uValueMeasureUnknown',
+  uValueMajorRenovation: 'cards.formula.caveat.uValueMajorRenovation',
   uValueScope: 'cards.formula.caveat.uValueScope',
   routeFromRoom: 'cards.formula.caveat.routeFromRoom',
   routeFromDwelling: 'cards.formula.caveat.routeFromDwelling',
@@ -81,6 +83,7 @@ export const CAVEAT_KEYS = {
   daylightRoomsOnly: 'cards.formula.caveat.daylightRoomsOnly',
   daylightAngle: 'cards.formula.caveat.daylightAngle',
   daylightOtherLaw: 'cards.formula.caveat.daylightOtherLaw',
+  daylightWinterGarden: 'cards.formula.caveat.daylightWinterGarden',
 } as const satisfies Record<CaveatKey, string>
 
 export const COMPONENT_KEYS = {
@@ -92,6 +95,7 @@ export const COMPONENT_KEYS = {
 export const MEASURE_KEYS = {
   new_build: 'cards.formula.measure.new_build',
   renovation: 'cards.formula.measure.renovation',
+  major_renovation: 'cards.formula.measure.major_renovation',
 } as const satisfies Record<Measure, string>
 
 export const STAIR_TYPE_KEYS = {

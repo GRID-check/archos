@@ -212,6 +212,8 @@ describe('FormulaCard', () => {
     expect(screen.getByText('Außenwand gegen Außenluft · Renovierung')).toBeInTheDocument()
     expect(checks().getByText('≤ 0,266 W/(m²K)')).toBeInTheDocument()
     expect(checks().getByText(/Pkt\. 4\.5 b\) mit Pkt\. 4\.4\.1, Zeile 1/)).toBeInTheDocument()
+    // The row says it is the bound WITHOUT a Sanierungskonzept.
+    expect(checks().getByText('U-Wert, ohne Sanierungskonzept')).toBeInTheDocument()
     expect(checks().getByText('nicht erfüllt')).toBeInTheDocument()
     expect(screen.getByText(/ohne Sanierungskonzept \(Pkt\. 4\.5 b\)/)).toBeInTheDocument()
     await enter(user, screen.getByRole('spinbutton', { name: 'EPS-F, Dicke d' }), '14')
@@ -224,11 +226,25 @@ describe('FormulaCard', () => {
     expect(checks().getByText('Angabe fehlt')).toBeInTheDocument()
   })
 
+  it('computes a größere Renovierung’s U-value without judging it against a table it is not held to', () => {
+    mount(fixtureCard('u-value-major-renovation'))
+    expect(screen.getByText('Außenwand gegen Außenluft · Größere Renovierung')).toBeInTheDocument()
+    expect(checks().getByText(/Energiekennzahlen gemessen \(Pkt\. 4\.3\)/)).toBeInTheDocument()
+    expect(within(screen.getByRole('region', { name: 'Rechenweg' })).getByText('0,270')).toBeInTheDocument()
+  })
+
+  it('cites ÖNORM EN ISO 6946 by its edition, with no unverified clause', () => {
+    mount(fixtureCard('u-value-external-wall'))
+    expect(screen.getByText('EN ISO 6946:2017')).toBeInTheDocument()
+    expect(screen.queryByText(/Abschnitt 6\.8/)).toBeNull()
+  })
+
   it('writes a percentage line with its × 100, and the daylight card’s scope and light angle', () => {
     mount(fixtureCard('daylight-above-12-percent'))
     expect(within(screen.getByRole('region', { name: 'Rechenweg' })).getByText('× 100')).toBeInTheDocument()
     expect(screen.getByText(/Gilt für Aufenthaltsräume \(Pkt\. 9\.1\.1\)/)).toBeInTheDocument()
     expect(screen.getByText(/seitlich höchstens 30° verschwenkt/)).toBeInTheDocument()
+    expect(screen.getByText(/Wintergarten oder eine verglaste Loggia vorgelagert/)).toBeInTheDocument()
   })
 
   it('says on an escape route that only OIB-RL 2 is modelled', () => {

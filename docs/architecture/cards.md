@@ -80,7 +80,7 @@ answer it has just written.
 |---|---|---|
 | `project_profile_patch` **(interactive)** | A proposed change to the project brief. With `proposal_id` it is the receipt of a stored `project_profile` proposal (`ProposalReceipt`): the server applies the patch in the deciding person's session and the card says who decided when. Without one, the browser applies it, as before | `title`, `rationale`, `patch[]` — JSON-Patch ops restricted to `/facts`, `/goals`, `/unknowns`, `/assumptions` (the before/after rows are built from the patch and the live profile, never from the model) |
 | `calculation` | The derivation behind a computed number — the Schrittmaßregel, a GFZ, a Brandlast, a U-value from its resistances. **There is no result field**: the model supplies operands, an operation from a closed set (`sum`, `product`, `quotient`, `percent_of`, `percent_ratio`) and the limit; the renderer computes, propagates the ± band, rounds and judges | `title`, `steps[]` (`label`, `operation`, `operands[]`, `unit`), `limit`, `reference`, `note` |
-| `formula` | A named rule the reader can ask "what if" of (ADR-0143): `u_value` (ÖNORM EN ISO 6946, held against OIB-RL 6 Pkt. 4.4.1), `stair_step_rule` (OIB-RL 4 Pkt. 3.2.1 and Tabelle 3), `escape_route_length` (OIB-RL 2 Pkt. 5.1.1, 5.1.2), `daylight_ratio` (OIB-RL 3 Pkt. 9.1.1 to 9.1.4). **No result, no unit and no limit on the wire**: the model names the case and fills each input with its source's value and where it is written; the renderer compiles the rule to `calculation` steps, takes the bound from its own table for that case, recomputes when the reader changes an input and marks a changed value „Ihre Annahme" | `title` (the component, no figure), `formula` (`name`, its case: `stair_type`, `component` and `measure`, or `start`, and its inputs: `value`, `editable`, `min`, `max`, `step`, `provenance`, `source`, `reference`), `note` (no figure) |
+| `formula` | A named rule the reader can ask "what if" of (ADR-0143): `u_value` (ÖNORM EN ISO 6946, held against OIB-RL 6 Pkt. 4.4.1), `stair_step_rule` (OIB-RL 4 Pkt. 3.2.1 and Tabelle 3), `escape_route_length` (OIB-RL 2 Pkt. 5.1.1, 5.1.2), `daylight_ratio` (OIB-RL 3 Pkt. 9.1.1 to 9.1.4). **No result, no unit and no limit on the wire**: the model names the case and fills each input with its source's value and where it is written; the renderer compiles the rule to `calculation` steps, takes the bound from its own table for that case, recomputes when the reader changes an input and marks a changed value „Ihre Annahme" | `title` (the component, no figure), `formula` (`name`, its case: `stair_type`, `component` and `measure` (`new_build`, `renovation`, `major_renovation`), or `start`, and its inputs: `value`, `editable`, `min`, `max`, `step`, `provenance`, `source`, `reference`), `note` (no figure) |
 | `surface` | Variants the reader picks one of, or cards that read together in one slot (ADR-0065). An A2UI v0.9 component list: a `Row`, `Column` or `Tabs` root whose leaves are content cards or `Text`; see [Every card is drawn through A2UI](#every-card-is-drawn-through-a2ui) | `title`, `components[]` |
 
 **Schematic cards** — eight programmatically-drawn technical diagrams (SVG kit
@@ -170,8 +170,9 @@ refuses a `value` outside its own `min`/`max` and a `min` at or above `max`, the
 TS schema accepts both. The renderer reconciles them (`inputSlots` drops the
 bound the source's value breaks), so a card that reaches the browser either way
 shows the source's value, never as an error. The title, a layer's or a leg's
-label carries no number but an identifier, and the note and an input's
-`source` carry no measurement, comparison or verdict word; pydantic refuses
+label, the note and an input's `source` are guarded fail-closed: a digit
+only inside an allow-listed citation or identifier, no material with a number,
+no verdict word or sign (`_figure_in` in `cards/models.py`); pydantic refuses
 them, the TS schema does not check.
 
 A changed input is written to the card's A2UI surface data model at

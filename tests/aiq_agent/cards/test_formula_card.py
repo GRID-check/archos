@@ -283,7 +283,7 @@ class TestTheMeasureOfAUValue:
             assert grid_card_adapter.validate_python(card).model_dump()["formula"]["measure"] == measure
         del card["formula"]["measure"]
         assert grid_card_adapter.validate_python(card).model_dump()["formula"]["measure"] is None
-        card["formula"]["measure"] = "major_renovation"
+        card["formula"]["measure"] = "partial_renovation"
         with pytest.raises(ValidationError):
             grid_card_adapter.validate_python(card)
 
@@ -293,7 +293,7 @@ class TestTheMeasureOfAUValue:
             for case in FIXTURE["cases"]
             if "card" in case and case["card"]["formula"]["name"] == "u_value"
         }
-        assert measures == {"new_build", "renovation", None}
+        assert measures == {"new_build", "renovation", "major_renovation", None}
 
 
 class TestAStatedResultInsideASurface:
@@ -307,3 +307,110 @@ class TestAStatedResultInsideASurface:
             ],
         }
         assert stated_result_fields(surface) == 2
+
+
+class TestTheGuardIsFailClosed:
+    """Every string the third review found accepted is a refusal case here; a digit needs an allow-list entry."""
+
+    NOTES = [
+        "U-Wert 0,17",
+        "Schrittmaß 63",
+        "U ≈ 0,17",
+        "U ~ 0,17",
+        "U ⩽ 0,35",
+        "U unter 0,35",
+        "U kleiner als 0,35",
+        "62 ± 3",
+        "20 Zentimeter",
+        "1,5 Meter Auskragung",
+        "12 Prozent",
+        "erfuellt",
+        "passt",
+        "ok",
+        "Ergebnis knapp unter dem Grenzwert",
+    ]
+    TITLES = [
+        "EPS 200",
+        "XPS 30",
+        "EPS 0",
+        "UG 18",
+        "BA 1600",
+        "Achse 12.5",
+        "Nr. 40",
+        "Stiege A – passt",
+        "Stiege A genügt",
+        "Stiege A in Ordnung",
+        "Stiege A ✓",
+        "Haus A, OK",
+        "nicht erfuellt",
+        "U-Wert deutlich unter Grenzwert",
+    ]
+    SOURCES = ["Schnitt A-A (17)", "Plan 17 Zentimeter"]
+
+    @pytest.mark.parametrize("note", NOTES)
+    def test_a_note(self, note):
+        with pytest.raises(ValidationError, match="carries"):
+            grid_card_adapter.validate_python(_stair(note=note))
+
+    @pytest.mark.parametrize("title", TITLES)
+    def test_a_title(self, title):
+        with pytest.raises(ValidationError, match="carries"):
+            grid_card_adapter.validate_python(_stair(title=title))
+
+    @pytest.mark.parametrize("label", ["EPS 200", "Dämmung passt", "Mineralwolle 16"])
+    def test_a_layer_label(self, label):
+        wall = json.loads(json.dumps(CARD_EXAMPLES["formula"]))
+        wall["formula"]["layers"][1]["label"] = label
+        with pytest.raises(ValidationError, match="carries"):
+            grid_card_adapter.validate_python(wall)
+
+    @pytest.mark.parametrize("source", SOURCES)
+    def test_a_source(self, source):
+        card = _stair()
+        card["formula"]["going"]["source"] = source
+        with pytest.raises(ValidationError, match="carries"):
+            grid_card_adapter.validate_python(card)
+
+    @pytest.mark.parametrize(
+        "text",
+        [
+            "Gilt sinngemäß auch für Außentreppen, Pkt. 3.2.7.",
+            "Siehe OIB-Richtlinie 4, Tabelle 3, Zeile 2.",
+            "Rechenweg nach ÖNORM B 8110-7.",
+            "gemessen ab OK FFB",
+        ],
+    )
+    def test_a_citation_and_a_floor_edge_still_pass_in_a_note(self, text):
+        grid_card_adapter.validate_python(_stair(note=text))
+
+    @pytest.mark.parametrize("source", ["Plan 04-123, Index B", "Grundriss 2. OG", "Raumbuch Top 3"])
+    def test_a_plan_number_still_passes_in_a_source(self, source):
+        card = _stair()
+        card["formula"]["going"]["source"] = source
+        grid_card_adapter.validate_python(card)
+
+    @pytest.mark.parametrize("title", ["U-Wert Außenwand AW 20", "Wohnzimmer Top 63", "Fluchtweg Büro 2.14"])
+    def test_an_identifier_passes_whatever_its_number(self, title):
+        # The judgement, documented at `_IDENTIFIER`: a component code („AW 20"), a
+        # numbered dwelling („Top 63") and a room number are names, and no rule on
+        # the text alone can tell one from a figure written as one. They pass.
+        grid_card_adapter.validate_python(_stair(title=title))
+
+    def test_every_fixture_card_and_example_survives_the_guard(self):
+        for case in FIXTURE["cases"]:
+            if "card" in case:
+                grid_card_adapter.validate_python(case["card"])
+        grid_card_adapter.validate_python(CARD_EXAMPLES["formula"])
+
+
+class TestAMajorRenovation:
+    def test_is_a_measure_of_its_own(self):
+        card = json.loads(json.dumps(CARD_EXAMPLES["formula"]))
+        card["formula"]["measure"] = "major_renovation"
+        assert grid_card_adapter.validate_python(card).model_dump()["formula"]["measure"] == "major_renovation"
+
+    def test_the_schema_tells_the_model_it_is_not_judged_by_the_table(self):
+        from aiq_agent.cards.models import UValueFormula
+
+        description = UValueFormula.model_fields["measure"].description or ""
+        assert "major_renovation" in description and "Pkt. 4.3" in description
