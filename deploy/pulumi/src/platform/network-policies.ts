@@ -4,6 +4,7 @@ import { GridConfig, backendAutoscaled } from "../config";
 import { CHROMA_MIGRATION, EDGE_RATE_LIMIT, GEOCODER, GOTENBERG, LANGFUSE, PORT, QDRANT } from "../constants";
 import { KEDA_NAMESPACE, KEDA_OPERATOR_LABEL } from "./keda";
 import { CLUSTER_NAME as POSTGRES_CLUSTER } from "../data/postgres";
+import { API_TIERS, CHAT_TIERS, LEGACY_CHAT_TIER } from "../app/tier-names";
 
 /**
  * `app.kubernetes.io/name` of the two Langfuse workloads and their ClickHouse
@@ -21,7 +22,7 @@ const OTEL_AGENT_POD = { podSelector: { matchLabels: { "app.kubernetes.io/name":
  * The backend roles that carry the Langfuse API keys (`backendEnv`, less the
  * ingest worker) and so are named callers of the web tier in rule 11d.
  */
-export const LANGFUSE_BACKEND_CALLERS = ["aiq-agent", "aiq-api", "agent-worker"] as const;
+export const LANGFUSE_BACKEND_CALLERS = [...CHAT_TIERS, ...API_TIERS, "agent-worker"] as const;
 
 /**
  * The pods that get `AIQ_QDRANT_URL` (every role built from `backendEnv`), the
@@ -32,8 +33,8 @@ export const LANGFUSE_BACKEND_CALLERS = ["aiq-agent", "aiq-api", "agent-worker"]
  * times out on every call while its plan is green.
  */
 export const QDRANT_CALLERS = [
-  "aiq-agent",
-  "aiq-api",
+  ...CHAT_TIERS,
+  ...API_TIERS,
   "agent-worker",
   "ingest-worker",
   QDRANT.snapshotJob,
@@ -292,8 +293,8 @@ export function installNetworkPolicies(
   //      answer pipeline's checks as scores on each turn's trace (ADR-0089,
   //      `aiq_agent/observability/langfuse_scores.py`) through `LANGFUSE_HOST`,
   //      the in-cluster Service, for the reason rule 11c gives. The three roles
-  //      that run answers or serve them: chat (`aiq-agent`), api (`aiq-api`)
-  //      and the research worker (`agent-worker`). The ingest worker is not
+  //      that run answers or serve them: chat and api (each under both names
+  //      while they run side by side, `tier-names.ts`) and the research worker (`agent-worker`). The ingest worker is not
   //      named and does not get the keys (`ingestWorkerEnv`): it writes none.
   const backendToLangfuse = cfg.langfuse.enabled
     ? mk("allow-backend-to-langfuse", {
@@ -394,8 +395,8 @@ export function installNetworkPolicies(
   //     pods only, and only when that tier autoscales. (Its cpu trigger reads
   //     `metrics.k8s.io`, which is no connection into `grid`.)
   const kedaToBackend = backendAutoscaled(cfg)
-    ? mk("allow-keda-to-aiq-agent", {
-        podSelector: { matchLabels: { "app.kubernetes.io/name": "aiq-agent" } },
+    ? mk(`allow-keda-to-${LEGACY_CHAT_TIER}`, {
+        podSelector: { matchLabels: { "app.kubernetes.io/name": LEGACY_CHAT_TIER } },
         policyTypes: ["Ingress"],
         ingress: [{ from: kedaOperator, ports: [{ protocol: "TCP", port: PORT.backend }] }],
       })

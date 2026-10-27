@@ -5,6 +5,7 @@ import { commonLabels } from "../platform/namespaces";
 import { AppWiring, SECRET_NAME } from "./config";
 import { SCALER_POLLING_SECONDS, installTriggerAuth } from "./keda-scaling";
 import { PORT } from "../constants";
+import { CHAT_TIER } from "./tier-names";
 
 /** The route that reports the fleet's running chat turns (`aiq_api/routes/chat_occupancy.py`). */
 export const OCCUPANCY_PATH = "/v1/internal/chat-occupancy";
@@ -17,17 +18,17 @@ export const OCCUPANCY_TOKEN_HEADER = "x-grid-internal-token";
 
 /**
  * The URL KEDA polls. The operator runs in its own namespace, so the Service name
- * is fully qualified: a bare `aiq-agent` resolves there to nothing and the
- * scaler errors on every poll. Through the load-balanced Service, so any ready
+ * is fully qualified: a bare `chat` resolves there to nothing and the scaler
+ * errors on every poll. Through the tier's load-balanced Service, so any ready
  * replica answers (the count is Dragonfly's, not the replica's).
  */
-export function occupancyUrl(namespace: pulumi.Input<string>): pulumi.Output<string> {
-  return pulumi.interpolate`http://aiq-agent.${namespace}.svc.cluster.local:${PORT.backend}${OCCUPANCY_PATH}`;
+export function occupancyUrl(namespace: pulumi.Input<string>, tier: string = CHAT_TIER): pulumi.Output<string> {
+  return pulumi.interpolate`http://${tier}.${namespace}.svc.cluster.local:${PORT.backend}${OCCUPANCY_PATH}`;
 }
 
 /**
- * The scale-out of the chat tier: a KEDA ScaledObject on the aiq-agent
- * StatefulSet (ADR-0080).
+ * The scale-out of the chat tier: a KEDA ScaledObject on its StatefulSet, under
+ * the tier's `name` (ADR-0080).
  *
  * SCALED ON TURNS IN FLIGHT, beside CPU. A chat turn mostly waits on a model, so
  * CPU alone says little about how close the tier is to its admission cap
@@ -56,13 +57,14 @@ export function installBackendScaling(
   cfg: GridConfig,
   statefulSet: k8s.apps.v1.StatefulSet,
   dependsOn: pulumi.Resource[],
+  name: string = CHAT_TIER,
 ): { scaledObject: k8s.apiextensions.CustomResource; auth: k8s.apiextensions.CustomResource } {
-  const labels = commonLabels("aiq-agent");
+  const labels = commonLabels(name);
 
   // The route is internal-token only. The operator reads the token from the
   // same Secret the pods get it from, so a rotation reaches both.
   const auth = installTriggerAuth(w, {
-    name: "aiq-agent-occupancy-auth",
+    name: `${name}-occupancy-auth`,
     parameter: "apiKey",
     secretName: SECRET_NAME,
     key: "GRID_INTERNAL_API_TOKEN",
@@ -71,11 +73,11 @@ export function installBackendScaling(
   });
 
   const scaledObject = new k8s.apiextensions.CustomResource(
-    "aiq-agent",
+    name,
     {
       apiVersion: "keda.sh/v1alpha1",
       kind: "ScaledObject",
-      metadata: { name: "aiq-agent", namespace: w.namespace, labels },
+      metadata: { name, namespace: w.namespace, labels },
       spec: {
         scaleTargetRef: { apiVersion: "apps/v1", kind: "StatefulSet", name: statefulSet.metadata.name },
         minReplicaCount: cfg.backend.replicas,
@@ -98,7 +100,7 @@ export function installBackendScaling(
             // AverageValue: the count divided by the replicas it is spread over.
             metricType: "AverageValue",
             metadata: {
-              url: occupancyUrl(w.namespace),
+              url: occupancyUrl(w.namespace, name),
               valueLocation: OCCUPANCY_FIELD,
               targetValue: String(cfg.backend.turnsPerReplica),
               authMode: "apiKey",
