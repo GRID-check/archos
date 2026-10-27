@@ -45,7 +45,6 @@ PRODUCT_PATTERNS = [
     re.compile(r"^sources/[^/]+/src/"),
     re.compile(r"^frontends/aiq_api/src/"),
     re.compile(r"^frontends/ui/src/"),
-    re.compile(r"^frontends/cli/src/"),
 ]
 
 # ...except for the parts of them that only a developer ever sees.

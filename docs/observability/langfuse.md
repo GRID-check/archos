@@ -149,6 +149,21 @@ masked like the question. A write the model chose before the note arrived and
 the turn held back is the technical step `status:steered:<round>` beside
 `repeat`, `refused` and `width`.
 
+The seconds before the first model call are one `CHAIN` observation per phase,
+with its real start and latency (`observability/turn_phases.observed_phase`;
+the profiler's span names, so a phase is called the same in both places):
+`setup.restricted_use`, the setup gather's `setup.project_context`,
+`setup.available_documents`, `setup.ingest_status`, `setup.session_registry`,
+`setup.subject_document` and `setup.shown_restricted_notes`, then
+`setup.answer_streaming`, `admission.wait` and `setup.checkpoint_digest`
+before the LangGraph run; inside it `history.trim` in the graph's first node,
+and in Piloti's own function `setup.skills`, `setup.file_tools` and
+`setup.llm_provider` beside `decide.turn`. Input is a few counts, output
+`outcome` (`ok`, `error`, `cancelled`), `ms` and counts; never turn content.
+A `decide.<slot>` generation also spans its call now (its `latency_ms`), where
+it used to read 1 ms. "Where did the first turn's seconds go" is a read of
+these rows: `docs/architecture/turn-latency-measured-2026-09.md` §3.6.
+
 ### A tool call on the agent door
 
 Each MCP tool call at `/api/mcp` (ADR-0122), from an external agent or from

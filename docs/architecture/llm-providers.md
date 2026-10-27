@@ -102,17 +102,15 @@ bounded by per-org/member/project budgets — see
   sending unauthenticated requests.
 - The legacy Kimi config (`config_grid_oib.yml`) is **unmaintained/broken** — do
   not use it as a starting point; base new configs on the OpenRouter reference.
-- No call site sets provider prompt-caching hints on static prompt prefixes
-  (orchestrator/planner/researcher/writer system prompts, tool registry,
-  source registry) — every LLM call resends them in full. See
-  [`scaling-review-2026-07.md`](scaling-review-2026-07.md) §6.1 for the cost
-  impact. On the deep-research graph specifically, provider caching used to
-  be further undercut by `ToolResultPruningMiddleware` shifting message
-  bytes on nearly every model call; that truncation is now monotonic
-  (2026-07-16, `0b5d29d`), removing that specific defeat — see
-  `src/aiq_agent/agents/deep_researcher/README.md` "Known limitations" — but
-  no provider caching hints are actually set yet, so this remains an open
-  cost lever regardless.
+- **Prompt caching** is set per call in `common/prompt_caching.py`, through
+  `llm_factory.prepare_request`, on every OpenRouter call of an agent: a
+  `session_id` + `prompt_cache_key` so a turn's calls land on the endpoint that
+  holds the cache, and for `anthropic/*` models a top-level `cache_control`,
+  because Claude caches nothing unless asked. Until 2026-10-27 that field was
+  missing and 60 M Claude prompt tokens in 30 days were all billed at full
+  price; the OpenAI models, which cache on their own, were at 51 %. Read the
+  share per model from `llm_usage_hourly` (`cached_tokens / prompt_tokens`);
+  the „Costs and budgets (prod)" alert fires when Claude's drops to near zero.
 - **LLM request timeouts — fixed 2026-07-16 (`590ba1a`).** Every `llms.*`
   block in `configs/config_oib_openrouter.yml` now sets `request_timeout`
   (60–180 s depending on role) and `max_retries: 2`, so an unresponsive
