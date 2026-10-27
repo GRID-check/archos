@@ -510,7 +510,7 @@ export function InboundMailWorkspace({
             }}
             loadingMore={loadingMore}
             everReceived={everReceived}
-            addressBlock={address ? <InboundMailAddressBlock address={address} projectName={projectName} showRules={false} /> : null}
+            addressBlock={address ? <InboundMailAddressBlock address={address} projectName={projectName} surface="never_used" showUses={false} /> : null}
             selectionBar={selectionBar}
             notice={notice}
           />

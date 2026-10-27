@@ -27,7 +27,7 @@ export const inboundMail: typeof en.inboundMail = {
   empty: {
     neverTitle: 'Noch keine E-Mails an dieses Projekt',
     neverText:
-      'Leiten Sie E-Mails mit Unterlagen an die E-Mail-Adresse des Projekts weiter. Sie warten hier, bis jemand sie ablegt. Ins Projekt kommt nur, was eine Person bestätigt.',
+      'Setzen Sie die Adresse unten in Cc, wenn Sie an Behörde, Statik oder Bauherrschaft schreiben. Die Antworten landen hier, und abgelegt wird erst, was jemand bestätigt.',
     doneTitle: 'Nichts wartet auf Ablage',
     doneText: 'Neue E-Mails an die E-Mail-Adresse des Projekts erscheinen hier.',
     showHandled: 'Bearbeitete anzeigen',
@@ -409,19 +409,21 @@ export const inboundMail: typeof en.inboundMail = {
   },
 
   address: {
-    dialogTitle: 'Per E-Mail senden',
-    dialogDescription:
-      'Leiten Sie E-Mails mit Unterlagen an die E-Mail-Adresse des Projekts weiter. Sie warten im E-Mail-Eingang, bis jemand sie ablegt.',
+    dialogTitle: 'E-Mail-Adresse des Projekts',
+    dialogDescription: 'So landet die Korrespondenz im Projekt, ohne dass jemand sie von Hand abspeichert.',
     label: 'E-Mail-Adresse des Projekts',
     copy: 'Kopieren',
     saveContact: 'Als Kontakt sichern',
     contactName: 'Piloti · {project}',
     contactNote: 'E-Mails an diese Adresse warten in Piloti, bis jemand sie ablegt.',
-    rules: {
-      held: 'Abgelegt wird erst, wenn eine Person es bestätigt.',
-      trust: 'Jede E-Mail zeigt, ob die Domain des Absenders bestätigt ist.',
-      scanned: 'Anhänge werden auf Schadsoftware geprüft, bevor jemand sie ablegen kann.',
+    usesLabel: 'Wofür die Adresse da ist',
+    uses: {
+      cc: 'Setzen Sie sie in Cc, wenn Sie an Behörde, Statik oder Bauherrschaft schreiben: die Antworten landen im E-Mail-Eingang.',
+      forward: 'Leiten Sie Unterlagen aus Ihrem Mailprogramm an sie weiter.',
+      held: 'Abgelegt wird erst, was jemand bestätigt.',
     },
+    tileLead: 'In Cc gesetzt, bringt sie die Antworten von Behörde, Statik und Bauherrschaft in den E-Mail-Eingang, bereit zum Ablegen.',
+    openInbox: 'Zum E-Mail-Eingang',
     guide: 'Anleitung',
     helpUrl: 'https://piloti.at/e-mail-eingang/',
     none: 'Dieses Projekt hat noch keine E-Mail-Adresse.',

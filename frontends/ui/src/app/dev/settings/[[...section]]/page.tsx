@@ -42,6 +42,9 @@ import { SIMILAR_PAGE } from '../../_fixtures/similar-projects'
 import { SimilarProjects } from '@/features/references/components/similar-projects'
 import { SimilarProjectsTile } from '@/features/projects/components/overview/similar-projects-tile'
 import { answerProjectRecord, useDevProjectRecord } from '../../_fixtures/project-record'
+import { ADDRESS_VARIANTS, fixtureAddressClient } from '../../inbound-mail/fixtures'
+
+const ADDRESS_CLIENT = fixtureAddressClient(ADDRESS_VARIANTS.manager)
 
 const PROJECT_ID = FIXTURE_PROJECT_ID
 
@@ -289,6 +292,8 @@ export default function SettingsDevPage({
                 manageMembers: admin,
               }}
               projectRecord={{ ...projectRecord, canEdit: admin, canErase: admin }}
+              // The project's mail address, as a reader who may decide its mail sees it (here: whoever administers).
+              inboundMail={admin ? { projectName: 'Wohnbau Mariahilf', client: ADDRESS_CLIENT } : undefined}
               similar={
                 <SimilarProjectsTile
                   page={SIMILAR_PAGE}

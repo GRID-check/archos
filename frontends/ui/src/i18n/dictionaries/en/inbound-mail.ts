@@ -24,7 +24,7 @@ export const inboundMail = {
   empty: {
     neverTitle: 'No mail to this project yet',
     neverText:
-      'Forward mail with documents to the project mail address. It waits here until someone files it. Nothing lands in the project unless a person confirms it.',
+      'Put the address below in Cc when you write to the authority, the structural engineer or the client. The replies land here, and nothing is filed until someone confirms it.',
     doneTitle: 'Nothing waits to be filed',
     doneText: 'New mail to the project mail address appears here.',
     showHandled: 'Show handled mail',
@@ -396,19 +396,21 @@ export const inboundMail = {
   },
 
   address: {
-    dialogTitle: 'Send by mail',
-    dialogDescription:
-      'Forward mail with documents to the project mail address. It waits in Project mail until someone files it.',
+    dialogTitle: 'Project mail address',
+    dialogDescription: 'So correspondence lands in the project without anyone saving it by hand.',
     label: 'Project mail address',
     copy: 'Copy',
     saveContact: 'Save as contact',
     contactName: 'Piloti · {project}',
     contactNote: 'Mail to this address waits in Piloti until someone files it.',
-    rules: {
-      held: 'Nothing is filed until a person confirms it.',
-      trust: 'Every mail shows whether the sender’s domain is verified.',
-      scanned: 'Attachments are checked for malware before anyone can file them.',
+    usesLabel: 'What the address is for',
+    uses: {
+      cc: 'Put it in Cc when you write to the authority, the structural engineer or the client: the replies land in project mail.',
+      forward: 'Forward documents to it from your mail program.',
+      held: 'Nothing is filed until someone confirms it.',
     },
+    tileLead: 'Put in Cc, it brings the replies of the authority, the structural engineer and the client into project mail, ready to file.',
+    openInbox: 'Open project mail',
     guide: 'Guide',
     helpUrl: 'https://piloti.at/en/project-mail/',
     none: 'This project has no mail address yet.',

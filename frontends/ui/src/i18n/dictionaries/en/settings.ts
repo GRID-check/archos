@@ -128,7 +128,7 @@ export const settings = {
       knowledgeLink: 'Open knowledge base',
       inboundMailTitle: 'Project mail address',
       inboundMailDescription:
-        'Forward mail with documents to this address. It waits in Project mail under Files until someone files it; Piloti suggests a folder, a name and a document type for each attachment. Nothing is filed unless a person confirms it.',
+        'Put it in Cc when you write to the authority, the structural engineer or the client, or forward documents to it. The mail waits in Project mail under Files; Piloti suggests a folder, a name and a document type for each attachment. Nothing is filed unless a person confirms it.',
     },
   },
 }

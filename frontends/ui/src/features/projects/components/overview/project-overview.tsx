@@ -34,6 +34,8 @@ import {
   Trash2,
 } from 'lucide-react'
 import { ActionMenu } from '@/components/ui/action-menu'
+import { InboundMailAddressTile } from '@/features/inbound-mail/components/inbound-mail-address'
+import type { InboundMailAddressClient } from '@/features/inbound-mail/lib/client'
 import { BentoCell, BentoGrid, BentoTile, type BentoSpan } from '@/components/ui/bento'
 import { Button } from '@/components/ui/button'
 import { ProjectStatusMark } from '@/components/projects/project-status'
@@ -92,6 +94,11 @@ export interface ProjectOverviewProps {
   /** What the open setup still asks for; given, the setup counts as open and its entry says what waits. */
   setupProgress?: OverviewSetupProgress
   access: ProjectOverviewAccess
+  /**
+   * The project's mail address tile (ADR-0134), for a reader who may decide the
+   * project's held mail; it draws itself once an address is active. Absent: no tile.
+   */
+  inboundMail?: { projectName: string; client?: InboundMailAddressClient }
 }
 
 export function ProjectOverview({
@@ -103,6 +110,7 @@ export function ProjectOverview({
   setupOpen = false,
   setupProgress,
   access,
+  inboundMail,
 }: ProjectOverviewProps): JSX.Element {
   const id = data.id
   // Documents and Memory stack beside the hero, so every reader's first two
@@ -131,6 +139,8 @@ export function ProjectOverview({
           href={settingsSectionHref(id, 'documents')}
         />
         <MemoryTile projectId={id} href={settingsSectionHref(id, 'memory')} />
+        {/* Where people look at the project, so the address is handed out where the work starts (WOW §3.5). A row of its own. */}
+        {inboundMail && <InboundMailAddressTile projectId={id} projectName={inboundMail.projectName} client={inboundMail.client} />}
         {usage && (
           <UsageTile usage={usage} href={settingsSectionHref(id, 'usage')} span={usageSpan} />
         )}
