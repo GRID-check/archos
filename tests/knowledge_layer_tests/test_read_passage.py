@@ -21,21 +21,21 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
+from knowledge_layer.read_passage import _MAX_PASSAGE_CHUNKS
+from knowledge_layer.read_passage import _READ_PASSAGE_DESCRIPTION
+from knowledge_layer.read_passage import ReadPassageConfig
+from knowledge_layer.read_passage import _clause_sort_key
+from knowledge_layer.read_passage import _document_names
+from knowledge_layer.read_passage import _matches
+from knowledge_layer.read_passage import _passage_filters
+from knowledge_layer.read_passage import read_passage
+from knowledge_layer.register import KnowledgeRetrievalConfig
 
 from aiq_agent.common.source_kinds import Shelf
 from aiq_agent.knowledge.schema import Chunk
 from aiq_agent.knowledge.schema import ContentType
 from aiq_agent.knowledge.schema import RetrievalResult
 from aiq_agent.knowledge.scoping import ScopedCollection
-from sources.knowledge_layer.src.read_passage import _MAX_PASSAGE_CHUNKS
-from sources.knowledge_layer.src.read_passage import _READ_PASSAGE_DESCRIPTION
-from sources.knowledge_layer.src.read_passage import ReadPassageConfig
-from sources.knowledge_layer.src.read_passage import _clause_sort_key
-from sources.knowledge_layer.src.read_passage import _document_names
-from sources.knowledge_layer.src.read_passage import _matches
-from sources.knowledge_layer.src.read_passage import _passage_filters
-from sources.knowledge_layer.src.read_passage import read_passage
-from sources.knowledge_layer.src.register import KnowledgeRetrievalConfig
 
 OIB = "oib-rl_2_ausgabe_mai_2023.pdf"
 
@@ -350,7 +350,7 @@ class TestFormatParity:
     """The block is the search's block. Nothing downstream learns a second shape."""
 
     async def test_the_located_passage_renders_exactly_as_a_searched_one(self, store):
-        from sources.knowledge_layer.src.register import _format_results
+        from knowledge_layer.register import _format_results
 
         out = await _read(document=OIB, clause="3.5.2")
 

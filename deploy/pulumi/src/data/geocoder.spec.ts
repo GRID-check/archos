@@ -99,7 +99,7 @@ describe("geocoder", () => {
     };
     env = appConfig.frontendEnv({ ...wiring, geocoderUrl: g.url });
     envDisabled = appConfig.frontendEnv(wiring);
-    bffJobsEnv = appConfig.bffJobsEnv({ ...wiring, geocoderUrl: g.url });
+    bffJobsEnv = (await import("../app/bff-jobs-env")).bffJobsEnv({ ...wiring, geocoderUrl: g.url });
     await new Promise((done) => g.service.id.apply(done));
   });
 

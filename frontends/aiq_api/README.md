@@ -43,7 +43,7 @@ GRID_ROLE=api dotenv -f deploy/.env run nat serve --config configs/config_oib_op
 │                                                                 │
 │   frontends/aiq_api/src/aiq_api/                                │
 │   ├── jobs/                                                     │
-│   │   ├── runner.py           # run_agent_job (generic)         │
+│   │   ├── agent_job.py        # run_agent_job, in phases        │
 │   │   ├── submit.py           # submit_agent_job                │
 │   │   ├── callbacks.py        # SSE event generation            │
 │   │   ├── event_store.py      # Persistent event storage       │
@@ -199,11 +199,11 @@ is disabled by default and opt-in via the `REQUIRE_AUTH` environment variable.
 | Variable | Purpose | Default |
 |----------|---------|---------|
 | `REQUIRE_AUTH` | Enforce authentication on all non-exempt routes | `false` |
-| `AIQ_TRACE_USER_IDENTITY_MODE` | Control whether verified user identity is attached to NAT spans: `none`, `id`, or `full` | `none` |
-| `AIQ_TRACE_USER_IDENTITY_HMAC_SECRET` | Secret used to pseudonymize verified user IDs in traces when identity tagging is enabled | unset |
-| `AIQ_TRACE_CLIENT_ID_MODE` | Control whether a pseudonymous client identifier is attached to NAT spans: `none` or `ip` | `none` |
-| `AIQ_TRACE_CLIENT_ID_HMAC_SECRET` | Secret used to pseudonymize client IDs when client tagging is enabled; falls back to the user-identity secret | unset |
-| `AIQ_TRACE_CLIENT_IP_HEADERS` | Ordered comma-separated client IP headers to trust before falling back to the ASGI client address | `x-real-ip,x-forwarded-for` |
+| `GRID_TRACE_USER_IDENTITY_MODE` | Control whether verified user identity is attached to NAT spans: `none`, `id`, or `full` | `none` |
+| `GRID_TRACE_USER_IDENTITY_HMAC_SECRET` | Secret used to pseudonymize verified user IDs in traces when identity tagging is enabled | unset |
+| `GRID_TRACE_CLIENT_ID_MODE` | Control whether a pseudonymous client identifier is attached to NAT spans: `none` or `ip` | `none` |
+| `GRID_TRACE_CLIENT_ID_HMAC_SECRET` | Secret used to pseudonymize client IDs when client tagging is enabled; falls back to the user-identity secret | unset |
+| `GRID_TRACE_CLIENT_IP_HEADERS` | Ordered comma-separated client IP headers to trust before falling back to the ASGI client address | `x-real-ip,x-forwarded-for` |
 
 ### Enabling authentication
 
@@ -226,7 +226,7 @@ Always-on NAT span tags:
 - `nat.aiq.auth.verified`: whether the request resolved to a verified principal
 - `nat.aiq.access.channel`: inferred or explicitly supplied access channel
 
-Optional user identity tags are controlled by `AIQ_TRACE_USER_IDENTITY_MODE`:
+Optional user identity tags are controlled by `GRID_TRACE_USER_IDENTITY_MODE`:
 
 - `none`: disable user identity tagging entirely
 - `id`: tag only pseudonymous stable identifiers (`nat.enduser.id`, `nat.aiq.user.id`, `nat.aiq.auth.type`)
@@ -234,17 +234,17 @@ Optional user identity tags are controlled by `AIQ_TRACE_USER_IDENTITY_MODE`:
 
 Only verified principals are tagged. Anonymous, internal, and unverified JWT
 fallback callers are never attached to traces.
-Set `AIQ_TRACE_USER_IDENTITY_HMAC_SECRET` when using `id` or `full`; otherwise
+Set `GRID_TRACE_USER_IDENTITY_HMAC_SECRET` when using `id` or `full`; otherwise
 identity tagging is skipped.
 
-Optional client correlation is controlled by `AIQ_TRACE_CLIENT_ID_MODE`:
+Optional client correlation is controlled by `GRID_TRACE_CLIENT_ID_MODE`:
 
 - `none`: disable client correlation
 - `ip`: add `nat.aiq.client.id` as an HMAC-derived pseudonymous identifier from
   the client IP
 
-Set `AIQ_TRACE_CLIENT_ID_HMAC_SECRET` when using `ip`. If unset, the middleware
-falls back to `AIQ_TRACE_USER_IDENTITY_HMAC_SECRET`. `AIQ_TRACE_CLIENT_IP_HEADERS`
+Set `GRID_TRACE_CLIENT_ID_HMAC_SECRET` when using `ip`. If unset, the middleware
+falls back to `GRID_TRACE_USER_IDENTITY_HMAC_SECRET`. `GRID_TRACE_CLIENT_IP_HEADERS`
 controls which ingress headers are consulted first.
 
 #### 1. Programmatic (`register_validator`)

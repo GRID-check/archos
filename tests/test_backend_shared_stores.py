@@ -24,14 +24,14 @@ PULUMI_CONFIG = REPO / "deploy" / "pulumi" / "src" / "app" / "config.ts"
 ROLES = ("chat", "api", "worker", "ingest-worker")
 
 SHARED_STORE_VARS = (
-    "AIQ_QDRANT_URL",
+    "GRID_QDRANT_URL",
     "REDIS_URL",
-    "AIQ_CHECKPOINT_DB",
-    "AIQ_DEEP_CHECKPOINT_DB",
+    "GRID_CHECKPOINT_DB",
+    "GRID_DEEP_CHECKPOINT_DB",
     "NAT_JOB_STORE_DB_URL",
-    "AIQ_SUMMARY_DB",
+    "GRID_SUMMARY_DB",
 )
-DSN_VARS = ("AIQ_CHECKPOINT_DB", "AIQ_DEEP_CHECKPOINT_DB", "NAT_JOB_STORE_DB_URL", "AIQ_SUMMARY_DB")
+DSN_VARS = ("GRID_CHECKPOINT_DB", "GRID_DEEP_CHECKPOINT_DB", "NAT_JOB_STORE_DB_URL", "GRID_SUMMARY_DB")
 
 POSTGRES_URL = re.compile(r"postgres(?:ql)?(?:\+[a-z0-9_]+)?://")
 WRAPPED_DEFAULT = re.compile(r"\$\{[A-Za-z_][A-Za-z0-9_]*:-(.*)\}", re.DOTALL)
@@ -62,9 +62,10 @@ def _environment(services: dict, service: str) -> dict[str, str]:
 
 
 def _default(value: str) -> str:
-    """The default inside a Compose ``${VAR:-default}``, or the value itself."""
-    match = WRAPPED_DEFAULT.fullmatch(value)
-    return match.group(1) if match else value
+    """The innermost default of a Compose ``${VAR:-${OLD_VAR:-default}}``, or the value itself."""
+    while match := WRAPPED_DEFAULT.fullmatch(value):
+        value = match.group(1)
+    return value
 
 
 def _backend_services(name: str) -> list[tuple[str, str, dict[str, str]]]:

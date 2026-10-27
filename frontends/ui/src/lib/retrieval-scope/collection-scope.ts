@@ -1,4 +1,4 @@
-import type { GridSession } from './auth/types'
+import type { GridSession } from '@/lib/auth/types'
 
 /**
  * The shelf a retrieval collection sits on, carried explicitly on the wire

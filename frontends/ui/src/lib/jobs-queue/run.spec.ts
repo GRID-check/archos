@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { ConflictError } from '@/lib/api/errors'
 import { getTenantContext } from '@/lib/db/tenant-context'
 import type { BffJobRow } from '@/lib/db/schema'
+import { inJobSlice } from './slice-scope'
 import { emptyCounts, type ReindexProjectPayload } from './types'
 
 const findClaimedJob = vi.fn()
@@ -102,6 +103,20 @@ beforeEach(() => {
 })
 
 describe('runJobSlice', () => {
+  it('runs the handler marked as a job slice, so nothing it calls reads a request it has not got', async () => {
+    findClaimedJob.mockResolvedValue(row())
+    let marked: boolean | undefined
+    runReindexSlice.mockImplementation(async (_session, state) => {
+      marked = inJobSlice()
+      return { done: true, payload: state }
+    })
+
+    await runJobSlice('job-1', 'w-0')
+
+    expect(marked).toBe(true)
+    expect(inJobSlice()).toBe(false)
+  })
+
   it('reads the row only for the worker that holds it, and refuses any other with a 409', async () => {
     findClaimedJob.mockResolvedValue(null)
 

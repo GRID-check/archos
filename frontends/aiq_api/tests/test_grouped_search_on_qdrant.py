@@ -4,7 +4,7 @@
 checks that what the real stack hands the BFF has the shape those tests
 assume: documents interleaved across projects in one fused order, the
 searched collection on every hit, facts filtering and lifting inside the
-query. Without ``AIQ_QDRANT_TEST_URL`` it skips locally and fails on CI.
+query. Without ``GRID_QDRANT_TEST_URL`` it skips locally and fails on CI.
 """
 
 from __future__ import annotations
@@ -52,11 +52,11 @@ QUERY = _unit("Fluchttreppe")
 
 @pytest.fixture
 def stack(monkeypatch):
-    url = os.environ.get("AIQ_QDRANT_TEST_URL", "").strip()
+    url = os.environ.get("GRID_QDRANT_TEST_URL", "").strip()
     if not url:
         if os.environ.get("CI"):
-            pytest.fail("AIQ_QDRANT_TEST_URL is unset on CI: the Qdrant service container is missing")
-        pytest.skip("AIQ_QDRANT_TEST_URL not set")
+            pytest.fail("GRID_QDRANT_TEST_URL is unset on CI: the Qdrant service container is missing")
+        pytest.skip("GRID_QDRANT_TEST_URL not set")
     from knowledge_layer.llamaindex.adapter import LlamaIndexRetriever
     from knowledge_layer.qdrant import schema
     from knowledge_layer.qdrant import store as store_module
@@ -64,7 +64,7 @@ def stack(monkeypatch):
     suffix = uuid.uuid4().hex[:8]
     monkeypatch.setitem(schema.ALIASES, schema.Physical.CORPUS, f"route_corpus_{suffix}")
     monkeypatch.setitem(schema.ALIASES, schema.Physical.OFFICE, f"route_office_{suffix}")
-    monkeypatch.setenv("AIQ_QDRANT_URL", url)
+    monkeypatch.setenv("GRID_QDRANT_URL", url)
     monkeypatch.delenv("REQUIRE_AUTH", raising=False)
     monkeypatch.setattr(socket, "getaddrinfo", _GETADDRINFO)
     store_module.reset_store()

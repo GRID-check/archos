@@ -40,6 +40,7 @@ from aiq_api.jobs import access as job_access
 from aiq_api.jobs import queue
 from aiq_api.jobs import run_envelope
 from aiq_api.jobs import worker as worker_mod
+from aiq_api.jobs.agent_job import run_agent_job
 from aiq_api.jobs.event_store import EventStore
 from aiq_api.jobs.run_envelope import RUN_ENVELOPE_RENEW_AFTER_MS
 from aiq_api.jobs.run_envelope import capture_request_envelope
@@ -49,7 +50,6 @@ from aiq_api.jobs.run_envelope import refusal_reason
 from aiq_api.jobs.runner import WORKER_ENVELOPE_HEADERS
 from aiq_api.jobs.runner import _inject_worker_headers
 from aiq_api.jobs.runner import _run_user_info
-from aiq_api.jobs.runner import run_agent_job
 
 from .test_job_submit_data_sources import submit_app  # noqa: F401 - the public submit route, built once
 
@@ -221,7 +221,7 @@ def db_url(tmp_path, monkeypatch):
     monkeypatch.setenv("NAT_JOB_STORE_DB_URL", url)
     monkeypatch.setenv("GRID_WORKER_LIVENESS_FILE", str(tmp_path / "alive"))
     monkeypatch.setenv("GRID_JOB_PAYLOAD_KEK", base64.b64encode(os.urandom(32)).decode())
-    monkeypatch.delenv("AIQ_DEEP_CHECKPOINT_DB", raising=False)
+    monkeypatch.delenv("GRID_DEEP_CHECKPOINT_DB", raising=False)
     EventStore._tables_initialized.clear()
     job_access._job_access_schema_initialized.clear()
     queue.ensure_research_queue_table(url)

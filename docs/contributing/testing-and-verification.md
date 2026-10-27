@@ -90,9 +90,9 @@ Backend job.** `tests/aiq_agent/common/test_claim_queue.py`,
 SQLite, which ranks in Python, and on Postgres, which runs production's claim
 SQL. The folder card builder's suites (`tests/aiq_agent/knowledge/folder_cards/`:
 dirty queue, budget, manifests, worker) run on both too, through the
-`database_url` and `agent_db` fixtures in their `conftest.py`. Without `AIQ_TEST_POSTGRES_URL` the Postgres parameter skips, so the task
+`database_url` and `agent_db` fixtures in their `conftest.py`. Without `GRID_TEST_POSTGRES_URL` the Postgres parameter skips, so the task
 reuses `scripts/rls-test-db.sh --exec` for a throwaway cluster and names a
-scratch database in it. Each file carries an `AIQ_TEST_POSTGRES_REQUIRED` guard,
+scratch database in it. Each file carries an `GRID_TEST_POSTGRES_REQUIRED` guard,
 set in CI, that fails instead of skipping. A new suite with a Postgres parameter
 joins the task's list.
 
@@ -494,7 +494,7 @@ its passage; this asks what the reader waited for and what they got.
 - **No stack needed:** `--ingest --corpus data/oib` takes the base corpus
   from that directory's PDFs instead of the object store, so the suite runs
   on a machine with no BFF and no SeaweedFS. The table, the ingest queue and
-  the ingestion itself are the real ones (a SQLite `AIQ_SUMMARY_DB` holds
+  the ingestion itself are the real ones (a SQLite `GRID_SUMMARY_DB` holds
   them); only the bytes come from the directory. Unchanged files are not
   ingested again on the next run.
 
@@ -611,7 +611,7 @@ the case to `tests/fixtures/derivation/loop_eval_questions.yaml` with a
 
 It needs `OPENROUTER_API_KEY` (or `OPENROUTER_KEY`) and the corpus
 (uploaded with `scripts/upload_oib_corpus.py`, or `-- --corpus data/oib`)
-ingested into the Qdrant at `AIQ_QDRANT_URL` (`-- --ingest` queues the corpus's
+ingested into the Qdrant at `GRID_QDRANT_URL` (`-- --ingest` queues the corpus's
 ingest jobs and runs them in the suite's own process first; the 39 OIB PDFs took
 about ten minutes on 4 CPUs on 2026-10-13). Every run costs model calls: the core set
 at two runs is twelve turns, about four minutes three at a time, and a turn
@@ -628,7 +628,7 @@ September 2026 measurements it grew out of are in
 Measure a committed, clean tree, where the document inventory is. Each
 question starts a fresh process from the working tree, so editing code
 mid-run measures two codebases (the report marks the commit `-dirty`). And
-`AIQ_SUMMARY_DB` defaults to a relative `./summaries.db`, so a `git worktree`
+`GRID_SUMMARY_DB` defaults to a relative `./summaries.db`, so a `git worktree`
 reads an empty inventory and runs every turn ~7 s slower without family
 overviews; the suite refuses to start on an empty one.
 
@@ -749,8 +749,8 @@ Paste `compare.md` into the PR. How to read it (`scripts/turn_census/compare.py`
 
 The project has to exist where the tools read it. The suite seeds it itself
 (`scripts/turn_census/fixture_files.py`: each file cut by the ingest job's own
-chunkers, `adapter.text_chunks_for_pages`, into the Qdrant at `AIQ_QDRANT_URL`, the
-documents into the metadata store at `AIQ_SUMMARY_DB`, which must be a database URL).
+chunkers, `adapter.text_chunks_for_pages`, into the Qdrant at `GRID_QDRANT_URL`, the
+documents into the metadata store at `GRID_SUMMARY_DB`, which must be a database URL).
 The cut matters: a section chunk repeats its heading breadcrumb and overlaps its
 neighbour, and the `pf-count-*` rows ask for counts that are wrong when either is
 counted. Seeding is idempotent and embeds only what changed; a file cut another way

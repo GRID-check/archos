@@ -59,9 +59,9 @@ class TestCacheDir:
 
 class TestTable:
     def test_without_a_database_it_fails_loudly(self, monkeypatch):
-        monkeypatch.delenv("AIQ_SUMMARY_DB", raising=False)
+        monkeypatch.delenv("GRID_SUMMARY_DB", raising=False)
         monkeypatch.delenv("NAT_JOB_STORE_DB_URL", raising=False)
-        with pytest.raises(corpus_store.CorpusStoreError, match="AIQ_SUMMARY_DB"):
+        with pytest.raises(corpus_store.CorpusStoreError, match="GRID_SUMMARY_DB"):
             corpus_store.list_files()
 
     def test_the_table_is_created_on_first_use(self, bucket):

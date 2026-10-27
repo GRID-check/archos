@@ -14,7 +14,8 @@ loop of its own, and this calls its `/v1/maintenance/housekeeping/*` routes on
 the cadences Kubernetes runs as CronJobs. One of them is the base-corpus sync
 (`base-corpus`, every ten minutes), which queues an ingest job for each uploaded OIB PDF that is
 not indexed yet (the `ingest-worker` service claims and runs it); the backend does no sync at boot. `bff-jobs` (ADR-0079) is the frontend image
-running `workers/jobs/index.js`: the BFF plus the claim loop that runs the jobs
+running `workers/jobs/index.js`: the BFF (or, with `GRID_BFF_JOBS_MODE=inprocess`,
+the services bundled into `dist-jobs/slice.mjs` and no server) plus the claim loop that runs the jobs
 in `bff_job_queue` (project reindex, failed-ingestion rescan, IFC extraction,
 Office rendition through `gotenberg`, research-report filing), with no
 published port. Without it none of them runs. It shares the frontend's environment by YAML alias, so a
@@ -69,13 +70,13 @@ Every other HTTP route is [`aiq-api`](#aiq-api-the-api-role)'s.
 |----------|---------|
 | `APP_ENV` | `production` |
 | `NAT_JOB_STORE_DB_URL` | `postgresql+asyncpg://aiq:aiq_dev@pgbouncer:5432/aiq_jobs` (pooled) |
-| `AIQ_CHECKPOINT_DB` | `postgresql://aiq:aiq_dev@pgbouncer:5432/aiq_checkpoints` (pooled) |
-| `AIQ_SUMMARY_DB` | `postgresql+psycopg://aiq:aiq_dev@pgbouncer:5432/aiq_jobs` (pooled) |
-| `AIQ_LISTEN_DB_URL` | `postgresql://aiq:aiq_dev@postgres:5432/aiq_jobs` (direct: SSE LISTEN/NOTIFY) |
-| `AIQ_LOCK_DB_URL` | `postgresql://aiq:aiq_dev@postgres:5432/aiq_jobs` (direct: session advisory locks) |
+| `GRID_CHECKPOINT_DB` | `postgresql://aiq:aiq_dev@pgbouncer:5432/aiq_checkpoints` (pooled) |
+| `GRID_SUMMARY_DB` | `postgresql+psycopg://aiq:aiq_dev@pgbouncer:5432/aiq_jobs` (pooled) |
+| `GRID_LISTEN_DB_URL` | `postgresql://aiq:aiq_dev@postgres:5432/aiq_jobs` (direct: SSE LISTEN/NOTIFY) |
+| `GRID_LOCK_DB_URL` | `postgresql://aiq:aiq_dev@postgres:5432/aiq_jobs` (direct: session advisory locks) |
 | `GRID_ROLE` | `chat` |
-| `AIQ_QDRANT_URL` | `http://qdrant:6333` (the `qdrant` service; no published port, no API key on the internal network; no embedded fallback: the backend keeps no volume) |
-| `AIQ_QDRANT_API_KEY` | empty (set it with a Qdrant elsewhere that wants one) |
+| `GRID_QDRANT_URL` | `http://qdrant:6333` (the `qdrant` service; no published port, no API key on the internal network; no embedded fallback: the backend keeps no volume) |
+| `GRID_QDRANT_API_KEY` | empty (set it with a Qdrant elsewhere that wants one) |
 | `CONFIG_FILE` | `/app/configs/config_oib_openrouter.yml` |
 | `HOST` | `0.0.0.0` |
 | `PORT` | `8000` |
@@ -137,7 +138,7 @@ is 660 s, the 600 s drain budget plus the time to give claims back.
 The same image as `GRID_ROLE=ingest-worker` (ADR-0076): `POST /v1/ingest`, served
 by `aiq-api`, only puts a job in the durable ingest queue, and this is the one
 process that claims it, fairly across organizations. With it stopped, uploads sit
-pending. `AIQ_INGEST_MAX_WORKERS` (default 2) is the jobs it runs at once. No web
+pending. `GRID_INGEST_MAX_WORKERS` (default 2) is the jobs it runs at once. No web
 port. Healthy while `/tmp/ingest-worker.alive` is fresh.
 
 ### qdrant
@@ -456,7 +457,7 @@ image writes its userlist), `POOL_MODE=transaction`, `AUTH_TYPE=scram-sha-256`,
 into URLs, so they cannot contain `:`, `@` or `/`.
 
 **Routing**: the pooled DSNs above and every `GRID_APP_DATABASE_URL` go through
-it. `AIQ_LISTEN_DB_URL`, `AIQ_LOCK_DB_URL`, `GRID_APP_MIGRATION_DATABASE_URL` and
+it. `GRID_LISTEN_DB_URL`, `GRID_LOCK_DB_URL`, `GRID_APP_MIGRATION_DATABASE_URL` and
 Langfuse's `DATABASE_URL` go straight to `postgres`, as in Kubernetes.
 
 **Healthcheck**: `pg_isready -h 127.0.0.1 -p 5432` — interval 5s, timeout 3s, retries 5.

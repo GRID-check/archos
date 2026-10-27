@@ -85,7 +85,8 @@ describe("the bff-jobs pool", () => {
     });
     const { loadConfig } = await import("../config");
     const { installBffJobs } = await import("./bff-jobs");
-    const { buildSecrets, bffJobsEnv } = await import("./config");
+    const { buildSecrets } = await import("./config");
+    const { bffJobsEnv } = await import("./bff-jobs-env");
     const { installNetworkPolicies } = await import("../platform/network-policies");
     const cfg = loadConfig();
     drainSeconds = cfg.bffJobs.drainSeconds;
@@ -154,6 +155,16 @@ describe("the bff-jobs pool", () => {
     // What the runner and the BFF in its pod cannot start without.
     const names = env.map((e) => e.name);
     expect(names).toEqual(expect.arrayContaining(["GRID_APP_DATABASE_URL", "GRID_INTERNAL_API_TOKEN"]));
+  });
+
+  it("runs slices in a spawned BFF unless told otherwise, and refuses a mode the runner does not know", async () => {
+    const { bffJobsMode } = await import("../config");
+
+    expect(env.find((e) => e.name === "GRID_BFF_JOBS_MODE")?.value).toBe("http");
+    expect(bffJobsMode("inprocess")).toBe("inprocess");
+    expect(() => bffJobsMode("in-process")).toThrow(/bffJobsMode/);
+    // The runner's own list of modes is the one this mirrors.
+    expect(read("frontends", "ui", "workers", "jobs", "index.js")).toMatch(/const MODES = .*\['http', 'inprocess'\]/);
   });
 
   it("carries the Web Push key pair and contact: this pool is the one that sends (ADR-0112)", async () => {

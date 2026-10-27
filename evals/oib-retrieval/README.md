@@ -45,7 +45,7 @@ the dense A/B, is the load-bearing evidence for the chunking change.
 
 ### What is NOT measured here, at all
 
-* **Production's retrieval quality.** That needs `OPENROUTER_API_KEY` / `AIQ_EMBED_API_KEY`
+* **Production's retrieval quality.** That needs `OPENROUTER_API_KEY` / `GRID_EMBED_API_KEY`
   and a populated Chroma collection. Everything here runs against a freshly built in-memory
   index.
 * **Chroma's approximate-nearest-neighbour recall.** The dense arm here is exact brute-force
@@ -254,7 +254,7 @@ task be:eval:qdrant-parity -- --variants all         # adds the ranking sweep
 Its own tests: `evals/oib-retrieval/tests/test_qdrant_parity.py` (offline: fixture, scores,
 gate bounds, the reference numbers against the gate report, the regex scan) and
 `sources/knowledge_layer/tests/test_qdrant_parity_harness.py` (the whole run on a
-synthetic corpus against `AIQ_QDRANT_TEST_URL`, which CI provides). The last run's
+synthetic corpus against `GRID_QDRANT_TEST_URL`, which CI provides). The last run's
 numbers: [`docs/audit/qdrant-gates-2026-10.md`](../../docs/audit/qdrant-gates-2026-10.md).
 
 ## Install

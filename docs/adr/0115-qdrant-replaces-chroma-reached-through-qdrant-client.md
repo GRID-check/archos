@@ -51,7 +51,7 @@ one."
 And, for the move itself:
 
 * Replace Chroma in one change, with no period in which both stores are written.
-* Move in steps behind a flag (`AIQ_VECTOR_BACKEND`: `chroma`, then `dual`,
+* Move in steps behind a flag (`GRID_VECTOR_BACKEND`: `chroma`, then `dual`,
   then `qdrant`), Chroma staying the write-side record until a last step
   removes it.
 
@@ -66,7 +66,7 @@ way to reach those features (the LlamaIndex store uses none of them).
 The move is one change, with no dual period. Ingestion embeds a file's chunks
 and writes them to Qdrant (`knowledge_layer/qdrant/writes.py`); every read,
 listing, count and delete goes to Qdrant. Chroma, its client, the
-`AIQ_VECTOR_BACKEND` flag, the Chroma-to-Qdrant mirror and the Postgres
+`GRID_VECTOR_BACKEND` flag, the Chroma-to-Qdrant mirror and the Postgres
 `chunk_text` mirror are deleted, and the existing data moves once, offline,
 with the export/import tool the runbook describes
 ([`qdrant-runbook.md`](../deployment/qdrant-runbook.md)). The flagged path was
@@ -125,7 +125,7 @@ need no second store to stay true.
   LlamaIndex's Chroma store) nowhere but the one-off migration tool under
   `deploy/migration/`. A second store creeping back in fails the build.
 * Every test that needs a store runs against a real `qdrant/qdrant:v1.19.2`
-  (the CI backend job sets `AIQ_QDRANT_TEST_URL` for every step) through one
+  (the CI backend job sets `GRID_QDRANT_TEST_URL` for every step) through one
   fixture, `sources/knowledge_layer/tests/qdrant_testing.py`, and fails, rather
   than skips, when the server is missing on CI.
 * `test_qdrant_adapter_deletes.py` drives every adapter delete against the

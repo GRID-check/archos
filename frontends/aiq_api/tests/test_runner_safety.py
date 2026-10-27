@@ -602,7 +602,7 @@ class TestPurgeDeepCheckpointImportable:
         assert callable(_purge_deep_checkpoint)
 
     def test_purge_is_noop_without_dsn(self, monkeypatch):
-        monkeypatch.delenv("AIQ_DEEP_CHECKPOINT_DB", raising=False)
+        monkeypatch.delenv("GRID_DEEP_CHECKPOINT_DB", raising=False)
         _purge_deep_checkpoint("job-x")  # must not raise
 
 

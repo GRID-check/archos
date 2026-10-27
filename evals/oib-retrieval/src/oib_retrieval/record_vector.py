@@ -64,8 +64,8 @@ MAX_CHUNK_CHARS = 2000
 
 _BATCH = 64
 
-DEFAULT_MODEL = os.environ.get("AIQ_EMBED_MODEL", "openai/text-embedding-3-large")
-DEFAULT_BASE_URL = os.environ.get("AIQ_EMBED_BASE_URL", "https://openrouter.ai/api/v1")
+DEFAULT_MODEL = os.environ.get("GRID_EMBED_MODEL", "openai/text-embedding-3-large")
+DEFAULT_BASE_URL = os.environ.get("GRID_EMBED_BASE_URL", "https://openrouter.ai/api/v1")
 
 
 def default_fixture_path() -> Path:
@@ -86,11 +86,11 @@ def resolve_api_key(base_url: str, model: str) -> str:
             return key
     except Exception:  # noqa: BLE001 - the hand chain below is the whole point
         pass
-    for env in ("AIQ_EMBED_API_KEY", "OPENROUTER_KEY", "OPENROUTER_API_KEY"):
+    for env in ("GRID_EMBED_API_KEY", "OPENROUTER_KEY", "OPENROUTER_API_KEY"):
         value = os.environ.get(env)
         if value:
             return value
-    raise SystemExit("No embeddings key: set AIQ_EMBED_API_KEY (or the provider key for AIQ_EMBED_BASE_URL).")
+    raise SystemExit("No embeddings key: set GRID_EMBED_API_KEY (or the provider key for GRID_EMBED_BASE_URL).")
 
 
 def embed(texts: list[str], *, model: str, base_url: str, api_key: str) -> list[list[float]]:

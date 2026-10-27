@@ -252,7 +252,7 @@ What remains, ranked by consequence:
    classification could replace on arrival. "What was in force at the permit
    date" cannot be asked.
 6. **Cross-encoder reranking is dark.** 437 tested lines, five providers,
-   `AIQ_RERANKER_PROVIDER=none` in every deploy file. The audit's own §21 says
+   `GRID_RERANKER_PROVIDER=none` in every deploy file. The audit's own §21 says
    recall is saturated at k=60 and the remaining gain is ordering.
 7. **Tables lose their Punkt.** Table documents are built from a separate
    pdfplumber pass with no outline context, so the threshold tables where the

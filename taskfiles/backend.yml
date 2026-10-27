@@ -101,13 +101,11 @@ tasks:
       # chromadb is not a dependency of this repo (ADR-0115): the exporter's own
       # PEP 723 pin decides the environment, and pytest's testpaths never reach
       # deploy/, so no other task imports chromadb. The end-to-end test runs the
-      # importer in .venv and needs AIQ_QDRANT_TEST_URL (skipped locally without it).
+      # importer in .venv and needs GRID_QDRANT_TEST_URL (skipped locally without it).
       - uvx --python 3.12 --with-requirements deploy/migration/chroma_export.py --with pytest pytest deploy/migration/tests -q -p no:cacheprovider
 
   prompts:pull:
     desc: 'Bring a Langfuse prompt version into review: task prompts:pull [-- --label <label>]'
-    env:
-      PYTHONPATH: src
     cmds:
       # Git is the platform prompt's source of truth (ADR-0060 (a)). This only
       # ever READS Langfuse: it writes the version under a label into
@@ -117,8 +115,6 @@ tasks:
 
   langfuse:provision:
     desc: 'Check (or with -- --apply, create) the score configs, review queue, judges and golden dataset Grid declares in Langfuse'
-    env:
-      PYTHONPATH: src
     cmds:
       # CHECK by default: prints what is missing or has drifted and writes
       # nothing. `--apply` creates what is missing and never changes or
@@ -128,8 +124,6 @@ tasks:
 
   prompts:push:
     desc: 'Check (or with -- --apply, publish) the committed platform prompt under a Langfuse label: task prompts:push [-- --label <label> [--apply]]'
-    env:
-      PYTHONPATH: src
     cmds:
       # CHECK by default: prints what publishing would change and writes
       # nothing. `--apply` (with `--label` named, production included) creates
@@ -168,7 +162,7 @@ tasks:
     cmds:
       # The recording is the only part of that harness that needs a model and a
       # key. It is committed so `be:eval:overview` and CI stay offline; re-run
-      # this when AIQ_EMBED_MODEL, data/oib or the golden questions change.
+      # this when GRID_EMBED_MODEL, data/oib or the golden questions change.
       - '{{.PY}} -m oib_retrieval.record_vector'
 
   be:eval:qdrant-parity:
@@ -181,7 +175,7 @@ tasks:
       # retriever. Chroma is gone (ADR-0115): its numbers from the gate run are the
       # fixed reference (qdrant_parity/baseline.py). `-- --embedder hashed` runs it
       # keyless as a wiring check only; `-- --variants all` adds the ranking sweep;
-      # `-- --qdrant-url URL` points at another server (default $AIQ_QDRANT_TEST_URL
+      # `-- --qdrant-url URL` points at another server (default $GRID_QDRANT_TEST_URL
       # or localhost:6333). Only uniquely named parity_* collections are touched.
       - '{{.PY}} -m oib_retrieval.qdrant_parity.runner {{.CLI_ARGS}}'
 
@@ -214,7 +208,8 @@ tasks:
       # Sets SURE_CONFIDENCE (frontends/ui/src/lib/filing/root-sort-types.ts).
       # Run before and after a change to the sort prompt, the scoring or the
       # threshold; writes tests/fixtures/root_sort/eval_<date>.json. A few cents.
-      - 'PYTHONPATH=../../src:src ../../.venv/bin/python -I ../../scripts/root_sort_eval.py {{.CLI_ARGS}}'
+      # `-I` ignores PYTHONPATH: the venv's editable installs are what resolve the imports.
+      - '../../.venv/bin/python -I ../../scripts/root_sort_eval.py {{.CLI_ARGS}}'
 
   be:eval:decisions:vision:
     desc: 'Decision-model eval for page images — Jev 1.14 reads a drawing page: kind, view, title block and drawing boxes on the fixture drawings (NEEDS OPENROUTER_API_KEY; no backend)'
@@ -255,8 +250,6 @@ tasks:
 
   be:eval:answer-suite:
     desc: 'Answer suite — the reference questions through the real agent, timed and checked, with a report (NEEDS OPENROUTER_API_KEY and the corpus ingested; -- --ingest ingests it first, in the suite process)'
-    env:
-      PYTHONPATH: src
     cmds:
       # The end-to-end check: seconds, reasoning tokens and the answer's own
       # expectations per question, medians over runs, a baseline diff.
