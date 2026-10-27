@@ -664,12 +664,13 @@ class ToolStepCallback(AsyncCallbackHandler):
     """
 
     def __init__(self) -> None:
-        self._running: dict[UUID, str] = {}
+        self._running: dict[UUID, tuple[str, str | None]] = {}
 
     async def on_tool_start(self, serialized: dict[str, Any], input_str: str, *, run_id: UUID, **kwargs: Any) -> None:
         tool = tool_basename(str(serialized.get("name") or kwargs.get("name") or "")) or "tool"
-        self._running[run_id] = tool
-        emit_step(ToolStep(id=f"tool:{run_id}", tool=tool), started=True)
+        mount = _tool_mount(tool, kwargs.get("inputs"))
+        self._running[run_id] = (tool, mount)
+        emit_step(ToolStep(id=f"tool:{run_id}", tool=tool, mount=mount), started=True)
 
     async def on_tool_end(self, output: Any, *, run_id: UUID, **kwargs: Any) -> None:
         self._finish(run_id, "ok")
@@ -678,9 +679,24 @@ class ToolStepCallback(AsyncCallbackHandler):
         self._finish(run_id, "error")
 
     def _finish(self, run_id: UUID, status: Literal["ok", "error"]) -> None:
-        tool = self._running.pop(run_id, None)
-        if tool is not None:
-            emit_step(ToolStep(id=f"tool:{run_id}", tool=tool, status=status))
+        running = self._running.pop(run_id, None)
+        if running is not None:
+            tool, mount = running
+            emit_step(ToolStep(id=f"tool:{run_id}", tool=tool, status=status, mount=mount))
+
+
+def _tool_mount(tool: str, inputs: Any) -> str | None:
+    """The mount a file tool's call reached, for the wire's ``mount`` (ADR-0133); ``None`` for any other tool.
+
+    The step stores the tool's name and never its arguments, so without this an
+    estate ``read_file`` and a draft ``read_file`` were one step, drawn as a draft.
+    """
+    from aiq_agent.common.estate_paths import WRITE_TOOLS
+    from aiq_agent.common.estate_paths import call_mount
+
+    if tool not in FILESYSTEM_READ_TOOLS and tool not in WRITE_TOOLS:
+        return None
+    return call_mount(tool, inputs if isinstance(inputs, dict) else None)
 
 
 # --- What each moment is called ---------------------------------------------
@@ -703,6 +719,9 @@ class ToolStepCallback(AsyncCallbackHandler):
 #: them — three readers, one spelling.
 KNOWLEDGE_SEARCH_TOOL = "knowledge_search"
 READ_PASSAGE_TOOL = "read_passage"
+#: The filesystem reader (ADR-0133): on the estate it opens a named passage as ``read_passage`` does, so it is
+#: a locator too; on ``/drafts/`` it reads a draft, which is no retrieval at all (:func:`_call_corpus`).
+READ_FILE_TOOL = "read_file"
 
 _SEARCH_CORPORA: tuple[tuple[str, str], ...] = (
     (KNOWLEDGE_SEARCH_TOOL, "knowledge"),
@@ -779,7 +798,7 @@ def _action_key(base: str, args: Any, name: str = "") -> str | None:
 
 
 #: Argument names a retrieval query hides behind, in preference order.
-_QUERY_KEYS = ("query", "search_query", "question", "q", "text", "name_contains")
+_QUERY_KEYS = ("query", "search_query", "question", "q", "text", "name_contains", "pattern")
 
 #: Arguments that pick what a call does or which record it reads, never what
 #: was asked: ``project_lookup``'s ``action`` and ``scope``, and every id. The
@@ -823,7 +842,7 @@ CHECKPOINT_FROM_NONE = "none"
 #: The tool itself stamps :data:`READ_PASSAGE_TOOL` on its hits
 #: (:func:`lane_tool_scope`), so the name is spelled once and the producer and
 #: the matcher cannot drift.
-LOCATOR_TOOL_BASENAMES = frozenset({READ_PASSAGE_TOOL})
+LOCATOR_TOOL_BASENAMES = frozenset({READ_PASSAGE_TOOL, READ_FILE_TOOL})
 
 #: Room for the document name on a locator line, after the label and the Punkt
 #: or page that follows it. Same budget as the quoted query and for the same
@@ -851,6 +870,27 @@ def _search_corpus(base: str) -> str | None:
     return None
 
 
+#: The filesystem tools that read the estate (ADR-0133); ``write_file`` and ``edit_file`` only ever reach drafts.
+FILESYSTEM_READ_TOOLS = frozenset({"ls", "glob", "grep", READ_FILE_TOOL})
+
+
+def _call_corpus(base: str, args: Any) -> str | None:
+    """The corpus one call reads: by its tool, and for a filesystem tool by its mount.
+
+    A call under ``/drafts/`` reads no corpus (it keeps its draft line); one on
+    ``/law/oib/`` reads the knowledge corpus; any other estate call reads the
+    reader's own files, „in Ihren Unterlagen“.
+    """
+    if base not in FILESYSTEM_READ_TOOLS:
+        return _search_corpus(base)
+    from aiq_agent.common.estate_paths import call_mount
+
+    mount = call_mount(base, args)
+    if mount in (None, "drafts", "skills"):
+        return None
+    return "knowledge" if mount == "law" else "documents"
+
+
 def tool_fetches_evidence(base: str) -> bool:
     """Does a tool with this BASENAME return hits of its own?
 
@@ -859,6 +899,9 @@ def tool_fetches_evidence(base: str) -> bool:
     not the calls they came from. The retrieval ledger reads it to tell which
     of a round's tools could have produced the documents it returned.
     """
+    if base in FILESYSTEM_READ_TOOLS:
+        # Asked of a NAME, the mount is unknown: a filesystem tool could have produced documents.
+        return True
     return bool(base) and _search_corpus(base) is not None
 
 
@@ -890,7 +933,10 @@ def is_search_call(call: Any) -> bool:
     """
     if not isinstance(call, dict):
         return False
-    return tool_fetches_evidence(tool_basename(str(call.get("name") or "")))
+    base = tool_basename(str(call.get("name") or ""))
+    if base in FILESYSTEM_READ_TOOLS:
+        return _call_corpus(base, call.get("args")) is not None
+    return tool_fetches_evidence(base)
 
 
 def is_retrieval_round(tool_calls: list[dict[str, Any]] | None) -> bool:
@@ -1039,7 +1085,49 @@ def fetch_signature(call: Any) -> str | None:
         return _search_signature(args)
     if base == "read_passage":
         return _passage_signature(args)
+    if base in (READ_FILE_TOOL, "grep"):
+        return _filesystem_signature(base, args)
     return None
+
+
+def _filesystem_signature(base: str, args: dict[str, Any]) -> str | None:
+    """What an estate ``read_file`` OPENS or an estate ``grep`` LOOKS FOR; ``None`` for a call on ``/drafts/``.
+
+    A draft read after ``edit_file`` is not a repeat: it reads what the edit
+    changed, so a call under ``/drafts/`` is never signed (ADR-0133 §6). The
+    path is case- and NFC-folded, so two spellings of one path are one read.
+    """
+    from aiq_agent.common.estate_paths import nfc
+    from aiq_agent.common.estate_paths import reaches_drafts_only
+
+    if reaches_drafts_only(base, args):
+        return None
+    if base == READ_FILE_TOOL and not _argument_text(args, "file_path"):
+        # A read that names no file cannot be read, and a guard that cannot read a call must not take it away.
+        return None
+    if base == READ_FILE_TOOL:
+        parts = [
+            READ_FILE_TOOL,
+            nfc(_argument_text(args, "file_path", fold_case=True)),
+            _pages_text(args.get("pages")),
+            _clause_argument(args).strip("."),
+            _page_text(args.get("offset")),
+            _page_text(args.get("limit")),
+        ]
+        return _SIGNATURE_SEPARATOR.join(parts)
+    return _SIGNATURE_SEPARATOR.join(
+        [
+            "grep",
+            " ".join(str(args.get("pattern") or "").split()).casefold(),
+            nfc(_argument_text(args, "path", fold_case=True)),
+            _argument_text(args, "glob", fold_case=True),
+            _argument_text(args, "output_mode") or "files_with_matches",
+            _argument_text(args, "mode") or "exact",
+            _argument_text(args, "stemmed", fold_case=True),
+            _argument_text(args, "context"),
+            _argument_text(args, "max_count"),
+        ]
+    )
 
 
 def _locator_line(args: Any) -> tuple[str, dict[str, str]] | None:
@@ -1053,7 +1141,7 @@ def _locator_line(args: Any) -> tuple[str, dict[str, str]] | None:
     """
     if not isinstance(args, dict):
         return None
-    document = str(args.get("document") or "").strip()
+    document = str(args.get("document") or "").strip() or _file_path_document(args)
     if not document:
         return None
     values = {"document": clip(document, MAX_DOCUMENT_CHARS)}
@@ -1066,6 +1154,16 @@ def _locator_line(args: Any) -> tuple[str, dict[str, str]] | None:
     if page is not None and str(page).strip():
         return KEY_RETRIEVAL_PAGE, {**values, "page": str(page).strip()}
     return None
+
+
+def _file_path_document(args: dict[str, Any]) -> str:
+    """The document a ``read_file`` path names: its leaf, without the ``.md`` the text is served under."""
+    path = str(args.get("file_path") or "").strip().rstrip("/")
+    if not path:
+        return ""
+    leaf = path.rsplit("/", 1)[-1]
+    stem = leaf[:-3] if leaf.lower().endswith(".md") and "." in leaf[:-3] else leaf
+    return stem
 
 
 def _query_text(args: Any) -> str | None:
@@ -1264,7 +1362,7 @@ def _describe_calls(calls: list[dict[str, Any]]) -> dict[str, Any]:
             # thing twice, worse.
             continue
         tools.append(base)
-        corpus = _search_corpus(base)
+        corpus = _call_corpus(base, call.get("args"))
         if corpus is not None:
             if corpus not in corpora:
                 corpora.append(corpus)

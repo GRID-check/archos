@@ -129,6 +129,12 @@ class TestTheArms:
         pairs = dict(files_eval.arm_overrides("search", self.TOOLS))
         assert pairs["functions.shallow_research_agent.tools"] == "web_search_tool,knowledge_search,look"
         assert pairs["functions.knowledge_search.match_modes"] == "meaning"
+        # The filesystem verbs over the estate are navigation too (ADR-0133); the override switches them off.
+        assert pairs["functions.shallow_research_agent.filesystem"] == "null"
+        from aiq_agent.agents.piloti.register import ResearchAgentConfig
+
+        assert ResearchAgentConfig(llm="x", filesystem="null").filesystem is None
+        assert ResearchAgentConfig(llm="x", filesystem="knowledge_search").filesystem == "knowledge_search"
 
     def test_navigate_drops_the_prefetch_and_ranked_search(self):
         pairs = dict(files_eval.arm_overrides("navigate", self.TOOLS))
@@ -231,6 +237,32 @@ class TestTheChecks:
     def test_the_moves_a_run_made(self):
         assert files_eval.moves(self.CALLS) == "list+search"
         assert files_eval.moves([]) == "none"
+
+    def test_a_row_written_for_the_old_names_holds_for_the_standard_ones(self):
+        """ADR-0133 §8: the matcher maps old to new for the release the aliases live, so runs compare."""
+        new = [
+            {"name": "read_file", "arguments": {"file_path": "/project/Gutachten/B.pdf.md", "pages": "4-6"}},
+            {"name": "ls", "arguments": {"path": "/project/Einreichung/", "depth": 2}},
+            {"name": "grep", "arguments": {"pattern": "Fluchtweg"}},
+        ]
+        assert files_eval.called({"read_passage": {"pages": "4-6", "document": "B.pdf"}}, new)
+        assert files_eval.called({"list_files": {"view": "tree", "folder": "Einreichung"}}, new)
+        assert files_eval.called({"knowledge_search": {"match": "exact"}}, new)
+        assert files_eval.moves(new) == "list+search+read"
+
+    def test_a_row_written_for_the_standard_names_holds_for_the_old_ones(self):
+        assert files_eval.called({"grep": {"mode": "exact"}}, self.CALLS)
+        assert files_eval.called("ls", self.CALLS)
+        assert files_eval.called({"read_file": {"pages": "2"}}, [{"name": "read_passage", "arguments": {"pages": "2"}}])
+
+    def test_a_draft_is_no_file_move(self):
+        drafts = [
+            {"name": "read_file", "arguments": {"file_path": "/drafts/a.md"}},
+            {"name": "ls", "arguments": {"path": "/drafts/"}},
+        ]
+        assert not files_eval.called("read_passage", drafts)
+        assert not files_eval.called("list_files", drafts)
+        assert files_eval.moves(drafts) == "none"
 
 
 class TestTheSuiteReadsTheSet:

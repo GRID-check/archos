@@ -401,6 +401,12 @@ functions:
           # The file browser reads the same files through the same scope, so
           # switching the knowledge base off must take it too.
           - list_files
+          # The filesystem verbs (`ls`, `glob`, `grep`, `read_file`, ADR-0133)
+          # read the same files through the same scope, and belong to this
+          # source for the same reason. They are not NAT functions, so they are
+          # not listed here: `common/data_sources.source_id_for_call` maps them
+          # to the source `knowledge_search` belongs to, PER MOUNT, so a call
+          # under /drafts/ is never refused and never captured as a source.
           # Other projects' uploaded documents (ADR-0094). Without this line
           # nothing the lookup returns is captured as a citable source, and a
           # turn whose only finding was a precedent was replaced by the canned
@@ -762,6 +768,11 @@ functions:
   shallow_research_agent:
     _type: research_agent
     llm: research_llm
+    # The filesystem verbs read the office's documents through this search's
+    # scope (ADR-0133): `read_file` over /project/, /office/, /chat/ and
+    # /law/oib/, beside the conversation's drafts under /drafts/. They are
+    # built per turn (the drafts are per conversation), not listed below.
+    filesystem: knowledge_search
     # Explicit list (replaces registry inheritance) so the non-data-source
     # `remember` and `ask_user` tools are included alongside search/knowledge.
     tools:

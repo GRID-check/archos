@@ -36,6 +36,44 @@ DISABLED_SOURCES_HEADER = "x-grid-disabled-sources"
 
 logger = logging.getLogger(__name__)
 
+#: The filesystem tools that read the office's documents (ADR-0133). They are not NAT functions, so the
+#: data-source registry does not list them; they belong to the source the ranked search belongs to, because
+#: they read its scope.
+FILESYSTEM_READ_TOOLS = frozenset({"ls", "glob", "grep", "read_file"})
+
+#: The tool whose source the filesystem tools share.
+ESTATE_SOURCE_TOOL = "knowledge_search"
+
+_GROUP_SEPARATORS = ("__", ".")
+
+
+def _basename(tool_name: str) -> str:
+    base = tool_name or ""
+    for separator in _GROUP_SEPARATORS:
+        if separator in base:
+            base = base.rsplit(separator, 1)[-1]
+    return base
+
+
+def source_id_for_call(tool_name: str, args: Any = None) -> str | None:
+    """The data source one call reaches: by its tool, and for a filesystem tool by its MOUNT.
+
+    A filesystem call under ``/drafts/`` reaches no source: a draft is what the
+    answer wrote itself, so it is never refused by a toggle and never captured
+    as evidence. Any other filesystem call reads the estate, which is the
+    knowledge base's scope. ``args=None`` (a result, whose call is not at hand)
+    reads as the estate; a draft result then carries no ``Citation:`` line and
+    registers nothing.
+    """
+    from aiq_agent.common.estate_paths import reaches_drafts_only
+
+    base = _basename(tool_name)
+    if base in FILESYSTEM_READ_TOOLS:
+        if reaches_drafts_only(base, args):
+            return None
+        return get_source_id_for_tool(ESTATE_SOURCE_TOOL)
+    return get_source_id_for_tool(tool_name)
+
 
 def parse_disabled_sources(raw: str | None) -> set[str]:
     """Decode the disabled-sources header into a lowercase id set.
@@ -97,7 +135,7 @@ def unavailable_source_ids(
     return frozenset(unavailable)
 
 
-def disabled_source_notice(tool_name: str, disabled: Iterable[str]) -> str | None:
+def disabled_source_notice(tool_name: str, disabled: Iterable[str], args: Any = None) -> str | None:
     """What a call to a switched-off source is answered with; ``None`` to run it.
 
     The ONE place that decides, so a tool, an interception point at the
@@ -112,11 +150,15 @@ def disabled_source_notice(tool_name: str, disabled: Iterable[str]) -> str | Non
     ``disabled`` is passed, never read from ambient state: the one caller is the
     interception point at the ``ToolNode`` boundary, and it holds the turn's set
     on the binding both graph nodes read.
+
+    ``args`` decides for the filesystem tools, whose source is their mount
+    (:func:`source_id_for_call`): a switched-off knowledge base refuses
+    ``read_file`` on ``/project/`` and still reads a draft.
     """
     unavailable = frozenset(disabled)
     if not unavailable:
         return None
-    source_id = get_source_id_for_tool(tool_name)
+    source_id = source_id_for_call(tool_name, args)
     if source_id is None or source_id.lower() not in unavailable:
         return None
     meta = get_source(source_id)

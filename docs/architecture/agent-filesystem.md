@@ -6,8 +6,8 @@
 > [ADR-0133](../adr/0133-piloti-reads-the-estate-through-standard-filesystem-tools.md)
 > (standard tools over our own backend, hybrid with ranked search) and
 > [ADR-0134](../adr/0134-extracted-page-text-is-stored-per-version.md) (page text is
-> stored per version). Written 2026-10-27, before slice 0; nothing below is built
-> unless it says so. The write side, and why the estate is never writable through
+> stored per version). Written 2026-10-27, before slice 0; what is built, and where it
+> departs from the design, is [As built](#as-built). The write side, and why the estate is never writable through
 > filesystem verbs, is [`piloti-filesystem-design.md`](piloti-filesystem-design.md) §2.
 > Today's tools and their costs: [`agent-tool-surface.md`](agent-tool-surface.md).
 > Output examples use the `files_eval` fixture project
@@ -26,6 +26,113 @@ stands in none of the 12 documents it searched, that „Fluchtweg“ stands on p
 opens the page. The Herleitung shows the three calls side by side, with what was
 looked for and where. Nothing the planner may not open was named, and no number
 was taken from a drawing as if it had been measured.
+
+## As built
+
+What exists in the code, by slice, and every place it departs from the design below
+with the reason. The design text stays as written; this section is the delta.
+
+**Slice 2, `read_file` over the estate** (built).
+
+| Piece | Where |
+|---|---|
+| Paths, mounts, canonical form, `call_mount` | `src/aiq_agent/common/estate_paths.py` |
+| The read-only async backend (rows, resolution, rendering) | `sources/knowledge_layer/src/estate.py` (`EstateBackend`) |
+| Stored page text and the chunk rebuild | `sources/knowledge_layer/src/stored_pages.py` |
+| The tools, the `CompositeBackend`, the `/drafts/` route | `src/aiq_agent/tools/documents/filesystem.py`, `tools.py` |
+| Citations on `ToolMessage.artifact` | `src/aiq_agent/common/citation_collector.py`; read first by `extract_sources_from_tool_result` |
+| `ToolStep.mount` | `common/wire_v2.py`, `turn_status.ToolStepCallback`; the UI's `executed-steps.ts` |
+| Config | `filesystem: knowledge_search` on `shallow_research_agent` (`configs/config_oib_openrouter.yml`) |
+
+Departures, each with its reason:
+
+1. **Scope comes from the turn's context, not `get_runtime().context`.** Piloti's loop is
+   its own LangGraph graph with no `context_schema`; the turn's scope already travels in
+   the per-turn context every knowledge-layer tool reads (`_resolve_scoped_collections`,
+   the inventory, `may_name`). The backend reads exactly that, so one instance built at
+   boot serves every turn and tenant (pinned by `test_estate_read.py::TestTenancy`).
+2. **No outermost `awrap_tool_call`.** Piloti binds the tools into its own tool node, as
+   the draft verbs were, so no middleware chain runs around them. The per-call collector
+   opens inside the tool wrapper (`filesystem.estate_message`), which is the same seam one
+   level down: each call is its own task, so parallel calls keep separate collectors.
+   Eviction does not run in Piloti's tool node either; `artifacts_root` is still
+   `/drafts/` for any caller that mounts the middleware.
+3. **The `/drafts/` route re-prefixes its keys** (`filesystem._DraftRoute`). The composite
+   strips the route prefix before it asks a routed backend, and every stored draft, its
+   card and `file_draft` key a draft by its full path (`/drafts/a.md`). The draft store is
+   unchanged and still write-once.
+4. **All four estate mounts are served from slice 2**, not slice 5: they are one backend
+   over the same scoped rows, and a `read_file` that could not open a base-corpus or
+   office hit would be a worse intermediate state than the mounts themselves.
+5. **Every knowledge-layer hit carries `Path:`** from slice 2 (`GroundingHit.path`), so a
+   `knowledge_search` or `read_passage` hit names the path `read_file` opens. One header
+   line per hit; the byte fixture `read_passage_outline.txt` moved with it.
+6. **The source toggle is mapped in code** (`data_sources.source_id_for_call`): the
+   filesystem tools are not NAT functions, so the `data_sources` registry cannot list
+   them. They belong to the source `knowledge_search` belongs to, per mount; a call under
+   `/drafts/` belongs to none.
+7. **A restricted path resolves only once its collection may be named** (`may_name`): a
+   search hit that returned it was admitted at its round's end, which is how a path "from a
+   search hit" is told from a guess. Before that the answer is the miss's, word for word.
+8. **A stored `index.json` that names another document or version is not served**: the
+   read falls back to the chunk rebuild and logs the refusal, rather than refusing the
+   read, because the chunks are still the document's own text.
+9. **`mount` has a sixth value, `estate`**, for a call over every estate mount (`grep`
+   without a path); absent still means the drafts.
+10. **Deferred:** txt/md/csv are read from their chunks, not their original bytes (the
+    window is still in lines); an IFC model answers with the way to `ifc_query` and
+    `ifc_measure`, not the `bim_models` summary; the door (`backend_tools.py`) does not
+    serve the new names yet.
+
+**The skills route** ([ADR-0135](../adr/0135-skills-run-on-deep-agents-skills-middleware.md)).
+The composite carries a third route, `/skills/`, the turn's read-only `SkillsBackend`; the four
+verbs answer a path under it with the stock tools, so a skill read is never a source, never
+signed by the repeat-fetch guard, never refused by a data-source toggle, and its `mount` on the
+wire is `skills`. Routes: default the estate, `/drafts/` the draft store, `/skills/` the skills.
+
+**Slice 3, `ls` and `glob`, folder cards as `README.md`** (built).
+`sources/knowledge_layer/src/estate_listing.py` renders over the listable rows only, so a
+restricted folder is neither named nor counted, and `ls` of it answers as a folder that does not
+exist does. `README.md` in every folder is the tier-0 card `list_files(view="tree")` builds, with
+the tier-1 abstract the folder-card worker wrote; a real document of that name keeps it. Herleitung
+verb `list` with file and folder counts. `list_files` stays bound as the alias.
+
+1. **`glob` matches with wcmatch**, Deep Agents' own matcher (a dependency of the pinned
+   `deepagents`), so a pattern means what it means to the stock tool; names are folded on both
+   sides, and a document matches by its leaf (`Plan.pdf.md`) or its file name (`Plan.pdf`), so
+   `*.pdf` finds PDFs.
+2. **`ls` has no paging argument.** It lists 40 files per folder and counts the rest, pointing at
+   `glob` or a subfolder; the stock `ls` schema has none and a second paging scheme beside
+   `read_file`'s would be one more thing to teach.
+3. **Deferred: the mount digest in the prompt.** It is a turn-context block, and the prompt is
+   slice 6's; the one prompt line that named `list_files(name_contains=…)` now names `glob`.
+
+**Slice 4, `grep` under its own name** (built). `sources/knowledge_layer/src/estate_grep.py`:
+stage 1 is the index's literal scan (`retriever.find_text`, the scan `knowledge_search(match=…)`
+runs, with slice 1's fixed counts), stage 2 recounts each candidate on its stored pages (up to 20
+documents within 3 s) and otherwise on its chunks' own text. `content` returns one grounding
+block per matching page (up to 8, round-robin over the files) and a `## Lines around the matches`
+index with `context`; a failed collection, a regex scan past its deadline and a capped scan are
+named as `incomplete: …`, and such a result never says "no match". Herleitung verb `search` with
+its mode. `knowledge_search` gains `path=` (it compiles to `shelf`, `folder` and `file_name`; an
+explicit one wins) and keeps `match="exact"|"regex"` as the alias. On the wire `mount` is `estate`
+for a grep without a path.
+
+1. **Stage 1 never needs a separate page scan.** The design reads the scope's stored pages when
+   the `MatchText` pre-filter cannot be a superset (part of a token, no literal word, a regex).
+   `find_text` already reads every chunk in scope in that case (it narrows only by
+   `literal_tokens`, which proves the superset), and a chunk holds its page's text plus overlap,
+   so the chunk scan is the superset and the deadline-and-cap reporting covers it.
+2. **A stemmed grep is verified on the chunks only**: the stemmed index decides which chunks match,
+   and the counting pattern is an approximation of its stems that a page recount would make
+   stricter than the index.
+3. **Restricted folders are searched, as `knowledge_search` searches them**; their matches are
+   reported for the round's admission and the denominators count only listable files. A
+   `path=` into a folder nothing listable is filed in answers as a folder that does not exist.
+4. **Deferred:** the three-arm suite (`grep only`, `semantic only`, `hybrid`) is the files eval's
+   existing three arms with the aliases mapped (`files_eval.aliases`); a `grep`-only arm that
+   unbinds `knowledge_search` entirely is not added. The answer suite has not been run on any
+   slice (no model access in the build container): every row above is unmeasured.
 
 ## 1. Mounts and paths
 
