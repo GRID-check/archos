@@ -44,7 +44,7 @@ describe('SavedSearchesMenu', () => {
     const [mine, theirs] = SEARCH_FIXTURE_SAVED
     german(<SavedSearchesMenu {...menu({ items: [mine!, { ...theirs!, ownerName: null }] })} />)
     await userEvent.click(screen.getByTestId('saved-searches'))
-    expect(await screen.findByText('Von einer Kollegin oder einem Kollegen geteilt')).toBeInTheDocument()
+    expect(await screen.findByText('Aus dem Büro geteilt')).toBeInTheDocument()
   })
 
   it('deletes with „Rückgängig“ in a toast, which takes the delete back', async () => {

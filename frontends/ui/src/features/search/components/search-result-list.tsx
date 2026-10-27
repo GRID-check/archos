@@ -1,6 +1,7 @@
 'use client'
 
-import type { JSX } from 'react'
+import type { JSX, ReactNode } from 'react'
+import { createContext, useContext } from 'react'
 import { Building2, FileText, Folder, MessageSquare, MessageSquareWarning } from 'lucide-react'
 
 import { LoadMore } from '@/components/ui/load-more'
@@ -17,6 +18,7 @@ import {
   type ProjectHit,
   type SearchHit,
   type SearchKind,
+  type SearchScopeQuery,
 } from '@/lib/search/search-wire'
 import { useSearchLabels } from '../hooks/use-search-labels'
 import { DocumentHitMenu, useHitMenus } from './hit-actions-menu'
@@ -25,6 +27,7 @@ import { useSearchReturn } from '../hooks/use-search-return'
 import type { SectionView } from '../lib/sections'
 import {
   Excerpt,
+  MatchedText,
   MatchHint,
   MetaLine,
   MetaPart,
@@ -34,6 +37,7 @@ import {
   ShelfMark,
   SupersededMark,
   WherePart,
+  useCompactRow,
 } from './search-atoms'
 
 export interface SearchResultListProps {
@@ -46,18 +50,32 @@ export interface SearchResultListProps {
   /** Each kind's listbox id and each hit's option id, which the search field's combobox names. */
   listId?: (kind: SearchKind) => string
   optionId?: (hit: SearchHit) => string
+  /** The scope searched in, so a row leaves out the shelf it already says. */
+  scope?: SearchScopeQuery
+}
+
+/**
+ * The scope the hits on screen were searched in. A row leaves out the shelf
+ * mark the scope already says: inside one project every hit is that
+ * project's, and „Kaiserstraße 43“ on every row is noise, not provenance.
+ */
+const HitScopeContext = createContext<SearchScopeQuery>({})
+
+export function HitScopeProvider({ scope, children }: { scope: SearchScopeQuery; children: ReactNode }): JSX.Element {
+  return <HitScopeContext.Provider value={scope}>{children}</HitScopeContext.Provider>
 }
 
 /**
  * The result as a list: one section per kind in the contract's order, each
- * hit with its name, where it lives (the shelf as its provenance mark, then
- * the folder), one line of what it is, and, for a document found by what it
- * says, the passage with the words set apart and its page. A document found by
- * words says, quietly, what they were found in.
+ * hit in at most three lines. The name first, with the searched words set
+ * apart; then one muted line of where it lives (the shelf as its provenance
+ * mark when the scope does not say it, then the folder) and what it is; then,
+ * for a document found by what it says, the passage with its page. Only a
+ * document whose row shows nothing that matched says what it was found in.
  */
-export function SearchResultList({ sections, onLoadMore, text, activeKey, listId, optionId }: SearchResultListProps): JSX.Element {
+export function SearchResultList({ sections, onLoadMore, text, activeKey, listId, optionId, scope = {} }: SearchResultListProps): JSX.Element {
   return (
-    <>
+    <HitScopeProvider scope={scope}>
       {SEARCH_KINDS.map((kind) => {
         const section = sections[kind]
         if (!section || section.hits.length === 0) return null
@@ -74,7 +92,7 @@ export function SearchResultList({ sections, onLoadMore, text, activeKey, listId
           />
         )
       })}
-    </>
+    </HitScopeProvider>
   )
 }
 
@@ -145,33 +163,29 @@ function KindSection({
 
 /**
  * Where a hit lives: the shelf as the provenance mark (the project, or the
- * Büroablage), then its folder. The names wrap rather than cut, so the whole
- * of a long project name is read without a pointer.
+ * Büroablage) unless the scope already names it, then its folder. On the page
+ * the names wrap rather than cut, so a long project name is read whole; the
+ * palette's one line truncates the mark and keeps its full name in the title.
  */
-function useWhere(): (shelf: 'project' | 'office_shelf', projectName: string | null, folderName?: string | null) => JSX.Element | null {
+function useWhere(): (shelf: 'project' | 'office_shelf', projectId: string | null, projectName: string | null, folderName?: string | null) => JSX.Element[] {
   const tWhere = useTranslations('search.where')
-  return (shelf, projectName, folderName = null) => {
-    const mark =
-      shelf === 'office_shelf' ? (
-        <ShelfMark shelf="office_shelf" label={tWhere('officeShelf')} wrap />
-      ) : projectName ? (
-        <ShelfMark shelf="project" label={projectName} wrap />
-      ) : null
-    if (!mark && !folderName) return null
-    return (
-      <>
-        {mark}
-        {folderName ? (
-          <WherePart label={tWhere('folder')} after={mark !== null}>
-            {folderName}
-          </WherePart>
-        ) : null}
-      </>
-    )
+  const scope = useContext(HitScopeContext)
+  const wrap = !useCompactRow()
+  return (shelf, projectId, projectName, folderName = null) => {
+    const said = shelf === 'office_shelf' ? scope.scope === 'office_shelf' : scope.scope === 'project' && scope.projectId === projectId
+    const mark = said ? null : shelf === 'office_shelf' ? (
+      <ShelfMark key="shelf" shelf="office_shelf" label={tWhere('officeShelf')} wrap={wrap} />
+    ) : projectName ? (
+      <ShelfMark key="shelf" shelf="project" label={projectName} wrap={wrap} />
+    ) : null
+    const folder = folderName ? (
+      <WherePart key="folder" label={tWhere('folder')} after={mark !== null}>
+        {folderName}
+      </WherePart>
+    ) : null
+    return [mark, folder].filter((part): part is JSX.Element => part !== null)
   }
 }
-
-const MATCHED_ON_ORDER = ['name', 'reading', 'content'] as const
 
 function DocumentRow({ hit, text, active, id }: { hit: DocumentHit; text: string; active: boolean; id?: string }): JSX.Element {
   const t = useTranslations('search')
@@ -181,22 +195,23 @@ function DocumentRow({ hit, text, active, id }: { hit: DocumentHit; text: string
   const type = labels.documentType(hit.documentType)
   const day = labels.day(hit.planDate ?? hit.documentDate)
   const from = useSearchReturn()
-  // „Inhalt“ goes without saying under the passage that shows it; the hint
-  // names only what the row does not show (the name, what Piloti read).
-  const matchedOn = text.trim()
-    ? MATCHED_ON_ORDER.filter((reason) => hit.matchedOn.includes(reason) && !(reason === 'content' && hit.passage))
-    : []
+  const title = termSegments(hit.title ?? hit.name, text)
+  // The row says what it was found in only when it shows nothing that
+  // matched: a passage shows the content, a set-apart word in the name shows
+  // the name. What is left is a match on what Piloti read about the document.
+  const shown = hit.passage !== null || title.some((segment) => segment.match)
+  const matchedOn = text.trim() && !shown ? hit.matchedOn : []
   return (
     <ResultRow
       href={documentHitHref(hit, from)}
       icon={FileText}
-      title={hit.title ?? hit.name}
+      title={<MatchedText segments={title} />}
       active={active}
       id={id}
       testId={`search-hit-document-${hit.id}`}
-      where={where(hit.shelf, hit.projectName, hit.folderName)}
       meta={
         <MetaLine
+          lead={where(hit.shelf, hit.projectId, hit.projectName, hit.folderName)}
           parts={[
             type ? <MetaPart key="type">{type}</MetaPart> : null,
             hit.planNumber ? <MetaPart key="number" code>{hit.planNumber}</MetaPart> : null,
@@ -214,6 +229,8 @@ function DocumentRow({ hit, text, active, id }: { hit: DocumentHit; text: string
           segments={termSegments(hit.passage.text, text)}
           page={hit.passage.page !== null ? t('passage.page', { page: hit.passage.page }) : undefined}
         />
+      ) : matchedOn.length > 0 ? (
+        <MatchHint label={t('matchedOn.label')} parts={matchedOn.map((reason) => t(`matchedOn.${reason}`))} />
       ) : null}
       {hit.changedFacts.length > 0 ? (
         <MatchHint
@@ -227,7 +244,6 @@ function DocumentRow({ hit, text, active, id }: { hit: DocumentHit; text: string
           })}
         />
       ) : null}
-      {matchedOn.length > 0 ? <MatchHint label={t('matchedOn.label')} parts={matchedOn.map((reason) => t(`matchedOn.${reason}`))} /> : null}
     </ResultRow>
   )
 }
@@ -246,8 +262,7 @@ function AnnotationRow({ hit, active, id }: { hit: AnnotationHit; active: boolea
       active={active}
       id={id}
       testId={`search-hit-annotation-${hit.id}`}
-      where={where(hit.shelf, hit.projectName)}
-      meta={<MetaLine parts={[<MetaPart key="kind">{kind}</MetaPart>, <MetaPart key="status">{status}</MetaPart>]} />}
+      meta={<MetaLine lead={where(hit.shelf, hit.projectId, hit.projectName)} parts={[<MetaPart key="kind">{kind}</MetaPart>, <MetaPart key="status">{status}</MetaPart>]} />}
     >
       <Excerpt>{hit.excerpt}</Excerpt>
     </ResultRow>
@@ -255,7 +270,7 @@ function AnnotationRow({ hit, active, id }: { hit: AnnotationHit; active: boolea
 }
 
 function FolderRow({ hit, active, id }: { hit: FolderHit; active: boolean; id?: string }): JSX.Element {
-  const where = useWhere()
+  const where = useWhere()(hit.shelf, hit.projectId, hit.projectName)
   return (
     <ResultRow
       href={folderHitHref(hit)}
@@ -263,7 +278,7 @@ function FolderRow({ hit, active, id }: { hit: FolderHit; active: boolean; id?: 
       title={hit.name}
       active={active}
       id={id}
-      where={where(hit.shelf, hit.projectName)}
+      meta={where.length > 0 ? <MetaLine lead={where} parts={[]} /> : undefined}
       testId={`search-hit-folder-${hit.id}`}
     >
       {hit.excerpt ? <Excerpt>{hit.excerpt}</Excerpt> : null}
@@ -289,8 +304,12 @@ function ConversationRow({ hit, active, id }: { hit: ConversationHit; active: bo
       title={hit.title}
       active={active}
       id={id}
-      meta={<MetaPart>{formatRelativeTime(hit.updatedAt, locale)}</MetaPart>}
-      where={hit.projectName ? where('project', hit.projectName) : null}
+      meta={
+        <MetaLine
+          lead={hit.projectName ? where('project', hit.projectId, hit.projectName) : []}
+          parts={[<MetaPart key="when">{formatRelativeTime(hit.updatedAt, locale)}</MetaPart>]}
+        />
+      }
       testId={`search-hit-conversation-${hit.id}`}
     />
   )

@@ -396,8 +396,8 @@ export interface ResultRowFrameProps {
 const ResultRowFrameContext = createContext<ComponentType<ResultRowFrameProps> | null>(null)
 export const ResultRowFrameProvider = ResultRowFrameContext.Provider
 
-/** The row's box: icon, then the name over the meta line, the mark at the end; on a phone the mark drops under the name. */
-const RESULT_ROW_LAYOUT = 'items-start gap-x-3 gap-y-1.5 px-2 py-2.5 max-sm:flex-wrap'
+/** The row's box: icon, then the name over the meta line; the page's row grows, the palette's stays compact. */
+const RESULT_ROW_LAYOUT = 'items-start gap-x-3 px-2 py-2.5'
 
 /**
  * The row the arrow keys are on: a 2px ink rule down its leading edge over the
@@ -407,16 +407,25 @@ const RESULT_ROW_LAYOUT = 'items-start gap-x-3 gap-y-1.5 px-2 py-2.5 max-sm:flex
 const ACTIVE_ROW = 'aria-selected:bg-accent/60 aria-selected:shadow-[inset_2px_0_0_0_var(--foreground)]'
 
 /**
- * One hit: an icon, its name in the strong weight, then where it lives
- * (project and folder), one muted line of what it is, and what matched under
- * it. The where line comes first because it is what tells two „Grundriss
- * Erdgeschoss“ apart.
+ * Whether the row stands in the ⌘K palette (a frame is provided) rather than
+ * the result list: there it is compact, one line of name and one of what it
+ * is, and what matched shows on the row the arrows are on.
+ */
+export function useCompactRow(): boolean {
+  return useContext(ResultRowFrameContext) !== null
+}
+
+/**
+ * One hit, at most three lines: its name in the strong weight (the focal
+ * point, with any state such as „Ersetzt“ beside it), one muted line of where
+ * it lives and what it is, and what matched under it. In the palette the
+ * third line shows only on the row the arrows are on, so a glance takes in
+ * twice the hits.
  */
 export function ResultRow({
   href,
   icon: Icon,
   title,
-  where,
   meta,
   aside,
   children,
@@ -428,13 +437,11 @@ export function ResultRow({
   href: string
   icon: LucideIcon
   title: ReactNode
-  /** Where it lives: the `ShelfMark` and the folder (`WherePart`). */
-  where?: ReactNode
-  /** One line of what it is: „Einreichplan · EP-03 · Index C · 1:100 · 14.10.2026“. */
+  /** One line of where it lives and what it is: „Kaiserstraße 43 › Einreichung · Einreichplan · EP-03 · Index C“ (`MetaLine`). */
   meta?: ReactNode
-  /** At the row's end: a state (`SupersededMark`). */
+  /** On the name's line, after it: a state (`SupersededMark`). */
   aside?: ReactNode
-  /** The passage, the excerpt. */
+  /** The passage, the excerpt, what it was found in. */
   children?: ReactNode
   /** The row the arrow keys are on. */
   active?: boolean
@@ -445,6 +452,7 @@ export function ResultRow({
   actions?: ReactNode
 }): JSX.Element {
   const Frame = useContext(ResultRowFrameContext)
+  const compact = Frame !== null
   const ref = useRef<HTMLAnchorElement>(null)
   useEffect(() => {
     if (active) ref.current?.scrollIntoView({ block: 'nearest' })
@@ -454,13 +462,24 @@ export function ResultRow({
       <ItemMedia className="size-5 pt-0.5 text-muted-foreground">
         <Icon className="size-4" aria-hidden />
       </ItemMedia>
-      <ItemContent className="flex flex-col gap-0.5">
-        <span className="text-sm font-semibold tracking-tight text-foreground max-sm:line-clamp-2 sm:truncate">{title}</span>
-        {where ? <span className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-1 py-0.5 text-xs">{where}</span> : null}
-        {meta ? <span className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs text-muted-foreground">{meta}</span> : null}
-        {children}
+      <ItemContent className="flex min-w-0 flex-col gap-0.5">
+        <span className="flex min-w-0 items-start gap-2">
+          <span className={cn('min-w-0 flex-1 text-sm font-semibold tracking-tight text-foreground', compact ? 'truncate' : 'max-sm:line-clamp-2 sm:truncate')}>{title}</span>
+          {aside ? <span className="flex shrink-0 items-center gap-1.5">{aside}</span> : null}
+        </span>
+        {meta ? (
+          <span
+            className={cn(
+              'block min-w-0 text-xs leading-5 text-muted-foreground',
+              // The palette keeps one line: a part that would wrap is left out whole, never cut mid-word.
+              compact && 'h-5 overflow-hidden'
+            )}
+          >
+            {meta}
+          </span>
+        ) : null}
+        {children ? compact ? <span className="hidden min-w-0 flex-col in-data-[selected=true]:flex">{children}</span> : children : null}
       </ItemContent>
-      {aside ? <span className="ml-auto flex shrink-0 items-center gap-1.5 pt-0.5 max-sm:ml-8 max-sm:basis-full max-sm:pt-0">{aside}</span> : null}
     </>
   )
   if (Frame) {
@@ -487,23 +506,38 @@ export function MetaPart({ children, code = false }: { children: ReactNode; code
   return <span className={cn('whitespace-nowrap', code && 'font-mono text-xs text-foreground/80')}>{children}</span>
 }
 
-/** The meta line's parts that are there, a dot between each. */
-export function MetaLine({ parts }: { parts: ReadonlyArray<ReactNode | null | undefined | false> }): JSX.Element {
-  const present = parts.filter((part): part is ReactNode => Boolean(part))
+/**
+ * The meta line's parts that are there, a dot between each, and never a dot at
+ * either end of a line: each part carries its dot before it, in a gutter the
+ * line pulls into its clipped left edge, so the dot of a part that starts a
+ * wrapped line is cut away with the gutter. `lead` parts (where it lives: the
+ * shelf's mark, then the folder with its own chevron) come first with no dot
+ * between them.
+ */
+export function MetaLine({
+  parts,
+  lead = [],
+}: {
+  parts: ReadonlyArray<ReactNode | null | undefined | false>
+  lead?: ReadonlyArray<ReactNode | null | undefined | false>
+}): JSX.Element {
+  const present = (list: ReadonlyArray<ReactNode | null | undefined | false>): ReactNode[] => list.filter((part): part is ReactNode => Boolean(part))
+  const items = [...present(lead).map((node, index) => ({ node, dot: index === 0 })), ...present(parts).map((node) => ({ node, dot: true }))]
   return (
-    <>
-      {/* Each dot travels with the part before it, so a wrapped line never starts on one. */}
-      {present.map((part, index) => (
-        <span key={index} className="inline-flex min-w-0 max-w-full items-center gap-x-1.5">
-          {part}
-          {index < present.length - 1 ? (
-            <span className="text-muted-foreground/60" aria-hidden>
-              ·
-            </span>
-          ) : null}
-        </span>
-      ))}
-    </>
+    <span className="block min-w-0 max-w-full overflow-hidden">
+      <span className="-ml-3 flex min-w-0 flex-wrap items-center gap-y-0.5">
+        {items.map((item, index) => (
+          <span key={index} className={cn('relative inline-flex min-w-0 max-w-full items-center', item.dot ? 'pl-3' : 'pl-1')}>
+            {item.dot ? (
+              <span className="absolute left-0 w-3 text-center text-muted-foreground/60" aria-hidden>
+                ·
+              </span>
+            ) : null}
+            {item.node}
+          </span>
+        ))}
+      </span>
+    </span>
   )
 }
 
@@ -593,9 +627,9 @@ export function PassageQuote({ segments, page }: { segments: readonly TextSegmen
         „
         {segments.map((segment, index) =>
           segment.match ? (
-            <mark key={index} className="rounded-[2px] bg-foreground/[0.08] font-semibold text-foreground [box-decoration-break:clone]" data-testid="search-passage-match">
+            <MatchMark key={index} testId="search-passage-match">
               {segment.text}
-            </mark>
+            </MatchMark>
           ) : (
             <span key={index}>{segment.text}</span>
           )
@@ -606,12 +640,38 @@ export function PassageQuote({ segments, page }: { segments: readonly TextSegmen
   )
 }
 
+/** A matched word: set apart by weight on a faint ink wash exactly as wide as the match. */
+function MatchMark({ children, testId }: { children: ReactNode; testId?: string }): JSX.Element {
+  return (
+    <mark className="rounded-[2px] bg-foreground/[0.08] font-semibold text-foreground [box-decoration-break:clone]" data-testid={testId}>
+      {children}
+    </mark>
+  )
+}
+
+/** A name with the searched words set apart, as the passage sets them, so a match on the name is seen and not told. */
+export function MatchedText({ segments }: { segments: readonly TextSegment[] }): JSX.Element {
+  return (
+    <>
+      {segments.map((segment, index) =>
+        segment.match ? (
+          <MatchMark key={index} testId="search-title-match">
+            {segment.text}
+          </MatchMark>
+        ) : (
+          <span key={index}>{segment.text}</span>
+        )
+      )}
+    </>
+  )
+}
+
 /** A plain excerpt (an annotation's body, a folder's description). */
 export function Excerpt({ children }: { children: ReactNode }): JSX.Element {
   return <p className="mt-0.5 line-clamp-2 text-pretty text-sm text-foreground/75">{children}</p>
 }
 
-/** A quiet line under a hit: what the words were found in („Gefunden in Name · Inhalt“), what a Fassung changed. Present, never loud. */
+/** A quiet line under a hit: what the words were found in, when the row shows nothing that matched („Gefunden in Zusammenfassung“), what a Fassung changed. Present, never loud. */
 export function MatchHint({ label, parts, testId = 'search-matched-on' }: { label: string; parts: readonly string[]; testId?: string }): JSX.Element {
   return (
     <span className="mt-0.5 text-xs text-muted-foreground/90" data-testid={testId}>
@@ -742,7 +802,7 @@ export function RegisterTable({
 
   const table = (
     <table className="w-full table-fixed caption-bottom border-separate border-spacing-0 text-sm" style={{ minWidth: `${minRem}rem` }}>
-      {/* Named for a screen reader; the columns say it to the eye. */}
+      {/* The table's name for a screen reader; to the eye the header row says it. */}
       <caption className="sr-only">{caption}</caption>
       <colgroup>
         {columnWidths.map((width, index) => (
@@ -940,36 +1000,15 @@ export function RegisterStackRow({
           <span className="min-w-0 flex-1 truncate text-sm font-semibold tracking-tight text-foreground">{title}</span>
           {aside ? <span className="flex shrink-0 items-center gap-1.5">{aside}</span> : null}
         </span>
-        {meta ? <StackMeta parts={meta} /> : null}
+        {meta && meta.some(Boolean) ? (
+          <span className="min-w-0 text-xs text-muted-foreground">
+            <MetaLine parts={meta} />
+          </span>
+        ) : null}
         {where ? <span className="flex min-w-0 pt-0.5 text-xs">{where}</span> : null}
       </Link>
       {actions ? <RowActions>{actions}</RowActions> : null}
     </li>
-  )
-}
-
-/**
- * A phone entry's meta line. Each part carries its dot IN FRONT, in a 12px
- * gutter, and the line is pulled 12px left inside a clipping box: the part
- * that starts a line has its dot cut off, so a wrapped line neither ends nor
- * starts on a separator, whichever part the width breaks before.
- */
-function StackMeta({ parts }: { parts: ReadonlyArray<ReactNode | null | undefined | false> }): JSX.Element | null {
-  const present = parts.filter((part): part is ReactNode => Boolean(part))
-  if (present.length === 0) return null
-  return (
-    <span className="flex min-w-0 overflow-hidden text-xs text-muted-foreground">
-      <span className="-ml-3 flex min-w-0 flex-wrap items-center gap-y-0.5">
-        {present.map((part, index) => (
-          <span
-            key={index}
-            className="inline-flex min-w-0 max-w-full items-center before:w-3 before:shrink-0 before:text-center before:text-muted-foreground/60 before:content-['·']"
-          >
-            <span className="min-w-0 truncate">{part}</span>
-          </span>
-        ))}
-      </span>
-    </span>
   )
 }
 

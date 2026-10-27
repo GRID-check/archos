@@ -31,7 +31,7 @@ describe('FilesHeaderControls', () => {
     const onSubmit = vi.fn()
     german(controls({ opensSearch: true, onSubmit, value: 'EP-03' }))
     const field = screen.getByRole('textbox', { name: 'Dateien durchsuchen' })
-    expect(field).toHaveAttribute('placeholder', 'Namen filtern, Enter sucht alles …')
+    expect(field).toHaveAttribute('placeholder', 'Filtern, Enter sucht alles…')
     // No second door beside it.
     expect(screen.queryByRole('button', { name: 'Suche' })).toBeNull()
     await userEvent.type(field, '{Enter}')
@@ -40,9 +40,9 @@ describe('FilesHeaderControls', () => {
 
   it('keeps the short placeholder on a phone and where the shelf has no search', () => {
     const { unmount } = german(controls({ opensSearch: true, onSubmit: () => {} }, true))
-    expect(screen.getByRole('textbox', { name: 'Dateien durchsuchen' })).toHaveAttribute('placeholder', 'Suchen …')
+    expect(screen.getByRole('textbox', { name: 'Dateien durchsuchen' })).toHaveAttribute('placeholder', 'Suchen…')
     unmount()
     german(controls({ onSubmit: () => {} }))
-    expect(screen.getByRole('textbox', { name: 'Dateien durchsuchen' })).toHaveAttribute('placeholder', 'Suchen …')
+    expect(screen.getByRole('textbox', { name: 'Dateien durchsuchen' })).toHaveAttribute('placeholder', 'Suchen…')
   })
 })

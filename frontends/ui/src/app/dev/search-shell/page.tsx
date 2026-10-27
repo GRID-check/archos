@@ -12,8 +12,8 @@
  * session's (an organization, a user, no projects), the path is
  * `/dev/search-shell`, so no header entry is marked current, and the search
  * calls `/api/search` like the page does, so a capture answers it (the
- * screenshot script routes it to the fixture answer). The page's title and
- * subtitle are the dictionary's, as the server page reads them.
+ * screenshot script routes it to the fixture answer). The page's title is
+ * the dictionary's, as the server page reads it.
  */
 
 import type { JSX } from 'react'
@@ -30,7 +30,7 @@ function SearchPageBody(): JSX.Element {
   const t = useTranslations('search')
   return (
     <ShellContent width="tool">
-      <PageHeader className="mb-6" title={t('title')} subtitle={t('subtitle')} />
+      <PageHeader className="mb-6" title={t('title')} />
       <Suspense fallback={null}>
         <SearchWorkspace surface={{ kind: 'office' }} currentUserId="user_lena" autoFocus />
       </Suspense>

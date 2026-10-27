@@ -81,7 +81,7 @@ describe('CommandPalette: the workspace search', () => {
     // At most three of a kind, though the answer holds more.
     expect(SEARCH_FIXTURE_RESPONSE.sections.document!.hits.length).toBeGreaterThan(3)
     expect(within(documents).getAllByRole('option')).toHaveLength(3)
-    // The page's own row: the name, the meta line, the passage with its page, the shelf mark.
+    // The page's own row, compact: the name, then one line of where it lives and what it is; the passage with its page.
     const concept = screen.getByTestId(`palette-search-hit-document-${CONCEPT}`)
     expect(concept).toHaveTextContent('Brandschutzkonzept Wohnhaus Seestadt J7')
     expect(concept).toHaveTextContent('S. 7')
@@ -117,6 +117,16 @@ describe('CommandPalette: the workspace search', () => {
     expect(push).toHaveBeenCalledWith('/app/search?q=Fluchtweg')
   })
 
+  it('opens every hit on the search page with Ctrl+Enter, from whichever row the arrows are on', async () => {
+    render(palette())
+    await userEvent.type(field(), 'Fluchtweg')
+    const concept = await screen.findByTestId(`palette-search-hit-document-${CONCEPT}`)
+    await waitFor(() => expect(concept).toHaveAttribute('aria-selected', 'true'))
+    await userEvent.keyboard('{Control>}{Enter}{/Control}')
+    expect(push).toHaveBeenCalledTimes(1)
+    expect(push).toHaveBeenCalledWith('/app/search?q=Fluchtweg')
+  })
+
   it('says when nothing was found, and still offers the search page', async () => {
     server.use(http.post('*/api/search', () => HttpResponse.json({ ...SEARCH_FIXTURE_RESPONSE, sections: {} })))
     render(palette())
@@ -133,7 +143,8 @@ describe('CommandPalette: the workspace search', () => {
     expect(within(recent).getAllByRole('option').map((row) => row.textContent)).toEqual(['EP-05', 'Fluchtweg'])
     const saved = await screen.findByTestId('palette-saved')
     expect(saved).toHaveTextContent('Einreichpläne, aktuell')
-    expect(saved).toHaveTextContent('Von einer Kollegin oder einem Kollegen geteilt')
+    // A colleague's search names who shared it, as the saved searches' popover does.
+    expect(saved).toHaveTextContent('Geteilt von Max Gruber')
     expect(screen.getByText('Profil')).toBeInTheDocument()
     expect(asked).toHaveLength(0)
 

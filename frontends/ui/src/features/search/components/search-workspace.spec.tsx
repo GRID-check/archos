@@ -84,11 +84,14 @@ describe('SearchWorkspaceView', () => {
     german(<Harness initial={{ ...EMPTY_SEARCH_STATE, text: 'Fluchtweg GK 4' }} onChange={() => {}} />)
     const concept = screen.getByTestId('search-hit-document-d0000000-0000-4000-8000-000000000001')
     expect(concept).toHaveTextContent('Brandschutzkonzept Wohnhaus Seestadt J7')
-    // Where it lives on its own line: the project as its provenance mark, whole, then the folder.
-    expect(concept).toHaveTextContent('Wohnhaus Seestadt Baufeld J7Ordner Brandschutz')
+    // Where it lives and what it is on one line: the project as its provenance mark, whole, the folder, the type.
+    expect(concept).toHaveTextContent('Wohnhaus Seestadt Baufeld J7Ordner Brandschutz·Brandschutzkonzept')
     expect(concept).toHaveTextContent('S. 7')
-    // What the words were found in that the row does not show: the passage under it already says „Inhalt“.
-    expect(within(concept).getByTestId('search-matched-on')).toHaveTextContent(/^Gefunden in was Piloti las$/)
+    // The passage shows what matched, so the row does not also say where it was found.
+    expect(within(concept).queryByTestId('search-matched-on')).toBeNull()
+    // A row that shows nothing that matched says what it was found in.
+    const earlier = screen.getByTestId('search-hit-document-d0000000-0000-4000-8000-000000000003')
+    expect(within(earlier).getByTestId('search-matched-on')).toHaveTextContent(/^Gefunden in Zusammenfassung$/)
     // The words searched for are set apart in the passage.
     expect(within(concept).getAllByText('Fluchtweg', { selector: 'mark' }).length).toBeGreaterThan(0)
     // It opens at the passage's page, the passage to light up there.
@@ -102,10 +105,36 @@ describe('SearchWorkspaceView', () => {
       `/app/projects/${PROJECT}/files?doc=d0000000-0000-4000-8000-000000000002&review=1&mark=a0000000-0000-4000-8000-000000000001`
     )
     expect(screen.getByTestId('search-section-conversation')).toHaveTextContent('Fluchtweglängen nach OIB-RL 2 für GK 4')
-    // The shelf still being read is said once, in the status line; the long
-    // note waits for a filter that depends on it.
-    expect(screen.getByTestId('search-status')).toHaveTextContent('eine Ablage wird noch gelesen')
-    expect(screen.queryByTestId('search-note-building')).toBeNull()
+    // The shelf still being read is said once, short, in the status line.
+    expect(screen.getByTestId('search-status')).toHaveTextContent('Treffer · eine Ablage wird noch gelesen ·')
+  })
+
+  it('sets the searched words apart in a name, and then does not say the name matched', () => {
+    german(<Harness initial={{ ...EMPTY_SEARCH_STATE, text: 'Brandschutzkonzept' }} onChange={() => {}} />)
+    const concept = screen.getByTestId('search-hit-document-d0000000-0000-4000-8000-000000000001')
+    expect(within(concept).getByTestId('search-title-match')).toHaveTextContent('Brandschutzkonzept')
+  })
+
+  it('leaves out the shelf a project’s own search already says, and keeps the Büroablage’s', () => {
+    german(
+      <SearchWorkspaceView
+        surface={{ kind: 'project', projectId: PROJECT }}
+        state={{ ...EMPTY_SEARCH_STATE, text: 'Fluchtweg GK 4' }}
+        onStateChange={() => {}}
+        fieldValue="Fluchtweg GK 4"
+        onFieldChange={() => {}}
+        response={SEARCH_FIXTURE_RESPONSE}
+        sections={SECTIONS}
+        loading={false}
+        failed={false}
+        onRetry={() => {}}
+        onLoadMore={() => {}}
+      />
+    )
+    const concept = screen.getByTestId('search-hit-document-d0000000-0000-4000-8000-000000000001')
+    expect(concept).not.toHaveTextContent('Wohnhaus Seestadt Baufeld J7')
+    expect(concept).toHaveTextContent('Ordner Brandschutz·Brandschutzkonzept')
+    expect(screen.getByTestId('search-hit-document-d0000000-0000-4000-8000-000000000006')).toHaveTextContent('Büroablage')
   })
 
   it('shows the kinds a document filter cannot narrow as not searched, and why, rather than unfiltered rows', () => {
@@ -146,9 +175,9 @@ describe('SearchWorkspaceView', () => {
     expect(screen.queryByTestId(/^search-hit-conversation-/)).toBeNull()
   })
 
-  it('explains the shelf still being read where a filter set depends on what it holds', () => {
+  it('says what the shelf still being read costs where a filter set depends on what it holds, in the same short clause', () => {
     german(<Harness initial={{ ...EMPTY_SEARCH_STATE, text: 'Fluchtweg', filters: { documentTypes: ['submission_drawing'] } }} onChange={() => {}} />)
-    expect(screen.getByTestId('search-note-building')).toHaveTextContent('Piloti liest noch')
+    expect(screen.getByTestId('search-status')).toHaveTextContent('eine Ablage wird noch gelesen, die Filter finden dort noch nicht alles')
   })
 
   it('leads the rail with Plannummer, Index and the current Fassung, always open', async () => {
@@ -218,7 +247,6 @@ describe('SearchWorkspaceView', () => {
     expect(screen.getByTestId('search-empty-archived')).toHaveTextContent('Archivierte einschließen')
     expect(screen.getByTestId('search-empty-all-kinds')).toHaveTextContent('Alles zeigen')
     expect(screen.getByTestId('search-empty-office')).toHaveAttribute('href', '/app/search?q=Stiege&kind=document')
-    expect(screen.queryByTestId('search-note-building')).toBeNull()
   })
 
   it('says what a Fassung changed against the one it replaced, in the dossier’s words', () => {

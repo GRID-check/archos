@@ -20,7 +20,7 @@ import type { SearchExportFormat } from '../lib/search-client'
 import { toggleFacet } from '../lib/search-facets'
 import { hitHref } from '../lib/search-hrefs'
 import { useSearchReturn } from '../hooks/use-search-return'
-import type { SearchSurface } from '../lib/search-surface'
+import { surfaceScope, type SearchSurface } from '../lib/search-surface'
 import { activeFilterCount, filtersByReading, officeSearchHref, withView, type SearchUrlState, type SearchView } from '../lib/search-url'
 import type { SectionView } from '../lib/sections'
 import { HitMenuProvider, type HitMenuState } from './hit-actions-menu'
@@ -235,10 +235,11 @@ export function SearchWorkspaceView({
       : lowerBound
         ? t('summaryAtLeast', { count: total })
         : t('total', { count: total })
-  // The shelves still being read are said once, in the status line; the long
-  // note only where a filter that is set depends on what they hold.
-  const readingNote = building > 0 && anyHits && filtersByReading(state)
-  const statusLine = status && building > 0 && anyHits && !loading && !readingNote ? `${status} · ${t('notes.buildingShort', { count: building })}` : status
+  // The shelves still being read are said once, short, in the status line;
+  // when a filter that is set depends on what they hold, the same clause says
+  // what that costs.
+  const buildingNote = filtersByReading(state) ? 'notes.buildingFiltered' : 'notes.buildingShort'
+  const statusLine = status && building > 0 && anyHits && !loading ? `${status} · ${t(buildingNote, { count: building })}` : status
 
   // The typed filters an office reaches for first lead, always open; the
   // counts follow; the rest waits behind „Weitere Filter“.
@@ -421,11 +422,6 @@ export function SearchWorkspaceView({
           {note}
         </SearchNote>
       ))}
-      {readingNote ? (
-        <SearchNote icon={Hourglass} testId="search-note-building">
-          {t('notes.building', { count: building })}
-        </SearchNote>
-      ) : null}
       {response?.contentPartial ? (
         <SearchNote icon={BookOpenCheck} testId="search-note-partial">
           {t('notes.contentPartial')}
@@ -458,7 +454,15 @@ export function SearchWorkspaceView({
               optionId={optionId}
             />
           ) : (
-            <SearchResultList sections={sections} onLoadMore={onLoadMore} text={state.text} activeKey={activeKey} listId={listId} optionId={optionId} />
+            <SearchResultList
+              sections={sections}
+              onLoadMore={onLoadMore}
+              text={state.text}
+              activeKey={activeKey}
+              listId={listId}
+              optionId={optionId}
+              scope={surfaceScope(surface, state)}
+            />
           )}
           </HitMenuProvider>
         </ResultsBody>

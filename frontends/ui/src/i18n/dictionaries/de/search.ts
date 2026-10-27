@@ -7,7 +7,6 @@ import type { en } from '../en'
  */
 export const search: typeof en.search = {
   title: 'Suche',
-  subtitle: 'Alles, was das Büro hat: Dokumente und was in ihnen steht, Anmerkungen, Ordner, Projekte und Chats.',
   scope: {
     office: 'Ganzes Büro',
     project: 'Dieses Projekt',
@@ -16,9 +15,9 @@ export const search: typeof en.search = {
   },
   field: {
     placeholder: {
-      office: 'Suche in allen Dokumenten, Anmerkungen, Ordnern, Projekten und Chats…',
-      project: 'In diesem Projekt suchen: Dokumente, Anmerkungen, Ordner, Chats…',
-      office_shelf: 'In der Büroablage suchen: Dokumente und Ordner…',
+      office: 'Im ganzen Büro suchen…',
+      project: 'In diesem Projekt suchen…',
+      office_shelf: 'In der Büroablage suchen…',
     },
     placeholderShort: 'Suchen…',
     modKey: 'Strg',
@@ -70,9 +69,10 @@ export const search: typeof en.search = {
     tab: 'Mit diesen Filtern nicht durchsucht',
   },
   notes: {
-    building:
-      '{count, plural, one {Piloti liest noch, was die Dokumente einer Ablage sind. Bis dahin finden Filter nach Art, Beteiligten und Angaben dort nicht alles.} other {Piloti liest noch, was die Dokumente in # Ablagen sind. Bis dahin finden Filter nach Art, Beteiligten und Angaben dort nicht alles.}}',
     buildingShort: '{count, plural, one {eine Ablage wird noch gelesen} other {# Ablagen werden noch gelesen}}',
+    /** Dasselbe, wenn ein gesetzter Filter von dem abhängt, was Piloti dort liest. */
+    buildingFiltered:
+      '{count, plural, one {eine Ablage wird noch gelesen, die Filter finden dort noch nicht alles} other {# Ablagen werden noch gelesen, die Filter finden dort noch nicht alles}}',
     contentPartial: 'Die Suche im Inhalt der Dokumente hat nur einen Teil dieses Bereichs abgedeckt.',
   },
   passage: {
@@ -95,8 +95,9 @@ export const search: typeof en.search = {
   },
   matchedOn: {
     label: 'Gefunden in',
-    name: 'Name',
-    reading: 'was Piloti las',
+    name: 'Dateiname',
+    /** Was Piloti über das Dokument las: Titel, Beteiligte, Ort, Plankopf, Verweise. Die Dateiansicht nennt es Zusammenfassung. */
+    reading: 'Zusammenfassung',
     content: 'Inhalt',
   },
   annotation: {
@@ -251,7 +252,7 @@ export const search: typeof en.search = {
     deleteFailed: 'Die Suche konnte nicht gelöscht werden.',
     shared: 'Geteilt',
     sharedSwitch: 'Geteilt',
-    fromColleague: 'Von einer Kollegin oder einem Kollegen geteilt',
+    fromColleague: 'Aus dem Büro geteilt',
     byColleague: 'Geteilt von {name}',
     deleted: '„{name}“ gelöscht',
     undo: 'Rückgängig',
