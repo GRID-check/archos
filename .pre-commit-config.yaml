@@ -142,6 +142,19 @@ repos:
         pass_filenames: false
         files: \.py$|^ci/(german_stems|english_names_baseline_py)\.json$
 
+      - id: file-size
+        name: no source file passes 600 lines, no Python function 60, and no giant grows
+        # Files of 3,000 to 7,000 lines and a 962-line function each got there
+        # one reasonable hunk at a time, and review passed every hunk. A ratchet
+        # on ci/size_baseline.json is the layer that holds while people are
+        # tired, so a split stays split. The venv python, not python3: its
+        # `ast` must parse the 3.14 syntax the tree is written in, and a system
+        # interpreter that cannot would read a file as "no functions".
+        entry: .venv/bin/python scripts/check_file_size.py
+        language: system
+        pass_filenames: false
+        files: \.(py|tsx?)$|^ci/size_baseline\.json$
+
       - id: env-docs
         name: the queue workers' environment variables have a row in the env reference
         # AGENTS.md asks for a row per variable; nothing else checks it, and an
