@@ -25,6 +25,7 @@ const READ_ONLY_WRITE_METHODS: Readonly<Record<string, string>> = {
   'passage-similar-search': 'findSimilarPassages searches the projects the person may read; stores nothing.',
   'workspace-search':
     'runSearch reads; the POST carries the question. Its one side effect is queueing a refresh of a derived search projection, which changes no answer the person sees.',
+  'workspace-search-suggest': 'runSuggest reads one grouped count over the search projection; the POST carries the filters. It writes nothing.',
   'workspace-search-export': 'exportPlanList reads and builds a file; the POST carries the question. It writes only the audit event.',
   'document-by-name-resolve': 'resolveProjectDocumentsByName / resolveOfficeShelfDocumentsByName look documents up by file name.',
   'document-name-match': 'probeProjectDocumentNames / probeOfficeShelfDocumentNames report which names already exist.',

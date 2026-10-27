@@ -387,3 +387,54 @@ export const searchBodyInputSchema = z
     return z.NEVER
   })
   .describe('The question: the body of workspace-search (text, kinds, filters, sort, dir); kinds and paging are ignored.')
+
+/**
+ * What the search completes as a person types (`POST /api/search/suggest`):
+ * the values the documents in reach hold for one free-text filter, with how
+ * many documents hold each. `party` fills `parties[].name`, `place` `place`,
+ * `cites` a `cites` entry (the value is the `kind:key` token), `scale`,
+ * `planNumber` and `planIndex` their fields, `fact` a fact's `equals`.
+ */
+export const SUGGEST_DIMENSIONS = ['party', 'place', 'cites', 'scale', 'planNumber', 'planIndex', 'fact'] as const
+export type SuggestDimension = (typeof SUGGEST_DIMENSIONS)[number]
+
+/** Values one completion answers: what a list under a field shows without scrolling. */
+export const SUGGEST_LIMIT = 10
+
+/**
+ * The search's filters on the wire of the suggest operation: an object, checked
+ * against {@link documentFiltersSchema} in full by the route's parse, and a bare
+ * object in its JSON Schema for the reason {@link searchBodyInputSchema} gives.
+ */
+export const documentFiltersInputSchema = z
+  .record(z.string(), z.unknown())
+  .transform((value, ctx) => {
+    const parsed = documentFiltersSchema.safeParse(value)
+    if (parsed.success) return parsed.data
+    for (const issue of parsed.error.issues) ctx.addIssue({ ...issue })
+    return z.NEVER
+  })
+  .describe('workspace-search filters; the dimension’s own is ignored.')
+
+/** `POST /api/search/suggest` body. Where to look is the query, as for the search. */
+export const suggestBodySchema = z
+  .object({
+    dimension: z.enum(SUGGEST_DIMENSIONS),
+    prefix: z
+      .string()
+      .trim()
+      .max(120)
+      .optional()
+      .describe('Start of any word; case and accents ignored.'),
+    role: z.enum(DOSSIER_PARTY_ROLES).optional().describe('party only.'),
+    factKey: z.enum(DOSSIER_FACT_KEYS).optional().describe('Needed for fact.'),
+    filters: documentFiltersInputSchema.optional(),
+  })
+  .refine((body) => body.dimension !== 'fact' || body.factKey !== undefined, { message: 'dimension fact needs factKey', path: ['factKey'] })
+export type SuggestBody = z.infer<typeof suggestBodySchema>
+
+/** The values, most documents first, then by label. `value` is what the filter takes, `label` how the documents write it. */
+export interface SuggestResponse {
+  dimension: SuggestDimension
+  values: FacetCount[]
+}

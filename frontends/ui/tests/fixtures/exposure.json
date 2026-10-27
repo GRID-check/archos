@@ -890,6 +890,16 @@
    "withheld": null,
    "reason": null
   },
+  "workspace-search-suggest": {
+   "kind": "catalog",
+   "domain": "documents",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
   "office-shelf-folder-create": {
    "kind": "catalog",
    "domain": "folders",

@@ -1,5 +1,16 @@
 import { describe, expect, it } from 'vitest'
-import { narrowsAnnotations, narrowsDocuments, setAsideKinds } from './search-wire'
+import { narrowsAnnotations, narrowsDocuments, setAsideKinds, suggestBodySchema } from './search-wire'
+
+describe('suggestBodySchema', () => {
+  it('needs a fact key to complete a fact, and checks the filters it passes on in full', () => {
+    expect(suggestBodySchema.safeParse({ dimension: 'party', prefix: 'Atel' }).success).toBe(true)
+    expect(suggestBodySchema.safeParse({ dimension: 'fact', prefix: 'GK' }).success).toBe(false)
+    expect(suggestBodySchema.safeParse({ dimension: 'fact', factKey: 'building_class' }).success).toBe(true)
+    expect(suggestBodySchema.safeParse({ dimension: 'cites', filters: { documentTypes: ['submission_drawing'] } }).success).toBe(true)
+    expect(suggestBodySchema.safeParse({ dimension: 'cites', filters: { documentTypes: ['no_such_type'] } }).success).toBe(false)
+    expect(suggestBodySchema.safeParse({ dimension: 'uploader' }).success).toBe(false)
+  })
+})
 
 describe('narrowsDocuments', () => {
   it('counts what a document is, and neither the projects (they cut every kind) nor the archive (it only widens)', () => {

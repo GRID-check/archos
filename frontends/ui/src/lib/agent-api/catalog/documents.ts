@@ -13,7 +13,7 @@ import {
 import { nameProbeRequestSchema } from '@/lib/documents/name-probe-types'
 import { DOCUMENT_STATUSES } from '@/lib/documents/document-status'
 import { SHELF_SCOPES } from '@/lib/documents/shelf-scope'
-import { searchBodyInputSchema, searchBodySchema, searchExportQuerySchema, searchScopeQuerySchema } from '@/lib/search/search-wire'
+import { searchBodyInputSchema, searchBodySchema, searchExportQuerySchema, searchScopeQuerySchema, suggestBodySchema } from '@/lib/search/search-wire'
 import type { AgentOperation } from '../operation'
 import { MAX_UPLOAD_BYTES, documentUploadFields, uploadBodySchemaWith } from '../upload-wire'
 
@@ -263,6 +263,21 @@ export const documentsOperations = [
     readOnly: true,
     spansProjects: 'unlessScoped',
     load: () => import('@/app/api/search/route'),
+  },
+  {
+    name: 'workspace-search-suggest',
+    domain: 'documents',
+    summary: 'Complete a search filter from document values',
+    description:
+      'Values documents in reach hold for one workspace-search filter, starting as `prefix`, with document ' +
+      'counts, under the same scope and `filters`. `cites` values are tokens.',
+    method: 'POST',
+    path: '/api/search/suggest',
+    query: searchScopeQuerySchema,
+    body: suggestBodySchema,
+    readOnly: true,
+    spansProjects: 'unlessScoped',
+    load: () => import('@/app/api/search/suggest/route'),
   },
   {
     name: 'workspace-search-export',
