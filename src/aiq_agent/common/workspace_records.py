@@ -28,7 +28,7 @@ model read:
   PROPOSAL, whose record is the input the model proposed;
 - a ``list_files`` LISTING, or an ``ls`` or ``glob`` of the estate (ADR-0133
   slice 6), is its rendered text, cut at :data:`LISTING_MAX_CHARS`. It stays an
-  index, never cited, and registers no source (``citation_verification``);
+  index, never cited, and registers no source (``citations.text_parsers``);
 - anything else (a refusal, which the tool words „Error …", or a notice the
   agent's own guards answered the call with) is no JSON and no record.
 

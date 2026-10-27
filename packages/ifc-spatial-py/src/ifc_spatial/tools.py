@@ -681,7 +681,7 @@ def create_tools(cache: SpatialCache | None = None) -> list[ToolDef]:
         global_id = str(args.get("globalId") or "")
         try:
             subject = model.file.by_guid(global_id)
-        except (RuntimeError, KeyError):
+        except RuntimeError, KeyError:
             raise ToolError(
                 f"Bauteil {global_id} ist in diesem Modell nicht enthalten — GlobalId mit find_elements prüfen"
             ) from None
@@ -858,7 +858,7 @@ def create_tools(cache: SpatialCache | None = None) -> list[ToolDef]:
                         f'limit muss mindestens 1 sein — "{requested}" übergeben. Ohne limit werden '
                         f"bis zu {MAX_BATCH} Bauteile gemessen."
                     )
-            except (TypeError, ValueError):
+            except TypeError, ValueError:
                 raise ToolError(
                     f'limit muss eine ganze Zahl sein — "{requested}" übergeben. Ohne limit werden '
                     f"bis zu {MAX_BATCH} Bauteile gemessen."
@@ -1027,7 +1027,7 @@ def create_tools(cache: SpatialCache | None = None) -> list[ToolDef]:
         global_id = _require(args, "globalId")
         try:
             subject = model.file.by_guid(global_id)
-        except (RuntimeError, KeyError):
+        except RuntimeError, KeyError:
             raise ToolError(
                 f"GlobalId {global_id} steht nicht in diesem Modell. "
                 "Mit find_elements suchen — GlobalIds sind exakt 22 Zeichen und gelten je Datei."
@@ -2058,7 +2058,7 @@ def _read_source(args: dict[str, Any]) -> bytes:
     if encoded:
         try:
             return base64.b64decode(encoded, validate=True)
-        except (binascii.Error, ValueError):
+        except binascii.Error, ValueError:
             raise ToolError("base64 ist nicht dekodierbar") from None
     raise ToolError("Eine Quelle angeben: path, url oder base64")
 
@@ -2103,7 +2103,7 @@ def _lower(value: Any) -> str:
 def _clamp(value: Any, low: int, high: int) -> int:
     try:
         number = int(float(value))
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         return low
     return max(low, min(high, number))
 

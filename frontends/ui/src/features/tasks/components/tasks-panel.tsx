@@ -39,7 +39,7 @@ import { SectionLabel } from '@/components/ui/section-label'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { useTranslations } from '@/i18n'
-import { listJobs, type Job } from '@/adapters/api/jobs-client'
+import { listJobs, listProjectRuns, type Job } from '@/adapters/api/jobs-client'
 import type { ScheduleDraft } from '@/features/jobs/lib/schedule-draft'
 import { seriesColorsFor } from '@/features/jobs/lib/timetable'
 import { ScheduleCard } from '@/features/jobs/components/schedule-card'
@@ -183,10 +183,7 @@ export function TasksPanel({
       try {
         // The newest page, as large as the list has always been read: the
         // filters and the timeline group what is on screen, not a server query.
-        const response = await fetch(`/api/projects/${encodeURIComponent(projectId)}/runs?limit=${RUN_LIST_PAGE}`)
-        if (!response.ok) throw new Error(`runs ${response.status}`)
-        const body = (await response.json()) as { runs?: TaskRunView[] }
-        const rows = body.runs ?? []
+        const rows = await listProjectRuns(projectId, { limit: RUN_LIST_PAGE })
         if (startedFor !== generationRef.current) return
         setTasks(rows)
         setFailed(false)

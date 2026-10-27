@@ -6,9 +6,9 @@ as the prompt asks, and the registry files RIS passages by key. The verifier
 removed both sources as ``url_not_in_registry`` and paid a repair pass for it.
 """
 
-from aiq_agent.common.citation_verification import SourceEntry
-from aiq_agent.common.citation_verification import SourceRegistry
-from aiq_agent.common.citation_verification import verify_citations
+from aiq_agent.citations.entries import SourceEntry
+from aiq_agent.citations.registry import SourceRegistry
+from aiq_agent.citations.verification import verify_citations
 
 LAW = "https://www.ris.bka.gv.at/GeltendeFassung.wxe?Abfrage=LrW&Gesetzesnummer=20000006"
 
@@ -54,7 +54,7 @@ def test_an_unretrieved_paragraph_with_the_same_link_still_goes():
 
 
 def test_an_error_that_links_somewhere_registers_nothing():
-    from aiq_agent.common.citation_verification import extract_sources_from_tool_result
+    from aiq_agent.citations.extraction import extract_sources_from_tool_result
 
     error = (
         "Error: Web search is unavailable because TAVILY_API_KEY is not set.\n"
@@ -81,21 +81,21 @@ def test_a_link_label_goes_with_its_link():
 
 
 def test_drop_url_leaves_no_dangling_separator_or_label():
-    from aiq_agent.common.citation_verification import _drop_url
+    from aiq_agent.citations.references import drop_url
 
-    assert _drop_url(f"{LAW} - Wiener Bauordnung § 5", LAW) == "Wiener Bauordnung § 5"
-    assert _drop_url(f"- [1] {LAW} - Wiener Bauordnung § 5", LAW) == "- [1] Wiener Bauordnung § 5"
-    assert _drop_url(f"Titel – Source: <{LAW}>", LAW) == "Titel"
-    assert _drop_url(f"Titel - URL: {LAW}", LAW) == "Titel"
-    assert _drop_url(f"Titel - {LAW}", LAW) == "Titel"
-    assert _drop_url(f"[Titel]({LAW})", LAW) == "Titel"
-    assert _drop_url(f"- [1] Bauordnung für Wien, § 63 | {LAW}", LAW) == "- [1] Bauordnung für Wien, § 63"
-    assert _drop_url(f"- [1] Bauordnung für Wien, § 63 (Source: {LAW})", LAW) == "- [1] Bauordnung für Wien, § 63"
-    assert _drop_url(f"Titel ({LAW})", LAW) == "Titel"
+    assert drop_url(f"{LAW} - Wiener Bauordnung § 5", LAW) == "Wiener Bauordnung § 5"
+    assert drop_url(f"- [1] {LAW} - Wiener Bauordnung § 5", LAW) == "- [1] Wiener Bauordnung § 5"
+    assert drop_url(f"Titel – Source: <{LAW}>", LAW) == "Titel"
+    assert drop_url(f"Titel - URL: {LAW}", LAW) == "Titel"
+    assert drop_url(f"Titel - {LAW}", LAW) == "Titel"
+    assert drop_url(f"[Titel]({LAW})", LAW) == "Titel"
+    assert drop_url(f"- [1] Bauordnung für Wien, § 63 | {LAW}", LAW) == "- [1] Bauordnung für Wien, § 63"
+    assert drop_url(f"- [1] Bauordnung für Wien, § 63 (Source: {LAW})", LAW) == "- [1] Bauordnung für Wien, § 63"
+    assert drop_url(f"Titel ({LAW})", LAW) == "Titel"
     # A link in square brackets leaves no empty ``[]`` behind.
-    assert _drop_url(f"- [1] Wiener Bauordnung, § 5 [{LAW}]", LAW) == "- [1] Wiener Bauordnung, § 5"
-    assert _drop_url(f"- [1] [{LAW}] - Wiener Bauordnung", LAW) == "- [1] Wiener Bauordnung"
+    assert drop_url(f"- [1] Wiener Bauordnung, § 5 [{LAW}]", LAW) == "- [1] Wiener Bauordnung, § 5"
+    assert drop_url(f"- [1] [{LAW}] - Wiener Bauordnung", LAW) == "- [1] Wiener Bauordnung"
     # A link sharing its parentheses keeps them for what else they hold.
     link = "https://www.ris.bka.gv.at/x?a=1"
-    assert _drop_url(f"BO-Wien § 5 ({link}, 2024)", link) == "BO-Wien § 5 (2024)"
-    assert _drop_url(f"BO-Wien § 5 (2024, {link})", link) == "BO-Wien § 5 (2024)"
+    assert drop_url(f"BO-Wien § 5 ({link}, 2024)", link) == "BO-Wien § 5 (2024)"
+    assert drop_url(f"BO-Wien § 5 (2024, {link})", link) == "BO-Wien § 5 (2024)"

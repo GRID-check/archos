@@ -1,6 +1,6 @@
 """Trailer-value grounding, digest rejection, mechanical quote gates.
 
-Specs for the three ``citation_verification`` gates behind the reviewer
+Specs for the three citation-verification gates behind the reviewer
 findings:
 
 1. **Digest rejection** — an already-read digest line (``"<file> |
@@ -21,8 +21,8 @@ CHUNK = (
 
 
 def _registry(*chunks: str):
-    from aiq_agent.common.citation_verification import SourceEntry
-    from aiq_agent.common.citation_verification import SourceRegistry
+    from aiq_agent.citations.entries import SourceEntry
+    from aiq_agent.citations.registry import SourceRegistry
 
     reg = SourceRegistry()
     for i, chunk in enumerate(chunks, 1):
@@ -38,7 +38,7 @@ def _registry(*chunks: str):
 
 
 def _oib_entry():
-    from aiq_agent.common.citation_verification import SourceEntry
+    from aiq_agent.citations.entries import SourceEntry
 
     return SourceEntry(
         citation_key="oib-rl_2_ausgabe_mai_2023.pdf, p.12",
@@ -58,8 +58,8 @@ class TestDigestShapedCitationsRejected:
         return f"Die Regel gilt [1].\n\n## Sources\n- [1] {line}"
 
     def test_a_digest_shaped_line_is_removed_even_for_a_retrieved_document(self):
-        from aiq_agent.common.citation_verification import SourceRegistry
-        from aiq_agent.common.citation_verification import verify_citations
+        from aiq_agent.citations.registry import SourceRegistry
+        from aiq_agent.citations.verification import verify_citations
 
         registry = SourceRegistry()
         registry.add(_oib_entry())
@@ -71,8 +71,8 @@ class TestDigestShapedCitationsRejected:
         assert "[1]" not in result.verified_report.split("## Sources")[0]
 
     def test_a_proper_citation_to_the_same_document_stays_valid(self):
-        from aiq_agent.common.citation_verification import SourceRegistry
-        from aiq_agent.common.citation_verification import verify_citations
+        from aiq_agent.citations.registry import SourceRegistry
+        from aiq_agent.citations.verification import verify_citations
 
         registry = SourceRegistry()
         registry.add(_oib_entry())
@@ -86,8 +86,8 @@ class TestDigestShapedCitationsRejected:
         assert result.removed_citations == []
 
     def test_a_digest_line_does_not_sink_the_other_citations(self):
-        from aiq_agent.common.citation_verification import SourceRegistry
-        from aiq_agent.common.citation_verification import verify_citations
+        from aiq_agent.citations.registry import SourceRegistry
+        from aiq_agent.citations.verification import verify_citations
 
         registry = SourceRegistry()
         registry.add(_oib_entry())
@@ -107,7 +107,7 @@ class TestDropUngroundedTrailerValues:
     """Values with Zahl/Klasse/Frist need a turn-source Fundstelle."""
 
     def _drop(self, meta: dict | None, sources: list) -> dict | None:
-        from aiq_agent.common.citation_verification import drop_ungrounded_trailer_values
+        from aiq_agent.citations.trailer_values import drop_ungrounded_trailer_values
 
         return drop_ungrounded_trailer_values(meta, sources)
 
@@ -129,7 +129,7 @@ class TestDropUngroundedTrailerValues:
         assert self._drop(meta, [_oib_entry()]) is None
 
     def test_a_verdict_value_with_an_unresolving_reference_drops(self):
-        from aiq_agent.common.citation_verification import SourceEntry
+        from aiq_agent.citations.entries import SourceEntry
 
         meta = {
             "v": 1,
@@ -254,7 +254,7 @@ class TestMechanicalQuoteGates:
     """Form gates at ``verify_quoted_spans``: too long, or uncited, is flagged."""
 
     def test_a_41_word_verbatim_cited_quote_is_flagged_for_length(self):
-        from aiq_agent.common.citation_verification import verify_quoted_spans
+        from aiq_agent.citations.quote_verification import verify_quoted_spans
 
         quote = " ".join(f"Wort{i}" for i in range(1, 42))
         reg = _registry(f"Vorbemerkung. {quote} Nachbemerkung.")
@@ -266,7 +266,7 @@ class TestMechanicalQuoteGates:
         assert flagged.best_coverage >= 0.90
 
     def test_exactly_40_words_passes_the_length_gate(self):
-        from aiq_agent.common.citation_verification import verify_quoted_spans
+        from aiq_agent.citations.quote_verification import verify_quoted_spans
 
         quote = " ".join(f"Wort{i}" for i in range(1, 41))
         reg = _registry(f"Vorbemerkung. {quote} Nachbemerkung.")
@@ -275,7 +275,7 @@ class TestMechanicalQuoteGates:
         assert verify_quoted_spans(answer, reg) == []
 
     def test_a_verbatim_quote_without_any_marker_is_flagged_uncited(self):
-        from aiq_agent.common.citation_verification import verify_quoted_spans
+        from aiq_agent.citations.quote_verification import verify_quoted_spans
 
         reg = _registry(CHUNK)
         answer = (
@@ -289,7 +289,7 @@ class TestMechanicalQuoteGates:
         assert flagged.best_coverage >= 0.90
 
     def test_a_marker_two_sentences_away_does_not_attribute(self):
-        from aiq_agent.common.citation_verification import verify_quoted_spans
+        from aiq_agent.citations.quote_verification import verify_quoted_spans
 
         reg = _registry(CHUNK)
         answer = (
@@ -309,7 +309,7 @@ class TestMechanicalQuoteGates:
         vgl. … [1].`` passing — a quote two sentences from any marker is
         still flagged (see above).
         """
-        from aiq_agent.common.citation_verification import verify_quoted_spans
+        from aiq_agent.citations.quote_verification import verify_quoted_spans
 
         reg = _registry(CHUNK)
         answer = (
@@ -320,7 +320,7 @@ class TestMechanicalQuoteGates:
         assert verify_quoted_spans(answer, reg) == []
 
     def test_a_decimal_point_does_not_split_the_sentence(self):
-        from aiq_agent.common.citation_verification import verify_quoted_spans
+        from aiq_agent.citations.quote_verification import verify_quoted_spans
 
         chunk = "Die lichte Hoehe muss mindestens 2.50 m im Lichten betragen, so die Verordnung."
         reg = _registry(chunk)
@@ -329,7 +329,7 @@ class TestMechanicalQuoteGates:
         assert verify_quoted_spans(answer, reg) == []
 
     def test_long_and_uncited_combine_in_one_reason(self):
-        from aiq_agent.common.citation_verification import verify_quoted_spans
+        from aiq_agent.citations.quote_verification import verify_quoted_spans
 
         quote = " ".join(f"Wort{i}" for i in range(1, 42))
         reg = _registry(f"Vorbemerkung. {quote} Nachbemerkung.")
@@ -340,7 +340,7 @@ class TestMechanicalQuoteGates:
         assert flagged.reason == "too_long+uncited"
 
     def test_a_cited_short_verbatim_quote_still_passes(self):
-        from aiq_agent.common.citation_verification import verify_quoted_spans
+        from aiq_agent.citations.quote_verification import verify_quoted_spans
 
         reg = _registry(CHUNK)
         answer = (

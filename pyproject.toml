@@ -204,7 +204,18 @@ markers = [
 [tool.ruff]
 # Set the maximum line length to 120.
 line-length = 120
-target-version = "py311"
+# No target-version: ruff reads it from `requires-python` above, so the two
+# cannot drift apart again (it said py311 while the project required 3.14).
+#
+# Except what runs outside the project venv, on the runner's own `python3`
+# (3.12 on ubuntu-24.04) or `uv run --no-project`: CI's scripts, the hook
+# checkers, the release-note tool and the Chroma exporter (`uvx --python 3.12`).
+# On py314 the formatter writes `except A, B:` (PEP 758), a SyntaxError there.
+[tool.ruff.per-file-target-version]
+"ci/**/*.py" = "py312"
+"scripts/check_*.py" = "py312"
+"scripts/release_notes.py" = "py312"
+"deploy/migration/**/*.py" = "py312"
 
 [tool.ruff.lint]
 
