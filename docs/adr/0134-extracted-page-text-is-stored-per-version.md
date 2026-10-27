@@ -244,6 +244,8 @@ door. PyMuPDF4LLM yields per-page chunks but is AGPL-3.0 or commercial, which bl
 for a hosted service without a licence. LlamaParse would be a new processor of tenant
 files, with the data-processing, region and zero-retention questions to solve again.
 
+**How the tools read it:** [`agent-filesystem.md`](../architecture/agent-filesystem.md).
+
 **The ingestion work stream** received the short form of decisions 1 to 6 on 2026-10-27.
 This record is the decision of record.
 

@@ -139,8 +139,8 @@ What it decides:
    block (prototype p2). Extracted text is served as `<name>.pdf.md`, one entry per
    document, the stem being the immutable file name that is also the citation key's
    stem. `read_file` accepts the bare `<name>.pdf` and answers with the `.pdf.md`
-   text. The living design, `docs/architecture/agent-filesystem.md`, has the rule
-   for every kind of document.
+   text. The [living design](../architecture/agent-filesystem.md) has the rule for
+   every kind of document.
 6. **Privacy: listing hides, reading admits.** A restricted document is absent from
    `ls` and `glob`. A guessed restricted path gets the same "no such file" as a real
    miss. A path the model got from a search hit reads, and the result is admitted or
@@ -323,6 +323,9 @@ three-month window that applies to prompt and tool-description changes
 ([working style](../contributing/working-style.md#prompting-advice-has-a-three-month-shelf-life)).
 They are evidence for the architecture. The tool descriptions written in slices 2 to 6
 take their advice from sources inside the window.
+
+**The living design**, with paths, tool contracts, example outputs and the Deep Agents
+recipe: [`agent-filesystem.md`](../architecture/agent-filesystem.md).
 
 **What this amends.** ADR-0127's rejection of a shell over a projection rested on
 `just-bash`-specific premises; it carries a dated note pointing here.
