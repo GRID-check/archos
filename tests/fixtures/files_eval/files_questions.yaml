@@ -193,6 +193,8 @@ questions:
     expect:
       tools: {any: [knowledge_search, read_passage, list_files]}
       mentions: ["EI 60"]
+      # "EI 60" is a substring of "REI 60" (a load-bearing wall), which would be a wrong answer.
+      not_mentions: ["REI 60"]
 
   - id: pf-outside-open-number
     open: Brandschutzkonzept_Hubergasse14.pdf

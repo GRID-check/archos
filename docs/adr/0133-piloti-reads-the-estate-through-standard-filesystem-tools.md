@@ -205,8 +205,8 @@ What it decides:
 
 ### Confirmation
 
-Gates that will enforce it. None of them exists yet; each lands with the slice that
-needs it, and until then review is the only gate.
+Gates that will enforce it. Only the answer-suite gate below exists; each other gate
+lands with the slice that needs it, and until then review is the only gate for it.
 
 * `task be:eval:answer-suite -- --set files` with three arms, grep only, semantic
   only and hybrid, before and after every slice. Exists since slice 0:
