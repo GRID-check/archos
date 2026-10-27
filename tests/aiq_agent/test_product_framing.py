@@ -138,6 +138,6 @@ def test_no_package_describes_itself_by_its_framework(relative: str) -> None:
 
 
 def test_the_scan_sees_the_packages() -> None:
-    assert {"pyproject.toml", "sources/knowledge_layer/pyproject.toml", "frontends/aiq_api/pyproject.toml"} <= set(
+    assert {"pyproject.toml", "packages/knowledge-layer/pyproject.toml", "frontends/aiq_api/pyproject.toml"} <= set(
         PYPROJECTS
     )

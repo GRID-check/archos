@@ -49,7 +49,7 @@ doc_class stamped at ingest would place it in the norm hierarchy under the
 
 ## What retrieval says
 
-`sources/knowledge_layer/src/register.py` adds one line to a marked hit's
+`packages/knowledge-layer/src/register.py` adds one line to a marked hit's
 grounding block, and nothing to an unmarked one:
 
 ```

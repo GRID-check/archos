@@ -159,7 +159,7 @@ repos:
         entry: .venv/bin/lint-imports --no-cache
         language: system
         pass_filenames: false
-        files: ^(src/aiq_agent|frontends/aiq_api/src|sources/knowledge_layer/src)/.*\.py$|^pyproject\.toml$
+        files: ^(src/aiq_agent|frontends/aiq_api/src|packages/knowledge-layer/src)/.*\.py$|^pyproject\.toml$
 
       - id: file-size
         name: no source file passes 600 lines, no Python function 60, and no giant grows

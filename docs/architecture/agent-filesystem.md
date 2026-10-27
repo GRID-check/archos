@@ -37,8 +37,8 @@ with the reason. The design text stays as written; this section is the delta.
 | Piece | Where |
 |---|---|
 | Paths, mounts, canonical form, `call_mount` | `src/aiq_agent/common/estate_paths.py` |
-| The read-only async backend (rows, resolution, rendering) | `sources/knowledge_layer/src/estate.py` (`EstateBackend`) |
-| Stored page text and the chunk rebuild | `sources/knowledge_layer/src/stored_pages.py` |
+| The read-only async backend (rows, resolution, rendering) | `packages/knowledge-layer/src/estate.py` (`EstateBackend`) |
+| Stored page text and the chunk rebuild | `packages/knowledge-layer/src/stored_pages.py` |
 | The tools, the `CompositeBackend`, the `/drafts/` route | `src/aiq_agent/tools/documents/filesystem.py`, `tools.py` |
 | Citations on `ToolMessage.artifact` | `src/aiq_agent/common/citation_collector.py`; read first by `extract_sources_from_tool_result` |
 | `ToolStep.mount` | `common/wire_v2.py`, `turn_status.ToolStepCallback`; the UI's `executed-steps.ts` |
@@ -91,7 +91,7 @@ signed by the repeat-fetch guard, never refused by a data-source toggle, and its
 wire is `skills`. Routes: default the estate, `/drafts/` the draft store, `/skills/` the skills.
 
 **Slice 3, `ls` and `glob`, folder cards as `README.md`** (built).
-`sources/knowledge_layer/src/estate_listing.py` renders over the listable rows only, so a
+`packages/knowledge-layer/src/estate_listing.py` renders over the listable rows only, so a
 restricted folder is neither named nor counted, and `ls` of it answers as a folder that does not
 exist does. `README.md` in every folder is the tier-0 card `list_files(view="tree")` builds, with
 the tier-1 abstract the folder-card worker wrote; a real document of that name keeps it. Herleitung
@@ -107,7 +107,7 @@ verb `list` with file and folder counts. `list_files` stays bound as the alias.
 3. **Deferred: the mount digest in the prompt.** It is a turn-context block, and the prompt is
    slice 6's; the one prompt line that named `list_files(name_contains=…)` now names `glob`.
 
-**Slice 4, `grep` under its own name** (built). `sources/knowledge_layer/src/estate_grep.py`:
+**Slice 4, `grep` under its own name** (built). `packages/knowledge-layer/src/estate_grep.py`:
 stage 1 is the index's literal scan (`retriever.find_text`, the scan `knowledge_search(match=…)`
 runs, with slice 1's fixed counts), stage 2 recounts each candidate on its stored pages (up to 20
 documents within 3 s) and otherwise on its chunks' own text. `content` returns one grounding
@@ -143,7 +143,7 @@ the evidence tool surface went from 5,560 to 3,111 tokens per call (o200k).
 | Piece | Where |
 |---|---|
 | The descriptions, bare schema fields, `conclusion` on `grep` and `read_file` | `src/aiq_agent/tools/documents/tools.py` (`_ESTATE_DESCRIPTIONS`), `filesystem.py` |
-| `knowledge_search` (ranked only, `path`) and `list_files` (no tree view) where the estate is read | `sources/knowledge_layer/src/chat_binding.py`, applied in `agents/piloti/register._chat_bound` only when `filesystem` is set (`estate_paths.reads_the_estate`) |
+| `knowledge_search` (ranked only, `path`) and `list_files` (no tree view) where the estate is read | `packages/knowledge-layer/src/chat_binding.py`, applied in `agents/piloti/register._chat_bound` only when `filesystem` is set (`estate_paths.reads_the_estate`) |
 | A retired argument is an error that names it and its replacement | the chat schemas forbid unknown arguments; `src/aiq_agent/common/retired_calls.py` adds the replacement in `tool_errors.render_tool_error` |
 | Shared hints state facts and name no tool | `read_passage.py`, `register.py`, `browse.py`, `document_groups.py`, `chunk_noise.py`, `qdrant/folders.py`, `already_read.py`, `revision_diff.py` |
 | A citation written as a path resolves to its key | `citations/citation_keys.py::citation_key_of_path` |

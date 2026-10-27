@@ -458,7 +458,7 @@ What lives where in the checkout.
 |------|---------|
 | `.devcontainer/` | VS Code dev container configuration |
 | `src/aiq_agent/` | Backend agent (LangGraph agents, cards, knowledge layer) |
-| `sources/` | NAT data-source packages (web search, knowledge layer, RIS adapter, grid cards) |
+| `packages/knowledge-layer`, `packages/ris-adapter`, `packages/tavily-web-search` | The Python packages of the uv workspace: the knowledge layer, the RIS adapter and web search, each a NAT plugin |
 | `frontends/ui/` | Next.js app: UI + BFF API routes + WS proxy (`server.js`) |
 | `frontends/web/` | Public Piloti landing page + blog (Astro microservice; `de`/`en`, Keystatic CMS for platform-owner blog writing) |
 | `frontends/aiq_api/` | The backend FastAPI front-end plugin (`_type: aiq_api`): REST routes, async jobs, `/v1/ingest` |

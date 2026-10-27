@@ -38,7 +38,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 TS_MAPPER = REPO_ROOT / "frontends" / "ui" / "src" / "features" / "documents" / "lib" / "ingest-failure.ts"
 TS_RETRY_POLICY = REPO_ROOT / "frontends" / "ui" / "src" / "lib" / "documents" / "retry-policy.ts"
 BACKEND_ROOTS = (
-    REPO_ROOT / "sources" / "knowledge_layer" / "src",
+    REPO_ROOT / "packages" / "knowledge-layer" / "src",
     REPO_ROOT / "src" / "aiq_agent" / "knowledge",
     # The ingest worker settles a job whose queued payload it cannot read
     # (`unreadable_job:`, `jobs/ingest_dispatch.py`). It was outside the scan,

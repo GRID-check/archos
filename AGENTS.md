@@ -5,7 +5,7 @@ every process, and Piloti, the agent, is a colleague in that office. Building la
 among many. [`VISION.md`](VISION.md) says what the product is; read it before you describe Piloti
 anywhere. The code: a Next.js UI and BFF (`frontends/ui`), a Python agent on the NeMo Agent Toolkit
 (`src/aiq_agent`), and the knowledge layer that reads the office's documents and the legal corpus
-(`sources/knowledge_layer`).
+(`packages/knowledge-layer`).
 
 ## Setup
 

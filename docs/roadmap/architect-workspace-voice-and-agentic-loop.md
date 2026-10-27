@@ -41,7 +41,7 @@
 > repair as workflows the agent could neither see nor react to. Both now leave
 > an observation the model reads: a widened `knowledge_search` leads its result
 > with one German line naming the alternative formulations and why they were
-> tried (`sources/knowledge_layer/src/requery.py::requery_notice`). The
+> tried (`packages/knowledge-layer/src/requery.py::requery_notice`). The
 > repair half did not last: a failed verification used to reach the rewrite
 > as a `citation_check` tool result naming the marker and the quote that
 > failed, and that observation went with the rewrite
@@ -310,7 +310,7 @@ Function calling without an explicit Thought step is a known collapse. ReAct int
 
 Two quality loops already exist. Both are **workflows inside a tool or after the answer**, not agent decisions.
 
-**Requery (CRAG-shaped, inside `knowledge_search`).** If `requery_llm` is set, a sufficiency judge may fire alternative formulations against every in-scope collection, fuse them with RRF, and rerank. The live line can show `status.retrieval.requery`. The model issued one search. The pipeline widened it. (`sources/knowledge_layer/src/requery.py`, `register.py` around the `judge_sufficiency` call; `turn_status.py:164–167`)
+**Requery (CRAG-shaped, inside `knowledge_search`).** If `requery_llm` is set, a sufficiency judge may fire alternative formulations against every in-scope collection, fuse them with RRF, and rerank. The live line can show `status.retrieval.requery`. The model issued one search. The pipeline widened it. (`packages/knowledge-layer/src/requery.py`, `register.py` around the `judge_sufficiency` call; `turn_status.py:164–167`)
 
 **Repair pass (evaluator-optimizer, after verification).** If a citation or quote fails, the turn may retrieve once more aimed at the failing text and rewrite, then re-verify (`repair_pass: true`). The reader may see `status.repair`. The model did not choose this. *(2026-09-24: superseded by [ADR-0067](../adr/0067-the-repair-corrects-a-misremembered-quote-in-place.md). With the prose streaming, the rewrite replaced an answer the reader had read; the repair now corrects only a misremembered quote, in place, on the small model.)*
 
@@ -489,7 +489,7 @@ A turn like “Soll-Ist über alle OIB-Richtlinien” should create a task of ki
 - `src/aiq_agent/agents/shallow_researcher/agent.py` — ReAct loop, budgets, forced synthesis, repair
 - `configs/config_oib_openrouter.yml` — tool list, `max_tool_iterations: 7`, `repair_pass` (the `compliance_check` binding is retired; see §1)
 - `src/aiq_agent/common/turn_status.py` — live status keys, requery/repair events, replace-not-accumulate
-- `sources/knowledge_layer/src/requery.py` — hidden sufficiency judge
+- `packages/knowledge-layer/src/requery.py` — hidden sufficiency judge
 - `frontends/ui/src/features/chat/components/reasoning/ReasoningFlow.tsx` + `.spec.ts` — fan-out, never a chain
 - `frontends/ui/src/features/chat/components/ChatThinking.tsx`, `AnswerAnatomy.tsx`
 - `frontends/ui/src/i18n/dictionaries/de/chat.ts` — Piloti vs Recherche-Agent

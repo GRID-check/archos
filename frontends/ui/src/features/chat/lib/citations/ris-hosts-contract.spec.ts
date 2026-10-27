@@ -1,9 +1,9 @@
-// @disk-inputs: ../../sources/ris_adapter/src/client.py
+// @disk-inputs: ../../packages/ris-adapter/src/client.py
 /**
  * The in-app RIS reader's host promise, pinned to the backend's enforcement.
  *
  * `isRisUrl` decides whether a citation chip OFFERS the in-app reader;
- * `ALLOWED_DOCUMENT_HOSTS` in `sources/ris_adapter/src/client.py` decides
+ * `ALLOWED_DOCUMENT_HOSTS` in `packages/ris-adapter/src/client.py` decides
  * whether the fetch behind it succeeds. If the first is ever wider than the
  * second, a chip promises a viewer and delivers a 404 — worse than the
  * outbound link it replaced, because the reader has already committed a click.
