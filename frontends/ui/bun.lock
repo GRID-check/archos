@@ -20,7 +20,7 @@
         "@ifc-lite/geometry": "^7.7.0",
         "@ifc-lite/parser": "^9.5.0",
         "@ifc-lite/renderer": "^6.0.1",
-        "@langfuse/client": "5.13.1",
+        "@langfuse/client": "6.0.1",
         "@modelcontextprotocol/client": "2.3.1",
         "@modelcontextprotocol/ext-apps": "2.0.3",
         "@modelcontextprotocol/server": "2.3.1",
@@ -445,7 +445,7 @@
 
     "@jridgewell/trace-mapping": ["@jridgewell/trace-mapping@0.3.31", "", { "dependencies": { "@jridgewell/resolve-uri": "^3.1.0", "@jridgewell/sourcemap-codec": "^1.4.14" } }, "sha512-zzNR+SdQSDJzc8joaeP8QQoCQr8NuYx2dIIytl1QeBEZHJ9uW6hebsrYgbz8hJwUQao3TWCMtmfV8Nu1twOLAw=="],
 
-    "@langfuse/client": ["@langfuse/client@5.13.1", "", { "dependencies": { "@langfuse/core": "^5.13.1", "@langfuse/tracing": "^5.13.1", "mustache": "^4.2.0" }, "peerDependencies": { "@opentelemetry/api": "^1.9.0" } }, "sha512-m9FdxZ4kwoH4k9xFQPG0q9Clpi6VU7bJs9fvJ+0Vv7JHDnsKMw725llPtLuMrHy7BFgGmxgR0lwC+k8BbMDTdw=="],
+    "@langfuse/client": ["@langfuse/client@6.0.1", "", { "dependencies": { "@langfuse/core": "^6.0.1", "@langfuse/tracing": "^6.0.1", "mustache": "^4.2.0" }, "peerDependencies": { "@opentelemetry/api": "^1.9.0" } }, "sha512-dYwP9sU/iWum9CgjG1/YchPAy9PWAQDVQ7tc41rWajnuGbZjGdEiJ0DjUqCBKkI0+iwMCs7h8vpgF1ZyDWrNWw=="],
 
     "@langfuse/core": ["@langfuse/core@5.11.1", "", { "peerDependencies": { "@opentelemetry/api": "^1.9.0" } }, "sha512-Oor1z4BlgI5RaUrRYYKf3ijyCAx0tiGCWsABzfm6ZDAgbaaFuiwvJVtXGohiq5evcnjGGE5h4Mf4ZjH1yd5vjw=="],
 

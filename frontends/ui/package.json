@@ -48,7 +48,7 @@
     "@ifc-lite/geometry": "^7.7.0",
     "@ifc-lite/parser": "^9.5.0",
     "@ifc-lite/renderer": "^6.0.1",
-    "@langfuse/client": "5.13.1",
+    "@langfuse/client": "6.0.1",
     "@modelcontextprotocol/client": "2.3.1",
     "@modelcontextprotocol/ext-apps": "2.0.3",
     "@modelcontextprotocol/server": "2.3.1",
