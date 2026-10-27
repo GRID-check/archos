@@ -148,8 +148,6 @@ describe('authorization catalog', () => {
       ...PROJECT_PERMISSION_SPECS,
       ...FOLDER_PERMISSION_SPECS,
     ]
-      // `skill:*` is left out on purpose: WorkOS holds it, so the catalog keeps it
-      // until it is deleted there, but nothing in the app grants or checks it.
       // A deprecated slug stays in the catalog only so existing grants keep working
       // (`acceptedPermissionSlugs`); the app checks the slug that replaced it.
       .filter((permission) => !registry.has(permission.slug) && !permission.deprecated)

@@ -111,7 +111,7 @@ describe('PermissionReference', () => {
     render(
       <PermissionReference
         permissions={[
-          permission({ slug: 'skill:run', name: 'Run skill schedule', tier: 'skill' }),
+          permission({ slug: 'folder:read', name: 'Read folder', tier: 'folder' }),
           permission(),
         ]}
         roles={[role()]}
@@ -121,7 +121,7 @@ describe('PermissionReference', () => {
     const rendered = screen
       .getAllByTestId(/^permission-tier-/)
       .map((section) => section.getAttribute('data-testid'))
-    expect(rendered).toEqual(['permission-tier-org', 'permission-tier-skill'])
+    expect(rendered).toEqual(['permission-tier-org', 'permission-tier-folder'])
   })
 
   test('the shipped catalog renders with the real inversion behind it', () => {
