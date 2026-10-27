@@ -1,67 +1,323 @@
 {
-  "about": "Claim stamps of real answers stored in the dev workspace (conversation-message-list, include=metadata), 2026-10-22 to 2026-10-27. Each was surfaced as 'low' under rule 2 (ADR-0125). 'expected' is the evidence ceiling under rule 3 (ADR-0139), and 'judged' says what the answer actually rests on. Texts are the stored stamps, cut where long.",
-  "answers": [
-    {
-      "id": "folder-listing",
-      "question": "was liegt in den foldern ?",
-      "rule_2": "low",
-      "expected": "medium",
-      "judged": "Every count and file name read off this turn's list_files; one next-step sentence ('muss im Einzelnen geöffnet werden') trips the normative net.",
-      "stamps": [
-        ["Das Projektwissen enthält 21 Dateien in vier Unterordnern und im Hauptverzeichnis.", "record", "value"],
-        ["Die Liste stammt aus dem Dateiindex; den Inhalt habe ich nicht gelesen.", "model_knowledge", "descriptive"],
-        ["00_Grundlagen · 4 · 250120_PerspektivischerSchnitt.pdf, AC20-Institute-Var-2.ifc, Wien-Lacknergasse-Schnitt-section.pdf, wizard_konzept (1).md", "record", "value"],
-        ["Abgabepläne · 8 · 220724_Aufsicht_1_100.pdf, 220725_P4_final (verschoben) 2.pdf, Invoice.jpg, pd8280-2.pdf", "record", "value"],
-        ["Berichte · 2 · piloti/…/projektstand-holzbau-wien-2026-09-15.md, Screenshot 2026-08-28 175733.png", "record", "value"],
-        ["sonstiges · 7 · Ausschreibung-proHolz-StudentTrophy26.pdf, Bild (1).png, Bild.png, expense_template.xlsx", "record", "value"],
-        ["Hauptverzeichnis · 0 · keine Dateien direkt; alle 21 liegen in den Unterordnern", "record", "value"],
-        ["Auffällig ist der Ordner sonstiges: Er enthält unter anderem eine Reisekostenvorlage und eine Hotelrechnung.", "record", "descriptive"],
-        ["Für die Einreichung sind vor allem die Pläne in Abgabepläne und 00_Grundlagen relevant.", "model_knowledge", "descriptive"],
-        ["Die Pläne in Abgabepläne und 00_Grundlagen sind nur dem Namen und der Kurzbeschreibung nach bekannt.", "model_knowledge", "descriptive"],
-        ["Welche Maßstäbe und Stände sie tatsächlich tragen, muss im Einzelnen geöffnet werden.", "model_knowledge", "normative"]
-      ]
-    },
-    {
-      "id": "listing-complete",
-      "question": "aber ich hab ja noch gnaz viele andere pdfs bist du dir sicher ?",
-      "rule_2": "low",
-      "expected": "medium",
-      "judged": "Counts per shelf read off this turn's list_files; 'die 39 Dateien des OIB-Korpus' trips the normative net on 'OIB'.",
-      "stamps": [
-        ["Ja, die Liste ist vollständig.", "model_knowledge", "descriptive"],
-        ["Projektwissen (dieses Projekt) · 20 · 10", "record", "value"],
-        ["Büroablage · 17 · 11", "record", "value"],
-        ["Private Sitzung (nur dieser Chat) · 0 · 0", "record", "value"],
-        ["Im Projektwissen liegen die PDFs 250120_PerspektivischerSchnitt, Wien-Lacknergasse-Schnitt-section, 220724_Aufsicht_1_100", "record", "value"],
-        ["Dazu kommen die 39 Dateien des OIB-Korpus im Basiswissen.", "model_knowledge", "normative"],
-        ["Die sind nicht als Einzelliste hinterlegt, Sie erreichen sie über die Suche.", "model_knowledge", "descriptive"]
-      ]
-    },
-    {
-      "id": "door-count-correction",
-      "question": "achso ne ich meinte wirklich eher ein pdf",
-      "rule_2": "low",
-      "expected": "low",
-      "judged": "Two load-bearing claims: one cited, one an uncited sentence naming OIB-RL. Half of what it asserts has nothing behind it; the knife edge, kept low on purpose (the laundering case has the same shape).",
-      "stamps": [
-        ["Im Projekt ist kein PDF-Grundriss mit einer Türzählung bekannt.", "reasoning", "descriptive"],
-        ["Die Zahl (77 Türen) stammt aus dem IFC-Modell AC20-Institute-Var-2.ifc, nicht aus einem PDF [1].", "cited", "value"],
-        ["Die Quellen aus meiner vorherigen Antwort (Erläuterungen zu OIB-RL 4 und 2.2) enthalten keine Türzählung und stützen die Zahl nicht.", "model_knowledge", "normative"]
-      ]
-    },
-    {
-      "id": "project-overview-from-profile",
-      "question": "was weißt du über das project",
-      "rule_2": "low",
-      "expected": "low",
-      "judged": "Written from the confirmed project profile in the turn context, which is no evidence channel: nothing this turn read stands behind it. Honest 'low' until the profile is a record (follow-up).",
-      "stamps": [
-        ["Das Projekt „Holzbau Wien“ betrifft einen Zubau in Holzbauweise an der Lacknergasse 98 in Wien.", "model_knowledge", "value"],
-        ["Geschoße · 5 oberirdisch, 1 unterirdisch", "model_knowledge", "value"],
-        ["Gebäudeklasse · GK 5 (bestätigt)", "model_knowledge", "normative"],
-        ["Fluchtniveau · 11–22 m, Rechenwert 12 m", "model_knowledge", "normative"],
-        ["Widmung · Wohngebiet, geschlossene Bauweise, Altstadterhaltungszone", "model_knowledge", "normative"]
-      ]
-    }
-  ]
+ "about": "The nine answers stored in the dev workspace between 2026-10-22 and 2026-10-27 (conversation-message-list, include=metadata and citations), each surfaced 'low' under rule 2 (ADR-0125). An entry holds either its stored stamps ('stamps') or its text with what its pointers resolved to ('content', 'cited', 'passages', the stored citation snippets, which are cut: the pipeline reads the whole passage, so a row the snippet does not hold may still be in the page). 'relabelled' says where a stored stamp was changed to what rule 3 makes of it. 'expected' is the ceiling under rule 3 (ADR-0139); 'judged' says what the answer actually rests on.",
+ "answers": [
+  {
+   "id": "folder-listing",
+   "question": "was liegt in den foldern ?",
+   "rule_2": "low",
+   "expected": "medium",
+   "judged": "6 of 7 backed: every count and file name read off this turn's list_files. One next step („muss im Einzelnen geöffnet werden\") trips the normative net, concludes nothing, and keeps it below high.",
+   "stamps": [
+    [
+     "Das Projektwissen enthält 21 Dateien in vier Unterordnern und im Hauptverzeichnis.",
+     "record",
+     "value"
+    ],
+    [
+     "Die Liste stammt aus dem Dateiindex; den Inhalt habe ich nicht gelesen.",
+     "model_knowledge",
+     "descriptive"
+    ],
+    [
+     "00_Grundlagen · 4 · 250120_PerspektivischerSchnitt.pdf, AC20-Institute-Var-2.ifc, Wien-Lacknergasse-Schnitt-section.pdf, wizard_konzept (1).md",
+     "record",
+     "value"
+    ],
+    [
+     "Abgabepläne · 8 · 220724_Aufsicht_1_100.pdf, 220725_P4_final (verschoben) 2.pdf, Invoice.jpg, pd8280-2.pdf",
+     "record",
+     "value"
+    ],
+    [
+     "Berichte · 2 · piloti/…/projektstand-holzbau-wien-2026-09-15.md, Screenshot 2026-08-28 175733.png",
+     "record",
+     "value"
+    ],
+    [
+     "sonstiges · 7 · Ausschreibung-proHolz-StudentTrophy26.pdf, Bild (1).png, Bild.png, expense_template.xlsx",
+     "record",
+     "value"
+    ],
+    [
+     "Hauptverzeichnis · 0 · keine Dateien direkt; alle 21 liegen in den Unterordnern",
+     "record",
+     "value"
+    ],
+    [
+     "Auffällig ist der Ordner sonstiges: Er enthält unter anderem eine Reisekostenvorlage und eine Hotelrechnung.",
+     "record",
+     "descriptive"
+    ],
+    [
+     "Für die Einreichung sind vor allem die Pläne in Abgabepläne und 00_Grundlagen relevant.",
+     "model_knowledge",
+     "descriptive"
+    ],
+    [
+     "Die Pläne in Abgabepläne und 00_Grundlagen sind nur dem Namen und der Kurzbeschreibung nach bekannt.",
+     "model_knowledge",
+     "descriptive"
+    ],
+    [
+     "Welche Maßstäbe und Stände sie tatsächlich tragen, muss im Einzelnen geöffnet werden.",
+     "model_knowledge",
+     "normative"
+    ]
+   ]
+  },
+  {
+   "id": "listing-complete",
+   "question": "aber ich hab ja noch gnaz viele andere pdfs bist du dir sicher ?",
+   "rule_2": "low",
+   "expected": "medium",
+   "judged": "4 of 5 backed: counts per shelf read off list_files. „die 39 Dateien des OIB-Korpus\" trips the net on „OIB\" and has no pointer, so not high.",
+   "stamps": [
+    [
+     "Ja, die Liste ist vollständig.",
+     "model_knowledge",
+     "descriptive"
+    ],
+    [
+     "Projektwissen (dieses Projekt) · 20 · 10",
+     "record",
+     "value"
+    ],
+    [
+     "Büroablage · 17 · 11",
+     "record",
+     "value"
+    ],
+    [
+     "Private Sitzung (nur dieser Chat) · 0 · 0",
+     "record",
+     "value"
+    ],
+    [
+     "Im Projektwissen liegen die PDFs 250120_PerspektivischerSchnitt, Wien-Lacknergasse-Schnitt-section, 220724_Aufsicht_1_100",
+     "record",
+     "value"
+    ],
+    [
+     "Dazu kommen die 39 Dateien des OIB-Korpus im Basiswissen.",
+     "model_knowledge",
+     "normative"
+    ],
+    [
+     "Die sind nicht als Einzelliste hinterlegt, Sie erreichen sie über die Suche.",
+     "model_knowledge",
+     "descriptive"
+    ]
+   ]
+  },
+  {
+   "id": "door-count-correction",
+   "question": "achso ne ich meinte wirklich eher ein pdf",
+   "rule_2": "low",
+   "expected": "low",
+   "judged": "0 of 2 backed: a door count whose only pointer named the wrong document, beside an uncited sentence about the OIB sources.",
+   "stamps": [
+    [
+     "Im Projekt ist kein PDF-Grundriss mit einer Türzählung bekannt.",
+     "reasoning",
+     "descriptive"
+    ],
+    [
+     "Die Zahl (77 Türen) stammt aus dem IFC-Modell AC20-Institute-Var-2.ifc, nicht aus einem PDF [1].",
+     "cited_dropped",
+     "value"
+    ],
+    [
+     "Die Quellen aus meiner vorherigen Antwort (Erläuterungen zu OIB-RL 4 und 2.2) enthalten keine Türzählung und stützen die Zahl nicht.",
+     "model_knowledge",
+     "normative"
+    ]
+   ],
+   "relabelled": "The answer wrote [1] with no Quellen list; the verifier bound it to a registry position (an OIB explanatory note, p.13, for a door count read off an IFC model). Under rule 3 the number is labelled instead, so the stamp is cited_dropped."
+  },
+  {
+   "id": "project-overview-from-profile",
+   "question": "was weißt du über das project",
+   "rule_2": "low",
+   "expected": "low",
+   "judged": "0 of 5 backed: written from the confirmed project profile in the turn context, which is no evidence channel. Honest „low\" until the profile is a record (follow-up).",
+   "stamps": [
+    [
+     "Das Projekt „Holzbau Wien“ betrifft einen Zubau in Holzbauweise an der Lacknergasse 98 in Wien.",
+     "model_knowledge",
+     "value"
+    ],
+    [
+     "Geschoße · 5 oberirdisch, 1 unterirdisch",
+     "model_knowledge",
+     "value"
+    ],
+    [
+     "Gebäudeklasse · GK 5 (bestätigt)",
+     "model_knowledge",
+     "normative"
+    ],
+    [
+     "Fluchtniveau · 11–22 m, Rechenwert 12 m",
+     "model_knowledge",
+     "normative"
+    ],
+    [
+     "Widmung · Wohngebiet, geschlossene Bauweise, Altstadterhaltungszone",
+     "model_knowledge",
+     "normative"
+    ]
+   ]
+  },
+  {
+   "id": "oib2-overview-2026-10-27",
+   "conversation": "s_1597e779_53ae_4e12_af25_8da5b218d2d9",
+   "question": "Was weißt du über die OIB-Richtlinie 2?",
+   "rule_2": "low",
+   "content": "Die OIB-Richtlinie 2 ist die Grundrichtlinie zum Brandschutz für Gebäude. Sie behandelt Tragfähigkeit im Brandfall, Ausbreitung von Feuer und Rauch, Flucht- und Rettungswege sowie Brandbekämpfung [1]. Für bestimmte Gebäudetypen verweist sie auf drei eigene Teile [1].\n\n| Teil | Gilt für | Fundstelle |\n|---|---|---|\n| OIB-Richtlinie 2 | Gebäude allgemein; Punkt 8 bis 10 verweisen auf die Teile 2.1 bis 2.3 | [1] |\n| OIB-Richtlinie 2.1 | Betriebsbauten | [2] |\n| OIB-Richtlinie 2.2 | Garagen, überdachte Stellplätze und Parkdecks | [3] |\n| OIB-Richtlinie 2.3 | Gebäude mit einem Fluchtniveau von mehr als 22 m | [4] |\n\nDie Punkte der Richtlinie 2 im Überblick [1]:\n\n- **Punkt 2 bis 4:** Tragfähigkeit im Brandfall, Ausbreitung innerhalb des Bauwerks und auf andere Bauwerke\n- **Punkt 5 und 6:** Flucht- und Rettungswege, Zugänglichkeit für die Brandbekämpfung\n- **Punkt 7:** besondere Bestimmungen\n- **Punkt 8 bis 10:** Verweis auf die Teile 2.1 bis 2.3\n- **Punkt 11:** Sondergebäude, für die ein Brandschutzkonzept erforderlich ist [6]\n- **Punkt 12:** Bauführungen im Bestand\n\nDie Punkte 2 bis 6 sind im Wesentlichen auf Wohn- und Büronutzung zugeschnitten [5]. Für Betriebsbauten ist der Gebäudeklassen-Begriff der Richtlinie 2 nach den Erläuterungen nicht zielführend, deshalb gilt dort das eigene Verfahren der Richtlinie 2.1 [5].\n\nEingeschoßige Gebäude mit höchstens 15 m² Brutto-Grundfläche, die auf eigenem Grund oder von Verkehrsflächen für die Brandbekämpfung zugänglich sind, haben keine Brandschutz-Anforderungen. Abweichungen sind nach Landesrecht möglich, wenn das gleiche Schutzniveau nachgewiesen wird; dafür ist der OIB-Leitfaden „Abweichungen im Brandschutz und Brandschutzkonzepte“ anzuwenden [1].\n\nNicht gelesen habe ich in diesem Zug die Anforderungstexte der einzelnen Punkte. Konkrete Werte, etwa Feuerwiderstandsklassen oder Fluchtweglängen, nenne ich erst nach dem Aufschlagen des jeweiligen Punktes. Welches Bundesland gilt und welche Ausgabe dort verbindlich erklärt ist, habe ich nicht geprüft.",
+   "cited": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6
+   ],
+   "passages": {
+    "1": "OIB-Richtlinie 2 — Brandschutz\n\n0 Vorbemerkungen\nDie zitierten Normen und sonstigen technischen Regelwerke gelten in der im Dokument „OIB-\nRichtlinien – Zitierte Normen und sonstige technische Regelwerke“ angeführten Fassung.\nDiese Richtlinie gilt für Gebäude. Für sonstige Bauwerke sind die Bestimmungen der Richtlinie\nsinngemäß anzuwenden.\nWerden in dieser Richtlinie Anforderungen an die Feuerwiderstandsklasse in Verbindung mit Anforderungen an Baustoffe der Klasse A2 gestellt, gilt dies auch als erfüllt, wenn\n• die für die Tragfähigkeit wesentlichen Bestandteile der Bauteile der Klasse A2 entsprechen und\n• die sonstigen Bestandteile aus Baustoffen der Klasse B bestehen.\nFür eingeschoßige Gebäude mit höchstens 15 m² Brutto-Grundfläche, die auf eigenem Grund oder\nvon Verkehrsflächen für die Brandbekämpfung zugänglich sind, werden keine Anforderungen hinsichtlich des Brandschutzes gestellt.\nFür Gebäude mit gemischter Nutzung gelten die Anforderungen hinsichtlich des Brandschutzes für\ndie einzelnen Nutzungsbereiche als erfüllt, wenn die für die jeweiligen Nutzungen anzuwendenden\nBestimmungen der Richtlinien eingehalten werden, wobei gegenseitige Wechselwirkungen zu berücksichtigen",
+    "2": "OIB-Richtlinie 2.1 — Brandschutz bei Betriebsbauten\n\n0 Vorbemerkungen\nDie zitierten Normen und sonstigen technischen Regelwerke gelten in der im Dokument „OIB-\nRichtlinien – Zitierte Normen und sonstige technische Regelwerke“ angeführten Fassung.\nWerden in dieser Richtlinie Anforderungen an die Feuerwiderstandsklasse in Verbindung mit Anforderungen an Baustoffe der Klasse A2 gestellt, gilt dies auch als erfüllt, wenn\n• die für die Tragfähigkeit wesentlichen Bestandteile der Bauteile der Klasse A2 entsprechen und\n• die sonstigen Bestandteile aus Baustoffen der Klasse B bestehen.\nEs wird darauf hingewiesen, dass parallel zu den Bestimmungen dieser Richtlinie gegebenenfalls\neinzelne Bestimmungen der OIB-Richtlinie 2 „Brandschutz“ zu berücksichtigen sind.\nBei Betriebsbauten können in Abhängigkeit des jeweiligen Gefahrenpotenzials, wie Brandbelastung, Aktivierungsgefahr und Umgebungssituation, höhere Anforderungen notwendig werden, wie\nz.B. für Chemiebetriebe.\nFür folgende Betriebsbauten sind aufgrund eines geringeren Risikos im Brandfall Erleichterungen\nvon den Anforderungen dieser Richtlinie zulässig:\n• Betriebsbauten, die lediglich der Aufstellung technischer Anlagen dienen und von",
+    "3": "OIB-Richtlinie 2.2 — Brandschutz bei Garagen, überdachten Stellplätzen und Parkdecks\n\n0 Vorbemerkungen\nDie zitierten Normen und sonstigen technischen Regelwerke gelten in der im Dokument „OIB-\nRichtlinien – Zitierte Normen und sonstige technische Regelwerke“ angeführten Fassung.\nWerden in dieser Richtlinie Anforderungen an die Feuerwiderstandsklasse in Verbindung mit Anforderungen an Baustoffe der Klasse A2 gestellt, gilt dies auch als erfüllt, wenn\n• die für die Tragfähigkeit wesentlichen Bestandteile der Bauteile der Klasse A2 und\n• die sonstigen Bestandteile aus Baustoffen der Klasse B bestehen.\nFür überdachte Stellplätze und Garagen mit jeweils höchstens 15 m² Nutzfläche, die auf eigenem\nGrund oder von Verkehrsflächen für die Brandbekämpfung zugänglich sind, werden keine Anforderungen hinsichtlich des Brandschutzes gestellt.\nBei Garagen und überdachten Stellplätzen von anerkannten Einsatzorganisationen sind Ausnahmen in Bezug auf Lagerungen (z.B. Materialien, Ausrüstungen, Treibstoffe) und untergeordneten\nNutzungen zulässig, sofern sie zur Erfüllung der gesetzlichen Aufgaben erforderlich sind und keine\nbrandschutztechnischen Bedenken bestehen.\nEs wird darauf hingewiesen, dass",
+    "4": "OIB-Richtlinie 2.3 — Brandschutz bei Gebäuden mit einem Fluchtniveau von mehr als 22 m\n\n0 Vorbemerkungen\nDie zitierten Normen und sonstigen technischen Regelwerke gelten in der im Dokument „OIB-\nRichtlinien – Zitierte Normen und sonstige technische Regelwerke“ angeführten Fassung.\nWerden in dieser Richtlinie Anforderungen an die Feuerwiderstandsklasse in Verbindung mit Anforderungen an Baustoffe der Klasse A2 gestellt, gilt dies auch als erfüllt, wenn\n• die für die Tragfähigkeit wesentlichen Bestandteile der Bauteile der Klasse A2 entsprechen und\n• die sonstigen Bestandteile aus Baustoffen der Klasse B bestehen.\nEs wird darauf hingewiesen, dass parallel zu den Bestimmungen dieser Richtlinie gegebenenfalls\neinzelne Bestimmungen der OIB-Richtlinie 2 „Brandschutz“ zu berücksichtigen sind.\nVon den Anforderungen dieser OIB-Richtlinie kann entsprechend den jeweiligen landesrechtlichen\nBestimmungen abgewichen werden, wenn vom Bauwerber nachgewiesen wird, dass das gleiche\nSchutzniveau wie bei Anwendung der Richtlinie erreicht wird. Hierbei ist der OIB-Leitfaden „Abweichungen im Brandschutz und Brandschutzkonzepte“ anzuwenden.",
+    "5": "Österreichisches Institut für Bautechnik OIB-330.2-035/23 OIB-Richtlinie 2.1 - Erläuterungen\nAllgemeines\nDie Erläuternden Bemerkungen zu OIB-Richtlinie 2.1 werden in dieser Ausgabe als konsolidierte\nFassung herausgegeben.\nDie OIB-Richtlinie 2.1 wurde zur leichteren Lesbarkeit und Anwendbarkeit sprachlich überarbeitet.\nWeiters wurden Anforderungen präzisiert sowie vereinfacht.\nDie wesentlichen Änderungen werden nachstehend angeführt:\n• Aufnahme eines Punktes betreffend die Feuerwiderstandsdauer der für die Standsicherheit von\nWänden und Decken erforderlichen aussteifenden und unterstützenden Bauteile,\n• Aufnahme von Anforderungen für Photovoltaikanlagen an Fassaden und auf Dächern.\nDiese Richtlinie soll Bauherren, Planverfassern und Fachplanern die Planung sowie Sachverstän-\ndigen von Behörden die Beurteilung im Hinblick auf die Genehmigung von Betriebsbauten erleich-\ntern.\nInsbesondere wurde ein Verfahren festgelegt, das ohne ingenieurmäßige Detailuntersuchungen\nsowie aufwändige Berechnungen auskommt und in der Vielzahl der praktischen Fälle für die Beur-\nteilung von Betriebsbauten ausreicht. Dieses vereinfachte Verfahren soll eine rechtssichere Pla-\nnung unterstützen und die",
+    "6": "Es ist zu beachten, dass gegebenenfalls zusätzlich auch einige\nBestimmungen der OIB-Richtlinie 2 relevant sein können (z.B. Punkt 3.4 Schächte, Kanäle, Leitungen und sonstige Einbauten, Punkt 3.5.10 Kleinteile ohne tragende Funktion bei Fassaden,\nPunkt 3.6.3 Parken von Aufzügen mit offenen Fahrkorb- und Schachttüren).\nZu Punkt 11: Sondergebäude\nDa für die verbleibenden Gebäudetypen aufgrund ihrer Besonderheiten keine allgemein gültigen\nAnforderungen gestellt werden können, ist für jedes dieser Bauvorhaben ein Brandschutzkonzept\nauszuarbeiten."
+   },
+   "expected": "medium",
+   "judged": "9 of 18 backed, 6 with nothing: the table of parts and the Erläuterungen sentences are cited; the list under „im Überblick [1]:\" is not on the cited page (p.4 holds the Vorbemerkungen), so its rows count half where a cited sentence states their number and nothing otherwise."
+  },
+  {
+   "id": "oib2-overview-2026-10-23",
+   "conversation": "s_af277312_0076_4720_9c69_d059ae1c2847",
+   "question": "was weißt du über die oib 2",
+   "rule_2": "low",
+   "content": "Die OIB-Richtlinie 2 ist die Grundrichtlinie des Brandschutzes für Gebäude. Sie regelt Tragfähigkeit im Brandfall, die Ausbreitung von Feuer und Rauch im Bauwerk und auf andere Bauwerke, Flucht- und Rettungswege und die Brandbekämpfung [1].\n\nDie Richtlinie gliedert sich wie folgt [1]:\n\n| Punkt | Inhalt |\n|---|---|\n| 2 | Allgemeine Anforderungen und Tragfähigkeit im Brandfall |\n| 3 | Ausbreitung von Feuer und Rauch innerhalb des Bauwerkes |\n| 4 | Ausbreitung von Feuer auf andere Bauwerke |\n| 5 | Flucht- und Rettungswege |\n| 6 | Brandbekämpfung |\n| 7 | Besondere Bestimmungen |\n| 8 bis 10 | Verweise auf OIB-RL 2.1 (Betriebsbauten), 2.2 (Garagen, Stellplätze, Parkdecks) und 2.3 (Fluchtniveau über 22 m) |\n| 11 | Sondergebäude mit Brandschutzkonzept |\n| 12 | Bauführungen im Bestand |\n\nZwei Vorbemerkungen gelten durchgehend: Die Richtlinie gilt für Gebäude, und von ihr kann nach Landesrecht abgewichen werden, wenn ein gleichwertiges Schutzniveau nachgewiesen wird; dafür ist der OIB-Leitfaden „Abweichungen im Brandschutz und Brandschutzkonzepte“ anzuwenden [1]. Eingeschoßige Gebäude bis 15 m² Brutto-Grundfläche sind ausgenommen [1].\n\nFür dieses Projekt heißt das: Der geplante Zubau ist GK 5 mit einem Fluchtniveau von 12 m. Die Sonderrichtlinie 2.3 gilt erst über 22 m und ist hier nicht einschlägig. Da es sich um einen Zubau zu einem Bestandsgebäude handelt, ist zusätzlich Punkt 12 zu prüfen. Danach darf für bestehende Bauwerksteile vom aktuellen Niveau abgewichen werden, solange das ursprüngliche Anforderungsniveau des rechtmäßigen Bestandes nicht verschlechtert wird [2].\n\n**Offen:** Die Tabellen 1a bis 6 (Brandverhalten, Feuerwiderstand, Treppenhäuser, Sicherheitsbeleuchtung) habe ich in diesem Schritt nicht gelesen; die konkreten Werte stehen dort. Ob die Ausgabe Mai 2023 in Wien tatsächlich verbindlich erklärt ist, ist aus den vorliegenden Unterlagen nicht belegt und muss vor einer Einreichung geprüft werden.",
+   "cited": [
+    1,
+    2
+   ],
+   "passages": {
+    "1": "OIB-Richtlinie 2 — Brandschutz\n\n0 Vorbemerkungen\nDie zitierten Normen und sonstigen technischen Regelwerke gelten in der im Dokument „OIB-\nRichtlinien – Zitierte Normen und sonstige technische Regelwerke“ angeführten Fassung.\nDiese Richtlinie gilt für Gebäude. Für sonstige Bauwerke sind die Bestimmungen der Richtlinie\nsinngemäß anzuwenden.\nWerden in dieser Richtlinie Anforderungen an die Feuerwiderstandsklasse in Verbindung mit Anforderungen an Baustoffe der Klasse A2 gestellt, gilt dies auch als erfüllt, wenn\n• die für die Tragfähigkeit wesentlichen Bestandteile der Bauteile der Klasse A2 entsprechen und\n• die sonstigen Bestandteile aus Baustoffen der Klasse B bestehen.\nFür eingeschoßige Gebäude mit höchstens 15 m² Brutto-Grundfläche, die auf eigenem Grund oder\nvon Verkehrsflächen für die Brandbekämpfung zugänglich sind, werden keine Anforderungen hinsichtlich des Brandschutzes gestellt.\nFür Gebäude mit gemischter Nutzung gelten die Anforderungen hinsichtlich des Brandschutzes für\ndie einzelnen Nutzungsbereiche als erfüllt, wenn die für die jeweiligen Nutzungen anzuwendenden\nBestimmungen der Richtlinien eingehalten werden, wobei gegenseitige Wechselwirkungen zu berücksichtigen",
+    "2": "OIB-Richtlinie 2 — Brandschutz\n\n12 Bauführungen im Bestand\nBei Änderungen an bestehenden Bauwerken mit Auswirkungen auf bestehende Bauwerksteile sind\nfür die bestehenden Bauwerksteile Abweichungen von den aktuellen Anforderungen dieser OIB-\nRichtlinie zulässig, wenn das ursprüngliche Anforderungsniveau des rechtmäßigen Bestandes\nnicht verschlechtert wird.\nTabelle 1a: Allgemeine Anforderungen an das Brandverhalten\nTabelle 1b: Allgemeine Anforderungen an den Feuerwiderstand von Bauteilen\nTabelle 2a: Anforderungen an Treppenhäuser bzw. Außentreppen im Verlauf\ndes einzigen Fluchtweges gemäß Punkt 5.1.1 b) in Gebäuden der\nGebäudeklassen 2, 3 und 4\nTabelle 2b: Anforderungen an Treppenhäuser bzw. Außentreppen im Verlauf\ndes einzigen Fluchtweges gemäß Punkt 5.1.1 b) in Gebäuden der\nGebäudeklasse 5\nTabelle 3: Anforderungen an Treppenhäuser bzw. Außentreppen im Verlauf von\nFluchtwegen gemäß Punkt 5.1.1 c)\nTabelle 4: Anforderungen an Brandabschnitte von Verkaufsflächen\nTabelle 5: Anforderungen an Pflegeheime und bettenführende Stationen von\nKrankenhäusern\nTabelle 6: Anwendungsbereiche für Sicherheitsbeleuchtung"
+   },
+   "expected": "low",
+   "judged": "4 of 19 backed, 15 with nothing: the Gliederung table under „gliedert sich wie folgt [1]:\" is not on p.4 (the Vorbemerkungen), so its rows are the model's own; the project paragraph's verdicts have no passage. Rule 2's „low\" was right here for the wrong reason, and the earlier version of this PR called it medium."
+  },
+  {
+   "id": "plans-with-registry-citations-2026-10-23",
+   "conversation": "s_af277312_0076_4720_9c69_d059ae1c2847",
+   "question": "kannst du schauen ob ich dokumente im projekt hab auf denen grundschnitte oder ansichten sichtbar sind",
+   "rule_2": "low",
+   "relabelled": "The answer wrote [1]-[5] with no source list; the verifier appended one from registry positions and bound every drawing to an OIB p.4. The turn read three numbered blocks, so under rule 3 the numbers are labelled: the stored 'cited' stamps are cited_dropped here.",
+   "stamps": [
+    [
+     "Ja, im Projektwissen liegen Grundrisse, Schnitte und Ansichten.",
+     "model_knowledge",
+     "descriptive"
+    ],
+    [
+     "Grundschnitte und Ansichten sind vorhanden, allerdings alle aus dem Ordner Abgabepläne bzw. 00_Grundlagen mit Ziegelmauerwerk und Stahlbeton.",
+     "record",
+     "descriptive"
+    ],
+    [
+     "Die Zuordnung zu diesem Holzbauprojekt ist offen (siehe unten).",
+     "model_knowledge",
+     "descriptive"
+    ],
+    [
+     "Nur ein echter Gebäudeschnitt: Die Datei Wien-Lacknergasse-Schnitt-section.pdf zeigt einen Gebäudeschnitt mit Keller, EG, 1. OG und DG und Höhenkoten (Referenzniveau EG 0,00 m, Dachoberkante 10,10 m) [1].",
+     "cited_dropped",
+     "value"
+    ],
+    [
+     "Die perspektivischen Schnitte (250120_PerspektivischerSchnitt.pdf, Screenshot 2026-08-28) sind Veranschaulichungen und keine Grundschnitte im technischen Sinn [2].",
+     "cited_dropped",
+     "value"
+    ],
+    [
+     "Grundrisse: Wien-Lacknergasse-Grundrisse-floorplans.pdf enthält Tiefparterre und Obergeschoß im Maßstab 1:100 [3].",
+     "cited_dropped",
+     "value"
+    ],
+    [
+     "Tectum-Projektplakate Kopie 2.pdf zeigt das 3. Obergeschoß im Maßstab 1:200 [4].",
+     "cited_dropped",
+     "value"
+    ],
+    [
+     "Ansichten: Wien-Lacknergasse-Ansichten-views.pdf enthält Westansicht (S. 1) und Ostansicht (S. 2) mit Höhenkoten bis 20,45 m [5].",
+     "cited_dropped",
+     "value"
+    ],
+    [
+     "Offen: Die Angaben stammen aus der automatischen Erkennung der Blätter, nicht aus einer Prüfung der Pläne.",
+     "model_knowledge",
+     "descriptive"
+    ],
+    [
+     "Vor einer Verwendung sind die Maße am Original zu prüfen.",
+     "model_knowledge",
+     "descriptive"
+    ],
+    [
+     "Es fällt außerdem auf, dass die Lacknergasse-Pläne ein Ziegelmauerwerk-/Stahlbetongebäude mit Tiefparterre, Turnsaal und Schlafsaal zeigen, während das Projekt laut Projektkontext in Holzbau (timber) geführt wird.",
+     "record",
+     "descriptive"
+    ],
+    [
+     "Die Höhen widersprechen sich zudem: Der Schnitt zeigt 10,10 m Dachoberkante, die Ostansicht 20,45 m Firsthöhe.",
+     "record",
+     "normative"
+    ],
+    [
+     "Ob diese Blätter zu diesem Projekt gehören, muss die Projektleitung klären, bevor sie in die Einreichung übernommen werden.",
+     "model_knowledge",
+     "normative"
+    ]
+   ],
+   "expected": "low",
+   "judged": "0 of 7 backed: every drawing was cited to an OIB page by registry position; labelled, the claims have nothing behind them."
+  },
+  {
+   "id": "oib2-overview-2026-10-22",
+   "conversation": "s_f936a9d6_09df_42ee_be33_6bd498903b63",
+   "question": "was weißt du zu roib 2",
+   "rule_2": "low",
+   "content": "Die OIB-Richtlinie 2 ist die Grundrichtlinie zum Brandschutz für Gebäude; sie regelt Tragfähigkeit im Brandfall, die Ausbreitung von Feuer und Rauch, Flucht- und Rettungswege und die Brandbekämpfung [1]. Für Betriebsbauten, Garagen und Gebäude mit einem Fluchtniveau über 22 m gibt es eigene Sonderteile, auf die der Grundteil verweist [1].\n\n| Teil | Gilt für | Fundstelle |\n|---|---|---|\n| OIB-RL 2 | Gebäude allgemein; Punkt 8 verweist auf 2.1, Punkt 9 auf 2.2, Punkt 10 auf 2.3 | [1] |\n| OIB-RL 2.1 | Betriebsbauten | [2] |\n| OIB-RL 2.2 | Überdachte Stellplätze, Garagen, Parkdecks | [3] |\n| OIB-RL 2.3 | Gebäude mit einem Fluchtniveau von mehr als 22 m | [4] |\n\nDer Grundteil gliedert sich in die Punkte 0 bis 12: Tragfähigkeit im Brandfall (2), Ausbreitung innerhalb des Bauwerks (3), Ausbreitung auf andere Bauwerke (4), Flucht- und Rettungswege (5), Brandbekämpfung (6), besondere Bestimmungen (7), Sondergebäude (11) und Bauführungen im Bestand (12) [1].\n\nFür Ihr Projekt sind vor allem drei Punkte relevant: Der Zubau ist ein Bauvorhaben im Bestand, daher ist Punkt 12 zusätzlich zu prüfen [1]. Das Fluchtniveau liegt laut Projektdaten bei 12 m, OIB-RL 2.3 greift damit nicht. Die Ausgabe Mai 2023 ist die gelesene Fassung; welche Ausgabe in Wien verbindlich erklärt ist, lässt sich aus der Wiener Bautechnikverordnung allein nicht belegen [Beleg nicht verifiziert].",
+   "cited": [
+    1,
+    2,
+    3,
+    4
+   ],
+   "passages": {
+    "1": "OIB-Richtlinie 2 — Brandschutz\n\n0 Vorbemerkungen\nDie zitierten Normen und sonstigen technischen Regelwerke gelten in der im Dokument „OIB-\nRichtlinien – Zitierte Normen und sonstige technische Regelwerke“ angeführten Fassung.\nDiese Richtlinie gilt für Gebäude. Für sonstige Bauwerke sind die Bestimmungen der Richtlinie\nsinngemäß anzuwenden.\nWerden in dieser Richtlinie Anforderungen an die Feuerwiderstandsklasse in Verbindung mit Anforderungen an Baustoffe der Klasse A2 gestellt, gilt dies auch als erfüllt, wenn\n• die für die Tragfähigkeit wesentlichen Bestandteile der Bauteile der Klasse A2 entsprechen und\n• die sonstigen Bestandteile aus Baustoffen der Klasse B bestehen.\nFür eingeschoßige Gebäude mit höchstens 15 m² Brutto-Grundfläche, die auf eigenem Grund oder\nvon Verkehrsflächen für die Brandbekämpfung zugänglich sind, werden keine Anforderungen hinsichtlich des Brandschutzes gestellt.\nFür Gebäude mit gemischter Nutzung gelten die Anforderungen hinsichtlich des Brandschutzes für\ndie einzelnen Nutzungsbereiche als erfüllt, wenn die für die jeweiligen Nutzungen anzuwendenden\nBestimmungen der Richtlinien eingehalten werden, wobei gegenseitige Wechselwirkungen zu berücksichtigen",
+    "2": "OIB-Richtlinie 2.1 — Brandschutz bei Betriebsbauten\n\n0 Vorbemerkungen\nDie zitierten Normen und sonstigen technischen Regelwerke gelten in der im Dokument „OIB-\nRichtlinien – Zitierte Normen und sonstige technische Regelwerke“ angeführten Fassung.\nWerden in dieser Richtlinie Anforderungen an die Feuerwiderstandsklasse in Verbindung mit Anforderungen an Baustoffe der Klasse A2 gestellt, gilt dies auch als erfüllt, wenn\n• die für die Tragfähigkeit wesentlichen Bestandteile der Bauteile der Klasse A2 entsprechen und\n• die sonstigen Bestandteile aus Baustoffen der Klasse B bestehen.\nEs wird darauf hingewiesen, dass parallel zu den Bestimmungen dieser Richtlinie gegebenenfalls\neinzelne Bestimmungen der OIB-Richtlinie 2 „Brandschutz“ zu berücksichtigen sind.\nBei Betriebsbauten können in Abhängigkeit des jeweiligen Gefahrenpotenzials, wie Brandbelastung, Aktivierungsgefahr und Umgebungssituation, höhere Anforderungen notwendig werden, wie\nz.B. für Chemiebetriebe.\nFür folgende Betriebsbauten sind aufgrund eines geringeren Risikos im Brandfall Erleichterungen\nvon den Anforderungen dieser Richtlinie zulässig:\n• Betriebsbauten, die lediglich der Aufstellung technischer Anlagen dienen und von",
+    "3": "OIB-Richtlinie 2.2 — Brandschutz bei Garagen, überdachten Stellplätzen und Parkdecks\n\n0 Vorbemerkungen\nDie zitierten Normen und sonstigen technischen Regelwerke gelten in der im Dokument „OIB-\nRichtlinien – Zitierte Normen und sonstige technische Regelwerke“ angeführten Fassung.\nWerden in dieser Richtlinie Anforderungen an die Feuerwiderstandsklasse in Verbindung mit Anforderungen an Baustoffe der Klasse A2 gestellt, gilt dies auch als erfüllt, wenn\n• die für die Tragfähigkeit wesentlichen Bestandteile der Bauteile der Klasse A2 und\n• die sonstigen Bestandteile aus Baustoffen der Klasse B bestehen.\nFür überdachte Stellplätze und Garagen mit jeweils höchstens 15 m² Nutzfläche, die auf eigenem\nGrund oder von Verkehrsflächen für die Brandbekämpfung zugänglich sind, werden keine Anforderungen hinsichtlich des Brandschutzes gestellt.\nBei Garagen und überdachten Stellplätzen von anerkannten Einsatzorganisationen sind Ausnahmen in Bezug auf Lagerungen (z.B. Materialien, Ausrüstungen, Treibstoffe) und untergeordneten\nNutzungen zulässig, sofern sie zur Erfüllung der gesetzlichen Aufgaben erforderlich sind und keine\nbrandschutztechnischen Bedenken bestehen.\nEs wird darauf hingewiesen, dass",
+    "4": "OIB-Richtlinie 2.3 — Brandschutz bei Gebäuden mit einem Fluchtniveau von mehr als 22 m\n\n0 Vorbemerkungen\nDie zitierten Normen und sonstigen technischen Regelwerke gelten in der im Dokument „OIB-\nRichtlinien – Zitierte Normen und sonstige technische Regelwerke“ angeführten Fassung.\nWerden in dieser Richtlinie Anforderungen an die Feuerwiderstandsklasse in Verbindung mit Anforderungen an Baustoffe der Klasse A2 gestellt, gilt dies auch als erfüllt, wenn\n• die für die Tragfähigkeit wesentlichen Bestandteile der Bauteile der Klasse A2 entsprechen und\n• die sonstigen Bestandteile aus Baustoffen der Klasse B bestehen.\nEs wird darauf hingewiesen, dass parallel zu den Bestimmungen dieser Richtlinie gegebenenfalls\neinzelne Bestimmungen der OIB-Richtlinie 2 „Brandschutz“ zu berücksichtigen sind.\nVon den Anforderungen dieser OIB-Richtlinie kann entsprechend den jeweiligen landesrechtlichen\nBestimmungen abgewichen werden, wenn vom Bauwerber nachgewiesen wird, dass das gleiche\nSchutzniveau wie bei Anwendung der Richtlinie erreicht wird. Hierbei ist der OIB-Leitfaden „Abweichungen im Brandschutz und Brandschutzkonzepte“ anzuwenden."
+   },
+   "expected": "medium",
+   "judged": "8 of 10 backed: cited throughout, one uncited verdict („OIB-RL 2.3 greift damit nicht\") and one dropped citation keep it below high, and the chip names the verdict."
+  },
+  {
+   "id": "oib2-haus-josef-registry-citations-2026-10-22",
+   "conversation": "s_ea0edeb4_4db7_474c_95b4_f189e1ac2800",
+   "question": "was weißt du zur oib 2",
+   "rule_2": "low",
+   "relabelled": "No source list from the model: the verifier appended one from registry positions, citing Punkt 12 to OIB-RL 2.1 p.4. The turn read three numbered blocks (one search, two read_passage), so every [N] is labelled: cited is empty.",
+   "content": "Die OIB-Richtlinie 2 ist die Brandschutz-Richtlinie für Gebäude. Sie gilt für Gebäude, sonstige Bauwerke sinngemäß [1]. Sie regelt Tragfähigkeit im Brandfall, die Ausbreitung von Feuer und Rauch im Bauwerk und auf andere Bauwerke, Flucht- und Rettungswege, die Brandbekämpfung sowie besondere Gebäudetypen [1].\n\nDie Richtlinie ist in Punkte gegliedert. Für Ihr Projekt sind vor allem diese Stellen relevant:\n\n| Punkt | Inhalt | Bezug zu Haus Josef | Fundstelle |\n|---|---|---|---|\n| 2 | Feuerwiderstand und Brandverhalten, Verknüpfung mit Baustoffklassen | Holzaufstockung | [1] |\n| 5 | Flucht- und Rettungswege, Treppenhäuser (Tabelle 2b für Gebäudeklasse 5) | Stiegen- und Aufzugsturm, Laubengänge | [1], [2] |\n| 10 | Gebäude mit Fluchtniveau über 22 m gelten nach OIB-RL 2.3 | Fluchtniveau laut Projektdaten 14 m, daher nicht einschlägig | [1] |\n| 12 | Bauführungen im Bestand | Umbau und Aufstockung | [2] |\n\nFür Umbau und Aufstockung gilt Punkt 12: Für bestehende Bauwerksteile sind Abweichungen von den aktuellen Anforderungen zulässig, wenn das ursprüngliche Anforderungsniveau des rechtmäßigen Bestandes nicht verschlechtert wird [2]. Die neuen Teile, insbesondere die Holzaufstockung, sind an den aktuellen Anforderungen zu messen.\n\nIm Projektordner liegt die Datei „Projektbeschreibung_Haus_Josef.pdf“ [nicht wörtlich in der Quelle belegt], die ein in Ausarbeitung befindliches Brandschutzkonzept beschreibt. Ihr Inhalt ist hier nicht gelesen. Ich kann sie gezielt öffnen, wenn Sie das wünschen.\n\nNicht geprüft habe ich die Zahlenwerte der Tabellen 1a, 1b und 2b. Sie sind nicht Teil dieser Antwort. Für die konkreten Feuerwiderstandsklassen der Gebäudeklasse 5 brauche ich eine gezielte Abfrage der Tabellen. Die Gebäudeklasse 5 ist laut Projektdaten bestätigt; die Einstufung selbst ist nicht Gegenstand dieser Antwort.",
+   "cited": [],
+   "passages": {},
+   "expected": "low",
+   "judged": "0 of 11 backed: its numbers named registry positions (Punkt 12 cited to OIB-RL 2.1 p.4); labelled, nothing it asserts about the law has a passage."
+  }
+ ]
 }

@@ -447,14 +447,31 @@ async def test_a_turn_with_no_drawing_value_writes_no_looked_before_measurement(
     assert "look-count" in names and "looked-before-measurement" not in names
 
 
-async def test_honest_absence_in_an_answer_is_medium_and_not_an_uncited_legal_claim():
+async def test_honest_absence_does_not_lift_the_verdict_it_rides_with():
+    """„Für den Gang ja" answers „Reicht der Fluchtweg?" with nothing behind it.
+
+    Until ADR-0139 a hedge exempted the sentence from being a legal claim
+    without a source, and it read „medium". A hedge is no source (review of
+    #1231): the verdict counts nothing, and with nothing else it reads „low".
+    """
     prose = "Für den Gang ja; der Abstand zum Treppenhaus ist in keinem Dokument nachgewiesen."
     messages = [HumanMessage("Reicht der Fluchtweg?"), AIMessage(ANSWER_ENVELOPE.format(prose=prose))]
 
     final, state = await _finalize(messages)
 
+    assert final.claim_stamps[0]["claim_type"] == "normative"
+    assert final.claims_ceiling == "low"
+    assert state.answer_confidence == "low"
+
+
+async def test_honest_absence_about_a_fact_still_counts_half():
+    prose = "Die Anzahl der Stellplätze ist in keinem Dokument angegeben."
+    messages = [HumanMessage("Wie viele Stellplätze?"), AIMessage(ANSWER_ENVELOPE.format(prose=prose))]
+
+    final, _ = await _finalize(messages)
+
+    assert [(stamp["claim_type"], stamp["support"]) for stamp in final.claim_stamps] == [("descriptive", 0.5)]
     assert final.claims_ceiling == "medium"
-    assert state.answer_confidence == "medium"
 
 
 async def test_a_look_on_a_page_with_a_retrieved_caption_does_not_borrow_the_captions_authority():

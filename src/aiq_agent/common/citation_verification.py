@@ -1064,6 +1064,34 @@ def _look_entry(hit: GroundingHit, tool_name: str) -> SourceEntry:
     return entry
 
 
+def turn_numbering(results: Sequence[tuple[str, Any, Any]]) -> list[SourceEntry | None]:
+    """What each ``[N]`` names when the answer wrote no source list: this turn's one numbered block, else nothing.
+
+    ``results`` are this turn's tool results as ``(tool name, content,
+    artifact)``. A grounding block numbers its passages „Result 1", „Result 2"
+    …, so in a turn that read exactly one block, ``[N]`` can only mean its N-th
+    passage. In a turn that read two or more, the model's numbers follow none
+    of them: two stored answers of 2026-10-22/23 that read a search and two
+    passages cited Punkt 12 to the search's second hit (OIB-RL 2.1 p.4) and
+    drawings to OIB pages, by position. So a second block leaves every number
+    naming nothing, and it is labelled. Never the conversation's registry
+    order either: the model never saw that numbering (ADR-0139).
+    """
+    from aiq_agent.common.citation_collector import hits_from_artifact
+
+    blocks: list[list[SourceEntry]] = []
+    for tool_name, content, artifact in results:
+        hits = hits_from_artifact(artifact)
+        if hits is None:
+            block = get_grounding_block(content) if isinstance(content, str) else None
+            hits = block.hits if block is not None else None
+        if hits:
+            blocks.append([_entry_from_hit(hit, tool_name) for hit in hits])
+    if len(blocks) != 1:
+        return []
+    return list(blocks[0])
+
+
 def _entry_from_hit(hit: GroundingHit, tool_name: str) -> SourceEntry:
     if is_look_tool(tool_name):
         return _look_entry(hit, tool_name)
@@ -3882,7 +3910,7 @@ def verify_citations(
     report_text: str,
     registry: SourceRegistry,
     *,
-    reference_sources: Sequence[SourceEntry] | None = None,
+    reference_sources: Sequence[SourceEntry | None] | None = None,
     label_dropped: bool = False,
     check_locus: bool = False,
 ) -> CitationVerificationResult:
@@ -3907,7 +3935,8 @@ def verify_citations(
         registry: SourceRegistry populated from tool call results.
         reference_sources: Optional writer-facing source list, in the same
             numbering order the writer saw. Used only to synthesize a missing
-            source section.
+            source section. A ``None`` at a position names nothing: that
+            number is labelled (:func:`turn_numbering`).
         label_dropped: Put :data:`DROPPED_CITATION_MARKER` where an
             unresolvable inline citation stood instead of deleting it silently
             (chat, ADR-0125). Also applies to an empty registry: every number
@@ -3972,7 +4001,8 @@ def verify_citations(
             line
             for i in cited_numbers
             if 1 <= i <= len(writer_sources)
-            if (line := _format_registry_reference(i, writer_sources[i - 1]))
+            if (entry := writer_sources[i - 1]) is not None
+            if (line := _format_registry_reference(i, entry))
         ]
         if not reference_lines:
             logger.warning("[CitationVerify] No source section found and no renderable writer-facing sources")

@@ -60,6 +60,7 @@ from aiq_agent.common.citation_verification import get_turn_captures
 from aiq_agent.common.citation_verification import is_look_place
 from aiq_agent.common.citation_verification import merged_citations
 from aiq_agent.common.citation_verification import sanitize_report
+from aiq_agent.common.citation_verification import turn_numbering
 from aiq_agent.common.citation_verification import verify_citations
 from aiq_agent.common.citation_verification import verify_quoted_spans
 from aiq_agent.common.claim_provenance import ClaimEvidence
@@ -517,7 +518,29 @@ class _Verified:
     unverified_quotes: tuple[UnverifiedQuote, ...]
 
 
-def _verify(content: str, registry: SourceRegistry, *, with_nearest: bool = False) -> _Verified:
+def _writer_numbering(turn: Sequence[Any]) -> list[SourceEntry | None] | None:
+    """What an ``[N]`` without a source list names: the N-th passage of the turn's one numbered block.
+
+    ``None`` when the turn read no numbered block or more than one
+    (``turn_numbering``), so every such number is labelled (``NO_SOURCE_LIST_REASON``).
+    """
+    numbering = turn_numbering(
+        [
+            (getattr(msg, "name", "") or "", msg.content, getattr(msg, "artifact", None))
+            for msg in turn
+            if isinstance(msg, ToolMessage)
+        ]
+    )
+    return numbering or None
+
+
+def _verify(
+    content: str,
+    registry: SourceRegistry,
+    *,
+    with_nearest: bool = False,
+    numbering: Sequence[SourceEntry | None] | None = None,
+) -> _Verified:
     """Citations against the registry, then quoted spans against the passages.
 
     ``verify_citations`` only proves a cited SOURCE is real, not that a QUOTED
@@ -528,12 +551,14 @@ def _verify(content: str, registry: SourceRegistry, *, with_nearest: bool = Fals
     """
     # Labelled, not stripped: a claim whose pointer did not hold must not read
     # like every other unmarked sentence (ADR-0125). The locus beside a marker
-    # is held to the passage it resolves to. No writer-facing list: Piloti's
-    # model never sees the registry numbered, so an answer that writes [N]
-    # without its Quellen list has numbers that name nothing. Reading them as
-    # registry positions (the registry is cumulative across the conversation)
-    # cited project drawings to OIB passages of the turn before (ADR-0139).
-    verification = verify_citations(content, registry, reference_sources=None, label_dropped=True, check_locus=True)
+    # is held to the passage it resolves to. The writer-facing list is THIS
+    # turn's numbered blocks (``_writer_numbering``): Piloti's model never sees
+    # the registry numbered, and reading [N] as a registry position (the
+    # registry is cumulative across the conversation) cited project drawings
+    # to OIB passages of the turn before (ADR-0139).
+    verification = verify_citations(
+        content, registry, reference_sources=numbering, label_dropped=True, check_locus=True
+    )
     logger.debug(
         "Piloti: citation verification complete — %d valid, %d removed",
         len(verification.valid_citations),
@@ -543,7 +568,12 @@ def _verify(content: str, registry: SourceRegistry, *, with_nearest: bool = Fals
     return _Verified(verification.verified_report, verification, tuple(quotes))
 
 
-async def _verify_with_quote_patch(content: str, registry: SourceRegistry, patch: RepairFn | None) -> _Verified:
+async def _verify_with_quote_patch(
+    content: str,
+    registry: SourceRegistry,
+    patch: RepairFn | None,
+    numbering: Sequence[SourceEntry | None] | None = None,
+) -> _Verified:
     """Verify, correct the misremembered quotes in place, and verify what ships.
 
     The one repair (ADR-0067). A removed citation is not repaired: the settled
@@ -554,7 +584,9 @@ async def _verify_with_quote_patch(content: str, registry: SourceRegistry, patch
     """
     # Off the loop: the quote check reads every cited passage, and the worker's
     # one event loop serves every other turn meanwhile (the settle does the same).
-    verified = await asyncio.to_thread(partial(_verify, with_nearest=patch is not None), content, registry)
+    verified = await asyncio.to_thread(
+        partial(_verify, with_nearest=patch is not None, numbering=numbering), content, registry
+    )
     if patch is None or not verified.unverified_quotes:
         return verified
     candidates = select_quotes(verified.unverified_quotes)
@@ -569,7 +601,7 @@ async def _verify_with_quote_patch(content: str, registry: SourceRegistry, patch
         return verified
     # The second pass verifies text the first already stripped, so it sees none
     # of the citations the first removed: carry them, or the ledger loses them.
-    shipped = await asyncio.to_thread(_verify, patched, registry)
+    shipped = await asyncio.to_thread(partial(_verify, numbering=numbering), patched, registry)
     removed = [*verified.verification.removed_citations, *shipped.verification.removed_citations]
     return replace(shipped, verification=replace(shipped.verification, removed_citations=removed))
 
@@ -1149,7 +1181,7 @@ async def finalize_answer(
         found_nothing = _require_retrieval(_passage_lookup_attempted(turn), tools, ruling=ruling)
     if sources:
         emit_citation_check(source_count=len(sources))
-        verified = await _verify_with_quote_patch(extracted.content, registry, repair)
+        verified = await _verify_with_quote_patch(extracted.content, registry, repair, _writer_numbering(turn))
     else:
         # Nothing to resolve against: every [N] the model wrote is labelled.
         verified = _verify(extracted.content, registry)
@@ -1263,6 +1295,11 @@ def _claim_provenance(
             )
             for source in cited
             if source.number is not None and source.entry.read
+        },
+        passages={
+            source.number: source.entry.chunk_text or ""
+            for source in cited
+            if source.number is not None and not is_look_place(source.entry)
         },
         quote_stamps=quote_stamps,
         records=records_from_messages(turn),

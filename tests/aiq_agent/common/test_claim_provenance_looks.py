@@ -166,11 +166,16 @@ class TestHonestAbsenceAndEstimatesAreNotFalseClaims:
         assert not is_hedged(sentence)
 
     @pytest.mark.parametrize("sentence", [*ABSENCE, *ESTIMATE])
-    def test_a_hedged_sentence_caps_at_medium_and_is_not_an_uncited_legal_claim(self, sentence):
+    def test_a_hedged_sentence_about_a_fact_caps_at_medium_and_one_about_the_law_counts_nothing(self, sentence):
+        """A hedge is honest uncertainty, not a source (ADR-0139): about the law it is still an uncited claim."""
         stamps = _stamps(sentence)
 
-        assert claims_ceiling(stamps) == "medium"
-        assert normative_uncited(stamps) == 0
+        if stamps[0].claim_type == "normative":
+            assert claims_ceiling(stamps) == "low"
+            assert normative_uncited(stamps) == 1
+        else:
+            assert claims_ceiling(stamps) == "medium"
+            assert normative_uncited(stamps) == 0
 
     def test_the_same_sentence_without_the_hedge_is_still_low_and_uncited(self):
         stamps = _stamps("Der Abstand zum Treppenhaus beträgt 28 m.")

@@ -286,7 +286,8 @@ class TestTheCeilings:
     def test_each_class_and_type(self, provenance, ctype, level):
         assert ceiling(provenance, ctype) == level
 
-    def test_the_answer_is_held_to_its_weakest_load_bearing_sentence(self):
+    def test_the_answer_counts_its_load_bearing_sentences(self):
+        """Rule 3 (ADR-0139): high only when all are backed, low when most have nothing behind them."""
         stamps = mark_load_bearing(
             [
                 ClaimStamp("Die Höhe muss 2,50 m sein [1].", "cited", "normative"),
@@ -295,8 +296,10 @@ class TestTheCeilings:
             ]
         )
         assert [stamp.load_bearing for stamp in stamps] == [True, False, True]
-        assert claims_ceiling(stamps) == "low"
+        assert claims_ceiling(stamps) == "medium"
         assert (weakest_claim(stamps).provenance, weakest_claim(stamps).claim_type) == ("model_knowledge", "value")
+        more = mark_load_bearing([*stamps, ClaimStamp("Die Gebühr beträgt 300 Euro.", "model_knowledge", "value")])
+        assert claims_ceiling(more) == "low"
 
     def test_a_purely_descriptive_answer_bears_on_every_sentence(self):
         stamps = mark_load_bearing(
