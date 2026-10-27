@@ -1,0 +1,17 @@
+# The `workspace` project (ADR-0147): the same program as ../Pulumi.yaml,
+# deploying into the brand-free namespace `workspace`. Object names are
+# picked by project in ../src/names.ts, so this file only names the project.
+#
+# Its stack files are generated at deploy time from ../Pulumi.<stack>.yaml by
+# ../scripts/workspace-stack-file.mjs and never committed, so the two cannot
+# drift while both projects exist. The cleanup step moves this project up to
+# deploy/pulumi/ and commits its stack files for real.
+name: workspace
+main: ..
+runtime:
+  name: nodejs
+  options:
+    packagemanager: bun
+description: >-
+  Kubernetes deployment of the architects' workspace: app tiers, Postgres,
+  SeaweedFS, Qdrant, Dragonfly and the edge, in the namespace `workspace`.

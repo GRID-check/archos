@@ -163,7 +163,7 @@ tasks:
       # opens them. Copy mode is the install, not a per-job workaround.
       UV_LINK_MODE: copy
     cmds:
-      - uv venv .venv
+      # uv sync creates .venv itself; a separate `uv venv` fails on a second run.
       - uv sync --group dev
       - task: fe:install
       - task: web:install

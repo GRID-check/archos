@@ -12,7 +12,7 @@
 import { useEffect, useCallback, useRef } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { useSearchParams, useRouter, usePathname } from 'next/navigation'
-import { useChatStore } from '@/features/chat'
+import { useChatStore } from '@/features/chat/store'
 import { resumableSessionId } from '@/features/chat/lib/resume-session'
 
 interface UseSessionUrlOptions {

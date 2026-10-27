@@ -56,7 +56,8 @@ NO_TENANT_CONTENT = {
 def _python_files() -> list[Path]:
     files: list[Path] = []
     for base in SCANNED:
-        files.extend(p for p in base.rglob("*.py") if "tests" not in p.relative_to(ROOT).parts)
+        # Tests and their support packages (`testing/`) are not call sites.
+        files.extend(p for p in base.rglob("*.py") if not {"tests", "testing"} & set(p.relative_to(ROOT).parts))
     return files
 
 

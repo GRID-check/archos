@@ -30,8 +30,8 @@ def test_the_verification_of_a_finished_answer_runs_off_the_loop(monkeypatch):
 def test_only_a_patch_about_to_run_asks_for_the_nearest_passage(monkeypatch):
     # The search over every cited page is read only by the patch's select:
     # the settle, a repair-off turn and the pass after a patch skip it.
-    from tests.aiq_agent.agents.piloti.test_settle_streamed import SOURCES
-    from tests.aiq_agent.agents.piloti.test_settle_streamed import _registry
+    from agent_testing.settle_streamed import SOURCES
+    from agent_testing.settle_streamed import _registry
 
     asked: list[bool] = []
     real = answer_pipeline._verify

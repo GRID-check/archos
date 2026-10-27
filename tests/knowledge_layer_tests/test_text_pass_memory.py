@@ -23,8 +23,7 @@ from pathlib import Path
 
 import pytest
 from knowledge_layer.llamaindex import adapter
-
-from tests.knowledge_layer_tests import pdf_fixtures
+from knowledge_layer_testing import pdf_fixtures
 
 _SHEETS = 4
 #: Enough paths that pdfplumber's cache is real, few enough to stay fast.

@@ -75,6 +75,7 @@ from pydantic import BeforeValidator
 
 from aiq_agent import project_context
 from aiq_agent.common.action_outcome import ActionOutcome
+from aiq_agent.common.action_rows import ActionRow
 from aiq_agent.common.bff_http import SignedEnvelope
 from aiq_agent.common.grounding_block import PROJECT_STATUS_LABELS
 from aiq_agent.common.grounding_block import GroundingBlock
@@ -83,7 +84,6 @@ from aiq_agent.common.grounding_block import SourceProject
 from aiq_agent.common.grounding_block import render_grounding_block
 from aiq_agent.common.norm_registry import FEDERAL_STATE_TOKENS
 from aiq_agent.common.source_kinds import Shelf
-from aiq_agent.common.turn_status import ActionRow
 from aiq_agent.knowledge.permit_extraction import canonical_record_kind
 from aiq_agent.knowledge.permit_extraction import canonical_requirement_kind
 from aiq_agent.knowledge.restricted_collections import is_restricted_collection

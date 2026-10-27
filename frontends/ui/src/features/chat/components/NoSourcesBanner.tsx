@@ -23,7 +23,7 @@ import { AnimatePresence } from '@/components/motion'
 import { HeightArrival } from '@/components/motion/height-arrival'
 import { useTranslations } from '@/i18n'
 import { useLayoutStore } from '@/features/layout/store'
-import { useDocumentsStore } from '@/features/documents'
+import { useDocumentsStore } from '@/features/documents/store'
 import { useChatStore } from '../store'
 
 /**

@@ -42,7 +42,7 @@
 import { useEffect, useState, type FC } from 'react'
 import { notFound, useSearchParams } from 'next/navigation'
 import { PdfDocumentView } from '@/features/knowledge/components/pdf-document-view'
-import { CitationDocumentDialog } from '@/features/chat/components/SourcePreview'
+import { CitationDocumentDialog } from '@/features/chat/components/source-preview/citation-document-dialog'
 import {
   buildCitationModel,
   resolveCitationTarget,

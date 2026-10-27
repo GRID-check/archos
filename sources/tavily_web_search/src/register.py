@@ -37,7 +37,7 @@ class _NoOutcome:
 
 try:  # the Grid agent draws one row per call (ADR-0132); the standalone dist has no agent package
     from aiq_agent.common.action_outcome import ActionOutcome
-    from aiq_agent.common.turn_status import ActionRow
+    from aiq_agent.common.action_rows import ActionRow
 except ImportError:
     ActionOutcome = _NoOutcome  # type: ignore[assignment,misc]
     ActionRow = _NoRow  # type: ignore[assignment,misc]
