@@ -292,7 +292,7 @@ describe("the program's ScaledObjects", () => {
     it("is what KEDA connects with: the scaler's login on each database, by FQDN, never the owner", () => {
       const scalerRequests = dsnRequests.filter((r) => r.as?.user === "grid_keda_scaler");
 
-      expect(scalerRequests.map((r) => r.db).sort()).toEqual(["grid_app", "grid_jobs"]);
+      expect(scalerRequests.map((r) => r.db).sort()).toEqual(["grid_app", "jobs"]);
       expect(scalerRequests.every((r) => r.clusterWide === true)).toBe(true);
     });
 

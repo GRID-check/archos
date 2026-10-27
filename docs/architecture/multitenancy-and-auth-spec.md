@@ -103,8 +103,8 @@ An honest snapshot of what exists today.
   per‑session collection TTL‑reaped after 24h.
 - **No "project" concept** exists anywhere. **No object store** is wired (only an
   aspirational `image_storage_uri` schema field + transitive `boto3`).
-- **Postgres is wired** in `docker-compose` (`postgres:16-alpine`, DBs `grid_jobs` +
-  `grid_checkpoints`) but holds **no app/identity data**. No Alembic, no ORM models
+- **Postgres is wired** in `docker-compose` (`postgres:16-alpine`, DBs `jobs` +
+  `checkpoints`) but holds **no app/identity data**. No Alembic, no ORM models
   (SQLAlchemy Core + raw SQL).
 
 ### Already‑committed foundations to build on
@@ -131,7 +131,7 @@ Three tiers plus an external identity provider.
 | --- | --- | --- |
 | **Next.js (UI + Application/BFF)** | Owns the WorkOS session, orgs/projects CRUD, document upload, conversation persistence, and the **collection‑naming / scoping policy**. Calls Postgres and SeaweedFS **directly**. Calls Python over HTTP/WS with a Bearer JWT + explicit context. | System of record (via Postgres/SeaweedFS) |
 | **Python AI‑Q agent** | Stateless inference + embedding microservice. Two contracts: `infer` and `ingest`. Receives user **context** for attribution/personalization but **trusts the caller** and is not the system of record. Writes vectors to Qdrant **only**. | Stateless |
-| **Data stores** | PostgreSQL server with `grid_app` (app/identity metadata), `grid_jobs` (agent job metadata + summaries), and `grid_checkpoints` (LangGraph checkpoints); SeaweedFS (document bytes); Qdrant (vectors). | Authoritative for app + agent data |
+| **Data stores** | PostgreSQL server with `grid_app` (app/identity metadata), `jobs` (agent job metadata + summaries), and `checkpoints` (LangGraph checkpoints); SeaweedFS (document bytes); Qdrant (vectors). | Authoritative for app + agent data |
 | **WorkOS** | External identity provider. | Authoritative for identity |
 
 We chose **Option A** (Next.js as the application/BFF) over a separate dedicated app server,
@@ -164,7 +164,7 @@ flowchart LR
     UI["Next.js UI"]
     BFF["Next.js BFF<br/>(authz + scoping policy)"]
     PGApp[("PostgreSQL\ngrid_app")]
-    PGAgent[("PostgreSQL\naiq_jobs + grid_checkpoints")]
+    PGAgent[("PostgreSQL\naiq_jobs + checkpoints")]
     Obj[("SeaweedFS")]
     Py["Python agent\n(stateless)"]
     Vec[("Qdrant")]
@@ -486,7 +486,7 @@ sequenceDiagram
 ## 8. Data Model
 
 App‑owned schema lives in the **`grid_app` database** on the same PostgreSQL server as the
-agent's existing `grid_jobs` and `grid_checkpoints` databases. The BFF owns `grid_app`; the
+agent's existing `jobs` and `checkpoints` databases. The BFF owns `grid_app`; the
 Python agent continues to own its own databases.
 
 **WorkOS IDs are stored as opaque `text` FKs.** There is **no users table** and **no
@@ -648,7 +648,7 @@ erDiagram
 
 A thin, explicit boundary. **BFF → Postgres (`grid_app`)** and **BFF → SeaweedFS** are **direct**;
 only **embedding / inference** goes to Python. The Python agent continues to own its existing
-`grid_jobs` and `grid_checkpoints` databases directly.
+`jobs` and `checkpoints` databases directly.
 
 ### BFF responsibilities
 
@@ -707,7 +707,7 @@ classDiagram
 flowchart LR
     BFF["Next.js BFF"]
     PGApp[("PostgreSQL\ngrid_app")]
-    PGAgent[("PostgreSQL\naiq_jobs + grid_checkpoints")]
+    PGAgent[("PostgreSQL\naiq_jobs + checkpoints")]
     Obj[("SeaweedFS")]
     Py["Python agent"]
     Vec[("Qdrant")]

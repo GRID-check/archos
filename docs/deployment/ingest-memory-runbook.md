@@ -165,12 +165,12 @@ The fixed build adds three lines, so the window between `file:start` and
 ## 4. Queue depth and dead jobs
 
 The scaler reads `ingest_job_queue`, so the same table is what to look at when
-pods are restarting. It lives in the `grid_jobs` database in the app Postgres,
+pods are restarting. It lives in the `jobs` database in the app Postgres,
 which is the CloudNativePG cluster `grid-pg`:
 
 ```bash
 PRIMARY=$(kubectl -n grid get cluster grid-pg -o jsonpath='{.status.currentPrimary}')
-kubectl -n grid exec "$PRIMARY" -- psql -U postgres -d grid_jobs -Atc \
+kubectl -n grid exec "$PRIMARY" -- psql -U postgres -d jobs -Atc \
   "SELECT status, count(*) FROM ingest_job_queue GROUP BY status ORDER BY status;"
 ```
 

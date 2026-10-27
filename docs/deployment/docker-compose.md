@@ -14,7 +14,8 @@ loop of its own, and this calls its `/v1/maintenance/housekeeping/*` routes on
 the cadences Kubernetes runs as CronJobs. One of them is the base-corpus sync
 (`base-corpus`, every ten minutes), which queues an ingest job for each uploaded OIB PDF that is
 not indexed yet (the `ingest-worker` service claims and runs it); the backend does no sync at boot. `bff-jobs` (ADR-0079) is the frontend image
-running `workers/jobs/index.js`: the BFF plus the claim loop that runs the jobs
+running `workers/jobs/index.js`: the BFF (or, with `GRID_BFF_JOBS_MODE=inprocess`,
+the services bundled into `dist-jobs/slice.mjs` and no server) plus the claim loop that runs the jobs
 in `bff_job_queue` (project reindex, failed-ingestion rescan, IFC extraction,
 Office rendition through `gotenberg`, research-report filing), with no
 published port. Without it none of them runs. It shares the frontend's environment by YAML alias, so a
@@ -68,11 +69,11 @@ Every other HTTP route is [`aiq-api`](#aiq-api-the-api-role)'s.
 | Variable | Default |
 |----------|---------|
 | `APP_ENV` | `production` |
-| `NAT_JOB_STORE_DB_URL` | `postgresql+asyncpg://grid:aiq_dev@pgbouncer:5432/grid_jobs` (pooled) |
-| `GRID_CHECKPOINT_DB` | `postgresql://grid:aiq_dev@pgbouncer:5432/grid_checkpoints` (pooled) |
-| `GRID_SUMMARY_DB` | `postgresql+psycopg://grid:aiq_dev@pgbouncer:5432/grid_jobs` (pooled) |
-| `GRID_LISTEN_DB_URL` | `postgresql://grid:aiq_dev@postgres:5432/grid_jobs` (direct: SSE LISTEN/NOTIFY) |
-| `GRID_LOCK_DB_URL` | `postgresql://grid:aiq_dev@postgres:5432/grid_jobs` (direct: session advisory locks) |
+| `NAT_JOB_STORE_DB_URL` | `postgresql+asyncpg://app:aiq_dev@pgbouncer:5432/jobs` (pooled) |
+| `GRID_CHECKPOINT_DB` | `postgresql://app:aiq_dev@pgbouncer:5432/checkpoints` (pooled) |
+| `GRID_SUMMARY_DB` | `postgresql+psycopg://app:aiq_dev@pgbouncer:5432/jobs` (pooled) |
+| `GRID_LISTEN_DB_URL` | `postgresql://app:aiq_dev@postgres:5432/jobs` (direct: SSE LISTEN/NOTIFY) |
+| `GRID_LOCK_DB_URL` | `postgresql://app:aiq_dev@postgres:5432/jobs` (direct: session advisory locks) |
 | `GRID_ROLE` | `chat` |
 | `GRID_QDRANT_URL` | `http://qdrant:6333` (the `qdrant` service; no published port, no API key on the internal network; no embedded fallback: the backend keeps no volume) |
 | `GRID_QDRANT_API_KEY` | empty (set it with a Qdrant elsewhere that wants one) |
@@ -414,9 +415,9 @@ PostgreSQL 16 database.
 
 | Variable | Value |
 |----------|-------|
-| `POSTGRES_USER` | `grid` |
+| `POSTGRES_USER` | `app` |
 | `POSTGRES_PASSWORD` | `aiq_dev` |
-| `POSTGRES_DB` | `grid_jobs` |
+| `POSTGRES_DB` | `jobs` |
 
 **Volumes**:
 
@@ -432,23 +433,23 @@ PostgreSQL 16 database.
 | CPU | 2 | 1 |
 | Memory | 4G | 2G |
 
-**Healthcheck**: `pg_isready -U grid -d postgres` — interval 5s, timeout 5s, retries 5.
+**Healthcheck**: `pg_isready -U app -d postgres` — interval 5s, timeout 5s, retries 5.
 
 **Restart**: `unless-stopped`.
 
 ### postgres-rename
 
-A one-shot run of `deploy/postgres/rename-to-grid.sh` (ADR-0145 row 10d): a volume
+A one-shot run of `deploy/postgres/rename-legacy-names.sh` (ADR-0145 row 10d): a volume
 made before the rename has the databases `aiq_jobs` and `aiq_checkpoints` and the
-superuser `aiq`, and this renames them to `grid_jobs`, `grid_checkpoints` and
-`grid`. Every service that waits on `postgres` waits for it to complete. A volume
+superuser `aiq`, and this renames them to `jobs`, `checkpoints` and
+`app`. Every service that waits on `postgres` waits for it to complete. A volume
 made with the new names, and every run after the first, change nothing. The
 renamed databases refuse new sessions and end the open ones while it runs.
 
 | Property | Value |
 |----------|-------|
 | Image | `postgres:16-alpine` (Coolify: the image `postgres.Dockerfile` builds, which carries the script) |
-| Command | `sh /rename-to-grid.sh` |
+| Command | `sh /rename-legacy-names.sh` |
 | Restart | `no` |
 
 ### pgbouncer

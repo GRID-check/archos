@@ -1233,7 +1233,7 @@ conversations ──1:N──→ messages (CASCADE delete)
 
 This PostgreSQL entrypoint script runs on first container startup and creates two additional databases alongside `grid_app`:
 
-### grid_jobs database
+### jobs database
 
 | Table | Purpose | Key Columns |
 |-------|---------|-------------|
@@ -1247,7 +1247,7 @@ Indexes: `job_info(status)`, `job_info(created_at)`, `job_access(owner_auth_type
 
 > **`document_metadata`** (renamed from `summaries`) is the per-document metadata store: the one-sentence `summary`, controlled ingestion `tags` (JSON list, e.g. `["Grundriss","Brandschutz"]`), the explicit `doc_class` ("Dokumentart"), and the user-facing `display_title` (the citation-chip name; the OIB corpus never shows a raw filename). **`init-db.sql` pre-creates only `summary`**; `tags`, `doc_class`, and `display_title` are added at runtime by `DocumentMetadataStore` on first access, and an existing `summaries` table is **renamed in place** to `document_metadata` (rows preserved) — so both the rename and the ALTER-TABLE column-adds are always exercised on a live deployment. See `docs/database/migrations.md` (init-db.sql section).
 
-### grid_checkpoints database
+### checkpoints database
 
 LangGraph conversation checkpoint tables:
 

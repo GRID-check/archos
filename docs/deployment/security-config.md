@@ -185,7 +185,7 @@ GRID_VLM_BASE_URL=https://openrouter.ai/api/v1
 ```yaml
 POSTGRES_USER: aiq
 POSTGRES_PASSWORD: aiq_dev
-POSTGRES_DB: grid_jobs
+POSTGRES_DB: jobs
 ```
 
 **These are development credentials.** In production:

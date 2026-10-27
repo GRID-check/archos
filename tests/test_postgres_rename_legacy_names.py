@@ -1,4 +1,4 @@
-"""``deploy/postgres/rename-to-grid.sh`` renames the AI-Q databases and role, once (ADR-0145 row 10d).
+"""``deploy/postgres/rename-legacy-names.sh`` renames the AI-Q databases and role, once (ADR-0145 row 10d).
 
 It runs on every deploy before the backend starts, on Kubernetes as the
 ``postgres`` superuser and on Compose as the role it renames, so each shape is
@@ -21,7 +21,7 @@ from urllib.parse import urlparse
 
 import pytest
 
-SCRIPT = Path(__file__).resolve().parents[1] / "deploy" / "postgres" / "rename-to-grid.sh"
+SCRIPT = Path(__file__).resolve().parents[1] / "deploy" / "postgres" / "rename-legacy-names.sh"
 _URL = os.environ.get("GRID_TEST_POSTGRES_URL")
 
 pytestmark = pytest.mark.skipif(
@@ -29,8 +29,8 @@ pytestmark = pytest.mark.skipif(
 )
 
 OLD_DATABASES = ("aiq_jobs", "aiq_checkpoints")
-NEW_DATABASES = ("grid_jobs", "grid_checkpoints")
-ROLES = ("aiq", "grid", "grid_rename_helper")
+NEW_DATABASES = ("jobs", "checkpoints")
+ROLES = ("aiq", "app", "rename_helper")
 
 
 def _env(user: str) -> dict[str, str]:
@@ -60,7 +60,7 @@ def _psql(sql: str, user: str | None = None, database: str = "postgres") -> str:
 
 
 def _run_script(user: str) -> subprocess.CompletedProcess[str]:
-    env = {**_env(user), "GRID_PASSWORD": "grid-test-password"}  # pragma: allowlist secret (throwaway cluster)
+    env = {**_env(user), "ROLE_PASSWORD": "test-password"}  # pragma: allowlist secret (throwaway cluster)
     return subprocess.run(["sh", str(SCRIPT)], env=env, capture_output=True, text=True, timeout=120, check=False)
 
 
@@ -98,14 +98,14 @@ def _assert_renamed(*, with_data: bool = True) -> None:
     assert set(NEW_DATABASES) <= databases
     assert not set(OLD_DATABASES) & databases
     roles = _roles()
-    assert "grid" in roles
-    assert not {"aiq", "grid_rename_helper"} & roles
+    assert "app" in roles
+    assert not {"aiq", "rename_helper"} & roles
     for name in NEW_DATABASES:
-        assert _psql(f"SELECT pg_get_userbyid(datdba) FROM pg_database WHERE datname = '{name}'") == "grid"
+        assert _psql(f"SELECT pg_get_userbyid(datdba) FROM pg_database WHERE datname = '{name}'") == "app"
         assert _psql(f"SELECT datallowconn FROM pg_database WHERE datname = '{name}'") == "t"
     # The data came along, and the renamed role reaches it.
     if with_data:
-        assert _psql("SELECT count(*) FROM job_info", user="grid", database="grid_jobs") == "0"
+        assert _psql("SELECT count(*) FROM job_info", user="app", database="jobs") == "0"
 
 
 def test_kubernetes_shape_renames_under_a_live_connection_and_a_second_run_is_a_no_op():
@@ -124,8 +124,8 @@ def test_kubernetes_shape_renames_under_a_live_connection_and_a_second_run_is_a_
 
         first = _run_script(_superuser())
         assert first.returncode == 0, first.stderr
-        assert "aiq_jobs -> grid_jobs" in first.stdout
-        assert "role aiq -> grid" in first.stdout
+        assert "aiq_jobs -> jobs" in first.stdout
+        assert "role aiq -> app" in first.stdout
         assert held.wait(timeout=30) != 0, "the connection to the old database survived the rename"
     finally:
         held.kill()
@@ -142,21 +142,21 @@ def test_compose_shape_renames_the_superuser_it_logs_in_as():
     # script under the new name, which does not exist yet.
     _old_install(superuser=True)
 
-    first = _run_script("grid")
+    first = _run_script("app")
     assert first.returncode == 0, first.stderr
-    assert "role aiq -> grid" in first.stdout
+    assert "role aiq -> app" in first.stdout
     _assert_renamed()
 
-    second = _run_script("grid")
+    second = _run_script("app")
     assert second.returncode == 0, second.stderr
     assert "->" not in second.stdout
     _assert_renamed()
 
 
 def test_a_fresh_install_without_the_old_names_is_left_alone():
-    _psql("CREATE ROLE grid LOGIN")
+    _psql("CREATE ROLE app LOGIN")
     for name in NEW_DATABASES:
-        _psql(f"CREATE DATABASE {name} OWNER grid")
+        _psql(f"CREATE DATABASE {name} OWNER app")
 
     result = _run_script(_superuser())
 
