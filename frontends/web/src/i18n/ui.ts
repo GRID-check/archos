@@ -56,6 +56,11 @@ const de = {
         description:
           'Impressum und Offenlegung der Piloti-Website nach §\u00a05 ECG und §\u00a025 MedienG: wer hinter Piloti steht, wo wir sitzen und wie Sie uns erreichen.',
       },
+      projectMail: {
+        title: 'E-Mails an ein Projekt: der E-Mail-Eingang – Piloti',
+        description:
+          'Was mit einer E-Mail an die Adresse eines Projekts geschieht: Sie wartet, bis eine Person sie ablegt, wird auf Schadsoftware geprüft und von keinem KI-Modell gelesen.',
+      },
       datenschutz: {
         title: 'Datenschutzerklärung – Piloti',
         description:
@@ -591,7 +596,7 @@ const de = {
   },
   legal: {
     emailLabel: 'E-Mail',
-    updated: 'Stand: September 2026',
+    updated: 'Stand: Oktober 2026',
     impressum: {
       heading: 'Impressum',
       ownerHeading: 'Medieninhaber, Herausgeber und Diensteanbieter',
@@ -636,6 +641,10 @@ const de = {
         {
           heading: 'Anmeldung und Piloti-Anwendung',
           html: 'Mit „Anmelden“ verlassen Sie diese Website und gelangen zur Piloti-Anwendung; dort gilt deren eigene Datenschutzerklärung. Kurz vorab: Die Anmeldung läuft über WorkOS, Inc. (USA). KI-Anfragen werden über OpenRouter, Inc. (USA) an Modellanbieter weitergeleitet, die ihren Sitz auch außerhalb der EU haben können. Produktanalyse, Fehlererfassung, Umfragen und Support der Anwendung laufen über PostHog (Rechenzentrum in Frankfurt am Main). Wir selbst trainieren keine KI-Modelle mit Ihren Daten.',
+        },
+        {
+          heading: 'E-Mails an die Adresse eines Projekts',
+          html: 'Büros, die Piloti nutzen, können ihren Projekten E-Mail-Adressen unter <em>piloti.at</em> geben. Schreiben Sie an eine solche Adresse, ist das Büro, dem das Projekt gehört, für Ihre E-Mail verantwortlich; wir verarbeiten sie in seinem Auftrag (Art.&nbsp;28 DSGVO). Ihre E-Mail läuft über Cloudflare, Inc. (USA, unter dem EU-US Data Privacy Framework zertifiziert), wird in unserer eigenen Infrastruktur auf Schadsoftware geprüft und wartet bis zu 30&nbsp;Tage, bis eine berechtigte Person im Büro sie ablegt oder verwirft. Abgelegte E-Mails werden Teil der Projektunterlagen des Büros, ihr Original wird als Nachweis aufbewahrt. Solange sie wartet, liest kein KI-Modell Ihre E-Mail. Wir senden keine Antworten. Fragen zu Ihren Daten richten Sie an das Büro; mehr dazu unter <a href="/e-mail-eingang/">E-Mails an ein Projekt</a>.',
         },
         {
           heading: 'Redaktionsbereich',
@@ -727,6 +736,11 @@ const en: typeof de = {
         title: 'Imprint – Piloti',
         description:
           'Imprint and disclosure for the Piloti website under Austrian law (§\u00a05 ECG, §\u00a025 MedienG): who is behind Piloti, where we are based and how to reach us.',
+      },
+      projectMail: {
+        title: 'Mail to a project: Project mail – Piloti',
+        description:
+          'What happens to a mail sent to a project’s address: it waits until a person files it, is scanned for malware and is read by no AI model.',
       },
       datenschutz: {
         title: 'Privacy policy – Piloti',
@@ -1236,7 +1250,7 @@ const en: typeof de = {
   },
   legal: {
     emailLabel: 'Email',
-    updated: 'Last updated: September 2026',
+    updated: 'Last updated: October 2026',
     impressum: {
       heading: 'Imprint',
       ownerHeading: 'Media owner, publisher and service provider',
@@ -1281,6 +1295,10 @@ const en: typeof de = {
         {
           heading: 'Sign-in and the Piloti application',
           html: '“Sign in” takes you from this website to the Piloti application, which has its own privacy policy. In short: sign-in is handled by WorkOS, Inc. (USA). AI requests are routed through OpenRouter, Inc. (USA) to model providers that may be based outside the EU. Product analytics, error tracking, surveys and support in the application run through PostHog (data centre in Frankfurt, Germany). We do not train AI models on your data.',
+        },
+        {
+          heading: 'Mail to a project’s address',
+          html: 'Offices that use Piloti can give their projects e-mail addresses at <em>piloti.at</em>. When you write to such an address, the office the project belongs to is the controller of your mail; we process it on its behalf (Art.&nbsp;28 GDPR). Your mail passes through Cloudflare, Inc. (USA, certified under the EU-US Data Privacy Framework), is scanned for malware in our own infrastructure, and waits for up to 30&nbsp;days until an authorised person in the office files or dismisses it. Filed mail becomes part of the office’s project documents, and its original is kept as evidence. While it waits, no AI model reads your mail. We send no replies. Questions about your data go to the office; more under <a href="/en/project-mail/">Mail to a project</a>.',
         },
         {
           heading: 'Editorial area',

@@ -1,0 +1,37 @@
+---
+/**
+ * The help page for project mail (/e-mail-eingang/, /en/project-mail/): what
+ * happens to a mail sent to a project's address. Linked from the app's
+ * address dialog and from the bounce text, so its anchors are stable (`#dkim`).
+ * The copy is src/i18n/project-mail.ts.
+ */
+import PageHead from '../molecules/PageHead.astro'
+import { projectMail } from '../../i18n/project-mail'
+import { getLocalizedPath } from '../../i18n/utils'
+import type { Locale } from '../../i18n/ui'
+
+interface Props {
+  locale?: Locale
+}
+const { locale = 'de' } = Astro.props
+const t = projectMail[locale]
+---
+
+<section class="frame pb-20 pt-28 sm:pb-28 md:pt-36">
+  <PageHead title={t.heading} locale={locale}>
+    <p>{t.lede}</p>
+  </PageHead>
+  <div class="prose-piloti mt-10">
+    {
+      t.sections.map((s) => (
+        <>
+          <h2 id={s.id}>{s.heading}</h2>
+          {s.paragraphs.map((p) => (
+            <p>{p}</p>
+          ))}
+        </>
+      ))
+    }
+    <p><a href={getLocalizedPath('/datenschutz/', locale)}>{t.privacyLink}</a></p>
+  </div>
+</section>

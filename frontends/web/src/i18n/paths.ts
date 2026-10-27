@@ -22,6 +22,7 @@ export const EN_SEGMENT = {
   neu: 'whats-new',
   impressum: 'imprint',
   datenschutz: 'privacy',
+  'e-mail-eingang': 'project-mail',
 } as const
 
 export type GermanSegment = keyof typeof EN_SEGMENT
