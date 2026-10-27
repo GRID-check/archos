@@ -4,7 +4,7 @@ description: >
   Whether this room is an Aufenthaltsraum, and what OIB 3 then requires.
 metadata:
   grid-agents: researcher,deep_researcher
-  grid-cards: daylight_incidence
+  grid-cards: daylight_incidence,formula
 ---
 
 # Classify the room first, then fetch the requirement
@@ -32,6 +32,9 @@ The provision supplies the limit. A figure without a source is only claimed.
 ## 3. Showing it
 
 Daylight with light prism and glazing share → `daylight_incidence`.
+Whether the glazing share is enough, and what window would be → `formula`
+with `daylight_ratio`, the room depth and the overhang: the card derives the
+required share of 9.1.3 and 9.1.4 itself.
 Several requirements side by side → as a check table with a status column.
 The passage whose wording the answer hangs on → as a quote line `> „…“ [N]`.
 

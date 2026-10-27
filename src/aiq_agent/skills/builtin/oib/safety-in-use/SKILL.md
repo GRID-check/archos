@@ -4,7 +4,7 @@ description: >
   Stair, guardrail, door width. The figure should be drawn.
 metadata:
   grid-agents: researcher,deep_researcher
-  grid-cards: stair_diagram,guardrail_check,dimension_diagram
+  grid-cards: stair_diagram,guardrail_check,dimension_diagram,formula
 ---
 
 # Answering a question about safety in use or accessibility
@@ -16,6 +16,9 @@ in their head, and as a drawing it reads at once. Write the sentence anyway.
 The card is in addition, never instead.
 
 Rise, tread, flight width, step formula → `stair_diagram`.
+Which rise and tread would work → `formula` with `stair_step_rule` and the
+stair type: the reader tries figures on the card, which takes the row of
+Tabelle 3 itself.
 Fall height, guardrail height, opening width, the gap below →
 `guardrail_check`. The fall height decides the limit, so it belongs in the
 card.

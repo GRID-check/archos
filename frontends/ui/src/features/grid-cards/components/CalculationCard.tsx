@@ -44,19 +44,13 @@ import {
   fmtComparator,
   fmtNum,
   fmtTolerance,
-  missingLabel,
   provenanceLabel,
   provenanceTitle,
-  statusColor,
 } from '../schematics/kit'
-import { evaluate, resultDecimals, verdictFor, type StepResult } from '../lib/calculate'
+import { evaluate, formatInput, resultDecimals, verdictFor } from '../lib/calculate'
 import { cn } from '@/lib/utils'
-import type {
-  CalculationLimitData,
-  CalculationOperandData,
-  CalculationStepData,
-  NormReferenceData,
-} from '../schematics/types'
+import type { CalculationLimitData, CalculationStepData, NormReferenceData } from '../schematics/types'
+import { DerivationSteps } from './Derivation'
 
 interface CalculationCardProps {
   title: string
@@ -64,131 +58,6 @@ interface CalculationCardProps {
   limit?: CalculationLimitData | null
   reference?: NormReferenceData | null
   note?: string | null
-}
-
-/** The glyph BETWEEN two operands of a step. Symbols, so they need no locale. */
-const operatorFor = (operation: CalculationStepData['operation'], operand: CalculationOperandData): string => {
-  if (operation === 'sum') return (operand.factor ?? 1) < 0 ? '−' : '+'
-  if (operation === 'quotient' || operation === 'percent_ratio') return '÷'
-  return '×'
-}
-
-/** A number with more decimals than the house two, for a result that needs them. */
-const fmtPrecise = (value: number, decimals: number): string =>
-  decimals <= 2 ? fmtNum(value) : new Intl.NumberFormat('de-AT', { maximumFractionDigits: decimals }).format(value)
-
-/**
- * One operand as it appears in the derivation line: the number on top, what it
- * is underneath. That is how a Rechenweg is written on paper, and it is what
- * lets a reader check the arithmetic and the meaning in one pass.
- */
-const Operand: FC<{
-  operand: CalculationOperandData
-  steps: CalculationStepData[]
-  referenced: StepResult | undefined
-  t: Translator
-}> = ({ operand, steps, referenced, t }) => {
-  const fromStep = operand.step != null
-  const value = fromStep ? referenced?.value : operand.value
-  const unit = fromStep ? (referenced?.unit ?? '') : (operand.unit ?? '')
-  const factor = typeof operand.factor === 'number' && operand.factor !== 1 ? Math.abs(operand.factor) : null
-  const label = fromStep ? (steps[(operand.step ?? 1) - 1]?.label ?? operand.label) : operand.label
-
-  return (
-    <span className="flex min-w-0 flex-col items-center">
-      <span className="whitespace-nowrap font-mono text-[13.5px] tabular-nums text-foreground">
-        {/* The rule's own multiplier reads as part of the term („2 × 17 cm"),
-            because that is what it is — not a quantity anybody measured. */}
-        {factor != null && <span className="text-muted-foreground">{fmtNum(factor)} × </span>}
-        {value == null ? (
-          <span className="font-sans text-xs italic text-muted-foreground">{missingLabel(t)}</span>
-        ) : (
-          <>
-            {fmtNum(value)}
-            {unit && <span className="text-muted-foreground"> {unit}</span>}
-          </>
-        )}
-      </span>
-      {/* Wraps instead of clipping: the label names what the figure above is,
-          and a `title` attribute is not shown on a phone. */}
-      <span className="card-meta max-w-[11rem] text-center font-normal [overflow-wrap:anywhere] text-muted-foreground">
-        {fromStep ? t('cards.calculation.fromStep', { step: String(operand.step) }) : label}
-      </span>
-    </span>
-  )
-}
-
-/** One step: `2 × 17 cm + 30 cm = 64 cm`, with the result computed here. */
-const StepRow: FC<{
-  step: CalculationStepData
-  index: number
-  steps: CalculationStepData[]
-  results: StepResult[]
-  isLast: boolean
-  decimals: number
-  verdict: ReturnType<typeof verdictFor>
-  t: Translator
-}> = ({ step, index, steps, results, isLast, decimals, verdict, t }) => {
-  const result = results[index]
-  const band = fmtTolerance(result.tolerance, result.unit)
-  // Only the LAST step is measured against the limit, so only it is tinted. An
-  // intermediate result coloured green would read as a verdict of its own.
-  const tint = isLast && verdict ? statusColor(verdict) : null
-
-  return (
-    <li className="flex flex-col gap-1">
-      <span className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">{step.label}</span>
-      <div className="flex flex-wrap items-start gap-x-2 gap-y-1">
-        {step.operands.map((operand, position) => (
-          <span key={`${operand.label}-${position}`} className="flex items-start gap-2">
-            {position > 0 && (
-              <span aria-hidden="true" className="pt-0.5 font-mono text-[13.5px] text-muted-foreground">
-                {operatorFor(step.operation, operand)}
-              </span>
-            )}
-            <Operand
-              operand={operand}
-              steps={steps}
-              referenced={operand.step != null ? results[operand.step - 1] : undefined}
-              t={t}
-            />
-          </span>
-        ))}
-
-        <span aria-hidden="true" className="pt-0.5 font-mono text-[13.5px] text-muted-foreground">
-          =
-        </span>
-
-        <span className="flex min-w-0 flex-col items-start">
-          <span
-            className={cn(
-              'whitespace-nowrap font-mono card-figure-24',
-              tint ? undefined : 'text-foreground'
-            )}
-            style={tint ? { color: tint } : undefined}
-          >
-            {result.value == null ? (
-              <span className="font-sans text-xs font-normal italic text-muted-foreground">{missingLabel(t)}</span>
-            ) : (
-              <>
-                {fmtPrecise(result.value, decimals)}
-                {result.unit && <span className="font-normal opacity-70"> {result.unit}</span>}
-              </>
-            )}
-          </span>
-          {band && <span className="text-[10.5px] leading-tight text-muted-foreground">{band}</span>}
-        </span>
-      </div>
-
-      {result.undecidable && (
-        <p className="max-w-prose text-xs leading-relaxed text-muted-foreground">
-          {result.undecidable === 'undefined'
-            ? t('cards.calculation.undefinedResult')
-            : t('cards.calculation.undecidable')}
-        </p>
-      )}
-    </li>
-  )
 }
 
 /** The bound the last result is held against, written the way a plan writes it. */
@@ -246,21 +115,13 @@ export const CalculationCard: FC<CalculationCardProps> = ({ title, steps, limit,
       note={note}
       reference={reference}
     >
-      <ol className="flex flex-col gap-3">
-        {steps.map((step, index) => (
-          <StepRow
-            key={`${step.label}-${index}`}
-            step={step}
-            index={index}
-            steps={steps}
-            results={results}
-            isLast={index === steps.length - 1}
-            decimals={decimals}
-            verdict={verdict}
-            t={t}
-          />
-        ))}
-      </ol>
+      <DerivationSteps
+        steps={steps}
+        results={results}
+        display={steps.map((_, index) => ({ decimals: index === steps.length - 1 ? decimals : 2 }))}
+        tint={verdict}
+        t={t}
+      />
 
       {limit && <LimitLine limit={limit} unit={final?.unit ?? ''} t={t} />}
 
@@ -307,7 +168,7 @@ export const CalculationCard: FC<CalculationCardProps> = ({ title, steps, limit,
                       <span className="text-muted-foreground">{operand.label}</span>
                       {operand.value != null && (
                         <span className="font-mono text-foreground">
-                          {fmtNum(operand.value)}
+                          {formatInput(operand.value)}
                           {unit && ` ${unit}`}
                         </span>
                       )}
