@@ -137,7 +137,7 @@ def emit(body: EventBody) -> None:
     """Write one wire body to the running graph's custom stream. Outside a graph run, nothing."""
     try:
         writer = get_stream_writer()
-    except (RuntimeError, KeyError):  # no graph run: outside any runnable, or in a runnable outside a graph
+    except RuntimeError, KeyError:  # no graph run: outside any runnable, or in a runnable outside a graph
         return
     writer(body)
 

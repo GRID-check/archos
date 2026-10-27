@@ -889,7 +889,7 @@ def _parse_object(raw: str) -> dict | None:
     try:
         payload = json.loads(raw, strict=False)
         return payload if isinstance(payload, dict) else None
-    except (json.JSONDecodeError, TypeError):
+    except json.JSONDecodeError, TypeError:
         pass
     start = raw.find("{")
     if start == -1:
@@ -899,7 +899,7 @@ def _parse_object(raw: str) -> dict | None:
         return None
     try:
         payload = json.loads(raw[start:end], strict=False)
-    except (json.JSONDecodeError, TypeError):
+    except json.JSONDecodeError, TypeError:
         return None
     return payload if isinstance(payload, dict) else None
 
