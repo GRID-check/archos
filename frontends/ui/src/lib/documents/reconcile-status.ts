@@ -26,6 +26,14 @@ import { IN_FLIGHT_DOCUMENT_STATUSES } from './document-status'
 import { parseRevisionLinkNames, type RevisionLinkNames, type RawRevisionLinkFields } from './revision-links'
 import { parsePhotoCapture, type PhotoCapture } from './photo-capture'
 import { parseRevisionFacts, type RevisionFacts } from './revision-facts'
+import {
+  parseDocumentReferences,
+  parseDossier,
+  parseReadingCoverage,
+  type DocumentReference,
+  type Dossier,
+  type ReadingCoverage,
+} from './dossier'
 import { setDocumentReconciledStatus } from './repository'
 import { documentShelf } from './shelf'
 import { publishShelfChanged } from './shelf-live'
@@ -152,6 +160,12 @@ export interface DocumentMetadata {
   capture?: PhotoCapture
   /** Title-block facts read off the drawing (see {@link RevisionFacts}). */
   revisionFacts?: RevisionFacts
+  /** What the document is and what it states (see {@link Dossier}). */
+  dossier?: Dossier
+  /** The norms, laws, drawing numbers and documents it points at. */
+  docReferences?: DocumentReference[]
+  /** How many of its pages were read, and why the rest were not. */
+  coverage?: ReadingCoverage
   /**
    * How many of this organisation's uploads wait in the ingest queue ahead of
    * this one (ADR-0076), or null when the row is not waiting there. The lane's
@@ -403,6 +417,9 @@ interface BackendFileEntry {
   topics?: string[] | null
   capture?: unknown
   revision_facts?: unknown
+  dossier?: unknown
+  doc_references?: unknown
+  coverage?: unknown
   /**
    * The Fassung links by FILE NAME, parsed. Deliberately not a
    * {@link DocumentMetadata} field: that type is spread onto rows several
@@ -437,6 +454,10 @@ interface RawBackendFile extends RawRevisionLinkFields {
   capture?: unknown
   // The title-block facts read off the drawing during ingestion.
   revision_facts?: unknown
+  // The dossier, references and reading coverage (docs/architecture/document-dossier.md).
+  dossier?: unknown
+  doc_references?: unknown
+  coverage?: unknown
   metadata?: { page_count?: number; content_types?: string[] } | null
 }
 
@@ -467,6 +488,9 @@ const loadCollectionFiles = async (collectionName: string): Promise<CollectionFi
       topics: file.topics,
       capture: file.capture,
       revision_facts: file.revision_facts,
+      dossier: file.dossier,
+      doc_references: file.doc_references,
+      coverage: file.coverage,
       revision: parseRevisionLinkNames(file),
     })
   }
@@ -784,6 +808,12 @@ const extractMetadata = (files: CollectionFiles | null, ref: CollectionFileRef):
   if (capture) meta.capture = capture
   const revisionFacts = parseRevisionFacts(file.revision_facts)
   if (revisionFacts) meta.revisionFacts = revisionFacts
+  const dossier = parseDossier(file.dossier)
+  if (dossier) meta.dossier = dossier
+  const docReferences = parseDocumentReferences(file.doc_references)
+  if (docReferences) meta.docReferences = docReferences
+  const coverage = parseReadingCoverage(file.coverage)
+  if (coverage) meta.coverage = coverage
   return Object.keys(meta).length > 0 ? meta : null
 }
 

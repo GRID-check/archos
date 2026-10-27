@@ -622,6 +622,28 @@ def set_document_revision_facts(collection: str, filename: str, facts: dict[str,
     return _get_document_metadata_store().set_revision_facts(collection, filename, facts or None)
 
 
+def set_document_reading(
+    collection: str,
+    filename: str,
+    *,
+    dossier: dict[str, Any] | None,
+    references: list[dict[str, Any]] | None,
+    coverage: dict[str, Any] | None,
+) -> bool:
+    """Set what the ingest read of a document: its dossier, its references, its coverage (UPDATE-only).
+
+    Written together by the ingest that read the file, so a re-ingest replaces the whole reading.
+    ``False`` when the document has no metadata row.
+    """
+    written = _get_document_metadata_store().set_reading(
+        collection, filename, dossier=dossier, references=references, coverage=coverage
+    )
+    # The chunks were written before the reading existed; their copy of it is set here.
+    if written:
+        _mirror_facts(collection, [filename])
+    return written
+
+
 def set_document_page_count(collection: str, filename: str, page_count: int | None) -> bool:
     """Set how many pages a document has (UPDATE-only, like :func:`set_document_capture`); ``None`` when it has none.
 
