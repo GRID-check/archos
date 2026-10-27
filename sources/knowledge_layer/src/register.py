@@ -112,9 +112,8 @@ _KNOWLEDGE_SEARCH_DESCRIPTION = (
     "whose Herkunft line says 'Piloti-Dokument' is office knowledge the office has approved, never a source for a "
     "normative value: cite it for what the office decided, not for what the OIB requires. An empty result says "
     "how to retry.\n"
-    "`path=` limits the search to a place, a folder or one file as the filesystem tools name them "
-    '("/project/Gutachten/", a hit\'s `Path:`); each hit carries the `Path:` read_file opens. The literal modes '
-    "are also `grep`, under its standard name.\n"
+    "`path=` limits the search to a place, a folder or one file as a hit's `Path:` line names it "
+    '("/project/Gutachten/", "/law/oib/").\n'
     "`conclusion=` is optional: one line on what you are looking for; it has no effect on the call."
 )
 

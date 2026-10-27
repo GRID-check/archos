@@ -207,7 +207,7 @@ class ResearchAgentConfig(FunctionBaseConfig, name="research_agent"):
         default=True,
         description=(
             "EVAL KNOB, not a product setting: false turns round 0's prefetched fetches off, so the "
-            "answer suite can measure the navigation tools (`list_files`, `read_passage`, exact search) "
+            "answer suite can measure the navigation tools (`ls`, `glob`, `grep`, `read_file`) "
             "without a ranked search already in the model's first request (`suite.py --set files "
             "--arm navigate`, ADR-0127). Production keeps the default."
         ),
@@ -682,11 +682,33 @@ def _estate_backend(config: ResearchAgentConfig, builder: Builder) -> Any:
     return EstateBackend(builder.get_function_config(config.filesystem))
 
 
+def _chat_bound(tools: list[Any], config: ResearchAgentConfig, builder: Builder) -> list[Any]:
+    """The shared knowledge-layer tools on Piloti's chat contract (``knowledge_layer.chat_binding``, slice 6).
+
+    ``knowledge_search`` is ranked search only and ``list_files`` the Fassungen of one document,
+    because Piloti reads the estate through ``ls``, ``glob``, ``grep`` and ``read_file``. Deep
+    research and intake bind the same NAT functions with their full contracts. The budget the
+    description states is the search's own configuration.
+    """
+    from knowledge_layer.chat_binding import KNOWLEDGE_SEARCH
+    from knowledge_layer.chat_binding import chat_tools
+
+    try:
+        search = builder.get_function_config(config.filesystem or KNOWLEDGE_SEARCH)
+    except Exception:  # noqa: BLE001 - a config without the search has nothing to rebind
+        return tools
+    return chat_tools(
+        tools,
+        top_k=int(getattr(search, "top_k", 5)),
+        max_per_document=int(getattr(search, "max_chunks_per_document", 0)),
+    )
+
+
 @register_function(config_type=ResearchAgentConfig, framework_wrappers=[LLMFrameworkEnum.LANGCHAIN])
 async def research_agent(config: ResearchAgentConfig, builder: Builder):
     """Research agent with tool-calling capabilities."""
     llm = await get_langchain_llm(builder, config.llm)
-    tools = await _load_tools(config, builder)
+    tools = _chat_bound(await _load_tools(config, builder), config, builder)
 
     # Deferred tool loading is verified HERE, at build time, against the live
     # endpoint, before a user turn exists to lose. The failure it guards is a
