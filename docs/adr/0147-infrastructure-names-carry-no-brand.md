@@ -119,7 +119,7 @@ is not a brand.
   `grid-org-<id>`) and the SeaweedFS access key `grid`. Each document row
   records the bucket it was written to, and the per-org prefix is in UI code,
   so renaming a bucket is a row rewrite plus an object copy, coupled to the
-  app. That is a follow-up ADR, written after this move. The move copies
+  app. That is a follow-up ADR (see Follow-up), written after this move. The move copies
   buckets under their current names.
 
 ### How each kind of state crosses
@@ -174,10 +174,19 @@ secrets key survives the project change. So we do not rename. We create:
    the program requires resolves to a non-empty value. A missing or
    undecryptable key fails `preview`. That is today's guard, unchanged.
 
-Prerequisite: the CI Pulumi token needs write access to ESC. The first
-`expand` run on `dev` shows whether it has it. If it does not, the product
-owner grants it once in the Pulumi Cloud console. That is a permission, not
-a cluster step.
+Prerequisite: the identity behind the deploy workflow's Pulumi token needs
+**Environment Open** on `grid-oib/<stack>`, which it already uses to resolve
+the old stack's secrets, and **Environment Write** on `workspace/<stack>`,
+including the right to create environments in the project `workspace`. In
+the legacy organization settings that is the Member role's default
+environment permission set to Write. Under RBAC it is a permission set
+granting Environment Write on `workspace/*`. The product owner grants it once
+in the Pulumi Cloud console. That is a permission, not a cluster step.
+The first `expand` run is not where we find out: the layout PR (step 1) adds
+a workflow preflight that creates and deletes a probe environment
+`workspace/preflight-probe`. If either call is refused, the run fails with
+"the Pulumi token needs Environment Write on workspace/* (ADR-0147)" before
+any stack is touched.
 
 ### Edge: Gateway, TLS, DNS
 
@@ -370,12 +379,23 @@ normal disaster path: restore the new cluster from its own backups.
   the second rename the brand already faces. Pilot phase is the cheapest
   moment this will have.
 
+## Follow-up
+
+**Bucket names are deferred, not dropped.** The rule covers every
+infrastructure name, so `grid-documents`, the per-organization
+`grid-org-<id>`, `grid-pg-backups` and the SeaweedFS access key `grid` get
+their own ADR. It is the next step after step 5 here. The shape is the same:
+expand (create the new buckets and copy objects while the old ones serve),
+switch (rewrite the bucket column in each document row in one migration,
+point the app's prefix at the new name, run the last copy), contract (delete
+the old buckets). The row rewrite and the per-org prefix belong to the app
+code, so that ADR is written together with the code-identifier session.
+
 ## More Information
 
 * Open on the AI-Q session: confirm the sequencing above, and that the CNPG
   `Cluster` and its Services (`grid-pg` → `postgres`) are this move's names,
   not theirs.
-* Follow-up ADR: bucket names and the SeaweedFS access key, after step 4.
 * Revisit if the cluster provider stops reserving a released LoadBalancer IP
   for re-claim. The edge plan above rests on that, and without it the switch
   has to change DNS instead.
