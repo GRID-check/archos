@@ -14,10 +14,18 @@ from aiq_agent.knowledge.schema import CollectionInfo
 from aiq_agent.knowledge.schema import FileInfo
 from aiq_agent.knowledge.schema import FileStatus
 from aiq_agent.oib_status import OibFileState
+from aiq_api.jobs import ingest_dispatch
 from tests.corpus_job_fakes import FakeIngestor as JobIngestor
 from tests.corpus_job_fakes import lose_the_workers_for
 from tests.corpus_job_fakes import run_worker
 from tests.object_corpus_fakes import install
+
+#: The API tier's own enqueue, which its routes hand to every ``oib_sync`` entry point.
+ENQUEUE = ingest_dispatch.enqueue_only
+
+
+def _sync() -> oib_sync.SyncResult:
+    return oib_sync.sync(enqueue=ENQUEUE)
 
 
 class FakeIngestor:
@@ -233,7 +241,7 @@ def jobs(monkeypatch):
 
 def test_a_file_whose_job_waits_is_pending(jobs):
     _stored("a.pdf", b"a")
-    oib_sync.sync()
+    _sync()
 
     status = oib_status.get_status(ingestor=FakeIngestor(_collection()))
 
@@ -244,7 +252,7 @@ def test_a_file_whose_job_waits_is_pending(jobs):
 def test_a_file_whose_job_ran_and_failed_is_failed_and_counted(jobs):
     _stored("a.pdf", b"a")
     _stored("b.pdf", b"b")
-    oib_sync.sync()
+    _sync()
     run_worker(succeed=False)
 
     status = oib_status.get_status(ingestor=FakeIngestor(_collection()))
@@ -256,7 +264,7 @@ def test_a_file_whose_job_ran_and_failed_is_failed_and_counted(jobs):
 
 def test_a_file_whose_job_died_with_its_workers_is_failed(jobs):
     row = corpus_store.put("a.pdf", b"a")
-    oib_sync.sync()
+    _sync()
     lose_the_workers_for(oib_sync.job_id_for(row))
 
     status = oib_status.get_status(ingestor=FakeIngestor(_collection()))
@@ -266,7 +274,7 @@ def test_a_file_whose_job_died_with_its_workers_is_failed(jobs):
 
 def test_a_failure_stays_failed_after_the_job_row_is_gone(jobs):
     row = corpus_store.put("a.pdf", b"a")
-    oib_sync.sync()
+    _sync()
     run_worker(succeed=False)
     oib_status.get_status(ingestor=FakeIngestor(_collection()))
     ingest_status_store.delete(oib_sync.job_id_for(row))
@@ -278,7 +286,7 @@ def test_a_failure_stays_failed_after_the_job_row_is_gone(jobs):
 
 def test_new_bytes_take_a_failed_file_out_of_failed(jobs):
     _stored("a.pdf", b"a")
-    oib_sync.sync()
+    _sync()
     run_worker(succeed=False)
     oib_status.get_status(ingestor=FakeIngestor(_collection()))
 
@@ -290,7 +298,7 @@ def test_new_bytes_take_a_failed_file_out_of_failed(jobs):
 
 def test_a_finished_job_reads_ingested_at_once_without_waiting_for_the_next_cycle(jobs):
     _stored("a.pdf", b"a")
-    oib_sync.sync()
+    _sync()
     run_worker()
 
     status = oib_status.get_status(ingestor=FakeIngestor(_collection(), files=[_file_info("a.pdf", 4)]))

@@ -21,7 +21,8 @@
 
 import 'server-only'
 import type { AuthorizedSession } from '@/lib/auth/types'
-import type { NewProjectIntakeRow, Project } from '@/lib/db/schema'
+import type { NewProjectIntakeRow } from '@/lib/db/schema/project-intakes'
+import type { Project } from '@/lib/db/schema/projects'
 import type { GeocodeResult } from '@/lib/geocoding/types'
 import { insertProjectIntake } from '@/lib/project-intake/repository'
 import type { ClosingIntent } from '@/lib/project-intake/types'

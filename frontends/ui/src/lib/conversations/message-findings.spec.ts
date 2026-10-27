@@ -1,3 +1,4 @@
+// @disk-inputs: ../../tests/fixtures/findings/wire_payload.json
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'

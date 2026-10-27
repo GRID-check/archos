@@ -11,17 +11,14 @@
 import 'server-only'
 import { and, eq, inArray, isNotNull, isNull, sql } from 'drizzle-orm'
 import type { DbExecutor } from '@/lib/db/executor'
-import {
-  conversationRestrictedFolders,
-  conversationSourceProjects,
-  conversations,
-  documents,
-  projectFolders,
-  projects,
-  resourceShares,
-  taskRuns,
-  type ResourceVisibility,
-} from '@/lib/db/schema'
+import { conversationRestrictedFolders } from '@/lib/db/schema/conversation-restricted-folders'
+import { conversationSourceProjects } from '@/lib/db/schema/conversation-source-projects'
+import { conversations } from '@/lib/db/schema/conversations'
+import { documents } from '@/lib/db/schema/documents'
+import { projectFolders } from '@/lib/db/schema/project-folders'
+import { projects } from '@/lib/db/schema/projects'
+import { resourceShares, type ResourceVisibility } from '@/lib/db/schema/resource-shares'
+import { taskRuns } from '@/lib/db/schema/task-model'
 
 /**
  * How many source folders one conversation records at most, read back. A

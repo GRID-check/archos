@@ -82,7 +82,8 @@ import {
 import { REPLY_MARK_CLOSED_REASON, REPLY_TAKEN_UP_REASON, type MarkMention } from '@/lib/annotations/types'
 import { wakeTurnId } from '@/lib/annotations/wake-ids'
 import { findWake } from '@/lib/annotations/wake-repository'
-import type { Document, DocumentAnnotationReplyRow, PilotiWakeRow } from '@/lib/db/schema'
+import type { DocumentAnnotationReplyRow, PilotiWakeRow } from '@/lib/db/schema/document-annotations'
+import type { Document } from '@/lib/db/schema/documents'
 import { getAccessibleDocument } from '@/lib/documents/access'
 import { mayOpenDocument } from '@/lib/documents/may-open'
 import {

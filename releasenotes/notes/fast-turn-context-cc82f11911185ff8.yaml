@@ -1,0 +1,11 @@
+---
+improvements:
+  - >
+    In a project without saved notes, Piloti starts answering up to a second
+    sooner, because it no longer waits to compare your question with notes that
+    are not there.
+operators:
+  - >
+    The setup.project_context phase in Langfuse now shows where the turn-context
+    call spent its time, read by read, and whether the memory read waited for the
+    query embedding.

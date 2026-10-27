@@ -101,7 +101,7 @@ import {
   peopleWhoMayRead,
   widenConversationAudience,
 } from '@/lib/conversations/restricted-use'
-import type { ResourceRole, ResourceVisibility } from '@/lib/db/schema'
+import type { ResourceRole, ResourceVisibility } from '@/lib/db/schema/resource-shares'
 import { publishToUsers } from '@/lib/events/bus'
 import { requireResourceAccess, requireResourceWriteAccess, resolveResourceAccess } from './access'
 import { loadOrganizationDirectory } from './directory'

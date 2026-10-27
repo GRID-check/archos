@@ -1,3 +1,4 @@
+// @disk-inputs: deploy/Dockerfile, observability/http-metrics.js, observability/otel-metrics.js, server.js, src/lib/limits/factory.js, src/lib/limits/rules.js, src/lib/limits/ws-frames.js, src/lib/proxy/backend-target.js, src/lib/proxy/ws-teardown.js, src/lib/proxy/ws-upgrade-headers.js, src/lib/redis/connect.js, src/lib/turns/turn-headers.js
 /**
  * @vitest-environment node
  */

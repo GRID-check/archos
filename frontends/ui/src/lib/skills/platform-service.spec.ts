@@ -39,7 +39,7 @@ import * as repository from './platform-repository'
 import * as categoryRepository from './skill-category-repository'
 import { findPlatformSkill } from './platform-skills'
 import { ConflictError, NotFoundError } from '@/lib/api/errors'
-import type { PlatformSkillRow } from '@/lib/db/schema'
+import type { PlatformSkillRow } from '@/lib/db/schema/platform-skills'
 import {
   createPlatformSkill,
   createPlatformSkillCategory,

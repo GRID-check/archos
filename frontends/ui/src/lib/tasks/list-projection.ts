@@ -31,7 +31,7 @@
 import 'server-only'
 import { TASK_PAGE_MAX_LIMIT, type TaskRunSummary, type TaskRunView } from './task-wire'
 import { listRunLedgersByMessageIds } from '@/lib/conversations/repository'
-import type { TaskRun } from '@/lib/db/schema'
+import type { TaskRun } from '@/lib/db/schema/task-model'
 import { sanitizeRunLedger } from '@/lib/runs/run-ledger'
 import type { RunLedger } from '@/lib/runs/run-ledger-types'
 import { runDisplayStatus, runTallies } from '@/lib/runs/run-vocabulary'

@@ -1,3 +1,4 @@
+// @disk-inputs: ../../tests/fixtures/collection_scope/scope_header.json
 /**
  * @vitest-environment node
  */

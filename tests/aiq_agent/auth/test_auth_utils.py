@@ -5,7 +5,6 @@ Module under test: src/aiq_agent/auth/utils.py
 
 import base64
 import json
-from unittest.mock import patch
 
 import pytest
 
@@ -16,6 +15,7 @@ from aiq_agent.auth import get_current_principal
 from aiq_agent.auth import get_current_user_info
 from aiq_agent.auth import get_user_info_from_unverified_token
 from aiq_agent.auth import register_token_fetcher
+from aiq_agent.auth.request_identity import user_context
 
 
 def _make_jwt(payload: dict) -> str:
@@ -93,7 +93,7 @@ def test_get_user_info_from_unverified_token_extracts_display_fields():
 
 
 def test_get_current_principal_uses_verified_middleware_context():
-    with patch("aiq_api.auth.middleware.get_current_user", return_value={"type": "jwt", "sub": "user-1"}):
+    with user_context({"type": "jwt", "sub": "user-1"}):
         principal = get_current_principal()
 
     assert principal is not None
@@ -102,15 +102,12 @@ def test_get_current_principal_uses_verified_middleware_context():
 
 
 def test_get_current_principal_rejects_unverified_token_context():
-    with patch("aiq_api.auth.middleware.get_current_user", return_value={"type": "unverified_jwt", "token": "x.y.z"}):
+    with user_context({"type": "unverified_jwt", "token": "x.y.z"}):
         assert get_current_principal() is None
 
 
 def test_get_current_user_info_uses_verified_middleware_context():
-    with patch(
-        "aiq_api.auth.middleware.get_current_user",
-        return_value={"type": "jwt", "sub": "user-1", "email": "alice@nvidia.com", "name": "Alice"},
-    ):
+    with user_context({"type": "jwt", "sub": "user-1", "email": "alice@nvidia.com", "name": "Alice"}):
         user_info = get_current_user_info()
 
     assert user_info is not None
@@ -121,7 +118,7 @@ def test_get_current_user_info_uses_verified_middleware_context():
 def test_get_current_user_info_ignores_registered_unverified_token_fetcher():
     jwt = _make_jwt({"email": "alice@nvidia.com", "name": "Alice"})
     register_token_fetcher(lambda: jwt)
-    with patch("aiq_api.auth.middleware.get_current_user", return_value={"type": "internal", "skip_clarifier": False}):
+    with user_context({"type": "internal", "skip_clarifier": False}):
         assert get_current_user_info() is None
 
 

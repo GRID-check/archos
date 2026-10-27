@@ -19,12 +19,7 @@
 import 'server-only'
 import { and, desc, eq, sql } from 'drizzle-orm'
 import { getDb } from '@/lib/db'
-import {
-  answerFeedback,
-  type AnswerFeedback,
-  type AnswerFeedbackReason,
-  type AnswerFeedbackVerdict,
-} from '@/lib/db/schema'
+import { answerFeedback, type AnswerFeedback, type AnswerFeedbackReason, type AnswerFeedbackVerdict } from '@/lib/db/schema/answer-feedback'
 import { isConversationTagKey, type ConversationTagKey } from '@/lib/conversations/tags'
 import { executeRows } from '@/lib/db/execute-rows'
 import { rangeDays, scopeBounds, type QualityScope } from '@/lib/quality/scope'

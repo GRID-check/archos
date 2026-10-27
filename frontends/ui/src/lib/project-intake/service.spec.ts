@@ -64,7 +64,7 @@ vi.mock('./derivations', async (original) => ({
 import { ConflictError, ForbiddenError, NotFoundError } from '@/lib/api/errors'
 import type { AuthorizedSession } from '@/lib/auth/types'
 import { requireProjectAccess } from '@/lib/authz/projects'
-import type { Project } from '@/lib/db/schema'
+import type { Project } from '@/lib/db/schema/projects'
 import type { ProjectIntakeRow } from '@/lib/db/schema/project-intakes'
 import { fetchBackendJobOutcome } from '@/lib/jobs/backend-client'
 import { recordDecisionScore } from '@/lib/langfuse/decision-score'

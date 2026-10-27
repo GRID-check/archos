@@ -1,3 +1,4 @@
+// @disk-inputs: ../../shared/cards/schemas.json, src/shared/cards/generated.ts
 /**
  * The generator's `$ref` resolution, and the drift of what it wrote.
  *

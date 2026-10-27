@@ -139,7 +139,10 @@ vi.mock('@/lib/db', async () => {
 vi.mock('@/lib/db/tenant-context', () => ({
   withTenant: (_scope: unknown, run: () => unknown) => run(),
 }))
-vi.mock('@/lib/db/schema', () => ({
+vi.mock('@/lib/db/schema/project-folder-grants', () => ({
+  projectFolderGrants: { folderId: 'grants.folder_id' },
+}))
+vi.mock('@/lib/db/schema/project-folders', () => ({
   projectFolders: {
     id: 'folders.id',
     projectId: 'folders.project_id',
@@ -148,7 +151,6 @@ vi.mock('@/lib/db/schema', () => ({
     accessMode: 'folders.access_mode',
     everyoneReads: 'folders.everyone_reads',
   },
-  projectFolderGrants: { folderId: 'grants.folder_id' },
 }))
 
 import { BadRequestError, NotFoundError } from '@/lib/api/errors'
@@ -176,7 +178,7 @@ import {
   type FolderAccessSetting,
 } from './folder-access-settings'
 import { assertRestrictionKeepsIfcOpen } from './ifc-folder-guard'
-import { projectFolderGrants } from '@/lib/db/schema'
+import { projectFolderGrants } from '@/lib/db/schema/project-folder-grants'
 
 const LOCK = 'lock:folder_access:org-1:plaene'
 

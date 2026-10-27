@@ -75,7 +75,7 @@
  *   different place.
  */
 
-import type { DocumentAuthor } from '@/lib/db/schema'
+import type { DocumentAuthor } from '@/lib/db/schema/documents'
 import { isAgentDocumentFilename } from './agent-namespace'
 
 declare const humanAuthored: unique symbol

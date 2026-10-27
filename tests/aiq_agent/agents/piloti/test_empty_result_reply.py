@@ -11,9 +11,9 @@ from langchain_core.messages import HumanMessage
 
 from aiq_agent.agents.piloti.models import ResearchAgentState
 from aiq_agent.agents.piloti.register import _run_agent
+from aiq_agent.citations.entries import EmptySourceRegistryError
 from aiq_agent.common.canned_replies import NO_SOURCES_MESSAGE
 from aiq_agent.common.canned_replies import SCOPED_NO_SOURCES_MESSAGE
-from aiq_agent.common.citation_verification import EmptySourceRegistryError
 
 
 def _deployment_that_finds_nothing() -> SimpleNamespace:

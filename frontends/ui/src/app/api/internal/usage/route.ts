@@ -6,7 +6,7 @@
  */
 
 import { z } from 'zod'
-import { COST_SOURCES, USAGE_ACTIVITIES } from '@/lib/db/schema'
+import { COST_SOURCES, USAGE_ACTIVITIES } from '@/lib/db/schema/budgets'
 import { internalApiRoute, parseJsonBody } from '@/lib/api/handler'
 import { withTenant } from '@/lib/db/tenant-context'
 import { recordUsageEvents } from '@/lib/budgets/service'

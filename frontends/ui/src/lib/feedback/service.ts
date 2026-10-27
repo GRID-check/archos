@@ -20,11 +20,7 @@ import { BadRequestError } from '@/lib/api/errors'
 import { requirePlatformPermission } from '@/lib/authz/platform'
 import { PLATFORM_PERMISSIONS } from '@/lib/authz/permissions'
 import type { AuthorizedSession, GridSession } from '@/lib/auth/types'
-import {
-  ANSWER_FEEDBACK_REASONS,
-  ANSWER_FEEDBACK_VERDICTS,
-  type AnswerFeedback,
-} from '@/lib/db/schema'
+import { ANSWER_FEEDBACK_REASONS, ANSWER_FEEDBACK_VERDICTS, type AnswerFeedback } from '@/lib/db/schema/answer-feedback'
 import type { AnswerFeedbackView, UpsertAnswerFeedbackInput } from './types'
 import {
   deleteAnswerFeedbackForUser,

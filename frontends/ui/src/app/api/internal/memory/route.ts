@@ -24,11 +24,7 @@ import {
   recordMemoryJudgeVerdict,
   recordRefusedMemoryJudgeVerdict,
 } from '@/lib/projects/memory-judge-audit'
-import {
-  PROJECT_MEMORY_CONFIDENCES,
-  PROJECT_MEMORY_KINDS,
-  PROJECT_MEMORY_MAX_RESTRICTED_FOLDERS,
-} from '@/lib/db/schema'
+import { PROJECT_MEMORY_CONFIDENCES, PROJECT_MEMORY_KINDS, PROJECT_MEMORY_MAX_RESTRICTED_FOLDERS } from '@/lib/db/schema/project-memory'
 
 // Agent-authored org-wide memory is DENIED by default: an org item lands in
 // every project's digest across the tenant, and this service-token endpoint

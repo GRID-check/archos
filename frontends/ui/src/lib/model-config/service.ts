@@ -13,11 +13,7 @@ import { getDb } from '@/lib/db'
 import { ForbiddenError } from '@/lib/api/errors'
 import { getCached, invalidateCached } from '@/lib/cache'
 import { invalidateBackendModelConfig } from './backend-key'
-import {
-  orgModelConfigs,
-  orgModelConfigVersions,
-  type OrgModelConfigVersion,
-} from '@/lib/db/schema'
+import { orgModelConfigs, orgModelConfigVersions, type OrgModelConfigVersion } from '@/lib/db/schema/org-model-config'
 import { getPlatformModelDefaults } from './platform-defaults'
 
 const OVERRIDES_CACHE_TTL_MS = 5 * 60 * 1000
