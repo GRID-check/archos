@@ -248,6 +248,10 @@ const ELEVATED_READERS: Record<string, { makes: string[]; why: string }> = {
     makes: ['internal:ingest'],
     why: 'The pipeline presigns a raster slot for the file it is reading (service token, no person).',
   },
+  'lib/documents/repository.ts#findPageTextTarget': {
+    makes: ['internal:ingest'],
+    why: 'The pipeline presigns the page-text slots for the file it is reading (service token, no person).',
+  },
   'lib/documents/repository.ts#documentExistsInCollection': {
     makes: ['internal:ingest'],
     why: 'The pipeline asks whether the file it just indexed still exists (service token, no person).',
