@@ -1998,6 +1998,38 @@ check_in grid_feedbacknotice "SELECT count(*) FROM information_schema.columns WH
 echo "==> 0184 product feedback reply notice and down migration verified"
 
 # ---------------------------------------------------------------------------
+# Migration 0185: the search projection (ADR-0133). The full-text vector is
+# generated with German stemming, so a plural finds the singular; the shelf key
+# names its project or the office shelf and nothing else; a row goes with its
+# document; the down drops both tables and 0185 applies again after it.
+# ---------------------------------------------------------------------------
+echo "==> verifying the 0185 search projection and its down migration on grid_documentsearch"
+migrate_until grid_documentsearch 0185_document_search
+sql_in grid_documentsearch <<'SQL'
+INSERT INTO projects (id, organization_id, name, created_by, collection_name) VALUES
+  ('aaaaaaaa-0000-4000-8000-000000000185', 'org_0185', 'Haus Wien', 'user_1', 'proj_0185');
+INSERT INTO documents (id, organization_id, created_by, filename, storage_key, collection_name, status, scope, project_id) VALUES
+  ('d1d1d1d1-0000-4000-8000-000000000185', 'org_0185', 'user_1', 'bsk.pdf', 'k/0185/a', 'proj_0185', 'completed', 'project', 'aaaaaaaa-0000-4000-8000-000000000185');
+INSERT INTO document_search_facets (document_id, organization_id, document_type, reference_tokens, fact_tokens, fact_numbers, search_text, fingerprint) VALUES
+  ('d1d1d1d1-0000-4000-8000-000000000185', 'org_0185', 'fire_safety_concept', '{"norm:önorm b 1600"}', '{"building_class=4"}',
+   '{"building_class": 4}', 'Brandschutzkonzept · Fluchtwege und Stiegenhäuser', 'f1');
+INSERT INTO document_search_shelves (organization_id, shelf_key, project_id, source_fingerprint, synced_at) VALUES
+  ('org_0185', 'project:aaaaaaaa-0000-4000-8000-000000000185', 'aaaaaaaa-0000-4000-8000-000000000185', '1@x', now());
+SQL
+check_in grid_documentsearch "SELECT count(*) FROM document_search_facets WHERE search_vector @@ websearch_to_tsquery('german', 'Brandschutzkonzepte Fluchtweg')" "1" "0185: the German vector finds a plural and a singular"
+check_in grid_documentsearch "SELECT count(*) FROM document_search_facets WHERE reference_tokens @> ARRAY['norm:önorm b 1600'] AND (fact_numbers->>'building_class')::numeric BETWEEN 3 AND 4" "1" "0185: a reference token and a numeric fact range"
+refused_in grid_documentsearch "INSERT INTO document_search_shelves (organization_id, shelf_key, project_id) VALUES ('org_0185', 'project:other', 'aaaaaaaa-0000-4000-8000-000000000185')" "document_search_shelves_key_shape" "0185: a shelf key names its own project"
+sql_in grid_documentsearch <<'SQL'
+DELETE FROM documents WHERE id = 'd1d1d1d1-0000-4000-8000-000000000185';
+SQL
+check_in grid_documentsearch "SELECT count(*) FROM document_search_facets" "0" "0185: a search row goes with its document"
+apply_in grid_documentsearch 0185_document_search.down.sql
+check_in grid_documentsearch "SELECT count(*) FROM information_schema.tables WHERE table_name IN ('document_search_facets', 'document_search_shelves')" "0" "0185 down drops both tables"
+apply_in grid_documentsearch 0185_document_search.sql
+check_in grid_documentsearch "SELECT count(*) FROM information_schema.tables WHERE table_name IN ('document_search_facets', 'document_search_shelves')" "2" "0185 applies again after its down"
+echo "==> 0185 search projection and down migration verified"
+
+# ---------------------------------------------------------------------------
 # Migrations 0159 to 0162: the project profile's names in English, and their DOWNs.
 #
 # On a database of its own, migrated to what precedes 0159, with a project whose

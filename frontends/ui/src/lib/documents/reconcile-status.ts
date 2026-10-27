@@ -37,6 +37,7 @@ import {
 import { setDocumentReconciledStatus } from './repository'
 import { documentShelf } from './shelf'
 import { publishShelfChanged } from './shelf-live'
+import { projectReadings } from '@/lib/search/facets-projector'
 import { parseIngestFailureCategory, type IngestFailureFacts } from './retry-policy'
 
 /**
@@ -817,6 +818,35 @@ const extractMetadata = (files: CollectionFiles | null, ref: CollectionFileRef):
   return Object.keys(meta).length > 0 ? meta : null
 }
 
+/** A document's reading as the listing holds it, and whether a newer Fassung replaces it. */
+export interface ListedReading {
+  metadata: DocumentMetadata | null
+  superseded: boolean
+}
+
+/**
+ * The readings of one collection's documents, from a FRESH listing, for the
+ * search projection's backstop refresh (`lib/search/shelf-projection.ts`).
+ * Takes {@link CollectionFileRef}s, the same gate {@link extractMetadata}
+ * takes. `null` when the listing could not be read: the caller writes nothing.
+ * A ref absent from the map is one the listing does not name, or names twice.
+ */
+export const readCollectionReadings = async (
+  collectionName: string,
+  refs: readonly CollectionFileRef[]
+): Promise<Map<string, ListedReading> | null> => {
+  const files = await loadCollectionFilesFresh(collectionName)
+  if (!files) return null
+  const readings = new Map<string, ListedReading>()
+  for (const ref of refs) {
+    if (ref.collectionName !== collectionName || files.ambiguousNames.has(ref.filename)) continue
+    const file = files.byName.get(ref.filename)
+    if (!file) continue
+    readings.set(ref.filename, { metadata: extractMetadata(files, ref), superseded: Boolean(file.revision?.supersededBy) })
+  }
+  return readings
+}
+
 /**
  * One `shelf.changed` per shelf the settled rows are on. A row type that does
  * not carry its shelf (`projectId`, `scope`) announces nothing; the listing
@@ -1020,6 +1050,7 @@ export async function reconcileDocumentStatuses<T extends ReconcilableDocument>(
       : loadCollectionFilesCached(collectionName)
 
   const metaByRow = new Map<string, DocumentMetadata>()
+  const supersededRows = new Set<string>()
   await Promise.all(
     rows.map(async (row) => {
       // The authorship gate, ahead of the fetch. A machine-authored row is not
@@ -1027,10 +1058,24 @@ export async function reconcileDocumentStatuses<T extends ReconcilableDocument>(
       // owns nothing in the list either way.
       const ref = collectionFileRef(row)
       if (!ref) return
-      const meta = extractMetadata(await listingFor(row.collectionName), ref)
+      const files = await listingFor(row.collectionName)
+      const meta = extractMetadata(files, ref)
       if (meta) metaByRow.set(row.id, meta)
+      if (files?.byName.get(ref.filename)?.revision?.supersededBy) supersededRows.add(row.id)
     })
   )
+
+  // A row that came to rest read is searchable by what it is from now on
+  // (ADR-0133): its search row is written here, from the reading this read
+  // already parsed. Never awaited and never thrown: the shelf's backstop
+  // refresh writes whatever this misses.
+  const readNow = settled.filter(([id, resolution]) => resolution.status === 'completed' && metaByRow.has(id))
+  if (readNow.length > 0) {
+    void projectReadings(
+      organizationId,
+      readNow.map(([id]) => ({ documentId: id, metadata: metaByRow.get(id) ?? null, superseded: supersededRows.has(id) }))
+    ).catch((error: unknown) => console.warn('[search] projecting settled readings failed', error))
+  }
 
   // Tell PostHog which uploads came to rest, once the counts are in. The same
   // rows `settled` names: the ones THIS read moved, so a concurrent read that

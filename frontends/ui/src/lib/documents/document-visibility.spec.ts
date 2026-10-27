@@ -55,6 +55,11 @@ const SEES_EVERY_ROW: Record<string, string> = {
   'lib/session-documents/repository.ts#listSessionDocumentsForCleanup':
     "Discarding a chat erases every attachment's objects, held ones first among them.",
 
+  'lib/search/facets-repository.ts#listShelfDocumentsForProjection':
+    "Sweep: the search projection's backstop walks a shelf's ids to rewrite their derived rows (ADR-0133). Ids to a job; every search joins the rows under the reader's predicate.",
+  'lib/search/facets-repository.ts#shelfSourceFingerprints':
+    "Staleness probe: a count and newest change per shelf, compared with the projection's last sync. Numbers to a job, nothing to a person.",
+
   // --- Orphan checks: a held document is not gone ---------------------------
   'lib/documents/repository.ts#documentIdsExisting':
     "The sharing registry's `exists`: the orphan sweep deletes grants of documents that are gone, and a held one is not.",
