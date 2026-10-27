@@ -17,7 +17,7 @@ vi.mock('@/lib/authz/project-membership', () => ({ PERMISSION_CHECKS_AT_ONCE: 8,
   resolveSubjectMembership: vi.fn(),
   userHoldsProjectPermission: vi.fn(),
 }))
-vi.mock('@/lib/authz/org-role-permissions', () => ({ orgRoleHoldsPermission: vi.fn() }))
+vi.mock('@/lib/authz/org-role-permissions', () => ({ rolesHoldPermission: vi.fn() }))
 vi.mock('@/lib/authz/folder-access', () => ({ isFolderVisibleToMember: vi.fn().mockResolvedValue(true) }))
 // The event itself is `quarantine-audit.spec.ts`'s subject; here, settling hands it over.
 vi.mock('@/lib/upload-screening/quarantine-audit', () => ({
@@ -29,7 +29,7 @@ vi.mock('./upload-report-service', () => ({ uploadReportFor: vi.fn().mockResolve
 vi.mock('@/lib/project-intake/trigger', () => ({ queueIntakeReadsAfterUpload: vi.fn().mockResolvedValue([]) }))
 
 import { auditOwedQuarantines } from '@/lib/upload-screening/quarantine-audit'
-import { orgRoleHoldsPermission } from '@/lib/authz/org-role-permissions'
+import { rolesHoldPermission } from '@/lib/authz/org-role-permissions'
 import { resolveSubjectMembership, userHoldsProjectPermission } from '@/lib/authz/project-membership'
 import type { UploadBatch } from '@/lib/db/schema'
 import { announceSettledVersions } from '@/lib/documents/revision-notify'
@@ -216,8 +216,9 @@ describe('onDocumentsSettled', () => {
     vi.mocked(resolveSubjectMembership).mockImplementation(async (_org, userId) => ({
       organizationMembershipId: `om-${userId}`,
       role: userId === 'admin' ? 'admin' : 'member',
+      roles: [userId === 'admin' ? 'admin' : 'member'],
     }))
-    vi.mocked(orgRoleHoldsPermission).mockImplementation(async (role) => role === 'admin')
+    vi.mocked(rolesHoldPermission).mockImplementation(async (_org, roles) => roles.includes('admin'))
     vi.mocked(userHoldsProjectPermission).mockImplementation(async (_s, _p, userId) => userId === 'lead')
 
     await onDocumentsSettled('org-1', [{ id: 'doc-q', status: 'quarantined' }])
@@ -249,8 +250,9 @@ describe('onDocumentsSettled', () => {
     vi.mocked(resolveSubjectMembership).mockImplementation(async (_org, userId) => ({
       organizationMembershipId: `om-${userId}`,
       role: 'member',
+      roles: ['member'],
     }))
-    vi.mocked(orgRoleHoldsPermission).mockResolvedValue(false)
+    vi.mocked(rolesHoldPermission).mockResolvedValue(false)
     vi.mocked(userHoldsProjectPermission).mockResolvedValue(true)
     // Only gf holds a folder role on Honorare (ADR-0097): asked per person, by their membership as it is now.
     vi.mocked(isFolderVisibleToMember).mockImplementation(async (_o, _p, _f, userId) => userId === 'gf')

@@ -133,7 +133,6 @@ Organization.
 |---|---|---|
 | `organization` | — | System root. Carries org-tier and platform-tier permissions. |
 | `project` | `organization` | Tenant workspace: documents, memory, conversations. |
-| `skill` | `project` | A scheduled agent-skill job attached to a project (Agent Skills). |
 | `folder` | `project` | A project folder with its own access list (ADR-0097). Who may read or change it is a folder role (§2a) assigned on it to a person. |
 
 **Only a folder with its own list is a resource**, and it sits directly under
@@ -153,11 +152,16 @@ About 5,000 resources of one type per organization is WorkOS's soft limit.
 > the parent project, enforced in `lib/documents/service.ts`. See ADR-0038.
 >
 > The `workflow` resource type and its three permissions/roles met the same
-> fate when Agent Skills replaced Workflows: the catalog now defines the
-> `skill` type instead. Environments the old feature reached still carry the
-> `workflow:*` leftovers — the provisioning script reports them as
-> `UNKNOWN … absent from the catalog`, which is how they stay visible until an
-> operator deletes them in the dashboard.
+> fate when Agent Skills replaced Workflows. Environments the old feature
+> reached still carry the `workflow:*` leftovers — the provisioning script
+> reports them as `UNKNOWN … absent from the catalog`, which is how they stay
+> visible until an operator deletes them in the dashboard.
+>
+> So did the `skill` type and `skill:view` / `skill:run` / `skill:manage`
+> (2026-10-27, ADR-0038's amendment): no skill resource was ever created and no
+> role held them, so a skill schedule is decided by its project's permissions
+> (`project:skills:manage`, `project:view`). They were deleted in both
+> environments when the catalog dropped them.
 
 ### 1. Organization-tier permissions (resource type: Organization)
 
@@ -192,20 +196,7 @@ project access comes from project-scoped roles.
 | `project:members:manage` | Grant and revoke project roles |
 | `project:skills:manage` | Create, edit, delete and run skill schedules in a project (Agent Skills Phase A) |
 
-### 1b. Skill-tier permissions (resource type: Skill)
-
-| Slug | Meaning |
-|---|---|
-| `skill:view` | See a skill schedule's definition, schedule and run history |
-| `skill:run` | Trigger it manually, outside its schedule (spends budget) |
-| `skill:manage` | Edit its definition/schedule, or delete it |
-
-Creating a skill schedule is `project:skills:manage` (there is no schedule yet
-to check against); operating an existing one is skill-tier, with the
-project-tier fallback in `lib/authz/decide.ts` keeping project admins working
-without provisioning per-skill roles.
-
-### 1c. Folder-tier permissions (resource type: Folder)
+### 1b. Folder-tier permissions (resource type: Folder)
 
 | Slug | Meaning |
 |---|---|
@@ -270,9 +261,9 @@ change, which is the property that silently broke for `org:audit:view` and
 to key off the role slug `admin`, so a custom administrator role reached no
 project at all however many `org:*` permissions it held. It is a permission now —
 grant it to any role that should administer every project in its organization.
-Existing `admin` sessions keep it through the bounded catalog implication in
-`lib/authz/permissions.ts`, so nobody re-logs-in; a custom role needs it
-provisioned before it can hold it.
+A session holds it when its token's `permissions` claim names it, and nothing
+else (the role-name implication was retired, ADR-0038's 2026-10-27 amendment);
+a role needs it provisioned before it can hold it.
 
 **A catalog change is not live until `--apply` has run against the environment.**
 The project tier reads its grants from WorkOS at request time and has no
@@ -734,14 +725,14 @@ Three things follow, and each has cost somebody an afternoon:
 
 1. **Dashboard** (still manual — the SDK cannot create resource types): create
    the resource types from §0 — `project` (parent `organization`), then
-   `skill` and `folder` (each parent `project`). Descriptions are capped at 150
+   `folder` (parent `project`). Descriptions are capped at 150
    characters.
 2. **Script**: `WORKOS_API_KEY=<key> npm run provision:workos-env -- --apply`
    from `frontends/ui` creates organization **GRID Platform** with external id
    `grid-platform` (the app resolves it by external id, so the name may differ
    but the external id may not). Was dashboard-only before.
 3. **Script**: `WORKOS_API_KEY=<key> npm run provision:authz -- --apply`.
-   This creates every permission from §1/§1a/§1b/§1c/§2 and every role from §2a,
+   This creates every permission from §1/§1a/§1b/§2 and every role from §2a,
    including the two platform-org roles, and is idempotent. Nothing to do if
    the environment is the one a stack deploys against: the
    `grid-app-authz-catalog` Job runs it on the next rollout.
@@ -868,7 +859,7 @@ environment; the migration that drops it also deletes the
   `org-platform-owner`/`org-platform-support` (cached lookup) or the break-glass
   allowlist.
 - **Per-resource**: `lib/authz/resource-check.ts` is the single FGA round-trip
-  for both the project and skill tiers, and fails closed.
+  for the project tier, and fails closed.
 - **Folders** (ADR-0097): `lib/authz/folder-roles.ts` holds every WorkOS call of
   the folder tier. A person's levels in a project are two
   `listResourcesForMembership` calls (`folder:read`, `folder:write`) scoped to

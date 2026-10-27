@@ -50,6 +50,8 @@ vi.mock('@/hooks/use-is-mobile', () => ({
   useIsMobile: () => mobile,
 }))
 vi.mock('./connection-band', () => ({ ConnectionBand: () => <div data-testid="connection-band" /> }))
+// WorkOS's widget needs a live token; the header decides only whether it is there.
+vi.mock('./organization-switcher', () => ({ default: () => <div data-testid="workos-organization-switcher" /> }))
 
 afterEach(() => {
   pathname = '/app/projects'
@@ -113,5 +115,19 @@ describe('OrgHeader — on a phone', () => {
   test('leaves the desktop band as it was: no presence ping of its own', () => {
     render(<OrgHeader {...baseProps} />)
     expect(screen.queryByTestId('connection-band')).toBeNull()
+  })
+})
+
+describe('the organization switcher', () => {
+  test('stands beside the wordmark for someone in several organizations', async () => {
+    render(<OrgHeader {...baseProps} canSwitchOrganization />)
+
+    expect(await screen.findByTestId('workos-organization-switcher')).toBeInTheDocument()
+  })
+
+  test('is not there for someone in one organization', () => {
+    render(<OrgHeader {...baseProps} />)
+
+    expect(screen.queryByTestId('organization-switcher')).not.toBeInTheDocument()
   })
 })

@@ -2,30 +2,20 @@
  * @vitest-environment node
  */
 /**
- * The third-party role resolver's own spec.
- *
- * It shipped with none, on the authorization path, resolving what somebody ELSE
- * may reach — and an adversarial pass found a real defect in it that a single
- * test would have caught (the WorkOS-knows-the-slug-but-not-the-permission
- * branch hard-denied instead of falling back). These are the properties the
+ * The role resolver's own spec: what the roles a person holds grant, as WorkOS
+ * says, for the paths with roles and no token. These are the properties the
  * module's header claims.
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('server-only', () => ({}))
 
-const listEnvironmentRoles = vi.fn()
 const listOrganizationRoles = vi.fn()
 vi.mock('@/lib/workos/client', () => ({
-  getWorkOS: () => ({ authorization: { listEnvironmentRoles, listOrganizationRoles } }),
+  getWorkOS: () => ({ authorization: { listOrganizationRoles } }),
 }))
 
-import {
-  orgRoleHoldsPermission,
-  organizationRoleHoldsPermission,
-  organizationRolePermissions,
-} from './org-role-permissions'
-import { hasPermission, ORG_PERMISSIONS } from './permissions'
+import { rolePermissions, rolesHoldPermission, ROLE_CACHE_TTL_MS } from './org-role-permissions'
 import { setCacheStore, type CacheStore } from '@/lib/cache'
 
 class TestStore implements CacheStore {
@@ -47,184 +37,67 @@ class TestStore implements CacheStore {
   }
 }
 
-const ORG = 'org_platform'
+const ORG = 'org_1'
+let store: TestStore
 
 beforeEach(() => {
   vi.clearAllMocks()
-  setCacheStore(new TestStore())
-  listEnvironmentRoles.mockResolvedValue({ data: [] })
-  listOrganizationRoles.mockResolvedValue({ data: [] })
-})
-
-describe('orgRoleHoldsPermission', () => {
-  it('answers from WorkOS when WorkOS knows the permission', async () => {
-    listEnvironmentRoles.mockResolvedValue({
-      data: [{ slug: 'acme-owner', permissions: ['org:projects:administer'] }],
-    })
-    await expect(orgRoleHoldsPermission('acme-owner', 'org:projects:administer')).resolves.toBe(
-      true
-    )
-  })
-
-  it('does NOT invent a permission WorkOS and the catalog both withhold', async () => {
-    listEnvironmentRoles.mockResolvedValue({
-      data: [{ slug: 'acme-owner', permissions: ['org:audit:view'] }],
-    })
-    await expect(orgRoleHoldsPermission('acme-owner', 'org:projects:administer')).resolves.toBe(
-      false
-    )
-  })
-
-  it('agrees with hasPermission when WorkOS lags the catalog', async () => {
-    // THE REGRESSION. A catalog that has shipped ahead of provisioning looks
-    // exactly like this: WorkOS knows `admin` and does not list the permission.
-    // Returning WorkOS's answer alone made this module deny where hasPermission
-    // allows, so an org admin reached every project while nobody could invite
-    // them to one — the divergence the module exists to prevent, inverted.
-    listEnvironmentRoles.mockResolvedValue({
-      data: [{ slug: 'admin', permissions: ['org:settings:manage'] }],
-    })
-    const session = { role: 'admin', permissions: [] }
-    expect(hasPermission(session, ORG_PERMISSIONS.projectsAdminister)).toBe(true)
-    await expect(orgRoleHoldsPermission('admin', ORG_PERMISSIONS.projectsAdminister)).resolves.toBe(
-      true
-    )
-  })
-
-  it('falls back to the catalog when WorkOS does not know the slug', async () => {
-    listEnvironmentRoles.mockResolvedValue({ data: [{ slug: 'something-else', permissions: [] }] })
-    await expect(orgRoleHoldsPermission('admin', ORG_PERMISSIONS.projectsAdminister)).resolves.toBe(
-      true
-    )
-  })
-
-  it('falls back to the catalog when the lookup throws — never to "yes"', async () => {
-    listEnvironmentRoles.mockRejectedValue(new Error('workos down'))
-    await expect(orgRoleHoldsPermission('admin', ORG_PERMISSIONS.projectsAdminister)).resolves.toBe(
-      true
-    )
-    await expect(
-      orgRoleHoldsPermission('member', ORG_PERMISSIONS.projectsAdminister)
-    ).resolves.toBe(false)
-  })
-
-  it('a slug neither side knows resolves to nothing', async () => {
-    listEnvironmentRoles.mockRejectedValue(new Error('workos down'))
-    await expect(
-      orgRoleHoldsPermission('never-heard-of-it', ORG_PERMISSIONS.projectsAdminister)
-    ).resolves.toBe(false)
-  })
-
-  it('a null or empty slug denies without calling WorkOS', async () => {
-    await expect(orgRoleHoldsPermission(null, ORG_PERMISSIONS.projectsAdminister)).resolves.toBe(
-      false
-    )
-    await expect(orgRoleHoldsPermission('', ORG_PERMISSIONS.projectsAdminister)).resolves.toBe(
-      false
-    )
-    expect(listEnvironmentRoles).not.toHaveBeenCalled()
-  })
-
-  it('caches the whole map, so N subjects cost one call', async () => {
-    listEnvironmentRoles.mockResolvedValue({ data: [{ slug: 'admin', permissions: [] }] })
-    await orgRoleHoldsPermission('admin', ORG_PERMISSIONS.projectsAdminister)
-    await orgRoleHoldsPermission('member', ORG_PERMISSIONS.projectsAdminister)
-    expect(listEnvironmentRoles).toHaveBeenCalledTimes(1)
+  store = new TestStore()
+  setCacheStore(store)
+  listOrganizationRoles.mockResolvedValue({
+    data: [
+      { slug: 'admin', permissions: ['org:settings:manage', 'org:projects:administer'] },
+      { slug: 'member', permissions: ['org:projects:create'] },
+      // An office's own role: WorkOS lists it beside the environment's.
+      { slug: 'org-geschaeftsfuehrung', permissions: ['org:projects:administer', 'org:archiv:manage'] },
+    ],
   })
 })
 
-/**
- * The custom roles an office builds for itself in WorkOS exist only inside its
- * organization. A third-party check that consulted environment roles and the
- * catalog alone denied every one of them — the quarantine never reached a
- * custom „Geschäftsführung" role holding org:projects:administer.
- */
-describe('orgRoleHoldsPermission — an organization\'s own custom roles', () => {
-  it("finds a custom role's permission when told the organization", async () => {
-    listOrganizationRoles.mockResolvedValue({
-      data: [{ slug: 'org-geschaeftsfuehrung', permissions: ['org:projects:administer'] }],
-    })
-    await expect(
-      orgRoleHoldsPermission('org-geschaeftsfuehrung', 'org:projects:administer', 'org_tenant')
-    ).resolves.toBe(true)
-    expect(listOrganizationRoles).toHaveBeenCalledWith('org_tenant')
+describe('rolePermissions', () => {
+  it('is what WorkOS says the roles hold, every role together', async () => {
+    expect(await rolePermissions(ORG, ['member', 'org-geschaeftsfuehrung'])).toEqual(
+      new Set(['org:projects:create', 'org:projects:administer', 'org:archiv:manage'])
+    )
+    expect(listOrganizationRoles).toHaveBeenCalledWith(ORG)
   })
 
-  it('counts a custom role granted the old org:archiv:manage as holding org:office_shelf:manage', async () => {
-    // Roles built before the rename hold the old slug until the re-grant runbook has run.
-    listOrganizationRoles.mockResolvedValue({
-      data: [{ slug: 'org-kuratorin', permissions: ['org:archiv:manage'] }],
-    })
-    await expect(orgRoleHoldsPermission('org-kuratorin', 'org:office_shelf:manage', 'org_tenant')).resolves.toBe(true)
+  it('grants a role WorkOS does not list nothing, whatever it is called', async () => {
+    expect(await rolePermissions(ORG, ['owner'])).toEqual(new Set())
   })
 
-  it('denies it without the organization, as before', async () => {
-    listOrganizationRoles.mockResolvedValue({
-      data: [{ slug: 'org-geschaeftsfuehrung', permissions: ['org:projects:administer'] }],
-    })
-    await expect(orgRoleHoldsPermission('org-geschaeftsfuehrung', 'org:projects:administer')).resolves.toBe(false)
+  it('asks nothing for no roles', async () => {
+    expect(await rolePermissions(ORG, [])).toEqual(new Set())
+    expect(listOrganizationRoles).not.toHaveBeenCalled()
   })
 
-  it('still answers an environment role when the organization lookup fails', async () => {
-    listOrganizationRoles.mockRejectedValue(new Error('rate limited'))
-    listEnvironmentRoles.mockResolvedValue({ data: [{ slug: 'admin', permissions: ['org:projects:administer'] }] })
-    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
-    await expect(orgRoleHoldsPermission('admin', 'org:projects:administer', 'org_tenant')).resolves.toBe(true)
-    warn.mockRestore()
+  it('fails closed, and does not remember the failure', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => {})
+    listOrganizationRoles.mockRejectedValueOnce(new Error('WorkOS down'))
+    expect(await rolePermissions(ORG, ['admin'])).toEqual(new Set())
+
+    expect(await rolePermissions(ORG, ['admin'])).toEqual(new Set(['org:settings:manage', 'org:projects:administer']))
+  })
+
+  it('asks WorkOS once per organization for a minute, and keys each organization apart', async () => {
+    await rolePermissions(ORG, ['admin'])
+    await rolePermissions(ORG, ['member'])
+    expect(listOrganizationRoles).toHaveBeenCalledTimes(1)
+    expect(store.ttls).toEqual([ROLE_CACHE_TTL_MS])
+    expect(ROLE_CACHE_TTL_MS).toBeLessThanOrEqual(60_000)
+
+    await rolePermissions('org_2', ['admin'])
+    expect(listOrganizationRoles).toHaveBeenCalledWith('org_2')
   })
 })
 
-describe('organization-scoped roles', () => {
-  it('unions WorkOS with the catalog rather than replacing it', async () => {
-    listOrganizationRoles.mockResolvedValue({
-      data: [{ slug: 'org-platform-support', permissions: ['platform:organizations:view'] }],
-    })
-    const held = await organizationRolePermissions(ORG, 'org-platform-support')
-    expect(held.has('platform:organizations:view')).toBe(true)
-    // From the catalog: WorkOS has not been re-provisioned for it yet.
-    expect(held.has('platform:settings:view')).toBe(true)
-    // Held by neither, and therefore not granted.
-    expect(held.has('platform:settings:manage')).toBe(false)
+describe('rolesHoldPermission', () => {
+  it("answers for an office's own custom role", async () => {
+    expect(await rolesHoldPermission(ORG, ['org-geschaeftsfuehrung'], 'org:projects:administer')).toBe(true)
+    expect(await rolesHoldPermission(ORG, ['member'], 'org:projects:administer')).toBe(false)
   })
 
-  it('keeps a custom platform role the catalog has never heard of', async () => {
-    listOrganizationRoles.mockResolvedValue({
-      data: [{ slug: 'acme-platform-auditor', permissions: ['platform:usage:view'] }],
-    })
-    const held = await organizationRolePermissions(ORG, 'acme-platform-auditor')
-    expect([...held]).toEqual(['platform:usage:view'])
-  })
-
-  it('organizationRoleHoldsPermission unions the same way', async () => {
-    listOrganizationRoles.mockResolvedValue({
-      data: [{ slug: 'org-platform-support', permissions: [] }],
-    })
-    await expect(
-      organizationRoleHoldsPermission(ORG, 'org-platform-support', 'platform:usage:view')
-    ).resolves.toBe(true)
-    await expect(
-      organizationRoleHoldsPermission(ORG, 'org-platform-support', 'platform:settings:manage')
-    ).resolves.toBe(false)
-  })
-
-  it('is keyed per organization, so two orgs cannot read each other', async () => {
-    listOrganizationRoles.mockResolvedValue({
-      data: [{ slug: 'r', permissions: ['platform:usage:view'] }],
-    })
-    await organizationRolePermissions('org_a', 'r')
-    await organizationRolePermissions('org_b', 'r')
-    expect(listOrganizationRoles).toHaveBeenCalledTimes(2)
-  })
-})
-
-describe('how long what a role holds is remembered', () => {
-  it('at most a minute, like the roles a person holds: the folder bypass is derived from both', async () => {
-    const store = new TestStore()
-    setCacheStore(store)
-
-    await orgRoleHoldsPermission('admin', ORG_PERMISSIONS.projectsAdminister, ORG)
-
-    expect(store.ttls).toHaveLength(2)
-    for (const ttl of store.ttls) expect(ttl).toBeLessThanOrEqual(60_000)
+  it('counts a grant of the old org:archiv:manage as org:office_shelf:manage', async () => {
+    expect(await rolesHoldPermission(ORG, ['org-geschaeftsfuehrung'], 'org:office_shelf:manage')).toBe(true)
   })
 })

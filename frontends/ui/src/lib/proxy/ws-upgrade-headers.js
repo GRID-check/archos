@@ -68,4 +68,45 @@ function findOversizedWsHeader(headers) {
   return null
 }
 
-module.exports = { stripClientContextHeaders, findOversizedWsHeader, WS_HEADER_LINE_MAX_BYTES, CLIENT_CONTEXT_HEADER_PREFIX }
+const SESSION_COOKIE_NAME = process.env.WORKOS_COOKIE_NAME || 'wos-session'
+
+function isSessionCookie(name) {
+  if (name === SESSION_COOKIE_NAME) return true
+  const prefix = `${SESSION_COOKIE_NAME}.`
+  return name.startsWith(prefix) && /^\d+$/.test(name.slice(prefix.length))
+}
+
+function cookieName(pair) {
+  const separator = pair.indexOf('=')
+  return (separator < 0 ? pair : pair.slice(0, separator)).trim()
+}
+
+/**
+ * The Cookie line for the backend, without the AuthKit session.
+ *
+ * The backend never reads the session: its identity is the scope the BFF
+ * resolved from it, and the cookie it does read is `idToken`. The sealed
+ * session is the largest thing in the line, split across `wos-session.0`, `.1`,
+ * … once it outgrows one cookie, and every permission or flag WorkOS adds grows
+ * it; left in, it would one day take the line past the parser's 8192 bytes and
+ * every chat socket would get a 431 while pages still loaded.
+ *
+ * @param {string | undefined} cookieHeader
+ * @returns {string | undefined} undefined when nothing is left to send
+ */
+function withoutSessionCookies(cookieHeader) {
+  if (!cookieHeader) return undefined
+  const kept = cookieHeader
+    .split(';')
+    .map((pair) => pair.trim())
+    .filter((pair) => pair && !isSessionCookie(cookieName(pair)))
+  return kept.length > 0 ? kept.join('; ') : undefined
+}
+
+module.exports = {
+  stripClientContextHeaders,
+  findOversizedWsHeader,
+  withoutSessionCookies,
+  WS_HEADER_LINE_MAX_BYTES,
+  CLIENT_CONTEXT_HEADER_PREFIX,
+}

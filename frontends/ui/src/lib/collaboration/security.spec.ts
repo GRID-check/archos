@@ -38,10 +38,17 @@ vi.mock('@/lib/projects/repository', async (importActual) => ({
 
 const listOrganizationMemberships = vi.fn()
 const authorizationCheck = vi.fn()
+// What WorkOS says the roles hold: Admin carries the org-wide project bypass.
+const listOrganizationRoles = vi.fn(async () => ({
+  data: [
+    { slug: 'admin', permissions: ['org:projects:administer'] },
+    { slug: 'member', permissions: ['org:projects:create'] },
+  ],
+}))
 vi.mock('@/lib/workos/client', () => ({
   getWorkOS: () => ({
     userManagement: { listOrganizationMemberships },
-    authorization: { check: authorizationCheck },
+    authorization: { check: authorizationCheck, listOrganizationRoles },
   }),
 }))
 
@@ -571,6 +578,7 @@ describe('the container precondition fails CLOSED (matrix F38, spec SH-5)', () =
     expect(listOrganizationMemberships).toHaveBeenCalledWith({
       userId: 'user_other_tenant',
       organizationId: session.organizationId,
+      statuses: ['active'],
       limit: 1,
     })
   })

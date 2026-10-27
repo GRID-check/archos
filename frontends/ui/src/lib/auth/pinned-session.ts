@@ -25,7 +25,7 @@
 import 'server-only'
 import type { AuthorizedSession } from '@/lib/auth/types'
 import { lookupSubjectMembership, resolveSubjectMembership } from '@/lib/authz/project-membership'
-import { permissionsForOrgRole } from '@/lib/authz/permissions'
+import { rolePermissions } from '@/lib/authz/org-role-permissions'
 import { enabledFlagsForOrganization } from '@/lib/workos/feature-flags'
 import { resolvePerson } from './person'
 
@@ -53,15 +53,8 @@ export interface PinnedRequester {
  * (ADR-0085), which files through the upload path's `image-upload` gate, would
  * have refused every picture.
  */
-export async function resolvePinnedRequesterSession(
-  requester: PinnedRequester,
-  options: { membershipTtlMs?: number } = {},
-): Promise<AuthorizedSession | null> {
-  const membership = await resolveSubjectMembership(
-    requester.organizationId,
-    requester.userId,
-    ...(options.membershipTtlMs === undefined ? [] : [options.membershipTtlMs]),
-  )
+export async function resolvePinnedRequesterSession(requester: PinnedRequester): Promise<AuthorizedSession | null> {
+  const membership = await resolveSubjectMembership(requester.organizationId, requester.userId)
   return sessionFor(requester, membership)
 }
 
@@ -87,9 +80,12 @@ async function sessionFor(
   // nothing here today; the caller refuses rather than guesses a role.
   if (!membership || !membership.role) return null
 
-  const [featureFlags, person] = await Promise.all([
+  // What the membership's roles hold, as WorkOS says, custom roles included:
+  // the same answer the person's own token carries in the browser.
+  const [featureFlags, person, permissions] = await Promise.all([
     enabledFlagsForOrganization(requester.organizationId),
     resolvePerson(requester.organizationId, requester.userId),
+    rolePermissions(requester.organizationId, membership.roles),
   ])
 
   return {
@@ -101,7 +97,8 @@ async function sessionFor(
     organizationId: requester.organizationId,
     organizationMembershipId: membership.organizationMembershipId,
     role: membership.role,
-    permissions: [...permissionsForOrgRole(membership.role)],
+    roles: membership.roles,
+    permissions: [...permissions],
     featureFlags,
   }
 }

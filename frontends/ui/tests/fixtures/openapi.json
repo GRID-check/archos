@@ -27776,7 +27776,7 @@
         "type": "apiKey",
         "in": "cookie",
         "name": "wos-session",
-        "description": "The Piloti app’s signed-in session (WorkOS AuthKit), as a browser holds it. A bearer token is not accepted here: an agent holds an OAuth token for the MCP server at /api/mcp and calls the operations there."
+        "description": "The Piloti app’s signed-in session (WorkOS AuthKit), as a browser holds it. A session too large for one cookie is split into wos-session.0, wos-session.1 and so on; send every one. A bearer token is not accepted here: an agent holds an OAuth token for the MCP server at /api/mcp and calls the operations there."
       }
     },
     "schemas": {

@@ -37,7 +37,7 @@
  */
 
 import 'server-only'
-import { orgRoleHoldsPermission } from '@/lib/authz/org-role-permissions'
+import { rolesHoldPermission } from '@/lib/authz/org-role-permissions'
 import type { InboxEmission } from '@/lib/inbox/service'
 import { emitInboxItems } from '@/lib/inbox/service'
 import { archiveInboxItemsOfType, findLiveInboxGroupKeys } from '@/lib/inbox/repository'
@@ -128,14 +128,13 @@ export function crossedBucketPercent(
 export async function findStorageAlertRecipients(organizationId: string): Promise<string[]> {
   const members = await listOrganizationMembersWithRoles(organizationId)
   const active = members.filter((member) => member.status === 'active' && member.roleSlug)
-  // Asked of WorkOS, organization roles first: an office's own custom role
-  // holding `org:settings:manage` is somebody who can act, and the catalog has
-  // never heard of it. A role neither WorkOS nor the catalog knows still
-  // denies — guessing permissive here would mail the storage position to
+  // Asked of WorkOS, which knows the office's own custom roles: one holding
+  // `org:settings:manage` is somebody who can act. A role WorkOS does not list
+  // denies; guessing permissive here would mail the storage position to
   // whoever holds an unknown role.
   const verdicts = await Promise.all(
     active.map(async (member) =>
-      (await orgRoleHoldsPermission(member.roleSlug, STORAGE_ALERT_PERMISSION, organizationId)) ? member.id : null
+      (await rolesHoldPermission(organizationId, member.roleSlug ? [member.roleSlug] : [], STORAGE_ALERT_PERMISSION)) ? member.id : null
     )
   )
   return verdicts.filter((id): id is string => id !== null)
