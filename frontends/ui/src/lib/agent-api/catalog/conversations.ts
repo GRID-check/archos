@@ -46,7 +46,7 @@ const conversationParams = z.object({
 })
 
 const feedbackReportParams = z.object({
-  reportId: z.string().uuid().describe('The feedback report id (a UUID), from feedback-report-list.'),
+  reportId: z.guid().describe('The feedback report id (a UUID), from feedback-report-list.'),
 })
 
 const messageParams = z.object({

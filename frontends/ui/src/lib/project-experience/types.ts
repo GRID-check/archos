@@ -42,7 +42,7 @@ export const experienceVocabularySchema = z.object({
 
 export const experienceRequestSchema = z.object({
   organizationId: text(200),
-  projectId: z.string().uuid(),
+  projectId: z.guid(),
   /** The project's main collection: the one the backend reads (a restricted folder has its own). */
   collection: text(300),
   /**

@@ -47,8 +47,8 @@ export type EstateTreeRequest = z.infer<typeof estateTreeRequestSchema>
 
 /** A living folder every reader of the conversation may list, empty or not. */
 export const estateTreeFolderSchema = z.object({
-  id: z.string().uuid(),
-  parent_id: z.string().uuid().nullable(),
+  id: z.guid(),
+  parent_id: z.guid().nullable(),
   name: z.string(),
   /** Slash-separated from the shelf's root, as `project_folders.path` holds it. */
   path: z.string(),
@@ -66,11 +66,11 @@ export type EstateTreeFolder = z.infer<typeof estateTreeFolderSchema>
  * document the projection has not reached yet.
  */
 export const estateTreeDocumentSchema = z.object({
-  id: z.string().uuid(),
+  id: z.guid(),
   /** The immutable identity, the path's leaf (`documents.filename`; `piloti/<name>` for an agent-filed one). */
   filename: z.string(),
   display_name: z.string().nullable(),
-  folder_id: z.string().uuid().nullable(),
+  folder_id: z.guid().nullable(),
   folder_path: z.string().nullable(),
   collection: z.string(),
   content_type: z.string().nullable(),
