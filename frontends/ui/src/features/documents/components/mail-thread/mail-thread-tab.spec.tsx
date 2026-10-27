@@ -221,6 +221,13 @@ describe('MailThreadTab', () => {
       expect(screen.getByTestId('mail-thread-detach')).toBeInTheDocument()
     })
 
+    it('is not offered for the thread’s only mail, which cannot leave it', async () => {
+      const single = { ...MAIL_THREAD_VARIANTS['three-messages'], view: { ...MAIL_THREAD_VARIANTS['three-messages'].view, entries: MAIL_THREAD_VARIANTS['three-messages'].view.entries.slice(0, 1) } }
+      renderTab('three-messages', { client: fixtureMailThreadClient(single) })
+      expect(await entries()).toHaveLength(1)
+      expect(screen.queryByTestId('mail-entry-menu')).toBeNull()
+    })
+
     it('is not offered to a reader who may not file mail', async () => {
       renderTab('member-sees-follows')
       expect((await entries()).every((row) => within(row).queryByTestId('mail-entry-menu') === null)).toBe(true)

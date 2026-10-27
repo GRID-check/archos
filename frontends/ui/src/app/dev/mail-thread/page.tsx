@@ -90,8 +90,8 @@ function Provenance({ worst }: { worst: boolean }): JSX.Element {
   const rowClient = useMemo(() => {
     const fixture = MAIL_THREAD_VARIANTS['three-messages']
     const base = fixtureMailThreadClient(fixture)
-    const fassungen = versions(2).map((version, index) => (index === 1 ? { ...version, mailOrigins: PROVENANCE_ORIGINS[worst ? 'worst' : 'verified'] } : version))
-    return { ...base, versions: async () => ({ documentId: 'doc', lifecycle: 'active' as const, publishedVersionId: fassungen[1].id, versions: fassungen }) }
+    const documentVersions = versions(2).map((version, index) => (index === 1 ? { ...version, mailOrigins: PROVENANCE_ORIGINS[worst ? 'worst' : 'verified'] } : version))
+    return { ...base, versions: async () => ({ documentId: 'doc', lifecycle: 'active' as const, publishedVersionId: documentVersions[1].id, versions: documentVersions }) }
   }, [worst])
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 p-4">
@@ -105,7 +105,8 @@ function Provenance({ worst }: { worst: boolean }): JSX.Element {
       {/* A Fassung row of the timeline, 248px of rail content. */}
       <section className="bg-surface-sunken flex flex-col gap-4 rounded-lg border p-4 sm:max-w-[280px]" aria-label="Fassungen">
         {keys.map((key) => (
-          <div key={key} className="flex flex-col gap-1">
+          // On the card the timeline's group gives its rows (`InspectorGroup`).
+          <div key={key} className="bg-card flex flex-col gap-1 rounded-lg border p-3">
             <p className="text-[13px] font-medium">Fassung 2</p>
             <MailOriginLine origins={PROVENANCE_ORIGINS[key]} onOpen={stayHere} />
           </div>

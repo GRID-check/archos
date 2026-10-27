@@ -26,7 +26,7 @@ import { mailThreadClient, type MailThreadClient } from './client'
 import { MailOriginLine, useOpenMailOrigin } from './mail-origin-line'
 
 /** The mails that brought the newest Fassung, or none. */
-export function newestFassungOrigins(versions: readonly { versionNumber: number; mailOrigins?: MailOriginView[] }[]): MailOriginView[] {
+export function newestVersionOrigins(versions: readonly { versionNumber: number; mailOrigins?: MailOriginView[] }[]): MailOriginView[] {
   const newest = versions.reduce<(typeof versions)[number] | null>(
     (best, version) => (best === null || version.versionNumber > best.versionNumber ? version : best),
     null,
@@ -51,7 +51,7 @@ export function MailProvenanceRow({ projectId, documentId, client = mailThreadCl
     client
       .versions(documentId)
       .then((listing) => {
-        if (alive) setOrigins(newestFassungOrigins(listing.versions))
+        if (alive) setOrigins(newestVersionOrigins(listing.versions))
       })
       .catch(() => {
         // Provenance is said when it can be read; a failed read leaves the row out.

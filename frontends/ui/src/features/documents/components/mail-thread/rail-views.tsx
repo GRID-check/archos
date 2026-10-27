@@ -39,7 +39,7 @@ export function ThreadRailViews({ mail, mailCount, value, onValueChange, details
         <TabsTrigger value="mail" className="text-xs" data-testid="file-rail-tab-mail">
           <Mail aria-hidden className="size-3.5" />
           {t('tab.label')}
-          <span className="text-muted-foreground tabular-nums" aria-hidden>
+          <span className="tabular-nums" aria-hidden>
             {mailCount}
           </span>
           <span className="sr-only">({t('tab.count', { count: mailCount })})</span>

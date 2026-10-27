@@ -142,8 +142,10 @@ export function MailThreadTab({
     <div className={cn('flex flex-col gap-3', className)} data-testid="mail-thread-tab" data-state="ready">
       {view.waitingCount !== null && view.waitingCount > 0 && (
         <p className="text-foreground flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-xs" data-testid="mail-thread-waiting">
-          <Inbox className="text-muted-foreground size-3.5 shrink-0" aria-hidden />
-          <span className="min-w-0">{t('tab.waiting', { count: view.waitingCount })}</span>
+          <span className="inline-flex min-w-0 items-start gap-1.5">
+            <Inbox className="text-muted-foreground mt-px size-3.5 shrink-0" aria-hidden />
+            <span className="min-w-0">{t('tab.waiting', { count: view.waitingCount })}</span>
+          </span>
           <Link
             href={inboundMailPaths(projectId).list({ status: 'waiting', outcome: null })}
             className="touch-target rounded-sm font-medium underline underline-offset-2 outline-none hover:no-underline focus-visible:ring-2 focus-visible:ring-ring/60"

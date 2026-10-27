@@ -20,7 +20,7 @@ import { toast } from 'sonner'
 import { render, screen, waitFor } from '@/test-utils'
 import { MAIL_THREAD_VARIANTS, PROJECT_ID, PROVENANCE_ORIGINS, THREAD_DOCUMENT_ID, fixtureMailThreadClient, origin, versions } from '@/app/dev/mail-thread/fixtures'
 import { MailOriginLine, mailEntryHref, useOpenMailOrigin } from './mail-origin-line'
-import { MailProvenanceRow, newestFassungOrigins } from './mail-provenance-row'
+import { MailProvenanceRow, newestVersionOrigins } from './mail-provenance-row'
 import type { MailThreadClient } from './client'
 
 beforeEach(() => vi.clearAllMocks())
@@ -77,9 +77,9 @@ describe('„Im E-Mail-Verlauf ansehen“', () => {
 
 describe('the header row', () => {
   it('speaks for the newest Fassung only', () => {
-    const fassungen = versions(3)
-    expect(newestFassungOrigins([{ ...fassungen[0], mailOrigins: [origin()] }, fassungen[1], fassungen[2]])).toEqual([])
-    expect(newestFassungOrigins([fassungen[0], { ...fassungen[2], mailOrigins: [origin()] }, fassungen[1]])).toEqual([origin()])
+    const documentVersions = versions(3)
+    expect(newestVersionOrigins([{ ...documentVersions[0], mailOrigins: [origin()] }, documentVersions[1], documentVersions[2]])).toEqual([])
+    expect(newestVersionOrigins([documentVersions[0], { ...documentVersions[2], mailOrigins: [origin()] }, documentVersions[1]])).toEqual([origin()])
   })
 
   it('shows the mail that brought the Fassung, and nothing for a document no mail brought', async () => {
