@@ -52,7 +52,7 @@ const shortText = z.string().trim().min(1).max(120)
 export const factFilterSchema = z
   .object({
     key: z.enum(DOSSIER_FACT_KEYS),
-    equals: shortText.optional().describe('Folded like the documents: "GK 4", "IV" and "4" match one Gebäudeklasse.'),
+    equals: shortText.optional().describe('Folded like the documents: for building_class "GK 4", "IV" and "4" are one value.'),
     min: z.number().finite().optional(),
     max: z.number().finite().optional(),
   })
@@ -84,8 +84,8 @@ export const documentFiltersSchema = z.object({
   planNumber: shortText.optional().describe('The Plannummer from the title block; spaces, hyphens and case ignored, a prefix matches.'),
   planIndex: z.array(shortText).max(20).optional(),
   planDate: dateRange.optional(),
-  scale: z.array(shortText).max(20).optional().describe('Maßstab as the sheet writes it, e.g. "1:100".'),
-  currentOnly: z.boolean().optional().describe('Only documents no newer Fassung replaces.'),
+  scale: z.array(shortText).max(20).optional().describe('Scale as the title block writes it, e.g. "1:100".'),
+  currentOnly: z.boolean().optional().describe('Only documents no newer revision replaces.'),
   parties: z.array(partyFilterSchema).max(8).optional(),
   place: shortText.optional().describe('A part of the address, municipality or state.'),
   facts: z.array(factFilterSchema).max(8).optional(),
@@ -93,7 +93,7 @@ export const documentFiltersSchema = z.object({
     .array(shortText)
     .max(8)
     .optional()
-    .describe('References the document makes: a norm ("ÖNORM B 1600"), a law ("§ 33 BayBO"), a plan number ("EP-05") or a `kind:key` token.'),
+    .describe('References the document makes: a norm ("EN 1992-1-1"), a law ("§ 33"), a drawing number ("EP-05") or a `kind:key` token.'),
   citedBy: z.string().uuid().optional().describe('Only the documents this document references by plan number or document type.'),
   citing: z.string().uuid().optional().describe('Only the documents that reference this document.'),
   documentDate: dateRange.optional(),
@@ -283,3 +283,20 @@ export interface SearchResponse {
 export const searchExportQuerySchema = searchScopeQuerySchema.extend({
   format: z.enum(['csv', 'xlsx']).describe('csv for a spreadsheet in a German locale (semicolon), xlsx for Excel.'),
 })
+
+/**
+ * The question on the wire of an operation that only passes it on (the export):
+ * an object, checked against {@link searchBodySchema} in full by the route's
+ * parse. Its JSON Schema is a bare object on purpose: `workspace-search`
+ * already describes the body, and a second copy would cost every agent's tool
+ * list several thousand characters (`mcp-server.spec.ts`).
+ */
+export const searchBodyInputSchema = z
+  .record(z.string(), z.unknown())
+  .transform((value, ctx) => {
+    const parsed = searchBodySchema.safeParse(value)
+    if (parsed.success) return parsed.data
+    for (const issue of parsed.error.issues) ctx.addIssue({ ...issue })
+    return z.NEVER
+  })
+  .describe('The question: the body of workspace-search (text, kinds, filters, sort, dir); kinds and paging are ignored.')

@@ -37,7 +37,7 @@ export const savedSearchQuerySchema = searchBodySchema
 /**
  * The question on the wire of `POST /api/search/saved`: an object, checked
  * against {@link savedSearchQuerySchema} in full by the route's parse. Its JSON
- * Schema is a bare object on purpose: the search operation already describes
+ * Schema is a bare object on purpose: `workspace-search` already describes
  * the body in full, and a second copy in this operation's input schema would
  * cost every agent's tool list several thousand characters for nothing
  * (`mcp-server.spec.ts`, "what tools mode costs a client").
@@ -52,9 +52,9 @@ const savedSearchQueryInput = z.record(z.string(), z.unknown()).transform((value
 /** `POST /api/search/saved`. */
 export const createSavedSearchSchema = z.object({
   name: nameSchema,
-  scope: searchScopeQuerySchema.describe('Where to look, as the search operation takes it in its query; {} is the whole office.'),
+  scope: searchScopeQuerySchema.describe('Where to look, as workspace-search takes it in its query; {} is the whole office.'),
   query: savedSearchQueryInput.describe(
-    'The question: the body of the search operation (text, kinds, filters, annotationFilters, sort, dir, limit, facets), without a cursor.'
+    'The question: the body of workspace-search (text, kinds, filters, annotationFilters, sort, dir, limit, facets), without a cursor.'
   ),
   shared: z.boolean().default(false).describe('Every member of the office sees and runs it, each with their own rights.'),
 })

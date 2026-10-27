@@ -191,8 +191,8 @@ export const EXPOSURE = {
   'document-search': { external: true, piloti: 'native:knowledge_search', reason: SEARCH },
   // Piloti too: the filters (type, facts, references, register order) are what `knowledge_search` cannot ask, and the
   // description says a passage is a pointer to read, not a source to quote.
-  search: OFFERED,
-  'search-export': OFFERED,
+  'workspace-search': OFFERED,
+  'workspace-search-export': OFFERED,
   'document-status': OFFERED,
   'document-summary-get': OFFERED,
   'document-tags-update': OFFERED,
