@@ -85,6 +85,8 @@ EXCLUDED = re.compile(
             r"\.mdx?$",  # prose, which follows the code it names
             r"^ci/[^/]*baseline[^/]*\.json$",  # ratchet baselines: they list paths, not names
             r"^scripts/check_brand_names\.py$|^tests/test_check_brand_names\.py$",  # this check
+            # The infrastructure names table: its legacy column holds the old names until ADR-0147's contract step.
+            r"^deploy/pulumi/src/names\.ts$",
         )
     )
 )
