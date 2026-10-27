@@ -206,7 +206,11 @@ describe('what tools mode costs a client', () => {
   // filter vocabulary (document types, facts with ranges, references, dates), not ballast; one search tool
   // with them replaces filter guessing across the list operations. Measured 1,020 with it; lower it again
   // when the catalog shrinks.
-  const MAX_AVERAGE_CHARS = 1_030
+  // Raised to 1,050 on 2026-10-27 for the Zod 4 move: `z.toJSONSchema` writes the numeric bounds, array
+  // minimums, `.regex()` patterns and defaults zod always enforced and the hand-written converter dropped
+  // (measured 1,042, +22 a tool). They are constraints an agent otherwise learns from a 400, not ballast;
+  // the exporter drops the keywords that only restate an absence (`lib/api/zod-json-schema.ts`).
+  const MAX_AVERAGE_CHARS = 1_050
   const MAX_OPERATION_CHARS = 9_000
 
   it(`stays under ${MAX_AVERAGE_CHARS} characters a tool on average, and ${MAX_OPERATION_CHARS} for any catalog operation`, async () => {

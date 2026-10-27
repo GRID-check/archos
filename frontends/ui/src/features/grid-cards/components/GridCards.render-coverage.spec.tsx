@@ -34,6 +34,7 @@
  * assertion IS the mount.
  */
 
+import { discriminatedOptions } from '@/lib/api/zod-union'
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { z } from 'zod'
 import { render } from '@/test-utils'
@@ -159,11 +160,11 @@ const EXCLUDED_FIXTURES: Record<string, CardInput> = {
 /**
  * Every card type, read off the union itself — never a list.
  *
- * `optionsMap` is keyed by the discriminator value zod resolved, so it is
+ * `discriminatedOptions` is keyed by the discriminator value zod resolved, so it is
  * right even for `project_profile_patch`, whose `type` literal is wrapped in a
  * `.default()`.
  */
-const ALL_TYPES = [...gridCardSchema.optionsMap.keys()].filter(
+const ALL_TYPES = [...discriminatedOptions(gridCardSchema).keys()].filter(
   (type): type is string => typeof type === 'string'
 )
 

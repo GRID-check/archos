@@ -32,7 +32,7 @@ import { SectionLabel } from '@/components/ui/section-label'
 import { useTranslations, type Translator } from '@/i18n'
 import { cn } from '@/lib/utils'
 import { NormRefFooter } from '../schematics/kit'
-import type { NormReferenceData } from '../schematics/types'
+import type { NormReferenceData } from '@/shared/cards/schemas'
 import { CARD_SHELL } from './card-chrome'
 
 type Confidence = 'low' | 'medium' | 'high'

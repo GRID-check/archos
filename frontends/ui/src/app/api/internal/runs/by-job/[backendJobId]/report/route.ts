@@ -41,7 +41,7 @@ const runReportSchema = z.object({
    * `answer_confidence`, `research_truncated`. Translated to the stored contract
    * by the service, at the one point the foreign dialect enters.
    */
-  metadata: z.record(z.unknown()).optional(),
+  metadata: z.record(z.string(), z.unknown()).optional(),
 })
 
 export const POST = internalApiRoute<Params>(
