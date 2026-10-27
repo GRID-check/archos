@@ -321,7 +321,7 @@ class DeferredObjectDownload:
         return {"url": self._url, "suffix": self._suffix}
 
     @classmethod
-    def from_payload(cls, data: dict) -> "DeferredObjectDownload":
+    def from_payload(cls, data: dict) -> DeferredObjectDownload:
         """Rebuild one from a queue payload, through the same SSRF gates a request meets.
 
         A row in the queue is not a request this route validated a moment ago:

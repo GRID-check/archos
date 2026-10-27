@@ -1,0 +1,6 @@
+---
+operators:
+  - >
+    A database migration rewrites the office shelf's old name inside stored chat
+    messages and tasks. Kubernetes and Docker Compose both run it before the new
+    frontend starts, which no longer reads the old name. It is safe to run twice.

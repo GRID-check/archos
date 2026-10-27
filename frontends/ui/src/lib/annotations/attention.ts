@@ -71,7 +71,8 @@ import {
   retractInboxOccurrenceAnchoredOn,
   rewriteInboxPayloadsAnchoredOn,
 } from '@/lib/inbox/service'
-import type { DocumentAnnotationReplyRow, InboxItemType } from '@/lib/db/schema'
+import type { DocumentAnnotationReplyRow } from '@/lib/db/schema/document-annotations'
+import type { InboxItemType } from '@/lib/db/schema/inbox'
 import { AGENT_MENTION_ID } from '@/lib/mentions/types'
 import { describeResource } from '@/lib/sharing/registry'
 

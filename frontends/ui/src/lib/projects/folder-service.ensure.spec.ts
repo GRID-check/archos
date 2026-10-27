@@ -36,9 +36,13 @@ vi.mock('@/lib/db', () => ({
   getDb: vi.fn(),
 }))
 
-vi.mock('@/lib/db/schema', () => ({
-  projectFolders: { id: 'id', projectId: 'project_id', parentId: 'parent_id', name: 'name' },
+vi.mock('@/lib/db/schema/documents', () => ({
   documents: { folderId: 'folder_id', projectId: 'project_id', id: 'id' },
+}))
+vi.mock('@/lib/db/schema/project-folders', () => ({
+  projectFolders: { id: 'id', projectId: 'project_id', parentId: 'parent_id', name: 'name' },
+}))
+vi.mock('@/lib/db/schema/projects', () => ({
   projects: { id: 'id', organizationId: 'organization_id', deletedAt: 'deleted_at' },
 }))
 

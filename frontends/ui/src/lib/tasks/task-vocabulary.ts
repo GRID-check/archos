@@ -10,15 +10,16 @@
  * moves.
  */
 
-/** Every kind a task row can be. See the schema for what each one means. */
-export const TASK_KINDS = [
-  'deep-research',
-  'chat',
-  'compliance_check',
-  'submission_check',
-  'document',
-  'revision',
-] as const
+import { DELEGATABLE_TASK_KINDS } from '@/shared/vocabularies.generated'
+
+export { DELEGATABLE_TASK_KINDS }
+
+/**
+ * Every kind a task row can be: the two job outputs, then the kinds a person
+ * delegates (generated from the agent's `TaskKind`). See the schema for what
+ * each one means.
+ */
+export const TASK_KINDS = ['deep-research', 'chat', ...DELEGATABLE_TASK_KINDS] as const
 export type TaskKind = (typeof TASK_KINDS)[number]
 
 /**

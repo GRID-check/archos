@@ -1904,12 +1904,20 @@
     "de": "In einer schmalen Dateienliste, etwa neben dem Chat, werden Dateinamen nicht mehr vom Status überlagert und lange Namen nicht mehr mitten in einem Buchstaben abgeschnitten: Die Liste zeigt weniger Spalten an und hält das Ende jedes Namens lesbar."
   },
   {
+    "en": "In a project without saved notes, Piloti starts answering up to a second sooner, because it no longer waits to compare your question with notes that are not there.",
+    "de": "In einem Projekt ohne gespeicherte Notizen antwortet Piloti bis zu einer Sekunde schneller, weil es nicht mehr darauf wartet, Ihre Frage mit nicht vorhandenen Notizen abzugleichen."
+  },
+  {
     "en": "In a shared chat Piloti searches only what everyone in it may open.",
     "de": "In einem geteilten Chat durchsucht Piloti nur, was alle Beteiligten öffnen dürfen."
   },
   {
     "en": "In exported PDFs, the signs for less than or equal to and greater than or equal to appeared as stray letters. A limit of at most forty metres came out with an unrelated character in place of its sign, while the number beside it stayed correct.",
     "de": "In exportierten PDFs erschienen die Zeichen für „kleiner oder gleich“ und „größer oder gleich“ als fremde Buchstaben. Eine Grenze von höchstens 40 Metern erschien mit einem fremden Zeichen an der Stelle des Vergleichszeichens, während die Zahl daneben stimmte."
+  },
+  {
+    "en": "In some projects Piloti treated its saved notes as confirmed project facts. It no longer does, so the facts it works from are the ones confirmed in the project profile.",
+    "de": "In manchen Projekten behandelt Piloti gespeicherte Notizen als bestätigte Projektfakten. Das ist nicht mehr der Fall: Piloti arbeitet nun mit den im Projektprofil bestätigten Fakten."
   },
   {
     "en": "In the Herleitung a passage read by point now shows the point, such as „Pkt. 3.5.2“, before the page.",

@@ -66,7 +66,7 @@ def make_picker(llm):
         ]
         try:
             return await structured.ainvoke(messages)
-        except (ValidationError, OutputParserException):
+        except ValidationError, OutputParserException:
             logger.warning("ris_lookup picker: invalid structured output, retrying once", exc_info=True)
             corrective = [
                 *messages,

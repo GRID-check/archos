@@ -30,7 +30,7 @@ vi.mock('./repository', () => ({
 
 import { ConflictError, ForbiddenError } from '@/lib/api/errors'
 import type { AuthorizedSession } from '@/lib/auth/types'
-import type { MailImport } from '@/lib/db/schema'
+import type { MailImport } from '@/lib/db/schema/mail-imports'
 import { enqueueJob } from '@/lib/jobs-queue/enqueue'
 import { MAIL_IMPORT_PART_BYTES } from './config'
 import * as repository from './repository'

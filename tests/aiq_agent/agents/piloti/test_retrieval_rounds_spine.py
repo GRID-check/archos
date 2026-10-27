@@ -28,10 +28,10 @@ from langchain_core.tools import tool
 
 from aiq_agent.agents.piloti.agent import PilotiAgent
 from aiq_agent.agents.piloti.models import ResearchAgentState
+from aiq_agent.citations.entries import SourceEntry
+from aiq_agent.citations.registry import SourceRegistry
 from aiq_agent.common import LLMProvider
 from aiq_agent.common import turn_status
-from aiq_agent.common.citation_verification import SourceEntry
-from aiq_agent.common.citation_verification import SourceRegistry
 from aiq_agent.common.turn_status import current_retrieval_round
 
 #: What each tool call saw in the round stamp, in execution order. Module level

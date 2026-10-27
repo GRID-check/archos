@@ -5,7 +5,7 @@ name: Turn shapes (live model)
 # commissioned report escalates to deep research before retrieving. Plus a
 # control question that must still search. Real prompt, real model through
 # OpenRouter, stub tools recording the trace:
-# tests/benchmarks/test_turn_shapes_live.py.
+# evals/turn-shapes/test_turn_shapes_live.py.
 #
 # REQUIRES the repository secret `OPENROUTER_API_KEY` (the same one
 # release-notes.yml translates with). The test file skips itself without the

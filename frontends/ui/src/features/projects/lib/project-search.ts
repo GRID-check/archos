@@ -10,7 +10,7 @@
  * Pure on purpose: the rules (which fields count, how a multi-word query
  * behaves) are what is worth testing, and the grid only calls this.
  */
-import type { Project } from '@/lib/db/schema'
+import type { Project } from '@/lib/db/schema/projects'
 
 /** The fields of a project the search reads. */
 export type SearchableProject = Pick<Project, 'name'> & Partial<Pick<Project, 'profile' | 'profileDisplay'>>

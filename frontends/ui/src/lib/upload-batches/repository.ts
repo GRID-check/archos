@@ -8,14 +8,8 @@ import 'server-only'
 import { and, asc, desc, eq, gt, inArray, isNotNull, isNull, lt, sql } from 'drizzle-orm'
 import { getDb } from '@/lib/db'
 import { withTenant } from '@/lib/db/tenant-context'
-import {
-  documents,
-  uploadBatches,
-  type Document,
-  type NewUploadBatch,
-  type UploadBatch,
-  type UploadBatchExclusion,
-} from '@/lib/db/schema'
+import { documents, type Document } from '@/lib/db/schema/documents'
+import { uploadBatches, type NewUploadBatch, type UploadBatch, type UploadBatchExclusion } from '@/lib/db/schema/upload-batches'
 import { IN_FLIGHT_DOCUMENT_STATUSES, columnStatuses } from '@/lib/documents/document-status'
 import { CURSOR_TIMESTAMP_FORMAT, type DocumentListCursor } from '@/lib/documents/list-cursor'
 import { outsideHiddenFolders } from '@/lib/documents/repository'

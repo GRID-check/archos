@@ -388,7 +388,7 @@ def _text_of(message: Any) -> str:
         return content
     try:
         return json.dumps(content, ensure_ascii=False, default=str)
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         return str(content)
 
 

@@ -18,7 +18,7 @@
 
 import 'server-only'
 import { resolvePinnedRequesterSession } from '@/lib/auth/pinned-session'
-import type { UploadBatch } from '@/lib/db/schema'
+import type { UploadBatch } from '@/lib/db/schema/upload-batches'
 import { memberReader } from '@/lib/documents/document-reader'
 import { listBatchDocuments } from './repository'
 import { reportSaysSomething, uploadReport, type UploadReport } from './upload-report'

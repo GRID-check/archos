@@ -23,7 +23,7 @@ vi.mock('./repository', () => ({
 
 import { resolvePinnedRequesterSessionStrict } from '@/lib/auth/pinned-session'
 import type { AuthorizedSession } from '@/lib/auth/types'
-import type { InboxItem } from '@/lib/db/schema'
+import type { InboxItem } from '@/lib/db/schema/inbox'
 import { findInboxItemForRecipient, listTouchedOfType } from '@/lib/inbox/repository'
 import { viewInboxItemAs } from '@/lib/inbox/service'
 import type { InboxItemView } from '@/lib/inbox/types'

@@ -31,8 +31,8 @@
  * revocation would have hidden.
  */
 
-import type { InboxItem, InboxItemType } from '@/lib/db/schema'
-import { INBOX_ITEM_TYPES } from '@/lib/db/schema'
+import type { InboxItem, InboxItemType } from '@/lib/db/schema/inbox'
+import { INBOX_ITEM_TYPES } from '@/lib/db/schema/inbox'
 import { INBOX_TYPE_DEFINITIONS, type InboxEmailDefault } from './registry'
 
 /** The row facts the decision reads. A full `InboxItem` satisfies it. */

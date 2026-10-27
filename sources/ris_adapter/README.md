@@ -19,7 +19,7 @@ OGD-RIS is an open-government-data service.
 The other three are a SEQUENCE the model used to run by hand — catalog, search,
 fetch — for two or three of its seven charged calls, ending in up to 40 000
 characters of law text that carried no `Citation:` key and no `Punkt:`. Nothing
-downstream could treat that as evidence: `citation_verification` fell through to
+downstream could treat that as evidence: citation verification fell through to
 the generic URL extractor, so the answer cited a link where it should have cited
 `§ 63 Abs 1`.
 

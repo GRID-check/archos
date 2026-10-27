@@ -163,7 +163,7 @@ NOT the level `none`, which actively disables reasoning. Both sides encode the
 vocabulary — the BFF validates on write, `aiq_agent/common/reasoning_settings.py`
 on read — so a hand-edited row can never push a provider-native tier name (e.g.
 DeepSeek's `max`, which OpenRouter rejects) into a request. Parity is pinned by
-`tests/fixtures/reasoning_efforts_catalog.json` from both languages.
+`frontends/ui/tests/fixtures/reasoning_efforts_catalog.json` from both languages.
 
 Applied at the same two seams as the model. Every user-facing agent (chat,
 the clarifier agent, deep research) resolves its LLMs

@@ -75,7 +75,7 @@ class SSEConnectionManager:
             logger.debug("SSE connection unregistered, active count: %d", len(self._active_connections))
 
     @asynccontextmanager
-    async def track_connection(self) -> AsyncGenerator[None, None]:
+    async def track_connection(self) -> AsyncGenerator[None]:
         """Context manager to track an SSE connection's lifecycle."""
         task = asyncio.current_task()
         if task:

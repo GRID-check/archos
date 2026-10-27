@@ -31,13 +31,8 @@
 
 import 'server-only'
 import type { AuthorizedSession } from '@/lib/auth/types'
-import {
-  INBOX_TARGET_TYPES,
-  SHAREABLE_RESOURCE_TYPES,
-  type InboxItemType,
-  type InboxTargetType,
-  type ShareableResourceType,
-} from '@/lib/db/schema'
+import { INBOX_TARGET_TYPES, type InboxItemType, type InboxTargetType } from '@/lib/db/schema/inbox'
+import { SHAREABLE_RESOURCE_TYPES, type ShareableResourceType } from '@/lib/db/schema/resource-shares'
 import { hasPlatformPermission } from '@/lib/authz/platform'
 import { requireProjectAccess } from '@/lib/authz/projects'
 import { resolveResourceAccess } from '@/lib/sharing/access'

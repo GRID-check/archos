@@ -8,7 +8,7 @@
 import 'server-only'
 import { and, eq } from 'drizzle-orm'
 import { getDb } from '@/lib/db'
-import { jobs, type Job } from '@/lib/db/schema'
+import { jobs, type Job } from '@/lib/db/schema/jobs'
 
 /** Load a job scoped to an organization (double-filtered by org). */
 export async function findJob(jobId: string, organizationId: string): Promise<Job | null> {

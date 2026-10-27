@@ -12,11 +12,12 @@ Three independent checks:
 
 CONTEXTVAR PROPAGATION
 -----------------------
-The middleware stores the resolved user dict in a ``ContextVar`` so that
+The middleware binds the resolved user dict in the agent tier's ``ContextVar``
+(``aiq_agent.auth.request_identity``) so that
 NAT workflow functions (which do not receive the ASGI ``Request`` object)
 can read the caller type without framework coupling.
 
-    from aiq_api.auth.middleware import get_current_user
+    from aiq_agent.auth.request_identity import get_current_user
     user = get_current_user()          # {"type": "jwt"|"internal"|"anonymous"|...}
     skip = user.get("skip_clarifier")  # True / False
 
@@ -76,14 +77,14 @@ import inspect
 import json
 import logging
 import os
-from contextlib import contextmanager
-from contextvars import ContextVar
 from typing import Any
 
 from starlette.types import ASGIApp
 from starlette.types import Receive
 from starlette.types import Scope
 from starlette.types import Send
+
+from aiq_agent.auth.request_identity import user_context
 
 from . import utils as auth_utils
 from .request_trace import get_request_trace_tags
@@ -104,37 +105,10 @@ logger = logging.getLogger(__name__)
 _build_pseudonymous_trace_user_id = auth_utils._build_pseudonymous_trace_user_id
 _build_pseudonymous_trace_client_id = auth_utils._build_pseudonymous_trace_client_id
 
-# ---------------------------------------------------------------------------
-# ContextVar — carries the resolved caller identity through the call stack
-# ---------------------------------------------------------------------------
-_current_user: ContextVar[dict[str, Any]] = ContextVar(
-    "_current_user",
-    default={"type": "internal", "skip_clarifier": False},
-)
-
-
-def get_current_user() -> dict[str, Any]:
-    """Return the caller identity dict set by ``AuthMiddleware`` for this request.
-
-    Returns the default ``{"type": "internal", "skip_clarifier": False}`` when
-    the middleware is not registered or when called outside a request context.
-    """
-    return _current_user.get()
-
 
 def get_current_trace_tags() -> dict[str, str]:
     """Return request trace tags resolved by ``AuthMiddleware`` for this request."""
     return get_request_trace_tags()
-
-
-@contextmanager
-def user_context(user: dict[str, Any]):
-    """Temporarily bind a resolved caller identity in the auth ContextVar."""
-    token = _current_user.set(user)
-    try:
-        yield
-    finally:
-        _current_user.reset(token)
 
 
 def build_request_trace_tags(

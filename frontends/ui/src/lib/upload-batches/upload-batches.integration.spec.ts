@@ -19,7 +19,7 @@
  */
 
 import { sql } from 'drizzle-orm'
-import type { Document } from '@/lib/db/schema'
+import type { Document } from '@/lib/db/schema/documents'
 import type { QuarantineCursor } from '@/lib/documents/repository'
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 import { REVIEWER_READER, internalRead } from '@/lib/documents/document-reader'

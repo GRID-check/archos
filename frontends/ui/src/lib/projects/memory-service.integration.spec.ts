@@ -29,8 +29,8 @@
 
 import { eq, sql } from 'drizzle-orm'
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
-import { projectMemory } from '@/lib/db/schema'
-import type { ProjectMemoryItem } from '@/lib/db/schema'
+import { projectMemory } from '@/lib/db/schema/project-memory'
+import type { ProjectMemoryItem } from '@/lib/db/schema/project-memory'
 import {
   NEAR_DUP_JACCARD_THRESHOLD,
   contentTokens,
@@ -47,7 +47,7 @@ vi.mock('@/lib/knowledge/embeddings', async (importOriginal) => {
   return { ...actual, embedNote: vi.fn(async () => null), embedNotes: vi.fn(async () => null) }
 })
 
-import { embedNote } from '@/lib/knowledge/embeddings'
+import { embedNote, embedNotes } from '@/lib/knowledge/embeddings'
 
 const url = process.env.TEST_DATABASE_URL
 
@@ -117,6 +117,7 @@ describe.skipIf(!url)('memory consolidation against live Postgres', () => {
   let withTenant: typeof import('@/lib/db/tenant-context').withTenant
   let withPlatformAccess: typeof import('@/lib/db/tenant-context').withPlatformAccess
   let createProjectMemoryItem: typeof import('./memory-service').createProjectMemoryItem
+  let buildProjectMemoryDigest: typeof import('./memory-service').buildProjectMemoryDigest
 
   const inTenant = <T>(run: () => Promise<T>): Promise<T> =>
     withTenant({ organizationId: ORG, userId: USER }, run)
@@ -159,6 +160,7 @@ describe.skipIf(!url)('memory consolidation against live Postgres', () => {
     withPlatformAccess = context.withPlatformAccess
     db = (await import('@/lib/db')).getDb()
     createProjectMemoryItem = (await import('./memory-service')).createProjectMemoryItem
+    buildProjectMemoryDigest = (await import('./memory-service')).buildProjectMemoryDigest
 
     await withPlatformAccess('test seed: create the organization', () =>
       db.execute(
@@ -276,5 +278,64 @@ describe.skipIf(!url)('memory consolidation against live Postgres', () => {
     expect(live(rows).map((row) => row.id)).toEqual([existing.id])
     expect(rows.find((row) => row.id === stale.id)?.status).toBe('superseded')
     expect(retired).toEqual([stale.id])
+  })
+
+  describe('the digest waits for the query embed only when a vector can change it', () => {
+    /** An embed that never answers: a digest that awaits it never returns, and the case times out. */
+    const embedThatHangs = () => vi.mocked(embedNote).mockImplementation(() => new Promise(() => {}))
+    const digestFor = (projectId: string, timing: import('./memory-recall').DigestTiming = {}) =>
+      inTenant(() => buildProjectMemoryDigest(projectId, ORG, { query: 'Wie hoch ist die Attika?', timing }))
+
+    afterEach(() => {
+      vi.mocked(embedNotes).mockReset()
+      vi.mocked(embedNotes).mockResolvedValue(null)
+    })
+
+    it('answers an empty scope without waiting, and the same null as before', async () => {
+      const projectId = await seedProject('dense_empty')
+      embedThatHangs()
+      const timing = {}
+      expect(await digestFor(projectId, timing)).toBeNull()
+      expect(timing).toMatchObject({ dense: 'skipped' })
+      // The embed was started beside the read, then dropped with its signal.
+      expect(vi.mocked(embedNote).mock.calls[0][1]?.signal?.aborted).toBe(true)
+      expect(embedNotes).not.toHaveBeenCalled()
+    })
+
+    it('ranks vector-less notes exactly as with no embedder at all, and still backfills them', async () => {
+      const projectId = await seedProject('dense_none')
+      await remember(projectId, 'constraint', 'Die Attika ist mit 1,10 m ausgeführt')
+      await remember(projectId, 'decision', 'Das Flachdach wird extensiv begrünt')
+      await remember(projectId, 'derived_fact', 'Die Gebäudeklasse ist GK 4')
+
+      const withoutEmbedder = await digestFor(projectId)
+      expect(withoutEmbedder).toContain('Attika')
+      vi.mocked(embedNotes).mockClear()
+
+      embedThatHangs()
+      const timing = {}
+      expect(await digestFor(projectId, timing)).toBe(withoutEmbedder)
+      expect(timing).toMatchObject({ dense: 'skipped' })
+      // The rows the skipped embed would have healed are handed to the backfill.
+      expect(vi.mocked(embedNotes).mock.calls[0][0]).toHaveLength(3)
+    })
+
+    it('waits for the vector when a note carries one, and ranks by it', async () => {
+      const projectId = await seedProject('dense_ranked')
+      useEmbedder()
+      // The note the question is about is the OLDER one, so recency alone would put it second.
+      await remember(projectId, 'constraint', 'Smoke extraction is natural in the stairwell')
+      await remember(projectId, 'decision', 'The Flachdach is extensively planted')
+      // The question has no word in common with either note: only the vector finds it.
+      vi.mocked(embedNote).mockImplementation(async (text) => ({
+        vector: topicVector(/Attika/.test(text) ? 'smoke extraction' : text),
+        fingerprint: FINGERPRINT,
+      }))
+      const timing = {}
+      const digest = await digestFor(projectId, timing)
+      expect(timing).toMatchObject({ dense: 'ranked' })
+      const lines = (digest ?? '').split('\n').filter((line) => line.startsWith('- ['))
+      expect(lines[0]).toContain('Smoke extraction')
+    })
   })
 })

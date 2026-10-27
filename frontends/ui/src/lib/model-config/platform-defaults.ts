@@ -24,7 +24,7 @@ import { getDb } from '@/lib/db'
 import { withPlatformAccess } from '@/lib/db/tenant-context'
 import { getCached, invalidateCached } from '@/lib/cache'
 import { invalidateEveryBackendModelConfig } from './backend-key'
-import { platformModelDefaults, type PlatformModelDefault } from '@/lib/db/schema'
+import { platformModelDefaults, type PlatformModelDefault } from '@/lib/db/schema/platform-model-defaults'
 import { AGENT_GROUP_IDS } from './agent-groups'
 
 const DEFAULTS_CACHE_TTL_MS = 5 * 60 * 1000

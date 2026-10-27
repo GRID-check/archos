@@ -31,7 +31,7 @@ vi.mock('@/lib/project-intake/trigger', () => ({ queueIntakeReadsAfterUpload: vi
 import { auditOwedQuarantines } from '@/lib/upload-screening/quarantine-audit'
 import { rolesHoldPermission } from '@/lib/authz/org-role-permissions'
 import { resolveSubjectMembership, userHoldsProjectPermission } from '@/lib/authz/project-membership'
-import type { UploadBatch } from '@/lib/db/schema'
+import type { UploadBatch } from '@/lib/db/schema/upload-batches'
 import { announceSettledVersions } from '@/lib/documents/revision-notify'
 import { findDocumentInOrg } from '@/lib/documents/repository'
 import { emitInboxItems } from '@/lib/inbox/service'

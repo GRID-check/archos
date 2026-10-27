@@ -41,6 +41,7 @@ from aiq_agent.knowledge.schema import FileStatus
 from aiq_agent.knowledge.schema import IngestionJobStatus
 from aiq_agent.knowledge.schema import JobState
 from aiq_api.jobs import ingest_dispatch
+from aiq_api.routes import oib as oib_routes
 from aiq_api.routes.oib import add_oib_routes
 
 _COLLECTION = "oib_knowledge"
@@ -355,7 +356,8 @@ async def test_a_zip_member_the_queue_refuses_is_rejected_and_the_others_go_on(a
             raise ingest_dispatch.QueueUnavailable("could not queue it")
         return real(prepared)
 
-    monkeypatch.setattr(ingest_dispatch, "enqueue_only", create_autospec(real, side_effect=enqueue))
+    # The route hands this enqueue to oib_sync; it is bound where the route module imports it.
+    monkeypatch.setattr(oib_routes, "enqueue_only", create_autospec(real, side_effect=enqueue))
     content = _build_zip({"good.pdf": _pdf_bytes(), "bad.pdf": _pdf_bytes()})
 
     async with _client(app) as client:
@@ -610,7 +612,7 @@ async def test_a_store_that_cannot_delete_the_object_is_a_500_and_the_document_i
 @pytest.mark.asyncio
 async def test_the_manual_sync_runs_one_cycle_and_reports_its_counts(app, monkeypatch):
     monkeypatch.setattr(
-        oib_sync, "sync", lambda: oib_sync.SyncResult(enqueued=2, ingested_recorded=3, failed=1, total=5)
+        oib_sync, "sync", lambda **_: oib_sync.SyncResult(enqueued=2, ingested_recorded=3, failed=1, total=5)
     )
 
     async with _client(app) as client:
@@ -626,7 +628,7 @@ async def test_the_manual_sync_runs_one_cycle_and_reports_its_counts(app, monkey
 
 @pytest.mark.asyncio
 async def test_a_manual_sync_that_breaks_is_a_500(app, monkeypatch):
-    def broken():
+    def broken(**_kwargs):
         raise corpus_store.CorpusStoreError("the base corpus needs SUMMARY_DB")
 
     monkeypatch.setattr(oib_sync, "sync", broken)

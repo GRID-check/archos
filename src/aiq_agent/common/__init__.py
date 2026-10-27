@@ -27,14 +27,6 @@ _LAZY: dict[str, str] = {
     "RunBudgetExceededError": ".budget_guard",
     "create_budget_guard_callback": ".budget_guard",
     "VerboseTraceCallback": ".callbacks",
-    "SourceRegistry": ".citation_verification",
-    "get_or_create_session_registry": ".citation_verification",
-    "get_session_registry": ".citation_verification",
-    "register_source_parser": ".citation_verification",
-    "reset_session_registry": ".citation_verification",
-    "sanitize_report": ".citation_verification",
-    "set_session_registry": ".citation_verification",
-    "verify_citations": ".citation_verification",
     "get_all_tool_refs": ".data_source_registry",
     "get_source_id_for_tool": ".data_source_registry",
     "DEFAULT_DATA_SOURCES": ".data_sources",
@@ -119,7 +111,7 @@ def _pool_int_env(name: str, default: int) -> int:
     try:
         val = int(os.environ.get(name, ""))
         return val if val > 0 else default
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         return default
 
 
@@ -133,7 +125,6 @@ __all__ = [
     "LLMRole",
     "OrgLLMCredential",
     "RunBudgetExceededError",
-    "SourceRegistry",
     "SpanClosingProfilerHandler",
     "VerboseTraceCallback",
     "all_mapped_tools_filtered_out",
@@ -167,18 +158,12 @@ __all__ = [
     "get_all_tool_refs",
     "get_checkpoint_pool",
     "get_checkpointer",
-    "get_or_create_session_registry",
     "get_source_id_for_tool",
-    "get_session_registry",
     "get_latest_user_query",
     "is_postgres_dsn",
     "load_prompt",
     "parse_data_sources",
-    "register_source_parser",
     "render_prompt_template",
-    "reset_session_registry",
-    "sanitize_report",
-    "set_session_registry",
     "validate_tool_availability",
     "apply_openrouter_structured_defaults",
     "ends_on_model_turn",
@@ -187,7 +172,6 @@ __all__ = [
     "normalize_chat_request",
     "strict_response_format",
     "strict_json_response_format",
-    "verify_citations",
 ]
 
 

@@ -15,19 +15,14 @@ locally without it, failed on CI.
 from __future__ import annotations
 
 import os
-import sys
 from pathlib import Path
 
 import pytest
+from oib_retrieval.qdrant_parity import runner
+from oib_retrieval.qdrant_parity import sample
 
 REPO = Path(__file__).resolve().parents[3]
-BENCHMARK = REPO / "frontends" / "benchmarks" / "oib_retrieval"
-sys.path.insert(0, str(BENCHMARK / "src"))
-
-from oib_retrieval_eval.qdrant_parity import runner  # noqa: E402
-from oib_retrieval_eval.qdrant_parity import sample  # noqa: E402
-
-HARD_CASES = BENCHMARK / "fixtures" / "qdrant_lexical_hard_cases.json"
+HARD_CASES = REPO / "evals" / "oib-retrieval" / "fixtures" / "qdrant_lexical_hard_cases.json"
 
 
 def _server_url() -> str:
@@ -83,8 +78,8 @@ def test_the_report_renders(report):
 
 
 def test_the_ranking_sweep_measures_every_variant_against_the_baseline(report):
-    from oib_retrieval_eval.qdrant_parity import decompound
-    from oib_retrieval_eval.qdrant_parity import variants
+    from oib_retrieval.qdrant_parity import decompound
+    from oib_retrieval.qdrant_parity import variants
 
     sweep = report["variants"]
     catalogue = variants.catalogue()

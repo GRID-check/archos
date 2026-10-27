@@ -1,3 +1,4 @@
+// @disk-inputs: src/features/layout/components/ChatArea.tsx, src/features/layout/components/MainLayout.tsx
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'

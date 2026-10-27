@@ -1,3 +1,4 @@
+// @disk-inputs: src/**
 /**
  * The deadlock shape, made into a build failure.
  *
