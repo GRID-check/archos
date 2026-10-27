@@ -329,11 +329,10 @@ def test_a_retirement_failure_never_fails_the_ingest(ingestor, registries, monke
     ingestor._retire_previous_version("proj_1", "statik.pdf", _PreviousVersion(chunk_ids=["c1"]))
     assert registries["bumped"] == []
 
-    # ---------------------------------------------------------------------------
-    # End to end through _run_ingestion: a real Qdrant, a stand-in embedder
-    # ---------------------------------------------------------------------------
 
-    raise AssertionError("ingestion job did not terminate in time")
+# ---------------------------------------------------------------------------
+# End to end through _run_ingestion: a real Qdrant, a stand-in embedder
+# ---------------------------------------------------------------------------
 
 
 def _chunks(ing, collection_name: str) -> dict[str, str]:

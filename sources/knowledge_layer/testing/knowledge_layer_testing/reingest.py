@@ -64,3 +64,4 @@ def _wait_terminal(ing, job_id, timeout=30):
         if status.is_terminal:
             return status
         time.sleep(0.05)
+    raise AssertionError("ingestion job did not terminate in time")
