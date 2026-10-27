@@ -7,33 +7,24 @@ to, the dimension truncation and the report renderer. The store half runs
 against a real Qdrant in
 ``sources/knowledge_layer/tests/test_qdrant_parity_harness.py``, where CI starts
 one.
-
-Import fallback as in the sibling benchmark tests.
 """
 
 from __future__ import annotations
 
 import json
 import math
-import sys
 from pathlib import Path
 
 import numpy as np
 import pytest
+from oib_retrieval.qdrant_parity import baseline
+from oib_retrieval.qdrant_parity import channels
+from oib_retrieval.qdrant_parity import evaluation
+from oib_retrieval.qdrant_parity import runner
+from oib_retrieval.qdrant_parity import sample
+from oib_retrieval.qdrant_parity.vectors import truncate_renormalise
 
-try:
-    from oib_retrieval_eval.qdrant_parity import evaluation
-except ImportError:
-    sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "frontends" / "benchmarks" / "oib_retrieval" / "src"))
-    from oib_retrieval_eval.qdrant_parity import evaluation
-
-from oib_retrieval_eval.qdrant_parity import baseline
-from oib_retrieval_eval.qdrant_parity import channels
-from oib_retrieval_eval.qdrant_parity import runner
-from oib_retrieval_eval.qdrant_parity import sample
-from oib_retrieval_eval.qdrant_parity.vectors import truncate_renormalise
-
-FIXTURES = Path(__file__).resolve().parents[2] / "frontends" / "benchmarks" / "oib_retrieval" / "fixtures"
+FIXTURES = Path(__file__).resolve().parents[1] / "fixtures"
 HARD_CASES = FIXTURES / "qdrant_lexical_hard_cases.json"
 
 
@@ -177,7 +168,7 @@ def test_the_base_filter_is_the_one_register_builds():
 
 def test_the_reference_is_the_gate_reports_chroma_path_and_names_its_source():
     """The numbers G1b and the report compare against, as ``qdrant-gates-2026-10.md`` records them."""
-    report = (Path(__file__).resolve().parents[2] / "docs" / "audit" / "qdrant-gates-2026-10.md").read_text()
+    report = (Path(__file__).resolve().parents[3] / "docs" / "audit" / "qdrant-gates-2026-10.md").read_text()
     assert "qdrant-gates-2026-10.md" in baseline.SOURCE
     lexical = baseline.LEXICAL_GOLDEN
     assert f"| {lexical.recall[5]:.3f} | {lexical.recall[10]:.3f} | {lexical.recall[16]:.3f} |" in report
@@ -249,7 +240,7 @@ def test_the_markdown_report_renders_every_section_from_plain_results():
 
 
 def test_the_sweep_diff_names_the_questions_that_moved():
-    from oib_retrieval_eval.qdrant_parity import variants
+    from oib_retrieval.qdrant_parity import variants
 
     def result(first: dict, recall: dict, hard: dict) -> dict:
         return {
@@ -269,7 +260,7 @@ def test_the_sweep_diff_names_the_questions_that_moved():
 
 
 def test_a_sweep_selection_always_starts_from_the_baseline_and_refuses_unknown_names():
-    from oib_retrieval_eval.qdrant_parity import variants
+    from oib_retrieval.qdrant_parity import variants
 
     assert list(variants.select("rrf_k100")) == [variants.BASELINE, "rrf_k100"]
     with pytest.raises(ValueError, match="unknown variants"):

@@ -25,11 +25,11 @@ from typing import Any
 
 import numpy as np
 
-from oib_retrieval_eval import metrics
-from oib_retrieval_eval.qdrant_parity import channels
-from oib_retrieval_eval.qdrant_parity import decompound
-from oib_retrieval_eval.qdrant_parity import evaluation
-from oib_retrieval_eval.qdrant_parity.stores import SCOPE
+from oib_retrieval import metrics
+from oib_retrieval.qdrant_parity import channels
+from oib_retrieval.qdrant_parity import decompound
+from oib_retrieval.qdrant_parity import evaluation
+from oib_retrieval.qdrant_parity.stores import SCOPE
 
 logger = logging.getLogger(__name__)
 
@@ -263,7 +263,7 @@ def diff(base: dict[str, Any], other: dict[str, Any]) -> dict[str, dict[str, lis
 
 def run(inputs: Any, retriever: Any, relevant_counts: dict[str, int], names: str, rounds: int, depth: int) -> dict:
     """Every selected variant, measured, and each diffed against the baseline."""
-    from oib_retrieval_eval.qdrant_parity.runner import Corpus
+    from oib_retrieval.qdrant_parity.runner import Corpus
 
     chosen = select(names)
     ordinary = {name: setting for name, setting in chosen.items() if not isinstance(setting, decompound.Variant)}

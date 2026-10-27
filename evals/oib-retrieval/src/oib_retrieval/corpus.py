@@ -85,10 +85,10 @@ class Chunk:
 def repo_root() -> Path:
     """Repo root, derived from this file's location.
 
-    This file is ``<root>/frontends/benchmarks/oib_retrieval/src/oib_retrieval_eval/corpus.py``,
-    so the root is five directories up.
+    This file is ``<root>/evals/oib-retrieval/src/oib_retrieval/corpus.py``,
+    so the root is four directories up.
     """
-    return Path(__file__).resolve().parents[5]
+    return Path(__file__).resolve().parents[4]
 
 
 def package_root() -> Path:

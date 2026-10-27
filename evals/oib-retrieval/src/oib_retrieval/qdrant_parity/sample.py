@@ -11,13 +11,13 @@ from __future__ import annotations
 
 import numpy as np
 
-from oib_retrieval_eval import overview
-from oib_retrieval_eval import qrels
-from oib_retrieval_eval.qdrant_parity import evaluation
-from oib_retrieval_eval.qdrant_parity.runner import Inputs
-from oib_retrieval_eval.qdrant_parity.runner import embed_inputs
-from oib_retrieval_eval.qdrant_parity.stores import IndexedChunk
-from oib_retrieval_eval.qdrant_parity.vectors import Embedder
+from oib_retrieval import overview
+from oib_retrieval import qrels
+from oib_retrieval.qdrant_parity import evaluation
+from oib_retrieval.qdrant_parity.runner import Inputs
+from oib_retrieval.qdrant_parity.runner import embed_inputs
+from oib_retrieval.qdrant_parity.stores import IndexedChunk
+from oib_retrieval.qdrant_parity.vectors import Embedder
 
 RL2 = "oib-rl_2_ausgabe_mai_2023.pdf"
 RL4 = "oib-rl_4_ausgabe_mai_2023.pdf"

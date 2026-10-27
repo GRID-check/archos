@@ -16,7 +16,7 @@ the gate report, never an edit here to make a run pass.
 
 from __future__ import annotations
 
-from oib_retrieval_eval.qdrant_parity.evaluation import RankScores
+from oib_retrieval.qdrant_parity.evaluation import RankScores
 
 #: Where every number below is written down, with how it was measured.
 SOURCE = "qdrant-gates-2026-10.md, final run 2026-10-13 (Chroma path)"

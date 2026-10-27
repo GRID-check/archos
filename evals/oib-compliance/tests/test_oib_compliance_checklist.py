@@ -1,45 +1,22 @@
 """Offline unit tests for the OIB compliance golden eval suite's scoring logic.
 
-Exercises frontends/benchmarks/oib_compliance/src/oib_compliance_eval/checklist.py
+Exercises evals/oib-compliance/src/oib_compliance/checklist.py
 directly with canned answers — no LLM, no NAT workflow run, no network. This
 is the "unit-test the scoring/checklist logic offline" deliverable for
-backlog T4-5.
-
-Normally this suite's package is made importable via
-``pip install -e frontends/benchmarks/oib_compliance`` (see that directory's
-README). Since this suite isn't yet wired into the root pyproject's uv
-workspace members, we fall back to a direct ``sys.path`` insert so these
-tests also run against a fresh checkout that hasn't done the editable
-install.
+backlog T4-5. The package is installed into the dev environment by
+``uv sync`` (the root pyproject's dev group).
 """
 
 import json
-import sys
 from pathlib import Path
 
 import pytest
+from oib_compliance.checklist import RunMetrics
+from oib_compliance.checklist import check_bounds
+from oib_compliance.checklist import grade_case
+from oib_compliance.checklist import score_checklist
 
-try:
-    from oib_compliance_eval.checklist import RunMetrics
-    from oib_compliance_eval.checklist import check_bounds
-    from oib_compliance_eval.checklist import grade_case
-    from oib_compliance_eval.checklist import score_checklist
-except ImportError:
-    _SRC = Path(__file__).resolve().parents[2] / "frontends" / "benchmarks" / "oib_compliance" / "src"
-    sys.path.insert(0, str(_SRC))
-    from oib_compliance_eval.checklist import RunMetrics
-    from oib_compliance_eval.checklist import check_bounds
-    from oib_compliance_eval.checklist import grade_case
-    from oib_compliance_eval.checklist import score_checklist
-
-FIXTURES_PATH = (
-    Path(__file__).resolve().parents[2]
-    / "frontends"
-    / "benchmarks"
-    / "oib_compliance"
-    / "fixtures"
-    / "oib_compliance_golden.json"
-)
+FIXTURES_PATH = Path(__file__).resolve().parents[1] / "fixtures" / "oib_compliance_golden.json"
 
 
 @pytest.fixture(scope="module")

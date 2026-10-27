@@ -4,21 +4,12 @@
 ``PageTable`` dataclasses. ``json.dump`` cannot write those, so the first
 ``extract_pages`` call raised and left a truncated cache file that every later
 run failed to parse. Offline: the extractor is replaced by a stub.
-
-Import fallback as in ``test_oib_retrieval_structure.py``.
 """
 
-import sys
 from pathlib import Path
 
 import pytest
-
-try:
-    from oib_retrieval_eval import corpus
-except ImportError:
-    _SRC = Path(__file__).resolve().parents[2] / "frontends" / "benchmarks" / "oib_retrieval" / "src"
-    sys.path.insert(0, str(_SRC))
-    from oib_retrieval_eval import corpus
+from oib_retrieval import corpus
 
 pytest.importorskip("llama_index.core", reason="the chunking arms are llama-index Documents")
 

@@ -169,7 +169,7 @@ aiq_otel_logs = "aiq_agent.observability.otlp_logging_method"
 aiq_otel_redaction = "aiq_agent.observability.otel_header_redaction_exporter"
 
 [tool.pytest.ini_options]
-testpaths = ["tests", "sources/**/tests"]
+testpaths = ["tests", "evals", "sources/**/tests"]
 # `-m "not live"`: a test that calls a real model runs only when asked for by
 # name (`task be:eval:turn-shapes` passes `-m live`, and a later `-m` replaces
 # this one). A key that happens to be in the shell is not that request: before
@@ -317,6 +317,11 @@ dev = [
     "ris-adapter",
     "knowledge-layer[all]",
     "aiq-api",
+    # The eval harnesses (evals/), so their tests and `task be:eval:*` import
+    # them by name. Path sources, not workspace members: the backend image's
+    # `uv sync --all-packages` would otherwise need evals/ in its build context.
+    "oib-retrieval",
+    "oib-compliance",
     "pytest-xdist>=3.8.0",
     # Splits the core suite across CI's backend shards (ci.yml `backend`).
     "pytest-split>=0.11.0",
@@ -359,3 +364,5 @@ tavily-web-search = { workspace = true }
 ris-adapter = { workspace = true }
 knowledge-layer = { workspace = true }
 aiq-api = { workspace = true }
+oib-retrieval = { path = "evals/oib-retrieval", editable = true }
+oib-compliance = { path = "evals/oib-compliance", editable = true }

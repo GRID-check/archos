@@ -15,16 +15,16 @@ per case, in one run.
 This is a NAT (NeMo Agent Toolkit) eval harness extension: a small installable
 plugin package registers a custom `nat.plugins.eval` evaluator, wired up via a
 config YAML passed to `nat eval`. The evaluator does **not** call an LLM judge — see
-`src/oib_compliance_eval/checklist.py` for why and how.
+`src/oib_compliance/checklist.py` for why and how.
 
 ## Layout
 
 | Path | Purpose |
 |------|---------|
-| `src/oib_compliance_eval/checklist.py` | Pure scoring logic (checklist grading + bounds check). No NAT/LLM imports — unit-tested offline in `tests/benchmarks/test_oib_compliance_checklist.py` at the repo root. |
-| `src/oib_compliance_eval/evaluator.py` | NAT `EvaluatorInfo` wrapper: pulls the response + trajectory out of each `EvalInputItem`, calls `checklist.py`. |
-| `src/oib_compliance_eval/register.py` | Plugin entry point (see `pyproject.toml`'s `[project.entry-points."nat.plugins"]`). |
-| `fixtures/oib_compliance_golden.json` | The 4 golden cases (query + expected-fact checklist + bounds). Deliberately named `fixtures/`, not `data/` — `frontends/benchmarks/*/data/` is gitignored (large downloaded datasets); these are small, checked-in, hand-authored fixtures. |
+| `src/oib_compliance/checklist.py` | Pure scoring logic (checklist grading + bounds check). No NAT/LLM imports — unit-tested offline in `evals/oib-compliance/tests/test_oib_compliance_checklist.py` at the repo root. |
+| `src/oib_compliance/evaluator.py` | NAT `EvaluatorInfo` wrapper: pulls the response + trajectory out of each `EvalInputItem`, calls `checklist.py`. |
+| `src/oib_compliance/register.py` | Plugin entry point (see `pyproject.toml`'s `[project.entry-points."nat.plugins"]`). |
+| `fixtures/oib_compliance_golden.json` | The 4 golden cases (query + expected-fact checklist + bounds). Deliberately named `fixtures/`, not `data/` — `evals/*/data/` is gitignored (large downloaded datasets); these are small, checked-in, hand-authored fixtures. |
 | `configs/config_oib_compliance_eval.yml` | The runner entry point — usage documented in its header comment. |
 
 ## Install
@@ -33,8 +33,8 @@ config YAML passed to `nat eval`. The evaluator does **not** call an LLM judge �
 # From repo root — this suite is a standalone plugin package. It is
 # intentionally NOT yet added to the root
 # pyproject.toml's [tool.uv.workspace] members list (that file is outside
-# frontends/benchmarks/); wire it in as a follow-up once calibrated.
-pip install -e frontends/benchmarks/oib_compliance
+# evals/); wire it in as a follow-up once calibrated.
+pip install -e evals/oib-compliance
 ```
 
 ## Run
@@ -46,11 +46,11 @@ lighter stand-in). Short version:
 
 ```bash
 dotenv -f deploy/.env run nat eval \
-  --config_file frontends/benchmarks/oib_compliance/configs/config_oib_compliance_eval.yml
+  --config_file evals/oib-compliance/configs/config_oib_compliance_eval.yml
 ```
 
 Results (including per-case checklist detail and bounds) go to
-`frontends/benchmarks/oib_compliance/results/` (gitignored, regeneratable).
+`evals/oib-compliance/results/` (gitignored, regeneratable).
 
 ## Calibration status
 

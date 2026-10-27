@@ -3,11 +3,11 @@ build-backend = "setuptools.build_meta"
 requires = ["setuptools>=83.0.0", "setuptools-scm>=8"]
 
 [tool.setuptools]
-packages = ["oib_compliance_eval"]
-package-dir = {"oib_compliance_eval" = "src/oib_compliance_eval"}
+packages = ["oib_compliance"]
+package-dir = {"oib_compliance" = "src/oib_compliance"}
 
 [project]
-name = "oib-compliance-eval"
+name = "oib-compliance"
 version = "1.0.0"
 description = "Golden OIB-compliance eval suite for NAT - deterministic checklist + latency/cost bounds evaluator"
 readme = "README.md"
@@ -19,4 +19,4 @@ dependencies = [
 ]
 
 [project.entry-points."nat.plugins"]
-oib_compliance_eval = "oib_compliance_eval.register"
+oib_compliance = "oib_compliance.register"

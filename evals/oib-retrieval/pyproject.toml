@@ -3,11 +3,11 @@ build-backend = "setuptools.build_meta"
 requires = ["setuptools>=83.0.0", "setuptools-scm>=8"]
 
 [tool.setuptools]
-packages = ["oib_retrieval_eval"]
-package-dir = {"oib_retrieval_eval" = "src/oib_retrieval_eval"}
+packages = ["oib_retrieval"]
+package-dir = {"oib_retrieval" = "src/oib_retrieval"}
 
 [project]
-name = "oib-retrieval-eval"
+name = "oib-retrieval"
 version = "1.0.0"
 description = "Retrieval evaluation harness for the OIB corpus - structural retrievability, lexical recall, and a gated dense arm"
 readme = "README.md"
@@ -27,7 +27,7 @@ dense = [
     "sentence-transformers>=5.0.0",
 ]
 
-# `oib_retrieval_eval.record_vector` only. It calls the production embedding API
+# `oib_retrieval.record_vector` only. It calls the production embedding API
 # and reads the corpus PDFs, so it needs a key and a network and never runs in
 # CI; the fixture it writes is what CI reads. An extra for the same reason
 # `dense` is one: the default install must stay small enough to be the CI path.
@@ -37,4 +37,4 @@ record = [
 ]
 
 [project.entry-points."nat.plugins"]
-oib_retrieval_eval = "oib_retrieval_eval.register"
+oib_retrieval = "oib_retrieval.register"

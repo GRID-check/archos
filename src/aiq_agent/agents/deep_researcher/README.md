@@ -474,7 +474,7 @@ cases, bounding wall-clock/LLM-calls/completion-tokens and grading
 answer-correctness via a checklist (no LLM judge). It exists specifically to
 make regressions in the 2026-07-16 perf fixes above (latency/cost) and in
 answer correctness measurable instead of vibes. See
-[frontends/benchmarks/oib_compliance/README.md](../../../../frontends/benchmarks/oib_compliance/README.md)
+[evals/oib-compliance/README.md](../../../../evals/oib-compliance/README.md)
 — calibration is still pending a live run (`bounds_calibration_pending: true`
 in the fixture).
 

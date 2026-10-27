@@ -1,34 +1,19 @@
 """Offline unit tests for the OIB retrieval harness's pure scoring modules.
 
-Exercises frontends/benchmarks/oib_retrieval/src/oib_retrieval_eval/{metrics,qrels,citations}.py
+Exercises evals/oib-retrieval/src/oib_retrieval/{metrics,qrels,citations}.py
 directly with hand-built rankings and the committed fixtures — no embedder, no model
 download, no PDF, no network, no key. Everything here runs in CI.
-
-Normally this suite's package is made importable via
-``pip install -e frontends/benchmarks/oib_retrieval`` (see that directory's README). Since
-it is not yet wired into the root pyproject's uv workspace members, we fall back to a
-direct ``sys.path`` insert, the same way ``test_oib_compliance_checklist.py`` does, so
-these tests also run against a fresh checkout that has not done the editable install.
 """
 
 import math
-import sys
 from pathlib import Path
 
 import pytest
+from oib_retrieval import metrics
+from oib_retrieval import qrels
+from oib_retrieval.citations import extract_units
 
-try:
-    from oib_retrieval_eval import metrics
-    from oib_retrieval_eval import qrels
-    from oib_retrieval_eval.citations import extract_units
-except ImportError:
-    _SRC = Path(__file__).resolve().parents[2] / "frontends" / "benchmarks" / "oib_retrieval" / "src"
-    sys.path.insert(0, str(_SRC))
-    from oib_retrieval_eval import metrics
-    from oib_retrieval_eval import qrels
-    from oib_retrieval_eval.citations import extract_units
-
-FIXTURES = Path(__file__).resolve().parents[2] / "frontends" / "benchmarks" / "oib_retrieval" / "fixtures"
+FIXTURES = Path(__file__).resolve().parents[1] / "fixtures"
 
 
 @pytest.fixture(scope="module")

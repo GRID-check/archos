@@ -47,16 +47,16 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from oib_retrieval_eval.corpus import ARM_CLAUSE
-from oib_retrieval_eval.corpus import ARM_PAGE
-from oib_retrieval_eval.corpus import CHUNK_OVERLAP
-from oib_retrieval_eval.corpus import CHUNK_SIZE
-from oib_retrieval_eval.corpus import CorpusMissingError
-from oib_retrieval_eval.corpus import clause_or_page_documents
-from oib_retrieval_eval.corpus import default_corpus_dir
-from oib_retrieval_eval.corpus import extract_pages
-from oib_retrieval_eval.corpus import page_documents
-from oib_retrieval_eval.qrels import ClauseIndex
+from oib_retrieval.corpus import ARM_CLAUSE
+from oib_retrieval.corpus import ARM_PAGE
+from oib_retrieval.corpus import CHUNK_OVERLAP
+from oib_retrieval.corpus import CHUNK_SIZE
+from oib_retrieval.corpus import CorpusMissingError
+from oib_retrieval.corpus import clause_or_page_documents
+from oib_retrieval.corpus import default_corpus_dir
+from oib_retrieval.corpus import extract_pages
+from oib_retrieval.corpus import page_documents
+from oib_retrieval.qrels import ClauseIndex
 
 #: A table-of-contents leader line ("3.1 Brandabschnitte ....... 5") points at a Punkt and
 #: is never the Punkt itself, so it must not be mistaken for its heading.

@@ -1,7 +1,7 @@
 """``task be:eval:qdrant-parity``: run the Qdrant retrieval gates on the OIB corpus.
 
-    PYTHONPATH=src:frontends/benchmarks/oib_retrieval/src:sources/knowledge_layer/src \\
-      .venv/bin/python -m oib_retrieval_eval.qdrant_parity.runner --out /tmp/qdrant-parity
+    PYTHONPATH=src:evals/oib-retrieval/src:sources/knowledge_layer/src \\
+      .venv/bin/python -m oib_retrieval.qdrant_parity.runner --out /tmp/qdrant-parity
 
 Needs: the corpus in ``data/oib`` (operator-provided), a Qdrant 1.19 server
 (``--qdrant-url``, default ``$AIQ_QDRANT_TEST_URL`` or ``http://localhost:6333``), and
@@ -36,18 +36,18 @@ from typing import Any
 
 import numpy as np
 
-from oib_retrieval_eval import corpus
-from oib_retrieval_eval import metrics
-from oib_retrieval_eval import qrels
-from oib_retrieval_eval.qdrant_parity import baseline
-from oib_retrieval_eval.qdrant_parity import channels
-from oib_retrieval_eval.qdrant_parity import dimension
-from oib_retrieval_eval.qdrant_parity import evaluation
-from oib_retrieval_eval.qdrant_parity import stores
-from oib_retrieval_eval.qdrant_parity import variants
-from oib_retrieval_eval.qdrant_parity.stores import IndexedChunk
-from oib_retrieval_eval.qdrant_parity.vectors import Embedder
-from oib_retrieval_eval.qdrant_parity.vectors import embed_text
+from oib_retrieval import corpus
+from oib_retrieval import metrics
+from oib_retrieval import qrels
+from oib_retrieval.qdrant_parity import baseline
+from oib_retrieval.qdrant_parity import channels
+from oib_retrieval.qdrant_parity import dimension
+from oib_retrieval.qdrant_parity import evaluation
+from oib_retrieval.qdrant_parity import stores
+from oib_retrieval.qdrant_parity import variants
+from oib_retrieval.qdrant_parity.stores import IndexedChunk
+from oib_retrieval.qdrant_parity.vectors import Embedder
+from oib_retrieval.qdrant_parity.vectors import embed_text
 
 logger = logging.getLogger(__name__)
 
@@ -624,7 +624,7 @@ def render_markdown(report: dict[str, Any]) -> str:
 
 
 def load_inputs(embedder_name: str, cache_dir: Path) -> Inputs:
-    from oib_retrieval_eval import overview
+    from oib_retrieval import overview
 
     fixtures = corpus.package_root() / "fixtures"
     golden = qrels.load_golden(fixtures / "oib_retrieval_golden.json")

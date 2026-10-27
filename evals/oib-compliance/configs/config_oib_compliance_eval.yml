@@ -7,7 +7,7 @@
 # reference config, configs/config_oib_openrouter.yml, minus the `front_end`
 # block — `nat eval` drives the workflow function directly, it doesn't need
 # the API server). The custom `oib_compliance_checklist_evaluator` (see
-# ../src/oib_compliance_eval/evaluator.py) then grades each case on two
+# ../src/oib_compliance/evaluator.py) then grades each case on two
 # independent axes with NO LLM judge call of its own:
 #   - correctness: a deterministic substring/keyword checklist of expected
 #     key facts (per-item detail in the output's reasoning.checklist)
@@ -20,7 +20,7 @@
 #
 # PREREQUISITES (this suite is NOT run in this sandbox — no live LLM access):
 #   1. Install this suite's evaluator plugin (editable, from repo root):
-#        pip install -e frontends/benchmarks/oib_compliance
+#        pip install -e evals/oib-compliance
 #   2. Set OPENROUTER_API_KEY (deploy/.env or exported) — the workflow below
 #      tracks the production boot floor. NOTE: production's effective model
 #      is an admin decision at runtime (Platform → Models); the literals below
@@ -35,7 +35,7 @@
 #
 # RUN:
 #   dotenv -f deploy/.env run nat eval \
-#     --config_file frontends/benchmarks/oib_compliance/configs/config_oib_compliance_eval.yml
+#     --config_file evals/oib-compliance/configs/config_oib_compliance_eval.yml
 #
 # Results (per-case checklist + bounds detail, aggregate pass counts) go to
 # ./results/ (gitignored, regeneratable — see eval.general.output_dir below).
@@ -233,11 +233,11 @@ workflow:
 eval:
   general:
     workflow_alias: "oib_compliance_golden_v1"
-    output_dir: frontends/benchmarks/oib_compliance/results
+    output_dir: evals/oib-compliance/results
     max_concurrency: 2
     dataset:
       _type: json
-      file_path: frontends/benchmarks/oib_compliance/fixtures/oib_compliance_golden.json
+      file_path: evals/oib-compliance/fixtures/oib_compliance_golden.json
       structure:
         question_key: question
         answer_key: expected_output

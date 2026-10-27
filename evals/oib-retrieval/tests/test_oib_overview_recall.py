@@ -28,29 +28,20 @@ module docstring records what it cost to learn.
 A lift on the deterministic side is therefore a claim, not a pass. It has to
 beat 0.933, and it has to answer six sibling questions differently.
 
-Import fallback as in the sibling benchmark tests: the suite is importable via
-``pip install -e frontends/benchmarks/oib_retrieval``, otherwise the src tree
-is prepended here so a fresh checkout runs without the editable install.
-``aiq_agent`` resolves via ``PYTHONPATH=src`` (set by ``Taskfile.yml`` — never
+``oib_retrieval`` is installed into the dev environment by ``uv sync`` (the
+root pyproject's dev group). ``aiq_agent`` resolves via ``PYTHONPATH=src`` (set by ``Taskfile.yml`` — never
 invoke pytest here without it, or the assertions below validate whatever the
 venv installed instead of this worktree).
 """
 
 import json
-import sys
 import time
 from pathlib import Path
 
 import pytest
+from oib_retrieval import overview
 
-try:
-    from oib_retrieval_eval import overview
-except ImportError:
-    _SRC = Path(__file__).resolve().parents[2] / "frontends" / "benchmarks" / "oib_retrieval" / "src"
-    sys.path.insert(0, str(_SRC))
-    from oib_retrieval_eval import overview
-
-FIXTURES = Path(__file__).resolve().parents[2] / "frontends" / "benchmarks" / "oib_retrieval" / "fixtures"
+FIXTURES = Path(__file__).resolve().parents[1] / "fixtures"
 GOLDEN_PATH = FIXTURES / "oib_golden_overview.json"
 CLAUSE_INDEX_PATH = FIXTURES / "clause_index.json"
 

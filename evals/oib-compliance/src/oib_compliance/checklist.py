@@ -6,7 +6,7 @@ Two independent axes are graded per case:
    substring/keyword (optionally regex) match against the agent's answer.
    This is intentionally *not* an LLM-judge: it is meant to be fast, free,
    deterministic, and fully unit-testable offline (see
-   ``tests/benchmarks/test_oib_compliance_checklist.py``), so it can run in
+   ``evals/oib-compliance/tests/test_oib_compliance_checklist.py``), so it can run in
    CI without live model access and still catch gross regressions (an answer
    that stops citing OIB-RL 2, stops naming the missing Nachweise, or starts
    hallucinating a nonexistent document).

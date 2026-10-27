@@ -5,30 +5,14 @@ documents are synthetic page dicts of the exact shape
 ``knowledge_layer.llamaindex.adapter._extract_text_from_pdf`` returns, and the dense arm is
 the deterministic hashed embedder. The real corpus run and the real model live in
 ``runner.py`` behind an explicit flag, deliberately outside CI.
-
-Import fallback as in ``test_oib_compliance_checklist.py`` — see the sibling
-``test_oib_retrieval_metrics.py`` docstring.
 """
 
-import sys
-from pathlib import Path
-
 import pytest
-
-try:
-    from oib_retrieval_eval import corpus
-    from oib_retrieval_eval import dense
-    from oib_retrieval_eval import lexical
-    from oib_retrieval_eval import structure
-    from oib_retrieval_eval.qrels import ClauseIndex
-except ImportError:
-    _SRC = Path(__file__).resolve().parents[2] / "frontends" / "benchmarks" / "oib_retrieval" / "src"
-    sys.path.insert(0, str(_SRC))
-    from oib_retrieval_eval import corpus
-    from oib_retrieval_eval import dense
-    from oib_retrieval_eval import lexical
-    from oib_retrieval_eval import structure
-    from oib_retrieval_eval.qrels import ClauseIndex
+from oib_retrieval import corpus
+from oib_retrieval import dense
+from oib_retrieval import lexical
+from oib_retrieval import structure
+from oib_retrieval.qrels import ClauseIndex
 
 pytest.importorskip("llama_index.core", reason="the chunking arms are llama-index Documents")
 
@@ -303,7 +287,7 @@ def test_asking_for_an_unknown_embedder_is_an_error_not_a_silent_fallback():
 
 
 def test_the_hybrid_path_runs_through_the_production_fusion_and_merge(synthetic_pages):
-    from oib_retrieval_eval import runner
+    from oib_retrieval import runner
 
     chunks = corpus._chunks_from_documents(
         corpus.clause_or_page_documents(synthetic_pages, FILE_NAME, 1024), FILE_NAME, corpus.ARM_CLAUSE
@@ -324,7 +308,7 @@ def test_the_hybrid_path_runs_through_the_production_fusion_and_merge(synthetic_
 
 
 def test_the_production_diversity_cap_limits_pages_taken_from_one_document(synthetic_pages):
-    from oib_retrieval_eval import runner
+    from oib_retrieval import runner
 
     chunks = corpus._chunks_from_documents(
         corpus.clause_or_page_documents(synthetic_pages, FILE_NAME, 1024), FILE_NAME, corpus.ARM_CLAUSE

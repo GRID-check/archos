@@ -29,7 +29,7 @@ from typing import Any
 
 import numpy as np
 
-from oib_retrieval_eval.qdrant_parity.vectors import truncate_renormalise
+from oib_retrieval.qdrant_parity.vectors import truncate_renormalise
 
 FULL = 3072
 REDUCED = 1024

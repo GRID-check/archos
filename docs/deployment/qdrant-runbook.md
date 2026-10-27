@@ -667,7 +667,7 @@ kubectl -n grid exec deploy/aiq-api -- python scripts/qdrant_chunk_length_stats.
 Then schedule it like any rebuild above (snapshot, stop ingestion, copy, check,
 switch). The copy log says `BM25 length … (recomputed)` or `(copied as stored)`.
 `--bm25-avg-len`, `--bm25-k` and `--bm25-b` set the values outright (a parity
-sweep's result, `frontends/benchmarks/oib_retrieval`); `--keep-bm25` copies the
+sweep's result, `evals/oib-retrieval`); `--keep-bm25` copies the
 lexical vectors untouched.
 
 ```bash

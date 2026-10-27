@@ -1,4 +1,4 @@
-# Backend tier (src/, sources/, frontends/aiq_api), evals, Langfuse/prompts.
+# Backend tier (src/, sources/, frontends/aiq_api, evals/), Langfuse/prompts.
 #
 # Included by the root Taskfile.yml with `flatten: true`: task names stay literal
 # (`be:test`). Shared vars (UI, WEB, PY, ...) and env live in the root file.
@@ -11,7 +11,7 @@ vars:
   TESTMON_ENV: TESTMON_DATAFILE=.testmondata-
   TESTMON_PATHS:
     map:
-      core: tests/
+      core: tests/ evals/
       api: frontends/aiq_api/tests/
       sources: sources --dist loadfile
 
@@ -35,7 +35,7 @@ tasks:
   be:test:
     desc: Backend core suite
     cmds:
-      - '{{.PY}} -X faulthandler -m pytest tests/ -q {{.XDIST}}'
+      - '{{.PY}} -X faulthandler -m pytest tests/ evals/ -q {{.XDIST}}'
 
   be:test:harness:
     desc: The tests of the repository's own machinery (CI workflows and plan scripts, release notes, PR hygiene)
@@ -137,8 +137,6 @@ tasks:
 
   be:eval:retrieval:
     desc: 'Retrieval structure check — the Punkt arm''s citable-unit share (model-free, offline; NEEDS the operator corpus in data/oib)'
-    env:
-      PYTHONPATH: src:frontends/benchmarks/oib_retrieval/src
     cmds:
       # ADR-0058 rule 7 made measurable: a chunker or German-analyzer change
       # that makes fewer Punkte survive as a citable unit fails here, on the
@@ -152,31 +150,25 @@ tasks:
       # tool: run it yourself before a chunker or German-analyzer change, and
       # quote the number in the PR. Without a corpus it exits 1 saying so.
       # What was lost and what would restore it: ADR-0058, "Update (2026-09-09)".
-      - '{{.PY}} -m oib_retrieval_eval.runner --structure-only --fail-below {{.RETRIEVAL_GATE_PCT | default "95"}}'
+      - '{{.PY}} -m oib_retrieval.runner --structure-only --fail-below {{.RETRIEVAL_GATE_PCT | default "95"}}'
 
   be:eval:overview:
     desc: Overview/exact/paraphrase golden recall report — the item-12 ratchet (offline, prints cohort table + per-query diff)
-    env:
-      PYTHONPATH: src:frontends/benchmarks/oib_retrieval/src
     cmds:
-      # Gating lives in tests/benchmarks/test_oib_overview_recall.py (CI runs it
+      # Gating lives in evals/oib-retrieval/tests/test_oib_overview_recall.py (CI runs it
       # via be:test:ci); this task is the human entry point to the same numbers.
-      - '{{.PY}} -m oib_retrieval_eval.overview'
+      - '{{.PY}} -m oib_retrieval.overview'
 
   be:eval:record-vector:
     desc: Re-record the vector channel for the overview golden set (needs the embeddings key; writes a fixture CI then reads offline)
-    env:
-      PYTHONPATH: src:frontends/benchmarks/oib_retrieval/src:sources/knowledge_layer/src
     cmds:
       # The recording is the only part of that harness that needs a model and a
       # key. It is committed so `be:eval:overview` and CI stay offline; re-run
       # this when AIQ_EMBED_MODEL, data/oib or the golden questions change.
-      - '{{.PY}} -m oib_retrieval_eval.record_vector'
+      - '{{.PY}} -m oib_retrieval.record_vector'
 
   be:eval:qdrant-parity:
     desc: 'Qdrant retrieval gates G1b/G2/G6 on the OIB corpus, beside the Chroma path''s recorded numbers (NEEDS data/oib, a Qdrant 1.19 server, OPENROUTER_API_KEY; writes results/qdrant_parity)'
-    env:
-      PYTHONPATH: src:frontends/benchmarks/oib_retrieval/src:sources/knowledge_layer/src
     cmds:
       # qdrant-retrieval-design.md §10; last run: docs/audit/qdrant-gates-2026-10.md.
       # Embeds the corpus once with the production model through make_embed_model
@@ -187,7 +179,7 @@ tasks:
       # keyless as a wiring check only; `-- --variants all` adds the ranking sweep;
       # `-- --qdrant-url URL` points at another server (default $AIQ_QDRANT_TEST_URL
       # or localhost:6333). Only uniquely named parity_* collections are touched.
-      - '{{.PY}} -m oib_retrieval_eval.qdrant_parity.runner {{.CLI_ARGS}}'
+      - '{{.PY}} -m oib_retrieval.qdrant_parity.runner {{.CLI_ARGS}}'
 
   be:eval:decisions:
     desc: 'Decision-model eval — does Jev pick the right OIB family, corpus and evidence need on the loop-eval questions (NEEDS OPENROUTER_API_KEY; no backend)'
@@ -297,13 +289,13 @@ tasks:
       # `-m live` selects what pyproject's addopts deselects everywhere else.
       # `-rs` prints the skip reason, so a run without the key says so instead
       # of going green.
-      - '{{.PY}} -X faulthandler -m pytest tests/benchmarks/test_turn_shapes_live.py -q -rs -m live'
+      - '{{.PY}} -X faulthandler -m pytest evals/turn-shapes/test_turn_shapes_live.py -q -rs -m live'
 
   be:test:ci:
     desc: Backend core suite with the coverage gate CI enforces
     cmds:
       - >-
-        {{.PY}} -X faulthandler -m pytest tests/ -q {{.XDIST}}
+        {{.PY}} -X faulthandler -m pytest tests/ evals/ -q {{.XDIST}}
         --cov=src/aiq_agent --cov-report=xml:coverage.xml --cov-report=term
         --cov-fail-under=65
 
@@ -321,7 +313,7 @@ tasks:
       # not in the file is counted at the average, so a stale file only
       # unbalances the shards, never drops a test.
       - >-
-        {{.PY}} -X faulthandler -m pytest tests/ -q {{.XDIST}}
+        {{.PY}} -X faulthandler -m pytest tests/ evals/ -q {{.XDIST}}
         --splits {{.TOTAL}} --group {{.INDEX}} --splitting-algorithm least_duration
         --durations-path tests/.test_durations
         --cov=src/aiq_agent --cov-report=
@@ -338,7 +330,7 @@ tasks:
     cmds:
       # Re-run when the shards' times in CI drift apart. Rounded to keep the
       # file's churn down; the split needs proportions, not precision.
-      - '{{.PY}} -X faulthandler -m pytest tests/ -q {{.XDIST}} --store-durations --durations-path tests/.test_durations'
+      - '{{.PY}} -X faulthandler -m pytest tests/ evals/ -q {{.XDIST}} --store-durations --durations-path tests/.test_durations'
       - >-
         {{.PY}} -c "import json, pathlib; p = pathlib.Path('tests/.test_durations');
         d = json.loads(p.read_text()); p.write_text(json.dumps({k: round(v, 3) for k, v in sorted(d.items())}, indent=0) + chr(10))"

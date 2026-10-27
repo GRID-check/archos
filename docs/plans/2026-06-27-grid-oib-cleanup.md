@@ -201,7 +201,7 @@ This repo is the Grid-branded AI-Q agent worktree. It contains a Next.js UI, a P
 | `frontends/ui/` | Next.js chat UI |
 | `frontends/debug/` | Debug console mounted at `/debug` |
 | `frontends/cli/` | `aiq-research` CLI |
-| `frontends/benchmarks/` | Evaluation harnesses |
+| `evals/` | Evaluation harnesses |
 | `frontends/aiq_api/` | Python API client library |
 | `configs/` | Workflow configs, including `config_grid_oib.yml` |
 | `deploy/` | Docker Compose assets |

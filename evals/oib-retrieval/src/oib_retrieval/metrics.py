@@ -9,7 +9,7 @@ per-arm reimplementation that could drift.
 THE UNIT IS ``(file_name, page)``, AND IT IS DEDUPLICATED BEFORE IT GETS HERE
 ----------------------------------------------------------------------------
 The product cites a document and a page, so that pair is what a judgement can be made
-about, and it is what :mod:`oib_retrieval_eval.qrels` expands a ``(richtlinie, punkt)``
+about, and it is what :mod:`oib_retrieval.qrels` expands a ``(richtlinie, punkt)``
 label into. Two chunks of the same page are one unit: the caller must collapse a ranked
 CHUNK list into a ranked list of DISTINCT units (first occurrence wins) before calling
 anything here. That collapse is not cosmetic — the Punkt-chunked arm emits ~3x as many

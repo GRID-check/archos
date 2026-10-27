@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "description": "Recorded file-level vector-channel ranking per golden question. Produced by oib_retrieval_eval.record_vector against the real data/oib corpus with the production embedding model. Re-record when the model, the corpus or the golden questions change; the harness refuses a fixture whose model does not match the configured one.",
+  "description": "Recorded file-level vector-channel ranking per golden question. Produced by oib_retrieval.record_vector against the real data/oib corpus with the production embedding model. Re-record when the model, the corpus or the golden questions change; the harness refuses a fixture whose model does not match the configured one.",
   "model": "openai/text-embedding-3-large",
   "base_url": "https://openrouter.ai/api/v1",
   "pages_per_doc": 4,

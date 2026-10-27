@@ -591,7 +591,7 @@ functions:
     # `AIQ_RERANKER_TIMEOUT_SECONDS` (3s) before that fallback, so worst case a
     # turn pays 3s + the judge's own 30s bound — never the other way round. Set
     # `reranker_provider: none` to hand reranking back to the judge. No offline
-    # eval covers reranking (`frontends/benchmarks/
+    # eval covers reranking (`evals/
     # oib_retrieval` stops upstream of it); the golden compliance eval and the
     # profiler's `tool` spans for `knowledge_search` are the before/after.
     reranker_provider: openrouter

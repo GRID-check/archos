@@ -190,7 +190,7 @@ def record(golden_path: Path, corpus_dir: Path, *, model: str, base_url: str) ->
         "schema_version": 1,
         "description": (
             "Recorded file-level vector-channel ranking per golden question. Produced by "
-            "oib_retrieval_eval.record_vector against the real data/oib corpus with the "
+            "oib_retrieval.record_vector against the real data/oib corpus with the "
             "production embedding model. Re-record when the model, the corpus or the "
             "golden questions change; the harness refuses a fixture whose model does not "
             "match the configured one."
@@ -214,7 +214,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--base-url", default=DEFAULT_BASE_URL)
     args = parser.parse_args(argv)
 
-    from oib_retrieval_eval.overview import default_golden_path
+    from oib_retrieval.overview import default_golden_path
 
     golden = Path(args.golden) if args.golden else default_golden_path()
     out = Path(args.out) if args.out else default_fixture_path()

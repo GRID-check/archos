@@ -2,10 +2,10 @@
 
 Run offline, without any API key:
 
-    PYTHONPATH=src:frontends/benchmarks/oib_retrieval/src \\
-      ./.venv/bin/python -m oib_retrieval_eval.runner --structure-only
-    PYTHONPATH=… ./.venv/bin/python -m oib_retrieval_eval.runner --embedder hashed
-    PYTHONPATH=… ./.venv/bin/python -m oib_retrieval_eval.runner --embedder e5
+    PYTHONPATH=src:evals/oib-retrieval/src \\
+      ./.venv/bin/python -m oib_retrieval.runner --structure-only
+    PYTHONPATH=… ./.venv/bin/python -m oib_retrieval.runner --embedder hashed
+    PYTHONPATH=… ./.venv/bin/python -m oib_retrieval.runner --embedder e5
 
 WHAT EACH SECTION IS WORTH
 --------------------------
@@ -41,11 +41,11 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 
-from oib_retrieval_eval import corpus
-from oib_retrieval_eval import lexical
-from oib_retrieval_eval import metrics
-from oib_retrieval_eval import qrels
-from oib_retrieval_eval import structure
+from oib_retrieval import corpus
+from oib_retrieval import lexical
+from oib_retrieval import metrics
+from oib_retrieval import qrels
+from oib_retrieval import structure
 
 #: How deep each channel retrieves before scoring. Well above the largest reported K so
 #: that removing production's excluded files afterwards still leaves a full ranking to
@@ -156,12 +156,12 @@ def _hybrid(
             type(
                 "_Result",
                 (),
-                {"success": True, "chunks": _to_schema_chunks(fused), "backend": "oib_retrieval_eval"},
+                {"success": True, "chunks": _to_schema_chunks(fused), "backend": "oib_retrieval"},
             )()
         ],
         query="",
         top_k=top_k,
-        backend_name="oib_retrieval_eval",
+        backend_name="oib_retrieval",
         max_per_document=max_per_document,
     )
     units: list[tuple[str, int]] = []
@@ -219,7 +219,7 @@ def run_arm(
     structurally zero and measures nothing) and filtered (which is what the agent sees, so
     it is what recall/nDCG/MRR are reported on).
     """
-    from oib_retrieval_eval import dense as dense_module
+    from oib_retrieval import dense as dense_module
 
     chunks = corpus.build_arm(arm, cache_dir=cache_dir)
     lexical_index = lexical.build_index(chunks)

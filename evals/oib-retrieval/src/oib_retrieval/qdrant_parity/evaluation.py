@@ -3,7 +3,7 @@
 THREE KINDS OF LABEL, THREE KINDS OF SCORE
 ------------------------------------------
 * **Punkt golden** (``oib_retrieval_golden.json``): graded ``(file, page)`` units.
-  Scored as recall@k, nDCG@k and MRR through :mod:`oib_retrieval_eval.metrics`,
+  Scored as recall@k, nDCG@k and MRR through :mod:`oib_retrieval.metrics`,
   the functions every other arm of this harness uses.
 * **Overview golden** (``oib_golden_overview.json``): expected FILES. Scored as
   file recall@k and MRR, the numbers ``be:eval:overview`` reports.
@@ -29,7 +29,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
-from oib_retrieval_eval import metrics
+from oib_retrieval import metrics
 
 HARD_CASE_KINDS = ("paragraph", "punkt_number", "allcaps_code", "compound", "compound_only", "umlaut_sz")
 

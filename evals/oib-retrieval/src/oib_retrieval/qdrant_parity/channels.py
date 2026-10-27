@@ -23,7 +23,7 @@ from collections.abc import Iterable
 from collections.abc import Sequence
 from typing import Any
 
-from oib_retrieval_eval.qdrant_parity.stores import SCOPE
+from oib_retrieval.qdrant_parity.stores import SCOPE
 
 #: The base collection's filter, as ``register._base_collection_filters`` builds it.
 NON_EVIDENCE_CHUNKING = "page"

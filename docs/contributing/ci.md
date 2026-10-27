@@ -300,7 +300,7 @@ not production. [`ci/pr_selection.py`](../../ci/pr_selection.py) decides, and
 runs the full suite on a pull request whenever testmon cannot see the change:
 a conftest, the lockfile or a `pyproject.toml`, how the backend jobs run,
 Python outside the tested packages (tests load `scripts/` and
-`frontends/benchmarks/` by path or in a subprocess), package data no test
+`evals/` by path or in a subprocess), package data no test
 names, or no recorded database. Known blind spot: a test that only exercises
 code in a subprocess is selected when its own file changes, not when the code
 it spawns does; the push run is what catches that.

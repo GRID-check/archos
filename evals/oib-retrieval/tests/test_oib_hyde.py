@@ -1,6 +1,6 @@
 """HyDE-as-channel experiment (backlog item 14): on-vs-off measurement.
 
-The instrument is the item-12 golden harness (``oib_retrieval_eval.overview``):
+The instrument is the item-12 golden harness (``oib_retrieval.overview``):
 recall@16 per cohort, HyDE on vs off. The on-mode fuses a drafter callback's
 passage as one extra RRF channel beside the original query (see
 ``overview.rank_files_with_hyde``); the draft's dense half has no offline
@@ -11,27 +11,32 @@ regression. This file pins the regression half (on-without-drafts is
 byte-identical to off) and the gating half (the draft callback fires exactly
 for the identifier-free queries, never for identifier-shaped ones). A lift
 needs RECORDED drafts from the real draft model — see the module docstring of
-``oib_retrieval_eval.overview`` for why hand-written drafts would be label
+``oib_retrieval.overview`` for why hand-written drafts would be label
 leakage. Until such drafts exist and move the overview number, the channel
 stays default-off: a measured negative is a complete result.
-
-Import fallback as in the sibling benchmark tests.
 """
 
-import sys
+import importlib.util
 from pathlib import Path
 
-try:
-    from oib_retrieval_eval import overview
-except ImportError:
-    _SRC = Path(__file__).resolve().parents[2] / "frontends" / "benchmarks" / "oib_retrieval" / "src"
-    sys.path.insert(0, str(_SRC))
-    from oib_retrieval_eval import overview
-
 import pytest
+from oib_retrieval import overview
 
-FIXTURES = Path(__file__).resolve().parents[2] / "frontends" / "benchmarks" / "oib_retrieval" / "fixtures"
+FIXTURES = Path(__file__).resolve().parents[1] / "fixtures"
 GOLDEN_PATH = FIXTURES / "oib_golden_overview.json"
+
+
+def _overview_recall_baseline() -> dict[str, dict[str, float]]:
+    """``BASELINE`` from ``test_oib_overview_recall.py``, loaded by file: under
+    ``--import-mode=importlib`` a test module has no dotted name to import."""
+    spec = importlib.util.spec_from_file_location(
+        "oib_overview_recall_baseline", Path(__file__).with_name("test_oib_overview_recall.py")
+    )
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module.BASELINE
+
 
 #: Queries with no exact identifier shape — the only ones the HyDE gate lets
 #: through. Derived from the gate (digits/§/quotes/filenames/exact terms),
@@ -138,7 +143,7 @@ def test_hyde_on_without_drafts_matches_the_pinned_baseline(no_draft_report) -> 
     # Read from the golden test's BASELINE rather than restated: these numbers
     # were duplicated here once, and a retrieval correction moved one copy and
     # not the other. One place to re-record.
-    from tests.benchmarks.test_oib_overview_recall import BASELINE
+    BASELINE = _overview_recall_baseline()
 
     # Table precision (3dp): the exact identity with off-mode is pinned by
     # test_hyde_on_without_drafts_is_the_baseline above.

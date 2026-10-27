@@ -7,7 +7,7 @@ and the report says so next to every dense figure.
 ``hashed`` — the CI path
 ------------------------
 A deterministic random projection of the German analyzer's lexemes into a fixed-dimension
-unit vector. It needs no network, no key and no model download, so ``tests/benchmarks/``
+unit vector. It needs no network, no key and no model download, so ``evals/oib-retrieval/tests/``
 can exercise the whole pipeline — index, search, fuse, score — and prove the metric code
 runs end to end. It measures WIRING. It has no semantics whatsoever: it cannot match a
 paraphrase, and its English numbers are noise by construction. A number from this embedder
@@ -40,7 +40,7 @@ from typing import Protocol
 
 import numpy as np
 
-from oib_retrieval_eval.corpus import Chunk
+from oib_retrieval.corpus import Chunk
 
 logger = logging.getLogger(__name__)
 

@@ -42,7 +42,7 @@ from collections import defaultdict
 from dataclasses import dataclass
 from dataclasses import field
 
-from oib_retrieval_eval.corpus import Chunk
+from oib_retrieval.corpus import Chunk
 
 #: Passed through to ``german_text.select_terms``. Left at the shipped defaults so the
 #: measured behaviour is the shipped behaviour; exposed so a tuning run can sweep it.

@@ -19,7 +19,7 @@ shape, and whether the expected corpus files are among what fired:
   documents as case-sensitive. The ceiling half is load-bearing: without it
   this mirror credits a term for retrieving a corpus it merely fails to
   filter (see EXPECTED BASELINE);
-* the sparse channel: ``oib_retrieval_eval.lexical`` — the shipped
+* the sparse channel: ``oib_retrieval.lexical`` — the shipped
   ``german_text`` analyzer, query terms, DF-ceiling selection and idf ranking
   over the fixture corpus (the SQLite-path semantics, in memory).
 
@@ -52,7 +52,7 @@ WHAT IT DOES NOT MEASURE (read before citing a number)
 
 THE VECTOR CHANNEL (``vector@k``) — RECORDED, REPORTED, NEVER FUSED
 -------------------------------------------------------------------
-``oib_retrieval_eval.record_vector`` embeds the REAL ``data/oib`` pages and the
+``oib_retrieval.record_vector`` embeds the REAL ``data/oib`` pages and the
 golden questions with the production embedding model and writes the file-level
 ranking per question to ``fixtures/vector_channel_recorded.json``. The harness
 reads that fixture, so CI stays offline and key-free while the number is a
@@ -71,7 +71,7 @@ Overview queries reach neither deterministic channel. The sparse survivors die
 at the DF ceiling, and the exact term casefolding extracts from "oib N" is the
 bare ``OIB``, which dies at the same ceiling on the exact side. The vector
 channel answers them anyway, and answers the literal-filename questions too,
-because the filename is in the embedded text. ``tests/benchmarks/
+because the filename is in the embedded text. ``tests/
 test_oib_overview_recall.py`` holds the pinned numbers.
 
 THE ARTEFACT THIS HARNESS PRODUCED, AND THE TWO GUARDS AGAINST A REPEAT
@@ -406,7 +406,7 @@ def _k() -> int:
     """The cutoff the headline recall is quoted at: production's top_k, read —
     never copied — from the production OIB config (fallback 16)."""
     try:
-        from oib_retrieval_eval.corpus import production_retrieval_settings
+        from oib_retrieval.corpus import production_retrieval_settings
 
         return int(production_retrieval_settings().top_k)
     except Exception:  # pragma: no cover - config absence must not break the harness
@@ -421,7 +421,7 @@ def fixture_docs() -> list[FixtureDoc]:
 def production_excluded() -> frozenset[str]:
     """Production's query-time exclusion list, read — never copied."""
     try:
-        from oib_retrieval_eval.corpus import production_excluded_file_names
+        from oib_retrieval.corpus import production_excluded_file_names
 
         return production_excluded_file_names()
     except Exception:  # pragma: no cover - config absence must not break the harness
@@ -501,8 +501,8 @@ def load_golden(path: str | Path, *, known_files: frozenset[str] | None = None) 
 
 def build_index(docs: list[FixtureDoc]):
     """In-memory sparse index over the fixture corpus (shipped analyzer)."""
-    from oib_retrieval_eval.corpus import Chunk
-    from oib_retrieval_eval.lexical import build_index
+    from oib_retrieval.corpus import Chunk
+    from oib_retrieval.lexical import build_index
 
     chunks = [
         Chunk(chunk_id=f"fixture:{doc.file_name}", text=doc.text, file_name=doc.file_name, page=1, arm="fixture")
@@ -520,7 +520,7 @@ def exact_terms_for(query: str) -> list[str]:
 
 def sparse_terms_for(index, query: str) -> list[str]:
     """The lexemes production's selector would actually search on."""
-    from oib_retrieval_eval.lexical import selected_terms
+    from oib_retrieval.lexical import selected_terms
 
     return selected_terms(index, query)
 
@@ -578,7 +578,7 @@ def vector_files_for(recorded: dict, entry_id: str) -> list[str]:
 
 def sparse_files_for(index, query: str, *, depth: int = RETRIEVE_DEPTH) -> list[str]:
     """Files the sparse channel ranks for ``query``, deduplicated, index order."""
-    from oib_retrieval_eval.lexical import search
+    from oib_retrieval.lexical import search
 
     ranked: list[str] = []
     for chunk in search(index, query, depth):
@@ -675,9 +675,9 @@ def run(
             is then byte-identical to the off-mode, which is the fail-open
             assertion. Drafts are never echoed into the report.
     """
-    from oib_retrieval_eval.metrics import mean
-    from oib_retrieval_eval.metrics import mrr
-    from oib_retrieval_eval.metrics import recall_at_k
+    from oib_retrieval.metrics import mean
+    from oib_retrieval.metrics import mrr
+    from oib_retrieval.metrics import recall_at_k
 
     cutoff = k if k is not None else _k()
     docs = fixture_docs() if docs is None else docs
