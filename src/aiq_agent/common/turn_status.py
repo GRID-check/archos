@@ -950,6 +950,8 @@ def _is_selector(name: str) -> bool:
 #: schema declares is a slot the model fills the way it fills every other slot,
 #: so the checkpoint stops depending on a habit the API discourages.
 CONCLUSION_ARG = "conclusion"
+#: What the evidence verbs say of it, the one field description they carry (ADR-0133 slice 6).
+CONCLUSION_DESCRIPTION = "Optional: one line on what you are looking for, shown to the person. No effect on the result."
 
 #: Where a round's checkpoint sentence came from. Stable tokens, because they
 #: are counted: ``argument`` is the structured slot, ``prose`` the assistant

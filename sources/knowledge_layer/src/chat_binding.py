@@ -17,6 +17,8 @@ from pydantic import create_model
 from pydantic import model_validator
 from pydantic.json_schema import SkipJsonSchema
 
+from aiq_agent.common.turn_status import CONCLUSION_DESCRIPTION
+
 from .browse import _LIST_FILES_DESCRIPTION
 from .browse import TREE_PARAGRAPH
 from .register import knowledge_search_description
@@ -34,7 +36,6 @@ CHAT_SCOPE = (
 #: Accepted, never offered, until the ``retired-call`` tag stops counting them: `path` names the same scope.
 HIDDEN = ("folder", "shelf", "file_name")
 DROPPED = {"knowledge_search": ("match", "stemmed", "context", "filters"), "list_files": ("view", "depth")}
-CONCLUSION = "Optional: one line on what you are looking for, shown to the person. No effect on the result."
 
 
 def _note_hidden(model: Any) -> Any:
@@ -51,7 +52,7 @@ def _schema(schema: Any, drop: Sequence[str], hidden: Sequence[str]) -> Any:
         if name in drop:
             continue
         annotation = SkipJsonSchema[info.annotation] if name in hidden else info.annotation  # ty: ignore
-        described = Field(default=info.default, description=CONCLUSION) if name == "conclusion" else info
+        described = Field(default=info.default, description=CONCLUSION_DESCRIPTION) if name == "conclusion" else info
         fields[name] = (annotation, described)
     validators = {"_note_hidden": model_validator(mode="after")(_note_hidden)} if hidden else {}
     return create_model(
