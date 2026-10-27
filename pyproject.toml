@@ -169,7 +169,7 @@ aiq_otel_logs = "aiq_agent.observability.otlp_logging_method"
 aiq_otel_redaction = "aiq_agent.observability.otel_header_redaction_exporter"
 
 [tool.pytest.ini_options]
-testpaths = ["tests", "sources/**/tests"]
+testpaths = ["tests", "evals", "sources/**/tests"]
 # `-m "not live"`: a test that calls a real model runs only when asked for by
 # name (`task be:eval:turn-shapes` passes `-m live`, and a later `-m` replaces
 # this one). A key that happens to be in the shell is not that request: before
@@ -187,9 +187,11 @@ addopts = "--import-mode=importlib -m 'not live'"
 # appended to sys.path, so it loses). `frontends/aiq_api/src` is the same guard
 # for `aiq_api`, which `tests/aiq_agent` imports too (the worker's header
 # contract, the job runner): without it a root-level `pytest` in a worktree ran
-# those tests against the MAIN checkout's `aiq_api`. `knowledge_layer` is a
-# finder-style editable and is NOT covered by this; see docs/contributing/gotchas.md.
-pythonpath = [".", "src", "frontends/aiq_api/src"]
+# those tests against the MAIN checkout's `aiq_api`. `evals/oib-retrieval/src`
+# is the same guard for the retrieval harness, a finder-style editable the evals
+# import by name. `knowledge_layer` is a finder-style editable too and is NOT
+# covered by this; see docs/contributing/gotchas.md.
+pythonpath = [".", "src", "frontends/aiq_api/src", "evals/oib-retrieval/src"]
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "session"
 markers = [
@@ -284,6 +286,73 @@ known-third-party = [
 ]
 order-by-type = true
 
+# The seams between the three Python packages, checked by import-linter in
+# `task be:lint` (`lint-imports`). It reads the import graph through grimp, lazy
+# imports inside functions included. An `ignore_imports` entry whose import is
+# gone fails the run (import-linter's default), so these lists only shrink.
+# docs/contributing/module-seams.md
+[tool.importlinter]
+root_packages = ["aiq_agent", "aiq_api", "knowledge_layer"]
+# Third-party packages become nodes too, so a contract can name one.
+include_external_packages = true
+
+[[tool.importlinter.contracts]]
+id = "qdrant-client-confined"
+name = "Only knowledge_layer.qdrant imports qdrant_client"
+type = "forbidden"
+source_modules = ["aiq_agent", "aiq_api", "knowledge_layer"]
+forbidden_modules = ["qdrant_client"]
+# Who names the client, not who reaches a module that does: everything reaches
+# knowledge_layer.qdrant, which is the point of confining the client there.
+allow_indirect_imports = true
+ignore_imports = ["knowledge_layer.qdrant.** -> qdrant_client"]
+
+[[tool.importlinter.contracts]]
+id = "agent-api-seam"
+name = "aiq_agent never imports aiq_api: the API tier hosts the agent, not the reverse"
+type = "forbidden"
+source_modules = ["aiq_agent"]
+forbidden_modules = ["aiq_api"]
+ignore_imports = [
+  # The WorkOS validator builds the API tier's JWTValidator and is registered as
+  # an `aiq_api.validators` entry point: API-tier code in the agent's package.
+  # Moving it into aiq_api deletes this line.
+  "aiq_agent.auth.workos_validator -> aiq_api.**",
+]
+
+[[tool.importlinter.contracts]]
+id = "agent-knowledge-port"
+name = "aiq_agent reaches knowledge_layer only through the retriever and ingestor port (ADR-0072)"
+type = "forbidden"
+source_modules = ["aiq_agent"]
+forbidden_modules = ["knowledge_layer"]
+# Direct imports only: aiq_agent reaching knowledge_layer through aiq_api is the
+# API tier's business, and the agent-api-seam contract already bounds that edge.
+allow_indirect_imports = true
+ignore_imports = [
+  # The port: `aiq_agent.knowledge.factory` builds the BaseRetriever and
+  # BaseIngestor the agent talks to, so it is the one module that should.
+  "aiq_agent.knowledge.factory -> knowledge_layer.**",
+  # Known bypasses of the port, from before this contract. Route each one
+  # through the port and delete its line; a new one fails the build.
+  "aiq_agent.agents.piloti.register -> knowledge_layer.chat_binding",
+  "aiq_agent.agents.piloti.register -> knowledge_layer.estate",
+  "aiq_agent.knowledge.collection_pages -> knowledge_layer.chunk_positions",
+  "aiq_agent.knowledge.collection_pages -> knowledge_layer.qdrant.payload",
+  "aiq_agent.knowledge.collection_pages -> knowledge_layer.qdrant.reads",
+  "aiq_agent.knowledge.folder_cards.inputs -> knowledge_layer.browse",
+  "aiq_agent.knowledge.folder_cards.worker -> knowledge_layer.browse",
+  "aiq_agent.knowledge.folder_cards.worker -> knowledge_layer.qdrant.folders",
+  "aiq_agent.knowledge.folder_cards.worker -> knowledge_layer.qdrant.store",
+  "aiq_agent.knowledge.scoping -> knowledge_layer.register",
+  "aiq_agent.oib_sync -> knowledge_layer.llamaindex.adapter",
+  "aiq_agent.tools.cross_project.hit_judge -> knowledge_layer.decisions",
+  "aiq_agent.tools.cross_project.register -> knowledge_layer.register",
+  "aiq_agent.tools.look.reading -> knowledge_layer.llamaindex.adapter",
+  "aiq_agent.tools.look.register -> knowledge_layer.view_image",
+  "aiq_agent.tools.look.resolve -> knowledge_layer.view_image",
+]
+
 [tool.yapf]
 based_on_style = "pep8"
 column_limit = 120
@@ -317,11 +386,16 @@ dev = [
     "ris-adapter",
     "knowledge-layer[all]",
     "aiq-api",
+    # The eval harness (evals/), so its tests and `task be:eval:*` import it
+    # by name. Path sources, not workspace members: the backend image's
+    # `uv sync --all-packages` would otherwise need evals/ in its build context.
+    "oib-retrieval",
     "pytest-xdist>=3.8.0",
     # Splits the core suite across CI's backend shards (ci.yml `backend`).
     "pytest-split>=0.11.0",
     # Runs only the tests a pull request's change reaches (ci.yml `backend-affected`).
     "pytest-testmon>=2.2.0",
+    "import-linter>=2.15",
 ]
 
 [tool.uv]
@@ -359,3 +433,4 @@ tavily-web-search = { workspace = true }
 ris-adapter = { workspace = true }
 knowledge-layer = { workspace = true }
 aiq-api = { workspace = true }
+oib-retrieval = { path = "evals/oib-retrieval", editable = true }

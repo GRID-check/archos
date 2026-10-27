@@ -15,7 +15,7 @@ from aiq_agent.common.cost_tracking import meter_openai_client
 from .env import env_float
 from .env import env_int
 
-# @environment_variable AIQ_EMBED_BATCH_SIZE
+# @environment_variable GRID_EMBED_BATCH_SIZE
 # @category Knowledge Layer
 # @type int
 # @default 64
@@ -24,10 +24,10 @@ from .env import env_int
 # too many round-trips on large documents — a 500-chunk PDF costs ~50
 # sequential HTTP calls. Every OpenAI-compatible embeddings endpoint accepts
 # far more per call (OpenAI 2048, NVIDIA NIM 259); 64 is conservative.
-EMBED_BATCH_SIZE = max(1, env_int("AIQ_EMBED_BATCH_SIZE", 64))
+EMBED_BATCH_SIZE = max(1, env_int("GRID_EMBED_BATCH_SIZE", 64))
 
 
-# @environment_variable AIQ_EMBED_TIMEOUT_SECONDS
+# @environment_variable GRID_EMBED_TIMEOUT_SECONDS
 # @category Knowledge Layer
 # @type float
 # @default 60
@@ -38,13 +38,13 @@ EMBED_BATCH_SIZE = max(1, env_int("AIQ_EMBED_BATCH_SIZE", 64))
 # open everywhere else, and this is what lets it fail open here. Two retries
 # stay for the transient 5xx a batch of EMBED_BATCH_SIZE texts occasionally
 # meets; 60s covers such a batch with room.
-EMBED_TIMEOUT_SECONDS = max(1.0, env_float("AIQ_EMBED_TIMEOUT_SECONDS", 60.0))
+EMBED_TIMEOUT_SECONDS = max(1.0, env_float("GRID_EMBED_TIMEOUT_SECONDS", 60.0))
 
 
 EMBED_MAX_RETRIES = 2
 
 
-# @environment_variable AIQ_QUERY_EMBED_TIMEOUT_SECONDS
+# @environment_variable GRID_QUERY_EMBED_TIMEOUT_SECONDS
 # @category Knowledge Layer
 # @type float
 # @default 3
@@ -56,7 +56,7 @@ EMBED_MAX_RETRIES = 2
 # single tail request held a whole turn for 11 s. At 3 s the client gives up on
 # that one and retries (EMBED_MAX_RETRIES), which a fresh request answers in
 # well under a second: the worst turn pays ~4 s instead of 11.
-QUERY_EMBED_TIMEOUT_SECONDS = max(0.5, env_float("AIQ_QUERY_EMBED_TIMEOUT_SECONDS", 3.0))
+QUERY_EMBED_TIMEOUT_SECONDS = max(0.5, env_float("GRID_QUERY_EMBED_TIMEOUT_SECONDS", 3.0))
 
 
 #: Collection-metadata keys recording which embedding produced a collection's vectors
@@ -94,7 +94,7 @@ def embed_fingerprint_metadata(model: str, base_url: str) -> dict[str, str]:
 def resolve_embed_api_key(base_url: str, model: str) -> str:
     """Resolve the embeddings API key through the shared credential resolver.
 
-    Chain: explicit ``AIQ_EMBED_API_KEY`` → provider inference from
+    Chain: explicit ``GRID_EMBED_API_KEY`` → provider inference from
     ``base_url`` (``OPENROUTER_API_KEY`` for the default OpenRouter host).
     Inference only selects the KEY for the configured embeddings endpoint; it
     NEVER changes ``base_url`` (embeddings need an embeddings-capable endpoint,
@@ -110,7 +110,7 @@ def resolve_embed_api_key(base_url: str, model: str) -> str:
     from aiq_agent.common.credential_resolution import resolve_llm_credential
 
     return resolve_llm_credential(
-        primary_env="AIQ_EMBED_API_KEY",
+        primary_env="GRID_EMBED_API_KEY",
         default_base_url=base_url,
         default_model=model,
         organization_id=None,

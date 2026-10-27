@@ -726,7 +726,7 @@ def test_embed_query_initializes_without_reaching_any_store(monkeypatch):
         def get_query_embedding(self, text: str) -> list[float]:
             return _vector(text)
 
-    monkeypatch.delenv("AIQ_QDRANT_URL", raising=False)
+    monkeypatch.delenv("GRID_QDRANT_URL", raising=False)
     monkeypatch.setattr(embedding_module, "make_embed_model", lambda **kwargs: Embedder())
     monkeypatch.setattr(store_module, "get_store", lambda *a, **k: pytest.fail("embedding reached the store"))
     instance = LlamaIndexRetriever({"embed_model": "test-model", "embed_base_url": "https://test"})

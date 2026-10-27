@@ -4,7 +4,7 @@
  */
 
 import { useChatStore } from '@/features/chat'
-import type { DraftMention } from '@/features/collaboration/lib/mention-text'
+import type { DraftMention } from '@/lib/mentions/mention-text'
 import { documentDisplayName } from '@/lib/documents/display-name'
 import type { FileItem } from '../components/project-file-workspace'
 import { documentAskQuestion, documentQuestionHref } from './document-question'

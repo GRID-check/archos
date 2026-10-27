@@ -16,6 +16,22 @@ from __future__ import annotations
 from unittest.mock import MagicMock
 
 import pytest
+from knowledge_layer.browse import _LIST_FILES_DESCRIPTION
+from knowledge_layer.browse import MAX_TOPIC_COUNTS
+from knowledge_layer.browse import MAX_TYPE_COUNTS
+from knowledge_layer.browse import ListFilesConfig
+from knowledge_layer.browse import file_row
+from knowledge_layer.browse import file_rows
+from knowledge_layer.browse import group_matches
+from knowledge_layer.browse import list_files
+from knowledge_layer.browse import no_match_message
+from knowledge_layer.browse import phrase_pattern
+from knowledge_layer.browse import pick_passages
+from knowledge_layer.browse import render_listing
+from knowledge_layer.browse import select_files
+from knowledge_layer.browse import split_alternatives
+from knowledge_layer.register import KnowledgeRetrievalConfig
+from knowledge_layer.register import knowledge_retrieval
 
 from aiq_agent.common.source_kinds import Shelf
 from aiq_agent.knowledge.document_classification import DOCUMENT_TYPE_TAGS
@@ -24,22 +40,6 @@ from aiq_agent.knowledge.schema import AvailableDocument
 from aiq_agent.knowledge.schema import Chunk
 from aiq_agent.knowledge.schema import ContentType
 from aiq_agent.knowledge.scoping import ScopedCollection
-from sources.knowledge_layer.src.browse import _LIST_FILES_DESCRIPTION
-from sources.knowledge_layer.src.browse import MAX_TOPIC_COUNTS
-from sources.knowledge_layer.src.browse import MAX_TYPE_COUNTS
-from sources.knowledge_layer.src.browse import ListFilesConfig
-from sources.knowledge_layer.src.browse import file_row
-from sources.knowledge_layer.src.browse import file_rows
-from sources.knowledge_layer.src.browse import group_matches
-from sources.knowledge_layer.src.browse import list_files
-from sources.knowledge_layer.src.browse import no_match_message
-from sources.knowledge_layer.src.browse import phrase_pattern
-from sources.knowledge_layer.src.browse import pick_passages
-from sources.knowledge_layer.src.browse import render_listing
-from sources.knowledge_layer.src.browse import select_files
-from sources.knowledge_layer.src.browse import split_alternatives
-from sources.knowledge_layer.src.register import KnowledgeRetrievalConfig
-from sources.knowledge_layer.src.register import knowledge_retrieval
 
 
 def _doc(name: str, folder: str | None = None, *, shelf: str = "project", **extra) -> AvailableDocument:
@@ -248,8 +248,8 @@ def search_with(monkeypatch, scope):
     """Install a retriever into ``knowledge_search`` and neutralise its boot-time reach."""
 
     def install(retriever):
-        monkeypatch.setattr("sources.knowledge_layer.src.register._get_retriever", lambda config: retriever)
-        monkeypatch.setattr("sources.knowledge_layer.src.register._initialize_ingestor", lambda config, llm: None)
+        monkeypatch.setattr("knowledge_layer.register._get_retriever", lambda config: retriever)
+        monkeypatch.setattr("knowledge_layer.register._initialize_ingestor", lambda config, llm: None)
         monkeypatch.setattr("aiq_agent.knowledge.factory.configure_summary_db", lambda url: None)
         monkeypatch.setattr("aiq_agent.knowledge.norm_store.configure_norm_store", lambda url: None)
         return retriever
@@ -938,8 +938,8 @@ class TestTheIngestsReadingInAListing:
         assert "Type:" not in line and "States:" not in line and "Refers to:" not in line
 
     def test_the_facts_and_references_are_bounded(self):
-        from sources.knowledge_layer.src.browse import MAX_ROW_FACTS
-        from sources.knowledge_layer.src.browse import MAX_ROW_REFERENCES
+        from knowledge_layer.browse import MAX_ROW_FACTS
+        from knowledge_layer.browse import MAX_ROW_REFERENCES
 
         row = self._row(
             dossier={"facts": [{"key": "units", "value": str(n)} for n in range(20)]},

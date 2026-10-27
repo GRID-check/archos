@@ -3,8 +3,11 @@
  * pod, once per slice of a claimed job (ADR-0079).
  *
  * The runner is plain Node with no build step, so it cannot import the
- * services a job calls; it claims from `bff_job_queue`, then POSTs here with
- * the job id and its own worker name. This reads the row (only a row that
+ * services a job calls from source; by default (`GRID_BFF_JOBS_MODE=http`) it
+ * claims from `bff_job_queue`, then POSTs here with the job id and its own
+ * worker name. With `inprocess` it imports the same `runJobSlice` from the
+ * bundle built at image build (`lib/jobs-queue/slice-entry.ts`) and this route
+ * is not called. This reads the row (only a row that
  * worker holds), runs ONE bounded step of the work as the person who asked, and
  * answers `{ done, payload }`: the runner saves `payload` as the job's progress
  * and asks again until `done`. 409 means the claim is no longer that worker's.

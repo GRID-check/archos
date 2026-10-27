@@ -9,7 +9,7 @@ import { getOrganizationDisplayName, switchableOrganizations } from '@/lib/organ
 import type { SwitchableOrganization } from '@/lib/organizations/switchable'
 import { isAuthRequired } from '@/lib/auth/auth-required'
 import { resolveTourEligibility } from '@/lib/onboarding/tour-eligibility'
-import { NO_TOURS, type TourEligibility } from '@/features/onboarding/lib/product-tour'
+import { NO_TOURS, type TourEligibility } from '@/lib/onboarding/product-tour'
 import type { ProjectSwitcherProject } from '@/components/shell/project-switcher'
 import type { SidebarUser } from '@/components/shell/sidebar-user-menu'
 

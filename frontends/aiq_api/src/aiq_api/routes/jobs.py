@@ -19,6 +19,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import os
 import time
 from typing import TYPE_CHECKING
 from typing import Annotated
@@ -51,6 +52,7 @@ if TYPE_CHECKING:
     from nat.builder.workflow_builder import WorkflowBuilder
     from nat.front_ends.fastapi.fastapi_front_end_plugin_worker import FastApiFrontEndPluginWorker
 
+from ..jobs.ingest_dispatch import enqueue_only
 from ..jobs.outcome_notify import notify_job_outcome_from_access
 from ..jobs.runner import DOCUMENT_ADDED_EVENT_TYPE
 from ..jobs.runner import WRITE_NOW_EVENT_TYPE
@@ -534,8 +536,6 @@ async def register_job_routes(app: FastAPI, builder: WorkflowBuilder, worker: Fa
     Uses NAT's JobStore for job metadata. Research runs on the database-claimed
     queue (ADR-0021). The /v1/data_sources endpoint is always registered.
     """
-    import os
-
     from .builder_state import set_active_builder
 
     # Publish the builder so the internal skills submit route (registered
@@ -1329,7 +1329,7 @@ async def _reap_stale_jobs_once(job_store, db_url: str) -> list[str]:
 
     # Only one replica runs the cycle (advisory lock), so N web replicas don't
     # redundantly re-detect and re-mark the same ghosts. A session lock, so it is
-    # taken on the direct AIQ_LOCK_DB_URL connection, never on db_url (ADR-0083).
+    # taken on the direct GRID_LOCK_DB_URL connection, never on db_url (ADR-0083).
     async with leader_lock_async(_PG_REAPER_LOCK_ID) as is_leader:
         if not is_leader:
             return []
@@ -1452,14 +1452,12 @@ def _add_housekeeping_routes(app: FastAPI, job_store, db_url: str, expiry_second
 
     @app.post("/v1/maintenance/housekeeping/chat-checkpoints", tags=["maintenance"], include_in_schema=False)
     async def housekeeping_chat_checkpoints(request: Request) -> dict:
-        import os
-
         from ..jobs.checkpoint_retention import reap_idle_threads
 
         _require_internal_token(request)
-        dsn = os.environ.get("AIQ_CHECKPOINT_DB")
+        dsn = os.environ.get("GRID_CHECKPOINT_DB")
         if not dsn:
-            return {"threads_reaped": 0, "skipped": "AIQ_CHECKPOINT_DB is not set"}
+            return {"threads_reaped": 0, "skipped": "GRID_CHECKPOINT_DB is not set"}
         retention_seconds = _checkpoint_retention_seconds()
         return {"threads_reaped": await asyncio.to_thread(reap_idle_threads, dsn, retention_seconds)}
 
@@ -1468,7 +1466,7 @@ def _add_housekeeping_routes(app: FastAPI, job_store, db_url: str, expiry_second
         from aiq_agent import oib_sync
 
         _require_internal_token(request)
-        result = await asyncio.to_thread(oib_sync.sync)
+        result = await asyncio.to_thread(oib_sync.sync, enqueue=enqueue_only)
         return {
             "enqueued": result.enqueued,
             "ingested_recorded": result.ingested_recorded,
@@ -1838,12 +1836,12 @@ async def _sse_generator_postgres(
     # LISTEN/NOTIFY needs a persistent session, which the transaction pooler in
     # front of `db_url` does not give (ADR-0083): the LISTEN lands on a server
     # connection the client does not keep, and no notification ever arrives. So
-    # there is no default to `db_url`; AIQ_LISTEN_DB_URL is the direct DSN, and
+    # there is no default to `db_url`; GRID_LISTEN_DB_URL is the direct DSN, and
     # `require_direct_dsns` (called when the web process starts) already refused
     # to boot without it, so this is an assertion and not a runtime path.
     import os
 
-    listen_db_url = os.environ["AIQ_LISTEN_DB_URL"]
+    listen_db_url = os.environ["GRID_LISTEN_DB_URL"]
     # Strip +psycopg2 before +psycopg (it's a prefix of the former) — this
     # codebase standardizes on postgresql+psycopg:// URLs, which asyncpg
     # rejects; a leftover driver suffix silently degrades every SSE stream

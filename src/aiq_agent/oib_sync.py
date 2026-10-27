@@ -27,6 +27,10 @@ Two callers drive it: an admin upload stores the file and queues its job at once
 (:func:`store_and_request`), and :func:`sync` (the housekeeping route, and the
 admin's "run it now") records what finished, then queues every file that still
 needs a job.
+
+The queue write itself is the API tier's (``aiq_api.jobs.ingest_dispatch.enqueue_only``:
+it encrypts the payload, which carries URLs). The API routes that drive this module hand it
+in as ``enqueue``, so the dependency runs from the API tier to this one and never back.
 """
 
 from __future__ import annotations
@@ -34,9 +38,11 @@ from __future__ import annotations
 import hashlib
 import logging
 import os
+from collections.abc import Callable
 from dataclasses import dataclass
 from dataclasses import replace
 from enum import StrEnum
+from typing import Any
 
 from aiq_agent import corpus_store
 from aiq_agent.knowledge import ingest_queue
@@ -46,9 +52,12 @@ from aiq_agent.knowledge.factory import unregister_summary
 from aiq_agent.knowledge.leader_lock import keyed_lock
 from aiq_agent.knowledge.schema import FileStatus
 from aiq_agent.knowledge.schema import JobState
-from aiq_agent.turn import api_seam
 
 logger = logging.getLogger(__name__)
+
+#: Stores a prepared ingest job in the durable queue, never running it; whether this call stored it
+#: (an id the queue already holds stores nothing). Raises when the queue cannot take the job.
+EnqueueIngestJob = Callable[[Any], bool]
 
 COLLECTION_NAME = os.environ.get("OIB_COLLECTION_NAME") or os.environ.get("COLLECTION_NAME") or "oib_knowledge"
 
@@ -176,7 +185,7 @@ def _collection_is_empty(ingestor) -> bool:
     """True when the OIB collection is missing or holds no vectors.
 
     Detects table/vector-store drift. The table says what was ingested, but the
-    vectors live in Qdrant, which can be reset or repointed (``AIQ_QDRANT_URL``
+    vectors live in Qdrant, which can be reset or repointed (``GRID_QDRANT_URL``
     at a fresh cluster) while the table still lists the whole corpus as ingested;
     the change detector would then find nothing to do and leave the collection
     empty forever.
@@ -272,7 +281,7 @@ def _drop_job(row: corpus_store.FileRow) -> None:
     ingest_queue.mark_done(job_id)
 
 
-def _request_locked(name: str, doc_class: str | None) -> bool:
+def _request_locked(name: str, doc_class: str | None, enqueue: EnqueueIngestJob) -> bool:
     row = corpus_store.get_file(name)
     if row is None:
         raise LookupError(f"{name} is no longer in the base corpus")
@@ -293,7 +302,7 @@ def _request_locked(name: str, doc_class: str | None) -> bool:
         job_id=job_id_for(row),
     )
     try:
-        queued = api_seam.enqueue_ingest_job(prepared)
+        queued = enqueue(prepared)
     except Exception:
         # Not queued, so it must not read as a pending job nobody holds.
         ingest_status_store.delete(prepared.job_id)
@@ -303,7 +312,7 @@ def _request_locked(name: str, doc_class: str | None) -> bool:
     return queued
 
 
-def request_ingestion(name: str, doc_class: str | None = None) -> bool:
+def request_ingestion(name: str, doc_class: str | None = None, *, enqueue: EnqueueIngestJob) -> bool:
     """Queue the ingest job for ``name`` unless the index is current or a job for these bytes exists.
 
     Whether this call queued one. Raises ``LookupError`` when the corpus does not list the file,
@@ -312,10 +321,10 @@ def request_ingestion(name: str, doc_class: str | None = None) -> bool:
     guesses it from the file name.
     """
     with _file_lock(name):
-        return _request_locked(name, doc_class)
+        return _request_locked(name, doc_class, enqueue)
 
 
-def store_and_request(name: str, data: bytes, doc_class: str | None = None) -> bool:
+def store_and_request(name: str, data: bytes, doc_class: str | None = None, *, enqueue: EnqueueIngestJob) -> bool:
     """An admin upload: store the file, then queue its job, with no cycle able to come between.
 
     Raises ``CorpusStoreError`` if the object store refuses the file (nothing is listed then), and
@@ -324,7 +333,7 @@ def store_and_request(name: str, data: bytes, doc_class: str | None = None) -> b
     """
     with _file_lock(name):
         corpus_store.put(name, data)
-        return _request_locked(name, doc_class)
+        return _request_locked(name, doc_class, enqueue)
 
 
 # ----------------------------------------------------------------------------
@@ -387,7 +396,7 @@ def mark_for_reingest(name: str) -> bool:
 #: Set while an operator moves an old vector store into a new, still empty one
 #: (the Chroma import, docs/deployment/qdrant-runbook.md). The empty corpus
 #: collection is then expected, not a reset to re-embed the corpus for.
-IMPORT_PENDING_ENV = "AIQ_VECTOR_IMPORT_PENDING"
+IMPORT_PENDING_ENV = "GRID_VECTOR_IMPORT_PENDING"
 
 
 def _forget_everything_if_the_index_was_reset(rows: dict[str, corpus_store.FileRow]) -> dict[str, corpus_store.FileRow]:
@@ -414,7 +423,7 @@ def _forget_everything_if_the_index_was_reset(rows: dict[str, corpus_store.FileR
     return corpus_store.list_files()
 
 
-def sync() -> SyncResult:
+def sync(*, enqueue: EnqueueIngestJob) -> SyncResult:
     """One sync cycle: record the jobs that finished, then queue a job for every file that needs one.
 
     Cheap: it reads the table and the status store and writes queue rows, and runs no ingestion.
@@ -429,7 +438,7 @@ def sync() -> SyncResult:
         enqueued = 0
         for name in sorted(n for n, state in settled.progress.items() if state == JobProgress.NONE):
             try:
-                enqueued += request_ingestion(name)
+                enqueued += request_ingestion(name, enqueue=enqueue)
             except LookupError:
                 logger.info("%s left the corpus before its job was queued", name)
         result = SyncResult(

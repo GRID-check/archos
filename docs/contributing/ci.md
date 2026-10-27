@@ -286,6 +286,14 @@ What it was made of, and what was done about each:
   16 MB); the steps that read a file at the base fetch it on demand, with the
   job token handed to git through that step's env (`ci/git_auth.sh`) rather
   than written to `.git/config`.
+- **Repo checks and SAST cloned the whole history**, ~75 s and ~72 s of every
+  PR's critical path (`docs/audit/blast-radius-2026-10.md` §7). A pull
+  request's Repo checks now start at depth 1 and `ci/fetch_merge_base.sh`
+  deepens them only down to the merge base, which the release-note rule and
+  gitleaks read; reno's own lint, which walks the whole history, runs only
+  when the notes, reno's config or its pin change (`release:lint:house` is the
+  rest). A push keeps the full clone. `semgrep ci` finds its merge base itself,
+  from the GitHub API (`GH_TOKEN`) or by deepening the shallow clone.
 
 **A pull request runs only the Python tests its change reaches.** Sharding
 made the full suite ~5 minutes; a typical change reaches a few dozen tests.
@@ -300,7 +308,7 @@ not production. [`ci/pr_selection.py`](../../ci/pr_selection.py) decides, and
 runs the full suite on a pull request whenever testmon cannot see the change:
 a conftest, a Python fixture, the lockfile or a `pyproject.toml`, how the
 backend jobs run, Python outside the tested packages (tests load `scripts/` and
-`frontends/benchmarks/` by path or in a subprocess), package data or a fixture
+`deploy/` by path or in a subprocess), package data or a fixture
 no test names, or no recorded database. A data fixture under `tests/fixtures/`
 adds the tests that name it or one of its directories, as tests read whole
 fixture directories. A non-Python file that a helper or conftest reads (a

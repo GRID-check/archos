@@ -63,36 +63,36 @@ class LlamaIndexRetriever(BaseRetriever):
     (``knowledge_layer.qdrant``, ADR-0115).
 
     Configuration options:
-        embed_model: Embedding model id (default from AIQ_EMBED_MODEL)
+        embed_model: Embedding model id (default from GRID_EMBED_MODEL)
         top_k: Default number of results (default: 10)
-        hybrid_search: Enable lexical+vector hybrid retrieval (default from AIQ_HYBRID_RETRIEVAL)
+        hybrid_search: Enable lexical+vector hybrid retrieval (default from GRID_HYBRID_RETRIEVAL)
 
     Environment variables:
-        AIQ_QDRANT_URL: The Qdrant cluster every chunk is written to
-        AIQ_EMBED_MODEL: Default embedding model name
-        AIQ_EMBED_BASE_URL: Default embedding model base URL
-        AIQ_RETRIEVER_TOP_K: Default top_k value
-        AIQ_HYBRID_RETRIEVAL: Enable hybrid lexical+vector retrieval (default: true)
+        GRID_QDRANT_URL: The Qdrant cluster every chunk is written to
+        GRID_EMBED_MODEL: Default embedding model name
+        GRID_EMBED_BASE_URL: Default embedding model base URL
+        GRID_RETRIEVER_TOP_K: Default top_k value
+        GRID_HYBRID_RETRIEVAL: Enable hybrid lexical+vector retrieval (default: true)
     """
 
     # Default configuration from environment variables
-    DEFAULT_EMBED_MODEL = os.environ.get("AIQ_EMBED_MODEL", "openai/text-embedding-3-large")
-    DEFAULT_EMBED_BASE_URL = os.environ.get("AIQ_EMBED_BASE_URL", "https://openrouter.ai/api/v1")
-    # @environment_variable AIQ_RETRIEVER_TOP_K
+    DEFAULT_EMBED_MODEL = os.environ.get("GRID_EMBED_MODEL", "openai/text-embedding-3-large")
+    DEFAULT_EMBED_BASE_URL = os.environ.get("GRID_EMBED_BASE_URL", "https://openrouter.ai/api/v1")
+    # @environment_variable GRID_RETRIEVER_TOP_K
     # @category Knowledge Layer
     # @type int
     # @default 10
     # @required false
     # Default number of results returned by the LlamaIndex retriever.
-    DEFAULT_TOP_K = env_int("AIQ_RETRIEVER_TOP_K", 10)
-    # @environment_variable AIQ_HYBRID_RETRIEVAL
+    DEFAULT_TOP_K = env_int("GRID_RETRIEVER_TOP_K", 10)
+    # @environment_variable GRID_HYBRID_RETRIEVAL
     # @category Knowledge Layer
     # @type bool
     # @default true
     # @required false
     # Enable the lexical channels beside the dense one: German BM25 and the
     # exact-term phrase channels, fused in Qdrant by reciprocal rank fusion.
-    DEFAULT_HYBRID_SEARCH = os.environ.get("AIQ_HYBRID_RETRIEVAL", "true").strip().lower() not in {
+    DEFAULT_HYBRID_SEARCH = os.environ.get("GRID_HYBRID_RETRIEVAL", "true").strip().lower() not in {
         "0",
         "false",
         "no",
@@ -135,7 +135,7 @@ class LlamaIndexRetriever(BaseRetriever):
 
         logger.info("LlamaIndexRetriever initialized")
 
-    # @environment_variable AIQ_STATIC_RESULT_CACHE_COLLECTIONS
+    # @environment_variable GRID_STATIC_RESULT_CACHE_COLLECTIONS
     # @category Knowledge Layer
     # @type str
     # @default oib_knowledge
@@ -144,16 +144,16 @@ class LlamaIndexRetriever(BaseRetriever):
     # (static corpora only — never project/session collections).
     STATIC_RESULT_CACHE_COLLECTIONS = frozenset(
         name.strip()
-        for name in os.environ.get("AIQ_STATIC_RESULT_CACHE_COLLECTIONS", "oib_knowledge").split(",")
+        for name in os.environ.get("GRID_STATIC_RESULT_CACHE_COLLECTIONS", "oib_knowledge").split(",")
         if name.strip()
     )
-    # @environment_variable AIQ_STATIC_RESULT_CACHE_TTL_SECONDS
+    # @environment_variable GRID_STATIC_RESULT_CACHE_TTL_SECONDS
     # @category Knowledge Layer
     # @type int
     # @default 3600
     # @required false
     # TTL for cached static-collection retrieval results.
-    STATIC_RESULT_CACHE_TTL_SECONDS = int(os.environ.get("AIQ_STATIC_RESULT_CACHE_TTL_SECONDS", "3600"))
+    STATIC_RESULT_CACHE_TTL_SECONDS = int(os.environ.get("GRID_STATIC_RESULT_CACHE_TTL_SECONDS", "3600"))
     RESULT_CACHE_MAX = 256
 
     def _ensure_initialized(self):
@@ -175,8 +175,8 @@ class LlamaIndexRetriever(BaseRetriever):
             embed_api_key = embedding.resolve_embed_api_key(self.embed_base_url, self.embed_model_name)
             if not embed_api_key:
                 logger.error(
-                    "No embeddings API key resolved (AIQ_EMBED_API_KEY / "
-                    "the provider key for AIQ_EMBED_BASE_URL) - retrieval/ingestion will fail."
+                    "No embeddings API key resolved (GRID_EMBED_API_KEY / "
+                    "the provider key for GRID_EMBED_BASE_URL) - retrieval/ingestion will fail."
                 )
 
             self._embed_model = embedding.make_embed_model(

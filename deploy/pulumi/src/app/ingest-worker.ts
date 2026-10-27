@@ -35,9 +35,9 @@ export const QUEUE_DEPTH_QUERY = queueDepthQuery(QUEUE_TABLE);
  * empty queue shrinks it back to the floor (zero, if the floor is zero).
  *
  * The ceiling that matters is not this one: replicas × concurrency ×
- * `AIQ_VLM_BATCH_WORKERS` VLM calls are in flight at the peak, all on the shared
+ * `GRID_VLM_BATCH_WORKERS` VLM calls are in flight at the peak, all on the shared
  * provider key. `assertVlmPeakFitsCeiling` fails the deploy when that product is
- * more than twice `AIQ_VLM_FLEET_CONCURRENCY` (itself held to the limiter ceilings,
+ * more than twice `GRID_VLM_FLEET_CONCURRENCY` (itself held to the limiter ceilings,
  * the vision model's own included), so `ingestWorkerMaxReplicas` cannot be raised
  * past what the provider budget can feed.
  *

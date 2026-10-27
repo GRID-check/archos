@@ -91,8 +91,8 @@ replicas cannot race, and never throws into boot — every failure path leaves t
 table empty, which is the pre-existing working state.
 
 `ingest_vlm` is normally skipped by rule 1: the ingestion VLM has its own
-credential plane (`AIQ_VLM_BASE_URL`) whose shipped default routes to NVIDIA, so
-seeding it would make an operator's `AIQ_VLM_MODEL` dead config and fail every
+credential plane (`GRID_VLM_BASE_URL`) whose shipped default routes to NVIDIA, so
+seeding it would make an operator's `GRID_VLM_MODEL` dead config and fail every
 caption call against that endpoint. It is bootstrapped only where the VLM itself
 runs on the platform provider.
 
@@ -163,7 +163,7 @@ NOT the level `none`, which actively disables reasoning. Both sides encode the
 vocabulary — the BFF validates on write, `aiq_agent/common/reasoning_settings.py`
 on read — so a hand-edited row can never push a provider-native tier name (e.g.
 DeepSeek's `max`, which OpenRouter rejects) into a request. Parity is pinned by
-`tests/fixtures/reasoning_efforts_catalog.json` from both languages.
+`frontends/ui/tests/fixtures/reasoning_efforts_catalog.json` from both languages.
 
 Applied at the same two seams as the model. Every user-facing agent (chat,
 the clarifier agent, deep research) resolves its LLMs
@@ -254,10 +254,10 @@ section). Two things differ from a chat group:
   the picker and the save-path `validateModelForGroup` to models whose
   `architecture.input_modalities` includes `image` — a text-only model would
   produce empty captions. Self-skips on BYOK catalogs with no modality metadata.
-- **Workflow default.** The VLM is env-configured (`AIQ_VLM_MODEL`), not a
+- **Workflow default.** The VLM is env-configured (`GRID_VLM_MODEL`), not a
   `llms:` entry, so `/v1/config/llm-defaults` reports its resolved default under
   a synthetic `vlm` key and the group's `configLlmRefs: ['vlm']` maps to it.
-- **Separate credential plane.** `AIQ_VLM_BASE_URL` is independent of the `llms:`
+- **Separate credential plane.** `GRID_VLM_BASE_URL` is independent of the `llms:`
   block and the shipped default routes to NVIDIA while the chat models route to
   OpenRouter. An override here replaces the model id only, so a model id from a
   different provider's catalog fails every caption call — which is why the

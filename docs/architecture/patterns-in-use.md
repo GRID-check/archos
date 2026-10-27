@@ -21,6 +21,18 @@ Layers and rules:
 [`../design/grid-design-language.md`](../design/grid-design-language.md#component-layers-atomic-design).
 **Enforced by:** review only.
 
+## Module seams
+
+The UI's layers point one way, `app` → `features` → `components` → `lib`, and a
+feature reaches another only through its index and never in a circle. In
+Python, `aiq_agent` never imports `aiq_api` (the API tier owns the request
+identity's writes and hands its capabilities in) and reaches `knowledge_layer`
+only through the port in `knowledge/factory.py` (ADR-0072).
+The rules and the baselines that hold today's exceptions:
+[`../contributing/module-seams.md`](../contributing/module-seams.md).
+**Enforced by:** dependency-cruiser in `task fe:lint`, import-linter in
+`task be:lint`. Both baselines only shrink.
+
 ## Guard scripts
 
 A bespoke check for a repo-specific failure that no off-the-shelf linter knows

@@ -18,9 +18,13 @@ without standing up a NAT workflow. That is the point of the package: the
 harness used to be one closure, and a field could be written, declared by the
 frontend and reach nobody without a single test noticing.
 
-**The dependency runs one way.** `aiq_api` hosts this workflow; `api_seam.py`
-is the only file under `aiq_agent` that may import back into it, so undoing the
-inversion is a change to one file. `turn/` also imports no agent state at
+**The dependency runs one way.** `aiq_api` hosts this workflow and imports it;
+nothing under `aiq_agent` imports `aiq_api`. What the agent needs from a request
+lives in the agent tier and the API tier writes it there: the caller identity
+(`auth/request_identity.py`, bound by the middleware), the auth error
+(`auth/errors.py`, subclassed by the token errors). An API-tier capability the
+agent drives is handed in by its API-tier caller (`oib_sync`'s `enqueue`).
+`turn/` also imports no agent state at
 runtime — `response.py` and `dispatch.py` type against it under `TYPE_CHECKING`
 only.
 
@@ -28,7 +32,7 @@ only.
 
 | When you | You must | What fails you |
 |---|---|---|
-| Reach for anything in `aiq_api` | Add it to `api_seam.py` and import it from there | `tests/aiq_agent/turn/test_api_seam.py` walks every module in `turn/` and `agents/piloti/` |
+| Need something from `aiq_api` | Own the type or state here and let `aiq_api` write it, or take the capability as a parameter its API-tier caller passes | The `agent-api-seam` import-linter contract (`pyproject.toml`, run by `task be:lint`), over every module in `aiq_agent` |
 | Add a wire field or a stage fact | Add it to `TurnResult` (`common/wire_v2.py`), lift it in `response.build_result`, and give it a test that reads it back | Nothing. A field nobody lifts is set, valid, and invisible |
 | Add setup I/O to the turn | Gather it with the existing `asyncio.gather` and let it fail open on its own | It lands on the time-to-first-byte path in series |
 

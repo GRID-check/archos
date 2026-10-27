@@ -20,15 +20,14 @@ from __future__ import annotations
 from types import SimpleNamespace
 
 import pytest
+from knowledge_layer.llamaindex.chunk_metadata import EMBED_EXCLUDED_METADATA_KEYS
+from knowledge_layer.llamaindex.chunk_metadata import apply_metadata_exclusions
+from knowledge_layer.llamaindex.embedding import embed_fingerprint
+from knowledge_layer.llamaindex.embedding import embed_fingerprint_metadata
+from knowledge_layer.llamaindex.retrieved_chunks import unit_score
+from knowledge_layer.llamaindex.retriever import LlamaIndexRetriever
 from knowledge_layer.qdrant.schema import identity_mismatch
 from knowledge_layer.qdrant.search import Hit
-
-from sources.knowledge_layer.src.llamaindex.chunk_metadata import EMBED_EXCLUDED_METADATA_KEYS
-from sources.knowledge_layer.src.llamaindex.chunk_metadata import apply_metadata_exclusions
-from sources.knowledge_layer.src.llamaindex.embedding import embed_fingerprint
-from sources.knowledge_layer.src.llamaindex.embedding import embed_fingerprint_metadata
-from sources.knowledge_layer.src.llamaindex.retrieved_chunks import unit_score
-from sources.knowledge_layer.src.llamaindex.retriever import LlamaIndexRetriever
 
 # ===========================================================================
 # Score scale
@@ -85,7 +84,7 @@ def test_a_hit_keeps_the_stored_chunk_id() -> None:
 
 def test_two_rankings_agree_on_identity_so_rrf_can_fuse() -> None:
     """The end-to-end property the id fix exists for: one passage, one identity."""
-    from sources.knowledge_layer.src.llamaindex.hybrid import reciprocal_rank_fusion
+    from knowledge_layer.llamaindex.hybrid import reciprocal_rank_fusion
 
     lexical = [_retriever()._chunk_from_hit(_hit("shared-id", 0.6))]
     vector = [SimpleNamespace(chunk_id="shared-id"), SimpleNamespace(chunk_id="other-id")]
@@ -159,23 +158,23 @@ def test_a_malformed_reranker_env_var_does_not_break_the_import() -> None:
     import importlib
     import os
 
-    from sources.knowledge_layer.src import cross_encoder
+    from knowledge_layer import cross_encoder
 
-    os.environ["AIQ_RERANKER_TIMEOUT_SECONDS"] = "abc"
-    os.environ["AIQ_RERANKER_MAX_DOC_CHARS"] = "lots"
+    os.environ["GRID_RERANKER_TIMEOUT_SECONDS"] = "abc"
+    os.environ["GRID_RERANKER_MAX_DOC_CHARS"] = "lots"
     try:
         reloaded = importlib.reload(cross_encoder)
         assert reloaded.DEFAULT_TIMEOUT_SECONDS == 3.0
         assert reloaded.DEFAULT_MAX_DOC_CHARS == 4000
     finally:
-        del os.environ["AIQ_RERANKER_TIMEOUT_SECONDS"]
-        del os.environ["AIQ_RERANKER_MAX_DOC_CHARS"]
+        del os.environ["GRID_RERANKER_TIMEOUT_SECONDS"]
+        del os.environ["GRID_RERANKER_MAX_DOC_CHARS"]
         importlib.reload(cross_encoder)
 
 
 def test_resolving_a_nonsense_provider_returns_none_rather_than_raising() -> None:
     """A YAML ``provider: 0`` arrives as an int, not a string."""
-    from sources.knowledge_layer.src.cross_encoder import resolve_cross_encoder
+    from knowledge_layer.cross_encoder import resolve_cross_encoder
 
     for hostile in (0, ["openrouter"], object(), "definitely-not-a-provider", "", "none"):
         assert resolve_cross_encoder(hostile) is None
@@ -184,8 +183,8 @@ def test_resolving_a_nonsense_provider_returns_none_rather_than_raising() -> Non
 # ===========================================================================
 # Embedding-model fingerprint
 #
-# Swapping AIQ_EMBED_MODEL between two models of the SAME dimension, or
-# repointing AIQ_EMBED_BASE_URL, produces no error anywhere: stored and query
+# Swapping GRID_EMBED_MODEL between two models of the SAME dimension, or
+# repointing GRID_EMBED_BASE_URL, produces no error anywhere: stored and query
 # vectors come from different spaces and retrieval is quietly wrong at a score
 # distribution that looks entirely normal.
 # ===========================================================================

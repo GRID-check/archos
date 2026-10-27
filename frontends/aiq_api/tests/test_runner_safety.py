@@ -17,19 +17,19 @@ from unittest.mock import patch
 import pytest
 
 from aiq_api.jobs.conversation_output import write_job_turn
-from aiq_api.jobs.runner import _ANSWER_CONFIDENCE_FIELDS
+from aiq_api.jobs.run_result import ANSWER_CONFIDENCE_FIELDS
+from aiq_api.jobs.run_result import build_job_output
+from aiq_api.jobs.run_result import extract_answer_transparency
+from aiq_api.jobs.run_result import extract_skills_activated
+from aiq_api.jobs.run_result import mark_degraded
 from aiq_api.jobs.runner import _DEGRADED_EVENT_FIELDS
 from aiq_api.jobs.runner import _GRAPH_RECURSION_ERROR_MSG
 from aiq_api.jobs.runner import _WALL_CLOCK_TIMEOUT_MSG
 from aiq_api.jobs.runner import JOB_DEGRADED_EVENT_TYPE
 from aiq_api.jobs.runner import CancellationMonitor
 from aiq_api.jobs.runner import _b64url_encode_text
-from aiq_api.jobs.runner import _build_job_output
 from aiq_api.jobs.runner import _create_agent_instance
-from aiq_api.jobs.runner import _extract_answer_transparency
-from aiq_api.jobs.runner import _extract_skills_activated
 from aiq_api.jobs.runner import _generate_grid_cards
-from aiq_api.jobs.runner import _mark_degraded
 from aiq_api.jobs.runner import _purge_deep_checkpoint
 from aiq_api.jobs.runner import _resolve_deep_research_checkpointer
 from aiq_api.jobs.runner import _update_status_if_not_terminal
@@ -602,7 +602,7 @@ class TestPurgeDeepCheckpointImportable:
         assert callable(_purge_deep_checkpoint)
 
     def test_purge_is_noop_without_dsn(self, monkeypatch):
-        monkeypatch.delenv("AIQ_DEEP_CHECKPOINT_DB", raising=False)
+        monkeypatch.delenv("GRID_DEEP_CHECKPOINT_DB", raising=False)
         _purge_deep_checkpoint("job-x")  # must not raise
 
 
@@ -615,20 +615,20 @@ class TestExtractSkillsActivated:
 
     def test_reads_it_off_an_agent_state(self) -> None:
         state = SimpleNamespace(skills_activated=["oib-brandschutznachweis"])
-        assert _extract_skills_activated(state) == ["oib-brandschutznachweis"]
+        assert extract_skills_activated(state) == ["oib-brandschutznachweis"]
 
     def test_reads_it_off_a_dict_result(self) -> None:
-        assert _extract_skills_activated({"skills_activated": ["a", "b"]}) == ["a", "b"]
+        assert extract_skills_activated({"skills_activated": ["a", "b"]}) == ["a", "b"]
 
     def test_an_agent_without_the_field_simply_has_none(self) -> None:
-        assert _extract_skills_activated(SimpleNamespace()) is None
-        assert _extract_skills_activated({}) is None
-        assert _extract_skills_activated("just a report string") is None
+        assert extract_skills_activated(SimpleNamespace()) is None
+        assert extract_skills_activated({}) is None
+        assert extract_skills_activated("just a report string") is None
 
     def test_an_empty_or_malformed_list_is_none_not_an_empty_claim(self) -> None:
-        assert _extract_skills_activated(SimpleNamespace(skills_activated=[])) is None
-        assert _extract_skills_activated(SimpleNamespace(skills_activated="oib")) is None
-        assert _extract_skills_activated(SimpleNamespace(skills_activated=[None, 3, "ok"])) == ["ok"]
+        assert extract_skills_activated(SimpleNamespace(skills_activated=[])) is None
+        assert extract_skills_activated(SimpleNamespace(skills_activated="oib")) is None
+        assert extract_skills_activated(SimpleNamespace(skills_activated=[None, 3, "ok"])) == ["ok"]
 
 
 class TestCardFailureIsADegradedReason:
@@ -637,15 +637,15 @@ class TestCardFailureIsADegradedReason:
     def test_appends_after_the_agent_reasons_without_duplicating(self) -> None:
         transparency: dict = {"degraded_reasons": ["no_valid_citations"]}
 
-        _mark_degraded(transparency, "cards_generation_failed")
-        _mark_degraded(transparency, "cards_generation_failed")
+        mark_degraded(transparency, "cards_generation_failed")
+        mark_degraded(transparency, "cards_generation_failed")
 
         assert transparency["degraded_reasons"] == ["no_valid_citations", "cards_generation_failed"]
 
     def test_creates_the_list_when_the_agent_recorded_none(self) -> None:
         transparency: dict = {"research_truncated": True}
 
-        _mark_degraded(transparency, "cards_generation_failed")
+        mark_degraded(transparency, "cards_generation_failed")
 
         assert transparency == {"research_truncated": True, "degraded_reasons": ["cards_generation_failed"]}
 
@@ -673,7 +673,7 @@ class TestExtractAnswerTransparency:
 
     def test_reads_the_cutoff_off_an_agent_state(self) -> None:
         state = SimpleNamespace(research_truncated=True, truncation_reason="wall_clock")
-        assert _extract_answer_transparency(state) == {
+        assert extract_answer_transparency(state) == {
             "research_truncated": True,
             "truncation_reason": "wall_clock",
         }
@@ -684,55 +684,53 @@ class TestExtractAnswerTransparency:
             "truncation_reason": "step_limit",
             "degraded_reasons": ["no_report_file"],
         }
-        assert _extract_answer_transparency(result) == result
+        assert extract_answer_transparency(result) == result
 
     def test_a_clean_run_contributes_nothing(self) -> None:
-        assert _extract_answer_transparency(SimpleNamespace()) == {}
-        assert _extract_answer_transparency({}) == {}
-        assert _extract_answer_transparency("just a report string") == {}
+        assert extract_answer_transparency(SimpleNamespace()) == {}
+        assert extract_answer_transparency({}) == {}
+        assert extract_answer_transparency("just a report string") == {}
 
     def test_a_completed_run_is_absent_not_false(self) -> None:
         """Absence is the contract: never ``research_truncated: false``."""
         state = SimpleNamespace(research_truncated=None, truncation_reason=None, degraded_reasons=None)
-        assert _extract_answer_transparency(state) == {}
-        assert _extract_answer_transparency(SimpleNamespace(research_truncated=False)) == {}
+        assert extract_answer_transparency(state) == {}
+        assert extract_answer_transparency(SimpleNamespace(research_truncated=False)) == {}
 
     def test_only_literal_true_counts_as_a_cutoff(self) -> None:
         """A truthy stand-in is an upstream bug, not a cutoff to announce."""
-        assert _extract_answer_transparency(SimpleNamespace(research_truncated=1)) == {}
-        assert _extract_answer_transparency(SimpleNamespace(research_truncated="yes")) == {}
+        assert extract_answer_transparency(SimpleNamespace(research_truncated=1)) == {}
+        assert extract_answer_transparency(SimpleNamespace(research_truncated="yes")) == {}
 
     def test_a_malformed_reason_is_dropped_rather_than_forwarded(self) -> None:
-        assert _extract_answer_transparency(SimpleNamespace(truncation_reason="")) == {}
-        assert _extract_answer_transparency(SimpleNamespace(truncation_reason="   ")) == {}
-        assert _extract_answer_transparency(SimpleNamespace(truncation_reason=17)) == {}
+        assert extract_answer_transparency(SimpleNamespace(truncation_reason="")) == {}
+        assert extract_answer_transparency(SimpleNamespace(truncation_reason="   ")) == {}
+        assert extract_answer_transparency(SimpleNamespace(truncation_reason=17)) == {}
 
     def test_degraded_reasons_keeps_only_the_stable_tokens(self) -> None:
         state = SimpleNamespace(degraded_reasons=["no_report_file", None, 3, "", "no_valid_citations"])
-        assert _extract_answer_transparency(state) == {"degraded_reasons": ["no_report_file", "no_valid_citations"]}
+        assert extract_answer_transparency(state) == {"degraded_reasons": ["no_report_file", "no_valid_citations"]}
 
     def test_an_empty_degraded_list_is_not_a_claim(self) -> None:
-        assert _extract_answer_transparency(SimpleNamespace(degraded_reasons=[])) == {}
-        assert _extract_answer_transparency(SimpleNamespace(degraded_reasons="no_report_file")) == {}
+        assert extract_answer_transparency(SimpleNamespace(degraded_reasons=[])) == {}
+        assert extract_answer_transparency(SimpleNamespace(degraded_reasons="no_report_file")) == {}
 
     def test_citations_removed_survives_the_job_path_too(self) -> None:
         """The socket path always lifted this; the job path dropped it entirely."""
         removed = {"count": 2, "reasons": ["dead link"]}
-        assert _extract_answer_transparency(SimpleNamespace(citations_removed=removed)) == {
-            "citations_removed": removed
-        }
-        assert _extract_answer_transparency(SimpleNamespace(citations_removed={})) == {}
-        assert _extract_answer_transparency(SimpleNamespace(citations_removed="two")) == {}
+        assert extract_answer_transparency(SimpleNamespace(citations_removed=removed)) == {"citations_removed": removed}
+        assert extract_answer_transparency(SimpleNamespace(citations_removed={})) == {}
+        assert extract_answer_transparency(SimpleNamespace(citations_removed="two")) == {}
 
 
 class TestBuildJobOutput:
     """What a client reading the finished job actually sees."""
 
     def test_a_clean_run_is_just_the_report(self) -> None:
-        assert _build_job_output("# Report", cards=None, transparency={}) == {"report": "# Report"}
+        assert build_job_output("# Report", cards=None, transparency={}) == {"report": "# Report"}
 
     def test_the_transparency_fields_land_next_to_the_report(self) -> None:
-        output = _build_job_output(
+        output = build_job_output(
             "# Report",
             cards=[{"type": "next_step"}],
             transparency={
@@ -757,7 +755,7 @@ class TestBuildJobOutput:
             degraded_reasons=["no_report_file"],
             citations_removed={"count": 1},
         )
-        output = _build_job_output("# Report", cards=None, transparency=_extract_answer_transparency(state))
+        output = build_job_output("# Report", cards=None, transparency=extract_answer_transparency(state))
         assert output["research_truncated"] is True
         assert output["truncation_reason"] == "step_limit"
         assert output["degraded_reasons"] == ["no_report_file"]
@@ -765,7 +763,7 @@ class TestBuildJobOutput:
 
     def test_nothing_empty_is_written(self) -> None:
         """No ``cards: []`` and no ``research_truncated: false`` on a clean run."""
-        output = _build_job_output("# Report", cards=[], transparency=_extract_answer_transparency({}))
+        output = build_job_output("# Report", cards=[], transparency=extract_answer_transparency({}))
         assert output == {"report": "# Report"}
 
 
@@ -795,34 +793,34 @@ class TestExtractAnswerConfidence:
             answer_confidence_reason="Keine bindende Quelle gefunden.",
             answer_confidence_capped_reason="ungrounded",
         )
-        assert _extract_answer_transparency(state) == {
+        assert extract_answer_transparency(state) == {
             "answer_confidence": "low",
             "answer_confidence_reason": "Keine bindende Quelle gefunden.",
             "answer_confidence_capped_reason": "ungrounded",
         }
 
     def test_reads_it_off_a_dict_result_too(self) -> None:
-        assert _extract_answer_transparency({"answer_confidence": "high"}) == {"answer_confidence": "high"}
+        assert extract_answer_transparency({"answer_confidence": "high"}) == {"answer_confidence": "high"}
 
     def test_an_agent_that_does_not_record_it_yet_writes_nothing(self) -> None:
         """The other half of this work may not have landed; nothing breaks."""
-        assert _extract_answer_transparency(SimpleNamespace()) == {}
-        assert _extract_answer_transparency(SimpleNamespace(answer_confidence=None)) == {}
+        assert extract_answer_transparency(SimpleNamespace()) == {}
+        assert extract_answer_transparency(SimpleNamespace(answer_confidence=None)) == {}
 
     def test_a_malformed_level_is_dropped_rather_than_forwarded(self) -> None:
-        assert _extract_answer_transparency(SimpleNamespace(answer_confidence="")) == {}
-        assert _extract_answer_transparency(SimpleNamespace(answer_confidence="   ")) == {}
-        assert _extract_answer_transparency(SimpleNamespace(answer_confidence=3)) == {}
-        assert _extract_answer_transparency(SimpleNamespace(answer_confidence_reason=[])) == {}
+        assert extract_answer_transparency(SimpleNamespace(answer_confidence="")) == {}
+        assert extract_answer_transparency(SimpleNamespace(answer_confidence="   ")) == {}
+        assert extract_answer_transparency(SimpleNamespace(answer_confidence=3)) == {}
+        assert extract_answer_transparency(SimpleNamespace(answer_confidence_reason=[])) == {}
 
     def test_confidence_is_not_a_degraded_run(self) -> None:
         """A low-confidence answer must not fire the operator-facing signal."""
-        for field_name in _ANSWER_CONFIDENCE_FIELDS:
+        for field_name in ANSWER_CONFIDENCE_FIELDS:
             assert field_name not in _DEGRADED_EVENT_FIELDS
 
     def test_the_confidence_fields_land_in_the_job_output(self) -> None:
         state = SimpleNamespace(answer_confidence="medium", answer_confidence_reason="Nur eine Quelle.")
-        output = _build_job_output("# Report", cards=None, transparency=_extract_answer_transparency(state))
+        output = build_job_output("# Report", cards=None, transparency=extract_answer_transparency(state))
         assert output["answer_confidence"] == "medium"
         assert output["answer_confidence_reason"] == "Nur eine Quelle."
 
@@ -847,9 +845,9 @@ class TestTransparencyReachesBothSurfaces:
             answer_confidence_reason="Recherche abgebrochen.",
             answer_confidence_capped_reason="ungrounded",
         )
-        transparency = _extract_answer_transparency(state)
+        transparency = extract_answer_transparency(state)
 
-        output = _build_job_output("# Report", cards=None, transparency=transparency)
+        output = build_job_output("# Report", cards=None, transparency=transparency)
 
         with patch(
             "aiq_api.jobs.conversation_output.post_internal_conversation_message",
@@ -871,8 +869,8 @@ class TestTransparencyReachesBothSurfaces:
 
     @pytest.mark.asyncio
     async def test_a_clean_run_marks_neither_surface(self) -> None:
-        transparency = _extract_answer_transparency(SimpleNamespace())
-        assert _build_job_output("# Report", cards=None, transparency=transparency) == {"report": "# Report"}
+        transparency = extract_answer_transparency(SimpleNamespace())
+        assert build_job_output("# Report", cards=None, transparency=transparency) == {"report": "# Report"}
 
         with patch(
             "aiq_api.jobs.conversation_output.post_internal_conversation_message",
@@ -952,10 +950,10 @@ class TestTheReportsOwnAccountReachesTheMessage:
     def test_the_retrieval_ledger_and_the_hidden_skills_are_lifted(self) -> None:
         from types import SimpleNamespace
 
-        from aiq_api.jobs.runner import _extract_answer_transparency
+        from aiq_api.jobs.run_result import extract_answer_transparency
 
         state = SimpleNamespace(retrieval_ledger=[{"round": 0}], skills_hidden=["house-voice", 3, ""])
-        assert _extract_answer_transparency(state) == {
+        assert extract_answer_transparency(state) == {
             "retrieval_ledger": [{"round": 0}],
             "skills_hidden": ["house-voice"],
         }
@@ -963,9 +961,9 @@ class TestTheReportsOwnAccountReachesTheMessage:
     def test_an_empty_ledger_or_list_writes_nothing(self) -> None:
         from types import SimpleNamespace
 
-        from aiq_api.jobs.runner import _extract_answer_transparency
+        from aiq_api.jobs.run_result import extract_answer_transparency
 
-        assert _extract_answer_transparency(SimpleNamespace(retrieval_ledger=[], skills_hidden=[])) == {}
+        assert extract_answer_transparency(SimpleNamespace(retrieval_ledger=[], skills_hidden=[])) == {}
 
 
 class TestReportFollowUps:

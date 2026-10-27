@@ -11,8 +11,8 @@ from __future__ import annotations
 import sys
 import threading
 
-from sources.knowledge_layer.src import register
-from sources.knowledge_layer.src.llamaindex.retriever import LlamaIndexRetriever
+from knowledge_layer import register
+from knowledge_layer.llamaindex.retriever import LlamaIndexRetriever
 
 
 class _Retriever:
@@ -54,8 +54,8 @@ async def test_a_retriever_without_the_hook_is_left_alone():
 
 
 def test_warm_components_leaves_the_retriever_initialised(monkeypatch):
-    from sources.knowledge_layer.src.llamaindex import dependencies
-    from sources.knowledge_layer.src.llamaindex import embedding
+    from knowledge_layer.llamaindex import dependencies
+    from knowledge_layer.llamaindex import embedding
 
     built: list[str] = []
     monkeypatch.setattr(dependencies, "ensure_retrieval_dependencies", lambda: None)

@@ -1,7 +1,7 @@
 """
 Agent-agnostic job runner.
 
-Provides the research worker's job function, ``run_agent_job``, for running any registered agent with:
+The helpers of the research worker's job function, ``agent_job.run_agent_job``, which runs any registered agent with:
 - NAT's JobStore for job metadata and status
 - SSE event streaming for real-time UI updates
 - Cancellation monitoring for graceful job termination
@@ -18,9 +18,10 @@ import json
 import logging
 import os
 import time
-import uuid
 from collections.abc import Callable
 from collections.abc import Iterator
+from datetime import UTC
+from datetime import datetime
 from typing import Any
 
 from starlette.datastructures import Headers
@@ -33,33 +34,17 @@ from aiq_agent.cards.registry import set_card_registry
 from aiq_agent.common.plan_documents import PlanDocument
 from aiq_agent.common.plan_documents import PlanDocuments
 from aiq_agent.common.plan_documents import sanitize_plan_documents
-from aiq_agent.common.provider_limiter import RESEARCH
-from aiq_agent.common.provider_limiter import with_provider_class
-from aiq_agent.common.turn_status import DEGRADED_CARDS_GENERATION_FAILED
-from aiq_agent.observability import boot_timing
-from aiq_agent.observability.boot_timing import BootClock
-from aiq_agent.observability.turn_trace import current_trace_id_hex
 from aiq_agent.project_context import ORGANIZATION_ID_HEADER
 from aiq_agent.project_context import PROJECT_ID_HEADER
-from aiq_agent.project_context import PROJECT_MEMORY_HEADER
 from aiq_agent.project_context import REQUEST_CONTEXT_ENVELOPE_HEADER
 from aiq_agent.project_context import REQUEST_CONTEXT_ENVELOPE_SIG_HEADER
 from aiq_agent.project_context import USER_ID_HEADER
-from aiq_agent.project_context import compose_project_context
 
-from .callbacks import AgentEventCallback
-from .conversation_output import FAILURE_NOTICE
 from .conversation_output import INTERRUPTED_NOTICE
 from .conversation_output import write_job_notice
-from .conversation_output import write_job_turn
 from .event_store import BatchingEventStore
 from .event_store import EventStore
 from .outcome_notify import notify_job_outcome
-from .phase_events import PHASE_DONE
-from .phase_events import PhaseProgressCallback
-from .phase_events import emit_phase_event
-from .run_envelope import envelope_headers_for_run
-from .run_ledger_fold import RunLedgerFold
 
 logger = logging.getLogger(__name__)
 
@@ -145,19 +130,6 @@ def _identity_values(identity: dict) -> tuple[object, object, object]:
     return (identity.get("project_id"), identity.get("organization_id"), identity.get("user_id"))
 
 
-# The answer's self-assessment, lifted alongside the cutoff/degradation marks and
-# spelled exactly as the socket path spells it (``persist_assistant_message``), so
-# the BFF's existing decoder maps all three into the stored provenance with no
-# frontend change. Deliberately NOT in _DEGRADED_EVENT_FIELDS above: a merely
-# low-confidence answer is not a degraded run, and announcing one as the other
-# would train operators to ignore the signal that means a run was cut off.
-_ANSWER_CONFIDENCE_FIELDS = (
-    "answer_confidence",
-    "answer_confidence_reason",
-    "answer_confidence_capped_reason",
-)
-
-
 def sanitize_job_error(exc: BaseException) -> str:
     """Map an internal exception to a user-safe error message.
 
@@ -232,64 +204,60 @@ async def _update_status_if_not_terminal(job_store: Any, job_id: str, status: An
     Raises ValueError if the job does not exist (matching NAT's
     ``JobStore.update_status`` contract).
     """
-    import json as _json
-    from datetime import UTC as _UTC
-    from datetime import datetime as _datetime
-
-    from pydantic import BaseModel as _BaseModel
-    from sqlalchemy import update as _sa_update
+    from sqlalchemy import update
 
     from nat.front_ends.fastapi.async_jobs.job_store import JobInfo
     from nat.front_ends.fastapi.async_jobs.job_store import JobStatus
 
     if not isinstance(status, JobStatus):
         status = JobStatus(status)
-
     terminal_statuses = {JobStatus.SUCCESS.value, JobStatus.FAILURE.value, JobStatus.INTERRUPTED.value}
-
-    # NAT's JobStore.update_status honors exactly these fields; the output
-    # serialization below mirrors it so a guarded write stores byte-identical
-    # values to the unguarded one it replaces.
-    error = kwargs.get("error")
-    output_path = kwargs.get("output_path")
-    output = kwargs.get("output")
-    if isinstance(output, _BaseModel):
-        output = output.model_dump_json(round_trip=True)
-    if isinstance(output, dict | list):
-        output = _json.dumps(output)
-
     stmt = (
-        _sa_update(JobInfo)
+        update(JobInfo)
         .where(JobInfo.job_id == job_id, JobInfo.status.not_in(terminal_statuses))
-        .values(
-            status=status.value,
-            error=error,
-            output_path=output_path,
-            output=output,
-            updated_at=_datetime.now(_UTC),
-        )
+        .values(_status_values(status, **kwargs))
     )
     async with job_store.session() as session:
         result = await session.execute(stmt)
         written = (result.rowcount or 0) > 0
-
     if written:
         return True
+    await _explain_refused_write(job_store, job_id, status)
+    return False
 
-    # Zero rows: the job is either already terminal (the race this guards) or
-    # missing. Distinguish with one read — the write already refused, so this
-    # read cannot cause a flip either way.
+
+def _status_values(status: Any, *, error: Any = None, output_path: Any = None, output: Any = None) -> dict[str, Any]:
+    """The columns a status write sets, serialized as NAT's ``JobStore.update_status`` does.
+
+    NAT honors exactly these fields; mirroring its output serialization keeps a
+    guarded write byte-identical to the unguarded one it replaces.
+    """
+    from pydantic import BaseModel
+
+    if isinstance(output, BaseModel):
+        output = output.model_dump_json(round_trip=True)
+    if isinstance(output, dict | list):
+        output = json.dumps(output)
+    return {
+        "status": status.value,
+        "error": error,
+        "output_path": output_path,
+        "output": output,
+        "updated_at": datetime.now(UTC),
+    }
+
+
+async def _explain_refused_write(job_store: Any, job_id: str, status: Any) -> None:
+    """Log why a guarded write touched no row, or raise ``ValueError`` when the job does not exist.
+
+    Zero rows means the job is already terminal (the race the guard is for) or
+    missing. One read tells them apart; the write already refused, so the read
+    cannot cause a flip either way.
+    """
     job = await job_store.get_job(job_id)
     if job is None:
         raise ValueError(f"Job {job_id} not found in job store")
-
-    logger.info(
-        "Job %s already in terminal status %s; not overwriting with %s",
-        job_id,
-        job.status,
-        status,
-    )
-    return False
+    logger.info("Job %s already in terminal status %s; not overwriting with %s", job_id, job.status, status)
 
 
 async def _current_job_status(job_store: Any, job_id: str) -> str | None:
@@ -426,21 +394,15 @@ async def _should_emit_cancelled_event(*, job_store: Any, job_id: str, finalized
     return False
 
 
-def _emit_ownership_lost_event(*, db_url: str, event_store: Any | None, job_id: str) -> Any:
-    """Store the ``job.ownership-lost`` lifecycle event; create the store lazily.
+def _emit_lifecycle_event(*, db_url: str, event_store: Any | None, job_id: str, event: dict[str, Any]) -> Any:
+    """Store and flush one terminal-path lifecycle event; create the store lazily, and return it.
 
-    Mirrors the lazy ``BatchingEventStore(EventStore(db_url, job_id))``
-    construction the other terminal paths use, and returns the store so the
-    caller keeps its flush semantics.
+    The lazy ``BatchingEventStore(EventStore(db_url, job_id))`` is the one every
+    terminal path uses; returning it keeps the caller's flush semantics.
     """
     if event_store is None:
         event_store = BatchingEventStore(EventStore(db_url, job_id))
-    event_store.store(
-        {
-            "type": JOB_OWNERSHIP_LOST_EVENT_TYPE,
-            "data": {"reason": _OWNERSHIP_LOST_REASON},
-        }
-    )
+    event_store.store(event)
     if hasattr(event_store, "flush"):
         event_store.flush()
     return event_store
@@ -475,39 +437,65 @@ async def _finalize_cancelled_run(
     so a late abort after the winner's SUCCESS or the reaper's FAILURE streams
     nothing.
 
-    Returns the event store (created lazily when the path streams an event).
+    Still-owner first (item 10): a reclaim abort must not steal the terminal
+    write from the new owner, nor leave an INTERRUPTED_NOTICE beside the
+    winner's answer. Returns the event store (created lazily when the path
+    streams an event).
+    """
+    if await _lost_claim(db_url, job_id, claim_owner):
+        logger.warning("Job %s lost its queue claim; emitting ownership-lost only (the owner publishes)", job_id)
+        lost = {"type": JOB_OWNERSHIP_LOST_EVENT_TYPE, "data": {"reason": _OWNERSHIP_LOST_REASON}}
+        return _emit_lifecycle_event(db_url=db_url, event_store=event_store, job_id=job_id, event=lost)
+
+    logger.info("Job %s cancelled", job_id)
+    finalized = await _mark_interrupted(job_store, job_id)
+    await _publish_interrupted(
+        job_store=job_store,
+        job_id=job_id,
+        finalized=finalized,
+        parent_conversation_id=parent_conversation_id,
+        usage_context=usage_context,
+        expect_run=expect_run,
+    )
+    # The event agrees with the standing verdict too (item 7): after the
+    # winner's SUCCESS or the reaper's FAILURE a late abort must not rewrite
+    # history as "cancelled by user".
+    if await _should_emit_cancelled_event(job_store=job_store, job_id=job_id, finalized=finalized):
+        cancelled = {"type": "job.cancelled", "data": {"reason": "cancelled by user"}}
+        event_store = _emit_lifecycle_event(db_url=db_url, event_store=event_store, job_id=job_id, event=cancelled)
+    return event_store
+
+
+async def _mark_interrupted(job_store: Any, job_id: str) -> bool:
+    """Write INTERRUPTED unless the job is already terminal; whether this run wrote it.
+
+    Sticky terminal statuses: a reaper's FAILURE or a winner's SUCCESS stays.
+    The "cancelled by user" error string is exact: the UI string-matches on it.
     """
     from nat.front_ends.fastapi.async_jobs.job_store import JobStatus
 
-    # Still-owner first (item 10): a reclaim abort must not steal the
-    # terminal write from the new owner — and must not leave an
-    # INTERRUPTED_NOTICE beside the winner's answer. The distinct
-    # ownership-lost signal itself is item 7's; this gate only ensures the
-    # loser publishes nothing.
-    lost_claim = await _lost_claim(db_url, job_id, claim_owner)
-    if lost_claim:
-        logger.warning(
-            "Job %s lost its queue claim; emitting ownership-lost only (the owning worker publishes)",
-            job_id,
-        )
-        return _emit_ownership_lost_event(db_url=db_url, event_store=event_store, job_id=job_id)
+    if not job_store:
+        return False
+    try:
+        return await _update_status_if_not_terminal(job_store, job_id, JobStatus.INTERRUPTED, error="cancelled by user")
+    except (ConnectionError, TimeoutError, RuntimeError):
+        return False
 
-    logger.info("Job %s cancelled", job_id)
-    finalized = False
-    if job_store:
-        try:
-            # Sticky terminal statuses: don't overwrite a FAILURE (reaper)
-            # or SUCCESS either — only mark still-active jobs INTERRUPTED.
-            # The "cancelled by user" error string is exact: the UI
-            # string-matches on it.
-            finalized = await _update_status_if_not_terminal(
-                job_store, job_id, JobStatus.INTERRUPTED, error="cancelled by user"
-            )
-        except (ConnectionError, TimeoutError, RuntimeError):
-            finalized = False
+
+async def _publish_interrupted(
+    *,
+    job_store: Any,
+    job_id: str,
+    finalized: bool,
+    parent_conversation_id: str | None,
+    usage_context: dict | None,
+    expect_run: bool,
+) -> None:
+    """The cancelled run's thread notice and outcome report, each gated on agreeing with the verdict."""
+    from nat.front_ends.fastapi.async_jobs.job_store import JobStatus
 
     # Gated on verdict agreement (item 10): a user cancel (standing
-    # INTERRUPTED, or the write above) still leaves its notice — otherwise
+    # INTERRUPTED, or this run's write) still leaves its notice — otherwise
     # the thread stays empty. A loser cancelled after the winner's SUCCESS
     # or the reaper's FAILURE writes nothing beside it.
     if await _should_write_notice(
@@ -534,22 +522,6 @@ async def _finalize_cancelled_run(
         await notify_job_outcome(
             job_id=job_id, usage_context=usage_context, status="interrupted", expect_run=expect_run
         )
-
-    # The event agrees with the standing verdict too (item 7): after the
-    # winner's SUCCESS or the reaper's FAILURE a late abort must not rewrite
-    # history as "cancelled by user".
-    if await _should_emit_cancelled_event(job_store=job_store, job_id=job_id, finalized=finalized):
-        if event_store is None:
-            event_store = BatchingEventStore(EventStore(db_url, job_id))
-        event_store.store(
-            {
-                "type": "job.cancelled",
-                "data": {"reason": "cancelled by user"},
-            }
-        )
-        if hasattr(event_store, "flush"):
-            event_store.flush()
-    return event_store
 
 
 def _normalize_trace_id(trace_id: int | str | None) -> int | None:
@@ -797,13 +769,13 @@ def _purge_deep_checkpoint(job_id: str) -> None:
     """Best-effort deletion of a finished deep run's durable checkpoint rows.
 
     The deep-research checkpointer keys ``thread_id == job_id`` in
-    ``AIQ_DEEP_CHECKPOINT_DB`` and writes the full growing state every step, but
+    ``GRID_DEEP_CHECKPOINT_DB`` and writes the full growing state every step, but
     nothing prunes ``checkpoints``/``checkpoint_blobs``/``checkpoint_writes`` — so
     they grow (superlinearly per run) forever. Once a run is terminal the
     checkpoint is dead weight (resume is manual-resubmit, never auto-read), so
     drop it. Never raises.
     """
-    dsn = os.environ.get("AIQ_DEEP_CHECKPOINT_DB")
+    dsn = os.environ.get("GRID_DEEP_CHECKPOINT_DB")
     if not dsn:
         return
     try:
@@ -828,7 +800,7 @@ def _purge_deep_checkpoint(job_id: str) -> None:
 async def _purge_deep_checkpoint_unless_reclaimed(db_url: str, job_id: str, claim_owner: str | None) -> bool:
     """Purge the run's deep checkpoint at its end, unless the job was reclaimed.
 
-    The rows (``AIQ_DEEP_CHECKPOINT_DB``, ``thread_id == job_id``) are keyed by
+    The rows (``GRID_DEEP_CHECKPOINT_DB``, ``thread_id == job_id``) are keyed by
     job, not by worker, so after a reclaim they are the NEW owner's resume
     point. A stalled loser reaching its ``finally`` deleted them from under it,
     and the winner resumed from nothing. ``worker.py`` already skipped its own
@@ -982,971 +954,6 @@ def _workflow_reflection_llm_ref(config: Any) -> str | None:
     return str(ref) if ref else None
 
 
-@with_provider_class(RESEARCH)
-async def run_agent_job(
-    configure_logging: bool,
-    log_level: int,
-    db_url: str,
-    config_file_path: str,
-    job_id: str,
-    input_text: str,
-    agent_class_path: str,
-    agent_config_name: str,
-    parent_span_id: str | None = None,
-    parent_function_id: str | None = None,
-    parent_function_name: str | None = None,
-    parent_workflow_run_id: str | None = None,
-    parent_workflow_trace_id: int | str | None = None,
-    parent_conversation_id: str | None = None,
-    request_trace_tags: dict[str, str] | None = None,
-    available_documents: list[dict] | None = None,
-    data_sources: list[str] | None = None,
-    auth_token: str | None = None,
-    collection_scope: list[str] | None = None,
-    project_context: str | None = None,
-    # The project-memory digest the BFF built when the job fired. A FALLBACK:
-    # the worker fetches a live digest first (a queued job may wait minutes,
-    # and the reflection pass at the end of a long run wants memory as of
-    # then), and keeps this one only when that fetch fails.
-    project_memory: str | None = None,
-    # Rendered PLATFORM_LESSONS block, carried in the job payload because
-    # request contextvars do not survive into a background worker.
-    platform_lessons: str | None = None,
-    model_overrides: dict[str, str] | None = None,
-    usage_context: dict | None = None,
-    user_info: dict | None = None,
-    clarifier_result: str | None = None,
-    memory_reflection_enabled: bool = False,
-    memory_reflection_llm: str | None = None,
-    # Queue claim owner (the research worker's own id) for the still-owner
-    # publish gate. None at submit time (unclaimed); the worker fills in its own
-    # id at replay.
-    claim_owner: str | None = None,
-    # The ``task_runs`` row this job IS, when the BFF knows it — the only
-    # identity the run-ledger route has. Absent for a job submitted before that
-    # plumbing exists, and then the fold still narrates the run on its own event
-    # stream and posts nothing (``jobs/run_ledger_fold.py``).
-    run_id: str | None = None,
-    # The Unterlagen the reader named on the plan card (``plan_documents``
-    # contract), sanitised here into the agent state and the run ledger.
-    documents: dict | None = None,
-    # The requester's signed request-context envelope, ``{header, signature}``
-    # exactly as the BFF sent it with the submit (ADR-0108). Absent for a run
-    # nobody signed for, and for a job queued before it existed.
-    request_envelope: dict | None = None,
-):
-    """
-    Run any registered agent as a research job, with cancellation support and telemetry.
-
-    The research worker claims a queued row and calls this function. It:
-    - Uses NAT's JobStore for status tracking
-    - Monitors for cancellation requests and gracefully terminates the agent
-    - Exports telemetry to Phoenix/OpenTelemetry via NAT's ExporterManager
-    - Propagates trace context from parent workflow for nested spans
-
-    Args:
-        configure_logging: Whether to set up logging in the worker.
-        log_level: Logging level to use.
-        db_url: Database URL for job store and event store.
-        config_file_path: Path to NAT config file.
-        job_id: Unique job identifier.
-        input_text: User input/query to run.
-        agent_class_path: Full module path to agent class.
-        agent_config_name: NAT config function name for the agent.
-        parent_span_id: Parent span ID for trace continuity (from caller context).
-        parent_function_id: Parent function ID for span hierarchy.
-        parent_function_name: Parent function name for span metadata.
-        parent_workflow_run_id: Parent workflow run ID for trace grouping.
-        parent_workflow_trace_id: Parent trace ID (int or hex string) for trace continuity.
-        parent_conversation_id: Conversation ID for session grouping in Phoenix.
-        request_trace_tags: Request trace tags captured at async submission time.
-        available_documents: Optional list of document dicts with file_name and summary.
-        data_sources: Optional list of allowed data sources to enforce in the worker.
-        auth_token: Optional auth token propagated from the HTTP request for
-            data sources that require authentication (requires_auth: true).
-        collection_scope: Optional list of collection names to scope knowledge
-            retrieval to. Injected into the worker's request metadata so that
-            ``get_collection_scope_from_context()`` returns the correct scope.
-        project_context: Optional project context string to inject into the
-            worker's request metadata so that
-            ``get_project_context_from_context()`` returns the correct context.
-        model_overrides: Optional per-org runtime model overrides
-            (``{agent_group: openrouter_model_id}``) captured from the
-            submitting request's ``X-Grid-Model-Overrides`` header. Applied to
-            the worker's LLM provider and re-injected into the worker's request
-            metadata so ``get_model_overrides_from_context()`` stays correct.
-        usage_context: Optional identity + budget snapshot captured at submit
-            time (``capture_usage_context()``), used to activate unified LLM
-            cost tracking for the whole job.
-        user_info: Optional user identity dict (name/email) forwarded onto the
-            agent state so prompts render the authenticated-user context.
-        clarifier_result: Optional clarifier dialog log forwarded onto the
-            agent state so prompts render the Clarification Context section.
-        memory_reflection_enabled: Whether the post-answer memory-reflection
-            stage should run over this job's report. Captured from the
-            submitting request's feature flag (the worker has no live request to
-            read it from). Only honored for jobs that also supply
-            ``memory_reflection_llm``.
-        memory_reflection_llm: Optional ``llms:`` ref (e.g. ``card_llm``) for the
-            reflection pass. When set (and enabled), the worker reflects over the
-            finished report to record durable project findings — the chat path
-            skips reflection for deep jobs because the report only exists once
-            the async job completes.
-        run_id: Optional id of the ``task_runs`` row this job is, used to
-            flush the run's ledger to the BFF. Without it the ledger is still
-            folded and still streamed as ``run.ledger`` events, but nothing is
-            written to the run's message.
-        request_envelope: Optional ``{header, signature}`` of the requester's
-            signed request-context envelope. Injected into the run's request
-            metadata (renewed first when it is past
-            ``run_envelope.RUN_ENVELOPE_RENEW_AFTER_MS``) so the tools that act
-            as a person echo it; dropped on any refusal or failure.
-        claim_owner: Optional DB-queue claim owner (worker id) for the
-            still-owner publish gate. ``None`` (unclaimed at submit) skips the
-            ownership check and only the terminal verdict
-            gates publishing. The DB worker fills in its own id at replay.
-    """
-
-    # Propagate auth token into the current async task's context so tools
-    # can retrieve it via get_auth_token(). Uses a ContextVar so concurrent
-    # jobs in the same worker process don't leak tokens across tasks.
-    _auth_token_reset = None
-    if auth_token:
-        from ._auth_context import job_auth_token
-
-        _auth_token_reset = job_auth_token.set(auth_token)
-
-    from aiq_api.auth.request_trace import install_request_trace_span_injection
-    from aiq_api.auth.request_trace import request_trace_tag_context
-
-    install_request_trace_span_injection()
-
-    from aiq_agent.common import VerboseTraceCallback
-    from aiq_agent.common import is_verbose
-    from nat.builder.workflow_builder import WorkflowBuilder
-    from nat.front_ends.fastapi.async_jobs.job_store import JobStatus
-    from nat.front_ends.fastapi.async_jobs.job_store import JobStore
-    from nat.plugin_api import LLMFrameworkEnum
-    from nat.runtime.loader import load_config
-
-    if configure_logging:
-        try:
-            from nat.utils.log_utils import setup_logging
-
-            setup_logging(log_level)
-        except ImportError:
-            import logging as std_logging
-
-            std_logging.basicConfig(level=log_level)
-
-    # Quiet NAT's per-parallel-step span-stack warnings in the worker too —
-    # deep research's concurrent researcher/tool fan-out triggers them on
-    # essentially every parallel call (see logging_utils for details) — and
-    # keep LangGraph's steps parented, or their spans never reach Langfuse.
-    from aiq_agent.common.logging_utils import suppress_noisy_dependency_logs
-    from aiq_agent.common.nat_step_repair import install_step_stack_repair
-
-    suppress_noisy_dependency_logs()
-    install_step_stack_repair()
-
-    job_store: JobStore | None = None
-    cancellation_monitor: CancellationMonitor | None = None
-    event_store: EventStore | BatchingEventStore | None = None
-    # Declared out here because the terminal paths below (cancel, failure, the
-    # finally) close it, and they run whether or not setup got that far.
-    run_ledger_fold: RunLedgerFold | None = None
-    logger.info(
-        "Research worker received: agent=%s, config=%s, job_id=%s",
-        agent_class_path,
-        agent_config_name,
-        job_id,
-    )
-
-    try:
-        job_store = JobStore(scheduler_address="", db_url=db_url)
-        # Guard the RUNNING write: a cancel (INTERRUPTED) or the ghost reaper
-        # (FAILURE) may have already finalized this job in the race window
-        # between claim and here. An unconditional write would resurrect a
-        # reaped job or silently lose a cancel (cancel deletes the queue row, and
-        # this status flip is the only signal).
-        if not await _update_status_if_not_terminal(job_store, job_id, JobStatus.RUNNING):
-            logger.info("Job %s already terminal before start; aborting run", job_id)
-            return
-
-        cancellation_monitor = CancellationMonitor(
-            db_url=db_url,
-            job_id=job_id,
-            poll_interval=1.0,
-        )
-        # The Unterlagen, sanitised ONCE here: the agent state, the ledger fold
-        # and the prompts all read this one object.
-        plan_documents = sanitize_plan_documents(documents)
-
-        from aiq_agent.observability import ensure_registered as register_grid_telemetry
-
-        # Same JOIN as deploy/start_web.py: Grid telemetry `_type`s register at
-        # import and are not in NAT's stock registry. A worker that reaches
-        # load_config without that import fails the same way the web pod did.
-        register_grid_telemetry()
-        # Paid by every job, not once per process (boot_timing).
-        clock = BootClock("research-job")
-        with clock.phase("load_config"):
-            config = load_config(config_file_path)
-
-        # Dynamically load the agent class
-        agent_cls = _load_agent_class(agent_class_path)
-
-        building = time.monotonic()
-        async with WorkflowBuilder.from_config(config=config) as builder:
-            clock.record("workflow_build", time.monotonic() - building)
-            boot_timing.flush()
-            fn_config = builder.get_function_config(agent_config_name)
-            if getattr(fn_config, "type", None) == "deep_research_agent":
-                from aiq_agent.agents.deep_researcher.register import DeepResearchAgentConfig
-                from aiq_agent.agents.deep_researcher.register import resolve_deep_research_runtime_config
-
-                if isinstance(fn_config, DeepResearchAgentConfig):
-                    skills_config, sandbox_config = resolve_deep_research_runtime_config(fn_config, builder)
-                    fn_config = fn_config.model_copy(update={"skills": skills_config, "sandbox": sandbox_config})
-
-            provider, llm = await _create_llm_provider(builder, fn_config)
-
-            # Apply per-org runtime model overrides captured at submission time.
-            # Done directly on the provider (not only via the header injection
-            # below) so the override holds regardless of when the agent class
-            # resolves its LLMs relative to context setup.
-            if model_overrides:
-                from aiq_agent.common import LLMRole
-                from aiq_agent.common import sanitize_model_overrides
-
-                sanitized_overrides = sanitize_model_overrides(model_overrides)
-                overridden = provider.with_model_overrides(sanitized_overrides)
-                if overridden is not provider:
-                    provider = overridden
-                    if llm is not None:
-                        llm = provider.get(LLMRole.ORCHESTRATOR)
-
-            # The platform owner's thinking level per group (Platform → Models).
-            # Platform-wide, so nothing is captured at submit time: the worker
-            # resolves the same map the chat replicas do, off the loop because
-            # a cold cache is one BFF round-trip.
-            from aiq_agent.common import LLMRole
-            from aiq_agent.common import get_reasoning_efforts
-
-            with_efforts = provider.with_reasoning_efforts(await asyncio.to_thread(get_reasoning_efforts))
-            if with_efforts is not provider:
-                provider = with_efforts
-                if llm is not None:
-                    llm = provider.get(LLMRole.ORCHESTRATOR)
-
-            # The tenant this job belongs to, captured at submit time inside
-            # usage_context because a research worker has no request headers to read
-            # it from. Two things need it: BYOK below, and the agent state
-            # handed to _run_agent (deep research resolves the organization's
-            # skills from it).
-            #
-            # BYOK (ADR-0022): resolve the org's own LLM credential just in
-            # time from the BFF (never carried in job_args — plaintext keys
-            # must not enter the persisted job store); resolution fails open to
-            # the platform credential.
-            _job_org_id = ((usage_context or {}).get("identity") or {}).get("organization_id")
-            # Captured for the post-job reflection pass, which builds its own LLM
-            # outside the provider and must re-apply the same tenant credential.
-            resolved_org_credential = None
-            if _job_org_id:
-                from aiq_agent.common import LLMRole
-                from aiq_agent.common import resolve_org_llm_credential
-
-                org_credential = resolve_org_llm_credential(_job_org_id)
-                resolved_org_credential = org_credential
-                if org_credential is not None:
-                    credentialed = provider.with_credential(org_credential)
-                    if credentialed is not provider:
-                        provider = credentialed
-                        if llm is not None:
-                            llm = provider.get(LLMRole.ORCHESTRATOR)
-
-            # Zero Data Retention (ADR-0014), after BYOK so the pin lands only on
-            # models that still point at OpenRouter. The worker once applied
-            # every dial but this one, and deep research runs here. Every model
-            # the job builds below (the agent, grid cards, anatomy, report
-            # follow-ups) comes from this provider, so pinning it pins them all.
-            # Off the loop: a cold lookup is a BFF call. Fails closed.
-            from aiq_agent.common import LLMRole
-            from aiq_agent.common.openrouter import data_policy_for
-
-            job_data_policy = await asyncio.to_thread(data_policy_for, _job_org_id)
-            pinned = provider.with_zdr(job_data_policy.zdr)
-            if pinned is not provider:
-                provider = pinned
-                if llm is not None:
-                    llm = provider.get(LLMRole.ORCHESTRATOR)
-
-            # Resolve tools: use the explicit list or auto-inherit the whole
-            # data_source_registry when none are configured.
-            tool_refs = _resolve_worker_tool_refs(fn_config)
-
-            tools = await builder.get_tools(tool_names=tool_refs, wrapper_type=LLMFrameworkEnum.LANGCHAIN)
-
-            # Apply per-agent exclusions (e.g. deep_research excludes web_search_tool)
-            if hasattr(fn_config, "exclude_tools") and fn_config.exclude_tools:
-                excluded = set(fn_config.exclude_tools)
-                tools = [t for t in tools if getattr(t, "name", "") not in excluded]
-
-            if data_sources is not None:
-                from aiq_agent.common import filter_tools_by_sources
-
-                tools = filter_tools_by_sources(tools, data_sources)
-
-            # Set up telemetry/observability for Phoenix and OpenTelemetry
-            from aiq_agent.common.nat_step_repair import SpanClosingProfilerHandler
-            from nat.data_models.intermediate_step import IntermediateStepPayload
-            from nat.data_models.intermediate_step import IntermediateStepType
-            from nat.data_models.intermediate_step import StreamEventData
-            from nat.data_models.intermediate_step import TraceMetadata
-            from nat.data_models.invocation_node import InvocationNode
-            from nat.observability.exporter_manager import ExporterManager
-            from nat.plugin_api import Context
-            from nat.plugin_api import ContextState
-            from nat.utils.reactive.subject import Subject
-
-            telemetry_exporters = {
-                name: configured.instance for name, configured in builder._telemetry_exporters.items()
-            }
-            exporter_manager = ExporterManager.from_exporters(telemetry_exporters)
-
-            # Initialize context state with trace propagation from parent
-            context_state = ContextState.get()
-            context_state.workflow_run_id.set(job_id)
-            if parent_conversation_id:
-                context_state.conversation_id.set(parent_conversation_id)
-
-            workflow_trace_id = _normalize_trace_id(parent_workflow_trace_id) or uuid.uuid4().int
-            context_state.workflow_trace_id.set(workflow_trace_id)
-
-            # Event stream for exporters to subscribe to
-            event_stream = Subject()
-            context_state.event_stream.set(event_stream)
-
-            # Initialize span stack (triggers default ["root"])
-            _ = context_state.active_span_id_stack
-
-            # Set up span hierarchy metadata
-            workflow_span_name = f"async_job:{agent_config_name}"
-            context_state.active_function.set(
-                InvocationNode(
-                    function_name=workflow_span_name,
-                    function_id=job_id,
-                    parent_id=parent_function_id,
-                    parent_name=parent_function_name,
-                )
-            )
-
-            context = Context(context_state)
-
-            # Inject collection-scope header into the worker's request metadata
-            # so downstream code can read it the same way synchronous HTTP/WebSocket
-            # requests do: Context.get().metadata.headers.get("x-grid-collection-scope")
-            if collection_scope is not None:
-                request_attrs = context_state.metadata.get()
-                encoded = _b64url_encode_text(json.dumps(collection_scope))
-                existing_headers = dict(request_attrs.headers) if request_attrs and request_attrs.headers else {}
-                request_attrs._request.headers = Headers(
-                    headers={**existing_headers, "x-grid-collection-scope": encoded}
-                )
-                context_state.metadata.set(request_attrs)
-            elif getattr(fn_config, "type", None) == "deep_research_agent":
-                # Audit-confirmed silent fallback: with no collection scope,
-                # get_collection_scope_from_context() returns None and knowledge-retrieval
-                # tools fall back to searching only the base/OIB collection plus the
-                # s_<conversation> session collection for the rest of this job — any
-                # project-specific collection is invisible, with no other user-facing
-                # signal that it happened. Logged once per job (this branch runs once per
-                # run_agent_job call, not per retrieval) so the degradation is diagnosable.
-                _identity = (usage_context or {}).get("identity") or {}
-                logger.warning(
-                    "Job %s: async deep-research job has no collection scope; knowledge "
-                    "retrieval will search only the base/OIB and s_<conversation> session "
-                    "collections for this job — project collections will be invisible "
-                    "(authenticated=%s, project_scoped=%s)",
-                    job_id,
-                    bool(_identity.get("organization_id") or _identity.get("user_id")),
-                    bool(_identity.get("project_id") or project_context),
-                )
-
-            if project_context is not None:
-                from aiq_agent.project_context import normalize_project_context
-
-                normalized = normalize_project_context(project_context)
-                if normalized:
-                    # Base64url, like every other multi-line header on this path
-                    # (collection scope above, model overrides below): the header
-                    # contract is base64url (`project_context.text_field`), and a
-                    # raw German „quote or em-dash makes Starlette's latin-1
-                    # header encoding throw UnicodeEncodeError before the agent
-                    # ever starts — an instant job failure with zero events.
-                    encoded = _b64url_encode_text(normalized)
-                    request_attrs = context_state.metadata.get()
-                    existing_headers = dict(request_attrs.headers) if request_attrs and request_attrs.headers else {}
-                    request_attrs._request.headers = Headers(
-                        headers={**existing_headers, "x-grid-project-context": encoded}
-                    )
-                    context_state.metadata.set(request_attrs)
-
-            # Re-inject the model-overrides header so any code that reads
-            # get_model_overrides_from_context() inside the worker sees the
-            # same overrides as the submitting request.
-            if model_overrides:
-                from aiq_agent.common import MODEL_OVERRIDES_HEADER
-
-                request_attrs = context_state.metadata.get()
-                encoded = _b64url_encode_text(json.dumps(model_overrides))
-                existing_headers = dict(request_attrs.headers) if request_attrs and request_attrs.headers else {}
-                request_attrs._request.headers = Headers(headers={**existing_headers, MODEL_OVERRIDES_HEADER: encoded})
-                context_state.metadata.set(request_attrs)
-
-            # WHO this job runs for. The chat path sets these on the WebSocket
-            # upgrade and every project-scoped tool reads them back through
-            # `get_project_id_from_context()`; a worker had none, so `remember`
-            # answered "no project in scope" on every deep-research run and the
-            # memory the run should have kept was never written.
-            _identity = (usage_context or {}).get("identity") or {}
-            _identity_headers = {
-                name: value
-                for name, value in zip(WORKER_IDENTITY_HEADERS, _identity_values(_identity), strict=True)
-                if isinstance(value, str) and value.strip()
-            }
-            if _identity_headers:
-                _inject_worker_headers(context_state, _identity_headers)
-
-            # AS WHOM it acts (ADR-0108). The identity headers above say whose
-            # project this is; only the envelope the BFF signed lets a tool act
-            # as that person (file, delegate, look into another project). It is
-            # echoed, renewed by the BFF when stale, and never built here.
-            _envelope_headers = await envelope_headers_for_run(
-                request_envelope, run_id=run_id, job_id=job_id, identity=_identity
-            )
-            if _envelope_headers:
-                _inject_worker_headers(context_state, _envelope_headers)
-            user_info = _run_user_info(user_info, _envelope_headers)
-
-            # WHAT the project already knows. The chat path fetches a live digest
-            # per turn and falls back to the connection-time one only on failure
-            # (piloti/conversation_register.py); the same discipline here, with the
-            # BFF-built `project_memory` as the frozen fallback. A successful
-            # fetch is authoritative even when empty — memory may have been
-            # cleared since the job fired.
-            memory_digest = project_memory
-            if _identity.get("project_id") or _identity.get("organization_id"):
-                try:
-                    from aiq_agent.knowledge.project_memory import fetch_memory_digest
-
-                    memory_digest = await asyncio.to_thread(
-                        fetch_memory_digest,
-                        project_id=_identity.get("project_id"),
-                        organization_id=_identity.get("organization_id"),
-                        query=input_text,
-                    )
-                except Exception:
-                    logger.warning(
-                        "Job %s: live memory digest fetch failed; using the digest from submit time",
-                        job_id,
-                        exc_info=True,
-                    )
-            if memory_digest:
-                _inject_worker_headers(
-                    context_state,
-                    {PROJECT_MEMORY_HEADER: _b64url_encode_text(memory_digest)},
-                )
-            # The agent state gets what a chat turn gets: profile and memory,
-            # composed the way `get_project_context_from_context()` composes them.
-            agent_project_context = compose_project_context(project_context, memory_digest)
-
-            workflow_metadata = TraceMetadata(
-                provided_metadata={
-                    "workflow_run_id": job_id,
-                    "workflow_trace_id": f"{workflow_trace_id:032x}",
-                    "conversation_id": parent_conversation_id,
-                    "agent": agent_class_path,
-                    "parent_workflow_run_id": parent_workflow_run_id,
-                    "parent_workflow_name": parent_function_name,
-                }
-            )
-
-            # Run with telemetry - exporter must start before pushing events
-            with request_trace_tag_context(request_trace_tags or {}):
-                async with exporter_manager.start(context_state=context_state):
-                    # Link to parent span if provided (for nested trace continuity)
-                    parent_metadata: TraceMetadata | None = None
-                    if parent_span_id and parent_span_id != "root":
-                        parent_metadata = TraceMetadata(
-                            provided_metadata={
-                                "workflow_run_id": parent_workflow_run_id,
-                                "workflow_trace_id": f"{workflow_trace_id:032x}",
-                                "conversation_id": parent_conversation_id,
-                                "workflow_name": parent_function_name,
-                            }
-                        )
-                        context.intermediate_step_manager.push_intermediate_step(
-                            IntermediateStepPayload(
-                                UUID=parent_span_id,
-                                event_type=IntermediateStepType.SPAN_START,
-                                name=parent_function_name or "parent_workflow",
-                                metadata=parent_metadata,
-                            )
-                        )
-
-                    # Push WORKFLOW_START first so LLM/tool events become children
-                    context.intermediate_step_manager.push_intermediate_step(
-                        IntermediateStepPayload(
-                            UUID=job_id,
-                            event_type=IntermediateStepType.WORKFLOW_START,
-                            name=workflow_span_name,
-                            metadata=workflow_metadata,
-                            data=StreamEventData(input=input_text),
-                        )
-                    )
-
-                    # Create profiler callback AFTER workflow starts (ensures correct parent).
-                    # SpanClosingProfilerHandler closes errored LLM/tool spans (missing
-                    # on_llm_error/on_tool_error upstream orphan a frame on retry, corrupting
-                    # IntermediateStepManager's span stack) and supports for_new_run() so it
-                    # gets a fresh instance per researcher worker like VerboseTraceCallback.
-                    nat_profiler_callback = SpanClosingProfilerHandler()
-
-                    verbose = is_verbose(getattr(fn_config, "verbose", False))
-                    callbacks = [VerboseTraceCallback()] if verbose else []
-
-                    raw_event_store = EventStore(db_url, job_id)
-                    event_store = BatchingEventStore(raw_event_store)
-                    # The run's own account of itself, folded from the events
-                    # this job already emits and flushed to the run's message.
-                    # Built HERE, per run, never at module level (ADR-0018): a
-                    # worker process is reused across jobs and tenants, and an
-                    # accumulator that outlived a run would put one office's
-                    # documents on another office's report. Wrapping the store
-                    # is what feeds it — every producer downstream keeps writing
-                    # exactly as it did.
-                    run_ledger_fold = RunLedgerFold(
-                        job_id=job_id,
-                        run_id=run_id,
-                        event_store=event_store,
-                        basis=[doc.model_dump() for doc in plan_documents.basis] if plan_documents else None,
-                    )
-                    cancellation_monitor.on_document_added = run_ledger_fold.add_basis
-                    event_store = run_ledger_fold.observing(event_store)
-                    agent_event_callback = AgentEventCallback(event_store)
-                    callbacks.append(agent_event_callback)
-                    callbacks.append(nat_profiler_callback)
-
-                    # Phase-progress events (T4-4) and the completion-token budget
-                    # cap are deep-research-specific: only that agent has the
-                    # planner/researcher/writer subagent structure the phase
-                    # detector understands, and long-running fan-out research is
-                    # the run-away-cost shape the budget cap exists for.
-                    fn_type = getattr(fn_config, "type", None)
-                    is_deep_research_job = fn_type == "deep_research_agent"
-                    if is_deep_research_job:
-                        callbacks.append(
-                            PhaseProgressCallback(
-                                event_store,
-                                max_research_concurrency=getattr(fn_config, "max_research_concurrency", None),
-                            )
-                        )
-
-                    if fn_type in _BUDGET_GUARDED_AGENT_TYPES:
-                        from aiq_agent.common import create_budget_guard_callback
-
-                        budget_guard_callback = create_budget_guard_callback()
-                        if budget_guard_callback is not None:
-                            callbacks.append(budget_guard_callback)
-
-                    # Durable checkpointing (T3-8): None unless deep_research_agent.checkpoint_db is
-                    # configured, in which case DeepResearcherAgent resumes via job_id as thread_id.
-                    checkpointer = await _resolve_deep_research_checkpointer(fn_config)
-
-                    # Instantiate agent with callbacks
-                    agent = _create_agent_instance(
-                        agent_cls=agent_cls,
-                        llm_provider=provider,
-                        llm=llm,
-                        tools=tools,
-                        fn_config=fn_config,
-                        verbose=verbose,
-                        callbacks=callbacks,
-                        job_id=job_id,
-                        checkpointer=checkpointer,
-                    )
-
-                    # Run agent - LLM/tool events will be nested under workflow span.
-                    # Unified LLM cost tracking covers every model call in the job;
-                    # identity/budget were captured at submit time (no live request
-                    # headers exist inside a research worker).
-                    from aiq_agent.common.cost_tracking import BudgetSnapshot
-                    from aiq_agent.common.cost_tracking import track_llm_costs
-                    from aiq_agent.common.profiler import track_agent_profile
-
-                    _usage = usage_context or {}
-                    with (
-                        track_agent_profile(
-                            agent_name=_JOB_PROFILE_NAMES.get(fn_type, "deep_research_job"),
-                            job_id=job_id,
-                            identity=_usage.get("identity") or {},
-                        ),
-                        track_llm_costs(
-                            job_id=job_id,
-                            identity=_usage.get("identity") or {},
-                            budget=BudgetSnapshot.from_header(_usage.get("budget_header")) or BudgetSnapshot(),
-                        ),
-                        # The card channel the chat turn binds, bound here for
-                        # the job: without it `emit_card` and `surface_documents`
-                        # answer "no card channel" and a deep answer never shows
-                        # a document card.
-                        _bound_card_registry() as card_registry,
-                    ):
-                        result = await _run_agent(
-                            agent=agent,
-                            input_text=input_text,
-                            monitor=cancellation_monitor,
-                            available_documents=available_documents,
-                            data_sources=data_sources,
-                            event_store=event_store,
-                            user_info=user_info,
-                            clarifier_result=clarifier_result,
-                            plan_documents=plan_documents,
-                            project_context=agent_project_context,
-                            platform_lessons=platform_lessons,
-                            organization_id=_job_org_id,
-                        )
-
-                    # Emit WORKFLOW_END event for Phoenix
-                    context.intermediate_step_manager.push_intermediate_step(
-                        IntermediateStepPayload(
-                            UUID=job_id,
-                            event_type=IntermediateStepType.WORKFLOW_END,
-                            name=workflow_span_name,
-                            metadata=workflow_metadata,
-                            data=StreamEventData(output=_extract_result(result)),
-                        )
-                    )
-
-                    if parent_metadata:
-                        context.intermediate_step_manager.push_intermediate_step(
-                            IntermediateStepPayload(
-                                UUID=parent_span_id,
-                                event_type=IntermediateStepType.SPAN_END,
-                                name=parent_function_name or "parent_workflow",
-                                metadata=parent_metadata,
-                            )
-                        )
-
-                    # Signal event stream completion
-                    event_stream.on_complete()
-
-                    # Extract report and update status inside the context manager
-                    # so the UI sees completion before exporter flush and cleanup
-                    report = _extract_result(result)
-
-                    # Two LLM passes over the finished report, both best-effort
-                    # and independent of each other, so they run together:
-                    #
-                    # - Grid response cards, re-emitted with the report artifact.
-                    #   Additive: card failures never fail the job.
-                    # - Project-memory reflection. The chat path runs this
-                    #   post-answer for chat/meta turns but skips deep jobs
-                    #   (the report exists only now). Awaited, guarded and
-                    #   fail-open — the user already has the report, so this
-                    #   never affects the job outcome, only its bookkeeping.
-                    #
-                    # They used to run one after the other, and the reflection
-                    # carried no bound of its own, so the job stayed RUNNING (and
-                    # the thread turn and the notification waited) for up to the
-                    # card timeout plus the reflection model's retries after the
-                    # reader already had the report.
-                    # An agent that declares ``produces_report = False`` writes to
-                    # objects, not a report: it gets none of the post-report passes.
-                    cards_result, anatomy, follow_ups = await _run_report_passes(
-                        produces_report=_produces_report(agent_cls),
-                        llm=llm,
-                        input_text=input_text,
-                        report=report,
-                        organization_id=_job_org_id,
-                        builder=builder,
-                        job_id=job_id,
-                        # A scheduled job's submitter (the BFF) knows the flag but
-                        # not the config's LLM ref; the worker has the config.
-                        reflection_llm_ref=memory_reflection_llm or _workflow_reflection_llm_ref(config),
-                        reflection_enabled=memory_reflection_enabled,
-                        usage_context=usage_context,
-                        memory_digest=memory_digest,
-                        org_credential=resolved_org_credential,
-                        model_overrides=model_overrides,
-                        zdr_only=job_data_policy.zdr,
-                    )
-                    cards = _merge_job_cards(card_registry.snapshot(), cards_result.cards)
-                    if cards:
-                        # Card delivery is additive and must never flip an
-                        # already-complete job to FAILURE — the report is done
-                        # and persisted below regardless of this emit.
-                        try:
-                            agent_event_callback.emit_final_report(report, cards=cards)
-                        except Exception:
-                            logger.warning("Job %s: failed to emit final report with cards (non-fatal)", job_id)
-
-                    # The marks the run left on its own answer (cut off, degraded,
-                    # citations stripped). Lifted here, one step before the job is
-                    # finalized, so both surfaces get them from the same read:
-                    # the persisted output below and the live event just under it.
-                    # Guarded exactly like the card emit above — this is
-                    # bookkeeping ABOUT a finished answer and must never unmake it.
-                    transparency: dict[str, Any] = {}
-                    try:
-                        transparency = _extract_answer_transparency(result)
-                        if anatomy.answer_meta:
-                            transparency["answer_meta"] = anatomy.answer_meta
-                        if anatomy.findings:
-                            transparency["findings"] = anatomy.findings
-                        if follow_ups:
-                            transparency["stages"] = {"followUps": follow_ups}
-                        # Post-hoc card generation is the runner's own step, so
-                        # its failure is recorded here rather than by the agent:
-                        # the report is whole, the proposals derived from it are
-                        # missing, and the reader is told which of the two it is.
-                        if cards_result.failed:
-                            _mark_degraded(transparency, DEGRADED_CARDS_GENERATION_FAILED)
-                        if event_store is not None and (
-                            transparency.get("research_truncated") or transparency.get("degraded_reasons")
-                        ):
-                            # Its own event, deliberately NOT a status change: the
-                            # run SUCCEEDED, it just succeeded with a marked
-                            # answer. A live SSE listener would otherwise learn
-                            # nothing until it went back and re-read the finished
-                            # job's output — so the reader who watched the stream
-                            # all the way to the end is precisely the one who
-                            # would never be told the answer was salvaged.
-                            # Payload is stable tokens only (no prose): the
-                            # reader's caveat rides the report's own banner, in
-                            # the product's voice.
-                            event_store.store(
-                                {
-                                    "type": JOB_DEGRADED_EVENT_TYPE,
-                                    "data": {
-                                        key: transparency[key] for key in _DEGRADED_EVENT_FIELDS if key in transparency
-                                    },
-                                }
-                            )
-                    except Exception:
-                        logger.warning(
-                            "Job %s: failed to record answer transparency (non-fatal)", job_id, exc_info=True
-                        )
-
-                    if is_deep_research_job:
-                        emit_phase_event(event_store, PHASE_DONE)
-
-                    # Flush any buffered events before updating status
-                    if hasattr(event_store, "flush"):
-                        event_store.flush()
-
-                    # The answer's structured provenance, read once and handed to
-                    # BOTH surfaces below: the job output feeds the live Report
-                    # panel, the message metadata feeds the thread on reload. A
-                    # source list — or a cutoff mark — that reached only one of
-                    # them is the bug this closes, one layer up.
-                    verified_sources = _extract_verified_sources(result)
-                    output = _build_job_output(report, cards=cards, transparency=transparency, sources=verified_sources)
-                    # Sticky terminal statuses: never flip a job the reaper or
-                    # cancel route already finalized (FAILURE/INTERRUPTED) back
-                    # to SUCCESS. Still-owner on top of that: a DB worker whose
-                    # claim was reclaimed lost the race even if job_info is
-                    # still RUNNING — stealing the terminal write here would
-                    # block the new owner's SUCCESS and its thread turn below.
-                    # (Hardening item 10; the conditional write itself is item 6.)
-                    lost_claim = await _lost_claim(db_url, job_id, claim_owner)
-                    if lost_claim:
-                        logger.warning(
-                            "Job %s lost its queue claim; skipping SUCCESS write and thread publish "
-                            "(the owning worker publishes)",
-                            job_id,
-                        )
-                        finalized = False
-                    else:
-                        finalized = await _update_status_if_not_terminal(
-                            job_store, job_id, JobStatus.SUCCESS, output=output
-                        )
-                    # A job with `output: 'chat'` was given a conversation when
-                    # it fired; this is what puts the run INTO it, so somebody
-                    # can open the thread and keep typing. Best-effort by
-                    # contract: the report is already stored on the job above,
-                    # and a conversation write must never unmake a good run.
-                    #
-                    # Gated on owning the terminal verdict (item 10): a reaped
-                    # job finishing late, or a reclaimed loser finishing second,
-                    # must not write its answer into the thread while the
-                    # status stays FAILURE — thread, Report and status would
-                    # diverge, each telling a different story about the run.
-                    if finalized:
-                        report_landed_in = await write_job_turn(
-                            conversation_id=parent_conversation_id,
-                            job_id=job_id,
-                            usage_context=usage_context,
-                            prompt=input_text,
-                            answer=report,
-                            cards=cards,
-                            skills_activated=_extract_skills_activated(result),
-                            sources=verified_sources,
-                            # The same transparency dict the job output above got.
-                            # The Report panel reads that output; the thread reads
-                            # only this row, so a run cut off at the wall clock and
-                            # salvaged would otherwise reopen tomorrow as a clean
-                            # answer — the caveat surviving exactly as long as the
-                            # live panel stayed open, which is not what "persisted"
-                            # is supposed to mean.
-                            transparency=transparency,
-                            expect_run=run_id is not None,
-                            # The trace this run is in, read from the context it
-                            # pinned above: the BFF scores votes on the report there.
-                            trace_id=current_trace_id_hex(),
-                        )
-                        # What the run left behind, for its ledger: the message
-                        # the report was just written into, as the writer names
-                        # it (the run's own message, or the fallback turn). No
-                        # file id yet — this tier does not file the report.
-                        if run_ledger_fold is not None:
-                            run_ledger_fold.note_result(report_message_id=report_landed_in or None)
-                    else:
-                        logger.info(
-                            "Job %s finished without a thread turn (%s); the standing verdict owns the thread",
-                            job_id,
-                            "queue claim lost" if lost_claim else "terminal status already set",
-                        )
-                    # Tell the job's creator. Only when THIS run wrote the
-                    # terminal status: a job the reaper already finalized was
-                    # reported by nobody, and will not be reported twice here.
-                    if finalized:
-                        await notify_job_outcome(
-                            job_id=job_id,
-                            usage_context=usage_context,
-                            status="success",
-                            report=report,
-                            cards=cards,
-                            # A job with a run id was submitted for a task_runs
-                            # row, so a 404 is "not recorded yet" and is retried.
-                            expect_run=run_id is not None,
-                        )
-                        logger.info(
-                            "Job %s completed (report: %d chars, cards: %d)",
-                            job_id,
-                            len(report),
-                            len(cards) if cards else 0,
-                        )
-
-    except asyncio.CancelledError:
-        # Item 7 owns the abort vocabulary: user cancel vs ownership loss are
-        # told apart inside _finalize_cancelled_run (positive claim state, never
-        # message sniffing). The loser emits job.ownership-lost only; a real
-        # cancel keeps its INTERRUPTED verdict, notice and job.cancelled event.
-        event_store = await _finalize_cancelled_run(
-            job_store=job_store,
-            db_url=db_url,
-            job_id=job_id,
-            claim_owner=claim_owner,
-            parent_conversation_id=parent_conversation_id,
-            usage_context=usage_context,
-            event_store=event_store,
-            expect_run=run_id is not None,
-        )
-
-    except Exception as e:
-        # Full exception (with traceback) is logged server-side; only the
-        # sanitized, user-safe message is persisted and streamed to clients.
-        logger.exception("Job %s failed: %s", job_id, type(e).__name__)
-        safe_error = sanitize_job_error(e)
-        finalized = False
-        lost_claim = await _lost_claim(db_url, job_id, claim_owner)
-        if lost_claim:
-            logger.warning(
-                "Job %s lost its queue claim; skipping FAILURE write and notice (the owning worker publishes)",
-                job_id,
-            )
-        elif job_store:
-            # Sticky terminal statuses: don't clobber an INTERRUPTED/FAILURE
-            # verdict written by the cancel route or the ghost-job reaper.
-            finalized = await _update_status_if_not_terminal(job_store, job_id, JobStatus.FAILURE, error=safe_error)
-        # The conversation was created when the job FIRED, before the outcome
-        # was known. Left alone, a failed run leaves a thread somebody opens to
-        # find completely empty, which reads as a broken product rather than a
-        # failed run. Gated on verdict agreement like the cancel path (item
-        # 10): a loser's failure notice must not land beside the winner's
-        # answer, nor relabel a user cancellation.
-        if await _should_write_notice(
-            job_store=job_store,
-            job_id=job_id,
-            verdict=JobStatus.FAILURE.value,
-            finalized=finalized,
-        ):
-            await write_job_notice(
-                conversation_id=parent_conversation_id,
-                job_id=job_id,
-                usage_context=usage_context,
-                notice=FAILURE_NOTICE,
-                expect_run=run_id is not None,
-            )
-        # A standing FAILURE (the reaper's) is reported by the reaper too; a
-        # repeat here is harmless. A reclaimed loser reports nothing.
-        if not lost_claim and await _should_notify_outcome(
-            job_store=job_store,
-            job_id=job_id,
-            verdict=JobStatus.FAILURE.value,
-            finalized=finalized,
-        ):
-            await notify_job_outcome(
-                job_id=job_id,
-                usage_context=usage_context,
-                status="failure",
-                error=safe_error,
-                expect_run=run_id is not None,
-            )
-
-        if event_store is None:
-            event_store = BatchingEventStore(EventStore(db_url, job_id))
-
-        event_store.store(
-            {
-                "type": "job.error",
-                "data": {
-                    "error": safe_error,
-                    "error_type": type(e).__name__,
-                },
-            }
-        )
-        if hasattr(event_store, "flush"):
-            event_store.flush()
-
-    finally:
-        # The run's last word on itself: seal the open step, emit the final
-        # snapshot, and state the terminal fact. Before the flush below, because
-        # the snapshot it writes is an event like any other and has to reach the
-        # store with the rest of them.
-        if run_ledger_fold is not None:
-            await run_ledger_fold.close()
-        # Ensure terminal-path events are not left in the batch buffer.
-        if event_store is not None and hasattr(event_store, "flush"):
-            event_store.flush()
-        if cancellation_monitor:
-            cancellation_monitor.stop()
-        # Clean up job-scoped auth token
-        if _auth_token_reset is not None:
-            from ._auth_context import job_auth_token
-
-            job_auth_token.reset(_auth_token_reset)
-        # Drop the job's URL dedup caches: they are class-level dicts keyed by
-        # job_id and otherwise accumulate for the life of the worker process.
-        AgentEventCallback.cleanup_job_urls(job_id)
-        # Drop the run's durable deep-checkpoint rows once the run is terminal,
-        # unless another worker now owns the job (see the helper).
-        await _purge_deep_checkpoint_unless_reclaimed(db_url, job_id, claim_owner)
-
-
 def _create_agent_instance(
     agent_cls: type,
     llm_provider,
@@ -1958,13 +965,20 @@ def _create_agent_instance(
     job_id: str | None = None,
     checkpointer: Any | None = None,
 ):
-    """
-    Create an agent instance, supporting different constructor patterns.
+    """Create an agent instance: from its own config when the runner knows it, else by convention.
 
-    Tries in order:
-    1. llm_provider + tools pattern (DeepResearcherAgent style)
-    2. llm + tools pattern (simpler agents)
+    Intake and deep research take their budgets and switches from their config.
+    Any other agent is tried against the constructor shapes in use, most
+    specific first (``_constructed_by_convention``).
     """
+    configured = _configured_agent(agent_cls, llm_provider, tools, fn_config, verbose, callbacks, job_id, checkpointer)
+    if configured is not None:
+        return configured
+    return _constructed_by_convention(agent_cls, llm_provider, llm, tools, fn_config, verbose, callbacks)
+
+
+def _configured_agent(agent_cls, llm_provider, tools, fn_config, verbose, callbacks, job_id, checkpointer) -> Any:
+    """An intake or deep-research agent built from its own config, or None for any other agent."""
     from aiq_agent.agents.deep_researcher.register import DeepResearchAgentConfig
     from aiq_agent.agents.intake.register import ProjectIntakeAgentConfig
 
@@ -1998,40 +1012,28 @@ def _create_agent_instance(
             max_run_seconds=fn_config.max_run_seconds,
             checkpointer=checkpointer,
         )
+    return None
 
-    # Try original deep_researcher pattern (llm_provider + tools + verbose)
-    try:
-        return agent_cls(
-            llm_provider=llm_provider,
-            tools=tools,
-            verbose=verbose,
-            callbacks=callbacks,
-        )
-    except TypeError:
-        pass
 
-    # Try llm_provider + tools pattern (PilotiAgent style)
-    try:
-        return agent_cls(
-            llm_provider=llm_provider,
-            tools=tools,
-            max_tool_iterations=getattr(fn_config, "max_tool_iterations", 5),
-            callbacks=callbacks,
-        )
-    except TypeError:
-        pass
-
-    # Try simpler llm + tools pattern
-    try:
-        return agent_cls(
-            llm=llm,
-            tools=tools,
-            callbacks=callbacks,
-        )
-    except TypeError:
-        pass
-
-    # Fallback: just callbacks
+def _constructed_by_convention(agent_cls, llm_provider, llm, tools, fn_config, verbose, callbacks) -> Any:
+    """The first constructor shape ``agent_cls`` accepts, most specific first; else callbacks alone."""
+    shapes = (
+        # The original deep researcher: provider, tools, verbose.
+        {"llm_provider": llm_provider, "tools": tools, "verbose": verbose},
+        # Piloti: provider, tools, an iteration cap.
+        {
+            "llm_provider": llm_provider,
+            "tools": tools,
+            "max_tool_iterations": getattr(fn_config, "max_tool_iterations", 5),
+        },
+        # The simplest agents: one model and tools.
+        {"llm": llm, "tools": tools},
+    )
+    for shape in shapes:
+        try:
+            return agent_cls(**shape, callbacks=callbacks)
+        except TypeError:
+            continue
     return agent_cls(callbacks=callbacks)
 
 
@@ -2056,101 +1058,90 @@ async def _run_agent(
     1. run(input_text: str) -> str (simple protocol)
     2. run(state) where state has messages (LangGraph pattern)
     """
+    import inspect
+
+    if not hasattr(agent, "run"):
+        raise TypeError(f"Agent {type(agent).__name__} does not have a run method")
+    params = list(inspect.signature(agent.run).parameters)
+    # A first parameter named for the question is the simple protocol: run(input_text).
+    if params and params[0] in ("input_text", "query", "input"):
+        return await run_with_cancellation(agent.run(input_text), monitor, event_store=event_store)
+    # Otherwise the agent takes a state. Mirror the synchronous chat path: the
+    # prompts read these off the state, so a job must carry them too. A worker
+    # has no request headers, so an agent that resolves per-tenant data (deep
+    # research resolves the org's skills) gets the organization captured at
+    # submit the same way.
+    fields = {
+        "user_info": user_info,
+        "clarifier_result": clarifier_result,
+        "plan_documents": plan_documents,
+        "project_context": project_context,
+        "platform_lessons": platform_lessons,
+        "organization_id": organization_id,
+    }
+    state_cls = _get_agent_state_class(agent)
+    if state_cls:
+        state = _model_state(state_cls, input_text, data_sources, available_documents, fields)
+    else:
+        state = _dict_state(input_text, data_sources, available_documents, fields)
+    return await _run_with_reader_controls(agent, state, monitor, event_store)
+
+
+def _model_state(state_cls: type, input_text: str, data_sources, available_documents, fields: dict) -> Any:
+    """The agent's own state model, with each of ``fields`` the model declares and that has a value."""
     from langchain_core.messages import HumanMessage
 
-    # Check if agent has a simple run(input_text) method
-    if hasattr(agent, "run"):
-        import inspect
-
-        sig = inspect.signature(agent.run)
-        params = list(sig.parameters.keys())
-
-        # If first param is 'input_text' or 'query', use simple pattern
-        if params and params[0] in ("input_text", "query", "input"):
-            return await run_with_cancellation(
-                agent.run(input_text),
-                monitor,
-                event_store=event_store,
-            )
-
-        # Otherwise assume state-based pattern
-        # Try to find the agent's state class
-        state_cls = _get_agent_state_class(agent)
-        if state_cls:
-            # Build state with available_documents if the class supports it
-            state_kwargs = {"messages": [HumanMessage(content=input_text)]}
-            if data_sources is not None:
-                state_kwargs["data_sources"] = data_sources
-            # Mirror the synchronous chat path: prompts read these off the
-            # agent state, so async jobs must carry them too. Guarded by
-            # field support so non-research agents keep working unchanged.
-            state_fields = getattr(state_cls, "model_fields", {})
-            for field_name, field_value in (
-                ("user_info", user_info),
-                ("clarifier_result", clarifier_result),
-                ("plan_documents", plan_documents),
-                ("project_context", project_context),
-                ("platform_lessons", platform_lessons),
-                # No request headers exist in a research worker, so an agent that
-                # resolves per-tenant data (deep research resolves the org's
-                # skills) cannot read the organization off the context the way
-                # the synchronous chat path does. It was captured at submit
-                # time; hand it over the same way as the fields above.
-                ("organization_id", organization_id),
-            ):
-                if field_value is not None and field_name in state_fields:
-                    state_kwargs[field_name] = field_value
-            if available_documents:
-                # Convert dicts to AvailableDocument if the state class expects them
-                try:
-                    from aiq_agent.knowledge import AvailableDocument
-
-                    state_kwargs["available_documents"] = [AvailableDocument(**doc) for doc in available_documents]
-                    logger.debug(
-                        "Research worker passing %d available documents to agent state",
-                        len(available_documents),
-                    )
-                except (ImportError, TypeError):
-                    # AvailableDocument not available or state doesn't support it
-                    pass
-            state = state_cls(**state_kwargs)
-        else:
-            # Fallback: create a simple dict state
-            state = {"messages": [HumanMessage(content=input_text)]}
-            if data_sources is not None:
-                state["data_sources"] = data_sources
-            if available_documents:
-                state["available_documents"] = available_documents
-            if user_info is not None:
-                state["user_info"] = user_info
-            if clarifier_result is not None:
-                state["clarifier_result"] = clarifier_result
-            if project_context is not None:
-                state["project_context"] = project_context
-            if platform_lessons is not None:
-                state["platform_lessons"] = platform_lessons
-
-        # The reader's „Jetzt schreiben" reaches the research tool through a
-        # per-run binding; the task created inside `run_with_cancellation`
-        # inherits it.
-        from aiq_agent.agents.deep_researcher.control import bind_added_documents
-        from aiq_agent.agents.deep_researcher.control import bind_write_now
-        from aiq_agent.agents.deep_researcher.control import reset_added_documents
-        from aiq_agent.agents.deep_researcher.control import reset_write_now
-
-        token = bind_write_now(monitor.write_now)
-        added_token = bind_added_documents(monitor.added_documents)
+    state_kwargs: dict[str, Any] = {"messages": [HumanMessage(content=input_text)]}
+    if data_sources is not None:
+        state_kwargs["data_sources"] = data_sources
+    declared = getattr(state_cls, "model_fields", {})
+    state_kwargs.update({name: value for name, value in fields.items() if value is not None and name in declared})
+    if available_documents:
         try:
-            return await run_with_cancellation(
-                agent.run(state),
-                monitor,
-                event_store=event_store,
-            )
-        finally:
-            reset_added_documents(added_token)
-            reset_write_now(token)
+            from aiq_agent.knowledge import AvailableDocument
 
-    raise TypeError(f"Agent {type(agent).__name__} does not have a run method")
+            state_kwargs["available_documents"] = [AvailableDocument(**doc) for doc in available_documents]
+            logger.debug("Research worker passing %d available documents to agent state", len(available_documents))
+        except (ImportError, TypeError):
+            # The state does not take AvailableDocument entries: run without them.
+            pass
+    return state_cls(**state_kwargs)
+
+
+def _dict_state(input_text: str, data_sources, available_documents, fields: dict) -> dict[str, Any]:
+    """A plain dict state, for an agent that names no state model. It never carried the plan or the organization."""
+    from langchain_core.messages import HumanMessage
+
+    state: dict[str, Any] = {"messages": [HumanMessage(content=input_text)]}
+    if data_sources is not None:
+        state["data_sources"] = data_sources
+    if available_documents:
+        state["available_documents"] = available_documents
+    for name in ("user_info", "clarifier_result", "project_context", "platform_lessons"):
+        if fields[name] is not None:
+            state[name] = fields[name]
+    return state
+
+
+async def _run_with_reader_controls(agent, state: Any, monitor: CancellationMonitor, event_store) -> Any:
+    """Run a state-taking agent with the reader's controls bound for the run.
+
+    The reader's „Jetzt schreiben" and the documents they add mid-run reach the
+    research tool through per-run bindings; the task ``run_with_cancellation``
+    creates inherits them.
+    """
+    from aiq_agent.agents.deep_researcher.control import bind_added_documents
+    from aiq_agent.agents.deep_researcher.control import bind_write_now
+    from aiq_agent.agents.deep_researcher.control import reset_added_documents
+    from aiq_agent.agents.deep_researcher.control import reset_write_now
+
+    token = bind_write_now(monitor.write_now)
+    added_token = bind_added_documents(monitor.added_documents)
+    try:
+        return await run_with_cancellation(agent.run(state), monitor, event_store=event_store)
+    finally:
+        reset_added_documents(added_token)
+        reset_write_now(token)
 
 
 def _get_agent_state_class(agent) -> type | None:
@@ -2238,7 +1229,7 @@ def _merge_job_cards(emitted: list[dict[str, Any]], generated: list[Any] | None)
     The post-hoc cards were derived from the finished report and are named by
     no marker, so appending them costs nothing — putting them first would shift
     every emitted index by their count. ``None`` when there is nothing at all,
-    matching ``_build_job_output``'s absent-not-empty rule.
+    matching ``run_result.build_job_output``'s absent-not-empty rule.
     """
     merged = [*emitted, *(generated or [])]
     return merged or None
@@ -2375,20 +1366,6 @@ async def _generate_grid_cards(llm: Any, query: str, report: str) -> CardGenerat
         return CardGenerationResult(cards=None, failed=True)
 
 
-def _mark_degraded(transparency: dict[str, Any], reason: str) -> None:
-    """Add one degraded-reason token to an answer's transparency, in place.
-
-    Appends rather than replaces: the agent's own reasons (no report file, no
-    valid citation) are already there, in its order, and this is one more thing
-    the reader should know, not a different claim about the run.
-    """
-    existing = transparency.get("degraded_reasons")
-    reasons = [token for token in existing if isinstance(token, str)] if isinstance(existing, list) else []
-    if reason not in reasons:
-        reasons.append(reason)
-    transparency["degraded_reasons"] = reasons
-
-
 async def _run_deep_research_reflection(
     *,
     builder: Any,
@@ -2427,68 +1404,17 @@ async def _run_deep_research_reflection(
     """
     if not reflection_enabled or not reflection_llm_ref or not report:
         return
-    # ADR-0087: no restricted-folder check here, on purpose. A check on this
-    # job's scope could never fire: the BFF signs a restricted collection only
-    # into an interactive chat scope (`collection-scope-request.ts`, pinned by
-    # `collection-scope-request.restricted.spec.ts`), so a run's scope is always
-    # open. What could carry restricted content into a run is its INPUT, the
-    # question a confined chat turn wrote, and that is refused where the run is
-    # commissioned: `commissionResearchRun` and `delegateTask` refuse a
-    # conversation that drew on a restricted folder, and a turn whose signed
-    # scope held one (`lib/conversations/restricted-egress.ts`). So the input
-    # read below (`query`) and the report are open content, and reflecting them
-    # into open project memory is right.
-    identity = (usage_context or {}).get("identity") or {}
-    project_id = identity.get("project_id")
-    if not project_id:
-        # The autonomous reflection stage only writes project-scoped memory
-        # (audit finding S1); an org-only job has nothing it may safely record.
+    identity = _reflection_identity(usage_context)
+    if identity is None:
         return
+    from aiq_agent.stages.memory_reflection import REFLECTION_TIMEOUT_S
+
     try:
-        from aiq_agent.common import AgentGroup
-        from aiq_agent.common import apply_model_override
-        from aiq_agent.common import apply_org_credential
-        from aiq_agent.common import get_langchain_llm
-        from aiq_agent.common import sanitize_model_overrides
-        from aiq_agent.common.cost_tracking import BudgetSnapshot
-        from aiq_agent.common.cost_tracking import track_llm_costs
-        from aiq_agent.common.profiler import track_agent_profile
-        from aiq_agent.memory.reflection import run_memory_reflection
-        from aiq_agent.stages.memory_reflection import REFLECTION_TIMEOUT_S
-
-        reflection_llm = await get_langchain_llm(builder, reflection_llm_ref)
-        overrides = sanitize_model_overrides(model_overrides) if model_overrides else {}
-        # Every dial explicit (not context): a research worker has no live request,
-        # and a getter here would be a blocking BFF call on the worker's loop.
-        # The credential first, so the ZDR pin lands only on a model that still
-        # points at OpenRouter.
-        reflection_llm = apply_model_override(
-            apply_org_credential(reflection_llm, org_credential),
-            AgentGroup.MEMORY_REFLECTION,
-            overrides,
-            zdr_only=zdr_only,
+        reflection_llm = await _reflection_llm(builder, reflection_llm_ref, org_credential, model_overrides, zdr_only)
+        await asyncio.wait_for(
+            _reflect(reflection_llm, identity, job_id=job_id, query=query, report=report, memory_digest=memory_digest),
+            timeout=REFLECTION_TIMEOUT_S,
         )
-
-        with (
-            track_agent_profile(agent_name="project_memory_reflection", job_id=job_id, identity=identity),
-            track_llm_costs(job_id=job_id, identity=identity, budget=BudgetSnapshot()),
-        ):
-            await asyncio.wait_for(
-                run_memory_reflection(
-                    llm=reflection_llm,
-                    query=query,
-                    answer=report,
-                    project_id=project_id,
-                    organization_id=identity.get("organization_id"),
-                    conversation_id=identity.get("conversation_id"),
-                    # The MEMORY digest, not the intake profile: the pass compares
-                    # the report against what is already remembered, and against
-                    # the profile it re-recorded known findings and could never
-                    # resolve a supersede quote.
-                    memory_digest=memory_digest,
-                ),
-                timeout=REFLECTION_TIMEOUT_S,
-            )
     except TimeoutError:
         logger.warning(
             "Job %s: deep-research memory reflection timed out after %ss (non-fatal)", job_id, REFLECTION_TIMEOUT_S
@@ -2497,196 +1423,72 @@ async def _run_deep_research_reflection(
         logger.warning("Job %s: deep-research memory reflection failed (non-fatal)", job_id, exc_info=True)
 
 
-def _extract_skills_activated(result: Any) -> list[str] | None:
-    """The skill names a job run activated, or ``None``.
+def _reflection_identity(usage_context: dict | None) -> dict | None:
+    """The run's identity when its report may be reflected into project memory, else None.
 
-    The socket path lifts this off the agent state onto the terminal frame and
-    persists it as message metadata; a job run had the same field on the same
-    state and dropped it on the floor, so a thread written by a job showed no
-    transparency where an interactive turn showed some. Read defensively (state
-    object OR dict, list-of-str or nothing) because the runner is agent-agnostic
-    by design — an agent whose state has no such field simply has none.
+    The autonomous reflection stage only writes project-scoped memory (audit
+    finding S1): an org-only job has nothing it may safely record.
+
+    ADR-0087: no restricted-folder check here, on purpose. A check on this job's
+    scope could never fire: the BFF signs a restricted collection only into an
+    interactive chat scope (`collection-scope-request.ts`, pinned by
+    `collection-scope-request.restricted.spec.ts`), so a run's scope is always
+    open. What could carry restricted content into a run is its INPUT, the
+    question a confined chat turn wrote, and that is refused where the run is
+    commissioned: `commissionResearchRun` and `delegateTask` refuse a
+    conversation that drew on a restricted folder, and a turn whose signed scope
+    held one (`lib/conversations/restricted-egress.ts`). So the question and the
+    report are open content, and reflecting them into open project memory is right.
     """
-    value = getattr(result, "skills_activated", None)
-    if value is None and isinstance(result, dict):
-        value = result.get("skills_activated")
-    if not isinstance(value, list):
-        return None
-    names = [name for name in value if isinstance(name, str) and name]
-    return names or None
+    identity = (usage_context or {}).get("identity") or {}
+    return identity if identity.get("project_id") else None
 
 
-def _extract_verified_sources(result: Any) -> list[dict[str, Any]] | None:
-    """The structured provenance of a finished run's answer, or ``None``.
+async def _reflect(
+    llm: Any, identity: dict, *, job_id: str, query: str, report: str, memory_digest: str | None
+) -> None:
+    """One reflection pass over the report, profiled and costed under the run's identity."""
+    from aiq_agent.common.cost_tracking import BudgetSnapshot
+    from aiq_agent.common.cost_tracking import track_llm_costs
+    from aiq_agent.common.profiler import track_agent_profile
+    from aiq_agent.memory.reflection import run_memory_reflection
 
-    Each entry is one source the report CITED, as the agent's citation
-    verification resolved it: the ``[N]`` label it wears in the prose, the
-    document/file/page locator the reader opens a PDF with, the coarse ``kind``
-    and the norm registry's binding note. The socket path lifts exactly this
-    field off the state and posts it as ``sources``; the job path reduced the
-    whole state to a report string, so a deep answer delivered as a job arrived
-    with nothing but numbers scraped back out of its own Markdown — no
-    open-at-page, no hover snippet, no authority badge — while the same answer
-    streamed live arrived fully attributed.
+    with (
+        track_agent_profile(agent_name="project_memory_reflection", job_id=job_id, identity=identity),
+        track_llm_costs(job_id=job_id, identity=identity, budget=BudgetSnapshot()),
+    ):
+        await run_memory_reflection(
+            llm=llm,
+            query=query,
+            answer=report,
+            project_id=identity["project_id"],
+            organization_id=identity.get("organization_id"),
+            conversation_id=identity.get("conversation_id"),
+            # The MEMORY digest, not the intake profile: the pass compares the
+            # report against what is already remembered, and against the profile
+            # it re-recorded known findings and could never resolve a supersede quote.
+            memory_digest=memory_digest,
+        )
 
-    Read defensively (state object OR dict, entries type-checked one by one)
-    because the runner is agent-agnostic by design: an agent whose state carries
-    no such field contributes nothing here, and one that carries a malformed
-    version contributes nothing rather than an unopenable chip.
+
+async def _reflection_llm(
+    builder: Any, llm_ref: str, org_credential: Any, model_overrides: dict[str, str] | None, zdr_only: bool
+) -> Any:
+    """The reflection model with every dial explicit: the org's credential, its override, zero data retention.
+
+    Explicit, not read from context: a research worker has no live request, and
+    a getter here would be a blocking BFF call on the worker's loop. The
+    credential goes first, so the ZDR pin lands only on a model that still
+    points at OpenRouter.
     """
-    value = getattr(result, "verified_sources", None)
-    if value is None and isinstance(result, dict):
-        value = result.get("verified_sources")
-    if not isinstance(value, list):
-        return None
-    sources = [source for source in value if isinstance(source, dict) and source]
-    return sources or None
+    from aiq_agent.common import AgentGroup
+    from aiq_agent.common import apply_model_override
+    from aiq_agent.common import apply_org_credential
+    from aiq_agent.common import get_langchain_llm
+    from aiq_agent.common import sanitize_model_overrides
 
-
-def _build_job_output(
-    report: str,
-    *,
-    cards: list[Any] | None,
-    transparency: dict[str, Any],
-    sources: list[dict[str, Any]] | None = None,
-) -> dict[str, Any]:
-    """The dict a finished job persists as its ``output``.
-
-    A named function rather than three inline lines because this dict IS the
-    contract a client reads a finished job by, and inline it could not be
-    checked without standing up a worker and a job store.
-
-    ``report`` is always there. Everything else is present or absent, never
-    present-and-empty: no ``cards: []`` on a run that produced none, and no
-    ``research_truncated: false`` on a run that completed — the same contract
-    that field keeps on the chat path, so a client can key off existence.
-
-    ``sources`` is spelled the way the backend spells it everywhere else on the
-    wire (the socket's ``TurnResult``, the message metadata), so
-    the live Report panel and a rehydrated thread read one contract rather than
-    two dialects of the same list.
-    """
-    output: dict[str, Any] = {"report": report}
-    if cards:
-        output["cards"] = cards
-    if sources:
-        output["sources"] = sources
-    output.update(transparency)
-    return output
-
-
-def _extract_answer_transparency(result: Any) -> dict[str, Any]:
-    """The marks a finished run left on its own answer, as the fields it set.
-
-    A deep run can SUCCEED and still owe the reader a caveat. It can be cut off
-    by the wall clock or by the graph's step limit and have its answer salvaged
-    from partial work (``research_truncated`` / ``truncation_reason``); it can
-    ship in a known-weaker form — no report file was ever written, or citation
-    verification found nothing provably grounded (``degraded_reasons``); and
-    citations it did make can have been stripped before anyone saw them
-    (``citations_removed``). It can also rate its own answer, in the level and
-    the two reasons that make the level actionable (``answer_confidence``).
-    The socket path lifts all of that off the agent state onto the terminal
-    frame. The job path reduced the entire state to a report string, so every
-    one of these markers died inside the research worker and the same answer looked
-    *cleaner* delivered as a job than streamed live.
-
-    Read defensively — state object OR dict, every field type-checked on its own
-    — because the runner is agent-agnostic by design: an agent whose state
-    carries none of this simply contributes nothing here, and one that carries a
-    malformed version of it contributes nothing rather than a wrong claim.
-
-    Returns only the fields actually present. Absence is the default and the
-    caller copies this dict straight into the job's persisted output, so the
-    presence of a key is itself the fact — ``research_truncated`` is written as
-    ``true`` or not written at all, never as ``false``, which is the contract it
-    already keeps on the chat path.
-    """
-
-    def field(name: str) -> Any:
-        value = getattr(result, name, None)
-        if value is None and isinstance(result, dict):
-            value = result.get(name)
-        return value
-
-    transparency: dict[str, Any] = {}
-
-    # Literal ``True`` only. A truthy stand-in (``1``, ``"yes"``) means the state
-    # was written by something that does not share this contract, and telling a
-    # reader their research was cut off when nothing recorded a cutoff is a worse
-    # failure than telling them nothing.
-    if field("research_truncated") is True:
-        transparency["research_truncated"] = True
-
-    reason = field("truncation_reason")
-    if isinstance(reason, str) and reason.strip():
-        # Read independently of the flag rather than nested under it: a state
-        # that recorded WHY it stopped but lost the boolean still knows something
-        # true, and the caller keys its event off either one being present.
-        transparency["truncation_reason"] = reason
-
-    degraded_reasons = field("degraded_reasons")
-    if isinstance(degraded_reasons, list):
-        tokens = [token for token in degraded_reasons if isinstance(token, str) and token]
-        # An empty list is not a claim of "degraded in zero ways" — it is the
-        # ordinary case, and it stays out of the output entirely.
-        if tokens:
-            transparency["degraded_reasons"] = tokens
-
-    citations_removed = field("citations_removed")
-    if isinstance(citations_removed, dict) and citations_removed:
-        transparency["citations_removed"] = citations_removed
-
-    # The answer's own self-assessment, read here so it rides the SAME dict to
-    # the same two surfaces instead of growing a second lift with its own bugs.
-    # The three travel together on purpose: the chat path has always sent the
-    # level with its reason, because "niedrig" alone tells a reader their answer
-    # might be wrong and nothing about what to check, and a level whose reason
-    # was dropped in transport is the exact complaint that pairing exists to
-    # prevent. Deep may not record any of them yet — absent is the ordinary case
-    # and writes nothing, so this lands before the field exists and stays correct
-    # after it does.
-    for confidence_field in _ANSWER_CONFIDENCE_FIELDS:
-        value = field(confidence_field)
-        if isinstance(value, str) and value.strip():
-            transparency[confidence_field] = value
-
-    # Recorded on the deep state and, until this, dropped on the way to the
-    # message: the run's own retrieval ledger and the skills the disclosure
-    # mutes. Both ride the same dict as the rest, present or absent.
-    ledger = field("retrieval_ledger")
-    if isinstance(ledger, list) and ledger:
-        transparency["retrieval_ledger"] = ledger
-    hidden = field("skills_hidden")
-    if isinstance(hidden, list):
-        names = [name for name in hidden if isinstance(name, str) and name]
-        if names:
-            transparency["skills_hidden"] = names
-
-    return transparency
-
-
-def _extract_result(result: Any) -> str:
-    """Extract string result from various result formats."""
-    # Direct string
-    if isinstance(result, str):
-        return result
-
-    # State with messages
-    if hasattr(result, "messages") and result.messages:
-        last_msg = result.messages[-1]
-        if hasattr(last_msg, "content"):
-            return str(last_msg.content)
-
-    # Dict with messages
-    if isinstance(result, dict):
-        if "messages" in result and result["messages"]:
-            last_msg = result["messages"][-1]
-            if hasattr(last_msg, "content"):
-                return str(last_msg.content)
-        if "report" in result:
-            return str(result["report"])
-        if "output" in result:
-            return str(result["output"])
-
-    return str(result) if result else ""
+    llm = await get_langchain_llm(builder, llm_ref)
+    overrides = sanitize_model_overrides(model_overrides) if model_overrides else {}
+    return apply_model_override(
+        apply_org_credential(llm, org_credential), AgentGroup.MEMORY_REFLECTION, overrides, zdr_only=zdr_only
+    )

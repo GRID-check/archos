@@ -4,7 +4,7 @@ LlamaIndex Backend - End-to-End Test
 
 This script tests the complete knowledge layer workflow with LlamaIndex:
 1. Ingest PDFs with multimodal extraction (text, tables, charts, images)
-2. Store embeddings in Qdrant (AIQ_QDRANT_URL)
+2. Store embeddings in Qdrant (GRID_QDRANT_URL)
 3. Test retrieval via semantic search
 
 Prerequisites:
@@ -129,7 +129,7 @@ async def main():
     print(f"\nFiles to ingest: {len(file_paths)}")
     for f in file_paths:
         print(f"  - {f}")
-    print(f"Qdrant: {os.environ.get('AIQ_QDRANT_URL', '(AIQ_QDRANT_URL not set)')}")
+    print(f"Qdrant: {os.environ.get('GRID_QDRANT_URL', '(GRID_QDRANT_URL not set)')}")
     print(f"Collection: {collection_name}")
 
     # Validate files exist
@@ -271,7 +271,7 @@ async def main():
     print("\n" + "=" * 70)
     print("Test Complete!")
     print("=" * 70)
-    print(f"\nData stored in Qdrant: {os.environ.get('AIQ_QDRANT_URL')}")
+    print(f"\nData stored in Qdrant: {os.environ.get('GRID_QDRANT_URL')}")
     print(f"Collection: {collection_name}")
     print(f"Files ingested: {len(file_paths)}")
 

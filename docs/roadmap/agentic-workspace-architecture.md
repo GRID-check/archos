@@ -48,7 +48,7 @@ that closes a loop is named where it ran.
 | A | Quote verification refuses a skipped or inserted whole word, whatever the word, at any length; sub-word OCR noise stays tolerated | `common/citation_verification.py` |
 | A | The Punkt and the retrieval score are parsed off the grounding block, fold under page dedup, reach the wire and the stored message, and the locus reads "Pkt. 3.5.2 · S. 7" | `citation_verification.py`, `features/chat/lib/citations/*`, `SourcePreview.tsx`, `CitationPeek.tsx` |
 | A | The turn's retrieval query survives the storage prune and the server whitelist, so a reloaded or shared thread keeps what was searched | `prune-message-for-storage.ts`, `message-provenance.ts`, `turn-events.ts` |
-| A · pass | The structural retrievability harness runs in CI as a gate (`task be:eval:retrieval`, 95% floor, 98.3% measured). *(Retired 2026-09-09: the corpus became operator-provided and gitignored, so no CI checkout can measure it. The harness stays as a local tool — [ADR-0058, Update (2026-09-09)](../adr/0058-retrieval-correctness-and-the-measurement-gate.md).)* | `Taskfile.yml`, `oib_retrieval_eval/runner.py` |
+| A · pass | The structural retrievability harness runs in CI as a gate (`task be:eval:retrieval`, 95% floor, 98.3% measured). *(Retired 2026-09-09: the corpus became operator-provided and gitignored, so no CI checkout can measure it. The harness stays as a local tool — [ADR-0058, Update (2026-09-09)](../adr/0058-retrieval-correctness-and-the-measurement-gate.md).)* | `Taskfile.yml`, `evals/oib-retrieval/src/oib_retrieval/runner.py` |
 | B | A background run carries the project, organization and user identity, fetches the live memory digest, composes it into the agent's context and hands the reflection pass a real digest; the fire path builds the digest and evaluates the reflection flag | `aiq_api/jobs/runner.py`, `routes/skills.py`, `lib/jobs/service.ts` |
 | B | A finished or failed run tells the job's creator: `job.completed` / `job.failed` inbox items, a `project` inbox target, an internal outcome route the worker calls from its terminal arms | `lib/inbox/*`, `app/api/internal/jobs/[jobId]/outcome`, `aiq_api/jobs/outcome_notify.py` |
 | B | One personal-data guard on the write path both memory writers share; a date is no longer dropped as a phone number | `knowledge/project_memory.py` |
@@ -144,7 +144,7 @@ named in `deploy/compose/docker-compose.coolify.yaml:131`.
 | Can it act without a human click? | No. Org memory writes and profile patches become proposal cards the user accepts | `register.py:171-186`, `cards/models.py:280-289` |
 | Can it work unattended? | A *job* is one prompt on a cron line that fires one agent. No plan, no steps, no review, no notification when it finishes | `lib/db/schema/jobs.ts:98-159`, `scheduler/index.js:131-157` |
 | Are its tools all live? | Two tools bound to the deep researcher cannot work there: `remember` needs `x-grid-project-id`, which the job runner never re-injects; `emit_card` needs a card registry that exists only on the chat path | `jobs/runner.py:749-785` vs `project_context.py:44-46`; `cards/register.py:175-181` |
-| Is quality measured? | A real retrieval harness exists (52-entry golden set, recall@k, nDCG, structural retrievability of 946 Punkte). No CI job, Taskfile target or schedule runs it | `frontends/benchmarks/oib_retrieval/`; `grep benchmark Taskfile.yml .github/workflows/` is empty |
+| Is quality measured? | A real retrieval harness exists (52-entry golden set, recall@k, nDCG, structural retrievability of 946 Punkte). No CI job, Taskfile target or schedule runs it | `evals/oib-retrieval/`; `grep benchmark Taskfile.yml .github/workflows/` is empty |
 | Is the user told what happened? | Live: yes, and well (status keys, the Herleitung graph, "Ausgeführt" chips, HITL). After the turn: the query is blanked before storage | `features/chat/lib/prune-message-for-storage.ts:47-59` |
 
 The one place the backend is genuinely multi-agent is deep research
@@ -252,7 +252,7 @@ What remains, ranked by consequence:
    classification could replace on arrival. "What was in force at the permit
    date" cannot be asked.
 6. **Cross-encoder reranking is dark.** 437 tested lines, five providers,
-   `AIQ_RERANKER_PROVIDER=none` in every deploy file. The audit's own §21 says
+   `GRID_RERANKER_PROVIDER=none` in every deploy file. The audit's own §21 says
    recall is saturated at k=60 and the remaining gain is ordering.
 7. **Tables lose their Punkt.** Table documents are built from a separate
    pdfplumber pass with no outline context, so the threshold tables where the
@@ -377,7 +377,7 @@ closed. A loop with no measurement is a hope.
 
 | # | Loop | Runs today | Does not | Closed when |
 |---|---|---|---|---|
-| L0 | **Turn**: generate → verify → repair → ship | generate, verify (subtractive), ship | repair. A failed quote or a removed citation yields a marker, never a re-search or a rewrite | One bounded repair pass (one extra tool call, one rewrite) on `citations_removed > 0`, an unverified quote, or a capped confidence; measured by the `oib_compliance` suite's citation-validity rate before and after. (Superseded by ADR-0067: a misremembered quote is corrected in place, quote_patch.py; repair_pass is the off switch.) |
+| L0 | **Turn**: generate → verify → repair → ship | generate, verify (subtractive), ship | repair. A failed quote or a removed citation yields a marker, never a re-search or a rewrite | One bounded repair pass (one extra tool call, one rewrite) on `citations_removed > 0`, an unverified quote, or a capped confidence; measured by the `oib_compliance` suite's citation-validity rate before and after (that suite was deleted uncalibrated in ADR-0145 row 2). (Superseded by ADR-0067: a misremembered quote is corrected in place, quote_patch.py; repair_pass is the off switch.) |
 | L1 | **Retrieval**: retrieve → judge sufficiency → re-query | retrieve, fuse, rerank | judge, re-query, multi-query. Nothing inside `knowledge_search` improves a weak query | recall@10 and nDCG@10 on the golden set, run in CI against a committed baseline, with the structural arm as the merge gate |
 | L2 | **Task**: plan → approve → run → verify → review → accept | run (deep research, compliance check) | everything durable around it: the plan is a socket future, the artifact expires, nobody is told, nobody reviews, the decision never returns | Time from "task created" to "task accepted" is a measured number per kind, and a rejected task's reason reaches the next run's prompt |
 | L3 | **Memory**: capture → consolidate → recall → measure use → decay | all five, on the chat path | capture and recall on the job path; closing an open question; use vs injection | Reinforcement fires only on the query-ranked build; `open_question` rows have a resolved rate; a memory holdout like the lessons' `holdout_pct` |
@@ -486,7 +486,7 @@ touches the three choke points named in §4 and two verification modules.
 executes the structural arm and the lexical arm against a committed baseline
 and fails on regression. *(That was true when this pass ran. The CI job was
 retired on 2026-09-09 with the corpus; the command still does exactly this
-locally, for anyone who has one.)* The `oib_compliance` suite reports citation-validity
+locally, for anyone who has one.)* The `oib_compliance` suite (deleted uncalibrated in ADR-0145 row 2) reports citation-validity
 and a new quote-polarity case. A stored message, reloaded on a second device,
 shows the query, the Punkt and the score for every source. Deployed SHA and
 the three flags are read off the pilot and recorded in the triage doc.
@@ -550,7 +550,7 @@ The loops that make the agent trustworthy unattended.
 | Tell the reader about truncation in the answer, which the config calls an open product decision | `config_oib_openrouter.yml:684-694` |
 
 **Verification pass D.** Citation-validity and quote-polarity rates on the
-`oib_compliance` suite with the repair pass on and off. Recall@10 with and
+`oib_compliance` suite with the repair pass on and off (deleted uncalibrated in ADR-0145 row 2; a successor eval would carry this). Recall@10 with and
 without the fan-out. A plan attached and asked about in one message is
 answered after ingestion and says so. A stale corpus produces one task per
 affected project and no duplicate.

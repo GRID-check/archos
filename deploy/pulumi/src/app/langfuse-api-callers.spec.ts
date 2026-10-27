@@ -46,7 +46,8 @@ describe("Langfuse's API credentials, with the tier deployed", () => {
   beforeAll(async () => {
     pulumi.runtime.setAllConfig({ ...baseStackConfig(), ...langfuseStackConfig() });
     const { loadConfig } = await import("../config");
-    const { bffJobsEnv, frontendEnv, purgerEnv, schedulerEnv } = await import("./config");
+    const { frontendEnv, purgerEnv, schedulerEnv } = await import("./config");
+    const { bffJobsEnv } = await import("./bff-jobs-env");
     const cfg = loadConfig();
     expect(cfg.langfuse.enabled).toBe(true);
     const wiring = {

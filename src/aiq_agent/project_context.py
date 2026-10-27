@@ -11,7 +11,7 @@ are accessed lowercased via ``Context`` metadata.
 reads ALL of them in one place, mirroring the TS builder at
 ``frontends/ui/src/lib/request-context.ts`` (see that module's docstring for
 the full header-inventory table and encodings). The two are pinned together
-by the cross-language contract fixture ``tests/fixtures/grid_request_context.json``::
+by the contract fixture ``frontends/ui/tests/fixtures/grid_request_context.json``::
 
     X-Grid-Project-Context: base64url(<project context string>)
     X-Grid-Org-Instructions: base64url(<the office's standing instructions>)
@@ -625,7 +625,7 @@ class GridRequestContext:
         of a live NAT Context.
 
         This is the cross-language contract-test entry point: the fixture at
-        ``tests/fixtures/grid_request_context.json`` carries
+        ``frontends/ui/tests/fixtures/grid_request_context.json`` carries
         ``{name, input, headers}`` cases; the TS side asserts
         ``buildGridRequestContextHeaders(input) == headers`` and the Python
         side (``tests/aiq_agent/test_project_context.py``) asserts

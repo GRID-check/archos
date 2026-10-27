@@ -5,11 +5,11 @@ from __future__ import annotations
 from types import SimpleNamespace
 
 import pytest
+from knowledge_layer.register import _format_results
+from knowledge_layer.register import _trace_lanes_for_chunks
 
 from aiq_agent.common.wire_v2 import TraceLane
 from aiq_agent.common.wire_v2 import TraceLaneSource
-from sources.knowledge_layer.src.register import _format_results
-from sources.knowledge_layer.src.register import _trace_lanes_for_chunks
 
 
 @pytest.fixture(autouse=True)

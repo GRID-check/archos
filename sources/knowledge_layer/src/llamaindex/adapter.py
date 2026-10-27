@@ -8,7 +8,7 @@ It uses:
 - Optional multimodal extraction (tables, charts, images) with VLM captioning through the same endpoint
 
 Configuration options:
-    embed_model: Embedding model (default: openai/text-embedding-3-large, 3072-d, via AIQ_EMBED_MODEL)
+    embed_model: Embedding model (default: openai/text-embedding-3-large, 3072-d, via GRID_EMBED_MODEL)
     embed_base_url: Embedding model base URL (default: https://openrouter.ai/api/v1)
     chunk_size: Chunk size for text splitting (default: 1024)
     chunk_overlap: Overlap between chunks (default: 128)
@@ -90,16 +90,16 @@ logger = logging.getLogger(__name__)
 # already holds a key for, so captioning needs no second credential. It takes
 # image input (verified on OpenRouter); caption quality on OIB tables and
 # drawings is still unevaluated, like its predecessor's was.
-DEFAULT_VLM_MODEL = os.environ.get("AIQ_VLM_MODEL", "openai/gpt-6-luna")
+DEFAULT_VLM_MODEL = os.environ.get("GRID_VLM_MODEL", "openai/gpt-6-luna")
 # Default VLM model base URL
-DEFAULT_VLM_BASE_URL = os.environ.get("AIQ_VLM_BASE_URL", "https://openrouter.ai/api/v1")
+DEFAULT_VLM_BASE_URL = os.environ.get("GRID_VLM_BASE_URL", "https://openrouter.ai/api/v1")
 
 
 # Image extraction settings - filters out small icons/logos
 MIN_IMAGE_WIDTH_PX = 100
 MIN_IMAGE_HEIGHT_PX = 100
 
-# @environment_variable AIQ_MAX_IMAGES_PER_DOCUMENT
+# @environment_variable GRID_MAX_IMAGES_PER_DOCUMENT
 # @category Knowledge Layer
 # @type int
 # @default 64
@@ -110,9 +110,9 @@ MIN_IMAGE_HEIGHT_PX = 100
 # that is analysed can also be stored for `look`. The largest
 # are kept (see `cap_images`); the count left out is recorded on the file's
 # job status as `images_over_cap`. 0 analyses none.
-MAX_IMAGES_PER_DOCUMENT = env_int("AIQ_MAX_IMAGES_PER_DOCUMENT", 64, minimum=0)
+MAX_IMAGES_PER_DOCUMENT = env_int("GRID_MAX_IMAGES_PER_DOCUMENT", 64, minimum=0)
 
-# @environment_variable AIQ_MAX_IMAGE_PIXELS
+# @environment_variable GRID_MAX_IMAGE_PIXELS
 # @category Knowledge Layer
 # @type int
 # @default 268435456
@@ -123,7 +123,7 @@ MAX_IMAGES_PER_DOCUMENT = env_int("AIQ_MAX_IMAGES_PER_DOCUMENT", 64, minimum=0)
 # scale argument), so `width x height` from the image metadata is the only thing
 # that can stand between a pathological raster and the allocation it would make;
 # a PDFium bitmap is about 4 bytes a pixel, so one decode peaks near
-# `AIQ_MAX_IMAGE_PIXELS * 4` bytes (1 GiB at the default). The default,
+# `GRID_MAX_IMAGE_PIXELS * 4` bytes (1 GiB at the default). The default,
 # 268 435 456 px (256 MP, 2^28), admits every realistic architectural scan and
 # refuses only the pathological:
 #   A0 (841x1189 mm = 33.1x46.8 in) at 300 dpi = 9933x14043  = 139.5 MP  kept
@@ -137,7 +137,7 @@ MAX_IMAGES_PER_DOCUMENT = env_int("AIQ_MAX_IMAGES_PER_DOCUMENT", 64, minimum=0)
 # A raster refused here is counted on the file's job status as
 # `images_over_pixel_budget` and logged with its page, index and pixel size; its
 # page keeps its text layer. 0 refuses every embedded raster.
-MAX_IMAGE_PIXELS = env_int("AIQ_MAX_IMAGE_PIXELS", 268_435_456, minimum=0)
+MAX_IMAGE_PIXELS = env_int("GRID_MAX_IMAGE_PIXELS", 268_435_456, minimum=0)
 
 # Cap on the longest edge (px) of an image before it is JPEG-re-encoded and sent
 # to the VLM. Larger images are downscaled (aspect preserved, never upscaled) to
@@ -158,7 +158,7 @@ VLM_MAX_IMAGE_DIM = 1568
 # are untouched and cost nothing extra.
 # ---------------------------------------------------------------------------
 
-# @environment_variable AIQ_RENDER_VISUAL_PAGES
+# @environment_variable GRID_RENDER_VISUAL_PAGES
 # @category Knowledge Layer
 # @type bool
 # @default true
@@ -166,31 +166,31 @@ VLM_MAX_IMAGE_DIM = 1568
 # Render drawing pages (text-sparse AND vector-heavy, `page_triage`) to images
 # and analyse them with the drawing schema. Effective only when a VLM key
 # resolves. It does not govern transcription: scanned and garbled pages are
-# rendered and transcribed whatever this says, and AIQ_MAX_OCR_PAGES=0 is the
+# rendered and transcribed whatever this says, and GRID_MAX_OCR_PAGES=0 is the
 # switch that stops that.
-RENDER_VISUAL_PAGES = os.environ.get("AIQ_RENDER_VISUAL_PAGES", "true").lower() == "true"
+RENDER_VISUAL_PAGES = os.environ.get("GRID_RENDER_VISUAL_PAGES", "true").lower() == "true"
 
 # Long-edge target (px) for a full-page render before it is sent to the VLM.
 # ~2048px keeps linework, room labels and scale bars legible while staying at
 # or below the vision-encoder caps of current VLMs (above this the provider
 # just downsamples). Scale is computed per page from its point size so an A0
 # sheet and an A4 sheet both land near this target.
-PAGE_RENDER_MAX_DIM = env_int("AIQ_PAGE_RENDER_MAX_DIM", 2048)
+PAGE_RENDER_MAX_DIM = env_int("GRID_PAGE_RENDER_MAX_DIM", 2048)
 
 # Page triage (`page_triage.classify_page`). A page with less watermark-stripped
 # text than this is "text-low": a scan when a raster covers most of it...
-VISUAL_PAGE_MIN_TEXT_CHARS = env_int("AIQ_VISUAL_PAGE_MIN_TEXT_CHARS", 200, minimum=0)
+VISUAL_PAGE_MIN_TEXT_CHARS = env_int("GRID_VISUAL_PAGE_MIN_TEXT_CHARS", 200, minimum=0)
 # ...a drawing when it also carries at least this many vector path objects (a
 # plan/section/elevation is typically hundreds-to-tens-of-thousands of paths).
 # Both, not either: a table-ruled text page has hundreds of cell borders.
-VISUAL_PAGE_MIN_PATHS = env_int("AIQ_VISUAL_PAGE_MIN_PATHS", 300, minimum=0)
+VISUAL_PAGE_MIN_PATHS = env_int("GRID_VISUAL_PAGE_MIN_PATHS", 300, minimum=0)
 # Hard cap on DRAWING pages rendered for the drawing analysis per document, to
 # bound VLM cost/latency on large plan sets. Pages past it are counted on the
 # file's job status (`drawing_pages_over_cap`); their text layer is still
 # indexed. Scanned pages are not drawings and are not under this cap.
-MAX_RENDERED_PAGES = env_int("AIQ_MAX_RENDERED_PAGES", 20, minimum=0)
+MAX_RENDERED_PAGES = env_int("GRID_MAX_RENDERED_PAGES", 20, minimum=0)
 
-# @environment_variable AIQ_MAX_OCR_PAGES
+# @environment_variable GRID_MAX_OCR_PAGES
 # @category Knowledge Layer
 # @type int
 # @default 500
@@ -199,10 +199,10 @@ MAX_RENDERED_PAGES = env_int("AIQ_MAX_RENDERED_PAGES", 20, minimum=0)
 # document. A page costs about $0.0007 with the default model. Pages past it
 # are counted on the file's job status (`pages_over_ocr_cap`), never dropped
 # quietly. 0 transcribes none: the OCR switch, independent of
-# AIQ_RENDER_VISUAL_PAGES.
-MAX_OCR_PAGES = env_int("AIQ_MAX_OCR_PAGES", 500, minimum=0)
+# GRID_RENDER_VISUAL_PAGES.
+MAX_OCR_PAGES = env_int("GRID_MAX_OCR_PAGES", 500, minimum=0)
 
-# @environment_variable AIQ_PDF_PAGE_MAX_OBJECTS
+# @environment_variable GRID_PDF_PAGE_MAX_OBJECTS
 # @category Knowledge Layer
 # @type int
 # @default 50000
@@ -214,9 +214,9 @@ MAX_OCR_PAGES = env_int("AIQ_MAX_OCR_PAGES", 500, minimum=0)
 # paths costs about 2 GiB and minutes for its title block. Such a page keeps
 # its text, without captioned tables or line styles, and is counted on the
 # file's job status (`pages_read_without_layout`). 0 lifts the ceiling.
-PDF_PAGE_MAX_OBJECTS = env_int("AIQ_PDF_PAGE_MAX_OBJECTS", 50_000, minimum=0)
+PDF_PAGE_MAX_OBJECTS = env_int("GRID_PDF_PAGE_MAX_OBJECTS", 50_000, minimum=0)
 
-# @environment_variable AIQ_VLM_TIMEOUT_SECONDS
+# @environment_variable GRID_VLM_TIMEOUT_SECONDS
 # @category Knowledge Layer
 # @type int
 # @default 180
@@ -232,9 +232,9 @@ PDF_PAGE_MAX_OBJECTS = env_int("AIQ_PDF_PAGE_MAX_OBJECTS", 50_000, minimum=0)
 # placeholders are skipped, not embedded. Clamped like the sibling knobs: a
 # misconfigured 0 or negative value would fail every VLM request immediately and
 # silently disable captioning altogether.
-VLM_REQUEST_TIMEOUT_SECONDS = max(1, env_int("AIQ_VLM_TIMEOUT_SECONDS", 180))
+VLM_REQUEST_TIMEOUT_SECONDS = max(1, env_int("GRID_VLM_TIMEOUT_SECONDS", 180))
 
-# @environment_variable AIQ_VLM_FLEET_CONCURRENCY
+# @environment_variable GRID_VLM_FLEET_CONCURRENCY
 # @category Knowledge Layer
 # @type int
 # @default 32
@@ -246,16 +246,16 @@ VLM_REQUEST_TIMEOUT_SECONDS = max(1, env_int("AIQ_VLM_TIMEOUT_SECONDS", 180))
 # Every vision call also holds a slot in its model's own provider-limiter pool
 # (`GRID_PROVIDER_MODEL_LIMIT_CEILING`, 32), so a pool above that never fills:
 # keep the two together.
-VLM_FLEET_CONCURRENCY = env_int("AIQ_VLM_FLEET_CONCURRENCY", 32)
+VLM_FLEET_CONCURRENCY = env_int("GRID_VLM_FLEET_CONCURRENCY", 32)
 
-# @environment_variable AIQ_VLM_RATE_LIMIT_RETRIES
+# @environment_variable GRID_VLM_RATE_LIMIT_RETRIES
 # @category Knowledge Layer
 # @type int
 # @default 4
 # @required false
 # Retries of a vision-model call the provider rate-limited (HTTP 429), with
 # exponential backoff or the provider's Retry-After, before the caption fails.
-VLM_RATE_LIMIT_RETRIES = max(0, env_int("AIQ_VLM_RATE_LIMIT_RETRIES", 4))
+VLM_RATE_LIMIT_RETRIES = max(0, env_int("GRID_VLM_RATE_LIMIT_RETRIES", 4))
 
 _VLM_SLOT_KEY = "ingest:vlm:inflight"
 _VLM_BACKOFF_CAP_SECONDS = 60.0
@@ -294,21 +294,21 @@ WATERMARK_LINE_PATTERNS = [
     re.compile(rf"^\s*{fragment}{suffix}", re.IGNORECASE) for fragment, suffix in _WATERMARK_PHRASES
 ]
 
-# @environment_variable AIQ_COLLECTION_TTL_HOURS
+# @environment_variable GRID_COLLECTION_TTL_HOURS
 # @category Knowledge Layer
 # @type float
 # @default 24
 # @required false
 # Hours before stale collections are deleted by the TTL cleanup thread.
-COLLECTION_TTL_HOURS = env_float("AIQ_COLLECTION_TTL_HOURS", 24.0)
+COLLECTION_TTL_HOURS = env_float("GRID_COLLECTION_TTL_HOURS", 24.0)
 
-# @environment_variable AIQ_TTL_CLEANUP_INTERVAL_SECONDS
+# @environment_variable GRID_TTL_CLEANUP_INTERVAL_SECONDS
 # @category Knowledge Layer
 # @type int
 # @default 3600
 # @required false
 # Seconds between TTL cleanup runs.
-TTL_CLEANUP_INTERVAL_SECONDS = env_int("AIQ_TTL_CLEANUP_INTERVAL_SECONDS", 3600)
+TTL_CLEANUP_INTERVAL_SECONDS = env_int("GRID_TTL_CLEANUP_INTERVAL_SECONDS", 3600)
 
 # Terminal jobs are retained this long for status polling/file listings, then
 # pruned so in-memory job tracking doesn't grow for the life of the process.
@@ -355,7 +355,7 @@ class _ClaimLost(Exception):  # noqa: N818 - a signal, not an error
 # record of a file that failed, so the file drops off the listing with it.
 # SUCCESS files stay listed: `list_files` reads them from the indexed chunks.
 # Bounds the `ingest_jobs` table (scaling review phase-2, #13).
-FILE_TRACKING_RETENTION_SECONDS = env_int("AIQ_FILE_TRACKING_RETENTION_SECONDS", 86400)  # 24h
+FILE_TRACKING_RETENTION_SECONDS = env_int("GRID_FILE_TRACKING_RETENTION_SECONDS", 86400)  # 24h
 
 # The heartbeat prunes expired job rows every this many beats (hourly).
 _PRUNE_EVERY_BEATS = 120
@@ -369,7 +369,7 @@ _PRUNE_EVERY_BEATS = 120
 #
 # The premise the in-process counter rested on -- "one backend process owns the
 # store" -- is false: every backend replica and every research worker reads ONE
-# Qdrant cluster (AIQ_QDRANT_URL). A version held in a module global is invisible
+# Qdrant cluster (GRID_QDRANT_URL). A version held in a module global is invisible
 # to every replica but its own, so a write here would leave the others serving
 # superseded results for the whole result-cache TTL. The version now lives in
 # the shared cache; these two functions are the adapter's seam onto it.
@@ -391,8 +391,8 @@ def resolve_vlm_credential(organization_id: str | None = None):
       0. **BYOK** — when ``organization_id`` is given and the org has a
          bring-your-own credential, the org's key + base URL win (never the
          model — mirrors ADR-0022/0014).
-      1. explicit override           — ``AIQ_VLM_API_KEY``
-      2. deployment provider key     — inferred from ``AIQ_VLM_BASE_URL``
+      1. explicit override           — ``GRID_VLM_API_KEY``
+      2. deployment provider key     — inferred from ``GRID_VLM_BASE_URL``
          (``OPENROUTER_API_KEY`` for the default OpenRouter host)
 
     Passing ``organization_id`` is what makes per-project/Archiv uploads use the
@@ -402,11 +402,11 @@ def resolve_vlm_credential(organization_id: str | None = None):
     from aiq_agent.common.credential_resolution import resolve_llm_credential
 
     return resolve_llm_credential(
-        primary_env="AIQ_VLM_API_KEY",
+        primary_env="GRID_VLM_API_KEY",
         default_base_url=DEFAULT_VLM_BASE_URL,
         default_model=DEFAULT_VLM_MODEL,
-        base_url_env="AIQ_VLM_BASE_URL",
-        model_env="AIQ_VLM_MODEL",
+        base_url_env="GRID_VLM_BASE_URL",
+        model_env="GRID_VLM_MODEL",
         organization_id=organization_id,
     )
 
@@ -616,7 +616,7 @@ def _image_candidates(
                     over_budget += 1
                     logger.warning(
                         "Refusing to decode %dx%d px (%d MP) image %d on page %d of %s: over the "
-                        "%d MP per-raster budget (AIQ_MAX_IMAGE_PIXELS); the page's text is still indexed",
+                        "%d MP per-raster budget (GRID_MAX_IMAGE_PIXELS); the page's text is still indexed",
                         width,
                         height,
                         pixels // 1_000_000,
@@ -2694,19 +2694,19 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
         vlm_model: VLM for captioning (default: openai/gpt-6-luna)
 
     Environment variables:
-        AIQ_QDRANT_URL: The Qdrant cluster every chunk is written to
-        AIQ_EMBED_MODEL: Default embedding model name
-        AIQ_EMBED_BASE_URL: Default embedding model base URL
-        AIQ_EXTRACT_TABLES: Set "false" to disable table extraction (on by default)
-        AIQ_EXTRACT_CHARTS: Set "false" to disable chart typing (on by default)
-        AIQ_EXTRACT_IMAGES: Set "false" to disable image extraction (on by default)
-        AIQ_VLM_MODEL: VLM model for captioning
-        AIQ_VLM_BASE_URL: Default VLM base URL
-        AIQ_COLLECTION_TTL_HOURS: Hours before stale collections are deleted (default: 24)
-        AIQ_TTL_CLEANUP_INTERVAL_SECONDS: Seconds between cleanup runs (default: 3600)
+        GRID_QDRANT_URL: The Qdrant cluster every chunk is written to
+        GRID_EMBED_MODEL: Default embedding model name
+        GRID_EMBED_BASE_URL: Default embedding model base URL
+        GRID_EXTRACT_TABLES: Set "false" to disable table extraction (on by default)
+        GRID_EXTRACT_CHARTS: Set "false" to disable chart typing (on by default)
+        GRID_EXTRACT_IMAGES: Set "false" to disable image extraction (on by default)
+        GRID_VLM_MODEL: VLM model for captioning
+        GRID_VLM_BASE_URL: Default VLM base URL
+        GRID_COLLECTION_TTL_HOURS: Hours before stale collections are deleted (default: 24)
+        GRID_TTL_CLEANUP_INTERVAL_SECONDS: Seconds between cleanup runs (default: 3600)
     """
 
-    # @environment_variable AIQ_EMBED_MODEL
+    # @environment_variable GRID_EMBED_MODEL
     # @category Knowledge Layer
     # @type str
     # @default openai/text-embedding-3-large
@@ -2714,56 +2714,55 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
     # Embedding model id for LlamaIndex vector encoding (the production
     # compose default; ingest and query MUST share it, stored vectors are
     # only comparable to vectors from the same model).
-    DEFAULT_EMBED_MODEL = os.environ.get("AIQ_EMBED_MODEL", "openai/text-embedding-3-large")
+    DEFAULT_EMBED_MODEL = os.environ.get("GRID_EMBED_MODEL", "openai/text-embedding-3-large")
 
-    # @environment_variable AIQ_EMBED_BASE_URL
+    # @environment_variable GRID_EMBED_BASE_URL
     # @category Knowledge Layer
     # @type str
     # @default https://openrouter.ai/api/v1
     # @required false
     # Embedding model base URL (OpenAI-compatible embeddings endpoint).
-    DEFAULT_EMBED_BASE_URL = os.environ.get("AIQ_EMBED_BASE_URL", "https://openrouter.ai/api/v1")
+    DEFAULT_EMBED_BASE_URL = os.environ.get("GRID_EMBED_BASE_URL", "https://openrouter.ai/api/v1")
 
-    # @environment_variable AIQ_EXTRACT_TABLES
+    # @environment_variable GRID_EXTRACT_TABLES
     # @category Knowledge Layer
     # @type bool
     # @default true
     # @required false
     # Index a PDF's uncaptioned tables as table chunks. On unless set to false.
-    DEFAULT_EXTRACT_TABLES = env_switch("AIQ_EXTRACT_TABLES")
+    DEFAULT_EXTRACT_TABLES = env_switch("GRID_EXTRACT_TABLES")
 
-    # @environment_variable AIQ_INGEST_MAX_WORKERS
+    # @environment_variable GRID_INGEST_MAX_WORKERS
     # @category Knowledge Layer
     # @type int
     # @default 2
     # @required false
     # Maximum concurrent ingestion jobs per process. Excess uploads queue
     # (job status stays PENDING) instead of each spawning a thread.
-    INGEST_MAX_WORKERS = max(1, env_int("AIQ_INGEST_MAX_WORKERS", 2))
+    INGEST_MAX_WORKERS = max(1, env_int("GRID_INGEST_MAX_WORKERS", 2))
 
     # Most ingestion jobs one organisation may run at once in this process's
-    # own pool; 0 for no cap. `GRID_INGEST_MAX_PER_ORG`, the one name of the
-    # setting the durable queue also reads (`per_org_cap_from_env`, which
-    # accepts the deprecated `AIQ_INGEST_MAX_PER_ORG`).
+    # own pool; 0 for no cap. `GRID_INGEST_MAX_PER_ORG`, the setting the
+    # durable queue also reads (`per_org_cap_from_env`).
     INGEST_MAX_PER_ORG = per_org_cap_from_env()
 
-    # @environment_variable AIQ_EXTRACT_IMAGES
+    # @environment_variable GRID_EXTRACT_IMAGES
     # @category Knowledge Layer
     # @type bool
     # @default true
     # @required false
     # Analyse a PDF's embedded rasters with the VLM and index them. On unless
     # set to false.
-    DEFAULT_EXTRACT_IMAGES = env_switch("AIQ_EXTRACT_IMAGES")
+    DEFAULT_EXTRACT_IMAGES = env_switch("GRID_EXTRACT_IMAGES")
 
-    # @environment_variable AIQ_EXTRACT_CHARTS
+    # @environment_variable GRID_EXTRACT_CHARTS
     # @category Knowledge Layer
     # @type bool
     # @default true
     # @required false
     # Index a visual the VLM types as a chart as a `chart` chunk. On unless set
     # to false; off, a chart is indexed as an image (see `indexed_visual_type`).
-    DEFAULT_EXTRACT_CHARTS = env_switch("AIQ_EXTRACT_CHARTS")
+    DEFAULT_EXTRACT_CHARTS = env_switch("GRID_EXTRACT_CHARTS")
 
     backend_name = "llamaindex"
     supports_durable_jobs = True
@@ -2948,8 +2947,8 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
             embed_api_key = embedding.resolve_embed_api_key(self.embed_base_url, self.embed_model_name)
             if not embed_api_key:
                 logger.error(
-                    "No embeddings API key resolved (AIQ_EMBED_API_KEY / "
-                    "the provider key for AIQ_EMBED_BASE_URL) - ingestion/retrieval will fail."
+                    "No embeddings API key resolved (GRID_EMBED_API_KEY / "
+                    "the provider key for GRID_EMBED_BASE_URL) - ingestion/retrieval will fail."
                 )
 
             self._embed_model = embedding.make_embed_model(
@@ -4451,7 +4450,7 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
             vlm_override = _resolve_vlm_model_override(organization_id)
             vlm_model = vlm_override or base_vlm_model
             # Scans and garbled pages are transcribed on the same endpoint and
-            # key; only the model may differ (AIQ_OCR_MODEL).
+            # key; only the model may differ (GRID_OCR_MODEL).
             from knowledge_layer.llamaindex import transcription as _transcription
 
             ocr_model = _transcription.resolve_ocr_model(base_vlm_model, vlm_override)
@@ -4736,7 +4735,7 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
                                 job,
                                 i,
                                 FileStatus.FAILED,
-                                error="vlm_not_configured: image ingestion requires AIQ_VLM_API_KEY",
+                                error="vlm_not_configured: image ingestion requires GRID_VLM_API_KEY",
                             )
                             logger.warning("Image ingestion skipped (VLM not configured): %s", file_name)
                             continue

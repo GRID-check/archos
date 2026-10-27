@@ -100,7 +100,7 @@ stratum is what matters (icon, composer presets, trust grouping, `SourceKind`) â
 the accent exists only because OIB and RIS are the two tiers architects compare
 most, and a Herleitung fan-out painting both the same blue left the authority
 badge carrying that whole distinction alone. Resolve it with `accentForLane`
-(`features/chat/lib/source-kinds.ts`), never by hand, so the Herleitung cards and
+(`lib/source-kinds.ts`), never by hand, so the Herleitung cards and
 the "Belegt durch" chips cannot drift. The type is `SourceTint = SourceSignal |
 'oib'`; an accent always keeps its stratum's icon.
 
