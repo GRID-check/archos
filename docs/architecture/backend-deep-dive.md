@@ -117,23 +117,24 @@ field at its default, and each is reset at the turn boundary in
 
   **Two rules, and the turn says which** (`answer_confidence_version`). Chat
   uses rule 3 (ADR-0139 over ADR-0125's stamps, `markers.surface_claim_confidence`):
-  every sentence of the final text is stamped with a provenance class and a
-  claim type (`common/claim_provenance.py`, `TurnResult.claim_stamps`), and the
-  self-report is held under the level the count of backed claims allows
-  (`claim_provenance.claims_ceiling`: high only when every claim is backed, low
-  when most have nothing behind them or an uncited verdict has no legal passage
-  beside it, medium otherwise; a next step bears no load, a table under a
-  lead-in is one claim, the confirmed project profile is a record), plus the
-  quote gate below. Rule 3 travels as
-  version 2 with `support` on each stamp, so an open tab still parses it. A turn
-  stored under rule 2 (the weakest sentence's ceiling) keeps its level. A passage that holds its sentence
-  (`claim_provenance.passage_holds`) lets it count whole; a workspace record
-  (`common/workspace_records.py`), an action or a measurement does so only for
-  a sentence that states no law, half for one the normative net catches, and
-  only a passage grounds a verdict on the law (`claim_provenance.states_verdict`).
-  Every heuristic fails safe: unsure, it drops a claim to half, never lifts it. Rule 2 names a cap `normative_claim_uncited`
-  (a statement about the law without a passage) or `ungrounded` (any other
-  sentence without evidence). Deep research, and any state without stamps, keep
+  every sentence of the final text is stamped with a provenance class and the
+  evidence it points at (`common/claim_provenance.py`, `TurnResult.claim_stamps`),
+  the claim judge checks each against that evidence in one call
+  (`common/claim_judge.py`, the org's follow-ups model, after the prose
+  streamed), and the self-report is held under the level the count of supported
+  claims allows (`claim_provenance.claims_ceiling`: high only when every claim
+  is supported, low when a verdict contradicts its source or nothing is
+  supported, medium otherwise and when the judge could not run; a next step or
+  an assessment bears no load, a table under a lead-in is one claim, the
+  confirmed project profile and the inventory are records), plus the quote gate
+  below. Rule 3 travels as version 2 with `support` on each stamp, so an open
+  tab still parses it. A turn stored under rule 2 (the weakest sentence's
+  ceiling) keeps its level. Only a passage grounds a verdict on the law
+  (`claim_provenance.support`): a workspace record
+  (`common/workspace_records.py`), an action, a measurement or a reading never
+  does, whatever the judge says. The capped reason names
+  `normative_claim_uncited` (a verdict nothing backs) or `ungrounded` (any other
+  claim without support). Deep research, and any state without stamps, keep
   rule 1, the answer-level floors described in the rest of this entry.
   - `"ungrounded"` — citation verification left the answer without grounding and
     nothing was measured.

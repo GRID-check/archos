@@ -1,9 +1,10 @@
 ---
 fixes:
   - >
-    The chip under an answer now says how many of its statements are backed by
-    a source, a record or a measurement, and warns only when a conclusion about
-    the law has no source. A listing of your files or an answer drawn from the
+    The chip under an answer now says how many of its statements the source,
+    record or measurement they rest on actually backs, checked statement by
+    statement, and warns when a conclusion about the law has no source or
+    contradicts it. A listing of your files or an answer drawn from the
     confirmed project details no longer shows low confidence because of a
     suggested next step.
   - >

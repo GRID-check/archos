@@ -68,7 +68,9 @@ binds one model per role:
 
 There is no generic `llm` field on deep research, so changing
 `orchestrator_llm` moves every role you did not set. Piloti reads `llm:`
-(`research_llm`). The clarify step is configured by the `clarifier:` block on
+(`research_llm`), and `claim_judge_llm` (`follow_ups_llm`) for the claim judge
+that checks each sentence of an answer against its evidence (ADR-0139), resolved
+per turn on the `follow_ups` agent group. The clarify step is configured by the `clarifier:` block on
 `chat_deepresearcher_agent` (`ClarifierSettings` in
 `src/aiq_agent/agents/piloti/clarify.py`): `llm` asks the questions and
 `planner_llm` writes the plan, falling back to `llm` when unset.

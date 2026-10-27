@@ -333,15 +333,15 @@ provenance is the stamp, not a citation marker.
 
 ## Amendment, 2026-10-27: the aggregation moved to ADR-0139
 
-The per-sentence provenance, the claim types and every ceiling above stand. The
-answer's level is no longer the weakest load-bearing sentence's ceiling: it
-counts the claims evidence carries (high only when all are, low when most are
-not or an uncited verdict has no legal passage beside it)
-([ADR-0139](0139-confidence-counts-the-claims-evidence-carries.md)). Two
-readings of this record change with it: only a normative sentence that
-concludes something about the law (a verdict) needs a passage, and a next step
-bears no load; and a hedge no longer exempts a verdict (the 2026-10-22
-amendment). The confirmed project profile is a record. The minimum let one
-sentence caught by the wide normative net floor the stored answers of 2026-10.
-ADR-0139 also stops reading `[N]` as a registry position when an answer writes
-no source list.
+The per-sentence provenance classes above stand, and so does the rule that only
+a passage grounds a claim about the law. The answer's level is no longer the
+weakest load-bearing sentence's ceiling: a small model checks each sentence
+against the evidence its class points at, and the level counts the claims it
+found supported (high only when all are, low when none is or a verdict
+contradicts its source) ([ADR-0139](0139-confidence-counts-the-claims-evidence-carries.md)).
+The per-class ceilings, the claim types as a decider of load, and the hedge
+list of the 2026-10-22 amendment are retired with it: the judge reads which
+sentence is a verdict, a fact, an assessment or a next step. The minimum let
+one sentence caught by the wide normative net floor the stored answers of
+2026-10. ADR-0139 also stops reading `[N]` as a registry position when an answer
+writes no source list, and makes the confirmed project profile a record.

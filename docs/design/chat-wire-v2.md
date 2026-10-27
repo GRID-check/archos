@@ -322,7 +322,8 @@ Changing what a known field may hold is a break. `answer_confidence_version`
 is the worked example: the confidence rule changed (rule 3, ADR-0139), and a
 `3` would have failed every open tab's `1 | 2`. Rule 3 therefore travels as `2`,
 and is told apart by the optional `support` on its claim stamps; `verdict`,
-`dropped` and `group` ride beside it, all four stripped by an older bundle.
+`judged` (what the claim judge found, `unavailable` when it could not run),
+`dropped` and `group` ride beside it, all five stripped by an older bundle.
 `tests/aiq_agent/common/test_wire_v2_open_tabs.py` checks a rule-3
 `RUN_FINISHED` against the schema as it stood before.
 
