@@ -642,6 +642,42 @@
    "describe": "{\"name\":\"quarantine-list\",\"domain\":\"documents\",\"summary\":\"List the quarantine queue\",\"description\":\"Documents the content check held back that the person may allow or delete: org admins see the organization's queue, project admins their projects' part, everyone else an empty `items` list.\",\"annotations\":{\"title\":\"List the quarantine queue\",\"readOnlyHint\":true,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{},\"additionalProperties\":false}}"
   },
   {
+   "name": "saved-search-create",
+   "domain": "documents",
+   "summary": "Save a search question",
+   "description": "Saves a search question under a `name` unique among the caller’s own: `scope` and `query` as the search operation takes them (query without `cursor`). `shared: true` shows it to every member of the office; each runs it with their own rights. Stores the question only, never results. Any member may save one, up to 200. Returns `{ savedSearch }`; a name already used answers 409.",
+   "readOnly": false,
+   "destructive": false,
+   "describe": "{\"name\":\"saved-search-create\",\"domain\":\"documents\",\"summary\":\"Save a search question\",\"description\":\"Saves a search question under a `name` unique among the caller’s own: `scope` and `query` as the search operation takes them (query without `cursor`). `shared: true` shows it to every member of the office; each runs it with their own rights. Stores the question only, never results. Any member may save one, up to 200. Returns `{ savedSearch }`; a name already used answers 409.\",\"annotations\":{\"title\":\"Save a search question\",\"readOnlyHint\":false,\"destructiveHint\":false,\"idempotentHint\":false,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"body\":{\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":120,\"description\":\"Unique among your own saved searches.\"},\"scope\":{\"type\":\"object\",\"properties\":{\"scope\":{\"type\":\"string\",\"enum\":[\"office\",\"project\",\"office_shelf\"],\"description\":\"Default `office`: every shelf the person may read.\"},\"projectId\":{\"type\":\"string\",\"format\":\"uuid\"},\"folderId\":{\"type\":\"string\",\"format\":\"uuid\",\"description\":\"A folder of the project or the office shelf, its subfolders included.\"}},\"description\":\"Where to look, as workspace-search takes it in its query; {} is the whole office.\"},\"query\":{\"type\":\"object\",\"additionalProperties\":{},\"description\":\"The question: the body of workspace-search (text, kinds, filters, annotationFilters, sort, dir, limit, facets), without a cursor.\"},\"shared\":{\"type\":\"boolean\",\"description\":\"Every member of the office sees and runs it, each with their own rights.\"}},\"required\":[\"name\",\"scope\",\"query\"]}},\"additionalProperties\":false,\"required\":[\"body\"],\"examples\":[{\"body\":{\"name\":\"Current fire safety concepts\",\"scope\":{},\"query\":{\"kinds\":[\"document\"],\"filters\":{\"documentTypes\":[\"fire_safety_concept\"],\"currentOnly\":true}},\"shared\":true}}]}}"
+  },
+  {
+   "name": "saved-search-delete",
+   "domain": "documents",
+   "summary": "Delete a saved search",
+   "description": "Permanently deletes one of the caller’s own saved searches, by its id from saved-search-list; colleagues it was shared with lose it too. Documents are untouched. A colleague’s answers 404.",
+   "readOnly": false,
+   "destructive": true,
+   "describe": "{\"name\":\"saved-search-delete\",\"domain\":\"documents\",\"summary\":\"Delete a saved search\",\"description\":\"Permanently deletes one of the caller’s own saved searches, by its id from saved-search-list; colleagues it was shared with lose it too. Documents are untouched. A colleague’s answers 404.\",\"annotations\":{\"title\":\"Delete a saved search\",\"readOnlyHint\":false,\"destructiveHint\":true,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"format\":\"uuid\",\"description\":\"The saved search id, from saved-search-list.\"}},\"required\":[\"id\"]}},\"additionalProperties\":false,\"required\":[\"params\"]}}"
+  },
+  {
+   "name": "saved-search-list",
+   "domain": "documents",
+   "summary": "List saved searches",
+   "description": "The caller’s own saved searches and the ones colleagues shared with the office, newest first: `{ savedSearches: [{ id, name, scope, query, shared, ownedByMe, createdAt }], nextCursor }`, a page of `limit` (default 50, max 200). To run one, pass its `scope` as the query and its `query` as the body of the search operation; it runs with the caller’s own rights, so a shared one finds only what the caller may read. Only rows with `ownedByMe` can be changed with saved-search-update or saved-search-delete.",
+   "readOnly": true,
+   "destructive": false,
+   "describe": "{\"name\":\"saved-search-list\",\"domain\":\"documents\",\"summary\":\"List saved searches\",\"description\":\"The caller’s own saved searches and the ones colleagues shared with the office, newest first: `{ savedSearches: [{ id, name, scope, query, shared, ownedByMe, createdAt }], nextCursor }`, a page of `limit` (default 50, max 200). To run one, pass its `scope` as the query and its `query` as the body of the search operation; it runs with the caller’s own rights, so a shared one finds only what the caller may read. Only rows with `ownedByMe` can be changed with saved-search-update or saved-search-delete.\",\"annotations\":{\"title\":\"List saved searches\",\"readOnlyHint\":true,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"query\":{\"type\":\"object\",\"properties\":{\"limit\":{\"type\":\"integer\",\"description\":\"Default 50, max 200.\"},\"cursor\":{\"type\":\"string\",\"maxLength\":64}}}},\"additionalProperties\":false,\"required\":[\"query\"]}}"
+  },
+  {
+   "name": "saved-search-update",
+   "domain": "documents",
+   "summary": "Rename or share a saved search",
+   "description": "Renames (`name`) or shares and unshares (`shared`) one of the caller’s own saved searches, by its id from saved-search-list. A colleague’s answers 404. Returns `{ savedSearch }`; a name already used answers 409.",
+   "readOnly": false,
+   "destructive": false,
+   "describe": "{\"name\":\"saved-search-update\",\"domain\":\"documents\",\"summary\":\"Rename or share a saved search\",\"description\":\"Renames (`name`) or shares and unshares (`shared`) one of the caller’s own saved searches, by its id from saved-search-list. A colleague’s answers 404. Returns `{ savedSearch }`; a name already used answers 409.\",\"annotations\":{\"title\":\"Rename or share a saved search\",\"readOnlyHint\":false,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"format\":\"uuid\",\"description\":\"The saved search id, from saved-search-list.\"}},\"required\":[\"id\"]},\"body\":{\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":120,\"description\":\"Unique among your own saved searches.\"},\"shared\":{\"type\":\"boolean\"}}}},\"additionalProperties\":false,\"required\":[\"params\",\"body\"]}}"
+  },
+  {
    "name": "session-document-upload",
    "domain": "documents",
    "summary": "Attach a file to a conversation",
@@ -676,6 +712,24 @@
    "readOnly": false,
    "destructive": false,
    "describe": "{\"name\":\"upload-batch-seal\",\"domain\":\"documents\",\"summary\":\"Seal an upload batch\",\"description\":\"Closes an upload batch after the last file: `unchanged` and `failed` count the files that wrote no row, `excluded` the names the screening refused as terms and counts. Only the uploader may seal. The id is the one given to upload-batch-open.\",\"annotations\":{\"title\":\"Seal an upload batch\",\"readOnlyHint\":false,\"destructiveHint\":false,\"idempotentHint\":false,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The upload batch id, the uuid given to upload-batch-open.\"}},\"required\":[\"id\"]},\"body\":{\"type\":\"object\",\"properties\":{\"unchanged\":{\"type\":\"integer\"},\"failed\":{\"type\":\"integer\"},\"excluded\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"term\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":80},\"count\":{\"type\":\"integer\"}},\"required\":[\"term\",\"count\"],\"additionalProperties\":false},\"maxItems\":200}},\"required\":[\"unchanged\",\"failed\"],\"additionalProperties\":false}},\"additionalProperties\":false,\"required\":[\"params\",\"body\"]}}"
+  },
+  {
+   "name": "workspace-search",
+   "domain": "documents",
+   "summary": "Search everything the person may read, with filters",
+   "description": "Searches every shelf the person may read, or one project (`projectId`), a folder of it (`folderId`) or the office shelf (`scope: office_shelf`). Finds documents by name, by what ingestion read (type, parties, facts, references, drawing number, revision, scale) and by content with the passage and page; also annotations, folders, projects and conversations (`kinds`). `sort` orders like a drawing register, `facets` counts per value, `cursor` pages one kind. A passage points at a page: read the document before quoting it.",
+   "readOnly": true,
+   "destructive": false,
+   "describe": "{\"name\":\"workspace-search\",\"domain\":\"documents\",\"summary\":\"Search everything the person may read, with filters\",\"description\":\"Searches every shelf the person may read, or one project (`projectId`), a folder of it (`folderId`) or the office shelf (`scope: office_shelf`). Finds documents by name, by what ingestion read (type, parties, facts, references, drawing number, revision, scale) and by content with the passage and page; also annotations, folders, projects and conversations (`kinds`). `sort` orders like a drawing register, `facets` counts per value, `cursor` pages one kind. A passage points at a page: read the document before quoting it.\",\"annotations\":{\"title\":\"Search everything the person may read, with filters\",\"readOnlyHint\":true,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"layered\":true,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"query\":{\"type\":\"object\",\"properties\":{\"scope\":{\"type\":\"string\",\"enum\":[\"office\",\"project\",\"office_shelf\"],\"description\":\"Default `office`: every shelf the person may read.\"},\"projectId\":{\"type\":\"string\",\"format\":\"uuid\"},\"folderId\":{\"type\":\"string\",\"format\":\"uuid\",\"description\":\"A folder of the project or the office shelf, its subfolders included.\"}}},\"body\":{\"type\":\"object\",\"fields\":[\"text\",\"kinds\",\"filters\",\"annotationFilters\",\"sort\",\"dir\",\"limit\",\"cursor\",\"facets\"],\"describe\":\"Large. Call describe-operation again with field: \\\"body\\\" for its full schema.\"}},\"required\":[\"query\",\"body\"],\"additionalProperties\":false}}"
+  },
+  {
+   "name": "workspace-search-export",
+   "domain": "documents",
+   "summary": "Export the documents a search finds as a drawing register file",
+   "description": "The documents of a search (same scope and body as workspace-search) as a drawing register: csv (semicolon, German locale) or xlsx, with drawing number, revision, plan date, scale, name, title, type, project, folder, dates, uploader, pages and whether it is the current revision, in the search order. Refused above 5000 documents: narrow the filters.",
+   "readOnly": true,
+   "destructive": false,
+   "describe": "{\"name\":\"workspace-search-export\",\"domain\":\"documents\",\"summary\":\"Export the documents a search finds as a drawing register file\",\"description\":\"The documents of a search (same scope and body as workspace-search) as a drawing register: csv (semicolon, German locale) or xlsx, with drawing number, revision, plan date, scale, name, title, type, project, folder, dates, uploader, pages and whether it is the current revision, in the search order. Refused above 5000 documents: narrow the filters.\",\"annotations\":{\"title\":\"Export the documents a search finds as a drawing register file\",\"readOnlyHint\":true,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"query\":{\"type\":\"object\",\"properties\":{\"scope\":{\"type\":\"string\",\"enum\":[\"office\",\"project\",\"office_shelf\"],\"description\":\"Default `office`: every shelf the person may read.\"},\"projectId\":{\"type\":\"string\",\"format\":\"uuid\"},\"folderId\":{\"type\":\"string\",\"format\":\"uuid\",\"description\":\"A folder of the project or the office shelf, its subfolders included.\"},\"format\":{\"type\":\"string\",\"enum\":[\"csv\",\"xlsx\"],\"description\":\"csv for a spreadsheet in a German locale (semicolon), xlsx for Excel.\"}},\"required\":[\"format\"]},\"body\":{\"type\":\"object\",\"additionalProperties\":{},\"description\":\"The question: the body of workspace-search (text, kinds, filters, sort, dir); kinds and paging are ignored.\"}},\"additionalProperties\":false,\"required\":[\"query\",\"body\"]}}"
   },
   {
    "name": "office-shelf-folder-create",
@@ -1924,26 +1978,26 @@
   "rename document": [
    "document-rename",
    "project-rename",
+   "saved-search-update",
    "office-shelf-folder-update",
    "project-folder-update",
    "conversation-update",
    "document-archive",
    "document-bin",
    "document-delete",
-   "document-download",
-   "document-file-get"
+   "document-download"
   ],
   "Dokument umbenennen": [
    "document-rename",
    "project-rename",
+   "saved-search-update",
    "office-shelf-folder-update",
    "project-folder-update",
    "conversation-update",
    "document-archive",
    "document-bin",
    "document-delete",
-   "document-download",
-   "document-file-get"
+   "document-download"
   ],
   "move document folder": [
    "document-move",
@@ -2007,7 +2061,6 @@
   ],
   "Fassungen eines Dokuments": [
    "document-version-list",
-   "document-revision-link-set",
    "document-version-approve",
    "document-version-content-get",
    "document-version-content-replace",
@@ -2015,7 +2068,8 @@
    "document-version-fork",
    "document-version-get",
    "document-version-publish",
-   "document-version-submit"
+   "document-version-submit",
+   "document-revision-link-set"
   ],
   "request review release": [
    "mention-request-release",
@@ -2112,7 +2166,8 @@
    "project-annotation-list",
    "project-annotations-export",
    "feedback-thread-reply",
-   "feedback-thread-get"
+   "feedback-thread-get",
+   "workspace-search"
   ],
   "Anmerkung beantworten": [
    "annotation-get",
@@ -2121,7 +2176,8 @@
    "annotation-reply-delete",
    "annotation-reply-update",
    "project-annotation-list",
-   "project-annotations-export"
+   "project-annotations-export",
+   "workspace-search"
   ],
   "conversation share": [
    "conversation-create",
@@ -2133,7 +2189,7 @@
    "conversation-awaiting-get",
    "conversation-mention-candidate-list",
    "conversation-update",
-   "conversation-draft-file"
+   "saved-search-update"
   ],
   "Unterhaltung teilen": [
    "conversation-list",
@@ -2145,7 +2201,7 @@
    "conversation-message-list",
    "conversation-awaiting-get",
    "conversation-mention-candidate-list",
-   "sharing-candidate-list"
+   "conversation-update"
   ],
   "": [
    "project-cleanup-confirm",
