@@ -23,10 +23,10 @@ from aiq_agent.project_context import PROJECT_MEMORY_HEADER
 from aiq_agent.project_context import compose_project_context
 
 from .run_envelope import envelope_headers_for_run
+from .run_result import extract_result
 from .runner import WORKER_IDENTITY_HEADERS
 from .runner import _b64url_encode_text
 from .runner import _create_llm_provider
-from .runner import _extract_result
 from .runner import _identity_values
 from .runner import _inject_worker_headers
 from .runner import _normalize_trace_id
@@ -102,7 +102,7 @@ class RunContext:
                 event_type=IntermediateStepType.WORKFLOW_END,
                 name=self.span_name,
                 metadata=workflow,
-                data=StreamEventData(output=_extract_result(result)),
+                data=StreamEventData(output=extract_result(result)),
             )
         )
         if parent is not None:

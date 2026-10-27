@@ -88,6 +88,16 @@ repos:
         pass_filenames: false
         files: ^(src/aiq_agent/common/wire_v2\.py|shared/wire/v2\.schema\.json|scripts/generate_wire_schema\.py|frontends/ui/scripts/generate-(wire|card)-schemas\.mjs|frontends/ui/src/adapters/api/wire-v2\.generated\.ts)$
 
+      - id: vocabularies
+        name: the UI's shared vocabularies are generated from their Python Literals
+        # One stage: each tuple in frontends/ui/src/shared/vocabularies.generated.ts
+        # is rendered straight from a Literal (scripts/generate_vocabularies.py).
+        # Running the generator is the check; a changed file fails the commit.
+        entry: bash -c 'PYTHONPATH=src .venv/bin/python scripts/generate_vocabularies.py'
+        language: system
+        pass_filenames: false
+        files: ^(src/aiq_agent/cards/models\.py|scripts/generate_vocabularies\.py|frontends/ui/src/shared/vocabularies\.generated\.ts)$
+
       - id: agent-docs
         name: every AGENTS.md is reachable by the agents that need it
         # Claude Code reads CLAUDE.md, never AGENTS.md, and bridges them with an

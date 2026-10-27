@@ -18,7 +18,7 @@ import type { AuthorizedSession } from '@/lib/auth/types'
 import { getOrgSettings, updateOrgSettings } from '@/lib/organizations/service'
 import { FEATURE_FLAGS } from '@/lib/authz/feature-flags'
 import { isOrgFeatureEnabled } from '@/lib/workos/feature-flags'
-import type { OrgLlmCredential } from '@/lib/db/schema'
+import type { OrgLlmCredential } from '@/lib/db/schema/org-llm-credentials'
 import {
   assertSafeBaseUrl,
   isKnownProvider,

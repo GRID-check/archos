@@ -40,15 +40,10 @@ import { ForbiddenError, NotFoundError, UnprocessableError } from '@/lib/api/err
 import { recordAuditEvent } from '@/lib/audit/service'
 import type { AuthorizedSession } from '@/lib/auth/types'
 import { requireProjectAccess } from '@/lib/authz/projects'
-import type {
-  DelegatableTaskKind,
-  JobOutput,
-  NewTaskDefinition,
-  TaskDefinition,
-  TaskPlan,
-  TaskRun,
-} from '@/lib/db/schema'
-import { DELEGATABLE_TASK_KINDS } from '@/lib/db/schema'
+import type { JobOutput } from '@/lib/db/schema/jobs'
+import type { NewTaskDefinition, TaskDefinition, TaskRun } from '@/lib/db/schema/task-model'
+import type { DelegatableTaskKind, TaskPlan } from '@/lib/db/schema/tasks'
+import { DELEGATABLE_TASK_KINDS } from '@/lib/db/schema/tasks'
 import { createTaskThread, submitAgentRun } from '@/lib/jobs/service'
 import { JobSubmitError, JobSubmitSkippedError } from '@/lib/jobs/backend-client'
 import { minIntervalMinutesFromEnv, nextOccurrence, validateCron } from '@/lib/jobs/schedule'

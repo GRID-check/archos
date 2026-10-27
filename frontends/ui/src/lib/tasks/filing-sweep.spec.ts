@@ -12,7 +12,7 @@ vi.mock('./repository', () => ({ listRunsWithStaleQueuedFiling: vi.fn(), settleQ
 vi.mock('@/lib/documents/research-report', () => ({ findFiledResearchReport: vi.fn() }))
 vi.mock('@/lib/jobs-queue/repository', () => ({ findOpenJobId: vi.fn(), findDeadJob: vi.fn() }))
 
-import type { TaskRun } from '@/lib/db/schema'
+import type { TaskRun } from '@/lib/db/schema/task-model'
 import { getTenantContext } from '@/lib/db/tenant-context'
 import { findFiledResearchReport } from '@/lib/documents/research-report'
 import { findDeadJob, findOpenJobId } from '@/lib/jobs-queue/repository'

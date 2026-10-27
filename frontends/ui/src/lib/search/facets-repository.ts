@@ -10,13 +10,8 @@
 import 'server-only'
 import { and, asc, count, eq, getTableColumns, gt, inArray, isNull, lt, max, or, sql, type SQL } from 'drizzle-orm'
 import { getDb } from '@/lib/db'
-import {
-  documents,
-  documentSearchFacets,
-  documentSearchShelves,
-  type DocumentSearchShelfRow,
-  type NewDocumentSearchFacetsRow,
-} from '@/lib/db/schema'
+import { documentSearchFacets, documentSearchShelves, type DocumentSearchShelfRow, type NewDocumentSearchFacetsRow } from '@/lib/db/schema/document-search'
+import { documents } from '@/lib/db/schema/documents'
 import { withTenant } from '@/lib/db/tenant-context'
 import { shelfDocumentWhere, type DocumentShelf } from '@/lib/documents/shelf'
 

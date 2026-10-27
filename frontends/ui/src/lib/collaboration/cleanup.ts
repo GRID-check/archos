@@ -81,7 +81,7 @@ export async function neutralizeConversationCollaboration(
  * so failures are logged and reported, never thrown.
  */
 export async function purgeResourceCollaboration(
-  resourceType: import('@/lib/db/schema').ShareableResourceType,
+  resourceType: import('@/lib/db/schema/resource-shares').ShareableResourceType,
   resourceId: string,
 ): Promise<CollaborationCleanupResult> {
   const [grants, requests, inboxItems] = await Promise.all([

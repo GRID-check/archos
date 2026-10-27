@@ -25,7 +25,7 @@ import 'server-only'
 import { ConflictError, NotFoundError, UnprocessableError } from '@/lib/api/errors'
 import { nextOffsetCursor, offsetPageOf } from '@/lib/api/offset-page'
 import { isUniqueViolation } from '@/lib/db/errors'
-import type { SavedSearchRow } from '@/lib/db/schema'
+import type { SavedSearchRow } from '@/lib/db/schema/saved-searches'
 import { resolvePeople } from '@/lib/sharing/directory'
 import {
   countOwnedSavedSearches,

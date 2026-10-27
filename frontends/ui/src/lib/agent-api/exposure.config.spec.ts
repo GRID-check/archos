@@ -1,3 +1,4 @@
+// @disk-inputs: tests/fixtures/exposure.json
 /**
  * @vitest-environment node
  */

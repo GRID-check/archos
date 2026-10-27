@@ -160,6 +160,12 @@ before the LangGraph run; inside it `history.trim` in the graph's first node,
 and in Piloti's own function `setup.skills`, `setup.file_tools` and
 `setup.llm_provider` beside `decide.turn`. Input is a few counts, output
 `outcome` (`ok`, `error`, `cancelled`), `ms` and counts; never turn content.
+`setup.project_context` is one call to the BFF's turn-context route, so its
+output also carries that route's `Server-Timing`: `bff_<read>_ms` for
+`session`, `access` and each read it runs at once (`profile`, `instructions`,
+`memory`, `decisions`, `reviews`, `cross_project`, `references`, `folders`,
+`workspace`), `bff_total_ms`, and `bff_memory_desc`, whether the memory read
+waited for the query embed (`ranked`, `skipped`, `unavailable`, `no-query`).
 A `decide.<slot>` generation also spans its call now (its `latency_ms`), where
 it used to read 1 ms. "Where did the first turn's seconds go" is a read of
 these rows: `docs/audit/turn-latency-measured-2026-09.md` §3.6.

@@ -18,6 +18,7 @@ import pytest
 from aiq_agent.agents.piloti import ask_user as ask_user_module
 from aiq_agent.agents.piloti.ask_user import AskUserConfig
 from aiq_agent.agents.piloti.ask_user import ask_user
+from aiq_agent.auth.request_identity import user_context
 from nat.plugin_api import HumanPromptRadio
 from nat.plugin_api import HumanResponseRadio
 from nat.plugin_api import HumanResponseText
@@ -311,7 +312,7 @@ class TestAHeadlessTurnIsNeverAsked:
     @pytest.mark.asyncio
     async def test_the_tool_refuses_without_prompting_and_points_at_the_thread(self):
         prompt_user_input = AsyncMock()
-        with patch("aiq_api.auth.middleware.get_current_user", return_value={"type": "internal", "headless": True}):
+        with user_context({"type": "internal", "headless": True}):
             result = await _call(
                 prompt_user_input,
                 question="Welches Modell meinst du?",
@@ -325,9 +326,7 @@ class TestAHeadlessTurnIsNeverAsked:
     @pytest.mark.asyncio
     async def test_an_anonymous_caller_that_only_skips_the_clarifier_is_still_asked(self):
         prompt_user_input = AsyncMock(return_value=_interaction_response(HumanResponseText(text="Castle.ifc")))
-        with patch(
-            "aiq_api.auth.middleware.get_current_user", return_value={"type": "anonymous", "skip_clarifier": True}
-        ):
+        with user_context({"type": "anonymous", "skip_clarifier": True}):
             result = await _call(
                 prompt_user_input,
                 question="Welches Modell meinst du?",

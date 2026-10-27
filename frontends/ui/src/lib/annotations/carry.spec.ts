@@ -14,7 +14,7 @@ vi.mock('@/lib/upload-screening/quarantine-reviewers', () => ({ shelfReaderFor: 
 
 import { ForbiddenError, NotFoundError } from '@/lib/api/errors'
 import type { AuthorizedSession } from '@/lib/auth/types'
-import type { Document } from '@/lib/db/schema'
+import type { Document } from '@/lib/db/schema/documents'
 import { getAccessibleDocument } from '@/lib/documents/access'
 import { loadRevisionLinks } from '@/lib/documents/revision-links-loader'
 import { replacingDocumentOf } from './carry'

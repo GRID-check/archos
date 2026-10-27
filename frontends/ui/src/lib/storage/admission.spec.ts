@@ -17,7 +17,7 @@ vi.mock('./service', () => ({
 
 import { InsufficientStorageError } from '@/lib/api/errors'
 import { admitOrDiscard, admitReplacementOrDiscard } from './admission'
-import type { NewDocument } from '@/lib/db/schema'
+import type { NewDocument } from '@/lib/db/schema/documents'
 
 /**
  * The object is written before the row, because a `documents` row implies its

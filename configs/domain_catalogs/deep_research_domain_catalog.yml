@@ -5,7 +5,7 @@
 #
 # NOTHING SHIPPED READS IT. `domain_catalog_path` is a field on the deep
 # researcher's config (`agents/deep_researcher/register.py`), and no config in
-# `configs/` or under `frontends/benchmarks/` sets it — so every running agent
+# `configs/` or under `evals/` sets it — so every running agent
 # gets the built-in single-domain fallback
 # (`source_routing._default_general_research_config`) instead of this catalog.
 # `tests/aiq_agent/agents/deep_researcher/test_source_routing.py` writes its own

@@ -1,3 +1,4 @@
+// @disk-inputs: src/**
 /**
  * The touch-target contract.
  *

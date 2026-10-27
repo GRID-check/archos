@@ -1,3 +1,4 @@
+// @disk-inputs: tests/fixtures/run-ledger.schema.json
 /**
  * @vitest-environment node
  */

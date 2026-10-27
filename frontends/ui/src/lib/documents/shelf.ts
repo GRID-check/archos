@@ -16,7 +16,8 @@
  */
 
 import { and, eq, isNull, type SQL } from 'drizzle-orm'
-import { documents, projectFolders } from '@/lib/db/schema'
+import { documents } from '@/lib/db/schema/documents'
+import { projectFolders } from '@/lib/db/schema/project-folders'
 
 export type DocumentShelf = { kind: 'project'; projectId: string } | { kind: 'office_shelf' }
 

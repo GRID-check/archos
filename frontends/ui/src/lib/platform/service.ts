@@ -11,7 +11,7 @@ import 'server-only'
 import { count, isNull } from 'drizzle-orm'
 import { getDb } from '@/lib/db'
 import { withPlatformAccess } from '@/lib/db/tenant-context'
-import { projects } from '@/lib/db/schema'
+import { projects } from '@/lib/db/schema/projects'
 import { getWorkOS } from '@/lib/workos/client'
 import {
   EMPTY_SPEND_WINDOW,
