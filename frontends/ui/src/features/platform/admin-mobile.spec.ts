@@ -1,3 +1,4 @@
+// @disk-inputs: src/app/app/(shell)/organization/**, src/app/app/(shell)/platform/**, src/app/app/(shell)/profile/**, src/components/charts/**, src/features/budgets/**, src/features/organization/**, src/features/platform/**
 /**
  * What the admin surfaces (organization, platform, profile, the charts) must
  * not do on an iPhone, held against the source.

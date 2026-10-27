@@ -1,3 +1,4 @@
+// @disk-inputs: src/**
 /**
  * Excalidraw is 2.5 MB gzipped and must never reach the chat bundle (ADR-0141,
  * ADR-0146).

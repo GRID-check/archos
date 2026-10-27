@@ -1,3 +1,4 @@
+// @disk-inputs: src/app/api/platform/**
 /**
  * @vitest-environment node
  */

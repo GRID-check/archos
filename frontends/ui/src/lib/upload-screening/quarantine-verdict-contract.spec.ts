@@ -1,3 +1,4 @@
+// @disk-inputs: ../../tests/fixtures/quarantine_verdict_cases.json
 /**
  * The typed quarantine verdict's reader side of `tests/fixtures/quarantine_verdict_cases.json`
  * (ADR-0113). The ingest job's producer side is

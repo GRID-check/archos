@@ -1,3 +1,4 @@
+// @disk-inputs: src/lib/diagrams/__fixtures__/excalidraw-sketch.svg, src/lib/diagrams/__fixtures__/mermaid-flowchart.svg, src/lib/diagrams/__fixtures__/mermaid-gantt.svg, src/lib/diagrams/__fixtures__/mermaid-mindmap.svg, src/lib/diagrams/__fixtures__/mermaid-pie.svg, src/lib/diagrams/__fixtures__/mermaid-sequence.svg, src/lib/diagrams/__fixtures__/mermaid-state.svg
 /**
  * @vitest-environment node
  */
