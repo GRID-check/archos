@@ -313,7 +313,38 @@ def _parse_citation_ref(key: str) -> tuple[str, Shelf | None, int | None]:
     if qualifier_match:
         shelf = shelf_for_qualifier(qualifier_match.group(1))
         filename = filename[: qualifier_match.start()].rstrip(", ").strip()
+    from_path = citation_key_of_path(filename)
+    if from_path is not None:
+        filename, path_shelf = from_path
+        shelf = shelf or path_shelf
     return filename, shelf, page
+
+
+def citation_key_of_path(text: str) -> tuple[str, Shelf | None] | None:
+    """``(file name, shelf)`` a path-shaped citation names; ``None`` when ``text`` is no estate path.
+
+    The model reads paths since ADR-0133 (a hit's ``Path:``, a ``read_file`` header), so a citation
+    written as ``/project/Gutachten/Brandschutzkonzept.pdf.md, p.3`` is likely. The key it means is
+    the file name: the last segment, with the ``.md`` a document's text is served under dropped
+    (``Notiz.md``, a text file under its own name, keeps it). The mount states the shelf, the way a
+    qualifier does. Verification would otherwise drop the citation and the answer lose its source
+    without a word; this is that correction held by code rather than by prompt prose.
+    """
+    from aiq_agent.common.estate_paths import MOUNT_SHELVES
+    from aiq_agent.common.estate_paths import mount_of_path
+
+    candidate = text.strip()
+    if not candidate.startswith("/"):
+        return None
+    mount = mount_of_path(candidate)
+    if mount not in MOUNT_SHELVES:
+        return None
+    leaf = candidate.rstrip("/").rsplit("/", 1)[-1]
+    if not leaf or candidate.endswith("/"):
+        return None
+    if leaf.lower().endswith(".md") and "." in leaf[:-3]:
+        leaf = leaf[:-3]
+    return leaf, parse_shelf(MOUNT_SHELVES[mount])
 
 
 def _entry_shelf(entry: SourceEntry) -> Shelf | None:
