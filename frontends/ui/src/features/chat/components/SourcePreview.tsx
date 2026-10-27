@@ -73,7 +73,6 @@ import {
   iconForTint,
   sourceSignalStyle,
 } from '@/features/layout/components/SourceSignalChip'
-import type { SourceTint } from '@/features/layout/lib/source-presets'
 import type { RevisionRef } from '@/lib/documents/revision-links'
 import { useChatStore } from '../store'
 import { useHoverPopover } from '@/hooks/use-hover-popover'
@@ -95,7 +94,7 @@ import {
   type CitedDocument,
   type StoredDocumentRef,
 } from '../lib/citations'
-import type { Shelf, SourceKind } from '../lib/source-kinds'
+import type { Shelf, SourceKind, SourceTint } from '@/lib/source-kinds'
 import { AuthorityTag } from './AuthorityTag'
 
 // ---------------------------------------------------------------------------

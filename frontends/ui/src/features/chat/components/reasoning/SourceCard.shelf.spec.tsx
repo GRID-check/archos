@@ -13,7 +13,7 @@ import { chatCopy } from '@/i18n/namespaces/chat'
 import { describe, test, expect } from 'vitest'
 import { SourceCard } from './SourceCard'
 import type { CitedDocument } from '../../lib/citations'
-import type { Shelf } from '../../lib/source-kinds'
+import type { Shelf } from '@/lib/source-kinds'
 
 /**
  * A retrieved project-KIND document, parameterised by the SHELF the wire

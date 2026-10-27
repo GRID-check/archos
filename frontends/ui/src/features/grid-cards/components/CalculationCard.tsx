@@ -50,7 +50,7 @@ import {
 } from '../schematics/kit'
 import { evaluate, formatInput, resultDecimals, verdictFor } from '../lib/calculate'
 import { cn } from '@/lib/utils'
-import type { CalculationLimitData, CalculationStepData, NormReferenceData } from '../schematics/types'
+import type { CalculationLimitData, CalculationStepData, NormReferenceData } from '@/shared/cards/schemas'
 import { DerivationSteps } from './Derivation'
 
 interface CalculationCardProps {

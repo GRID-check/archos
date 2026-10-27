@@ -25,6 +25,7 @@ import {
   listPlatformReasoningEfforts,
   savePlatformReasoningEfforts,
 } from '@/lib/reasoning-settings/service'
+import { definedValues } from '@/lib/utils/defined-values'
 
 export const GET = platformApiRoute(
   async () => {
@@ -68,7 +69,7 @@ export const PUT = platformApiRoute(
     // outage can never block an effort change — which matters, because dialling
     // effort DOWN is the lever an operator reaches for when a run burns tokens.
     const rows = await savePlatformReasoningEfforts({
-      efforts: input.efforts,
+      efforts: definedValues(input.efforts),
       note: input.note ?? null,
       actorUserId: session.userId,
       actorEmail: session.email ?? null,

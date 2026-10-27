@@ -244,7 +244,7 @@ def copy_collection(
     # A collection left on Qdrant's defaults records none, as it always has.
     recorded = None if target_length == BM25_DEFAULT_LENGTH else target_length
     # The live collection's shape unless told otherwise, never the environment's:
-    # the process running this need not carry the backend's AIQ_QDRANT_* values.
+    # the process running this need not carry the backend's GRID_QDRANT_* values.
     create_collection(
         client,
         physical,

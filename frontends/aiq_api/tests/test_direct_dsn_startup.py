@@ -1,6 +1,6 @@
 """A process on Postgres refuses to start without the direct DSNs it uses (ADR-0083).
 
-Behind the transaction pooler a missing ``AIQ_LISTEN_DB_URL`` or ``AIQ_LOCK_DB_URL``
+Behind the transaction pooler a missing ``GRID_LISTEN_DB_URL`` or ``GRID_LOCK_DB_URL``
 is not an error anywhere downstream, it is every SSE stream quietly polling or a
 lock that is never taken. So each process that uses them checks once, at start:
 the ``api`` role needs both (it serves the streams and takes locks); the ``chat`` role,
@@ -27,19 +27,19 @@ DIRECT = "postgresql://aiq:pw@grid-pg-rw:5432/aiq_jobs"  # pragma: allowlist sec
 
 @pytest.fixture(autouse=True)
 def _postgres_without_direct_dsns(monkeypatch):
-    monkeypatch.setenv("AIQ_SUMMARY_DB", POOLED)
+    monkeypatch.setenv("GRID_SUMMARY_DB", POOLED)
     monkeypatch.setenv("NAT_JOB_STORE_DB_URL", POOLED)
-    monkeypatch.delenv("AIQ_LOCK_DB_URL", raising=False)
-    monkeypatch.delenv("AIQ_LISTEN_DB_URL", raising=False)
+    monkeypatch.delenv("GRID_LOCK_DB_URL", raising=False)
+    monkeypatch.delenv("GRID_LISTEN_DB_URL", raising=False)
 
 
 def test_the_research_worker_will_not_boot_without_the_lock_dsn():
-    with pytest.raises(RuntimeError, match="AIQ_LOCK_DB_URL is not set"):
+    with pytest.raises(RuntimeError, match="GRID_LOCK_DB_URL is not set"):
         research_worker.main()
 
 
 def test_the_ingest_worker_will_not_boot_without_the_lock_dsn():
-    with pytest.raises(RuntimeError, match="AIQ_LOCK_DB_URL is not set"):
+    with pytest.raises(RuntimeError, match="GRID_LOCK_DB_URL is not set"):
         ingest_worker.main()
 
 
@@ -51,22 +51,22 @@ def _web(role: WebRole) -> AIQAPIWorker:
 
 
 def test_the_api_role_will_not_boot_without_either_direct_dsn():
-    with pytest.raises(RuntimeError, match="AIQ_LOCK_DB_URL is not set; AIQ_LISTEN_DB_URL is not set"):
+    with pytest.raises(RuntimeError, match="GRID_LOCK_DB_URL is not set; GRID_LISTEN_DB_URL is not set"):
         _web(WebRole.API).build_app()
 
 
 def test_the_api_role_needs_the_listen_dsn_even_with_the_lock_dsn(monkeypatch):
-    monkeypatch.setenv("AIQ_LOCK_DB_URL", DIRECT)
-    with pytest.raises(RuntimeError, match="AIQ_LISTEN_DB_URL is not set"):
+    monkeypatch.setenv("GRID_LOCK_DB_URL", DIRECT)
+    with pytest.raises(RuntimeError, match="GRID_LISTEN_DB_URL is not set"):
         _web(WebRole.API).build_app()
 
 
 def test_the_chat_role_needs_the_lock_dsn_and_not_the_listen_dsn(monkeypatch):
     """It serves no job stream (its stream is the socket, over Dragonfly), but it does take locks."""
-    with pytest.raises(RuntimeError, match=r"AIQ_LOCK_DB_URL is not set, but"):
+    with pytest.raises(RuntimeError, match=r"GRID_LOCK_DB_URL is not set, but"):
         _web(WebRole.CHAT).build_app()
 
-    monkeypatch.setenv("AIQ_LOCK_DB_URL", DIRECT)
+    monkeypatch.setenv("GRID_LOCK_DB_URL", DIRECT)
     sentinel = RuntimeError("past the check")
 
     def reached(self):
@@ -79,7 +79,7 @@ def test_the_chat_role_needs_the_lock_dsn_and_not_the_listen_dsn(monkeypatch):
 
 def test_the_workers_do_not_ask_for_the_listen_dsn(monkeypatch):
     """They never serve a stream: the lock DSN alone gets past the check."""
-    monkeypatch.setenv("AIQ_LOCK_DB_URL", DIRECT)
+    monkeypatch.setenv("GRID_LOCK_DB_URL", DIRECT)
     sentinel = RuntimeError("past the check")
 
     class Reached:

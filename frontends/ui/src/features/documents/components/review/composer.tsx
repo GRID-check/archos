@@ -16,7 +16,7 @@ import {
   splitMentionSegments,
   type DraftMention,
   type MentionQuery,
-} from '@/features/collaboration/lib/mention-text'
+} from '@/lib/mentions/mention-text'
 import { useTranslations } from '@/i18n'
 import { collaborationCopy } from '@/i18n/namespaces/collaboration'
 import { filesCopy } from '@/i18n/namespaces/files'
@@ -58,7 +58,7 @@ function withoutMention(text: string, mentions: readonly DraftMention[], targetI
  *
  * Mentions are the chat's, gesture for gesture: „@" opens the chat's own
  * picker (`MentionPicker`), and a pick writes „@Name" into the text and
- * records whom it means (`features/collaboration/lib/mention-text.ts`). What
+ * records whom it means (`lib/mentions/mention-text.ts`). What
  * is sent is reconciled against the text at the last moment, so a name
  * deleted while editing is nobody mentioned, and a name typed by hand never
  * was. `mentionPiloti` offers Piloti (the spark beside Send writes its

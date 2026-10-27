@@ -28,10 +28,9 @@ import { FOCUS_RING } from '@/components/ui/focus-ring'
 import { useTranslations } from '@/i18n'
 import { chatCopy } from '@/i18n/namespaces/chat'
 import { sourceSignalStyle } from '@/features/layout/components/SourceSignalChip'
-import type { SourceSignal } from '@/features/layout/lib/source-presets'
 import { SectionLabel } from '@/components/ui/section-label'
 import { AuthorityTag } from '../AuthorityTag'
-import { KIND_TO_SIGNAL } from '../../lib/source-kinds'
+import { KIND_TO_SIGNAL, type SourceSignal } from '@/lib/source-kinds'
 import {
   citationNumbers,
   documentPages,

@@ -17,7 +17,7 @@
  *
  * The visibility of each control per state and permission is proved over the
  * transition table in `../lib/document-lifecycle.spec.ts`; the merge, numbering
- * and standing rules over plain data in `../lib/revision-timeline.spec.ts` and
+ * and standing rules over plain data in `lib/documents/revision-timeline.spec.ts` and
  * `../lib/revision-standing.spec.ts`. Copy another worker owns is read from the
  * dictionary, so a wording change there does not break a behaviour pinned here.
  */

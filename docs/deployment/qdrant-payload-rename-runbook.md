@@ -55,7 +55,7 @@ re-ingested, which is why the rewrite is a script.
 
 ## Procedure
 
-Run it from a pod that has `AIQ_QDRANT_URL` and `AIQ_QDRANT_API_KEY` and the
+Run it from a pod that has `GRID_QDRANT_URL` and `GRID_QDRANT_API_KEY` and the
 repository's `scripts/` (every `aiq-api` pod).
 
 1. **Deploy the release and let the rollout finish.** The first backend start

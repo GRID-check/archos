@@ -9,6 +9,7 @@ Only the socket and the card channel's binding are replaced.
 from __future__ import annotations
 
 import json
+import urllib.error
 import uuid
 from typing import Any
 
@@ -18,8 +19,8 @@ from aiq_agent.cards.models import grid_card_adapter
 from aiq_agent.cards.registry import CardRegistry
 from aiq_agent.cards.registry import reset_card_registry
 from aiq_agent.cards.registry import set_card_registry
+from aiq_agent.common import bff_http
 from aiq_agent.tools.workspace import cards
-from aiq_agent.tools.workspace import client
 from aiq_agent.tools.workspace import register as workspace
 
 from .test_workspace_client import SECRET
@@ -69,7 +70,7 @@ class Server:
 @pytest.fixture
 def server(monkeypatch: pytest.MonkeyPatch) -> Server:
     fake = Server()
-    monkeypatch.setattr(client._opener, "open", fake.open)
+    monkeypatch.setattr(bff_http._opener, "open", fake.open)
     monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", SECRET)
     monkeypatch.setenv("FRONTEND_INTERNAL_URL", "http://bff.test/")
     bind(monkeypatch, turn_of("anna"))
@@ -163,9 +164,9 @@ async def test_only_call_emits_cards(server, registry) -> None:
 
 async def test_a_rate_limited_door_tells_the_model_to_call_again_next_round(server, registry, monkeypatch) -> None:
     def refuse(request: Any, timeout: float) -> _Response:  # noqa: ARG001
-        raise client.urllib.error.HTTPError(request.full_url, 429, "Too Many Requests", {}, None)
+        raise urllib.error.HTTPError(request.full_url, 429, "Too Many Requests", {}, None)
 
-    monkeypatch.setattr(client._opener, "open", refuse)
+    monkeypatch.setattr(bff_http._opener, "open", refuse)
 
     assert await workspace.run_search("list projects") == workspace.RATE_LIMITED
     assert "next round" in workspace.RATE_LIMITED

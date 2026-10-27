@@ -14,7 +14,7 @@ export const createCredentialSchema = z.object({
   label: z.string().trim().min(1).max(120),
   baseUrl: z.string().trim().max(500).nullable().optional(),
   apiKey: z.string().min(8).max(512),
-  rotatedFrom: z.string().uuid().nullable().optional(),
+  rotatedFrom: z.guid().nullable().optional(),
 })
 
 /** `PUT /api/organization/llm-credentials/mode`. */

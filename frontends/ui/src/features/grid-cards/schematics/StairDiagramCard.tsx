@@ -28,7 +28,7 @@ import {
 import { sketchPolygon, sketchRect, type Point } from './rough'
 import { useTranslations } from '@/i18n'
 import { chatCopy } from '@/i18n/namespaces/chat'
-import type { DimensionCheckData, NormReferenceData } from './types'
+import type { DimensionCheckData, NormReferenceData } from '@/shared/cards/schemas'
 
 interface StairDiagramCardProps {
   title: string

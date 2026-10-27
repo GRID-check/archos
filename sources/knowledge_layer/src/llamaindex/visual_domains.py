@@ -256,7 +256,7 @@ DOMAINS: dict[str, Domain] = {domain.id: domain for domain in (ARCHITECTURE, GEN
 #: Always enabled: it is what a segment falls back to, so it can never be off.
 FALLBACK_DOMAIN_ID = GENERAL.id
 
-# @environment_variable AIQ_VISUAL_DOMAINS
+# @environment_variable GRID_VISUAL_DOMAINS
 # @category Knowledge Layer
 # @type str
 # @default architecture,general
@@ -265,7 +265,7 @@ FALLBACK_DOMAIN_ID = GENERAL.id
 # uploaded images. The schema is the same whichever are enabled; the domains
 # decide what the model is asked to look for and what the extracted categories
 # are called. "general" is always enabled as the fallback.
-DEFAULT_DOMAIN_IDS = os.environ.get("AIQ_VISUAL_DOMAINS", f"{ARCHITECTURE.id},{GENERAL.id}")
+DEFAULT_DOMAIN_IDS = os.environ.get("GRID_VISUAL_DOMAINS", f"{ARCHITECTURE.id},{GENERAL.id}")
 
 
 @dataclass(frozen=True)

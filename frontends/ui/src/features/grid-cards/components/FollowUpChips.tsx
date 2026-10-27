@@ -29,7 +29,7 @@ import { useChatStore } from '@/features/chat/store'
 import { useTranslations } from '@/i18n'
 import { chatCopy } from '@/i18n/namespaces/chat'
 import { cn } from '@/lib/utils'
-import type { FollowUpData } from '../schematics/types'
+import type { StoredFollowUp } from '@/lib/conversations/message-stages'
 
 /**
  * A chip the CLIENT offers, rather than one the model emitted.
@@ -52,7 +52,7 @@ export interface FollowUpAction {
 
 interface FollowUpChipsProps {
   title?: string | null
-  items: FollowUpData[]
+  items: StoredFollowUp[]
   /**
    * Client-side offers, rendered AFTER the model's questions in the same row.
    * Last because they are the aside: the questions are what this answer made
@@ -90,7 +90,7 @@ const CHIP = cn(
  * rail's wrapper would contribute the column's `gap-4` even while rendering
  * nothing, which is a 16px hole under the answer for a turn with no chips.
  */
-export const usableFollowUps = (items: FollowUpData[]): FollowUpData[] =>
+export const usableFollowUps = (items: StoredFollowUp[]): StoredFollowUp[] =>
   items.filter((item) => Boolean(item?.question))
 
 export const FollowUpChips: FC<FollowUpChipsProps> = ({

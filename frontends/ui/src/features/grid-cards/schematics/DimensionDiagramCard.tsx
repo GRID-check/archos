@@ -28,7 +28,7 @@ import {
 import { sketchCircle, sketchLine, sketchPath, sketchPolygon, sketchRect, type Point } from './rough'
 import { useTranslations, type Translator } from '@/i18n'
 import { chatCopy } from '@/i18n/namespaces/chat'
-import type { DimensionCheckData, NormReferenceData } from './types'
+import type { DimensionCheckData, NormReferenceData } from '@/shared/cards/schemas'
 
 type Shape = 'door' | 'ramp' | 'corridor' | 'turning_circle' | 'threshold' | 'parking_space' | 'lift_cabin'
 

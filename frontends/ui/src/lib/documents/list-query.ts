@@ -12,7 +12,7 @@
  */
 
 import { z } from 'zod'
-import { BadRequestError } from '@/lib/api/errors'
+import { BadRequestError } from '@/lib/api/api-error'
 import { DOCUMENT_AUTHORS, type DocumentAuthor } from './document-authors'
 import { DOCUMENT_READ_FAMILIES, type DocumentReadFamily } from './document-status'
 import { shelfSelectorFields } from './shelf-scope'
@@ -62,7 +62,7 @@ export const documentListFilterSchema = z.object({
   /** Where this page starts: the previous page's `nextCursor`. A malformed one is a 400. */
   cursor: documentListCursorParam,
   /** The level: a folder id, or `root` for the documents filed in no folder. Absent with another level parameter: the whole shelf. */
-  folderId: z.union([z.literal('root'), z.string().uuid()]).optional(),
+  folderId: z.union([z.literal('root'), z.guid()]).optional(),
   /** The order of a level read. Default `added`. */
   sort: z.enum(DOCUMENT_LEVEL_SORTS).optional(),
   /** Its direction. Default `asc` for `name`, `desc` otherwise. */

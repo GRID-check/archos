@@ -24,7 +24,7 @@ import {
 import { sketchPath, type Point } from './rough'
 import { useTranslations } from '@/i18n'
 import { chatCopy } from '@/i18n/namespaces/chat'
-import type { DimensionCheckData, EgressSegmentData, NormReferenceData } from './types'
+import type { DimensionCheckData, EgressSegmentData, NormReferenceData } from '@/shared/cards/schemas'
 
 interface EgressDiagramCardProps {
   title: string

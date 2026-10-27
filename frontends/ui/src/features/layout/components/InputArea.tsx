@@ -125,7 +125,7 @@ import {
   insertMention,
   type DraftMention,
   type MentionQuery,
-} from '@/features/collaboration/lib/mention-text'
+} from '@/lib/mentions/mention-text'
 import { MENTION_ERROR_REASONS, type MentionCandidate } from '@/lib/mentions/types'
 import { SHARING_ERROR_REASONS } from '@/lib/sharing/types'
 import { InvokedSkillChip } from '@/features/skills/components/InvokedSkillChip'

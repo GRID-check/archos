@@ -58,7 +58,7 @@ def add_config_info_routes(router: APIRouter, llm_configs: Mapping[str, Any]) ->
     # the same contract the `llms` map above serves for the model.
     reasoning_efforts = {name: getattr(config, "reasoning_effort", None) for name, config in llm_configs.items()}
 
-    # The ingestion VLM is env-configured (AIQ_VLM_MODEL), not a `llms:` entry,
+    # The ingestion VLM is env-configured (GRID_VLM_MODEL), not a `llms:` entry,
     # so surface its resolved default under a stable synthetic `vlm` key. The
     # org model-config UI's `ingest_vlm` group maps to this via configLlmRefs so
     # it too shows a "workflow default" (and what a reset returns to).
@@ -68,7 +68,7 @@ def add_config_info_routes(router: APIRouter, llm_configs: Mapping[str, Any]) ->
         vlm_cred = resolve_vlm_credential()
         if vlm_cred.model:
             defaults.setdefault("vlm", vlm_cred.model)
-        # The VLM sits on its own credential plane (AIQ_VLM_BASE_URL), which is
+        # The VLM sits on its own credential plane (GRID_VLM_BASE_URL), which is
         # routinely a different provider from the `llms:` block — the shipped
         # default routes to NVIDIA while the chat models route to OpenRouter. Its
         # base URL is reported separately for exactly that reason.

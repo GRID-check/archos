@@ -30,7 +30,7 @@ import {
 import { sketchRect } from './rough'
 import { useTranslations } from '@/i18n'
 import { chatCopy } from '@/i18n/namespaces/chat'
-import type { StagingAreaPlanData, DimensionCheckData, NormReferenceData } from './types'
+import type { StagingAreaPlanData, DimensionCheckData, NormReferenceData } from '@/shared/cards/schemas'
 
 interface FireAccessPlanCardProps {
   title: string

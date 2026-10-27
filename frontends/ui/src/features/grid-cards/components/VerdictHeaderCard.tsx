@@ -33,7 +33,7 @@ import { useTranslations, type Translator } from '@/i18n'
 import { chatCopy } from '@/i18n/namespaces/chat'
 import { cn } from '@/lib/utils'
 import { NormRefFooter } from '../schematics/kit'
-import type { NormReferenceData } from '../schematics/types'
+import type { NormReferenceData } from '@/shared/cards/schemas'
 import { CARD_SHELL } from './card-chrome'
 
 type Confidence = 'low' | 'medium' | 'high'

@@ -37,7 +37,7 @@ import { AGENT_MENTION_ID } from '@/lib/mentions/types'
 import { motion, springPress } from '@/components/motion'
 import { cn } from '@/lib/utils'
 import { useMentionPerson } from '../context/mention-people'
-import { splitMentionSegments, type DraftMention } from '../lib/mention-text'
+import { splitMentionSegments, type DraftMention } from '@/lib/mentions/mention-text'
 import { PersonPeek } from './PersonPeek'
 
 export interface MentionTextProps {

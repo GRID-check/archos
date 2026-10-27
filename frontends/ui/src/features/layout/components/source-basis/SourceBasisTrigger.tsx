@@ -56,7 +56,7 @@ import { useAuth } from '@/adapters/auth'
 import { useTranslations } from '@/i18n'
 import { researchCopy } from '@/i18n/namespaces/research'
 import { useLayoutStore } from '../../store'
-import type { SourceSignal } from '../../lib/source-presets'
+import type { SourceSignal } from '@/lib/source-kinds'
 import { iconForTint } from '../SourceSignalChip'
 import { buildSourceBasis, summariseBasis, type BasisSummary } from './source-basis-model'
 

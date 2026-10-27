@@ -32,7 +32,7 @@ import {
 import { sketchLine, sketchRect } from './rough'
 import { useTranslations } from '@/i18n'
 import { chatCopy } from '@/i18n/namespaces/chat'
-import type { DimensionCheckData, DimStatus, NormReferenceData, ObstructionData } from './types'
+import type { DimensionCheckData, DimStatus, NormReferenceData, ObstructionData } from '@/shared/cards/schemas'
 
 interface DaylightIncidenceCardProps {
   title: string

@@ -65,7 +65,7 @@ import {
   type TourEligibility,
   type TourFlags,
   type TourId,
-} from '../lib/product-tour'
+} from '@/lib/onboarding/product-tour'
 import type { JSX } from 'react'
 
 /** How long arrival waits for the page to render the tour's first anchor. */

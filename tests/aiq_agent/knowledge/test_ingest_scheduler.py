@@ -12,7 +12,6 @@ import time
 
 import pytest
 
-from aiq_agent.knowledge import ingest_scheduler
 from aiq_agent.knowledge.ingest_scheduler import PLATFORM_LANE
 from aiq_agent.knowledge.ingest_scheduler import FairIngestScheduler
 from aiq_agent.knowledge.ingest_scheduler import per_org_cap_from_env
@@ -396,29 +395,14 @@ def test_a_job_that_appears_in_the_source_is_claimed_within_the_idle_interval(sc
 
 def test_the_per_org_cap_is_read_from_the_fleet_name(monkeypatch):
     monkeypatch.setenv("GRID_INGEST_MAX_PER_ORG", "3")
-    monkeypatch.setenv("AIQ_INGEST_MAX_PER_ORG", "9")
 
     assert per_org_cap_from_env() == 3
-
-
-def test_the_old_per_org_cap_name_is_still_accepted_and_warns_once(monkeypatch, caplog):
-    monkeypatch.delenv("GRID_INGEST_MAX_PER_ORG", raising=False)
-    monkeypatch.setenv("AIQ_INGEST_MAX_PER_ORG", "2")
-    monkeypatch.setattr(ingest_scheduler, "_legacy_cap_warned", False)
-
-    with caplog.at_level("WARNING"):
-        assert per_org_cap_from_env() == 2
-        assert per_org_cap_from_env() == 2
-
-    warnings = [r for r in caplog.records if "deprecated" in r.getMessage()]
-    assert len(warnings) == 1
-    assert "GRID_INGEST_MAX_PER_ORG" in warnings[0].getMessage()
 
 
 @pytest.mark.parametrize("value", ["", "many", "-4"])
 def test_a_missing_or_malformed_per_org_cap_means_no_cap(monkeypatch, value):
     monkeypatch.setenv("GRID_INGEST_MAX_PER_ORG", value)
-    monkeypatch.delenv("AIQ_INGEST_MAX_PER_ORG", raising=False)
+    monkeypatch.delenv("GRID_INGEST_MAX_PER_ORG", raising=False)
 
     assert per_org_cap_from_env() == 0
 

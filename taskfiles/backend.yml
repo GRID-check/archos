@@ -19,12 +19,16 @@ tasks:
   # ── backend (src/, sources/, frontends/aiq_api) ─────────────────────────────
 
   be:lint:
-    desc: 'Ruff lint + format check. CI: task be:lint -- --output-format=github'
+    desc: 'Ruff lint + format check, and the package seams (import-linter). CI: task be:lint -- --output-format=github'
     cmds:
       # Extra arguments reach `ruff check` only: the formatter calls its own
       # --output-format unstable and warns about it.
       - '{{.RUFF}} check . {{.CLI_ARGS}}'
       - '{{.RUFF}} format --check .'
+      # The contracts in pyproject.toml's [tool.importlinter]: aiq_agent reaches
+      # aiq_api and knowledge_layer only through their seams. About a second.
+      # docs/contributing/module-seams.md
+      - '{{.LINT_IMPORTS}} --no-cache'
 
   be:format:
     desc: Apply ruff formatting and autofixes
@@ -97,7 +101,7 @@ tasks:
       # chromadb is not a dependency of this repo (ADR-0115): the exporter's own
       # PEP 723 pin decides the environment, and pytest's testpaths never reach
       # deploy/, so no other task imports chromadb. The end-to-end test runs the
-      # importer in .venv and needs AIQ_QDRANT_TEST_URL (skipped locally without it).
+      # importer in .venv and needs GRID_QDRANT_TEST_URL (skipped locally without it).
       - uvx --python 3.12 --with-requirements deploy/migration/chroma_export.py --with pytest pytest deploy/migration/tests -q -p no:cacheprovider
 
   prompts:pull:
@@ -170,7 +174,7 @@ tasks:
     cmds:
       # The recording is the only part of that harness that needs a model and a
       # key. It is committed so `be:eval:overview` and CI stay offline; re-run
-      # this when AIQ_EMBED_MODEL, data/oib or the golden questions change.
+      # this when GRID_EMBED_MODEL, data/oib or the golden questions change.
       - '{{.PY}} -m oib_retrieval_eval.record_vector'
 
   be:eval:qdrant-parity:
@@ -185,7 +189,7 @@ tasks:
       # retriever. Chroma is gone (ADR-0115): its numbers from the gate run are the
       # fixed reference (qdrant_parity/baseline.py). `-- --embedder hashed` runs it
       # keyless as a wiring check only; `-- --variants all` adds the ranking sweep;
-      # `-- --qdrant-url URL` points at another server (default $AIQ_QDRANT_TEST_URL
+      # `-- --qdrant-url URL` points at another server (default $GRID_QDRANT_TEST_URL
       # or localhost:6333). Only uniquely named parity_* collections are touched.
       - '{{.PY}} -m oib_retrieval_eval.qdrant_parity.runner {{.CLI_ARGS}}'
 

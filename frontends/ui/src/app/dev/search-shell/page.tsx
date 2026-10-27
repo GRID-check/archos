@@ -23,7 +23,7 @@ import { AppShellChrome } from '@/components/shell/app-shell-chrome'
 import { ShellContent } from '@/components/shell/shell-content'
 import { PageHeader } from '@/components/ui/page-header'
 import { SearchWorkspace } from '@/features/search'
-import { NO_TOURS } from '@/features/onboarding/lib/product-tour'
+import { NO_TOURS } from '@/lib/onboarding/product-tour'
 import { I18nProvider, useTranslations } from '@/i18n'
 import { searchCopy } from '@/i18n/namespaces/search'
 

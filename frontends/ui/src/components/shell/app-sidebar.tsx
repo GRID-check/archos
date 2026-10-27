@@ -68,7 +68,7 @@ import { useRecordRecentProject } from './recent-projects'
 import { useShellOverlays } from './shell-overlays'
 import { ShellSearchButton } from './shell-search-button'
 import { ConnectionBand } from './connection-band'
-import { sectionAnchor } from '@/features/onboarding/lib/product-tour'
+import { sectionAnchor } from '@/lib/onboarding/product-tour'
 
 /**
  * THE ACTIVE PILL'S SHARED-LAYOUT IDENTITY.

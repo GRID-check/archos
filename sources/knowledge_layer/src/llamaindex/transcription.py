@@ -3,8 +3,8 @@
 A scanned page has no text layer, and a garbled one has a text layer that
 decodes to glyph ids (``page_triage``). Both are rendered and sent to the SAME
 OpenAI-compatible endpoint the drawing analysis uses, with the same credential
-(``resolve_vlm_credential``: org BYOK, then ``AIQ_VLM_API_KEY``, then the
-provider key for ``AIQ_VLM_BASE_URL``), and the reply becomes the page's text.
+(``resolve_vlm_credential``: org BYOK, then ``GRID_VLM_API_KEY``, then the
+provider key for ``GRID_VLM_BASE_URL``), and the reply becomes the page's text.
 It is then chunked like any other page: a transcription is text, not a visual,
 so it never enters the drawing schema.
 
@@ -39,7 +39,7 @@ PROMPT_VERSION = 1
 #: The file failure for a scan with no vision model to read it. Same
 #: ``reason: text`` shape as the image path's, so the failed-document UX offers
 #: the same remedy instead of "no content extracted".
-SCAN_NEEDS_VLM = "vlm_not_configured: scanned PDF pages need a vision model to be transcribed (AIQ_VLM_API_KEY)"
+SCAN_NEEDS_VLM = "vlm_not_configured: scanned PDF pages need a vision model to be transcribed (GRID_VLM_API_KEY)"
 
 #: Reply that says the page carries no text worth indexing (blank, a photo).
 NO_TEXT_MARKER = "[KEIN TEXT]"
@@ -67,15 +67,15 @@ Sonderfälle — dann antwortest du NUR mit der Markierung:
 - Die Seite ist überwiegend ein Plan, eine technische Zeichnung, ein Schnitt, eine Ansicht
   oder ein Foto (nicht ein Textdokument mit einer kleinen Abbildung): {DRAWING_MARKER}"""
 
-# @environment_variable AIQ_OCR_MODEL
+# @environment_variable GRID_OCR_MODEL
 # @category Knowledge Layer
 # @type string
 # @default (the ingestion VLM model)
 # @required false
 # Model that transcribes scanned and garbled PDF pages. Unset, the ingestion
-# VLM transcribes them (AIQ_VLM_MODEL, or the org's `ingest_vlm` override).
+# VLM transcribes them (GRID_VLM_MODEL, or the org's `ingest_vlm` override).
 # Same endpoint and key as the VLM.
-OCR_MODEL_ENV = "AIQ_OCR_MODEL"
+OCR_MODEL_ENV = "GRID_OCR_MODEL"
 
 #: Output budget for one page. A dense A4 page is ~900 German words, ~1 800
 #: tokens; tables in Markdown roughly double that. ``_vlm_chat_create`` doubles
@@ -91,7 +91,7 @@ def cache_prompt_type() -> str:
 
 
 def resolve_ocr_model(vlm_model: str, org_override: str | None = None) -> str:
-    """The model that transcribes: the org's vision override, else ``AIQ_OCR_MODEL``, else the VLM.
+    """The model that transcribes: the org's vision override, else ``GRID_OCR_MODEL``, else the VLM.
 
     The org's ``ingest_vlm`` override wins because it is the tenant's own choice
     of vision model, made in the admin UI; a separate ``ingest_ocr`` group was

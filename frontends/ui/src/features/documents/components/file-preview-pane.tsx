@@ -96,7 +96,7 @@ import { IngestFailureNotice } from './ingest-failure-notice'
 import { AssignmentFaces } from './assignment-faces'
 import { AuthorshipLine } from './authorship-line'
 import { DocumentRevisions } from './document-revisions'
-import { showsRevisionsSection } from '../lib/revision-timeline'
+import { showsRevisionsSection } from '@/lib/documents/revision-timeline'
 import { DocumentVersionStateBadge } from './document-version-badge'
 import type {
   DocumentLifecyclePermission,

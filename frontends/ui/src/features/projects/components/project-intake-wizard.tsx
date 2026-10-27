@@ -16,7 +16,7 @@ import {
   Sparkles,
   Trash2,
 } from 'lucide-react'
-import { projectTourUrl } from '@/features/onboarding/lib/product-tour'
+import { projectTourUrl } from '@/lib/onboarding/product-tour'
 import {
   AnimatePresence,
   motion,

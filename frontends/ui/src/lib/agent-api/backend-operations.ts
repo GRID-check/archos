@@ -38,7 +38,8 @@ import { ApiError } from '@/lib/api/errors'
 import { CHAT_PERMISSIONS } from '@/lib/authz/chat'
 import { requireProjectAccess } from '@/lib/authz/projects'
 import { withTenant } from '@/lib/db/tenant-context'
-import { isTokenSafeDestination } from '@/lib/model-config/backend-defaults'
+import { getBackendUrl } from '@/lib/backend-url'
+import { InternalServiceUnavailableError, internalServiceHeaders } from '@/lib/internal-auth'
 import { resolveTurnContext, TurnBudgetExhaustedError } from '@/lib/turns/turn-context'
 import { turnContextHeaders } from '@/lib/turns/turn-headers.js'
 import backendTools from '../../../tests/fixtures/backend-tools.schema.json'
@@ -506,11 +507,17 @@ export async function callBackendOperation(
     )
   }
 
+  // The token authenticates the call and is the key the envelope is signed with.
   const secret = process.env.GRID_INTERNAL_API_TOKEN
-  const base = (process.env.BACKEND_URL ?? 'http://localhost:8000').replace(/\/$/, '')
-  if (!secret || !isTokenSafeDestination(base)) {
+  const base = getBackendUrl()
+  let tokenHeaders: Record<string, string>
+  try {
+    tokenHeaders = internalServiceHeaders(base)
+  } catch (error) {
+    if (!(error instanceof InternalServiceUnavailableError)) throw error
     return refusal(503, 'backend_not_configured', 'The BFF cannot sign a request to the backend')
   }
+  if (!secret) return refusal(503, 'backend_not_configured', 'The BFF cannot sign a request to the backend')
 
   // Reads tenant rows with a session and no route around it, so the tenant is stated.
   const tenant = { organizationId: session.organizationId, userId: session.userId }
@@ -538,7 +545,7 @@ export async function callBackendOperation(
   try {
     const response = await fetch(`${base}/v1/internal/tools/${encodeURIComponent(op.tool)}`, {
       method: 'POST',
-      headers: { 'content-type': 'application/json', 'x-grid-internal-token': secret, ...envelope },
+      headers: { 'content-type': 'application/json', ...envelope, ...tokenHeaders },
       body: JSON.stringify({ arguments: toolArguments }),
       cache: 'no-store',
       // A redirect would replay the internal token at whatever host the response names.

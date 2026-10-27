@@ -31,6 +31,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { useTranslations } from '@/i18n'
 import { navCopy } from '@/i18n/namespaces/nav'
+import { isFrameworkControlFlow } from '@/lib/analytics/control-flow-error'
 import type { SwitchableOrganization } from '@/lib/organizations/switchable'
 
 const AFTER_SWITCH = '/app/projects'
@@ -42,8 +43,7 @@ const AFTER_SWITCH = '/app/projects'
  * digest, what Next's own `isRedirectError` reads). Nothing failed.
  */
 export function isNavigatingAway(error: unknown): boolean {
-  if (typeof error !== 'object' || error === null || !('digest' in error)) return false
-  return String(error.digest).startsWith('NEXT_REDIRECT')
+  return isFrameworkControlFlow(error)
 }
 
 export function OrganizationSwitcherMenu({
