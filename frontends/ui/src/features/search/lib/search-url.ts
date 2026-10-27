@@ -83,6 +83,8 @@ export const SEARCH_PARAMS = {
   uploader: 'uploader',
   state: 'state',
   incomplete: 'incomplete',
+  changed: 'changed',
+  changedFact: 'changedFact',
   fileType: 'ext',
   pagesMin: 'pagesMin',
   pagesMax: 'pagesMax',
@@ -249,6 +251,8 @@ export function parseSearchParams(params: URLSearchParams): SearchUrlState {
     uploadedBy: list(params, P.uploader, (value) => (value !== '' && value.length <= 100 ? value : null), 20),
     states: list(params, P.state, (value) => oneOf(SEARCH_READ_STATES, value), SEARCH_READ_STATES.length),
     incompleteRead: params.get(P.incomplete) === '1' ? true : undefined,
+    factsChanged: params.get(P.changed) === '1' ? true : undefined,
+    changedFacts: list(params, P.changedFact, (value) => oneOf(DOSSIER_FACT_KEYS, value), DOSSIER_FACT_KEYS.length),
     fileTypes: list(params, P.fileType, (value) => (EXTENSION.test(value.toLowerCase()) ? value.toLowerCase() : null), 12),
     pages:
       pagesMin !== undefined || pagesMax !== undefined
@@ -336,6 +340,8 @@ export function writeSearchParams(state: SearchUrlState, base: URLSearchParams =
   add(P.uploader, f.uploadedBy)
   add(P.state, f.states)
   if (f.incompleteRead) set(P.incomplete, 1)
+  if (f.factsChanged) set(P.changed, 1)
+  add(P.changedFact, f.changedFacts)
   add(P.fileType, f.fileTypes)
   set(P.pagesMin, f.pages?.min)
   set(P.pagesMax, f.pages?.max)

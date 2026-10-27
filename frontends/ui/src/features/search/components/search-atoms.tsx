@@ -504,10 +504,10 @@ export function Excerpt({ children }: { children: ReactNode }): JSX.Element {
   return <p className="mt-0.5 line-clamp-2 text-pretty text-sm text-foreground/75">{children}</p>
 }
 
-/** What the words were found in („Gefunden in Name · Inhalt“): present, never loud. */
-export function MatchHint({ label, parts }: { label: string; parts: readonly string[] }): JSX.Element {
+/** A quiet line under a hit: what the words were found in („Gefunden in Name · Inhalt“), what a Fassung changed. Present, never loud. */
+export function MatchHint({ label, parts, testId = 'search-matched-on' }: { label: string; parts: readonly string[]; testId?: string }): JSX.Element {
   return (
-    <span className="mt-0.5 text-xs text-muted-foreground/90" data-testid="search-matched-on">
+    <span className="mt-0.5 text-xs text-muted-foreground/90" data-testid={testId}>
       {label} {parts.join(' · ')}
     </span>
   )
@@ -877,8 +877,12 @@ export function PanelBody({ children }: { children: ReactNode }): JSX.Element {
 }
 
 /** A line of muted text where a list would be. */
-export function QuietLine({ children }: { children: ReactNode }): JSX.Element {
-  return <p className="text-sm text-muted-foreground">{children}</p>
+export function QuietLine({ children, testId }: { children: ReactNode; testId?: string }): JSX.Element {
+  return (
+    <p className="text-sm text-muted-foreground" data-testid={testId}>
+      {children}
+    </p>
+  )
 }
 
 /** The search inside a shelf's own frame (Dateien, Büroablage), which lends no page padding. */

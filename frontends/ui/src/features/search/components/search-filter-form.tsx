@@ -116,6 +116,7 @@ export function SearchFilterForm({ state, onChange, currentUserId, defaultOpen =
                 })
               }
             />
+            <Flag label={t('factsChanged')} checked={Boolean(f.factsChanged)} onChange={(on) => set({ factsChanged: on || undefined })} testId="filter-facts-changed" />
             <Flag label={t('incompleteRead')} checked={Boolean(f.incompleteRead)} onChange={(on) => set({ incompleteRead: on || undefined })} testId="filter-incomplete" />
             <Flag label={t('includeArchived')} checked={Boolean(f.includeArchived)} onChange={(on) => set({ includeArchived: on || undefined })} testId="filter-archived" />
         </RailBody>

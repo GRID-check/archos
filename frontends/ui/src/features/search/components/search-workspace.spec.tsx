@@ -104,6 +104,26 @@ describe('SearchWorkspaceView', () => {
     expect(screen.getByTestId('search-note-building')).toBeInTheDocument()
   })
 
+  it('says what a Fassung changed against the one it replaced, in the dossier’s words', () => {
+    german(<Harness initial={{ ...EMPTY_SEARCH_STATE, text: 'Fluchtweg GK 4' }} onChange={() => {}} />)
+    const indexC = screen.getByTestId('search-hit-document-d0000000-0000-4000-8000-000000000002')
+    expect(within(indexC).getByTestId('search-changed-facts')).toHaveTextContent(
+      'Gegenüber der Vorfassung: Fluchtweglänge 38,50 m → 42,10 m · Oberirdische Geschosse 4 → 5'
+    )
+    const unchanged = screen.getByTestId('search-hit-document-d0000000-0000-4000-8000-000000000001')
+    expect(within(unchanged).queryByTestId('search-changed-facts')).toBeNull()
+  })
+
+  it('counts the changed facts as a facet, and says under the facets how many documents are not read yet', async () => {
+    const onChange = vi.fn()
+    german(<Harness initial={EMPTY_SEARCH_STATE} onChange={onChange} />)
+    expect(screen.getByTestId('search-facets-unread')).toHaveTextContent('3 Dokumente noch nicht gelesen, in den Zahlen oben nicht enthalten.')
+    const facet = screen.getByTestId('search-facet-changedFact')
+    expect(facet).toHaveTextContent('Geänderte Angaben')
+    await userEvent.click(within(facet).getByTestId('search-facet-changedFact-escape_route_length'))
+    expect(onChange).toHaveBeenLastCalledWith(expect.objectContaining({ filters: { changedFacts: ['escape_route_length'] } }))
+  })
+
   it('marks a replaced Fassung in ink with its icon and word, never in the Büroablage’s amber', () => {
     german(<Harness initial={{ ...EMPTY_SEARCH_STATE, text: 'Fluchtweg GK 4' }} onChange={() => {}} />)
     const replaced = screen.getByTestId('search-hit-document-d0000000-0000-4000-8000-000000000003')

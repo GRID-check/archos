@@ -9,7 +9,7 @@ import { SEARCH_FACET_DIMENSIONS, type FacetCount, type SearchFacetDimension, ty
 import { useSearchLabels } from '../hooks/use-search-labels'
 import { isFacetActive } from '../lib/search-facets'
 import type { SearchUrlState } from '../lib/search-url'
-import { FacetOption, RailAction, RailSection } from './search-atoms'
+import { FacetOption, QuietLine, RailAction, RailSection } from './search-atoms'
 
 /** How many values a dimension shows before „Alle zeigen“. */
 const FACET_PREVIEW = 6
@@ -17,6 +17,8 @@ const FACET_PREVIEW = 6
 export interface SearchFacetRailProps {
   state: SearchUrlState
   facets: SearchResponse['facets']
+  /** Documents in scope not read yet, which no count above includes. */
+  unread?: number | null
   onToggle: (dimension: SearchFacetDimension, value: string) => void
   /** The project dimension narrows the office-wide page only; inside a project or on the shelf it is no choice. */
   showProjects: boolean
@@ -26,7 +28,8 @@ export interface SearchFacetRailProps {
  * The counts over the matched documents, one group per dimension, the values
  * switched on first. A click switches a value on or off (`toggleFacet`).
  */
-export function SearchFacetRail({ state, facets, onToggle, showProjects }: SearchFacetRailProps): JSX.Element | null {
+export function SearchFacetRail({ state, facets, unread = null, onToggle, showProjects }: SearchFacetRailProps): JSX.Element | null {
+  const t = useTranslations('search.facets')
   if (!facets) return null
   const dimensions = SEARCH_FACET_DIMENSIONS.filter((dimension) => (dimension === 'project' ? showProjects : true))
   return (
@@ -34,6 +37,7 @@ export function SearchFacetRail({ state, facets, onToggle, showProjects }: Searc
       {dimensions.map((dimension) => (
         <FacetGroup key={dimension} dimension={dimension} values={facets[dimension] ?? []} state={state} onToggle={onToggle} />
       ))}
+      {unread ? <QuietLine testId="search-facets-unread">{t('unread', { count: unread })}</QuietLine> : null}
     </>
   )
 }

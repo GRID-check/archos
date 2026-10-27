@@ -4154,5 +4154,9 @@
   {
     "en": "Filter documents by type, drawing number, revision, scale, parties, place, stated facts such as building class, cited norms, dates and status, and sort them like a drawing register with one row per document. Save the search, or export the result as a CSV or Excel drawing list.",
     "de": "Filtern Sie Dokumente nach Dokumentart, Plannummer, Index, Maßstab, Beteiligten, Ort, Angaben wie der Gebäudeklasse, zitierten Normen, Daten und Status, und sortieren Sie sie wie eine Planliste mit einer Zeile je Dokument. Speichern Sie die Suche oder exportieren Sie das Ergebnis als CSV- oder Excel-Planliste."
+  },
+  {
+    "en": "See what a new version of a document changed: filter for documents whose stated facts differ from the version they replaced, such as a new building class or one more storey, and each result names the change, before and after. The filter panel also says how many documents Piloti has not read yet, so a count never suggests they lack a value.",
+    "de": "Sehen Sie, was eine neue Fassung geändert hat: Filtern Sie nach Dokumenten, deren Angaben von der ersetzten Fassung abweichen, etwa eine neue Gebäudeklasse oder ein Geschoss mehr, und jeder Treffer nennt die Änderung mit altem und neuem Wert. Die Filterleiste sagt außerdem, wie viele Dokumente Piloti noch nicht gelesen hat, damit eine Zahl nie den Eindruck erweckt, ihnen fehle ein Wert."
   }
 ]

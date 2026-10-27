@@ -11,3 +11,9 @@ features:
     stated facts such as building class, cited norms, dates and status, and
     sort them like a drawing register with one row per document. Save the
     search, or export the result as a CSV or Excel drawing list.
+  - >
+    See what a new version of a document changed: filter for documents whose
+    stated facts differ from the version they replaced, such as a new building
+    class or one more storey, and each result names the change, before and
+    after. The filter panel also says how many documents Piloti has not read
+    yet, so a count never suggests they lack a value.
