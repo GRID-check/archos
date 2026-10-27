@@ -25,6 +25,7 @@ import { I18nProvider } from '@/i18n'
 import type { SavedSearchView } from '@/lib/search/saved-search-client'
 import { SearchWorkspaceView } from '@/features/search'
 import { SavedSearchesMenu } from '@/features/search/components/saved-searches-menu'
+import { useSuggestedSearchName } from '@/features/search/hooks/use-suggested-search-name'
 import { EMPTY_SEARCH_STATE, type SearchUrlState } from '@/features/search/lib/search-url'
 import { sectionView } from '@/features/search/lib/sections'
 import type { SearchKind, SearchResponse } from '@/lib/search/search-wire'
@@ -47,6 +48,8 @@ function Preview({ initial, filtersOpen, answer }: { initial: SearchUrlState; fi
   const [state, setState] = useState(initial)
   const [field, setField] = useState(initial.text)
   const [saved, setSaved] = useState<SavedSearchView[]>(SEARCH_FIXTURE_SAVED)
+  const [deleting, setDeleting] = useState<ReadonlySet<string>>(new Set())
+  const suggestedName = useSuggestedSearchName(state)
   return (
     <SearchWorkspaceView
       surface={{ kind: 'office' }}
@@ -68,11 +71,13 @@ function Preview({ initial, filtersOpen, answer }: { initial: SearchUrlState; fi
       filtersOpen={filtersOpen}
       savedSearches={
         <SavedSearchesMenu
-          items={saved}
+          items={saved.filter((entry) => !deleting.has(entry.id))}
           failed={false}
           onApply={() => {}}
           onToggleShare={(item) => setSaved((list) => list.map((entry) => (entry.id === item.id ? { ...entry, shared: !entry.shared } : entry)))}
-          onDelete={(item) => setSaved((list) => list.filter((entry) => entry.id !== item.id))}
+          onDelete={(item) => setDeleting((ids) => new Set(ids).add(item.id))}
+          onUndoDelete={(item) => setDeleting((ids) => new Set([...ids].filter((id) => id !== item.id)))}
+          suggestedName={suggestedName}
           onSave={async () => true}
         />
       }

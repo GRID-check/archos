@@ -66,6 +66,7 @@ export const search: typeof en.search = {
   },
   where: {
     officeShelf: 'Büroablage',
+    folder: 'Ordner',
     separator: ' · ',
   },
   document: {
@@ -73,6 +74,12 @@ export const search: typeof en.search = {
     supersededHint: 'Eine neuere Fassung ersetzt dieses Dokument',
     pagesNotRead: '{count, plural, one {1 Seite nicht gelesen} other {# Seiten nicht gelesen}}',
     index: 'Index {index}',
+  },
+  matchedOn: {
+    label: 'Gefunden in',
+    name: 'Name',
+    reading: 'was Piloti las',
+    content: 'Inhalt',
   },
   annotation: {
     on: 'zu {document}',
@@ -194,7 +201,12 @@ export const search: typeof en.search = {
     changeFailed: 'Die Änderung konnte nicht gespeichert werden.',
     deleteFailed: 'Die Suche konnte nicht gelöscht werden.',
     shared: 'Geteilt',
+    sharedSwitch: 'Geteilt',
     fromColleague: 'Von einer Kollegin oder einem Kollegen geteilt',
+    byColleague: 'Geteilt von {name}',
+    deleted: '„{name}“ gelöscht',
+    undo: 'Rückgängig',
+    nameRequired: 'Bitte der Suche einen Namen geben.',
     shareToggle: '{name} mit dem Büro teilen',
     delete: '{name} löschen',
   },
