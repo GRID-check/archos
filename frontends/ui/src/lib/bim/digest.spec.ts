@@ -1,3 +1,4 @@
+// @disk-inputs: tests/fixtures/ifc/sample-building.ifc
 /**
  * The digest is what makes a model retrievable by the existing RAG stack, so
  * what matters is that the *facts an architect would ask about* are present as

@@ -1,7 +1,8 @@
 import 'server-only'
 import { and, eq, gte, sql } from 'drizzle-orm'
 import { getDb } from '@/lib/db'
-import { conversations, messages } from '@/lib/db/schema'
+import { conversations } from '@/lib/db/schema/conversations'
+import { messages } from '@/lib/db/schema/messages'
 
 export interface DailyQuestions {
   /** UTC day, `YYYY-MM-DD`. */

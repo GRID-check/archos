@@ -6,7 +6,7 @@
  */
 
 import { describe, expect, it } from 'vitest'
-import type { Project } from '@/lib/db/schema'
+import type { Project } from '@/lib/db/schema/projects'
 import { buildIntakeProfile, projectIntakeDefinitionV1 } from '@/lib/project-profile/intake-definition'
 import { SIMILARITY_WEIGHTS, federalStateOf, rankBySimilarity, sharedTraits, similarity, similarityFacts } from './similarity'
 

@@ -1,16 +1,8 @@
-"""Auth-related exception types."""
+"""The API tier's token failures, each an :class:`AuthError` the agent tier owns and catches."""
 
+from aiq_agent.auth.errors import AuthError
 
-class AuthError(Exception):
-    """Raised when a request fails due to authentication or authorization issues.
-
-    Agent nodes catch this before the generic Exception handler and return
-    str(e) directly to the user. Subclass this for specific auth failure modes
-    (e.g. missing token, expired token, insufficient permissions) to ensure
-    actionable error messages reach the caller rather than a generic fallback.
-    """
-
-    error_code: str = "auth_error"
+__all__ = ["AuthError", "TokenExpiredError", "TokenInvalidError"]
 
 
 class TokenExpiredError(AuthError):

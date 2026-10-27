@@ -20,7 +20,7 @@ import { BadRequestError, ConflictError, ForbiddenError, NotFoundError } from '@
 import { recordAuditEvent } from '@/lib/audit/service'
 import type { AuthorizedSession } from '@/lib/auth/types'
 import type { DbExecutor } from '@/lib/db/executor'
-import type { ResourceRole, ResourceVisibility, ShareableResourceType } from '@/lib/db/schema'
+import type { ResourceRole, ResourceVisibility, ShareableResourceType } from '@/lib/db/schema/resource-shares'
 import type { AudienceWidening } from '@/lib/conversations/restricted-use'
 import { publishToUsers } from '@/lib/events/bus'
 import { resolveResourceAccess, requireResourceAccess, requireResourceWriteAccess } from './access'

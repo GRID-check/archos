@@ -2,7 +2,8 @@
  * @vitest-environment node
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import type { Document, DocumentVersion } from '@/lib/db/schema'
+import type { DocumentVersion } from '@/lib/db/schema/document-versions'
+import type { Document } from '@/lib/db/schema/documents'
 
 vi.mock('server-only', () => ({}))
 vi.mock('@/lib/assignments/repository', () => ({ listAssignmentsForResources: vi.fn() }))

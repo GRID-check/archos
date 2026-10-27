@@ -129,7 +129,7 @@ server's `dryRun` is ([servers][mcp-fs]).
   project. It is uncapped and paged, facets by folder, name, `doc_class` and
   date, and lists in-flight files. It drops the shelves the turn did not ask for,
   as the search does, and its rows are an index: they register no citable source
-  (`src/aiq_agent/common/citation_verification.py`). Tools resolve names against the uncapped
+  (`src/aiq_agent/citations/session.py`). Tools resolve names against the uncapped
   inventory, which fixes the 51st-file bug, and rows carry `added_at`.
 - Earlier: `emit_card` left chat, `ris_lookup` collapsed, parallel calls are
   capped at 12, and errors teach (`src/aiq_agent/common/tool_errors.py`).
@@ -201,7 +201,7 @@ LLM events for 30 days, so there is no per-tool usage or error rate.
 
 | # | Item | Why | Files | Effort | Measure |
 |---|---|---|---|---|---|
-| 1 | Project-file eval fixture with `expect.tools` (`must`, `must_not`, `max_research_calls`) | 2 of 29 loop-eval rows are own-file, both skipped; `Run.tool_calls` is already recorded | `tests/fixtures/derivation/loop_eval_questions.yaml`, `scripts/turn_census/suite.py`, `frontends/benchmarks/oib_retrieval` | S–M | ~20 `pf-*` rows: pass rate, research calls, `status:repeat`/`width`/`budget` = 0 |
+| 1 | Project-file eval fixture with `expect.tools` (`must`, `must_not`, `max_research_calls`) | 2 of 29 loop-eval rows are own-file, both skipped; `Run.tool_calls` is already recorded | `tests/fixtures/derivation/loop_eval_questions.yaml`, `scripts/turn_census/suite.py`, `evals/oib-retrieval` | S–M | ~20 `pf-*` rows: pass rate, research calls, `status:repeat`/`width`/`budget` = 0 |
 | 2 | Bind `ifc_*` only when the project has a readable model | −8.2k tokens and a distractor; outside that scope both return "no model" | `src/aiq_agent/agents/piloti/register.py` (`_tools_in_scope`), BFF project context | S–M | Input tokens per call by scope; model questions in the answer suite; a model uploaded mid-conversation binds next turn |
 | 3 | Prefetch the IFC `briefing` in round 0 | `modell` prefetches nothing while the tool says "CALL 'briefing' FIRST"; a taught sequence is an incomplete contract ([ADR-0060](../adr/0060-three-instruction-layers-and-tools-that-answer.md)); OpenAI: combine sequential calls | `src/aiq_agent/agents/piloti/decisions.py`, `src/aiq_agent/tools/bim/measure_register.py` | S–M | Rounds on model questions |
 | 4 | Read page ranges (built: `pages`, `cursor`), and whole documents under ~15–25k tokens | A printed page ≠ stored page cost two extra rounds; Claude Code `Read(pages)`; long context beats RAG when affordable ([Li et al.][li-2024], [contextual retrieval][a-cr]) | `sources/knowledge_layer/src/read_passage.py`, a per-page store at ingest, decided in [ADR-0134](../adr/0134-extracted-page-text-is-stored-per-version.md) and read through `read_file` ([`agent-filesystem.md`](agent-filesystem.md)) | M | Rounds and truncation on outline and page rows |

@@ -8,7 +8,7 @@ vi.mock('server-only', () => ({}))
 vi.mock('@/lib/jobs-queue/enqueue', () => ({ enqueueJob: vi.fn(async () => ({ jobId: 'j' })) }))
 vi.mock('./repository', () => ({ userIdsWithSubscription: vi.fn() }))
 
-import type { InboxItem } from '@/lib/db/schema'
+import type { InboxItem } from '@/lib/db/schema/inbox'
 import { enqueueJob } from '@/lib/jobs-queue/enqueue'
 import { BURST_HOLD_MS, enqueueInboxPushes } from './enqueue'
 import { userIdsWithSubscription } from './repository'

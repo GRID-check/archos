@@ -22,10 +22,10 @@ from langchain_core.tools import tool
 import nat.plugins.langchain.tool_wrapper  # noqa: F401  registers the LangChain wrapper
 from aiq_agent.agents.piloti.agent import PilotiAgent
 from aiq_agent.agents.piloti.models import ResearchAgentState
+from aiq_agent.citations.entries import SourceEntry
+from aiq_agent.citations.registry import SourceRegistry
 from aiq_agent.common import LLMProvider
 from aiq_agent.common.agent_tools import load_agent_tools
-from aiq_agent.common.citation_verification import SourceEntry
-from aiq_agent.common.citation_verification import SourceRegistry
 from aiq_agent.knowledge import restricted_use as ru
 from aiq_agent.knowledge.restricted_use import WITHHELD_NOTICE
 from aiq_agent.knowledge.restricted_use import RestrictedUse

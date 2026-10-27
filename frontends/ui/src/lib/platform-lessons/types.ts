@@ -4,10 +4,7 @@
  */
 
 import { z } from 'zod'
-import {
-  PLATFORM_LESSON_ROOT_CAUSE_STATUSES,
-  type PlatformLesson,
-} from '@/lib/db/schema'
+import { PLATFORM_LESSON_ROOT_CAUSE_STATUSES, type PlatformLesson } from '@/lib/db/schema/platform-lessons'
 
 /**
  * Ceilings for what one report contributes to a distillation prompt. Bounded

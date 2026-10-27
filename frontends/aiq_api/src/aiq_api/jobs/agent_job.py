@@ -19,7 +19,8 @@ The research worker (``jobs/worker.py``) claims a queued row and awaits
 ``_finish_failed`` and ``_release`` are the failure and ``finally`` paths;
 ``runner._finalize_cancelled_run`` is the cancelled one. ``JobScope`` carries
 what those terminal paths close, whether or not setup got that far. The
-helpers each phase calls live in ``jobs/runner.py``.
+helpers each phase calls live in ``jobs/runner.py``; what a finished run's state
+says (report, sources, the marks on its answer) is read in ``jobs/run_result.py``.
 
 A parameter of ``run_agent_job`` is a payload key: removing or renaming one
 needs its old name in ``worker.RETIRED_PAYLOAD_KEYS``.

@@ -1,3 +1,4 @@
+// @disk-inputs: src/**
 /**
  * The hold is a reader every query states, not a status every reader remembers
  * (ADR-0086, amended 2026-10-08).

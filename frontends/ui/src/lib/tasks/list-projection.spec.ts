@@ -12,7 +12,7 @@ vi.mock('server-only', () => ({}))
 vi.mock('@/lib/conversations/repository', () => ({ listRunLedgersByMessageIds: vi.fn() }))
 
 import { listRunLedgersByMessageIds } from '@/lib/conversations/repository'
-import type { TaskRun } from '@/lib/db/schema'
+import type { TaskRun } from '@/lib/db/schema/task-model'
 import type { RunLedger } from '@/lib/runs/run-ledger-types'
 import { loadRunSummaries, runSummaryOf, toTaskRunView } from './list-projection'
 

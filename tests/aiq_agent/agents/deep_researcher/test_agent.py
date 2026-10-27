@@ -23,12 +23,12 @@ from aiq_agent.agents.deep_researcher.models import ResearchQuery
 from aiq_agent.agents.deep_researcher.tools.research import build_research_batch_tool
 from aiq_agent.agents.deep_researcher.tools.research import researcher_invoke_state
 from aiq_agent.agents.deep_researcher.tools.source_registry import render_source_list
+from aiq_agent.citations.entries import SourceEntry
+from aiq_agent.citations.registry import SourceRegistry
+from aiq_agent.citations.session import reset_session_registry
+from aiq_agent.citations.session import set_session_registry
 from aiq_agent.common import LLMProvider
 from aiq_agent.common import LLMRole
-from aiq_agent.common.citation_verification import SourceEntry
-from aiq_agent.common.citation_verification import SourceRegistry
-from aiq_agent.common.citation_verification import reset_session_registry
-from aiq_agent.common.citation_verification import set_session_registry
 from tests.provider_doubles import NAT_LLM_CONFIG
 from tests.provider_doubles import nat_langchain_client
 
@@ -1311,7 +1311,7 @@ class TestDeepResearcherAgent:
             def __init__(self) -> None:
                 self.spawned: list[FakeIsolatingCallback] = []
 
-            def for_new_run(self) -> "FakeIsolatingCallback":
+            def for_new_run(self) -> FakeIsolatingCallback:
                 fresh = FakeIsolatingCallback()
                 self.spawned.append(fresh)
                 return fresh
@@ -2200,7 +2200,7 @@ class TestPerRunIsolation:
             # registry at the end of a run now fails loudly — which also proves
             # the second run did not inherit run-one's captured source (it would
             # otherwise have a non-empty registry and succeed).
-            from aiq_agent.common.citation_verification import EmptySourceRegistryError
+            from aiq_agent.citations.entries import EmptySourceRegistryError
 
             state = DeepResearchAgentState(messages=[HumanMessage(content="Next request")])
             with pytest.raises(EmptySourceRegistryError):
@@ -2444,7 +2444,7 @@ class TestDeepResearcherCitationVerification:
     async def test_run_fails_when_registry_is_empty_despite_report(self, mock_llm_provider, real_tool):
         """A report produced with zero captured sources is unverifiable, so the run fails."""
         from aiq_agent.agents.deep_researcher.agent import DeepResearcherAgent
-        from aiq_agent.common.citation_verification import EmptySourceRegistryError
+        from aiq_agent.citations.entries import EmptySourceRegistryError
 
         report = "Completed report without captured sources."
         deep_result = {
@@ -2467,7 +2467,7 @@ class TestDeepResearcherCitationVerification:
     async def test_run_raises_empty_registry_error_when_nothing_to_salvage(self, mock_llm_provider, real_tool):
         """No report, no fallback message, no sources → EmptySourceRegistryError."""
         from aiq_agent.agents.deep_researcher.agent import DeepResearcherAgent
-        from aiq_agent.common.citation_verification import EmptySourceRegistryError
+        from aiq_agent.citations.entries import EmptySourceRegistryError
 
         mock_agent = streaming_graph_mock({"messages": [], "files": {}})
 
@@ -2629,7 +2629,7 @@ class TestApplyRenumberingDropsSanitizeDeaths:
 
     def test_shortened_death_drops_chip_and_remaps_survivor(self):
         from aiq_agent.agents.deep_researcher.agent import _apply_renumbering
-        from aiq_agent.common.citation_verification import sanitize_report
+        from aiq_agent.citations.sanitize import sanitize_report
 
         report = (
             "Good [1]. Short [2]. Also good [3].\n\n"
@@ -2659,7 +2659,7 @@ class TestApplyRenumberingDropsSanitizeDeaths:
 
     def test_unsafe_death_drops_chip_prose_has_no_orphan(self):
         from aiq_agent.agents.deep_researcher.agent import _apply_renumbering
-        from aiq_agent.common.citation_verification import sanitize_report
+        from aiq_agent.citations.sanitize import sanitize_report
 
         report = (
             "Good [1]. Evil [2].\n\n"
@@ -2696,9 +2696,9 @@ class TestApplyRenumberingDropsSanitizeDeaths:
         """Full path the agent runs: verify keeps, sanitize deletes, wire drops."""
         from aiq_agent.agents.deep_researcher.agent import _apply_renumbering
         from aiq_agent.agents.deep_researcher.agent import _cited_sources_to_wire
-        from aiq_agent.common.citation_verification import SourceRegistry
-        from aiq_agent.common.citation_verification import sanitize_report
-        from aiq_agent.common.citation_verification import verify_citations
+        from aiq_agent.citations.registry import SourceRegistry
+        from aiq_agent.citations.sanitize import sanitize_report
+        from aiq_agent.citations.verification import verify_citations
 
         registry = SourceRegistry()
         registry.add(SourceEntry(url="https://example.com/good", source_type="web_search"))
@@ -2821,7 +2821,7 @@ class TestSessionRegistryBinding:
 
     async def _run_capturing_registry(self, agent):
         """Run the agent, returning what get_session_registry() saw mid-run."""
-        from aiq_agent.common.citation_verification import get_session_registry
+        from aiq_agent.citations.session import get_session_registry
 
         seen = []
         graph = streaming_graph_mock({"messages": [], "files": output_markdown_file()})
@@ -2839,7 +2839,7 @@ class TestSessionRegistryBinding:
     @pytest.mark.asyncio
     async def test_binds_the_runs_registry_when_nothing_is_bound(self, mock_llm_provider, real_tool):
         from aiq_agent.agents.deep_researcher.agent import DeepResearcherAgent
-        from aiq_agent.common.citation_verification import get_session_registry
+        from aiq_agent.citations.session import get_session_registry
 
         # Citation verification off: this run captures no sources (the graph is a
         # mock), and an unverifiable report is correctly a hard failure -- which
@@ -2857,7 +2857,7 @@ class TestSessionRegistryBinding:
     @pytest.mark.asyncio
     async def test_leaves_an_existing_session_registry_alone(self, mock_llm_provider, real_tool):
         from aiq_agent.agents.deep_researcher.agent import DeepResearcherAgent
-        from aiq_agent.common.citation_verification import get_session_registry
+        from aiq_agent.citations.session import get_session_registry
 
         agent = DeepResearcherAgent(llm_provider=mock_llm_provider, tools=[real_tool])
         with seeded_session_registry(SourceEntry(url="https://conversation.example")):

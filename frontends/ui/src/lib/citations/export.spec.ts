@@ -34,7 +34,7 @@ vi.mock('@/lib/norms/service', () => ({
 import * as repository from './repository'
 import { getOrganizationDisplayNames } from '@/lib/organizations/display-names'
 import { getCitationExport } from './service'
-import type { CitationEvent } from '@/lib/db/schema'
+import type { CitationEvent } from '@/lib/db/schema/citation-events'
 import type { QualityScope } from '@/lib/quality/scope'
 
 /** The last 7 days ending on the frozen "today", every organization and project. */

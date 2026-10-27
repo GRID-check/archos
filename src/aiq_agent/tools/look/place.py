@@ -10,7 +10,7 @@ evidence tool answers in, so:
 
 * a live turn reads the record by the hash of the text (``render_grounding_block``
   files it), a replayed turn reads the text (``register_source_parser`` in
-  ``common/citation_verification.py``), and both produce the same source entry;
+  ``citations/text_parsers.py``), and both produce the same source entry;
 * the source chip and the citation peek draw the ``Region:`` as the place they
   already draw for a cited sheet (``regions`` on the wire).
 

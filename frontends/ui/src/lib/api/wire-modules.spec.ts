@@ -1,3 +1,4 @@
+// @disk-inputs: src/lib/**
 /**
  * @vitest-environment node
  */

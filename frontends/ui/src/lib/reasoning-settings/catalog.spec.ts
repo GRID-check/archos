@@ -50,9 +50,7 @@ describe('reasoning effort catalog', () => {
   })
 
   it('matches the cross-language contract fixture', () => {
-    // The fixture twin lives at `frontends/ui/tests/fixtures/` and is
-    // byte-identical to repo-root `tests/fixtures/reasoning_efforts_catalog.json`,
-    // which the Python parity test asserts against `_EFFORTS`. A level added
+    // The Python parity test reads the same file and asserts it against `_EFFORTS`. A level added
     // here without the backend counterpart fails there.
     expect([...REASONING_EFFORTS]).toEqual(catalogFixture)
   })

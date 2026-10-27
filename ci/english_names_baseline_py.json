@@ -1,8 +1,8 @@
 {
-  "frontends/benchmarks/oib_retrieval/src/oib_retrieval_eval/evaluator.py": 5,
-  "frontends/benchmarks/oib_retrieval/src/oib_retrieval_eval/qdrant_parity/sample.py": 2,
-  "frontends/benchmarks/oib_retrieval/src/oib_retrieval_eval/qrels.py": 30,
-  "frontends/benchmarks/oib_retrieval/src/oib_retrieval_eval/structure.py": 32,
+  "evals/oib-retrieval/src/oib_retrieval/evaluator.py": 5,
+  "evals/oib-retrieval/src/oib_retrieval/qdrant_parity/sample.py": 2,
+  "evals/oib-retrieval/src/oib_retrieval/qrels.py": 30,
+  "evals/oib-retrieval/src/oib_retrieval/structure.py": 32,
   "packages/ifc-spatial-py/tests/test_fire.py": 5,
   "scripts/loop_eval.py": 2,
   "sources/knowledge_layer/tests/test_qdrant_adapter.py": 1,
@@ -16,7 +16,7 @@
   "tests/aiq_agent/common/test_key_cited_links.py": 3,
   "tests/aiq_agent/common/test_norm_registry.py": 1,
   "tests/aiq_agent/common/test_turn_status.py": 1,
-  "tests/benchmarks/test_oib_overview_recall.py": 4,
+  "evals/oib-retrieval/tests/test_oib_overview_recall.py": 4,
   "tests/knowledge_layer_tests/test_read_passage.py": 1,
   "tests/knowledge_layer_tests/test_restricted_reads.py": 3,
   "tests/knowledge_layer_tests/test_revision_ingestion.py": 1

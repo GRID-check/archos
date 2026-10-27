@@ -44,9 +44,9 @@ import re
 from dataclasses import dataclass
 from dataclasses import field
 
-from aiq_agent.common.citation_verification import _GROUPED_CITATION_RE
-from aiq_agent.common.citation_verification import _REFERENCE_HEADING_LINE_RE
-from aiq_agent.common.citation_verification import expand_grouped_citations
+from aiq_agent.citations.references import _GROUPED_CITATION_RE
+from aiq_agent.citations.references import REFERENCE_HEADING_LINE_RE
+from aiq_agent.citations.references import expand_grouped_citations
 
 #: How far into the reply the ``"answer"`` key may start. Only the masthead
 #: comes before it (a verdict with its reference and a summary fit well
@@ -281,7 +281,7 @@ class AnswerProseStream:
             newline = text.find("\n", skip)
             line = text if newline < 0 else text[:newline]
             ended = newline >= 0 or self.closed
-            if line_start and ended and _REFERENCE_HEADING_LINE_RE.fullmatch(line.rstrip()):
+            if line_start and ended and REFERENCE_HEADING_LINE_RE.fullmatch(line.rstrip()):
                 self._state = "sources"
                 # The lines before it go out as written: trimming them here
                 # would trim only what this chunk carried.
