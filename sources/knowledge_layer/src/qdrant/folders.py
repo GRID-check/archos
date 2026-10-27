@@ -32,8 +32,6 @@ from typing import Any
 
 from qdrant_client import models
 
-from aiq_agent.common.tool_vocabulary import current_vocabulary
-
 from .prefilter import FOLDER_FIELD
 from .prefilter import folder_ancestors
 from .prefilter import folder_key
@@ -244,14 +242,8 @@ def render_folder_hits(hits: Sequence[FolderHit], query_hint: str = "…") -> st
         abstract = hit.abstract if len(hit.abstract) <= _ABSTRACT_CHARS else hit.abstract[: _ABSTRACT_CHARS - 1] + "…"
         stale = " (card may be out of date)" if hit.status != "fresh" else ""
         lines.append(f"Folder: {hit.folder_path} — {abstract or 'no abstract'}{stale}")
-    first = hits[0].folder_path
-    if current_vocabulary().filesystem:
-        inside = f'`ls` on that folder (`depth=2`) or `knowledge_search(query="{query_hint}", path=…)` with its path'
-    else:
-        inside = (
-            f'`list_files(folder="{first}", view="tree")` or `knowledge_search(query="{query_hint}", folder="{first}")`'
-        )
     lines.append(
-        f"A folder is a pointer, not a source: look inside with {inside}, and cite the documents you read there."
+        f"A folder is a pointer, not a source: list {hits[0].folder_path} or search inside it "
+        f'("{query_hint}"), and cite the documents you read there.'
     )
     return "\n".join(lines)

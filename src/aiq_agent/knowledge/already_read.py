@@ -37,8 +37,6 @@ from dataclasses import dataclass
 from dataclasses import field
 from typing import Any
 
-from aiq_agent.common.tool_vocabulary import current_vocabulary
-
 logger = logging.getLogger(__name__)
 
 #: Heading of the rendered block, the anchor the prompt rule names.
@@ -267,25 +265,18 @@ def render_already_read_block(digest: Sequence[str] | None) -> str:
     lines = [line.strip() for line in (digest or []) if line and line.strip()]
     if not lines:
         return ""
-    vocabulary = current_vocabulary()
-    if vocabulary.filesystem:
-        reopen = (
-            "opening it again with `read_file` on its path (a mount and the exact name from the line resolve, "
-            "e.g. `/project/<name>.md`; `glob` finds it otherwise)"
-        )
-    else:
-        reopen = "opening it again with `read_passage` and the exact name from the line"
     return "\n".join(
         [
             DIGEST_HEADING,
             "Documents already opened in THIS conversation — an index, NOT evidence: "
             "a line proves that the document was opened, not that its wording is available now "
             "(the passages of the PREVIOUS turn are still in the transcript; older ones are not). "
-            f"Cite or quote verbatim only after {reopen}; the digest line itself is never cited.",
+            "Cite or quote verbatim only after opening it again by the exact name from the line; "
+            "the digest line itself is never cited.",
             f"Limited to at most {MAX_DIGEST_DOCS} documents / about {MAX_DIGEST_TOKENS} tokens — "
             "older entries drop out; what is missing here is therefore not ruled out, but is to be "
             "searched with `knowledge_search`. Entries can be outdated (a newer Fassung was filed): "
-            f"if {vocabulary.read_name} finds no such document or passage, resolve again with `knowledge_search`.",
+            "if the read finds no such document or passage, resolve again with `knowledge_search`.",
             *[f"- {line}" for line in lines],
         ]
     )

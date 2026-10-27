@@ -41,8 +41,6 @@ from __future__ import annotations
 import os
 from dataclasses import dataclass
 
-from aiq_agent.common.tool_vocabulary import current_vocabulary
-
 from .llamaindex.page_triage import MIN_JUDGEABLE_CHARS
 from .llamaindex.page_triage import text_quality
 
@@ -139,7 +137,7 @@ def noise_notice(dropped: int) -> str:
         return ""
     return (
         f"Left out {dropped} passage(s) whose text is OCR debris from a drawing's text layer; "
-        f"{current_vocabulary().literal_name} still returns every passage.\n\n"
+        "a literal search still returns every passage.\n\n"
     )
 
 

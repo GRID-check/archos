@@ -73,7 +73,6 @@ from pydantic import ConfigDict
 from pydantic import Field
 
 from aiq_agent.common.action_outcome import ActionOutcome
-from aiq_agent.common.tool_vocabulary import current_vocabulary
 from aiq_agent.common.turn_status import ActionRow
 from nat.plugin_api import Builder
 from nat.plugin_api import Context
@@ -958,32 +957,23 @@ def _outline_lines(entries: Sequence[OutlineEntry], limit: int = _MAX_OUTLINE_LI
     return lines
 
 
-def _outline_instruction() -> str:
-    """The one line that says what the Gliederung is and what it is not, naming the caller's read.
+#: The one line that says what the Gliederung is and what it is not. English, like everything an
+#: agent reads (AGENTS.md), and it names no tool: three agents read it, each with its own reader.
+_OUTLINE_INSTRUCTION = (
+    "Open a listed Punkt by its number. The Gliederung is an index, not evidence: only the passages above "
+    "carry a Citation."
+)
 
-    English, like everything an agent reads (AGENTS.md); it has to be unmistakable that a heading
-    is not a source. The read is the binding's own (``common.tool_vocabulary``): ``read_file`` on
-    Piloti's chat, ``read_passage`` for deep research and intake.
-    """
-    read = current_vocabulary().read(clause="…")
-    return (
-        f"Open a listed Punkt with {read}. The Gliederung is an index, not evidence: only the passages above "
-        "carry a Citation."
-    )
-
-
-def _no_clauses_line() -> str:
-    """The same sentence for a document that has no Punkte to list."""
-    read = current_vocabulary().read(page="…")
-    return (
-        "This document is not structured in Punkte, so it has no Gliederung: its first passages are above; "
-        f"open further pages with {read}."
-    )
+#: The same sentence for a document that has no Punkte to list.
+_NO_CLAUSES_LINE = (
+    "This document is not structured in Punkte, so it has no Gliederung: its first passages are above, and "
+    "further pages open by their number."
+)
 
 
 def _outline_block(entries: Sequence[OutlineEntry]) -> str:
     """The ``## Gliederung`` index appended under the outline's passage."""
-    return "\n".join(["## Gliederung", *_outline_lines(entries), "", _outline_instruction(), ""])
+    return "\n".join(["## Gliederung", *_outline_lines(entries), "", _OUTLINE_INSTRUCTION, ""])
 
 
 # ---------------------------------------------------------------------------
@@ -1047,12 +1037,11 @@ class FamilyOverview:
         numbers = ", ".join(member.number for member in self.members)
         count = f"{len(self.members)} part" if len(self.members) == 1 else f"{len(self.members)} parts"
         span = "Result 1 is" if len(self.chunks) == 1 else f"Results 1 to {len(self.chunks)} are"
-        read = current_vocabulary().read_name
         return (
             f"{self.label}: {count} in the corpus ({numbers}).\n"
             f"{span} the Geltungsbereich of these parts, their Gliederungen are below; "
             "the results for the query follow.\n"
-            f"These parts are therefore open at the level {read} opens a document at; "
+            "These parts are therefore open at the level a read of one document opens it at; "
             "deeper goes only a single Punkt from a Gliederung, as described below."
         )
 
@@ -1072,7 +1061,7 @@ def _family_trailer(members: Sequence[FamilyMember]) -> str:
     lines: list[str] = []
     for member in members:
         lines += [f"## Gliederung {member.title}", *_outline_lines(member.entries, budget), ""]
-    return "\n".join([*lines, _outline_instruction(), ""])
+    return "\n".join([*lines, _OUTLINE_INSTRUCTION, ""])
 
 
 def _member_title(file_name: str) -> str:
@@ -1822,7 +1811,7 @@ async def read_passage(config: ReadPassageConfig, _builder: Builder):
             merged,
             query,
             notice=_older_revision_notice(targets),
-            trailer=_no_clauses_line(),
+            trailer=_NO_CLAUSES_LINE,
             reading_of=document,
         )
         logger.info("read_passage: %s outlined %d opening chunk(s)", query, len(merged.chunks))
