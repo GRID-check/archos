@@ -211,7 +211,11 @@ yet for the same reason.
    `saved_searches` (migration 0186) holds the question only: the scope and
    the body without its cursor, never a result. Running a shared one is an
    ordinary search by the reader, with the reader's reach, so sharing a
-   question shares nothing the reader could not already find. Only the owner
+   question shares nothing the reader could not already find. The question
+   itself still names projects (its scope, its `projectIds` filter), so the
+   list hides a colleague's search scoped to a project the reader may not
+   view and drops such projects from its filter (`savedSearchForReader`): the
+   reader never learns a project exists that the projects list hides. Only the owner
    renames, shares or deletes one; anyone else's answers 404. A colleague's
    shared one carries `ownerName`, from the office's people directory
    (`lib/sharing/directory.ts`), so the list says whose question it is. A

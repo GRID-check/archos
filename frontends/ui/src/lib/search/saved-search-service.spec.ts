@@ -31,6 +31,11 @@ import { createSavedSearch, deleteSavedSearch, listSavedSearches, updateSavedSea
 import { SAVED_SEARCHES_PER_PERSON_MAX } from './saved-search-wire'
 
 const lena = { organizationId: 'org-1', userId: 'user-lena' }
+const PROJECT_SEEN = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
+const PROJECT_HIDDEN = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb'
+
+/** The projects Lena may view, as the route reads them. */
+const viewable = (...ids: string[]) => vi.fn(async (): Promise<ReadonlySet<string>> => new Set(ids))
 
 function row(overrides: Partial<SavedSearchRow> = {}): SavedSearchRow {
   return {
@@ -66,7 +71,7 @@ describe('saved searches', () => {
       row({ id: '22222222-2222-4222-8222-222222222222', ownerUserId: 'user-max', shared: true }),
       row({ id: '33333333-3333-4333-8333-333333333333' }),
     ])
-    const page = await listSavedSearches(lena, { limit: 2 })
+    const page = await listSavedSearches(lena, { limit: 2 }, viewable())
     expect(listVisibleSavedSearches).toHaveBeenCalledWith(lena, { limit: 2, offset: 0 })
     expect(page.savedSearches.map((s) => [s.ownedByMe, s.shared])).toEqual([
       [true, false],
@@ -86,7 +91,7 @@ describe('saved searches', () => {
     vi.mocked(resolvePeople).mockResolvedValue(
       new Map([['user-max', { userId: 'user-max', email: 'max@example.com', name: 'Max Gruber', profilePictureUrl: null }]])
     )
-    const page = await listSavedSearches(lena, { limit: 3 })
+    const page = await listSavedSearches(lena, { limit: 3 }, viewable())
     expect(resolvePeople).toHaveBeenCalledWith('org-1', ['user-max', 'user-gone'])
     expect(page.savedSearches.map((s) => s.ownerName)).toEqual([null, 'Max Gruber', null])
     expect(page.nextCursor).toBe('3')
@@ -94,8 +99,38 @@ describe('saved searches', () => {
 
   it('answers no cursor on the last page, and refuses a cursor it never gave', async () => {
     vi.mocked(listVisibleSavedSearches).mockResolvedValue([row()])
-    expect((await listSavedSearches(lena, { cursor: '2' })).nextCursor).toBeNull()
-    await expect(listSavedSearches(lena, { cursor: 'abc' })).rejects.toBeInstanceOf(BadRequestError)
+    expect((await listSavedSearches(lena, { cursor: '2' }, viewable())).nextCursor).toBeNull()
+    await expect(listSavedSearches(lena, { cursor: 'abc' }, viewable())).rejects.toBeInstanceOf(BadRequestError)
+  })
+
+  it('hides a colleague’s search scoped to a project the reader may not view, and keeps their own', async () => {
+    vi.mocked(listVisibleSavedSearches).mockResolvedValue([
+      row({ id: 'mine', scope: { scope: 'project', projectId: PROJECT_HIDDEN } }),
+      row({ id: 'max-hidden', ownerUserId: 'user-max', shared: true, scope: { scope: 'project', projectId: PROJECT_HIDDEN } }),
+      row({ id: 'max-seen', ownerUserId: 'user-max', shared: true, scope: { scope: 'project', projectId: PROJECT_SEEN } }),
+    ])
+    const page = await listSavedSearches(lena, {}, viewable(PROJECT_SEEN))
+    expect(page.savedSearches.map((view) => view.id)).toEqual(['mine', 'max-seen'])
+  })
+
+  it('drops the projects the reader may not view from a colleague’s filter, and hides it when none is left', async () => {
+    vi.mocked(listVisibleSavedSearches).mockResolvedValue([
+      row({ id: 'both', ownerUserId: 'user-max', shared: true, query: { filters: { projectIds: [PROJECT_SEEN, PROJECT_HIDDEN] } } }),
+      row({ id: 'hidden-only', ownerUserId: 'user-max', shared: true, query: { filters: { projectIds: [PROJECT_HIDDEN] } } }),
+    ])
+    const page = await listSavedSearches(lena, {}, viewable(PROJECT_SEEN))
+    expect(page.savedSearches.map((view) => view.id)).toEqual(['both'])
+    expect(page.savedSearches[0]?.query.filters?.projectIds).toEqual([PROJECT_SEEN])
+  })
+
+  it('reads the reader’s projects only when a colleague’s search names one', async () => {
+    vi.mocked(listVisibleSavedSearches).mockResolvedValue([
+      row({ scope: { scope: 'project', projectId: PROJECT_HIDDEN } }),
+      row({ id: 'office', ownerUserId: 'user-max', shared: true }),
+    ])
+    const projects = viewable()
+    await listSavedSearches(lena, {}, projects)
+    expect(projects).not.toHaveBeenCalled()
   })
 
   it('saves as the caller', async () => {

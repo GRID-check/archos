@@ -9,6 +9,13 @@
  * the owner could see beyond it. That is why any member may share one with the
  * whole office without a permission of its own.
  *
+ * What a colleague's question still names: a project id in its scope or its
+ * `projectIds` filter. A reader who may not view that project must not learn it
+ * exists, so {@link listSavedSearches} hides a colleague's search scoped to such
+ * a project (running it would answer 404 anyway) and drops such ids from its
+ * filter. Document ids (`citedBy`, `citing`) stay: an id names no project, and
+ * the reader's run applies their own reach to it.
+ *
  * Who may change one: only its owner. Every write is keyed by the owner, so a
  * colleague's row, shared or not, answers 404 exactly as a missing one does:
  * a 403 would confirm the id exists.
@@ -53,18 +60,49 @@ export function toSavedSearchView(row: SavedSearchRow, readerUserId: string, own
   }
 }
 
+/** The projects a colleague's saved search names, in its scope and its filter. */
+function namedProjects(row: SavedSearchRow): string[] {
+  return [...(row.scope.projectId ? [row.scope.projectId] : []), ...(row.query.filters?.projectIds ?? [])]
+}
+
+/**
+ * A colleague's saved search as `viewable` lets the reader see it: null when
+ * scoped to a project they may not view, else without such projects in its
+ * filter. The reader's own is theirs whole.
+ */
+export function savedSearchForReader(
+  row: SavedSearchRow,
+  readerUserId: string,
+  viewable: ReadonlySet<string>
+): SavedSearchRow | null {
+  if (row.ownerUserId === readerUserId) return row
+  if (row.scope.projectId && !viewable.has(row.scope.projectId)) return null
+  const projectIds = row.query.filters?.projectIds
+  if (!projectIds || projectIds.every((id) => viewable.has(id))) return row
+  const kept = projectIds.filter((id) => viewable.has(id))
+  // Every named project hidden: the question without them would search wider than the owner asked.
+  if (kept.length === 0) return null
+  return { ...row, query: { ...row.query, filters: { ...row.query.filters, projectIds: kept } } }
+}
+
 /**
  * The reader's own and the office's shared saved searches, newest first, one
  * page. A colleague's is named by who saved it (the people directory, cached),
- * so the reader knows whose question they are about to run.
+ * so the reader knows whose question they are about to run, and shows only the
+ * projects the reader may view (`viewableProjects`, read only when a
+ * colleague's names one).
  */
 export async function listSavedSearches(
   reader: SavedSearchOwner,
-  query: ListSavedSearchesQuery
+  query: ListSavedSearchesQuery,
+  viewableProjects: () => Promise<ReadonlySet<string>>
 ): Promise<SavedSearchListResponse> {
   const page = offsetPageOf(query)
   const fetched = await listVisibleSavedSearches(reader, page)
-  const rows = fetched.slice(0, page.limit)
+  const onPage = fetched.slice(0, page.limit)
+  const namesProjects = onPage.some((row) => row.ownerUserId !== reader.userId && namedProjects(row).length > 0)
+  const viewable = namesProjects ? await viewableProjects() : new Set<string>()
+  const rows = onPage.flatMap((row) => savedSearchForReader(row, reader.userId, viewable) ?? [])
   const colleagues = [...new Set(rows.map((row) => row.ownerUserId).filter((userId) => userId !== reader.userId))]
   const people = await resolvePeople(reader.organizationId, colleagues)
   return {
