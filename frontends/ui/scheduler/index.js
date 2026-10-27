@@ -195,7 +195,7 @@ async function reconcileRuns(config, fetchImpl, streak) {
  * owns the work (a stranded document gets a new `bff_job_queue` job or says why
  * it cannot; a report filing whose job is gone is ended), this container
  * supplies the clock. Logs only when it changed something or failed; never
- * throws. Returns the counts `{ documents, filings, mailImports, inboundMail }`,
+ * throws. Returns the counts `{ documents, filings, mailImports, transientFailures, inboundMail }`,
  * or null.
  */
 async function reconcileBackgroundWork(config, fetchImpl, streak) {
