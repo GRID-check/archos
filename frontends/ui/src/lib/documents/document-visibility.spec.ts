@@ -24,7 +24,7 @@
  */
 
 import { readFileSync, readdirSync } from 'node:fs'
-import { join } from 'node:path'
+import { join, posix } from 'node:path'
 import ts from 'typescript-api'
 import { describe, expect, it } from 'vitest'
 
@@ -54,6 +54,13 @@ const SEES_EVERY_ROW: Record<string, string> = {
     "The same sweep's second look at one collection right before its delete, so a document filed since the snapshot keeps its chunks. A held row is not deleted either.",
   'lib/session-documents/repository.ts#listSessionDocumentsForCleanup':
     "Discarding a chat erases every attachment's objects, held ones first among them.",
+
+  'lib/search/facets-repository.ts#listShelfDocumentsForProjection':
+    "Sweep: the search projection's backstop walks a shelf's ids to rewrite their derived rows (ADR-0136). Ids to a job; every search joins the rows under the reader's predicate.",
+  'lib/search/facets-repository.ts#listCollectionDocumentsForProjection':
+    "The search projection: the ids of the documents a settled Fassung replaces, by file name, so their derived rows say so (ADR-0136). Ids to the projector; every search joins the rows under the reader's predicate.",
+  'lib/search/facets-repository.ts#shelfSourceFingerprints':
+    "Staleness probe: a count and newest change per shelf, compared with the projection's last sync. Numbers to a job, nothing to a person.",
 
   // --- Orphan checks: a held document is not gone ---------------------------
   'lib/documents/repository.ts#documentIdsExisting':
@@ -176,6 +183,8 @@ const KEYED_BY_A_READ_DOCUMENT: Record<string, string> = {
     "Carrying a mark (migration 0151): the next number and the count of the replacing document, the close of the replaced one's mark and the linked copy. The service read both documents for writing first (`getAccessibleDocument`, the replacing one found through `loadRevisionFacts` for the reader).",
   'lib/annotations/repository.ts#listReplies|documentAnnotationReplies':
     'The threads of Anmerkungen just read from a document the service read first.',
+  'lib/search/providers-repository.ts#replyMatch|documentAnnotationReplies':
+    "A subquery correlated to the outer row's `document_annotations.id`; the outer query joins `documents` under the search reach (`reachWhere`).",
   'lib/annotations/repository.ts#insertAnnotationReply|documentAnnotationReplies':
     "The thread's count under the insert's lock, for an Anmerkung of a document the service read for writing.",
 
@@ -288,6 +297,43 @@ const ELEVATED_READERS: Record<string, { makes: string[]; why: string }> = {
     makes: ['internal:just-written'],
     why: "Reads back the task result it just filed as Piloti's document.",
   },
+}
+
+/**
+ * Exported helpers that compose `documentVisibleTo`, which a query in ANOTHER
+ * module may name in place of the predicate, keyed `<path under src>#<function>`.
+ * The scan reads one module at a time, so without this a query that ANDs the
+ * search's reach predicate would have to state the predicate a second time.
+ * Each entry is checked to compose in its own module, so it cannot outlive
+ * the predicate it stands for.
+ */
+const COMPOSING_HELPERS: Record<string, string> = {
+  'lib/search/document-repository.ts#reachWhere':
+    "The search reach's documents predicate (ADR-0136): every search provider joins `documents` under it, and it ANDs `documentVisibleTo(reachReader(reach))`.",
+  'lib/search/document-repository.ts#documentSearchWhere':
+    "The document search's whole WHERE (ADR-0136): `reachWhere` and the filters; annotations narrow through their document with it, so they inherit the same `documentVisibleTo`.",
+}
+
+/** A relative or `@/` import, as a path under `src`; null for a package. */
+function resolveImport(from: string, specifier: string): string | null {
+  if (specifier.startsWith('@/')) return `${specifier.slice(2)}.ts`
+  if (specifier.startsWith('.')) return `${posix.join(posix.dirname(from), specifier)}.ts`
+  return null
+}
+
+/** The local names this module gives the {@link COMPOSING_HELPERS} it imports. */
+function importedComposers(tree: ts.SourceFile, path: string): Set<string> {
+  const found = new Set<string>()
+  for (const statement of tree.statements) {
+    if (!ts.isImportDeclaration(statement) || !ts.isStringLiteral(statement.moduleSpecifier)) continue
+    const bindings = statement.importClause?.namedBindings
+    const target = resolveImport(path, statement.moduleSpecifier.text)
+    if (!bindings || !ts.isNamedImports(bindings) || !target) continue
+    for (const element of bindings.elements) {
+      if (`${target}#${(element.propertyName ?? element.name).text}` in COMPOSING_HELPERS) found.add(element.name.text)
+    }
+  }
+  return found
 }
 
 /** Every `.ts` under `src`, specs, fixtures and mocks aside. */
@@ -510,6 +556,7 @@ interface DocumentsRead {
 function documentsReads(source: string, path: string): DocumentsRead[] {
   const tree = ts.createSourceFile(path, source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX)
   const bindings = schemaBindings(tree)
+  const composers = importedComposers(tree, path)
 
   // Same-module functions and module constants, by name, for the transitive check.
   const definitions = new Map<string, ts.Node[]>()
@@ -539,11 +586,19 @@ function documentsReads(source: string, path: string): DocumentsRead[] {
     let found = false
     const walk = (node: ts.Node) => {
       if (found) return
-      if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && node.expression.text === PREDICATE) {
+      if (
+        ts.isCallExpression(node) &&
+        ts.isIdentifier(node.expression) &&
+        (node.expression.text === PREDICATE || composers.has(node.expression.text))
+      ) {
         found = true
         return
       }
-      if (ts.isIdentifier(node) && !seen.has(node.text) && definitions.has(node.text)) {
+      // A member name (`.where(…)`, `{ where: … }`) is not a reference to a binding called `where`.
+      const memberName =
+        (ts.isPropertyAccessExpression(node.parent) && node.parent.name === node) ||
+        (ts.isPropertyAssignment(node.parent) && node.parent.name === node)
+      if (ts.isIdentifier(node) && !memberName && !seen.has(node.text) && definitions.has(node.text)) {
         seen.add(node.text)
         if (definitions.get(node.text)!.some((definition) => composesIn(definition, seen))) {
           found = true
@@ -656,6 +711,19 @@ describe('every read of documents states its reader (ADR-0086)', () => {
     expect(Object.keys(KEYED_BY_A_READ_DOCUMENT).filter((key) => !uncomposedFacts.has(key))).toEqual([])
   })
 
+  it('names in COMPOSING_HELPERS only helpers that compose the predicate in their own module', () => {
+    const offenders = Object.keys(COMPOSING_HELPERS).filter((key) => {
+      const [path, name] = key.split('#')
+      const file = files.find((candidate) => candidate.path === path)
+      if (!file) return true
+      // A probe query in that module that names the helper alone composes only if the helper does.
+      const probe = `${file.source}\nexport function __composingProbe(r) { return db.select().from(documents).where(${name}(r)) }\n`
+      const read = documentsReads(probe, path).find((entry) => entry.key === `${path}#__composingProbe`)
+      return read?.composes !== true
+    })
+    expect(offenders, 'A COMPOSING_HELPERS entry whose function is gone or no longer composes `documentVisibleTo`.').toEqual([])
+  })
+
   it('makes a reader that sees held rows only where ELEVATED_READERS says why', () => {
     const made = new Map<string, Set<string>>()
     for (const { path, source } of files) {
@@ -736,6 +804,26 @@ describe('every read of documents states its reader (ADR-0086)', () => {
     it('accepts a query that composes the predicate', () => {
       expect(check('export function f(r) { return db.select().from(documents).where(documentVisibleTo(r)) }')).toEqual([
         { key: 'probe.ts#f', table: 'documents', composes: true },
+      ])
+    })
+
+    it('does not take a `.where(…)` call for a reference to a composing `where` binding elsewhere in the module', () => {
+      const body =
+        'export function f(r) { const where = and(x, documentVisibleTo(r)); return db.select().from(documents).where(where) }\n' +
+        'export function g() { return db.select().from(documents).where(eq(documents.id, id)) }'
+      expect(check(body)).toEqual([
+        { key: 'probe.ts#f', table: 'documents', composes: true },
+        { key: 'probe.ts#g', table: 'documents', composes: false },
+      ])
+    })
+
+    it('accepts an imported helper listed in COMPOSING_HELPERS, and only that one', () => {
+      const prelude = header + "import { reachWhere, other } from '@/lib/search/document-repository'\n"
+      expect(check('export function f(r) { return db.select().from(documents).where(reachWhere(r)) }', prelude)).toEqual([
+        { key: 'probe.ts#f', table: 'documents', composes: true },
+      ])
+      expect(check('export function f(r) { return db.select().from(documents).where(other(r)) }', prelude)).toEqual([
+        { key: 'probe.ts#f', table: 'documents', composes: false },
       ])
     })
 

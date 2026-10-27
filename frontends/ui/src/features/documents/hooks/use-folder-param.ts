@@ -2,6 +2,7 @@
 
 import { useCallback } from 'react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
+import { clearDocumentLocus } from '../lib/document-locus'
 
 /**
  * Which folder is open, in the URL rather than in state.
@@ -34,6 +35,7 @@ export function useFolderParam(): readonly [string | null, (next: string | null)
       // Leaving a level closes whatever was open in it: a `doc` from the folder
       // you just left is not in the folder you just entered.
       params.delete('doc')
+      clearDocumentLocus(params)
       const query = params.toString()
       const path = pathname ?? ''
       router.push(query ? `${path}?${query}` : path, { scroll: false })

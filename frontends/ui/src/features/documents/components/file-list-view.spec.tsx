@@ -152,15 +152,15 @@ describe('FileListView', () => {
 
   describe('as a ranked semantic result set', () => {
     const HITS = [
-      { ...doc('Statik.pdf', { createdAt: '2026-06-09T09:00:00Z' }), snippet: 'Lastannahmen', page: 4, score: 0.42 },
-      { ...doc('Flucht.pdf', { createdAt: '2026-06-01T09:00:00Z' }), snippet: 'Fluchtwegbreite', page: 2, score: 0.91 },
+      { ...doc('Statik.pdf', { createdAt: '2026-06-09T09:00:00Z' }), snippet: 'Lastannahmen', page: 4, rank: 2 },
+      { ...doc('Flucht.pdf', { createdAt: '2026-06-01T09:00:00Z' }), snippet: 'Fluchtwegbreite', page: 2, rank: 1 },
     ]
 
     it('keeps the ranking instead of re-sorting by upload date', () => {
       renderList(HITS, { semantic: true })
       // Newest-first would put Statik on top; the ranking puts Flucht there.
       expect(rowNames()).toEqual(['Flucht.pdf', 'Statik.pdf'])
-      expect(screen.getAllByTestId('file-list-relevance')[0]).toHaveTextContent('91%')
+      expect(screen.getAllByTestId('file-list-relevance')[0]).toHaveTextContent('1')
     })
 
     it('shows the passage that matched, with its page', () => {

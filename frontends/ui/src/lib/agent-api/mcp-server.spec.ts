@@ -202,7 +202,11 @@ describe('what tools mode costs a client', () => {
   // Measured October 2026 (chars of the tools/list result, about four per token): 1,141 per tool before the
   // fix wave (ifMatch on every write, `additionalProperties: true` everywhere, every hint and the title twice),
   // 922 after. A ratchet: an operation that needs more says so in its description, not in schema ballast.
-  const MAX_AVERAGE_CHARS = 1_000
+  // Raised to 1,030 on 2026-10-27 for `workspace-search` (ADR-0136): about 6,100 characters, which are its
+  // filter vocabulary (document types, facts with ranges, references, dates), not ballast; one search tool
+  // with them replaces filter guessing across the list operations. Measured 1,020 with it; lower it again
+  // when the catalog shrinks.
+  const MAX_AVERAGE_CHARS = 1_030
   const MAX_OPERATION_CHARS = 9_000
 
   it(`stays under ${MAX_AVERAGE_CHARS} characters a tool on average, and ${MAX_OPERATION_CHARS} for any catalog operation`, async () => {

@@ -19,6 +19,7 @@ import type { AuthorizedSession } from '@/lib/auth/types'
 import { getBackendUrl } from '@/lib/backend-proxy'
 import type { Document } from '@/lib/db/schema'
 import { INTERNAL_TOKEN_HEADER } from '@/lib/internal-auth'
+import { refreshSearchRows } from '@/lib/search/refresh-rows'
 import { shelfReaderFor } from '@/lib/upload-screening/quarantine-reviewers'
 import { getAccessibleDocument } from './access'
 import { collectionFileRef } from './collection-file-ref'
@@ -120,8 +121,13 @@ export async function setRevisionLink(
   })
 
   // Read back from the backend's listing, fresh: the cached one predates the write.
+  // The search rows follow in the same breath: the older document's `superseded`
+  // is this decision, and the person who made it searches next (ADR-0136).
   const reader = await shelfReaderFor(session, newer)
-  const facts = await loadRevisionLinks(session, [newer, older], reader, { fresh: true })
+  const [facts] = await Promise.all([
+    loadRevisionLinks(session, [newer, older], reader, { fresh: true }),
+    refreshSearchRows(session.organizationId, [newer, older]),
+  ])
   const newerRevision = facts.get(newer.id) ?? null
 
   // Only a confirmed link is news; taking one back tells nobody. Detached, so a

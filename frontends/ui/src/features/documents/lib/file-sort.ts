@@ -49,14 +49,14 @@ const statusRank = (status: string | null): number => {
 }
 
 /**
- * A listing row MAY carry semantic match evidence (`SemanticHit`), and only the
- * score participates in ordering. Typed as an optional member rather than cast
- * at the read site, so a plain `FileItem[]` is still assignable.
+ * A listing row MAY carry its place in a search's ranking (`SemanticHit`), and
+ * only the rank participates in ordering. Typed as an optional member rather
+ * than cast at the read site, so a plain `FileItem[]` is still assignable.
  */
-export type ScoredFile = FileItem & { score?: number }
+export type RankedFile = FileItem & { rank?: number }
 
 /** Unranked rows sort BELOW every ranked one rather than above them. */
-const scoreOf = (file: ScoredFile): number => file.score ?? -1
+const rankOf = (file: RankedFile): number => file.rank ?? Number.MAX_SAFE_INTEGER
 
 const timeOf = (iso: string): number => {
   const value = new Date(iso).getTime()
@@ -99,7 +99,7 @@ export function nextSort(current: FileSort, key: FileSortKey): FileSort {
  * it. Ties always fall back to the filename so the order is total: a sort with
  * ties resolved arbitrarily reshuffles rows under the cursor on every refresh.
  */
-export function sortFiles<T extends ScoredFile>(files: readonly T[], sort: FileSort, locale?: string): T[] {
+export function sortFiles<T extends RankedFile>(files: readonly T[], sort: FileSort, locale?: string): T[] {
   const collator = new Intl.Collator(locale, { numeric: true, sensitivity: 'base' })
   const sign = sort.direction === 'asc' ? 1 : -1
 
@@ -116,7 +116,8 @@ export function sortFiles<T extends ScoredFile>(files: readonly T[], sort: FileS
       case 'added':
         return timeOf(a.createdAt) - timeOf(b.createdAt)
       case 'relevance':
-        return scoreOf(a) - scoreOf(b)
+        // Best first is `desc`, and rank 1 is the best.
+        return rankOf(b) - rankOf(a)
     }
   }
 
