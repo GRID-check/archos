@@ -41,6 +41,10 @@ MAX_KEY_FACTS = 8
 MAX_STATEMENT_CHARS = 300
 MAX_FACT_DOCUMENTS = 8
 MAX_PAGES_CHARS = 40
+#: Output budget of one card. The card runs on the summary model, whose own cap
+#: (``summary_llm.max_tokens``, 100) is one sentence: an abstract with eight key
+#: facts was cut off mid-object and failed the schema.
+MAX_OUTPUT_TOKENS = 2000
 
 SYSTEM_PROMPT = (
     "You write the card of one folder in an Austrian architecture office's document store. The card "
@@ -264,7 +268,7 @@ async def generate(
     system = SYSTEM_PROMPT + (INCREMENTAL_NOTE if mode == "incremental" else "")
     prompt = prompt if prompt is not None else user_prompt(inputs)
     model = llm_model_name(llm)
-    structured = llm.bind(response_format=strict_json_response_format(CardReply))
+    structured = llm.bind(max_tokens=MAX_OUTPUT_TOKENS, response_format=strict_json_response_format(CardReply))
     metadata = {
         "collection": inputs.collection,
         "depth": inputs.depth,

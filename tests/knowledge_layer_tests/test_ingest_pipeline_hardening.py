@@ -173,6 +173,45 @@ class TestEnrichVlmBatchSkipsFailures:
         """Every test starts with an empty cache so prior suites can't leak hits."""
         monkeypatch.setattr(processing, "get_json", lambda key: None)
         monkeypatch.setattr(processing, "set_json", lambda key, value, ttl: None)
+        # The second pass waits before it asks again; not in a test.
+        monkeypatch.setattr(processing, "VLM_SECOND_PASS_DELAY_SECONDS", 0)
+
+    def test_an_item_that_fails_once_is_read_in_the_second_pass(self, monkeypatch):
+        replies = iter([("image", "[Image - analysis failed]"), ("image", "Ein Lageplan im Maßstab 1:500.")])
+        monkeypatch.setattr(adapter, "_analyze_image_with_vlm", lambda *a, **k: next(replies))
+
+        image_results, _ = processing.enrich_vlm_batch([self._image_record()], [], "m", "https://vlm.test/v1", "key")
+
+        assert [caption for _, _, caption in image_results] == ["Ein Lageplan im Maßstab 1:500."]
+
+    def test_the_second_pass_asks_only_for_what_failed(self, monkeypatch):
+        asked: list[bytes] = []
+
+        def reply(image_bytes, *a, **k):
+            asked.append(image_bytes)
+            return ("image", "[Image - analysis failed]") if image_bytes == b"bad" else ("image", "Ein Foto.")
+
+        monkeypatch.setattr(adapter, "_analyze_image_with_vlm", reply)
+        good = {**self._image_record(), "image_bytes": b"good"}
+        bad = {**self._image_record(), "image_bytes": b"bad", "image_index": 1}
+
+        image_results, _ = processing.enrich_vlm_batch([good, bad], [], "m", "https://vlm.test/v1", "key")
+
+        assert sorted(asked) == [b"bad", b"bad", b"good"]
+        assert len(image_results) == 1
+
+    def test_a_negative_delay_turns_the_second_pass_off(self, monkeypatch):
+        monkeypatch.setattr(processing, "VLM_SECOND_PASS_DELAY_SECONDS", -1)
+        calls: list[int] = []
+        monkeypatch.setattr(
+            adapter,
+            "_analyze_image_with_vlm",
+            lambda *a, **k: calls.append(1) or ("image", "[Image - analysis failed]"),
+        )
+
+        processing.enrich_vlm_batch([self._image_record()], [], "m", "https://vlm.test/v1", "key")
+
+        assert calls == [1]
 
     @staticmethod
     def _image_record():
