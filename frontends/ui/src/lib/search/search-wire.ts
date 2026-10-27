@@ -38,6 +38,7 @@ export const SEARCH_SORTS = [
   'scale',
   'folder',
   'status',
+  'author',
 ] as const
 export type SearchSort = (typeof SEARCH_SORTS)[number]
 
@@ -191,6 +192,8 @@ export interface DocumentHit {
   pagesNotRead: number | null
   superseded: boolean
   municipality: string | null
+  /** The Verfasser the reading names (architect, else author), as the document writes it. */
+  author: string | null
   /** Why it matched the text: its name, what it is (the reading), its content. */
   matchedOn: Array<'name' | 'reading' | 'content'>
   passage: SearchPassage | null

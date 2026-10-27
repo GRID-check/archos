@@ -37,6 +37,7 @@ function doc(partial: Partial<DocumentHit> & Pick<DocumentHit, 'id' | 'name'>): 
     pagesNotRead: 0,
     superseded: false,
     municipality: 'Wien',
+    author: 'Atelier Lindner ZT GmbH',
     matchedOn: ['reading'],
     passage: null,
     ...partial,

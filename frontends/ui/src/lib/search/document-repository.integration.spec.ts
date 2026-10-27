@@ -322,7 +322,7 @@ const SEEDS: Seed[] = [
 const VISIBLE = ['A1', 'A2', 'A3', 'A4', 'A5', 'A6', 'A9', 'A12', 'A13']
 const FACET_KEYS: FacetKey[] = ['documentType', 'tag', 'project', 'partyRole', 'municipality', 'cites', 'status', 'fileType']
 /** The sorts this spec states the expected order of; scale, folder and status are covered by their own cases. */
-type CheckedSort = Exclude<SearchSort, 'relevance' | 'scale' | 'folder' | 'status'>
+type CheckedSort = Exclude<SearchSort, 'relevance' | 'scale' | 'folder' | 'status' | 'author'>
 const SORTS: CheckedSort[] = [
   'name',
   'added',

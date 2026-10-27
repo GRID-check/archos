@@ -186,6 +186,7 @@ function toDocumentHit(row: DocumentSearchRow, passage: BackendSearchHit | undef
     pagesNotRead: row.pagesNotRead,
     superseded: row.superseded,
     municipality: row.municipality,
+    author: row.author,
     matchedOn: [
       ...(row.matchedName ? (['name'] as const) : []),
       ...(row.matchedReading ? (['reading'] as const) : []),
