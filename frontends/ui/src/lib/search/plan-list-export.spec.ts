@@ -53,8 +53,8 @@ beforeEach(() => vi.clearAllMocks())
 describe('renderPlanListCsv', () => {
   it('writes a German-locale CSV: BOM, German headers, semicolons, the register in order', () => {
     const csv = renderPlanListCsv([hit(), hit({ id: 'd2', planNumber: 'EP-04', superseded: true, shelf: 'office_shelf', projectName: null })], de)
-    const [header, first, second] = csv.replace('﻿', '').split('\r\n')
-    expect(csv.startsWith('﻿')).toBe(true)
+    const [header, first, second] = csv.replace('\uFEFF', '').split('\r\n')
+    expect(csv.startsWith('\uFEFF')).toBe(true)
     expect(header.split(';').slice(0, 4)).toEqual(['"Plannummer"', '"Index"', '"Planstand"', '"Maßstab"'])
     expect(first).toContain('"Einreichplan"')
     expect(first).toContain('"Hubergasse 14"')
