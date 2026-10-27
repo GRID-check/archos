@@ -5,14 +5,17 @@ import { useCallback, useMemo, useState } from 'react'
 import { toast } from 'sonner'
 
 import { useTranslations } from '@/i18n'
+import { capturePosthog } from '@/lib/analytics/posthog'
 import { SEARCH_LIMIT_DEFAULT } from '@/lib/search/search-wire'
 import { useSavedSearches } from '../hooks/use-saved-searches'
 import { SearchReturnProvider } from '../hooks/use-search-return'
-import { useSearchResults } from '../hooks/use-search-results'
+import { useSearchResults, type AnsweredSearch } from '../hooks/use-search-results'
+import { useOpenedHitCapture, useSearchTracker } from '../hooks/use-search-tracker'
 import { useSearchUrlState } from '../hooks/use-search-url-state'
 import { useSuggestedSearchName } from '../hooks/use-suggested-search-name'
 import { exportSearch, type SearchExportFormat } from '../lib/search-client'
-import { fromSearchBody, toSearchBody } from '../lib/search-url'
+import { captureRefinements, captureSavedSearchRun, filterDimensions, parseServerTiming, telemetrySurface } from '../lib/search-telemetry'
+import { fromSearchBody, toSearchBody, type SearchUrlState } from '../lib/search-url'
 import { projectFromSavedScope, surfaceScope, type SearchSurface } from '../lib/search-surface'
 import { SavedSearchesMenu } from './saved-searches-menu'
 import { SearchInset } from './search-atoms'
@@ -20,6 +23,12 @@ import { SearchWorkspaceView } from './search-workspace-view'
 
 /** The register reads longer pages than a list: it is walked, not skimmed. */
 const REGISTER_LIMIT = 100
+
+/** What a search state narrows by beyond its body's filters: kinds the reader picked, a project picked on the office page. */
+const extraDimensions = (state: SearchUrlState) => ({ kinds: state.view !== 'register' && state.kinds !== null, project: state.projectId !== null })
+
+/** The filter dimensions a search state sets (`search_refined` compares two). */
+const stateDimensions = (state: SearchUrlState): string[] => filterDimensions(toSearchBody(state), extraDimensions(state))
 
 export interface SearchWorkspaceProps {
   surface: SearchSurface
@@ -45,7 +54,14 @@ export function SearchWorkspace({ surface, leading, currentUserId, autoFocus = f
     () => toSearchBody(state, { limit: state.view === 'register' ? REGISTER_LIMIT : SEARCH_LIMIT_DEFAULT, facets: true }),
     [state]
   )
-  const results = useSearchResults(scope, body)
+  const tracker = useSearchTracker(telemetrySurface(surface))
+  const onAnswered = useCallback(
+    (answer: AnsweredSearch) =>
+      tracker.answered({ ...answer, serverTiming: parseServerTiming(answer.serverTiming), view: state.view, extraDimensions: extraDimensions(state) }),
+    [tracker, state]
+  )
+  const results = useSearchResults(scope, body, onAnswered)
+  useOpenedHitCapture(tracker, results.sections)
   const onRemoveFailed = useCallback(() => toast.error(t('saved.deleteFailed')), [t])
   const saved = useSavedSearches({ onRemoveFailed })
   const facets = results.response?.facets
@@ -58,13 +74,17 @@ export function SearchWorkspace({ surface, leading, currentUserId, autoFocus = f
     const outcome = await exportSearch(scope, toSearchBody(state), format, t('export.fileName'))
     setExporting(false)
     if (!outcome.saved) toast.error(t('export.failed'))
+    else capturePosthog('report_exported', { kind: 'plan_list', format })
   }
 
   const view = (
     <SearchWorkspaceView
       surface={surface}
       state={state}
-      onStateChange={(next) => setState(next)}
+      onStateChange={(next) => {
+        captureRefinements(stateDimensions(state), stateDimensions(next))
+        setState(next)
+      }}
       fieldValue={fieldValue}
       onFieldChange={setFieldValue}
       response={results.response}
@@ -83,7 +103,10 @@ export function SearchWorkspace({ surface, leading, currentUserId, autoFocus = f
           narrow={narrow}
           items={saved.items}
           failed={saved.failed}
-          onApply={(item) => setState(fromSearchBody(item.query, projectFromSavedScope(surface, item.scope)))}
+          onApply={(item) => {
+            captureSavedSearchRun(item)
+            setState(fromSearchBody(item.query, projectFromSavedScope(surface, item.scope)))
+          }}
           onToggleShare={(item) => {
             void saved.toggleShare(item).then((ok) => {
               if (!ok) toast.error(t('saved.changeFailed'))

@@ -687,6 +687,7 @@ export async function fetchGroupedSemanticHits(
         ...(snippetMaxChars ? { snippet_max_chars: snippetMaxChars } : {}),
         ...(options.filters ? { filters: options.filters } : {}),
         ...(options.boost ? { boost: options.boost } : {}),
+        ...(options.purpose ? { purpose: options.purpose } : {}),
       }),
       signal: AbortSignal.timeout(BACKEND_FETCH_TIMEOUT_MS),
     })
@@ -753,6 +754,13 @@ export interface GroupedSearchOptions {
   filters?: GroupedSearchFilters
   /** The current project's facts and the similarity weights (`similarityBoostOf`). */
   boost?: SearchBoostWire | null
+  /**
+   * Who asks, when the backend should trace the search itself: the workspace
+   * search's call is a `retrieve.workspace_search` observation there, because
+   * no NAT run sees it. The cross-project lookup sends none: Piloti's
+   * `project_lookup` tool already traces it as `retrieve.project_lookup`.
+   */
+  purpose?: 'workspace_search'
 }
 
 /** The identity of a document in the backend: its collection and its filename. */

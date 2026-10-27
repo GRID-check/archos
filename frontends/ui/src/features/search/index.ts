@@ -16,6 +16,7 @@ export {
 } from './components/palette-search'
 export { usePaletteSearch, usePaletteShortcuts } from './hooks/use-palette-search'
 export { savedSearchHref, searchPageHref } from './lib/search-hrefs'
+export { captureSavedSearchRun } from './lib/search-telemetry'
 export { useShelfSearchMode } from './hooks/use-shelf-search-mode'
 export type { SearchSurface } from './lib/search-surface'
 export { EMPTY_SEARCH_STATE, parseSearchParams, writeSearchParams, type SearchUrlState } from './lib/search-url'

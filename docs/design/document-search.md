@@ -383,3 +383,11 @@ way (`facetCountsOnce`) and a search without text side by side
 Measured, not built: sorting the matched ids first and joining the display
 columns to the page alone (a deferred join) took the page from 104–119 to
 59–69 ms.
+
+In production the same split is measured per search: the route's
+`Server-Timing` header names `sql` and `content` (the wait on
+`POST /v1/collections/search`), PostHog's `search_issued` carries both with the
+browser's `duration_ms`, and the content query is the Langfuse observation
+`retrieve.workspace_search` with its pre-filter mode and candidate counts
+([`posthog-events.md`](../observability/posthog-events.md),
+[`langfuse.md`](../observability/langfuse.md)).
