@@ -381,6 +381,13 @@ function build(entry: Entry): BackendOperation {
 /** Every read tool of the Python agent offered over MCP, in the contract's order. */
 export const BACKEND_OPERATIONS: readonly BackendOperation[] = ENTRIES.map(build)
 
+/**
+ * The tool Piloti's own chat does an operation's work with, where it is not the tool the door calls.
+ * Piloti reads the estate with the filesystem verbs (ADR-0133 slice 6), while the door keeps calling
+ * the older tools, which deep research and intake still bind.
+ */
+export const PILOTI_TOOL_FOR: Readonly<Record<string, string>> = { read_passage: 'read_file' }
+
 /** The operation each Python tool is over MCP, for the names its answers mention. */
 const OPERATION_NAMES: ToolNames = Object.fromEntries(ENTRIES.map((entry) => [entry.tool, entry.name]))
 

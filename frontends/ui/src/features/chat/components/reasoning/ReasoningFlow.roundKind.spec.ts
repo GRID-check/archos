@@ -21,4 +21,12 @@ describe('roundKind', () => {
     expect(roundKind(false, 0, ['list_files', 'knowledge_search'], t, true)).toBe('Kein Treffer')
     expect(roundKind(false, 0, [], t, true)).toBe('Kein Treffer')
   })
+
+  test('the filesystem verbs read as the names they replaced (ADR-0133 slice 6), and old turns still do', () => {
+    expect(roundKind(false, 0, ['ls'], t, true)).toBe('Ordner öffnen')
+    expect(roundKind(false, 0, ['ls', 'glob'], t, true)).toBe('Ordner öffnen')
+    expect(roundKind(false, 0, ['grep'], t, true)).toBe('Kein Treffer')
+    expect(roundKind(false, 2, ['read_file', 'read_file'], t, true)).toBe(roundKind(false, 2, ['read_passage'], t, true))
+    expect(roundKind(false, 2, ['read_file'], t, true)).not.toBe(roundKind(false, 2, ['grep'], t, true))
+  })
 })

@@ -12,11 +12,11 @@ describe('document check ids', () => {
 describe('checkInstruction', () => {
   const text = checkInstruction({ id: 'd-1', name: 'Brandschutzkonzept.pdf' })
 
-  it('is English and names the tools, the cap, the silence and that nobody answers', () => {
+  it('is English and names the goal, not the reading tools, the cap, the silence and that nobody answers', () => {
     expect(text).toContain('Brandschutzkonzept.pdf')
     expect(text).toContain('2 to 4 load-bearing facts')
-    expect(text).toContain('knowledge_search')
-    expect(text).toContain('read_passage')
+    expect(text).not.toContain('read_passage')
+    expect(text).not.toContain('list_files')
     expect(text).toContain('canvas__mark')
     expect(text).toContain('"Agrees"')
     expect(text).toContain('do not ask anything')

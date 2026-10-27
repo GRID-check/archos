@@ -76,7 +76,8 @@ class TestParsing:
     def test_a_leaf_names_its_file_name_first(self) -> None:
         assert file_name_candidates("Plan.pdf.md") == ["Plan.pdf", "Plan.pdf.md"]
         assert file_name_candidates("Plan.pdf") == ["Plan.pdf"]
-        assert file_name_candidates("Notiz.md") == ["Notiz.md"]
+        assert file_name_candidates("Notiz.md") == ["Notiz.md", "Notiz"]  # a file with no extension is served so
+        assert file_name_candidates("Notiz.v2.md") == ["Notiz.v2", "Notiz.v2.md"]
 
 
 class TestMounts:

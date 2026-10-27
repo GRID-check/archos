@@ -77,7 +77,7 @@ class TestTheDescriptions:
         edit = next(tool for tool in draft_tools(backend) if tool.name == "edit_file")
         assert "heading" in edit.description
         assert "paragraph" in edit.description
-        assert "@@ lines" in edit.description
+        assert "`@@ … @@` header" in edit.description
 
     def test_read_warns_that_the_header_is_not_in_the_file(self, backend: DraftBackend) -> None:
         """DeepAgents 0.7 prints a ``@@ lines … @@`` header and no line numbers."""
