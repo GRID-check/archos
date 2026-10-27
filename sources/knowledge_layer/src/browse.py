@@ -76,6 +76,10 @@ from nat.plugin_api import FunctionInfo
 from nat.plugin_api import FunctionRef
 from nat.plugin_api import register_function
 
+from .chunk_positions import OwnText
+from .chunk_positions import own_matches
+from .chunk_positions import own_text
+from .chunk_positions import own_texts
 from .revision_series import find_revision_series
 from .revision_series import parse_revision_name
 from .revision_series import revision_label
@@ -1587,10 +1591,9 @@ def _occurrences(body: str, pattern: Any, timeout: float | None = None) -> int:
     return sum(1 for match in pattern.finditer(body, timeout=timeout) if match.end() > match.start())
 
 
-def _matched_strings(body: str, pattern: Any, timeout: float | None = None) -> list[str]:
-    """The text of every non-empty match, whitespace collapsed (a match across a line break reads as one line)."""
-    found = pattern.finditer(body) if timeout is None else pattern.finditer(body, timeout=timeout)
-    return [" ".join(match.group().split()) for match in found if match.end() > match.start()]
+def _matched_strings(own: OwnText, pattern: Any, timeout: float | None = None) -> list[str]:
+    """Every match that is the chunk's own, whitespace collapsed (a match across a line break reads as one line)."""
+    return [" ".join(match.group().split()) for match in own_matches(own, pattern, timeout)]
 
 
 @dataclass
@@ -1606,6 +1609,8 @@ class FileMatches:
     strings: dict[str, list[Any]] = field(default_factory=dict)
     #: True once the file had more distinct strings than :data:`MAX_TRACKED_STRINGS`.
     strings_cut: bool = False
+    #: Per chunk id, the text its matches were counted on (``chunk_positions.own_text``).
+    own: dict[str, OwnText] = field(default_factory=dict)
 
     def note_strings(self, found: Sequence[str], page: int | None) -> None:
         for text in found:
@@ -1649,20 +1654,27 @@ def group_matches(
 
     ``collect_strings`` (a regex search) also records each distinct matched string per file, for
     :func:`distinct_matches`.
+
+    One place in the document is one match (``chunk_positions``): a chunk's breadcrumb is not
+    matched, its own heading counts on its first part only, and a match inside the overlap it
+    repeats from the returned chunk before it is that chunk's. A chunk left with no match of its
+    own is no passage either.
     """
     compiled = pattern if hasattr(pattern, "finditer") else re.compile(pattern)
     groups: dict[tuple[str, str], FileMatches] = {}
-    for chunk in chunks:
+    chunks = list(chunks)
+    for chunk, own in zip(chunks, own_texts(chunks), strict=True):
         if deadline is not None and timeout is not None:
             remaining = deadline - time.monotonic()
             if remaining <= 0:
                 raise TimeoutError("the count ran out of time")
             timeout = min(timeout, remaining)
-        body = getattr(chunk, "content", "") or ""
-        found: list[str] = _matched_strings(body, compiled, timeout) if collect_strings else []
-        count = len(found) if collect_strings else _occurrences(body, compiled, timeout)
-        if store_decides:
-            count = max(count, 1)
+        found: list[str] = _matched_strings(own, compiled, timeout) if collect_strings else []
+        count = len(found) if collect_strings else sum(1 for _ in own_matches(own, compiled, timeout))
+        if store_decides and not count and not _occurrences(getattr(chunk, "content", "") or "", compiled, timeout):
+            # The stemmed index matched a form the counting pattern does not know: once. A chunk whose
+            # match the pattern does find, but only in its breadcrumb or overlap, is not its own match.
+            count = 1
         if not count:
             continue
         metadata = getattr(chunk, "metadata", None) or {}
@@ -1676,6 +1688,7 @@ def group_matches(
                 collection,
             )
         group.chunks.append(chunk)
+        group.own[chunk.chunk_id] = own
         group.occurrences += count
         if found:
             group.note_strings(found, getattr(chunk, "page_number", None))
@@ -1907,16 +1920,16 @@ def match_table(
     return "\n".join(lines)
 
 
-def _line_spans(body: str, pattern: Any, timeout: float | None) -> list[tuple[int, int]]:
-    """``(first line, last line)`` of every non-empty match in ``body``, counting from 0."""
+def _line_spans(own: OwnText, pattern: Any, timeout: float | None) -> list[tuple[int, int]]:
+    """``(first line, last line)`` of every match that is the chunk's own, counting from 0."""
     starts = [0]
-    starts.extend(match.end() for match in re.finditer("\n", body))
-    matches = pattern.finditer(body) if timeout is None else pattern.finditer(body, timeout=timeout)
+    starts.extend(match.end() for match in re.finditer("\n", own.text))
+    matches = own_matches(own, pattern, timeout)
 
     def line_of(offset: int) -> int:
         return max(0, bisect.bisect_right(starts, offset) - 1)
 
-    return [(line_of(m.start()), line_of(max(m.start(), m.end() - 1))) for m in matches if m.end() > m.start()]
+    return [(line_of(m.start()), line_of(max(m.start(), m.end() - 1))) for m in matches]
 
 
 def _context_ranges(spans: Sequence[tuple[int, int]], context: int, last: int) -> list[tuple[int, int]]:
@@ -1931,11 +1944,10 @@ def _context_ranges(spans: Sequence[tuple[int, int]], context: int, last: int) -
     return ranges
 
 
-def _chunk_snippets(chunk: Any, where: str, pattern: Any, context: int, room: int, timeout: float | None):
+def _chunk_snippets(own: OwnText, where: str, pattern: Any, context: int, room: int, timeout: float | None):
     """One chunk's ``(lines, cut)``: its hit ranges, at most ``room`` lines, ``cut`` when it had to stop."""
-    body = (getattr(chunk, "content", "") or "").replace("\r\n", "\n")
-    lines = body.split("\n")
-    spans = _line_spans(body, pattern, timeout)
+    lines = own.text.split("\n")
+    spans = _line_spans(own, pattern, timeout)
     hit_lines = {number for first, end in spans for number in range(first, end + 1)}
     out: list[str] = []
     for low, high in _context_ranges(spans, context, len(lines) - 1):
@@ -1958,11 +1970,12 @@ def match_snippets(groups: Sequence[FileMatches], pattern: Any, context: int, *,
     """
     out: list[str] = []
     cut = False
-    chunks = [(group.file_name, chunk) for group in groups for chunk in group.chunks]
-    for file_name, chunk in chunks:
+    chunks = [(group, chunk) for group in groups for chunk in group.chunks]
+    for group, chunk in chunks:
         page = getattr(chunk, "page_number", None)
-        where = f"{file_name}, p.{page}" if page else file_name
-        found, cut = _chunk_snippets(chunk, where, pattern, context, MAX_SNIPPET_LINES - len(out), timeout)
+        where = f"{group.file_name}, p.{page}" if page else group.file_name
+        own = group.own.get(chunk.chunk_id) or own_text(chunk)
+        found, cut = _chunk_snippets(own, where, pattern, context, MAX_SNIPPET_LINES - len(out), timeout)
         out.extend(found)
         if cut:
             break
@@ -2467,6 +2480,14 @@ _TOO_COSTLY_SCAN = (
 )
 
 
+#: A capped scan whose passages all held the match only in a heading breadcrumb or an overlap.
+_CAPPED_WITHOUT_OWN_MATCH = (
+    f"The search stopped after {MAX_MATCH_CHUNKS} matching passages, and in those the words stood only in "
+    "headings restated from elsewhere or in text repeated from the passage before. What lies past that limit was "
+    "not read: this is NOT a no. Narrow it with `folder=`, `file_name=` or `doc_class=`."
+)
+
+
 def _context_lines(value: Any) -> tuple[int | None, str]:
     """``context=`` as a count of lines (0 to :data:`MAX_CONTEXT_LINES`), None for none, or a refusal."""
     if value is None or (isinstance(value, str) and not value.strip()):
@@ -2766,6 +2787,10 @@ async def _search(
         )
     except TimeoutError:
         return _TOO_COSTLY_SCAN if deadline is not None and time.monotonic() >= deadline else _TOO_COSTLY
+    if not groups and truncated:
+        # Every passage the capped scan read held the words only in a breadcrumb or an overlap: what lies past
+        # the cap was not read, so this is no „no“ (and no row count either).
+        return _CAPPED_WITHOUT_OWN_MATCH
     if outcome is not None:
         # Hits are the literal matches (the table's count); documents are the files holding them, counted
         # only where the model may be told about them yet (ADR-0088). No match while a collection failed is

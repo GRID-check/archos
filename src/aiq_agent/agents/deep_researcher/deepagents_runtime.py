@@ -9,7 +9,7 @@ import re
 import shlex
 import threading
 from collections.abc import Callable
-from dataclasses import replace
+from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 from typing import Literal
@@ -17,37 +17,33 @@ from typing import TypeVar
 from uuid import uuid4
 
 from deepagents.backends import CompositeBackend
-from deepagents.backends import FilesystemBackend
 from deepagents.backends import StateBackend
 from deepagents.backends.protocol import ExecuteResponse
 from deepagents.backends.protocol import FileDownloadResponse
 from deepagents.backends.protocol import FileUploadResponse
-from deepagents.backends.protocol import GlobResult
-from deepagents.backends.protocol import GrepResult
-from deepagents.backends.protocol import LsResult
-from deepagents.backends.protocol import ReadResult
 from deepagents.backends.sandbox import BaseSandbox
 from pydantic import ConfigDict
 from pydantic import Field
 from pydantic import field_validator
 
+from aiq_agent.skills import OFFICE_SOURCE
+from aiq_agent.skills import SKILLS_ROOT
+from aiq_agent.skills import Skill
+from aiq_agent.skills import SkillRuntime
 from aiq_agent.skills.builtin import discover_builtin_skills
 from aiq_agent.skills.resolver import _is_curated
+from aiq_agent.skills.runtime import source_path
 from nat.plugin_api import FunctionBaseConfig
 
 logger = logging.getLogger(__name__)
 
 T = TypeVar("T")
 
-# Builtin skills moved to the shared substrate layout (src/aiq_agent/skills/builtin):
+# Builtin skills live in the shared substrate layout (src/aiq_agent/skills/builtin):
 # collection = mid-level dir name, skill = leaf dir name. Only the collections
-# NAMED in `deep_research_skills.agents` are mounted for a subagent — today
-# `research` and `synthesis`. The chat-side collections (`bim`, `oib`,
-# `presentation`) live under the same root and reach the researcher
-# through `SkillResolver` instead, so adding one here is not a deep-research
-# change and mounting one would hand the writer instructions it cannot carry out.
+# NAMED in `deep_research_skills.agents` are offered to a subagent, each as its
+# own source `/skills/<collection>/` on the run's skills backend (ADR-0135).
 BUILTIN_SKILLS_DIR = Path(__file__).resolve().parents[2] / "skills" / "builtin"
-BUILTIN_SKILL_SOURCE = "/skills/"
 SHARED_ROUTE = "/shared/"
 SKILL_AGENT_NAMES = frozenset({"researcher-agent", "writer-agent"})
 
@@ -113,18 +109,11 @@ class DeepAgentsRuntime:
         sandbox: DeepResearchSandboxConfig | None = None,
         job_id: str | None = None,
     ) -> None:
-        self._skills = skills
         self._sandbox = sandbox
         self._job_id = str(job_id) if job_id is not None else str(uuid4())
-        self._backend: Any | None = None
-        self._skill_sources_by_agent = _resolve_agent_skill_sources(skills)
-        self._skill_sources = tuple(
-            dict.fromkeys(source for sources in self._skill_sources_by_agent.values() for source in sources)
-        )
-        _validate_sandbox_requirements(
-            skills=skills,
-            sandbox=sandbox,
-        )
+        self._default: Any | None = None
+        self._collections_by_agent = _resolve_agent_collections(skills)
+        _validate_sandbox_requirements(skills=skills, sandbox=sandbox)
 
     @property
     def execution_enabled(self) -> bool:
@@ -132,121 +121,50 @@ class DeepAgentsRuntime:
         return self._sandbox is not None
 
     @property
-    def skills_enabled(self) -> bool:
-        """Return true when any agent has configured skill sources."""
-        return bool(self._skill_sources)
+    def collections(self) -> tuple[str, ...]:
+        """Every builtin collection some subagent is assigned, in config order."""
+        return tuple(dict.fromkeys(c for names in self._collections_by_agent.values() for c in names))
 
-    def skill_sources_for(self, agent_name: str) -> list[str] | None:
-        """Return DeepAgents source paths for an agent/subagent name."""
-        sources = self._skill_sources_by_agent.get(agent_name)
-        return list(sources) if sources else None
+    def skill_runtime(self, office: Sequence[Skill] = ()) -> SkillRuntime:
+        """This run's skills: the assigned builtin collections, then the office's own.
 
-    @property
-    def backend(self) -> Any:
-        """Return the concrete backend instance passed to DeepAgents."""
-        if self._backend is None:
-            self._backend = _build_backend(
-                sandbox=self._sandbox,
-                job_id=self._job_id,
-                skills_enabled=self.skills_enabled,
-            )
-        return self._backend
+        Curated builtins are offers, not machinery: one the organization took up
+        arrives in ``office`` through the BFF payload, and is otherwise absent.
+        """
+        machinery = _machinery_by_collection()
+        sources: dict[str, Sequence[Skill]] = {c: machinery.get(c, ()) for c in self.collections}
+        sources[OFFICE_SOURCE] = tuple(office)
+        return SkillRuntime(sources)
 
+    def skill_sources_for(self, agent_name: str, skills: SkillRuntime | None) -> list[str]:
+        """The builtin sources ``agent_name`` lists: its assigned collections holding a skill this run."""
+        held = set(skills.sources) if skills is not None else set()
+        return [source_path(c) for c in self._collections_by_agent.get(agent_name, ()) if c in held]
 
-def _build_backend(
-    *,
-    sandbox: DeepResearchSandboxConfig | None,
-    job_id: str,
-    skills_enabled: bool,
-) -> Any:
-    """Build the smallest stock DeepAgents backend needed for this run."""
-    default = _create_sandbox_backend(sandbox, job_id) if sandbox is not None else StateBackend()
-    routes: dict[str, Any] = {}
-    if skills_enabled:
-        routes[BUILTIN_SKILL_SOURCE] = _skills_backend()
-    if sandbox is not None:
-        routes[SHARED_ROUTE] = StateBackend()
-    if not routes:
-        return default
-    return CompositeBackend(default=default, routes=routes)
+    def backend_for(self, skills: SkillRuntime | None) -> Any:
+        """The backend one run's graph uses: the job's default plus the ``/skills/`` and ``/shared/`` routes.
+
+        Built per run because the skills are per tenant; the default (state, or
+        the job's sandbox) is built once per agent instance.
+        """
+        if self._default is None:
+            self._default = _create_sandbox_backend(self._sandbox, self._job_id) if self._sandbox else StateBackend()
+        routes: dict[str, Any] = {}
+        if skills is not None and skills.sources:
+            routes[SKILLS_ROOT] = skills.backend
+        if self._sandbox is not None:
+            routes[SHARED_ROUTE] = StateBackend()
+        return CompositeBackend(default=self._default, routes=routes) if routes else self._default
 
 
 @functools.cache
-def _curated_skill_dir_names() -> frozenset[str]:
-    """Skill directory names that are offers, not machinery.
-
-    The chat resolver already drops these from ``always_on``. The DeepAgents
-    filesystem used to mount the whole ``builtin/`` tree, so a researcher could
-    ``read_file`` an offer the org never switched on. Same gate, both agents.
-
-    Cached per process: ``discover_builtin_skills`` walks the skills tree on
-    disk, the tree is immutable at runtime, and this ran on every run that
-    mounted skills (every production run). ``cache_clear()`` resets it.
-    """
-    return frozenset(skill.name for skill in discover_builtin_skills() if _is_curated(skill))
-
-
-def _path_is_curated_offer(path: str, curated: frozenset[str]) -> bool:
-    parts = path.replace("\\", "/").strip("/").split("/")
-    return any(part in curated for part in parts)
-
-
-class MachineryOnlyFilesystemBackend(FilesystemBackend):
-    """Filesystem skills route with curated offers removed.
-
-    Chat's ``SkillResolver.always_on`` already excludes ``grid-catalog: curated``.
-    This backend is the other half of that gate: a path whose skill directory is
-    an offer 404s, and listings omit those directories. Activated offers reach
-    a run through the BFF payload, not through this mount.
-    """
-
-    def __init__(self, *args: Any, **kwargs: Any) -> None:
-        super().__init__(*args, **kwargs)
-        self._curated = _curated_skill_dir_names()
-
-    def ls(self, path: str) -> LsResult:
-        result = super().ls(path)
-        if result.entries is None:
-            return result
-        kept = [entry for entry in result.entries if not _path_is_curated_offer(entry["path"], self._curated)]
-        return replace(result, entries=kept)
-
-    def read(self, file_path: str, offset: int = 0, limit: int = 2000) -> ReadResult:
-        if _path_is_curated_offer(file_path, self._curated):
-            return ReadResult(error=f"Path '{file_path}': path_not_found", file_data=None)
-        return super().read(file_path, offset=offset, limit=limit)
-
-    def glob(self, pattern: str, path: str | None = None) -> GlobResult:
-        result = super().glob(pattern, path=path)
-        if result.matches is None:
-            return result
-        kept = [entry for entry in result.matches if not _path_is_curated_offer(entry["path"], self._curated)]
-        return replace(result, matches=kept)
-
-    def grep(self, pattern: str, path: str | None = None, glob: str | None = None) -> GrepResult:
-        result = super().grep(pattern, path=path, glob=glob)
-        if result.matches is None:
-            return result
-        kept = [match for match in result.matches if not _path_is_curated_offer(match["path"], self._curated)]
-        return replace(result, matches=kept)
-
-    def download_files(self, paths: list[str]) -> list[FileDownloadResponse]:
-        visible = [path for path in paths if not _path_is_curated_offer(path, self._curated)]
-        responses = super().download_files(visible) if visible else []
-        by_path = {item.path: item for item in responses}
-
-        def _one(path: str) -> FileDownloadResponse:
-            found = by_path.get(path)
-            if found is not None:
-                return found
-            return FileDownloadResponse(path=path, content=None, error="file_not_found")
-
-        return [_one(path) for path in paths]
-
-
-def _skills_backend() -> FilesystemBackend:
-    """Return the filesystem-backed built-in skills route, offers stripped."""
-    return MachineryOnlyFilesystemBackend(root_dir=BUILTIN_SKILLS_DIR.resolve(), virtual_mode=True)
+def _machinery_by_collection() -> dict[str, tuple[Skill, ...]]:
+    """Non-curated builtin skills grouped by collection, read from disk once per process."""
+    grouped: dict[str, list[Skill]] = {}
+    for skill in discover_builtin_skills():
+        if not _is_curated(skill):
+            grouped.setdefault(skill.collection or "", []).append(skill)
+    return {collection: tuple(skills) for collection, skills in grouped.items()}
 
 
 def discover_skill_collections(root: Path = BUILTIN_SKILLS_DIR) -> dict[str, str]:
@@ -260,7 +178,7 @@ def discover_skill_collections(root: Path = BUILTIN_SKILLS_DIR) -> dict[str, str
         if collection_dir == root:
             continue
         name = collection_dir.relative_to(root).as_posix()
-        collections[name] = f"{BUILTIN_SKILL_SOURCE}{name}/"
+        collections[name] = source_path(name)
     return collections
 
 
@@ -273,14 +191,13 @@ def resolve_skill_collections(collection_names: tuple[str, ...]) -> tuple[str, .
     return tuple(known[name] for name in collection_names)
 
 
-def _resolve_agent_skill_sources(skills: DeepResearchSkillsConfig | None) -> dict[str, tuple[str, ...]]:
+def _resolve_agent_collections(skills: DeepResearchSkillsConfig | None) -> dict[str, tuple[str, ...]]:
+    """Each subagent's collection names, every one checked against the builtin tree."""
     if skills is None:
         return {}
-    return {
-        agent_name: resolve_skill_collections(collection_names)
-        for agent_name, collection_names in skills.agents.items()
-        if collection_names
-    }
+    for names in skills.agents.values():
+        resolve_skill_collections(names)
+    return {agent_name: names for agent_name, names in skills.agents.items() if names}
 
 
 def _validate_sandbox_requirements(

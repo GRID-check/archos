@@ -41,6 +41,8 @@ import {
 import type { ThemeMode } from '@/features/layout/types'
 import { useTranslations, useLocale, locales } from '@/i18n'
 import { cn } from '@/lib/utils'
+import type { SwitchableOrganization } from '@/lib/organizations/switchable'
+import { OrganizationSwitcherMenu } from './organization-switcher'
 
 export interface SidebarUser {
   name?: string | null
@@ -68,6 +70,8 @@ export interface SidebarUserMenuProps {
   canViewOrganization?: boolean
   /** Show the platform dashboard entry (platform owner only, ADR-0016). */
   canManagePlatform?: boolean
+  /** The organizations to offer a switch to (`switchableOrganizations`); empty for someone in one. */
+  organizations?: readonly SwitchableOrganization[]
   /**
    * Tailwind size class for the trigger avatar. Defaults to the sidebar
    * footer's 30px; the org top bar passes a 36px avatar to match the dummy.
@@ -100,6 +104,7 @@ export function SidebarUserMenu({
   canManageOrganization = false,
   canViewOrganization = false,
   canManagePlatform = false,
+  organizations = [],
   avatarSizeClass = 'size-[30px]',
   organizationName = null,
   tourAnchor,
@@ -221,6 +226,7 @@ export function SidebarUserMenu({
             </Link>
           </DropdownMenuItem>
         )}
+        {organizations.length > 1 && <OrganizationSwitcherMenu organizations={organizations} />}
         {canManagePlatform && (
           <DropdownMenuItem asChild className="gap-2">
             <Link href="/app/platform">

@@ -63,7 +63,7 @@ export interface SlashCommandQuery {
 
 /** What the leading token names: which skill, and what was asked alongside it. */
 export interface SlashInvocation {
-  /** The skill's `name` — the frontmatter/`use_skill` identifier. */
+  /** The skill's `name` — the frontmatter identifier and the directory of its `SKILL.md`. */
   skillName: string
   /**
    * The token as it was typed, without the `/`. It differs from `skillName` when

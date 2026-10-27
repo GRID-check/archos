@@ -123,7 +123,7 @@ const MEMORY =
 const SEARCH = 'a hit of this search is no citable source; Piloti’s own `knowledge_search` returns quotable passages'
 const TASK = 'Piloti proposes a task, or commissions a run, with its own `create_task`, whose card the person confirms'
 const SKILL_READ =
-  'Piloti is given the office’s skills at turn start and loads one with its own `use_skill`, which the turn records; the door offers them to outside agents'
+  'Piloti is given the office’s skills at turn start and reads one with its own `read_file`, which the turn records; the door offers them to outside agents'
 const CANVAS ='Piloti marks a document, and answers in a mark’s thread, with its own canvas tools, anchored where it looked'
 
 /**

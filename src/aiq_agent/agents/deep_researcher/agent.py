@@ -115,17 +115,6 @@ def _resolve_skills_blocking(organization_id: str | None) -> tuple[Skill, ...]:
     return resolve_served_skills(SKILL_AGENT, organization_id)
 
 
-def _skills_block(runtime: SkillRuntime) -> str | None:
-    """The writer's skills section: the L1 catalog it may pick from.
-
-    The same block the researcher renders, from the same runtime, so a skill
-    that names both agents is presented to both of them in the same words.
-    None when the run resolved no skills — the writer prompt then shows no
-    skills section at all rather than an empty heading.
-    """
-    return runtime.prompt_block()
-
-
 def _run_scoped_callbacks(callbacks: Sequence[Any], source_registry_middleware: SourceRegistryMiddleware) -> list[Any]:
     """Fresh trace callbacks for one run, each holding this run's registry accessor.
 
@@ -184,10 +173,11 @@ class DeepResearchRunArtifacts:
     rounds: RetrievalRounds
     #: The Unterlagen the reader named, for the unread mark at the end.
     plan_documents: PlanDocuments | None
-    #: This run's resolved skills. The runtime accumulates the activation list
-    #: DURING the run and ``_finalize`` reports it — a runtime that went out of
-    #: scope at graph-build time is why deep research shipped
-    #: ``skills_activated=None`` on every answer while the researcher reported it.
+    #: This run's skills, served under ``/skills/`` (ADR-0135). The runtime
+    #: accumulates the activation list DURING the run, from the reads of every
+    #: subagent, and ``_finalize`` reports it — a runtime that went out of
+    #: scope at graph-build time is why deep research once shipped
+    #: ``skills_activated=None`` on every answer.
     skill_runtime: SkillRuntime
 
 
@@ -257,11 +247,11 @@ class DeepResearcherAgent:
         run can observe another run's state (ADR-0018).
 
         ``skill_runtime`` is resolved by :meth:`run` off the event loop, since
-        it is an HTTP round trip to the BFF. A caller without one gets a run
-        with no platform skills, the shape of a run whose BFF did not answer.
+        it is an HTTP round trip to the BFF. A caller without one gets the
+        builtin collections alone, the shape of a run whose BFF did not answer.
         """
         if skill_runtime is None:
-            skill_runtime = SkillRuntime()
+            skill_runtime = self.deepagents_runtime.skill_runtime()
         documents = state.plan_documents
         source_registry_middleware = SourceRegistryMiddleware(
             source_tool_names=self.source_tool_names,
@@ -273,7 +263,6 @@ class DeepResearcherAgent:
             source_registry_middleware=source_registry_middleware,
             max_concurrent_source_tool_calls=self.max_concurrent_source_tool_calls,
             max_source_tool_batch_size=self.max_source_tool_batch_size,
-            writer_skill_tools=skill_runtime.build_tools(),
         )
         middleware_set = build_deep_research_middleware_set(
             tool_set=tool_set,
@@ -295,7 +284,7 @@ class DeepResearcherAgent:
             enable_source_router=self.enable_source_router,
             max_research_concurrency=self.max_research_concurrency,
             checkpointer=self.checkpointer,
-            skills_block=_skills_block(skill_runtime),
+            skills=skill_runtime,
             rounds=rounds,
         )
         return DeepResearchRunArtifacts(
@@ -309,9 +298,8 @@ class DeepResearcherAgent:
             skill_runtime=skill_runtime,
         )
 
-    @staticmethod
-    async def _build_skill_runtime(state: DeepResearchAgentState) -> SkillRuntime:
-        """Resolve this run's platform/org skills into a fresh runtime.
+    async def _build_skill_runtime(self, state: DeepResearchAgentState) -> SkillRuntime:
+        """Resolve this run's skills into a fresh runtime: the builtin collections and the office's own.
 
         Per run, for the reason the source registry is (ADR-0018): the runtime
         owns one run's activation list and this instance is shared across runs
@@ -319,23 +307,21 @@ class DeepResearcherAgent:
         worker ``get_organization_id_from_context()`` reads no headers because
         there is no request — and falls back to the request context for the
         synchronous path and evaluation runs. Every resolved skill is an OFFER:
-        the writer reads the catalog and calls ``use_skill`` for the one it
+        each subagent reads its catalog and opens with ``read_file`` the one it
         judges applies, and nothing here can put a body in front of it.
 
         The resolver is a SYNCHRONOUS HTTP call to the BFF. Run on the loop it
         stalled the research worker's heartbeat for as long as the BFF took to
         answer, and the ghost reaper failed healthy jobs for it
         (``docs/contributing/gotchas.md``), so it runs in a worker thread.
-        ``resolve_served_skills`` never raises: an empty skill set produces an
-        empty runtime, no tool and no prompt block.
+        ``resolve_served_skills`` never raises: an empty office set leaves the
+        builtin collections, and no office source.
         """
         organization_id = state.organization_id or get_organization_id_from_context()
-        skills = await asyncio.to_thread(_resolve_skills_blocking, organization_id)
-        runtime = SkillRuntime(skills=skills)
-        if not skills:
-            return runtime
+        office = await asyncio.to_thread(_resolve_skills_blocking, organization_id)
+        runtime = self.deepagents_runtime.skill_runtime(office)
         emit_skills_offered(runtime)
-        logger.info("Deep research resolved %d organization skill(s) for the writer", len(skills))
+        logger.info("Deep research resolved %d office skill(s) for the writer", len(office))
         return runtime
 
     # -- the run --------------------------------------------------------------

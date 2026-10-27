@@ -31,18 +31,18 @@ function mockDbSelect(rows: Array<{ organizationId: string }>) {
   };
 }
 
-function mockCheck(results: Record<string, boolean>) {
-  return vi.fn(async ({ permissionSlug }: { permissionSlug: string }) => ({
-    authorized: results[permissionSlug] ?? false,
+/** What WorkOS answers for the caller's effective permissions on the project. */
+function setupWorkOS(held: Record<string, boolean>) {
+  const effective = vi.fn(async () => ({
+    autoPagination: async () =>
+      Object.entries(held)
+        .filter(([, holds]) => holds)
+        .map(([slug]) => ({ slug })),
   }));
-}
-
-function setupWorkOS(checkResults: Record<string, boolean>) {
-  const check = mockCheck(checkResults);
   mockGetWorkOS.mockReturnValue({
-    authorization: { check },
+    authorization: { listEffectivePermissionsByExternalId: effective },
   } as unknown as ReturnType<typeof getWorkOS>);
-  return check;
+  return effective;
 }
 
 const baseSession: AuthorizedSession = {
@@ -104,7 +104,7 @@ describe("requireProjectAccess", () => {
     mockGetDb.mockReturnValue(
       mockDbSelect([{ organizationId: "org_1" }]) as never,
     );
-    const check = setupWorkOS({
+    const effective = setupWorkOS({
       "project:view": true,
       "project:edit": false,
       "project:manage": false,
@@ -113,10 +113,9 @@ describe("requireProjectAccess", () => {
     const result = await requireProjectAccess(baseSession, PROJECT_ID);
 
     expect(result).toEqual({ role: "project-viewer", closed: false, readsBecauseClosed: false });
-    expect(check).toHaveBeenCalledWith({
+    expect(effective).toHaveBeenCalledWith({
       organizationMembershipId: "om_1",
-      permissionSlug: "project:view",
-      resourceExternalId: PROJECT_ID,
+      externalId: PROJECT_ID,
       resourceTypeSlug: "project",
     });
   });

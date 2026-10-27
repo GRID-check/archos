@@ -36,7 +36,7 @@ whose answer can only ADD to the turn:
   call for methods most turns never use (ADR-0063, amended); one chosen
   body costs a tenth of that and only when a question calls for it. The
   body stays an offer: the model decides whether to follow it, and the
-  rest stay one catalog line each behind ``use_skill``.
+  rest stay one catalog line each, read with ``read_file`` (ADR-0135).
 - ``self_contained``: whether the message can be searched on its own. A
   follow-up („und in GK 4?") cannot, and searching the fragment would hand
   the model a grounding block about nothing. A follow-up prefetches
@@ -561,8 +561,8 @@ def _undecided_prefetch(question: str) -> list[dict[str, Any]]:
 def attached_card_types(decisions: TurnDecisions, skill_cards: Mapping[str, Sequence[str]]) -> list[str]:
     """The card types whose full shape rides this turn's prompt, in order, capped.
 
-    The chosen skill's preferred cards first — the shapes ``use_skill`` used
-    to hand over with the body — then the types the card nouls picked; each
+    The chosen skill's preferred cards first — the shapes a ``read_file`` of
+    it hands over with the body — then the types the card nouls picked; each
     once, at most ``MAX_ATTACHED_SHAPES``. The caller's lists already leave
     out the shapes the envelope teaches (``ENVELOPE_SHAPE_TYPES``) and
     ``surface`` (``CHAT_ONLY_CARD_TYPES``).

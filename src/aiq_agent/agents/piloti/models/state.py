@@ -290,7 +290,7 @@ class ResearchAgentState(BaseModel):
     # present.
     skills_activated: list[str] | None = None
     # What the ANSWER ENVELOPE said the model followed among the skills whose
-    # body rode the prompt (ADR-0063). Raw names, lifted by the ledger; the
+    # body was pinned in the prompt (ADR-0063). Raw names, lifted by the ledger; the
     # register turns the accepted ones into ``skills_activated`` after ``run()``.
     # Never lifted to the reader itself.
     skills_applied: list[str] | None = None

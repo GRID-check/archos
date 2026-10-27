@@ -2,7 +2,6 @@
 
 import type { JSX } from 'react'
 import * as React from 'react'
-import dynamic from 'next/dynamic'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { Archive, Bell, MessageSquarePlus } from 'lucide-react'
@@ -18,10 +17,8 @@ import { cn } from '@/lib/utils'
 import { ConnectionBand } from './connection-band'
 import { ShellSearchButton } from './shell-search-button'
 import { SidebarUserMenu, type SidebarUser } from './sidebar-user-menu'
+import type { SwitchableOrganization } from '@/lib/organizations/switchable'
 
-// Loaded only for someone who belongs to several organizations: the widget
-// brings Radix Themes and its stylesheet, which nobody else needs.
-const HeaderOrganizationSwitcher = dynamic(() => import('./organization-switcher'), { ssr: false })
 
 /**
  * The org-scope chrome: one slim header instead of a rail.
@@ -50,8 +47,8 @@ export interface OrgHeaderProps {
   user?: SidebarUser
   organizationName?: string | null
   authRequired: boolean
-  /** The reader belongs to more than one organization (`belongsToSeveralOrganizations`). */
-  canSwitchOrganization?: boolean
+  /** The organizations the avatar menu offers to switch to (`switchableOrganizations`); empty for one. */
+  organizations?: readonly SwitchableOrganization[]
   canManageOrganization: boolean
   canViewOrganization: boolean
   canManagePlatform: boolean
@@ -63,7 +60,7 @@ export function OrgHeader({
   user,
   organizationName,
   authRequired,
-  canSwitchOrganization = false,
+  organizations = [],
   canManageOrganization,
   canViewOrganization,
   canManagePlatform,
@@ -93,11 +90,6 @@ export function OrgHeader({
           >
             Piloti
           </Link>
-          {canSwitchOrganization && (
-            <div className="min-w-0 max-w-64" data-testid="organization-switcher">
-              <HeaderOrganizationSwitcher />
-            </div>
-          )}
         </div>
 
         <div className="flex items-center gap-1">
@@ -144,6 +136,7 @@ export function OrgHeader({
             canManageOrganization={canManageOrganization}
             canViewOrganization={canViewOrganization}
             canManagePlatform={canManagePlatform}
+            organizations={organizations}
             tourAnchor={TOUR_ANCHORS.account}
           />
         </div>

@@ -6,9 +6,14 @@ What this is
 namespaced by conversation. The tools themselves are stock DeepAgents
 (:mod:`aiq_agent.tools.documents.tools`); this module is the storage half:
 where the bytes live, what a path may be, how much a conversation may keep, and
-the one correction the stock backend needs.
+the two corrections the stock backend needs.
 
-**The one correction is NFC.** ``Gebäudeklasse`` typed decomposed (``a`` + U+0308)
+**``write_file`` is create-only.** DeepAgents' ``write`` creates or overwrites
+since 0.7; here a second ``write_file`` to one path is refused and the model is
+pointed at ``edit_file`` (:func:`write_refusal`), so a draft the reader has seen
+is never replaced wholesale behind its card.
+
+**The other correction is NFC.** ``Gebäudeklasse`` typed decomposed (``a`` + U+0308)
 and the same word typed composed are different strings, so an ``edit_file``
 whose ``old_string`` was typed by the model one way against a file written the
 other way fails with ``String not found in file: 'Gebäudeklasse'`` — an error
@@ -296,12 +301,32 @@ def ceiling_refusal(projected_bytes: int, file_path: str) -> str | None:
     )
 
 
+def _overwrite_refusal(usage: DraftUsage, file_path: str) -> str | None:
+    """Why a ``write_file`` to a path that already holds a draft cannot happen.
+
+    The working directory is create-only for ``write_file``: a second write to
+    one path would replace a draft the reader may already have seen on its card
+    (or filed) without a word. DeepAgents' ``StoreBackend`` refused this itself
+    up to 0.6; since 0.7 its ``write`` creates or overwrites, so the refusal
+    lives here, worded as the stock one was.
+    """
+    if usage.content is None:
+        return None
+    return (
+        f"Cannot write to {file_path} because it already exists. "
+        "Read it and revise it with `edit_file`, or write to a new path."
+    )
+
+
 def write_refusal(usage: DraftUsage, file_path: str, content: str) -> str | None:
     """Why this ``write_file`` cannot happen, or ``None``."""
     refusal = path_refusal(file_path)
     if refusal is not None:
         return refusal
     refusal = _root_write_refusal(file_path)
+    if refusal is not None:
+        return refusal
+    refusal = _overwrite_refusal(usage, file_path)
     if refusal is not None:
         return refusal
     projected = usage.total_bytes - draft_bytes(usage.content or "") + draft_bytes(content)
@@ -337,6 +362,10 @@ class DraftBackend(StoreBackend):
     Four overrides, two of them the async twin of the other two, because the
     tools call whichever half the graph is running (Piloti is async;
     the sync path exists so the invariant does not depend on that staying true).
+
+    ``delete`` is inherited from ``StoreBackend`` (0.7 added it) and reached by
+    no tool: ``draft_tools`` builds only the four verbs. Dropping a whole
+    working directory goes through :func:`delete_conversation_drafts`.
     """
 
     def __init__(self, *, store: BaseStore, conversation_id: str) -> None:
