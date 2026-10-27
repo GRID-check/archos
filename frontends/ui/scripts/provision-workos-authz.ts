@@ -20,7 +20,7 @@
  * Every deploy runs `--apply` against its own environment, bundled to plain ESM
  * by the image build: the Kubernetes Job `grid-app-authz-catalog`
  * (`deploy/pulumi/src/app/workos-authz-jobs.ts`) and the compose service
- * `grid-workos-authz`. So it must never delete a permission or a role, and
+ * `workos-authz`. So it must never delete a permission or a role, and
  * must leave roles outside the catalog (an office's custom roles) alone.
  *
  * ## What this script does NOT do

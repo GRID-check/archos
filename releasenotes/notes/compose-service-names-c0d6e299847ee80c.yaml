@@ -2,7 +2,7 @@
 operators:
   - >
     In Docker Compose the backend services aiq-agent and aiq-api are now chat
-    and api, containers are named grid-<service>, and the network is
-    grid-network. Update with docker compose up -d --remove-orphans, or the old
-    containers keep their ports, and change BACKEND_URL or BACKEND_CHAT_URL in
-    your .env if you set them to the old names.
+    and api, grid-migrate, grid-audit-schemas and grid-workos-authz are migrate,
+    audit-schemas and workos-authz, and the network is app. Containers take
+    Compose's default names. Update with docker compose up -d --remove-orphans,
+    or the old containers keep their ports.

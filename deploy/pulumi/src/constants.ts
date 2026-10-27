@@ -692,7 +692,7 @@ export const POSTGRES_DIRECT_RESERVE = {
   sessionLocksBackground: 4,
   /**
    * Migration and bootstrap Jobs on the owner DSN: `pg-init-tables` (one psql at a
-   * time), `grid-migrate` (`ensure-rls-roles` plus drizzle-kit) and the queue
+   * time), `migrate` (`ensure-rls-roles` plus drizzle-kit) and the queue
    * scaler's grants. They overlap on a first deploy, so this is their sum rather
    * than their largest.
    */

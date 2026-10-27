@@ -142,17 +142,17 @@ own domains, DB password, and internal token with no manual input.
    `SERVICE_FQDN_FRONTEND_3000`. Optionally override it with your own domain in
    the service's settings. Do the same for SeaweedFS if you want a stable S3 URL.
 5. **Deploy.** On first boot: Postgres runs `init-db.sql` (creates the 3 DBs),
-   `grid-migrate` runs the Drizzle migrations for `grid_app`, `seaweedfs-init`
-   creates the bucket, `grid-audit-schemas` reconciles the WorkOS Audit Log
+   `migrate` runs the Drizzle migrations for `grid_app`, `seaweedfs-init`
+   creates the bucket, `audit-schemas` reconciles the WorkOS Audit Log
    schemas, and the backend starts. Once the frontend is healthy,
-   `grid-workos-authz` creates the authorization catalog's permissions and
+   `workos-authz` creates the authorization catalog's permissions and
    roles in WorkOS and carries folder grants over (ADR-0097). It ingests nothing at boot; the base-corpus
    housekeeping route does that, every ten minutes.
    The frontend waits for the first three; they are `depends_on:
    service_completed_successfully`, so a failure in any of them stops the
    frontend rather than letting it serve a half-provisioned environment.
 
-   > **`grid-audit-schemas` is why nothing here is a manual WorkOS step.** WorkOS
+   > **`audit-schemas` is why nothing here is a manual WorkOS step.** WorkOS
    > rejects an Audit Log event whose action has no schema in the environment —
    > and rejects one whose registered schema has the wrong targets or metadata
    > keys the same way. Most of the trail survives that (the default emitter
@@ -180,7 +180,7 @@ works across the whole stack** — `frontend` reaches the backend at
 reach `postgres:5432`, `seaweedfs:8333`, and `dragonfly:6379` by name. No custom
 network is needed to get this.
 
-> **The dual-homed pitfall (why the custom `grid-network` was removed).** Coolify
+> **The dual-homed pitfall (why the custom `app` was removed).** Coolify
 > [documents](https://coolify.io/docs/applications/build-packs/docker-compose)
 > that defining a custom network in a compose resource makes every container
 > **dual-homed** — attached to BOTH your custom bridge and Coolify's managed
@@ -215,7 +215,7 @@ resource's **Connect To Predefined Network** option instead. It is not needed fo
 anything in this stack, since all services live in the same compose project.
 
 > The bundled dev compose (`deploy/compose/docker-compose.yaml`) still declares
-> its own `grid-network` — that is correct and unchanged. It runs under plain
+> its own `app` — that is correct and unchanged. It runs under plain
 > `docker compose` with **no** Coolify-managed network and **no** Traefik, so
 > there is nothing to be dual-homed against. The custom-network removal applies
 > **only** to the Coolify compose file.
@@ -423,7 +423,7 @@ redeploys of the same environment; each preview gets its own set.
       resolves to SeaweedFS's public domain and the signature host matches.
 - [ ] Ask one question about an uploaded project document and one about an OIB-Richtlinie → knowledge results appear for both (confirms embeddings +
       ingestion). If empty, revisit §6 and §7.
-- [ ] (WorkOS environments) `grid-audit-schemas` exited 0 in the deploy log, and
+- [ ] (WorkOS environments) `audit-schemas` exited 0 in the deploy log, and
       a filed report produces a `document.generated` event in the org's audit
       log. A rejected event unfiles the document, so "the report is not in
       Berichte" and "the audit schema is stale" are the same symptom —
@@ -459,7 +459,7 @@ docker compose -f docker-compose.coolify.yaml up -d
 |---|---|---|
 | Container names | fixed (`chat`, …) | none (Coolify namespaces) |
 | Deep-research execution | dedicated `agent-worker` + shared `qdrant` store (mirrors K8s) |
-| Docker network | custom `grid-network` (bridge) | none declared — Coolify's managed per-stack network (avoids dual-homed 504/DNS failures) |
+| Docker network | custom `app` (bridge) | none declared — Coolify's managed per-stack network (avoids dual-homed 504/DNS failures) |
 | Host ports | published (3000, 8000, 5432, 8333/8888) | none — proxy + FQDN vars |
 | Secrets | `deploy/.env` literals | Coolify UI (`${VAR:?}`) + generated passwords; `OPENROUTER_API_KEY`, `TAVILY_API_KEY`, `GRID_ADMIN_TOKEN` all required |
 | Auth (`REQUIRE_AUTH`) | `false` (dev convenience) | **`true`** by default (WorkOS required; opt out per-preview) |

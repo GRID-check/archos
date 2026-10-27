@@ -23,7 +23,7 @@
 # BUILD
 # -----------------------------------------------------------------------------
 #
-#   docker build -f deploy/Dockerfile -t grid-frontend:latest .
+#   docker build -f deploy/Dockerfile -t frontend:latest .
 #
 # -----------------------------------------------------------------------------
 # RUN
@@ -39,7 +39,7 @@
 #     -e WORKOS_API_KEY=sk_test_xxx \
 #     -e WORKOS_REDIRECT_URI=https://your-domain.com/api/auth/callback \
 #     -e WORKOS_COOKIE_PASSWORD=$(openssl rand -hex 32) \
-#     grid-frontend:latest
+#     frontend:latest
 #
 # Without authentication (development/testing):
 #
@@ -47,7 +47,7 @@
 #     -e BACKEND_URL=http://backend:8000 \
 #     -e BACKEND_CHAT_URL=http://backend-chat:8000 \
 #     -e REQUIRE_AUTH=false \
-#     grid-frontend:latest
+#     frontend:latest
 #
 # -----------------------------------------------------------------------------
 # ENVIRONMENT VARIABLES (all runtime - no rebuild needed)

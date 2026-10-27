@@ -37,8 +37,8 @@ BUILD_TARGET=release docker compose --env-file ../.env -f docker-compose.yaml up
 To use pre-built images from a registry (skips local build):
 
 ```bash
-BACKEND_IMAGE=ghcr.io/grid-check/grid-oib-backend:<tag> \
-FRONTEND_IMAGE=ghcr.io/grid-check/grid-oib-frontend:<tag> \
+BACKEND_IMAGE=<registry>/<backend image>:<tag> \
+FRONTEND_IMAGE=<registry>/<frontend image>:<tag> \
 docker compose --env-file ../.env -f docker-compose.yaml up -d
 ```
 
@@ -55,14 +55,14 @@ Every other HTTP route is [`api`](#api-the-api-role)'s.
 
 | Property | Value |
 |----------|-------|
-| Image | `grid-oib-backend:local` (override with `BACKEND_IMAGE`) |
+| Image | `backend:local` (override with `BACKEND_IMAGE`) |
 | Build context | `../../` (repo root) |
 | Dockerfile | `deploy/Dockerfile` |
 | Build target | `${BUILD_TARGET:-dev}` (dev = CLI included, release = web only) |
-| Container name | `chat` |
+| Container name | (auto-generated) |
 | Ports | `${CHAT_PORT:-8001}:8000` (the WebSocket, for a client that dials it directly, such as `task be:eval:loop`) |
 | Env file | `../.env` |
-| Networks | `grid-network` |
+| Networks | `app` |
 
 **Key environment variables** (set in compose, can be overridden via .env):
 
@@ -120,7 +120,7 @@ role serves which route.
 
 | Property | Value |
 |----------|-------|
-| Container name | `api` |
+| Container name | (auto-generated) |
 | Ports | `${PORT:-8000}:8000` (the API and `/docs`) |
 | Environment | `chat`'s, with `GRID_ROLE=api` |
 | Healthcheck | the same `/health` probe as `chat` |
@@ -176,7 +176,7 @@ S3-compatible object storage for documents (single `weed server -s3` process).
 | Image | `chrislusf/seaweedfs:3.80` |
 | Container name | (auto-generated) |
 | Ports | `8333:8333` (S3 API), `8888:8888` (Filer UI), `9333:9333` (Master) |
-| Networks | `grid-network` |
+| Networks | `app` |
 
 **Environment**:
 
@@ -219,7 +219,7 @@ app services wait on this via `service_completed_successfully`.
 |----------|-------|
 | Image | `chrislusf/seaweedfs:3.80` |
 | Entrypoint | `/bin/sh -c` |
-| Networks | `grid-network` |
+| Networks | `app` |
 
 **Command**:
 ```bash
@@ -232,7 +232,7 @@ idempotent (bucket-already-exists is a successful no-op).
 
 This container runs, creates the bucket, and exits. It is not restarted.
 
-### grid-migrate
+### migrate
 
 One-shot migrator, and the reason `frontend` no longer migrates. It provisions
 the row-level-security roles (`scripts/ensure-rls-roles.mjs`) and then runs
@@ -251,7 +251,7 @@ inside the very process the boundary is meant to constrain. `frontend`,
 
 Runbook: [row-level security](../database/row-level-security.md), ADR-0041.
 
-### grid-workos-authz
+### workos-authz
 
 One-shot WorkOS authorization rollout from the frontend image, the compose
 equivalent of the Kubernetes Jobs `grid-app-authz-catalog` and
@@ -267,7 +267,7 @@ must not run while the old dialog can still narrow a list
 ([the rollout](workos-provisioning.md#rolling-out-folder-roles-adr-0097)). With
 `WORKOS_API_KEY` unset it prints one line and exits 0.
 
-### grid-audit-schemas
+### audit-schemas
 
 One-shot reconciler for the **WorkOS Audit Log schemas**, from the same frontend
 image, and the compose equivalent of the Kubernetes Job `grid-app-audit-schemas`
@@ -294,8 +294,8 @@ already was for authentication.
 
 | Property | Value |
 |----------|-------|
-| Image | `${FRONTEND_IMAGE:-grid-oib-frontend:local}` (the frontend image) |
-| Container name | `grid-audit-schemas` |
+| Image | `${FRONTEND_IMAGE:-frontend:local}` (the frontend image) |
+| Container name | (auto-generated) |
 | Environment | `WORKOS_API_KEY` (optional) |
 | Depends on | nothing — it only needs egress to WorkOS |
 | Restart | `"no"` |
@@ -309,12 +309,12 @@ The Next.js UI application.
 
 | Property | Value |
 |----------|-------|
-| Image | `grid-oib-frontend:local` (override with `FRONTEND_IMAGE`) |
+| Image | `frontend:local` (override with `FRONTEND_IMAGE`) |
 | Build context | `../../frontends/ui` |
 | Dockerfile | `deploy/Dockerfile` |
-| Container name | `grid-frontend` |
+| Container name | (auto-generated) |
 | Ports | `${FRONTEND_PORT:-3000}:3000` |
-| Networks | `grid-network`, `gotenberg-internal` |
+| Networks | `app`, `gotenberg-internal` |
 
 **Environment**:
 
@@ -323,7 +323,7 @@ The Next.js UI application.
 | `REQUIRE_AUTH` | `${REQUIRE_AUTH:-false}` |
 | `BACKEND_URL` | `${BACKEND_URL:-http://api:8000}` (the api role: every HTTP call) |
 | `BACKEND_CHAT_URL` | `${BACKEND_CHAT_URL:-http://chat:8000}` (the chat role: the WebSocket proxy alone; required, no fallback to `BACKEND_URL`) |
-| `GRID_APP_DATABASE_URL` | `${GRID_APP_DATABASE_URL:-postgresql://grid_app_rw:${GRID_APP_RUNTIME_PASSWORD:-grid_app_rw_dev}@pgbouncer:5432/grid_app}` — the least-privilege role, subject to row-level security (ADR-0041), through the pooler. Migrations use the owner credential in `GRID_APP_MIGRATION_DATABASE_URL`, set only on `grid-migrate`, straight to `postgres`. |
+| `GRID_APP_DATABASE_URL` | `${GRID_APP_DATABASE_URL:-postgresql://grid_app_rw:${GRID_APP_RUNTIME_PASSWORD:-grid_app_rw_dev}@pgbouncer:5432/grid_app}` — the least-privilege role, subject to row-level security (ADR-0041), through the pooler. Migrations use the owner credential in `GRID_APP_MIGRATION_DATABASE_URL`, set only on `migrate`, straight to `postgres`. |
 | `WORKOS_CLIENT_ID` | `${WORKOS_CLIENT_ID}` |
 | `WORKOS_API_KEY` | `${WORKOS_API_KEY}` |
 | `NEXT_PUBLIC_WORKOS_REDIRECT_URI` | `${NEXT_PUBLIC_WORKOS_REDIRECT_URI:-${WORKOS_REDIRECT_URI:-http://localhost:3000/api/auth/callback}}` |
@@ -345,7 +345,7 @@ The Next.js UI application.
 
 **Healthcheck**: `curl -f http://localhost:3000/api/healthz` — interval 15s, timeout 10s, start period 60s, retries 5. The dependency-free `/api/healthz`, not `/` (a full SSR render) and not `/api/health` (which proxies the backend and reports 502 while the agent boots).
 
-**Depends on**: `grid-migrate` (completed successfully), `grid-audit-schemas` (completed successfully), `chat` (healthy), `api` (healthy), `seaweedfs` (healthy), `seaweedfs-init` (completed successfully), `postgres` (healthy), `gotenberg` (started, not healthy: a broken converter fails Word and presentation ingests retryably, and must not also take down the UI and every other upload type).
+**Depends on**: `migrate` (completed successfully), `audit-schemas` (completed successfully), `chat` (healthy), `api` (healthy), `seaweedfs` (healthy), `seaweedfs-init` (completed successfully), `postgres` (healthy), `gotenberg` (started, not healthy: a broken converter fails Word and presentation ingests retryably, and must not also take down the UI and every other upload type).
 
 **Restart**: `unless-stopped`.
 
@@ -364,7 +364,7 @@ preview or thumbnail.
 | Property | Value |
 |----------|-------|
 | Image | `gotenberg/gotenberg:8.37.0-libreoffice` (pinned, LibreOffice-only variant; Pulumi pins the same tag, and `deploy/pulumi/src/app/gotenberg.spec.ts` fails when they differ) |
-| Container name | `grid-gotenberg` |
+| Container name | (auto-generated) |
 | Ports | none published |
 | Networks | `gotenberg-internal` only |
 
@@ -407,9 +407,9 @@ PostgreSQL 16 database.
 | Property | Value |
 |----------|-------|
 | Image | `postgres:16-alpine` |
-| Container name | `grid-postgres` |
+| Container name | (auto-generated) |
 | Ports | `5432:5432` |
-| Networks | `grid-network` |
+| Networks | `app` |
 
 **Environment**:
 
@@ -446,8 +446,8 @@ a direct connection fails here and not first in production.
 | Property | Value |
 |----------|-------|
 | Image | `edoburu/pgbouncer:v1.26.0-p0`, digest-pinned (PgBouncer 1.26.0; `max_prepared_statements` needs 1.21 or newer) |
-| Container name | `grid-pgbouncer` |
-| Ports | none published; `pgbouncer:5432` on `grid-network` |
+| Container name | (auto-generated) |
+| Ports | none published; `pgbouncer:5432` on `app` |
 | Pool mode | `transaction` |
 
 **Environment**: `DATABASE_URLS` (one login per pooled role, from which the
@@ -476,7 +476,7 @@ Langfuse's `DATABASE_URL` go straight to `postgres`, as in Kubernetes.
 
 | Name | Driver | Services |
 |------|--------|----------|
-| `grid-network` | bridge | Every service except `gotenberg` |
+| `app` | bridge | Every service except `gotenberg` |
 | `gotenberg-internal` | bridge, `internal: true` (no route off the host) | `gotenberg`, `frontend` |
 
 ## Build Targets

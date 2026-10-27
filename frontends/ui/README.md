@@ -199,7 +199,7 @@ The lazy loading is automatic and seamless - you don't need to do anything speci
 From the **UI directory** (`frontends/ui/`):
 
 ```bash
-docker build -t grid-frontend:latest .
+docker build -t frontend:latest .
 ```
 
 ### Run
@@ -211,7 +211,7 @@ docker run -p 3000:3000 \
   -e BACKEND_URL=http://localhost:8000 \
   -e BACKEND_CHAT_URL=http://localhost:8001 \
   -e REQUIRE_AUTH=false \
-  grid-frontend:latest
+  frontend:latest
 ```
 
 **With WorkOS AuthKit authentication:**
@@ -225,7 +225,7 @@ docker run -p 3000:3000 \
   -e WORKOS_API_KEY=sk_test_xxx \
   -e WORKOS_REDIRECT_URI=https://your-domain.com/api/auth/callback \
   -e WORKOS_COOKIE_PASSWORD=$(openssl rand -hex 32) \
-  grid-frontend:latest
+  frontend:latest
 ```
 
 ### Docker Compose Example
@@ -233,7 +233,7 @@ docker run -p 3000:3000 \
 ```yaml
 services:
   frontend:
-    image: grid-frontend:latest
+    image: frontend:latest
     environment:
       # Backend
       - BACKEND_URL=http://backend:8000
@@ -268,7 +268,7 @@ docker run -p 3000:3000 \
   -e BACKEND_URL=http://host.docker.internal:8000 \
   -e BACKEND_CHAT_URL=http://host.docker.internal:8001 \
   -e REQUIRE_AUTH=false \
-  grid-frontend:latest
+  frontend:latest
 ```
 
 #### Docker Network

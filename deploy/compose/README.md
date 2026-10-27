@@ -91,19 +91,19 @@ To use pre-built images instead of building locally, set the `BACKEND_IMAGE` and
 cd deploy/compose
 
 # Log in to the registry CI publishes to
-docker login ghcr.io
+docker login <registry>
 
 # Run with pre-built images
-BACKEND_IMAGE=ghcr.io/grid-check/grid-oib-backend:<tag> \
-FRONTEND_IMAGE=ghcr.io/grid-check/grid-oib-frontend:<tag> \
+BACKEND_IMAGE=<registry>/<backend image>:<tag> \
+FRONTEND_IMAGE=<registry>/<frontend image>:<tag> \
 docker compose --env-file ../.env -f docker-compose.yaml up -d
 ```
 
 You can also add these to your `deploy/.env` file:
 
 ```bash
-BACKEND_IMAGE=ghcr.io/grid-check/grid-oib-backend:<tag>
-FRONTEND_IMAGE=ghcr.io/grid-check/grid-oib-frontend:<tag>
+BACKEND_IMAGE=<registry>/<backend image>:<tag>
+FRONTEND_IMAGE=<registry>/<frontend image>:<tag>
 ```
 
 Then run without specifying them on the command line:
@@ -171,9 +171,9 @@ Common conflicts:
 
 **Check logs:**
 ```bash
-docker logs grid-chat -f
-docker logs grid-frontend -f
-docker logs grid-postgres -f
+docker compose logs -f chat
+docker compose logs -f frontend
+docker compose logs -f postgres
 ```
 
 **Health check:**
@@ -183,7 +183,7 @@ curl http://localhost:8000/health
 
 **Database connection:**
 ```bash
-docker exec -it grid-postgres psql -U aiq -d aiq_jobs
+docker compose exec postgres psql -U aiq -d aiq_jobs
 ```
 
 **Rebuild:**

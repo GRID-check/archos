@@ -13,7 +13,6 @@ docker compose up -d --build
          │      • Determines build order from depends_on
          │
          ├── 2. postgres:16-alpine starts
-         │      • Container name: grid-postgres
          │      • Runs /docker-entrypoint-initdb.d/init-db.sql
          │      │   • Creates aiq_checkpoints database
          │      │   • Creates grid_app database
@@ -42,7 +41,6 @@ docker compose up -d --build
          │      • Container exits (one-shot)
          │
          ├── 5. chat starts (depends on postgres + seaweedfs healthy)
-         │      • Container name: chat
          │      • ENTRYPOINT: python /app/deploy/entrypoint.py
          │      │
          │      │   entrypoint.py:
@@ -71,8 +69,7 @@ docker compose up -d --build
          │      │   • /api/v1/ingest/* (file ingestion)
          │      └── AIQ API worker starts (async job processing with SSE)
          │
-         ├── 6. grid-migrate runs to completion (depends on postgres healthy)
-         │      • Container name: grid-migrate
+         ├── 6. migrate runs to completion (depends on postgres healthy)
          │      • One-shot (restart: "no"); everything below waits for it to exit 0
          │      │
          │      │   Step 6a: node scripts/ensure-rls-roles.mjs
@@ -85,9 +82,8 @@ docker compose up -d --build
          │            owner, which is what keeps a backfill from touching 0 rows
          │          • Runs pending migrations from drizzle/ directory
          │
-         └── 7. frontend starts (depends on grid-migrate completed, plus
+         └── 7. frontend starts (depends on migrate completed, plus
                 chat + postgres + seaweedfs healthy)
-                • Container name: grid-frontend
                 • command: ["node", "server.js"] — it serves, it does not migrate.
                   The serving container never holds the owner credential (ADR-0041).
                 • Connects as grid_app_rw via GRID_APP_DATABASE_URL
@@ -150,7 +146,7 @@ admin re-indexes it. It ingests nothing itself. See [`oib-sync.md`](../technical
 
 This is step 6 of the sequence above, spelled out. Migrations no longer run from
 the `frontend` container in any stack — compose, Coolify or Kubernetes. The
-one-shot `grid-migrate` service runs, in order:
+one-shot `migrate` service runs, in order:
 
 1. `node scripts/ensure-rls-roles.mjs` — creates `grid_app_rw` and
    `grid_app_platform` if absent and syncs the runtime password from

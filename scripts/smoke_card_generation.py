@@ -12,7 +12,7 @@ Run inside the backend Docker image so it has deps + the OPENROUTER_API_KEY:
 
     docker run --rm --env-file deploy/.env \
         -v "F:/GRID/grid-oib-agent/scripts:/smoke:ro" \
-        grid-oib-backend:local python /smoke/smoke_card_generation.py
+        backend:local python /smoke/smoke_card_generation.py
 """
 
 from __future__ import annotations

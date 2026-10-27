@@ -472,7 +472,7 @@ services:
   # tenant-isolation bypass inside the very process RLS exists to constrain
   # (ADR-0041). This stack was the last one where that credential was still
   # mounted on `frontend`.
-  grid-migrate:
+  migrate:
     build:
       context: ./frontends/ui
       dockerfile: deploy/Dockerfile
@@ -523,7 +523,7 @@ services:
   # deploy/pulumi/index.ts. `--apply` reconciles rather than re-creates, so a
   # redeploy against an unchanged registry writes nothing (schema versions are
   # append-only in WorkOS).
-  grid-audit-schemas:
+  audit-schemas:
     build:
       context: ./frontends/ui
       dockerfile: deploy/Dockerfile
@@ -544,7 +544,7 @@ services:
     build:
       context: ./frontends/ui
       dockerfile: deploy/Dockerfile
-    # The image CMD migrates then serves; migration has moved to grid-migrate,
+    # The image CMD migrates then serves; migration has moved to migrate,
     # so this container only serves.
     command: ["node", "server.js"]
     environment:
@@ -566,7 +566,7 @@ services:
       # this very URL before starting, so there is one source of truth.
       - GRID_APP_DATABASE_URL=postgresql://grid_app_rw:${SERVICE_PASSWORD_GRIDRUNTIME}@pgbouncer:5432/grid_app
       # No GRID_APP_MIGRATION_DATABASE_URL here, deliberately: the owner
-      # credential belongs to `grid-migrate` above and nowhere else.
+      # credential belongs to `migrate` above and nowhere else.
       - GRID_INTERNAL_API_TOKEN=${SERVICE_PASSWORD_INTERNALTOKEN}
       # S1 security default: agent org-wide memory writes are OFF unless explicitly
       # enabled here (see app/api/internal/memory/route.ts). Leave false in production.
@@ -655,11 +655,11 @@ services:
     expose:
       - "3000"
     depends_on:
-      grid-migrate:
+      migrate:
         condition: service_completed_successfully
       # A rejected `document.generated` unfiles the document it was about, so
       # the schemas are reconciled before this container serves.
-      grid-audit-schemas:
+      audit-schemas:
         condition: service_completed_successfully
       chat:
         condition: service_healthy
@@ -719,7 +719,7 @@ services:
     # 10 s would kill it first.
     stop_grace_period: 60s
     depends_on:
-      grid-migrate:
+      migrate:
         condition: service_completed_successfully
       api:
         condition: service_healthy
@@ -739,9 +739,9 @@ services:
   # --apply`, which only adds). Then the folder-grants carry-over (ADR-0097),
   # which is a no-op once it has run. After the frontend is healthy, because
   # the carry-over must not run while the old dialog can still narrow a list.
-  # No key, no WorkOS, exit 0, as for grid-audit-schemas. Bundled by the image
+  # No key, no WorkOS, exit 0, as for audit-schemas. Bundled by the image
   # build: the runtime keeps neither bun nor tsx.
-  grid-workos-authz:
+  workos-authz:
     build:
       context: ./frontends/ui
       dockerfile: deploy/Dockerfile
@@ -791,7 +791,7 @@ services:
     depends_on:
       # Reaches Postgres directly rather than through the frontend, so it needs
       # the migration to have finished on its own account.
-      grid-migrate:
+      migrate:
         condition: service_completed_successfully
       postgres:
         condition: service_healthy
