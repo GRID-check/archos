@@ -1,0 +1,7 @@
+---
+fixes:
+  - >
+    For people who work in more than one office, the top bar above the
+    projects filled the whole window and hid the page. The bar is back to its
+    normal height, and switching offices now lives in the menu behind your
+    picture.

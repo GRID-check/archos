@@ -44,7 +44,12 @@ deciding whether your forces still hold, and cannot do that from adjectives.
 
 ## Considered Options
 
-<!-- Name them all here, including "do nothing" when it was a real candidate. -->
+<!--
+Name them all here, including "do nothing" when it was a real candidate.
+A rejected option names the premise its rejection rests on ("rejected because
+the tool materialises every document per grep", not "rejected: too costly"),
+so a later reader can re-check the premise instead of re-arguing the option.
+-->
 
 *
 *
@@ -75,7 +80,17 @@ review is the only gate", and open the gap under More Information. An honest
 
 ## Pros and Cons of the Options
 
-<!-- One subsection per option that deserves the space. Delete the section for a decision with one obvious winner. -->
+<!--
+One subsection per option that deserves the space. Delete the section for a
+decision with one obvious winner.
+
+Each "Bad, because" that rules an option out states its premise as a fact that
+can turn false: a version, a measurement, a property of one tool, a constraint
+that holds today. ADR-0046 rejected SkillsMiddleware for request-driven forcing
+the code later removed; ADR-0127 rejected a shell over a projection for reasons
+that were properties of `just-bash`, not of the idea. Both were re-checked in
+ADR-0133 only because the premise was written down.
+-->
 
 ###
 

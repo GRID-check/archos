@@ -62,9 +62,8 @@ research call's input ([turns audit](turns-per-answer-audit-2026-09.md)).
 | `canvas__room`, `canvas__point`, `canvas__highlight`, `canvas__marks`, `canvas__mark`, `canvas__update`, `canvas__delete`, `canvas__reply` | The review canvas, one NAT function group (looking is `look`, below): who is in the document and where, point and highlight for everyone, read Anmerkungen, propose one (a person takes it over) or, with `open=true`, set one the person asked for, change one (status, assignee, date, kind, text, with a required `note` posted in its thread) or delete one when the person asks, answer in a thread. Each takes an optional `document`; the default is the document open on the canvas, then the conversation's subject | 217 / 161 / 184 / 216 / 140 / 578 / 303 / 141 / 187 (2,127) | `src/aiq_agent/tools/canvas/register.py` |
 | `workspace__search`, `workspace__describe`, `workspace__call`, `workspace__report_missing` | Piloti as a client of its own MCP server (ADR-0122), the same four meta-tools an external agent gets in `search` mode: find an operation, read its schema, call it as the asker (a write comes back as a proposal), or report a missing operation. Four tools instead of the hundreds of operations behind them. Each call echoes the turn's envelope. English since October 2026, like everything an agent reads | ~200 / ~120 / ~160 / ~105 (~585, estimated from length after the English rewrite, not re-measured) | `src/aiq_agent/tools/workspace/register.py` |
 | `look` | Shows a page, a region of it or an embedded image to the model, in every context (ADR-0128) | 300 | `src/aiq_agent/tools/look/register.py` (renderer `sources/knowledge_layer/src/view_image.py`) |
-| `ls`, `read_file`, `write_file`, `edit_file` | Draft working directory (DeepAgents stock) | 131 / 226 / 244 / 312 | `src/aiq_agent/tools/documents/tools.py` |
+| `ls`, `read_file`, `write_file`, `edit_file` | Draft working directory (DeepAgents stock); `read_file` also reads the turn's skills under `/skills/` (ADR-0135), and a turn without a conversation gets `read_file` alone for them | 131 / 226 / 244 / 312 (`read_file` ~60 more with skills, not re-measured) | `src/aiq_agent/tools/documents/tools.py` |
 | `file_draft` | Files a draft; `submit=True` sends it for review | 190 | `src/aiq_agent/tools/documents/register.py` |
-| `use_skill` | Loads a skill body | 60 | `src/aiq_agent/skills/runtime.py` |
 | web search, advanced web search | Tavily | ~400 together | `sources/tavily_web_search/src/register.py` |
 
 The `ifc_*` pair is 8.65k of the 17.3k (the turns audit measured ~8.2k).
@@ -113,6 +112,18 @@ server's `dryRun` is ([servers][mcp-fs]).
   "at least" and adds one facet over `file_name` (`store.facet_counts`) under the same
   word filter: per file, the passages that hold the words, an upper bound beside the
   counted lower bound.
+  A count is one per place in the document, not per stored chunk
+  (`sources/knowledge_layer/src/chunk_positions.py`). The heading breadcrumb a section
+  or Punkt chunk opens with (`A › B`, the Richtlinie's label, a table caption repeated
+  on every part) is never matched; a section's own heading, which the breadcrumb is the
+  only copy of, counts once, on the section's first part. A match inside the overlap a
+  chunk repeats from its predecessor (`chunk_ordinal − 1` among the returned chunks) is
+  the predecessor's, and a chunk left without a match of its own is no passage. The
+  context lines, the distinct strings of a regex and the Herleitung row's hits and
+  documents are counted the same way. A point without `chunk_ordinal` is matched
+  against the ordinal-less chunks of its own page and otherwise counts as stored. A
+  capped scan whose passages held the words only in breadcrumbs or overlaps says it is
+  not a no.
 - `list_files` replaces the 50-row prompt inventory as the way to see a
   project. It is uncapped and paged, facets by folder, name, `doc_class` and
   date, and lists in-flight files. It drops the shelves the turn did not ask for,
@@ -191,7 +202,7 @@ LLM events for 30 days, so there is no per-tool usage or error rate.
 | 1 | Project-file eval fixture with `expect.tools` (`must`, `must_not`, `max_research_calls`) | 2 of 29 loop-eval rows are own-file, both skipped; `Run.tool_calls` is already recorded | `tests/fixtures/derivation/loop_eval_questions.yaml`, `scripts/turn_census/suite.py`, `frontends/benchmarks/oib_retrieval` | S–M | ~20 `pf-*` rows: pass rate, research calls, `status:repeat`/`width`/`budget` = 0 |
 | 2 | Bind `ifc_*` only when the project has a readable model | −8.2k tokens and a distractor; outside that scope both return "no model" | `src/aiq_agent/agents/piloti/register.py` (`_tools_in_scope`), BFF project context | S–M | Input tokens per call by scope; model questions in the answer suite; a model uploaded mid-conversation binds next turn |
 | 3 | Prefetch the IFC `briefing` in round 0 | `modell` prefetches nothing while the tool says "CALL 'briefing' FIRST"; a taught sequence is an incomplete contract ([ADR-0060](../adr/0060-three-instruction-layers-and-tools-that-answer.md)); OpenAI: combine sequential calls | `src/aiq_agent/agents/piloti/decisions.py`, `src/aiq_agent/tools/bim/measure_register.py` | S–M | Rounds on model questions |
-| 4 | Read page ranges (built: `pages`, `cursor`), and whole documents under ~15–25k tokens | A printed page ≠ stored page cost two extra rounds; Claude Code `Read(pages)`; long context beats RAG when affordable ([Li et al.][li-2024], [contextual retrieval][a-cr]) | `sources/knowledge_layer/src/read_passage.py`, a per-page store at ingest | M | Rounds and truncation on outline and page rows |
+| 4 | Read page ranges (built: `pages`, `cursor`), and whole documents under ~15–25k tokens | A printed page ≠ stored page cost two extra rounds; Claude Code `Read(pages)`; long context beats RAG when affordable ([Li et al.][li-2024], [contextual retrieval][a-cr]) | `sources/knowledge_layer/src/read_passage.py`, a per-page store at ingest, decided in [ADR-0134](../adr/0134-extracted-page-text-is-stored-per-version.md) and read through `read_file` ([`agent-filesystem.md`](agent-filesystem.md)) | M | Rounds and truncation on outline and page rows |
 | 5 | Truncation notes that name the next call | Grounding hits end in a bare `[truncated]` (`src/aiq_agent/common/grounding_block.py`), BIM lists say "N weitere" (`src/aiq_agent/tools/bim/rendering.py`); `list_files` already names `offset=` | those two, `sources/ris_adapter/src/lookup/grammar.py` | S | Re-fetches of the same document per turn |
 | 6 | Count argument rejections per tool, then `Literal` enums for fixed-value parameters | `is_argument_rejection` only sets a log level (`src/aiq_agent/common/callbacks.py`); NAT drops `Args:`; OpenAI: enums | `src/aiq_agent/common/callbacks.py`, tool input models | S, then M | `status:tool_rejected:<tool>`; schema work above ~2 % |
 | 7 | New `propose_file_change` operations: folder rename/move/delete, retag, archive with warning. **PD** for archive | Routes exist (§4); the BFF stays the single writer | `src/aiq_agent/tools/files/`, UI card executor | S each | Card accept rate; tidy-up fixture rows |

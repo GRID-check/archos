@@ -59,3 +59,17 @@ def test_every_field_a_filter_names_has_an_index_and_the_lists_are_lists():
         assert field in schema.KEYWORD_FIELDS
     assert "pages_not_read" in schema.INTEGER_FIELDS
     assert {"references", "dossier_facts", "parties"} <= LIST_FIELDS
+
+
+def test_a_hit_keeps_its_document_id_so_grouping_and_the_bff_join_by_it():
+    from types import SimpleNamespace
+
+    from knowledge_layer.document_groups import document_key
+    from knowledge_layer.qdrant.payload import chunk_metadata
+
+    metadata = chunk_metadata(
+        {"grid_document_id": "doc-1", "office_id": "org-1", "project_id": "p-1", "file_name": "a.pdf"}
+    )
+
+    assert metadata == {"grid_document_id": "doc-1", "file_name": "a.pdf"}
+    assert document_key(SimpleNamespace(metadata=metadata, file_name="a.pdf")) == ("id", "doc-1")

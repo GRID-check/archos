@@ -234,10 +234,24 @@ class TestRetrieval:
 
     def test_loading_a_skill_is_not_a_retrieval(self, steps) -> None:
         """The skills substrate narrates that itself, with the skill's human title."""
-        turn_status.emit_retrieval([{"name": "use_skill", "args": {"skill_name": "x"}}], round_index=0)
+        read = {"name": "read_file", "args": {"file_path": "/skills/office/x/SKILL.md", "limit": 1000}}
+        turn_status.emit_retrieval([read], round_index=0)
         turn_status.emit_retrieval([], round_index=1)
         turn_status.emit_retrieval(None, round_index=2)
         assert steps == []
+
+    def test_a_draft_read_is_still_narrated_as_one(self, steps) -> None:
+        turn_status.emit_retrieval([{"name": "read_file", "args": {"file_path": "/drafts/a.md"}}], round_index=0)
+        assert _live(steps)[0].key == "status.action.draftRead"
+
+    def test_the_skills_root_is_the_skills_packages(self) -> None:
+        """Spelled out in turn_status because the skills package imports it; the two must agree."""
+        from aiq_agent.skills import SKILLS_ROOT
+
+        assert turn_status.SKILLS_ROOT == SKILLS_ROOT
+        assert turn_status.is_skill_read({"name": "read_file", "args": {"file_path": f"{SKILLS_ROOT}o/x/SKILL.md"}})
+        assert not turn_status.is_skill_read({"name": "read_file", "args": {"file_path": "/drafts/x.md"}})
+        assert not turn_status.is_skill_read({"name": "ls", "args": {"path": SKILLS_ROOT}})
 
     def test_an_interaction_tool_says_what_it_does(self, steps) -> None:
         turn_status.emit_retrieval([{"name": "remember", "args": {"text": "Dachneigung 30°"}}], round_index=0)
@@ -1015,7 +1029,7 @@ class TestFetchSignature:
 
     def test_every_other_tool_is_never_guarded(self) -> None:
         """Two cards are two cards; two measurements are not the same bytes."""
-        for name in ("emit_card", "remember", "ris_search_tool", "web_search_tool", "ifc_measure", "use_skill"):
+        for name in ("emit_card", "remember", "ris_search_tool", "web_search_tool", "ifc_measure", "read_file"):
             assert turn_status.fetch_signature({"name": name, "args": {"query": "q"}}) is None
 
     def test_a_call_it_cannot_read_is_not_signed(self) -> None:

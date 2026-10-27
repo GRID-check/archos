@@ -684,11 +684,11 @@ task be:eval:answer-suite -- --set workspace --out /tmp/ws/after --baseline /tmp
 
 **The files set** (`-- --set files --arm search|navigate|both`, ADR-0127) asks about
 a project's own files: what is in a folder, where a document is, how many, what a
-page range says, every occurrence of a word. About 20 `pf-*` rows
+page range says, every occurrence of a word and how often it stands. About 20 `pf-*` rows
 (`tests/fixtures/files_eval/files_questions.yaml`, whose header says what each check
 means) run through the real `list_files`, `knowledge_search` and `read_passage` in a
 fixture project (`tests/fixtures/files_eval/project.yaml`, the intake eval's project
-grown to nested folders, a 14-page report and a letter). Each row states
+grown to nested folders, a 14-page report, a meeting protocol and a letter). Each row states
 `expect.tools`, the move that fits it, and the report gives pass rate, rounds,
 tokens, seconds, the moves each row made and the `status:budget|repeat|width`
 counts. A row with `needs:` waits for a tool argument a later slice adds and is
@@ -701,14 +701,14 @@ The arms measure each way of finding alone: `search` unbinds `list_files` and
 today's behaviour. Run each arm with `--runs 3`, as the judge rows are noisy.
 
 The project has to exist where the tools read it. The suite seeds it itself
-(`scripts/turn_census/fixture_files.py`: one chunk per page into the Qdrant at
-`AIQ_QDRANT_URL`, the documents into the metadata store at `AIQ_SUMMARY_DB`, which
-must be a database URL). Seeding is idempotent and embeds only what changed; it
-needs the deployment's embedding key. Reseed after editing `project.yaml` by
-running the suite again. Because the seed bypasses the chunker, the files set
-does not see a change to how a Markdown, text or CSV file is cut into sections;
-for that, ingest a file for real and ask by hand, or add a case to the
-chunker's own specs.
+(`scripts/turn_census/fixture_files.py`: each file cut by the ingest job's own
+chunkers, `adapter.text_chunks_for_pages`, into the Qdrant at `AIQ_QDRANT_URL`, the
+documents into the metadata store at `AIQ_SUMMARY_DB`, which must be a database URL).
+The cut matters: a section chunk repeats its heading breadcrumb and overlaps its
+neighbour, and the `pf-count-*` rows ask for counts that are wrong when either is
+counted. Seeding is idempotent and embeds only what changed; a file cut another way
+before loses its stale points. It needs the deployment's embedding key. Reseed after
+editing `project.yaml` by running the suite again.
 
 ```bash
 task be:eval:answer-suite -- --set files --arm both --runs 3 --out /tmp/pf/both

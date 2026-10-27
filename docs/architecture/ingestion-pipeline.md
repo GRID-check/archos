@@ -159,7 +159,8 @@ A 429 or a timeout inside a vision call is retried in place (A:2274). A file who
 read failed for a passing reason (`transient`: an interruption, a timeout, a download
 or provider error) is sent back by the background-work sweep
 (`frontends/ui/src/lib/documents/transient-retry.ts`): at `bulk` priority, at most
-three attempts in all, 5 minutes after the first failure and doubling. Every other
+three attempts in all, 5 minutes after the first failure and doubling, and only for a
+failure of the last 24 hours, so a deploy never re-reads an old backlog. Every other
 failure waits for a person or the `reingest_failed` job.
 
 ## 4. Where the time goes

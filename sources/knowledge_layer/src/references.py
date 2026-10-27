@@ -222,15 +222,16 @@ def reference_keys_for(text: str) -> list[tuple[str, str]]:
     """``(kind, key)`` pairs a search for documents referring to ``text`` matches. Pure.
 
     ``text`` is what a person or the model names: "ÖNORM B 1600", "§ 33 BayBO",
-    "EP-05", "Brandschutzkonzept". A norm or a law is read with the same patterns as
-    the documents; a document word maps to its type; anything else is taken as a plan
-    number, which is how a sheet is named. Several readings may match ("Lageplan" is
-    a document type, never a plan number), so every one found is returned.
+    "EP-05", "Plan Nr. EP-05", "Brandschutzkonzept". A norm, a law or a plan with its
+    designator or pointing word is read with the same patterns as the documents; a
+    document word maps to its type; anything else is taken as a bare plan number,
+    which is how a sheet is named. Several readings may match ("Lageplan" is a
+    document type, never a plan number), so every one found is returned.
     """
     text = " ".join((text or "").split())
     if not text:
         return []
-    found = [(kind, key) for kind, key, _ in _found(text) if kind in ("norm", "law")]
+    found = [(kind, key) for kind, key, _ in _found(text) if kind in ("norm", "law", "plan")]
     document_type = _document_type(text)
     if document_type:
         found.append(("document", document_type))

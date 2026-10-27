@@ -17,6 +17,9 @@ MAX_CHUNKS = 4096
 def read_pages(collection: str, file_name: str) -> list[tuple[Any, str]] | None:
     """``(page_label, chunk text)`` of one file in reading order, or None when the collection or file has none.
 
+    The text is the document's (:func:`own_page_texts`): a chunk's breadcrumb and the overlap it
+    repeats are left out, so a reader of the pages reads each sentence once.
+
     Raises when the store cannot be read: an outage is not evidence that a
     file has no chunks, so it never reads as None (``read_passage`` does the same).
 
@@ -27,7 +30,34 @@ def read_pages(collection: str, file_name: str) -> list[tuple[Any, str]] | None:
     are random.
     """
     hits = _document_hits(collection, file_name)
-    return [(hit.payload.get("page_label"), hit.text) for hit in hits if hit.text] or None
+    return [(hit.payload.get("page_label"), text) for hit, text in zip(hits, own_page_texts(hits)) if text] or None
+
+
+def own_page_texts(hits: list[Any]) -> list[str]:
+    """Each hit's text as the document reads there: no breadcrumb, no overlap repeated from the chunk before.
+
+    A section or Punkt chunk opens with its heading breadcrumb and repeats about 96 tokens of its
+    predecessor (``knowledge_layer.chunk_positions``); read back as stored, every ancestor heading
+    stood before every chunk and the overlap twice. The section's own heading stays, once, at the
+    head of its first part. ``hits`` are one file's, in reading order; a point without
+    ``chunk_ordinal`` keeps its overlap unless a chunk of its own page holds it.
+    """
+    from types import SimpleNamespace
+
+    from knowledge_layer.chunk_positions import own_texts
+
+    views = [
+        SimpleNamespace(
+            chunk_id=str(getattr(hit, "chunk_id", "") or ""),
+            content=hit.text or "",
+            metadata=hit.payload or {},
+            file_name=(hit.payload or {}).get("file_name"),
+            content_type=(hit.payload or {}).get("content_type"),
+            page_number=(hit.payload or {}).get("page_label"),
+        )
+        for hit in hits
+    ]
+    return [(own.text[: own.repeat_start] + own.text[own.repeat_end :].lstrip()).strip() for own in own_texts(views)]
 
 
 def read_chunks(collection: str, file_name: str) -> list[tuple[str, dict[str, Any]]] | None:
