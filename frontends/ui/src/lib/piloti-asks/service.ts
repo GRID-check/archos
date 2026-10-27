@@ -13,7 +13,7 @@
  *    ask's id, which is also the turn id and the A2A task id.
  * 3. The turn context for that session and thread (`resolveTurnContext`),
  *    which refuses a spent budget, and the chat socket, opened as an internal
- *    caller with the signed envelope and `X-Grid-Mode: headless`.
+ *    caller with the signed envelope and `X-Chat-Mode: headless`.
  * 4. A wait of up to {@link ASK_WAIT_SECONDS}: the chat socket reports the
  *    turn's end to `/api/internal/turns/outcome` (`recordAskOutcome`), on
  *    whichever replica, and this polls the row. Past the wait the caller gets

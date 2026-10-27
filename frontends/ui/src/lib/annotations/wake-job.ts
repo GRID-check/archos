@@ -15,7 +15,7 @@
  * 6. The turn context for their pinned session and that thread
  *    (`resolveTurnContext`), which refuses a spent budget.
  * 7. The chat socket, opened as an internal caller with the signed envelope
- *    (the thread inside it) and `X-Grid-Mode: headless`
+ *    (the thread inside it) and `X-Chat-Mode: headless`
  *    (`lib/turns/headless-turn.ts`), and one `user_message` with `trigger`,
  *    `if_idle`, the mark's region and `reply_in_thread`.
  *

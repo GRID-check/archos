@@ -71,7 +71,7 @@ domain, because an ask is a conversation.
    A2A task id.
 4. `resolveTurnContext` for that session and thread, which refuses a spent
    budget, then `runHeadlessTurn` (ADR-0106): the chat socket opened as an
-   internal caller with the signed envelope and `X-Grid-Mode: headless`, one
+   internal caller with the signed envelope and `X-Chat-Mode: headless`, one
    `user_message` with `trigger: { kind: 'agent_consult', event_id: <ask id> }`
    and `if_idle`.
 5. The chat socket posts every headless turn's outcome to

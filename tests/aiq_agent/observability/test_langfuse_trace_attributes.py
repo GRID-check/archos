@@ -29,9 +29,7 @@ ENDPOINT = "http://otel-collector:4318/v1/traces"
 
 
 def _make_config() -> OtelCollectorRedactionTelemetryExporter:
-    return OtelCollectorRedactionTelemetryExporter(
-        _type="otelcollector_redaction", project="grid-backend-chat", endpoint=ENDPOINT
-    )
+    return OtelCollectorRedactionTelemetryExporter(_type="otelcollector_redaction", project="chat", endpoint=ENDPOINT)
 
 
 class TestAttributeMapping:
@@ -222,7 +220,7 @@ class TestPipelineWiring:
 
         config = OtelCollectorRedactionTelemetryExporter(
             _type="otelcollector_redaction",
-            project="grid-backend-chat",
+            project="chat",
             endpoint=ENDPOINT,
             redaction_enabled=True,
             force_redaction=True,

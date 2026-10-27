@@ -54,7 +54,7 @@ Chosen option: 2.
 * The turn runs as the person whose act is the event, in that person's own
   thread about the document, and answers where it was addressed.
 * The BFF enqueues the wake in the same transaction as the event, runs it over
-  the existing chat socket with a signed envelope (`x-grid-mode: headless`),
+  the existing chat socket with a signed envelope (`x-chat-mode: headless`),
   with `trigger` and `if_idle` on the message: a running turn is never
   superseded, and `ask_user` refuses on a headless turn.
 * Guards: Piloti's own writes never wake it; only people who can edit the mark

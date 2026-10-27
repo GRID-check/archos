@@ -5,7 +5,7 @@
  * The same store-free driver the canvas uses (`createTurnSocket`), over Node's
  * `ws`, which can set the upgrade's headers a browser cannot: the signed
  * `X-Grid-Request-Context` envelope (with the conversation, or the canvas
- * tools have no subject) and `X-Grid-Mode: headless`, which marks the caller
+ * tools have no subject) and `X-Chat-Mode: headless`, which marks the caller
  * headless so the clarifier is skipped and `ask_user` refuses instead of
  * waiting thirty minutes on a socket nobody reads.
  *

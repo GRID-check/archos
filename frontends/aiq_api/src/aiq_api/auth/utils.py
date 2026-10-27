@@ -90,28 +90,39 @@ def _load_trace_client_ip_headers() -> list[str]:
     return [header.strip().lower() for header in raw.split(",") if header.strip()]
 
 
-#: The prefix of our request headers, and the one they had before ADR-0145 (row 10b).
-#: The BFF and the backend deploy separately, so for one release a header is read
-#: under either; the BFF sends both meanwhile.
-HEADER_PREFIX = "x-grid-"
-LEGACY_HEADER_PREFIX = "x-aiq-"
+#: Our request headers, by meaning: the legacy name each had before ADR-0145
+#: (row 10b) is read too for one release, because the BFF and the backend deploy
+#: separately. The BFF sends both meanwhile.
+HEADERS = {"mode": ("x-chat-mode", "x-aiq-mode"), "access-channel": ("x-access-channel", "x-aiq-access-channel")}
 
-#: The prefix of our span attributes, and the one saved trace views filtered on
-#: before ADR-0145. For one release every attribute is written under both.
-TRACE_TAG_PREFIX = "grid."
+#: The span attributes this middleware writes. Saved trace views filtered on them
+#: under the ``aiq.`` prefix before ADR-0145, so for one release each is written
+#: under that name too.
+TRACE_TAG_KEYS = frozenset(
+    {
+        "user.id",
+        "user.email",
+        "user.name",
+        "auth.type",
+        "auth.transport",
+        "auth.verified",
+        "caller.type",
+        "access.channel",
+        "client.id",
+    }
+)
 LEGACY_TRACE_TAG_PREFIX = "aiq."
 
 
-def _grid_header(headers: dict[bytes, bytes], name: str) -> str | None:
-    """The ``x-grid-<name>`` header's text, else the legacy ``x-aiq-<name>``'s."""
-    return _extract_header_text(headers, HEADER_PREFIX + name) or _extract_header_text(
-        headers, LEGACY_HEADER_PREFIX + name
-    )
+def _header(headers: dict[bytes, bytes], meaning: str) -> str | None:
+    """The header ``meaning`` names, under its name or else its legacy one."""
+    name, legacy = HEADERS[meaning]
+    return _extract_header_text(headers, name) or _extract_header_text(headers, legacy)
 
 
 def is_headless_request(headers: dict[bytes, bytes]) -> bool:
     """Return ``True`` for headless callers that should skip the clarifier."""
-    return (_grid_header(headers, "mode") or "").lower() == "headless"
+    return (_header(headers, "mode") or "").lower() == "headless"
 
 
 def _build_pseudonymous_trace_user_id(principal_type: str, principal_sub: str, secret: str | None) -> str | None:
@@ -176,13 +187,13 @@ def _extract_explicit_access_channel(headers: dict[bytes, bytes], *, allow_overr
     if not allow_override:
         return None
 
-    value = _grid_header(headers, "access-channel")
+    value = _header(headers, "access-channel")
     if not value:
         return None
     channel = value.lower()
     if channel in TRACE_ACCESS_CHANNELS:
         return channel
-    logger.warning("Ignoring unsupported X-Grid-Access-Channel=%r", value)
+    logger.warning("Ignoring unsupported X-Access-Channel=%r", value)
     return None
 
 
@@ -240,14 +251,14 @@ def _build_trace_user_tags(user: dict[str, Any], mode: str, secret: str | None) 
 
     tags = {
         "enduser.id": pseudonymous_id,
-        "grid.user.id": pseudonymous_id,
-        "grid.auth.type": str(principal_type),
+        "user.id": pseudonymous_id,
+        "auth.type": str(principal_type),
     }
     if mode == "full":
         if email := user.get("email"):
-            tags["grid.user.email"] = str(email)
+            tags["user.email"] = str(email)
         if name := user.get("name"):
-            tags["grid.user.name"] = str(name)
+            tags["user.name"] = str(name)
     return tags
 
 
@@ -264,10 +275,10 @@ def _build_common_trace_tags(
     """Return always-on low-risk trace tags describing request origin and auth shape."""
     auth_transport = _extract_auth_transport(headers)
     tags = {
-        "grid.caller.type": str(user.get("type") or "unknown"),
-        "grid.auth.transport": auth_transport,
-        "grid.auth.verified": "true" if _is_verified_trace_user(user) else "false",
-        "grid.access.channel": _infer_access_channel(
+        "caller.type": str(user.get("type") or "unknown"),
+        "auth.transport": auth_transport,
+        "auth.verified": "true" if _is_verified_trace_user(user) else "false",
+        "access.channel": _infer_access_channel(
             headers,
             user,
             auth_transport,
@@ -279,7 +290,7 @@ def _build_common_trace_tags(
         client_ip = _extract_client_ip(headers, scope, client_ip_headers)
         client_id = _build_pseudonymous_trace_client_id(client_ip or "", client_id_secret)
         if client_id:
-            tags["grid.client.id"] = client_id
+            tags["client.id"] = client_id
 
     return tags
 
@@ -345,11 +356,7 @@ def build_request_trace_tags(
         client_ip_headers=client_ip_headers,
     )
     tags.update(_build_trace_user_tags(user, user_identity_mode, user_identity_secret))
-    legacy = {
-        LEGACY_TRACE_TAG_PREFIX + key.removeprefix(TRACE_TAG_PREFIX): value
-        for key, value in tags.items()
-        if key.startswith(TRACE_TAG_PREFIX)
-    }
+    legacy = {LEGACY_TRACE_TAG_PREFIX + key: value for key, value in tags.items() if key in TRACE_TAG_KEYS}
     return {**tags, **legacy}
 
 

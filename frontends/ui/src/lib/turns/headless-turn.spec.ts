@@ -59,7 +59,7 @@ const run = (server: ReturnType<typeof fakeServer>, extra: { detachAfterMs?: num
   runHeadlessTurn({
     url: 'ws://aiq-agent:8000/websocket',
     conversationId: 's_thread',
-    headers: { 'x-grid-mode': 'headless' },
+    headers: { 'x-chat-mode': 'headless' },
     message: MESSAGE,
     requires: REQUIRES,
     createSocket: server.createSocket,
@@ -134,7 +134,7 @@ const cancel = (server: ReturnType<typeof fakeServer>, extra: { graceMs?: number
     url: 'ws://aiq-agent:8000/websocket',
     conversationId: 's_thread',
     turnId: 'turn-1',
-    headers: { 'x-grid-mode': 'headless' },
+    headers: { 'x-chat-mode': 'headless' },
     createSocket: server.createSocket,
     graceMs: extra.graceMs ?? 5,
   })

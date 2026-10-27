@@ -30,8 +30,8 @@ from aiq_api.auth.errors import AuthError
 
 
 def _with_legacy_tags(tags: dict[str, str]) -> dict[str, str]:
-    """``tags`` plus each ``grid.*`` one again under ``aiq.*``, written beside it for one release (ADR-0145)."""
-    return {**tags, **{"aiq." + k.removeprefix("grid."): v for k, v in tags.items() if k.startswith("grid.")}}
+    """``tags`` plus each of the middleware's own again under ``aiq.*``, for one release (ADR-0145)."""
+    return {**tags, **{"aiq." + k: v for k, v in tags.items() if k != "enduser.id"}}
 
 
 # ---------------------------------------------------------------------------
@@ -371,7 +371,7 @@ class TestAuthMiddlewareAuthFlow:
             host=external_host,
             extra_headers=[
                 (b"authorization", b"Bearer good"),
-                (b"x-grid-mode", b"headless"),
+                (b"x-chat-mode", b"headless"),
             ],
         )
         await mw(scope, AsyncMock(), send)
@@ -520,14 +520,14 @@ class TestAuthMiddlewareInternal:
         assert span_tags == _with_legacy_tags(
             {
                 "enduser.id": expected_id,
-                "grid.user.id": expected_id,
-                "grid.auth.type": "oidc",
-                "grid.user.email": "alice@example.com",
-                "grid.user.name": "Alice",
-                "grid.caller.type": "oidc",
-                "grid.auth.transport": "bearer",
-                "grid.auth.verified": "true",
-                "grid.access.channel": "api",
+                "user.id": expected_id,
+                "auth.type": "oidc",
+                "user.email": "alice@example.com",
+                "user.name": "Alice",
+                "caller.type": "oidc",
+                "auth.transport": "bearer",
+                "auth.verified": "true",
+                "access.channel": "api",
             }
         )
 
@@ -577,12 +577,12 @@ class TestAuthMiddlewareInternal:
         assert span_attributes == _with_legacy_tags(
             {
                 "enduser.id": expected_id,
-                "grid.user.id": expected_id,
-                "grid.auth.type": "service",
-                "grid.caller.type": "service",
-                "grid.auth.transport": "bearer",
-                "grid.auth.verified": "true",
-                "grid.access.channel": "api",
+                "user.id": expected_id,
+                "auth.type": "service",
+                "caller.type": "service",
+                "auth.transport": "bearer",
+                "auth.verified": "true",
+                "access.channel": "api",
             }
         )
 
@@ -622,10 +622,10 @@ class TestAuthMiddlewareInternal:
 
         assert span_tags == _with_legacy_tags(
             {
-                "grid.caller.type": "oidc",
-                "grid.auth.transport": "bearer",
-                "grid.auth.verified": "true",
-                "grid.access.channel": "api",
+                "caller.type": "oidc",
+                "auth.transport": "bearer",
+                "auth.verified": "true",
+                "access.channel": "api",
             }
         )
 
@@ -665,10 +665,10 @@ class TestAuthMiddlewareInternal:
 
         assert span_tags == _with_legacy_tags(
             {
-                "grid.caller.type": "oidc",
-                "grid.auth.transport": "bearer",
-                "grid.auth.verified": "true",
-                "grid.access.channel": "api",
+                "caller.type": "oidc",
+                "auth.transport": "bearer",
+                "auth.verified": "true",
+                "access.channel": "api",
             }
         )
 
@@ -708,10 +708,10 @@ class TestAuthMiddlewareInternal:
 
         assert span_tags == _with_legacy_tags(
             {
-                "grid.caller.type": "oidc",
-                "grid.auth.transport": "bearer",
-                "grid.auth.verified": "true",
-                "grid.access.channel": "api",
+                "caller.type": "oidc",
+                "auth.transport": "bearer",
+                "auth.verified": "true",
+                "access.channel": "api",
             }
         )
 
@@ -753,7 +753,7 @@ class TestAuthMiddlewareInternal:
             mw = AuthMiddleware(app, validators=[mock_v], require_auth=True, external_hostnames=set())
             await mw(scope, AsyncMock(), send)
 
-        assert span_tags["grid.access.channel"] == "headless"
+        assert span_tags["access.channel"] == "headless"
 
     @pytest.mark.asyncio
     async def test_explicit_access_channel_ignored_for_external_anonymous_request(self, capture_asgi, external_host):
@@ -786,7 +786,7 @@ class TestAuthMiddlewareInternal:
             mw = AuthMiddleware(app, validators=[], require_auth=False, external_hostnames={external_host.decode()})
             await mw(scope, AsyncMock(), send)
 
-        assert span_tags["grid.access.channel"] == "anonymous"
+        assert span_tags["access.channel"] == "anonymous"
 
     @pytest.mark.asyncio
     async def test_client_ip_mode_adds_pseudonymous_client_id(self, capture_asgi):
@@ -830,11 +830,11 @@ class TestAuthMiddlewareInternal:
         expected_client_id = middleware_module._build_pseudonymous_trace_client_id("203.0.113.10", "client-secret")
         assert span_tags == _with_legacy_tags(
             {
-                "grid.caller.type": "anonymous",
-                "grid.auth.transport": "none",
-                "grid.auth.verified": "false",
-                "grid.access.channel": "anonymous",
-                "grid.client.id": expected_client_id,
+                "caller.type": "anonymous",
+                "auth.transport": "none",
+                "auth.verified": "false",
+                "access.channel": "anonymous",
+                "client.id": expected_client_id,
             }
         )
 
@@ -877,10 +877,10 @@ class TestAuthMiddlewareInternal:
 
         assert span_tags == _with_legacy_tags(
             {
-                "grid.caller.type": "unverified_jwt",
-                "grid.auth.transport": "bearer",
-                "grid.auth.verified": "false",
-                "grid.access.channel": "api",
+                "caller.type": "unverified_jwt",
+                "auth.transport": "bearer",
+                "auth.verified": "false",
+                "access.channel": "api",
             }
         )
 

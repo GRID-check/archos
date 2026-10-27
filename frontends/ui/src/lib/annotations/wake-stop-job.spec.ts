@@ -58,7 +58,7 @@ describe('runPilotiWakeStop', () => {
     expect(cancelHeadlessTurn).toHaveBeenCalledTimes(1)
     const request = sentRequest()
     expect(request).toMatchObject({ url: 'ws://aiq-agent:8000/websocket', conversationId: THREAD, turnId: WAKE_ID })
-    expect(request.headers['x-grid-mode']).toBe('headless')
+    expect(request.headers['x-chat-mode']).toBe('headless')
     expect(request.headers['x-aiq-mode']).toBe('headless')
     expect(request.headers['x-grid-user-id']).toBe('user_anna')
     expect(request.headers).not.toHaveProperty('authorization')

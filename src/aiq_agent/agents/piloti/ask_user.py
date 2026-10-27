@@ -256,7 +256,7 @@ async def _prompt_user(manager: Any, question: str, labels: list[str]) -> Any:
         raise _Undeliverable("The question could not be delivered.") from exc
 
 
-#: What the model is told on a turn an event woke (``X-Grid-Mode: headless``):
+#: What the model is told on a turn an event woke (``X-Chat-Mode: headless``):
 #: nobody holds the socket, so a prompt would wait out its thirty minutes. The
 #: question belongs where the event happened, in the thread.
 _HEADLESS = (

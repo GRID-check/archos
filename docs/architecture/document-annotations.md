@@ -856,7 +856,7 @@ right to write the document, the mark, the caps. It writes the trigger into the
 person's thread as a question row („Anna Berger in Anmerkung 4: „…““), resolves
 the turn context for that session and thread (`lib/turns/turn-context.ts`,
 which refuses a spent budget), and opens the chat socket as an internal caller
-with the signed envelope and `X-Grid-Mode: headless` (`lib/turns/headless-turn.ts`).
+with the signed envelope and `X-Chat-Mode: headless` (`lib/turns/headless-turn.ts`).
 The `user_message` carries `trigger`, `if_idle`, the mark's region with its
 `annotation_id`, and `reply_in_thread`. The contract:
 [`websocket-protocol.md`](../api/websocket-protocol.md#a-turn-an-event-woke-trigger--if_idle).

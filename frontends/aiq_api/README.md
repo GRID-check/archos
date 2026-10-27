@@ -221,20 +221,20 @@ through HTTP requests, WebSocket workflow execution, and async jobs.
 
 Always-on NAT span tags:
 
-- `nat.grid.caller.type`: resolved caller type from the auth middleware
-- `nat.grid.auth.transport`: `bearer`, `cookie`, or `none`
-- `nat.grid.auth.verified`: whether the request resolved to a verified principal
-- `nat.grid.access.channel`: inferred or explicitly supplied access channel
+- `nat.caller.type`: resolved caller type from the auth middleware
+- `nat.auth.transport`: `bearer`, `cookie`, or `none`
+- `nat.auth.verified`: whether the request resolved to a verified principal
+- `nat.access.channel`: inferred or explicitly supplied access channel
 
-For one release every `grid.*` tag is written again under `aiq.*`, its name before
-ADR-0145, so a saved trace view filtering on the old name keeps matching until it
+For one release every one of these tags is also written under `aiq.*`, its old
+name, so a saved trace view filtering on the old name keeps matching until it
 is re-pointed.
 
 Optional user identity tags are controlled by `GRID_TRACE_USER_IDENTITY_MODE`:
 
 - `none`: disable user identity tagging entirely
-- `id`: tag only pseudonymous stable identifiers (`nat.enduser.id`, `nat.grid.user.id`, `nat.grid.auth.type`)
-- `full`: tag pseudonymous identifiers plus `nat.grid.user.email` and `nat.grid.user.name` when present
+- `id`: tag only pseudonymous stable identifiers (`nat.enduser.id`, `nat.user.id`, `nat.auth.type`)
+- `full`: tag pseudonymous identifiers plus `nat.user.email` and `nat.user.name` when present
 
 Only verified principals are tagged. Anonymous, internal, and unverified JWT
 fallback callers are never attached to traces.
@@ -244,7 +244,7 @@ identity tagging is skipped.
 Optional client correlation is controlled by `GRID_TRACE_CLIENT_ID_MODE`:
 
 - `none`: disable client correlation
-- `ip`: add `nat.grid.client.id` as an HMAC-derived pseudonymous identifier from
+- `ip`: add `nat.client.id` as an HMAC-derived pseudonymous identifier from
   the client IP
 
 Set `GRID_TRACE_CLIENT_ID_HMAC_SECRET` when using `ip`. If unset, the middleware
@@ -305,9 +305,9 @@ class MyValidator:
 
 The middleware sets `skip_clarifier=True` for callers that cannot participate in
 interactive back-and-forth (anonymous requests, headless API callers).  Pass the
-`X-Grid-Mode: headless` request header to force this for any authenticated caller.
+`X-Chat-Mode: headless` request header to force this for any authenticated caller.
 For one release the old name, `X-AIQ-Mode`, is read too (and `X-AIQ-Access-Channel`
-beside `X-Grid-Access-Channel`): the BFF and the backend deploy separately.
+beside `X-Access-Channel`): the BFF and the backend deploy separately.
 
 ---
 

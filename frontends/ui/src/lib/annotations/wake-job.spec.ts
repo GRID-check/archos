@@ -175,7 +175,7 @@ describe('a wake that runs', () => {
     await runPilotiWake('org_1', PAYLOAD, NOT_LAST)
 
     const { headers } = sentRequest()
-    expect(headers['x-grid-mode']).toBe('headless')
+    expect(headers['x-chat-mode']).toBe('headless')
     expect(headers['x-aiq-mode']).toBe('headless')
     expect(headers['x-grid-user-id']).toBe('user_anna')
     // No browser cookie and no bearer: the backend reads an internal caller and trusts the envelope.
