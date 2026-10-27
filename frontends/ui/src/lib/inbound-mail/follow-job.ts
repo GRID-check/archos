@@ -166,7 +166,7 @@ export async function followMail(organizationId: string, payload: InboundMailFol
   if (written.kind !== 'written') return waits(written.kind)
   await auditDecisions([written.decision])
   recordFollowDecision(session, work, text, threadId, now)
-  return fileDecided(session, payload, threadId)
+  return fileDecided(session, payload, written.decision.id, threadId)
 }
 
 /** A text this job decided and did not finish filing: filed on that decision, as its decider. */
@@ -181,7 +181,7 @@ async function resumeDecided(
   const session = await followerSession(organizationId, decision.decidedBy, payload)
   // The claim runs out and the claim sweep hands the text back to a person.
   if (!session) return waits('not_waiting')
-  return fileDecided(session, payload, decision.mailThreadId)
+  return fileDecided(session, payload, decision.id, decision.mailThreadId)
 }
 
 /**
@@ -232,18 +232,21 @@ async function endFollow(follow: FollowRow, reason: 'access_lost' | 'document_go
 }
 
 /**
- * Step 5: the filing job's own step, as the follower; what became of the
- * text. An appended text tells the follower (`inbound_mail.appended`); the
+ * Step 5: the filing job's own step, as the follower, on this job's own
+ * decision only (a person who decided the mail's attachments meanwhile files
+ * them in their own run); what became of the text. An appended text tells the follower (`inbound_mail.appended`); the
  * filing step itself settles the project's collapsed rows when the mail ends.
  */
 async function fileDecided(
   session: AuthorizedSession,
   payload: InboundMailFollowPayload,
+  decisionId: string,
   threadId: string | null,
 ): Promise<FollowOutcome> {
   const filed = await runInboundMailFiling(session, {
     projectId: payload.projectId,
     mailIds: [payload.mailId],
+    decisionIds: [decisionId],
     requester: requesterOf(session),
   })
   if (!filed.done) return { kind: 'busy' }

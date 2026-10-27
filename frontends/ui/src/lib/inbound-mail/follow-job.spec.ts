@@ -177,6 +177,8 @@ describe('a reply every condition of D31 holds for', () => {
     const [asWho, filing] = vi.mocked(runInboundMailFiling).mock.calls[0]!
     expect(asWho).toBe(follower)
     expect(filing).toMatchObject({ projectId: PROJECT_ID, mailIds: [MAIL_ID], requester: { userId: PERSON } })
+    // Its own decision only: a person's decision on the same mail is theirs to file.
+    expect(filing.decisionIds).toEqual([decided.id])
     // Resolved strictly: a directory that does not answer retries, it never reads as "left".
     expect(resolvePinnedRequesterSessionStrict).toHaveBeenCalledWith({
       userId: PERSON,
@@ -371,6 +373,7 @@ describe('the run', () => {
     expect(writeFollowDecision).not.toHaveBeenCalled()
     expect(resolvePinnedRequesterSessionStrict).toHaveBeenCalledWith({ userId: OTHER_FOLLOWER, email: null, organizationId: 'org_1' })
     expect(runInboundMailFiling).toHaveBeenCalledOnce()
+    expect(vi.mocked(runInboundMailFiling).mock.calls[0]![1].decisionIds).toEqual(['decision-1'])
     // The thread is the decision's own, and the one told is its decider.
     expect(announceAppended).toHaveBeenCalledWith(expect.objectContaining({ threadId: THREAD_ID, followerUserId: OTHER_FOLLOWER }))
   })

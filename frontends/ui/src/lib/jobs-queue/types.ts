@@ -554,11 +554,15 @@ export type InboundMailSuggestPayload = z.infer<typeof inboundMailSuggestPayload
 /**
  * `inbound_mail_file`: file the parts a person decided on, as that person
  * (D26). What to do is on the decision rows the parts name, never here: the
- * payload says only which mails and who.
+ * payload says only which mails and who. A run files only decisions its
+ * requester made, and, when `decisionIds` is given, only those (the follow
+ * job names its own): a decision another person made on the same mail is
+ * filed by that person's run.
  */
 export const inboundMailFilePayloadSchema = z.object({
   projectId: z.string().uuid(),
   mailIds: z.array(z.string().uuid()).min(1).max(20),
+  decisionIds: z.array(z.string().uuid()).min(1).max(2_020).optional(),
   requester: requesterSchema,
 })
 export type InboundMailFilePayload = z.infer<typeof inboundMailFilePayloadSchema>

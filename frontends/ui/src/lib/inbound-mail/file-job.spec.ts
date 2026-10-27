@@ -391,6 +391,33 @@ describe('an attachment', () => {
   })
 })
 
+describe('whose decisions a run files (review D, finding 1)', () => {
+  it('leaves a part another person decided: it files only decisions its own person made', async () => {
+    const part = attachment()
+    vi.mocked(findFilingWork).mockResolvedValue([work([part], [[part, { decidedBy: 'user_someone_else' }]])])
+    await runInboundMailFiling(session, payload)
+    expect(uploadDocument).not.toHaveBeenCalled()
+    expect(returnPartToWaiting).not.toHaveBeenCalled()
+    expect(announceFilingFailed).not.toHaveBeenCalled()
+  })
+
+  it('files only the decisions its payload names, when it names some', async () => {
+    const part = attachment()
+    vi.mocked(findFilingWork).mockResolvedValue([work([part], [[part, {}]])])
+    await runInboundMailFiling(session, { ...payload, decisionIds: ['decision-of-another-run'] })
+    expect(uploadDocument).not.toHaveBeenCalled()
+  })
+
+  it('renders no other person’s text decision into its append', async () => {
+    const message = text()
+    vi.mocked(findFilingWork).mockResolvedValue([
+      work([message], [[message, { threadAction: 'append', mailThreadId: THREAD_ID, decidedBy: 'user_someone_else' }]]),
+    ])
+    await runInboundMailFiling(session, payload)
+    expect(appendInboundMessage).not.toHaveBeenCalled()
+  })
+})
+
 describe('the text', () => {
   const messageDecision = {
     threadAction: 'append',

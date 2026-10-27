@@ -3,7 +3,9 @@ import 'server-only'
  * The filing job (`inbound_mail_file`, ADR-0137, DECISION §6 "File"): files the
  * parts a person decided on, AS THAT PERSON (`handler`, the decider's session
  * resolved for every slice; a person who left the organization ends it, and
- * the claims run out to sweep 5). What to file, where, under which name and
+ * the claims run out to sweep 5). A run acts only on decisions its person
+ * made (and, when the payload names decision ids, only on those): another
+ * person's decision on the same mail is filed by their own run. What to file, where, under which name and
  * with which acknowledgements is read from the decision rows each claimed part
  * names (`decision_id`), never from the payload, which says only which mails
  * and who.
@@ -107,15 +109,20 @@ const jobRequest = (): Request =>
 interface FilingRun {
   session: AuthorizedSession
   projectId: string
+  /** The decisions this run may act on: its person's own, and of those only the payload's when it names some. */
+  owns: (decision: InboundMailDecisionRow) => boolean
   request: Request
   once: <T>(key: string, load: () => Promise<T>) => Promise<T>
 }
 
-function filingRun(session: AuthorizedSession, projectId: string): FilingRun {
+function filingRun(session: AuthorizedSession, payload: InboundMailFilePayload): FilingRun {
   const cache = new Map<string, Promise<unknown>>()
+  const named = payload.decisionIds ? new Set(payload.decisionIds) : null
   return {
     session,
-    projectId,
+    projectId: payload.projectId,
+    owns: (decision) =>
+      decision.decidedBy === session.userId && (named === null || named.has(decision.id)),
     request: jobRequest(),
     once: <T>(key: string, load: () => Promise<T>) => {
       if (!cache.has(key)) cache.set(key, load())
@@ -141,14 +148,28 @@ const newThreadLocale = (run: FilingRun): Promise<MailThreadLocale> =>
 
 const sha256 = (bytes: Uint8Array): string => createHash('sha256').update(bytes).digest('hex')
 
+/**
+ * The mail with only the decisions this run may act on (`FilingRun.owns`): a
+ * part another person decided is theirs to file, in their session, into the
+ * folder and with the release they chose, and is left alone here, claim and
+ * all. Without this, a follow job's retry would upload a person's attachments
+ * as the follower, or a person's run render the follower's append.
+ */
+function ownWork(run: FilingRun, work: FilingWork): FilingWork {
+  const decisions = new Map([...work.decisions].filter(([, decision]) => run.owns(decision)))
+  return { ...work, decisions }
+}
+
 /** The slice (`handler`): every mail of the payload, then the run's batches sealed. */
 export async function runInboundMailFiling(
   session: AuthorizedSession,
   payload: InboundMailFilePayload
 ): Promise<JobSliceResult<InboundMailFilePayload>> {
-  const work = await findFilingWork(payload.projectId, payload.mailIds)
+  const run = filingRun(session, payload)
+  const work = (await findFilingWork(payload.projectId, payload.mailIds)).map((mail) =>
+    ownWork(run, mail)
+  )
   if (work.length === 0) return { done: true, payload }
-  const run = filingRun(session, payload.projectId)
   let busy = false
   try {
     for (const mail of work) busy = (await fileMail(run, mail)) === 'busy' || busy
@@ -349,8 +370,9 @@ async function fileText(
 ): Promise<'done' | 'busy'> {
   if (!(await renewClaim(part.id, decision.id, new Date(Date.now() + FILING_CLAIM_MS))))
     return 'done'
-  const [fresh] = await findFilingWork(run.projectId, [filedMail.id])
-  if (!fresh) return 'done'
+  const [found] = await findFilingWork(run.projectId, [filedMail.id])
+  if (!found) return 'done'
+  const fresh = ownWork(run, found)
   const { mail } = fresh
   if (!mail.readStorageKey) {
     await returnPartToWaiting(part.id, decision.id, 'unreadable')

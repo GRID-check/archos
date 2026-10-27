@@ -209,7 +209,12 @@ one thread is filed in sent order with the Fassung each becomes.
 
 ## Filing
 
-`lib/inbound-mail/file-job.ts`, handler as the decider, interactive. Per mail:
+`lib/inbound-mail/file-job.ts`, handler as the decider, interactive. A run acts
+only on decisions its own person made, and the follow job's run only on the
+decision it just wrote (`decisionIds` in the payload): a part another person
+decided on the same mail is left to that person's run, so nothing is ever
+uploaded in one person's session on another's choice of folder, name or
+release. Per mail:
 finish a stopped original move; each attachment (claim renewed, bytes read and
 SHA-256 checked, re-scanned when the verdict is older than 24 h, folder resolved
 as the person, the upload path with the person's chosen type and `mail_origin`);
