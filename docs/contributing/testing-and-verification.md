@@ -314,7 +314,7 @@ offline by [`tests/test_loop_eval.py`](../../tests/test_loop_eval.py).
 ## Cross-service contract fixtures
 
 Where a wire format has a producer in one language and a consumer in another,
-the contract is a JSON fixture under `tests/fixtures/` that **both** suites read,
+the contract is one JSON fixture that **both** suites read,
 never two assertions that each pin their own side. Two tests that agree with
 themselves prove nothing about a boundary: ADR-0046 records the internal-token
 header spelled one way by every caller and read the other way by the guard,
@@ -328,11 +328,13 @@ Two of these exist:
 | `grid_request_context.json` | `request-context.spec.ts` builds the headers | `test_project_context.py` parses them back |
 | `job_fire_headers.json` | `tests/lib/jobs/fire-headers.test.ts` fires a real submit and captures what went out | `test_fire_path_contract.py` asserts each backend-required set is a subset |
 
-Each is duplicated verbatim into `frontends/ui/tests/fixtures/`, because
+Such a fixture lives in `frontends/ui/tests/fixtures/`, once.
 `frontends/ui/Dockerfile.typecheck`'s build context is scoped to `frontends/ui`
-and cannot `COPY` from outside it. **Copy the repo-root file over the twin when
-you change it** — `test_fire_path_contract.py` compares the two byte for byte,
-so drift fails a test rather than splitting the contract in half.
+and cannot `COPY` from outside it, while the Python suite reads the whole
+repository, so that is the one place both can reach. A copy of it anywhere else
+is a second contract that drifts: `tests/test_no_twin_fixtures.py` fails any
+file under the repo-root `tests/` that is byte-identical to one under
+`frontends/ui/tests/fixtures/`.
 
 ## Security and static analysis
 
