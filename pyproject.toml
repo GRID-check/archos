@@ -175,7 +175,7 @@ testpaths = ["tests", "sources/**/tests"]
 # this one). A key that happens to be in the shell is not that request: before
 # this, `task verify` spent model tokens on any machine that had one.
 addopts = "--import-mode=importlib -m 'not live'"
-# Makes `from tests.conftest import ...` (the shared provider-contract double)
+# Makes `from tests.provider_doubles import ...` (the shared provider-contract double)
 # resolve the same way under every invocation — `python -m pytest`, the bare
 # `pytest` console script, and an IDE runner — instead of
 # depending on which of those happens to put the repo root on sys.path.

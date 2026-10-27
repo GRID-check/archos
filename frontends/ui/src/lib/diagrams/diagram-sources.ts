@@ -63,8 +63,10 @@
  *
  * Since ADR-0141 a person can produce one: the sketch editor
  * (`features/diagrams/sketch/`) files a drawing Piloti made, reworked by hand,
- * as an `excalidraw` scene with the SVG Excalidraw exported. The model still
- * never writes one.
+ * as an `excalidraw` scene with the SVG Excalidraw exported. Since ADR-0146
+ * the model writes one too, as a sketch (`./sketch-fence.ts`): a subject that
+ * claims no dimension, labelled „nicht maßstäblich" wherever it is shown or
+ * filed.
  */
 export const DIAGRAM_SOURCE_KINDS = ['mermaid', 'excalidraw'] as const
 export type DiagramSourceKind = (typeof DIAGRAM_SOURCE_KINDS)[number]

@@ -298,30 +298,42 @@ and the 65% coverage gate run on every push to `develop`, which the deploy
 waits for, so a test a selection missed turns `develop` red before staging,
 not production. [`ci/pr_selection.py`](../../ci/pr_selection.py) decides, and
 runs the full suite on a pull request whenever testmon cannot see the change:
-a conftest, the lockfile or a `pyproject.toml`, how the backend jobs run,
-Python outside the tested packages (tests load `scripts/` and
-`frontends/benchmarks/` by path or in a subprocess), package data no test
-names, or no recorded database. Known blind spot: a test that only exercises
+a conftest, a Python fixture, the lockfile or a `pyproject.toml`, how the
+backend jobs run, Python outside the tested packages (tests load `scripts/` and
+`frontends/benchmarks/` by path or in a subprocess), package data or a fixture
+no test names, or no recorded database. A data fixture under `tests/fixtures/`
+adds the tests that name it or one of its directories, as tests read whole
+fixture directories. Known blind spot: a test that only exercises
 code in a subprocess is selected when its own file changes, not when the code
 it spawns does; the push run is what catches that.
 
 **The UI suite selects the same way, by import graph.** `vitest related`
-keeps the specs whose imports reach a changed file, split over the same six
+keeps the specs whose imports reach a changed file, split over the same eight
 shards. Every spec that reads the tree from disk instead of importing it (the
 route, key and migration walkers; ~100 found by what they call, not by a
 list) runs on every selection, because no import graph connects them to a
 change. Changes to what every spec loads (the manifest, the vitest config and
 setup, the mocks the setup installs, tsconfig) run the whole suite. A median
-change still reaches ~45% of the specs, because shared modules sit behind
-barrels; the saving is the other half, and a leaf change reaches a handful.
-The coverage comment comes only from a full run.
+squash commit that touches the UI still selected 815 of 1,644 specs, 86% of
+the suite's time, in October 2026: half of them change a dictionary string,
+which reaches ~720 specs, and the rest mostly touch a module behind
+`lib/api/errors.ts` or the schema barrel. A leaf change reaches a handful.
+`task fe:blast-radius` holds each hub to the specs it reached when recorded;
+the hubs, and the splits that would cut them, are in
+[`docs/audit/blast-radius-2026-10.md`](../audit/blast-radius-2026-10.md). The
+coverage comment comes only from a full run.
 
-**What a later push to the same pull request re-runs.** Both selections are
-taken against the pull request's last green run, not its base: the tests that
-run passed, so the next push owes only what changed since. That set is the pull
-request's own diff since that run's head, plus every file the base branch
+**What a later push to the same pull request re-runs.** Two references are
+sound, and the Plan job takes the one that forces fewer full suites, then the
+one with fewer files. One is the whole pull request against its base: a test
+that reaches none of its files answers on the merge commit what it answers on
+`develop`, whose own full run is the deploy gate. The other is the pull
+request's last green run: the tests that ran passed, so the next push owes the
+pull request's own diff since that run's head, plus every file the base branch
 changed since an hour before that run started (the merge commit CI tests
-carries both). The backend keeps its testmon database per pull request for the
+carries both). The second wins while `develop` stands still. When it moved, the
+hour of `develop` it adds (a median 95 files) used to force the full Python
+suite on 88 of 115 re-runs, where the pull request's own diff forces it on 28. The backend keeps its testmon database per pull request for the
 same reason, so tests that failed keep running until they pass. A push that
 only answers a review comment runs the few tests that comment touched, and one
 that touches nothing a UI spec reads runs no UI spec at all.

@@ -630,6 +630,9 @@ jobs:
       # Findings become annotations on the pull request's diff.
       - run: task fe:lint -- --format=github
       - run: task fe:types
+      # How many specs a change to each hub module selects, against its recorded
+      # baseline: a new edge from a hub into a subtree fails here.
+      - run: task fe:blast-radius
       # ubuntu-latest ships PostgreSQL server binaries but runs no cluster; the
       # script builds a throwaway one and tears it down.
       - name: Tenant isolation (row-level security, real Postgres)

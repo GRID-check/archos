@@ -25,8 +25,8 @@ from aiq_agent.agents.piloti.register import _turn_facts
 from aiq_agent.agents.piloti.register import research_agent
 from aiq_agent.skills.models import Skill
 from aiq_agent.skills.runtime import SkillRuntime
-from tests.conftest import NAT_LLM_CONFIG
-from tests.conftest import nat_langchain_client
+from tests.provider_doubles import NAT_LLM_CONFIG
+from tests.provider_doubles import nat_langchain_client
 
 
 @tool
