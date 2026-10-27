@@ -181,6 +181,10 @@
               "de": "Das Zurückholen einer von Piloti geöffneten Modellansicht funktioniert wieder, nachdem Sie darin ein anderes Element ausgewählt haben. Sobald Sie die Modellansicht verlassen haben, bietet der Chat nicht mehr an, sie zurückzuholen."
             },
             {
+              "en": "When Piloti may not show you something, you now see that access was refused instead of a general error. A file that fails more than one upload check is now refused for the same reason in project files, the Archiv and the chat.",
+              "de": "Kann Piloti Ihnen etwas nicht anzeigen, sehen Sie jetzt statt einer allgemeinen Fehlermeldung, dass der Zugriff verweigert wurde. Eine Datei, die mehrere Upload-Prüfungen nicht besteht, wird jetzt in Projektdateien, im Archiv und im Chat aus demselben Grund abgelehnt."
+            },
+            {
               "en": "The confidence under an answer is now a check of the whole answer against everything Piloti read for it, and the chip names the statements nothing backs or a source contradicts. A listing of your files or an answer drawn from the project details no longer shows low confidence for a suggested next step.",
               "de": "Die Konfidenz unter einer Antwort prüft jetzt die gesamte Antwort anhand aller Inhalte, die Piloti dafür gelesen hat. Der Chip kennzeichnet Aussagen, die unbelegt sind oder denen eine Quelle widerspricht. Eine Dateiliste oder eine Antwort auf Basis der Projektdetails zeigt bei einem vorgeschlagenen nächsten Schritt nicht mehr eine niedrige Konfidenz an."
             },
