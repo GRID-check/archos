@@ -40,7 +40,7 @@ def _upload(client: httpx.Client, url: str, pdf: Path, headers: dict[str, str]) 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=(__doc__ or "").split("\n\n")[0])
     parser.add_argument("directory", type=Path, help="Directory holding the PDFs (searched recursively).")
-    parser.add_argument("--url", default=os.environ.get("GRID_BACKEND_URL", "http://localhost:8000"))
+    parser.add_argument("--url", default=os.environ.get("BACKEND_URL", "http://localhost:8000"))
     args = parser.parse_args(argv)
 
     pdfs = sorted(p for p in args.directory.rglob("*.pdf") if p.is_file())

@@ -5,7 +5,7 @@ The claimable queue row (``research_job_queue.payload``) persists the full
 auth token plus identity/budget context, so persisting it is at-rest exposure
 (table, WAL, backups, replicas).
 
-When ``GRID_JOB_PAYLOAD_KEK`` (32 bytes, base64) is set the payload is
+When ``JOB_PAYLOAD_KEK`` (32 bytes, base64) is set the payload is
 AES-256-GCM encrypted; the worker decrypts it in-process to run the job. Without
 a KEK the payload is stored as plaintext JSON (dev/compat) with a one-time
 warning, so single-node/dev keeps working. Set the KEK in any multi-node or
@@ -48,15 +48,15 @@ class PayloadKeyError(RuntimeError):
 
 
 def _kek() -> bytes | None:
-    raw = os.environ.get("GRID_JOB_PAYLOAD_KEK", "").strip()
+    raw = os.environ.get("JOB_PAYLOAD_KEK", "").strip()
     if not raw:
         return None
     try:
         key = base64.b64decode(raw)
     except Exception as exc:  # noqa: BLE001
-        raise PayloadKeyError("GRID_JOB_PAYLOAD_KEK is not valid base64") from exc
+        raise PayloadKeyError("JOB_PAYLOAD_KEK is not valid base64") from exc
     if len(key) != 32:
-        raise PayloadKeyError("GRID_JOB_PAYLOAD_KEK must decode to 32 bytes (AES-256)")
+        raise PayloadKeyError("JOB_PAYLOAD_KEK must decode to 32 bytes (AES-256)")
     return key
 
 
@@ -68,7 +68,7 @@ def serialize(payload: dict[str, Any]) -> str:
         global _warned_plaintext
         if not _warned_plaintext:
             logger.warning(
-                "GRID_JOB_PAYLOAD_KEK is not set — research-job payloads (including the user auth "
+                "JOB_PAYLOAD_KEK is not set — research-job payloads (including the user auth "
                 "token) are stored as PLAINTEXT in Postgres. Set a 32-byte base64 KEK to encrypt "
                 "them at rest before running multi-node/production."
             )
@@ -90,7 +90,7 @@ def deserialize(stored: str) -> dict[str, Any]:
     if stored.startswith(_ENC_PREFIX):
         kek = _kek()
         if kek is None:
-            raise PayloadKeyError("payload is encrypted but GRID_JOB_PAYLOAD_KEK is not set")
+            raise PayloadKeyError("payload is encrypted but JOB_PAYLOAD_KEK is not set")
         from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
         blob = base64.b64decode(stored[len(_ENC_PREFIX) :])
@@ -101,7 +101,7 @@ def deserialize(stored: str) -> dict[str, Any]:
         # KEK configured: a plaintext row is either pre-KEK legacy (drain before
         # enabling the KEK) or forged by a DB-write attacker — either way it
         # must never be executed.
-        raise PayloadKeyError("payload is not encrypted but GRID_JOB_PAYLOAD_KEK is set; refusing plaintext")
+        raise PayloadKeyError("payload is not encrypted but JOB_PAYLOAD_KEK is set; refusing plaintext")
     if stored.startswith(_PLAIN_PREFIX):
         return json.loads(base64.b64decode(stored[len(_PLAIN_PREFIX) :]))
     # Back-compat: a raw JSON object written before this wrapper existed.

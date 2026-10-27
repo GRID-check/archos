@@ -49,9 +49,9 @@ def fleet(tmp_path, monkeypatch):
     async_url = f"sqlite+aiosqlite:///{tmp_path}/jobs.db"
     queue.ensure_research_queue_table(db_url)
     monkeypatch.setenv("NAT_JOB_STORE_DB_URL", async_url)
-    monkeypatch.setenv("GRID_WORKER_LIVENESS_FILE", str(tmp_path / "alive"))
-    monkeypatch.delenv("GRID_DEEP_CHECKPOINT_DB", raising=False)
-    monkeypatch.delenv("GRID_JOB_PAYLOAD_KEK", raising=False)
+    monkeypatch.setenv("WORKER_LIVENESS_FILE", str(tmp_path / "alive"))
+    monkeypatch.delenv("DEEP_CHECKPOINT_DB", raising=False)
+    monkeypatch.delenv("JOB_PAYLOAD_KEK", raising=False)
     yield db_url, async_url
     queue._queues.pop(db_url, None)
 

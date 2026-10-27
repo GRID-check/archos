@@ -500,8 +500,8 @@ class TestAuthMiddlewareInternal:
             patch.dict(
                 os.environ,
                 {
-                    "GRID_TRACE_USER_IDENTITY_MODE": "full",
-                    "GRID_TRACE_USER_IDENTITY_HMAC_SECRET": "test-secret",  # pragma: allowlist secret
+                    "TRACE_USER_IDENTITY_MODE": "full",
+                    "TRACE_USER_IDENTITY_HMAC_SECRET": "test-secret",  # pragma: allowlist secret
                 },
                 clear=False,
             ),
@@ -551,8 +551,8 @@ class TestAuthMiddlewareInternal:
             patch.dict(
                 os.environ,
                 {
-                    "GRID_TRACE_USER_IDENTITY_MODE": "id",
-                    "GRID_TRACE_USER_IDENTITY_HMAC_SECRET": "test-secret",  # pragma: allowlist secret
+                    "TRACE_USER_IDENTITY_MODE": "id",
+                    "TRACE_USER_IDENTITY_HMAC_SECRET": "test-secret",  # pragma: allowlist secret
                 },
                 clear=False,
             ),
@@ -602,7 +602,7 @@ class TestAuthMiddlewareInternal:
         with (
             patch.dict(
                 os.environ,
-                {"GRID_TRACE_USER_IDENTITY_MODE": "none"},
+                {"TRACE_USER_IDENTITY_MODE": "none"},
                 clear=False,
             ),
             patch.dict(sys.modules, {"ddtrace": ddtrace_module}, clear=False),
@@ -643,7 +643,7 @@ class TestAuthMiddlewareInternal:
         with (
             patch.dict(
                 os.environ,
-                {"GRID_TRACE_USER_IDENTITY_MODE": "none", "GRID_TRACE_CLIENT_ID_MODE": "none"},
+                {"TRACE_USER_IDENTITY_MODE": "none", "TRACE_CLIENT_ID_MODE": "none"},
                 clear=False,
             ),
             patch.dict(sys.modules, {"ddtrace": ddtrace_module}, clear=False),
@@ -684,7 +684,7 @@ class TestAuthMiddlewareInternal:
         with (
             patch.dict(
                 os.environ,
-                {"GRID_TRACE_USER_IDENTITY_MODE": "id", "GRID_TRACE_USER_IDENTITY_HMAC_SECRET": ""},
+                {"TRACE_USER_IDENTITY_MODE": "id", "TRACE_USER_IDENTITY_HMAC_SECRET": ""},
                 clear=False,
             ),
             patch.dict(sys.modules, {"ddtrace": ddtrace_module}, clear=False),
@@ -729,7 +729,7 @@ class TestAuthMiddlewareInternal:
         with (
             patch.dict(
                 os.environ,
-                {"GRID_TRACE_USER_IDENTITY_MODE": "none", "GRID_TRACE_CLIENT_ID_MODE": "none"},
+                {"TRACE_USER_IDENTITY_MODE": "none", "TRACE_CLIENT_ID_MODE": "none"},
                 clear=False,
             ),
             patch.dict(sys.modules, {"ddtrace": ddtrace_module}, clear=False),
@@ -762,7 +762,7 @@ class TestAuthMiddlewareInternal:
         with (
             patch.dict(
                 os.environ,
-                {"GRID_TRACE_USER_IDENTITY_MODE": "none", "GRID_TRACE_CLIENT_ID_MODE": "none"},
+                {"TRACE_USER_IDENTITY_MODE": "none", "TRACE_CLIENT_ID_MODE": "none"},
                 clear=False,
             ),
             patch.dict(sys.modules, {"ddtrace": ddtrace_module}, clear=False),
@@ -800,9 +800,9 @@ class TestAuthMiddlewareInternal:
             patch.dict(
                 os.environ,
                 {
-                    "GRID_TRACE_USER_IDENTITY_MODE": "none",
-                    "GRID_TRACE_CLIENT_ID_MODE": "ip",
-                    "GRID_TRACE_CLIENT_ID_HMAC_SECRET": "client-secret",  # pragma: allowlist secret
+                    "TRACE_USER_IDENTITY_MODE": "none",
+                    "TRACE_CLIENT_ID_MODE": "ip",
+                    "TRACE_CLIENT_ID_HMAC_SECRET": "client-secret",  # pragma: allowlist secret
                 },
                 clear=False,
             ),
@@ -847,8 +847,8 @@ class TestAuthMiddlewareInternal:
             patch.dict(
                 os.environ,
                 {
-                    "GRID_TRACE_USER_IDENTITY_MODE": "full",
-                    "GRID_TRACE_USER_IDENTITY_HMAC_SECRET": "test-secret",  # pragma: allowlist secret
+                    "TRACE_USER_IDENTITY_MODE": "full",
+                    "TRACE_USER_IDENTITY_HMAC_SECRET": "test-secret",  # pragma: allowlist secret
                 },
                 clear=False,
             ),
@@ -936,7 +936,7 @@ class TestAuthMiddlewareExempt:
 
 class TestLoadExternalHostnames:
     def test_reads_aiq_external_hostnames_env(self) -> None:
-        with patch.dict(os.environ, {"GRID_EXTERNAL_HOSTNAMES": " a.com , b.com "}):
+        with patch.dict(os.environ, {"EXTERNAL_HOSTNAMES": " a.com , b.com "}):
             from aiq_api.auth.middleware import _load_external_hostnames
 
             assert _load_external_hostnames() == {"a.com", "b.com"}

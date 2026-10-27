@@ -38,7 +38,7 @@ logger = logging.getLogger(__name__)
 #: Ingestion of one PDF is seconds; a large plan set is minutes, and a turn
 #: that waits minutes is a hung chat. Twenty covers the common attachment and
 #: lets the rest fall through to the "still being read" paragraph, which tells
-#: the model to say so. Operators tune it with GRID_INGEST_WAIT_SECONDS.
+#: the model to say so. Operators tune it with INGEST_WAIT_SECONDS.
 INGEST_WAIT_SECONDS_DEFAULT = 20.0
 INGEST_POLL_SECONDS = 1.0
 AVAILABLE_DOCUMENTS_DEFAULT_LIMIT = 50
@@ -52,26 +52,24 @@ def available_documents_limit() -> int:
 
     Every chat turn injects the full list into ~5 prompt templates, so per-turn
     LLM cost grew linearly with the corpus, paid even on chit-chat.
-    ``GRID_AVAILABLE_DOCUMENTS_MAX`` (default 50) tunes it; 0/negative disables.
+    ``AVAILABLE_DOCUMENTS_MAX`` (default 50) tunes it; 0/negative disables.
     """
-    raw = os.environ.get("GRID_AVAILABLE_DOCUMENTS_MAX", "")
+    raw = os.environ.get("AVAILABLE_DOCUMENTS_MAX", "")
     try:
         return int(raw) if raw.strip() else AVAILABLE_DOCUMENTS_DEFAULT_LIMIT
     except ValueError:
-        logger.warning(
-            "GRID_AVAILABLE_DOCUMENTS_MAX=%r is not an integer; using %d", raw, AVAILABLE_DOCUMENTS_DEFAULT_LIMIT
-        )
+        logger.warning("AVAILABLE_DOCUMENTS_MAX=%r is not an integer; using %d", raw, AVAILABLE_DOCUMENTS_DEFAULT_LIMIT)
         return AVAILABLE_DOCUMENTS_DEFAULT_LIMIT
 
 
 def ingest_wait_seconds() -> float:
-    raw = os.environ.get("GRID_INGEST_WAIT_SECONDS")
+    raw = os.environ.get("INGEST_WAIT_SECONDS")
     if raw is None or not raw.strip():
         return INGEST_WAIT_SECONDS_DEFAULT
     try:
         return max(0.0, float(raw))
     except ValueError:
-        logger.warning("GRID_INGEST_WAIT_SECONDS=%r is not a number; using %s", raw, INGEST_WAIT_SECONDS_DEFAULT)
+        logger.warning("INGEST_WAIT_SECONDS=%r is not a number; using %s", raw, INGEST_WAIT_SECONDS_DEFAULT)
         return INGEST_WAIT_SECONDS_DEFAULT
 
 
@@ -162,7 +160,7 @@ def _cap_for_prompt(aggregated: list, max_documents: int | None = None) -> list:
     # incomplete instead of presenting a truncated shelf as the whole shelf.
     set_inventory_drops(dropped)
     if limit and limit > 0 and before > len(kept):
-        logger.info("Capping available_documents from %d to %d (GRID_AVAILABLE_DOCUMENTS_MAX)", before, len(kept))
+        logger.info("Capping available_documents from %d to %d (AVAILABLE_DOCUMENTS_MAX)", before, len(kept))
     return kept
 
 

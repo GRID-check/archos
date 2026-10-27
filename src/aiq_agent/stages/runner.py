@@ -50,10 +50,10 @@ logger = logging.getLogger(__name__)
 
 #: Shared across ALL stages, not per stage: two stages with four slots each is
 #: eight background LLM calls competing with live turns.
-_MAX_CONCURRENCY = int(os.environ.get("GRID_STAGE_MAX_CONCURRENCY", "4"))
+_MAX_CONCURRENCY = int(os.environ.get("STAGE_MAX_CONCURRENCY", "4"))
 #: Beyond this many in-flight handlers, further stages are dropped rather than
 #: queued — a stage is a best-effort enhancement of an already-delivered answer.
-_MAX_PENDING = int(os.environ.get("GRID_STAGE_MAX_PENDING", "16"))
+_MAX_PENDING = int(os.environ.get("STAGE_MAX_PENDING", "16"))
 
 #: Strong references to in-flight tasks so the event loop's weak bookkeeping does
 #: not garbage-collect a stage mid-run.

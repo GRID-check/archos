@@ -1,7 +1,7 @@
 """
 NAT plugin registration for unified AI-Q API.
 
-One plugin, two web roles (``GRID_ROLE``, ``roles.WebRole``, ADR-0082 step B):
+One plugin, two web roles (``PROCESS_ROLE``, ``roles.WebRole``, ADR-0082 step B):
 
 * ``chat`` mounts the chat socket, the chat-occupancy route KEDA reads, and
   what is left of NAT's own routes once its HTTP turn routes are off (see
@@ -568,11 +568,11 @@ class AIQAPIWorker(FastApiFrontEndPluginWorker):
 
         NAT's default gate (8) is an ``asyncio.Semaphore`` held for the whole
         ``Session.run``: a turn waiting on a person's answer kept its place for
-        up to ``GRID_HITL_RESPONSE_TIMEOUT_SECONDS``, and the ninth turn queued
+        up to ``HITL_RESPONSE_TIMEOUT_SECONDS``, and the ninth turn queued
         behind them unseen, after ``RUN_STARTED``, while its heartbeat kept the
         reader's spinner alive. Nobody chose that number. The chosen gate is
         ADR-0040's admission (``aiq_agent.common.turn_admission``,
-        ``GRID_MAX_ACTIVE_TURNS``), held around every chat turn, which refuses
+        ``MAX_ACTIVE_TURNS``), held around every chat turn, which refuses
         a turn it has no slot for at once with a retry hint instead of queueing
         it. Registered with the worker's others so NAT shuts it down with them.
         """

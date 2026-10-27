@@ -1,6 +1,6 @@
 """The backend's two web roles serve disjoint routes, and between them every route (ADR-0082 step B).
 
-``GRID_ROLE=chat`` and ``GRID_ROLE=api`` are the same image and the same plugin.
+``PROCESS_ROLE=chat`` and ``PROCESS_ROLE=api`` are the same image and the same plugin.
 What keeps them two jobs and not one is that no route is mounted by both, and
 what keeps the split from losing a route is that none is mounted by neither. A
 route that goes missing from a Service's pods is a 404 the BFF sees only when a
@@ -352,14 +352,14 @@ def test_a_web_role_is_read_from_grid_role(raw):
     "env", [{}, {ROLE_ENV: ""}, {ROLE_ENV: "web"}, {ROLE_ENV: "worker"}, {ROLE_ENV: "ingest-worker"}]
 )
 def test_a_missing_or_unknown_web_role_stops_the_process_and_says_which_variable(env):
-    with pytest.raises(ValueError, match="GRID_ROLE"):
+    with pytest.raises(ValueError, match="PROCESS_ROLE"):
         web_role(env)
 
 
 def test_a_worker_built_without_a_web_role_fails_before_it_connects_to_anything(monkeypatch):
     monkeypatch.delenv(ROLE_ENV, raising=False)
 
-    with pytest.raises(ValueError, match="GRID_ROLE"):
+    with pytest.raises(ValueError, match="PROCESS_ROLE"):
         plugin.AIQAPIWorker(Config(general=GeneralConfig(front_end=plugin.AIQAPIConfig())))
 
 

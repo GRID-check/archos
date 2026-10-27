@@ -1,7 +1,7 @@
 """``leader_lock``, and the rule every session lock here follows (ADR-0083).
 
 A session advisory lock lives as long as the server connection that took it, so
-it is taken on the direct DSN (``GRID_LOCK_DB_URL``) and on an engine that never
+it is taken on the direct DSN (``LOCK_DB_URL``) and on an engine that never
 pools. Behind the transaction pooler it would be acquired on one server
 connection and released on another, which leaves the first locked and raises
 nothing. The suite has no Postgres server, so the Postgres half is pinned by
@@ -26,7 +26,7 @@ POOLED = "postgresql+psycopg://aiq:pw@grid-pg-pooler-rw:5432/aiq_jobs"  # pragma
 
 @pytest.fixture(autouse=True)
 def _no_database(monkeypatch):
-    for name in ("GRID_LOCK_DB_URL", "GRID_LISTEN_DB_URL", "GRID_SUMMARY_DB", "NAT_JOB_STORE_DB_URL"):
+    for name in ("LOCK_DB_URL", "LISTEN_DB_URL", "SUMMARY_DB", "NAT_JOB_STORE_DB_URL"):
         monkeypatch.delenv(name, raising=False)
 
 
@@ -56,13 +56,13 @@ def test_without_postgres_everyone_is_the_leader():
 
 
 def test_a_sqlite_lock_url_is_not_postgres_and_grants_leadership(monkeypatch):
-    monkeypatch.setenv("GRID_LOCK_DB_URL", "sqlite:///./locks.db")
+    monkeypatch.setenv("LOCK_DB_URL", "sqlite:///./locks.db")
     with leader_lock(1) as leads:
         assert leads is True
 
 
 def test_the_winner_holds_the_lock_on_the_direct_dsn_and_releases_it(monkeypatch):
-    monkeypatch.setenv("GRID_LOCK_DB_URL", DIRECT)
+    monkeypatch.setenv("LOCK_DB_URL", DIRECT)
     urls, conn = _engine(monkeypatch, wins=True)
 
     with leader_lock(42) as leads:
@@ -77,7 +77,7 @@ def test_the_winner_holds_the_lock_on_the_direct_dsn_and_releases_it(monkeypatch
 
 
 def test_the_lock_is_released_when_the_body_raises(monkeypatch):
-    monkeypatch.setenv("GRID_LOCK_DB_URL", DIRECT)
+    monkeypatch.setenv("LOCK_DB_URL", DIRECT)
     _, conn = _engine(monkeypatch, wins=True)
 
     with pytest.raises(RuntimeError), leader_lock(42):
@@ -88,7 +88,7 @@ def test_the_lock_is_released_when_the_body_raises(monkeypatch):
 
 
 def test_the_loser_runs_nothing_and_leaves_no_session_behind(monkeypatch):
-    monkeypatch.setenv("GRID_LOCK_DB_URL", DIRECT)
+    monkeypatch.setenv("LOCK_DB_URL", DIRECT)
     _, conn = _engine(monkeypatch, wins=False)
 
     with leader_lock(42) as leads:
@@ -101,7 +101,7 @@ def test_the_loser_runs_nothing_and_leaves_no_session_behind(monkeypatch):
 def test_an_unreachable_database_means_nobody_leads_this_cycle(monkeypatch, caplog):
     # Fail-closed: running unelected would be every replica running the cycle at
     # once. The caller's schedule retries on its next tick.
-    monkeypatch.setenv("GRID_LOCK_DB_URL", "postgresql://nobody@127.0.0.1:9/none?connect_timeout=1")
+    monkeypatch.setenv("LOCK_DB_URL", "postgresql://nobody@127.0.0.1:9/none?connect_timeout=1")
 
     with caplog.at_level("WARNING"), leader_lock(42) as leads:
         assert leads is False
@@ -110,7 +110,7 @@ def test_an_unreachable_database_means_nobody_leads_this_cycle(monkeypatch, capl
 
 
 def test_a_failed_try_lock_query_means_nobody_leads_and_ends_the_session(monkeypatch, caplog):
-    monkeypatch.setenv("GRID_LOCK_DB_URL", DIRECT)
+    monkeypatch.setenv("LOCK_DB_URL", DIRECT)
     _, conn = _engine(monkeypatch)
     conn.execute.side_effect = RuntimeError("connection lost")
 
@@ -122,7 +122,7 @@ def test_a_failed_try_lock_query_means_nobody_leads_and_ends_the_session(monkeyp
 
 
 async def test_the_async_election_also_fails_closed(monkeypatch):
-    monkeypatch.setenv("GRID_LOCK_DB_URL", DIRECT)
+    monkeypatch.setenv("LOCK_DB_URL", DIRECT)
     _, conn = _engine(monkeypatch)
     conn.execute.side_effect = RuntimeError("connection lost")
 
@@ -131,7 +131,7 @@ async def test_the_async_election_also_fails_closed(monkeypatch):
 
 
 def test_a_failed_unlock_still_ends_the_session(monkeypatch):
-    monkeypatch.setenv("GRID_LOCK_DB_URL", DIRECT)
+    monkeypatch.setenv("LOCK_DB_URL", DIRECT)
     _, conn = _engine(monkeypatch, wins=True)
     conn.execute.side_effect = [MagicMock(scalar=MagicMock(return_value=True)), RuntimeError("connection lost")]
 
@@ -141,22 +141,22 @@ def test_a_failed_unlock_still_ends_the_session(monkeypatch):
     conn.close.assert_called_once()  # closing a never-pooled session releases the lock
 
 
-@pytest.mark.parametrize("name", ["GRID_SUMMARY_DB", "NAT_JOB_STORE_DB_URL"])
+@pytest.mark.parametrize("name", ["SUMMARY_DB", "NAT_JOB_STORE_DB_URL"])
 def test_postgres_without_a_lock_dsn_is_a_configuration_error_not_a_quiet_fallback(monkeypatch, name):
     # The old behaviour derived the lock connection from these. Doing that now
     # would put session locks on the pooled DSN, which is the bug.
     monkeypatch.setenv(name, POOLED)
 
-    with pytest.raises(RuntimeError, match="GRID_LOCK_DB_URL is not set"), leader_lock(1):
+    with pytest.raises(RuntimeError, match="LOCK_DB_URL is not set"), leader_lock(1):
         pass
-    with pytest.raises(RuntimeError, match="GRID_LOCK_DB_URL is not set"), keyed_lock("reingest:proj:x.pdf"):
+    with pytest.raises(RuntimeError, match="LOCK_DB_URL is not set"), keyed_lock("reingest:proj:x.pdf"):
         pass
 
 
 def test_the_lock_dsn_wins_over_the_pooled_ones(monkeypatch):
-    monkeypatch.setenv("GRID_SUMMARY_DB", POOLED)
+    monkeypatch.setenv("SUMMARY_DB", POOLED)
     monkeypatch.setenv("NAT_JOB_STORE_DB_URL", POOLED)
-    monkeypatch.setenv("GRID_LOCK_DB_URL", DIRECT)
+    monkeypatch.setenv("LOCK_DB_URL", DIRECT)
     urls, _ = _engine(monkeypatch)
 
     with leader_lock(1):
@@ -168,7 +168,7 @@ def test_the_lock_dsn_wins_over_the_pooled_ones(monkeypatch):
 
 
 async def test_the_async_election_is_the_same_election(monkeypatch):
-    monkeypatch.setenv("GRID_LOCK_DB_URL", DIRECT)
+    monkeypatch.setenv("LOCK_DB_URL", DIRECT)
     urls, conn = _engine(monkeypatch, wins=True)
 
     async with leader_lock_async(7) as leads:
@@ -180,7 +180,7 @@ async def test_the_async_election_is_the_same_election(monkeypatch):
 
 
 async def test_the_async_loser_is_told_so(monkeypatch):
-    monkeypatch.setenv("GRID_LOCK_DB_URL", DIRECT)
+    monkeypatch.setenv("LOCK_DB_URL", DIRECT)
     _engine(monkeypatch, wins=False)
 
     async with leader_lock_async(7) as leads:
@@ -226,7 +226,7 @@ def test_lock_connections_ask_libpq_for_tcp_keepalives(monkeypatch):
 
 
 def test_a_keyed_lock_bounds_its_wait_before_it_waits(monkeypatch):
-    monkeypatch.setenv("GRID_LOCK_DB_URL", DIRECT)
+    monkeypatch.setenv("LOCK_DB_URL", DIRECT)
     _, conn = _engine(monkeypatch)
 
     with keyed_lock("reingest:proj:x.pdf"):
@@ -244,8 +244,8 @@ def test_a_keyed_lock_bounds_its_wait_before_it_waits(monkeypatch):
     [("30", "30s"), ("0", "0s"), ("not-a-number", "900s"), ("-5", "900s")],
 )
 def test_the_keyed_lock_wait_is_configurable_and_zero_means_no_limit(monkeypatch, raw, expected):
-    monkeypatch.setenv("GRID_LOCK_DB_URL", DIRECT)
-    monkeypatch.setenv("GRID_KEYED_LOCK_TIMEOUT_SECONDS", raw)
+    monkeypatch.setenv("LOCK_DB_URL", DIRECT)
+    monkeypatch.setenv("KEYED_LOCK_TIMEOUT_SECONDS", raw)
     _, conn = _engine(monkeypatch)
 
     with keyed_lock("reingest:proj:x.pdf"):
@@ -255,7 +255,7 @@ def test_the_keyed_lock_wait_is_configurable_and_zero_means_no_limit(monkeypatch
 
 
 def test_a_keyed_lock_that_times_out_ends_its_session_and_does_not_run_the_body(monkeypatch, caplog):
-    monkeypatch.setenv("GRID_LOCK_DB_URL", DIRECT)
+    monkeypatch.setenv("LOCK_DB_URL", DIRECT)
     _, conn = _engine(monkeypatch)
     conn.execute.side_effect = [MagicMock(), RuntimeError("canceling statement due to lock timeout")]
 
@@ -278,66 +278,66 @@ def test_without_a_postgres_database_nothing_is_required():
 
 
 def test_a_sqlite_process_needs_no_direct_dsn(monkeypatch):
-    monkeypatch.setenv("GRID_SUMMARY_DB", SQLITE)
+    monkeypatch.setenv("SUMMARY_DB", SQLITE)
     monkeypatch.setenv("NAT_JOB_STORE_DB_URL", "sqlite+aiosqlite:///./jobs.db")
 
     require_direct_dsns(listen=True)
 
 
-@pytest.mark.parametrize("name", ["GRID_SUMMARY_DB", "NAT_JOB_STORE_DB_URL"])
+@pytest.mark.parametrize("name", ["SUMMARY_DB", "NAT_JOB_STORE_DB_URL"])
 def test_a_postgres_web_process_without_the_lock_dsn_cannot_start(monkeypatch, name):
     monkeypatch.setenv(name, POOLED)
-    monkeypatch.setenv("GRID_LISTEN_DB_URL", DIRECT)
+    monkeypatch.setenv("LISTEN_DB_URL", DIRECT)
 
-    with pytest.raises(RuntimeError, match="GRID_LOCK_DB_URL is not set") as raised:
+    with pytest.raises(RuntimeError, match="LOCK_DB_URL is not set") as raised:
         require_direct_dsns(listen=True)
 
-    assert "GRID_LISTEN_DB_URL" not in str(raised.value)
+    assert "LISTEN_DB_URL" not in str(raised.value)
 
 
 def test_a_postgres_web_process_without_the_listen_dsn_cannot_start(monkeypatch):
-    monkeypatch.setenv("GRID_SUMMARY_DB", POOLED)
-    monkeypatch.setenv("GRID_LOCK_DB_URL", DIRECT)
+    monkeypatch.setenv("SUMMARY_DB", POOLED)
+    monkeypatch.setenv("LOCK_DB_URL", DIRECT)
 
-    with pytest.raises(RuntimeError, match="GRID_LISTEN_DB_URL is not set") as raised:
+    with pytest.raises(RuntimeError, match="LISTEN_DB_URL is not set") as raised:
         require_direct_dsns(listen=True)
 
-    assert "GRID_LOCK_DB_URL" not in str(raised.value)
+    assert "LOCK_DB_URL" not in str(raised.value)
 
 
 def test_the_message_names_every_missing_variable(monkeypatch):
-    monkeypatch.setenv("GRID_SUMMARY_DB", POOLED)
+    monkeypatch.setenv("SUMMARY_DB", POOLED)
 
-    with pytest.raises(RuntimeError, match="GRID_LOCK_DB_URL is not set; GRID_LISTEN_DB_URL is not set"):
+    with pytest.raises(RuntimeError, match="LOCK_DB_URL is not set; LISTEN_DB_URL is not set"):
         require_direct_dsns(listen=True)
 
 
 def test_a_worker_needs_the_lock_dsn_but_not_the_listen_dsn(monkeypatch):
-    monkeypatch.setenv("GRID_SUMMARY_DB", POOLED)
+    monkeypatch.setenv("SUMMARY_DB", POOLED)
 
-    with pytest.raises(RuntimeError, match="GRID_LOCK_DB_URL is not set"):
+    with pytest.raises(RuntimeError, match="LOCK_DB_URL is not set"):
         require_direct_dsns(listen=False)
 
-    monkeypatch.setenv("GRID_LOCK_DB_URL", DIRECT)
+    monkeypatch.setenv("LOCK_DB_URL", DIRECT)
     require_direct_dsns(listen=False)  # no LISTEN here: it never serves a stream
 
 
 def test_the_check_passes_when_both_are_set(monkeypatch):
-    monkeypatch.setenv("GRID_SUMMARY_DB", POOLED)
+    monkeypatch.setenv("SUMMARY_DB", POOLED)
     monkeypatch.setenv("NAT_JOB_STORE_DB_URL", POOLED)
-    monkeypatch.setenv("GRID_LOCK_DB_URL", DIRECT)
-    monkeypatch.setenv("GRID_LISTEN_DB_URL", DIRECT)
+    monkeypatch.setenv("LOCK_DB_URL", DIRECT)
+    monkeypatch.setenv("LISTEN_DB_URL", DIRECT)
 
     require_direct_dsns(listen=True)
     require_direct_dsns(listen=False)
 
 
-@pytest.mark.parametrize("name", ["GRID_LOCK_DB_URL", "GRID_LISTEN_DB_URL"])
+@pytest.mark.parametrize("name", ["LOCK_DB_URL", "LISTEN_DB_URL"])
 def test_a_direct_dsn_that_is_not_postgres_is_refused_on_a_postgres_process(monkeypatch, name):
     # Set, but to something `_lock_url` would treat as "no Postgres": unguarded again, silently.
-    monkeypatch.setenv("GRID_SUMMARY_DB", POOLED)
-    monkeypatch.setenv("GRID_LOCK_DB_URL", DIRECT)
-    monkeypatch.setenv("GRID_LISTEN_DB_URL", DIRECT)
+    monkeypatch.setenv("SUMMARY_DB", POOLED)
+    monkeypatch.setenv("LOCK_DB_URL", DIRECT)
+    monkeypatch.setenv("LISTEN_DB_URL", DIRECT)
     monkeypatch.setenv(name, SQLITE)
 
     with pytest.raises(RuntimeError, match=f"{name} is not a PostgreSQL URL"):

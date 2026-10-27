@@ -51,7 +51,7 @@ def env(tmp_path, monkeypatch, qdrant_store):
     from aiq_agent.knowledge import factory
 
     summary_db = f"sqlite:///{tmp_path / 'summaries.db'}"
-    monkeypatch.setenv("GRID_SUMMARY_DB", summary_db)
+    monkeypatch.setenv("SUMMARY_DB", summary_db)
     factory._document_metadata_store = None
     configure_summary_db(summary_db)
     bumped: list[str] = []

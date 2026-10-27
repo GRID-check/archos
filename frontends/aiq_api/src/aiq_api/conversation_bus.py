@@ -85,10 +85,10 @@ _RUNNING = "conv:{id}:running"  # SET NX + TTL: the one turn of the conversation
 # Every frame of a turn lands here, and a socket that `attach`es reads back what
 # it missed by `(turn_id, seq)`. A v2 turn is a few dozen frames, so the cap
 # holds many turns; the TTL bounds a conversation nobody comes back to.
-_STREAM_MAXLEN = int(os.environ.get("GRID_CONV_STREAM_MAXLEN", "2000") or "2000")
-_STREAM_TTL_SECONDS = int(os.environ.get("GRID_CONV_STREAM_TTL_SECONDS", "3600") or "3600")
+_STREAM_MAXLEN = int(os.environ.get("CONV_STREAM_MAXLEN", "2000") or "2000")
+_STREAM_TTL_SECONDS = int(os.environ.get("CONV_STREAM_TTL_SECONDS", "3600") or "3600")
 
-# @environment_variable GRID_CHAT_RUNNING_TTL_SECONDS
+# @environment_variable CHAT_RUNNING_TTL_SECONDS
 # @category Server
 # @type float
 # @default 12
@@ -98,14 +98,14 @@ _STREAM_TTL_SECONDS = int(os.environ.get("GRID_CONV_STREAM_TTL_SECONDS", "3600")
 # the turn runs and deletes the marker when the turn ends. It bounds two
 # things in opposite directions. How long a newer question waits behind a
 # replica that died mid-turn: up to this value, and it must stay under
-# `GRID_CHAT_SUPERSEDE_WAIT_SECONDS`, which must stay under the client's 15 s
+# `CHAT_SUPERSEDE_WAIT_SECONDS`, which must stay under the client's 15 s
 # acknowledgement bound. And, with `GRID_CHAT_AFFINITY` off, how long a Dragonfly
 # blip the owner survives: it stops writing and cancels its turn once a
 # successful renewal is older than this minus a 4 s margin (one guarded write,
 # 3 s, plus 1 s). A failed renewal is retried every second, so a blip shorter
 # than about this value minus 6 s is ridden out and a longer one ends the
 # answer. It must be above 4.
-RUNNING_TTL_SECONDS = float(os.environ.get("GRID_CHAT_RUNNING_TTL_SECONDS", "12") or "12")
+RUNNING_TTL_SECONDS = float(os.environ.get("CHAT_RUNNING_TTL_SECONDS", "12") or "12")
 
 #: The bound on one bus command a turn waits on. RedisTransport's own client
 #: timeout is the same second; this one holds for any transport.
@@ -513,7 +513,7 @@ class ConversationBus:
 # REDIS_URL is set and the bus is not explicitly disabled — ON by default. With
 # no REDIS_URL it uses the in-process transport (single-process, byte-identical
 # to the pre-bus path); the Redis path fails open to local delivery on error.
-# Opt out with GRID_CONVERSATION_BUS=0.
+# Opt out with CONVERSATION_BUS=0.
 # ---------------------------------------------------------------------------
 _bus: ConversationBus | None = None
 _in_memory_singleton: InMemoryTransport | None = None
@@ -524,7 +524,7 @@ def _bus_enabled() -> bool:
     # Default ON: the stateless conversation bus is the intended architecture.
     # Explicit falsey values opt out (the tier then falls back to affinity /
     # single-process local delivery, byte-identical to the pre-bus path).
-    val = os.environ.get("GRID_CONVERSATION_BUS", "1").strip().lower()
+    val = os.environ.get("CONVERSATION_BUS", "1").strip().lower()
     return val not in ("0", "false", "no", "off", "")
 
 

@@ -193,11 +193,11 @@ describe("the chat tier's scale-out", () => {
   it("gives a terminating replica the whole drain, and the drain covers the longest chat turn", async () => {
     const spec = await resolve(find(STATEFULSET, "chat").inputs.spec);
     const grace = spec.template.spec.terminationGracePeriodSeconds;
-    const drain = Number(backendEnvNames.GRID_CHAT_DRAIN_SECONDS);
+    const drain = Number(backendEnvNames.CHAT_DRAIN_SECONDS);
 
     expect(drain).toBe(cfg.backend.drainSeconds);
     expect(grace).toBeGreaterThan(drain + 10); // the preStop endpoint drain comes out of the same budget
-    const deadline = Number(chatSocket.match(/GRID_CHAT_TURN_DEADLINE_SECONDS", "(\d+)"/)?.[1]);
+    const deadline = Number(chatSocket.match(/CHAT_TURN_DEADLINE_SECONDS", "(\d+)"/)?.[1]);
     expect(deadline).toBeGreaterThan(0);
     expect(drain).toBeGreaterThanOrEqual(deadline);
   });

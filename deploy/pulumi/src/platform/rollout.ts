@@ -387,14 +387,14 @@ export const BACKEND_DRAIN_SLACK_SECONDS = 60;
  *
  * On SIGTERM the replica is already out of the Service's endpoints, so no new
  * socket arrives, and it waits for the turns it claimed
- * (`GRID_CHAT_DRAIN_SECONDS`, `chat_socket.ChatRegistry.drain`) while relays on
+ * (`CHAT_DRAIN_SECONDS`, `chat_socket.ChatRegistry.drain`) while relays on
  * other replicas keep streaming them from Dragonfly (ADR-0080). The pod must
  * live that long, so the grace period IS the drain plus the endpoint drain and
  * slack, not a number chosen beside it: at the old fixed 90 s every rollout and
  * every scale-in killed a long answer after a minute and a half.
  *
  * `drainSeconds` has to cover the longest chat turn, which is the turn's own
- * deadline (`GRID_CHAT_TURN_DEADLINE_SECONDS`, 2700). The admission lease is
+ * deadline (`CHAT_TURN_DEADLINE_SECONDS`, 2700). The admission lease is
  * renewed for as long as a turn runs, so it bounds nothing here.
  */
 export function backendRollout(drainSeconds: number): RolloutProfile {

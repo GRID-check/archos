@@ -163,7 +163,7 @@ This is a simple bearer token. Change it from the default before deploying to pr
 Embeddings and the VLM route through OpenRouter with `OPENROUTER_API_KEY`; the
 embeddings client is LlamaIndex's `NVIDIAEmbedding` class pointed at an
 OpenAI-compatible endpoint, and the key reaches it through the shared credential
-resolver (`GRID_EMBED_API_KEY`, else the key inferred from `GRID_EMBED_BASE_URL`).
+resolver (`EMBED_API_KEY`, else the key inferred from `EMBED_BASE_URL`).
 `NVIDIA_API_KEY` is not read anywhere.
 
 ### What's Needed For VLM Features

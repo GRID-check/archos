@@ -10,16 +10,16 @@ Unified API plugin for the AI-Q blueprint: **Knowledge API** (collections, docum
 ```bash
 # Loads API keys from deploy/.env; NeMo Agent toolkit auto-creates:
 # - SQLite database at .tmp/job_store.db
-GRID_ROLE=api dotenv -f deploy/.env run nat serve --config configs/config_oib_openrouter.yml
+PROCESS_ROLE=api dotenv -f deploy/.env run nat serve --config configs/config_oib_openrouter.yml
 ```
 
-`GRID_ROLE` is required and has no default (ADR-0082): `api` serves the HTTP routes, `chat` the chat socket (run it on another port beside the `api` process when the UI is in use, as `scripts/start_e2e.sh` does). Ingestion is claimed by `GRID_ROLE=ingest-worker python deploy/entrypoint.py`; without one, set `GRID_INGEST_QUEUE=off` and `api` runs ingest jobs itself.
+`PROCESS_ROLE` is required and has no default (ADR-0082): `api` serves the HTTP routes, `chat` the chat socket (run it on another port beside the `api` process when the UI is in use, as `scripts/start_e2e.sh` does). Ingestion is claimed by `PROCESS_ROLE=ingest-worker python deploy/entrypoint.py`; without one, set `INGEST_QUEUE=off` and `api` runs ingest jobs itself.
 
 ### Production (PostgreSQL)
 
 ```bash
 export NAT_JOB_STORE_DB_URL="postgresql://user:pass@host:5432/dbname"
-GRID_ROLE=api dotenv -f deploy/.env run nat serve --config configs/config_oib_openrouter.yml
+PROCESS_ROLE=api dotenv -f deploy/.env run nat serve --config configs/config_oib_openrouter.yml
 ```
 
 ## Architecture
@@ -199,11 +199,11 @@ is disabled by default and opt-in via the `REQUIRE_AUTH` environment variable.
 | Variable | Purpose | Default |
 |----------|---------|---------|
 | `REQUIRE_AUTH` | Enforce authentication on all non-exempt routes | `false` |
-| `GRID_TRACE_USER_IDENTITY_MODE` | Control whether verified user identity is attached to NAT spans: `none`, `id`, or `full` | `none` |
-| `GRID_TRACE_USER_IDENTITY_HMAC_SECRET` | Secret used to pseudonymize verified user IDs in traces when identity tagging is enabled | unset |
-| `GRID_TRACE_CLIENT_ID_MODE` | Control whether a pseudonymous client identifier is attached to NAT spans: `none` or `ip` | `none` |
-| `GRID_TRACE_CLIENT_ID_HMAC_SECRET` | Secret used to pseudonymize client IDs when client tagging is enabled; falls back to the user-identity secret | unset |
-| `GRID_TRACE_CLIENT_IP_HEADERS` | Ordered comma-separated client IP headers to trust before falling back to the ASGI client address | `x-real-ip,x-forwarded-for` |
+| `TRACE_USER_IDENTITY_MODE` | Control whether verified user identity is attached to NAT spans: `none`, `id`, or `full` | `none` |
+| `TRACE_USER_IDENTITY_HMAC_SECRET` | Secret used to pseudonymize verified user IDs in traces when identity tagging is enabled | unset |
+| `TRACE_CLIENT_ID_MODE` | Control whether a pseudonymous client identifier is attached to NAT spans: `none` or `ip` | `none` |
+| `TRACE_CLIENT_ID_HMAC_SECRET` | Secret used to pseudonymize client IDs when client tagging is enabled; falls back to the user-identity secret | unset |
+| `TRACE_CLIENT_IP_HEADERS` | Ordered comma-separated client IP headers to trust before falling back to the ASGI client address | `x-real-ip,x-forwarded-for` |
 
 ### Enabling authentication
 
@@ -226,7 +226,7 @@ Always-on NAT span tags:
 - `nat.aiq.auth.verified`: whether the request resolved to a verified principal
 - `nat.aiq.access.channel`: inferred or explicitly supplied access channel
 
-Optional user identity tags are controlled by `GRID_TRACE_USER_IDENTITY_MODE`:
+Optional user identity tags are controlled by `TRACE_USER_IDENTITY_MODE`:
 
 - `none`: disable user identity tagging entirely
 - `id`: tag only pseudonymous stable identifiers (`nat.enduser.id`, `nat.aiq.user.id`, `nat.aiq.auth.type`)
@@ -234,17 +234,17 @@ Optional user identity tags are controlled by `GRID_TRACE_USER_IDENTITY_MODE`:
 
 Only verified principals are tagged. Anonymous, internal, and unverified JWT
 fallback callers are never attached to traces.
-Set `GRID_TRACE_USER_IDENTITY_HMAC_SECRET` when using `id` or `full`; otherwise
+Set `TRACE_USER_IDENTITY_HMAC_SECRET` when using `id` or `full`; otherwise
 identity tagging is skipped.
 
-Optional client correlation is controlled by `GRID_TRACE_CLIENT_ID_MODE`:
+Optional client correlation is controlled by `TRACE_CLIENT_ID_MODE`:
 
 - `none`: disable client correlation
 - `ip`: add `nat.aiq.client.id` as an HMAC-derived pseudonymous identifier from
   the client IP
 
-Set `GRID_TRACE_CLIENT_ID_HMAC_SECRET` when using `ip`. If unset, the middleware
-falls back to `GRID_TRACE_USER_IDENTITY_HMAC_SECRET`. `GRID_TRACE_CLIENT_IP_HEADERS`
+Set `TRACE_CLIENT_ID_HMAC_SECRET` when using `ip`. If unset, the middleware
+falls back to `TRACE_USER_IDENTITY_HMAC_SECRET`. `TRACE_CLIENT_IP_HEADERS`
 controls which ingress headers are consulted first.
 
 #### 1. Programmatic (`register_validator`)

@@ -9,7 +9,7 @@ import { baseStackConfig } from "../test-support/stack-config";
  * The api tier (ADR-0082 step B).
  *
  * What goes wrong here plans clean and deploys green:
- *   - A `GRID_ROLE` the Python image does not know stops every pod of the tier
+ *   - A `PROCESS_ROLE` the Python image does not know stops every pod of the tier
  *     at start (the entrypoint refuses it), and a role nobody sets gets no route
  *     at all. Both sides are read as source below.
  *   - A BFF whose `BACKEND_URL` still names the chat tier sends every HTTP call
@@ -166,11 +166,11 @@ describe("the api tier", () => {
     expect(pod.terminationGracePeriodSeconds).toBeLessThan(backendRollout(cfg.backend.drainSeconds).terminationGracePeriodSeconds);
   });
 
-  it("runs as GRID_ROLE=api, and the chat StatefulSet as GRID_ROLE=chat", async () => {
+  it("runs as PROCESS_ROLE=api, and the chat StatefulSet as PROCESS_ROLE=chat", async () => {
     const api = (await resolve(find(DEPLOYMENT, "api").inputs.spec)).template.spec.containers[0].env;
     const chat = (await resolve(find(STATEFULSET, "chat").inputs.spec)).template.spec.containers[0].env;
     const role = (env: Array<{ name: string; value?: string }>) =>
-      env.filter((e) => e.name === "GRID_ROLE").map((e) => e.value);
+      env.filter((e) => e.name === "PROCESS_ROLE").map((e) => e.value);
 
     expect(role(api)).toEqual(["api"]);
     expect(role(chat)).toEqual(["chat"]);
@@ -183,17 +183,17 @@ describe("the api tier", () => {
 
     expect(known).toEqual(["api", "chat"]);
     expect(entrypoint).toContain('ROLES = ("chat", "api", "worker", "ingest-worker")');
-    expect(chatEnvValues.GRID_ROLE).toBe("chat");
-    expect(apiEnvValues.GRID_ROLE).toBe("api");
+    expect(chatEnvValues.PROCESS_ROLE).toBe("chat");
+    expect(apiEnvValues.PROCESS_ROLE).toBe("api");
   });
 
   it("is the chat tier's env without what only chat reads", () => {
-    const chatOnly = ["GRID_CHAT_DRAIN_SECONDS", "GRID_CHAT_AFFINITY", "GRID_CONVERSATION_BUS"];
+    const chatOnly = ["CHAT_DRAIN_SECONDS", "GRID_CHAT_AFFINITY", "CONVERSATION_BUS"];
     for (const name of chatOnly) {
       expect(chatEnvValues[name], name).toBeDefined();
       expect(apiEnvValues[name], name).toBeUndefined();
     }
-    const apart = [...chatOnly, "GRID_ROLE", "OTEL_SERVICE_NAME"];
+    const apart = [...chatOnly, "PROCESS_ROLE", "OTEL_SERVICE_NAME"];
     const shared = Object.keys(chatEnvValues).filter((n) => !apart.includes(n));
     expect(shared.filter((n) => apiEnvValues[n] !== chatEnvValues[n])).toEqual([]);
   });
@@ -212,8 +212,8 @@ describe("the api tier", () => {
   });
 
   it("only hands ingestion to the tier: the queue has no off switch and nothing in the roles claims", async () => {
-    expect(chatEnvValues.GRID_INGEST_QUEUE).toBeUndefined();
-    expect(apiEnvValues.GRID_INGEST_QUEUE).toBeUndefined();
+    expect(chatEnvValues.INGEST_QUEUE).toBeUndefined();
+    expect(apiEnvValues.INGEST_QUEUE).toBeUndefined();
     expect(cfg.ingestWorker).not.toHaveProperty("enabled");
   });
 

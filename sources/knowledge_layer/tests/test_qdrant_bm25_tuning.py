@@ -36,12 +36,12 @@ WORDS = ["Fluchtweg", "Treppenhaus", "Brandabschnitt", "Geschoss", "Rauchabzug",
 
 
 def _server_url() -> str:
-    url = os.environ.get("GRID_QDRANT_TEST_URL", "").strip()
+    url = os.environ.get("QDRANT_TEST_URL", "").strip()
     if url:
         return url
     if os.environ.get("CI"):
-        pytest.fail("GRID_QDRANT_TEST_URL is unset on CI: the Qdrant service container is missing")
-    pytest.skip("GRID_QDRANT_TEST_URL not set; start a Qdrant 1.19 server to run these")
+        pytest.fail("QDRANT_TEST_URL is unset on CI: the Qdrant service container is missing")
+    pytest.skip("QDRANT_TEST_URL not set; start a Qdrant 1.19 server to run these")
 
 
 @pytest.fixture
@@ -201,8 +201,8 @@ class TestOnQdrant:
         import pathlib
 
         store.upsert(SCOPE, _records([60, 80]))
-        monkeypatch.setenv("GRID_QDRANT_URL", _server_url())
-        monkeypatch.delenv("GRID_QDRANT_API_KEY", raising=False)
+        monkeypatch.setenv("QDRANT_URL", _server_url())
+        monkeypatch.delenv("QDRANT_API_KEY", raising=False)
         path = pathlib.Path(__file__).resolve().parents[3] / "scripts" / "qdrant_chunk_length_stats.py"
         spec = importlib.util.spec_from_file_location("qdrant_chunk_length_stats", path)
         script = importlib.util.module_from_spec(spec)

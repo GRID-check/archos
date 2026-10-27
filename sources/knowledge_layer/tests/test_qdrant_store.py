@@ -2,7 +2,7 @@
 
 What is under test is the server's behaviour as this package drives it: German
 BM25, server-side fusion, strict mode, phrase matching, grouping. A mock would
-only test the mock, so these run against ``GRID_QDRANT_TEST_URL``: the CI
+only test the mock, so these run against ``QDRANT_TEST_URL``: the CI
 backend job starts ``qdrant/qdrant:v1.19.2`` as a service container. Locally,
 without the variable, the module skips; on CI it fails instead, so the suite
 cannot quietly stop running.
@@ -32,12 +32,12 @@ IDENTITY = {"aiq:embed_fingerprint": "test-fp", "aiq:embed_model": "test-model"}
 
 
 def _server_url() -> str:
-    url = os.environ.get("GRID_QDRANT_TEST_URL", "").strip()
+    url = os.environ.get("QDRANT_TEST_URL", "").strip()
     if url:
         return url
     if os.environ.get("CI"):
-        pytest.fail("GRID_QDRANT_TEST_URL is unset on CI: the Qdrant service container is missing")
-    pytest.skip("GRID_QDRANT_TEST_URL not set; start a Qdrant 1.19 server to run these")
+        pytest.fail("QDRANT_TEST_URL is unset on CI: the Qdrant service container is missing")
+    pytest.skip("QDRANT_TEST_URL not set; start a Qdrant 1.19 server to run these")
 
 
 @pytest.fixture
@@ -448,7 +448,7 @@ def test_concurrent_creators_both_succeed(store, monkeypatch):
 def test_writes_are_acknowledged_by_one_replica(fresh_store, monkeypatch):
     """At RF 2 a write consistency of 2 failed every write to a shard whose second peer was down."""
     store = fresh_store
-    monkeypatch.setenv("GRID_QDRANT_REPLICATION_FACTOR", "2")
+    monkeypatch.setenv("QDRANT_REPLICATION_FACTOR", "2")
     store.upsert("proj_a", [_record("x", "a.pdf")])
     assert store.client.get_collection(store.alias("proj_a")).config.params.replication_factor == 2
     assert store.client.get_collection(store.alias("proj_a")).config.params.write_consistency_factor == 1

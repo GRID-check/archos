@@ -1,7 +1,7 @@
 """The base corpus: table, cache, hash checks and the ingestion state (ADR-0082, step A2).
 
 The BFF and SeaweedFS are replaced by an in-memory bucket (``tests/object_corpus_fakes``);
-the corpus table is a real SQLite file (a real Postgres when ``GRID_TEST_CORPUS_DB`` is set),
+the corpus table is a real SQLite file (a real Postgres when ``TEST_CORPUS_DB`` is set),
 so the store's own logic runs for real.
 """
 
@@ -59,9 +59,9 @@ class TestCacheDir:
 
 class TestTable:
     def test_without_a_database_it_fails_loudly(self, monkeypatch):
-        monkeypatch.delenv("GRID_SUMMARY_DB", raising=False)
+        monkeypatch.delenv("SUMMARY_DB", raising=False)
         monkeypatch.delenv("NAT_JOB_STORE_DB_URL", raising=False)
-        with pytest.raises(corpus_store.CorpusStoreError, match="GRID_SUMMARY_DB"):
+        with pytest.raises(corpus_store.CorpusStoreError, match="SUMMARY_DB"):
             corpus_store.list_files()
 
     def test_the_table_is_created_on_first_use(self, bucket):

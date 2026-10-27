@@ -17,7 +17,7 @@ The retriever caches retrieval results for static collections for
 ``STATIC_RESULT_CACHE_TTL_SECONDS`` (1 hour) and keys them on the collection's
 write version, so a write invalidates them immediately. That worked only while
 "the process" and "the deployment" were the same thing. They are not: Qdrant is
-a shared cluster (``GRID_QDRANT_URL``), the backend runs at ``backendReplicas: 2``
+a shared cluster (``QDRANT_URL``), the backend runs at ``backendReplicas: 2``
 in production, and the deep-research worker tier runs 2-8 more — all reading and
 writing ONE store. A version counter held in a module global is invisible to
 every replica but its own, so an ingest or a delete on replica A would leave
@@ -99,7 +99,7 @@ _REDIS_URL_ENV = "REDIS_URL"
 
 _KEY_PREFIX = "knowledge:collection-version:"
 
-# @environment_variable GRID_COLLECTION_VERSION_MEMO_SECONDS
+# @environment_variable COLLECTION_VERSION_MEMO_SECONDS
 # @category Knowledge Layer
 # @type float
 # @default 3.0
@@ -109,7 +109,7 @@ _KEY_PREFIX = "knowledge:collection-version:"
 # the retrieval result cache: raising it saves round trips and lengthens the
 # window in which one replica can still serve results a write on another replica
 # has already superseded.
-MEMO_TTL_SECONDS = float(os.environ.get("GRID_COLLECTION_VERSION_MEMO_SECONDS", "3.0"))
+MEMO_TTL_SECONDS = float(os.environ.get("COLLECTION_VERSION_MEMO_SECONDS", "3.0"))
 
 # Don't repeat "cannot resolve the version" once per query while the store is
 # down; once a minute per collection is enough to see it in the logs.

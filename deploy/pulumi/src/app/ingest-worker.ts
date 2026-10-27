@@ -23,7 +23,7 @@ export const QUEUE_DEPTH_QUERY = queueDepthQuery(QUEUE_TABLE);
 /**
  * The ingestion tier (ADR-0076), the only process that claims ingestion jobs.
  *
- * Replicas of the backend image with `GRID_ROLE=ingest-worker`: no web port, no PVC. Each builds the ingestor once and its `concurrency` threads
+ * Replicas of the backend image with `PROCESS_ROLE=ingest-worker`: no web port, no PVC. Each builds the ingestor once and its `concurrency` threads
  * claim jobs from Postgres, fairly across organisations (fewest running first,
  * fleet-wide). Vectors live in the shared Qdrant, jobs in Postgres, so a replica
  * is disposable.
@@ -35,9 +35,9 @@ export const QUEUE_DEPTH_QUERY = queueDepthQuery(QUEUE_TABLE);
  * empty queue shrinks it back to the floor (zero, if the floor is zero).
  *
  * The ceiling that matters is not this one: replicas × concurrency ×
- * `GRID_VLM_BATCH_WORKERS` VLM calls are in flight at the peak, all on the shared
+ * `VLM_BATCH_WORKERS` VLM calls are in flight at the peak, all on the shared
  * provider key. `assertVlmPeakFitsCeiling` fails the deploy when that product is
- * more than twice `GRID_VLM_FLEET_CONCURRENCY` (itself held to the limiter ceilings,
+ * more than twice `VLM_FLEET_CONCURRENCY` (itself held to the limiter ceilings,
  * the vision model's own included), so `ingestWorkerMaxReplicas` cannot be raised
  * past what the provider budget can feed.
  *

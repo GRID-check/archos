@@ -32,7 +32,7 @@ USAGE
 
 IT NEEDS A KEY, NOT A BACKEND
 -----------------------------
-``OPENROUTER_API_KEY`` (or ``GRID_DECISIONS_API_KEY``). The routes run in-process through
+``OPENROUTER_API_KEY`` (or ``DECISIONS_API_KEY``). The routes run in-process through
 FastAPI's TestClient, so the only network call is the model's. A failed call stops the
 run: a partial run is not a measurement, so no report is written.
 """
@@ -384,8 +384,8 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--out", type=Path, default=FIXTURE.parent / f"eval_{date.today().isoformat()}.json")
     args = parser.parse_args(argv)
-    if not (os.environ.get("OPENROUTER_API_KEY") or os.environ.get("GRID_DECISIONS_API_KEY")):
-        print("root_sort_eval: set OPENROUTER_API_KEY (or GRID_DECISIONS_API_KEY); nothing to measure.")
+    if not (os.environ.get("OPENROUTER_API_KEY") or os.environ.get("DECISIONS_API_KEY")):
+        print("root_sort_eval: set OPENROUTER_API_KEY (or DECISIONS_API_KEY); nothing to measure.")
         return 2
     fixture = load_fixture()
     problems = check_fixture(fixture)

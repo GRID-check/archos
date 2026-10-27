@@ -6,7 +6,7 @@ WHY THIS EXISTS
 Every drawing page an upload carries costs one generative vision call today
 (``adapter._analyze_drawing_page_with_vlm``): about 25 s for a multi-view sheet,
 56 s when the reply runs past its budget and is asked again, and it holds one of
-the fleet's ``GRID_VLM_FLEET_CONCURRENCY`` slots the whole time, so it is also what
+the fleet's ``VLM_FLEET_CONCURRENCY`` slots the whole time, so it is also what
 every other office's upload waits behind. Jev 1.14 (TypeSafe, on OpenRouter's
 Decisions endpoint) reads images: a ``choice`` says what a page is, a ``box`` says
 where something is on it, in about half a second for about $0.0002 a page.
@@ -54,7 +54,7 @@ hold, 1 when they do not, 2 without a key.
 
 IT NEEDS A KEY, NOT A BACKEND
 -----------------------------
-``OPENROUTER_API_KEY`` (or ``GRID_DECISIONS_API_KEY``). Four requests, under a
+``OPENROUTER_API_KEY`` (or ``DECISIONS_API_KEY``). Four requests, under a
 tenth of a cent.
 
 USAGE
@@ -280,9 +280,9 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n", 1)[0])
     parser.add_argument("--sheets", type=Path, help="a directory of real sheet images, answered ungraded")
     args = parser.parse_args()
-    key = os.environ.get("GRID_DECISIONS_API_KEY") or os.environ.get("OPENROUTER_API_KEY")
+    key = os.environ.get("DECISIONS_API_KEY") or os.environ.get("OPENROUTER_API_KEY")
     if not key:
-        print("No OPENROUTER_API_KEY / GRID_DECISIONS_API_KEY: nothing to ask.")
+        print("No OPENROUTER_API_KEY / DECISIONS_API_KEY: nothing to ask.")
         return 2
     held = eval_fixtures(key)
     if args.sheets:

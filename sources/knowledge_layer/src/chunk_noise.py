@@ -141,20 +141,20 @@ def noise_notice(dropped: int) -> str:
     )
 
 
-# @environment_variable GRID_DROP_OCR_NOISE
+# @environment_variable DROP_OCR_NOISE
 # @category Knowledge Layer
 # @type bool
 # @default false
 # @required false
 # Leave OCR debris passages out of knowledge_search's ranked pool before the
 # reranker and the per-document cap. Off until the answer suite has measured it.
-DROP_OCR_NOISE_ENV = "GRID_DROP_OCR_NOISE"
+DROP_OCR_NOISE_ENV = "DROP_OCR_NOISE"
 
 _TRUE_VALUES = frozenset({"1", "true", "yes", "on"})
 
 
 def noise_filter_enabled(configured: bool | None) -> bool:
-    """The config's choice when it makes one, else ``GRID_DROP_OCR_NOISE``; off by default."""
+    """The config's choice when it makes one, else ``DROP_OCR_NOISE``; off by default."""
     if configured is not None:
         return configured
     return os.environ.get(DROP_OCR_NOISE_ENV, "").strip().lower() in _TRUE_VALUES

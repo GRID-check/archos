@@ -812,7 +812,7 @@ server does not read its box or its thread target still goes; the canvas client
 says what it went without (`onDegraded`, `canvasDegradations`), the card says
 Piloti answered about the whole document, and a thread answer that never
 reached the thread is offered there to add by hand. Both fields travel only
-while `GRID_WIRE_V2_ADDITIVE_FIELDS` is on, its default: the hello then names
+while `WIRE_V2_ADDITIVE_FIELDS` is on, its default: the hello then names
 them in `accepts`.
 
 Mentioning Piloti in a thread sends the same turn with `reply_in_thread`. The

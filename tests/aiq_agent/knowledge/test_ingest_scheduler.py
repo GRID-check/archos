@@ -394,15 +394,15 @@ def test_a_job_that_appears_in_the_source_is_claimed_within_the_idle_interval(sc
 
 
 def test_the_per_org_cap_is_read_from_the_fleet_name(monkeypatch):
-    monkeypatch.setenv("GRID_INGEST_MAX_PER_ORG", "3")
+    monkeypatch.setenv("INGEST_MAX_PER_ORG", "3")
 
     assert per_org_cap_from_env() == 3
 
 
 @pytest.mark.parametrize("value", ["", "many", "-4"])
 def test_a_missing_or_malformed_per_org_cap_means_no_cap(monkeypatch, value):
-    monkeypatch.setenv("GRID_INGEST_MAX_PER_ORG", value)
-    monkeypatch.delenv("GRID_INGEST_MAX_PER_ORG", raising=False)
+    monkeypatch.setenv("INGEST_MAX_PER_ORG", value)
+    monkeypatch.delenv("INGEST_MAX_PER_ORG", raising=False)
 
     assert per_org_cap_from_env() == 0
 

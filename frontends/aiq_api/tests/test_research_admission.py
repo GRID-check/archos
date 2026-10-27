@@ -27,14 +27,14 @@ def _fill(db_url: str, organization_id: str, jobs: int) -> None:
 
 
 async def test_scheduled_work_piling_up_in_one_organization_is_still_admitted_below_the_bound(db_url, monkeypatch):
-    monkeypatch.setenv("GRID_MAX_QUEUED_JOBS_PER_ORG", "5")
+    monkeypatch.setenv("MAX_QUEUED_JOBS_PER_ORG", "5")
     _fill(db_url, "org-a", 4)
 
     await submit._enforce_job_admission(db_url, "org-a")
 
 
 async def test_an_organization_past_its_waiting_bound_is_refused_and_nobody_else_is(db_url, monkeypatch):
-    monkeypatch.setenv("GRID_MAX_QUEUED_JOBS_PER_ORG", "3")
+    monkeypatch.setenv("MAX_QUEUED_JOBS_PER_ORG", "3")
     _fill(db_url, "org-a", 3)
 
     with pytest.raises(JobAdmissionError, match="3 research jobs waiting"):
@@ -43,7 +43,7 @@ async def test_an_organization_past_its_waiting_bound_is_refused_and_nobody_else
 
 
 async def test_running_jobs_do_not_count_against_the_waiting_bound(db_url, monkeypatch):
-    monkeypatch.setenv("GRID_MAX_QUEUED_JOBS_PER_ORG", "2")
+    monkeypatch.setenv("MAX_QUEUED_JOBS_PER_ORG", "2")
     _fill(db_url, "org-a", 2)
     queue.claim_next(db_url, "w1", 30, 3)  # one starts: one waits
 
@@ -51,7 +51,7 @@ async def test_running_jobs_do_not_count_against_the_waiting_bound(db_url, monke
 
 
 async def test_the_waiting_bound_can_be_switched_off(db_url, monkeypatch):
-    monkeypatch.setenv("GRID_MAX_QUEUED_JOBS_PER_ORG", "0")
+    monkeypatch.setenv("MAX_QUEUED_JOBS_PER_ORG", "0")
     _fill(db_url, "org-a", 60)
 
     await submit._enforce_job_admission(db_url, "org-a")

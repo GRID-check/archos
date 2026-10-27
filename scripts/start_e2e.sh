@@ -68,8 +68,8 @@ echo "================================================"
 echo ""
 
 check_env() {
-    export GRID_DEV_ENV=e2e
-    echo "Set GRID_DEV_ENV=e2e"
+    export DEV_ENV=e2e
+    echo "Set DEV_ENV=e2e"
 
     if [ -f "./deploy/.env" ]; then
         set -a  # Automatically export all variables
@@ -144,11 +144,11 @@ start_backend() {
     echo "Config: $CONFIG_FILE"
     echo ""
 
-    GRID_ROLE=api nat serve --config_file "$CONFIG_FILE" --host 0.0.0.0 --port 8000 &
+    PROCESS_ROLE=api nat serve --config_file "$CONFIG_FILE" --host 0.0.0.0 --port 8000 &
     BACKEND_PID=$!
     echo "Backend api PID: $BACKEND_PID"
 
-    GRID_ROLE=chat nat serve --config_file "$CONFIG_FILE" --host 0.0.0.0 --port 8001 &
+    PROCESS_ROLE=chat nat serve --config_file "$CONFIG_FILE" --host 0.0.0.0 --port 8001 &
     CHAT_PID=$!
     echo "Backend chat PID: $CHAT_PID"
 }

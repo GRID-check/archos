@@ -113,7 +113,7 @@ _PG_REAP_EXHAUSTED_LOCK_ID = 0x41495152_58485300
 _MAX_ACTIVE_PER_ORG_ENV = "GRID_MAX_ACTIVE_JOBS_PER_ORG"
 _DEFAULT_MAX_ACTIVE_PER_ORG = 3
 
-# @environment_variable GRID_MAX_QUEUED_JOBS_PER_ORG
+# @environment_variable MAX_QUEUED_JOBS_PER_ORG
 # @category Server
 # @type int
 # @default 50
@@ -122,7 +122,7 @@ _DEFAULT_MAX_ACTIVE_PER_ORG = 3
 # Past it a submit is refused with 429: abuse protection against a runaway caller,
 # not capacity management, because capacity makes a job wait, never fail. 0 or
 # negative disables the bound.
-_MAX_QUEUED_PER_ORG_ENV = "GRID_MAX_QUEUED_JOBS_PER_ORG"
+_MAX_QUEUED_PER_ORG_ENV = "MAX_QUEUED_JOBS_PER_ORG"
 _DEFAULT_MAX_QUEUED_PER_ORG = 50
 
 

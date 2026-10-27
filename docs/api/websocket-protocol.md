@@ -43,7 +43,7 @@ ws://<host>/websocket?v=2&projectId=<uuid>&conversationId=<session_id>
   "Client → server" below). Free strings: a hello naming one this
   page does not know is still a hello. `accepts`, like
   `RUN_FINISHED.result.reasoning_effort`, is sent only while
-  `GRID_WIRE_V2_ADDITIVE_FIELDS` is on, its default; `off` is the rollback
+  `WIRE_V2_ADDITIVE_FIELDS` is on, its default; `off` is the rollback
   ([chat-wire-v2.md](../design/chat-wire-v2.md#compatibility-additive-changes-are-safe)). It is the
   other half of the version gate: `4426` tells an old page it is old, `hello`
   tells a current page the server is current. A server that predates this wire
@@ -265,7 +265,7 @@ narration.
 | `claim_stamps` | `Array<{ text, provenance, claim_type, load_bearing, numbers?, operation?, unmatched? }>` | No longer sent. Turns stored under rule 2 (ADR-0125) carry it in their metadata, and the chip renders them with it as before. |
 | `answer_confidence_version` | `1 \| 2` | Which rule computed `answer_confidence`: `2` a checked answer (ADR-0139; told apart from a stored per-sentence turn of ADR-0125 by `confidence_check`), `1` the answer-level floors. Absent when no level is surfaced. |
 | `lookup_found_nothing` | `boolean` (default `false`) | A search ran and found nothing; the answer is shown with a note that it rests on general knowledge. A `ruling` in that case is refused instead. |
-| `reasoning_effort` | `"none" \| "minimal" \| "low" \| "medium" \| "high" \| "xhigh"` | The thinking level the answering call ran at, resolved server-side (`reasoning_settings.effort_of` on the turn's model: the asker's `user_message.reasoning_effort`, else the platform's level for the group, else the configured one). On a Stopped turn it is the level the asker stated. Not on the frame when `GRID_WIRE_V2_ADDITIVE_FIELDS` is set off, the rollback (the row keeps it). Absent when no answering call ran or the model sends no level. The client prefers it over the level it recorded when it asked, so an observer and a turn the asker never saw finish carry it too; "Gründlicher neu beantworten" steps up from it. Persisted into message metadata under the same key, restored as `provenance.reasoningEffort` (a `none` is not a dial level and is dropped there). |
+| `reasoning_effort` | `"none" \| "minimal" \| "low" \| "medium" \| "high" \| "xhigh"` | The thinking level the answering call ran at, resolved server-side (`reasoning_settings.effort_of` on the turn's model: the asker's `user_message.reasoning_effort`, else the platform's level for the group, else the configured one). On a Stopped turn it is the level the asker stated. Not on the frame when `WIRE_V2_ADDITIVE_FIELDS` is set off, the rollback (the row keeps it). Absent when no answering call ran or the model sends no level. The client prefers it over the level it recorded when it asked, so an observer and a turn the asker never saw finish carry it too; "Gründlicher neu beantworten" steps up from it. Persisted into message metadata under the same key, restored as `provenance.reasoningEffort` (a `none` is not a dial level and is dropped there). |
 
 ```typescript
 /** One announced retrieval round, as the backend recorded it. */
@@ -314,7 +314,7 @@ ends, each pinned by a test in `frontends/aiq_api/tests/test_chat_socket.py`:
 - **One terminal, structurally.** `run_turn`'s `finally` sends a `RUN_ERROR` if
   no terminal went out, whatever escaped (a `BaseExceptionGroup` from a task
   group included). The escaped error is logged by the task's done-callback.
-- **A deadline.** `GRID_CHAT_TURN_DEADLINE_SECONDS` (2700) on the turn's own
+- **A deadline.** `CHAT_TURN_DEADLINE_SECONDS` (2700) on the turn's own
   clock, which stops while the turn waits on a person's answer. At the deadline
   the turn is cancelled like a Stop and ends with
   `RUN_ERROR{workflow_error, details: "turn_deadline_exceeded: …"}`.
@@ -322,7 +322,7 @@ ends, each pinned by a test in `frontends/aiq_api/tests/test_chat_socket.py`:
   (`workflow_stream`, 10 s) for the workflow's `finally` blocks, then ends the
   turn without them.
 - **No hidden queue.** The chat runs with NAT's per-replica semaphore off; the
-  one concurrency gate is ADR-0040's admission (`GRID_MAX_ACTIVE_TURNS`), which
+  one concurrency gate is ADR-0040's admission (`MAX_ACTIVE_TURNS`), which
   refuses a turn at once with a retry hint rather than holding it after
   `RUN_STARTED`.
 
@@ -342,7 +342,7 @@ refuse the whole message.
 
 | `type` | Fields | Notes |
 |---|---|---|
-| `user_message` | `message_id` (becomes `turn_id`), `text`, `data_sources[]`, `context_only?`, `author_name?`, `focus_file_name?`, `focus_shelf?`, `source_preset?`, `focus_document_id?`, `focus_version_id?`, `focus_version_state?`, `reasoning_effort?`, `posthog_session_id?`, `focus_region?`, `reply_in_thread?`, `trigger?`, `if_idle?` | A question. With `if_idle` (a turn an event woke, [below](#a-turn-an-event-woke-trigger--if_idle)) it never supersedes: a conversation with a running turn refuses it as `rejected{busy}`, before its id is claimed, so it may be sent again under the same id. The type name is what the gateway's turn limiter (`lib/limits/ws-frames.js`) counts. A second `user_message` for a turn already running or run, on any replica, is `rejected{duplicate_turn}` (the turn id is claimed on the bus for as long as the stream keeps it); a new one supersedes and cancels a stale turn, on whichever replica runs it, and starts only once the stale turn has stopped: the conversation's running marker (`conv:<id>:running`, ADR-0080) is held by the turn that runs, so two turns of one conversation never run at once. If the stale turn has not stopped within `GRID_CHAT_SUPERSEDE_WAIT_SECONDS`, the new question ends with a refused `RUN_FINISHED` ("still finishing the previous answer", with a retry hint) and nothing runs. With `GRID_CHAT_AFFINITY` off, a turn that can no longer renew its marker (Dragonfly unreachable from its replica for most of `GRID_CHAT_RUNNING_TTL_SECONDS`, or the marker gone) stops itself before a newer turn could take the marker and ends with a `cancelled` `RUN_FINISHED`; the partial answer is not persisted. |
+| `user_message` | `message_id` (becomes `turn_id`), `text`, `data_sources[]`, `context_only?`, `author_name?`, `focus_file_name?`, `focus_shelf?`, `source_preset?`, `focus_document_id?`, `focus_version_id?`, `focus_version_state?`, `reasoning_effort?`, `posthog_session_id?`, `focus_region?`, `reply_in_thread?`, `trigger?`, `if_idle?` | A question. With `if_idle` (a turn an event woke, [below](#a-turn-an-event-woke-trigger--if_idle)) it never supersedes: a conversation with a running turn refuses it as `rejected{busy}`, before its id is claimed, so it may be sent again under the same id. The type name is what the gateway's turn limiter (`lib/limits/ws-frames.js`) counts. A second `user_message` for a turn already running or run, on any replica, is `rejected{duplicate_turn}` (the turn id is claimed on the bus for as long as the stream keeps it); a new one supersedes and cancels a stale turn, on whichever replica runs it, and starts only once the stale turn has stopped: the conversation's running marker (`conv:<id>:running`, ADR-0080) is held by the turn that runs, so two turns of one conversation never run at once. If the stale turn has not stopped within `CHAT_SUPERSEDE_WAIT_SECONDS`, the new question ends with a refused `RUN_FINISHED` ("still finishing the previous answer", with a retry hint) and nothing runs. With `GRID_CHAT_AFFINITY` off, a turn that can no longer renew its marker (Dragonfly unreachable from its replica for most of `CHAT_RUNNING_TTL_SECONDS`, or the marker gone) stops itself before a newer turn could take the marker and ends with a `cancelled` `RUN_FINISHED`; the partial answer is not persisted. |
 | `interaction_response` | `turn_id`, `interaction_id`, `answer: {text} \| {option_id}` | Exactly one answer, structurally. Only the person the prompt addressed may answer; anyone else gets `rejected{not_asker}`, and an answer with no prompt waiting `rejected{no_pending_interaction}`. |
 | `cancel_turn` | `turn_id`, `shown?: {seq, chars}` | Stop. Only the asker's verified subject (or an internal caller) may cancel; anyone else gets `rejected{not_asker}`. The server cancels the graph run, not just the socket. `shown` says how much was on screen (the first `chars` code points of the answer as folded through `seq`), and the stopped answer is cut to it; sent only when the hello accepts `cancel_turn.shown`. |
 | `attach` | `turn_id`, `after_seq` | Replay the turn from `after_seq + 1`, then continue live. Sent for every open turn after a reconnect, and with `after_seq: 0` after a reload. `rejected{turn_not_found}` when the stream holds nothing for the turn: ask for the persisted answer instead. |
@@ -482,7 +482,7 @@ three absent is every ordinary turn.
 
 - **Every stamped event is appended** to the conversation's stream on
   Dragonfly (`conv:<id>:stream`, `ConversationBus.publish_frame`, bounded by
-  `GRID_CONV_STREAM_MAXLEN` and its TTL). A `rejected` event (seq 0) is not.
+  `CONV_STREAM_MAXLEN` and its TTL). A `rejected` event (seq 0) is not.
 - **The cursor is `(turn_id, seq)`.** The client drops an event with
   `seq ≤ lastSeq` for its turn, and treats `seq > lastSeq + 1` as a gap: it
   sends `attach{turn_id, after_seq: lastSeq}`.
@@ -618,7 +618,7 @@ sends `focus_document_id`, which the canvas tools act on when the model names
 no document. Both fields are on the turn's trace as `turn_surface`
 ([`langfuse.md`](../observability/langfuse.md)).
 
-Because `accepts` is itself withheld while `GRID_WIRE_V2_ADDITIVE_FIELDS` is
+Because `accepts` is itself withheld while `WIRE_V2_ADDITIVE_FIELDS` is
 off, a page sends neither field with that flag off. It is on by default; `off`
 is the rollback, and with it off a canvas question reaches Piloti without its
 box and no reply lands in its thread.
@@ -657,7 +657,7 @@ turn, not into a new one (`common/steering.py`, the steering research of
   sent as the note's `focus_region`.
 
 Like every optional entry, `steer` is in `accepts` only while
-`GRID_WIRE_V2_ADDITIVE_FIELDS` is on, its default; with it set off, the composer keeps its
+`WIRE_V2_ADDITIVE_FIELDS` is on, its default; with it set off, the composer keeps its
 type-ahead behaviour and the canvas says Piloti is busy.
 
 ### A turn an event woke (`trigger` / `if_idle`)
@@ -684,7 +684,7 @@ a server whose hello lists it (`user_message.trigger`, `user_message.if_idle`).
   in the thread instead of waiting thirty minutes on a socket nobody reads.
 - **Before sending,** read the hello: `accepts` must hold
   `user_message.trigger` and `user_message.if_idle`. A server without them
-  (or `GRID_WIRE_V2_ADDITIVE_FIELDS` set off) would supersede a typed turn; do not
+  (or `WIRE_V2_ADDITIVE_FIELDS` set off) would supersede a typed turn; do not
   send, retry later.
 - **The message.** `{"v":2,"type":"user_message","conversation_id":…,
   "message_id":uuid5(<reply id>),"text":<the reply, masked server-side>,
@@ -741,5 +741,5 @@ when `GRID_TRACE_IDENTITY_ATTRIBUTES` is on and the value is a UUIDv7, so
 Langfuse's PostHog export can put the turn on the session's replay
 ([`langfuse.md`](../observability/langfuse.md#posthog-export)). A value that is
 not a UUIDv7 is dropped silently and the turn runs. Because `accepts` is itself
-withheld while `GRID_WIRE_V2_ADDITIVE_FIELDS` is off, the link flows only
+withheld while `WIRE_V2_ADDITIVE_FIELDS` is off, the link flows only
 with that flag on, its default.

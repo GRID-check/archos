@@ -31,7 +31,7 @@ def _clean_env() -> dict[str, str]:
     existing = env.get("PYTHONPATH", "")
     env["PYTHONPATH"] = src if not existing else src + os.pathsep + existing
     env["START_WEB"] = str(START_WEB)
-    env["GRID_ROLE"] = "chat"
+    env["PROCESS_ROLE"] = "chat"
     return env
 
 

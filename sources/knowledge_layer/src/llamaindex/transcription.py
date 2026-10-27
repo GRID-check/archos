@@ -67,7 +67,7 @@ Sonderfälle — dann antwortest du NUR mit der Markierung:
 - Die Seite ist überwiegend ein Plan, eine technische Zeichnung, ein Schnitt, eine Ansicht
   oder ein Foto (nicht ein Textdokument mit einer kleinen Abbildung): {DRAWING_MARKER}"""
 
-# @environment_variable GRID_OCR_MODEL
+# @environment_variable OCR_MODEL
 # @category Knowledge Layer
 # @type string
 # @default (the ingestion VLM model)
@@ -75,7 +75,7 @@ Sonderfälle — dann antwortest du NUR mit der Markierung:
 # Model that transcribes scanned and garbled PDF pages. Unset, the ingestion
 # VLM transcribes them (GRID_VLM_MODEL, or the org's `ingest_vlm` override).
 # Same endpoint and key as the VLM.
-OCR_MODEL_ENV = "GRID_OCR_MODEL"
+OCR_MODEL_ENV = "OCR_MODEL"
 
 #: Output budget for one page. A dense A4 page is ~900 German words, ~1 800
 #: tokens; tables in Markdown roughly double that. ``_vlm_chat_create`` doubles
@@ -91,7 +91,7 @@ def cache_prompt_type() -> str:
 
 
 def resolve_ocr_model(vlm_model: str, org_override: str | None = None) -> str:
-    """The model that transcribes: the org's vision override, else ``GRID_OCR_MODEL``, else the VLM.
+    """The model that transcribes: the org's vision override, else ``OCR_MODEL``, else the VLM.
 
     The org's ``ingest_vlm`` override wins because it is the tenant's own choice
     of vision model, made in the admin UI; a separate ``ingest_ocr`` group was

@@ -391,7 +391,7 @@ One caution for honest positioning: this makes the *product capable of* GDPR-con
 
 - Scheduled retention policies ("auto-delete after X days") — the queue supports it later via `purge_after`.
 - Retention periods per folder („aufbewahren bis"); a deletion before it ends would be refused (later phase).
-- LangGraph checkpoints of chats whose answers a folder purge replaced: the agent's per-thread state keeps the original answer until the checkpoint reaper removes the idle thread (`GRID_CHAT_CHECKPOINT_RETENTION_SECONDS`, default 14 days) or the chat is deleted; no per-thread checkpoint delete exists yet.
+- LangGraph checkpoints of chats whose answers a folder purge replaced: the agent's per-thread state keeps the original answer until the checkpoint reaper removes the idle thread (`CHAT_CHECKPOINT_RETENTION_SECONDS`, default 14 days) or the chat is deleted; no per-thread checkpoint delete exists yet.
 - Legal-hold management UI (API only for now; holds are rare, deliberate events).
 - Data export / portability (Art. 20) and export-before-delete — separate feature.
 - Backup scrubbing — deleted data persists in backups until rotation; document the rotation window in the DPA (see GDPR section).

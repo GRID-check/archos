@@ -13,7 +13,7 @@ the cluster rather than a laptop:
   research worker builds a workflow for every job it runs, not once per process.
 
 Each reading is one ``grid.boot.phase_seconds`` histogram point with ``role`` and
-``phase`` attributes (``chat`` and ``api`` are ``GRID_ROLE``'s two web values,
+``phase`` attributes (``chat`` and ``api`` are ``PROCESS_ROLE``'s two web values,
 ``research-worker`` and ``ingest-worker`` the workers; ``research-job`` is below),
 and one ``[boot-timing]`` log line. A reading taken before
 a meter provider exists would go to a no-op instrument, so readings wait in the

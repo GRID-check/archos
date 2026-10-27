@@ -306,7 +306,7 @@ async def test_nat_s_socket_objects_are_nat_s_own_and_the_route_is_ours(monkeypa
     assert config.step_adaptor.mode == StepAdaptorMode.OFF
 
     monkeypatch.setenv("NAT_CONFIG_FILE", "configs/config_oib_openrouter.yml")
-    monkeypatch.setenv("GRID_ROLE", "chat")
+    monkeypatch.setenv("PROCESS_ROLE", "chat")
     worker = AIQAPIWorker(Config(general=GeneralConfig(front_end=config)))
     session_manager = object()
     monkeypatch.setattr(worker, "_create_chat_session_manager", AsyncMock(return_value=session_manager))
@@ -353,7 +353,7 @@ async def test_any_other_wire_version_is_closed_4426(harness, query):
 
 async def test_the_first_frame_is_hello_before_any_client_message(harness, monkeypatch):
     monkeypatch.setenv("GRID_GIT_SHA", "abc1234")
-    monkeypatch.setenv("GRID_WIRE_V2_ADDITIVE_FIELDS", "on")
+    monkeypatch.setenv("WIRE_V2_ADDITIVE_FIELDS", "on")
     sock = harness().connect()
     await until(lambda: sock.frames)
 
@@ -1571,7 +1571,7 @@ async def test_the_chat_session_manager_has_no_nat_semaphore(monkeypatch):
     create = AsyncMock(return_value=object())
     monkeypatch.setattr(plugin.SessionManager, "create", create)
     monkeypatch.setenv("NAT_CONFIG_FILE", "configs/config_oib_openrouter.yml")
-    monkeypatch.setenv("GRID_ROLE", "chat")
+    monkeypatch.setenv("PROCESS_ROLE", "chat")
     worker = AIQAPIWorker(Config(general=GeneralConfig(front_end=AIQAPIConfig())))
 
     manager = await worker._create_chat_session_manager(builder=object())
@@ -1612,7 +1612,7 @@ def test_the_row_is_the_typed_result_in_wire_spelling():
 async def test_the_hello_names_nothing_it_accepts_while_the_additive_fields_are_off(harness, monkeypatch):
     """The rollback: a hello with no ``accepts``, as for a tab that parses the hello strictly."""
     monkeypatch.setenv("GRID_GIT_SHA", "abc1234")
-    monkeypatch.setenv("GRID_WIRE_V2_ADDITIVE_FIELDS", "off")
+    monkeypatch.setenv("WIRE_V2_ADDITIVE_FIELDS", "off")
     sock = harness().connect()
     await until(lambda: sock.frames)
 
@@ -1622,7 +1622,7 @@ async def test_the_hello_names_nothing_it_accepts_while_the_additive_fields_are_
 async def test_the_hello_names_the_canvas_fields_by_default(harness, monkeypatch):
     """Unset, the hello says it reads the canvas's box, thread target and notes: without them a
     canvas question reaches Piloti without its box and never answers in its thread."""
-    monkeypatch.delenv("GRID_WIRE_V2_ADDITIVE_FIELDS", raising=False)
+    monkeypatch.delenv("WIRE_V2_ADDITIVE_FIELDS", raising=False)
     sock = harness().connect()
     await until(lambda: sock.frames)
 
@@ -1635,9 +1635,9 @@ async def test_the_hello_names_the_canvas_fields_by_default(harness, monkeypatch
 @pytest.mark.parametrize(("flag", "sent"), [(None, True), ("off", False), ("on", True), ("1", True)])
 async def test_the_level_reaches_the_frame_only_with_the_additive_fields_on(persisted, monkeypatch, flag, sent):
     if flag is None:
-        monkeypatch.delenv("GRID_WIRE_V2_ADDITIVE_FIELDS", raising=False)
+        monkeypatch.delenv("WIRE_V2_ADDITIVE_FIELDS", raising=False)
     else:
-        monkeypatch.setenv("GRID_WIRE_V2_ADDITIVE_FIELDS", flag)
+        monkeypatch.setenv("WIRE_V2_ADDITIVE_FIELDS", flag)
     published: list[dict] = []
 
     async def publish(_conversation_id: str, frame: dict) -> bool:

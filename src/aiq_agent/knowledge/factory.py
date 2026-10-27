@@ -181,10 +181,10 @@ def get_retriever(
 
     Memory: the instance is now long-lived, so its caches are too. The
     query-embedding LRU dominates — at 3072 dimensions one cached embedding is
-    ~97 KiB, so a full ``GRID_QUERY_EMBED_CACHE_SIZE`` (512) is ~49 MiB. That
+    ~97 KiB, so a full ``QUERY_EMBED_CACHE_SIZE`` (512) is ~49 MiB. That
     ~49 MiB is now per distinct configuration (in practice one, sometimes two)
     instead of per concurrent agent run, which is a reduction, not a new cost —
-    but it is resident rather than transient, and ``GRID_QUERY_EMBED_CACHE_SIZE``
+    but it is resident rather than transient, and ``QUERY_EMBED_CACHE_SIZE``
     is the knob if a replica's footprint needs trimming.
 
     Correctness: a long-lived result cache is only safe because cache entries
@@ -451,7 +451,7 @@ def clear_active_retriever() -> None:
 # using configurable SQLite/PostgreSQL. Backends call register_summary() after
 # ingestion; agents call get_available_documents() for prompt context.
 #
-# Back-compat: the DB *file* (default ``summaries.db``), the ``GRID_SUMMARY_DB``
+# Back-compat: the DB *file* (default ``summaries.db``), the ``SUMMARY_DB``
 # env var, and the NAT ``summary_db`` config field keep their names so existing
 # databases/deployments are not orphaned — only the misnamed TABLE and store
 # CLASS were renamed to ``document_metadata`` (see document_metadata_store.py).
@@ -497,9 +497,7 @@ def _get_document_metadata_store() -> "DocumentMetadataStore":
                 # instead of silently falling back to a local SQLite file that in a
                 # container often isn't writable ("unable to open database file")
                 # and, worse, would split summaries away from the real Postgres.
-                db_url = (
-                    os.environ.get("GRID_SUMMARY_DB") or os.environ.get("NAT_JOB_STORE_DB_URL") or _DEFAULT_METADATA_DB
-                )
+                db_url = os.environ.get("SUMMARY_DB") or os.environ.get("NAT_JOB_STORE_DB_URL") or _DEFAULT_METADATA_DB
                 _document_metadata_store = DocumentMetadataStore(db_url)
                 logger.info("Document metadata store initialized (lazy env fallback): %s", redact_db_url(db_url))
     return _document_metadata_store

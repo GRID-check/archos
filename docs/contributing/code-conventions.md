@@ -206,5 +206,5 @@ per organization, changed in the dashboard with no deploy, and reaches the
 Python tier through the BFF (`GET /api/internal/stages`), which has no WorkOS
 client of its own. `GRID_FOLDER_CARDS` and `GRID_OFFICE_CONVENTIONS` were built
 as variables and replaced by the `folder-cards` and `office-conventions` flags;
-their tuning (`GRID_FOLDER_CARDS_MONTHLY_TOKENS`) stayed. Registering a flag:
+their tuning (`FOLDER_CARDS_MONTHLY_TOKENS`) stayed. Registering a flag:
 [`workos-provisioning.md`](../deployment/workos-provisioning.md).

@@ -16,7 +16,7 @@ source of truth. What a corpus document *is* (Richtlinie/Leitfaden/Erläuterung)
 derives from its filename — see ``oib_doc_class``/``lane_for_hit``.
 
 Storage: the YAML seed at ``configs/norms/at/registry.yml`` (override the root via
-``GRID_NORMS_DIR``), optionally superseded at runtime by the admin-managed store
+``NORMS_DIR``), optionally superseded at runtime by the admin-managed store
 (``set_db_loader`` — the store registers itself; the YAML remains the seed).
 
 Failure semantics: a missing/invalid registry FAILS OPEN (feature disabled, warning).
@@ -49,7 +49,7 @@ from aiq_agent.profile_names import normalize_profile_token
 logger = logging.getLogger(__name__)
 
 DEFAULT_NORMS_DIR = "configs/norms"
-ENV_NORMS_DIR = "GRID_NORMS_DIR"
+ENV_NORMS_DIR = "NORMS_DIR"
 
 # OGD-RIS applications the catalog may point into (subset of the applications the
 # ris_adapter supports; see ris_adapter.client.CONTROLLER_FOR_APPLICATION).
@@ -355,7 +355,7 @@ _REPO_ROOT = Path(__file__).resolve().parents[3]
 
 
 def _norms_dir(path: str | None) -> Path:
-    """The norms seed directory: explicit ``path``, else ``$GRID_NORMS_DIR``, else the default.
+    """The norms seed directory: explicit ``path``, else ``$NORMS_DIR``, else the default.
 
     The default is relative to the working directory, which is the repo root
     everywhere the seed is loaded on purpose. When it is NOT there — a test run

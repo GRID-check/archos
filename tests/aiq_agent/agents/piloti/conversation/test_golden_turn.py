@@ -13,7 +13,7 @@ graph's own writer carried out of Piloti's inner graph, which is the reach
 The frames are stamped as the socket stamps them (``RUN_STARTED`` first, one
 ``seq`` each) and compared with ``tests/fixtures/wire_v2/golden_turn.jsonl``,
 ``ts`` excepted. Regenerate it after a deliberate wire change with
-``GRID_REGEN_GOLDEN=1``, and read the diff.
+``REGEN_GOLDEN=1``, and read the diff.
 """
 
 from __future__ import annotations
@@ -161,7 +161,7 @@ async def _golden_turn(workflow_harness, monkeypatch) -> list[dict]:
 async def test_the_turn_is_the_golden_frame_for_frame(workflow_harness, monkeypatch):
     frames = await _golden_turn(workflow_harness, monkeypatch)
     lines = [json.dumps({k: v for k, v in frame.items() if k != "ts"}, ensure_ascii=False) for frame in frames]
-    if os.environ.get("GRID_REGEN_GOLDEN"):
+    if os.environ.get("REGEN_GOLDEN"):
         GOLDEN.parent.mkdir(parents=True, exist_ok=True)
         GOLDEN.write_text("\n".join(lines) + "\n", encoding="utf-8")
     assert lines == GOLDEN.read_text(encoding="utf-8").splitlines()

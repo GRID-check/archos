@@ -67,20 +67,20 @@ class TestParseCompletionTokenCeiling:
 
 class TestCreateBudgetGuardCallback:
     def test_disabled_by_default(self, monkeypatch):
-        monkeypatch.delenv("GRID_MAX_RUN_COMPLETION_TOKENS", raising=False)
+        monkeypatch.delenv("MAX_RUN_COMPLETION_TOKENS", raising=False)
         assert create_budget_guard_callback() is None
 
     def test_disabled_when_env_zero(self, monkeypatch):
-        monkeypatch.setenv("GRID_MAX_RUN_COMPLETION_TOKENS", "0")
+        monkeypatch.setenv("MAX_RUN_COMPLETION_TOKENS", "0")
         assert create_budget_guard_callback() is None
 
     def test_enabled_from_env(self, monkeypatch):
-        monkeypatch.setenv("GRID_MAX_RUN_COMPLETION_TOKENS", "1000")
+        monkeypatch.setenv("MAX_RUN_COMPLETION_TOKENS", "1000")
         callback = create_budget_guard_callback()
         assert isinstance(callback, BudgetGuardCallback)
 
     def test_explicit_ceiling_overrides_env(self, monkeypatch):
-        monkeypatch.setenv("GRID_MAX_RUN_COMPLETION_TOKENS", "1000")
+        monkeypatch.setenv("MAX_RUN_COMPLETION_TOKENS", "1000")
         assert create_budget_guard_callback(ceiling=0) is None
         callback = create_budget_guard_callback(ceiling=42)
         assert callback is not None

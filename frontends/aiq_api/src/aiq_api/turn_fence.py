@@ -59,7 +59,7 @@ def validate_running_ttl(ttl: float) -> float:
     margin = fence_margin()
     if margin >= ttl:
         raise ValueError(
-            f"GRID_CHAT_RUNNING_TTL_SECONDS={ttl:g} is not above the fence margin of {margin:g}s "
+            f"CHAT_RUNNING_TTL_SECONDS={ttl:g} is not above the fence margin of {margin:g}s "
             f"(a guarded write may take {GUARDED_WRITE_TIMEOUT_SECONDS:g}s): a turn would be fenced as it starts"
         )
     return ttl

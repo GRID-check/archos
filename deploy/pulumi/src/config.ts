@@ -905,7 +905,7 @@ export interface GridConfig {
   };
 
   /**
-   * The chat tier (`aiq-agent`, `GRID_ROLE=chat`): CPU/memory here, replicas and
+   * The chat tier (`aiq-agent`, `PROCESS_ROLE=chat`): CPU/memory here, replicas and
    * their scaling below, and the admission knobs that bound concurrent work.
    */
   backend: {
@@ -942,10 +942,10 @@ export interface GridConfig {
     /** CPU utilisation (% of requests) at which the KEDA cpu trigger adds replicas. */
     cpuTargetPercent: number;
     /**
-     * `GRID_CHAT_DRAIN_SECONDS`: how long a terminating replica waits for its
+     * `CHAT_DRAIN_SECONDS`: how long a terminating replica waits for its
      * turns before cancelling them. The pod's grace period is this plus the
      * endpoint drain and slack (`backendRollout`), so it must cover the longest
-     * chat turn, `GRID_CHAT_TURN_DEADLINE_SECONDS` (2700).
+     * chat turn, `CHAT_TURN_DEADLINE_SECONDS` (2700).
      */
     drainSeconds: number;
     /**
@@ -958,7 +958,7 @@ export interface GridConfig {
   };
 
   /**
-   * The api tier (ADR-0082 step B): `GRID_ROLE=api`, every backend HTTP route
+   * The api tier (ADR-0082 step B): `PROCESS_ROLE=api`, every backend HTTP route
    * except the chat socket (knowledge, jobs and SSE, LLM utilities, admin,
    * housekeeping). A Deployment of the backend image behind the `aiq-api`
    * Service, which is what `BACKEND_URL` names. HPA-owned, like the frontend:
@@ -1002,11 +1002,11 @@ export interface GridConfig {
     resources: ResourceSpec;
     minReplicas: number;
     maxReplicas: number;
-    /** Concurrent research jobs per worker process (GRID_RESEARCH_WORKERS); also KEDA's jobs-per-replica target. */
+    /** Concurrent research jobs per worker process (RESEARCH_WORKERS); also KEDA's jobs-per-replica target. */
     concurrency: number;
     /**
      * Seconds a terminating worker may spend finishing the research jobs it has
-     * already claimed (`GRID_RESEARCH_WORKER_DRAIN_SECONDS`). The pod's
+     * already claimed (`RESEARCH_WORKER_DRAIN_SECONDS`). The pod's
      * `terminationGracePeriodSeconds` is this plus 30 s, so the worker has time
      * to give back what it did not finish before the kubelet SIGKILLs it.
      *
@@ -1038,20 +1038,20 @@ export interface GridConfig {
     minReplicas: number;
     /**
      * Ceiling. The real ceiling is the model provider's rate limit on the
-     * shared key: replicas × concurrency × `GRID_VLM_BATCH_WORKERS` is the
+     * shared key: replicas × concurrency × `VLM_BATCH_WORKERS` is the
      * peak number of VLM calls in flight, and `assertVlmPeakFitsCeiling` fails
      * the deploy when that is more than twice `vlmFleetConcurrency`, which is
      * itself held to the provider ceilings.
      */
     maxReplicas: number;
-    /** Jobs one replica runs at once (`GRID_INGEST_MAX_WORKERS`); also KEDA's jobs-per-replica target. */
+    /** Jobs one replica runs at once (`INGEST_MAX_WORKERS`); also KEDA's jobs-per-replica target. */
     concurrency: number;
     /** SIGTERM budget to finish claimed jobs; an unfinished one is claimed again elsewhere. */
     drainSeconds: number;
     /** Most jobs one organisation may run fleet-wide at once; 0 = no cap (the claim is fair regardless). */
     maxPerOrg: number;
     /**
-     * `GRID_MAX_IMAGE_PIXELS`: an embedded raster larger than this many pixels is
+     * `MAX_IMAGE_PIXELS`: an embedded raster larger than this many pixels is
      * refused before it is decoded. pypdfium2 cannot downscale an embedded image
      * on decode, so this is the only bound on one bitmap's allocation; the
      * PDFium lock serialises decodes within a process, so the tier's raster peak
@@ -1115,13 +1115,13 @@ export interface GridConfig {
    * vision model's own `modelLimitCeiling` (a call takes a slot in each pool).
    */
   providerLimits: {
-    /** `GRID_VLM_FLEET_CONCURRENCY`: vision calls in flight across every ingest process at once. */
+    /** `VLM_FLEET_CONCURRENCY`: vision calls in flight across every ingest process at once. */
     vlmFleetConcurrency: number;
-    /** `GRID_VLM_BATCH_WORKERS`: vision calls one file runs at once. */
+    /** `VLM_BATCH_WORKERS`: vision calls one file runs at once. */
     vlmBatchWorkers: number;
-    /** `GRID_PROVIDER_LIMIT_CEILING`: model calls in flight fleet-wide, all models together. */
+    /** `PROVIDER_LIMIT_CEILING`: model calls in flight fleet-wide, all models together. */
     limitCeiling: number;
-    /** `GRID_PROVIDER_MODEL_LIMIT_CEILING`: model calls in flight fleet-wide to one model. */
+    /** `PROVIDER_MODEL_LIMIT_CEILING`: model calls in flight fleet-wide to one model. */
     modelLimitCeiling: number;
   };
 
@@ -3002,7 +3002,7 @@ export function loadConfig(): GridConfig {
         limitsMemory: cfg.get("ingestWorkerLimitsMemory") ?? "6Gi",
       },
       minReplicas: Math.max(0, num(cfg, "ingestWorkerMinReplicas", 1)),
-      // 5 x 3 x `GRID_VLM_BATCH_WORKERS` (4) = 60, within 2 x the vision pool (32): the
+      // 5 x 3 x `VLM_BATCH_WORKERS` (4) = 60, within 2 x the vision pool (32): the
       // most the default budget can feed (`assertVlmPeakFitsCeiling`).
       maxReplicas: Math.max(1, num(cfg, "ingestWorkerMaxReplicas", 5)),
       concurrency: Math.max(1, num(cfg, "ingestWorkerConcurrency", 3)),
@@ -3388,8 +3388,8 @@ export function assertHpaTargetIsProportional(
 /**
  * Vision calls the ingest tier can have in flight at its ceiling: replicas, times
  * the jobs one replica runs at once, times the files' own parallelism
- * (`GRID_VLM_BATCH_WORKERS`). Every one of them asks the shared provider key for a
- * slot of the fleet pool (`GRID_VLM_FLEET_CONCURRENCY`).
+ * (`VLM_BATCH_WORKERS`). Every one of them asks the shared provider key for a
+ * slot of the fleet pool (`VLM_FLEET_CONCURRENCY`).
  */
 export function vlmPeakCalls(cfg: Pick<GridConfig, "ingestWorker" | "providerLimits">): number {
   return cfg.ingestWorker.maxReplicas * cfg.ingestWorker.concurrency * cfg.providerLimits.vlmBatchWorkers;
@@ -3400,7 +3400,7 @@ export function vlmPeakCalls(cfg: Pick<GridConfig, "ingestWorker" | "providerLim
  * wait for a slot, which is what the pool is for, so some overshoot is a queue
  * that keeps the pool busy between files; a lot of it is replicas that only hold
  * memory while they wait, and a wait long enough to meet the vision client's
- * timeout (`GRID_VLM_TIMEOUT_SECONDS`) is a retry for nothing.
+ * timeout (`VLM_TIMEOUT_SECONDS`) is a retry for nothing.
  */
 export const VLM_OVERSUBSCRIPTION = 2;
 

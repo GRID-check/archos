@@ -565,7 +565,7 @@ idea makes, and the same one the skills substrate already makes with
 
 Per §0.1 this does **not** mean deleting `available_documents`. The two coexist;
 the cap stays where it is. If the digest turns out to be better, it wins on a
-measurement, and `GRID_AVAILABLE_DOCUMENTS_MAX` goes to zero on purpose rather
+measurement, and `AVAILABLE_DOCUMENTS_MAX` goes to zero on purpose rather
 than by assumption.
 
 ### Where scale does cost something

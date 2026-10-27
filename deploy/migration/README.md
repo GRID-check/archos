@@ -88,9 +88,9 @@ python scripts/import_vectors.py --in /exchange/export --verify-only  # compare 
 python scripts/import_vectors.py --in /exchange/export --collection oib_knowledge
 ```
 
-It reads the backend's environment (`GRID_QDRANT_URL`, `GRID_QDRANT_API_KEY`, the
-metadata store for the person-set facts, `GRID_EMBED_MODEL` and
-`GRID_EMBED_BASE_URL` for a collection whose export names no embedder), so run
+It reads the backend's environment (`QDRANT_URL`, `QDRANT_API_KEY`, the
+metadata store for the person-set facts, `EMBED_MODEL` and
+`EMBED_BASE_URL` for a collection whose export names no embedder), so run
 it where the backend runs.
 
 - **Insert-only.** Point ids are the chunk ids, so a re-run inserts only what
@@ -211,7 +211,7 @@ The exporter needs `chromadb`, which is not a dependency of this repository, so
 its tests run in an environment of their own and never in `task be:test*`:
 
 ```bash
-GRID_QDRANT_TEST_URL=http://localhost:6333 task be:test:migration
+QDRANT_TEST_URL=http://localhost:6333 task be:test:migration
 # which runs
 uvx --python 3.12 --with-requirements deploy/migration/chroma_export.py --with pytest \
   pytest deploy/migration/tests -q -p no:cacheprovider
@@ -224,6 +224,6 @@ They build a real persist directory, export it in both modes (the HTTP mode
 against `chroma run`), and check the manifest and every record. The last test
 hands the export to `scripts/import_vectors.py` in the repository's venv
 (`.venv/bin/python`, or `PILOTI_VENV_PYTHON`) and checks every point in Qdrant;
-it skips without `GRID_QDRANT_TEST_URL` locally and fails without it on CI. The
+it skips without `QDRANT_TEST_URL` locally and fails without it on CI. The
 importer's own tests were deleted on 2026-10-22: the move ran on production on
 2026-10-18, and this end-to-end test is what still covers the importer.

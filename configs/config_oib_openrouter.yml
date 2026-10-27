@@ -89,7 +89,7 @@ llms:
   #
   # So: do NOT edit these to move the fleet to a newer model — that is a save in
   # the admin UI, not a commit and a redeploy. Change them (or set
-  # GRID_DEFAULT_MODEL) only to move the *floor*, e.g. for a deployment that
+  # DEFAULT_MODEL) only to move the *floor*, e.g. for a deployment that
   # runs without the BFF. What this file remains the sole owner of is the
   # plumbing: base_url, api_key, temperature, max_tokens, timeouts and
   # retries — none of which an override may touch. reasoning_effort is a
@@ -126,7 +126,7 @@ llms:
   # Shallow Research — fast retrieval + synthesis (the quick-answer tier).
   research_llm:
     _type: openai
-    model_name: ${GRID_DEFAULT_MODEL:-openai/gpt-6-luna}
+    model_name: ${DEFAULT_MODEL:-openai/gpt-6-luna}
     base_url: "https://openrouter.ai/api/v1"
     api_key: ${OPENROUTER_API_KEY}
     temperature: 1.0
@@ -190,7 +190,7 @@ llms:
   # HITL Clarification & Planning — clarify ambiguity, generate the research plan.
   clarifier_llm:
     _type: openai
-    model_name: ${GRID_DEFAULT_MODEL:-openai/gpt-6-luna}
+    model_name: ${DEFAULT_MODEL:-openai/gpt-6-luna}
     base_url: "https://openrouter.ai/api/v1"
     api_key: ${OPENROUTER_API_KEY}
     temperature: 1.0
@@ -203,7 +203,7 @@ llms:
   # Deep Researcher — Orchestrator (also the report writer): top-level control.
   deep_orchestrator_llm:
     _type: openai
-    model_name: ${GRID_DEFAULT_MODEL:-openai/gpt-6-luna}
+    model_name: ${DEFAULT_MODEL:-openai/gpt-6-luna}
     base_url: "https://openrouter.ai/api/v1"
     api_key: ${OPENROUTER_API_KEY}
     temperature: 1.0
@@ -220,7 +220,7 @@ llms:
   # Deep Researcher — Planning sub-agents.
   deep_planner_llm:
     _type: openai
-    model_name: ${GRID_DEFAULT_MODEL:-openai/gpt-6-luna}
+    model_name: ${DEFAULT_MODEL:-openai/gpt-6-luna}
     base_url: "https://openrouter.ai/api/v1"
     api_key: ${OPENROUTER_API_KEY}
     temperature: 1.0
@@ -233,7 +233,7 @@ llms:
   # Deep Researcher — Researcher sub-agents (parallel investigations).
   deep_researcher_llm:
     _type: openai
-    model_name: ${GRID_DEFAULT_MODEL:-openai/gpt-6-luna}
+    model_name: ${DEFAULT_MODEL:-openai/gpt-6-luna}
     base_url: "https://openrouter.ai/api/v1"
     api_key: ${OPENROUTER_API_KEY}
     temperature: 1.0
@@ -246,7 +246,7 @@ llms:
   # Deep Researcher — source routing (which source to query). Lighter decision.
   deep_router_llm:
     _type: openai
-    model_name: ${GRID_DEFAULT_MODEL:-openai/gpt-6-luna}
+    model_name: ${DEFAULT_MODEL:-openai/gpt-6-luna}
     base_url: "https://openrouter.ai/api/v1"
     api_key: ${OPENROUTER_API_KEY}
     temperature: 1.0
@@ -262,7 +262,7 @@ llms:
   # which is also the deep-research source_router_llm where medium still matters.
   ris_planner_llm:
     _type: openai
-    model_name: ${GRID_DEFAULT_MODEL:-openai/gpt-6-luna}
+    model_name: ${DEFAULT_MODEL:-openai/gpt-6-luna}
     base_url: "https://openrouter.ai/api/v1"
     api_key: ${OPENROUTER_API_KEY}
     temperature: 1.0
@@ -275,7 +275,7 @@ llms:
   # Card generation — structured rich-UI compliance cards.
   card_llm:
     _type: openai
-    model_name: ${GRID_DEFAULT_MODEL:-openai/gpt-6-luna}
+    model_name: ${DEFAULT_MODEL:-openai/gpt-6-luna}
     base_url: "https://openrouter.ai/api/v1"
     api_key: ${OPENROUTER_API_KEY}
     temperature: 1.0
@@ -297,7 +297,7 @@ llms:
   # already dead when the bound fired.
   follow_ups_llm:
     _type: openai
-    model_name: ${GRID_DEFAULT_MODEL:-openai/gpt-6-luna}
+    model_name: ${DEFAULT_MODEL:-openai/gpt-6-luna}
     base_url: "https://openrouter.ai/api/v1"
     api_key: ${OPENROUTER_API_KEY}
     temperature: 1.0
@@ -310,7 +310,7 @@ llms:
   # Document / project summaries — trivial one-liners.
   summary_llm:
     _type: openai
-    model_name: ${GRID_DEFAULT_MODEL:-openai/gpt-6-luna}
+    model_name: ${DEFAULT_MODEL:-openai/gpt-6-luna}
     base_url: "https://openrouter.ai/api/v1"
     api_key: ${OPENROUTER_API_KEY}
     temperature: 1.0
@@ -345,7 +345,7 @@ llms:
   # can be silently inert on a given model; `seed` is set for the same reason.
   rerank_llm:
     _type: openai
-    model_name: ${GRID_DEFAULT_MODEL:-openai/gpt-6-luna}
+    model_name: ${DEFAULT_MODEL:-openai/gpt-6-luna}
     base_url: "https://openrouter.ai/api/v1"
     api_key: ${OPENROUTER_API_KEY}
     temperature: 0
@@ -491,7 +491,7 @@ functions:
     ingest_into_knowledge: true
 
   # Norm registry (configs/norms/<country>/registry.yml, override via
-  # GRID_NORMS_DIR; ADR-0025): typed spine with verified RIS pointers.
+  # NORMS_DIR; ADR-0025): typed spine with verified RIS pointers.
   # ris_search short-circuits to these pointers on a catalog match
   # (catalog_shortcut), ris_catalog_lookup annotates hits with registry
   # relations, and both answering prompts show the lane-rendered block.
@@ -508,7 +508,7 @@ functions:
   # VLM captions OF drawings and the model never saw a drawing: NAT only binds a
   # function that appears under `functions:`.
   #
-  # It fails closed on its own: no vision key, or `GRID_VIEW_IMAGES_ENABLED`
+  # It fails closed on its own: no vision key, or `VIEW_IMAGES_ENABLED`
   # off, and it returns a sentence saying so rather than an image.
   look:
     _type: look
@@ -549,7 +549,7 @@ functions:
       - oib-rl_zitierte_normen_und_sonstige_technische_regelwerke_ausgabe_mai_2023.pdf
     generate_summary: true
     summary_model: summary_llm
-    summary_db: ${GRID_SUMMARY_DB:-sqlite+aiosqlite:///./summaries.db}
+    summary_db: ${SUMMARY_DB:-sqlite+aiosqlite:///./summaries.db}
     # top_k=16 with a 5-per-document diversity cap still spans >=4 distinct
     # Richtlinien on cross-cutting questions instead of 5 chunks from the 1-2
     # top-scoring PDFs, and gives each of them enough consecutive text to reason
@@ -583,12 +583,12 @@ functions:
     # `qwen/qwen3-reranker-8b`, multilingual, which a German corpus needs, and
     # served from a zero-data-retention endpoint, which every rerank is pinned to
     # (`cohere/rerank-v3.5`, the default until 2026-09, has none).
-    # `GRID_RERANKER_MODEL` / `GRID_RERANKER_BASE_URL` override per deployment.
+    # `RERANKER_MODEL` / `RERANKER_BASE_URL` override per deployment.
     #
     # Fail-open: a key that does not resolve or any provider error falls back to
     # the judge (first failure per 5 min warns, the rest debug; 5 consecutive
     # failures disable the cross-encoder for 5 min). A provider that HANGS costs
-    # `GRID_RERANKER_TIMEOUT_SECONDS` (3s) before that fallback, so worst case a
+    # `RERANKER_TIMEOUT_SECONDS` (3s) before that fallback, so worst case a
     # turn pays 3s + the judge's own 30s bound — never the other way round. Set
     # `reranker_provider: none` to hand reranking back to the judge. No offline
     # eval covers reranking (`frontends/benchmarks/
@@ -953,7 +953,7 @@ functions:
     # budget spent, answered by the duplicate guard when the model asks
     # again), the chosen skill's body and card shapes ride this turn's prompt. Every tool stays bound whatever it
     # says (ADR-0052). `scripts/decision_eval.py` is the adoption gate;
-    # GRID_DECISIONS_ENABLED=false switches every decision off at once.
+    # DECISIONS_ENABLED=false switches every decision off at once.
     turn_decisions: true
     skill_allowlist: []
 
@@ -1005,12 +1005,12 @@ functions:
     # Durable checkpointing for async deep-research jobs (T3-8), mirroring
     # workflow.checkpoint_db below: re-invoking the same job_id resumes from
     # the last persisted checkpoint instead of starting over. STRICTLY OPT-IN:
-    # empty/unset GRID_DEEP_CHECKPOINT_DB means no durability (in-memory graph,
+    # empty/unset DEEP_CHECKPOINT_DB means no durability (in-memory graph,
     # today's behavior). Do NOT default to a relative sqlite path here — the
     # container's working directory is not guaranteed writable, and a default-on
     # value took application startup down (post-#72 incident). Point the env var
     # at a writable volume path or a Postgres DSN to enable resume-by-job_id.
-    checkpoint_db: ${GRID_DEEP_CHECKPOINT_DB:-}
+    checkpoint_db: ${DEEP_CHECKPOINT_DB:-}
 
   # The Erfassungs-Agent (ADR-0111, docs/design/agentic-project-intake.md):
   # Piloti sets a new project's profile up from its documents, as a background
@@ -1057,7 +1057,7 @@ workflow:
     log_response_max_chars: 2000
     verbose: true
   use_async_deep_research: true
-  checkpoint_db: ${GRID_CHECKPOINT_DB:-./checkpoints.db}
+  checkpoint_db: ${CHECKPOINT_DB:-./checkpoints.db}
   # Enables the async post-answer memory-reflection stage (reuses the cheap
   # card_llm). This only makes the capability AVAILABLE; whether it runs is
   # decided per TURN by the BFF (`GET /api/internal/stages`) from the

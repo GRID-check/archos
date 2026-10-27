@@ -729,7 +729,7 @@ _session_registries_lock = threading.Lock()
 # Cross-turn citation state survives process restarts and replica moves via
 # the shared cache (ADR-0020); the in-process LRU stays the fast path.
 _REGISTRY_CACHE_PREFIX = "citations:"
-_REGISTRY_CACHE_TTL_SECONDS = int(os.environ.get("GRID_CITATION_REGISTRY_TTL_SECONDS", "86400"))
+_REGISTRY_CACHE_TTL_SECONDS = int(os.environ.get("CITATION_REGISTRY_TTL_SECONDS", "86400"))
 
 
 def _registry_from_cached_entries(entries: Any) -> SourceRegistry:

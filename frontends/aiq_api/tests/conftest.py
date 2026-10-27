@@ -72,4 +72,4 @@ def _no_live_decisions(monkeypatch):
     down-votes on it, and a developer's OpenRouter key would otherwise send a
     test's fixtures to the live endpoint.
     """
-    monkeypatch.setenv("GRID_DECISIONS_ENABLED", "false")
+    monkeypatch.setenv("DECISIONS_ENABLED", "false")

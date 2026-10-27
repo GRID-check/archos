@@ -351,7 +351,7 @@ it generated every server-to-client schema `.strict()`. A tab of that bundle
 still open after the deploy refused a hello that names `accepts` (its socket
 ends `outdated`) and a `RUN_FINISHED` whose result has `reasoning_effort` (the
 turn never ends). So for that one release the server withheld both behind
-`GRID_WIRE_V2_ADDITIVE_FIELDS`, off by default (`STAGED_SERVER_FIELDS`,
+`WIRE_V2_ADDITIVE_FIELDS`, off by default (`STAGED_SERVER_FIELDS`,
 `aiq_api/chat_socket.py`). Every bundle since parses leniently, so the flag is
 now on by default; `off` is the rollback. A new tab works without the two
 fields: with no `accepts` it sends no `shown`, so a Stop stores everything
@@ -569,7 +569,7 @@ still cancels a stale turn, as `set_workflow_task` does today.
 
 **HITL.** `RunningTurn.ask(prompt) -> HumanResponse` registers the pending
 interaction, with the subject it is addressed to, and sends
-`interaction_request` with `expires_at = now + GRID_HITL_RESPONSE_TIMEOUT_SECONDS`.
+`interaction_request` with `expires_at = now + HITL_RESPONSE_TIMEOUT_SECONDS`.
 It awaits the answer, sends `interaction_resolved`, and converts the answer into
 NAT's response. A relay replica publishes the answer on the bus as today.
 Expiry sends `interaction_resolved{expired}`, then `RUN_ERROR{interaction_expired}`.
@@ -578,7 +578,7 @@ Expiry sends `interaction_resolved{expired}`, then `RUN_ERROR{interaction_expire
 
 - **Every stamped frame is still `XADD`ed** to `conv:<id>:stream`
   (`ConversationBus.publish_frame`), within the same bounds
-  (`GRID_CONV_STREAM_MAXLEN`, `_TTL_SECONDS`). A `rejected` frame (seq 0) is not.
+  (`CONV_STREAM_MAXLEN`, `_TTL_SECONDS`). A `rejected` frame (seq 0) is not.
 - **The cursor is `(turn_id, seq)`**, not the stream entry id. `grid_frame_id`
   and `with_frame_id` are deleted. The client drops any event with
   `seq ≤ lastSeq` for its turn, and treats `seq > lastSeq + 1` as a gap: it sends

@@ -22,7 +22,7 @@ export interface Qdrant {
   snapshotCronJob: k8s.batch.v1.CronJob;
   /** The Prometheus alerting rules, rendered against this stack's limits. */
   alertRules: k8s.core.v1.ConfigMap;
-  /** In-cluster URL every backend tier points GRID_QDRANT_URL at. */
+  /** In-cluster URL every backend tier points QDRANT_URL at. */
   url: pulumi.Output<string>;
   /** `host:port` of every peer's metrics listener, which the collector scrapes. */
   metricsTargets: pulumi.Output<string[]>;

@@ -78,15 +78,15 @@ def _positive_int_env(name: str, default: int) -> int:
 # failing, and the failure surfaced as a resubmittable error, feeding the
 # plan -> batch -> resubmit loop. 100 steps is generous for a single-query
 # researcher (each tool round-trip costs 2 steps) while still bounding a
-# pathological worker. Overridable via GRID_RESEARCHER_RECURSION_LIMIT.
-RESEARCHER_RECURSION_LIMIT = _positive_int_env("GRID_RESEARCHER_RECURSION_LIMIT", 100)
+# pathological worker. Overridable via RESEARCHER_RECURSION_LIMIT.
+RESEARCHER_RECURSION_LIMIT = _positive_int_env("RESEARCHER_RECURSION_LIMIT", 100)
 
 # Code-level bound on orchestrator resubmissions of the same query digest
 # (the "retry budget: at most 2" prompt prose is advisory only). After this
 # many submissions of one digest the query is returned as a terminal
 # unresearchable gap instead of being run again. Overridable via
-# GRID_MAX_QUERY_SUBMISSIONS.
-MAX_QUERY_SUBMISSIONS = _positive_int_env("GRID_MAX_QUERY_SUBMISSIONS", 3)
+# MAX_QUERY_SUBMISSIONS.
+MAX_QUERY_SUBMISSIONS = _positive_int_env("MAX_QUERY_SUBMISSIONS", 3)
 
 # Research notes are read back by the writer at full size (its pruning
 # middleware keeps the last N results intact), so a single oversized note can

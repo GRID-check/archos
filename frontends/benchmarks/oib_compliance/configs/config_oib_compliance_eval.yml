@@ -169,7 +169,7 @@ functions:
     project_collections: []
     generate_summary: true
     summary_model: summary_llm
-    summary_db: ${GRID_SUMMARY_DB:-sqlite+aiosqlite:///./summaries.db}
+    summary_db: ${SUMMARY_DB:-sqlite+aiosqlite:///./summaries.db}
     top_k: 5
 
   remember:

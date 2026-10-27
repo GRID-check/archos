@@ -1,7 +1,7 @@
 """Age-based retention for the interactive chat checkpoint store (P0 #1, chat).
 
 LangGraph writes a full-state checkpoint per super-step, keyed by ``thread_id``
-(the conversation id), into ``GRID_CHECKPOINT_DB``. Unlike a deep-research run a
+(the conversation id), into ``CHECKPOINT_DB``. Unlike a deep-research run a
 chat conversation has **no terminal event**, so nothing ever drops these rows —
 they accumulate with every turn across every conversation forever
 (``checkpoints``/``checkpoint_blobs``/``checkpoint_writes``). The deep path is

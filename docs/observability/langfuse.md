@@ -391,7 +391,7 @@ never reads a trace's body, so this is the whole cost.
   turn.
 * The page sends the id only to a server whose hello lists
   `user_message.posthog_session_id` in `accepts`, which is withheld while
-  `GRID_WIRE_V2_ADDITIVE_FIELDS` is off. It is on by default; set off, the link is gone.
+  `WIRE_V2_ADDITIVE_FIELDS` is off. It is on by default; set off, the link is gone.
 
 ### How to enable
 

@@ -28,7 +28,7 @@ THE FLOORS
 
 IT NEEDS A KEY, NOT A BACKEND
 -----------------------------
-``OPENROUTER_API_KEY`` (or ``GRID_DECISIONS_API_KEY``); well under a cent for
+``OPENROUTER_API_KEY`` (or ``DECISIONS_API_KEY``); well under a cent for
 both sets. Exit 0 when the floors hold, 1 when they do not.
 
 USAGE

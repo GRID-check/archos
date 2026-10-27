@@ -28,11 +28,11 @@ _BFF_RUNNER = Path(__file__).resolve().parents[2] / "ui" / "workers" / "jobs" / 
 )
 def test_int_env_falls_back_below_its_floor_and_on_anything_not_a_number(monkeypatch, raw, floor, expected):
     if raw is None:
-        monkeypatch.delenv("GRID_TEST_LEASE", raising=False)
+        monkeypatch.delenv("TEST_LEASE", raising=False)
     else:
-        monkeypatch.setenv("GRID_TEST_LEASE", raw)
+        monkeypatch.setenv("TEST_LEASE", raw)
 
-    assert lease_policy.int_env("GRID_TEST_LEASE", 7, floor=floor) == expected
+    assert lease_policy.int_env("TEST_LEASE", 7, floor=floor) == expected
 
 
 def test_the_liveness_marker_is_written_and_a_failed_write_does_not_raise(tmp_path, caplog):

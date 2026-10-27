@@ -581,7 +581,7 @@ export const POSTGRES_TUNING = {
    * session advisory locks and open transactions) for 16 to 55 minutes in the
    * 2026-10 incident, stalling ingestion and the api's start-up behind locks
    * nobody would release. A live client that sits idle on purpose, such as a
-   * session-lock holder on `GRID_LOCK_DB_URL`, answers the probes at the kernel
+   * session-lock holder on `LOCK_DB_URL`, answers the probes at the kernel
    * level and is not affected. All three are user-level settings, so a change
    * is a reload, not a restart.
    */
@@ -674,7 +674,7 @@ export const POSTGRES_DIRECT_RESERVE = {
    */
   cnpg: 6,
   /**
-   * `GRID_LISTEN_DB_URL`: one asyncpg connection per open job SSE stream, held for
+   * `LISTEN_DB_URL`: one asyncpg connection per open job SSE stream, held for
    * as long as the job runs, by the `api` role (the chat role serves no job
    * stream, ADR-0082). So the bound is the jobs and their viewers, not the number
    * of api pods: scaling `aiq-api` out spreads the streams, it adds none. Running jobs are bounded by the research tier
@@ -684,7 +684,7 @@ export const POSTGRES_DIRECT_RESERVE = {
    */
   sseListen: 20,
   /**
-   * Session advisory locks (`GRID_LOCK_DB_URL`) that are not tied to ingest
+   * Session advisory locks (`LOCK_DB_URL`) that are not tied to ingest
    * volume: the ghost-job reaper, the collection TTL cleanup, and an api
    * replica's own re-ingest. One connection each, held for the length of a cycle.
    * The ingest tier adds one `keyed_lock` per job in flight, counted separately.
@@ -779,7 +779,7 @@ export const QDRANT = {
   s3Identity: "grid-qdrant",
   /**
    * Shards and replicas of the tenant collection on a cluster, fixed when the
-   * backend creates it (`GRID_QDRANT_SHARD_NUMBER`, `GRID_QDRANT_REPLICATION_FACTOR`).
+   * backend creates it (`QDRANT_SHARD_NUMBER`, `QDRANT_REPLICATION_FACTOR`).
    * Open-source Qdrant cannot reshard, so 6 fits 1, 2, 3 and 6 nodes. With RF 2
    * a lost peer keeps every shard readable and the 3-peer Raft quorum intact,
    * and writes keep going: the backend creates the collection with write

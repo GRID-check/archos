@@ -32,7 +32,7 @@ Resolution is **per agent group**, so the layers mix: an org that pinned only
 | Workflow YAML | `configs/*.yml` → `llms:` → `model_name` | a commit + redeploy | boot floor only |
 
 For an LLM an agent group covers, the YAML is not where the fleet's model is
-decided — its `model_name` values are `${GRID_DEFAULT_MODEL:-…}` floors for a
+decided — its `model_name` values are `${DEFAULT_MODEL:-…}` floors for a
 process with no BFF to ask (local `nat run`, a detached worker, an unreachable
 frontend). What the YAML solely owns everywhere is the plumbing an override may
 never touch: `base_url`, `api_key`, `temperature`, `max_tokens`, timeouts and

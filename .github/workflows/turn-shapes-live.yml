@@ -57,5 +57,5 @@ jobs:
           # The boot floor the test reads from configs/config_oib_openrouter.yml
           # can be moved for one run from the repository variables without a
           # commit; unset resolves to the config's own default.
-          GRID_DEFAULT_MODEL: ${{ vars.GRID_DEFAULT_MODEL }}
+          DEFAULT_MODEL: ${{ vars.DEFAULT_MODEL }}
         run: task be:eval:turn-shapes

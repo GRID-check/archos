@@ -226,7 +226,7 @@ For each file:
 
    A PDF counts as structured when it has at least three headings, at least half its text sits under one, and at most 30% of its lines are headings (`section_chunking.structure_is_usable`). A heading is a short line in a larger type than the body, in bold, or opened by a German numbering; lines that repeat at the top or bottom of most pages are running headers and are dropped. A transcribed page's Markdown ATX headings (`## 1 Befund`) are section headings. A numbered line in body type counts only when its title reads as one: at most 8 words, no finite verb, not ending mid-sentence. A line that runs on in lowercase into a line of another style is not a heading. Locators are normalised, so `§3` and `Art.3` become `§ 3` and `Art. 3`. `read_passage(page=N)` returns the chunks whose `[page_label, page_end]` range covers N, so a section chunk that starts on page 2 and ends on page 3 is found for page 3.
 2. **Table extraction** (PDF only, optional) — Uses `pdfplumber` to extract the tables the text pass did not already index as captioned tables; each becomes row groups that repeat the header row (`content_type: "table"`, `table_part` orders them), so the splitter never cuts a table into header-less rows. The tables are read right after the text, before the upload screen, and screened with it: the table pass opens the PDF on its own and also reads a page the text pass lost
-3. **Image extraction** (PDF only, optional) — Uses `pypdfium2` to extract the embedded rasters worth a caption, at least 100×100 px by the image object's own metadata, so an icon is filtered without being decoded. Every candidate is sized from metadata (`PdfImage.get_px_size()`, no pixels read), the per-document cap `GRID_MAX_IMAGES_PER_DOCUMENT` (64) is applied right there — largest first, everything past it never decoded — and only the kept rasters are decoded, one at a time, each downscaled to `VLM_MAX_IMAGE_DIM` before it is held. Peak memory is one raster instead of the document's, which is the bound that keeps an ingest pod inside its limit on a plan set ([ingest memory runbook](../deployment/ingest-memory-runbook.md)). Each kept raster is sent to the VLM API (default: `openai/gpt-6-luna` via OpenRouter — image input verified, caption quality on OIB drawings still open, see the Configuration table) for classification (chart vs image) and captioning; captions become `Document` objects with `content_type: "chart"` or `"image"` metadata
+3. **Image extraction** (PDF only, optional) — Uses `pypdfium2` to extract the embedded rasters worth a caption, at least 100×100 px by the image object's own metadata, so an icon is filtered without being decoded. Every candidate is sized from metadata (`PdfImage.get_px_size()`, no pixels read), the per-document cap `MAX_IMAGES_PER_DOCUMENT` (64) is applied right there — largest first, everything past it never decoded — and only the kept rasters are decoded, one at a time, each downscaled to `VLM_MAX_IMAGE_DIM` before it is held. Peak memory is one raster instead of the document's, which is the bound that keeps an ingest pod inside its limit on a plan set ([ingest memory runbook](../deployment/ingest-memory-runbook.md)). Each kept raster is sent to the VLM API (default: `openai/gpt-6-luna` via OpenRouter — image input verified, caption quality on OIB drawings still open, see the Configuration table) for classification (chart vs image) and captioning; captions become `Document` objects with `content_type: "chart"` or `"image"` metadata
 
    Every PDFium call in the process (page triage, page renders, image extraction, thumbnails, `look`) is serialized through `pdfium_lock` in `knowledge_layer/llamaindex/pdfium_lock.py`, because PDFium is not thread-safe; the lock is held for the PDFium work alone — reading a page's objects, decoding one raster — and image encoding happens after it is released.
 
@@ -364,13 +364,13 @@ one name at once both collected the same predecessor, both retired it, and both
 new versions stayed. With it the second job waits, finds the first job's new
 version as its predecessor, and replaces it: the version that finishes last is
 the one left. On Postgres it is a session advisory lock on a connection of its
-own, taken on `GRID_LOCK_DB_URL`, the direct DSN and never the pooled one
+own, taken on `LOCK_DB_URL`, the direct DSN and never the pooled one
 (ADR-0083), so it holds across replicas and is released when a replica dies;
 with SQLite or no database only the in-process lock holds. With Postgres it
 fails closed: an unreachable lock database raises, logged, and the file
 is marked failed (it does not replace its predecessor unguarded across replicas),
 so the failed-ingestion rescan picks it up. An ingest worker on Postgres with no
-`GRID_LOCK_DB_URL` refuses to start.
+`LOCK_DB_URL` refuses to start.
 
 The base corpus (`src/aiq_agent/oib_sync.py`) relies on the same step: its ingest
 jobs run on the queue like any other and nothing deletes a file before it is ingested again.
@@ -439,9 +439,9 @@ One window remains, narrow and named:
 | `embed_model` | `openai/text-embedding-3-large` (via OpenRouter) | Embedding model id; keep it stable, stored vectors only match query vectors from the same model — see "Embedding-model changes" below |
 | `chunk_size` | 1024 | Text chunk size (model supports up to 2048 tokens) |
 | `chunk_overlap` | 128 | Overlap between chunks |
-| `extract_tables` | true (`GRID_EXTRACT_TABLES`) | PDF table extraction |
-| `extract_images` | true (`GRID_EXTRACT_IMAGES`) | PDF image extraction + VLM captioning, at most `GRID_MAX_IMAGES_PER_DOCUMENT` (64) per PDF |
-| `extract_charts` | true (`GRID_EXTRACT_CHARTS`) | Index VLM-typed charts as `chart` chunks with structured data; off, as images |
+| `extract_tables` | true (`EXTRACT_TABLES`) | PDF table extraction |
+| `extract_images` | true (`EXTRACT_IMAGES`) | PDF image extraction + VLM captioning, at most `MAX_IMAGES_PER_DOCUMENT` (64) per PDF |
+| `extract_charts` | true (`EXTRACT_CHARTS`) | Index VLM-typed charts as `chart` chunks with structured data; off, as images |
 | `vlm_model` | `openai/gpt-6-luna` (via OpenRouter) | VLM for image captioning. TODO: evaluate caption quality on OIB drawings; neither this default nor its predecessor has been measured there |
 | `generate_summary` | false | Enable document summarization |
 | `summary_model` | null | LLM reference for summarization |
@@ -461,12 +461,12 @@ After any embedding-model change:
    and [the runbook](../deployment/qdrant-runbook.md)); a dev stack can drop its
    Qdrant volume instead.
 2. Re-ingest the base corpus (OIB sync) and every project collection.
-3. Pin `GRID_EMBED_MODEL` explicitly wherever the deployment must survive the
+3. Pin `EMBED_MODEL` explicitly wherever the deployment must survive the
    next default change (production does this and is unaffected).
 
 ### TTL Cleanup
 
-Session-scoped collections (`s_*`) are automatically reaped by a background thread, measured from the newest `indexed_at` on their points. Default TTL is 24 hours (`GRID_COLLECTION_TTL_HOURS`), checked every 3600 seconds (`GRID_TTL_CLEANUP_INTERVAL_SECONDS`). Base/project collections are never auto-deleted.
+Session-scoped collections (`s_*`) are automatically reaped by a background thread, measured from the newest `indexed_at` on their points. Default TTL is 24 hours (`COLLECTION_TTL_HOURS`), checked every 3600 seconds (`TTL_CLEANUP_INTERVAL_SECONDS`). Base/project collections are never auto-deleted.
 
 ### Fixed: silent summary-row loss on double LLM failure (2026-07-16)
 
@@ -503,8 +503,8 @@ Recovery no longer requires re-ingesting the file; the reconciliation pass
 catches it on the next ingestion run for that collection.
 
 - **Text source**: the document's already-indexed chunk text, read from Qdrant (`collection_pages.read_pages`), when available (the same text ingestion classified from), falling back to the stored summary otherwise.
-- **LLM access**: it runs outside the NAT runtime, so it builds an OpenAI-compatible client from env vars that must match the `summary_llm` block in `configs/config_oib_openrouter.yml`: `BACKFILL_SUMMARY_API_KEY` (falls back to the provider key inferred from the base URL, `OPENROUTER_API_KEY` by default), `BACKFILL_SUMMARY_BASE_URL` (default `https://openrouter.ai/api/v1`), `BACKFILL_SUMMARY_MODEL` (default `GRID_DEFAULT_MODEL`, then `openai/gpt-6-luna`).
-- **Store**: `GRID_SUMMARY_DB` (or `--summary-db`); chunk text from Qdrant at `GRID_QDRANT_URL` (without it, the stored summary).
+- **LLM access**: it runs outside the NAT runtime, so it builds an OpenAI-compatible client from env vars that must match the `summary_llm` block in `configs/config_oib_openrouter.yml`: `BACKFILL_SUMMARY_API_KEY` (falls back to the provider key inferred from the base URL, `OPENROUTER_API_KEY` by default), `BACKFILL_SUMMARY_BASE_URL` (default `https://openrouter.ai/api/v1`), `BACKFILL_SUMMARY_MODEL` (default `DEFAULT_MODEL`, then `openai/gpt-6-luna`).
+- **Store**: `SUMMARY_DB` (or `--summary-db`); chunk text from Qdrant at `QDRANT_URL` (without it, the stored summary).
 - **Exit codes** (for CI): `0` = success (nothing to do, or a completed run with no failures; `--dry-run` always exits `0`), `1` = a real run finished but at least one document failed to classify (`stats.failed > 0`, so a partial backfill can be flagged), `2` = the tagging LLM could not be constructed (no `BACKFILL_SUMMARY_API_KEY` and no provider key for the base URL).
 
 ---

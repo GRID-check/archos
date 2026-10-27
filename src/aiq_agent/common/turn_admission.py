@@ -32,7 +32,7 @@ wins the race.
 ## Leases, renewed while the turn runs
 
 Slots are held in a sorted set scored by when the holder last vouched for them,
-and a slot older than ``GRID_TURN_LEASE_SECONDS`` is dropped on the next
+and a slot older than ``TURN_LEASE_SECONDS`` is dropped on the next
 acquire. A plain increment/decrement pair leaks a slot forever whenever a
 replica is OOM-killed mid-turn, and the pool shrinks silently until nobody can
 chat. A lease self-heals.
@@ -71,7 +71,7 @@ from aiq_agent.common.lease_slots import RENEW_LUA
 
 logger = logging.getLogger(__name__)
 
-# @environment_variable GRID_MAX_ACTIVE_TURNS
+# @environment_variable MAX_ACTIVE_TURNS
 # @category Server
 # @type int
 # @default 24
@@ -79,18 +79,18 @@ logger = logging.getLogger(__name__)
 # Maximum interactive chat turns running concurrently across all organizations.
 # Its own pool, never shared with the research queue — that separation is what
 # stops background research from starving chat. 0 or negative disables.
-MAX_ACTIVE_TURNS = int(os.environ.get("GRID_MAX_ACTIVE_TURNS", "24"))
+MAX_ACTIVE_TURNS = int(os.environ.get("MAX_ACTIVE_TURNS", "24"))
 
-# @environment_variable GRID_MAX_ACTIVE_TURNS_PER_ORG
+# @environment_variable MAX_ACTIVE_TURNS_PER_ORG
 # @category Server
 # @type int
 # @default 6
 # @required false
 # Maximum concurrent interactive chat turns per organization, so one tenant
 # cannot occupy the interactive pool. 0 or negative disables the per-org cap.
-MAX_ACTIVE_TURNS_PER_ORG = int(os.environ.get("GRID_MAX_ACTIVE_TURNS_PER_ORG", "6"))
+MAX_ACTIVE_TURNS_PER_ORG = int(os.environ.get("MAX_ACTIVE_TURNS_PER_ORG", "6"))
 
-# @environment_variable GRID_TURN_LEASE_SECONDS
+# @environment_variable TURN_LEASE_SECONDS
 # @category Server
 # @type int
 # @default 120
@@ -98,7 +98,7 @@ MAX_ACTIVE_TURNS_PER_ORG = int(os.environ.get("GRID_MAX_ACTIVE_TURNS_PER_ORG", "
 # How long an admission slot survives without its turn renewing it. A running
 # turn renews every third of this, so it bounds only how long a replica killed
 # mid-turn keeps its slots, not how long a turn may run.
-TURN_LEASE_SECONDS = int(os.environ.get("GRID_TURN_LEASE_SECONDS", "120"))
+TURN_LEASE_SECONDS = int(os.environ.get("TURN_LEASE_SECONDS", "120"))
 
 
 def _renew_interval() -> float:
@@ -293,7 +293,7 @@ def active_turns() -> int | None:
     this replica's own table is the whole fleet. With one configured but
     unreachable the answer is None, not this replica's share: a quarter of the
     real number would read as a quiet fleet and scale it in under its turns.
-    Only the global pool is counted, so ``GRID_MAX_ACTIVE_TURNS`` of 0 or less
+    Only the global pool is counted, so ``MAX_ACTIVE_TURNS`` of 0 or less
     (admission off) reads as 0.
     """
     now = time.time()
@@ -368,7 +368,7 @@ def admit_turn(organization_id: str | None) -> Iterator[None]:
 
     Raises `TurnAdmissionError` when the global or the organization's pool is
     full. Synchronous, and it does not renew the lease, so it suits only a block
-    shorter than `GRID_TURN_LEASE_SECONDS`. A chat turn wants `admit_turn_async`.
+    shorter than `TURN_LEASE_SECONDS`. A chat turn wants `admit_turn_async`.
     """
     member = uuid.uuid4().hex
     held, refusal = _acquire_all(organization_id, member)

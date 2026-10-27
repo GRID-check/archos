@@ -194,11 +194,11 @@ def test_cache_tty_default_is_60(resolver: SkillResolver, monkeypatch: pytest.Mo
     from aiq_agent.skills.resolver import _cache_ttl_seconds
 
     assert _cache_ttl_seconds() == 60.0
-    monkeypatch.setenv("GRID_SKILLS_CACHE_TTL_SECONDS", "120")
+    monkeypatch.setenv("SKILLS_CACHE_TTL_SECONDS", "120")
     assert _cache_ttl_seconds() == 120.0
-    monkeypatch.setenv("GRID_SKILLS_CACHE_TTL_SECONDS", "0")
+    monkeypatch.setenv("SKILLS_CACHE_TTL_SECONDS", "0")
     assert _cache_ttl_seconds() == 60.0
-    monkeypatch.setenv("GRID_SKILLS_CACHE_TTL_SECONDS", "junk")
+    monkeypatch.setenv("SKILLS_CACHE_TTL_SECONDS", "junk")
     assert _cache_ttl_seconds() == 60.0
 
 

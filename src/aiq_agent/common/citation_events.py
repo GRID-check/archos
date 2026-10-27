@@ -391,7 +391,7 @@ def _submit_batch(payload: dict[str, Any]) -> bool:
 
 def _events_enabled() -> bool:
     """Whether citation-health telemetry is emitted (default on)."""
-    return (os.environ.get("GRID_CITATION_EVENTS_ENABLED") or "true").strip().lower() not in {
+    return (os.environ.get("CITATION_EVENTS_ENABLED") or "true").strip().lower() not in {
         "0",
         "false",
         "no",

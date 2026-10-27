@@ -1329,7 +1329,7 @@ async def _reap_stale_jobs_once(job_store, db_url: str) -> list[str]:
 
     # Only one replica runs the cycle (advisory lock), so N web replicas don't
     # redundantly re-detect and re-mark the same ghosts. A session lock, so it is
-    # taken on the direct GRID_LOCK_DB_URL connection, never on db_url (ADR-0083).
+    # taken on the direct LOCK_DB_URL connection, never on db_url (ADR-0083).
     async with leader_lock_async(_PG_REAPER_LOCK_ID) as is_leader:
         if not is_leader:
             return []
@@ -1419,12 +1419,12 @@ _PG_REAPER_LOCK_ID = _PG_ADVISORY_LOCK_ID + 1
 
 
 def _checkpoint_retention_seconds() -> int:
-    return _int_env("GRID_CHAT_CHECKPOINT_RETENTION_SECONDS", 1209600)  # 14d
+    return _int_env("CHAT_CHECKPOINT_RETENTION_SECONDS", 1209600)  # 14d
 
 
 def _job_info_delete_grace_seconds() -> int:
     """How long an expired, terminal job's rows are kept before the event cleanup deletes them."""
-    return _int_env("GRID_JOB_INFO_DELETE_GRACE_SECONDS", 604800)  # 7d
+    return _int_env("JOB_INFO_DELETE_GRACE_SECONDS", 604800)  # 7d
 
 
 def _add_housekeeping_routes(app: FastAPI, job_store, db_url: str, expiry_seconds: int) -> None:
@@ -1457,9 +1457,9 @@ def _add_housekeeping_routes(app: FastAPI, job_store, db_url: str, expiry_second
         from ..jobs.checkpoint_retention import reap_idle_threads
 
         _require_internal_token(request)
-        dsn = os.environ.get("GRID_CHECKPOINT_DB")
+        dsn = os.environ.get("CHECKPOINT_DB")
         if not dsn:
-            return {"threads_reaped": 0, "skipped": "GRID_CHECKPOINT_DB is not set"}
+            return {"threads_reaped": 0, "skipped": "CHECKPOINT_DB is not set"}
         retention_seconds = _checkpoint_retention_seconds()
         return {"threads_reaped": await asyncio.to_thread(reap_idle_threads, dsn, retention_seconds)}
 
@@ -1838,12 +1838,12 @@ async def _sse_generator_postgres(
     # LISTEN/NOTIFY needs a persistent session, which the transaction pooler in
     # front of `db_url` does not give (ADR-0083): the LISTEN lands on a server
     # connection the client does not keep, and no notification ever arrives. So
-    # there is no default to `db_url`; GRID_LISTEN_DB_URL is the direct DSN, and
+    # there is no default to `db_url`; LISTEN_DB_URL is the direct DSN, and
     # `require_direct_dsns` (called when the web process starts) already refused
     # to boot without it, so this is an assertion and not a runtime path.
     import os
 
-    listen_db_url = os.environ["GRID_LISTEN_DB_URL"]
+    listen_db_url = os.environ["LISTEN_DB_URL"]
     # Strip +psycopg2 before +psycopg (it's a prefix of the former) — this
     # codebase standardizes on postgresql+psycopg:// URLs, which asyncpg
     # rejects; a leftover driver suffix silently degrades every SSE stream

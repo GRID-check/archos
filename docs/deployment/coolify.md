@@ -20,10 +20,10 @@ NVIDIA base-image removal — see §2, apart from the stock `qdrant/qdrant`,
 | Service | Role | Exposed publicly? |
 |---|---|---|
 | `frontend` | Next.js UI + BFF gateway (auth, `grid_app` DB, WS proxy) — port 3000 | **Yes** (your domain) |
-| `aiq-agent` | Python FastAPI backend, **`chat` role** (`GRID_ROLE=chat`): the chat WebSocket, the only route a turn runs through — port 8000. The frontend dials it with `BACKEND_CHAT_URL` | No (internal) |
-| `aiq-api` | Python FastAPI backend, **`api` role** (`GRID_ROLE=api`): every other HTTP route (knowledge, jobs and SSE, LLM utilities, admin) — port 8000. The frontend, `purger` and `housekeeping` call it with `BACKEND_URL`. Mirrors the K8s `aiq-api` Deployment | No (internal) |
-| `agent-worker` | Deep-research worker (`GRID_ROLE=worker`): claims jobs from Postgres and runs them off the web tier. Mirrors the K8s worker Deployment | No (internal) |
-| `ingest-worker` | Ingestion tier (`GRID_ROLE=ingest-worker`): the one process that claims the durable ingest queue `POST /v1/ingest` fills (ADR-0076). Without it uploads sit pending. Mirrors the K8s ingest-worker Deployment | No (internal) |
+| `aiq-agent` | Python FastAPI backend, **`chat` role** (`PROCESS_ROLE=chat`): the chat WebSocket, the only route a turn runs through — port 8000. The frontend dials it with `BACKEND_CHAT_URL` | No (internal) |
+| `aiq-api` | Python FastAPI backend, **`api` role** (`PROCESS_ROLE=api`): every other HTTP route (knowledge, jobs and SSE, LLM utilities, admin) — port 8000. The frontend, `purger` and `housekeeping` call it with `BACKEND_URL`. Mirrors the K8s `aiq-api` Deployment | No (internal) |
+| `agent-worker` | Deep-research worker (`PROCESS_ROLE=worker`): claims jobs from Postgres and runs them off the web tier. Mirrors the K8s worker Deployment | No (internal) |
+| `ingest-worker` | Ingestion tier (`PROCESS_ROLE=ingest-worker`): the one process that claims the durable ingest queue `POST /v1/ingest` fills (ADR-0076). Without it uploads sit pending. Mirrors the K8s ingest-worker Deployment | No (internal) |
 | `qdrant` | Shared Qdrant vector store (ADR-0115) — port 6333, with the API key Coolify generates (`SERVICE_PASSWORD_QDRANT`). One store every backend role (`aiq-agent`, `aiq-api`, `agent-worker`, `ingest-worker`) queries over HTTP. Mirrors the K8s Qdrant StatefulSet, single node | No (internal) |
 | `seaweedfs` | S3-compatible object storage — port 8333 | **Yes** (presigned PDF URLs) |
 | `postgres` | Three logical DBs: `aiq_jobs`, `aiq_checkpoints`, `grid_app` | No (internal) |
@@ -107,7 +107,7 @@ which are generated per deployment and stay consistent across the stack:
 | `SERVICE_PASSWORD_POSTGRES` | Auto-generated Postgres password (embedded in every DB URL) |
 | `SERVICE_PASSWORD_SEAWEEDFS` | Auto-generated SeaweedFS secret key |
 | `SERVICE_PASSWORD_INTERNALTOKEN` | Auto-generated shared token for the single-writer memory endpoint |
-| `SERVICE_PASSWORD_QDRANT` | Auto-generated Qdrant API key: the `qdrant` service requires it, the backend roles send it (`GRID_QDRANT_API_KEY`) |
+| `SERVICE_PASSWORD_QDRANT` | Auto-generated Qdrant API key: the `qdrant` service requires it, the backend roles send it (`QDRANT_API_KEY`) |
 
 Because these are stable per stack, each preview environment self-configures its
 own domains, DB password, and internal token with no manual input.
@@ -272,7 +272,7 @@ on job access control (a job's owner, or a caller whose signed envelope places t
 job in their project or conversation, ADR-0084) and the signed-envelope rule for
 WorkOS callers, for every request, so it is not only an external switch. In-cluster frontend→backend calls
 are classified internal and carry the user's token and envelope (or the internal
-token), so setting it `true` does not break them. `GRID_EXTERNAL_HOSTNAMES` is wired to the
+token), so setting it `true` does not break them. `EXTERNAL_HOSTNAMES` is wired to the
 frontend FQDN as defense-in-depth: should the backend's port 8000 ever be
 exposed under that domain, requests would be forced through the path allowlist
 and auth instead of being trusted as internal.
@@ -325,7 +325,7 @@ There is **no separate embedding provider and no NVIDIA endpoint**. A single
 
 - Embeddings: `openai/text-embedding-3-large` via `https://openrouter.ai/api/v1`.
 - The embeddings client resolves its key through the shared credential
-  resolver (`GRID_EMBED_API_KEY`, else the provider key inferred from the base
+  resolver (`EMBED_API_KEY`, else the provider key inferred from the base
   URL), so the OpenRouter key reaches it on its own. `NVIDIA_API_KEY` is not
   read anywhere. The compose defaults handle all of this; you only supply
   `OPENROUTER_API_KEY`.
@@ -335,7 +335,7 @@ So chat, web search, **and** the knowledge base all work with just
 
 > **Embedding-model stability rule:** the OIB embeddings are stored as vectors
 > from a specific model. Retrieval only returns correct results if
-> `GRID_EMBED_MODEL` + `GRID_EMBED_BASE_URL` at query time match what embedded the
+> `EMBED_MODEL` + `EMBED_BASE_URL` at query time match what embedded the
 > corpus. Keep the compose defaults
 > (`openai/text-embedding-3-large` @ OpenRouter); changing the embedder means the
 > persisted vectors must be re-generated (wipe the Qdrant volume; the next base-corpus
@@ -355,7 +355,7 @@ volume for it (ADR-0082 step A2):
   from. There is no `data/oib` mount and no registry file.
 - **Embeddings** — held by the shared `qdrant` store on its own persistent
   volume (`qdrant_data`, mounted at `/qdrant/storage`). Every backend role
-  reaches it at `GRID_QDRANT_URL` (`http://qdrant:6333`) with the generated key.
+  reaches it at `QDRANT_URL` (`http://qdrant:6333`) with the generated key.
   There is no embedded fallback in this file. `qdrant/qdrant:v1.19.2` is pinned
   (`QDRANT_IMAGE` overrides): self-hosted Qdrant upgrades one minor at a time.
 
@@ -366,7 +366,7 @@ volume for it (ADR-0082 step A2):
 > what Chroma held until the vectors are moved once with the exporter and
 > importer. Coolify starts every service on a deploy, the housekeeping clock
 > included, so the order is: stop, export from `<uuid>_chroma_data`, set
-> `GRID_VECTOR_IMPORT_PENDING=true`, deploy, stop the app services at once,
+> `VECTOR_IMPORT_PENDING=true`, deploy, stop the app services at once,
 > import on the `<uuid>` network with `aiq-api`'s environment, remove the
 > variable, restart ([`qdrant-runbook.md`](qdrant-runbook.md), "Migrating from
 > Chroma", "On Coolify"). Without the variable, the first base-corpus sync
@@ -463,7 +463,7 @@ docker compose -f docker-compose.coolify.yaml up -d
 | Host ports | published (3000, 8000, 5432, 8333/8888) | none — proxy + FQDN vars |
 | Secrets | `deploy/.env` literals | Coolify UI (`${VAR:?}`) + generated passwords; `OPENROUTER_API_KEY`, `TAVILY_API_KEY`, `GRID_ADMIN_TOKEN` all required |
 | Auth (`REQUIRE_AUTH`) | `false` (dev convenience) | **`true`** by default (WorkOS required; opt out per-preview) |
-| External-host classification | unset | `GRID_EXTERNAL_HOSTNAMES` = frontend FQDN (defense-in-depth) |
+| External-host classification | unset | `EXTERNAL_HOSTNAMES` = frontend FQDN (defense-in-depth) |
 | Frontend/SeaweedFS exposure | `localhost:PORT` | `SERVICE_FQDN_*` https domains |
 | CORS / redirect / SeaweedFS public URL | `localhost` defaults | derived from generated FQDNs |
 | `configs/` bind mount | mounted read-only | dropped (baked into the image) |

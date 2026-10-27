@@ -12,20 +12,20 @@ queue's depth. Cancellation needs nothing special here: the cancel route flips
 honors it from any replica.
 
 On SIGTERM the worker stops claiming and waits up to
-``GRID_RESEARCH_WORKER_DRAIN_SECONDS`` for the jobs it holds. A job still running
+``RESEARCH_WORKER_DRAIN_SECONDS`` for the jobs it holds. A job still running
 when that budget ends is given back to the queue at no cost in attempts, and
 another worker claims it from the start at once; a pod that is killed instead
 (OOM, node loss) leaves its claims to go stale and be claimed again.
 
 Config (env):
   NAT_JOB_STORE_DB_URL            jobs DB (Postgres in prod; required)
-  GRID_RESEARCH_WORKERS           concurrent jobs per process (default 1)
-  GRID_RESEARCH_WORKER_POLL_SECONDS    idle poll interval (default 5)
-  GRID_RESEARCH_WORKER_STALE_SECONDS   claim considered dead after (default 90)
-  GRID_RESEARCH_WORKER_MAX_ATTEMPTS    claims before the job is dead (default 3)
-  GRID_RESEARCH_WORKER_HEARTBEAT_SECONDS  heartbeat cadence (default 30)
-  GRID_RESEARCH_WORKER_DRAIN_SECONDS   drain budget on SIGTERM (default 600)
-  GRID_RESEARCH_DEAD_RETENTION_DAYS    how long a dead row is kept (default 14)
+  RESEARCH_WORKERS           concurrent jobs per process (default 1)
+  RESEARCH_WORKER_POLL_SECONDS    idle poll interval (default 5)
+  RESEARCH_WORKER_STALE_SECONDS   claim considered dead after (default 90)
+  RESEARCH_WORKER_MAX_ATTEMPTS    claims before the job is dead (default 3)
+  RESEARCH_WORKER_HEARTBEAT_SECONDS  heartbeat cadence (default 30)
+  RESEARCH_WORKER_DRAIN_SECONDS   drain budget on SIGTERM (default 600)
+  RESEARCH_DEAD_RETENTION_DAYS    how long a dead row is kept (default 14)
   GRID_MAX_ACTIVE_JOBS_PER_ORG    one organization's concurrent jobs (default 3)
 """
 
@@ -83,7 +83,7 @@ def _int_env(name: str, default: int) -> int:
     return lease_policy.int_env(name, default, floor=1)
 
 
-# @environment_variable GRID_RESEARCH_DEAD_RETENTION_DAYS
+# @environment_variable RESEARCH_DEAD_RETENTION_DAYS
 # @category Server
 # @type int
 # @default 14
@@ -91,7 +91,7 @@ def _int_env(name: str, default: int) -> int:
 # How long a dead research queue row (a job that failed every claim, or whose
 # payload could not be read) is kept as a trace before it is deleted.
 def _dead_retention_seconds() -> int:
-    days = _int_env("GRID_RESEARCH_DEAD_RETENTION_DAYS", lease_policy.DEAD_RETENTION_DAYS)
+    days = _int_env("RESEARCH_DEAD_RETENTION_DAYS", lease_policy.DEAD_RETENTION_DAYS)
     return days * lease_policy.SECONDS_PER_DAY
 
 
@@ -99,18 +99,18 @@ class ResearchWorker:
     def __init__(self) -> None:
         self.db_url = os.environ.get("NAT_JOB_STORE_DB_URL", "sqlite:///./data/jobs.db")
         self.worker_id = f"{socket.gethostname()}:{os.getpid()}"
-        self.concurrency = _int_env("GRID_RESEARCH_WORKERS", 1)
-        self.poll_seconds = _int_env("GRID_RESEARCH_WORKER_POLL_SECONDS", 5)
-        self.stale_seconds = _int_env("GRID_RESEARCH_WORKER_STALE_SECONDS", 90)
-        self.max_attempts = _int_env("GRID_RESEARCH_WORKER_MAX_ATTEMPTS", lease_policy.MAX_ATTEMPTS)
-        self.heartbeat_seconds = _int_env("GRID_RESEARCH_WORKER_HEARTBEAT_SECONDS", lease_policy.HEARTBEAT_SECONDS)
+        self.concurrency = _int_env("RESEARCH_WORKERS", 1)
+        self.poll_seconds = _int_env("RESEARCH_WORKER_POLL_SECONDS", 5)
+        self.stale_seconds = _int_env("RESEARCH_WORKER_STALE_SECONDS", 90)
+        self.max_attempts = _int_env("RESEARCH_WORKER_MAX_ATTEMPTS", lease_policy.MAX_ATTEMPTS)
+        self.heartbeat_seconds = _int_env("RESEARCH_WORKER_HEARTBEAT_SECONDS", lease_policy.HEARTBEAT_SECONDS)
         # How long a stopping worker waits for the jobs it holds before it gives them back.
-        self.drain_seconds = _int_env("GRID_RESEARCH_WORKER_DRAIN_SECONDS", lease_policy.DRAIN_SECONDS)
+        self.drain_seconds = _int_env("RESEARCH_WORKER_DRAIN_SECONDS", lease_policy.DRAIN_SECONDS)
         # One organization's concurrent jobs, fleet-wide: the claim's per-lane cap (0 = none).
         self.per_org_cap = max(0, queue.max_active_per_org())
         # Liveness marker file the k8s probe checks (the backend image has no
         # pgrep/procps). Touched every loop tick; a stale mtime => the loop hung.
-        self.liveness_file = os.environ.get("GRID_WORKER_LIVENESS_FILE", "/tmp/research-worker.alive")
+        self.liveness_file = os.environ.get("WORKER_LIVENESS_FILE", "/tmp/research-worker.alive")
         self._stop = asyncio.Event()
         self._running: set[asyncio.Task] = set()
         #: The claims this process holds, by job id, so a drain can give them back.

@@ -18,8 +18,8 @@ import yaml
 COMPOSE_DIR = Path(__file__).resolve().parents[1] / "deploy" / "compose"
 FILES = ["docker-compose.yaml", "docker-compose.coolify.yaml"]
 
-POOLED = ("NAT_JOB_STORE_DB_URL", "GRID_CHECKPOINT_DB", "GRID_SUMMARY_DB")
-DIRECT = ("GRID_LISTEN_DB_URL", "GRID_LOCK_DB_URL")
+POOLED = ("NAT_JOB_STORE_DB_URL", "CHECKPOINT_DB", "SUMMARY_DB")
+DIRECT = ("LISTEN_DB_URL", "LOCK_DB_URL")
 
 
 def _services(name: str) -> dict:

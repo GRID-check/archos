@@ -74,7 +74,7 @@ def _no_live_decisions(monkeypatch):
     passes or fails on its latency, and spends money. A test of a decision
     deletes the variable and stubs the endpoint (``test_decisions.py``).
     """
-    monkeypatch.setenv("GRID_DECISIONS_ENABLED", "false")
+    monkeypatch.setenv("DECISIONS_ENABLED", "false")
 
 
 class Emitted(list):

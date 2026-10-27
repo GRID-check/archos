@@ -70,15 +70,15 @@ from aiq_agent.knowledge.restricted_use import note_collections_read
 logger = logging.getLogger(__name__)
 
 # Long edge of the rendered page, in pixels. Mirrors the ingestion-time
-# visual-page render (GRID_RENDER_VISUAL_PAGES) so the model sees the page at
+# visual-page render (RENDER_VISUAL_PAGES) so the model sees the page at
 # the same resolution it was captioned at.
-_MAX_DIM_ENV = "GRID_PAGE_RENDER_MAX_DIM"
+_MAX_DIM_ENV = "PAGE_RENDER_MAX_DIM"
 _DEFAULT_MAX_DIM = 2048
 
 # Gate env: when "off", the tool is available but answers with a text-only
 # block. The capability half of the gate (vision key) is derived, never
 # configured: without a VLM key no model in the fleet can consume images.
-_VIEW_IMAGES_ENABLED_ENV = "GRID_VIEW_IMAGES_ENABLED"
+_VIEW_IMAGES_ENABLED_ENV = "VIEW_IMAGES_ENABLED"
 
 _JPEG_QUALITY = 90
 
@@ -96,7 +96,7 @@ _INTERNAL_TOKEN_ENV = "GRID_INTERNAL_API_TOKEN"
 
 
 def default_max_dim() -> int:
-    """The long edge a page is rendered at: ``GRID_PAGE_RENDER_MAX_DIM``, or 2048."""
+    """The long edge a page is rendered at: ``PAGE_RENDER_MAX_DIM``, or 2048."""
     try:
         value = int(os.environ.get(_MAX_DIM_ENV, str(_DEFAULT_MAX_DIM)).strip())
     except ValueError:

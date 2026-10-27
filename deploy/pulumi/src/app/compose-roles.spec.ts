@@ -27,7 +27,7 @@ function env(service: Service): Record<string, string> {
   return Object.fromEntries(Object.entries(raw).map(([key, value]) => [key, String(value)]));
 }
 
-const roleOf = (file: string, name: string) => env(compose(file).services[name]).GRID_ROLE;
+const roleOf = (file: string, name: string) => env(compose(file).services[name]).PROCESS_ROLE;
 
 /**
  * The environment a container actually gets: the YAML merge key
@@ -52,7 +52,7 @@ function effectiveEnv(file: string, name: string): Record<string, string> {
  * uploads a file. Both are read here as source, like the Python they configure.
  */
 describe.each(COMPOSE_FILES)("%s", (file) => {
-  it("runs one service per role of the image, each under its own GRID_ROLE", () => {
+  it("runs one service per role of the image, each under its own PROCESS_ROLE", () => {
     expect(roleOf(file, "aiq-agent")).toBe("chat");
     expect(roleOf(file, "aiq-api")).toBe("api");
     expect(roleOf(file, "agent-worker")).toBe("worker");
@@ -61,7 +61,7 @@ describe.each(COMPOSE_FILES)("%s", (file) => {
 
   it("names exactly the roles the entrypoint accepts", () => {
     const roles = Object.values(compose(file).services)
-      .map((service) => env(service).GRID_ROLE)
+      .map((service) => env(service).PROCESS_ROLE)
       .filter((role): role is string => role !== undefined);
     const accepted = read("deploy", "entrypoint.py").match(/^ROLES = \((.*)\)$/m)?.[1];
 
@@ -99,8 +99,8 @@ describe.each(COMPOSE_FILES)("%s", (file) => {
     for (const name of ["aiq-agent", "aiq-api", "agent-worker", "ingest-worker"]) {
       expect(Object.keys(services[name].depends_on ?? {}), name).toContain("qdrant");
       const vars = effectiveEnv(file, name);
-      expect(vars.GRID_QDRANT_URL, name).toContain("http://qdrant:6333");
-      expect(vars.GRID_QDRANT_API_KEY, name).toBeDefined();
+      expect(vars.QDRANT_URL, name).toContain("http://qdrant:6333");
+      expect(vars.QDRANT_API_KEY, name).toBeDefined();
     }
   });
 
@@ -145,10 +145,10 @@ describe("the retired role and claim switch", () => {
     join("deploy", "pulumi", "src", "app", "backend.ts"),
   ];
 
-  it.each(files)("%s has no GRID_ROLE=web and no GRID_INGEST_QUEUE_CLAIM", (file) => {
+  it.each(files)("%s has no PROCESS_ROLE=web and no GRID_INGEST_QUEUE_CLAIM", (file) => {
     const source = read(file);
 
-    expect(source).not.toMatch(/GRID_ROLE[=:"' ]+web\b/);
+    expect(source).not.toMatch(/PROCESS_ROLE[=:"' ]+web\b/);
     expect(source).not.toContain("GRID_INGEST_QUEUE_CLAIM");
   });
 

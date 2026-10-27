@@ -2,7 +2,7 @@
 
 Against a real Qdrant server, like ``test_qdrant_store.py``: what is under test
 is how the server ranks, filters and shards, which a mock cannot tell. Without
-``GRID_QDRANT_TEST_URL`` the server tests skip locally and fail on CI.
+``QDRANT_TEST_URL`` the server tests skip locally and fail on CI.
 """
 
 from __future__ import annotations
@@ -52,12 +52,12 @@ CURRENT = {
 
 
 def _server_url() -> str:
-    url = os.environ.get("GRID_QDRANT_TEST_URL", "").strip()
+    url = os.environ.get("QDRANT_TEST_URL", "").strip()
     if url:
         return url
     if os.environ.get("CI"):
-        pytest.fail("GRID_QDRANT_TEST_URL is unset on CI: the Qdrant service container is missing")
-    pytest.skip("GRID_QDRANT_TEST_URL not set; start a Qdrant 1.19 server to run these")
+        pytest.fail("QDRANT_TEST_URL is unset on CI: the Qdrant service container is missing")
+    pytest.skip("QDRANT_TEST_URL not set; start a Qdrant 1.19 server to run these")
 
 
 class Stores:
@@ -72,7 +72,7 @@ class Stores:
 
     def make(self, shards: int = 1) -> QdrantStore:
         suffix = uuid.uuid4().hex[:8]
-        self.monkeypatch.setenv("GRID_QDRANT_SHARD_NUMBER", str(shards))
+        self.monkeypatch.setenv("QDRANT_SHARD_NUMBER", str(shards))
         for physical in schema.Physical:
             alias = f"test_{physical.value}_{suffix}"
             self.monkeypatch.setitem(schema.ALIASES, physical, alias)

@@ -411,7 +411,7 @@ class RisSearchToolConfig(FunctionBaseConfig, name="ris_search"):
         default="",
         description=(
             "DEPRECATED (ADR-0025): path to a legacy flat catalog YAML. Empty = the norm registry "
-            "(configs/norms/*/registry.yml, GRID_NORMS_DIR). Set only for legacy override."
+            "(configs/norms/*/registry.yml, NORMS_DIR). Set only for legacy override."
         ),
     )
 
@@ -696,7 +696,7 @@ class RisCatalogLookupToolConfig(FunctionBaseConfig, name="ris_catalog_lookup"):
         default="",
         description=(
             "DEPRECATED (ADR-0025): path to a legacy flat catalog YAML. Empty = the norm registry "
-            "(configs/norms/*/registry.yml, GRID_NORMS_DIR). Set only for legacy override."
+            "(configs/norms/*/registry.yml, NORMS_DIR). Set only for legacy override."
         ),
     )
     max_matches: int = Field(default=5, ge=1, description="Maximum catalog entries returned per lookup")

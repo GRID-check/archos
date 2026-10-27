@@ -15,7 +15,7 @@ import os
 REQUEST_TIMEOUT_SECONDS = 30
 
 
-# @environment_variable GRID_QDRANT_URL
+# @environment_variable QDRANT_URL
 # @category Knowledge Layer
 # @type str
 # @default (unset)
@@ -23,13 +23,13 @@ REQUEST_TIMEOUT_SECONDS = 30
 # Qdrant HTTP endpoint, e.g. http://qdrant:6333. Every backend tier that reads or writes the knowledge layer needs it.
 def qdrant_url() -> str:
     """The Qdrant HTTP endpoint; every read and write of the knowledge layer needs it."""
-    url = (os.environ.get("GRID_QDRANT_URL") or "").strip()
+    url = (os.environ.get("QDRANT_URL") or "").strip()
     if not url:
-        raise RuntimeError("GRID_QDRANT_URL is not set; the knowledge layer stores every chunk in Qdrant")
+        raise RuntimeError("QDRANT_URL is not set; the knowledge layer stores every chunk in Qdrant")
     return url
 
 
-# @environment_variable GRID_QDRANT_API_KEY
+# @environment_variable QDRANT_API_KEY
 # @category Knowledge Layer
 # @type str
 # @default (unset)
@@ -37,7 +37,7 @@ def qdrant_url() -> str:
 # API key for Qdrant (service.api_key). Unset only for a local, unauthenticated instance.
 def qdrant_api_key() -> str | None:
     """The API key Qdrant expects, or None for an unauthenticated local instance."""
-    return (os.environ.get("GRID_QDRANT_API_KEY") or "").strip() or None
+    return (os.environ.get("QDRANT_API_KEY") or "").strip() or None
 
 
 def _positive_int(name: str, default: int) -> int:
@@ -50,7 +50,7 @@ def _positive_int(name: str, default: int) -> int:
     return value
 
 
-# @environment_variable GRID_QDRANT_SHARD_NUMBER
+# @environment_variable QDRANT_SHARD_NUMBER
 # @category Knowledge Layer
 # @type int
 # @default 1
@@ -58,10 +58,10 @@ def _positive_int(name: str, default: int) -> int:
 # Shards per Qdrant collection, set once at creation. 6 on the 3-node cluster (fits 1/2/3/6 nodes).
 def shard_number() -> int:
     """Shards for the tenant collection, fixed at creation (open-source Qdrant cannot reshard)."""
-    return _positive_int("GRID_QDRANT_SHARD_NUMBER", 1)
+    return _positive_int("QDRANT_SHARD_NUMBER", 1)
 
 
-# @environment_variable GRID_QDRANT_REPLICATION_FACTOR
+# @environment_variable QDRANT_REPLICATION_FACTOR
 # @category Knowledge Layer
 # @type int
 # @default 1
@@ -69,4 +69,4 @@ def shard_number() -> int:
 # Replicas per shard, set once at creation. 2 on the 3-node cluster; writes need only one (consistency 1).
 def replication_factor() -> int:
     """Replicas per shard, fixed at creation; a self-hosted cluster does not re-replicate by itself."""
-    return _positive_int("GRID_QDRANT_REPLICATION_FACTOR", 1)
+    return _positive_int("QDRANT_REPLICATION_FACTOR", 1)

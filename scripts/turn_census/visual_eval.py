@@ -19,7 +19,7 @@ What it scores per run:
 - whether every look reached a card item and a step. That needs the look card and step of V3, so until
   they exist (``parity_available``) it is reported ``n/a`` rather than 0.
 
-``--look off`` runs the same rows with ``GRID_VIEW_IMAGES_ENABLED=0``: the paired run that says what looking
+``--look off`` runs the same rows with ``VIEW_IMAGES_ENABLED=0``: the paired run that says what looking
 is worth. Then ``must: [look]`` and ``gold_covered`` are not asked (the tool answers "disabled"); the
 looks still count, as attempts.
 """

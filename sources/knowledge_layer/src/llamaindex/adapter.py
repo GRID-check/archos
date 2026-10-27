@@ -8,7 +8,7 @@ It uses:
 - Optional multimodal extraction (tables, charts, images) with VLM captioning through the same endpoint
 
 Configuration options:
-    embed_model: Embedding model (default: openai/text-embedding-3-large, 3072-d, via GRID_EMBED_MODEL)
+    embed_model: Embedding model (default: openai/text-embedding-3-large, 3072-d, via EMBED_MODEL)
     embed_base_url: Embedding model base URL (default: https://openrouter.ai/api/v1)
     chunk_size: Chunk size for text splitting (default: 1024)
     chunk_overlap: Overlap between chunks (default: 128)
@@ -96,7 +96,7 @@ def _env_float(name: str, fallback: float, *, minimum: float = _POSITIVE) -> flo
 
     ``minimum`` defaults to "strictly positive", which is right for a timeout or a
     batch size but WRONG for a count whose zero means "off": rejecting
-    ``GRID_MAX_RENDERED_PAGES=0`` silently restored the default of 20 and the
+    ``MAX_RENDERED_PAGES=0`` silently restored the default of 20 and the
     deployment paid VLM cost it had explicitly opted out of. Pass ``minimum=0``
     for those.
     """
@@ -269,7 +269,7 @@ def _retrieval_dependency_error(cause: BaseException) -> RuntimeError:
 MIN_IMAGE_WIDTH_PX = 100
 MIN_IMAGE_HEIGHT_PX = 100
 
-# @environment_variable GRID_MAX_IMAGES_PER_DOCUMENT
+# @environment_variable MAX_IMAGES_PER_DOCUMENT
 # @category Knowledge Layer
 # @type int
 # @default 64
@@ -280,9 +280,9 @@ MIN_IMAGE_HEIGHT_PX = 100
 # that is analysed can also be stored for `look`. The largest
 # are kept (see `cap_images`); the count left out is recorded on the file's
 # job status as `images_over_cap`. 0 analyses none.
-MAX_IMAGES_PER_DOCUMENT = _env_int("GRID_MAX_IMAGES_PER_DOCUMENT", 64, minimum=0)
+MAX_IMAGES_PER_DOCUMENT = _env_int("MAX_IMAGES_PER_DOCUMENT", 64, minimum=0)
 
-# @environment_variable GRID_MAX_IMAGE_PIXELS
+# @environment_variable MAX_IMAGE_PIXELS
 # @category Knowledge Layer
 # @type int
 # @default 268435456
@@ -293,7 +293,7 @@ MAX_IMAGES_PER_DOCUMENT = _env_int("GRID_MAX_IMAGES_PER_DOCUMENT", 64, minimum=0
 # scale argument), so `width x height` from the image metadata is the only thing
 # that can stand between a pathological raster and the allocation it would make;
 # a PDFium bitmap is about 4 bytes a pixel, so one decode peaks near
-# `GRID_MAX_IMAGE_PIXELS * 4` bytes (1 GiB at the default). The default,
+# `MAX_IMAGE_PIXELS * 4` bytes (1 GiB at the default). The default,
 # 268 435 456 px (256 MP, 2^28), admits every realistic architectural scan and
 # refuses only the pathological:
 #   A0 (841x1189 mm = 33.1x46.8 in) at 300 dpi = 9933x14043  = 139.5 MP  kept
@@ -307,7 +307,7 @@ MAX_IMAGES_PER_DOCUMENT = _env_int("GRID_MAX_IMAGES_PER_DOCUMENT", 64, minimum=0
 # A raster refused here is counted on the file's job status as
 # `images_over_pixel_budget` and logged with its page, index and pixel size; its
 # page keeps its text layer. 0 refuses every embedded raster.
-MAX_IMAGE_PIXELS = _env_int("GRID_MAX_IMAGE_PIXELS", 268_435_456, minimum=0)
+MAX_IMAGE_PIXELS = _env_int("MAX_IMAGE_PIXELS", 268_435_456, minimum=0)
 
 # Cap on the longest edge (px) of an image before it is JPEG-re-encoded and sent
 # to the VLM. Larger images are downscaled (aspect preserved, never upscaled) to
@@ -328,7 +328,7 @@ VLM_MAX_IMAGE_DIM = 1568
 # are untouched and cost nothing extra.
 # ---------------------------------------------------------------------------
 
-# @environment_variable GRID_RENDER_VISUAL_PAGES
+# @environment_variable RENDER_VISUAL_PAGES
 # @category Knowledge Layer
 # @type bool
 # @default true
@@ -336,31 +336,31 @@ VLM_MAX_IMAGE_DIM = 1568
 # Render drawing pages (text-sparse AND vector-heavy, `page_triage`) to images
 # and analyse them with the drawing schema. Effective only when a VLM key
 # resolves. It does not govern transcription: scanned and garbled pages are
-# rendered and transcribed whatever this says, and GRID_MAX_OCR_PAGES=0 is the
+# rendered and transcribed whatever this says, and MAX_OCR_PAGES=0 is the
 # switch that stops that.
-RENDER_VISUAL_PAGES = os.environ.get("GRID_RENDER_VISUAL_PAGES", "true").lower() == "true"
+RENDER_VISUAL_PAGES = os.environ.get("RENDER_VISUAL_PAGES", "true").lower() == "true"
 
 # Long-edge target (px) for a full-page render before it is sent to the VLM.
 # ~2048px keeps linework, room labels and scale bars legible while staying at
 # or below the vision-encoder caps of current VLMs (above this the provider
 # just downsamples). Scale is computed per page from its point size so an A0
 # sheet and an A4 sheet both land near this target.
-PAGE_RENDER_MAX_DIM = _env_int("GRID_PAGE_RENDER_MAX_DIM", 2048)
+PAGE_RENDER_MAX_DIM = _env_int("PAGE_RENDER_MAX_DIM", 2048)
 
 # Page triage (`page_triage.classify_page`). A page with less watermark-stripped
 # text than this is "text-low": a scan when a raster covers most of it...
-VISUAL_PAGE_MIN_TEXT_CHARS = _env_int("GRID_VISUAL_PAGE_MIN_TEXT_CHARS", 200, minimum=0)
+VISUAL_PAGE_MIN_TEXT_CHARS = _env_int("VISUAL_PAGE_MIN_TEXT_CHARS", 200, minimum=0)
 # ...a drawing when it also carries at least this many vector path objects (a
 # plan/section/elevation is typically hundreds-to-tens-of-thousands of paths).
 # Both, not either: a table-ruled text page has hundreds of cell borders.
-VISUAL_PAGE_MIN_PATHS = _env_int("GRID_VISUAL_PAGE_MIN_PATHS", 300, minimum=0)
+VISUAL_PAGE_MIN_PATHS = _env_int("VISUAL_PAGE_MIN_PATHS", 300, minimum=0)
 # Hard cap on DRAWING pages rendered for the drawing analysis per document, to
 # bound VLM cost/latency on large plan sets. Pages past it are counted on the
 # file's job status (`drawing_pages_over_cap`); their text layer is still
 # indexed. Scanned pages are not drawings and are not under this cap.
-MAX_RENDERED_PAGES = _env_int("GRID_MAX_RENDERED_PAGES", 20, minimum=0)
+MAX_RENDERED_PAGES = _env_int("MAX_RENDERED_PAGES", 20, minimum=0)
 
-# @environment_variable GRID_MAX_OCR_PAGES
+# @environment_variable MAX_OCR_PAGES
 # @category Knowledge Layer
 # @type int
 # @default 500
@@ -369,10 +369,10 @@ MAX_RENDERED_PAGES = _env_int("GRID_MAX_RENDERED_PAGES", 20, minimum=0)
 # document. A page costs about $0.0007 with the default model. Pages past it
 # are counted on the file's job status (`pages_over_ocr_cap`), never dropped
 # quietly. 0 transcribes none: the OCR switch, independent of
-# GRID_RENDER_VISUAL_PAGES.
-MAX_OCR_PAGES = _env_int("GRID_MAX_OCR_PAGES", 500, minimum=0)
+# RENDER_VISUAL_PAGES.
+MAX_OCR_PAGES = _env_int("MAX_OCR_PAGES", 500, minimum=0)
 
-# @environment_variable GRID_PDF_PAGE_MAX_OBJECTS
+# @environment_variable PDF_PAGE_MAX_OBJECTS
 # @category Knowledge Layer
 # @type int
 # @default 50000
@@ -384,9 +384,9 @@ MAX_OCR_PAGES = _env_int("GRID_MAX_OCR_PAGES", 500, minimum=0)
 # paths costs about 2 GiB and minutes for its title block. Such a page keeps
 # its text, without captioned tables or line styles, and is counted on the
 # file's job status (`pages_read_without_layout`). 0 lifts the ceiling.
-PDF_PAGE_MAX_OBJECTS = _env_int("GRID_PDF_PAGE_MAX_OBJECTS", 50_000, minimum=0)
+PDF_PAGE_MAX_OBJECTS = _env_int("PDF_PAGE_MAX_OBJECTS", 50_000, minimum=0)
 
-# @environment_variable GRID_VLM_TIMEOUT_SECONDS
+# @environment_variable VLM_TIMEOUT_SECONDS
 # @category Knowledge Layer
 # @type int
 # @default 180
@@ -402,9 +402,9 @@ PDF_PAGE_MAX_OBJECTS = _env_int("GRID_PDF_PAGE_MAX_OBJECTS", 50_000, minimum=0)
 # placeholders are skipped, not embedded. Clamped like the sibling knobs: a
 # misconfigured 0 or negative value would fail every VLM request immediately and
 # silently disable captioning altogether.
-VLM_REQUEST_TIMEOUT_SECONDS = max(1, _env_int("GRID_VLM_TIMEOUT_SECONDS", 180))
+VLM_REQUEST_TIMEOUT_SECONDS = max(1, _env_int("VLM_TIMEOUT_SECONDS", 180))
 
-# @environment_variable GRID_VLM_FLEET_CONCURRENCY
+# @environment_variable VLM_FLEET_CONCURRENCY
 # @category Knowledge Layer
 # @type int
 # @default 32
@@ -414,23 +414,23 @@ VLM_REQUEST_TIMEOUT_SECONDS = max(1, _env_int("GRID_VLM_TIMEOUT_SECONDS", 180))
 # the number of ingest workers, is what the provider sees, so scaling the ingest
 # tier out queues calls here instead of turning into upstream 429s. 0 disables.
 # Every vision call also holds a slot in its model's own provider-limiter pool
-# (`GRID_PROVIDER_MODEL_LIMIT_CEILING`, 32), so a pool above that never fills:
+# (`PROVIDER_MODEL_LIMIT_CEILING`, 32), so a pool above that never fills:
 # keep the two together.
-VLM_FLEET_CONCURRENCY = _env_int("GRID_VLM_FLEET_CONCURRENCY", 32)
+VLM_FLEET_CONCURRENCY = _env_int("VLM_FLEET_CONCURRENCY", 32)
 
-# @environment_variable GRID_VLM_RATE_LIMIT_RETRIES
+# @environment_variable VLM_RATE_LIMIT_RETRIES
 # @category Knowledge Layer
 # @type int
 # @default 4
 # @required false
 # Retries of a vision-model call the provider rate-limited (HTTP 429), with
 # exponential backoff or the provider's Retry-After, before the caption fails.
-VLM_RATE_LIMIT_RETRIES = max(0, _env_int("GRID_VLM_RATE_LIMIT_RETRIES", 4))
+VLM_RATE_LIMIT_RETRIES = max(0, _env_int("VLM_RATE_LIMIT_RETRIES", 4))
 
 _VLM_SLOT_KEY = "ingest:vlm:inflight"
 _VLM_BACKOFF_CAP_SECONDS = 60.0
 
-# @environment_variable GRID_EMBED_BATCH_SIZE
+# @environment_variable EMBED_BATCH_SIZE
 # @category Knowledge Layer
 # @type int
 # @default 64
@@ -439,9 +439,9 @@ _VLM_BACKOFF_CAP_SECONDS = 60.0
 # too many round-trips on large documents — a 500-chunk PDF costs ~50
 # sequential HTTP calls. Every OpenAI-compatible embeddings endpoint accepts
 # far more per call (OpenAI 2048, NVIDIA NIM 259); 64 is conservative.
-EMBED_BATCH_SIZE = max(1, _env_int("GRID_EMBED_BATCH_SIZE", 64))
+EMBED_BATCH_SIZE = max(1, _env_int("EMBED_BATCH_SIZE", 64))
 
-# @environment_variable GRID_EMBED_TIMEOUT_SECONDS
+# @environment_variable EMBED_TIMEOUT_SECONDS
 # @category Knowledge Layer
 # @type float
 # @default 60
@@ -452,10 +452,10 @@ EMBED_BATCH_SIZE = max(1, _env_int("GRID_EMBED_BATCH_SIZE", 64))
 # open everywhere else, and this is what lets it fail open here. Two retries
 # stay for the transient 5xx a batch of EMBED_BATCH_SIZE texts occasionally
 # meets; 60s covers such a batch with room.
-EMBED_TIMEOUT_SECONDS = max(1.0, _env_float("GRID_EMBED_TIMEOUT_SECONDS", 60.0))
+EMBED_TIMEOUT_SECONDS = max(1.0, _env_float("EMBED_TIMEOUT_SECONDS", 60.0))
 EMBED_MAX_RETRIES = 2
 
-# @environment_variable GRID_QUERY_EMBED_TIMEOUT_SECONDS
+# @environment_variable QUERY_EMBED_TIMEOUT_SECONDS
 # @category Knowledge Layer
 # @type float
 # @default 3
@@ -467,7 +467,7 @@ EMBED_MAX_RETRIES = 2
 # single tail request held a whole turn for 11 s. At 3 s the client gives up on
 # that one and retries (EMBED_MAX_RETRIES), which a fresh request answers in
 # well under a second: the worst turn pays ~4 s instead of 11.
-QUERY_EMBED_TIMEOUT_SECONDS = max(0.5, _env_float("GRID_QUERY_EMBED_TIMEOUT_SECONDS", 3.0))
+QUERY_EMBED_TIMEOUT_SECONDS = max(0.5, _env_float("QUERY_EMBED_TIMEOUT_SECONDS", 3.0))
 
 # pypdfium2 page-object type constants (the C API values are not always exposed
 # as Python attributes across versions).
@@ -502,21 +502,21 @@ WATERMARK_LINE_PATTERNS = [
     re.compile(rf"^\s*{fragment}{suffix}", re.IGNORECASE) for fragment, suffix in _WATERMARK_PHRASES
 ]
 
-# @environment_variable GRID_COLLECTION_TTL_HOURS
+# @environment_variable COLLECTION_TTL_HOURS
 # @category Knowledge Layer
 # @type float
 # @default 24
 # @required false
 # Hours before stale collections are deleted by the TTL cleanup thread.
-COLLECTION_TTL_HOURS = _env_float("GRID_COLLECTION_TTL_HOURS", 24.0)
+COLLECTION_TTL_HOURS = _env_float("COLLECTION_TTL_HOURS", 24.0)
 
-# @environment_variable GRID_TTL_CLEANUP_INTERVAL_SECONDS
+# @environment_variable TTL_CLEANUP_INTERVAL_SECONDS
 # @category Knowledge Layer
 # @type int
 # @default 3600
 # @required false
 # Seconds between TTL cleanup runs.
-TTL_CLEANUP_INTERVAL_SECONDS = _env_int("GRID_TTL_CLEANUP_INTERVAL_SECONDS", 3600)
+TTL_CLEANUP_INTERVAL_SECONDS = _env_int("TTL_CLEANUP_INTERVAL_SECONDS", 3600)
 
 # Terminal jobs are retained this long for status polling/file listings, then
 # pruned so in-memory job tracking doesn't grow for the life of the process.
@@ -563,7 +563,7 @@ class _ClaimLost(Exception):  # noqa: N818 - a signal, not an error
 # record of a file that failed, so the file drops off the listing with it.
 # SUCCESS files stay listed: `list_files` reads them from the indexed chunks.
 # Bounds the `ingest_jobs` table (scaling review phase-2, #13).
-FILE_TRACKING_RETENTION_SECONDS = _env_int("GRID_FILE_TRACKING_RETENTION_SECONDS", 86400)  # 24h
+FILE_TRACKING_RETENTION_SECONDS = _env_int("FILE_TRACKING_RETENTION_SECONDS", 86400)  # 24h
 
 # The heartbeat prunes expired job rows every this many beats (hourly).
 _PRUNE_EVERY_BEATS = 120
@@ -577,7 +577,7 @@ _PRUNE_EVERY_BEATS = 120
 #
 # The premise the in-process counter rested on -- "one backend process owns the
 # store" -- is false: every backend replica and every research worker reads ONE
-# Qdrant cluster (GRID_QDRANT_URL). A version held in a module global is invisible
+# Qdrant cluster (QDRANT_URL). A version held in a module global is invisible
 # to every replica but its own, so a write here would leave the others serving
 # superseded results for the whole result-cache TTL. The version now lives in
 # the shared cache; these two functions are the adapter's seam onto it.
@@ -844,7 +844,7 @@ def embed_fingerprint_metadata(model: str, base_url: str) -> dict[str, str]:
 def _resolve_embed_api_key(base_url: str, model: str) -> str:
     """Resolve the embeddings API key through the shared credential resolver.
 
-    Chain: explicit ``GRID_EMBED_API_KEY`` → provider inference from
+    Chain: explicit ``EMBED_API_KEY`` → provider inference from
     ``base_url`` (``OPENROUTER_API_KEY`` for the default OpenRouter host).
     Inference only selects the KEY for the configured embeddings endpoint; it
     NEVER changes ``base_url`` (embeddings need an embeddings-capable endpoint,
@@ -860,7 +860,7 @@ def _resolve_embed_api_key(base_url: str, model: str) -> str:
     from aiq_agent.common.credential_resolution import resolve_llm_credential
 
     return resolve_llm_credential(
-        primary_env="GRID_EMBED_API_KEY",
+        primary_env="EMBED_API_KEY",
         default_base_url=base_url,
         default_model=model,
         organization_id=None,
@@ -1130,7 +1130,7 @@ def _image_candidates(
                     over_budget += 1
                     logger.warning(
                         "Refusing to decode %dx%d px (%d MP) image %d on page %d of %s: over the "
-                        "%d MP per-raster budget (GRID_MAX_IMAGE_PIXELS); the page's text is still indexed",
+                        "%d MP per-raster budget (MAX_IMAGE_PIXELS); the page's text is still indexed",
                         width,
                         height,
                         pixels // 1_000_000,
@@ -3208,19 +3208,19 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
         vlm_model: VLM for captioning (default: openai/gpt-6-luna)
 
     Environment variables:
-        GRID_QDRANT_URL: The Qdrant cluster every chunk is written to
-        GRID_EMBED_MODEL: Default embedding model name
-        GRID_EMBED_BASE_URL: Default embedding model base URL
-        GRID_EXTRACT_TABLES: Set "false" to disable table extraction (on by default)
-        GRID_EXTRACT_CHARTS: Set "false" to disable chart typing (on by default)
-        GRID_EXTRACT_IMAGES: Set "false" to disable image extraction (on by default)
+        QDRANT_URL: The Qdrant cluster every chunk is written to
+        EMBED_MODEL: Default embedding model name
+        EMBED_BASE_URL: Default embedding model base URL
+        EXTRACT_TABLES: Set "false" to disable table extraction (on by default)
+        EXTRACT_CHARTS: Set "false" to disable chart typing (on by default)
+        EXTRACT_IMAGES: Set "false" to disable image extraction (on by default)
         GRID_VLM_MODEL: VLM model for captioning
         GRID_VLM_BASE_URL: Default VLM base URL
-        GRID_COLLECTION_TTL_HOURS: Hours before stale collections are deleted (default: 24)
-        GRID_TTL_CLEANUP_INTERVAL_SECONDS: Seconds between cleanup runs (default: 3600)
+        COLLECTION_TTL_HOURS: Hours before stale collections are deleted (default: 24)
+        TTL_CLEANUP_INTERVAL_SECONDS: Seconds between cleanup runs (default: 3600)
     """
 
-    # @environment_variable GRID_EMBED_MODEL
+    # @environment_variable EMBED_MODEL
     # @category Knowledge Layer
     # @type str
     # @default openai/text-embedding-3-large
@@ -3228,55 +3228,55 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
     # Embedding model id for LlamaIndex vector encoding (the production
     # compose default; ingest and query MUST share it, stored vectors are
     # only comparable to vectors from the same model).
-    DEFAULT_EMBED_MODEL = os.environ.get("GRID_EMBED_MODEL", "openai/text-embedding-3-large")
+    DEFAULT_EMBED_MODEL = os.environ.get("EMBED_MODEL", "openai/text-embedding-3-large")
 
-    # @environment_variable GRID_EMBED_BASE_URL
+    # @environment_variable EMBED_BASE_URL
     # @category Knowledge Layer
     # @type str
     # @default https://openrouter.ai/api/v1
     # @required false
     # Embedding model base URL (OpenAI-compatible embeddings endpoint).
-    DEFAULT_EMBED_BASE_URL = os.environ.get("GRID_EMBED_BASE_URL", "https://openrouter.ai/api/v1")
+    DEFAULT_EMBED_BASE_URL = os.environ.get("EMBED_BASE_URL", "https://openrouter.ai/api/v1")
 
-    # @environment_variable GRID_EXTRACT_TABLES
+    # @environment_variable EXTRACT_TABLES
     # @category Knowledge Layer
     # @type bool
     # @default true
     # @required false
     # Index a PDF's uncaptioned tables as table chunks. On unless set to false.
-    DEFAULT_EXTRACT_TABLES = _env_switch("GRID_EXTRACT_TABLES")
+    DEFAULT_EXTRACT_TABLES = _env_switch("EXTRACT_TABLES")
 
-    # @environment_variable GRID_INGEST_MAX_WORKERS
+    # @environment_variable INGEST_MAX_WORKERS
     # @category Knowledge Layer
     # @type int
     # @default 2
     # @required false
     # Maximum concurrent ingestion jobs per process. Excess uploads queue
     # (job status stays PENDING) instead of each spawning a thread.
-    INGEST_MAX_WORKERS = max(1, _env_int("GRID_INGEST_MAX_WORKERS", 2))
+    INGEST_MAX_WORKERS = max(1, _env_int("INGEST_MAX_WORKERS", 2))
 
     # Most ingestion jobs one organisation may run at once in this process's
-    # own pool; 0 for no cap. `GRID_INGEST_MAX_PER_ORG`, the setting the
+    # own pool; 0 for no cap. `INGEST_MAX_PER_ORG`, the setting the
     # durable queue also reads (`per_org_cap_from_env`).
     INGEST_MAX_PER_ORG = per_org_cap_from_env()
 
-    # @environment_variable GRID_EXTRACT_IMAGES
+    # @environment_variable EXTRACT_IMAGES
     # @category Knowledge Layer
     # @type bool
     # @default true
     # @required false
     # Analyse a PDF's embedded rasters with the VLM and index them. On unless
     # set to false.
-    DEFAULT_EXTRACT_IMAGES = _env_switch("GRID_EXTRACT_IMAGES")
+    DEFAULT_EXTRACT_IMAGES = _env_switch("EXTRACT_IMAGES")
 
-    # @environment_variable GRID_EXTRACT_CHARTS
+    # @environment_variable EXTRACT_CHARTS
     # @category Knowledge Layer
     # @type bool
     # @default true
     # @required false
     # Index a visual the VLM types as a chart as a `chart` chunk. On unless set
     # to false; off, a chart is indexed as an image (see `indexed_visual_type`).
-    DEFAULT_EXTRACT_CHARTS = _env_switch("GRID_EXTRACT_CHARTS")
+    DEFAULT_EXTRACT_CHARTS = _env_switch("EXTRACT_CHARTS")
 
     backend_name = "llamaindex"
     supports_durable_jobs = True
@@ -3461,8 +3461,8 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
             embed_api_key = _resolve_embed_api_key(self.embed_base_url, self.embed_model_name)
             if not embed_api_key:
                 logger.error(
-                    "No embeddings API key resolved (GRID_EMBED_API_KEY / "
-                    "the provider key for GRID_EMBED_BASE_URL) - ingestion/retrieval will fail."
+                    "No embeddings API key resolved (EMBED_API_KEY / "
+                    "the provider key for EMBED_BASE_URL) - ingestion/retrieval will fail."
                 )
 
             self._embed_model = make_embed_model(
@@ -4964,7 +4964,7 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
             vlm_override = _resolve_vlm_model_override(organization_id)
             vlm_model = vlm_override or base_vlm_model
             # Scans and garbled pages are transcribed on the same endpoint and
-            # key; only the model may differ (GRID_OCR_MODEL).
+            # key; only the model may differ (OCR_MODEL).
             from knowledge_layer.llamaindex import transcription as _transcription
 
             ocr_model = _transcription.resolve_ocr_model(base_vlm_model, vlm_override)
@@ -6198,36 +6198,36 @@ class LlamaIndexRetriever(BaseRetriever):
     (``knowledge_layer.qdrant``, ADR-0115).
 
     Configuration options:
-        embed_model: Embedding model id (default from GRID_EMBED_MODEL)
+        embed_model: Embedding model id (default from EMBED_MODEL)
         top_k: Default number of results (default: 10)
-        hybrid_search: Enable lexical+vector hybrid retrieval (default from GRID_HYBRID_RETRIEVAL)
+        hybrid_search: Enable lexical+vector hybrid retrieval (default from HYBRID_RETRIEVAL)
 
     Environment variables:
-        GRID_QDRANT_URL: The Qdrant cluster every chunk is written to
-        GRID_EMBED_MODEL: Default embedding model name
-        GRID_EMBED_BASE_URL: Default embedding model base URL
-        GRID_RETRIEVER_TOP_K: Default top_k value
-        GRID_HYBRID_RETRIEVAL: Enable hybrid lexical+vector retrieval (default: true)
+        QDRANT_URL: The Qdrant cluster every chunk is written to
+        EMBED_MODEL: Default embedding model name
+        EMBED_BASE_URL: Default embedding model base URL
+        RETRIEVER_TOP_K: Default top_k value
+        HYBRID_RETRIEVAL: Enable hybrid lexical+vector retrieval (default: true)
     """
 
     # Default configuration from environment variables
-    DEFAULT_EMBED_MODEL = os.environ.get("GRID_EMBED_MODEL", "openai/text-embedding-3-large")
-    DEFAULT_EMBED_BASE_URL = os.environ.get("GRID_EMBED_BASE_URL", "https://openrouter.ai/api/v1")
-    # @environment_variable GRID_RETRIEVER_TOP_K
+    DEFAULT_EMBED_MODEL = os.environ.get("EMBED_MODEL", "openai/text-embedding-3-large")
+    DEFAULT_EMBED_BASE_URL = os.environ.get("EMBED_BASE_URL", "https://openrouter.ai/api/v1")
+    # @environment_variable RETRIEVER_TOP_K
     # @category Knowledge Layer
     # @type int
     # @default 10
     # @required false
     # Default number of results returned by the LlamaIndex retriever.
-    DEFAULT_TOP_K = _env_int("GRID_RETRIEVER_TOP_K", 10)
-    # @environment_variable GRID_HYBRID_RETRIEVAL
+    DEFAULT_TOP_K = _env_int("RETRIEVER_TOP_K", 10)
+    # @environment_variable HYBRID_RETRIEVAL
     # @category Knowledge Layer
     # @type bool
     # @default true
     # @required false
     # Enable the lexical channels beside the dense one: German BM25 and the
     # exact-term phrase channels, fused in Qdrant by reciprocal rank fusion.
-    DEFAULT_HYBRID_SEARCH = os.environ.get("GRID_HYBRID_RETRIEVAL", "true").strip().lower() not in {
+    DEFAULT_HYBRID_SEARCH = os.environ.get("HYBRID_RETRIEVAL", "true").strip().lower() not in {
         "0",
         "false",
         "no",
@@ -6280,14 +6280,14 @@ class LlamaIndexRetriever(BaseRetriever):
 
         logger.info("LlamaIndexRetriever initialized")
 
-    # @environment_variable GRID_QUERY_EMBED_CACHE_SIZE
+    # @environment_variable QUERY_EMBED_CACHE_SIZE
     # @category Knowledge Layer
     # @type int
     # @default 512
     # @required false
     # Maximum cached query embeddings per retriever (LRU).
-    EMBED_CACHE_MAX = _env_int("GRID_QUERY_EMBED_CACHE_SIZE", 512, minimum=0)
-    # @environment_variable GRID_STATIC_RESULT_CACHE_COLLECTIONS
+    EMBED_CACHE_MAX = _env_int("QUERY_EMBED_CACHE_SIZE", 512, minimum=0)
+    # @environment_variable STATIC_RESULT_CACHE_COLLECTIONS
     # @category Knowledge Layer
     # @type str
     # @default oib_knowledge
@@ -6296,16 +6296,16 @@ class LlamaIndexRetriever(BaseRetriever):
     # (static corpora only — never project/session collections).
     STATIC_RESULT_CACHE_COLLECTIONS = frozenset(
         name.strip()
-        for name in os.environ.get("GRID_STATIC_RESULT_CACHE_COLLECTIONS", "oib_knowledge").split(",")
+        for name in os.environ.get("STATIC_RESULT_CACHE_COLLECTIONS", "oib_knowledge").split(",")
         if name.strip()
     )
-    # @environment_variable GRID_STATIC_RESULT_CACHE_TTL_SECONDS
+    # @environment_variable STATIC_RESULT_CACHE_TTL_SECONDS
     # @category Knowledge Layer
     # @type int
     # @default 3600
     # @required false
     # TTL for cached static-collection retrieval results.
-    STATIC_RESULT_CACHE_TTL_SECONDS = int(os.environ.get("GRID_STATIC_RESULT_CACHE_TTL_SECONDS", "3600"))
+    STATIC_RESULT_CACHE_TTL_SECONDS = int(os.environ.get("STATIC_RESULT_CACHE_TTL_SECONDS", "3600"))
     RESULT_CACHE_MAX = 256
 
     def _ensure_initialized(self):
@@ -6327,8 +6327,8 @@ class LlamaIndexRetriever(BaseRetriever):
             embed_api_key = _resolve_embed_api_key(self.embed_base_url, self.embed_model_name)
             if not embed_api_key:
                 logger.error(
-                    "No embeddings API key resolved (GRID_EMBED_API_KEY / "
-                    "the provider key for GRID_EMBED_BASE_URL) - retrieval/ingestion will fail."
+                    "No embeddings API key resolved (EMBED_API_KEY / "
+                    "the provider key for EMBED_BASE_URL) - retrieval/ingestion will fail."
                 )
 
             self._embed_model = make_embed_model(

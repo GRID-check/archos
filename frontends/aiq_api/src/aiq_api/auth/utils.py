@@ -27,7 +27,7 @@ TRACE_ACCESS_CHANNELS = frozenset(
 
 def _load_trace_user_identity_mode() -> str:
     """Read and normalize the trace user identity tagging mode."""
-    raw = os.getenv("GRID_TRACE_USER_IDENTITY_MODE", "none").strip().lower()
+    raw = os.getenv("TRACE_USER_IDENTITY_MODE", "none").strip().lower()
     aliases = {
         "0": "none",
         "false": "none",
@@ -40,7 +40,7 @@ def _load_trace_user_identity_mode() -> str:
     mode = aliases.get(raw, raw)
     if mode not in TRACE_USER_IDENTITY_MODES:
         logger.warning(
-            "Invalid GRID_TRACE_USER_IDENTITY_MODE=%r; expected one of %s. Falling back to 'none'.",
+            "Invalid TRACE_USER_IDENTITY_MODE=%r; expected one of %s. Falling back to 'none'.",
             raw,
             sorted(TRACE_USER_IDENTITY_MODES),
         )
@@ -50,13 +50,13 @@ def _load_trace_user_identity_mode() -> str:
 
 def _load_trace_user_identity_secret() -> str | None:
     """Read the secret used to pseudonymize trace user identity."""
-    secret = os.getenv("GRID_TRACE_USER_IDENTITY_HMAC_SECRET", "").strip()
+    secret = os.getenv("TRACE_USER_IDENTITY_HMAC_SECRET", "").strip()
     return secret or None
 
 
 def _load_trace_client_id_mode() -> str:
     """Read and normalize the trace client-id tagging mode."""
-    raw = os.getenv("GRID_TRACE_CLIENT_ID_MODE", "none").strip().lower()
+    raw = os.getenv("TRACE_CLIENT_ID_MODE", "none").strip().lower()
     aliases = {
         "0": "none",
         "false": "none",
@@ -68,7 +68,7 @@ def _load_trace_client_id_mode() -> str:
     mode = aliases.get(raw, raw)
     if mode not in TRACE_CLIENT_ID_MODES:
         logger.warning(
-            "Invalid GRID_TRACE_CLIENT_ID_MODE=%r; expected one of %s. Falling back to 'none'.",
+            "Invalid TRACE_CLIENT_ID_MODE=%r; expected one of %s. Falling back to 'none'.",
             raw,
             sorted(TRACE_CLIENT_ID_MODES),
         )
@@ -78,7 +78,7 @@ def _load_trace_client_id_mode() -> str:
 
 def _load_trace_client_id_secret() -> str | None:
     """Read the secret used to pseudonymize trace client identity."""
-    secret = os.getenv("GRID_TRACE_CLIENT_ID_HMAC_SECRET", "").strip()
+    secret = os.getenv("TRACE_CLIENT_ID_HMAC_SECRET", "").strip()
     if secret:
         return secret
     return _load_trace_user_identity_secret()
@@ -86,7 +86,7 @@ def _load_trace_client_id_secret() -> str | None:
 
 def _load_trace_client_ip_headers() -> list[str]:
     """Read preferred client IP headers in lookup order."""
-    raw = os.getenv("GRID_TRACE_CLIENT_IP_HEADERS", "x-real-ip,x-forwarded-for")
+    raw = os.getenv("TRACE_CLIENT_IP_HEADERS", "x-real-ip,x-forwarded-for")
     return [header.strip().lower() for header in raw.split(",") if header.strip()]
 
 
@@ -213,7 +213,7 @@ def _build_trace_user_tags(user: dict[str, Any], mode: str, secret: str | None) 
     pseudonymous_id = _build_pseudonymous_trace_user_id(str(principal_type), str(principal_sub), secret)
     if pseudonymous_id is None:
         logger.warning(
-            "GRID_TRACE_USER_IDENTITY_MODE=%s but GRID_TRACE_USER_IDENTITY_HMAC_SECRET is not set; "
+            "TRACE_USER_IDENTITY_MODE=%s but TRACE_USER_IDENTITY_HMAC_SECRET is not set; "
             "skipping user identity trace tags.",
             mode,
         )

@@ -47,7 +47,7 @@ architecture doc.
    pages an hour in total, and at most 15 documents are in flight across every
    office. Time to searchable for a new upload depends on everyone else's
    drawings.
-2. **Pages past 20 are not read.** `GRID_MAX_RENDERED_PAGES = 20` per file. A
+2. **Pages past 20 are not read.** `MAX_RENDERED_PAGES = 20` per file. A
    60-sheet Einreichung loses 40 sheets of drawing content without telling anyone.
 3. **The document is understood from its cover and its last page.** Summary, tags
    and topics see the first and last chunk, 4000 characters. Tags are 12 coarse

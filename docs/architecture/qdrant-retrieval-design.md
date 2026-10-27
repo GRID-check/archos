@@ -572,7 +572,7 @@ it changes, which is the path ADR-0072 itself named for this case.
 | Growth | Add a node, then `replicate_shard` / `move_shard`. A shape change means a new collection, a scroll-and-upsert copy of stored vectors, and an alias switch | No resharding or auto-rebalancing in OSS |
 | Large office | Tiered multitenancy (1.16) promotes one office to its own shard. It requires custom sharding chosen at collection creation | Decided in the spike from the largest office's point count (Q4) |
 
-New environment variables (`GRID_QDRANT_URL`, `GRID_QDRANT_API_KEY`,
+New environment variables (`QDRANT_URL`, `QDRANT_API_KEY`,
 `GRID_QDRANT_READ_ONLY_KEY`) get their rows in
 [`environment-variables.md`](../deployment/environment-variables.md) in the
 change that adds them.
@@ -695,7 +695,7 @@ change took Chroma out. What was built:
 | A collection's `updated_at` (what the reaper of conversation uploads reads) is the newest `indexed_at` on its points, an ordered scroll | `schema.INDEXED_AT_FIELD`, `store.newest` |
 | A fact copy follows the rows a register or unregister changes the meaning of: the rows whose `superseded_by` names the file are copied again, so a Fassung that became current is not hidden by `superseded != true` | `factory.register_summary`, `unregister_summary`; `DocumentMetadataStore.files_linked_to` |
 | Deleted: Chroma's client and collections, `GRID_VECTOR_BACKEND`, `qdrant/mirror.py` and `ordered_delete`, the Postgres `chunk_text` mirror, the `$contains` channel and its pricing, `exp(-d)` score recovery, `embed_fingerprint_mismatch` (the identity lives in Qdrant's collection metadata only), the Chroma backfill (`backfill_qdrant.py`, `backfill_chunk_text.py`), and `chromadb` plus `llama-index-vector-stores-chroma` from the dependencies | — |
-| One test fixture for every store test: unique aliases per test, the process-wide store pointed at them, both deleted after; skips locally without `GRID_QDRANT_TEST_URL`, fails on CI | `sources/knowledge_layer/tests/qdrant_testing.py` |
+| One test fixture for every store test: unique aliases per test, the process-wide store pointed at them, both deleted after; skips locally without `QDRANT_TEST_URL`, fails on CI | `sources/knowledge_layer/tests/qdrant_testing.py` |
 | The import boundary forbids `chromadb` everywhere but the migration tool | `test_qdrant_import_boundary.py` |
 | The gate harness runs Qdrant alone: the corpus written through `write_chunks`, read through the production retriever, every number printed beside the Chroma path's from the gate run (fixed, `baseline.py`); exact mode held to a full regex scan, which is what Chroma's `$regex` was | `task be:eval:qdrant-parity`, `qdrant_parity/` |
 
@@ -871,7 +871,7 @@ rest stands.
   mirror and the deletes behind the ingest worker. Two keys in one process buy
   nothing: whoever has the process has both.
 * **Corpus at RF 2, not on every peer.** `create_collection` gives both
-  collections `GRID_QDRANT_REPLICATION_FACTOR`; §9 wants the corpus on every
+  collections `QDRANT_REPLICATION_FACTOR`; §9 wants the corpus on every
   peer. The runbook adds the third replica with one `replicate_shard` (drilled,
   4 s).
 * **`write_consistency_factor` is 1, decided by a drill.** On 2026-10-13,

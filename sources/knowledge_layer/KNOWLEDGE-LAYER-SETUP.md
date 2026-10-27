@@ -35,7 +35,7 @@ Document ingestion and retrieval for Piloti, on one backend: `llamaindex`.
 chunking, Qdrant as the one vector store (ADR-0115, reached through
 `qdrant-client` inside `knowledge_layer/qdrant/`), embeddings and the VLM
 through OpenRouter. It runs in the agent's process and needs a Qdrant cluster
-(`GRID_QDRANT_URL`) and OpenRouter. It is the production backend,
+(`QDRANT_URL`) and OpenRouter. It is the production backend,
 and has been since the first commit: every config Piloti deployed selects it.
 
 Earlier versions of this guide listed a second backend (a client for NVIDIA's
@@ -120,16 +120,16 @@ By default, LlamaIndex ingests text only and calls the embedding and VLM models 
 | Variable | Default | Description |
 |----------|---------|-------------|
 | **Embedding** | | |
-| `GRID_EMBED_MODEL` | `openai/text-embedding-3-large` | Embedding model id; keep it stable, stored vectors only match query vectors from the same model |
-| `GRID_EMBED_BASE_URL` | `https://openrouter.ai/api/v1` | Embedding API base URL (any OpenAI-compatible embeddings endpoint) |
-| `GRID_EMBED_TIMEOUT_SECONDS` | `60` | Per-request timeout on the ingestion embeddings client, two retries |
-| `GRID_QUERY_EMBED_TIMEOUT_SECONDS` | `3` | Per-request timeout on the query embedding a chat turn waits on, two retries; retrieval fails open after the third attempt |
+| `EMBED_MODEL` | `openai/text-embedding-3-large` | Embedding model id; keep it stable, stored vectors only match query vectors from the same model |
+| `EMBED_BASE_URL` | `https://openrouter.ai/api/v1` | Embedding API base URL (any OpenAI-compatible embeddings endpoint) |
+| `EMBED_TIMEOUT_SECONDS` | `60` | Per-request timeout on the ingestion embeddings client, two retries |
+| `QUERY_EMBED_TIMEOUT_SECONDS` | `3` | Per-request timeout on the query embedding a chat turn waits on, two retries; retrieval fails open after the third attempt |
 | **Extraction switches** (on unless set to `false`; no deployment sets them) | | |
-| `GRID_EXTRACT_TABLES` | `true` | Also index every other pdfplumber table in a PDF as a `[TABLE from page N]` chunk. Captioned tables („Tabelle 3: …") do not need it: they are always read as tables and cut out of the page text (`llamaindex/captioned_tables.py`). In a document with a Punkt outline each is its own passage, addressable as `read_passage(punkt="Tabelle 3")`; otherwise it is put back as Markdown into its page's text. This pass skips them |
-| `GRID_EXTRACT_IMAGES` | `true` | Extract embedded images from PDFs and caption them with a VLM, skipping pages already rendered whole as visual pages. For a BFF-dispatched document the raster is also stored beside the file (`_img/<index>.jpg`, via the BFF presign route) so `look` can show it at its own resolution |
-| `GRID_EXTRACT_CHARTS` | `true` | Index a visual the VLM types as a chart as a `chart` chunk with its structured data (chart type, axis labels, data points); off, it is indexed as an image |
-| `GRID_MAX_IMAGES_PER_DOCUMENT` | `64` | Most embedded images per PDF sent to the VLM, largest first; the count left out is on the file's job status as `images_over_cap` |
-| `GRID_MAX_IMAGE_PIXELS` | `268435456` | Refuse an embedded raster over this many pixels (256 MP) before decoding it, from its metadata; pypdfium2 cannot downscale an embedded image on decode, so this bounds one bitmap's allocation (~1 GiB at the default). Counted as `images_over_pixel_budget`; a page refused this way keeps its text layer |
+| `EXTRACT_TABLES` | `true` | Also index every other pdfplumber table in a PDF as a `[TABLE from page N]` chunk. Captioned tables („Tabelle 3: …") do not need it: they are always read as tables and cut out of the page text (`llamaindex/captioned_tables.py`). In a document with a Punkt outline each is its own passage, addressable as `read_passage(punkt="Tabelle 3")`; otherwise it is put back as Markdown into its page's text. This pass skips them |
+| `EXTRACT_IMAGES` | `true` | Extract embedded images from PDFs and caption them with a VLM, skipping pages already rendered whole as visual pages. For a BFF-dispatched document the raster is also stored beside the file (`_img/<index>.jpg`, via the BFF presign route) so `look` can show it at its own resolution |
+| `EXTRACT_CHARTS` | `true` | Index a visual the VLM types as a chart as a `chart` chunk with its structured data (chart type, axis labels, data points); off, it is indexed as an image |
+| `MAX_IMAGES_PER_DOCUMENT` | `64` | Most embedded images per PDF sent to the VLM, largest first; the count left out is on the file's job status as `images_over_cap` |
+| `MAX_IMAGE_PIXELS` | `268435456` | Refuse an embedded raster over this many pixels (256 MP) before decoding it, from its metadata; pypdfium2 cannot downscale an embedded image on decode, so this bounds one bitmap's allocation (~1 GiB at the default). Counted as `images_over_pixel_budget`; a page refused this way keeps its text layer |
 | **Vision Model** | | |
 | `GRID_VLM_MODEL` | `openai/gpt-6-luna` | VLM for image captioning — house model, image input verified on OpenRouter; caption quality on OIB tables/drawings still unevaluated (TODO) |
 | `GRID_VLM_BASE_URL` | `https://openrouter.ai/api/v1` | VLM API base URL (any OpenAI-compatible chat endpoint that takes images) |
@@ -138,9 +138,9 @@ To switch one off, set it in `deploy/.env`:
 
 ```bash
 # In deploy/.env or export directly
-GRID_EXTRACT_TABLES=false   # Leave uncaptioned PDF tables in the page text (captioned ones are always tables)
-GRID_EXTRACT_IMAGES=false   # Do not caption embedded PDF images
-GRID_EXTRACT_CHARTS=false   # Index charts as images
+EXTRACT_TABLES=false   # Leave uncaptioned PDF tables in the page text (captioned ones are always tables)
+EXTRACT_IMAGES=false   # Do not caption embedded PDF images
+EXTRACT_CHARTS=false   # Index charts as images
 ```
 
 The startup log shows the active mode; by default:
@@ -149,7 +149,7 @@ The startup log shows the active mode; by default:
 LlamaIndexIngestor initialized: mode=text + tables + charts + images
 ```
 
-> **Note:** `GRID_EXTRACT_IMAGES` and `GRID_EXTRACT_CHARTS` work together. With both on (the default), each image is typed by the VLM and a chart is indexed as a chart. With charts off, a chart is indexed as an image; with images off, embedded images are still analysed and only charts are kept.
+> **Note:** `EXTRACT_IMAGES` and `EXTRACT_CHARTS` work together. With both on (the default), each image is typed by the VLM and a chart is indexed as a chart. With charts off, a chart is indexed as an image; with images off, embedded images are still analysed and only charts are kept.
 
 ### Programmatic Usage
 
@@ -161,7 +161,7 @@ from knowledge_layer.llamaindex import LlamaIndexRetriever, LlamaIndexIngestor
 from aiq_agent.knowledge import get_retriever, get_ingestor
 
 # Ingest documents
-ingestor = get_ingestor("llamaindex")  # Qdrant at GRID_QDRANT_URL
+ingestor = get_ingestor("llamaindex")  # Qdrant at QDRANT_URL
 ingestor.create_collection("my_docs")
 job_id = ingestor.upload_file("doc.pdf", "my_docs")
 
@@ -263,7 +263,7 @@ When `generate_summary: true`, you **must** configure `summary_model` to referen
 llms:
   summary_llm:
     _type: openai
-    model_name: ${GRID_DEFAULT_MODEL:-openai/gpt-6-luna}
+    model_name: ${DEFAULT_MODEL:-openai/gpt-6-luna}
     base_url: "https://openrouter.ai/api/v1"
     api_key: ${OPENROUTER_API_KEY}
     temperature: 0.3
@@ -343,13 +343,13 @@ functions:
   knowledge_search:
     _type: knowledge_retrieval
     generate_summary: true
-    summary_db: ${GRID_SUMMARY_DB:-sqlite+aiosqlite:///./summaries.db}  # Default: SQLite
+    summary_db: ${SUMMARY_DB:-sqlite+aiosqlite:///./summaries.db}  # Default: SQLite
 ```
 
 For production deployments, use PostgreSQL:
 
 ```bash
-export GRID_SUMMARY_DB="postgresql+psycopg://user:pass@localhost:5432/mydb"
+export SUMMARY_DB="postgresql+psycopg://user:pass@localhost:5432/mydb"
 ```
 
 The summary store uses SQLAlchemy and follows the same pattern as the jobs database (`db_url`), so you can point both to the same PostgreSQL instance if desired.
@@ -499,7 +499,7 @@ Configuration values are resolved in the following order (highest to lowest prio
 
 1. **Explicit parameter** - Values passed directly to factory functions (`get_retriever("llamaindex")`)
 2. **YAML config file** - The options in your workflow config (recommended)
-3. **Environment variables** - `KNOWLEDGE_RETRIEVER_BACKEND`, `GRID_QDRANT_URL`, etc.
+3. **Environment variables** - `KNOWLEDGE_RETRIEVER_BACKEND`, `QDRANT_URL`, etc.
 4. **Hardcoded defaults** - Built-in fallback values
 
 **Recommendation:** Use YAML config as your single source of truth for workflow configuration. Environment variables are useful for:
@@ -514,8 +514,8 @@ Configuration values are resolved in the following order (highest to lowest prio
 | `OPENROUTER_API_KEY` | All | Required for embeddings/VLM and LLM calls (everything routes through OpenRouter) |
 | `KNOWLEDGE_RETRIEVER_BACKEND` | All | Default retriever backend (fallback if not in YAML) |
 | `KNOWLEDGE_INGESTOR_BACKEND` | All | Default ingestor backend (fallback if not in YAML) |
-| `GRID_QDRANT_URL` | llamaindex | The Qdrant cluster every chunk is stored in (required; `GRID_QDRANT_API_KEY` when it needs one) |
-| `GRID_SUMMARY_DB` | All | Summary database URL (SQLite or PostgreSQL) |
+| `QDRANT_URL` | llamaindex | The Qdrant cluster every chunk is stored in (required; `QDRANT_API_KEY` when it needs one) |
+| `SUMMARY_DB` | All | Summary database URL (SQLite or PostgreSQL) |
 | `COLLECTION_NAME` | All | Default collection name |
 
 ---

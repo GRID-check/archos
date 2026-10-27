@@ -105,8 +105,8 @@ revisiting only if a live test shows A's output needs more than filler removal.
 
 | Variable | Default | |
 |---|---|---|
-| `GRID_DICTATION_MODEL` | `elevenlabs/scribe-v2` | Primary model |
-| `GRID_DICTATION_FALLBACK_MODEL` | `openai/whisper-large-v3-turbo` | Tried only when the primary failed; empty switches it off |
+| `DICTATION_MODEL` | `elevenlabs/scribe-v2` | Primary model |
+| `DICTATION_FALLBACK_MODEL` | `openai/whisper-large-v3-turbo` | Tried only when the primary failed; empty switches it off |
 
 These are environment variables, like `SUMMARY_LLM_MODEL`, because dictation
 is not an agent group: Platform → Models validates a group's model against chat

@@ -479,8 +479,8 @@ socket or not. Only a turn silent for 70 s (two minutes when there is no
 stream to ask, 40 minutes at most) ends with the banner. The reader meanwhile
 sees „prüfe auf fertige Antwort".
 
-**Bounds.** `GRID_CONV_STREAM_MAXLEN` (2000 events, many turns) and
-`GRID_CONV_STREAM_TTL_SECONDS` (an hour since the last event). A reader away
+**Bounds.** `CONV_STREAM_MAXLEN` (2000 events, many turns) and
+`CONV_STREAM_TTL_SECONDS` (an hour since the last event). A reader away
 longer than that gets the finished answer from Postgres, or the banner.
 
 ## The reveal is paced, not typed
@@ -842,7 +842,7 @@ Accepted residuals:
 - Between the terminal and the settle (the 300 to 500 ms finish) the composer
   already shows Send, so Stop is not offered there.
 - The server names `cancel_turn.shown` in its hello's `accepts` only while
-  `GRID_WIRE_V2_ADDITIVE_FIELDS` is on. It is on by default; `off` is the
+  `WIRE_V2_ADDITIVE_FIELDS` is on. It is on by default; `off` is the
   rollback to the release that kept tabs of the strict bundle parsing frames
   ([chat wire v2, Compatibility](chat-wire-v2.md#compatibility-additive-changes-are-safe)).
   With it off the page sends no `shown`, and the agent stores everything

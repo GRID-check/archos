@@ -147,7 +147,7 @@ describe("the program constructs in the split topology", () => {
     for (const container of containers) {
       expect(container.volumeMounts ?? []).toEqual([]);
       const env = container.env ?? [];
-      expect(env.find((e) => e.name === "GRID_QDRANT_URL")?.value).toBeDefined();
+      expect(env.find((e) => e.name === "QDRANT_URL")?.value).toBeDefined();
       for (const gone of ["GRID_CHROMA_DIR", "OIB_UPLOADS_DIR", "GRID_BASE_CORPUS_STORE"]) {
         expect(env.find((e) => e.name === gone)).toBeUndefined();
       }
@@ -167,7 +167,7 @@ describe("the program constructs in the split topology", () => {
     const role = (type: string, name: string) => {
       const spec = RESOURCES.find((r) => r.type === type && r.name === name)?.inputs.spec;
       const env = spec?.template?.spec.containers[0].env as Array<{ name: string; value?: string }> | undefined;
-      return env?.filter((e) => e.name === "GRID_ROLE").map((e) => e.value);
+      return env?.filter((e) => e.name === "PROCESS_ROLE").map((e) => e.value);
     };
     expect(role("kubernetes:apps/v1:StatefulSet", "aiq-agent")).toEqual(["chat"]);
     expect(role("kubernetes:apps/v1:Deployment", "aiq-api")).toEqual(["api"]);
@@ -343,8 +343,8 @@ describe("the program constructs in the split topology", () => {
     ]) {
       const env = RESOURCES.find((r) => r.type === type && r.name === name)?.inputs.spec?.template?.spec.containers[0].env;
       const names = (env ?? []).map((e) => e.name);
-      expect(names, name).toContain("GRID_QDRANT_URL");
-      expect(names, name).toContain("GRID_QDRANT_API_KEY");
+      expect(names, name).toContain("QDRANT_URL");
+      expect(names, name).toContain("QDRANT_API_KEY");
       expect(names.filter((n) => n.startsWith("GRID_CHROMA") || n === "GRID_VECTOR_BACKEND"), name).toEqual([]);
     }
   });

@@ -60,7 +60,7 @@ that closes a loop is named where it ran.
 | fix | The OIB display title reads any edition off the filename, not only "Mai 2023"; the three document-metadata resolvers log a failed store read instead of silently falling back | `common/norm_registry.py`, `sources/knowledge_layer/src/register.py` |
 | D · L0 | The turn's one repair: a failed citation or quote triggers one retrieval aimed at the failing text and one rewrite, re-verified, the better answer ships (`repair_pass`, `status.repair`). (Superseded by ADR-0067: a misremembered quote is corrected in place, quote_patch.py; repair_pass is the off switch.) | `piloti/agent.py` |
 | D · L1 | The retrieval loop: a sufficiency judge beside the reranker, alternative formulations retrieved from every collection and fused into the same RRF, a second rerank; `status.retrieval.requery` on the live line and `requery_queries` in the trace | `knowledge_layer/requery.py`, `register.py`, `config_oib_openrouter.yml` |
-| D · L5 | The turn holds for an attachment still being indexed (`GRID_INGEST_WAIT_SECONDS`, `status.documents.waiting`), re-reads the inventory when it finishes; the in-flight filter that never fired is fixed | `piloti/conversation_register.py`, `knowledge/ingest_status_store.py` |
+| D · L5 | The turn holds for an attachment still being indexed (`INGEST_WAIT_SECONDS`, `status.documents.waiting`), re-reads the inventory when it finishes; the in-flight filter that never fired is fixed | `piloti/conversation_register.py`, `knowledge/ingest_status_store.py` |
 | fix | Deep research no longer dies of one slow source: a tool's own timeout is a tool error the model routes around; the writer's call bound matches its output (600 s, one retry); a budget exhaustion keeps its actionable message; the banner names the real cause | `deep_researcher/tools/source_tool_batching.py`, `deep_researcher/agent.py`, `jobs/runner.py`, `config_oib_openrouter.yml` |
 | B | Reinforcement fires only on a build ranked against a question; a refused supersede is recorded as `conflicts_with_id` on the new row (migration 0076); every bound tool's context needs are declared (`TOOL_CONTEXT_REQUIREMENTS`) and checked against what the job worker injects | `lib/projects/memory-service.ts`, `project_context.py`, `tests/aiq_agent/test_tool_context_contract.py` |
 | delete | `card_generator_llm` (a field nothing read), the unmaintained `config_grid_oib.yml`, the two-hop research → history → chat redirect, and the backlog lines closed at HEAD | `piloti/conversation_register.py`, `configs/`, `docs/audit/overnight-run-backlog.md` |
@@ -252,7 +252,7 @@ What remains, ranked by consequence:
    classification could replace on arrival. "What was in force at the permit
    date" cannot be asked.
 6. **Cross-encoder reranking is dark.** 437 tested lines, five providers,
-   `GRID_RERANKER_PROVIDER=none` in every deploy file. The audit's own §21 says
+   `RERANKER_PROVIDER=none` in every deploy file. The audit's own §21 says
    recall is saturated at k=60 and the remaining gain is ordering.
 7. **Tables lose their Punkt.** Table documents are built from a separate
    pdfplumber pass with no outline context, so the threshold tables where the

@@ -272,7 +272,7 @@ def add_skill_routes(router: APIRouter) -> None:
             422: {"description": "Invalid payload, or unknown/agent-unavailable data source IDs"},
             429: {
                 "description": (
-                    "Abuse bound: the organization already has too many jobs waiting (`GRID_MAX_QUEUED_JOBS_PER_ORG`)"
+                    "Abuse bound: the organization already has too many jobs waiting (`MAX_QUEUED_JOBS_PER_ORG`)"
                 )
             },
         },

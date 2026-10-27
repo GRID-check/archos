@@ -294,7 +294,7 @@ effective skill set for one run:
    - Cached in the shared Dragonfly/Redis cache
      (`aiq_agent.common.cache`, ADR-0020) keyed
      `skills:{organization_id}:{agent}` for
-     `GRID_SKILLS_CACHE_TTL_SECONDS` (default 60s).
+     `SKILLS_CACHE_TTL_SECONDS` (default 60s).
    - Any failure (no `GRID_INTERNAL_API_TOKEN`, timeout, non-2xx, malformed
      payload) degrades to the builtin set — skills are an additive
      capability and must never take chat down.
@@ -892,7 +892,7 @@ however triggered — is visible in history. Capacity
 never skips an occurrence (ADR-0079): the job joins the research queue as `bulk`
 priority, the run is recorded `queued`, and the worker's first flush moves it to
 `running`; only an organization's waiting queue past
-`GRID_MAX_QUEUED_JOBS_PER_ORG` still yields a `skipped` run.
+`MAX_QUEUED_JOBS_PER_ORG` still yields a `skipped` run.
 
 ### The worker's side, and the outcome
 
@@ -1212,7 +1212,7 @@ renaming them is a deployment change with no user-visible gain.
 | `GRID_SKILL_SCHEDULER_BATCH` | skill-scheduler | `20` | Max claims per tick |
 | `GRID_SKILL_MIN_INTERVAL_MINUTES` | frontend | `15` | Minimum cron cadence accepted at save time |
 | `GRID_SKILL_RUNS_RETENTION_DAYS` | skill-scheduler | `90` | Run-history retention |
-| `GRID_SKILLS_CACHE_TTL_SECONDS` | aiq-agent | `60` | Backend org-skill resolution cache TTL (ADR-0020) |
+| `SKILLS_CACHE_TTL_SECONDS` | aiq-agent | `60` | Backend org-skill resolution cache TTL (ADR-0020) |
 
 (Existing: `GRID_APP_DATABASE_URL`, `FRONTEND_INTERNAL_URL`,
 `GRID_INTERNAL_API_TOKEN`, `BACKEND_URL` are reused, not new.)

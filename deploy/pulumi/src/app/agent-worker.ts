@@ -30,7 +30,7 @@ export const RESEARCH_QUEUE_DEPTH_QUERY = queueDepthQuery(QUEUE_TABLE);
 /**
  * Research worker tier (ADR-0021, ADR-0079).
  *
- * Dedicated worker replicas (same backend image, `GRID_ROLE=worker`) claim
+ * Dedicated worker replicas (same backend image, `PROCESS_ROLE=worker`) claim
  * deep-research jobs from Postgres and execute them, so the token-heavy
  * workload scales horizontally and independently of the chat/web tier. No web
  * port, no PVC — workers are stateless (vectors live in shared Qdrant,

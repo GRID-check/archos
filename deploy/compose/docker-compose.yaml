@@ -3,10 +3,10 @@
 # =============================================================================
 #
 # Services:
-#   aiq-agent    - Backend, chat role (GRID_ROLE=chat): the chat WebSocket
-#   aiq-api      - Backend, api role (GRID_ROLE=api): every other HTTP route
-#   agent-worker - Backend, research jobs (GRID_ROLE=worker)
-#   ingest-worker - Backend, ingestion (GRID_ROLE=ingest-worker)
+#   aiq-agent    - Backend, chat role (PROCESS_ROLE=chat): the chat WebSocket
+#   aiq-api      - Backend, api role (PROCESS_ROLE=api): every other HTTP route
+#   agent-worker - Backend, research jobs (PROCESS_ROLE=worker)
+#   ingest-worker - Backend, ingestion (PROCESS_ROLE=ingest-worker)
 #   qdrant       - The shared vector store the four roles above talk to
 #   frontend     - Next.js UI (aiq-blueprint-ui)
 #   postgres     - PostgreSQL for jobs and checkpoints
@@ -46,11 +46,11 @@ services:
     env_file:
       - ../.env
     # The backend's environment, once: the other roles of the image alias it and
-    # change what differs (`<<: *backend-environment`, then GRID_ROLE and so on).
+    # change what differs (`<<: *backend-environment`, then PROCESS_ROLE and so on).
     environment: &backend-environment
       # The chat role: the chat WebSocket and the answers running on it
       # (ADR-0082). Every other role of the image sets its own.
-      GRID_ROLE: chat
+      PROCESS_ROLE: chat
       APP_ENV: ${APP_ENV:-production}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
       # PostHog for the Python roles (fail-open: both empty means no events leave
@@ -65,24 +65,24 @@ services:
       # statements goes straight to `postgres`, so a session-feature regression
       # fails here and not first in production.
       NAT_JOB_STORE_DB_URL: ${NAT_JOB_STORE_DB_URL:-postgresql+asyncpg://aiq:aiq_dev@pgbouncer:5432/aiq_jobs}  # pragma: allowlist secret (local compose default, same class as POSTGRES_PASSWORD below)
-      GRID_CHECKPOINT_DB: ${GRID_CHECKPOINT_DB:-${AIQ_CHECKPOINT_DB:-postgresql://aiq:aiq_dev@pgbouncer:5432/aiq_checkpoints}}  # pragma: allowlist secret (local compose default, same class as POSTGRES_PASSWORD below)
+      CHECKPOINT_DB: ${CHECKPOINT_DB:-${GRID_CHECKPOINT_DB:-${AIQ_CHECKPOINT_DB:-postgresql://aiq:aiq_dev@pgbouncer:5432/aiq_checkpoints}}}  # pragma: allowlist secret (local compose default, same class as POSTGRES_PASSWORD below)
       # A research job's deep checkpoint, so one that loses its worker resumes where it
       # was instead of starting over. Kubernetes sets the same (deploy/pulumi config.ts).
-      GRID_DEEP_CHECKPOINT_DB: ${GRID_DEEP_CHECKPOINT_DB:-${AIQ_DEEP_CHECKPOINT_DB:-postgresql://aiq:aiq_dev@pgbouncer:5432/aiq_checkpoints}}  # pragma: allowlist secret (local compose default, same class as POSTGRES_PASSWORD below)
-      GRID_SUMMARY_DB: ${GRID_SUMMARY_DB:-${AIQ_SUMMARY_DB:-postgresql+psycopg://aiq:aiq_dev@pgbouncer:5432/aiq_jobs}}  # pragma: allowlist secret (local compose default, same class as POSTGRES_PASSWORD below)
+      DEEP_CHECKPOINT_DB: ${DEEP_CHECKPOINT_DB:-${GRID_DEEP_CHECKPOINT_DB:-${AIQ_DEEP_CHECKPOINT_DB:-postgresql://aiq:aiq_dev@pgbouncer:5432/aiq_checkpoints}}}  # pragma: allowlist secret (local compose default, same class as POSTGRES_PASSWORD below)
+      SUMMARY_DB: ${SUMMARY_DB:-${GRID_SUMMARY_DB:-${AIQ_SUMMARY_DB:-postgresql+psycopg://aiq:aiq_dev@pgbouncer:5432/aiq_jobs}}}  # pragma: allowlist secret (local compose default, same class as POSTGRES_PASSWORD below)
       # SSE LISTEN/NOTIFY: a notification reaches the one server session that ran
       # LISTEN, which a transaction pooler does not keep for the client.
-      GRID_LISTEN_DB_URL: ${GRID_LISTEN_DB_URL:-${AIQ_LISTEN_DB_URL:-postgresql://aiq:aiq_dev@postgres:5432/aiq_jobs}}  # pragma: allowlist secret (local compose default, same class as POSTGRES_PASSWORD below)
+      LISTEN_DB_URL: ${LISTEN_DB_URL:-${GRID_LISTEN_DB_URL:-${AIQ_LISTEN_DB_URL:-postgresql://aiq:aiq_dev@postgres:5432/aiq_jobs}}}  # pragma: allowlist secret (local compose default, same class as POSTGRES_PASSWORD below)
       # Session advisory locks (leader election, the re-ingest lock, the ghost-job
       # reaper). A session owns the lock, so behind the pooler it would be taken
       # on one server connection and "released" on another.
-      GRID_LOCK_DB_URL: ${GRID_LOCK_DB_URL:-${AIQ_LOCK_DB_URL:-postgresql://aiq:aiq_dev@postgres:5432/aiq_jobs}}  # pragma: allowlist secret (local compose default, same class as POSTGRES_PASSWORD below)
+      LOCK_DB_URL: ${LOCK_DB_URL:-${GRID_LOCK_DB_URL:-${AIQ_LOCK_DB_URL:-postgresql://aiq:aiq_dev@postgres:5432/aiq_jobs}}}  # pragma: allowlist secret (local compose default, same class as POSTGRES_PASSWORD below)
       # Shared cache (Dragonfly, ADR-0020): citation-registry snapshots and
       # cross-replica caches. Unset = per-process in-memory fallback.
       REDIS_URL: ${REDIS_URL:-redis://dragonfly:6379/0}
       # Stateless chat tier via the Dragonfly pub/sub conversation bus (ADR-0028).
       # On by default; fails open to local delivery. Set to 0 to opt out.
-      GRID_CONVERSATION_BUS: ${GRID_CONVERSATION_BUS:-1}
+      CONVERSATION_BUS: ${CONVERSATION_BUS:-${GRID_CONVERSATION_BUS:-1}}
       # Project Memory: the `remember` tool writes via the frontend's internal
       # API (single-writer separation — the backend never touches grid_app).
       FRONTEND_INTERNAL_URL: ${FRONTEND_INTERNAL_URL:-http://frontend:3000}
@@ -113,18 +113,18 @@ services:
       # the base corpus is in SeaweedFS and a table (ADR-0082), its cache is under
       # /tmp. An installation that ran Chroma moves its vectors over once:
       # see the Chroma migration in docs/deployment/qdrant-runbook.md.
-      GRID_QDRANT_URL: ${GRID_QDRANT_URL:-${AIQ_QDRANT_URL:-http://qdrant:6333}}
-      GRID_QDRANT_API_KEY: ${GRID_QDRANT_API_KEY:-${AIQ_QDRANT_API_KEY:-}}
+      QDRANT_URL: ${QDRANT_URL:-${GRID_QDRANT_URL:-${AIQ_QDRANT_URL:-http://qdrant:6333}}}
+      QDRANT_API_KEY: ${QDRANT_API_KEY:-${GRID_QDRANT_API_KEY:-${AIQ_QDRANT_API_KEY:-}}}
       # `true` only while an old store is imported into a Qdrant this release
       # already runs against: the base-corpus sync then does not take the empty
       # corpus collection for a reset (docs/deployment/qdrant-runbook.md).
-      GRID_VECTOR_IMPORT_PENDING: ${GRID_VECTOR_IMPORT_PENDING:-${AIQ_VECTOR_IMPORT_PENDING:-}}
+      VECTOR_IMPORT_PENDING: ${VECTOR_IMPORT_PENDING:-${GRID_VECTOR_IMPORT_PENDING:-${AIQ_VECTOR_IMPORT_PENDING:-}}}
       # Research jobs (ADR-0021) are claimed from Postgres by the `agent-worker`
       # service below: the chat role submits one, the api role streams and cancels it.
       # Encrypts DB-claimed job payloads at rest (AES-256-GCM). Empty = plaintext
       # (a one-time warning is logged); acceptable on a single trusted node. Set a
       # base64 32-byte key to encrypt: `openssl rand -base64 32`.
-      GRID_JOB_PAYLOAD_KEK: ${GRID_JOB_PAYLOAD_KEK:-}
+      JOB_PAYLOAD_KEK: ${JOB_PAYLOAD_KEK:-${GRID_JOB_PAYLOAD_KEK:-}}
       # Server config
       # Grid OIB config (default)
       CONFIG_FILE: ${BACKEND_CONFIG:-/app/configs/config_oib_openrouter.yml}
@@ -163,7 +163,7 @@ services:
     # The api role of the backend image (ADR-0082): every HTTP route but the chat
     # socket (knowledge, jobs and their SSE streams, the LLM utilities, admin,
     # housekeeping). It is what BACKEND_URL names. Same image, same environment
-    # as `aiq-agent` (aliased, so the two cannot drift) and GRID_ROLE=api; the
+    # as `aiq-agent` (aliased, so the two cannot drift) and PROCESS_ROLE=api; the
     # roles call each other nowhere.
     image: ${BACKEND_IMAGE:-nvcr.io/nvidia/blueprint/aiq-agent:2.0.0}
     build:
@@ -175,7 +175,7 @@ services:
       - ../.env
     environment:
       <<: *backend-environment
-      GRID_ROLE: api
+      PROCESS_ROLE: api
     ports:
       # The API and its docs: what `localhost:8000` has always been.
       - "${PORT:-8000}:8000"
@@ -205,7 +205,7 @@ services:
   agent-worker:
     # Research jobs (ADR-0021), the docker-compose mirror of the Kubernetes
     # Deployment in deploy/pulumi/src/app/agent-worker.ts: the backend image as
-    # GRID_ROLE=worker claims jobs from Postgres (FOR UPDATE SKIP LOCKED) and
+    # PROCESS_ROLE=worker claims jobs from Postgres (FOR UPDATE SKIP LOCKED) and
     # reads and writes the shared Qdrant. No web port.
     image: ${BACKEND_IMAGE:-nvcr.io/nvidia/blueprint/aiq-agent:2.0.0}
     build:
@@ -217,14 +217,14 @@ services:
       - ../.env
     environment:
       <<: *backend-environment
-      GRID_ROLE: worker
+      PROCESS_ROLE: worker
       # Concurrent research jobs claimed per worker process.
-      GRID_RESEARCH_WORKERS: ${GRID_RESEARCH_WORKERS:-1}
+      RESEARCH_WORKERS: ${RESEARCH_WORKERS:-${GRID_RESEARCH_WORKERS:-1}}
     volumes:
       - ../../configs:/app/configs:ro
     networks:
       - aiq-network
-    # The drain budget (GRID_RESEARCH_WORKER_DRAIN_SECONDS, 600 s) and the time
+    # The drain budget (RESEARCH_WORKER_DRAIN_SECONDS, 600 s) and the time
     # to give back what is still running; docker's default 10 s would kill it first.
     stop_grace_period: 660s
     depends_on:
@@ -269,11 +269,11 @@ services:
       - ../.env
     environment:
       <<: *backend-environment
-      GRID_ROLE: ingest-worker
+      PROCESS_ROLE: ingest-worker
       # Ingestion jobs this process runs at once (K8s: ingestWorker.concurrency).
-      GRID_INGEST_MAX_WORKERS: ${GRID_INGEST_MAX_WORKERS:-${AIQ_INGEST_MAX_WORKERS:-2}}
-      GRID_INGEST_WORKER_DRAIN_SECONDS: ${GRID_INGEST_WORKER_DRAIN_SECONDS:-600}
-      GRID_WORKER_LIVENESS_FILE: /tmp/ingest-worker.alive
+      INGEST_MAX_WORKERS: ${INGEST_MAX_WORKERS:-${GRID_INGEST_MAX_WORKERS:-${AIQ_INGEST_MAX_WORKERS:-2}}}
+      INGEST_WORKER_DRAIN_SECONDS: ${INGEST_WORKER_DRAIN_SECONDS:-${GRID_INGEST_WORKER_DRAIN_SECONDS:-600}}
+      WORKER_LIVENESS_FILE: /tmp/ingest-worker.alive
     volumes:
       - ../../configs:/app/configs:ro
     networks:
@@ -316,7 +316,7 @@ services:
     env_file:
       - ../.env
     environment:
-      - GRID_SUMMARY_DB=${GRID_SUMMARY_DB:-${AIQ_SUMMARY_DB:-postgresql+psycopg://aiq:aiq_dev@pgbouncer:5432/aiq_jobs}}
+      - SUMMARY_DB=${SUMMARY_DB:-${GRID_SUMMARY_DB:-${AIQ_SUMMARY_DB:-postgresql+psycopg://aiq:aiq_dev@pgbouncer:5432/aiq_jobs}}}
       - FRONTEND_INTERNAL_URL=${FRONTEND_INTERNAL_URL:-http://frontend:3000}
       - GRID_INTERNAL_API_TOKEN=${GRID_INTERNAL_API_TOKEN:-grid-internal-dev-token}
     entrypoint: ["python", "-m", "aiq_agent.legacy_corpus_import"]

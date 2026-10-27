@@ -65,7 +65,7 @@ Key responsibilities of the BFF:
 
 The backend uses the **NVIDIA NeMo Agent Toolkit (NAT)** framework with a custom startup script:
 
-- **Entrypoint** (`entrypoint.py`): Launches the web server; research runs in the separate `GRID_ROLE=worker` container.
+- **Entrypoint** (`entrypoint.py`): Launches the web server; research runs in the separate `PROCESS_ROLE=worker` container.
 - **Web server** (`start_web.py`): Loads the NAT YAML configuration, sets up environment variables, and runs uvicorn directly (bypassing `nat serve` to avoid asyncio event-loop conflicts).
 - **NAT runtime**: Provides the LangGraph-based pipeline: one answering agent (research) that decides per turn whether to escalate, a clarification step that confirms a research plan, and the deep research agent with citation verification.
 

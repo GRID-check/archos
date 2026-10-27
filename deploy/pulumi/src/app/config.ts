@@ -155,7 +155,7 @@ export function buildSecrets(w: AppWiring): AppSecrets {
     GRID_INTERNAL_API_TOKEN: cfg.internal.apiToken,
     GRID_ADMIN_TOKEN: cfg.internal.adminToken,
     GRID_CORPUS_EXPORT_TOKEN: cfg.internal.corpusExportToken,
-    GRID_JOB_PAYLOAD_KEK: cfg.internal.jobPayloadKek,
+    JOB_PAYLOAD_KEK: cfg.internal.jobPayloadKek,
     GRID_WEB_PUSH_VAPID_PRIVATE_KEY: cfg.webPush.privateKey,
     // PostHog Support (feedback tickets). Absent unless the stack sets it, so
     // `frontendEnv` can leave the variable off the pod rather than empty.
@@ -183,16 +183,16 @@ export function buildSecrets(w: AppWiring): AppSecrets {
     // (`grid-pg-rw`) for what needs one server connection across statements.
     // `postgres.spec.ts` holds this table to the same split.
     NAT_JOB_STORE_DB_URL: w.dsn({ db: "aiq_jobs", via: "pooler", driver: "postgresql+asyncpg" }),
-    GRID_CHECKPOINT_DB: w.dsn({ db: "aiq_checkpoints", via: "pooler" }),
-    GRID_SUMMARY_DB: w.dsn({ db: "aiq_jobs", via: "pooler", driver: "postgresql+psycopg" }),
-    GRID_DEEP_CHECKPOINT_DB: w.dsn({ db: "aiq_checkpoints", via: "pooler" }),
+    CHECKPOINT_DB: w.dsn({ db: "aiq_checkpoints", via: "pooler" }),
+    SUMMARY_DB: w.dsn({ db: "aiq_jobs", via: "pooler", driver: "postgresql+psycopg" }),
+    DEEP_CHECKPOINT_DB: w.dsn({ db: "aiq_checkpoints", via: "pooler" }),
     // LISTEN/NOTIFY: a notification reaches the one server session that ran
     // LISTEN, which a transaction pooler does not keep for the client.
-    GRID_LISTEN_DB_URL: w.dsn({ db: "aiq_jobs", via: "direct" }),
+    LISTEN_DB_URL: w.dsn({ db: "aiq_jobs", via: "direct" }),
     // Session advisory locks (leader election, the re-ingest lock, the reaper):
     // a session owns the lock, so behind a pooler it is taken on one server
     // connection and "released" on another, and the first stays locked.
-    GRID_LOCK_DB_URL: w.dsn({ db: "aiq_jobs", via: "direct" }),
+    LOCK_DB_URL: w.dsn({ db: "aiq_jobs", via: "direct" }),
     // The app tier connects as the least-privilege role, so row-level security
     // applies to it (ADR-0041). Migrations get the owner credential below —
     // RLS does not apply to a table's owner, so DDL and backfills still work.
@@ -204,7 +204,7 @@ export function buildSecrets(w: AppWiring): AppSecrets {
     GRID_APP_MIGRATION_DATABASE_URL: w.dsn({ db: "grid_app", via: "direct" }),
     // The read-write key (ADR-0115): the ingest tier writes, and the backend
     // tiers share one env.
-    GRID_QDRANT_API_KEY: cfg.qdrant.apiKey,
+    QDRANT_API_KEY: cfg.qdrant.apiKey,
   };
 
   const secret = new k8s.core.v1.Secret(
@@ -288,7 +288,7 @@ export function webPosthogEnv(cfg: GridConfig): EnvVar[] {
  * everywhere (never SQLite) — the hard precondition for durability and any
  * future replica. The admission caps are the
  * backend's VERTICAL scaling levers (see docs/audit/scaling-review-2026-07.md
- * §4, §6). `chatEnv`, `apiEnv` and the worker envs add `GRID_ROLE`.
+ * §4, §6). `chatEnv`, `apiEnv` and the worker envs add `PROCESS_ROLE`.
  */
 
 export function backendEnv(w: AppWiring, otelServiceName = "grid-aiq-agent"): EnvVar[] {
@@ -301,29 +301,29 @@ export function backendEnv(w: AppWiring, otelServiceName = "grid-aiq-agent"): En
     { name: "CONFIG_FILE", value: cfg.backend.configFile },
     { name: "COLLECTION_NAME", value: "oib_knowledge" },
     // Encrypts DB-claimed job payloads at rest (empty = plaintext, dev only).
-    sref("GRID_JOB_PAYLOAD_KEK"),
-    { name: "GRID_NORMS_DIR", value: "configs/norms" },
+    sref("JOB_PAYLOAD_KEK"),
+    { name: "NORMS_DIR", value: "configs/norms" },
     // Databases (Postgres, not SQLite).
     sref("NAT_JOB_STORE_DB_URL"),
-    sref("GRID_CHECKPOINT_DB"),
-    sref("GRID_SUMMARY_DB"),
-    sref("GRID_LISTEN_DB_URL"),
-    sref("GRID_LOCK_DB_URL"),
+    sref("CHECKPOINT_DB"),
+    sref("SUMMARY_DB"),
+    sref("LISTEN_DB_URL"),
+    sref("LOCK_DB_URL"),
     // Durable per-job LangGraph checkpointing for async deep-research runs.
-    sref("GRID_DEEP_CHECKPOINT_DB"),
+    sref("DEEP_CHECKPOINT_DB"),
     // Shared cache (authenticated: the URL carries the password).
     sref("REDIS_URL"),
     // Stateless chat tier via the Dragonfly pub/sub conversation bus (ADR-0028).
     // ON by default — the intended architecture; uses REDIS_URL, fails open to
     // local delivery. Set conversationBus=false to fall back to affinity.
-    { name: "GRID_CONVERSATION_BUS", value: cfg.conversationBus ? "1" : "0" },
+    { name: "CONVERSATION_BUS", value: cfg.conversationBus ? "1" : "0" },
     // The flag the BFF routes by (ADR-0080). The backend reads it for one
     // decision: with the bus down, affinity on fails the one-running-turn fence
     // open (every turn of a conversation reaches one process), off refuses.
     { name: "GRID_CHAT_AFFINITY", value: cfg.backend.chatAffinity ? "1" : "0" },
     // How long a terminating replica waits for its turns; the pod's grace period
     // is this plus the endpoint drain and slack (`backendRollout`).
-    { name: "GRID_CHAT_DRAIN_SECONDS", value: String(cfg.backend.drainSeconds) },
+    { name: "CHAT_DRAIN_SECONDS", value: String(cfg.backend.drainSeconds) },
     // Project-memory write path (backend → frontend BFF).
     { name: "FRONTEND_INTERNAL_URL", value: `http://frontend:${PORT.frontend}` },
     sref("GRID_INTERNAL_API_TOKEN"),
@@ -376,28 +376,28 @@ export function backendEnv(w: AppWiring, otelServiceName = "grid-aiq-agent"): En
     ...langfuseApiEnv(cfg),
     // Admission control (bounds concurrent heavy work — §4.2).
     { name: "GRID_MAX_ACTIVE_JOBS_PER_ORG", value: String(cfg.backend.maxActiveJobsPerOrg) },
-    { name: "GRID_MAX_QUEUED_JOBS_PER_ORG", value: String(cfg.backend.maxQueuedJobsPerOrg) },
-    { name: "GRID_INGEST_MAX_WORKERS", value: String(cfg.backend.ingestMaxWorkers) },
-    { name: "GRID_INGEST_MAX_PER_ORG", value: String(cfg.ingestWorker.maxPerOrg) },
+    { name: "MAX_QUEUED_JOBS_PER_ORG", value: String(cfg.backend.maxQueuedJobsPerOrg) },
+    { name: "INGEST_MAX_WORKERS", value: String(cfg.backend.ingestMaxWorkers) },
+    { name: "INGEST_MAX_PER_ORG", value: String(cfg.ingestWorker.maxPerOrg) },
     // No env for the base corpus: it lives in SeaweedFS and the knowledge
     // database (ADR-0082 step A2), and the per-replica cache defaults to
-    // /tmp/base-corpus (GRID_BASE_CORPUS_CACHE_DIR), a place the pod may lose.
+    // /tmp/base-corpus (BASE_CORPUS_CACHE_DIR), a place the pod may lose.
     // LLM / embeddings / VLM (all via OpenRouter).
     sref("OPENROUTER_API_KEY"),
     sref("TAVILY_API_KEY"),
-    { name: "GRID_EMBED_MODEL", value: cfg.llm.embedModel },
-    { name: "GRID_EMBED_BASE_URL", value: cfg.llm.embedBaseUrl },
-    srefAs("GRID_EMBED_API_KEY", "OPENROUTER_API_KEY"),
+    { name: "EMBED_MODEL", value: cfg.llm.embedModel },
+    { name: "EMBED_BASE_URL", value: cfg.llm.embedBaseUrl },
+    srefAs("EMBED_API_KEY", "OPENROUTER_API_KEY"),
     { name: "GRID_VLM_MODEL", value: cfg.llm.vlmModel },
     { name: "GRID_VLM_BASE_URL", value: cfg.llm.vlmBaseUrl },
     srefAs("GRID_VLM_API_KEY", "OPENROUTER_API_KEY"),
     // What the one OpenRouter key is asked to carry (ADR-0076, ADR-0081). Set
     // from the stack so the budget is read where `ingestWorkerMaxReplicas` is:
     // `assertVlmPeakFitsCeiling` holds the two together.
-    { name: "GRID_VLM_FLEET_CONCURRENCY", value: String(cfg.providerLimits.vlmFleetConcurrency) },
-    { name: "GRID_VLM_BATCH_WORKERS", value: String(cfg.providerLimits.vlmBatchWorkers) },
-    { name: "GRID_PROVIDER_LIMIT_CEILING", value: String(cfg.providerLimits.limitCeiling) },
-    { name: "GRID_PROVIDER_MODEL_LIMIT_CEILING", value: String(cfg.providerLimits.modelLimitCeiling) },
+    { name: "VLM_FLEET_CONCURRENCY", value: String(cfg.providerLimits.vlmFleetConcurrency) },
+    { name: "VLM_BATCH_WORKERS", value: String(cfg.providerLimits.vlmBatchWorkers) },
+    { name: "PROVIDER_LIMIT_CEILING", value: String(cfg.providerLimits.limitCeiling) },
+    { name: "PROVIDER_MODEL_LIMIT_CEILING", value: String(cfg.providerLimits.modelLimitCeiling) },
     // No GRID_EXTRACT_* here: tables, images and charts are on in code and a
     // flag only switches one off. Setting them per deployment is how production
     // ran without tables and dropped every chart it had paid to analyse.
@@ -428,14 +428,14 @@ export function backendEnv(w: AppWiring, otelServiceName = "grid-aiq-agent"): En
  */
 function backendQdrantEnv(w: AppWiring): EnvVar[] {
   return [
-    { name: "GRID_QDRANT_URL", value: w.qdrantUrl },
-    sref("GRID_QDRANT_API_KEY"),
+    { name: "QDRANT_URL", value: w.qdrantUrl },
+    sref("QDRANT_API_KEY"),
     // Left at 1 and 1 on a cluster, every collection would sit on one peer and
     // die with it: the shape the three peers exist to avoid.
     ...(w.cfg.qdrant.replicas > 1
       ? [
-          { name: "GRID_QDRANT_SHARD_NUMBER", value: String(QDRANT.tenantShards) },
-          { name: "GRID_QDRANT_REPLICATION_FACTOR", value: String(QDRANT.tenantReplicationFactor) },
+          { name: "QDRANT_SHARD_NUMBER", value: String(QDRANT.tenantShards) },
+          { name: "QDRANT_REPLICATION_FACTOR", value: String(QDRANT.tenantReplicationFactor) },
         ]
       : []),
   ];
@@ -445,38 +445,38 @@ function backendQdrantEnv(w: AppWiring): EnvVar[] {
  * What only the `chat` role reads: its drain, the affinity flag it fences turns
  * by, and the conversation bus. The `api` role runs none of them.
  */
-const CHAT_ONLY_ENV = new Set(["GRID_CHAT_DRAIN_SECONDS", "GRID_CHAT_AFFINITY", "GRID_CONVERSATION_BUS"]);
+const CHAT_ONLY_ENV = new Set(["CHAT_DRAIN_SECONDS", "GRID_CHAT_AFFINITY", "CONVERSATION_BUS"]);
 
-/** The chat tier's (`aiq-agent` StatefulSet) environment: the backend env and `GRID_ROLE=chat`. */
+/** The chat tier's (`aiq-agent` StatefulSet) environment: the backend env and `PROCESS_ROLE=chat`. */
 export function chatEnv(w: AppWiring): EnvVar[] {
-  return [...backendEnv(w), { name: "GRID_ROLE", value: "chat" }];
+  return [...backendEnv(w), { name: "PROCESS_ROLE", value: "chat" }];
 }
 
 /**
  * The api tier's (`aiq-api` Deployment) environment: the backend env without
- * what only chat reads, as its own service in traces, and `GRID_ROLE=api`.
+ * what only chat reads, as its own service in traces, and `PROCESS_ROLE=api`.
  */
 export function apiEnv(w: AppWiring): EnvVar[] {
   return [
     ...backendEnv(w, "grid-aiq-api").filter((e) => !(typeof e.name === "string" && CHAT_ONLY_ENV.has(e.name))),
-    { name: "GRID_ROLE", value: "api" },
+    { name: "PROCESS_ROLE", value: "api" },
   ];
 }
 
 /**
  * Research worker (ADR-0021) environment: the full backend env (DB DSNs, shared
  * Qdrant, LLM keys, object storage — the worker runs the same `run_agent_job`)
- * plus the worker role + per-process concurrency. `GRID_ROLE=worker` makes the
+ * plus the worker role + per-process concurrency. `PROCESS_ROLE=worker` makes the
  * entrypoint run `python -m aiq_api.jobs.worker` with no web server.
  */
 export function workerEnv(w: AppWiring): EnvVar[] {
   return [
     ...backendEnv(w, "grid-agent-worker"),
-    { name: "GRID_ROLE", value: "worker" },
-    { name: "GRID_RESEARCH_WORKERS", value: String(w.cfg.agentWorker.concurrency) },
+    { name: "PROCESS_ROLE", value: "worker" },
+    { name: "RESEARCH_WORKERS", value: String(w.cfg.agentWorker.concurrency) },
     // The drain budget the pod's grace period is derived from (`agent-worker.ts`):
     // a job still running when it ends is given back to the queue, not killed.
-    { name: "GRID_RESEARCH_WORKER_DRAIN_SECONDS", value: String(w.cfg.agentWorker.drainSeconds) },
+    { name: "RESEARCH_WORKER_DRAIN_SECONDS", value: String(w.cfg.agentWorker.drainSeconds) },
   ];
 }
 
@@ -494,18 +494,18 @@ const INGEST_WITHHELD_ENV = new Set(["LANGFUSE_HOST", "LANGFUSE_PUBLIC_KEY", "LA
  * per-process concurrency.
  */
 export function ingestWorkerEnv(w: AppWiring, livenessFile: string): EnvVar[] {
-  const overridden = new Set(["GRID_INGEST_MAX_WORKERS"]);
+  const overridden = new Set(["INGEST_MAX_WORKERS"]);
   return [
     ...backendEnv(w, "grid-ingest-worker").filter(
       (e) => !(typeof e.name === "string" && (overridden.has(e.name) || INGEST_WITHHELD_ENV.has(e.name))),
     ),
-    { name: "GRID_ROLE", value: "ingest-worker" },
-    { name: "GRID_INGEST_MAX_WORKERS", value: String(w.cfg.ingestWorker.concurrency) },
+    { name: "PROCESS_ROLE", value: "ingest-worker" },
+    { name: "INGEST_MAX_WORKERS", value: String(w.cfg.ingestWorker.concurrency) },
     // What one embedded raster may allocate before it is refused (adapter.py).
     // Set from the stack where the tier's memory is, because it is a memory bound.
-    { name: "GRID_MAX_IMAGE_PIXELS", value: String(w.cfg.ingestWorker.maxImagePixels) },
-    { name: "GRID_INGEST_WORKER_DRAIN_SECONDS", value: String(w.cfg.ingestWorker.drainSeconds) },
-    { name: "GRID_WORKER_LIVENESS_FILE", value: livenessFile },
+    { name: "MAX_IMAGE_PIXELS", value: String(w.cfg.ingestWorker.maxImagePixels) },
+    { name: "INGEST_WORKER_DRAIN_SECONDS", value: String(w.cfg.ingestWorker.drainSeconds) },
+    { name: "WORKER_LIVENESS_FILE", value: livenessFile },
   ];
 }
 

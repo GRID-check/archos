@@ -43,7 +43,7 @@ and chose the same corpus on every row.
 
 IT NEEDS A KEY, NOT A BACKEND
 -----------------------------
-``OPENROUTER_API_KEY`` (or ``GRID_DECISIONS_API_KEY``). A few cents for every
+``OPENROUTER_API_KEY`` (or ``DECISIONS_API_KEY``). A few cents for every
 part together. It cannot run in CI for that reason alone.
 
 USAGE
@@ -514,8 +514,8 @@ def main(argv: list[str] | None = None) -> int:
     unknown = [part for part in args.parts if part not in PARTS]
     if unknown:
         parser.error(f"unknown part(s): {', '.join(unknown)}")
-    if not (os.environ.get("OPENROUTER_API_KEY") or os.environ.get("GRID_DECISIONS_API_KEY")):
-        print("decision_eval_office: set OPENROUTER_API_KEY (or GRID_DECISIONS_API_KEY); nothing to measure.")
+    if not (os.environ.get("OPENROUTER_API_KEY") or os.environ.get("DECISIONS_API_KEY")):
+        print("decision_eval_office: set OPENROUTER_API_KEY (or DECISIONS_API_KEY); nothing to measure.")
         return 2
     results = asyncio.run(_run(list(args.parts or PARTS)))
     if args.out:

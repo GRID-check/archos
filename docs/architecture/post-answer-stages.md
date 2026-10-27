@@ -1252,14 +1252,14 @@ The existing reflection policy is right and is promoted to the primitive
 (`reflection.py:376-381, 432-438`): **beyond the cap, stages are dropped, not
 queued.**
 
-- One shared, per-event-loop semaphore for all stages — `GRID_STAGE_MAX_CONCURRENCY`,
-  default 4. **[as built]** it and `GRID_STAGE_MAX_PENDING` replace
+- One shared, per-event-loop semaphore for all stages — `STAGE_MAX_CONCURRENCY`,
+  default 4. **[as built]** it and `STAGE_MAX_PENDING` replace
   `MEMORY_REFLECTION_MAX_CONCURRENCY` / `MEMORY_REFLECTION_MAX_PENDING`, which
   the primitive supersedes; `deploy/.env.example` and
   `docs/deployment/environment-variables.md` move with them. Loop-keyed via `WeakKeyDictionary` exactly as `_loop_semaphore`
   does (`reflection.py:385-395`), because chat and research workers run different
   loops.
-- `GRID_STAGE_MAX_PENDING`, default 16, counted **across all stages**. At the cap
+- `STAGE_MAX_PENDING`, default 16, counted **across all stages**. At the cap
   the stage is not scheduled and records `outcome:"skipped", reason:"pending_cap"`
   — so load-shedding is a number on the dashboard, not a silent absence.
 - **Shared and not per-stage on purpose.** The resource under pressure is the

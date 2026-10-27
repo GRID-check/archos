@@ -197,7 +197,7 @@ def test_a_captionless_box_pages_later_does_not_continue_an_old_table(monkeypatc
 
 
 def test_the_table_pass_skips_what_the_captioned_pass_took(monkeypatch):
-    """GRID_EXTRACT_TABLES read every pdfplumber table again: Tabelle 3 stood in
+    """EXTRACT_TABLES read every pdfplumber table again: Tabelle 3 stood in
     the index twice, as „Tabelle 3" and as „[TABLE from page 1]"."""
     import pdfplumber
     from knowledge_layer.llamaindex.adapter import _extract_tables_from_pdf

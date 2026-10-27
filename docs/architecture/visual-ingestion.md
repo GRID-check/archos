@@ -67,7 +67,7 @@ Concretely, the rules that keep it modular:
    chosen per segment, and where the vocabulary should eventually live:
    [`visual-extraction-schema.md`](visual-extraction-schema.md).
 9. **Every capability is on in code; a flag only switches one off.**
-   `GRID_EXTRACT_TABLES`, `GRID_EXTRACT_IMAGES` and `GRID_EXTRACT_CHARTS` default
+   `EXTRACT_TABLES`, `EXTRACT_IMAGES` and `EXTRACT_CHARTS` default
    to on and no deployment sets them, so none is off because a stack forgot
    it. Production once set only the images flag: uncaptioned tables stayed
    garbled page text, and every raster typed `chart` was analysed and then
@@ -78,11 +78,11 @@ Concretely, the rules that keep it modular:
    whole as a visual page contributes no embedded rasters: the render already
    shows them, and a scanned page's full-page raster was otherwise analysed
    twice. The remaining rasters are capped per PDF at
-   `GRID_MAX_IMAGES_PER_DOCUMENT` (64, the BFF's storage cap), largest first;
+   `MAX_IMAGES_PER_DOCUMENT` (64, the BFF's storage cap), largest first;
    the number left out is recorded on the file's job status
    (`file_details[].metadata.images_over_cap`). Rendered pages have their own
-   cap, `GRID_MAX_RENDERED_PAGES`. Each accepted raster is also bounded in size
-   before it is decoded: one over `GRID_MAX_IMAGE_PIXELS` (256 MP) is refused
+   cap, `MAX_RENDERED_PAGES`. Each accepted raster is also bounded in size
+   before it is decoded: one over `MAX_IMAGE_PIXELS` (256 MP) is refused
    from its metadata (`get_px_size`), because pypdfium2 cannot downscale an
    embedded image on decode and a 20000x20000 px raster is a ~1.6 GiB
    allocation. The refusals are counted as `images_over_pixel_budget` and
@@ -95,13 +95,13 @@ A page reaches the index by one of four roads (`page_triage`):
 | Kind | Test | Road |
 |---|---|---|
 | text | usable text layer | pdfplumber text, as always |
-| scan | less than `GRID_VISUAL_PAGE_MIN_TEXT_CHARS` of text and a raster covering at least half the page | rendered, **transcribed**, indexed as page text |
-| garbled | the text layer is `(cid:n)` runs, replacement characters, mojibake (`GebÃ¤ude`) or glyph ids shifted into letters (vowel ratio below 0.22) | as a scan, and the transcription replaces the text layer. A page left untranscribed (no vision key, a failed call, past `GRID_MAX_OCR_PAGES`, or that set to 0) keeps what of its text is not `(cid:n)` tokens (`salvage_text`), counted as `pages_garbled_text_kept`. The shares are measured per glyph, a `(cid:n)` token counting as the one glyph it stands for, and symbol-font bullets in the private use area are exempt, so a clean Word export with bullets is not garbled |
-| drawing | text-low and not a scan, carrying any real graphic content: at least `MIN_SKETCH_PATHS` (20) vector paths or a picture. A garbled page with at least `GRID_VISUAL_PAGE_MIN_PATHS` paths is a CAD sheet and lands here too | rendered, drawing schema |
+| scan | less than `VISUAL_PAGE_MIN_TEXT_CHARS` of text and a raster covering at least half the page | rendered, **transcribed**, indexed as page text |
+| garbled | the text layer is `(cid:n)` runs, replacement characters, mojibake (`GebÃ¤ude`) or glyph ids shifted into letters (vowel ratio below 0.22) | as a scan, and the transcription replaces the text layer. A page left untranscribed (no vision key, a failed call, past `MAX_OCR_PAGES`, or that set to 0) keeps what of its text is not `(cid:n)` tokens (`salvage_text`), counted as `pages_garbled_text_kept`. The shares are measured per glyph, a `(cid:n)` token counting as the one glyph it stands for, and symbol-font bullets in the private use area are exempt, so a clean Word export with bullets is not garbled |
+| drawing | text-low and not a scan, carrying any real graphic content: at least `MIN_SKETCH_PATHS` (20) vector paths or a picture. A garbled page with at least `VISUAL_PAGE_MIN_PATHS` paths is a CAD sheet and lands here too | rendered, drawing schema |
 
 Until 2026-09 a page with under 200 characters went through the drawing schema,
 which describes a page ("Bescheid mit Auflagen") instead of saying what is
-written on it, and only the first `GRID_MAX_RENDERED_PAGES` (20) were rendered:
+written on it, and only the first `MAX_RENDERED_PAGES` (20) were rendered:
 page 21 of a scan was lost with the file reporting success. The rule was also
 "text-low OR path-heavy", so a table-ruled text page with 300 cell borders was
 sent to the drawing analysis too. A drawing now needs both.
@@ -118,7 +118,7 @@ analysis, `[KEIN TEXT]` (a blank page) indexes nothing.
 **Same credential, same cache.** Transcription calls the endpoint the drawing
 analysis calls, with `resolve_vlm_credential` (org BYOK, then
 `GRID_VLM_API_KEY`, then the provider key). The model is the org's `ingest_vlm`
-override, else `GRID_OCR_MODEL`, else the VLM model. A separate `ingest_ocr`
+override, else `OCR_MODEL`, else the VLM model. A separate `ingest_ocr`
 agent group was not added: it would be a new picker row, a bootstrap default
 and a BFF config key for a choice no tenant has asked to make separately.
 Replies are cached in the VLM cache (Dragonfly) as
@@ -126,12 +126,12 @@ Replies are cached in the VLM cache (Dragonfly) as
 visual analysis shares; failures are not cached.
 
 **Nothing is dropped quietly.** Transcription has its own cap,
-`GRID_MAX_OCR_PAGES` (500). Every page the triage sent to transcription is
+`MAX_OCR_PAGES` (500). Every page the triage sent to transcription is
 counted on the file's job status (`file_details[].metadata`):
 `pages_transcribed`, `pages_transcription_failed`, `pages_over_ocr_cap`, and
 `pages_not_transcribed_no_vlm` when no vision key resolves. A PDF whose only
 content is scanned pages fails with `vlm_not_configured: …` instead of "no
-content extracted". Drawing pages past `GRID_MAX_RENDERED_PAGES` are counted as
+content extracted". Drawing pages past `MAX_RENDERED_PAGES` are counted as
 `drawing_pages_over_cap`. A scanned page's full-page raster is not also sent
 to the image analysis.
 
@@ -150,7 +150,7 @@ org, it does not exist on a BYOK endpoint that is not OpenRouter, and it takes
 whole files, so one garbled page inside a 200-page text PDF would pay for 200
 pages or need the PDF split first. Per-page transcription picks exactly the
 pages triage selects, reuses the cache and the per-org model, and a better OCR
-model is a setting (`GRID_OCR_MODEL`), not a new route.
+model is a setting (`OCR_MODEL`), not a new route.
 
 ## What the schema captures (v5)
 

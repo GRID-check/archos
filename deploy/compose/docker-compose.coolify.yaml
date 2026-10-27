@@ -55,7 +55,7 @@ services:
     environment:
       # The chat role: the chat WebSocket and the answers running on it
       # (ADR-0082). The services below extend this one and set their own role.
-      - GRID_ROLE=chat
+      - PROCESS_ROLE=chat
       - APP_ENV=${APP_ENV:-production}
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
       # PostHog for the Python roles (fail-open: both empty means no events leave
@@ -74,12 +74,12 @@ services:
       # The OIB corpus is embedded on first boot into the persistent Qdrant
       # volume with this model; keep it stable across redeploys so stored vectors
       # and query embeddings always use the same model.
-      - GRID_EMBED_MODEL=${GRID_EMBED_MODEL:-${AIQ_EMBED_MODEL:-openai/text-embedding-3-large}}
-      - GRID_EMBED_BASE_URL=${GRID_EMBED_BASE_URL:-${AIQ_EMBED_BASE_URL:-https://openrouter.ai/api/v1}}
-      # GRID_EMBED_API_KEY is the embeddings key override (now read by the adapter
+      - EMBED_MODEL=${EMBED_MODEL:-${GRID_EMBED_MODEL:-${AIQ_EMBED_MODEL:-openai/text-embedding-3-large}}}
+      - EMBED_BASE_URL=${EMBED_BASE_URL:-${GRID_EMBED_BASE_URL:-${AIQ_EMBED_BASE_URL:-https://openrouter.ai/api/v1}}}
+      # EMBED_API_KEY is the embeddings key override (now read by the adapter
       # via the shared resolver). An explicitly set value wins; otherwise the
       # OpenRouter key is used even if provider inference is ever disabled.
-      - GRID_EMBED_API_KEY=${GRID_EMBED_API_KEY:-${AIQ_EMBED_API_KEY:-${OPENROUTER_API_KEY}}}
+      - EMBED_API_KEY=${EMBED_API_KEY:-${GRID_EMBED_API_KEY:-${AIQ_EMBED_API_KEY:-${OPENROUTER_API_KEY}}}}
       - GRID_VLM_MODEL=${GRID_VLM_MODEL:-${AIQ_VLM_MODEL:-openai/gpt-6-luna}}
       - GRID_VLM_BASE_URL=${GRID_VLM_BASE_URL:-${AIQ_VLM_BASE_URL:-https://openrouter.ai/api/v1}}
       # ── Databases (single Postgres, three logical DBs; see init-db.sql) ──
@@ -87,21 +87,21 @@ services:
       # transaction pooler (`pgbouncer`); what needs ONE server connection across
       # statements goes straight to `postgres`.
       - NAT_JOB_STORE_DB_URL=postgresql+asyncpg://aiq:${SERVICE_PASSWORD_POSTGRES}@pgbouncer:5432/aiq_jobs
-      - GRID_CHECKPOINT_DB=postgresql://aiq:${SERVICE_PASSWORD_POSTGRES}@pgbouncer:5432/aiq_checkpoints
+      - CHECKPOINT_DB=postgresql://aiq:${SERVICE_PASSWORD_POSTGRES}@pgbouncer:5432/aiq_checkpoints
       # A research job's deep checkpoint: resume on another worker instead of starting over.
-      - GRID_DEEP_CHECKPOINT_DB=postgresql://aiq:${SERVICE_PASSWORD_POSTGRES}@pgbouncer:5432/aiq_checkpoints
-      - GRID_SUMMARY_DB=postgresql+psycopg://aiq:${SERVICE_PASSWORD_POSTGRES}@pgbouncer:5432/aiq_jobs
+      - DEEP_CHECKPOINT_DB=postgresql://aiq:${SERVICE_PASSWORD_POSTGRES}@pgbouncer:5432/aiq_checkpoints
+      - SUMMARY_DB=postgresql+psycopg://aiq:${SERVICE_PASSWORD_POSTGRES}@pgbouncer:5432/aiq_jobs
       # SSE LISTEN/NOTIFY: a notification reaches the one server session that ran
       # LISTEN, which a transaction pooler does not keep for the client.
-      - GRID_LISTEN_DB_URL=postgresql://aiq:${SERVICE_PASSWORD_POSTGRES}@postgres:5432/aiq_jobs
+      - LISTEN_DB_URL=postgresql://aiq:${SERVICE_PASSWORD_POSTGRES}@postgres:5432/aiq_jobs
       # Session advisory locks (leader election, the re-ingest lock, the ghost-job
       # reaper): held by a session, so never through the pooler.
-      - GRID_LOCK_DB_URL=postgresql://aiq:${SERVICE_PASSWORD_POSTGRES}@postgres:5432/aiq_jobs
+      - LOCK_DB_URL=postgresql://aiq:${SERVICE_PASSWORD_POSTGRES}@postgres:5432/aiq_jobs
       # ── Shared cache (Dragonfly, ADR-0020) ──
       - REDIS_URL=redis://dragonfly:6379/0
       # Stateless chat tier via the Dragonfly pub/sub conversation bus (ADR-0028).
       # On by default; fails open to local delivery. Set to 0 to opt out.
-      - GRID_CONVERSATION_BUS=${GRID_CONVERSATION_BUS:-1}
+      - CONVERSATION_BUS=${CONVERSATION_BUS:-${GRID_CONVERSATION_BUS:-1}}
       # ── Deep-research execution (ADR-0021), mirroring the Kubernetes topology ──
       # Research jobs are claimed (FOR UPDATE SKIP LOCKED) by the dedicated `agent-worker`
       # service below, so the token-heavy research workload scales and crashes
@@ -109,7 +109,7 @@ services:
       # Encrypts DB-claimed job payloads at rest (AES-256-GCM). Empty = plaintext
       # (a one-time warning is logged); acceptable on a single trusted node. Set a
       # base64 32-byte key to encrypt: `openssl rand -base64 32`.
-      - GRID_JOB_PAYLOAD_KEK=${GRID_JOB_PAYLOAD_KEK:-}
+      - JOB_PAYLOAD_KEK=${JOB_PAYLOAD_KEK:-${GRID_JOB_PAYLOAD_KEK:-}}
       # ── Single-writer memory bridge to the frontend BFF ──
       - FRONTEND_INTERNAL_URL=http://frontend:3000
       - GRID_INTERNAL_API_TOKEN=${SERVICE_PASSWORD_INTERNALTOKEN}
@@ -131,15 +131,15 @@ services:
       # over HTTP (the `qdrant` service below), so the vector store is not
       # pinned to a single container's disk: the chat and api roles read what the
       # ingest worker writes. There is no embedded fallback: the backend keeps no
-      # volume (ADR-0082). Keep GRID_EMBED_MODEL stable so stored + query vectors
+      # volume (ADR-0082). Keep EMBED_MODEL stable so stored + query vectors
       # match. A stack that ran Chroma moves its vectors over once: see the
       # Chroma migration in docs/deployment/qdrant-runbook.md.
-      - GRID_QDRANT_URL=http://qdrant:6333
-      - GRID_QDRANT_API_KEY=${SERVICE_PASSWORD_QDRANT}
+      - QDRANT_URL=http://qdrant:6333
+      - QDRANT_API_KEY=${SERVICE_PASSWORD_QDRANT}
       # `true` only while an old store is imported into this Qdrant: the
       # base-corpus sync then does not take the empty corpus collection for a
       # reset (docs/deployment/qdrant-runbook.md, "On Coolify").
-      - GRID_VECTOR_IMPORT_PENDING=${GRID_VECTOR_IMPORT_PENDING:-${AIQ_VECTOR_IMPORT_PENDING:-}}
+      - VECTOR_IMPORT_PENDING=${VECTOR_IMPORT_PENDING:-${GRID_VECTOR_IMPORT_PENDING:-${AIQ_VECTOR_IMPORT_PENDING:-}}}
       - COLLECTION_NAME=${COLLECTION_NAME:-oib_knowledge}
       - CONFIG_FILE=${BACKEND_CONFIG:-/app/configs/config_oib_openrouter.yml}
       # Allow the browser-facing frontend origin through the API's CORS filter.
@@ -159,7 +159,7 @@ services:
       - GRID_ADMIN_TOKEN=${GRID_ADMIN_TOKEN:?set GRID_ADMIN_TOKEN}
       # Default ON for this production compose; kept consistent with the frontend.
       # REQUIRE_AUTH gates the token check only for EXTERNAL requests (Host in
-      # GRID_EXTERNAL_HOSTNAMES). It also turns on job access control (owner, or the
+      # EXTERNAL_HOSTNAMES). It also turns on job access control (owner, or the
       # project/conversation the BFF signed; ADR-0084) and the signed-envelope
       # rule for WorkOS callers, for every request. In-cluster BFF calls carry the
       # user's token and envelope, or the internal token, so they keep working.
@@ -178,7 +178,7 @@ services:
       # (see auth/middleware.py::_load_external_hostnames). If port 8000 is ever
       # exposed under this FQDN, those requests hit the path allowlist + auth
       # instead of being trusted as internal.
-      - GRID_EXTERNAL_HOSTNAMES=${SERVICE_FQDN_FRONTEND}
+      - EXTERNAL_HOSTNAMES=${SERVICE_FQDN_FRONTEND}
     expose:
       - "8000"
     # No volumes: the base corpus lives in SeaweedFS and a table (ADR-0082), and
@@ -248,8 +248,8 @@ services:
   # ── Deep-research worker tier (ADR-0021), the docker-compose mirror of the
   #    Kubernetes Deployment in deploy/pulumi/src/app/agent-worker.ts ──
   # Same backend image and env as aiq-agent (via `extends`, so the two can never
-  # drift — critically, they share GRID_EMBED_MODEL, so ingest- and query-side
-  # vectors always match), but launched with GRID_ROLE=worker: the entrypoint
+  # drift — critically, they share EMBED_MODEL, so ingest- and query-side
+  # vectors always match), but launched with PROCESS_ROLE=worker: the entrypoint
   # then execs `python -m aiq_api.jobs.worker` instead of the web server. Workers
   # claim jobs from Postgres (FOR UPDATE SKIP LOCKED) and read/write the shared
   # Qdrant — no web port.
@@ -257,10 +257,10 @@ services:
     extends:
       service: aiq-agent
     environment:
-      # GRID_ROLE flips entrypoint.py to the worker module (no uvicorn).
-      - GRID_ROLE=worker
+      # PROCESS_ROLE flips entrypoint.py to the worker module (no uvicorn).
+      - PROCESS_ROLE=worker
       # Concurrent research jobs claimed per worker process (K8s: agentWorker.concurrency).
-      - GRID_RESEARCH_WORKERS=${GRID_RESEARCH_WORKERS:-1}
+      - RESEARCH_WORKERS=${RESEARCH_WORKERS:-${GRID_RESEARCH_WORKERS:-1}}
     # extends does NOT carry depends_on — declare the worker's own start ordering.
     depends_on:
       postgres:
@@ -295,13 +295,13 @@ services:
   # Every HTTP route of the backend but the chat socket: knowledge, jobs and their
   # SSE streams, the LLM utilities, admin, housekeeping. It is what BACKEND_URL
   # names. Same image and env as aiq-agent (via `extends`, so the two cannot
-  # drift) and GRID_ROLE=api. Like aiq-agent it has no `ports:`: Coolify would
+  # drift) and PROCESS_ROLE=api. Like aiq-agent it has no `ports:`: Coolify would
   # publish it on the host.
   aiq-api:
     extends:
       service: aiq-agent
     environment:
-      - GRID_ROLE=api
+      - PROCESS_ROLE=api
     # extends does NOT carry depends_on — declare the role's own start ordering.
     depends_on:
       seaweedfs:
@@ -326,11 +326,11 @@ services:
     extends:
       service: aiq-agent
     environment:
-      - GRID_ROLE=ingest-worker
+      - PROCESS_ROLE=ingest-worker
       # Ingestion jobs this process runs at once (K8s: ingestWorker.concurrency).
-      - GRID_INGEST_MAX_WORKERS=${GRID_INGEST_MAX_WORKERS:-${AIQ_INGEST_MAX_WORKERS:-2}}
-      - GRID_INGEST_WORKER_DRAIN_SECONDS=${GRID_INGEST_WORKER_DRAIN_SECONDS:-600}
-      - GRID_WORKER_LIVENESS_FILE=/tmp/ingest-worker.alive
+      - INGEST_MAX_WORKERS=${INGEST_MAX_WORKERS:-${GRID_INGEST_MAX_WORKERS:-${AIQ_INGEST_MAX_WORKERS:-2}}}
+      - INGEST_WORKER_DRAIN_SECONDS=${INGEST_WORKER_DRAIN_SECONDS:-${GRID_INGEST_WORKER_DRAIN_SECONDS:-600}}
+      - WORKER_LIVENESS_FILE=/tmp/ingest-worker.alive
     # The drain budget and the time to give back what is still running; docker's
     # default 10 s would kill it first.
     stop_grace_period: 660s
