@@ -155,10 +155,10 @@ export function newThreadTarget(view: Pick<InboundMailView, 'subject' | 'parts'>
   return { kind: 'create', name: displaySubject(view.subject) ?? copy.untitledThread, folder, folderSuggested: fromPiloti, releaseName: false }
 }
 
-/** Whether the mail's own text can be filed at all: waiting, read, and the project open. */
+/** Whether the mail's own text can be filed at all: waiting, read, its raw message scanned clean, and the project open. */
 export function messageSelectable(view: InboundMailView): boolean {
   const part = view.parts.find((candidate) => candidate.kind === 'message')
-  return !!part && partMessageSelectable(part, view.projectClosed)
+  return !!part && partMessageSelectable(part, view)
 }
 
 export function initialDraft(view: InboundMailView, folders: readonly FolderOption[], copy: DraftCopy): MailDraft {

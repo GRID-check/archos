@@ -6,7 +6,8 @@ import 'server-only'
  * nine conditions holds. The receive job queued it because conditions 1–6
  * held then; nothing it read then is trusted now. Per run:
  *
- * 1. **The mail.** Still waiting, its text still waiting. A text this job
+ * 1. **The mail.** Still waiting, its text still waiting, its raw message
+ *    scanned clean (an infected or unscannable message is never appended). A text this job
  *    already decided and could not finish (the thread was busy, the process
  *    died) is filed on that decision, as its decider.
  * 2. **Conditions 1–6 again** (`judgeFollow`, the receive job's own reading):
@@ -86,6 +87,8 @@ export const FOLLOW_WAIT_REASONS = [
   'thread_full',
   /** The text could not be read; only a person can file its original. */
   'unreadable',
+  /** The raw message did not scan clean (infected, or failed): its text is never filed, by a follow or a person. */
+  'scan_not_clean',
   /** A message with this Message-ID is already in a thread of the project. */
   'already_filed',
   /** The follow ended, ran out, or was made after the mail arrived (condition 1, under the lock). */
@@ -145,6 +148,7 @@ export async function followMail(organizationId: string, payload: InboundMailFol
   const refused = await followerMayAppend(session, payload.projectId, threadId, follow)
   if (refused) return refused
   if (!work.mail.readStorageKey || text.riskFlags.includes('unreadable')) return waits('unreadable')
+  if (work.mail.rawScanStatus !== 'clean') return waits('scan_not_clean')
   if (work.mail.messageId && (await findFiledMessages(payload.projectId, work.mail.messageId)).length > 0)
     return waits('already_filed')
 

@@ -12,7 +12,7 @@ import { incompleteReason, partPreselected, withReviewDefaults } from './review-
 import type { SenderFacts } from './sender-risk'
 
 const confirmed: SenderFacts = { trust: 'external_verified', reason: 'dkim_pass', flags: [] }
-const open = { projectClosed: false, sender: confirmed }
+const open = { projectClosed: false, rawScan: 'clean' as const, sender: confirmed }
 
 /** Miriam Huber's address, its signature failed: „Dringend: Kontoänderung Honorarnote“. */
 const forgedMember: InboundMailSenderView = {
@@ -60,24 +60,29 @@ describe('partPreselected: an attachment', () => {
   it('offers a Fassung checked from a confirmed sender, unchecked from one that cannot vouch (D11)', () => {
     const revisionCandidate = { documentId: 'd', name: 'S-101_B.pdf', folderPath: 'Tragwerk', nextVersion: 3 }
     expect(partPreselected(part({ revisionCandidate }), open)).toBe(true)
-    expect(partPreselected(part({ revisionCandidate }), { projectClosed: false, sender: { trust: 'external_unverified', reason: 'dkim_none', flags: [] } })).toBe(false)
+    expect(partPreselected(part({ revisionCandidate }), { projectClosed: false, rawScan: 'clean' as const, sender: { trust: 'external_unverified', reason: 'dkim_none', flags: [] } })).toBe(false)
     expect(partPreselected(part({ revisionCandidate, riskFlags: ['unverified_thread'] }), open)).toBe(false)
   })
 
   it('offers nothing in a closed project', () => {
-    expect(partPreselected(part(), { projectClosed: true, sender: confirmed })).toBe(false)
-    expect(partPreselected(messagePart(), { projectClosed: true, sender: confirmed })).toBe(false)
+    expect(partPreselected(part(), { projectClosed: true, rawScan: 'clean' as const, sender: confirmed })).toBe(false)
+    expect(partPreselected(messagePart(), { projectClosed: true, rawScan: 'clean' as const, sender: confirmed })).toBe(false)
   })
 })
 
 describe('partPreselected: the text', () => {
   it('offers a readable, waiting text checked, even from an unsigned stranger (it starts a thread of its own)', () => {
     expect(partPreselected(messagePart(), open)).toBe(true)
-    expect(partPreselected(messagePart(), { projectClosed: false, sender: { trust: 'external_unverified', reason: 'dkim_none', flags: [] } })).toBe(true)
+    expect(partPreselected(messagePart(), { projectClosed: false, rawScan: 'clean' as const, sender: { trust: 'external_unverified', reason: 'dkim_none', flags: [] } })).toBe(true)
+  })
+
+  it('offers no text whose raw message did not scan clean: it cannot be filed (review D, finding 7)', () => {
+    expect(partPreselected(messagePart(), { ...open, rawScan: 'infected' })).toBe(false)
+    expect(partPreselected(messagePart(), { ...open, rawScan: 'failed' })).toBe(false)
   })
 
   it('offers a text already in a thread, or one that could not be read, unchecked', () => {
-    expect(partPreselected(messagePart(), { projectClosed: false, sender: { ...confirmed, flags: ['message_id_reused', 'already_filed'] } })).toBe(false)
+    expect(partPreselected(messagePart(), { projectClosed: false, rawScan: 'clean' as const, sender: { ...confirmed, flags: ['message_id_reused', 'already_filed'] } })).toBe(false)
     expect(partPreselected(messagePart({ riskFlags: ['unreadable'] }), open)).toBe(false)
   })
 })

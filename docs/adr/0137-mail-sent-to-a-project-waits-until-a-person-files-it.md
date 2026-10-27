@@ -113,7 +113,8 @@ and it takes no name in the project. The place is the project's
 
 The receive job (`lib/inbound-mail/receive-job.ts`) runs as the system and can
 file nothing. It scans the whole raw message before the mail becomes `waiting`
-(a CHECK), drops auto-replies, delivery reports and loops, authenticates the
+(a CHECK; a text whose raw message is not clean is never filed, by a person or
+a follow, since filing keeps that message as the entry's original), drops auto-replies, delivery reports and loops, authenticates the
 sender, reads the MIME tree, runs the Namensprüfung on each attachment's name
 and the subject, scans each attachment, asks the Python reader for the text
 (`POST /v1/mail/read`, no model), redacts every other project's address,

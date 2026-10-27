@@ -12,7 +12,7 @@ import 'server-only'
  * | Code | The check |
  * |---|---|
  * | `stale`, `part_not_waiting`, `part_unknown` | the mail is the one the person read (`ifMatch`), each part is this mail's and waits |
- * | `scan_not_clean` | an attachment's scan said clean (the job re-scans one older than a day) |
+ * | `scan_not_clean` | an attachment's scan said clean (the job re-scans one older than a day); for the text, the whole raw message's scan did, since filing the text keeps that message as the entry's original |
  * | `type_not_accepted` | the office accepts the type, of the part and of the name it is filed under |
  * | `name_stop` | the name check passes the file name, the thread name and a new folder path, or the person released it |
  * | `risk_not_acknowledged` | a `macro` or `type_mismatch` part, an append to a thread the sender could not vouch for, a Fassung of an earlier document from such a sender: the part's id is in `acknowledgeRisk` |
@@ -215,6 +215,10 @@ function planMessage(
 ): { row: NewInboundMailDecisionRow; writeFolder: string | null } {
   if (!mail.readStorageKey || part.riskFlags.includes('unreadable')) {
     throw refusal('unreadable', 'The text of this mail could not be read; download its original instead', { partId: part.id })
+  }
+  // Filing the text moves the raw message into the Verlauf as its original, for the Verlauf's life.
+  if (mail.rawScanStatus !== 'clean') {
+    throw refusal('scan_not_clean', 'This mail has no clean scan, so its text cannot be filed; dismiss it', { partId: part.id })
   }
   if (message.text === 'masked' && part.contentFindings.length === 0) {
     throw refusal('nothing_to_mask', 'The content check found nothing to mask in this text; file it as "full"', { partId: part.id })

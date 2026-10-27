@@ -61,7 +61,7 @@ export const FOLDERS: FolderOption[] = [
 // ------------------------------------------------------------ builders
 
 /** A confirmed outsider in an open project: what a part's default is judged against until `mail()` judges it against its own sender. */
-const PART_DEFAULT_CONTEXT = { projectClosed: false, sender: { trust: 'external_verified', reason: 'dkim_pass', flags: [] } } as const
+const PART_DEFAULT_CONTEXT = { projectClosed: false, rawScan: 'clean', sender: { trust: 'external_verified', reason: 'dkim_pass', flags: [] } } as const
 
 export function part(overrides: Partial<InboundMailPartView> & { name?: string } = {}): InboundMailPartView {
   sequence += 1

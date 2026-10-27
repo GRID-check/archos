@@ -71,7 +71,7 @@ export const INBOUND_MAIL_REFUSALS = [
   'part_not_waiting',
   /** A part named is not this mail's, or a kind in the wrong slot (the text in `parts`). */
   'part_unknown',
-  /** An attachment's scan is not clean (pending, failed or infected). */
+  /** An attachment's scan, or for the text the whole raw message's scan, is not clean (pending, failed or infected). */
   'scan_not_clean',
   /** The office does not accept this file type (the part's, or the new name's). */
   'type_not_accepted',

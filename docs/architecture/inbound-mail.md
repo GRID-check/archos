@@ -103,7 +103,9 @@ One log line per delivery, ids and codes only; a refusal is a PostHog
 
 1. load the row and read `raw.eml`;
 2. **scan the whole raw message** (`ScanMail yes`) and store the verdict; a
-   mail is never `waiting` unscanned (CHECK `inbound_mails_waiting_is_scanned`);
+   mail is never `waiting` unscanned (CHECK `inbound_mails_waiting_is_scanned`).
+   A text whose raw message is not `clean` cannot be filed, by a person or a
+   follow: filing the text keeps that message as the entry's original;
 3. drop auto-replies, delivery reports and loops (`dropped`, raw erased); mark
    list and bulk mail `automatic`;
 4. **authenticate the sender** (`sender-auth.ts`, mailauth 8 without an IP, so
@@ -193,7 +195,8 @@ no suggestion, nothing pre-selected, never in a bulk decision.
 
 `POST /api/projects/[id]/inbound-mails/file` (`lib/inbound-mail/service.ts`,
 `decision.ts`) decides 1–20 mails. It checks every rule synchronously:
-`requireFolderWrite` on each target, the accepted type, a clean scan, the
+`requireFolderWrite` on each target, the accepted type, a clean scan (of each
+attachment, and for the text of the whole raw message), the
 acknowledgements (only with one mail), the name check of a new Verlauf's name
 and folder path, the name free or `revisionOf`, `ifMatch`. Then, in one
 transaction, it appends the decision rows, claims the listed parts (`waiting →
@@ -435,7 +438,7 @@ All operations live in `frontends/ui/src/lib/agent-api/catalog/mail.ts`, domain
 | Rate limits and byte caps | webhook | 429 | one address floods its own queue; the others keep working |
 | DKIM/DMARC and hygiene | receive job | a label | a forged mail claims a domain; no pre-selection, no follow, „nicht bestätigt“ in the Verlauf |
 | Name check, risk flags | receive job, `decision.ts` | flag, acknowledgement | an explicit, audited override only |
-| ClamAV on attachments and the whole raw message | receive job, filing job, downloads | `infected`: dismiss only; `failed`: re-scan | malware reaches a person |
+| ClamAV on attachments and the whole raw message | receive job, decision, follow job, filing job, downloads | an attachment `infected`: dismiss only; `failed`: re-scan. The raw message not `clean`: its text cannot be filed (`scan_not_clean`) and a follow never appends it (`scan_not_clean`), it can only be dismissed until a re-scan comes back clean | malware reaches a person, or an infected `.eml` is kept as a Verlauf's original |
 | Redaction of other projects' addresses | receive job | — | another tenant's token learned (the original stays unredacted and gated) |
 | `project:documents:write`, candidates for the viewer | service | 404 | a non-writer reads held mail, or a writer learns restricted names |
 | Per-target folder write, type, scan, acknowledgements, `ifMatch` | `decision.ts` | 409 / 403 | a filing the decider was not entitled to |

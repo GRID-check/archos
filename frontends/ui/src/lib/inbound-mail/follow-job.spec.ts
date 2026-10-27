@@ -239,6 +239,8 @@ describe('each of D31’s nine conditions, failing alone, leaves the mail waitin
       state.nameStops = ['Gehalt']
     }],
     ['6. the content check found something in the own text', () => given({}, { contentFindings: ['iban'] })],
+    ['the raw message did not scan clean (review D, finding 7)', () => given({ rawScanStatus: 'infected' })],
+    ['the raw message’s scan failed', () => given({ rawScanStatus: 'failed' })],
     ['7. the office’s inbound-mail entitlement is off for the follower', () => {
       vi.mocked(isInboundMailEnabled).mockReturnValue(false)
     }],

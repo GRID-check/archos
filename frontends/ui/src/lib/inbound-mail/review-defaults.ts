@@ -36,6 +36,7 @@ import type {
   InboundMailView,
   IncompleteReason,
 } from './inbound-mail-wire'
+import type { MalwareScanStatus } from './inbound-mail-vocabulary'
 import { impersonationOf, senderNeedsAcknowledgement, senderRiskLevel, type SenderFacts } from './sender-risk'
 
 /** A part as the service reads it, before its default is known. */
@@ -103,15 +104,28 @@ function asksForALook(part: InboundMailPartBase): boolean {
   )
 }
 
-/** The text a person may file at all: waiting, readable, the project open. */
-export function messageSelectable(part: InboundMailPartBase, projectClosed: boolean): boolean {
-  return part.kind === 'message' && part.state === 'waiting' && !part.riskFlags.includes('unreadable') && !projectClosed
+/** What of the mail decides whether its text can be filed at all. */
+interface MessageContext {
+  projectClosed: boolean
+  /** The whole raw message's scan: a text whose raw message is not clean is never filed (`decision.ts`). */
+  rawScan: MalwareScanStatus
+}
+
+/** The text a person may file at all: waiting, readable, its raw message scanned clean, the project open. */
+export function messageSelectable(part: InboundMailPartBase, mail: MessageContext): boolean {
+  return (
+    part.kind === 'message' &&
+    part.state === 'waiting' &&
+    !part.riskFlags.includes('unreadable') &&
+    mail.rawScan === 'clean' &&
+    !mail.projectClosed
+  )
 }
 
 /** Whether a part is offered checked. See the module header. */
-export function partPreselected(part: InboundMailPartBase, mail: { projectClosed: boolean; sender: SenderFacts | null }): boolean {
+export function partPreselected(part: InboundMailPartBase, mail: MessageContext & { sender: SenderFacts | null }): boolean {
   if (!mail.sender || impersonationOf(mail.sender) !== null) return false
-  if (part.kind === 'message') return messageSelectable(part, mail.projectClosed) && !mail.sender.flags.includes('already_filed')
+  if (part.kind === 'message') return messageSelectable(part, mail) && !mail.sender.flags.includes('already_filed')
   return attachmentSelectable(part, mail.projectClosed) && !attachmentNeedsPerson(part, mail.sender)
 }
 
@@ -149,7 +163,7 @@ export function incompleteReason(view: Omit<InboundMailView, DerivedFields>): In
 /** The view with what it asks of the person: each part's default, the sender's risk, whether it is complete. */
 export function withReviewDefaults(base: InboundMailViewBase): InboundMailView {
   const sender = senderFactsOfView(base)
-  const parts = base.parts.map((part) => ({ ...part, preselected: partPreselected(part, { projectClosed: base.projectClosed, sender }) }))
+  const parts = base.parts.map((part) => ({ ...part, preselected: partPreselected(part, { projectClosed: base.projectClosed, rawScan: base.rawScan, sender }) }))
   const view = { ...base, parts }
   return {
     ...view,

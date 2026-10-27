@@ -300,6 +300,13 @@ describe('C2: each rule, failing alone', () => {
     expect(codeOf(() => plan(mail, decision(mail), full))).toBe('thread_full')
   })
 
+  it('refuses the text of a mail whose raw message did not scan clean (review D, finding 7)', () => {
+    for (const rawScanStatus of ['infected', 'failed'] as const) {
+      const unclean = heldMail({ rawScanStatus })
+      expect(codeOf(() => plan(unclean, decision(unclean)))).toBe('scan_not_clean')
+    }
+  })
+
   it('refuses the text of a mail nobody could read, and masking a text with nothing to mask', () => {
     const unread = heldMail({ readStorageKey: null })
     expect(codeOf(() => plan(unread, decision(unread)))).toBe('unreadable')
