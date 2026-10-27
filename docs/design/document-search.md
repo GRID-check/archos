@@ -290,12 +290,24 @@ chosen columns on a line under it, the order in a menu.
   so a capture never contradicts its chips. `?scope=project`,
   `?state=empty|loading|error`, `?filters=open`.
 
-The rail starts with Plannummer, Index and „Nur aktuelle Fassung“, always
-open; the counted facets follow; the rest folds under „Weitere Filter“. Under
-`md` the rail is a bottom sheet behind „Filter“ with „Alle entfernen“ and
-„N Treffer zeigen“ pinned at the foot; on a phone the saved searches and the
-export fold into one „Mehr“. Dates are typed in the page's locale
+The rail starts with Plannummer and Index on one row and „Nur aktuelle
+Fassung“, always open; the counted facets follow; the rest folds under
+„Weitere Filter“. A filter has one control: what the rail counts (Beteiligte,
+Verweist auf, Dateityp) is chosen in its group, a party's name is typed inside
+the Beteiligte group, and an opened long list is narrowed by a field over it.
+„Nur aktuelle Fassung“ is the rail's switch in the list and the switch above
+the table in the Planliste, which shows no chip for it. Under `md` the rail is
+a bottom sheet behind „Filter“ with „Alle entfernen“ and „N Treffer zeigen“
+pinned at the foot. Dates are typed in the page's locale
 (`components/ui/date-input.tsx`), not in the browser's.
+
+The toolbar is set as the Dateien header is: the view as an icon pair, saved
+searches as one quiet button whose list ends in „Diese Suche speichern“ (a
+popover; on a phone a bottom sheet), and the Planliste's export as an icon in
+the Planliste only. The Planliste has hairlines and no stripes, the keyboard's
+row in the accent fill; „Ersetzt“ sits on the name in every view, and Status
+is a column the reader adds, showing only the exceptions („Wird gelesen“,
+„Nicht lesbar“).
 
 A hit opens where the workspace already shows it: a document in its shelf's
 preview (`?doc=`), an annotation in the review at the mark. A document hit
