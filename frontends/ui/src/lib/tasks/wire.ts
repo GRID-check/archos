@@ -58,7 +58,7 @@ export const internalTaskRequestSchema = z.discriminatedUnion('op', [
   z
     .object({
       op: z.literal('create'),
-      projectId: z.string().uuid(),
+      projectId: z.guid(),
       kind: z.preprocess(canonicalTaskKind, z.enum(DELEGATABLE_TASK_KINDS)),
       /** What was asked, in the requester's own words. */
       goal: z.string().trim().min(1).max(TASK_GOAL_MAX_CHARS),
@@ -89,7 +89,7 @@ export const internalTaskRequestSchema = z.discriminatedUnion('op', [
   z
     .object({
       op: z.literal('research'),
-      projectId: z.string().uuid(),
+      projectId: z.guid(),
       /**
        * The question the run is to answer, as the turn restated it. It IS the
        * run's prompt, so it is bounded like a goal and carries no markup: a

@@ -176,7 +176,7 @@ export type ClosingIntent = z.infer<typeof closingIntentSchema>
 
 /** One document a reading read, by its content: a new Fassung has a new hash and is read again. */
 export const documentReadSchema = z.object({
-  documentId: z.string().uuid(),
+  documentId: z.guid(),
   contentHash: z.string().min(1).max(128),
 })
 export type DocumentRead = z.infer<typeof documentReadSchema>
@@ -350,7 +350,7 @@ export type LocationRegisterView = z.infer<typeof locationRegisterViewSchema>
  * value by the wizard's modules, then the derivations.
  */
 export const intakeViewSchema = z.object({
-  projectId: z.string().uuid(),
+  projectId: z.guid(),
   status: z.enum(INTAKE_STATUSES),
   mode: z.enum(INTAKE_MODES),
   description: z.string().max(MAX_INTAKE_DESCRIPTION_LENGTH).nullable(),
@@ -635,7 +635,7 @@ export const INTERNAL_INTAKE_RESPONSE_SCHEMAS = {
   withdraw: internalIntakeWithdrawResponseSchema,
   progress: internalIntakeProgressResponseSchema,
   finish: internalIntakeFinishResponseSchema,
-} as const satisfies Record<InternalIntakeOp, z.ZodTypeAny>
+} as const satisfies Record<InternalIntakeOp, z.ZodType>
 
 export type InternalIntakeResponse<Op extends InternalIntakeOp = InternalIntakeOp> = z.infer<
   (typeof INTERNAL_INTAKE_RESPONSE_SCHEMAS)[Op]

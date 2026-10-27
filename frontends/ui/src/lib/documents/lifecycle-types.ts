@@ -608,7 +608,7 @@ export const internalDocumentVersionRequestSchema = z.discriminatedUnion('op', [
   z
     .object({
       op: z.literal('create'),
-      projectId: z.string().uuid(),
+      projectId: z.guid(),
       /** The idempotency key — `{conversationId}-{slug}`, minted by the caller. */
       ref: z.string().min(1).max(200),
       title: z.string().trim().min(1).max(200),
@@ -618,8 +618,8 @@ export const internalDocumentVersionRequestSchema = z.discriminatedUnion('op', [
   z
     .object({
       op: z.literal('update'),
-      documentId: z.string().uuid(),
-      versionId: z.string().uuid(),
+      documentId: z.guid(),
+      versionId: z.guid(),
       content: z.string().max(2_000_000),
       ifMatch: z.string().min(1),
     })
@@ -627,8 +627,8 @@ export const internalDocumentVersionRequestSchema = z.discriminatedUnion('op', [
   z
     .object({
       op: z.literal('submit'),
-      documentId: z.string().uuid(),
-      versionId: z.string().uuid(),
+      documentId: z.guid(),
+      versionId: z.guid(),
       reviewerUserIds: z.array(z.string().min(1)).max(20).default([]),
       /**
        * A reviewer the user NAMED, as they said them („leg das der Anna vor").
@@ -732,9 +732,9 @@ export const reviewQueueQuerySchema = z.object({
     .enum(REVIEW_QUEUE_ROLES)
     .default('reviewer')
     .describe('`reviewer` (default): waiting for the person’s decision; `submitter`: sent by the person.'),
-  projectId: z.string().uuid().optional().describe('Only this project’s documents.'),
+  projectId: z.guid().optional().describe('Only this project’s documents.'),
   limit: z.coerce.number().int().min(1).max(50).default(50).describe('Page size (default and most 50).'),
-  cursor: z.string().uuid().optional().describe('The previous `nextCursor`.'),
+  cursor: z.guid().optional().describe('The previous `nextCursor`.'),
 })
 
 export type ReviewQueueQuery = z.infer<typeof reviewQueueQuerySchema>

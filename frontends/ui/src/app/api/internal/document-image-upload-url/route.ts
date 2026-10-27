@@ -26,7 +26,7 @@ import { NotFoundError } from '@/lib/api/errors'
 import { presignDocumentImageUpload } from '@/lib/documents/service'
 
 const bodySchema = z.object({
-  documentId: z.string().uuid(),
+  documentId: z.guid(),
   collection: z.string().min(1),
   imageIndex: z.number().int().min(0),
   organizationId: z.string().min(1).optional(),
