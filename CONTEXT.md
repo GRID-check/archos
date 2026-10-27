@@ -124,6 +124,12 @@ _Avoid_: folder; folders organise documents within a shelf, a shelf decides who 
 **Dokumentart** (document type):
 What a document is (an OIB-Richtlinie, a law, a standard, a Grundriss, a
 Gutachten…), set by a person and always trusted over a guess from the file name.
+*Korrespondenz* (correspondence) is a letter or e-mail exchanged between
+parties; a filed **E-Mail-Verlauf** is one. „E-Mail“ is the format (the lane
+„Projektwissen · E-Mail“), *Korrespondenz* the type. A Bescheid that arrived by
+e-mail is a copy („Kopie per E-Mail“), not its Zustellung, and Fristen run from
+the Zustellung.
+_Code_: the type token `correspondence`.
 
 **Fassung** (revision):
 One state of a document, whether it was uploaded again under the same name or
@@ -188,12 +194,16 @@ someone with the right *prüft* it and lets it through (*zulassen*, “allow”)
 deletes it (ADR-0086). It waits in the *Quarantäne*: „zurückgehalten“ is the
 state, the Quarantäne the place.
 _Avoid_: „freigeben“, “release”: both collide with **Freigabe**; „zurückgehalten“
-for a file the **Namensprüfung** stopped.
+for a file the **Namensprüfung** stopped, or for a mail waiting in the
+**E-Mail-Eingang**.
 
 **Namensprüfung** (name check):
 The check of a file's name and its folders' names against the office's list,
 before the upload (ADR-0086): in the browser, before any byte or name leaves;
-repeated by the server, and by the e-mail import. What it stops is *Nicht
+repeated by the server, and by the e-mail import. When a mail arrives at a
+project's address, a match is shown on the attachment (and on a new
+E-Mail-Verlauf's name) and the person deciding may file it anyway
+(*Trotzdem ablegen*). What it stops is *Nicht
 hochgeladen* (“Not uploaded”), and nothing of it is stored; the upload summary
 counts it by term, never by name. The uploader may upload one file anyway
 (*Trotzdem hochladen*, “Upload anyway”), their own call, which the audit trail
@@ -208,6 +218,92 @@ as office knowledge. Its *Herkunft* (origin) names who wrote and who approved it
 
 **Fundstelle** (locus):
 The exact place a statement is pinned to: a Punkt, a section, a page.
+
+## Project mail
+
+**E-Mail-Eingang** (Project mail):
+Where mail sent to a project's e-mail address waits until a person files it
+(ADR-0134). Each part of a mail, its own text and each attachment, is
+*abgelegt* (into a folder the person chooses, under a name and a Dokumentart,
+possibly as a new Fassung; the text usually into its **E-Mail-Verlauf**) or
+not; a mail nobody wants is *verworfen*, and one nobody decides *läuft ab*
+after 30 days; both can be *wiederhergestellt* for seven days. Until a person
+files it, nothing of a mail is a document: nothing indexes it and no model of
+Piloti's reads it. Anyone may write to the address; each mail says whether its
+sender's domain was confirmed („Domain bestätigt: …“, „Domain nicht
+bestätigt“), which shapes what is suggested and never files anything by itself.
+A mail that poses as a member („Gibt sich als … aus“) is a stop, never a
+default. Attachments are checked for malware before anyone can file them. Who
+may add documents to the project decides; the folder's write right still
+applies to where a file goes. The list's filter is „Wartet auf Ablage ·
+Bearbeitet“ (Abgelegt, Verworfen, Abgelaufen).
+_Avoid_: Postfach (the notifications), Posteingang (Outlook's folder), Inbox,
+Intake; „annehmen“, „ablehnen“, „freigeben“, „zulassen“, „prüfen“ (**Freigabe**
+and **Zurückgehalten** own those); „übernehmen“ for a mail; „anhängen“ (collides
+with Anhänge); „Abgelegt“ as a mail's state; Quarantäne; „Nachricht“ for an
+e-mail („3 neue E-Mails“); „Absender bestätigt“ (DKIM proves a domain, not a
+person).
+_Code_: `inbound mail` (`lib/inbound-mail`, `inbound_mails`, operations
+`inbound-mail-*`, route `files/mail`); the verbs `file`, `dismiss`, `restore`;
+the states `waiting`, `settled`, `filed`, `dismissed`, `expired`; never
+`inbox` or `intake`.
+
+**E-Mail-Adresse des Projekts** (project mail address):
+The address `<name>.<token>@piloti.at` a project receives mail at. Whoever
+knows it can put mail in front of the office, never into the project. A leaked
+address is replaced (*neue Adresse erzeugen*): the old one stops working at
+once, and every *Folgen* on the project ends.
+_Avoid_: Projektadresse, which is where the building stands.
+_Code_: `inbound mail address` (`inbound_mail_addresses`,
+`inbound-mail-address-*`, verb `rotate`).
+
+**E-Mail-Verlauf** (mail thread):
+One e-mail conversation filed as one document of Dokumentart *Korrespondenz*:
+each filed e-mail is a section, and each one filed later adds a Fassung, so
+the newest Fassung holds the whole conversation and Piloti cites one e-mail of
+it. E-mails from the project's address and from an imported Outlook archive
+end up in the same E-Mail-Verlauf, each once. Each section keeps its *Original
+(.eml)* as evidence: downloadable by whoever may read the Verlauf, never read by
+a model. An e-mail filed into the wrong Verlauf is *herausgelöst* (moved to
+another or a new one; the earlier Fassungen keep it). Its tab in the preview is
+„E-Mails“.
+_Avoid_: bare „Verlauf“ (the chat's), Thread, Unterhaltung, Version,
+„Nachrichten“ for its tab.
+_Code_: `mail thread` (`lib/mail-thread`, `mail_threads`, `mail_thread_entries`
+for its e-mails, verb `detach`).
+
+**Verlauf folgen** (follow a mail thread):
+A person's standing, revocable decision about one **E-Mail-Verlauf** („Diesem
+E-Mail-Verlauf folgen“, „Sie folgen diesem E-Mail-Verlauf bis …“, „nicht mehr
+folgen“): while it runs (60 days, renewable up to 180), the text of later
+replies from confirmed domains already in the conversation is added without a
+click, in that person's name; attachments still wait in the
+**E-Mail-Eingang**. It ends when the person or a manager ends it, when it runs
+out, when the person loses access, when the address is replaced, or when an
+e-mail is herausgelöst from that Verlauf.
+_Avoid_: abonnieren, automatisch ablegen.
+_Code_: `follow` / `unfollow` (`mail_thread_follows`, `mail-thread-follow`).
+
+**Original (.eml)** (original):
+The e-mail exactly as it arrived, kept as evidence beside its section: never a
+document, never indexed, never read by a model, scanned for malware on every
+download.
+_Avoid_: Rohdaten, Quelltext.
+_Code_: `original` (`_mail-originals/`, the operations `*-original-get`).
+
+**E-Mail-Import** (mail import):
+A person's own Outlook archive (.pst/.ost) filed into a project as that person
+(ADR-0085): attachments into one folder per e-mail, the e-mails' text into the
+project's E-Mail-Verläufe, skipping any e-mail the project already has.
+Starting it is the person's decision, so it does not wait in the
+E-Mail-Eingang.
+_Code_: `mail import` (`lib/mail-import`, `mail_imports`).
+
+**Postfach** (inbox):
+Where a person's notifications wait: requests, notices, warnings. Not a
+mailbox; no e-mail is in it.
+_Avoid_: Posteingang, E-Mail-Eingang.
+_Code_: `inbox`.
 
 ## An answer
 
