@@ -1,42 +1,42 @@
-# Web tier (frontends/web: landing site, blog, riso art).
+# Site tier (apps/site: landing site, blog, riso art).
 #
 # Included by the root Taskfile.yml with `flatten: true`: task names stay literal
-# (`web:check`). Shared vars (UI, WEB, PY, ...) and env live in the root file.
+# (`site:check`). Shared vars (UI, SITE, PY, ...) and env live in the root file.
 
 version: '3'
 
 tasks:
-  # ── web (frontends/web — Piloti landing site + blog) ────────────────────────
+  # ── site (apps/site — Piloti landing site + blog) ───────────────────────
 
-  web:install:
-    desc: Install web (landing site) dependencies
-    dir: '{{.WEB}}'
+  site:install:
+    desc: Install the site (landing site) dependencies
+    dir: '{{.SITE}}'
     cmds:
       # Bun installs (ADR-0103); Node still runs Astro, as the scripts' shebangs say.
       - bun install --frozen-lockfile
 
-  web:check:
-    desc: Astro typecheck + content validation for the web service
-    dir: '{{.WEB}}'
+  site:check:
+    desc: Astro typecheck + content validation for the site
+    dir: '{{.SITE}}'
     cmds:
       - bun run check
 
-  web:build:
-    desc: Production build of the web service
-    dir: '{{.WEB}}'
+  site:build:
+    desc: Production build of the site
+    dir: '{{.SITE}}'
     cmds:
       - bun run build
 
-  web:verify:
-    desc: Everything CI runs for the web tier
+  site:verify:
+    desc: Everything CI runs for the site tier
     cmds:
-      - task: web:install
-      - task: web:check
-      - task: web:build
+      - task: site:install
+      - task: site:check
+      - task: site:build
 
-  web:preview:
-    desc: Build the web service with drafts rendered (blog preview only — never ship this)
-    dir: '{{.WEB}}'
+  site:preview:
+    desc: Build the site with drafts rendered (blog preview only — never ship this)
+    dir: '{{.SITE}}'
     env:
       # Preview-only. `astro build` bakes the result into the image, so a release
       # build with this set would publish every unfinished draft to the live site.
@@ -46,37 +46,37 @@ tasks:
       - bun install --frozen-lockfile
       - bun run build
 
-  # ── riso art (frontends/web/art/riso — procedural prints for the site) ──────
-  # The raw commands are `node art/riso/<script>.mjs` in frontends/web; every
+  # ── riso art (apps/site/art/riso — procedural prints for the site) ──────
+  # The raw commands are `node art/riso/<script>.mjs` in apps/site; every
   # task below is one of them. The workflow and the series rules are in
-  # frontends/web/art/riso/README.md.
+  # apps/site/art/riso/README.md.
 
   art:setup:
     desc: Clone the pinned riso-windowseat kit into the user cache and find a browser (idempotent)
-    dir: '{{.WEB}}'
+    dir: '{{.SITE}}'
     cmds:
       - node art/riso/setup.mjs {{.CLI_ARGS}}
 
   art:new:
     desc: 'Scaffold a riso work from the template: task art:new -- <work> [--title "Title"]'
-    dir: '{{.WEB}}'
+    dir: '{{.SITE}}'
     cmds:
       - node art/riso/new.mjs {{.CLI_ARGS}}
 
   art:export:
     desc: 'Export riso works to public/art/ and art/riso/out/, then rewrite src/data/art.json: task art:export -- [--work w] [--only ids]'
-    dir: '{{.WEB}}'
+    dir: '{{.SITE}}'
     cmds:
       - node art/riso/export.mjs {{.CLI_ARGS}}
 
   art:verify:
-    desc: The kit's determinism check on every riso job, in both engines (minutes; not in web:check)
-    dir: '{{.WEB}}'
+    desc: The kit's determinism check on every riso job, in both engines (minutes; not in site:check)
+    dir: '{{.SITE}}'
     cmds:
       - node art/riso/verify.mjs {{.CLI_ARGS}}
 
   art:check:
-    desc: The fast riso gate (manifest, files, sizes, alt text, ids in src/); also part of web:check
-    dir: '{{.WEB}}'
+    desc: The fast riso gate (manifest, files, sizes, alt text, ids in src/); also part of site:check
+    dir: '{{.SITE}}'
     cmds:
       - node art/riso/check.mjs

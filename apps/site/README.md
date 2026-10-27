@@ -62,9 +62,9 @@ The originals stay in the build output (Astro keeps them for the image endpoint)
 so a huge upload still costs image-layer size and build time even though no
 visitor downloads it — the content guard warns above 4 MB for that reason.
 
-Astro's cache is relocated to `frontends/web/.astro-cache` (`cacheDir` in
+Astro's cache is relocated to `apps/site/.astro-cache` (`cacheDir` in
 `astro.config.mjs`) because the default `node_modules/.astro` was deleted by the
-`npm ci` `task web:install` used to run, which made every CI build reprocess every image
+`npm ci` `task site:install` used to run, which made every CI build reprocess every image
 from cold — 44s versus 19s warm on current content. CI's web job restores and
 saves it via `actions/cache`, and the web image build
 (`.github/actions/build-image`) restores it into the Docker build context, since a layer cache cannot help a `RUN bun run
@@ -81,13 +81,13 @@ invisible on the deployed site.
 `PUBLIC_INCLUDE_DRAFTS` is preview-only. `astro build` bakes the result into the
 image, so setting it on a release build would publish every unfinished draft.
 
-Locally, the same harness runs against a built server. `task web:preview` is the
+Locally, the same harness runs against a built server. `task site:preview` is the
 same target CI uses, so the two cannot drift:
 
 ```bash
-task web:preview                          # build with drafts, from the repo root
+task site:preview                          # build with drafts, from the repo root
 
-cd frontends/web
+cd apps/site
 node dist/server/entry.mjs &              # background only the server
 until curl -sf http://localhost:4321/ >/dev/null; do sleep 1; done
 

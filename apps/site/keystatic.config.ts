@@ -12,7 +12,7 @@ import { COVER_PLATES, COVER_PLATE_IDS } from './src/components/craft/plates'
 // entry. Keeping the assets one level above the locale folders makes `../` the
 // correct hop for both `blog/de/*` and `blog/en/*`. The `_` prefix keeps the
 // directory out of the content collection's `**/*.mdx` glob.
-const IMAGE_DIRECTORY = 'frontends/web/src/content/blog/_images'
+const IMAGE_DIRECTORY = 'apps/site/src/content/blog/_images'
 const IMAGE_PUBLIC_PATH = '../_images/'
 
 const postSchema = {
@@ -82,14 +82,14 @@ export default config({
     'posts-de': collection({
       label: 'Blog (Deutsch)',
       slugField: 'title',
-      path: 'frontends/web/src/content/blog/de/*',
+      path: 'apps/site/src/content/blog/de/*',
       format: { contentField: 'content' },
       schema: postSchema,
     }),
     'posts-en': collection({
       label: 'Blog (English)',
       slugField: 'title',
-      path: 'frontends/web/src/content/blog/en/*',
+      path: 'apps/site/src/content/blog/en/*',
       format: { contentField: 'content' },
       schema: postSchema,
     }),

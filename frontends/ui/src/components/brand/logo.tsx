@@ -1,6 +1,6 @@
 /**
  * Piloti product logo: the column mark plus an optional wordmark.
- * The mark is the master's path (`BRAND_MARK`, from `shared/brand/piloti-mark.svg`)
+ * The mark is the master's path (`BRAND_MARK`, from `packages/brand/piloti-mark.svg`)
  * cropped to the column, drawn in `currentColor` so it follows light and dark.
  */
 

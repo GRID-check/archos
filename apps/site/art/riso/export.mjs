@@ -11,7 +11,7 @@
  *   node art/riso/export.mjs --manifest                       # only rewrite the manifests
  *   node art/riso/export.mjs --engine chromium                # override the engine setup chose
  *
- * Run from frontends/web with its node_modules installed (sharp comes with
+ * Run from apps/site with its node_modules installed (sharp comes with
  * Astro), after `node art/riso/setup.mjs`.
  *
  * Per job: open the work in the kit's browser harness (tools/lib/browser.mjs,

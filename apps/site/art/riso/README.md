@@ -24,7 +24,7 @@ shows one.
 
 ## Commands
 
-From `frontends/web`, with `bun install --frozen-lockfile` done (the exporter uses the site's sharp):
+From `apps/site`, with `bun install --frozen-lockfile` done (the exporter uses the site's sharp):
 
 ```bash
 node art/riso/setup.mjs                         # task art:setup
@@ -91,7 +91,7 @@ saves.
 3. Inspect. Export with `--only`, then look at the whole frame at viewing size
    in every format, and at 1:1 crops of the 2x file at every junction, contact
    point and small detail and at the screen itself (crop with the sharp in
-   `frontends/web/node_modules`; `?only=<ink>` shows one plate at a time). List
+   `apps/site/node_modules`; `?only=<ink>` shows one plate at a time). List
    what you looked at under "Inspected" in `PRINT.md`.
 4. Export the work. Site files over 1 MB fail the export, which is the commit
    hook's limit.
@@ -228,7 +228,7 @@ are lossless (truecolour, or 8-bit grayscale).
   the pin. Upload them where they are used.
 - **Downloads.** Every export ends with `downloads.mjs`, which copies each
   `out` and `app` file into `public/downloads/` (committed, so the unlisted
-  image page can hand them out: `frontends/web/AGENTS.md`, "Unlisted pages")
+  image page can hand them out: `apps/site/AGENTS.md`, "Unlisted pages")
   and writes `src/data/downloads.json`. A PNG within 1 MB is copied as it is;
   a larger one (the slides, the postcard composite) becomes JPEG q95 4:4:4,
   which every slide tool, LinkedIn and print shop reads (mean error 0.6–1.9

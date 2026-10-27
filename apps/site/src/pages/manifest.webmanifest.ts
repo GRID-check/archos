@@ -2,7 +2,7 @@ import type { APIRoute } from 'astro'
 import { SITE_NAME } from '../consts'
 import { ui } from '../i18n/ui'
 
-/** The web app manifest. Icons are rendered by scripts/build-brand-assets.mjs. */
+/** The web app manifest. Icons are rendered by packages/brand/build-brand-assets.mjs. */
 export const GET: APIRoute = () => {
   const manifest = {
     name: `${SITE_NAME} — ${ui.de.hero.title}`,

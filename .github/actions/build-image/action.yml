@@ -53,14 +53,14 @@ runs:
     # The web build reprocesses every blog image on a cold cache, and the layer
     # cache cannot help it (`COPY . .` comes first). CI's web job writes this
     # cache; restoring it into the build context lets the container start warm.
-    # frontends/web/.dockerignore leaves `.astro-cache` in the context for this,
+    # apps/site/.dockerignore leaves `.astro-cache` in the context for this,
     # and the runner stage copies only dist/, so it never reaches the image.
     - name: Restore the Astro asset cache into the build context
       if: inputs.name == 'web'
       uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
-        path: frontends/web/.astro-cache
-        key: astro-cache-${{ runner.os }}-${{ hashFiles('frontends/web/src/content/blog/_images/**', 'frontends/web/src/assets/**') }}
+        path: apps/site/.astro-cache
+        key: astro-cache-${{ runner.os }}-${{ hashFiles('apps/site/src/content/blog/_images/**', 'apps/site/src/assets/**') }}
         restore-keys: |
           astro-cache-${{ runner.os }}-
 

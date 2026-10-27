@@ -323,7 +323,7 @@ export function installGatewayResources(
         allowedRoutes: { namespaces: { from: "Same" } },
       },
       {
-        // Landing site (frontends/web) — apex host (e.g. dev.piloti.at).
+        // Landing site (apps/site) — apex host (e.g. dev.piloti.at).
         name: "https-web",
         port: 443,
         protocol: "HTTPS",

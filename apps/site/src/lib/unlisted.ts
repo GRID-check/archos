@@ -3,7 +3,7 @@
  * link. Each is `noindex, nofollow`, filtered out of the sitemap
  * (astro.config.mjs reads `UNLISTED`), and named by nothing else: no link on
  * another page, no line in robots.txt (a Disallow would publish the path) and
- * none in llms.txt. frontends/web/AGENTS.md, "Unlisted pages".
+ * none in llms.txt. apps/site/AGENTS.md, "Unlisted pages".
  *
  * The slug is written here and nowhere else. It is a plain word by the
  * founders' choice: the page is internal and unlisted, not secret. Changing it

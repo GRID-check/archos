@@ -74,7 +74,7 @@ step "UI dependencies (bun)"
 (cd frontends/ui && bun install --frozen-lockfile)
 
 step "web/landing dependencies (bun)"
-bun install --frozen-lockfile --cwd frontends/web
+bun install --frozen-lockfile --cwd apps/site
 
 step "Pulumi program and policy pack (bun)"
 # Two Node programs, each with its own lockfile. Installing only the policy pack

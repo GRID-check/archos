@@ -38,7 +38,7 @@ Reach for the narrow task rather than the whole gate:
 | Backend tests | `task be:test`, or `task be:test:api` for the plugin suite |
 | The Chroma exporter and the move off Chroma (`deploy/migration/`, `qdrant/import_vectors.py`) | `task be:test:migration`, in its own `chromadb` environment; nothing else imports `chromadb` ([`deploy/migration/README.md`](../../deploy/migration/README.md#tests)) |
 | Pulumi and the policy pack | `task infra:types` |
-| Astro landing site | `task web:verify` |
+| Astro landing site | `task site:verify` |
 
 Then run `task verify:fast` before you push.
 

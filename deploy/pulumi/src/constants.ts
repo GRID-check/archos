@@ -26,7 +26,7 @@ export const UID = {
   backend: 1000,
   /** Frontend image (`frontends/ui/deploy/Dockerfile`): user `nextjs` = 1001. */
   frontend: 1001,
-  /** Web (landing/blog) image (`frontends/web/Dockerfile`): user `piloti` = 1001. */
+  /** Web (landing/blog) image (`apps/site/Dockerfile`): user `piloti` = 1001. */
   web: 1001,
   /** Gotenberg image (upstream `build/Dockerfile`): user `gotenberg` = 1001. */
   gotenberg: 1001,
@@ -43,7 +43,7 @@ export const UID = {
 export const PORT = {
   backend: 8000,
   frontend: 3000,
-  /** Astro Node standalone adapter default port (`frontends/web/Dockerfile`). */
+  /** Astro Node standalone adapter default port (`apps/site/Dockerfile`). */
   web: 4321,
   redis: 6379,
   postgres: 5432,

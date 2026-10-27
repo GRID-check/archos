@@ -73,7 +73,7 @@ class Image:
 IMAGES = (
     Image("backend", context=".", dockerfile="deploy/Dockerfile", target="release"),
     Image("frontend", context="frontends/ui", dockerfile="frontends/ui/deploy/Dockerfile"),
-    Image("web", context="frontends/web", dockerfile="frontends/web/Dockerfile"),
+    Image("web", context="apps/site", dockerfile="apps/site/Dockerfile"),
 )
 
 _INSTRUCTION = re.compile(r"^\s*(COPY|ADD)\s+(.*)$", re.IGNORECASE)

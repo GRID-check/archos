@@ -310,7 +310,7 @@ const backend = installBackend(wiring, cfg, secrets, [
   ...afterChromaMigration,
 ]);
 
-// Landing site + blog (Astro, frontends/web) — static-first, no app secrets,
+// Landing site + blog (Astro, apps/site) — static-first, no app secrets,
 // but it pulls from the same registry, so it gets the pull Secret too.
 const web = installWeb(cfg, provider, namespace, wiring.imagePullSecrets, [
   ns,

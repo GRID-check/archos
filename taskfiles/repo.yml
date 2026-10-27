@@ -1,7 +1,7 @@
 # Repo-wide tooling: agent skills (apm), release notes, pre-commit.
 #
 # Included by the root Taskfile.yml with `flatten: true`: task names stay literal
-# (`agents:audit`). Shared vars (UI, WEB, PY, ...) and env live in the root file.
+# (`agents:audit`). Shared vars (UI, SITE, PY, ...) and env live in the root file.
 
 version: '3'
 
@@ -121,7 +121,7 @@ tasks:
       - '{{.RENO}} report .'
 
   release:changelog:
-    desc: Regenerate frontends/web/src/data/changelog.json from the notes
+    desc: Regenerate apps/site/src/data/changelog.json from the notes
     # Normally you never run this: the release-notes workflow does it on merge to
     # develop and commits the result. Run it locally to preview the page, or to
     # resolve a conflict in the generated file (regenerate, do not hand-merge).

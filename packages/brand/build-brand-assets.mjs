@@ -2,12 +2,12 @@
 /**
  * Renders every brand raster from the one master mark, for both apps.
  *
- *   node scripts/build-brand-assets.mjs          write everything below
- *   node scripts/build-brand-assets.mjs --check  fail if an SVG copy drifted
+ *   node packages/brand/build-brand-assets.mjs          write everything below
+ *   node packages/brand/build-brand-assets.mjs --check  fail if an SVG copy drifted
  *
- * The master is `shared/brand/piloti-mark.svg`. Each app gets a committed copy,
- * because neither Docker build can see `shared/` (each builds from its own
- * directory). `npm run check` runs the `--check` form, so an edited copy, or a
+ * The master is `piloti-mark.svg` beside this file. Each app gets a committed copy,
+ * because neither Docker build can see `packages/` (each builds from its own
+ * directory). The site's `npm run check` runs the `--check` form, so an edited copy, or a
  * master edited without re-running this, fails CI instead of shipping two marks.
  * The same check holds the inline, `currentColor` copies of the path (see
  * INLINE_COPIES) to the master.
@@ -15,27 +15,30 @@
  * One master serves every size, 16 px to 512: the mark is built on a 16-unit
  * grid, so it has no small-size variant to keep in step.
  * The rasters are not compared: sharp's anti-aliasing moves between versions.
+ * sharp is the site's (apps/site/node_modules): writing needs it, `--check` does
+ * not, so this directory carries no install of its own.
  *
  * Output
- *   frontends/web/public/  favicon.svg, favicon.ico, apple-touch-icon.png,
+ *   apps/site/public/  favicon.svg, favicon.ico, apple-touch-icon.png,
  *                          icons/icon-{192,512}.png, icons/icon-maskable-512.png,
  *   frontends/ui/src/app/  icon.svg, favicon.ico, apple-icon.png (Next file conventions)
  *   frontends/ui/public/   icons/icon-{192,512}.png, icons/icon-maskable-512.png
  */
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { createRequire } from 'node:module'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import sharp from 'sharp'
 
-const webRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..')
-const repoRoot = resolve(webRoot, '../..')
+const brandRoot = dirname(fileURLToPath(import.meta.url))
+const repoRoot = resolve(brandRoot, '../..')
+const siteRoot = resolve(repoRoot, 'apps/site')
 const uiRoot = resolve(repoRoot, 'frontends/ui')
-const MASTER = resolve(repoRoot, 'shared/brand/piloti-mark.svg')
+const MASTER = resolve(brandRoot, 'piloti-mark.svg')
 
 const INK = '#2a301f' // --color-accent-900, the tile
 
 const SVG_COPIES = [
-  resolve(webRoot, 'public/favicon.svg'),
+  resolve(siteRoot, 'public/favicon.svg'),
   resolve(uiRoot, 'src/app/icon.svg'),
 ]
 /**
@@ -44,7 +47,7 @@ const SVG_COPIES = [
  * check is that the string is there; this script does not rewrite them.
  */
 const INLINE_COPIES = [
-  resolve(webRoot, 'src/components/atoms/Logo.astro'),
+  resolve(siteRoot, 'src/components/atoms/Logo.astro'),
   resolve(uiRoot, 'src/lib/brand.ts'),
 ]
 
@@ -59,7 +62,7 @@ if (!markPath) throw new Error(`${MASTER}: <g id="mark"> holds no path`)
 if (process.argv.includes('--check')) {
   const drifted = SVG_COPIES.filter((path) => readFileSync(path, 'utf8') !== master)
   for (const path of drifted) {
-    console.error(`${path} differs from ${MASTER}. Run node scripts/build-brand-assets.mjs.`)
+    console.error(`${path} differs from ${MASTER}. Run node packages/brand/build-brand-assets.mjs.`)
   }
   const stale = INLINE_COPIES.filter((path) => !readFileSync(path, 'utf8').includes(markPath))
   for (const path of stale) {
@@ -69,6 +72,8 @@ if (process.argv.includes('--check')) {
   console.log('Brand mark copies match the master.')
   process.exit(0)
 }
+
+const sharp = createRequire(resolve(siteRoot, 'package.json'))('sharp')
 
 /** The mark on a square, unrounded ground; `scale` is the mark's share of the side. */
 function fullBleed(scale) {
@@ -127,11 +132,11 @@ const manifestIcons = {
 }
 
 for (const path of SVG_COPIES) write(path, master)
-write(resolve(webRoot, 'public/favicon.ico'), favicon)
-write(resolve(webRoot, 'public/apple-touch-icon.png'), touch)
+write(resolve(siteRoot, 'public/favicon.ico'), favicon)
+write(resolve(siteRoot, 'public/apple-touch-icon.png'), touch)
 write(resolve(uiRoot, 'src/app/favicon.ico'), favicon)
 write(resolve(uiRoot, 'src/app/apple-icon.png'), touch)
 for (const [name, data] of Object.entries(manifestIcons)) {
-  write(resolve(webRoot, 'public', name), data)
+  write(resolve(siteRoot, 'public', name), data)
   write(resolve(uiRoot, 'public', name), data)
 }

@@ -143,7 +143,7 @@ export interface GridConfig {
     appDomain: string;
     /** Public host for the S3 endpoint used to sign browser preview/download URLs. Derived: `s3.<baseDomain>` unless the `s3Domain` key overrides it. */
     s3Domain: string;
-    /** Public host for the landing site (frontends/web). Derived: the `baseDomain` apex itself unless the `webDomain` key overrides it. */
+    /** Public host for the landing site (apps/site). Derived: the `baseDomain` apex itself unless the `webDomain` key overrides it. */
     webDomain: string;
     /** Email for the Let's Encrypt ACME account. */
     letsEncryptEmail: string;
@@ -979,7 +979,7 @@ export interface GridConfig {
     hpaCpuTargetPercent: number;
   };
 
-  /** Landing site (frontends/web) — a static-first Astro service; tiny resources. */
+  /** Landing site (apps/site) — a static-first Astro service; tiny resources. */
   web: {
     resources: ResourceSpec;
     minReplicas: number;

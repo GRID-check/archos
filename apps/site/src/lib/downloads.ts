@@ -12,7 +12,7 @@
  * exported for it: each density, the on-page twin, the print separations.
  *
  * The app's manifest (frontends/ui/src/lib/art/art.json) is not read here: the
- * site's image is built from frontends/web alone, so downloads.mjs copies the
+ * site's image is built from apps/site alone, so downloads.mjs copies the
  * app's files and their entries into the downloads manifest instead.
  */
 import fs from 'node:fs'

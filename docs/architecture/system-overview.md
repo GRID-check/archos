@@ -460,7 +460,7 @@ What lives where in the checkout.
 | `src/aiq_agent/` | Backend agent (LangGraph agents, cards, knowledge layer) |
 | `sources/` | NAT data-source packages (web search, knowledge layer, RIS adapter, grid cards) |
 | `frontends/ui/` | Next.js app: UI + BFF API routes + WS proxy (`server.js`) |
-| `frontends/web/` | Public Piloti landing page + blog (Astro microservice; `de`/`en`, Keystatic CMS for platform-owner blog writing) |
+| `apps/site/` | Public Piloti landing page + blog (Astro microservice; `de`/`en`, Keystatic CMS for platform-owner blog writing) |
 | `frontends/aiq_api/` | The backend FastAPI front-end plugin (`_type: aiq_api`): REST routes, async jobs, `/v1/ingest` |
 | `frontends/benchmarks/` | Piloti's building-law evals (`oib_retrieval`, `oib_compliance`) |
 | `configs/` | Workflow configs. **LLM-agnostic** — any OpenAI-compatible endpoint (set `base_url`/key per config). **`config_oib_openrouter.yml` is the working reference config** (`config_grid_oib.yml`/Kimi is currently unmaintained). The `model_name` values are only the **boot fallback**: the live default per agent group is admin-controlled (Platform → Models, `platform_model_defaults`) and a tenant may override it (Organization → Models) — see `docs/architecture/org-model-configuration.md`. Do not edit the YAML to move the fleet to a new model. |

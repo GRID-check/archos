@@ -68,7 +68,7 @@ CI = load("ci.yml")
 JOBS = CI["jobs"]
 PLAN = JOBS["changes"]
 STEPS = {step["id"]: step for step in PLAN["steps"] if "id" in step}
-TIERS = ["backend", "frontend", "web", "infra", "packages", "sast"]
+TIERS = ["backend", "frontend", "site", "infra", "packages", "sast"]
 BUILD = json.dumps([{"name": "backend"}])
 
 

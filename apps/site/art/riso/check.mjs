@@ -9,7 +9,7 @@
  *   - a work has no PRINT.md, or art/riso/LICENSE-NOTICE.md is missing
  *   - a work's JOBS table does not evaluate (bad format, plate, alt text ...)
  *   - a site or app job's file is not exported (public/art/<file> missing in
- *     frontends/web or frontends/ui)
+ *     apps/site or frontends/ui)
  *   - a manifest (src/data/art.json for the site, ../ui/src/lib/art/art.json
  *     for the app) differs from what the JOBS tables and the files on disk give
  *     (stale alt text, a re-export whose ?v= hash was not written, a hand
@@ -79,7 +79,7 @@ async function onPageParity(paperFile, pageFile, paper) {
 }
 
 // ── each destination: its manifest, its files, its orphans, its references ──
-// site is frontends/web, app is frontends/ui (kit.mjs DESTS). Both are held to
+// site is apps/site, app is frontends/ui (kit.mjs DESTS). Both are held to
 // the same JOBS tables, so every riso file has one source: a work under art/riso/.
 const workNames = works.map((w) => w.name).join('|');
 const idRe = new RegExp(`['"\`]((?:${workNames || '\\u0000'})/[a-z0-9-]+/[a-z0-9-]+)['"\`]`, 'g');

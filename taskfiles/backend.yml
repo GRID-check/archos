@@ -1,7 +1,7 @@
 # Backend tier (src/, sources/, frontends/aiq_api), evals, Langfuse/prompts.
 #
 # Included by the root Taskfile.yml with `flatten: true`: task names stay literal
-# (`be:test`). Shared vars (UI, WEB, PY, ...) and env live in the root file.
+# (`be:test`). Shared vars (UI, SITE, PY, ...) and env live in the root file.
 
 version: '3'
 

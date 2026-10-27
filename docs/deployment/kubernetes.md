@@ -1661,7 +1661,7 @@ emitted somewhere it can read; see §10.
   through the BFF, and nobody has measured what a compressor does to that
   stream. The S3 route serves presigned PDFs and images, which do not shrink.
 - **Static caching is the web image's job, not Envoy's.** The container runs
-  `frontends/web/runtime/server.mjs`, which sets `Cache-Control` on files that
+  `apps/site/runtime/server.mjs`, which sets `Cache-Control` on files that
   exist: `/_astro/*` `public, max-age=31536000, immutable`, `/fonts/*` and
   `/art/*` `public, max-age=604800, stale-while-revalidate=86400`, HTML left at
   `public, max-age=0` with an ETag so every view revalidates. An HTTPRoute

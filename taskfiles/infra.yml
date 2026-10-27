@@ -1,7 +1,7 @@
 # Infra tier (deploy/pulumi).
 #
 # Included by the root Taskfile.yml with `flatten: true`: task names stay literal
-# (`infra:types`). Shared vars (UI, WEB, PY, ...) and env live in the root file.
+# (`infra:types`). Shared vars (UI, SITE, PY, ...) and env live in the root file.
 
 version: '3'
 

@@ -106,18 +106,20 @@ frontend:
   - 'ci/german_stems.json'
   - 'ci/browser_work_loops.json'
   - '.github/actions/build-image/**'
-web:
-  - 'frontends/web/**'
-  # The brand master and the app's copy: web's `npm run check` holds both
-  # apps' copies to the master (scripts/build-brand-assets.mjs --check).
-  - 'shared/brand/**'
+  # The brand script writes the app's icons (packages/brand/build-brand-assets.mjs).
+  - 'packages/brand/**'
+site:
+  - 'apps/site/**'
+  # The brand master and the app's copy: the site's `npm run check` holds
+  # both apps' copies to the master (packages/brand/build-brand-assets.mjs --check).
+  - 'packages/brand/**'
   - 'frontends/ui/src/app/icon.svg'
-  # The app's riso art: exported from frontends/web/art/riso and held to its
-  # JOBS tables by web's `npm run check` (art/riso/check.mjs).
+  # The app's riso art: exported from apps/site/art/riso and held to its
+  # JOBS tables by the site's `npm run check` (art/riso/check.mjs).
   - 'frontends/ui/public/art/**'
   - 'frontends/ui/src/lib/art/**'
   - 'Taskfile.yml'
-  - 'taskfiles/web.yml'
+  - 'taskfiles/site.yml'
   - '.github/workflows/ci.yml'
   - '.github/filters.yml'
   - '.github/actions/setup-bun/**'
@@ -139,7 +141,11 @@ infra:
 # pay for a Next.js build. The `packages` job is ~4 minutes, essentially all of
 # it packages/ifc-spatial-py, which is why it is filtered at all.
 packages:
-  - 'packages/**'
+  # The IFC packages only: packages/brand has no suite of its own and is
+  # checked by the site and frontend tiers (ADR-0145).
+  - 'packages/ifc-spatial*/**'
+  # The guide for both, beside them.
+  - 'packages/*.md'
   - 'Taskfile.yml'
   - 'taskfiles/packages.yml'
   - '.github/workflows/ci.yml'
@@ -160,6 +166,7 @@ migrations:
 sast:
   - 'src/**'
   - 'frontends/**'
+  - 'apps/**'
   - 'sources/**'
   - 'packages/**'
   - 'deploy/**'

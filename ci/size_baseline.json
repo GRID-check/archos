@@ -173,7 +173,7 @@
     "frontends/ui/src/shared/components/MarkdownRenderer/MarkdownRenderer.tsx": 1195,
     "frontends/ui/src/shared/components/MarkdownRenderer/answer-atoms.tsx": 925,
     "frontends/ui/src/shared/components/MarkdownRenderer/directive-shape.ts": 765,
-    "frontends/web/src/scripts/landing.ts": 928,
+    "apps/site/src/scripts/landing.ts": 928,
     "packages/ifc-spatial-py/src/ifc_spatial/accessibility.py": 2059,
     "packages/ifc-spatial-py/src/ifc_spatial/briefing.py": 1902,
     "packages/ifc-spatial-py/src/ifc_spatial/circulation.py": 949,

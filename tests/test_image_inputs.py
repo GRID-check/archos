@@ -112,8 +112,8 @@ def repo(mod, tmp_path, monkeypatch):
             "pyproject.toml": "[project]\n",
             "frontends/ui/deploy/Dockerfile": "FROM node\nCOPY . .\n",
             "frontends/ui/page.tsx": "export {}\n",
-            "frontends/web/Dockerfile": "FROM node\nCOPY . .\n",
-            "frontends/web/index.astro": "<p/>\n",
+            "apps/site/Dockerfile": "FROM node\nCOPY . .\n",
+            "apps/site/index.astro": "<p/>\n",
             "docs/readme.md": "hi\n",
         },
     )

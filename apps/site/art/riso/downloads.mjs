@@ -8,7 +8,7 @@
  *        to the gitignored art/riso/out/<work>/, so a deploy never has them;
  *        this copies them in.
  *   app  the product app's vignettes. They live in frontends/ui/public/art/,
- *        which the site's image (built from frontends/web alone) cannot reach.
+ *        which the site's image (built from apps/site alone) cannot reach.
  *
  *   node art/riso/downloads.mjs              # publish what exists, rewrite src/data/downloads.json
  *   node art/riso/downloads.mjs --manifest   # only rewrite the manifest
