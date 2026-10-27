@@ -15,11 +15,11 @@ top-level names describe the NVIDIA AI-Q blueprint the repo was forked from,
 not what is in it:
 
 - **`frontends/` holds Python.** Next to the UI (`frontends/ui`) and the landing
-  site (`frontends/web`) sit the backend host (`frontends/aiq_api`), a debug
-  console (`frontends/debug`), the blueprint's command-line client
-  (`frontends/cli`) and the eval harnesses (`frontends/benchmarks`). In AI-Q a
-  "frontend" was anything that drove the agent. Here, four of the six are not
-  frontends.
+  site (`frontends/web`) sit the backend host (`frontends/aiq_api`) and the eval
+  harnesses (`frontends/benchmarks`). In AI-Q a "frontend" was anything that
+  drove the agent. Here, two of the four are not frontends. (#1246 already
+  deleted the blueprint's debug console, command-line client and three
+  inherited benchmarks.)
 - **`sources/` mixes a library and adapters.** `knowledge_layer` is the
   ingestion and retrieval library the agent is built on; `ris_adapter` and
   `tavily_web_search` are thin NAT plugins in front of outside services. The
@@ -62,7 +62,6 @@ were open on 2026-10-27. Measured on `develop` at 39f8628 with
 | `frontends/web` | 122 | 77 |
 | `tests/knowledge_layer_tests` | 78 | 43 |
 | `plans/` | 21 | 16 |
-| `frontends/cli`, `frontends/debug` | 11, 9 | 7, 7 |
 
 `tests/.test_durations` is excluded because it is generated
 (`task be:test:durations`), not edited. It alone carries 1,418 references to
@@ -97,10 +96,9 @@ would touch every one of them for no gain.
 1. Do nothing; keep explaining the names in `where-is-what.md`.
 2. The tree as first sketched: `tools/evals` and `tools/scripts`,
    `packages/adapters/{ris,web-search}`, the BFF in `server/`.
-3. The same tree with five changes: `evals/` at the top and `scripts/` left
+3. The same tree with four changes: `evals/` at the top and `scripts/` left
    where it is; adapters flat under `packages/`, named after their
-   distribution; the BFF in `bff/`; the brand in `packages/brand`; the
-   inherited AI-Q leftovers removed rather than moved.
+   distribution; the BFF in `bff/`; the brand in `packages/brand`.
 4. One big-bang PR that does every move and the rename at once.
 
 ## Decision Outcome
@@ -123,8 +121,8 @@ apps/                     things that run: each is an image, with its Dockerfile
     tests/                specs and harness, with test-utils/, mocks/ and the vitest config
     public/  scripts/  eslint-rules/  patches/  Dockerfile  server.js  proxy.ts  instrumentation.ts
   site/                   the landing site (was frontends/web)
-  backend/                the Python host for the ADR-0082 roles (was frontends/aiq_api, frontends/debug,
-                          and deploy/Dockerfile with its entrypoint.py and start_web.py)
+  backend/                the Python host for the ADR-0082 roles (was frontends/aiq_api, and
+                          deploy/Dockerfile with its entrypoint.py and start_web.py)
 packages/                 libraries: a directory that holds a distribution is named after it
   piloti-agent/           the agent (was src/aiq_agent + tests/aiq_agent)
   knowledge-layer/        ingestion and retrieval (was sources/knowledge_layer + tests/knowledge_layer_tests)
@@ -178,7 +176,7 @@ Every category found on 39f8628, what replaces it, and the row that does it:
 
 | Category | Today | Target | Row |
 |---|---|---|---|
-| Python imports and distributions | `aiq_agent`/`aiq-agent`, `aiq_api`/`aiq-api`, `aiq_debug`/`aiq-debug` | `piloti_agent`/`piloti-agent`, `piloti_backend`/`piloti-backend`, `piloti_backend.debug` | 10a |
+| Python imports and distributions | `aiq_agent`/`aiq-agent`, `aiq_api`/`aiq-api` | `piloti_agent`/`piloti-agent`, `piloti_backend`/`piloti-backend` | 10a |
 | Python symbols | `AIQAPIConfig`, `AIQAPIWorker`, `register_aiq_api`, … | `Backend…`, `register_backend` | 10a |
 | Entry points | group `aiq_api.validators`; NAT plugins `aiq_*` | `piloti_backend.validators`; `piloti_*`. No `NAT_PLUGIN_*` list exists in `deploy/` or `configs/`; re-check before renaming | 10a |
 | Environment variables | 87 `AIQ_*` | `GRID_*`, the house prefix (192 variables). Read both for one release, warn on the old one, then drop it | 10b |
@@ -224,10 +222,7 @@ because sorting them inside the rename would turn the rename into a refactor.
 `evals/` holds the two harnesses that measure Piloti, with their tests inside
 each one. Rule 3 renames their distributions `oib-retrieval-eval` and
 `oib-compliance-eval` to `oib-retrieval` and `oib-compliance`, with the imports
-to match, in row 2's second commit. The three inherited AI-Q benchmarks
-(`deepresearch_bench`, `deepsearch_qa`, `freshqa`) are removed in the same PR:
-no task, CI job or test runs them, and two are uv workspace members only. If
-someone owns one by then, it moves to `evals/` instead. The eval runners now in
+to match, in row 2's second commit. The eval runners now in
 `scripts/` (`decision_eval*.py`, `loop_eval.py`, `intake_eval/`,
 `root_sort_eval.py`, `turn_census/`) follow into `evals/` in a PR of their own.
 
@@ -256,13 +251,13 @@ open PRs touching that tree have drained or been rebased by their authors.
 | # | Move | Lines | Waits on |
 |---|---|---|---|
 | 0 | Gates: the filter-coverage test (every tracked path matched by a `.github/filters.yml` filter; in flight, and written here if that PR has not merged), and `tests/test_repo_layout.py` (below) | — | — |
-| 1 | `plans/` → `docs/superpowers/plans/`. Remove `frontends/cli` with what launches it: `scripts/start_cli.sh`, its lines in `scripts/setup.sh`, `scripts/README.md`, `README.md`, the `COPY` in `deploy/Dockerfile`, and the pyproject member and source | ~40 | — |
-| 2 | `frontends/benchmarks` + `tests/benchmarks` → `evals/`; distribution names per rule 3; remove the three AI-Q benchmarks | 140 | — |
+| 1 | `plans/` → `docs/superpowers/plans/` | 21 | — |
+| 2 | `frontends/benchmarks` + `tests/benchmarks` → `evals/`; distribution names per rule 3 | 140 | — |
 | 3 | `frontends/web` → `apps/site`; `shared/brand` and the brand script → `packages/brand`; task namespace `web:` → `site:` | ~140 | open site PRs |
 | 4 | `shared/cards`, `shared/wire` → `contracts/` | 211 | open card and wire PRs |
 | 5 | Import hygiene: `sources.<pkg>.src.X` → the installed name (338 lines), and the 69 dotted `tests.aiq_agent.…` imports → an importable helpers module. This ends the double identity and makes rows 6 and 7 pure renames | ~410 | open retrieval and agent-test PRs |
 | 6 | `sources/*` + `tests/knowledge_layer_tests` → `packages/<distribution>` | ~470 | row 5 |
-| 7 | `frontends/aiq_api`, `frontends/debug`, `deploy/Dockerfile` with `entrypoint.py` and `start_web.py` → `apps/backend`. Paths only: `aiq-debug`'s package sits in `apps/backend/src/` beside `aiq_api`, under the backend's pyproject | ~230 | open backend-route PRs |
+| 7 | `frontends/aiq_api`, `deploy/Dockerfile` with `entrypoint.py` and `start_web.py` → `apps/backend`. Paths only | ~220 | open backend-route PRs |
 | 8 | `src/aiq_agent` + `tests/aiq_agent` → `packages/piloti-agent`: the `git mv`, then the pyproject split as its own commit. The distribution stays `aiq-agent` until 10a; the layout test allowlists that | ~1,020 | row 5; open agent PRs |
 | 9 | `frontends/ui` → `apps/workspace`, with `app/ ui/ bff/` inside, in two commits; task namespace `fe:` → `workspace:` and CI tier `frontend` → `workspace` | 1,464 | the in-flight UI queue |
 | 10a | Python rename: imports, distributions, symbols, entry points | ~10,800 | an empty Python PR queue |
@@ -343,8 +338,10 @@ through the list and says in its description which lines did not apply:
 - Repo config: `.pre-commit-config.yaml`, `.gitignore`, `.gitleaks.toml`,
   `.semgrepignore`, `.devcontainer/devcontainer.json`, `apm.yml`.
 - Path-keyed ratchet baselines: `ci/english_names_baseline_py.json`,
-  `ci/german_stems.json`, `frontends/ui/english-names-baseline.json`. Rewrite
-  the keys; the counts must not change.
+  `ci/german_stems.json`, `frontends/ui/english-names-baseline.json`, and
+  `ci/size_baseline.json` (`python scripts/check_file_size.py --rebaseline`).
+  Rewrite the keys and review the baseline diff: only keys change, never a
+  count.
 - `tests/.test_durations`: rewrite the keys or regenerate with
   `task be:test:durations`, or the shards unbalance.
 - Every `AGENTS.md` and `CLAUDE.md` pair moves with its directory;
