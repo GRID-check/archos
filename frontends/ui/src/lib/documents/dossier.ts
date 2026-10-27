@@ -79,7 +79,7 @@ export const DOCUMENT_REFERENCE_KINDS = ['norm', 'law', 'plan', 'document'] as c
 export type DocumentReferenceKind = (typeof DOCUMENT_REFERENCE_KINDS)[number]
 
 /** Why pages went unread (`coverage.reasons` keys). */
-export const COVERAGE_REASONS = ['render_cap', 'vision_failed', 'transcription_failed', 'transcription_cap'] as const
+export const COVERAGE_REASONS = ['render_cap', 'vision_failed', 'transcription_failed', 'transcription_cap', 'no_vision'] as const
 export type CoverageReason = (typeof COVERAGE_REASONS)[number]
 
 /** The contract's bounds; anything longer is cut, never trusted. */
