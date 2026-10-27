@@ -2358,6 +2358,37 @@ export async function redispatchStuckDocument(
   return status === 'failed' ? 'failed' : 'requeued'
 }
 
+/** How the transient-retry sweep's retry of one failed document came out. */
+export type TransientRetryOutcome = 'requeued' | 'failed' | 'gone'
+
+/**
+ * Send a document whose read failed for a passing reason (`transient`) back through ingestion.
+ *
+ * The sweep's door (`./transient-retry`), and the system's own act like {@link redispatchStuckDocument}:
+ * no person is asking, so no session; what the row says is all this believes, and it is read again
+ * here because the sweep's list may be stale. At `bulk` priority, so a retry yields to people's uploads.
+ */
+export async function retryTransientFailure(
+  organizationId: string,
+  documentId: string
+): Promise<TransientRetryOutcome> {
+  const doc = await findDocumentInOrg(documentId, organizationId, internalRead('ingest'))
+  if (!doc || doc.status !== 'failed' || doc.ingestFailureCategory !== 'transient') return 'gone'
+  if (!doc.storageKey || doc.authoredBy !== 'user' || !collectionFileRef(doc)) return 'gone'
+  const { status } = await dispatchDocument({
+    organizationId,
+    projectId: doc.projectId,
+    documentId: doc.id,
+    filename: doc.filename,
+    storageKey: doc.storageKey,
+    storageBucket: doc.storageBucket,
+    collectionName: doc.collectionName,
+    folderPath: await resolveDocumentFolderPath(doc, organizationId),
+    priority: 'bulk',
+  })
+  return status === 'failed' ? 'failed' : 'requeued'
+}
+
 /**
  * Replace a document's controlled tags. Requires `project:edit`. The document
  * row maps to the backend's `(collectionName, filename)` summary key; the edit
