@@ -33,6 +33,36 @@ const de = {
       ],
     },
     {
+      id: 'zweck',
+      heading: 'Wofür die Adresse da ist',
+      paragraphs: [
+        'Setzen Sie die Adresse des Projekts in Cc, wenn Sie an Behörde, Statik oder Bauherrschaft schreiben: die Antworten landen im E-Mail-Eingang des Projekts. Unterlagen aus Ihrem Mailprogramm können Sie an sie weiterleiten. Abgelegt wird nichts, bevor jemand es bestätigt.',
+        'Sie finden die Adresse auf der Projektübersicht, unter „Adresse“ im E-Mail-Eingang, unter „Per E-Mail senden …“ beim Hochladen und in den Projekteinstellungen unter Dokumente.',
+      ],
+    },
+    {
+      id: 'bereit',
+      heading: 'Bereit und Braucht Sie',
+      paragraphs: [
+        'Im E-Mail-Eingang stehen die wartenden E-Mails unter zwei Überschriften. „Bereit“ heißt: die Domain des Absenders ist bestätigt, für jeden Teil ist ein Ziel vorgeschlagen, und nichts ist zu prüfen. Ein Klick auf „Wie vorgeschlagen ablegen“ legt eine solche E-Mail ab; „Alle … ablegen“ legt mehrere ab und fragt vorher nach.',
+        'Unter „Braucht Sie“ steht bei jeder E-Mail, was noch fehlt: „Absender prüfen“, „Anhang prüfen“, „Anhang wird noch geprüft …“, „E-Mail-Verlauf wählen“, „Ordner wählen“ oder „Projekt ist abgeschlossen“.',
+      ],
+    },
+    {
+      id: 'nach-dem-ablegen',
+      heading: 'Nach dem Ablegen',
+      paragraphs: [
+        'Bei jedem abgelegten Teil steht, wo er liegt und welche Fassung er geworden ist, etwa „Abgelegt in Behörde · Fassung 1“ oder „In E-Mail-Verlauf „Stellplatznachweis“ abgelegt · Fassung 4“. „Öffnen“ führt hin. Rückgängig machen lässt sich eine Ablage nicht.',
+      ],
+    },
+    {
+      id: 'folgen',
+      heading: 'Einem E-Mail-Verlauf folgen',
+      paragraphs: [
+        'Wer einem E-Mail-Verlauf folgt, lässt den Text späterer Antworten von bestätigten Absendern ohne eigenen Klick anfügen; Anhänge warten weiter auf eine Person. Das Folgen endet nach höchstens 180 Tagen, wenn die Adresse des Projekts ersetzt wird, wenn eine E-Mail aus dem Verlauf herausgelöst wird, und wenn das Projekt abgeschlossen wird. Wird es wieder geöffnet, folgt niemand von selbst wieder.',
+      ],
+    },
+    {
       id: 'sicherheit',
       heading: 'Prüfungen vor der Ablage',
       paragraphs: [
@@ -52,7 +82,7 @@ const de = {
       heading: 'Domain bestätigt: E-Mails signieren (DKIM)',
       paragraphs: [
         'Piloti erkennt eine Domain als bestätigt, wenn sie die E-Mail mit DKIM signiert hat und die Signatur zur Absenderadresse passt. E-Mails Ihrer Kolleginnen und Kollegen, die Ihre Domain nicht signiert, brauchen vor dem Ablegen eine eigene Bestätigung, und Piloti schlägt für sie keinen E-Mail-Verlauf vor.',
-        'Ob Ihre Domain signiert, sagt Ihnen, wer Ihre E-Mail betreut: Microsoft 365, Google Workspace und die meisten Anbieter bieten DKIM an und brauchen dafür einen Eintrag im DNS Ihrer Domain. Der Dialog „Per E-Mail senden“ in Piloti zeigt, wie viele E-Mails Ihres Büros der letzten 30 Tage bestätigt waren.',
+        'Ob Ihre Domain signiert, sagt Ihnen, wer Ihre E-Mail betreut: Microsoft 365, Google Workspace und die meisten Anbieter bieten DKIM an und brauchen dafür einen Eintrag im DNS Ihrer Domain. Wer das Projekt verwaltet, sieht in den Projekteinstellungen unter Dokumente, wie viele E-Mails Ihres Büros der letzten 30 Tage bestätigt waren.',
       ],
     },
     {
@@ -82,6 +112,36 @@ const en: typeof de = {
       ],
     },
     {
+      id: 'zweck',
+      heading: 'What the address is for',
+      paragraphs: [
+        'Put the project’s address in Cc when you write to the authority, the structural engineer or the client: the replies land in the project’s mail. You can forward documents from your mail program to it. Nothing is filed before someone confirms it.',
+        'You find the address on the project overview, under “Address” in the project’s mail, under “Send by mail …” when uploading, and in the project settings under Documents.',
+      ],
+    },
+    {
+      id: 'bereit',
+      heading: 'Ready and Needs you',
+      paragraphs: [
+        'The waiting mails stand under two headings. “Ready” means the sender’s domain is verified, every part has a suggested place, and nothing needs checking. “File as suggested” files such a mail in one press; “File all …” files several and asks first.',
+        'Under “Needs you” each mail says what it still needs: checking the sender or an attachment, an attachment still being scanned, choosing a mail thread or a folder, or a closed project.',
+      ],
+    },
+    {
+      id: 'nach-dem-ablegen',
+      heading: 'After filing',
+      paragraphs: [
+        'Each filed part says where it went and which Fassung (version) it became, and “Open” takes you there. A filing cannot be undone.',
+      ],
+    },
+    {
+      id: 'folgen',
+      heading: 'Following a mail thread',
+      paragraphs: [
+        'Whoever follows a mail thread lets the text of later replies from verified senders be added without a press of their own; attachments still wait for a person. Following ends after at most 180 days, when the project’s address is replaced, when a mail is detached from the thread, and when the project is closed. Reopening the project starts no follow again.',
+      ],
+    },
+    {
       id: 'sicherheit',
       heading: 'Checks before filing',
       paragraphs: [
@@ -101,7 +161,7 @@ const en: typeof de = {
       heading: 'Domain verified: signing your mail (DKIM)',
       paragraphs: [
         'Piloti treats a domain as verified when it signed the mail with DKIM and the signature matches the sender’s address. Mail from your colleagues that your domain does not sign needs its own confirmation before filing, and Piloti suggests no mail thread for it.',
-        'Whoever runs your e-mail can tell you whether your domain signs: Microsoft 365, Google Workspace and most providers offer DKIM and need an entry in your domain’s DNS for it. The “Send by mail” dialog in Piloti shows how much of your office’s mail of the last 30 days was verified.',
+        'Whoever runs your e-mail can tell you whether your domain signs: Microsoft 365, Google Workspace and most providers offer DKIM and need an entry in your domain’s DNS for it. Whoever manages the project sees in the project settings under Documents how much of your office’s mail of the last 30 days was verified.',
       ],
     },
     {

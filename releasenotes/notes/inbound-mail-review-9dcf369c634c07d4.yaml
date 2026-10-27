@@ -30,6 +30,23 @@ features:
     filed into the wrong conversation. A file that came by mail shows which
     mail brought it, and each Fassung names its mail.
   - >
+    In the E-Mail-Eingang the waiting mails stand under „Bereit“ and „Braucht
+    Sie“. A complete mail is filed with one press on „Wie vorgeschlagen
+    ablegen“; every other mail says what it still needs.
+  - >
+    An opened mail starts with its text: sender, confirmed domain and arrival
+    stand in one line, and the recipients, the original and the expiry date
+    under „Details“.
+  - >
+    After filing, each part says which folder it went to and which Fassung it
+    became.
+  - >
+    The project's email address is on the project overview and says what it
+    is for: put it in Cc when you write to the Behörde, the Statik or the
+    Bauherrschaft.
+  - >
+    Closing a project ends every follow of its E-Mail-Verläufe.
+  - >
     The Postfach tells you when mail waits, when it is about to expire, when
     your own mail was filed, when filing failed and when a followed Verlauf
     grew, without showing a sender, subject or file name.

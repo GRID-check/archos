@@ -1260,7 +1260,7 @@ other. Index `(project_id, message_id)`. DELETE is not revoked here.
 | `renewed_at` | `timestamptz` | not before `created_at` | |
 | `daily_cap` | `smallint` | 1..50, default 20 | |
 | `expiring_notified_at` | `timestamptz` | | Day 55, once |
-| `ended_at`, `ended_by`, `ended_reason` | | reason exactly with `ended_at`; `unfollowed`/`expired`/`access_lost`/`address_rotated`/`detached`/`document_gone`/`revoked_by_manager`; `unfollowed` only by the follower, `revoked_by_manager` only by someone else (`…_person_reason_attributed`) | `ended_by` NULL when the system noticed |
+| `ended_at`, `ended_by`, `ended_reason` | | reason exactly with `ended_at`; `unfollowed`/`expired`/`access_lost`/`address_rotated`/`detached`/`document_gone`/`revoked_by_manager`/`project_closed` (`mail_thread_follows_ended_reason_known`, the vocabulary `MAIL_THREAD_FOLLOW_END_REASONS`); `unfollowed` only by the follower, `revoked_by_manager` only by someone else (`…_person_reason_attributed`) | `ended_by` NULL when the system noticed; for `project_closed` the person who closed the project, or NULL when sweep 12 ended it |
 
 Unique `(id, thread_id, user_id, organization_id)` (what a follow decision's
 key points at); one running follow per person and thread

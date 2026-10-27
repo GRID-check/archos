@@ -18,9 +18,16 @@ Dateien, your office does not have it yet.
 ## The project's address
 
 The address looks like `bauplatz-12.k3x7q2m9p4ab@piloti.at`: the project's
-name and a random part. Find it in Dateien under the upload menu, **Per E-Mail
-senden …**, with **Kopieren** and **Als Kontakt sichern** (a contact card for
-your mail program).
+name and a random part. **What it is for:** put it in Cc when you write to the
+Behörde, the Statik or the Bauherrschaft, and their replies land in the
+E-Mail-Eingang; forward documents from your mail program to it. Nothing is
+filed before someone confirms it.
+
+Find it on the project overview (the tile „E-Mail-Adresse des Projekts“, for
+whoever may decide the project's mail), under **Adresse** in the
+E-Mail-Eingang, in Dateien under the upload menu (**Per E-Mail senden …**) and
+under **Einstellungen › Dokumente**, each with **Kopieren** and **Als Kontakt
+sichern** (a contact card for your mail program).
 
 - Whoever manages the project creates the address, in the dialog or under
   **Einstellungen › Dokumente**. Until then the dialog says the project has
@@ -76,9 +83,30 @@ The mail's text is shown as plain text: links are not opened, and nothing from
 outside is loaded. Long text folds; „Zitierten Text anzeigen“ shows what the
 sender quoted.
 
+## Bereit and Braucht Sie
+
+The waiting mails stand under two headings. **Bereit** means the sender's
+domain is confirmed, every part has a suggested place, and nothing needs
+checking. „Wie vorgeschlagen ablegen“ on such a row files it in one press,
+without a confirmation; the mail is read again first, and if it changed
+meanwhile („Anhang wird noch geprüft …“) nothing is filed and you are told
+why. With two or more ready mails, „Alle {n} wie vorgeschlagen ablegen“ files
+them after a confirmation grouped by destination (at most 20 at a time).
+
+Under **Braucht Sie** each mail says what it needs: „Absender prüfen“, „Anhang
+prüfen“, „Anhang wird noch geprüft …“, „E-Mail-Verlauf wählen“, „Ordner
+wählen“ or „Projekt ist abgeschlossen“. A mail that poses as someone never gets
+the button. Mail from an unconfirmed domain and automatic mail sit below, in a
+folded group. „Bearbeitet“ lists what was filed, dismissed or expired, each row
+saying which. The Postfach's „E-Mails warten“ opens the list at „Bereit“.
+
 ## Filing a mail
 
-Open a mail and decide each part:
+Open a mail: it starts with the text. Under the subject one line names the
+sender („{Name} ‹{Adresse}›“), whether the domain is confirmed, and when it
+arrived; „Details“ shows the recipients, the dates, how long it still waits,
+and the original. In its last week the expiry date moves up into that line.
+Decide each part:
 
 - **The mail's text** („E-Mail-Text“) goes into an E-Mail-Verlauf: „In
   E-Mail-Verlauf „Stellplatznachweis“ ablegen (wird Fassung 4)“ when the mail
@@ -108,8 +136,8 @@ are filed one at a time, never in a group.
 **When the content check finds something in the text** (an IBAN, a social
 security number, one of your office's terms), you choose how the text is filed:
 „Unkenntlich ablegen“ (the default: the findings are masked in the
-E-Mail-Verlauf, the original stays unchanged), „Als eigenen E-Mail-Verlauf
-ablegen“, or „Ungekürzt in den E-Mail-Verlauf“, which holds the whole Verlauf
+E-Mail-Verlauf, the original stays unchanged), „Getrennt ablegen (eigener
+E-Mail-Verlauf)“, or „Ungekürzt in den E-Mail-Verlauf“, which holds the whole Verlauf
 until someone checks it.
 
 **When the name check stops a file name**, the attachment is unchecked with
@@ -120,8 +148,15 @@ override is recorded.
 ablegen“: it files every selected mail as its defaults and Piloti's suggestions
 say, after a confirmation grouped by destination. It is offered only when every
 selected mail is complete: nothing to confirm, a folder for every attachment.
-Mails of one conversation are grouped: „4 E-Mails in E-Mail-Verlauf „…“
-ablegen (wird Fassung 4–7)“.
+Ready replies of one conversation are one group under „Bereit“: „Alle 4
+ablegen (wird Fassung 4–7)“. Its replies that need a look are a group under
+„Braucht Sie“ with „Der Reihe nach ansehen“.
+
+**After filing** each part says where it went and which Fassung it became:
+„Abgelegt in Behörde/Bescheide · Fassung 1 · Öffnen“, „In E-Mail-Verlauf
+„Stellplatznachweis“ abgelegt · Fassung 4 · Öffnen“. Where you may not read
+the folder it says only „In Dateien abgelegt“. A toast lists every part. A
+filing has no undo; „Öffnen“ takes you to the document.
 
 ## Dismissing, expiring, restoring
 
@@ -211,7 +246,9 @@ nothing the name or content check would stop. Everything else waits as usual.
   follow („Beenden“ under „Wer folgt“).
 - It also ends when you lose access to the project or the Verlauf's folder,
   when the project's address is replaced, when an e-mail is herausgelöst from
-  that Verlauf, or when the Verlauf is deleted.
+  that Verlauf, when the Verlauf is deleted, or when the project is closed
+  („Das Projekt wurde abgeschlossen“). Reopening the project starts no follow
+  again: following is your own act.
 - The Postfach tells you, once a day per Verlauf, when replies were added („Eine Antwort wurde einem E-Mail-Verlauf in … angefügt“).
 
 ## Tips

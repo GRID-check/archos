@@ -139,6 +139,17 @@ mail, so a bulk action never carries one. The decision rows are appended in one
 transaction with a compare-and-set claim of each part; the filing job reads
 what to do from those rows and nowhere else.
 
+**„Bereit“ is the list's surface of `incompleteReason`** (RT-X10). The waiting
+list shows the mails whose `incompleteReason` is null and that do not read as
+an impersonation under „Bereit“, the rest under „Braucht Sie“, each saying what
+it needs. A ready row's one-press „Wie vorgeschlagen ablegen“ sends the same
+request, under the same rule, as the bulk action: no acknowledgement, at most
+20 mails. The Postfach's „E-Mails warten“ row links to „Bereit“ rather than
+carrying the action: it is one row per project and carries no mail's state, so
+it cannot honestly say which mail one press would file. Each part view carries
+`filedAs` (name, folder, Fassung) once filed, resolved per viewer like
+`documentId`, so the person sees where every part went.
+
 **Filing is the ordinary upload, as the person.** The filing job
 (`inbound_mail_file`) runs in the decider's own session and files through the
 upload path: Namensprüfung, Inhaltsprüfung, the office's accepted file types,
@@ -318,8 +329,15 @@ an append is made once, as the earliest running follower.
 A follow ends by the person (`unfollowed`), by a manager
 (`revoked_by_manager`), by expiry (`expired`, sweep 12), when the follower's
 access is gone (`access_lost`), when the project's address is rotated or
-switched off (`address_rotated`), on a detach in that Verlauf (`detached`), and
-when the document is gone (`document_gone`). Every start, renewal and end is
+switched off (`address_rotated`), on a detach in that Verlauf (`detached`),
+when the document is gone (`document_gone`), and when the project is closed
+(`project_closed`, the coordinator's product decision of 2026-10-27: a standing
+decision to file replies ends with the work). Closing ends every running follow
+of the project as the person who closed it; sweep 12 is the backstop and ends,
+as the system, a follow it finds running in a closed project. Reopening starts
+no follow again. Whether a follow should instead end after 60 quiet days rather
+than run to 180 days with renewals is an open question to the owner; the 180
+days stand. Every start, renewal and end is
 audited (`mail_thread.follow_started`, `mail_thread.follow_ended`). Following
 is a `control`-sensitive operation (ADR-0122): Piloti never sees it, an outside
 agent only under the office's opt-in and the step-up scope. Ending is offered
@@ -453,8 +471,9 @@ placement review and no document check.
   trust-shaped defaults, an impersonation stop, ClamAV, byte caps and rate
   limits (ADR-0138), and address rotation.
 * Bad, because review is still work: every attachment of every mail waits for a
-  person, and a busy project's E-Mail-Eingang needs a habit. The Postfach's
-  „Wie vorgeschlagen ablegen“ action is not built yet.
+  person, and a busy project's E-Mail-Eingang needs a habit. A complete mail
+  is one press in the list („Bereit“); the Postfach row and the push carry no
+  filing action yet.
 * Bad, because a project's mail is kept: originals of filed mail live as long as
   their Verlauf, which is a retention decision about third parties' data. The
   Datenschutzberater's sign-off (owner question Q1) is open, and the
