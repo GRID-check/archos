@@ -4120,9 +4120,9 @@
             "required": true,
             "schema": {
               "type": "string",
-              "description": "The document id, from document-list or document-search."
+              "description": "The document id, from document-list or workspace-search."
             },
-            "description": "The document id, from document-list or document-search."
+            "description": "The document id, from document-list or workspace-search."
           }
         ],
         "requestBody": {
@@ -4186,9 +4186,9 @@
             "required": true,
             "schema": {
               "type": "string",
-              "description": "The document id, from document-list or document-search."
+              "description": "The document id, from document-list or workspace-search."
             },
-            "description": "The document id, from document-list or document-search."
+            "description": "The document id, from document-list or workspace-search."
           }
         ],
         "responses": {
@@ -4319,9 +4319,9 @@
             "required": true,
             "schema": {
               "type": "string",
-              "description": "The document id, from document-list or document-search."
+              "description": "The document id, from document-list or workspace-search."
             },
-            "description": "The document id, from document-list or document-search."
+            "description": "The document id, from document-list or workspace-search."
           }
         ],
         "responses": {
@@ -4371,9 +4371,9 @@
             "required": true,
             "schema": {
               "type": "string",
-              "description": "The document id, from document-list or document-search."
+              "description": "The document id, from document-list or workspace-search."
             },
-            "description": "The document id, from document-list or document-search."
+            "description": "The document id, from document-list or workspace-search."
           }
         ],
         "responses": {
@@ -4423,9 +4423,9 @@
             "required": true,
             "schema": {
               "type": "string",
-              "description": "The document id, from document-list or document-search."
+              "description": "The document id, from document-list or workspace-search."
             },
-            "description": "The document id, from document-list or document-search."
+            "description": "The document id, from document-list or workspace-search."
           }
         ],
         "requestBody": {
@@ -4504,9 +4504,9 @@
             "required": true,
             "schema": {
               "type": "string",
-              "description": "The document id, from document-list or document-search."
+              "description": "The document id, from document-list or workspace-search."
             },
-            "description": "The document id, from document-list or document-search."
+            "description": "The document id, from document-list or workspace-search."
           }
         ],
         "responses": {
@@ -4558,9 +4558,9 @@
             "required": true,
             "schema": {
               "type": "string",
-              "description": "The document id, from document-list or document-search."
+              "description": "The document id, from document-list or workspace-search."
             },
-            "description": "The document id, from document-list or document-search."
+            "description": "The document id, from document-list or workspace-search."
           },
           {
             "name": "versionId",
@@ -4652,9 +4652,9 @@
             "required": true,
             "schema": {
               "type": "string",
-              "description": "The document id, from document-list or document-search."
+              "description": "The document id, from document-list or workspace-search."
             },
-            "description": "The document id, from document-list or document-search."
+            "description": "The document id, from document-list or workspace-search."
           }
         ],
         "responses": {
@@ -4871,9 +4871,9 @@
             "required": true,
             "schema": {
               "type": "string",
-              "description": "The document id, from document-list or document-search."
+              "description": "The document id, from document-list or workspace-search."
             },
-            "description": "The document id, from document-list or document-search."
+            "description": "The document id, from document-list or workspace-search."
           }
         ],
         "responses": {
@@ -4925,9 +4925,9 @@
             "required": true,
             "schema": {
               "type": "string",
-              "description": "The document id, from document-list or document-search."
+              "description": "The document id, from document-list or workspace-search."
             },
-            "description": "The document id, from document-list or document-search."
+            "description": "The document id, from document-list or workspace-search."
           }
         ],
         "requestBody": {
@@ -5085,9 +5085,9 @@
             "required": true,
             "schema": {
               "type": "string",
-              "description": "The document id, from document-list or document-search."
+              "description": "The document id, from document-list or workspace-search."
             },
-            "description": "The document id, from document-list or document-search."
+            "description": "The document id, from document-list or workspace-search."
           }
         ],
         "responses": {
@@ -5139,9 +5139,9 @@
             "required": true,
             "schema": {
               "type": "string",
-              "description": "The document id, from document-list or document-search."
+              "description": "The document id, from document-list or workspace-search."
             },
-            "description": "The document id, from document-list or document-search."
+            "description": "The document id, from document-list or workspace-search."
           }
         ],
         "responses": {
@@ -5193,9 +5193,9 @@
             "required": true,
             "schema": {
               "type": "string",
-              "description": "The document id, from document-list or document-search."
+              "description": "The document id, from document-list or workspace-search."
             },
-            "description": "The document id, from document-list or document-search."
+            "description": "The document id, from document-list or workspace-search."
           }
         ],
         "responses": {
@@ -5453,84 +5453,6 @@
         }
       }
     },
-    "/api/documents/search": {
-      "post": {
-        "operationId": "document-search",
-        "summary": "Search a shelf’s documents by meaning",
-        "description": "Semantic search over one shelf, a project’s (`projectId`, from project-list) or the office shelf (`scope: office_shelf`), for a question or phrase `q`. Returns the best matching documents with a snippet, page and score, up to `topK` (1 to 100). Read-only.",
-        "tags": [
-          "documents"
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "scope": {
-                    "type": "string",
-                    "enum": [
-                      "project",
-                      "office_shelf"
-                    ],
-                    "description": "Default `project` (with `projectId`)."
-                  },
-                  "projectId": {
-                    "type": "string",
-                    "minLength": 1
-                  },
-                  "q": {
-                    "type": "string",
-                    "minLength": 1,
-                    "maxLength": 1000
-                  },
-                  "topK": {
-                    "type": "integer"
-                  }
-                },
-                "required": [
-                  "q"
-                ],
-                "additionalProperties": true
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Success. The body is the route’s JSON answer; no response schema is declared for it yet, so read the operation description for what it contains.",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          },
-          "400": {
-            "$ref": "#/components/responses/Error400"
-          },
-          "401": {
-            "$ref": "#/components/responses/Error401"
-          },
-          "403": {
-            "$ref": "#/components/responses/Error403"
-          },
-          "404": {
-            "$ref": "#/components/responses/Error404"
-          },
-          "429": {
-            "$ref": "#/components/responses/Error429"
-          }
-        },
-        "x-mcp-annotations": {
-          "title": "Search a shelf’s documents by meaning",
-          "readOnlyHint": true,
-          "destructiveHint": false,
-          "idempotentHint": true,
-          "openWorldHint": false
-        }
-      }
-    },
     "/api/documents/{id}/status": {
       "get": {
         "operationId": "document-status",
@@ -5546,9 +5468,9 @@
             "required": true,
             "schema": {
               "type": "string",
-              "description": "The document id, from document-list or document-search."
+              "description": "The document id, from document-list or workspace-search."
             },
-            "description": "The document id, from document-list or document-search."
+            "description": "The document id, from document-list or workspace-search."
           }
         ],
         "responses": {
@@ -5687,9 +5609,9 @@
             "required": true,
             "schema": {
               "type": "string",
-              "description": "The document id, from document-list or document-search."
+              "description": "The document id, from document-list or workspace-search."
             },
-            "description": "The document id, from document-list or document-search."
+            "description": "The document id, from document-list or workspace-search."
           }
         ],
         "requestBody": {
@@ -5775,9 +5697,9 @@
             "required": true,
             "schema": {
               "type": "string",
-              "description": "The document id, from document-list or document-search."
+              "description": "The document id, from document-list or workspace-search."
             },
-            "description": "The document id, from document-list or document-search."
+            "description": "The document id, from document-list or workspace-search."
           }
         ],
         "responses": {
@@ -5829,9 +5751,9 @@
             "required": true,
             "schema": {
               "type": "string",
-              "description": "The document id, from document-list or document-search."
+              "description": "The document id, from document-list or workspace-search."
             },
-            "description": "The document id, from document-list or document-search."
+            "description": "The document id, from document-list or workspace-search."
           }
         ],
         "responses": {
@@ -5883,9 +5805,9 @@
             "required": true,
             "schema": {
               "type": "string",
-              "description": "The document id, from document-list or document-search."
+              "description": "The document id, from document-list or workspace-search."
             },
-            "description": "The document id, from document-list or document-search."
+            "description": "The document id, from document-list or workspace-search."
           }
         ],
         "responses": {
@@ -6031,9 +5953,9 @@
             "required": true,
             "schema": {
               "type": "string",
-              "description": "The document id, from document-list or document-search."
+              "description": "The document id, from document-list or workspace-search."
             },
-            "description": "The document id, from document-list or document-search."
+            "description": "The document id, from document-list or workspace-search."
           }
         ],
         "responses": {
@@ -9693,9 +9615,9 @@
             "required": true,
             "schema": {
               "type": "string",
-              "description": "The document id, from a project document listing or document-search."
+              "description": "The document id, from a project document listing or workspace-search."
             },
-            "description": "The document id, from a project document listing or document-search."
+            "description": "The document id, from a project document listing or workspace-search."
           }
         ],
         "requestBody": {
@@ -9873,9 +9795,9 @@
             "required": true,
             "schema": {
               "type": "string",
-              "description": "The document id, from a project document listing or document-search."
+              "description": "The document id, from a project document listing or workspace-search."
             },
-            "description": "The document id, from a project document listing or document-search."
+            "description": "The document id, from a project document listing or workspace-search."
           }
         ],
         "responses": {
@@ -9927,9 +9849,9 @@
             "required": true,
             "schema": {
               "type": "string",
-              "description": "The document id, from a project document listing or document-search."
+              "description": "The document id, from a project document listing or workspace-search."
             },
-            "description": "The document id, from a project document listing or document-search."
+            "description": "The document id, from a project document listing or workspace-search."
           },
           {
             "name": "annotationId",
@@ -9989,9 +9911,9 @@
             "required": true,
             "schema": {
               "type": "string",
-              "description": "The document id, from a project document listing or document-search."
+              "description": "The document id, from a project document listing or workspace-search."
             },
-            "description": "The document id, from a project document listing or document-search."
+            "description": "The document id, from a project document listing or workspace-search."
           },
           {
             "name": "annotationId",
@@ -10051,9 +9973,9 @@
             "required": true,
             "schema": {
               "type": "string",
-              "description": "The document id, from a project document listing or document-search."
+              "description": "The document id, from a project document listing or workspace-search."
             },
-            "description": "The document id, from a project document listing or document-search."
+            "description": "The document id, from a project document listing or workspace-search."
           },
           {
             "name": "annotationId",
@@ -10222,9 +10144,9 @@
             "required": true,
             "schema": {
               "type": "string",
-              "description": "The document id, from a project document listing or document-search."
+              "description": "The document id, from a project document listing or workspace-search."
             },
-            "description": "The document id, from a project document listing or document-search."
+            "description": "The document id, from a project document listing or workspace-search."
           },
           {
             "name": "annotationId",
@@ -10334,9 +10256,9 @@
             "required": true,
             "schema": {
               "type": "string",
-              "description": "The document id, from a project document listing or document-search."
+              "description": "The document id, from a project document listing or workspace-search."
             },
-            "description": "The document id, from a project document listing or document-search."
+            "description": "The document id, from a project document listing or workspace-search."
           },
           {
             "name": "annotationId",
@@ -10406,9 +10328,9 @@
             "required": true,
             "schema": {
               "type": "string",
-              "description": "The document id, from a project document listing or document-search."
+              "description": "The document id, from a project document listing or workspace-search."
             },
-            "description": "The document id, from a project document listing or document-search."
+            "description": "The document id, from a project document listing or workspace-search."
           },
           {
             "name": "annotationId",
@@ -10525,9 +10447,9 @@
             "required": true,
             "schema": {
               "type": "string",
-              "description": "The document id, from a project document listing or document-search."
+              "description": "The document id, from a project document listing or workspace-search."
             },
-            "description": "The document id, from a project document listing or document-search."
+            "description": "The document id, from a project document listing or workspace-search."
           },
           {
             "name": "format",
@@ -10651,9 +10573,9 @@
             "required": true,
             "schema": {
               "type": "string",
-              "description": "The document id, from a project document listing or document-search."
+              "description": "The document id, from a project document listing or workspace-search."
             },
-            "description": "The document id, from a project document listing or document-search."
+            "description": "The document id, from a project document listing or workspace-search."
           }
         ],
         "responses": {
@@ -10706,9 +10628,9 @@
             "required": true,
             "schema": {
               "type": "string",
-              "description": "The document id, from a project document listing or document-search."
+              "description": "The document id, from a project document listing or workspace-search."
             },
-            "description": "The document id, from a project document listing or document-search."
+            "description": "The document id, from a project document listing or workspace-search."
           }
         ],
         "responses": {
@@ -10760,9 +10682,9 @@
             "required": true,
             "schema": {
               "type": "string",
-              "description": "The document id, from a project document listing or document-search."
+              "description": "The document id, from a project document listing or workspace-search."
             },
-            "description": "The document id, from a project document listing or document-search."
+            "description": "The document id, from a project document listing or workspace-search."
           }
         ],
         "responses": {
@@ -10998,9 +10920,9 @@
             "required": true,
             "schema": {
               "type": "string",
-              "description": "The document id, from a project document listing or document-search."
+              "description": "The document id, from a project document listing or workspace-search."
             },
-            "description": "The document id, from a project document listing or document-search."
+            "description": "The document id, from a project document listing or workspace-search."
           }
         ],
         "requestBody": {
@@ -11075,9 +10997,9 @@
             "required": true,
             "schema": {
               "type": "string",
-              "description": "The document id, from a project document listing or document-search."
+              "description": "The document id, from a project document listing or workspace-search."
             },
-            "description": "The document id, from a project document listing or document-search."
+            "description": "The document id, from a project document listing or workspace-search."
           }
         ],
         "requestBody": {
@@ -11153,9 +11075,9 @@
             "required": true,
             "schema": {
               "type": "string",
-              "description": "The document id, from a project document listing or document-search."
+              "description": "The document id, from a project document listing or workspace-search."
             },
-            "description": "The document id, from a project document listing or document-search."
+            "description": "The document id, from a project document listing or workspace-search."
           }
         ],
         "requestBody": {
@@ -11224,9 +11146,9 @@
             "required": true,
             "schema": {
               "type": "string",
-              "description": "The document id, from a project document listing or document-search."
+              "description": "The document id, from a project document listing or workspace-search."
             },
-            "description": "The document id, from a project document listing or document-search."
+            "description": "The document id, from a project document listing or workspace-search."
           },
           {
             "name": "versionId",
@@ -11310,9 +11232,9 @@
             "required": true,
             "schema": {
               "type": "string",
-              "description": "The document id, from a project document listing or document-search."
+              "description": "The document id, from a project document listing or workspace-search."
             },
-            "description": "The document id, from a project document listing or document-search."
+            "description": "The document id, from a project document listing or workspace-search."
           },
           {
             "name": "versionId",
@@ -11372,9 +11294,9 @@
             "required": true,
             "schema": {
               "type": "string",
-              "description": "The document id, from a project document listing or document-search."
+              "description": "The document id, from a project document listing or workspace-search."
             },
-            "description": "The document id, from a project document listing or document-search."
+            "description": "The document id, from a project document listing or workspace-search."
           },
           {
             "name": "versionId",
@@ -11461,9 +11383,9 @@
             "required": true,
             "schema": {
               "type": "string",
-              "description": "The document id, from a project document listing or document-search."
+              "description": "The document id, from a project document listing or workspace-search."
             },
-            "description": "The document id, from a project document listing or document-search."
+            "description": "The document id, from a project document listing or workspace-search."
           },
           {
             "name": "from",
@@ -11535,9 +11457,9 @@
             "required": true,
             "schema": {
               "type": "string",
-              "description": "The document id, from a project document listing or document-search."
+              "description": "The document id, from a project document listing or workspace-search."
             },
-            "description": "The document id, from a project document listing or document-search."
+            "description": "The document id, from a project document listing or workspace-search."
           }
         ],
         "requestBody": {
@@ -11599,9 +11521,9 @@
             "required": true,
             "schema": {
               "type": "string",
-              "description": "The document id, from a project document listing or document-search."
+              "description": "The document id, from a project document listing or workspace-search."
             },
-            "description": "The document id, from a project document listing or document-search."
+            "description": "The document id, from a project document listing or workspace-search."
           }
         ],
         "responses": {
@@ -11653,9 +11575,9 @@
             "required": true,
             "schema": {
               "type": "string",
-              "description": "The document id, from a project document listing or document-search."
+              "description": "The document id, from a project document listing or workspace-search."
             },
-            "description": "The document id, from a project document listing or document-search."
+            "description": "The document id, from a project document listing or workspace-search."
           },
           {
             "name": "versionId",
@@ -11717,9 +11639,9 @@
             "required": true,
             "schema": {
               "type": "string",
-              "description": "The document id, from a project document listing or document-search."
+              "description": "The document id, from a project document listing or workspace-search."
             },
-            "description": "The document id, from a project document listing or document-search."
+            "description": "The document id, from a project document listing or workspace-search."
           },
           {
             "name": "versionId",
@@ -11781,9 +11703,9 @@
             "required": true,
             "schema": {
               "type": "string",
-              "description": "The document id, from a project document listing or document-search."
+              "description": "The document id, from a project document listing or workspace-search."
             },
-            "description": "The document id, from a project document listing or document-search."
+            "description": "The document id, from a project document listing or workspace-search."
           },
           {
             "name": "versionId",
@@ -11873,9 +11795,9 @@
             "required": true,
             "schema": {
               "type": "string",
-              "description": "The document id, from a project document listing or document-search."
+              "description": "The document id, from a project document listing or workspace-search."
             },
-            "description": "The document id, from a project document listing or document-search."
+            "description": "The document id, from a project document listing or workspace-search."
           },
           {
             "name": "versionId",
@@ -11965,9 +11887,9 @@
             "required": true,
             "schema": {
               "type": "string",
-              "description": "The document id, from a project document listing or document-search."
+              "description": "The document id, from a project document listing or workspace-search."
             },
-            "description": "The document id, from a project document listing or document-search."
+            "description": "The document id, from a project document listing or workspace-search."
           }
         ],
         "responses": {
@@ -12019,9 +11941,9 @@
             "required": true,
             "schema": {
               "type": "string",
-              "description": "The document id, from a project document listing or document-search."
+              "description": "The document id, from a project document listing or workspace-search."
             },
-            "description": "The document id, from a project document listing or document-search."
+            "description": "The document id, from a project document listing or workspace-search."
           },
           {
             "name": "versionId",

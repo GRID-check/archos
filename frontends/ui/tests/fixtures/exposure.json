@@ -587,16 +587,6 @@
    "withheld": null,
    "reason": null
   },
-  "document-search": {
-   "kind": "catalog",
-   "domain": "documents",
-   "sensitivity": null,
-   "external": true,
-   "piloti": "native:knowledge_search",
-   "platform": false,
-   "withheld": null,
-   "reason": "a hit of this search is no citable source; Piloti’s own `knowledge_search` returns quotable passages"
-  },
   "document-status": {
    "kind": "catalog",
    "domain": "documents",

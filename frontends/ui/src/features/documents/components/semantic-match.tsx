@@ -4,16 +4,18 @@ import { Quote } from 'lucide-react'
 import { useTranslations } from '@/i18n'
 
 /**
- * Match-evidence block for a semantic-search result card — the transparent
- * "why it matched" cue the product requires: the best backend snippet, the page
- * it came from, and a subtle relevance bar + percent (score, 0..1). Rendered
- * inside both the project and Archiv file cards, so its labels live in the
- * shared `files` namespace. Visually distinct (primary tint) from the plain
- * filename filter so the user always knows they are seeing semantic results.
+ * Match-evidence block for a search result card — the transparent "why it
+ * matched" cue the product requires: the passage that matched and the page it
+ * came from. The search ranks and shows no score (ADR-0133): the order of the
+ * cards is the ranking. A document found by its name or by what it is carries
+ * no passage, and then nothing is drawn. Rendered inside both the project and
+ * Archiv file cards, so its labels live in the shared `files` namespace.
+ * Visually distinct (primary tint) from the plain filename filter so the user
+ * always knows they are seeing search results.
  */
-export function SemanticMatch({ snippet, page, score }: { snippet: string; page: number | null; score: number }) {
+export function SemanticMatch({ snippet, page }: { snippet: string; page: number | null }) {
   const t = useTranslations('files')
-  const percent = Math.max(0, Math.min(100, Math.round(score * 100)))
+  if (snippet === '' && page === null) return null
 
   return (
     <div
@@ -26,25 +28,13 @@ export function SemanticMatch({ snippet, page, score }: { snippet: string; page:
           {snippet}
         </p>
       )}
-      <div className="flex items-center gap-2 text-xs text-muted-foreground">
-        {page !== null && (
-          <span className="shrink-0 font-medium tabular-nums" data-testid="semantic-page">
+      {page !== null && (
+        <div className="text-xs text-muted-foreground">
+          <span className="font-medium tabular-nums" data-testid="semantic-page">
             {t('browser.semantic.page', { page: String(page) })}
           </span>
-        )}
-        <div
-          className="flex min-w-0 flex-1 items-center gap-1.5"
-          title={t('browser.semantic.relevance', { percent: String(percent) })}
-        >
-          <span className="sr-only">{t('browser.semantic.relevance', { percent: String(percent) })}</span>
-          <div className="h-1 min-w-8 flex-1 overflow-hidden rounded-full bg-muted" aria-hidden>
-            <div className="h-full rounded-full bg-primary" style={{ width: `${percent}%` }} />
-          </div>
-          <span className="shrink-0 tabular-nums" aria-hidden>
-            {percent}%
-          </span>
         </div>
-      </div>
+      )}
     </div>
   )
 }
