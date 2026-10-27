@@ -138,29 +138,32 @@ for a grep without a path.
 **Slice 6, the descriptions, the evidence rules, the old names retired** (built). The tool
 texts, the three `<rules>` bullets and the line-by-line fate of each are in
 [`prompt-value-audit-2026-10.md`](prompt-value-audit-2026-10.md#2026-10-27-slice-6-the-evidence-tools-and-their-rules);
-the evidence tool surface went from 5,560 to 2,426 tokens per call (o200k).
+the evidence tool surface went from 5,560 to 3,111 tokens per call (o200k).
 
 | Piece | Where |
 |---|---|
 | The descriptions, bare schema fields, `conclusion` on `grep` and `read_file` | `src/aiq_agent/tools/documents/tools.py` (`_ESTATE_DESCRIPTIONS`), `filesystem.py` |
-| `knowledge_search` (ranked only, `path`) and `list_files` (Fassungen only) on Piloti's chat | `sources/knowledge_layer/src/chat_binding.py`, applied in `agents/piloti/register._chat_bound` |
-| A call to a retired spelling answered with the exact replacement call | `src/aiq_agent/common/retired_calls.py`, composed into `agents/piloti/agent._withheld_calls` |
-| Shared hints name the caller's own tool | `src/aiq_agent/common/tool_vocabulary.py`, set around Piloti's graph run |
+| `knowledge_search` (ranked only, `path`) and `list_files` (no tree view) where the estate is read | `sources/knowledge_layer/src/chat_binding.py`, applied in `agents/piloti/register._chat_bound` only when `filesystem` is set (`estate_paths.reads_the_estate`) |
+| A retired argument is an error that names it and its replacement | the chat schemas forbid unknown arguments; `src/aiq_agent/common/retired_calls.py` adds the replacement in `tool_errors.render_tool_error` |
+| Shared hints state facts and name no tool | `read_passage.py`, `register.py`, `browse.py`, `document_groups.py`, `chunk_noise.py`, `qdrant/folders.py`, `already_read.py`, `revision_diff.py` |
 | A citation written as a path resolves to its key | `common/citation_verification.citation_key_of_path` |
 | The coverage line and the `Herkunft:` line say what they mean | `common/grounding_block.COVERAGE_GAP_NOTE`, `AGENT_DOCUMENT_NOTE` |
-| The literal prefetch of a quoted term or a code | `agents/piloti/decisions._corpus_prefetch`: a `grep` on the shelf's mount or the open document |
+| The literal prefetch of a quoted term or a code | `agents/piloti/decisions._corpus_prefetch`: a `grep` with `output_mode="content"` on the shelf's mount, narrowed to the open document by `glob` |
 
 Departures, each with its reason:
 
 1. **The skills moved before this slice** (ADR-0135), so the `/skills/` exception to "tool
    results are data" ships, and there is no `use_skill` to retire.
-2. **The retired names are refused, not unbound from the NAT registry**: deep research, intake
-   and the door bind the same NAT functions with their full contracts, so the variant is chosen
-   at bind time and the refusal applies only where the replacement is bound. An eval arm without
-   the filesystem verbs runs the old calls.
-3. **A `read_passage` refusal names the exact path only when a hit named it**; otherwise it names
-   the `Path:` line and a `glob` that finds it. The path needs the document's rows, which the pure
-   guard does not read.
+2. **The retired names are unbound, not unregistered**: deep research, intake and the door bind
+   the same NAT functions with their full contracts, so the variant is chosen at bind time, and a
+   config without `filesystem` (an eval arm, a benchmark) keeps the full contracts. A
+   `read_passage` call on the chat is answered by the tool node with the tools there are; a
+   retired argument (`match`, `stemmed`, `context`, `view`) by the schema, with its replacement.
+3. **`list_files` keeps its listing on the chat**, filters and paging included: `ls` lists 40 files
+   a folder and `glob` 100 matches, neither filters by date, and the inventory points at the
+   complete, filtered list. Only its tree view left (`ls(depth=…)` draws the tree). `folder`,
+   `shelf` and `file_name` on `knowledge_search` stay accepted, hidden, and count under the
+   `retired-call` trace tag; when the tag stops firing, they go.
 4. **The already-read digest keeps file names, not paths**: its lines are persisted on the
    conversation, and `read_file` resolves a mount and a leaf without the folder, so the digest says
    that instead of changing a stored format.
