@@ -1,7 +1,7 @@
 """The agent is built once; a turn binds only what it varies.
 
 Before this, every skills-enabled turn (every production turn: the builtin
-skills always resolve, so ``use_skill`` is always folded in) constructed a
+skills always resolve, so the skill tool is always folded in) constructed a
 fresh ``PilotiAgent``: the 43 KB prompt re-read from disk inside
 the async request, the LangGraph recompiled, every tool schema rebound, the
 BM25 index rebuilt. The "bind once at construction" comments were true of a
@@ -40,12 +40,6 @@ def web_search_tool(query: str) -> str:
     return f"results: {query}"
 
 
-@tool
-def use_skill(skill_name: str) -> str:
-    """Return the full instructions of ``skill_name``."""
-    return f"instructions for {skill_name}"
-
-
 class _FakeBuilder:
     def __init__(self, llm):
         self._llm = llm
@@ -69,10 +63,13 @@ def _mock_llm():
 
 
 def _skill_runtime():
+    from aiq_agent.skills.backend import SkillsBackend
+
     runtime = MagicMock()
-    runtime.prompt_block.return_value = "## Verfügbare Skills"
-    runtime.build_tools.return_value = [use_skill]
+    runtime.prompt_block.return_value = "## Skills"
+    runtime.backend = SkillsBackend({})
     runtime.activated = []
+    runtime.pinned = ()
     runtime.hidden_activated = ()
     return runtime
 
@@ -134,7 +131,7 @@ async def test_two_skills_turns_build_one_agent_read_the_prompt_once_and_compile
 
     with (
         patch.object(register_module, "get_organization_id_from_context", return_value="org-1"),
-        patch.object(register_module, "SkillRuntime", return_value=runtime),
+        patch.object(register_module, "SkillRuntime", MagicMock(office=MagicMock(return_value=runtime))),
         patch.object(register_module, "SkillResolver") as ResolverCls,
     ):
         ResolverCls.return_value.resolve.return_value = (MagicMock(name="piloti-voice"),)
@@ -153,11 +150,11 @@ async def test_two_skills_turns_build_one_agent_read_the_prompt_once_and_compile
     # same thing — a read that happens per turn moves this number.
     assert counters == {"prompt_reads": 2, "graph_compiles": 1, "agents_built": 1}
     # What a turn DOES cost: one binding of the turn's tool set (search +
-    # use_skill), because the skill closure is per turn. Never more.
+    # read_file over the turn's skills), because the skills are per turn. Never more.
     assert llm.bind_tools.call_count == 1 + 2
     bound_names = [[t.name for t in call.args[0]] for call in llm.bind_tools.call_args_list]
     assert bound_names[0] == ["web_search_tool"]
-    assert bound_names[1] == ["web_search_tool", "use_skill"]
+    assert bound_names[1] == ["web_search_tool", "read_file"]
 
 
 @pytest.mark.asyncio
@@ -181,7 +178,7 @@ async def test_a_turn_that_varies_nothing_reuses_the_boot_binding():
 async def test_the_ceiling_is_the_research_budget_and_nothing_is_added_to_it():
     """One number bounds the turn, on the boot binding and on a turn binding alike.
 
-    A turn used to be able to raise the ceiling for the ``use_skill`` calls the
+    A turn used to be able to raise the ceiling for the skill calls the
     deployment forced. Nothing is forced now, so ``TurnConfig`` cannot vary the
     budget at all: what the config says is what the turn gets, which is what the
     traced floors in ``config_oib_openrouter.yml`` measure.

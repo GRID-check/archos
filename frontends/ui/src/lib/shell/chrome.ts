@@ -5,7 +5,8 @@ import type { AuthorizedSession } from '@/lib/auth/types'
 import { getNavFlags, type NavFlags } from '@/lib/authz/nav'
 import { isIfcModelsEnabled, isSkillsEnabled } from '@/lib/authz/feature-flags'
 import { listProjects } from '@/lib/projects/service'
-import { getOrganizationDisplayName } from '@/lib/organizations/service'
+import { getOrganizationDisplayName, switchableOrganizations } from '@/lib/organizations/service'
+import type { SwitchableOrganization } from '@/lib/organizations/switchable'
 import { isAuthRequired } from '@/lib/auth/auth-required'
 import { resolveTourEligibility } from '@/lib/onboarding/tour-eligibility'
 import { NO_TOURS, type TourEligibility } from '@/features/onboarding/lib/product-tour'
@@ -30,6 +31,8 @@ export interface ShellChrome {
   user?: SidebarUser
   /** The org the reader is acting in, for the footer eyebrow. */
   organizationName: string | null
+  /** The organizations the avatar menu offers to switch to; empty for someone in one. */
+  organizations: SwitchableOrganization[]
   navFlags: NavFlags
   /** Agent Skills + Jobs sections (`skills` flag, ADR-0046). */
   showSkills: boolean
@@ -55,6 +58,7 @@ function emptyChrome(): ShellChrome {
     projects: [],
     user: undefined,
     organizationName: null,
+    organizations: [],
     navFlags: EMPTY_NAV_FLAGS,
     showSkills: false,
     showModels: false,
@@ -89,6 +93,10 @@ export async function resolveShellChrome(): Promise<ShellChrome> {
   if (!session) return emptyChrome()
 
   const authRequired = isAuthRequired()
+  // Independent of everything below, so it runs alongside it.
+  const switchable = authRequired
+    ? switchableOrganizations(session.organizationId, session.userId)
+    : Promise.resolve([])
 
   let navFlags = EMPTY_NAV_FLAGS
   try {
@@ -124,6 +132,7 @@ export async function resolveShellChrome(): Promise<ShellChrome> {
     projects,
     user: { name: session.name, email: session.email },
     organizationName,
+    organizations: await switchable,
     navFlags,
     showSkills: isSkillsEnabled(session),
     showModels: isIfcModelsEnabled(session),

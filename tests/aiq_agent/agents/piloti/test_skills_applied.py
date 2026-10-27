@@ -2,7 +2,7 @@
 
 The pipeline lifts the names, the ledger carries them onto the state, and the
 register hands them to the runtime AFTER the run — the runtime decides which
-are real (only a body it inlined), and ``skills_activated`` is what it says.
+are real (only a body it pinned), and ``skills_activated`` is what it says.
 """
 
 from __future__ import annotations
@@ -58,12 +58,12 @@ def test_the_ledger_carries_them_onto_the_state():
 
 
 def test_the_register_reports_what_the_runtime_accepted():
-    """Two inlined, one behind `use_skill`; the model names one of each and a
-    fiction. Activated is the inlined one it named, and only that."""
+    """One pinned, one only in the catalog; the model names both and a fiction.
+    Activated is the pinned one it named, and only that."""
     kurz = Skill(name="kurz", description="k", body="kurz body", origin="platform")
-    zwei = Skill(name="zwei", description="z", body="zwei body", origin="platform")
     lang = Skill(name="lang", description="l", body="x" * 5000, origin="org")
-    runtime = SkillRuntime(skills=(kurz, zwei, lang), inline_max_body_chars=100, inline_budget_chars=1000)
-    result = ResearchAgentState(messages=[], skills_applied=["zwei", "lang", "nope"])
+    runtime = SkillRuntime.office((kurz, lang))
+    runtime.pin("kurz")
+    result = ResearchAgentState(messages=[], skills_applied=["kurz", "lang", "nope"])
     _report_skills(result, runtime)
-    assert result.skills_activated == ["zwei"]
+    assert result.skills_activated == ["kurz"]

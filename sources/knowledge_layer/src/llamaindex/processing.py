@@ -44,6 +44,7 @@ import hashlib
 import io
 import logging
 import os
+import time
 from concurrent.futures import ThreadPoolExecutor
 from concurrent.futures import as_completed
 from dataclasses import dataclass
@@ -414,6 +415,16 @@ def render_visual_pages_no_vlm(
 # ---------------------------------------------------------------------------
 
 
+# @environment_variable AIQ_VLM_SECOND_PASS_DELAY_SECONDS
+# @category Knowledge Layer
+# @type float
+# @default 10
+# @required false
+# Seconds the vision batch waits before reading the pages and images that failed once more.
+# A negative value turns the second pass off.
+VLM_SECOND_PASS_DELAY_SECONDS = float(os.environ.get("AIQ_VLM_SECOND_PASS_DELAY_SECONDS", "10"))
+
+
 def enrich_vlm_batch(
     image_records: list[dict[str, Any]],
     drawing_pages: list[dict[str, Any]],
@@ -476,51 +487,56 @@ def enrich_vlm_batch(
         return page
 
     total_tasks = len(image_records) + len(drawing_pages)
-    image_results: list[tuple] = []
-    enriched_drawings: list[dict] = []
-    skipped = 0
+    work: list[tuple[str, dict]] = [("image", record) for record in image_records]
+    work += [("drawing", page) for page in drawing_pages]
+    run = {"image": _enrich_one_image, "drawing": _enrich_one_drawing}
 
-    with ThreadPoolExecutor(max_workers=min(VLM_BATCH_WORKERS, total_tasks or 1)) as pool:
-        futures = {}
+    def _pass(items: list[tuple[str, dict]]) -> tuple[list[tuple], list[dict], list[tuple[str, dict]]]:
+        """One concurrent pass: the images and drawings read, and the items that failed."""
+        images: list[tuple] = []
+        drawings: list[dict] = []
+        failed: list[tuple[str, dict]] = []
+        with ThreadPoolExecutor(max_workers=min(VLM_BATCH_WORKERS, len(items) or 1)) as pool:
+            # Each task runs in a copy of this thread's context, so the ingest job's
+            # data-policy scope (`openrouter.data_policy_scope`), cost tracker
+            # (`_ingest_cost_scope`) and file trace all reach the VLM call.
+            futures = {pool.submit(contextvars.copy_context().run, run[kind], obj): (kind, obj) for kind, obj in items}
+            for future in as_completed(futures):
+                kind, obj = futures[future]
+                try:
+                    result = future.result()
+                except Exception as e:
+                    logger.warning("VLM enrichment failed for %s on page %s: %s", kind, obj.get("page_number"), e)
+                    failed.append((kind, obj))
+                    continue
+                # Fail-open placeholder captions (provider error, empty response) carry no
+                # retrievable content and would pollute the vector store as real chunks.
+                caption = result[2] if kind == "image" else result.get("caption")
+                if is_failed_caption(caption):
+                    logger.warning(
+                        "VLM analysis failed for %s on page %s: %s", kind, obj.get("page_number"), (caption or "")[:120]
+                    )
+                    failed.append((kind, obj))
+                    continue
+                (images if kind == "image" else drawings).append(result)
+        return images, drawings, failed
 
-        # Each task runs in a copy of this thread's context, so the ingest job's
-        # data-policy scope (`openrouter.data_policy_scope`) and cost tracker
-        # (`_ingest_cost_scope`) both reach the VLM call.
-        for record in image_records:
-            fut = pool.submit(contextvars.copy_context().run, _enrich_one_image, record)
-            futures[fut] = ("image", record)
-
-        for page in drawing_pages:
-            fut = pool.submit(contextvars.copy_context().run, _enrich_one_drawing, page)
-            futures[fut] = ("drawing", page)
-
-        for future in as_completed(futures):
-            kind, obj = futures[future]
-            try:
-                result = future.result()
-            except Exception as e:
-                logger.warning("VLM enrichment failed for %s (skipped, not indexed): %s", kind, e)
-                skipped += 1
-                continue
-            # Fail-open placeholder captions (provider error/missing key/empty
-            # response) are skipped the same way — they carry no retrievable
-            # content and would pollute the vector store as real chunks.
-            caption = result[2] if kind == "image" else result.get("caption")
-            if is_failed_caption(caption):
-                logger.warning(
-                    "VLM analysis failed for %s on page %s (skipped, not indexed): %s",
-                    kind,
-                    obj.get("page_number"),
-                    (caption or "")[:120],
-                )
-                skipped += 1
-                continue
-            if kind == "image":
-                image_results.append(result)
-            else:
-                enriched_drawings.append(result)
+    image_results, enriched_drawings, failed = _pass(work)
+    # One more pass for what failed, after a pause: a failed reply is never cached, so
+    # this asks the model again. Most failures are passing (a timeout, a provider
+    # hiccup the 429 waits do not cover), and a page dropped here is a page nobody
+    # can search; a second pass costs only the pages that failed.
+    if failed and VLM_SECOND_PASS_DELAY_SECONDS >= 0:
+        logger.info("VLM batch: %d item(s) failed; trying them once more", len(failed))
+        time.sleep(VLM_SECOND_PASS_DELAY_SECONDS)
+        more_images, more_drawings, failed = _pass(failed)
+        image_results += more_images
+        enriched_drawings += more_drawings
+    skipped = len(failed)
 
     if skipped:
-        logger.warning("VLM batch: %d/%d item(s) failed and were skipped (not indexed)", skipped, total_tasks)
+        logger.warning("VLM batch: %d/%d item(s) failed twice and were skipped (not indexed)", skipped, total_tasks)
+    # Page order, whatever order the passes finished in.
+    enriched_drawings.sort(key=lambda page: page.get("page_number") or 0)
 
     return image_results, enriched_drawings

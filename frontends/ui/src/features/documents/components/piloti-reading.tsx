@@ -11,6 +11,8 @@ import { DocumentTagsEditor } from './document-tags-editor'
 import { DocumentTopicsEditor } from './document-topics-editor'
 import type { PhotoCapture } from '@/lib/documents/photo-capture'
 import { MapPin } from 'lucide-react'
+import type { DocumentLinks } from '@/lib/documents/findings-wire'
+import { DocumentDossier } from './document-dossier'
 
 const TYPE_SET = new Set<string>(DOCUMENT_TYPE_TAGS)
 const DISCIPLINE_SET = new Set<string>(DISCIPLINE_TAGS)
@@ -38,10 +40,16 @@ export function PilotiReading({
   file,
   canManage,
   onTagsUpdated,
+  projectId,
+  dossierLinks,
 }: {
   file: FileItem
   canManage: boolean
   onTagsUpdated?: (fileId: string, tags: string[], topics?: string[]) => void
+  /** The project the document is in: its references resolve to the project's documents. */
+  projectId?: string
+  /** The resolved references, where the caller already holds them (a preview); else read from the project. */
+  dossierLinks?: DocumentLinks | null
 }): JSX.Element {
   const t = useTranslations('files')
   const { locale } = useLocale()
@@ -147,6 +155,7 @@ export function PilotiReading({
           </div>
         </div>
       )}
+      <DocumentDossier file={file} projectId={projectId} links={dossierLinks} />
     </div>
   )
 }
@@ -154,7 +163,9 @@ export function PilotiReading({
 /** „12 Seiten gelesen · Text, Tabellen, Zeichnungen" — or null when the listing says neither. */
 function readingFacts(file: FileItem, locale: string, t: ReturnType<typeof useTranslations>): string | null {
   const parts: string[] = []
-  if (typeof file.pageCount === 'number' && file.pageCount > 0) {
+  // The coverage line says how many pages were read, and how many not; the
+  // bare page count beside it would say it twice.
+  if (!file.coverage && typeof file.pageCount === 'number' && file.pageCount > 0) {
     parts.push(t('brief.pages', { count: file.pageCount, formatted: file.pageCount.toLocaleString(locale) }))
   }
   // Content kinds only when there is something beyond plain text: a lone

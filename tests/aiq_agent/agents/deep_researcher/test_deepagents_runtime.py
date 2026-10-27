@@ -8,19 +8,18 @@ from unittest.mock import patch
 
 import pytest
 from deepagents.backends import CompositeBackend
-from deepagents.backends import FilesystemBackend
 from deepagents.backends import StateBackend
 from pydantic import ValidationError
 
-from aiq_agent.agents.deep_researcher.deepagents_runtime import BUILTIN_SKILL_SOURCE
 from aiq_agent.agents.deep_researcher.deepagents_runtime import SHARED_ROUTE
 from aiq_agent.agents.deep_researcher.deepagents_runtime import DeepAgentsRuntime
 from aiq_agent.agents.deep_researcher.deepagents_runtime import DeepResearchSandboxConfig
 from aiq_agent.agents.deep_researcher.deepagents_runtime import DeepResearchSkillsConfig
 from aiq_agent.agents.deep_researcher.deepagents_runtime import discover_skill_collections
 from aiq_agent.agents.deep_researcher.deepagents_runtime import resolve_skill_collections
+from aiq_agent.skills import SKILLS_ROOT
 
-SYNTHESIS_SKILL_SOURCE = f"{BUILTIN_SKILL_SOURCE}synthesis/"
+SYNTHESIS_SKILL_SOURCE = f"{SKILLS_ROOT}synthesis/"
 
 
 class TestSkillCollections:
@@ -57,23 +56,22 @@ class TestDeepAgentsRuntimeRouting:
     def test_baseline_uses_plain_state_backend(self) -> None:
         runtime = DeepAgentsRuntime()
 
-        assert isinstance(runtime.backend, StateBackend)
+        assert isinstance(runtime.backend_for(None), StateBackend)
+        assert isinstance(runtime.backend_for(runtime.skill_runtime()), StateBackend)
         assert runtime.execution_enabled is False
-        assert runtime.skills_enabled is False
+        assert runtime.collections == ()
 
     def test_curated_offers_are_absent_from_the_skills_mount(self) -> None:
         """An offer the org never switched on must not be readable from /skills/.
 
-        Chat already drops ``grid-catalog: curated`` from always_on. The mount
-        used to serve the whole builtin tree, so a researcher could still
-        ``read_file`` forecast-analysis. Same gate on both agents.
+        Chat drops ``grid-catalog: curated`` from always_on; the deep run's
+        builtin collections drop it too, so the same gate holds on both agents.
+        An offer the org took up arrives through the BFF payload, as an office skill.
         """
         runtime = DeepAgentsRuntime(
             skills=DeepResearchSkillsConfig(agents={"writer-agent": ("synthesis",)}),
         )
-        # CompositeBackend is what the agent talks to; the route backend's
-        # virtual root is `/`, so `/skills/synthesis/` only exists here.
-        backend = runtime.backend
+        backend = runtime.backend_for(runtime.skill_runtime())
         listed = backend.ls("/skills/synthesis/")
         names = [entry["path"].rstrip("/").rsplit("/", 1)[-1] for entry in (listed.entries or [])]
         assert "long-form-report-writer" in names
@@ -81,11 +79,10 @@ class TestDeepAgentsRuntimeRouting:
         hidden = backend.read("/skills/synthesis/prediction-report-writer/SKILL.md")
         assert hidden.file_data is None
         assert hidden.error
-        route = runtime.backend.routes[BUILTIN_SKILL_SOURCE]
-        downloads = route.download_files(
+        downloads = backend.download_files(
             [
-                "/synthesis/long-form-report-writer/SKILL.md",
-                "/synthesis/prediction-report-writer/SKILL.md",
+                "/skills/synthesis/long-form-report-writer/SKILL.md",
+                "/skills/synthesis/prediction-report-writer/SKILL.md",
             ]
         )
         assert downloads[0].error is None
@@ -96,31 +93,52 @@ class TestDeepAgentsRuntimeRouting:
         oib_runtime = DeepAgentsRuntime(
             skills=DeepResearchSkillsConfig(agents={"researcher-agent": ("oib",)}),
         )
-        oib = oib_runtime.backend.ls("/skills/oib/")
+        oib_backend = oib_runtime.backend_for(oib_runtime.skill_runtime())
+        oib = oib_backend.ls("/skills/oib/")
         oib_names = [entry["path"].rstrip("/").rsplit("/", 1)[-1] for entry in (oib.entries or [])]
         assert "fire-safety" in oib_names
         assert "submission-check" not in oib_names
         assert "existing-building" not in oib_names
-        globbed = oib_runtime.backend.glob("**/SKILL.md", "/skills/oib/")
-        glob_paths = [entry["path"] for entry in (globbed.matches or [])]
-        assert any("fire-safety" in path for path in glob_paths)
-        assert not any("submission-check" in path for path in glob_paths)
-        grepped = oib_runtime.backend.grep("Gebäudeklasse", path="/skills/oib/")
+        grepped = oib_backend.grep("Gebäudeklasse", path="/skills/oib/")
         grep_paths = [match["path"] for match in (grepped.matches or [])]
         assert grep_paths
         assert not any("submission-check" in path for path in grep_paths)
+
+    def test_a_taken_up_offer_is_an_office_skill(self) -> None:
+        from aiq_agent.skills.builtin import discover_builtin_skills
+        from aiq_agent.skills.resolver import _is_curated
+
+        offer = next(s for s in discover_builtin_skills() if _is_curated(s))
+        runtime = DeepAgentsRuntime(skills=DeepResearchSkillsConfig(agents={"writer-agent": ("synthesis",)}))
+        skills = runtime.skill_runtime((offer,))
+        backend = runtime.backend_for(skills)
+        assert backend.read(f"/skills/office/{offer.name}/SKILL.md").error is None
+        assert skills.sources == ("synthesis", "office")
 
     def test_skills_only_adds_skills_route(self) -> None:
         runtime = DeepAgentsRuntime(
             skills=DeepResearchSkillsConfig(agents={"writer-agent": ("synthesis",)}),
         )
-        backend = runtime.backend
+        skills = runtime.skill_runtime()
+        backend = runtime.backend_for(skills)
 
         assert isinstance(backend, CompositeBackend)
         assert isinstance(backend.default, StateBackend)
-        assert set(backend.routes) == {BUILTIN_SKILL_SOURCE}
-        assert isinstance(backend.routes[BUILTIN_SKILL_SOURCE], FilesystemBackend)
-        assert runtime.skill_sources_for("writer-agent") == [SYNTHESIS_SKILL_SOURCE]
+        assert set(backend.routes) == {SKILLS_ROOT}
+        assert backend.routes[SKILLS_ROOT] is skills.backend
+        assert runtime.skill_sources_for("writer-agent", skills) == [SYNTHESIS_SKILL_SOURCE]
+        assert runtime.skill_sources_for("researcher-agent", skills) == []
+
+    def test_each_run_gets_its_own_skills_and_shares_the_default(self) -> None:
+        """The skills are per tenant and per run (ADR-0018); the job's default backend is not."""
+        runtime = DeepAgentsRuntime(skills=DeepResearchSkillsConfig(agents={"writer-agent": ("synthesis",)}))
+        first, second = runtime.skill_runtime(), runtime.skill_runtime()
+        a, b = runtime.backend_for(first), runtime.backend_for(second)
+        assert a.routes[SKILLS_ROOT] is not b.routes[SKILLS_ROOT]
+        assert a.default is b.default
+        a.read("/skills/synthesis/long-form-report-writer/SKILL.md")
+        assert first.activated == ("long-form-report-writer",)
+        assert second.activated == ()
 
     def test_sandbox_only_adds_shared_route(self) -> None:
         fake_sandbox = MagicMock()
@@ -129,13 +147,12 @@ class TestDeepAgentsRuntimeRouting:
             return_value=fake_sandbox,
         ):
             runtime = DeepAgentsRuntime(sandbox=DeepResearchSandboxConfig())
-            backend = runtime.backend
+            backend = runtime.backend_for(runtime.skill_runtime())
 
         assert isinstance(backend, CompositeBackend)
         assert backend.default is fake_sandbox
         assert set(backend.routes) == {SHARED_ROUTE}
         assert runtime.execution_enabled is True
-        assert runtime.skills_enabled is False
 
     def test_sandbox_and_skills_add_shared_and_skills_routes(self) -> None:
         fake_sandbox = MagicMock()
@@ -145,14 +162,17 @@ class TestDeepAgentsRuntimeRouting:
             return_value=fake_sandbox,
         ):
             runtime = DeepAgentsRuntime(skills=skills, sandbox=DeepResearchSandboxConfig())
-            backend = runtime.backend
+            skill_runtime = runtime.skill_runtime()
+            backend = runtime.backend_for(skill_runtime)
 
         assert isinstance(backend, CompositeBackend)
         assert backend.default is fake_sandbox
-        assert set(backend.routes) == {BUILTIN_SKILL_SOURCE, SHARED_ROUTE}
-        assert isinstance(backend.routes[BUILTIN_SKILL_SOURCE], FilesystemBackend)
+        # Every skill of `research` is a curated offer, so the run holds none of
+        # them and mounts no `/skills/` route: an offer reaches a run only as an
+        # office skill the organization took up.
+        assert set(backend.routes) == {SHARED_ROUTE}
         assert isinstance(backend.routes[SHARED_ROUTE], StateBackend)
-        assert runtime.skill_sources_for("researcher-agent") == ["/skills/research/"]
+        assert runtime.skill_sources_for("researcher-agent", skill_runtime) == []
 
     def test_require_sandbox_collection_without_sandbox_raises(self) -> None:
         skills = DeepResearchSkillsConfig(
@@ -174,7 +194,7 @@ class TestDeepAgentsRuntimeRouting:
         )
         runtime = DeepAgentsRuntime(skills=skills, sandbox=DeepResearchSandboxConfig())
 
-        assert runtime.skill_sources_for("researcher-agent") == ["/skills/research/"]
+        assert runtime.collections == ("research",)
 
     def test_require_sandbox_collection_with_sandbox_still_rejects_unknown_names(self) -> None:
         skills = DeepResearchSkillsConfig(
@@ -189,9 +209,9 @@ class TestDeepAgentsRuntimeRouting:
         from deepagents.middleware.skills import _list_skills
 
         runtime = DeepAgentsRuntime(skills=DeepResearchSkillsConfig(agents={"writer-agent": ("synthesis",)}))
-        backend = runtime.backend
+        backend = runtime.backend_for(runtime.skill_runtime())
 
-        top_level_skills = _list_skills(backend, BUILTIN_SKILL_SOURCE)
+        top_level_skills = _list_skills(backend, SKILLS_ROOT)
         synthesis_skills = _list_skills(backend, SYNTHESIS_SKILL_SOURCE)
 
         assert [skill["name"] for skill in top_level_skills] == []
@@ -245,7 +265,7 @@ class TestDeepAgentsRuntimeRouting:
                     }
                 ],
                 backend=StateBackend(),
-                skills=[BUILTIN_SKILL_SOURCE],
+                skills=[SKILLS_ROOT],
             )
 
         writer_middleware = create_agent_calls[0]["middleware"]
@@ -261,7 +281,7 @@ class TestDeepAgentsRuntimeJobId:
         sandbox = DeepResearchSandboxConfig()
         with patch("aiq_agent.agents.deep_researcher.deepagents_runtime._create_sandbox_backend") as create_backend:
             runtime = DeepAgentsRuntime(sandbox=sandbox, job_id="job-abc-123")
-            _ = runtime.backend
+            _ = runtime.backend_for(None)
 
         create_backend.assert_called_once_with(sandbox, "job-abc-123")
 
@@ -271,8 +291,8 @@ class TestDeepAgentsRuntimeJobId:
         with patch("aiq_agent.agents.deep_researcher.deepagents_runtime._create_sandbox_backend") as create_backend:
             runtime_a = DeepAgentsRuntime(sandbox=sandbox_a)
             runtime_b = DeepAgentsRuntime(sandbox=sandbox_b)
-            _ = runtime_a.backend
-            _ = runtime_b.backend
+            _ = runtime_a.backend_for(None)
+            _ = runtime_b.backend_for(None)
 
         job_id_a = create_backend.call_args_list[0].args[1]
         job_id_b = create_backend.call_args_list[1].args[1]
@@ -291,20 +311,20 @@ class TestDeepAgentsRuntimeJobId:
             ),
             pytest.raises(ImportError, match="langchain-modal"),
         ):
-            _ = DeepAgentsRuntime(sandbox=DeepResearchSandboxConfig()).backend
+            _ = DeepAgentsRuntime(sandbox=DeepResearchSandboxConfig()).backend_for(None)
 
 
 class TestTheSkillsMountIsReadOnly:
-    """The mount's root is the worker's own `skills/builtin`; deepagents 0.7 added a recursive `delete`.
+    """The permission rules deny writes on `/skills/**` in the tools; the backend refuses on its own too.
 
-    The permission rules deny writes on `/skills/**` in the tools; the backend
-    refuses on its own so a call that bypasses the tools cannot change the
-    skills every later run reads.
+    Nothing is on disk behind the mount any more, but deepagents 0.7 offers a
+    recursive `delete`, and a write that reached the backend another way must
+    still change nothing.
     """
 
     def _skills(self) -> Any:
         runtime = DeepAgentsRuntime(skills=DeepResearchSkillsConfig(agents={"writer-agent": ("synthesis",)}))
-        return runtime.backend.routes[BUILTIN_SKILL_SOURCE]
+        return runtime.backend_for(runtime.skill_runtime()).routes[SKILLS_ROOT]
 
     def test_write_edit_and_delete_are_refused(self) -> None:
         skills = self._skills()

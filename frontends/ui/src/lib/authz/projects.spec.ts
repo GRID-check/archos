@@ -3,10 +3,26 @@
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-const check = vi.fn()
+const effective = vi.fn()
 vi.mock('@/lib/workos/client', () => ({
-  getWorkOS: () => ({ authorization: { check } }),
+  getWorkOS: () => ({ authorization: { listEffectivePermissionsByExternalId: effective } }),
 }))
+
+const ALL_PROJECT = [
+  'project:view',
+  'project:chat',
+  'project:edit',
+  'project:documents:write',
+  'project:documents:generate',
+  'project:memory:write',
+  'project:manage',
+  'project:members:manage',
+  'project:skills:manage',
+]
+/** What WorkOS says the member effectively holds on the project. */
+const holds = (...slugs: string[]): void => {
+  effective.mockResolvedValue({ autoPagination: async () => slugs.map((slug) => ({ slug })) })
+}
 
 const findProjectTenancy = vi.fn()
 vi.mock('@/lib/projects/repository', () => ({
@@ -16,6 +32,7 @@ vi.mock('@/lib/projects/repository', () => ({
 import { requireProjectAccess } from './projects'
 import { setCacheStore, type CacheStore } from '@/lib/cache'
 import type { AuthorizedSession } from '@/lib/auth/types'
+import { NotFoundError } from '@/lib/api/errors'
 
 /**
  * Controllable in-process store. Ignores TTL expiry (tests assert hits within
@@ -65,27 +82,22 @@ describe('requireProjectAccess', () => {
     store = new TestStore()
     setCacheStore(store)
     delete process.env.GRID_AUTHZ_CACHE_TTL_MS
-    // Grant edit but not manage → derived role project-editor.
-    check.mockImplementation(({ permissionSlug }: { permissionSlug: string }) =>
-      Promise.resolve({ authorized: permissionSlug !== 'project:manage' })
-    )
+    // Everything but manage → derived role project-editor.
+    holds(...ALL_PROJECT.filter((slug) => slug !== 'project:manage'))
     findProjectTenancy.mockResolvedValue({ organizationId: 'org_1', deletedAt: null })
   })
 
-  const authzKeys = () => store.getKeys.filter((k) => k.startsWith('authz:check:'))
+  const authzKeys = () => store.getKeys.filter((k) => k.startsWith('authz:effective:'))
 
   describe('the org-wide project bypass is a PERMISSION, not a role name', () => {
-    it('a legacy admin session still bypasses FGA entirely (no WorkOS calls)', async () => {
-      // `hasPermission`'s bounded catalog implication: the session carries the
-      // role slug and no claims, and the catalog says Admin holds
-      // `org:projects:administer`. Nobody has to re-log-in for the fix.
-      const result = await requireProjectAccess(
-        session({ role: 'admin' }),
-        PROJECT_ID,
-        'project:edit'
+    it('a role named admin without the permission in its token gets no bypass', async () => {
+      // The token is the answer; the role's name is not. Such a session is asked
+      // of WorkOS like anyone else.
+      holds()
+      await expect(requireProjectAccess(session({ role: 'admin' }), PROJECT_ID, 'project:edit')).rejects.toBeInstanceOf(
+        NotFoundError
       )
-      expect(result).toEqual({ role: 'project-admin', closed: false, readsBecauseClosed: false })
-      expect(check).not.toHaveBeenCalled()
+      expect(effective).toHaveBeenCalled()
     })
 
     it('a session holding the permission bypasses, whatever its role is called', async () => {
@@ -95,11 +107,11 @@ describe('requireProjectAccess', () => {
         'project:manage'
       )
       expect(result).toEqual({ role: 'project-admin', closed: false, readsBecauseClosed: false })
-      expect(check).not.toHaveBeenCalled()
+      expect(effective).not.toHaveBeenCalled()
     })
 
     it('a role that is not admin and holds nothing gets no bypass', async () => {
-      check.mockResolvedValue({ authorized: false })
+      holds()
       await expect(
         requireProjectAccess(
           session({ role: 'org-auditor', permissions: ['org:audit:view'] }),
@@ -113,7 +125,7 @@ describe('requireProjectAccess', () => {
       // The mirror-image fault: the extensibility contract broke the moment a
       // persona needed to reach projects. It now works — by holding the
       // permission, which is the point — and does NOT come for free.
-      check.mockResolvedValue({ authorized: false })
+      holds()
       await expect(
         requireProjectAccess(
           session({
@@ -143,18 +155,21 @@ describe('requireProjectAccess', () => {
       // asks. The skipped `project:manage` check used to fall back to comparing
       // against `accepted[0]` — a different slug — so a real project admin came
       // back as an editor.
-      check.mockImplementation(({ permissionSlug }: { permissionSlug: string }) =>
-        Promise.resolve({ authorized: permissionSlug === 'project:manage' })
-      )
+      holds('project:manage')
       await expect(
         requireProjectAccess(session(), PROJECT_ID, ['project:members:manage', 'project:manage'])
       ).resolves.toEqual({ role: 'project-admin', closed: false, readsBecauseClosed: false })
     })
   })
 
-  it('project:edit makes two FGA round-trips (edit + manage) when uncached', async () => {
-    await requireProjectAccess(session(), PROJECT_ID, 'project:edit')
-    expect(check).toHaveBeenCalledTimes(2)
+  it('asks WorkOS once per project, whatever it asks for', async () => {
+    await requireProjectAccess(session(), PROJECT_ID, ['project:documents:write', 'project:edit'])
+    expect(effective).toHaveBeenCalledTimes(1)
+    expect(effective).toHaveBeenCalledWith({
+      organizationMembershipId: 'om_1',
+      resourceTypeSlug: 'project',
+      externalId: PROJECT_ID,
+    })
   })
 
   describe('cache disabled (GRID_AUTHZ_CACHE_TTL_MS=0)', () => {
@@ -162,10 +177,10 @@ describe('requireProjectAccess', () => {
       process.env.GRID_AUTHZ_CACHE_TTL_MS = '0'
     })
 
-    it('never consults the cache and re-checks every request', async () => {
+    it('never consults the cache and asks on every request', async () => {
       await requireProjectAccess(session(), PROJECT_ID, 'project:edit')
       await requireProjectAccess(session(), PROJECT_ID, 'project:edit')
-      expect(check).toHaveBeenCalledTimes(4)
+      expect(effective).toHaveBeenCalledTimes(2)
       expect(authzKeys()).toHaveLength(0)
     })
   })
@@ -176,23 +191,18 @@ describe('requireProjectAccess', () => {
       expect(authzKeys().length).toBeGreaterThan(0)
     })
 
-    it('miss then populate: the first request checks WorkOS and stores each result', async () => {
+    it('miss then populate: the first request asks WorkOS and stores the answer', async () => {
       await requireProjectAccess(session(), PROJECT_ID, 'project:edit')
-      expect(check).toHaveBeenCalledTimes(2)
-      // The key carries the ORG and the resource TYPE as well as the id, so a
-      // project and a workflow that happen to share an external id cannot
-      // collide — and neither can two tenants checking the same project id.
-      expect([...store.map.keys()].sort()).toEqual([
-        'authz:check:org_1:om_1:project:proj_1:project:edit',
-        'authz:check:org_1:om_1:project:proj_1:project:manage',
-      ])
+      expect(effective).toHaveBeenCalledTimes(1)
+      // The key carries the ORG, the membership and the resource TYPE as well as
+      // the id, so two tenants asking about the same project id cannot collide.
+      expect([...store.map.keys()]).toEqual(['authz:effective:org_1:om_1:project:proj_1'])
     })
 
-    it('hit: an identical second request serves both checks from cache', async () => {
+    it('hit: an identical second request is served from cache', async () => {
       await requireProjectAccess(session(), PROJECT_ID, 'project:edit')
-      await requireProjectAccess(session(), PROJECT_ID, 'project:edit')
-      // 2 real checks on the first request, 0 on the second.
-      expect(check).toHaveBeenCalledTimes(2)
+      await requireProjectAccess(session(), PROJECT_ID, 'project:manage').catch(() => undefined)
+      expect(effective).toHaveBeenCalledTimes(1)
     })
 
     it("is keyed per membership: a different user does not read another user's grant", async () => {
@@ -202,39 +212,53 @@ describe('requireProjectAccess', () => {
         PROJECT_ID,
         'project:edit'
       )
-      expect(check).toHaveBeenCalledTimes(4)
+      expect(effective).toHaveBeenCalledTimes(2)
     })
 
-    it('fail-open: a cache-read outage degrades to live checks and still authorizes', async () => {
+    it('fail-open: a cache-read outage degrades to a live call and still authorizes', async () => {
       store.failGet = true
       const result = await requireProjectAccess(session(), PROJECT_ID, 'project:edit')
       expect(result).toEqual({ role: 'project-editor', closed: false, readsBecauseClosed: false })
-      expect(check).toHaveBeenCalledTimes(2)
+      expect(effective).toHaveBeenCalledTimes(1)
     })
 
     it('a denied check still throws NotFound (cached denials do not leak access)', async () => {
-      check.mockResolvedValue({ authorized: false })
+      holds()
       await expect(requireProjectAccess(session(), PROJECT_ID, 'project:edit')).rejects.toThrow()
     })
   })
 
-  it('fails CLOSED when the FGA call itself errors', async () => {
-    // A check that cannot complete is a denial, never a default-allow. Before
-    // the shared resource-check primitive this rejection propagated as a 500,
-    // which left the outcome to whatever the caller did with the exception.
-    check.mockRejectedValue(new Error('workos unreachable'))
+  it('fails CLOSED when the WorkOS call itself errors, and does not remember it', async () => {
+    // A call that cannot complete is a denial, never a default-allow.
+    vi.spyOn(console, 'warn').mockImplementation(() => {})
+    effective.mockRejectedValueOnce(new Error('workos unreachable'))
     await expect(requireProjectAccess(session(), PROJECT_ID, 'project:view')).rejects.toThrow(
       'Not found'
     )
+    expect(store.map.size).toBe(0)
+  })
+
+  it('reads a project WorkOS has never registered as holding nothing', async () => {
+    effective.mockRejectedValue(Object.assign(new Error('not found'), { status: 404 }))
+    await expect(requireProjectAccess(session(), PROJECT_ID, 'project:view')).rejects.toThrow('Not found')
+  })
+
+  it('is an editor by any write permission it holds, whatever was asked', async () => {
+    // Asked only for project:view, a holder of project:documents:write is still
+    // an editor: the role reads what the caller holds, not what was asked.
+    holds('project:view', 'project:documents:write')
+    await expect(requireProjectAccess(session(), PROJECT_ID, 'project:view')).resolves.toEqual({
+      role: 'project-editor',
+      closed: false,
+      readsBecauseClosed: false,
+    })
   })
 
   describe('any-of permissions (the ADR-0038 project:edit split)', () => {
     const DOC_WRITE = ['project:documents:write', 'project:edit'] as const
 
     it('accepts the narrow permission on its own', async () => {
-      check.mockImplementation(({ permissionSlug }: { permissionSlug: string }) =>
-        Promise.resolve({ authorized: permissionSlug === 'project:documents:write' })
-      )
+      holds('project:documents:write')
       // The derived role reflects the INTENT that was satisfied, so a holder of
       // only the narrow write permission reads as an editor — the same answer
       // the pre-split code gave a `project:edit` holder.
@@ -248,9 +272,7 @@ describe('requireProjectAccess', () => {
     it('still accepts a legacy role holding only the project:edit umbrella', async () => {
       // A custom role provisioned before the split must not lose document
       // writes the day the narrow permission is introduced.
-      check.mockImplementation(({ permissionSlug }: { permissionSlug: string }) =>
-        Promise.resolve({ authorized: permissionSlug === 'project:edit' })
-      )
+      holds('project:edit')
       await expect(requireProjectAccess(session(), PROJECT_ID, DOC_WRITE)).resolves.toEqual({
         role: 'project-editor',
         closed: false,
@@ -259,18 +281,14 @@ describe('requireProjectAccess', () => {
     })
 
     it('denies when the caller holds neither', async () => {
-      check.mockImplementation(({ permissionSlug }: { permissionSlug: string }) =>
-        Promise.resolve({ authorized: permissionSlug === 'project:view' })
-      )
+      holds('project:view')
       await expect(requireProjectAccess(session(), PROJECT_ID, DOC_WRITE)).rejects.toThrow(
         'Not found'
       )
     })
 
     it('does not let a memory grant unlock document writes', async () => {
-      check.mockImplementation(({ permissionSlug }: { permissionSlug: string }) =>
-        Promise.resolve({ authorized: permissionSlug === 'project:memory:write' })
-      )
+      holds('project:memory:write')
       await expect(requireProjectAccess(session(), PROJECT_ID, DOC_WRITE)).rejects.toThrow(
         'Not found'
       )
@@ -278,9 +296,7 @@ describe('requireProjectAccess', () => {
   })
 
   it('authorizes the new fine-grained project permissions', async () => {
-    check.mockImplementation(({ permissionSlug }: { permissionSlug: string }) =>
-      Promise.resolve({ authorized: permissionSlug === 'project:memory:write' })
-    )
+    holds('project:memory:write')
     // Editor, not viewer. This expectation used to read `project-viewer`, which
     // contradicted the any-of case above ("a holder of only the narrow write
     // permission reads as an editor") — the ladder was keyed on the umbrella
@@ -313,7 +329,7 @@ describe('requireProjectAccess', () => {
       await expect(requireProjectAccess(session(), PROJECT_ID, 'project:skills:manage')).rejects.toMatchObject(refusal)
       await expect(requireProjectAccess(session(), PROJECT_ID, 'project:manage')).rejects.toMatchObject(refusal)
       // Decided before WorkOS is asked anything.
-      expect(check).not.toHaveBeenCalled()
+      expect(effective).not.toHaveBeenCalled()
     })
 
     it('refuses a write to an organization admin too: the closed check runs before the bypass', async () => {
@@ -335,7 +351,7 @@ describe('requireProjectAccess', () => {
     })
 
     it('lets every organization member read and chat, as a viewer who reads only because it is closed', async () => {
-      check.mockResolvedValue({ authorized: false })
+      holds()
       await expect(requireProjectAccess(session(), PROJECT_ID, 'project:view')).resolves.toEqual({
         role: 'project-viewer',
         closed: true,
@@ -358,13 +374,13 @@ describe('requireProjectAccess', () => {
     })
 
     it('asks project:manage as if active only when reopening says so', async () => {
-      check.mockResolvedValue({ authorized: true })
+      holds(...ALL_PROJECT)
       await expect(
         requireProjectAccess(session(), PROJECT_ID, 'project:manage', { evenWhenClosed: true })
       ).resolves.toMatchObject({ role: 'project-admin', closed: true })
-      // A fresh cache: the grant above is cached for the TTL.
+      // A fresh cache: the answer above is cached for the TTL.
       setCacheStore(new TestStore())
-      check.mockResolvedValue({ authorized: false })
+      holds()
       await expect(
         requireProjectAccess(session(), PROJECT_ID, 'project:manage', { evenWhenClosed: true })
       ).rejects.toMatchObject({ status: 404 })

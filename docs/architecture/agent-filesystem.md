@@ -84,6 +84,12 @@ Departures, each with its reason:
     `ifc_measure`, not the `bim_models` summary; the door (`backend_tools.py`) does not
     serve the new names yet.
 
+**The skills route** ([ADR-0135](../adr/0135-skills-run-on-deep-agents-skills-middleware.md)).
+The composite carries a third route, `/skills/`, the turn's read-only `SkillsBackend`; the four
+verbs answer a path under it with the stock tools, so a skill read is never a source, never
+signed by the repeat-fetch guard, never refused by a data-source toggle, and its `mount` on the
+wire is `skills`. Routes: default the estate, `/drafts/` the draft store, `/skills/` the skills.
+
 **Slice 3, `ls` and `glob`, folder cards as `README.md`** (built).
 `sources/knowledge_layer/src/estate_listing.py` renders over the listable rows only, so a
 restricted folder is neither named nor counted, and `ls` of it answers as a folder that does not

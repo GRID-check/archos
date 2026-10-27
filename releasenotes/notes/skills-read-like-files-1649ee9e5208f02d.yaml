@@ -1,0 +1,7 @@
+---
+improvements:
+  - >
+    Piloti now opens your office's skills the same way in chat and in deep
+    research, and a deep research report's "Skills used" now names every
+    working method it followed, including the report formats Piloti brings
+    along.

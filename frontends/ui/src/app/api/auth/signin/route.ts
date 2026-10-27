@@ -1,5 +1,4 @@
 import { getSignInUrl } from '@workos-inc/authkit-nextjs'
-import { cookies } from 'next/headers'
 import { type NextRequest, NextResponse } from 'next/server'
 import { safeReturnPathname } from '@/lib/auth/return-pathname'
 import { tenantSlotRoute } from '@/lib/db/tenant-context'
@@ -20,45 +19,17 @@ import { tenantSlotRoute } from '@/lib/db/tenant-context'
  * `returnPathname`, because AuthKit's own middleware redirect mints no verifier
  * cookie for a client-side navigation and that flow can never complete.
  *
+ * `getSignInUrl` caps the verifier cookies it leaves behind at five, as the
+ * middleware does (authkit-nextjs 4.6.2, #505), so a browser that keeps
+ * bouncing through here cannot fill its cookie jar into an HTTP 431.
+ *
  * Anonymous by design: like /api/auth/callback, it runs BEFORE a session
  * exists — creating one is its whole job — so no session-based posture can
  * apply. AuthKit's middlewareAuth lets it through via
  * proxy.ts unauthenticatedPaths.
  */
 
-/**
- * AuthKit's middleware keeps at most five verifier cookies and expires the rest
- * (`MAX_PKCE_COOKIES` in its `pkce.ts`), because a pile of them risks HTTP 431.
- * That budget lives in the middleware path only; `setPKCECookie` just writes.
- * The proxy now sends every unauthenticated client navigation here, so a browser
- * that keeps bouncing would add one cookie per attempt for ten minutes and the
- * loop would end at a 431 instead of a login page.
- *
- * Mirror the budget. A flow live in another tab is given up only once the limit
- * is already reached, which is the trade AuthKit makes at the same point.
- */
-const VERIFIER_COOKIE_PREFIX = 'wos-auth-verifier'
-const MAX_VERIFIER_COOKIES = 5
-
-async function expireVerifierCookies(): Promise<void> {
-  const jar = await cookies()
-  const verifiers = jar
-    .getAll()
-    .filter(({ name }) => name === VERIFIER_COOKIE_PREFIX || name.startsWith(`${VERIFIER_COOKIE_PREFIX}-`))
-
-  if (verifiers.length < MAX_VERIFIER_COOKIES) return
-
-  // Expire in the scope AuthKit set: `path: '/'` and WORKOS_COOKIE_DOMAIN. A
-  // bare `delete(name)` answers with a host-only expiry, which does not remove a
-  // cookie that carries a Domain, so a deployment that sets the variable would
-  // sweep nothing and keep the 431 this exists to prevent.
-  const domain = process.env.WORKOS_COOKIE_DOMAIN
-  for (const { name } of verifiers) jar.delete({ name, path: '/', domain })
-}
-
 const signIn = async (request: NextRequest): Promise<Response> => {
-  await expireVerifierCookies()
-
   const returnTo = safeReturnPathname(new URL(request.url).searchParams.get('returnPathname'))
   const url = await getSignInUrl(returnTo ? { returnTo } : {})
   return NextResponse.redirect(url)

@@ -8,7 +8,7 @@ const session = {
   organizationId: 'org-1',
   email: 'admin@grid.com',
   role: 'admin',
-  permissions: [] as string[],
+  permissions: adminPermissions(),
   featureFlags: null as string[] | null,
 }
 
@@ -38,6 +38,7 @@ vi.mock('@/lib/llm-credentials/service', () => ({
 
 import { GET, POST } from './route'
 import { createCredential } from '@/lib/llm-credentials/service'
+import { adminPermissions } from '@/test-utils/admin-permissions'
 
 const get = (): Request => new Request('http://localhost/api/organization/llm-credentials')
 const post = (body: unknown): Request =>
@@ -51,6 +52,7 @@ describe('/api/organization/llm-credentials', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     session.role = 'admin'
+    session.permissions = adminPermissions()
     session.featureFlags = ['byok-llm']
     vi.stubEnv('REQUIRE_AUTH', 'true')
   })
@@ -60,6 +62,7 @@ describe('/api/organization/llm-credentials', () => {
 
   it('GET rejects non-admins', async () => {
     session.role = 'member'
+    session.permissions = []
     expect((await GET(get())).status).toBe(403)
   })
 

@@ -136,8 +136,11 @@ const ESTATE_LABEL_KEYS: Record<string, string> = {
   grep: 'documents',
 }
 
+/** The mounts that are no office document: the drafts the answer wrote, and the skills (ADR-0135). */
+const OFF_ESTATE: ReadonlySet<string> = new Set(['drafts', 'skills'])
+
 const toolLabelKey = (tool: string, mount: unknown): string | undefined => {
-  if (typeof mount === 'string' && mount !== 'drafts' && ESTATE_LABEL_KEYS[tool]) return ESTATE_LABEL_KEYS[tool]
+  if (typeof mount === 'string' && !OFF_ESTATE.has(mount) && ESTATE_LABEL_KEYS[tool]) return ESTATE_LABEL_KEYS[tool]
   return TOOL_LABEL_KEYS[tool]
 }
 

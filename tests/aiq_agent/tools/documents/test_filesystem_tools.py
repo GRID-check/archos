@@ -221,6 +221,48 @@ class TestTheRound:
         ]
 
 
+class TestTheSkillsRoute:
+    """``/skills/`` (ADR-0135) sits beside ``/drafts/`` and the estate on one composite."""
+
+    def _tools(self, drafts: DraftBackend | None) -> dict:
+        from aiq_agent.skills.backend import SkillsBackend
+        from aiq_agent.skills.models import Skill
+
+        skill = Skill(
+            name="fire-safety", description="Brandschutz.", body="# Brandschutz\n\nErst die GK.", origin="org"
+        )
+        skills = SkillsBackend({"office": (skill,)})
+        return {tool.name: tool for tool in filesystem_tools(drafts, _estate(), skills=skills)}
+
+    async def test_a_skill_reads_through_the_stock_tool(self, drafts: DraftBackend) -> None:
+        read = await _call(
+            self._tools(drafts), "read_file", file_path="/skills/office/fire-safety/SKILL.md", limit=1000
+        )
+        assert read.status != "error", read.content
+        assert "Erst die GK." in read.content and read.artifact is None
+        assert "/skills/" in self._tools(drafts)["read_file"].description
+
+    async def test_the_estate_and_the_drafts_still_read(self, drafts: DraftBackend) -> None:
+        tools = self._tools(drafts)
+        estate = await _call(tools, "read_file", file_path=PATH, pages="1")
+        assert "Citation: Brandschutzkonzept.pdf, p.1" in estate.content
+        await _call(tools, "write_file", file_path="/drafts/a.md", content="# A")
+        assert "# A" in (await _call(tools, "read_file", file_path="/drafts/a.md")).content
+
+    async def test_a_skill_is_never_writable_and_reads_without_a_conversation(self) -> None:
+        tools = self._tools(None)
+        assert set(tools) == {"ls", "read_file", "glob", "grep"}
+        read = await _call(tools, "read_file", file_path="/skills/office/fire-safety/SKILL.md")
+        assert read.status != "error", read.content
+
+    def test_a_skill_read_is_no_source_no_signature_and_no_toggle(self, monkeypatch) -> None:
+        monkeypatch.setattr(data_sources, "get_source_id_for_tool", {"knowledge_search": "knowledge_layer"}.get)
+        args = {"file_path": "/skills/office/fire-safety/SKILL.md"}
+        assert data_sources.source_id_for_call("read_file", args) is None
+        assert data_sources.disabled_source_notice("read_file", {"knowledge_layer"}, args) is None
+        assert fetch_signature({"name": "read_file", "args": args}) is None
+
+
 class TestGrepOnTheDrafts:
     async def test_a_drafts_grep_is_the_stock_literal_grep(self, drafts: DraftBackend) -> None:
         tools = _tools(drafts)

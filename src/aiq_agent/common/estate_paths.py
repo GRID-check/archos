@@ -41,7 +41,7 @@ from dataclasses import dataclass
 from typing import Any
 from typing import Literal
 
-Mount = Literal["drafts", "project", "office", "chat", "law"]
+Mount = Literal["drafts", "skills", "project", "office", "chat", "law"]
 
 #: The estate mounts, in the order ``ls("/")`` lists them.
 ESTATE_MOUNTS: tuple[Mount, ...] = ("project", "office", "chat", "law")
@@ -53,6 +53,7 @@ MOUNT_ROOTS: dict[Mount, str] = {
     "chat": "/chat/",
     "law": "/law/oib/",
     "drafts": "/drafts/",
+    "skills": "/skills/",
 }
 
 #: The drafts' root before it had an English name; stored turns still carry it.
@@ -137,10 +138,19 @@ def is_draft_path(path: str | None) -> bool:
     return False
 
 
+def is_skill_path(path: str | None) -> bool:
+    """Whether ``path`` is under the skills' root (ADR-0135): the turn's skills, read-only, never evidence."""
+    candidate = (path or "").strip()
+    root = MOUNT_ROOTS["skills"]
+    return candidate == root.rstrip("/") or candidate.startswith(root)
+
+
 def mount_of_path(path: str | None) -> Mount | None:
     """The mount ``path`` lies in; ``None`` for the root, a bare ``/law/`` or an unknown prefix."""
     if is_draft_path(path):
         return "drafts"
+    if is_skill_path(path):
+        return "skills"
     candidate = nfc((path or "").strip())
     if not candidate.startswith("/"):
         return None
@@ -183,8 +193,13 @@ def call_mount(tool: str, args: Any) -> Mount | Literal["estate"] | None:
 
 
 def reaches_drafts_only(tool: str, args: Any) -> bool:
-    """Whether a filesystem call stays inside the drafts: never a source, never signed, never refused by a toggle."""
-    return call_mount(tool, args) == "drafts"
+    """Whether a filesystem call stays off the estate, in the drafts or the skills.
+
+    Such a call is never a source, never signed by the repeat-fetch guard and
+    never refused by a data-source toggle: a draft is what the answer wrote, a
+    skill is a method, and neither is the office's evidence.
+    """
+    return call_mount(tool, args) in ("drafts", "skills")
 
 
 @dataclass(frozen=True)

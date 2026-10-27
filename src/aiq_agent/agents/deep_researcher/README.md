@@ -450,9 +450,12 @@ glance:
   (`factory.py:skill_filesystem_permissions`) are evaluated first-match-wins
   (deepagents' `_check_fs_permission` walks the rule list in order and
   returns on the first path match) and are ordered correctly for that
-  semantics: deny-write-builtin, then allow-read-builtin (only if skill
-  sources are assigned), then allow-read-per-source, then a catch-all
-  deny-read-builtin.
+  semantics: deny-write `/skills/**`, then allow-read `/skills/` (only if the
+  agent lists a source), then allow-read-per-source, then a catch-all
+  deny-read `/skills/**`. The sources are the agent's assigned builtin
+  collections and, for the writer, `/skills/office/` (the office's skills from
+  the BFF); all of them are served by the run's read-only `SkillsBackend`
+  (ADR-0135).
 - The manually-built researcher runnable (`factory.py:build_researcher_runnable`)
   places `SkillsMiddleware` *before* `FilesystemMiddleware`/summarization/
   `PatchToolCallsMiddleware`, whereas deepagents' auto-assembled subagent

@@ -23,8 +23,12 @@ vi.mock('next/link', () => ({
   }),
 }))
 
+const userMenuProps = vi.fn()
 vi.mock('./sidebar-user-menu', () => ({
-  SidebarUserMenu: () => <div data-testid="user-menu" />,
+  SidebarUserMenu: (props: { organizations?: unknown }) => {
+    userMenuProps(props)
+    return <div data-testid="user-menu" />
+  },
 }))
 
 // The badge subscription is the hook's own concern; here only the count's
@@ -113,5 +117,18 @@ describe('OrgHeader — on a phone', () => {
   test('leaves the desktop band as it was: no presence ping of its own', () => {
     render(<OrgHeader {...baseProps} />)
     expect(screen.queryByTestId('connection-band')).toBeNull()
+  })
+})
+
+describe('the organization switcher', () => {
+  test('is handed to the avatar menu, and the header band carries none', () => {
+    const organizations = [
+      { id: 'org_1', name: 'GRID Test', current: true },
+      { id: 'org_2', name: 'feld72 Architekten', current: false },
+    ]
+    render(<OrgHeader {...baseProps} organizations={organizations} />)
+
+    expect(userMenuProps).toHaveBeenLastCalledWith(expect.objectContaining({ organizations }))
+    expect(screen.queryByTestId('user-menu-switch-organization')).not.toBeInTheDocument()
   })
 })

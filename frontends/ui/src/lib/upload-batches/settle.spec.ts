@@ -17,17 +17,19 @@ vi.mock('@/lib/authz/project-membership', () => ({ PERMISSION_CHECKS_AT_ONCE: 8,
   resolveSubjectMembership: vi.fn(),
   userHoldsProjectPermission: vi.fn(),
 }))
-vi.mock('@/lib/authz/org-role-permissions', () => ({ orgRoleHoldsPermission: vi.fn() }))
+vi.mock('@/lib/authz/org-role-permissions', () => ({ rolesHoldPermission: vi.fn() }))
 vi.mock('@/lib/authz/folder-access', () => ({ isFolderVisibleToMember: vi.fn().mockResolvedValue(true) }))
 // The event itself is `quarantine-audit.spec.ts`'s subject; here, settling hands it over.
 vi.mock('@/lib/upload-screening/quarantine-audit', () => ({
   auditOwedQuarantines: vi.fn().mockResolvedValue(undefined),
 }))
+// What the report says is `upload-report.spec.ts`'s; here, settling puts it on the row or goes on without it.
+vi.mock('./upload-report-service', () => ({ uploadReportFor: vi.fn().mockResolvedValue(null) }))
 // Which projects get a reading is `project-intake/trigger.spec.ts`'s; here, settling hands the batches over.
 vi.mock('@/lib/project-intake/trigger', () => ({ queueIntakeReadsAfterUpload: vi.fn().mockResolvedValue([]) }))
 
 import { auditOwedQuarantines } from '@/lib/upload-screening/quarantine-audit'
-import { orgRoleHoldsPermission } from '@/lib/authz/org-role-permissions'
+import { rolesHoldPermission } from '@/lib/authz/org-role-permissions'
 import { resolveSubjectMembership, userHoldsProjectPermission } from '@/lib/authz/project-membership'
 import type { UploadBatch } from '@/lib/db/schema'
 import { announceSettledVersions } from '@/lib/documents/revision-notify'
@@ -39,6 +41,7 @@ import { queueIntakeReadsAfterUpload } from '@/lib/project-intake/trigger'
 import { makeDocument, makeProject } from '@/test-utils/db-fixtures'
 import { batchIdsOfDocuments, completeSettledBatches, reopenCompletedBatches } from './repository'
 import { onDocumentsSettled, settleUploadBatches } from './settle'
+import { uploadReportFor } from './upload-report-service'
 
 const batch = (overrides: Partial<UploadBatch> = {}): UploadBatch => ({
   id: 'batch-1',
@@ -67,6 +70,39 @@ beforeEach(() => {
 })
 
 describe('settleUploadBatches', () => {
+  it('puts the upload report on the row when there is one', async () => {
+    vi.mocked(completeSettledBatches).mockResolvedValue([batch()])
+    const report = {
+      projectId: 'proj-1',
+      documents: 2,
+      read: 2,
+      byType: [{ type: 'submission_drawing' as const, count: 2 }],
+      facts: 0,
+      factSamples: [],
+      newFindings: 0,
+      findings: [],
+      resolvedFindings: 0,
+      unresolvedReferences: 0,
+      pagesNotRead: 0,
+      documentsNotFullyRead: 0,
+    }
+    vi.mocked(uploadReportFor).mockResolvedValueOnce(report)
+
+    await settleUploadBatches('org-1', ['batch-1'])
+
+    expect(vi.mocked(emitInboxItems).mock.calls[0][0][0]?.payload).toEqual({ subject: 'Wohnbau Nord', report })
+  })
+
+  it('writes the row without a report when the report fails', async () => {
+    vi.mocked(completeSettledBatches).mockResolvedValue([batch()])
+    vi.mocked(uploadReportFor).mockRejectedValueOnce(new Error('listing down'))
+
+    await settleUploadBatches('org-1', ['batch-1'])
+
+    expect(vi.mocked(emitInboxItems).mock.calls[0][0][0]?.payload).toEqual({ subject: 'Wohnbau Nord' })
+    expect(reopenCompletedBatches).not.toHaveBeenCalled()
+  })
+
   it('tells the uploader once per batch this call completed, naming where it went', async () => {
     vi.mocked(completeSettledBatches).mockResolvedValue([batch()])
 
@@ -180,8 +216,9 @@ describe('onDocumentsSettled', () => {
     vi.mocked(resolveSubjectMembership).mockImplementation(async (_org, userId) => ({
       organizationMembershipId: `om-${userId}`,
       role: userId === 'admin' ? 'admin' : 'member',
+      roles: [userId === 'admin' ? 'admin' : 'member'],
     }))
-    vi.mocked(orgRoleHoldsPermission).mockImplementation(async (role) => role === 'admin')
+    vi.mocked(rolesHoldPermission).mockImplementation(async (_org, roles) => roles.includes('admin'))
     vi.mocked(userHoldsProjectPermission).mockImplementation(async (_s, _p, userId) => userId === 'lead')
 
     await onDocumentsSettled('org-1', [{ id: 'doc-q', status: 'quarantined' }])
@@ -213,8 +250,9 @@ describe('onDocumentsSettled', () => {
     vi.mocked(resolveSubjectMembership).mockImplementation(async (_org, userId) => ({
       organizationMembershipId: `om-${userId}`,
       role: 'member',
+      roles: ['member'],
     }))
-    vi.mocked(orgRoleHoldsPermission).mockResolvedValue(false)
+    vi.mocked(rolesHoldPermission).mockResolvedValue(false)
     vi.mocked(userHoldsProjectPermission).mockResolvedValue(true)
     // Only gf holds a folder role on Honorare (ADR-0097): asked per person, by their membership as it is now.
     vi.mocked(isFolderVisibleToMember).mockImplementation(async (_o, _p, _f, userId) => userId === 'gf')

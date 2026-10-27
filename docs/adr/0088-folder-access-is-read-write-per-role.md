@@ -107,7 +107,7 @@ affordances.
 fallback when WorkOS cannot be asked. A role taken away stops opening a folder
 within a minute, not at the next token refresh. **The admin bypass is derived
 the same way**: `clearanceOf` asks what the membership's roles hold now
-(`orgRoleHoldsPermission`, whose role-to-permission map is cached at most 60 s)
+(`rolesHoldPermission`, whose role-to-permission map is cached at most 60 s)
 rather than reading `org:projects:administer` from the token, so a demoted
 admin stops reaching every folder within a minute. Only when WorkOS cannot be
 asked is the token's permission the answer, as it is for the roles. This

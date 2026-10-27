@@ -1521,7 +1521,9 @@ class TestAsyncJobRunnerAgentFactory:
         assert "skills" not in kwargs
         subagents = {subagent["name"]: subagent for subagent in kwargs["subagents"]}
         assert "skills" not in subagents["planner-agent"]
-        assert subagents["writer-agent"]["skills"] == ["/skills/synthesis/"]
+        writer_middleware = subagents["writer-agent"]["middleware"]
+        writer_skills = [m for m in writer_middleware if m.__class__.__name__ == "SkillsMiddleware"]
+        assert [m.sources for m in writer_skills] == [["/skills/synthesis/"]]
         assert "Available Skills:" not in kwargs["system_prompt"]
         assert "Use read_file to load the relevant SKILL.md BEFORE writing any code" not in kwargs["system_prompt"]
         assert 'execute("python /workspace/[name].py")' not in kwargs["system_prompt"]

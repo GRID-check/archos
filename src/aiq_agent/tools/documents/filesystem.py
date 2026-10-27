@@ -49,6 +49,8 @@ from pydantic import Field
 from aiq_agent.common.citation_collector import artifact_for
 from aiq_agent.common.citation_collector import collect_citations
 from aiq_agent.common.estate_paths import is_draft_path
+from aiq_agent.common.estate_paths import is_skill_path
+from aiq_agent.skills import SKILLS_ROOT
 
 from .draft_store import DRAFT_ROOT
 from .draft_store import DraftBackend
@@ -166,14 +168,26 @@ class _NoEstate(BackendProtocol):
         return EditResult(error=f"{file_path} is outside {DRAFT_ROOT} (permission denied)")
 
 
-def composite_backend(drafts: DraftBackend | None, estate: BackendProtocol | None) -> CompositeBackend:
-    """The one backend the middleware sees: the estate by default, ``/drafts/`` routed to the draft store.
+def composite_backend(
+    drafts: DraftBackend | None, estate: BackendProtocol | None, *, skills: BackendProtocol | None = None
+) -> CompositeBackend:
+    """The one backend the middleware sees: the estate by default, ``/drafts/`` and ``/skills/`` routed.
 
-    ``artifacts_root`` is the drafts: eviction writing to a read-only default
-    fails silently and the result stays whole in context (ADR-0133 trap 4).
+    ``/drafts/`` is the draft store (keys re-prefixed, :class:`_DraftRoute`);
+    ``/skills/`` the turn's read-only skills backend (ADR-0135), which takes its
+    paths relative to its root, as a route hands them. ``artifacts_root`` is the
+    drafts: eviction writing to a read-only default fails silently and the
+    result stays whole in context (ADR-0133 trap 4).
     """
     routes: dict[str, BackendProtocol] = {DRAFT_ROOT: _DraftRoute(drafts)} if drafts is not None else {}
+    if skills is not None:
+        routes[SKILLS_ROOT] = skills
     return CompositeBackend(default=estate or _NoEstate(), routes=routes, artifacts_root=DRAFT_ROOT)
+
+
+def _off_the_estate(path: str | None) -> bool:
+    """A path the stock tool answers: the drafts (and their legacy root) or the skills."""
+    return path is not None and (is_draft_path(path) or is_skill_path(path))
 
 
 class EstateReadFileSchema(ReadFileSchema):
@@ -254,8 +268,8 @@ class PilotiFilesystem(FilesystemMiddleware):
             pages: str | int | None = None,
             clause: str | None = None,
         ) -> ToolMessage | Any:
-            if is_draft_path(file_path):
-                if not has_drafts:
+            if _off_the_estate(file_path):
+                if not has_drafts and is_draft_path(file_path):
                     return _refusal("read_file", runtime, NO_DRAFTS)
                 return await stock.coroutine(
                     file_path=modernize_draft_path(file_path), runtime=runtime, offset=offset, limit=limit
@@ -282,8 +296,8 @@ class PilotiFilesystem(FilesystemMiddleware):
         has_drafts = self._has_drafts
 
         async def ls(path: str, runtime: ToolRuntime, depth: int = 1) -> ToolMessage | Any:
-            if is_draft_path(path):
-                if not has_drafts:
+            if _off_the_estate(path):
+                if not has_drafts and is_draft_path(path):
                     return _refusal("ls", runtime, NO_DRAFTS)
                 return await stock.coroutine(path=modernize_draft_path(path), runtime=runtime)
             return await estate_message("ls", runtime, lambda: estate.ls(path, depth=depth, drafts=has_drafts))
@@ -304,8 +318,8 @@ class PilotiFilesystem(FilesystemMiddleware):
         has_drafts = self._has_drafts
 
         async def glob(pattern: str, runtime: ToolRuntime, path: str | None = None) -> ToolMessage | Any:
-            if path is not None and is_draft_path(path):
-                if not has_drafts:
+            if _off_the_estate(path):
+                if not has_drafts and is_draft_path(path):
                     return _refusal("glob", runtime, NO_DRAFTS)
                 return await stock.coroutine(pattern=pattern, path=modernize_draft_path(path), runtime=runtime)
             return await estate_message("glob", runtime, lambda: estate.glob(pattern, path))
@@ -336,8 +350,8 @@ class PilotiFilesystem(FilesystemMiddleware):
             stemmed: bool = False,
             context: int = 0,
         ) -> ToolMessage | Any:
-            if path is not None and is_draft_path(path):
-                if not has_drafts:
+            if _off_the_estate(path):
+                if not has_drafts and is_draft_path(path):
                     return _refusal("grep", runtime, NO_DRAFTS)
                 # The drafts are lines the answer wrote: the stock literal grep, never evidence.
                 return await stock.coroutine(

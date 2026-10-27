@@ -94,8 +94,8 @@ def emit_skill_activated(skill: Skill) -> None:
     """Say that this skill is now shaping the answer. The one LIVE skill event.
 
     Fires from the single activation site in ``SkillRuntime``, which is reached
-    only when ``use_skill`` hands a body over, so the line is a report of
-    delivery, never of an intention.
+    only when ``read_file`` hands a body over or the model names a pinned body
+    it followed, so the line is a report of delivery, never of an intention.
 
     A skill with no ``grid-title`` is technical: an id like
     ``oib-brandschutznachweis-2024`` in a status line is worse than silence,

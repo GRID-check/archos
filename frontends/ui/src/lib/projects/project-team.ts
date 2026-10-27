@@ -49,7 +49,8 @@ export async function loadProjectTeam(projectId: string, organizationId: string)
       const userId = userOf.get(assignment.organizationMembershipId)
       if (!userId) continue
       const earlier = since.get(userId)
-      if (!earlier || assignment.createdAt < earlier) since.set(userId, assignment.createdAt)
+      const joined = assignment.createdAt.toISOString()
+      if (!earlier || joined < earlier) since.set(userId, joined)
     }
     return [...since]
       .map(([userId, createdAt]) => ({ userId, name: directory.get(userId)?.name ?? null, since: dateToMonth(createdAt) }))

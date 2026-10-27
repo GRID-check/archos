@@ -32,6 +32,13 @@ they deliberately do NOT say:
   one the model learns to ignore.
 * **Anything about filing.** The working directory is not the project. What a
   draft becomes is decided by a person, through the lifecycle API.
+
+The same ``read_file`` reads the turn's skills (ADR-0135): the run's
+``SkillsBackend`` is routed under ``/skills/`` beside the working directory
+(and beside the estate, in the one-namespace shape), read-only, so one verb
+serves all of them and a turn with no conversation still gets ``read_file``
+for its skills. A tool name is unique in a binding, which is why the skills
+do not get a ``read_file`` of their own.
 """
 
 from __future__ import annotations
@@ -39,11 +46,14 @@ from __future__ import annotations
 import logging
 from typing import Any
 
+from deepagents.backends import CompositeBackend
+from deepagents.backends.protocol import BackendProtocol
 from deepagents.middleware.filesystem import FilesystemMiddleware
 from deepagents.middleware.filesystem import FilesystemPermission
 from langchain_core.tools import BaseTool
 
 from aiq_agent.project_context import get_conversation_id_from_context
+from aiq_agent.skills import SKILLS_ROOT
 
 from .draft_store import DRAFT_ROOT
 from .draft_store import DraftBackend
@@ -181,20 +191,40 @@ _ESTATE_DESCRIPTIONS = {
 }
 
 
-def filesystem_tools(drafts: DraftBackend | None, estate: Any) -> list[BaseTool]:
+#: The skills are read, never written, and only under their own root.
+_SKILL_PERMISSION = FilesystemPermission(operations=["read"], paths=[f"{SKILLS_ROOT}**"], mode="allow")
+
+_SKILL_READ = (
+    "a skill's instructions: the `SKILL.md` at a path the Skills section lists, under "
+    f"`{SKILLS_ROOT}`. Pass `limit=1000` so the whole method arrives in one read."
+)
+_READ_WITH_SKILLS = f"{_TOOL_DESCRIPTIONS['read_file']} It also reads {_SKILL_READ}"
+_READ_SKILLS_ONLY = f"Reads {_SKILL_READ}"
+
+
+def filesystem_tools(
+    drafts: DraftBackend | None, estate: Any, *, skills: BackendProtocol | None = None
+) -> list[BaseTool]:
     """The turn's file verbs over one namespace: the estate's readers, plus the drafts' verbs when there are drafts.
 
     ``estate`` is the knowledge layer's ``EstateBackend`` (built once, at boot);
     ``drafts`` the conversation's draft store, or ``None`` on a turn without a
-    conversation. The tools are built per turn because the draft store is.
+    conversation; ``skills`` the turn's skills backend, a read-only ``/skills/``
+    route beside ``/drafts/``. The tools are built per turn because the draft
+    store and the skills are.
     """
     names = [*ESTATE_TOOL_NAMES, *(DRAFT_ONLY_TOOL_NAMES if drafts is not None else ())]
+    descriptions = {**_TOOL_DESCRIPTIONS, **_ESTATE_DESCRIPTIONS}
+    permissions = list(_PERMISSIONS)
+    if skills is not None:
+        descriptions["read_file"] = f"{descriptions['read_file']}\n- {_SKILL_READ[0].upper()}{_SKILL_READ[1:]}"
+        permissions.insert(0, _SKILL_PERMISSION)
     middleware = PilotiFilesystem(
         estate=estate,
         drafts=drafts is not None,
-        backend=composite_backend(drafts, estate),
-        custom_tool_descriptions={**_TOOL_DESCRIPTIONS, **_ESTATE_DESCRIPTIONS},
-        permissions=_PERMISSIONS,
+        backend=composite_backend(drafts, estate, skills=skills),
+        custom_tool_descriptions=descriptions,
+        permissions=permissions,
         tools=names,
     )
     by_name = {tool.name: tool for tool in middleware.tools}
@@ -202,28 +232,43 @@ def filesystem_tools(drafts: DraftBackend | None, estate: Any) -> list[BaseTool]
     return [by_name[name] for name in order if name in by_name]
 
 
-def draft_tools(backend: DraftBackend) -> list[BaseTool]:
-    """The four verbs bound to one conversation's working directory."""
+def draft_tools(backend: DraftBackend | None, *, skills: BackendProtocol | None = None) -> list[BaseTool]:
+    """The verbs for one turn without an estate: the four over the working directory, ``read_file`` over the skills.
+
+    With both, the skills backend is a ``/skills/`` route on a composite whose
+    default is the working directory; with skills alone, ``read_file`` is the
+    only verb. Every path outside the two roots is denied in the tool.
+    """
+    if backend is None and skills is None:
+        return []
+    names = DRAFT_TOOL_NAMES if backend is not None else ("read_file",)
+    descriptions = dict(_TOOL_DESCRIPTIONS)
+    permissions = list(_PERMISSIONS)
+    mounted: BackendProtocol = backend if backend is not None else skills  # ty: ignore[invalid-assignment]
+    if skills is not None:
+        mounted = CompositeBackend(default=mounted, routes={SKILLS_ROOT: skills})
+        descriptions["read_file"] = _READ_WITH_SKILLS if backend is not None else _READ_SKILLS_ONLY
+        permissions.insert(0, _SKILL_PERMISSION)
     middleware = FilesystemMiddleware(
-        backend=backend,
-        custom_tool_descriptions=_TOOL_DESCRIPTIONS,
-        permissions=_PERMISSIONS,
-        tools=list(DRAFT_TOOL_NAMES),
+        backend=mounted,
+        custom_tool_descriptions=descriptions,
+        permissions=permissions,
+        tools=list(names),
     )
     by_name = {tool.name: tool for tool in middleware.tools}
-    return [by_name[name] for name in DRAFT_TOOL_NAMES if name in by_name]
+    return [by_name[name] for name in names if name in by_name]
 
 
-async def filesystem_tools_for_turn(estate: Any = None) -> list[BaseTool]:
+async def filesystem_tools_for_turn(estate: Any = None, *, skills: BackendProtocol | None = None) -> list[BaseTool]:
     """The file verbs for the turn in context.
 
     Without an estate backend, exactly :func:`draft_tools_for_turn`. With one,
-    the estate's readers are bound on every turn, and the drafts' verbs join
-    them when the turn has a working directory.
+    the estate's readers are bound on every turn, the drafts' verbs join them
+    when the turn has a working directory, and ``read_file`` reads the skills.
     """
     if estate is None:
-        return await draft_tools_for_turn()
-    return filesystem_tools(await _turn_drafts(), estate)
+        return await draft_tools_for_turn(skills=skills)
+    return filesystem_tools(await _turn_drafts(), estate, skills=skills)
 
 
 async def _turn_drafts() -> DraftBackend | None:
@@ -238,21 +283,14 @@ async def _turn_drafts() -> DraftBackend | None:
         return None
 
 
-async def draft_tools_for_turn() -> list[BaseTool]:
-    """The working-directory tools for the turn in context; ``[]`` when there is none.
+async def draft_tools_for_turn(*, skills: BackendProtocol | None = None) -> list[BaseTool]:
+    """The file verbs for the turn in context without an estate; ``[]`` when it has neither drafts nor skills.
 
     No conversation id means there is nothing to namespace a working directory
-    by (a CLI run, an eval, a job worker), so the turn is offered no file verbs
+    by (a CLI run, an eval, a job worker), so the turn is offered no draft verbs
     at all rather than a directory shared by everyone. A store that cannot be
     reached is the same answer: the turn answers without drafting, which is what
-    every turn did before this existed.
+    every turn did before this existed. ``skills``, the turn's skills backend,
+    is readable either way.
     """
-    conversation_id = get_conversation_id_from_context()
-    if not conversation_id:
-        return []
-    try:
-        backend = await get_draft_backend(conversation_id)
-    except Exception:  # noqa: BLE001 - a working directory is never worth the turn
-        logger.warning("Working directory unavailable; this turn is answered without it.", exc_info=True)
-        return []
-    return draft_tools(backend)
+    return draft_tools(await _turn_drafts(), skills=skills)

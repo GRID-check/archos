@@ -12,7 +12,7 @@ import { getWorkOS } from '@/lib/workos/client'
 import { requireProjectAccess, type ProjectPermission } from '@/lib/authz/projects'
 import { CHAT_PERMISSIONS } from '@/lib/authz/chat'
 import { hasPermission, ORG_PERMISSIONS } from '@/lib/authz/permissions'
-import { checkResourcePermission } from '@/lib/authz/resource-check'
+import { effectiveResourcePermissions } from '@/lib/authz/resource-check'
 import { recordAuditEvent } from '@/lib/audit/service'
 import { neutralizeCollaborationForProject } from '@/lib/collaboration/cleanup'
 import {
@@ -161,17 +161,15 @@ export async function projectsHolding<T extends Pick<Project, 'id' | 'status'>>(
     const asked = closed ? keptWhenClosed(permissions) : permissions
     if (asked.length === 0) return false
     if (closed && openToOrganizationWhenClosed(asked)) return true
-    for (const permissionSlug of asked) {
-      const allowed = await checkResourcePermission({
-        organizationMembershipId: session.organizationMembershipId,
-        organizationId: session.organizationId,
-        permissionSlug,
-        resourceExternalId: project.id,
-        resourceTypeSlug: 'project',
-      })
-      if (allowed) return true
-    }
-    return false
+    // One WorkOS call per project, cached under the key `requireProjectAccess`
+    // reads, so opening a listed project asks WorkOS nothing new.
+    const effective = await effectiveResourcePermissions({
+      organizationMembershipId: session.organizationMembershipId,
+      organizationId: session.organizationId,
+      resourceExternalId: project.id,
+      resourceTypeSlug: 'project',
+    })
+    return asked.some((permission) => effective.has(permission))
   }
   const held = await Promise.all(projects.map(holds))
   return projects.filter((_, index) => held[index])

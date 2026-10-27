@@ -60,7 +60,7 @@ GRID_METADATA_KEYS = frozenset(
 #: ``grid-cards`` — the card types a skill would LIKE its answers rendered as.
 #:
 #: A preference, not a contract: it costs nothing until the skill is activated,
-#: at which point ``SkillRuntime`` appends a short block naming these types to
+#: at which point its ``read_file`` appends a short block naming these types to
 #: the skill body. Values are card ``type`` literals from the ``GridCard``
 #: union, minus ``SYSTEM_CARD_TYPES`` — a system card is emitted by a tool on a
 #: sanctioned path, so naming one here would be asking the model to fabricate
@@ -134,7 +134,7 @@ _HIDDEN_FALSE = frozenset({"false", "0", "no"})
 #:
 #: NOT an agentskills.io rule — the open format says nothing about tags. It is a
 #: GRID prompt-safety rule: ``name`` and ``description`` are interpolated into an
-#: agent's system prompt (``SkillRuntime.prompt_block``), where a stray tag can
+#: agent's prompt (the ``SkillsMiddleware`` catalog), where a stray tag can
 #: close a structural element the prompt opened and let skill text land in a
 #: position it was never meant to occupy. The body is NOT checked — it is
 #: markdown delivered through a tool result, and restricting its content would
@@ -159,7 +159,7 @@ class Skill(BaseModel):
         description: One-line summary shown to the model (progressive
             disclosure level 1).
         body: The full markdown instructions (level 2, loaded via
-            ``use_skill``).
+            ``read_file`` on its ``SKILL.md``).
         metadata: Reserved GRID keys + free-form extra keys.
         origin: ``platform`` for builtin files, ``org`` for BFF-served rows.
         collection: Mid-level collection dir name for builtin files

@@ -1518,8 +1518,10 @@ def tool_called_by(body: Any) -> str | None:
     if getattr(step, "kind", None) != "tool":
         return None
     tool = getattr(step, "tool", None) or None
-    if tool and getattr(step, "mount", None) == "drafts":
-        return f"draft:{tool}"
+    mount = getattr(step, "mount", None)
+    if tool and mount in ("drafts", "skills"):
+        # A skill read (ADR-0135) is no office-file move either.
+        return f"{'draft' if mount == 'drafts' else 'skill'}:{tool}"
     return tool
 
 
