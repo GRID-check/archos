@@ -15,7 +15,7 @@ const session = {
   organizationId: 'org-1',
   email: 'admin@grid.com',
   role: 'admin',
-  permissions: [] as string[],
+  permissions: adminPermissions(),
   featureFlags: ['runtime-model-config'] as string[] | null,
 }
 
@@ -66,6 +66,7 @@ import { POST } from './route'
 import { fetchZdrEndpoints, ZdrListUnavailableError, type ZdrIndex } from '@/lib/model-config/openrouter'
 import { isZdrApplicableForOrg } from '@/lib/model-config/org-catalog'
 import { isZdrOnlyForOrg } from '@/lib/organizations/service'
+import { adminPermissions } from '@/test-utils/admin-permissions'
 
 const zdrIndex = (...endpoints: Array<{ modelId: string; supportedParameters?: string[] }>): ZdrIndex =>
   new Map(

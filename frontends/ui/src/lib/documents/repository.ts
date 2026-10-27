@@ -1455,6 +1455,55 @@ export async function findStorageKeyByCollectionAndFilename(
  * live, user-authored (this feeds a presigned WRITE under the document's
  * prefix), and org-narrowed when the caller carries one.
  */
+/**
+ * The row a version's stored page text is written for (ADR-0134): its storage key, bucket and content
+ * hash, and the number of the version those mirror. Same lookup and same guards as
+ * {@link findStorageKeyByIdAndCollection}; the version comes from the published version it points at.
+ */
+export async function findPageTextTarget(
+  documentId: string,
+  collectionName: string,
+  organizationId?: string,
+): Promise<{ storageKey: string; storageBucket: string | null; contentHash: string | null; version: number | null } | null> {
+  const db = getDb()
+  const [row] = await withOptionalTenant(
+    organizationId,
+    'internal page-text presign: the service-token caller identifies the row by its ' +
+      'unguessable document id and collection name and carries no organization',
+    () =>
+      db
+        .select({
+          storageKey: documents.storageKey,
+          storageBucket: documents.storageBucket,
+          contentHash: documents.contentHash,
+          version: documentVersions.versionNumber,
+        })
+        .from(documents)
+        .leftJoin(
+          documentVersions,
+          and(eq(documentVersions.id, documents.publishedVersionId), eq(documentVersions.documentId, documents.id)),
+        )
+        .where(
+          and(
+            eq(documents.id, documentId),
+            eq(documents.collectionName, collectionName),
+            eq(documents.authoredBy, 'user'),
+            ...(organizationId ? [eq(documents.organizationId, organizationId)] : []),
+            // The pipeline writes the text after its screen; the row is held until it finishes.
+            documentVisibleTo(internalRead('ingest')),
+          ),
+        )
+        .limit(1),
+  )
+  if (!row?.storageKey) return null
+  return {
+    storageKey: row.storageKey,
+    storageBucket: row.storageBucket ?? null,
+    contentHash: row.contentHash ?? null,
+    version: row.version === null || row.version === undefined ? null : Number(row.version),
+  }
+}
+
 export async function findStorageKeyByIdAndCollection(
   documentId: string,
   collectionName: string,
@@ -1798,6 +1847,48 @@ export async function listStuckProcessingDocuments(
     jobStatus: row.jobStatus === 'dead' ? 'dead' : null,
     lastError: row.lastError ?? null,
   }))
+}
+
+/** A failed document the transient-retry sweep may send back: its id, its organization, how often it was sent. */
+export interface TransientFailureDocument {
+  id: string
+  organizationId: string
+  attempts: number
+}
+
+/**
+ * Failed documents whose failure the backend called `transient` (an interruption, a timeout, a download
+ * or upstream error), sent fewer than `maxAttempts` times, and whose last attempt is older than its backoff:
+ * `firstBackoffMinutes` after the first attempt, doubling with each further one. Oldest first, bounded.
+ * Discovery across every organization, like {@link listStuckProcessingDocuments}; each row is retried
+ * inside its own. A person's document only (`authored_by = 'user'`), with stored bytes, not in the bin.
+ */
+export async function listTransientFailures(
+  now: Date,
+  options: { maxAttempts: number; firstBackoffMinutes: number; maxAgeHours: number; limit: number },
+): Promise<TransientFailureDocument[]> {
+  const db = getDb()
+  const attempts = sql`greatest(coalesce(${documents.ingestAttempts}, 1), 1)`
+  const rows = await withPlatformAccess('document sweep: finding transient ingest failures to retry', () =>
+    db
+      .select({ id: documents.id, organizationId: documents.organizationId, attempts: documents.ingestAttempts })
+      .from(documents)
+      .where(
+        and(
+          eq(documents.status, 'failed'),
+          eq(documents.ingestFailureCategory, 'transient'),
+          eq(documents.authoredBy, 'user'),
+          sql`${documents.storageKey} IS NOT NULL`,
+          sql`coalesce(${documents.ingestAttempts}, 1) < ${options.maxAttempts}`,
+          sql`${documents.updatedAt} < ${now.toISOString()}::timestamptz - make_interval(mins => ${options.firstBackoffMinutes} * power(2, ${attempts} - 1)::int)`,
+          sql`${documents.updatedAt} > ${now.toISOString()}::timestamptz - make_interval(hours => ${options.maxAgeHours})`,
+          sql`NOT EXISTS (SELECT 1 FROM project_folders f WHERE f.id = ${documents.folderId} AND f.deleted_at IS NOT NULL)`,
+        ),
+      )
+      .orderBy(asc(documents.updatedAt))
+      .limit(options.limit),
+  )
+  return rows.map((row) => ({ id: row.id, organizationId: row.organizationId, attempts: Number(row.attempts ?? 1) }))
 }
 
 /**

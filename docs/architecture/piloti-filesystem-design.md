@@ -1,5 +1,9 @@
 # Piloti in the File System — Design Spec
 
+> **The read side lives in [`agent-filesystem.md`](agent-filesystem.md)**
+> (ADR-0133, ADR-0134): the mounts, `ls`/`glob`/`grep`/`read_file` and how each
+> document appears. This spec stays the exploration of the write side.
+
 > Piloti can read the office's files. It cannot write one. This spec designs the
 > write side as a substrate rather than a tool: one namespace, one write path,
 > one authorization decision, one lifecycle — mounted under every agent, not

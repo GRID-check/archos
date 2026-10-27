@@ -2,6 +2,7 @@ import type { MarkTally } from '@/lib/annotations/types'
 import type { DocumentAuthor } from '@/lib/db/schema'
 import type { RevisionLinks } from '@/lib/documents/revision-links'
 import type { PhotoCapture } from '@/lib/documents/photo-capture'
+import type { DocumentReference, Dossier, ReadingCoverage } from '@/lib/documents/dossier'
 import type { RevisionFacts } from '@/lib/documents/revision-facts'
 import type { QuarantineVerdict } from '@/lib/upload-screening/quarantine'
 import type {
@@ -96,6 +97,16 @@ export interface FileItem {
    * says nothing; `null` is "read, and the sheet showed none".
    */
   revisionFacts?: RevisionFacts | null
+  /**
+   * What ingestion read the document to be: its type, parties, dates, place
+   * and the facts it states (`lib/documents/dossier.ts`). Optional like
+   * `revisionFacts`; `null` is "read, and nothing usable".
+   */
+  dossier?: Dossier | null
+  /** The norms, laws, drawing numbers and document types it points at. */
+  docReferences?: DocumentReference[] | null
+  /** How many of its pages were read, and why the rest were not. */
+  coverage?: ReadingCoverage | null
   /**
    * Which documents this one replaces or is replaced by, Piloti's suggestion
    * and what changed (CONTEXT.md, „Fassung"). Every reference is a document the

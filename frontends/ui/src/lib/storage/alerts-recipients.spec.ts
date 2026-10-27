@@ -6,9 +6,9 @@ vi.mock('@/lib/inbox/repository', () => ({ archiveInboxItemsOfType: vi.fn(), fin
 vi.mock('./repository', () => ({ aggregateStorageUsageByOrganization: vi.fn() }))
 vi.mock('./service', () => ({ getStorageQuotaBytes: vi.fn() }))
 vi.mock('@/lib/organizations/service', () => ({ listOrganizationMembersWithRoles: vi.fn() }))
-vi.mock('@/lib/authz/org-role-permissions', () => ({ orgRoleHoldsPermission: vi.fn() }))
+vi.mock('@/lib/authz/org-role-permissions', () => ({ rolesHoldPermission: vi.fn() }))
 
-import { orgRoleHoldsPermission } from '@/lib/authz/org-role-permissions'
+import { rolesHoldPermission } from '@/lib/authz/org-role-permissions'
 import { listOrganizationMembersWithRoles } from '@/lib/organizations/service'
 import { findStorageAlertRecipients, STORAGE_ALERT_PERMISSION } from './alerts'
 
@@ -24,9 +24,9 @@ describe('findStorageAlertRecipients', () => {
       { id: 'u_intern', status: 'active', roleSlug: 'member' },
       { id: 'u_left', status: 'inactive', roleSlug: 'org-geschaeftsfuehrung' },
     ] as Awaited<ReturnType<typeof listOrganizationMembersWithRoles>>)
-    vi.mocked(orgRoleHoldsPermission).mockImplementation(async (role) => role === 'org-geschaeftsfuehrung')
+    vi.mocked(rolesHoldPermission).mockImplementation(async (_org, roles) => roles.includes('org-geschaeftsfuehrung'))
 
     await expect(findStorageAlertRecipients('org_1')).resolves.toEqual(['u_gf'])
-    expect(orgRoleHoldsPermission).toHaveBeenCalledWith('org-geschaeftsfuehrung', STORAGE_ALERT_PERMISSION, 'org_1')
+    expect(rolesHoldPermission).toHaveBeenCalledWith('org_1', ['org-geschaeftsfuehrung'], STORAGE_ALERT_PERMISSION)
   })
 })

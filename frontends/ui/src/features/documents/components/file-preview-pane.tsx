@@ -1837,7 +1837,7 @@ export function FilePreviewPane({
                           correct it — see `piloti-reading.tsx` for why this is
                           no longer an always-open tag form. */}
                       <div className={cn('p-3', file.summary && 'border-border/60 border-t')}>
-                        <PilotiReading file={file} canManage={canManage} onTagsUpdated={onTagsUpdated} />
+                        <PilotiReading file={file} canManage={canManage} onTagsUpdated={onTagsUpdated} projectId={projectId} />
                       </div>
                     </>
                   ) : (

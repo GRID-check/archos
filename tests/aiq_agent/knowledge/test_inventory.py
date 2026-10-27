@@ -682,3 +682,26 @@ class TestTopicsAndCaptureInTheInventory:
         assert "Themen" not in text
         assert "aufgenommen" not in text
         assert "**baustelle.jpg**: Rohbau Ost, Stand Oktober." in text
+
+
+class TestTheIngestsReading:
+    """The dossier's type and the unread pages reach the line every turn reads; the facts stay in list_files."""
+
+    def test_the_type_and_the_unread_pages_are_on_the_line(self):
+        doc = _doc("BSK.pdf", collection="proj_1", shelf="project")
+        doc.dossier = {"document_type": "fire_safety_concept", "facts": [{"key": "building_class", "value": "4"}]}
+        doc.coverage = {"pages": 40, "not_read": 2}
+
+        text = render_inventory_block([doc])
+
+        assert "Typ: fire safety concept" in text
+        assert "2 von 40 Seiten nicht vollständig gelesen" in text
+        # A fact costs prompt on every turn; list_files shows it on demand.
+        assert "building_class" not in text
+
+    def test_a_document_read_whole_says_nothing_extra(self):
+        doc = _doc("BSK.pdf", collection="proj_1", shelf="project")
+        doc.dossier = {"document_type": "other"}
+        doc.coverage = {"pages": 4, "not_read": 0}
+
+        assert "Typ:" not in render_inventory_block([doc]) and "nicht vollständig" not in render_inventory_block([doc])

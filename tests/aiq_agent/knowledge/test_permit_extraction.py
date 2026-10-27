@@ -17,6 +17,7 @@ from langchain_core.messages import HumanMessage
 
 from aiq_agent.knowledge import permit_extraction
 from aiq_agent.knowledge.document_classification import DOCUMENT_TYPE_TAGS
+from aiq_agent.knowledge.permit_extraction import MAX_OUTPUT_TOKENS
 from aiq_agent.knowledge.permit_extraction import MAX_REQUIREMENTS
 from aiq_agent.knowledge.permit_extraction import MAX_TEXT_CHARS
 from aiq_agent.knowledge.permit_extraction import PermitExtraction
@@ -111,6 +112,15 @@ def test_the_call_demands_a_strict_json_schema():
     json_schema = llm.bound["response_format"]["json_schema"]
     assert json_schema["strict"] is True
     assert json_schema["schema"]["additionalProperties"] is False
+
+
+def test_the_call_brings_its_own_output_budget():
+    # The summary model it runs on is capped at one sentence (100 tokens); a record with
+    # Auflagen was cut off mid-object and never landed.
+    llm = FakeLLM(_record())
+    extract_permit_record("Text", llm, file_name="m.pdf")
+
+    assert llm.bound["max_tokens"] == MAX_OUTPUT_TOKENS >= 4000
 
 
 def test_the_schema_kinds_are_the_contracts():

@@ -22,6 +22,7 @@ import {
   signingS3Client,
   presignForBackend,
   buildImageStorageKey,
+  buildPageTextStorageKey,
   buildThumbnailStorageKey,
 } from '@/lib/s3'
 import { resolveDocumentBucket } from '@/lib/storage/bucket'
@@ -97,6 +98,7 @@ import {
   findStorageKeyByCollectionAndFilename,
   type StoredDocumentFile,
   findStorageKeyByIdAndCollection,
+  findPageTextTarget,
   listDocumentLevelPage,
   listProjectDocumentPage,
   findProjectDocumentsByFilenames,
@@ -2358,6 +2360,37 @@ export async function redispatchStuckDocument(
   return status === 'failed' ? 'failed' : 'requeued'
 }
 
+/** How the transient-retry sweep's retry of one failed document came out. */
+export type TransientRetryOutcome = 'requeued' | 'failed' | 'gone'
+
+/**
+ * Send a document whose read failed for a passing reason (`transient`) back through ingestion.
+ *
+ * The sweep's door (`./transient-retry`), and the system's own act like {@link redispatchStuckDocument}:
+ * no person is asking, so no session; what the row says is all this believes, and it is read again
+ * here because the sweep's list may be stale. At `bulk` priority, so a retry yields to people's uploads.
+ */
+export async function retryTransientFailure(
+  organizationId: string,
+  documentId: string
+): Promise<TransientRetryOutcome> {
+  const doc = await findDocumentInOrg(documentId, organizationId, internalRead('ingest'))
+  if (!doc || doc.status !== 'failed' || doc.ingestFailureCategory !== 'transient') return 'gone'
+  if (!doc.storageKey || doc.authoredBy !== 'user' || !collectionFileRef(doc)) return 'gone'
+  const { status } = await dispatchDocument({
+    organizationId,
+    projectId: doc.projectId,
+    documentId: doc.id,
+    filename: doc.filename,
+    storageKey: doc.storageKey,
+    storageBucket: doc.storageBucket,
+    collectionName: doc.collectionName,
+    folderPath: await resolveDocumentFolderPath(doc, organizationId),
+    priority: 'bulk',
+  })
+  return status === 'failed' ? 'failed' : 'requeued'
+}
+
 /**
  * Replace a document's controlled tags. Requires `project:edit`. The document
  * row maps to the backend's `(collectionName, filename)` summary key; the edit
@@ -3248,6 +3281,9 @@ export async function getDocumentStatus(session: AuthorizedSession, documentId: 
     topics: reconciled.topics,
     capture: reconciled.capture,
     revisionFacts: reconciled.revisionFacts,
+    dossier: reconciled.dossier,
+    docReferences: reconciled.docReferences,
+    coverage: reconciled.coverage,
     // Resolved for THIS reader: a document they may not open is not in it.
     revision,
     // The place in the ingest queue, null once the job is claimed or settled.
@@ -3342,6 +3378,33 @@ export async function presignDocumentImageUpload(
     3600
   )
   return { uploadUrl, storageKey }
+}
+
+/**
+ * One presigned PUT for a part of a version's stored page text (ADR-0134), with the row's id,
+ * version and content hash, which the pipeline writes into `index.json` so the reader can refuse
+ * a file that is not this version's. Null when the row is unknown or the part is not one of
+ * `PAGE_TEXT_PARTS`; the pipeline then stores nothing.
+ */
+export async function presignDocumentPageTextUpload(
+  documentId: string,
+  collectionName: string,
+  part: string,
+  organizationId?: string
+): Promise<{ uploadUrl: string; storageKey: string; documentId: string; version: number | null; contentHash: string | null } | null> {
+  const doc = await findPageTextTarget(documentId, collectionName, organizationId)
+  if (!doc) return null
+  const storageKey = buildPageTextStorageKey(doc.storageKey, part)
+  if (!storageKey) return null
+  const uploadUrl = await presignForBackend(
+    new PutObjectCommand({
+      Bucket: resolveDocumentBucket(doc.storageBucket),
+      Key: storageKey,
+      ContentType: part.endsWith('.json') ? 'application/json' : 'text/markdown; charset=utf-8',
+    }),
+    3600
+  )
+  return { uploadUrl, storageKey, documentId, version: doc.version, contentHash: doc.contentHash }
 }
 
 /**

@@ -7,7 +7,9 @@ vi.mock('server-only', () => ({}))
 vi.mock('@/lib/authz/project-membership', () => ({ resolveSubjectMembership: vi.fn(), lookupSubjectMembership: vi.fn() }))
 vi.mock('@/lib/workos/feature-flags', () => ({ enabledFlagsForOrganization: vi.fn() }))
 vi.mock('./person', () => ({ resolvePerson: vi.fn() }))
+vi.mock('@/lib/authz/org-role-permissions', () => ({ rolePermissions: vi.fn() }))
 
+import { rolePermissions } from '@/lib/authz/org-role-permissions'
 import { lookupSubjectMembership, resolveSubjectMembership } from '@/lib/authz/project-membership'
 import { enabledFlagsForOrganization } from '@/lib/workos/feature-flags'
 import { resolvePerson } from './person'
@@ -17,10 +19,11 @@ const requester = { userId: 'user_owner', email: 'owner@grid.test', organization
 
 beforeEach(() => {
   vi.clearAllMocks()
-  vi.mocked(resolveSubjectMembership).mockResolvedValue({ organizationMembershipId: 'om_1', role: 'member' })
-  vi.mocked(lookupSubjectMembership).mockResolvedValue({ organizationMembershipId: 'om_1', role: 'member' })
+  vi.mocked(resolveSubjectMembership).mockResolvedValue({ organizationMembershipId: 'om_1', role: 'member', roles: ['member'] })
+  vi.mocked(lookupSubjectMembership).mockResolvedValue({ organizationMembershipId: 'om_1', role: 'member', roles: ['member'] })
   vi.mocked(enabledFlagsForOrganization).mockResolvedValue([])
   vi.mocked(resolvePerson).mockResolvedValue({ name: null, email: null, organizationName: null })
+  vi.mocked(rolePermissions).mockResolvedValue(new Set(['org:projects:create']))
 })
 
 afterEach(() => {
@@ -38,12 +41,30 @@ describe('resolvePinnedRequesterSession', () => {
       organizationId: 'org_1',
       organizationMembershipId: 'om_1',
       role: 'member',
+      roles: ['member'],
       // No token: nothing on the filing path forwards one, and none is minted.
       accessToken: '',
       featureFlags: [],
     })
-    // Permissions come from the catalog for the role, never from the caller.
-    expect(Array.isArray(session?.permissions)).toBe(true)
+    // Permissions come from WorkOS for the membership's roles, never from the caller.
+    expect(rolePermissions).toHaveBeenCalledWith('org_1', ['member'])
+    expect(session?.permissions).toEqual(['org:projects:create'])
+  })
+
+  it("gives an office's own custom role what WorkOS says it holds, as the person's token would", async () => {
+    // Built from the catalog's table, the session gave a role the catalog has
+    // never heard of nothing at all, so Piloti could not do for a Geschäftsführer
+    // what the Geschäftsführer could do in the browser.
+    vi.mocked(resolveSubjectMembership).mockResolvedValueOnce({
+      organizationMembershipId: 'om_1',
+      role: 'org-geschaeftsfuehrung',
+      roles: ['org-geschaeftsfuehrung'],
+    })
+    vi.mocked(rolePermissions).mockResolvedValueOnce(new Set(['org:projects:administer', 'org:settings:manage']))
+
+    const session = await resolvePinnedRequesterSession(requester)
+
+    expect(session?.permissions).toEqual(['org:projects:administer', 'org:settings:manage'])
   })
 
   it('knows the person by name, as a live session does, so an unattended turn is not addressed as nobody', async () => {
@@ -66,7 +87,7 @@ describe('resolvePinnedRequesterSession', () => {
   })
 
   it('is nobody when the membership carries no role to derive permissions from', async () => {
-    vi.mocked(resolveSubjectMembership).mockResolvedValueOnce({ organizationMembershipId: 'om_1', role: null })
+    vi.mocked(resolveSubjectMembership).mockResolvedValueOnce({ organizationMembershipId: 'om_1', role: null, roles: [] })
 
     expect(await resolvePinnedRequesterSession(requester)).toBeNull()
   })

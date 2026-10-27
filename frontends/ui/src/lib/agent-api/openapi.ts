@@ -276,7 +276,8 @@ export function buildOpenApiDocument(
           in: 'cookie',
           name: SESSION_COOKIE,
           description:
-            'The Piloti app\u2019s signed-in session (WorkOS AuthKit), as a browser holds it. A bearer token is not accepted ' +
+            'The Piloti app\u2019s signed-in session (WorkOS AuthKit), as a browser holds it. A session too large for one ' +
+            `cookie is split into ${SESSION_COOKIE}.0, ${SESSION_COOKIE}.1 and so on; send every one. A bearer token is not accepted ` +
             `here: an agent holds an OAuth token for the MCP server at ${MCP_PATH} and calls the operations there.`,
         },
       },

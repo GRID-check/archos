@@ -1,7 +1,7 @@
 # ADR-0046: Agent skills — user-selected, progressive-disclosure instruction packages
 
 - **Status:** Proposed
-- **Date:** 2026-08-10, amended 2026-08-11, amended 2026-10-27
+- **Date:** 2026-08-10, amended 2026-08-11, noted and amended 2026-10-27
 - **Deciders:** Platform
 - **Related:** ADR-0018 (per-run state), ADR-0020 (Dragonfly shared cache),
   ADR-0022 (org BYOK), ADR-0023 (Workflows — **superseded by this ADR**),
@@ -462,6 +462,31 @@ and strict validation are shared.
 - **One engine for both sides** — rejected: the chat side needs prompt
   catalogs + request forcing; the deep side runs sandboxed filesystem tools
   natively. Forcing one engine onto both would distort one of them.
+
+  > **Noted 2026-10-27, in place.** This ADR is still Proposed, so the note
+  > sits beside the two rejections above, which stay as written. Both rested
+  > on premises that no longer hold, checked in the code that day:
+  >
+  > 1. **Request-driven forcing is gone.** `src/aiq_agent/skills/runtime.py`:
+  >    "Nothing in this module can REQUIRE a skill … There is no way to mark a
+  >    skill as required, for a deployment or for one request", and no
+  >    `force_skills` remains under `src/`.
+  > 2. **`SkillsMiddleware` renders a catalog.** Its `SKILLS_SYSTEM_PROMPT` lists
+  >    each skill's name, description and `SKILL.md` path under "Available
+  >    Skills" and tells the model to read the body only when the task matches
+  >    ("Progressive Disclosure"), in the installed 0.6.12 and in 0.7.32
+  >    (`deepagents/middleware/skills.py`). That is the catalog the model opts
+  >    into that this record asked for.
+  >
+  > Moving chat skills onto `SkillsMiddleware` is the next planned step after
+  > [ADR-0133](0133-piloti-reads-the-estate-through-standard-filesystem-tools.md),
+  > and it is decided in its own change, not here. What it would still have to
+  > carry: a backend serving the BFF-resolved office skills as `SKILL.md`,
+  > activation tracking (`skills_applied`, the "Skills used" disclosure), the
+  > preferred cards, curated and hidden filtering, and the inline shortcut of
+  > [ADR-0063](0063-short-skill-bodies-ride-the-prompt.md). Why a rejection
+  > names its premise:
+  > [working style](../contributing/working-style.md#a-rejection-names-its-premise).
 - **A `/` menu that opens anywhere in the message** (the `@` behaviour) —
   rejected: false positives on ordinary German punctuation, for no gain, since
   an invocation applies to the whole turn anyway.
