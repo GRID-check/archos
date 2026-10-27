@@ -347,7 +347,7 @@ What dominates:
 | A re-run takes the cheaper of two sound references, the PR's whole diff or the diff since its last green run plus `develop`'s hour (`ci/pr_selection.py` `changed_paths`, `cheaper`) | Re-runs forcing the full Python suite 88 → 28 of 115; full UI 45 → 14; no UI at all 3 → 56 | Replay of 115 develop commits through old and new `decide_*` |
 | A data fixture under `tests/fixtures/` selects the tests that name it or its directories; full only if none, or for a Python fixture | First runs forcing full Python 29 → 28; the fixture that forced 3 of 8 sampled PR runs now selects `test_grounding_block.py` | Same replay; `tests/test_pr_selection.py` |
 | `aiq_agent`, `aiq_agent.common`, `aiq_agent.agents`, `agents.piloti`, `agents.deep_researcher` and `knowledge_layer` re-export lazily (`aiq_agent/lazy_exports.py`, PEP 562) | Import times in section 3 | `-X importtime` |
-| `knowledge_layer.register` (the NAT entry point) imports `browse` and `read_passage` itself | `list_files` and `read_passage` still register; the package `__init__` was what registered them | `GlobalTypeRegistry` lists all three; `test_import_weight.py` |
+| `knowledge_layer.browse` and `knowledge_layer.read_passage` get their own `nat.plugins` entry points, as `sources/AGENTS.md` asks | `list_files` and `read_passage` still register; the package `__init__` was what registered them | NAT's `discover_and_register_plugins` lists all three; `test_import_weight.py` |
 | Root conftest imports only `pytest`; the model doubles move to `tests/provider_doubles.py`; the Qdrant fixtures to `sources/knowledge_layer/tests/qdrant_fixtures.py`, which imports the client on first use | A 7-test file 5.7 s → 1.3 s; harness 11.8 s → 6.6 s | Section 3 |
 
 Every suite passed afterwards: core 15,636 passed / 381 skipped, api 1,802 /
@@ -372,8 +372,8 @@ re-run reference stays a candidate, and wins whenever `develop` stood still.
 - **`tests/test_import_weight.py`** (~5 s, core suite). In a fresh interpreter,
   each lazy package loads none of its own submodules, the root conftest loads
   none of LangChain, LangGraph, NAT, Qdrant, LlamaIndex, OpenAI or
-  `aiq_agent.common`, and the knowledge-layer entry point loads the two tools it
-  registers. Against the old code, 6 of its 8 cases fail.
+  `aiq_agent.common`, and each knowledge-layer module that registers a tool is
+  a `nat.plugins` entry point. Against the old code, 6 of its 8 cases fail.
 
 ## 7. Structural fixes, ranked by what they would cut
 

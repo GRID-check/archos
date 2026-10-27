@@ -5,8 +5,8 @@ Importing ``aiq_agent.common.turn_status`` executes ``aiq_agent/__init__.py`` an
 test. When those imported their whole package, a one-line harness test spent
 4.6 s of its 5.7 s loading LangChain, NAT, LangGraph's checkpointers and the
 Qdrant client, and every test importing one ``aiq_agent.common`` module loaded
-all sixty (docs/audit/blast-radius-2026-10.md). Each check runs in a fresh
-interpreter, because this one has long since imported everything.
+all sixty (docs/audit/blast-radius-2026-10.md). Each import check runs in a
+fresh interpreter, because this one has long since imported everything.
 """
 
 from __future__ import annotations
@@ -64,9 +64,12 @@ def test_the_root_conftest_loads_nothing_heavy():
     assert heavy == [], f"tests/conftest.py loads {heavy}: import it inside the fixture that needs it"
 
 
-def test_the_knowledge_layer_entry_point_registers_all_three_tools():
-    # The package `__init__` used to import the two siblings, which is how NAT
-    # saw them; the entry point (`knowledge_layer.register`) does it now.
-    loaded = _loaded_by("import knowledge_layer.register")
+def test_every_knowledge_layer_tool_module_is_an_entry_point():
+    # The package `__init__` used to import `browse` and `read_passage`, which is
+    # how NAT saw their tools; each has its own entry point now. A stale venv
+    # fails here: `uv sync --group dev` installs the new entry points.
+    from importlib.metadata import entry_points
 
-    assert {"knowledge_layer.browse", "knowledge_layer.read_passage"} <= set(loaded)
+    plugins = {entry.value for entry in entry_points(group="nat.plugins")}
+
+    assert {"knowledge_layer.register", "knowledge_layer.browse", "knowledge_layer.read_passage"} <= plugins

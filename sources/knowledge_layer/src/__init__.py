@@ -14,8 +14,8 @@ The adapter modules can be used standalone without NAT.
 
 from aiq_agent.lazy_exports import lazy_exports
 
-# Loaded on first use (PEP 562). NAT registers the tools through the entry
-# point, which names `knowledge_layer.register` itself; importing them here made
+# Loaded on first use (PEP 562). NAT registers the tools through their entry
+# points (`pyproject.toml`), which name the modules themselves; importing them here made
 # every `knowledge_layer.qdrant.*` import pay for the registrations and their
 # LlamaIndex and NAT imports (docs/audit/blast-radius-2026-10.md).
 _LAZY = {

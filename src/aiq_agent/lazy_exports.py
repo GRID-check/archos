@@ -34,6 +34,8 @@ def lazy_exports(package: str, exports: Mapping[str, str]) -> Callable[[str], An
         source = exports.get(name)
         if source is None:
             raise AttributeError(f"module {package!r} has no attribute {name!r}")
+        # The source comes from the package's own literal map, never from input.
+        # nosemgrep: python.lang.security.audit.non-literal-import.non-literal-import
         module = importlib.import_module(source, package)
         value = module if source == name else getattr(module, name)
         setattr(sys.modules[package], name, value)

@@ -34,11 +34,6 @@ from nat.plugin_api import FunctionBaseConfig
 from nat.plugin_api import FunctionInfo
 from nat.plugin_api import register_function
 
-# The two sibling tools register themselves when imported, and this module is
-# the package's one `nat.plugins` entry point. The package `__init__` used to
-# import them for that; it loads lazily now, so the entry point does.
-from . import browse as _browse  # noqa: F401 - registers list_files
-from . import read_passage as _read_passage  # noqa: F401 - registers read_passage
 from .chunk_noise import noise_filter_enabled
 from .chunk_noise import noise_notice
 from .chunk_noise import without_noise
