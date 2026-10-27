@@ -372,6 +372,68 @@ a bottom sheet behind „Filter“ with „Alle entfernen“ and „N Treffer ze
 pinned at the foot. Dates are typed in the page's locale
 (`components/ui/date-input.tsx`), not in the browser's.
 
+#### Completions: the filters offer what the office holds
+
+A typed filter is only as good as the spelling a person guesses: „Lindner“
+finds nothing when the documents say „Atelier Lindner ZT GmbH“ and the field
+only matched what was typed after Enter. So every free-text filter completes
+from the documents: a party's name in Beteiligte (and a further reference in
+Verweist auf, under its thirty counted values), Plannummer, Index, Maßstab,
+Ort, and an Angabe's value. Each value shows how many documents hold it,
+spelled as the documents most often spell it; taking one applies the filter at
+once. What was typed and not taken still applies on Enter or blur, as before.
+
+- **One capability, three clients.** `POST /api/search/suggest`
+  (`lib/search/suggest.ts`, `suggest-repository.ts`) and the operation
+  `workspace-search-suggest`, offered on both doors: an outside agent and
+  Piloti ask for the exact party name or norm token before they filter,
+  instead of guessing it. Body: `dimension` (`party` with an optional `role`,
+  `place`, `cites`, `scale`, `planNumber`, `planIndex`, `fact` with its
+  `factKey`), `prefix`, and the search's `filters`; scope is the query, as for
+  the search. Answer: at most ten `{ value, label, count }`, most documents
+  first, then by label. A `cites` value is the `kind:key` token the filter
+  takes; its label is the document's own spelling.
+- **The same reach and filters as the search.** One statement under
+  `documentSearchWhere`, the predicate the page and the facet counts use: a
+  value of a document in a hidden folder, someone else's upload held in
+  screening, a project the reader cannot open or another office is never
+  named or counted (`document-repository.integration.spec.ts`, „completions“).
+  The dimension's own filter is left out (`filtersBeside`), so with one party
+  chosen the others still show; a fact leaves out only its own key. The words
+  of the search are not asked: a completion counts what a filter would admit,
+  and the content search that words start is no part of a keystroke.
+- **Matched on the start of any word**, case, accents and the marks between
+  words ignored (`lib/search/suggest-fold.ts`, one `translate()` table shared
+  by the browser and the SQL): „lind“, „LIND“ and „Lind“ find „Atelier Lindner
+  ZT GmbH“, „sud“ finds „Ingenieurbüro Süd“, „onorm“ „ÖNORM B 1600“. A
+  drawing number matches as its filter does, squashed from the start („EP0“
+  finds „EP-05“ and „EP 05“, which are one value). Spellings that fold alike
+  are one value; their counts add up, so a document that writes one name two
+  ways counts twice for it.
+- **Bounded.** B-tree only and no new index: under row-level security none
+  serves `LIKE` (0185, `docs/contributing/gotchas.md`). The matched documents
+  are read once, as a facet count reads them, each value counted per exact
+  spelling, and only the distinct spellings are folded and matched (a
+  `MATERIALIZED` CTE keeps the planner from folding every occurrence). Ten
+  values at most; the route's `Server-Timing` says `sql`.
+- **The field** (`components/ui/suggest-input.tsx`) is the WAI-ARIA combobox
+  with list autocomplete the address field already is: focus stays in it,
+  ↑ ↓ move the active option, Enter takes it, Escape closes the list and
+  nothing else. Nothing is active until an arrow is pressed, so Enter on what
+  was typed keeps its old meaning. It asks only while it has focus, 150 ms
+  after the last key; a list field (Index, Maßstab) completes the entry being
+  typed and leaves out the ones already in it. The source is the surface's
+  (`SuggestSourceProvider`): the connected search asks the route at its scope
+  and under its filters, `/dev/search` answers from its fixture office.
+- PostHog's `search_suggestion_picked` says which filter, the rank taken and
+  how many characters were typed, never the value
+  ([`posthog-events.md`](../observability/posthog-events.md)).
+
+Not in this change: the „Alle zeigen“ field over a long counted list still
+narrows the thirty values the rail holds (Verweist auf gets the completing
+field under it instead); the uploader, whose names live in the people
+directory rather than in SQL, is chosen from its counts only.
+
 The toolbar is set as the Dateien header is: the view as an icon pair, saved
 searches as one quiet button whose list ends in „Diese Suche speichern“ (a
 popover; on a phone a bottom sheet), and the Planliste's export as an icon in
@@ -478,6 +540,15 @@ folder), 40,000 more beside it; ANALYZEd after the seed.
 | one project's register, current only, by plan number, 100 rows | 6 | 10 |
 | facet counts, all eight dimensions, office-wide | 124 | 152 |
 | facet counts, all eight dimensions, text „Brandschutz“ (one statement) | 82 | 94 |
+| completion, a party „atel“, office-wide (third run) | 80 | 104 |
+| completion, a reference „önorm“, office-wide (third run) | 96 | 107 |
+| completion, a drawing number „ep“ under „Nur aktuelle Fassung“ (third run) | 53 | 71 |
+
+The completions' first form folded every party of every matched document
+before matching (Postgres pushed the match below the per-spelling count):
+340 to 450 ms p50 for a party. Counting per spelling first, behind a
+`MATERIALIZED` fence, and folding only the distinct spellings brought it to
+one facet count's time.
 
 The first run measured the text facets as eight statements side by side: 199/231.
 
