@@ -324,7 +324,7 @@ cost is a full corpus re-embed, so this is a measured decision, not a config fli
 persists only `hnsw:space`, `created_at`, `updated_at` into Chroma's collection
 metadata; `_run_ingestion`'s `get_or_create_collection` persists only
 `hnsw:space`. Correctness rests entirely on a comment in
-`docker-compose.coolify.yaml`: *"keep `AIQ_EMBED_MODEL` stable so stored + query
+`docker-compose.coolify.yaml`: *"keep `GRID_EMBED_MODEL` stable so stored + query
 vectors match."*
 
 Change that variable — a plausible operator action, and the exact action F11

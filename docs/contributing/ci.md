@@ -286,6 +286,14 @@ What it was made of, and what was done about each:
   16 MB); the steps that read a file at the base fetch it on demand, with the
   job token handed to git through that step's env (`ci/git_auth.sh`) rather
   than written to `.git/config`.
+- **Repo checks and SAST cloned the whole history**, ~75 s and ~72 s of every
+  PR's critical path (`docs/audit/blast-radius-2026-10.md` §7). A pull
+  request's Repo checks now start at depth 1 and `ci/fetch_merge_base.sh`
+  deepens them only down to the merge base, which the release-note rule and
+  gitleaks read; reno's own lint, which walks the whole history, runs only
+  when the notes, reno's config or its pin change (`release:lint:house` is the
+  rest). A push keeps the full clone. `semgrep ci` finds its merge base itself,
+  from the GitHub API (`GH_TOKEN`) or by deepening the shallow clone.
 
 **A pull request runs only the Python tests its change reaches.** Sharding
 made the full suite ~5 minutes; a typical change reaches a few dozen tests.
@@ -303,7 +311,8 @@ backend jobs run, Python outside the tested packages (tests load `scripts/` and
 `frontends/benchmarks/` by path or in a subprocess), package data or a fixture
 no test names, or no recorded database. A data fixture under `tests/fixtures/`
 adds the tests that name it or one of its directories, as tests read whole
-fixture directories. Known blind spot: a test that only exercises
+fixture directories. A non-Python file that a helper or conftest reads (a
+quoted name) runs the full suite, since nothing says which tests load it. Known blind spot: a test that only exercises
 code in a subprocess is selected when its own file changes, not when the code
 it spawns does; the push run is what catches that.
 
@@ -332,8 +341,11 @@ request's last green run: the tests that ran passed, so the next push owes the
 pull request's own diff since that run's head, plus every file the base branch
 changed since an hour before that run started (the merge commit CI tests
 carries both). The second wins while `develop` stands still. When it moved, the
-hour of `develop` it adds (a median 95 files) used to force the full Python
-suite on 88 of 115 re-runs, where the pull request's own diff forces it on 28. The backend keeps its testmon database per pull request for the
+hour of `develop` it adds (a median 83 files) used to force the full Python
+suite on 90 of 113 re-runs, where the pull request's own diff forces it on 27.
+The first holds only measured from `develop`'s testmon database, so when it
+wins (`reference: base`) the api and sources suites restore that one instead
+of their own. The backend keeps its testmon database per pull request for the
 same reason, so tests that failed keep running until they pass. A push that
 only answers a review comment runs the few tests that comment touched, and one
 that touches nothing a UI spec reads runs no UI spec at all.

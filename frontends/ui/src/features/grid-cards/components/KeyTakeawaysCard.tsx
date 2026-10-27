@@ -46,12 +46,12 @@ import { Card } from '@/components/ui/card'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { useTranslations } from '@/i18n'
 import { cn } from '@/lib/utils'
-import type { KeyTakeawayData } from '../schematics/types'
+import type { AnswerMetaTakeaway } from '@/lib/conversations/message-answer-meta'
 import { CARD_SHELL } from './card-chrome'
 
 interface KeyTakeawaysCardProps {
   title?: string | null
-  items: KeyTakeawayData[]
+  items: AnswerMetaTakeaway[]
   /**
    * Render flat on the answer surface: the envelope's native `takeaways`
    * field is the answer's own closing block, so it gets the eyebrow and the
@@ -116,7 +116,7 @@ const RowBody: FC<{ index: number; text: string }> = ({ index, text }) => {
   )
 }
 
-const TakeawayRow: FC<{ item: KeyTakeawayData; index: number }> = ({ item, index }) => {
+const TakeawayRow: FC<{ item: AnswerMetaTakeaway; index: number }> = ({ item, index }) => {
   const [open, setOpen] = useState(false)
 
   if (!item.detail) {

@@ -7,8 +7,9 @@ import threading
 import time
 from types import SimpleNamespace
 
+from knowledge_layer.llamaindex.adapter import LlamaIndexRetriever
+
 from aiq_agent.knowledge import factory
-from sources.knowledge_layer.src.llamaindex.adapter import LlamaIndexRetriever
 
 
 class _SlowEmbedder:
@@ -23,7 +24,7 @@ class _SlowEmbedder:
 
 def _inflight_wait_hook(waiting: threading.Semaphore):
     """Signal ``waiting`` each time a caller starts waiting on an in-flight embedding; returns the undo."""
-    from sources.knowledge_layer.src.llamaindex import adapter
+    from knowledge_layer.llamaindex import adapter
 
     original = adapter._InflightEmbedding.result
 
@@ -161,7 +162,7 @@ def test_no_search_retriever_means_no_warm_up(monkeypatch):
 
 
 def test_without_a_cache_parallel_callers_still_share_one_embedding(monkeypatch):
-    """``AIQ_QUERY_EMBED_CACHE_SIZE=0`` turns the LRU off, not the in-flight
+    """``GRID_QUERY_EMBED_CACHE_SIZE=0`` turns the LRU off, not the in-flight
     sharing: the waiters read the vector off the in-flight record."""
     retriever, embedder = _retriever()
     monkeypatch.setattr(LlamaIndexRetriever, "EMBED_CACHE_MAX", 0)
@@ -199,10 +200,9 @@ def test_initialising_the_retriever_leaves_the_global_embed_model_alone(monkeypa
     """The retriever's query model (3 s timeout) used to be installed as the
     process-wide ``Settings.embed_model``; it embeds every query with its own
     model, so the global is not its to set."""
+    from knowledge_layer.llamaindex import adapter
     from llama_index.core import Settings
     from llama_index.embeddings import nvidia
-
-    from sources.knowledge_layer.src.llamaindex import adapter
 
     monkeypatch.setattr(adapter, "ensure_retrieval_dependencies", lambda: None)
     from llama_index.core import MockEmbedding
@@ -220,6 +220,6 @@ def test_initialising_the_retriever_leaves_the_global_embed_model_alone(monkeypa
 def test_the_llamaindex_backend_registers_the_retriever():
     # A class inserted between the decorator and the retriever once took the
     # registration: every llamaindex deployment built the wrong class.
-    import sources.knowledge_layer.src.llamaindex.adapter  # noqa: F401  (registers)
+    import knowledge_layer.llamaindex.adapter  # noqa: F401  (registers)
 
     assert factory._RETRIEVER_REGISTRY["llamaindex"].__name__ == "LlamaIndexRetriever"

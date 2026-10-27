@@ -21,7 +21,7 @@ vi.mock('@/lib/proxy/collection-authz', () => ({
   })),
 }))
 
-vi.mock('@/lib/collection-scope-request', () => ({
+vi.mock('@/lib/retrieval-scope/collection-scope-request', () => ({
   buildCollectionScopeFromRequest: vi.fn().mockResolvedValue({
     headerValue: 'scope',
     scope: [],
@@ -59,7 +59,7 @@ vi.mock('@/lib/projects/repository', () => ({
 import { DELETE, GET, POST } from './route'
 import { requireAuthorizedSession } from '@/lib/auth/require-auth'
 import { getEffectiveModelOverrides } from '@/lib/model-config/service'
-import { buildCollectionScopeFromRequest } from '@/lib/collection-scope-request'
+import { buildCollectionScopeFromRequest } from '@/lib/retrieval-scope/collection-scope-request'
 import { loadProjectFederalState } from '@/lib/project-profile/prompt-view'
 import { fileCommissionedReport } from '@/lib/documents/commissioned-report'
 import { verifyGridRequestContextEnvelope } from '@/lib/request-context'

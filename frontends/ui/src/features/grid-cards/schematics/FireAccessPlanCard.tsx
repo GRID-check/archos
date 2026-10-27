@@ -29,7 +29,7 @@ import {
 } from './kit'
 import { sketchRect } from './rough'
 import { useTranslations } from '@/i18n'
-import type { StagingAreaPlanData, DimensionCheckData, NormReferenceData } from './types'
+import type { StagingAreaPlanData, DimensionCheckData, NormReferenceData } from '@/shared/cards/schemas'
 
 interface FireAccessPlanCardProps {
   title: string

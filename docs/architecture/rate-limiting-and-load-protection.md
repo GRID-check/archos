@@ -495,7 +495,7 @@ than an admission.
   KEDA, not on CPU (`deploy/pulumi/src/app/ingest-worker.ts`); retired rows —
   `dead` and `cancelled` — are excluded from that depth. Its ceiling is held to the provider budget at plan
   time: `ingestWorkerMaxReplicas` x `ingestWorkerConcurrency` x
-  `AIQ_VLM_BATCH_WORKERS` may not exceed twice `AIQ_VLM_FLEET_CONCURRENCY`, or
+  `GRID_VLM_BATCH_WORKERS` may not exceed twice `GRID_VLM_FLEET_CONCURRENCY`, or
   `pulumi up` fails with the numbers (`assertVlmPeakFitsCeiling`); replicas past
   that only queue on the pool. The pool itself may not exceed either limiter
   ceiling a vision call passes (key-wide, and its model's own: 32), or it could
@@ -510,7 +510,7 @@ than an admission.
   reports the same depth, read from the same table, so chart depth and age
   with `max`, not `sum`.
 - **A fixed ceiling at the provider.** However many workers run, at most
-  `AIQ_VLM_FLEET_CONCURRENCY` vision calls are in flight, a Dragonfly lease pool
+  `GRID_VLM_FLEET_CONCURRENCY` vision calls are in flight, a Dragonfly lease pool
   sharing L3's scripts (`common/lease_slots.py`). A 429 backs off outside its
   slot. Fails open like L3. It is the narrow, ingestion-only ceiling; L3c below
   is the one every model call passes, and the VLM pool sits outside it.

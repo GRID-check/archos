@@ -152,6 +152,15 @@ repos:
         pass_filenames: false
         files: \.py$|^ci/(german_stems|english_names_baseline_py)\.json$
 
+      - id: import-contracts
+        name: the Python packages keep their seams (import-linter)
+        # The contracts in pyproject.toml's [tool.importlinter]; `task be:lint`
+        # runs them too. About a second, only when Python or the contracts change.
+        entry: .venv/bin/lint-imports --no-cache
+        language: system
+        pass_filenames: false
+        files: ^(src/aiq_agent|frontends/aiq_api/src|sources/knowledge_layer/src)/.*\.py$|^pyproject\.toml$
+
       - id: file-size
         name: no source file passes 600 lines, no Python function 60, and no giant grows
         # Files of 3,000 to 7,000 lines and a 962-line function each got there

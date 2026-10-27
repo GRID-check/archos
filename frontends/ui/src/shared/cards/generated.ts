@@ -2,7 +2,7 @@
 
 import { z } from 'zod'
 
-export const projectProfilePatchOperationSchema = z.object({ "op": z.enum(["add","replace","remove"]), "path": z.string().describe("For a confirmed hard fact use \"/facts/<key>\" with op \"add\" (works for both new and changed values). For an uncertain inference use \"/assumptions/<key>\". Known fact keys and values: main_use: residential|office|lodging|assembly|healthcare|agriculture|manufacturing|storage|other; building_class: GK1|GK2|GK3|GK4|GK5; escape_level: <=7m|7-11m|11-22m|>22m; existing_or_new: existing|new_build|extension_and_conversion; land_designation: building_land|traffic_area|open_land|core|mixed; development_pattern: open|semi_detached|closed; safety_category: low|medium|high; existing_age: <10|10-30|30-50|>50; storeys_above_ground / storeys_below_ground / bed_count / unit_count: number; plot_boundary / building_line / protection_zone / deviating_development_plan: boolean; high_rise_details: free text"), "value": z.any().describe("The PLAIN value only (e.g. \"GK4\", 3, true) — never wrap it in an object; the app adds provenance metadata when the user accepts.").default(null) }).describe("A JSON Patch operation targeting a project profile section.")
+export const projectProfilePatchOperationSchema = z.object({ "op": z.enum(["add","replace","remove"]), "path": z.string().describe("For a confirmed hard fact use \"/facts/<key>\" with op \"add\" (works for both new and changed values). For an uncertain inference use \"/assumptions/<key>\". Known fact keys and values: main_use: residential|office|lodging|assembly|healthcare|agriculture|manufacturing|storage|other; building_class: GK1|GK2|GK3|GK4|GK5; escape_level: <=7m|7-11m|11-22m|>22m; existing_or_new: existing|new_build|extension_and_conversion; land_designation: building_land|traffic_area|open_land|core|mixed; development_pattern: open|semi_detached|closed; safety_category: low|medium|high; existing_age: <10|10-30|30-50|>50; storeys_above_ground / storeys_below_ground / bed_count / unit_count: number; plot_boundary / building_line / protection_zone / deviating_development_plan: boolean; high_rise_details: free text"), "value": z.unknown().describe("The PLAIN value only (e.g. \"GK4\", 3, true) — never wrap it in an object; the app adds provenance metadata when the user accepts.").default(null) }).describe("A JSON Patch operation targeting a project profile section.")
 
 export const projectProfilePatchPreviewItemSchema = z.object({ "after": z.string(), "before": z.string(), "label": z.string() }).describe("A before/after preview for a single patched field.")
 
@@ -66,7 +66,7 @@ export const fireAccessPlanCardSchema = z.object({ "building_class": z.union([z.
 
 export const memoryProposalCardSchema = z.object({ "confidence": z.enum(["low","medium","high"]).default("medium"), "content": z.string().min(1).describe("The finding to remember (shown to the user verbatim)"), "kind": z.enum(["decision","constraint","open_question","derived_fact","preference"]), "proposal_id": z.union([z.string().regex(new RegExp("^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")), z.null()]).describe("The server proposal this card shows (POST /api/internal/proposals). Absent: the browser writes the note through the reader's own session, as before proposals were server objects").default(null), "supersedes": z.union([z.string().max(500), z.null()]).describe("The earlier note this one corrects, quoted verbatim; accepting the proposal retires it").default(null), "title": z.string().min(1).describe("Short title for the memory proposal"), "type": z.literal("memory_proposal") }).describe("A proposal to save a finding to long-term memory, confirmed by the user.\n\nSystem-emitted by the `remember` tool when an org-scoped write needs human\nauthorization. With `proposal_id` the note is a stored proposal (kind\n`memory`) the server files in the accepting person's session, org-wide or,\nif they choose, in the project; without one the browser writes it through the\nreader's own session.")
 
-export const operationProposalCardSchema = z.object({ "input": z.record(z.string(), z.any()).describe("What the operation is called with: params, query and body, shown to the person").optional(), "operation": z.string().min(1).describe("The catalog operation's name, e.g. 'folder-rename'"), "proposal_id": z.string().regex(new RegExp("^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")).describe("The server proposal this card shows (kind 'operation'); the person accepts or dismisses it there"), "title": z.string().min(1).describe("The one-line English description of what accepting would do"), "type": z.literal("operation_proposal").default("operation_proposal") }).describe("A workspace operation the agent PROPOSES through the MCP surface and a person runs.\n\nSystem-emitted for a write operation Piloti called on the product's own MCP\nserver (ADR-0122): the call changed nothing, it stored an ``operation``\nproposal (ADR-0105) and this card shows it. Accepting runs the operation\nas the ACCEPTING person through the operation's own route, so that route's\nauthorization decides; dismissing runs nothing. ``proposal_id`` is\nrequired: a call that stored no proposal has no card, and says so in its\nown result text.")
+export const operationProposalCardSchema = z.object({ "input": z.record(z.string(), z.unknown()).describe("What the operation is called with: params, query and body, shown to the person").optional(), "operation": z.string().min(1).describe("The catalog operation's name, e.g. 'folder-rename'"), "proposal_id": z.string().regex(new RegExp("^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")).describe("The server proposal this card shows (kind 'operation'); the person accepts or dismisses it there"), "title": z.string().min(1).describe("The one-line English description of what accepting would do"), "type": z.literal("operation_proposal").default("operation_proposal") }).describe("A workspace operation the agent PROPOSES through the MCP surface and a person runs.\n\nSystem-emitted for a write operation Piloti called on the product's own MCP\nserver (ADR-0122): the call changed nothing, it stored an ``operation``\nproposal (ADR-0105) and this card shows it. Accepting runs the operation\nas the ACCEPTING person through the operation's own route, so that route's\nauthorization decides; dismissing runs nothing. ``proposal_id`` is\nrequired: a call that stored no proposal has no card, and says so in its\nown result text.")
 
 export const surfacedDocumentSchema = z.object({ "file_name": z.string().min(1).describe("Exact indexed file name (resolves to the live document row)"), "page": z.union([z.number().int(), z.null()]).describe("1-based page the snippet came from, if known").default(null), "score": z.union([z.number(), z.null()]).describe("0..1 relevance score of the best chunk").default(null), "snippet": z.union([z.string(), z.null()]).describe("Best-matching passage — WHY this file surfaced").default(null), "source": z.union([z.enum(["project","office"]), z.null()]).describe("Which corpus it came from: 'project' or 'office' (Büroablage)").default(null), "summary": z.union([z.string(), z.null()]).describe("One-line description of what the document is").default(null) }).describe("One real document surfaced by a corpus search, with its match evidence.")
 
@@ -126,7 +126,7 @@ export const ifcDiffCardSchema = z.object({ "base_model_file": z.string().min(1)
 
 export const ifcModelPickerCardSchema = z.object({ "note": z.union([z.string(), z.null()]).describe("Optional one-line clarification under the tiles").default(null), "title": z.string().min(1).describe("Short heading, e.g. 'Welches Modell möchten Sie öffnen?'"), "type": z.literal("ifc_model_picker") }).describe("A clickable list of the project's IFC models — pick one to open in the viewer.\n\nEmit for \"zeig mir das Modell\" / \"welches Modell\" when the user wants to SEE\nor OPEN the building and the project may hold several models. The old answer\nto that was a prose bullet list of file names the user had to read and retype;\nthis card renders each model as a tile that opens the BIM viewer on click,\nclient-side, with no second turn.\n\nIt carries only WHICH view to offer — never a list of file names. The renderer\nreads the project's actual models from the live model list (the same source\nthe viewer resolves against), so the model here cannot name a file that does\nnot exist: there is nothing to invent. An empty project renders nothing and\nthe written answer stands on its own, which is the fail-open the prose gave.")
 
-export const surfaceCardSchema = z.object({ "components": z.array(z.record(z.string(), z.any())).min(3).describe("The A2UI component list: one container with id 'root' (Row, Column or Tabs) and what it holds: cards, each `{\"id\", \"component\": <card type>, …that card's fields}`, and `{\"id\", \"component\": \"Text\", \"text\": <Markdown>}` for a table, a list or prose."), "title": z.union([z.string(), z.null()]).describe("Optional heading over the whole surface, e.g. 'Zwei Varianten des zweiten Fluchtwegs'").default(null), "type": z.literal("surface") }).describe("Several cards composed into one A2UI surface: variants as tabs, related cards side by side.\n\n`components` is an A2UI v0.9 component list (a2ui.org): flat, each entry\n`{\"id\", \"component\", …props}`, children referenced by id, exactly one\n`\"id\": \"root\"`. Containers are `Row` and `Column` (`children`: ids) and\n`Tabs` (`tabs`: `[{title, child}]`); `Text` (`text`: Markdown) holds what\nthe answer would write in prose, a table or a list; every other component\nis a card, named by its type, with that card's own fields as props. Validated twice: the\nstructure by `a2ui-core` (unique ids, a root, no dangling reference, no\ncycle, no orphan), each card by its own model.")
+export const surfaceCardSchema = z.object({ "components": z.array(z.record(z.string(), z.unknown())).min(3).describe("The A2UI component list: one container with id 'root' (Row, Column or Tabs) and what it holds: cards, each `{\"id\", \"component\": <card type>, …that card's fields}`, and `{\"id\", \"component\": \"Text\", \"text\": <Markdown>}` for a table, a list or prose."), "title": z.union([z.string(), z.null()]).describe("Optional heading over the whole surface, e.g. 'Zwei Varianten des zweiten Fluchtwegs'").default(null), "type": z.literal("surface") }).describe("Several cards composed into one A2UI surface: variants as tabs, related cards side by side.\n\n`components` is an A2UI v0.9 component list (a2ui.org): flat, each entry\n`{\"id\", \"component\", …props}`, children referenced by id, exactly one\n`\"id\": \"root\"`. Containers are `Row` and `Column` (`children`: ids) and\n`Tabs` (`tabs`: `[{title, child}]`); `Text` (`text`: Markdown) holds what\nthe answer would write in prose, a table or a list; every other component\nis a card, named by its type, with that card's own fields as props. Validated twice: the\nstructure by `a2ui-core` (unique ids, a root, no dangling reference, no\ncycle, no orphan), each card by its own model.")
 
 export const gridCardSchema = z.discriminatedUnion('type', [
   projectProfilePatchCardSchema,
@@ -157,3 +157,67 @@ export const gridCardSchema = z.discriminatedUnion('type', [
   ifcModelPickerCardSchema,
   surfaceCardSchema,
 ])
+
+export type ProjectProfilePatchOperationData = z.input<typeof projectProfilePatchOperationSchema>
+export type ProjectProfilePatchPreviewItemData = z.input<typeof projectProfilePatchPreviewItemSchema>
+export type ProjectProfilePatchCardData = z.input<typeof projectProfilePatchCardSchema>
+export type NormReferenceData = z.input<typeof normReferenceSchema>
+export type CalculationLimitData = z.input<typeof calculationLimitSchema>
+export type CalculationOperandData = z.input<typeof calculationOperandSchema>
+export type CalculationStepData = z.input<typeof calculationStepSchema>
+export type CalculationCardData = z.input<typeof calculationCardSchema>
+export type FormulaInputData = z.input<typeof formulaInputSchema>
+export type UValueLayerData = z.input<typeof uValueLayerSchema>
+export type UValueFormulaData = z.input<typeof uValueFormulaSchema>
+export type StairStepRuleFormulaData = z.input<typeof stairStepRuleFormulaSchema>
+export type EscapeRouteSegmentData = z.input<typeof escapeRouteSegmentSchema>
+export type EscapeRouteLengthFormulaData = z.input<typeof escapeRouteLengthFormulaSchema>
+export type DaylightRatioFormulaData = z.input<typeof daylightRatioFormulaSchema>
+export type FormulaCardData = z.input<typeof formulaCardSchema>
+export type SectionMarkerData = z.input<typeof sectionMarkerSchema>
+export type SectionStoreyData = z.input<typeof sectionStoreySchema>
+export type BuildingSectionCardData = z.input<typeof buildingSectionCardSchema>
+export type DimensionCheckData = z.input<typeof dimensionCheckSchema>
+export type StairDiagramCardData = z.input<typeof stairDiagramCardSchema>
+export type DimensionDiagramCardData = z.input<typeof dimensionDiagramCardSchema>
+export type SetbackSideData = z.input<typeof setbackSideSchema>
+export type SetbackPlanCardData = z.input<typeof setbackPlanCardSchema>
+export type EgressSegmentData = z.input<typeof egressSegmentSchema>
+export type EgressDiagramCardData = z.input<typeof egressDiagramCardSchema>
+export type ObstructionData = z.input<typeof obstructionSchema>
+export type DaylightIncidenceCardData = z.input<typeof daylightIncidenceCardSchema>
+export type GuardrailCheckCardData = z.input<typeof guardrailCheckCardSchema>
+export type StagingAreaPlanData = z.input<typeof stagingAreaPlanSchema>
+export type FireAccessPlanCardData = z.input<typeof fireAccessPlanCardSchema>
+export type MemoryProposalCardData = z.input<typeof memoryProposalCardSchema>
+export type OperationProposalCardData = z.input<typeof operationProposalCardSchema>
+export type SurfacedDocumentData = z.input<typeof surfacedDocumentSchema>
+export type DocumentGridSearchData = z.input<typeof documentGridSearchSchema>
+export type DocumentGridCardData = z.input<typeof documentGridCardSchema>
+export type DocumentDraftCardData = z.input<typeof documentDraftCardSchema>
+export type TaskCreatedCardData = z.input<typeof taskCreatedCardSchema>
+export type FileOperationItemData = z.input<typeof fileOperationItemSchema>
+export type FileOperationProposalCardData = z.input<typeof fileOperationProposalCardSchema>
+export type CanvasDocumentData = z.input<typeof canvasDocumentSchema>
+export type CanvasProposedItemData = z.input<typeof canvasProposedItemSchema>
+export type CanvasCreatedItemData = z.input<typeof canvasCreatedItemSchema>
+export type CanvasFieldChangeData = z.input<typeof canvasFieldChangeSchema>
+export type CanvasChangedItemData = z.input<typeof canvasChangedItemSchema>
+export type CanvasDeletedItemData = z.input<typeof canvasDeletedItemSchema>
+export type CanvasRepliedItemData = z.input<typeof canvasRepliedItemSchema>
+export type CanvasActivityCardData = z.input<typeof canvasActivityCardSchema>
+export type LookDocumentData = z.input<typeof lookDocumentSchema>
+export type LookItemData = z.input<typeof lookItemSchema>
+export type LookCardData = z.input<typeof lookCardSchema>
+export type RevisionCompareChangeData = z.input<typeof revisionCompareChangeSchema>
+export type RevisionCompareCardData = z.input<typeof revisionCompareCardSchema>
+export type IfcPropertyMatchData = z.input<typeof ifcPropertyMatchSchema>
+export type IfcElementMatchData = z.input<typeof ifcElementMatchSchema>
+export type IfcHighlightData = z.input<typeof ifcHighlightSchema>
+export type IfcViewerCardData = z.input<typeof ifcViewerCardSchema>
+export type IfcComplianceCardData = z.input<typeof ifcComplianceCardSchema>
+export type IfcScheduleCardData = z.input<typeof ifcScheduleCardSchema>
+export type IfcElementCardData = z.input<typeof ifcElementCardSchema>
+export type IfcDiffCardData = z.input<typeof ifcDiffCardSchema>
+export type IfcModelPickerCardData = z.input<typeof ifcModelPickerCardSchema>
+export type SurfaceCardData = z.input<typeof surfaceCardSchema>

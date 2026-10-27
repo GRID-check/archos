@@ -3,7 +3,7 @@
 The move to Qdrant waited on the gates in
 [`docs/architecture/qdrant-retrieval-design.md` §10](../architecture/qdrant-retrieval-design.md#10-spike-gates-before-anything-is-built);
 it was then made in one change, with no flag and no dual period (ADR-0115).
-The `AIQ_VECTOR_BACKEND` and `AIQ_CHROMA_*` settings below describe how each
+The `GRID_VECTOR_BACKEND` and `GRID_CHROMA_*` settings below describe how each
 path was measured at the time; none of them exists any more. This page records the first run of the instrument built for them,
 `task be:eval:qdrant-parity`, what it found, the two defects it found and fixed
 in the Qdrant path, the answer suite run for G1, and what is still not
@@ -36,13 +36,13 @@ Both paths read **one corpus with one set of vectors**:
   `ChunkTextStore` on a throwaway PostgreSQL 16 cluster, which is the
   production German channel (`to_tsvector('german')`, `ts_rank_cd`). Reads go
   through `LlamaIndexRetriever._retrieve_sync` with
-  `AIQ_VECTOR_BACKEND=chroma`: dense, the `$contains` passes, the Postgres
+  `GRID_VECTOR_BACKEND=chroma`: dense, the `$contains` passes, the Postgres
   mirror, then RRF in Python.
 - **Qdrant path.** The same Chroma collection was copied by
   `qdrant/backfill.py` into the production collection shape (`schema.py`:
   dense plus server BM25 with `BM25_OPTIONS`, TurboQuant 4-bit, strict mode)
   on Qdrant 1.19.2. Reads go through the same `_retrieve_sync` with
-  `AIQ_VECTOR_BACKEND=qdrant`, which makes one `hybrid_search` Query API call.
+  `GRID_VECTOR_BACKEND=qdrant`, which makes one `hybrid_search` Query API call.
 - **Labels.** The labels are the harness's own. The Punkt golden set has 46
   answerable questions, German and English, graded by `(file, page)`. The
   overview golden set has 30 questions in three cohorts, labelled by file. New
@@ -533,7 +533,7 @@ the PDFs from a directory instead of the object store.
 ### What was run
 
 - **Corpus.** The 39 OIB 2023 PDFs, ingested once by the production pipeline
-  under `AIQ_VECTOR_BACKEND=dual` (about ten minutes on 4 CPUs): 2,938 chunks
+  under `GRID_VECTOR_BACKEND=dual` (about ten minutes on 4 CPUs): 2,938 chunks
   in Chroma, mirrored into Qdrant 1.19.2 with the same ids, text and vectors.
   `scripts/backfill_qdrant.py --dry-run --verify` found the id sets equal
   (missing 0, extra 0). Both paths read the same chunks and the same document
@@ -548,10 +548,10 @@ the PDFs from a directory instead of the object store.
 
   | Pass | Read path | Chroma reached as |
   |---|---|---|
-  | Chroma A | pre-migration baseline | embedded (`AIQ_CHROMA_DIR`), as the suite opens it by default |
-  | Chroma B | pre-migration baseline | the Chroma 1.5.9 server, as production runs it (`AIQ_CHROMA_URL`) |
-  | Qdrant A | `AIQ_VECTOR_BACKEND=qdrant` | embedded, as the write record only |
-  | Qdrant B | `AIQ_VECTOR_BACKEND=qdrant` | the server, as the write record only |
+  | Chroma A | pre-migration baseline | embedded (`GRID_CHROMA_DIR`), as the suite opens it by default |
+  | Chroma B | pre-migration baseline | the Chroma 1.5.9 server, as production runs it (`GRID_CHROMA_URL`) |
+  | Qdrant A | `GRID_VECTOR_BACKEND=qdrant` | embedded, as the write record only |
+  | Qdrant B | `GRID_VECTOR_BACKEND=qdrant` | the server, as the write record only |
 
   Chroma B is the baseline the comparisons below use. Chroma A hit a fault of
   the harness (under Defects) and is kept as a second sample of the
@@ -670,7 +670,7 @@ object has no attribute 'bindings'`), and the knowledge layer skips that
 search (`Knowledge layer failed, skipping`). It hit 8 of Chroma A's 58 turns,
 and 2 of the first 8 turns of a repeat pass, which was abandoned for it.
 Production reaches Chroma over HTTP and never takes this path; with
-`AIQ_CHROMA_URL` (Chroma B) it did not occur. It is not fixed, since the
+`GRID_CHROMA_URL` (Chroma B) it did not occur. It is not fixed, since the
 Chroma read path is being removed, and it is why Chroma A is not the
 baseline.
 
@@ -703,8 +703,8 @@ start the Qdrant server on that storage:
 ```bash
 QDRANT__STORAGE__STORAGE_PATH=/tmp/claude-0/qd/g1 QDRANT__STORAGE__SNAPSHOTS_PATH=/tmp/claude-0/qd/g1-snap \
   QDRANT__SERVICE__HTTP_PORT=6450 QDRANT__SERVICE__GRPC_PORT=6451 QDRANT__TELEMETRY_DISABLED=true /tmp/claude-0/qd/qdrant
-AIQ_QDRANT_URL=http://localhost:6450 \
-  AIQ_SUMMARY_DB=sqlite+aiosqlite:////tmp/claude-0/g1/state/summaries.db \
+GRID_QDRANT_URL=http://localhost:6450 \
+  GRID_SUMMARY_DB=sqlite+aiosqlite:////tmp/claude-0/g1/state/summaries.db \
   GRID_BASE_CORPUS_CACHE_DIR=/tmp/claude-0/g1/state/base-corpus \
   task be:eval:answer-suite -- --all --runs 2 --out /tmp/claude-0/g1/qdrant-c \
     --baseline /tmp/claude-0/g1/chroma-srv/results.json
@@ -715,8 +715,8 @@ an empty Qdrant storage path (`/tmp/claude-0/qd/g1-q`) and an empty state
 directory:
 
 ```bash
-AIQ_QDRANT_URL=http://localhost:6450 \
-  AIQ_SUMMARY_DB=sqlite+aiosqlite:////tmp/claude-0/g1/state-q/summaries.db \
+GRID_QDRANT_URL=http://localhost:6450 \
+  GRID_SUMMARY_DB=sqlite+aiosqlite:////tmp/claude-0/g1/state-q/summaries.db \
   GRID_BASE_CORPUS_CACHE_DIR=/tmp/claude-0/g1/state-q/base-corpus \
   task be:eval:answer-suite -- --ingest --corpus data/oib --all --runs 2 \
     --out /tmp/claude-0/g1/qdrant-after --baseline /tmp/claude-0/g1/chroma-srv/results.json
@@ -782,4 +782,4 @@ Qdrant building HNSW and TurboQuant for 2.5k × 3,072 dimensions twice (the
 corpus collection and the G6 collection). Its own tests are
 `tests/benchmarks/test_qdrant_parity.py` (offline) and
 `sources/knowledge_layer/tests/test_qdrant_parity_harness.py` (against
-`AIQ_QDRANT_TEST_URL`, which CI provides).
+`GRID_QDRANT_TEST_URL`, which CI provides).

@@ -37,7 +37,7 @@
 import 'server-only'
 import { NotFoundError } from '@/lib/api/errors'
 import type { AuthorizedSession } from '@/lib/auth/types'
-import { sessionCollectionName } from '@/lib/collection-scope'
+import { sessionCollectionName } from '@/lib/retrieval-scope/collection-scope'
 import { OFFICE_SHELF, projectShelf } from '@/lib/documents/shelf'
 import { officeShelfCollectionNames } from '@/lib/office-shelf/collection'
 import type { VerifiedGridRequestContext } from '@/lib/request-context'

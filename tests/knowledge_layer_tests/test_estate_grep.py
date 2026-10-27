@@ -22,6 +22,12 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
+from knowledge_layer import stored_pages
+from knowledge_layer.browse import FileRow
+from knowledge_layer.estate import EstateBackend
+from knowledge_layer.estate_grep import GrepRefused
+from knowledge_layer.estate_grep import compile_query
+from knowledge_layer.qdrant.retrieval import PatternTooCostly
 
 from aiq_agent.common import turn_status
 from aiq_agent.common.citation_collector import collect_citations
@@ -30,12 +36,6 @@ from aiq_agent.common.grounding_block import end_grounding_capture
 from aiq_agent.knowledge.schema import Chunk
 from aiq_agent.knowledge.schema import ContentType
 from aiq_agent.knowledge.scoping import ScopedCollection
-from sources.knowledge_layer.src import stored_pages
-from sources.knowledge_layer.src.browse import FileRow
-from sources.knowledge_layer.src.estate import EstateBackend
-from sources.knowledge_layer.src.estate_grep import GrepRefused
-from sources.knowledge_layer.src.estate_grep import compile_query
-from sources.knowledge_layer.src.qdrant.retrieval import PatternTooCostly
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO_ROOT / "scripts" / "turn_census"))
@@ -126,12 +126,10 @@ def _backend(retriever: Retriever, rows=None, stored=None) -> EstateBackend:
 
 @pytest.fixture(autouse=True)
 def _setup(monkeypatch):
-    from sources.knowledge_layer.src import browse
+    from knowledge_layer import browse
 
     monkeypatch.setattr(browse, "_collection_filter", lambda collection, **_kwargs: None)
-    monkeypatch.setattr(
-        "sources.knowledge_layer.src.register._resolve_base_collection", lambda _config: "oib_knowledge"
-    )
+    monkeypatch.setattr("knowledge_layer.register._resolve_base_collection", lambda _config: "oib_knowledge")
     token = begin_grounding_capture()
     try:
         yield

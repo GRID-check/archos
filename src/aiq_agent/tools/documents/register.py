@@ -51,6 +51,7 @@ import re
 from typing import Any
 
 from aiq_agent import project_context
+from aiq_agent.common.bff_http import SignedEnvelope
 from nat.plugin_api import Builder
 from nat.plugin_api import FunctionBaseConfig
 from nat.plugin_api import FunctionInfo
@@ -69,7 +70,6 @@ from .draft_store import filing_record
 from .draft_store import get_draft_backend
 from .draft_store import modernize_draft_path
 from .filing import FilingError
-from .filing import SignedEnvelope
 from .filing import post_document_version
 
 logger = logging.getLogger(__name__)

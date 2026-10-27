@@ -54,12 +54,12 @@ from typing import get_args
 
 from aiq_agent import project_context
 from aiq_agent.cards.models import TaskKind
+from aiq_agent.common.bff_http import SignedEnvelope
 from nat.plugin_api import Builder
 from nat.plugin_api import FunctionBaseConfig
 from nat.plugin_api import FunctionInfo
 from nat.plugin_api import register_function
 
-from ..documents.filing import SignedEnvelope
 from .cards import emit_task_card
 from .client import DelegationError
 from .client import post_task

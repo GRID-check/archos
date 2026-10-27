@@ -18,20 +18,20 @@ from sqlalchemy import text
 from aiq_agent.common import claim_queue
 
 CLAIM = {"stale_seconds": 180, "max_attempts": 3}
-_POSTGRES = os.environ.get("AIQ_TEST_POSTGRES_URL")
+_POSTGRES = os.environ.get("GRID_TEST_POSTGRES_URL")
 _TABLES = ("research_claims", "research_claim_turns", "other_claims", "other_claim_turns")
 
 
 def test_the_postgres_branch_ran_where_it_is_required():
     """CI's ``task be:test:postgres`` sets the guard: there a missing database fails instead of skipping green."""
-    if os.environ.get("AIQ_TEST_POSTGRES_REQUIRED"):
-        assert _POSTGRES, "AIQ_TEST_POSTGRES_URL is unset while AIQ_TEST_POSTGRES_REQUIRED is set"
+    if os.environ.get("GRID_TEST_POSTGRES_REQUIRED"):
+        assert _POSTGRES, "GRID_TEST_POSTGRES_URL is unset while GRID_TEST_POSTGRES_REQUIRED is set"
 
 
 @pytest.fixture(
     params=[
         "sqlite",
-        pytest.param("postgres", marks=pytest.mark.skipif(not _POSTGRES, reason="AIQ_TEST_POSTGRES_URL not set")),
+        pytest.param("postgres", marks=pytest.mark.skipif(not _POSTGRES, reason="GRID_TEST_POSTGRES_URL not set")),
     ]
 )
 def url(request, tmp_path):

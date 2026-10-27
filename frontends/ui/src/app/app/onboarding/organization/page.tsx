@@ -14,7 +14,7 @@ import { type ReactNode, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/adapters/auth/use-auth'
 import { OrganizationSetup } from '@/features/onboarding/components/organization-setup'
-import { TOUR_START_URL } from '@/features/onboarding/lib/product-tour'
+import { TOUR_START_URL } from '@/lib/onboarding/product-tour'
 import { useTranslations } from '@/i18n'
 
 /** The "you're in" beat before the hand-off. Long enough to read, no longer. */

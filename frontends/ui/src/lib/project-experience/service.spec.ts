@@ -131,6 +131,8 @@ function givenProfile(profile: unknown) {
 describe('extractProjectExperience', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    // The extractor is service-token guarded; without a token nothing is sent.
+    vi.stubEnv('GRID_INTERNAL_API_TOKEN', 'test-token')
     vi.stubGlobal('fetch', mockFetch)
     mockFetch.mockReset()
     vi.mocked(requireProjectAccess).mockResolvedValue(undefined as never)
@@ -142,6 +144,7 @@ describe('extractProjectExperience', () => {
 
   afterEach(() => {
     vi.unstubAllGlobals()
+    vi.unstubAllEnvs()
   })
 
   it('checks memory write access first, and refuses a closed project before the backend is asked', async () => {
