@@ -18,6 +18,14 @@ folder ([Filing suggestions](#filing-suggestions)). An `operation` may be the
 organization's, with no project (0176). What differs between them is held in one file,
 `frontends/ui/src/lib/proposals/kinds.ts`: the payload schema, who may decide,
 what is refused when it is proposed, the inbox line, and which applier runs.
+
+An applied `operation` runs its route as the person, and the route can tell it
+was a card: the applier passes the proposal's id as `callOperation`'s `origin`,
+and the acting session answers it (`actingProposalId`,
+`lib/agent-api/acting-session.ts`). The E-Mail-Eingang records such a filing
+as `via = 'piloti_proposal'`, and the database refuses a card that carries an
+acknowledgement or a name release (ADR-0134): Piloti proposes `inbound-mail-file`
+for clean, unflagged parts only.
 The lifecycle in `service.ts` is the same for every kind and asks `kinds.ts`
 for the rest.
 
