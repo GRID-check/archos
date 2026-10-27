@@ -89,6 +89,7 @@ from pydantic import ValidationError
 from starlette.websockets import WebSocketDisconnect
 
 from aiq_agent.auth.errors import AuthError
+from aiq_agent.common.action_rows import is_literal_search
 from aiq_agent.common.content_screen import ScreeningRules
 from aiq_agent.common.content_screen import findings_summary
 from aiq_agent.common.content_screen import mask_text
@@ -98,7 +99,6 @@ from aiq_agent.common.steering import SteerInbox
 from aiq_agent.common.steering import SteerNote
 from aiq_agent.common.steering import bind_steer_inbox
 from aiq_agent.common.steering import unbind_steer_inbox
-from aiq_agent.common.turn_status import is_literal_search
 from aiq_agent.common.wire_v2 import ACCEPTED_CLIENT_FIELDS
 from aiq_agent.common.wire_v2 import CLIENT_MESSAGE
 from aiq_agent.common.wire_v2 import CLOSE_CLIENT_OUTDATED

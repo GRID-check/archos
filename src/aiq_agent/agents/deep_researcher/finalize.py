@@ -32,15 +32,15 @@ from aiq_agent.common.citation_verification import source_origin_token
 from aiq_agent.common.citation_verification import verify_citations
 from aiq_agent.common.citation_verification import verify_quoted_spans
 from aiq_agent.common.retrieval_ledger import build_retrieval_ledger
-from aiq_agent.common.turn_status import CUTOFF_RUN_BUDGET
-from aiq_agent.common.turn_status import CUTOFF_STEP_LIMIT
-from aiq_agent.common.turn_status import CUTOFF_UPSTREAM_TIMEOUT
-from aiq_agent.common.turn_status import CUTOFF_USER_REQUESTED
-from aiq_agent.common.turn_status import CUTOFF_WALL_CLOCK
-from aiq_agent.common.turn_status import DEGRADED_BASIS_UNREAD
-from aiq_agent.common.turn_status import DEGRADED_NO_VALID_CITATIONS
-from aiq_agent.common.turn_status import DEGRADED_UNVERIFIED_QUOTES
-from aiq_agent.common.turn_status import emit_answer_degraded
+from aiq_agent.common.turn_notices import CUTOFF_RUN_BUDGET
+from aiq_agent.common.turn_notices import CUTOFF_STEP_LIMIT
+from aiq_agent.common.turn_notices import CUTOFF_UPSTREAM_TIMEOUT
+from aiq_agent.common.turn_notices import CUTOFF_USER_REQUESTED
+from aiq_agent.common.turn_notices import CUTOFF_WALL_CLOCK
+from aiq_agent.common.turn_notices import DEGRADED_BASIS_UNREAD
+from aiq_agent.common.turn_notices import DEGRADED_NO_VALID_CITATIONS
+from aiq_agent.common.turn_notices import DEGRADED_UNVERIFIED_QUOTES
+from aiq_agent.common.turn_notices import emit_answer_degraded
 from aiq_agent.skills import SkillRuntime
 
 logger = logging.getLogger(__name__)

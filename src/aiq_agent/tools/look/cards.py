@@ -1,7 +1,7 @@
 """The ``look`` card and the ``look`` step: where Piloti looked, shown twice (ADR-0128).
 
 Every look that rendered leaves a Herleitung row at once
-(``turn_status.emit_look_step``): the reader sees Piloti look while it looks.
+(``retrieval_status.emit_look_step``): the reader sees Piloti look while it looks.
 The CARD waits for the answer, because it shows only the looks the answer
 relies on, and that is known once the answer is final.
 
@@ -52,7 +52,7 @@ from aiq_agent.cards.models import grid_card_adapter
 from aiq_agent.cards.registry import extend_or_add
 from aiq_agent.cards.registry import get_card_registry
 from aiq_agent.common.page_region_words import where_on_the_page
-from aiq_agent.common.turn_status import emit_look_step
+from aiq_agent.common.retrieval_status import emit_look_step
 
 logger = logging.getLogger(__name__)
 

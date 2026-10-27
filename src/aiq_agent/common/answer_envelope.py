@@ -78,10 +78,10 @@ from pydantic import ValidationError
 from pydantic import field_validator
 
 from aiq_agent.common.provenance import normalize_document_name
-from aiq_agent.common.turn_status import VERDICT_DROP_AGENT_AUTHORED
-from aiq_agent.common.turn_status import VERDICT_DROP_UNREFERENCED_WITH_AGENT_SOURCE
-from aiq_agent.common.turn_status import emit_anatomy_dropped
-from aiq_agent.common.turn_status import emit_verdict_dropped
+from aiq_agent.common.turn_notices import VERDICT_DROP_AGENT_AUTHORED
+from aiq_agent.common.turn_notices import VERDICT_DROP_UNREFERENCED_WITH_AGENT_SOURCE
+from aiq_agent.common.turn_notices import emit_anatomy_dropped
+from aiq_agent.common.turn_notices import emit_verdict_dropped
 
 logger = logging.getLogger(__name__)
 

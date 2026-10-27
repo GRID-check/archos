@@ -22,7 +22,7 @@ route by which a measurement's evidence attaches itself to a judgment.
 
 from __future__ import annotations
 
-from aiq_agent.common.turn_status import tool_basename
+from aiq_agent.common.tool_calls import tool_basename
 from aiq_agent.tools.bim.measurement_evidence import result_carries_measurement
 
 #: Tools whose results constitute a MEASUREMENT of the building.

@@ -37,7 +37,7 @@ from aiq_agent.common.agent_tools import load_agent_tools
 from aiq_agent.common.fenced_checkpointer import FencedCheckpointer
 from aiq_agent.common.profiler import flush_after_answer
 from aiq_agent.common.profiler import track_agent_profile
-from aiq_agent.common.turn_status import documents_loading_step
+from aiq_agent.common.retrieval_status import documents_loading_step
 from aiq_agent.common.wire_v2 import EventBody
 from aiq_agent.common.wire_v2 import RunFinishedBody
 from aiq_agent.common.wire_v2 import StatusStep

@@ -18,13 +18,15 @@ from knowledge_layer.browse import FileRow
 from knowledge_layer.estate import EstateBackend
 from langgraph.store.memory import InMemoryStore
 
+from aiq_agent.common import action_rows
 from aiq_agent.common import data_sources
+from aiq_agent.common import tool_calls
 from aiq_agent.common import turn_status
 from aiq_agent.common.citation_collector import hits_from_artifact
 from aiq_agent.common.citation_verification import extract_sources_from_tool_result
 from aiq_agent.common.grounding_block import begin_grounding_capture
 from aiq_agent.common.grounding_block import end_grounding_capture
-from aiq_agent.common.turn_status import fetch_signature
+from aiq_agent.common.tool_calls import fetch_signature
 from aiq_agent.tools.documents.draft_store import DraftBackend
 from aiq_agent.tools.documents.draft_store import draft_namespace
 from aiq_agent.tools.documents.filesystem import NO_DRAFTS
@@ -199,13 +201,13 @@ class TestTheRound:
         assert data_sources.disabled_source_notice("write_file", off, {"file_path": "/drafts/a.md"}) is None
 
     def test_an_estate_read_is_a_retrieval_round_and_a_draft_read_is_not(self) -> None:
-        assert turn_status.is_retrieval_round([{"name": "read_file", "args": {"file_path": PATH}}])
-        assert not turn_status.is_retrieval_round([{"name": "read_file", "args": {"file_path": "/drafts/a.md"}}])
+        assert tool_calls.is_retrieval_round([{"name": "read_file", "args": {"file_path": PATH}}])
+        assert not tool_calls.is_retrieval_round([{"name": "read_file", "args": {"file_path": "/drafts/a.md"}}])
 
     async def test_the_tool_step_says_which_mount(self, monkeypatch) -> None:
         emitted: list = []
         monkeypatch.setattr(turn_status, "emit_step", lambda step, started=False, **_: emitted.append(step))
-        callback = turn_status.ToolStepCallback()
+        callback = action_rows.ToolStepCallback()
         run = uuid4()
         await callback.on_tool_start({"name": "read_file"}, "", run_id=run, inputs={"file_path": PATH})
         await callback.on_tool_end("", run_id=run)

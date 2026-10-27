@@ -33,7 +33,7 @@ from pydantic import field_validator
 from pydantic import model_validator
 
 from aiq_agent.common.action_outcome import ActionOutcome
-from aiq_agent.common.turn_status import ActionRow
+from aiq_agent.common.action_rows import ActionRow
 from aiq_agent.knowledge.ifc_spatial_client import call_spatial_tool
 from aiq_agent.knowledge.ifc_spatial_client import open_model
 from aiq_agent.knowledge.ifc_spatial_client import resolve_model_source

@@ -480,7 +480,7 @@ class TestComparing:
     async def test_an_unreachable_index_is_said_as_one_never_as_not_in_the_index(self, scope, stored, monkeypatch):
         from knowledge_layer.qdrant import store as store_module
 
-        from aiq_agent.common.turn_status import FETCH_FAILED_MARKER
+        from aiq_agent.common.tool_calls import FETCH_FAILED_MARKER
 
         def down(*_args, **_kwargs):
             raise ConnectionError("qdrant down")

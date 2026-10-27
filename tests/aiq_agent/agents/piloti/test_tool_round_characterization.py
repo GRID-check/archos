@@ -53,7 +53,7 @@ from aiq_agent.common.steering import SteerInbox
 from aiq_agent.common.steering import SteerNote
 from aiq_agent.common.steering import bind_steer_inbox
 from aiq_agent.common.steering import unbind_steer_inbox
-from aiq_agent.common.turn_status import FETCH_FAILED_MARKER
+from aiq_agent.common.tool_calls import FETCH_FAILED_MARKER
 from aiq_agent.knowledge import restricted_use as ru
 from aiq_agent.knowledge.restricted_use import WITHHELD_NOTICE
 from aiq_agent.knowledge.restricted_use import RestrictedUse

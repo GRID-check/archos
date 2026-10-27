@@ -46,7 +46,7 @@ async def test_ris_lookup_is_not_signed_by_the_duplicate_fetch_guard(lookup):
     guard answers a repeat with a German scolding, which is worse than serving
     it from the cache the test above proves is already there.
     """
-    from aiq_agent.common.turn_status import fetch_signature
+    from aiq_agent.common.tool_calls import fetch_signature
 
     call = {"name": "ris_lookup_tool", "args": {"question": "Was verlangt § 63 BO Wien?"}}
 

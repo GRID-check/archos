@@ -3326,7 +3326,7 @@ class TestUpstreamTimeoutIsNotTheBudget:
     @pytest.mark.asyncio
     async def test_an_inner_timeout_is_named_upstream_not_wall_clock(self, mock_llm_provider, real_tool):
         from aiq_agent.agents.deep_researcher.agent import DeepResearcherAgent
-        from aiq_agent.common.turn_status import CUTOFF_UPSTREAM_TIMEOUT
+        from aiq_agent.common.turn_notices import CUTOFF_UPSTREAM_TIMEOUT
 
         # Raised from INSIDE the graph, immediately -- nowhere near the budget.
         graph = streaming_graph_mock(error=TimeoutError("provider read timed out"))
@@ -3350,7 +3350,7 @@ class TestUpstreamTimeoutIsNotTheBudget:
     @pytest.mark.asyncio
     async def test_the_real_budget_is_still_named_wall_clock(self, mock_llm_provider, real_tool):
         from aiq_agent.agents.deep_researcher.agent import DeepResearcherAgent
-        from aiq_agent.common.turn_status import CUTOFF_WALL_CLOCK
+        from aiq_agent.common.turn_notices import CUTOFF_WALL_CLOCK
 
         graph = streaming_graph_mock(hang=True)
         seen: dict[str, object] = {}
