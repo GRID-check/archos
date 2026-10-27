@@ -339,10 +339,11 @@ export interface MessageProvenance {
    */
   claimStamps?: ClaimStamp[]
   /**
-   * Which rule computed `answerConfidence`: 2 the weakest load-bearing
-   * sentence (ADR-0125), 3 the evidence share over the same stamps
-   * (ADR-0139). Absent on every answer stored before rule 2, which renders
-   * under the answer-level floors it was computed with.
+   * Which rule computed `answerConfidence`: 2 the per-sentence stamps,
+   * held to the weakest (ADR-0125) or, when the stamps carry `support`, the
+   * count of backed claims (rule 3, ADR-0139, which keeps 2 for open tabs).
+   * Absent on every answer stored before rule 2, which renders under the
+   * answer-level floors it was computed with.
    */
   answerConfidenceVersion?: AnswerConfidenceVersion
   /** A search ran and found nothing; the answer is the model's own knowledge. Present or absent. */

@@ -3,9 +3,9 @@
 A tab outlives a deploy. Its bundle reads what the server sends leniently: an
 unknown key is stripped, but a known field with a value its schema does not
 allow drops the whole frame, and a dropped ``RUN_FINISHED`` asks the tab to
-reload. ``v2.schema.before-rule-3.json`` is the generated schema as it stood on
-develop before ADR-0139; refresh it only when a release has staged a break on
-purpose.
+reload. ``v2.schema.before-rule-3.json`` is the generated schema's
+``RunFinished`` and what it references, as they stood before ADR-0139; refresh
+it only when a release has staged a break on purpose.
 """
 
 from __future__ import annotations
@@ -32,16 +32,17 @@ def _lenient(node: Any) -> Any:
 
 def _old_tab_reads(frame: dict[str, Any]) -> bool:
     schema = _lenient(json.loads((FIXTURES / "v2.schema.before-rule-3.json").read_text()))
-    validator = jsonschema.Draft202012Validator({**schema, "$ref": "#/$defs/WireEvent"})
-    return validator.is_valid(frame)
+    return jsonschema.Draft202012Validator(schema).is_valid(frame)
 
 
 def _rule_three_finish(version: int) -> dict[str, Any]:
-    """The golden turn's RUN_FINISHED as rule 3 writes it: stamps carrying ``support``."""
+    """The golden turn's RUN_FINISHED as rule 3 writes it: stamps carrying every field rule 3 added."""
     lines = (FIXTURES / "golden_turn.jsonl").read_text().splitlines()
     frame = next(json.loads(line) for line in lines if '"RUN_FINISHED"' in line)
     result = frame["result"]
-    result["claim_stamps"] = [{**stamp, "support": 1.0} for stamp in result["claim_stamps"]]
+    result["claim_stamps"] = [
+        {**stamp, "support": 1.0, "verdict": True, "dropped": True, "group": 1} for stamp in result["claim_stamps"]
+    ]
     result["answer_confidence_version"] = version
     # The golden file leaves the clock out so it stays byte-stable; a live frame carries it.
     return {**frame, "ts": 1_793_100_000_000}

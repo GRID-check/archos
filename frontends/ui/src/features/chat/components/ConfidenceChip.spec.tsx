@@ -199,6 +199,21 @@ describe('ConfidenceChip under the evidence share', () => {
     expect(chip).toHaveClass('text-warning')
   })
 
+  test('a listing whose only normative sentence concludes nothing reads backed, muted, with nothing named', () => {
+    // Round 3 of #1231: a pure list_files answer showed „Rechtsaussage ohne Beleg" for a next step.
+    const listing = [
+      { text: 'Abgabepläne · 8 · …', provenance: 'record', claimType: 'value', loadBearing: true, support: 1, verdict: false },
+      { text: 'Berichte · 2 · …', provenance: 'record', claimType: 'value', loadBearing: true, support: 1, verdict: false },
+      { text: 'Welche Maßstäbe sie tragen, muss im Einzelnen geöffnet werden.', provenance: 'model_knowledge', claimType: 'normative', loadBearing: false, support: 0, verdict: false },
+    ] as const
+    render(<ConfidenceChip confidence="high" version={2} claimStamps={[...listing]} />)
+
+    const chip = screen.getByRole('button')
+    expect(chip).toHaveTextContent('2 of 2 statements backed')
+    expect(chip).not.toHaveTextContent('·')
+    expect(chip).not.toHaveClass('text-warning')
+  })
+
   test('names a citation that did not hold', () => {
     const dropped = [
       ...stamps.slice(0, 3),

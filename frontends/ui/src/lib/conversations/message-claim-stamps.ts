@@ -41,11 +41,19 @@ export interface ClaimStamp {
   /** For a record or an action: the workspace operation it came from. */
   operation?: string
   /**
-   * What the sentence contributes to the answer's evidence share (rule 3,
-   * ADR-0139): 1 evidence of its own, 0.5 an Einschätzung or a hedge, 0
-   * nothing. Computed by the agent, never here; absent on older answers.
+   * What the sentence contributes to the answer's count of backed claims
+   * (rule 3, ADR-0139): 1 evidence of its own; 0.5 an Einschätzung drawn from
+   * a cited passage or a hedge about a fact; 0 nothing, and every uncited
+   * verdict on the law, hedged or not. Computed by the agent, never here;
+   * absent on older answers.
    */
   support?: 0 | 0.5 | 1
+  /** Rule 3: it concludes something about the law, so only a passage grounds it. */
+  verdict?: boolean
+  /** Rule 3: it carried a pointer that did not hold (labelled in the text). */
+  dropped?: boolean
+  /** Rule 3: the table or list under one lead-in it belongs to; the group is one claim. */
+  group?: number
 }
 
 /** A long answer is a few dozen sentences; more is a runaway producer. */
@@ -80,7 +88,39 @@ function sanitizeStamp(input: unknown): ClaimStamp | undefined {
   const operation = cap(input.operation, MAX_OPERATION_CHARS)
   if (operation) stamp.operation = operation
   if (input.support === 0 || input.support === 0.5 || input.support === 1) stamp.support = input.support
+  if (typeof input.verdict === 'boolean') stamp.verdict = input.verdict
+  if (input.dropped === true) stamp.dropped = true
+  if (typeof input.group === 'number' && Number.isInteger(input.group) && input.group >= 0 && input.group < 1000)
+    stamp.group = input.group
   return stamp
+}
+
+/** Whether a stamp states a verdict on the law: the agent's flag, else (older stamps) its claim type. */
+const isVerdict = (stamp: ClaimStamp): boolean => stamp.verdict ?? stamp.claimType === 'normative'
+
+/** Whether a stamp carried a pointer that did not hold: the flag, or (older stamps) its class. */
+const isDropped = (stamp: ClaimStamp): boolean =>
+  stamp.dropped === true || stamp.provenance === 'cited_dropped'
+
+/** The load-bearing stamps as claims: one per sentence, a group (a table under a lead-in) as one. */
+function claimsOf(stamps: readonly ClaimStamp[]): ClaimStamp[][] {
+  const claims: ClaimStamp[][] = []
+  const groups = new Map<number, ClaimStamp[]>()
+  for (const stamp of stamps) {
+    if (!stamp.loadBearing) continue
+    if (stamp.group === undefined) {
+      claims.push([stamp])
+      continue
+    }
+    const group = groups.get(stamp.group)
+    if (group) group.push(stamp)
+    else {
+      const members = [stamp]
+      groups.set(stamp.group, members)
+      claims.push(members)
+    }
+  }
+  return claims
 }
 
 /** How many load-bearing sentences the answer has, and how many carry evidence of their own. */
@@ -91,14 +131,19 @@ export interface ClaimEvidenceCount {
 
 /**
  * The count the confidence chip leads with under rule 3 („12 von 14 Aussagen
- * belegt"): the load-bearing sentences, and those whose `support` the agent
- * computed as whole. Null when the stamps carry no support (an answer stored
- * before rule 3) or nothing bears load.
+ * belegt"): the claims (a load-bearing sentence, or a table under a lead-in as
+ * one), and those every sentence of which the agent computed as backed whole.
+ * Null when the stamps carry no support (an answer stored before rule 3) or
+ * nothing bears load.
  */
 export function claimEvidenceCount(stamps: readonly ClaimStamp[]): ClaimEvidenceCount | null {
-  const bearing = stamps.filter((stamp) => stamp.loadBearing)
-  if (bearing.length === 0 || bearing.some((stamp) => stamp.support === undefined)) return null
-  return { backed: bearing.filter((stamp) => stamp.support === 1).length, claims: bearing.length }
+  const claims = claimsOf(stamps)
+  if (claims.length === 0 || claims.some((claim) => claim.some((stamp) => stamp.support === undefined)))
+    return null
+  return {
+    backed: claims.filter((claim) => claim.every((stamp) => stamp.support === 1)).length,
+    claims: claims.length,
+  }
 }
 
 /** What the chip names beside the count under rule 3, read off the stamps alone. */
@@ -106,16 +151,17 @@ export type ClaimWarning = 'normativeClaimUncited' | 'citationUnverified'
 
 /**
  * The warning the stamps themselves call for (ADR-0139), whatever the model
- * said of itself: a load-bearing statement about the law with no quoted or
- * cited passage first, then a load-bearing pointer that did not hold. Null when
- * neither. The chip used to warn only when a cap on the self-report fired, so a
- * self-report that already matched the ceiling left an uncited verdict unnamed.
+ * said of itself: an uncited VERDICT on the law first (a next step or a fact
+ * the normative net caught is no verdict, and a pure listing names nothing),
+ * then a load-bearing pointer that did not hold. Null when neither. The chip
+ * used to warn only when a cap on the self-report fired, so a self-report that
+ * already matched the ceiling left an uncited verdict unnamed.
  */
 export function claimWarning(stamps: readonly ClaimStamp[]): ClaimWarning | null {
   const bearing = stamps.filter((stamp) => stamp.loadBearing)
-  if (bearing.some((stamp) => stamp.claimType === 'normative' && !PASSAGE.has(stamp.provenance)))
+  if (bearing.some((stamp) => isVerdict(stamp) && !PASSAGE.has(stamp.provenance)))
     return 'normativeClaimUncited'
-  if (bearing.some((stamp) => stamp.provenance === 'cited_dropped')) return 'citationUnverified'
+  if (bearing.some(isDropped)) return 'citationUnverified'
   return null
 }
 
@@ -146,7 +192,7 @@ const PASSAGE: ReadonlySet<ClaimProvenance> = new Set(['quoted', 'cited'])
  * each sentence in exactly one:
  *
  * - `dropped`: it cited something that did not hold;
- * - `normativeUncited`: it states the law with no quoted or cited passage
+ * - `normativeUncited`: it concludes something about the law (a verdict) with no quoted or cited passage
  *   (a record or a measurement beside it does not count);
  * - `supported`: a passage, a record, an action or a measurement stands behind it;
  * - `observed`: it repeats a value a look read off a drawing (never grounds the law);
@@ -172,8 +218,8 @@ export function claimMix(stamps: readonly ClaimStamp[]): ClaimMix {
     dropped: 0,
   }
   for (const stamp of stamps) {
-    if (stamp.provenance === 'cited_dropped') mix.dropped += 1
-    else if (stamp.claimType === 'normative' && !PASSAGE.has(stamp.provenance))
+    if (isDropped(stamp)) mix.dropped += 1
+    else if (stamp.claimType === 'normative' && isVerdict(stamp) && !PASSAGE.has(stamp.provenance))
       mix.normativeUncited += 1
     else if (SUPPORTED.has(stamp.provenance)) mix.supported += 1
     else if (stamp.provenance === 'observed') mix.observed += 1

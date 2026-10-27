@@ -651,6 +651,30 @@
           "title": "Claim Type",
           "type": "string"
         },
+        "dropped": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Dropped"
+        },
+        "group": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Group"
+        },
         "load_bearing": {
           "default": false,
           "title": "Load Bearing",
@@ -716,6 +740,18 @@
           },
           "title": "Unmatched",
           "type": "array"
+        },
+        "verdict": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Verdict"
         }
       },
       "required": [

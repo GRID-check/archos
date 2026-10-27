@@ -152,3 +152,34 @@ describe('claimWarning', () => {
     expect(claimWarning(stamps(stamp('cited', 'normative'), stamp('model_knowledge', 'normative', false)))).toBeNull()
   })
 })
+
+describe('rule 3 fields (round 3 of #1231)', () => {
+  test('a normative sentence the agent says concludes nothing is no warning: a listing names nothing', () => {
+    const stamps = sanitizeClaimStamps([
+      { text: 'Abgabepläne · 8', provenance: 'record', claim_type: 'value', load_bearing: true, support: 1, verdict: false },
+      { text: 'Die Höhen widersprechen sich.', provenance: 'record', claim_type: 'normative', load_bearing: true, support: 1, verdict: false },
+    ])
+    expect(claimWarning(stamps ?? [])).toBeNull()
+    expect(claimMix(stamps ?? []).normativeUncited).toBe(0)
+  })
+
+  test('an uncited verdict is named, and a dropped pointer is a flag, not a class', () => {
+    const stamps = sanitizeClaimStamps([
+      { text: 'Die Treppe ist 1,10 m breit.', provenance: 'measured', claim_type: 'value', load_bearing: true, support: 1, verdict: false, dropped: true },
+      { text: 'Die Treppe ist damit zu schmal.', provenance: 'model_knowledge', claim_type: 'normative', load_bearing: true, support: 0, verdict: true },
+    ])
+    expect(stamps?.[0].dropped).toBe(true)
+    expect(claimWarning(stamps ?? [])).toBe('normativeClaimUncited')
+    expect(claimWarning((stamps ?? []).slice(0, 1))).toBe('citationUnverified')
+  })
+
+  test('a table under a lead-in counts as one claim, backed only when every row is', () => {
+    const stamps = sanitizeClaimStamps([
+      { text: 'A [1].', provenance: 'cited', claim_type: 'value', load_bearing: true, support: 1 },
+      { text: 'Gliederung [1]:', provenance: 'cited', claim_type: 'normative', load_bearing: true, support: 1, group: 1 },
+      { text: '2 · Tragfähigkeit', provenance: 'reasoning', claim_type: 'value', load_bearing: true, support: 0.5, group: 1 },
+      { text: '3 · Ausbreitung', provenance: 'reasoning', claim_type: 'value', load_bearing: true, support: 0, group: 1 },
+    ])
+    expect(claimEvidenceCount(stamps ?? [])).toEqual({ backed: 1, claims: 2 })
+  })
+})

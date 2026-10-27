@@ -403,10 +403,22 @@ class ClaimStamp(_Model):
     operation: str | None = None
     #: For a ``record``: numbers the sentence states that no record this turn held.
     unmatched: list[str] = Field(default_factory=list)
-    #: What the sentence contributes to the turn's evidence share (rule 3,
-    #: ADR-0139): 1 evidence of its own, 0.5 an Einschätzung or a hedge, 0
-    #: nothing. Absent on a turn stored before it.
+    #: What the sentence contributes to the turn's count of backed claims
+    #: (rule 3, ADR-0139): 1 evidence of its own; 0.5 an Einschätzung drawn
+    #: from a cited passage or a hedge about a fact; 0 nothing, and every
+    #: uncited verdict on the law, hedged or not. Absent on a turn stored
+    #: before rule 3; its presence is what tells rule 3 apart on the wire.
     support: float | None = Field(default=None, ge=0, le=1)
+    #: Rule 3: the sentence concludes something about the law, so only a
+    #: passage grounds it; the chip warns on an uncited one. Optional, as
+    #: ``support`` is, so an open tab's bundle strips it.
+    verdict: bool | None = None
+    #: Rule 3: it carried a pointer that did not hold; its class is what is
+    #: left without it.
+    dropped: bool | None = None
+    #: Rule 3: the table or list under one lead-in this sentence belongs to;
+    #: the group counts as one claim.
+    group: int | None = None
 
 
 class TurnResult(_Model):
