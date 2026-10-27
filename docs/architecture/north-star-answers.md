@@ -189,8 +189,8 @@ the six folders) under the table. Each `[N]` opens the page. No look card.
 
 **Checks.** Row `ns-orient-project`: `list_files` with `view: tree`, no look,
 at most three rounds, the six folder names and „Index B“ in the answer.
-Langfuse: `file-tools-used` = `navigate`; `claims-by-class` shows `record`
-and `cited` and no `model_knowledge`; `answer-confidence` high;
+Langfuse: `file-tools-used` = `navigate`; `confidence-judged-level` high with
+no finding; `answer-confidence` high;
 `folder-card-fresh` true.
 
 ---
@@ -239,8 +239,8 @@ that opens the file.
 
 **Checks.** Row `ns-current-fassung`: `list_files` with `view: tree`, no
 `read_passage`, no look, at most two rounds; „6“ or „sechs“, „Index B“ and the
-date. Langfuse: `file-tools-used` = `navigate`; `claims-by-class` all
-`record`; latency in the fast band of the suite report.
+date. Langfuse: `file-tools-used` = `navigate`; `confidence-judged-level`
+high; latency in the fast band of the suite report.
 
 ---
 
@@ -372,7 +372,7 @@ Zum Vorverfahren 123456-2026 liegt im Projekt kein eigenes Dokument; die Zahl st
 
 **Checks.** Row `ns-geschaeftszahlen`: `knowledge_search` with `match` regex
 or exact, no look, at most two rounds, all three numbers. Langfuse:
-`file-tools-used` = `search`; `claims-by-class` all `cited`.
+`file-tools-used` = `search`; `confidence-judged-level` high.
 
 ---
 
@@ -428,7 +428,7 @@ Anlagentechnisch sieht das Konzept vernetzte Rauchwarnmelder in allen Aufenthalt
 
 **Checks.** Row `ns-not-in-documents`: an exact or regex search, judge
 `none_found`, „Rauchwarnmelder“ in the answer. Langfuse: `sources-empty`
-false (the read found the equipment); `claims-normative-uncited` 0.
+false (the read found the equipment); `confidence-judge-unavailable` false.
 
 ---
 
@@ -845,9 +845,8 @@ side by side when both are open.
 
 **Checks.** Row `ns-escape-route-law`: `knowledge_search` called, „12 m“ and
 „OIB“ in the answer, „13,80“ not, judge `separates_sources`. Langfuse:
-`claims-normative-uncited` 0; `claims-by-class` holds `cited` and
-`reasoning`; `answer-confidence` medium, never high; `confidence-capped` not
-needed because the self-report was already medium.
+`confidence-judged-level` medium, never high: the 13,80 m of the drawing is
+no passage of the law, and the check names what it is checked against.
 
 ---
 
@@ -926,8 +925,8 @@ fact, and an estimate goes nowhere near the confirmed facts.
 
 **Checks.** Row `ns-gk-unstated`: a read or search, „Fluchtniveau“,
 „10,65“ and „11 m“ in the answer, judge `separates_sources`. Langfuse:
-`answer-confidence` not high; `claims-by-class` holds `quoted`, `cited` and
-`reasoning`; `claims-normative-uncited` 0.
+`answer-confidence` not high; the check's findings name the unstated
+Gebäudeklasse as unbacked.
 
 ---
 
@@ -1236,8 +1235,8 @@ with the question, the answer and the Herleitung.
    the drawing shows, what the law requires (always a cited passage), what is
    Piloti's own estimate. A reading of a drawing, a record or an estimate never
    carries a statement about the law.
-7. **Its confidence is that of its weakest load-bearing claim**, with a reason
-   that names what is and is not belegt. Uncertainty is said once, concretely,
+7. **Its confidence is a grading of the answer against its evidence**, naming
+   what is not belegt and the source each statement was checked against. Uncertainty is said once, concretely,
    with where it gets decided.
 8. **Absence is reported as absence.** With the scope that was searched, and
    without a number, a reason or a value from another project or Fassung put in

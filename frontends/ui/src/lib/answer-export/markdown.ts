@@ -22,6 +22,7 @@ import { stripDirectives } from '@/lib/text/answer-directives'
 import { marked, type Token, type Tokens } from 'marked'
 import type { DocBlock, DocRun, HeadingLevel } from './blocks'
 import { DIAGRAM_SOURCE_KINDS } from '@/lib/diagrams/diagram-sources'
+import { REFUSED_SKETCH_FENCE_LANGUAGE } from '@/lib/diagrams/sketch-fence'
 
 /** Inline tokens carried on a block token, when it has any. */
 type InlineHost = { tokens?: Token[]; text?: string; raw?: string }
@@ -196,7 +197,17 @@ const blockFrom = (token: Token, options: MarkdownToBlocksOptions = {}): DocBloc
  */
 const isDiagramFence = (lang: string | undefined): boolean =>
   typeof lang === 'string' &&
-  (DIAGRAM_SOURCE_KINDS as readonly string[]).includes(lang.trim().toLowerCase())
+  ((DIAGRAM_SOURCE_KINDS as readonly string[]).includes(lang.trim().toLowerCase()) ||
+    lang.trim().toLowerCase() === REFUSED_SKETCH_FENCE_LANGUAGE)
+
+/**
+ * A sketch (ADR-0146) is JSON, and JSON is never printed for a reader: it is
+ * an Excalidraw scene no one regenerates by reading it. Its file is the filed
+ * sketch, which carries the scene in its own metadata. So a sketch gets the
+ * label alone, in every format.
+ */
+const isSketchFence = (lang: string | undefined): boolean =>
+  /^excalidraw(?:-refused)?$/.test((lang ?? '').trim().toLowerCase())
 
 /**
  * The label a drawing this export cannot render carries instead of a picture.
@@ -215,7 +226,9 @@ const isDiagramFence = (lang: string | undefined): boolean =>
  * here, not a rewrite.
  */
 export const diagramLabel = (lang: string | undefined): string =>
-  `Diagramm (${(lang ?? '').trim().toLowerCase()}) — hier als Quelltext, im Original als Zeichnung.`
+  isSketchFence(lang)
+    ? 'Skizze — in dieser Datei nicht dargestellt. Die Antwort in Piloti zeigt sie als Zeichnung.'
+    : `Diagramm (${(lang ?? '').trim().toLowerCase()}) — hier als Quelltext, im Original als Zeichnung.`
 
 /**
  * A drawing this export cannot render: the format's placeholder when it has
@@ -226,7 +239,7 @@ export const diagramLabel = (lang: string | undefined): string =>
 export const diagramBlocks = (lang: string | undefined, source: string, placeholder?: string): DocBlock[] => {
   if (placeholder) return [{ kind: 'paragraph', runs: [{ text: placeholder, italic: true }], style: 'meta' }]
   const label: DocBlock = { kind: 'paragraph', runs: [{ text: diagramLabel(lang), italic: true }], style: 'meta' }
-  return source ? [label, { kind: 'paragraph', runs: [{ text: source, mono: true }] }] : [label]
+  return source && !isSketchFence(lang) ? [label, { kind: 'paragraph', runs: [{ text: source, mono: true }] }] : [label]
 }
 
 /** How {@link markdownToBlocks} prints what it cannot draw or must rank. */

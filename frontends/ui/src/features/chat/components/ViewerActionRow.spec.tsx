@@ -12,6 +12,8 @@ import {
   releaseViewerActions,
   resetViewerActions,
   setViewerActionsAuto,
+  noteViewerLocation,
+  showViewerAction,
   useViewerActionStore,
   type ViewerActionCall,
   type ViewerActionOutcome,
@@ -61,10 +63,23 @@ const draw = () =>
   )
 
 describe('ViewerActionRow', () => {
-  it('draws nothing for an answer that moved no viewer, nor while its turn still runs', () => {
-    proposeViewerAction('answer-1', call('open_document', 'va_0'))
+  it('draws nothing for an answer that proposed no place', () => {
     const { container } = draw()
     expect(container.querySelector('[data-testid="viewer-action-row"]')).toBeNull()
+  })
+
+  it('says a place waits for the answer while the turn runs, and opens it on „Anzeigen“', async () => {
+    setViewerActionsAuto(true)
+    proposeViewerAction('answer-1', call('open_document', 'va_0'))
+    draw()
+
+    expect(screen.getByTestId('viewer-action')).toHaveAttribute('data-status', 'held')
+    expect(screen.getByTestId('viewer-action-status')).toHaveTextContent('Wartet auf die fertige Antwort')
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /anzeigen/i }))
+    })
+    expect(useViewerActionStore.getState().entries.va_0?.status).toBe('shown')
+    expect(screen.getByRole('button', { name: /zurücknehmen/i })).toBeInTheDocument()
   })
 
   it('says what moved and puts it back on „Zurücknehmen“', async () => {
@@ -127,5 +142,18 @@ describe('ViewerActionRow', () => {
     expect(live).toHaveLength(1)
     expect(live[0]).toHaveAttribute('data-testid', 'viewer-action-status')
     expect(screen.getByRole('region')).not.toHaveAttribute('aria-live')
+  })
+
+  it('offers no „Zurücknehmen“ for a model view the person has left', async () => {
+    outcome = { outcome: 'shown', where: 'model', undo, undoable: () => false }
+    await act(async () => {
+      proposeViewerAction('answer-1', call('focus_ifc_element', 'va_m'))
+      await showViewerAction('va_m')
+      noteViewerLocation()
+    })
+    draw()
+
+    expect(screen.getByTestId('viewer-action-status')).toHaveTextContent('Modellansicht geöffnet')
+    expect(screen.queryByRole('button', { name: /zurücknehmen/i })).toBeNull()
   })
 })

@@ -330,3 +330,14 @@ What does not change: the listing is an index, never cited. It registers no
 source (`register_source_parser` for `list_files` still returns nothing), no
 `[N]` resolves to it, and `browse.py` still tells the model not to cite it. The
 provenance is the stamp, not a citation marker.
+
+## Amendment, 2026-10-27: the confidence rule is superseded by ADR-0139
+
+The level is no longer held to the weakest load-bearing sentence. A model
+grades the whole answer against everything the turn registered (ADR-0139), and
+the per-sentence classes, claim types and ceilings this record introduced are
+gone from new turns; a stored turn keeps its `claim_stamps` and renders as it
+did. What stands: an unresolvable `[N]` is labelled where it stood
+(`DROPPED_CITATION_MARKER`), a lookup that found nothing ships its answer with
+the banner, and workspace records travel their own channel, never the
+`SourceRegistry`.

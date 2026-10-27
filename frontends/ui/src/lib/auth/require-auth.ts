@@ -3,27 +3,10 @@
  */
 
 import { redirect } from 'next/navigation'
-import { NextResponse } from 'next/server'
-import { isAuthzError } from '@/lib/auth-utils'
+import { NoOrganizationError } from '@/lib/api/errors'
 import { runWithTenantSlot } from '@/lib/db/tenant-context'
 import { requireGridSession } from './session'
 import type { AuthorizedSession } from './types'
-
-/**
- * Error thrown when a signed-in session has not selected a WorkOS organization.
- *
- * API route handlers can map this to a 403 response; page/server-action code
- * should use {@link requireAuthorizedPageSession} to redirect instead.
- */
-export class NoOrganizationError extends Error {
-  readonly code = 'NO_ORGANIZATION'
-  readonly status = 403
-
-  constructor() {
-    super('Forbidden: no organization selected')
-    this.name = 'NoOrganizationError'
-  }
-}
 
 /**
  * Require a signed-in Grid session that has selected a WorkOS organization.
@@ -95,27 +78,4 @@ export async function requireAuthorizedPageSession(): Promise<AuthorizedSession>
  */
 export function withPageSession<T>(fn: (session: AuthorizedSession) => Promise<T> | T): Promise<T> {
   return runWithTenantSlot(async () => fn(await requireAuthorizedPageSession()))
-}
-
-/**
- * Map a caught error to a 403 JSON response when it is an authorization
- * failure (no organization selected, forbidden, unauthorized, not-found);
- * otherwise return null so the caller falls through to its own handling
- * (typically rethrow → Next.js 500). Lets API route handlers apply the
- * no-organization → 403 contract uniformly instead of letting
- * {@link NoOrganizationError} escape as an opaque 500:
- *
- * ```ts
- * } catch (error) {
- *   const denied = authzErrorResponse(error)
- *   if (denied) return denied
- *   throw error
- * }
- * ```
- */
-export function authzErrorResponse(error: unknown): NextResponse | null {
-  if (isAuthzError(error)) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-  }
-  return null
 }

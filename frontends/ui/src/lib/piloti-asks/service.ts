@@ -26,8 +26,7 @@
 
 import 'server-only'
 import { randomUUID } from 'node:crypto'
-import { ConflictError, ForbiddenError, NotFoundError } from '@/lib/api/errors'
-import { isAuthzError } from '@/lib/auth-utils'
+import { ConflictError, ForbiddenError, isAuthzRefusal, NotFoundError } from '@/lib/api/errors'
 import type { AuthorizedSession } from '@/lib/auth/types'
 import { CHAT_PERMISSIONS } from '@/lib/authz/chat'
 import { configuredAppOrigin } from '@/lib/app-origin'
@@ -200,7 +199,7 @@ async function startTurn(
     })
   } catch (error) {
     if (error instanceof TurnBudgetExhaustedError) return { state: 'rejected', reason: `budget: ${error.message}` }
-    if (isAuthzError(error)) return { state: 'rejected', reason: 'You may no longer chat in this project.' }
+    if (isAuthzRefusal(error)) return { state: 'rejected', reason: 'You may no longer chat in this project.' }
     throw error
   }
   const target = socketTarget(ask.conversationId)

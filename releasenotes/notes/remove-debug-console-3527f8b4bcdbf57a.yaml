@@ -1,0 +1,7 @@
+---
+operators:
+  - |
+    The backend no longer serves the debug console at /debug, and the
+    AIQ_ENABLE_DEBUG environment variable is gone; remove it from any
+    deployment that sets it. The console was an unused page from the original
+    blueprint, and the aiq-research terminal client was removed with it.

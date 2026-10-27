@@ -144,7 +144,8 @@ function OperationInput({
   if (rows.length === 0) return null
   // A path id is the object the action acts on: named after what it resolved to ("Project"), not "ID".
   const labelOf = (row: OperationInputRow): string => {
-    const target = row.source === 'params' && row.key === 'id' ? targets.find((candidate) => candidate.id === row.value) : undefined
+    const id = row.ids ?? row.value
+    const target = row.source === 'params' && row.key === 'id' ? targets.find((candidate) => candidate.id === id) : undefined
     if (target) return t(`cards.operationProposal.targetType.${target.type}`)
     return isNamedInputKey(row.key) ? t(`cards.operationProposal.inputKeys.${row.key}`) : humanizeKey(row.key)
   }
@@ -163,7 +164,8 @@ function OperationInput({
             <dt className="shrink-0 font-medium" title={row.key} data-key={row.key}>
               {labelOf(row)}
             </dt>
-            <dd className="min-w-0 break-words" data-testid="operation-input-value">
+            {/* A value shown by name keeps its id on hover, as the field keeps its technical name. */}
+            <dd className="min-w-0 break-words" data-testid="operation-input-value" title={row.ids}>
               {open ? <span className="whitespace-pre-wrap">{row.value}</span> : previewOf(row)}
               {row.long && (
                 <Button
@@ -203,7 +205,12 @@ export function OperationReceipt({
   const { proposal } = server
   const shownOperation = proposal?.payload.operation ?? operation
   const shownInput = proposal?.payload.input ?? input
-  const rows = useMemo(() => operationInputRows(shownInput), [shownInput])
+  const targets = proposal?.targets
+  // An id the server named for this reader reads as that name, in the inputs as on „Betrifft“.
+  const rows = useMemo(() => {
+    const names = new Map((targets ?? []).flatMap((target) => (target.name ? [[target.id, target.name] as const] : [])))
+    return operationInputRows(shownInput, (id) => names.get(id))
+  }, [shownInput, targets])
   // Unfolded once is read: folding it again does not make „Übernehmen“ wait again.
   const [unfolded, setUnfolded] = useState<ReadonlySet<string>>(() => new Set())
   const [read, setRead] = useState<ReadonlySet<string>>(() => new Set())
@@ -228,8 +235,8 @@ export function OperationReceipt({
           <p className="card-caption text-muted-foreground" data-testid="operation-name">
             {t('cards.operationProposal.operation', { operation: shownOperation })}
           </p>
-          <OperationTargets targets={proposal?.targets ?? []} />
-          <OperationInput rows={rows} targets={proposal?.targets ?? []} unfolded={unfolded} onToggle={toggle} />
+          <OperationTargets targets={targets ?? []} />
+          <OperationInput rows={rows} targets={targets ?? []} unfolded={unfolded} onToggle={toggle} />
         </>
       }
       acceptBlocked={unread > 0 ? t('cards.operationProposal.readAllFirst', { count: unread }) : undefined}

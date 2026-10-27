@@ -6,6 +6,7 @@ import { getTokenClaims, withAuth } from '@workos-inc/authkit-nextjs'
 import { currentActingSession } from '@/lib/agent-api/acting-session'
 import { lookupSubjectMembership, type SubjectMembership } from '@/lib/authz/project-membership'
 import { clearTenantContext, enterTenantContext } from '@/lib/db/tenant-context'
+import { SessionRequiredError } from '@/lib/api/errors'
 import type { GridSession } from './types'
 
 /**
@@ -107,13 +108,13 @@ export async function getGridSession(): Promise<GridSession | null> {
 /**
  * Require a signed-in Grid session.
  *
- * @throws {Error} when no WorkOS session is present.
+ * @throws {SessionRequiredError} when no WorkOS session is present.
  */
 export async function requireGridSession(): Promise<GridSession> {
   const session = await getGridSession()
 
   if (!session) {
-    throw new Error('Unauthorized: Grid session required')
+    throw new SessionRequiredError()
   }
 
   return session

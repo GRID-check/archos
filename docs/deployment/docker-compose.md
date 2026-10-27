@@ -113,7 +113,7 @@ The same image as `aiq-agent`, started as `GRID_ROLE=api`: the Knowledge API
 (collections, documents, search, ingest enqueue), the Async Job API with its SSE
 streams, the LLM utilities (titles, summaries, consistency check, feedback digest,
 lesson distillation, skill review, note embeddings), admin, the housekeeping
-routes, and the debug console. It is what `BACKEND_URL=http://aiq-api:8000` names,
+routes. It is what `BACKEND_URL=http://aiq-api:8000` names,
 for the frontend, the purger and the `housekeeping` clock. It serves no chat
 socket. [`docs/api/python-endpoints.md`](../api/python-endpoints.md) lists which
 role serves which route.
@@ -121,7 +121,7 @@ role serves which route.
 | Property | Value |
 |----------|-------|
 | Container name | `aiq-api` |
-| Ports | `${PORT:-8000}:8000` (the API, `/docs`, `/debug`) |
+| Ports | `${PORT:-8000}:8000` (the API and `/docs`) |
 | Environment | `aiq-agent`'s, with `GRID_ROLE=api` |
 | Healthcheck | the same `/health` probe as `aiq-agent` |
 | Depends on | `seaweedfs`, `postgres`, `pgbouncer`, `qdrant` (healthy) |
@@ -486,7 +486,6 @@ The backend `deploy/Dockerfile` defines two build targets:
 ### dev (default)
 
 - Based on `debian:bookworm-slim` with a uv-managed Python 3.14 (`python-build-standalone`)
-- Includes CLI (`aiq-research`) and debug UI (`aiq_debug`)
 - Includes Node.js 22 for frontend development inside the dev container
 - `APP_ENV` defaults to `development` (when unset, compose default is `production`)
 

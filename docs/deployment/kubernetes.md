@@ -1088,7 +1088,7 @@ schema.
 
 The agent (`aiq-agent`) is the token-heavy core and the thing you most want to
 scale. Its scaling story has two phases. This is grounded in
-[`../architecture/scaling-review-2026-07.md`](../architecture/scaling-review-2026-07.md),
+[`../audit/scaling-review-2026-07.md`](../audit/scaling-review-2026-07.md),
 which inventories exactly what pins work to one process.
 
 ### 6.1 Today: vertical scaling (wired and working)
@@ -2481,7 +2481,7 @@ depends on §9, whose guard already refuses `networkPolicies=false`.
 - **Web and worker images must be the same Langfuse version.** They are two
   config keys because upstream publishes two images; digests are opaque, so
   nothing can verify it for you. Both defaults are pinned from the same tag
-  (4.68.0). Bump them together.
+  (4.71.0). Bump them together.
 - **ClickHouse must run UTC.** On any other server timezone Langfuse's queries
   return empty or shifted results — a dashboard reporting "no data" for a system
   that is plainly running. `TZ=UTC` is pinned on the container; do not override.

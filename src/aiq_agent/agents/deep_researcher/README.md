@@ -345,7 +345,7 @@ writer) and uses its own stable, persisted cutoff — the two mechanisms are
 still not aware of each other, they just no longer fight the cache on their
 own axis. No call site sets provider-side prompt-caching hints yet, so
 enabling that remains a separate, larger cost lever — see
-`docs/architecture/scaling-review-2026-07.md` §6.1 and
+`docs/audit/scaling-review-2026-07.md` §6.1 and
 `docs/architecture/llm-providers.md`.
 
 ### Strict structured-output schemas can violate provider constraints — fixed (`2db0f7d`)
@@ -466,22 +466,6 @@ glance:
 
 ## Evaluation
 
-### Deep Research Bench (DRB)
-
-The benchmark evaluates research reports using RACE and FACT metrics.
-
-See [frontends/benchmarks/deepresearch_bench/README.md](../../../../frontends/benchmarks/deepresearch_bench/README.md) for full documentation (path from this file to repo root).
-
-**Quick start:**
-
-```bash
-# Install the evaluator (from repo root)
-uv pip install -e ./frontends/benchmarks/deepresearch_bench
-
-# Run evaluation (use one of the provided configs)
-dotenv -f deploy/.env run nat eval --config_file frontends/benchmarks/deepresearch_bench/configs/config_nemotron_only.yml
-```
-
 ### OIB Compliance golden eval suite (backlog T4-5, 2026-07-16)
 
 A separate, smaller golden eval suite exercises the real
@@ -498,4 +482,3 @@ in the fixture).
 
 - [LangChain DeepAgents documentation](https://docs.langchain.com/oss/python/deepagents/overview)
 - [NeMo Agent Toolkit documentation](https://docs.nvidia.com/nemo/agent-toolkit/latest/index.html)
-- [Deep Research Bench](../../../../frontends/benchmarks/deepresearch_bench/README.md)

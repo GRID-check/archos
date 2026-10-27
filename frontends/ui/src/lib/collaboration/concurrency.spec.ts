@@ -37,7 +37,6 @@ vi.mock('@/lib/authz/project-membership', () => ({
 
 vi.mock('@/lib/auth/require-auth', () => ({
   requireAuthorizedSession: vi.fn(),
-  authzErrorResponse: () => null,
 }))
 
 // Which people may read what a conversation recorded is `restricted-use.spec.ts`'s

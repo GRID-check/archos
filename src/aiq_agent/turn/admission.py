@@ -41,6 +41,7 @@ from aiq_agent.common.turn_admission import admit_turn_async
 from aiq_agent.common.wire_v2 import EventBody
 from aiq_agent.common.wire_v2 import RunFinishedBody
 from aiq_agent.common.wire_v2 import TurnResult
+from aiq_agent.observability.turn_phases import observed_phase
 
 logger = logging.getLogger(__name__)
 
@@ -65,10 +66,14 @@ class AnsweringAgent(Protocol[StateT]):
 
 
 async def spanned(name: str, awaitable: Awaitable[T]) -> T:
-    """Await inside a profiler span. Each gathered branch runs in its own task
-    and therefore its own copy of the context, so the span nests under the
-    turn root and never leaks into a sibling."""
-    with profiled_span(name):
+    """Await inside a profiler span and a Langfuse observation of the same name.
+
+    Each gathered branch runs in its own task and therefore its own copy of the
+    context, so the span nests under the turn root and never leaks into a
+    sibling. The observation (``observability.turn_phases``) is what makes the
+    seconds before the first model call readable in the trace, phase by phase.
+    """
+    with profiled_span(name), observed_phase(name):
         return await awaitable
 
 
@@ -114,7 +119,7 @@ async def _enter_admission_slot(
     difference between "this replica is busy" and "this replica is broken" in
     the waterfall an operator opens.
     """
-    with profiled_span("admission.wait"):
+    with profiled_span("admission.wait"), observed_phase("admission.wait"):
         try:
             await admission.enter_async_context(admit_turn_async(organization_id))
         except TurnAdmissionError as refused:

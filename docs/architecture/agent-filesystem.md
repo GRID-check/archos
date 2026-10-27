@@ -137,7 +137,7 @@ for a grep without a path.
 
 **Slice 6, the descriptions, the evidence rules, the old names retired** (built). The tool
 texts, the three `<rules>` bullets and the line-by-line fate of each are in
-[`prompt-value-audit-2026-10.md`](prompt-value-audit-2026-10.md#2026-10-27-slice-6-the-evidence-tools-and-their-rules);
+[`docs/audit/prompt-value-audit-2026-10.md`](../audit/prompt-value-audit-2026-10.md#2026-10-27-slice-6-the-evidence-tools-and-their-rules);
 the evidence tool surface went from 5,560 to 3,111 tokens per call (o200k).
 
 | Piece | Where |

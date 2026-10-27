@@ -623,7 +623,7 @@ Its bookkeeping is also covered offline by
 before/after report and the arms run by
 [`tests/test_answer_suite_compare.py`](../../tests/test_answer_suite_compare.py). The
 September 2026 measurements it grew out of are in
-[turns-per-answer-audit-2026-09.md](../architecture/turns-per-answer-audit-2026-09.md).
+[turns-per-answer-audit-2026-09.md](../audit/turns-per-answer-audit-2026-09.md).
 
 Measure a committed, clean tree, where the document inventory is. Each
 question starts a fresh process from the working tree, so editing code
@@ -651,7 +651,7 @@ a slice, `scripts/turn_census/startup_probe.py` prints each turn's provider
 calls and the retriever's embed, store (the one Qdrant query) and retrieve phases in milliseconds,
 several questions in one process so all but the first are warm. What both
 measured on 2026-09-24, and the effort A/B:
-[turn-latency-measured-2026-09.md](../architecture/turn-latency-measured-2026-09.md).
+[turn-latency-measured-2026-09.md](../audit/turn-latency-measured-2026-09.md).
 
 ### The workspace set
 
@@ -883,7 +883,7 @@ and `light` modes that replayed it, are gone with the v2 cut.
 | Is the answer right, and did it get slower or more variable? | `task be:eval:answer-suite` | key and ingested corpus | about 4 minutes for the core set at two runs |
 | What did one turn cost, call by call? | `task be:eval:turn-census -- "<question>"` | key and ingested corpus | one turn per run (`--runs`, default 1); writes to `/tmp/turn_census` unless `--out`; `--override KEY VALUE` per census |
 | What happens in the milliseconds before the first model call? | `scripts/turn_census/startup_probe.py` | key, corpus and document inventory | several questions in one process; the first turn is cold |
-| Does Qdrant retrieval still clear gates G1b, G2 and G6, beside the numbers the Chroma path recorded? | `task be:eval:qdrant-parity` (`-- --variants all` adds the ranking sweep) | `data/oib`, a Qdrant 1.19 server, the embeddings key | about 15 minutes on 4 CPUs; the corpus embedding (~$0.12) is cached after the first run. [The gate report](../architecture/qdrant-gates-2026-10.md) |
+| Does Qdrant retrieval still clear gates G1b, G2 and G6, beside the numbers the Chroma path recorded? | `task be:eval:qdrant-parity` (`-- --variants all` adds the ranking sweep) | `data/oib`, a Qdrant 1.19 server, the embeddings key | about 15 minutes on 4 CPUs; the corpus embedding (~$0.12) is cached after the first run. [The gate report](../audit/qdrant-gates-2026-10.md) |
 | Does the Erfassungs-Agent set a project up right from its documents? | `task be:eval:intake` | key and bun | about a cent and two minutes per run of the boot model |
 | What shape did the turn take (rounds, locator, checkpoint)? | `task be:eval:loop` | a running backend at `GRID_LOOP_EVAL_URL` with the corpus | real model calls per question; `--compare` needs no backend |
 | Does the layout shift while an answer streams? | `/dev/stream-replay?fixture=varianten` (or `oib2`), `&speed=N`, `&ending=recorded` for the recording's own terminal (the retired whole-answer rewrite on `oib2`) | the UI dev server | free: the fixtures are recorded frames in `frontends/ui/src/app/dev/_fixtures/stream-frames.ts`, replayed as v2 events through `foldTurnEvent`. `window.__replay` holds `shifts` (each source flagged `edge` when it entered or left the viewport), `anchorTops` and `done` for a headless capture. The answer alone: no Herleitung, no thread scroller |

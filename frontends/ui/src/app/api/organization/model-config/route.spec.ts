@@ -22,7 +22,6 @@ afterEach(() => {
 
 vi.mock('@/lib/auth/require-auth', () => ({
   requireAuthorizedSession: vi.fn().mockImplementation(async () => session),
-  authzErrorResponse: vi.fn().mockReturnValue(null),
 }))
 
 vi.mock('@/lib/model-config/backend-defaults', () => ({

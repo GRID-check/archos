@@ -5,7 +5,7 @@
  * a try/catch of its own, and until this file existed nothing asserted it — the
  * caching audit counted the coverage at zero ("No test covers `common/cache.py`
  * or `lib/cache/index.ts` at all",
- * `docs/architecture/latency-and-caching-audit-2026-09.md` §4.4, option E6).
+ * `docs/audit/latency-and-caching-audit-2026-09.md` §4.4, option E6).
  * A regression here is silent by construction: a `throw` from the store surfaces
  * as a 500 on whichever route happens to be first past the broken op, and looks
  * like that route's bug.

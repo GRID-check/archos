@@ -20,7 +20,6 @@ const session = {
 }
 vi.mock('@/lib/auth/require-auth', () => ({
   requireAuthorizedSession: vi.fn().mockImplementation(async () => session),
-  authzErrorResponse: vi.fn().mockReturnValue(null),
 }))
 
 const listAccessLog = vi.fn()

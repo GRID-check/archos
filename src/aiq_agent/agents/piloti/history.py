@@ -43,6 +43,17 @@ def _get_token_encoder():
         return None
 
 
+def warm_token_encoder() -> bool:
+    """Load the encoder now, so no turn pays for it; whether tiktoken is usable.
+
+    Blocking (a file read, or the BPE table's download on an empty cache):
+    called once at boot through ``asyncio.to_thread``. Without it the first
+    turn of every process paid it inside the conversation graph's first node,
+    synchronously, on the event loop every other turn shares.
+    """
+    return _get_token_encoder() is not None
+
+
 def _encoded_len(text: str) -> int:
     encoder = _get_token_encoder()
     if encoder is None:

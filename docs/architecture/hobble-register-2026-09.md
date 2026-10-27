@@ -12,8 +12,8 @@
 >
 > The decision this produced:
 > [ADR-0060](../adr/0060-three-instruction-layers-and-tools-that-answer.md).
-> Complements [`latency-and-caching-audit-2026-09.md`](latency-and-caching-audit-2026-09.md)
-> (what a reader waits for) and [`rag-system-audit-2026-08.md`](rag-system-audit-2026-08.md)
+> Complements [`docs/audit/latency-and-caching-audit-2026-09.md`](../audit/latency-and-caching-audit-2026-09.md)
+> (what a reader waits for) and [`docs/audit/rag-system-audit-2026-08.md`](../audit/rag-system-audit-2026-08.md)
 > (retrieval quality).
 
 ---

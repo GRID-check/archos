@@ -16,8 +16,8 @@
  *   its `before_send` and no GeoIP. The package's client sends each exception
  *   immediately, so there is no queue for the shutdown hook to flush.
  * - **Authorization denials are not errors.** `requireProjectAccess` throws a
- *   plain `Error('Not found')` on a permission denial, and the same signal
- *   routes the visitor to the access screen (`isAuthzError`). Counted as
+ *   `NotFoundError` on a permission denial, and a refusal (401, 403 or 404,
+ *   `isAuthzRefusal`) routes the visitor to the access screen. Counted as
  *   exceptions they would be most of the free tier's 100K a month and none of
  *   its value.
  * - **A form post naming no action we have is not an error either.** Next
@@ -48,7 +48,7 @@ import {
   type OnRequestErrorOptions,
 } from '@posthog/next'
 
-import { isAuthzError } from '@/lib/auth-utils'
+import { isAuthzRefusal } from '@/lib/api/errors'
 
 import { posthogServerSettings, serverSuperProperties } from './posthog-server'
 import { scrubServerEvent } from './scrub-server-event'
@@ -103,7 +103,7 @@ const isUnknownActionError = (error: unknown): boolean =>
 export const beforeCapture = (
   capture: OnRequestErrorBeforeCaptureContext
 ): Record<string, unknown> | false => {
-  if (isAuthzError(capture.error)) return false
+  if (isAuthzRefusal(capture.error)) return false
   if (isUnknownActionError(capture.error)) return false
   if (limiter.consumeRateLimit(fingerprintOf(capture))) return false
   // The package's client is not ours to `register` on, so the super

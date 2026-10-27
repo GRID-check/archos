@@ -2,6 +2,7 @@
  * @vitest-environment node
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { NotFoundError } from '@/lib/api/errors'
 
 vi.mock('@/lib/auth/session', () => ({
   getGridSession: vi.fn(),
@@ -150,7 +151,7 @@ describe('/api/auth/websocket-scope', () => {
     }
     mockGetGridSession.mockResolvedValue(session)
     // The access check inside the scope builder rejects (tenancy/FGA denial).
-    mockBuildCollectionScopeFromRequest.mockRejectedValue(new Error('Not found'))
+    mockBuildCollectionScopeFromRequest.mockRejectedValue(new NotFoundError())
 
     const req = new Request('http://localhost:3000/api/auth/websocket-scope?projectId=proj-1')
     const res = await GET(req)

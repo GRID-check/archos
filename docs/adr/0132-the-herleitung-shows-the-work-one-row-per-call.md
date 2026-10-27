@@ -37,7 +37,7 @@ dargestellt.“ Measured in the code on 2026-10-22:
   it: what was looked for, and where.
 
 The turn is also really sequential, in a narrower way than it feels
-(`docs/architecture/turn-latency-measured-2026-09.md`): calls inside a round
+(`docs/audit/turn-latency-measured-2026-09.md`): calls inside a round
 already run concurrently (`ToolNode` gathers them, `parallel_tool_calls=True`),
 but the model usually issues one query per round, and each round costs a
 reasoning call of about 5.7 s. The search description says „Prefer one precise

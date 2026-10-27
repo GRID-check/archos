@@ -5,12 +5,12 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "aiq-api"
 version = "0.1.0"
-description = "Unified AI-Q API - Knowledge API and Async Job API combined"
+description = "Piloti backend host: the chat runtime, the knowledge and job APIs, and the workers"
 readme = "README.md"
 requires-python = ">=3.14,<3.15"
 license = {text = "Apache-2.0"}
 authors = [
-    {name = "NVIDIA Corporation"}
+    {name = "Grid Agent Contributors"}
 ]
 classifiers = [
     "Development Status :: 4 - Beta",

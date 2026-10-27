@@ -287,7 +287,7 @@ export function webPosthogEnv(cfg: GridConfig): EnvVar[] {
  * Backend environment shared by every role of the image. Postgres DSNs
  * everywhere (never SQLite) — the hard precondition for durability and any
  * future replica. The admission caps are the
- * backend's VERTICAL scaling levers (see docs/architecture/scaling-review-2026-07.md
+ * backend's VERTICAL scaling levers (see docs/audit/scaling-review-2026-07.md
  * §4, §6). `chatEnv`, `apiEnv` and the worker envs add `GRID_ROLE`.
  */
 

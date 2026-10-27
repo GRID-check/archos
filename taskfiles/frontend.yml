@@ -40,6 +40,14 @@ tasks:
       # imports. No `.tsbuildinfo`: every run checks the whole project, in seconds.
       - bun run type-check {{.CLI_ARGS}}
 
+  fe:blast-radius:
+    desc: 'Hold each hub module to the specs it reached when recorded (-- --update rewrites the baseline, -- --top 30 lists the widest)'
+    dir: '{{.UI}}'
+    cmds:
+      # How many specs a one-line change to a module selects, from esbuild's
+      # import graph, against scripts/blast-radius.baseline.json. A few seconds.
+      - node scripts/blast-radius.mjs {{.CLI_ARGS}}
+
   fe:test:
     desc: Run the UI test suite
     dir: '{{.UI}}'
@@ -178,5 +186,6 @@ tasks:
       - task: fe:cards:check
       - task: fe:lint
       - task: fe:types
+      - task: fe:blast-radius
       - task: fe:test:ci
       - task: fe:build

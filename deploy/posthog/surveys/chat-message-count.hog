@@ -1,0 +1,16 @@
+// Counts each person's chat messages into the person property
+// chat_messages_total, so the NPS survey can target people who have really
+// used Piloti (chat_messages_total >= 15). Trigger: chat_message_sent.
+// Person properties at event time can lag a burst of messages, so the count
+// is a lower bound, which is enough for a threshold. Counting started on
+// 2026-10-27; earlier messages are not in it.
+let previous := toInt(person.properties.chat_messages_total ?? 0) ?? 0
+let next := previous + 1
+postHogCapture({
+  'event': '$set',
+  'distinct_id': event.distinct_id,
+  'properties': {
+    '$set': {'chat_messages_total': next}
+  }
+})
+print(f'chat_messages_total {previous} -> {next}')

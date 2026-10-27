@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import json
+
 from langchain_core.messages import AIMessage
 from langchain_core.messages import HumanMessage
 from langchain_core.messages import ToolMessage
@@ -30,16 +32,11 @@ def test_the_qualified_name_is_matched_and_a_bare_call_is_not():
     assert not is_workspace_call("workspace__search")
 
 
-def test_a_read_is_its_values_with_german_spellings_and_counts():
-    record = record_from_result(
-        "approvals-list",
-        {},
-        '{"items": [{"status": "approved", "due": "2026-11-03"}, {"status": "approved", "due": "2026-11-04"}]}',
-    )
+def test_a_read_is_the_routes_json():
+    text = '{"items": [{"status": "approved", "due": "2026-11-03"}, {"status": "approved", "due": "2026-11-04"}]}'
+    record = record_from_result("approvals-list", {}, text)
     assert record.outcome == "read"
-    assert "freigegeben" in record.haystack and "3.11.2026" in record.haystack
-    # Two rows: the list's length, and the repeated status.
-    assert 2 in record.counts
+    assert json.loads(record.text) == json.loads(text)
 
 
 def test_a_proposal_carries_what_was_proposed_and_a_refusal_is_no_record():
@@ -48,14 +45,14 @@ def test_a_proposal_carries_what_was_proposed_and_a_refusal_is_no_record():
         {"input": {"body": {"email": "lea@buero.at"}}},
         "Proposed — the person decides. Nothing was changed.",
     )
-    assert proposal.outcome == "proposed" and "lea@buero.at" in proposal.haystack
+    assert proposal.outcome == "proposed" and "lea@buero.at" in proposal.text
     assert record_from_result("member-add", {}, "Error: the workspace server refused the call (403)") is None
     assert record_from_result("member-add", {}, "  ") is None
 
 
-def test_a_capped_answer_that_is_not_json_is_matched_as_text():
+def test_a_capped_answer_that_is_not_json_is_kept_as_text():
     record = record_from_result("tasks-list", {}, '{"items": [{"title": "Statik prüfen"}\n[gekürzt: Antwort zu lang.]')
-    assert record is not None and "statik prüfen" in record.haystack
+    assert record is not None and "Statik prüfen" in record.text
 
 
 def test_records_come_from_this_turns_calls_in_order_and_other_tools_are_ignored():
@@ -120,16 +117,14 @@ def test_a_notice_the_agent_answered_the_call_with_is_no_record():
         assert record_from_result("task-get", {}, text) is None
 
 
-def test_a_read_keeps_one_item_per_row_and_none_for_piloti_s_words():
+def test_a_read_keeps_the_rows_and_none_of_piloti_s_words():
     record = record_from_result(
         "comment-list",
         {},
         '{"total": 2, "items": [{"authoredBy": "user", "text": "Schnitt prüfen"},'
         '{"authoredBy": "agent", "text": "Die Brüstung ist zu niedrig"}]}',
     )
-    assert "schnitt prüfen" in record.haystack and "brüstung" not in record.haystack
-    assert any("schnitt prüfen" in item for item in record.items)
-    assert any(item.split("\n") == ["2"] for item in record.items)
+    assert json.loads(record.text) == {"total": 2, "items": [{"authoredBy": "user", "text": "Schnitt prüfen"}]}
 
 
 TREE = (
@@ -148,12 +143,12 @@ def _listing(result: str, tool: str = "knowledge__list_files") -> list:
     ]
 
 
-def test_a_listing_is_a_read_record_capped_and_one_item_per_line():
+def test_a_listing_is_a_read_record_capped():
     (record,) = records_from_messages(_listing(TREE))
     assert (record.operation, record.outcome) == ("list_files", "read")
-    assert len(record.items) == 5 and "einreichplan eg index b" in record.haystack
+    assert record.text == TREE.strip()
     (capped,) = records_from_messages(_listing("x " * 20_000))
-    assert len(capped.haystack) <= LISTING_MAX_CHARS
+    assert len(capped.text) <= LISTING_MAX_CHARS
 
 
 def _estate(tool: str, args: dict, result: str, status: str = "success") -> list:
