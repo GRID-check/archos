@@ -26,11 +26,12 @@
  * an indexed document re-read on purpose, a row stranded at `uploaded`, a
  * stuck in-flight row (`reingestDocument` has its own guards for those).
  *
- * Nothing retries a failed document on its own. The one sweep there is
- * (`./stuck-processing`) recovers rows left at `processing`, never `failed`,
- * and an automatic retry of failures would spend vision calls nobody asked
- * for. `ingest_attempts` is recorded on every dispatch so that one could be
- * capped if it is ever added; today it is a fact for people, not an input.
+ * One sweep retries a failed document on its own, and only a `transient`
+ * one (`./transient-retry`): at most three attempts in all, `ingest_attempts`
+ * as the cap, with a doubling backoff, at `bulk` priority. Every other
+ * category waits for a person, because a retry of a file that fails the same
+ * way spends vision calls nobody asked for. `./stuck-processing` recovers rows
+ * left at `processing`, never `failed`.
  *
  * Pure, no `server-only`: the listing projection, the service and the specs
  * import it, and the SQL twin (`retryAllowedSql` in `./repository`) states the

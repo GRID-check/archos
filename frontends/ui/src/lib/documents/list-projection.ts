@@ -80,6 +80,9 @@ export function toDocumentWireRow(
     topics: row.topics ?? null,
     capture: row.capture ?? null,
     revisionFacts: row.revisionFacts ?? null,
+    dossier: row.dossier ?? null,
+    docReferences: row.docReferences ?? null,
+    coverage: row.coverage ?? null,
     revision: row.revision ?? null,
     queueAhead: row.queueAhead ?? null,
     // Whether „Alle erneut lesen“ sends it and „Erneut lesen“ is offered

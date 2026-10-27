@@ -40,7 +40,7 @@ import 'server-only'
 import { ForbiddenError, NotFoundError } from '@/lib/api/errors'
 import type { AuthorizedSession } from '@/lib/auth/types'
 import { hasPermission, ORG_PERMISSIONS } from './permissions'
-import { orgRoleHoldsPermission } from './org-role-permissions'
+import { rolesHoldPermission } from './org-role-permissions'
 import { resolveMembershipRoles } from '@/lib/auth/membership-roles'
 import { requireProjectAccess } from './projects'
 import { checkResourcePermission } from './resource-check'
@@ -74,14 +74,10 @@ export * from './folder-access-rule'
 
 /**
  * Whether any of `roles` holds the admin bypass in the organization, by what
- * WorkOS and the catalog say each role holds now (`orgRoleHoldsPermission`,
- * cached at most a minute).
+ * WorkOS says each role holds now (`rolesHoldPermission`, cached at most a minute).
  */
-async function anyRoleAdministers(organizationId: string, roles: readonly string[]): Promise<boolean> {
-  const verdicts = await Promise.all(
-    roles.map((role) => orgRoleHoldsPermission(role, ORG_PERMISSIONS.projectsAdminister, organizationId))
-  )
-  return verdicts.some(Boolean)
+function anyRoleAdministers(organizationId: string, roles: readonly string[]): Promise<boolean> {
+  return rolesHoldPermission(organizationId, roles, ORG_PERMISSIONS.projectsAdminister)
 }
 
 /**

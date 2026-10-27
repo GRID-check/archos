@@ -103,14 +103,31 @@ export default async function proxy(request: NextRequest, event: NextFetchEvent)
  */
 const SESSION_COOKIE_NAME = process.env.WORKOS_COOKIE_NAME || 'wos-session'
 
+/**
+ * The session's cookies as the browser sent them: the whole cookie, or the
+ * chunks a session too large for one is split into (`<name>.0`, `<name>.1`, …,
+ * patches/@workos-inc%2Fauthkit-nextjs@*.patch).
+ */
+const SESSION_CHUNK_PREFIX = `${SESSION_COOKIE_NAME}.`
+
+function isSessionCookie(name: string): boolean {
+  if (name === SESSION_COOKIE_NAME) return true
+  return name.startsWith(SESSION_CHUNK_PREFIX) && /^\d+$/.test(name.slice(SESSION_CHUNK_PREFIX.length))
+}
+
+function sessionCookies(request: NextRequest): { name: string; value: string }[] {
+  return request.cookies.getAll().filter(({ name }) => isSessionCookie(name))
+}
+
 function warnIfSessionIsDiscarded(request: NextRequest, response: Response): void {
   if (!isAuthorizeRedirect(response.headers.get('location'))) return
-  const cookie = request.cookies.get(SESSION_COOKIE_NAME)?.value
-  if (!cookie) return
+  const cookies = sessionCookies(request)
+  if (cookies.length === 0) return
 
   console.warn('[auth] session cookie present, but AuthKit is sending the request to sign in again', {
     path: request.nextUrl.pathname,
-    cookieBytes: cookie.length,
+    cookieBytes: cookies.reduce((bytes, { value }) => bytes + value.length, 0),
+    cookieChunks: cookies.length,
     redirectCarriesVerifier: carriesVerifierCookie(response),
     requestKind: request.headers.get('rsc') === '1' ? 'rsc' : request.headers.get('accept') ?? 'unknown',
   })

@@ -8,7 +8,7 @@ const session = {
   organizationId: 'org-1',
   email: 'admin@grid.com',
   role: 'admin',
-  permissions: [] as string[],
+  permissions: adminPermissions(),
   featureFlags: null as string[] | null,
 }
 
@@ -23,6 +23,7 @@ vi.mock('@/lib/llm-credentials/service', () => ({
 
 import { PUT } from './route'
 import { setLlmProviderMode } from '@/lib/llm-credentials/service'
+import { adminPermissions } from '@/test-utils/admin-permissions'
 
 const put = (body: unknown): Request =>
   new Request('http://localhost/api/organization/llm-credentials/mode', {
@@ -35,6 +36,7 @@ describe('/api/organization/llm-credentials/mode', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     session.role = 'admin'
+    session.permissions = adminPermissions()
     session.featureFlags = ['byok-llm']
     vi.stubEnv('REQUIRE_AUTH', 'true')
   })
@@ -44,6 +46,7 @@ describe('/api/organization/llm-credentials/mode', () => {
 
   it('rejects non-admins', async () => {
     session.role = 'member'
+    session.permissions = []
     expect((await PUT(put({ mode: 'platform' }))).status).toBe(403)
     expect(setLlmProviderMode).not.toHaveBeenCalled()
   })

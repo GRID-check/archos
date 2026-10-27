@@ -538,6 +538,49 @@ describe('reconcileDocumentStatuses metadata enrichment', () => {
     expect(junk.revisionFacts).toBeUndefined()
   })
 
+  it('merges the dossier, references and coverage, parsed, and drops junk ones', async () => {
+    makeDbMock()
+    mockFetch.mockResolvedValue(
+      collectionResponse([
+        {
+          file_id: 'f-1',
+          file_name: 'plan.pdf',
+          status: 'success',
+          dossier: {
+            version: 1,
+            document_type: 'submission_drawing',
+            facts: [{ key: 'storeys_above_ground', value: '4', unit: null, page: 1, quote: '4 oberirdische Geschosse' }],
+          },
+          doc_references: [{ kind: 'plan', key: 'ep-05', label: 'EP-05', pages: [1] }],
+          coverage: { pages: 40, text: 30, transcribed: 5, drawings: 5, drawings_read: 3, not_read: 2, reasons: { render_cap: 2 } },
+        },
+        {
+          file_id: 'f-2',
+          file_name: 'junk.pdf',
+          status: 'success',
+          dossier: { document_type: 'novel' },
+          doc_references: [{ kind: 'rumour', key: 'x' }],
+          coverage: { pages: 0 },
+        },
+      ])
+    )
+
+    const [present, junk] = await reconcileDocumentStatuses(
+      [makeRow({ status: 'completed' }), makeRow({ id: 'doc-2', filename: 'junk.pdf', status: 'completed' })],
+      'org-1'
+    )
+
+    expect(present.dossier?.documentType).toBe('submission_drawing')
+    expect(present.dossier?.facts).toEqual([
+      { key: 'storeys_above_ground', value: '4', unit: null, page: 1, quote: '4 oberirdische Geschosse' },
+    ])
+    expect(present.docReferences).toEqual([{ kind: 'plan', key: 'ep-05', label: 'EP-05', pages: [1] }])
+    expect(present.coverage).toMatchObject({ pages: 40, notRead: 2, drawingsRead: 3, reasons: { render_cap: 2 } })
+    expect(junk.dossier).toBeUndefined()
+    expect(junk.docReferences).toBeUndefined()
+    expect(junk.coverage).toBeUndefined()
+  })
+
   it('reads the Fassung links by file name and keeps them out of the row metadata', async () => {
     makeDbMock()
     mockFetch.mockResolvedValue(

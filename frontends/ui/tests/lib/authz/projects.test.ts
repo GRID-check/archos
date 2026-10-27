@@ -78,7 +78,7 @@ describe("requireProjectAccess", () => {
     );
 
     const result = await requireProjectAccess(
-      { ...baseSession, role: "admin" },
+      { ...baseSession, role: "admin", permissions: ["org:projects:administer"] },
       PROJECT_ID,
     );
 
@@ -95,7 +95,7 @@ describe("requireProjectAccess", () => {
     );
 
     await expect(
-      requireProjectAccess({ ...baseSession, role: "admin" }, PROJECT_ID),
+      requireProjectAccess({ ...baseSession, role: "admin", permissions: ["org:projects:administer"] }, PROJECT_ID),
     ).rejects.toThrow("Not found");
     expect(mockGetWorkOS).not.toHaveBeenCalled();
   });
