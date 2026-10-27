@@ -447,7 +447,7 @@ All operations live in `frontends/ui/src/lib/agent-api/catalog/mail.ts`, domain
 | Redaction of other projects' addresses | receive job | — | another tenant's token learned (the original stays unredacted and gated) |
 | `project:documents:write`, candidates for the viewer | service | 404 | a non-writer reads held mail, or a writer learns restricted names |
 | Per-target folder write, type, scan, acknowledgements, `ifMatch` | `decision.ts` | 409 / 403 | a filing the decider was not entitled to |
-| `decision_id` FK to a `file`, person-shaped decider, clean card, follower FK, `filed_is_clean`, `waiting_is_scanned` | Postgres | statement refused | a code path that files by itself is refused by the database |
+| `decision_id` FK to a `file`, person-shaped decider, clean card, follower FK, `filed_is_clean`, `waiting_is_scanned` | Postgres | statement refused | a part filed without a `file` decision, a decision by a `system:*` actor, a card carrying an acknowledgement, a follow decision without its follower, or a part filed or waiting without a clean scan. The database cannot tell a code path that writes a real person's id from that person: that is the static ratchet's and the filing job's (it runs in the decider's session) |
 | `requiresPersonConfirmation` | door | refused with a link | an injected outside agent cannot file |
 | Filing as the decider (or follower) | job | `last_failure` | nothing past an ordinary upload by that person |
 | Static ratchet | `review-first.spec.ts` | CI | — |
