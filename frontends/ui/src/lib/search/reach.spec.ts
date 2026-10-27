@@ -21,7 +21,7 @@ import { audienceReach } from '@/lib/cross-project/audience-reach'
 import { readConversationAudience } from '@/lib/conversations/restricted-use-repository'
 import { findProjectInOrg } from '@/lib/projects/repository'
 import { requireProjectAccess } from '@/lib/authz/projects'
-import type { Project } from '@/lib/db/schema'
+import type { Project } from '@/lib/db/schema/projects'
 import { BadRequestError } from '@/lib/api/errors'
 import { reachForAudience, reachReader, resolveScope } from './reach'
 

@@ -16,7 +16,7 @@ import { GET, POST } from '@/app/api/skills/route'
 import { requireAuthorizedSession } from '@/lib/auth/require-auth'
 import { listSkills, createSkill } from '@/lib/skills/service'
 import type { AuthorizedSession } from '@/lib/auth/types'
-import type { Skill } from '@/lib/db/schema'
+import type { Skill } from '@/lib/db/schema/jobs'
 
 const mockSession = vi.mocked(requireAuthorizedSession)
 const mockList = vi.mocked(listSkills)

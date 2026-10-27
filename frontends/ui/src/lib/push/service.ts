@@ -11,7 +11,7 @@ import 'server-only'
 import { BadRequestError, ConflictError, NotFoundError } from '@/lib/api/errors'
 import type { AuthorizedSession } from '@/lib/auth/types'
 import { captureServer } from '@/lib/analytics/posthog-server'
-import type { PushSubscriptionRow } from '@/lib/db/schema'
+import type { PushSubscriptionRow } from '@/lib/db/schema/push-subscriptions'
 import {
   applyPushPreferencesPatch,
   resolvePushPreferences,

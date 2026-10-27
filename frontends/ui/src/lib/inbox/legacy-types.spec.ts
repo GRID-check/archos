@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { INBOX_ITEM_TYPES } from '@/lib/db/schema'
+import { INBOX_ITEM_TYPES } from '@/lib/db/schema/inbox'
 import { canonicalInboxType, legacyInboxTypeAliases, LEGACY_INBOX_TYPES } from './types'
 
 describe('inbox types written before the English names', () => {

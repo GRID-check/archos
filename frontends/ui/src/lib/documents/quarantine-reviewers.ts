@@ -13,7 +13,7 @@ import { isFolderVisibleToMember } from '@/lib/authz/folder-access'
 import { rolesHoldPermission } from '@/lib/authz/org-role-permissions'
 import { ORG_PERMISSIONS } from '@/lib/authz/permissions'
 import { resolveSubjectMembership, userHoldsProjectPermission } from '@/lib/authz/project-membership'
-import type { Document } from '@/lib/db/schema'
+import type { Document } from '@/lib/db/schema/documents'
 
 export async function isQuarantineReviewer(
   organizationId: string,

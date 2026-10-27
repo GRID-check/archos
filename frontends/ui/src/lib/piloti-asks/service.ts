@@ -39,7 +39,7 @@ import {
   insertConversation,
   insertMessages,
 } from '@/lib/conversations/repository'
-import type { PilotiAskRow } from '@/lib/db/schema'
+import type { PilotiAskRow } from '@/lib/db/schema/piloti-asks'
 import { withPlatformAccess } from '@/lib/db/tenant-context'
 import { isUuid } from '@/lib/ids'
 import { memberReader } from '@/lib/documents/visibility'

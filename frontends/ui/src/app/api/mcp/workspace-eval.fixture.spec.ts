@@ -1,3 +1,4 @@
+// @disk-inputs: tests/fixtures/workspace/catalog.json
 /**
  * @vitest-environment node
  */

@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { ConflictError } from '@/lib/api/errors'
 import { getTenantContext } from '@/lib/db/tenant-context'
-import type { BffJobRow } from '@/lib/db/schema'
+import type { BffJobRow } from '@/lib/db/schema/bff-job-queue'
 import { inJobSlice } from './slice-scope'
 import { emptyCounts, type ReindexProjectPayload } from './types'
 

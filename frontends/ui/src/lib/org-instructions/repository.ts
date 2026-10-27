@@ -13,7 +13,7 @@ import 'server-only'
 import { eq } from 'drizzle-orm'
 import { getDb } from '@/lib/db'
 import { withTenant } from '@/lib/db/tenant-context'
-import { organizationInstructions, type OrganizationInstructions } from '@/lib/db/schema'
+import { organizationInstructions, type OrganizationInstructions } from '@/lib/db/schema/organization-instructions'
 
 /** The stored block for an organization, or null when it has never written one. */
 export async function findOrganizationInstructions(

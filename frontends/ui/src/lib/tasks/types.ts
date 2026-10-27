@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { TASK_REVIEWS } from '@/lib/db/schema'
+import { TASK_REVIEWS } from '@/lib/db/schema/tasks'
 
 /** Bound on a reviewer's reason: it is quoted into the next run's prompt. */
 export const REVIEW_REASON_MAX_CHARS = 1000

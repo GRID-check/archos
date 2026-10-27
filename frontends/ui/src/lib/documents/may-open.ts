@@ -37,7 +37,7 @@ import {
   resolveSubjectMembership,
   userHoldsProjectPermission,
 } from '@/lib/authz/project-membership'
-import type { Document } from '@/lib/db/schema'
+import type { Document } from '@/lib/db/schema/documents'
 import { loadOrganizationDirectory } from '@/lib/sharing/directory'
 import { hasPassedScreening } from './document-reader'
 import { isQuarantineReviewer } from './quarantine-reviewers'

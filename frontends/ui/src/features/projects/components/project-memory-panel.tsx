@@ -15,11 +15,7 @@ import {
   Plus,
   Trash2,
 } from 'lucide-react'
-import {
-  PROJECT_MEMORY_KINDS,
-  type ProjectMemoryItem,
-  type ProjectMemoryKind,
-} from '@/lib/db/schema'
+import { PROJECT_MEMORY_KINDS, type ProjectMemoryItem, type ProjectMemoryKind } from '@/lib/db/schema/project-memory'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
