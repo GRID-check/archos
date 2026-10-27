@@ -1,0 +1,6 @@
+---
+fixes:
+  - >
+    When Piloti looks up every place a word appears in your documents, each place now counts once.
+    A word in a chapter heading, or in a passage that runs on to the next page, was counted two or
+    more times and could be listed on pages where it does not stand.

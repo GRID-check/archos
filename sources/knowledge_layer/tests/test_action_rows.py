@@ -192,6 +192,37 @@ class TestKnowledgeSearchRow:
         assert finished.status == "ok"
         assert (finished.counts.hits, finished.counts.documents, finished.counts.searched) == (2, 1, 30)
 
+    async def test_the_row_counts_a_place_once_not_its_breadcrumb_nor_its_overlap(
+        self, corpus, rows, monkeypatch
+    ) -> None:
+        store = corpus([])
+        overlap = "Die Fluchtwegbreite im Stiegenhaus beträgt an jeder Stelle mindestens einen Meter zwanzig."
+        path = "3 Flucht- und Rettungswege"
+        part_one = _chunk(OIB, 12, "3.1").model_copy(
+            update={
+                "content": f"{OIB}\n3 Flucht- und Rettungswege\n\n3.1 Fluchtwege. Einleitung. {overlap}",
+                "metadata": {"chunking": "clause", "clause_id": "3.1", "clause_path": f"{path} › 3.1 Fluchtwege"},
+            }
+        )
+        part_two = part_one.model_copy(
+            update={"chunk_id": "two", "content": f"{overlap} Danach folgt der Rest des Punktes."}
+        )
+        part_one.metadata["chunk_ordinal"], part_two.metadata = 4, {**part_one.metadata, "chunk_ordinal": 5}
+
+        async def _find_text(collection, pattern, filters=None, limit=None, **options):
+            return [part_one.model_copy(deep=True), part_two.model_copy(deep=True)]
+
+        async def _reads(search_config, narrowed, folder):
+            return {BASE: 30}
+
+        store.find_text = _find_text
+        monkeypatch.setattr(browse, "_searched_documents", _reads)
+
+        await _search(query="Flucht", match="exact")
+
+        # Before: 4 (the ancestor line in the header, the Punkt's own line, the overlap twice).
+        assert _one_call(rows)[1].counts.hits == 2
+
     async def test_an_exact_search_with_no_match_is_empty_and_keeps_its_denominator(
         self, corpus, rows, monkeypatch
     ) -> None:

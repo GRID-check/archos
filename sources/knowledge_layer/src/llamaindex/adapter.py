@@ -6169,15 +6169,20 @@ class LlamaIndexRetriever(BaseRetriever):
         if not pattern or limit <= 0:
             return []
         from ..qdrant import retrieval as qdrant_retrieval
+        from ..qdrant.schema import CHUNK_ORDINAL_FIELD
 
         # Every returned chunk matches, so none ranks above another; the
         # caller orders them by document and page (cosine 1.0).
-        return [
-            self._chunk_from_hit(hit)
-            for hit in qdrant_retrieval.find_text(
-                collection_name, pattern, filters, limit, user_regex=user_regex, stem_phrases=stem_phrases
-            )
-        ]
+        hits = qdrant_retrieval.find_text(
+            collection_name, pattern, filters, limit, user_regex=user_regex, stem_phrases=stem_phrases
+        )
+        chunks = [self._chunk_from_hit(hit) for hit in hits]
+        for chunk, hit in zip(chunks, hits, strict=True):
+            # The count finds a chunk's overlap by its place in the file (``chunk_positions``), which
+            # the hit's metadata leaves out as store-only.
+            if isinstance(hit.payload.get(CHUNK_ORDINAL_FIELD), int):
+                chunk.metadata.setdefault(CHUNK_ORDINAL_FIELD, hit.payload[CHUNK_ORDINAL_FIELD])
+        return chunks
 
     def _warm_sync(self, query: str) -> None:
         self._ensure_initialized()
