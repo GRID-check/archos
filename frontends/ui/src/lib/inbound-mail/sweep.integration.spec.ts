@@ -734,6 +734,17 @@ describe.skipIf(!url)('the E-Mail-Eingang’s sweeps against Postgres', () => {
       const left = await rows<{ id: string }>(sql`SELECT id FROM mail_threads WHERE id IN (${rendering}::uuid, ${recent}::uuid, ${abandoned}::uuid)`)
       expect(new Set(left.map((row) => row.id))).toEqual(new Set([rendering, recent]))
     })
+
+    it('takes a new archive Verlauf whose first Fassung the upload path refused for good, with its entries, while its import still runs', async () => {
+      // `giveUpPendingRender` clears `render_pending_at`: the Verlauf never gets a document, its entries hold the text.
+      const refused = await archiveThread('importing', '2 hours')
+      await rows(sql`UPDATE mail_threads SET render_pending_at = NULL WHERE id = ${refused}::uuid`)
+
+      await sweep.sweepOrphanedThreads(now())
+
+      expect(await rows(sql`SELECT id FROM mail_threads WHERE id = ${refused}::uuid`)).toEqual([])
+      expect(await rows(sql`SELECT id FROM mail_thread_entries WHERE thread_id = ${refused}::uuid`)).toEqual([])
+    })
   })
 
   describe('sweep 13: an original’s move that stopped', () => {
