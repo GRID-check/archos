@@ -240,6 +240,10 @@ const SORT_COLUMNS: Record<Exclude<SearchSort, 'relevance'>, SQL> = {
   scale: sql`replace(${f.scale}, ' ', '')`,
   folder: sql`lower(${projectFolders.name})`,
   status: sql`lower(${documents.status})`,
+  author: sql`lower(coalesce(
+    (SELECT party->>'name' FROM jsonb_array_elements(${f.parties}) AS party WHERE party->>'role' = 'architect' LIMIT 1),
+    (SELECT party->>'name' FROM jsonb_array_elements(${f.parties}) AS party WHERE party->>'role' = 'author' LIMIT 1)
+  ))`,
 }
 
 function orderOf(sort: SearchSort, dir: 'asc' | 'desc', text: TextMatch | null): SQL[] {
@@ -276,6 +280,8 @@ export interface DocumentSearchRow {
   pagesNotRead: number | null
   superseded: boolean
   municipality: string | null
+  /** The Verfasser: the first party the reading names as architect, else as author. */
+  author: string | null
   matchedName: boolean
   matchedReading: boolean
 }
@@ -316,6 +322,10 @@ export async function searchDocumentPage(
         pagesNotRead: f.pagesNotRead,
         superseded: sql<boolean>`coalesce(${f.superseded}, false)`,
         municipality: f.municipality,
+        author: sql<string | null>`coalesce(
+          (SELECT party->>'name' FROM jsonb_array_elements(${f.parties}) AS party WHERE party->>'role' = 'architect' LIMIT 1),
+          (SELECT party->>'name' FROM jsonb_array_elements(${f.parties}) AS party WHERE party->>'role' = 'author' LIMIT 1)
+        )`,
         matchedName: text ? sql<boolean>`coalesce(${nameContains(text.text) ?? sql`false`}, false)` : sql<boolean>`false`,
         matchedReading: text ? sql<boolean>`coalesce(${SEARCH_VECTOR} @@ ${tsQuery(text.text)}, false)` : sql<boolean>`false`,
       })

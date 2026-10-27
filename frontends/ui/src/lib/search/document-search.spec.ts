@@ -85,6 +85,7 @@ const row = (overrides: Partial<DocumentSearchRow> = {}): DocumentSearchRow => (
   pagesNotRead: 0,
   superseded: false,
   municipality: 'Wien',
+  author: null,
   matchedName: false,
   matchedReading: true,
   ...overrides,
