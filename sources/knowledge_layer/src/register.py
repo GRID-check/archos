@@ -141,9 +141,6 @@ def knowledge_search_description(match_modes: Sequence[str]) -> str:
         text = text.replace(_EXACT_PARAGRAPH, "")
     if "regex" not in modes:
         text = text.replace(_REGEX_PARAGRAPH, "")
-    if "meaning" not in modes:
-        offered = " or ".join(f'`match="{mode}"`' for mode in ("exact", "regex") if mode in modes)
-        text = f"In this configuration the search is literal only: pass {offered} on every call.\n{text}"
     return text
 
 
@@ -217,10 +214,11 @@ class KnowledgeRetrievalConfig(FunctionBaseConfig, name="knowledge_retrieval"):
     match_modes: list[str] = Field(
         default_factory=lambda: ["meaning", "exact", "regex"],
         description=(
-            "EVAL KNOB, not a product setting: the `match=` modes the search accepts. The answer suite's "
-            "`semantic` arm keeps only `meaning` and its `grep` arm only the literal modes, to measure "
-            "each way of finding on its own (ADR-0127). A comma-separated string is read as a list, which "
-            "is how `nat run --override` hands one over. Production keeps the default: every mode."
+            "EVAL KNOB, not a product setting: the `match=` modes the search accepts on the bindings that "
+            "offer `match` (deep research, intake). The answer suite's `semantic` arm keeps only `meaning`; "
+            "Piloti's chat binds ranked search only since ADR-0133 slice 6, so its `grep` arm unbinds the "
+            "search instead of narrowing it. A comma-separated string is read as a list, which is how "
+            "`nat run --override` hands one over. Production keeps the default: every mode."
         ),
     )
     hybrid_search: bool | None = Field(

@@ -444,17 +444,10 @@ class TestDescriptionFollowsMatchModes:
         text = await self._description(["meaning"])
         assert 'match="exact"' not in text and 'match="regex"' not in text
 
-    async def test_the_navigate_arm_is_told_the_search_is_literal_only(self, search_with):
-        search_with(_Store([]))
-        text = await self._description(["exact", "regex"])
-        assert text.startswith('In this configuration the search is literal only: pass `match="exact"` or')
-        assert '`match="exact"` returns EVERY passage' in text
-
     async def test_production_offers_every_mode(self, search_with):
         search_with(_Store([]))
         text = await self._description(["meaning", "exact", "regex"])
         assert '`match="exact"` returns' in text and '`match="regex"` is the same search' in text
-        assert "literal only" not in text
 
 
 def _regex_examples(description: str) -> list[str]:
