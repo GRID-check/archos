@@ -373,12 +373,18 @@ pins it). The old re-run reference stays a candidate, and wins whenever
 - **`task fe:blast-radius`** (`frontends/ui/scripts/blast-radius.mjs`, ~5 s, in
   `fe:verify` and the CI Frontend job). It counts, for every module, the specs
   that reach it, over esbuild's graph, and compares the counts with
-  `scripts/blast-radius.baseline.json` (every module at ≥240 specs, 552 of
-  them). It fails a module outside the baseline that reaches 300 specs, or a
-  recorded one that grows by more than 10% or 10 specs, whichever is larger.
-  Both limits scale with the number of specs, so a growing suite does not
-  fail it. `-- --update` rewrites the
-  baseline, and the PR says why; `-- --top 30` prints the list above.
+  `scripts/blast-radius.baseline.json` (every module at ≥240 specs that
+  imports something of ours, 308 of them). A recorded module fails when it
+  grows by more than 10% or 10 specs, whichever is larger; a module outside
+  the baseline fails past 300 with the same slack (330). Both limits scale
+  with the number of specs, so specs other pull requests add do not fail
+  this one. A leaf, which imports nothing of ours, is held by neither rule:
+  it is as wide as its importers, and an edge that widens it shows up on
+  them. The first version had neither the new-hub slack nor the leaf rule,
+  and `develop` went red minutes after it merged, when #1256 and #1257
+  landed beside it (#1261 re-recorded; `docs/contributing/gotchas.md` says
+  what to do next time). `-- --update` rewrites the baseline, and the PR
+  says why; `-- --top 30` prints the list above.
 - **`tests/test_import_weight.py`** (~5 s, core suite). In a fresh interpreter,
   each lazy package loads none of its own submodules and nothing heavy, and
   re-exports no name one of its submodules has; neither conftest every test

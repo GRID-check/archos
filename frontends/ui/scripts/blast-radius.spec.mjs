@@ -7,7 +7,15 @@
  * is decoration, so the failing cases are the ones pinned here.
  */
 import { describe, expect, it } from 'vitest'
-import { RECORD_FLOOR, THRESHOLD, baselineOf, specReach, violations } from './blast-radius.mjs'
+import {
+  RECORD_FLOOR,
+  THRESHOLD,
+  baselineOf,
+  ceilingOf,
+  leavesOf,
+  specReach,
+  violations,
+} from './blast-radius.mjs'
 
 const input = (...imports) => ({
   imports: imports.map((path) => ({ path, kind: 'import-statement' })),
@@ -34,10 +42,27 @@ describe('specReach', () => {
   })
 })
 
+describe('leavesOf', () => {
+  it('names the modules that import nothing of ours, and no spec', () => {
+    const leaves = leavesOf({
+      'src/a.spec.ts': input('src/hub.ts'),
+      'src/hub.ts': input('src/leaf.ts'),
+      'src/leaf.ts': { imports: [{ path: 'zod', kind: 'import-statement', external: true }] },
+      'src/data.json': input(),
+    })
+
+    expect([...leaves].sort()).toEqual(['src/data.json', 'src/leaf.ts'])
+  })
+})
+
 describe('violations', () => {
-  it('fails a module that became a hub without being recorded', () => {
-    expect(violations({ 'src/new.ts': THRESHOLD }, {})).toEqual([
-      `src/new.ts: a new hub, reached by ${THRESHOLD} specs (threshold ${THRESHOLD})`,
+  it('fails a module that became a hub without being recorded, past the same slack a hub has', () => {
+    const limit = ceilingOf(THRESHOLD)
+
+    // Crossing the threshold by the few specs another pull request added is not a new hub.
+    expect(violations({ 'src/new.ts': limit }, {})).toEqual([])
+    expect(violations({ 'src/new.ts': limit + 1 }, {})).toEqual([
+      `src/new.ts: a new hub, reached by ${limit + 1} specs (limit ${limit})`,
     ])
   })
 
@@ -56,7 +81,7 @@ describe('violations', () => {
     // A tenth more specs: a hub recorded at 500 may reach 550, and 605 with its slack.
     expect(violations({ 'src/hub.ts': 605 }, { 'src/hub.ts': 500 }, 1.1)).toEqual([])
     expect(violations({ 'src/hub.ts': 606 }, { 'src/hub.ts': 500 }, 1.1)).toHaveLength(1)
-    expect(violations({ 'src/new.ts': THRESHOLD }, {}, 1.1)).toEqual([])
+    expect(violations({ 'src/new.ts': ceilingOf(THRESHOLD * 1.1) }, {}, 1.1)).toEqual([])
   })
 })
 
@@ -74,10 +99,11 @@ describe('baselineOf', () => {
     })
   })
 
-  it('gives a recorded module just under the threshold its slack, where an unrecorded one would fail', () => {
-    const baseline = baselineOf({ 'src/near.ts': THRESHOLD - 1 })
+  it('holds a recorded module to its own count, below where a new hub would fail', () => {
+    const baseline = baselineOf({ 'src/near.ts': RECORD_FLOOR })
+    const ceiling = ceilingOf(RECORD_FLOOR)
 
-    expect(violations({ 'src/near.ts': THRESHOLD }, baseline)).toEqual([])
-    expect(violations({ 'src/near.ts': THRESHOLD }, {})).toHaveLength(1)
+    expect(violations({ 'src/near.ts': ceiling }, baseline)).toEqual([])
+    expect(violations({ 'src/near.ts': ceiling + 1 }, baseline)).toHaveLength(1)
   })
 })

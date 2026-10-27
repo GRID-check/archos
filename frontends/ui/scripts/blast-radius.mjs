@@ -14,12 +14,17 @@
  * few seconds. It counts a module a spec replaces with `vi.mock` too, so it
  * reads a little above `vitest related`, never below.
  *
- * The check fails when a module not in the baseline reaches THRESHOLD specs (a
- * new hub), or a baseline module grows past its recorded count by more than
- * the slack. The baseline records every module from RECORD_FLOOR up, so one
- * just under the threshold has its slack too, and both limits scale with the
- * number of specs: a suite that grows by a tenth lets every count grow by a
- * tenth. A count that drops is tightened on `--update`, and only there.
+ * The check fails when a module not in the baseline grows past THRESHOLD and
+ * its slack (a new hub), or a baseline module grows past its recorded count and
+ * its slack. The baseline records every module from RECORD_FLOOR up, and both
+ * limits scale with the number of specs: a suite that grows by a tenth lets
+ * every count grow by a tenth, so specs other pull requests add do not fail
+ * this one. A count that drops is tightened on `--update`, and only there.
+ *
+ * A leaf, a module that imports nothing of ours, is held by neither rule. It
+ * is as wide as whatever imports it, and an edge that widens it shows up on
+ * that importer, which is not a leaf; there is nothing to cut in the leaf
+ * itself (`lib/api/zod-union.ts`, `lib/diagrams/sketch-fence.ts`).
  *
  *   node scripts/blast-radius.mjs            check against the baseline
  *   node scripts/blast-radius.mjs --update   rewrite the baseline
@@ -66,6 +71,15 @@ async function importGraph(entryPoints) {
   return result.metafile.inputs
 }
 
+/** The modules that import nothing of ours: neither specs nor anything with an in-tree import. */
+export function leavesOf(inputs) {
+  return new Set(
+    Object.entries(inputs)
+      .filter(([file, { imports }]) => !SPEC.test(file) && imports.every((edge) => edge.external))
+      .map(([file]) => file)
+  )
+}
+
 /** For each module that is not a spec, how many specs reach it. */
 export function specReach(inputs) {
   const importers = new Map()
@@ -94,22 +108,26 @@ export function specReach(inputs) {
   return reach
 }
 
+/** The most a count expected at `expected` may reach before it fails. */
+export function ceilingOf(expected) {
+  return Math.max(Math.ceil(expected * SLACK.ratio), Math.ceil(expected) + SLACK.specs)
+}
+
 /**
  * What breaks the ratchet, one line each. `scale` is the number of specs now
  * over the number the baseline was recorded with.
  */
 export function violations(reach, baseline, scale = 1) {
   const found = []
-  const threshold = Math.ceil(THRESHOLD * scale)
+  const newHub = ceilingOf(THRESHOLD * scale)
   for (const [file, count] of Object.entries(reach)) {
     const recorded = baseline[file]
     if (recorded === undefined) {
-      if (count >= threshold)
-        found.push(`${file}: a new hub, reached by ${count} specs (threshold ${threshold})`)
+      if (count > newHub)
+        found.push(`${file}: a new hub, reached by ${count} specs (limit ${newHub})`)
       continue
     }
-    const expected = recorded * scale
-    const ceiling = Math.max(Math.ceil(expected * SLACK.ratio), Math.ceil(expected) + SLACK.specs)
+    const ceiling = ceilingOf(recorded * scale)
     if (count > ceiling)
       found.push(`${file}: reached by ${count} specs, was ${recorded} (ceiling ${ceiling})`)
   }
@@ -127,14 +145,17 @@ export function baselineOf(reach) {
 
 async function main(argv) {
   const specs = specFiles()
-  const reach = specReach(await importGraph(specs))
+  const inputs = await importGraph(specs)
+  const everyReach = specReach(inputs)
   const topIndex = argv.indexOf('--top')
   if (topIndex !== -1) {
-    const widest = Object.entries(reach).sort(([, a], [, b]) => b - a)
+    const widest = Object.entries(everyReach).sort(([, a], [, b]) => b - a)
     for (const [file, count] of widest.slice(0, Number(argv[topIndex + 1] ?? 30)))
       console.log(`${count}\t${file}`)
     return 0
   }
+  const leaves = leavesOf(inputs)
+  const reach = Object.fromEntries(Object.entries(everyReach).filter(([file]) => !leaves.has(file)))
   if (argv.includes('--update')) {
     const modules = baselineOf(reach)
     const description =
