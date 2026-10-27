@@ -277,7 +277,7 @@
     "frontends/aiq_api/src/aiq_api/routes/jobs.py::_sse_generator_polling": 147,
     "frontends/aiq_api/src/aiq_api/routes/jobs.py::_sse_generator_postgres": 223,
     "frontends/aiq_api/src/aiq_api/routes/jobs.py::_validate_data_sources_for_agent": 76,
-    "frontends/aiq_api/src/aiq_api/routes/jobs.py::register_job_routes": 521,
+    "frontends/aiq_api/src/aiq_api/routes/jobs.py::register_job_routes": 519,
     "frontends/aiq_api/src/aiq_api/routes/jobs.py::register_job_routes.submit_job": 80,
     "frontends/aiq_api/src/aiq_api/routes/lesson_distill.py::add_lesson_distill_routes": 94,
     "frontends/aiq_api/src/aiq_api/routes/lesson_distill.py::add_lesson_distill_routes.lesson_distill": 80,

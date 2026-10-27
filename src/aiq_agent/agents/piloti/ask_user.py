@@ -31,9 +31,9 @@ import threading
 from collections import OrderedDict
 from typing import Any
 
+from aiq_agent.auth.request_identity import headless_turn_requested
 from aiq_agent.common import build_human_prompt
 from aiq_agent.common import extract_user_response
-from aiq_agent.turn.api_seam import headless_turn_requested
 from nat.plugin_api import Builder
 from nat.plugin_api import Context
 from nat.plugin_api import FunctionBaseConfig
@@ -273,7 +273,7 @@ _REFUSALS = {
 
 
 def _headless() -> bool:
-    """Whether this turn runs headless (``turn.api_seam``); a failure to tell reads as attended."""
+    """Whether this turn runs headless (``auth.request_identity``); a failure to tell reads as attended."""
     try:
         return headless_turn_requested()
     except Exception:  # noqa: BLE001 - outside the API tier there is no caller to read

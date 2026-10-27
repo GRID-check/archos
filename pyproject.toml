@@ -307,16 +307,14 @@ ignore_imports = ["knowledge_layer.qdrant.** -> qdrant_client"]
 
 [[tool.importlinter.contracts]]
 id = "agent-api-seam"
-name = "aiq_agent reaches aiq_api only through turn/api_seam.py"
+name = "aiq_agent never imports aiq_api: the API tier hosts the agent, not the reverse"
 type = "forbidden"
 source_modules = ["aiq_agent"]
 forbidden_modules = ["aiq_api"]
 ignore_imports = [
-  # The seam itself; its module docstring is the rule.
-  "aiq_agent.turn.api_seam -> aiq_api.**",
-  # An older inversion that predates the seam and is not the seam's to undo.
-  # Listed so the contract covers the whole package, not because it is approved.
-  "aiq_agent.auth.utils -> aiq_api.**",
+  # The WorkOS validator builds the API tier's JWTValidator and is registered as
+  # an `aiq_api.validators` entry point: API-tier code in the agent's package.
+  # Moving it into aiq_api deletes this line.
   "aiq_agent.auth.workos_validator -> aiq_api.**",
 ]
 
