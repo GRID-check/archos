@@ -111,8 +111,6 @@ frontends/benchmarks/*/aggregated_results_*/
 # Large analysis outputs (optional - comment out if you want to track specific files)
 frontends/benchmarks/*/analysis/*_scored_*.csv
 frontends/benchmarks/*/analysis/*_output_*.csv
-frontends/benchmarks/*/analysis/freshqa_output_*.csv
-frontends/benchmarks/*/analysis/freshqa_scored_*.csv
 frontends/benchmarks/*/analysis/*.csv
 
 # Configs created in notebooks
