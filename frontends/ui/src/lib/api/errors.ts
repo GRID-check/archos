@@ -5,30 +5,24 @@
  * the route-handler wrapper in `@/lib/api/handler` maps them to the JSON
  * error envelope. This keeps HTTP concerns out of the service layer while
  * guaranteeing every route returns consistent, non-leaky error responses.
+ *
+ * About 600 specs reach this module, so it is a leaf: it imports types and
+ * `./api-error` (itself import-free) only, or everything it imports is re-run
+ * with them (`errors-leaf.spec.ts`).
  */
 
 import type { RateLimitDecision } from '@/lib/limits/types'
-import { BYTES_PER_MB } from '@/shared/config/request-body-limit'
+import { ApiError, ForbiddenError } from './api-error'
 
-export class ApiError extends Error {
-  constructor(
-    readonly status: number,
-    readonly code: string,
-    message: string,
-    /** Optional machine-readable details, serialized at the envelope top level. */
-    readonly details?: unknown
-  ) {
-    super(message)
-    this.name = new.target.name
-  }
-}
+export { ApiError, BadRequestError, ForbiddenError } from './api-error'
 
-/** 400 — malformed input (bad JSON, schema violations, invalid params). */
-export class BadRequestError extends ApiError {
-  constructor(message = 'Bad request', details?: unknown) {
-    super(400, 'BAD_REQUEST', message, details)
-  }
-}
+/**
+ * Bytes in a decimal MB. Declared here rather than imported from
+ * `@/shared/config/request-body-limit` to keep this module a leaf, the
+ * convention that file states for itself; `errors-leaf.spec.ts` holds the two
+ * equal.
+ */
+const BYTES_PER_MB = 1e6
 
 /** 401 — no valid session. */
 export class UnauthorizedError extends ApiError {
@@ -61,13 +55,6 @@ export class SessionRequiredError extends UnauthorizedError {
  */
 export function isAuthzRefusal(error: unknown): error is ApiError {
   return error instanceof ApiError && (error.status === 401 || error.status === 403 || error.status === 404)
-}
-
-/** 403 — authenticated but not allowed. */
-export class ForbiddenError extends ApiError {
-  constructor(message = 'Forbidden', details?: unknown) {
-    super(403, 'FORBIDDEN', message, details)
-  }
 }
 
 /**

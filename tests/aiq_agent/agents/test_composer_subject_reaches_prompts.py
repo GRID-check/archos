@@ -96,7 +96,7 @@ class TestPilotiPromptNamesTheSubject:
         („pass `file_name=` that exact indexed name"), and it used to be
         restated here on every turn with a focused file (ADR-0060 (d)).
         """
-        from sources.knowledge_layer.src.register import _KNOWLEDGE_SEARCH_DESCRIPTION
+        from knowledge_layer.register import _KNOWLEDGE_SEARCH_DESCRIPTION
 
         agent = PilotiAgent(llm_provider=mock_llm_provider, tools=[real_tool])
 

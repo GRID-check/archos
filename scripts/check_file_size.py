@@ -7,7 +7,7 @@ Why this exists
 
 The repo grew files of three to seven thousand lines (`adapter.py`, the chat
 composer, the documents service) and Python functions that run for hundreds of
-lines (`run_agent_job`, 962). Every split that brings one down is undone by the
+lines (`run_agent_job` ran to 962 before it became its phases). Every split that brings one down is undone by the
 next change that finds it easier to add a branch than a module, unless
 something refuses the growth. Code review did not: each of those files passed
 it one reasonable hunk at a time.

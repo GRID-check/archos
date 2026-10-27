@@ -17,6 +17,7 @@ site (frontends/web/scripts/lint-claims.mjs).
 from __future__ import annotations
 
 import re
+import tomllib
 from pathlib import Path
 
 import pytest
@@ -139,3 +140,30 @@ def test_the_description_scan_sees_the_tools() -> None:
     assert "src/aiq_agent/tools/canvas/register.py" in files
     assert FILE_AS_PLAN_EN.search("the older Fassung of the same plan")
     assert not FILE_AS_PLAN_EN.search("reads the plan and research notes")
+
+
+#: Every distribution this repository builds. Its description is what `pip show`,
+#: the lockfile and a newcomer's first `cat pyproject.toml` read.
+PACKAGE_GLOBS = (
+    "pyproject.toml",
+    "sources/*/pyproject.toml",
+    "frontends/*/pyproject.toml",
+    "packages/*/pyproject.toml",
+)
+PYPROJECTS = sorted(path.relative_to(ROOT).as_posix() for pattern in PACKAGE_GLOBS for path in ROOT.glob(pattern))
+
+#: The framework as the frame: "NAT-based …", "NeMo Agent Toolkit workflows".
+FRAMEWORK_FRAME = re.compile(r"\bNAT\b|NeMo|Agent Toolkit", re.IGNORECASE)
+
+
+@pytest.mark.parametrize("relative", PYPROJECTS)
+def test_no_package_describes_itself_by_its_framework(relative: str) -> None:
+    """A package says what it does for Piloti; the framework is an implementation detail (VISION.md)."""
+    description = tomllib.loads((ROOT / relative).read_text(encoding="utf-8"))["project"]["description"]
+    assert not FRAMEWORK_FRAME.search(description), f"{relative}: {description!r}"
+
+
+def test_the_scan_sees_the_packages() -> None:
+    assert {"pyproject.toml", "sources/knowledge_layer/pyproject.toml", "frontends/aiq_api/pyproject.toml"} <= set(
+        PYPROJECTS
+    )

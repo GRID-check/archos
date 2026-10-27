@@ -24,7 +24,7 @@
 
 import 'server-only'
 import type { GridSession } from '@/lib/auth/types'
-import { buildCollectionScopeFromRequest } from '@/lib/collection-scope-request'
+import { buildCollectionScopeFromRequest } from '@/lib/retrieval-scope/collection-scope-request'
 import { loadProjectFederalState, loadProjectPromptView } from '@/lib/project-profile/prompt-view'
 import { buildProjectMemoryDigest } from '@/lib/projects/memory-service'
 import { resolveOrgInstructions } from '@/lib/org-instructions/service'
@@ -33,7 +33,7 @@ import { isWebSearchEnabledForOrg } from '@/lib/organizations/service'
 import { getEffectiveModelOverrides } from '@/lib/model-config/service'
 import { getBudgetStatus } from '@/lib/budgets/service'
 import { announceBudgetBlocked } from '@/lib/budgets/budget-events'
-import type { ScopedCollection } from '@/lib/collection-scope'
+import type { ScopedCollection } from '@/lib/retrieval-scope/collection-scope'
 import { requesterOf, type GridRequester } from '@/lib/request-context'
 
 /** Run a best-effort lookup: its failure is logged and read as "absent". */
