@@ -19,7 +19,6 @@ vi.mock('@/lib/auth/require-auth', () => ({
     role: 'member',
     permissions: [],
   }),
-  authzErrorResponse: () => null,
 }))
 vi.mock('@/lib/conversations/live', () => ({ requireConversationSpectator: vi.fn() }))
 vi.mock('@/lib/events/conversation-frames', () => ({ peekNewestConversationFrame: vi.fn() }))

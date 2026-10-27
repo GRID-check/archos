@@ -1,6 +1,9 @@
+---
+status: accepted
+---
+
 # ADR-0022: Enterprise BYOK LLM credentials per organization (WorkOS Vault) and the org web-search setting
 
-- **Status**: Accepted
 - **Date**: 2026-07-11
 - **Deciders**: Grid Agent team
 - **Related**: ADR-0010 (LLM-agnostic endpoints), ADR-0014 (org runtime model

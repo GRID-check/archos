@@ -54,18 +54,11 @@ import { IN_FLIGHT_DOCUMENT_STATUSES } from './document-status'
 import { INGEST_ALREADY_DONE, INGEST_NOT_ELIGIBLE, INGEST_RUNNING, INGEST_WOULD_FAIL_AGAIN } from './reingest-codes'
 import { canRetry, contentHashChanged, CURRENT_INGEST_READER_VERSION, type RetryFacts } from './retry-policy'
 import { normalizeDrawingStructured, type DrawingStructured } from './drawing-structured'
-import { getFileUploadConfigFromEnv } from '@/shared/config/file-upload'
 import {
   buildDocumentImageUrl,
   DOCUMENT_IMAGE_CACHE_CONTROL,
   verifyDocumentImageUrl,
 } from '@/lib/images/signed-image-url'
-import { isVlmConfigured } from '@/lib/documents/vlm-capability'
-import {
-  FEATURE_FLAGS,
-  isFeatureEnabled,
-  isIfcModelsEnabled,
-} from '@/lib/authz/feature-flags'
 import { deleteAssignmentsForResource } from '@/lib/assignments/repository'
 import { purgeResourceCollaboration } from '@/lib/collaboration/cleanup'
 import { assertNoActiveHold } from '@/lib/compliance/holds'
@@ -950,57 +943,6 @@ export interface UploadDocumentInput {
 }
 
 export type { UploadDocumentResult }
-
-/** Lowercased extension including the leading dot, or '' when there is none. */
-function fileExtension(name: string): string {
-  const idx = name.lastIndexOf('.')
-  return idx > 0 ? name.slice(idx).toLowerCase() : ''
-}
-
-/**
- * Server-side upload allow-list. The client already filters by accepted type,
- * but nothing enforced it on the server until now — so any type could be
- * POSTed directly. This mirrors the same env-driven accepted-types config the
- * client uses (closing that gap for ALL types), and gates image types by
- * availability = the `image-upload` flag AND the derived VLM capability:
- * images are in the allow-list only when the session's org has the flag AND a
- * vision model resolves on the backend. The capability comes from the same
- * TTL-cached probe (`isVlmConfigured`) that layout.tsx uses, so this allow-list
- * and the client's accepted-types list are ONE truth. Fail-closed: an
- * unconfirmable capability excludes images (never a silent-failure upload).
- */
-export async function assertUploadTypeAllowed(
-  session: AuthorizedSession,
-  filename: string
-): Promise<void> {
-  const imageUploadEnabled = isFeatureEnabled(session, FEATURE_FLAGS.imageUpload)
-  const ifcUploadEnabled = isIfcModelsEnabled(session)
-  const vlmAvailable = await isVlmConfigured()
-  const { acceptedTypes } = getFileUploadConfigFromEnv(process.env, {
-    imageUploadEnabled,
-    vlmAvailable,
-    ifcUploadEnabled,
-  })
-  const allowed = acceptedTypes
-    .split(',')
-    .map((ext) => ext.trim().toLowerCase())
-    .filter(Boolean)
-  const ext = fileExtension(filename)
-  if (!ext || !allowed.includes(ext)) {
-    throw new BadRequestError(`File type "${ext || 'unknown'}" is not permitted`, {
-      extension: ext || null,
-      accepted: allowed,
-    })
-  }
-}
-
-/**
- * Server-side file-size enforcement, against the organization's per-file limit
- * (or `BIM_MAX_IFC_BYTES` for a model). Lives with the limit it enforces;
- * re-exported here because the upload paths take their admission checks from
- * this module.
- */
-export { assertFileSizeAllowed } from '@/lib/storage/upload-limit'
 
 /**
  * Store an uploaded file in SeaweedFS, record it, and hand it to the backend for

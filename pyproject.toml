@@ -11,7 +11,7 @@ package-dir = {"" = "src"}
 [project]
 name = "aiq-agent"
 version = "2.0.0"
-description = "NVIDIA AI-Q Blueprint - An enterprise-grade agent for intelligent research assistance"
+description = "Piloti, the workspace for architects: the agent, its tools and the knowledge it reads"
 readme = "README.md"
 # 3.14.1, not 3.14: uv lets a pre-release interpreter satisfy `>=3.14`, and on
 # 3.14.0rc2 pydantic calls `typing._eval_type` with `prefer_fwd_module`, a
@@ -88,7 +88,7 @@ viz = [
 
 # -----------------------------------------------------------------------------
 # Workspace members are installed via: uv sync
-# Individual packages: uv pip install -e ./frontends/cli
+# Individual packages: uv pip install -e ./frontends/aiq_api
 # See [tool.uv.workspace] below for auto-discovered packages
 # -----------------------------------------------------------------------------
 
@@ -367,7 +367,7 @@ indent_dictionary_value = true
 # Usage:
 #   uv sync                              # Install root + all workspace members
 #   uv sync --package aiq-agent  # Install only the root package
-#   uv pip install -e ./frontends/cli    # Install a specific package
+#   uv pip install -e ./sources/ris_adapter  # Install a specific package
 #   uv pip install -e "./frontends/aiq_api[postgres]"  # With extras
 # -----------------------------------------------------------------------------
 [dependency-groups]
@@ -386,8 +386,6 @@ dev = [
     "ris-adapter",
     "knowledge-layer[all]",
     "aiq-api",
-    "aiq-research-cli",
-    "aiq-debug",
     "pytest-xdist>=3.8.0",
     # Splits the core suite across CI's backend shards (ci.yml `backend`).
     "pytest-split>=0.11.0",
@@ -423,10 +421,6 @@ prerelease = "if-necessary-or-explicit"
 members = [
     "sources/*",
     "frontends/aiq_api",
-    "frontends/cli",
-    "frontends/debug",
-    "frontends/benchmarks/freshqa",
-    "frontends/benchmarks/deepsearch_qa",
 ]
 
 [tool.uv.sources]
@@ -435,7 +429,3 @@ tavily-web-search = { workspace = true }
 ris-adapter = { workspace = true }
 knowledge-layer = { workspace = true }
 aiq-api = { workspace = true }
-aiq-research-cli = { workspace = true }
-aiq-debug = { workspace = true }
-freshqa-eval = { workspace = true }
-deepsearch-qa-evaluator = { workspace = true }

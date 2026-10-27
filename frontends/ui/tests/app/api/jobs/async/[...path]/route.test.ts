@@ -2,6 +2,7 @@
  * @vitest-environment node
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { NotFoundError } from '@/lib/api/errors'
 
 vi.mock('@/lib/auth/require-auth', () => ({
   requireAuthorizedSession: vi.fn(),
@@ -156,7 +157,7 @@ describe('/api/jobs/async/[...path]', () => {
     it('returns 404 when project access is missing', async () => {
       process.env.REQUIRE_AUTH = 'true'
       mockRequireAuthorizedSession.mockResolvedValue(baseSession)
-      mockBuildCollectionScopeFromRequest.mockRejectedValue(new Error('Not found'))
+      mockBuildCollectionScopeFromRequest.mockRejectedValue(new NotFoundError())
       const fetchMock = vi.fn()
       global.fetch = fetchMock
 
@@ -248,7 +249,7 @@ describe('/api/jobs/async/[...path]', () => {
     it('returns 404 when project access is missing', async () => {
       process.env.REQUIRE_AUTH = 'true'
       mockRequireAuthorizedSession.mockResolvedValue(baseSession)
-      mockBuildCollectionScopeFromRequest.mockRejectedValue(new Error('Not found'))
+      mockBuildCollectionScopeFromRequest.mockRejectedValue(new NotFoundError())
       const fetchMock = vi.fn()
       global.fetch = fetchMock
 
@@ -303,7 +304,7 @@ describe('/api/jobs/async/[...path]', () => {
     it('returns 404 when project access is missing', async () => {
       process.env.REQUIRE_AUTH = 'true'
       mockRequireAuthorizedSession.mockResolvedValue(baseSession)
-      mockBuildCollectionScopeFromRequest.mockRejectedValue(new Error('Not found'))
+      mockBuildCollectionScopeFromRequest.mockRejectedValue(new NotFoundError())
       const fetchMock = vi.fn()
       global.fetch = fetchMock
 

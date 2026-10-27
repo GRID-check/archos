@@ -10,7 +10,6 @@ vi.mock('@/lib/auth/session', () => ({
 }))
 
 vi.mock('@/lib/auth/require-auth', () => ({
-  authzErrorResponse: () => null,
 }))
 
 vi.mock('@/lib/authz/platform', () => {

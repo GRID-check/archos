@@ -32,7 +32,7 @@ Pricing lives in a YAML file under `tokenomics.pricing`. Prices are in **USD per
 
 
 ```yaml
-# frontends/benchmarks/deepresearch_bench/configs/config_tokenomics_pricing.yml
+# configs/config_tokenomics_pricing.yml
 
 tokenomics:
   pricing:
@@ -70,8 +70,8 @@ Run after `nat eval` completes. The trace file is written to the `output_dir` co
 
 ```bash
 PYTHONPATH=src python -m aiq_agent.tokenomics.report \
-    --trace  frontends/benchmarks/deepresearch_bench/results/all_requests_profiler_traces.json \
-    --config frontends/benchmarks/deepresearch_bench/configs/config_tokenomics_pricing.yml \
+    --trace  <eval output_dir>/all_requests_profiler_traces.json \
+    --config configs/config_tokenomics_pricing.yml \
     [--output path/to/report.html]
 ```
 
@@ -136,7 +136,7 @@ from aiq_agent.tokenomics import parse_trace, PricingRegistry
 # Load pricing from the tokenomics YAML (not the nat eval config)
 import yaml
 
-with open("frontends/benchmarks/deepresearch_bench/configs/config_tokenomics_pricing.yml") as f:
+with open("configs/config_tokenomics_pricing.yml") as f:
     config = yaml.safe_load(f)
 pricing = PricingRegistry.from_dict(config["tokenomics"]["pricing"])
 

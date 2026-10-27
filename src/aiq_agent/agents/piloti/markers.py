@@ -173,36 +173,32 @@ def detect_and_strip_confidence_marker(content: Any) -> tuple[Any, ConfidenceLev
 # Overconfidence guard
 # ---------------------------------------------------------------------------
 #
-# Pure functions over a parsed ``[CONFIDENCE:…]`` level: the deterministic cap
-# the platform applies to the model's self-assessment. They live here, beside
-# the marker contract they interpret.
+# What the platform surfaces as an answer's confidence. They live here, beside
+# the marker contract they interpret. Two rules, and a turn says which
+# (``answer_confidence_version`` on the wire):
 #
-# Two rules, and a turn says which it was computed under
-# (``claim_provenance.CONFIDENCE_RULE_VERSION`` on the wire):
-#
-# - **Rule 2, chat** (:func:`surface_claim_confidence`, ADR-0125): the level is
-#   the self-report, held under the weakest load-bearing SENTENCE's ceiling
-#   (``common/claim_provenance.py``). A record, an action or a measurement
-#   grounds the sentences it states; a normative sentence still needs a
-#   passage, so no evidence of the second kind can launder a claim about the
-#   law.
-# - **Rule 1, deep research** (:func:`surface_answer_confidence`): the
-#   answer-level floors. A research report has no per-sentence stamps yet,
-#   and every chat turn stored before rule 2 was computed under it.
+# - **Chat** (:func:`surface_checked_confidence`, ADR-0139): the level the
+#   answer check (``common/claim_judge.py``) gave, under the hard quote gate.
+#   The self-report only says the answer is one to grade; it sets no level.
+#   No check, no level.
+# - **Deep research** (:func:`surface_answer_confidence`, rule 1): the
+#   answer-level floors over the self-report. Every chat turn stored before the
+#   check was computed under rule 1 or the per-sentence rule 2 (ADR-0125), and
+#   keeps the level it was stored with.
+
+#: The rule version a checked chat answer travels as. An open tab reads the
+#: field as ``1 | 2``; the check itself (``confidence_check`` on the turn)
+#: tells it apart from a stored rule-2 turn (docs/design/chat-wire-v2.md).
+CONFIDENCE_RULE_VERSION = 2
 
 
-#: Why a self-report was downgraded.
+#: Why a level was capped.
 #:
-#: - ``ungrounded``             nothing behind the weakest sentence: no verified
-#:   citation and no record or measurement (rule 1: for the whole answer).
+#: - ``ungrounded``             no verified citation (rule 1).
 #: - ``quote_unverified``       a quoted span matched no retrieved passage.
-#: - ``normative_claim_uncited`` a claim about the law with no passage behind it.
-#:   Rule 1: a measured answer that also talks about the law; rule 2: any
-#:   load-bearing normative sentence that is not quoted or cited.
-#: - ``measurement_only``       rule 1 only: measurement-grounded and purely
-#:   descriptive, so "high" was reduced to "medium".
-#: - ``citation_fallback``      no longer produced: the single-source fallback is
-#:   gone (ADR-0125). Kept because stored turns carry it.
+#: - ``normative_claim_uncited``, ``measurement_only``, ``citation_fallback``:
+#:   no longer produced (rules 1 and 2 as chat ran them). Kept because stored
+#:   turns carry them.
 CappedReason = Literal[
     "ungrounded",
     "quote_unverified",
@@ -211,16 +207,14 @@ CappedReason = Literal[
     "citation_fallback",
 ]
 
-#: The ceiling measurement grounding can reach under rule 1. Never "high":
-#: without per-sentence stamps a measurement is grounding for the answer's
-#: NUMBERS, not for every sentence around them.
+#: The most an answer with a quote no passage holds can reach under a citation.
 MEASUREMENT_CONFIDENCE_CEILING: ConfidenceLevel = "medium"
 
 _CONFIDENCE_ORDER: tuple[ConfidenceLevel, ...] = ("low", "medium", "high")
 
 
 def _at_most(level: ConfidenceLevel, ceiling: ConfidenceLevel) -> ConfidenceLevel:
-    """``level`` clamped down to ``ceiling`` — never raises a self-report."""
+    """``level`` clamped down to ``ceiling`` — never raises it."""
     return level if _CONFIDENCE_ORDER.index(level) <= _CONFIDENCE_ORDER.index(ceiling) else ceiling
 
 
@@ -228,123 +222,52 @@ def surface_answer_confidence(
     self_reported: ConfidenceLevel | None,
     citation_grounded: bool,
     quotes_verified: bool = True,
-    *,
-    measurement_grounded: bool = False,
-    normative_claim_uncited: bool = False,
 ) -> ConfidenceLevel | None:
-    """Rule 1: the answer-level floors, for an answer with no per-sentence stamps (deep research).
+    """Rule 1: the answer-level floors, for a report the answer check does not grade (deep research).
 
     Returns ``None`` when there is no self-assessment to surface. Citation
-    grounding is the only route to "high": an answer grounded in a verified
-    citation with every quoted span verified surfaces the model's own level.
-    Measurement grounding lifts an answer off "low" to at most
-    :data:`MEASUREMENT_CONFIDENCE_CEILING`, and only when the answer makes no
-    uncited normative claim. An unverified quote caps to "medium" under a
-    citation and to "low" without one, BEFORE measurement grounding is
-    consulted: a measured number must never rescue a fabricated quotation.
+    grounding is the only route off "low": an answer grounded in a verified
+    citation with every quoted span verified surfaces the model's own level,
+    one with an unverified quote at most "medium".
     """
     if self_reported is None:
         return None
-    if citation_grounded and quotes_verified:
-        return self_reported
-    if not quotes_verified:
-        if citation_grounded:
-            return _at_most(self_reported, MEASUREMENT_CONFIDENCE_CEILING)
+    if not citation_grounded:
         return "low"
-    if measurement_grounded and not normative_claim_uncited:
-        return _at_most(self_reported, MEASUREMENT_CONFIDENCE_CEILING)
-    return "low"
+    return self_reported if quotes_verified else _at_most(self_reported, MEASUREMENT_CONFIDENCE_CEILING)
 
 
 def answer_confidence_capped_reason(
     self_reported: ConfidenceLevel | None,
     citation_grounded: bool,
     quotes_verified: bool = True,
-    *,
-    measurement_grounded: bool = False,
-    normative_claim_uncited: bool = False,
 ) -> CappedReason | None:
-    """Why rule 1 capped the surfaced confidence, or ``None`` when no cap applied.
-
-    Derived from :func:`surface_answer_confidence`, so the reason can never
-    disagree with the level it explains. Precedence: ``quote_unverified``
-    whenever the answer had some grounding but a quote failed; then the mixed
-    case ``normative_claim_uncited``; then ``measurement_only``; else
-    ``ungrounded``.
-    """
-    if self_reported is None or self_reported == "low":
-        return None
-    surfaced = surface_answer_confidence(
+    """Why rule 1 capped the surfaced confidence, or ``None`` when no cap applied."""
+    if self_reported is None or surface_answer_confidence(self_reported, citation_grounded, quotes_verified) in (
         self_reported,
-        citation_grounded,
-        quotes_verified,
-        measurement_grounded=measurement_grounded,
-        normative_claim_uncited=normative_claim_uncited,
-    )
-    if surfaced == self_reported:
+        None,
+    ):
         return None
-    if not quotes_verified and (citation_grounded or measurement_grounded):
-        return "quote_unverified"
-    if not citation_grounded:
-        if measurement_grounded and normative_claim_uncited:
-            return "normative_claim_uncited"
-        if measurement_grounded:
-            return "measurement_only"
-        return "ungrounded"
-    return "quote_unverified"
+    return "quote_unverified" if citation_grounded else "ungrounded"
 
 
 def _quote_cap(quotes_verified: bool, citation_grounded: bool) -> ConfidenceLevel:
-    """The hard quote gate both rules share: a quote no passage holds caps to medium under a citation, else low."""
+    """The hard quote gate: a quote no passage holds caps to medium under a citation, else low."""
     if quotes_verified:
         return "high"
     return MEASUREMENT_CONFIDENCE_CEILING if citation_grounded else "low"
 
 
-def surface_claim_confidence(
-    self_reported: ConfidenceLevel | None,
-    claims_ceiling: ConfidenceLevel | None,
-    *,
-    quotes_verified: bool = True,
-    citation_grounded: bool = False,
+def surface_checked_confidence(
+    checked: ConfidenceLevel | None, *, quotes_verified: bool = True, citation_grounded: bool = False
 ) -> ConfidenceLevel | None:
-    """Rule 2: ``min(self-report, weakest load-bearing sentence's ceiling)``, under the hard quote gate.
-
-    ``claims_ceiling`` is ``claim_provenance.claims_ceiling`` of the final
-    answer, which floors an answer with no sentence at ``low``
-    (``NO_CLAIMS_CEILING``); ``None``, a state that carries no ceiling, leaves
-    the self-report to the quote gate alone. The self-report is never raised.
-    """
-    if self_reported is None:
-        return None
-    level = _at_most(self_reported, _quote_cap(quotes_verified, citation_grounded))
-    return _at_most(level, claims_ceiling) if claims_ceiling is not None else level
+    """The answer check's level under the quote gate; ``None`` when the check gave none (it was unavailable)."""
+    return _at_most(checked, _quote_cap(quotes_verified, citation_grounded)) if checked is not None else None
 
 
-def claim_confidence_capped_reason(
-    self_reported: ConfidenceLevel | None,
-    claims_ceiling: ConfidenceLevel | None,
-    weakest: tuple[str, str] | None,
-    *,
-    quotes_verified: bool = True,
-    citation_grounded: bool = False,
+def checked_confidence_capped_reason(
+    checked: ConfidenceLevel | None, *, quotes_verified: bool = True, citation_grounded: bool = False
 ) -> CappedReason | None:
-    """Why rule 2 lowered the self-report, or ``None`` when it did not.
-
-    ``weakest`` is ``(provenance class, claim type)`` of the sentence that set
-    the ceiling. A failed quote is named first when it alone explains the
-    level; otherwise a normative sentence without a passage is
-    ``normative_claim_uncited`` and anything else without evidence is
-    ``ungrounded``.
-    """
-    surfaced = surface_claim_confidence(
-        self_reported, claims_ceiling, quotes_verified=quotes_verified, citation_grounded=citation_grounded
-    )
-    if self_reported is None or surfaced == self_reported:
-        return None
-    quote_level = _at_most(self_reported, _quote_cap(quotes_verified, citation_grounded))
-    if quote_level == surfaced and quote_level != self_reported:
-        return "quote_unverified"
-    if weakest is not None and weakest[1] == "normative":
-        return "normative_claim_uncited"
-    return "ungrounded"
+    """``quote_unverified`` when the quote gate lowered the check's level, else ``None``."""
+    surfaced = surface_checked_confidence(checked, quotes_verified=quotes_verified, citation_grounded=citation_grounded)
+    return "quote_unverified" if surfaced != checked else None

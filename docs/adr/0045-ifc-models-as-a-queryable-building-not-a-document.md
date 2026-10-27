@@ -1,6 +1,8 @@
-# ADR-0045 — IFC models are a queryable building, not another document
+---
+status: accepted
+---
 
-**Status:** Accepted
+# ADR-0045 — IFC models are a queryable building, not another document
 **Date:** 2026-08-08
 **Supersedes the plan in:** [`docs/roadmap/ifc-viewer-card-spec.md`](../roadmap/ifc-viewer-card-spec.md)
 

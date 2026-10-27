@@ -31,7 +31,6 @@
 
 import 'server-only'
 import { ApiError } from '@/lib/api/errors'
-import { isAuthzError } from '@/lib/auth-utils'
 import { resolvePinnedRequesterSession } from '@/lib/auth/pinned-session'
 import type { AuthorizedSession } from '@/lib/auth/types'
 import { isPilotiNoticesEnabled } from '@/lib/authz/feature-flags'
@@ -70,7 +69,7 @@ const skipped = (reason: string): NoticeOutcome => {
 
 /** A refusal a retry would meet again (no access, gone, restricted, not readable): the notice ends. */
 const isFinal = (error: unknown): boolean =>
-  isAuthzError(error) || (error instanceof ApiError && error.status >= 400 && error.status < 500)
+  error instanceof ApiError && error.status >= 400 && error.status < 500
 
 /** One page's comparison, or null for a page that cannot be compared (past the end, not rendered). */
 async function comparePage(

@@ -232,7 +232,7 @@ render    the tree, with every leaf a passage or a fact locus
 Budget is per slot, not per turn. A slot that cannot be filled is not a
 truncated answer; it is an `unknown` fact with a named source that was tried,
 which is exactly what `ask_user` should be for (today its description forbids
-asking what a search could establish, `backlog.md` PF-14). A verdict with a
+asking what a search could establish, `docs/audit/overnight-run-backlog.md` PF-14). A verdict with a
 missing leaf is *incomplete by construction*, so the repair pass the first
 review proposed becomes targeted: fill this slot, not "search again".
 

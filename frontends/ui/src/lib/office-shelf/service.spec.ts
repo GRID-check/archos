@@ -69,9 +69,11 @@ vi.mock('@/lib/audit/service', () => ({
 
 // Shared document machinery reused by the Archiv — mocked so these tests focus
 // on the Archiv service's own orchestration/authorization.
+// The type and size gates, mocked where they live: `admitUpload`
+// (`@/lib/documents/upload-admission`) imports them from there.
+vi.mock('@/lib/documents/upload-type', () => ({ assertUploadTypeAllowed: vi.fn().mockResolvedValue(undefined) }))
+vi.mock('@/lib/storage/upload-limit', () => ({ assertFileSizeAllowed: vi.fn().mockResolvedValue(undefined) }))
 vi.mock('@/lib/documents/service', () => ({
-  assertFileSizeAllowed: vi.fn(),
-  assertUploadTypeAllowed: vi.fn().mockResolvedValue(undefined),
   // The ONE model-vs-ingest dispatcher every shelf shares. The Archiv used to
   // call `dispatchIngest` with its own `isIfcFilename` branch beside it; the
   // branch now lives in `dispatchDocument`, which is what this asserts on.
@@ -132,7 +134,8 @@ vi.mock('./repository', () => ({
 }))
 
 import { canManageOfficeShelf } from '@/lib/authz/organizations'
-import { assertUploadTypeAllowed, dispatchDocument } from '@/lib/documents/service'
+import { dispatchDocument } from '@/lib/documents/service'
+import { assertUploadTypeAllowed } from '@/lib/documents/upload-type'
 import { reconcileDocumentStatuses } from '@/lib/documents/reconcile-status'
 import { recordAuditEvent } from '@/lib/audit/service'
 import { ConflictError, ForbiddenError, NotFoundError, UpstreamError } from '@/lib/api/errors'

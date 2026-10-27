@@ -28,8 +28,7 @@
  */
 
 import 'server-only'
-import { ApiError } from '@/lib/api/errors'
-import { isAuthzError } from '@/lib/auth-utils'
+import { isAuthzRefusal } from '@/lib/api/errors'
 import { resolvePinnedRequesterSession } from '@/lib/auth/pinned-session'
 import type { AuthorizedSession } from '@/lib/auth/types'
 import { CHAT_PERMISSIONS } from '@/lib/authz/chat'
@@ -84,7 +83,7 @@ async function checkableDocument(session: AuthorizedSession, documentId: string)
     const checkable = document.scope === 'project' && Boolean(document.projectId) && document.lifecycle === 'active'
     return checkable ? document : null
   } catch (error) {
-    if (isAuthzError(error) || (error instanceof ApiError && (error.status === 403 || error.status === 404))) return null
+    if (isAuthzRefusal(error)) return null
     throw error
   }
 }
@@ -144,7 +143,7 @@ async function startCheck(
   try {
     await requireProjectAccess(session, document.projectId as string, CHAT_PERMISSIONS)
   } catch (error) {
-    if (isAuthzError(error)) return done
+    if (isAuthzRefusal(error)) return done
     throw error
   }
   // Idempotent on the derived ids: a retried slice finds its conversation and its message.
@@ -173,7 +172,7 @@ async function startCheck(
     context = await resolveTurnContext(session, { projectId: document.projectId ?? undefined, conversationId })
   } catch (error) {
     if (error instanceof TurnBudgetExhaustedError) return end(`budget: ${error.message}`)
-    if (isAuthzError(error)) return end('the person may no longer chat here')
+    if (isAuthzRefusal(error)) return end('the person may no longer chat here')
     throw error
   }
   const secret = process.env.GRID_INTERNAL_API_TOKEN

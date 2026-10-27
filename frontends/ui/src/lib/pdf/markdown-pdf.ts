@@ -189,7 +189,7 @@ export function markdownRenderCost(markdown: string): number {
  * retries, and worth telling a person — apart from "the renderer fell over",
  * which is worth retrying. A bare `Error` collapses the two into "something
  * went wrong", and this path's failures are already swallowed by a caller that
- * logs and moves on (`fileReportIfCommissioned`), so the message in the log is
+ * logs and moves on (`fileCommissionedReport`), so the message in the log is
  * the whole of what an operator gets.
  */
 export class MarkdownTooLongError extends Error {

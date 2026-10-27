@@ -12,8 +12,8 @@
  * `job_runs` row, and the worker's outcome callback closes it. The requester
  * is PINNED at creation — the job's creator, never the scheduler and never a
  * service token — because unattended work must act as somebody, and the
- * somebody is whoever asked for it (`docs/superpowers/specs/2026-08-20-
- * agent-authored-documents-design.md`, decision 10).
+ * somebody is whoever asked for it (`docs/architecture/agent-authored-documents.md`,
+ * decision 10).
  *
  * Review is a second, independent axis on the same row (the
  * `mention_requests` shape: a lifecycle `status`, and separately how it was

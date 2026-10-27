@@ -46,13 +46,15 @@ tasks:
     cmds:
       # CI's Repo checks job runs these on every pull request, so the backend
       # filter need not fire for `ci/`, `releasenotes/` or a workflow alone
-      # (.github/filters.yml). They stay in the core suite too.
+      # (.github/filters.yml). They stay in the core suite too. The product-framing
+      # test is here because it reads the first-impression docs, and a docs-only
+      # change runs no filtered tier.
       - >-
         {{.PY}} -X faulthandler -m pytest -q -p no:cacheprovider
         tests/test_ci_workflows.py tests/test_reuse_green_run.py tests/test_last_green.py
         tests/test_image_inputs.py tests/test_pinned_images.py tests/test_plan_summary.py
         tests/test_release_notes.py tests/test_pr_closing_keywords.py tests/test_bun_version_pin.py
-        tests/test_pr_selection.py
+        tests/test_pr_selection.py tests/test_ci_filter_coverage.py tests/aiq_agent/test_product_framing.py
 
   be:test:sources:
     desc: The sources/ package suites
@@ -180,7 +182,7 @@ tasks:
     env:
       PYTHONPATH: src:frontends/benchmarks/oib_retrieval/src:sources/knowledge_layer/src
     cmds:
-      # qdrant-retrieval-design.md §10; last run: docs/architecture/qdrant-gates-2026-10.md.
+      # qdrant-retrieval-design.md §10; last run: docs/audit/qdrant-gates-2026-10.md.
       # Embeds the corpus once with the production model through make_embed_model
       # (cached under .cache/qdrant_parity, about $0.12 cold), writes it into Qdrant
       # through ingestion's write_chunks and reads it through the production

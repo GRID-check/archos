@@ -26,8 +26,8 @@
 > tree, not a search fan-out) is an architectural requirement.
 >
 > **Companions.** [`system-overview.md`](../architecture/system-overview.md)
-> for what exists, [`rag-system-audit-2026-08.md`](../architecture/rag-system-audit-2026-08.md)
-> and [`memory-system-audit-2026-07.md`](../architecture/memory-system-audit-2026-07.md)
+> for what exists, [`rag-system-audit-2026-08.md`](../audit/rag-system-audit-2026-08.md)
+> and [`memory-system-audit-2026-07.md`](../audit/memory-system-audit-2026-07.md)
 > for the two subsystems this document re-measures,
 > [`collaborative-workspace-vision.md`](collaborative-workspace-vision.md) for
 > the compliance-board framing this one revises,
@@ -63,7 +63,7 @@ that closes a loop is named where it ran.
 | D · L5 | The turn holds for an attachment still being indexed (`GRID_INGEST_WAIT_SECONDS`, `status.documents.waiting`), re-reads the inventory when it finishes; the in-flight filter that never fired is fixed | `piloti/conversation_register.py`, `knowledge/ingest_status_store.py` |
 | fix | Deep research no longer dies of one slow source: a tool's own timeout is a tool error the model routes around; the writer's call bound matches its output (600 s, one retry); a budget exhaustion keeps its actionable message; the banner names the real cause | `deep_researcher/tools/source_tool_batching.py`, `deep_researcher/agent.py`, `jobs/runner.py`, `config_oib_openrouter.yml` |
 | B | Reinforcement fires only on a build ranked against a question; a refused supersede is recorded as `conflicts_with_id` on the new row (migration 0076); every bound tool's context needs are declared (`TOOL_CONTEXT_REQUIREMENTS`) and checked against what the job worker injects | `lib/projects/memory-service.ts`, `project_context.py`, `tests/aiq_agent/test_tool_context_contract.py` |
-| delete | `card_generator_llm` (a field nothing read), the unmaintained `config_grid_oib.yml`, the two-hop research → history → chat redirect, and the backlog lines closed at HEAD | `piloti/conversation_register.py`, `configs/`, `backlog.md` |
+| delete | `card_generator_llm` (a field nothing read), the unmaintained `config_grid_oib.yml`, the two-hop research → history → chat redirect, and the backlog lines closed at HEAD | `piloti/conversation_register.py`, `configs/`, `docs/audit/overnight-run-backlog.md` |
 | C | The `tasks` row (ADR-0051): one per attempt, requester pinned, plan frozen, lifecycle and review as separate axes; a scheduled deep-research report is filed at completion as the requester through the outcome callback; a rejection's reason reaches the next run's prompt as `PREVIOUS_DECISIONS`; audit `task.created` / `task.completed` / `task.reviewed`; `GET …/tasks`, `POST …/tasks/[taskId]/review` | `lib/tasks/*`, `lib/auth/pinned-session.ts`, `drizzle/0075_tasks.sql`, `jobs/outcome_notify.py` |
 
 Still open from the plan: the card-generation failure signal, the stall
@@ -234,7 +234,7 @@ What remains, ranked by consequence:
    `nur` all fit in the 6-character gap. Measured 0% detection at that size.
    In a product that presents a checked quotation, this is the most serious
    open correctness item in the repository. `citation_verification.py:2027`,
-   `backlog.md` T2-CIT1. Not tunable; needs a polarity-aware token check.
+   `docs/audit/overnight-run-backlog.md` T2-CIT1. Not tunable; needs a polarity-aware token check.
 3. **No retrieval loop.** Nothing judges sufficiency and re-queries. The deep
    researcher asks the model for an `evidence_judgment` score and leaves the
    re-query to its discretion; the chat path caps `knowledge_search` at two
@@ -413,7 +413,7 @@ Before any of the above, the single most useful thing to establish is
   (`grep OTEL_ docker-compose.coolify.yaml` is empty; Langfuse is an opt-in
   profile). `ErrorBanner.tsx` renders no trace or request id. A user cannot
   say why a turn failed and an operator cannot look it up.
-- `backlog.md` is stale in both directions: PF-1 (`view_knowledge_image`
+- `docs/audit/overnight-run-backlog.md` is stale in both directions: PF-1 (`view_knowledge_image`
   unwired), the `_running_workflow_task` no-op and the disabled
   `memory_reflection_llm` are all fixed at HEAD and still listed open.
 
@@ -647,4 +647,4 @@ The pass that tries to remove, per `AGENTS.md`:
 - `config_grid_oib.yml`'s retrieval block, which points at the production
   collection with no exclusions and no reranker, or the config itself.
 - The two-hop redirect chain `research → history → chat`.
-- Every `backlog.md` line that is closed at HEAD (§8 lists three).
+- Every `docs/audit/overnight-run-backlog.md` line that is closed at HEAD (§8 lists three).

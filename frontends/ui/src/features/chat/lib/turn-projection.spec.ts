@@ -135,9 +135,11 @@ describe('the other ends', () => {
           answer_confidence: 'medium',
           answer_confidence_version: 2,
           lookup_found_nothing: true,
-          claim_stamps: [
-            { text: 'Ich gebe das an eine Recherche ab.', provenance: 'model_knowledge', claim_type: 'descriptive', load_bearing: true },
-          ],
+          confidence_check: {
+            status: 'judged',
+            level: 'medium',
+            findings: [{ statement: 'Abgabe', problem: 'unbacked', reason: 'nichts gelesen', source: 'none' }],
+          },
         },
       }),
     ])
@@ -145,9 +147,11 @@ describe('the other ends', () => {
       answerConfidence: 'medium',
       answerConfidenceVersion: 2,
       lookupFoundNothing: true,
-      claimStamps: [
-        { text: 'Ich gebe das an eine Recherche ab.', provenance: 'model_knowledge', claimType: 'descriptive', loadBearing: true },
-      ],
+      confidenceCheck: {
+        status: 'judged',
+        level: 'medium',
+        findings: [{ statement: 'Abgabe', problem: 'unbacked', reason: 'nichts gelesen', source: 'none' }],
+      },
     })
   })
 

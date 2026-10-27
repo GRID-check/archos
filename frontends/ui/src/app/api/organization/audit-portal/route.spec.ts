@@ -12,7 +12,6 @@ vi.mock('@/lib/auth/require-auth', () => ({
     role: 'member',
     permissions: permissions.value,
   })),
-  authzErrorResponse: () => null,
 }))
 
 const generateAuditPortalLink = vi.fn()

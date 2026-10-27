@@ -17,7 +17,7 @@ import type { AnswerMeta } from '@/lib/conversations/message-answer-meta'
 import type { Findings } from '@/lib/conversations/message-findings'
 import type { RetrievalLedger } from '@/lib/conversations/message-retrieval-ledger'
 import type { QuoteStamp } from '@/lib/conversations/message-quote-stamps'
-import type { ClaimStamp } from '@/lib/conversations/message-claim-stamps'
+import type { ConfidenceCheck } from '@/lib/conversations/confidence-check'
 import type { RunLedger } from '@/lib/runs/run-ledger-types'
 import type { MessageStages } from '@/lib/conversations/message-stages'
 import type { StoredPromptOption } from '@/lib/conversations/message-prompt'
@@ -374,15 +374,11 @@ export interface ChatMessage {
    * belegt [N]" from it; same sanitize contract as `retrievalLedger`.
    */
   quoteStamps?: QuoteStamp[]
+  /** What the answer check found (`TurnResult.confidence_check`, ADR-0139): its level and findings, or unavailable. */
+  confidenceCheck?: ConfidenceCheck
   /**
-   * Where each sentence comes from (`TurnResult.claim_stamps`, ADR-0125). The
-   * confidence chip explains its level as their mix.
-   */
-  claimStamps?: ClaimStamp[]
-  /**
-   * Which rule computed `answerConfidence`: 2 the per-sentence formula
-   * (ADR-0125). Absent on an answer stored before it, which keeps the
-   * explanation of the answer-level floors it was computed with.
+   * Which rule computed `answerConfidence`: 2 a checked answer, or on a stored
+   * one the per-sentence rule (ADR-0125); absent under the answer-level floors.
    */
   answerConfidenceVersion?: 1 | 2
   /** A search ran and found nothing; the answer is the model's own knowledge. Present or absent. */

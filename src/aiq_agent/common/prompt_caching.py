@@ -1,4 +1,4 @@
-"""Provider prompt-cache affinity: keep one turn's stable prefix on one shard.
+"""Provider prompt caching: switch it on where it is opt-in, keep a turn on one shard.
 
 WHAT THE PROVIDER ALREADY DOES, AND WHAT IT NEEDS FROM US
 ========================================================
@@ -48,9 +48,32 @@ WHAT WE DELIBERATELY DO NOT SEND
   no effect. Full usage details are now always included automatically in every
   response." (https://openrouter.ai/docs/use-cases/usage-accounting). Cached
   token counts arrive whether or not we ask.
-- ``cache_control`` breakpoints: automatic caching covers the OpenAI family, and
-  a breakpoint is a per-block edit of the prompt payload — a change to the
-  cached prefix itself, which belongs to whoever owns the prompt.
+- A per-block ``cache_control`` breakpoint: it is an edit of the prompt payload,
+  which belongs to whoever owns the prompt. The top-level field below needs none.
+
+WHAT CLAUDE NEEDS ON TOP: ONE TOP-LEVEL ``cache_control``
+=========================================================
+Anthropic models cache nothing unless the request asks. This module used to
+send only the routing fields above, on the reading that caching is automatic;
+that holds for the OpenAI family and not for Claude, and from the day Opus
+became the chat model every call paid full price for the prefix the previous
+call of the same turn had just sent. Measured on production on 2026-10-27:
+60 M Anthropic prompt tokens in 30 days, 0 of them read from the cache, against
+51 % for the OpenAI models on the same code path.
+
+OpenRouter's answer is automatic caching: "Add a single ``cache_control``
+field at the top level of your request", and the provider "moves the
+breakpoint forward as the conversation grows"
+(https://openrouter.ai/docs/guides/best-practices/prompt-caching). It is
+accepted on both Chat Completions and the Responses API. Measured the same day
+on ``anthropic/claude-haiku-5.5``, a 7.5 k-token prompt sent twice: without
+the field 0 cached tokens on either API; with it the second call read 7 520
+from the cache and cost 89 % less. A write costs 1.25x, a read 0.1x, so one
+repeat pays for it, and a turn makes 3-6 calls.
+
+The field goes only to the families in :data:`EXPLICIT_CACHE_FAMILIES`: the
+docs name the providers that accept it, and a model an admin re-points a group
+at must not start failing on a field its provider rejects.
 
 THE KEY IS THE PREFIX, NOT THE CONVERSATION
 ===========================================
@@ -93,6 +116,18 @@ SESSION_ID_FIELD = "session_id"
 #: OpenAI's cache-shard hint, forwarded by OpenRouter and used as the sticky
 #: key when no ``session_id`` is present.
 PROMPT_CACHE_KEY_FIELD = "prompt_cache_key"
+
+#: OpenRouter's automatic-caching switch for providers that cache only on request.
+CACHE_CONTROL_FIELD = "cache_control"
+
+#: The default five-minute entry: a turn's calls are seconds apart. The one-hour
+#: TTL costs 2x on every write, which a turn's repeats would not pay back.
+_AUTOMATIC_CACHE = {"type": "ephemeral"}
+
+#: Model families whose provider caches only what the request marks. An
+#: OpenRouter model id is ``<family>/<model>``, with a leading ``~`` on the
+#: ``-latest`` aliases.
+EXPLICIT_CACHE_FAMILIES = ("anthropic",)
 
 #: Prefix on the emitted key so a value showing up in a provider dashboard is
 #: attributable without a lookup.
@@ -194,6 +229,24 @@ def with_prompt_cache_routing(extra_body: Any, key: str) -> dict[str, Any]:
     return merged
 
 
+def needs_cache_marker(model: str | None) -> bool:
+    """Whether ``model``'s provider caches only when the request carries ``cache_control``."""
+    family = (model or "").lstrip("~").partition("/")[0]
+    return family in EXPLICIT_CACHE_FAMILIES
+
+
+def with_cache_marker(extra_body: Any, model: str | None) -> dict[str, Any]:
+    """Return a NEW ``extra_body`` that turns on automatic caching where the model needs it.
+
+    Non-destructive like :func:`with_prompt_cache_routing`; a caller that set
+    its own ``cache_control`` (a one-hour TTL, say) wins.
+    """
+    merged: dict[str, Any] = dict(extra_body) if isinstance(extra_body, Mapping) else {}
+    if needs_cache_marker(model):
+        merged.setdefault(CACHE_CONTROL_FIELD, dict(_AUTOMATIC_CACHE))
+    return merged
+
+
 def _system_text(messages: Any) -> str | None:
     """The leading system message's content, or None when a call has no system turn.
 
@@ -220,9 +273,9 @@ def prompt_cache_extra_body(
 ) -> dict[str, Any] | None:
     """The ``extra_body`` override that pins one call to its prefix's shard.
 
-    Returns ``None`` when there is nothing to pin: a call with no leading
-    system message has no prefix worth a key (and the prompt is then too short
-    to reach any provider's caching minimum anyway).
+    Returns ``None`` when there is nothing to add: a call with no leading
+    system message has no prefix worth a key. A model that caches only on
+    request still gets the cache marker then, since its history may be long.
 
     ``kwargs`` is the per-call binding — ``bind(tools=…)``, ``bind(response_format=…)``
     — and is read, never mutated: the tool payload and the response format both
@@ -230,11 +283,11 @@ def prompt_cache_extra_body(
     """
     system_prompt = _system_text(messages)
     if system_prompt is None:
-        return None
+        return with_cache_marker(extra_body, model) if needs_cache_marker(model) else None
     key = prompt_cache_key(
         system_prompt=_cacheable_prefix(system_prompt),
         tools=(kwargs.get("tools"), kwargs.get("response_format")),
         organization_id=organization_id,
         model=model,
     )
-    return with_prompt_cache_routing(extra_body, key)
+    return with_cache_marker(with_prompt_cache_routing(extra_body, key), model)

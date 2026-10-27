@@ -1,0 +1,13 @@
+---
+improvements:
+  - >
+    When Piloti proposes a change, the card now names the projects, folders,
+    documents and people it affects instead of showing their ids.
+  - >
+    A place Piloti wants to show you appears under the answer as soon as the
+    answer starts, marked as waiting, and you can open it right away.
+fixes:
+  - >
+    Taking back a model view Piloti opened works again after you selected
+    another element there, and once you have left the model view the chat no
+    longer offers to take it back.

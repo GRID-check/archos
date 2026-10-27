@@ -1,0 +1,620 @@
+{
+ "$comment": "The chat wire v2 schema's RunFinished and what it references, as generated before ADR-0139 (shared/wire/v2.schema.json at ef89b61b3): the frame an open tab of that bundle reads. See tests/aiq_agent/common/test_wire_v2_open_tabs.py.",
+ "$defs": {
+  "CitationsRemoved": {
+   "additionalProperties": false,
+   "properties": {
+    "count": {
+     "minimum": 1,
+     "title": "Count",
+     "type": "integer"
+    },
+    "reasons": {
+     "items": {
+      "type": "string"
+     },
+     "title": "Reasons",
+     "type": "array"
+    }
+   },
+   "required": [
+    "count",
+    "reasons"
+   ],
+   "title": "CitationsRemoved",
+   "type": "object"
+  },
+  "ClaimStamp": {
+   "additionalProperties": false,
+   "description": "Where one sentence of ``text`` comes from (``common/claim_provenance.py``, ADR-0125), in document order.\n\n``provenance`` is the strongest evidence the sentence has; ``claim_type``\nwhether it states the law, a value, or a description. ``load_bearing``\nsentences are the ones the turn's confidence is held to.",
+   "properties": {
+    "claim_type": {
+     "enum": [
+      "normative",
+      "value",
+      "descriptive"
+     ],
+     "title": "Claim Type",
+     "type": "string"
+    },
+    "load_bearing": {
+     "default": false,
+     "title": "Load Bearing",
+     "type": "boolean"
+    },
+    "numbers": {
+     "items": {
+      "type": "integer"
+     },
+     "title": "Numbers",
+     "type": "array"
+    },
+    "operation": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Operation"
+    },
+    "provenance": {
+     "enum": [
+      "quoted",
+      "cited",
+      "cited_dropped",
+      "record",
+      "action",
+      "measured",
+      "observed",
+      "reasoning",
+      "model_knowledge"
+     ],
+     "title": "Provenance",
+     "type": "string"
+    },
+    "text": {
+     "description": "The sentence as the final text writes it, cut at 300 characters.",
+     "maxLength": 300,
+     "title": "Text",
+     "type": "string"
+    },
+    "unmatched": {
+     "items": {
+      "type": "string"
+     },
+     "title": "Unmatched",
+     "type": "array"
+    }
+   },
+   "required": [
+    "text",
+    "provenance",
+    "claim_type"
+   ],
+   "title": "ClaimStamp",
+   "type": "object"
+  },
+  "KeyedCard": {
+   "additionalProperties": false,
+   "description": "A card and its identity key, so a card equal to one already drawn keeps its node.",
+   "properties": {
+    "card": {
+     "additionalProperties": true,
+     "description": "A GridCard (cards/models.py); validated by gridCardSchema on render.",
+     "title": "Card",
+     "type": "object"
+    },
+    "key": {
+     "description": "card_key(card): stable across the live event and the terminal.",
+     "minLength": 1,
+     "title": "Key",
+     "type": "string"
+    }
+   },
+   "required": [
+    "key",
+    "card"
+   ],
+   "title": "KeyedCard",
+   "type": "object"
+  },
+  "QuoteStamp": {
+   "additionalProperties": false,
+   "description": "The server's check of one quote line ``> „…“ [N]`` (``common/quote_stamps.py``), in document order.\n\n``verbatim`` names the passage that holds the wording and the ``[N]`` it\ncarries (absent for a passage read but not cited); ``not_found`` means no\nretrieved passage holds it; ``unchecked`` means there was nothing to check\nagainst, or the span is too short to mean anything.",
+   "properties": {
+    "clause": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Clause"
+    },
+    "file_name": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "File Name"
+    },
+    "number": {
+     "anyOf": [
+      {
+       "minimum": 1,
+       "type": "integer"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Number"
+    },
+    "page": {
+     "anyOf": [
+      {
+       "type": "integer"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Page"
+    },
+    "status": {
+     "enum": [
+      "verbatim",
+      "not_found",
+      "unchecked"
+     ],
+     "title": "Status",
+     "type": "string"
+    },
+    "text": {
+     "description": "The wording between the quote marks, as the final text writes it.",
+     "title": "Text",
+     "type": "string"
+    },
+    "title": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Title"
+    },
+    "url": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Url"
+    }
+   },
+   "required": [
+    "text",
+    "status"
+   ],
+   "title": "QuoteStamp",
+   "type": "object"
+  },
+  "RunFinished": {
+   "additionalProperties": false,
+   "properties": {
+    "conversation_id": {
+     "minLength": 1,
+     "title": "Conversation Id",
+     "type": "string"
+    },
+    "outcome": {
+     "enum": [
+      "answered",
+      "refused",
+      "handed_off",
+      "cancelled"
+     ],
+     "title": "Outcome",
+     "type": "string"
+    },
+    "result": {
+     "$ref": "#/$defs/TurnResult"
+    },
+    "seq": {
+     "minimum": 0,
+     "title": "Seq",
+     "type": "integer"
+    },
+    "ts": {
+     "minimum": 0,
+     "title": "Ts",
+     "type": "integer"
+    },
+    "turn_id": {
+     "minLength": 1,
+     "title": "Turn Id",
+     "type": "string"
+    },
+    "type": {
+     "const": "RUN_FINISHED",
+     "default": "RUN_FINISHED",
+     "title": "Type",
+     "type": "string"
+    },
+    "v": {
+     "const": 2,
+     "default": 2,
+     "title": "V",
+     "type": "integer"
+    }
+   },
+   "required": [
+    "outcome",
+    "result",
+    "conversation_id",
+    "turn_id",
+    "seq",
+    "ts",
+    "type",
+    "v"
+   ],
+   "title": "RunFinished",
+   "type": "object"
+  },
+  "RunHandoff": {
+   "additionalProperties": false,
+   "description": "The run a turn commissioned (ADR-0062) and the message it narrates itself in: both or neither.",
+   "properties": {
+    "run_id": {
+     "minLength": 1,
+     "title": "Run Id",
+     "type": "string"
+    },
+    "run_message_id": {
+     "minLength": 1,
+     "title": "Run Message Id",
+     "type": "string"
+    }
+   },
+   "required": [
+    "run_id",
+    "run_message_id"
+   ],
+   "title": "RunHandoff",
+   "type": "object"
+  },
+  "TurnResult": {
+   "additionalProperties": false,
+   "description": "Everything the finished turn delivers; authoritative, and what the server persists.\n\nIt replaces the text once more and takes back what it omits (a card\nsuppressed, a masthead gated out). The persisted row is built from this\nmodel and nothing else (``aiq_api`` ``persist_turn_result``).",
+   "properties": {
+    "answer_confidence": {
+     "anyOf": [
+      {
+       "enum": [
+        "low",
+        "medium",
+        "high"
+       ],
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Answer Confidence"
+    },
+    "answer_confidence_capped_reason": {
+     "anyOf": [
+      {
+       "enum": [
+        "ungrounded",
+        "quote_unverified",
+        "normative_claim_uncited",
+        "measurement_only",
+        "citation_fallback"
+       ],
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Answer Confidence Capped Reason"
+    },
+    "answer_confidence_reason": {
+     "anyOf": [
+      {
+       "maxLength": 300,
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Answer Confidence Reason"
+    },
+    "answer_confidence_version": {
+     "anyOf": [
+      {
+       "enum": [
+        1,
+        2
+       ],
+       "type": "integer"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Answer Confidence Version"
+    },
+    "answer_meta": {
+     "anyOf": [
+      {
+       "additionalProperties": true,
+       "type": "object"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Answer Meta"
+    },
+    "cards": {
+     "items": {
+      "$ref": "#/$defs/KeyedCard"
+     },
+     "title": "Cards",
+     "type": "array"
+    },
+    "citations_removed": {
+     "anyOf": [
+      {
+       "$ref": "#/$defs/CitationsRemoved"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null
+    },
+    "claim_stamps": {
+     "items": {
+      "$ref": "#/$defs/ClaimStamp"
+     },
+     "title": "Claim Stamps",
+     "type": "array"
+    },
+    "escalation_reason": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Escalation Reason"
+    },
+    "job_admission_rejected": {
+     "default": false,
+     "title": "Job Admission Rejected",
+     "type": "boolean"
+    },
+    "lookup_found_nothing": {
+     "default": false,
+     "title": "Lookup Found Nothing",
+     "type": "boolean"
+    },
+    "message_id": {
+     "description": "turn.response.answer_message_id(conversation, turn).",
+     "minLength": 1,
+     "title": "Message Id",
+     "type": "string"
+    },
+    "quote_stamps": {
+     "items": {
+      "$ref": "#/$defs/QuoteStamp"
+     },
+     "title": "Quote Stamps",
+     "type": "array"
+    },
+    "read_sources": {
+     "items": {
+      "additionalProperties": true,
+      "type": "object"
+     },
+     "title": "Read Sources",
+     "type": "array"
+    },
+    "reasoning_effort": {
+     "anyOf": [
+      {
+       "enum": [
+        "none",
+        "minimal",
+        "low",
+        "medium",
+        "high",
+        "xhigh"
+       ],
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Reasoning Effort"
+    },
+    "research_truncated": {
+     "default": false,
+     "title": "Research Truncated",
+     "type": "boolean"
+    },
+    "retrieval_ledger": {
+     "items": {
+      "additionalProperties": true,
+      "type": "object"
+     },
+     "title": "Retrieval Ledger",
+     "type": "array"
+    },
+    "retry_after_seconds": {
+     "anyOf": [
+      {
+       "minimum": 0,
+       "type": "integer"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Retry After Seconds"
+    },
+    "routing_decision": {
+     "anyOf": [
+      {
+       "enum": [
+        "meta",
+        "shallow",
+        "deep",
+        "error"
+       ],
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Routing Decision"
+    },
+    "run": {
+     "anyOf": [
+      {
+       "$ref": "#/$defs/RunHandoff"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null
+    },
+    "skills_activated": {
+     "items": {
+      "type": "string"
+     },
+     "title": "Skills Activated",
+     "type": "array"
+    },
+    "skills_hidden": {
+     "items": {
+      "type": "string"
+     },
+     "title": "Skills Hidden",
+     "type": "array"
+    },
+    "sources": {
+     "items": {
+      "$ref": "#/$defs/WireSource"
+     },
+     "title": "Sources",
+     "type": "array"
+    },
+    "text": {
+     "title": "Text",
+     "type": "string"
+    }
+   },
+   "required": [
+    "message_id",
+    "text"
+   ],
+   "title": "TurnResult",
+   "type": "object"
+  },
+  "WireSource": {
+   "additionalProperties": true,
+   "description": "A cited source (``source_entry_to_wire``). ``number`` is its ``[N]`` in the prose.",
+   "properties": {
+    "content": {
+     "title": "Content",
+     "type": "string"
+    },
+    "file_name": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "File Name"
+    },
+    "number": {
+     "anyOf": [
+      {
+       "minimum": 1,
+       "type": "integer"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Number"
+    },
+    "page": {
+     "anyOf": [
+      {
+       "type": "integer"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Page"
+    }
+   },
+   "required": [
+    "content"
+   ],
+   "title": "WireSource",
+   "type": "object"
+  }
+ },
+ "$ref": "#/$defs/RunFinished"
+}

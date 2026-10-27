@@ -22,7 +22,7 @@ const session = {
 }
 
 vi.mock('@/lib/auth/session', () => ({ getGridSession: async () => session }))
-vi.mock('@/lib/auth/require-auth', () => ({ authzErrorResponse: vi.fn().mockReturnValue(null) }))
+vi.mock('@/lib/auth/require-auth', () => ({}))
 
 const requirePlatformPermission = vi.fn().mockResolvedValue(undefined)
 const getPlatformOrganizationId = vi.fn().mockResolvedValue('org_platform')

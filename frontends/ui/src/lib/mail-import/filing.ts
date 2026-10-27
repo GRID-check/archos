@@ -45,7 +45,8 @@ import { resolveShelfFolderPath } from '@/lib/documents/folder-path'
 import { hasPassedScreening } from '@/lib/documents/document-reader'
 import { documentNameKey } from '@/lib/documents/name-match'
 import { findLiveDocumentByFilename, findProjectCollectionsHoldingFilename } from '@/lib/documents/repository'
-import { assertFileSizeAllowed, assertUploadTypeAllowed, uploadDocument } from '@/lib/documents/service'
+import { uploadDocument } from '@/lib/documents/service'
+import { admitFileBeforeReading } from '@/lib/documents/upload-admission'
 import { projectShelf } from '@/lib/documents/shelf'
 import { FOLDER_NAME_TAKEN } from '@/lib/documents/shelf-folders'
 import { createProjectFolder, ensureProjectFolderPaths } from '@/lib/projects/folder-service'
@@ -288,13 +289,7 @@ async function refusalBeforeReading(
   size: number,
 ): Promise<MailImportSkipReason | null> {
   try {
-    await assertUploadTypeAllowed(session, filename)
-  } catch (error) {
-    if (error instanceof BadRequestError) return 'type'
-    throw error
-  }
-  try {
-    await assertFileSizeAllowed(session.organizationId, size, filename)
+    await admitFileBeforeReading(session, { filename, size })
   } catch (error) {
     const reason = refusalReason(error)
     if (reason) return reason

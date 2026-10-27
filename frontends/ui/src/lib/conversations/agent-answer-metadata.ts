@@ -101,9 +101,12 @@ const BACKEND_ANSWER_KEYS = [
   // The server's check of each quote line (`quote_stamps`), same landing as the
   // ledger: bounded into `provenance.quoteStamps`.
   'quote_stamps',
-  // Where each sentence comes from, which rule computed the confidence, and
-  // whether the search found nothing (ADR-0125): bounded into `provenance`.
+  // What the answer check found (ADR-0139), which rule computed the
+  // confidence, and whether the search found nothing: bounded into
+  // `provenance`. `claim_stamps` (rule 2, ADR-0125) is no longer read; listed
+  // so a row that still carries it drops the key.
   'claim_stamps',
+  'confidence_check',
   'answer_confidence_version',
   'lookup_found_nothing',
   // Written by the same socket-persistence path when the client had gone:
@@ -461,7 +464,7 @@ export function provenanceFromBackendMetadata(
   // tallies rather than trusting them.
   candidate.retrievalLedger = metadata.retrieval_ledger
   candidate.quoteStamps = metadata.quote_stamps
-  candidate.claimStamps = metadata.claim_stamps
+  candidate.confidenceCheck = metadata.confidence_check
   candidate.answerConfidenceVersion = metadata.answer_confidence_version
   if (metadata.lookup_found_nothing === true) candidate.lookupFoundNothing = true
 

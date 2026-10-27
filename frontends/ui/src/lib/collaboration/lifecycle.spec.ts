@@ -61,7 +61,6 @@ vi.mock('@/lib/workos/client', () => ({
 // `@/lib/backend-proxy`, which pulls in the AuthKit session helpers.
 vi.mock('@/lib/auth/require-auth', () => ({
   requireAuthorizedSession: vi.fn(),
-  authzErrorResponse: () => null,
 }))
 
 vi.mock('@/lib/session-documents/repository', () => ({

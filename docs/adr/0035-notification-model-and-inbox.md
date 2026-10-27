@@ -1,6 +1,9 @@
+---
+status: accepted
+---
+
 # ADR-0035: The notification model — a generic item frame, a type registry, and the database as the record
 
-- **Status:** Accepted
 - **Date:** 2026-07-29
 - **Deciders:** Platform engineering
 - **Related:** ADR-0011 (deletion pipeline), ADR-0012 (cards as the rich-UI layer),

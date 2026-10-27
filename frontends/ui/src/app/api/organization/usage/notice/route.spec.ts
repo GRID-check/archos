@@ -1,6 +1,7 @@
 /**
  * @vitest-environment node
  */
+import { SessionRequiredError } from '@/lib/api/errors'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const session = { userId: 'user-1', organizationId: 'org-1', email: 'm@grid.com', role: 'member', permissions: [] as string[] }
@@ -21,7 +22,7 @@ describe('GET /api/organization/usage/notice', () => {
   })
 
   it('refuses an unauthenticated caller before reading any budget', async () => {
-    requireAuthorizedSession.mockRejectedValueOnce(new Error('Unauthorized'))
+    requireAuthorizedSession.mockRejectedValueOnce(new SessionRequiredError())
     expect((await GET(request())).status).toBe(403)
     expect(getChatUsageNotice).not.toHaveBeenCalled()
   })
