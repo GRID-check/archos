@@ -1905,8 +1905,9 @@ the office block and the Project Context, followed by a one-line legend for
 each record block the Project Context actually holds (`PROJECT_MEMORY`,
 `PROPOSAL_DECISIONS`, `REVIEW_DECISIONS`, `FOLDER_DESCRIPTIONS`,
 `documents_missing:`). It lists no tool names: the bound schemas carry them.
-If deferred tool loading (ADR-0048, off since 2026-09-25) is turned back on,
-check whether the model still finds the deferred tools without a name index.
+When a tool search arrives (ADR-0048's deferred loading was removed on
+2026-10-27; a standards-based one replaces it in its own change), check whether
+the model still finds the deferred tools without a name index.
 
 Everything else that used to sit in the prompt is either a tool's own contract,
 which lives in the tool description that owns it (ADR-0060 (d)), a rail code

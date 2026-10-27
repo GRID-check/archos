@@ -50,7 +50,6 @@ NO_TENANT_CONTENT = {
     "scripts/turn_census/census.py": "parses recorded request paths",
     "scripts/release_notes.py": "sends the changelog, which is public",
     "scripts/smoke_card_generation.py": "a dev smoke test on fixed sample text",
-    "src/aiq_agent/common/deferred_tool_loading.py": "the capability probe sends 'ping' and synthetic tool schemas",
 }
 
 
