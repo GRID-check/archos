@@ -42,6 +42,18 @@
             "default": null,
             "title": "Doc Class"
           },
+          "document_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Document Type"
+          },
           "file_name": {
             "anyOf": [
               {
@@ -100,6 +112,18 @@
           "query": {
             "title": "Query",
             "type": "string"
+          },
+          "refers_to": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Refers To"
           },
           "shelf": {
             "anyOf": [

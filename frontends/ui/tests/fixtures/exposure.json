@@ -770,6 +770,16 @@
    "withheld": null,
    "reason": "Piloti holds no Outlook archive: the bytes come from the person’s disk, and a part is larger than any proposal a person can read"
   },
+  "project-document-findings": {
+   "kind": "catalog",
+   "domain": "documents",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
   "project-upload-list": {
    "kind": "catalog",
    "domain": "documents",

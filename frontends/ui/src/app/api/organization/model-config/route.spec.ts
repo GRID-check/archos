@@ -8,7 +8,7 @@ const session = {
   organizationId: 'org-1',
   email: 'admin@grid.com',
   role: 'admin',
-  permissions: [] as string[],
+  permissions: adminPermissions(),
   featureFlags: ['runtime-model-config'] as string[] | null,
 }
 
@@ -96,6 +96,7 @@ import { getCatalogForOrg } from '@/lib/model-config/org-catalog'
 import { ZdrListUnavailableError, type ZdrIndex } from '@/lib/model-config/openrouter'
 import { getZdrCoverage } from '@/lib/model-config/zdr-coverage'
 import { isZdrOnlyForOrg } from '@/lib/organizations/service'
+import { adminPermissions } from '@/test-utils/admin-permissions'
 
 const CAPABLE = {
   id: 'vendor/capable',
@@ -134,10 +135,12 @@ describe('/api/organization/model-config', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     session.role = 'admin'
+    session.permissions = adminPermissions()
   })
 
   it('GET rejects non-admins', async () => {
     session.role = 'member'
+    session.permissions = []
     expect((await GET(get())).status).toBe(403)
   })
 
@@ -164,6 +167,7 @@ describe('/api/organization/model-config', () => {
 
   it('PUT rejects non-admins before validation', async () => {
     session.role = 'member'
+    session.permissions = []
     expect((await PUT(put({ overrides: {} }))).status).toBe(403)
     expect(createAndActivateVersion).not.toHaveBeenCalled()
   })

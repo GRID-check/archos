@@ -1882,7 +1882,7 @@ describe('the folder a document is filed in reaches the ingest dispatch', () => 
     vi.mocked(findFolderPathInOfficeShelf).mockResolvedValue('Normen/Brandschutz')
 
     // An admin holds `org:archiv:manage`, which re-ingesting an Archiv document takes.
-    await reingestDocument({ ...session, role: 'admin' }, 'doc-99')
+    await reingestDocument({ ...session, role: 'admin', permissions: ['org:office_shelf:manage'] }, 'doc-99')
 
     expect(findFolderPathInOfficeShelf).toHaveBeenCalledWith('folder-1', 'org-1')
     expect(findFolderPathInProject).not.toHaveBeenCalled()
@@ -2264,7 +2264,7 @@ describe('renameDocument', () => {
     })
 
     await expect(
-      renameDocument({ ...session, role: 'admin' }, 'doc-1', 'Musterordner.pdf', request())
+      renameDocument({ ...session, role: 'admin', permissions: ['org:office_shelf:manage'] }, 'doc-1', 'Musterordner.pdf', request())
     ).resolves.toMatchObject({ displayName: 'Musterordner.pdf' })
     expect(recordAuditEvent).toHaveBeenCalledWith(
       expect.objectContaining({ action: 'office_shelf.document.renamed', filedIn: null })

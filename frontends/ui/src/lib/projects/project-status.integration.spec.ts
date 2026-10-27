@@ -38,7 +38,7 @@ const contracts = { id: '' }
 vi.mock('@/lib/auth/membership-roles', () => ({
   resolveMembershipRoles: vi.fn(async (_org: string, userId: string) => ROLES[userId] ?? null),
 }))
-vi.mock('@/lib/authz/org-role-permissions', () => ({ orgRoleHoldsPermission: vi.fn(async () => false) }))
+vi.mock('@/lib/authz/org-role-permissions', () => ({ rolesHoldPermission: vi.fn(async () => false) }))
 vi.mock('@/lib/authz/project-membership', () => ({
   resolveSubjectMembership: vi.fn(async (_org: string, userId: string) => ({
     organizationMembershipId: userId.replace('user_', 'om_'),

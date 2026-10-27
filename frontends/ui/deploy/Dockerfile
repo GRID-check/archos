@@ -105,6 +105,8 @@ FROM base AS deps
 WORKDIR /app
 
 COPY package.json bun.lock ./
+# `patchedDependencies` in package.json: bun applies these while installing.
+COPY patches ./patches
 
 RUN bun install --frozen-lockfile --ignore-scripts
 

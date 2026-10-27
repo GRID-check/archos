@@ -77,6 +77,68 @@ return 1
 
 RELEASE_LUA = "return redis.call('ZREM', KEYS[1], ARGV[1])"
 
+#: How long a waiter counts as waiting after its last poll. Above the longest poll
+#: interval of :func:`hold` (2 s, jittered to 3 s), so a waiter between two polls
+#: is still seen, and a waiter that gave up stops counting soon after.
+WAITING_PATIENCE_SECONDS = 10
+
+# ACQUIRE_LUA with a fair share between lanes (organisations). A member is
+# "lane|id". A lane may take a slot while the pool has room and either it holds
+# fewer than its share (the limit over the lanes holding or waiting, rounded up)
+# or no other lane is waiting. So a lone lane takes the whole pool, and a second
+# lane's first call gets the next free slot instead of queueing behind the first
+# lane's hundred: work-conserving, the claim queue's rule (ADR-0076) applied to
+# the slots. A refused caller is recorded as waiting (KEYS[2]) for
+# ARGV[6] seconds, renewed on every poll, so the other lanes see it.
+FAIR_ACQUIRE_LUA = (
+    """
+local key = KEYS[1]
+local waiting = KEYS[2]
+local now = tonumber(ARGV[1])
+local lease = tonumber(ARGV[2])
+local limit = tonumber(ARGV[3])
+local member = ARGV[4]
+local lane = ARGV[5]
+local patience = tonumber(ARGV[6])
+"""
+    + PRUNE_LUA
+    + """
+prune(key)
+redis.call('ZREMRANGEBYSCORE', waiting, '-inf', now - patience)
+local function lane_of(m)
+  local at = string.find(m, '|', 1, true)
+  if at then return string.sub(m, 1, at - 1) end
+  return m
+end
+local lanes, count, mine, others_waiting = {}, 0, 0, false
+local function see(l)
+  if not lanes[l] then lanes[l] = true; count = count + 1 end
+end
+see(lane)
+local holders = redis.call('ZRANGE', key, 0, -1)
+for _, m in ipairs(holders) do
+  local l = lane_of(m)
+  see(l)
+  if l == lane then mine = mine + 1 end
+end
+for _, m in ipairs(redis.call('ZRANGE', waiting, 0, -1)) do
+  local l = lane_of(m)
+  see(l)
+  if l ~= lane then others_waiting = true end
+end
+local share = math.ceil(limit / count)
+if #holders < limit and (mine < share or not others_waiting) then
+  redis.call('ZADD', key, now, member)
+  redis.call('EXPIRE', key, lease)
+  redis.call('ZREM', waiting, member)
+  return 1
+end
+redis.call('ZADD', waiting, now, member)
+redis.call('EXPIRE', waiting, math.ceil(patience) + 1)
+return 0
+"""
+)
+
 # Re-stamp a slot this turn still holds. A slot that was already reclaimed
 # stays gone: adding it back could take the pool past its limit, which is the
 # over-admission a renewal exists to prevent. Returns 1 when renewed.
@@ -218,7 +280,9 @@ return removed
 
 
 @contextmanager
-def hold(key: str, limit: int, *, lease_seconds: int, max_wait_seconds: float) -> Iterator[None]:
+def hold(
+    key: str, limit: int, *, lease_seconds: int, max_wait_seconds: float, lane: str | None = None
+) -> Iterator[None]:
     """Hold one of ``limit`` fleet-wide slots in ``key`` for the ``with`` body, waiting for one.
 
     The lease must outlast the body (a call's own timeout is the natural
@@ -231,17 +295,29 @@ def hold(key: str, limit: int, *, lease_seconds: int, max_wait_seconds: float) -
     the pool exists to prevent. The wait is bounded all the same, because
     every lease ages out: a holder that died frees its slot ``lease_seconds``
     later. Only a missing store lets the body run without one.
+
+    With a ``lane`` (an organisation) the pool is shared fairly between lanes
+    (:data:`FAIR_ACQUIRE_LUA`): one lane's backlog cannot hold every slot while
+    another lane waits, and a lane alone still takes them all.
     """
     if limit <= 0:
         yield
         return
-    member = uuid.uuid4().hex
+    member = f"{lane.replace('|', '_')}|{uuid.uuid4().hex}" if lane else uuid.uuid4().hex
+    waiting_key = f"{key}:waiting"
     started = time.monotonic()
     next_warning = started + max_wait_seconds
     delay = 0.05
     held = False
     while True:
-        taken = cache.eval_script(ACQUIRE_LUA, [key], [time.time(), lease_seconds, limit, member])
+        if lane:
+            taken = cache.eval_script(
+                FAIR_ACQUIRE_LUA,
+                [key, waiting_key],
+                [time.time(), lease_seconds, limit, member, member.split("|", 1)[0], WAITING_PATIENCE_SECONDS],
+            )
+        else:
+            taken = cache.eval_script(ACQUIRE_LUA, [key], [time.time(), lease_seconds, limit, member])
         if taken is None:
             break  # no shared store: fail open
         if int(taken) == 1:
