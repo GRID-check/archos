@@ -37,6 +37,7 @@ import {
 import { setDocumentReconciledStatus } from './repository'
 import { documentShelf } from './shelf'
 import { publishShelfChanged } from './shelf-live'
+import { projectReadings } from '@/lib/search/facets-projector'
 import { parseIngestFailureCategory, type IngestFailureFacts } from './retry-policy'
 
 /**
@@ -234,12 +235,15 @@ const recordedIngestHash = (metadata: unknown): string | null => {
   return null
 }
 
-const fetchJson = async (url: string, init?: RequestInit): Promise<{ status: number; body: unknown } | null> => {
+const fetchJson = async (
+  url: string,
+  init?: RequestInit
+): Promise<{ status: number; body: unknown; headers?: Headers } | null> => {
   try {
     const response = await fetch(url, { ...init, signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) })
     if (response.status === 404) return { status: 404, body: null }
     if (!response.ok) return null
-    return { status: response.status, body: await response.json() }
+    return { status: response.status, body: await response.json(), headers: response.headers }
   } catch {
     return null
   }
@@ -438,7 +442,16 @@ interface BackendFileEntry {
 interface CollectionFiles {
   byName: Map<string, BackendFileEntry>
   ambiguousNames: Set<string>
+  /**
+   * The backend listed the files but could not merge what it read of them
+   * (`X-Grid-Reading-Unavailable`, `aiq_api/routes/documents.py`): summaries,
+   * dossiers, references and coverage are missing for this read, not absent.
+   */
+  readingUnavailable: boolean
 }
+
+/** The header the backend sets on a listing whose reading could not be merged. */
+const READING_UNAVAILABLE_HEADER = 'x-grid-reading-unavailable'
 
 interface RawBackendFile extends RawRevisionLinkFields {
   file_name?: string
@@ -494,7 +507,7 @@ const loadCollectionFiles = async (collectionName: string): Promise<CollectionFi
       revision: parseRevisionLinkNames(file),
     })
   }
-  return { byName, ambiguousNames }
+  return { byName, ambiguousNames, readingUnavailable: result.headers?.get(READING_UNAVAILABLE_HEADER) === '1' }
 }
 
 // ---------------------------------------------------------------------------
@@ -817,6 +830,37 @@ const extractMetadata = (files: CollectionFiles | null, ref: CollectionFileRef):
   return Object.keys(meta).length > 0 ? meta : null
 }
 
+/** A document's reading as the listing holds it, and whether a newer Fassung replaces it. */
+export interface ListedReading {
+  metadata: DocumentMetadata | null
+  superseded: boolean
+}
+
+/**
+ * The readings of one collection's documents, from a FRESH listing, for the
+ * search projection's backstop refresh (`lib/search/shelf-projection.ts`).
+ * Takes {@link CollectionFileRef}s, the same gate {@link extractMetadata}
+ * takes. `null` when the listing could not be read, or came without the
+ * reading (`X-Grid-Reading-Unavailable`): the caller writes nothing.
+ * A ref absent from the map is one the listing does not name, or names twice.
+ */
+export const readCollectionReadings = async (
+  collectionName: string,
+  refs: readonly CollectionFileRef[]
+): Promise<Map<string, ListedReading> | null> => {
+  const files = await loadCollectionFilesFresh(collectionName)
+  // A listing without the reading says nothing about it: the refresh retries rather than records it.
+  if (!files || files.readingUnavailable) return null
+  const readings = new Map<string, ListedReading>()
+  for (const ref of refs) {
+    if (ref.collectionName !== collectionName || files.ambiguousNames.has(ref.filename)) continue
+    const file = files.byName.get(ref.filename)
+    if (!file) continue
+    readings.set(ref.filename, { metadata: extractMetadata(files, ref), superseded: Boolean(file.revision?.supersededBy) })
+  }
+  return readings
+}
+
 /**
  * One `shelf.changed` per shelf the settled rows are on. A row type that does
  * not carry its shelf (`projectId`, `scope`) announces nothing; the listing
@@ -1020,6 +1064,7 @@ export async function reconcileDocumentStatuses<T extends ReconcilableDocument>(
       : loadCollectionFilesCached(collectionName)
 
   const metaByRow = new Map<string, DocumentMetadata>()
+  const supersededRows = new Set<string>()
   await Promise.all(
     rows.map(async (row) => {
       // The authorship gate, ahead of the fetch. A machine-authored row is not
@@ -1027,10 +1072,24 @@ export async function reconcileDocumentStatuses<T extends ReconcilableDocument>(
       // owns nothing in the list either way.
       const ref = collectionFileRef(row)
       if (!ref) return
-      const meta = extractMetadata(await listingFor(row.collectionName), ref)
+      const files = await listingFor(row.collectionName)
+      const meta = extractMetadata(files, ref)
       if (meta) metaByRow.set(row.id, meta)
+      if (files?.byName.get(ref.filename)?.revision?.supersededBy) supersededRows.add(row.id)
     })
   )
+
+  // A row that came to rest read is searchable by what it is from now on
+  // (ADR-0133): its search row is written here, from the reading this read
+  // already parsed. Never awaited and never thrown: the shelf's backstop
+  // refresh writes whatever this misses.
+  const readNow = settled.filter(([id, resolution]) => resolution.status === 'completed' && metaByRow.has(id))
+  if (readNow.length > 0) {
+    void projectReadings(
+      organizationId,
+      readNow.map(([id]) => ({ documentId: id, metadata: metaByRow.get(id) ?? null, superseded: supersededRows.has(id) }))
+    ).catch((error: unknown) => console.warn('[search] projecting settled readings failed', error))
+  }
 
   // Tell PostHog which uploads came to rest, once the counts are in. The same
   // rows `settled` names: the ones THIS read moved, so a concurrent read that

@@ -167,6 +167,12 @@ def _fused(chunk: Chunk) -> float:
     return float(value) if isinstance(value, (int, float)) else 0.0
 
 
+def _document_id(chunk: Chunk) -> str | None:
+    """The document's BFF id from the chunk's metadata, when the store put it there."""
+    value = chunk.metadata.get("grid_document_id")
+    return value if isinstance(value, str) and value else None
+
+
 def _ranked_group_hits(
     grouped: list[tuple[str, list[Chunk]]], files_per_group: int, snippet_max_chars: int
 ) -> list[DocumentSearchHit]:
@@ -199,6 +205,7 @@ def _ranked_group_hits(
                 snippet=_snippet(chunk.content, snippet_max_chars),
                 page_number=chunk.page_number,
                 collection=collection,
+                grid_document_id=_document_id(chunk),
             )
             ranked.append((-_fused(chunk), group_index, file_index, hit))
     ranked.sort(key=lambda entry: entry[:3])
@@ -212,12 +219,61 @@ def _ranked_group_hits(
 CURRENT_REVISIONS: dict[str, Any] = {"superseded": {"$ne": True}}
 
 
+class MatchesNothing(Exception):
+    """The filters admit no passage: every ``refers_to`` text read as no reference at all."""
+
+
+def reference_values(terms: list[str]) -> list[str]:
+    """``terms`` as the ``references`` values a document carries, through the pushdown ``knowledge_search`` uses.
+
+    A ``kind:key`` token (``norm:önorm b 1600``, the projection's own spelling)
+    is taken as it stands; anything else is read as a person names a reference
+    (``prefilter.plan``: ``references.reference_keys_for``, then
+    ``payload.reference_value``). Any of the terms, so the values are their union.
+    """
+    from knowledge_layer.qdrant import prefilter
+    from knowledge_layer.qdrant.payload import reference_value
+    from knowledge_layer.references import KINDS
+
+    values: list[str] = []
+    for term in terms:
+        kind, sep, key = term.partition(":")
+        if sep and kind in KINDS and key.strip() == key and key:
+            values.append(reference_value(kind, key))
+            continue
+        pushdown = prefilter.plan(doc_class=None, folder=None, file_name=None, refers_to=term)
+        values.extend(pushdown.references)
+    return list(dict.fromkeys(values))
+
+
+def _reading_clauses(filters: GroupedSearchFilters) -> list[dict[str, Any]]:
+    """The conditions on what ingestion put on every chunk: the document, its dossier type, its references.
+
+    Raises :class:`MatchesNothing` when ``refers_to`` was asked and named no
+    reference: dropping the condition would widen the search instead.
+    """
+    from knowledge_layer.qdrant import prefilter
+
+    parts: list[dict[str, Any]] = []
+    if filters.document_ids:
+        parts.append({"grid_document_id": {"$in": list(dict.fromkeys(filters.document_ids))}})
+    if filters.reading_types:
+        parts.append({"document_type": {"$in": list(dict.fromkeys(filters.reading_types))}})
+    if filters.refers_to:
+        references = tuple(reference_values(filters.refers_to))
+        if not references:
+            raise MatchesNothing
+        parts.extend(prefilter.Pushdown(hide_superseded=False, references=references).clauses(user_shelf=False))
+    return parts
+
+
 def grouped_filters(filters: GroupedSearchFilters | None) -> dict[str, Any]:
     """The typed request filters in the retriever's filter grammar, always with the superseded exclusion.
 
     The grammar is what ``knowledge_layer.qdrant.scope`` compiles into the
     scope filter, so these become pre-filters inside the one query. Each
     tag group is a separate any-of, as the BFF's ``matchesTags`` reads them.
+    Raises :class:`MatchesNothing` for filters no passage can meet.
     """
     if filters is None:
         return CURRENT_REVISIONS
@@ -225,6 +281,7 @@ def grouped_filters(filters: GroupedSearchFilters | None) -> dict[str, Any]:
     for group in (filters.document_types, filters.disciplines):
         if group:
             parts.append({"tags": {"$in": list(group)}})
+    parts.extend(_reading_clauses(filters))
     if filters.project_facts is not None:
         facts = filters.project_facts.to_store()
         for key, value in facts.items():
@@ -263,12 +320,16 @@ def add_document_search_routes(router: APIRouter):
         from aiq_agent.knowledge.factory import get_active_retriever
 
         try:
+            filters = grouped_filters(request.filters)
+        except MatchesNothing:
+            return DocumentSearchResponse(hits=[])
+        try:
             grouped = await get_active_retriever().search_grouped(
                 request.query,
                 collections,
                 groups=request.groups,
                 group_size=request.files_per_group * GROUP_CHUNKS_PER_FILE,
-                filters=grouped_filters(request.filters),
+                filters=filters,
                 boost=(
                     {"facts": request.boost.facts.to_store(), "weights": request.boost.weights.to_store()}
                     if request.boost

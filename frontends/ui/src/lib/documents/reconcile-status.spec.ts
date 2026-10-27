@@ -21,9 +21,14 @@ vi.mock('@/lib/analytics/posthog-server', () => ({ captureServer }))
 // shelves a reconciliation announces.
 vi.mock('./shelf-live', () => ({ publishShelfChanged: vi.fn() }))
 
+// The search row's own mapping is `lib/search/facets.spec.ts`'s subject; here
+// it is which readings reconciliation hands over, and when.
+vi.mock('@/lib/search/facets-projector', () => ({ projectReadings: vi.fn().mockResolvedValue(0) }))
+
 import { getDb } from '@/lib/db'
 import { onDocumentsSettled } from '@/lib/upload-batches/settle'
 import { publishShelfChanged } from './shelf-live'
+import { projectReadings } from '@/lib/search/facets-projector'
 import { asDb } from '@/test-utils/db-fixtures'
 import {
   reconcileDocumentStatuses,
@@ -32,6 +37,7 @@ import {
   describeBackendIngestState,
   readRevisionLinkNames,
   refreshCollectionFiles,
+  readCollectionReadings,
   type ReconcilableDocument,
 } from './reconcile-status'
 import { collectionFileRef } from './collection-file-ref'
@@ -769,6 +775,32 @@ describe('reconcileDocumentStatuses metadata enrichment', () => {
   })
 })
 
+describe('readCollectionReadings', () => {
+  beforeEach(() => {
+    vi.stubGlobal('fetch', mockFetch)
+    mockFetch.mockReset()
+    clearCollectionFilesCache()
+  })
+  afterEach(() => {
+    vi.unstubAllGlobals()
+    vi.clearAllMocks()
+  })
+
+  const ref = collectionFileRef(makeRow())
+  const file = { file_name: 'plan.pdf', status: 'success', summary: 'A plan.', superseded_by: 'plan-b.pdf' }
+
+  it('reads each named file\'s reading and whether a newer Fassung replaces it', async () => {
+    mockFetch.mockResolvedValue(collectionResponse([file]))
+    const readings = await readCollectionReadings('proj_abc', ref ? [ref] : [])
+    expect(readings?.get('plan.pdf')).toEqual({ metadata: { summary: 'A plan.' }, superseded: true })
+  })
+
+  it('says nothing when the backend listed the files without their reading, so nothing is blanked', async () => {
+    mockFetch.mockResolvedValue({ ...collectionResponse([file]), headers: new Headers({ 'X-Grid-Reading-Unavailable': '1' }) })
+    expect(await readCollectionReadings('proj_abc', ref ? [ref] : [])).toBeNull()
+  })
+})
+
 describe('reconcileDocumentStatuses authorship gate on the status pass', () => {
   beforeEach(() => {
     vi.stubGlobal('fetch', mockFetch)
@@ -955,6 +987,34 @@ describe('reconcileDocumentStatuses enrichment on a status transition', () => {
 
     expect(again.summary).toBe('A ground-floor plan.')
     expect(collectionCalls()).toHaveLength(2)
+  })
+
+  it('hands the reading of a row that came to rest read to the search projection, with its Fassung state', async () => {
+    makeDbMock()
+    routeBackend(
+      { 'job-1': { status: 'completed', file_details: [{ status: 'success' }] } },
+      { current: [{ ...indexedPlan, superseded_by: 'plan-c.pdf' }] }
+    )
+
+    await reconcileDocumentStatuses([makeRow()], 'org-1')
+
+    expect(projectReadings).toHaveBeenCalledWith('org-1', [
+      expect.objectContaining({
+        documentId: 'doc-1',
+        superseded: true,
+        metadata: expect.objectContaining({ summary: 'A ground-floor plan.', tags: ['Grundriss'] }),
+      }),
+    ])
+  })
+
+  it('hands nothing to the search projection for a row that failed or was already at rest', async () => {
+    makeDbMock()
+    routeBackend({ 'job-1': { status: 'failed', error: 'kaputt' } }, { current: [indexedPlan] })
+
+    await reconcileDocumentStatuses([makeRow()], 'org-1')
+    await reconcileDocumentStatuses([makeRow({ id: 'doc-2', status: 'completed' })], 'org-1')
+
+    expect(projectReadings).not.toHaveBeenCalled()
   })
 
   it('fetches a collection fresh at most once per read, however many rows transition', async () => {

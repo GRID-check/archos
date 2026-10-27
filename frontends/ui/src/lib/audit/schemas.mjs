@@ -658,6 +658,12 @@ export const AUDIT_SCHEMAS = /** @type {const} */ ({
       proposalCount: 'number',
     },
   },
+  // A person exported a search's documents as a Planliste (`lib/search/plan-list-export.ts`).
+  // The format, the scope's kind and counts; never a name, a filter value or the text.
+  'search.plan_list.exported': {
+    targets: [{ type: 'organization' }],
+    metadata: { format: 'string', scope: 'string', documentCount: 'number', filtered: 'boolean', text: 'boolean' },
+  },
   'office_shelf.document.uploaded': {
     targets: [{ type: 'document' }],
     metadata: { filename: 'string', fileSize: 'number', collectionName: 'string' },

@@ -130,6 +130,8 @@ export interface FileWorkspaceProps {
    * (a project's Outlook import) and cannot afford a button for on 393px.
    */
   moreEntries?: readonly ActionMenuEntry[]
+  /** A control at the start of the wide header row (the door into the shelf's search). */
+  headerLeading?: ReactNode
   /**
    * The folder tree and the first page of a folder level as the SERVER already
    * read them, for the first paint (ADR-0102). `initialFiles` is the first
@@ -178,6 +180,7 @@ export function FileWorkspace({
   shelf,
   renderHeader,
   moreEntries,
+  headerLeading,
   initialFolders,
   initialFiles,
   initialNextCursor = null,
@@ -841,6 +844,7 @@ export function FileWorkspace({
       upload={phone ? undefined : uploader({ allowFolders: true, pickFilesRef, pickFolderRef })}
       moreEntries={moreEntries}
       advancedEntries={advancedEntries}
+      leading={headerLeading}
     />
   )
 

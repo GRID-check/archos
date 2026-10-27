@@ -443,6 +443,19 @@ async def test_grouped_search_names_the_searched_collection_not_the_chunks_claim
 
 
 @pytest.mark.asyncio
+async def test_grouped_search_names_each_documents_id_when_its_chunks_carry_it(app):
+    known = _ranked("a.pdf", 0.9, 0.03)
+    known.metadata["grid_document_id"] = "0b0e9c1e-1111-4111-8111-111111111111"
+    unknown = _ranked("b.pdf", 0.8, 0.02)
+    set_active_retriever(_grouped_retriever([("proj_a", [known, unknown])]))
+
+    async with _client(app) as client:
+        res = await client.post("/v1/collections/search", json={"query": "q", "collections": ["proj_a"]})
+
+    assert [h["grid_document_id"] for h in res.json()["hits"]] == ["0b0e9c1e-1111-4111-8111-111111111111", None]
+
+
+@pytest.mark.asyncio
 async def test_grouped_search_hands_filters_and_boost_to_the_retriever_as_its_grammar(app):
     retriever = _grouped_retriever([])
     set_active_retriever(retriever)
@@ -493,6 +506,100 @@ async def test_grouped_search_refuses_an_unknown_filter_or_status(app):
             json={"query": "q", "collections": ["proj_a"], "filters": {"project_status": ["archived"]}},
         )
     assert unknown.status_code == 422 and status.status_code == 422
+
+
+DOC_A = "0e8b1c2a-1111-4222-8333-444455556666"
+DOC_B = "7f3a9d10-aaaa-4bbb-8ccc-dddddddddddd"
+
+
+@pytest.mark.asyncio
+async def test_grouped_search_narrows_to_documents_reading_types_and_references_inside_the_query(app):
+    """ADR-0133 item 5: the BFF's candidates, the dossier's type and its references are pre-filters, any of each."""
+    retriever = _grouped_retriever([])
+    set_active_retriever(retriever)
+
+    async with _client(app) as client:
+        res = await client.post(
+            "/v1/collections/search",
+            json={
+                "query": "q",
+                "collections": ["proj_a"],
+                "filters": {
+                    "document_types": ["Plan"],
+                    "document_ids": [DOC_A.upper(), DOC_B, DOC_A],
+                    "reading_types": ["site_plan", "fire_safety_concept"],
+                    "refers_to": ["ÖNORM B 1600", "EP-05", "Brandschutzkonzept", "law:§ 33 baybo"],
+                },
+            },
+        )
+
+    assert res.status_code == 200
+    assert retriever.search_grouped.await_args.kwargs["filters"] == {
+        "$and": [
+            {"tags": {"$in": ["Plan"]}},
+            {"grid_document_id": {"$in": [DOC_A, DOC_B]}},
+            {"document_type": {"$in": ["site_plan", "fire_safety_concept"]}},
+            {
+                "references": {
+                    "$in": ["norm:önorm b 1600", "plan:ep-05", "document:fire_safety_concept", "law:§ 33 baybo"]
+                }
+            },
+            {"superseded": {"$ne": True}},
+        ]
+    }
+
+
+def test_the_reading_filters_compile_in_the_one_scope_filter():
+    """Every field is one the scope filter accepts (indexed, keyword), so Qdrant applies it, not a post-filter."""
+    from knowledge_layer.qdrant.scope import scope_filter
+
+    from aiq_api.models.requests import GroupedSearchFilters
+    from aiq_api.routes.document_search import grouped_filters
+
+    filters = grouped_filters(
+        GroupedSearchFilters(document_ids=[DOC_A], reading_types=["permit"], refers_to=["ÖNORM B 1600"])
+    )
+    compiled = scope_filter(["proj_a"], filters)
+    assert "grid_document_id" in repr(compiled) and "document_type" in repr(compiled)
+    assert "norm:önorm b 1600" in repr(compiled)
+
+
+@pytest.mark.asyncio
+async def test_a_reference_nobody_can_read_matches_nothing_without_widening(app):
+    """``refers_to`` that names no reference is no condition to drop: the answer is empty, Qdrant is not asked."""
+    retriever = _grouped_retriever([("proj_a", [_ranked("a.pdf", 0.9, 0.9)])])
+    set_active_retriever(retriever)
+
+    async with _client(app) as client:
+        res = await client.post(
+            "/v1/collections/search",
+            json={"query": "q", "collections": ["proj_a"], "filters": {"refers_to": ["hallo"]}},
+        )
+
+    assert res.status_code == 200 and res.json()["hits"] == []
+    retriever.search_grouped.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "filters",
+    [
+        {"document_ids": ["not-a-uuid"]},
+        {"document_ids": [DOC_A] * 1001},
+        {"reading_types": ["Plan"]},
+        {"reading_types": ["site_plan"] * 25},
+        {"refers_to": ["x"] * 9},
+        {"refers_to": [""]},
+        {"refers_to": ["x" * 201]},
+    ],
+)
+async def test_grouped_search_refuses_reading_filters_out_of_bounds(app, filters):
+    set_active_retriever(_grouped_retriever([]))
+    async with _client(app) as client:
+        res = await client.post(
+            "/v1/collections/search", json={"query": "q", "collections": ["proj_a"], "filters": filters}
+        )
+    assert res.status_code == 422
 
 
 @pytest.mark.asyncio

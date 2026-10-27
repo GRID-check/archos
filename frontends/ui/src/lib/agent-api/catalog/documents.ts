@@ -14,6 +14,7 @@ import {
 import { nameProbeRequestSchema } from '@/lib/documents/name-probe-types'
 import { DOCUMENT_STATUSES } from '@/lib/documents/document-status'
 import { SHELF_SCOPES } from '@/lib/documents/shelf-scope'
+import { searchBodyInputSchema, searchBodySchema, searchExportQuerySchema, searchScopeQuerySchema } from '@/lib/search/search-wire'
 import type { AgentOperation } from '../operation'
 import { MAX_UPLOAD_BYTES, documentUploadFields, uploadBodySchemaWith } from '../upload-wire'
 
@@ -258,6 +259,41 @@ export const documentsOperations = [
     body: searchDocumentsSchema,
     readOnly: true,
     load: () => import('@/app/api/documents/search/route'),
+  },
+  {
+    name: 'workspace-search',
+    domain: 'documents',
+    summary: 'Search everything the person may read, with filters',
+    description:
+      'Searches every shelf the person may read, or one project (`projectId`), a folder of it (`folderId`) or the office ' +
+      'shelf (`scope: office_shelf`). Finds documents by name, by what ingestion read (type, parties, facts, references, ' +
+      'drawing number, revision, scale) and by content with the passage and page; also annotations, folders, projects and ' +
+      'conversations (`kinds`). `sort` orders like a drawing register, `facets` counts per value, `cursor` pages one kind. ' +
+      'A passage points at a page: read the document before quoting it.',
+    method: 'POST',
+    path: '/api/search',
+    query: searchScopeQuerySchema,
+    body: searchBodySchema,
+    readOnly: true,
+    spansProjects: 'unlessScoped',
+    load: () => import('@/app/api/search/route'),
+  },
+  {
+    name: 'workspace-search-export',
+    domain: 'documents',
+    summary: 'Export the documents a search finds as a drawing register file',
+    description:
+      'The documents of a search (same scope and body as workspace-search) as a drawing register: csv (semicolon, German locale) or ' +
+      'xlsx, with drawing number, revision, plan date, scale, name, title, type, project, folder, dates, uploader, pages and ' +
+      'whether it is the current revision, in the search order. Refused above 5000 documents: narrow the filters.',
+    method: 'POST',
+    path: '/api/search/export',
+    query: searchExportQuerySchema,
+    body: searchBodyInputSchema,
+    readOnly: true,
+    spansProjects: 'unlessScoped',
+    binaryResponse: ['text/csv', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'],
+    load: () => import('@/app/api/search/export/route'),
   },
   {
     name: 'document-summary-get',

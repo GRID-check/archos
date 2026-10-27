@@ -194,6 +194,13 @@ const BOUNDARY_MIGRATIONS = [
   // Adds office_convention_decisions — a person's confirm or decline of one
   // line of the office's conventions (ADR-0129). Keyed by its organization.
   '0182_office_convention_decisions.sql',
+  // Adds document_search_facets and document_search_shelves — the filterable
+  // projection of each document's reading and each shelf's sync state
+  // (ADR-0133). Both keyed by their organization.
+  '0185_document_search.sql',
+  // Adds saved_searches — a person's saved search questions, shareable within
+  // the office (ADR-0133, slice 5). Keyed by its organization.
+  '0186_saved_searches.sql',
 ]
 
 const MIGRATION_SOURCES = BOUNDARY_MIGRATIONS.map((file) =>

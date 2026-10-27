@@ -13,12 +13,11 @@
 
 import * as React from 'react'
 import { usePathname, useRouter } from 'next/navigation'
-import { Building2, FolderKanban, LogOut, Moon, Plus, Sun, UserRound } from 'lucide-react'
+import { Building2, FolderKanban, LogOut, Moon, Plus, Search, Sun, UserRound } from 'lucide-react'
 
 import { useAuth } from '@/adapters/auth/use-auth'
 import {
   CommandDialog,
-  CommandEmpty,
   CommandGroup,
   CommandInput,
   CommandItem,
@@ -121,6 +120,16 @@ export function CommandPalette({
   const t = useTranslations('shortcuts.palette')
   const tNav = useTranslations('nav')
   const tCommon = useTranslations('common')
+  const tSearch = useTranslations('search.palette')
+
+  // What the reader typed: the palette's first row carries it into the
+  // workspace search (`/app/search?q=…`), so ⌘K is also the way to find a
+  // document, not only a place.
+  const [query, setQuery] = React.useState('')
+  React.useEffect(() => {
+    if (!open) setQuery('')
+  }, [open])
+  const searchHref = query.trim() ? `/app/search?q=${encodeURIComponent(query.trim())}` : '/app/search'
 
   const projectId = projectIdFromPathname(pathname)
   // The ↑ ↓ ↵ Esc legend is for a keyboard. Read off the primary pointer, so a
@@ -179,6 +188,8 @@ export function CommandPalette({
     >
       <div className="flex shrink-0 items-center md:contents max-md:border-b max-md:[&_[data-slot=command-input-wrapper]]:border-b-0 max-md:[&_[data-slot=command-input-wrapper]]:flex-1 max-md:[&_[data-slot=command-input-wrapper]]:h-14 max-md:[&_[data-slot=command-input-wrapper]]:bg-transparent!">
         <CommandInput
+          value={query}
+          onValueChange={setQuery}
           placeholder={t('placeholder')}
           // The wrapper's wash is this field's focus signal (and on a phone,
           // the keyboard is); the global `:focus-visible` outline is unlayered
@@ -195,7 +206,23 @@ export function CommandPalette({
         </DialogClose>
       </div>
       <CommandList className="min-h-0 max-md:max-h-none max-md:flex-1 max-md:overscroll-contain">
-        <CommandEmpty>{t('empty')}</CommandEmpty>
+        {/* No „Keine Ergebnisse“: the first row always answers, with a search
+            for what was typed. */}
+        <CommandGroup forceMount>
+          <CommandItem
+            forceMount
+            value={`workspace-search ${query}`}
+            onSelect={() => runCommand(() => router.push(searchHref))}
+            className={PALETTE_ITEM_CLASS}
+            data-testid="palette-workspace-search"
+          >
+            <Search className="text-muted-foreground" aria-hidden />
+            <span className="min-w-0 flex-1 truncate">
+              {query.trim() ? tSearch('searchFor', { text: query.trim() }) : tSearch('open')}
+            </span>
+          </CommandItem>
+        </CommandGroup>
+        <CommandSeparator />
 
         {projects !== null && projects.length > 0 && (
           <CommandGroup heading={t('groups.projects')}>

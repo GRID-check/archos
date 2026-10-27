@@ -1,7 +1,7 @@
 'use client'
 
 import type { JSX } from 'react'
-import type { ReactNode, Ref } from 'react'
+import type { KeyboardEvent as ReactKeyboardEvent, ReactNode, Ref } from 'react'
 import { Search, X } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
@@ -29,6 +29,13 @@ export interface SearchFieldProps {
   inputRef?: Ref<HTMLInputElement>
   /** Optional control after the field (a run / submit button). */
   trailing?: ReactNode
+  /**
+   * Shown inside the field's end while it is empty: the shortcut that focuses
+   * it (`<KbdGroup>`). Gives way to the clear control once there is a value.
+   */
+  hint?: ReactNode
+  /** Keys the field handles itself (Escape, the arrows over a result list). */
+  onKeyDown?: (event: ReactKeyboardEvent<HTMLInputElement>) => void
 }
 
 /**
@@ -48,6 +55,8 @@ export function SearchField({
   type = 'text',
   inputRef,
   trailing,
+  hint,
+  onKeyDown,
 }: SearchFieldProps): JSX.Element {
   const canClear = Boolean(clearLabel)
   const hasValue = Boolean(value)
@@ -62,6 +71,7 @@ export function SearchField({
         type={type}
         value={value}
         onChange={(event) => onChange(event.target.value)}
+        onKeyDown={onKeyDown}
         placeholder={placeholder}
         aria-label={label}
         // THE SOFT KEYBOARD IS PART OF THIS CONTROL, and until now nothing in the
@@ -92,9 +102,15 @@ export function SearchField({
           // `pointer-coarse:size-11`), so the gutter grows with it and the end
           // of a long query never runs under the X.
           canClear && 'pr-8 pointer-coarse:pr-11',
+          hint && !hasValue && 'sm:pr-20',
           inputClassName,
         )}
       />
+      {hint && !hasValue ? (
+        <InputGroupAddon align="end" className="right-2 max-sm:hidden pointer-coarse:hidden" aria-hidden>
+          {hint}
+        </InputGroupAddon>
+      ) : null}
       {canClear ? (
         <Button
           type="button"
