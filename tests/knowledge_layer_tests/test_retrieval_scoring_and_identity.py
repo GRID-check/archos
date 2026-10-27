@@ -161,15 +161,15 @@ def test_a_malformed_reranker_env_var_does_not_break_the_import() -> None:
 
     from sources.knowledge_layer.src import cross_encoder
 
-    os.environ["AIQ_RERANKER_TIMEOUT_SECONDS"] = "abc"
-    os.environ["AIQ_RERANKER_MAX_DOC_CHARS"] = "lots"
+    os.environ["GRID_RERANKER_TIMEOUT_SECONDS"] = "abc"
+    os.environ["GRID_RERANKER_MAX_DOC_CHARS"] = "lots"
     try:
         reloaded = importlib.reload(cross_encoder)
         assert reloaded.DEFAULT_TIMEOUT_SECONDS == 3.0
         assert reloaded.DEFAULT_MAX_DOC_CHARS == 4000
     finally:
-        del os.environ["AIQ_RERANKER_TIMEOUT_SECONDS"]
-        del os.environ["AIQ_RERANKER_MAX_DOC_CHARS"]
+        del os.environ["GRID_RERANKER_TIMEOUT_SECONDS"]
+        del os.environ["GRID_RERANKER_MAX_DOC_CHARS"]
         importlib.reload(cross_encoder)
 
 
@@ -184,8 +184,8 @@ def test_resolving_a_nonsense_provider_returns_none_rather_than_raising() -> Non
 # ===========================================================================
 # Embedding-model fingerprint
 #
-# Swapping AIQ_EMBED_MODEL between two models of the SAME dimension, or
-# repointing AIQ_EMBED_BASE_URL, produces no error anywhere: stored and query
+# Swapping GRID_EMBED_MODEL between two models of the SAME dimension, or
+# repointing GRID_EMBED_BASE_URL, produces no error anywhere: stored and query
 # vectors come from different spaces and retrieval is quietly wrong at a score
 # distribution that looks entirely normal.
 # ===========================================================================

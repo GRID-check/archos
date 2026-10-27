@@ -9,7 +9,7 @@ Points written before the rename hold ``punkt_id`` / ``punkt_path`` / ``punkt_ti
     python scripts/qdrant_rename_payload_keys.py all --apply          # create the indexes, rewrite, verify
     python scripts/qdrant_rename_payload_keys.py all --verify         # counts only; exit 1 while any legacy key is left
 
-It reads the environment the backend reads: ``AIQ_QDRANT_URL`` and ``AIQ_QDRANT_API_KEY``. Without ``--apply`` it
+It reads the environment the backend reads: ``GRID_QDRANT_URL`` and ``GRID_QDRANT_API_KEY``. Without ``--apply`` it
 writes nothing at all, not even the payload indexes. With it, per collection: the payload indexes the English
 names need (idempotent, the same call the backend makes at start), then for each point one request that SETS
 the English fields and one that DELETES the German keys, in that order, so an interrupted run leaves a point

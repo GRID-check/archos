@@ -121,7 +121,7 @@ string is re-embedded once per collection, every time, with no memoization.
 | Citation source registry (accumulates across turns) | module-global LRU (`src/aiq_agent/common/citation_verification.py:352-373`) | **No** |
 | Ingestion job/file status | in-memory dicts in singleton ingestor | **No** |
 | Deep-research execution + cancel | localhost Dask futures | **No** |
-| NAT job metadata/events | SQLite default; PG supported (+ `AIQ_LISTEN_DB_URL` for SSE) | Only with PG |
+| NAT job metadata/events | SQLite default; PG supported (+ `GRID_LISTEN_DB_URL` for SSE) | Only with PG |
 | BFF caches (flags, prompt view, catalog, platform) | per-process Maps | Stale-read hazard |
 | Vector store | embedded Chroma on local volume | **No** |
 
@@ -232,7 +232,7 @@ The localhost-Dask design cannot span replicas (submit on A, cancel routed to B 
 
 Precondition for either (and for any second backend replica): flip the default SQLite stores to
 the already-supported Postgres DSNs (`job_info`/`job_events`, checkpoints, summary store,
-`AIQ_LISTEN_DB_URL`) — this is configuration, not code.
+`GRID_LISTEN_DB_URL`) — this is configuration, not code.
 
 ### 4.4 Single points of failure to acknowledge
 

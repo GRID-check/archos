@@ -201,7 +201,7 @@
     "sources/knowledge_layer/src/cross_encoder.py": 650,
     "sources/knowledge_layer/src/estate.py": 1113,
     "sources/knowledge_layer/src/estate_grep.py": 643,
-    "sources/knowledge_layer/src/llamaindex/adapter.py": 6905,
+    "sources/knowledge_layer/src/llamaindex/adapter.py": 6904,
     "sources/knowledge_layer/src/llamaindex/clause_chunking.py": 736,
     "sources/knowledge_layer/src/llamaindex/section_chunking.py": 791,
     "sources/knowledge_layer/src/llamaindex/visual_analysis.py": 1011,

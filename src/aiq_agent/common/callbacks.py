@@ -22,7 +22,7 @@ RESET_ALL = "\033[0m"
 
 
 def is_verbose_enabled() -> bool:
-    return os.environ.get("AIQ_VERBOSE", "").lower() in ("1", "true", "yes")
+    return os.environ.get("GRID_VERBOSE", "").lower() in ("1", "true", "yes")
 
 
 class ResearchLogger:

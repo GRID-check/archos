@@ -58,15 +58,15 @@ def test_reports_the_base_url_each_llm_targets(client, monkeypatch):
     # An LLM config without a base_url reports None rather than being omitted:
     # "unknown endpoint" must be distinguishable from "no such LLM".
     assert base_urls["weird_llm"] is None
-    # The ingestion VLM has its own credential plane (AIQ_VLM_BASE_URL) and is
+    # The ingestion VLM has its own credential plane (GRID_VLM_BASE_URL) and is
     # routinely a different provider from the `llms:` block.
     assert isinstance(base_urls["vlm"], str) and base_urls["vlm"]
 
 
 def test_vlm_default_reflects_env(monkeypatch):
-    """The synthetic `vlm` default mirrors AIQ_VLM_MODEL (resolved at
+    """The synthetic `vlm` default mirrors GRID_VLM_MODEL (resolved at
     route-registration time)."""
-    monkeypatch.setenv("AIQ_VLM_MODEL", "vendor/vision-x")
+    monkeypatch.setenv("GRID_VLM_MODEL", "vendor/vision-x")
     monkeypatch.delenv("GRID_INTERNAL_API_TOKEN", raising=False)
     app = FastAPI()
     router = APIRouter()

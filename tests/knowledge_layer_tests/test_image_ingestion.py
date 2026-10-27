@@ -516,7 +516,7 @@ class TestRunIngestionImageBranch:
         assert not status.is_success
         detail = status.file_details[0]
         assert detail.status.value == "failed"
-        assert detail.error_message == "vlm_not_configured: image ingestion requires AIQ_VLM_API_KEY"
+        assert detail.error_message == "vlm_not_configured: image ingestion requires GRID_VLM_API_KEY"
 
     def test_summary_fail_but_tags_succeed_persists_fallback_summary(self, tmp_path, monkeypatch, ingestor, summary_db):
         """Fix 1: when the summary LLM call fails but tag classification

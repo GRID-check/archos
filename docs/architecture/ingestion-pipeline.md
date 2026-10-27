@@ -40,7 +40,7 @@ flowchart LR
     PL[_ingest_job A:4674<br/>the per-file pipeline]
   end
   subgraph Providers["OpenRouter"]
-    VLM[vision model<br/>AIQ_VLM_MODEL]
+    VLM[vision model<br/>GRID_VLM_MODEL]
     JEV[Jev decisions]
     LLM[summary model]
     EMB[embeddings]
@@ -64,7 +64,7 @@ Three things in this picture decide almost everything about speed and reliabilit
 
 1. **One document is one queue row, one claim, one worker thread.** Nothing inside a
    document runs on a second machine (ADR-0117 keeps it that way).
-2. **Every vision call in the fleet holds one of `AIQ_VLM_FLEET_CONCURRENCY` slots**
+2. **Every vision call in the fleet holds one of `GRID_VLM_FLEET_CONCURRENCY` slots**
    (32 by default, a lease pool on Dragonfly, A:419). That pool is shared by every
    office on the platform. It is the throughput ceiling, not CPU.
 3. **Status is pulled, never pushed.** The BFF learns a document is done when someone
@@ -315,7 +315,7 @@ order, so B's document waits for one document of A's to finish before it starts.
 | Question | Where |
 |---|---|
 | Why did this file fail? | `documents.ingest_error`, the job's `file_details`, `[ingest-perf]` and the worker log for the job id |
-| Why is this page missing from search? | page triage (`page_triage.classify_page`), the render cap (`AIQ_MAX_RENDERED_PAGES`), a skipped vision or OCR call (warning in the log only) |
+| Why is this page missing from search? | page triage (`page_triage.classify_page`), the render cap (`GRID_MAX_RENDERED_PAGES`), a skipped vision or OCR call (warning in the log only) |
 | What did it cost? | `llm_usage_events` where `activity = 'ingest'` and the job id |
 | Who decides the order of jobs? | `aiq_agent.knowledge.ingest_queue.claim_next`, ADR-0076 and ADR-0079 |
 | Where is the vision prompt? | `visual_analysis.build_prompt` over `visual_domains` |

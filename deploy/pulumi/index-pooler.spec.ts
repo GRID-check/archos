@@ -51,13 +51,13 @@ const KEDA_DIRECT = `${DIRECT}.${NAMESPACE}.svc.cluster.local`;
 const EXPECTED_HOSTS: Record<string, string> = {
   // The pooled five: self-contained per transaction.
   "grid-secrets/NAT_JOB_STORE_DB_URL": POOLER,  // pragma: allowlist secret
-  "grid-secrets/AIQ_CHECKPOINT_DB": POOLER,  // pragma: allowlist secret
-  "grid-secrets/AIQ_DEEP_CHECKPOINT_DB": POOLER,
-  "grid-secrets/AIQ_SUMMARY_DB": POOLER,
+  "grid-secrets/GRID_CHECKPOINT_DB": POOLER,  // pragma: allowlist secret
+  "grid-secrets/GRID_DEEP_CHECKPOINT_DB": POOLER,
+  "grid-secrets/GRID_SUMMARY_DB": POOLER,
   "grid-secrets/GRID_APP_DATABASE_URL": POOLER,
   // Session-scoped: LISTEN/NOTIFY, session advisory locks, DDL under the owner.
-  "grid-secrets/AIQ_LISTEN_DB_URL": DIRECT,
-  "grid-secrets/AIQ_LOCK_DB_URL": DIRECT,
+  "grid-secrets/GRID_LISTEN_DB_URL": DIRECT,
+  "grid-secrets/GRID_LOCK_DB_URL": DIRECT,
   "grid-secrets/GRID_APP_MIGRATION_DATABASE_URL": DIRECT,
   // KEDA polls from another namespace, so by FQDN, and straight to the primary.
   "grid-keda-scaler/KEDA_JOBS_QUEUE_DB_URL": KEDA_DIRECT,
@@ -69,7 +69,7 @@ const EXPECTED_HOSTS: Record<string, string> = {
   "keda-scaler-grants-dsns/JOBS_DSN": DIRECT,
   "keda-scaler-grants-dsns/APP_DSN": DIRECT,
   "keda-scaler-grants-dsns/NAT_JOB_STORE_DB_URL": DIRECT,  // pragma: allowlist secret
-  "keda-scaler-grants-dsns/AIQ_SUMMARY_DB": DIRECT,
+  "keda-scaler-grants-dsns/GRID_SUMMARY_DB": DIRECT,
   // Prisma migrates under a session advisory lock of its own.
   "langfuse-secrets/database-url": DIRECT,
 };
@@ -129,14 +129,14 @@ describe("Postgres routing", () => {
     // reading a failure sees the reason and not only a diff of hostnames.
     const hosts = Object.fromEntries(postgresDsns().map(({ id, url }) => [id, url.hostname]));
 
-    for (const key of ["AIQ_LISTEN_DB_URL", "AIQ_LOCK_DB_URL", "GRID_APP_MIGRATION_DATABASE_URL"]) {
+    for (const key of ["GRID_LISTEN_DB_URL", "GRID_LOCK_DB_URL", "GRID_APP_MIGRATION_DATABASE_URL"]) {
       expect(hosts[`grid-secrets/${key}`], key).toBe(DIRECT);
     }
   });
 
-  it("points AIQ_LOCK_DB_URL at the jobs database as the owner, like the other Python DSNs", () => {
-    const lock = postgresDsns().find(({ id }) => id === "grid-secrets/AIQ_LOCK_DB_URL")!.url;
-    const listen = postgresDsns().find(({ id }) => id === "grid-secrets/AIQ_LISTEN_DB_URL")!.url;
+  it("points GRID_LOCK_DB_URL at the jobs database as the owner, like the other Python DSNs", () => {
+    const lock = postgresDsns().find(({ id }) => id === "grid-secrets/GRID_LOCK_DB_URL")!.url;
+    const listen = postgresDsns().find(({ id }) => id === "grid-secrets/GRID_LISTEN_DB_URL")!.url;
 
     expect(lock.pathname).toBe("/aiq_jobs");
     expect(lock.username).toBe(listen.username);
@@ -178,8 +178,8 @@ describe("Postgres routing", () => {
 
     for (const tier of ["aiq-agent", "aiq-api", "agent-worker", "ingest-worker"]) {
       const names = env(tier);
-      expect(names, `${tier} has env`).toContain("AIQ_LISTEN_DB_URL");
-      expect(names, `${tier} takes its locks on the direct DSN`).toContain("AIQ_LOCK_DB_URL");
+      expect(names, `${tier} has env`).toContain("GRID_LISTEN_DB_URL");
+      expect(names, `${tier} takes its locks on the direct DSN`).toContain("GRID_LOCK_DB_URL");
     }
   });
 

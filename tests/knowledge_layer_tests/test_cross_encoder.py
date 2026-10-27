@@ -28,7 +28,7 @@ def _isolated_breaker_state():
 
 @pytest.fixture()
 def _no_keys(monkeypatch):
-    monkeypatch.delenv("AIQ_RERANKER_API_KEY", raising=False)
+    monkeypatch.delenv("GRID_RERANKER_API_KEY", raising=False)
     monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
 
 

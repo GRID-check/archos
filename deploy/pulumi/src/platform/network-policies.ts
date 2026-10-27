@@ -24,7 +24,7 @@ const OTEL_AGENT_POD = { podSelector: { matchLabels: { "app.kubernetes.io/name":
 export const LANGFUSE_BACKEND_CALLERS = ["aiq-agent", "aiq-api", "agent-worker"] as const;
 
 /**
- * The pods that get `AIQ_QDRANT_URL` (every role built from `backendEnv`), the
+ * The pods that get `GRID_QDRANT_URL` (every role built from `backendEnv`), the
  * snapshot CronJob, the one-shot Chroma migration's importer, and the
  * operator's throwaway `qdrant-ops` pod (the runbook's restore and shard
  * moves, run from inside the namespace): the named callers of Qdrant's client
