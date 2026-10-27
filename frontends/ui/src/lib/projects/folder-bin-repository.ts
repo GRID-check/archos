@@ -42,11 +42,11 @@ export async function listDocumentIdsInFolders(tx: DbExecutor, projectId: string
 /**
  * Take the project's bin lock until the transaction ends. Inserts and moves of
  * documents and folders into a folder of the project take it SHARED in their
- * trigger (`grid_refuse_write_into_deleted_folder`), so once this returns no
+ * trigger (`refuse_write_into_deleted_folder`), so once this returns no
  * write into the subtree is in flight, and none starts before the commit.
  */
 export async function takeBinLock(tx: DbExecutor, projectId: string): Promise<void> {
-  await tx.execute(sql`SELECT pg_advisory_xact_lock(grid_folder_bin_lock_key(${projectId}::uuid))`)
+  await tx.execute(sql`SELECT pg_advisory_xact_lock(folder_bin_lock_key(${projectId}::uuid))`)
 }
 
 /** A PROJECT folder row in any state, with what the bin reads of it. */

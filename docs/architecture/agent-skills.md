@@ -620,7 +620,7 @@ surviving standard row becomes an offer, the CHECK narrows to `offer` and the
 partial index goes. Its counterpart `0087_organization_instructions.sql` adds
 `organization_instructions`, the tenant-side home for what the tier was misused
 for (ADR-0060). Each
-tenant table joins the tenant boundary with a `grid_secure_table()` line (ADR-0041) —
+tenant table joins the tenant boundary with a `secure_table()` line (ADR-0041) —
 re-emitted by 0043 under the new names, because a rename carries the policy
 along but leaves its stored predicate written against the old table name.
 `0086_task_definitions.sql` adds the collapsed pair and re-secures them the same
@@ -658,7 +658,7 @@ way.
   `published`, and the two closed defaults mean different things: unpublished is
   *invisible*, `offer` *requires consent*
 - No `organization_id`: one row reaches every tenant at once. Secured with
-  `grid_secure_platform_table` — every tenant reads it, only the platform role
+  `secure_platform_table` — every tenant reads it, only the platform role
   writes it, so the fleet catalogue is an enforced boundary rather than a
   convention
 
@@ -673,8 +673,8 @@ way.
 - Its own table rather than a key in `organizations.settings`, for three things
   the jsonb bag cannot hold: the bound in SQL, attribution for "who told the
   agent to do that", and its own cache entry on the WS-upgrade hot path
-- Secured with `grid_secure_table('organization_instructions',
-  'organization_id = grid_current_org()')` and listed in `rls-coverage.spec.ts`
+- Secured with `secure_table('organization_instructions',
+  'organization_id = current_org()')` and listed in `rls-coverage.spec.ts`
 - It is **not a skill** and does not appear in any catalog: see ADR-0060
 
 `curated_skill_activations` — an org's decision about one curated skill

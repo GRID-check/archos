@@ -25,7 +25,7 @@
  *     folder (ADR-0093), as `admitSourceFolders` marks it for the
  *     conversation's own project. Open content of another project is not
  *     restricted use: `conversation_source_projects` stays outside
- *     `grid_conversation_restricted_use`, so a hand-out of projects alone marks
+ *     `conversation_restricted_use`, so a hand-out of projects alone marks
  *     nothing.
  *
  * The record therefore exists before the content can reach the model, whatever

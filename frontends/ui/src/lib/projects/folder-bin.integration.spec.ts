@@ -999,7 +999,7 @@ describe.skipIf(!url)('the Papierkorb against live Postgres (migration 0115)', (
       const [entityType, entityId] = target()
       await hold(entityType, entityId)
       const [covered] = await inOrg(() =>
-        db.execute<{ held: boolean }>(sql`SELECT grid_legal_hold_blocks('folder', ${folder.contracts}, ${ORG}) AS held`)
+        db.execute<{ held: boolean }>(sql`SELECT legal_hold_blocks('folder', ${folder.contracts}, ${ORG}) AS held`)
       )
       expect(covered.held).toBe(true)
     })
@@ -1007,7 +1007,7 @@ describe.skipIf(!url)('the Papierkorb against live Postgres (migration 0115)', (
     it('does not cover a folder for a hold elsewhere in the project', async () => {
       await hold('document', doc.plan)
       const [covered] = await inOrg(() =>
-        db.execute<{ held: boolean }>(sql`SELECT grid_legal_hold_blocks('folder', ${folder.contracts}, ${ORG}) AS held`)
+        db.execute<{ held: boolean }>(sql`SELECT legal_hold_blocks('folder', ${folder.contracts}, ${ORG}) AS held`)
       )
       expect(covered.held).toBe(false)
     })
@@ -1015,10 +1015,10 @@ describe.skipIf(!url)('the Papierkorb against live Postgres (migration 0115)', (
     it('covers a document through a hold on a folder above it, and a project through a hold on one of its folders', async () => {
       await hold('folder', folder.admin)
       const [document] = await inOrg(() =>
-        db.execute<{ held: boolean }>(sql`SELECT grid_legal_hold_blocks('document', ${doc.old}, ${ORG}) AS held`)
+        db.execute<{ held: boolean }>(sql`SELECT legal_hold_blocks('document', ${doc.old}, ${ORG}) AS held`)
       )
       const [project] = await inOrg(() =>
-        db.execute<{ held: boolean }>(sql`SELECT grid_legal_hold_blocks('project', ${projectId}, ${ORG}) AS held`)
+        db.execute<{ held: boolean }>(sql`SELECT legal_hold_blocks('project', ${projectId}, ${ORG}) AS held`)
       )
       expect([document.held, project.held]).toEqual([true, true])
     })

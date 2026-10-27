@@ -55,7 +55,7 @@ deciding person's session, and the decision is one row every reader sees.
 
 ## The data
 
-`proposed_changes` sits under `grid_secure_table` RLS: the organization, and for
+`proposed_changes` sits under `secure_table` RLS: the organization, and for
 a project's proposal the project's organization; a Büroablage proposal is the
 organization's alone, as a Büroablage folder is (0146). Both foreign keys are
 composite with the organization

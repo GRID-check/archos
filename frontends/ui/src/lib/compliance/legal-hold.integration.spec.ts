@@ -5,7 +5,7 @@
  *
  * The unit suites double `isCoveredByActiveHold` and prove the delete paths
  * ask before they erase. Only this can prove the answer: the predicate is a
- * plpgsql function (`grid_legal_hold_blocks`) that joins documents,
+ * plpgsql function (`legal_hold_blocks`) that joins documents,
  * conversations and holds, and it runs under row-level security.
  *
  *   GRID_TEST_DATABASE_URL=postgres://grid_app_rw@host:port/grid_app \

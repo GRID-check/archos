@@ -61,23 +61,23 @@ Two lines, and the build tells you if you forget.
 
 ```sql
 -- Tenant data: the row carries its own organization.
-SELECT grid_secure_table('my_table', 'organization_id = grid_current_org()');
+SELECT secure_table('my_table', 'organization_id = current_org()');
 
 -- A child table with no organization_id: resolve through the parent.
-SELECT grid_secure_table('my_child_table',
-  'EXISTS (SELECT 1 FROM projects p WHERE p.id = project_id AND p.organization_id = grid_current_org())');
+SELECT secure_table('my_child_table',
+  'EXISTS (SELECT 1 FROM projects p WHERE p.id = project_id AND p.organization_id = current_org())');
 
 -- Platform-wide configuration: every tenant reads it, only the platform writes it.
-SELECT grid_secure_platform_table('my_platform_table');
+SELECT secure_platform_table('my_platform_table');
 ```
 
-`grid_secure_table` enables RLS, installs the single `grid_tenant_isolation`
+`secure_table` enables RLS, installs the single `grid_tenant_isolation`
 policy and grants DML — three statements that must agree, so they are one call.
 
 If you skip it, `rls-coverage.spec.ts` fails by name:
 
 ```
-These tables are outside the tenant boundary. Add a grid_secure_table() line
+These tables are outside the tenant boundary. Add a secure_table() line
 for each one to a migration: expected [ 'my_table' ] to deeply equal []
 ```
 
@@ -139,9 +139,9 @@ Symptoms map to causes almost one-to-one.
 | Symptom | Cause | Fix |
 |---|---|---|
 | `MissingTenantContextError` | Code path never established a scope | Wrap it in `withTenant` / `withPlatformAccess` |
-| `permission denied for table X` | Table not in the boundary, or a tenant writing a `platform_*` table | Add `grid_secure_table('X', …)`; platform writes go through `withPlatformAccess` |
+| `permission denied for table X` | Table not in the boundary, or a tenant writing a `platform_*` table | Add `secure_table('X', …)`; platform writes go through `withPlatformAccess` |
 | `new row violates row-level security policy` | The row's organization ≠ the active one | Usually correct behaviour — check which tenant you meant |
-| Query returns `[]`, no error | Right context, wrong tenant — or a `NULL` `organization_id` row | `SELECT grid_current_org();` inside the same transaction |
+| Query returns `[]`, no error | Right context, wrong tenant — or a `NULL` `organization_id` row | `SELECT current_org();` inside the same transaction |
 | A worker goes quiet, ticks look healthy | Lost its `SET LOCAL ROLE` step-up | See `workers/platform-scope.js`; both workers have specs asserting it |
 
 Confirm what the database thinks it is answering as:
@@ -149,7 +149,7 @@ Confirm what the database thinks it is answering as:
 ```sql
 BEGIN;
   SELECT set_config('grid.organization_id', 'org_123', true);
-  SELECT current_user, grid_current_org();
+  SELECT current_user, current_org();
 COMMIT;
 ```
 

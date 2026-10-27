@@ -21,7 +21,7 @@ function makeTx(held = false) {
   const tx = (strings, ...values) => {
     const text = strings.join('$').replace(/\s+/g, ' ').trim()
     executed.push({ text, values })
-    return Promise.resolve(text.includes('grid_legal_hold_blocks') ? [{ held }] : [])
+    return Promise.resolve(text.includes('legal_hold_blocks') ? [{ held }] : [])
   }
   return { tx, executed }
 }

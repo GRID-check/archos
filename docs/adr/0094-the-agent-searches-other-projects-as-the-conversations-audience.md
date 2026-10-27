@@ -158,7 +158,7 @@ agent's `answer_message_id(conversation, turn)`) is marked in
 `message_restricted_use` when the conversation now drew on a restricted folder
 (ADR-0093), as the admission marks it for the conversation's own project. Open
 content of another project is not restricted use: `conversation_source_projects`
-stays outside `grid_conversation_restricted_use`, so a hand-out of projects
+stays outside `conversation_restricted_use`, so a hand-out of projects
 alone marks nothing.
 
 **The workspace door shares the reach and the record** (added 2026-10-21).

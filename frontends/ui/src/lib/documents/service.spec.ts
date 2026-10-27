@@ -160,7 +160,7 @@ vi.mock('./reconcile-status', async (importOriginal) => ({
 // audited and its reviewers told) is `upload-batches/settle`'s subject.
 vi.mock('@/lib/upload-batches/settle', () => ({ onDocumentsSettled: vi.fn().mockResolvedValue(undefined) }))
 
-// The hold predicate is SQL (`grid_legal_hold_blocks`, migration 0093), proven
+// The hold predicate is SQL (`legal_hold_blocks`, migration 0093), proven
 // against Postgres in `legal-hold.integration.spec.ts`; the gate runs for real.
 // The erasure of a document's objects is `object-cleanup.spec.ts`'s subject;
 // here it is what the delete asks for, and what the delete does when it fails.

@@ -186,7 +186,7 @@ export async function recordSourceFolders(
 /**
  * Mark one answer of this conversation as drawing on a folder with restricted
  * access, when the database's rule says the conversation does
- * (`grid_conversation_restricted_use`, migration 0124, ADR-0093). Keyed by the
+ * (`conversation_restricted_use`, migration 0124, ADR-0093). Keyed by the
  * answer's message id, which the agent mints for the turn and the vote names,
  * so the mark exists whether or not the answer is ever persisted. Idempotent;
  * the runtime role may insert marks and never lift one.
@@ -200,7 +200,7 @@ export async function markAnswerRestrictedUse(
   await executor.execute(sql`
     INSERT INTO message_restricted_use (organization_id, message_id, conversation_id)
     SELECT ${organizationId}, ${messageId}, ${conversationId}
-    WHERE grid_conversation_restricted_use(${organizationId}, ${conversationId})
+    WHERE conversation_restricted_use(${organizationId}, ${conversationId})
     ON CONFLICT DO NOTHING`)
 }
 

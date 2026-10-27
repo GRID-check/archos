@@ -1,0 +1,8 @@
+---
+operators:
+  - >
+    The database's own functions lose their grid_ prefix on deploy:
+    grid_secure_table is now secure_table, grid_current_org is current_org,
+    grid_legal_hold_blocks is legal_hold_blocks, and so on for all 29. The old
+    names still answer for one release; the next release removes them, so move
+    any hand-written SQL or dashboard query that calls them to the new names.

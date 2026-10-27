@@ -175,7 +175,7 @@ later `scheduled` state attaches to publish without touching approval.
 `tasks_review_complete`); published requires `approved_by` and `approved_at`;
 changes requested and rejected require a comment; one open draft per item and
 one published version per item as partial unique indexes with `COMMENT ON
-INDEX`. `grid_secure_table` in the same migration, the table listed in
+INDEX`. `secure_table` in the same migration, the table listed in
 `BOUNDARY_MIGRATIONS`, a `.down.sql`, the journal entry. No new permission.
 
 **No state-machine library.** The authority is Postgres (the CHECKs plus a

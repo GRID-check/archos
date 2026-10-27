@@ -520,7 +520,7 @@ The one new table, and the seams that already exist hung off it.
 
 | Change | Module | Kind |
 |---|---|---|
-| `tasks` table with lifecycle, pinned requester, plan, budget, deadline, concurrency policy; `jobs` creates tasks | `frontends/ui/src/lib/db/schema/tasks.ts`, `lib/tasks/`, migration with `grid_secure_table` | new row, generalises `jobs`/`job_runs`/`mention_requests` |
+| `tasks` table with lifecycle, pinned requester, plan, budget, deadline, concurrency policy; `jobs` creates tasks | `frontends/ui/src/lib/db/schema/tasks.ts`, `lib/tasks/`, migration with `secure_table` | new row, generalises `jobs`/`job_runs`/`mention_requests` |
 | Persist the clarifier's plan on the task; approval is a row transition resolved by an event, not a socket future | `piloti/clarify.py` (`preview_plan`), `lib/tasks/` | generalisation |
 | File the run's artifact at completion as the pinned requester, off the interactive GET | `lib/documents/research-report.ts`, `api/jobs/async/[...path]/route.ts:247` | generalisation; the route comment names this as "v1.1, decision 10" |
 | Audit actions `task.created … task.accepted`; per-task budget and deadline enforced by `GridCostTracker` and `BudgetGuardCallback` | `lib/audit/schemas.mjs`, `common/budget_guard.py`, `lib/request-context.ts` | generalisation |

@@ -1444,8 +1444,8 @@ describe('read state (spec CC-18, IB-9)', () => {
  * (`docs/architecture/post-answer-stages.md` §4.3, §7.3).
  *
  * That reuse is the design's tenant-isolation claim: `messages` is already
- * covered by `grid_secure_table` and the route already requires `collaborator`,
- * so a stage adds **zero rows to `grid_secure_table`** — the thing the isolation
+ * covered by `secure_table` and the route already requires `collaborator`,
+ * so a stage adds **zero rows to `secure_table`** — the thing the isolation
  * job would otherwise have to re-prove.
  */
 describe('a stage writes its output onto the message row (post-answer-stages §4.3)', () => {

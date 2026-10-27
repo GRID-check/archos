@@ -7,7 +7,7 @@
  * can prove the SQL: that the mark and the queue row land together under
  * row-level security, that `deletion_queue_active_entity_idx` keeps one active
  * row per chat, that closing it leaves the purger's own claim alone, that the
- * claim query (`purger/db.js`) with its `grid_legal_hold_blocks` guard treats a
+ * claim query (`purger/db.js`) with its `legal_hold_blocks` guard treats a
  * conversation row the way it treats a project.
  *
  *   GRID_TEST_DATABASE_URL=postgres://grid_app_rw@host:port/grid_app \

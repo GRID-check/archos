@@ -1324,6 +1324,13 @@
       "when": 1792730000000,
       "tag": "0188_agent_tables",
       "breakpoints": true
+    },
+    {
+      "idx": 189,
+      "version": "7",
+      "when": 1792740000000,
+      "tag": "0189_brand_free_functions",
+      "breakpoints": true
     }
   ]
 }
