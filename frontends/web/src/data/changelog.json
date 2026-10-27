@@ -89,6 +89,14 @@
               "de": "Bewilligungsbescheide mit mehreren Auflagen werden wieder vollständig berücksichtigt."
             },
             {
+              "en": "Asking which documents deal with a topic lists each document once again, even when two folders hold a file of the same name.",
+              "de": "Bei der Frage, welche Dokumente ein Thema behandeln, wird jedes Dokument erneut aufgelistet, auch wenn sich in zwei Ordnern Dateien mit demselben Namen befinden."
+            },
+            {
+              "en": "Asking for the documents that refer to a plan finds them when the plan is named the way a person writes it, such as \"Plan Nr. EP-05\" or \"siehe EP-05\".",
+              "de": "Wenn Sie nach Dokumenten fragen, die sich auf einen Plan beziehen, werden diese auch gefunden, wenn der Plan so bezeichnet ist, wie man ihn schreiben würde, etwa „Plan Nr. EP-05“ oder „siehe EP-05“."
+            },
+            {
               "en": "Signing in from a new browser or a private window no longer bounces back and forth until the browser gives up with too many redirects.",
               "de": "Wenn Sie sich über einen neuen Browser oder ein privates Fenster anmelden, kommt es nicht mehr zu endlosen Weiterleitungen, bis der Browser abbricht."
             },

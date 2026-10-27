@@ -158,7 +158,7 @@ describe('profileDisagreements', () => {
 })
 
 describe('the profile_contradiction finding', () => {
-  const profileReview = profile({ building_class: 'GK3', storeys_above_ground: 4 })
+  const confirmedProfile = profile({ building_class: 'GK3', storeys_above_ground: 4 })
 
   it('names every current document that disagrees, first among the findings', () => {
     const documents = [
@@ -167,7 +167,7 @@ describe('the profile_contradiction finding', () => {
       doc('old', 'Brandschutzkonzept_V1.pdf', [fact('building_class', 'GK 5', 1)], { superseded: true }),
       doc('ep', 'EP-05 Grundriss EG.pdf', [fact('storeys_above_ground', '5', 1)]),
     ]
-    const findings = deriveDocumentFindings(documents, profileReview)
+    const findings = deriveDocumentFindings(documents, confirmedProfile)
     expect(findings[0]).toEqual({
       kind: 'profile_contradiction',
       subject: 'building_class',
