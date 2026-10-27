@@ -199,7 +199,9 @@ yet for the same reason.
 1. **Facts become filterable.** Migration, projector, job, staleness. Serves
    "a file nobody tagged is as findable".
 2. **One core, one API, one operation.** Query model, reach, providers, facet
-   counts, `POST /api/search`, operation `search` for outside agents and Piloti.
+   counts, `POST /api/search`, operation `workspace-search` for outside agents
+   and Piloti, the content search pre-filtered by the structured filters
+   (`document_ids` when 1,000 or fewer, else `reading_types` and `refers_to`).
    Serves "the same search for Lena, Piloti and an outside agent".
 3. **The page.** Global page with Strg+K, the same organism in a project's
    Dateien, result list with passages and a register view. Serves 08:55 and
@@ -215,9 +217,19 @@ yet for the same reason.
    operations `saved-search-list`, `-create`, `-update`, `-delete`
    (`lib/search/saved-search-*.ts`).
 
-Next, not in this change: tasks and memory as kinds, Piloti's `list_files` reading
-the core for its structured filters, Planfred-style "who received which Index"
-from the version access log.
+### Piloti
+
+Piloti reaches the search as every other client does: `workspace-search` is
+offered on its workspace door, so it filters, sorts and counts exactly as the
+person would, under the person's rights. Its native `list_files` and
+`knowledge_search` stay as they are: they read the turn's own inventory and
+return citable passages, which this search does not (a passage here is a
+pointer to read). Making `list_files` take its structured filters from the core
+is the next step, once the answer suite measures it (ADR-0127's eval set).
+
+Next, not in this change: tasks and memory as kinds, `list_files` on the core,
+Planfred-style "who received which Index" from the version access log, the
+Files pane's semantic search (`POST /api/documents/search`) moved onto the core.
 
 ## Measured
 
