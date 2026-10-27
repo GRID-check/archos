@@ -76,8 +76,8 @@ const COLUMN_WIDTH: Readonly<Record<RegisterColumn, number | null>> = {
   // Verfasser and Projekt carry the words that tell two rows apart („Atelier
   // Lindner ZT GmbH“, „Wohnhaus Seestadt J7“): the width Status gave a column
   // of „Gelesen“ went to them.
-  author: 11,
-  project: 13,
+  author: 10.5,
+  project: 11.5,
   folder: 8,
   uploaded: 7.5,
   pages: 5,
