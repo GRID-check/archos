@@ -8,6 +8,7 @@ from aiq_agent.common.applicability import facts_from_project_context
 from aiq_agent.common.applicability import render_project_block
 from aiq_agent.common.applicability import resolve_oib_applicability
 from aiq_agent.common.applicability import trigger_hints
+from aiq_agent.project_context import compose_project_context
 
 
 def _by_code(facts: dict) -> dict[str, OibVerdict]:
@@ -101,7 +102,31 @@ class TestTriggerHints:
         assert hints[3].startswith("Stellplatzverpflichtung")
 
 
+#: A profile whose LAST section is ``confirmed:``, and the memory the turn context
+#: composes after it (``compose_project_context``): lines holding ``=`` that are
+#: no confirmed fact of the project.
+PROFILE_ENDING_CONFIRMED = "PROJECT_CONTEXT v1\n\nconfirmed:\n- floors_above=5\n- use=residential"
+MEMORY_WITH_EQUALS = (
+    "PROJECT_MEMORY v1\n"
+    "- [constraint, high, unverified] Brandabschnitt: Fläche=1200 m² laut Konzept\n\n"
+    "PROPOSAL_DECISIONS v1\n"
+    "- accepted: building_class=5\n"
+    "- denkmalschutz=true"
+)
+
+
 class TestFactsFromProjectContext:
+    def test_memory_after_a_profile_ending_in_confirmed_adds_no_facts(self):
+        """The turn decision's ``project_facts`` and the prompt's project block both parse this composition.
+
+        The section used to end only at a ``...:`` header, so every memory line
+        holding ``=`` after a profile whose last section is ``confirmed:`` came
+        out as a confirmed fact.
+        """
+        composed = compose_project_context(PROFILE_ENDING_CONFIRMED, MEMORY_WITH_EQUALS)
+        assert facts_from_project_context(PROFILE_ENDING_CONFIRMED) == {"floors_above": 5, "use": "residential"}
+        assert facts_from_project_context(composed) == {"floors_above": 5, "use": "residential"}
+
     def test_parses_confirmed_facts(self):
         text = (
             "PROJECT_CONTEXT v1\n"
@@ -178,6 +203,13 @@ class TestFactsFromProjectContext:
 
 
 class TestRenderProjectBlock:
+    def test_memory_after_a_profile_ending_in_confirmed_changes_nothing_in_the_block(self):
+        composed = compose_project_context(PROFILE_ENDING_CONFIRMED, MEMORY_WITH_EQUALS)
+        block = render_project_block(composed)
+        assert block == render_project_block(PROFILE_ENDING_CONFIRMED)
+        # The decisions block's bare `denkmalschutz=true` once raised the heritage hint.
+        assert "Denkmalschutz" not in (block or "")
+
     def test_none_when_facts_empty(self):
         assert render_project_block("") is None
         assert render_project_block("PROJECT_CONTEXT v1\ngoals:\n- x\n") is None

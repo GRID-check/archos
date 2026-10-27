@@ -11,6 +11,8 @@ import {
   POSTGRES_POOLER,
   POSTGRES_TUNING,
 } from "./constants";
+import { GOTENBERG_SLOTS_PER_REPLICA, bffJobsMode } from "./rendition-sizing";
+export { GOTENBERG_SLOTS_PER_REPLICA, bffJobsMode, gotenbergCapacity, renditionCeiling } from "./rendition-sizing";
 
 /**
  * Typed configuration for the Grid OIB Kubernetes deployment.
@@ -1080,6 +1082,13 @@ export interface GridConfig {
     drainSeconds: number;
     /** Most jobs one organisation may run fleet-wide at once; 0 = no cap (the claim is fair regardless). */
     maxPerOrg: number;
+    /**
+     * Where a slice runs (`GRID_BFF_JOBS_MODE`): `http`, in a `node server.js`
+     * the pod spawns, or `inprocess`, in the supervisor from the bundled
+     * services (`dist-jobs/slice.mjs`, ADR-0079 amendment 1). `http` until the
+     * in-process host has run in every environment.
+     */
+    mode: "http" | "inprocess";
     /**
      * Office conversions ONE pod runs at Gotenberg at once (`GOTENBERG_MAX_
      * CONCURRENCY` in the pod). The fleet's ceiling is this times `maxReplicas`
@@ -3021,6 +3030,7 @@ export function loadConfig(): GridConfig {
       concurrency: Math.max(1, num(cfg, "bffJobsConcurrency", 2)),
       drainSeconds: Math.max(15, num(cfg, "bffJobsDrainSeconds", 60)),
       maxPerOrg: Math.max(0, num(cfg, "bffJobsMaxPerOrg", 0)),
+      mode: bffJobsMode(cfg.get("bffJobsMode")),
       // One: LibreOffice converts one document at a time, and the second slot
       // Gotenberg is sized for is the next job waiting behind it. A pod running
       // two jobs at once still converts one file at a time.
@@ -3373,30 +3383,6 @@ export function assertHpaTargetIsProportional(
       `${tier}: CPU limit (${r.limitsCpu}) is below the request (${r.requestsCpu}).`,
     );
   }
-}
-
-/**
- * Conversions one Gotenberg replica is sized to take at once: one running and
- * one ready behind it. The second is deliberate (`rendition.ts` in the BFF):
- * it keeps the converter busy between files without queueing anything inside
- * it that could run out of its own API timeout.
- */
-export const GOTENBERG_SLOTS_PER_REPLICA = 2;
-
-/**
- * The most office conversions the `bff-jobs` pool can have in flight at
- * Gotenberg at once: its replicas at the ceiling times what one pod runs.
- * Background conversions are claimed from `bff_job_queue` (ADR-0079), so this
- * is the fleet-wide bound that replaced a per-process queue in every frontend
- * pod; readers opening a preview are the frontend pods' own, bounded apart.
- */
-export function renditionCeiling(cfg: Pick<GridConfig, "bffJobs">): number {
-  return cfg.bffJobs.maxReplicas * cfg.bffJobs.renditionConcurrency;
-}
-
-/** What the converter can take: its replicas times {@link GOTENBERG_SLOTS_PER_REPLICA}. */
-export function gotenbergCapacity(cfg: Pick<GridConfig, "gotenberg">): number {
-  return cfg.gotenberg.replicas * GOTENBERG_SLOTS_PER_REPLICA;
 }
 
 /**

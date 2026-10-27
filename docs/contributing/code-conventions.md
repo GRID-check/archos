@@ -14,6 +14,17 @@ and review passed every hunk, so the limit is a check rather than a request:
 `scripts/check_file_size.py`, the `file-size` hook in `task lint:repo`, which
 CI's **Repo checks** job runs.
 
+**Import statements are not counted**, nor the blank lines between two of
+them: `import` and `from … import` in Python, `import … from` and
+`export … from` in TypeScript and JavaScript, a multi-line one whole. An import
+names a dependency; it is not logic anyone has to read through. While they
+counted, the precise import cost lines: importing the one i18n namespace or the
+one schema table a module uses, instead of a barrel that drags in every other,
+grew a giant by a line per import and failed the check, so the ratchet
+punished exactly the decoupling that keeps a change's test selection small
+([`docs/audit/blast-radius-2026-10.md`](../audit/blast-radius-2026-10.md)).
+A dynamic `import()` is an expression and counts.
+
 It is a ratchet. `ci/size_baseline.json` records every file and function that
 was over when the check arrived, at its size then:
 
