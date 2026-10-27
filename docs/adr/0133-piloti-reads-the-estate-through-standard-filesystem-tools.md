@@ -211,7 +211,7 @@ lands with the slice that needs it, and until then review is the only gate for i
 * `task be:eval:answer-suite -- --set files` with three arms, grep only, semantic
   only and hybrid, before and after every slice. Exists since slice 0:
   `--arm all` runs the three, `--baseline` or `--compare` diffs two runs arm by arm,
-  and the rows match the coming tool names through `files_eval.canonical`.
+  and the rows match the coming tool names through `files_eval.aliases`.
 * A test that a restricted document's path returns the same text as a path that
   does not exist, for `read_file`, `ls` of its folder and `glob`.
 * A pinned-version test that builds the tools from `FilesystemMiddleware` and fails

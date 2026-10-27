@@ -341,10 +341,19 @@ class StorageLocation(tuple):
     """
 
     version_id: str | None
+    #: The document row the BFF resolved, when it said; the stored page text's ``index.json`` must name it.
+    document_id: str | None
 
-    def __new__(cls, storage_key: str, storage_bucket: str | None, version_id: str | None = None):  # noqa: ANN204
+    def __new__(  # noqa: ANN204
+        cls,
+        storage_key: str,
+        storage_bucket: str | None,
+        version_id: str | None = None,
+        document_id: str | None = None,
+    ):
         location = super().__new__(cls, (storage_key, storage_bucket))
         location.version_id = version_id
+        location.document_id = document_id
         return location
 
 
@@ -411,8 +420,12 @@ async def _resolve_storage_location(
         if not isinstance(storage_bucket, str) or not storage_bucket:
             storage_bucket = None
         version_id = data.get("versionId")
+        document_id = data.get("documentId")
         return StorageLocation(
-            storage_key, storage_bucket, version_id if isinstance(version_id, str) and version_id else None
+            storage_key,
+            storage_bucket,
+            version_id if isinstance(version_id, str) and version_id else None,
+            document_id if isinstance(document_id, str) and document_id else None,
         )
     except Exception:  # noqa: BLE001 - fail-open contract
         logger.warning("look: storage-key lookup failed for %s/%s", collection, file_name, exc_info=True)

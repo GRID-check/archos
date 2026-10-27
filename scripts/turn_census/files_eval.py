@@ -20,9 +20,12 @@ pairs on the one config, by today's tool names and by the ones ADR-0133 brings (
 ``--arm all`` runs the three in turn. The names before ADR-0133 (``search``, ``navigate``, ``both``)
 are read as these, so a results.json written with them still compares.
 
-The same rows run before and after the rename: a recorded call by a coming name is read as the call
-it stands for today (:func:`canonical`), and so is a row's expectation, so ``{knowledge_search:
-{match: exact}}`` holds for ``grep("Fluchtweg")`` and ``list_files`` for ``ls("/project/")``.
+The same rows run before and after the rename: a call counts under its own name and under the
+names it is an alias of, both ways (:func:`aliases`), and a path on the call or in the row's
+expectation is read as the scope it addresses (:func:`path_scope`), so ``{knowledge_search: {match:
+exact}}`` holds for ``grep("Fluchtweg")``, ``list_files`` for ``ls("/project/")`` and ``{grep: {path:
+/project/Behörde/}}`` for ``knowledge_search(match="exact", folder="Behörde")``. A call under
+``/drafts/`` is no file move.
 
 The row's ``needs`` names an argument that exists only after its slice lands. A row whose argument
 the tools do not have yet is "not applicable on this commit": it is not run, so the baseline is
@@ -55,14 +58,6 @@ ARMS = ("semantic", "grep", "hybrid")
 LEGACY_ARMS = {"search": "semantic", "navigate": "grep", "both": "hybrid"}
 #: The tools that list, read or match literally, by today's names and by ADR-0133's (§8).
 LITERAL_TOOLS = frozenset({"list_files", "read_passage", "ls", "glob", "grep", "read_file"})
-#: ADR-0133 §8: each coming tool, the tool it stands for today, and its arguments' names today.
-#: ``path`` and ``file_path`` are not renamed: each becomes the scope it addresses (:func:`path_scope`).
-TOOL_ALIASES: dict[str, tuple[str, dict[str, str]]] = {
-    "ls": ("list_files", {}),
-    "glob": ("list_files", {"pattern": "name_contains"}),
-    "read_file": ("read_passage", {}),
-    "grep": ("knowledge_search", {"pattern": "query", "mode": "match"}),
-}
 
 #: An argument a slice adds, and where the tools' own schema shows it: ``needs`` -> (tool, argument).
 #: ``regex`` is a value of ``match``, which the schema cannot show; the tool's description says it.
@@ -128,13 +123,15 @@ def arms_of(arm: str) -> list[str]:
 _TOOLS_KEY = "functions.shallow_research_agent.tools"
 _MODES_KEY = "functions.knowledge_search.match_modes"
 _PREFETCH_KEY = "functions.shallow_research_agent.prefetch"
+_FILESYSTEM_KEY = "functions.shallow_research_agent.filesystem"
 
 
 def arm_overrides(arm: str, tools: list[str]) -> list[list[str]]:
     """The ``--override`` pairs of an arm. ``tools`` is the agent's configured tool list (the config's own).
 
     The arm restricts what is bound through the knobs the agent already reads: its tool list, the
-    search's ``match_modes`` and the round-0 ``prefetch``. Literal search is a mode of
+    search's ``match_modes``, the round-0 ``prefetch`` and the estate its ``filesystem`` verbs read
+    (``null`` in the semantic arm leaves them the drafts alone). Literal search is a mode of
     ``knowledge_search`` today; once ``grep`` is configured it is a tool, and the grep arm unbinds the
     ranked one instead of narrowing its modes.
     """
@@ -142,7 +139,11 @@ def arm_overrides(arm: str, tools: list[str]) -> list[list[str]]:
     if arm == "hybrid":
         return []
     if arm == "semantic":
-        pairs = [[_TOOLS_KEY, ",".join(name for name in tools if name not in LITERAL_TOOLS)]]
+        pairs = [
+            [_TOOLS_KEY, ",".join(name for name in tools if name not in LITERAL_TOOLS)],
+            # The filesystem verbs over the estate (ADR-0133) are navigation too; the drafts stay.
+            [_FILESYSTEM_KEY, "null"],
+        ]
         return [*pairs, [_MODES_KEY, "meaning"]] if "knowledge_search" in tools else pairs
     if "grep" in tools:
         return [[_TOOLS_KEY, ",".join(name for name in tools if name != "knowledge_search")], [_PREFETCH_KEY, "false"]]
@@ -188,18 +189,28 @@ def _matches(wanted: Any, actual: Any) -> bool:
     )
 
 
+#: The file tools by today's names: a call by a coming name is read as one of these (:func:`today`).
+TODAY_TOOLS = ("list_files", "knowledge_search", "read_passage")
+
+
+def _is_draft(path: Any) -> bool:
+    text = str(path or "").strip().lstrip("/")
+    return text.startswith(("drafts", "entwuerfe"))
+
+
 def path_scope(path: Any) -> dict[str, str]:
     """What an ADR-0133 path addresses, in today's scope arguments: ``shelf``, ``folder``, ``file_name``.
 
     ``/project/Gutachten/Brandschutz/Brandschutzkonzept.pdf.md`` is the file ``Brandschutzkonzept.pdf``
     in ``Gutachten/Brandschutz`` on the ``project`` shelf; ``/project/Behörde/`` is a folder. A last
     segment with a dot is a file, and the ``.md`` a document's text carries is dropped from its name.
+    ``/law/`` is rooted one level deeper (``/law/oib/``), so its folders start below the corpus.
     """
     text = str(path or "")
     parts = [part for part in text.split("/") if part]
     if not parts:
         return {}
-    scope, folders = {"shelf": parts[0]}, parts[1:]
+    scope, folders = {"shelf": parts[0]}, parts[2:] if parts[0] == "law" else parts[1:]
     if folders and "." in folders[-1] and not text.endswith("/"):
         name = folders.pop()
         scope["file_name"] = name[: -len(".md")] if name.endswith(".md") and name.count(".") > 1 else name
@@ -216,44 +227,105 @@ def _scoped(value: Any) -> dict[str, Any]:
     return {key: [scope[key] for scope in scopes if key in scope] for key in {k for s in scopes for k in s}}
 
 
-def canonical(call: dict[str, Any], *, defaults: bool = True) -> dict[str, Any]:
-    """A call by a coming name (``ls``, ``glob``, ``grep``, ``read_file``) as the call it stands for today.
+def scope_arguments(arguments: dict[str, Any], *, defaults: bool = True) -> dict[str, Any]:
+    """``arguments`` with each ``path`` and ``file_path`` also read as the ``shelf``, ``folder`` and ``file_name``.
 
-    ``path`` and ``file_path`` become the ``shelf``, ``folder`` and ``file_name`` they address, a
-    ``read_file``'s file its ``document``, and ``grep`` without a ``mode`` is ``match=exact``, its
-    default. ``defaults`` is False for an expectation, where an argument left out means any value and a
-    path's mount (its ``shelf``) is not asked.
+    ``defaults`` is False for an expectation: an argument it leaves out matches any value, and a path's
+    mount (its ``shelf``) is not asked of the call, because today's calls seldom name their shelf.
     """
-    name = _basename(str(call.get("name") or ""))
-    target, renames = TOOL_ALIASES.get(name, (name, {}))
-    out: dict[str, Any] = {}
-    for key, value in (call.get("arguments") or {}).items():
-        if key in ("path", "file_path"):
-            for scoped_key, scoped_value in _scoped(value).items():
-                # An expectation's mount is not asked of the call: today's calls seldom name their shelf.
-                if defaults or scoped_key != "shelf":
-                    out.setdefault(scoped_key, scoped_value)
-        else:
-            out[renames.get(key, key)] = value
-    if name == "read_file" and "file_name" in out:
-        out.setdefault("document", out.pop("file_name"))
-    if name == "grep" and defaults:
-        out.setdefault("match", "exact")
-    return {"name": target, "arguments": out}
+    out = {key: value for key, value in arguments.items() if defaults or key not in ("path", "file_path")}
+    for key in ("path", "file_path"):
+        if key not in arguments:
+            continue
+        for scoped_key, scoped_value in _scoped(arguments[key]).items():
+            if defaults or scoped_key != "shelf":
+                out.setdefault(scoped_key, scoped_value)
+    return out
+
+
+def _present(arguments: dict[str, Any]) -> dict[str, Any]:
+    return {key: value for key, value in arguments.items() if value is not None}
+
+
+def aliases(call: dict[str, Any]) -> list[dict[str, Any]]:
+    """The calls one call also counts as for the release the old names live (ADR-0133 §8).
+
+    An estate ``read_file`` is a ``read_passage`` of the same document and pages, ``ls`` and ``glob`` are a
+    ``list_files``, ``grep`` is a literal ``knowledge_search`` (``match=exact`` when it names no mode); and
+    back, so a row written for either name holds for both and the before and after runs compare. A path
+    carries its ``folder`` and ``file_name`` across (:func:`path_scope`). A call under ``/drafts/`` is no
+    file move.
+    """
+    name, args = _basename(call["name"]), call.get("arguments") or {}
+    if name == "read_file" and not _is_draft(args.get("file_path")):
+        scope = path_scope(args.get("file_path"))
+        leaf = str(args.get("file_path") or "").rstrip("/").rsplit("/", 1)[-1]
+        mapped = {
+            "document": scope.get("file_name") or leaf or None,
+            "folder": scope.get("folder") if "file_name" in scope else None,
+            "pages": args.get("pages"),
+            "clause": args.get("clause"),
+        }
+        return [{"name": "read_passage", "arguments": _present(mapped)}]
+    if name in ("ls", "glob") and not _is_draft(args.get("path")):
+        listed = {"folder": path_scope(args.get("path")).get("folder")}
+        if name == "ls" and int(args.get("depth") or 1) > 1:
+            listed["view"] = "tree"
+        return [{"name": "list_files", "arguments": _present(listed)}]
+    if name == "grep" and not _is_draft(args.get("path")):
+        scope = path_scope(args.get("path"))
+        searched = {
+            "query": args.get("pattern"),
+            "match": args.get("mode") or "exact",
+            "context": args.get("context"),
+            "folder": scope.get("folder"),
+            "file_name": scope.get("file_name"),
+        }
+        return [{"name": "knowledge_search", "arguments": _present(searched)}]
+    if name == "read_passage":
+        return [{"name": "read_file", "arguments": {"pages": args.get("pages"), "clause": args.get("clause")}}]
+    if name == "list_files":
+        return [{"name": "ls", "arguments": {}}, {"name": "glob", "arguments": {}}]
+    match = str(args.get("match") or "").strip().lower()
+    if name == "knowledge_search" and match in ("exact", "regex"):
+        found = {"pattern": args.get("query"), "mode": match, **{k: args.get(k) for k in ("folder", "file_name")}}
+        return [{"name": "grep", "arguments": _present(found)}]
+    return []
+
+
+def _seen(calls: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Every call as made (its path read as a scope) and as each name it is an alias of."""
+    made = [{"name": call["name"], "arguments": scope_arguments(call.get("arguments") or {})} for call in calls]
+    return [*made, *(alias for call in calls for alias in aliases(call))]
+
+
+def today(call: dict[str, Any]) -> dict[str, Any] | None:
+    """The call by today's file-tool name (``TODAY_TOOLS``) it is or stands for; None for another tool or a draft."""
+    for candidate in _seen([call]):
+        if _basename(candidate["name"]) in TODAY_TOOLS:
+            return {**candidate, "name": _basename(candidate["name"])}
+    return None
+
+
+def _today_name(call: dict[str, Any]) -> str:
+    """The name a call counts under for ``no_repeat``: today's file tool it stands for, else its own."""
+    made = today(call)
+    return made["name"] if made is not None else _basename(str(call.get("name") or ""))
 
 
 def called(item: Any, calls: list[dict[str, Any]]) -> bool:
     """Whether the turn made a call ``item`` names: a tool name, or ``{tool: {argument: value | [values]}}``.
 
-    Both sides are read by today's names (:func:`canonical`), so a row written for ``list_files`` holds
-    for ``ls`` and one written for ``grep`` holds for ``knowledge_search(match="exact")``.
+    A call counts under its own name and under the names it is an alias of (:func:`aliases`), and a path on
+    either side is read as the scope it addresses (:func:`scope_arguments`), so ``{grep: {path:
+    /project/Behörde/}}`` holds for ``knowledge_search(match="exact", folder="Behörde")``.
     """
     tool, wanted = next(iter(item.items())) if isinstance(item, dict) else (str(item), {})
-    want = canonical({"name": tool, "arguments": wanted}, defaults=False)
+    want = scope_arguments(wanted, defaults=False)
     return any(
-        made["name"] == want["name"]
-        and all(_matches(value, made["arguments"].get(key)) for key, value in want["arguments"].items())
-        for made in (canonical(call) for call in calls)
+        tool in (call["name"], _basename(call["name"]))
+        and all(_matches(v, call["arguments"].get(k)) for k, v in want.items())
+        for call in _seen(calls)
     )
 
 
@@ -340,8 +412,8 @@ def files_checks(
     for item in tools.get("must_not") or []:
         checks[f"must_not:{_label(item)}"] = not called(item, calls)
     for name in expect.get("no_repeat") or []:
-        tool = canonical({"name": name})["name"]
-        checks[f"no_repeat:{name}"] = sum(canonical(call)["name"] == tool for call in calls) <= 1
+        tool = _today_name({"name": name})
+        checks[f"no_repeat:{name}"] = sum(_today_name(call) == tool for call in calls) <= 1
     if expect.get("max_research_calls"):
         checks[f"rounds<={expect['max_research_calls']}"] = research_calls <= int(expect["max_research_calls"])
     if expect.get("at_least"):
@@ -368,7 +440,9 @@ def _label(item: Any) -> str:
 
 def move(call: dict[str, Any]) -> str | None:
     """The move one call made: ``list``, ``search`` (meaning), ``grep`` (literal) or ``read``; None for another tool."""
-    made = canonical(call)
+    made = today(call)
+    if made is None:
+        return None
     if made["name"] == "knowledge_search":
         literal = str(made["arguments"].get("match") or "meaning").casefold() in ("exact", "regex")
         return "grep" if literal else "search"

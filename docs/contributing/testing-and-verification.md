@@ -710,11 +710,13 @@ reading and literal tool (`list_files`, `read_passage`, and ADR-0133's `ls`, `gl
 `search`, `navigate` and `both` are the arms' earlier names and still work. Run with
 `--runs 3`, as the judge rows are noisy.
 
-The same rows run before and after the ADR-0133 rename. `files_eval.canonical` reads a
-call by a coming name as the call it stands for today (`ls`/`glob` as `list_files`,
-`read_file` as `read_passage`, `grep` as `knowledge_search(match=exact|regex)`, a
-`path` as its `folder` and `file_name`), on both the recorded call and the row's
-expectation, so `{knowledge_search: {match: exact}}` holds for `grep("Fluchtweg")`.
+The same rows run before and after the ADR-0133 rename. `files_eval.aliases` counts a
+call under its own name and under the names it stands for, both ways (`ls`/`glob` and
+`list_files`, `read_file` and `read_passage`, `grep` and
+`knowledge_search(match=exact|regex)`), and a `path` on the recorded call or in the row's
+expectation is read as its `folder` and `file_name` (`files_eval.path_scope`), so
+`{knowledge_search: {match: exact}}` holds for `grep("Fluchtweg")`. A call under
+`/drafts/` is no file move.
 
 **Before and after the filesystem move, one command each:**
 

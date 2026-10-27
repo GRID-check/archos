@@ -124,12 +124,34 @@ const skillChip = (
   return { key, label, prefix: template.split('{name}')[0].trim(), mono: named.text }
 }
 
+/**
+ * A file tool on the office's documents (ADR-0133): the step's `mount` says it reached the estate, not the
+ * drafts, so it is a read or a listing. A stored turn's file step carries no mount, and every one of those
+ * reached the drafts, which keep their `draft` chip.
+ */
+const ESTATE_LABEL_KEYS: Record<string, string> = {
+  read_file: 'reading',
+  ls: 'documents',
+  glob: 'documents',
+  grep: 'documents',
+}
+
+/** The mounts that are no office document: the drafts the answer wrote, and the skills (ADR-0135). */
+const OFF_ESTATE: ReadonlySet<string> = new Set(['drafts', 'skills'])
+
+const toolLabelKey = (tool: string, mount: unknown): string | undefined => {
+  if (typeof mount === 'string' && !OFF_ESTATE.has(mount) && ESTATE_LABEL_KEYS[tool]) return ESTATE_LABEL_KEYS[tool]
+  return TOOL_LABEL_KEYS[tool]
+}
+
 /** The chip for a `tool` step, keyed by its label so tools of one kind share it. */
 const toolChip = (
-  step: Pick<StoredThinkingStep, 'kind' | 'tool'>,
+  step: Pick<StoredThinkingStep, 'kind' | 'tool' | 'detail'>,
   t: (key: string) => string
 ): Pick<ExecutedStep, 'key' | 'label'> | null => {
-  const label = step.kind === 'tool' && step.tool ? stepNameLabel(step.tool, t) : null
+  if (step.kind !== 'tool' || !step.tool) return null
+  const key = toolLabelKey(step.tool, step.detail?.mount)
+  const label = key ? t(`thinking.stepName.${key}`) : null
   return label ? { key: label, label } : null
 }
 

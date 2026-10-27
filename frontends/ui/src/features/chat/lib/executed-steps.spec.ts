@@ -74,6 +74,33 @@ describe('deriveExecutedSteps', () => {
     ])
   })
 
+  test('a file tool on the office documents is a read or a listing, on the drafts it is drafting (ADR-0133)', () => {
+    const fileStep = (name: string, mount?: string) =>
+      storedStep({ id: `tool:${(n += 1)}`, kind: 'tool', tool: name, status: 'ok', ...(mount ? { mount } : {}) })
+    const chips = deriveExecutedSteps(
+      [
+        fileStep('read_file', 'project'),
+        fileStep('grep', 'estate'),
+        fileStep('read_file', 'drafts'),
+        // A stored turn's file step carries no mount, and only ever reached the drafts.
+        fileStep('ls'),
+      ],
+      t
+    )
+    expect(chips.map((chip) => chip.label)).toEqual([
+      'thinking.stepName.reading',
+      'thinking.stepName.documents',
+      'thinking.stepName.draft',
+    ])
+  })
+
+  test('the mount survives the fold into the stored row', () => {
+    const row = storedStep({ id: 'tool:m', kind: 'tool', tool: 'read_file', status: 'ok', mount: 'law' })
+    expect(row.detail).toEqual({ mount: 'law' })
+    const error = storedStep({ id: 'tool:e', kind: 'tool', tool: 'read_file', status: 'error', mount: 'drafts' })
+    expect(error.detail).toEqual({ status: 'error', mount: 'drafts' })
+  })
+
   test('an unlabelled tool gets no chip', () => {
     expect(deriveExecutedSteps([tool('ask_user')], t)).toEqual([])
   })
