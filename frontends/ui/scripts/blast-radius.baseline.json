@@ -1,7 +1,7 @@
 {
  "description": "Specs that reach each hub module (a module reached by at least `threshold` specs), read by frontends/ui/scripts/blast-radius.mjs. Rewrite with `task fe:blast-radius -- --update` and say in the pull request why a hub grew. docs/audit/blast-radius-2026-10.md",
  "threshold": 300,
- "specs": 1618,
+ "specs": 1620,
  "modules": {
   "src/adapters/api/wire-v2.generated.ts": 302,
   "src/adapters/api/wire-v2.ts": 302,
@@ -121,7 +121,7 @@
   "src/lib/analytics/posthog-server.ts": 369,
   "src/lib/analytics/scrub-server-event.ts": 370,
   "src/lib/annotations/types.ts": 783,
-  "src/lib/api/errors.ts": 848,
+  "src/lib/api/errors.ts": 851,
   "src/lib/api/zod-union.ts": 530,
   "src/lib/app-origin.ts": 439,
   "src/lib/audit/document-names.ts": 400,
@@ -146,6 +146,7 @@
   "src/lib/authz/projects.ts": 455,
   "src/lib/authz/resource-check.ts": 457,
   "src/lib/backend-proxy.ts": 341,
+  "src/lib/backend-url.ts": 579,
   "src/lib/bim/repository.ts": 303,
   "src/lib/bim/rule-inputs.ts": 304,
   "src/lib/bim/rules.ts": 391,
@@ -271,6 +272,7 @@
   "src/lib/geocoding/types.ts": 781,
   "src/lib/ids.ts": 494,
   "src/lib/inbox/inbox-vocabulary.ts": 769,
+  "src/lib/internal-auth.ts": 387,
   "src/lib/knowledge/consolidation.ts": 305,
   "src/lib/knowledge/digest-format.ts": 307,
   "src/lib/knowledge/embeddings.ts": 305,
@@ -370,7 +372,7 @@
   "src/shared/components/MarkdownRenderer/status-marks.ts": 419,
   "src/shared/components/MarkdownRenderer/table-shape.ts": 418,
   "src/shared/config/file-upload.ts": 358,
-  "src/shared/config/request-body-limit.ts": 879,
+  "src/shared/config/request-body-limit.ts": 882,
   "src/test-utils/index.tsx": 321,
   "workers/database-unavailable.js": 394
  }
