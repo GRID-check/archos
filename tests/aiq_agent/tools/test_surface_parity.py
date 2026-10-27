@@ -20,7 +20,7 @@ import pytest
 ROOT = Path(__file__).resolve().parents[3]
 PARITY = ROOT / "frontends" / "ui" / "tests" / "fixtures" / "surface-parity.json"
 #: Tools outside the canvas group that are the same capability family.
-STANDALONE_TOOLS = ("look",)
+STANDALONE_TOOLS = ("look", "show_in_viewer")
 
 
 def piloti_tool_names() -> set[str]:

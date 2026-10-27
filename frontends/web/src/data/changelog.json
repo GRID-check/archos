@@ -51,6 +51,22 @@
               "de": "Ein Projekt listet Erkenntnisse aus seinen Dokumenten auf: ein referenziertes Dokument oder eine Plannummer, die dem Projekt nicht vorliegt, sowie zwei Dokumente, die denselben Sachverhalt unterschiedlich darstellen – jeweils mit den Seiten, auf die sich der Befund stützt."
             },
             {
+              "en": "A process or outline Piloti drew in a project can now be reworked by hand: „Als Skizze bearbeiten“ opens it on a drawing canvas, and your version is filed into the project as an SVG and a PDF marked as drafted by Piloti and edited by you.",
+              "de": "Eine von Piloti in einem Projekt gezeichnete Prozessdarstellung oder Kontur lässt sich jetzt manuell überarbeiten: „Als Skizze bearbeiten“ öffnet sie auf einer Zeichenfläche, und Ihre Version wird als SVG und PDF im Projekt abgelegt – gekennzeichnet als von Piloti entworfen und von Ihnen bearbeitet."
+            },
+            {
+              "en": "Piloti now finds and reads your documents the same way on every question: it lists a folder, searches the wording, and opens the pages it needs, and the Herleitung shows each of those steps by what it looked at. When no passage answers what you asked, Piloti says so and names what it searched, rather than calling the matter unregulated.",
+              "de": "Piloti findet und liest Ihre Dokumente jetzt bei jeder Frage auf dieselbe Weise: Es listet Ordner auf, durchsucht den Wortlaut und öffnet die benötigten Seiten. Die Herleitung zeigt jeden dieser Schritte anhand der Inhalte, die Piloti dafür herangezogen hat. Wenn keine Textstelle Ihre Frage beantwortet, sagt Piloti das und nennt, wonach es gesucht hat, statt den Sachverhalt als ungeregelt zu bezeichnen."
+            },
+            {
+              "en": "When an answer rests on one place in a document, Piloti now opens it beside the chat once the answer is there, at that page with the passage or area marked, and a row under the answer undoes it in one click. It opens only what you may see yourself and never while you are typing, and a switch under the answer or on your profile page turns it off.",
+              "de": "Wenn eine Antwort auf einer Stelle in einem Dokument beruht, öffnet Piloti das Dokument jetzt neben dem Chat, sobald die Antwort vorliegt – auf der entsprechenden Seite und mit markierter Textstelle oder Fläche. Über eine Zeile unter der Antwort können Sie das mit einem Klick rückgängig machen. Es werden nur Inhalte geöffnet, die Sie selbst sehen dürfen, und nie während Sie tippen. Über einen Schalter unter der Antwort oder auf Ihrer Profilseite können Sie die Funktion deaktivieren."
+            },
+            {
+              "en": "When your own assistant is connected to Piloti, Piloti's proposals now appear as Piloti's card inside Claude, ChatGPT and VS Code, in your assistant's colours and language. You apply or discard the change there with one press, with your rights, and the assistant keeps the card's buttons from its own model.",
+              "de": "Wenn Ihr eigener Assistent mit Piloti verbunden ist, erscheinen die Vorschläge von Piloti jetzt als Piloti-Karte in Claude, ChatGPT und VS Code – in den Farben und der Sprache Ihres Assistenten. Mit einem Klick übernehmen oder verwerfen Sie die Änderung dort, mit Ihren Berechtigungen. Die Schaltflächen auf der Karte stammen weiterhin vom eigenen Modell des Assistenten."
+            },
+            {
               "en": "Piloti now goes through your documents like a colleague on the drive: it lists a folder, finds every place a word stands across the shelves you may see, and reads the pages that hold it. Each quote names its page, and a search that could not reach everything says what it left out instead of answering that nothing was found.",
               "de": "Piloti durchsucht Ihre Dokumente jetzt wie ein Kollege im Laufwerk: Es listet Ordnerinhalte auf, findet alle Vorkommen eines Begriffs in den für Sie sichtbaren Ablagen und liest die entsprechenden Seiten. Jedes Zitat nennt die Seitenzahl. Kann eine Suche nicht alles erfassen, weist sie darauf hin, was ausgelassen wurde, statt zu melden, dass nichts gefunden wurde."
             },
@@ -65,6 +81,10 @@
             {
               "en": "A project's findings now show where a document states a different building class, storey count, plot area, construction method, use or federal state than the project profile, side by side with links to both.",
               "de": "Die Ergebnisse eines Projekts zeigen jetzt nebeneinander, wo ein Dokument eine andere Gebäudeklasse, Geschossanzahl, Grundstücksfläche, Bauweise, Nutzung oder ein anderes Bundesland als im Projektprofil angibt, jeweils mit Links zu beiden."
+            },
+            {
+              "en": "A U-value, the Schrittmaßregel, an escape route's length or a room's glazing share now comes as a „Was wäre, wenn“ card, held to the Richtlinie's limit for your stair type, component or room. Change an input and the result and the verdict are recomputed on the spot; your value is marked „Ihre Annahme“ beside the source's figure, and nothing is saved.",
+              "de": "Ein U-Wert, die Schrittmaßregel, die Länge eines Fluchtwegs oder der Verglasungsanteil eines Raums wird jetzt als „Was wäre, wenn“-Karte angezeigt und mit dem Grenzwert der Richtlinie für Ihren Treppentyp, Ihr Bauteil oder Ihren Raum abgeglichen. Ändern Sie eine Eingabe, werden Ergebnis und Bewertung sofort neu berechnet; Ihr Wert ist neben dem Quellenwert als „Ihre Annahme“ gekennzeichnet, und nichts wird gespeichert."
             },
             {
               "en": "Search finds anything the office holds, from anywhere with Ctrl+K: documents by their name, by what they are and by what they say, with the matching passage and page, plus annotations, folders, projects and conversations. It searches every project and the office shelf at once, or inside one project or folder.",
@@ -112,8 +132,16 @@
               "de": "Wenn Piloti während einer Antwort etwas zu Ihrem Projekt festhält, sehen Sie es jetzt direkt bei der Antwort statt unter „Details“. Mit einem Tippen sehen Sie, was festgehalten wurde. Korrigiert eine Notiz eine frühere, steht in der Antwort „Memory aktualisiert“, und die alte Notiz wird durchgestrichen angezeigt."
             },
             {
+              "en": "A proposed action's card in the chat now names each input in words, such as Folder or Project, instead of its technical name, in German and English.",
+              "de": "Die Karte einer vorgeschlagenen Aktion im Chat benennt nun jede Eingabe auf Deutsch und Englisch ausgeschrieben, etwa als Ordner oder Projekt, statt mit ihrem technischen Namen."
+            },
+            {
               "en": "Quotes, notes, callouts, messages and schedule entries no longer have a coloured bar down their left edge. Quoted words are set in italics, excerpts from a source sit on a quiet background, an unread message shows a dot, and a confirmation or warning says what it is with an icon and a word instead of a coloured stripe.",
               "de": "Zitate, Notizen, Hinweise, Nachrichten und Termineinträge haben keine farbige Leiste mehr am linken Rand. Zitierte Wörter sind kursiv gesetzt, Auszüge aus einer Quelle heben sich durch einen dezenten Hintergrund ab, ungelesene Nachrichten sind mit einem Punkt gekennzeichnet, und Bestätigungen oder Warnungen werden mit einem Symbol und einer Bezeichnung statt mit einem farbigen Streifen kenntlich gemacht."
+            },
+            {
+              "en": "The search filters now complete as you type: party names, place, cited norms and drawings, drawing number, revision, scale and stated facts offer the values your documents actually hold, each with how many documents hold it, so you pick the exact spelling instead of guessing it.",
+              "de": "Die Suchfilter ergänzen jetzt beim Tippen: Beteiligte, Ort, zitierte Normen und Pläne, Plannummer, Index, Maßstab und Angaben schlagen die Werte vor, die in Ihren Dokumenten tatsächlich stehen, jeweils mit der Zahl der Dokumente, die ihn enthalten. So wählen Sie die genaue Schreibweise, statt sie zu erraten."
             },
             {
               "en": "Piloti now opens your office's skills the same way in chat and in deep research, and a deep research report's \"Skills used\" now names every working method it followed, including the report formats Piloti brings along.",
@@ -139,6 +167,10 @@
             {
               "en": "When Piloti looks up every place a word appears in your documents, each place now counts once. A word in a chapter heading, or in a passage that runs on to the next page, was counted two or more times and could be listed on pages where it does not stand.",
               "de": "Wenn Piloti alle Stellen in Ihren Dokumenten ermittelt, an denen ein Wort vorkommt, zählt jede Stelle jetzt nur einmal. Ein Wort in einer Kapitelüberschrift oder in einem Textabschnitt, der auf der nächsten Seite weitergeht, wurde bisher zwei- oder mehrmals gezählt und konnte auf Seiten aufgeführt werden, auf denen es nicht vorkommt."
+            },
+            {
+              "en": "An answer no longer loses a source because Piloti cited a document by its place in the folders instead of by its name.",
+              "de": "Eine Antwort lässt eine Quelle nicht mehr aus, wenn Piloti ein Dokument anhand seiner Position in der Ordnerstruktur statt anhand seines Namens zitiert."
             },
             {
               "en": "For people who work in more than one office, the top bar above the projects filled the whole window and hid the page. The bar is back to its normal height, and switching offices now lives in the menu behind your picture.",

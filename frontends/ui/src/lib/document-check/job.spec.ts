@@ -138,7 +138,7 @@ describe('runDocumentCheckSlice — starting the turn', () => {
       if_idle: true,
       trigger: { kind: 'new_document', event_id: CHECK_ID, annotation_id: null },
     })
-    expect(request.message.text).toContain('knowledge_search')
+    expect(request.message.text).toContain('canvas__mark')
     expect(request.message.text).toContain('do not ask anything')
     // The person's message is the same instruction, under the turn's id.
     expect(vi.mocked(insertMessages).mock.calls[0][0][0]).toMatchObject({ id: CHECK_ID, role: 'user', authorUserId: 'uploader' })

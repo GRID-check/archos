@@ -137,7 +137,7 @@ def noise_notice(dropped: int) -> str:
         return ""
     return (
         f"Left out {dropped} passage(s) whose text is OCR debris from a drawing's text layer; "
-        '`match="exact"` still returns every passage.\n\n'
+        "a literal search still returns every passage.\n\n"
     )
 
 

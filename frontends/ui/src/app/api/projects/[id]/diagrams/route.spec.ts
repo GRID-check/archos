@@ -37,6 +37,11 @@ vi.mock('@/lib/diagrams/filing', () => ({
   fileDiagramDocuments: (...args: unknown[]) => fileDiagramDocuments(...args),
 }))
 
+const recordDiagramScore = vi.fn()
+vi.mock('@/lib/langfuse/diagram-score', () => ({
+  recordDiagramScore: (...args: unknown[]) => recordDiagramScore(...args),
+}))
+
 const requireResourceAccess = vi.fn()
 vi.mock('@/lib/sharing/access', () => ({
   requireResourceAccess: (...args: unknown[]) => requireResourceAccess(...args),
@@ -94,6 +99,31 @@ describe('POST /api/projects/[id]/diagrams', () => {
       svg: { documentId: 'doc-svg' },
       pdf: { documentId: 'doc-pdf' },
     })
+  })
+
+  it('marks a drawing a person edited as having two authors, and scores it on the answer’s trace (ADR-0141)', async () => {
+    recordDiagramScore.mockReset()
+    const response = await post(
+      submission({ sourceKind: 'excalidraw', source: '{"type":"excalidraw"}', edited: true, answerId: 'msg_42' })
+    )
+
+    expect(response.status).toBe(201)
+    expect(fileDiagramDocuments).toHaveBeenCalledWith(
+      expect.objectContaining({ sourceKind: 'excalidraw', marking: de.diagrams.markingEdited })
+    )
+    expect(recordDiagramScore).toHaveBeenCalledWith({
+      organizationId: 'org-1',
+      answerId: 'msg_42',
+      documentId: 'doc-svg',
+      edited: true,
+    })
+  })
+
+  it('keeps „Von Piloti erstellt" on a drawing filed as drawn', async () => {
+    recordDiagramScore.mockReset()
+    await post(submission())
+    expect(fileDiagramDocuments).toHaveBeenCalledWith(expect.objectContaining({ marking: de.diagrams.marking }))
+    expect(recordDiagramScore).toHaveBeenCalledWith(expect.objectContaining({ answerId: null, edited: false }))
   })
 
   it('names the refused rule in the reader’s language', async () => {

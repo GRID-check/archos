@@ -31,6 +31,7 @@ import { useSessionUrl } from '@/hooks/use-session-url'
 import { documentDisplayName } from '@/lib/documents/display-name'
 import { useTranslations } from '@/i18n'
 import { useFilePreviewStore } from '@/features/documents/stores/file-preview-store'
+import { ViewerActionHost } from '@/features/documents/components/viewer-action-host'
 import { useComposerMetrics } from '../hooks/use-composer-metrics'
 import { useSessionRows } from '../hooks/use-session-rows'
 import { motion } from '@/components/motion'
@@ -268,6 +269,9 @@ export const MainLayout: FC<MainLayoutProps> = ({
 
               {/* The scrims under and above the floating composer (`ComposerScrim`). */}
               <ComposerScrim />
+
+              {/* What Piloti's viewer actions move, for this page only (ADR-0144). */}
+              <ViewerActionHost />
 
               {/* Floating composer stack: overlays the bottom of the chat scroll
               area instead of docking below it, so messages scroll behind the

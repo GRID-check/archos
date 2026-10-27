@@ -136,7 +136,7 @@ class TestUserPattern:
     def test_a_pattern_that_is_not_a_regex_is_refused_with_the_way_out(self, text):
         compiled, refusal = user_pattern(text)
         assert compiled is None
-        assert "not a valid regex" in refusal and 'match="exact"' in refusal
+        assert "not a valid regex" in refusal and "search literally" in refusal
 
     def test_a_pattern_longer_than_the_bound_is_refused(self):
         compiled, refusal = user_pattern("a" * 301)
@@ -444,17 +444,10 @@ class TestDescriptionFollowsMatchModes:
         text = await self._description(["meaning"])
         assert 'match="exact"' not in text and 'match="regex"' not in text
 
-    async def test_the_navigate_arm_is_told_the_search_is_literal_only(self, search_with):
-        search_with(_Store([]))
-        text = await self._description(["exact", "regex"])
-        assert text.startswith('In this configuration the search is literal only: pass `match="exact"` or')
-        assert '`match="exact"` returns EVERY passage' in text
-
     async def test_production_offers_every_mode(self, search_with):
         search_with(_Store([]))
         text = await self._description(["meaning", "exact", "regex"])
         assert '`match="exact"` returns' in text and '`match="regex"` is the same search' in text
-        assert "literal only" not in text
 
 
 def _regex_examples(description: str) -> list[str]:

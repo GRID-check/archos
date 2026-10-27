@@ -198,6 +198,15 @@ export const search: typeof en.search = {
     rangeInvalid: 'Der untere Wert liegt über dem oberen.',
     factValueMissing: 'Bitte einen Wert eingeben.',
     factBoundMissing: 'Bitte einen Mindest- oder Höchstwert eingeben.',
+    suggestions: 'Vorschläge aus den Dokumenten',
+    citesFind: 'Weitere Verweise',
+    citesPlaceholder: 'ÖNORM, OIB-RL, EP-05',
+    referenceKinds: {
+      norm: 'Norm',
+      law: 'Gesetz',
+      plan: 'Plan',
+      document: 'Dokument',
+    },
   },
   register: {
     caption: 'Eine Zeile je Dokument, so wie Piloti es gelesen hat.',

@@ -14,6 +14,10 @@
  *    `reason` the entry gives.
  *  - `platform`: platform staff on the platform door (ADR-0126). Only the
  *    `platform` domain, and that domain on no other door.
+ *  - `app`: an MCP Apps view in an outside agent's host (ADR-0142). Set only
+ *    on an app-only tool (`catalog/app-views.ts`): a control on a card the
+ *    person presses, listed with `_meta.ui.visibility: ['app']` so the host
+ *    keeps it from the model, and offered to no other audience.
  *
  * `withheld` keeps an operation in the catalog and on no door, with its
  * category and reason (the amendment's four categories); offering it again is
@@ -39,6 +43,7 @@
 
 import type { BackendOperationName } from './backend-operations'
 import type { OperationName } from './catalog'
+import type { AppToolName } from './catalog/app-views'
 
 /**
  * Why an operation is withheld from agents. `external-service`: a service we
@@ -67,6 +72,8 @@ export interface Exposure {
   readonly piloti: boolean | NativeTool
   /** Offered on the platform door (the `platform` domain only). */
   readonly platform?: true
+  /** An app-only tool: offered to an MCP Apps view in an outside agent's host, never to a model (ADR-0142). */
+  readonly app?: true
   /** On no door at all, with why. */
   readonly withheld?: Withholding
   /** Why the entry is not simply offered to both office audiences. */
@@ -117,6 +124,16 @@ const ARCHIVE_BYTES = {
     'Piloti holds no Outlook archive: the bytes come from the person’s disk, and a part is larger than any proposal a person can read',
 } as const satisfies Exposure
 
+/** A control on an MCP Apps card (ADR-0142): the person presses it, the model never sees it, Piloti never decides. */
+const APP_ONLY = {
+  external: false,
+  piloti: false,
+  app: true,
+  reason:
+    'pressed by the person on Piloti’s card inside their own assistant (an MCP App); listed with `visibility: ["app"]`, so ' +
+    'the host keeps it from the model, and it runs the catalog operation it names through that operation’s route',
+} as const satisfies Exposure
+
 const NATIVE_READ = 'Piloti reads with this native tool itself; the door offers it to outside agents'
 const MEMORY =
   'Piloti keeps a note with its own `remember`, which records where the finding came from and keeps a restricted one in its project'
@@ -126,7 +143,8 @@ const SKILL_READ =
 const CANVAS ='Piloti marks a document, and answers in a mark’s thread, with its own canvas tools, anchored where it looked'
 
 /**
- * Every operation, in catalog order (domain, then name), then the read tools.
+ * Every operation, in catalog order (domain, then name), then the read tools,
+ * then the app-only tools.
  * A name that is no operation, or an operation without an entry, does not compile.
  */
 export const EXPOSURE = {
@@ -203,6 +221,7 @@ export const EXPOSURE = {
   // Piloti too: the filters (type, facts, references, register order) are what `knowledge_search` cannot ask, and the
   // description says a passage is a pointer to read, not a source to quote.
   'workspace-search': OFFERED,
+  'workspace-search-suggest': OFFERED,
   'workspace-search-export': OFFERED,
   'document-status': OFFERED,
   'document-summary-get': OFFERED,
@@ -701,12 +720,16 @@ export const EXPOSURE = {
 
   // the agent’s read tools (`backend-operations.ts`)
   'knowledge-search': { external: true, piloti: 'native:knowledge_search', reason: NATIVE_READ },
-  'passage-read': { external: true, piloti: 'native:read_passage', reason: NATIVE_READ },
+  'passage-read': { external: true, piloti: 'native:read_file', reason: NATIVE_READ },
   'files-list': { external: true, piloti: 'native:list_files', reason: NATIVE_READ },
   'document-look': { external: true, piloti: 'native:look', reason: NATIVE_READ },
   'ifc-query': { external: true, piloti: 'native:ifc_query', reason: NATIVE_READ },
   'ifc-measure': { external: true, piloti: 'native:ifc_measure', reason: NATIVE_READ },
   'law-lookup': { external: true, piloti: 'native:ris_lookup_tool', reason: NATIVE_READ },
-} as const satisfies Record<OperationName | BackendOperationName, Exposure>
+
+  // the app-only tools of the door's MCP Apps views (`catalog/app-views.ts`)
+  'proposal-card-apply': APP_ONLY,
+  'proposal-card-dismiss': APP_ONLY,
+} as const satisfies Record<OperationName | BackendOperationName | AppToolName, Exposure>
 
 export type ExposedName = keyof typeof EXPOSURE

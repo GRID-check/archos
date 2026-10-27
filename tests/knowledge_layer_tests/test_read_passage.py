@@ -288,7 +288,7 @@ class TestTheFilterIsTheAnswer:
         out = await _read(document=OIB)
 
         assert "Provide `clause=`" not in out
-        assert "nicht nach Punkten gegliedert" in out
+        assert "not structured in Punkte" in out
         assert "## Gliederung" not in out
         assert len(store.calls) == 2
 

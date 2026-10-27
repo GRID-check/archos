@@ -316,7 +316,7 @@ _TOOL_DESCRIPTION = (
     "Asking for files of a KIND ('hab ich sonst noch Grundrisse', 'welche Fotos "
     "vom Bestand') is a browse: `mode=many` on that shelf, so they can open them.\n"
     "WHEN NOT TO CALL — to say what is on a shelf ('welche Dateien hast du im "
-    "Büroablage'), answer from the knowledge-base inventory, or from `list_files` "
+    "Büroablage'), answer from the knowledge-base inventory, or from a listing "
     "where the inventory is incomplete or the question filters by folder, name or "
     "date; file names written in the answer already open on click. To read, "
     "quote, or cite a passage, use `knowledge_search`. "

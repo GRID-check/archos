@@ -475,7 +475,7 @@ def render_diff(
         lines.append(f"Piloti's summary of the change (from the descriptions): {_clip(change_summary)}")
     lines.append(
         "What was compared is the printed text and Piloti's reading of the drawings, not the drawings themselves. "
-        "Check a dimension in the document with `read_passage` before stating it; marks on the page are shown by "
+        "Check a dimension by reading the document before stating it; marks on the page are shown by "
         "„Vergleichen“ in Dateien."
     )
     return "\n".join(lines)

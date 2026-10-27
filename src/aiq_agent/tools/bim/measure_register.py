@@ -721,7 +721,7 @@ _TOOL_DESCRIPTION = (
     "to sanity-check that a measured arrangement looks the way the numbers imply, or before measuring "
     "at all. ~6 s. NEVER read a number off it — a dimension taken from a picture is guessed even when "
     "it happens to be right.\n"
-    "  'draw'           — the same plan as an SVG FILE for the USER (~5 s). It returns a path, not an "
+    "  'draw'           — the same floor plan as an SVG FILE for the USER (~5 s). It returns a path, not an "
     "image: you cannot see it. Use 'view' when YOU need to look, 'draw' when the user wants the file.\n"
     "  'shopping_list'  — writes the model's blind spots as a buildingSMART IDS 1.0 file the architect "
     "can run in Solibri/BIMcollab/ifctester against their own model, and re-run after fixing to prove "

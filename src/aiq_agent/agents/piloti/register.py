@@ -35,6 +35,8 @@ from aiq_agent.common import unavailable_source_ids
 from aiq_agent.common import validate_tool_availability
 from aiq_agent.common.agent_tools import load_agent_tools
 from aiq_agent.common.citation_verification import EmptySourceRegistryError
+from aiq_agent.common.client_tools import KNOWN_CLIENT_TOOLS
+from aiq_agent.common.client_tools import client_tool_declared
 from aiq_agent.common.data_source_registry import get_all_sources
 from aiq_agent.common.decisions import SKIPPED_TOO_SHORT
 from aiq_agent.common.decisions import record_skipped
@@ -183,7 +185,7 @@ class ResearchAgentConfig(FunctionBaseConfig, name="research_agent"):
         default=True,
         description=(
             "EVAL KNOB, not a product setting: false turns round 0's prefetched fetches off, so the "
-            "answer suite can measure the navigation tools (`list_files`, `read_passage`, exact search) "
+            "answer suite can measure the navigation tools (`ls`, `glob`, `grep`, `read_file`) "
             "without a ranked search already in the model's first request (`suite.py --set files "
             "--arm grep`, ADR-0127, ADR-0133). Production keeps the default."
         ),
@@ -455,14 +457,21 @@ def _tools_in_scope(tools: list[Any]) -> list[Any]:
     """The turn's tools less those that cannot run in its scope.
 
     The tool payload still does not vary with the data-source toggles (the
-    cache shard stays one per org); it varies with one fact the turn cannot
-    change — whether there is a project — so an org has two shards, not one
-    per combination.
+    cache shard stays one per org); it varies with two facts the turn cannot
+    change — whether there is a project, and whether the asking page can run a
+    frontend tool (``common/client_tools``, ADR-0144) — so an org has at most
+    four shards, not one per combination.
     """
-    if get_project_id_from_context():
-        return tools
-    # The BASE name: a grouped or MCP tool arrives as ``bim__ifc_query``.
-    return [tool for tool in tools if tool_basename(getattr(tool, "name", "") or "") not in _PROJECT_MODEL_TOOLS]
+    in_project = bool(get_project_id_from_context())
+
+    def runs_here(tool: Any) -> bool:
+        # The BASE name: a grouped or MCP tool arrives as ``bim__ifc_query``.
+        name = tool_basename(getattr(tool, "name", "") or "")
+        if name in KNOWN_CLIENT_TOOLS:
+            return client_tool_declared(name)
+        return in_project or name not in _PROJECT_MODEL_TOOLS
+
+    return [tool for tool in tools if runs_here(tool)]
 
 
 def _apply_decisions(decisions: TurnDecisions, state: ResearchAgentState, runtime: SkillRuntime | None) -> None:
@@ -607,6 +616,7 @@ def _turn_prefetch(
             decisions,
             facts.question,
             focus_file_name=state.focus_file_name,
+            focus_shelf=state.focus_shelf,
             previous_message=facts.previous_message,
             reference_projects=facts.reference_projects,
         )
@@ -658,11 +668,31 @@ def _estate_backend(config: ResearchAgentConfig, builder: Builder) -> Any:
     return EstateBackend(builder.get_function_config(config.filesystem))
 
 
+def _chat_bound(tools: list[Any], config: ResearchAgentConfig, builder: Builder) -> list[Any]:
+    """The shared knowledge-layer tools on the contract of a binding that reads the estate (slice 6).
+
+    Only when the turns will bind the estate's verbs (``filesystem`` set): ``knowledge_search`` is
+    then ranked search with ``path`` and ``list_files`` loses its tree view, because ``grep`` and
+    ``ls`` do those. A config without the estate (an eval, a benchmark) keeps the full contracts,
+    the literal modes included. The budget the description states is the search's own configuration.
+    """
+    if config.filesystem is None:
+        return tools
+    from knowledge_layer.chat_binding import chat_tools
+
+    search = builder.get_function_config(config.filesystem)
+    return chat_tools(
+        tools,
+        top_k=int(getattr(search, "top_k", 5)),
+        max_per_document=int(getattr(search, "max_chunks_per_document", 0)),
+    )
+
+
 @register_function(config_type=ResearchAgentConfig, framework_wrappers=[LLMFrameworkEnum.LANGCHAIN])
 async def research_agent(config: ResearchAgentConfig, builder: Builder):
     """Research agent with tool-calling capabilities."""
     llm = await get_langchain_llm(builder, config.llm)
-    tools = await _load_tools(config, builder)
+    tools = _chat_bound(await _load_tools(config, builder), config, builder)
 
     provider = LLMProvider()
     provider.set_default(llm, group=AgentGroup.RESEARCH)

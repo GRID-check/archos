@@ -36,20 +36,18 @@ from deepagents.backends.protocol import LsResult
 from deepagents.backends.protocol import ReadResult
 from deepagents.backends.protocol import WriteResult
 from deepagents.middleware.filesystem import FilesystemMiddleware
-from deepagents.middleware.filesystem import GlobSchema
-from deepagents.middleware.filesystem import GrepSchema
-from deepagents.middleware.filesystem import LsSchema
-from deepagents.middleware.filesystem import ReadFileSchema
 from langchain.tools import ToolRuntime
 from langchain_core.messages import ToolMessage
 from langchain_core.tools import BaseTool
 from langchain_core.tools import StructuredTool
+from pydantic import BaseModel
 from pydantic import Field
 
 from aiq_agent.common.citation_collector import artifact_for
 from aiq_agent.common.citation_collector import collect_citations
 from aiq_agent.common.estate_paths import is_draft_path
 from aiq_agent.common.estate_paths import is_skill_path
+from aiq_agent.common.turn_status import CONCLUSION_DESCRIPTION
 from aiq_agent.skills import SKILLS_ROOT
 
 from .draft_store import DRAFT_ROOT
@@ -190,26 +188,15 @@ def _off_the_estate(path: str | None) -> bool:
     return path is not None and (is_draft_path(path) or is_skill_path(path))
 
 
-class EstateReadFileSchema(ReadFileSchema):
-    """``read_file``'s arguments: the stock three, then the two a paginated document is addressed by."""
+class EstateReadFileSchema(BaseModel):
+    """``read_file``'s arguments, bare: the description says what each means."""
 
-    offset: int = Field(
-        default=0,
-        description=(
-            "Lines to skip, for a draft or a text file (txt, md, csv). On a paginated document use pages instead; "
-            "an offset there is mapped to the pages it falls on."
-        ),
-    )
-    limit: int = Field(default=100, description="Lines to read, for a draft or a text file. Default 100.")
-    pages: str | int | None = Field(
-        default=None,
-        description='Pages of a paginated document: "3", "3-5" or "3,7,11" (at most 30). Omit for the opening page '
-        "and the document's Gliederung.",
-    )
-    clause: str | None = Field(
-        default=None,
-        description='One Punkt of a Punkt-structured document, the number alone ("3.5.2"); pages is then ignored.',
-    )
+    file_path: str
+    pages: str | int | None = None
+    clause: str | None = None
+    offset: int = 0
+    limit: int = 100
+    conclusion: str = Field(default="", description=CONCLUSION_DESCRIPTION)
 
 
 #: A coroutine of one estate call: returns a ``knowledge_layer.estate.ToolOutput``.
@@ -267,6 +254,7 @@ class PilotiFilesystem(FilesystemMiddleware):
             limit: int = 100,
             pages: str | int | None = None,
             clause: str | None = None,
+            conclusion: str = "",  # noqa: ARG001 - read off the call by the Herleitung, never by the read
         ) -> ToolMessage | Any:
             if _off_the_estate(file_path):
                 if not has_drafts and is_draft_path(file_path):
@@ -327,7 +315,7 @@ class PilotiFilesystem(FilesystemMiddleware):
         return StructuredTool.from_function(
             name="glob",
             coroutine=glob,
-            args_schema=GlobSchema,
+            args_schema=EstateGlobSchema,
             infer_schema=False,
             description=self._custom_tool_descriptions.get("glob") or stock.description,
         )
@@ -349,6 +337,7 @@ class PilotiFilesystem(FilesystemMiddleware):
             mode: str = "exact",
             stemmed: bool = False,
             context: int = 0,
+            conclusion: str = "",  # noqa: ARG001 - read off the call by the Herleitung, never by the search
         ) -> ToolMessage | Any:
             if _off_the_estate(path):
                 if not has_drafts and is_draft_path(path):
@@ -386,42 +375,58 @@ class PilotiFilesystem(FilesystemMiddleware):
         )
 
 
-class EstateGrepSchema(GrepSchema):
-    """``grep``'s arguments: the stock five, then how the pattern is read and how much is shown around it."""
+class EstateGrepSchema(BaseModel):
+    """``grep``'s arguments, bare: the stock five, then how the pattern is read and how much is shown around it."""
 
-    pattern: str = Field(
-        description='The wording to find: literal by default (mode="exact"), a Python regular expression with '
-        'mode="regex".'
-    )
-    path: str | None = Field(
-        default=None,
-        description="Where to search: a place (/project/), a folder, or one file. Omit for every place the person "
-        "may see; the drafts are searched only under /drafts/.",
-    )
-    glob: str | None = Field(default=None, description="Only files whose name matches this glob (`*.pdf`, `EP-*`).")
-    mode: Literal["exact", "regex"] = Field(
-        default="exact",
-        description="exact: the pattern literally, folding case, ä/ae, ß/ss, soft hyphens and line-break "
-        "hyphenation; 2-3 characters match a whole word only. regex: a Python regular expression, case-insensitive.",
-    )
-    stemmed: bool = Field(default=False, description="exact only: also find inflected forms (German stemming).")
-    context: int = Field(
-        default=0,
-        ge=0,
-        le=3,
-        description="content only: lines shown around each match, 0 to 3, in an index under the passages.",
-    )
+    pattern: str
+    path: str | None = None
+    glob: str | None = None
+    output_mode: Literal["files_with_matches", "content", "count"] = "files_with_matches"
+    max_count: int | None = Field(default=None, gt=0)
+    mode: Literal["exact", "regex"] = "exact"
+    stemmed: bool = False
+    context: int = Field(default=0, ge=0, le=3)
+    conclusion: str = Field(default="", description=CONCLUSION_DESCRIPTION)
 
 
-class EstateLsSchema(LsSchema):
-    """``ls``'s arguments: the stock path, and how deep the tree goes."""
+class EstateLsSchema(BaseModel):
+    """``ls``'s arguments, bare."""
 
-    depth: int = Field(
-        default=1,
-        ge=1,
-        le=4,
-        description="1 lists the folder; 2 to 4 return the tree below it as folder cards, that many levels deep.",
-    )
+    path: str
+    depth: int = Field(default=1, ge=1, le=4)
+
+
+class EstateGlobSchema(BaseModel):
+    """``glob``'s arguments, bare."""
+
+    pattern: str
+    path: str | None = None
+
+
+class DraftWriteSchema(BaseModel):
+    """``write_file``'s arguments, bare (the stock schema repeats its description per field)."""
+
+    file_path: str
+    content: str
+
+
+class DraftEditSchema(BaseModel):
+    """``edit_file``'s arguments, bare."""
+
+    file_path: str
+    old_string: str
+    new_string: str
+    replace_all: bool = False
+
+
+#: The bare schema each stock tool is rebound with, by name.
+BARE_STOCK_SCHEMAS: dict[str, type[BaseModel]] = {"write_file": DraftWriteSchema, "edit_file": DraftEditSchema}
+
+
+def with_bare_schema(tool: BaseTool) -> BaseTool:
+    """A stock tool with its field descriptions dropped; its description already says what each field means."""
+    bare = BARE_STOCK_SCHEMAS.get(tool.name)
+    return tool.model_copy(update={"args_schema": bare}) if bare is not None else tool
 
 
 def _refusal(name: str, runtime: ToolRuntime, text: str) -> ToolMessage:

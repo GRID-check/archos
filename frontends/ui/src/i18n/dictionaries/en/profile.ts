@@ -37,6 +37,13 @@ export const profile = {
     label: 'Show technical reasoning',
     hint: 'Reveals the individual technical steps (which agent or tool ran). Off by default — you normally see the plain-language trace.',
   },
+  viewerActions: {
+    title: 'Places in the viewer',
+    description:
+      'When an answer rests on one place in a document, Piloti can open it beside the chat with the place marked. The answer says what it opened, with “Undo”.',
+    label: 'Open automatically',
+    hint: 'Applies to this browser. Off: Piloti only suggests the place under the answer.',
+  },
   usageAnalytics: {
     title: 'Usage analytics',
     description:
