@@ -17,6 +17,7 @@ export const searchExport: typeof en.searchExport = {
     documentDate: 'Dokumentdatum',
     uploadedAt: 'Hochgeladen',
     uploadedBy: 'Hochgeladen von',
+    author: 'Verfasser',
     pages: 'Seiten',
     current: 'Aktuelle Fassung',
     status: 'Status',

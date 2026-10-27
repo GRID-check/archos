@@ -223,6 +223,17 @@ One organism, `frontends/ui/src/features/search` (`SearchWorkspace`), at every
 scope; the question lives in the URL (`?q=…&type=…&view=register&sort=…`), so
 a search is a link and Back walks its filters.
 
+The register is the 09:10 view by default: without words it reads by
+Plannummer (documents without a number last, either way), „Nur aktuelle
+Fassung“ is on (`current=0` turns it off; the list's default is off, and
+`current=1` turns it on there), and it shows Plannummer, Index, Titel,
+Planstand, Maßstab, Dokumentart, Verfasser, Projekt (office scope only) and
+Status. The column menu adds Ordner, Hochgeladen and Seiten; the choice is
+`cols=` in the URL, in the register's order. Every column header sorts. The
+export carries every column whatever is shown, and its menu says so. On a
+phone the register is a stack: Plannummer and Index over the title, the other
+chosen columns on a line under it, the order in a menu.
+
 - `/app/search`: the whole office. The rail's „Suche“ (`g u`), the header's
   magnifier, and ⌘K, whose first row carries what was typed
   (`/app/search?q=…`). The project facet narrows it to one project.
@@ -232,8 +243,16 @@ a search is a link and Back walks its filters.
 - `/dev/search`: the organism over a fixture answer, list and register.
 
 A hit opens where the workspace already shows it: a document in its shelf's
-preview (`?doc=`), an annotation in the review at the mark. The passage's page
-is not in the link yet: the Dateien preview has no page parameter.
+preview (`?doc=`), an annotation in the review at the mark. A document hit
+with a passage opens at it: `?doc=<id>&page=7&highlight=<passage>`
+(`features/documents/lib/document-locus.ts`). `page` and `highlight` are the
+two things a citation hands the same pdf.js viewer, so the preview opens at the
+passage's page with the passage lit up, matched as fuzzily as a citation's (and
+looked for on the neighbouring pages when the page number is off by a cover
+sheet). The link carries the passage's first 200 characters, cut at a word.
+The place belongs to the document `doc` names: opening another document, or a
+folder, takes `page` and `highlight` off the address with the review's params.
+A preview that is not a PDF (an image, a text file) ignores both.
 
 ### Piloti
 

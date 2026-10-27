@@ -9,26 +9,29 @@
  * not a box, separates the two; a facet option is one dense row that toggles
  * and counts in tabular figures; a result row is the product's list row
  * (`Item`) as a link, the name in the strong weight and everything else on one
- * muted meta line; the register is a table whose header stays put while its
- * rows scroll. The organisms arrange them and never style them.
+ * muted meta line; the register is a table whose header stays put while the
+ * page scrolls its rows, and a stack of entries on a phone. The organisms arrange them and never style them.
  */
 
 import type { JSX, ReactNode } from 'react'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import type { LucideIcon } from 'lucide-react'
-import { Archive, ChevronRight, FolderKanban, X } from 'lucide-react'
+import { Archive, ChevronRight, FolderKanban, History, X } from 'lucide-react'
 
 import { Chip, ChipLabel } from '@/components/ui/chip'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { FOCUS_RING_INSET } from '@/components/ui/focus-ring'
+import { HorizontalScroll } from '@/components/ui/horizontal-scroll'
 import { Item, ItemContent, ItemMedia } from '@/components/ui/item'
 import { Kbd, KbdGroup } from '@/components/ui/kbd'
+import { Label } from '@/components/ui/label'
 import { SectionLabel } from '@/components/ui/section-label'
 import { Skeleton } from '@/components/ui/skeleton'
 import { SortableHead } from '@/components/ui/sortable-head'
 import { Spinner } from '@/components/ui/spinner'
-import { TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { Switch } from '@/components/ui/switch'
+import { TableBody, TableCell, TableHeader, TableRow } from '@/components/ui/table'
 import type { TextSegment } from '@/lib/text/term-segments'
 import { sourceTint } from '@/lib/ui/source-tint'
 import { cn } from '@/lib/utils'
@@ -428,27 +431,127 @@ export function ResultsBody({ stale, children }: { stale: boolean; children: Rea
 
 // ─── Register ───────────────────────────────────────────────────────────────
 
-/** The register's box: it scrolls, so the header row can stay put above the rows. */
-export function RegisterTable({ children, caption, testId }: { children: ReactNode; caption: string; testId?: string }): JSX.Element {
+/** What a register states about itself, above its rows: „Nur aktuelle Fassung“ at the start, the column and sort menus at the end. */
+export function RegisterBar({ start, end }: { start: ReactNode; end: ReactNode }): JSX.Element {
   return (
-    <div className="max-h-[calc(100dvh-12rem)] min-w-0 overflow-auto border-y border-border/70" data-testid={testId}>
-      <table className="w-full caption-bottom border-separate border-spacing-0 text-[13px]">
-        <caption className="py-2 text-left text-xs text-muted-foreground">{caption}</caption>
-        {children}
-      </table>
+    <div className="flex min-w-0 flex-wrap items-center justify-between gap-x-4 gap-y-2" data-testid="search-register-bar">
+      <div className="flex min-w-0 items-center gap-2">{start}</div>
+      <div className="flex items-center gap-2">{end}</div>
+    </div>
+  )
+}
+
+/** A switch with its words beside it, the words part of the control: „Nur aktuelle Fassung“. */
+export function LabelledSwitch({
+  id,
+  label,
+  checked,
+  onCheckedChange,
+  testId,
+}: {
+  id: string
+  label: string
+  checked: boolean
+  onCheckedChange: (checked: boolean) => void
+  testId?: string
+}): JSX.Element {
+  return (
+    <div className="flex items-center gap-2">
+      <Switch id={id} checked={checked} onCheckedChange={onCheckedChange} data-testid={testId} />
+      <Label htmlFor={id} className="cursor-pointer text-sm font-normal text-foreground">
+        {label}
+      </Label>
+    </div>
+  )
+}
+
+/** A document a newer Fassung replaces: ink, not a warning; the clock-back glyph says „older“ with the word. */
+export function SupersededMark({ label, title }: { label: string; title?: string }): JSX.Element {
+  return (
+    <Chip size="sm" variant="outline" title={title} className="text-muted-foreground" data-testid="superseded-mark">
+      <History aria-hidden />
+      {label}
+    </Chip>
+  )
+}
+
+/** The narrowest the name column gets before the register scrolls sideways instead. */
+const REGISTER_NAME_MIN_REM = 12
+
+/**
+ * The register's box. The page is its one vertical scroller, so the header row
+ * stays put above the rows as the page scrolls. The columns have widths and the
+ * name takes the rest; only when the chosen columns cannot fit beside a
+ * readable name does the table scroll sideways, behind the kit's fade and
+ * chevron, which say there is more to the right.
+ */
+export function RegisterTable({
+  children,
+  caption,
+  testId,
+  columnWidths,
+  scrollLabel,
+}: {
+  children: ReactNode
+  caption: string
+  testId?: string
+  /** One per column in order, in rem; null is the column that takes the rest. */
+  columnWidths: ReadonlyArray<number | null>
+  /** The name of the region when it scrolls sideways. */
+  scrollLabel: string
+}): JSX.Element {
+  const box = useRef<HTMLDivElement>(null)
+  const [wide, setWide] = useState(false)
+  const flexible = columnWidths.filter((width) => width === null).length
+  const minRem = columnWidths.reduce<number>((sum, width) => sum + (width ?? 0), 0) + flexible * REGISTER_NAME_MIN_REM
+
+  useLayoutEffect(() => {
+    const element = box.current
+    if (!element) return
+    const update = (): void => {
+      const rem = Number.parseFloat(getComputedStyle(document.documentElement).fontSize) || 16
+      setWide(minRem * rem > element.clientWidth + 1)
+    }
+    update()
+    if (typeof ResizeObserver === 'undefined') return
+    const observer = new ResizeObserver(update)
+    observer.observe(element)
+    return () => observer.disconnect()
+  }, [minRem])
+
+  const table = (
+    <table className="w-full table-fixed caption-bottom border-separate border-spacing-0 text-sm" style={{ minWidth: `${minRem}rem` }}>
+      <caption className="py-2 text-left text-xs text-muted-foreground">{caption}</caption>
+      <colgroup>
+        {columnWidths.map((width, index) => (
+          <col key={index} style={width === null ? undefined : { width: `${width}rem` }} />
+        ))}
+      </colgroup>
+      {children}
+    </table>
+  )
+  return (
+    <div ref={box} className="min-w-0" data-testid={testId} data-wide={wide || undefined}>
+      {wide ? (
+        <HorizontalScroll cue aria-label={scrollLabel}>
+          {table}
+        </HorizontalScroll>
+      ) : (
+        table
+      )}
     </div>
   )
 }
 
 export function RegisterHead({ children }: { children: ReactNode }): JSX.Element {
   return (
-    <TableHeader className="sticky top-0 z-10 bg-background [&_th]:border-b [&_th]:border-border/70 [&_tr]:border-b-0">
+    <TableHeader className="sticky top-0 z-10 bg-background [&_th]:border-y [&_th]:border-border/70 [&_tr]:border-b-0">
       <TableRow className="hover:bg-transparent">{children}</TableRow>
     </TableHeader>
   )
 }
 
-/** A header cell; a sortable one is the kit's `SortableHead`. Figures align right, as their column does. */
+/** A header cell, the kit's `SortableHead`: every register column orders the search. Figures align right, as their column does. */
 export function RegisterHeadCell({
   label,
   numeric = false,
@@ -456,13 +559,11 @@ export function RegisterHeadCell({
 }: {
   label: string
   numeric?: boolean
-  sort?: { ariaLabel: string; direction: 'asc' | 'desc' | null; onSort: () => void }
+  sort: { ariaLabel: string; direction: 'asc' | 'desc' | null; onSort: () => void }
 }): JSX.Element {
-  const className = cn('h-8 whitespace-nowrap px-2', numeric && 'text-right')
-  if (!sort) return <TableHead className={className}>{label}</TableHead>
   return (
     <SortableHead
-      className={className}
+      className={cn('h-8 overflow-hidden whitespace-nowrap px-2', numeric && 'text-right')}
       label={label}
       ariaLabel={sort.ariaLabel}
       active={sort.direction !== null}
@@ -494,25 +595,27 @@ export function RegisterRow({ children, active = false, testId }: { children: Re
   )
 }
 
-/** A cell: one line, cut with an ellipsis; figures right-aligned in tabular digits, identifiers in the mono face. */
+/** A cell: one line, cut with an ellipsis at its column's width; figures right-aligned in tabular digits, identifiers in the mono face. */
 export function RegisterCell({
   children,
   kind = 'text',
   title,
 }: {
   children?: ReactNode
-  kind?: 'text' | 'strong' | 'code' | 'figure' | 'muted'
+  /** `mark`: a chip (where it is kept, a state) that gives way to its column's width. */
+  kind?: 'text' | 'strong' | 'code' | 'figure' | 'muted' | 'mark'
   title?: string
 }): JSX.Element {
   return (
     <TableCell
       className={cn(
-        'max-w-40 truncate px-2 py-1.5',
-        kind === 'strong' && 'max-w-64 font-medium text-foreground',
-        kind === 'code' && 'whitespace-nowrap font-mono text-xs',
-        kind === 'figure' && 'whitespace-nowrap text-right tabular-nums',
-        kind === 'muted' && 'whitespace-nowrap tabular-nums text-muted-foreground',
-        kind === 'text' && 'text-foreground/80'
+        'truncate px-2 py-1.5',
+        kind === 'strong' && 'font-medium text-foreground',
+        kind === 'code' && 'font-mono text-xs',
+        kind === 'figure' && 'text-right tabular-nums',
+        kind === 'muted' && 'tabular-nums text-muted-foreground',
+        kind === 'text' && 'text-foreground/80',
+        kind === 'mark' && '[&>*]:max-w-full!'
       )}
       title={title}
     >
@@ -527,6 +630,68 @@ export function RegisterLink({ href, children }: { href: string; children: React
     <Link href={href} className={cn('rounded-sm hover:underline', FOCUS_RING_INSET)}>
       {children}
     </Link>
+  )
+}
+
+/** The register on a phone: no table to scroll sideways, one stacked entry per document. */
+export function RegisterStack({ children, label, testId }: { children: ReactNode; label: string; testId?: string }): JSX.Element {
+  return (
+    <ul className="flex min-w-0 flex-col divide-y divide-border/70 border-y border-border/70" aria-label={label} data-testid={testId}>
+      {children}
+    </ul>
+  )
+}
+
+/**
+ * One document on a phone: Plannummer and Index in the mono face over the
+ * name, what else the register shows on a muted line under it, the state at
+ * the end of the first line.
+ */
+export function RegisterStackRow({
+  href,
+  code,
+  title,
+  meta,
+  aside,
+  active = false,
+  testId,
+}: {
+  href: string
+  /** „EP-03 · C“; absent for a document without a number. */
+  code?: ReactNode
+  title: ReactNode
+  meta?: ReactNode
+  aside?: ReactNode
+  active?: boolean
+  testId?: string
+}): JSX.Element {
+  const ref = useRef<HTMLAnchorElement>(null)
+  useEffect(() => {
+    if (active) ref.current?.scrollIntoView({ block: 'nearest' })
+  }, [active])
+  return (
+    <li className="list-none">
+      <Link
+        ref={ref}
+        href={href}
+        data-testid={testId}
+        aria-current={active ? 'true' : undefined}
+        className={cn(
+          'flex min-w-0 flex-col gap-0.5 px-1 py-2.5 transition-colors duration-snap ease-out hover:bg-secondary/60 motion-reduce:transition-none',
+          FOCUS_RING_INSET,
+          active && 'bg-secondary'
+        )}
+      >
+        {code || aside ? (
+          <span className="flex min-h-5 min-w-0 items-center gap-2">
+            <span className="min-w-0 flex-1 truncate font-mono text-xs text-foreground/80">{code}</span>
+            {aside ? <span className="flex shrink-0 items-center gap-1.5">{aside}</span> : null}
+          </span>
+        ) : null}
+        <span className="truncate text-sm font-semibold tracking-tight text-foreground">{title}</span>
+        {meta ? <span className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs text-muted-foreground">{meta}</span> : null}
+      </Link>
+    </li>
   )
 }
 

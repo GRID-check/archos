@@ -19,6 +19,7 @@ export const searchExport = {
     documentDate: 'Document date',
     uploadedAt: 'Uploaded',
     uploadedBy: 'Uploaded by',
+    author: 'Author',
     pages: 'Pages',
     current: 'Current revision',
     status: 'Status',

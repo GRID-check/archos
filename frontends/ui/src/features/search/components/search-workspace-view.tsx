@@ -17,7 +17,7 @@ import type { SearchExportFormat } from '../lib/search-client'
 import { toggleFacet } from '../lib/search-facets'
 import { hitHref } from '../lib/search-hrefs'
 import type { SearchSurface } from '../lib/search-surface'
-import { activeFilterCount, type SearchUrlState, type SearchView } from '../lib/search-url'
+import { activeFilterCount, withView, type SearchUrlState, type SearchView } from '../lib/search-url'
 import type { SectionView } from '../lib/sections'
 import { SearchActiveFilters } from './search-active-filters'
 import {
@@ -35,7 +35,7 @@ import {
 import { SearchExportMenu } from './search-export-menu'
 import { SearchFacetRail } from './search-facet-rail'
 import { SearchFilterForm } from './search-filter-form'
-import { SearchRegister } from './search-register'
+import { SearchRegister, SearchRegisterBar } from './search-register'
 import { SearchResultList } from './search-result-list'
 
 const ALL_KINDS = 'all'
@@ -216,7 +216,7 @@ export function SearchWorkspaceView({
                   size="sm"
                   value={state.view}
                   onValueChange={(value) => {
-                    if (value === 'list' || value === 'register') onStateChange({ ...state, view: value as SearchView })
+                    if (value === 'list' || value === 'register') onStateChange(withView(state, value as SearchView))
                   }}
                   aria-label={t('views.label')}
                 >
@@ -273,7 +273,9 @@ export function SearchWorkspaceView({
             )
           })}
         </ToggleGroup>
-      ) : null}
+      ) : (
+        <SearchRegisterBar state={state} onStateChange={onStateChange} hideProject={!officeWide} />
+      )}
       <ResultsStatus busy={loading && !failed}>
         {status}
         {status && anyHits ? ` · ${t('keys')}` : null}

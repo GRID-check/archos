@@ -69,6 +69,15 @@ function Harness({ initial, onChange }: { initial: SearchUrlState; onChange: (ne
   )
 }
 
+/** A document hit's link: its shelf preview at the passage's page, the passage to light up there. */
+const atPassage = (base: string, page: number, passage: string): string =>
+  `${base}&${new URLSearchParams({ page: String(page), highlight: passage }).toString()}`
+const CONCEPT_AT_PASSAGE = atPassage(
+  `/app/projects/${PROJECT}/files?doc=d0000000-0000-4000-8000-000000000001`,
+  7,
+  'Die Fluchtweglänge beträgt max. 40 m bis zum nächsten gesicherten Stiegenhaus (GK 4, OIB-RL 2, Pkt. 5.1.1)'
+)
+
 describe('SearchWorkspaceView', () => {
   it('shows each kind with where it lives, and a document’s passage with its page', () => {
     german(<Harness initial={{ ...EMPTY_SEARCH_STATE, text: 'Fluchtweg GK 4' }} onChange={() => {}} />)
@@ -80,10 +89,11 @@ describe('SearchWorkspaceView', () => {
     expect(concept).toHaveTextContent('S. 7')
     // The words searched for are set apart in the passage.
     expect(within(concept).getAllByText('Fluchtweg', { selector: 'mark' }).length).toBeGreaterThan(0)
-    expect(concept).toHaveAttribute('href', `/app/projects/${PROJECT}/files?doc=d0000000-0000-4000-8000-000000000001`)
+    // It opens at the passage's page, the passage to light up there.
+    expect(concept).toHaveAttribute('href', CONCEPT_AT_PASSAGE)
     expect(screen.getByTestId('search-hit-document-d0000000-0000-4000-8000-000000000006')).toHaveAttribute(
       'href',
-      '/app/office-shelf?doc=d0000000-0000-4000-8000-000000000006'
+      atPassage('/app/office-shelf?doc=d0000000-0000-4000-8000-000000000006', 9, 'Die Fluchtweglänge darf 40 m nicht überschreiten')
     )
     expect(screen.getByTestId('search-hit-annotation-a0000000-0000-4000-8000-000000000001')).toHaveAttribute(
       'href',
@@ -116,7 +126,7 @@ describe('SearchWorkspaceView', () => {
     await userEvent.keyboard('{ArrowDown}{ArrowDown}')
     expect(screen.getByTestId('search-hit-document-d0000000-0000-4000-8000-000000000002')).toHaveAttribute('aria-current', 'true')
     await userEvent.keyboard('{ArrowUp}{Enter}')
-    expect(routerPush).toHaveBeenCalledWith(`/app/projects/${PROJECT}/files?doc=d0000000-0000-4000-8000-000000000001`)
+    expect(routerPush).toHaveBeenCalledWith(CONCEPT_AT_PASSAGE)
     await userEvent.keyboard('{Escape}')
     expect(onField).toHaveBeenCalledWith('')
   })
@@ -184,13 +194,42 @@ describe('SearchWorkspaceView', () => {
     const register = screen.getByTestId('search-register')
     expect(within(register).getAllByRole('row')).toHaveLength(1 + SEARCH_FIXTURE_RESPONSE.sections.document!.hits.length)
 
-    await userEvent.click(within(register).getByRole('button', { name: 'Nach Plannummer sortieren' }))
-    expect(onChange).toHaveBeenLastCalledWith(expect.objectContaining({ sort: 'plan_number', dir: 'asc' }))
+    // The register reads by Plannummer from the start: the first click turns it round.
     await userEvent.click(within(register).getByRole('button', { name: 'Nach Plannummer sortieren' }))
     expect(onChange).toHaveBeenLastCalledWith(expect.objectContaining({ sort: 'plan_number', dir: 'desc' }))
-    // Maßstab is shown, not ordered by.
-    expect(within(register).queryByRole('button', { name: 'Nach Maßstab sortieren' })).toBeNull()
+    await userEvent.click(within(register).getByRole('button', { name: 'Nach Plannummer sortieren' }))
+    expect(onChange).toHaveBeenLastCalledWith(expect.objectContaining({ sort: 'plan_number', dir: 'asc' }))
+    // Every column orders the search, Maßstab and Verfasser among them.
+    await userEvent.click(within(register).getByRole('button', { name: 'Nach Maßstab sortieren' }))
+    expect(onChange).toHaveBeenLastCalledWith(expect.objectContaining({ sort: 'scale', dir: 'asc' }))
+    await userEvent.click(within(register).getByRole('button', { name: 'Nach Verfasser sortieren' }))
+    expect(onChange).toHaveBeenLastCalledWith(expect.objectContaining({ sort: 'author', dir: 'asc' }))
+    // Ordner is a column the reader asks for.
+    expect(within(register).queryByRole('button', { name: 'Nach Ordner sortieren' })).toBeNull()
     expect(within(register).getByText('Ersetzt')).toBeInTheDocument()
+  })
+
+  it('shows „Nur aktuelle Fassung“ above the register, and switches it off into the URL state', async () => {
+    const onChange = vi.fn()
+    german(<Harness initial={{ ...EMPTY_SEARCH_STATE, view: 'register', filters: { currentOnly: true } }} onChange={onChange} />)
+    const toggle = screen.getByRole('switch', { name: 'Nur aktuelle Fassung' })
+    expect(toggle).toBeChecked()
+    await userEvent.click(toggle)
+    expect(onChange).toHaveBeenLastCalledWith(expect.objectContaining({ filters: {} }))
+  })
+
+  it('adds a column from the column menu, in its place', async () => {
+    const onChange = vi.fn()
+    german(<Harness initial={{ ...EMPTY_SEARCH_STATE, view: 'register' }} onChange={onChange} />)
+    await userEvent.click(screen.getByTestId('search-register-columns'))
+    await userEvent.click(await screen.findByRole('menuitemcheckbox', { name: 'Ordner' }))
+    expect(onChange).toHaveBeenLastCalledWith(
+      expect.objectContaining({ columns: ['planNumber', 'planIndex', 'title', 'planDate', 'scale', 'documentType', 'author', 'project', 'folder', 'status'] })
+    )
+    // The menu stays open for the next pick; Escape closes it.
+    expect(screen.getByRole('menuitemcheckbox', { name: 'Ordner' })).toBeChecked()
+    await userEvent.keyboard('{Escape}')
+    expect(within(screen.getByTestId('search-register')).getByRole('button', { name: 'Nach Ordner sortieren' })).toBeInTheDocument()
   })
 })
 
@@ -242,7 +281,7 @@ describe('SearchWorkspace', () => {
     const rows = await screen.findAllByTestId('saved-search-apply')
     await userEvent.click(rows[0])
     expect(routerPush).toHaveBeenCalledWith(
-      `/app/search?view=register&sort=plan_number&dir=asc&project=${PROJECT}&type=submission_drawing&current=1`,
+      `/app/search?view=register&sort=plan_number&dir=asc&project=${PROJECT}&type=submission_drawing`,
       { scroll: false }
     )
   })

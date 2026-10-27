@@ -4,10 +4,13 @@
  * annotation in the document's review at the mark, a folder as the open level
  * of its shelf, a conversation in its thread.
  *
- * The passage's page is not in the link: the Dateien preview reads `doc`,
- * `review` and `mark` and has no page parameter yet.
+ * A document hit with a passage opens AT it: `page` and `highlight` on the
+ * preview's link (`features/documents/lib/document-locus.ts`), the page and
+ * passage a citation hands the same viewer, so the matched passage is lit up
+ * on the page it came from.
  */
 
+import { withDocumentLocus } from '@/features/documents/lib/document-locus'
 import { documentHref } from '@/features/uploads/lib/upload-summary'
 import type { AnnotationHit, ConversationHit, DocumentHit, FolderHit, ProjectHit, SearchHit } from '@/lib/search/search-wire'
 
@@ -16,8 +19,9 @@ function shelfBase(shelf: 'project' | 'office_shelf', projectId: string | null):
   return '/app/office-shelf'
 }
 
-export function documentHitHref(hit: Pick<DocumentHit, 'id' | 'shelf' | 'projectId'>): string {
-  return documentHref({ scope: hit.shelf, projectId: hit.projectId }, hit.id) ?? `/app/office-shelf?doc=${encodeURIComponent(hit.id)}`
+export function documentHitHref(hit: Pick<DocumentHit, 'id' | 'shelf' | 'projectId'> & Partial<Pick<DocumentHit, 'passage'>>): string {
+  const href = documentHref({ scope: hit.shelf, projectId: hit.projectId }, hit.id) ?? `/app/office-shelf?doc=${encodeURIComponent(hit.id)}`
+  return hit.passage ? withDocumentLocus(href, { page: hit.passage.page, highlight: hit.passage.text }) : href
 }
 
 export function annotationHitHref(hit: Pick<AnnotationHit, 'id' | 'documentId' | 'projectId'>): string {

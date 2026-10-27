@@ -22,6 +22,7 @@ import {
   type SearchKind,
   type SearchSort,
 } from '@/lib/search/search-wire'
+import { effectiveSort, normalizeRegisterColumns, REGISTER_COLUMNS, type RegisterColumn } from './search-sort'
 
 /** The two ways a result is read: what matched and where (list), or one row per document (register, the Planliste). */
 export const SEARCH_VIEWS = ['list', 'register'] as const
@@ -40,6 +41,8 @@ export interface SearchUrlState {
   filters: DocumentFilters
   /** On the office-wide page: one project the reader narrowed to (the project facet). */
   projectId: string | null
+  /** The register's columns the reader chose, in the register's order; null is the default set. */
+  columns: RegisterColumn[] | null
 }
 
 export const EMPTY_SEARCH_STATE: SearchUrlState = {
@@ -50,6 +53,7 @@ export const EMPTY_SEARCH_STATE: SearchUrlState = {
   dir: null,
   filters: {},
   projectId: null,
+  columns: null,
 }
 
 /**
@@ -84,6 +88,7 @@ export const SEARCH_PARAMS = {
   pagesMax: 'pagesMax',
   archived: 'archived',
   project: 'project',
+  columns: 'cols',
 } as const
 
 const ALL_SEARCH_PARAM_NAMES: readonly string[] = Object.values(SEARCH_PARAMS)
@@ -212,6 +217,7 @@ export function parseSearchParams(params: URLSearchParams): SearchUrlState {
   const project = params.get(P.project)
   const pagesMin = count(params.get(P.pagesMin))
   const pagesMax = count(params.get(P.pagesMax))
+  const current = params.get(P.current)
 
   const filters = compactFilters({
     documentTypes: list(params, P.documentType, (value) => oneOf(DOSSIER_DOCUMENT_TYPES, value), 24),
@@ -220,7 +226,9 @@ export function parseSearchParams(params: URLSearchParams): SearchUrlState {
     planIndex: list(params, P.planIndex, (value) => shortText(value) ?? null, 20),
     planDate: range(day(params.get(P.planFrom)), day(params.get(P.planTo))),
     scale: list(params, P.scale, (value) => shortText(value) ?? null, 20),
-    currentOnly: params.get(P.current) === '1' ? true : undefined,
+    // The register shows the current Fassung unless the link says otherwise
+    // (`current=0`); the list shows every Fassung unless it says `current=1`.
+    currentOnly: (view === 'register' ? current !== '0' : current === '1') ? true : undefined,
     parties: (() => {
       const parties = params.getAll(P.party).flatMap((value) => {
         const party = parsePartyParam(value)
@@ -257,7 +265,34 @@ export function parseSearchParams(params: URLSearchParams): SearchUrlState {
     dir,
     filters,
     projectId: project !== null && UUID.test(project) ? project : null,
+    columns: parseColumnsParam(params.get(P.columns)),
   }
+}
+
+/** `cols=planNumber,title,folder`: the columns named, in the register's order; anything unknown is dropped. */
+export function parseColumnsParam(value: string | null): RegisterColumn[] | null {
+  if (value === null) return null
+  const named = value.split(',').flatMap((entry) => {
+    const column = oneOf(REGISTER_COLUMNS, entry.trim())
+    return column ? [column] : []
+  })
+  return named.length > 0 ? normalizeRegisterColumns(named) : null
+}
+
+/** Each view's own default for „Nur aktuelle Fassung“: the register reads the current plans, the list everything. */
+export function currentOnlyDefault(view: SearchView): boolean {
+  return view === 'register'
+}
+
+/**
+ * The search in another view. „Nur aktuelle Fassung“ follows the new view's
+ * default while the reader left it at the old one's; a choice they made stays.
+ */
+export function withView(state: SearchUrlState, view: SearchView): SearchUrlState {
+  if (view === state.view) return state
+  const current = Boolean(state.filters.currentOnly)
+  const currentOnly = current === currentOnlyDefault(state.view) ? currentOnlyDefault(view) : current
+  return { ...state, view, filters: compactFilters({ ...state.filters, currentOnly: currentOnly || undefined }) }
 }
 
 /**
@@ -289,7 +324,9 @@ export function writeSearchParams(state: SearchUrlState, base: URLSearchParams =
   set(P.planFrom, f.planDate?.from)
   set(P.planTo, f.planDate?.to)
   add(P.scale, f.scale)
-  if (f.currentOnly) set(P.current, 1)
+  if (state.view === 'register') {
+    if (!f.currentOnly) set(P.current, 0)
+  } else if (f.currentOnly) set(P.current, 1)
   add(P.party, f.parties?.map(writePartyParam))
   set(P.place, f.place)
   add(P.fact, f.facts?.map(writeFactParam))
@@ -303,6 +340,8 @@ export function writeSearchParams(state: SearchUrlState, base: URLSearchParams =
   set(P.pagesMin, f.pages?.min)
   set(P.pagesMax, f.pages?.max)
   if (f.includeArchived) set(P.archived, 1)
+  const columns = normalizeRegisterColumns(state.columns)
+  if (columns) set(P.columns, columns.join(','))
   return params
 }
 
@@ -331,14 +370,17 @@ export function toSearchBody(state: SearchUrlState, options: SearchBodyOptions =
   const text = state.text.trim()
   const filters = compactFilters(state.filters)
   const kinds = options.kinds ?? (state.view === 'register' ? ['document' as const] : state.kinds ?? undefined)
-  // Relevance is an order of text matches; without text the route would refuse it.
-  const sort = state.sort === 'relevance' && text === '' ? null : state.sort
+  // Relevance is an order of text matches; without text the route would refuse
+  // it. The register without a column chosen reads by Plannummer.
+  const order = state.view === 'register' ? effectiveSort(state) : null
+  const sort = order && order.sort !== 'relevance' ? order.sort : state.sort === 'relevance' && text === '' ? null : state.sort
+  const dir = order && order.sort !== 'relevance' ? order.dir : state.dir
   return {
     ...(text !== '' ? { text } : {}),
     ...(kinds ? { kinds } : {}),
     ...(Object.keys(filters).length > 0 ? { filters } : {}),
     ...(sort ? { sort } : {}),
-    ...(sort && state.dir ? { dir: state.dir } : {}),
+    ...(sort && dir ? { dir } : {}),
     ...(options.limit !== undefined ? { limit: options.limit } : {}),
     ...(options.cursor !== undefined ? { cursor: options.cursor } : {}),
     ...(options.facets !== undefined ? { facets: options.facets } : {}),
@@ -359,6 +401,7 @@ export function fromSearchBody(body: SearchBody, projectId: string | null = null
     dir: body.dir ?? null,
     filters: compactFilters(body.filters ?? {}),
     projectId,
+    columns: null,
   }
 }
 
