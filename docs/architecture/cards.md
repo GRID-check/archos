@@ -34,8 +34,8 @@ sources, and the persisted decisions of interactive cards.
 ## Current card types
 
 Defined in `src/aiq_agent/cards/models.py` as a discriminated union (`GridCard`)
-— **25 types in four families**: 17 the answering model may emit, 16 of them
-through `emit_card` too; the 17th is `surface` (ADR-0065), a composition whose
+— **26 types in four families**: 18 the answering model may emit, 17 of them
+through `emit_card` too; the 18th is `surface` (ADR-0065), a composition whose
 leaves are content cards or `Text`, offered on the chat envelope only
 (`CHAT_ONLY_CARD_TYPES`: `emit_card`, `describe_card` and the post-hoc
 validator refuse it, because only the chat pipeline recites its `[N]`); and
@@ -80,6 +80,7 @@ answer it has just written.
 |---|---|---|
 | `project_profile_patch` **(interactive)** | A proposed change to the project brief. With `proposal_id` it is the receipt of a stored `project_profile` proposal (`ProposalReceipt`): the server applies the patch in the deciding person's session and the card says who decided when. Without one, the browser applies it, as before | `title`, `rationale`, `patch[]` — JSON-Patch ops restricted to `/facts`, `/goals`, `/unknowns`, `/assumptions` (the before/after rows are built from the patch and the live profile, never from the model) |
 | `calculation` | The derivation behind a computed number — the Schrittmaßregel, a GFZ, a Brandlast, a U-value from its resistances. **There is no result field**: the model supplies operands, an operation from a closed set (`sum`, `product`, `quotient`, `percent_of`, `percent_ratio`) and the limit; the renderer computes, propagates the ± band, rounds and judges | `title`, `steps[]` (`label`, `operation`, `operands[]`, `unit`), `limit`, `reference`, `note` |
+| `formula` | A named rule the reader can ask "what if" of (ADR-0141): `u_value` (ÖNORM EN ISO 6946), `stair_step_rule` (OIB-RL 4 Pkt. 3.2.1), `escape_route_length` (OIB-RL 2 Pkt. 5.1.1), `daylight_ratio` (OIB-RL 3 Pkt. 9.1.1). **No result and no unit on the wire**: the model fills each input with its source's value and where it is written; the renderer computes (`lib/formulas.ts`), recomputes when the reader changes an input, marks a changed value „Ihre Annahme" and judges against limits that must carry their Punkt | `title`, `formula` (`name` + its inputs: `value`, `editable`, `min`, `max`, `step`, `provenance`, `source`, `reference`), `limits[]` (`target`, `comparator`, `value`, `upper`, `label`, `reference`), `note` |
 | `surface` | Variants the reader picks one of, or cards that read together in one slot (ADR-0065). An A2UI v0.9 component list: a `Row`, `Column` or `Tabs` root whose leaves are content cards or `Text`; see [Every card is drawn through A2UI](#every-card-is-drawn-through-a2ui) | `title`, `components[]` |
 
 **Schematic cards** — eight programmatically-drawn technical diagrams (SVG kit
@@ -148,6 +149,20 @@ persisted on the message; see
 [Interactive cards](#interactive-cards-the-answer-must-be-persisted).
 
 `validate_cards()` validates against the union and drops null fields.
+
+### `formula`: the reader's what-if, bound into the surface (ADR-0141)
+
+`formula` is `calculation` with a name instead of operations, and inputs the
+reader may change. The name picks one of a closed set of pure functions in
+`frontends/ui/src/features/grid-cards/lib/formulas.ts`; each is tested against
+hand-computed cases in `shared/cards/formula-cases.json`, which
+`tests/aiq_agent/cards/test_formula_card.py` validates as cards. A changed input
+is written to the card's A2UI surface data model at `/inputs/<leaf id>`
+(`features/a2ui/reader-inputs.ts`): never to the message, never to a backend,
+never to an export, and gone on reload. A limit is a statement: it carries its
+`NormReference` with a `section`, the schema refuses one without, and the reader
+has no control over it. Langfuse records `formula-input-provenance` per card,
+the share of given inputs that say where they are written.
 
 ### `calculation` has nowhere to put a wrong answer
 
@@ -923,9 +938,9 @@ without re-plumbing generation or transport.
 
 ## Card catalog
 
-The catalog is the twenty-three types tabulated under
-[Current card types](#current-card-types) — three structured
-(`project_profile_patch`, `calculation`, `surface`), eight schematic, six
+The catalog is the types tabulated under
+[Current card types](#current-card-types) — four structured
+(`project_profile_patch`, `calculation`, `formula`, `surface`), eight schematic, six
 model-facing IFC and six system — and that is the only place in this document
 where they are listed, on purpose: a card type appearing in two tables means one
 of them is already wrong. See

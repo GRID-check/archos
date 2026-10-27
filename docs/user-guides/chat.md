@@ -304,6 +304,29 @@ the end.
 - **Wide content scrolls sideways.** A wide table or diagram scrolls inside
   its own frame. The frame can take keyboard focus, so arrow keys scroll it.
 
+## What if: changing a value on a card that computes
+
+Some answers carry a card that works a number out by a named rule: a U-value
+from the wall's layers (ÖNORM EN ISO 6946), the Schrittmaßregel 2s + a (OIB-RL 4,
+Pkt. 3.2.1), an escape route's Gehweglänge (OIB-RL 2, Pkt. 5.1.1), or the
+Lichteintrittsfläche against the Bodenfläche (OIB-RL 3, Pkt. 9.1.1). The card is
+headed **Was wäre wenn**.
+
+- **Every input says where it comes from**: the Einreichplan, the Raumbuch, a
+  product data sheet, a norm.
+- **Change an input and the card recomputes on the spot**: the Rechenweg, the
+  result and the verdict against the cited limit. Type a number (a comma or a
+  point both work), or use the arrow keys to step it. Nothing is sent to
+  Piloti and no new answer is written.
+- **A changed value is marked „Ihre Annahme"**, with the source's value beside
+  it, and the Rechenweg says it was computed with your assumptions.
+  **Zurücksetzen** restores every source value.
+- **The limit cannot be changed.** It is the Richtlinie's, shown with its Punkt.
+- **A value the source does not give stays empty**, and the card says it cannot
+  judge without it. Enter an assumption to see the result it would give.
+- **Nothing is saved.** A reload, a copy or an export shows the source's values
+  again, never your what-if.
+
 ## Answer sources ("Belegt durch")
 
 Answers that already carry source data show a provenance block: structured citations from shallow/deep research (`origin` plus optional `file_name`/`page`/`number`, with `[KB]`/`[RIS]`/`[Web]` tokens and URL heuristics as fallback) and the laws named by `legal_basis` cards. Sources are tinted by origin (law / project / web) and always pair icon + label with the color; web and RIS sources link out. Answers without source data show no block — sources are never fabricated.
