@@ -37,7 +37,6 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 from typing import Self
-from typing import TypeVar
 
 from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import BaseMessage
@@ -160,8 +159,6 @@ returns their reply. Empty options means a free-text question."""
 ClarifyFn = Callable[[ClarifyRequest], Awaitable[ClarifyResult]]
 """What the conversation graph holds: one call, one finished dialog."""
 
-ModelT = TypeVar("ModelT", bound=BaseModel)
-
 
 class ClarifierSettings(BaseModel):
     """The clarification step's configuration, nested under the workflow config.
@@ -219,7 +216,7 @@ class ClarifyDeps:
 # -- pure helpers --------------------------------------------------------------
 
 
-def parse_json_response(content: Any, schema: type[ModelT]) -> ModelT | None:
+def parse_json_response[ModelT: BaseModel](content: Any, schema: type[ModelT]) -> ModelT | None:
     """Parse one structured response out of an LLM reply.
 
     The model is asked for this schema natively (strict ``json_schema``) or, on
@@ -251,7 +248,7 @@ def unwrap_query(reply: str) -> str:
     """
     try:
         data = json.loads(reply)
-    except (json.JSONDecodeError, TypeError):
+    except json.JSONDecodeError, TypeError:
         return reply
     if isinstance(data, dict) and isinstance(data.get("query"), str):
         return data["query"]

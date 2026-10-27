@@ -7,7 +7,7 @@
  * tier's by `stopped-answer.spec.ts`.
  */
 import { describe, expect, it } from 'vitest'
-import type { Message } from '@/lib/db/schema'
+import type { Message } from '@/lib/db/schema/messages'
 import { ConflictError } from '@/lib/api/errors'
 import { STOP_CUT_WINDOW_MS, answerMessageId, cutStoppedRow } from './stopped-cut'
 

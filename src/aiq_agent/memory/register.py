@@ -172,8 +172,8 @@ def _turn_restriction_evidence() -> RestrictionEvidence:
     earlier = turn_shown_notes()
     if not restricted_collections_in(scope) and earlier.empty:
         return RestrictionEvidence()
-    from aiq_agent.common.citation_verification import get_session_registry
-    from aiq_agent.common.citation_verification import get_turn_captures
+    from aiq_agent.citations.session import get_session_registry
+    from aiq_agent.citations.session import get_turn_captures
     from aiq_agent.knowledge.inventory import get_turn_documents
 
     sources = list(get_turn_captures())

@@ -1,3 +1,4 @@
+// @disk-inputs: observability/**, purger/**, scheduler/**, server.js, src/**, workers/**
 /**
  * @vitest-environment node
  */

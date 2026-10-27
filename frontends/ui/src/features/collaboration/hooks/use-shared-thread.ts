@@ -52,7 +52,7 @@ import {
   isConversationOnServer,
   useConversationOnServer,
 } from '@/features/chat/lib/conversation-on-server'
-import type { ConversationEngagement } from '@/lib/db/schema'
+import type { ConversationEngagement } from '@/lib/db/schema/conversations'
 import {
   publishThreadRole,
   publishThreadSharing,

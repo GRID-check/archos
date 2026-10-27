@@ -68,6 +68,7 @@ import datetime
 import fnmatch
 import json
 import os
+import posixpath
 import re
 import subprocess
 import sys
@@ -159,8 +160,11 @@ UI_FULL = (
 # these since the last green run leaves every UI result standing.
 UI_INPUTS = (UI + "**", "configs/**", "shared/**", "scripts/**", "src/aiq_agent/cards/**", "tests/fixtures/**")
 
-# The spec files vitest collects (vitest.config.ts `include`).
-UI_SPECS = (
+# The spec files vitest collects (vitest.config.ts `include`). Vitest's `**/`
+# matches no directory too; fnmatch's needs one, so each glob also gets its
+# top-level form. Without it `src/english-names.spec.ts`, which reads every
+# tracked file, was never found and ran on no selection at all.
+_VITEST_INCLUDE = (
     "src/**/*.spec.ts",
     "src/**/*.spec.tsx",
     "src/**/*.test.ts",
@@ -174,12 +178,35 @@ UI_SPECS = (
     "scripts/**/*.spec.mjs",
     "eslint-rules/**/*.spec.mjs",
 )
+UI_SPECS = _VITEST_INCLUDE + tuple(glob.replace("/**/", "/") for glob in _VITEST_INCLUDE)
 
 # A spec that reads the tree from disk: route and key walkers, migration and
-# schema checks. Their inputs are not imports, so they run on every selection.
+# schema checks. Their inputs are not imports, so no graph sees them. Each
+# declares them in a `// @disk-inputs:` line (globs relative to frontends/ui),
+# and runs only when a changed path matches one; one without the line runs on
+# every selection. config/vitest/disk-inputs.ts fails a spec that reads a path
+# its line does not declare, and scripts/declare-disk-inputs.mjs writes the line.
 READS_DISK = re.compile(
     r"""from ['"](?:node:)?fs(?:/promises)?['"]|require\(['"](?:node:)?fs|readdirSync|readFileSync|globSync"""
 )
+DISK_INPUTS = re.compile(r"^\s*//\s*@disk-inputs:\s*(.+)$", re.MULTILINE)
+# A spec that starts a process: what the child reads, no recorder sees, so it
+# never counts as declared.
+SPAWNS = re.compile(r"""['"](?:node:)?child_process['"]""")
+
+#: A disk reader's inputs, repo-relative, or None when it declares none.
+DiskReaders = dict[str, tuple[str, ...] | None]
+
+
+def declared_inputs(source: str) -> tuple[str, ...] | None:
+    """The repo-relative globs a spec's `@disk-inputs` line names, or None without one."""
+    found = DISK_INPUTS.search(source)
+    if not found or SPAWNS.search(source):
+        return None
+    globs = (glob.strip() for glob in found.group(1).split(","))
+    # `*` is the only wildcard a declaration has; a Next route's `[...path]`
+    # is literal, and fnmatch would read it as a character class.
+    return tuple(posixpath.normpath(posixpath.join(UI, glob)).replace("[", "[[]") for glob in globs if glob)
 
 
 def _matches(path: str, patterns: Iterable[str]) -> bool:
@@ -282,19 +309,27 @@ def decide_python(changed: list[str], test_files: dict[str, str], recorded: bool
     return "select", sorted(extra), reason
 
 
-def decide_ui(changed: list[str], disk_readers: list[str]) -> tuple[str, list[str], str]:
+def decide_ui(changed: list[str], disk_readers: DiskReaders) -> tuple[str, list[str], str]:
     """`(mode, files for vitest related, reason)`; paths in the files list are relative to frontends/ui.
 
-    `none` means no UI spec can have changed outcome, so none runs.
+    `none` means no UI spec can have changed outcome, so none runs. A disk reader
+    runs when a changed path matches its declared inputs, or always without them.
     """
     forced = [path for path in changed if _matches(path, UI_FULL)]
     if forced:
         return "full", [], f"{forced[0]} reaches every spec"
-    if not any(_matches(path, UI_INPUTS) for path in changed):
+    declared = {glob for inputs in disk_readers.values() if inputs for glob in inputs}
+    if not any(_matches(path, UI_INPUTS) or _matches(path, declared) for path in changed):
         return "none", [], "nothing a UI spec reads changed"
     mine = sorted(path.removeprefix(UI) for path in changed if path.startswith(UI))
-    files = sorted(set(mine) | set(disk_readers))
-    return "select", files, f"{len(mine)} changed UI files, plus {len(disk_readers)} specs that read the tree from disk"
+    undeclared = {spec for spec, inputs in disk_readers.items() if inputs is None}
+    reached = {spec for spec, inputs in disk_readers.items() if inputs and any(_matches(p, inputs) for p in changed)}
+    files = sorted(set(mine) | undeclared | reached)
+    reason = (
+        f"{len(mine)} changed UI files, plus {len(reached)} of {len(disk_readers) - len(undeclared)} "
+        f"tree-reading specs whose declared inputs changed and {len(undeclared)} that declare none"
+    )
+    return "select", files, reason
 
 
 def _git(*args: str) -> str:
@@ -316,17 +351,20 @@ def _python_test_files() -> dict[str, str]:
     return files
 
 
-def _disk_readers() -> list[str]:
+def _disk_readers() -> DiskReaders:
     ui = ROOT / UI
-    readers = []
+    readers: DiskReaders = {}
     for directory, subdirs, names in os.walk(ui):
         subdirs[:] = [name for name in subdirs if name not in ("node_modules", ".next", "coverage")]
         for name in names:
             path = Path(directory, name)
             relative = path.relative_to(ui).as_posix()
-            if _matches(relative, UI_SPECS) and READS_DISK.search(path.read_text(encoding="utf-8", errors="ignore")):
-                readers.append(relative)
-    return sorted(readers)
+            if not _matches(relative, UI_SPECS):
+                continue
+            source = path.read_text(encoding="utf-8", errors="ignore")
+            if READS_DISK.search(source):
+                readers[relative] = declared_inputs(source)
+    return dict(sorted(readers.items()))
 
 
 def previous_green(get: Get, repo: str, branch: str, head: str, is_ancestor: Callable[[str], bool]) -> dict | None:

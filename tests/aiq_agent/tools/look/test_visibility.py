@@ -64,7 +64,7 @@ class _Cited:
 
 
 def _cited(*file_names: str) -> list:
-    from aiq_agent.common.citation_verification import SourceEntry
+    from aiq_agent.citations.entries import SourceEntry
 
     return [_Cited(SourceEntry(citation_key=f"{name}, p.1", source_type="knowledge_layer")) for name in file_names]
 

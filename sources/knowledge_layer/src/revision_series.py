@@ -24,11 +24,7 @@ import re
 from collections.abc import Callable
 from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Generic
 from typing import Literal
-from typing import TypeVar
-
-T = TypeVar("T")
 
 _SEP = r"[ _.\-]"
 # ``re.ASCII`` on the case-insensitive patterns: JS ``/i`` without ``u`` folds only ASCII
@@ -82,13 +78,13 @@ class RevisionName:
 
 
 @dataclass(frozen=True)
-class RevisionSeriesMember(Generic[T]):
+class RevisionSeriesMember[T]:
     item: T
     revision: RevisionName
 
 
 @dataclass(frozen=True)
-class RevisionSeries(Generic[T]):
+class RevisionSeries[T]:
     # The series key plus the format, so a PDF and a DWG of one Fassung are not versions of each other.
     key: str
     # The revision that looks current: a suggestion, never a decision.
@@ -177,7 +173,7 @@ def series_key_of(filename: str) -> str:
     return _series_key(stem)
 
 
-def _newest_first(
+def _newest_first[T](
     members: list[RevisionSeriesMember[T]], created_at: Callable[[T], str | None]
 ) -> list[RevisionSeriesMember[T]]:
     """The revisions of ONE series, newest first, by a tuple — a total order (the TS twin's ``newestFirst``).
@@ -211,7 +207,7 @@ def _signature(revision: RevisionName) -> str:
     return f"{kind}:{value}:{revision.date or ''}"
 
 
-def find_revision_series(
+def find_revision_series[T](
     items: Sequence[T],
     *,
     filename: Callable[[T], str],

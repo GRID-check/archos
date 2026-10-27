@@ -23,7 +23,7 @@
 import { eq } from 'drizzle-orm'
 import { ApiError } from '@/lib/api/errors'
 import { getDb } from '@/lib/db'
-import { documents } from '@/lib/db/schema'
+import { documents } from '@/lib/db/schema/documents'
 import { getProjectFolderAccess, requireFolderWrite } from '@/lib/authz/folder-access'
 import { getBackendUrl } from '@/lib/backend-proxy'
 import type { AuthorizedSession } from '@/lib/auth/types'

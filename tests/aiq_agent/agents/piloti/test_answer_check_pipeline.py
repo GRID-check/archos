@@ -21,8 +21,8 @@ from aiq_agent.agents.piloti import answer_pipeline
 from aiq_agent.agents.piloti.answer_check import TurnCheck
 from aiq_agent.agents.piloti.answer_pipeline import finalize_answer
 from aiq_agent.agents.piloti.ledger import assemble_result
-from aiq_agent.common.citation_verification import SourceEntry
-from aiq_agent.common.citation_verification import SourceRegistry
+from aiq_agent.citations.entries import SourceEntry
+from aiq_agent.citations.registry import SourceRegistry
 from aiq_agent.common.claim_judge import Evidence
 from aiq_agent.common.claim_judge import Finding
 
@@ -226,8 +226,8 @@ async def test_a_record_never_enters_the_source_registry():
 
 
 async def test_a_locus_the_cited_passage_does_not_hold_is_labelled_in_the_answer():
-    from aiq_agent.common.citation_verification import DROPPED_CITATION_MARKER
-    from aiq_agent.common.citation_verification import SourceEntry
+    from aiq_agent.citations.entries import DROPPED_CITATION_MARKER
+    from aiq_agent.citations.entries import SourceEntry
 
     registry = SourceRegistry()
     registry.add(
@@ -343,7 +343,7 @@ def _hold_a_look(reading: str, name: str = "Grundriss_EG.pdf") -> None:
 
 
 def _look_place_entry(region=(0.1, 0.2, 0.3, 0.4)):
-    from aiq_agent.common.citation_verification import extract_sources_from_tool_result
+    from aiq_agent.citations.extraction import extract_sources_from_tool_result
     from aiq_agent.tools.look.place import place_facts
     from aiq_agent.tools.look.place import render_place
 

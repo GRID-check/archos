@@ -6,10 +6,10 @@ from agent_testing.settle_streamed import SOURCES
 from agent_testing.settle_streamed import _registry
 
 from aiq_agent.agents.piloti.answer_pipeline import settle_streamed_citations
-from aiq_agent.common.citation_verification import DROPPED_CITATION_MARKER
-from aiq_agent.common.citation_verification import UNVERIFIED_QUOTE_MARKER
-from aiq_agent.common.citation_verification import SourceEntry
-from aiq_agent.common.citation_verification import SourceRegistry
+from aiq_agent.citations.entries import DROPPED_CITATION_MARKER
+from aiq_agent.citations.entries import UNVERIFIED_QUOTE_MARKER
+from aiq_agent.citations.entries import SourceEntry
+from aiq_agent.citations.registry import SourceRegistry
 
 
 def test_an_unbacked_marker_is_labelled_and_the_rest_take_the_numbers_the_terminal_will_give():

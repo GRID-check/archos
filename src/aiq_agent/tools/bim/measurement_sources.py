@@ -19,7 +19,7 @@ much". Only the second is reproducible.
 ## Why this is a separate channel and not a ``SourceEntry``
 
 ``citation_grounded`` is derived from the contents of
-:class:`~aiq_agent.common.citation_verification.SourceRegistry`: a non-empty
+:class:`~citations.registry.SourceRegistry`: a non-empty
 registry runs ``verify_citations``, a surviving citation sets the flag, and a
 registry holding exactly ONE source triggers the single-source fallback that
 sets it too. That flag is the only route to a surfaced "high", and the
@@ -35,7 +35,7 @@ retrieved nothing and measured something would stop being a turn with no
 retrieved evidence.
 
 Hence: measurements never touch the registry. They accumulate in their own
-per-turn capture log — the same ContextVar shape ``citation_verification``'s
+per-turn capture log — the same ContextVar shape ``citations.session``'s
 ``begin_turn_capture`` uses — and meet the retrieved sources only on the wire,
 where the coarse ``kind`` is all that is left of either and the rendering
 surfaces pick both up automatically (``source_kinds.MEASUREMENT_SOURCE_KIND``).
@@ -246,7 +246,7 @@ class MeasurementSource:
 # Per-turn capture
 # ---------------------------------------------------------------------------
 #
-# The same ContextVar shape ``citation_verification.begin_turn_capture`` uses,
+# The same ContextVar shape ``citations.session.begin_turn_capture`` uses,
 # and for the same reasons: concurrent turns must not mix, and the log is
 # per-TURN rather than cumulative — a measurement taken two turns ago is not
 # part of this answer's derivation.

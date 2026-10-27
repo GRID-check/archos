@@ -42,7 +42,7 @@ import {
   type WakeEnd,
 } from '@/lib/annotations/wake-repository'
 import { getDb } from '@/lib/db'
-import type { PilotiWakeRow } from '@/lib/db/schema'
+import type { PilotiWakeRow } from '@/lib/db/schema/document-annotations'
 import { withPlatformAccess, withTenant } from '@/lib/db/tenant-context'
 import { memberReader } from '@/lib/documents/document-reader'
 import { findDocumentInOrg } from '@/lib/documents/repository'

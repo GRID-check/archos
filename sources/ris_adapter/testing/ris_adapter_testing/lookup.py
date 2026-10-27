@@ -145,7 +145,7 @@ class LookupHarness:
     @staticmethod
     def body_of(output: str, index: int = 1) -> str:
         """The passage body of one ``--- Result N ---`` block, as the parser sees it."""
-        from aiq_agent.common.citation_verification import _extract_kl_chunk_bodies
+        from aiq_agent.citations.grounding_text import _extract_kl_chunk_bodies
 
         return _extract_kl_chunk_bodies(output)[index - 1]
 

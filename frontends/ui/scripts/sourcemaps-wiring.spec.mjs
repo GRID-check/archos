@@ -1,3 +1,4 @@
+// @disk-inputs: ../../.github/actions/build-image/action.yml, deploy/Dockerfile
 /**
  * @vitest-environment node
  */

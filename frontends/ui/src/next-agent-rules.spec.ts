@@ -1,3 +1,4 @@
+// @disk-inputs: AGENTS.md
 /**
  * `next dev` rewrites `AGENTS.md` when it detects a coding agent, unless
  * `agentRules` is off (`node_modules/next/dist/server/lib/start-server.js`,

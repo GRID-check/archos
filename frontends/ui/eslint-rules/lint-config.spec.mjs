@@ -67,6 +67,8 @@ const FIXTURES = {
   'src/app/api/internal/usage/route.ts': "import { db } from '@/lib/db'\nexport const handle = db",
   'src/features/grid-cards/schematics/kit.tsx': "export const size = 'text-sm'",
   'tests/canary.test.ts': 'export const fixture: any = {}',
+  'src/lib/canary-repository.ts': "import { projects } from '@/lib/db/schema'\nexport const table = projects",
+  'src/lib/canary-table.ts': "import { projects } from '@/lib/db/schema/projects'\nexport const table = projects",
 }
 
 /** [file, rule] pairs that MUST be reported. */
@@ -80,6 +82,7 @@ const EXPECTED = [
   ['src/lib/canary.ts', 'grid(require-tenant-cache-key)'],
   ['src/lib/canary.ts', 'grid(no-restricted-syntax)'],
   ['src/app/api/canary/route.ts', 'eslint(no-restricted-imports)'],
+  ['src/lib/canary-repository.ts', 'eslint(no-restricted-imports)'],
   ['src/features/grid-cards/schematics/kit.tsx', 'grid(card-type-scale)'],
   ['tests/canary.test.ts', 'typescript(no-explicit-any)'],
 ]
@@ -125,9 +128,12 @@ describe('.oxlintrc.json', () => {
     expect(restricted).toHaveLength(4)
   })
 
-  it('reports only the value import from the db in a route', () => {
+  it('reports only the value import from the db in a route, and the schema barrel outside one', () => {
     const imports = findings.filter(([f, r]) => r === 'eslint(no-restricted-imports)')
-    expect(imports).toEqual([['src/app/api/canary/route.ts', 'eslint(no-restricted-imports)']])
+    expect(imports.sort()).toEqual([
+      ['src/app/api/canary/route.ts', 'eslint(no-restricted-imports)'],
+      ['src/lib/canary-repository.ts', 'eslint(no-restricted-imports)'],
+    ])
   })
 
   it('exempts exactly the files PRE_EXISTING_DB_IMPORTERS lists', () => {

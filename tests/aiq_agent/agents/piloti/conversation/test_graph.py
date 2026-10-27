@@ -725,7 +725,7 @@ class TestAFollowUpAnsweredFromTheTranscript:
         from langchain_core.messages import ToolMessage
 
         from aiq_agent.agents.piloti.answer_pipeline import finalize_answer
-        from aiq_agent.common.citation_verification import SourceRegistry
+        from aiq_agent.citations.registry import SourceRegistry
 
         call = {"name": "knowledge_search", "args": {"query": "Fluchtweg"}, "id": "c1"}
         messages = [

@@ -12,7 +12,7 @@
  * change and never a new component.
  */
 
-import { INBOX_ITEM_TYPES, type InboxItemType, type InboxTargetType } from '@/lib/db/schema'
+import { INBOX_ITEM_TYPES, type InboxItemType, type InboxTargetType } from '@/lib/db/schema/inbox'
 import { PLATFORM_PERMISSIONS } from '@/lib/authz/permissions'
 import type { PushCategory, PushUrgency } from './push-categories'
 import { isMarkAnchored } from './types'

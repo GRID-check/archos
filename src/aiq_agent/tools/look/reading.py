@@ -165,7 +165,7 @@ def build_messages(question: str, jpeg: bytes) -> list[dict[str, Any]]:
 def _reply_text(data: Any) -> str:
     try:
         content = data["choices"][0]["message"]["content"]
-    except (KeyError, IndexError, TypeError):
+    except KeyError, IndexError, TypeError:
         return ""
     return content if isinstance(content, str) else ""
 

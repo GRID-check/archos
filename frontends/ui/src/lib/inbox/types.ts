@@ -13,7 +13,8 @@
  * `tsc` fails until step 2 is done.
  */
 
-import type { InboxItemType, InboxTargetType, ShareableResourceType } from '@/lib/db/schema'
+import type { InboxItemType, InboxTargetType } from '@/lib/db/schema/inbox'
+import type { ShareableResourceType } from '@/lib/db/schema/resource-shares'
 import type { MarkMention } from '@/lib/annotations/types'
 import type { UploadReport } from '@/lib/upload-batches/upload-report'
 

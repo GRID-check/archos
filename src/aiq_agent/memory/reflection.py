@@ -90,7 +90,7 @@ def _clamped_importance(value: Any) -> int:
     """``value`` as an importance rating in 1..10, defaulting when unreadable."""
     try:
         importance = int(value)
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         return _NEUTRAL_IMPORTANCE
     return min(10, max(1, importance))
 

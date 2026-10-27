@@ -20,7 +20,7 @@ import 'server-only'
 import { asc, inArray } from 'drizzle-orm'
 import { getDb } from '@/lib/db'
 import { getCached, invalidateCached } from '@/lib/cache'
-import { platformReasoningEfforts, type PlatformReasoningEffort } from '@/lib/db/schema'
+import { platformReasoningEfforts, type PlatformReasoningEffort } from '@/lib/db/schema/platform-reasoning-efforts'
 import { AGENT_GROUP_IDS } from '@/lib/model-config/agent-groups'
 import { isReasoningEffort, type ReasoningEffort } from './catalog'
 

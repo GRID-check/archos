@@ -17,11 +17,7 @@
 import 'server-only'
 import { and, asc, eq } from 'drizzle-orm'
 import { getDb } from '@/lib/db'
-import {
-  platformSkills,
-  type NewPlatformSkillRow,
-  type PlatformSkillRow,
-} from '@/lib/db/schema'
+import { platformSkills, type NewPlatformSkillRow, type PlatformSkillRow } from '@/lib/db/schema/platform-skills'
 
 /** Hard cap for the curated catalogue. */
 export const PLATFORM_SKILLS_LIST_LIMIT = 200

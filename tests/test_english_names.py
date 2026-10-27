@@ -48,7 +48,7 @@ def _count(path: str) -> int:
         for token in tokenize.generate_tokens(io.StringIO(source).readline):
             if token.type == tokenize.NAME and not keyword.iskeyword(token.string) and german_words(token.string):
                 count += 1
-    except (tokenize.TokenError, SyntaxError):
+    except tokenize.TokenError, SyntaxError:
         return 0
     return count
 

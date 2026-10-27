@@ -63,22 +63,6 @@ const SOURCE_KINDS: ReadonlySet<SourceKind> = new Set([
 ])
 
 /**
- * The German kinds a stored citation, a trace lane or an older pod's wire still
- * carries. Read-only: nothing writes these, `modernizeSourceKind` maps them on
- * the way in.
- */
-export const LEGACY_SOURCE_KIND: Readonly<Record<string, SourceKind>> = {
-  baurecht: 'building_law',
-  buero: 'office',
-  projekt: 'project',
-  messung: 'measurement',
-}
-
-/** A kind (or lane-kind) value spelled the English way, whichever spelling it came in. */
-export const modernizeSourceKind = (value: string | null | undefined): string | null | undefined =>
-  value && Object.hasOwn(LEGACY_SOURCE_KIND, value) ? LEGACY_SOURCE_KIND[value] : value
-
-/**
  * The German fine-lane keys, as exact keys. A lane is `<family>[_<tier>]`, so the
  * mapping is on whole keys: the OIB tiers are named, the family prefix alone
  * is the fallback for a tier this table has not met.
@@ -206,15 +190,6 @@ export const SHELVES = ['office_shelf', 'project', 'session', 'base'] as const s
 const SHELF_SET: ReadonlySet<string> = new Set<string>(SHELVES)
 
 /**
- * The shelf's wire value before it had an English name. A message, citation or
- * peer from before the rename still says `archiv`; it reads as the office
- * shelf and nothing writes it. Python twin: `LEGACY_SHELF_VALUES` in
- * `src/aiq_agent/common/source_kinds.py` (parity: `source-kinds.spec.ts`).
- * Remove after one release.
- */
-export const LEGACY_SHELF_VALUES: Readonly<Record<string, Shelf>> = { archiv: 'office_shelf' }
-
-/**
  * Narrow an untrusted wire value to a Shelf, else undefined.
  *
  * Unknown reads as UNKNOWN and renders unattributed. It is never defaulted to
@@ -223,8 +198,7 @@ export const LEGACY_SHELF_VALUES: Readonly<Record<string, Shelf>> = { archiv: 'o
  * the strongest provenance claim this UI can make.
  */
 export const asShelf = (value: string | null | undefined): Shelf | undefined => {
-  const raw = (value ?? '').trim().toLowerCase()
-  const key = LEGACY_SHELF_VALUES[raw] ?? raw
+  const key = (value ?? '').trim().toLowerCase()
   return SHELF_SET.has(key) ? (key as Shelf) : undefined
 }
 
