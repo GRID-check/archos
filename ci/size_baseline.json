@@ -83,7 +83,7 @@
     "frontends/ui/src/features/knowledge/lib/passage-highlight.ts": 758,
     "frontends/ui/src/features/layout/components/ChatArea.tsx": 2522,
     "frontends/ui/src/features/layout/components/ChatToolbar.tsx": 668,
-    "frontends/ui/src/features/layout/components/InputArea.tsx": 2667,
+    "frontends/ui/src/features/layout/components/InputArea.tsx": 2341,
     "frontends/ui/src/features/layout/components/SessionsPanel.tsx": 1304,
     "frontends/ui/src/features/platform/components/agent-profiler.tsx": 679,
     "frontends/ui/src/features/platform/components/answer-feedback-health.tsx": 883,

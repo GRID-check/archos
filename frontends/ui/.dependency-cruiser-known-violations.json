@@ -3992,7 +3992,7 @@
   },
   {
     "type": "dependency",
-    "from": "src/features/layout/components/InputArea.tsx",
+    "from": "src/features/layout/components/input-area/composer-helpers.ts",
     "to": "src/features/chat/hooks/use-websocket-chat.ts",
     "unresolvedTo": "@/features/chat/hooks/use-websocket-chat",
     "dependencyTypes": [
@@ -4163,7 +4163,7 @@
   },
   {
     "type": "dependency",
-    "from": "src/features/layout/components/InputArea.tsx",
+    "from": "src/features/layout/components/input-area/file-chip.tsx",
     "to": "src/features/documents/components/ingest-failure-notice.tsx",
     "unresolvedTo": "@/features/documents/components/ingest-failure-notice",
     "dependencyTypes": [
@@ -4180,7 +4180,7 @@
   },
   {
     "type": "dependency",
-    "from": "src/features/layout/components/InputArea.tsx",
+    "from": "src/features/layout/components/input-area/file-chip.tsx",
     "to": "src/features/documents/lib/ingest-failure.ts",
     "unresolvedTo": "@/features/documents/lib/ingest-failure",
     "dependencyTypes": [
