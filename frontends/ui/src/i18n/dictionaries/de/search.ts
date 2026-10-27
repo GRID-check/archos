@@ -166,7 +166,7 @@ export const search: typeof en.search = {
     factKey: 'Welche Angabe',
     factValue: 'Wert',
     cites: 'Verweist auf',
-    citesHint: 'Eine Norm, ein Gesetz oder eine Plannummer, z. B. ÖNORM B 1600',
+    citesHint: 'Norm, Gesetz oder Plannummer, z. B. ÖNORM B 1600',
     uploaded: 'Hochgeladen',
     uploadedByMe: 'Von mir hochgeladen',
     uploadedBy: 'Hochgeladen von',
@@ -217,7 +217,7 @@ export const search: typeof en.search = {
     xlsx: 'Planliste als Excel',
     failed: 'Der Export hat nicht geklappt. Bitte erneut versuchen.',
     fileName: 'Planliste',
-    allColumns: 'Die Datei enthält alle Spalten der Planliste, auch ausgeblendete.',
+    allColumns: 'Mit allen Spalten, auch den ausgeblendeten.',
   },
   saved: {
     label: 'Gespeicherte Suchen',
@@ -259,8 +259,8 @@ export const search: typeof en.search = {
     recent: 'Zuletzt gesucht',
     hint: {
       office:
-        'Findet Dokumente nach Name, Plankopf, Art und Inhalt (mit Seite), dazu Anmerkungen, Ordner, Projekte und Chats im ganzen Büro.',
-      project: 'Findet in diesem Projekt Dokumente nach Name, Plankopf, Art und Inhalt (mit Seite), dazu Anmerkungen, Ordner und Chats.',
+        'Dokumente nach Name, Plankopf, Art und Inhalt, dazu Anmerkungen, Ordner, Projekte und Chats im ganzen Büro.',
+      project: 'Dokumente nach Name, Plankopf, Art und Inhalt, dazu Anmerkungen, Ordner und Chats in diesem Projekt.',
     },
   },
 }

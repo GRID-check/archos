@@ -166,7 +166,7 @@ export const search = {
     factKey: 'Which fact',
     factValue: 'Value',
     cites: 'Cites',
-    citesHint: 'A norm, a law or a drawing number, e.g. ÖNORM B 1600',
+    citesHint: 'Norm, law or drawing number, e.g. ÖNORM B 1600',
     uploaded: 'Uploaded',
     uploadedByMe: 'Uploaded by me',
     uploadedBy: 'Uploaded by',
@@ -217,7 +217,7 @@ export const search = {
     xlsx: 'Register as Excel',
     failed: 'The export did not work. Try again.',
     fileName: 'Register',
-    allColumns: 'The file holds every column of the register, hidden ones too.',
+    allColumns: 'With every column, hidden ones too.',
   },
   saved: {
     label: 'Saved searches',
@@ -259,8 +259,8 @@ export const search = {
     recent: 'Recent searches',
     hint: {
       office:
-        'Finds documents by name, title block, type and content (with the page), plus annotations, folders, projects and chats across the office.',
-      project: 'Finds documents in this project by name, title block, type and content (with the page), plus annotations, folders and chats.',
+        'Documents by name, title block, type and content, plus annotations, folders, projects and chats across the office.',
+      project: 'Documents by name, title block, type and content, plus annotations, folders and chats in this project.',
     },
   },
 }

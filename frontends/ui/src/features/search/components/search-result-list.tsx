@@ -177,7 +177,11 @@ function DocumentRow({ hit, text, active, id }: { hit: DocumentHit; text: string
   const where = useWhere()
   const type = labels.documentType(hit.documentType)
   const day = labels.day(hit.planDate ?? hit.documentDate)
-  const matchedOn = text.trim() ? MATCHED_ON_ORDER.filter((reason) => hit.matchedOn.includes(reason)) : []
+  // „Inhalt“ goes without saying under the passage that shows it; the hint
+  // names only what the row does not show (the name, what Piloti read).
+  const matchedOn = text.trim()
+    ? MATCHED_ON_ORDER.filter((reason) => hit.matchedOn.includes(reason) && !(reason === 'content' && hit.passage))
+    : []
   return (
     <ResultRow
       href={documentHitHref(hit)}

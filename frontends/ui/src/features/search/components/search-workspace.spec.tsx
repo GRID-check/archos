@@ -86,8 +86,8 @@ describe('SearchWorkspaceView', () => {
     // Where it lives on its own line: the project as its provenance mark, whole, then the folder.
     expect(concept).toHaveTextContent('Wohnhaus Seestadt Baufeld J7Ordner Brandschutz')
     expect(concept).toHaveTextContent('S. 7')
-    // What the words were found in, quietly.
-    expect(within(concept).getByTestId('search-matched-on')).toHaveTextContent('Gefunden in was Piloti las · Inhalt')
+    // What the words were found in that the row does not show: the passage under it already says „Inhalt“.
+    expect(within(concept).getByTestId('search-matched-on')).toHaveTextContent(/^Gefunden in was Piloti las$/)
     // The words searched for are set apart in the passage.
     expect(within(concept).getAllByText('Fluchtweg', { selector: 'mark' }).length).toBeGreaterThan(0)
     // It opens at the passage's page, the passage to light up there.
