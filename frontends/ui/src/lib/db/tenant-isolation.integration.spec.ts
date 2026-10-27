@@ -633,10 +633,13 @@ describe.skipIf(!url)('tenant isolation against live Postgres', () => {
       expect(cause.message, `${table} must not be tenant-readable`).toMatch(/permission denied/i)
     }
     // The platform role still reads them — that is where the pipeline runs.
+    // Read, not counted: the suites share one database and run in parallel,
+    // and `feedback/repository.integration.spec.ts` holds a lesson row for a
+    // moment, so a count of 0 passed only when the timing was lucky.
     const rows = await withPlatformAccess('test: lesson register read', () =>
       db.execute(sql`select count(*)::int as n from platform_lessons`)
     )
-    expect([...rows][0]).toMatchObject({ n: 0 })
+    expect([...rows][0]).toMatchObject({ n: expect.any(Number) })
   })
 
   /**
