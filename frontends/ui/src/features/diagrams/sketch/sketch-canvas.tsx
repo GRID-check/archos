@@ -15,10 +15,8 @@
  * one drawing, so everything that reaches outside the office or outside that
  * drawing is off:
  *
- *   - **Fonts from our own origin.** Excalidraw fetches its webfonts from a
- *     public CDN unless `window.EXCALIDRAW_ASSET_PATH` names another place.
- *     `scripts/copy-excalidraw-assets.mjs` stages them into
- *     `public/excalidraw/`, the way pdf.js's are.
+ *   - **Fonts from our own origin** (`excalidraw-assets.ts`), staged into
+ *     `public/excalidraw/` the way pdf.js's are.
  *   - **No images, no embeds.** An image would be refused by the SVG
  *     validator, and an embed is a third-party page inside a filed document.
  *   - **No load, save, export or image download of its own.** Filing into the
@@ -30,6 +28,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef } from 'react'
+import './excalidraw-assets'
 import {
   convertToExcalidrawElements,
   Excalidraw,
@@ -39,17 +38,8 @@ import {
 } from '@excalidraw/excalidraw'
 import '@excalidraw/excalidraw/index.css'
 import { DIAGRAM_SOURCE_FACTS } from '@/lib/diagrams/diagram-sources'
-import { SKETCH_FONT_FAMILY, SKETCH_FONT_SIZE, type SketchSkeleton } from './sketch-from-model'
+import { SKETCH_FONT_FAMILY, SKETCH_FONT_SIZE } from './sketch-from-model'
 import { fileableSketchSvg } from './sketch-svg'
-
-declare global {
-  interface Window {
-    EXCALIDRAW_ASSET_PATH?: string
-  }
-}
-
-// Set before the first render reads it; the module itself is loaded on click.
-if (typeof window !== 'undefined') window.EXCALIDRAW_ASSET_PATH = '/excalidraw/'
 
 type ExcalidrawApi = Parameters<NonNullable<React.ComponentProps<typeof Excalidraw>['excalidrawAPI']>>[0]
 
@@ -60,7 +50,8 @@ export interface SketchCanvasHandle {
 }
 
 export interface SketchCanvasProps {
-  initialElements: SketchSkeleton[]
+  /** Excalidraw skeletons: a model laid out (`sketch-from-model.ts`) or a sketch fence (`lib/diagrams/sketch-fence.ts`). */
+  initialElements: readonly object[]
   theme: 'light' | 'dark'
   langCode: string
   /** Called once the canvas can be asked for its scene. */
@@ -104,7 +95,7 @@ export default function SketchCanvas({
 
   // The skeletons are bound and measured once, by Excalidraw itself.
   const elements = useMemo(
-    () => convertToExcalidrawElements(initialElements as Parameters<typeof convertToExcalidrawElements>[0]),
+    () => convertToExcalidrawElements(initialElements as unknown as Parameters<typeof convertToExcalidrawElements>[0]),
     [initialElements]
   )
 

@@ -68,13 +68,13 @@ from aiq_agent.common.turn_status import emit_answer_repair
 from aiq_agent.common.turn_status import emit_citation_check
 from aiq_agent.common.unlisted_citations import writer_numbering
 from aiq_agent.common.workspace_records import filed_proposal_ids
+from aiq_agent.observability.answer_scores import dialect_scores
+from aiq_agent.observability.answer_scores import quote_patch_scores
 from aiq_agent.observability.langfuse_scores import card_validity_score
-from aiq_agent.observability.langfuse_scores import dialect_scores
 from aiq_agent.observability.langfuse_scores import dropped_citation_scores
 from aiq_agent.observability.langfuse_scores import emit_scores
 from aiq_agent.observability.langfuse_scores import formula_provenance_score
 from aiq_agent.observability.langfuse_scores import look_scores
-from aiq_agent.observability.langfuse_scores import quote_patch_scores
 from aiq_agent.observability.langfuse_scores import work_unfiled_scores
 from aiq_agent.observability.langfuse_trace_attributes import record_trace_metadata
 
@@ -1097,7 +1097,7 @@ def _held_to_dialect(content: str, meta: AnswerMeta | None) -> DialectResult:
     dialect = validate_dialect(content, meta.kind if meta is not None else None)
     if dialect.census or dialect.repairs:
         record_trace_metadata(answer_dialect=dialect.as_trace())
-    emit_scores(dialect_scores(dialect.repairs), writer="piloti")
+    emit_scores(dialect_scores(dialect.repairs, dialect.sketches), writer="piloti")
     return dialect
 
 

@@ -34,6 +34,14 @@ describe('markdownToBlocks — diagram fences', () => {
     expect(blocks[0].kind === 'paragraph' && blocks[0].runs[0].mono).toBeFalsy()
   })
 
+  it.each(['excalidraw', 'excalidraw-refused'])('prints a %s sketch as its label alone, never its JSON', (lang) => {
+    const blocks = markdownToBlocks(`\`\`\`${lang}\n{"elements": [{"type": "text", "x": 0, "y": 0, "text": "N"}]}\n\`\`\``)
+
+    expect(blocks).toHaveLength(1)
+    expect(runsText(blocks[0])).toContain('Skizze')
+    expect(runsText(blocks[0])).not.toContain('{')
+  })
+
   it('leaves an ordinary code fence exactly as it was', () => {
     // The narrowness is the point: labelling every fence would caption a
     // TypeScript snippet as a drawing.
@@ -46,9 +54,10 @@ describe('markdownToBlocks — diagram fences', () => {
   it('labels every kind the product knows how to draw', () => {
     // Reads the shared vocabulary rather than restating it, so a kind added to
     // DIAGRAM_SOURCE_KINDS reaches this export without anyone remembering to.
-    for (const lang of ['mermaid', 'excalidraw']) {
+    // A sketch is labelled by what it is, not by its format (ADR-0146).
+    for (const [lang, word] of [['mermaid', 'mermaid'], ['excalidraw', 'Skizze']]) {
       const blocks = markdownToBlocks('```' + lang + '\nx\n```')
-      expect(runsText(blocks[0])).toContain(lang)
+      expect(runsText(blocks[0])).toContain(word)
     }
   })
 
