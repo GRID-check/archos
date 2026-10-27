@@ -82,6 +82,12 @@ An externally visible name (an MCP tool an outside agent calls, a public
 route, an analytics event) is renamed with the old name kept as an alias for
 one release, never as a hard break.
 
+A name two deployed tiers exchange (the `x-grid-*` service headers between
+the BFF and the backend) moves by expand, switch, contract, because the tiers
+roll out side by side: first every receiver reads the new name beside the old
+(`lib/http/legacy-header-names.ts`, `aiq_api.legacy_headers`), the next
+release the senders switch, the release after the old name goes.
+
 ## Python
 
 Ruff, line length 120, Python 3.14. New tools use `@register_function` with a

@@ -258,7 +258,6 @@
     "frontends/aiq_api/src/aiq_api/jobs/run_ledger_fold.py::RunLedgerFold.__init__": 61,
     "frontends/aiq_api/src/aiq_api/jobs/submit.py::_build_run_agent_payload": 85,
     "frontends/aiq_api/src/aiq_api/jobs/submit.py::submit_agent_job": 316,
-    "frontends/aiq_api/src/aiq_api/plugin.py::AIQAPIWorker.build_app": 71,
     "frontends/aiq_api/src/aiq_api/plugin.py::api_routers": 68,
     "frontends/aiq_api/src/aiq_api/routes/cleanup_proposal.py::add_cleanup_proposal_routes": 63,
     "frontends/aiq_api/src/aiq_api/routes/consistency_check.py::add_consistency_check_routes": 99,
