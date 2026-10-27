@@ -19591,7 +19591,7 @@
       "post": {
         "operationId": "diagram-file",
         "summary": "File a drawn diagram into a project",
-        "description": "File a diagram as documents of the project: the `svg` and its `source` (mermaid or excalidraw), a `title`, and `runId`, the id of the answer it was drawn in (filing the same diagram twice files nothing twice). Optionally `conversationId` so restricted-folder rules apply. Returns `{ svg, pdf }`, `pdf` null when only the SVG landed. Needs project:documents:write and project:documents:generate.",
+        "description": "File a diagram as documents of the project: the `svg` and its `source` (mermaid or excalidraw), a `title`, and `runId`, the id of the answer it was drawn in (filing the same diagram twice files nothing twice). Optionally `conversationId` so restricted-folder rules apply, and `edited: true` when a person reworked the drawing, so the files name both authors. Returns `{ svg, pdf }`, `pdf` null when only the SVG landed. Needs project:documents:write and project:documents:generate.",
         "tags": [
           "bim"
         ],
@@ -19645,6 +19645,15 @@
                     "type": "string",
                     "minLength": 1,
                     "maxLength": 128
+                  },
+                  "answerId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 128
+                  },
+                  "edited": {
+                    "type": "boolean",
+                    "description": "True when a person edited the drawing before filing it; the files then name both authors"
                   }
                 },
                 "required": [

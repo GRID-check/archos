@@ -32,7 +32,7 @@ import type { DiagramFiling } from '../use-diagram-filing'
  * caption row a button's visual weight — it stays a line of quiet text, which
  * is what it should look like beside „Schematisch — ohne Maßangabe.".
  */
-const CONTROL =
+export const CAPTION_CONTROL =
   'inline-flex min-h-11 items-center rounded-sm font-medium text-primary underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
 
 export function DiagramFilingControls({ filing, className }: { filing: DiagramFiling; className?: string }) {
@@ -54,7 +54,7 @@ export function DiagramFilingControls({ filing, className }: { filing: DiagramFi
       {href && documentId ? (
         <a
           href={href}
-          className={CONTROL}
+          className={CAPTION_CONTROL}
           data-testid="diagram-open-filed"
           // A real link, intercepted — not a button dressed as one. Middle
           // click, "copy link address" and a phone all still get the Files
@@ -90,7 +90,7 @@ export function DiagramFilingControls({ filing, className }: { filing: DiagramFi
           // Disabled until the paper copy exists: in dark mode it lands a beat
           // after the picture, and a press before then would file nothing.
           disabled={!filing.canFile}
-          className={cn(CONTROL, 'disabled:cursor-not-allowed disabled:opacity-60')}
+          className={cn(CAPTION_CONTROL, 'disabled:cursor-not-allowed disabled:opacity-60')}
         >
           {state.kind === 'partial' ? t('file.completePdf') : t('file.action')}
         </button>
