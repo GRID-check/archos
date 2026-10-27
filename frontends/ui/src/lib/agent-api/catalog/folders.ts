@@ -477,9 +477,8 @@ export const foldersOperations = [
     summary: 'Start an Outlook archive import',
     description:
       'Registers a .pst or .ost archive (`filename`, `sizeBytes`, up to 25 GB) and answers the upload plan `{ import, partSize, ' +
-      'partCount, uploadedParts }`. Send the parts with mail-import-part-upload, then call mail-import-complete. The mails are ' +
-      'then filed with no proposal to approve, into the project folder "E-Mail-Import/<archive name>" as the person who started ' +
-      'the import, each file through the same checks as any upload.',
+      'partCount, uploadedParts }`. Send the parts with mail-import-part-upload, then call mail-import-complete. Then filed as ' +
+      'you, without a proposal, through the upload checks, into "E-Mail-Import/<archive name>".',
     method: 'POST',
     path: '/api/projects/[id]/mail-imports',
     params: projectParams,
@@ -509,8 +508,8 @@ export const foldersOperations = [
     summary: 'Finish sending an Outlook archive',
     description:
       'Call once every part is sent: the parts are joined and the filing job is queued (HTTP 202). Answers the import with its ' +
-      'status; follow it with mail-import-get. Refused with 409 when the import was cancelled meanwhile, and with 409 and ' +
-      'details.missingParts (the first 50) while a part is absent or the wrong size: send those with mail-import-part-upload and call again.',
+      'status; follow it with mail-import-get. 409 if cancelled, or with `details.missingParts` (the first 50) while parts are ' +
+      'missing or mis-sized: send those, call again.',
     method: 'POST',
     path: '/api/projects/[id]/mail-imports/[importId]/complete',
     params: mailImportParams,
