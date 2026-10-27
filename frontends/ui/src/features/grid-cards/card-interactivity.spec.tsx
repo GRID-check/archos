@@ -161,7 +161,7 @@ describe('interactive card wiring', () => {
       const user = userEvent.setup()
       render(<GridCards cards={[testCase.card]} projectId="proj-1" messageId="msg-1" />)
 
-      await user.click(screen.getByRole('button', { name: testCase.action }))
+      await user.click(await screen.findByRole('button', { name: testCase.action }))
 
       await waitFor(() => expect(setCardDecision).toHaveBeenCalled())
       const [messageId, cardKey] = setCardDecision.mock.calls[0]
@@ -184,7 +184,7 @@ describe('interactive card wiring', () => {
         <GridCardItem card={testCase.card} index={2} projectId="proj-1" messageId="msg-1" />,
       )
 
-      await user.click(screen.getByRole('button', { name: testCase.action }))
+      await user.click(await screen.findByRole('button', { name: testCase.action }))
 
       await waitFor(() => expect(setCardDecision).toHaveBeenCalled())
       expect(cardKeyOfDecisionKey(setCardDecision.mock.calls[0][1])).toBe(`${type}-2`)
@@ -198,8 +198,11 @@ describe('interactive card wiring', () => {
      * answer, fire the non-idempotent write behind it, and forget both — so the
      * action must not be on screen at all.
      */
-    it(`offers no way to settle ${type} when the decision could not be kept`, () => {
+    it(`offers no way to settle ${type} when the decision could not be kept`, async () => {
       render(<GridCards cards={[testCase.card]} projectId="proj-1" decisionsMustPersist />)
+      // The A2UI renderer loads after the first commit; until it does only the
+      // placeholder is on screen, and a missing button would prove nothing.
+      await waitFor(() => expect(document.querySelector('[data-slot="card-placeholder"]')).toBeNull())
 
       expect(screen.queryByRole('button', { name: testCase.action })).toBeNull()
       expect(setCardDecision).not.toHaveBeenCalled()
@@ -219,7 +222,7 @@ describe('interactive card wiring', () => {
       )
 
       expect(screen.queryByText('Platzhalter')).toBeNull()
-      await user.click(screen.getByRole('button', { name: testCase.action }))
+      await user.click(await screen.findByRole('button', { name: testCase.action }))
 
       await waitFor(() => expect(setCardDecision).toHaveBeenCalled())
       expect(cardKeyOfDecisionKey(setCardDecision.mock.calls[0][1])).toBe(`${type}-1`)
@@ -233,7 +236,7 @@ describe('interactive card wiring', () => {
     const user = userEvent.setup()
     render(<GridCardView card={card} index={2} leafId="b" projectId="proj-1" messageId="msg-1" />)
 
-    await user.click(screen.getByRole('button', { name: action }))
+    await user.click(await screen.findByRole('button', { name: action }))
 
     await waitFor(() => expect(setCardDecision).toHaveBeenCalled())
     expect(setCardDecision.mock.calls[0][1]).toBe('memory_proposal-2.b')

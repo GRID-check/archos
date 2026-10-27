@@ -198,6 +198,7 @@ Consequences, where a reader looks for them.
 | [0134](0134-extracted-page-text-is-stored-per-version.md) | Extracted page text is stored per version, and the index is derived from it | Proposed |
 | [0135](0135-skills-run-on-deep-agents-skills-middleware.md) | Skills run on Deep Agents' SkillsMiddleware, in chat and in deep research | Proposed |
 | [0139](0139-confidence-is-the-share-of-claims-evidence-carries.md) | Confidence counts the claims evidence carries, and the chip leads with it | Accepted |
+| [0140](0140-a-turn-that-needs-the-person-pauses-and-a-new-run-resumes-it.md) | A turn that needs the person pauses, and a new run resumes it: LangGraph `interrupt()` with the checkpointer, as AG-UI 1.0's interrupt outcome | Proposed |
 
 > Note: 0027, 0039, 0044 and 0047 were each independently used twice, every
 > time because two people read the next number off this index instead of off

@@ -172,16 +172,16 @@ describe('CalloutCard', () => {
 })
 
 /**
- * The semantic color contract: muted, flat, rule-based. Every colored
- * treatment pairs hue + left-rule position + label/icon, never hue alone, and
- * running text stays ink on every wash.
+ * The semantic color contract: muted and flat. Every colored treatment pairs
+ * hue + label + icon, never hue alone, no side stripe carries it, and running
+ * text stays ink on every wash.
  */
 describe('KeyTakeawaysCard distillation marker', () => {
-  it('paints a 2px green rule and a dark-green eyebrow with a check icon, washed at the pill only', () => {
+  it('marks the block with a dark-green eyebrow and a check icon, washed at the pill only, and no side stripe', () => {
     const { container } = render(<KeyTakeawaysCard title={null} items={[{ text: 'Erstens' }]} />)
 
     const card = container.querySelector('[data-slot="card"]')
-    expect(card).toHaveClass('border-l-2', 'border-l-success')
+    expect(card?.className, 'side stripes are discouraged (grid-design-language.md)').not.toMatch(/border-l/)
     expect(
       card?.className,
       'the wash must not fill behind the running text — it rides the eyebrow pill alone',
@@ -193,8 +193,7 @@ describe('KeyTakeawaysCard distillation marker', () => {
       eyebrow.className,
       'the wash is the project green at ~7%, not the full-strength chip tint',
     ).toContain('var(--source-project)')
-    // Hue never travels alone: the written label, the left rule above and a
-    // check glyph beside the label.
+    // Hue never travels alone: the written label and a check glyph beside it.
     expect(eyebrow.querySelector('svg.lucide-circle-check')).not.toBeNull()
   })
 
@@ -207,13 +206,14 @@ describe('KeyTakeawaysCard distillation marker', () => {
     )
   })
 
-  it('carries the same rule in the flat register, the wash on the eyebrow alone', () => {
+  it('carries the same marker in the flat register, the wash on the eyebrow alone', () => {
     const { container } = render(
       <KeyTakeawaysCard flat title={null} items={[{ text: 'Erstens' }]} />,
     )
 
     const flat = container.firstElementChild
-    expect(flat).toHaveClass('border-l-2', 'border-l-success')
+    expect(flat?.className).not.toMatch(/border-l/)
+    expect(screen.getByText('Das Wichtigste').querySelector('svg.lucide-circle-check')).not.toBeNull()
     expect(flat?.className).not.toContain('var(--source-project)')
     expect(screen.getByText('Das Wichtigste')).toHaveClass('text-success')
     expect(screen.getByText('Das Wichtigste').className).toContain('var(--source-project)')
@@ -221,7 +221,7 @@ describe('KeyTakeawaysCard distillation marker', () => {
 })
 
 describe('CalloutCard action-axis tiers', () => {
-  it('marks Frist amber: rule, clock and a washed kind pill — the one warm constant', () => {
+  it('marks Frist amber: clock and a washed kind pill — the one warm constant', () => {
     const { container } = render(
       <CalloutCard kind="deadline" text="Die Bauverhandlung ist binnen sechs Wochen anzuberaumen." />,
     )
@@ -229,36 +229,36 @@ describe('CalloutCard action-axis tiers', () => {
     const card = container.querySelector('[data-slot="card"]')
     // The wash marks the kind pill, never the remark behind it.
     expect(card?.className).not.toContain('var(--source-office)')
-    expect(card?.querySelector('span[aria-hidden="true"]')).toHaveClass('bg-warning')
+    expect(card?.innerHTML, 'no side stripe: the well and the word carry the tone').not.toMatch(/w-\[3px\]|border-l/)
     const pill = screen.getByText('Frist')
     expect(pill).toHaveClass('text-warning')
     expect(pill.className).toContain('var(--source-office)')
     expect(card?.querySelector('svg.lucide-calendar-clock')).not.toBeNull()
   })
 
-  it('marks Achtung brick red: rule, triangle and a washed kind pill', () => {
+  it('marks Achtung brick red: triangle and a washed kind pill', () => {
     const { container } = render(
       <CalloutCard kind="warning" text="Die Wiener Bauordnung weicht bei der Berechnung ab." />,
     )
 
     const card = container.querySelector('[data-slot="card"]')
     expect(card?.className).not.toContain('var(--signal-error)')
-    expect(card?.querySelector('span[aria-hidden="true"]')).toHaveClass('bg-danger')
+    expect(card?.innerHTML, 'no side stripe: the well and the word carry the tone').not.toMatch(/w-\[3px\]|border-l/)
     const pill = screen.getByText('Achtung')
     expect(pill).toHaveClass('text-error')
     expect(pill.className).toContain('var(--signal-error)')
     expect(card?.querySelector('svg.lucide-triangle-alert')).not.toBeNull()
   })
 
-  it('keeps Hinweis neutral: slate rule, almost no wash, subdued eyebrow', () => {
+  it('keeps Hinweis neutral: no edge, no wash, subdued eyebrow', () => {
     const { container } = render(
       <CalloutCard kind="note" text="Die Frist läuft ab Zustellung des Bescheids." />,
     )
 
     const card = container.querySelector('[data-slot="card"]')
     const cls = card?.className ?? ''
-    // The slate rule …
-    expect(card?.querySelector('span[aria-hidden="true"]')).toHaveClass('bg-muted-foreground/40')
+    // No edge …
+    expect(card?.innerHTML, 'no side stripe: the well and the word carry the tone').not.toMatch(/w-\[3px\]|border-l/)
     // … and no chromatic hue anywhere on the card: no wash, no tinted edge.
     for (const chromatic of [
       'bg-warning',
@@ -273,7 +273,7 @@ describe('CalloutCard action-axis tiers', () => {
     }
     const eyebrow = screen.getByText('Hinweis')
     expect(eyebrow).toHaveClass('text-muted-foreground')
-    // Still triple-coded: the word, the rule and the glyph.
+    // Still coded twice over colour: the word and the glyph.
     expect(card?.querySelector('svg.lucide-info')).not.toBeNull()
   })
 
@@ -287,21 +287,21 @@ describe('CalloutCard action-axis tiers', () => {
 
     const card = container.querySelector('[data-slot="card"]')
     const cls = card?.className ?? ''
-    expect(card?.querySelector('span[aria-hidden="true"]')).toHaveClass('bg-muted-foreground/40')
+    expect(card?.innerHTML, 'no side stripe: the well and the word carry the tone').not.toMatch(/w-\[3px\]|border-l/)
     expect(cls).not.toContain('bg-success')
     expect(cls).not.toContain('var(--source-project)')
     expect(screen.getByText('Tipp')).toHaveClass('text-muted-foreground')
     expect(card?.querySelector('svg.lucide-lightbulb')).not.toBeNull()
   })
 
-  it('carries the tier edge in the flat register, the wash on the kind pill alone', () => {
+  it('keeps the flat register edgeless, the wash on the kind pill alone', () => {
     const { container } = render(
       <CalloutCard flat kind="deadline" text="Binnen sechs Wochen anzuberaumen." />,
     )
 
     const flat = container.firstElementChild
     expect(flat?.className).not.toContain('var(--source-office)')
-    expect(flat?.querySelector('span[aria-hidden="true"]')).toHaveClass('bg-warning')
+    expect(flat?.innerHTML, 'no side stripe: the well and the word carry the tone').not.toMatch(/w-\[3px\]|border-l/)
     const pill = screen.getByText('Frist')
     expect(pill).toHaveClass('text-warning')
     expect(pill.className).toContain('var(--source-office)')

@@ -34,16 +34,18 @@ overrides = [
 
 [[package]]
 name = "a2ui-core"
-version = "0.1.1"
+version = "0.4.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
+    { name = "babel" },
     { name = "jsonschema" },
     { name = "pydantic" },
     { name = "referencing" },
+    { name = "regex" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/d9/51/477ea2d173f77d54f1a3b963fafc811a228427d077442bc7b6cc7409787d/a2ui_core-0.1.1.tar.gz", hash = "sha256:591df9357cd84a3ccf409132a741eb1fbb060be73de0eebb3dcfdd4c7b33180d", size = 84241, upload-time = "2026-07-08T03:49:36.958Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/33/b4/bc9c54a5b19f2aa1548f1791f7f7e0f75888b93668b7c03ede4474c804d9/a2ui_core-0.4.0.tar.gz", hash = "sha256:840749f45c477a1a4958a64a9c521dca13192693d745cbf45caafb34902ed6fc", size = 278287, upload-time = "2026-10-17T01:03:33.709Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/2e/14/2344f6edc4b381db477d4387a28d1c84a56614962cc16f55074be981a12a/a2ui_core-0.1.1-py3-none-any.whl", hash = "sha256:8857e1942b8b1bab530efa0c20f6f9048c5771b47b3b98b3bc1ca28d39480069", size = 75389, upload-time = "2026-07-08T03:49:35.698Z" },
+    { url = "https://files.pythonhosted.org/packages/11/30/07a774bccf1d3339c402877753329d3c2d727104fb41ea67e6415c48f0e0/a2ui_core-0.4.0-py3-none-any.whl", hash = "sha256:e9839f96003d731b44e40cf6e8ad251282ded398281067412f08b0bbcd16951d", size = 247823, upload-time = "2026-10-17T01:03:30.985Z" },
 ]
 
 [[package]]
@@ -246,7 +248,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "a2ui-core", specifier = "==0.1.1" },
+    { name = "a2ui-core", specifier = "==0.4.0" },
     { name = "aiofiles", specifier = ">=23.0.0" },
     { name = "aiosqlite", specifier = ">=0.19.0" },
     { name = "asyncpg", specifier = ">=0.29.0" },

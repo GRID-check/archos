@@ -226,7 +226,7 @@ class TestScope:
 
     async def test_the_action_row_is_a_search_with_its_mode(self, monkeypatch) -> None:
         emitted = []
-        monkeypatch.setattr(turn_status, "emit_step", lambda step, started=False: emitted.append(step))
+        monkeypatch.setattr(turn_status, "emit_step", lambda step, started=False, **_: emitted.append(step))
         await _backend(Retriever({COLLECTION: _chunks()})).grep(r"Flucht\w+", mode="regex")
         settled = [step for step in emitted if step.kind == "action" and step.status != "running"]
         assert settled and settled[-1].verb == "search" and settled[-1].mode == "regex"

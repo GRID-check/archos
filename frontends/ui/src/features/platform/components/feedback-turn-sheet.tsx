@@ -28,6 +28,7 @@ import { TimeAgo } from '@/components/ui/time-ago'
 import { useLocale, useTranslations } from '@/i18n'
 import { formatAbsoluteTime } from '@/lib/format'
 import { cn } from '@/lib/utils'
+import { Quote } from '@/components/ui/quote'
 import { orgLabel, type FeedbackHealthTurn } from './answer-feedback-types'
 
 /**
@@ -177,7 +178,7 @@ function DetailBlock({
   children,
 }: {
   label: string
-  /** The voter's own words: set off with a rule so they read as a quote, not as Piloti's text. */
+  /** The voter's own words: set as a `Quote` so they read as a quote, not as Piloti's text. */
   quoted?: boolean
   testId?: string
   children: ReactNode
@@ -185,7 +186,7 @@ function DetailBlock({
   return (
     <section className="flex flex-col gap-1.5" data-testid={testId}>
       <SectionLabel as="h3">{label}</SectionLabel>
-      <div className={cn(quoted && 'border-border border-l-2 pl-3')}>{children}</div>
+      {quoted ? <Quote as="div">{children}</Quote> : <div>{children}</div>}
     </section>
   )
 }
