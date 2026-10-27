@@ -218,7 +218,7 @@ class KnowledgeRetrievalConfig(FunctionBaseConfig, name="knowledge_retrieval"):
         default_factory=lambda: ["meaning", "exact", "regex"],
         description=(
             "EVAL KNOB, not a product setting: the `match=` modes the search accepts. The answer suite's "
-            "`search` arm keeps only `meaning` and its `navigate` arm only the literal modes, to measure "
+            "`semantic` arm keeps only `meaning` and its `grep` arm only the literal modes, to measure "
             "each way of finding on its own (ADR-0127). A comma-separated string is read as a list, which "
             "is how `nat run --override` hands one over. Production keeps the default: every mode."
         ),

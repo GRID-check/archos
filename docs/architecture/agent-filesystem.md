@@ -130,9 +130,10 @@ for a grep without a path.
    reported for the round's admission and the denominators count only listable files. A
    `path=` into a folder nothing listable is filed in answers as a folder that does not exist.
 4. **Deferred:** the three-arm suite (`grep only`, `semantic only`, `hybrid`) is the files eval's
-   existing three arms with the aliases mapped (`files_eval.aliases`); a `grep`-only arm that
-   unbinds `knowledge_search` entirely is not added. The answer suite has not been run on any
-   slice (no model access in the build container): every row above is unmeasured.
+   existing three arms, renamed `semantic`, `grep` and `hybrid`, with the aliases mapped
+   (`files_eval.aliases`); the `grep` arm unbinds `knowledge_search` once `grep` is a configured
+   tool, and the `semantic` arm sets `filesystem: null` so the estate verbs reach the drafts
+   alone. The answer suite has not been run on any slice (no model access in the build container): every row above is unmeasured.
 
 ## 1. Mounts and paths
 
@@ -518,8 +519,10 @@ as a backend route.
 ## 9. Slices
 
 Each measured on `task be:eval:answer-suite -- --set files` before and after, with the
-arms grep only, semantic only and hybrid from slice 4. The table with what each reads off
-the suite is in ADR-0133's More Information.
+arms grep only, semantic only and hybrid (`--arm all`, with `--baseline` or `--compare`
+for the before/after table; [the files set](../contributing/testing-and-verification.md#the-answer-suite)).
+The rows match the old and the new tool names alike, so one row set measures every slice.
+The table with what each reads off the suite is in ADR-0133's More Information.
 
 0. A realistic fixture document cut by the real section chunker.
 1. Grep's double count in the overlap and breadcrumb matches, fixed inside today's tool.
