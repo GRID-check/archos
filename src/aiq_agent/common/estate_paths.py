@@ -284,21 +284,20 @@ def action_place(path: str | None) -> dict[str, str]:
     The reader's words for a mount are the frontend's (``thinking.work.place.*``),
     so the row carries the mount and the folder *inside* it, never the path: no
     path, or ``/``, is ``estate`` (every place the person may see); a mount root
-    has no ``target``. A path that names no place, or is refused, keeps the
-    model's own words as ``target`` with no ``mount``: that is what the call
-    looked for. Pure.
+    has no ``target``. A path that names no place, or is refused, gives nothing:
+    the row then says „einen Ordner“, never ``drafts › .. › project``. Pure.
     """
     raw = (path or "").strip()
     try:
         parsed = parse_estate_path(raw, directory=True)
     except PathRefused:
-        return {"target": raw}
+        return {}
     if parsed.path == "/":
         return {"mount": "estate"}
     if parsed.path == "/law/":
         return {"mount": "law"}
     if parsed.mount is None or parsed.mount in ("drafts", "skills"):
-        return {"target": raw}
+        return {}
     folder = "" if parsed.mount == "law" else parsed.folder
     return {"mount": parsed.mount, **({"target": folder} if folder else {})}
 

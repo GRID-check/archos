@@ -175,37 +175,64 @@ everything looked complete with hits and failed without them. Decided:
   (`project | office | chat | law | estate`, the vocabulary of `ToolStep.mount`;
   `estate` is every place the person may see) and `target` is then the folder
   inside it (`estate_paths.action_place`). The words are the frontend's:
-  „Listet 03 Einreichung“, „Durchsucht alle Ablagen wörtlich nach „…““, „Sucht
-  Dateien „*.pdf“ im Projekt“ (a `glob` is a `list` row with its pattern as
-  `query`), a folder outside the project under its place („Büroablage ›
-  Vorlagen“). A path that names no place keeps the model's words. A row stored
-  before `mount` is read back the same way (`legacyPlace`).
+  „Öffnet 03 Einreichung“, „Durchsucht alle Ablagen wörtlich nach „…““, „Sucht
+  im Projekt nach PDF-Dateien“ (a `glob` is a `list` row with its pattern as
+  `query`). A folder outside the project is named under its place, with the
+  article the sentence needs („Durchsucht die Büroablage › Vorlagen“, „in der
+  Büroablage › Vorlagen“, „im Chat › Pläne“), and without one inside quotes
+  („der Ordner „Büroablage › Vorlagen““). A path that names no place gives
+  the row no `target` at all („Öffnet einen Ordner · fehlgeschlagen“), never
+  the model's `drafts › .. › project`.
+- **Simple patterns read as words.** A glob of one type or one word reads
+  „PDF-Dateien“, „Dateien mit „Brandschutz“ im Namen“, „PDF-Dateien mit „Plan“
+  im Namen“; a regex of plain words or'ed reads „wörtlich nach „EI 90“ oder
+  „REI 90““. Any other pattern is quoted as written („Dateien „EP-0?_*.pdf““,
+  „nach dem Muster „EI\s?90““), and „Offen“ calls a pattern search „die Suche …
+  nach dem Muster“, never „die wörtliche Suche“.
 - **An incomplete search says so.** `ActionStep.incomplete` is set by a `grep`
   with any gap (a place that did not answer, the regex deadline, the passage
-  cap). Its count is a floor („3 Treffer in 1 Dokument, unvollständig“); with no
-  hit it is `empty`, not `error`, because most of the scope was searched, and
-  „Offen“ says „… nicht alles durchsuchen konnte“. It has its own shape (a dashed
-  ring), its own second line, and never folds into a sum. Only a `grep` that
+  cap). With no hit it is `empty`, not `error`, because most of the scope was
+  searched. It has its own shape (a dashed ring) and a second line saying what
+  it means („nicht alles durchsucht – es kann weitere Treffer geben“, „… – das
+  ist kein Nein“); the count beside it stays a count („3 Treffer in 1 Datei“),
+  with the word „unvollständig“ only where there is none. It never folds into a
+  sum, and „Offen“ says „… nicht alles durchsuchen konnte“. Only a `grep` that
   searched nothing at all is `error`.
-- **A miss is „nicht gefunden“, not a failure.** A folder or document that does
-  not resolve is `empty` with the name the model asked for; a restricted one
-  gives the byte-identical row, so the row confirms nothing (ADR-0088). This
-  replaces „a read that falls through to unknown document is an error row“
-  below for the estate's `read_file`; `read_passage` keeps its old rule while it
-  lives.
-- **Counts are what is there.** A listing counts the folder's files, not the 40
-  (`ls`) or 100 (`glob`) its text had room for; `ls /` counts places and
-  documents („3 Ablagen, 62 Dateien“); a zero beside a count is dropped. A read
-  says the pages it served (a read without `pages` opens page 1 and says so), and
-  a folder card (`README.md`) is a `list` row of its folder with the card's
-  counts. A search without a hit says how much it searched („kein Treffer in 41
-  Dokumenten“), and every hit count reads „14 Treffer in 3 Dokumenten“.
+- **A miss is „nicht gefunden“; an empty folder is „leer“.** A folder or file
+  that does not resolve is `empty` with `missing` (also new on `ActionStep`) and
+  the name the model asked for; a restricted one gives the byte-identical row,
+  so the row confirms nothing (ADR-0088). A folder that is there and holds
+  nothing (a new project, a chat without uploads) is `ok` with its zeros and
+  reads „Öffnet das Projekt · leer“: it was found, and „Offen“ owes nothing for
+  it. „Nicht gefunden“ is said only for `missing`. This replaces „a read that
+  falls through to unknown document is an error row“ below for the estate's
+  `read_file`; `read_passage` keeps its old rule while it lives.
+- **One thing, one count, one noun.** A folder counts everything it holds, its
+  subfolders' files too, whether `ls` lists it flat, as a tree or as its folder
+  card, and not the 40 (`ls`) or 100 (`glob`) its text had room for. Every count
+  of a filesystem row counts files („12 Dateien, 2 Ordner“, „14 Treffer in 3
+  Dateien“, „kein Treffer in 41 Dateien“); a search outside the filesystem
+  keeps „Dokumenten“. `ls /` counts places and files („3 Ablagen, 41 Dateien“),
+  exactly the set a `grep` everywhere searches, so the two numbers agree when
+  nothing failed; an incomplete grep counts only the places that answered. A
+  zero beside a count is dropped. A read says the pages it served (a read
+  without `pages` opens page 1 and says so), named as its card names the
+  document („Liest Baubeschreibung, S. 4–6“), and a folder card (`README.md`)
+  is a `list` row of its folder.
 - **A row links only when its call returned a card.** A listing, a name search
   and a `files_with_matches` grep are indexes: their rows are no buttons, where
   a tap used to set every card back and light nothing.
 - **Drafts and skills draw no row**, as agent-filesystem §6 says; a skill read
   no longer wears the „Entwurf“ chip, and a draft `grep`/`glob` does.
-- The listing verb is „Listet“ (it was „Öffnet“), its step kind „Auflisten“.
+- The listing verb is „Öffnet“ / „Geöffnet: …“, its step kind „Ordner öffnen“.
+  („Listet“ was tried and is not German for what a person does with a folder.)
+- **Rows stored before `mount`** are read back as the wire sends them now
+  (`legacyPlace` in `message-provenance.ts`): a listing's or search's path as
+  its place, a read's path as its file name, a folder card's `…/README.md` as
+  the listing of its folder. Delete `legacyPlace` and its spec once no stored
+  conversation holds an `action` step written before this amendment shipped:
+  after the conversation retention window has passed since that deploy, or
+  sooner by a migration that rewrites those steps.
 
 ### Consequences
 

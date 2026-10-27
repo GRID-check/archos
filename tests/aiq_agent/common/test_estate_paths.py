@@ -122,9 +122,10 @@ class TestTheRowsPlace:
     def test_a_path_is_its_place_and_folder(self, path, place) -> None:
         assert action_place(path) == place
 
-    @pytest.mark.parametrize("path", ["/nirgends/", "../project/", "project/x", "/drafts/"])
-    def test_a_path_that_names_no_place_keeps_the_models_words(self, path) -> None:
-        assert action_place(path) == {"target": path}
+    @pytest.mark.parametrize("path", ["/nirgends/", "../project/", "project/x", "/drafts/", "/drafts/../project/"])
+    def test_a_path_that_names_no_place_gives_the_row_nothing_to_print(self, path) -> None:
+        """The row then reads „… einen Ordner“, never „drafts › .. › project“."""
+        assert action_place(path) == {}
 
     def test_the_document_a_read_asked_for_is_its_leaf_without_the_text_suffix(self) -> None:
         assert asked_document("/project/Personal/Vertrag.pdf.md") == "Vertrag.pdf"

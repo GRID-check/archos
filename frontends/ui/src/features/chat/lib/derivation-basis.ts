@@ -35,8 +35,9 @@ import {
 import {
   actionPlace,
   breadcrumb,
+  namePattern,
   placeIn,
-  placeName,
+  placeLabel,
   quoteQuery,
   sentenceKind,
   workParts,
@@ -172,8 +173,15 @@ const callNoun = (t: Translator, action: StoredAction): string => {
   const place = actionPlace(action)
   if (place) {
     // A call over the filesystem is named by where it looked: „die wörtliche Suche in allen Ablagen nach ‚…‘“.
-    const call = t(`thinking.node.basis.call.${sentenceKind(action)}`)
+    const kind = sentenceKind(action)
     const where = placeIn(t, place)
+    // A pattern is no wörtliche Suche: „die Suche in der Büroablage › Vorlagen nach dem Muster ‚EI\s?90‘“.
+    if (kind === 'grep' && action.mode === 'regex' && action.query)
+      return t('thinking.node.basis.callPlacePattern', {
+        place: where,
+        query: quoteQuery(t, action.query),
+      })
+    const call = t(`thinking.node.basis.call.${kind}`)
     return action.query
       ? t('thinking.node.basis.callPlaceQuery', {
           call,
@@ -220,11 +228,13 @@ const openPoint = (
     )
   const place = actionPlace(action)
   const kind = sentenceKind(action)
-  if (place && action.query && (kind === 'grep' || kind === 'glob'))
-    return t(
-      kind === 'grep' ? 'thinking.node.basis.openNoHitPlace' : 'thinking.node.basis.openNoFile',
-      { place: placeIn(t, place), query: quoteQuery(t, action.query) }
-    )
+  if (place && action.query && kind === 'grep')
+    return t('thinking.node.basis.openNoHitPlace', { call: callNoun(t, action) })
+  if (place && action.query && kind === 'glob')
+    return t('thinking.node.basis.openNoFile', {
+      place: placeIn(t, place),
+      what: namePattern(t, action.query),
+    })
   const { query, target } = action
   if (!query) {
     const parts = workParts(t, action)
@@ -249,10 +259,10 @@ const openPoint = (
 
 /** The folder or document an empty listing or read did not find, by the name the row gives it; null otherwise. */
 const missingName = (t: Translator, action: StoredAction): string | null => {
-  if (action.verb === 'read' && action.target) return action.target
+  if (!action.missing) return null
+  if (action.verb === 'read') return action.target || null
   const place = actionPlace(action)
-  if (action.verb !== 'list' || !place || action.query) return null
-  return placeName(t, place)
+  return place ? placeLabel(t, place) : null
 }
 
 /**

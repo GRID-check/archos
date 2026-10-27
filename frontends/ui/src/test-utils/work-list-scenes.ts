@@ -508,7 +508,9 @@ export const manyCallsScene = (): TimedStep[] => {
 // The rows exactly as the estate backend emits them (`estate.py`,
 // `estate_grep.py`, pinned by `test_estate_action_rows.py`): a place (`mount`)
 // and the folder inside it, never a path. Step 1 orients (a folder, a name
-// pattern, a literal search), step 2 reads what step 1 found.
+// pattern, a literal search), step 2 reads what step 1 found. The numbers agree
+// as the backend's do: a folder counts everything below it, and the places
+// (`ls /`) count exactly what a grep everywhere searches when nothing fails.
 
 const SPEC = 'Baubeschreibung.pdf'
 
@@ -522,7 +524,7 @@ export const filesystemScene = (): TimedStep[] =>
       mount: 'project',
       target: '03 Einreichung',
       status: 'ok',
-      counts: { files: 12, folders: 2 },
+      counts: { files: 21, folders: 2 },
     }),
     ...call('call:fs2', 110, 1600, {
       round: 1,
@@ -532,7 +534,7 @@ export const filesystemScene = (): TimedStep[] =>
       mount: 'project',
       target: '03 Einreichung',
       status: 'ok',
-      counts: { hits: 14, documents: 3, searched: 12 },
+      counts: { hits: 14, documents: 3, searched: 21 },
     }),
     ...call('call:fs3', 120, 300, {
       round: 1,
@@ -600,7 +602,7 @@ export const filesystemEdgesScene = (): TimedStep[] =>
       status: 'empty',
       counts: { hits: 0, documents: 0, searched: 41 },
     }),
-    // The office's scan failed: 9 of 41 searched, three hits, and the row says it is a floor.
+    // The office's scan failed: 32 of 41 searched, three hits, and the row says it is a floor.
     ...call('call:fe2', 110, 3000, {
       round: 1,
       verb: 'search',
@@ -609,7 +611,7 @@ export const filesystemEdgesScene = (): TimedStep[] =>
       mount: 'estate',
       incomplete: true,
       status: 'ok',
-      counts: { hits: 3, documents: 1, searched: 9 },
+      counts: { hits: 3, documents: 1, searched: 32 },
     }),
     // The same failure without a hit: no hit in what was searched, and no no.
     ...call('call:fe3', 120, 3000, {
@@ -623,6 +625,16 @@ export const filesystemEdgesScene = (): TimedStep[] =>
       status: 'empty',
       counts: { hits: 0, documents: 0, searched: 9 },
     }),
+    // A regex of plain words or'ed together reads as the words.
+    ...call('call:fe9', 130, 900, {
+      round: 1,
+      verb: 'search',
+      mode: 'regex',
+      query: 'EI 90|REI 90',
+      mount: 'project',
+      status: 'ok',
+      counts: { hits: 2, documents: 1, searched: 21 },
+    }),
     retrievalOf(3200, 2, 'Den Personalordner und die Pläne ansehen.'),
     // A folder that does not exist, and a restricted one: one answer for both.
     ...call('call:fe4', 3300, 200, {
@@ -631,6 +643,7 @@ export const filesystemEdgesScene = (): TimedStep[] =>
       mount: 'project',
       target: 'Personal',
       status: 'empty',
+      missing: true,
     }),
     // A guessed path: the name the model asked for, „nicht gefunden“, as for any miss.
     ...call('call:fe5', 3310, 200, {
@@ -638,6 +651,7 @@ export const filesystemEdgesScene = (): TimedStep[] =>
       verb: 'read',
       target: 'Vertrag.pdf',
       status: 'empty',
+      missing: true,
     }),
     ...call('call:fe6', 3320, 200, {
       round: 2,
@@ -653,7 +667,15 @@ export const filesystemEdgesScene = (): TimedStep[] =>
       verb: 'list',
       mount: 'estate',
       status: 'ok',
-      counts: { files: 62, folders: 3 },
+      counts: { files: 41, folders: 3 },
+    }),
+    // A place that is there and holds nothing: „leer“, and nothing for „Offen“.
+    ...call('call:fe10', 3720, 200, {
+      round: 3,
+      verb: 'list',
+      mount: 'chat',
+      status: 'ok',
+      counts: { files: 0, folders: 0 },
     }),
     ...call('call:fe8', 3710, 300, {
       round: 3,

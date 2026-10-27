@@ -1037,6 +1037,8 @@ export const chat: typeof en.chat = {
       noHit: 'kein Treffer',
       // Eine wörtliche Suche ohne Treffer, mit dem, was sie durchsucht hat.
       noHitIn: 'kein Treffer in {count, plural, one {#\u00A0Dokument} other {#\u00A0Dokumenten}}',
+      // Dasselbe im Dateisystem, wo jede Zahl Dateien zählt: „kein Treffer in 41 Dateien“.
+      noHitInFiles: 'kein Treffer in {count, plural, one {#\u00A0Datei} other {#\u00A0Dateien}}',
       nothingFound: 'nichts gefunden',
       // Ein Ordner oder Dokument, das es nicht gibt (ein gesperrter Ordner antwortet genauso).
       notFound: 'nicht gefunden',
@@ -1044,8 +1046,8 @@ export const chat: typeof en.chat = {
       noFile: 'keine Datei',
       failed: 'fehlgeschlagen',
       // Eine wörtliche Suche, die nicht alles durchsuchen konnte: ihre Zahl ist eine Untergrenze.
+      // Nur ohne Zahl; mit einer Zahl sagen die gestrichelte Form und die Notiz darunter, dass sie eine Untergrenze ist.
       incomplete: 'unvollständig',
-      incompleteResult: '{found}, unvollständig',
       incompleteNote: {
         hits: 'nicht alles durchsucht – es kann weitere Treffer geben',
         noHit: 'nicht alles durchsucht – das ist kein Nein',
@@ -1066,7 +1068,7 @@ export const chat: typeof en.chat = {
       kind: {
         search: 'Suchen',
         read: 'Lesen',
-        list: 'Auflisten',
+        list: 'Ordner öffnen',
         look: 'Betrachten',
         model: 'Modell abfragen',
         workspace: 'Arbeitsbereich',
@@ -1085,7 +1087,13 @@ export const chat: typeof en.chat = {
         chat: 'die Dateien dieses Chats',
         law: 'die OIB-Richtlinien',
         estate: 'alle Ablagen',
-        // … und als erstes Glied vor einem Ordner, der nicht im Projekt liegt: „Büroablage › Vorlagen“.
+        // … ein Ordner, der nicht im Projekt liegt, mit dem Artikel seiner Ablage: „die Büroablage › Vorlagen“ …
+        folder: {
+          office: 'die Büroablage ›\u00A0{folder}',
+          chat: 'den Chat ›\u00A0{folder}',
+          law: 'die OIB-Richtlinien ›\u00A0{folder}',
+        },
+        // … und als Name in Anführungszeichen, ohne Artikel: „Büroablage › Vorlagen“.
         folderIn: '{place} ›\u00A0{folder}',
         crumb: {
           office: 'Büroablage',
@@ -1100,7 +1108,14 @@ export const chat: typeof en.chat = {
         chat: 'in den Dateien dieses Chats',
         law: 'in den OIB-Richtlinien',
         estate: 'in allen Ablagen',
+        // Ein Ordner des Projekts: „in 03 Einreichung“ …
         folder: 'in {folder}',
+        // … einer anderen Ablage, mit ihrem Artikel: „in der Büroablage › Vorlagen“.
+        folderOf: {
+          office: 'in der Büroablage ›\u00A0{folder}',
+          chat: 'im Chat ›\u00A0{folder}',
+          law: 'in den OIB-Richtlinien ›\u00A0{folder}',
+        },
       },
       // Das Verb steht gedämpft vor seinem Gegenstand: „Sucht wörtlich“ „„Brandabschnitt“ im Projekt“.
       verb: {
@@ -1110,11 +1125,12 @@ export const chat: typeof en.chat = {
         searchIn: 'Sucht in',
         searchExactIn: 'Sucht wörtlich in',
         searchRegexIn: 'Sucht nach Muster in',
-        list: 'Listet',
+        // Ein Ordner, den Piloti aufmacht, um zu sehen, was darin liegt: „Öffnet 03 Einreichung“.
+        list: 'Öffnet',
         // Die wörtliche Suche im Dateisystem: „Durchsucht 03 Einreichung wörtlich nach „Brandabschnitt““.
         grep: 'Durchsucht',
-        // Die Suche nach Dateinamen: „Sucht Dateien „*.pdf“ im Projekt“.
-        glob: 'Sucht Dateien',
+        // Die Suche nach Dateinamen: „Sucht im Projekt nach PDF-Dateien“.
+        glob: 'Sucht',
         read: 'Liest',
         look: 'Betrachtet',
         lookup: 'Sucht in anderen Projekten:',
@@ -1126,9 +1142,9 @@ export const chat: typeof en.chat = {
       // Der Kopf eines fertigen Zugs mit genau einem Aufruf: was getan WURDE.
       done: {
         search: 'Gesucht: {name}',
-        list: 'Gelistet: {name}',
+        list: 'Geöffnet: {name}',
         grep: 'Durchsucht: {name}',
-        glob: 'Dateien gesucht: {name}',
+        glob: 'Gesucht: {name}',
         read: 'Gelesen: {name}',
         look: 'Betrachtet: {name}',
         lookup: 'In anderen Projekten gesucht: {name}',
@@ -1139,7 +1155,7 @@ export const chat: typeof en.chat = {
       },
       doneFallback: {
         search: 'In den Dokumenten gesucht',
-        list: 'Einen Ordner gelistet',
+        list: 'Einen Ordner geöffnet',
         read: 'Ein Dokument gelesen',
         look: 'Ein Dokument betrachtet',
         lookup: 'In anderen Projekten gesucht',
@@ -1154,7 +1170,17 @@ export const chat: typeof en.chat = {
         queryIn: '{target}: „{query}“',
         grepExact: '{place} wörtlich nach „{query}“',
         grepRegex: '{place} nach dem Muster „{query}“',
-        names: '„{query}“ {place}',
+        // Ein Muster, das nur Wörter verodert: „das Projekt wörtlich nach „EI 90“ oder „REI 90““.
+        grepAny: '{place} wörtlich nach {words}',
+        or: 'oder',
+        names: '{place} nach {what}',
+        // Was eine Suche nach Dateinamen sucht, in Worten, wo das Muster einfach ist.
+        namesWhat: {
+          ext: '{ext}-Dateien',
+          word: 'Dateien mit „{word}“ im Namen',
+          extWord: '{ext}-Dateien mit „{word}“ im Namen',
+          pattern: 'Dateien „{query}“',
+        },
         pages: '{target}, S.\u00A0{pages}',
         clause: '{target}, {pages}',
         where: '{target}, S.\u00A0{pages}, {where}',
@@ -1177,7 +1203,7 @@ export const chat: typeof en.chat = {
       },
       fallback: {
         search: 'Sucht in den Dokumenten',
-        list: 'Listet einen Ordner',
+        list: 'Öffnet einen Ordner',
         read: 'Liest ein Dokument',
         look: 'Betrachtet ein Dokument',
         lookup: 'Sucht in anderen Projekten',
@@ -1190,7 +1216,12 @@ export const chat: typeof en.chat = {
         hits: '{count, plural, one {#\u00A0Treffer} other {#\u00A0Treffer}}',
         hitsDocuments:
           '{hits, plural, one {#\u00A0Treffer} other {#\u00A0Treffer}} in {documents, plural, one {#\u00A0Dokument} other {#\u00A0Dokumenten}}',
+        // Im Dateisystem zählt jede Zahl Dateien, wie die Ablage sie zählt.
+        hitsFiles:
+          '{hits, plural, one {#\u00A0Treffer} other {#\u00A0Treffer}} in {documents, plural, one {#\u00A0Datei} other {#\u00A0Dateien}}',
         documents: '{count, plural, one {#\u00A0Dokument} other {#\u00A0Dokumente}}',
+        // Ein Ordner, den es gibt und der nichts enthält: ein neues Projekt, ein Chat ohne Upload.
+        emptyFolder: 'leer',
         passages: '{count, plural, one {#\u00A0Stelle} other {#\u00A0Stellen}}',
         // Die Ablagen selbst (`ls /`): wie viele es gibt und was sie halten.
         places:
@@ -1468,21 +1499,23 @@ export const chat: typeof en.chat = {
         openIncomplete: 'Nicht beurteilbar, weil {call} nicht alles durchsuchen konnte.',
         // Ein Ordner oder Dokument, das es nicht gibt.
         openNotFoundFolder: 'Nicht beurteilbar, weil der Ordner „{name}“ nicht gefunden wurde.',
-        openNotFoundDocument: 'Nicht beurteilbar, weil das Dokument „{name}“ nicht gefunden wurde.',
-        // Eine Suche nach Dateinamen, auf die keine Datei passt: `{place}` mit Präposition.
-        openNoFile: 'Nicht beurteilbar, weil {place} keine Datei auf „{query}“ passt.',
-        // Eine wörtliche Suche im Dateisystem ohne Treffer: `{place}` mit Präposition („in allen Ablagen“).
-        openNoHitPlace:
-          'Nicht beurteilbar, weil die wörtliche Suche {place} nach „{query}“ keine Fundstelle ergab.',
+        openNotFoundDocument: 'Nicht beurteilbar, weil die Datei „{name}“ nicht gefunden wurde.',
+        // Eine Suche nach Dateinamen ohne Treffer: `{place}` mit Präposition, `{what}` wie in der Zeile.
+        openNoFile: 'Nicht beurteilbar, weil {place} keine {what} gefunden wurden.',
+        // Eine Suche im Dateisystem ohne Treffer: `{call}` sagt wie, wo und wonach.
+        openNoHitPlace: 'Nicht beurteilbar, weil {call} keine Fundstelle ergab.',
         openInterrupted: 'Nicht beurteilbar, weil {call} abgebrochen wurde.',
         callQuery: '{call} nach „{query}“',
         callTarget: '{call} „{target}“',
         callPlace: '{call} {place}',
         callPlaceQuery: '{call} {place} nach „{query}“',
+        // Eine Mustersuche: „die Suche in der Büroablage › Vorlagen nach dem Muster „EI\s?90““.
+        callPlacePattern: 'die Suche {place} nach dem Muster „{query}“',
         call: {
           search: 'die Suche',
-          list: 'das Auflisten des Ordners',
+          list: 'das Öffnen des Ordners',
           grep: 'die wörtliche Suche',
+          grepRegex: 'die Suche nach einem Muster',
           glob: 'die Suche nach Dateinamen',
           read: 'das Lesen des Dokuments',
           look: 'das Betrachten des Dokuments',

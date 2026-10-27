@@ -1036,6 +1036,8 @@ export const chat = {
       noHit: 'no hit',
       // A literal search without a hit, with what it searched.
       noHitIn: 'no hit in {count, plural, one {#\u00A0document} other {#\u00A0documents}}',
+      // The same on the filesystem, where every count counts files: “no hit in 41 files”.
+      noHitInFiles: 'no hit in {count, plural, one {#\u00A0file} other {#\u00A0files}}',
       nothingFound: 'nothing found',
       // A folder or document that is not there (a restricted folder answers the same).
       notFound: 'not found',
@@ -1043,8 +1045,8 @@ export const chat = {
       noFile: 'no file',
       failed: 'failed',
       // A literal search that could not search everything: its count is a floor.
+      // Only without a count; with one, the dashed shape and the note under it say it is a floor.
       incomplete: 'incomplete',
-      incompleteResult: '{found}, incomplete',
       incompleteNote: {
         hits: 'not everything was searched – there may be more hits',
         noHit: 'not everything was searched – this is not a no',
@@ -1084,7 +1086,13 @@ export const chat = {
         chat: "this chat's files",
         law: 'the OIB guidelines',
         estate: 'every place',
-        // … and as the first crumb before a folder outside the project: “Office filing › Templates”.
+        // … a folder outside the project, with its place's article: “the office filing › Templates” …
+        folder: {
+          office: 'the office filing ›\u00A0{folder}',
+          chat: 'the chat ›\u00A0{folder}',
+          law: 'the OIB guidelines ›\u00A0{folder}',
+        },
+        // … and as a quoted name, without one: “Office filing › Templates”.
         folderIn: '{place} ›\u00A0{folder}',
         crumb: {
           office: 'Office filing',
@@ -1099,7 +1107,14 @@ export const chat = {
         chat: "in this chat's files",
         law: 'in the OIB guidelines',
         estate: 'in every place',
+        // A folder of the project: “in 03 Einreichung” …
         folder: 'in {folder}',
+        // … of another place, with its article: “in the office filing › Templates”.
+        folderOf: {
+          office: 'in the office filing ›\u00A0{folder}',
+          chat: 'in the chat ›\u00A0{folder}',
+          law: 'in the OIB guidelines ›\u00A0{folder}',
+        },
       },
       // The verb sits muted before its object: „Searches for the exact phrase“ „“Brandabschnitt” in the project“.
       verb: {
@@ -1112,8 +1127,8 @@ export const chat = {
         list: 'Lists',
         // The filesystem's literal search: “Searches 03 Einreichung for the exact words “Brandabschnitt””.
         grep: 'Searches',
-        // The file-name search: “Looks for files named “*.pdf” in the project”.
-        glob: 'Looks for files named',
+        // The file-name search: “Looks for PDF files in the project”.
+        glob: 'Looks for',
         read: 'Reads',
         look: 'Looks at',
         lookup: 'Searches other projects for',
@@ -1127,7 +1142,7 @@ export const chat = {
         search: 'Searched: {name}',
         list: 'Listed: {name}',
         grep: 'Searched: {name}',
-        glob: 'Looked for files named {name}',
+        glob: 'Looked for {name}',
         read: 'Read: {name}',
         look: 'Looked at: {name}',
         lookup: 'Searched other projects: {name}',
@@ -1153,7 +1168,17 @@ export const chat = {
         queryIn: '{target} for “{query}”',
         grepExact: '{place} for the exact words “{query}”',
         grepRegex: '{place} for the pattern “{query}”',
-        names: '“{query}” {place}',
+        // A pattern that only ORs words: “the project for the exact words “EI 90” or “REI 90””.
+        grepAny: '{place} for the exact words {words}',
+        or: 'or',
+        names: '{what} {place}',
+        // What a file-name search looks for, in words where the pattern is simple.
+        namesWhat: {
+          ext: '{ext} files',
+          word: 'files with “{word}” in the name',
+          extWord: '{ext} files with “{word}” in the name',
+          pattern: 'files named “{query}”',
+        },
         pages: '{target}, p.\u00A0{pages}',
         clause: '{target}, {pages}',
         where: '{target}, p.\u00A0{pages}, {where}',
@@ -1189,7 +1214,12 @@ export const chat = {
         hits: '{count, plural, one {#\u00A0hit} other {#\u00A0hits}}',
         hitsDocuments:
           '{hits, plural, one {#\u00A0hit} other {#\u00A0hits}} in {documents, plural, one {#\u00A0document} other {#\u00A0documents}}',
+        // On the filesystem every count counts files, as the filing counts them.
+        hitsFiles:
+          '{hits, plural, one {#\u00A0hit} other {#\u00A0hits}} in {documents, plural, one {#\u00A0file} other {#\u00A0files}}',
         documents: '{count, plural, one {#\u00A0document} other {#\u00A0documents}}',
+        // A folder that is there and holds nothing: a new project, a chat without uploads.
+        emptyFolder: 'empty',
         passages: '{count, plural, one {#\u00A0passage} other {#\u00A0passages}}',
         // The places themselves (`ls /`): how many there are and what they hold.
         places:
@@ -1454,21 +1484,23 @@ export const chat = {
         openIncomplete: 'Cannot be judged: {call} could not search everything.',
         // A folder or document that is not there.
         openNotFoundFolder: 'Cannot be judged: the folder “{name}” was not found.',
-        openNotFoundDocument: 'Cannot be judged: the document “{name}” was not found.',
-        // A file-name search no file matched: `{place}` carries its preposition.
-        openNoFile: 'Cannot be judged: no file {place} matches “{query}”.',
-        // A literal filesystem search without a hit: `{place}` carries its preposition (“in every place”).
-        openNoHitPlace:
-          'Cannot be judged: the literal search {place} for “{query}” found no passage.',
+        openNotFoundDocument: 'Cannot be judged: the file “{name}” was not found.',
+        // A file-name search without a match: `{place}` carries its preposition, `{what}` reads as on the row.
+        openNoFile: 'Cannot be judged: no {what} were found {place}.',
+        // A filesystem search without a hit: `{call}` says how, where and for what.
+        openNoHitPlace: 'Cannot be judged: {call} found no passage.',
         openInterrupted: 'Cannot be judged: {call} was stopped.',
         callQuery: '{call} for “{query}”',
         callTarget: '{call} “{target}”',
         callPlace: '{call} {place}',
         callPlaceQuery: '{call} {place} for “{query}”',
+        // A pattern search: “the search in the office filing › Templates for the pattern “EI\s?90””.
+        callPlacePattern: 'the search {place} for the pattern “{query}”',
         call: {
           search: 'the search',
           list: 'listing the folder',
           grep: 'the literal search',
+          grepRegex: 'the pattern search',
           glob: 'the file-name search',
           read: 'reading the document',
           look: 'looking at the document',

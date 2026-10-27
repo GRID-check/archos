@@ -231,6 +231,7 @@ const storedFields = (step: StepOf<string>, previous?: StoredThinkingStep): Part
           ...some('shelf', step.shelf),
           ...some('mount', step.mount),
           ...(step.incomplete ? { incomplete: true } : {}),
+          ...(step.missing ? { missing: true } : {}),
           ...some('counts', actionCountsOf(step.counts)),
           ...(step.elapsed_ms === null ? {} : { elapsedMs: step.elapsed_ms }),
         },

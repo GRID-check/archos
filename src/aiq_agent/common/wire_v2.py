@@ -342,6 +342,13 @@ class ActionStep(_StepBase):
             "time or stopped at its cap): its count is a floor, and no hit is no no."
         ),
     )
+    missing: bool | None = Field(
+        default=None,
+        description=(
+            "The folder or document the call named is not there (a restricted one answers the same, ADR-0088). "
+            "Absent on an empty folder or a search without a hit, which are there and hold nothing."
+        ),
+    )
     counts: ActionCounts | None = None
     elapsed_ms: int | None = Field(default=None, ge=0)
 

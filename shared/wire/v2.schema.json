@@ -152,6 +152,19 @@
           "title": "Kind",
           "type": "string"
         },
+        "missing": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "The folder or document the call named is not there (a restricted one answers the same, ADR-0088). Absent on an empty folder or a search without a hit, which are there and hold nothing.",
+          "title": "Missing"
+        },
         "mode": {
           "anyOf": [
             {

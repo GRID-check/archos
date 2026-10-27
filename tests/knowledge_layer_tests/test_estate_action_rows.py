@@ -71,7 +71,7 @@ class TestList:
             "status": "ok",
             "mount": "project",
             "target": "Einreichung",
-            "counts": {"files": 1, "folders": 1},
+            "counts": {"files": 3, "folders": 1},
         }
 
     async def test_the_places_themselves_count_every_document(self, steps) -> None:
@@ -99,7 +99,13 @@ class TestList:
         steps.clear()
         await listing_suite._backend().ls("/project/Persona/")
         missing = _row(steps)
-        assert restricted == {"verb": "list", "status": "empty", "mount": "project", "target": "Personal"}
+        assert restricted == {
+            "verb": "list",
+            "status": "empty",
+            "missing": True,
+            "mount": "project",
+            "target": "Personal",
+        }
         assert {**missing, "target": "Personal"} == restricted
 
     async def test_a_name_pattern_is_the_query_beside_its_place(self, steps) -> None:
@@ -121,6 +127,41 @@ class TestList:
             "mount": "estate",
             "counts": {"files": 0},
         }
+
+    async def test_an_empty_project_is_there_and_empty_never_not_found(self, steps) -> None:
+        """A new project, without a file yet: it was found, it holds nothing, and „Offen“ owes nothing."""
+        office_only = [row for row in listing_suite.ROWS if row.shelf != "project"]
+        await listing_suite._backend(office_only).ls("/project/")
+        assert _row(steps) == {"verb": "list", "status": "ok", "mount": "project", "counts": {"files": 0, "folders": 0}}
+
+    async def test_a_chat_without_uploads_is_there_and_empty(self, steps) -> None:
+        await listing_suite._backend().ls("/chat/")
+        assert _row(steps) == {"verb": "list", "status": "ok", "mount": "chat", "counts": {"files": 0, "folders": 0}}
+
+    async def test_a_folder_counts_everything_it_holds_as_its_tree_and_card_do(self, steps) -> None:
+        """One folder, one count: what `ls`, `ls(depth=2)` and its README.md say it holds (ADR-0132)."""
+        await listing_suite._backend().ls("/project/Einreichung/")
+        flat = _row(steps)["counts"]["files"]
+        steps.clear()
+        await listing_suite._backend().ls("/project/Einreichung/", depth=2)
+        tree = _row(steps)["counts"]["files"]
+        steps.clear()
+        await listing_suite._backend().read_file("/project/Einreichung/README.md")
+        card = _row(steps)["counts"]["files"]
+        assert flat == tree == card == 3
+
+    async def test_the_places_count_what_a_grep_everywhere_searches(self, steps) -> None:
+        """„3 Ablagen, N Dateien“ and „kein Treffer in N Dateien“ are one N when nothing failed."""
+        await grep_suite._backend(grep_suite.Retriever({grep_suite.COLLECTION: grep_suite._chunks()})).ls("/")
+        places = _row(steps)["counts"]["files"]
+        steps.clear()
+        await _grep_backend().grep("Sprinklerzentrale")
+        assert _row(steps)["counts"]["searched"] == places
+
+    async def test_a_path_that_names_no_place_is_a_failed_listing_of_no_named_folder(self, steps) -> None:
+        """`/drafts/../project/` never reaches the row as „drafts › .. › project“."""
+        await listing_suite._backend().ls("/drafts/../project/")
+        assert _row(steps) == {"verb": "list", "status": "error"}
 
     async def test_a_listing_returns_no_card(self, steps) -> None:
         await listing_suite._backend().ls("/project/")
@@ -170,15 +211,9 @@ class TestGrep:
         await _grep_backend().grep("Fluchtweg", path="/project/", output_mode="content")
         assert _linked(steps) == 1
 
-    async def test_a_path_that_names_no_place_keeps_the_models_words(self, steps) -> None:
+    async def test_a_path_that_names_no_place_names_no_folder(self, steps) -> None:
         await _grep_backend().grep("Fluchtweg", path="/nirgends/")
-        assert _row(steps) == {
-            "verb": "search",
-            "status": "error",
-            "query": "Fluchtweg",
-            "mode": "exact",
-            "target": "/nirgends/",
-        }
+        assert _row(steps) == {"verb": "search", "status": "error", "query": "Fluchtweg", "mode": "exact"}
 
 
 class TestRead:
@@ -210,7 +245,7 @@ class TestRead:
 
     async def test_a_miss_is_not_found_by_the_name_asked_for(self, steps) -> None:
         await read_suite._backend().read_file("/project/Personal/Gehalt.pdf.md")
-        assert _row(steps) == {"verb": "read", "status": "empty", "target": "Gehalt.pdf"}
+        assert _row(steps) == {"verb": "read", "status": "empty", "missing": True, "target": "Gehalt.pdf"}
 
     async def test_a_guessed_restricted_path_reads_exactly_like_a_miss(self, steps) -> None:
         """Nothing on the row confirms the file: no shelf, no count, the asked name only (ADR-0088)."""
@@ -219,7 +254,7 @@ class TestRead:
         steps.clear()
         await read_suite._backend(restricted=()).read_file("/project/Personal/Vertrxg.pdf.md")
         absent = _row(steps)
-        assert guessed == {"verb": "read", "status": "empty", "target": "Vertrag.pdf"}
+        assert guessed == {"verb": "read", "status": "empty", "missing": True, "target": "Vertrag.pdf"}
         assert {**absent, "target": "Vertrag.pdf"} == guessed
 
     async def test_a_folder_card_is_the_folders_listing(self, steps) -> None:

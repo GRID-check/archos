@@ -57,7 +57,7 @@ describe('RoundCalls', () => {
     expect(items[0]).toHaveTextContent(
       'Sucht wörtlich „Brandabschnitt“ im Projekt14 Treffer in 3 Dokumenten'
     )
-    expect(items[1]).toHaveTextContent('Listet 03 Einreichung › Pläne12 Dateien, 2 Ordner')
+    expect(items[1]).toHaveTextContent('Öffnet 03 Einreichung › Pläne12 Dateien, 2 Ordner')
     expect(screen.queryByTestId('work-bar')).toBeNull()
     expect(document.body).not.toHaveTextContent(/\d,\d s|gleichzeitig/)
     restore()
@@ -207,7 +207,7 @@ describe('RoundCalls', () => {
       .filter((row) => row.getAttribute('data-incomplete') === 'true')
     expect(incomplete).toHaveLength(2)
     expect(incomplete[0]).toHaveTextContent(
-      'Durchsucht alle Ablagen wörtlich nach „Brandabschnitt“nicht alles durchsucht – es kann weitere Treffer geben3 Treffer in 1 Dokument, unvollständig'
+      'Durchsucht alle Ablagen wörtlich nach „Brandabschnitt“nicht alles durchsucht – es kann weitere Treffer geben3 Treffer in 1 Datei'
     )
     expect(within(incomplete[0]).getByTestId('work-row-note')).toHaveTextContent(
       'nicht alles durchsucht – es kann weitere Treffer geben'
@@ -229,11 +229,11 @@ describe('RoundCalls', () => {
     const links = screen.getAllByTestId('work-row-link')
     expect(links.map((link) => link.getAttribute('aria-label'))).toEqual([
       `Liest Baubeschreibung.pdf, S.${NB}4–6: 3${NB}Stellen`,
-      `Durchsucht alle Ablagen wörtlich nach „Fluchtweg“: 3${NB}Treffer in 1${NB}Dokument`,
+      `Durchsucht alle Ablagen wörtlich nach „Fluchtweg“: 3${NB}Treffer in 1${NB}Datei`,
     ])
     const listing = screen.getAllByTestId('work-row').find((row) => row.dataset.verb === 'list')!
     expect(within(listing).queryByRole('button')).toBeNull()
-    expect(listing).toHaveTextContent('Listet 03 Einreichung › Pläne9 Dateien')
+    expect(listing).toHaveTextContent('Öffnet 03 Einreichung › Pläne9 Dateien')
   })
 
   test('a row with a call id is a button that links; its name is the sentence', async () => {

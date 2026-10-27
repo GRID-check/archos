@@ -363,7 +363,7 @@ describe('workParts', () => {
         target: '03 Einreichung/Pläne',
         counts: { files: 12, folders: 2 },
       })
-    ).toBe(`Listet 03 Einreichung › Pläne: 12${NB}Dateien, 2${NB}Ordner`)
+    ).toBe(`Öffnet 03 Einreichung › Pläne: 12${NB}Dateien, 2${NB}Ordner`)
     expect(breadcrumb('a\\b/c')).toBe('a › b › c')
   })
 
@@ -436,7 +436,7 @@ describe('workParts', () => {
       tone: 'running',
     })
     expect(workParts(t, { verb: 'read', status: 'empty', target: 'a.pdf' })).toMatchObject({
-      result: 'nicht gefunden',
+      result: 'nichts gefunden',
       tone: 'empty',
     })
     expect(workParts(t, { verb: 'law', status: 'error', query: 'x' })).toMatchObject({
@@ -476,7 +476,7 @@ describe('workParts', () => {
     })
     // Reading, looking and opening keep their verb: „Liest 7 Dokumente“ reads.
     expect(workParts(t, { verb: 'list', status: 'ok', target: 'a' }, { fold })).toMatchObject({
-      verb: 'Listet',
+      verb: 'Öffnet',
       object: `4${NB}Ordner`,
     })
   })

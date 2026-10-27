@@ -211,8 +211,9 @@ def render_folder(
         lines.append(f"Not listed here: files still being read ({len(in_flight)}).")
     lines.append("Restricted folders are not listed.")
     lines.append("Next: `ls` a folder, `glob` by name, `grep` for wording, `read_file` to read.")
-    # What the folder holds, not what the text had room for: the text says how many it left out.
-    return Listing(text="\n".join(lines), files=len(here), folders=len(subfolders))
+    # Everything the folder holds, its subfolders' documents too, as its head line, the tree and the folder card
+    # count it; not what the text had room for.
+    return Listing(text="\n".join(lines), files=len(selected), folders=len(subfolders))
 
 
 def _render_tree(
