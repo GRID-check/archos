@@ -37,7 +37,7 @@ import { ReviewPageLayer } from './review-page-layer'
 import { ReviewPanel } from './review-panel'
 import { DraftCard, ThreadCard } from './thread-card'
 
-vi.mock('@/features/chat', () => ({
+vi.mock('@/features/chat/store', () => ({
   useChatStore: (selector: (state: { currentUserId: string }) => unknown) => selector({ currentUserId: 'user_me' }),
 }))
 

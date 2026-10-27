@@ -52,7 +52,7 @@ vi.mock('@/features/documents', () => ({
 vi.mock('./FileSourcesTab', () => ({ FileSourcesTab: () => null }))
 vi.mock('@/features/documents/components/file-preview-dialog', () => ({ FilePreviewDialog: () => null }))
 
-import { useChatStore } from '@/features/chat'
+import { useChatStore } from '@/features/chat/store'
 import { useLayoutStore } from '../store'
 import { InputArea } from './InputArea'
 

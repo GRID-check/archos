@@ -6,7 +6,7 @@ const peek = vi.fn()
 const open = vi.fn()
 const beginHandoff = vi.fn()
 
-vi.mock('@/features/chat', () => ({
+vi.mock('@/features/chat/store', () => ({
   useChatStore: {
     getState: () => ({
       currentUserId: 'user-1',
