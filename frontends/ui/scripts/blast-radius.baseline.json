@@ -303,6 +303,7 @@
   "src/shared/components/MarkdownRenderer/table-shape.ts": 419,
   "src/shared/config/file-upload.ts": 359,
   "src/test-utils/index.tsx": 321,
-  "src/lib/tasks/task-vocabulary.ts": 800
+  "src/lib/tasks/task-vocabulary.ts": 800,
+  "src/lib/source-kinds.ts": 547
  }
 }
