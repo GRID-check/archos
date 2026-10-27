@@ -19,6 +19,7 @@ from aiq_agent.knowledge.base import FUSED_SCORE_KEY
 from aiq_agent.knowledge.base import BaseIngestor
 from aiq_agent.knowledge.schema import Chunk
 from aiq_agent.knowledge.scoping import _normalize_collection_name
+from aiq_agent.observability.direct_trace import observed_retrieval
 from aiq_agent.project_context import REQUEST_CONTEXT_ENVELOPE_HEADER
 from aiq_agent.project_context import REQUEST_CONTEXT_ENVELOPE_SIG_HEADER
 from aiq_agent.project_context import GridRequestContext
@@ -295,6 +296,91 @@ def grouped_filters(filters: GroupedSearchFilters | None) -> dict[str, Any]:
     return {"$and": [*parts, CURRENT_REVISIONS]}
 
 
+#: The trace the workspace search's content query files under, and the observation inside it.
+WORKSPACE_SEARCH_FEATURE = "workspace-search"
+WORKSPACE_SEARCH_STEP = "retrieve.workspace_search"
+#: Collections whose hit counts the trace names, at most (the BFF names up to 500).
+TRACE_COLLECTION_LIMIT = 50
+
+
+def _filter_fields(filters: GroupedSearchFilters | None) -> list[str]:
+    """The filter fields a request set (never their values)."""
+    return sorted(filters.model_dump(exclude_defaults=True, exclude_none=True)) if filters else []
+
+
+def prefilter_mode(filters: GroupedSearchFilters | None) -> str:
+    """How the BFF narrowed the content query before ranking (ADR-0136 item 5), as a label.
+
+    ``document_ids``: the SQL candidates themselves, few enough to name.
+    ``payload``: too many to name, so what the documents are and cite
+    (``reading_types``, ``refers_to``) or their tags. ``none``: only the
+    superseded exclusion.
+    """
+    if filters is not None and filters.document_ids:
+        return "document_ids"
+    return "payload" if _filter_fields(filters) else "none"
+
+
+def _trace_query(request: GroupedDocumentSearchRequest, collections: list[str]) -> dict[str, Any]:
+    """The trace's input: the ask as data. The words stay out (ADR-0089); their length and word count do not."""
+    return {
+        "text_chars": len(request.query),
+        "text_tokens": len(request.query.split()),
+        "collections": len(collections),
+        "groups": request.groups,
+        "files_per_group": request.files_per_group,
+        "prefilter": prefilter_mode(request.filters),
+        "document_ids": len(request.filters.document_ids) if request.filters else 0,
+        "filter_fields": _filter_fields(request.filters),
+    }
+
+
+def _trace_picks(grouped: list[tuple[str, list[Chunk]]], hits: list[DocumentSearchHit]) -> dict[str, Any]:
+    """The trace's output: counts, by collection; never a passage, a file name or the words."""
+    per_collection: dict[str, int] = {}
+    for hit in hits:
+        per_collection[hit.collection] = per_collection.get(hit.collection, 0) + 1
+    ranked = sorted(per_collection.items(), key=lambda entry: entry[1], reverse=True)
+    return {
+        "candidates": sum(len(chunks) for _, chunks in grouped),
+        "documents": len(hits),
+        "with_document_id": sum(1 for hit in hits if hit.grid_document_id),
+        "collections_with_hits": len(per_collection),
+        "hits_per_collection": dict(ranked[:TRACE_COLLECTION_LIMIT]),
+    }
+
+
+async def _search_grouped(
+    request: GroupedDocumentSearchRequest, collections: list[str]
+) -> tuple[list[DocumentSearchHit], list[tuple[str, list[Chunk]]]]:
+    """The grouped search's documents, and the groups it ranked them from; none when the filters admit nothing."""
+    from aiq_agent.knowledge.factory import get_active_retriever
+
+    try:
+        filters = grouped_filters(request.filters)
+    except MatchesNothing:
+        return [], []
+    try:
+        grouped = await get_active_retriever().search_grouped(
+            request.query,
+            collections,
+            groups=request.groups,
+            group_size=request.files_per_group * GROUP_CHUNKS_PER_FILE,
+            filters=filters,
+            boost=(
+                {"facts": request.boost.facts.to_store(), "weights": request.boost.weights.to_store()}
+                if request.boost
+                else None
+            ),
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    except Exception as e:
+        logger.exception("Grouped document search failed")
+        raise HTTPException(status_code=500, detail="grouped document search failed") from e
+    return _ranked_group_hits(grouped, request.files_per_group, request.snippet_max_chars), grouped
+
+
 def add_document_search_routes(router: APIRouter):
     """Add semantic document-search routes to the FastAPI app."""
 
@@ -313,37 +399,32 @@ def add_document_search_routes(router: APIRouter):
         single-collection search. Qdrant is the only store (ADR-0115), so the
         BFF has nothing to fall back to: a failed search is a 500, as for the
         single-collection search, and the BFF surfaces it as an upstream error.
+
+        The workspace search (``purpose="workspace_search"``) is a root trace
+        ``workspace-search`` holding one ``retrieve.workspace_search``
+        retriever observation; no NAT run sees this route. Other callers are
+        traced where they run (``retrieve.project_lookup``).
         """
         collections = list(dict.fromkeys(request.collections))
         for collection in collections:
             _authorize_collection(http_request, collection)
-        from aiq_agent.knowledge.factory import get_active_retriever
-
-        try:
-            filters = grouped_filters(request.filters)
-        except MatchesNothing:
-            return DocumentSearchResponse(hits=[])
-        try:
-            grouped = await get_active_retriever().search_grouped(
-                request.query,
-                collections,
-                groups=request.groups,
-                group_size=request.files_per_group * GROUP_CHUNKS_PER_FILE,
-                filters=filters,
-                boost=(
-                    {"facts": request.boost.facts.to_store(), "weights": request.boost.weights.to_store()}
-                    if request.boost
-                    else None
-                ),
+        if request.purpose != "workspace_search":
+            hits, _ = await _search_grouped(request, collections)
+            return DocumentSearchResponse(hits=hits)
+        mode = prefilter_mode(request.filters)
+        with observed_retrieval(
+            WORKSPACE_SEARCH_FEATURE,
+            step=WORKSPACE_SEARCH_STEP,
+            query=_trace_query(request, collections),
+            metadata={"prefilter": mode, "collections": len(collections)},
+        ) as trace:
+            hits, grouped = await _search_grouped(request, collections)
+            picks = _trace_picks(grouped, hits)
+            trace.finish(
+                picks,
+                {"prefilter": mode, "candidates": picks["candidates"], "documents": picks["documents"]},
             )
-        except ValueError as e:
-            raise HTTPException(status_code=400, detail=str(e)) from e
-        except Exception as e:
-            logger.exception("Grouped document search failed")
-            raise HTTPException(status_code=500, detail="grouped document search failed") from e
-        return DocumentSearchResponse(
-            hits=_ranked_group_hits(grouped, request.files_per_group, request.snippet_max_chars)
-        )
+        return DocumentSearchResponse(hits=hits)
 
     @router.post(
         "/v1/collections/{collection_name}/search",
