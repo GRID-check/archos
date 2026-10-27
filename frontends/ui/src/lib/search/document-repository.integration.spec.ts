@@ -102,6 +102,8 @@ const SEEDS: Seed[] = [
         dates: [{ kind: 'issued', date: '2026-03-12' }],
         place: { address: 'Hauptstraße 1', municipality: 'Wien', state: 'Wien' },
         facts: [fact('building_class', 'GK 4'), fact('storeys_above_ground', '5'), fact('building_height', '14,5')],
+        // Index C against Index B (A2): one more storey.
+        changes: [{ key: 'storeys_above_ground', before: '4', after: '5', page: 1 }],
       }),
       docReferences: [
         { kind: 'norm', key: 'önorm b 1600', label: 'ÖNORM B 1600', pages: [1] },
@@ -221,6 +223,7 @@ const SEEDS: Seed[] = [
         parties: [{ role: 'engineer', name: 'Geheim GmbH' }],
         place: { municipality: 'Wien', state: 'Wien' },
         facts: [fact('building_class', '4')],
+        changes: [{ key: 'building_class', before: '3', after: '4', page: 1 }],
       }),
       docReferences: [{ kind: 'norm', key: 'önorm b 1600', label: 'ÖNORM B 1600', pages: [1] }],
       pageCount: 9,
@@ -240,6 +243,7 @@ const SEEDS: Seed[] = [
         documentType: 'fire_safety_concept',
         place: { municipality: 'Wien', state: 'Wien' },
         facts: [fact('building_class', '4')],
+        changes: [{ key: 'building_class', before: '3', after: '4', page: 1 }],
       }),
       docReferences: [{ kind: 'norm', key: 'önorm b 1600', label: 'ÖNORM B 1600', pages: [1] }],
       pageCount: 5,
@@ -320,7 +324,7 @@ const SEEDS: Seed[] = [
 
 /** What the reader may see office-wide with no flags: everything but A7, A8, A10, A11 and B1. */
 const VISIBLE = ['A1', 'A2', 'A3', 'A4', 'A5', 'A6', 'A9', 'A12', 'A13']
-const FACET_KEYS: FacetKey[] = ['documentType', 'tag', 'project', 'partyRole', 'municipality', 'cites', 'status', 'fileType']
+const FACET_KEYS: FacetKey[] = ['documentType', 'tag', 'project', 'partyRole', 'municipality', 'cites', 'status', 'fileType', 'changedFact']
 /** The sorts this spec states the expected order of; scale, folder and status are covered by their own cases. */
 type CheckedSort = Exclude<SearchSort, 'relevance' | 'scale' | 'folder' | 'status' | 'author'>
 const SORTS: CheckedSort[] = [
@@ -461,6 +465,7 @@ describe.skipIf(!url)('the search documents SQL against Postgres', () => {
     await withPlatformAccess('test teardown', async () => {
       for (const org of [ORG, ORG_B]) {
         await db.execute(sql`DELETE FROM document_search_facets WHERE organization_id = ${org}`)
+        await db.execute(sql`DELETE FROM document_search_shelves WHERE organization_id = ${org}`)
         await db.execute(sql`DELETE FROM documents WHERE organization_id = ${org}`)
         await db.execute(sql`DELETE FROM project_folders WHERE organization_id = ${org}`)
         await db.execute(sql`DELETE FROM projects WHERE organization_id = ${org}`)
@@ -515,6 +520,28 @@ describe.skipIf(!url)('the search documents SQL against Postgres', () => {
       expect(await found(officeReach({ reviewShelf: true }), query())).toEqual(keys(...VISIBLE, 'A11'))
     })
 
+    it('finds, counts and shows what a Fassung changed, never for a hidden or held document', async () => {
+      expect(await found(officeReach(), query({ factsChanged: true }))).toEqual(keys('A1'))
+      expect(await found(officeReach(), query({ changedFacts: ['storeys_above_ground', 'units'] }))).toEqual(keys('A1'))
+      // A7 (hidden) and A8 (held) changed their Gebäudeklasse; the reader sees neither.
+      expect(await found(officeReach(), query({ changedFacts: ['building_class'] }))).toEqual([])
+      expect(await found(officeReach({ reviewP1: true }), query({ changedFacts: ['building_class'] }))).toEqual(keys('A8'))
+      const facets = await repo.documentFacetCounts(officeReach(), query(), ['changedFact'])
+      expect(facets.changedFact).toEqual([{ value: 'storeys_above_ground', count: 1 }])
+      const { rows } = await repo.searchDocumentPage(officeReach(), query({ factsChanged: true }), ALL)
+      expect(rows[0].changedFacts).toEqual([{ key: 'storeys_above_ground', before: '4', after: '5', page: 1 }])
+      const unchanged = await repo.searchDocumentPage(officeReach(), query({ planNumber: 'EP 05', planIndex: ['B'] }), ALL)
+      expect(unchanged.rows[0].changedFacts).toEqual([])
+    })
+
+    it('counts the documents in reach Piloti has not read, whatever the filters, and none it may not see', async () => {
+      // A9 (the reader's own held upload) and A12; never B1's office or a hidden folder.
+      expect(await repo.countUnreadDocuments(officeReach(), false)).toBe(2)
+      expect(await repo.countUnreadDocuments(officeReach(), true)).toBe(2)
+      const p2Only: SearchReach = { ...officeReach(), projects: officeReach().projects.slice(1), officeShelf: null }
+      expect(await repo.countUnreadDocuments(p2Only, false)).toBe(0)
+    })
+
     it('shows archived rows only when asked', async () => {
       expect(await found(officeReach(), query({ includeArchived: true }))).toEqual(keys(...VISIBLE, 'A10'))
     })
@@ -528,6 +555,31 @@ describe.skipIf(!url)('the search documents SQL against Postgres', () => {
       const shelf: SearchReach = { ...reach, scope: { kind: 'office_shelf' }, projects: [] }
       expect(await found(shelf, query())).toEqual(keys('A5', 'A6'))
       expect(await found({ ...reach, projects: [], officeShelf: null }, query())).toEqual([])
+    })
+
+    it('reads the folder path of each row from the shelf root, nested names joined by a slash, the root as empty', async () => {
+      const [child] = Array.from(
+        await inTenant(ORG, () =>
+          db.execute<{ id: string }>(sql`
+            INSERT INTO project_folders (organization_id, project_id, parent_id, name, path)
+            VALUES (${ORG}, ${projectIds.p1}::uuid, ${folderIds.visible}::uuid, 'Grundrisse', 'Einreichung/Grundrisse')
+            RETURNING id`)
+        )
+      )
+      const move = (folderId: string): Promise<unknown> =>
+        inTenant(ORG, () => db.execute(sql`UPDATE documents SET folder_id = ${folderId}::uuid WHERE id = ${ids.A1}::uuid`))
+      await move(String(child.id))
+      try {
+        const { rows } = await repo.searchDocumentPage(officeReach(), query(), ALL)
+        const pathOf = (key: string): string | undefined => rows.find((row) => row.id === ids[key])?.folderPath
+        expect(pathOf('A1')).toBe('Einreichung/Grundrisse')
+        expect(rows.find((row) => row.id === ids.A1)?.folderName).toBe('Grundrisse')
+        expect(pathOf('A2')).toBe('')
+        expect(pathOf('A5')).toBe('')
+      } finally {
+        await move(folderIds.visible)
+        await inTenant(ORG, () => db.execute(sql`DELETE FROM project_folders WHERE id = ${String(child.id)}::uuid`))
+      }
     })
 
     it('never crosses into another organization, even with its project in the reach', async () => {
@@ -729,6 +781,57 @@ describe.skipIf(!url)('the search documents SQL against Postgres', () => {
         sorted(tally(rows.flatMap((row) => [...new Set((seedOf(row).metadata?.dossier?.parties ?? []).map((party) => party.role))]))))
       expect(sorted(facets.cites)).toEqual(
         sorted(tally(rows.flatMap((row) => [...new Set((seedOf(row).metadata?.docReferences ?? []).map((ref) => `${ref.kind}:${ref.key}`.toLowerCase()))]))))
+    })
+  })
+
+  describe("a person's edit reaches the projection", () => {
+    it('a Fassung decision flips „current only“ at once, and taking it back flips it again', async () => {
+      const { toSearchFacets } = await import('./facets')
+      const { upsertSearchFacets } = await import('./facets-repository')
+      const seed = SEEDS.find((candidate) => candidate.key === 'A4')!
+      const write = (superseded: boolean) =>
+        upsertSearchFacets(ORG, [toSearchFacets({ documentId: ids.A4, organizationId: ORG, superseded }, seed.metadata)!])
+      const current = () => found(officeReach(), query({ currentOnly: true }))
+
+      expect(await write(true)).toBe(1)
+      expect(await current()).not.toContain('A4')
+      expect(await write(false)).toBe(1)
+      expect(await current()).toContain('A4')
+    })
+
+    it('marks a synced shelf stale without unsyncing it, and lets the next search claim its refresh at once', async () => {
+      const { claimShelfRefresh, markShelfSynced, markShelvesStale, readShelfSyncStates, STALE_FINGERPRINT } = await import(
+        './facets-repository'
+      )
+      const { isStale } = await import('./shelf-projection')
+      const p1 = { kind: 'project' as const, projectId: projectIds.p1 }
+      const p2 = { kind: 'project' as const, projectId: projectIds.p2 }
+      await markShelfSynced(ORG, p1, '7@x')
+      expect(await claimShelfRefresh(ORG, p1, 10 * 60 * 1000)).toBe(true)
+      // p2 has a claim and no sync: the CHECK keeps its fingerprint null.
+      expect(await claimShelfRefresh(ORG, p2, 10 * 60 * 1000)).toBe(true)
+
+      await markShelvesStale(ORG, [p1, p2])
+
+      const states = new Map((await readShelfSyncStates(ORG, [`project:${projectIds.p1}`, `project:${projectIds.p2}`])).map((s) => [s.shelfKey, s]))
+      const synced = states.get(`project:${projectIds.p1}`)!
+      expect(synced.syncedAt).not.toBeNull()
+      expect(synced.sourceFingerprint).toBe(STALE_FINGERPRINT)
+      expect(isStale(synced, '7@x', new Date())).toBe(true)
+      expect(states.get(`project:${projectIds.p2}`)!.sourceFingerprint).toBeNull()
+      expect(await claimShelfRefresh(ORG, p1, 10 * 60 * 1000)).toBe(true)
+      expect(await claimShelfRefresh(ORG, p2, 10 * 60 * 1000)).toBe(true)
+    })
+
+    it('finds the documents a settled Fassung names, by file name, in its collection and organization only', async () => {
+      const { listCollectionDocumentsForProjection } = await import('./facets-repository')
+      const a4 = SEEDS.find((candidate) => candidate.key === 'A4')!
+
+      const listed = await listCollectionDocumentsForProjection(ORG, C2, [a4.filename, 'nicht-da.pdf'])
+
+      expect(listed.map((row) => row.id)).toEqual([ids.A4])
+      expect(await listCollectionDocumentsForProjection(ORG_B, C2, [a4.filename])).toEqual([])
+      expect(await listCollectionDocumentsForProjection(ORG, C1, [a4.filename])).toEqual([])
     })
   })
 })

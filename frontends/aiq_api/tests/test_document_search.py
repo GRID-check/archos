@@ -655,3 +655,75 @@ async def test_single_collection_search_is_not_shadowed_by_the_grouped_route(app
     async with _client(app) as client:
         res = await client.post("/v1/collections/search/search", json={"query": "q"})
     assert res.status_code == 200
+
+
+async def _traced_spans(app, body: dict) -> list:
+    """The spans one grouped search leaves, with tracing on."""
+    from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
+
+    from aiq_agent.observability import direct_trace
+
+    exporter = InMemorySpanExporter()
+    direct_trace.reset_tracer_provider()
+    direct_trace.install_tracer_provider(None, exporter=exporter)
+    try:
+        async with _client(app) as client:
+            res = await client.post("/v1/collections/search", json=body)
+        assert res.status_code == 200
+        direct_trace._provider.force_flush()
+        return list(exporter.get_finished_spans())
+    finally:
+        direct_trace.reset_tracer_provider()
+
+
+@pytest.mark.asyncio
+async def test_the_workspace_search_is_one_retriever_observation_carrying_counts_not_text(app):
+    """ADR-0089: the workspace search's content query is traced as `retrieve.workspace_search`, without its words."""
+    set_active_retriever(
+        _grouped_retriever(
+            [
+                ("proj_a", [_ranked("Fluchtwegplan.pdf", 0.9, 0.03), _ranked("b.pdf", 0.8, 0.02)]),
+                ("proj_b", [_ranked("c.pdf", 0.7, 0.01, "proj_b")]),
+            ]
+        )
+    )
+
+    spans = await _traced_spans(
+        app,
+        {
+            "query": "Fluchtweg Treppenhaus",
+            "collections": ["proj_a", "proj_b"],
+            "purpose": "workspace_search",
+            "filters": {"document_ids": [DOC_A, DOC_B]},
+        },
+    )
+
+    assert [span.name for span in spans] == ["retrieve.workspace_search"]
+    attributes = dict(spans[0].attributes)
+    assert attributes["langfuse.observation.type"] == "retriever"
+    assert attributes["langfuse.trace.name"] == "workspace-search"
+    assert attributes["langfuse.trace.metadata.prefilter"] == "document_ids"
+    query = json.loads(attributes["langfuse.observation.input"])
+    assert query["prefilter"] == "document_ids" and query["document_ids"] == 2 and query["text_tokens"] == 2
+    output = json.loads(attributes["langfuse.observation.output"])
+    assert output["candidates"] == 3 and output["documents"] == 3
+    assert output["hits_per_collection"] == {"proj_a": 2, "proj_b": 1}
+    serialized = json.dumps(attributes, ensure_ascii=False)
+    assert "Fluchtweg" not in serialized and "some content" not in serialized
+
+
+@pytest.mark.asyncio
+async def test_a_grouped_search_without_a_purpose_is_not_traced_here(app):
+    """The cross-project lookup is traced by Piloti's `project_lookup`; a second trace would count it twice."""
+    set_active_retriever(_grouped_retriever([("proj_a", [_ranked("a.pdf", 0.9, 0.03)])]))
+    assert await _traced_spans(app, {"query": "q", "collections": ["proj_a"]}) == []
+
+
+def test_the_prefilter_mode_names_how_the_bff_narrowed_the_query():
+    from aiq_api.models.requests import GroupedSearchFilters
+    from aiq_api.routes.document_search import prefilter_mode
+
+    assert prefilter_mode(None) == "none"
+    assert prefilter_mode(GroupedSearchFilters()) == "none"
+    assert prefilter_mode(GroupedSearchFilters(document_ids=[DOC_A])) == "document_ids"
+    assert prefilter_mode(GroupedSearchFilters(reading_types=["permit"])) == "payload"

@@ -11,6 +11,7 @@
  */
 
 import { apiRoute, parseJsonBody, parseQuery } from '@/lib/api/handler'
+import { listProjects } from '@/lib/projects/service'
 import { createSavedSearch, listSavedSearches } from '@/lib/search/saved-search-service'
 import { createSavedSearchSchema, listSavedSearchesQuerySchema } from '@/lib/search/saved-search-wire'
 
@@ -20,7 +21,8 @@ const MEMBER_WHY =
 export const GET = apiRoute(
   async ({ session, request }) => {
     const query = parseQuery(request, listSavedSearchesQuerySchema)
-    return listSavedSearches({ organizationId: session.organizationId, userId: session.userId }, query)
+    const viewableProjects = () => listProjects(session).then((projects) => new Set(projects.map((project) => project.id)))
+    return listSavedSearches({ organizationId: session.organizationId, userId: session.userId }, query, viewableProjects)
   },
   { authz: { sessionOnly: true, why: MEMBER_WHY } }
 )

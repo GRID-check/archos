@@ -6,6 +6,15 @@ import type { SearchBody, SearchKind, SearchResponse, SearchScopeQuery } from '@
 import { postSearch } from '../lib/search-client'
 import type { SectionView } from '../lib/sections'
 
+/** One question's answer as it landed: how long the browser waited, and the route's `Server-Timing`. */
+export interface AnsweredSearch {
+  scope: SearchScopeQuery
+  body: SearchBody
+  response: SearchResponse
+  durationMs: number
+  serverTiming: string | null
+}
+
 interface MorePage {
   hits: SectionView['hits']
   nextCursor: string | null
@@ -49,7 +58,7 @@ export function appendUnique<T extends { id: string }>(earlier: readonly T[], la
  * section ends there instead of asking it again, and a document a later page
  * repeats is dropped (`appendUnique`): React keys rows by id.
  */
-export function useSearchResults(scope: SearchScopeQuery, body: SearchBody): SearchResults {
+export function useSearchResults(scope: SearchScopeQuery, body: SearchBody, onAnswered?: (answer: AnsweredSearch) => void): SearchResults {
   const key = JSON.stringify([scope, body])
   const [response, setResponse] = useState<SearchResponse | null>(null)
   const [loading, setLoading] = useState(true)
@@ -58,6 +67,11 @@ export function useSearchResults(scope: SearchScopeQuery, body: SearchBody): Sea
   const [more, setMore] = useState<Partial<Record<SearchKind, MorePage>>>({})
   const current = useRef(key)
   const asked = useRef<Partial<Record<SearchKind, Set<string>>>>({})
+  // Heard for the question's own answer, not a section's further page (telemetry: `search_issued`).
+  const answeredRef = useRef(onAnswered)
+  useEffect(() => {
+    answeredRef.current = onAnswered
+  }, [onAnswered])
 
   useEffect(() => {
     const [askedScope, askedBody] = JSON.parse(key) as [SearchScopeQuery, SearchBody]
@@ -66,8 +80,13 @@ export function useSearchResults(scope: SearchScopeQuery, body: SearchBody): Sea
     asked.current = {}
     setLoading(true)
     setFailed(false)
-    postSearch(askedScope, askedBody, controller.signal)
+    const started = performance.now()
+    let serverTiming: string | null = null
+    postSearch(askedScope, askedBody, controller.signal, (header) => {
+      serverTiming = header
+    })
       .then((answer) => {
+        answeredRef.current?.({ scope: askedScope, body: askedBody, response: answer, durationMs: performance.now() - started, serverTiming })
         setResponse(answer)
         setMore({})
         setLoading(false)

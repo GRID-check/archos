@@ -95,7 +95,7 @@ describe('which columns the register shows', () => {
 
   it('switches a column on in its place and off again, back to the default', () => {
     const withFolder = toggleRegisterColumn(null, 'folder')
-    expect(withFolder).toEqual(['planNumber', 'planIndex', 'title', 'planDate', 'scale', 'documentType', 'author', 'project', 'folder', 'status'])
+    expect(withFolder).toEqual(['planNumber', 'planIndex', 'title', 'planDate', 'scale', 'documentType', 'author', 'project', 'folder'])
     expect(toggleRegisterColumn(withFolder, 'folder')).toBeNull()
   })
 

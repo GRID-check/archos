@@ -15,6 +15,7 @@ export type ActiveFilterValue =
   | { kind: 'partyRole'; role: string | null; name: string | null }
   | { kind: 'readState'; value: string }
   | { kind: 'fact'; fact: FactFilter }
+  | { kind: 'factKey'; key: string }
   | { kind: 'range'; from: string | number | null; to: string | number | null }
   | { kind: 'project'; projectId: string }
   | { kind: 'flag' }
@@ -65,6 +66,8 @@ export function activeFilters(state: SearchUrlState): ActiveFilter[] {
   }
   each(f.uploadedBy, 'uploadedBy', 'filters.uploadedBy', text, same)
   each(f.states, 'states', 'facets.state', (value) => ({ kind: 'readState', value }), same)
+  if (f.factsChanged) out.push({ id: 'factsChanged', labelKey: 'filters.factsChanged', value: { kind: 'flag' }, next: without({ factsChanged: undefined }) })
+  each(f.changedFacts, 'changedFacts', 'facets.changedFact', (key) => ({ kind: 'factKey', key }), same)
   if (f.incompleteRead) out.push({ id: 'incompleteRead', labelKey: 'filters.incompleteRead', value: { kind: 'flag' }, next: without({ incompleteRead: undefined }) })
   each(f.fileTypes, 'fileTypes', 'facets.fileType', text, same)
   if (f.pages) {

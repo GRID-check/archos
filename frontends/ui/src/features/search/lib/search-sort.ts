@@ -35,7 +35,8 @@ export type RegisterColumn = (typeof REGISTER_COLUMNS)[number]
 /**
  * The columns a register shows until the reader picks others: the ones the Jour
  * fixe reads (Plannummer, Index, Planstand, Maßstab, Verfasser, Dokumentart).
- * Ordner, Hochgeladen and Seiten are a choice in the column menu.
+ * Ordner, Hochgeladen, Seiten and Status are a choice in the column menu:
+ * Status shows only the exceptions, and „Ersetzt“ already sits on the name.
  */
 export const DEFAULT_REGISTER_COLUMNS: readonly RegisterColumn[] = [
   'planNumber',
@@ -46,7 +47,6 @@ export const DEFAULT_REGISTER_COLUMNS: readonly RegisterColumn[] = [
   'documentType',
   'author',
   'project',
-  'status',
 ]
 
 /** The column that names a row: it is always shown, so a row is never anonymous. */

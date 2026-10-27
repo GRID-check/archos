@@ -109,6 +109,8 @@ export const documentFiltersSchema = z.object({
   uploadedBy: z.array(z.string().max(100)).max(20).optional().describe('Uploader user ids.'),
   states: z.array(z.enum(SEARCH_READ_STATES)).max(5).optional(),
   incompleteRead: z.boolean().optional().describe('Has unread pages.'),
+  factsChanged: z.boolean().optional().describe('States facts differently from the revision it replaced.'),
+  changedFacts: z.array(z.enum(DOSSIER_FACT_KEYS)).max(DOSSIER_FACT_KEYS.length).optional().describe('Facts changed against the replaced revision.'),
   fileTypes: z
     .array(z.string().regex(/^[a-z0-9]{1,8}$/))
     .max(12)
@@ -135,10 +137,10 @@ export const searchBodySchema = z.object({
     .trim()
     .max(500)
     .optional()
-    .describe('Matches names, what documents are and say (with the page), annotations, folders, projects, conversations.'),
+    .describe('Matches names, what documents are and say (with the page), annotations, folders, projects, conversations. Write it in the language of the documents.'),
   kinds: z.array(z.enum(SEARCH_KINDS)).min(1).max(SEARCH_KINDS.length).optional().describe('Default: every kind.'),
-  filters: documentFiltersSchema.optional(),
-  annotationFilters: annotationFiltersSchema.optional(),
+  filters: documentFiltersSchema.optional().describe('Narrow documents and their annotations; other kinds are then set aside (`setAside`).'),
+  annotationFilters: annotationFiltersSchema.optional().describe('Narrow annotations; other kinds are then set aside.'),
   sort: z.enum(SEARCH_SORTS).optional().describe('Default: relevance with text, else added.'),
   dir: z.enum(['asc', 'desc']).optional(),
   limit: z.number().int().min(1).max(SEARCH_LIMIT_MAX).optional(),
@@ -177,6 +179,13 @@ export interface DocumentHit {
   projectName: string | null
   folderId: string | null
   folderName: string | null
+  /**
+   * The folder's path from the shelf root, its names joined by "/"
+   * ("03 Einreichung/Grundrisse"); '' at the shelf root. With `shelf` and
+   * `filename` it is where Piloti's filesystem reads the document
+   * (`src/aiq_agent/common/estate_paths.py`).
+   */
+  folderPath: string
   status: string
   contentType: string | null
   uploadedAt: string
@@ -191,6 +200,8 @@ export interface DocumentHit {
   pageCount: number | null
   pagesNotRead: number | null
   superseded: boolean
+  /** What this Fassung states differently from the one it replaced; empty when nothing changed or nothing was compared. */
+  changedFacts: Array<{ key: string; before: string | null; after: string | null; page: number | null }>
   municipality: string | null
   /** The Verfasser the reading names (architect, else author), as the document writes it. */
   author: string | null
@@ -270,11 +281,70 @@ export const SEARCH_FACET_DIMENSIONS = [
   'state',
   'fileType',
   'uploader',
+  'changedFact',
 ] as const
 export type SearchFacetDimension = (typeof SEARCH_FACET_DIMENSIONS)[number]
 
+/**
+ * Why a kind that was asked for was not searched: a filter was set that it
+ * cannot honour, so its rows would claim a narrowing they do not have.
+ * `document_filters`: a filter on what a document is (folders, projects and
+ * conversations are no document; annotations narrow through theirs).
+ * `annotation_filters`: a filter on annotations, which no other kind carries.
+ */
+export type SetAsideReason = 'document_filters' | 'annotation_filters'
+
+/**
+ * Whether the document filters narrow anything a folder, a project or a
+ * conversation cannot carry. `projectIds` narrows every kind (it cuts the
+ * reach) and `includeArchived` only widens, so neither counts. Pure.
+ */
+export function narrowsDocuments(filters: DocumentFilters | undefined): boolean {
+  if (!filters) return false
+  return Object.entries(filters).some(([key, value]) => {
+    if (key === 'projectIds' || key === 'includeArchived') return false
+    if (Array.isArray(value)) return value.length > 0
+    if (value !== null && typeof value === 'object') return Object.values(value).some((bound) => bound !== undefined)
+    return value !== undefined && value !== false
+  })
+}
+
+/** Whether the annotation filters narrow anything. Pure. */
+export function narrowsAnnotations(filters: AnnotationFilters | undefined): boolean {
+  if (!filters) return false
+  return Boolean(filters.statuses?.length || filters.kinds?.length || filters.assignedToMe || filters.createdByMe)
+}
+
+/**
+ * The kinds a question asks for that its filters set aside, and why. A kind
+ * the question would not have searched anyway (a folder without text) is not
+ * named. Pure: the search and the surface read the same answer.
+ */
+export function setAsideKinds(
+  body: Pick<SearchBody, 'text' | 'kinds' | 'filters' | 'annotationFilters'>
+): Partial<Record<SearchKind, SetAsideReason>> {
+  const byDocument = narrowsDocuments(body.filters)
+  const byAnnotation = narrowsAnnotations(body.annotationFilters)
+  const hasText = Boolean(body.text?.trim())
+  const out: Partial<Record<SearchKind, SetAsideReason>> = {}
+  for (const kind of SEARCH_KINDS) {
+    if (body.kinds && !body.kinds.includes(kind)) continue
+    if (kind === 'annotation') continue
+    if (kind === 'document') {
+      if (byAnnotation) out.document = 'annotation_filters'
+      continue
+    }
+    if (!hasText) continue
+    if (byDocument) out[kind] = 'document_filters'
+    else if (byAnnotation) out[kind] = 'annotation_filters'
+  }
+  return out
+}
+
 export interface SearchResponse {
   scope: SearchScope
+  /** Kinds asked for and not searched, because a filter is set that they cannot honour. */
+  setAside: Partial<Record<SearchKind, SetAsideReason>>
   sections: {
     document?: SearchSection<DocumentHit>
     annotation?: SearchSection<AnnotationHit>
@@ -284,6 +354,12 @@ export interface SearchResponse {
   }
   /** Counts over the matched documents, per filter; absent when not asked. */
   facets: Partial<Record<SearchFacetDimension, FacetCount[]>> | null
+  /**
+   * Documents in scope Piloti has not read yet (no projection row), counted
+   * with the facets and absent from every count and reading filter; null when
+   * the facets were not asked.
+   */
+  unread: number | null
   /** Shelves whose documents are not yet filterable by what they are (the projection is being built). */
   building: string[]
   /** The content search covered only part of the scope (more collections than one search names). */

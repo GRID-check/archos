@@ -5,7 +5,7 @@
  * the only file under `features/search` that writes Tailwind.
  *
  * Each owns one decision. The frame decides where the rail sits (beside the
- * results from `md`, folded behind „Filter“ under it) and that a hairline,
+ * results from `md`, in a bottom sheet behind „Filter“ under it) and that a hairline,
  * not a box, separates the two; a facet option is one dense row that toggles
  * and counts in tabular figures; a result row is the product's list row
  * (`Item`) as a link, the name in the strong weight and everything else on one
@@ -19,12 +19,16 @@ import Link from 'next/link'
 import type { LucideIcon } from 'lucide-react'
 import { Archive, ChevronRight, Folder, FolderKanban, History, Users, X } from 'lucide-react'
 
+import { ShortcutKeys } from '@/components/shell/shortcut-keys'
+import { MOD, type KeySegment } from '@/components/shell/shortcuts'
+import { Button } from '@/components/ui/button'
 import { Chip, ChipLabel } from '@/components/ui/chip'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
+import { CommandHints, type CommandHintLabels } from '@/components/ui/command'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { FOCUS_RING_INSET } from '@/components/ui/focus-ring'
 import { HorizontalScroll } from '@/components/ui/horizontal-scroll'
 import { Item, ItemContent, ItemMedia } from '@/components/ui/item'
-import { Kbd, KbdGroup } from '@/components/ui/kbd'
 import { Label } from '@/components/ui/label'
 import { SectionLabel } from '@/components/ui/section-label'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -33,41 +37,90 @@ import { Spinner } from '@/components/ui/spinner'
 import { Switch } from '@/components/ui/switch'
 import { TableBody, TableCell, TableHeader, TableRow } from '@/components/ui/table'
 import { useTranslations } from '@/i18n'
+import { keepUnitsTogether } from '@/lib/text/keep-units'
 import type { TextSegment } from '@/lib/text/term-segments'
 import { sourceTint } from '@/lib/ui/source-tint'
 import { cn } from '@/lib/utils'
+import { fitColumns, minimumRem, type ColumnFit } from '../lib/register-fit'
 
 // ─── Frame ──────────────────────────────────────────────────────────────────
 
-/** The page: the toolbar and the chips on top, the rail beside the results with a hairline between. */
-export function SearchFrame({
-  toolbar,
-  rail,
-  railOpen,
-  children,
-}: {
-  toolbar: ReactNode
-  rail: ReactNode
-  /** Under `md` the rail is folded away until the reader opens it. */
-  railOpen: boolean
-  children: ReactNode
-}): JSX.Element {
+/**
+ * The page: the toolbar and the chips on top, the rail beside the results with
+ * a hairline between. Under `md` there is no rail beside anything: it opens
+ * in the filter sheet (`FilterSheet`), so the first result stays under the
+ * field instead of a screen of counts further down. `rail` is null there.
+ */
+export function SearchFrame({ toolbar, rail, children }: { toolbar: ReactNode; rail: ReactNode; children: ReactNode }): JSX.Element {
   return (
     <div className="flex min-w-0 flex-col gap-4" data-testid="search-frame">
       <div className="flex min-w-0 flex-col gap-3">{toolbar}</div>
       <div className="flex min-w-0 flex-col gap-6 md:grid md:grid-cols-[14rem_minmax(0,1fr)] md:items-start md:gap-0">
-        <aside
-          className={cn(
-            'min-w-0 flex-col gap-1 md:sticky md:top-4 md:flex md:max-h-[calc(100dvh-2rem)] md:overflow-y-auto md:border-r md:pr-3',
-            railOpen ? 'flex' : 'hidden'
-          )}
-          data-testid="search-rail"
-        >
-          {rail}
-        </aside>
+        {rail ? (
+          <aside
+            className="hidden min-w-0 flex-col gap-1 md:sticky md:top-4 md:flex md:max-h-[calc(100dvh-2rem)] md:overflow-y-auto md:border-r md:pr-3"
+            data-testid="search-rail"
+          >
+            {rail}
+          </aside>
+        ) : null}
         <div className="flex min-w-0 flex-col gap-3 md:pl-6">{children}</div>
       </div>
     </div>
+  )
+}
+
+/**
+ * The rail on a phone: the kit's bottom sheet (a `Dialog`, which below `sm`
+ * anchors to the bottom edge with a grabber and a pinned footer), the facets
+ * and filters scrolling under a fixed title, and two actions where the thumb
+ * is: take every filter off, and go back to the answer with its size on the
+ * button. Filters apply as they are set, so closing it discards nothing.
+ */
+export function FilterSheet({
+  open,
+  onOpenChange,
+  title,
+  description,
+  closeLabel,
+  clearLabel,
+  onClear,
+  canClear,
+  showLabel,
+  children,
+}: {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  title: string
+  description: string
+  closeLabel: string
+  clearLabel: string
+  onClear: () => void
+  canClear: boolean
+  /** „14 Treffer zeigen“. */
+  showLabel: string
+  children: ReactNode
+}): JSX.Element {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent closeLabel={closeLabel} data-testid="search-filter-sheet">
+        <DialogHeader>
+          <DialogTitle>{title}</DialogTitle>
+          <DialogDescription className="sr-only">{description}</DialogDescription>
+        </DialogHeader>
+        <div className="-mx-1 flex min-w-0 flex-col gap-1" data-testid="search-rail">
+          {children}
+        </div>
+        <DialogFooter>
+          <Button type="button" variant="outline" onClick={onClear} disabled={!canClear} data-testid="search-sheet-clear">
+            {clearLabel}
+          </Button>
+          <Button type="button" onClick={() => onOpenChange(false)} data-testid="search-sheet-show">
+            {showLabel}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   )
 }
 
@@ -86,19 +139,34 @@ export function ToolbarLabel({ children }: { children: ReactNode }): JSX.Element
   return <span className="max-sm:sr-only">{children}</span>
 }
 
-/** The shortcut that focuses the field, inside it: ⌘ K or Strg K. */
-export function FieldShortcut({ modifier }: { modifier: string }): JSX.Element {
-  return (
-    <KbdGroup>
-      <Kbd>{modifier}</Kbd>
-      <Kbd>K</Kbd>
-    </KbdGroup>
-  )
+/**
+ * The shortcut that focuses the field, inside it: ⌘ K or Strg K, from the
+ * shell's one key renderer so it names the key as the palette does.
+ * (`SearchField` hides it on a phone and under a finger.)
+ */
+export function FieldShortcut(): JSX.Element {
+  return <ShortcutKeys segments={FOCUS_FIELD_KEYS} />
 }
 
-/** Shown only under `md`, where the rail is folded. */
-export function RailToggleSlot({ children }: { children: ReactNode }): JSX.Element {
-  return <div className="md:hidden">{children}</div>
+const FOCUS_FIELD_KEYS: readonly KeySegment[] = [{ kind: 'chord', caps: [MOD, 'K'] }]
+
+/** A hint about keys, in a status line: gone under a finger and on a phone-sized screen. */
+export function KeysHint({ children }: { children: ReactNode }): JSX.Element {
+  return <span className="max-sm:hidden pointer-coarse:hidden">{children}</span>
+}
+
+/**
+ * A row of choices that may be wider than the column (the kinds with their
+ * counts, on a phone): it scrolls sideways, and the edge that hides one says
+ * so with a fade and a chevron. The fade alone faded into the strip's own pale
+ * well and read as its end, with Projekte and Chats past it.
+ */
+export function ChoiceStrip({ label, children }: { label: string; children: ReactNode }): JSX.Element {
+  return (
+    <HorizontalScroll cue aria-label={label} className="-mx-1 px-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      {children}
+    </HorizontalScroll>
+  )
 }
 
 // ─── Rail ───────────────────────────────────────────────────────────────────
@@ -109,13 +177,26 @@ export function RailSection({
   children,
   testId,
   defaultOpen = true,
+  fixed = false,
 }: {
   title: string
   children: ReactNode
   testId?: string
   defaultOpen?: boolean
+  /** Always open, its name a plain heading: the group the rail starts with. */
+  fixed?: boolean
 }): JSX.Element {
   const [open, setOpen] = useState(defaultOpen)
+  if (fixed) {
+    return (
+      <section className="flex min-w-0 flex-col border-b border-border/60 py-2 last:border-b-0" data-testid={testId}>
+        <div className="flex h-7 items-center px-1">
+          <SectionLabel as="h3">{title}</SectionLabel>
+        </div>
+        <div className="flex min-w-0 flex-col pt-0.5">{children}</div>
+      </section>
+    )
+  }
   return (
     <Collapsible open={open} onOpenChange={setOpen} asChild>
       <section className="flex min-w-0 flex-col border-b border-border/60 py-2 last:border-b-0" data-testid={testId}>
@@ -158,14 +239,16 @@ export function FacetOption({
       onClick={onToggle}
       data-testid={testId}
       className={cn(
-        'flex h-7 w-full min-w-0 items-center gap-2 rounded-sm px-1 text-left text-[13px] transition-colors duration-snap ease-out motion-reduce:transition-none pointer-coarse:h-11 pointer-coarse:text-sm',
+        // A long name (a project's address) wraps to a second line rather than
+        // ending in an ellipsis whose rest only a tooltip knew.
+        'flex min-h-7 w-full min-w-0 items-start gap-2 rounded-sm px-1 py-1 text-left text-sm leading-5 transition-colors duration-snap ease-out motion-reduce:transition-none pointer-coarse:min-h-11 pointer-coarse:items-center',
         FOCUS_RING_INSET,
         active ? 'bg-secondary font-medium text-foreground' : 'text-foreground/80 hover:bg-secondary/60 hover:text-foreground'
       )}
     >
       <span
         className={cn(
-          'flex size-3.5 shrink-0 items-center justify-center rounded-[3px] border transition-colors duration-snap',
+          'mt-[3px] flex size-3.5 shrink-0 items-center justify-center rounded-[3px] border transition-colors duration-snap pointer-coarse:mt-0',
           active ? 'border-foreground bg-foreground text-background' : 'border-strong bg-background'
         )}
         aria-hidden
@@ -176,12 +259,17 @@ export function FacetOption({
           </svg>
         ) : null}
       </span>
-      <span className="min-w-0 flex-1 truncate" title={label}>
+      <span className="line-clamp-2 min-w-0 flex-1 break-words" title={label.length > 48 ? label : undefined}>
         {label}
       </span>
-      <span className="shrink-0 text-xs tabular-nums text-muted-foreground">{count}</span>
+      <span className="shrink-0 text-xs leading-5 tabular-nums text-muted-foreground">{count}</span>
     </button>
   )
+}
+
+/** A field over a facet group's values that narrows them by name, once the whole list is open. */
+export function FacetFind({ children }: { children: ReactNode }): JSX.Element {
+  return <div className="px-1 pb-1.5 pointer-fine:[&_input]:h-8">{children}</div>
 }
 
 /** A control under a rail group or a form, at its own width: „Alle zeigen“, „Hinzufügen“. */
@@ -189,12 +277,25 @@ export function RailAction({ children }: { children: ReactNode }): JSX.Element {
   return <div className="flex min-w-0 flex-wrap items-center gap-2 px-1">{children}</div>
 }
 
-/** The typed filters' column. */
+/**
+ * The typed filters' column. Its fields are the rail's compact size under a
+ * mouse (32px, as the toolbar's controls), the full 44px under a finger.
+ */
 export function RailBody({ children }: { children: ReactNode }): JSX.Element {
-  return <div className="flex min-w-0 flex-col gap-3 px-1 pb-2 pt-1">{children}</div>
+  return <div className="flex min-w-0 flex-col gap-3 px-1 pb-2 pt-1 pointer-fine:[&_input]:h-8">{children}</div>
 }
 
-/** Two short fields side by side: from and to, min and max, role and name. */
+/** Two fields one above the other: a date's from and to, which do not fit side by side in the rail. */
+export function FieldStack({ children }: { children: ReactNode }): JSX.Element {
+  return <div className="flex min-w-0 flex-col gap-2">{children}</div>
+}
+
+/** Plannummer and Index on one row: the number takes the room, the Index (a letter or two) a narrow field. */
+export function KeyFieldRow({ children }: { children: ReactNode }): JSX.Element {
+  return <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_4.5rem] items-start gap-2">{children}</div>
+}
+
+/** Two short fields side by side: min and max. */
 export function FieldPair({ children }: { children: ReactNode }): JSX.Element {
   return <div className="grid min-w-0 grid-cols-2 gap-2">{children}</div>
 }
@@ -226,19 +327,25 @@ export function ResultsStatus({ children, busy }: { children: ReactNode; busy: b
   return (
     <p className="flex min-h-5 items-center gap-2 text-xs tabular-nums text-muted-foreground" role="status" aria-live="polite" data-testid="search-status">
       {busy ? <Spinner size="xs" aria-hidden /> : null}
-      {children}
+      {/* One run of text: the status and the key hint wrap as a sentence, not as two columns. */}
+      <span className="min-w-0">{children}</span>
     </p>
   )
 }
 
-/** A note about the answer, not an error: facts still being read, content searched in part. */
+/** A note about the answer, not an error: facts still being read, content searched in part. A quiet line, not a box. */
 export function SearchNote({ children, icon: Icon, testId }: { children: ReactNode; icon: LucideIcon; testId?: string }): JSX.Element {
   return (
-    <p className="flex items-start gap-2 text-pretty rounded-md bg-secondary/70 px-3 py-2 text-xs text-muted-foreground" data-testid={testId}>
+    <p className="flex items-start gap-1.5 text-pretty text-xs text-muted-foreground" data-testid={testId}>
       <Icon className="mt-px size-3.5 shrink-0" aria-hidden />
       <span>{children}</span>
     </p>
   )
+}
+
+/** The actions under an empty answer, side by side, wrapping on a phone. */
+export function EmptyActions({ children }: { children: ReactNode }): JSX.Element {
+  return <div className="flex flex-wrap items-center justify-center gap-2">{children}</div>
 }
 
 /** The kinds as a row of choices with their counts. */
@@ -295,8 +402,8 @@ export interface ResultRowFrameProps {
 const ResultRowFrameContext = createContext<ComponentType<ResultRowFrameProps> | null>(null)
 export const ResultRowFrameProvider = ResultRowFrameContext.Provider
 
-/** The row's box: icon, then the name over the meta line, the mark at the end; on a phone the mark drops under the name. */
-const RESULT_ROW_LAYOUT = 'items-start gap-x-3 gap-y-1.5 px-2 py-2.5 max-sm:flex-wrap'
+/** The row's box: icon, then the name over the meta line; the page's row grows, the palette's stays compact. */
+const RESULT_ROW_LAYOUT = 'items-start gap-x-3 px-2 py-2.5'
 
 /**
  * The row the arrow keys are on: a 2px ink rule down its leading edge over the
@@ -306,41 +413,52 @@ const RESULT_ROW_LAYOUT = 'items-start gap-x-3 gap-y-1.5 px-2 py-2.5 max-sm:flex
 const ACTIVE_ROW = 'aria-selected:bg-accent/60 aria-selected:shadow-[inset_2px_0_0_0_var(--foreground)]'
 
 /**
- * One hit: an icon, its name in the strong weight, then where it lives
- * (project and folder), one muted line of what it is, and what matched under
- * it. The where line comes first because it is what tells two „Grundriss
- * Erdgeschoss“ apart.
+ * Whether the row stands in the ⌘K palette (a frame is provided) rather than
+ * the result list: there it is compact, one line of name and one of what it
+ * is, and what matched shows on the row the arrows are on.
+ */
+export function useCompactRow(): boolean {
+  return useContext(ResultRowFrameContext) !== null
+}
+
+/**
+ * One hit, at most three lines: its name in the strong weight (the focal
+ * point, with any state such as „Ersetzt“ beside it), one muted line of where
+ * it lives and what it is, and what matched under it. In the palette the
+ * third line shows only on the row the arrows are on, so a glance takes in
+ * twice the hits.
  */
 export function ResultRow({
   href,
   icon: Icon,
   title,
-  where,
   meta,
   aside,
   children,
   active = false,
   testId,
   id,
+  actions,
 }: {
   href: string
   icon: LucideIcon
   title: ReactNode
-  /** Where it lives: the `ShelfMark` and the folder (`WherePart`). */
-  where?: ReactNode
-  /** One line of what it is: „Einreichplan · EP-03 · Index C · 1:100 · 14.10.2026“. */
+  /** One line of where it lives and what it is: „Kaiserstraße 43 › Einreichung · Einreichplan · EP-03 · Index C“ (`MetaLine`). */
   meta?: ReactNode
-  /** At the row's end: a state (`SupersededMark`). */
+  /** On the name's line, after it: a state (`SupersededMark`). */
   aside?: ReactNode
-  /** The passage, the excerpt. */
+  /** The passage, the excerpt, what it was found in. */
   children?: ReactNode
   /** The row the arrow keys are on. */
   active?: boolean
   testId?: string
   /** The option's id, which the field's `aria-activedescendant` names while the row is active. */
   id?: string
+  /** The row's ⋯ (`DocumentHitMenu`): beside the link, never inside it, at the row's end. Not drawn in a frame. */
+  actions?: ReactNode
 }): JSX.Element {
   const Frame = useContext(ResultRowFrameContext)
+  const compact = Frame !== null
   const ref = useRef<HTMLAnchorElement>(null)
   useEffect(() => {
     if (active) ref.current?.scrollIntoView({ block: 'nearest' })
@@ -350,13 +468,24 @@ export function ResultRow({
       <ItemMedia className="size-5 pt-0.5 text-muted-foreground">
         <Icon className="size-4" aria-hidden />
       </ItemMedia>
-      <ItemContent className="flex flex-col gap-0.5">
-        <span className="text-sm font-semibold tracking-tight text-foreground max-sm:line-clamp-2 sm:truncate">{title}</span>
-        {where ? <span className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-1 py-0.5 text-xs">{where}</span> : null}
-        {meta ? <span className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs text-muted-foreground">{meta}</span> : null}
-        {children}
+      <ItemContent className="flex min-w-0 flex-col gap-0.5">
+        <span className="flex min-w-0 items-start gap-2">
+          <span className={cn('min-w-0 flex-1 text-sm font-semibold tracking-tight text-foreground', compact ? 'truncate' : 'max-sm:line-clamp-2 sm:truncate')}>{title}</span>
+          {aside ? <span className="flex shrink-0 items-center gap-1.5">{aside}</span> : null}
+        </span>
+        {meta ? (
+          <span
+            className={cn(
+              'block min-w-0 text-xs leading-5 text-muted-foreground',
+              // The palette keeps one line: a part that would wrap is left out whole, never cut mid-word.
+              compact && 'h-5 overflow-hidden'
+            )}
+          >
+            {meta}
+          </span>
+        ) : null}
+        {children ? compact ? <span className="hidden min-w-0 flex-col in-data-[selected=true]:flex">{children}</span> : children : null}
       </ItemContent>
-      {aside ? <span className="ml-auto flex shrink-0 items-center gap-1.5 pt-0.5 max-sm:ml-8 max-sm:basis-full max-sm:pt-0">{aside}</span> : null}
     </>
   )
   if (Frame) {
@@ -367,12 +496,13 @@ export function ResultRow({
     )
   }
   return (
-    <li role="none" className="list-none">
-      <Item asChild className={cn(RESULT_ROW_LAYOUT, ACTIVE_ROW)}>
+    <li role="none" className="relative list-none">
+      <Item asChild className={cn(RESULT_ROW_LAYOUT, ACTIVE_ROW, actions && ROW_ACTIONS_ROOM)}>
         <Link ref={ref} id={id} href={href} role="option" aria-selected={active} data-testid={testId}>
           {content}
         </Link>
       </Item>
+      {actions ? <RowActions>{actions}</RowActions> : null}
     </li>
   )
 }
@@ -382,22 +512,40 @@ export function MetaPart({ children, code = false }: { children: ReactNode; code
   return <span className={cn('whitespace-nowrap', code && 'font-mono text-xs text-foreground/80')}>{children}</span>
 }
 
-/** The meta line's parts that are there, a dot between each. */
-export function MetaLine({ parts }: { parts: ReadonlyArray<ReactNode | null | undefined | false> }): JSX.Element {
-  const present = parts.filter((part): part is ReactNode => Boolean(part))
+/**
+ * The meta line's parts that are there, a dot between each, and never a dot at
+ * either end of a line: each part carries its dot before it, in a gutter the
+ * line pulls into its clipped left edge, so the dot of a part that starts a
+ * wrapped line is cut away with the gutter. `lead` parts (where it lives: the
+ * shelf's mark, then the folder) come first with no dot between them, but
+ * every part keeps the full gutter, a dot in it or not: a narrower one let the
+ * clip that eats a wrapped line's dot eat half the folder icon of a lead part
+ * that started the phone's second line.
+ */
+export function MetaLine({
+  parts,
+  lead = [],
+}: {
+  parts: ReadonlyArray<ReactNode | null | undefined | false>
+  lead?: ReadonlyArray<ReactNode | null | undefined | false>
+}): JSX.Element {
+  const present = (list: ReadonlyArray<ReactNode | null | undefined | false>): ReactNode[] => list.filter((part): part is ReactNode => Boolean(part))
+  const items = [...present(lead).map((node, index) => ({ node, dot: index === 0 })), ...present(parts).map((node) => ({ node, dot: true }))]
   return (
-    <>
-      {present.map((part, index) => (
-        <span key={index} className="contents">
-          {index > 0 ? (
-            <span className="text-muted-foreground/60" aria-hidden>
-              ·
-            </span>
-          ) : null}
-          {part}
-        </span>
-      ))}
-    </>
+    <span className="block min-w-0 max-w-full overflow-hidden">
+      <span className="-ml-3 flex min-w-0 flex-wrap items-center gap-y-0.5">
+        {items.map((item, index) => (
+          <span key={index} data-meta-part className="relative inline-flex min-w-0 max-w-full items-center pl-3">
+            {item.dot ? (
+              <span className="absolute left-0 w-3 text-center text-muted-foreground/60" aria-hidden>
+                ·
+              </span>
+            ) : null}
+            {item.node}
+          </span>
+        ))}
+      </span>
+    </span>
   )
 }
 
@@ -426,14 +574,15 @@ export function ShelfMark({ shelf, label, wrap = false }: { shelf: 'project' | '
 
 /**
  * A folder in the where line: an icon and its name, in ink, never a colour.
- * After a shelf mark it leads with a quiet chevron, kept with the name so a
- * wrapped line never ends on the chevron alone. `label` („Ordner“) is read
- * before the name by a screen reader, which does not see the icon.
+ * After a shelf mark it is set apart by the meta line's gutter, not by a chevron: the
+ * tinted mark and the folder glyph already read as two steps, and a chevron
+ * that wrapped with the folder started the phone's second line on a lone „›“.
+ * `label` („Ordner“) is read before the name by a screen reader, which does
+ * not see the icon.
  */
-export function WherePart({ children, label, after = false }: { children: ReactNode; label: string; after?: boolean }): JSX.Element {
+export function WherePart({ children, label }: { children: ReactNode; label: string }): JSX.Element {
   return (
     <span className="inline-flex min-w-0 items-center gap-1 text-foreground/75">
-      {after ? <ChevronRight className="size-3 shrink-0 text-muted-foreground/60" aria-hidden /> : null}
       <Folder className="size-3 shrink-0 text-muted-foreground" aria-hidden />
       <span className="min-w-0 [overflow-wrap:anywhere]">
         <span className="sr-only">{label} </span>
@@ -486,11 +635,11 @@ export function PassageQuote({ segments, page }: { segments: readonly TextSegmen
         „
         {segments.map((segment, index) =>
           segment.match ? (
-            <mark key={index} className="rounded-[2px] bg-foreground/[0.08] font-semibold text-foreground [box-decoration-break:clone]" data-testid="search-passage-match">
+            <MatchMark key={index} testId="search-passage-match">
               {segment.text}
-            </mark>
+            </MatchMark>
           ) : (
-            <span key={index}>{segment.text}</span>
+            <span key={index}>{keepUnitsTogether(segment.text)}</span>
           )
         )}
         “
@@ -499,15 +648,41 @@ export function PassageQuote({ segments, page }: { segments: readonly TextSegmen
   )
 }
 
+/** A matched word: set apart by weight on a faint ink wash exactly as wide as the match. */
+function MatchMark({ children, testId }: { children: ReactNode; testId?: string }): JSX.Element {
+  return (
+    <mark className="rounded-[2px] bg-foreground/[0.08] font-semibold text-foreground [box-decoration-break:clone]" data-testid={testId}>
+      {children}
+    </mark>
+  )
+}
+
+/** A name with the searched words set apart, as the passage sets them, so a match on the name is seen and not told. */
+export function MatchedText({ segments }: { segments: readonly TextSegment[] }): JSX.Element {
+  return (
+    <>
+      {segments.map((segment, index) =>
+        segment.match ? (
+          <MatchMark key={index} testId="search-title-match">
+            {segment.text}
+          </MatchMark>
+        ) : (
+          <span key={index}>{segment.text}</span>
+        )
+      )}
+    </>
+  )
+}
+
 /** A plain excerpt (an annotation's body, a folder's description). */
 export function Excerpt({ children }: { children: ReactNode }): JSX.Element {
   return <p className="mt-0.5 line-clamp-2 text-pretty text-sm text-foreground/75">{children}</p>
 }
 
-/** What the words were found in („Gefunden in Name · Inhalt“): present, never loud. */
-export function MatchHint({ label, parts }: { label: string; parts: readonly string[] }): JSX.Element {
+/** A quiet line under a hit: what the words were found in, when the row shows nothing that matched („Gefunden in Zusammenfassung“), what a Fassung changed. Present, never loud. */
+export function MatchHint({ label, parts, testId = 'search-matched-on' }: { label: string; parts: readonly string[]; testId?: string }): JSX.Element {
   return (
-    <span className="mt-0.5 text-xs text-muted-foreground/90" data-testid="search-matched-on">
+    <span className="mt-0.5 text-xs text-muted-foreground/90" data-testid={testId}>
       {label} {parts.join(' · ')}
     </span>
   )
@@ -579,60 +754,69 @@ export function LabelledSwitch({
   )
 }
 
-/** The narrowest the name column gets before the register scrolls sideways instead. */
-const REGISTER_NAME_MIN_REM = 12
-
 /**
  * The register's box. The page is its one vertical scroller, so the header row
- * stays put above the rows as the page scrolls. The columns have widths and the
- * name takes the rest; only when the chosen columns cannot fit beside a
- * readable name does the table scroll sideways, behind the kit's fade and
- * chevron, which say there is more to the right.
+ * stays put above the rows as the page scrolls. Each column claims the width
+ * its header needs and the width its values on the page need, and the room is
+ * shared out by `fitColumns`, the name taking the rest; only when the chosen
+ * columns cannot fit beside a readable name does the table scroll sideways,
+ * behind the kit's fade and chevron, which say there is more to the right.
  */
 export function RegisterTable({
   children,
   caption,
   testId,
-  columnWidths,
+  columns,
   scrollLabel,
   id,
+  actionsRem = 0,
 }: {
   children: ReactNode
   caption: string
   testId?: string
   /** The id the search field's `aria-controls` names. */
   id?: string
-  /** One per column in order, in rem; null is the column that takes the rest. */
-  columnWidths: ReadonlyArray<number | null>
+  /** One per column in order: what it needs and what it would like, in rem (`register-fit.ts`). */
+  columns: readonly ColumnFit[]
   /** The name of the region when it scrolls sideways. */
   scrollLabel: string
+  /**
+   * The rows' ⋯ column (`RegisterActionsCell`), last, in rem. Its room comes
+   * out of the name's minimum, so the menu never tips a register that fits
+   * into scrolling sideways.
+   */
+  actionsRem?: number
 }): JSX.Element {
   const box = useRef<HTMLDivElement>(null)
-  const [wide, setWide] = useState(false)
-  const flexible = columnWidths.filter((width) => width === null).length
-  const minRem = columnWidths.reduce<number>((sum, width) => sum + (width ?? 0), 0) + flexible * REGISTER_NAME_MIN_REM
+  // The box's width in rem; 0 until measured, which is every minimum.
+  const [boxRem, setBoxRem] = useState(0)
+  const minRem = minimumRem(columns)
+  const wide = boxRem > 0 && minRem > boxRem + 0.0625
+  const columnWidths = fitColumns(columns, boxRem - actionsRem)
 
   useLayoutEffect(() => {
     const element = box.current
     if (!element) return
     const update = (): void => {
       const rem = Number.parseFloat(getComputedStyle(document.documentElement).fontSize) || 16
-      setWide(minRem * rem > element.clientWidth + 1)
+      setBoxRem(element.clientWidth / rem)
     }
     update()
     if (typeof ResizeObserver === 'undefined') return
     const observer = new ResizeObserver(update)
     observer.observe(element)
     return () => observer.disconnect()
-  }, [minRem])
+  }, [])
 
   const table = (
     <table className="w-full table-fixed caption-bottom border-separate border-spacing-0 text-sm" style={{ minWidth: `${minRem}rem` }}>
-      <caption className="py-2 text-left text-xs text-muted-foreground">{caption}</caption>
+      {/* The table's name for a screen reader; to the eye the header row says it. */}
+      <caption className="sr-only">{caption}</caption>
       <colgroup>
         {columnWidths.map((width, index) => (
           <col key={index} style={width === null ? undefined : { width: `${width}rem` }} />
         ))}
+        {actionsRem > 0 ? <col style={{ width: `${actionsRem}rem` }} /> : null}
       </colgroup>
       {children}
     </table>
@@ -693,10 +877,12 @@ export function RegisterRow({ children, active = false, testId, id }: { children
     <TableRow
       ref={ref}
       id={id}
-      data-state={active ? 'selected' : undefined}
+      // No `data-state`: the kit's muted selected fill would race the accent below.
       aria-selected={active || undefined}
-      // The row the arrow keys are on: the list's 2px ink rule, on the first cell (a row draws no shadow of its own).
-      className="h-9 border-b-0 even:bg-secondary/30 [&>td]:border-b [&>td]:border-border/50 aria-selected:[&>td:first-child]:shadow-[inset_2px_0_0_0_var(--foreground)]"
+      // Hairlines separate the rows, no stripes: a stripe competed with the
+      // selection. The row the arrow keys are on takes the list's selected
+      // fill and its 2px ink rule, on the first cell (a row draws no shadow of its own).
+      className="h-9 border-b-0 [&>td]:border-b [&>td]:border-border/50 aria-selected:bg-accent aria-selected:hover:bg-accent aria-selected:[&>td:first-child]:shadow-[inset_2px_0_0_0_var(--foreground)]"
       data-testid={testId}
     >
       {children}
@@ -709,14 +895,18 @@ export function RegisterCell({
   children,
   kind = 'text',
   title,
+  span,
 }: {
   children?: ReactNode
   /** `mark`: a chip (where it is kept, a state) that gives way to its column's width. */
   kind?: 'text' | 'strong' | 'code' | 'figure' | 'muted' | 'mark'
   title?: string
+  /** Columns the cell covers: the name runs on into the empty cells after it (`titleSpan`). */
+  span?: number
 }): JSX.Element {
   return (
     <TableCell
+      colSpan={span && span > 1 ? span : undefined}
       className={cn(
         'truncate px-2 py-1.5',
         kind === 'strong' && 'font-medium text-foreground',
@@ -730,6 +920,17 @@ export function RegisterCell({
     >
       {children}
     </TableCell>
+  )
+}
+
+/** The name cell's content: the name, cut at the column, then its state („Ersetzt“) at its end, never cut. */
+export function RegisterTitle({ children, mark }: { children: ReactNode; mark?: ReactNode }): JSX.Element {
+  if (!mark) return <>{children}</>
+  return (
+    <span className="flex min-w-0 items-center gap-2">
+      <span className="min-w-0 truncate">{children}</span>
+      <span className="flex shrink-0 items-center">{mark}</span>
+    </span>
   )
 }
 
@@ -753,36 +954,45 @@ export function RegisterStack({ children, label, testId, id }: { children: React
 
 /**
  * One document on a phone: Plannummer and Index in the mono face over the
- * name, what else the register shows on a muted line under it, the state at
- * the end of the first line.
+ * name, the state at the end of the name's line (where every view puts
+ * „Ersetzt“), what else the register shows on a muted line under it, and where
+ * it is kept on a line of its own, so a long project name is read whole and
+ * the meta line never ends on a separator before it.
  */
 export function RegisterStackRow({
   href,
   code,
   title,
   meta,
+  where,
   aside,
   active = false,
   testId,
   id,
+  actions,
 }: {
   href: string
   /** „EP-03 · C“; absent for a document without a number. */
   code?: ReactNode
   title: ReactNode
-  meta?: ReactNode
+  /** What else the register shows, part by part: dated, scaled, typed, authored. */
+  meta?: ReadonlyArray<ReactNode | null | undefined | false>
+  /** Where it is kept: the `ShelfMark`. */
+  where?: ReactNode
   aside?: ReactNode
   active?: boolean
   testId?: string
   /** The option's id, named by the field's `aria-activedescendant` while it is active. */
   id?: string
+  /** The entry's ⋯, beside the link at its end. */
+  actions?: ReactNode
 }): JSX.Element {
   const ref = useRef<HTMLAnchorElement>(null)
   useEffect(() => {
     if (active) ref.current?.scrollIntoView({ block: 'nearest' })
   }, [active])
   return (
-    <li role="none" className="list-none">
+    <li role="none" className="relative list-none">
       <Link
         ref={ref}
         id={id}
@@ -793,32 +1003,43 @@ export function RegisterStackRow({
         className={cn(
           'flex min-w-0 flex-col gap-0.5 px-1 py-2.5 transition-colors duration-snap ease-out hover:bg-secondary/60 motion-reduce:transition-none',
           FOCUS_RING_INSET,
-          ACTIVE_ROW
+          ACTIVE_ROW,
+          actions && ROW_ACTIONS_ROOM
         )}
       >
-        {code || aside ? (
-          <span className="flex min-h-5 min-w-0 items-center gap-2">
-            <span className="min-w-0 flex-1 truncate font-mono text-xs text-foreground/80">{code}</span>
-            {aside ? <span className="flex shrink-0 items-center gap-1.5">{aside}</span> : null}
+        {code ? <span className="min-w-0 truncate font-mono text-xs text-foreground/80">{code}</span> : null}
+        <span className="flex min-w-0 items-center gap-2">
+          <span className="min-w-0 flex-1 truncate text-sm font-semibold tracking-tight text-foreground">{title}</span>
+          {aside ? <span className="flex shrink-0 items-center gap-1.5">{aside}</span> : null}
+        </span>
+        {meta && meta.some(Boolean) ? (
+          <span className="min-w-0 text-xs text-muted-foreground">
+            <MetaLine parts={meta} />
           </span>
         ) : null}
-        <span className="truncate text-sm font-semibold tracking-tight text-foreground">{title}</span>
-        {meta ? <span className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs text-muted-foreground">{meta}</span> : null}
+        {where ? <span className="flex min-w-0 pt-0.5 text-xs">{where}</span> : null}
       </Link>
+      {actions ? <RowActions>{actions}</RowActions> : null}
     </li>
   )
 }
 
 // ─── Saved searches ─────────────────────────────────────────────────────────
 
-/** A saved search in the list: its name applies it, the controls after it share or delete it. */
+/**
+ * A saved search in the list: its name applies it, one muted line under it
+ * says what it asks (whole in the tooltip when cut), and the control after it
+ * is its ⋯ or, for a colleague's, the colleague's mark.
+ */
 export function SavedSearchRow({
   name,
+  summary,
   detail,
   onApply,
   controls,
 }: {
   name: string
+  summary?: string
   detail?: string
   onApply: () => void
   controls?: ReactNode
@@ -832,24 +1053,15 @@ export function SavedSearchRow({
         data-testid="saved-search-apply"
       >
         <span className="line-clamp-2 text-sm font-medium text-foreground [overflow-wrap:anywhere]">{name}</span>
+        {summary ? (
+          <span className="block truncate text-xs text-muted-foreground" title={summary} data-testid="saved-search-summary">
+            {summary}
+          </span>
+        ) : null}
         {detail ? <span className="block truncate text-xs text-muted-foreground">{detail}</span> : null}
       </button>
       {controls ? <div className="flex shrink-0 items-center gap-1">{controls}</div> : null}
     </li>
-  )
-}
-
-/**
- * A compact switch with its word beside it („Geteilt“), the word part of its
- * label, so it is read and clicked as one. The row-sized twin of
- * {@link LabelledSwitch}, for a switch inside a menu row.
- */
-export function SwitchCaption({ label, children }: { label: string; children: ReactNode }): JSX.Element {
-  return (
-    <label className="flex cursor-pointer items-center gap-1.5 text-xs text-muted-foreground">
-      {children}
-      <span>{label}</span>
-    </label>
   )
 }
 
@@ -877,8 +1089,12 @@ export function PanelBody({ children }: { children: ReactNode }): JSX.Element {
 }
 
 /** A line of muted text where a list would be. */
-export function QuietLine({ children }: { children: ReactNode }): JSX.Element {
-  return <p className="text-sm text-muted-foreground">{children}</p>
+export function QuietLine({ children, testId }: { children: ReactNode; testId?: string }): JSX.Element {
+  return (
+    <p className="text-sm text-muted-foreground" data-testid={testId}>
+      {children}
+    </p>
+  )
 }
 
 /** The search inside a shelf's own frame (Dateien, Büroablage), which lends no page padding. */
@@ -924,5 +1140,66 @@ export function PaletteAside({ children, busy = false, testId }: { children: Rea
       {busy ? <Spinner className="size-3 shrink-0" /> : null}
       <span className="truncate">{children}</span>
     </span>
+  )
+}
+
+// ─── Hit actions and the composer's `#` ─────────────────────────────────────
+/** The room a row leaves at its end for its ⋯, so the mark at the end never sits under it. */
+const ROW_ACTIONS_ROOM = 'pr-11'
+
+/** A row's ⋯, over the row's end beside its link (a control inside a link is no control). */
+function RowActions({ children }: { children: ReactNode }): JSX.Element {
+  return <span className="absolute right-1 top-1.5 flex items-center">{children}</span>
+}
+
+/** The header over the rows' ⋯: no words on screen, its name for a screen reader. */
+export function RegisterActionsHead({ label }: { label: string }): JSX.Element {
+  return (
+    <th scope="col" className="h-8 px-1">
+      <span className="sr-only">{label}</span>
+    </th>
+  )
+}
+
+/** A row's ⋯ in the register's last column. */
+export function RegisterActionsCell({ children }: { children: ReactNode }): JSX.Element {
+  return <TableCell className="px-1 py-0.5 text-right">{children}</TableCell>
+}
+
+/** The width of the register's ⋯ column, in rem. */
+export const REGISTER_ACTIONS_WIDTH = 2.75
+
+/**
+ * The composer's `#` panel: the surface of the composer's other pickers (`@`,
+ * `/`): a popover card above the composer, the list scrolling inside it, and
+ * the keys as a footer for a fine pointer only (a phone has no arrows), the
+ * palette's own footer (`CommandHints`), so each key reads as it does there.
+ */
+export function ComposerPickerFrame({ children, hints, testId }: { children: ReactNode; hints: CommandHintLabels; testId?: string }): JSX.Element {
+  return (
+    <div
+      className="flex max-h-[360px] w-full flex-col overflow-hidden rounded-xl border bg-popover text-popover-foreground shadow-lg animate-in fade-in-0 slide-in-from-bottom-1 duration-snap ease-out motion-reduce:animate-none"
+      data-testid={testId}
+    >
+      <div className="min-h-0 flex-1 overflow-y-auto">{children}</div>
+      <CommandHints labels={hints} className="pointer-coarse:hidden" />
+    </div>
+  )
+}
+
+/**
+ * The `#` picker's list as the ⌘K palette draws its own (`CommandDialog`):
+ * quiet kind headings, the palette's item padding, so a hit looks the same in both.
+ */
+export const COMPOSER_COMMAND_CLASS =
+  'bg-transparent [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1.5 [&_[cmdk-group-heading]]:text-xs [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:text-muted-foreground [&_[cmdk-item]]:px-2 [&_[cmdk-item]]:py-2 [&_[cmdk-item]_svg]:size-4'
+
+/** Where the results have no row to carry it (the composer's `#`): what the search is doing, as a line under the hits. */
+export function PaletteStatusLine({ children, busy = false, testId }: { children: ReactNode; busy?: boolean; testId?: string }): JSX.Element {
+  return (
+    <p className="flex items-center gap-1.5 px-3 py-2 text-xs text-muted-foreground" aria-live="polite" data-testid={testId}>
+      {busy ? <Spinner className="size-3" /> : null}
+      {children}
+    </p>
   )
 }

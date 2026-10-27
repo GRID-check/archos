@@ -20,6 +20,8 @@ vi.mock('@/lib/auth/require-auth', () => ({
   authzErrorResponse: vi.fn().mockReturnValue(null),
 }))
 
+vi.mock('@/lib/projects/service', () => ({ listProjects: vi.fn().mockResolvedValue([{ id: 'project-a' }]) }))
+
 vi.mock('@/lib/search/saved-search-service', () => ({
   listSavedSearches: vi.fn().mockResolvedValue({ savedSearches: [], nextCursor: null }),
   createSavedSearch: vi.fn().mockImplementation(async (_owner: unknown, input: { name: string }) => ({
@@ -51,7 +53,17 @@ describe('/api/search/saved', () => {
     const res = await GET(new Request('http://localhost/api/search/saved?limit=10&cursor=20'))
     expect(res.status).toBe(200)
     expect(await res.json()).toEqual({ savedSearches: [], nextCursor: null })
-    expect(listSavedSearches).toHaveBeenCalledWith({ organizationId: 'org-1', userId: 'user-1' }, { limit: 10, cursor: '20' })
+    expect(listSavedSearches).toHaveBeenCalledWith(
+      { organizationId: 'org-1', userId: 'user-1' },
+      { limit: 10, cursor: '20' },
+      expect.any(Function)
+    )
+  })
+
+  it('GET hands the service the projects the caller may view', async () => {
+    await GET(new Request('http://localhost/api/search/saved'))
+    const viewableProjects = vi.mocked(listSavedSearches).mock.calls[0]?.[2]
+    expect(await viewableProjects?.()).toEqual(new Set(['project-a']))
   })
 
   it('GET refuses a limit above the cap with a 400', async () => {

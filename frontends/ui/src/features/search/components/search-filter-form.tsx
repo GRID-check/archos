@@ -4,17 +4,18 @@ import type { JSX, KeyboardEvent } from 'react'
 import { useId, useState } from 'react'
 
 import { Button } from '@/components/ui/button'
+import { DateInput } from '@/components/ui/date-input'
 import { Field, FieldDescription, FieldError, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
-import { useTranslations } from '@/i18n'
-import { DOSSIER_FACT_KEYS, DOSSIER_PARTY_ROLES, type DossierFactKey, type DossierPartyRole } from '@/lib/documents/dossier'
+import { useLocale, useTranslations } from '@/i18n'
+import { DOSSIER_FACT_KEYS, type DossierFactKey } from '@/lib/documents/dossier'
 import type { DocumentFilters } from '@/lib/search/search-wire'
 import { useSearchLabels } from '../hooks/use-search-labels'
 import { splitList } from '../lib/active-filters'
 import { compactFilters, NUMERIC_FACT_KEYS, type SearchUrlState } from '../lib/search-url'
-import { FieldPair, RailAction, RailBody, RailSection } from './search-atoms'
+import { FieldPair, FieldStack, KeyFieldRow, RailBody, RailSection } from './search-atoms'
 
 export interface SearchFilterFormProps {
   state: SearchUrlState
@@ -25,8 +26,6 @@ export interface SearchFilterFormProps {
   defaultOpen?: boolean
 }
 
-const ANY_ROLE = '__any'
-
 function numberOrUndefined(value: string): number | undefined {
   const trimmed = value.trim().replace(',', '.')
   if (trimmed === '') return undefined
@@ -35,10 +34,54 @@ function numberOrUndefined(value: string): number | undefined {
 }
 
 /**
- * The structured filters of `DocumentFilters` that are typed rather than
- * counted: Plannummer, Index, Planstand, Maßstab, Beteiligte, Ort, Angaben,
- * Verweise, Hochgeladen, Seiten. A typed field takes effect on Enter or when
- * it loses focus, so the search does not run on every keystroke of a number.
+ * The three filters a drawing is found by in the Jour fixe: Plannummer, Index
+ * and „Nur aktuelle Fassung“. The rail's first group, always open, because
+ * they are typed rather than counted and are what an office reaches for first.
+ */
+export function SearchKeyFilters({ state, onChange }: Pick<SearchFilterFormProps, 'state' | 'onChange'>): JSX.Element {
+  const t = useTranslations('search.filters')
+  const f = state.filters
+  const set = (patch: Partial<DocumentFilters>): void => onChange({ ...state, filters: compactFilters({ ...f, ...patch }) })
+  return (
+    <RailSection title={t('keyTitle')} fixed testId="search-key-filters">
+      <RailBody>
+        {/* Two short codes, one row: the Index is a letter or two. Their example is the placeholder, not a hint line under each. */}
+        <KeyFieldRow>
+          <CommitText
+            label={t('planNumber')}
+            placeholder={t('planNumberPlaceholder')}
+            value={f.planNumber ?? ''}
+            onCommit={(value) => set({ planNumber: value || undefined })}
+            testId="filter-plan-number"
+          />
+          <CommitText
+            label={t('planIndex')}
+            placeholder={t('planIndexPlaceholder')}
+            title={t('listHint')}
+            value={(f.planIndex ?? []).join(', ')}
+            onCommit={(value) => set({ planIndex: splitList(value) })}
+            testId="filter-plan-index"
+          />
+        </KeyFieldRow>
+        {/* The register says it above its table (`SearchRegisterBar`): one control per view for one setting. */}
+        {state.view === 'register' ? null : (
+          <Flag label={t('currentOnly')} checked={Boolean(f.currentOnly)} onChange={(on) => set({ currentOnly: on || undefined })} testId="filter-current" />
+        )}
+      </RailBody>
+    </RailSection>
+  )
+}
+
+/**
+ * The rest of the structured filters of `DocumentFilters` that are typed
+ * rather than counted: Planstand, Maßstab, Ort, Angaben, Hochgeladen, Seiten.
+ * What the rail counts (Beteiligte, Verweist auf, Dateityp) is chosen in its
+ * facet group and nowhere else, so no filter has two controls; a party's name,
+ * which no count lists, is typed inside the Beteiligte group
+ * (`PartyNameFilter`). Folded under „Weitere Filter“: they are
+ * reached for less, and a rail that shows them all buries the counts. A typed
+ * field takes effect on Enter or when it loses focus, so the search does not
+ * run on every keystroke of a number.
  */
 export function SearchFilterForm({ state, onChange, currentUserId, defaultOpen = false }: SearchFilterFormProps): JSX.Element {
   const t = useTranslations('search.filters')
@@ -47,78 +90,55 @@ export function SearchFilterForm({ state, onChange, currentUserId, defaultOpen =
 
   return (
     <RailSection title={t('title')} defaultOpen={defaultOpen} testId="search-more-filters">
-        <RailBody>
-            <CommitText label={t('planNumber')} value={f.planNumber ?? ''} onCommit={(value) => set({ planNumber: value || undefined })} testId="filter-plan-number" />
-            <CommitText
-              label={t('planIndex')}
-              hint={t('listHint')}
-              value={(f.planIndex ?? []).join(', ')}
-              onCommit={(value) => set({ planIndex: splitList(value) })}
-              testId="filter-plan-index"
-            />
-            <DateRange
-              label={t('planDate')}
-              value={f.planDate}
-              onChange={(range) => set({ planDate: range })}
-              testId="filter-plan-date"
-            />
-            <CommitText
-              label={t('scale')}
-              hint={t('listHint')}
-              value={(f.scale ?? []).join(', ')}
-              onCommit={(value) => set({ scale: splitList(value) })}
-              testId="filter-scale"
-            />
-            <Flag label={t('currentOnly')} checked={Boolean(f.currentOnly)} onChange={(on) => set({ currentOnly: on || undefined })} testId="filter-current" />
-            <PartyAdder onAdd={(party) => set({ parties: [...(f.parties ?? []), party] })} />
-            <CommitText label={t('place')} hint={t('placeHint')} value={f.place ?? ''} onCommit={(value) => set({ place: value || undefined })} testId="filter-place" />
-            <FactAdder onAdd={(fact) => set({ facts: [...(f.facts ?? []), fact] })} />
-            <CommitText
-              label={t('cites')}
-              hint={t('citesHint')}
-              value=""
-              clearOnCommit
-              onCommit={(value) => {
-                if (value) set({ cites: [...new Set([...(f.cites ?? []), value])] })
-              }}
-              testId="filter-cites"
-            />
-            <DateRange label={t('uploaded')} value={f.uploaded} onChange={(range) => set({ uploaded: range })} testId="filter-uploaded" />
-            {currentUserId ? (
-              <Flag
-                label={t('uploadedByMe')}
-                checked={(f.uploadedBy ?? []).includes(currentUserId)}
-                onChange={(on) =>
-                  set({ uploadedBy: on ? [...new Set([...(f.uploadedBy ?? []), currentUserId])] : (f.uploadedBy ?? []).filter((id) => id !== currentUserId) })
-                }
-                testId="filter-uploaded-by-me"
-              />
-            ) : null}
-            <CommitText
-              label={t('fileType')}
-              hint={t('listHint')}
-              value={(f.fileTypes ?? []).join(', ')}
-              onCommit={(value) =>
-                set({ fileTypes: splitList(value.toLowerCase().replace(/\./g, '')).filter((ext) => /^[a-z0-9]{1,8}$/.test(ext)) })
-              }
-              testId="filter-file-type"
-            />
-            <NumberRange
-              label={t('pages')}
-              min={f.pages?.min}
-              max={f.pages?.max}
-              onChange={(min, max) =>
-                set({
-                  pages:
-                    min === undefined && max === undefined
-                      ? undefined
-                      : { ...(min !== undefined ? { min: Math.max(0, Math.trunc(min)) } : {}), ...(max !== undefined ? { max: Math.max(0, Math.trunc(max)) } : {}) },
-                })
-              }
-            />
-            <Flag label={t('incompleteRead')} checked={Boolean(f.incompleteRead)} onChange={(on) => set({ incompleteRead: on || undefined })} testId="filter-incomplete" />
-            <Flag label={t('includeArchived')} checked={Boolean(f.includeArchived)} onChange={(on) => set({ includeArchived: on || undefined })} testId="filter-archived" />
-        </RailBody>
+      <RailBody>
+        <DateRange label={t('planDate')} value={f.planDate} onChange={(range) => set({ planDate: range })} testId="filter-plan-date" />
+        {/* An example in the field, as the dates and the Plannummer have; what else it takes is the tooltip. */}
+        <CommitText
+          label={t('scale')}
+          placeholder={t('scalePlaceholder')}
+          title={t('listHint')}
+          value={(f.scale ?? []).join(', ')}
+          onCommit={(value) => set({ scale: splitList(value) })}
+          testId="filter-scale"
+        />
+        <CommitText
+          label={t('place')}
+          placeholder={t('placePlaceholder')}
+          title={t('placeHint')}
+          value={f.place ?? ''}
+          onCommit={(value) => set({ place: value || undefined })}
+          testId="filter-place"
+        />
+        <FactAdder onAdd={(fact) => set({ facts: [...(f.facts ?? []), fact] })} />
+        <DateRange label={t('uploaded')} value={f.uploaded} onChange={(range) => set({ uploaded: range })} testId="filter-uploaded" />
+        {/* Beside the upload date: "what changed recently" is the two together. */}
+        <Flag label={t('factsChanged')} checked={Boolean(f.factsChanged)} onChange={(on) => set({ factsChanged: on || undefined })} testId="filter-facts-changed" />
+        {currentUserId ? (
+          <Flag
+            label={t('uploadedByMe')}
+            checked={(f.uploadedBy ?? []).includes(currentUserId)}
+            onChange={(on) =>
+              set({ uploadedBy: on ? [...new Set([...(f.uploadedBy ?? []), currentUserId])] : (f.uploadedBy ?? []).filter((id) => id !== currentUserId) })
+            }
+            testId="filter-uploaded-by-me"
+          />
+        ) : null}
+        <NumberRange
+          label={t('pages')}
+          min={f.pages?.min}
+          max={f.pages?.max}
+          onChange={(min, max) =>
+            set({
+              pages:
+                min === undefined && max === undefined
+                  ? undefined
+                  : { ...(min !== undefined ? { min: Math.max(0, Math.trunc(min)) } : {}), ...(max !== undefined ? { max: Math.max(0, Math.trunc(max)) } : {}) },
+            })
+          }
+        />
+        <Flag label={t('incompleteRead')} checked={Boolean(f.incompleteRead)} onChange={(on) => set({ incompleteRead: on || undefined })} testId="filter-incomplete" />
+        <Flag label={t('includeArchived')} checked={Boolean(f.includeArchived)} onChange={(on) => set({ includeArchived: on || undefined })} testId="filter-archived" />
+      </RailBody>
     </RailSection>
   )
 }
@@ -127,6 +147,8 @@ export function SearchFilterForm({ state, onChange, currentUserId, defaultOpen =
 function CommitText(props: {
   label: string
   hint?: string
+  placeholder?: string
+  title?: string
   value: string
   onCommit: (value: string) => void
   clearOnCommit?: boolean
@@ -138,6 +160,8 @@ function CommitText(props: {
 function CommitTextField({
   label,
   hint,
+  placeholder,
+  title,
   value,
   onCommit,
   clearOnCommit = false,
@@ -145,6 +169,8 @@ function CommitTextField({
 }: {
   label: string
   hint?: string
+  placeholder?: string
+  title?: string
   value: string
   onCommit: (value: string) => void
   clearOnCommit?: boolean
@@ -167,7 +193,16 @@ function CommitTextField({
   return (
     <Field>
       <FieldLabel htmlFor={id}>{label}</FieldLabel>
-      <Input id={id} value={draft} onChange={(event) => setDraft(event.target.value)} onBlur={commit} onKeyDown={onKeyDown} data-testid={testId} />
+      <Input
+        id={id}
+        value={draft}
+        placeholder={placeholder}
+        title={title}
+        onChange={(event) => setDraft(event.target.value)}
+        onBlur={commit}
+        onKeyDown={onKeyDown}
+        data-testid={testId}
+      />
       {hint ? <FieldDescription>{hint}</FieldDescription> : null}
     </Field>
   )
@@ -185,7 +220,9 @@ function DateRange({
   testId?: string
 }): JSX.Element {
   const t = useTranslations('search.filters')
+  const { locale } = useLocale()
   const id = useId()
+  const tokens = { day: t('dateTokens.day'), month: t('dateTokens.month'), year: t('dateTokens.year') }
   const change = (patch: { from?: string; to?: string }): void => {
     const next = { ...value, ...patch }
     const from = next.from || undefined
@@ -195,10 +232,29 @@ function DateRange({
   return (
     <Field>
       <FieldLabel htmlFor={`${id}-from`}>{label}</FieldLabel>
-      <FieldPair>
-        <Input id={`${id}-from`} type="date" aria-label={`${label} ${t('from')}`} value={value?.from ?? ''} max={value?.to} onChange={(event) => change({ from: event.target.value })} data-testid={testId ? `${testId}-from` : undefined} />
-        <Input type="date" aria-label={`${label} ${t('to')}`} value={value?.to ?? ''} min={value?.from} onChange={(event) => change({ to: event.target.value })} data-testid={testId ? `${testId}-to` : undefined} />
-      </FieldPair>
+      <FieldStack>
+        <DateInput
+          id={`${id}-from`}
+          locale={locale}
+          tokens={tokens}
+          placeholderPrefix={t('from')}
+          aria-label={`${label} ${t('from')}`}
+          value={value?.from ?? ''}
+          max={value?.to}
+          onChange={(from) => change({ from })}
+          data-testid={testId ? `${testId}-from` : undefined}
+        />
+        <DateInput
+          locale={locale}
+          tokens={tokens}
+          placeholderPrefix={t('to')}
+          aria-label={`${label} ${t('to')}`}
+          value={value?.to ?? ''}
+          min={value?.from}
+          onChange={(to) => change({ to })}
+          data-testid={testId ? `${testId}-to` : undefined}
+        />
+      </FieldStack>
     </Field>
   )
 }
@@ -251,54 +307,26 @@ function Flag({ label, checked, onChange, testId }: { label: string; checked: bo
   )
 }
 
-function PartyAdder({ onAdd }: { onAdd: (party: { role?: DossierPartyRole; name?: string }) => void }): JSX.Element {
+/**
+ * A party by name, inside the Beteiligte group: the roles are counted there,
+ * a name is typed. Enter adds it as a chip and empties the field for the next.
+ */
+export function PartyNameFilter({ state, onChange }: Pick<SearchFilterFormProps, 'state' | 'onChange'>): JSX.Element {
   const t = useTranslations('search.filters')
-  const labels = useSearchLabels()
-  const id = useId()
-  const [role, setRole] = useState<string>(ANY_ROLE)
-  const [name, setName] = useState('')
-  const chosenRole = (DOSSIER_PARTY_ROLES as readonly string[]).includes(role) ? (role as DossierPartyRole) : undefined
-  const trimmed = name.trim()
-  const add = (): void => {
-    if (!chosenRole && !trimmed) return
-    onAdd({ ...(chosenRole ? { role: chosenRole } : {}), ...(trimmed ? { name: trimmed.slice(0, 120) } : {}) })
-    setRole(ANY_ROLE)
-    setName('')
-  }
+  const f = state.filters
   return (
-    <Field>
-      <FieldLabel htmlFor={`${id}-name`}>{t('parties')}</FieldLabel>
-      <FieldPair>
-        <Select value={role} onValueChange={setRole}>
-          <SelectTrigger aria-label={t('partyRole')} data-testid="filter-party-role">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value={ANY_ROLE}>{t('partyAnyRole')}</SelectItem>
-            {DOSSIER_PARTY_ROLES.map((value) => (
-              <SelectItem key={value} value={value}>
-                {labels.partyRole(value)}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Input
-          id={`${id}-name`}
-          placeholder={t('partyName')}
-          value={name}
-          onChange={(event) => setName(event.target.value)}
-          onKeyDown={(event) => {
-            if (event.key === 'Enter') add()
-          }}
-          data-testid="filter-party-name"
-        />
-      </FieldPair>
-      <RailAction>
-        <Button type="button" variant="outline" size="sm" onClick={add} disabled={!chosenRole && !trimmed} data-testid="filter-party-add">
-          {t('add')}
-        </Button>
-      </RailAction>
-    </Field>
+    <RailBody>
+      <CommitText
+        label={t('partyNameLabel')}
+        placeholder={t('partyNamePlaceholder')}
+        value=""
+        clearOnCommit
+        onCommit={(value) => {
+          if (value) onChange({ ...state, filters: compactFilters({ ...f, parties: [...(f.parties ?? []), { name: value.slice(0, 120) }] }) })
+        }}
+        testId="filter-party-name"
+      />
+    </RailBody>
   )
 }
 
@@ -315,8 +343,15 @@ function FactAdder({ onAdd }: { onAdd: (fact: { key: DossierFactKey; equals?: st
   const upper = numberOrUndefined(max)
   const inverted = lower !== undefined && upper !== undefined && lower > upper
   const ready = numeric ? !inverted && (lower !== undefined || upper !== undefined) : equals.trim() !== ''
+  // Never greyed out (a disabled button cannot say why): a press with nothing to add says so under the fields.
+  const [tried, setTried] = useState(false)
+  const missing = tried && !ready && !inverted
   const add = (): void => {
-    if (!ready) return
+    if (!ready) {
+      setTried(true)
+      return
+    }
+    setTried(false)
     const value = equals.trim()
     onAdd(numeric ? { key, ...(lower !== undefined ? { min: lower } : {}), ...(upper !== undefined ? { max: upper } : {}) } : { key, equals: value.slice(0, 120) })
     setEquals('')
@@ -350,11 +385,10 @@ function FactAdder({ onAdd }: { onAdd: (fact: { key: DossierFactKey; equals?: st
         <Input placeholder={t('factValue')} aria-label={t('factValue')} value={equals} onChange={(event) => setEquals(event.target.value)} onKeyDown={onKeyDown} data-testid="filter-fact-value" />
       )}
       {inverted ? <FieldError>{t('rangeInvalid')}</FieldError> : null}
-      <RailAction>
-        <Button type="button" variant="outline" size="sm" onClick={add} disabled={!ready} data-testid="filter-fact-add">
-          {t('add')}
-        </Button>
-      </RailAction>
+      {missing ? <FieldError>{numeric ? t('factBoundMissing') : t('factValueMissing')}</FieldError> : null}
+      <Button type="button" variant="secondary" size="sm" className="self-start" onClick={add} data-testid="filter-fact-add">
+        {t('add')}
+      </Button>
     </Field>
   )
 }

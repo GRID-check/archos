@@ -508,7 +508,8 @@ where it is shown (ADR-0128). The canvas and the chat are mirrors: what a
 person or Piloti does on the review canvas, a reader of the chat sees done, and
 the other way round. [`parity.config.ts`](../../frontends/ui/src/lib/surface-parity/parity.config.ts)
 has one entry per capability (look, point, highlight, mark, update, delete,
-reply, compare Fassungen, ask about a box, open at a place) with its `canvas`
+reply, compare Fassungen, ask about a box, open at a place, reference a
+document with `#` in the composer) with its `canvas`
 and its `chat` form. A form is a rendering (a component, a card type, a step
 kind), an `exempt` line (the surface has no meaning for it), or a `gap` that
 names the slice closing it; the spec fails a gap whose card now exists, so a

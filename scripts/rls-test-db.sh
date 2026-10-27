@@ -2017,8 +2017,9 @@ echo "==> 0184 product feedback reply notice and down migration verified"
 # ---------------------------------------------------------------------------
 # Migration 0185: the search projection (ADR-0136). The full-text vector is
 # generated with German stemming, so a plural finds the singular; the shelf key
-# names its project or the office shelf and nothing else; a row goes with its
-# document; the down drops both tables and 0185 applies again after it.
+# names its project or the office shelf and nothing else; what a Fassung changed
+# keeps its keys and its entries to one length; a row goes with its document; the
+# down drops both tables and 0185 applies again after it.
 # ---------------------------------------------------------------------------
 echo "==> verifying the 0185 search projection and its down migration on grid_documentsearch"
 migrate_until grid_documentsearch 0185_document_search
@@ -2036,6 +2037,13 @@ SQL
 check_in grid_documentsearch "SELECT count(*) FROM document_search_facets WHERE search_vector @@ websearch_to_tsquery('german', 'Brandschutzkonzepte Fluchtweg')" "1" "0185: the German vector finds a plural and a singular"
 check_in grid_documentsearch "SELECT count(*) FROM document_search_facets WHERE reference_tokens @> ARRAY['norm:önorm b 1600'] AND (fact_numbers->>'building_class')::numeric BETWEEN 3 AND 4" "1" "0185: a reference token and a numeric fact range"
 refused_in grid_documentsearch "INSERT INTO document_search_facets (document_id, organization_id, fingerprint) VALUES ('d1d1d1d1-0000-4000-8000-000000000185', 'org_other', 'f2') ON CONFLICT (document_id) DO UPDATE SET organization_id = excluded.organization_id" "document_search_facets_document_tenant_fkey" "0185: a search row cannot move to another organization than its document's"
+sql_in grid_documentsearch <<'SQL'
+UPDATE document_search_facets SET changed_facts = '[{"key": "building_class", "before": "3", "after": "4", "page": 2}]', changed_fact_keys = '{building_class}'
+  WHERE document_id = 'd1d1d1d1-0000-4000-8000-000000000185';
+SQL
+check_in grid_documentsearch "SELECT count(*) FROM document_search_facets WHERE changed_fact_keys && ARRAY['building_class', 'units'] AND cardinality(changed_fact_keys) > 0" "1" "0185: a changed fact is found by its key"
+refused_in grid_documentsearch "UPDATE document_search_facets SET changed_fact_keys = '{}' WHERE document_id = 'd1d1d1d1-0000-4000-8000-000000000185'" "document_search_facets_changes_keyed" "0185: a change cannot lose its key, nor a key its change"
+refused_in grid_documentsearch "UPDATE document_search_facets SET changed_facts = '{}', changed_fact_keys = '{}' WHERE document_id = 'd1d1d1d1-0000-4000-8000-000000000185'" "document_search_facets_changes_array" "0185: changed_facts is a list"
 refused_in grid_documentsearch "INSERT INTO document_search_shelves (organization_id, shelf_key, project_id) VALUES ('org_0185', 'project:other', 'aaaaaaaa-0000-4000-8000-000000000185')" "document_search_shelves_key_shape" "0185: a shelf key names its own project"
 sql_in grid_documentsearch <<'SQL'
 DELETE FROM documents WHERE id = 'd1d1d1d1-0000-4000-8000-000000000185';

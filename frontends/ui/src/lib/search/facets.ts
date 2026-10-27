@@ -12,7 +12,7 @@
  */
 
 import { createHash } from 'node:crypto'
-import type { NewDocumentSearchFacetsRow, SearchFacetFact, SearchFacetParty } from '@/lib/db/schema'
+import type { NewDocumentSearchFacetsRow, SearchFacetChange, SearchFacetFact, SearchFacetParty } from '@/lib/db/schema'
 import type { DocumentMetadata } from '@/lib/documents/reconcile-status'
 import { squashDrawingNumber } from '@/lib/documents/findings'
 
@@ -151,6 +151,12 @@ export function toSearchFacets(
     const token = referenceToken(reference.kind, reference.key)
     if (!(token in referenceLabels)) referenceLabels[token] = reference.label
   }
+  const changedFacts: SearchFacetChange[] = (dossier?.changes ?? []).map((change) => ({
+    key: change.key,
+    before: change.before,
+    after: change.after,
+    page: change.page,
+  }))
   const capture = metadata.capture ?? null
   const base = {
     documentId: subject.documentId,
@@ -181,6 +187,8 @@ export function toSearchFacets(
     pageCount: metadata.pageCount ?? metadata.coverage?.pages ?? null,
     pagesNotRead: metadata.coverage ? metadata.coverage.notRead : null,
     superseded: subject.superseded,
+    changedFacts,
+    changedFactKeys: changedFacts.map((change) => change.key),
   } satisfies Omit<NewDocumentSearchFacetsRow, 'searchText' | 'fingerprint'>
   const withText = { ...base, searchText: searchTextOf(base, revision?.title) }
   return { ...withText, fingerprint: fingerprintOf(withText) }

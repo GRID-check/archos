@@ -3,9 +3,12 @@
 import { useCallback, useEffect, useState } from 'react'
 
 import { listSavedSearches, type SavedSearchView } from '@/lib/search/saved-search-client'
-import type { SearchResponse, SearchScopeQuery } from '@/lib/search/search-wire'
+import type { SearchBody, SearchKind, SearchResponse, SearchScopeQuery } from '@/lib/search/search-wire'
 import { readRecentSearches, rememberSearch } from '../lib/recent-searches'
 import { postSearch } from '../lib/search-client'
+import { hitHref } from '../lib/search-hrefs'
+import { findHitByHref, parseServerTiming } from '../lib/search-telemetry'
+import { useSearchTracker } from './use-search-tracker'
 
 /** How long the palette waits after the last key before it asks: about one keystroke's gap. */
 export const PALETTE_SEARCH_DEBOUNCE_MS = 150
@@ -20,6 +23,11 @@ export interface PaletteSearch {
   failed: boolean
 }
 
+export interface PaletteSearchHandle extends PaletteSearch {
+  /** The reader is about to go to `href`: when it is one of the answer's hits, `search_result_opened` says which. */
+  opening: (href: string) => void
+}
+
 const IDLE: PaletteSearch = { answered: '', response: null, loading: false, failed: false }
 
 /**
@@ -28,10 +36,23 @@ const IDLE: PaletteSearch = { answered: '', response: null, loading: false, fail
  * counts. A newer question cancels the one in flight, and the last answer stays
  * up (marked stale) until the next arrives, so the list does not blink per key.
  */
-export function usePaletteSearch(text: string, scope: SearchScopeQuery, enabled: boolean): PaletteSearch {
+export function usePaletteSearch(
+  text: string,
+  scope: SearchScopeQuery,
+  enabled: boolean,
+  /** The composer's `#` asks for documents alone, more of them. */
+  options: { kinds?: readonly SearchKind[]; limit?: number } = {}
+): PaletteSearchHandle {
   const [state, setState] = useState<PaletteSearch>(IDLE)
   const words = text.trim()
   const scopeKey = JSON.stringify(scope)
+  const kindsKey = options.kinds ? options.kinds.join(',') : ''
+  const limit = options.limit ?? PALETTE_HITS_PER_KIND
+  const tracker = useSearchTracker('palette')
+
+  useEffect(() => {
+    if (!enabled) tracker.flush()
+  }, [enabled, tracker])
 
   useEffect(() => {
     if (!enabled || words === '') {
@@ -41,8 +62,25 @@ export function usePaletteSearch(text: string, scope: SearchScopeQuery, enabled:
     setState((current) => ({ ...current, loading: true, failed: false }))
     const controller = new AbortController()
     const timer = window.setTimeout(() => {
-      postSearch(JSON.parse(scopeKey) as SearchScopeQuery, { text: words, limit: PALETTE_HITS_PER_KIND, facets: false }, controller.signal)
-        .then((response) => setState({ answered: words, response, loading: false, failed: false }))
+      const asked = JSON.parse(scopeKey) as SearchScopeQuery
+      const kinds = kindsKey ? (kindsKey.split(',') as SearchKind[]) : undefined
+      const body: SearchBody = { text: words, limit, facets: false, ...(kinds ? { kinds } : {}) }
+      const started = performance.now()
+      let serverTiming: string | null = null
+      postSearch(asked, body, controller.signal, (header) => {
+        serverTiming = header
+      })
+        .then((response) => {
+          tracker.answered({
+            scope: asked,
+            body,
+            response,
+            durationMs: performance.now() - started,
+            serverTiming: parseServerTiming(serverTiming),
+            view: 'list',
+          })
+          setState({ answered: words, response, loading: false, failed: false })
+        })
         .catch(() => {
           if (controller.signal.aborted) return
           setState((current) => ({ ...current, loading: false, failed: true }))
@@ -52,9 +90,18 @@ export function usePaletteSearch(text: string, scope: SearchScopeQuery, enabled:
       window.clearTimeout(timer)
       controller.abort()
     }
-  }, [words, scopeKey, enabled])
+  }, [words, scopeKey, enabled, tracker, kindsKey, limit])
 
-  return state
+  const { response } = state
+  const opening = useCallback(
+    (href: string) => {
+      const found = response ? findHitByHref(response.sections, href, hitHref) : null
+      if (found) tracker.opened(found.hit, found.rank)
+      else tracker.flush()
+    },
+    [response, tracker]
+  )
+  return { ...state, opening }
 }
 
 export interface PaletteShortcuts {

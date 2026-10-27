@@ -35,7 +35,7 @@ const Command = React.forwardRef<
 ))
 Command.displayName = CommandPrimitive.displayName
 
-interface CommandHintLabels {
+export interface CommandHintLabels {
   move: string
   open: string
   close: string
@@ -65,11 +65,16 @@ interface CommandDialogProps extends React.ComponentPropsWithoutRef<typeof Dialo
   commandProps?: Pick<React.ComponentPropsWithoutRef<typeof CommandPrimitive>, 'filter' | 'value' | 'onValueChange' | 'loop'>
 }
 
-function CommandHints({ labels }: { labels?: CommandHintLabels }) {
+/**
+ * The keys of a list you walk with the keyboard, each with its word: the
+ * palette's footer, and the footer of every picker that walks the same way
+ * (the composer's `#`), so one key never has two descriptions.
+ */
+function CommandHints({ labels, className }: { labels?: CommandHintLabels; className?: string }) {
   return (
     <div
       data-slot="command-hints"
-      className="text-muted-foreground flex shrink-0 items-center gap-3 border-t bg-muted/40 px-3 py-2 text-xs"
+      className={cn('text-muted-foreground flex shrink-0 items-center gap-3 border-t bg-muted/40 px-3 py-2 text-xs', className)}
     >
       <span className="inline-flex items-center gap-1.5">
         <KbdGroup>
@@ -231,6 +236,7 @@ export {
   CommandDialog,
   CommandEmpty,
   CommandGroup,
+  CommandHints,
   CommandInput,
   CommandItem,
   CommandList,

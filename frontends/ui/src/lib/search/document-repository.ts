@@ -13,7 +13,7 @@ import 'server-only'
 import { and, asc, desc, eq, gte, inArray, isNull, lte, ne, notInArray, or, sql, type SQL } from 'drizzle-orm'
 import { getDb } from '@/lib/db'
 import { executeRows } from '@/lib/db/execute-rows'
-import { documents, documentSearchFacets, projectFolders, projects } from '@/lib/db/schema'
+import { documents, documentSearchFacets, projectFolders, projects, type SearchFacetChange } from '@/lib/db/schema'
 import { withTenant } from '@/lib/db/tenant-context'
 import { squashDrawingNumber } from '@/lib/documents/findings'
 import { nameContains, readFamilyWhere } from '@/lib/documents/repository'
@@ -162,6 +162,9 @@ export function filtersWhere(filters: DocumentFilters): SQL[] {
   const family = readFamilyWhere(filters.states)
   if (family) where.push(family)
   if (filters.incompleteRead) where.push(sql`${f.pagesNotRead} > 0`)
+  // Array operators, not an index: under RLS no index serves them (0185's header), and these run over the reach's rows.
+  if (filters.factsChanged) where.push(sql`cardinality(${f.changedFactKeys}) > 0`)
+  if (filters.changedFacts?.length) where.push(sql`${f.changedFactKeys} && ${pgTextArray(filters.changedFacts)}`)
   anyOf((filters.fileTypes ?? []).map((extension) => sql`lower(${documents.filename}) LIKE ${`%.${extension}`}`))
   if (filters.pages?.min !== undefined) where.push(gte(f.pageCount, filters.pages.min))
   if (filters.pages?.max !== undefined) where.push(lte(f.pageCount, filters.pages.max))
@@ -266,6 +269,8 @@ export interface DocumentSearchRow {
   projectName: string | null
   folderId: string | null
   folderName: string | null
+  /** `project_folders.path`, the stored path from the shelf root; '' at the root. */
+  folderPath: string
   collectionName: string
   status: string
   contentType: string | null
@@ -283,6 +288,7 @@ export interface DocumentSearchRow {
   pageCount: number | null
   pagesNotRead: number | null
   superseded: boolean
+  changedFacts: SearchFacetChange[]
   municipality: string | null
   /** The Verfasser: the first party the reading names as architect, else as author. */
   author: string | null
@@ -310,6 +316,8 @@ export async function searchDocumentPage(
         projectName: projects.name,
         folderId: documents.folderId,
         folderName: projectFolders.name,
+        // The path is stored and rewritten with every rename and move (`documents/shelf-folders.ts`), so the page reads it off the join it already has.
+        folderPath: sql<string>`coalesce(${projectFolders.path}, '')`,
         collectionName: documents.collectionName,
         status: documents.status,
         contentType: documents.contentType,
@@ -326,6 +334,7 @@ export async function searchDocumentPage(
         pageCount: f.pageCount,
         pagesNotRead: f.pagesNotRead,
         superseded: sql<boolean>`coalesce(${f.superseded}, false)`,
+        changedFacts: f.changedFacts,
         municipality: f.municipality,
         author: sql<string | null>`coalesce(
           (SELECT party->>'name' FROM jsonb_array_elements(${f.parties}) AS party WHERE party->>'role' = 'architect' LIMIT 1),
@@ -359,6 +368,7 @@ export async function searchDocumentPage(
       planDate: row.planDate === null ? null : String(row.planDate),
       documentDate: row.documentDate === null ? null : String(row.documentDate),
       superseded: Boolean(row.superseded),
+      changedFacts: Array.isArray(row.changedFacts) ? row.changedFacts : [],
       matchedName: Boolean(row.matchedName),
       matchedReading: Boolean(row.matchedReading),
     })) as DocumentSearchRow[],
@@ -383,6 +393,7 @@ const FACET_VALUE: Record<string, SQL> = {
   // whose capture group sends Postgres down its slow regex path (measured: 120 ms against 45 ms over
   // 60,000 names), and this facet runs over every matched row (`search-latency.integration.spec.ts`).
   fileType: sql`CASE WHEN ${documents.filename} ~ '\\.[A-Za-z0-9]{1,8}$' THEN lower(split_part(${documents.filename}, '.', -1)) END`,
+  changedFact: sql`unnest(${f.changedFactKeys})`,
 }
 export type FacetKey = keyof typeof FACET_VALUE
 
@@ -401,6 +412,7 @@ const FACET_ON_MATCHED: Record<FacetKey, SQL> = {
   status: sql.raw('lower(matched.status)'),
   uploader: sql.raw('matched.created_by'),
   fileType: sql.raw("CASE WHEN matched.filename ~ '\\.[A-Za-z0-9]{1,8}$' THEN lower(split_part(matched.filename, '.', -1)) END"),
+  changedFact: sql.raw('unnest(matched.changed_fact_keys)'),
 }
 
 type FacetRows = Record<string, Array<{ value: string; count: number }>>
@@ -466,7 +478,8 @@ export async function facetCountsOnce(reach: SearchReach, query: DocumentQuery, 
           SELECT ${documents.projectId} AS project_id, ${documents.status} AS status, ${documents.filename} AS filename,
             ${documents.createdBy} AS created_by,
             ${f.documentType} AS document_type, ${f.tags} AS tags, ${f.partyRoles} AS party_roles,
-            ${f.municipality} AS municipality, ${f.referenceTokens} AS reference_tokens
+            ${f.municipality} AS municipality, ${f.referenceTokens} AS reference_tokens,
+            ${f.changedFactKeys} AS changed_fact_keys
           FROM ${documents}
           LEFT JOIN ${f} ON ${f.documentId} = ${documents.id}
           LEFT JOIN ${projects} ON ${projects.id} = ${documents.projectId}
@@ -482,6 +495,23 @@ export async function facetCountsOnce(reach: SearchReach, query: DocumentQuery, 
   const out: FacetRows = Object.fromEntries(keys.map((key) => [key, []]))
   for (const row of rows) out[row.facet]?.push({ value: String(row.value), count: Number(row.count) })
   return out
+}
+
+/**
+ * How many documents in reach Piloti has not read yet: no projection row, so
+ * no facet counts them and no reading filter can find them. Over the reach,
+ * not the filters: a reading filter admits none of them by construction, so
+ * counting them under it would always say 0.
+ */
+export async function countUnreadDocuments(reach: SearchReach, includeArchived: boolean): Promise<number> {
+  const [row] = await withTenant({ organizationId: reach.organizationId }, () =>
+    getDb()
+      .select({ unread: sql<number>`count(*)` })
+      .from(documents)
+      .leftJoin(f, eq(f.documentId, documents.id))
+      .where(and(reachWhere(reach, includeArchived), ne(documents.scope, 'session'), isNull(f.documentId)))
+  )
+  return Number(row?.unread ?? 0)
 }
 
 /** What one document in reach says it is and points at, for a `citedBy` or `citing` filter; null when out of reach. */

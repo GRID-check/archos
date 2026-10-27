@@ -2556,6 +2556,10 @@
     "de": "Zitate aus einer Stelle, die Piloti direkt geöffnet hat, bleiben jetzt in der Antwort. Bisher hat eine Prüfung sie verworfen, sodass die Antwort ohne Beleg blieb."
   },
   {
+    "en": "Quotes, notes, callouts, messages and schedule entries no longer have a coloured bar down their left edge. Quoted words are set in italics, excerpts from a source sit on a quiet background, an unread message shows a dot, and a confirmation or warning says what it is with an icon and a word instead of a coloured stripe.",
+    "de": "Zitate, Notizen, Hinweise, Nachrichten und Termineinträge haben keine farbige Leiste mehr am linken Rand. Zitierte Wörter sind kursiv gesetzt, Auszüge aus einer Quelle heben sich durch einen dezenten Hintergrund ab, ungelesene Nachrichten sind mit einem Punkt gekennzeichnet, und Bestätigungen oder Warnungen werden mit einem Symbol und einer Bezeichnung statt mit einem farbigen Streifen kenntlich gemacht."
+  },
+  {
     "en": "Rating an answer as not helpful no longer pulls the layout beneath it out of shape. The question about what went wrong, its four reasons and the note field now open on their own line, aligned with the answer above them, while the copy and export buttons stay where they were.",
     "de": "Wenn Sie eine Antwort als nicht hilfreich bewerten, gerät der Bereich darunter nicht mehr aus der Form. Die Frage nach dem Fehler, die vier Gründe und das Notizfeld erscheinen auf einer eigenen Zeile, bündig mit der Antwort darüber, während die Schaltflächen zum Kopieren und Exportieren an ihrer Stelle bleiben."
   },
@@ -3604,6 +3608,10 @@
     "de": "Wenn Piloti alle Stellen in Ihren Dokumenten ermittelt, an denen ein Wort vorkommt, zählt jede Stelle jetzt nur einmal. Ein Wort in einer Kapitelüberschrift oder in einem Textabschnitt, der auf der nächsten Seite weitergeht, wurde bisher zwei- oder mehrmals gezählt und konnte auf Seiten aufgeführt werden, auf denen es nicht vorkommt."
   },
   {
+    "en": "When Piloti notes something about your project during an answer, you now see it right on the answer instead of inside Details, and one tap shows what was noted. When a note corrects an earlier one, the answer says Memory updated and shows the old note struck through.",
+    "de": "Wenn Piloti während einer Antwort etwas zu Ihrem Projekt festhält, sehen Sie es jetzt direkt bei der Antwort statt unter „Details“. Mit einem Tippen sehen Sie, was festgehalten wurde. Korrigiert eine Notiz eine frühere, steht in der Antwort „Memory aktualisiert“, und die alte Notiz wird durchgestrichen angezeigt."
+  },
+  {
     "en": "When Piloti proposes a research plan and you reply in your own words, it now revises the plan with your answer. A plain no still skips the plan and answers directly.",
     "de": "Schlägt Piloti einen Rechercheplan vor und Sie antworten in eigenen Worten, überarbeitet es den Plan jetzt mit Ihrer Antwort. Ein schlichtes Nein überspringt den Plan weiterhin und führt zur direkten Antwort."
   },
@@ -3618,6 +3626,10 @@
   {
     "en": "When Piloti researches a question in depth, it now shows as a task in the conversation, with phases, rounds, documents and running time; it can be cancelled and its report is filed.",
     "de": "Recherchiert Piloti eine Frage gründlich, erscheint das jetzt als Auftrag im Verlauf, mit Phasen, Runden, Dokumenten und Laufzeit; er lässt sich abbrechen, und der Bericht wird abgelegt."
+  },
+  {
+    "en": "When Piloti runs a deep research inside the chat, the Herleitung now shows who did the work: the planning, each research question and the report, nested under the deep research, each with whether it is still working, finished or failed. A research question that failed says so, and the answer goes on without it.",
+    "de": "Wenn Piloti im Chat eine Deep Research durchführt, zeigt die Herleitung jetzt die einzelnen Arbeitsschritte: die Planung, jede Recherchefrage und den Bericht, verschachtelt unter der Deep Research und jeweils mit dem Status „in Bearbeitung“, „abgeschlossen“ oder „fehlgeschlagen“. Eine fehlgeschlagene Recherchefrage wird entsprechend gekennzeichnet, und die Antwort wird ohne sie fortgesetzt."
   },
   {
     "en": "When Piloti searches more than once, the Herleitung now shows the conclusion behind each new search: what it already knew and what it still needed, instead of repeating the search query.",
@@ -4148,7 +4160,23 @@
     "de": "„Offen“ wird jetzt überall gleich gezählt: Vorschläge von Piloti, die niemand übernommen hat, werden in Dateien, in der Prüfansicht oder vor einer Freigabe nicht mehr als offen gezählt. Sie werden separat ausgewiesen: „2 offen · 12 Vorschläge“, damit die Zahl mit „Offene Punkte“ und dem Protokoll übereinstimmt."
   },
   {
-    "en": "Search finds anything the office holds, from anywhere with Ctrl+K: documents with the passage and page, annotations, folders, projects and chats, filtered by document type, parties, place, facts or cited norms. Its register shows one row per document, sortable by any column and exportable as a CSV or Excel drawing list.",
-    "de": "Die Suche findet alles, was das Büro hat, von überall mit Strg+K: Dokumente mit der Fundstelle und Seite, Anmerkungen, Ordner, Projekte und Chats, gefiltert nach Dokumentart, Beteiligten, Ort, Angaben oder zitierten Normen. Ihre Planliste zeigt eine Zeile je Dokument, nach jeder Spalte sortierbar und als CSV oder Excel exportierbar."
+    "en": "Search finds anything the office holds, from anywhere with Ctrl+K: documents by their name, by what they are and by what they say, with the matching passage and page, plus annotations, folders, projects and conversations. It searches every project and the office shelf at once, or inside one project or folder.",
+    "de": "Die Suche findet alles, was das Büro hat, von überall mit Strg+K: Dokumente nach ihrem Namen, nach ihrer Art und nach ihrem Inhalt, mit der passenden Fundstelle und Seite, dazu Anmerkungen, Ordner, Projekte und Unterhaltungen. Sie durchsucht alle Projekte und die Büroablage auf einmal oder nur ein Projekt oder einen Ordner."
+  },
+  {
+    "en": "Filter documents by type, drawing number, revision, scale, parties, place, stated facts such as building class, cited norms, dates and status, and sort them like a drawing register with one row per document. Save the search, or export the result as a CSV or Excel drawing list that names each document's folder path.",
+    "de": "Filtern Sie Dokumente nach Dokumentart, Plannummer, Index, Maßstab, Beteiligten, Ort, Angaben wie der Gebäudeklasse, zitierten Normen, Daten und Status, und sortieren Sie sie wie eine Planliste mit einer Zeile je Dokument. Speichern Sie die Suche oder exportieren Sie das Ergebnis als CSV- oder Excel-Planliste mit dem Ordnerpfad jedes Dokuments."
+  },
+  {
+    "en": "Closing a document or annotation opened from the search returns to the search as you left it, with its words, filters, view and sort.",
+    "de": "Wer ein Dokument oder eine Anmerkung aus der Suche öffnet und wieder schließt, kehrt zur Suche zurück, wie sie war: mit Suchbegriff, Filtern, Ansicht und Sortierung."
+  },
+  {
+    "en": "See what a new version of a document changed: filter for documents whose stated facts differ from the version they replaced, such as a new building class or one more storey, and each result names the change, before and after. The filter panel also says how many documents Piloti has not read yet, so a count never suggests they lack a value.",
+    "de": "Sehen Sie, was eine neue Fassung geändert hat: Filtern Sie nach Dokumenten, deren Angaben von der ersetzten Fassung abweichen, etwa eine neue Gebäudeklasse oder ein Geschoss mehr, und jeder Treffer nennt die Änderung mit altem und neuem Wert. Die Filterleiste sagt außerdem, wie viele Dokumente Piloti noch nicht gelesen hat, damit eine Zahl nie den Eindruck erweckt, ihnen fehle ein Wert."
+  },
+  {
+    "en": "A document found by the search opens a menu with Ask Piloti, Open current version and Open points, also with Shift+F10 on the chosen result. In the chat, type # and a word to pick a document from the workspace and ask about it.",
+    "de": "Ein gefundenes Dokument hat ein Menü mit „Piloti fragen“, „Aktuelle Fassung öffnen“ und „Offene Punkte“, auch mit Umschalt+F10 auf dem gewählten Treffer. Im Chat holen # und ein Wort ein Dokument aus der Arbeitsfläche in die Frage."
   }
 ]

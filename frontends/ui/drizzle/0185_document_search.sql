@@ -20,7 +20,12 @@
 -- Tokens are lower case: `reference_tokens` are `kind:key` (the Qdrant
 -- payload's own `references` tokens), `fact_tokens` are `key=value`
 -- (`normalizeFactValue`). `fact_numbers` holds the facts that parse as numbers,
--- for ranges. `search_vector` is generated from `search_text` (title, summary,
+-- for ranges. `changed_facts` is what a new Fassung's dossier says changed
+-- against the Fassung it replaced (`{key, before, after, page}`, the dossier's
+-- `changes`), and `changed_fact_keys` its keys, which the "what changed"
+-- filter and facet read; a CHECK holds the two to one length. Empty says
+-- nothing changed OR nothing was compared: only documents ingested since the
+-- comparison existed carry one, and nothing backfills the older. `search_vector` is generated from `search_text` (title, summary,
 -- parties, place, plan number, reference labels, topics), German stemming.
 --
 -- ## Indexes
@@ -82,6 +87,8 @@ CREATE TABLE IF NOT EXISTS "document_search_facets" (
   "page_count" integer,
   "pages_not_read" integer,
   "superseded" boolean DEFAULT false NOT NULL,
+  "changed_facts" jsonb DEFAULT '[]'::jsonb NOT NULL,
+  "changed_fact_keys" text[] DEFAULT '{}' NOT NULL,
   "search_text" text DEFAULT '' NOT NULL,
   "search_vector" tsvector GENERATED ALWAYS AS (to_tsvector('german'::regconfig, "search_text")) STORED,
   "fingerprint" text NOT NULL,
@@ -90,6 +97,10 @@ CREATE TABLE IF NOT EXISTS "document_search_facets" (
   CONSTRAINT document_search_facets_facts_array CHECK (jsonb_typeof("facts") = 'array'),
   CONSTRAINT document_search_facets_numbers_object CHECK (jsonb_typeof("fact_numbers") = 'object'),
   CONSTRAINT document_search_facets_labels_object CHECK (jsonb_typeof("reference_labels") = 'object'),
+  CONSTRAINT document_search_facets_changes_array CHECK (jsonb_typeof("changed_facts") = 'array'),
+  CONSTRAINT document_search_facets_changes_keyed CHECK (
+    jsonb_typeof("changed_facts") <> 'array' OR cardinality("changed_fact_keys") = jsonb_array_length("changed_facts")
+  ),
   CONSTRAINT document_search_facets_text_bounded CHECK (char_length("search_text") <= 20000),
   CONSTRAINT document_search_facets_pages CHECK ("page_count" IS NULL OR "page_count" >= 0),
   CONSTRAINT document_search_facets_unread CHECK ("pages_not_read" IS NULL OR "pages_not_read" >= 0),

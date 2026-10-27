@@ -7,9 +7,12 @@ import { ActionMenu } from '@/components/ui/action-menu'
 import { Button } from '@/components/ui/button'
 import { useTranslations } from '@/i18n'
 import type { SearchExportFormat } from '../lib/search-client'
-import { ToolbarLabel } from './search-atoms'
 
-/** The Planliste of the current result, as CSV or XLSX, with every column of the register. */
+/**
+ * The Planliste of the current result, as CSV or XLSX, with every column of
+ * the register. Offered in the register view only, where the Planliste is on
+ * screen: an icon in the toolbar, as Dateien sets its secondary actions.
+ */
 export function SearchExportMenu({
   onExport,
   busy,
@@ -30,9 +33,8 @@ export function SearchExportMenu({
         { type: 'label', label: t('allColumns') },
       ]}
       trigger={
-        <Button type="button" variant="outline" size="sm" aria-label={t('label')} aria-busy={busy || undefined} disabled={busy} data-testid="search-export">
+        <Button type="button" variant="ghost" size="icon" aria-label={t('label')} title={t('label')} aria-busy={busy || undefined} disabled={busy} data-testid="search-export">
           <Download aria-hidden />
-          <ToolbarLabel>{t('label')}</ToolbarLabel>
         </Button>
       }
     />

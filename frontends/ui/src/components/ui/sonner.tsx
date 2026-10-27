@@ -52,18 +52,17 @@ function Toaster({ ...props }: ToasterProps) {
           // Every non-error tone stays monochrome (`bg-popover`); error alone
           // gains the danger-subtle body. Icons are untouched throughout, so
           // error stays distinguishable without color alone.
-          // The left edge is uniformly 2px on every toast so the per-tone
-          // accent below never changes geometry — only its color. Tones use
-          // the signal families (theme colors, so the side-specific utility
-          // wins the cascade over `border-border` exactly like a framework
-          // `border-l-*` would).
-          toast: 'text-popover-foreground border-border rounded-xl border-l-2 shadow-md',
+          // One full hairline on every toast, and no accent edge (side
+          // stripes are discouraged, grid-design-language.md "Emphasis
+          // without a stripe"): the tone is the icon, in its signal ink, and
+          // the toast's own words.
+          toast: 'text-popover-foreground border-border rounded-xl border shadow-md',
           default: 'bg-popover',
           loading: 'bg-popover',
-          success: 'border-l-status-active bg-popover',
-          error: 'border-l-signal-error bg-danger-subtle',
-          warning: 'border-l-source-office bg-popover',
-          info: 'border-l-source-law bg-popover',
+          success: 'bg-popover [&_[data-icon]]:text-success',
+          error: 'border-danger bg-danger-subtle [&_[data-icon]]:text-error',
+          warning: 'bg-popover [&_[data-icon]]:text-warning',
+          info: 'bg-popover [&_[data-icon]]:text-info',
         },
       }}
       {...props}

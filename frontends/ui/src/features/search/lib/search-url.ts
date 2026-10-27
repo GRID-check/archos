@@ -83,6 +83,8 @@ export const SEARCH_PARAMS = {
   uploader: 'uploader',
   state: 'state',
   incomplete: 'incomplete',
+  changed: 'changed',
+  changedFact: 'changedFact',
   fileType: 'ext',
   pagesMin: 'pagesMin',
   pagesMax: 'pagesMax',
@@ -249,6 +251,8 @@ export function parseSearchParams(params: URLSearchParams): SearchUrlState {
     uploadedBy: list(params, P.uploader, (value) => (value !== '' && value.length <= 100 ? value : null), 20),
     states: list(params, P.state, (value) => oneOf(SEARCH_READ_STATES, value), SEARCH_READ_STATES.length),
     incompleteRead: params.get(P.incomplete) === '1' ? true : undefined,
+    factsChanged: params.get(P.changed) === '1' ? true : undefined,
+    changedFacts: list(params, P.changedFact, (value) => oneOf(DOSSIER_FACT_KEYS, value), DOSSIER_FACT_KEYS.length),
     fileTypes: list(params, P.fileType, (value) => (EXTENSION.test(value.toLowerCase()) ? value.toLowerCase() : null), 12),
     pages:
       pagesMin !== undefined || pagesMax !== undefined
@@ -336,6 +340,8 @@ export function writeSearchParams(state: SearchUrlState, base: URLSearchParams =
   add(P.uploader, f.uploadedBy)
   add(P.state, f.states)
   if (f.incompleteRead) set(P.incomplete, 1)
+  if (f.factsChanged) set(P.changed, 1)
+  add(P.changedFact, f.changedFacts)
   add(P.fileType, f.fileTypes)
   set(P.pagesMin, f.pages?.min)
   set(P.pagesMax, f.pages?.max)
@@ -405,11 +411,52 @@ export function fromSearchBody(body: SearchBody, projectId: string | null = null
   }
 }
 
-/** How many filters are set, for the phone's „Filter (3)“. A list counts once per value. */
+/**
+ * How many filters are set, for the phone's „Filter (3)“. A list counts once
+ * per value. The Planliste's „Nur aktuelle Fassung“ is its own switch above
+ * the table, with no chip, so it is not counted there either: „Filter (2)“
+ * stood over a single chip.
+ */
 export function activeFilterCount(state: SearchUrlState): number {
   let total = state.projectId ? 1 : 0
-  for (const value of Object.values(compactFilters(state.filters))) {
+  for (const [key, value] of Object.entries(compactFilters(state.filters))) {
+    if (key === 'currentOnly' && state.view === 'register') continue
     total += Array.isArray(value) ? value.length : 1
   }
   return total
+}
+
+/**
+ * The filters answered from what Piloti read (`document_search_facets`), not
+ * from the filing: on a shelf still being read they can miss a document that
+ * matches. Name, folder, upload, status and file type are the filing's.
+ */
+const READ_FILTER_FIELDS: ReadonlyArray<keyof DocumentFilters> = [
+  'documentTypes',
+  'tags',
+  'planNumber',
+  'planIndex',
+  'planDate',
+  'scale',
+  'currentOnly',
+  'parties',
+  'place',
+  'municipalities',
+  'facts',
+  'cites',
+  'citedBy',
+  'citing',
+  'documentDate',
+]
+
+/** Whether the search narrows by something read from the documents, which a shelf still being read may not know yet. */
+export function filtersByReading(state: SearchUrlState): boolean {
+  const f = compactFilters(state.filters)
+  return READ_FILTER_FIELDS.some((field) => f[field] !== undefined)
+}
+
+/** The same question asked of the whole office: the office-wide page, every project. */
+export function officeSearchHref(state: SearchUrlState): string {
+  const query = writeSearchParams({ ...state, projectId: null }).toString()
+  return query ? `/app/search?${query}` : '/app/search'
 }

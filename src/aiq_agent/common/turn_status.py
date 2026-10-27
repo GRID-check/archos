@@ -93,11 +93,14 @@ from __future__ import annotations
 import json
 import logging
 import time
+from collections.abc import AsyncIterator
 from collections.abc import Iterator
 from collections.abc import Sequence
+from contextlib import asynccontextmanager
 from contextlib import contextmanager
 from contextvars import ContextVar
 from contextvars import Token
+from dataclasses import dataclass
 from typing import Any
 from typing import Literal
 from uuid import UUID
@@ -105,6 +108,7 @@ from uuid import uuid4
 
 from langchain_core.callbacks import AsyncCallbackHandler
 from langgraph.config import get_stream_writer
+from langgraph.errors import GraphBubbleUp
 
 from aiq_agent.common.source_kinds import canonical_shelf_value
 from aiq_agent.common.wire_v2 import ActionCounts
@@ -120,6 +124,9 @@ from aiq_agent.common.wire_v2 import StatusStep
 from aiq_agent.common.wire_v2 import Step
 from aiq_agent.common.wire_v2 import StepFinishedBody
 from aiq_agent.common.wire_v2 import StepStartedBody
+from aiq_agent.common.wire_v2 import SubagentErrorBody
+from aiq_agent.common.wire_v2 import SubagentFinishedBody
+from aiq_agent.common.wire_v2 import SubagentStartedBody
 from aiq_agent.common.wire_v2 import ToolStep
 from aiq_agent.common.workspace_records import is_workspace_call
 
@@ -152,12 +159,120 @@ def step_scope(scope: Scope) -> Iterator[None]:
         _step_scope.reset(token)
 
 
-def emit_step(step: Step, *, started: bool = False) -> None:
-    """Emit one Herleitung row: STEP_STARTED for a step with a duration, else STEP_FINISHED."""
+@dataclass
+class SubagentFrame:
+    """The subagent invocation the code running here belongs to (AG-UI 1.0 subagents)."""
+
+    run_id: str
+    parent_run_id: str | None
+    #: The tool call that spawned it, when the subagent is a tool (deepagents' ``task``).
+    tool_call_id: str | None = None
+    #: Its SUBAGENT_ERROR is sent: the invocation is closed, and no FINISHED follows.
+    failed: bool = False
+
+
+#: The innermost subagent invocation running in this context, or None for the
+#: turn's own agent. Bound by :func:`subagent_run` and inherited the way every
+#: ContextVar is: by the tasks LangGraph and ``asyncio.gather`` start inside it,
+#: so a subagent's nodes, tools and callbacks see it without being told.
+_subagent: ContextVar[SubagentFrame | None] = ContextVar("grid_subagent", default=None)
+
+#: What a person reads when a subagent fails. The exception stays in the logs
+#: and the trace: its text may carry a tool's output, which never rides the wire.
+SUBAGENT_FAILED_MESSAGE = "The subagent failed; the turn goes on without its result."
+
+
+def current_subagent() -> SubagentFrame | None:
+    """The subagent invocation running in this context, if any."""
+    return _subagent.get()
+
+
+def _clip(text: str | None, limit: int) -> str | None:
+    """``text`` on one line and at most ``limit`` characters, or None when empty."""
+    flat = " ".join((text or "").split())
+    if not flat:
+        return None
+    return flat if len(flat) <= limit else flat[: limit - 1].rstrip() + "…"
+
+
+@asynccontextmanager
+async def subagent_run(
+    name: str, *, description: str | None = None, parent_tool_call_id: str | None = None
+) -> AsyncIterator[SubagentFrame]:
+    """Run the block as one subagent invocation: SUBAGENT_STARTED, its steps attributed, then FINISHED or ERROR.
+
+    A nested block names the enclosing invocation as its parent. A failure is
+    reported and re-raised: whether the turn goes on is the caller's to decide,
+    as AG-UI leaves it to the parent agent. A cancellation reports nothing (the
+    turn's terminal closes every open group), and neither does LangGraph's
+    ``GraphBubbleUp``, which is a pause, not a failure: pausing a run is
+    ADR-0140's. Outside a graph run every emit is a no-op, so a deep-research
+    job worker pays nothing for it.
+    """
+    parent = _subagent.get()
+    frame = SubagentFrame(
+        run_id=f"sa_{uuid4().hex[:20]}",
+        parent_run_id=parent.run_id if parent else None,
+        tool_call_id=parent_tool_call_id[:128] if parent_tool_call_id else None,
+    )
+    emit(
+        SubagentStartedBody(
+            subagent_run_id=frame.run_id,
+            name=name[:64],
+            description=_clip(description, 160),
+            parent_subagent_run_id=frame.parent_run_id,
+            parent_tool_call_id=frame.tool_call_id,
+        )
+    )
+    token = _subagent.set(frame)
+    try:
+        yield frame
+    except GraphBubbleUp:
+        raise
+    except Exception as exc:
+        logger.info("Subagent %s (%s) failed: %s", name, frame.run_id, type(exc).__name__)
+        fail_subagent(frame, type(exc).__name__)
+        raise
+    else:
+        if not frame.failed:
+            emit(SubagentFinishedBody(subagent_run_id=frame.run_id))
+    finally:
+        _subagent.reset(token)
+
+
+def fail_subagent(frame: SubagentFrame, code: str) -> None:
+    """Report ``frame`` failed, once: also for a spawning tool that came back as an error result instead of raising.
+
+    An invocation ends exactly once, so the block it runs in sends no
+    SUBAGENT_FINISHED after this.
+    """
+    if frame.failed:
+        return
+    frame.failed = True
+    emit(SubagentErrorBody(subagent_run_id=frame.run_id, message=SUBAGENT_FAILED_MESSAGE, code=code[:64] or None))
+
+
+#: ``emit_step``'s default: attribute the row to the subagent running here.
+_INHERIT: Any = object()
+
+
+def emit_step(step: Step, *, started: bool = False, subagent_run_id: str | None = _INHERIT) -> None:
+    """Emit one Herleitung row: STEP_STARTED for a step with a duration, else STEP_FINISHED.
+
+    The row is attributed to the subagent running here, unless the caller
+    names the invocation itself (``None``: the turn's own agent).
+    """
     scope = _step_scope.get()
     if scope != step.scope:
         step = step.model_copy(update={"scope": scope})
-    emit(StepStartedBody(step=step) if started else StepFinishedBody(step=step))
+    if subagent_run_id is _INHERIT:
+        frame = _subagent.get()
+        subagent_run_id = frame.run_id if frame else None
+    emit(
+        StepStartedBody(step=step, subagent_run_id=subagent_run_id)
+        if started
+        else StepFinishedBody(step=step, subagent_run_id=subagent_run_id)
+    )
 
 
 #: Which retrieval round the agent is in RIGHT NOW — the slot ``emit_retrieval``
@@ -664,13 +779,14 @@ class ToolStepCallback(AsyncCallbackHandler):
     """
 
     def __init__(self) -> None:
-        self._running: dict[UUID, tuple[str, str | None]] = {}
+        self._running: dict[UUID, tuple[str, str | None, str | None]] = {}
 
     async def on_tool_start(self, serialized: dict[str, Any], input_str: str, *, run_id: UUID, **kwargs: Any) -> None:
         tool = tool_basename(str(serialized.get("name") or kwargs.get("name") or "")) or "tool"
         mount = _tool_mount(tool, kwargs.get("inputs"))
-        self._running[run_id] = (tool, mount)
-        emit_step(ToolStep(id=f"tool:{run_id}", tool=tool, mount=mount), started=True)
+        subagent = _tool_subagent(kwargs.get("tool_call_id"))
+        self._running[run_id] = (tool, mount, subagent)
+        emit_step(ToolStep(id=f"tool:{run_id}", tool=tool, mount=mount), started=True, subagent_run_id=subagent)
 
     async def on_tool_end(self, output: Any, *, run_id: UUID, **kwargs: Any) -> None:
         self._finish(run_id, "ok")
@@ -681,8 +797,22 @@ class ToolStepCallback(AsyncCallbackHandler):
     def _finish(self, run_id: UUID, status: Literal["ok", "error"]) -> None:
         running = self._running.pop(run_id, None)
         if running is not None:
-            tool, mount = running
-            emit_step(ToolStep(id=f"tool:{run_id}", tool=tool, status=status, mount=mount))
+            tool, mount, subagent = running
+            emit_step(ToolStep(id=f"tool:{run_id}", tool=tool, status=status, mount=mount), subagent_run_id=subagent)
+
+
+def _tool_subagent(tool_call_id: Any) -> str | None:
+    """Which invocation a tool call belongs to. The call that SPAWNED a subagent is its parent's.
+
+    A subagent is bound around the tool that spawns it (deepagents' ``task``),
+    so that tool's own callbacks already see it; they hand the row up a level.
+    """
+    frame = _subagent.get()
+    if frame is None:
+        return None
+    if frame.tool_call_id is not None and isinstance(tool_call_id, str) and tool_call_id[:128] == frame.tool_call_id:
+        return frame.parent_run_id
+    return frame.run_id
 
 
 def _tool_mount(tool: str, inputs: Any) -> str | None:
@@ -849,8 +979,8 @@ LOCATOR_TOOL_BASENAMES = frozenset({READ_PASSAGE_TOOL, READ_FILE_TOOL})
 #: reason: the line has one row.
 MAX_DOCUMENT_CHARS = 32
 
-#: Function-group separators used by NAT-qualified tool names (mirrors
-#: ``piloti.agent._TOOL_NAME_SEPARATORS``).
+#: Function-group separators used by NAT-qualified tool names: ``group__tool``
+#: for a function group or an MCP server, ``group.tool`` for a dotted one.
 _TOOL_NAME_SEPARATORS = ("__", ".")
 
 

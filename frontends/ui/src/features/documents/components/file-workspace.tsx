@@ -130,8 +130,13 @@ export interface FileWorkspaceProps {
    * (a project's Outlook import) and cannot afford a button for on 393px.
    */
   moreEntries?: readonly ActionMenuEntry[]
-  /** A control at the start of the wide header row (the door into the shelf's search). */
-  headerLeading?: ReactNode
+  /**
+   * The shelf's search, if it has one (a project's Dateien, the Büroablage):
+   * Enter in the header's field opens it with what was typed, instead of the
+   * listing's own content search. One field, one way in: typing still filters
+   * the listing by name as it did.
+   */
+  onOpenSearch?: (text: string) => void
   /**
    * The folder tree and the first page of a folder level as the SERVER already
    * read them, for the first paint (ADR-0102). `initialFiles` is the first
@@ -180,7 +185,7 @@ export function FileWorkspace({
   shelf,
   renderHeader,
   moreEntries,
-  headerLeading,
+  onOpenSearch,
   initialFolders,
   initialFiles,
   initialNextCursor = null,
@@ -838,13 +843,18 @@ export function FileWorkspace({
       // The corpus search, in the header with the other controls that act on the
       // listing. No run button: the field reads as the plain filter it mostly is,
       // and Enter commits the query to the semantic search.
-      search={{ value: search.query, onChange: search.setQuery, onSubmit: search.run, onClear: search.clear }}
+      search={{
+        value: search.query,
+        onChange: search.setQuery,
+        onSubmit: onOpenSearch ? () => onOpenSearch(search.query.trim()) : search.run,
+        onClear: search.clear,
+        opensSearch: Boolean(onOpenSearch),
+      }}
       // The durable corpus is where a büro brings a whole tree in. On a phone the
       // same control floats at the foot of the screen instead (`uploadFab`).
       upload={phone ? undefined : uploader({ allowFolders: true, pickFilesRef, pickFolderRef })}
       moreEntries={moreEntries}
       advancedEntries={advancedEntries}
-      leading={headerLeading}
     />
   )
 

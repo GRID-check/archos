@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createHash } from 'node:crypto'
+import { refreshSearchRows } from '@/lib/search/refresh-rows'
 
 /**
  * `document_versions` is not this suite's subject (ADR-0054). The upload path
@@ -12,6 +13,7 @@ vi.mock('@/lib/authz/folder-access', async () => (await import('@/test-utils/fol
 // seam the byte-serving functions are held to: which of them call it, with
 // what, and only after the request could no longer be refused.
 vi.mock('@/lib/download-log/service', () => ({ recordDocumentAccess: vi.fn(async () => undefined) }))
+vi.mock('@/lib/search/refresh-rows', () => ({ refreshSearchRows: vi.fn(async () => undefined) }))
 vi.mock('./version-repository', () => ({
   DOCUMENT_VERSION_LIST_LIMIT: 200,
   insertDocumentVersion: vi.fn(async (values: Record<string, unknown>) => ({
@@ -2325,6 +2327,25 @@ describe('the authorship gate on the (collection, filename) join', () => {
       })
       const init = documentCalls()[0]?.[1] as RequestInit
       expect(JSON.parse(String(init.body))).toEqual({ tags: ['Gutachten'], topics: ['Fluchtweg'] })
+    })
+
+    it('rewrites the search row of the retagged document once the backend took the tags', async () => {
+      vi.mocked(findDocumentInOrg).mockResolvedValue(humanDoc)
+      vi.mocked(refreshSearchRows).mockClear()
+      mockFetch.mockResolvedValue({ ok: true, status: 200, json: async () => ({ tags: ['Gutachten'] }) })
+
+      await updateDocumentTags(session, 'doc-1', ['Gutachten'])
+
+      expect(refreshSearchRows).toHaveBeenCalledWith(session.organizationId, [humanDoc])
+    })
+
+    it('rewrites no search row when the backend refused the tags', async () => {
+      vi.mocked(findDocumentInOrg).mockResolvedValue(humanDoc)
+      vi.mocked(refreshSearchRows).mockClear()
+      mockFetch.mockResolvedValue({ ok: false, status: 400, json: async () => ({}) })
+
+      await expect(updateDocumentTags(session, 'doc-1', ['Gutachten'])).rejects.toThrow()
+      expect(refreshSearchRows).not.toHaveBeenCalled()
     })
 
     it('leaves topics out of the PATCH body and the answer when the edit does not carry them', async () => {

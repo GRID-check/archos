@@ -34,6 +34,7 @@ import {
   PALETTE_ALL_RESULTS_VALUE,
   PaletteSearchResults,
   PaletteSearchStart,
+  captureSavedSearchRun,
   paletteFilter,
   isPaletteHitValue,
   paletteHitValue,
@@ -47,7 +48,7 @@ import { useMediaQuery } from '@/hooks/use-media-query'
 import { useTranslations } from '@/i18n'
 import { paletteSections } from './project-sections'
 import { ShortcutKeys } from './shortcut-keys'
-import { LEADER_KEY } from './shortcuts'
+import { LEADER_KEY, MOD } from './shortcuts'
 
 interface PaletteProject {
   id: string
@@ -67,9 +68,10 @@ const PALETTE_ITEM_CLASS =
 
 /**
  * On a desktop the palette carries search hits as well as commands: a hit is
- * two or three lines (name, meta line, passage), so the card is wider than a
- * command list needs and stands higher, leaving the list room to show three
- * documents and what follows them without a scroll.
+ * two lines (its name, then where it lives and what it is; the passage only on
+ * the row the arrows are on), so the card is wider than a command list needs
+ * and stands higher, leaving the list room for every kind's hits and the
+ * „Alle Treffer“ row without a scroll.
  */
 const DESKTOP_PALETTE_CLASS = 'md:top-[15%] md:max-w-2xl!'
 
@@ -178,13 +180,27 @@ export function CommandPalette({
   }, [firstHit])
   const filter = React.useMemo(() => paletteFilter(defaultFilter), [])
 
+  const { opening } = search
   const openSearchHref = React.useCallback(
     (href: string) => {
       if (words) shortcuts.remember(words)
+      opening(href)
       onOpenChange(false)
       router.push(href)
     },
-    [words, shortcuts, onOpenChange, router],
+    [words, shortcuts, opening, onOpenChange, router],
+  )
+  // Mod+Enter opens every hit for what is typed from whichever row the arrows
+  // are on, so the search page is one chord away and never a scroll.
+  const allHref = words ? searchPageHref(words, projectId) : null
+  const onFieldKeyDown = React.useCallback(
+    (event: React.KeyboardEvent<HTMLInputElement>) => {
+      if (event.key !== 'Enter' || !(event.metaKey || event.ctrlKey) || !allHref) return
+      // cmdk skips its own Enter (select the active row) once this is handled.
+      event.preventDefault()
+      openSearchHref(allHref)
+    },
+    [allHref, openSearchHref],
   )
   // The ↑ ↓ ↵ Esc legend is for a keyboard. Read off the primary pointer, so a
   // touch tablet past `md` drops it as well as a phone does.
@@ -245,6 +261,7 @@ export function CommandPalette({
         <CommandInput
           value={query}
           onValueChange={setQuery}
+          onKeyDown={onFieldKeyDown}
           placeholder={t('placeholder')}
           // The wrapper's wash is this field's focus signal (and on a phone,
           // the keyboard is); the global `:focus-visible` outline is unlayered
@@ -271,7 +288,15 @@ export function CommandPalette({
             loading={search.loading}
             failed={search.failed}
             onOpen={openSearchHref}
-            allHref={searchPageHref(words, projectId)}
+            allHref={allHref ?? searchPageHref(words, projectId)}
+            scope={scope}
+            allShortcut={
+              finePointer ? (
+                <CommandShortcut className="ml-0 shrink-0 tracking-normal">
+                  <ShortcutKeys segments={[{ kind: 'chord', caps: [MOD, '↵'] }]} />
+                </CommandShortcut>
+              ) : null
+            }
             itemClassName={PALETTE_ITEM_CLASS}
           />
         ) : (
@@ -280,7 +305,10 @@ export function CommandPalette({
             recent={shortcuts.recent}
             saved={shortcuts.saved}
             onRecent={setQuery}
-            onSaved={(item) => openSearchHref(savedSearchHref(item))}
+            onSaved={(item) => {
+              captureSavedSearchRun(item)
+              openSearchHref(savedSearchHref(item))
+            }}
             onOpenSearch={() => openSearchHref('/app/search')}
             itemClassName={PALETTE_ITEM_CLASS}
           />

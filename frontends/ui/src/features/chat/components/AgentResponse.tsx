@@ -85,7 +85,7 @@ import { NestedMarkdownPluginsProvider } from '@/shared/components/MarkdownRende
 import { SkillsUsedDisclosure } from '@/features/skills/components/SkillsUsedDisclosure'
 import { AnswerSourcesRow } from './AnswerSourcesRow'
 import { MemoryNotedChip } from './MemoryNotedChip'
-import { turnMemoryItems, type TurnMemoryItem } from '../lib/turn-memory'
+import { turnMemoryItems } from '../lib/turn-memory'
 import { answerMetaToAnatomy, summaryDuplicatesBody } from '../lib/answer-meta-cards'
 import { AnatomyBlock, AnatomyMasthead, mastheadShows } from './AnswerAnatomy'
 import { AnswerOutline } from './AnswerOutline'
@@ -769,8 +769,9 @@ const ReadSourcesSection: FC<{ readSources?: CitationSource[] }> = ({ readSource
  * The single disclosure in the answer footer.
  *
  * The footer keeps verdict, body, the "Belegt durch" sources row, the copy
- * actions and the feedback thumbs visible; everything else the turn carries
- * — confidence, the memory note, the skills that shaped the answer, the
+ * actions, the memory chip (`beside` the trigger) and the feedback thumbs
+ * visible; everything else the turn carries
+ * — confidence, the skills that shaped the answer, the
  * verification notes and the timestamp — lives behind ONE muted text-xs
  * trigger line. When the turn carries something the reader must not miss —
  * a cut-off, a salvaged run, stripped citations, low confidence — the trigger
@@ -789,7 +790,6 @@ const AnswerDetails = memo(function AnswerDetails({
   answerConfidenceReason,
   claimStamps,
   answerConfidenceVersion,
-  memoryItems,
   skillsActivated,
   skillsHidden,
   showReasoning,
@@ -804,6 +804,7 @@ const AnswerDetails = memo(function AnswerDetails({
   conversationId,
   messageId,
   before,
+  beside,
   after,
 }: {
   hasConfidence: boolean
@@ -812,7 +813,6 @@ const AnswerDetails = memo(function AnswerDetails({
   answerConfidenceReason?: string
   claimStamps?: ClaimStamp[]
   answerConfidenceVersion?: 1 | 2
-  memoryItems: TurnMemoryItem[]
   skillsActivated?: string[]
   skillsHidden?: string[]
   showReasoning?: boolean
@@ -829,6 +829,12 @@ const AnswerDetails = memo(function AnswerDetails({
   messageId?: string
   /** Set on the trigger's own line: the footer's copy actions before it, feedback after. */
   before?: ReactNode
+  /**
+   * Right after the trigger, before the spacer: what the turn wants SEEN
+   * without opening anything (the memory chip). After the trigger so that a
+   * chip arriving late moves nothing the reader already found.
+   */
+  beside?: ReactNode
   after?: ReactNode
 }) {
   const t = useTranslations('chat')
@@ -880,6 +886,7 @@ const AnswerDetails = memo(function AnswerDetails({
             )}
           </span>
         </CollapsibleTrigger>
+        {beside}
         {after ? (
           <>
             <span className="flex-1" aria-hidden="true" />
@@ -898,7 +905,6 @@ const AnswerDetails = memo(function AnswerDetails({
               version={answerConfidenceVersion}
             />
           )}
-          <MemoryNotedChip items={memoryItems} />
           <SkillsUsedDisclosure
             skillsActivated={skillsActivated}
             hiddenSkills={skillsHidden}
@@ -1389,7 +1395,6 @@ const AgentResponseComponent: FC<AgentResponseProps> = ({
     hasConfidence ||
     Boolean(timestamp) ||
     Boolean(answerDurationMs) ||
-    memoryItems.length > 0 ||
     (skillsActivated?.length ?? 0) > 0 ||
     Boolean(researchTruncated) ||
     (degradedReasons?.length ?? 0) > 0 ||
@@ -1444,6 +1449,12 @@ const AgentResponseComponent: FC<AgentResponseProps> = ({
       ) : null,
     [hasAnswerActions, actionsContent, actionsBody, actionsDocuments, conversationId, messageId, inert]
   )
+  // On the meta row itself, never behind „Details": a write to the project's
+  // memory changes what every later answer starts from, so the reader is told
+  // on the answer, in one glance, and opens what it was in one tap. Always
+  // rendered (it draws nothing for a turn that recorded nothing) so it knows
+  // whether its items arrived in front of the reader or were there at mount.
+  const memoryChip = useMemo(() => <MemoryNotedChip items={memoryItems} />, [memoryItems])
   const feedback = useMemo(
     () =>
       hasFeedback && messageId ? (
@@ -1801,6 +1812,7 @@ const AgentResponseComponent: FC<AgentResponseProps> = ({
                   className={hasMetaRow ? 'flex min-h-6 flex-col gap-1.5' : 'min-h-6'}
                   aria-hidden={hasMetaRow ? undefined : true}
                 >
+                  {memoryChip}
                   {hasDetailsContent && (
                     <AnswerDetails
                       conversationId={conversationId}
@@ -1811,7 +1823,6 @@ const AgentResponseComponent: FC<AgentResponseProps> = ({
                       answerConfidenceReason={answerConfidenceReason}
                       claimStamps={claimStamps}
                       answerConfidenceVersion={answerConfidenceVersion}
-                      memoryItems={memoryItems}
                       skillsActivated={skillsActivated}
                       skillsHidden={skillsHidden}
                       showReasoning={showReasoning}
@@ -1962,8 +1973,8 @@ const AgentResponseComponent: FC<AgentResponseProps> = ({
               </div>
 
               {/* Provenance footer — ONE tinted zone under the body's hairline that
-            holds the sources block, the copy actions, and a single disclosure
-            for everything else (confidence, memory note, skills used,
+            holds the sources block, the copy actions, the memory chip, and a
+            single disclosure for everything else (confidence, skills used,
             verification notes, feedback, timestamp). The sources row must not
             draw its own divider here (the body hairline already separates), so
             it takes withDivider={false}. */}
@@ -2013,7 +2024,6 @@ const AgentResponseComponent: FC<AgentResponseProps> = ({
                           answerConfidenceReason={answerConfidenceReason}
                           claimStamps={claimStamps}
                           answerConfidenceVersion={answerConfidenceVersion}
-                          memoryItems={memoryItems}
                           skillsActivated={skillsActivated}
                           skillsHidden={skillsHidden}
                           showReasoning={showReasoning}
@@ -2026,11 +2036,13 @@ const AgentResponseComponent: FC<AgentResponseProps> = ({
                           timestamp={timestamp}
                           answerDurationMs={answerDurationMs}
                           before={answerActions}
+                          beside={memoryChip}
                           after={feedback}
                         />
                       ) : (
                         <>
                           {answerActions}
+                          {memoryChip}
                           {hasMetaRow && <span className="flex-1" aria-hidden="true" />}
                           {feedback}
                         </>

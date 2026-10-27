@@ -3,7 +3,7 @@
  * share it with the office. See `projects.ts` for the shape and
  * `docs/architecture/agent-surface.md` for the rules.
  *
- * Kept apart from the `search` operation itself so the two grow without
+ * Kept apart from the `workspace-search` operation itself so the two grow without
  * touching each other; both are in the `documents` domain.
  */
 

@@ -41,6 +41,8 @@ export interface FilesHeaderControlsProps {
     onChange: (value: string) => void
     onSubmit: () => void
     onClear: () => void
+    /** Enter opens the shelf's search rather than the listing's: the placeholder says so where there is room. */
+    opensSearch?: boolean
   }
   /**
    * The upload control for the WIDE row. Absent on a phone, where the same
@@ -54,8 +56,6 @@ export interface FilesHeaderControlsProps {
    * follow `moreEntries` in the ⋯; on a wide screen they get a ⋯ of their own.
    */
   advancedEntries?: readonly ActionMenuEntry[]
-  /** First in the WIDE row: what the shelf adds before the view choice (its search). A phone reaches it through `moreEntries`. */
-  leading?: ReactNode
 }
 
 export function FilesHeaderControls({
@@ -69,7 +69,6 @@ export function FilesHeaderControls({
   upload,
   moreEntries,
   advancedEntries,
-  leading,
 }: FilesHeaderControlsProps): JSX.Element {
   const t = useTranslations('files')
   const choose = (value: string): void => {
@@ -82,7 +81,7 @@ export function FilesHeaderControls({
       onChange={search.onChange}
       onSubmit={search.onSubmit}
       onClear={search.onClear}
-      placeholder={t('browser.searchPlaceholder')}
+      placeholder={search.opensSearch && !phone ? t('browser.searchPlaceholderEverything') : t('browser.searchPlaceholder')}
       searchLabel={t('browser.searchLabel')}
       resetLabel={t('browser.resetSearch')}
     />
@@ -147,7 +146,6 @@ export function FilesHeaderControls({
 
   return (
     <div className="flex min-w-0 flex-wrap items-center justify-end gap-2" data-testid="files-controls">
-      {leading}
       <ToggleGroup
         type="single"
         value={view}

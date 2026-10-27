@@ -11,6 +11,12 @@ agent must not call this after citing.
 
 The model cannot invent filenames. The tool looks up or searches the in-scope
 project + Büroablage corpora and emits a ``document_grid`` system card.
+
+A browse (``mode=many``) asks the ``workspace-search`` operation, the search a
+person runs on the search page, as the turn's person (ADR-0122, ADR-0136), so
+its card can offer that page with the same question. A run with no signed
+request context (an eval, the CLI), or a search that could not run, browses the
+vector corpora as before and its card carries no link.
 """
 
 from __future__ import annotations
@@ -405,10 +411,17 @@ async def surface_documents(tool_config: SurfaceDocumentsConfig, builder: Builde
         max_files = get_retrieval_setting("surface.max_files", MAX_SURFACED_FILES)
 
         documents: list[dict]
+        search: dict | None = None
         if named:
             documents = await _surface_named(named, targets, meta, query or named, chunk_top_k)
         else:
-            documents = await _surface_search(query, targets, effective, chunk_top_k, max_files)
+            browsed = None
+            if effective == "many":
+                browsed = await _browse_workspace_search(query, _target_shelves(targets, scoped_entries), max_files)
+            if browsed is not None:
+                documents, search = browsed
+            else:
+                documents = await _surface_search(query, targets, effective, chunk_top_k, max_files)
 
         if not documents:
             subject = filename or query
@@ -441,6 +454,8 @@ async def surface_documents(tool_config: SurfaceDocumentsConfig, builder: Builde
             "query": query or filename,
             "documents": [{k: v for k, v in doc.items() if not k.startswith("_")} for doc in documents],
         }
+        if search is not None:
+            card["search"] = {"text": search["text"], "scope": search["scope"]}
         try:
             validated = grid_card_adapter.validate_python(card).model_dump(exclude_none=True)
         except Exception as exc:
@@ -469,7 +484,10 @@ async def surface_documents(tool_config: SurfaceDocumentsConfig, builder: Builde
             query,
             filename,
         )
-        return _briefing_for_agent(query or filename or "", documents, effective)
+        briefing = _briefing_for_agent(query or filename or "", documents, effective)
+        if search is not None:
+            briefing = f"{briefing}\n{_search_line(search)}"
+        return briefing
 
     yield FunctionInfo.from_fn(_surface, description=_TOOL_DESCRIPTION)
 
@@ -513,6 +531,130 @@ async def _surface_named(
             "_folder_path": info.get("folder_path") or None,
         }
     ]
+
+
+#: The operation a browse asks: the search page's own (``frontends/ui/src/lib/agent-api/catalog/documents.ts``).
+WORKSPACE_SEARCH_OPERATION = "workspace-search"
+#: Hits asked per shelf: room for the kind filter below to keep ``max_files`` of one kind.
+_WORKSPACE_SEARCH_LIMIT = 10
+#: ``DocumentHit.shelf`` → the card's ``source``.
+_SOURCE_OF_HIT_SHELF: dict[str, Literal["project", "office"]] = {"project": "project", "office_shelf": "office"}
+
+
+def _target_shelves(targets: list[str], scoped: list | None) -> set[str]:
+    """Which shelves the targets hold, ``project`` and ``office_shelf``: what the browse may search."""
+    from aiq_agent.common.source_kinds import Shelf
+
+    by_collection = {}
+    for entry in scoped or []:
+        entry_shelf = getattr(entry, "shelf", None)
+        if entry_shelf is Shelf.PROJECT:
+            by_collection[getattr(entry, "collection", None)] = "project"
+        elif entry_shelf is Shelf.OFFICE_SHELF:
+            by_collection[getattr(entry, "collection", None)] = "office"
+    shelves: set[str] = set()
+    for collection in targets:
+        source = _source_for_target(collection, by_collection)
+        if source == "project":
+            shelves.add("project")
+        elif source == "office":
+            shelves.add("office_shelf")
+    return shelves
+
+
+def _search_scopes(shelves: set[str], project_id: str | None) -> list[dict[str, str]]:
+    """One ``workspace-search`` scope per shelf the turn reads; the project only with its id."""
+    scopes: list[dict[str, str]] = []
+    if "project" in shelves and project_id:
+        scopes.append({"scope": "project", "projectId": project_id})
+    if "office_shelf" in shelves:
+        scopes.append({"scope": "office_shelf"})
+    return scopes
+
+
+def _rows_from_search(structured: dict) -> list[dict]:
+    """The document hits of one ``workspace-search`` answer as card rows, in its order."""
+    section = (structured.get("sections") or {}).get("document") or {}
+    rows: list[dict] = []
+    for hit in section.get("hits") or []:
+        if not isinstance(hit, dict):
+            continue
+        file_name = str(hit.get("filename") or "").strip()
+        source = _SOURCE_OF_HIT_SHELF.get(str(hit.get("shelf") or ""))
+        if not file_name or source is None:
+            continue
+        passage = hit.get("passage") if isinstance(hit.get("passage"), dict) else {}
+        snippet = _clip(passage.get("text"), 300)
+        page = passage.get("page")
+        rows.append(
+            {
+                "file_name": file_name,
+                "snippet": snippet,
+                "page": page if isinstance(page, int) and page > 0 else None,
+                "source": source,
+                "_folder_path": hit.get("folderName") or None,
+            }
+        )
+    return rows
+
+
+def _interleave(groups: list[list[dict]]) -> list[dict]:
+    """Rank 1 of each shelf, then rank 2, … ; a file named twice is kept once."""
+    merged: list[dict] = []
+    seen: set[str] = set()
+    for rank in range(max((len(group) for group in groups), default=0)):
+        for group in groups:
+            if rank < len(group) and group[rank]["file_name"] not in seen:
+                seen.add(group[rank]["file_name"])
+                merged.append(group[rank])
+    return merged
+
+
+def _pick_browse(rows: list[dict], query: str, max_files: int) -> list[dict]:
+    """A short choice of one kind, best first: the query's kind when it names one, else the winner's."""
+    hint = _query_kind(query)
+    if hint:
+        hinted = [row for row in rows if _file_kind(row["file_name"]) == hint]
+        rows = hinted or rows
+    if not rows:
+        return []
+    kind = _file_kind(rows[0]["file_name"])
+    cap = max(1, min(max_files, MAX_SURFACED_FILES))
+    return [row for row in rows if _file_kind(row["file_name"]) == kind][:cap]
+
+
+async def _browse_workspace_search(query: str, shelves: set[str], max_files: int) -> tuple[list[dict], dict] | None:
+    """The browse through ``workspace-search``: the rows and the question for the card's link.
+
+    ``None`` when the operation could not answer for every shelf asked (no envelope, a
+    refusal, an outage); the caller then browses the vector corpora instead.
+    """
+    from aiq_agent.project_context import get_project_id_from_context
+    from aiq_agent.tools.workspace.register import read_operation
+
+    text = query.strip()[:500]
+    scopes = _search_scopes(shelves, get_project_id_from_context())
+    if not text or not scopes:
+        return None
+    body = {"text": text, "kinds": ["document"], "limit": _WORKSPACE_SEARCH_LIMIT, "facets": False}
+    answers = await asyncio.gather(
+        *(read_operation(WORKSPACE_SEARCH_OPERATION, {"query": scope, "body": body}) for scope in scopes)
+    )
+    if any(answer is None for answer in answers):
+        logger.info("surface_documents: workspace-search did not answer; browsing the corpora")
+        return None
+    total = sum(int(((answer.get("sections") or {}).get("document") or {}).get("total") or 0) for answer in answers)
+    documents = _pick_browse(_interleave([_rows_from_search(answer) for answer in answers]), text, max_files)
+    scope = scopes[0]["scope"] if len(scopes) == 1 else "office"
+    return documents, {"text": text, "scope": scope, "total": total}
+
+
+def _search_line(search: dict) -> str:
+    """What the model may tell the reader about the link the card carries."""
+    return (
+        f"The workspace search finds {search['total']} document(s) for {search['text']!r}; the card links to the "
+        "search page with this query for the rest."
+    )
 
 
 async def _surface_search(

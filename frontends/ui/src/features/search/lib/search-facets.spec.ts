@@ -17,6 +17,7 @@ const VALUE: Record<SearchFacetDimension, string> = {
   state: 'reading',
   fileType: 'pdf',
   uploader: 'user_01',
+  changedFact: 'building_class',
 }
 
 describe('a facet click', () => {
@@ -53,6 +54,7 @@ describe('a facet click', () => {
     expect(toggleFacet(EMPTY_SEARCH_STATE, 'documentType', 'castle')).toBe(EMPTY_SEARCH_STATE)
     expect(toggleFacet(EMPTY_SEARCH_STATE, 'state', 'gone')).toBe(EMPTY_SEARCH_STATE)
     expect(toggleFacet(EMPTY_SEARCH_STATE, 'tag', 'Unsinn')).toBe(EMPTY_SEARCH_STATE)
+    expect(toggleFacet(EMPTY_SEARCH_STATE, 'changedFact', 'colour')).toBe(EMPTY_SEARCH_STATE)
   })
 })
 
@@ -79,6 +81,15 @@ describe('the chips of the filters that are set', () => {
     expect(withoutPermit.text).toBe('EP')
     expect(chips[0].next.projectId).toBeNull()
     expect(chips[5].next.filters.facts).toBeUndefined()
+  })
+
+  it('gives „Angaben geändert“ and each changed fact a chip of its own', () => {
+    const changed: SearchUrlState = { ...EMPTY_SEARCH_STATE, filters: { factsChanged: true, changedFacts: ['building_class', 'units'] } }
+    const chips = activeFilters(changed)
+    expect(chips.map((chip) => chip.id)).toEqual(['factsChanged', 'changedFacts:building_class', 'changedFacts:units'])
+    expect(chips[1].value).toEqual({ kind: 'factKey', key: 'building_class' })
+    expect(chips[1].next.filters).toEqual({ factsChanged: true, changedFacts: ['units'] })
+    expect(chips[0].next.filters).toEqual({ changedFacts: ['building_class', 'units'] })
   })
 
   it('clears every filter and keeps the words', () => {

@@ -1,12 +1,13 @@
 /**
  * The backstop that keeps a shelf's search rows current (ADR-0136).
  *
- * A row is written when its document settles (`reconcileDocumentStatuses`).
- * What that misses (a person's tags or a Fassung link written on the agent
- * side later, rows from before the projection existed) a refresh of the whole
- * shelf catches: a search finds the shelf's fingerprint moved since its last
- * sync, or the sync older than {@link SHELF_SYNC_MAX_AGE_MS}, and queues one
- * `search_facets_sync` job, at most one per shelf per
+ * A row is written when its document settles (`reconcileDocumentStatuses`)
+ * and when a person changes what it derives (`./refresh-rows.ts`). What both
+ * miss (a write the agent makes on its own side, a refresh that failed, rows
+ * from before the projection existed) a refresh of the whole shelf catches: a
+ * search finds the shelf's fingerprint moved since its last sync, or the sync
+ * older than {@link SHELF_SYNC_MAX_AGE_MS}, or the shelf marked stale by a
+ * refresh that failed, and queues one `search_facets_sync` job, at most one per shelf per
  * {@link SHELF_REFRESH_MIN_INTERVAL_MS}, the way the office's conventions are
  * refreshed (`lib/office-conventions/service.ts`).
  *
@@ -15,12 +16,9 @@
  */
 
 import 'server-only'
-import { collectionFileRef, type CollectionFileRef } from '@/lib/documents/collection-file-ref'
-import { readCollectionReadings } from '@/lib/documents/reconcile-status'
 import type { DocumentShelf } from '@/lib/documents/shelf'
 import { enqueueJob } from '@/lib/jobs-queue/enqueue'
 import { BFF_JOB_PRIORITY, type JobSliceResult, type SearchFacetsSyncPayload } from '@/lib/jobs-queue/types'
-import { projectReadings, type DocumentReading } from './facets-projector'
 import {
   claimShelfRefresh,
   listShelfDocumentsForProjection,
@@ -30,8 +28,8 @@ import {
   shelfKey,
   shelfOfKey,
   shelfSourceFingerprints,
-  type ProjectionDocument,
 } from './facets-repository'
+import { projectDocuments } from './refresh-rows'
 
 /** At most one refresh of a shelf is queued in this interval. */
 export const SHELF_REFRESH_MIN_INTERVAL_MS = 10 * 60 * 1000
@@ -50,39 +48,14 @@ export async function runSearchFacetsSyncSlice(
   const shelf = shelfOfKey(payload.shelfKey)
   if (!shelf) return { done: true, payload }
   const page = await listShelfDocumentsForProjection(organizationId, shelf, payload.afterId)
-  const written = await projectPage(organizationId, page)
+  // An unreadable listing throws, and the queue retries rather than reads it as "nothing known".
+  const written = await projectDocuments(organizationId, page)
   const next = { ...payload, written: payload.written + written }
   if (page.length < PROJECTION_PAGE_SIZE) {
     await markShelfSynced(organizationId, shelf, payload.sourceFingerprint)
     return { done: true, payload: next }
   }
   return { done: false, payload: { ...next, afterId: page[page.length - 1].id } }
-}
-
-/** Read the page's documents from their collections' listings and write their rows. Throws when a listing is unreadable. */
-async function projectPage(organizationId: string, page: readonly ProjectionDocument[]): Promise<number> {
-  const byCollection = new Map<string, Array<{ id: string; ref: CollectionFileRef }>>()
-  for (const document of page) {
-    const ref = collectionFileRef(document)
-    if (!ref) continue
-    const group = byCollection.get(ref.collectionName) ?? []
-    group.push({ id: document.id, ref })
-    byCollection.set(ref.collectionName, group)
-  }
-  const readings: DocumentReading[] = []
-  for (const [collectionName, entries] of byCollection) {
-    const listed = await readCollectionReadings(
-      collectionName,
-      entries.map((entry) => entry.ref)
-    )
-    // An unreadable listing is retried by the queue rather than read as "nothing known".
-    if (!listed) throw new Error(`search_facets_sync: listing of ${collectionName} unreadable`)
-    for (const entry of entries) {
-      const reading = listed.get(entry.ref.filename)
-      if (reading) readings.push({ documentId: entry.id, ...reading })
-    }
-  }
-  return projectReadings(organizationId, readings)
 }
 
 /** What a search learns about its shelves' projection. */

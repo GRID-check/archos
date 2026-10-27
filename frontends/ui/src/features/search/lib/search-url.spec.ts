@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import { searchBodySchema } from '@/lib/search/search-wire'
 import {
+  activeFilterCount,
   EMPTY_SEARCH_STATE,
   fromSearchBody,
   hasSearchParams,
@@ -42,6 +43,8 @@ const EVERYTHING: SearchUrlState = {
     uploadedBy: ['user_lena'],
     states: ['readable', 'reading'],
     incompleteRead: true,
+    factsChanged: true,
+    changedFacts: ['building_class', 'storeys_above_ground'],
     fileTypes: ['pdf', 'dwg'],
     pages: { min: 1, max: 40 },
     includeArchived: true,
@@ -71,7 +74,7 @@ describe('the URL and the search state', () => {
   it('drops what a hand-edited link cannot name, instead of sending a body the route refuses', () => {
     const state = parseSearchParams(
       new URLSearchParams(
-        'view=grid&sort=colour&dir=up&type=castle&tag=Unsinn&state=gone&ext=p.df&planFrom=gestern&fact=height=&fact=nonsense:1..2&party=wizard:&project=not-a-uuid&pagesMin=-3&kind=memo'
+        'view=grid&sort=colour&dir=up&type=castle&tag=Unsinn&state=gone&ext=p.df&planFrom=gestern&fact=height=&fact=nonsense:1..2&party=wizard:&project=not-a-uuid&pagesMin=-3&kind=memo&changedFact=colour&changed=yes'
       )
     )
     expect(state).toEqual(EMPTY_SEARCH_STATE)
@@ -103,7 +106,7 @@ describe('the register’s columns in the URL', () => {
   it('keeps the title, drops what it cannot name, and reads a link naming the defaults as the default', () => {
     expect(parseSearchParams(new URLSearchParams('cols=planNumber,colour')).columns).toEqual(['planNumber', 'title'])
     expect(parseSearchParams(new URLSearchParams('cols=colour,,')).columns).toBeNull()
-    const defaults = 'planNumber,planIndex,title,planDate,scale,documentType,author,project,status'
+    const defaults = 'planNumber,planIndex,title,planDate,scale,documentType,author,project'
     expect(parseSearchParams(new URLSearchParams(`cols=${defaults}`)).columns).toBeNull()
   })
 
@@ -134,6 +137,14 @@ describe('„Nur aktuelle Fassung“, each view’s own default', () => {
     expect(withView(listCurrent, 'register').filters.currentOnly).toBe(true)
     const registerAll = { ...list, view: 'register' as const }
     expect(withView(registerAll, 'list').filters.currentOnly).toBeUndefined()
+  })
+})
+
+describe('the phone’s filter count', () => {
+  it('leaves out „Nur aktuelle Fassung“ in the Planliste, where it is the switch above the table', () => {
+    const filters: SearchUrlState['filters'] = { currentOnly: true, documentTypes: ['submission_drawing'] }
+    expect(activeFilterCount({ ...EMPTY_SEARCH_STATE, view: 'register', filters })).toBe(1)
+    expect(activeFilterCount({ ...EMPTY_SEARCH_STATE, view: 'list', filters })).toBe(2)
   })
 })
 

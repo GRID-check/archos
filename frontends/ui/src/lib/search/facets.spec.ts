@@ -102,6 +102,23 @@ describe('toSearchFacets', () => {
     expect(toSearchFacets(subject, reading({ capture: { capturedAt: 'gestern' } }))?.capturedAt).toBeNull()
   })
 
+  it('projects what a new Fassung changed, keys in the same order, and re-fingerprints when it does', () => {
+    const changes = [
+      { key: 'storeys_above_ground' as const, before: '4', after: '5', page: 2 },
+      { key: 'room_height' as const, before: '2.60 m', after: null, page: null },
+    ]
+    const row = toSearchFacets(subject, reading({ dossier: dossier({ changes }) }))
+    expect(row?.changedFacts).toEqual(changes)
+    expect(row?.changedFactKeys).toEqual(['storeys_above_ground', 'room_height'])
+    expect(row?.fingerprint).not.toBe(toSearchFacets(subject, reading())?.fingerprint)
+  })
+
+  it('projects no change for a dossier that carries none', () => {
+    const row = toSearchFacets(subject, reading())
+    expect(row?.changedFacts).toEqual([])
+    expect(row?.changedFactKeys).toEqual([])
+  })
+
   it('falls back to the Plankopf date when the dossier names none', () => {
     const row = toSearchFacets(subject, reading({ dossier: dossier({ dates: [] }) }))
     expect(row?.documentDate).toBe('2025-03-14')
