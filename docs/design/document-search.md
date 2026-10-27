@@ -269,6 +269,18 @@ The place belongs to the document `doc` names: opening another document, or a
 folder, takes `page` and `highlight` off the address with the review's params.
 A preview that is not a PDF (an image, a text file) ignores both.
 
+A document or annotation hit comes back to the search. Its link carries
+`back`, the search page's own address (query, filters, kinds, view, sort),
+the way Offene Punkte and the Postfach send a reader into a review
+(`features/documents/lib/open-review.ts`): closing the preview
+(`hooks/use-preview-channel.ts`) or the review goes there, by Back when the
+entry behind is that search, else by replacing the address with it. `back` is
+only ever a path of the app (`appReturnPath`). A folder, a project and a
+conversation have nothing to close; Back walks to the search, whose URL holds
+it all. The ⌘K palette's hits carry no `back`: what lies under the palette is
+not a search. The scroll position is not restored: the answer is fetched
+afresh, and its further pages with it.
+
 ### Piloti
 
 Piloti reaches the search as every other client does: `workspace-search` is

@@ -21,6 +21,7 @@ import { documentReadFamily } from '@/lib/documents/document-status'
 import type { DocumentHit } from '@/lib/search/search-wire'
 import { useSearchLabels } from '../hooks/use-search-labels'
 import { documentHitHref } from '../lib/search-hrefs'
+import { useSearchReturn } from '../hooks/use-search-return'
 import {
   COLUMN_SORT,
   columnSortState,
@@ -282,6 +283,7 @@ function useStatus(hit: DocumentHit): { node: ReactNode; quiet: boolean } {
 }
 
 function RegisterLine({ hit, columns, active, id }: { hit: DocumentHit; columns: readonly RegisterColumn[]; active: boolean; id?: string }): JSX.Element {
+  const from = useSearchReturn()
   const t = useTranslations('search')
   const labels = useSearchLabels()
   const status = useStatus(hit)
@@ -298,7 +300,7 @@ function RegisterLine({ hit, columns, active, id }: { hit: DocumentHit; columns:
       case 'title':
         return (
           <RegisterCell key={column} kind="strong" title={hit.title ?? hit.name}>
-            <RegisterLink href={documentHitHref(hit)}>{hit.title ?? hit.name}</RegisterLink>
+            <RegisterLink href={documentHitHref(hit, from)}>{hit.title ?? hit.name}</RegisterLink>
           </RegisterCell>
         )
       case 'documentType': {
@@ -340,6 +342,7 @@ function RegisterLine({ hit, columns, active, id }: { hit: DocumentHit; columns:
 
 /** On a phone: the number and Index over the name; the other chosen columns on one muted line. */
 function RegisterStackLine({ hit, columns, active, id }: { hit: DocumentHit; columns: readonly RegisterColumn[]; active: boolean; id?: string }): JSX.Element {
+  const from = useSearchReturn()
   const t = useTranslations('search')
   const labels = useSearchLabels()
   const status = useStatus(hit)
@@ -376,7 +379,7 @@ function RegisterStackLine({ hit, columns, active, id }: { hit: DocumentHit; col
   return (
     <RegisterStackRow
       id={id}
-      href={documentHitHref(hit)}
+      href={documentHitHref(hit, from)}
       code={code || undefined}
       title={hit.title ?? hit.name}
       meta={<MetaLine parts={columns.map(meta)} />}
