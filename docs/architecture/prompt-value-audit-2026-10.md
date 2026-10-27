@@ -210,14 +210,14 @@ facts about our own tools; whether hybrid wins is the answer suite's three
 arms to measure.
 
 **Tool surface** (descriptions and schemas of the eight evidence tools,
-o200k): 5,560 → 3,111 per call (2,426 in the first cut, which also dropped
+o200k): 5,560 → 3,204 per call (3,111 before the limits clauses on `ls` and `read_file`; 2,426 in the first cut, which also dropped
 `list_files`' listing; review kept its date filter and paging, +565). The base is the commit with slices 2 to 4,
 which bound the estate verbs beside `read_passage`, the listing `list_files`
 and the literal `knowledge_search`. `tests/aiq_agent/agents/piloti/test_evidence_token_budget.py`
 holds it.
 
 **System prompt** (`<rules>`, the evidence bullets): four → three, 173 → 166
-tokens (o200k); the static prompt 4,872 → 4,865. The coverage sentence
+tokens (o200k); the static prompt 4,872 → 4,875 after merging develop (its document-language clause). The coverage sentence
 (+36 tokens) is paid only on a result a judge found insufficient.
 
 | Line | Fate | Test | Where it is now |

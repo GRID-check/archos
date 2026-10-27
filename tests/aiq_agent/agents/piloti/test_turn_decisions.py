@@ -275,7 +275,22 @@ class TestThePrefetch:
             "args": {"pattern": "Rauchabzug", "output_mode": "content", "path": "/project/", "glob": "Gutachten.pdf"},
         }
         odd = prefetch_calls(self._decided("projekt"), q, focus_file_name="Plan [A].pdf", focus_shelf="session")
-        assert odd[1]["args"]["path"] == "/chat/" and odd[1]["args"]["glob"] == "Plan [[]A[]].pdf"
+        assert odd[1]["args"]["path"] == "/chat/"
+
+    @pytest.mark.parametrize("name", ["Plan [A].pdf", "Plan {A,B}.pdf", "Plan\\x.pdf", "Plan *.pdf"])
+    def test_the_open_document_s_glob_matches_it_and_nothing_else(self, name):
+        """The estate's own matcher (BRACE on) reads the escaped name as the one file it is."""
+        from types import SimpleNamespace
+
+        from knowledge_layer.estate import glob_files
+
+        def file(file_name: str) -> SimpleNamespace:
+            leaf = f"{file_name}.md"
+            return SimpleNamespace(path=f"/project/{leaf}", leaf=leaf, row=SimpleNamespace(file_name=file_name))
+
+        calls = prefetch_calls(self._decided("projekt"), "Wo steht „Rauchabzug“?", focus_file_name=name)
+        files = [file(n) for n in (name, "plan a.pdf", "Plan A.pdf", "Plan B.pdf", "Plan x.pdf", "Plan .pdf")]
+        assert [f.row.file_name for f in glob_files(files, calls[1]["args"]["glob"])] == [name]
 
     def test_codes_and_file_names_are_literal_terms_at_most_two_and_the_office_shelf_follows_the_corpus(self):
         q = "Vergleiche A-101, EG_02, 04-112 und Grundriss_EG.pdf"

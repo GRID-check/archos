@@ -320,16 +320,38 @@ def _parse_citation_ref(key: str) -> tuple[str, Shelf | None, int | None]:
     return filename, shelf, page
 
 
-def _key_file_names(key: str) -> list[str]:
-    """The file names a citation key may mean: its own, or each a path-shaped one can stand for."""
-    filename = _parse_citation_ref(key)[0]
-    raw = _PAGE_RE.split(key, maxsplit=1)[0].rstrip(", ").strip()
-    from_path = citation_key_of_path(_SCOPE_QUALIFIER_RE.sub("", raw))
+def _key_file_names(key: str, filename: str) -> list[str]:
+    """The file names a citation key may mean: its parsed ``filename``, or each one a path-shaped key stands for."""
+    from_path = citation_key_of_path(_cited_path(key) or "")
     return from_path[0] if from_path is not None else [filename]
 
 
-#: An estate path inside a source line, up to the page or the end of the line.
-_ESTATE_PATH_IN_LINE_RE = re.compile(r"/(?:project|office|chat|law/oib)/[^\n,]+")
+#: Where an estate path starts inside a citation key or a source line.
+_ESTATE_PATH_START_RE = re.compile(r"/(?:project|office|chat|law/oib)/")
+#: An estate path up to its leaf's extensions (``Plan.pdf.md``, ``Notiz.v2.md``), where a delimiter follows.
+_ESTATE_PATH_LEAF_RE = re.compile(
+    r"[^\n]*?(?:\.(?:pdf|md|txt|csv|docx?|xlsx?|pptx?|ifc|dwg|dxf|png|jpe?g|tiff?|eml|msg|html?))+(?=[\s,;)\]]|$)",
+    re.IGNORECASE,
+)
+
+
+def _cited_path(text: str) -> str | None:
+    """The estate path ``text`` cites, exactly: from its mount to the leaf's extension.
+
+    A file name may hold commas (``Bescheid, Stand 2024.pdf``), so the path ends at its extension,
+    and text after it (a page, a dash, a closing parenthesis) stays. A leaf without a known extension
+    ends where the locus (``p.3``, ``S. 3``) or the shelf qualifier begins, never at the first comma.
+    """
+    start = _ESTATE_PATH_START_RE.search(text)
+    if start is None:
+        return None
+    rest = text[start.start() :].split("\n", 1)[0]
+    if leaf := _ESTATE_PATH_LEAF_RE.match(rest):
+        return leaf.group(0)
+    page = _TITLE_PAGE_RE.search(rest)
+    span = (rest[: page.start()] if page else rest).rstrip().rstrip(",").rstrip()
+    qualifier = _SCOPE_QUALIFIER_RE.search(span)
+    return (span[: qualifier.start()] if qualifier else span).rstrip() or None
 
 
 def citation_key_of_path(text: str) -> tuple[list[str], Shelf | None] | None:
@@ -623,11 +645,11 @@ class SourceRegistry:
         source over a qualifier the model mistyped, and the unqualified filename
         was already proof enough that the document was retrieved.
         """
-        _target_file, target_shelf, target_page = _parse_citation_ref(key)
+        target_file, target_shelf, target_page = _parse_citation_ref(key)
+        named = [(_parse_citation_key(e.citation_key)[0].lower(), e) for e in self._citation_keys]
         matches: list[SourceEntry] = []
-        for name in _key_file_names(key):
-            wanted = name.lower()
-            matches = [e for e in self._citation_keys if _parse_citation_key(e.citation_key)[0].lower() == wanted]
+        for name in _key_file_names(key, target_file):
+            matches = [entry for entry_name, entry in named if entry_name == name.lower()]
             if matches:
                 break
         if target_shelf:
@@ -4062,9 +4084,9 @@ def verify_citations(
             url_replacements[source.line_url] = source.url
         if source.citation_key and source.line_url:
             dropped_urls[num] = source.line_url
-        if source.citation_key and (cited_path := _ESTATE_PATH_IN_LINE_RE.search(match_text)):
+        if source.citation_key and (cited_path := _cited_path(match_text)):
             # The line shows the file's name, as its chip does, never the path the model copied.
-            cited_paths[num] = (cited_path.group(0).rstrip(), _parse_citation_key(source.citation_key)[0])
+            cited_paths[num] = (cited_path, _parse_citation_key(source.citation_key)[0])
         if not already_tokenized and (entry := source.entry(registry)):
             if token := source_origin_token(entry):
                 origin_tokens[num] = token
@@ -4154,7 +4176,7 @@ def verify_citations(
             if (dropped := dropped_urls.get(num)) is not None:
                 line = _drop_url(line, dropped)
             if (cited := cited_paths.get(num)) is not None:
-                line = line.replace(*cited)
+                line = line.replace(*cited, 1)
             if (token := origin_tokens.get(num)) is not None:
                 line = _inject_origin_token(line, token)
         cleaned_ref_lines.append(line)

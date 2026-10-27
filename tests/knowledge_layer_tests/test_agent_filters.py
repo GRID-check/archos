@@ -136,8 +136,8 @@ def test_knowledge_search_description_is_a_contract_for_the_evidence_tool() -> N
 def test_knowledge_search_takes_the_checkpoint_as_an_optional_argument() -> None:
     """The Herleitung checkpoint has a slot, and filling it is the model's option."""
     desc = _KNOWLEDGE_SEARCH_DESCRIPTION
-    assert "`conclusion=` is optional" in desc
-    assert "no effect on the call" in desc
+    assert "`conclusion=`: Optional" in desc
+    assert "No effect on the result" in desc
 
 
 def test_the_description_says_what_a_piloti_document_may_be_cited_for() -> None:

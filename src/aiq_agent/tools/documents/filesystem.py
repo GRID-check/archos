@@ -47,6 +47,7 @@ from aiq_agent.common.citation_collector import artifact_for
 from aiq_agent.common.citation_collector import collect_citations
 from aiq_agent.common.estate_paths import is_draft_path
 from aiq_agent.common.estate_paths import is_skill_path
+from aiq_agent.common.turn_status import CONCLUSION_DESCRIPTION
 from aiq_agent.skills import SKILLS_ROOT
 
 from .draft_store import DRAFT_ROOT
@@ -185,12 +186,6 @@ def composite_backend(
 def _off_the_estate(path: str | None) -> bool:
     """A path the stock tool answers: the drafts (and their legacy root) or the skills."""
     return path is not None and (is_draft_path(path) or is_skill_path(path))
-
-
-#: The one field description the evidence verbs carry: everything else about an argument is said once, in
-#: the tool's description (slice 6). It is an explanation for the person, not reasoning, and it feeds the
-#: Herleitung checkpoint (``turn_status.CONCLUSION_ARG``); the tool never reads it.
-CONCLUSION_DESCRIPTION = "Optional: one line on what you are looking for, shown to the person. No effect on the result."
 
 
 class EstateReadFileSchema(BaseModel):

@@ -22,7 +22,6 @@ import { canManageOfficeShelf } from '@/lib/authz/organizations'
 import { recordAuditEvent } from '@/lib/audit/service'
 import { getBackendUrl } from '@/lib/backend-proxy'
 import { ForbiddenError, NotFoundError } from '@/lib/api/errors'
-import { fetchSemanticHits, joinHitsToFiles, type SearchedDocument } from '@/lib/documents/service'
 import { collectionFileRef, purgeIngestedChunks } from '@/lib/documents/collection-file-ref'
 import { OFFICE_SHELF } from '@/lib/documents/shelf'
 import { publishShelfChanged } from '@/lib/documents/shelf-live'
@@ -88,37 +87,6 @@ export async function listOfficeShelf(
     collectionName: officeShelfCollectionName(session.organizationId),
     canManage: canManageOfficeShelf(session),
   }
-}
-
-/**
- * Document-centric semantic search over the org's shared Archiv. Any org member
- * may read; resolves the org's `archiv_<orgId>` collection, runs the
- * deterministic vector search on the backend, and joins the hits to the
- * Archiv's file rows by collection and filename. Fail-open: a backend
- * error/timeout yields `{ hits: [] }`, never a crash.
- *
- * The join looks the hit names up directly rather than reading the listing:
- * the listing is paged, and a hit on a document past its first page would
- * otherwise be dropped as if the search had not found it.
- *
- * The Archiv is one collection (`archiv_<orgId>`), and every row the lookup
- * returns is filed in it, so the join's collection key is always met by the
- * right row.
- */
-export async function searchOfficeShelfDocuments(
-  session: AuthorizedSession,
-  query: string,
-  topK = 20,
-): Promise<{ hits: Array<SearchedDocument<ListedDocument>> }> {
-  const hits = await fetchSemanticHits(officeShelfCollectionName(session.organizationId), query, topK)
-  if (hits.length === 0) return { hits: [] }
-  const reader = await officeShelfReader(session)
-  const rows = await findOfficeShelfDocumentsByFilenames(
-    session.organizationId,
-    hits.map((hit) => hit.file_name),
-    { reader },
-  )
-  return { hits: joinHitsToFiles(hits, await toListedDocuments(session, rows, reader)) }
 }
 
 /**

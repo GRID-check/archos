@@ -48,7 +48,7 @@ export interface ShelfEndpoints {
   listParams?: Record<string, string>
   /** The folder collection; `/ensure` and `/{id}` hang off it. */
   folders: string
-  /** The semantic search route and the fixed body fields it takes. */
+  /** The search route with the shelf as its query, and the fixed body fields it takes. */
   search: string
   searchBody?: Record<string, unknown>
 }
@@ -142,15 +142,18 @@ export interface CardExtras {
   footerLead?: ReactNode
 }
 
+/** A shelf's search asks the one search (ADR-0136) for documents only, without the counts it does not show. */
+const SHELF_SEARCH_BODY = { kinds: ['document'], facets: false } as const
+
 /** The semantic search scope of a project's shelf. */
 export function projectSearchScope(projectId: string): Pick<ShelfEndpoints, 'search' | 'searchBody'> {
-  return { search: '/api/documents/search', searchBody: { projectId } }
+  return { search: `/api/search?projectId=${encodeURIComponent(projectId)}`, searchBody: SHELF_SEARCH_BODY }
 }
 
 /** The semantic search scope of the office Archiv. */
 export const OFFICE_SHELF_SEARCH_SCOPE: Pick<ShelfEndpoints, 'search' | 'searchBody'> = {
-  search: '/api/documents/search',
-  searchBody: { scope: 'office_shelf' },
+  search: '/api/search?scope=office_shelf',
+  searchBody: SHELF_SEARCH_BODY,
 }
 
 export function projectEndpoints(projectId: string): ShelfEndpoints {

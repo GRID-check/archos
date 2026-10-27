@@ -667,14 +667,10 @@ def _chat_bound(tools: list[Any], config: ResearchAgentConfig, builder: Builder)
     ``ls`` do those. A config without the estate (an eval, a benchmark) keeps the full contracts,
     the literal modes included. The budget the description states is the search's own configuration.
     """
+    if config.filesystem is None:
+        return tools
     from knowledge_layer.chat_binding import chat_tools
 
-    from aiq_agent.common.estate_paths import reads_the_estate
-    from aiq_agent.tools.documents.tools import ESTATE_TOOL_NAMES
-
-    estate_verbs = ESTATE_TOOL_NAMES if config.filesystem is not None else ()
-    if not reads_the_estate([*(getattr(tool, "name", "") for tool in tools), *estate_verbs]):
-        return tools
     search = builder.get_function_config(config.filesystem)
     return chat_tools(
         tools,

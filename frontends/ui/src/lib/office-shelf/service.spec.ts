@@ -76,10 +76,6 @@ vi.mock('@/lib/documents/service', () => ({
   // call `dispatchIngest` with its own `isIfcFilename` branch beside it; the
   // branch now lives in `dispatchDocument`, which is what this asserts on.
   dispatchDocument: vi.fn().mockResolvedValue({ jobId: 'job-1', status: 'pending' }),
-  // The semantic-search join is unit-tested in the documents service; here we
-  // assert the Archiv service wires the collection + hits through it correctly.
-  fetchSemanticHits: vi.fn(),
-  joinHitsToFiles: vi.fn(),
 }))
 
 vi.mock('@/lib/documents/reconcile-status', () => ({
@@ -136,7 +132,7 @@ vi.mock('./repository', () => ({
 }))
 
 import { canManageOfficeShelf } from '@/lib/authz/organizations'
-import { assertUploadTypeAllowed, dispatchDocument, fetchSemanticHits, joinHitsToFiles } from '@/lib/documents/service'
+import { assertUploadTypeAllowed, dispatchDocument } from '@/lib/documents/service'
 import { reconcileDocumentStatuses } from '@/lib/documents/reconcile-status'
 import { recordAuditEvent } from '@/lib/audit/service'
 import { ConflictError, ForbiddenError, NotFoundError, UpstreamError } from '@/lib/api/errors'
@@ -162,12 +158,10 @@ import {
   deleteOfficeShelfDocument,
   probeOfficeShelfDocumentNames,
   resolveOfficeShelfDocumentsByName,
-  searchOfficeShelfDocuments,
 } from './service'
 import { makeDocument, makeLiveDocumentMatch } from '@/test-utils/db-fixtures'
 import type { AuthorizedSession } from '@/lib/auth/types'
 import type { DocumentMetadata, ReconcilableDocument } from '@/lib/documents/reconcile-status'
-import type { SearchedDocument } from '@/lib/documents/service'
 
 const session: AuthorizedSession = {
   userId: 'user-1',
@@ -319,63 +313,6 @@ describe('listOfficeShelf', () => {
     const result = await listOfficeShelf(session, { level: LEVEL })
 
     expect(result.documents[0]).toMatchObject({ id: 'd1', assignees: [] })
-  })
-})
-
-describe('searchOfficeShelfDocuments', () => {
-  it('resolves the org archiv collection, runs the search, and returns the joined hits', async () => {
-    // `listOfficeShelf` selects `authoredBy` (archiv/repository.ts), and
-    // `joinHitsToFiles` requires it — a row without it would be a compile error,
-    // which is the point: the authorship filter cannot be bypassed by a caller
-    // that forgets the column.
-    const docs: Array<ReconcilableDocument & { createdAt: Date; authoredBy: string }> = [
-      {
-        id: 'd1',
-        filename: 'plan.pdf',
-        createdAt: new Date('2026-01-01T00:00:00Z'),
-        status: 'completed',
-        collectionName: 'archiv_org-1',
-        errorMessage: null,
-        authoredBy: 'user',
-        publishedVersionId: null,
-      },
-    ]
-    vi.mocked(findOfficeShelfDocumentsByFilenames).mockResolvedValue([])
-    vi.mocked(reconcileDocumentStatuses).mockResolvedValue(docs.map((d) => ({ ...d, metadata: {} })))
-    vi.mocked(canManageOfficeShelf).mockReturnValue(false)
-    const backendHits = [{ file_name: 'plan.pdf', score: 0.8, snippet: 's', page_number: 1, collection: 'archiv_org-1' }]
-    vi.mocked(fetchSemanticHits).mockResolvedValue(backendHits)
-    const joinedHits: Array<SearchedDocument<(typeof docs)[number]>> = [
-      { ...docs[0], snippet: 's', page: 1, score: 0.8 },
-    ]
-    vi.mocked(joinHitsToFiles).mockReturnValue(joinedHits)
-
-    const { hits } = await searchOfficeShelfDocuments(session, 'fire escape', 20)
-
-    expect(fetchSemanticHits).toHaveBeenCalledWith('archiv_org-1', 'fire escape', 20)
-    // The join reads the hit names directly, not the paged listing — a hit on
-    // a document past the first page must still resolve.
-    expect(findOfficeShelfDocumentsByFilenames).toHaveBeenCalledWith('org-1', ['plan.pdf'], { reader: { kind: 'member', userId: 'user-1' } })
-    expect(listOfficeShelfDocumentLevel).not.toHaveBeenCalled()
-    // Joined against the Archiv's own reconciled rows (not the raw backend hits).
-    expect(joinHitsToFiles).toHaveBeenCalledWith(backendHits, expect.arrayContaining([expect.objectContaining({ id: 'd1' })]))
-    // The service returns the join result untouched — the document row plus
-    // its match evidence, not a trimmed projection of it.
-    expect(hits).toEqual(joinedHits)
-  })
-
-  it('defaults topK to 20 when omitted', async () => {
-    vi.mocked(findOfficeShelfDocumentsByFilenames).mockResolvedValue([])
-    vi.mocked(reconcileDocumentStatuses).mockResolvedValue([])
-    vi.mocked(canManageOfficeShelf).mockReturnValue(false)
-    vi.mocked(fetchSemanticHits).mockResolvedValue([])
-    vi.mocked(joinHitsToFiles).mockReturnValue([])
-
-    await searchOfficeShelfDocuments(session, 'q')
-
-    expect(fetchSemanticHits).toHaveBeenCalledWith('archiv_org-1', 'q', 20)
-    // No hits, no lookup.
-    expect(findOfficeShelfDocumentsByFilenames).not.toHaveBeenCalled()
   })
 })
 

@@ -142,7 +142,8 @@ _READ_PASSAGE_DESCRIPTION = (
     "chunks, up to about 6k tokens; a read that stopped early ends with a `cursor` to pass back with the same "
     "`document=`.\n"
     "Returns: the passages, each with Source, Citation (copy verbatim), Dokumentart, Punkt and page. The "
-    "Gliederung is an index, not evidence: only passages carry a Citation. An unknown document name is refused, "
+    "Gliederung is an index, not evidence: only passages carry a Citation; a Punkt it lists, or one an outline "
+    "in a `knowledge_search` result lists, opens here by its number (`clause=`). An unknown document name is refused, "
     "with up to three labelled guesses from this turn's readable inventory when anything is close.\n"
     "`conclusion=` is optional: one line on what you are looking for; it has no effect on the call."
 )

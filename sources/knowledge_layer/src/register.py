@@ -23,6 +23,8 @@ from pydantic import model_validator
 
 from aiq_agent.common.action_outcome import ActionOutcome
 from aiq_agent.common.estate_paths import estate_path
+from aiq_agent.common.turn_status import CONCLUSION_ARG
+from aiq_agent.common.turn_status import CONCLUSION_DESCRIPTION
 from aiq_agent.common.turn_status import ActionRow
 from aiq_agent.common.wire_v2 import TraceLane
 from aiq_agent.common.wire_v2 import TraceLaneSource
@@ -94,7 +96,7 @@ SCOPE_PARAGRAPH = (
     "folder or one file. "
 )
 #: Said of ``conclusion`` where the schema cannot carry a field description.
-CONCLUSION_LINE = "\n`conclusion=` is optional: one line on what you are looking for; it has no effect on the call."
+CONCLUSION_LINE = f"\n`{CONCLUSION_ARG}=`: {CONCLUSION_DESCRIPTION}"
 
 _KNOWLEDGE_SEARCH_DESCRIPTION = (
     "Searches the ingested knowledge base (the office's files and the OIB corpus) and returns quotable "
@@ -363,6 +365,13 @@ class KnowledgeRetrievalConfig(FunctionBaseConfig, name="knowledge_retrieval"):
         if isinstance(data, dict) and isinstance(data.get("match_modes"), str):
             data = {**data, "match_modes": [mode.strip() for mode in data["match_modes"].split(",") if mode.strip()]}
         return data
+
+    @model_validator(mode="after")
+    def keep_ranked_search(self):
+        """A search without ``meaning`` is refused: literal-only is ``grep``'s, on a binding that reads the estate."""
+        if "meaning" not in self.match_modes:
+            raise ValueError("match_modes must keep `meaning`; a literal-only arm unbinds the search for `grep`.")
+        return self
 
     @model_validator(mode="after")
     def validate_summary_config(self):

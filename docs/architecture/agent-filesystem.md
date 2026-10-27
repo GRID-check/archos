@@ -487,8 +487,20 @@ confirm the file.
 
 The tree comes from inventory rows (`without_restricted`), as `list_files` builds it
 today. Empty folders and folder descriptions need the BFF's tree, and a folder name is
-itself a name, so that waits for a route that filters for the conversation's whole
-audience (slice 7).
+itself a name, so the BFF serves it filtered for the conversation's whole audience
+(slice 7, **built**): `POST /api/internal/estate-tree`, one shelf (`project`,
+`office_shelf`, `session`) per call, the shelf taken from the signed envelope and its
+signed scope, never from the body. It lists every living folder, empty ones included,
+with its description and whether it has a card, and a keyset page of documents with
+the search projection's Dokumentart, pages, Plankopf and superseded mark and the
+published Fassung. Who may list what is the search's listing reach (`reachForAudience`
+with `listing` and `includeOwnProject`, `lib/search/reach.ts`), so a
+restricted folder is absent in every audience, a solo chat's included; held uploads,
+binned folders and archived documents are absent too. The contract is
+[`docs/api/bff-routes.md`](../api/bff-routes.md) (`/api/internal/estate-tree`); the
+agent's client is `aiq_agent/knowledge/estate_tree_client.py`, which the estate backend
+of slices 2–3 calls. A missing, binned and restricted folder all answer the same 404,
+so `ls` renders each as the same "No file".
 
 ## 6. Herleitung and wire
 
@@ -556,16 +568,18 @@ our own caching stays), the general-purpose subagent, `write_todos`.
 
 | Today | Becomes |
 |---|---|
-| `list_files` | `ls` and `glob`. `revisions_of` and `compare_to` stay on `list_files` until a revisions surface exists |
+| `list_files` | `ls` and `glob` for a folder and a name; `list_files` stays, without its tree view, for the filtered, paged listing (`added_since`, `doc_class`, `topic`, `offset`) and the Fassungen (`revisions_of`, `compare_to`), which neither has |
 | `read_passage` | `read_file` with `pages` and `clause` |
 | `knowledge_search(match="exact"\|"regex")` | `grep` |
 | draft `ls`, `read_file`, `write_file`, `edit_file` | the same tools, on `/drafts/` |
 | `knowledge_search` (meaning) | stays, with `path` |
 | `look`, `ris_lookup`, `web_search_tool`, `ifc_query`, `ifc_measure`, `project_lookup`, `workspace__*`, `canvas__*` and the write tools | stay |
 
-Since slice 6 the old names are off Piloti's chat binding: a call to one is answered with
-the exact replacement call (`common/retired_calls.py`), and `list_files` stays bound with
-`revisions_of` and `compare_to` only. They stay registered, because stored and replayed turns
+Since slice 6 `read_passage` and the literal `knowledge_search` are off Piloti's chat binding
+where the estate is read. A `read_passage` call is answered by the tool node's own error, which
+names the tools there are; a retired argument (`match`, `stemmed`, `context`, `view`, `depth`) is
+rejected by the schema with its replacement named (`common/retired_calls.py`). `list_files` keeps
+every filter and its paging. The old names stay registered, because stored and replayed turns
 name them, the read side reads them for good, and the answer suite's matcher maps old to new so
 before and after compare. The MCP door keeps its operations (`files-list`,
 `passage-read`, `knowledge-search`) and gains `path`. Deep research and intake keep the
@@ -587,7 +601,7 @@ The table with what each reads off the suite is in ADR-0133's More Information.
 4. `grep` under its own name.
 5. `/law/oib/`, `/office/`, `/chat/`; `knowledge_search(path=…)`.
 6. The prompt around four verbs; aliases retired.
-7. The audience-aware BFF tree route.
+7. The audience-aware BFF tree route. **Built** (2026-10-27): the route and its client; no tool reads it until slice 3's `ls`.
 
 ## 10. Open questions
 

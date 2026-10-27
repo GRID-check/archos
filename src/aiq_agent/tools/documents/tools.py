@@ -74,12 +74,25 @@ ESTATE_TOOL_NAMES = ("ls", "read_file", "glob", "grep")
 #: The tools only a working directory gives: the two that write.
 DRAFT_ONLY_TOOL_NAMES = ("write_file", "edit_file")
 
-#: Model-facing text, replacing DeepAgents' defaults. ``edit_file`` carries the
-#: two things that actually make an exact-string replacement land: anchor on a
-#: heading, and copy the paragraph rather than retyping it — with the warning
-#: that ``read_file`` prints a ``@@ lines … @@`` header that is not part of the
-#: file (since DeepAgents 0.7 the body below it is verbatim, without the line
-#: numbers and tabs it used to carry).
+#: The two writing verbs, one contract whichever namespace they sit in: a draft is written once, and
+#: ``edit_file`` copies its anchor from ``read_file``, whose ``@@ … @@`` header (DeepAgents 0.7) is not
+#: part of the file.
+_WRITE_DESCRIPTIONS = {
+    "write_file": (
+        f"Writes a draft as Markdown at `{DRAFT_ROOT}<name>.md` (short, lowercase, hyphens). For a commissioned "
+        "document (Aktenvermerk, Protokoll, Checkliste, Flächenaufstellung): write it here, complete and starting "
+        "with a `# ` heading, rather than in the answer, which then says in one sentence what was written. A draft "
+        f"is written once: an existing path is refused, and edit_file changes it. Only {DRAFT_ROOT} is writable."
+    ),
+    "edit_file": (
+        "Changes part of a draft: replaces `old_string`, which must occur exactly once (or pass "
+        "`replace_all=true`), with `new_string`. Copy `old_string` verbatim from read_file's output below its "
+        f"`@@ … @@` header, anchored on a heading and covering the whole paragraph you change. Only {DRAFT_ROOT} "
+        "is editable."
+    ),
+}
+
+#: Model-facing text for the drafts alone, replacing DeepAgents' defaults.
 _TOOL_DESCRIPTIONS = {
     "ls": (
         "Lists the drafts of this conversation. The working directory is at "
@@ -95,24 +108,7 @@ _TOOL_DESCRIPTIONS = {
         "What stands here, the answer wrote itself; evidence comes from the "
         "source tools."
     ),
-    "write_file": (
-        "Writes a NEW document into this conversation's working directory, as Markdown "
-        f"under `{DRAFT_ROOT}<name>.md` (short, descriptive file name, lowercase, "
-        "hyphens). For a commissioned document — Aktenvermerk, protocol, "
-        "checklist, area schedule, concept draft: the document is written, not "
-        "described in the answer. The document begins with a heading (`# …`) and is "
-        "complete; the answer then says in one sentence what was written. "
-        "Only creates new files: if the path already exists, `edit_file` is the tool."
-    ),
-    "edit_file": (
-        "Revises an existing draft by replacing `old_string` exactly once with "
-        "`new_string`. `old_string` must be unique in the document: anchor on a "
-        "heading and take over the whole paragraph from the heading to the end of the text to "
-        "change, verbatim from the output of `read_file` — without its "
-        "`@@ lines … @@` header line. If the text occurs several times, the "
-        "tool reports the count; then retry with more surrounding context. For a new document "
-        "use `write_file`."
-    ),
+    **_WRITE_DESCRIPTIONS,
 }
 
 #: Read and write are confined to the one root. The permission is checked in the
@@ -145,8 +141,8 @@ _ESTATE_DESCRIPTIONS = {
         "/office/ (the Büroablage), /chat/ (files dropped into this conversation), /law/oib/ (the "
         f'OIB-Richtlinien), {DRAFT_ROOT} (this conversation\'s drafts), {SKILLS_ROOT} (procedures); `ls("/")` '
         "lists the mounts this turn has. `depth` 2 to 4 returns the tree below as folder cards; a folder's "
-        "`README.md` is its card. Use it to see what a project or folder holds; to find a file by part of its "
-        "name, glob is quicker."
+        "`README.md` is its card. At most 40 files a folder are listed; a listing is an index, never cited. Use "
+        "it to see what a project or folder holds; to find a file by part of its name, glob is quicker."
     ),
     "glob": (
         "Finds files by name. `pattern` takes `*`, `**`, `?`, `[abc]` and `{a,b}` (`**/*Brandschutz*`); case is "
@@ -175,20 +171,10 @@ _ESTATE_DESCRIPTIONS = {
         '("3.5.2", "Tabelle 3", or the Punkt a hit printed) one Punkt of a structured document such as an '
         "OIB-Richtlinie; without either you get the first page and the Gliederung. A document comes back one "
         "citable passage per page, up to about 6k tokens a call. `offset` and `limit` count lines (default 0 and "
-        "100) and apply to drafts, skills and text files; on a paginated document use `pages`."
+        "100) and apply to drafts, skills and text files; on a paginated document use `pages`. A draft is what "
+        "the answer wrote, never evidence."
     ),
-    "write_file": (
-        f"Writes a draft as Markdown at `{DRAFT_ROOT}<name>.md` (short, lowercase, hyphens). For a commissioned "
-        "document (Aktenvermerk, Protokoll, Checkliste, Flächenaufstellung): write it here, complete and starting "
-        "with a `# ` heading, rather than in the answer, which then says in one sentence what was written. A draft "
-        f"is written once: an existing path is refused, and edit_file changes it. Only {DRAFT_ROOT} is writable."
-    ),
-    "edit_file": (
-        "Changes part of a draft: replaces `old_string`, which must occur exactly once (or pass "
-        "`replace_all=true`), with `new_string`. Copy `old_string` verbatim from read_file's output below its "
-        f"`@@ … @@` header, anchored on a heading and covering the whole paragraph you change. Only {DRAFT_ROOT} "
-        "is editable."
-    ),
+    **_WRITE_DESCRIPTIONS,
 }
 
 

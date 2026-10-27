@@ -75,6 +75,7 @@ import { ProjectUppyUpload } from '@/features/documents/components/project-uppy-
 import { sortedFolderDestinations } from '@/features/documents/lib/folder-path-label'
 import { useFileSearch } from '@/features/documents/hooks/use-file-search'
 import { projectSearchScope } from '@/features/documents/lib/file-shelf'
+import { documentSearchAnswer, fileSearchHit } from '@/test-utils/search-answers'
 import type { FileItem, FolderItem } from '@/features/documents/components/project-file-workspace'
 import { RevisionsFixture } from './revisions-fixture'
 import { FolderBrief } from '@/features/documents/components/folder-brief'
@@ -241,7 +242,7 @@ if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
       // every other thumbnail 404s → warm "no thumbnail" placeholder.
       if (/\/api\/documents\/p7\/thumbnail$/.test(url)) return new Response(null, { status: 500 })
       if (/\/api\/documents\/.+\/thumbnail$/.test(url)) return new Response(null, { status: 404 })
-      if (/\/api\/documents\/search$/.test(url)) {
+      if (/\/api\/search\?/.test(url)) {
         const variant = new URLSearchParams(window.location.search).get('variant')
         // The semantic search, refusing to run — see the `search-failed` variant.
         if (variant === 'search-failed') return new Response(null, { status: 500 })
@@ -249,13 +250,13 @@ if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
         // the oldest file in the set, so a list that re-sorted by date would
         // put it last and the ranking would be gone without a word.
         if (variant === 'search-list') {
-          return Response.json({
-            hits: [
-              { ...FILES[1], snippet: 'Die nutzbare Fluchtwegbreite beträgt mindestens 1,20 m.', page: 2, score: 0.93 },
-              { ...FILES[0], snippet: 'Der zweite Fluchtweg führt über die Nordfassade.', page: 11, score: 0.71 },
-              { ...FILES[4], snippet: 'Lastannahmen für den Fluchtbalkon nach ÖNORM B 1991.', page: 7, score: 0.38 },
-            ],
-          })
+          return Response.json(
+            documentSearchAnswer([
+              fileSearchHit(FILES[1], { text: 'Die nutzbare Fluchtwegbreite beträgt mindestens 1,20 m.', page: 2 }),
+              fileSearchHit(FILES[0], { text: 'Der zweite Fluchtweg führt über die Nordfassade.', page: 11 }),
+              fileSearchHit(FILES[4], { text: 'Lastannahmen für den Fluchtbalkon nach ÖNORM B 1991.', page: 7 }),
+            ])
+          )
         }
       }
       return real(input, init)
