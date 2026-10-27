@@ -516,12 +516,12 @@ ceiling.
    ([testing-and-verification.md](../contributing/testing-and-verification.md#the-workspace-set));
    its `uses` rows check the job got done with the native tool.
 
-**What it holds today** (358 entries: 351 operations, 7 read tools; regenerate from `frontends/ui/tests/fixtures/exposure.json`):
+**What it holds today** (359 entries: 352 operations, 7 read tools; regenerate from `frontends/ui/tests/fixtures/exposure.json`):
 
 | Column | Count |
 |---|---|
-| `external: true` | 252 |
-| `piloti: true` | 208 |
+| `external: true` | 253 |
+| `piloti: true` | 209 |
 | `piloti: 'native:…'` | 17 |
 | `piloti: false` | 133 (51 withheld, 55 platform, 13 sensitive, 3 asks, 3 decisions, 3 Outlook archive bytes, 2 held mail text and bytes, 2 skill reads, 1 standing decision: `mail-thread-unfollow`) |
 | `platform: true` | 55 |
