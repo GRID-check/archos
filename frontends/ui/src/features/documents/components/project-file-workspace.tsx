@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Mail, Search } from 'lucide-react'
+import { Mail } from 'lucide-react'
 import { ProjectSectionActions } from '@/components/shell/project-section-frame'
 import { createDocumentNameProbeClient } from '@/lib/documents/name-probe-client'
 import { useTranslations } from '@/i18n'
@@ -18,7 +18,7 @@ import { FileWorkspace } from './file-workspace'
 import { MailImportAction } from './mail-import-action'
 import { MailImportDialog } from './mail-import-dialog'
 import { DocumentFindingsPanel } from './document-findings-panel'
-import { SearchWorkspace, ShelfSearchBack, ShelfSearchToggle, useShelfSearchMode } from '@/features/search'
+import { SearchWorkspace, ShelfSearchBack, useShelfSearchMode } from '@/features/search'
 
 // The row and folder types live in `../file-types`; they are re-exported here
 // because this is the name every importer already uses.
@@ -97,7 +97,6 @@ export function ProjectFileWorkspace({
   mailImportEnabled = false,
 }: ProjectFileWorkspaceProps) {
   const t = useTranslations('files')
-  const tSearch = useTranslations('search.mode')
   const router = useRouter()
   const probe = useMemo(() => createDocumentNameProbeClient(), [])
   // The Outlook import is a button beside the upload control on a wide screen
@@ -156,16 +155,8 @@ export function ProjectFileWorkspace({
             {mailOffered && !phone && <MailImportAction projectId={projectId} />}
           </ProjectSectionActions>
         )}
-        headerLeading={<ShelfSearchToggle onOpen={search.open} />}
+        onOpenSearch={search.open}
         moreEntries={[
-          {
-            type: 'item' as const,
-            id: 'search',
-            label: tSearch('open'),
-            icon: Search,
-            onSelect: search.open,
-            testId: 'shelf-search-open-more',
-          },
           ...(mailOffered && phone
             ? [
                 {
