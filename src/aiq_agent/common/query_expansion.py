@@ -28,7 +28,7 @@ is the number that matters here because the reranker downstream can reorder a po
 Closing the rest of the gap needs the corpus reachable in the language asked, rather
 than the question rewritten into the corpus's. Indexing an English rendering of every
 Punkt beside its German original measures better than this glossary and costs German
-nothing -- see ``docs/architecture/rag-system-audit-2026-08.md`` §23. This table is
+nothing -- see ``docs/audit/rag-system-audit-2026-08.md`` §23. This table is
 the reason that is worth doing.
 
 It is deliberately pure, deterministic and table-driven -- no LLM, no network, no

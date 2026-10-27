@@ -41,6 +41,7 @@ import { isOfficeShelfCollectionName } from '@/lib/office-shelf/collection-prefi
 import { sessionCollectionName } from '@/lib/collection-scope'
 import { getProjectFolderAccess, restrictedCollectionBase } from '@/lib/authz/folder-access'
 import type { AuthorizedSession, GridSession } from '@/lib/auth/types'
+import { ForbiddenError, NotFoundError } from '@/lib/api/errors'
 import { errorEnvelope, handleAuthzError } from '@/lib/backend-proxy'
 
 /** The projectId/conversationId context a proxy request was made in. */
@@ -215,7 +216,7 @@ async function authorizeCollection(
     if (upload) return refuseRawUpload('proj_')
     if (fileDelete) return refuseChunkOnlyDelete('/api/documents/[id]')
     if (!session?.organizationId) {
-      return handleAuthzError(new Error('Forbidden'))
+      return handleAuthzError(new ForbiddenError())
     }
     // A restricted folder's collection belongs to the project whose collection
     // name it extends; nothing in the projects table names it directly.
@@ -225,7 +226,7 @@ async function authorizeCollection(
       const projectId = await deps.findProjectIdByCollection(projectCollection, session.organizationId)
 
       if (!projectId) {
-        return handleAuthzError(new Error('Not found'))
+        return handleAuthzError(new NotFoundError())
       }
 
       // Proxy collection routes cover writes (upload/delete) into the project
@@ -242,7 +243,7 @@ async function authorizeCollection(
           projectId,
           projectCollection
         )
-        if (!cleared.includes(collectionName)) return handleAuthzError(new Error('Not found'))
+        if (!cleared.includes(collectionName)) return handleAuthzError(new NotFoundError())
       }
     } catch (error) {
       return handleAuthzError(error)
@@ -259,13 +260,13 @@ async function authorizeCollection(
     if (upload) return refuseRawUpload('office_shelf')
     if (fileDelete) return refuseChunkOnlyDelete('/api/documents/[id]')
     if (!session?.organizationId) {
-      return handleAuthzError(new Error('Forbidden'))
+      return handleAuthzError(new ForbiddenError())
     }
     if (
       !officeShelfCollectionNames(session.organizationId).includes(collectionName) ||
       !canManageOfficeShelf(session)
     ) {
-      return handleAuthzError(new Error('Forbidden'))
+      return handleAuthzError(new ForbiddenError())
     }
     return null
   }

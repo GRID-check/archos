@@ -13,6 +13,7 @@ import {
   dropViewerActions,
   newViewerActions,
   noteTypedAt,
+  noteViewerLocation,
   noteViewerRoom,
   proposeViewerAction,
   registerViewerActionRunner,
@@ -76,12 +77,38 @@ afterEach(() => {
 })
 
 describe('nothing moves before the answer is there', () => {
-  it('holds an action while its turn runs, and the row shows nothing yet', () => {
+  it('holds an action while its turn runs, and the row shows it as held', () => {
     proposeViewerAction('answer-1', call('highlight_passage'))
 
     expect(run).not.toHaveBeenCalled()
     expect(entry('va_highlight_passage')?.status).toBe('held')
-    expect(viewerActionsOf(useViewerActionStore.getState(), 'answer-1')).toEqual([])
+    expect(viewerActionsOf(useViewerActionStore.getState(), 'answer-1').map((held) => held.status)).toEqual(['held'])
+  })
+
+  it('runs a held action at once on the person’s press, and the answer then moves nothing else', async () => {
+    proposeViewerAction('answer-1', call('open_document', 'va_1'))
+    proposeViewerAction('answer-1', call('highlight_passage', 'va_2'))
+
+    const pressed = showViewerAction('va_1')
+    // The press is in flight: the answer arriving now neither runs it twice nor moves another place.
+    expect(entry('va_1')?.status).toBe('pending')
+    await releaseViewerActions('answer-1')
+    await pressed
+
+    expect(run).toHaveBeenCalledOnce()
+    expect(entry('va_1')?.status).toBe('shown')
+    expect(entry('va_2')).toMatchObject({ status: 'offered', reason: 'another' })
+  })
+
+  it('keeps what the person pressed when the turn ends without an answer', async () => {
+    proposeViewerAction('answer-1', call('open_document', 'va_1'))
+    proposeViewerAction('answer-1', call('highlight_passage', 'va_2'))
+    await showViewerAction('va_1')
+
+    dropViewerActions('answer-1')
+
+    expect(entry('va_1')?.status).toBe('shown')
+    expect(entry('va_2')).toBeUndefined()
   })
 
   it('moves the viewer once the answer releases it, and says so, with the way back', async () => {
@@ -118,6 +145,26 @@ describe('nothing moves before the answer is there', () => {
 
     expect(run).toHaveBeenCalledOnce()
     expect(useViewerActionStore.getState().byAnswer['answer-1']).toEqual(['va_open_document'])
+  })
+})
+
+describe('an action that left the chat', () => {
+  it('drops its „Zurücknehmen“ once the page is no longer where it went, and keeps it while it is', async () => {
+    let there = true
+    outcome = { outcome: 'shown', where: 'model', undo, undoable: () => there }
+    proposeViewerAction('answer-1', call('focus_ifc_element'))
+    await showViewerAction('va_focus_ifc_element')
+
+    noteViewerLocation()
+    expect(entry('va_focus_ifc_element')).toMatchObject({ status: 'shown', where: 'model' })
+    expect(entry('va_focus_ifc_element')?.left).toBeUndefined()
+
+    there = false
+    noteViewerLocation()
+    expect(entry('va_focus_ifc_element')).toMatchObject({ status: 'shown', left: true })
+    undoViewerAction('va_focus_ifc_element')
+    expect(undo).not.toHaveBeenCalled()
+    expect(entry('va_focus_ifc_element')?.status).toBe('shown')
   })
 })
 

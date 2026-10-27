@@ -5,7 +5,7 @@ Status: **built** — see [As built](#as-built-2026-08-20) for where the code
 differs from this design, and why.
 Branch: `claude/piloti-filesystem-write-design-mftg4d`
 
-Related: [file-native work objects](2026-08-13-file-native-ownership-design.md)
+Related: file-native work objects (removed; in git history at `56ee3329`)
 (merged, PR #416), [ADR-0032](../adr/0032-shareable-resource-model.md),
 [ADR-0042](../adr/0042-object-storage-durability-and-quota.md),
 [ADR-0047](../adr/0059-assignment-is-not-access.md),

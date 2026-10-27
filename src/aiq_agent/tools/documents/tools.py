@@ -133,7 +133,7 @@ _PERMISSIONS = [
 #: instead. What a result can say at the moment it matters (caps reached, `incomplete:`, a miss, a drawing's
 #: caveat, an unknown path, restricted folders) is said by the result, not here; the schema fields are bare, so
 #: each argument's meaning is stated once. The texts and the sources behind them:
-#: ``docs/architecture/prompt-value-audit-2026-10.md`` (slice 6).
+#: ``docs/audit/prompt-value-audit-2026-10.md`` (slice 6).
 _ESTATE_DESCRIPTIONS = {
     "ls": (
         "Lists one folder: its subfolders with their document counts, and its files with pages, Dokumentart, "

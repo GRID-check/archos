@@ -120,6 +120,7 @@ from aiq_agent.tools.bim.measurement_sources import end_measurement_capture
 from aiq_agent.tools.bim.measurement_sources import get_measurement_captures
 from aiq_agent.turn.answer_stream import streaming_call
 
+from .answer_check import turn_check
 from .answer_pipeline import CardRepairFn
 from .answer_pipeline import FinalAnswer
 from .answer_pipeline import LiveAnswer
@@ -1019,6 +1020,7 @@ class PilotiAgent:
         envelope_json_mode_with_tools: bool = False,
         repair_pass: bool = True,
         card_repair_llm: BaseChatModel | None = None,
+        claim_judge_llm: BaseChatModel | None = None,
     ) -> None:
         """Build the agent once.
 
@@ -1038,20 +1040,14 @@ class PilotiAgent:
                 spend before synthesis is forced, read off the cost tracker
                 that already meters them. The bound that protects the person
                 paying, now that rounds do not: 0 disables it.
-            max_calls_per_round: How many tool calls of ONE round are run. A
-                runaway guard and not a doctrine — a round costs one however
-                wide it fans out, and a wide round is usually the model using
-                it well — so it sits far above any batch the prompt asks for.
-                The calls past it are answered with a notice saying they may be
-                issued again next round, never deleted from the AIMessage. 0
-                disables it.
+            max_calls_per_round: How many tool calls of ONE round are run: a
+                runaway guard far above any batch the prompt asks for. The calls
+                past it are told to ask again next round, never deleted. 0 disables it.
             callbacks: Optional LangGraph callbacks.
             envelope_json_mode_with_tools: Whether provider JSON mode is ALSO
                 bound on tool-bound research iterations, not only on the
-                tool-free forced-synthesis call. Default False: some
-                OpenRouter-routed providers accept the parameter and then stop
-                emitting tool calls, a silent degradation the per-call
-                fallback cannot see.
+                tool-free forced-synthesis call. Default False: some providers
+                accept it and then stop emitting tool calls, unseen.
             repair_pass: Correct a misremembered quotation in place, on
                 ``card_repair_llm`` (``quote_patch.py``, ADR-0067). Off, or
                 without that model, ships the marker.
@@ -1060,8 +1056,11 @@ class PilotiAgent:
                 thousand tokens instead of the full-context round the
                 ``emit_card`` retry used to cost. ``None`` drops a card that
                 fails validation, and records that it did.
+            claim_judge_llm: Grades each answer on its turn's evidence (``answer_check``,
+                ADR-0139). ``None`` leaves the check unavailable and no level.
         """
         self.card_repair_llm = card_repair_llm
+        self.claim_judge_llm = claim_judge_llm
         self.llm_provider = llm_provider
         self.tools = list(tools)
         self.max_tool_iterations = max_tool_iterations
@@ -1526,12 +1525,9 @@ class PilotiAgent:
         """Execute one research turn: the tool loop, then the post-answer pipeline.
 
         What THIS turn's tools returned and MEASURED are captured on two
-        separate ledgers beside the cumulative registry. That separation is
-        the safety property: ``citation_grounded`` derives from the registry
-        and is the only route to a surfaced "high", while the normative brake
-        is gated on its ABSENCE; a measurement in the registry would hand an
-        uncited legal verdict the evidence of the basement measurement standing
-        next to it (see ``bim.measurement_sources``).
+        separate ledgers beside the cumulative registry: a measurement in the
+        registry would be a passage an uncited legal verdict could rest on
+        (see ``bim.measurement_sources``).
         """
         binding = self._resolve_turn(turn)
         # Which static half THIS turn renders, when it is the bundled fallback:
@@ -1584,6 +1580,7 @@ class PilotiAgent:
             turn_sources=turn_sources,
             card_repair=self._card_repairer(),
             measured_values=[measurement.value_text for measurement in turn_measurements],
+            check=turn_check(state, self.claim_judge_llm),
         )
         self._emit_final_report(final)
         # The "already read" digest, appended at turn end: this turn's captures

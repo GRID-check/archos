@@ -10,6 +10,11 @@
  * card shows its {@link previewOf} until the reader unfolds it, and „Apply“
  * waits until every long row has been unfolded, so a person never accepts text
  * they were not shown (an injected instruction at the end of a long body).
+ *
+ * A value that is an id the server named for this reader (the proposal's
+ * `targets`: a project, a document, a folder, a person) reads as that name; the
+ * id stays on the row (`ids`) for whoever checks it. An id nobody named stays
+ * the id.
  */
 
 export interface OperationInputRow {
@@ -20,7 +25,12 @@ export interface OperationInputRow {
   long: boolean
   /** Where the field sits in the call: a path parameter is the object the action acts on. */
   source: 'body' | 'query' | 'params'
+  /** The value as the call carries it, when {@link value} shows names in place of its ids. */
+  ids?: string
 }
+
+/** The name the reader knows an id by, or null to show the id. */
+export type IdName = (id: string) => string | null | undefined
 
 /** Longest value shown whole without unfolding. */
 export const PREVIEW_LENGTH = 160
@@ -33,23 +43,38 @@ function show(value: unknown): string {
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value)
 
-function rowOf(key: string, value: unknown, source: OperationInputRow['source']): OperationInputRow {
-  const text = show(value)
-  return { key, value: text, long: text.length > PREVIEW_LENGTH || text.includes('\n'), source }
+/** A string, or a list of strings, with every id the reader knows by name replaced by it; anything else as it is. */
+function named(value: unknown, nameOf: IdName): unknown {
+  if (typeof value === 'string') return nameOf(value) ?? value
+  if (Array.isArray(value) && value.every((item) => typeof item === 'string')) return value.map((item) => nameOf(item) ?? item)
+  return value
 }
 
-function rowsOf(record: unknown, source: OperationInputRow['source']): OperationInputRow[] {
+function rowOf(key: string, value: unknown, source: OperationInputRow['source'], nameOf: IdName): OperationInputRow {
+  const raw = show(value)
+  const text = show(named(value, nameOf))
+  const row: OperationInputRow = { key, value: text, long: text.length > PREVIEW_LENGTH || text.includes('\n'), source }
+  return text === raw ? row : { ...row, ids: raw }
+}
+
+function rowsOf(record: unknown, source: OperationInputRow['source'], nameOf: IdName): OperationInputRow[] {
   if (!isRecord(record)) return []
   return Object.entries(record)
     .filter(([, value]) => value !== undefined && value !== null && value !== '')
-    .map(([key, value]) => rowOf(key, value, source))
+    .map(([key, value]) => rowOf(key, value, source, nameOf))
 }
 
-/** Every row of `input`, body first, then query, then path parameters. */
-export function operationInputRows(input: Record<string, unknown>): OperationInputRow[] {
+const unnamed: IdName = () => null
+
+/** Every row of `input`, body first, then query, then path parameters; ids `nameOf` knows read as names. */
+export function operationInputRows(input: Record<string, unknown>, nameOf: IdName = unnamed): OperationInputRow[] {
   const body = input.body
-  const bodyRows = isRecord(body) ? rowsOf(body, 'body') : body === undefined || body === null ? [] : [rowOf('body', body, 'body')]
-  return [...bodyRows, ...rowsOf(input.query, 'query'), ...rowsOf(input.params, 'params')]
+  const bodyRows = isRecord(body)
+    ? rowsOf(body, 'body', nameOf)
+    : body === undefined || body === null
+      ? []
+      : [rowOf('body', body, 'body', nameOf)]
+  return [...bodyRows, ...rowsOf(input.query, 'query', nameOf), ...rowsOf(input.params, 'params', nameOf)]
 }
 
 /** The start of a long value, on one line, marked as cut. */

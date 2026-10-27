@@ -933,6 +933,12 @@ functions:
     # shape in a few thousand tokens — instead of costing the full-context
     # round the `emit_card` retry used to. Unset = drop it and record it.
     card_repair_llm: card_llm
+    # The answer check (ADR-0139): one structured call at temperature 0, after
+    # the answer streamed, grades the answer against everything the turn
+    # registered. The follow-ups model: the smallest role an organisation
+    # configures, resolved with its override and BYOK for that group. Unset =
+    # no confidence level, the chip says the check was unavailable.
+    claim_judge_llm: follow_ups_llm
     # Agent skills (ADR-0135): Deep Agents' SkillsMiddleware catalog in the turn
     # context, each SKILL.md read with `read_file` under /skills/. Empty
     # allowlist = every resolved skill (builtin + org) is offered. No body

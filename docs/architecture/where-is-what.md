@@ -19,7 +19,7 @@ does not exist, so a moved file is caught; a missing row is not.
 
 | Concept | Owning code | Doc of record | Decision |
 |---|---|---|---|
-| Filing a machine-authored document | `frontends/ui/src/lib/documents/generated.ts` — `fileGeneratedDocument` | [`docs/specs/2026-08-20-agent-authored-documents-design.md`](../specs/2026-08-20-agent-authored-documents-design.md) | ADR-0042, ADR-0038 |
+| Filing a machine-authored document | `frontends/ui/src/lib/documents/generated.ts` — `fileGeneratedDocument` | [`docs/architecture/agent-authored-documents.md`](agent-authored-documents.md) | ADR-0042, ADR-0038 |
 | Producers and their reference kinds | `frontends/ui/src/lib/documents/generated.ts` — `GENERATED_DOCUMENT_PRODUCER_REF_KINDS` | same | — |
 | Author and ref-kind vocabulary | `frontends/ui/src/lib/documents/document-authors.ts` — `AUTHORED_REF_KINDS` | [`document-roles.md`](document-roles.md) | ADR-0032 |
 | The "written by a machine" marking in the bytes | `frontends/ui/src/lib/ai-provenance.ts` — `aiProvenanceMarking` | [`docs/user-guides/agent-authored-reports.md`](../user-guides/agent-authored-reports.md) | — |
@@ -315,7 +315,7 @@ does not exist, so a moved file is caught; a missing row is not.
 | Answer envelope, shared wire fixture | `tests/fixtures/answer_meta/wire_payload.json` | same | ADR-0037 |
 | The answer dialect, server side: vocabulary, budget per kind, unwrap/marker repairs, census | `src/aiq_agent/common/answer_dialect.py` — `validate_dialect`; parity with `frontends/ui/src/lib/text/answer-directives.ts` in `tests/aiq_agent/common/test_answer_dialect_parity.py` | [`docs/design/answer-richness.md`](../design/answer-richness.md) | ADR-0069 |
 | The stamp on each quote line (`TurnResult.quote_stamps`) | `src/aiq_agent/common/quote_stamps.py` — `stamp_quote_lines` | [`docs/api/websocket-protocol.md`](../api/websocket-protocol.md) | ADR-0069 |
-| Where each sentence comes from (`TurnResult.claim_stamps`) and the confidence held to the weakest one | `src/aiq_agent/common/claim_provenance.py` — `classify_claims`, `claims_ceiling`; `src/aiq_agent/agents/piloti/markers.py` — `surface_claim_confidence` | [`docs/observability/langfuse.md`](../observability/langfuse.md) | ADR-0125 |
+| The answer's confidence: one model call grading the answer against everything the turn registered (`TurnResult.confidence_check`) | `src/aiq_agent/common/claim_judge.py` — `llm_judge`; `src/aiq_agent/agents/piloti/answer_pipeline.py` — `_evidence`, `_check_answer`; `src/aiq_agent/agents/piloti/markers.py` — `surface_checked_confidence` | [`docs/observability/langfuse.md`](../observability/langfuse.md) | ADR-0139 |
 | Workspace reads and proposals as records, never registry sources | `src/aiq_agent/common/workspace_records.py` — `records_from_messages` | — | ADR-0125 |
 | Answer repair after verification | `src/aiq_agent/agents/piloti/quote_patch.py` — `patch_quotes` | [`docs/audit/repair-pass-alternatives-2026-09.md`](../audit/repair-pass-alternatives-2026-09.md) | ADR-0067 |
 | Confidence markers and the overconfidence guard | `src/aiq_agent/agents/piloti/markers.py` | [`docs/audit/quote-verification-calibration-2026-07.md`](../audit/quote-verification-calibration-2026-07.md) | ADR-0058 (retrieval correctness) |
@@ -376,7 +376,7 @@ does not exist, so a moved file is caught; a missing row is not.
 | Data-source registry (the UI toggles) | `src/aiq_agent/common/data_source_registry.py` | [`docs/user-guides/knowledge-search.md`](../user-guides/knowledge-search.md) | ADR-0026 |
 | Source kinds, Python | `src/aiq_agent/common/source_kinds.py` — `SOURCE_KINDS`, `kind_for_lane` | [`docs/audit/rag-system-audit-2026-08.md`](../audit/rag-system-audit-2026-08.md) | ADR-0026 |
 | Source kinds, TypeScript mirror | `frontends/ui/src/features/chat/lib/source-kinds.ts` — `KIND_TO_SIGNAL`, `kindForLane` | same | ADR-0026 |
-| `doc_class` (human-set, beats every filename guess) | `src/aiq_agent/knowledge/document_classification.py`; UI in `frontends/ui/src/lib/knowledge/doc-class.ts` | [`docs/specs/2026-07-17-norm-registry-design.md`](../specs/2026-07-17-norm-registry-design.md) | ADR-0025 |
+| `doc_class` (human-set, beats every filename guess) | `src/aiq_agent/knowledge/document_classification.py`; UI in `frontends/ui/src/lib/knowledge/doc-class.ts` | — | ADR-0025 |
 | Norm registry lanes | `src/aiq_agent/common/norm_registry.py` | same | ADR-0025 |
 | Citation verification | `src/aiq_agent/common/citation_verification.py` | [`docs/audit/citation-system-audit-2026-07.md`](../audit/citation-system-audit-2026-07.md) | ADR-0058 (retrieval correctness) |
 | The grounding block: the record, and the one renderer | `src/aiq_agent/common/grounding_block.py` — `GroundingHit`, `GroundingBlock`, `render_grounding_block` | [`backend-deep-dive.md`](backend-deep-dive.md) | ADR-0061 |

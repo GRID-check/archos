@@ -116,7 +116,7 @@ Nothing acts on uploads.
 
 ### Does the 1 October conclusion hold?
 
-**Yes.** `docs/plans/2026-10-01-upload-governance-worklog.md` concluded that nothing in the NVIDIA stack screens uploaded documents, that `pii_defense` is English Presidio on output only, that the Guardrails sensitive-data rail is English-only, and that the gate is ours to build. All of that still holds against today's latest releases.
+**Yes.** `docs/plans/2026-10-01-upload-governance-worklog.md` at `56ee3329` concluded that nothing in the NVIDIA stack screens uploaded documents, that `pii_defense` is English Presidio on output only, that the Guardrails sensitive-data rail is English-only, and that the gate is ours to build. All of that still holds against today's latest releases.
 
 Two corrections and additions:
 

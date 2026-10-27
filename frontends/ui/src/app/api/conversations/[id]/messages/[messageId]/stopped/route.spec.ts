@@ -16,7 +16,6 @@ vi.mock('@/lib/auth/require-auth', () => ({
     role: 'member',
     permissions: [],
   }),
-  authzErrorResponse: () => null,
 }))
 
 const findConversationTenancy = vi.fn()

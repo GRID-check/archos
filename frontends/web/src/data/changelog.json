@@ -120,6 +120,14 @@
               "de": "Wenn Sie Piloti bitten, Ihnen Dateien zu einem Thema anzuzeigen, findet es diese jetzt über dieselbe Suche, die Sie selbst verwenden, und in der Sprache Ihrer Dokumente. Die angezeigten Dateien enthalten einen Link, der diese Suche mit allen Ergebnissen öffnet."
             },
             {
+              "en": "When Piloti proposes a change, the card now names the projects, folders, documents and people it affects instead of showing their ids.",
+              "de": "Wenn Piloti eine Änderung vorschlägt, nennt die Karte jetzt die betroffenen Projekte, Ordner, Dokumente und Personen, statt ihre IDs anzuzeigen."
+            },
+            {
+              "en": "A place Piloti wants to show you appears under the answer as soon as the answer starts, marked as waiting, and you can open it right away.",
+              "de": "Ein Ort, den Piloti Ihnen zeigen möchte, wird direkt unter der Antwort angezeigt, sobald diese beginnt, als wartend markiert und kann sofort geöffnet werden."
+            },
+            {
               "en": "Chat answers on a Claude model now use considerably less of your office's monthly budget, because the parts Piloti sends again on every step of an answer are now billed at a tenth of the price.",
               "de": "Chat-Antworten mit einem Claude-Modell belasten Ihr monatliches Bürobudget jetzt deutlich weniger, da die Teile, die Piloti bei jedem Antwortschritt erneut sendet, nun nur noch mit einem Zehntel des Preises verrechnet werden."
             },
@@ -167,6 +175,26 @@
             {
               "en": "The permission reference on the Access tab no longer lists skill-schedule permissions that no role could ever hold. Who may run and change a schedule is decided by the project, as it always was.",
               "de": "Die Berechtigungsübersicht im Tab Zugriff führt keine Berechtigungen für Skill-Zeitpläne mehr auf, die keine Rolle jemals haben konnte. Wer einen Zeitplan ausführen und ändern darf, wird wie bisher durch das Projekt festgelegt."
+            },
+            {
+              "en": "Taking back a model view Piloti opened works again after you selected another element there, and once you have left the model view the chat no longer offers to take it back.",
+              "de": "Das Zurückholen einer von Piloti geöffneten Modellansicht funktioniert wieder, nachdem Sie darin ein anderes Element ausgewählt haben. Sobald Sie die Modellansicht verlassen haben, bietet der Chat nicht mehr an, sie zurückzuholen."
+            },
+            {
+              "en": "When Piloti may not show you something, you now see that access was refused instead of a general error. A file that fails more than one upload check is now refused for the same reason in project files, the Archiv and the chat.",
+              "de": "Kann Piloti Ihnen etwas nicht anzeigen, sehen Sie jetzt statt einer allgemeinen Fehlermeldung, dass der Zugriff verweigert wurde. Eine Datei, die mehrere Upload-Prüfungen nicht besteht, wird jetzt in Projektdateien, im Archiv und im Chat aus demselben Grund abgelehnt."
+            },
+            {
+              "en": "The confidence under an answer is now a check of the whole answer against everything Piloti read for it, and the chip names the statements nothing backs or a source contradicts. A listing of your files or an answer drawn from the project details no longer shows low confidence for a suggested next step.",
+              "de": "Die Konfidenz unter einer Antwort prüft jetzt die gesamte Antwort anhand aller Inhalte, die Piloti dafür gelesen hat. Der Chip kennzeichnet Aussagen, die unbelegt sind oder denen eine Quelle widerspricht. Eine Dateiliste oder eine Antwort auf Basis der Projektdetails zeigt bei einem vorgeschlagenen nächsten Schritt nicht mehr eine niedrige Konfidenz an."
+            },
+            {
+              "en": "When the confidence check cannot run, the chip says so instead of showing a level.",
+              "de": "Wenn die Konfidenzprüfung nicht ausgeführt werden kann, zeigt der Chip dies an, statt eine Stufe anzuzeigen."
+            },
+            {
+              "en": "When an answer numbers its sources without listing them, each number now points to the passage this answer read that says what the sentence says, and the source list is added for you, instead of an unrelated source from earlier in the conversation.",
+              "de": "Wenn eine Antwort ihre Quellen nummeriert, ohne sie aufzulisten, verweist nun jede Nummer auf die gelesene Passage, die die jeweilige Aussage belegt, und die Quellenliste wird automatisch ergänzt – statt auf eine unpassende Quelle aus dem früheren Gespräch."
             },
             {
               "en": "A word search that could not search all your documents no longer looks complete in the Herleitung. It is drawn with a dashed ring and says that a missing hit is no proof; an incomplete search without a hit appears under „Offen“.",

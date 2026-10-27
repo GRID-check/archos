@@ -17,6 +17,13 @@ import {
   resetRequestErrorHandlerForTests,
 } from './request-error'
 import { scrubServerEvent } from './scrub-server-event'
+import {
+  ConflictError,
+  ForbiddenError,
+  NoOrganizationError,
+  NotFoundError,
+  SessionRequiredError,
+} from '@/lib/api/errors'
 
 const request = { path: '/api/projects/p-1/files', method: 'POST', headers: {} }
 const context = {
@@ -72,12 +79,21 @@ describe('request errors through @posthog/next', () => {
     })
   })
 
-  test.each(['Not found', 'Not found: project', 'Forbidden', 'Unauthorized access'])(
-    'an authorization denial (%s) is not an exception',
-    (message) => {
-      expect(beforeCapture(capture(new Error(message)))).toBe(false)
-    }
-  )
+  test.each([
+    ['NotFoundError', () => new NotFoundError()],
+    ['ForbiddenError', () => new ForbiddenError('This project is closed')],
+    ['SessionRequiredError', () => new SessionRequiredError()],
+    ['NoOrganizationError', () => new NoOrganizationError()],
+  ])('an authorization denial (%s) is not an exception', (_name, denial) => {
+    expect(beforeCapture(capture(denial()))).toBe(false)
+  })
+
+  test('another API error, and a plain Error that only reads like a denial, still are', () => {
+    // Typed, not matched by message: a server error says "forbidden" in its
+    // text as easily as a denial does.
+    expect(beforeCapture(capture(new ConflictError('Conflict')))).not.toBe(false)
+    expect(beforeCapture(capture(new Error('Forbidden'), '/elsewhere'))).not.toBe(false)
+  })
 
   test('a post naming a server action this build lacks is not an exception', () => {
     // Next's own message (action-handler, E975), verbatim.

@@ -209,6 +209,14 @@ export const OPERATION_TARGET_TYPES = [
 export type OperationTargetType = (typeof OPERATION_TARGET_TYPES)[number]
 
 /**
+ * What the card names besides the targets: a person of the office the call
+ * names by user id (`userId`). A label only: no gate reads it, so it is not a
+ * target type.
+ */
+export const OPERATION_TARGET_VIEW_TYPES = [...OPERATION_TARGET_TYPES, 'member'] as const
+export type OperationTargetViewType = (typeof OPERATION_TARGET_VIEW_TYPES)[number]
+
+/**
  * One target of a proposed operation as the card shows it to ITS reader: the
  * name when that reader may read it (a project, a document), else null and the
  * card shows the id. Resolved per reader when the proposal is read, never
@@ -216,7 +224,7 @@ export type OperationTargetType = (typeof OPERATION_TARGET_TYPES)[number]
  * proposer could see.
  */
 export const operationTargetViewSchema = z.object({
-  type: z.enum(OPERATION_TARGET_TYPES),
+  type: z.enum(OPERATION_TARGET_VIEW_TYPES),
   id: z.string(),
   name: z.string().nullable(),
 })

@@ -2,43 +2,33 @@
 
 Piloti reaches the office's own state through its MCP server (``workspace__call``,
 ADR-0122): who is on a project, which approvals are open, what a task says. A
-sentence read straight off that state is grounded more firmly than any passage,
-because the server row IS the fact. Before this module, the answer pipeline
-could not tell: the workspace is not a data source (``NOT_SOURCES``), nothing
-it returned reached the citation registry, and „Anna hat drei offene
-Freigaben" surfaced as an ungrounded „low".
+statement read straight off that state is backed more firmly than by any
+passage, because the server row IS the fact. The answer check reads every
+record of the turn beside the passages (``common/claim_judge.py``, ADR-0139).
 
 ## Why a separate channel, not the ``SourceRegistry``
 
 The same argument ``tools/bim/measurement_sources.py`` makes for measurements,
-and for the same reason: the registry is what ``[N]`` resolves through, what
-the single-source fallback once drew from, and what ``EmptySourceRegistryError``
-means is empty. A record in it would let a member list ground an uncited legal
-verdict, and a turn that read the task list and retrieved nothing would stop
-being a turn without retrieved evidence. So a record never touches it. It
-grounds descriptive and value sentences about the office (``claim_provenance``)
-and never a normative one.
+and for the same reason: the registry is what ``[N]`` resolves through and what
+``EmptySourceRegistryError`` means is empty. A record in it would be citable
+like a passage of the law, and a turn that read the task list and retrieved
+nothing would stop being a turn without retrieved evidence. So a record never
+touches it, and the check is told that a record never backs a statement about
+what a regulation requires.
 
 ## Where records come from
 
 From the turn's own transcript, not from the tool: each ``workspace__call``
 the model made this turn, paired with its result. The tool's text is all the
-model read, so it is all a sentence can have been written from:
+model read:
 
-- a READ answers with the route's JSON (``discovery.ts`` ``renderText``), whose
-  scalar values become the record's haystack, one ITEM per element of a list
-  (a row); a capped answer is the JSON cut short, matched as text, one item per
-  fragment between brackets;
+- a READ answers with the route's JSON (``discovery.ts`` ``renderText``),
+  whole or capped;
 - a WRITE answers „Proposed — the person decides. Nothing was changed.": a
-  PROPOSAL, whose evidence is the server row the person decides on. Its values
-  are the inputs the model proposed;
-- a ``list_files`` LISTING (tree or files view; ADR-0125, amendment of
-  2026-10-22), or an ``ls`` or ``glob`` of the estate (ADR-0133 slice 6), is
-  read like a capped read: the rendered text the model saw, cut at
-  :data:`LISTING_MAX_CHARS`, one item per line, so „Einreichung: 6
-  Dokumente, aktuell Index B" is a sentence read off the listing. It is
-  provenance only: the listing stays an index, never cited, and registers no
-  source (``citation_verification``);
+  PROPOSAL, whose record is the input the model proposed;
+- a ``list_files`` LISTING, or an ``ls`` or ``glob`` of the estate (ADR-0133
+  slice 6), is its rendered text, cut at :data:`LISTING_MAX_CHARS`. It stays an
+  index, never cited, and registers no source (``citation_verification``);
 - anything else (a refusal, which the tool words „Error …", or a notice the
   agent's own guards answered the call with) is no JSON and no record.
 
@@ -47,8 +37,8 @@ model read, so it is all a sentence can have been written from:
 A record is evidence because the server holds it and the model did not write
 it. A conversation's history (``conversation-message-list``), a comment thread
 or a report Piloti drafted are server rows too, but the words in them are an
-earlier answer's, and matching a sentence against them would launder model
-knowledge into ``record``. So an object marked as Piloti's (``role:
+earlier answer's, and reading them as evidence would launder model knowledge
+into a record. So an object marked as Piloti's (``role:
 "assistant"``, ``authoredBy: "agent"``, ``authorKind: "piloti"``) contributes
 nothing, and a capped answer carrying such a marker, which cannot be split by
 author, is no record.
@@ -61,8 +51,6 @@ from __future__ import annotations
 
 import json
 import re
-from collections import Counter
-from collections.abc import Iterable
 from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Any
@@ -98,50 +86,20 @@ _PILOTI_AUTHORED: dict[str, frozenset[str]] = {
 _PILOTI_AUTHORED_TEXT_RE = re.compile(
     r'"(?:role|authoredBy|authorKind)"\s*:\s*"(?:assistant|agent|piloti)"', re.IGNORECASE
 )
-_FRAGMENT_SPLIT_RE = re.compile(r"[{}\[\]\n]")
 
 RecordOutcome = Literal["read", "proposed"]
-
-_ISO_DATE_RE = re.compile(r"\b(\d{4})-(\d{2})-(\d{2})")
-
-#: Workspace enum tokens and the German the answer writes for them. Both sides
-#: go into the haystack, so „freigegeben" matches a stored ``approved``.
-_ENUM_WORDS: dict[str, tuple[str, ...]] = {
-    "approved": ("freigegeben", "genehmigt"),
-    "accepted": ("angenommen",),
-    "rejected": ("abgelehnt",),
-    "dismissed": ("verworfen", "abgelehnt"),
-    "pending": ("offen", "ausstehend"),
-    "open": ("offen",),
-    "done": ("erledigt", "abgeschlossen"),
-    "completed": ("erledigt", "abgeschlossen"),
-    "closed": ("geschlossen", "abgeschlossen"),
-    "draft": ("entwurf",),
-    "in_review": ("in prüfung", "zur prüfung"),
-    "archived": ("archiviert",),
-    "active": ("aktiv",),
-    "owner": ("inhaber", "inhaberin"),
-    "admin": ("administrator", "administratorin"),
-    "member": ("mitglied",),
-}
 
 
 @dataclass(frozen=True)
 class WorkspaceRecord:
-    """One workspace call this turn: what it read or proposed, as text a sentence can be matched against."""
+    """One workspace call or listing this turn: what it read or proposed, as the text the answer check reads."""
 
     #: The operation the model called (``project-members-list``), as it named it.
     operation: str
     outcome: RecordOutcome
-    #: Every scalar value the result carried, casefolded, one per line; enum
-    #: tokens are followed by their German.
-    haystack: str
-    #: The counts it implies without stating them: the length of every list,
-    #: and how often each value repeats („2 offen" when two rows say pending).
-    counts: frozenset[int] = frozenset()
-    #: The haystack per item: one row of a list, or the values outside any
-    #: list. Words a sentence is matched on must stand in one item together.
-    items: tuple[str, ...] = ()
+    #: What the result held, Piloti's own words taken out: the route's JSON, the
+    #: proposed input, or the listing's lines.
+    text: str
 
     def to_wire(self) -> dict[str, Any]:
         return {"operation": self.operation, "outcome": self.outcome}
@@ -175,21 +133,21 @@ def is_estate_listing(tool_name: str, call: dict[str, Any] | None) -> bool:
 
 
 def listing_record(text: str, tool: str = LISTING_TOOL) -> WorkspaceRecord | None:
-    """The record a ``list_files`` result makes: its rendered text, capped, one item per line.
+    """The record a ``list_files`` result makes: its rendered text, capped.
 
     A listing is rows the knowledge layer computed, not words Piloti wrote, so
-    it is a read. Numbers are matched against the text itself; the line counts
-    (``12 file(s)``, ``6 documents``) are in it.
+    it is a read.
     """
     stripped = text.strip()
     if not stripped or _LISTING_REFUSALS.match(stripped):
         return None
-    lines = [line.strip().casefold() for line in stripped[:LISTING_MAX_CHARS].splitlines() if line.strip()]
-    return WorkspaceRecord(tool, "read", "\n".join(lines), frozenset(), tuple(lines))
+    return WorkspaceRecord(tool, "read", stripped[:LISTING_MAX_CHARS])
 
 
-def _piloti_authored(value: dict[str, Any]) -> bool:
+def _piloti_authored(value: Any) -> bool:
     """Whether ``value`` is an object the workspace marks as written by Piloti."""
+    if not isinstance(value, dict):
+        return False
     for key, item in value.items():
         marks = _PILOTI_AUTHORED.get(str(key).casefold())
         if marks and isinstance(item, str) and item.strip().casefold() in marks:
@@ -197,79 +155,25 @@ def _piloti_authored(value: dict[str, Any]) -> bool:
     return False
 
 
-def _scalars(value: Any, counts: set[int], items: list[list[str]] | None = None) -> Iterable[str]:
-    """Every scalar under ``value`` as text, skipping what Piloti wrote; list lengths into ``counts``.
-
-    With ``items``, each list element's scalars also go into an item of their own.
-    """
+def _without_piloti(value: Any) -> Any:
+    """``value`` with every object the workspace marks as Piloti's own taken out."""
     if isinstance(value, dict):
-        if _piloti_authored(value):
-            return
-        for item in value.values():
-            yield from _scalars(item, counts, items)
-    elif isinstance(value, list):
-        counts.add(len(value))
-        for item in value:
-            if items is None:
-                yield from _scalars(item, counts, None)
-                continue
-            row = list(_scalars(item, counts, items))
-            if row:
-                items.append(row)
-            yield from row
-    elif isinstance(value, bool) or value is None:
-        return
-    elif isinstance(value, (int, float, str)):
-        text = str(value).strip()
-        if text:
-            yield text
-
-
-def _with_spellings(text: str) -> list[str]:
-    """``text`` casefolded, plus the German an enum token and an ISO date are written as."""
-    folded = text.casefold()
-    spellings = [folded, *_ENUM_WORDS.get(folded, ())]
-    for year, month, day in _ISO_DATE_RE.findall(folded):
-        spellings += [f"{int(day)}.{int(month)}.{year}", f"{day}.{month}.{year}", f"{int(day)}.{int(month)}."]
-    return spellings
-
-
-def _haystack(values: Iterable[str]) -> str:
-    return "\n".join(spelling for value in values for spelling in _with_spellings(value))
+        return {key: _without_piloti(item) for key, item in value.items() if not _piloti_authored(item)}
+    if isinstance(value, list):
+        return [_without_piloti(item) for item in value if not _piloti_authored(item)]
+    return value
 
 
 def _read_record(operation: str, text: str) -> WorkspaceRecord | None:
     """The record a read's JSON makes, whole or capped; None when it holds nothing but Piloti's words."""
-    counts: set[int] = set()
-    rows: list[list[str]] = []
     try:
         parsed = json.loads(text)
     except ValueError:
-        if _PILOTI_AUTHORED_TEXT_RE.search(text):
-            return None
-        values = [text]
-        rows = [[fragment] for fragment in _FRAGMENT_SPLIT_RE.split(text) if fragment.strip()]
-    else:
-        values = list(_scalars(parsed, counts, rows))
-        loose = _outside_rows(parsed)
-        if loose:
-            rows.append(loose)
-    if not values and not counts:
+        return None if _PILOTI_AUTHORED_TEXT_RE.search(text) else WorkspaceRecord(operation, "read", text)
+    kept = None if _piloti_authored(parsed) else _without_piloti(parsed)
+    if kept in (None, {}, []):
         return None
-    counts.update(Counter(value.casefold() for value in values).values())
-    items = tuple(_haystack(row) for row in rows) or (_haystack(values),)
-    return WorkspaceRecord(operation, "read", _haystack(values), frozenset(counts), items)
-
-
-def _outside_rows(value: Any) -> list[str]:
-    """The scalars of ``value`` that stand outside every list: a page's total, a project's own name."""
-    if isinstance(value, dict):
-        if _piloti_authored(value):
-            return []
-        return [scalar for item in value.values() for scalar in _outside_rows(item)]
-    if isinstance(value, list):
-        return []
-    return list(_scalars(value, set()))
+    return WorkspaceRecord(operation, "read", json.dumps(kept, ensure_ascii=False))
 
 
 def _calls_by_id(messages: Sequence[Any]) -> dict[str, dict[str, Any]]:
@@ -294,8 +198,7 @@ def record_from_result(operation: str, arguments: dict[str, Any], text: str) -> 
     stripped = text.strip()
     if stripped.startswith(PROPOSED_PREFIX):
         call_input = arguments.get("input") if isinstance(arguments.get("input"), dict) else {}
-        values = list(_scalars(call_input, set()))
-        return WorkspaceRecord(operation, "proposed", _haystack(values), frozenset())
+        return WorkspaceRecord(operation, "proposed", json.dumps(call_input, ensure_ascii=False))
     if not stripped.startswith(_JSON_STARTS):
         return None
     return _read_record(operation, stripped)

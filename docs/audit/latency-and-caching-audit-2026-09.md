@@ -12,8 +12,8 @@
 > (16.2 s) the final call, and the startup sequence to the millisecond.
 >
 > Supersedes the still-open items in
-> `docs/plans/2026-07-18-chat-response-time-perf-audit.md` and
-> `docs/plans/2026-07-19-shallow-research-speedups-fable.md` (§7 says which landed).
+> `docs/plans/2026-07-18-chat-response-time-perf-audit.md` at `56ee3329` and
+> `docs/plans/2026-07-19-shallow-research-speedups-fable.md` at `56ee3329` (§7 says which landed).
 > Complements `rag-system-audit-2026-08.md` (retrieval quality),
 > `docs/architecture/post-answer-stages.md` (what runs after the answer) and ADR-0020 (the cache
 > tier).
@@ -664,7 +664,7 @@ change.
 
 ## 7. The July findings, reconciled
 
-Of `docs/plans/2026-07-18` and `docs/plans/2026-07-19`: tool-description dedup,
+Of `docs/plans/2026-07-18` and `docs/plans/2026-07-19` (both at `56ee3329`): tool-description dedup,
 batched `doc_class`, fire-and-forget registry persist, single envelope parse,
 norm-store memo (`knowledge/norm_store.py:51`), Tavily client reuse
 (`sources/tavily_web_search/src/register.py:104`), `html_to_text` off the loop

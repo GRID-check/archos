@@ -122,37 +122,73 @@ describe('ConfidenceChip', () => {
  * on, and the tooltip says what the sentences rest on. A turn stored before it
  * carries no version and keeps the copy it was computed under.
  */
-describe('ConfidenceChip under the per-sentence rule', () => {
-  const stamps = [
-    { text: 'Anna has three open approvals.', provenance: 'record', claimType: 'value', loadBearing: true },
-    { text: 'The height is 2.50 m [1].', provenance: 'cited', claimType: 'normative', loadBearing: true },
-    { text: 'That also holds for the attic.', provenance: 'reasoning', claimType: 'descriptive', loadBearing: false },
-    { text: 'Section 5 allows it.', provenance: 'model_knowledge', claimType: 'normative', loadBearing: true },
-  ] as const
-
-  test('shows the mix of what the sentences rest on', async () => {
+describe('ConfidenceChip on a stored per-sentence turn (ADR-0125)', () => {
+  test('keeps the copy of the rule it was stored under', async () => {
     const user = userEvent.setup()
-    render(
-      <ConfidenceChip confidence="low" cappedReason="normative_claim_uncited" version={2} claimStamps={[...stamps]} />
-    )
+    render(<ConfidenceChip confidence="low" cappedReason="normative_claim_uncited" version={2} />)
 
     await user.hover(screen.getByRole('button'))
 
-    const mix = await screen.findAllByTestId('confidence-claim-mix')
-    expect(mix[0]).toHaveTextContent('2 statements backed · 1 inference · 1 legal statement without a source')
     expect(
       (await screen.findAllByText(/A workspace record or a measurement does not back a legal statement\./)).length
     ).toBeGreaterThan(0)
     expect((await screen.findAllByText(/held to the weakest statement/)).length).toBeGreaterThan(0)
   })
+})
 
-  test('a stored turn without a version keeps the answer-level copy and shows no mix', async () => {
+describe('ConfidenceChip for a checked answer (ADR-0139)', () => {
+  const finding = {
+    statement: 'The stair is 1.50 m wide',
+    problem: 'contradicted',
+    reason: 'the section gives 1.10 m',
+    source: '[1] Section A-A.pdf, p.2',
+  } as const
+
+  test('names what the check found unbacked, and the source it checked against', async () => {
     const user = userEvent.setup()
-    render(<ConfidenceChip confidence="low" cappedReason="ungrounded" claimStamps={[...stamps]} />)
+    render(
+      <ConfidenceChip
+        confidence="low"
+        reason="Everything is backed."
+        version={2}
+        check={{ status: 'judged', level: 'low', findings: [finding] }}
+      />
+    )
+
+    expect(screen.getByRole('button')).toHaveAccessibleName('Evidence check of the answer: low')
+    await user.hover(screen.getByRole('button'))
+
+    const findings = (await screen.findAllByTestId('confidence-check-findings'))[0]
+    expect(findings).toHaveTextContent('The stair is 1.50 m wide')
+    expect(findings).toHaveTextContent('contradicts the source: the section gives 1.10 m')
+    expect(findings).toHaveTextContent('checked against [1] Section A-A.pdf, p.2')
+    // The level is the check's, so the model's reason for its own self-report is not shown as if it were.
+    expect(screen.queryByText(/Everything is backed\./)).not.toBeInTheDocument()
+  })
+
+  test('says when a quote the server could not find capped the level', async () => {
+    const user = userEvent.setup()
+    render(
+      <ConfidenceChip
+        confidence="medium"
+        cappedReason="quote_unverified"
+        check={{ status: 'judged', level: 'high', findings: [] }}
+      />
+    )
 
     await user.hover(screen.getByRole('button'))
 
-    expect((await screen.findAllByText(/Low confidence: answer not backed by sources\./)).length).toBeGreaterThan(0)
-    expect(screen.queryByTestId('confidence-claim-mix')).not.toBeInTheDocument()
+    expect((await screen.findAllByText(/A quotation could not be confirmed word for word/)).length).toBeGreaterThan(0)
+    expect(screen.queryByTestId('confidence-check-findings')).not.toBeInTheDocument()
+  })
+
+  test('an unavailable check shows no level and says the check did not run', async () => {
+    const user = userEvent.setup()
+    render(<ConfidenceChip confidence={null} check={{ status: 'unavailable', findings: [] }} />)
+
+    expect(screen.getByTestId('confidence-check-unavailable')).toHaveTextContent('Evidence check unavailable')
+    expect(screen.queryByText(/Confidence:/)).not.toBeInTheDocument()
+    await user.hover(screen.getByRole('button'))
+    expect((await screen.findAllByText(/so Piloti shows no level/)).length).toBeGreaterThan(0)
   })
 })

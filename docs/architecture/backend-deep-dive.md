@@ -116,68 +116,43 @@ field at its default, and each is reset at the turn boundary in
   machine-readable reason the UI can explain.
 
   **Two rules, and the turn says which** (`answer_confidence_version`). Chat
-  uses rule 2 (ADR-0125, `markers.surface_claim_confidence`): every sentence of
-  the final text is stamped with a provenance class and a claim type
-  (`common/claim_provenance.py`, `TurnResult.claim_stamps`), and the self-report
-  is held under the weakest load-bearing sentence's ceiling, plus the quote gate
-  below. A passage, a workspace record (`common/workspace_records.py`), an
-  action or a measurement lets its sentence reach `"high"`; only a passage
-  grounds a normative sentence. Rule 2 names a cap `normative_claim_uncited`
-  (a statement about the law without a passage) or `ungrounded` (any other
-  sentence without evidence). Deep research, and any state without stamps, keep
-  rule 1, the answer-level floors described in the rest of this entry.
-  - `"ungrounded"` — citation verification left the answer without grounding and
-    nothing was measured.
+  surfaces the answer check's level (ADR-0139, `markers.surface_checked_confidence`):
+  one model call on the follow-ups model, at temperature 0 after the prose
+  streamed, grades the final answer against everything the turn registered
+  (`common/claim_judge.py`; passages in full up to a budget, this turn's
+  workspace records from `common/workspace_records.py`, the profile and the
+  inventory, measurements, readings, and what the quote check found), and
+  returns a level and the statements it found unbacked or contradicted
+  (`TurnResult.confidence_check`). The quote gate below is the one rule on top;
+  the self-report sets no level. A check that cannot run surfaces no level.
+  Deep research keeps rule 1, the answer-level floors described in the rest of
+  this entry.
+  - `"ungrounded"` — rule 1: citation verification left the report without
+    grounding.
   - `"quote_unverified"` — a quoted span failed the deterministic
     quote-vs-source check (a grounded answer is held at "medium", an ungrounded
     one at "low"; the span itself is marked inline) (`verify_quoted_spans`, difflib coverage over the
     registry's captured `chunk_text`, fail-open; the offending span is annotated
     inline with `[nicht wörtlich in der Quelle belegt]` and the answer is never
     otherwise altered).
-  - `"normative_claim_uncited"` / `"measurement_only"` — the two reasons about
-    the SECOND kind of grounding, below.
+  - `"normative_claim_uncited"` / `"measurement_only"` — no longer produced;
+    they named rule 1's measurement branches for chat, which the answer check
+    replaced (ADR-0139). Stored turns still carry the tokens.
   - `"citation_fallback"` — no longer produced. It named the single registry
     source Piloti appended when nothing the model wrote survived verification;
     that fallback invented an attribution and was removed (ADR-0125). Stored
     turns still carry the token.
 
-  **Two kinds of grounding.** The guard was written against one form of
-  evidence: a citation the verifier can resolve to a retrieved passage. An IFC
-  measurement has no passage to quote — it carries a `provenance`, a `tolerance`,
-  a readable `method` and the GlobalIds it was derived from
-  (`ifc_spatial.envelope.Answer`) — so a correctly measured number was capped to
-  `"low"` for lacking evidence it structurally cannot have. Two extra signals
-  travel from Piloti alongside `answer_citation_grounded`:
-  - `answer_measurement_grounded` — this turn produced at least one
-    `declared`/`computed` `ifc_measure` answer. Written by Piloti's
-    tools node (a sticky OR across the tool loop; `piloti/grounding.py`
-    decides what counts — a refusal, an outage, an `inferred` guess and a
-    `decidable: false` finding all do not). Lifts the surfaced confidence off the
-    `"low"` floor to at most `"medium"`; `"high"` still requires a verified
-    citation.
-  - `answer_normative_claim_uncited` — the anti-laundering brake. A single answer
-    routinely mixes „Der Keller ist 2,70 m hoch" (reproducible) with „…und
-    erfüllt damit OIB 4 Punkt 2.1" (a legal claim needing a quote). If the
-    measurement satisfied the gate for the whole answer, the legal claim would
-    ride out confidently on evidence that says nothing about it — worse than the
-    over-hedging it replaces. So when a non-citation-grounded answer mentions
-    regulatory material or passes a verdict at all, the measurement grounding is
-    withheld and the answer keeps its `"low"`, reported as
-    `"normative_claim_uncited"` rather than resolved silently. The `"medium"`
-    ceiling is the structural half of the same defence and does not depend on
-    that text heuristic. The vocabulary is two-tier: named instruments and
-    deontic modals („muss", „darf", `must`, `shall`) fire wherever they appear,
-    while the handful of stems `ifc_measure`'s own renderers use about the
-    APPARATUS („für eine Messung geeignet", „für die Ermittlung … erforderlich",
-    „die Datei ist zu groß") fire only in a sentence that does not name the
-    apparatus — a false fire re-floors exactly the measured answers the signal
-    above exists to un-hedge. The brake reads the answer's PROSE — a trailing
-    reference list is stripped first (`_prose_without_references`), because a
-    source title is a pointer, not a claim the answer makes. Only a GENUINELY
-    trailing list is cut: every line after the heading must be a link, a list
-    entry or blank, or the „**Quellen:**" line is just something the model wrote
-    in the middle of an answer and the verdict after it would be dropped before
-    the brake ever read it.
+  **Two kinds of grounding.** An IFC measurement has no passage to quote — it
+  carries a `provenance`, a `tolerance`, a readable `method` and the GlobalIds it
+  was derived from (`ifc_spatial.envelope.Answer`). Piloti's tools node records
+  `answer_measurement_grounded` when this turn produced at least one
+  `declared`/`computed` `ifc_measure` answer (a sticky OR across the tool loop;
+  `piloti/grounding.py` decides what counts — a refusal, an outage, an
+  `inferred` guess and a `decidable: false` finding all do not), and the
+  measured values reach the answer check beside the passages, which is told
+  that a measurement never backs a statement about what a regulation requires.
+  A measurement never enters the `SourceRegistry`, so it is never a passage.
 
   **What counts as a measurement.** `ifc_measure`'s renderer states it: a result
   from an operation that could measure something ends with a line reporting how

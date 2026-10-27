@@ -60,6 +60,14 @@ export const DEMO = {
   profileDismissed: id(9),
   /** An action of the agent catalog with a long value: „Übernehmen“ waits until it is read in full. */
   operationOpen: id(10),
+  operationIds: id(11),
+} as const
+
+/** The ids an operation names, for the card that shows each by its name (and one this reader may not read). */
+const NAMED = {
+  folder: '0b7a9c1e-2d3f-4a5b-8c6d-7e8f9a0b1c2d',
+  documents: ['3c2b1a0f-9e8d-4c7b-a6f5-4e3d2c1b0a9f', '9a8b7c6d-5e4f-4a3b-8c2d-1e0f9a8b7c6d'],
+  person: 'user_anna',
 } as const
 
 const base = {
@@ -169,6 +177,26 @@ const seed = (): Map<string, ProposedChangeView> =>
           kind: 'operation',
           payload: OPERATION,
           targets: [{ type: 'project', id: DEMO_PROJECT_ID, name: 'Wohnanlage Lindengasse' }],
+        },
+        {
+          ...base,
+          id: DEMO.operationIds,
+          kind: 'operation',
+          payload: {
+            operation: 'document-move',
+            input: {
+              params: { id: DEMO_PROJECT_ID },
+              body: { folderId: NAMED.folder, documentIds: [...NAMED.documents], assigneeId: NAMED.person },
+            },
+            summary: 'Zwei Dokumente nach „Einreichung“ verschieben und Anna zuweisen',
+          },
+          targets: [
+            { type: 'project', id: DEMO_PROJECT_ID, name: 'Wohnanlage Lindengasse' },
+            { type: 'folder', id: NAMED.folder, name: 'Einreichung' },
+            { type: 'document', id: NAMED.documents[0], name: 'Baubeschreibung.pdf' },
+            { type: 'document', id: NAMED.documents[1], name: null },
+            { type: 'member', id: NAMED.person, name: 'Anna Berger' },
+          ],
         },
       ] satisfies ProposedChangeView[]
     ).map((proposal) => [proposal.id, proposal])
