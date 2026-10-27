@@ -53,6 +53,7 @@ import { BFF_JOB_PRIORITY, type BffJobPriority } from '@/lib/db/schema'
  * where they disagree. Sliced: the first slice starts the turn, the next ones
  * wait (`notBefore`) for its answer and leave what it found. Does nothing when
  * the organization's `piloti-notices` is off.
+ *
  * The four `inbound_mail_*` kinds carry a mail sent to a project's address
  * (ADR-0137), and who each runs as is the point of the design: nothing that
  * runs as the system files. `inbound_mail_receive` is one step AS THE SYSTEM
@@ -68,6 +69,7 @@ import { BFF_JOB_PRIORITY, type BffJobPriority } from '@/lib/db/schema'
  * `search_facets_sync` walks one shelf's documents a page per slice as the
  * system (ADR-0136): it rewrites their derived search rows from the reading the
  * agent stored, and decides nothing about who may read them.
+ *
  * The other three are one bounded step each and run as the system, because the
  * person's permission was checked when the work was requested and what they do
  * afterwards takes no session: parsing a model, converting a file, rendering
@@ -96,7 +98,6 @@ export const BFF_JOB_KINDS = [
   'inbound_mail_suggest',
   'inbound_mail_file',
   'inbound_mail_follow',
- *
   'search_facets_sync',
 ] as const
 export type BffJobKind = (typeof BFF_JOB_KINDS)[number]
