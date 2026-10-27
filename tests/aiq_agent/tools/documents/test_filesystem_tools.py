@@ -79,10 +79,10 @@ async def _call(tools: dict, name: str, **args):
 
 class TestWhatIsBound:
     def test_with_drafts_the_four_verbs(self, drafts: DraftBackend) -> None:
-        assert list(_tools(drafts)) == ["ls", "read_file", "write_file", "edit_file"]
+        assert list(_tools(drafts)) == ["ls", "read_file", "write_file", "edit_file", "glob"]
 
     def test_without_a_conversation_only_the_readers(self) -> None:
-        assert list(_tools(None)) == ["read_file"]
+        assert list(_tools(None)) == ["ls", "read_file", "glob"]
 
     def test_delete_and_execute_are_never_built(self, drafts: DraftBackend) -> None:
         """``CompositeBackend`` always offers ``delete`` (prototype trap 3): only the allowlist keeps it off."""

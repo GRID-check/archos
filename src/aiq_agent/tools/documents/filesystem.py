@@ -35,6 +35,8 @@ from deepagents.backends.protocol import LsResult
 from deepagents.backends.protocol import ReadResult
 from deepagents.backends.protocol import WriteResult
 from deepagents.middleware.filesystem import FilesystemMiddleware
+from deepagents.middleware.filesystem import GlobSchema
+from deepagents.middleware.filesystem import LsSchema
 from deepagents.middleware.filesystem import ReadFileSchema
 from langchain.tools import ToolRuntime
 from langchain_core.messages import ToolMessage
@@ -269,6 +271,61 @@ class PilotiFilesystem(FilesystemMiddleware):
             infer_schema=False,
             description=self._custom_tool_descriptions.get("read_file") or stock.description,
         )
+
+    def _create_ls_tool(self) -> BaseTool:
+        stock = super()._create_ls_tool()
+        if self._estate is None:
+            return stock
+        estate = self._estate
+        has_drafts = self._has_drafts
+
+        async def ls(path: str, runtime: ToolRuntime, depth: int = 1) -> ToolMessage | Any:
+            if is_draft_path(path):
+                if not has_drafts:
+                    return _refusal("ls", runtime, NO_DRAFTS)
+                return await stock.coroutine(path=modernize_draft_path(path), runtime=runtime)
+            return await estate_message("ls", runtime, lambda: estate.ls(path, depth=depth, drafts=has_drafts))
+
+        return StructuredTool.from_function(
+            name="ls",
+            coroutine=ls,
+            args_schema=EstateLsSchema,
+            infer_schema=False,
+            description=self._custom_tool_descriptions.get("ls") or stock.description,
+        )
+
+    def _create_glob_tool(self) -> BaseTool:
+        stock = super()._create_glob_tool()
+        if self._estate is None:
+            return stock
+        estate = self._estate
+        has_drafts = self._has_drafts
+
+        async def glob(pattern: str, runtime: ToolRuntime, path: str | None = None) -> ToolMessage | Any:
+            if path is not None and is_draft_path(path):
+                if not has_drafts:
+                    return _refusal("glob", runtime, NO_DRAFTS)
+                return await stock.coroutine(pattern=pattern, path=modernize_draft_path(path), runtime=runtime)
+            return await estate_message("glob", runtime, lambda: estate.glob(pattern, path))
+
+        return StructuredTool.from_function(
+            name="glob",
+            coroutine=glob,
+            args_schema=GlobSchema,
+            infer_schema=False,
+            description=self._custom_tool_descriptions.get("glob") or stock.description,
+        )
+
+
+class EstateLsSchema(LsSchema):
+    """``ls``'s arguments: the stock path, and how deep the tree goes."""
+
+    depth: int = Field(
+        default=1,
+        ge=1,
+        le=4,
+        description="1 lists the folder; 2 to 4 return the tree below it as folder cards, that many levels deep.",
+    )
 
 
 def _refusal(name: str, runtime: ToolRuntime, text: str) -> ToolMessage:

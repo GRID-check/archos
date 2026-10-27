@@ -84,6 +84,23 @@ Departures, each with its reason:
     `ifc_measure`, not the `bim_models` summary; the door (`backend_tools.py`) does not
     serve the new names yet.
 
+**Slice 3, `ls` and `glob`, folder cards as `README.md`** (built).
+`sources/knowledge_layer/src/estate_listing.py` renders over the listable rows only, so a
+restricted folder is neither named nor counted, and `ls` of it answers as a folder that does not
+exist does. `README.md` in every folder is the tier-0 card `list_files(view="tree")` builds, with
+the tier-1 abstract the folder-card worker wrote; a real document of that name keeps it. Herleitung
+verb `list` with file and folder counts. `list_files` stays bound as the alias.
+
+1. **`glob` matches with wcmatch**, Deep Agents' own matcher (a dependency of the pinned
+   `deepagents`), so a pattern means what it means to the stock tool; names are folded on both
+   sides, and a document matches by its leaf (`Plan.pdf.md`) or its file name (`Plan.pdf`), so
+   `*.pdf` finds PDFs.
+2. **`ls` has no paging argument.** It lists 40 files per folder and counts the rest, pointing at
+   `glob` or a subfolder; the stock `ls` schema has none and a second paging scheme beside
+   `read_file`'s would be one more thing to teach.
+3. **Deferred: the mount digest in the prompt.** It is a turn-context block, and the prompt is
+   slice 6's; the one prompt line that named `list_files(name_contains=…)` now names `glob`.
+
 ## 1. Mounts and paths
 
 | Mount | What | Backed by | Writable |

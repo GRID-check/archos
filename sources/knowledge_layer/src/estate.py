@@ -381,6 +381,10 @@ class EstateBackend(BackendProtocol):
             return ToolOutput(str(refusal), status="error"), None, None
         if parsed.mount is None or parsed.leaf is None:
             return ToolOutput(_directory_message(parsed.path), status="error"), None, None
+        if fold(parsed.leaf) == "readme.md":
+            card = await self._folder_card(parsed)
+            if card is not None:
+                return card, parsed.path, None
         resolution = await self.resolve(parsed)
         file = resolution.file
         if file is None:
@@ -524,6 +528,91 @@ class EstateBackend(BackendProtocol):
         preamble = f"{file.path}, Punkt {clause}. Each block is one citable passage; cite its Citation line."
         notices = [line for line in (note, _older_revision_notice(file)) if line]
         return _render(hits, preamble=preamble, notices=notices, trailer="", tool=READ_FILE_TOOL)
+
+    # -- ls, glob and the folder card ---------------------------------------------
+
+    async def _abstracts(self, files: Sequence[EstateFile], mount: Mount | None) -> dict[str, list[str]]:
+        """The written folder abstracts (tier 1) of ``mount``'s collections; empty off a chat turn or on any error."""
+        from aiq_agent.knowledge.folder_cards import listing_abstracts
+
+        from .estate_listing import abstracts_by_folder
+        from .estate_listing import collections_of
+
+        collections = collections_of([file for file in files if file.mount == mount])
+        try:
+            return abstracts_by_folder(await listing_abstracts(collections))
+        except Exception:  # noqa: BLE001 - the abstract is a line beside the counts, never worth the listing
+            logger.info("estate: no folder abstracts", exc_info=True)
+            return {}
+
+    async def _folder_card(self, parsed: EstatePath) -> ToolOutput | None:
+        """``<folder>/README.md`` as the folder's card, unless a real document holds that name there."""
+        from .estate_listing import has_real_readme
+        from .estate_listing import render_readme
+        from .estate_listing import stored_folder
+
+        files = await self.listable_files()
+        if parsed.mount is None:
+            return None
+        folder = stored_folder(files, parsed.mount, "" if parsed.mount == "law" else parsed.folder)
+        if folder is None or has_real_readme(files, parsed.mount, folder):
+            return None
+        card = render_readme(files, parsed, abstracts=await self._abstracts(files, parsed.mount))
+        return ToolOutput(card.text) if card is not None else None
+
+    async def ls(self, path: str | None, *, depth: int = 1, drafts: bool = False) -> ToolOutput:
+        """``ls`` on the estate (agent-filesystem.md §3): a folder, or the tree as folder cards. An index."""
+        from aiq_agent.common.turn_status import ActionRow
+
+        from .estate_listing import render_folder
+        from .estate_listing import render_root
+
+        row = ActionRow("list", target=(path or "/").strip())
+        try:
+            try:
+                parsed = parse_estate_path(path, directory=True)
+            except PathRefused as refusal:
+                row.finish("error")
+                return ToolOutput(str(refusal), status="error")
+            files = await self.listable_files()
+            if parsed.mount is None and parsed.path == "/":
+                listing = render_root(files, drafts=drafts)
+            else:
+                in_flight = await _in_flight([file for file in files if file.mount == parsed.mount])
+                listing = render_folder(
+                    files,
+                    parsed,
+                    abstracts=await self._abstracts(files, parsed.mount),
+                    in_flight=in_flight,
+                    depth=max(1, min(int(depth or 1), 4)),
+                )
+        except BaseException:
+            row.finish("error")
+            raise
+        _settle_listing(row, listing)
+        return ToolOutput(listing.text, status="error" if listing.error else "ok")
+
+    async def glob(self, pattern: str, path: str | None = None) -> ToolOutput:
+        """``glob`` on the estate: file names, ``* ** ? [abc] {a,b}``, folded. An index."""
+        from aiq_agent.common.turn_status import ActionRow
+
+        from .estate_listing import render_glob
+
+        target = " · ".join(part for part in ((path or "").strip(), (pattern or "").strip()) if part)
+        row = ActionRow("list", target=target)
+        try:
+            if path:
+                try:
+                    parse_estate_path(path, directory=True)
+                except PathRefused as refusal:
+                    row.finish("error")
+                    return ToolOutput(str(refusal), status="error")
+            listing = render_glob(await self.listable_files(), pattern, path)
+        except BaseException:
+            row.finish("error")
+            raise
+        _settle_listing(row, listing)
+        return ToolOutput(listing.text, status="ok")
 
     # -- the protocol ------------------------------------------------------------
 
@@ -693,6 +782,29 @@ def glob_files(files: Sequence[EstateFile], pattern: str, path: str | None = Non
 # ---------------------------------------------------------------------------
 # Rendering
 # ---------------------------------------------------------------------------
+
+
+async def _in_flight(files: Sequence[EstateFile]) -> list[str]:
+    """Files of these collections still being read, by name (``browse._in_flight``); empty on any error."""
+    from .browse import _in_flight as in_flight
+
+    collections = sorted({file.row.collection for file in files if file.row.collection})
+    if not collections:
+        return []
+    try:
+        return await asyncio.to_thread(in_flight, collections)
+    except Exception:  # noqa: BLE001 - a status read never costs the listing
+        return []
+
+
+def _settle_listing(row: Any, listing: Any) -> None:
+    """A listing's Herleitung row: ``list`` with its file and folder counts (ADR-0132)."""
+    if listing.error:
+        row.finish("error")
+        return
+    counts = {"files": listing.files, "folders": listing.folders}
+    empty = not listing.files and not listing.folders
+    row.finish("empty" if empty else "ok", counts=counts)
 
 
 def _store_down(file: EstateFile) -> str:

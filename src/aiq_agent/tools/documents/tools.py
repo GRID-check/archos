@@ -58,10 +58,10 @@ logger = logging.getLogger(__name__)
 DRAFT_TOOL_NAMES = ("ls", "read_file", "write_file", "edit_file")
 
 #: The estate's readers, bound whether or not the turn has a working directory.
-ESTATE_TOOL_NAMES = ("read_file",)
+ESTATE_TOOL_NAMES = ("ls", "read_file", "glob")
 
-#: The tools only a working directory gives: writing, and listing the drafts (until ``ls`` reads the estate).
-DRAFT_ONLY_TOOL_NAMES = ("ls", "write_file", "edit_file")
+#: The tools only a working directory gives: the two that write.
+DRAFT_ONLY_TOOL_NAMES = ("write_file", "edit_file")
 
 #: Model-facing text, replacing DeepAgents' defaults. ``edit_file`` carries the
 #: two things that actually make an exact-string replacement land: anchor on a
@@ -121,9 +121,30 @@ _PERMISSIONS = [
 ]
 
 
-#: ``read_file`` once it reads the estate too. A contract: what it reads, how a document is addressed, what
-#: comes back and what is not evidence.
+#: The verbs once they read the estate too. Each a contract: what it reads, how it is addressed, what comes back,
+#: what is not evidence, and which of the other verbs fits instead.
 _ESTATE_DESCRIPTIONS = {
+    "ls": (
+        "Lists one folder of the office's documents (read-only) or of this conversation's drafts. `ls(\"/\")` "
+        "shows the places: /project/ (this project), /office/ (the Büroablage), /chat/ (files dropped into this "
+        f"conversation), /law/oib/ (the OIB-Richtlinien) and `{DRAFT_ROOT}`. A folder shows its subfolders with "
+        "document counts and one line per file: the path leaf (`<file name>.md`, the leaf read_file takes), pages, "
+        "Dokumentart, Plankopf Index and the document's own date, and which file replaced it. `depth` 2 to 4 "
+        "returns the tree below the folder as folder cards. Every folder holds a `README.md`: its folder card, "
+        "readable with read_file. At most 40 files per folder are listed; the rest are counted. Restricted folders "
+        "are never listed. An index, not a source: it says which files exist, never what they say, so it is never "
+        "cited; read_file reads, grep finds wording, knowledge_search finds meaning. list_files is the former "
+        "name and stays for one release."
+    ),
+    "glob": (
+        "Finds the office's documents by file NAME: `*`, `**`, `?`, `[abc]`, `{a,b}`. A pattern without `/` "
+        "matches the name at any depth (`*Brandschutz*`, `*.pdf`); one with `/` matches the path below `path` "
+        "(`Einreichung/**/*.pdf`), an absolute one the whole path (`/project/**/EP-*`). Case, umlauts (ä/ae) and "
+        "ß/ss do not matter. `path` limits the search to one place or folder (default: every place the person may "
+        "see; drafts only when `path` is under /drafts/). Returns absolute paths, one per line with pages and "
+        "Dokumentart, at most 100. An index, not a source: a name says nothing of the content; grep for wording, "
+        "knowledge_search for meaning, read_file to read."
+    ),
     "read_file": (
         "Reads one file by its absolute path. Two kinds of file:\n"
         "- The office's documents (read-only): /project/ (this project), /office/ (the Büroablage), /chat/ "
@@ -134,7 +155,8 @@ _ESTATE_DESCRIPTIONS = {
         "by `offset`/`limit` in lines. Returns one block per page, each with a `Citation:` line to copy verbatim "
         "(`<file name>, p.N`) and a `Path:` line; at most about 6k tokens per read, and the result names the next "
         "call. A drawing's text is a vision model's reading, not a measurement. A path you did not get from a "
-        "listing, a search hit or the person may not exist; a miss says so and suggests names.\n"
+        "listing, a search hit or the person may not exist; a miss says so and suggests names. "
+        "`<folder>/README.md` is the folder's card, an index and never cited.\n"
         f"- This conversation's drafts under `{DRAFT_ROOT}`: read before a revision, so that `old_string` comes "
         "verbatim from the document. The output starts with a `@@ lines … @@` header that is not part of the file. "
         "A draft is what the answer wrote itself, never evidence.\n"
