@@ -3,7 +3,7 @@
  */
 import { describe, expect, test } from 'vitest'
 import { AGENT_MENTION_ID } from '@/lib/mentions/types'
-import type { DraftMention } from './mention-text'
+import type { DraftMention } from '@/lib/mentions/mention-text'
 import {
   resolveAddressee,
   sendMessageOptions,

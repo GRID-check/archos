@@ -33,7 +33,7 @@ import type {
   TraceLaneCard,
 } from '@/lib/conversations/message-provenance'
 import type { ChatEffort } from '@/lib/reasoning-settings/catalog'
-import { KIND_TO_SIGNAL, asShelf } from './source-kinds'
+import { KIND_TO_SIGNAL, asShelf } from '@/lib/source-kinds'
 import { sharedPrefixChars, stoppedAnswer } from './stopped-answer'
 
 type Named<N extends string> = Extract<WireEvent, { type: 'CUSTOM'; name: N }>

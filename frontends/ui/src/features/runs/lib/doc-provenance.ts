@@ -18,8 +18,7 @@
  * reason.
  */
 
-import { asShelf, kindForLane, KIND_TO_SIGNAL, type SourceKind } from '@/features/chat/lib/source-kinds'
-import type { SourceTint } from '@/features/layout/lib/source-presets'
+import { asShelf, kindForLane, KIND_TO_SIGNAL, type SourceKind, type SourceTint } from '@/lib/source-kinds'
 import type { RunLedgerDoc } from '@/lib/runs/run-ledger-types'
 
 export interface DocProvenance {
