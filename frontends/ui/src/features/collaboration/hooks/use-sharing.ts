@@ -21,41 +21,22 @@ import type {
 } from '@/lib/sharing/types'
 import { createRetryLadder, type RetryLadder } from '@/shared/utils/backoff'
 import { useLiveEvents } from './use-live-events'
+import {
+  changeResourceRole,
+  escalateResourceAccess,
+  getResourceSharing,
+  getShareCandidates,
+  grantResourceAccess,
+  NO_FAILURE_DETAIL,
+  revokeResourceAccess,
+  setResourceVisibility,
+  SharingRequestError,
+  type SharingFailure,
+  type ShareCandidatesResponse,
+} from '@/adapters/api/sharing-client'
+import { getAwaitingState, getMentionCandidates, releaseMention } from '@/adapters/api/mentions-client'
 
-/** A refusal the UI can localise, extracted from the standard error envelope. */
-export interface SharingFailure {
-  /** `details.reason` when the server supplied one (e.g. `last-owner`). */
-  reason: string | null
-  /** Server-supplied message, as a fallback when the reason is unrecognised. */
-  message: string | null
-  /** `details.person`: who a `restricted-content` refusal is about, when the server named them. */
-  person?: string | null
-  /** `details.folders`: the restricted folders, named only to a sharer cleared for them. */
-  folders?: readonly string[]
-}
-
-const NO_FAILURE_DETAIL: SharingFailure = { reason: null, message: null }
-
-async function readFailure(response: Response): Promise<SharingFailure> {
-  try {
-    const body = (await response.json()) as {
-      error?: string
-      details?: { reason?: unknown; person?: unknown; folders?: unknown } | null
-    }
-    const details = body.details ?? {}
-    const folders = Array.isArray(details.folders)
-      ? details.folders.filter((folder): folder is string => typeof folder === 'string')
-      : []
-    return {
-      reason: typeof details.reason === 'string' ? details.reason : null,
-      message: body.error ?? null,
-      person: typeof details.person === 'string' ? details.person : null,
-      folders,
-    }
-  } catch {
-    return NO_FAILURE_DETAIL
-  }
-}
+export type { SharingFailure } from '@/adapters/api/sharing-client'
 
 /**
  * Backoff ladder, in ms, for a load that came back empty-handed.
@@ -140,7 +121,7 @@ export function useSharing(
   const cancelRetry = useCallback(() => retry.cancel(), [retry])
 
   const refresh = useCallback(async () => {
-    if (!enabled || !base) {
+    if (!enabled || !resourceId) {
       // Invalidate any read still in flight: without this bump its `current`
       // would still match and it would write the abandoned resource's state back
       // over the cleared one.
@@ -152,9 +133,7 @@ export function useSharing(
     }
     const current = ++seq.current
     try {
-      const response = await fetch(base)
-      if (!response.ok) throw new Error(`sharing ${response.status}`)
-      const data = (await response.json()) as ResourceSharingState
+      const data = await getResourceSharing(resourceType, resourceId)
       if (current !== seq.current) return
       setState(data)
       setLoadError(false)
@@ -170,7 +149,7 @@ export function useSharing(
       // `loading` deliberately stays true across the ladder: the answer is still
       // coming, and a skeleton is truer than an error for a thread this young.
     }
-  }, [base, enabled, retry])
+  }, [resourceType, resourceId, enabled, retry])
 
   useEffect(() => {
     refreshRef.current = () => void refresh()
@@ -215,17 +194,12 @@ export function useSharing(
   })
 
   const mutate = useCallback(
-    async (input: string, init: RequestInit): Promise<boolean> => {
+    async (request: () => Promise<ResourceSharingState>): Promise<boolean> => {
       setFailure(null)
       setSaving(true)
       try {
-        const response = await fetch(input, init)
-        if (!response.ok) {
-          setFailure(await readFailure(response))
-          return false
-        }
         // Render the server's answer, never an optimistic guess.
-        const data = (await response.json()) as ResourceSharingState
+        const data = await request()
         // Invalidate any READ still in flight. A mutation's response is strictly
         // newer than a GET issued before it, but the GET had no way to know that:
         // invite someone, tab away and back (which restarts the read), and the
@@ -242,8 +216,8 @@ export function useSharing(
         setLoadError(false)
         setLoading(false)
         return true
-      } catch {
-        setFailure(NO_FAILURE_DETAIL)
+      } catch (error) {
+        setFailure(error instanceof SharingRequestError ? error.failure : NO_FAILURE_DETAIL)
         return false
       } finally {
         setSaving(false)
@@ -251,12 +225,6 @@ export function useSharing(
     },
     [retry],
   )
-
-  const json = (body: unknown): RequestInit => ({
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  })
 
   return {
     state,
@@ -267,16 +235,14 @@ export function useSharing(
     saving,
     refresh: restart,
     setVisibility: async (visibility) =>
-      base ? mutate(base, { ...json({ visibility }), method: 'PATCH' }) : false,
+      resourceId ? mutate(() => setResourceVisibility(resourceType, resourceId, visibility)) : false,
     grant: async (subjectUserId, role = 'collaborator') =>
-      base ? mutate(`${base}/grants`, json({ subjectUserId, role })) : false,
+      resourceId ? mutate(() => grantResourceAccess(resourceType, resourceId, subjectUserId, role)) : false,
     changeRole: async (subjectUserId, role) =>
-      base ? mutate(`${base}/grants`, { ...json({ subjectUserId, role }), method: 'PATCH' }) : false,
+      resourceId ? mutate(() => changeResourceRole(resourceType, resourceId, subjectUserId, role)) : false,
     revoke: async (subjectUserId) =>
-      base
-        ? mutate(`${base}/grants/${encodeURIComponent(subjectUserId)}`, { method: 'DELETE' })
-        : false,
-    escalate: async () => (base ? mutate(`${base}/grants`, json({ escalate: true })) : false),
+      resourceId ? mutate(() => revokeResourceAccess(resourceType, resourceId, subjectUserId)) : false,
+    escalate: async () => (resourceId ? mutate(() => escalateResourceAccess(resourceType, resourceId)) : false),
   }
 }
 
@@ -303,11 +269,7 @@ export function useShareCandidates(
     setError(false)
     void (async () => {
       try {
-        const response = await fetch(
-          `/api/sharing/${encodeURIComponent(resourceType)}/${encodeURIComponent(resourceId)}/candidates`,
-        )
-        if (!response.ok) throw new Error(`candidates ${response.status}`)
-        const data = (await response.json()) as ShareCandidate[] | { candidates: ShareCandidate[] }
+        const data: ShareCandidatesResponse = await getShareCandidates(resourceType, resourceId)
         if (cancelled) return
         setCandidates(Array.isArray(data) ? data : (data.candidates ?? []))
       } catch {
@@ -348,9 +310,7 @@ export function useAwaitingState(
       return
     }
     try {
-      const response = await fetch(`/api/conversations/${encodeURIComponent(conversationId)}/awaiting`)
-      if (!response.ok) return
-      setAwaiting((await response.json()) as AwaitingStateResponse)
+      setAwaiting(await getAwaitingState(conversationId))
     } catch {
       // Keep the last known state: a failed poll must not make the thread look
       // free to answer when it is still waiting on someone.
@@ -373,11 +333,7 @@ export function useAwaitingState(
   const release = useCallback(
     async (requestId: string): Promise<boolean> => {
       try {
-        const response = await fetch(`/api/mentions/${encodeURIComponent(requestId)}/release`, {
-          method: 'POST',
-        })
-        if (!response.ok) return false
-        setAwaiting((await response.json()) as AwaitingStateResponse)
+        setAwaiting(await releaseMention(requestId))
         return true
       } catch {
         return false
@@ -424,12 +380,9 @@ export function useMentionCandidates(
     }
     const current = ++seq.current
     try {
-      const response = await fetch(
-        `/api/conversations/${encodeURIComponent(conversationId)}/mention-candidates`,
-      )
-      if (!response.ok) throw new Error(`candidates ${response.status}`)
+      const candidates = await getMentionCandidates(conversationId)
       if (current !== seq.current) return
-      setData((await response.json()) as MentionCandidatesResponse)
+      setData(candidates)
       retry.reset()
       setLoading(false)
     } catch {
