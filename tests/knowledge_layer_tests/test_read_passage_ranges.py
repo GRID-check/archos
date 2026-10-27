@@ -181,6 +181,16 @@ class TestWithoutOverlap:
         assert trimmed[1].content == "Danach folgt der Rauchabzug."
         assert (trimmed[1].chunk_id, trimmed[1].page_number) == (second.chunk_id, second.page_number)
 
+    def test_a_section_chunk_is_cut_after_its_breadcrumb_and_keeps_it(self):
+        # Before: the repeat was looked for at the very head of the text, which is the breadcrumb,
+        # so the overlap of every section cut in two was read twice.
+        first = _chunk(2, 3, f"3 Decke\n\nEinleitung zur Decke. {SENTENCE}")
+        second = _chunk(3, 4, f"3 Decke\n\n{SENTENCE} Danach folgt die Bekleidung.")
+        for chunk, part in ((first, 1), (second, 2)):
+            chunk.metadata.update({"chunking": "section", "clause_path": "3 Decke", "section_part": part})
+
+        assert _without_overlap([first, second])[1].content == "3 Decke\n\nDanach folgt die Bekleidung."
+
     def test_whitespace_differences_do_not_hide_the_overlap(self):
         first = _chunk(4, 0, f"Anfang.\n{SENTENCE}")
         second = _chunk(4, 1, SENTENCE.replace(" ", "  ") + " Rest des Absatzes.")

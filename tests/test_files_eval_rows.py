@@ -83,15 +83,36 @@ class TestTheFixture:
         assert {f.folder for f in load_fixture().files} >= {"Einreichung"}
         assert "Einreichung/Pläne" not in {f.folder for f in load_fixture().files}
 
-    def test_one_chunk_per_page_with_what_the_reading_tools_order_by(self):
+    def test_the_report_is_cut_by_the_section_chunker_with_what_the_reading_tools_order_by(self):
         file = next(f for f in PROJECT.files if f.name.startswith("Brandschutzkonzept"))
         specs = fixture_files.chunk_specs(PROJECT, file)
-        assert [s["metadata"]["page_label"] for s in specs] == [str(n) for n in range(1, 15)]
-        assert [s["ordinal"] for s in specs] == list(range(14))
-        assert len({s["chunk_id"] for s in specs}) == 14
+        assert {s["metadata"]["chunking"] for s in specs} == {"section"}
+        covered = {
+            page for s in specs for page in range(int(s["metadata"]["page_label"]), int(s["metadata"]["page_end"]) + 1)
+        }
+        assert covered == set(range(1, 15)), "every page is held by a chunk's page range"
+        assert [s["ordinal"] for s in specs] == list(range(len(specs)))
+        assert len({s["chunk_id"] for s in specs}) == len(specs)
         assert specs == fixture_files.chunk_specs(PROJECT, file), (
             "ids are stable: re-seeding overwrites, never duplicates"
         )
+
+    def test_chunks_hold_text_twice_as_production_stores_it(self):
+        """The breadcrumb and the overlap, without which the count rows measure nothing (``pf-count-*``)."""
+        report = next(f for f in PROJECT.files if f.name.startswith("Brandschutzkonzept"))
+        breadcrumbs = [s["metadata"].get("clause_path") or "" for s in fixture_files.chunk_specs(PROJECT, report)]
+        assert sum(path.startswith("3 Rettungswege und Aufzug") for path in breadcrumbs) == 4
+        protocol = next(f for f in PROJECT.files if f.name.startswith("Besprechungsprotokoll"))
+        parts = [s for s in fixture_files.chunk_specs(PROJECT, protocol) if s["metadata"].get("clause_id") == "3"]
+        assert [s["metadata"]["section_part"] for s in parts] == [1, 2]
+        assert all("Kopfbolzendübeln" in s["text"] for s in parts), "the planted word stands in the overlap"
+        assert sum("Kopfbolzendübel" in page for page in protocol.pages) == 1
+        assert sum("Verbunddecke" in page for page in protocol.pages) == 1
+
+    def test_the_visual_set_keeps_one_chunk_per_page(self):
+        import fixture_visual
+
+        assert fixture_visual.load_project().chunking == "page"
 
     def test_the_envelope_scope_is_the_projects_own_collection(self):
         scope = fixture_files.FilesWorkspace(PROJECT).envelope_fields["collectionScope"]

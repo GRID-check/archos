@@ -1873,7 +1873,7 @@ export interface TransientFailureDocument {
  */
 export async function listTransientFailures(
   now: Date,
-  options: { maxAttempts: number; firstBackoffMinutes: number; limit: number },
+  options: { maxAttempts: number; firstBackoffMinutes: number; maxAgeHours: number; limit: number },
 ): Promise<TransientFailureDocument[]> {
   const db = getDb()
   const attempts = sql`greatest(coalesce(${documents.ingestAttempts}, 1), 1)`
@@ -1889,6 +1889,7 @@ export async function listTransientFailures(
           sql`${documents.storageKey} IS NOT NULL`,
           sql`coalesce(${documents.ingestAttempts}, 1) < ${options.maxAttempts}`,
           sql`${documents.updatedAt} < ${now.toISOString()}::timestamptz - make_interval(mins => ${options.firstBackoffMinutes} * power(2, ${attempts} - 1)::int)`,
+          sql`${documents.updatedAt} > ${now.toISOString()}::timestamptz - make_interval(hours => ${options.maxAgeHours})`,
           sql`NOT EXISTS (SELECT 1 FROM project_folders f WHERE f.id = ${documents.folderId} AND f.deleted_at IS NOT NULL)`,
         ),
       )

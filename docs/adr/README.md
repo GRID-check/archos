@@ -194,6 +194,9 @@ Consequences, where a reader looks for them.
 | [0130](0130-piloti-notices-a-new-fassung.md) | Piloti notices a new Fassung: it compares it unasked and leaves proposed marks where it changed | Accepted |
 | [0131](0131-the-agent-api-speaks-one-dialect.md) | The agent API speaks one dialect: one word, one id slot, lean pages, views not rows | Accepted |
 | [0132](0132-the-herleitung-shows-the-work-one-row-per-call.md) | The Herleitung shows the work: one row per call, grouped by round, with what it found | Proposed |
+| [0133](0133-piloti-reads-the-estate-through-standard-filesystem-tools.md) | Piloti reads the office's documents through ls, glob, grep and read_file over its own backend, beside ranked search | Proposed |
+| [0134](0134-extracted-page-text-is-stored-per-version.md) | Extracted page text is stored per version, and the index is derived from it | Proposed |
+| [0135](0135-skills-run-on-deep-agents-skills-middleware.md) | Skills run on Deep Agents' SkillsMiddleware, in chat and in deep research | Proposed |
 | [0136](0136-attachments-from-outside-are-scanned-in-cluster-by-clamav.md) | Attachments from outside are scanned in the cluster by ClamAV before anyone can file or download them | Proposed |
 | [0137](0137-mail-sent-to-a-project-waits-until-a-person-files-it.md) | Mail sent to a project waits until a person files it; a conversation is one document; its originals are evidence; a person may follow it | Proposed |
 | [0138](0138-project-mail-arrives-through-cloudflare-email-routing-and-a-signed-worker.md) | Project mail arrives through Cloudflare Email Routing and a signed Worker; the BFF authenticates the sender | Proposed |

@@ -620,7 +620,7 @@ the pipeline's machinery. A skill is one SKILL.md body with no files of its
 own, so there is no file index and no third read for a referenced file. Any
 member may read; the routes are gated on the skills feature. Piloti is not
 offered either (`piloti: false`): it gets the same catalogue at turn start and
-loads a body with its own `use_skill`.
+reads a body with its own `read_file` (ADR-0135).
 
 ### Output schemas and icons
 

@@ -83,6 +83,10 @@ from nat.plugin_api import FunctionInfo
 from nat.plugin_api import FunctionRef
 from nat.plugin_api import register_function
 
+from .chunk_positions import body
+from .chunk_positions import repeated_head
+from .chunk_positions import split_prefix
+
 logger = logging.getLogger(__name__)
 
 #: How many chunks one locator fetch may return per collection.
@@ -121,15 +125,6 @@ _MAX_RANGE_PAGES = 30
 #: How many characters one ranged read returns (about 6k tokens). Past it the read stops at a
 #: chunk boundary and ends with a ``cursor`` the model passes back to continue.
 _MAX_READ_CHARS = 24_000
-
-#: The longest repeated head :func:`_without_overlap` will cut, in characters. The chunkers overlap
-#: neighbours by about 96 tokens; anything much longer is not an overlap but a coincidence.
-_MAX_OVERLAP_CHARS = 1_200
-
-#: The shortest repeat worth cutting: a heading or a table header that a neighbouring chunk
-#: happens to repeat is the chunk's own text, not overlap.
-_MIN_OVERLAP_WORDS = 8
-_MIN_OVERLAP_CHARS = 40
 
 #: How many Gliederung lines the outline may print before it says how many more
 #: exist. Headings are not rendered as passages (a heading is not evidence), so
@@ -560,10 +555,6 @@ def _range_order(chunks: Sequence[Any]) -> list[Any]:
     return sorted(chunks, key=_chunk_position)
 
 
-def _words_with_offsets(text: str) -> list[tuple[str, int]]:
-    return [(match.group(), match.start()) for match in re.finditer(r"\S+", text)]
-
-
 def _without_overlap(chunks: Sequence[Any]) -> list[Any]:
     """The chunks with each head cut by the words it repeats from the chunk before it.
 
@@ -572,16 +563,19 @@ def _without_overlap(chunks: Sequence[Any]) -> list[Any]:
     previous chunk's text (words compared after whitespace normalisation) is cut, only between two text
     chunks of one document that the chunker cut one after the other, only when the repeat is long enough
     not to be a repeated heading, and never when it would leave nothing. The Citation key and page are
-    the chunk's own and do not change.
+    the chunk's own and do not change. A section chunk's breadcrumb stays where it is: the repeat is
+    looked for in the bodies after it (``chunk_positions.split_prefix``), where the overlap stands.
     """
     result: list[Any] = []
     previous: Any = None
     for chunk in chunks:
         trimmed = chunk
         if previous is not None and _neighbours(previous, chunk):
-            cut = _repeated_head(previous.content, chunk.content)
+            start = split_prefix(chunk)[0]
+            cut = repeated_head(body(previous), chunk.content[start:])
             if cut:
-                trimmed = chunk.model_copy(update={"content": chunk.content[cut:].lstrip()})
+                content = chunk.content[:start] + chunk.content[start + cut :].lstrip()
+                trimmed = chunk.model_copy(update={"content": content})
         result.append(trimmed)
         previous = chunk
     return result
@@ -602,30 +596,6 @@ def _neighbours(previous: Any, chunk: Any) -> bool:
     before_ordinal, after_ordinal = _chunk_ordinal(previous), _chunk_ordinal(chunk)
     # A chunk without an ordinal has no known predecessor: legacy chunks of a page are ordered by id.
     return before_ordinal is not None and after_ordinal is not None and after_ordinal - before_ordinal == 1
-
-
-def _repeated_head(previous: str, text: str) -> int:
-    """How many characters of ``text`` repeat the end of ``previous``; 0 when they do not, or would be all of it.
-
-    Only a repeat that ends within :data:`_MAX_OVERLAP_CHARS` of ``text`` counts, so only the words
-    that start there are candidates, and only a count whose first word is ``text``'s first word is
-    compared: linear in practice, where trying every count was quadratic in the chunk's words.
-    """
-    after = _words_with_offsets(text[: _MAX_OVERLAP_CHARS + 1])
-    if len(after) <= _MIN_OVERLAP_WORDS:
-        return 0
-    tail = previous[-(_MAX_OVERLAP_CHARS * 2) :]
-    before = [word for word, _ in _words_with_offsets(tail)]
-    if len(tail) < len(previous):
-        before = before[1:]  # the slice may have cut its first word in two
-    words = [word for word, _ in after]
-    longest = min(len(before), len(after) - 1)
-    for count in range(longest, _MIN_OVERLAP_WORDS - 1, -1):
-        if before[-count] != words[0] or before[-count:] != words[:count]:
-            continue
-        end = after[count][1]
-        return end if _MIN_OVERLAP_CHARS <= end <= _MAX_OVERLAP_CHARS else 0
-    return 0
 
 
 def _is_range_text(value: Any) -> bool:

@@ -238,7 +238,7 @@ class TestDeepResearcherAgent:
             assert len(agent.tools) == 1
             assert agent.verbose is True
             assert agent.callbacks == []
-            assert agent.deepagents_runtime.skill_sources_for("orchestrator") is None
+            assert agent.deepagents_runtime.collections == ()
             assert agent.enable_source_router is True
 
     def test_init_with_custom_settings(self, mock_llm_provider, real_tool, mock_create_deep_agent):
@@ -272,8 +272,7 @@ class TestDeepResearcherAgent:
             assert agent.domain_catalog_path == "configs/domain_catalogs/deep_research_domain_catalog.yml"
             assert agent.enable_source_router is False
             assert agent.enable_citation_verification is False
-            assert agent.deepagents_runtime.skill_sources_for("orchestrator") is None
-            assert agent.deepagents_runtime.skill_sources_for("researcher-agent") == ["/skills/research/"]
+            assert agent.deepagents_runtime.collections == ("research",)
 
     def test_init_defaults_checkpointer_to_none(self, mock_llm_provider, real_tool, mock_create_deep_agent):
         """No checkpoint_db configured -> no durable checkpointer (current in-memory-only behavior)."""
@@ -654,7 +653,13 @@ class TestDeepResearcherAgent:
             assert any(
                 m.__class__.__name__ == "ToolVisibilityMiddleware" for m in subagents["writer-agent"]["middleware"]
             )
-            assert subagents["writer-agent"]["skills"] == [synthesis_skill_source]
+            # Our SkillsMiddleware, in the spec's middleware, takes the skills slot by name.
+            assert "skills" not in subagents["writer-agent"]
+            (writer_skills,) = [
+                m for m in subagents["writer-agent"]["middleware"] if m.__class__.__name__ == "SkillsMiddleware"
+            ]
+            assert writer_skills.sources == [synthesis_skill_source]
+            assert writer_skills.system_prompt_template.startswith("## Skills")
             assert "/skills/synthesis/" not in subagents["writer-agent"]["system_prompt"]
             assert "read_writer_context" not in subagents["writer-agent"]["system_prompt"]
             assert "/shared/plan.json" in subagents["writer-agent"]["system_prompt"]
@@ -1391,14 +1396,14 @@ class TestDeepResearcherAgent:
 
     def test_modal_backend_is_concrete_cached_and_routes_skills_locally(self, mock_llm_provider, real_tool):
         """Modal backend creation is lazy, cached, and skill reads do not hit Modal."""
-        from deepagents.backends import FilesystemBackend
         from deepagents.backends import StateBackend
 
         from aiq_agent.agents.deep_researcher.agent import DeepResearcherAgent
-        from aiq_agent.agents.deep_researcher.deepagents_runtime import BUILTIN_SKILL_SOURCE
         from aiq_agent.agents.deep_researcher.deepagents_runtime import SHARED_ROUTE
         from aiq_agent.agents.deep_researcher.deepagents_runtime import DeepResearchSandboxConfig
         from aiq_agent.agents.deep_researcher.deepagents_runtime import DeepResearchSkillsConfig
+        from aiq_agent.skills import SKILLS_ROOT
+        from aiq_agent.skills import SkillsBackend
 
         sandbox = DeepResearchSandboxConfig()
         agent = DeepResearcherAgent(
@@ -1416,16 +1421,18 @@ class TestDeepResearcherAgent:
                 return_value=fake_modal_backend,
             ) as create_backend,
         ):
-            backend_one = agent.deepagents_runtime.backend
-            backend_two = agent.deepagents_runtime.backend
+            skills = agent.deepagents_runtime.skill_runtime()
+            backend_one = agent.deepagents_runtime.backend_for(skills)
+            backend_two = agent.deepagents_runtime.backend_for(skills)
 
-        assert backend_one is backend_two
+        assert backend_one.default is backend_two.default
         assert backend_one.default is fake_modal_backend
         create_backend.assert_called_once_with(
             sandbox,
             "job-123",
         )
-        assert isinstance(backend_one.routes[BUILTIN_SKILL_SOURCE], FilesystemBackend)
+        assert isinstance(backend_one.routes[SKILLS_ROOT], SkillsBackend)
+        assert backend_one.read("/skills/synthesis/long-form-report-writer/SKILL.md").error is None
         assert isinstance(backend_one.routes[SHARED_ROUTE], StateBackend)
         fake_modal_backend.ls.assert_not_called()
         fake_modal_backend.read.assert_not_called()

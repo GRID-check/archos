@@ -1,0 +1,8 @@
+---
+fixes:
+  - >
+    Asking which documents deal with a topic lists each document once again, even
+    when two folders hold a file of the same name.
+  - >
+    Asking for the documents that refer to a plan finds them when the plan is
+    named the way a person writes it, such as "Plan Nr. EP-05" or "siehe EP-05".

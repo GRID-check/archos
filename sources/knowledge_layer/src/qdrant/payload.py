@@ -369,11 +369,13 @@ def chunk_own_payload(scope: str, record: ChunkRecord) -> dict[str, Any]:
 
 
 #: Fields the store adds for filtering. A hit's metadata leaves them out, so a
-#: chunk read back carries exactly the metadata the chunker gave it; the facts
-#: themselves are read from the metadata store, their authority.
+#: chunk read back carries the metadata the chunker gave it; the facts
+#: themselves are read from the metadata store, their authority. The one job
+#: field a hit keeps is ``grid_document_id``: it is the document's identity, which
+#: grouping (``document_groups.document_key``) and the BFF join a hit by.
 STORE_ONLY_FIELDS = frozenset(
     {TEXT_FIELD, TEXT_STEM_FIELD, SCOPE_FIELD, CHUNK_ID_FIELD, READING_ORDER_FIELD}
-    | {"office_id", "project_id", "grid_document_id"}
+    | {"office_id", "project_id"}
     | {
         CHUNK_ORDINAL_FIELD,
         "folder_path",

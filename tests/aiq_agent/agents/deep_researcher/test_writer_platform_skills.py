@@ -15,7 +15,7 @@ that carries the body.
 The second test is the more important one. A skill is additive; a report is the
 product. If the BFF cannot be reached — an anonymous run, an unset
 ``GRID_INTERNAL_API_TOKEN``, a restarting frontend — the run must still produce
-its report, with no skills section and no ``use_skill`` tool to call.
+its report, with no skills section and nothing under ``/skills/office/`` to read.
 """
 
 from __future__ import annotations
@@ -130,6 +130,19 @@ def _voice_row() -> dict[str, object]:
     }
 
 
+def _writer_catalog(writer: dict) -> tuple[str | None, object | None]:
+    """The catalog the writer's SkillsMiddleware renders, and that middleware; (None, None) without one."""
+    from langchain.agents.middleware.types import ModelRequest
+
+    found = [m for m in writer["middleware"] if m.__class__.__name__ == "SkillsMiddleware"]
+    if not found:
+        return None, None
+    middleware = found[0]
+    loaded = middleware.before_agent({}, None, None) or {}
+    message = middleware.modify_request(ModelRequest(model=None, messages=[], state=dict(loaded))).system_message
+    return (message.text if message is not None else None), middleware
+
+
 async def _prepare(agent: DeepResearcherAgent, graph: MagicMock, state: DeepResearchAgentState) -> dict:
     """Build one run's graph the way ``run()`` does and return the writer subagent spec.
 
@@ -163,23 +176,29 @@ async def test_a_platform_skill_reaches_the_writer_as_a_catalog_line_and_a_body(
     )
 
     with mock.patch.object(SkillResolver, "_fetch_org_skills", return_value=[_voice_row()]):
-        writer = await _prepare(agent, graph, state)
+        skill_runtime = await agent._build_skill_runtime(state)
+        with mock.patch("aiq_agent.agents.deep_researcher.factory.create_deep_agent", return_value=graph) as create:
+            agent._prepare_run(state, skill_runtime)
+    writer = next(spec for spec in create.call_args.kwargs["subagents"] if spec["name"] == WRITER_AGENT)
 
-    prompt = writer["system_prompt"]
-    assert "## Available skills" in prompt
-    assert "- `piloti-voice`:" in prompt
+    catalog, middleware = _writer_catalog(writer)
+    assert middleware.sources == ["/skills/office/"]
+    assert "- **piloti-voice**:" in (catalog or "")
+    assert "Read `/skills/office/piloti-voice/SKILL.md`" in (catalog or "")
     # One block, and no second one telling the writer it MUST load anything:
     # the `standard: True` on the row above is not read on this side any more.
-    assert "Active skills" not in prompt
-    # The catalog has to tell the writer what loads a body.
-    assert "use_skill" in prompt
+    assert "Active skills" not in (catalog or "")
+    assert VOICE_BODY not in (catalog or "")
 
-    use_skill = next(item for item in writer["tools"] if item.name == "use_skill")
-    assert VOICE_BODY in use_skill.invoke({"skill_name": "piloti-voice"})
-    # And the writer's sanitizer must accept the name, or the call is rewritten
-    # into a tool that does not exist.
+    # The writer reads the body with read_file, through the run's backend, and
+    # the read is what the "Skills used" disclosure reports.
+    read = middleware._backend.read("/skills/office/piloti-voice/SKILL.md", 0, 1000)
+    assert VOICE_BODY in read.file_data["content"]
+    assert skill_runtime.activated == ("piloti-voice",)
+    assert skill_runtime.hidden_activated == ("piloti-voice",)
     sanitizer = next(m for m in writer["middleware"] if m.__class__.__name__ == "ToolNameSanitizationMiddleware")
-    assert "use_skill" in sanitizer.valid_tool_names
+    assert "read_file" in sanitizer.valid_tool_names
+    assert [item.name for item in writer["tools"]] == ["think", "get_verified_sources"]
 
 
 @pytest.mark.asyncio
@@ -238,6 +257,7 @@ async def test_a_chat_only_platform_skill_is_not_offered_to_the_writer(llm_provi
         writer = await _prepare(agent, graph, state)
 
     assert "chat-voice" not in writer["system_prompt"]
+    assert _writer_catalog(writer) == (None, None)
     assert [item.name for item in writer["tools"]] == ["think", "get_verified_sources"]
 
 
@@ -248,8 +268,7 @@ async def test_the_report_is_still_written_when_skills_cannot_be_resolved(llm_pr
     The whole resolution path is allowed to fail here — the way it fails on an
     anonymous run or with ``GRID_INTERNAL_API_TOKEN`` unset — and the assertion
     is that the run reaches its finished Markdown anyway, with no skills section
-    promising instructions that never arrived and no ``use_skill`` tool bound to
-    a catalog that is empty.
+    promising instructions that never arrived.
     """
     agent = DeepResearcherAgent(
         llm_provider=llm_provider,
@@ -261,7 +280,7 @@ async def test_the_report_is_still_written_when_skills_cannot_be_resolved(llm_pr
     with mock.patch.object(SkillResolver, "_fetch_org_skills", side_effect=RuntimeError("frontend unreachable")):
         writer = await _prepare(agent, graph, state)
 
-        assert "## Available skills" not in writer["system_prompt"]
+        assert _writer_catalog(writer) == (None, None)
         assert [item.name for item in writer["tools"]] == ["think", "get_verified_sources"]
 
         with mock.patch(

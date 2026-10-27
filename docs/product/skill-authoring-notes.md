@@ -21,16 +21,16 @@ The real path, end to end:
 | Discovery | `skills/builtin.py` | `builtin/<collection>/<name>/SKILL.md` is parsed **strictly**. A malformed frontmatter is a deployment error, not a skip. |
 | Validation | `skills/models.py` | `name` ≤64 chars and must equal the directory name; `description` ≤1024 chars, non-empty, **no angle brackets** (it lands in a system prompt); `grid-cards` is checked against the live card catalog and a typo raises at parse time. |
 | Resolution | `skills/resolver.py` | Per run: every non-`grid-catalog: curated` builtin, plus the org's rows from the BFF (which shadow builtins by name), then filtered by `grid-agents`. Fails **open** to the builtin set. |
-| Level 1 | `skills/runtime.py::prompt_block` | Renders `## Available skills` + one line per skill: `` - `name`: description ``, verbatim. This string becomes `state.skills_block` in the agent's system prompt (`agents/piloti/register.py`). |
-| Level 2 | `skills/runtime.py::build_tools` | A LangChain tool named `use_skill(skill_name)` returns the body. **The model must call it.** Nothing else loads a body. |
-| Forcing | — | There is none. Nothing puts a skill's body in front of the model; the catalog is an offer and `use_skill` is the only path. A `/name` in the composer is a mention in the message text, which the model reads like any other part of the question. |
+| Level 1 | Deep Agents' `SkillsMiddleware`, our `skills/runtime.py::SKILLS_PROMPT` | Renders `## Skills` + per skill `` - **name**: description `` and the line `` -> Read `/skills/<source>/<name>/SKILL.md` for full instructions ``. Piloti puts it in the turn context (`state.skills_block`); deep research's subagents get it in their system prompt (ADR-0135). |
+| Level 2 | `skills/backend.py::SkillsBackend.read` | The model calls `read_file` on the `SKILL.md`. **The model must call it.** Nothing else loads a body, except the one the turn-start decision pins. |
+| Forcing | — | There is none. A pinned body (ADR-0064) is still an offer the model may read past; a `/name` in the composer is a mention in the message text, which the model reads like any other part of the question. |
 
 Four consequences that matter more than any generic advice:
 
 1. **Triggering is a tool-call decision, not a routing decision.** There is no
    fuzzy matcher, no `/slash` invocation for the model, no automatic injection.
-   The model reads one bullet line and decides whether to spend a tool call on
-   `use_skill`. It is competing not with other skills but with *answering
+   The model reads one catalog entry and decides whether to spend a tool call on
+   `read_file` for its `SKILL.md`. It is competing not with other skills but with *answering
    straight away* using tools whose descriptions are far longer and far more
    actionable (`ifc_measure`'s is ~4 000 characters and always in context).
 2. **The description is never truncated.** Claude Code trims descriptions to fit

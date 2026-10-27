@@ -17,7 +17,7 @@
  * progressive-disclosure level-1 metadata the agent itself is given at the start
  * of every turn, and nothing more. The instructions (level 2) are not fetched
  * here and are not shown here; they enter the conversation only when the agent
- * calls `use_skill` during the turn. Keeping the menu and the agent's catalogue
+ * reads the skill's `SKILL.md` during the turn. Keeping the menu and the agent's catalogue
  * literally the same text is the point: a description that does not say WHEN the
  * skill applies is equally useless to the person scanning this list and to the
  * model deciding whether to load it, so the menu is honest feedback on how well

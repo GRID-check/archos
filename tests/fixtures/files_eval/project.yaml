@@ -4,7 +4,8 @@
 # which stays untouched, its answer key depends on it), grown to the shape of an office's drive:
 # nested folders, a 14-page report to read through, and a later letter. Every name, number and
 # party is invented. `scripts/turn_census/fixture_files.py` seeds it into the Qdrant and the
-# metadata store the suite's runs read, one chunk per page.
+# metadata store the suite's runs read, each file cut by the ingest job's own chunkers: a file
+# with headings gets section chunks with a breadcrumb and an overlap, as production stores it.
 #
 # `refile` moves a base file into a folder (name -> path); `files` adds new ones. A file's
 # `pages` are its pages in order. The questions are `files_questions.yaml` beside this file;
@@ -23,6 +24,11 @@
 #     ma37-wien.at, „Domain nicht bestätigt“) claims the Ausgleichsabgabe is waived; „ein Stellplatz
 #     im Hof“ is written only as a quote inside the Behörde's mail; the Stellplatzberechnung came
 #     with Ing. Gruber's signed mail of 04.05.2026.
+#   - „Rettungsweg“ stands five times in the Brandschutzkonzept, on pages 3, 7 and 9; the chapter
+#     heading „3. Rettungswege und Aufzug“ is restated in the breadcrumb of its three subsections.
+#   - The Besprechungsprotokoll's section 3 is long enough to be cut in two: „Kopfbolzendübeln“
+#     (once, page 2) stands in the overlap both parts hold, and „Verbunddecke“ only in the
+#     section's heading (once, page 2), which both parts and subsection 3.1 restate.
 #
 # `markdown` names a file's bytes instead of `pages`; `mail_facts` names what the BFF sends beside
 # a filed mail (`mail_thread` for the Verlauf, `mail_origin` for an attachment, by name).
@@ -165,3 +171,61 @@ files:
         Pflichtstellplätze nach dem Wiener Garagengesetz: 4
         Auf der Liegenschaft herstellbar: 0 (Innenhof bleibt Grünfläche)
         Ergebnis: 4 Pflichtstellplätze, abzugelten durch Ausgleichsabgabe
+
+  - name: Besprechungsprotokoll_Tragwerk_2026-04-28.pdf
+    folder: Korrespondenz/Planung
+    added_at: "2026-05-06"
+    tags: [Schriftverkehr]
+    pages:
+      - |
+        BESPRECHUNGSPROTOKOLL
+        Aufstockung Wohnhaus Hubergasse 14, 1160 Wien – Tragwerksplanung der Aufstockung
+        Besprechung am 28.04.2026 im Baubüro Thaliastraße 120, Protokoll: Arch. DI Lena Wagner
+
+        1 Teilnehmer
+        Für den Bauherrn: Mag. Stefan Steiner, Hubergasse 14 Projektentwicklungs GmbH.
+        Für die Tragwerksplanung: DI Karl Hofer, Ziviltechniker für Bauingenieurwesen.
+        Für die Architektur: Arch. DI Lena Wagner und DI Paul Novak.
+
+        2 Bestandsdecken
+        Die Dippelbaumdecken über dem obersten Bestandsgeschoß wurden an vier Stellen geöffnet. Die Tramlage ist trocken,
+        die Auflager in der Mittelmauer sind intakt, an der Hoffassade ist ein Tramkopf angemorscht und wird ersetzt.
+        Die Beschüttung wird vollständig entfernt, damit die neue Decke direkt auf der Tramlage aufliegen kann.
+      - |
+        3 Holz-Beton-Verbunddecke
+        Über dem obersten Bestandsgeschoß wird die bestehende Tramlage zu einer Decke im Verbund ertüchtigt. Auf die Trame
+        kommt eine Schalung aus Dreischichtplatten, darauf eine Trennlage und eine Aufbetonschicht von zwölf Zentimetern
+        aus Beton der Festigkeitsklasse C25/30. Herr Hofer erläutert, dass das Holz die Zugkräfte und der Beton die
+        Druckkräfte übernimmt, solange die Fuge zwischen beiden schubfest ausgebildet ist. Ohne diese Verbindung
+        würden Holz und Beton als zwei getrennte Bauteile wirken und die Durchbiegung wäre rund dreimal so groß.
+        Die Bewehrung der Aufbetonschicht besteht aus einer Lage Baustahlgitter, die an den Rändern in die neuen
+        Ringbalken eingebunden wird. Die Ringbalken liegen auf den Hauptmauern und verteilen die Lasten der Aufstockung
+        gleichmäßig auf das Mauerwerk. Die Hauptmauern wurden im Februar beprobt; die Druckfestigkeit des Mauerwerks
+        reicht nach der Berechnung für die zusätzlichen Lasten aus, wenn die Fugen an zwei Stellen saniert werden.
+        Die Trame werden vor dem Betonieren im Abstand von höchstens einem Meter unterstellt. Die Unterstellung bleibt
+        stehen, bis der Beton nach sieben Tagen ausreichend erhärtet ist, und wird erst nach Freigabe durch die
+        Tragwerksplanung entfernt. Herr Novak weist darauf hin, dass die Wohnungen im obersten Bestandsgeschoß in dieser
+        Zeit bewohnt sind; die Unterstellung muss daher so angeordnet werden, dass die Wohnungen zugänglich bleiben.
+        Die Hausverwaltung wird die Mieter zwei Wochen vorher schriftlich informieren.
+        Zur Schalldämmung erhält die Decke oberseitig eine Trittschalldämmung und einen schwimmenden Estrich. Die
+        Gesamthöhe des neuen Aufbaus beträgt rund fünfundzwanzig Zentimeter; die Fußbodenoberkante der Aufstockung
+        steigt dadurch gegenüber der Einreichplanung nicht, weil die Beschüttung entfällt.
+        Die Schubverbindung zwischen Holz und Beton wird mit Kopfbolzendübeln hergestellt, die in die Trame eingeschraubt
+        werden. Ihr Abstand beträgt im Auflagerbereich zehn Zentimeter und in Feldmitte zwanzig Zentimeter.
+        Die Verbindungsmittel werden vor dem Betonieren von der Tragwerksplanung abgenommen und fotografisch dokumentiert.
+      - |
+        Fortsetzung Punkt 3
+        Für den Brandschutz der Decke ist die Holzunterseite maßgebend. Die Trame bleiben im Bestand sichtbar, werden
+        aber mit einer Bekleidung aus Gipsfaserplatten versehen, damit die geforderte Feuerwiderstandsdauer erreicht wird.
+        Der Nachweis wird gemeinsam mit dem Brandschutzplaner geführt und dem Konzept als Beilage angeschlossen.
+        Die Baufirma hat angefragt, ob statt der Aufbetonschicht eine Brettsperrholzplatte verwendet werden kann. Herr
+        Hofer lehnt das ab: die Platte wäre leichter, würde aber die Steifigkeit der Decke nicht erreichen, und die
+        Anschlüsse an die Ringbalken wären aufwendiger. Die Variante wird nicht weiter verfolgt.
+
+        3.1 Schwingungsnachweis
+        Der Schwingungsnachweis ergibt eine Eigenfrequenz von über acht Hertz. Damit ist die Decke für Wohnnutzung
+        ausreichend steif, eine zusätzliche Masse auf dem Estrich ist nicht erforderlich.
+
+        4 Termine und nächste Schritte
+        Die Ausführungsstatik wird bis 22.05.2026 übermittelt. Die Baufirma legt bis dahin den Bauablauf für die
+        Unterstellung vor. Nächste Besprechung: 03.06.2026, gleicher Ort.

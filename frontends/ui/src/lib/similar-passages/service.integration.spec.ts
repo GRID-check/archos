@@ -28,6 +28,7 @@
 
 import { sql } from 'drizzle-orm'
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
+import { PROJECT_PERMISSION_SPECS } from '@/lib/authz/catalog'
 
 vi.mock('server-only', () => ({}))
 
@@ -43,6 +44,10 @@ vi.mock('@/lib/workos/client', () => ({
     authorization: {
       check: vi.fn(async ({ resourceExternalId }: { resourceExternalId?: string }) => ({
         authorized: resourceExternalId !== undefined && GRANTED.has(resourceExternalId),
+      })),
+      // A granted project holds every project permission.
+      listEffectivePermissionsByExternalId: vi.fn(async ({ externalId }: { externalId: string }) => ({
+        autoPagination: async () => (GRANTED.has(externalId) ? PROJECT_PERMISSION_SPECS.map(({ slug }) => ({ slug })) : []),
       })),
       listResourcesForMembership: vi.fn(async () => ({
         autoPagination: async () => [...CLEARED_FOLDERS].map((externalId) => ({ externalId, resourceTypeSlug: 'folder' })),

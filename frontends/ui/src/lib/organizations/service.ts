@@ -7,6 +7,7 @@
  */
 
 import 'server-only'
+import type { SwitchableOrganization } from './switchable'
 import { findOrganization, upsertOrganization } from './repository'
 import { getWorkOS } from '@/lib/workos/client'
 import { getCached, invalidateCached } from '@/lib/cache'
@@ -220,30 +221,41 @@ export async function getOrganizationDisplayName(
 /** Membership changes are rare; a joiner sees the switcher within this long. */
 const SWITCHER_CACHE_TTL_MS = 5 * 60_000
 
+/** More offices than one person works in; the menu lists them all on one page. */
+const SWITCHER_MEMBERSHIP_LIMIT = 50
+
 /**
- * Whether the person belongs to more than one organization, which is when the
- * header offers WorkOS's organization switcher. Two memberships are enough to
- * answer, so no more are asked for.
+ * The organizations the person can switch between, by name, the current one
+ * marked: empty for someone in one organization, which is when the avatar menu
+ * offers no switch. WorkOS's membership carries the organization's name, so one
+ * call answers.
  *
- * Fails soft to `false`, as the display name does: a header without the
- * switcher still renders, and caught outside `getCached` so an outage is not
- * remembered as "one organization".
+ * Fails soft to empty, as the display name does: a menu without the switch
+ * still renders, and caught outside `getCached` so an outage is not remembered
+ * as "one organization".
  */
-export async function belongsToSeveralOrganizations(
+export async function switchableOrganizations(
   organizationId: string | null | undefined,
   userId: string
-): Promise<boolean> {
+): Promise<SwitchableOrganization[]> {
   try {
     return await getCached(`organization-switcher:${organizationId ?? 'none'}:${userId}`, SWITCHER_CACHE_TTL_MS, async () => {
       const memberships = await getWorkOS().userManagement.listOrganizationMemberships({
         userId,
         statuses: ['active'],
-        limit: 2,
+        limit: SWITCHER_MEMBERSHIP_LIMIT,
       })
-      return memberships.data.length > 1
+      if (memberships.data.length < 2) return []
+      return memberships.data
+        .map((membership) => ({
+          id: membership.organizationId,
+          name: membership.organizationName || membership.organizationId,
+          current: membership.organizationId === organizationId,
+        }))
+        .sort((a, b) => a.name.localeCompare(b.name))
     })
   } catch {
-    return false
+    return []
   }
 }
 

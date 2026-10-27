@@ -859,7 +859,26 @@ def tool_fetches_evidence(base: str) -> bool:
     not the calls they came from. The retrieval ledger reads it to tell which
     of a round's tools could have produced the documents it returned.
     """
-    return bool(base) and base != "use_skill" and _search_corpus(base) is not None
+    return bool(base) and _search_corpus(base) is not None
+
+
+#: Where the skills are mounted: ``aiq_agent.skills.SKILLS_ROOT``, spelled out
+#: because the skills package imports this module. ``test_turn_status`` pins the two.
+SKILLS_ROOT = "/skills/"
+
+
+def is_skill_read(call: Any) -> bool:
+    """Is this ONE tool call a ``read_file`` of a skill (ADR-0135)?
+
+    Such a read is not narrated as a tool: the skills substrate announces the
+    activation with the skill's own title (``skills.events``), and a draft-read
+    line for it would say the wrong thing.
+    """
+    if not isinstance(call, dict) or tool_basename(str(call.get("name") or "")) != "read_file":
+        return False
+    args = call.get("args")
+    path = args.get("file_path") if isinstance(args, dict) else None
+    return isinstance(path, str) and path.startswith(SKILLS_ROOT)
 
 
 def is_search_call(call: Any) -> bool:
@@ -1239,7 +1258,7 @@ def _describe_calls(calls: list[dict[str, Any]]) -> dict[str, Any]:
     action_key: str | None = None
     for call in calls:
         base = tool_basename(str(call.get("name") or ""))
-        if not base or base == "use_skill":
+        if not base or is_skill_read(call):
             # The skills substrate narrates its own activation with the skill's
             # human title; repeating it here as a tool name would say the same
             # thing twice, worse.

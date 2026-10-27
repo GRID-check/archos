@@ -4,6 +4,7 @@ from unittest.mock import MagicMock
 from unittest.mock import patch
 
 import pytest
+from deepagents.backends import StateBackend
 from deepagents.middleware.filesystem import _apply_permissions_to_ls_results
 from deepagents.middleware.filesystem import _check_fs_permission
 from langchain.agents.middleware import AgentMiddleware
@@ -33,6 +34,7 @@ from aiq_agent.agents.deep_researcher.models import ResearchNotes
 from aiq_agent.agents.deep_researcher.models import ResearchPlan
 from aiq_agent.common import LLMProvider
 from aiq_agent.common import LLMRole
+from aiq_agent.skills import SkillRuntime
 
 
 @tool
@@ -98,9 +100,11 @@ def _graph_context(
     state: DeepResearchAgentState | None = None,
     provider: LLMProvider | None = None,
     enable_source_router: bool = True,
+    skills: SkillRuntime | None = None,
 ) -> DeepResearchGraphContext:
     _, tool_set, middleware_set = _tool_set_and_middleware()
     runtime = runtime or DeepAgentsRuntime()
+    skills = skills if skills is not None else runtime.skill_runtime()
     return DeepResearchGraphContext(
         llm_provider=provider or _llm_provider(),
         state=state or DeepResearchAgentState(messages=[]),
@@ -113,8 +117,9 @@ def _graph_context(
         current_datetime="2026-06-03 12:00:00",
         max_research_concurrency=6,
         enable_source_router=enable_source_router,
-        backend=runtime.backend,
+        backend=runtime.backend_for(skills),
         visibility_middleware=runtime_visibility_middleware(runtime),
+        skills=skills,
     )
 
 
@@ -209,7 +214,8 @@ def test_subagents_route_tools_and_writer_skills():
     assert _deferred_schemas(by_name["planner-agent"]["middleware"]) == [ResearchPlan]
     assert "web_search_tool" in _tool_names(by_name["planner-agent"]["tools"])
     assert _tool_names(by_name["writer-agent"]["tools"]) == ["think", "get_verified_sources"]
-    assert by_name["writer-agent"]["skills"] == ["/skills/synthesis/"]
+    assert _skills_sources(by_name["writer-agent"]["middleware"]) == ["/skills/synthesis/"]
+    assert _skills_sources(by_name["planner-agent"]["middleware"]) is None
     writer_permissions = by_name["writer-agent"]["permissions"]
     assert (
         _check_fs_permission(writer_permissions, "read", "/skills/synthesis/long-form-report-writer/SKILL.md")
@@ -243,7 +249,7 @@ def test_skill_filesystem_permissions_filter_unassigned_skill_collections():
 def test_graph_uses_researcher_config_key_for_researcher_skills():
     """The researcher runnable uses the public `researcher` skill config key."""
     registry, tool_set, middleware_set = _tool_set_and_middleware()
-    runtime = DeepAgentsRuntime(skills=DeepResearchSkillsConfig(agents={"researcher-agent": ("research",)}))
+    runtime = DeepAgentsRuntime(skills=DeepResearchSkillsConfig(agents={"researcher-agent": ("oib",)}))
     fake_graph = MagicMock()
     fake_graph.with_config.return_value = fake_graph
 
@@ -264,11 +270,43 @@ def test_graph_uses_researcher_config_key_for_researcher_skills():
             callbacks=[],
             domain_catalog_path=None,
             max_research_concurrency=6,
+            skills=runtime.skill_runtime(),
         )
 
     researcher_middleware = create_researcher.call_args.kwargs["middleware"]
-    skills_middleware = [item for item in researcher_middleware if item.__class__.__name__ == "SkillsMiddleware"]
-    assert skills_middleware[0].sources == ["/skills/research/"]
+    assert _skills_sources(researcher_middleware) == ["/skills/oib/"]
+
+
+def _skills_sources(middleware) -> list[str] | None:
+    found = [item for item in middleware if item.__class__.__name__ == "SkillsMiddleware"]
+    return found[0].sources if found else None
+
+
+def test_the_office_skills_go_to_the_writer_alone():
+    """An office skill is an instruction about the answer, and the writer writes it (ADR-0135)."""
+    from aiq_agent.skills.models import Skill
+
+    runtime = DeepAgentsRuntime(
+        skills=DeepResearchSkillsConfig(agents={"writer-agent": ("synthesis",), "researcher-agent": ("oib",)})
+    )
+    voice = Skill(name="house-voice", description="Wie das Büro schreibt.", body="Kurz.", origin="org")
+    context = _graph_context(runtime=runtime, skills=runtime.skill_runtime((voice,)))
+    by_name = {subagent["name"]: subagent for subagent in build_deep_research_subagents(context)}
+
+    assert _skills_sources(by_name["writer-agent"]["middleware"]) == ["/skills/synthesis/", "/skills/office/"]
+    assert context.skill_sources("researcher-agent") == ["/skills/oib/"]
+    writer = by_name["writer-agent"]["permissions"]
+    assert _check_fs_permission(writer, "read", "/skills/office/house-voice/SKILL.md") == "allow"
+    assert _check_fs_permission(writer, "write", "/skills/office/house-voice/SKILL.md") == "deny"
+    researcher = context.permissions("researcher-agent")
+    assert _check_fs_permission(researcher, "read", "/skills/office/house-voice/SKILL.md") == "deny"
+
+
+def test_a_run_without_skills_mounts_none_and_gates_nothing():
+    context = _graph_context()
+    assert context.permissions("writer-agent") == []
+    by_name = {subagent["name"]: subagent for subagent in build_deep_research_subagents(context)}
+    assert _skills_sources(by_name["writer-agent"]["middleware"]) is None
 
 
 def test_graph_passes_checkpointer_through_alongside_inmemory_store():
@@ -366,7 +404,7 @@ def test_researcher_runnable_uses_rendered_prompt_and_runtime_middleware():
     researcher_agent = MagicMock()
     researcher_model = MagicMock()
     shared_middleware = [MagicMock(name="shared_middleware")]
-    backend = MagicMock()
+    backend = StateBackend()
 
     with (
         patch(

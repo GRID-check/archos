@@ -56,7 +56,7 @@ describe('an outside agent finds the office’s procedures on its own', () => {
     expect(found(outside, 'read skill').slice(0, 3)).toContain('skill-get')
   })
 
-  it('is not offered to Piloti, which loads skills with its own use_skill', () => {
+  it('is not offered to Piloti, which reads skills with its own read_file', () => {
     expect(found(piloti, 'office procedure')).not.toContain('skill-search')
     expect(found(piloti, 'office procedure')).not.toContain('skill-get')
   })
