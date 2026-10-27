@@ -145,14 +145,18 @@ deployment. It cannot leave the old one running beside the new one, which
 option B needs. And the reference says nothing about whether the Pulumi Cloud
 secrets key survives the project change. So we do not rename. We create:
 
-1. **Program layout.** `deploy/pulumi/` becomes the `workspace` project, with
-   `Pulumi.yaml` `name: workspace` and stack files keyed `workspace:*`.
-   The old project moves to `deploy/pulumi/legacy/`: a `Pulumi.yaml` with
-   `name: grid-oib` and `main: ..`, plus the current stack files, unchanged
-   except for the move-phase key. Both projects run **the same program**.
-   `new pulumi.Config()` reads the running project's namespace, so neither
-   needs a code branch for its prefix. The old stack keeps its history.
-   The new stack's history starts at its first deploy.
+1. **Program layout.** The old project stays where it is, so nothing about
+   the running deployment moves while the new one is built: `deploy/pulumi/`
+   with `name: grid-oib` and its stack files. The new project lives in
+   `deploy/pulumi/workspace/`: a `Pulumi.yaml` with `name: workspace` and
+   `main: ..`, and stack files keyed `workspace:*`. Both projects run **the
+   same program**. `new pulumi.Config()` reads the running project's
+   namespace, and `src/names.ts` picks each object name by the running
+   project (today's names for `grid-oib`, brand-free ones for `workspace`), so
+   neither stack file says which set it gets. The old stack keeps its
+   history. The new stack's history starts at its first deploy. The cleanup
+   step moves `workspace/` up to `deploy/pulumi/` once the old project is
+   gone.
 2. **ESC.** The deploy workflow runs `pulumi env clone grid-oib/<stack>
    workspace/<stack>`, which re-encrypts every secret under the new
    environment. It then exports the definition (ciphertext only), rewrites
@@ -182,7 +186,7 @@ the legacy organization settings that is the Member role's default
 environment permission set to Write. Under RBAC it is a permission set
 granting Environment Write on `workspace/*`. The product owner grants it once
 in the Pulumi Cloud console. That is a permission, not a cluster step.
-The first `expand` run is not where we find out: the layout PR (step 1) adds
+The first `expand` run is not where we find out: step 1 adds
 a workflow preflight that creates and deletes a probe environment
 `workspace/preflight-probe`. If either call is refused, the run fails with
 "the Pulumi token needs Environment Write on workspace/* (ADR-0147)" before
@@ -239,7 +243,7 @@ contract steps:
    resources from its state without touching them. In the same run, the new
    stack switches to `sharedPlatform: owned` and adopts each one with the
    `import` resource option. Import ids come from a `StackReference` to the
-   old stack's outputs, which step 1 adds.
+   old stack's outputs, which the expand step adds.
 
 ### Order, phases, outage
 
@@ -250,11 +254,15 @@ two updates overlap.
 | # | PR (dev, then a separate prod PR) | Old stack `grid-oib` | New stack `workspace` | Outage |
 |---|---|---|---|---|
 | 0 | this ADR | | | |
-| 1 | program layout, ESC clone, renamed objects behind the names map | `move: off` (unchanged, no-op preview) | does not exist yet | none |
+| 1 | names table (`src/names.ts`) and its spec, ESC write preflight (warns) | unchanged, no-op preview | does not exist yet | none |
+| 1b | `deploy/pulumi/workspace/` project and stack files, ESC clone and key re-prefix, the `stack-files.spec.ts` case; the workflow **previews** the new stack and applies nothing | unchanged | preview only: proves `main: ..`, the ESC clone and every secret resolving | none |
 | 2 | **expand** | `move: source`: copier NetworkPolicy, retainOnDelete on shared | `move: expand`: replica cluster, SeaweedFS + `rclone sync`, Qdrant rehearsal, apps at 0, no Gateway | none |
 | 3 | **switch** | `move: standby`: app tiers at 0, CronJobs suspended, Gateway deleted, Postgres left running | `move: active`: catch-up gate, promote, final sync, Qdrant copy, ClickHouse restore, migrations Job, apps up, Gateway, verify Job | **yes** |
 | 4 | **contract**, after the product owner confirms | `move: retired`: `grid` deleted | `move: off`, `sharedPlatform: owned`: imports shared pieces | none |
-| 5 | cleanup: delete `legacy/`, the move code and the workflow steps | gone | | none |
+| 5 | cleanup: move `workspace/` up to `deploy/pulumi/`, fold `src/names.ts` into its brand-free column, delete the move code and the workflow steps | gone | | none |
+
+Step 1's preflight only warns, so a missing grant never stops an ordinary
+deploy. Expand switches it to fail.
 
 Expected outage on `dev`: stopping the old tiers about 1 minute; catch-up
 gate and promotion about 2; the last `rclone` delta and the ClickHouse restore
@@ -328,17 +336,17 @@ normal disaster path: restore the new cluster from its own backups.
 
 ### Confirmation
 
-* `deploy/pulumi/index-move.spec.ts`, added in step 1: for each `move` value
+* `deploy/pulumi/index-move.spec.ts`, added with expand: for each `move` value
   it checks the resource set. `off` and `source` create nothing in
   `workspace`. `expand` creates no Gateway, keeps every app tier at 0 and every
   CronJob suspended, and sets `replica.enabled: true`. `active` gates the
   promotion on the catch-up Job, and the apps and the Gateway on the
   promotion. `retired` declares nothing but retained shared resources.
-* `deploy/pulumi/index-names.spec.ts`: no `metadata.name`, namespace, label
-  value or config key the program produces contains `grid` or `piloti`, once
-  the `legacy/` stack is gone. During the move it runs against the
-  `workspace` stack config only.
-* `stack-files.spec.ts` gains a case, in step 1, that fails a `secure:` block
+* `deploy/pulumi/index-names.spec.ts`, added in step 1: the whole program,
+  run as the `workspace` project, gives no logical name, `metadata.name`,
+  namespace, label value or annotation key containing `grid` or `piloti`.
+  Run as `grid-oib` it finds 372, which is what shows the check bites.
+* `stack-files.spec.ts` gains a case, in step 1b, that fails a `secure:` block
   in any stack file that imports an ESC environment. Nothing checks that
   today, which is how three of them stayed in `Pulumi.dev.yaml`.
 * The switch PRs need their deploy run and verify log before merge. Review is
