@@ -29,7 +29,7 @@ from knowledge_layer.qdrant.store import QdrantStore
 from qdrant_client import models
 
 DIM = 8
-IDENTITY = {"aiq:embed_fingerprint": "test-fp", "aiq:embed_model": "test-model"}
+IDENTITY = {"embed_fingerprint": "test-fp", "embed_model": "test-model"}
 
 #: The BFF's SIMILARITY_WEIGHTS (frontends/ui/src/lib/cross-project/similarity.ts), as the request carries them.
 WEIGHTS = {
