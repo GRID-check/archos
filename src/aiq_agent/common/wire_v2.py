@@ -239,6 +239,14 @@ class ToolStep(_StepBase):
     kind: Literal["tool"] = "tool"
     tool: str = Field(min_length=1)
     status: Literal["running", "ok", "error"] = "running"
+    mount: Literal["drafts", "project", "office", "chat", "law", "estate"] | None = Field(
+        default=None,
+        description=(
+            "Which part of Piloti's filesystem a file tool reached (ADR-0133): a mount, or `estate` for a call "
+            "over every mount the person may see. Absent on every other tool, and on a file tool of a turn "
+            "stored before the field existed, which only ever reached the drafts."
+        ),
+    )
 
 
 class SkillStep(_StepBase):

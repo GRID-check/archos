@@ -262,7 +262,9 @@ class TestRetrieval:
             "edit_file": "status.action.draftEdit",
         }
         for index, (verb, key) in enumerate(verbs.items()):
-            turn_status.emit_retrieval([{"name": verb, "args": {"file_path": "/drafts/a.md"}}], round_index=index)
+            # `ls` takes `path`; on the drafts each verb keeps its draft line (ADR-0133: the mount decides).
+            args = {"path": "/drafts/"} if verb == "ls" else {"file_path": "/drafts/a.md"}
+            turn_status.emit_retrieval([{"name": verb, "args": args}], round_index=index)
         assert [payload.key for payload in _live(steps)] == list(verbs.values())
 
     def test_a_file_verb_is_an_action_and_never_a_retrieval(self, steps) -> None:

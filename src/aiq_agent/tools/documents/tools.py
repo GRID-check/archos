@@ -1,4 +1,18 @@
-"""the four file verbs Piloti gets, and nothing else.
+"""Piloti's file verbs: the drafts' four, and the estate's readers beside them (ADR-0133).
+
+Two shapes, chosen per turn:
+
+* **The drafts alone** (:func:`draft_tools`, a turn with no estate backend):
+  stock DeepAgents tools over :class:`DraftBackend`, as before ADR-0133.
+* **One namespace** (:func:`filesystem_tools`): the same tools over a
+  ``CompositeBackend`` whose default is the read-only estate
+  (``knowledge_layer.estate``) and whose ``/drafts/`` route is the draft store.
+  ``read_file`` then reads both, and renders grounding blocks on the estate
+  (``filesystem.PilotiFilesystem``).
+
+The drafts-only notes follow.
+
+The four file verbs over the drafts, and nothing else.
 
 ``ls``, ``read_file``, ``write_file``, ``edit_file`` — stock DeepAgents tools
 over :class:`~aiq_agent.tools.documents.draft_store.DraftBackend`. The
@@ -23,6 +37,7 @@ they deliberately do NOT say:
 from __future__ import annotations
 
 import logging
+from typing import Any
 
 from deepagents.middleware.filesystem import FilesystemMiddleware
 from deepagents.middleware.filesystem import FilesystemPermission
@@ -33,12 +48,20 @@ from aiq_agent.project_context import get_conversation_id_from_context
 from .draft_store import DRAFT_ROOT
 from .draft_store import DraftBackend
 from .draft_store import get_draft_backend
+from .filesystem import PilotiFilesystem
+from .filesystem import composite_backend
 
 logger = logging.getLogger(__name__)
 
 #: The verbs bound into Piloti's tool node, in the order the model
 #: meets them, and the middleware's allowlist: nothing else is built.
 DRAFT_TOOL_NAMES = ("ls", "read_file", "write_file", "edit_file")
+
+#: The estate's readers, bound whether or not the turn has a working directory.
+ESTATE_TOOL_NAMES = ("read_file",)
+
+#: The tools only a working directory gives: writing, and listing the drafts (until ``ls`` reads the estate).
+DRAFT_ONLY_TOOL_NAMES = ("ls", "write_file", "edit_file")
 
 #: Model-facing text, replacing DeepAgents' defaults. ``edit_file`` carries the
 #: two things that actually make an exact-string replacement land: anchor on a
@@ -98,6 +121,51 @@ _PERMISSIONS = [
 ]
 
 
+#: ``read_file`` once it reads the estate too. A contract: what it reads, how a document is addressed, what
+#: comes back and what is not evidence.
+_ESTATE_DESCRIPTIONS = {
+    "read_file": (
+        "Reads one file by its absolute path. Two kinds of file:\n"
+        "- The office's documents (read-only): /project/ (this project), /office/ (the Büroablage), /chat/ "
+        "(files dropped into this conversation), /law/oib/ (the OIB-Richtlinien). A document's text is served as "
+        "`<file name>.md` (Plan.pdf is /project/<folder>/Plan.pdf.md; the bare .pdf path works too). Address a "
+        'paginated document with `pages` ("3", "3-5", "3,7,11"; at most 30) or one Punkt with `clause` '
+        '("3.5.2"); with neither you get the opening page and the Gliederung. A text file (txt, md, csv) is read '
+        "by `offset`/`limit` in lines. Returns one block per page, each with a `Citation:` line to copy verbatim "
+        "(`<file name>, p.N`) and a `Path:` line; at most about 6k tokens per read, and the result names the next "
+        "call. A drawing's text is a vision model's reading, not a measurement. A path you did not get from a "
+        "listing, a search hit or the person may not exist; a miss says so and suggests names.\n"
+        f"- This conversation's drafts under `{DRAFT_ROOT}`: read before a revision, so that `old_string` comes "
+        "verbatim from the document. The output starts with a `@@ lines … @@` header that is not part of the file. "
+        "A draft is what the answer wrote itself, never evidence.\n"
+        "Paths come from a hit's `Path:` line, the turn context or the person. To find which document says "
+        'something, search first (knowledge_search by meaning, knowledge_search with match="exact" for a '
+        "wording); read_passage is the former name of this read and stays for one release."
+    ),
+}
+
+
+def filesystem_tools(drafts: DraftBackend | None, estate: Any) -> list[BaseTool]:
+    """The turn's file verbs over one namespace: the estate's readers, plus the drafts' verbs when there are drafts.
+
+    ``estate`` is the knowledge layer's ``EstateBackend`` (built once, at boot);
+    ``drafts`` the conversation's draft store, or ``None`` on a turn without a
+    conversation. The tools are built per turn because the draft store is.
+    """
+    names = [*ESTATE_TOOL_NAMES, *(DRAFT_ONLY_TOOL_NAMES if drafts is not None else ())]
+    middleware = PilotiFilesystem(
+        estate=estate,
+        drafts=drafts is not None,
+        backend=composite_backend(drafts, estate),
+        custom_tool_descriptions={**_TOOL_DESCRIPTIONS, **_ESTATE_DESCRIPTIONS},
+        permissions=_PERMISSIONS,
+        tools=names,
+    )
+    by_name = {tool.name: tool for tool in middleware.tools}
+    order = [*DRAFT_TOOL_NAMES, *(name for name in ESTATE_TOOL_NAMES if name not in DRAFT_TOOL_NAMES)]
+    return [by_name[name] for name in order if name in by_name]
+
+
 def draft_tools(backend: DraftBackend) -> list[BaseTool]:
     """The four verbs bound to one conversation's working directory."""
     middleware = FilesystemMiddleware(
@@ -108,6 +176,30 @@ def draft_tools(backend: DraftBackend) -> list[BaseTool]:
     )
     by_name = {tool.name: tool for tool in middleware.tools}
     return [by_name[name] for name in DRAFT_TOOL_NAMES if name in by_name]
+
+
+async def filesystem_tools_for_turn(estate: Any = None) -> list[BaseTool]:
+    """The file verbs for the turn in context.
+
+    Without an estate backend, exactly :func:`draft_tools_for_turn`. With one,
+    the estate's readers are bound on every turn, and the drafts' verbs join
+    them when the turn has a working directory.
+    """
+    if estate is None:
+        return await draft_tools_for_turn()
+    return filesystem_tools(await _turn_drafts(), estate)
+
+
+async def _turn_drafts() -> DraftBackend | None:
+    """This conversation's draft store; ``None`` with no conversation, or when the store cannot be reached."""
+    conversation_id = get_conversation_id_from_context()
+    if not conversation_id:
+        return None
+    try:
+        return await get_draft_backend(conversation_id)
+    except Exception:  # noqa: BLE001 - a working directory is never worth the turn
+        logger.warning("Working directory unavailable; this turn is answered without it.", exc_info=True)
+        return None
 
 
 async def draft_tools_for_turn() -> list[BaseTool]:

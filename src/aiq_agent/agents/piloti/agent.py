@@ -52,7 +52,6 @@ from langgraph.prebuilt import tools_condition
 from aiq_agent.common import LLMProvider
 from aiq_agent.common import LLMRole
 from aiq_agent.common import content_to_text
-from aiq_agent.common import get_source_id_for_tool
 from aiq_agent.common.citation_verification import SourceRegistry
 from aiq_agent.common.citation_verification import begin_turn_capture
 from aiq_agent.common.citation_verification import end_turn_capture
@@ -66,6 +65,7 @@ from aiq_agent.common.citation_verification import reset_session_registry
 from aiq_agent.common.citation_verification import set_session_registry
 from aiq_agent.common.cost_tracking import grid_cost_tracker_var
 from aiq_agent.common.data_sources import disabled_source_notice
+from aiq_agent.common.data_sources import source_id_for_call
 from aiq_agent.common.deferred_tool_loading import DeferredToolBinding
 from aiq_agent.common.deferred_tool_loading import DeferredToolLoadingSettings
 from aiq_agent.common.deferred_tool_loading import bind_tools_deferred
@@ -311,6 +311,11 @@ def _call_name(call: Any) -> str:
     return str(name or "")
 
 
+def _call_args(call: Any) -> Any:
+    """One call's arguments, however the provider spelled the call."""
+    return call.get("args") if isinstance(call, dict) else getattr(call, "args", None)
+
+
 def _call_basenames(message: Any) -> list[str]:
     """The basenames of one message's tool calls, in order."""
     names: list[str] = []
@@ -377,7 +382,8 @@ def _withheld_calls(
     refused = [
         (call, sentence)
         for call in calls
-        if id(call) not in seen and (sentence := disabled_source_notice(_call_name(call), disabled)) is not None
+        if id(call) not in seen
+        and (sentence := disabled_source_notice(_call_name(call), disabled, _call_args(call))) is not None
     ]
     seen |= {id(call) for call, _ in refused}
     over_width = _over_width([call for call in calls if id(call) not in seen], max_calls)
@@ -932,6 +938,7 @@ def _capture_sources(
     content: str,
     source_tool_names: frozenset[str],
     registry: SourceRegistry,
+    artifact: Any = None,
 ) -> None:
     """Register the sources one tool result carries, gated twice.
 
@@ -944,13 +951,13 @@ def _capture_sources(
     """
     if tool_name not in source_tool_names:
         return
-    source_id = get_source_id_for_tool(tool_name)
+    source_id = source_id_for_call(tool_name)
     # `look` is no data source: it registers the PLACE it read, when it read a
     # project or office document (`tools/look/place.py`), and nothing else.
     if source_id is None and not is_look_tool(tool_name):
         logger.debug("[CitationRegistry] Skipping non-data-source tool result from %s", tool_name)
         return
-    sources = extract_sources_from_tool_result(tool_name, content, source_id=source_id)
+    sources = extract_sources_from_tool_result(tool_name, content, source_id=source_id, artifact=artifact)
     for source in sources:
         registry.add(source)
     # A place is no retrieval: it must not ground a trailer value or count as a retrieved source.
@@ -1536,7 +1543,9 @@ class PilotiAgent:
             # A look answers in blocks (text, then the image): its text is the grounding block.
             content = content_to_text(message.content) if isinstance(message.content, list) else str(message.content)
             measured = measured or tool_result_is_measurement(tool_name, content)
-            _capture_sources(tool_name, content, binding.source_tool_names, registry)
+            _capture_sources(
+                tool_name, content, binding.source_tool_names, registry, getattr(message, "artifact", None)
+            )
         return measured
 
     # -- the turn ---------------------------------------------------------------

@@ -22,6 +22,7 @@ from pydantic import Field
 from pydantic import model_validator
 
 from aiq_agent.common.action_outcome import ActionOutcome
+from aiq_agent.common.estate_paths import estate_path
 from aiq_agent.common.turn_status import ActionRow
 from aiq_agent.common.wire_v2 import TraceLane
 from aiq_agent.common.wire_v2 import TraceLaneSource
@@ -1574,6 +1575,7 @@ def _grounding_hit(chunk, *, resolved, resolved_titles, resolved_folders, ambigu
     page = chunk.page_number if chunk.page_number and chunk.page_number > 0 else None
     content = chunk.content
     truncated = len(content) > _CHUNK_TRUNCATE_CHARS
+    folder_path = _hit_folder_path(chunk, resolved_folders)
     return GroundingHit(
         citation_key=_citation_key_for(chunk.file_name, shelf, page, ambiguous),
         file_name=chunk.file_name,
@@ -1582,7 +1584,7 @@ def _grounding_hit(chunk, *, resolved, resolved_titles, resolved_folders, ambigu
         collection=_metadata_text(metadata.get("collection")),
         doc_class=_hit_doc_class(chunk, resolved),
         display_title=_hit_display_title(chunk, resolved_titles) or chunk.file_name,
-        folder_path=_hit_folder_path(chunk, resolved_folders),
+        folder_path=folder_path,
         clause=_metadata_text(metadata.get("clause_id")),
         score=chunk.score,
         content_type=chunk.content_type.value,
@@ -1593,6 +1595,8 @@ def _grounding_hit(chunk, *, resolved, resolved_titles, resolved_folders, ambigu
         body_truncated=truncated,
         regions=_hit_regions(chunk),
         page_end=_page_end(chunk, page),
+        # Where `read_file` opens the page around this hit (ADR-0133); none for a shelf with no mount.
+        path=estate_path(shelf, folder_path, chunk.file_name) if chunk.file_name else None,
     )
 
 

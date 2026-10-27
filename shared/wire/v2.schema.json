@@ -3088,6 +3088,27 @@
           "title": "Kind",
           "type": "string"
         },
+        "mount": {
+          "anyOf": [
+            {
+              "enum": [
+                "drafts",
+                "project",
+                "office",
+                "chat",
+                "law",
+                "estate"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Which part of Piloti's filesystem a file tool reached (ADR-0133): a mount, or `estate` for a call over every mount the person may see. Absent on every other tool, and on a file tool of a turn stored before the field existed, which only ever reached the drafts.",
+          "title": "Mount"
+        },
         "scope": {
           "default": "chat",
           "enum": [

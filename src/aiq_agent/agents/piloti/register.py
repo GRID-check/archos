@@ -21,6 +21,7 @@ from typing import Any
 from langchain_core.messages import AIMessage
 from langchain_core.messages import HumanMessage
 from pydantic import Field
+from pydantic import field_validator
 
 from aiq_agent.common import AgentGroup
 from aiq_agent.common import LLMProvider
@@ -52,7 +53,7 @@ from aiq_agent.project_context import get_project_id_from_context
 from aiq_agent.skills import SkillResolver
 from aiq_agent.skills import SkillRuntime
 from aiq_agent.skills.events import emit_skills_offered
-from aiq_agent.tools.documents.tools import draft_tools_for_turn
+from aiq_agent.tools.documents.tools import filesystem_tools_for_turn
 from nat.plugin_api import Builder
 from nat.plugin_api import FunctionBaseConfig
 from nat.plugin_api import FunctionGroupRef
@@ -224,6 +225,23 @@ class ResearchAgentConfig(FunctionBaseConfig, name="research_agent"):
             "--arm navigate`, ADR-0127). Production keeps the default."
         ),
     )
+    filesystem: FunctionRef | None = Field(
+        default=None,
+        description=(
+            "The `knowledge_retrieval` instance whose scope the filesystem tools read the office's documents "
+            "through (ADR-0133): `read_file` over /project/, /office/, /chat/ and /law/oib/ beside the drafts. "
+            "Unset: the file verbs reach the conversation's drafts alone, as before."
+        ),
+    )
+
+    @field_validator("filesystem", mode="before")
+    @classmethod
+    def _no_filesystem(cls, value: Any) -> Any:
+        """``null``, ``none`` or empty from an ``--override`` (the files eval's search arm) switch the estate off."""
+        if isinstance(value, str) and value.strip().lower() in ("", "null", "none"):
+            return None
+        return value
+
     envelope_json_mode_with_tools: bool = Field(
         default=False,
         description=(
@@ -244,6 +262,8 @@ class _Deployment:
     agent: PilotiAgent
     provider: LLMProvider
     tools: list[Any]
+    #: The read-only estate backend the filesystem tools read through (``knowledge_layer.estate``); built once.
+    estate: Any = None
     #: tool names → (is_valid, unavailable): the availability check is a scan
     #: with an INFO line per tool, and the tool set is fixed per deployment.
     availability: dict[tuple[str, ...], tuple[bool, list[str]]] = field(default_factory=dict)
@@ -591,7 +611,10 @@ async def _run_turn(deployment: _Deployment, state: ResearchAgentState) -> Resea
     facts = _turn_facts(state, runtime) if config.turn_decisions else None
     _warm_question(facts)
     draft_tools, decisions, llm_provider, fit = await asyncio.gather(
-        draft_tools_for_turn(), _decide_turn(facts), _active_provider(deployment.provider), _fit_references(facts)
+        filesystem_tools_for_turn(deployment.estate),
+        _decide_turn(facts),
+        _active_provider(deployment.provider),
+        _fit_references(facts),
     )
     _apply_decisions(decisions, state, runtime)
     _apply_reference_fit(fit, state)
@@ -668,6 +691,19 @@ async def _run_agent(deployment: _Deployment, state: ResearchAgentState, turn: T
         return format_no_sources_message(_RESEARCH_TYPE, exc.unavailable_tools, exc.available_count, scoped=scoped)
 
 
+def _estate_backend(config: ResearchAgentConfig, builder: Builder) -> Any:
+    """The estate backend the filesystem tools read through, built at boot; ``None`` when none is configured.
+
+    It reads nothing here: the scope, the rows and the pages are the turn's,
+    read per call from the turn's context (ADR-0133).
+    """
+    if config.filesystem is None:
+        return None
+    from knowledge_layer.estate import EstateBackend
+
+    return EstateBackend(builder.get_function_config(config.filesystem))
+
+
 @register_function(config_type=ResearchAgentConfig, framework_wrappers=[LLMFrameworkEnum.LANGCHAIN])
 async def research_agent(config: ResearchAgentConfig, builder: Builder):
     """Research agent with tool-calling capabilities."""
@@ -702,7 +738,9 @@ async def research_agent(config: ResearchAgentConfig, builder: Builder):
             else None
         ),
     )
-    deployment = _Deployment(config=config, agent=agent, provider=provider, tools=tools)
+    deployment = _Deployment(
+        config=config, agent=agent, provider=provider, tools=tools, estate=_estate_backend(config, builder)
+    )
 
     async def _run(state: ResearchAgentState) -> ResearchAgentState:
         return await _run_turn(deployment, state)

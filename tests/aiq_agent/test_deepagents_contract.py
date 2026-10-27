@@ -43,6 +43,7 @@ _IMPORTED_NAMES = {
         "DeleteResult",
         "EditResult",
         "ExecuteResponse",
+        "FileInfo",
         "FileDownloadResponse",
         "FileUploadResponse",
         "GlobResult",
@@ -53,11 +54,12 @@ _IMPORTED_NAMES = {
     ],
     "deepagents.backends.sandbox": ["BaseSandbox"],
     "deepagents.backends.store": ["StoreBackend"],
-    "deepagents.backends.utils": ["validate_path"],
+    "deepagents.backends.utils": ["slice_read_response", "validate_path"],
     "deepagents.middleware.filesystem": [
         "FilesystemMiddleware",
         "FilesystemPermission",
         "FsToolName",
+        "ReadFileSchema",
         # private, used by tests that pin our permission rules' semantics
         "_apply_permissions_to_ls_results",
         "_check_fs_permission",
@@ -140,6 +142,48 @@ def test_the_allowlist_builds_only_the_listed_tools() -> None:
     assert allowed == {"ls", "read_file"}
 
 
+#: The private builders ``tools/documents/filesystem.PilotiFilesystem`` overrides (ADR-0133). They carry no
+#: stability promise, so a rename is caught here rather than by a model that silently gets the stock tool.
+_OVERRIDDEN_BUILDERS = ("_create_read_file_tool", "_create_ls_tool", "_create_glob_tool", "_create_grep_tool")
+
+
+@pytest.mark.parametrize("builder", _OVERRIDDEN_BUILDERS)
+def test_the_builders_the_estate_overrides_exist_and_take_nothing(builder: str) -> None:
+    from deepagents.middleware.filesystem import FilesystemMiddleware
+
+    method = getattr(FilesystemMiddleware, builder, None)
+    assert method is not None, (
+        f"FilesystemMiddleware.{builder} is gone: PilotiFilesystem's override is never called, and the stock tool "
+        "(no grounding blocks, no citations) is bound under our name. Port tools/documents/filesystem.py."
+    )
+    assert list(inspect.signature(method).parameters) == ["self"]
+    source = inspect.getsource(FilesystemMiddleware._create_tools)
+    assert f"self.{builder}" in source, f"_create_tools no longer calls {builder}; the override is dead code"
+
+
+def test_the_stock_read_file_coroutine_takes_what_the_estate_wrapper_passes() -> None:
+    """The drafts' read goes through the stock coroutine with ``file_path``, ``runtime``, ``offset``, ``limit``."""
+    from deepagents.backends import StateBackend
+    from deepagents.middleware.filesystem import FilesystemMiddleware
+    from deepagents.middleware.filesystem import ReadFileSchema
+
+    stock = next(t for t in FilesystemMiddleware(backend=StateBackend(), tools=["read_file"]).tools)
+    assert set(inspect.signature(stock.coroutine).parameters) >= {"file_path", "runtime", "offset", "limit"}
+    assert set(ReadFileSchema.model_fields) == {"file_path", "offset", "limit"}, (
+        "ReadFileSchema changed: EstateReadFileSchema (tools/documents/filesystem.py) extends it"
+    )
+
+
+def test_the_composite_strips_the_route_prefix_the_draft_route_puts_back() -> None:
+    """``_DraftRoute`` re-prefixes ``/drafts`` because the composite hands a routed backend ``/a.md``."""
+    from deepagents.backends import CompositeBackend
+    from deepagents.backends import StateBackend
+
+    composite = CompositeBackend(default=StateBackend(), routes={"/drafts/": StateBackend()})
+    _backend, key = composite._get_backend_and_key("/drafts/a.md")
+    assert key == "/a.md"
+
+
 # ---------------------------------------------------------------------------
 # Backends: the protocol our two subclasses override
 # ---------------------------------------------------------------------------
@@ -150,6 +194,8 @@ def test_the_allowlist_builds_only_the_listed_tools() -> None:
     [
         "aiq_agent.tools.documents.draft_store:DraftBackend",
         "aiq_agent.agents.deep_researcher.deepagents_runtime:MachineryOnlyFilesystemBackend",
+        "aiq_agent.tools.documents.filesystem:_DraftRoute",
+        "knowledge_layer.estate:EstateBackend",
     ],
 )
 def test_our_backend_overrides_match_the_protocol(path: str) -> None:

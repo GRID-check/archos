@@ -102,6 +102,8 @@ def arm_overrides(arm: str, tools: list[str]) -> list[list[str]]:
         return [
             ["functions.shallow_research_agent.tools", ",".join(kept)],
             ["functions.knowledge_search.match_modes", "meaning"],
+            # The filesystem verbs over the estate (ADR-0133) are navigation too; the drafts stay.
+            ["functions.shallow_research_agent.filesystem", "null"],
         ]
     return [
         ["functions.shallow_research_agent.prefetch", "false"],
@@ -148,13 +150,63 @@ def _matches(wanted: Any, actual: Any) -> bool:
     )
 
 
+def _is_draft(path: Any) -> bool:
+    text = str(path or "").strip().lstrip("/")
+    return text.startswith(("drafts", "entwuerfe"))
+
+
+def _stem(file_path: Any) -> str:
+    leaf = str(file_path or "").rstrip("/").rsplit("/", 1)[-1]
+    return leaf[:-3] if leaf.lower().endswith(".md") and "." in leaf[:-3] else leaf
+
+
+def _folder_of(path: Any) -> str | None:
+    """The folder below the mount a filesystem path names (``/project/A/B/`` -> ``A/B``), or None at a root."""
+    parts = [part for part in str(path or "").strip("/").split("/") if part]
+    depth = 2 if parts[:1] == ["law"] else 1
+    return "/".join(parts[depth:]) or None
+
+
+def aliases(call: dict[str, Any]) -> list[dict[str, Any]]:
+    """The calls one call also counts as for the release the old names live (ADR-0133 §8).
+
+    An estate ``read_file`` is a ``read_passage`` of the same document and pages, ``ls`` and ``glob`` are a
+    ``list_files``, ``grep`` is a literal ``knowledge_search``; and back, so a row written for either name
+    holds for both and the before and after runs compare. A call under ``/drafts/`` is no file move.
+    """
+    name, args = _basename(call["name"]), call.get("arguments") or {}
+    if name == "read_file" and not _is_draft(args.get("file_path")):
+        mapped = {"document": _stem(args.get("file_path")), "pages": args.get("pages"), "clause": args.get("clause")}
+        return [{"name": "read_passage", "arguments": {k: v for k, v in mapped.items() if v is not None}}]
+    if name in ("ls", "glob") and not _is_draft(args.get("path")):
+        listed = {"folder": _folder_of(args.get("path"))}
+        if name == "ls" and int(args.get("depth") or 1) > 1:
+            listed["view"] = "tree"
+        return [{"name": "list_files", "arguments": {k: v for k, v in listed.items() if v is not None}}]
+    if name == "grep" and not _is_draft(args.get("path")):
+        searched = {"query": args.get("pattern"), "match": args.get("mode") or "exact", "context": args.get("context")}
+        return [{"name": "knowledge_search", "arguments": {k: v for k, v in searched.items() if v is not None}}]
+    if name == "read_passage":
+        return [{"name": "read_file", "arguments": {"pages": args.get("pages"), "clause": args.get("clause")}}]
+    if name == "list_files":
+        return [{"name": "ls", "arguments": {}}, {"name": "glob", "arguments": {}}]
+    match = str(args.get("match") or "").strip().lower()
+    if name == "knowledge_search" and match in ("exact", "regex"):
+        return [{"name": "grep", "arguments": {"pattern": args.get("query"), "mode": match}}]
+    return []
+
+
 def called(item: Any, calls: list[dict[str, Any]]) -> bool:
-    """Whether the turn made a call ``item`` names: a tool name, or ``{tool: {argument: value | [values]}}``."""
+    """Whether the turn made a call ``item`` names: a tool name, or ``{tool: {argument: value | [values]}}``.
+
+    A call counts under its own name and under the names it is an alias of (:func:`aliases`).
+    """
     tool, wanted = next(iter(item.items())) if isinstance(item, dict) else (str(item), {})
+    seen = [*calls, *(alias for call in calls for alias in aliases(call))]
     return any(
         tool in (call["name"], _basename(call["name"]))
         and all(_matches(v, call["arguments"].get(k)) for k, v in wanted.items())
-        for call in calls
+        for call in seen
     )
 
 
@@ -269,6 +321,7 @@ def _label(item: Any) -> str:
 def moves(run_calls: list[dict[str, Any]]) -> str:
     """Which moves a run made: ``list``, ``search``, ``read``, joined; ``none`` when it called no file tool."""
     names = {_basename(call["name"]) for call in run_calls}
+    names |= {alias["name"] for call in run_calls for alias in aliases(call)}
     found = [
         word
         for tool, word in (("list_files", "list"), ("knowledge_search", "search"), ("read_passage", "read"))
