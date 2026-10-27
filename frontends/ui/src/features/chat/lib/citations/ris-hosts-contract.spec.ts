@@ -19,7 +19,7 @@ import { RIS_DOCUMENT_HOSTS, isRisUrl } from './target'
 
 /** Repo root, from this spec's own location. */
 const REPO_ROOT = join(__dirname, '..', '..', '..', '..', '..', '..', '..')
-const CLIENT = join(REPO_ROOT, 'sources', 'ris_adapter', 'src', 'client.py')
+const CLIENT = join(REPO_ROOT, 'packages', 'ris-adapter', 'src', 'client.py')
 
 const backendHosts = (): string[] => {
   const source = readFileSync(CLIENT, 'utf8')
