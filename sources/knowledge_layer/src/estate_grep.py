@@ -187,10 +187,11 @@ async def search(
 ) -> ToolOutput:
     """``grep`` on the estate, with its Herleitung row (verb ``search``, mode ``exact`` or ``regex``)."""
     from aiq_agent.common.action_outcome import ActionOutcome
+    from aiq_agent.common.estate_paths import action_place
     from aiq_agent.common.turn_status import ActionRow
     from aiq_agent.common.turn_status import lane_tool_scope
 
-    row = ActionRow("search", query=pattern, mode=(mode or "exact").strip().lower(), target=(path or "/").strip())
+    row = ActionRow("search", query=pattern, mode=(mode or "exact").strip().lower(), **action_place(path))
     outcome = ActionOutcome()
     try:
         with lane_tool_scope("grep"):
@@ -250,6 +251,8 @@ async def _search(
     unsearched = {gap.mount for gap in gaps if gap.reason in ("failed", "unavailable")}
     searched_files = [file for file in searched_files if MOUNT_ROOTS[file.mount].rstrip("/") not in unsearched]
     outcome.searched = len(searched_files)
+    # Whatever could not be served (a place, the deadline, the cap) leaves the row a floor, never a full count.
+    outcome.incomplete = bool(gaps)
     matches = await _verify(chunks, query, searchable, backend)
     outcome.record(
         sum(doc.occurrences for doc in matches),
@@ -257,7 +260,7 @@ async def _search(
         collections=[doc.collection for doc in matches],
     )
     if not matches:
-        outcome.failed = bool(gaps) and not any(gap.reason == "capped" for gap in gaps)
+        # Most of the scope WAS searched: the row is "no hit, incomplete", not a failure (the text says the same).
         return ToolOutput(_no_match(query, where, len(searched_files), gaps), status="ok")
     from aiq_agent.knowledge.restricted_use import note_collections_read
 

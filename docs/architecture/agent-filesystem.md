@@ -173,6 +173,22 @@ Departures, each with its reason:
    history-with-retired-calls row (a pre-slice conversation resumed on each provider path) is not
    added yet.
 
+**The Herleitung rows** ([ADR-0132](../adr/0132-the-herleitung-shows-the-work-one-row-per-call.md),
+amendment of 2026-10-27). §6's table as built, where it departs:
+
+| Call | Row | `mount` · `target` | `query` | counts, flags |
+|---|---|---|---|---|
+| `ls(path)` | `list` | the place · the folder inside it (none at a root; `estate` for `/`) | | every file the folder holds, its subfolders' too (not the 40 shown), and its folders; `ls /`: every file and the places, the set a `grep` everywhere searches; an empty folder is `ok` with zeros; a missing or restricted one `empty` + `missing` |
+| `glob(pattern, path)` | `list` | as `ls` | the pattern | every match (not the 100 shown) |
+| `grep(pattern, path)` | `search`, `mode` `exact`/`regex` | as `ls` | the pattern | hits, documents, searched; `incomplete` on any gap, and an incomplete no-hit is `empty` |
+| `read_file` (estate) | `read` | file name only when `may_name`, `shelf` | | the pages SERVED; a miss is `empty` + `missing` with the leaf asked for |
+| `read_file(<folder>/README.md)` | `list` | the card's folder | | the card's files and folders |
+
+A path that is no place gives neither `mount` nor `target`. A missing and
+a restricted folder or file give identical rows (pinned by `test_estate_action_rows.py`).
+The UI's words are `chat.thinking.work.place*`; the `/dev/derivation` variants `fs` and
+`fs-edges` draw every outcome.
+
 ## 1. Mounts and paths
 
 | Mount | What | Backed by | Writable |

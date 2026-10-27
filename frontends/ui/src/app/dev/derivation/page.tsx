@@ -43,6 +43,12 @@
  *   - single-read → one read, cited: the header is the Herleitung.
  *   - many-calls → eleven calls in one step: ×7, worst first, „+N weitere“.
  *   - phone    → the work turn at 380 px and 320 px.
+ *   - fs       → the filesystem verbs (ADR-0133): a folder, a name pattern and
+ *     a literal search side by side, then two reads and a citable grep.
+ *   - fs-edges → every outcome of those verbs that is not a plain hit: a
+ *     literal search without a hit, one that could not search everything, a
+ *     folder that is not there, a guessed path, the places themselves.
+ *   Both fs variants also render at 320 px.
  */
 
 import { useEffect, useState } from 'react'
@@ -54,6 +60,9 @@ import {
   MOCKUP_QUESTION,
   failedCallCitations,
   failedCallScene,
+  filesystemCitations,
+  filesystemEdgesScene,
+  filesystemScene,
   foldScene,
   manyCallsScene,
   mockupCitations,
@@ -393,6 +402,20 @@ const singleReadCommon = {
   userQuestion:
     'Welche Feuerwiderstandsklasse nennt das Brandschutzkonzept für die Decke über der Garage?',
 }
+const filesystemCommon = {
+  ...workCommon,
+  steps: foldScene(filesystemScene()),
+  citations: filesystemCitations(),
+  userQuestion:
+    'Wo stehen in der Einreichung die Brandabschnitte, und was sagt die Baubeschreibung dazu?',
+}
+const filesystemEdgesCommon = {
+  ...workCommon,
+  steps: foldScene(filesystemEdgesScene()),
+  citations: undefined,
+  answerConfidence: 'low' as const,
+  userQuestion: 'Ist irgendwo eine Sprinkleranlage vorgesehen?',
+}
 const manyCallsCommon = {
   ...workCommon,
   steps: foldScene(manyCallsScene()),
@@ -412,62 +435,71 @@ export default function DerivationPreviewPage() {
     setVariant(new URLSearchParams(window.location.search).get('variant'))
   }, [])
 
+  const narrow = variant === 'phone' || variant === 'fs' || variant === 'fs-edges'
   const common =
     variant === 'work' || variant === 'phone'
       ? workCommon
-      : variant === 'folded'
-        ? foldedCommon
-        : variant === 'no-research'
-          ? noResearchCommon
-          : variant === 'failed'
-            ? failedCommon
-            : variant === 'single-read'
-              ? singleReadCommon
-              : variant === 'many-calls'
-                ? manyCallsCommon
-                : variant === 'work'
-                  ? workCommon
-                  : variant === 'work-live'
-                    ? workLiveCommon
-                    : variant === 'branches'
-                      ? branchesCommon
-                      : variant === 'live'
-                        ? liveCommon
-                        : variant === 'dense'
-                          ? denseCommon
-                          : variant === 'spine'
-                            ? spineCommon(2)
-                            : variant === 'spine-folded'
-                              ? spineCommon(3)
-                              : defaultCommon
+      : variant === 'fs'
+        ? filesystemCommon
+        : variant === 'fs-edges'
+          ? filesystemEdgesCommon
+          : variant === 'folded'
+            ? foldedCommon
+            : variant === 'no-research'
+              ? noResearchCommon
+              : variant === 'failed'
+                ? failedCommon
+                : variant === 'single-read'
+                  ? singleReadCommon
+                  : variant === 'many-calls'
+                    ? manyCallsCommon
+                    : variant === 'work'
+                      ? workCommon
+                      : variant === 'work-live'
+                        ? workLiveCommon
+                        : variant === 'branches'
+                          ? branchesCommon
+                          : variant === 'live'
+                            ? liveCommon
+                            : variant === 'dense'
+                              ? denseCommon
+                              : variant === 'spine'
+                                ? spineCommon(2)
+                                : variant === 'spine-folded'
+                                  ? spineCommon(3)
+                                  : defaultCommon
   const label =
-    variant === 'phone'
-      ? '/dev/derivation?variant=phone — the work turn at phone widths'
-      : variant === 'folded'
-        ? '/dev/derivation?variant=folded — panel closed: counts and the one warning'
-        : variant === 'no-research'
-          ? '/dev/derivation?variant=no-research — answered without research'
-          : variant === 'failed'
-            ? '/dev/derivation?variant=failed — a failed RIS call'
-            : variant === 'single-read'
-              ? '/dev/derivation?variant=single-read — one call, no graph'
-              : variant === 'many-calls'
-                ? '/dev/derivation?variant=many-calls — ×7, worst first, +N weitere'
-                : variant === 'work'
-                  ? '/dev/derivation?variant=work — the 2026-10 Herleitung: rows, linked cards, Grundlagen'
-                  : variant === 'work-live'
-                    ? '/dev/derivation?variant=work-live — work list mid-round, running rows'
-                    : variant === 'branches'
-                      ? '/dev/derivation?variant=branches — long question, sources without findings'
-                      : variant === 'live'
-                        ? '/dev/derivation?variant=live — mid-stream turn (live status + chips)'
-                        : variant === 'dense'
-                          ? '/dev/derivation?variant=dense — 9 sources, packed into stacked columns'
-                          : variant === 'spine'
-                            ? '/dev/derivation?variant=spine — two retrieval rounds, both layers open'
-                            : variant === 'spine-folded'
-                              ? '/dev/derivation?variant=spine-folded — three rounds, older layers folded'
-                              : '/dev/derivation — reasoning graph (desktop + mobile)'
+    variant === 'fs'
+      ? "/dev/derivation?variant=fs — ls, glob, grep and read_file over the office's documents"
+      : variant === 'fs-edges'
+        ? '/dev/derivation?variant=fs-edges — no hit, incomplete, not there, guessed, the places'
+        : variant === 'phone'
+          ? '/dev/derivation?variant=phone — the work turn at phone widths'
+          : variant === 'folded'
+            ? '/dev/derivation?variant=folded — panel closed: counts and the one warning'
+            : variant === 'no-research'
+              ? '/dev/derivation?variant=no-research — answered without research'
+              : variant === 'failed'
+                ? '/dev/derivation?variant=failed — a failed RIS call'
+                : variant === 'single-read'
+                  ? '/dev/derivation?variant=single-read — one call, no graph'
+                  : variant === 'many-calls'
+                    ? '/dev/derivation?variant=many-calls — ×7, worst first, +N weitere'
+                    : variant === 'work'
+                      ? '/dev/derivation?variant=work — the 2026-10 Herleitung: rows, linked cards, Grundlagen'
+                      : variant === 'work-live'
+                        ? '/dev/derivation?variant=work-live — work list mid-round, running rows'
+                        : variant === 'branches'
+                          ? '/dev/derivation?variant=branches — long question, sources without findings'
+                          : variant === 'live'
+                            ? '/dev/derivation?variant=live — mid-stream turn (live status + chips)'
+                            : variant === 'dense'
+                              ? '/dev/derivation?variant=dense — 9 sources, packed into stacked columns'
+                              : variant === 'spine'
+                                ? '/dev/derivation?variant=spine — two retrieval rounds, both layers open'
+                                : variant === 'spine-folded'
+                                  ? '/dev/derivation?variant=spine-folded — three rounds, older layers folded'
+                                  : '/dev/derivation — reasoning graph (desktop + mobile)'
 
   return (
     <main className="bg-background min-h-dvh px-4 py-10">
@@ -489,7 +521,7 @@ export default function DerivationPreviewPage() {
             <ChatThinking key={variant ?? 'default'} {...common} />
           </div>
         </div>
-        {variant === 'phone' && (
+        {narrow && (
           <div>
             <div className="text-muted-foreground mb-2 font-mono text-xs">
               ↓ small phone (320px)

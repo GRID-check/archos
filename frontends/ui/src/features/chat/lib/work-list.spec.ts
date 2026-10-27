@@ -329,7 +329,7 @@ describe('workParts', () => {
     ).toEqual({
       verb: 'Sucht wörtlich',
       object: '„Brandabschnitt“ im Projekt',
-      result: `14${NB}Treffer${NB}· 3${NB}Dokumente`,
+      result: `14${NB}Treffer in 3${NB}Dokumenten`,
       tone: 'ok',
     })
     // „von 41“ went by the value test: the place proves, the denominator does not.
@@ -530,6 +530,6 @@ describe('workParts', () => {
           counts: { hits: 2, documents: 1 },
         })
       )
-    ).toBe(`Searches for the exact phrase “x” in the project: 2${NB}hits${NB}· 1${NB}document`)
+    ).toBe(`Searches for the exact phrase “x” in the project: 2${NB}hits in 1${NB}document`)
   })
 })
