@@ -1,0 +1,72 @@
+"""What an import loads stays what it needs.
+
+Importing ``aiq_agent.common.turn_status`` executes ``aiq_agent/__init__.py`` and
+``aiq_agent/common/__init__.py`` first, and the root conftest loads before every
+test. When those imported their whole package, a one-line harness test spent
+4.6 s of its 5.7 s loading LangChain, NAT, LangGraph's checkpointers and the
+Qdrant client, and every test importing one ``aiq_agent.common`` module loaded
+all sixty (docs/audit/blast-radius-2026-10.md). Each check runs in a fresh
+interpreter, because this one has long since imported everything.
+"""
+
+from __future__ import annotations
+
+import json
+import subprocess
+import sys
+from pathlib import Path
+
+import pytest
+
+ROOT = Path(__file__).resolve().parents[1]
+
+# Packages whose ``__init__`` re-exports lazily (``aiq_agent.lazy_exports``):
+# importing the package loads none of its own submodules but that helper.
+LAZY_PACKAGES = [
+    "aiq_agent",
+    "aiq_agent.agents",
+    "aiq_agent.agents.piloti",
+    "aiq_agent.agents.deep_researcher",
+    "aiq_agent.common",
+    "knowledge_layer",
+]
+
+# What the root conftest may not load: each is a second or more, and most tests
+# never touch it. A fixture that needs one imports it in its body.
+HEAVY = ["langchain_core", "langgraph", "nat", "qdrant_client", "llama_index", "openai", "aiq_agent.common"]
+
+
+def _loaded_by(statement: str) -> list[str]:
+    """The modules that running ``statement`` adds to a fresh interpreter's ``sys.modules``."""
+    script = (
+        "import json, sys\n"
+        "before = set(sys.modules)\n"
+        f"{statement}\n"
+        "print(json.dumps(sorted(set(sys.modules) - before)))\n"
+    )
+    done = subprocess.run(
+        [sys.executable, "-c", script], cwd=ROOT, capture_output=True, text=True, check=True, timeout=120
+    )
+    return json.loads(done.stdout.strip().splitlines()[-1])
+
+
+@pytest.mark.parametrize("package", LAZY_PACKAGES)
+def test_a_lazy_package_loads_none_of_its_submodules(package):
+    own = [name for name in _loaded_by(f"import {package}") if name.startswith(f"{package}.")]
+
+    assert own in ([], ["aiq_agent.lazy_exports"]), f"{package}/__init__.py imports {own}"
+
+
+def test_the_root_conftest_loads_nothing_heavy():
+    loaded = _loaded_by("import tests.conftest")
+    heavy = sorted({top for top in HEAVY for name in loaded if name == top or name.startswith(f"{top}.")})
+
+    assert heavy == [], f"tests/conftest.py loads {heavy}: import it inside the fixture that needs it"
+
+
+def test_the_knowledge_layer_entry_point_registers_all_three_tools():
+    # The package `__init__` used to import the two siblings, which is how NAT
+    # saw them; the entry point (`knowledge_layer.register`) does it now.
+    loaded = _loaded_by("import knowledge_layer.register")
+
+    assert {"knowledge_layer.browse", "knowledge_layer.read_passage"} <= set(loaded)

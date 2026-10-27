@@ -5,76 +5,103 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
+import sys
+from typing import TYPE_CHECKING
+from typing import Any
 
-import aiosqlite
-from langgraph.checkpoint.base import BaseCheckpointSaver
-from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
-from langgraph.checkpoint.serde.jsonplus import JsonPlusSerializer
-from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
-from psycopg.rows import dict_row
-from psycopg_pool import AsyncConnectionPool
+from aiq_agent.lazy_exports import lazy_exports
 
-from .budget_guard import BudgetGuardCallback
-from .budget_guard import RunBudgetExceededError
-from .budget_guard import create_budget_guard_callback
-from .callbacks import VerboseTraceCallback
-from .citation_verification import SourceRegistry
-from .citation_verification import get_or_create_session_registry
-from .citation_verification import get_session_registry
-from .citation_verification import register_source_parser
-from .citation_verification import reset_session_registry
-from .citation_verification import sanitize_report
-from .citation_verification import set_session_registry
-from .citation_verification import verify_citations
-from .data_source_registry import get_all_tool_refs
-from .data_source_registry import get_source_id_for_tool
-from .data_sources import DEFAULT_DATA_SOURCES
-from .data_sources import DISABLED_SOURCES_HEADER
-from .data_sources import all_mapped_tools_filtered_out
-from .data_sources import disabled_source_notice
-from .data_sources import extract_messages_and_sources
-from .data_sources import filter_tools_by_sources
-from .data_sources import format_data_source_tools
-from .data_sources import get_disabled_sources_from_context
-from .data_sources import parse_data_sources
-from .data_sources import parse_disabled_sources
-from .data_sources import unavailable_source_ids
-from .db_utils import redact_db_url
-from .human_prompt import build_human_prompt
-from .human_prompt import extract_user_response
-from .json_utils import extract_json
-from .llm_credentials import OrgLLMCredential
-from .llm_credentials import apply_org_credential
-from .llm_credentials import get_org_llm_credential_from_context
-from .llm_credentials import resolve_org_llm_credential
-from .llm_factory import apply_openrouter_structured_defaults
-from .llm_factory import enforce_chat_request_contract
-from .llm_factory import get_langchain_llm
-from .llm_factory import strict_json_response_format
-from .llm_factory import strict_response_format
-from .llm_provider import LLMProvider
-from .llm_provider import LLMRole
-from .message_contract import CONTINUATION_TURN
-from .message_contract import ends_on_model_turn
-from .message_contract import normalize_chat_request
-from .message_utils import content_to_text
-from .message_utils import get_latest_user_query
-from .model_overrides import MODEL_OVERRIDES_HEADER
-from .model_overrides import AgentGroup
-from .model_overrides import apply_model_override
-from .model_overrides import apply_zdr_routing
-from .model_overrides import get_model_overrides_from_context
-from .model_overrides import get_zdr_only_from_context
-from .model_overrides import is_reasoning_incompatible_error
-from .model_overrides import parse_model_overrides
-from .model_overrides import sanitize_model_overrides
-from .nat_step_repair import SpanClosingProfilerHandler
-from .prompt_utils import load_prompt
-from .prompt_utils import render_prompt_template
-from .reasoning_settings import get_reasoning_efforts
-from .tool_validation import format_tool_unavailability_error
-from .tool_validation import format_user_facing_tool_error
-from .tool_validation import validate_tool_availability
+if TYPE_CHECKING:
+    from langgraph.checkpoint.base import BaseCheckpointSaver
+    from langgraph.checkpoint.serde.jsonplus import JsonPlusSerializer
+    from psycopg_pool import AsyncConnectionPool
+
+# What this package re-exports, and from where. Loaded on first use (PEP 562),
+# not when the package is: importing `aiq_agent.common.turn_status` executes
+# this file first, and the eager form made every such import pay for LangGraph's
+# checkpointers, psycopg's pool, NAT and LangChain, ~1.7 s of a 2.0 s import
+# (docs/audit/blast-radius-2026-10.md). `tests/test_import_weight.py` keeps it
+# that way.
+_LAZY: dict[str, str] = {
+    "BudgetGuardCallback": ".budget_guard",
+    "RunBudgetExceededError": ".budget_guard",
+    "create_budget_guard_callback": ".budget_guard",
+    "VerboseTraceCallback": ".callbacks",
+    "SourceRegistry": ".citation_verification",
+    "get_or_create_session_registry": ".citation_verification",
+    "get_session_registry": ".citation_verification",
+    "register_source_parser": ".citation_verification",
+    "reset_session_registry": ".citation_verification",
+    "sanitize_report": ".citation_verification",
+    "set_session_registry": ".citation_verification",
+    "verify_citations": ".citation_verification",
+    "get_all_tool_refs": ".data_source_registry",
+    "get_source_id_for_tool": ".data_source_registry",
+    "DEFAULT_DATA_SOURCES": ".data_sources",
+    "DISABLED_SOURCES_HEADER": ".data_sources",
+    "all_mapped_tools_filtered_out": ".data_sources",
+    "disabled_source_notice": ".data_sources",
+    "extract_messages_and_sources": ".data_sources",
+    "filter_tools_by_sources": ".data_sources",
+    "format_data_source_tools": ".data_sources",
+    "get_disabled_sources_from_context": ".data_sources",
+    "parse_data_sources": ".data_sources",
+    "parse_disabled_sources": ".data_sources",
+    "unavailable_source_ids": ".data_sources",
+    "redact_db_url": ".db_utils",
+    "build_human_prompt": ".human_prompt",
+    "extract_user_response": ".human_prompt",
+    "extract_json": ".json_utils",
+    "OrgLLMCredential": ".llm_credentials",
+    "apply_org_credential": ".llm_credentials",
+    "get_org_llm_credential_from_context": ".llm_credentials",
+    "resolve_org_llm_credential": ".llm_credentials",
+    "apply_openrouter_structured_defaults": ".llm_factory",
+    "enforce_chat_request_contract": ".llm_factory",
+    "get_langchain_llm": ".llm_factory",
+    "strict_json_response_format": ".llm_factory",
+    "strict_response_format": ".llm_factory",
+    "LLMProvider": ".llm_provider",
+    "LLMRole": ".llm_provider",
+    "CONTINUATION_TURN": ".message_contract",
+    "ends_on_model_turn": ".message_contract",
+    "normalize_chat_request": ".message_contract",
+    "content_to_text": ".message_utils",
+    "get_latest_user_query": ".message_utils",
+    "MODEL_OVERRIDES_HEADER": ".model_overrides",
+    "AgentGroup": ".model_overrides",
+    "apply_model_override": ".model_overrides",
+    "apply_zdr_routing": ".model_overrides",
+    "get_model_overrides_from_context": ".model_overrides",
+    "get_zdr_only_from_context": ".model_overrides",
+    "is_reasoning_incompatible_error": ".model_overrides",
+    "parse_model_overrides": ".model_overrides",
+    "sanitize_model_overrides": ".model_overrides",
+    "SpanClosingProfilerHandler": ".nat_step_repair",
+    "load_prompt": ".prompt_utils",
+    "render_prompt_template": ".prompt_utils",
+    "get_reasoning_efforts": ".reasoning_settings",
+    "format_tool_unavailability_error": ".tool_validation",
+    "format_user_facing_tool_error": ".tool_validation",
+    "validate_tool_availability": ".tool_validation",
+    # The checkpointer backends, read through `_lazy` below so a test that
+    # patches `aiq_agent.common.AsyncPostgresSaver` still reaches the call.
+    "AsyncConnectionPool": "psycopg_pool",
+    "AsyncPostgresSaver": "langgraph.checkpoint.postgres.aio",
+    "AsyncSqliteSaver": "langgraph.checkpoint.sqlite.aio",
+    "JsonPlusSerializer": "langgraph.checkpoint.serde.jsonplus",
+    "aiosqlite": "aiosqlite",
+    "dict_row": "psycopg.rows",
+}
+
+
+__getattr__ = lazy_exports(__name__, _LAZY)
+
+
+def _lazy(name: str) -> Any:
+    """`name` as this module holds it now: patched by a test, loaded, or loaded on this call."""
+    return getattr(sys.modules[__name__], name)
+
 
 logger = logging.getLogger(__name__)
 
@@ -211,7 +238,7 @@ def _build_checkpointer_serde() -> JsonPlusSerializer:
     from aiq_agent.common.wire_v2 import TurnTrigger
     from aiq_agent.knowledge.schema import AvailableDocument
 
-    return JsonPlusSerializer(
+    return _lazy("JsonPlusSerializer")(
         allowed_msgpack_modules=[AvailableDocument, FocusRegion, TurnTrigger],
     )
 
@@ -233,11 +260,11 @@ def get_checkpoint_pool(dsn: str) -> AsyncConnectionPool:
     # now that the tier scales (ADR-0028).
     min_size = _pool_int_env("GRID_CHECKPOINT_POOL_MIN_SIZE", 1)
     max_size = max(min_size, _pool_int_env("GRID_CHECKPOINT_POOL_MAX_SIZE", 10))
-    pool = AsyncConnectionPool(
+    pool = _lazy("AsyncConnectionPool")(
         conninfo=dsn,
         min_size=min_size,
         max_size=max_size,
-        kwargs={"autocommit": True, "row_factory": dict_row},
+        kwargs={"autocommit": True, "row_factory": _lazy("dict_row")},
     )
     _postgres_pools[dsn] = pool
     return pool
@@ -270,7 +297,8 @@ async def get_checkpointer(checkpoint_db: str) -> BaseCheckpointSaver:
             # Lazy: `aiq_agent.knowledge` imports from this package.
             from aiq_agent.knowledge.leader_lock import keyed_lock_async
 
-            checkpointer = AsyncPostgresSaver(get_checkpoint_pool(checkpoint_db), serde=_build_checkpointer_serde())
+            saver = _lazy("AsyncPostgresSaver")
+            checkpointer = saver(get_checkpoint_pool(checkpoint_db), serde=_build_checkpointer_serde())
             # Every role runs `setup()` at start and it is not safe against that: it creates tables and
             # indexes one statement at a time (CREATE INDEX CONCURRENTLY), so a transaction lock cannot
             # hold it. A session lock on the direct DSN does (ADR-0083).
@@ -278,8 +306,8 @@ async def get_checkpointer(checkpoint_db: str) -> BaseCheckpointSaver:
                 await checkpointer.setup()
             logger.info("Postgres checkpointer initialized via async pool.")
         else:
-            conn = await aiosqlite.connect(checkpoint_db)
-            checkpointer = AsyncSqliteSaver(conn, serde=_build_checkpointer_serde())
+            conn = await _lazy("aiosqlite").connect(checkpoint_db)
+            checkpointer = _lazy("AsyncSqliteSaver")(conn, serde=_build_checkpointer_serde())
             await checkpointer.setup()
             logger.info("SQLite checkpointer initialized: %s", checkpoint_db)
 

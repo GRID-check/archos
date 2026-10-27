@@ -12,23 +12,21 @@ Note: NAT tool registrations require NAT to be installed.
 The adapter modules can be used standalone without NAT.
 """
 
-# Eagerly import NAT functions to trigger @register_function decorators
-try:
-    from .browse import ListFilesConfig
-    from .browse import list_files
-    from .read_passage import ReadPassageConfig
-    from .read_passage import read_passage
-    from .register import KnowledgeRetrievalConfig
-    from .register import knowledge_retrieval
+from aiq_agent.lazy_exports import lazy_exports
 
-    __all__ = [
-        "ListFilesConfig",
-        "list_files",
-        "KnowledgeRetrievalConfig",
-        "knowledge_retrieval",
-        "ReadPassageConfig",
-        "read_passage",
-    ]
-except ImportError:
-    # NAT not installed - skip function registration
-    __all__ = []
+# Loaded on first use (PEP 562). NAT registers the tools through the entry
+# point, which names `knowledge_layer.register` itself; importing them here made
+# every `knowledge_layer.qdrant.*` import pay for the registrations and their
+# LlamaIndex and NAT imports (docs/audit/blast-radius-2026-10.md).
+_LAZY = {
+    "ListFilesConfig": ".browse",
+    "list_files": ".browse",
+    "ReadPassageConfig": ".read_passage",
+    "read_passage": ".read_passage",
+    "KnowledgeRetrievalConfig": ".register",
+    "knowledge_retrieval": ".register",
+}
+
+__all__ = list(_LAZY)
+
+__getattr__ = lazy_exports(__name__, _LAZY)
