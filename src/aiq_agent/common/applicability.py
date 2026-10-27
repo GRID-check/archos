@@ -419,6 +419,13 @@ def facts_from_project_context(text: str) -> Facts:
 
     Numbers are coerced to int/float; ``true``/``false`` to bool (the four intake
     triggers arrive as strings in the prompt-text view); quoted strings are unquoted.
+
+    The section ends at the first line that is neither an item nor indented: the
+    profile's next section (``goals:``), or the next block of the composed turn
+    context (``PROJECT_MEMORY v1``, ``PROPOSAL_DECISIONS v1``, ...). It used to
+    end only at a ``...:`` header, so a profile whose last section is
+    ``confirmed:`` read every memory line holding a ``=`` as a confirmed fact,
+    for the turn decision and the prompt's project block alike.
     """
     facts: Facts = {}
     in_confirmed = False
@@ -427,7 +434,7 @@ def facts_from_project_context(text: str) -> Facts:
         if line.strip() == "confirmed:":
             in_confirmed = True
             continue
-        if in_confirmed and line and not line.startswith((" ", "-")) and line.rstrip().endswith(":"):
+        if in_confirmed and line and not line.startswith((" ", "-")):
             break
         if not in_confirmed:
             continue
