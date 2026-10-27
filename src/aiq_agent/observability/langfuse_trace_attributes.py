@@ -514,7 +514,7 @@ def _as_count(value: Any) -> int:
     """A token count as a non-negative int; anything else is 0."""
     try:
         return max(0, int(value))
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         return 0
 
 

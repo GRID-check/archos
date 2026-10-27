@@ -109,7 +109,7 @@ class SelectiveToolRetryMiddleware(ToolRetryMiddleware):
             return super().wrap_tool_call(request, handler)
         except GraphBubbleUp:
             raise
-        except (RunBudgetExceededError, BudgetExceededError):
+        except RunBudgetExceededError, BudgetExceededError:
             raise
         except Exception as exc:  # noqa: BLE001 - converted to an error ToolMessage for the model
             return self._handle_failure(tool_name, request.tool_call["id"], exc, 1)
@@ -123,7 +123,7 @@ class SelectiveToolRetryMiddleware(ToolRetryMiddleware):
             return await super().awrap_tool_call(request, handler)
         except GraphBubbleUp:
             raise
-        except (RunBudgetExceededError, BudgetExceededError):
+        except RunBudgetExceededError, BudgetExceededError:
             raise
         except Exception as exc:  # noqa: BLE001 - converted to an error ToolMessage for the model
             return self._handle_failure(tool_name, request.tool_call["id"], exc, 1)

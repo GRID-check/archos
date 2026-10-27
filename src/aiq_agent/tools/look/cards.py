@@ -78,7 +78,7 @@ def clamp_region(region: Any) -> list[float] | None:
         return None
     try:
         x, y, w, h = (min(1.0, max(0.0, float(share))) for share in region)
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         return None
     w, h = min(w, 1 - x), min(h, 1 - y)
     if w <= 0 or h <= 0:

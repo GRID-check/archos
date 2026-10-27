@@ -119,7 +119,7 @@ def _pool_int_env(name: str, default: int) -> int:
     try:
         val = int(os.environ.get(name, ""))
         return val if val > 0 else default
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         return default
 
 
