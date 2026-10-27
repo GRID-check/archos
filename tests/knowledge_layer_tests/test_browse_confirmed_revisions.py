@@ -9,15 +9,15 @@ both files are in the selection.
 from __future__ import annotations
 
 import pytest
+from knowledge_layer.browse import MAX_CHANGE_CHARS
+from knowledge_layer.browse import confirmed_revision_marks
+from knowledge_layer.browse import file_row
+from knowledge_layer.browse import file_rows
+from knowledge_layer.browse import render_listing
+from knowledge_layer.browse import select_files
 
 from aiq_agent.knowledge.inventory import render_inventory_block
 from aiq_agent.knowledge.schema import AvailableDocument
-from sources.knowledge_layer.src.browse import MAX_CHANGE_CHARS
-from sources.knowledge_layer.src.browse import confirmed_revision_marks
-from sources.knowledge_layer.src.browse import file_row
-from sources.knowledge_layer.src.browse import file_rows
-from sources.knowledge_layer.src.browse import render_listing
-from sources.knowledge_layer.src.browse import select_files
 
 
 def _doc(name: str, folder: str | None = None, **extra) -> AvailableDocument:

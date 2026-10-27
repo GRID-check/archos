@@ -4,7 +4,7 @@ vi.mock('@/lib/auth/require-auth', () => ({
   requireAuthorizedSession: vi.fn(),
 }))
 
-vi.mock('@/lib/collection-scope-request', () => ({
+vi.mock('@/lib/retrieval-scope/collection-scope-request', () => ({
   buildCollectionScopeFromRequest: vi.fn(),
 }))
 
@@ -23,7 +23,7 @@ vi.mock('@/lib/sharing/access', () => ({
 
 import { GET, POST, DELETE } from '@/app/api/v1/[...path]/route'
 import { requireAuthorizedSession } from '@/lib/auth/require-auth'
-import { buildCollectionScopeFromRequest } from '@/lib/collection-scope-request'
+import { buildCollectionScopeFromRequest } from '@/lib/retrieval-scope/collection-scope-request'
 import { requireProjectAccess } from '@/lib/authz/projects'
 import { getDb } from '@/lib/db'
 import { NotFoundError } from '@/lib/api/errors'

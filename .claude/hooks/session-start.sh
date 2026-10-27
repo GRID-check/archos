@@ -79,6 +79,8 @@ bun install --frozen-lockfile --cwd apps/site
 step "Pulumi program and policy pack (bun)"
 # Two Node programs, each with its own lockfile. Installing only the policy pack
 # leaves `task verify` failing at `infra:types`.
+# The same two lines as `task infra:install`, spelled out because `task` itself
+# may have failed to install above.
 bun install --frozen-lockfile --cwd deploy/pulumi
 bun install --frozen-lockfile --cwd deploy/pulumi/policy
 

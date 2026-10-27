@@ -6,13 +6,13 @@ adds only what the extension needs (``refile``, ``tags``). Unlike the intake eva
 three file tools over the fixture, the ``files`` set runs the REAL ``list_files``,
 ``knowledge_search`` and ``read_passage``, so the project has to exist where they read:
 
-- the vector store (``AIQ_QDRANT_URL``): each file cut by the ingest job's own chunkers
+- the vector store (``GRID_QDRANT_URL``): each file cut by the ingest job's own chunkers
   (``adapter.text_chunks_for_pages``: the section chunker's breadcrumbs and its overlap across page
   breaks, the per-page splitter where a file has no headings), written through the adapter's own
   write path (``knowledge_layer.qdrant.writes.write_chunks``) and embedded by the deployment's
   embedder, with ``page_label``, ``chunk_ordinal``, ``folder_path`` and ``grid_document_id`` as an
   ingest job writes them;
-- the metadata store (``AIQ_SUMMARY_DB``): each document registered, filed, typed and given its
+- the metadata store (``GRID_SUMMARY_DB``): each document registered, filed, typed and given its
   Fassung facts through ``DocumentMetadataStore``, which is what ``list_files`` reads.
 
 Seeding is idempotent: a file whose chunks already carry this content's hash is not embedded again.
@@ -146,11 +146,11 @@ def _ingested_specs(project: FilesProject, file: FixtureFile, digest: str) -> li
 
 def seed_problem() -> str | None:
     """Why the suite cannot seed or read the project (nothing runs then), or None."""
-    if not os.environ.get("AIQ_QDRANT_URL"):
-        return "AIQ_QDRANT_URL is not set: the files set seeds its project into a Qdrant and its runs read it."
-    summary_db = os.environ.get("AIQ_SUMMARY_DB", "")
+    if not os.environ.get("GRID_QDRANT_URL"):
+        return "GRID_QDRANT_URL is not set: the files set seeds its project into a Qdrant and its runs read it."
+    summary_db = os.environ.get("GRID_SUMMARY_DB", "")
     if "://" not in summary_db:
-        return "AIQ_SUMMARY_DB must be a database URL (sqlite+aiosqlite:////absolute/path/summaries.db)."
+        return "GRID_SUMMARY_DB must be a database URL (sqlite+aiosqlite:////absolute/path/summaries.db)."
     return None
 
 
@@ -176,7 +176,7 @@ def seed(project: FilesProject | None = None, *, embed: Any = None) -> dict[str,
         LlamaIndexRetriever.DEFAULT_EMBED_MODEL, LlamaIndexRetriever.DEFAULT_EMBED_BASE_URL
     )
     store = get_store(identity)
-    metadata = DocumentMetadataStore(os.environ["AIQ_SUMMARY_DB"])
+    metadata = DocumentMetadataStore(os.environ["GRID_SUMMARY_DB"])
     written: dict[str, int] = {}
     for file in project.files:
         specs = chunk_specs(project, file)

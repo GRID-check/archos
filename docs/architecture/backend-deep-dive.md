@@ -413,7 +413,7 @@ config key any more. The result rides `ChatResponse.cards` → `message.cards`
 
 With `use_async_deep_research: true` (the working config), any query routed to
 deep research returns the stub `"Deep research job submitted. Job ID: …"`. The
-**real** answer is produced later by `frontends/aiq_api/src/aiq_api/jobs/runner.py`
+**real** answer is produced later by `frontends/aiq_api/src/aiq_api/jobs/agent_job.py`
 (`run_agent_job`), which now generates cards post-hoc from the final report
 (`_generate_grid_cards` → `aiq_agent.cards.generate_cards`), re-emits the
 report artifact with cards attached over the job SSE stream, and stores
@@ -652,7 +652,7 @@ the folder.
 
 Every backend call carries a base64url `X-Grid-Collection-Scope` header =
 `[oib_knowledge, archiv_<org>, proj_<id>, s_<conversation>]`, built in
-`src/lib/collection-scope-request.ts` and validated backend-side. This is the core
+`src/lib/retrieval-scope/collection-scope-request.ts` and validated backend-side. This is the core
 RAG multi-tenant boundary. Note `resolveProjectCollectionName` short-circuits to
 no project scope when `session.organizationId` is falsy (anonymous /
 `REQUIRE_AUTH=false`).
@@ -847,32 +847,32 @@ document summary:
    XObjects), gated on `extract_images`/`extract_charts` (both on by default).
    Returns raw image bytes — **no VLM call yet**. Pages rendered whole in step 4
    are skipped, so each page is analysed once, and at most
-   `AIQ_MAX_IMAGES_PER_DOCUMENT` (64, largest first) go to the VLM; the rest are
+   `GRID_MAX_IMAGES_PER_DOCUMENT` (64, largest first) go to the VLM; the rest are
    counted on the file's job status as `images_over_cap`. A single raster over
-   `AIQ_MAX_IMAGE_PIXELS` (256 MP) is refused from its metadata before it is
+   `GRID_MAX_IMAGE_PIXELS` (256 MP) is refused from its metadata before it is
    decoded — pypdfium2 cannot downscale an embedded image on decode, so a
    20000x20000 px raster would be a ~1.6 GiB transient allocation — and counted
    as `images_over_pixel_budget`, with its page, index and pixel size logged. Identical rasters (a logo re-embedded on every
    page, a reused plan) are content-hash deduped (SHA-256 of the re-encoded
    JPEG) so each unique image is captioned and indexed exactly once.
 4. **Rendered visual/vector pages** — `processing.render_visual_pages_no_vlm`,
-   gated on `AIQ_RENDER_VISUAL_PAGES` (default on) **and** a resolvable VLM key.
+   gated on `GRID_RENDER_VISUAL_PAGES` (default on) **and** a resolvable VLM key.
    This is the track that captures **vector CAD/architectural drawings** (plans,
    sections, elevations, perspectives): they are thousands of vector *path*
    objects with almost no text and **no embedded raster image**, so tracks 1
    and 3 both miss them entirely. The whole page is composited into one bitmap
-   (`page.render`, scaled so the long edge ≈ `AIQ_PAGE_RENDER_MAX_DIM` px,
+   (`page.render`, scaled so the long edge ≈ `GRID_PAGE_RENDER_MAX_DIM` px,
    default 2048) — **no VLM call yet**. A page is routed here only when the
    page triage (`page_triage.classify_page`) calls it a drawing: its
-   watermark-stripped text is below `AIQ_VISUAL_PAGE_MIN_TEXT_CHARS` (200)
-   **and** it has ≥ `AIQ_VISUAL_PAGE_MIN_PATHS` (300) vector paths — so ordinary
+   watermark-stripped text is below `GRID_VISUAL_PAGE_MIN_TEXT_CHARS` (200)
+   **and** it has ≥ `GRID_VISUAL_PAGE_MIN_PATHS` (300) vector paths — so ordinary
    text PDFs (the bulk OIB corpus) skip rendering at near-zero cost — and at
-   most `AIQ_MAX_RENDERED_PAGES` (20) pages are rendered per document, the rest
+   most `GRID_MAX_RENDERED_PAGES` (20) pages are rendered per document, the rest
    counted as `drawing_pages_over_cap`. Scanned pages (text-low, a raster over
    half the page) and garbled text layers (`(cid:n)`, mojibake) are not
    drawings: before track 1 builds its Documents they are rendered and
    transcribed by the same vision endpoint (`transcription.route_pdf_pages`,
-   capped by `AIQ_MAX_OCR_PAGES`), and the transcription is indexed as the
+   capped by `GRID_MAX_OCR_PAGES`), and the transcription is indexed as the
    page's text. See [`visual-ingestion.md`](visual-ingestion.md#scans-and-garbled-text-layers). The
    renderer receives track 1's already watermark-stripped page texts
    (`page_texts=…`), so the PDF's text layer is read once per library and the
@@ -883,7 +883,7 @@ document summary:
 
 All image bytes (from track 3) and rendered page bitmaps (from track 4) are
 passed to `processing.enrich_vlm_batch`, which runs every VLM caption call in a
-single `ThreadPoolExecutor` (`AIQ_VLM_BATCH_WORKERS`, default 4) per file, with
+single `ThreadPoolExecutor` (`GRID_VLM_BATCH_WORKERS`, default 4) per file, with
 **content-hash caching** via the shared Dragonfly/Redis store (ADR-0020). The
 cache key is `vlm:caption:{model}:{prompt_type}:{sha256(image_bytes)}` with a
 30-day TTL — the model is part of the identity, so a model switch (deployment-
@@ -893,7 +893,7 @@ re-captions its new/modified pages. **Failure placeholders are never cached** �
 a failed analysis (`processing.is_failed_caption`) is returned to the caller but
 not stored, so the re-ingest that recovers the file actually reaches the VLM
 again instead of replaying a transient provider error for the 30-day TTL. Both VLM call sites construct their OpenAI
-client with an explicit timeout (`AIQ_VLM_TIMEOUT_SECONDS`, default 180s) and a
+client with an explicit timeout (`GRID_VLM_TIMEOUT_SECONDS`, default 180s) and a
 single retry — previously SDK defaults (≈600s × 2 retries) let one hung
 provider park an ingest worker for ~20 minutes. A response clipped at
 `max_tokens` (`finish_reason == "length"`) is retried **once** with a doubled
@@ -995,7 +995,7 @@ admins select the model in the model-config picker (`ingest_vlm` group, gated to
 vision-capable models); see `docs/architecture/org-model-configuration.md`.
 
 **Embedding throughput.** Chunks are embedded by `NVIDIAEmbedding` in batches of
-`AIQ_EMBED_BATCH_SIZE` (default 64) per HTTP call instead of the llama-index
+`GRID_EMBED_BATCH_SIZE` (default 64) per HTTP call instead of the llama-index
 default of 10 — a 500-chunk document went from ~50 serialized embedding
 round-trips on the ingest worker to ~8. The knob applies to both the ingestor
 and the retriever's embedding client. (Embedding calls remain synchronous on
@@ -1218,7 +1218,7 @@ Five retrieval-quality improvements sit in the knowledge layer's `register.py`
    a citation the UI peeks the cited project/Büro file itself
    (`useCitationPeek`) so the two tools are not a pair.
 
-2. **Hybrid lexical + vector retrieval (RRF)** — gated on `AIQ_HYBRID_RETRIEVAL`
+2. **Hybrid lexical + vector retrieval (RRF)** — gated on `GRID_HYBRID_RETRIEVAL`
    (default on, config key `hybrid_search` in the knowledge layer YAML block).
    When enabled, `LlamaIndexRetriever` adds lexical channels to the dense one
    in the same Qdrant query: German BM25 over the chunk text, and per selective
@@ -1231,13 +1231,13 @@ Five retrieval-quality improvements sit in the knowledge layer's `register.py`
    model did not weight) without an embedding re-index.
 
 3. **Reranker** — a cross-encoder first, the LLM judge as its fallback.
-   `reranker_provider` (config field, env default `AIQ_RERANKER_PROVIDER`; the
+   `reranker_provider` (config field, env default `GRID_RERANKER_PROVIDER`; the
    reference config sets `openrouter`, model `cohere/rerank-v3.5`) names
    OpenRouter's reranking endpoint (`knowledge_layer/cross_encoder.py`; a
    self-hosted reranker speaking the same shape fits through
-   `AIQ_RERANKER_BASE_URL`) that scores each
+   `GRID_RERANKER_BASE_URL`) that scores each
    (query, passage) pair over the full chunk in ~100ms, bounded by
-   `AIQ_RERANKER_TIMEOUT_SECONDS` (10s). A key that does not resolve, or any
+   `GRID_RERANKER_TIMEOUT_SECONDS` (10s). A key that does not resolve, or any
    provider error, falls back to the judge: `rerank_llm` (an LLM alias from the
    config's `llms:` block; the reference config gives it a dedicated
    `rerank_llm` entry) rescores the merged+filtered pool once
@@ -1311,10 +1311,10 @@ Five retrieval-quality improvements sit in the knowledge layer's `register.py`
 
 5. **Multimodal answer-time page/image viewing** — the NAT tool `look`
    (`tools/look/`, ADR-0128; renderer `knowledge_layer/view_image.py`, gated on
-   `AIQ_VIEW_IMAGES_ENABLED`, default on, plus a resolvable VLM key) hands a
+   `GRID_VIEW_IMAGES_ENABLED`, default on, plus a resolvable VLM key) hands a
    knowledge image to the VLM **as an image block during a research turn** —
    not just at ingestion. Three source shapes: **PDF pages** are re-rendered on
-   demand with pypdfium2 (long edge `AIQ_PAGE_RENDER_MAX_DIM`, default 2048) —
+   demand with pypdfium2 (long edge `GRID_PAGE_RENDER_MAX_DIM`, default 2048) —
    base-corpus PDFs from this replica's cache of the corpus, which
    `corpus_store.ensure_local` fills from SeaweedFS on demand (the
    `oib_corpus_files` table says what a base-corpus file is), project/Archiv
@@ -1772,8 +1772,8 @@ runner). And the research tab can 403 — see §9.
 `f8093a0`)**: the `X-Grid-Collection-Scope` header is captured once at submit
 time (`piloti/conversation_register.py`) and threaded into the async job payload
 as `collection_scope`. The research worker only re-injects it into its own
-request context conditionally — `frontends/aiq_api/src/aiq_api/jobs/runner.py:641`
-does `if collection_scope is not None:` before base64url-encoding it back
+request context conditionally — `frontends/aiq_api/src/aiq_api/jobs/agent_job_setup.py`
+(`_inject_scope_headers`) does `if collection_scope is not None:` before base64url-encoding it back
 onto the header. When the scope is absent, `knowledge_retrieval` inside the
 worker falls back to legacy config-based resolution (base collection +
 session collection only — see `docs/technical-reference/collection-scoping.md`).
@@ -1786,7 +1786,7 @@ the point the re-injection would otherwise be skipped.
 
 **Durable checkpointing (backlog T3-8, 2026-07-16, `5bea711`)**: optional
 LangGraph checkpointing for the deep-research graph, configured via
-`deep_research_agent.checkpoint_db` (env `AIQ_DEEP_CHECKPOINT_DB`; unset by
+`deep_research_agent.checkpoint_db` (env `GRID_DEEP_CHECKPOINT_DB`; unset by
 default) — see §9's "Async deep-research jobs are not restart-safe" bullet
 for the full mechanism and its manual-resubmit resume contract. A run's rows
 (`thread_id == job_id`) are purged when it ends, by the runner's `finally`
@@ -1981,7 +1981,7 @@ full specs in `org-model-configuration.md` (ADR-0014) and
   nothing applies) in Piloti/deep `_run` closures and in
   `clarify.Clarifier.deps_for`, plus `apply_model_override()` at the clarifier
   planner and the reflection scheduling site. Async jobs carry
-  the map through `submit_agent_job` → `jobs/runner.py` (provider + header
+  the map through `submit_agent_job` → `jobs/agent_job_setup.py` (provider + header
   re-injection). Only the model id changes; params/keys stay from YAML. When
   no header/envelope carries the map (e.g. the generic async-job proxy before
   2026-07-16, or any future endpoint the BFF doesn't front),
@@ -2105,7 +2105,7 @@ office's skills (`resolve_served_skills`) under `/skills/office/`. Full design a
   `collection_scope` is still only re-injected into the research worker context
   when present (behavior unchanged: absent scope still drops
   project-collection search for that job, §7), but the degradation is no
-  longer silent: `runner.py` logs a one-time WARNING (job id, whether the
+  longer silent: `agent_job_setup.py` logs a one-time WARNING (job id, whether the
   request looked authenticated/project-scoped) at the point it would
   otherwise skip re-injection, so the gap is diagnosable from logs instead of
   invisible.
@@ -2219,7 +2219,7 @@ office's skills (`resolve_served_skills`) under `/skills/office/`. Full design a
   instance for callbacks without it) before each `researcher_runnable.ainvoke()`
   call — the outer/batch-level callbacks list itself is untouched. This
   applies uniformly to both the sync chat path and the async job runner
-  (both go through the same `_run_research_query`), so `runner.py` building
+  (both go through the same `_run_research_query`), so `agent_job.py` building
   one `VerboseTraceCallback()`/`LangchainProfilerHandler()` per job (not per
   worker) no longer means those workers race on shared state.
 - **Async deep-research jobs are not restart-safe — mitigated 2026-07-16
@@ -2228,7 +2228,7 @@ office's skills (`resolve_served_skills`) under `/skills/office/`. Full design a
   an optional `checkpointer` (per-thread execution state, an independent axis
   from `store`) passed through to `create_deep_agent`. When
   `deep_research_agent.checkpoint_db` is configured (env
-  `AIQ_DEEP_CHECKPOINT_DB`; unset by default, opt-in since jobs run in
+  `GRID_DEEP_CHECKPOINT_DB`; unset by default, opt-in since jobs run in
   ephemeral research worker processes — the reference config sets it to
   `./deep_research_checkpoints.db`), `DeepResearcherAgent.run()` wires
   `configurable.thread_id = job_id` and `durability="async"` (LangGraph's

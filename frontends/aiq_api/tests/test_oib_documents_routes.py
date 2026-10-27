@@ -95,7 +95,9 @@ class _FakeBucket:
 def bucket(monkeypatch, tmp_path):
     """The corpus: a fake bucket, a fresh table and an empty cache directory."""
     fake = _FakeBucket()
-    monkeypatch.setenv("AIQ_SUMMARY_DB", os.environ.get("GRID_TEST_CORPUS_DB") or f"sqlite:///{tmp_path / 'corpus.db'}")
+    monkeypatch.setenv(
+        "GRID_SUMMARY_DB", os.environ.get("GRID_TEST_CORPUS_DB") or f"sqlite:///{tmp_path / 'corpus.db'}"
+    )
     monkeypatch.setenv(corpus_store.CACHE_DIR_ENV, str(tmp_path / "cache"))
     monkeypatch.setattr(corpus_store, "_request_upload_url", fake.request_upload_url)
     monkeypatch.setattr(corpus_store, "_put_object", fake.put_object)
@@ -627,7 +629,7 @@ async def test_the_manual_sync_runs_one_cycle_and_reports_its_counts(app, monkey
 @pytest.mark.asyncio
 async def test_a_manual_sync_that_breaks_is_a_500(app, monkeypatch):
     def broken():
-        raise corpus_store.CorpusStoreError("the base corpus needs AIQ_SUMMARY_DB")
+        raise corpus_store.CorpusStoreError("the base corpus needs GRID_SUMMARY_DB")
 
     monkeypatch.setattr(oib_sync, "sync", broken)
 

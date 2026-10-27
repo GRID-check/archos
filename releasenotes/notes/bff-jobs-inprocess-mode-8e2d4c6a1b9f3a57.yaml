@@ -1,0 +1,8 @@
+---
+operators:
+  - >
+    The bff-jobs pod can run its job slices without starting a second Next.js
+    server: set GRID_BFF_JOBS_MODE=inprocess (Pulumi bffJobsMode) and the
+    supervisor runs them from the services bundled at image build and answers
+    the health probes itself. The default stays http, so nothing changes until
+    you opt in.
