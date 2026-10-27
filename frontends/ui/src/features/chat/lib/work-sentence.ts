@@ -8,14 +8,21 @@
  * the call does not report drops its clause instead of printing „0“. A search
  * that found nothing says where it looked, because the object already names
  * the place: „Sucht in OIB-RL 2: „Brandabschnitt Tiefgarage“ · kein Treffer“.
+ *
+ * A call over Piloti's filesystem (ADR-0133) names its place by `mount` and
+ * the folder inside it, never by its path, and counts files: „Durchsucht 03
+ * Einreichung wörtlich nach „Brandabschnitt“ · 14 Treffer in 3 Dateien“,
+ * „Öffnet das Projekt · leer“, „Sucht in allen Ablagen nach PDF-Dateien“. A
+ * literal search that could not search everything says so (a dashed shape, and
+ * what that means on a line of its own): it never looks complete.
  */
 
 import type { Translator } from '@/i18n'
-import type { StoredAction } from '@/lib/conversations/message-provenance'
+import type { ActionMount, StoredAction } from '@/lib/conversations/message-provenance'
 import { bindAbbreviations } from './document-names'
 
 /** `interrupted`: a call stored as running whose turn ended (Stop, an error, a closed stream). */
-export type WorkTone = 'ok' | 'running' | 'empty' | 'error' | 'interrupted'
+export type WorkTone = 'ok' | 'running' | 'empty' | 'error' | 'interrupted' | 'incomplete'
 
 export interface WorkParts {
   /** What was done, muted: „Liest“. Empty when only a fallback sentence is known. */
@@ -25,6 +32,12 @@ export interface WorkParts {
   /** What it found, „läuft“, „kein Treffer“, „abgebrochen“ or „fehlgeschlagen“; empty when the call counted nothing. */
   result: string
   tone: WorkTone
+  /**
+   * What the result means for the answer, on a muted line of its own: after
+   * „fehlgeschlagen“ that the answer does not rest on it, after „unvollständig“
+   * that a no is no no. Absent on every other row.
+   */
+  note?: string
 }
 
 /** What one row stands for when same-kind calls are folded into it. */
@@ -116,6 +129,174 @@ const shelfPhrase = (t: Translator, action: StoredAction): string => {
   return key ? t(`thinking.work.shelf.${key}`) : ''
 }
 
+/** Where a path-based call looked: its place and the folder inside it (`''` at the place's root). */
+export interface ActionPlace {
+  mount: ActionMount
+  folder: string
+}
+
+/** The place of a filesystem call, or null for every other call. */
+export const actionPlace = (action: StoredAction): ActionPlace | null =>
+  action.mount
+    ? { mount: action.mount, folder: (action.target ?? '').replace(/^\/+|\/+$/g, '') }
+    : null
+
+/**
+ * A project's folders are what an architect means by „the folders“: they go by
+ * their breadcrumb alone. A folder of another place is named under that place,
+ * in the form the sentence needs: „die Büroablage › Vorlagen“, „in der
+ * Büroablage › Vorlagen“, and in quotes „Büroablage › Vorlagen“.
+ */
+const bareFolder = (place: ActionPlace): boolean =>
+  place.mount === 'project' || place.mount === 'estate'
+
+/** A folder as a name in quotes, without an article: „03 Einreichung“, „Büroablage › Vorlagen“. */
+export const placeLabel = (t: Translator, place: ActionPlace): string => {
+  const crumbs = breadcrumb(place.folder)
+  if (!place.folder) return t(`thinking.work.place.${place.mount}`)
+  return bareFolder(place)
+    ? crumbs
+    : t('thinking.work.place.folderIn', {
+        place: t(`thinking.work.place.crumb.${place.mount}`),
+        folder: crumbs,
+      })
+}
+
+/**
+ * A folder of another place after its article: „den Chat › Pläne“, „im Chat ›
+ * Pläne“. The crumb, not the place's own phrase, comes before the breadcrumb:
+ * „die Dateien dieses Chats › Pläne“ says Dateien twice.
+ */
+const placedFolder = (t: Translator, place: ActionPlace, form: 'object' | 'in'): string =>
+  t('thinking.work.place.folderIn', {
+    place: `${t(`thinking.work.place.article.${place.mount}.${form}`)} ${t(`thinking.work.place.crumb.${place.mount}`)}`,
+    folder: breadcrumb(place.folder),
+  })
+
+/** The place as the object of a verb: „das Projekt“, „03 Einreichung › Pläne“, „die Büroablage › Vorlagen“. */
+export const placeName = (t: Translator, place: ActionPlace): string => {
+  if (!place.folder) return t(`thinking.work.place.${place.mount}`)
+  return bareFolder(place) ? breadcrumb(place.folder) : placedFolder(t, place, 'object')
+}
+
+/** The place after its preposition: „im Projekt“, „in 03 Einreichung“, „in der Büroablage › Vorlagen“. */
+export const placeIn = (t: Translator, place: ActionPlace): string => {
+  if (!place.folder) return t(`thinking.work.placeIn.${place.mount}`)
+  return bareFolder(place)
+    ? t('thinking.work.placeIn.folder', { folder: breadcrumb(place.folder) })
+    : placedFolder(t, place, 'in')
+}
+
+/** `*.pdf`, `**\/*.dwg`: files of one type. */
+const GLOB_EXTENSION = /^(?:\*\*\/)?\*\.([A-Za-z0-9]{1,5})$/
+/** `*Brandschutz*`, `**\/*Plan*.pdf`: files with a word in their name, of one type or any. */
+const GLOB_WORD = /^(?:\*\*\/)?\*([^*?[\]{}/\\]+)\*(?:\.([A-Za-z0-9]{1,5}))?$/
+
+/**
+ * What a file-name search looks for, in words where its pattern is simple
+ * („PDF-Dateien“, „Dateien mit „Brandschutz“ im Namen“), and by the pattern
+ * itself where it is not („Dateien „EP-0?_*.pdf““).
+ */
+export function namePattern(t: Translator, pattern: string): string {
+  const trimmed = pattern.trim()
+  const typed = GLOB_EXTENSION.exec(trimmed)
+  if (typed) return t('thinking.work.object.namesWhat.ext', { ext: typed[1].toUpperCase() })
+  const named = GLOB_WORD.exec(trimmed)
+  const word = named?.[1].trim()
+  if (named && word) {
+    return named[2]
+      ? t('thinking.work.object.namesWhat.extWord', { ext: named[2].toUpperCase(), word })
+      : t('thinking.work.object.namesWhat.word', { word })
+  }
+  return t('thinking.work.object.namesWhat.pattern', { query: quoteQuery(t, trimmed) })
+}
+
+/** A pattern of plain words or'ed together (`EI 90|REI 90`): no character in it means more than itself. */
+const REGEX_WORDS = /^[\p{L}\p{N} -]+(?:\|[\p{L}\p{N} -]+)*$/u
+
+/** The words a regex looks for when it is only words, or'ed; null for a real pattern. */
+export const regexWords = (pattern: string): string[] | null =>
+  REGEX_WORDS.test(pattern.trim())
+    ? pattern
+        .split('|')
+        .map((word) => word.trim())
+        .filter(Boolean)
+    : null
+
+/** „„EI 90““, „„EI 90“ oder „REI 90““, „„a“, „b“ oder „c““. */
+const wordList = (t: Translator, words: readonly string[]): string => {
+  const quoted = words.map((word) => t('thinking.work.object.query', { query: word }))
+  const last = quoted.pop() ?? ''
+  return quoted.length ? `${quoted.join(', ')} ${t('thinking.work.object.or')} ${last}` : last
+}
+
+/**
+ * A regex of words matches as the literal search does only where the literal
+ * search's folding adds nothing: the store compiles a person's regex
+ * case-insensitively (`compile_user_regex`), but never folds „ü“ and „ue“
+ * into one as the literal search does. Words with an umlaut, ß or a spelled-out
+ * one (ae, oe, ue, ss) are searched for, not „wörtlich“; a word like „Feuer“
+ * loses the word too, which is never wrong, only less precise.
+ */
+const FOLDED_LETTERS = /[äöüß]|ae|oe|ue|ss/i
+
+/** A filesystem search's object: wörtlich, by the words a simple regex names, or by its pattern. */
+const grepObject = (t: Translator, action: StoredAction, place: ActionPlace): string => {
+  const words = action.mode === 'regex' && action.query ? regexWords(action.query) : null
+  const where = placeName(t, place)
+  if (words) {
+    const literal = !words.some((word) => FOLDED_LETTERS.test(word))
+    return t(literal ? 'thinking.work.object.grepAny' : 'thinking.work.object.grepWords', {
+      place: where,
+      words: wordList(t, words),
+    })
+  }
+  const query = action.query ? quoteQuery(t, action.query) : ''
+  return t(
+    action.mode === 'regex' ? 'thinking.work.object.grepRegex' : 'thinking.work.object.grepExact',
+    { place: where, query }
+  )
+}
+
+/**
+ * What a row is, finer than its verb where the words differ: a literal search
+ * of the filesystem (`grep`) and a search by file name (`glob`, a listing with
+ * a pattern) read differently from a ranked search and a folder listing.
+ */
+export type WorkSentenceKind = StoredAction['verb'] | 'grep' | 'glob'
+
+export const sentenceKind = (action: StoredAction): WorkSentenceKind => {
+  if (!action.mount) return action.verb
+  if (action.verb === 'search' && action.mode !== 'meaning') return 'grep'
+  if (action.verb === 'list' && action.query) return 'glob'
+  return action.verb
+}
+
+/** A filesystem call's verb and object; null for any other call. */
+const placeVerbAndObject = (
+  t: Translator,
+  action: StoredAction
+): { verb: string; object: string } | null => {
+  const place = actionPlace(action)
+  if (!place) return null
+  switch (sentenceKind(action)) {
+    case 'grep':
+      return { verb: t('thinking.work.verb.grep'), object: grepObject(t, action, place) }
+    case 'glob':
+      return {
+        verb: t('thinking.work.verb.glob'),
+        object: t('thinking.work.object.names', {
+          what: namePattern(t, action.query ?? ''),
+          place: placeIn(t, place),
+        }),
+      }
+    case 'list':
+      return { verb: t('thinking.work.verb.list'), object: placeName(t, place) }
+    default:
+      return null
+  }
+}
+
 /** „Sucht“, „Sucht wörtlich“, „Sucht nach Muster“, and each with „in“ when the search names its document or folder. */
 const searchVerb = (t: Translator, action: StoredAction): string => {
   const mode = action.mode === 'exact' ? 'Exact' : action.mode === 'regex' ? 'Regex' : ''
@@ -160,10 +341,12 @@ const placeObject = (
 const clauseLabel = (pages: string): string => pages.trim().replace(/^(pkt\.?)\s*/i, '$1\u00A0')
 
 /** The verbs that only open, read or look: a folded row keeps the verb („Liest 7 Dokumente“). */
-const FOLD_KEEPS_VERB = new Set<StoredAction['verb']>(['read', 'look', 'list'])
+const FOLD_KEEPS_VERB = new Set<WorkSentenceKind>(['read', 'look', 'list'])
 
 /** The folded object of a search-like verb: no verb, the count says it („4 Suchen im RIS“). */
-const FOLDED_KEYS: Record<StoredAction['verb'], string> = {
+const FOLDED_KEYS: Record<WorkSentenceKind, string> = {
+  grep: 'searches',
+  glob: 'nameSearches',
   read: 'documents',
   look: 'documents',
   list: 'folders',
@@ -177,13 +360,15 @@ const FOLDED_KEYS: Record<StoredAction['verb'], string> = {
 
 /** The folded object: „7 Dokumente“, „3 Ordner“, „4 Suchen“. */
 const foldedObject = (t: Translator, action: StoredAction, count: number): string =>
-  t(`thinking.work.many.${FOLDED_KEYS[action.verb]}`, { count })
+  t(`thinking.work.many.${FOLDED_KEYS[sentenceKind(action)]}`, { count })
 
 const verbAndObject = (
   t: Translator,
   action: StoredAction,
   where: string | undefined
 ): { verb: string; object: string } => {
+  const placed = placeVerbAndObject(t, action)
+  if (placed) return placed
   const { verb, query, target, pages } = action
   switch (verb) {
     case 'search':
@@ -218,18 +403,27 @@ const verbAndObject = (
 const foundOf = (t: Translator, action: StoredAction, counts: StoredAction['counts']): string => {
   const { hits, documents, files, folders } = counts ?? {}
   if (action.verb === 'list') {
-    if (files !== undefined && folders !== undefined)
+    // A folder that is there and holds nothing: found, and empty („Öffnet das Projekt · leer“).
+    if (!action.query && files === 0 && !folders) return t('thinking.work.found.emptyFolder')
+    if (action.mount === 'estate' && !action.query && files !== undefined && folders !== undefined)
+      return t('thinking.work.found.places', { files, folders })
+    // A zero beside a count is noise („9 Dateien, 0 Ordner“): the listing says what is there.
+    if (files !== undefined && folders !== undefined && files > 0 && folders > 0)
       return t('thinking.work.found.listing', { files, folders })
+    if (folders !== undefined && folders > 0 && !files)
+      return t('thinking.work.found.folders', { count: folders })
     if (files !== undefined) return t('thinking.work.found.files', { count: files })
     if (folders !== undefined) return t('thinking.work.found.folders', { count: folders })
     return ''
   }
   if (action.verb === 'read' || action.verb === 'look') {
-    return hits !== undefined ? t('thinking.work.found.places', { count: hits }) : ''
+    return hits !== undefined ? t('thinking.work.found.passages', { count: hits }) : ''
   }
   if (hits !== undefined) {
+    // On the filesystem every count counts files, as its listings do: one noun for one thing.
+    const key = action.mount ? 'hitsFiles' : 'hitsDocuments'
     return documents !== undefined
-      ? t('thinking.work.found.hitsDocuments', { hits, documents })
+      ? t(`thinking.work.found.${key}`, { hits, documents })
       : t('thinking.work.found.hits', { count: hits })
   }
   return documents !== undefined ? t('thinking.work.found.documents', { count: documents }) : ''
@@ -249,7 +443,7 @@ export function workParts(
   const folded = fold && fold.count > 1 ? fold : undefined
   const named = verbAndObject(t, action, where)
   const object = folded ? foldedObject(t, action, folded.count) : named.object
-  const verb = folded && !FOLD_KEEPS_VERB.has(action.verb) ? '' : named.verb
+  const verb = folded && !FOLD_KEEPS_VERB.has(sentenceKind(action)) ? '' : named.verb
   // A call known only by its verb reads as one sentence: the fallback, in the object's ink.
   const parts = object
     ? { verb, object }
@@ -259,15 +453,54 @@ export function workParts(
   if (action.status === 'running')
     return { ...parts, result: t('thinking.work.interrupted'), tone: 'interrupted' }
   if (action.status === 'error')
-    return { ...parts, result: t('thinking.work.failed'), tone: 'error' }
+    return {
+      ...parts,
+      result: t('thinking.work.failed'),
+      tone: 'error',
+      note: t('thinking.work.failedNote'),
+    }
   if (action.status === 'empty') {
-    const word = SEARCHING.has(action.verb) ? 'noHit' : 'nothingFound'
-    return { ...parts, result: t(`thinking.work.${word}`), tone: 'empty' }
+    const result = emptyResult(t, action)
+    return action.incomplete
+      ? { ...parts, ...incomplete(t, result, false) }
+      : { ...parts, result, tone: 'empty' }
   }
   const found = foundOf(t, action, folded ? folded.counts : action.counts)
+  if (action.incomplete) return { ...parts, ...incomplete(t, found, true) }
   const short = reading && reading.length <= MAX_READING_RESULT_CHARS ? reading : ''
   return { ...parts, result: found || (action.verb === 'look' ? short : ''), tone: 'ok' }
 }
+
+/**
+ * What a call that found nothing says: a folder or document the call named
+ * that is not there („nicht gefunden“, only when the call says `missing`), a
+ * name search that no file matched, a search where it looked („kein Treffer in
+ * 41 Dateien“ when it counted them). A folder that is there and empty is no
+ * empty call: it settles `ok` and reads „leer“.
+ */
+const emptyResult = (t: Translator, action: StoredAction): string => {
+  if (action.missing) return t('thinking.work.notFound')
+  if (sentenceKind(action) === 'glob') return t('thinking.work.noFile')
+  if (!SEARCHING.has(action.verb)) return t('thinking.work.nothingFound')
+  const searched = action.counts?.searched
+  if (!searched) return t('thinking.work.noHit')
+  return t(action.mount ? 'thinking.work.noHitInFiles' : 'thinking.work.noHitIn', { count: searched })
+}
+
+/**
+ * A search that could not search everything: what it found, and on its own line
+ * what that means. The dashed shape and the note mark it; the count stays a
+ * count, with „unvollständig“ only where there is no count to show.
+ */
+const incomplete = (
+  t: Translator,
+  found: string,
+  hit: boolean
+): Pick<WorkParts, 'result' | 'tone' | 'note'> => ({
+  result: found || t('thinking.work.incomplete'),
+  tone: 'incomplete',
+  note: t(hit ? 'thinking.work.incompleteNote.hits' : 'thinking.work.incompleteNote.noHit'),
+})
 
 /**
  * The settled head of a turn that made one call, in the past: „Gelesen:
@@ -279,12 +512,14 @@ export function settledHead(t: Translator, action: StoredAction, name?: string):
   const parts = workParts(t, action)
   const object = name || (parts.verb ? parts.object : '')
   return object
-    ? t(`thinking.work.done.${action.verb}`, { name: object })
+    ? t(`thinking.work.done.${sentenceKind(action)}`, { name: object })
     : t(`thinking.work.doneFallback.${action.verb}`)
 }
 
 /** The row as one sentence, for its accessible name: „Liest Einreichplan EG.pdf, S. 2–3: 2 Stellen“. */
 export const workPartsText = (parts: WorkParts): string => {
   const head = [parts.verb, parts.object].filter(Boolean).join(' ')
-  return parts.result ? `${head}: ${parts.result}` : head
+  const said = parts.result ? `${head}: ${parts.result}` : head
+  // „unvollständig“ alone does not say what it means; a screen reader hears the note with it.
+  return parts.tone === 'incomplete' && parts.note ? `${said} (${parts.note})` : said
 }

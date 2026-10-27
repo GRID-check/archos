@@ -206,8 +206,8 @@ the sources each step returned, and a last card, „Grundlagen · Entwurf“.
 **A step says what Piloti set out to do, then shows each call as a row.** The
 sentence under „Schritt 1 · Suchen“ is Piloti's own, when it wrote one. Under it
 stands one row per call: the verb muted, then what it was done to, then what came
-back on the right — „Sucht wörtlich „Brandabschnitt“ im Projekt · 14 Treffer ·
-3 Dokumente“, „Liest Einreichplan EG.pdf, S. 2–3 · 2 Stellen“. A search that
+back on the right — „Sucht wörtlich „Brandabschnitt“ im Projekt · 14 Treffer in
+3 Dokumenten“, „Liest Einreichplan EG.pdf, S. 2–3 · 2 Stellen“. A search that
 found nothing says where it looked: „Sucht in OIB-RL 2: „Brandabschnitt
 Tiefgarage“ · kein Treffer“; a search of a corpus names it first („Sucht im
 RIS: „Wiener Garagengesetz““). A status is a shape and a word (a ring for no
@@ -219,6 +219,29 @@ gemessen“, and holds its place while it runs. Three or more calls of one kind
 fold into one row („Liest 7 Dokumente ×7“; searches carry no verb: „4 Suchen
 im RIS ×4“); a step of more than five rows shows the worst three and „+N
 weitere“. No row carries a time: no one checks an answer by its seconds.
+
+**Rows over your documents name the folder, never a path.** When Piloti opens a
+folder, looks for files by name, searches the wording or reads a document, the
+row names the place as you do: „Öffnet 03 Einreichung · 12 Dateien, 2 Ordner“,
+„Sucht im Projekt nach PDF-Dateien · 7 Dateien“, „Durchsucht 03 Einreichung
+wörtlich nach „Brandabschnitt“ · 14 Treffer in 3 Dateien“, „Liest
+Baubeschreibung, S. 4–6 · 3 Stellen“ (the document by the name its source card
+gives it, and the pages it actually read). A folder of the Büroablage or of this
+chat carries its place first („Durchsucht die Büroablage › Vorlagen …“); a
+search everywhere says „alle Ablagen“. A simple file-name pattern reads as words
+(„Dateien mit „Brandschutz“ im Namen“), any other as written. These rows count
+files, and a folder counts everything in it, its subfolders too. A wording
+search without a hit says how many files it searched („kein Treffer in 41
+Dateien“), the same number „Öffnet alle Ablagen · 3 Ablagen, 41 Dateien“ shows.
+One that could not search everything (a part of the documents did not answer in
+time, or it stopped at its limit) is marked with a dashed ring, and the line
+under it says what that means: there may be more hits, or a missing hit is no
+proof that the wording is absent; „Offen“ lists it. A folder or document that is
+not there reads „nicht gefunden“; a folder you may not open reads exactly the
+same, so the Herleitung never confirms it exists. A folder that is there and
+holds nothing, such as a new project or a chat without uploads, reads „leer“.
+A listing or a search for file names returns no source card, so its row is no
+button. What Piloti writes into its drafts or reads from a skill draws no row.
 
 **The automatic first search has no row.** When Piloti searches before it
 starts thinking (the prefetch), what it found joins the first step's sources

@@ -701,11 +701,18 @@ class ActionRow:
         counts: dict[str, int | None] | None = None,
         **fields: Any,
     ) -> None:
-        """Settle the row once: its outcome, its counts and its time. A second call is ignored."""
+        """Settle the row once: its outcome, its counts and its time. A second call is ignored.
+
+        A settled ``mount`` is the whole place the call reached: it replaces the running row's ``mount`` and
+        ``target``, so a place's root (no ``target``) never keeps the name the running row showed.
+        """
         if self._done:
             return
         self._done = True
         self._release_call()
+        if "mount" in fields:
+            self._fields.pop("mount", None)
+            self._fields.pop("target", None)
         self._fields.update(_clip_action(fields))
         self._fields["status"] = status
         self._fields["elapsed_ms"] = max(0, round((time.monotonic() - self._started) * 1000))
@@ -931,10 +938,12 @@ def _action_key(base: str, args: Any, name: str = "") -> str | None:
 _QUERY_KEYS = ("query", "search_query", "question", "q", "text", "name_contains", "pattern")
 
 #: Arguments that pick what a call does or which record it reads, never what
-#: was asked: ``project_lookup``'s ``action`` and ``scope``, and every id. The
-#: "first non-empty string" fallback skips them, so a ``brief`` with no query
-#: reads „Sucht in anderen Projekten", not „Sucht in anderen Projekten: „brief"".
-_SELECTOR_ARGS = frozenset({"action", "scope"})
+#: was asked: ``project_lookup``'s ``action`` and ``scope``, the filesystem
+#: verbs' addresses and switches (ADR-0133), and every id. The "first non-empty
+#: string" fallback skips them, so a ``brief`` with no query reads „Sucht in
+#: anderen Projekten", not „Sucht in anderen Projekten: „brief"", and an ``ls``
+#: never quotes its path as if the reader had asked for it.
+_SELECTOR_ARGS = frozenset({"action", "scope", "path", "file_path", "glob", "output_mode", "mode", "match"})
 
 
 def _is_selector(name: str) -> bool:

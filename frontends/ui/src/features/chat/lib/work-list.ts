@@ -93,7 +93,7 @@ export const prefetchRounds = (steps: readonly StoredThinkingStep[]): Set<number
 const severity = (row: WorkRow): number => {
   if (row.running) return 2
   if (row.action.status === 'error') return 0
-  return row.action.status === 'empty' || isInterrupted(row) ? 1 : 3
+  return row.action.status === 'empty' || row.action.incomplete || isInterrupted(row) ? 1 : 3
 }
 
 const sum = (values: Array<number | undefined>): number | undefined =>
@@ -101,11 +101,24 @@ const sum = (values: Array<number | undefined>): number | undefined =>
     ? values.reduce<number>((a, b) => a + (b ?? 0), 0)
     : undefined
 
-/** The key same-kind calls share: verb and match mode, settled with a result. Running, empty and failed rows never fold. */
+/**
+ * The key same-kind calls share: verb, match mode and whether it named a pattern,
+ * settled with a result. Running, empty, failed and incomplete rows never fold:
+ * folded, their word would be summed away. Nor do folders Piloti opened: each
+ * names its own place, and „3 Ordner · 50 Dateien“ would add a place's count of
+ * places to a folder's count of files.
+ */
+const opensFolder = (action: WorkRow['action']): boolean =>
+  action.verb === 'list' && Boolean(action.mount) && !action.query
+
 const foldKey = (row: WorkRow): string | null =>
-  row.running || row.action.status !== 'ok' || row.looks.length > 0
+  row.running ||
+  row.action.status !== 'ok' ||
+  row.action.incomplete ||
+  row.looks.length > 0 ||
+  opensFolder(row.action)
     ? null
-    : `${row.action.verb}:${row.action.mode ?? ''}`
+    : `${row.action.verb}:${row.action.mode ?? ''}:${row.action.mount && row.action.query ? 'pattern' : ''}`
 
 /** Three or more settled same-kind calls of a round as one row, at the place of the first. */
 export function foldRows(rows: readonly WorkRow[]): WorkRow[] {

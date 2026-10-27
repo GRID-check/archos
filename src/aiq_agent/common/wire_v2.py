@@ -331,6 +331,27 @@ class ActionStep(_StepBase):
         default=None, max_length=40, description="The pages or Punkt read, e.g. '2-3', 'Pkt. 3.5'."
     )
     shelf: str | None = Field(default=None, max_length=40, description="Which shelf: project, office, base, web.")
+    mount: Literal["project", "office", "chat", "law", "estate"] | None = Field(
+        default=None,
+        description=(
+            "The place a path-based call reached (ADR-0133), `estate` for every place the person may see. "
+            "With it, `target` is the folder inside that place, absent at its root."
+        ),
+    )
+    incomplete: bool | None = Field(
+        default=None,
+        description=(
+            "A literal search that could not search everything (a place did not answer, the scan ran out of "
+            "time or stopped at its cap): its count is a floor, and no hit is no no."
+        ),
+    )
+    missing: bool | None = Field(
+        default=None,
+        description=(
+            "The folder or document the call named is not there (a restricted one answers the same, ADR-0088). "
+            "Absent on an empty folder or a search without a hit, which are there and hold nothing."
+        ),
+    )
     counts: ActionCounts | None = None
     elapsed_ms: int | None = Field(default=None, ge=0)
 
