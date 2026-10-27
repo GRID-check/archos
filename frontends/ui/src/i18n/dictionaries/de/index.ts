@@ -46,6 +46,7 @@ import { intakeFilingStep } from './intake-filing-step'
 import { intakeProjectStep } from './intake-project-step'
 import { intakeShell } from './intake-shell'
 import { notifications } from './notifications'
+import { search } from './search'
 import type { Dictionary } from '../index'
 
 export const de: Dictionary = {
@@ -89,4 +90,5 @@ export const de: Dictionary = {
   intakeProjectStep,
   intakeShell,
   notifications,
+  search,
 }

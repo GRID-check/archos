@@ -46,6 +46,7 @@ import { intakeFilingStep } from './intake-filing-step'
 import { intakeProjectStep } from './intake-project-step'
 import { intakeShell } from './intake-shell'
 import { notifications } from './notifications'
+import { search } from './search'
 
 export const en = {
   common,
@@ -88,4 +89,5 @@ export const en = {
   intakeProjectStep,
   intakeShell,
   notifications,
+  search,
 } as const
