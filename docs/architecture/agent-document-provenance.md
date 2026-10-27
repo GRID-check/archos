@@ -37,7 +37,7 @@ unchanged through the whole pipeline.
 
 `office_piloti`, label "Piloti-Dokument", inside the `office` source kind
 (`common/source_kinds.py`, mirrored in
-`frontends/ui/src/features/chat/lib/source-kinds.ts`). It is a sub-label within
+`frontends/ui/src/lib/source-kinds.ts`). It is a sub-label within
 a coarse kind, never a kind of its own — the document IS office knowledge and
 paints in the office colour.
 

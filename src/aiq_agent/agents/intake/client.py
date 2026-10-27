@@ -26,29 +26,22 @@ Every failure, a refusal included, comes back as an :class:`IntakeReply` with
 ``ok=False`` and a sentence the model can act on, and is one
 ``project_intake.<op>`` observation in Langfuse.
 
-The transport is the internal-call shape ``tools/proposals_client.py`` uses; its
-base URL and redirect guard are imported from there rather than copied an
-eighth time (``tools/documents/filing.py`` says why the shape is not lifted yet).
+The transport is :mod:`aiq_agent.common.bff_http`, the one BFF client.
 """
 
 from __future__ import annotations
 
 import asyncio
-import json
 import logging
-import os
-import urllib.error
-import urllib.request
 from dataclasses import dataclass
 from dataclasses import field
 from typing import Any
 from typing import Literal
 
 from aiq_agent import project_context
+from aiq_agent.common import bff_http
+from aiq_agent.common.bff_http import SignedEnvelope
 from aiq_agent.observability.retrieval_trace import emit_step_span
-from aiq_agent.tools.documents.filing import SignedEnvelope
-from aiq_agent.tools.proposals_client import _internal_base_url
-from aiq_agent.tools.proposals_client import _NoRedirectHandler
 
 logger = logging.getLogger(__name__)
 
@@ -69,15 +62,12 @@ STALE_READING = "stale-reading"
 
 IntakeOp = Literal["needs", "record", "withdraw", "progress", "finish"]
 
-_opener = urllib.request.build_opener(_NoRedirectHandler)
 
-
-class IntakeRequestError(RuntimeError):
+class IntakeRequestError(bff_http.BffError):
     """The route refused, or could not be reached. ``status`` and ``reason`` when the BFF said."""
 
     def __init__(self, message: str, *, status: int | None = None, reason: str | None = None) -> None:
-        super().__init__(message)
-        self.status = status
+        super().__init__(message, status=status)
         self.reason = reason
 
 
@@ -128,16 +118,10 @@ def finish_request(job_id: str, summary: str, documents_read: list[str], trace_i
     }
 
 
-def _error_reason(exc: urllib.error.HTTPError) -> str | None:
+def _error_reason(exc: bff_http.BffRefusedError) -> str | None:
     """The BFF's reason token from an error body (``{"error": "stale-reading"}``), when it sent one."""
-    try:
-        body = json.loads(exc.read().decode("utf-8"))
-    except Exception:  # noqa: BLE001 — an unreadable error body is a status without a reason
-        return None
-    if not isinstance(body, dict):
-        return None
     for name in ("reason", "error", "code"):
-        value = body.get(name)
+        value = exc.body.get(name)
         if isinstance(value, str) and value:
             return value[:100]
     return None
@@ -145,29 +129,15 @@ def _error_reason(exc: urllib.error.HTTPError) -> str | None:
 
 def post_intake(payload: dict[str, Any], envelope: SignedEnvelope) -> dict[str, Any]:
     """POST one intake op; the parsed body. Blocking: call off the loop. Raises :class:`IntakeRequestError`."""
-    token = os.environ.get("GRID_INTERNAL_API_TOKEN")
-    if not token:
-        raise IntakeRequestError("GRID_INTERNAL_API_TOKEN is not configured")
-    request = urllib.request.Request(
-        f"{_internal_base_url()}{INTAKE_PATH}",
-        data=json.dumps(payload, ensure_ascii=False).encode("utf-8"),
-        headers={
-            "Content-Type": "application/json",
-            "X-Grid-Internal-Token": token,
-            # Who this is, forwarded exactly as the BFF minted it for the run's requester.
-            "X-Grid-Request-Context": envelope.header,
-            "X-Grid-Request-Context-Sig": envelope.signature,
-        },
-        method="POST",
-    )
     try:
-        with _opener.open(request, timeout=REQUEST_TIMEOUT_SECONDS) as response:
-            body = json.loads(response.read().decode("utf-8"))
-    except urllib.error.HTTPError as exc:
+        body = bff_http.post_json(INTAKE_PATH, payload, timeout=REQUEST_TIMEOUT_SECONDS, headers=envelope.headers())
+    except bff_http.BffNotConfiguredError as exc:
+        raise IntakeRequestError(str(exc)) from exc
+    except bff_http.BffRefusedError as exc:
         raise IntakeRequestError(
-            f"the intake route refused ({exc.code})", status=exc.code, reason=_error_reason(exc)
+            f"the intake route refused ({exc.status})", status=exc.status, reason=_error_reason(exc)
         ) from exc
-    except (urllib.error.URLError, OSError, ValueError) as exc:
+    except bff_http.BffError as exc:
         raise IntakeRequestError("the intake route could not be reached") from exc
     if not isinstance(body, dict):
         raise IntakeRequestError("the intake route answered with something that is not an object")

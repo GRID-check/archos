@@ -54,7 +54,7 @@ import { ProjectSwitcherSheet } from './project-switcher-sheet'
 import { useKeyboardUp } from './use-keyboard-up'
 import type { ProjectSwitcherProject } from './project-switcher'
 import type { SidebarUser } from './sidebar-user-menu'
-import type { TourEligibility } from '@/features/onboarding/lib/product-tour'
+import type { TourEligibility } from '@/lib/onboarding/product-tour'
 import type { SwitchableOrganization } from '@/lib/organizations/switchable'
 
 // `/app/uploads/<id>` is the upload summary's dialog (ADR-0086), opened from

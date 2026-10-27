@@ -180,6 +180,8 @@ describe("the Python tiers' PostHog pair", () => {
     const tiers: Array<[string, string]> = [
       ["aiq-agent", "kubernetes:apps/v1:StatefulSet"],
       ["aiq-api", "kubernetes:apps/v1:Deployment"],
+      ["chat", "kubernetes:apps/v1:StatefulSet"],
+      ["api", "kubernetes:apps/v1:Deployment"],
       ["agent-worker", "kubernetes:apps/v1:Deployment"],
     ];
     for (const [name, type] of tiers) {

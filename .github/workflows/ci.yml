@@ -85,10 +85,12 @@ jobs:
       # Third-party image pins this change adds or moves, for trivy.
       pins: ${{ steps.pins.outputs.pins || '[]' }}
       # What a pull request's test lanes run: 'select' only the tests its
-      # change reaches since its last green run, 'full' the sharded,
-      # coverage-gated suite, 'none' (UI) nothing. A push is always full.
-      # ci/pr_selection.py says why, in this job's log.
+      # change reaches, 'full' the sharded, coverage-gated suite, 'none' (UI)
+      # nothing. A push is always full. Reaches since what is `reference`:
+      # 'green' its last green run, 'base' the whole pull request against
+      # develop. ci/pr_selection.py says why, in this job's log.
       backend_mode: ${{ steps.pysel.outputs.py_mode || 'full' }}
+      py_reference: ${{ steps.pysel.outputs.reference || 'base' }}
       py_extra: ${{ steps.pysel.outputs.py_extra || '[]' }}
       ui_mode: ${{ steps.pysel.outputs.ui_mode || 'full' }}
       ui_files: ${{ steps.pysel.outputs.ui_files || '[]' }}
@@ -509,10 +511,13 @@ jobs:
       # This pull request's own database first: it carries what the last push
       # ran, so the next push re-runs only what it changed (and anything that
       # failed, which testmon keeps selecting until it passes). Else develop's,
-      # which is all a core shard reads (above).
+      # which is all a core shard reads (above). Develop's too when the plan
+      # selected against the whole pull request (`py_reference: base`): that
+      # selection is sound only measured from develop, and from this pull
+      # request's database it would skip a test whose file it changed earlier.
       - name: Restore this pull request's test database
         id: own-db
-        if: ${{ !matrix.shard }}
+        if: ${{ !matrix.shard && needs.changes.outputs.py_reference == 'green' }}
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: .testmondata-${{ matrix.suite }}
@@ -647,8 +652,8 @@ jobs:
   frontend-test:
     name: Frontend tests (shard ${{ matrix.shard }}/8)
     needs: changes
-    # A pull request whose change no UI spec reads since its last green run
-    # ('none') runs none; one that a selection can see runs only the specs
+    # A pull request whose change no UI spec reads since its reference (the
+    # last green run or the base, ci/pr_selection.py) runs none ('none'); one that a selection can see runs only the specs
     # its change reaches ('select'); everything else, and every push, all.
     if: needs.changes.outputs.frontend == 'true' && (github.event_name == 'push' || needs.changes.outputs.ui_mode != 'none')
     runs-on: ubuntu-latest

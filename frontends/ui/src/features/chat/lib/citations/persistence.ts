@@ -211,7 +211,7 @@ const readSources = (value: unknown): Array<z.infer<typeof wireSourceSchema>> | 
   // Pre-envelope localStorage wrote the client-shaped array directly. Parse it
   // leniently and map the few fields whose names differ, so provenance already
   // on disk is not lost the day the envelope ships.
-  const legacy = z.array(z.record(z.unknown())).safeParse(value)
+  const legacy = z.array(z.record(z.string(), z.unknown())).safeParse(value)
   if (!legacy.success) return null
   const mapped = legacy.data.map((row) => ({
     ...row,

@@ -113,10 +113,10 @@ describe("the api tier", () => {
   });
 
   it("is a Deployment, a Service and an HPA of the backend image, with a PDB", async () => {
-    const deployment = find(DEPLOYMENT, "aiq-api");
-    const service = find(SERVICE, "aiq-api");
-    const hpa = find(HPA, "aiq-api");
-    find(PDB, "aiq-api");
+    const deployment = find(DEPLOYMENT, "api");
+    const service = find(SERVICE, "api");
+    const hpa = find(HPA, "api");
+    find(PDB, "api");
 
     const container = (await resolve(deployment.inputs.spec)).template.spec.containers[0];
     const { backendImage } = await import("../config");
@@ -126,30 +126,30 @@ describe("the api tier", () => {
     expect((await resolve(service.inputs.spec)).selector).toEqual(
       (await resolve(deployment.inputs.spec)).selector.matchLabels,
     );
-    expect((await resolve(hpa.inputs.spec)).scaleTargetRef).toMatchObject({ kind: "Deployment", name: "aiq-api" });
+    expect((await resolve(hpa.inputs.spec)).scaleTargetRef).toMatchObject({ kind: "Deployment", name: "api" });
   });
 
   it("scales between the configured floor and ceiling on CPU", async () => {
-    const spec = await resolve(find(HPA, "aiq-api").inputs.spec);
+    const spec = await resolve(find(HPA, "api").inputs.spec);
 
     expect(spec.minReplicas).toBe(3);
     expect(spec.maxReplicas).toBe(7);
     expect(spec.metrics).toEqual([
       { type: "Resource", resource: { name: "cpu", target: { type: "Utilization", averageUtilization: 60 } } },
     ]);
-    expect((await resolve(find(DEPLOYMENT, "aiq-api").inputs.spec)).replicas).toBe(3);
+    expect((await resolve(find(DEPLOYMENT, "api").inputs.spec)).replicas).toBe(3);
   });
 
   it("holds no volume: it is stateless, like the worker tiers", async () => {
-    const pod = (await resolve(find(DEPLOYMENT, "aiq-api").inputs.spec)).template.spec;
+    const pod = (await resolve(find(DEPLOYMENT, "api").inputs.spec)).template.spec;
 
     expect(pod.volumes).toBeUndefined();
     expect(pod.containers[0].volumeMounts).toBeUndefined();
   });
 
   it("probes /health the way the chat tier does", async () => {
-    const container = (await resolve(find(DEPLOYMENT, "aiq-api").inputs.spec)).template.spec.containers[0];
-    const chat = (await resolve(find(STATEFULSET, "aiq-agent").inputs.spec)).template.spec.containers[0];
+    const container = (await resolve(find(DEPLOYMENT, "api").inputs.spec)).template.spec.containers[0];
+    const chat = (await resolve(find(STATEFULSET, "chat").inputs.spec)).template.spec.containers[0];
 
     for (const probe of ["startupProbe", "readinessProbe", "livenessProbe"]) {
       expect(container[probe].httpGet, probe).toEqual({ path: "/health", port: 8000 });
@@ -159,7 +159,7 @@ describe("the api tier", () => {
 
   it("drains for the SSE close and short requests, not for a chat turn", async () => {
     const { ROLLOUT, API_DRAIN_SECONDS, backendRollout } = await import("../platform/rollout");
-    const pod = (await resolve(find(DEPLOYMENT, "aiq-api").inputs.spec)).template.spec;
+    const pod = (await resolve(find(DEPLOYMENT, "api").inputs.spec)).template.spec;
 
     expect(pod.terminationGracePeriodSeconds).toBe(ROLLOUT.api.terminationGracePeriodSeconds);
     expect(pod.terminationGracePeriodSeconds).toBeGreaterThan(ROLLOUT.api.endpointDrainSeconds + API_DRAIN_SECONDS);
@@ -167,8 +167,8 @@ describe("the api tier", () => {
   });
 
   it("runs as GRID_ROLE=api, and the chat StatefulSet as GRID_ROLE=chat", async () => {
-    const api = (await resolve(find(DEPLOYMENT, "aiq-api").inputs.spec)).template.spec.containers[0].env;
-    const chat = (await resolve(find(STATEFULSET, "aiq-agent").inputs.spec)).template.spec.containers[0].env;
+    const api = (await resolve(find(DEPLOYMENT, "api").inputs.spec)).template.spec.containers[0].env;
+    const chat = (await resolve(find(STATEFULSET, "chat").inputs.spec)).template.spec.containers[0].env;
     const role = (env: Array<{ name: string; value?: string }>) =>
       env.filter((e) => e.name === "GRID_ROLE").map((e) => e.value);
 
@@ -242,7 +242,7 @@ describe("the api tier", () => {
     const spec = await resolve(find("kubernetes:networking.k8s.io/v1:NetworkPolicy", "allow-same-namespace").inputs.spec);
 
     expect(spec.ingress).toEqual([{ from: [{ podSelector: {} }] }]);
-    expect(spec.podSelector.matchExpressions[0].values).not.toContain("aiq-api");
+    expect(spec.podSelector.matchExpressions[0].values).not.toContain("api");
     // KEDA scrapes the chat tier's occupancy route and nothing of the api tier's.
     const keda = RESOURCES.filter((r) => r.name === "allow-keda-to-aiq-api");
     expect(keda).toEqual([]);

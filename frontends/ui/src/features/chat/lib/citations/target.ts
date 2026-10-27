@@ -14,7 +14,7 @@
  */
 
 import type { RevisionRef } from '@/lib/documents/revision-links'
-import type { Shelf } from '../source-kinds'
+import type { Shelf } from '@/lib/source-kinds'
 import { citedLoci, isHttpUrl, type CitationLocus, type CitedDocument } from './model'
 import { parseKbLocator, type KbCitationLocator } from './locator'
 import {

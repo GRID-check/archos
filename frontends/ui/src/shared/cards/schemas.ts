@@ -6,13 +6,21 @@
 // `npm run generate:cards`.
 
 import { z } from 'zod'
-import { gridCardSchema, projectProfilePatchCardSchema } from './generated'
+import { gridCardSchema, projectProfilePatchCardSchema, type CalculationStepData, type DimensionCheckData } from './generated'
 import { modernizeGridCard } from './legacy'
 
 export { gridCardSchema, projectProfilePatchCardSchema }
+/** Every card model and sub-structure as `<ModelName>Data`, inferred from its schema. */
+export type * from './generated'
 
 export type GridCard = z.infer<typeof gridCardSchema>
-export type ProjectProfilePatchCardData = z.infer<typeof projectProfilePatchCardSchema>
+
+/** A dimension's verdict: `DimStatus` in `cards/models.py`. */
+export type DimStatus = DimensionCheckData['status']
+/** Who makes the claim behind a number on a card: `Provenance` in `cards/models.py`. */
+export type Provenance = NonNullable<DimensionCheckData['provenance']>
+/** The closed set of operations a Rechenweg step may take: `CalculationOperation` in `cards/models.py`. */
+export type CalculationOperation = CalculationStepData['operation']
 
 /**
  * A message's cards in wire order. An `undefined` hole is a card that failed

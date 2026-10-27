@@ -39,10 +39,10 @@
  * `INTERNAL_TOKEN_HEADER`). That header authenticates the BFF *service*
  * against internal-only backend/BFF endpoints with a static shared secret
  * (`GRID_INTERNAL_API_TOKEN`) — it isn't derived from per-request caller
- * context (org/project/model-overrides/...) the way every header above is,
- * and it already has a single centralized producer/consumer pair, so it
- * doesn't belong to the "hand-forwarded, easy to drop" bug class this module
- * targets.
+ * context (org/project/model-overrides/...) the way every header above is.
+ * Its producer is `internalServiceHeaders` and its BFF-side consumer
+ * `requireInternalToken`, both in `internal-auth.ts`; `internal-auth.spec.ts`
+ * fails any other file in `src/` that writes the header.
  *
  * `federalState` (backlog T3-9 follow-up, 2026-07-16, user-mandated) is
  * DELIBERATELY envelope-only: unlike every field in the table above it never

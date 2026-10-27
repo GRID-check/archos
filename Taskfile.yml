@@ -38,6 +38,7 @@ vars:
   EXE: '{{if eq OS "windows"}}.exe{{end}}'
   PY: '{{.VENV_BIN}}/python{{.EXE}}'
   RUFF: '{{.VENV_BIN}}/ruff{{.EXE}}'
+  LINT_IMPORTS: '{{.VENV_BIN}}/lint-imports{{.EXE}}'
   # pytest-xdist, one worker per logical CPU, for the core and aiq_api suites.
   # Much of their wall clock is asyncio waits, so a serial run left the runner
   # idle: on two workers aiq_api went 67s -> 44s, the core suite ~3m20s -> 2m27s.

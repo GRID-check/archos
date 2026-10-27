@@ -16,7 +16,7 @@ export const NO_VISIBLE_CHANGE = 'keine sichtbare Änderung'
 /** The page to compare is a 1-based page of both files. */
 export const revisionCompareBodySchema = z.object({
   /** The document being replaced (the path's `[id]` is the newer one). */
-  older: z.string().uuid(),
+  older: z.guid(),
   page: z.number().int().min(1).max(2000).default(1),
 })
 

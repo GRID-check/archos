@@ -11,7 +11,7 @@
  * No `server-only`: the browser imports this.
  */
 
-import type { ZodType, ZodTypeDef } from 'zod'
+import type { ZodType } from 'zod'
 import {
   rootSortRunSchema,
   rootSortSummarySchema,
@@ -45,7 +45,7 @@ export function rootSortPath(shelf: RootSortShelf): string {
 export const rootSortRunPath = (runId: string) => `/api/root-sort-runs/${encodeURIComponent(runId)}`
 
 async function requestAs<T>(
-  schema: ZodType<T, ZodTypeDef, unknown>,
+  schema: ZodType<T, unknown>,
   run: RootSortFetch,
   path: string,
   method: 'GET' | 'POST',

@@ -7,8 +7,7 @@
  * if a projection needed to, that would be a fact missing from the model.
  */
 
-import type { SourceSignal } from '@/features/layout/lib/source-presets'
-import { KIND_TO_SIGNAL, modernizeLane, type Shelf } from '../source-kinds'
+import { KIND_TO_SIGNAL, modernizeLane, type Shelf, type SourceSignal } from '@/lib/source-kinds'
 import { splitReportSources, type ReportSourceEntry } from '@/features/layout/lib/report-citations'
 import {
   citationNumbers,
