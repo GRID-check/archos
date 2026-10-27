@@ -93,8 +93,15 @@ sender MTA ──SMTP──▶ Cloudflare Email Routing (apex MX of piloti.at)
   entrypoints).
 - **It buffers the message** (≤ 25 MiB, Cloudflare's inbound cap) because the
   digest is known only after the last byte and a fixed-length body is what
-  carries a real `Content-Length`. Buffering 25 MiB needs the **Workers Paid**
-  plan; gate G5 measures CPU and memory, and a failure stops the launch.
+  carries a real `Content-Length`. The **Workers Paid** plan is needed for CPU
+  time, not memory: both plans give an isolate 128 MB, but Free allows 10 ms of
+  CPU per invocation and Paid 30 s by default, up to 5 min
+  ([Workers limits](https://developers.cloudflare.com/workers/platform/limits/),
+  read 2026-10-27). Copying up to 25 MiB into an ArrayBuffer and a SHA-256 over
+  it run well past 10 ms for a large mail. On Free the handler then fails,
+  which the verdict contract makes a temporary error, so the sender retries for
+  days and the mail never arrives; a small mail may fit in 10 ms. Gate G5
+  measures the CPU of a 25 MiB mail, and a failure stops the launch.
 - **`redirect: "manual"`**: a followed redirect would turn the POST into a GET
   and send the signed headers elsewhere. `BFF_TIMEOUT_MS` is 90 s.
 
@@ -239,8 +246,10 @@ runbook, with the owner gates and the launch gates G1–G9:
 * Bad, because the product domain's mail is bound to Cloudflare Email Routing,
   and Cloudflare becomes a transit processor of project mail (a sub-processor
   row and a customer notice, gate O7).
-* Bad, because Workers Paid is a running cost, and buffering 25 MiB in a Worker
-  is unproven until G5.
+* Bad, because Workers Paid is a running cost, needed for the CPU time (Free
+  allows 10 ms per invocation, which a large mail's copy and SHA-256 exceed;
+  Workers limits, read 2026-10-27), and the CPU of buffering 25 MiB in a
+  Worker is unproven until G5.
 * Bad, because two behaviours we rely on are undocumented by Cloudflare: a
   thrown error is a temporary SMTP failure (G2, re-proved after every
   `compatibilityDate` bump, G8), and the email handler's wall-clock cap.

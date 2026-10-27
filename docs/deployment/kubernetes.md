@@ -581,8 +581,15 @@ Worker `inbound-mail-worker.js` (uploaded verbatim); the signed route
 
 ### Prerequisites
 
-- **Cloudflare Workers Paid** on the account (gate O2): the Worker buffers up
-  to 25 MiB to sign it, which the free plan's CPU and memory do not allow.
+- **Cloudflare Workers Paid** on the account (gate O2), for CPU time, not
+  memory: both plans give an isolate 128 MB, but Free allows 10 ms of CPU per
+  invocation and Paid 30 s by default, up to 5 min
+  ([Workers limits](https://developers.cloudflare.com/workers/platform/limits/),
+  read 2026-10-27). The Worker copies up to 25 MiB into an ArrayBuffer and
+  hashes it with SHA-256 to sign it, which runs well past 10 ms for a large
+  mail. On Free the handler then fails, which the verdict contract makes a
+  temporary error, so the sender retries for days and the mail never arrives.
+  A small mail may fit in 10 ms. Gate G5 measures the CPU of a 25 MiB mail.
 - `cloudflareApiToken` with, on the mail domain's zone, `Zone:Zone Settings:Edit`,
   `Zone:Email Routing Rules:Edit` and `Zone:Zone:Read`, plus Account
   `Workers Scripts:Edit` with the account under the token's Account Resources.
@@ -646,7 +653,7 @@ probes are held mail in the TEST office, never a customer's):
 | G2 | A throwing Worker gives a temporary failure, and the retry delivers |
 | G3 | 24 MiB is held, 26 MiB refused by Cloudflare, a truncated body gives `body-truncated`, unsigned and unknown-key requests 401 |
 | G4 | While paused, a temporary failure; after the unpause the mail is delivered |
-| G5 | Worker CPU and memory for a 25 MiB message. A failure blocks the launch: there is no fallback that drops the digest |
+| G5 | Worker CPU time for a 25 MiB message (Workers Paid; Free allows 10 ms). A failure blocks the launch: there is no fallback that drops the digest |
 | G6 | EICAR through the full path; a limit-exceeding archive and a stale signature database each give `failed`, never `clean`; an infected original's download is refused. Known engine gap (ClamAV 1.5.4): a zip member over `MaxFileSize` (100 MB) is scanned only up to that size and answers `OK` with no alert, gzip alerts (ADR-0139) |
 | G7 | Literal `postmaster@` and `abuse@` rules present |
 | G8 | G1 and G2 again after any `COMPATIBILITY_DATE` bump of the Worker (a spec fails once the date is a year old) |

@@ -35,9 +35,15 @@
  * `frontends/ui/src/lib/internal-auth.ts`). So the Worker buffers the message:
  * the digest is known only after the last byte, and a fixed-length body is
  * what carries a real `Content-Length` (a stream body goes out chunked, and the
- * BFF refuses a request it cannot hold to an exact length). Buffering 25 MiB is
- * CPU and memory a Workers Free plan does not have; Workers Paid is a launch
- * prerequisite and gate G5 measures it (DECISION D19). There is no fallback
+ * BFF refuses a request it cannot hold to an exact length). Workers Paid is a
+ * launch prerequisite for CPU time, not memory: both plans give an isolate
+ * 128 MB, but Free allows 10 ms of CPU per invocation and Paid 30 s by default
+ * (up to 5 min) (developers.cloudflare.com/workers/platform/limits, read
+ * 2026-10-27). Copying up to 25 MiB into an ArrayBuffer and hashing it with
+ * SHA-256 runs well past 10 ms for a large mail; on Free the handler then
+ * fails, which the verdict contract makes a temporary error, so the sender
+ * retries for days and the mail never arrives. A small mail may fit in 10 ms.
+ * Gate G5 measures the CPU of a 25 MiB mail (DECISION D19). There is no fallback
  * that drops the digest: a replay is then the same bytes, which the BFF
  * answers as a duplicate.
  *
