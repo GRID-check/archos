@@ -1,3 +1,4 @@
+// @disk-inputs: drizzle/0149_piloti_wakes_document_idx.down.sql, drizzle/0149_piloti_wakes_document_idx.sql, drizzle/meta/_journal.json
 /**
  * @vitest-environment node
  */

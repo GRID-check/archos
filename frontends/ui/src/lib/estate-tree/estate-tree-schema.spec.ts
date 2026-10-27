@@ -1,3 +1,4 @@
+// @disk-inputs: tests/fixtures/estate-tree.schema.json
 /**
  * @vitest-environment node
  */

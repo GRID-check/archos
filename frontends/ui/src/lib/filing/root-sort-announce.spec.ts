@@ -2,7 +2,7 @@
  * @vitest-environment node
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import type { RootSortRun } from '@/lib/db/schema'
+import type { RootSortRun } from '@/lib/db/schema/root-sort-runs'
 
 vi.mock('server-only', () => ({}))
 vi.mock('@/lib/db/tenant-context', () => ({

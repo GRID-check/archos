@@ -8,7 +8,8 @@ import 'server-only'
 import { and, asc, eq, isNull, ne, sql } from 'drizzle-orm'
 import { getDb } from '@/lib/db'
 import { withTenant } from '@/lib/db/tenant-context'
-import { projectPeople, projects, type ProjectPersonRow } from '@/lib/db/schema'
+import { projectPeople, type ProjectPersonRow } from '@/lib/db/schema/project-people'
+import { projects } from '@/lib/db/schema/projects'
 import type { ProjectStatus } from './project-status'
 
 /** Most people one project lists. Far above any real project team; a bound, not a quota. */

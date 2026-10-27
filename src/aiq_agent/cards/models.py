@@ -1506,11 +1506,9 @@ class DocumentDraftCard(CardModel):
 # exists, so this card REPORTS rather than proposes: there is nothing to accept,
 # and a control here would offer to do a second time what the tool just did.
 
-#: The kinds a person may delegate. Mirrored (not imported) from
-#: `DELEGATABLE_TASK_KINDS` in `frontends/ui/src/lib/db/schema/tasks.ts` — the
-#: same parse-independently rule `DocumentVersionState` follows one screen up,
-#: for the same reason: the contract crosses a language boundary, and a shared
-#: schema between the two would be a build step neither tier wants.
+#: The kinds a person may delegate. The one source: `create_task` reads it here,
+#: and `scripts/generate_vocabularies.py` renders it to the UI's
+#: `DELEGATABLE_TASK_KINDS` (`frontends/ui/src/shared/vocabularies.generated.ts`).
 TaskKind = Literal["compliance_check", "submission_check", "document", "revision"]
 
 

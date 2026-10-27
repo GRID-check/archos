@@ -21,7 +21,7 @@
  * arithmetic are tested without a database. Windows are UTC, like the rollup.
  */
 
-import type { BudgetScope, BudgetUnit } from '@/lib/db/schema'
+import type { BudgetScope, BudgetUnit } from '@/lib/db/schema/budgets'
 
 export type UsageNoticeLevel = 'forecast' | 'warning' | 'critical' | 'exhausted'
 

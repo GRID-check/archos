@@ -64,7 +64,9 @@ import {
   findConversationTenancy,
   listMessagesForConversation,
 } from '@/lib/conversations/repository'
-import type { Conversation, Message, ResourceVisibility } from '@/lib/db/schema'
+import type { Conversation } from '@/lib/db/schema/conversations'
+import type { Message } from '@/lib/db/schema/messages'
+import type { ResourceVisibility } from '@/lib/db/schema/resource-shares'
 import { findProjectInOrg } from '@/lib/projects/repository'
 import { findGrantForSubject } from '@/lib/sharing/repository'
 import { exportAnswerDocument } from './service'

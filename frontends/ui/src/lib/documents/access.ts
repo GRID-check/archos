@@ -19,7 +19,7 @@ import { isFolderVisibleTo, requireFolderWrite } from '@/lib/authz/folder-access
 import { requireProjectAccess } from '@/lib/authz/projects'
 import { requireResourceAccess } from '@/lib/sharing/access'
 import { canManageOfficeShelf } from '@/lib/authz/organizations'
-import type { Document } from '@/lib/db/schema'
+import type { Document } from '@/lib/db/schema/documents'
 import { mayReviewQuarantine } from '@/lib/upload-screening/quarantine-reviewers'
 import { internalRead, memberReader } from './document-reader'
 import { findDocumentInOrg } from './repository'

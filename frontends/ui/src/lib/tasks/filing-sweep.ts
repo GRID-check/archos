@@ -29,7 +29,7 @@ import 'server-only'
 import { withPlatformAccess, withTenant } from '@/lib/db/tenant-context'
 import { findFiledResearchReport } from '@/lib/documents/research-report'
 import { findDeadJob, findOpenJobId } from '@/lib/jobs-queue/repository'
-import type { TaskRun } from '@/lib/db/schema'
+import type { TaskRun } from '@/lib/db/schema/task-model'
 import * as repository from './repository'
 
 /** A filing must have been queued this long before the sweep judges it. */

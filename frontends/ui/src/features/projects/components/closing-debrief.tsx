@@ -41,7 +41,7 @@ import { useTranslations } from '@/i18n'
 import { projectsCopy } from '@/i18n/namespaces/projects'
 import { isConfirmedMemory, memoryOriginOf } from '@/lib/cross-project/decision-origin'
 import { factLabel, fingerprintOf, type FingerprintKey } from '@/lib/cross-project/fingerprint'
-import type { ProjectMemoryItem } from '@/lib/db/schema'
+import type { ProjectMemoryItem } from '@/lib/db/schema/project-memory'
 import type { ProjectExperienceError, ProjectExperienceResult } from '@/lib/project-experience/types'
 import type { ProjectAssumption, ProjectFact, ProjectPrimitiveValue, ProjectProfile } from '@/lib/project-profile/types'
 

@@ -31,7 +31,7 @@ vi.mock('./service', () => ({ listAnnotations: vi.fn() }))
 import { NotFoundError } from '@/lib/api/errors'
 import { recordAuditEvent } from '@/lib/audit/service'
 import type { AuthorizedSession } from '@/lib/auth/types'
-import type { DocumentVersion } from '@/lib/db/schema'
+import type { DocumentVersion } from '@/lib/db/schema/document-versions'
 import { getAccessibleDocument } from '@/lib/documents/access'
 import { listDocumentVersions } from '@/lib/documents/version-repository'
 import { translatorFor, type Namespace } from '@/i18n/namespace'

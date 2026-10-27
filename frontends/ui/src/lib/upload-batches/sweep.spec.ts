@@ -17,7 +17,7 @@ vi.mock('@/lib/upload-screening/quarantine-audit', () => ({
   sweepOwedQuarantines: vi.fn().mockResolvedValue(0),
 }))
 
-import type { UploadBatch } from '@/lib/db/schema'
+import type { UploadBatch } from '@/lib/db/schema/upload-batches'
 import { reconcileDocumentStatuses } from '@/lib/documents/reconcile-status'
 import { pruneSpentQuarantines, sweepOwedQuarantines } from '@/lib/upload-screening/quarantine-audit'
 import { makeDocument } from '@/test-utils/db-fixtures'

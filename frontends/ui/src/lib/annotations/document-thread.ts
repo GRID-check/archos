@@ -22,7 +22,7 @@ import type { AuthorizedSession } from '@/lib/auth/types'
 import { CHAT_PERMISSIONS } from '@/lib/authz/chat'
 import { requireProjectAccess } from '@/lib/authz/projects'
 import { findConversationInOrg, insertConversation } from '@/lib/conversations/repository'
-import type { Document } from '@/lib/db/schema'
+import type { Document } from '@/lib/db/schema/documents'
 import { documentThreadConversationId } from './wake-ids'
 
 /** The longest title a thread gets from its document's name. */

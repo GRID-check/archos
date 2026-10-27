@@ -32,7 +32,7 @@ import { notFound } from 'next/navigation'
 
 import { EngagementNotice } from '@/features/collaboration/components/EngagementNotice'
 import { I18nProvider } from '@/i18n'
-import type { ConversationEngagement } from '@/lib/db/schema'
+import type { ConversationEngagement } from '@/lib/db/schema/conversations'
 
 const Row = ({ label, children }: { label: string; children: React.ReactNode }) => (
   <section className="flex flex-col gap-2">

@@ -16,23 +16,15 @@ import { and, desc, eq, exists, inArray, isNotNull, isNull, ne, or, sql, type SQ
 import { getDb } from '@/lib/db'
 import type { DbExecutor } from '@/lib/db/executor'
 import { stripJsonNullBytes } from '@/lib/text/jsonb'
-import {
-  answerFeedback,
-  conversationReads,
-  conversationRestrictedFolders,
-  conversationSourceProjects,
-  conversations,
-  deletionQueue,
-  messages,
-  projects,
-  resourceShares,
-  type Conversation,
-  type ConversationRead,
-  type Message,
-  type NewMessage,
-  type ShareableResourceType,
-  type ResourceVisibility,
-} from '@/lib/db/schema'
+import { answerFeedback } from '@/lib/db/schema/answer-feedback'
+import { conversationReads, type ConversationRead } from '@/lib/db/schema/conversation-reads'
+import { conversationRestrictedFolders } from '@/lib/db/schema/conversation-restricted-folders'
+import { conversationSourceProjects } from '@/lib/db/schema/conversation-source-projects'
+import { conversations, type Conversation } from '@/lib/db/schema/conversations'
+import { deletionQueue } from '@/lib/db/schema/deletion-queue'
+import { messages, type Message, type NewMessage } from '@/lib/db/schema/messages'
+import { projects } from '@/lib/db/schema/projects'
+import { resourceShares, type ShareableResourceType, type ResourceVisibility } from '@/lib/db/schema/resource-shares'
 
 /** Hard cap for unpaginated org-wide conversation lists. */
 export const CONVERSATION_LIST_LIMIT = 200

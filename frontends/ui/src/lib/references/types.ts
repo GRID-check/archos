@@ -9,7 +9,8 @@
  */
 
 import type { FingerprintFact } from '@/lib/cross-project/fingerprint'
-import type { PermitRecordKind, PermitRequirementKind, ProjectMemoryKind } from '@/lib/db/schema'
+import type { PermitRecordKind, PermitRequirementKind } from '@/lib/db/schema/permit-records'
+import type { ProjectMemoryKind } from '@/lib/db/schema/project-memory'
 
 /** How many closed projects the page lists; the rest of the office stays out of sight. */
 export const SIMILAR_PROJECTS_MAX = 12

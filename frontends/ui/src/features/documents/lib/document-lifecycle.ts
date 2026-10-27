@@ -30,7 +30,7 @@ import {
   type DocumentVersionTransition,
   type DocumentVersionView,
 } from '@/lib/documents/lifecycle-types'
-import type { DocumentAuthor } from '@/lib/db/schema'
+import type { DocumentAuthor } from '@/lib/db/schema/documents'
 
 /**
  * The ops a REVIEW surface offers.

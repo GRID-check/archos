@@ -1,3 +1,4 @@
+// @disk-inputs: ../../tests/fixtures/answer_meta/work_payload.json
 import { render as rtlRender, screen } from '@testing-library/react'
 import type { ReactElement } from 'react'
 import { readFileSync } from 'node:fs'
