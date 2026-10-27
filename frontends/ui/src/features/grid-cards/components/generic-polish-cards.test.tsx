@@ -172,16 +172,16 @@ describe('CalloutCard', () => {
 })
 
 /**
- * The semantic color contract: muted, flat, rule-based. Every colored
- * treatment pairs hue + left-rule position + label/icon, never hue alone, and
- * running text stays ink on every wash.
+ * The semantic color contract: muted and flat. Every colored treatment pairs
+ * hue + label + icon, never hue alone, no side stripe carries it, and running
+ * text stays ink on every wash.
  */
 describe('KeyTakeawaysCard distillation marker', () => {
-  it('paints a 2px green rule and a dark-green eyebrow with a check icon, washed at the pill only', () => {
+  it('marks the block with a dark-green eyebrow and a check icon, washed at the pill only, and no side stripe', () => {
     const { container } = render(<KeyTakeawaysCard title={null} items={[{ text: 'Erstens' }]} />)
 
     const card = container.querySelector('[data-slot="card"]')
-    expect(card).toHaveClass('border-l-2', 'border-l-success')
+    expect(card?.className, 'side stripes are discouraged (grid-design-language.md)').not.toMatch(/border-l/)
     expect(
       card?.className,
       'the wash must not fill behind the running text — it rides the eyebrow pill alone',
@@ -193,8 +193,7 @@ describe('KeyTakeawaysCard distillation marker', () => {
       eyebrow.className,
       'the wash is the project green at ~7%, not the full-strength chip tint',
     ).toContain('var(--source-project)')
-    // Hue never travels alone: the written label, the left rule above and a
-    // check glyph beside the label.
+    // Hue never travels alone: the written label and a check glyph beside it.
     expect(eyebrow.querySelector('svg.lucide-circle-check')).not.toBeNull()
   })
 
@@ -207,13 +206,14 @@ describe('KeyTakeawaysCard distillation marker', () => {
     )
   })
 
-  it('carries the same rule in the flat register, the wash on the eyebrow alone', () => {
+  it('carries the same marker in the flat register, the wash on the eyebrow alone', () => {
     const { container } = render(
       <KeyTakeawaysCard flat title={null} items={[{ text: 'Erstens' }]} />,
     )
 
     const flat = container.firstElementChild
-    expect(flat).toHaveClass('border-l-2', 'border-l-success')
+    expect(flat?.className).not.toMatch(/border-l/)
+    expect(screen.getByText('Das Wichtigste').querySelector('svg.lucide-circle-check')).not.toBeNull()
     expect(flat?.className).not.toContain('var(--source-project)')
     expect(screen.getByText('Das Wichtigste')).toHaveClass('text-success')
     expect(screen.getByText('Das Wichtigste').className).toContain('var(--source-project)')

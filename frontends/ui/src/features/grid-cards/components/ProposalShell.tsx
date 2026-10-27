@@ -2,6 +2,7 @@
 
 import { useLayoutEffect, useRef, type ReactNode, type Ref } from 'react'
 import { useIsPresent, type Transition } from 'motion/react'
+import { CircleCheck, CircleMinus, type LucideIcon } from 'lucide-react'
 import { Card } from '@/components/ui/card'
 import {
   AnimatePresence,
@@ -14,25 +15,29 @@ import { useHeightGlide } from '@/components/motion/height-glide'
 import { cn } from '@/lib/utils'
 import { CARD_SHELL } from './card-chrome'
 
-/** The left-accent tone of a proposal card by its lifecycle state. */
+/** A proposal card's lifecycle state. */
 type ProposalTone = 'pending' | 'accepted' | 'dismissed'
 
 /**
- * `pending` is INK, not amber.
+ * An outcome's glyph, beside the receipt's words. `pending` has none: the
+ * question is the state.
  *
- * Lifecycle is its own axis (`grid-card-charter.md` §A3): "we are waiting for
- * you" is not "you are close to a limit", and amber already means the second
- * everywhere else in the set — on a Frist callout, on a tightening change, on a
- * measurement inside its tolerance band. Spending it here made an unanswered
- * question look like a compliance risk, and made a real compliance risk one
- * amber edge among several. Ink says "unresolved" without borrowing anyone
- * else's meaning, and the accepted/dismissed states still carry the verdict
- * colours they earn by being outcomes.
+ * Lifecycle is its own axis (`grid-card-charter.md` §A3), and it used to be an
+ * accent edge whose colour tracked the state. Side stripes are discouraged
+ * (grid-design-language.md, "Emphasis without a stripe"), and an edge said the
+ * outcome in colour alone; the glyph says it in shape, the receipt in words,
+ * and the verdict colour only reinforces both (WCAG 1.4.1).
  */
-const TONE_ACCENT: Record<ProposalTone, string> = {
-  pending: 'border-l-foreground/40',
-  accepted: 'border-l-success',
-  dismissed: 'border-l-subtle',
+const OUTCOME_GLYPH: Record<ProposalTone, LucideIcon | null> = {
+  pending: null,
+  accepted: CircleCheck,
+  dismissed: CircleMinus,
+}
+
+const OUTCOME_INK: Record<ProposalTone, string> = {
+  pending: '',
+  accepted: 'text-success',
+  dismissed: 'text-muted-foreground',
 }
 
 /** A question breathes more than its one-line receipt. */
@@ -61,6 +66,7 @@ function ProposalBody({
   children: ReactNode
 }) {
   const present = useIsPresent()
+  const Glyph = OUTCOME_GLYPH[tone]
   return (
     <motion.div
       ref={ref}
@@ -72,25 +78,30 @@ function ProposalBody({
       animate={{ opacity: 1, transition: enter }}
       exit={{ opacity: 0, transition: exit }}
     >
-      {children}
+      {Glyph ? (
+        <div className="flex items-start gap-2">
+          <Glyph data-outcome={tone} className={cn('mt-0.5 size-4 shrink-0', OUTCOME_INK[tone])} aria-hidden />
+          <div className="min-w-0 flex-1">{children}</div>
+        </div>
+      ) : (
+        children
+      )}
     </motion.div>
   )
 }
 
 /**
  * The shared shell for user-confirmed proposal cards (`project_profile_patch`,
- * `memory_proposal`, `file_operation_proposal`): a left-accented card that
- * fades in, whose accent colour tracks the proposal's lifecycle — ink while
- * pending, green once accepted, muted once dismissed (see TONE_CLASS above for
- * why pending is ink and not amber). The cards used to hand-roll this
- * identical `motion.div` + `Card border-l-2 p-5 shadow-xs` chrome and state
- * machine; this owns it once so they can't drift.
+ * `memory_proposal`, `file_operation_proposal`): a card on the quiet card
+ * ground whose receipt carries the outcome's glyph — a green check once
+ * accepted, a muted minus once dismissed (see OUTCOME_GLYPH above). The cards
+ * used to hand-roll this identical `motion.div` + `Card p-5 shadow-xs` chrome
+ * and state machine; this owns it once so they can't drift.
  *
  * THE ANSWER IS ONE CARD CHANGING, not one card replaced by another. A card
  * returns `<ProposalShell tone=…>` from each branch, so React keeps this one
  * instance across the decision, and the shell turns the swap into motion:
  *
- *  - the accent eases to its new colour (`transition-colors` on the Card);
  *  - the question cross-fades into its receipt (`popLayout`: the outgoing body
  *    leaves the flow at once and fades out over the incoming one);
  *  - the card glides from the question's height to the receipt's
@@ -138,12 +149,7 @@ export function ProposalShell({
     // replayed on every remount (a restored thread, a re-render by position)
     // and doubled the slot's fade on a live one.
     <Card
-      className={cn(
-        CARD_SHELL,
-        'border-l-2 p-5 transition-colors duration-base ease-out motion-reduce:transition-none',
-        TONE_ACCENT[tone],
-        className
-      )}
+      className={cn(CARD_SHELL, 'p-5', className)}
     >
       {/* The frame the height glides on. `relative` is for `popLayout`,
           which positions the outgoing body absolutely against it. */}
