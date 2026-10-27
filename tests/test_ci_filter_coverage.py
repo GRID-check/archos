@@ -105,6 +105,13 @@ def test_every_tracked_path_is_in_a_tier_or_listed_as_in_none():
     )
 
 
+def test_the_grammar_check_refuses_what_only_one_matcher_reads():
+    for pattern in ("docs/{a,b}/**", "src/**.py", "a**/b", "[ab]/*", "!docs/**", "a//b"):
+        assert not _in_shared_grammar(pattern), pattern
+    for pattern in ("docs/**", "*.md", ".github/workflows/*.yml", "**/x", "Taskfile.yml"):
+        assert _in_shared_grammar(pattern), pattern
+
+
 def test_a_path_outside_every_tier_is_reported():
     assert _uncovered(["apps/moved-ui/src/page.tsx", "frontends/ui/src/page.tsx"]) == ["apps/moved-ui/src/page.tsx"]
 
@@ -119,18 +126,25 @@ def test_every_unfiltered_entry_still_matches_something():
     assert stale == [], f"UNFILTERED entries that match no tracked path; delete them: {stale}"
 
 
-#: A literal path, or one with `*` inside a segment and `**` as a whole segment.
-#: No braces, extglobs, character classes or negation: on that grammar wcmatch
-#: and picomatch read a pattern the same way.
-SHARED_GRAMMAR = re.compile(r"^(?:\*\*|[A-Za-z0-9_.*-]+)(?:/(?:\*\*|[A-Za-z0-9_.*-]+))*$")
+#: One path segment: literal characters and `*`. A segment may instead be `**`
+#: whole. No braces, extglobs, character classes or negation: on that grammar
+#: wcmatch and picomatch read a pattern the same way. Checked per segment, so
+#: the expression has no nested repetition to backtrack through.
+SHARED_SEGMENT = re.compile(r"[A-Za-z0-9_.*-]+")
+
+
+def _in_shared_grammar(pattern: str) -> bool:
+    return all(
+        segment == "**" or ("**" not in segment and SHARED_SEGMENT.fullmatch(segment)) for segment in pattern.split("/")
+    )
 
 
 def test_patterns_stay_in_the_grammar_both_matchers_share():
     patterns = [p for family in _filters().values() for p in family] + list(UNFILTERED)
-    outside = [p for p in patterns if not SHARED_GRAMMAR.match(p) or re.search(r"[^/]\*\*|\*\*[^/]", p)]
+    outside = [p for p in patterns if not _in_shared_grammar(p)]
     assert outside == [], (
         f"Patterns outside the grammar this test checks with wcmatch: {outside}. "
-        "Widen SHARED_GRAMMAR only after test_wcmatch_agrees_with_picomatch covers the new syntax."
+        "Widen SHARED_SEGMENT only after test_wcmatch_agrees_with_picomatch covers the new syntax."
     )
 
 
