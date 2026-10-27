@@ -23,7 +23,10 @@
  * Every move hands back its undo, and the undo says whether it put anything
  * back: the viewer as it was, unless the person has opened another document
  * since; the comparison shut, unless another one is open now; the page the
- * person came from, unless they have left the model view already.
+ * person came from, while they are still in the model view it opened (the same
+ * page and model, whatever element or camera they moved to since). Once they
+ * have left it the undo does nothing, and says so to the host
+ * (`undoable`), which drops it from the row.
  */
 
 import type {
@@ -140,10 +143,15 @@ function openAtPlace(call: ViewerActionCall, row: ReadRow, room: boolean): Viewe
   return { outcome: 'shown', where: room ? 'beside' : 'over', undo }
 }
 
-/** Path and query of an in-app href, for comparing where the page is with where an action took it. */
-const pathOf = (href: string): string => {
+/**
+ * The model view an in-app href shows: its page and its model. The stage keeps
+ * the rest of its view in the query (element, storey, camera) and rewrites it
+ * as the person works (`router.replace`), so those say nothing about whether
+ * the person is still in the view an action opened.
+ */
+const modelViewOf = (href: string): string => {
   const url = new URL(href, 'http://in-app.invalid')
-  return `${url.pathname}${url.search}`
+  return `${url.pathname}?model=${url.searchParams.get('model') ?? ''}`
 }
 
 export function createViewerActionRunner(deps: ViewerActionRunnerDeps): ViewerActionRunner {
@@ -168,13 +176,14 @@ export function createViewerActionRunner(deps: ViewerActionRunnerDeps): ViewerAc
     const href = row.projectId ? buildModelHref(row.projectId, view) : buildOfficeShelfModelHref(view)
     const from = deps.currentHref()
     deps.navigate(href)
+    // Only from the model view this action opened: a page the person went on to is theirs.
+    const undoable = (): boolean => modelViewOf(deps.currentHref()) === modelViewOf(href)
     const undo = (): boolean => {
-      // Only from the model view this action opened: a page the person went on to is theirs.
-      if (pathOf(deps.currentHref()) !== pathOf(href)) return false
+      if (!undoable()) return false
       deps.navigate(from)
       return true
     }
-    return { outcome: 'shown', where: 'model', undo }
+    return { outcome: 'shown', where: 'model', undo, undoable }
   }
 
   return {

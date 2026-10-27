@@ -629,6 +629,47 @@ describe('operation proposal with a proposal_id', () => {
     await waitFor(() => expect(posts()).toEqual([`POST /api/proposals/${PROPOSAL_ID}/apply`]))
   })
 
+  it('shows an id it can name as the name, the id kept on hover, and an id nobody named as the id', async () => {
+    const project = '6f1c2d3e-4a5b-4c6d-8e7f-9a0b1c2d3e4f'
+    const folder = '0b7a9c1e-2d3f-4a5b-8c6d-7e8f9a0b1c2d'
+    const documents = ['3c2b1a0f-9e8d-4c7b-a6f5-4e3d2c1b0a9f', '9a8b7c6d-5e4f-4a3b-8c2d-1e0f9a8b7c6d']
+    const person = 'user_01JABCDEF'
+    serve(
+      operationProposal({
+        payload: {
+          operation: 'document-move',
+          input: { params: { id: project }, body: { folderId: folder, documentIds: documents, userId: person, note: 'kurz' } },
+          summary: 'Move two documents',
+        },
+        targets: [
+          { type: 'project', id: project, name: 'Neubau Musterstraße' },
+          { type: 'folder', id: folder, name: 'Einreichung' },
+          { type: 'document', id: documents[0]!, name: 'Baubeschreibung.pdf' },
+          { type: 'document', id: documents[1]!, name: null },
+          { type: 'member', id: person, name: 'Anna Berger' },
+        ],
+      })
+    )
+    render(<OperationReceipt proposalId={PROPOSAL_ID} title="Move" operation="document-move" input={{}} />)
+    const input = await screen.findByTestId('operation-input')
+    await waitFor(() => expect(input).toHaveTextContent('Einreichung'))
+    const values = Object.fromEntries(
+      Array.from(input.querySelectorAll('div')).map((row) => {
+        const value = row.querySelector('dd')!
+        return [row.querySelector('dt')!.getAttribute('title'), [value.textContent, value.getAttribute('title')]]
+      })
+    )
+    expect(values.folderId).toEqual(['Einreichung', folder])
+    expect(values.userId).toEqual(['Anna Berger', person])
+    expect(values.id).toEqual(['Neubau Musterstraße', project])
+    // One document this reader may not read keeps its id; the other reads by name.
+    expect(values.documentIds?.[0]).toContain('Baubeschreibung.pdf')
+    expect(values.documentIds?.[0]).toContain(documents[1])
+    expect(values.documentIds?.[0]).not.toContain(documents[0])
+    expect(values.note).toEqual(['kurz', null])
+    expect(screen.getByTestId('operation-targets')).toHaveTextContent('Person Anna Berger')
+  })
+
   it('offers „Apply“ at once when every value is short enough to be shown whole', async () => {
     serve(operationProposal({ payload: { operation: 'project-rename', input: { params: { id: 'p-1' }, body: { name: 'Neu' } }, summary: 'Rename' } }))
     render(operationCard)

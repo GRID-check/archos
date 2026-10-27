@@ -885,6 +885,7 @@ export const chat = {
         bim_model: 'Model',
         upload_batch: 'Upload',
         proposal: 'Proposal',
+        member: 'Person',
       },
       inputLabel: 'Inputs',
       // A long value is shortened at first; „Apply“ waits until every one has been read in full.
@@ -900,6 +901,7 @@ export const chat = {
         bim_model: 'Model {name}',
         upload_batch: 'Upload {name}',
         proposal: 'Proposal {name}',
+        member: 'Person {name}',
       },
       applied: 'The action was carried out.',
       dismissed: 'Discarded. The action was not carried out.',
@@ -1982,6 +1984,7 @@ export const chat = {
       focus_ifc_element: 'Element in {name}',
     },
     status: {
+      held: 'Waits for the finished answer',
       pending: 'Opening …',
       undone: 'Undone',
       kept: 'Not undone: you have changed the viewer since',

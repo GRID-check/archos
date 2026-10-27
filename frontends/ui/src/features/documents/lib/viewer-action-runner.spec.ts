@@ -241,6 +241,37 @@ describe('a model element', () => {
     expect(here).toBe('/app/projects/proj-1/chat?c=1')
   })
 
+  it('goes back from the same model view after the person selected another element or turned the camera there', async () => {
+    let here = '/app/projects/proj-1/chat?c=1'
+    const navigate = vi.fn((href: string) => {
+      here = href
+    })
+    const outcome = await createViewerActionRunner(deps(documents([model]), { currentHref: () => here, navigate })).run(focus)
+    if (outcome.outcome !== 'shown') throw new Error('expected shown')
+    // The stage keeps its view in the query and rewrites it as the person works in it (`router.replace`).
+    here = '/app/projects/proj-1/files?model=Haus+A.ifc&element=0aB&cam=iso'
+
+    expect(outcome.undoable?.()).toBe(true)
+    expect(outcome.undo()).toBe(true)
+    expect(here).toBe('/app/projects/proj-1/chat?c=1')
+  })
+
+  it('has nothing to take back once the person left the model view, and never navigates', async () => {
+    let here = '/app/projects/proj-1/chat'
+    const navigate = vi.fn((href: string) => {
+      here = href
+    })
+    const outcome = await createViewerActionRunner(deps(documents([model]), { currentHref: () => here, navigate })).run(focus)
+    if (outcome.outcome !== 'shown') throw new Error('expected shown')
+    // Another model on the same page is not the view this action opened.
+    here = '/app/projects/proj-1/files?model=Haus+B.ifc'
+    expect(outcome.undoable?.()).toBe(false)
+    here = '/app/projects/proj-1/chat'
+    expect(outcome.undoable?.()).toBe(false)
+    expect(outcome.undo()).toBe(false)
+    expect(navigate).toHaveBeenCalledTimes(1)
+  })
+
   it('stays where the person went on to, and says it did nothing', async () => {
     let here = '/app/projects/proj-1/chat'
     const navigate = vi.fn((href: string) => {

@@ -15,10 +15,13 @@
  *  - Only the asker's live page runs one. The driver hands this module only
  *    the actions of turns it asked itself (`use-websocket-chat.ts`); a
  *    spectator, a replay after a reload and another tab never move anything.
- *  - Nothing moves before the answer is there. An action is held while the
- *    turn runs and released when it ends with an answer
+ *  - Nothing moves on its own before the answer is there. An action is held
+ *    while the turn runs and released when it ends with an answer
  *    (`releaseViewerActions`); a turn that fails, is stopped or ends without an
- *    answer drops what it held (`dropViewerActions`).
+ *    answer drops what it held (`dropViewerActions`). The row shows a held
+ *    place as soon as the answer is on screen, says it waits, and „Anzeigen“
+ *    opens it at once: the person's press is theirs, and counts as the one
+ *    place of that answer.
  *  - One place per answer moves on its own; any other is offered.
  *  - The person can turn it off (`setViewerActionsAuto`, in the row and on the
  *    profile page); with reduced motion asked of the system it starts off.
@@ -30,7 +33,11 @@
  *    the runner (`features/documents/lib/viewer-action-runner.ts`); a document
  *    they may not see is refused and nothing moves.
  *  - „Zurücknehmen“ says so only when it put something back: a viewer the
- *    person has since changed is left as they made it.
+ *    person has since changed is left as they made it. An action that left the
+ *    chat (the model view) offers it only while the page is still where it
+ *    went (`noteViewerLocation`); after that there is nothing to take back, and
+ *    the row drops the control rather than navigate somewhere the person did
+ *    not come from.
  *
  * A name off this bundle's allow-list (a newer server's sixth action) is passed
  * over, not refused: the wire reads it as a string (`isViewerAction`).
@@ -88,13 +95,21 @@ export interface ViewerActionEntry {
   reason?: OfferReason
   refusal?: RefusalReason
   where?: ShownWhere
+  /** A shown action whose place the person has left (the model view): nothing to take back, no „Zurücknehmen“. */
+  left?: true
 }
 
 /** An undo says whether it put anything back. */
 export type ViewerActionUndo = () => boolean
 
 export type ViewerActionOutcome =
-  | { outcome: 'shown'; where: ShownWhere; undo: ViewerActionUndo }
+  | {
+      outcome: 'shown'
+      where: ShownWhere
+      undo: ViewerActionUndo
+      /** Whether the undo could still act now; absent: always. Asked when the page moves (`noteViewerLocation`). */
+      undoable?: () => boolean
+    }
   | { outcome: 'refused'; reason: RefusalReason }
   | { outcome: 'failed' }
 
@@ -114,6 +129,7 @@ export const VIEWER_ACTIONS_AUTO_KEY = 'grid.viewerActions.auto'
 
 let runner: ViewerActionRunner | null = null
 const undos = new Map<string, ViewerActionUndo>()
+const undoables = new Map<string, () => boolean>()
 
 const readAuto = (): boolean => {
   try {
@@ -253,6 +269,7 @@ const execute = async (id: string): Promise<void> => {
   const result = await runner.run(entry.call).catch((): ViewerActionOutcome => ({ outcome: 'failed' }))
   if (result.outcome === 'shown') {
     undos.set(id, result.undo)
+    if (result.undoable) undoables.set(id, result.undoable)
     patch(id, { status: 'shown', reason: undefined, where: result.where })
     return
   }
@@ -301,10 +318,11 @@ export const proposeViewerAction = (answerId: string, call: ViewerActionCall): v
  * offered. One place per answer moves the viewer.
  */
 export const releaseViewerActions = async (answerId: string): Promise<void> => {
-  const held = (useViewerActionStore.getState().byAnswer[answerId] ?? []).filter(
-    (id) => useViewerActionStore.getState().entries[id]?.status === 'held'
-  )
-  let moved = false
+  const ids = useViewerActionStore.getState().byAnswer[answerId] ?? []
+  const statusOf = (id: string) => useViewerActionStore.getState().entries[id]?.status
+  const held = ids.filter((id) => statusOf(id) === 'held')
+  // A place the person opened while the turn ran is this answer's one move.
+  let moved = ids.some((id) => statusOf(id) === 'pending' || statusOf(id) === 'shown')
   for (const id of held) {
     const entry = useViewerActionStore.getState().entries[id]
     if (!entry) continue
@@ -390,8 +408,15 @@ export const citationViewerAction = (cited: {
   return { tool_call_id: id, tool_call_name: 'open_document', args: base }
 }
 
-/** The person pressed „Anzeigen“: run it now, whatever the setting says. */
-export const showViewerAction = (id: string): Promise<void> => execute(id)
+/**
+ * The person pressed „Anzeigen“: run it now, whatever the setting says. A held
+ * one leaves the hold first, so the answer arriving meanwhile neither runs it
+ * again nor moves another place.
+ */
+export const showViewerAction = (id: string): Promise<void> => {
+  if (useViewerActionStore.getState().entries[id]?.status === 'held') patch(id, { status: 'pending' })
+  return execute(id)
+}
 
 /**
  * The person pressed „Zurücknehmen“. The row says „Zurückgenommen“ only when the
@@ -401,14 +426,29 @@ export const undoViewerAction = (id: string): void => {
   const undo = undos.get(id)
   if (!undo) return
   undos.delete(id)
+  undoables.delete(id)
   patch(id, { status: undo() ? 'undone' : 'kept' })
 }
 
-/** The actions of one answer, in arrival order, for its row; none while its turn still runs. */
+/**
+ * The page moved (the host's route changed). An action that left the chat and
+ * whose place the person has since left has nothing to take back: its undo is
+ * dropped and its row offers no „Zurücknehmen“.
+ */
+export const noteViewerLocation = (): void => {
+  for (const [id, undoable] of [...undoables]) {
+    if (undoable()) continue
+    undoables.delete(id)
+    undos.delete(id)
+    patch(id, { left: true })
+  }
+}
+
+/** The actions of one answer, in arrival order, for its row; a held one too, so the row says it waits. */
 export const viewerActionsOf = (state: ViewerActionState, answerId: string): ViewerActionEntry[] =>
   (state.byAnswer[answerId] ?? []).flatMap((id) => {
     const entry = state.entries[id]
-    return entry && entry.status !== 'held' ? [entry] : []
+    return entry ? [entry] : []
   })
 
 /** The actions in `next` that `previous` did not hold yet, in arrival order, and only those this bundle can run. */
@@ -425,6 +465,7 @@ export const newViewerActions = (
 export const resetViewerActions = (): void => {
   useViewerActionStore.setState({ entries: {}, byAnswer: {}, latestAnswer: null, auto: null, besideChat: false })
   undos.clear()
+  undoables.clear()
   runner = null
   lastTypedAt = Number.NEGATIVE_INFINITY
 }
