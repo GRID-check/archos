@@ -6,7 +6,8 @@ import { installPdb, onNodeGroup, spreadAcrossNodes } from "../platform/scheduli
 import { hardenedContainerSecurityContext } from "../platform/security";
 import { agentWorkerRollout, gracefulShutdown, secretChecksumAnnotations, surgeRollout } from "../platform/rollout";
 import { withLangfuseKeysChecksum } from "../platform/langfuse";
-import { AppSecrets, AppWiring, BFF_QUEUE_DSN_KEY, SCALER_SECRET_NAME, bffJobsEnv } from "./config";
+import { AppSecrets, AppWiring, BFF_QUEUE_DSN_KEY, SCALER_SECRET_NAME } from "./config";
+import { bffJobsEnv } from "./bff-jobs-env";
 import { installQueueScaledObject, installTriggerAuth, queueDepthQuery } from "./keda-scaling";
 import { PORT, UID } from "../constants";
 
@@ -28,6 +29,10 @@ export const BFF_QUEUE_DEPTH_QUERY = queueDepthQuery(QUEUE_TABLE);
  * `bff_job_queue`, fairly across organizations (fewest running first,
  * fleet-wide), and has that BFF run them a bounded slice at a time. So the heavy
  * work lands here, never on the user-facing frontend pods that proxy chat.
+ * With `bffJobsMode: inprocess` there is no BFF in the pod: the supervisor runs
+ * the slices from the bundled services (`dist-jobs/slice.mjs`) and answers the
+ * probes' `/api/healthz` itself, so the probes below hold in both modes
+ * (ADR-0079 amendment 1).
  *
  * INTERNAL ONLY. No Service and no HTTPRoute: nothing routes to these pods, and
  * the one caller of their BFF is the claim loop on the pod's own loopback
