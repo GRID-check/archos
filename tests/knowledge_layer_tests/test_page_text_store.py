@@ -57,7 +57,7 @@ def test_a_failed_page_keeps_its_entry_with_no_body():
 def test_offsets_are_bytes_not_characters():
     body, index = _render([PageText(1, "Gebäude ß"), PageText(2, "zwei")], page_count=2)
     second = index["pages"][1]
-    assert body[second["offset"] : second["offset"] + second["length"]] == "zwei\n".encode()
+    assert body[second["offset"] : second["offset"] + second["length"]] == b"zwei\n"
 
 
 def test_the_pipelines_pages_carry_what_read_them():
