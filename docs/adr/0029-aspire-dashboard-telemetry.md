@@ -1,10 +1,10 @@
+---
+status: superseded by ADR-0100
+---
+
 # ADR-0029: Aspire Standalone Dashboard as Live Telemetry Pane
 
 Date: 2026-07-27
-
-## Status
-
-Superseded by ADR-0100
 
 ## Context
 

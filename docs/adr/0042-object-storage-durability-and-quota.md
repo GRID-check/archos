@@ -1,6 +1,9 @@
+---
+status: proposed
+---
+
 # ADR-0042: Object-storage durability — backup, quota, and least privilege
 
-- **Status:** Proposed
 - **Date:** 2026-08-07
 - **Deciders:** Grid Agent team
 - **Superseded in part by:** [ADR-0043](0043-seaweedfs-split-topology-and-per-tenant-buckets.md) — the topology split this ADR deferred, which is what turns chunk encryption from crypto-erasure into at-rest protection.

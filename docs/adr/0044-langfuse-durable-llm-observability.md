@@ -1,6 +1,9 @@
+---
+status: proposed
+---
+
 # ADR-0044: Langfuse as the durable LLM-observability backend
 
-- **Status:** Proposed
 - **Date:** 2026-08-09
 - **Deciders:** Platform
 - **Related:** ADR-0029 (Aspire dashboard telemetry), ADR-0031 (err2issue),

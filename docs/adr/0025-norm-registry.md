@@ -1,6 +1,10 @@
+---
+status: accepted
+---
+
 # ADR-0025: Norm catalog — flat curated pointers + prose legal notes, admin-managed
 
-- **Status:** Accepted (v2 — supersedes the v1 "typed legal-document spine" draft of this ADR, reduced after adversarial review; see Context)
+- **Status note:** v2 — supersedes the v1 "typed legal-document spine" draft of this ADR, reduced after adversarial review; see Context
 - **Date:** 2026-07-18
 - **Deciders:** Grid engineering
 - **Related:** ADR-0006 (knowledge collection scoping), ADR-0016 (platform owner tier), ADR-0024 (org Archiv), `docs/superpowers/specs/2026-07-17-norm-registry-design.md` (superseded design, kept for history), `configs/norms/`

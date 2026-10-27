@@ -1,6 +1,9 @@
+---
+status: proposed
+---
+
 # ADR-0059: Assignment is not access (and not provenance)
 
-- **Status:** Proposed
 - **Date:** 2026-08-13
 - **Deciders:** Platform engineering
 - **Related:** ADR-0004 (tenancy, ownership & access), ADR-0032 (shareable-resource

@@ -1,6 +1,10 @@
+---
+status: accepted
+---
+
 # ADR-0047: A document's shelf travels as data, not as a name or a label
 
-- **Status:** Accepted (Phase 1 and Phase 2 implemented; see the 2026-09-27 amendment)
+- **Status note:** Phase 1 and Phase 2 implemented; see the 2026-09-27 amendment
 - **Date:** 2026-08-12
 - **Deciders:** Grid engineering
 - **Related:** ADR-0024 (org-wide Archiv), ADR-0026 (source-kind taxonomy), ADR-0045 (IFC models as a queryable building)

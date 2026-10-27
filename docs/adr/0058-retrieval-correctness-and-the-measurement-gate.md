@@ -1,6 +1,9 @@
+---
+status: proposed
+---
+
 # ADR-0058: Retrieval correctness, structure-aware chunking, and the measurement gate
 
-- **Status:** Proposed
 - **Date:** 2026-08-10
 - **Deciders:** Platform / backend
 - **Related:** ADR-0039 (agentic retrieval quality package), ADR-0020 (shared cache),

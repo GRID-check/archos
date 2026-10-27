@@ -13,8 +13,10 @@ New records use [MADR 4](https://adr.github.io/madr/). The shape is in
 [`0000-template.md`](0000-template.md). Records 0001–0049 predate that template
 and follow the lightweight
 [Michael Nygard pattern](https://cognitect.com/blog/2011/11/15/documenting-architecture-decisions);
-they are left in the shape they were written in, because an accepted decision is
-superseded rather than rewritten.
+their bodies are left in the shape they were written in, because an accepted
+decision is superseded rather than rewritten. Their status is metadata, not the
+decision: since 2026-10 every record, old or new, carries it as frontmatter
+`status:` and nowhere else, and `scripts/check_adrs.py` refuses any other form.
 
 Working in here: [`AGENTS.md`](AGENTS.md).
 
@@ -58,6 +60,7 @@ Consequences, where a reader looks for them.
 | `accepted` | Agreed and in effect. |
 | `rejected` | Considered and declined; kept so it is not re-proposed. |
 | `superseded by ADR-NNNN` | Replaced by a later decision; kept for history. |
+| `superseded` | Replaced, and the replacing record is not written yet (0048). Becomes `superseded by ADR-NNNN` when it is. |
 | `deprecated` | No longer relevant, but not directly replaced. |
 
 ## Index

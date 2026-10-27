@@ -1,6 +1,9 @@
+---
+status: accepted
+---
+
 # ADR-0008: Project & Organization Memory (agent-authored, single-writer)
 
-- **Status:** Accepted
 - **Date:** 2026-07-05
 - **Deciders:** Grid Agent team
 - **Related:** [ADR-0003](0003-nextjs-bff-and-stateless-python-agent.md), [`../architecture/project-memory-design.md`](../architecture/project-memory-design.md)

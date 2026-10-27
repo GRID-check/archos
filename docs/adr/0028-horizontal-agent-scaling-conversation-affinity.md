@@ -1,6 +1,9 @@
+---
+status: accepted
+---
+
 # ADR-0028: Horizontally scaling the aiq-agent container via conversation affinity
 
-- **Status:** Accepted
 - **Date:** 2026-07-22
 - **Deciders:** Platform engineering
 - **Related:** ADR-0021 (DB-claimed workers), ADR-0020 (Dragonfly shared cache),

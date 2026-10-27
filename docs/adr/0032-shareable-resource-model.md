@@ -1,6 +1,9 @@
+---
+status: accepted
+---
+
 # ADR-0032: The shareable-resource model, and where resource-level grants live
 
-- **Status:** Accepted
 - **Date:** 2026-07-29
 - **Deciders:** Platform engineering
 - **Related:** ADR-0004 (tenancy, ownership & access), ADR-0007 (no local identity sync),

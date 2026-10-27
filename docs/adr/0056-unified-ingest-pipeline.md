@@ -1,6 +1,9 @@
+---
+status: accepted
+---
+
 # ADR-0056: Unified Document Processing Pipeline with Concurrent VLM Enrichment
 
-- **Status:** Accepted
 - **Date:** 2026-07-27
 - **Deciders:** Engineering team
 - **Related:** ADR-0020 (shared cache), ADR-0025 (norm registry), ADR-0026 (source kinds), `docs/architecture/backend-deep-dive.md`

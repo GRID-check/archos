@@ -1,6 +1,9 @@
+---
+status: accepted
+---
+
 # ADR-0033: Server-authoritative shared conversations (and the seam that keeps private ones local-first)
 
-- **Status:** Accepted
 - **Date:** 2026-07-29
 - **Deciders:** Platform engineering
 - **Related:** ADR-0009 (WebSocket-only chat transport), ADR-0028 (conversation
