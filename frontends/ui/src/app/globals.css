@@ -961,7 +961,12 @@ body {
    roughly constant across the two — rather than accepting a signal that is
    quietly weaker for half the users.
    ============================================================================= */
+/* A passage opened without a source behind it (a search hit, not a citation)
+   has no provenance tint, so it takes ink — the FIXED paper ink, as the
+   reader's own search hits do below. `--ring` was the fallback once, and it is
+   paper-white in dark mode: the mark vanished on the white page. */
 :root {
+  --passage-ink: color-mix(in oklch, var(--paper-ink) 64%, transparent);
   --passage-strength: 38%;
   --passage-peak: 88%;
   --passage-halo: 30%;
@@ -976,21 +981,21 @@ body {
 @keyframes grid-passage-ping {
   0% {
     background-color: transparent;
-    box-shadow: 0 0 0 0 color-mix(in oklch, var(--passage-tint, var(--ring)) 70%, transparent);
+    box-shadow: 0 0 0 0 color-mix(in oklch, var(--passage-tint, var(--passage-ink)) 70%, transparent);
   }
   /* The swell. It has to overshoot the resting mark by a wide margin — at a few
      points of difference the "arrival" is invisible against the mark it settles
      into, which is the whole event. The halo spreads past the band so the eye is
      caught by a shape appearing, not only by a colour changing. */
   30% {
-    background-color: color-mix(in oklch, var(--passage-tint, var(--ring)) var(--passage-peak), transparent);
+    background-color: color-mix(in oklch, var(--passage-tint, var(--passage-ink)) var(--passage-peak), transparent);
     box-shadow: 0 0 0 5px
-      color-mix(in oklch, var(--passage-tint, var(--ring)) var(--passage-halo), transparent);
+      color-mix(in oklch, var(--passage-tint, var(--passage-ink)) var(--passage-halo), transparent);
   }
   100% {
     background-color: color-mix(
       in oklch,
-      var(--passage-tint, var(--ring)) var(--passage-strength),
+      var(--passage-tint, var(--passage-ink)) var(--passage-strength),
       transparent
     );
     box-shadow: 0 0 0 0 transparent;
@@ -1003,7 +1008,7 @@ body {
      one thing a highlight must not do to the sentence it is pointing at. */
   background-color: color-mix(
     in oklch,
-    var(--passage-tint, var(--ring)) var(--passage-strength),
+    var(--passage-tint, var(--passage-ink)) var(--passage-strength),
     transparent
   );
   mix-blend-mode: multiply;
@@ -1023,7 +1028,7 @@ body {
 .region-highlight {
   --passage-strength: 14%;
   --passage-peak: 40%;
-  outline: 2px solid color-mix(in oklch, var(--passage-tint, var(--ring)) 85%, transparent);
+  outline: 2px solid color-mix(in oklch, var(--passage-tint, var(--passage-ink)) 85%, transparent);
   outline-offset: 0;
 }
 
@@ -1033,7 +1038,7 @@ body {
 }
 
 .region-label {
-  box-shadow: 0 0 0 1px color-mix(in oklch, var(--passage-tint, var(--ring)) 60%, transparent);
+  box-shadow: 0 0 0 1px color-mix(in oklch, var(--passage-tint, var(--passage-ink)) 60%, transparent);
 }
 
 /* The fuzzy mark: a windowed or partial match, the software's best guess at
@@ -1045,7 +1050,7 @@ body {
   --passage-strength: 22%;
   --passage-peak: 60%;
   outline: 1.5px dashed
-    color-mix(in oklch, var(--passage-tint, var(--ring)) 65%, transparent);
+    color-mix(in oklch, var(--passage-tint, var(--passage-ink)) 65%, transparent);
   outline-offset: 1px;
 }
 

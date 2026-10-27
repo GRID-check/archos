@@ -92,6 +92,10 @@ type PostHogProperties = Record<string, string | number | boolean | null | undef
  * `report_exported` is the trigger of the CSAT survey in PostHog (a person took a
  * generated document out of the app); its properties are `kind` and `format`.
  *
+ * `search_issued`, `search_result_opened`, `search_refined`, `saved_search_created`
+ * and `saved_search_run` are the workspace search's (`features/search/lib/search-telemetry.ts`):
+ * the shape of a question and the counts of its answer, never its words.
+ *
  * `answer_completed` closes a chat turn (`outcome`, `duration_ms`,
  * `citation_count`, `source_kinds`, `effort`, `has_run`); `citation_opened`,
  * `document_opened` and `ifc_model_opened` are the three ways a reader goes from
@@ -126,6 +130,11 @@ export type PostHogEvent =
   | 'report_exported'
   | 'similar_passages_searched'
   | 'similar_passage_opened'
+  | 'search_issued'
+  | 'search_result_opened'
+  | 'search_refined'
+  | 'saved_search_created'
+  | 'saved_search_run'
   | 'usage_notice_shown'
   | 'usage_notice_dismissed'
   | 'viewer_action_outcome'

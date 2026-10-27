@@ -41,7 +41,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
  */
 
 /** A listing row, optionally carrying the evidence for a semantic match. */
-export type FileListRow = FileItem & { snippet?: string; page?: number | null; score?: number }
+export type FileListRow = FileItem & { snippet?: string; page?: number | null; rank?: number }
 
 interface FileListViewProps {
   files: FileListRow[]
@@ -88,10 +88,6 @@ interface FileListViewProps {
    */
   selection?: { active: boolean; selectedIds: ReadonlySet<string>; onToggle: (id: string) => void }
 }
-
-/** A 0..1 backend score as the whole percent the reader sees. */
-const percentOf = (score: number | undefined): number =>
-  Math.max(0, Math.min(100, Math.round((score ?? 0) * 100)))
 
 /** Dense explorer cells — tighter than the admin Table default. */
 const CELL = 'px-2 py-1.5 pointer-coarse:py-3'
@@ -466,13 +462,15 @@ const FileListRowItem = memo(function FileListRowItem({
             CELL,
           )}
         >
-          <span
-            className="font-medium text-foreground"
-            title={t('browser.semantic.relevance', { percent: String(percentOf(file.score)) })}
-            data-testid="file-list-relevance"
-          >
-            {percentOf(file.score)}%
-          </span>
+          {file.rank !== undefined && (
+            <span
+              className="font-medium text-foreground"
+              title={t('browser.semantic.rank', { rank: String(file.rank) })}
+              data-testid="file-list-relevance"
+            >
+              {file.rank}
+            </span>
+          )}
         </TableCell>
       )}
       <TableCell className={CELL}>

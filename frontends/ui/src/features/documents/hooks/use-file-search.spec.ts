@@ -4,30 +4,34 @@ import { HttpResponse } from 'msw'
 import { server } from '@/mocks/server'
 import { OFFICE_SHELF_SEARCH_SCOPE, projectSearchScope } from '../lib/file-shelf'
 import { useFileSearch } from './use-file-search'
-import { shelfPost } from '@/test-utils/shelf-handlers'
+import { http } from 'msw'
+import { documentSearchAnswer } from '@/test-utils/search-answers'
 
 describe('useFileSearch', () => {
-  let requests: Array<{ path: string; body: unknown }>
+  let requests: Array<{ path: string; query: string; body: unknown }>
 
   beforeEach(() => {
     requests = []
-    const answer = async ({ request }: { request: Request }) => {
-      requests.push({ path: new URL(request.url).pathname, body: await request.json() })
-      return HttpResponse.json({ hits: [] })
-    }
     server.use(
-      shelfPost('project', '/api/documents/search', answer),
-      shelfPost('office_shelf', '/api/documents/search', answer)
+      http.post('/api/search', async ({ request }) => {
+        const url = new URL(request.url)
+        requests.push({ path: url.pathname, query: url.search, body: await request.json() })
+        return HttpResponse.json(documentSearchAnswer([]))
+      })
     )
   })
 
-  it('searches a project with its id in the body', async () => {
+  it('asks the one search for the documents of a project, the project as the scope', async () => {
     const { result } = renderHook(() => useFileSearch(projectSearchScope('proj-1')))
     act(() => result.current.setQuery('Brandschutz'))
     act(() => result.current.run())
 
     await waitFor(() => expect(requests).toHaveLength(1))
-    expect(requests[0]).toEqual({ path: '/api/documents/search', body: { q: 'Brandschutz', projectId: 'proj-1' } })
+    expect(requests[0]).toEqual({
+      path: '/api/search',
+      query: '?projectId=proj-1',
+      body: { text: 'Brandschutz', kinds: ['document'], facets: false },
+    })
   })
 
   it('searches the Archiv by its scope, shelf-wide', async () => {
@@ -36,7 +40,11 @@ describe('useFileSearch', () => {
     act(() => result.current.run())
 
     await waitFor(() => expect(requests).toHaveLength(1))
-    expect(requests[0]).toEqual({ path: '/api/documents/search', body: { q: 'Brandschutz', scope: 'office_shelf' } })
+    expect(requests[0]).toEqual({
+      path: '/api/search',
+      query: '?scope=office_shelf',
+      body: { text: 'Brandschutz', kinds: ['document'], facets: false },
+    })
   })
 
   it('offers the substring filter alone without a scope', () => {

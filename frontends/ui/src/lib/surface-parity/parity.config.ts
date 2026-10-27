@@ -181,6 +181,13 @@ export const SURFACE_CAPABILITIES = {
     // The review offers its selection to the chat's own turns (`registerCanvasFocusProvider`); the turn sends it as `focus_region`.
     chat: { component: 'features/documents/lib/review-focus.ts' },
   },
+  referenceDocument: {
+    summary: 'Pick a document from the live workspace search into a message, which makes it the question’s subject',
+    operations: ['workspace-search'],
+    canvas: { exempt: 'The canvas shows one document, which is already the subject of what is asked there' },
+    // `#` in the composer: the palette's live results in the composer's picker panel; a pick sets the composer subject.
+    chat: { component: 'features/search/components/composer-search-picker.tsx' },
+  },
   openAtPlace: {
     summary: 'Open a document at a page, with a region glowing',
     canvas: { component: `${REVIEW}/document-review.tsx` },

@@ -66,6 +66,29 @@ describe('parseDossier', () => {
     expect(dossier?.facts).toEqual([{ key: 'gross_floor_area', value: '1245.5', unit: 'm²', page: 3, quote: null }])
   })
 
+  it('reads what a new Fassung changed against the one it replaced, once per key', () => {
+    const dossier = parseDossier({
+      document_type: 'submission_drawing',
+      facts: [{ key: 'storeys_above_ground', value: '5' }],
+      changes: [
+        { key: 'storeys_above_ground', before: '4', after: '5', page: 2 },
+        { key: 'storeys_above_ground', before: '3', after: '5', page: 2 },
+        { key: 'room_height', before: '2.60 m', after: null, page: null },
+        { key: 'colour', before: 'rot', after: 'blau' },
+        { key: 'units', before: null, after: null },
+      ],
+      changed_against: 'EP-01_C.pdf',
+    })
+    expect(dossier?.changes).toEqual([
+      { key: 'storeys_above_ground', before: '4', after: '5', page: 2 },
+      { key: 'room_height', before: '2.60 m', after: null, page: null },
+    ])
+  })
+
+  it('has no changes field when the dossier says nothing of a predecessor', () => {
+    expect(parseDossier({ document_type: 'permit' })).not.toHaveProperty('changes')
+  })
+
   it('bounds parties, facts and quotes to the contract', () => {
     const dossier = parseDossier({
       parties: Array.from({ length: 12 }, (_, index) => ({ role: 'engineer', name: `Büro ${index}` })),

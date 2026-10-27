@@ -303,6 +303,24 @@
     "step": null
    }
   },
+  "referenceDocument": {
+   "summary": "Pick a document from the live workspace search into a message, which makes it the question’s subject",
+   "tool": null,
+   "annotationOp": null,
+   "operations": [
+    "workspace-search"
+   ],
+   "canvas": {
+    "kind": "exempt",
+    "reason": "The canvas shows one document, which is already the subject of what is asked there"
+   },
+   "chat": {
+    "kind": "rendering",
+    "component": "features/search/components/composer-search-picker.tsx",
+    "card": null,
+    "step": null
+   }
+  },
   "openAtPlace": {
    "summary": "Open a document at a page, with a region glowing",
    "tool": null,

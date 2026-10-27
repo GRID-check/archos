@@ -85,6 +85,7 @@ export const chat = {
     // files) rather than a silent dead tile.
     unresolvedHint: 'The assistant referenced this file.',
     openInOfficeShelf: 'Open in Office filing',
+    openInSearch: 'Open in search',
     openInFiles: 'Open in project files',
     // The resolve fetch failed — a retry affordance, not a permanent dead tile.
     loadError: 'Documents couldn’t be loaded.',

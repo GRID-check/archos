@@ -50,7 +50,9 @@ import {
   listMessagesForConversation,
   listVisibleConversations,
   upsertConversationRead,
+  visibleConversationsWhere,
 } from './repository'
+import { conversations } from '@/lib/db/schema'
 
 const PROJECT_ID = '3f2504e0-4f89-11d3-9a0c-0305e82c3301'
 
@@ -184,6 +186,33 @@ describe('listVisibleConversations — no project scope', () => {
     // And crucially: `project` visibility alone does NOT make the cut here — the
     // same rule the scoped branch now applies to its unstamped rows.
     expect(params).not.toContain('project')
+  })
+})
+
+describe('visibleConversationsWhere — over the projects a search reaches', () => {
+  const OTHER_ID = '3f2504e0-4f89-11d3-9a0c-0305e82c3302'
+  const statement = (projects: Parameters<typeof visibleConversationsWhere>[2]) =>
+    recordingDb
+      .select({ id: conversations.id })
+      .from(conversations)
+      .where(visibleConversationsWhere('org_1', 'user_me', projects))
+      .toSQL()
+
+  it('narrows only private rows inside the named projects, and judges unstamped rows on their own grounds', () => {
+    const { sql, params } = statement({ projectIds: [PROJECT_ID, OTHER_ID], withoutContainer: true })
+    expect(sql).toContain(
+      '("conversations"."project_id" in ($2, $3) and ("conversations"."visibility" <> $4 or "conversations"."created_by" = $5'
+    )
+    expect(sql).toContain('or ("conversations"."project_id" is null and (')
+    expect(params.slice(0, 3)).toEqual(['org_1', PROJECT_ID, OTHER_ID])
+    expect(sql.match(/"conversations"\."visibility" <> /g)).toHaveLength(1)
+  })
+
+  it('leaves the unstamped rows out when asked to, and matches nothing for no project and no unstamped rows', () => {
+    expect(statement({ projectIds: [PROJECT_ID], withoutContainer: false }).sql).not.toContain('is null')
+    const none = statement({ projectIds: [], withoutContainer: false }).sql
+    expect(none).toContain('false')
+    expect(none).not.toContain('"conversations"."project_id"')
   })
 })
 

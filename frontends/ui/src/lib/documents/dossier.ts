@@ -88,6 +88,8 @@ export const DOSSIER_MAX_DATES = 8
 export const DOSSIER_MAX_FACTS = 24
 export const DOSSIER_MAX_QUOTE_LENGTH = 240
 export const DOCUMENT_REFERENCES_MAX = 60
+/** Fact changes a new Fassung's dossier carries at most (`dossier.MAX_CHANGES`). */
+export const DOSSIER_MAX_CHANGES = 12
 /** Not in the contract: a sane ceiling for text a person reads in a rail. */
 const MAX_NAME_LENGTH = 200
 const MAX_TITLE_LENGTH = 300
@@ -128,6 +130,19 @@ export interface DossierFact {
   quote: string | null
 }
 
+/**
+ * One fact a new Fassung states differently from the one it replaced
+ * (`dossier.fact_changes`): `before` null is newly stated, `after` null no
+ * longer stated. Values carry their unit, as the documents write them.
+ */
+export interface DossierFactChange {
+  key: DossierFactKey
+  before: string | null
+  after: string | null
+  /** The page of the new Fassung that states it, or null. */
+  page: number | null
+}
+
 export interface Dossier {
   documentType: DossierDocumentType | null
   title: string | null
@@ -136,6 +151,12 @@ export interface Dossier {
   dates: DossierDate[]
   place: DossierPlace | null
   facts: DossierFact[]
+  /**
+   * What changed against the Fassung this one replaced, when that one had a
+   * dossier too. Absent says nothing: a document ingested before the
+   * comparison existed, or with no predecessor, carries none.
+   */
+  changes?: DossierFactChange[]
 }
 
 export interface DocumentReference {
@@ -220,6 +241,15 @@ function parseFact(raw: unknown): DossierFact | null {
   }
 }
 
+function parseFactChange(raw: unknown): DossierFactChange | null {
+  if (!isRecord(raw)) return null
+  const key = oneOf(DOSSIER_FACT_KEYS, raw.key)
+  const before = boundedText(raw.before, MAX_VALUE_LENGTH + MAX_UNIT_LENGTH + 1)
+  const after = boundedText(raw.after, MAX_VALUE_LENGTH + MAX_UNIT_LENGTH + 1)
+  if (!key || (before === null && after === null)) return null
+  return { key, before, after, page: usablePage(raw.page) }
+}
+
 /** Parse each entry, keep what survives, stop at `max`. */
 function boundedList<T>(raw: unknown, parse: (entry: unknown) => T | null, max: number): T[] {
   const parsed: T[] = []
@@ -248,6 +278,18 @@ export function parseDossier(raw: unknown): Dossier | null {
     place: parsePlace(raw.place),
     facts: boundedList(raw.facts, parseFact, DOSSIER_MAX_FACTS),
   }
+  const seenChanges = new Set<string>()
+  const changes = boundedList(
+    raw.changes,
+    (entry) => {
+      const change = parseFactChange(entry)
+      if (!change || seenChanges.has(change.key)) return null
+      seenChanges.add(change.key)
+      return change
+    },
+    DOSSIER_MAX_CHANGES
+  )
+  if (changes.length > 0) dossier.changes = changes
   const empty =
     !dossier.documentType &&
     !dossier.title &&

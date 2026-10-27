@@ -50,12 +50,5 @@ export const documentFileQuerySchema = z.object({
   download: z.string().max(8).optional(),
 })
 
-/** `POST /api/documents/search` */
-export const searchDocumentsSchema = z.object({
-  ...shelfSelectorFields,
-  q: z.string().trim().min(1).max(1000),
-  topK: z.number().int().min(1).max(100).optional(),
-})
-
 /** `GET /api/documents/summary` */
 export const documentSummaryQuerySchema = documentSummaryFilterSchema.extend(shelfSelectorFields)
