@@ -28,7 +28,13 @@ TESTS = {
     "tests/test_config.py": "load('configs/config_oib_openrouter.yml')",
     "sources/knowledge_layer/tests/test_schema.py": "read('schemas.json')",
 }
-READERS = ["src/lib/authz/authz-coverage.spec.ts"]
+READERS = {"src/lib/authz/authz-coverage.spec.ts": None}
+#: One reader that declares its inputs, one that does not.
+DECLARED = {
+    "src/app/api/authz-coverage.spec.ts": ("frontends/ui/src/app/api/**",),
+    "src/lib/skills/legacy-names.spec.ts": ("src/aiq_agent/skills/builtin.py",),
+    "src/english-names.spec.ts": None,
+}
 
 
 @pytest.fixture(scope="module")
@@ -191,14 +197,14 @@ def test_what_every_spec_loads_forces_the_full_ui_suite(mod, path):
 def test_a_config_the_bff_reads_still_runs_the_disk_readers(mod):
     mode, files, _ = mod.decide_ui(["configs/config_oib_openrouter.yml"], READERS)
 
-    assert (mode, files) == ("select", READERS)
+    assert (mode, files) == ("select", list(READERS))
 
 
 def test_a_backend_fixture_runs_the_ui_specs_that_read_it(mod):
     # `skills/resolve-payload-contract.spec.ts` reads one from disk.
     changed = ["tests/fixtures/skills_resolve/resolve_payload.json"]
 
-    assert mod.decide_ui(changed, READERS)[:2] == ("select", READERS)
+    assert mod.decide_ui(changed, READERS)[:2] == ("select", list(READERS))
 
 
 def test_a_change_no_ui_spec_reads_runs_no_ui_spec(mod):
@@ -210,8 +216,42 @@ def test_the_disk_readers_are_found_by_what_they_do(mod):
 
     assert readers, "no UI spec reads from disk any more? then the rule is stale"
     assert all(not path.startswith("node_modules/") for path in readers)
-    for path in readers[:20]:
+    for path in list(readers)[:20]:
         assert mod.READS_DISK.search((ROOT / mod.UI / path).read_text(encoding="utf-8"))
+    # Top-level specs too: fnmatch's `**/` needs a directory, vitest's does not.
+    assert "src/english-names.spec.ts" in readers
+
+
+def test_a_declaring_reader_runs_only_when_its_inputs_change(mod):
+    mode, files, _ = mod.decide_ui(["frontends/ui/src/features/chat/x.tsx"], DECLARED)
+
+    assert mode == "select"
+    assert files == ["src/english-names.spec.ts", "src/features/chat/x.tsx"]
+
+    _, files, _ = mod.decide_ui(["frontends/ui/src/app/api/projects/route.ts"], DECLARED)
+    assert "src/app/api/authz-coverage.spec.ts" in files
+
+
+def test_a_declared_input_outside_the_ui_selects_its_reader(mod):
+    """Before declarations, a change to a Python file a UI spec reads ran no UI spec at all."""
+    mode, files, _ = mod.decide_ui(["src/aiq_agent/skills/builtin.py"], DECLARED)
+
+    assert mode == "select"
+    assert files == ["src/english-names.spec.ts", "src/lib/skills/legacy-names.spec.ts"]
+
+
+def test_the_declaration_is_read_relative_to_the_ui(mod):
+    source = "// @disk-inputs: src/app/api/**, ../../shared/wire/v2/**\nimport x from 'y'\n"
+
+    assert mod.declared_inputs(source) == ("frontends/ui/src/app/api/**", "shared/wire/v2/**")
+    assert mod.declared_inputs("import x from 'y'\n") is None
+    # A Next route's brackets are literal, not an fnmatch character class.
+    (route,) = mod.declared_inputs("// @disk-inputs: src/app/api/v1/[...path]/route.ts\n")
+    assert mod._matches("frontends/ui/src/app/api/v1/[...path]/route.ts", [route])
+    assert not mod._matches("frontends/ui/src/app/api/v1/p/route.ts", [route])
+    # What a child process reads, no recorder sees: such a spec never counts as declared.
+    spawning = "// @disk-inputs: src/**\nimport { execFileSync } from 'node:child_process'\n"
+    assert mod.declared_inputs(spawning) is None
 
 
 # --- The reference ------------------------------------------------------------------

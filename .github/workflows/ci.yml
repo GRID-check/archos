@@ -428,9 +428,11 @@ jobs:
       - name: Combine the shards and apply the gate
         run: |
           coverage="coverage==$(uv export --frozen --only-group dev --no-hashes --no-emit-workspace | sed -n 's/^coverage==\([^ ;]*\).*/\1/p')"
-          uvx --from "$coverage" coverage combine --keep .coverage.shard*
-          uvx --from "$coverage" coverage xml -o coverage.xml
-          uvx --from "$coverage" coverage report --fail-under=65
+          # The shards' interpreter: coverage re-parses every source file, and
+          # the runner's own 3.12 cannot read 3.14 syntax (`except A, B:`).
+          uvx --python 3.14 --from "$coverage" coverage combine --keep .coverage.shard*
+          uvx --python 3.14 --from "$coverage" coverage xml -o coverage.xml
+          uvx --python 3.14 --from "$coverage" coverage report --fail-under=65
       - name: Coverage comment (backend)
         if: github.event_name == 'pull_request'
         continue-on-error: true # never fail CI on a comment hiccup

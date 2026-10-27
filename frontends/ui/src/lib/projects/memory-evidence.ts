@@ -22,7 +22,7 @@
 import 'server-only'
 import { and, eq, inArray } from 'drizzle-orm'
 import { getDb } from '@/lib/db'
-import { documents } from '@/lib/db/schema'
+import { documents } from '@/lib/db/schema/documents'
 import { documentVisibleTo, type DocumentReader } from '@/lib/documents/visibility'
 import { liveFolderAccess } from '@/lib/permits/live-access'
 import { servedFrom } from '@/lib/permits/repository'

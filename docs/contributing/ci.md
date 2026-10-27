@@ -318,10 +318,18 @@ it spawns does; the push run is what catches that.
 
 **The UI suite selects the same way, by import graph.** `vitest related`
 keeps the specs whose imports reach a changed file, split over the same eight
-shards. Every spec that reads the tree from disk instead of importing it (the
-route, key and migration walkers; ~100 found by what they call, not by a
-list) runs on every selection, because no import graph connects them to a
-change. Changes to what every spec loads (the manifest, the vitest config and
+shards. A spec that reads the tree from disk instead of importing it (the
+route, key and migration walkers; ~120, found by what they call, not by a
+list) has inputs no import graph sees, so it declares them in its first line,
+`// @disk-inputs: src/app/api/**, ../../shared/wire/v2/**` (globs relative to
+`frontends/ui`), and runs when a changed path matches one, wherever in the
+repository it is. `config/vitest/disk-inputs.ts` records what every declaring
+spec reads while it runs and fails it on a path the line leaves out; `node
+scripts/declare-disk-inputs.mjs <spec>` rewrites the line from a recorded run.
+A spec that declares nothing runs on every selection, as all of them used to:
+one that starts a process (the recorder cannot see the child's reads), one
+that reads from a file list (over 60 inputs: `english-names.spec.ts`), and one
+that read nothing in the recording run. Changes to what every spec loads (the manifest, the vitest config and
 setup, the mocks the setup installs, tsconfig) run the whole suite. A median
 squash commit that touches the UI still selected 815 of 1,644 specs, 86% of
 the suite's time, in October 2026: half of them change a dictionary string,

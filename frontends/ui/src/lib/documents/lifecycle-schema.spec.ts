@@ -1,3 +1,4 @@
+// @disk-inputs: tests/fixtures/document-lifecycle.schema.json
 /**
  * @vitest-environment node
  */

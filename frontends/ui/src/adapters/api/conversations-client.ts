@@ -1,4 +1,5 @@
-import type { Conversation, Message } from '@/lib/db/schema'
+import type { Conversation } from '@/lib/db/schema/conversations'
+import type { Message } from '@/lib/db/schema/messages'
 import { fetchThreadHistory } from '@/lib/conversations/history-client'
 import type { MessageView } from '@/lib/conversations/message-view'
 

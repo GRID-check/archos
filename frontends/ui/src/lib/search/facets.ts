@@ -12,7 +12,7 @@
  */
 
 import { createHash } from 'node:crypto'
-import type { NewDocumentSearchFacetsRow, SearchFacetChange, SearchFacetFact, SearchFacetParty } from '@/lib/db/schema'
+import type { NewDocumentSearchFacetsRow, SearchFacetChange, SearchFacetFact, SearchFacetParty } from '@/lib/db/schema/document-search'
 import type { DocumentMetadata } from '@/lib/documents/reconcile-status'
 import { squashDrawingNumber } from '@/lib/documents/findings'
 

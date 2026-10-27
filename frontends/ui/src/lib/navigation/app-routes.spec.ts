@@ -1,3 +1,4 @@
+// @disk-inputs: src/app/app/**
 /**
  * URL invariance for the `/app` route tree.
  *

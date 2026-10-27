@@ -20,13 +20,8 @@ import { canWriteDocument } from '@/lib/documents/can-write'
 import { getPlatformOrganizationId, hasPlatformPermission } from '@/lib/authz/platform'
 import { withTenant } from '@/lib/db/tenant-context'
 import { publishToUser } from '@/lib/events/bus'
-import type {
-  InboxItem,
-  InboxItemType,
-  InboxTargetType,
-  NewInboxItem,
-  ShareableResourceType,
-} from '@/lib/db/schema'
+import type { InboxItem, InboxItemType, InboxTargetType, NewInboxItem } from '@/lib/db/schema/inbox'
+import type { ShareableResourceType } from '@/lib/db/schema/resource-shares'
 import { enqueueInboxPushes } from '@/lib/push/enqueue'
 import { listProjectNamesInOrg } from '@/lib/projects/repository'
 import { resolvePeople } from '@/lib/sharing/directory'

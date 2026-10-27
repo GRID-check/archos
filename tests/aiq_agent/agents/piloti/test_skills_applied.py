@@ -16,8 +16,8 @@ from aiq_agent.agents.piloti.answer_pipeline import finalize_answer
 from aiq_agent.agents.piloti.ledger import assemble_result
 from aiq_agent.agents.piloti.models import ResearchAgentState
 from aiq_agent.agents.piloti.register import _report_skills
-from aiq_agent.common.citation_verification import SourceEntry
-from aiq_agent.common.citation_verification import SourceRegistry
+from aiq_agent.citations.entries import SourceEntry
+from aiq_agent.citations.registry import SourceRegistry
 from aiq_agent.skills.models import Skill
 from aiq_agent.skills.runtime import SkillRuntime
 

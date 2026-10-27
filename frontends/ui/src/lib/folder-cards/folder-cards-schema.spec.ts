@@ -1,3 +1,4 @@
+// @disk-inputs: tests/fixtures/folder-cards.schema.json
 /**
  * @vitest-environment node
  */

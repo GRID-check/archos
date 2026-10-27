@@ -14,10 +14,10 @@ import re
 from collections.abc import Sequence
 from typing import Any
 
-from aiq_agent.common.citation_verification import SourceEntry
-from aiq_agent.common.citation_verification import _entry_from_hit
-from aiq_agent.common.citation_verification import _inline_citation_numbers
-from aiq_agent.common.citation_verification import get_grounding_block
+from aiq_agent.citations.entries import SourceEntry
+from aiq_agent.citations.extraction import _entry_from_hit
+from aiq_agent.citations.report_layout import inline_citation_numbers
+from aiq_agent.common.grounding_block import get_grounding_block
 
 _RESULT_HEADER_RE = re.compile(r"^--- Result (\d+) ---$", re.MULTILINE)
 
@@ -92,7 +92,7 @@ def resolve_unlisted_numbers(text: str, numbered: dict[int, list[SourceEntry]]) 
     """
     every = [entry for held in numbered.values() for entry in held]
     resolved: dict[int, SourceEntry] = {}
-    for number in sorted(_inline_citation_numbers(text)):
+    for number in sorted(inline_citation_numbers(text)):
         carrying = _carrying(text, number)
         counts = [(sum(_holds(sentence, entry) for sentence in carrying), entry) for entry in every]
         best = max((count for count, _ in counts), default=0)

@@ -185,7 +185,7 @@ def _eval(script: str, collection: str, floor: int) -> int | None:
         return None
     try:
         return int(result)
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         logger.warning("Collection version for %s came back non-numeric: %r", collection, result)
         return None
 

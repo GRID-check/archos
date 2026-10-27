@@ -1,3 +1,4 @@
+// @disk-inputs: src/**
 /**
  * The two mobile contracts `touch-target.spec.ts` cannot see.
  *

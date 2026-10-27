@@ -1,3 +1,4 @@
+// @disk-inputs: tests/fixtures/ifc/sample-building-geometry.ifc, tests/fixtures/ifc/sample-building.ifc
 /**
  * @vitest-environment node
  *

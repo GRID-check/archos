@@ -20,7 +20,7 @@
  */
 
 import 'server-only'
-import type { PilotiWakeRow } from '@/lib/db/schema'
+import type { PilotiWakeRow } from '@/lib/db/schema/document-annotations'
 import { publishToDocumentRoom } from '@/lib/realtime/document-channel'
 import type { PilotiWorkView } from './types'
 import { wakeEndReasonKind } from './wake-end-reason'

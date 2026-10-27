@@ -1,3 +1,4 @@
+// @disk-inputs: tests/fixtures/project-intake.schema.json
 /**
  * @vitest-environment node
  */

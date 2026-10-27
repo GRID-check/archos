@@ -975,7 +975,7 @@ def _classes_of(model: SpatialModel | None, global_ids: Sequence[str] | None) ->
     for global_id in global_ids:
         try:
             found.append(model.file.by_guid(global_id).is_a())
-        except (RuntimeError, KeyError):
+        except RuntimeError, KeyError:
             continue
     return sorted(dict.fromkeys(found))
 

@@ -42,7 +42,8 @@ import { eq, and, ne, sql } from 'drizzle-orm'
 
 import { getDb } from '@/lib/db'
 import { withTenant } from '@/lib/db/tenant-context'
-import { conversations, messages, type ConversationEngagement } from '@/lib/db/schema'
+import { conversations, type ConversationEngagement } from '@/lib/db/schema/conversations'
+import { messages } from '@/lib/db/schema/messages'
 
 /**
  * Whether it is worth OFFERING `mention` for a thread nobody has set a mode on.

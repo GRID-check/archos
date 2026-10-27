@@ -1,12 +1,12 @@
 """WorkOS-specific JWT validator factory.
 
-Returns a :class:`aiq_api.auth.JWTValidator` configured to verify WorkOS
+Returns a :class:`JWTValidator` configured to verify WorkOS
 access tokens against the WorkOS JWKS endpoint for a given client ID.
 """
 
 import os
 
-from aiq_api.auth import JWTValidator
+from .jwt_validator import JWTValidator
 
 
 def create_workos_validator() -> JWTValidator:

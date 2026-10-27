@@ -93,7 +93,7 @@ def point_id(chunk_id: str) -> str:
     """The Qdrant point id for a chunk: the chunk id itself when it is a UUID."""
     try:
         return str(uuid.UUID(chunk_id))
-    except (ValueError, AttributeError, TypeError):
+    except ValueError, AttributeError, TypeError:
         return str(uuid.uuid5(_POINT_NAMESPACE, str(chunk_id)))
 
 
@@ -126,7 +126,7 @@ def _as_bool(value: Any) -> bool | None:
 def _as_int(value: Any) -> int | None:
     try:
         return int(float(value))
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         return None
 
 

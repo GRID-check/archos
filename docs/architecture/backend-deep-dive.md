@@ -763,7 +763,7 @@ research turn renders ~40 real corpus filenames plus their summaries into the
 system prompt. Those filenames are *exactly* the citation keys
 `verify_citations` matches against, and the registry it matches them against
 holds only sources captured from actual tool results
-(`common/citation_verification.py`). A model that cites a filename it read off
+(`citations/references.py`). A model that cites a filename it read off
 the inventory rather than out of a `knowledge_search` result therefore gets
 every such citation dropped with `citation_key_not_in_registry`, and the answer
 ships with the visible "Ohne Quellenangabe" note — while the document sits
@@ -1075,13 +1075,13 @@ Herleitung never reads them back out of the text. It still writes them as the
 
 The renderer files each block under the SHA-256 of the exact bytes it returns,
 in a per-turn `ContextVar` that `PilotiAgent.run` opens beside
-`begin_lane_capture`. `citation_verification.extract_sources_from_tool_result`
+`begin_lane_capture`. `citations/extraction.py::extract_sources_from_tool_result`
 looks the block up by that hash and builds `SourceEntry`s by field copy, so a
 passage body cannot supply a header field the producer omitted. `PilotiAgent.run`
 is the only caller that opens the capture, so the structured read is what a
 Piloti turn gets for `knowledge_search`, `read_passage` and `ris_lookup`, and
 the deep researcher, the conversation path and the job runner parse the text.
-The text parsers in `citation_verification`
+The text parsers in `citations/text_parsers.py`
 (`_parse_knowledge_layer` and the eleven `_KL_*` regexes) stay for the callers
 that hold the bytes without the records: a registry hydrated from the shared
 cache, a turn replayed out of Postgres, and the job runner's callback in
@@ -1153,7 +1153,7 @@ Three things make it fit the rest of the tier rather than sit beside it. Its
 output is `_format_results`, so citations, the `Punkt:` line and the
 `## Trace-Lanes` fan-out under the round stamp all work unchanged and nothing
 downstream learns a second shape. That claim was false for one release:
-`citation_verification` registers its knowledge parser on the substring
+`citations/text_parsers.py` registers its knowledge parser on the substring
 `knowledge`, which `read_passage` does not contain, so the locator's passages
 fell to the non-URL fallback and registered one source whose citation key was
 the string `read_passage`. A citation to a passage the turn OPENED rather than
@@ -1479,7 +1479,7 @@ Austria's). The org-Archiv stratum (ADR-0024) sits beside these unchanged.
   `applicable-standards.ts`), German trigger hints for the four boolean intake
   facts (Kleingarten, Denkmalschutz, Betriebsanlage, Stellplatz), and the
   prompt section Piloti renders from the project context.
-- **Display tagging** — `lane_for_hit` / `citation_verification.source_lane`
+- **Display tagging** — `lane_for_hit` / `citations/binding.py::source_lane`
   map a retrieval or citation hit to a stratum + lane label (Bundesrecht /
   Landesrecht / Verordnung via catalog rank; OIB lanes via filename class;
   Projektwissen / Büroablage / Web via collection origin) for the research
@@ -1832,7 +1832,7 @@ resolution/exclusion, `LLMProvider` construction, verbose/trace callback setup,
 per-request data-source-filtered rebuild, tool-availability validation, and
 prompt-loading fallbacks. Good shared primitives already live in
 `src/aiq_agent/common/` (`llm_provider`, `data_source_registry`, `tool_validation`,
-`prompt_utils`, `citation_verification`).
+`prompt_utils`, `citations`).
 
 **Recommended (not yet implemented):** a `src/aiq_agent/common/agent_base.py`
 providing `resolve_tools()`, `build_llm_provider()`, `with_tool_guard()`, a

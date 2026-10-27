@@ -4,7 +4,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { AuthorizedSession } from '@/lib/auth/types'
 import { ForbiddenError, NotFoundError } from '@/lib/api/errors'
-import type { Document } from '@/lib/db/schema'
+import type { Document } from '@/lib/db/schema/documents'
 import type { RevisionLinks } from './revision-links'
 
 vi.mock('server-only', () => ({}))

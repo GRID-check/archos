@@ -22,13 +22,7 @@ import 'server-only'
 import { BadRequestError } from '@/lib/api/errors'
 import type { AuthorizedSession } from '@/lib/auth/types'
 import type { DbExecutor } from '@/lib/db/executor'
-import {
-  RESOURCE_ROLES,
-  SHAREABLE_RESOURCE_TYPES,
-  type ResourceRole,
-  type ResourceVisibility,
-  type ShareableResourceType,
-} from '@/lib/db/schema'
+import { RESOURCE_ROLES, SHAREABLE_RESOURCE_TYPES, type ResourceRole, type ResourceVisibility, type ShareableResourceType } from '@/lib/db/schema/resource-shares'
 import {
   conversationIdsExisting,
   findConversationInOrg,

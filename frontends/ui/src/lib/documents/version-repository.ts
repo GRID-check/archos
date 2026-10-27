@@ -11,17 +11,10 @@
 import 'server-only'
 import { and, asc, desc, eq, gt, inArray, isNotNull, isNull, lt, ne, sql } from 'drizzle-orm'
 import { getDb } from '@/lib/db'
-import {
-  documentVersionReviews,
-  documentVersions,
-  documents,
-  inboxItems,
-  projects,
-  type DocumentReviewOutcome,
-  type DocumentSubmitActor,
-  type DocumentVersion,
-  type NewDocumentVersion,
-} from '@/lib/db/schema'
+import { documentVersionReviews, documentVersions, type DocumentReviewOutcome, type DocumentSubmitActor, type DocumentVersion, type NewDocumentVersion } from '@/lib/db/schema/document-versions'
+import { documents } from '@/lib/db/schema/documents'
+import { inboxItems } from '@/lib/db/schema/inbox'
+import { projects } from '@/lib/db/schema/projects'
 import {
   lockStorageQuota,
   readStorageUsage,

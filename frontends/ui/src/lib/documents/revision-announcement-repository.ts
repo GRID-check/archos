@@ -7,7 +7,7 @@
 import 'server-only'
 import { and, eq } from 'drizzle-orm'
 import { getDb } from '@/lib/db'
-import { documentRevisionAnnouncements } from '@/lib/db/schema'
+import { documentRevisionAnnouncements } from '@/lib/db/schema/document-revision-announcements'
 import { withTenant } from '@/lib/db/tenant-context'
 
 /** One announced Fassung: the newer document, and the anchor its inbox item uses. */

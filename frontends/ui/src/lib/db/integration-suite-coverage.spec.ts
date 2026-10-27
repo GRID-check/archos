@@ -1,3 +1,4 @@
+// @disk-inputs: ../../scripts/rls-test-db.sh, ../../taskfiles/**, src/**
 /**
  * @vitest-environment node
  *
