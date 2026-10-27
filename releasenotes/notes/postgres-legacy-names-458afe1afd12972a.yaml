@@ -1,0 +1,8 @@
+---
+operators:
+  - >
+    The Postgres databases aiq_jobs and aiq_checkpoints are renamed to jobs and
+    checkpoints, and the role aiq to agent, automatically on the deploy that
+    carries this: a Kubernetes Job before the backend rolls, and a one-shot
+    postgres-rename service in Compose. Expect a short outage of the backend
+    while it runs. Nothing to do by hand.

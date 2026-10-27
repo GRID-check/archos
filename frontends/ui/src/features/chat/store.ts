@@ -24,18 +24,29 @@ export type ChatStoreWithHydration = ChatStore & {
   /** True once persist rehydration has settled (or found nothing to restore). */
   hasHydrated: boolean
 }
-import {
-  createMessagesSlice,
-  createSessionsSlice,
-  createInteractionSlice,
-} from './stores'
+import { createMessagesSlice } from './stores/messages-store'
+import { createSessionsSlice } from './stores/sessions-store'
+import { createInteractionSlice } from './stores/interaction-store'
 import { chatIndexKey, createResilientStorage } from './stores/chat-storage'
+import { moveStoredChat } from './stores/chat-storage-rename'
 import {
   logStoreHydration,
   logExternalStorageEvent,
 } from './lib/storage-logger'
 
-const CHAT_STORE_NAME = 'aiq-chat-store'
+const CHAT_STORE_NAME = 'chat-store'
+/** The store's name before ADR-0145; its keys move once (`chat-storage-rename.ts`). */
+const LEGACY_CHAT_STORE_NAME = 'aiq-chat-store'
+
+const chatStorage = () => {
+  if (typeof window === 'undefined') return undefined
+  try {
+    moveStoredChat(LEGACY_CHAT_STORE_NAME, CHAT_STORE_NAME)
+  } catch {
+    // No localStorage: createResilientStorage reports it and stores nothing.
+  }
+  return createResilientStorage()
+}
 
 export const useChatStore = create<ChatStoreWithHydration>()(
   devtools(
@@ -50,7 +61,7 @@ export const useChatStore = create<ChatStoreWithHydration>()(
       {
         // The prefix of every key the chat store writes (`stores/chat-storage.ts`).
         name: CHAT_STORE_NAME,
-        storage: typeof window === 'undefined' ? undefined : createResilientStorage(),
+        storage: chatStorage(),
         partialize: (state) => ({
           currentUserId: state.currentUserId,
           conversations: state.conversations,

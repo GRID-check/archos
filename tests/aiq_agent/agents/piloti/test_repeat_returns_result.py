@@ -35,7 +35,7 @@ from aiq_agent.citations.entries import SourceEntry
 from aiq_agent.citations.registry import SourceRegistry
 from aiq_agent.common import LLMProvider
 from aiq_agent.common import turn_status
-from aiq_agent.common.turn_status import FETCH_FAILED_MARKER
+from aiq_agent.common.tool_calls import FETCH_FAILED_MARKER
 
 _PROMPT = "Du bist Piloti."
 

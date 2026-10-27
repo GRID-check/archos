@@ -41,7 +41,7 @@ vi.mock('../store', () => ({
 }))
 
 // Mock the chat store (no longer uses useIsCurrentSessionBusy for navigation)
-vi.mock('@/features/chat', () => ({
+vi.mock('@/features/chat/store', () => ({
   useChatStore: vi.fn(),
 }))
 
@@ -65,7 +65,7 @@ vi.mock('./DeleteSessionConfirmationModal', () => ({
 }))
 
 import { useLayoutStore } from '../store'
-import { useChatStore } from '@/features/chat'
+import { useChatStore } from '@/features/chat/store'
 
 /**
  * Helper to create a mock chat store state.

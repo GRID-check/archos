@@ -18,9 +18,8 @@ from knowledge_layer.llamaindex.adapter import LlamaIndexRetriever
 from knowledge_layer.qdrant import store as store_module
 from knowledge_layer.qdrant import writes
 from knowledge_layer.qdrant.payload import ChunkRecord
-
-from sources.knowledge_layer.tests.qdrant_testing import record as _record
-from sources.knowledge_layer.tests.qdrant_testing import vector as _vector
+from knowledge_layer_testing.qdrant import record as _record
+from knowledge_layer_testing.qdrant import vector as _vector
 
 #: The real reader, before ``retriever`` stubs it for the tests that need no metadata store.
 FACTS_BY_FILE = writes.facts_by_file
@@ -128,7 +127,7 @@ def test_a_foreign_embedder_is_refused_on_write(retriever):
     """The write checks the identity the collection was created with: two vector spaces never share one."""
     _ingest(retriever, "proj_a", [_row("x", "a.pdf")])
     store_module.reset_store()
-    other = {"aiq:embed_fingerprint": "other-fp", "aiq:embed_model": "other-model"}
+    other = {"embed_fingerprint": "other-fp", "embed_model": "other-model"}
     with pytest.raises(RuntimeError, match="embedding mismatch"):
         writes.write_chunks("proj_a", "b.pdf", [_row("y", "b.pdf")], identity=other)
     store_module.reset_store()

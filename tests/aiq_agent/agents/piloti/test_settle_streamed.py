@@ -2,31 +2,14 @@
 
 from __future__ import annotations
 
+from agent_testing.settle_streamed import SOURCES
+from agent_testing.settle_streamed import _registry
+
 from aiq_agent.agents.piloti.answer_pipeline import settle_streamed_citations
 from aiq_agent.citations.entries import DROPPED_CITATION_MARKER
 from aiq_agent.citations.entries import UNVERIFIED_QUOTE_MARKER
 from aiq_agent.citations.entries import SourceEntry
 from aiq_agent.citations.registry import SourceRegistry
-
-
-def _registry() -> SourceRegistry:
-    registry = SourceRegistry()
-    for page in (12, 13):
-        registry.add(
-            SourceEntry(
-                citation_key=f"oib-rl_2_ausgabe_mai_2023.pdf, p.{page}",
-                source_type="knowledge_layer",
-                collection="oib_knowledge",
-                tool_name="knowledge_search",
-            )
-        )
-    return registry
-
-
-SOURCES = (
-    "**Quellen:**\n- [1] oib-rl_2_ausgabe_mai_2023.pdf, p.12\n- [2] erfunden.pdf, p.1\n"
-    "- [3] oib-rl_2_ausgabe_mai_2023.pdf, p.13"
-)
 
 
 def test_an_unbacked_marker_is_labelled_and_the_rest_take_the_numbers_the_terminal_will_give():

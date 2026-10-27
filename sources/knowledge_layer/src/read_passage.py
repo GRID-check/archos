@@ -73,7 +73,7 @@ from pydantic import ConfigDict
 from pydantic import Field
 
 from aiq_agent.common.action_outcome import ActionOutcome
-from aiq_agent.common.turn_status import ActionRow
+from aiq_agent.common.action_rows import ActionRow
 from nat.plugin_api import Builder
 from nat.plugin_api import Context
 from nat.plugin_api import FunctionBaseConfig
@@ -1324,7 +1324,7 @@ def _empty_document_message(document: str) -> str:
 
 def _store_silent_message(query: str) -> str:
     """Every fetch for this locus raised. Not an empty document; an unanswered store."""
-    from aiq_agent.common.turn_status import FETCH_FAILED_MARKER
+    from aiq_agent.common.tool_calls import FETCH_FAILED_MARKER
 
     # Marked so the agent's duplicate-fetch guard can tell this apart from a
     # passage that was actually read: without the marker the retry this
@@ -1602,7 +1602,7 @@ async def read_passage(config: ReadPassageConfig, _builder: Builder):
         return result
 
     async def _read_body(arguments: ReadPassageInput, outcome: ActionOutcome) -> str:
-        from aiq_agent.common.turn_status import READ_PASSAGE_TOOL
+        from aiq_agent.common.tool_calls import READ_PASSAGE_TOOL
         from aiq_agent.common.turn_status import lane_tool_scope
 
         # `conclusion` is unread here on purpose — see the note in

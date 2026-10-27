@@ -394,7 +394,7 @@ class TestTheTool:
 
 
 def _page(file_name: str, n: int, text: str):
-    from sources.knowledge_layer.tests.qdrant_testing import record
+    from knowledge_layer_testing.qdrant import record
 
     return record(text, file_name, page_label=str(n), content_type="text")
 
@@ -402,7 +402,7 @@ def _page(file_name: str, n: int, text: str):
 @pytest.fixture
 def stored(monkeypatch, qdrant_store):  # noqa: ARG001 - the store the compare reads
     """Index A and Index B as the index holds them, in a real Qdrant: one value moved on page 2."""
-    from sources.knowledge_layer.tests.qdrant_testing import write
+    from knowledge_layer_testing.qdrant import write
 
     write(
         "proj_1",
@@ -463,7 +463,7 @@ class TestComparing:
         One chunk per page (the fixture above) cannot see a shuffled page; the
         Sentence splitter cuts several from a real one.
         """
-        from sources.knowledge_layer.tests.qdrant_testing import write
+        from knowledge_layer_testing.qdrant import write
 
         lines = [f"Zeile {i}: Brandabschnitt {i} hat Feuerwiderstand REI {30 + i}" for i in range(8)]
         for name in ("Plan_Index_A.pdf", "Plan_Index_B.pdf"):
@@ -480,7 +480,7 @@ class TestComparing:
     async def test_an_unreachable_index_is_said_as_one_never_as_not_in_the_index(self, scope, stored, monkeypatch):
         from knowledge_layer.qdrant import store as store_module
 
-        from aiq_agent.common.turn_status import FETCH_FAILED_MARKER
+        from aiq_agent.common.tool_calls import FETCH_FAILED_MARKER
 
         def down(*_args, **_kwargs):
             raise ConnectionError("qdrant down")

@@ -29,7 +29,7 @@ from aiq_agent.agents.deep_researcher.custom_middleware import SubagentEventsMid
 from aiq_agent.agents.deep_researcher.models import ResearchNotes
 from aiq_agent.agents.deep_researcher.models import ResearchQuery
 from aiq_agent.agents.deep_researcher.tools import research
-from aiq_agent.common.turn_status import ToolStepCallback
+from aiq_agent.common.action_rows import ToolStepCallback
 from aiq_agent.common.turn_status import emit_step
 from aiq_agent.common.wire_v2 import StatusStep
 from aiq_agent.common.wire_v2 import StepFinishedBody

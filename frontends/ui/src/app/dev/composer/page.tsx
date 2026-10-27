@@ -30,7 +30,7 @@ import { notFound } from 'next/navigation'
 import { AppConfigProvider, type AppConfig } from '@/shared/context'
 import { getFileUploadConfigFromEnv } from '@/shared/config/file-upload'
 import { InputArea } from '@/features/layout/components'
-import { useChatStore } from '@/features/chat'
+import { useChatStore } from '@/features/chat/store'
 import { useLayoutStore } from '@/features/layout/store'
 import { publishThreadRole } from '@/shared/collaboration/thread-sharing'
 

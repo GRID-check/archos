@@ -42,7 +42,7 @@ const second = answered()
 const link = encodeCitationLink({ document: first[0]!, locus: first[0]!.loci[1]! })
 
 // The viewer itself is not what this asserts — how MANY of it are mounted is.
-vi.mock('./SourcePreview', () => ({
+vi.mock('./source-preview/source-document-dialog', () => ({
   SourceDocumentDialog: ({
     citation,
     onClose,

@@ -11,6 +11,11 @@ import logging
 from typing import Any
 
 import pytest
+from agent_testing.intake import JOB
+from agent_testing.intake import NEEDS
+from agent_testing.intake import NEEDS_BODY
+from agent_testing.intake import recorded_all
+from agent_testing.intake import validator
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import AIMessage
 from langchain_core.messages import HumanMessage
@@ -23,11 +28,6 @@ from aiq_agent.agents.intake.models import IntakeAgentState
 from aiq_agent.agents.intake.read_log import current_read_log
 from aiq_agent.common import LLMProvider
 from aiq_agent.common.cost_tracking import BudgetExceededError
-from tests.aiq_agent.agents.intake.conftest import JOB
-from tests.aiq_agent.agents.intake.conftest import NEEDS
-from tests.aiq_agent.agents.intake.conftest import NEEDS_BODY
-from tests.aiq_agent.agents.intake.conftest import recorded_all
-from tests.aiq_agent.agents.intake.conftest import validator
 
 
 class ScriptedModel(BaseChatModel):
@@ -309,8 +309,9 @@ class TestWhenNothingCanBeRecorded:
 
 class TestTheOpening:
     def test_it_is_the_projects_state_with_the_last_readings_note(self):
+        from agent_testing.intake import NEEDS_BODY
+
         from aiq_agent.agents.intake.agent import first_message
-        from tests.aiq_agent.agents.intake.conftest import NEEDS_BODY
 
         opening = first_message(
             "Neue Dokumente hochgeladen", {**NEEDS_BODY, "previousSummary": "Einreichplan gelesen; Fluchtniveau offen."}
@@ -323,9 +324,9 @@ class TestTheOpening:
 class TestThePrompt:
     def test_the_product_framing_scan_reads_this_prompt(self):
         """``tests/aiq_agent/test_product_framing.py`` holds every prompt to VISION.md and CONTEXT.md."""
-        from tests.aiq_agent.test_product_framing import FILE_AS_PLAN
-        from tests.aiq_agent.test_product_framing import OLD_FRAME
-        from tests.aiq_agent.test_product_framing import PROMPTS
+        from agent_testing.product_framing import FILE_AS_PLAN
+        from agent_testing.product_framing import OLD_FRAME
+        from agent_testing.product_framing import PROMPTS
 
         assert "src/aiq_agent/agents/intake/prompts/system.j2" in PROMPTS
         from aiq_agent.agents.intake.agent import system_prompt
