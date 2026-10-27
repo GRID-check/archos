@@ -30,6 +30,11 @@ DOTTED = re.compile(
 )
 
 
+#: Through `sources.`, only a package's own `src` or `tests` directory is a path
+#: (`"sources.count"`, a telemetry key, is not).
+SOURCES_PATH = re.compile(r"sources\.\w+\.(?:src|tests)\b")
+
+
 def _suite_directories() -> frozenset[str]:
     """The directories under ``tests/`` a move may take with it: all but ``fixtures``."""
     return frozenset(path.name for path in (ROOT / "tests").iterdir() if path.is_dir() and path.name != "fixtures")
@@ -40,7 +45,7 @@ def _offenders(files: dict[str, str], suites: frozenset[str]) -> list[str]:
         f"{name}:{text[: match.start()].count(chr(10)) + 1}: {match['path']}"
         for name, text in sorted(files.items())
         for match in DOTTED.finditer(text)
-        if match["root"] == "sources" or match["top"] in suites
+        if (match["root"] == "sources" and SOURCES_PATH.match(match["path"])) or match["top"] in suites
     ]
 
 
@@ -70,6 +75,8 @@ def test_the_check_sees_each_spelling_and_lets_the_stable_ones_through():
             "from tests.fixtures.drafting_turns import FILE\n"
             "from .conftest import BODY\n"
             "from knowledge_layer_testing.qdrant import write\n"
+            'span.set_attribute("sources.count", 3)\n'
+            "value = row['sources.0.title']\n"
             "# a comment about tests.aiq_agent.tools is prose, not an import\n"
         ),
     }
