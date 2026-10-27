@@ -5,7 +5,7 @@
 
 import { desc, sql, type SQL } from 'drizzle-orm'
 import { getDb } from '@/lib/db'
-import { projectMemory } from '@/lib/db/schema'
+import { projectMemory } from '@/lib/db/schema/project-memory'
 import { cosineSimilaritySql, type EmbeddedNote } from '@/lib/knowledge/embeddings'
 
 /**
