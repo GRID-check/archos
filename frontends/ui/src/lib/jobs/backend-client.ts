@@ -14,18 +14,24 @@
  */
 
 import 'server-only'
+// The leaf, not `@/lib/backend-proxy`: that module pulls
+// `@workos-inc/authkit-nextjs`, which the session-less scheduler fire path (and
+// these unit tests) must not load.
+import { getBackendUrl } from '@/lib/backend-url'
+import { InternalServiceUnavailableError, internalServiceHeaders } from '@/lib/internal-auth'
 import type { PlanDocument, PlanDocuments } from '@/lib/runs/plan-documents'
 
 /**
- * Backend base URL — same resolution as `getBackendUrl` in
- * `@/lib/backend-proxy`, deliberately NOT imported from there: that module
- * pulls `@workos-inc/authkit-nextjs`, which the session-less scheduler fire
- * path (and these unit tests) must not load. Keep the env chain in sync.
+ * The service-token header for a call to the backend, or the caller's own error
+ * (with the producer's 503) when this deployment cannot send one.
  */
-function getBackendUrl(): string {
-  const url =
-    process.env.BACKEND_URL || process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000'
-  return url.replace(/\/$/, '')
+function serviceHeaders(toError: (message: string, status: number) => Error): Record<string, string> {
+  try {
+    return internalServiceHeaders(getBackendUrl())
+  } catch (error) {
+    if (error instanceof InternalServiceUnavailableError) throw toError(error.message, error.status)
+    throw error
+  }
 }
 
 /**
@@ -166,10 +172,7 @@ export async function submitJob(
   payload: JobSubmitPayload,
   extraHeaders: Record<string, string>
 ): Promise<{ jobId: string; queued: boolean }> {
-  const token = process.env.GRID_INTERNAL_API_TOKEN
-  if (!token) {
-    throw new JobSubmitError('GRID_INTERNAL_API_TOKEN is not configured', 503)
-  }
+  const tokenHeaders = serviceHeaders((message, status) => new JobSubmitError(message, status))
 
   let response: Response
   try {
@@ -177,8 +180,8 @@ export async function submitJob(
       method: 'POST',
       headers: {
         'content-type': 'application/json',
-        'x-grid-internal-token': token,
         ...extraHeaders,
+        ...tokenHeaders,
       },
       body: JSON.stringify(payload),
     })
@@ -336,13 +339,12 @@ const KILL_TIMEOUT_MS = 120_000
  * `JobCancelError` for anything but a well-formed 2xx.
  */
 export async function killActiveBackendJobs(): Promise<BackendKillResult> {
-  const token = process.env.GRID_INTERNAL_API_TOKEN
-  if (!token) throw new JobCancelError('GRID_INTERNAL_API_TOKEN is not configured', 503)
+  const tokenHeaders = serviceHeaders((message, status) => new JobCancelError(message, status))
   let response: Response
   try {
     response = await fetch(`${getBackendUrl()}/v1/internal/jobs/kill-active`, {
       method: 'POST',
-      headers: { Accept: 'application/json', 'x-grid-internal-token': token },
+      headers: { Accept: 'application/json', ...tokenHeaders },
       signal: AbortSignal.timeout(KILL_TIMEOUT_MS),
     })
   } catch (err) {
@@ -416,8 +418,7 @@ export async function fetchBackendJobOutcome(
   backendJobId: string,
   organizationId: string
 ): Promise<BackendJobOutcome | null> {
-  const token = process.env.GRID_INTERNAL_API_TOKEN
-  if (!token) throw new JobProbeError('GRID_INTERNAL_API_TOKEN is not configured', 503)
+  const tokenHeaders = serviceHeaders((message, status) => new JobProbeError(message, status))
 
   const url =
     `${getBackendUrl()}/v1/internal/jobs/${encodeURIComponent(backendJobId)}/outcome` +
@@ -425,7 +426,7 @@ export async function fetchBackendJobOutcome(
   let response: Response
   try {
     response = await fetch(url, {
-      headers: { Accept: 'application/json', 'x-grid-internal-token': token },
+      headers: { Accept: 'application/json', ...tokenHeaders },
       signal: AbortSignal.timeout(PROBE_TIMEOUT_MS),
     })
   } catch (err) {

@@ -30,6 +30,14 @@ while disabled):
   `grid-locale` cookie (no provider exists) and reuses `errors.appError` for its
   copy, German and English. The prop is `retry` (stable since Next 16.3).
 
+Next's control flow (`redirect()`, `notFound()`, `forbidden()`: a throw the
+framework catches and turns into navigation) is never an exception.
+`lib/analytics/control-flow-error.ts` recognises it by `digest` or by the bare
+`NEXT_REDIRECT` message a server action's rejected promise carries, and three
+places drop it: `capturePosthogException`, the browser `before_send`
+(`scrubEvent`, for the unhandled-rejection autocapture) and the server
+`beforeCapture`.
+
 Neither boundary reports an authorization denial (an expected outcome, told by
 its message, since a server-thrown class does not survive the RSC boundary) or an error with a `digest` (thrown on the server, where
 `onRequestError` already reported it with its stack; the client copy is the

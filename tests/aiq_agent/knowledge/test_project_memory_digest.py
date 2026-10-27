@@ -6,6 +6,7 @@ import json
 
 import pytest
 
+from aiq_agent.common import bff_http
 from aiq_agent.knowledge import project_memory as pm
 
 
@@ -31,7 +32,7 @@ def _patched_opener(monkeypatch, *, body=None, error=None):
                 raise error
             return _FakeResponse(json.dumps(body).encode("utf-8"))
 
-    monkeypatch.setattr(pm, "_opener", _Opener())
+    monkeypatch.setattr(bff_http, "_opener", _Opener())
     yield captured
 
 
@@ -72,7 +73,7 @@ def test_blank_digest_returns_none(monkeypatch):
 def test_transport_error_propagates(monkeypatch):
     monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", "t")
     with _patched_opener(monkeypatch, error=OSError("boom")):
-        with pytest.raises(OSError):
+        with pytest.raises(bff_http.BffUnreachableError):
             pm.fetch_memory_digest(project_id="p1", organization_id=None)
 
 
@@ -98,7 +99,7 @@ def test_timeout_error_propagates_for_failopen(monkeypatch):
     connection-time digest (fail-open) instead of dropping memory."""
     monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", "t")
     with _patched_opener(monkeypatch, error=TimeoutError("timed out")):
-        with pytest.raises(TimeoutError):
+        with pytest.raises(bff_http.BffUnreachableError):
             pm.fetch_memory_digest(project_id="p1", organization_id=None)
 
 

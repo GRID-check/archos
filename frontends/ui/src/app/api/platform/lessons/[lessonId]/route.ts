@@ -17,7 +17,7 @@ import { PLATFORM_PERMISSIONS } from '@/lib/authz/permissions'
 import { getLessonProvenance, updateLesson } from '@/lib/platform-lessons/service'
 import { updateLessonSchema } from '@/lib/platform-lessons/types'
 
-const lessonIdSchema = z.string().uuid()
+const lessonIdSchema = z.guid()
 
 /** A path segment that is not a uuid names nothing — 404, not a 500. */
 function parseLessonId(params: { lessonId?: string | string[] }): string {

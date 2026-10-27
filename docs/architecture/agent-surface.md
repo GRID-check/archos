@@ -843,9 +843,10 @@ that decides whether the call works. `summary` is one line, for search and for
 ### Schemas
 
 `body`, `query` and `params` are zod and are exported to JSON Schema by
-`lib/api/zod-json-schema.ts`, which refuses a node it cannot describe. If a shared
-schema fails that (`z.custom`, `z.date`), extend the exporter when the node is
-describable. Otherwise give the operation a looser `body` written for the agent
+`lib/api/zod-json-schema.ts`, Zod 4's own `z.toJSONSchema` read as input (a
+`.default()` field is optional), which refuses a node it cannot describe. If a
+shared schema fails that (`z.custom`, `z.map`, a bare transform), extend the
+exporter's `override` when the node is describable, as it does for `z.date`. Otherwise give the operation a looser `body` written for the agent
 (`z.object({...}).passthrough()` with the describable fields) and a comment that
 the route's schema is the gate. The route's schema is always the gate.
 

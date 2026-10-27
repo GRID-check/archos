@@ -164,7 +164,7 @@ async function jsonOf(response: Response, what: string): Promise<unknown> {
 }
 
 function parseOrThrow<T>(
-  schema: z.ZodType<T, z.ZodTypeDef, unknown>,
+  schema: z.ZodType<T, unknown>,
   body: unknown,
   what: string
 ): T {

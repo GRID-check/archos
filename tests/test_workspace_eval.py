@@ -104,7 +104,7 @@ def test_a_read_answers_from_the_office_by_project() -> None:
 
 
 def test_the_agents_own_client_reads_the_doors_answer(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    from aiq_agent.tools.documents.filing import SignedEnvelope
+    from aiq_agent.common.bff_http import SignedEnvelope
     from aiq_agent.tools.workspace.client import call_tool_result
 
     bff = FixtureBFF(TOKEN, tmp_path / "requests.jsonl", workspace=FixtureWorkspace()).start()

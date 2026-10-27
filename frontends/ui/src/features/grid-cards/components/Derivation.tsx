@@ -30,7 +30,7 @@ import {
   type StepDisplay,
   type StepResult,
 } from '../lib/calculate'
-import type { CalculationOperandData, CalculationStepData, DimStatus } from '../schematics/types'
+import type { CalculationOperandData, CalculationStepData, DimStatus } from '@/shared/cards/schemas'
 
 export type { StepDisplay } from '../lib/calculate'
 

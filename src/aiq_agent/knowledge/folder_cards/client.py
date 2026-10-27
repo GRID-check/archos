@@ -15,17 +15,11 @@ call is blocking; call it off the event loop.
 
 from __future__ import annotations
 
-import json
 import logging
-import os
-import urllib.error
-import urllib.parse
-import urllib.request
 from collections.abc import Iterable
 from typing import Any
 
-from aiq_agent.tools.proposals_client import _internal_base_url
-from aiq_agent.tools.proposals_client import _NoRedirectHandler
+from aiq_agent.common import bff_http
 
 logger = logging.getLogger(__name__)
 
@@ -34,13 +28,10 @@ REQUEST_TIMEOUT_SECONDS = 15
 #: A listing waits this long for the cards before it renders tier 0 alone.
 READ_TIMEOUT_SECONDS = 3
 
-_opener = urllib.request.build_opener(_NoRedirectHandler)
 
-
-class FolderCardsError(RuntimeError):
+class FolderCardsError(bff_http.BffError):
     def __init__(self, message: str, *, status: int | None = None) -> None:
-        super().__init__(message)
-        self.status = status
+        super().__init__(message, status=status)
 
 
 def put_request(
@@ -72,24 +63,15 @@ def put_request(
 
 
 def _call(method: str, query: dict[str, str] | None = None, body: dict[str, Any] | None = None, timeout: float = 0):
-    token = os.environ.get("GRID_INTERNAL_API_TOKEN")
-    if not token:
-        raise FolderCardsError("GRID_INTERNAL_API_TOKEN is not configured")
-    url = f"{_internal_base_url()}{FOLDER_CARDS_PATH}"
-    if query:
-        url = f"{url}?{urllib.parse.urlencode(query)}"
-    request = urllib.request.Request(
-        url,
-        data=json.dumps(body, ensure_ascii=False).encode("utf-8") if body is not None else None,
-        headers={"Content-Type": "application/json", "X-Grid-Internal-Token": token},
-        method=method,
-    )
     try:
-        with _opener.open(request, timeout=timeout or REQUEST_TIMEOUT_SECONDS) as response:
-            parsed = json.loads(response.read().decode("utf-8"))
-    except urllib.error.HTTPError as exc:
-        raise FolderCardsError(f"the folder cards route refused ({exc.code})", status=exc.code) from exc
-    except (urllib.error.URLError, OSError, ValueError) as exc:
+        parsed = bff_http.request_json(
+            method, FOLDER_CARDS_PATH, timeout=timeout or REQUEST_TIMEOUT_SECONDS, body=body, query=query
+        )
+    except bff_http.BffNotConfiguredError as exc:
+        raise FolderCardsError(str(exc)) from exc
+    except bff_http.BffRefusedError as exc:
+        raise FolderCardsError(f"the folder cards route refused ({exc.status})", status=exc.status) from exc
+    except bff_http.BffError as exc:
         raise FolderCardsError("the folder cards route could not be reached") from exc
     if not isinstance(parsed, dict):
         raise FolderCardsError("the folder cards route answered with something that is not an object")

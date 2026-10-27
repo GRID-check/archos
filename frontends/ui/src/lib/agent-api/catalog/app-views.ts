@@ -45,7 +45,7 @@ export const APP_VIEWS = [
   },
 ] as const satisfies readonly AppView[]
 
-const proposalIdArgument = z.string().uuid().describe('The proposal id, from the proposal-get result the card shows.')
+const proposalIdArgument = z.guid().describe('The proposal id, from the proposal-get result the card shows.')
 
 export interface AppTool {
   /** `<entity>-<verb>`, distinct from every operation name: the operation stays listed for the model. */
@@ -56,7 +56,7 @@ export interface AppTool {
   readonly title: string
   readonly description: string
   /** Flat arguments, as a view's `callServerTool` sends them: `id` is the operation's path id. */
-  readonly input: z.ZodObject<z.ZodRawShape>
+  readonly input: z.ZodObject
   /** Whether the arguments besides `id` are the operation's body; otherwise it is called with no body. */
   readonly sendsBody: boolean
 }

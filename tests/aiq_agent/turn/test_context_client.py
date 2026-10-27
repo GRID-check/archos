@@ -13,6 +13,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
+from aiq_agent.common import bff_http
 from aiq_agent.project_context import ORG_INSTRUCTIONS_TRUNCATED_MARKER
 from aiq_agent.project_context import GridRequestContext
 from aiq_agent.turn import context_client as client
@@ -52,7 +53,7 @@ def opener(monkeypatch):
     ).encode("utf-8")
     opener = MagicMock()
     opener.open.return_value = response
-    monkeypatch.setattr(client, "_opener", opener)
+    monkeypatch.setattr(bff_http, "_opener", opener)
     return opener
 
 
@@ -198,20 +199,6 @@ def test_missing_signed_credentials_fails_before_network(request_context, opener
     with pytest.raises(TurnContextError, match="signed requester credentials"):
         client.fetch_turn_context(request_context)
     opener.open.assert_not_called()
-
-
-def test_redirect_handler_never_follows_redirects():
-    with pytest.raises(urllib.error.HTTPError) as error:
-        client._NoRedirectHandler().redirect_request(
-            MagicMock(full_url="http://bff/api/internal/turn-context"),
-            None,
-            302,
-            "Found",
-            {},
-            "https://other.example/secret",
-        )
-    assert error.value.code == 302
-    assert "other.example" not in str(error.value)
 
 
 def test_reference_projects_are_read_and_cut_at_a_whole_line(request_context, opener):
