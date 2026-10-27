@@ -6,10 +6,14 @@
  *
  * | Kind         | Matched on                   | Who sees it |
  * |--------------|------------------------------|-------------|
- * | annotation   | body and replies             | annotations on documents the reach's documents predicate lets through |
+ * | annotation   | body and replies             | annotations on documents the documents' predicate lets through: the reach and the document filters |
  * | folder       | name, description            | living folders on a shelf in reach, not hidden from the reader |
  * | project      | name, site address           | the projects in reach |
  * | conversation | title, topic tags            | the conversation list's own rule over the projects in reach, minus withheld content |
+ *
+ * Folders, projects and conversations carry nothing a document filter asks
+ * about, so the search sets them aside while one is set (`setAsideKinds` in
+ * `./search-wire.ts`) rather than list rows the filter never touched.
  *
  * Message bodies are not searched: a message can quote a restricted folder the
  * reader is not cleared for, which needs its own provider and test.
@@ -32,6 +36,7 @@ import {
   type ConversationReach,
   type ProviderPage,
 } from './providers-repository'
+import type { DocumentQuery } from './document-repository'
 import type { ReachedProject, SearchReach } from './reach'
 import {
   SEARCH_LIMIT_MAX,
@@ -57,11 +62,16 @@ const pageOf = (page: ProviderPage) => ({
 
 const fold = (value: string) => value.normalize('NFC').toLocaleLowerCase().trim()
 
-/** The annotations on documents in reach whose body or a reply carries `text` (or every one, by the filters, without text). */
+/**
+ * The annotations whose body or a reply carries `text` (or every one, by the
+ * filters, without text), on documents `documents` admits: the reach and the
+ * document filters, as the documents section reads them.
+ */
 export async function searchAnnotations(
   reach: SearchReach,
   text: string | null,
   filters: AnnotationFilters,
+  documents: Omit<DocumentQuery, 'text'>,
   page: ProviderPage
 ): Promise<Found<AnnotationHit>> {
   const term = text?.trim() ? text.trim() : null
@@ -73,6 +83,7 @@ export async function searchAnnotations(
       kinds: filters.kinds?.length ? filters.kinds : null,
       assigneeUserId: filters.assignedToMe ? reach.userId : null,
       createdBy: filters.createdByMe ? reach.userId : null,
+      documents,
     },
     pageOf(page)
   )

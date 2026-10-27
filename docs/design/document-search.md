@@ -124,7 +124,8 @@ operation's schema is the same zod object:
 - `kinds`: `document`, `annotation`, `folder`, `project`, `conversation`.
   Absent: all of them.
 - `filters`: the document filters below; `annotation` filters (status,
-  assignee, author); common ones (dates, person).
+  assignee, author); common ones (dates, person). A kind a set filter cannot
+  narrow is set aside, and the answer says so (`setAside`, below).
 - `sort` and `dir`: relevance when there is text, else any register column.
 - `limit` and `cursor`, `nextCursor` back (ADR-0131 rule 3).
 
@@ -201,18 +202,42 @@ are being built.
 | Kind | Matched on | Who sees it |
 |---|---|---|
 | document | name, dossier, plan facts, references, content | the reach's documents predicate |
-| annotation | body and replies | annotations on documents in reach |
+| annotation | body and replies | annotations on documents in reach that the document filters admit |
 | folder | name, description | folders in reach that are not hidden |
 | project | name, address | projects in reach |
 | conversation | title, topic tags | the conversation list's own rule, generalized from one project to the reach; withheld conversations (ADR-0088) are never matched |
 
 The providers live in `lib/search/providers.ts`. Annotations are joined to
-`documents` under the same `reachWhere` the document search uses, so a mark on
-a document in a hidden folder or on someone else's held upload is never found.
+`documents` (and its search row) under the same `documentSearchWhere` the
+document search uses, the reach and the document filters together, so a mark on
+a document in a hidden folder or on someone else's held upload is never found,
+and with „Dokumentart: Einreichplan“ set only the marks on Einreichpläne are.
 Conversations: across the office, every project in reach plus the rows with no
 project (the list's rule for those); in a project, that project's rows only;
 on the office shelf or in a folder, none. A withheld conversation is dropped
 before it is counted.
+
+#### A filter narrows every row shown, or the kind is set aside
+
+A chip claims a narrowing, so every row under it honours it. A filter on what a
+document is (`filters`, `setAsideKinds` in `search-wire.ts`) narrows the
+documents and, through their document, the annotations. A folder, a project or
+a conversation carries nothing such a filter asks about, so while one is set
+those kinds are not searched, and the answer names them in
+`setAside: { folder: 'document_filters', … }`. An annotation filter (status,
+kind, assignee, author) narrows only annotations, so it sets the documents and
+the other kinds aside the same way (`annotation_filters`); with the documents
+set aside there are no facet counts, so no count disagrees with a row. Two
+document filters set nothing aside: `projectIds` cuts the reach every kind
+reads, and `includeArchived` only widens. A kind the words would not have
+searched anyway (a folder without text) is not named.
+
+The list shows a set-aside kind's tab disabled, titled „Mit diesen Filtern
+nicht durchsucht“, and one line above the results says which filters apply
+and which kinds wait: „Die Filter gelten für Dokumente und ihre Anmerkungen.
+Ordner, Projekte und Chats werden so lange nicht durchsucht.“ The line earns
+its place (principle 9): a disabled tab alone does not say why, and a silent
+gap reads as „no folder matched“.
 
 Tasks, task runs, proposals and project memory are not searched yet: each has
 its own subject-access rule (a run's subject document, a memory's restricted

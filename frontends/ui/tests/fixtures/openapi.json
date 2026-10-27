@@ -7763,7 +7763,8 @@
                         "type": "boolean"
                       }
                     },
-                    "additionalProperties": true
+                    "additionalProperties": true,
+                    "description": "Narrow documents and their annotations; other kinds are then set aside (`setAside`)."
                   },
                   "annotationFilters": {
                     "type": "object",
@@ -7801,7 +7802,8 @@
                         "type": "boolean"
                       }
                     },
-                    "additionalProperties": true
+                    "additionalProperties": true,
+                    "description": "Narrow annotations; other kinds are then set aside."
                   },
                   "sort": {
                     "type": "string",

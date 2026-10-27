@@ -10,6 +10,7 @@ import {
   BookOpenCheck,
   FileSpreadsheet,
   FileText,
+  FilterX,
   Hourglass,
   List,
   MoreHorizontal,
@@ -26,7 +27,7 @@ import { SearchField } from '@/components/ui/search-field'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { PHONE_QUERY, useIsMobile } from '@/hooks/use-is-mobile'
 import { useMediaQuery } from '@/hooks/use-media-query'
-import { useTranslations } from '@/i18n'
+import { useLocale, useTranslations } from '@/i18n'
 import { SEARCH_KINDS, type DocumentHit, type SearchFacetDimension, type SearchHit, type SearchKind, type SearchResponse } from '@/lib/search/search-wire'
 import { clearFilters } from '../lib/active-filters'
 import type { SearchExportFormat } from '../lib/search-client'
@@ -134,6 +135,7 @@ export function SearchWorkspaceView({
   filtersOpen = false,
 }: SearchWorkspaceViewProps): JSX.Element {
   const t = useTranslations('search')
+  const { locale } = useLocale()
   const router = useRouter()
   const from = useSearchReturn()
   const sheetLayout = useIsMobile()
@@ -222,6 +224,14 @@ export function SearchWorkspaceView({
   const placeholder = phone ? t('field.placeholderShort') : t(`field.placeholder.${surface.kind}`)
   const building = response?.building.length ?? 0
   const oneKind = state.view === 'list' && state.kinds?.length === 1 ? state.kinds[0] : null
+  // Kinds a filter that is set cannot narrow are not searched (`setAsideKinds`); the list says which, once.
+  const setAside = state.view === 'list' ? (response?.setAside ?? {}) : {}
+  const setAsideNote = (['document_filters', 'annotation_filters'] as const).flatMap((reason) => {
+    const named = SEARCH_KINDS.filter((kind) => setAside[kind] === reason && (officeWide || kind !== 'project'))
+    if (named.length === 0) return []
+    const kinds = new Intl.ListFormat(locale, { type: 'conjunction' }).format(named.map((kind) => t(`kinds.${kind}`)))
+    return [t(`setAside.${reason}`, { kinds })]
+  })
 
   const status = failed
     ? null
@@ -419,8 +429,16 @@ export function SearchWorkspaceView({
             <ToggleGroupItem value={ALL_KINDS}>{t('kindFilter.all')}</ToggleGroupItem>
             {SEARCH_KINDS.filter((kind) => officeWide || kind !== 'project').map((kind) => {
               const section = response?.sections[kind]
+              const asideReason = setAside[kind]
               return (
-                <ToggleGroupItem key={kind} value={kind} data-testid={`search-kind-${kind}`}>
+                <ToggleGroupItem
+                  key={kind}
+                  value={kind}
+                  disabled={Boolean(asideReason) && state.kinds?.[0] !== kind}
+                  title={asideReason ? t('setAside.tab') : undefined}
+                  data-set-aside={asideReason}
+                  data-testid={`search-kind-${kind}`}
+                >
                   {t(`kinds.${kind}`)}
                   {section ? <KindCount>{section.totalIsLowerBound ? `${section.total}+` : section.total}</KindCount> : null}
                 </ToggleGroupItem>
@@ -435,6 +453,11 @@ export function SearchWorkspaceView({
         {statusLine}
         {status && anyHits ? <KeysHint>{` · ${t('keys')}`}</KeysHint> : null}
       </ResultsStatus>
+      {setAsideNote.map((note) => (
+        <SearchNote key={note} icon={FilterX} testId="search-note-set-aside">
+          {note}
+        </SearchNote>
+      ))}
       {readingNote ? (
         <SearchNote icon={Hourglass} testId="search-note-building">
           {t('notes.building', { count: building })}

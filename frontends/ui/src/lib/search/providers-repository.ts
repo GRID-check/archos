@@ -3,8 +3,11 @@
  * "What everything covers"): annotations, folders and conversations, each under
  * the reach the documents are searched with.
  *
- * - An annotation is found only on a document the reach's documents predicate
- *   lets through (`reachWhere`): the shelves, the hidden folders, the hold.
+ * - An annotation is found only on a document the documents' own predicate
+ *   lets through (`documentSearchWhere`): the reach (the shelves, the hidden
+ *   folders, the hold) and the search's document filters, so a chip such as
+ *   „Dokumentart: Einreichplan“ narrows the annotations as it narrows the
+ *   documents. One rule, one join: never a second reading of the filters.
  * - A folder is found when it is alive, on a shelf in reach, not hidden from
  *   the reader, and inside the folder scope when there is one.
  * - A conversation follows the conversation list's own rule
@@ -22,6 +25,7 @@ import {
   documentAnnotationReplies,
   documentAnnotations,
   documents,
+  documentSearchFacets,
   projectFolders,
   projects,
 } from '@/lib/db/schema'
@@ -29,7 +33,7 @@ import { withTenant } from '@/lib/db/tenant-context'
 import { visibleConversationsWhere } from '@/lib/conversations/repository'
 import { likeContains } from '@/lib/text/like-pattern'
 import type { AnnotationKind, AnnotationStatus } from '@/lib/annotations/types'
-import { reachWhere } from './document-repository'
+import { documentSearchWhere, type DocumentQuery } from './document-repository'
 import type { SearchReach } from './reach'
 import { SEARCH_LIMIT_MAX } from './search-wire'
 
@@ -55,6 +59,8 @@ export interface AnnotationQuery {
   kinds: readonly AnnotationKind[] | null
   assigneeUserId: string | null
   createdBy: string | null
+  /** What the annotation's document must be: the documents' question without its text. */
+  documents: Omit<DocumentQuery, 'text'>
 }
 
 export interface AnnotationSearchRow {
@@ -102,7 +108,7 @@ function replyMatch(organizationId: string, text: string) {
 function annotationWhere(reach: SearchReach, query: AnnotationQuery): SQL | undefined {
   return and(
     eq(documentAnnotations.organizationId, reach.organizationId),
-    reachWhere(reach, false),
+    documentSearchWhere(reach, { ...query.documents, text: null }),
     inArray(documentAnnotations.status, [...query.statuses]),
     query.kinds?.length ? inArray(documentAnnotations.kind, [...query.kinds]) : undefined,
     query.assigneeUserId ? eq(documentAnnotations.assigneeUserId, query.assigneeUserId) : undefined,
@@ -130,6 +136,7 @@ export async function searchAnnotationRows(
     .select({ one: sql`1` })
     .from(documentAnnotations)
     .innerJoin(documents, eq(documents.id, documentAnnotations.documentId))
+    .leftJoin(documentSearchFacets, eq(documentSearchFacets.documentId, documents.id))
     .where(where)
     .limit(SEARCH_TOTAL_CAP)
     .as('capped')
@@ -154,6 +161,7 @@ export async function searchAnnotationRows(
         })
         .from(documentAnnotations)
         .innerJoin(documents, eq(documents.id, documentAnnotations.documentId))
+        .leftJoin(documentSearchFacets, eq(documentSearchFacets.documentId, documents.id))
         .leftJoin(projects, eq(projects.id, documents.projectId))
         .where(where)
         .orderBy(desc(documentAnnotations.createdAt), asc(documentAnnotations.id))

@@ -68,6 +68,11 @@ export const search: typeof en.search = {
     wholeOffice: 'Im ganzen Büro suchen',
     withFilters: 'Die Filter schließen alles aus, was gepasst hat. Einen entfernen oder alle.',
   },
+  setAside: {
+    document_filters: 'Die Filter gelten für Dokumente und ihre Anmerkungen. {kinds} werden so lange nicht durchsucht.',
+    annotation_filters: 'Die Filter gelten nur für Anmerkungen. {kinds} werden so lange nicht durchsucht.',
+    tab: 'Mit diesen Filtern nicht durchsucht',
+  },
   notes: {
     building:
       '{count, plural, one {Piloti liest noch, was die Dokumente einer Ablage sind. Bis dahin finden Filter nach Art, Beteiligten und Angaben dort nicht alles.} other {Piloti liest noch, was die Dokumente in # Ablagen sind. Bis dahin finden Filter nach Art, Beteiligten und Angaben dort nicht alles.}}',

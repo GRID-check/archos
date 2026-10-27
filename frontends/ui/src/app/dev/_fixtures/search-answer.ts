@@ -7,6 +7,9 @@
  * project facet, every counted facet, Plannummer (a prefix, as the server
  * folds it: case, spaces and hyphens ignored), Index, Maßstab, the dates,
  * current Fassung, pages, file type and uploader; and the register's sort.
+ * As the server does, an annotation shows only while its document matches the
+ * document filters, and folders, projects and chats are set aside while one
+ * is set (`setAsideKinds`): the chips never claim a narrowing the rows ignore.
  * The words are not matched here: ranking by them is the server's, and the
  * fixture is the answer to „Fluchtweg GK 4“ already. What a hit does not carry
  * (its tags, parties, citations) is written beside it in `READ`, the reading
@@ -14,9 +17,9 @@
  */
 
 import { documentReadFamily } from '@/lib/documents/document-status'
-import type { DocumentHit, FacetCount, SearchFacetDimension, SearchResponse } from '@/lib/search/search-wire'
+import { narrowsDocuments, setAsideKinds, type DocumentHit, type FacetCount, type SearchFacetDimension, type SearchResponse } from '@/lib/search/search-wire'
 import { effectiveSort } from '@/features/search/lib/search-sort'
-import type { SearchUrlState } from '@/features/search/lib/search-url'
+import { toSearchBody, type SearchUrlState } from '@/features/search/lib/search-url'
 import { SEARCH_FIXTURE_DOCUMENTS, SEARCH_FIXTURE_REGISTER_DOCUMENTS, SEARCH_FIXTURE_RESPONSE } from './search'
 
 /** What the reading found in each fixture document that its hit does not show. */
@@ -166,13 +169,27 @@ export function searchFixtureAnswer(state: SearchUrlState): SearchResponse {
     pool.filter((hit) => matches(hit, state)),
     state
   )
-  const wanted = (kind: keyof SearchResponse['sections']): boolean => (state.view === 'register' ? kind === 'document' : !state.kinds || state.kinds.includes(kind))
+  // The fixture is the answer to words even when the field is empty, so the words count as set.
+  const setAside = setAsideKinds({ ...toSearchBody(state), text: state.text.trim() || 'Fluchtweg GK 4' })
+  const wanted = (kind: keyof SearchResponse['sections']): boolean =>
+    !setAside[kind] && (state.view === 'register' ? kind === 'document' : !state.kinds || state.kinds.includes(kind))
   const inProject = <T extends { projectId: string | null }>(hits: T[]): T[] => (state.projectId ? hits.filter((hit) => hit.projectId === state.projectId) : hits)
+  // An annotation narrows through its document, against the whole pool so the register's drawings count too.
+  const matchedIds = new Set([...SEARCH_FIXTURE_DOCUMENTS, ...SEARCH_FIXTURE_REGISTER_DOCUMENTS].filter((hit) => matches(hit, state)).map((hit) => hit.id))
+  const throughDocument = <T extends { documentId?: string }>(hits: T[]): T[] =>
+    narrowsDocuments(state.filters) ? hits.filter((hit) => hit.documentId !== undefined && matchedIds.has(hit.documentId)) : hits
   const sections: SearchResponse['sections'] = {}
   for (const [kind, section] of Object.entries(SEARCH_FIXTURE_RESPONSE.sections) as Array<[keyof SearchResponse['sections'], NonNullable<SearchResponse['sections'][keyof SearchResponse['sections']]>]>) {
     if (!wanted(kind)) continue
-    const hits = kind === 'document' ? documents : kind === 'project' ? section.hits : inProject(section.hits as Array<{ projectId: string | null }>)
+    const hits =
+      kind === 'document'
+        ? documents
+        : kind === 'project'
+          ? section.hits
+          : kind === 'annotation'
+            ? throughDocument(inProject(section.hits as Array<{ projectId: string | null; documentId: string }>))
+            : inProject(section.hits as Array<{ projectId: string | null }>)
     Object.assign(sections, { [kind]: { hits, total: hits.length, totalIsLowerBound: false, nextCursor: null } })
   }
-  return { ...SEARCH_FIXTURE_RESPONSE, sections, facets: facetsOf(documents) }
+  return { ...SEARCH_FIXTURE_RESPONSE, setAside, sections, facets: facetsOf(documents) }
 }

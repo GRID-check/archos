@@ -216,6 +216,7 @@ export const SEARCH_FIXTURE_RESPONSE: SearchResponse = {
       { value: 'dwg', label: null, count: 1 },
     ],
   },
+  setAside: {},
   building: ['office_shelf'],
   contentPartial: false,
 }

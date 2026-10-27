@@ -14,7 +14,9 @@
  * WorkOS is the one thing faked, and the reader holds none. What it proves:
  *   - an annotation is found on a document the reader's listing shows, by its
  *     body or a reply, and never on a document in a hidden folder, on another
- *     person's held upload, or in a project out of reach;
+ *     person's held upload, or in a project out of reach; and only on a
+ *     document the search's document filters admit (its type, its drawing
+ *     number), read off the same predicate the documents are found with;
  *   - a folder is found by its name or description, and never when it is
  *     hidden, binned, or in a project out of reach;
  *   - a conversation is found by its title or topic tag as the list would show
@@ -53,6 +55,8 @@ describe.skipIf(!url)('the search providers against live Postgres', () => {
   let providers: typeof import('./providers')
   let reach: SearchReach
   const ids = { project: '', outside: '', hidden: '', restricted: '' }
+  /** The documents' question with no filter: the reach alone. */
+  const ALL_DOCUMENTS = { filters: {}, citedBy: null, citing: null }
 
   const session = {
     userId: READER,
@@ -203,6 +207,18 @@ describe.skipIf(!url)('the search providers against live Postgres', () => {
     await folder(ids.outside, 'Verträge fremd')
 
     const shown = await documentIn(ids.project, 'EG.pdf')
+    // EG.pdf was read as a submission drawing EP-05; the other documents have no reading.
+    const { toSearchFacets } = await import('./facets')
+    const { upsertSearchFacets } = await import('./facets-repository')
+    const reading = toSearchFacets(
+      { documentId: shown, organizationId: ORG, superseded: false },
+      {
+        summary: 'Grundriss EG',
+        revisionFacts: { documentNumber: 'EP-05', revision: 'C', revisionDate: null, scale: null, title: 'Grundriss EG' },
+        dossier: { documentType: 'submission_drawing', title: null, summary: null, parties: [], dates: [], place: null, facts: [] },
+      } as never
+    )
+    expect(await upsertSearchFacets(ORG, [reading!])).toBe(1)
     const inHidden = await documentIn(ids.project, 'geheim.pdf', { folderId: ids.hidden })
     const heldForeign = await documentIn(ids.project, 'held-foreign.pdf', { held: true })
     const heldOwn = await documentIn(ids.project, 'held-own.pdf', { createdBy: READER, held: true })
@@ -286,7 +302,7 @@ describe.skipIf(!url)('the search providers against live Postgres', () => {
 
   describe('annotations', () => {
     it('finds the marks on documents the reader’s listing shows, by body or reply, and no others', async () => {
-      const found = await providers.searchAnnotations(reach, 'fluchtweg', {}, page)
+      const found = await providers.searchAnnotations(reach, 'fluchtweg', {}, ALL_DOCUMENTS, page)
       expect(found.hits.map((hit) => hit.excerpt).sort()).toEqual(
         [
           'Der Fluchtweg ist betroffen',
@@ -304,20 +320,41 @@ describe.skipIf(!url)('the search providers against live Postgres', () => {
     })
 
     it('does not find a mark on a document in a hidden folder', async () => {
-      const found = await providers.searchAnnotations(reach, 'geheimen', {}, page)
+      const found = await providers.searchAnnotations(reach, 'geheimen', {}, ALL_DOCUMENTS, page)
       expect(found).toEqual({ hits: [], total: 0 })
     })
 
     it('does not find a mark on another person’s held upload', async () => {
-      const found = await providers.searchAnnotations(reach, 'fremdem Upload', {}, page)
+      const found = await providers.searchAnnotations(reach, 'fremdem Upload', {}, ALL_DOCUMENTS, page)
       expect(found).toEqual({ hits: [], total: 0 })
     })
 
     it('lists by the filters alone without text, and narrows to the reader’s own marks', async () => {
-      const all = await providers.searchAnnotations(reach, null, {}, page)
+      const all = await providers.searchAnnotations(reach, null, {}, ALL_DOCUMENTS, page)
       expect(all.total).toBe(3)
-      const mine = await providers.searchAnnotations(reach, null, { createdByMe: true }, page)
+      const mine = await providers.searchAnnotations(reach, null, { createdByMe: true }, ALL_DOCUMENTS, page)
       expect(mine.total).toBe(0)
+    })
+
+    it('narrows through the document: only marks on documents the document filters admit', async () => {
+      const onDrawings = await providers.searchAnnotations(
+        reach,
+        'fluchtweg',
+        {},
+        { filters: { documentTypes: ['submission_drawing'], planNumber: 'ep 0' }, citedBy: null, citing: null },
+        page
+      )
+      // EG.pdf is the submission drawing EP-05; the reader's own held upload has no reading.
+      expect(onDrawings.hits.map((hit) => hit.excerpt).sort()).toEqual(['Der Fluchtweg ist betroffen', 'Fluchtweg zu schmal'])
+      expect(onDrawings.total).toBe(2)
+      const onConcepts = await providers.searchAnnotations(
+        reach,
+        null,
+        {},
+        { filters: { documentTypes: ['fire_safety_concept'] }, citedBy: null, citing: null },
+        page
+      )
+      expect(onConcepts).toEqual({ hits: [], total: 0 })
     })
   })
 

@@ -66,6 +66,11 @@ export const search = {
     wholeOffice: 'Search the whole office',
     withFilters: 'The filters exclude everything that matched. Take one off, or clear them all.',
   },
+  setAside: {
+    document_filters: 'The filters apply to documents and their annotations. {kinds} are not searched while they are set.',
+    annotation_filters: 'The filters apply to annotations only. {kinds} are not searched while they are set.',
+    tab: 'Not searched with these filters',
+  },
   notes: {
     building:
       '{count, plural, one {Piloti is still reading what the documents on one shelf are. Filters by type, parties and facts may miss some of them until it is done.} other {Piloti is still reading what the documents on # shelves are. Filters by type, parties and facts may miss some of them until it is done.}}',

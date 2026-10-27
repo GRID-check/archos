@@ -9,6 +9,7 @@ import { server } from '@/mocks/server'
 import { I18nProvider } from '@/i18n'
 import type { SearchBody } from '@/lib/search/search-wire'
 import { SEARCH_FIXTURE_RESPONSE, SEARCH_FIXTURE_SAVED } from '@/app/dev/_fixtures/search'
+import { searchFixtureAnswer } from '@/app/dev/_fixtures/search-answer'
 import { EMPTY_SEARCH_STATE, type SearchUrlState } from '../lib/search-url'
 import { sectionView } from '../lib/sections'
 import { SearchWorkspace } from './search-workspace'
@@ -105,6 +106,44 @@ describe('SearchWorkspaceView', () => {
     // note waits for a filter that depends on it.
     expect(screen.getByTestId('search-status')).toHaveTextContent('eine Ablage wird noch gelesen')
     expect(screen.queryByTestId('search-note-building')).toBeNull()
+  })
+
+  it('shows the kinds a document filter cannot narrow as not searched, and why, rather than unfiltered rows', () => {
+    const state: SearchUrlState = {
+      ...EMPTY_SEARCH_STATE,
+      text: 'Fluchtweg GK 4',
+      filters: { documentTypes: ['submission_drawing'], planNumber: 'EP-0' },
+    }
+    const answer = searchFixtureAnswer(state)
+    const sections = Object.fromEntries(Object.entries(answer.sections).map(([kind, section]) => [kind, sectionView(section!)]))
+    german(
+      <SearchWorkspaceView
+        surface={{ kind: 'office' }}
+        state={state}
+        onStateChange={() => {}}
+        fieldValue={state.text}
+        onFieldChange={() => {}}
+        response={answer}
+        sections={sections}
+        loading={false}
+        failed={false}
+        onRetry={() => {}}
+        onLoadMore={() => {}}
+      />
+    )
+    for (const kind of ['folder', 'project', 'conversation']) {
+      expect(screen.getByTestId(`search-kind-${kind}`)).toBeDisabled()
+      expect(screen.getByTestId(`search-kind-${kind}`)).toHaveAttribute('title', 'Mit diesen Filtern nicht durchsucht')
+    }
+    expect(screen.getByTestId('search-kind-annotation')).toBeEnabled()
+    expect(screen.getByTestId('search-note-set-aside')).toHaveTextContent(
+      'Die Filter gelten für Dokumente und ihre Anmerkungen. Ordner, Projekte und Chats werden so lange nicht durchsucht.'
+    )
+    // The mark on the Einreichplan EP-03 stays: an annotation narrows through its document.
+    expect(screen.getAllByTestId(/^search-hit-annotation-/)).toHaveLength(1)
+    expect(searchFixtureAnswer({ ...state, filters: { documentTypes: ['fire_safety_concept'] } }).sections.annotation?.hits).toEqual([])
+    expect(screen.queryByTestId(/^search-hit-folder-/)).toBeNull()
+    expect(screen.queryByTestId(/^search-hit-conversation-/)).toBeNull()
   })
 
   it('explains the shelf still being read where a filter set depends on what it holds', () => {
