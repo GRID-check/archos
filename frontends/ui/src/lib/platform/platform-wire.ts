@@ -15,7 +15,7 @@ export const modelDefaultsPutSchema = z.object({
    * `author/slug` ids — unlike a tenant's BYOK override, this row is served to
    * every organization, so it must be a model the platform catalog knows.
    */
-  defaults: z.record(
+  defaults: z.partialRecord(
     z.enum(AGENT_GROUP_IDS as [string, ...string[]]),
     z.object({ model: z.string().regex(OPENROUTER_MODEL_ID_PATTERN, 'not an OpenRouter model id') })
   ),
@@ -25,7 +25,7 @@ export const modelDefaultsPutSchema = z.object({
 /** PUT /api/platform/reasoning-efforts */
 export const reasoningEffortsPutSchema = z.object({
   /** The complete effort set; groups omitted are cleared back to the YAML. */
-  efforts: z.record(z.enum(AGENT_GROUP_IDS as [string, ...string[]]), z.enum(REASONING_EFFORTS)),
+  efforts: z.partialRecord(z.enum(AGENT_GROUP_IDS as [string, ...string[]]), z.enum(REASONING_EFFORTS)),
   note: z.string().trim().max(500).nullable().optional(),
 })
 

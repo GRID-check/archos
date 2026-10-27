@@ -9,7 +9,7 @@
  * which builds the documents every surface renders.
  */
 
-import type { SourceSignal } from '@/features/layout/lib/source-presets'
+import type { SourceSignal } from '@/lib/source-kinds'
 import type { StoredThinkingStep, TraceLaneCard } from '@/lib/conversations/message-provenance'
 
 /** Law first, then project, model, office, auto; within a signal by label. */

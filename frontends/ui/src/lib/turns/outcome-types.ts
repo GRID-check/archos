@@ -26,7 +26,7 @@ export const turnOutcomeRequestSchema = z
   .object({
     conversationId: z.string().min(1).max(200),
     /** The turn id: the user message id the turn answered. A wake's id. */
-    turnId: z.string().uuid(),
+    turnId: z.guid(),
     outcome: z.enum(TURN_OUTCOMES),
     /** Why, for `refused` and `failed`; user-safe, never a stack trace. */
     reason: z.string().min(1).max(500).optional(),

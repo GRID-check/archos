@@ -16,7 +16,8 @@
  */
 
 import 'server-only'
-import { isTokenSafeDestination } from '@/lib/model-config/backend-defaults'
+import { getBackendUrl } from '@/lib/backend-url'
+import { InternalServiceUnavailableError, internalServiceHeaders } from '@/lib/internal-auth'
 
 export interface RisDocument {
   /** The URL the text was read from — the canonical RIS page for the citation. */
@@ -61,15 +62,18 @@ export async function fetchRisDocument(
    */
   passage?: string
 ): Promise<RisDocument> {
-  const base = (process.env.BACKEND_URL ?? 'http://localhost:8000').replace(/\/$/, '')
-  const headers: Record<string, string> = { Accept: 'application/json' }
-  const token = process.env.GRID_INTERNAL_API_TOKEN
-  // Same rule as every other internal call from this tier: the shared token
-  // travels over TLS, or over plain HTTP only to a destination that cannot
-  // leave the deployment's own network.
-  if (token && isTokenSafeDestination(base)) {
-    headers['x-grid-internal-token'] = token
+  const base = getBackendUrl()
+  let tokenHeaders: Record<string, string>
+  try {
+    tokenHeaders = internalServiceHeaders(base)
+  } catch (error) {
+    if (!(error instanceof InternalServiceUnavailableError)) throw error
+    // The backend's RIS route refuses a call without the token, so there is
+    // nothing to ask: the reader gets the outage answer, the log the reason.
+    console.warn(`[RIS] ${error.message}`)
+    throw new RisDocumentUnavailableError('RIS is not reachable right now', 503)
   }
+  const headers: Record<string, string> = { Accept: 'application/json', ...tokenHeaders }
 
   const params = new URLSearchParams({ reference })
   if (application) params.set('application', application)

@@ -9,8 +9,8 @@ import { MAX_ROOT_SORT_DOCUMENTS } from './root-sort-types'
 
 /** A placement the person kept: into an existing folder, a new one, or back to the root (`folderId` and `newFolderPath` null). */
 export const keptMoveSchema = z.object({
-  documentId: z.string().uuid(),
-  folderId: z.string().uuid().nullable(),
+  documentId: z.guid(),
+  folderId: z.guid().nullable(),
   newFolderPath: z.string().min(1).max(1024).nullable(),
 })
 export type KeptMove = z.infer<typeof keptMoveSchema>

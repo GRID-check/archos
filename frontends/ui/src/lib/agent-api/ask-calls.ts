@@ -223,7 +223,7 @@ function requireDeclared(call: ServerContext): void {
 
 /** The ask a task id names, as its asker reads it; an id that names none of theirs is an unknown task. */
 async function readTask(ctx: McpCallContext, op: AgentOperation, taskId: string): Promise<{ view: AskView; result: OperationResult }> {
-  if (!z.string().uuid().safeParse(taskId).success) throw unknownTask()
+  if (!z.guid().safeParse(taskId).success) throw unknownTask()
   const read = await callAsk(ctx, op, { params: { id: taskId } })
   if ('view' in read) return read
   if (read.status === 404) throw unknownTask()
@@ -251,7 +251,7 @@ export function registerAskTasks(server: McpServer, ctx: McpCallContext): void {
   })
   server.server.setRequestHandler('tasks/cancel', { params: taskParams }, async ({ taskId }, call) => {
     requireDeclared(call)
-    if (!z.string().uuid().safeParse(taskId).success) throw unknownTask()
+    if (!z.guid().safeParse(taskId).success) throw unknownTask()
     const read = await callAsk(ctx, ops.cancel, { params: { id: taskId } })
     // Cancellation is cooperative: an ask that already ended is acknowledged, and tasks/get shows how it ended.
     if ('view' in read || read.status === 409) return {}

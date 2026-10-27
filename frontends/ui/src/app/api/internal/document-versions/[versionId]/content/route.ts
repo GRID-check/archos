@@ -65,7 +65,7 @@ const querySchema = z.object({
    * on the agent's side). When reading the subject admits a restricted folder,
    * that answer is marked in the same transaction (ADR-0093).
    */
-  answerMessageId: z.string().uuid().optional(),
+  answerMessageId: z.guid().optional(),
 })
 
 export const GET = internalApiRoute<Params>(

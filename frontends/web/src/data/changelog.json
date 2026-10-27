@@ -233,6 +233,10 @@
               "de": "Wenn Sie Piloti um ein Excalidraw-Diagramm oder eine Skizze bitten, erstellt es diese jetzt. Sie können die Zeichnung als Skizze öffnen und weiterbearbeiten, statt die Meldung zu erhalten, dass dies nicht möglich ist. Fragen Sie Piloti nach sich selbst, etwa ob es in Ihrem eigenen Assistenten funktioniert, antwortet es jetzt, statt Ihre Dateien zu durchsuchen."
             },
             {
+              "en": "The file list no longer flashes a browser error when it opens: dates in the list read in Vienna time on the first paint, whatever time zone your computer is set to. Sign-in redirects are also no longer reported to us as errors.",
+              "de": "Beim Öffnen der Dateiliste wird kein Browserfehler mehr kurz angezeigt: Die Datumsangaben erscheinen bereits beim ersten Laden in Wiener Zeit – unabhängig von der Zeitzone Ihres Computers. Auch Anmelde-Weiterleitungen werden uns nicht mehr als Fehler gemeldet."
+            },
+            {
               "en": "Asking which documents deal with a topic lists each document once again, even when two folders hold a file of the same name.",
               "de": "Bei der Frage, welche Dokumente ein Thema behandeln, wird jedes Dokument erneut aufgelistet, auch wenn sich in zwei Ordnern Dateien mit demselben Namen befinden."
             },
