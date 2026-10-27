@@ -19,15 +19,9 @@ import 'server-only'
 import { and, desc, eq, inArray, notExists, or, sql } from 'drizzle-orm'
 import { getDb } from '@/lib/db'
 import type { DbExecutor } from '@/lib/db/executor'
-import {
-  conversations,
-  documents,
-  resourceShares,
-  type NewResourceShare,
-  type ResourceRole,
-  type ResourceShare,
-  type ShareableResourceType,
-} from '@/lib/db/schema'
+import { conversations } from '@/lib/db/schema/conversations'
+import { documents } from '@/lib/db/schema/documents'
+import { resourceShares, type NewResourceShare, type ResourceRole, type ResourceShare, type ShareableResourceType } from '@/lib/db/schema/resource-shares'
 
 /** Hard cap on a single resource's grant roster (also enforced as a rule, spec SH-16). */
 export const SHARE_ROSTER_LIMIT = 200

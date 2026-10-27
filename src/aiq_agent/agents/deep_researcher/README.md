@@ -464,20 +464,6 @@ glance:
   non-Anthropic models). The ordering differs cosmetically between the two
   paths but is stable per agent — not a runtime bug.
 
-## Evaluation
-
-### OIB Compliance golden eval suite (backlog T4-5, 2026-07-16)
-
-A separate, smaller golden eval suite exercises the real
-`chat_deepresearcher_agent` workflow against 4 hand-authored OIB-compliance
-cases, bounding wall-clock/LLM-calls/completion-tokens and grading
-answer-correctness via a checklist (no LLM judge). It exists specifically to
-make regressions in the 2026-07-16 perf fixes above (latency/cost) and in
-answer correctness measurable instead of vibes. See
-[frontends/benchmarks/oib_compliance/README.md](../../../../frontends/benchmarks/oib_compliance/README.md)
-— calibration is still pending a live run (`bounds_calibration_pending: true`
-in the fixture).
-
 ## References
 
 - [LangChain DeepAgents documentation](https://docs.langchain.com/oss/python/deepagents/overview)

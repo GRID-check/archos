@@ -1,3 +1,4 @@
+// @disk-inputs: tests/fixtures/proposals.schema.json
 /**
  * @vitest-environment node
  */

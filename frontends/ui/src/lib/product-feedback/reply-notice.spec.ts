@@ -18,7 +18,7 @@ vi.mock('./repository', () => ({
 }))
 
 import { UpstreamError } from '@/lib/api/errors'
-import type { ProductFeedback } from '@/lib/db/schema'
+import type { ProductFeedback } from '@/lib/db/schema/product-feedback'
 import { withPlatformAccess, withTenant } from '@/lib/db/tenant-context'
 import { INBOX_TYPE_DEFINITIONS } from '@/lib/inbox/registry'
 import { emitInboxItems } from '@/lib/inbox/service'

@@ -445,7 +445,7 @@ class SpatialModel:
             raise UnknownElementError(str(global_id), method)
         try:
             element = self.file.by_guid(global_id)
-        except (RuntimeError, KeyError):
+        except RuntimeError, KeyError:
             raise UnknownElementError(global_id, method) from None
         if element is None or getattr(element, "GlobalId", None) != global_id:
             raise UnknownElementError(global_id, method)

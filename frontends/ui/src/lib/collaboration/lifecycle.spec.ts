@@ -201,7 +201,8 @@ import {
 } from '@/lib/conversations/repository'
 import { deleteConversation, getConversation, updateConversationTitle } from '@/lib/conversations/service'
 import { getDb } from '@/lib/db'
-import type { MentionRequest, ResourceRole, ResourceVisibility } from '@/lib/db/schema'
+import type { MentionRequest } from '@/lib/db/schema/mention-requests'
+import type { ResourceRole, ResourceVisibility } from '@/lib/db/schema/resource-shares'
 import { publishToUsers } from '@/lib/events/bus'
 import { INBOX_TYPE_DEFINITIONS } from '@/lib/inbox/registry'
 import {

@@ -12,7 +12,7 @@
  */
 
 import 'server-only'
-import type { InboxItem } from '@/lib/db/schema'
+import type { InboxItem } from '@/lib/db/schema/inbox'
 import { isPushStillDue, pushPolicyFor } from '@/lib/inbox/push-policy'
 import { enqueueJob } from '@/lib/jobs-queue/enqueue'
 import { BFF_JOB_PRIORITY } from '@/lib/jobs-queue/types'

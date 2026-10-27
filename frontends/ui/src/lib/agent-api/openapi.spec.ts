@@ -1,3 +1,4 @@
+// @disk-inputs: tests/fixtures/openapi.json
 /**
  * @vitest-environment node
  */

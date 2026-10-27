@@ -1,3 +1,4 @@
+// @disk-inputs: tests/fixtures/run-envelope.schema.json
 /**
  * @vitest-environment node
  */

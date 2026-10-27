@@ -14,11 +14,14 @@ import asyncio
 import base64
 import contextlib
 import importlib
+import json
 import logging
 import os
 import time
 from collections.abc import Callable
 from collections.abc import Iterator
+from datetime import UTC
+from datetime import datetime
 from typing import Any
 
 from starlette.datastructures import Headers
@@ -127,19 +130,6 @@ def _identity_values(identity: dict) -> tuple[object, object, object]:
     return (identity.get("project_id"), identity.get("organization_id"), identity.get("user_id"))
 
 
-# The answer's self-assessment, lifted alongside the cutoff/degradation marks and
-# spelled exactly as the socket path spells it (``persist_assistant_message``), so
-# the BFF's existing decoder maps all three into the stored provenance with no
-# frontend change. Deliberately NOT in _DEGRADED_EVENT_FIELDS above: a merely
-# low-confidence answer is not a degraded run, and announcing one as the other
-# would train operators to ignore the signal that means a run was cut off.
-_ANSWER_CONFIDENCE_FIELDS = (
-    "answer_confidence",
-    "answer_confidence_reason",
-    "answer_confidence_capped_reason",
-)
-
-
 def sanitize_job_error(exc: BaseException) -> str:
     """Map an internal exception to a user-safe error message.
 
@@ -214,64 +204,60 @@ async def _update_status_if_not_terminal(job_store: Any, job_id: str, status: An
     Raises ValueError if the job does not exist (matching NAT's
     ``JobStore.update_status`` contract).
     """
-    import json as _json
-    from datetime import UTC as _UTC
-    from datetime import datetime as _datetime
-
-    from pydantic import BaseModel as _BaseModel
-    from sqlalchemy import update as _sa_update
+    from sqlalchemy import update
 
     from nat.front_ends.fastapi.async_jobs.job_store import JobInfo
     from nat.front_ends.fastapi.async_jobs.job_store import JobStatus
 
     if not isinstance(status, JobStatus):
         status = JobStatus(status)
-
     terminal_statuses = {JobStatus.SUCCESS.value, JobStatus.FAILURE.value, JobStatus.INTERRUPTED.value}
-
-    # NAT's JobStore.update_status honors exactly these fields; the output
-    # serialization below mirrors it so a guarded write stores byte-identical
-    # values to the unguarded one it replaces.
-    error = kwargs.get("error")
-    output_path = kwargs.get("output_path")
-    output = kwargs.get("output")
-    if isinstance(output, _BaseModel):
-        output = output.model_dump_json(round_trip=True)
-    if isinstance(output, dict | list):
-        output = _json.dumps(output)
-
     stmt = (
-        _sa_update(JobInfo)
+        update(JobInfo)
         .where(JobInfo.job_id == job_id, JobInfo.status.not_in(terminal_statuses))
-        .values(
-            status=status.value,
-            error=error,
-            output_path=output_path,
-            output=output,
-            updated_at=_datetime.now(_UTC),
-        )
+        .values(_status_values(status, **kwargs))
     )
     async with job_store.session() as session:
         result = await session.execute(stmt)
         written = (result.rowcount or 0) > 0
-
     if written:
         return True
+    await _explain_refused_write(job_store, job_id, status)
+    return False
 
-    # Zero rows: the job is either already terminal (the race this guards) or
-    # missing. Distinguish with one read — the write already refused, so this
-    # read cannot cause a flip either way.
+
+def _status_values(status: Any, *, error: Any = None, output_path: Any = None, output: Any = None) -> dict[str, Any]:
+    """The columns a status write sets, serialized as NAT's ``JobStore.update_status`` does.
+
+    NAT honors exactly these fields; mirroring its output serialization keeps a
+    guarded write byte-identical to the unguarded one it replaces.
+    """
+    from pydantic import BaseModel
+
+    if isinstance(output, BaseModel):
+        output = output.model_dump_json(round_trip=True)
+    if isinstance(output, dict | list):
+        output = json.dumps(output)
+    return {
+        "status": status.value,
+        "error": error,
+        "output_path": output_path,
+        "output": output,
+        "updated_at": datetime.now(UTC),
+    }
+
+
+async def _explain_refused_write(job_store: Any, job_id: str, status: Any) -> None:
+    """Log why a guarded write touched no row, or raise ``ValueError`` when the job does not exist.
+
+    Zero rows means the job is already terminal (the race the guard is for) or
+    missing. One read tells them apart; the write already refused, so the read
+    cannot cause a flip either way.
+    """
     job = await job_store.get_job(job_id)
     if job is None:
         raise ValueError(f"Job {job_id} not found in job store")
-
-    logger.info(
-        "Job %s already in terminal status %s; not overwriting with %s",
-        job_id,
-        job.status,
-        status,
-    )
-    return False
+    logger.info("Job %s already in terminal status %s; not overwriting with %s", job_id, job.status, status)
 
 
 async def _current_job_status(job_store: Any, job_id: str) -> str | None:
@@ -408,21 +394,15 @@ async def _should_emit_cancelled_event(*, job_store: Any, job_id: str, finalized
     return False
 
 
-def _emit_ownership_lost_event(*, db_url: str, event_store: Any | None, job_id: str) -> Any:
-    """Store the ``job.ownership-lost`` lifecycle event; create the store lazily.
+def _emit_lifecycle_event(*, db_url: str, event_store: Any | None, job_id: str, event: dict[str, Any]) -> Any:
+    """Store and flush one terminal-path lifecycle event; create the store lazily, and return it.
 
-    Mirrors the lazy ``BatchingEventStore(EventStore(db_url, job_id))``
-    construction the other terminal paths use, and returns the store so the
-    caller keeps its flush semantics.
+    The lazy ``BatchingEventStore(EventStore(db_url, job_id))`` is the one every
+    terminal path uses; returning it keeps the caller's flush semantics.
     """
     if event_store is None:
         event_store = BatchingEventStore(EventStore(db_url, job_id))
-    event_store.store(
-        {
-            "type": JOB_OWNERSHIP_LOST_EVENT_TYPE,
-            "data": {"reason": _OWNERSHIP_LOST_REASON},
-        }
-    )
+    event_store.store(event)
     if hasattr(event_store, "flush"):
         event_store.flush()
     return event_store
@@ -457,39 +437,65 @@ async def _finalize_cancelled_run(
     so a late abort after the winner's SUCCESS or the reaper's FAILURE streams
     nothing.
 
-    Returns the event store (created lazily when the path streams an event).
+    Still-owner first (item 10): a reclaim abort must not steal the terminal
+    write from the new owner, nor leave an INTERRUPTED_NOTICE beside the
+    winner's answer. Returns the event store (created lazily when the path
+    streams an event).
+    """
+    if await _lost_claim(db_url, job_id, claim_owner):
+        logger.warning("Job %s lost its queue claim; emitting ownership-lost only (the owner publishes)", job_id)
+        lost = {"type": JOB_OWNERSHIP_LOST_EVENT_TYPE, "data": {"reason": _OWNERSHIP_LOST_REASON}}
+        return _emit_lifecycle_event(db_url=db_url, event_store=event_store, job_id=job_id, event=lost)
+
+    logger.info("Job %s cancelled", job_id)
+    finalized = await _mark_interrupted(job_store, job_id)
+    await _publish_interrupted(
+        job_store=job_store,
+        job_id=job_id,
+        finalized=finalized,
+        parent_conversation_id=parent_conversation_id,
+        usage_context=usage_context,
+        expect_run=expect_run,
+    )
+    # The event agrees with the standing verdict too (item 7): after the
+    # winner's SUCCESS or the reaper's FAILURE a late abort must not rewrite
+    # history as "cancelled by user".
+    if await _should_emit_cancelled_event(job_store=job_store, job_id=job_id, finalized=finalized):
+        cancelled = {"type": "job.cancelled", "data": {"reason": "cancelled by user"}}
+        event_store = _emit_lifecycle_event(db_url=db_url, event_store=event_store, job_id=job_id, event=cancelled)
+    return event_store
+
+
+async def _mark_interrupted(job_store: Any, job_id: str) -> bool:
+    """Write INTERRUPTED unless the job is already terminal; whether this run wrote it.
+
+    Sticky terminal statuses: a reaper's FAILURE or a winner's SUCCESS stays.
+    The "cancelled by user" error string is exact: the UI string-matches on it.
     """
     from nat.front_ends.fastapi.async_jobs.job_store import JobStatus
 
-    # Still-owner first (item 10): a reclaim abort must not steal the
-    # terminal write from the new owner — and must not leave an
-    # INTERRUPTED_NOTICE beside the winner's answer. The distinct
-    # ownership-lost signal itself is item 7's; this gate only ensures the
-    # loser publishes nothing.
-    lost_claim = await _lost_claim(db_url, job_id, claim_owner)
-    if lost_claim:
-        logger.warning(
-            "Job %s lost its queue claim; emitting ownership-lost only (the owning worker publishes)",
-            job_id,
-        )
-        return _emit_ownership_lost_event(db_url=db_url, event_store=event_store, job_id=job_id)
+    if not job_store:
+        return False
+    try:
+        return await _update_status_if_not_terminal(job_store, job_id, JobStatus.INTERRUPTED, error="cancelled by user")
+    except ConnectionError, TimeoutError, RuntimeError:
+        return False
 
-    logger.info("Job %s cancelled", job_id)
-    finalized = False
-    if job_store:
-        try:
-            # Sticky terminal statuses: don't overwrite a FAILURE (reaper)
-            # or SUCCESS either — only mark still-active jobs INTERRUPTED.
-            # The "cancelled by user" error string is exact: the UI
-            # string-matches on it.
-            finalized = await _update_status_if_not_terminal(
-                job_store, job_id, JobStatus.INTERRUPTED, error="cancelled by user"
-            )
-        except (ConnectionError, TimeoutError, RuntimeError):
-            finalized = False
+
+async def _publish_interrupted(
+    *,
+    job_store: Any,
+    job_id: str,
+    finalized: bool,
+    parent_conversation_id: str | None,
+    usage_context: dict | None,
+    expect_run: bool,
+) -> None:
+    """The cancelled run's thread notice and outcome report, each gated on agreeing with the verdict."""
+    from nat.front_ends.fastapi.async_jobs.job_store import JobStatus
 
     # Gated on verdict agreement (item 10): a user cancel (standing
-    # INTERRUPTED, or the write above) still leaves its notice — otherwise
+    # INTERRUPTED, or this run's write) still leaves its notice — otherwise
     # the thread stays empty. A loser cancelled after the winner's SUCCESS
     # or the reaper's FAILURE writes nothing beside it.
     if await _should_write_notice(
@@ -516,22 +522,6 @@ async def _finalize_cancelled_run(
         await notify_job_outcome(
             job_id=job_id, usage_context=usage_context, status="interrupted", expect_run=expect_run
         )
-
-    # The event agrees with the standing verdict too (item 7): after the
-    # winner's SUCCESS or the reaper's FAILURE a late abort must not rewrite
-    # history as "cancelled by user".
-    if await _should_emit_cancelled_event(job_store=job_store, job_id=job_id, finalized=finalized):
-        if event_store is None:
-            event_store = BatchingEventStore(EventStore(db_url, job_id))
-        event_store.store(
-            {
-                "type": "job.cancelled",
-                "data": {"reason": "cancelled by user"},
-            }
-        )
-        if hasattr(event_store, "flush"):
-            event_store.flush()
-    return event_store
 
 
 def _normalize_trace_id(trace_id: int | str | None) -> int | None:
@@ -975,13 +965,20 @@ def _create_agent_instance(
     job_id: str | None = None,
     checkpointer: Any | None = None,
 ):
-    """
-    Create an agent instance, supporting different constructor patterns.
+    """Create an agent instance: from its own config when the runner knows it, else by convention.
 
-    Tries in order:
-    1. llm_provider + tools pattern (DeepResearcherAgent style)
-    2. llm + tools pattern (simpler agents)
+    Intake and deep research take their budgets and switches from their config.
+    Any other agent is tried against the constructor shapes in use, most
+    specific first (``_constructed_by_convention``).
     """
+    configured = _configured_agent(agent_cls, llm_provider, tools, fn_config, verbose, callbacks, job_id, checkpointer)
+    if configured is not None:
+        return configured
+    return _constructed_by_convention(agent_cls, llm_provider, llm, tools, fn_config, verbose, callbacks)
+
+
+def _configured_agent(agent_cls, llm_provider, tools, fn_config, verbose, callbacks, job_id, checkpointer) -> Any:
+    """An intake or deep-research agent built from its own config, or None for any other agent."""
     from aiq_agent.agents.deep_researcher.register import DeepResearchAgentConfig
     from aiq_agent.agents.intake.register import ProjectIntakeAgentConfig
 
@@ -1015,40 +1012,28 @@ def _create_agent_instance(
             max_run_seconds=fn_config.max_run_seconds,
             checkpointer=checkpointer,
         )
+    return None
 
-    # Try original deep_researcher pattern (llm_provider + tools + verbose)
-    try:
-        return agent_cls(
-            llm_provider=llm_provider,
-            tools=tools,
-            verbose=verbose,
-            callbacks=callbacks,
-        )
-    except TypeError:
-        pass
 
-    # Try llm_provider + tools pattern (PilotiAgent style)
-    try:
-        return agent_cls(
-            llm_provider=llm_provider,
-            tools=tools,
-            max_tool_iterations=getattr(fn_config, "max_tool_iterations", 5),
-            callbacks=callbacks,
-        )
-    except TypeError:
-        pass
-
-    # Try simpler llm + tools pattern
-    try:
-        return agent_cls(
-            llm=llm,
-            tools=tools,
-            callbacks=callbacks,
-        )
-    except TypeError:
-        pass
-
-    # Fallback: just callbacks
+def _constructed_by_convention(agent_cls, llm_provider, llm, tools, fn_config, verbose, callbacks) -> Any:
+    """The first constructor shape ``agent_cls`` accepts, most specific first; else callbacks alone."""
+    shapes = (
+        # The original deep researcher: provider, tools, verbose.
+        {"llm_provider": llm_provider, "tools": tools, "verbose": verbose},
+        # Piloti: provider, tools, an iteration cap.
+        {
+            "llm_provider": llm_provider,
+            "tools": tools,
+            "max_tool_iterations": getattr(fn_config, "max_tool_iterations", 5),
+        },
+        # The simplest agents: one model and tools.
+        {"llm": llm, "tools": tools},
+    )
+    for shape in shapes:
+        try:
+            return agent_cls(**shape, callbacks=callbacks)
+        except TypeError:
+            continue
     return agent_cls(callbacks=callbacks)
 
 
@@ -1073,101 +1058,90 @@ async def _run_agent(
     1. run(input_text: str) -> str (simple protocol)
     2. run(state) where state has messages (LangGraph pattern)
     """
+    import inspect
+
+    if not hasattr(agent, "run"):
+        raise TypeError(f"Agent {type(agent).__name__} does not have a run method")
+    params = list(inspect.signature(agent.run).parameters)
+    # A first parameter named for the question is the simple protocol: run(input_text).
+    if params and params[0] in ("input_text", "query", "input"):
+        return await run_with_cancellation(agent.run(input_text), monitor, event_store=event_store)
+    # Otherwise the agent takes a state. Mirror the synchronous chat path: the
+    # prompts read these off the state, so a job must carry them too. A worker
+    # has no request headers, so an agent that resolves per-tenant data (deep
+    # research resolves the org's skills) gets the organization captured at
+    # submit the same way.
+    fields = {
+        "user_info": user_info,
+        "clarifier_result": clarifier_result,
+        "plan_documents": plan_documents,
+        "project_context": project_context,
+        "platform_lessons": platform_lessons,
+        "organization_id": organization_id,
+    }
+    state_cls = _get_agent_state_class(agent)
+    if state_cls:
+        state = _model_state(state_cls, input_text, data_sources, available_documents, fields)
+    else:
+        state = _dict_state(input_text, data_sources, available_documents, fields)
+    return await _run_with_reader_controls(agent, state, monitor, event_store)
+
+
+def _model_state(state_cls: type, input_text: str, data_sources, available_documents, fields: dict) -> Any:
+    """The agent's own state model, with each of ``fields`` the model declares and that has a value."""
     from langchain_core.messages import HumanMessage
 
-    # Check if agent has a simple run(input_text) method
-    if hasattr(agent, "run"):
-        import inspect
-
-        sig = inspect.signature(agent.run)
-        params = list(sig.parameters.keys())
-
-        # If first param is 'input_text' or 'query', use simple pattern
-        if params and params[0] in ("input_text", "query", "input"):
-            return await run_with_cancellation(
-                agent.run(input_text),
-                monitor,
-                event_store=event_store,
-            )
-
-        # Otherwise assume state-based pattern
-        # Try to find the agent's state class
-        state_cls = _get_agent_state_class(agent)
-        if state_cls:
-            # Build state with available_documents if the class supports it
-            state_kwargs = {"messages": [HumanMessage(content=input_text)]}
-            if data_sources is not None:
-                state_kwargs["data_sources"] = data_sources
-            # Mirror the synchronous chat path: prompts read these off the
-            # agent state, so async jobs must carry them too. Guarded by
-            # field support so non-research agents keep working unchanged.
-            state_fields = getattr(state_cls, "model_fields", {})
-            for field_name, field_value in (
-                ("user_info", user_info),
-                ("clarifier_result", clarifier_result),
-                ("plan_documents", plan_documents),
-                ("project_context", project_context),
-                ("platform_lessons", platform_lessons),
-                # No request headers exist in a research worker, so an agent that
-                # resolves per-tenant data (deep research resolves the org's
-                # skills) cannot read the organization off the context the way
-                # the synchronous chat path does. It was captured at submit
-                # time; hand it over the same way as the fields above.
-                ("organization_id", organization_id),
-            ):
-                if field_value is not None and field_name in state_fields:
-                    state_kwargs[field_name] = field_value
-            if available_documents:
-                # Convert dicts to AvailableDocument if the state class expects them
-                try:
-                    from aiq_agent.knowledge import AvailableDocument
-
-                    state_kwargs["available_documents"] = [AvailableDocument(**doc) for doc in available_documents]
-                    logger.debug(
-                        "Research worker passing %d available documents to agent state",
-                        len(available_documents),
-                    )
-                except (ImportError, TypeError):
-                    # AvailableDocument not available or state doesn't support it
-                    pass
-            state = state_cls(**state_kwargs)
-        else:
-            # Fallback: create a simple dict state
-            state = {"messages": [HumanMessage(content=input_text)]}
-            if data_sources is not None:
-                state["data_sources"] = data_sources
-            if available_documents:
-                state["available_documents"] = available_documents
-            if user_info is not None:
-                state["user_info"] = user_info
-            if clarifier_result is not None:
-                state["clarifier_result"] = clarifier_result
-            if project_context is not None:
-                state["project_context"] = project_context
-            if platform_lessons is not None:
-                state["platform_lessons"] = platform_lessons
-
-        # The reader's „Jetzt schreiben" reaches the research tool through a
-        # per-run binding; the task created inside `run_with_cancellation`
-        # inherits it.
-        from aiq_agent.agents.deep_researcher.control import bind_added_documents
-        from aiq_agent.agents.deep_researcher.control import bind_write_now
-        from aiq_agent.agents.deep_researcher.control import reset_added_documents
-        from aiq_agent.agents.deep_researcher.control import reset_write_now
-
-        token = bind_write_now(monitor.write_now)
-        added_token = bind_added_documents(monitor.added_documents)
+    state_kwargs: dict[str, Any] = {"messages": [HumanMessage(content=input_text)]}
+    if data_sources is not None:
+        state_kwargs["data_sources"] = data_sources
+    declared = getattr(state_cls, "model_fields", {})
+    state_kwargs.update({name: value for name, value in fields.items() if value is not None and name in declared})
+    if available_documents:
         try:
-            return await run_with_cancellation(
-                agent.run(state),
-                monitor,
-                event_store=event_store,
-            )
-        finally:
-            reset_added_documents(added_token)
-            reset_write_now(token)
+            from aiq_agent.knowledge import AvailableDocument
 
-    raise TypeError(f"Agent {type(agent).__name__} does not have a run method")
+            state_kwargs["available_documents"] = [AvailableDocument(**doc) for doc in available_documents]
+            logger.debug("Research worker passing %d available documents to agent state", len(available_documents))
+        except ImportError, TypeError:
+            # The state does not take AvailableDocument entries: run without them.
+            pass
+    return state_cls(**state_kwargs)
+
+
+def _dict_state(input_text: str, data_sources, available_documents, fields: dict) -> dict[str, Any]:
+    """A plain dict state, for an agent that names no state model. It never carried the plan or the organization."""
+    from langchain_core.messages import HumanMessage
+
+    state: dict[str, Any] = {"messages": [HumanMessage(content=input_text)]}
+    if data_sources is not None:
+        state["data_sources"] = data_sources
+    if available_documents:
+        state["available_documents"] = available_documents
+    for name in ("user_info", "clarifier_result", "project_context", "platform_lessons"):
+        if fields[name] is not None:
+            state[name] = fields[name]
+    return state
+
+
+async def _run_with_reader_controls(agent, state: Any, monitor: CancellationMonitor, event_store) -> Any:
+    """Run a state-taking agent with the reader's controls bound for the run.
+
+    The reader's „Jetzt schreiben" and the documents they add mid-run reach the
+    research tool through per-run bindings; the task ``run_with_cancellation``
+    creates inherits them.
+    """
+    from aiq_agent.agents.deep_researcher.control import bind_added_documents
+    from aiq_agent.agents.deep_researcher.control import bind_write_now
+    from aiq_agent.agents.deep_researcher.control import reset_added_documents
+    from aiq_agent.agents.deep_researcher.control import reset_write_now
+
+    token = bind_write_now(monitor.write_now)
+    added_token = bind_added_documents(monitor.added_documents)
+    try:
+        return await run_with_cancellation(agent.run(state), monitor, event_store=event_store)
+    finally:
+        reset_added_documents(added_token)
+        reset_write_now(token)
 
 
 def _get_agent_state_class(agent) -> type | None:
@@ -1210,7 +1184,7 @@ def _get_agent_state_class(agent) -> type | None:
                 if isinstance(cls, type) and hasattr(cls, "model_fields"):
                     if "messages" in cls.model_fields:
                         return cls
-    except (ImportError, AttributeError):
+    except ImportError, AttributeError:
         pass
 
     # Try same module
@@ -1255,7 +1229,7 @@ def _merge_job_cards(emitted: list[dict[str, Any]], generated: list[Any] | None)
     The post-hoc cards were derived from the finished report and are named by
     no marker, so appending them costs nothing — putting them first would shift
     every emitted index by their count. ``None`` when there is nothing at all,
-    matching ``_build_job_output``'s absent-not-empty rule.
+    matching ``run_result.build_job_output``'s absent-not-empty rule.
     """
     merged = [*emitted, *(generated or [])]
     return merged or None
@@ -1392,20 +1366,6 @@ async def _generate_grid_cards(llm: Any, query: str, report: str) -> CardGenerat
         return CardGenerationResult(cards=None, failed=True)
 
 
-def _mark_degraded(transparency: dict[str, Any], reason: str) -> None:
-    """Add one degraded-reason token to an answer's transparency, in place.
-
-    Appends rather than replaces: the agent's own reasons (no report file, no
-    valid citation) are already there, in its order, and this is one more thing
-    the reader should know, not a different claim about the run.
-    """
-    existing = transparency.get("degraded_reasons")
-    reasons = [token for token in existing if isinstance(token, str)] if isinstance(existing, list) else []
-    if reason not in reasons:
-        reasons.append(reason)
-    transparency["degraded_reasons"] = reasons
-
-
 async def _run_deep_research_reflection(
     *,
     builder: Any,
@@ -1444,68 +1404,17 @@ async def _run_deep_research_reflection(
     """
     if not reflection_enabled or not reflection_llm_ref or not report:
         return
-    # ADR-0087: no restricted-folder check here, on purpose. A check on this
-    # job's scope could never fire: the BFF signs a restricted collection only
-    # into an interactive chat scope (`collection-scope-request.ts`, pinned by
-    # `collection-scope-request.restricted.spec.ts`), so a run's scope is always
-    # open. What could carry restricted content into a run is its INPUT, the
-    # question a confined chat turn wrote, and that is refused where the run is
-    # commissioned: `commissionResearchRun` and `delegateTask` refuse a
-    # conversation that drew on a restricted folder, and a turn whose signed
-    # scope held one (`lib/conversations/restricted-egress.ts`). So the input
-    # read below (`query`) and the report are open content, and reflecting them
-    # into open project memory is right.
-    identity = (usage_context or {}).get("identity") or {}
-    project_id = identity.get("project_id")
-    if not project_id:
-        # The autonomous reflection stage only writes project-scoped memory
-        # (audit finding S1); an org-only job has nothing it may safely record.
+    identity = _reflection_identity(usage_context)
+    if identity is None:
         return
+    from aiq_agent.stages.memory_reflection import REFLECTION_TIMEOUT_S
+
     try:
-        from aiq_agent.common import AgentGroup
-        from aiq_agent.common import apply_model_override
-        from aiq_agent.common import apply_org_credential
-        from aiq_agent.common import get_langchain_llm
-        from aiq_agent.common import sanitize_model_overrides
-        from aiq_agent.common.cost_tracking import BudgetSnapshot
-        from aiq_agent.common.cost_tracking import track_llm_costs
-        from aiq_agent.common.profiler import track_agent_profile
-        from aiq_agent.memory.reflection import run_memory_reflection
-        from aiq_agent.stages.memory_reflection import REFLECTION_TIMEOUT_S
-
-        reflection_llm = await get_langchain_llm(builder, reflection_llm_ref)
-        overrides = sanitize_model_overrides(model_overrides) if model_overrides else {}
-        # Every dial explicit (not context): a research worker has no live request,
-        # and a getter here would be a blocking BFF call on the worker's loop.
-        # The credential first, so the ZDR pin lands only on a model that still
-        # points at OpenRouter.
-        reflection_llm = apply_model_override(
-            apply_org_credential(reflection_llm, org_credential),
-            AgentGroup.MEMORY_REFLECTION,
-            overrides,
-            zdr_only=zdr_only,
+        reflection_llm = await _reflection_llm(builder, reflection_llm_ref, org_credential, model_overrides, zdr_only)
+        await asyncio.wait_for(
+            _reflect(reflection_llm, identity, job_id=job_id, query=query, report=report, memory_digest=memory_digest),
+            timeout=REFLECTION_TIMEOUT_S,
         )
-
-        with (
-            track_agent_profile(agent_name="project_memory_reflection", job_id=job_id, identity=identity),
-            track_llm_costs(job_id=job_id, identity=identity, budget=BudgetSnapshot()),
-        ):
-            await asyncio.wait_for(
-                run_memory_reflection(
-                    llm=reflection_llm,
-                    query=query,
-                    answer=report,
-                    project_id=project_id,
-                    organization_id=identity.get("organization_id"),
-                    conversation_id=identity.get("conversation_id"),
-                    # The MEMORY digest, not the intake profile: the pass compares
-                    # the report against what is already remembered, and against
-                    # the profile it re-recorded known findings and could never
-                    # resolve a supersede quote.
-                    memory_digest=memory_digest,
-                ),
-                timeout=REFLECTION_TIMEOUT_S,
-            )
     except TimeoutError:
         logger.warning(
             "Job %s: deep-research memory reflection timed out after %ss (non-fatal)", job_id, REFLECTION_TIMEOUT_S
@@ -1514,196 +1423,72 @@ async def _run_deep_research_reflection(
         logger.warning("Job %s: deep-research memory reflection failed (non-fatal)", job_id, exc_info=True)
 
 
-def _extract_skills_activated(result: Any) -> list[str] | None:
-    """The skill names a job run activated, or ``None``.
+def _reflection_identity(usage_context: dict | None) -> dict | None:
+    """The run's identity when its report may be reflected into project memory, else None.
 
-    The socket path lifts this off the agent state onto the terminal frame and
-    persists it as message metadata; a job run had the same field on the same
-    state and dropped it on the floor, so a thread written by a job showed no
-    transparency where an interactive turn showed some. Read defensively (state
-    object OR dict, list-of-str or nothing) because the runner is agent-agnostic
-    by design — an agent whose state has no such field simply has none.
+    The autonomous reflection stage only writes project-scoped memory (audit
+    finding S1): an org-only job has nothing it may safely record.
+
+    ADR-0087: no restricted-folder check here, on purpose. A check on this job's
+    scope could never fire: the BFF signs a restricted collection only into an
+    interactive chat scope (`collection-scope-request.ts`, pinned by
+    `collection-scope-request.restricted.spec.ts`), so a run's scope is always
+    open. What could carry restricted content into a run is its INPUT, the
+    question a confined chat turn wrote, and that is refused where the run is
+    commissioned: `commissionResearchRun` and `delegateTask` refuse a
+    conversation that drew on a restricted folder, and a turn whose signed scope
+    held one (`lib/conversations/restricted-egress.ts`). So the question and the
+    report are open content, and reflecting them into open project memory is right.
     """
-    value = getattr(result, "skills_activated", None)
-    if value is None and isinstance(result, dict):
-        value = result.get("skills_activated")
-    if not isinstance(value, list):
-        return None
-    names = [name for name in value if isinstance(name, str) and name]
-    return names or None
+    identity = (usage_context or {}).get("identity") or {}
+    return identity if identity.get("project_id") else None
 
 
-def _extract_verified_sources(result: Any) -> list[dict[str, Any]] | None:
-    """The structured provenance of a finished run's answer, or ``None``.
+async def _reflect(
+    llm: Any, identity: dict, *, job_id: str, query: str, report: str, memory_digest: str | None
+) -> None:
+    """One reflection pass over the report, profiled and costed under the run's identity."""
+    from aiq_agent.common.cost_tracking import BudgetSnapshot
+    from aiq_agent.common.cost_tracking import track_llm_costs
+    from aiq_agent.common.profiler import track_agent_profile
+    from aiq_agent.memory.reflection import run_memory_reflection
 
-    Each entry is one source the report CITED, as the agent's citation
-    verification resolved it: the ``[N]`` label it wears in the prose, the
-    document/file/page locator the reader opens a PDF with, the coarse ``kind``
-    and the norm registry's binding note. The socket path lifts exactly this
-    field off the state and posts it as ``sources``; the job path reduced the
-    whole state to a report string, so a deep answer delivered as a job arrived
-    with nothing but numbers scraped back out of its own Markdown — no
-    open-at-page, no hover snippet, no authority badge — while the same answer
-    streamed live arrived fully attributed.
+    with (
+        track_agent_profile(agent_name="project_memory_reflection", job_id=job_id, identity=identity),
+        track_llm_costs(job_id=job_id, identity=identity, budget=BudgetSnapshot()),
+    ):
+        await run_memory_reflection(
+            llm=llm,
+            query=query,
+            answer=report,
+            project_id=identity["project_id"],
+            organization_id=identity.get("organization_id"),
+            conversation_id=identity.get("conversation_id"),
+            # The MEMORY digest, not the intake profile: the pass compares the
+            # report against what is already remembered, and against the profile
+            # it re-recorded known findings and could never resolve a supersede quote.
+            memory_digest=memory_digest,
+        )
 
-    Read defensively (state object OR dict, entries type-checked one by one)
-    because the runner is agent-agnostic by design: an agent whose state carries
-    no such field contributes nothing here, and one that carries a malformed
-    version contributes nothing rather than an unopenable chip.
+
+async def _reflection_llm(
+    builder: Any, llm_ref: str, org_credential: Any, model_overrides: dict[str, str] | None, zdr_only: bool
+) -> Any:
+    """The reflection model with every dial explicit: the org's credential, its override, zero data retention.
+
+    Explicit, not read from context: a research worker has no live request, and
+    a getter here would be a blocking BFF call on the worker's loop. The
+    credential goes first, so the ZDR pin lands only on a model that still
+    points at OpenRouter.
     """
-    value = getattr(result, "verified_sources", None)
-    if value is None and isinstance(result, dict):
-        value = result.get("verified_sources")
-    if not isinstance(value, list):
-        return None
-    sources = [source for source in value if isinstance(source, dict) and source]
-    return sources or None
+    from aiq_agent.common import AgentGroup
+    from aiq_agent.common import apply_model_override
+    from aiq_agent.common import apply_org_credential
+    from aiq_agent.common import get_langchain_llm
+    from aiq_agent.common import sanitize_model_overrides
 
-
-def _build_job_output(
-    report: str,
-    *,
-    cards: list[Any] | None,
-    transparency: dict[str, Any],
-    sources: list[dict[str, Any]] | None = None,
-) -> dict[str, Any]:
-    """The dict a finished job persists as its ``output``.
-
-    A named function rather than three inline lines because this dict IS the
-    contract a client reads a finished job by, and inline it could not be
-    checked without standing up a worker and a job store.
-
-    ``report`` is always there. Everything else is present or absent, never
-    present-and-empty: no ``cards: []`` on a run that produced none, and no
-    ``research_truncated: false`` on a run that completed — the same contract
-    that field keeps on the chat path, so a client can key off existence.
-
-    ``sources`` is spelled the way the backend spells it everywhere else on the
-    wire (the socket's ``TurnResult``, the message metadata), so
-    the live Report panel and a rehydrated thread read one contract rather than
-    two dialects of the same list.
-    """
-    output: dict[str, Any] = {"report": report}
-    if cards:
-        output["cards"] = cards
-    if sources:
-        output["sources"] = sources
-    output.update(transparency)
-    return output
-
-
-def _extract_answer_transparency(result: Any) -> dict[str, Any]:
-    """The marks a finished run left on its own answer, as the fields it set.
-
-    A deep run can SUCCEED and still owe the reader a caveat. It can be cut off
-    by the wall clock or by the graph's step limit and have its answer salvaged
-    from partial work (``research_truncated`` / ``truncation_reason``); it can
-    ship in a known-weaker form — no report file was ever written, or citation
-    verification found nothing provably grounded (``degraded_reasons``); and
-    citations it did make can have been stripped before anyone saw them
-    (``citations_removed``). It can also rate its own answer, in the level and
-    the two reasons that make the level actionable (``answer_confidence``).
-    The socket path lifts all of that off the agent state onto the terminal
-    frame. The job path reduced the entire state to a report string, so every
-    one of these markers died inside the research worker and the same answer looked
-    *cleaner* delivered as a job than streamed live.
-
-    Read defensively — state object OR dict, every field type-checked on its own
-    — because the runner is agent-agnostic by design: an agent whose state
-    carries none of this simply contributes nothing here, and one that carries a
-    malformed version of it contributes nothing rather than a wrong claim.
-
-    Returns only the fields actually present. Absence is the default and the
-    caller copies this dict straight into the job's persisted output, so the
-    presence of a key is itself the fact — ``research_truncated`` is written as
-    ``true`` or not written at all, never as ``false``, which is the contract it
-    already keeps on the chat path.
-    """
-
-    def field(name: str) -> Any:
-        value = getattr(result, name, None)
-        if value is None and isinstance(result, dict):
-            value = result.get(name)
-        return value
-
-    transparency: dict[str, Any] = {}
-
-    # Literal ``True`` only. A truthy stand-in (``1``, ``"yes"``) means the state
-    # was written by something that does not share this contract, and telling a
-    # reader their research was cut off when nothing recorded a cutoff is a worse
-    # failure than telling them nothing.
-    if field("research_truncated") is True:
-        transparency["research_truncated"] = True
-
-    reason = field("truncation_reason")
-    if isinstance(reason, str) and reason.strip():
-        # Read independently of the flag rather than nested under it: a state
-        # that recorded WHY it stopped but lost the boolean still knows something
-        # true, and the caller keys its event off either one being present.
-        transparency["truncation_reason"] = reason
-
-    degraded_reasons = field("degraded_reasons")
-    if isinstance(degraded_reasons, list):
-        tokens = [token for token in degraded_reasons if isinstance(token, str) and token]
-        # An empty list is not a claim of "degraded in zero ways" — it is the
-        # ordinary case, and it stays out of the output entirely.
-        if tokens:
-            transparency["degraded_reasons"] = tokens
-
-    citations_removed = field("citations_removed")
-    if isinstance(citations_removed, dict) and citations_removed:
-        transparency["citations_removed"] = citations_removed
-
-    # The answer's own self-assessment, read here so it rides the SAME dict to
-    # the same two surfaces instead of growing a second lift with its own bugs.
-    # The three travel together on purpose: the chat path has always sent the
-    # level with its reason, because "niedrig" alone tells a reader their answer
-    # might be wrong and nothing about what to check, and a level whose reason
-    # was dropped in transport is the exact complaint that pairing exists to
-    # prevent. Deep may not record any of them yet — absent is the ordinary case
-    # and writes nothing, so this lands before the field exists and stays correct
-    # after it does.
-    for confidence_field in _ANSWER_CONFIDENCE_FIELDS:
-        value = field(confidence_field)
-        if isinstance(value, str) and value.strip():
-            transparency[confidence_field] = value
-
-    # Recorded on the deep state and, until this, dropped on the way to the
-    # message: the run's own retrieval ledger and the skills the disclosure
-    # mutes. Both ride the same dict as the rest, present or absent.
-    ledger = field("retrieval_ledger")
-    if isinstance(ledger, list) and ledger:
-        transparency["retrieval_ledger"] = ledger
-    hidden = field("skills_hidden")
-    if isinstance(hidden, list):
-        names = [name for name in hidden if isinstance(name, str) and name]
-        if names:
-            transparency["skills_hidden"] = names
-
-    return transparency
-
-
-def _extract_result(result: Any) -> str:
-    """Extract string result from various result formats."""
-    # Direct string
-    if isinstance(result, str):
-        return result
-
-    # State with messages
-    if hasattr(result, "messages") and result.messages:
-        last_msg = result.messages[-1]
-        if hasattr(last_msg, "content"):
-            return str(last_msg.content)
-
-    # Dict with messages
-    if isinstance(result, dict):
-        if "messages" in result and result["messages"]:
-            last_msg = result["messages"][-1]
-            if hasattr(last_msg, "content"):
-                return str(last_msg.content)
-        if "report" in result:
-            return str(result["report"])
-        if "output" in result:
-            return str(result["output"])
-
-    return str(result) if result else ""
+    llm = await get_langchain_llm(builder, llm_ref)
+    overrides = sanitize_model_overrides(model_overrides) if model_overrides else {}
+    return apply_model_override(
+        apply_org_credential(llm, org_credential), AgentGroup.MEMORY_REFLECTION, overrides, zdr_only=zdr_only
+    )

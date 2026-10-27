@@ -29,7 +29,8 @@ import {
 } from '@/lib/authz/folder-access'
 import { canManageOfficeShelf } from '@/lib/authz/organizations'
 import { requireProjectAccess } from '@/lib/authz/projects'
-import type { Document, UploadBatch, UploadBatchExclusion, UploadBatchScope } from '@/lib/db/schema'
+import type { Document } from '@/lib/db/schema/documents'
+import type { UploadBatch, UploadBatchExclusion, UploadBatchScope } from '@/lib/db/schema/upload-batches'
 import { surfaceStateOf, type SurfaceState } from '@/lib/documents/surface-state'
 import { reconcileDocumentStatuses, type DocumentMetadata } from '@/lib/documents/reconcile-status'
 import { encodeDocumentListCursor, type DocumentListCursor } from '@/lib/documents/list-cursor'
@@ -50,7 +51,7 @@ import {
 } from './repository'
 
 /** The shelves an upload can go to; re-stated here so a route needs nothing from the db layer. */
-export { UPLOAD_BATCH_SCOPES } from '@/lib/db/schema'
+export { UPLOAD_BATCH_SCOPES } from '@/lib/db/schema/upload-batches'
 
 /** Most files one batch may announce. Mirrors the CHECK in migration 0110. */
 import { UPLOAD_BATCH_MAX_FILES } from './batch-wire'

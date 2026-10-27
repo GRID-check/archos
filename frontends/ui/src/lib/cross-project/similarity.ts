@@ -16,7 +16,7 @@
  * by recency alone. Pure: no I/O, no clock.
  */
 
-import type { Project } from '@/lib/db/schema'
+import type { Project } from '@/lib/db/schema/projects'
 import { normalizeProfileToken } from '@/lib/project-profile/legacy-names'
 
 /** The facts the ranking reads, by profile key. */

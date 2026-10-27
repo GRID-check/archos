@@ -19,7 +19,7 @@ import type { JSX } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { Suspense } from 'react'
 import { ProjectsGrid } from '@/components/projects/projects-grid'
-import type { Project } from '@/lib/db/schema'
+import type { Project } from '@/lib/db/schema/projects'
 
 // Relative to the moment the preview renders, not to a pinned date: the whole
 // point of the surface is the *shape* of the recency ordering ("12 minutes ago"

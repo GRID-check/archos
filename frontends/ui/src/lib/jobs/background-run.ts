@@ -15,7 +15,7 @@
  */
 
 import 'server-only'
-import type { JobOutput } from '@/lib/db/schema'
+import type { JobOutput } from '@/lib/db/schema/jobs'
 import { buildGridRequestContextWireHeaders, encodeGridBudgetHeader } from '@/lib/request-context'
 import type { PlanDocuments } from '@/lib/runs/plan-documents'
 import { submitJob, type JobPriority, type JobSubmitPayload, type BackgroundAgentType } from './backend-client'

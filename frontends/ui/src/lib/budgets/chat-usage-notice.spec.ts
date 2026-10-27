@@ -7,7 +7,7 @@
  * binding limit, and amounts travel only to someone who may already read them.
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import type { BudgetPolicy } from '@/lib/db/schema'
+import type { BudgetPolicy } from '@/lib/db/schema/budgets'
 import type { AuthorizedSession } from '@/lib/auth/types'
 
 vi.mock('server-only', () => ({}))

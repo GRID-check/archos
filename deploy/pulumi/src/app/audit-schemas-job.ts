@@ -6,6 +6,7 @@ import { commonLabels } from "../platform/namespaces";
 import { hardenedContainerSecurityContext } from "../platform/security";
 import { JOB_DEFAULTS, LIGHT_WORKER_RESOURCES, UID } from "../constants";
 import { AppSecrets, AppWiring, auditSchemaEnv } from "./config";
+import { logicalName } from "../names";
 
 /**
  * Reconciles the WorkOS Audit Log schemas with the app's audit registry
@@ -76,14 +77,14 @@ export function reconcileAuditSchemas(
   dependsOn: pulumi.Resource[],
 ): k8s.batch.v1.Job {
   return new k8s.batch.v1.Job(
-    "grid-app-audit-schemas",
+    logicalName("grid-app-audit-schemas"),
     {
       metadata: { namespace: w.namespace },
       spec: {
         backoffLimit: JOB_DEFAULTS.backoffLimit,
         ttlSecondsAfterFinished: JOB_DEFAULTS.ttlSecondsAfterFinished,
         template: {
-          metadata: { labels: commonLabels("grid-app-audit-schemas") },
+          metadata: { labels: commonLabels(logicalName("grid-app-audit-schemas")) },
           spec: {
             enableServiceLinks: false, // see platform/security.ts — service-link env collisions
             imagePullSecrets: w.imagePullSecrets,

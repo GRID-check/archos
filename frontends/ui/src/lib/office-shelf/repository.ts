@@ -12,7 +12,7 @@
 import 'server-only'
 import { and, eq } from 'drizzle-orm'
 import { getDb } from '@/lib/db'
-import { documents, type Document } from '@/lib/db/schema'
+import { documents, type Document } from '@/lib/db/schema/documents'
 import {
   findDocumentsByFilenames,
   findDocumentsByNames,

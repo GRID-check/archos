@@ -28,7 +28,8 @@ import { ApiError, BadRequestError, ForbiddenError, NotFoundError } from '@/lib/
 import type { AuthorizedSession } from '@/lib/auth/types'
 import { filterUsersWithProjectAccess } from '@/lib/authz/project-membership'
 import { PRODUCT_NAME } from '@/lib/brand'
-import type { MentionRequest, ShareableResourceType } from '@/lib/db/schema'
+import type { MentionRequest } from '@/lib/db/schema/mention-requests'
+import type { ShareableResourceType } from '@/lib/db/schema/resource-shares'
 import { publishToUsers } from '@/lib/events/bus'
 import { inboxGroupKey } from '@/lib/inbox/registry'
 import {

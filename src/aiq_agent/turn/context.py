@@ -13,6 +13,7 @@ import asyncio
 import logging
 import uuid
 from dataclasses import dataclass
+from dataclasses import field
 from dataclasses import replace
 from typing import Any
 
@@ -81,6 +82,10 @@ class TurnContext:
     #: (in an earlier turn, or this turn's memory or subject), as the BFF
     #: recorded it; or that could not be established.
     recorded_restricted: bool = False
+    #: Where the BFF spent the turn-context call (``ContextBlocks.timing``):
+    #: ``spanned`` records it on the ``setup.project_context`` phase. Empty
+    #: off the BFF path.
+    phase_facts: dict[str, float | str] = field(default_factory=dict)
 
     @property
     def confined(self) -> bool:
@@ -228,7 +233,7 @@ async def _live_memory_digest(
             user_id=request.user_id,
             restricted_collections=signed_restricted_collections(request),
         )
-    except (RuntimeError, OSError, ValueError):
+    except RuntimeError, OSError, ValueError:
         # The documented failure modes of fetch_memory_digest: configuration,
         # transport, and an unparseable body. Degrade to the connection-time digest.
         logger.warning("Live memory digest fetch failed; using connection-time digest", exc_info=True)
@@ -338,6 +343,7 @@ async def _load_turn_context(
         org_instructions=blocks.org_instructions,
         reference_projects=blocks.reference_projects,
         workspace=blocks.workspace,
+        phase_facts=blocks.timing,
         # The restriction is settled after the whole setup gather
         # (`settle_restriction`): the digest and the subject can each confine.
         deep_research_allowed=turn_flags.deep_research_allowed,

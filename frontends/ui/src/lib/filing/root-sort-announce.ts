@@ -10,7 +10,7 @@ import 'server-only'
  * reports is already stored.
  */
 
-import type { RootSortRun } from '@/lib/db/schema'
+import type { RootSortRun } from '@/lib/db/schema/root-sort-runs'
 import { bestEffortInbox } from '@/lib/inbox/best-effort'
 import { inboxGroupKey } from '@/lib/inbox/registry'
 import { recipientsHoldingGroup } from '@/lib/inbox/repository'

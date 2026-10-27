@@ -3,7 +3,7 @@
 
 WHY THIS EXISTS
 ---------------
-The retrieval golden set (``frontends/benchmarks/oib_retrieval/fixtures/oib_retrieval_golden.json``)
+The retrieval golden set (``evals/oib-retrieval/fixtures/oib_retrieval_golden.json``)
 labels each question with the *Punkte* that answer it — ``("OIB-RL 2", "3.1.1")`` —
 because that is the unit an Austrian architect and the product's own citation
 contract both speak in (``NormReference.section`` is ``"Pkt. 5.1.1"``). Retrieval,
@@ -130,7 +130,7 @@ DEFAULT_CORPUS_DIR = "data/oib"
 #: Every spelling the OIB publishes a Richtlinie under: ``oib-rl_<n>_…`` for most
 #: parts, ``oib-richtlinie_2.2_…`` for OIB-RL 2.2 (see ``canonical_oib_file_name``).
 DEFAULT_PREFIXES = ("oib-rl_", "oib-richtlinie_")
-DEFAULT_OUT = "frontends/benchmarks/oib_retrieval/fixtures/clause_index.json"
+DEFAULT_OUT = "evals/oib-retrieval/fixtures/clause_index.json"
 
 #: A numbered heading: up to four dot-separated levels, then a non-space title.
 HEADING_RE = re.compile(r"^(\d+(?:\.\d+){0,3})\s+(\S.*)$")

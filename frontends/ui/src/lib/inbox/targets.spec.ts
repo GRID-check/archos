@@ -23,7 +23,7 @@ vi.mock('@/lib/product-feedback/repository', () => ({ getOwnProductFeedback: vi.
 import type { AuthorizedSession } from '@/lib/auth/types'
 import { hasPlatformPermission } from '@/lib/authz/platform'
 import { requireProjectAccess } from '@/lib/authz/projects'
-import type { ProductFeedback } from '@/lib/db/schema'
+import type { ProductFeedback } from '@/lib/db/schema/product-feedback'
 import { getOwnProductFeedback } from '@/lib/product-feedback/repository'
 import { resolveResourceAccess } from '@/lib/sharing/access'
 import { describeResource } from '@/lib/sharing/registry'

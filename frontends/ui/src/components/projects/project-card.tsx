@@ -21,7 +21,7 @@
 
 import type { JSX } from 'react'
 import { RaisedCard, RaisedCardBody, RaisedCardFooter } from '@/components/ui/raised-card'
-import type { Project } from '@/lib/db/schema'
+import type { Project } from '@/lib/db/schema/projects'
 import {
   ProjectActivity,
   ProjectOpenLink,

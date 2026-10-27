@@ -42,10 +42,10 @@ from aiq_agent.agents.piloti.agent import _WIDTH_CAP_MESSAGE
 from aiq_agent.agents.piloti.agent import PilotiAgent
 from aiq_agent.agents.piloti.agent import _recursion_limit
 from aiq_agent.agents.piloti.models import ResearchAgentState
+from aiq_agent.citations.entries import SourceEntry
+from aiq_agent.citations.registry import SourceRegistry
 from aiq_agent.common import LLMProvider
 from aiq_agent.common import turn_status
-from aiq_agent.common.citation_verification import SourceEntry
-from aiq_agent.common.citation_verification import SourceRegistry
 from aiq_agent.common.cost_tracking import GridCostTracker
 from aiq_agent.common.cost_tracking import UsageEvent
 from aiq_agent.common.cost_tracking import grid_cost_tracker_var

@@ -6,7 +6,7 @@
 import 'server-only'
 import { and, desc, eq } from 'drizzle-orm'
 import { getDb } from '@/lib/db'
-import { orgLlmCredentials, type NewOrgLlmCredential, type OrgLlmCredential } from '@/lib/db/schema'
+import { orgLlmCredentials, type NewOrgLlmCredential, type OrgLlmCredential } from '@/lib/db/schema/org-llm-credentials'
 
 export async function listCredentials(organizationId: string, limit = 50): Promise<OrgLlmCredential[]> {
   const db = getDb()

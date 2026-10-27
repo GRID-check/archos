@@ -2542,9 +2542,9 @@ async def test_a_note_is_read_by_the_real_graph_in_its_next_round_and_holds_back
 
     from aiq_agent.agents.piloti.agent import PilotiAgent
     from aiq_agent.agents.piloti.models import ResearchAgentState
+    from aiq_agent.citations.entries import SourceEntry
+    from aiq_agent.citations.registry import SourceRegistry
     from aiq_agent.common import LLMProvider
-    from aiq_agent.common.citation_verification import SourceEntry
-    from aiq_agent.common.citation_verification import SourceRegistry
     from aiq_agent.common.steering import HELD_FOR_STEER
 
     ran: list[str] = []

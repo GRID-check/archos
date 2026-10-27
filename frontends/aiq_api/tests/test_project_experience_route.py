@@ -30,7 +30,7 @@ class _FakeLLM:
         self.replies = list(replies)
         self.model_name = "fake/model"
 
-    def bind(self, **_kwargs: Any) -> "_FakeLLM":
+    def bind(self, **_kwargs: Any) -> _FakeLLM:
         return self
 
     def invoke(self, _messages: list[Any]) -> SimpleNamespace:

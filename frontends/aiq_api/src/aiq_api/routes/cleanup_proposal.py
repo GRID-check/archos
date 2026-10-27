@@ -78,7 +78,7 @@ def parse_candidates(content: str, known_ids: set[str]) -> list[CleanupCandidate
         text = text[text.find("{") :] if "{" in text else text
     try:
         data = json.loads(text)
-    except (json.JSONDecodeError, TypeError):
+    except json.JSONDecodeError, TypeError:
         return None
     if not isinstance(data, dict) or not isinstance(data.get("candidates"), list):
         return None
@@ -158,7 +158,7 @@ def add_cleanup_proposal_routes(router: APIRouter) -> None:
         except httpx.HTTPError as exc:
             logger.warning("Cleanup proposal LLM call failed: %s", type(exc).__name__)
             return CleanupProposalResponse(error="llm_request_failed")
-        except (KeyError, IndexError, TypeError, ValueError):
+        except KeyError, IndexError, TypeError, ValueError:
             logger.warning("Cleanup proposal LLM response had an unexpected shape")
             return CleanupProposalResponse(error="llm_response_malformed")
 

@@ -78,7 +78,7 @@ import {
 } from '@/lib/annotations/repository'
 import { publishToDocumentRoom } from '@/lib/realtime/document-channel'
 import { userHoldsProjectPermission } from '@/lib/authz/project-membership'
-import type { Document } from '@/lib/db/schema'
+import type { Document } from '@/lib/db/schema/documents'
 import { getAccessibleDocument } from '@/lib/documents/access'
 import { loadOrganizationDirectory } from '@/lib/sharing/directory'
 import { recordAuditEvent } from '@/lib/audit/service'

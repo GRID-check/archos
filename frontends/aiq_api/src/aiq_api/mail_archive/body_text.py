@@ -85,7 +85,7 @@ def html_to_text(markup: str) -> str:
         return ""
     try:
         root = lxml_html.document_fromstring(markup)
-    except (ParserError, ValueError):
+    except ParserError, ValueError:
         return markup
     # Listed first: dropping an element while iterating skips its next sibling.
     for element in list(root.iter(*_SKIPPED_TAGS)):

@@ -25,8 +25,8 @@ from aiq_agent.agents.piloti.models import ConversationState
 from aiq_agent.cards.registry import CardRegistry
 from aiq_agent.cards.registry import reset_card_registry
 from aiq_agent.cards.registry import set_card_registry
-from aiq_agent.common.citation_verification import SourceEntry
-from aiq_agent.common.citation_verification import SourceRegistry
+from aiq_agent.citations.entries import SourceEntry
+from aiq_agent.citations.registry import SourceRegistry
 from aiq_agent.turn.response import build_result
 
 PASSAGE = "Brandabschnitte dürfen eine Nettogrundfläche von höchstens 1.200 m² aufweisen."
