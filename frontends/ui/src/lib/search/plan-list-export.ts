@@ -14,7 +14,8 @@
  */
 
 import 'server-only'
-import { Workbook } from 'exceljs'
+// Default import: exceljs is CommonJS (see `lib/feedback/export-workbook.ts`).
+import ExcelJS from 'exceljs'
 import type { Dictionary as FullDictionary } from '@/i18n/dictionaries'
 import { dossierCopy } from '@/i18n/namespaces/dossier'
 import { searchExportCopy } from '@/i18n/namespaces/search-export'
@@ -72,7 +73,7 @@ export function renderPlanListCsv(hits: readonly DocumentHit[], dictionary: Dict
 
 /** The rows as a workbook with one sheet. */
 export async function renderPlanListWorkbook(hits: readonly DocumentHit[], dictionary: Dictionary): Promise<Uint8Array> {
-  const workbook = new Workbook()
+  const workbook = new ExcelJS.Workbook()
   const sheet = workbook.addWorksheet(dictionary.searchExport.sheet, { views: [{ state: 'frozen', ySplit: 1 }] })
   sheet.columns = COLUMNS.map((column) => ({ header: dictionary.searchExport.columns[column.key], key: column.key, width: column.width }))
   for (const hit of hits) {

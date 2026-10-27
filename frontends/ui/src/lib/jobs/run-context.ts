@@ -14,7 +14,7 @@
 import 'server-only'
 import { resolvePerson } from '@/lib/auth/person'
 import { getBudgetStatus } from '@/lib/budgets/service'
-import { computeCollectionScope } from '@/lib/collection-scope'
+import { computeCollectionScope } from '@/lib/retrieval-scope/collection-scope'
 import { getEffectiveModelOverrides } from '@/lib/model-config/service'
 import { resolveOrgInstructions } from '@/lib/org-instructions/service'
 import { loadProjectFederalState, loadProjectPromptView } from '@/lib/project-profile/prompt-view'

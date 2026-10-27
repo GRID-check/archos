@@ -44,10 +44,10 @@ from aiq_agent.observability.boot_timing import BootClock
 
 from . import lease_policy
 from . import queue
+from .agent_job import run_agent_job
 from .outcome_notify import notify_job_outcome_from_access
 from .runner import _purge_deep_checkpoint
 from .runner import _update_status_if_not_terminal
-from .runner import run_agent_job
 
 logger = logging.getLogger(__name__)
 

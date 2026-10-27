@@ -25,7 +25,12 @@
  */
 
 import 'server-only'
-import { Workbook, type Worksheet } from 'exceljs'
+// The default import: exceljs is CommonJS, and Node's ESM loader cannot see its
+// named exports, so `{ Workbook }` breaks the jobs bundle (`dist-jobs/slice.mjs`).
+import ExcelJS from 'exceljs'
+
+type Workbook = ExcelJS.Workbook
+type Worksheet = ExcelJS.Worksheet
 import { interpolate } from '@/i18n/translate'
 import { PRODUCT_NAME } from '@/lib/brand'
 import {
@@ -250,7 +255,7 @@ function addColumnsSheet(workbook: Workbook, dictionary: Dictionary): void {
 
 /** The whole workbook, as the bytes of an .xlsx file. */
 export async function renderFeedbackWorkbook(data: FeedbackExport, dictionary: Dictionary): Promise<Uint8Array> {
-  const workbook = new Workbook()
+  const workbook = new ExcelJS.Workbook()
   workbook.creator = PRODUCT_NAME
   workbook.created = data.generatedAt
   workbook.modified = data.generatedAt

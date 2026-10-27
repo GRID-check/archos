@@ -1,13 +1,13 @@
 """Cross-language contract for the shelf, on the hop where it is consumed.
 
 ``X-Grid-Collection-Scope`` is written by the Next.js BFF
-(``frontends/ui/src/lib/collection-scope-request.ts``) and read here. Neither
+(``frontends/ui/src/lib/retrieval-scope/collection-scope-request.ts``) and read here. Neither
 runtime imports the other's enum — ADR-0047 keeps each side's constants local
 on purpose — so the only thing holding them in agreement is the shared fixture
 ``tests/fixtures/collection_scope/scope_header.json``.
 
 This module proves the agent still READS what the fixture describes;
-``frontends/ui/src/lib/collection-scope-contract.spec.ts`` proves the BFF still
+``frontends/ui/src/lib/retrieval-scope/collection-scope-contract.spec.ts`` proves the BFF still
 WRITES it. Change the payload on one end and exactly one side fails.
 
 That split matters because every defect this phase produced was invisible to

@@ -7,12 +7,13 @@
 import 'server-only'
 import { cache } from 'react'
 import { cookies, headers } from 'next/headers'
-import { LOCALE_COOKIE, type Locale } from './config'
+import { LOCALE_COOKIE, defaultLocale, type Locale } from './config'
 import { translatorFor, type Namespace } from './namespace'
 import { pickRequestLocale } from './request-locale'
 import type { Translator } from './translate'
 import { findSavedLocale } from '@/lib/user-preferences/locale'
 import { actingReaderIsAgent } from '@/lib/agent-api/acting-session'
+import { inJobSlice } from '@/lib/jobs-queue/slice-scope'
 
 /**
  * The locale of the person behind the request.
@@ -33,10 +34,14 @@ const requestLocale = cache(async (): Promise<Locale> => {
  * Resolve the active locale for the current request. An agent's call through
  * the MCP server (`lib/agent-api/dispatch.ts`) reads English, whatever the
  * person saved: a model reads the answer, and anything an agent reads is
- * English (AGENTS.md, "Industry standard first").
+ * English (AGENTS.md, "Industry standard first"). A job slice reads the
+ * default locale: it has no request, and so no person's cookie or header.
  */
 export async function getLocale(): Promise<Locale> {
   if (actingReaderIsAgent()) return 'en'
+  // A job slice has no request to read (`cookies()` throws outside one), and
+  // the request it used to run in, the runner's POST, carried no locale either.
+  if (inJobSlice()) return defaultLocale
   return requestLocale()
 }
 

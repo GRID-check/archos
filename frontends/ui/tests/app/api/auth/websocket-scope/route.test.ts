@@ -12,7 +12,7 @@ vi.mock('@/lib/authz/projects', () => ({
   requireProjectAccess: vi.fn(),
 }))
 
-vi.mock('@/lib/collection-scope-request', () => ({
+vi.mock('@/lib/retrieval-scope/collection-scope-request', () => ({
   buildCollectionScopeFromRequest: vi.fn(),
 }))
 
@@ -29,7 +29,7 @@ vi.mock('@/lib/projects/memory-service', () => ({
 import { GET } from '@/app/api/auth/websocket-scope/route'
 import { getGridSession } from '@/lib/auth/session'
 import { requireProjectAccess } from '@/lib/authz/projects'
-import { buildCollectionScopeFromRequest } from '@/lib/collection-scope-request'
+import { buildCollectionScopeFromRequest } from '@/lib/retrieval-scope/collection-scope-request'
 import { loadProjectPromptView } from '@/lib/project-profile/prompt-view'
 
 const mockGetGridSession = vi.mocked(getGridSession)
