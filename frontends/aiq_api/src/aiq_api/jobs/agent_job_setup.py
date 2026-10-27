@@ -135,7 +135,10 @@ async def prepare_models(builder: Any, request: JobRequest) -> JobModels:
     provider = provider.with_reasoning_efforts(await asyncio.to_thread(get_reasoning_efforts))
     # BYOK (ADR-0022): the org's own credential, fetched just in time and never
     # carried in the payload; resolution fails open to the platform credential.
-    org_credential = resolve_org_llm_credential(request.organization_id) if request.organization_id else None
+    org_credential = None
+    if request.organization_id:
+        # Off the loop: a cold or expired cache is a BFF call.
+        org_credential = await asyncio.to_thread(resolve_org_llm_credential, request.organization_id)
     if org_credential is not None:
         provider = provider.with_credential(org_credential)
     # Zero Data Retention (ADR-0014), after BYOK so the pin lands only on models

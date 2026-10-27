@@ -74,7 +74,7 @@ decision rather than implemented ad hoc.
    `req.headers['x-grid-locale'] = result.data.locale` (a short BCP-47 tag,
    e.g. `de`, `en`). Absent header ⇒ default to `en` (fail-open).
 3. **Thread through async jobs.** Add `x-grid-locale` to the header whitelist
-   reconstructed in `frontends/aiq_api/src/aiq_api/jobs/runner.py` so deep-
+   reconstructed in `frontends/aiq_api/src/aiq_api/jobs/agent_job_setup.py` (`_inject_scope_headers`) so deep-
    research/job bubbles localize consistently with chat.
 4. **Parse in one place.** Add a small helper next to the existing header
    readers in `src/aiq_agent/project_context.py`, e.g.
