@@ -805,13 +805,10 @@ jobs:
         with:
           node-version: "22"
       - uses: ./.github/actions/setup-bun
-      - run: bun install --frozen-lockfile
-        working-directory: deploy/pulumi
-      # The policy pack is its own Node program with its own lockfile; a rule
-      # that no longer compiles would otherwise surface only at deploy time.
-      - run: bun install --frozen-lockfile
-        working-directory: deploy/pulumi/policy
       - uses: ./.github/actions/setup-task
+      # The program and the policy pack, each from its own lockfile; a policy
+      # rule that no longer compiles would otherwise surface only at deploy time.
+      - run: task infra:install
       # What can run on an untrusted PR: the types (every CRD `spec`, and the
       # policy pack) and the manifests under `pulumi.runtime.setMocks` (a
       # renamed flag, a Service missing a port, a probe on the wrong endpoint).
