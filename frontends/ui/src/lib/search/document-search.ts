@@ -74,6 +74,7 @@ const FACET_KEYS: Record<SearchFacetDimension, FacetKey> = {
   cites: 'cites',
   state: 'status',
   fileType: 'fileType',
+  uploader: 'uploader',
 }
 
 /** A cursor names one kind and an offset; opaque on the wire. */
@@ -198,7 +199,8 @@ function toDocumentHit(row: DocumentSearchRow, passage: BackendSearchHit | undef
 function labelFacets(
   reach: SearchReach,
   counts: Record<string, Array<{ value: string; count: number }>>,
-  dimensions: readonly SearchFacetDimension[]
+  dimensions: readonly SearchFacetDimension[],
+  people: ReadonlyMap<string, { name: string | null }>
 ): Partial<Record<SearchFacetDimension, FacetCount[]>> {
   const projectNames = new Map(reach.projects.map((reached) => [reached.project.id, reached.project.name]))
   const out: Partial<Record<SearchFacetDimension, FacetCount[]>> = {}
@@ -212,7 +214,14 @@ function labelFacets(
     }
     out[dimension] = values.map(({ value, count }) => ({
       value,
-      label: dimension === 'project' ? (projectNames.get(value) ?? null) : dimension === 'cites' ? value.slice(value.indexOf(':') + 1) : null,
+      label:
+        dimension === 'project'
+          ? (projectNames.get(value) ?? null)
+          : dimension === 'cites'
+            ? value.slice(value.indexOf(':') + 1)
+            : dimension === 'uploader'
+              ? (people.get(value)?.name ?? null)
+              : null,
       count,
     }))
   }
@@ -265,7 +274,8 @@ async function searchDocuments(
     searchDocumentPage(reach, query, { ...order, ...page }),
     withFacets ? documentFacetCounts(reach, query, Object.values(FACET_KEYS)) : Promise.resolve(null),
   ])
-  const people = await resolvePeople(reach.organizationId, [...new Set(result.rows.map((row) => row.createdBy))])
+  const uploaders = (counts?.uploader ?? []).map((entry) => entry.value)
+  const people = await resolvePeople(reach.organizationId, [...new Set([...result.rows.map((row) => row.createdBy), ...uploaders])])
   const hits = result.rows.map((row) =>
     toDocumentHit(
       row,
@@ -282,7 +292,7 @@ async function searchDocuments(
       totalIsLowerBound: Boolean(text) && (content === null || content.partial || passages.size >= CONTENT_CANDIDATES),
       nextCursor: nextOffset < result.total && nextOffset <= SEARCH_OFFSET_MAX ? encodeSearchCursor('document', nextOffset) : null,
     },
-    facets: counts ? labelFacets(reach, counts, Object.keys(FACET_KEYS) as SearchFacetDimension[]) : null,
+    facets: counts ? labelFacets(reach, counts, Object.keys(FACET_KEYS) as SearchFacetDimension[], people) : null,
     contentPartial: content === null || content.partial,
   }
 }

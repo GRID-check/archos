@@ -321,7 +321,9 @@ const SEEDS: Seed[] = [
 /** What the reader may see office-wide with no flags: everything but A7, A8, A10, A11 and B1. */
 const VISIBLE = ['A1', 'A2', 'A3', 'A4', 'A5', 'A6', 'A9', 'A12', 'A13']
 const FACET_KEYS: FacetKey[] = ['documentType', 'tag', 'project', 'partyRole', 'municipality', 'cites', 'status', 'fileType']
-const SORTS: Array<Exclude<SearchSort, 'relevance'>> = [
+/** The sorts this spec states the expected order of; scale, folder and status are covered by their own cases. */
+type CheckedSort = Exclude<SearchSort, 'relevance' | 'scale' | 'folder' | 'status'>
+const SORTS: CheckedSort[] = [
   'name',
   'added',
   'plan_number',
@@ -646,7 +648,7 @@ describe.skipIf(!url)('the search documents SQL against Postgres', () => {
 
   describe('order, paging and counts', () => {
     const projectName: Record<string, string | null> = {}
-    const seedValues = (seed: Seed): Record<Exclude<SearchSort, 'relevance'>, string | number | null> => {
+    const seedValues = (seed: Seed): Record<CheckedSort, string | number | null> => {
       const revision = seed.metadata?.revisionFacts
       const dates = seed.metadata?.dossier?.dates ?? []
       return {
@@ -663,7 +665,7 @@ describe.skipIf(!url)('the search documents SQL against Postgres', () => {
       }
     }
 
-    function expectedOrder(sort: Exclude<SearchSort, 'relevance'>, dir: 'asc' | 'desc', names: string[]): string[] {
+    function expectedOrder(sort: CheckedSort, dir: 'asc' | 'desc', names: string[]): string[] {
       projectName['p1'] = projectName['p1-visible'] = projectName['p1-hidden'] = 'wohnhaus wien'
       projectName['p2'] = 'volksschule graz'
       const rows = names.map((name) => ({ name, id: ids[name], value: seedValues(SEEDS.find((seed) => seed.key === name)!)[sort] }))

@@ -35,6 +35,9 @@ export const SEARCH_SORTS = [
   'document_type',
   'page_count',
   'project',
+  'scale',
+  'folder',
+  'status',
 ] as const
 export type SearchSort = (typeof SEARCH_SORTS)[number]
 
@@ -89,6 +92,8 @@ export const documentFiltersSchema = z.object({
   currentOnly: z.boolean().optional().describe('No newer revision replaces it.'),
   parties: z.array(partyFilterSchema).max(8).optional(),
   place: shortText.optional().describe('Part of address, municipality or state.'),
+  municipalities: z.array(shortText).max(20).optional().describe('Municipality as the facet names it, any case.'),
+  projectIds: z.array(z.string().uuid()).max(50).optional().describe('Only these projects (within the scope).'),
   facts: z.array(factFilterSchema).max(8).optional(),
   cites: z
     .array(shortText)
@@ -196,6 +201,7 @@ export interface AnnotationHit {
   id: string
   documentId: string
   documentName: string
+  shelf: 'project' | 'office_shelf'
   projectId: string | null
   projectName: string | null
   annotationKind: string
@@ -260,6 +266,7 @@ export const SEARCH_FACET_DIMENSIONS = [
   'cites',
   'state',
   'fileType',
+  'uploader',
 ] as const
 export type SearchFacetDimension = (typeof SEARCH_FACET_DIMENSIONS)[number]
 

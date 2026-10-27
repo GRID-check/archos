@@ -147,6 +147,10 @@ export function filtersWhere(filters: DocumentFilters): SQL[] {
   if (filters.place) {
     where.push(sql`lower(concat_ws(' ', ${f.address}, ${f.municipality}, ${f.federalState})) LIKE ${likeContains(filters.place.toLowerCase())}`)
   }
+  if (filters.municipalities?.length) {
+    where.push(inArray(sql`lower(${f.municipality})`, filters.municipalities.map((name) => name.toLowerCase())))
+  }
+  if (filters.projectIds?.length) where.push(inArray(documents.projectId, filters.projectIds))
   for (const fact of filters.facts ?? []) where.push(factWhere(fact))
   for (const entry of filters.cites ?? []) where.push(citesWhere(entry))
   where.push(...between(sql`${f.documentDate}`, filters.documentDate))
@@ -233,6 +237,9 @@ const SORT_COLUMNS: Record<Exclude<SearchSort, 'relevance'>, SQL> = {
   document_type: sql`${f.documentType}`,
   page_count: sql`${f.pageCount}`,
   project: sql`lower(${projects.name})`,
+  scale: sql`replace(${f.scale}, ' ', '')`,
+  folder: sql`lower(${projectFolders.name})`,
+  status: sql`lower(${documents.status})`,
 }
 
 function orderOf(sort: SearchSort, dir: 'asc' | 'desc', text: TextMatch | null): SQL[] {
@@ -356,6 +363,7 @@ const FACET_VALUE: Record<string, SQL> = {
   municipality: sql`${f.municipality}`,
   cites: sql`unnest(${f.referenceTokens})`,
   status: sql`lower(${documents.status})`,
+  uploader: sql`${documents.createdBy}`,
   // A match test, then the last dot's part: the same value as `substring(... from '\.([A-Za-z0-9]{1,8})$')`,
   // whose capture group sends Postgres down its slow regex path (measured: 120 ms against 45 ms over
   // 60,000 names), and this facet runs over every matched row (`search-latency.integration.spec.ts`).
@@ -376,6 +384,7 @@ const FACET_ON_MATCHED: Record<FacetKey, SQL> = {
   municipality: sql.raw('matched.municipality'),
   cites: sql.raw('unnest(matched.reference_tokens)'),
   status: sql.raw('lower(matched.status)'),
+  uploader: sql.raw('matched.created_by'),
   fileType: sql.raw("CASE WHEN matched.filename ~ '\\.[A-Za-z0-9]{1,8}$' THEN lower(split_part(matched.filename, '.', -1)) END"),
 }
 
@@ -440,6 +449,7 @@ export async function facetCountsOnce(reach: SearchReach, query: DocumentQuery, 
       getDb().execute(sql`
         WITH matched AS MATERIALIZED (
           SELECT ${documents.projectId} AS project_id, ${documents.status} AS status, ${documents.filename} AS filename,
+            ${documents.createdBy} AS created_by,
             ${f.documentType} AS document_type, ${f.tags} AS tags, ${f.partyRoles} AS party_roles,
             ${f.municipality} AS municipality, ${f.referenceTokens} AS reference_tokens
           FROM ${documents}

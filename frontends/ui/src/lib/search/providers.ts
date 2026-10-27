@@ -83,6 +83,7 @@ export async function searchAnnotations(
       id: row.id,
       documentId: row.documentId,
       documentName: documentDisplayName(row),
+      shelf: row.projectId === null ? 'office_shelf' : 'project',
       projectId: row.projectId,
       projectName: row.projectName,
       annotationKind: row.kind,
