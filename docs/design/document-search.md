@@ -181,6 +181,14 @@ and the answer says its facets are being built.
 | project | name, address | projects in reach |
 | conversation | title, topic tags | the conversation list's own rule, generalized from one project to the reach; withheld conversations (ADR-0088) are never matched |
 
+The providers live in `lib/search/providers.ts`. Annotations are joined to
+`documents` under the same `reachWhere` the document search uses, so a mark on
+a document in a hidden folder or on someone else's held upload is never found.
+Conversations: across the office, every project in reach plus the rows with no
+project (the list's rule for those); in a project, that project's rows only;
+on the office shelf or in a folder, none. A withheld conversation is dropped
+before it is counted.
+
 Tasks, task runs, proposals and project memory are not searched yet: each has
 its own subject-access rule (a run's subject document, a memory's restricted
 folders) that needs its own provider and test. Message bodies are not searched
