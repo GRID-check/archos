@@ -13,6 +13,7 @@ from datetime import datetime
 
 import pytest
 from sqlalchemy import text
+from sqlalchemy.exc import IntegrityError
 
 from aiq_agent.common import claim_queue
 from aiq_agent.knowledge import ingest_queue
@@ -647,6 +648,64 @@ def test_a_table_from_before_priority_and_dead_rows_is_upgraded_in_place(db):
     assert (claim.job_id, claim.priority) == ("old", claim_queue.PRIORITY_INTERACTIVE)
     ingest_queue.enqueue("new", "org-a", "p", priority="bulk")
     assert ingest_queue.counts() == {"queued": 1, "claimed": 1, "dead": 0, "cancelled": 0}
+
+
+# -------------------------------------------------------------- the guard
+
+
+def _set_status(db, job_id: str, status: str) -> None:
+    with _engine(db).begin() as conn:
+        conn.execute(text("UPDATE ingest_job_queue SET status = :s WHERE job_id = :id"), {"s": status, "id": job_id})
+
+
+@pytest.mark.parametrize("retire", ["cancel", "dead"])
+@pytest.mark.parametrize("revive", [claim_queue.QUEUED, claim_queue.CLAIMED, "the other retired status"])
+def test_the_database_refuses_to_move_a_retired_job(db, retire, revive):
+    """A statement that skips ``claim_queue``'s WHERE clauses still cannot bring a stopped or dead job back."""
+    _enqueue("a0", "org-a", "2026-09-30 10:00:00")
+    if retire == "cancel":
+        ingest_queue.cancel("a0")
+    else:
+        ingest_queue.mark_dead("a0", "unreadable payload")
+    retired = _row(db, "a0")[0]
+    if revive == "the other retired status":
+        revive = claim_queue.DEAD if retired == claim_queue.CANCELLED else claim_queue.CANCELLED
+
+    with pytest.raises(IntegrityError):
+        _set_status(db, "a0", revive)
+
+    assert _row(db, "a0")[0] == retired
+    assert ingest_queue.claim_next("w1", **CLAIM) is None
+
+
+@pytest.mark.parametrize("status", [claim_queue.CLAIMED, claim_queue.DEAD, "done"])
+def test_the_database_refuses_a_job_born_anything_but_queued(db, status):
+    ingest_queue.ensure_table(db)
+    with pytest.raises(IntegrityError), _engine(db).begin() as conn:
+        conn.execute(
+            text("INSERT INTO ingest_job_queue (job_id, lane, payload, status) VALUES ('x', 'org-a', 'p', :s)"),
+            {"s": status},
+        )
+
+
+def test_the_database_refuses_an_unknown_status_on_a_live_job(db):
+    _enqueue("a0", "org-a", "2026-09-30 10:00:00")
+
+    with pytest.raises(IntegrityError):
+        _set_status(db, "a0", "done")
+
+
+def test_every_move_the_queue_makes_is_one_the_guard_allows(db):
+    """queued -> claimed -> queued (given back) -> claimed -> dead, and queued -> cancelled, all pass."""
+    _enqueue("a0", "org-a", "2026-09-30 10:00:00")
+    _enqueue("b0", "org-b", "2026-09-30 10:00:01")
+    ingest_queue.cancel("b0")
+    assert ingest_queue.claim_next("w1", **CLAIM).job_id == "a0"
+    assert ingest_queue.release_claims(["a0"], "w1") == 1
+    assert ingest_queue.claim_next("w1", **CLAIM).job_id == "a0"
+    assert ingest_queue.mark_dead("a0", "gave up")
+
+    assert (_row(db, "a0")[0], _row(db, "b0")[0]) == (claim_queue.DEAD, claim_queue.CANCELLED)
 
 
 # ------------------------------------------------------------------- meters

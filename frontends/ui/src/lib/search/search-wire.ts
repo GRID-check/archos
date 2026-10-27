@@ -104,15 +104,15 @@ export const documentFiltersSchema = z.object({
   parties: z.array(partyFilterSchema).max(8).optional(),
   place: shortText.optional().describe('Part of address, municipality or state.'),
   municipalities: z.array(shortText).max(20).optional().describe('Municipality as the facet names it, any case.'),
-  projectIds: z.array(z.string().uuid()).max(50).optional().describe('Only these projects (within the scope).'),
+  projectIds: z.array(z.guid()).max(50).optional().describe('Only these projects (within the scope).'),
   facts: z.array(factFilterSchema).max(8).optional(),
   cites: z
     .array(shortText)
     .max(8)
     .optional()
     .describe('Cited norm ("EN 1992-1-1"), law ("§ 33"), drawing ("EP-05") or `kind:key` token.'),
-  citedBy: z.string().uuid().optional().describe('Documents this document references.'),
-  citing: z.string().uuid().optional().describe('Documents referencing this document.'),
+  citedBy: z.guid().optional().describe('Documents this document references.'),
+  citing: z.guid().optional().describe('Documents referencing this document.'),
   documentDate: dateRange.optional(),
   uploaded: dateRange.optional(),
   photographed: dateRange.optional(),
@@ -162,8 +162,8 @@ export type SearchBody = z.infer<typeof searchBodySchema>
 /** `POST /api/search` query: where to look. */
 export const searchScopeQuerySchema = z.object({
   scope: z.enum(['office', 'project', 'office_shelf']).optional().describe('Default `office`: every shelf the person may read.'),
-  projectId: z.string().uuid().optional(),
-  folderId: z.string().uuid().optional().describe('A folder of the project or the office shelf, its subfolders included.'),
+  projectId: z.guid().optional(),
+  folderId: z.guid().optional().describe('A folder of the project or the office shelf, its subfolders included.'),
 })
 export type SearchScopeQuery = z.infer<typeof searchScopeQuerySchema>
 

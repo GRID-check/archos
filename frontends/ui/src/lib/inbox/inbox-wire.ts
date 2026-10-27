@@ -15,7 +15,7 @@ export const inboxListQuerySchema = z.object({
   type: z.enum(INBOX_ITEM_TYPES).optional().describe('Only this item type.'),
   projectId: z
     .string()
-    .uuid()
+    .guid()
     .optional()
     .describe('Only items about this project or its conversations and documents.'),
   limit: z.coerce
@@ -40,7 +40,7 @@ export const unreadAnchorsQuerySchema = z.object({
  * something a user-facing endpoint should accept.
  */
 export const markReadSchema = z.union([
-  z.object({ itemIds: z.array(z.string().uuid()).min(1).max(INBOX_LIST_LIMIT) }).strict(),
+  z.object({ itemIds: z.array(z.guid()).min(1).max(INBOX_LIST_LIMIT) }).strict(),
   z.object({ all: z.literal(true) }).strict(),
   z
     .object({
@@ -59,4 +59,4 @@ export const markReadSchema = z.union([
     .strict(),
 ])
 
-export const markUnreadSchema = z.object({ itemIds: z.array(z.string().uuid()).min(1).max(INBOX_LIST_LIMIT) }).strict()
+export const markUnreadSchema = z.object({ itemIds: z.array(z.guid()).min(1).max(INBOX_LIST_LIMIT) }).strict()

@@ -43,7 +43,7 @@ const cardSchema = z.object({
 export const cardCatalogSchema = z.object({
   cards: z.array(cardSchema),
   /** Shapes the card bodies reference by name (NormReference, DimensionCheck, …). */
-  buildingBlocks: z.record(z.array(cardFieldSchema)),
+  buildingBlocks: z.record(z.string(), z.array(cardFieldSchema)),
   cardCount: z.number(),
   featureRequest: z.object({
     repository: z.string(),

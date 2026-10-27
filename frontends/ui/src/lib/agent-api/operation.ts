@@ -68,11 +68,11 @@ export interface AgentOperation {
    */
   readonly load: () => Promise<RouteModule>
   /** The dynamic segments, one key per `[name]` in `path`. */
-  readonly params?: z.ZodObject<z.ZodRawShape>
+  readonly params?: z.ZodObject
   /** Query string parameters. */
-  readonly query?: z.ZodObject<z.ZodRawShape>
+  readonly query?: z.ZodObject
   /** The JSON body the route parses, reused from the route's own schema where it is exported. */
-  readonly body?: z.ZodTypeAny
+  readonly body?: z.ZodType
   /**
    * How `body` reaches the route (default `json`). `multipart`: the agent sends
    * `{ files: [{ name, mimeType, contentBase64 }], fields? }` (`upload-wire.ts`)

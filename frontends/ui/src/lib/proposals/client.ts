@@ -11,7 +11,7 @@
  * No `server-only` and no drizzle: the browser imports this.
  */
 
-import type { ZodType, ZodTypeDef } from 'zod'
+import type { ZodType } from 'zod'
 import {
   proposalListResponseSchema,
   proposalResponseSchema,
@@ -50,7 +50,7 @@ async function request(
 }
 
 async function requestAs<T>(
-  schema: ZodType<T, ZodTypeDef, unknown>,
+  schema: ZodType<T, unknown>,
   run: ProposalFetch,
   path: string,
   method: 'GET' | 'POST',
