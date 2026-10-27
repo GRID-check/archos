@@ -45,6 +45,13 @@ const READ: Record<string, { tags: string[]; partyRoles: string[]; cites: Array<
   'd0000000-0000-4000-8000-000000000006': { tags: ['Brandschutz'], partyRoles: [], cites: [] },
 }
 
+/**
+ * A document's reading. The register's further drawings have no entry of
+ * their own: their Verfasser was read as the architect, so the Beteiligte
+ * count agrees with the Verfasser column beside it.
+ */
+const readOf = (hit: DocumentHit): (typeof READ)[string] => READ[hit.id] ?? { tags: [], partyRoles: hit.author ? ['architect'] : [], cites: [] }
+
 const fold = (value: string): string => value.toLowerCase().replace(/[\s-]/g, '')
 const extension = (hit: DocumentHit): string => hit.filename.split('.').pop()?.toLowerCase() ?? ''
 const within = (value: string | null, range: { from?: string; to?: string } | undefined): boolean =>
@@ -53,7 +60,7 @@ const anyOf = (wanted: readonly string[] | undefined, held: readonly string[]): 
 
 function matches(hit: DocumentHit, state: SearchUrlState): boolean {
   const f = state.filters
-  const read = READ[hit.id] ?? { tags: [], partyRoles: [], cites: [] }
+  const read = readOf(hit)
   return (
     (!state.projectId || hit.projectId === state.projectId) &&
     anyOf(f.projectIds, hit.projectId ? [hit.projectId] : []) &&
@@ -138,7 +145,7 @@ function count(values: Array<{ value: string; label?: string | null }>): FacetCo
 
 /** The counts over the matched documents, as the server would give them. */
 function facetsOf(hits: DocumentHit[]): Partial<Record<SearchFacetDimension, FacetCount[]>> {
-  const read = (hit: DocumentHit): (typeof READ)[string] => READ[hit.id] ?? { tags: [], partyRoles: [], cites: [] }
+  const read = readOf
   return {
     documentType: count(hits.flatMap((hit) => (hit.documentType ? [{ value: hit.documentType }] : []))),
     tag: count(hits.flatMap((hit) => read(hit).tags.map((value) => ({ value })))),

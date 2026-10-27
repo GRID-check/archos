@@ -145,9 +145,9 @@ export function FieldShortcut({ modifier }: { modifier: string }): JSX.Element {
   )
 }
 
-/** A hint about keys, in a status line: gone under a finger. */
+/** A hint about keys, in a status line: gone under a finger and on a phone-sized screen. */
 export function KeysHint({ children }: { children: ReactNode }): JSX.Element {
-  return <span className="pointer-coarse:hidden">{children}</span>
+  return <span className="max-sm:hidden pointer-coarse:hidden">{children}</span>
 }
 
 /**
@@ -308,7 +308,8 @@ export function ResultsStatus({ children, busy }: { children: ReactNode; busy: b
   return (
     <p className="flex min-h-5 items-center gap-2 text-xs tabular-nums text-muted-foreground" role="status" aria-live="polite" data-testid="search-status">
       {busy ? <Spinner size="xs" aria-hidden /> : null}
-      {children}
+      {/* One run of text: the status and the key hint wrap as a sentence, not as two columns. */}
+      <span className="min-w-0">{children}</span>
     </p>
   )
 }
@@ -474,14 +475,15 @@ export function MetaLine({ parts }: { parts: ReadonlyArray<ReactNode | null | un
   const present = parts.filter((part): part is ReactNode => Boolean(part))
   return (
     <>
+      {/* Each dot travels with the part before it, so a wrapped line never starts on one. */}
       {present.map((part, index) => (
-        <span key={index} className="contents">
-          {index > 0 ? (
+        <span key={index} className="inline-flex min-w-0 max-w-full items-center gap-x-1.5">
+          {part}
+          {index < present.length - 1 ? (
             <span className="text-muted-foreground/60" aria-hidden>
               ·
             </span>
           ) : null}
-          {part}
         </span>
       ))}
     </>
