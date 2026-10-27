@@ -1740,7 +1740,7 @@ function malwareScanConfig(cfg: pulumi.Config): GridConfig["malwareScan"] {
     // `clamav/clamav` 1.5.4 (Alpine) with its signatures baked in, so a new pod
     // serves at once and freshclam only fetches what changed since the build.
     // Keep it equal to the Compose pin (deploy/compose/docker-compose.yaml).
-    "clamav/clamav:1.5.4@sha256:e19130cdebaeacc71fa46eab3ed6f69941f2f22aa5e08d55e9197f8edf43ce5e";
+    "clamav/clamav:1.5.4@sha256:bda39705e291105049c3936e2803ac90b955172af8030f94f05dce1252df6c6d";
   if (!/@sha256:[0-9a-f]{64}$/.test(image)) {
     throw new Error(
       `grid-oib:malwareScanImage "${image}" is refused: pin it by digest (<image>@sha256:<64 hex>), so ` +
