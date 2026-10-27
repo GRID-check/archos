@@ -26,7 +26,6 @@ from aiq_agent.common.citation_verification import _parse_citation_key
 from aiq_agent.common.citation_verification import extract_sources_from_tool_result
 from aiq_agent.common.citation_verification import get_session_registry
 from aiq_agent.common.cost_tracking import BudgetExceededError
-from aiq_agent.common.deferred_tool_loading import tool_payload_name
 
 logger = logging.getLogger(__name__)
 
@@ -283,13 +282,24 @@ class DeferredStructuredOutputMiddleware(AgentMiddleware):
 
 
 def _request_tool_name(tool: object) -> str | None:
-    """Return a LangChain model-request tool name across common tool shapes.
+    """Return a LangChain model-request tool name across the shapes a request carries.
 
-    One implementation, in ``common.deferred_tool_loading``, because the
-    deferred-tool payload builder has to read tool identity out of exactly the
-    same three shapes and a second traversal would drift from this one.
+    A request's ``tools`` list may hold ``BaseTool`` objects, chat-shaped
+    dicts (``{"function": {"name": …}}``) or already-flat Responses dicts
+    (``{"name": …}``); a tool with none of them (a provider-native entry such
+    as ``{"type": "tool_search"}``) has no name and is never hidden.
     """
-    return tool_payload_name(tool)
+    name = getattr(tool, "name", None)
+    if isinstance(name, str):
+        return name
+    if not isinstance(tool, dict):
+        return None
+    if isinstance(tool.get("name"), str):
+        return tool["name"]
+    function = tool.get("function")
+    if isinstance(function, dict) and isinstance(function.get("name"), str):
+        return function["name"]
+    return None
 
 
 class ToolVisibilityMiddleware(AgentMiddleware):

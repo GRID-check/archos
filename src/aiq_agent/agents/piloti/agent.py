@@ -107,6 +107,7 @@ from aiq_agent.common.turn_status import is_retrieval_round
 from aiq_agent.common.turn_status import is_skill_read
 from aiq_agent.common.turn_status import record_round_announcement
 from aiq_agent.common.turn_status import retrieval_round_scope
+from aiq_agent.common.turn_status import tool_basename
 from aiq_agent.common.wire_v2 import SteerAppliedBody
 from aiq_agent.common.wire_v2 import SteerAppliedValue
 from aiq_agent.knowledge.already_read import merge_digest
@@ -144,7 +145,6 @@ from .quote_patch import quote_patcher
 from .tool_search import ToolSearchIndex
 from .tool_search import ToolSearchSettings
 from .tool_search import build_query_parts
-from .tool_search import tool_basename
 
 logger = logging.getLogger(__name__)
 

@@ -433,13 +433,6 @@ def test_tool_payload_name_returns_none_for_an_unnameable_tool():
     assert tool_payload_name({"type": "tool_search"}) is None
 
 
-def test_the_deep_researcher_middleware_shares_this_one_implementation():
-    from aiq_agent.agents.deep_researcher.custom_middleware import _request_tool_name
-
-    assert _request_tool_name({"type": "function", "function": {"name": "ifc_measure"}}) == "ifc_measure"
-    assert _request_tool_name({"type": "tool_search"}) is None
-
-
 # ------------------------------------------------- the per-model capability gate
 #
 # The gap these guard: OpenRouter + Responses says the CLIENT can express the

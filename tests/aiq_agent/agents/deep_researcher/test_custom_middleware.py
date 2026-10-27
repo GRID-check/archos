@@ -14,6 +14,7 @@ from aiq_agent.agents.deep_researcher.custom_middleware import SelectiveToolRetr
 from aiq_agent.agents.deep_researcher.custom_middleware import SourceRegistryMiddleware
 from aiq_agent.agents.deep_researcher.custom_middleware import ToolNameSanitizationMiddleware
 from aiq_agent.agents.deep_researcher.custom_middleware import ToolVisibilityMiddleware
+from aiq_agent.agents.deep_researcher.custom_middleware import _request_tool_name
 from aiq_agent.agents.deep_researcher.custom_middleware import is_retryable_tool_error
 from aiq_agent.agents.deep_researcher.models import ResearchNotes
 from aiq_agent.agents.deep_researcher.tools.source_registry import build_get_verified_sources_tool
@@ -874,3 +875,19 @@ class TestExcludedDocumentsNeverBecomeSources:
             reset_session_registry(token)
 
         assert mw.read_file_names() == {"neu.pdf"}
+
+
+@pytest.mark.parametrize(
+    "shape",
+    [
+        SimpleNamespace(name="ifc_measure"),
+        {"name": "ifc_measure"},
+        {"type": "function", "function": {"name": "ifc_measure"}},
+    ],
+)
+def test_request_tool_name_reads_every_shape_langchain_passes(shape):
+    assert _request_tool_name(shape) == "ifc_measure"
+
+
+def test_request_tool_name_returns_none_for_an_unnameable_tool():
+    assert _request_tool_name({"type": "tool_search"}) is None

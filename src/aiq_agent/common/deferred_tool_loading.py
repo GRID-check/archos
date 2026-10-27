@@ -519,11 +519,8 @@ class DeferredToolLoadingSettings(BaseModel):
 def tool_payload_name(tool: object) -> str | None:
     """Return a tool's name across the several shapes LangChain passes around.
 
-    Shared with :class:`~aiq_agent.agents.deep_researcher.custom_middleware.ToolVisibilityMiddleware`,
-    which filters model-request tools by name: a request's ``tools`` list may
-    hold ``BaseTool`` objects, chat-shaped dicts (``{"function": {"name": …}}``)
-    or already-flat Responses dicts, and every caller that reasons about tool
-    identity needs all three.
+    A payload may hold ``BaseTool`` objects, chat-shaped dicts
+    (``{"function": {"name": …}}``) or already-flat Responses dicts.
     """
     name = getattr(tool, "name", None)
     if isinstance(name, str):
