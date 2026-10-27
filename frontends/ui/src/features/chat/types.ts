@@ -8,7 +8,7 @@ import type { PageRegion } from '@/features/knowledge/lib/page-region'
 import type { GridCard } from '@/shared/cards/schemas'
 import type { CardInteractions } from '@/features/grid-cards/card-decision'
 import type { ProjectStatus } from '@/lib/projects/project-status'
-import type { DraftMention } from '@/features/collaboration/lib/mention-text'
+import type { DraftMention } from '@/lib/mentions/mention-text'
 import type {
   AnswerConfidenceCappedReason,
   StoredThinkingStep,
@@ -25,7 +25,7 @@ import type { MessagesSlice } from './stores/messages-store'
 import type { SessionsSlice } from './stores/sessions-store'
 import type { InteractionSlice } from './stores/interaction-store'
 
-import type { Shelf, SourceKind } from './lib/source-kinds'
+import type { Shelf, SourceKind } from '@/lib/source-kinds'
 import type { DocumentVersionState } from '@/lib/documents/lifecycle-types'
 import type { ChatEffort } from '@/lib/reasoning-settings/catalog'
 

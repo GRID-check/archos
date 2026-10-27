@@ -29,9 +29,13 @@
  * a client-supplied array in it is otherwise an unbounded write.
  */
 
-import type { SourceSignal } from '@/features/layout/lib/source-presets'
-import type { Shelf, SourceKind } from '@/features/chat/lib/source-kinds'
-import { modernizeLane, modernizeSourceKind } from '@/features/chat/lib/source-kinds'
+import {
+  modernizeLane,
+  modernizeSourceKind,
+  type Shelf,
+  type SourceKind,
+  type SourceSignal,
+} from '@/lib/source-kinds'
 import { modernizeTurnEventKey, modernizeTurnEventValueName } from './legacy-turn-event'
 import type { RetrievalLedger } from './message-retrieval-ledger'
 import { sanitizeRetrievalLedger } from './message-retrieval-ledger'

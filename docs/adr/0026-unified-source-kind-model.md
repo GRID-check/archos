@@ -48,7 +48,7 @@ The coarse kinds (mirroring the click-dummy `TYPES`) are:
 is not part of the citation taxonomy.)
 
 - The taxonomy lives in **`src/aiq_agent/common/source_kinds.py`** (backend) and
-  a mirror **`frontends/ui/src/features/chat/lib/source-kinds.ts`** (frontend).
+  a mirror **`frontends/ui/src/lib/source-kinds.ts`** (frontend).
   The backend owns keys + German labels + a `css_token`; presentation colours
   live in frontend CSS custom properties (`var(--source-{css_token})`), so both
   ends share one source of truth without shipping colours from the backend.

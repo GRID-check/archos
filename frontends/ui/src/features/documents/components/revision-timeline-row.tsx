@@ -9,7 +9,7 @@ import { MiddleTruncate } from '@/components/ui/middle-truncate'
 import { DEFAULT_TAIL_LENGTH } from '@/lib/text/middle-truncate'
 import { cn } from '@/lib/utils'
 import { Quote } from '@/components/ui/quote'
-import { changeLines } from '../lib/revision-timeline'
+import { changeLines } from '@/lib/documents/revision-timeline'
 
 export interface RevisionTimelineRowProps {
   /** „Fassung 3": what the row is called. Unambiguous on its own, never „Diese Fassung". */
@@ -62,7 +62,7 @@ export interface RevisionTimelineRowProps {
  * the file name only where it is another document, the state only where it is
  * worth a word.
  *
- * Presentational. Which rows exist and in which order is `lib/revision-timeline.ts`;
+ * Presentational. Which rows exist and in which order is `lib/documents/revision-timeline.ts`;
  * what the actions do belongs to `document-revisions.tsx`.
  */
 export function RevisionTimelineRow({

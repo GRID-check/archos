@@ -88,6 +88,7 @@ Index: [`contributing/README.md`](contributing/README.md).
 | [Headless first](contributing/headless-first.md) | A capability is a route and an operation; how an agent reaches everything a person can do ([ADR-0122](adr/0122-everything-a-person-can-do-an-agent-can-do.md)) |
 | [Documentation obligations](contributing/documentation.md) | Which doc to update for which change |
 | [Lint evaluation](contributing/lint-evaluation.md) | Why the UI lints with oxlint, not ESLint or Biome, and what that cost |
+| [Module seams](contributing/module-seams.md) | Which module may import which, checked by dependency-cruiser |
 
 ## User guides
 
