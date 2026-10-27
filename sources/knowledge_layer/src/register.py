@@ -23,6 +23,7 @@ from pydantic import model_validator
 
 from aiq_agent.common.action_outcome import ActionOutcome
 from aiq_agent.common.estate_paths import estate_path
+from aiq_agent.common.tool_vocabulary import current_vocabulary
 from aiq_agent.common.turn_status import ActionRow
 from aiq_agent.common.wire_v2 import TraceLane
 from aiq_agent.common.wire_v2 import TraceLaneSource
@@ -1746,11 +1747,12 @@ def _format_results(
 #: two-document search, in the result and in the Herleitung built from it. It
 #: names the way back rather than an instruction: the parts are still readable,
 #: one call each.
-_FAMILY_OVERVIEW_FAILED_NOTICE = (
-    "Hinweis: der Überblick über die Teile der OIB-Richtlinie {key} konnte nicht erstellt werden; "
-    "es folgen nur die gerankten Treffer, die Teile sind einzeln mit `read_passage(document=…)` "
-    "zu öffnen.\n\n"
-)
+def _family_overview_failed_notice(key: str) -> str:
+    """The notice, naming the caller's read (``common.tool_vocabulary``)."""
+    return (
+        f"Note: the overview of the parts of OIB-Richtlinie {key} could not be built; only the ranked results "
+        f"follow, and each part opens on its own with {current_vocabulary().read_name}.\n\n"
+    )
 
 
 #: Replaced files one notice names before it counts the rest.
@@ -1810,8 +1812,9 @@ def _hidden_revisions_notice(superseded: dict[str, dict[str, str]]) -> str:
         return ""
     shown = ", ".join(names[:_HIDDEN_REVISIONS_NAMED])
     rest = len(names) - _HIDDEN_REVISIONS_NAMED
-    tail = f" und {rest} weitere" if rest > 0 else ""
-    return f"Ältere Fassungen ausgeblendet: {shown}{tail} — mit file_name=… gezielt lesbar.\n\n"
+    tail = f" and {rest} more" if rest > 0 else ""
+    how = "by its path with `read_file`" if current_vocabulary().filesystem else "with `file_name=…`"
+    return f"Older Fassungen left out: {shown}{tail}; each is readable {how}.\n\n"
 
 
 @dataclass(frozen=True, slots=True)
@@ -2942,7 +2945,7 @@ async def knowledge_retrieval(config: KnowledgeRetrievalConfig, _builder: Builde
             # the family question. Said only where there ARE passages: an empty
             # or failed search already tells the model the stronger thing.
             if branch.failed and merged.chunks:
-                notice += _FAMILY_OVERVIEW_FAILED_NOTICE.format(key=family_key)
+                notice += _family_overview_failed_notice(family_key)
 
             # After the floor, not before: the floor is the only thing that can empty a
             # non-empty result set, and this message is the vocabulary for saying so.

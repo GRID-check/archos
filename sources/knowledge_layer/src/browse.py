@@ -63,6 +63,7 @@ from pydantic import Field
 
 from aiq_agent.common.action_outcome import ActionOutcome
 from aiq_agent.common.source_kinds import canonical_shelf_value
+from aiq_agent.common.tool_vocabulary import current_vocabulary
 from aiq_agent.common.turn_status import ActionRow
 from aiq_agent.knowledge.page_count import page_number
 from aiq_agent.knowledge.title_block import display_date
@@ -1052,7 +1053,10 @@ def _card_lines(card: FolderCard, about: Sequence[str] = ()) -> list[str]:
     if card.files:
         lines.append(f"  Files here: {' · '.join(card.files)}")
     elif card.direct > MAX_CARD_FILES:
-        call = f'`list_files(folder="{card.path}")`' if card.path else "`list_files()`"
+        if current_vocabulary().filesystem:
+            call = "`ls` on the folder"
+        else:
+            call = f'`list_files(folder="{card.path}")`' if card.path else "`list_files()`"
         lines.append(
             f"  Files here: {card.direct}, too many to name (a card names them up to {MAX_CARD_FILES}); "
             f"{call} lists them."
@@ -1287,7 +1291,7 @@ def _resolve_chain(
     if not matches:
         return [], (
             f'No file on {where} is named or contains "{wanted.strip()}". Find the exact name with '
-            "`list_files(name_contains=…)`."
+            f"{'`glob`' if current_vocabulary().filesystem else '`list_files(name_contains=…)`'}."
         )
     chains: dict[frozenset[tuple[str, str]], list[FileRow]] = {}
     for row in matches:
@@ -1349,8 +1353,8 @@ def render_revisions(
         "The change note sits on the NEWER Fassung and compares it with the base named beside it; between two "
         "Fassungen that are not neighbours, read the rows in between together. It is a summary by Piloti, not "
         "proof: what changed page by page is shown by `list_files(revisions_of=…, compare_to=…)`, and you check a "
-        "measurement with `read_passage(document=…)`. An older Fassung stays readable on request; otherwise rely "
-        "on the current one. Write file names exactly as they appear here."
+        f"measurement with {current_vocabulary().read()}. An older Fassung stays readable on request; otherwise "
+        "rely on the current one. Write file names exactly as they appear here."
     )
     return "\n".join(lines)
 
@@ -2425,6 +2429,11 @@ async def _files_by_collection(
     return names
 
 
+def _literal_mode() -> str:
+    """How the caller asks for a literal search: ``grep``'s default mode, or ``knowledge_search``'s ``match``."""
+    return '`mode="exact"`' if current_vocabulary().filesystem else '`match="exact"`'
+
+
 def user_pattern(text: str) -> tuple[Any | None, str]:
     """A person's regex, compiled; ``(None, refusal)`` when it cannot run, with the line that teaches the fix.
 
@@ -2447,7 +2456,7 @@ def user_pattern(text: str) -> tuple[Any | None, str]:
     except (regex.error, RecursionError, OverflowError) as error:
         return None, (
             f"`query` is not a valid regex (Python syntax): {error}. Escape a literal ( ) [ ] {{ }} . * + ? | \\ "
-            'with a backslash, or use `match="exact"` for a literal word.'
+            f"with a backslash, or use {_literal_mode()} for a literal word."
         )
     if compiled.search(""):
         return None, (

@@ -3,7 +3,7 @@
 A file a person confirmed as replaced stays readable by name: „was stand in Index B“ is a
 real question. What the read must not do is hand the passage over as the document's current
 state, so the result opens with one line naming the current Fassung, through the same notice
-slot „Ältere Fassungen ausgeblendet“ uses in the search (the block's hash still matches). The
+slot „Older Fassungen left out“ uses in the search (the block's hash still matches). The
 current Fassung itself, and a file nobody replaced, read exactly as before.
 """
 
@@ -25,7 +25,7 @@ from sources.knowledge_layer.src.read_passage import read_passage
 from sources.knowledge_layer.src.register import KnowledgeRetrievalConfig
 
 PROJECT = "proj_1"
-NOTICE = "Ältere Fassung:"
+NOTICE = "Older Fassung:"
 
 
 def _doc(name: str, **extra) -> AvailableDocument:

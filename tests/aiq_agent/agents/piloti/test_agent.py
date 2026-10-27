@@ -3881,7 +3881,7 @@ class TestTheTidyingRulesLiveInTheTools:
 
     def test_a_name_is_taken_from_the_overview_and_never_invented(self):
         (description,) = _file_verb_descriptions().values()
-        assert "exactly as the overview or `list_files` shows it" in description
+        assert "exactly as the overview or a listing shows it" in description
 
 
 class TestTheThreeDraftingTurnShapes:
