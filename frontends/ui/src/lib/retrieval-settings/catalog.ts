@@ -5,7 +5,7 @@
  * defaults (the values the workflow YAML / tool constants ship with), and
  * their accepted ranges. Mirrored by `_BOUNDS`/`_ALLOWED_VALUES` in the
  * backend's `src/aiq_agent/common/retrieval_settings.py`; parity is pinned by
- * `tests/fixtures/retrieval_settings_catalog.json` on both sides, so a key
+ * `frontends/ui/tests/fixtures/retrieval_settings_catalog.json` on both sides, so a key
  * added here without the backend bound fails in CI.
  *
  * Values are global (platform-level, no org layer) and reach the backend via

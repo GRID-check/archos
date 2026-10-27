@@ -207,7 +207,9 @@ class TestCatalogParity:
         import json
         from pathlib import Path
 
-        fixture = Path(__file__).parents[2] / "fixtures" / "reasoning_efforts_catalog.json"
+        fixture = (
+            Path(__file__).parents[3] / "frontends" / "ui" / "tests" / "fixtures" / "reasoning_efforts_catalog.json"
+        )
         catalog = json.loads(fixture.read_text(encoding="utf-8"))
         assert frozenset(catalog) == reasoning_settings._EFFORTS
 

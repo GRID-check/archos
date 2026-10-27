@@ -1,3 +1,4 @@
+// @disk-inputs: src/app/**
 /**
  * Server components are transport, like route handlers — they may not query.
  *

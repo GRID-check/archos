@@ -25,6 +25,7 @@ from pydantic import Field
 from aiq_agent.knowledge.document_classification import canonical_doc_class
 from aiq_agent.oib_status import OibKnowledgeStatus
 
+from ..jobs.ingest_dispatch import enqueue_only
 from ..models.requests import OibDocumentDeleteResponse
 from ..models.requests import OibDocumentUploadResponse
 from ..models.requests import OibReingestRequest
@@ -105,15 +106,14 @@ class _TemporaryFileResponse(FileResponse):
             Path(self.path).unlink(missing_ok=True)
 
 
+# The two below import late: the corpus and the status pull the knowledge layer in.
 def _run_ingestion():
-    # Import here to avoid heavy imports at module load time.
     from aiq_agent.oib_sync import sync
 
-    return sync()
+    return sync(enqueue=enqueue_only)
 
 
 def _compute_status():
-    # Import here to avoid heavy imports at module load time.
     from aiq_agent.oib_status import get_status
 
     return get_status()
@@ -141,7 +141,7 @@ def _store_upload(name: str, content: bytes, doc_class: str | None) -> None:
     """
     from aiq_agent import oib_sync
 
-    oib_sync.store_and_request(name, content, doc_class)
+    oib_sync.store_and_request(name, content, doc_class, enqueue=enqueue_only)
 
 
 def _is_safe_zip_member(member_name: str, base_dir: Path) -> bool:
@@ -226,7 +226,7 @@ def _queue_reingest(names: list[str]) -> tuple[list[str], list[str]]:
         if not oib_sync.mark_for_reingest(name):
             unknown.append(name)
             continue
-        oib_sync.request_ingestion(name)
+        oib_sync.request_ingestion(name, enqueue=enqueue_only)
         queued.append(name)
     return queued, unknown
 

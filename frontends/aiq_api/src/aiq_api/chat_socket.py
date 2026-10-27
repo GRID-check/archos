@@ -88,6 +88,7 @@ from fastapi import WebSocket
 from pydantic import ValidationError
 from starlette.websockets import WebSocketDisconnect
 
+from aiq_agent.auth.errors import AuthError
 from aiq_agent.common.content_screen import ScreeningRules
 from aiq_agent.common.content_screen import findings_summary
 from aiq_agent.common.content_screen import mask_text
@@ -168,7 +169,6 @@ from aiq_agent.turn.payload import thread_reply_requested
 from aiq_agent.turn.payload import turn_surface
 from aiq_agent.turn.response import answer_message_id
 from aiq_agent.turn.streaming import TurnTextFold
-from aiq_api.auth.errors import AuthError
 from aiq_api.auth.middleware import build_request_trace_tags
 from aiq_api.auth.middleware import detect_internal_caller
 from aiq_api.auth.middleware import resolve_request_user

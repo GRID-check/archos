@@ -25,6 +25,7 @@ from aiq_agent.agents.piloti.clarify import build_clarifier
 from aiq_agent.agents.piloti.conversation import ConversationGraph
 from aiq_agent.agents.piloti.history import warm_token_encoder
 from aiq_agent.agents.piloti.models import ConversationState
+from aiq_agent.auth.request_identity import skip_clarifier_requested
 from aiq_agent.common import AgentGroup
 from aiq_agent.common import filter_tools_by_sources
 from aiq_agent.common import format_tool_unavailability_error
@@ -67,7 +68,6 @@ from aiq_agent.turn.admission import refused
 from aiq_agent.turn.admission import spanned
 from aiq_agent.turn.answer_stream import answer_streaming_enabled
 from aiq_agent.turn.answer_stream import bound_live_prose
-from aiq_agent.turn.api_seam import skip_clarifier_requested
 from aiq_agent.turn.context import TurnContext
 from aiq_agent.turn.context import load_turn_context
 from aiq_agent.turn.context import settle_restriction

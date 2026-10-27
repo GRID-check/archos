@@ -574,10 +574,10 @@ jobs:
           EXTRA_JSON: ${{ needs.changes.outputs.py_extra }}
         run: |
           # The named test files that belong to this suite, in its first shard.
-          case "$SUITE" in core) root=tests/ ;; api) root=frontends/aiq_api/tests/ ;; sources) root=sources/ ;; esac
+          case "$SUITE" in core) root='^(tests|evals)/' ;; api) root='^frontends/aiq_api/tests/' ;; sources) root='^sources/' ;; esac
           extra=""
           if [ -z "$SHARD" ] || [ "${SHARD%%/*}" = 1 ]; then
-            extra="$(jq -r --arg root "$root" '[.[] | select(startswith($root))] | join(" ")' <<<"$EXTRA_JSON")"
+            extra="$(jq -r --arg root "$root" '[.[] | select(test($root))] | join(" ")' <<<"$EXTRA_JSON")"
           fi
           task be:test:affected SUITE="$SUITE" SHARD="$SHARD" EXTRA="$extra"
       # Saved red or green: a failed test is recorded as failed and re-runs.

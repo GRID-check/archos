@@ -57,7 +57,7 @@ class Ranking:
     """How a search reads the dense index and fuses its channels: the knobs the parity sweep measures.
 
     One frozen value, :data:`RANKING`, is what production runs; the sweep
-    (``oib_retrieval_eval.qdrant_parity.variants``) swaps it to measure the
+    (``oib_retrieval.qdrant_parity.variants``) swaps it to measure the
     alternatives through the same code. Every default is the setting the
     measurement supports (``qdrant-gates-2026-10.md``, "Ranking sweep").
     """
