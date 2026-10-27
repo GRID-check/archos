@@ -21,7 +21,7 @@ import {
 } from '@/lib/api/errors'
 import type { AuthorizedSession } from '@/lib/auth/types'
 import { getBackendUrl } from '@/lib/backend-proxy'
-import { INTERNAL_TOKEN_HEADER } from '@/lib/internal-auth'
+import { internalServiceHeaders } from '@/lib/internal-auth'
 import {
   MAX_DICTATION_AUDIO_BYTES,
   dictationFormatOf,
@@ -75,7 +75,7 @@ async function postToBackend(session: AuthorizedSession, body: object): Promise<
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        [INTERNAL_TOKEN_HEADER]: process.env.GRID_INTERNAL_API_TOKEN ?? '',
+        ...internalServiceHeaders(getBackendUrl()),
         // Whose credential and data policy, and whose ledger row.
         'x-grid-organization-id': session.organizationId,
         'x-grid-user-id': session.userId,

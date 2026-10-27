@@ -38,6 +38,7 @@ import { getDb } from '@/lib/db'
 import { withPlatformAccess } from '@/lib/db/tenant-context'
 import { documents } from '@/lib/db/schema'
 import { getBackendUrl } from '@/lib/backend-proxy'
+import { internalServiceHeaders } from '@/lib/internal-auth'
 import { syncAllProjectFacts, type ProjectFactsSyncResult } from '@/lib/cross-project/project-facts-mirror'
 
 // Reconcile touches whole collections; give each backend call more room than a
@@ -264,7 +265,7 @@ async function reconcileOrphanedSummaries(
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'x-grid-internal-token': process.env.GRID_INTERNAL_API_TOKEN ?? '',
+      ...internalServiceHeaders(getBackendUrl()),
     },
     body: JSON.stringify({ collections: collectionNames, dry_run: false }),
     signal: AbortSignal.timeout(BACKEND_FETCH_TIMEOUT_MS),
@@ -310,7 +311,7 @@ async function refreshDocumentFacts(
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-grid-internal-token': process.env.GRID_INTERNAL_API_TOKEN ?? '',
+          ...internalServiceHeaders(getBackendUrl()),
         },
         body: JSON.stringify({ collections: batch }),
         signal: AbortSignal.timeout(DOCUMENT_FACTS_TIMEOUT_MS),

@@ -13,6 +13,7 @@ import type {
   IngestionJobStatus,
 } from '@/adapters/api/documents-schemas'
 import type { DocumentFileStatus } from '@/features/documents/types'
+import { getBackendUrl } from '@/lib/backend-url'
 import { getDb, RelationType, resetDatabase } from '../database'
 
 // ============================================================================
@@ -169,7 +170,7 @@ const updateJobProgress = (jobId: string): IngestionJobStatus | null => {
 // Handlers
 // ============================================================================
 
-const baseUrl = process.env.BACKEND_URL || process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000'
+const baseUrl = getBackendUrl()
 
 export const documentHandlers = [
   // --------------------------------------------------------------------------
