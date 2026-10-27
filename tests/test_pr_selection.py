@@ -99,6 +99,13 @@ def test_package_data_no_test_names_forces_the_full_suite(mod):
     assert mod.decide_python(["src/aiq_agent/agents/piloti/prompts/unnamed.md"], TESTS, recorded=True)[0] == "full"
 
 
+def test_an_eval_fixture_no_test_names_forces_the_full_suite(mod):
+    # The harness reads its recordings through its own code, not by a name a test spells out.
+    changed = ["evals/oib-retrieval/fixtures/vector_channel_recorded.json"]
+
+    assert mod.decide_python(changed, TESTS, recorded=True)[0] == "full"
+
+
 def test_a_lookup_failure_answers_no_database(mod):
     def broken(_path):
         raise OSError("network")

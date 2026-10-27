@@ -92,7 +92,7 @@ def repo_root() -> Path:
 
 
 def package_root() -> Path:
-    """The ``oib_retrieval`` benchmark package directory."""
+    """The ``evals/oib-retrieval`` harness directory."""
     return Path(__file__).resolve().parents[2]
 
 

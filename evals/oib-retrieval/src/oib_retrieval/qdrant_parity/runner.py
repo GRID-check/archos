@@ -1,7 +1,6 @@
 """``task be:eval:qdrant-parity``: run the Qdrant retrieval gates on the OIB corpus.
 
-    PYTHONPATH=src:evals/oib-retrieval/src:sources/knowledge_layer/src \\
-      .venv/bin/python -m oib_retrieval.qdrant_parity.runner --out /tmp/qdrant-parity
+    .venv/bin/python -m oib_retrieval.qdrant_parity.runner --out /tmp/qdrant-parity
 
 Needs: the corpus in ``data/oib`` (operator-provided), a Qdrant 1.19 server
 (``--qdrant-url``, default ``$AIQ_QDRANT_TEST_URL`` or ``http://localhost:6333``), and

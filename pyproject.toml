@@ -187,9 +187,11 @@ addopts = "--import-mode=importlib -m 'not live'"
 # appended to sys.path, so it loses). `frontends/aiq_api/src` is the same guard
 # for `aiq_api`, which `tests/aiq_agent` imports too (the worker's header
 # contract, the job runner): without it a root-level `pytest` in a worktree ran
-# those tests against the MAIN checkout's `aiq_api`. `knowledge_layer` is a
-# finder-style editable and is NOT covered by this; see docs/contributing/gotchas.md.
-pythonpath = [".", "src", "frontends/aiq_api/src"]
+# those tests against the MAIN checkout's `aiq_api`. `evals/oib-retrieval/src`
+# is the same guard for the retrieval harness, a finder-style editable the evals
+# import by name. `knowledge_layer` is a finder-style editable too and is NOT
+# covered by this; see docs/contributing/gotchas.md.
+pythonpath = [".", "src", "frontends/aiq_api/src", "evals/oib-retrieval/src"]
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "session"
 markers = [

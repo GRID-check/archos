@@ -196,17 +196,14 @@ Offline, no key, from the repo root:
 
 ```bash
 # The chunking A/B alone (~30 s warm, ~4 min cold while the PDF cache builds)
-PYTHONPATH=src:evals/oib-retrieval/src \
-  ./.venv/bin/python -m oib_retrieval.runner --structure-only
+./.venv/bin/python -m oib_retrieval.runner --structure-only
 
 # Everything, with the CI embedder. Dense/hybrid numbers are WIRING ONLY.
-PYTHONPATH=src:evals/oib-retrieval/src \
-  ./.venv/bin/python -m oib_retrieval.runner --embedder hashed
+./.venv/bin/python -m oib_retrieval.runner --embedder hashed
 
 # Everything, with the real local model (downloads ~120 MB once, ~12 min CPU)
-pip install -e "evals/oib-retrieval[dense]"
+uv pip install -e "evals/oib-retrieval[dense]"
 OIB_RETRIEVAL_MODEL_CACHE=~/.cache/huggingface \
-PYTHONPATH=src:evals/oib-retrieval/src \
   ./.venv/bin/python -m oib_retrieval.runner --embedder e5
 ```
 

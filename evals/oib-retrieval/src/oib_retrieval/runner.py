@@ -2,10 +2,9 @@
 
 Run offline, without any API key:
 
-    PYTHONPATH=src:evals/oib-retrieval/src \\
-      ./.venv/bin/python -m oib_retrieval.runner --structure-only
-    PYTHONPATH=… ./.venv/bin/python -m oib_retrieval.runner --embedder hashed
-    PYTHONPATH=… ./.venv/bin/python -m oib_retrieval.runner --embedder e5
+    ./.venv/bin/python -m oib_retrieval.runner --structure-only
+    ./.venv/bin/python -m oib_retrieval.runner --embedder hashed
+    ./.venv/bin/python -m oib_retrieval.runner --embedder e5
 
 WHAT EACH SECTION IS WORTH
 --------------------------

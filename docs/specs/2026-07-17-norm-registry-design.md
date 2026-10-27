@@ -438,7 +438,7 @@ Phases are separately mergeable PRs against `develop`, each with its docs update
   NormReference resolver.
 - **Frontend:** applicability parity test (TS codegen output vs Python resolver on shared
   fixtures); typecheck via `Dockerfile.typecheck` (host npm is unreliable on this repo).
-- **Evals:** existing `oib_compliance` golden dataset unchanged; add cases for edition discipline
+- **Evals:** existing `oib_compliance` golden dataset unchanged (deleted uncalibrated in ADR-0145 row 2); add cases for edition discipline
   and guidance-vs-requirement once Phase 5 lands.
 - **Verification workflow per AGENTS.md:** ruff + `ruff format --check`, `py_compile`,
   `pytest tests/`, Docker frontend typecheck.
