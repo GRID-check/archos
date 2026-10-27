@@ -1,7 +1,7 @@
 'use client'
 
 import type { FormEvent, JSX } from 'react'
-import { useId, useMemo, useState } from 'react'
+import { useId, useState } from 'react'
 import { Bookmark, BookmarkPlus, MoreHorizontal, Pencil, Share2, Trash2, UserX } from 'lucide-react'
 import { toast } from 'sonner'
 
@@ -19,9 +19,7 @@ import { useTranslations } from '@/i18n'
 import type { SavedSearchView } from '@/lib/search/saved-search-client'
 import { SAVED_SEARCH_NAME_MAX } from '@/lib/search/saved-search-wire'
 import { SAVED_SEARCH_UNDO_MS, type SavedSearchRenameOutcome } from '../hooks/use-saved-searches'
-import { useSearchLabels } from '../hooks/use-search-labels'
-import type { ActiveFilter } from '../lib/active-filters'
-import { savedSearchSummary } from '../lib/saved-search-summary'
+import { useSavedSearchSummary } from '../hooks/use-saved-search-summary'
 import { ColleagueMark, DialogForm, PanelBody, QuietLine, RailAction, SavedSearchList, SavedSearchRow } from './search-atoms'
 
 export interface SavedSearchesMenuProps {
@@ -188,22 +186,6 @@ function SavedSearchesBody({
       </RailAction>
     </>
   )
-}
-
-/** The line under a saved search's name: what it asks, in the chips' words. */
-function useSavedSearchSummary(): (item: SavedSearchView) => string {
-  const t = useTranslations('search')
-  const labels = useSearchLabels()
-  return useMemo(() => {
-    const words = {
-      quote: (text: string) => t('saved.summaryText', { text }),
-      register: t('views.register'),
-      // A saved search's project is its scope, which `fromSearchBody` leaves out: no project chip to name.
-      filter: (filter: ActiveFilter) => labels.activeFilter(filter, () => null),
-      everything: t('saved.summaryEverything'),
-    }
-    return (item: SavedSearchView) => savedSearchSummary(item.query, words)
-  }, [t, labels])
 }
 
 /**
