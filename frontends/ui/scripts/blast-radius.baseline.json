@@ -2,7 +2,7 @@
  "description": "Specs that reach each module reached by at least `recordFloor` specs, out of `specs`, read by frontends/ui/scripts/blast-radius.mjs. A module outside it fails at `threshold`. Rewrite with `task fe:blast-radius -- --update` and say in the pull request why a hub grew. docs/audit/blast-radius-2026-10.md",
  "threshold": 300,
  "recordFloor": 240,
- "specs": 1625,
+ "specs": 1630,
  "modules": {
   "src/adapters/api/config.ts": 285,
   "src/adapters/api/turn-socket.ts": 280,
@@ -132,6 +132,18 @@
   "src/lib/documents/reconcile-status.ts": 283,
   "src/lib/documents/rendition.ts": 284,
   "src/lib/documents/repository.ts": 373,
+  "src/lib/documents/repository/folders.ts": 373,
+  "src/lib/documents/repository/ingest-state.ts": 373,
+  "src/lib/documents/repository/levels.ts": 373,
+  "src/lib/documents/repository/list.ts": 373,
+  "src/lib/documents/repository/lookup-by-ref.ts": 373,
+  "src/lib/documents/repository/lookup.ts": 373,
+  "src/lib/documents/repository/mutations.ts": 373,
+  "src/lib/documents/repository/name-lookup.ts": 373,
+  "src/lib/documents/repository/quarantine-and-retry.ts": 373,
+  "src/lib/documents/repository/reconcile.ts": 373,
+  "src/lib/documents/repository/shelf-reads.ts": 373,
+  "src/lib/documents/repository/storage.ts": 373,
   "src/lib/documents/research-report.ts": 283,
   "src/lib/documents/retry-policy.ts": 378,
   "src/lib/documents/reviewers.ts": 284,
@@ -234,6 +246,7 @@
   "src/lib/projects/folder-derived-repository.ts": 283,
   "src/lib/projects/folder-service.ts": 283,
   "src/lib/projects/ifc-folder-guard.ts": 284,
+  "src/lib/projects/memory-recall.ts": 303,
   "src/lib/projects/memory-service.ts": 303,
   "src/lib/projects/project-status.ts": 737,
   "src/lib/projects/repository.ts": 493,
@@ -276,6 +289,7 @@
   "src/lib/tasks/repository.ts": 288,
   "src/lib/tasks/service.ts": 283,
   "src/lib/tasks/subject-access.ts": 284,
+  "src/lib/tasks/task-vocabulary.ts": 738,
   "src/lib/tasks/task-wire.ts": 284,
   "src/lib/tasks/wire.ts": 283,
   "src/lib/text/answer-directives.ts": 419,
@@ -302,7 +316,6 @@
   "src/shared/components/MarkdownRenderer/check-rows.ts": 419,
   "src/shared/components/MarkdownRenderer/table-shape.ts": 419,
   "src/shared/config/file-upload.ts": 359,
-  "src/test-utils/index.tsx": 321,
-  "src/lib/tasks/task-vocabulary.ts": 800
+  "src/test-utils/index.tsx": 321
  }
 }
