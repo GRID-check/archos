@@ -92,7 +92,7 @@ describe('readEstateTree: the project shelf', () => {
   it('reads the audience’s reach for the envelope’s project, restricted folders hidden even in a solo chat', async () => {
     const answer = await readEstateTree(context(), session, { shelf: 'project' })
 
-    expect(reachForAudience).toHaveBeenCalledWith(session, 's_conv_1', { kind: 'project', projectId: PROJECT })
+    expect(reachForAudience).toHaveBeenCalledWith(session, 's_conv_1', { kind: 'project', projectId: PROJECT }, { includeOwnProject: true })
     const listed = vi.mocked(listTreeFolders).mock.calls[0][0]
     expect(listed.projects[0].hiddenFolderIds).toEqual(['f-binned', 'f-restricted', 'f-restricted-child'])
     expect(vi.mocked(listTreeDocuments).mock.calls[0][0]).toEqual({ kind: 'reach', reach: listed })
@@ -121,15 +121,12 @@ describe('readEstateTree: the project shelf', () => {
     await expect(readEstateTree(context(), session, { shelf: 'project' })).rejects.toThrow('No such shelf in this turn.')
   })
 
-  // TODO(document-search): `audienceReach` leaves the conversation's own project out of a shared private chat, so
-  // `reachForAudience` 404s `/project/` there. This case FAILS today on purpose (`it.fails`): once the reach keeps the
-  // own project, it passes, `it.fails` turns red, and this becomes a plain `it`.
-  it.fails('lists the conversation’s own project in a shared private chat', async () => {
-    vi.mocked(reachForAudience).mockImplementation(async () => {
-      // What `audienceReach` answers today for a shared private chat: the own project is not among the projects.
-      throw new NotFoundError('Project not found')
-    })
-    await expect(readEstateTree(context(), session, { shelf: 'project' })).resolves.toMatchObject({ shelf: 'project' })
+  it('lists the conversation’s own project in a shared private chat, pruned for that audience', async () => {
+    // `includeOwnProject` keeps the own project that `audienceReach` (the reach for OTHER projects) leaves out.
+    vi.mocked(reachForAudience).mockImplementation(async (_session, _conversation, _scope, options) =>
+      options?.includeOwnProject ? reach({ screenedOnly: true }) : Promise.reject(new NotFoundError('Project not found')),
+    )
+    await expect(readEstateTree(context(), session, { shelf: 'project' })).resolves.toMatchObject({ shelf: 'project', collection: 'proj_1' })
   })
 })
 
@@ -138,7 +135,7 @@ describe('readEstateTree: a folder', () => {
     vi.mocked(findFolderIdByPath).mockResolvedValue('f-plans')
     vi.mocked(reachForAudience).mockResolvedValue(reach({ folderIds: ['f-plans', 'f-plans-old'] }))
     await readEstateTree(context(), session, { shelf: 'project', folder_path: 'Einreichung/Pläne' })
-    expect(reachForAudience).toHaveBeenCalledWith(session, 's_conv_1', { kind: 'project', projectId: PROJECT, folderId: 'f-plans' })
+    expect(reachForAudience).toHaveBeenCalledWith(session, 's_conv_1', { kind: 'project', projectId: PROJECT, folderId: 'f-plans' }, { includeOwnProject: true })
     expect(vi.mocked(listTreeFolders).mock.calls[0][0].folderIds).toEqual(['f-plans', 'f-plans-old'])
   })
 
@@ -166,7 +163,7 @@ describe('readEstateTree: the office shelf and the conversation’s files', () =
   it('reads the office shelf under the audience’s reach when the signed scope holds it', async () => {
     vi.mocked(reachForAudience).mockResolvedValue(reach({ projects: [], officeShelf: { collection: 'archiv_org_1', reviewsQuarantine: false } }))
     const answer = await readEstateTree(context(), session, { shelf: 'office_shelf' })
-    expect(reachForAudience).toHaveBeenCalledWith(session, 's_conv_1', { kind: 'office_shelf' })
+    expect(reachForAudience).toHaveBeenCalledWith(session, 's_conv_1', { kind: 'office_shelf' }, { includeOwnProject: true })
     expect(answer.shelf).toBe('office_shelf')
   })
 

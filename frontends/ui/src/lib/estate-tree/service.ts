@@ -29,7 +29,7 @@
  *
  * | Shelf | What it is |
  * |---|---|
- * | `project` | the envelope's project, in reach of the audience |
+ * | `project` | the envelope's project, the conversation's own (`includeOwnProject`), pruned for the audience |
  * | `office_shelf` | the organization's office shelf (ADR-0078) |
  * | `session` | the conversation's own files, under the reach's reader |
  *
@@ -119,9 +119,6 @@ async function resolveShelf(
   if (!projectId) throw notInScope()
   const folderId = request.folder_path ? await findFolderIdByPath(context.organizationId, projectShelf(projectId), request.folder_path) : null
   if (request.folder_path && !folderId) throw noFolder()
-  // TODO(document-search): `audienceReach` leaves the conversation's OWN project out of a shared private chat
-  // (it is the reach for OTHER projects, ADR-0094), so `/project/` 404s there today. Take the option that keeps
-  // it once `reachForAudience` has one; `service.spec.ts` holds the case as `it.fails`.
   const reach = await listed(session, conversationId, { kind: 'project', projectId, ...(folderId ? { folderId } : {}) }, folderId)
   const project = reach.projects.find((reached) => reached.project.id === projectId)?.project
   if (!project || !signed.has(project.collectionName)) throw notInScope()
@@ -137,7 +134,9 @@ async function listed(
 ): Promise<SearchReach> {
   let reach: SearchReach
   try {
-    reach = await listingReach(await reachForAudience(session, conversationId, scope))
+    // `includeOwnProject`: `audienceReach` names the OTHER projects a lookup may search (ADR-0094), and a shared
+    // chat's own project is not among them; a reader of the conversation reads its project.
+    reach = await listingReach(await reachForAudience(session, conversationId, scope, { includeOwnProject: true }))
   } catch (error) {
     if (error instanceof NotFoundError) throw folderId ? noFolder() : notInScope()
     throw error
