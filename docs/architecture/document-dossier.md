@@ -20,7 +20,7 @@ flowchart LR
   end
   subgraph BFF["BFF, per project"]
     RS[references resolved<br/>to the project's documents]
-    FD[findings: missing document,<br/>missing plan, contradiction,<br/>incomplete read]
+    FD[findings: missing document,<br/>missing plan, contradiction,<br/>profile contradiction,<br/>incomplete read]
     UI[file panel + project report<br/>+ agent operation]
   end
   DG --> DC --> D
@@ -117,7 +117,44 @@ serves them (operation `project-document-findings`).
 | `missing_document` | a `document` reference whose type no document in the project has |
 | `missing_plan` | a `plan` reference no document's Plankopf number or file name matches |
 | `contradiction` | two current (not superseded) documents state one fact key with different values |
+| `profile_contradiction` | a current document states a fact the project's confirmed profile (the Steckbrief) holds otherwise |
 | `incomplete_read` | a document's coverage has `not_read > 0` |
 
 Every finding names the documents and pages it rests on. It is a pointer for a
 person, never a verdict.
+
+### Compared with the profile
+
+`frontends/ui/src/lib/documents/profile-contradictions.ts`. The service reads the
+project's profile after the listing's gate let the reader in; a profile that cannot
+be read leaves this kind out. Only confirmed facts (`profile.facts`) are a yardstick,
+never a suggestion read from the same documents, and only where both sides mean the
+same thing:
+
+| Dossier | Profile key | Read as |
+|---|---|---|
+| `building_class` | `building_class` | the class number (`GK 4`, `Gebäudeklasse 4`) |
+| `storeys_above_ground`, `storeys_below_ground` | the same | a whole number written alone |
+| `plot_area` | `plot_area` | m², a German number, 1 % apart before it differs |
+| `construction_method` | `construction_method` | intake tokens through words that name exactly one |
+| `use` | `uses` | intake tokens, the same way; garage and plant rooms name nothing |
+| `place.state` | `federal_state` | an Austrian Land by name or short form |
+
+A building's copy (`storeys_above_ground@bldg1`) counts: a document agrees when it
+names any building's value. Keys held per use zone (dwelling units, parking) are not
+compared. A value either side cannot read for certain is silence, not a finding.
+
+## The Eingangsbericht (BFF)
+
+When an upload batch on a project settles, `settleUploadBatches` puts what it brought
+on the uploader's `upload.completed` inbox row as `payload.report`
+(`lib/upload-batches/upload-report.ts`, computed by `upload-report-service.ts`): the
+documents read by document type, the facts they state, the findings that are new
+(the project's findings without the batch's documents against those with them) and
+the ones it settled, the references it makes that the project cannot answer, and the
+pages not read in full. It is read as the uploader (their pinned session, the
+findings' own listing), bounded by one shelf read and four seconds, and fail-open:
+any failure writes the row without it. It names no document, only counts, types and
+finding keys, because the row outlives the reader's right to a file; the row links to
+the findings panel, which re-authorizes. Agents read it on `inbox-list` as
+`uploadReport`.
