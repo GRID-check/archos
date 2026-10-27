@@ -2,7 +2,7 @@
  * @vitest-environment node
  */
 import { describe, it, expect } from 'vitest'
-import { buildCollectionScopeHeader, computeCollectionScope } from '@/lib/collection-scope'
+import { buildCollectionScopeHeader, computeCollectionScope } from '@/lib/retrieval-scope/collection-scope'
 
 const baseSession = {
   userId: 'user_1',
