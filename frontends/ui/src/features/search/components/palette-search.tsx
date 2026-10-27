@@ -29,6 +29,7 @@ import {
   PaletteAside,
   PaletteGlyph,
   PaletteLabel,
+  PaletteStatusLine,
   ResultRowFrameProvider,
   type ResultRowFrameProps,
 } from './search-atoms'
@@ -80,23 +81,48 @@ export interface PaletteSearchResultsProps {
   failed: boolean
   /** Open a hit, or the search page, and close the palette. */
   onOpen: (href: string) => void
-  /** The search page asking `text` at the palette's scope. */
-  allHref: string
+  /**
+   * Pick a hit instead of opening it: the composer's `#`, which puts the hit
+   * into the message. Given, a hit's Enter or click picks it.
+   */
+  onPick?: (hit: SearchHit) => void
+  /** The search page asking `text` at the palette's scope; null leaves the row out, and the status stands as a line of its own. */
+  allHref: string | null
+  /** Hits of each kind shown. */
+  perKind?: number
   itemClassName?: string
 }
 
 /** What was typed, answered: three hits of each kind, then the way to all of them. */
-export function PaletteSearchResults({ text, answered, response, loading, failed, onOpen, allHref, itemClassName }: PaletteSearchResultsProps): JSX.Element {
+export function PaletteSearchResults({
+  text,
+  answered,
+  response,
+  loading,
+  failed,
+  onOpen,
+  onPick,
+  allHref,
+  perKind = PALETTE_HITS_PER_KIND,
+  itemClassName,
+}: PaletteSearchResultsProps): JSX.Element {
   const t = useTranslations('search')
   const words = text.trim()
   const stale = answered !== words
-  const anyHits = SEARCH_KINDS.some((kind) => (response?.sections[kind]?.hits.length ?? 0) > 0)
+  const shown = paletteHits(response, perKind)
+  const anyHits = shown.length > 0
   const status = failed ? t('error') : loading || stale ? t('loading') : response && !anyHits ? t('palette.noHits') : null
+  const select = onPick
+    ? (href: string): void => {
+        const hit = shown.find((entry) => hitHref(entry) === href)
+        if (hit) onPick(hit)
+      }
+    : onOpen
   return (
-    <OpenContext.Provider value={onOpen}>
+    <OpenContext.Provider value={select}>
       <ResultRowFrameProvider value={PaletteHitFrame}>
         {SEARCH_KINDS.map((kind) => {
-          const hits = response?.sections[kind]?.hits.slice(0, PALETTE_HITS_PER_KIND) ?? []
+          const hits = response?.sections[kind]?.hits.slice(0, perKind) ?? []
           if (hits.length === 0) return null
           return (
             <CommandGroup key={kind} heading={t(`kinds.${kind}`)} forceMount className={stale ? PALETTE_STALE_CLASS : undefined} data-testid={`palette-group-${kind}`}>
@@ -107,19 +133,32 @@ export function PaletteSearchResults({ text, answered, response, loading, failed
           )
         })}
       </ResultRowFrameProvider>
-      <CommandGroup forceMount>
-        <CommandItem forceMount value={PALETTE_ALL_RESULTS_VALUE} onSelect={() => onOpen(allHref)} className={itemClassName} data-testid="palette-workspace-search">
-          <PaletteGlyph icon={Search} />
-          <PaletteLabel>{t('palette.allResults', { text: words })}</PaletteLabel>
-          {status ? (
-            <PaletteAside busy={loading && !failed} testId="palette-search-status">
-              {status}
-            </PaletteAside>
-          ) : null}
-        </CommandItem>
-      </CommandGroup>
+      {allHref === null ? (
+        status ? (
+          <PaletteStatusLine busy={loading && !failed} testId="palette-search-status">
+            {status}
+          </PaletteStatusLine>
+        ) : null
+      ) : (
+        <CommandGroup forceMount>
+          <CommandItem forceMount value={PALETTE_ALL_RESULTS_VALUE} onSelect={() => onOpen(allHref)} className={itemClassName} data-testid="palette-workspace-search">
+            <PaletteGlyph icon={Search} />
+            <PaletteLabel>{t('palette.allResults', { text: words })}</PaletteLabel>
+            {status ? (
+              <PaletteAside busy={loading && !failed} testId="palette-search-status">
+                {status}
+              </PaletteAside>
+            ) : null}
+          </CommandItem>
+        </CommandGroup>
+      )}
     </OpenContext.Provider>
   )
+}
+
+/** The hits the results show, in their order: each kind's first `perKind`, the kinds in the contract's order. */
+export function paletteHits(response: SearchResponse | null, perKind: number = PALETTE_HITS_PER_KIND): SearchHit[] {
+  return SEARCH_KINDS.flatMap((kind): SearchHit[] => response?.sections[kind]?.hits.slice(0, perKind) ?? [])
 }
 
 export interface PaletteSearchStartProps {

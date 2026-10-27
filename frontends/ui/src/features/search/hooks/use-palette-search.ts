@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from 'react'
 
 import { listSavedSearches, type SavedSearchView } from '@/lib/search/saved-search-client'
-import type { SearchBody, SearchResponse, SearchScopeQuery } from '@/lib/search/search-wire'
+import type { SearchBody, SearchKind, SearchResponse, SearchScopeQuery } from '@/lib/search/search-wire'
 import { readRecentSearches, rememberSearch } from '../lib/recent-searches'
 import { postSearch } from '../lib/search-client'
 import { hitHref } from '../lib/search-hrefs'
@@ -36,10 +36,18 @@ const IDLE: PaletteSearch = { answered: '', response: null, loading: false, fail
  * counts. A newer question cancels the one in flight, and the last answer stays
  * up (marked stale) until the next arrives, so the list does not blink per key.
  */
-export function usePaletteSearch(text: string, scope: SearchScopeQuery, enabled: boolean): PaletteSearchHandle {
+export function usePaletteSearch(
+  text: string,
+  scope: SearchScopeQuery,
+  enabled: boolean,
+  /** The composer's `#` asks for documents alone, more of them. */
+  options: { kinds?: readonly SearchKind[]; limit?: number } = {}
+): PaletteSearchHandle {
   const [state, setState] = useState<PaletteSearch>(IDLE)
   const words = text.trim()
   const scopeKey = JSON.stringify(scope)
+  const kindsKey = options.kinds ? options.kinds.join(',') : ''
+  const limit = options.limit ?? PALETTE_HITS_PER_KIND
   const tracker = useSearchTracker('palette')
 
   useEffect(() => {
@@ -55,7 +63,8 @@ export function usePaletteSearch(text: string, scope: SearchScopeQuery, enabled:
     const controller = new AbortController()
     const timer = window.setTimeout(() => {
       const asked = JSON.parse(scopeKey) as SearchScopeQuery
-      const body: SearchBody = { text: words, limit: PALETTE_HITS_PER_KIND, facets: false }
+      const kinds = kindsKey ? (kindsKey.split(',') as SearchKind[]) : undefined
+      const body: SearchBody = { text: words, limit, facets: false, ...(kinds ? { kinds } : {}) }
       const started = performance.now()
       let serverTiming: string | null = null
       postSearch(asked, body, controller.signal, (header) => {
@@ -81,7 +90,7 @@ export function usePaletteSearch(text: string, scope: SearchScopeQuery, enabled:
       window.clearTimeout(timer)
       controller.abort()
     }
-  }, [words, scopeKey, enabled, tracker])
+  }, [words, scopeKey, enabled, tracker, kindsKey, limit])
 
   const { response } = state
   const opening = useCallback(
