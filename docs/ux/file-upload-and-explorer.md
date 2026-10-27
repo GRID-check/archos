@@ -815,7 +815,7 @@ therefore no longer able to drift: `useLevelListing` and `useShelfSummary`
 now the fallback), `useFolderTree` (load, create, rename,
 move, delete, with the `files` strings), `useDocumentMoves`, `useShelfUpload`
 (the plan, the ensure request, moves of unchanged documents, `folderIdFor`),
-`useFolderParam` (`?folder=`), `useViewPreference` (`grid.files.view`),
+`useFolderParam` (`?folder=`), `useViewPreference` (`files.view`),
 `useFileSearch` (takes the shelf's search route), `usePreviewChannel` and
 `useDocParamSync` (`?doc=`), `useModelStage` (`?model=`), and the one row mapper
 `toFileItem`.

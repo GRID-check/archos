@@ -14,7 +14,7 @@
 
 import { useEffect } from 'react'
 
-export const RECENT_PROJECTS_STORAGE_KEY = 'grid.project.recent'
+export const RECENT_PROJECTS_STORAGE_KEY = 'project.recent'
 
 /** How many ids are kept. The sheet shows fewer; the rest absorb deletions. */
 const KEEP = 8

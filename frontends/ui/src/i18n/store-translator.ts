@@ -14,7 +14,7 @@
 
 import { getDictionary } from './dictionaries'
 import { createTranslator, type Translator } from './translate'
-import { LOCALE_COOKIE, defaultLocale, isLocale, resolveLocale, type Locale } from './config'
+import { LEGACY_LOCALE_COOKIE, LOCALE_COOKIE, defaultLocale, isLocale, resolveLocale, type Locale } from './config'
 
 /**
  * Read the active locale: the page's `lang`, else the mirror cookie, else the default.
@@ -32,9 +32,8 @@ export function getActiveLocale(): Locale {
   // read as English.
   const pageLang = document.documentElement.lang
   if (isLocale(pageLang)) return pageLang
-  const match = document.cookie.match(
-    new RegExp(`(?:^|;\\s*)${LOCALE_COOKIE}=([^;]+)`),
-  )
+  const read = (name: string) => document.cookie.match(new RegExp(`(?:^|;\\s*)${name}=([^;]+)`))
+  const match = read(LOCALE_COOKIE) ?? read(LEGACY_LOCALE_COOKIE)
   return resolveLocale(match ? decodeURIComponent(match[1]) : undefined)
 }
 

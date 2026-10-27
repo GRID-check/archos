@@ -124,7 +124,7 @@ export function clearMailImportSendFailure(): void {
   if (state.failure) set({ send: state.send, failure: null })
 }
 
-const FILE_KEY = 'piloti.mailImport.file.'
+const FILE_KEY = 'mailImport.file.'
 
 function fingerprint(file: File): string {
   return `${file.size}:${file.lastModified}`

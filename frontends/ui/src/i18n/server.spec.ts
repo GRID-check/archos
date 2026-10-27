@@ -32,6 +32,15 @@ describe('getLocale', () => {
     expect(await getLocale()).toBe('de')
   })
 
+  it('reads the cookie under its old name while the new one is missing (ADR-0145 rule 5)', async () => {
+    const jar: Record<string, string> = { 'grid-locale': 'de' }
+    cookies.mockResolvedValue({ get: (name: string) => (name in jar ? { value: jar[name] } : undefined) })
+    headers.mockResolvedValue(new Headers({ 'accept-language': 'en' }))
+    findSavedLocale.mockResolvedValue({ known: false, locale: null })
+
+    expect(await getLocale()).toBe('de')
+  })
+
   it('answers the default in a job slice, which has no request to read', async () => {
     cookies.mockRejectedValue(new Error(OUTSIDE_A_REQUEST))
     headers.mockRejectedValue(new Error(OUTSIDE_A_REQUEST))

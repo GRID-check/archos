@@ -406,7 +406,7 @@ of the same answer.
 handle: pull it to give the document as much of the row as you want, between
 280px and 960px, and the chat column keeps its own floor (40% of the row), so on
 a smaller window that floor is what stops you first. The width you set is
-remembered — per browser, in `localStorage` (`grid.filePeek.width`) — so the next
+remembered — per browser, in `localStorage` (`filePeek.width`) — so the next
 file opens at the width you read the last one at. Double-click the seam to put
 it back at its default. The seam is also keyboard operable (Tab to it, then the
 arrow keys). Drag it all the way shut and the peek is dismissed exactly as the

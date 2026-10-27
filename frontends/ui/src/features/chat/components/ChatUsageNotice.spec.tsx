@@ -107,7 +107,7 @@ describe('ChatUsageNotice', () => {
   })
 
   test('a spent budget shows even when its key was dismissed', async () => {
-    window.localStorage.setItem('piloti.usage-notice.dismissed', JSON.stringify(['spent']))
+    window.localStorage.setItem('usage-notice.dismissed', JSON.stringify(['spent']))
     answer(notice({ level: 'exhausted', percent: 100, key: 'spent' }))
     render(<ChatUsageNotice isAuthenticated />)
     expect(await screen.findByRole('alert')).toBeInTheDocument()

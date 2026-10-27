@@ -73,7 +73,7 @@ const TOOLS: Array<{ tool: PaletteTool; key: string; icon: LucideIcon }> = [
 ]
 
 /** Where this browser keeps that it has seen the tools explained: the first review opens with them spelled out. */
-export const TOOLS_INTRO_KEY = 'piloti.review.toolsIntroSeen'
+export const TOOLS_INTRO_KEY = 'review.toolsIntroSeen'
 
 /** Whether the tools were explained here before. Storage that cannot be read counts as seen: no intro on every open. */
 export function toolsIntroSeen(): boolean {

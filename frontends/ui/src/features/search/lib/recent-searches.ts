@@ -8,7 +8,7 @@
  * window, a preview), where the palette simply shows no recent searches.
  */
 
-export const RECENT_SEARCHES_KEY = 'grid.search.recent'
+export const RECENT_SEARCHES_KEY = 'search.recent'
 export const RECENT_SEARCHES_MAX = 5
 
 /** `text` first, without an earlier copy of it (case-insensitive), at most {@link RECENT_SEARCHES_MAX}. */
