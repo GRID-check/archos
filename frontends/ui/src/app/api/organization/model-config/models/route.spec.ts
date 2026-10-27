@@ -27,7 +27,6 @@ afterEach(() => {
 
 vi.mock('@/lib/auth/require-auth', () => ({
   requireAuthorizedSession: vi.fn().mockImplementation(async () => session),
-  authzErrorResponse: vi.fn().mockReturnValue(null),
 }))
 vi.mock('@/lib/organizations/service', () => ({ isZdrOnlyForOrg: vi.fn() }))
 vi.mock('@/lib/model-config/org-catalog', () => ({ getCatalogForOrg: vi.fn() }))

@@ -24,7 +24,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('@/lib/auth/require-auth', () => ({
   requireAuthorizedSession: vi.fn(),
-  authzErrorResponse: () => null,
 }))
 
 // Container access granted, so the only interesting variable is the conversation.

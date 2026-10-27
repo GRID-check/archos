@@ -30,7 +30,6 @@ vi.mock('@/lib/authz/projects', () => ({ requireProjectAccess: vi.fn() }))
 // under test does not need the Next.js request context.
 vi.mock('@/lib/auth/require-auth', () => ({
   requireAuthorizedSession: vi.fn(),
-  authzErrorResponse: () => null,
 }))
 
 vi.mock('@/lib/conversations/repository', () => ({

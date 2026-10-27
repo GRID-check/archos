@@ -54,7 +54,6 @@ import { PROJECT_CLOSED_SQLSTATE, projectClosedError } from '@/lib/projects/proj
 import { NextResponse } from 'next/server'
 import { ZodError, type ZodType, type output } from 'zod'
 import { requireAuthorizedSession } from '@/lib/auth/require-auth'
-import { isAuthzError } from '@/lib/auth-utils'
 import { hasPermission, type KnownPermission } from '@/lib/authz/permissions'
 import { requireInternalToken, type InternalTokenEnv } from '@/lib/internal-auth'
 import { runWithTenantSlot, withPlatformAccess } from '@/lib/db/tenant-context'
@@ -67,7 +66,9 @@ import {
   ApiError,
   BadRequestError,
   ForbiddenError,
+  NoOrganizationError,
   PayloadTooLargeError,
+  SessionRequiredError,
   TooManyRequestsError,
   UpstreamError,
 } from './errors'
@@ -297,6 +298,12 @@ const DATABASE_RETRY_AFTER_S = 5
 export function errorResponse(error: unknown, request: Request): Response {
   if (isNextControlFlowError(error)) throw error
   const requestId = resolveRequestId(request)
+  // The two session guards keep the body they had while they threw plain
+  // Errors matched by message: `403 { error: 'Forbidden' }`, for no session as
+  // for no organization (see `SessionRequiredError`).
+  if (error instanceof SessionRequiredError || error instanceof NoOrganizationError) {
+    return errorPayload({ error: 'Forbidden', code: 'FORBIDDEN' }, 403, requestId)
+  }
   if (error instanceof ApiError) {
     const body: Record<string, unknown> = { error: error.message, code: error.code }
     if (error.details !== undefined) body.details = error.details
@@ -307,12 +314,6 @@ export function errorResponse(error: unknown, request: Request): Response {
       error instanceof TooManyRequestsError ? rateLimitHeaders(error.decision) : undefined
     if (error instanceof UpstreamError) logUpstreamError(error, requestId)
     return errorPayload(body, error.status, requestId, headers)
-  }
-  // Legacy guards (requireGridSession, requireProjectAccess, WorkOS client
-  // wrappers) throw plain Errors classified by message. Map them exactly as
-  // authzErrorResponse() did so behavior stays stable while they migrate.
-  if (isAuthzError(error)) {
-    return errorPayload({ error: 'Forbidden', code: 'FORBIDDEN' }, 403, requestId)
   }
   // The database's delete trigger refused a row a legal hold covers (migration
   // 0093). The service check normally answers first with the same 409; this is

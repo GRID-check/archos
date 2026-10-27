@@ -32,7 +32,7 @@
 import { NextResponse } from 'next/server'
 import { tenantSlotRoute } from '@/lib/db/tenant-context'
 import { buildCollectionScopeFromRequest } from '@/lib/collection-scope-request'
-import { isAuthzError } from '@/lib/auth-utils'
+import { isAuthzRefusal } from '@/lib/api/errors'
 import {
   resolveOptionalSession,
   backendErrorEnvelope,
@@ -157,7 +157,7 @@ export const GET = tenantSlotRoute(async function GET(
     if (isRedirectError(error)) {
       throw error
     }
-    if (isAuthzError(error)) {
+    if (isAuthzRefusal(error)) {
       return handleAuthzError(error)
     }
 
@@ -233,7 +233,7 @@ export const POST = tenantSlotRoute(async function POST(
     if (isRedirectError(error)) {
       throw error
     }
-    if (isAuthzError(error)) {
+    if (isAuthzRefusal(error)) {
       return handleAuthzError(error)
     }
 
@@ -300,7 +300,7 @@ export const DELETE = tenantSlotRoute(async function DELETE(
     if (isRedirectError(error)) {
       throw error
     }
-    if (isAuthzError(error)) {
+    if (isAuthzRefusal(error)) {
       return handleAuthzError(error)
     }
 

@@ -6,7 +6,6 @@ import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { StatusScreen } from '@/components/brand/status-screen'
 import { useTranslations } from '@/i18n'
-import { isAuthzError } from '@/lib/auth-utils'
 import { capturePosthogException } from '@/lib/analytics/posthog'
 
 /**
@@ -23,16 +22,15 @@ export default function RouteError({
 }) {
   const t = useTranslations('errors')
 
-  // Classify on the same typed authz signal the API route handlers and page
-  // guards use (`isAuthzError`, `@/lib/auth-utils`) — never a bare substring
-  // match. A naive /access/i regex also matches unrelated crashes such as
-  // "Cannot access 'x' before initialization", which would misroute a real
-  // bug to the access-denied screen. `isAuthzError` only matches the app's
-  // actual authz message convention ("not found", "forbidden",
-  // "unauthorized" — see `requireProjectAccess`'s `NotFoundError` and
-  // `NoOrganizationError`), so an unknown error always falls through to the
-  // generic screen (fail-safe).
-  const isAccess = isAuthzError(error)
+  // Classified by message, because this is a client boundary: a server-thrown
+  // `ApiError` crosses the RSC boundary as a plain `Error`, so the typed check
+  // the server uses (`isAuthzRefusal`) cannot see it here. Never a bare
+  // substring match: a naive /access/i also matches unrelated crashes such as
+  // "Cannot access 'x' before initialization", which would misroute a real bug
+  // to the access-denied screen. `isAccessDenial` matches only the messages the
+  // authz errors carry, so an unknown error falls through to the generic
+  // screen (fail-safe).
+  const isAccess = isAccessDenial(error)
 
   useEffect(() => {
     console.error('[route error]', error)
@@ -77,5 +75,21 @@ export default function RouteError({
         </>
       }
     />
+  )
+}
+
+/**
+ * The messages the authz errors carry: `NotFoundError` ("Not found",
+ * `requireProjectAccess`), `ForbiddenError` and `NoOrganizationError`
+ * ("Forbidden…"), `UnauthorizedError` and `SessionRequiredError`
+ * ("Unauthorized…").
+ */
+function isAccessDenial(error: Error): boolean {
+  const message = error.message.toLowerCase()
+  return (
+    message === 'not found' ||
+    message.startsWith('not found:') ||
+    message.includes('unauthorized') ||
+    message.includes('forbidden')
   )
 }

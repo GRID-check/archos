@@ -37,10 +37,48 @@ export class UnauthorizedError extends ApiError {
   }
 }
 
+/**
+ * 401 — no signed-in session at all (`requireGridSession`).
+ *
+ * Its own class because the route wrapper answers it as `403 { error:
+ * 'Forbidden' }`, the answer it got while the session guard threw a plain
+ * `Error` matched by message; a client sees no change. 401 is the HTTP answer
+ * for a missing session, and moving to it is its own decision.
+ */
+export class SessionRequiredError extends UnauthorizedError {
+  constructor() {
+    super('Unauthorized: Grid session required')
+  }
+}
+
+/**
+ * Whether `error` is an authorization refusal: no session (401), not allowed
+ * (403), or not there for this caller (404).
+ *
+ * Server-side only. An error that crosses the RSC boundary to a client error
+ * boundary arrives as a plain `Error` and keeps only its message; `app/error.tsx`
+ * classifies by message for that reason.
+ */
+export function isAuthzRefusal(error: unknown): error is ApiError {
+  return error instanceof ApiError && (error.status === 401 || error.status === 403 || error.status === 404)
+}
+
 /** 403 — authenticated but not allowed. */
 export class ForbiddenError extends ApiError {
   constructor(message = 'Forbidden', details?: unknown) {
     super(403, 'FORBIDDEN', message, details)
+  }
+}
+
+/**
+ * 403 — a signed-in session that has not selected a WorkOS organization
+ * (`requireAuthorizedSession`). The route wrapper answers it as it answers
+ * {@link SessionRequiredError}; page and server-action code calls
+ * `requireAuthorizedPageSession`, which redirects instead.
+ */
+export class NoOrganizationError extends ForbiddenError {
+  constructor() {
+    super('Forbidden: no organization selected')
   }
 }
 
