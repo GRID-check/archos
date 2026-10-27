@@ -415,7 +415,8 @@ def _setup_backend(config: KnowledgeRetrievalConfig, summary_llm_obj=None) -> tu
 
 #: Modules the search imports inside its body, on first use. Importing them at
 #: build time takes their cost (``folder_channel`` alone was 136 ms, measured
-#: 2026-10-27) off the first turn.
+#: 2026-10-27) off the first turn. ``_warm_search_path_sync`` imports each by a
+#: literal statement; the test holds the two lists together.
 _SEARCH_PATH_MODULES = (
     "knowledge_layer.browse",
     "knowledge_layer.folder_channel",
@@ -426,13 +427,15 @@ _SEARCH_PATH_MODULES = (
 
 
 def _warm_search_path_sync(retriever: Any) -> None:
-    import importlib
-
     warm = getattr(retriever, "warm_components", None)
     if callable(warm):
         warm()
-    for module in _SEARCH_PATH_MODULES:
-        importlib.import_module(module)
+    import knowledge_layer.browse  # noqa: F401 - warm-up import
+    import knowledge_layer.folder_channel  # noqa: F401 - warm-up import
+    import knowledge_layer.read_passage  # noqa: F401 - warm-up import
+    import knowledge_layer.requery  # noqa: F401 - warm-up import
+
+    import aiq_agent.observability.retrieval_trace  # noqa: F401 - warm-up import
 
 
 async def _warm_search_path(retriever: Any) -> None:
